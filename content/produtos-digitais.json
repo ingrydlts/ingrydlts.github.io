@@ -7,7 +7,7 @@
       "summary": "A planilha financeira que lança seus gastos fixos sozinha — todo mês, sem você precisar copiar e colar nada.",
       "description": "Feita pra quem organiza a vida em euros, mora fora do Brasil e não tem paciência pra reeditar planilha todo mês. Uma planilha em Google Sheets que roda praticamente sozinha: você cadastra o gasto fixo ou parcelado uma vez, e ela lança automaticamente todo dia 1º — parcela certa, sem duplicar, sabendo sozinha quando parar.",
       "image": "",
-      "price": 37,
+      "price": 25,
       "priceOld": 39,
       "launchNote": "Preço de lançamento — válido para os primeiros 30 compradores",
       "guaranteeDays": 14,
@@ -22,7 +22,7 @@
         { "q": "Preciso saber programar pra instalar a automação?", "a": "Não. Você só segue o guia passo a passo, ou usa o Prompt Mestre pra qualquer IA gerar o código por você." },
         { "q": "Preciso comprar de novo todo ano?", "a": "Não. É compra única, reutilizável pra sempre." }
       ],
-      "stripeLink": "https://buy.stripe.com/4gM3cv80l0ch0YJ5hTaR200"
+      "stripeLink": "https://buy.stripe.com/9B6bJ10xTgbfgXH7q1aR201"
     },
     {
       "slug": "organizacao-mensal",

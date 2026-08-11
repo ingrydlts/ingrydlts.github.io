@@ -125,6 +125,7 @@
         '<div style="display:flex; align-items:baseline; gap:12px; margin-bottom:6px;">' +
           (p.priceOld ? '<span style="text-decoration:line-through; color:#A8AF9E; font-weight:700; font-size:14px;">de ' + formatPrice(p.priceOld) + "</span>" : "") +
           '<span class="price" style="font-size:30px;">' + (p.priceOld ? "por " : "") + formatPrice(p.price) + "</span>" +
+          (p.priceOld && p.priceOld > p.price ? '<span style="background:#577328; color:#fff; font-weight:700; font-size:12px; padding:3px 8px; border-radius:20px;">-' + Math.round((1 - p.price / p.priceOld) * 100) + "%</span>" : "") +
         "</div>" +
         (p.launchNote ? '<div style="font-weight:600; font-size:13px; color:#577328; margin-bottom:20px;">' + escapeHtml(p.launchNote) + "</div>" : "") +
         (featuresHtml ? '<ul style="list-style:none; padding:0; margin:0 0 22px;">' + featuresHtml + "</ul>" : "") +
