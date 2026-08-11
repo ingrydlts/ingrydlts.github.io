@@ -99,14 +99,14 @@
 
 <script src="/assets/js/main.js"></script>
 <script type="module">
-  import { fetchJSON, imgSlotHTML, escapeHtml } from "/assets/js/render.js";
+  import { fetchJSON, imgSlotHTML, escapeHtml, postHref } from "/assets/js/render.js";
 
   let ALL_POSTS = [];
   let activeCategory = "Todos";
 
   function postCardHTML(post) {
     return (
-      '<a class="card" href="/artigos/post/?slug=' + encodeURIComponent(post.slug) + '" style="color:inherit;">' +
+      '<a class="card" href="' + escapeHtml(postHref(post)) + '" style="color:inherit;">' +
       imgSlotHTML(post.image, post.title, "Foto do artigo") +
       '<div class="card-body">' +
       '<span class="eyebrow" style="color:#6E6862;">' + escapeHtml(post.category) + "</span>" +

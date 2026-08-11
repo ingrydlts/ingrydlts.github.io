@@ -81,7 +81,7 @@
 
 <script src="/assets/js/main.js"></script>
 <script type="module">
-  import { fetchJSON, imgSlotHTML, escapeHtml, qs } from "/assets/js/render.js";
+  import { fetchJSON, imgSlotHTML, escapeHtml, qs, postHref } from "/assets/js/render.js";
   import { markdownToBlocks } from "/assets/js/markdown.js";
 
   function formatDate(iso) {
@@ -129,6 +129,10 @@
       root.innerHTML = '<p class="empty-state">Artigo não encontrado. <a href="/artigos/">Voltar ao blog</a>.</p>';
       return;
     }
+    if (post.url) {
+      window.location.replace(post.url);
+      return;
+    }
     document.title = post.title + " — Por Dentro";
 
     const blocks = markdownToBlocks(post.body);
@@ -138,7 +142,7 @@
 
     const related = data.items.filter((p) => p.slug !== post.slug).slice(0, 3);
     const relatedHtml = related.map((p) =>
-      '<a class="card" href="/artigos/post/?slug=' + encodeURIComponent(p.slug) + '" style="color:inherit;">' +
+      '<a class="card" href="' + escapeHtml(postHref(p)) + '" style="color:inherit;">' +
       imgSlotHTML(p.image, p.title, "Foto do artigo") +
       '<div class="card-body"><h3 style="font-size:16px;">' + escapeHtml(p.title) + "</h3>" +
       '<span style="font-weight:600; font-size:13px; color:#604034;">Ler artigo →</span></div></a>'

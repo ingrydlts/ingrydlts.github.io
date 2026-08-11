@@ -34,3 +34,9 @@ export function imgSlotHTML(src, alt, label) {
 export function qs(name) {
   return new URLSearchParams(window.location.search).get(name);
 }
+
+// Alguns posts migraram para página estática própria (post.url);
+// os demais continuam no template dinâmico via ?slug=
+export function postHref(post) {
+  return post.url || "/artigos/post/?slug=" + encodeURIComponent(post.slug);
+}

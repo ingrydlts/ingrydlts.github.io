@@ -126,7 +126,7 @@
 
 <script src="/assets/js/main.js"></script>
 <script type="module">
-  import { fetchJSON, imgSlotHTML, escapeHtml } from "/assets/js/render.js";
+  import { fetchJSON, imgSlotHTML, escapeHtml, postHref } from "/assets/js/render.js";
 
   (async function () {
     try {
@@ -145,7 +145,7 @@
       const el = document.getElementById("home-blog-teaser");
       el.innerHTML = latest.map(function (post) {
         return (
-          '<a class="card" href="/artigos/post/?slug=' + encodeURIComponent(post.slug) + '" style="color:inherit;">' +
+          '<a class="card" href="' + escapeHtml(postHref(post)) + '" style="color:inherit;">' +
           imgSlotHTML(post.image, post.title, "Foto do artigo") +
           '<div class="card-body">' +
           '<span class="eyebrow" style="color:#6E6862; margin-bottom:2px;">' + escapeHtml(post.category) + "</span>" +
