@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Artigo — Por Dentro</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,600;9..144,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/css/style.css">
+<style>:root { --nav-active: #604034; }</style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="/" class="site-logo">Por Dentro</a>
+  <nav class="site-nav" aria-label="Navegação principal">
+    <a href="/produtos-digitais/">Produtos digitais</a>
+    <a href="/produtos-de-estudo/">Produtos de estudo</a>
+    <a href="/produtos-de-compras/">Produtos de compras</a>
+    <a href="/artigos/">Blog</a>
+    <a href="/sobre/">Sobre</a>
+  </nav>
+  <button class="nav-toggle" aria-label="Abrir menu" aria-expanded="false">
+    <span></span><span></span><span></span>
+  </button>
+</header>
+<nav class="mobile-nav" aria-label="Navegação mobile">
+  <a href="/produtos-digitais/">Produtos digitais</a>
+  <a href="/produtos-de-estudo/">Produtos de estudo</a>
+  <a href="/produtos-de-compras/">Produtos de compras</a>
+  <a href="/artigos/">Blog</a>
+  <a href="/sobre/">Sobre</a>
+</nav>
+
+<main>
+  <div class="container">
+    <a class="back-link" href="/artigos/">← Voltar aos artigos</a>
+    <div id="article-root">
+      <p class="muted">Carregando artigo...</p>
+    </div>
+  </div>
+</main>
+
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-grid">
+      <div>
+        <div class="site-logo" style="color:#F4F1EC; margin-bottom:14px;">Por Dentro</div>
+        <p style="color:#A8A29C; max-width:32ch; font-size:13px;">Templates, indicações de estudo e de compras para quem vive a vida real fora do Brasil.</p>
+      </div>
+      <div>
+        <div class="footer-col-title">Navegação</div>
+        <div class="footer-links">
+          <a href="/produtos-digitais/">Produtos digitais</a>
+          <a href="/produtos-de-estudo/">Produtos de estudo</a>
+          <a href="/produtos-de-compras/">Produtos de compras</a>
+          <a href="/artigos/">Blog</a>
+          <a href="/sobre/">Sobre</a>
+        </div>
+      </div>
+      <div>
+        <div class="footer-col-title">Legal</div>
+        <div class="footer-links">
+          <a href="/mentions-legales/">Mentions légales</a>
+          <a href="/cgv/">CGV</a>
+          <a href="/confidentialite/">Confidentialité</a>
+        </div>
+      </div>
+      <div>
+        <div class="footer-col-title">Redes</div>
+        <div class="footer-links"><a href="https://instagram.com/" target="_blank" rel="noopener">@ingryd.pordentro</a></div>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>© Por Dentro · France</span>
+      <span>Feito por quem vive isso.</span>
+    </div>
+  </div>
+</footer>
+
+<script src="/assets/js/main.js"></script>
+<script type="module">
+  import { fetchJSON, imgSlotHTML, escapeHtml, qs } from "/assets/js/render.js";
+  import { markdownToBlocks } from "/assets/js/markdown.js";
+
+  function formatDate(iso) {
+    if (!iso) return "";
+    const d = new Date(iso + "T00:00:00");
+    if (isNaN(d)) return iso;
+    return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" });
+  }
+
+  function inArticleBanner() {
+    return (
+      '<div class="in-article-banner"><div class="blog-banner">' +
+      imgSlotHTML("", "", "Foto do item indicado") +
+      '<div class="blog-banner-body">' +
+      '<div><span class="eyebrow" style="color:#5F87AE;">Da vitrine · Produtos de estudo</span>' +
+      "<h3>Livros e indicações pra quem tá estudando francês</h3></div>" +
+      '<a class="btn btn-pill" href="/produtos-de-estudo/" style="background:#8AACD2;">Ver indicações →</a>' +
+      "</div></div></div>"
+    );
+  }
+
+  function endOfArticleCTA() {
+    return (
+      '<div class="buy-box" style="display:flex; align-items:center; justify-content:space-between; gap:24px; flex-wrap:wrap; margin:40px 0;">' +
+      '<div><span class="eyebrow" style="color:#577328;">Da vitrine · Produtos digitais</span>' +
+      '<h3 style="margin:0 0 6px;">Depois do artigo vem a papelada</h3>' +
+      '<p class="muted" style="margin:0; font-size:13px;">Conheça os Templates Organizadores da Por Dentro.</p></div>' +
+      '<a class="btn btn-pill" href="/produtos-digitais/" style="background:#577328; flex-shrink:0;">Ver produtos →</a>' +
+      "</div>"
+    );
+  }
+
+  (async function () {
+    const root = document.getElementById("article-root");
+    const slug = qs("slug");
+    let data;
+    try {
+      data = await fetchJSON("/content/posts.json");
+    } catch (e) {
+      root.innerHTML = '<p class="empty-state">Não foi possível carregar o artigo agora.</p>';
+      return;
+    }
+    const post = data.items.find((p) => p.slug === slug);
+    if (!post) {
+      root.innerHTML = '<p class="empty-state">Artigo não encontrado. <a href="/artigos/">Voltar ao blog</a>.</p>';
+      return;
+    }
+    document.title = post.title + " — Por Dentro";
+
+    const blocks = markdownToBlocks(post.body);
+    const mid = Math.ceil(blocks.length / 2);
+    const bodyHtml =
+      blocks.slice(0, mid).join("") + inArticleBanner() + blocks.slice(mid).join("");
+
+    const related = data.items.filter((p) => p.slug !== post.slug).slice(0, 3);
+    const relatedHtml = related.map((p) =>
+      '<a class="card" href="/artigos/post/?slug=' + encodeURIComponent(p.slug) + '" style="color:inherit;">' +
+      imgSlotHTML(p.image, p.title, "Foto do artigo") +
+      '<div class="card-body"><h3 style="font-size:16px;">' + escapeHtml(p.title) + "</h3>" +
+      '<span style="font-weight:600; font-size:13px; color:#604034;">Ler artigo →</span></div></a>'
+    ).join("");
+
+    root.innerHTML =
+      '<article>' +
+      '<div class="article-header">' +
+      '<span class="eyebrow" style="color:#604034;">' + escapeHtml(post.category) + "</span>" +
+      "<h1>" + escapeHtml(post.title) + "</h1>" +
+      '<div class="article-meta">' + escapeHtml(formatDate(post.date)) + (post.readMinutes ? " · " + post.readMinutes + " min de leitura" : "") + "</div>" +
+      "</div>" +
+      imgSlotHTML(post.image, post.title, "Foto de capa do artigo").replace('class="img-slot"', 'class="img-slot article-hero"') +
+      '<div class="article-body">' + bodyHtml + "</div>" +
+      endOfArticleCTA() +
+      "</article>" +
+      (relatedHtml
+        ? '<div class="related"><div class="eyebrow" style="color:#6E6862;">Veja também</div><div class="related-list">' + relatedHtml + "</div></div>"
+        : "");
+  })();
+</script>
+</body>
+</html>

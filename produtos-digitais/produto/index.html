@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Produto — Por Dentro</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,600;9..144,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/css/style.css">
+<style>:root { --nav-active: #577328; }</style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="/" class="site-logo">Por Dentro</a>
+  <nav class="site-nav" aria-label="Navegação principal">
+    <a href="/produtos-digitais/">Produtos digitais</a>
+    <a href="/produtos-de-estudo/">Produtos de estudo</a>
+    <a href="/produtos-de-compras/">Produtos de compras</a>
+    <a href="/artigos/">Blog</a>
+    <a href="/sobre/">Sobre</a>
+  </nav>
+  <button class="nav-toggle" aria-label="Abrir menu" aria-expanded="false">
+    <span></span><span></span><span></span>
+  </button>
+</header>
+<nav class="mobile-nav" aria-label="Navegação mobile">
+  <a href="/produtos-digitais/">Produtos digitais</a>
+  <a href="/produtos-de-estudo/">Produtos de estudo</a>
+  <a href="/produtos-de-compras/">Produtos de compras</a>
+  <a href="/artigos/">Blog</a>
+  <a href="/sobre/">Sobre</a>
+</nav>
+
+<main>
+  <div class="container">
+    <a class="back-link" href="/produtos-digitais/">← Produtos digitais</a>
+    <div id="product-root">
+      <p class="muted">Carregando produto...</p>
+    </div>
+  </div>
+</main>
+
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-grid">
+      <div>
+        <div class="site-logo" style="color:#F4F1EC; margin-bottom:14px;">Por Dentro</div>
+        <p style="color:#A8A29C; max-width:32ch; font-size:13px;">Templates, indicações de estudo e de compras para quem vive a vida real fora do Brasil.</p>
+      </div>
+      <div>
+        <div class="footer-col-title">Navegação</div>
+        <div class="footer-links">
+          <a href="/produtos-digitais/">Produtos digitais</a>
+          <a href="/produtos-de-estudo/">Produtos de estudo</a>
+          <a href="/produtos-de-compras/">Produtos de compras</a>
+          <a href="/artigos/">Blog</a>
+          <a href="/sobre/">Sobre</a>
+        </div>
+      </div>
+      <div>
+        <div class="footer-col-title">Legal</div>
+        <div class="footer-links">
+          <a href="/mentions-legales/">Mentions légales</a>
+          <a href="/cgv/">CGV</a>
+          <a href="/confidentialite/">Confidentialité</a>
+        </div>
+      </div>
+      <div>
+        <div class="footer-col-title">Redes</div>
+        <div class="footer-links"><a href="https://instagram.com/" target="_blank" rel="noopener">@ingryd.pordentro</a></div>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>© Por Dentro · France</span>
+      <span>Feito por quem vive isso.</span>
+    </div>
+  </div>
+</footer>
+
+<script src="/assets/js/main.js"></script>
+<script type="module">
+  import { fetchJSON, imgSlotHTML, escapeHtml, formatPrice, qs } from "/assets/js/render.js";
+  import { initBuyBox } from "/assets/js/purchase.js";
+
+  (async function () {
+    const root = document.getElementById("product-root");
+    const slug = qs("slug");
+    let data;
+    try {
+      data = await fetchJSON("/content/produtos-digitais.json");
+    } catch (e) {
+      root.innerHTML = '<p class="empty-state">Não foi possível carregar os produtos agora.</p>';
+      return;
+    }
+    const p = data.items.find((item) => item.slug === slug);
+    if (!p) {
+      root.innerHTML = '<p class="empty-state">Produto não encontrado. <a href="/produtos-digitais/">Voltar aos produtos digitais</a>.</p>';
+      return;
+    }
+
+    document.title = p.title + " — Por Dentro";
+
+    const featuresHtml = (p.features || []).map((f) =>
+      '<li style="display:flex; gap:10px; font-size:14px; margin-bottom:8px;"><span style="color:#577328; font-weight:700;">✓</span>' + escapeHtml(f) + "</li>"
+    ).join("");
+
+    const faqHtml = (p.faq || []).map((item) =>
+      '<div style="padding:16px 0; border-top:1px solid var(--borda-suave);"><h3 style="font-size:15px; margin:0 0 6px;">' +
+      escapeHtml(item.q) + '</h3><p style="font-size:14px; margin:0;">' + escapeHtml(item.a) + "</p></div>"
+    ).join("");
+
+    root.innerHTML =
+      '<div class="hero" style="padding-top:16px;">' +
+        "<div>" +
+          '<span class="eyebrow" style="color:#577328;">Produtos digitais</span>' +
+          "<h1>" + escapeHtml(p.summary) + "</h1>" +
+          "<p>" + escapeHtml(p.description) + "</p>" +
+        "</div>" +
+        imgSlotHTML(p.image, p.title, "Print / preview do produto") +
+      "</div>" +
+
+      '<div class="buy-box" style="max-width:480px; margin:0 0 56px;">' +
+        '<div style="display:flex; align-items:baseline; gap:12px; margin-bottom:6px;">' +
+          (p.priceOld ? '<span style="text-decoration:line-through; color:#A8AF9E; font-weight:700; font-size:14px;">de ' + formatPrice(p.priceOld) + "</span>" : "") +
+          '<span class="price" style="font-size:30px;">' + (p.priceOld ? "por " : "") + formatPrice(p.price) + "</span>" +
+        "</div>" +
+        (p.launchNote ? '<div style="font-weight:600; font-size:13px; color:#577328; margin-bottom:20px;">' + escapeHtml(p.launchNote) + "</div>" : "") +
+        (featuresHtml ? '<ul style="list-style:none; padding:0; margin:0 0 22px;">' + featuresHtml + "</ul>" : "") +
+
+        '<div class="pay-badges" style="margin-bottom:18px;">' +
+          '<span class="pay-badge"><svg width="18" height="13" viewBox="0 0 24 18" fill="none"><rect x="1" y="1" width="22" height="16" rx="2.5" stroke="#6E6862" stroke-width="1.4"></rect><rect x="1" y="5" width="22" height="3" fill="#6E6862"></rect></svg>Cartão</span>' +
+          '<span class="pay-badge"><span class="link-mark"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"></path></svg></span>link</span>' +
+        "</div>" +
+
+        '<label class="gate-checkbox"><input type="checkbox" data-gate-checkbox><span>Entendo que o acesso ao arquivo é imediato e renuncio ao meu direito de retratação de 14 dias.</span></label>' +
+        '<button class="btn btn-block" data-gate-button disabled style="background:#577328;">Ir para pagamento seguro — ' + formatPrice(p.price) + "</button>" +
+        '<p class="gate-message" data-gate-message></p>' +
+        '<p class="muted" style="font-size:12px; text-align:center; margin:14px 0 0;">' +
+          (p.guaranteeDays ? "Garantia de " + p.guaranteeDays + " dias. " : "") +
+          "Você será redirecionado(a) para o Stripe, nosso processador de pagamentos." +
+        "</p>" +
+      "</div>" +
+
+      (faqHtml ? '<div style="max-width:640px; margin-bottom:64px;"><h2>Perguntas frequentes</h2>' + faqHtml + "</div>" : "");
+
+    initBuyBox(root, p.stripeLink);
+  })();
+</script>
+</body>
+</html>

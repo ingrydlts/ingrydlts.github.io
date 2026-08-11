@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Produtos de compras — Por Dentro</title>
+<meta name="description" content="Roupas e acessórios pensados pro clima e pra rotina real em Paris.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,600;9..144,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/css/style.css">
+<style>:root { --nav-active: #B8933F; }</style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="/" class="site-logo">Por Dentro</a>
+  <nav class="site-nav" aria-label="Navegação principal">
+    <a href="/produtos-digitais/">Produtos digitais</a>
+    <a href="/produtos-de-estudo/">Produtos de estudo</a>
+    <a href="/produtos-de-compras/">Produtos de compras</a>
+    <a href="/artigos/">Blog</a>
+    <a href="/sobre/">Sobre</a>
+  </nav>
+  <button class="nav-toggle" aria-label="Abrir menu" aria-expanded="false">
+    <span></span><span></span><span></span>
+  </button>
+</header>
+<nav class="mobile-nav" aria-label="Navegação mobile">
+  <a href="/produtos-digitais/">Produtos digitais</a>
+  <a href="/produtos-de-estudo/">Produtos de estudo</a>
+  <a href="/produtos-de-compras/">Produtos de compras</a>
+  <a href="/artigos/">Blog</a>
+  <a href="/sobre/">Sobre</a>
+</nav>
+
+<main>
+  <div class="container">
+    <section class="section-lg">
+      <span class="eyebrow" style="color:#B8933F;">Produtos de compras</span>
+      <h1>Peças que fazem sentido na vida real em Paris</h1>
+      <p class="muted" style="max-width:60ch;">Indicações — não é loja, é o que realmente uso.</p>
+    </section>
+
+    <section class="grid grid-3" id="product-grid" aria-label="Indicações de compras">
+      <p class="muted">Carregando indicações...</p>
+    </section>
+
+    <!-- Esta frase é exigência fixa do contrato Amazon Associates (ver especificação, seção 3.1.1).
+         Se os links desta categoria não forem da Amazon, troque por um selo "Publicité"/"Lien affilié"
+         equivalente ao programa de afiliados realmente usado. -->
+    <p class="muted" style="font-size:13px; max-width:70ch; margin:24px 0 0;">
+      En tant que Partenaire Amazon, je réalise un bénéfice sur les achats remplissant les conditions requises.
+    </p>
+
+    <div id="category-banner"></div>
+  </div>
+</main>
+
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-grid">
+      <div>
+        <div class="site-logo" style="color:#F4F1EC; margin-bottom:14px;">Por Dentro</div>
+        <p style="color:#A8A29C; max-width:32ch; font-size:13px;">Templates, indicações de estudo e de compras para quem vive a vida real fora do Brasil.</p>
+      </div>
+      <div>
+        <div class="footer-col-title">Navegação</div>
+        <div class="footer-links">
+          <a href="/produtos-digitais/">Produtos digitais</a>
+          <a href="/produtos-de-estudo/">Produtos de estudo</a>
+          <a href="/produtos-de-compras/">Produtos de compras</a>
+          <a href="/artigos/">Blog</a>
+          <a href="/sobre/">Sobre</a>
+        </div>
+      </div>
+      <div>
+        <div class="footer-col-title">Legal</div>
+        <div class="footer-links">
+          <a href="/mentions-legales/">Mentions légales</a>
+          <a href="/cgv/">CGV</a>
+          <a href="/confidentialite/">Confidentialité</a>
+        </div>
+      </div>
+      <div>
+        <div class="footer-col-title">Redes</div>
+        <div class="footer-links"><a href="https://instagram.com/" target="_blank" rel="noopener">@ingryd.pordentro</a></div>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>© Por Dentro · France</span>
+      <span>Feito por quem vive isso.</span>
+    </div>
+  </div>
+</footer>
+
+<script src="/assets/js/main.js"></script>
+<script type="module">
+  import { fetchJSON, imgSlotHTML, escapeHtml } from "/assets/js/render.js";
+
+  (async function () {
+    const grid = document.getElementById("product-grid");
+    try {
+      const data = await fetchJSON("/content/produtos-compras.json");
+      if (!data.items.length) {
+        grid.innerHTML = '<p class="empty-state">Nenhuma indicação cadastrada ainda — adicione uma em /admin.</p>';
+      } else {
+        grid.innerHTML = data.items.map(function (item) {
+          const href = item.affiliateUrl || "#";
+          return (
+            '<a class="card" href="' + escapeHtml(href) + '" target="_blank" rel="sponsored nofollow noopener" style="color:inherit; position:relative;">' +
+            imgSlotHTML(item.image, item.title, "Foto do item") +
+            '<div class="card-body">' +
+            "<h3>" + escapeHtml(item.title) + "</h3>" +
+            "<p>" + escapeHtml(item.desc) + "</p>" +
+            '<span class="badge badge-publicite" style="align-self:flex-start;">Publicité</span>' +
+            "</div></a>"
+          );
+        }).join("");
+      }
+    } catch (e) {
+      grid.innerHTML = '<p class="empty-state">Não foi possível carregar as indicações agora.</p>';
+      console.error(e);
+    }
+
+    try {
+      const [banners, posts] = await Promise.all([
+        fetchJSON("/content/banners.json"),
+        fetchJSON("/content/posts.json"),
+      ]);
+      const b = banners.categoryBanners["produtos-de-compras"];
+      const post = posts.items.find((p) => p.slug === b.postSlug);
+      const href = post ? "/artigos/post/?slug=" + encodeURIComponent(post.slug) : "/artigos/";
+      document.getElementById("category-banner").innerHTML =
+        '<div class="blog-banner">' +
+        imgSlotHTML(b.image, b.title, "Foto do artigo") +
+        '<div class="blog-banner-body">' +
+        '<div><span class="eyebrow" style="color:' + b.color + ';">' + escapeHtml(b.kicker) + "</span>" +
+        "<h3>" + escapeHtml(b.title) + "</h3></div>" +
+        '<a class="btn btn-pill" href="' + href + '" style="background:' + b.color + ';">' + escapeHtml(b.ctaText) + "</a>" +
+        "</div></div>";
+    } catch (e) { console.warn(e); }
+  })();
+</script>
+</body>
+</html>

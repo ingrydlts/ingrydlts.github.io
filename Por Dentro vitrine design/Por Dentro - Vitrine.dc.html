@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <meta name="design_doc_mode" content="canvas">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,600;9..144,700&display=swap" rel="stylesheet">
+  <script src="./image-slot.js"></script>
+  <style>
+    body { margin: 0; background: #E4DFD3; font-family: 'Inter', sans-serif; }
+    a { color: #604034; text-decoration: none; }
+    a:hover { color: #2B2B2B; }
+  </style>
+</helmet>
+
+<div style="display:flex; flex-direction:column; gap:64px; padding:48px; align-items:flex-start;">
+
+  <div style="font-family:'Inter',sans-serif; font-size:13px; letter-spacing:0.08em; text-transform:uppercase; color:#6E6862; font-weight:700;">Por Dentro — mockups de referência · desktop 1440 / mobile 390</div>
+
+  <!-- ================= HOME ================= -->
+  <div data-screen-label="Home" style="display:flex; flex-direction:column; gap:20px;">
+    <div style="font-family:'Inter',sans-serif; font-weight:700; font-size:14px; color:#2B2B2B;">01 · Home</div>
+    <div style="display:flex; gap:32px; align-items:flex-start; flex-wrap:wrap;">
+
+      <!-- Desktop -->
+      <div style="width:1440px; background:#F4F1EC; box-shadow:0 8px 30px rgba(43,43,43,0.12);">
+        <header style="display:flex; align-items:center; justify-content:space-between; padding:28px 64px; border-bottom:1px solid rgba(43,43,43,0.1);">
+          <div style="font-family:'Fraunces',serif; font-weight:700; font-size:24px; color:#2B2B2B;">Por Dentro</div>
+          <nav style="display:flex; gap:36px; font-size:14px; font-weight:600; color:#2B2B2B;">
+            <span>Produtos digitais</span><span>Produtos de estudo</span><span>Produtos de compras</span><span>Sobre</span>
+          </nav>
+        </header>
+        <div style="padding:80px 64px 64px; display:flex; gap:56px; align-items:center;">
+          <div style="flex:1;">
+            <div style="font-family:'Inter',sans-serif; font-weight:700; font-size:13px; letter-spacing:0.12em; text-transform:uppercase; color:#BB9351; margin-bottom:16px;">Feito por quem já passou por isso</div>
+            <h1 style="font-family:'Fraunces',serif; font-weight:700; font-size:52px; line-height:1.1; color:#2B2B2B; margin:0 0 20px;">Tudo que ajuda a viver na França, num só lugar.</h1>
+            <p style="font-family:'Inter',sans-serif; font-size:17px; line-height:1.6; color:#6E6862; max-width:46ch; margin:0;">Templates, indicações de estudo e de compras — pensados por quem construiu essa vida aqui, um dia depois do outro.</p>
+          </div>
+          <image-slot id="home-hero-desktop" style="width:520px; height:400px;" shape="rounded" radius="6" placeholder="Foto real — mesa, luz natural"></image-slot>
+        </div>
+        <div style="padding:0 64px 88px; display:grid; grid-template-columns:repeat(3,1fr); gap:24px;">
+          <div style="background:#F4F1EC; border:1px solid rgba(43,43,43,0.12); border-radius:4px; overflow:hidden;">
+            <div style="height:6px; background:#577328;"></div>
+            <div style="padding:28px;">
+              <div style="font-family:'Inter',sans-serif; font-weight:700; font-size:11px; letter-spacing:0.1em; text-transform:uppercase; color:#577328; margin-bottom:10px;">Produtos digitais</div>
+              <h3 style="font-family:'Fraunces',serif; font-weight:700; font-size:22px; color:#2B2B2B; margin:0 0 10px;">Templates para o dia a dia</h3>
+              <p style="font-family:'Inter',sans-serif; font-size:14px; color:#6E6862; line-height:1.5; margin:0 0 20px;">Planilhas e templates de Notion prontos, feitos para a burocracia e a rotina de quem mora fora.</p>
+              <span style="font-family:'Inter',sans-serif; font-weight:600; font-size:14px; color:#577328;">Ver templates →</span>
+            </div>
+          </div>
+          <div style="background:#F4F1EC; border:1px solid rgba(43,43,43,0.12); border-radius:4px; overflow:hidden;">
+            <div style="height:6px; background:#8AACD2;"></div>
+            <div style="padding:28px;">
+              <div style="font-family:'Inter',sans-serif; font-weight:700; font-size:11px; letter-spacing:0.1em; text-transform:uppercase; color:#8AACD2; margin-bottom:10px;">Produtos de estudo</div>
+              <h3 style="font-family:'Fraunces',serif; font-weight:700; font-size:22px; color:#2B2B2B; margin:0 0 10px;">O que ajudou a aprender francês</h3>
+              <p style="font-family:'Inter',sans-serif; font-size:14px; color:#6E6862; line-height:1.5; margin:0 0 20px;">Livros, dicionários e papelaria que valeram a pena — com indicação honesta, não venda de curso.</p>
+              <span style="font-family:'Inter',sans-serif; font-weight:600; font-size:14px; color:#8AACD2;">Ver indicações →</span>
+            </div>
+          </div>
+          <div style="background:#F4F1EC; border:1px solid rgba(43,43,43,0.12); border-radius:4px; overflow:hidden;">
+            <div style="height:6px; background:#DEB975;"></div>
+            <div style="padding:28px;">
+              <div style="font-family:'Inter',sans-serif; font-weight:700; font-size:11px; letter-spacing:0.1em; text-transform:uppercase; color:#B8933F; margin-bottom:10px;">Produtos de compras</div>
+              <h3 style="font-family:'Fraunces',serif; font-weight:700; font-size:22px; color:#2B2B2B; margin:0 0 10px;">Peças que fazem sentido em Paris</h3>
+              <p style="font-family:'Inter',sans-serif; font-size:14px; color:#6E6862; line-height:1.5; margin:0 0 20px;">Roupas e acessórios pensados pro clima e pra rotina real, não pro Instagram.</p>
+              <span style="font-family:'Inter',sans-serif; font-weight:600; font-size:14px; color:#B8933F;">Ver seleção →</span>
+            </div>
+          </div>
+        </div>
+        <footer style="padding:28px 64px; border-top:1px solid rgba(43,43,43,0.1); display:flex; justify-content:space-between; font-size:12px; color:#6E6862;">
+          <span>© Por Dentro</span>
+          <div style="display:flex; gap:20px;"><span>Mentions légales</span><span>CGV</span><span>Confidentialité</span></div>
+        </footer>
+      </div>
+
+      <!-- Mobile -->
+      <div style="width:390px; background:#F4F1EC; box-shadow:0 8px 30px rgba(43,43,43,0.12);">
+        <header style="display:flex; align-items:center; justify-content:space-between; padding:20px 22px; border-bottom:1px solid rgba(43,43,43,0.1);">
+          <div style="font-family:'Fraunces',serif; font-weight:700; font-size:19px; color:#2B2B2B;">Por Dentro</div>
+          <div style="display:flex; flex-direction:column; gap:4px;"><div style="width:20px;height:2px;background:#2B2B2B;"></div><div style="width:20px;height:2px;background:#2B2B2B;"></div><div style="width:20px;height:2px;background:#2B2B2B;"></div></div>
+        </header>
+        <div style="padding:28px 22px;">
+          <image-slot id="home-hero-mobile" style="width:100%; height:220px;" shape="rounded" radius="6" placeholder="Foto real"></image-slot>
+          <div style="font-family:'Inter',sans-serif; font-weight:700; font-size:11px; letter-spacing:0.1em; text-transform:uppercase; color:#BB9351; margin:20px 0 12px;">Feito por quem já passou por isso</div>
+          <h1 style="font-family:'Fraunces',serif; font-weight:700; font-size:28px; line-height:1.2; color:#2B2B2B; margin:0 0 14px;">Tudo que ajuda a viver na França, num só lugar.</h1>
+          <p style="font-family:'Inter',sans-serif; font-size:14px; line-height:1.6; color:#6E6862; margin:0;">Templates, indicações de estudo e de compras — pensados por quem construiu essa vida aqui.</p>
+        </div>
+        <div style="padding:0 22px 32px; display:flex; flex-direction:column; gap:14px;">
+          <div style="background:#F4F1EC; border:1px solid rgba(43,43,43,0.12); border-radius:4px; overflow:hidden;">
+            <div style="height:5px; background:#577328;"></div>
+            <div style="padding:18px;">
+              <div style="font-family:'Inter',sans-serif; font-weight:700; font-size:10px; letter-spacing:0.08em; text-transform:uppercase; color:#577328; margin-bottom:6px;">Produtos digitais</div>
+              <h3 style="font-family:'Fraunces',serif; font-weight:700; font-size:17px; color:#2B2B2B; margin:0 0 6px;">Templates para o dia a dia</h3>
+              <span style="font-family:'Inter',sans-serif; font-weight:600; font-size:13px; color:#577328;">Ver templates →</span>
+            </div>
+          </div>
+          <div style="background:#F4F1EC; border:1px solid rgba(43,43,43,0.12); border-radius:4px; overflow:hidden;">
+            <div style="height:5px; background:#8AACD2;"></div>
+            <div style="padding:18px;">
+              <div style="font-family:'Inter',sans-serif; font-weight:700; font-size:10px; letter-spacing:0.08em; text-transform:uppercase; color:#8AACD2; margin-bottom:6px;">Produtos de estudo</div>
+              <h3 style="font-family:'Fraunces',serif; font-weight:700; font-size:17px; color:#2B2B2B; margin:0 0 6px;">O que ajudou a aprender francês</h3>
+              <span style="font-family:'Inter',sans-serif; font-weight:600; font-size:13px; color:#8AACD2;">Ver indicações →</span>
+            </div>
+          </div>
+          <div style="background:#F4F1EC; border:1px solid rgba(43,43,43,0.12); border-radius:4px; overflow:hidden;">
+            <div style="height:5px; background:#DEB975;"></div>
+            <div style="padding:18px;">
+              <div style="font-family:'Inter',sans-serif; font-weight:700; font-size:10px; letter-spacing:0.08em; text-transform:uppercase; color:#B8933F; margin-bottom:6px;">Produtos de compras</div>
+              <h3 style="font-family:'Fraunces',serif; font-weight:700; font-size:17px; color:#2B2B2B; margin:0 0 6px;">Peças que fazem sentido em Paris</h3>
+              <span style="font-family:'Inter',sans-serif; font-weight:600; font-size:13px; color:#B8933F;">Ver seleção →</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= PRODUTOS DIGITAIS ================= -->
+  <div data-screen-label="Produtos digitais" style="display:flex; flex-direction:column; gap:20px;">
+    <div style="font-family:'Inter',sans-serif; font-weight:700; font-size:14px; color:#2B2B2B;">02 · /produtos-digitais — cor emocional Verde Moss</div>
+    <div style="display:flex; gap:32px; align-items:flex-start; flex-wrap:wrap;">
+
+      <!-- Desktop -->
+      <div style="width:1440px; background:#F4F1EC; box-shadow:0 8px 30px rgba(43,43,43,0.12);">
+        <header style="display:flex; align-items:center; justify-content:space-between; padding:28px 64px; border-bottom:1px solid rgba(43,43,43,0.1);">
+          <div style="font-family:'Fraunces',serif; font-weight:700; font-size:24px; color:#2B2B2B;">Por Dentro</div>
+          <nav style="display:flex; gap:36px; font-size:14px; font-weight:600; color:#2B2B2B;">
+            <span style="color:#577328;">Produtos digitais</span><span>Produtos de estudo</span><span>Produtos de compras</span><span>Sobre</span>
+          </nav>
+        </header>
+        <div style="padding:56px 64px 24px;">
+          <div style="font-family:'Inter',sans-serif; font-weight:700; font-size:12px; letter-spacing:0.1em; text-transform:uppercase; color:#577328; margin-bottom:12px;">Produtos digitais</div>
+          <h1 style="font-family:'Fraunces',serif; font-weight:700; font-size:38px; color:#2B2B2B; margin:0 0 12px;">Templates para organizar a vida por aqui</h1>
+          <p style="font-family:'Inter',sans-serif; font-size:15px; color:#6E6862; max-width:60ch; margin:0;">Acesso imediato após a compra — sem espera, sem plataforma no meio.</p>
+        </div>
+        <div style="padding:24px 64px 72px; display:grid; grid-template-columns:repeat(2,1fr); gap:28px;">
+
+          <div style="background:#FFFFFF; border:1px solid rgba(43,43,43,0.12); border-radius:4px; overflow:hidden;">
+            <image-slot id="dig-card1-desktop" style="width:100%; height:200px;" shape="rect" placeholder="Preview do template"></image-slot>
+            <div style="padding:24px;">
+              <div style="font-family:'Inter',sans-serif; font-weight:700; font-size:10px; letter-spacing:0.08em; text-transform:uppercase; color:#6E6862; margin-bottom:8px;">Template Excel</div>
+              <h3 style="font-family:'Fraunces',serif; font-weight:700; font-size:20px; color:#2B2B2B; margin:0 0 8px;">Organização Mensal</h3>
+              <p style="font-family:'Inter',sans-serif; font-size:14px; color:#6E6862; line-height:1.5; margin:0 0 18px;">Planilha pronta para controlar despesas e documentos do mês.</p>
+              <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px;">
+                <span style="font-family:'Inter',sans-serif; font-weight:700; font-size:20px; color:#BB9351;">12,00 €</span>
+              </div>
+              <label style="display:flex; gap:10px; align-items:flex-start; margin-bottom:16px; cursor:pointer;">
+                <input type="checkbox" checked="{{ checkedA }}" onChange="{{ toggleA }}" style="margin-top:3px; width:16px; height:16px; accent-color:#577328;">
+                <span style="font-family:'Inter',sans-serif; font-size:12px; color:#6E6862; line-height:1.5;">Entendo que o acesso ao arquivo é imediato e renuncio ao meu direito de retratação de 14 dias.</span>
+              </label>
+              <button disabled="{{ disabledA }}" style="{{ buyBtnStyleA }}" style-hover="{{ buyBtnStyleAHover }}">Comprar agora</button>
+            </div>
+          </div>
+
+          <div style="background:#FFFFFF; border:1px solid rgba(43,43,43,0.12); border-radius:4px; overflow:hidden;">
+            <image-slot id="dig-card2-desktop" style="width:100%; height:200px;" shape="rect" placeholder="Preview do template"></image-slot>
+            <div style="padding:24px;">
+              <div style="font-family:'Inter',sans-serif; font-weight:700; font-size:10px; letter-spacing:0.08em; text-transform:uppercase; color:#6E6862; margin-bottom:8px;">Template Notion</div>
+              <h3 style="font-family:'Fraunces',serif; font-weight:700; font-size:20px; color:#2B2B2B; margin:0 0 8px;">Painel de Burocracia</h3>
+              <p style="font-family:'Inter',sans-serif; font-size:14px; color:#6E6862; line-height:1.5; margin:0 0 18px;">Sistema para acompanhar visto, seguro e documentos em um só painel.</p>
+              <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px;">
+                <span style="font-family:'Inter',sans-serif; font-weight:700; font-size:20px; color:#BB9351;">18,00 €</span>
+              </div>
+              <label style="display:flex; gap:10px; align-items:flex-start; margin-bottom:16px; cursor:pointer;">
+                <input type="checkbox" checked="{{ checkedB }}" onChange="{{ toggleB }}" style="margin-top:3px; width:16px; height:16px; accent-color:#577328;">
+                <span style="font-family:'Inter',sans-serif; font-size:12px; color:#6E6862; line-height:1.5;">Entendo que o acesso ao arquivo é imediato e renuncio ao meu direito de retratação de 14 dias.</span>
+              </label>
+              <button disabled="{{ disabledB }}" style="{{ buyBtnStyleB }}">Comprar agora</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Mobile -->
+      <div style="width:390px; background:#F4F1EC; box-shadow:0 8px 30px rgba(43,43,43,0.12);">
+        <header style="display:flex; align-items:center; justify-content:space-between; padding:20px 22px; border-bottom:1px solid rgba(43,43,43,0.1);">
+          <div style="font-family:'Fraunces',serif; font-weight:700; font-size:19px; color:#2B2B2B;">Por Dentro</div>
+          <div style="display:flex; flex-direction:column; gap:4px;"><div style="width:20px;height:2px;background:#2B2B2B;"></div><div style="width:20px;height:2px;background:#2B2B2B;"></div><div style="width:20px;height:2px;background:#2B2B2B;"></div></div>
+        </header>
+        <div style="padding:24px 22px 8px;">
+          <div style="font-family:'Inter',sans-serif; font-weight:700; font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:#577328; margin-bottom:10px;">Produtos digitais</div>
+          <h1 style="font-family:'Fraunces',serif; font-weight:700; font-size:26px; color:#2B2B2B; margin:0 0 8px;">Templates para organizar a vida por aqui</h1>
+        </div>
+        <div style="padding:16px 22px 32px; display:flex; flex-direction:column; gap:20px;">
+          <div style="background:#FFFFFF; border:1px solid rgba(43,43,43,0.12); border-radius:4px; overflow:hidden;">
+            <image-slot id="dig-card1-mobile" style="width:100%; height:160px;" shape="rect" placeholder="Preview do template"></image-slot>
+            <div style="padding:18px;">
+              <div style="font-family:'Inter',sans-serif; font-weight:700; font-size:9px; letter-spacing:0.06em; text-transform:uppercase; color:#6E6862; margin-bottom:6px;">Template Excel</div>
+              <h3 style="font-family:'Fraunces',serif; font-weight:700; font-size:17px; color:#2B2B2B; margin:0 0 6px;">Organização Mensal</h3>
+              <p style="font-family:'Inter',sans-serif; font-size:13px; color:#6E6862; line-height:1.5; margin:0 0 12px;">Planilha pronta para controlar despesas e documentos do mês.</p>
+              <span style="font-family:'Inter',sans-serif; font-weight:700; font-size:17px; color:#BB9351; display:block; margin-bottom:12px;">12,00 €</span>
+              <label style="display:flex; gap:8px; align-items:flex-start; margin-bottom:12px;">
+                <input type="checkbox" checked="{{ checkedA }}" onChange="{{ toggleA }}" style="margin-top:2px; width:15px; height:15px; accent-color:#577328;">
+                <span style="font-family:'Inter',sans-serif; font-size:11px; color:#6E6862; line-height:1.5;">Entendo que o acesso ao arquivo é imediato e renuncio ao meu direito de retratação de 14 dias.</span>
+              </label>
+              <button disabled="{{ disabledA }}" style="{{ buyBtnStyleA }}">Comprar agora</button>
+            </div>
+          </div>
+          <div style="background:#FFFFFF; border:1px solid rgba(43,43,43,0.12); border-radius:4px; overflow:hidden;">
+            <image-slot id="dig-card2-mobile" style="width:100%; height:160px;" shape="rect" placeholder="Preview do template"></image-slot>
+            <div style="padding:18px;">
+              <div style="font-family:'Inter',sans-serif; font-weight:700; font-size:9px; letter-spacing:0.06em; text-transform:uppercase; color:#6E6862; margin-bottom:6px;">Template Notion</div>
+              <h3 style="font-family:'Fraunces',serif; font-weight:700; font-size:17px; color:#2B2B2B; margin:0 0 6px;">Painel de Burocracia</h3>
+              <p style="font-family:'Inter',sans-serif; font-size:13px; color:#6E6862; line-height:1.5; margin:0 0 12px;">Sistema para acompanhar visto, seguro e documentos em um só painel.</p>
+              <span style="font-family:'Inter',sans-serif; font-weight:700; font-size:17px; color:#BB9351; display:block; margin-bottom:12px;">18,00 €</span>
+              <label style="display:flex; gap:8px; align-items:flex-start; margin-bottom:12px;">
+                <input type="checkbox" checked="{{ checkedB }}" onChange="{{ toggleB }}" style="margin-top:2px; width:15px; height:15px; accent-color:#577328;">
+                <span style="font-family:'Inter',sans-serif; font-size:11px; color:#6E6862; line-height:1.5;">Entendo que o acesso ao arquivo é imediato e renuncio ao meu direito de retratação de 14 dias.</span>
+              </label>
+              <button disabled="{{ disabledB }}" style="{{ buyBtnStyleB }}">Comprar agora</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div style="font-family:'Inter',sans-serif; font-size:12px; color:#6E6862; max-width:600px;">Nota: os dois cards demonstram os dois estados exigidos por lei — checkbox desmarcada (botão esmaecido) e marcada (botão ativo). Clique nas checkboxes para testar.</div>
+  </div>
+
+  <!-- ================= PRODUTOS DE ESTUDO ================= -->
+  <div data-screen-label="Produtos de estudo" style="display:flex; flex-direction:column; gap:20px;">
+    <div style="font-family:'Inter',sans-serif; font-weight:700; font-size:14px; color:#2B2B2B;">03 · /produtos-de-estudo — cor emocional Placid Blue</div>
+    <div style="display:flex; gap:32px; align-items:flex-start; flex-wrap:wrap;">
+
+      <!-- Desktop -->
+      <div style="width:1440px; background:#F4F1EC; box-shadow:0 8px 30px rgba(43,43,43,0.12);">
+        <header style="display:flex; align-items:center; justify-content:space-between; padding:28px 64px; border-bottom:1px solid rgba(43,43,43,0.1);">
+          <div style="font-family:'Fraunces',serif; font-weight:700; font-size:24px; color:#2B2B2B;">Por Dentro</div>
+          <nav style="display:flex; gap:36px; font-size:14px; font-weight:600; color:#2B2B2B;">
+            <span>Produtos digitais</span><span style="color:#5F87AE;">Produtos de estudo</span><span>Produtos de compras</span><span>Sobre</span>
+          </nav>
+        </header>
+        <div style="padding:56px 64px 24px;">
+          <div style="font-family:'Inter',sans-serif; font-weight:700; font-size:12px; letter-spacing:0.1em; text-transform:uppercase; color:#5F87AE; margin-bottom:12px;">Produtos de estudo</div>
+          <h1 style="font-family:'Fraunces',serif; font-weight:700; font-size:38px; color:#2B2B2B; margin:0 0 12px;">O que ajudou a aprender francês de verdade</h1>
+          <p style="font-family:'Inter',sans-serif; font-size:15px; color:#6E6862; max-width:60ch; margin:0;">Indicações honestas — sem curso, sem promessa milagrosa.</p>
+        </div>
+        <div style="padding:24px 64px 16px; display:grid; grid-template-columns:repeat(3,1fr); gap:28px;">
+          <sc-for list="{{ estudoItems }}" as="item" hint-placeholder-count="3">
+            <div style="background:#FFFFFF; border:1px solid rgba(43,43,43,0.12); border-radius:4px; overflow:hidden; position:relative;">
+              <image-slot id="{{ item.imgId }}" style="width:100%; height:180px;" shape="rect" placeholder="Foto do item"></image-slot>
+              <div style="padding:22px;">
+                <h3 style="font-family:'Fraunces',serif; font-weight:700; font-size:19px; color:#2B2B2B; margin:0 0 8px;">{{ item.title }}</h3>
+                <p style="font-family:'Inter',sans-serif; font-size:13px; color:#6E6862; line-height:1.5; margin:0 0 16px;">{{ item.desc }}</p>
+                <span style="font-family:'Inter',sans-serif; font-weight:700; font-size:10px; letter-spacing:0.06em; text-transform:uppercase; background:#501318; color:#FFFFFF; padding:5px 10px; border-radius:2px; display:inline-block;">Publicité</span>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+        <div style="padding:8px 64px 56px; font-family:'Inter',sans-serif; font-size:12px; color:#6E6862; max-width:70ch;">Como Parceiro Amazon, obtenho lucro sobre compras qualificadas.</div>
+      </div>
+
+      <!-- Mobile -->
+      <div style="width:390px; background:#F4F1EC; box-shadow:0 8px 30px rgba(43,43,43,0.12);">
+        <header style="display:flex; align-items:center; justify-content:space-between; padding:20px 22px; border-bottom:1px solid rgba(43,43,43,0.1);">
+          <div style="font-family:'Fraunces',serif; font-weight:700; font-size:19px; color:#2B2B2B;">Por Dentro</div>
+          <div style="display:flex; flex-direction:column; gap:4px;"><div style="width:20px;height:2px;background:#2B2B2B;"></div><div style="width:20px;height:2px;background:#2B2B2B;"></div><div style="width:20px;height:2px;background:#2B2B2B;"></div></div>
+        </header>
+        <div style="padding:24px 22px 8px;">
+          <div style="font-family:'Inter',sans-serif; font-weight:700; font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:#5F87AE; margin-bottom:10px;">Produtos de estudo</div>
+          <h1 style="font-family:'Fraunces',serif; font-weight:700; font-size:26px; color:#2B2B2B; margin:0 0 8px;">O que ajudou a aprender francês de verdade</h1>
+        </div>
+        <div style="padding:16px 22px 12px; display:flex; flex-direction:column; gap:18px;">
+          <sc-for list="{{ estudoItems }}" as="item" hint-placeholder-count="3">
+            <div style="background:#FFFFFF; border:1px solid rgba(43,43,43,0.12); border-radius:4px; overflow:hidden;">
+              <image-slot id="{{ item.imgIdM }}" style="width:100%; height:150px;" shape="rect" placeholder="Foto do item"></image-slot>
+              <div style="padding:16px;">
+                <h3 style="font-family:'Fraunces',serif; font-weight:700; font-size:16px; color:#2B2B2B; margin:0 0 6px;">{{ item.title }}</h3>
+                <p style="font-family:'Inter',sans-serif; font-size:12px; color:#6E6862; line-height:1.5; margin:0 0 12px;">{{ item.desc }}</p>
+                <span style="font-family:'Inter',sans-serif; font-weight:700; font-size:9px; letter-spacing:0.06em; text-transform:uppercase; background:#501318; color:#FFFFFF; padding:4px 9px; border-radius:2px; display:inline-block;">Publicité</span>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+        <div style="padding:0 22px 24px; font-family:'Inter',sans-serif; font-size:11px; color:#6E6862;">Como Parceiro Amazon, obtenho lucro sobre compras qualificadas.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= PRODUTOS DE COMPRAS ================= -->
+  <div data-screen-label="Produtos de compras" style="display:flex; flex-direction:column; gap:20px;">
+    <div style="font-family:'Inter',sans-serif; font-weight:700; font-size:14px; color:#2B2B2B;">04 · /produtos-de-compras — cor emocional Beje Paris</div>
+    <div style="display:flex; gap:32px; align-items:flex-start; flex-wrap:wrap;">
+
+      <!-- Desktop -->
+      <div style="width:1440px; background:#F4F1EC; box-shadow:0 8px 30px rgba(43,43,43,0.12);">
+        <header style="display:flex; align-items:center; justify-content:space-between; padding:28px 64px; border-bottom:1px solid rgba(43,43,43,0.1);">
+          <div style="font-family:'Fraunces',serif; font-weight:700; font-size:24px; color:#2B2B2B;">Por Dentro</div>
+          <nav style="display:flex; gap:36px; font-size:14px; font-weight:600; color:#2B2B2B;">
+            <span>Produtos digitais</span><span>Produtos de estudo</span><span style="color:#B8933F;">Produtos de compras</span><span>Sobre</span>
+          </nav>
+        </header>
+        <div style="padding:56px 64px 24px;">
+          <div style="font-family:'Inter',sans-serif; font-weight:700; font-size:12px; letter-spacing:0.1em; text-transform:uppercase; color:#B8933F; margin-bottom:12px;">Produtos de compras</div>
+          <h1 style="font-family:'Fraunces',serif; font-weight:700; font-size:38px; color:#2B2B2B; margin:0 0 12px;">Peças que fazem sentido na vida real em Paris</h1>
+          <p style="font-family:'Inter',sans-serif; font-size:15px; color:#6E6862; max-width:60ch; margin:0;">Indicações — não é loja, é o que realmente uso.</p>
+        </div>
+        <div style="padding:24px 64px 16px; display:grid; grid-template-columns:repeat(3,1fr); gap:28px;">
+          <sc-for list="{{ comprasItems }}" as="item" hint-placeholder-count="3">
+            <div style="background:#FFFFFF; border:1px solid rgba(43,43,43,0.12); border-radius:4px; overflow:hidden;">
+              <image-slot id="{{ item.imgId }}" style="width:100%; height:180px;" shape="rect" placeholder="Foto do item"></image-slot>
+              <div style="padding:22px;">
+                <h3 style="font-family:'Fraunces',serif; font-weight:700; font-size:19px; color:#2B2B2B; margin:0 0 8px;">{{ item.title }}</h3>
+                <p style="font-family:'Inter',sans-serif; font-size:13px; color:#6E6862; line-height:1.5; margin:0 0 16px;">{{ item.desc }}</p>
+                <span style="font-family:'Inter',sans-serif; font-weight:700; font-size:10px; letter-spacing:0.06em; text-transform:uppercase; background:#501318; color:#FFFFFF; padding:5px 10px; border-radius:2px; display:inline-block;">Publicité</span>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+        <div style="padding:8px 64px 56px; font-family:'Inter',sans-serif; font-size:12px; color:#6E6862; max-width:70ch;">Como Parceiro Amazon, obtenho lucro sobre compras qualificadas.</div>
+      </div>
+
+      <!-- Mobile -->
+      <div style="width:390px; background:#F4F1EC; box-shadow:0 8px 30px rgba(43,43,43,0.12);">
+        <header style="display:flex; align-items:center; justify-content:space-between; padding:20px 22px; border-bottom:1px solid rgba(43,43,43,0.1);">
+          <div style="font-family:'Fraunces',serif; font-weight:700; font-size:19px; color:#2B2B2B;">Por Dentro</div>
+          <div style="display:flex; flex-direction:column; gap:4px;"><div style="width:20px;height:2px;background:#2B2B2B;"></div><div style="width:20px;height:2px;background:#2B2B2B;"></div><div style="width:20px;height:2px;background:#2B2B2B;"></div></div>
+        </header>
+        <div style="padding:24px 22px 8px;">
+          <div style="font-family:'Inter',sans-serif; font-weight:700; font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:#B8933F; margin-bottom:10px;">Produtos de compras</div>
+          <h1 style="font-family:'Fraunces',serif; font-weight:700; font-size:26px; color:#2B2B2B; margin:0 0 8px;">Peças que fazem sentido na vida real em Paris</h1>
+        </div>
+        <div style="padding:16px 22px 12px; display:flex; flex-direction:column; gap:18px;">
+          <sc-for list="{{ comprasItems }}" as="item" hint-placeholder-count="3">
+            <div style="background:#FFFFFF; border:1px solid rgba(43,43,43,0.12); border-radius:4px; overflow:hidden;">
+              <image-slot id="{{ item.imgIdM }}" style="width:100%; height:150px;" shape="rect" placeholder="Foto do item"></image-slot>
+              <div style="padding:16px;">
+                <h3 style="font-family:'Fraunces',serif; font-weight:700; font-size:16px; color:#2B2B2B; margin:0 0 6px;">{{ item.title }}</h3>
+                <p style="font-family:'Inter',sans-serif; font-size:12px; color:#6E6862; line-height:1.5; margin:0 0 12px;">{{ item.desc }}</p>
+                <span style="font-family:'Inter',sans-serif; font-weight:700; font-size:9px; letter-spacing:0.06em; text-transform:uppercase; background:#501318; color:#FFFFFF; padding:4px 9px; border-radius:2px; display:inline-block;">Publicité</span>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+        <div style="padding:0 22px 24px; font-family:'Inter',sans-serif; font-size:11px; color:#6E6862;">Como Parceiro Amazon, obtenho lucro sobre compras qualificadas.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= SOBRE ================= -->
+  <div data-screen-label="Sobre" style="display:flex; flex-direction:column; gap:20px;">
+    <div style="font-family:'Inter',sans-serif; font-weight:700; font-size:14px; color:#2B2B2B;">05 · /sobre</div>
+    <div style="display:flex; gap:32px; align-items:flex-start; flex-wrap:wrap;">
+
+      <!-- Desktop -->
+      <div style="width:1440px; background:#F4F1EC; box-shadow:0 8px 30px rgba(43,43,43,0.12);">
+        <header style="display:flex; align-items:center; justify-content:space-between; padding:28px 64px; border-bottom:1px solid rgba(43,43,43,0.1);">
+          <div style="font-family:'Fraunces',serif; font-weight:700; font-size:24px; color:#2B2B2B;">Por Dentro</div>
+          <nav style="display:flex; gap:36px; font-size:14px; font-weight:600; color:#2B2B2B;">
+            <span>Produtos digitais</span><span>Produtos de estudo</span><span>Produtos de compras</span><span style="color:#604034;">Sobre</span>
+          </nav>
+        </header>
+        <div style="padding:88px 64px; display:flex; gap:64px; align-items:center;">
+          <image-slot id="sobre-foto-desktop" style="width:420px; height:520px;" shape="rounded" radius="6" placeholder="Foto da Ingryd"></image-slot>
+          <div style="flex:1;">
+            <div style="font-family:'Inter',sans-serif; font-weight:700; font-size:12px; letter-spacing:0.1em; text-transform:uppercase; color:#604034; margin-bottom:16px;">Sobre</div>
+            <h1 style="font-family:'Fraunces',serif; font-weight:700; font-size:40px; color:#2B2B2B; margin:0 0 24px;">Quem é a Ingryd</h1>
+            <p style="font-family:'Inter',sans-serif; font-size:16px; line-height:1.7; color:#6E6862; max-width:56ch; margin:0 0 16px;">[Texto sobre a Ingryd: quem é, como chegou na França, e por que criou o Por Dentro — a preencher com o conteúdo real da criadora.]</p>
+            <p style="font-family:'Inter',sans-serif; font-size:16px; line-height:1.7; color:#6E6862; max-width:56ch; margin:0;">[Segundo parágrafo: o que ela quer que quem chega agora leve daqui.]</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Mobile -->
+      <div style="width:390px; background:#F4F1EC; box-shadow:0 8px 30px rgba(43,43,43,0.12);">
+        <header style="display:flex; align-items:center; justify-content:space-between; padding:20px 22px; border-bottom:1px solid rgba(43,43,43,0.1);">
+          <div style="font-family:'Fraunces',serif; font-weight:700; font-size:19px; color:#2B2B2B;">Por Dentro</div>
+          <div style="display:flex; flex-direction:column; gap:4px;"><div style="width:20px;height:2px;background:#2B2B2B;"></div><div style="width:20px;height:2px;background:#2B2B2B;"></div><div style="width:20px;height:2px;background:#2B2B2B;"></div></div>
+        </header>
+        <div style="padding:28px 22px;">
+          <image-slot id="sobre-foto-mobile" style="width:100%; height:280px;" shape="rounded" radius="6" placeholder="Foto da Ingryd"></image-slot>
+          <div style="font-family:'Inter',sans-serif; font-weight:700; font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:#604034; margin:20px 0 12px;">Sobre</div>
+          <h1 style="font-family:'Fraunces',serif; font-weight:700; font-size:26px; color:#2B2B2B; margin:0 0 14px;">Quem é a Ingryd</h1>
+          <p style="font-family:'Inter',sans-serif; font-size:14px; line-height:1.7; color:#6E6862; margin:0 0 12px;">[Texto sobre a Ingryd: quem é, como chegou na França, e por que criou o Por Dentro.]</p>
+          <p style="font-family:'Inter',sans-serif; font-size:14px; line-height:1.7; color:#6E6862; margin:0;">[O que ela quer que quem chega agora leve daqui.]</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= UI KIT ================= -->
+  <div data-screen-label="UI Kit" style="display:flex; flex-direction:column; gap:20px;">
+    <div style="font-family:'Inter',sans-serif; font-weight:700; font-size:14px; color:#2B2B2B;">06 · UI Kit</div>
+    <div style="width:1200px; background:#F4F1EC; box-shadow:0 8px 30px rgba(43,43,43,0.12); padding:56px 64px; display:flex; flex-direction:column; gap:48px;">
+
+      <div>
+        <div style="font-family:'Inter',sans-serif; font-weight:700; font-size:11px; letter-spacing:0.1em; text-transform:uppercase; color:#6E6862; margin-bottom:16px;">Paleta base</div>
+        <div style="display:flex; gap:16px;">
+          <div style="width:160px;"><div style="height:70px; background:#F4F1EC; border:1px solid rgba(43,43,43,0.15); border-radius:4px;"></div><div style="font-size:12px; font-weight:600; color:#2B2B2B; margin-top:8px;">Off-White</div><div style="font-size:11px; color:#6E6862;">#F4F1EC</div></div>
+          <div style="width:160px;"><div style="height:70px; background:#2B2B2B; border-radius:4px;"></div><div style="font-size:12px; font-weight:600; color:#2B2B2B; margin-top:8px;">Grafite</div><div style="font-size:11px; color:#6E6862;">#2B2B2B</div></div>
+          <div style="width:160px;"><div style="height:70px; background:#BB9351; border-radius:4px;"></div><div style="font-size:12px; font-weight:600; color:#2B2B2B; margin-top:8px;">Ouro Queimado</div><div style="font-size:11px; color:#6E6862;">#BB9351 · máx. 1×/tela</div></div>
+        </div>
+      </div>
+
+      <div>
+        <div style="font-family:'Inter',sans-serif; font-weight:700; font-size:11px; letter-spacing:0.1em; text-transform:uppercase; color:#6E6862; margin-bottom:16px;">Cores emocionais por categoria</div>
+        <div style="display:flex; gap:16px;">
+          <div style="width:160px;"><div style="height:70px; background:#577328; border-radius:4px;"></div><div style="font-size:12px; font-weight:600; color:#2B2B2B; margin-top:8px;">Verde Moss</div><div style="font-size:11px; color:#6E6862;">Digitais</div></div>
+          <div style="width:160px;"><div style="height:70px; background:#8AACD2; border-radius:4px;"></div><div style="font-size:12px; font-weight:600; color:#2B2B2B; margin-top:8px;">Placid Blue</div><div style="font-size:11px; color:#6E6862;">Estudo</div></div>
+          <div style="width:160px;"><div style="height:70px; background:#DEB975; border-radius:4px;"></div><div style="font-size:12px; font-weight:600; color:#2B2B2B; margin-top:8px;">Beje Paris</div><div style="font-size:11px; color:#6E6862;">Compras</div></div>
+          <div style="width:160px;"><div style="height:70px; background:#501318; border-radius:4px;"></div><div style="font-size:12px; font-weight:600; color:#2B2B2B; margin-top:8px;">Merlot</div><div style="font-size:11px; color:#6E6862;">Etiqueta legal</div></div>
+          <div style="width:160px;"><div style="height:70px; background:#604034; border-radius:4px;"></div><div style="font-size:12px; font-weight:600; color:#2B2B2B; margin-top:8px;">Downtown Brown</div><div style="font-size:11px; color:#6E6862;">Botão secundário</div></div>
+        </div>
+      </div>
+
+      <div>
+        <div style="font-family:'Inter',sans-serif; font-weight:700; font-size:11px; letter-spacing:0.1em; text-transform:uppercase; color:#6E6862; margin-bottom:16px;">Tipografia</div>
+        <div style="display:flex; gap:40px; align-items:baseline;">
+          <div><div style="font-size:10px; color:#BB9351; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; margin-bottom:6px;">Display (Gliker → Fraunces)</div><div style="font-family:'Fraunces',serif; font-weight:700; font-size:44px; color:#2B2B2B;">Ag</div></div>
+          <div><div style="font-size:10px; color:#BB9351; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; margin-bottom:6px;">Inter Bold</div><div style="font-family:'Inter',sans-serif; font-weight:700; font-size:44px; color:#2B2B2B;">Ag</div></div>
+          <div><div style="font-size:10px; color:#BB9351; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; margin-bottom:6px;">Inter Regular</div><div style="font-family:'Inter',sans-serif; font-weight:400; font-size:44px; color:#2B2B2B;">Ag</div></div>
+        </div>
+      </div>
+
+      <div>
+        <div style="font-family:'Inter',sans-serif; font-weight:700; font-size:11px; letter-spacing:0.1em; text-transform:uppercase; color:#6E6862; margin-bottom:16px;">Botões</div>
+        <div style="display:flex; gap:14px; align-items:center;">
+          <button style="font-family:'Inter',sans-serif; font-weight:600; font-size:14px; padding:12px 24px; border-radius:3px; border:none; background:#577328; color:#FFFFFF; cursor:default;">Comprar agora</button>
+          <button style="font-family:'Inter',sans-serif; font-weight:600; font-size:14px; padding:12px 24px; border-radius:3px; border:none; background:#8AACD2; color:#FFFFFF; cursor:default;">Ver mais</button>
+          <button style="font-family:'Inter',sans-serif; font-weight:600; font-size:14px; padding:12px 24px; border-radius:3px; border:none; background:#B8933F; color:#FFFFFF; cursor:default;">Ver seleção</button>
+          <button style="font-family:'Inter',sans-serif; font-weight:600; font-size:14px; padding:12px 24px; border-radius:3px; border:1px solid #604034; background:transparent; color:#604034; cursor:default;">Saiba mais</button>
+          <button disabled style="font-family:'Inter',sans-serif; font-weight:600; font-size:14px; padding:12px 24px; border-radius:3px; border:none; background:#A8AF9E; color:#F4F1EC; cursor:default; opacity:0.55;">Comprar agora (desabilitado)</button>
+        </div>
+      </div>
+
+      <div>
+        <div style="font-family:'Inter',sans-serif; font-weight:700; font-size:11px; letter-spacing:0.1em; text-transform:uppercase; color:#6E6862; margin-bottom:16px;">Etiquetas legais</div>
+        <div style="display:flex; gap:14px; align-items:center;">
+          <span style="font-family:'Inter',sans-serif; font-weight:700; font-size:11px; letter-spacing:0.06em; text-transform:uppercase; background:#501318; color:#FFFFFF; padding:6px 12px; border-radius:2px;">Publicité</span>
+          <span style="font-family:'Inter',sans-serif; font-weight:700; font-size:11px; letter-spacing:0.06em; text-transform:uppercase; border:1px solid #8AACD2; color:#5F87AE; padding:6px 12px; border-radius:2px;">Lien affilié</span>
+        </div>
+      </div>
+
+      <div>
+        <div style="font-family:'Inter',sans-serif; font-weight:700; font-size:11px; letter-spacing:0.1em; text-transform:uppercase; color:#6E6862; margin-bottom:16px;">Cards de produto</div>
+        <div style="display:flex; gap:24px;">
+          <div style="width:280px; background:#FFFFFF; border:1px solid rgba(43,43,43,0.12); border-radius:4px; overflow:hidden;">
+            <image-slot id="uikit-card-digital" style="width:100%; height:140px;" shape="rect" placeholder="Preview"></image-slot>
+            <div style="padding:18px;">
+              <h3 style="font-family:'Fraunces',serif; font-weight:700; font-size:17px; color:#2B2B2B; margin:0 0 6px;">Card de produto digital</h3>
+              <p style="font-family:'Inter',sans-serif; font-size:12px; color:#6E6862; margin:0 0 10px;">Preço em Ouro Queimado, botão na cor emocional.</p>
+              <span style="font-family:'Inter',sans-serif; font-weight:700; font-size:18px; color:#BB9351;">12,00 €</span>
+            </div>
+          </div>
+          <div style="width:280px; background:#FFFFFF; border:1px solid rgba(43,43,43,0.12); border-radius:4px; overflow:hidden;">
+            <image-slot id="uikit-card-afiliado" style="width:100%; height:140px;" shape="rect" placeholder="Preview"></image-slot>
+            <div style="padding:18px;">
+              <h3 style="font-family:'Fraunces',serif; font-weight:700; font-size:17px; color:#2B2B2B; margin:0 0 8px;">Card de afiliado</h3>
+              <p style="font-family:'Inter',sans-serif; font-size:12px; color:#6E6862; margin:0 0 10px;">Etiqueta "Publicité" sempre visível no card.</p>
+              <span style="font-family:'Inter',sans-serif; font-weight:700; font-size:10px; letter-spacing:0.06em; text-transform:uppercase; background:#501318; color:#FFFFFF; padding:5px 10px; border-radius:2px; display:inline-block;">Publicité</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div style="font-family:'Inter',sans-serif; font-weight:700; font-size:11px; letter-spacing:0.1em; text-transform:uppercase; color:#6E6862; margin-bottom:16px;">Gate legal — checkbox de renúncia</div>
+        <div style="display:flex; gap:24px;">
+          <div style="width:340px; background:#FFFFFF; border:1px solid rgba(43,43,43,0.12); border-radius:4px; padding:18px;">
+            <label style="display:flex; gap:10px; align-items:flex-start; margin-bottom:14px;"><input type="checkbox" style="margin-top:3px; width:16px; height:16px;"><span style="font-family:'Inter',sans-serif; font-size:12px; color:#6E6862; line-height:1.5;">Entendo que o acesso ao arquivo é imediato e renuncio ao meu direito de retratação de 14 dias.</span></label>
+            <button disabled style="font-family:'Inter',sans-serif; font-weight:600; font-size:14px; padding:10px 20px; border-radius:3px; border:none; background:#A8AF9E; color:#F4F1EC; opacity:0.55;">Comprar agora</button>
+          </div>
+          <div style="width:340px; background:#FFFFFF; border:1px solid rgba(43,43,43,0.12); border-radius:4px; padding:18px;">
+            <label style="display:flex; gap:10px; align-items:flex-start; margin-bottom:14px;"><input type="checkbox" checked style="margin-top:3px; width:16px; height:16px; accent-color:#577328;"><span style="font-family:'Inter',sans-serif; font-size:12px; color:#6E6862; line-height:1.5;">Entendo que o acesso ao arquivo é imediato e renuncio ao meu direito de retratação de 14 dias.</span></label>
+            <button style="font-family:'Inter',sans-serif; font-weight:600; font-size:14px; padding:10px 20px; border-radius:3px; border:none; background:#577328; color:#FFFFFF;">Comprar agora</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { checkedA: false, checkedB: true };
+
+  toggleA = () => this.setState(s => ({ checkedA: !s.checkedA }));
+  toggleB = () => this.setState(s => ({ checkedB: !s.checkedB }));
+
+  btnStyle(active, color) {
+    return active
+      ? `font-family:'Inter',sans-serif; font-weight:600; font-size:14px; padding:12px 20px; border-radius:3px; border:none; width:100%; background:${color}; color:#FFFFFF; cursor:pointer;`
+      : `font-family:'Inter',sans-serif; font-weight:600; font-size:14px; padding:12px 20px; border-radius:3px; border:none; width:100%; background:#A8AF9E; color:#F4F1EC; opacity:0.55; cursor:not-allowed;`;
+  }
+
+  renderVals() {
+    const estudoItems = [
+      { imgId: 'est-1-d', imgIdM: 'est-1-m', title: 'Le Robert Junior — Dicionário', desc: 'Indicação de dicionário de francês para reforço de vocabulário.' },
+      { imgId: 'est-2-d', imgIdM: 'est-2-m', title: 'Caderno Clairefontaine', desc: 'A papelaria francesa clássica — a que realmente uso para anotar aulas.' },
+      { imgId: 'est-3-d', imgIdM: 'est-3-m', title: 'Bescherelle — Conjugação', desc: 'O guia de conjugação que salva na hora da redação.' },
+    ];
+    const comprasItems = [
+      { imgId: 'com-1-d', imgIdM: 'com-1-m', title: 'Trench coat — indicação', desc: 'Peça de guarda-roupa indicada para o clima de outono em Paris.' },
+      { imgId: 'com-2-d', imgIdM: 'com-2-m', title: 'Bota de chuva', desc: 'A que aguenta o inverno parisiense sem sofrimento.' },
+      { imgId: 'com-3-d', imgIdM: 'com-3-m', title: 'Cachecol de lã', desc: 'Simples, quente, e combina com tudo — o básico que vale o investimento.' },
+    ];
+    return {
+      estudoItems, comprasItems,
+      checkedA: this.state.checkedA, toggleA: this.toggleA,
+      checkedB: this.state.checkedB, toggleB: this.toggleB,
+      disabledA: !this.state.checkedA, disabledB: !this.state.checkedB,
+      buyBtnStyleA: this.btnStyle(this.state.checkedA, '#577328'),
+      buyBtnStyleB: this.btnStyle(this.state.checkedB, '#577328'),
+    };
+  }
+}
+</script>
+</body>
+</html>

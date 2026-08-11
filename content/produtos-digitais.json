@@ -1,0 +1,58 @@
+{
+  "items": [
+    {
+      "slug": "planilha-financeira-super-integrada",
+      "title": "Planilha Financeira Super Integrada",
+      "kicker": "Template Google Sheets",
+      "summary": "A planilha financeira que lança seus gastos fixos sozinha — todo mês, sem você precisar copiar e colar nada.",
+      "description": "Feita pra quem organiza a vida em euros, mora fora do Brasil e não tem paciência pra reeditar planilha todo mês. Uma planilha em Google Sheets que roda praticamente sozinha: você cadastra o gasto fixo ou parcelado uma vez, e ela lança automaticamente todo dia 1º — parcela certa, sem duplicar, sabendo sozinha quando parar.",
+      "image": "",
+      "price": 27,
+      "priceOld": 39,
+      "launchNote": "Preço de lançamento — válido para os primeiros 30 compradores",
+      "guaranteeDays": 14,
+      "features": [
+        "Planilha com 7 painéis + automação real",
+        "Prompt Mestre de IA, manual e guia de instalação",
+        "Compra única — sem assinatura, reutiliza todo ano",
+        "Funciona em PC, Mac, tablet e celular"
+      ],
+      "faq": [
+        { "q": "Funciona só no Google Sheets, ou também no Excel?", "a": "É feita pra Google Sheets — funciona em qualquer navegador ou no app do celular, de graça." },
+        { "q": "Preciso saber programar pra instalar a automação?", "a": "Não. Você só segue o guia passo a passo, ou usa o Prompt Mestre pra qualquer IA gerar o código por você." },
+        { "q": "Preciso comprar de novo todo ano?", "a": "Não. É compra única, reutilizável pra sempre." }
+      ],
+      "stripeLink": ""
+    },
+    {
+      "slug": "organizacao-mensal",
+      "title": "Organização Mensal",
+      "kicker": "Template Excel",
+      "summary": "Planilha pronta para controlar despesas e documentos do mês.",
+      "description": "Planilha pronta para controlar despesas e documentos do mês.",
+      "image": "",
+      "price": 12,
+      "priceOld": null,
+      "launchNote": "",
+      "guaranteeDays": 14,
+      "features": [],
+      "faq": [],
+      "stripeLink": ""
+    },
+    {
+      "slug": "painel-burocracia",
+      "title": "Painel de Burocracia",
+      "kicker": "Template Notion",
+      "summary": "Sistema para acompanhar visto, seguro e documentos em um só painel.",
+      "description": "Sistema para acompanhar visto, seguro e documentos em um só painel.",
+      "image": "",
+      "price": 18,
+      "priceOld": null,
+      "launchNote": "",
+      "guaranteeDays": 14,
+      "features": [],
+      "faq": [],
+      "stripeLink": ""
+    }
+  ]
+}

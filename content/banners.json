@@ -1,0 +1,41 @@
+{
+  "home": {
+    "heroImage": "",
+    "heroImageAlt": "Foto real — mesa, luz natural"
+  },
+  "categoryBanners": {
+    "produtos-digitais": {
+      "kicker": "Do blog · Guia",
+      "title": "Como organizar toda sua burocracia em um só lugar",
+      "image": "",
+      "color": "#577328",
+      "ctaText": "Ler no blog →",
+      "postSlug": "burocracia-primeiro-ano"
+    },
+    "produtos-de-estudo": {
+      "kicker": "Do blog · Guia",
+      "title": "Tudo sobre o Exame Cívico: o que estudar e como se preparar",
+      "image": "",
+      "color": "#8AACD2",
+      "ctaText": "Ler no blog →",
+      "postSlug": "tudo-sobre-o-exame-civico"
+    },
+    "produtos-de-compras": {
+      "kicker": "Do blog · Estilo de vida",
+      "title": "O que realmente uso pra enfrentar o inverno parisiense",
+      "image": "",
+      "color": "#B8933F",
+      "ctaText": "Ler no blog →",
+      "postSlug": "inverno-parisiense"
+    }
+  },
+  "blogSidebar": {
+    "kicker": "Da vitrine",
+    "title": "Precisa organizar sua documentação?",
+    "body": "Conheça nossos Templates Organizadores — acesso imediato, sem plataforma no meio.",
+    "image": "",
+    "color": "#577328",
+    "ctaText": "Ver produtos →",
+    "ctaHref": "/produtos-digitais/"
+  }
+}

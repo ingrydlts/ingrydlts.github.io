@@ -1,0 +1,265 @@
+/* ──────────────────────────────────────────────────────────────
+   Ingryd, tô Por Dentro — Colors & Type
+   A warm, editorial, scrapbook-of-a-life-abroad palette.
+   ──────────────────────────────────────────────────────────── */
+
+/* Webfonts — Google Fonts substitutes (see README for flagged subs) */
+@import url("https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,700;9..144,900&family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap");
+
+:root {
+  /* ════════  COLOR — Strategic palette  ════════
+     Máximo 3 cores por peça — 2 principais + 1 emocional.
+     Prioridade: Azul · Bege · Creme · Verde Moss.
+     Vermelho (merlot) APENAS para assuntos urgentes. */
+
+  /* The nine. Each colour carries one job. */
+  --grafite:        #2B2B2B;  /* Grafite Profundo — textos, títulos, estrutura, inteligência */
+  --off-white:      #F4F1EC;  /* Off-White — fundo principal, sofisticação editorial */
+  --cream:          #F4E7CE;  /* Creme — superfície secundária quente, raízes parisienses */
+  --beje-paris:     #DEB975;  /* Beje Paris — identidade emocional + BOTÕES (Paris real) */
+  --verde-moss:     #577328;  /* Verde Moss — ancoragem, estabilidade, confiança */
+  --esmeralda:      #063B35;  /* Verde Esmeralda — detalhes, introspecção, profundidade */
+  --placid-blue:    #8AACD2;  /* Placid Blue — pausa, didático, acessível */
+  --merlot:         #501318;  /* Merlot — tensão, verdade crua, impacto (SÓ urgente) */
+  --downtown-brown: #604034;  /* Downtown Brown — identidade, raízes Brasil, memória */
+  --ouro:           #BB9351;  /* Ouro Queimado / Latão — assinatura premium (uso raríssimo) */
+
+  /* Tints for surfaces & states (derived, warm) */
+  --off-white-soft: #FBF9F4;  /* lifted card / inset surface */
+  --paper-deep:     #E8E2D5;  /* section divider on off-white */
+  --grafite-soft:   #4A443F;  /* secondary text */
+  --beje-deep:      #C9A85C;  /* beje hover/press */
+  --beje-soft:      #EFD8A8;  /* beje tint — chips, fills */
+  --brown-deep:     #4A322A;  /* brown hover/press */
+  --moss-deep:      #43591E;  /* moss hover/press */
+
+  /* ── Legacy aliases — keep older specimens & components working ──
+     Old burgundy-led brand is retired: burgundy now maps to the
+     identity brown; the only red is merlot, reserved for urgent. */
+  --paper:        var(--off-white);
+  --paper-soft:   var(--off-white-soft);
+  --ink:          var(--grafite);
+  --ink-soft:     var(--grafite-soft);
+  --burgundy:     var(--downtown-brown);
+  --burgundy-deep:var(--brown-deep);
+  --shell:        var(--cream);
+  --shell-shadow: #D8C9AB;
+  --manila:       var(--beje-paris);
+  --tan:          var(--beje-deep);
+  --kraft:        var(--downtown-brown);
+  --signal-red:   var(--merlot);   /* urgent only */
+
+  /* Neutrals (warm grays, never cool) */
+  --warm-50:  #F7F1E4;
+  --warm-100: #EAE0CC;
+  --warm-200: #D5C8AE;
+  --warm-300: #B5A488;
+  --warm-400: #8E7B5F;
+  --warm-500: #6B5B43;
+  --warm-600: #4A3E2D;
+  --warm-700: #2E251A;
+
+  /* ────────  COLOR — Semantic  ──────── */
+  --bg:            var(--paper);
+  --bg-elevated:   var(--paper-soft);
+  --bg-section:    var(--paper-deep);
+
+  --fg:            var(--grafite);
+  --fg-1:          var(--grafite);       /* primary text */
+  --fg-2:          var(--grafite-soft);  /* secondary text */
+  --fg-3:          var(--warm-500);      /* tertiary / metadata */
+  --fg-on-accent:  var(--grafite);       /* text on beje button */
+  --fg-on-dark:    var(--off-white);     /* text on grafite/esmeralda/merlot */
+
+  /* Interactive accent = Beje Paris (buttons) */
+  --accent:        var(--beje-paris);
+  --accent-hover:  var(--beje-deep);
+  --accent-soft:   var(--beje-soft);
+
+  /* Role colours — one job each */
+  --identity:      var(--downtown-brown);/* raízes brasileiras, marca */
+  --detail:        var(--esmeralda);     /* detalhes, fios, profundidade */
+  --anchor:        var(--verde-moss);    /* confiança, estabilidade */
+  --didactic:      var(--placid-blue);   /* explicação, pausa */
+  --urgent:        var(--merlot);        /* SÓ assuntos urgentes */
+  --premium:       var(--ouro);          /* assinatura, 1 elemento/peça */
+
+  --rule:          var(--warm-200);      /* hairlines, dividers */
+  --rule-strong:   var(--downtown-brown);/* editorial dividers — identity */
+
+  /* ────────  TYPE — Families  ──────── */
+  /* Fraunces ≈ Migra/Recoleta (chunky, soft, lightly serifed display) */
+  --serif-display: "Fraunces", "Recoleta", "Cooper Std", Georgia, serif; /* @kind font */
+  /* DM Sans ≈ a warm grotesque for body + tracked caps tagline */
+  --sans-body:     "DM Sans", "Söhne", "Inter", system-ui, sans-serif; /* @kind font */
+  --mono:          "JetBrains Mono", "IBM Plex Mono", ui-monospace, monospace; /* @kind font */
+
+  /* Type scale — modular, anchored to editorial rhythm */
+  --t-xs:  12px;
+  --t-sm:  14px;
+  --t-base:16px;
+  --t-md:  18px;
+  --t-lg:  22px;
+  --t-xl:  28px;
+  --t-2xl: 36px;
+  --t-3xl: 48px;
+  --t-4xl: 64px;
+  --t-5xl: 88px;
+  --t-6xl: 120px;
+
+  /* Line heights */
+  --lh-tight:  1.02; /* @kind font */
+  --lh-snug:   1.18; /* @kind font */
+  --lh-normal: 1.45; /* @kind font */
+  --lh-loose:  1.65; /* @kind font */
+
+  /* Letter spacing — tracked caps are core to the brand */
+  --ls-tight:  -0.02em;
+  --ls-normal: 0; /* @kind font */
+  --ls-caps:   0.08em;
+  --ls-caps-wide: 0.16em;
+
+  /* ────────  SPACING / RADII / SHADOW  ──────── */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 64px;
+  --space-9: 96px;
+
+  --r-xs: 2px;
+  --r-sm: 4px;
+  --r-md: 8px;
+  --r-lg: 16px;
+  --r-pill: 999px;
+
+  /* Shadows — paper-on-paper, never glassy/glowy */
+  --shadow-clip: 2px 3px 0 rgba(28, 22, 20, 0.18);              /* taped/clipped */
+  --shadow-card: 0 1px 2px rgba(28, 22, 20, 0.08),
+                 0 8px 24px -10px rgba(28, 22, 20, 0.18);
+  --shadow-paper:0 12px 28px -14px rgba(28, 22, 20, 0.45),
+                 0 2px 0 rgba(28, 22, 20, 0.06);                /* photo-on-desk */
+  --shadow-press: inset 0 2px 0 rgba(28, 22, 20, 0.10);
+}
+
+/* ────────  TYPE — Semantic roles  ──────── */
+.h-display, h1.display {
+  font-family: var(--serif-display);
+  font-weight: 900;
+  font-size: clamp(56px, 9vw, var(--t-6xl));
+  line-height: var(--lh-tight);
+  letter-spacing: -0.015em;
+  color: var(--paper);
+  text-transform: uppercase;
+  font-variation-settings: "SOFT" 100, "opsz" 144;
+}
+
+h1, .h1 {
+  font-family: var(--serif-display);
+  font-weight: 800;
+  font-size: var(--t-4xl);
+  line-height: var(--lh-tight);
+  letter-spacing: -0.01em;
+  color: var(--fg-1);
+  font-variation-settings: "SOFT" 80, "opsz" 96;
+}
+
+h2, .h2 {
+  font-family: var(--serif-display);
+  font-weight: 700;
+  font-size: var(--t-3xl);
+  line-height: var(--lh-snug);
+  letter-spacing: -0.005em;
+  color: var(--fg-1);
+  font-variation-settings: "SOFT" 60, "opsz" 72;
+}
+
+h3, .h3 {
+  font-family: var(--serif-display);
+  font-weight: 700;
+  font-size: var(--t-2xl);
+  line-height: var(--lh-snug);
+  color: var(--fg-1);
+}
+
+h4, .h4 {
+  font-family: var(--sans-body);
+  font-weight: 700;
+  font-size: var(--t-xl);
+  line-height: var(--lh-snug);
+  color: var(--fg-1);
+}
+
+/* The brand's signature: the "POR DENTRO DE…" tracked caps tagline */
+.eyebrow, .caps {
+  font-family: var(--sans-body);
+  font-weight: 700;
+  font-size: var(--t-sm);
+  text-transform: uppercase;
+  letter-spacing: var(--ls-caps);
+  color: var(--burgundy);
+}
+
+.caps-wide {
+  font-family: var(--sans-body);
+  font-weight: 600;
+  font-size: var(--t-xs);
+  text-transform: uppercase;
+  letter-spacing: var(--ls-caps-wide);
+  color: var(--fg-2);
+}
+
+p, .body {
+  font-family: var(--sans-body);
+  font-weight: 400;
+  font-size: var(--t-base);
+  line-height: var(--lh-normal);
+  color: var(--fg-1);
+  text-wrap: pretty;
+}
+
+.lede {
+  font-family: var(--serif-display);
+  font-weight: 400;
+  font-style: italic;
+  font-size: var(--t-lg);
+  line-height: var(--lh-normal);
+  color: var(--ink-soft);
+  font-variation-settings: "SOFT" 80;
+}
+
+small, .meta {
+  font-family: var(--sans-body);
+  font-weight: 500;
+  font-size: var(--t-xs);
+  color: var(--fg-3);
+}
+
+code, .mono {
+  font-family: var(--mono);
+  font-size: 0.92em;
+  color: var(--burgundy);
+  background: var(--paper-soft);
+  padding: 2px 6px;
+  border-radius: var(--r-xs);
+}
+
+.handle {
+  font-family: var(--sans-body);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: var(--ls-caps);
+  color: var(--paper);
+}
+
+/* Numerals on tabs, e.g. (01) (02) (03) */
+.tab-num {
+  font-family: var(--sans-body);
+  font-weight: 500;
+  font-size: var(--t-sm);
+  color: var(--ink-soft);
+  font-variant-numeric: tabular-nums;
+}

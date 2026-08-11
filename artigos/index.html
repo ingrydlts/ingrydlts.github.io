@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Blog — Por Dentro</title>
+<meta name="description" content="Guias e artigos sobre viver na França — burocracia, estudo e rotina, sem enrolação.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,600;9..144,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/css/style.css">
+<style>
+  :root { --nav-active: #604034; }
+  .mobile-only-banner { grid-column: 1 / -1; }
+  @media (min-width: 980px) { .mobile-only-banner { display: none; } }
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="/" class="site-logo">Por Dentro</a>
+  <nav class="site-nav" aria-label="Navegação principal">
+    <a href="/produtos-digitais/">Produtos digitais</a>
+    <a href="/produtos-de-estudo/">Produtos de estudo</a>
+    <a href="/produtos-de-compras/">Produtos de compras</a>
+    <a href="/artigos/">Blog</a>
+    <a href="/sobre/">Sobre</a>
+  </nav>
+  <button class="nav-toggle" aria-label="Abrir menu" aria-expanded="false">
+    <span></span><span></span><span></span>
+  </button>
+</header>
+<nav class="mobile-nav" aria-label="Navegação mobile">
+  <a href="/produtos-digitais/">Produtos digitais</a>
+  <a href="/produtos-de-estudo/">Produtos de estudo</a>
+  <a href="/produtos-de-compras/">Produtos de compras</a>
+  <a href="/artigos/">Blog</a>
+  <a href="/sobre/">Sobre</a>
+</nav>
+
+<main>
+  <div class="container">
+    <section class="section-lg" style="padding-bottom:0;">
+      <span class="eyebrow" style="color:#604034;">Blog · Guia Expat</span>
+      <h1>Por dentro, em texto</h1>
+      <p class="muted" style="max-width:60ch;">Guias e artigos sobre viver na França — burocracia, estudo e rotina, sem enrolação.</p>
+    </section>
+
+    <div class="blog-toolbar">
+      <input type="search" class="blog-search" id="search-input" placeholder="Buscar artigos...">
+      <div class="filter-pills" id="filter-pills"></div>
+    </div>
+
+    <div class="blog-layout">
+      <div class="grid grid-2" id="posts-grid">
+        <p class="muted">Carregando artigos...</p>
+      </div>
+      <aside class="blog-sidebar" id="sidebar-banner"></aside>
+    </div>
+  </div>
+</main>
+
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-grid">
+      <div>
+        <div class="site-logo" style="color:#F4F1EC; margin-bottom:14px;">Por Dentro</div>
+        <p style="color:#A8A29C; max-width:32ch; font-size:13px;">Templates, indicações de estudo e de compras para quem vive a vida real fora do Brasil.</p>
+      </div>
+      <div>
+        <div class="footer-col-title">Navegação</div>
+        <div class="footer-links">
+          <a href="/produtos-digitais/">Produtos digitais</a>
+          <a href="/produtos-de-estudo/">Produtos de estudo</a>
+          <a href="/produtos-de-compras/">Produtos de compras</a>
+          <a href="/artigos/">Blog</a>
+          <a href="/sobre/">Sobre</a>
+        </div>
+      </div>
+      <div>
+        <div class="footer-col-title">Legal</div>
+        <div class="footer-links">
+          <a href="/mentions-legales/">Mentions légales</a>
+          <a href="/cgv/">CGV</a>
+          <a href="/confidentialite/">Confidentialité</a>
+        </div>
+      </div>
+      <div>
+        <div class="footer-col-title">Redes</div>
+        <div class="footer-links"><a href="https://instagram.com/" target="_blank" rel="noopener">@ingryd.pordentro</a></div>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>© Por Dentro · France</span>
+      <span>Feito por quem vive isso.</span>
+    </div>
+  </div>
+</footer>
+
+<script src="/assets/js/main.js"></script>
+<script type="module">
+  import { fetchJSON, imgSlotHTML, escapeHtml } from "/assets/js/render.js";
+
+  let ALL_POSTS = [];
+  let activeCategory = "Todos";
+
+  function postCardHTML(post) {
+    return (
+      '<a class="card" href="/artigos/post/?slug=' + encodeURIComponent(post.slug) + '" style="color:inherit;">' +
+      imgSlotHTML(post.image, post.title, "Foto do artigo") +
+      '<div class="card-body">' +
+      '<span class="eyebrow" style="color:#6E6862;">' + escapeHtml(post.category) + "</span>" +
+      "<h3>" + escapeHtml(post.title) + "</h3>" +
+      "<p>" + escapeHtml(post.excerpt) + "</p>" +
+      '<span style="font-weight:600; font-size:13px; color:#604034;">Ler artigo →</span>' +
+      "</div></a>"
+    );
+  }
+
+  function bannerHTML(banner, extraClass) {
+    return (
+      '<div class="card' + (extraClass ? " " + extraClass : "") + '" style="border-color:' + banner.color + "55;\">" +
+      imgSlotHTML(banner.image, banner.title, "Preview do template") +
+      '<div class="card-body">' +
+      '<span class="eyebrow" style="color:' + banner.color + ';">' + escapeHtml(banner.kicker) + "</span>" +
+      "<h3>" + escapeHtml(banner.title) + "</h3>" +
+      "<p>" + escapeHtml(banner.body) + "</p>" +
+      '<a class="btn btn-pill" href="' + escapeHtml(banner.ctaHref) + '" style="background:' + banner.color + "; align-self:flex-start;\">" + escapeHtml(banner.ctaText) + "</a>" +
+      "</div></div>"
+    );
+  }
+
+  function render(banner) {
+    const grid = document.getElementById("posts-grid");
+    const term = (document.getElementById("search-input").value || "").trim().toLowerCase();
+    const filtered = ALL_POSTS.filter((p) => {
+      const matchesCategory = activeCategory === "Todos" || p.category === activeCategory;
+      const matchesTerm = !term || (p.title + " " + p.excerpt).toLowerCase().indexOf(term) !== -1;
+      return matchesCategory && matchesTerm;
+    });
+
+    if (!filtered.length) {
+      grid.innerHTML = '<p class="empty-state">Nenhum artigo encontrado com esse filtro.</p>';
+      return;
+    }
+
+    const cards = filtered.map(postCardHTML);
+    // insere o banner de produto a cada 2 posts — só aparece de fato no mobile (ver CSS .mobile-only-banner)
+    if (banner) {
+      cards.splice(2, 0, bannerHTML(banner, "mobile-only-banner"));
+    }
+    grid.innerHTML = cards.join("");
+  }
+
+  (async function () {
+    let banner = null;
+    try {
+      const [postsData, bannersData] = await Promise.all([
+        fetchJSON("/content/posts.json"),
+        fetchJSON("/content/banners.json"),
+      ]);
+      ALL_POSTS = postsData.items.slice().sort((a, b) => (a.date < b.date ? 1 : -1));
+      banner = bannersData.blogSidebar;
+
+      document.getElementById("sidebar-banner").innerHTML = bannerHTML(banner);
+
+      const categories = ["Todos"].concat(
+        Array.from(new Set(ALL_POSTS.map((p) => p.category)))
+      );
+      const pillsEl = document.getElementById("filter-pills");
+      pillsEl.innerHTML = categories.map((c) =>
+        '<button type="button" class="filter-pill' + (c === "Todos" ? " is-active" : "") + '" data-category="' + escapeHtml(c) + '">' + escapeHtml(c) + "</button>"
+      ).join("");
+      pillsEl.addEventListener("click", function (e) {
+        const btn = e.target.closest(".filter-pill");
+        if (!btn) return;
+        activeCategory = btn.dataset.category;
+        pillsEl.querySelectorAll(".filter-pill").forEach((el) => el.classList.toggle("is-active", el === btn));
+        render(banner);
+      });
+
+      document.getElementById("search-input").addEventListener("input", () => render(banner));
+
+      render(banner);
+    } catch (e) {
+      document.getElementById("posts-grid").innerHTML = '<p class="empty-state">Não foi possível carregar os artigos agora.</p>';
+      console.error(e);
+    }
+  })();
+</script>
+</body>
+</html>

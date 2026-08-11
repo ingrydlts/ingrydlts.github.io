@@ -1,0 +1,163 @@
+backend:
+  name: github
+  repo: SEU-USUARIO/SEU-REPOSITORIO # troque pelo owner/repo real no GitHub antes de publicar
+  branch: main
+  base_url: https://SEU-WORKER.workers.dev # Cloudflare Worker de OAuth — ver README.md, seção "Configurar o /admin"
+  auth_endpoint: auth
+
+# Imagens enviadas pelo painel caem aqui e ficam disponíveis em /images/uploads/...
+media_folder: "images/uploads"
+public_folder: "/images/uploads"
+
+locale: "pt"
+
+collections:
+  - name: produtos_digitais
+    label: "Produtos digitais"
+    files:
+      - name: produtos_digitais
+        label: "Lista de produtos digitais"
+        file: content/produtos-digitais.json
+        fields:
+          - label: Produtos
+            name: items
+            widget: list
+            summary: "{{title}} — {{price}} €"
+            fields:
+              - { label: "Slug (parte da URL, sem espaço/acento)", name: slug, widget: string }
+              - { label: Título, name: title, widget: string }
+              - { label: "Categoria curta (ex. Template Excel)", name: kicker, widget: string }
+              - { label: "Resumo (aparece no card)", name: summary, widget: string }
+              - { label: "Descrição (aparece na página do produto)", name: description, widget: text }
+              - { label: Imagem, name: image, widget: image, required: false }
+              - { label: "Preço atual (€)", name: price, widget: number, value_type: float }
+              - { label: "Preço antigo — deixe em branco se não houver desconto", name: priceOld, widget: number, value_type: float, required: false }
+              - { label: "Selo de lançamento (opcional)", name: launchNote, widget: string, required: false }
+              - { label: "Dias de garantia", name: guaranteeDays, widget: number, required: false, default: 14 }
+              - label: "O que inclui (lista de recursos)"
+                name: features
+                widget: list
+                required: false
+                field: { label: Item, name: item, widget: string }
+              - label: "Perguntas frequentes"
+                name: faq
+                widget: list
+                required: false
+                fields:
+                  - { label: Pergunta, name: q, widget: string }
+                  - { label: Resposta, name: a, widget: text }
+              - { label: "Link de pagamento do Stripe (Payment Link)", name: stripeLink, widget: string, required: false, hint: "Cole aqui o link gerado no painel do Stripe para este produto." }
+
+  - name: produtos_estudo
+    label: "Produtos de estudo (afiliados)"
+    files:
+      - name: produtos_estudo
+        label: "Lista de indicações de estudo"
+        file: content/produtos-estudo.json
+        fields:
+          - label: Itens
+            name: items
+            widget: list
+            summary: "{{title}}"
+            fields:
+              - { label: Título, name: title, widget: string }
+              - { label: Descrição curta, name: desc, widget: string }
+              - { label: Imagem, name: image, widget: image, required: false }
+              - { label: "Link de afiliado", name: affiliateUrl, widget: string, required: false }
+
+  - name: produtos_compras
+    label: "Produtos de compras (afiliados)"
+    files:
+      - name: produtos_compras
+        label: "Lista de indicações de compras"
+        file: content/produtos-compras.json
+        fields:
+          - label: Itens
+            name: items
+            widget: list
+            summary: "{{title}}"
+            fields:
+              - { label: Título, name: title, widget: string }
+              - { label: Descrição curta, name: desc, widget: string }
+              - { label: Imagem, name: image, widget: image, required: false }
+              - { label: "Link de afiliado", name: affiliateUrl, widget: string, required: false }
+
+  - name: posts
+    label: "Blog — artigos"
+    files:
+      - name: posts
+        label: "Lista de artigos"
+        file: content/posts.json
+        fields:
+          - label: Artigos
+            name: items
+            widget: list
+            summary: "{{title}} ({{category}})"
+            fields:
+              - { label: "Slug (parte da URL, sem espaço/acento)", name: slug, widget: string }
+              - { label: Título, name: title, widget: string }
+              - { label: "Resumo (aparece no card)", name: excerpt, widget: string }
+              - { label: "Categoria (usada nos filtros)", name: category, widget: string }
+              - { label: "Foto de capa", name: image, widget: image, required: false }
+              - { label: "Data de publicação", name: date, widget: datetime, format: "YYYY-MM-DD", date_format: "YYYY-MM-DD", time_format: false }
+              - { label: "Tempo de leitura (min)", name: readMinutes, widget: number, required: false }
+              - { label: "Corpo do artigo", name: body, widget: markdown, hint: "Use ## para subtítulo, - para lista, **negrito**, [texto](link)." }
+
+  - name: banners
+    label: "Banners e destaques"
+    files:
+      - name: banners
+        label: "Banners do site"
+        file: content/banners.json
+        fields:
+          - label: Home
+            name: home
+            widget: object
+            fields:
+              - { label: "Foto do hero", name: heroImage, widget: image, required: false }
+              - { label: "Texto alternativo da foto", name: heroImageAlt, widget: string, required: false }
+          - label: "Banners vitrine → blog (um por categoria)"
+            name: categoryBanners
+            widget: object
+            fields:
+              - label: "Produtos digitais"
+                name: produtos-digitais
+                widget: object
+                fields:
+                  - { label: Selo, name: kicker, widget: string }
+                  - { label: Título, name: title, widget: string }
+                  - { label: Foto, name: image, widget: image, required: false }
+                  - { label: "Cor (hex)", name: color, widget: string }
+                  - { label: "Texto do botão", name: ctaText, widget: string }
+                  - { label: "Slug do artigo pra onde o botão leva", name: postSlug, widget: string }
+              - label: "Produtos de estudo"
+                name: produtos-de-estudo
+                widget: object
+                fields:
+                  - { label: Selo, name: kicker, widget: string }
+                  - { label: Título, name: title, widget: string }
+                  - { label: Foto, name: image, widget: image, required: false }
+                  - { label: "Cor (hex)", name: color, widget: string }
+                  - { label: "Texto do botão", name: ctaText, widget: string }
+                  - { label: "Slug do artigo pra onde o botão leva", name: postSlug, widget: string }
+              - label: "Produtos de compras"
+                name: produtos-de-compras
+                widget: object
+                fields:
+                  - { label: Selo, name: kicker, widget: string }
+                  - { label: Título, name: title, widget: string }
+                  - { label: Foto, name: image, widget: image, required: false }
+                  - { label: "Cor (hex)", name: color, widget: string }
+                  - { label: "Texto do botão", name: ctaText, widget: string }
+                  - { label: "Slug do artigo pra onde o botão leva", name: postSlug, widget: string }
+          - label: "Banner lateral do blog (promove um produto)"
+            name: blogSidebar
+            widget: object
+            fields:
+              - { label: Selo, name: kicker, widget: string }
+              - { label: Título, name: title, widget: string }
+              - { label: Texto, name: body, widget: text }
+              - { label: Foto, name: image, widget: image, required: false }
+              - { label: "Cor (hex)", name: color, widget: string }
+              - { label: "Texto do botão", name: ctaText, widget: string }
+              - { label: "Link do botão", name: ctaHref, widget: string }
