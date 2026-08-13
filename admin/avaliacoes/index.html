@@ -15,8 +15,10 @@
   .mod-login[hidden] { display: none; }
   .mod-list[hidden] { display: none; }
   .mod-group { margin-bottom: 40px; }
-  .mod-group h2 { font-size: 18px; margin-bottom: 14px; }
+  .mod-group h2 { font-size: 18px; margin-bottom: 4px; }
+  .mod-subhead { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--texto-secundario); margin: 18px 0 10px; }
   .mod-card { background: #fff; border: 1px solid var(--borda); border-radius: 8px; padding: 18px 20px; margin-bottom: 12px; }
+  .mod-card.is-approved { border-left: 3px solid var(--verde-moss); }
   .mod-card-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 6px; flex-wrap: wrap; }
   .mod-name { font-weight: 700; font-size: 14px; }
   .mod-stars { color: var(--ouro); letter-spacing: 1px; font-size: 14px; }
@@ -41,7 +43,7 @@
   <div class="mod-head">
     <span class="eyebrow" style="color:#577328;">Painel interno</span>
     <h1 style="margin-bottom:6px;">Moderar avaliações</h1>
-    <p class="muted" style="margin:0;">Aprove ou rejeite os comentários e notas enviados na página de cada produto. Só o que for aprovado aqui aparece pro público.</p>
+    <p class="muted" style="margin:0;">Aprove ou rejeite os comentários e notas enviados na página de cada produto. Só o que for aprovado aqui aparece pro público — e dá pra remover depois algo já publicado, se precisar.</p>
   </div>
 
   <div class="mod-login" id="mod-login">
@@ -103,69 +105,89 @@
   function onLoggedIn() {
     loginBox.hidden = true;
     listBox.hidden = false;
-    loadPending();
+    loadAll();
   }
 
-  function loadPending() {
-    statusEl.textContent = "Carregando avaliações pendentes…";
+  function loadAll() {
+    statusEl.textContent = "Carregando avaliações…";
     groupsEl.innerHTML = "";
 
     Promise.all([
-      fetch(WORKER_BASE + "/api/reviews/pending", { headers: { Authorization: "Bearer " + token } }).then(function (r) {
+      fetch(WORKER_BASE + "/api/reviews/all", { headers: { Authorization: "Bearer " + token } }).then(function (r) {
         if (!r.ok) throw new Error(r.status === 401 ? "Essa conta não tem permissão de escrita no repositório." : "Falha ao carregar avaliações.");
         return r.json();
       }),
       fetch("/content/produtos-digitais.json").then(function (r) { return r.json(); }).catch(function () { return { items: [] }; })
     ]).then(function (results) {
-      renderPending(results[0].pending || [], results[1].items || []);
+      renderAll(results[0].pending || [], results[0].approved || [], results[1].items || []);
     }).catch(function (err) {
       statusEl.textContent = "";
       groupsEl.innerHTML = '<p class="mod-error">' + escapeHtml(err.message) + "</p>";
     });
   }
 
-  function renderPending(pending, products) {
-    if (!pending.length) {
+  function buildCard(r, slug, isApproved) {
+    var card = document.createElement("div");
+    card.className = "mod-card" + (isApproved ? " is-approved" : "");
+    card.innerHTML =
+      '<div class="mod-card-head">' +
+        '<span class="mod-name">' + escapeHtml(r.name) + "</span>" +
+        '<span class="mod-stars">' + "★".repeat(r.rating) + "☆".repeat(5 - r.rating) + "</span>" +
+      "</div>" +
+      '<div class="mod-date">' + new Date(r.createdAt).toLocaleDateString("pt-BR") + "</div>" +
+      '<p class="mod-comment">' + escapeHtml(r.comment) + "</p>" +
+      '<div class="mod-actions">' +
+        (isApproved
+          ? '<button class="mod-btn reject" data-action="reject">Remover</button>'
+          : '<button class="mod-btn approve" data-action="approve">Aprovar</button><button class="mod-btn reject" data-action="reject">Rejeitar</button>') +
+      "</div>";
+
+    card.querySelectorAll("[data-action]").forEach(function (btn) {
+      btn.addEventListener("click", function () { moderate(r.id, slug, btn.dataset.action, card); });
+    });
+    return card;
+  }
+
+  function renderAll(pending, approved, products) {
+    if (!pending.length && !approved.length) {
       statusEl.textContent = "";
-      groupsEl.innerHTML = '<p class="mod-empty">Nenhuma avaliação pendente no momento.</p>';
+      groupsEl.innerHTML = '<p class="mod-empty">Nenhuma avaliação — nem pendente, nem publicada — no momento.</p>';
       return;
     }
-    statusEl.textContent = pending.length + " avaliação(ões) aguardando aprovação.";
+    statusEl.textContent = pending.length + " pendente(s) · " + approved.length + " publicada(s).";
 
-    var bySlug = {};
-    pending.forEach(function (r) { (bySlug[r.slug] = bySlug[r.slug] || []).push(r); });
+    var slugs = {};
+    pending.forEach(function (r) { slugs[r.slug] = true; });
+    approved.forEach(function (r) { slugs[r.slug] = true; });
 
     var titleBySlug = {};
     products.forEach(function (p) { titleBySlug[p.slug] = p.title; });
 
     groupsEl.innerHTML = "";
-    Object.keys(bySlug).forEach(function (slug) {
+    Object.keys(slugs).forEach(function (slug) {
       var group = document.createElement("div");
       group.className = "mod-group";
       var title = titleBySlug[slug] || slug;
       group.innerHTML = "<h2>" + escapeHtml(title) + "</h2>";
 
-      bySlug[slug].forEach(function (r) {
-        var card = document.createElement("div");
-        card.className = "mod-card";
-        card.innerHTML =
-          '<div class="mod-card-head">' +
-            '<span class="mod-name">' + escapeHtml(r.name) + "</span>" +
-            '<span class="mod-stars">' + "★".repeat(r.rating) + "☆".repeat(5 - r.rating) + "</span>" +
-          "</div>" +
-          '<div class="mod-date">' + new Date(r.createdAt).toLocaleDateString("pt-BR") + "</div>" +
-          '<p class="mod-comment">' + escapeHtml(r.comment) + "</p>" +
-          '<div class="mod-actions">' +
-            '<button class="mod-btn approve" data-action="approve">Aprovar</button>' +
-            '<button class="mod-btn reject" data-action="reject">Rejeitar</button>' +
-          "</div>";
+      var slugPending = pending.filter(function (r) { return r.slug === slug; });
+      var slugApproved = approved.filter(function (r) { return r.slug === slug; });
 
-        card.querySelectorAll("[data-action]").forEach(function (btn) {
-          btn.addEventListener("click", function () { moderate(r.id, slug, btn.dataset.action, card); });
-        });
+      if (slugPending.length) {
+        var pendHead = document.createElement("div");
+        pendHead.className = "mod-subhead";
+        pendHead.textContent = "Pendentes de aprovação";
+        group.appendChild(pendHead);
+        slugPending.forEach(function (r) { group.appendChild(buildCard(r, slug, false)); });
+      }
 
-        group.appendChild(card);
-      });
+      if (slugApproved.length) {
+        var apprHead = document.createElement("div");
+        apprHead.className = "mod-subhead";
+        apprHead.textContent = "Já publicadas";
+        group.appendChild(apprHead);
+        slugApproved.forEach(function (r) { group.appendChild(buildCard(r, slug, true)); });
+      }
 
       groupsEl.appendChild(group);
     });

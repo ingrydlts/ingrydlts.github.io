@@ -6,9 +6,9 @@
  *
  * 2. API de avaliações de produto (estrelas + comentário), com moderação.
  *    Rotas: GET /api/reviews (público, só aprovadas), POST /api/reviews
- *    (público, grava pendente), GET /api/reviews/pending e
- *    POST /api/reviews/moderate (protegidas — exigem token de alguém com
- *    permissão de escrita no repositório, o mesmo token que o /auth acima gera).
+ *    (público, grava pendente), GET /api/reviews/all e POST /api/reviews/moderate
+ *    (protegidas — exigem token de alguém com permissão de escrita no
+ *    repositório, o mesmo token que o /auth acima gera).
  *
  * Variáveis de ambiente necessárias (Settings → Variables and Secrets no Worker):
  *   GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET  — do GitHub OAuth App (ver README.md)
@@ -211,20 +211,25 @@ async function handlePostReview(request, env, ctx) {
   return json({ ok: true }, 201);
 }
 
-async function handlePendingReviews(request, env) {
+// Lista tanto pendentes (pra aprovar/rejeitar) quanto já aprovadas (pra dar
+// pra remover uma avaliação publicada por engano ou de teste).
+async function handleAllReviews(request, env) {
   const moderator = await requireCollaborator(request, env);
   if (!moderator) return json({ error: 'Sem permissão. Faça login com uma conta que tem acesso ao repositório.' }, 401);
 
   const db = await getDB(env);
   const pending = [];
+  const approved = [];
   for (const slug of Object.keys(db)) {
     for (const r of db[slug]) {
       if (r.status === 'pending') pending.push({ ...r, slug });
+      if (r.status === 'approved') approved.push({ ...r, slug });
     }
   }
   pending.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+  approved.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
-  return json({ pending });
+  return json({ pending, approved });
 }
 
 async function handleModerate(request, env) {
@@ -314,8 +319,8 @@ export default {
       if (url.pathname === '/api/reviews' && request.method === 'POST') {
         return await handlePostReview(request, env, ctx);
       }
-      if (url.pathname === '/api/reviews/pending' && request.method === 'GET') {
-        return await handlePendingReviews(request, env);
+      if (url.pathname === '/api/reviews/all' && request.method === 'GET') {
+        return await handleAllReviews(request, env);
       }
       if (url.pathname === '/api/reviews/moderate' && request.method === 'POST') {
         return await handleModerate(request, env);
