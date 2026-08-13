@@ -2,11 +2,11 @@
   "items": [
     {
       "launchNote": "Preço de lançamento — válido para os primeiros 30 compradores",
-      "summary": "A planilha financeira que lança seus gastos fixos sozinha — todo mês, sem você precisar copiar e colar nada.",
+      "summary": "A planilha financeira que lança seus gastos fixos sozinha, todo mês, sem você precisar copiar e colar nada.",
       "stripeLink": "https://buy.stripe.com/9B6bJ10xTgbfgXH7q1aR201",
       "price": 25,
       "slug": "planilha-financeira-super-integrada",
-      "kicker": "Template Google Sheets",
+      "kicker": "Template Excel e Google Sheets",
       "faq": [
         {
           "q": "Funciona só no Google Sheets, ou também no Excel?",
@@ -28,10 +28,10 @@
         "Planilha com 7 painéis + automação real",
         "Prompt Mestre de IA, manual e guia de instalação",
         "Compra única — sem assinatura, reutiliza todo ano",
-        "Funciona em PC, Mac, tablet e celular"
+        "Funciona no Microsof Excel e Google Sheets"
       ],
       "priceOld": 39,
-      "guaranteeDays": 14
+      "guaranteeDays": 5
     }
   ]
 }
