@@ -29,7 +29,18 @@ collections:
               - { label: "Categoria curta (ex. Template Excel)", name: kicker, widget: string }
               - { label: "Resumo (aparece no card)", name: summary, widget: string }
               - { label: "Descrição (aparece na página do produto)", name: description, widget: text }
-              - { label: Imagem, name: image, widget: image, required: false, hint: "Tamanho ideal: 1200×900px (proporção 4:3), foto na horizontal. Aparece no card da lista e no topo da página do produto." }
+              - { label: "Imagem de capa (aparece no card da lista)", name: image, widget: image, required: false, hint: "Tamanho ideal: 1200×900px (proporção 4:3), foto na horizontal." }
+              - label: "Galeria da página do produto (fotos e vídeos)"
+                name: gallery
+                widget: list
+                required: false
+                hint: "Se deixar vazio, a página do produto usa só a imagem de capa acima."
+                summary: "{{fields.type}} — {{fields.caption}}"
+                fields:
+                  - { label: Tipo, name: type, widget: select, options: ["Foto", "Vídeo"], default: "Foto" }
+                  - { label: "Foto (se tipo = Foto)", name: image, widget: image, required: false, hint: "Tamanho ideal: 1200×900px (proporção 4:3), foto na horizontal." }
+                  - { label: "Link do vídeo (se tipo = Vídeo)", name: videoUrl, widget: string, required: false, hint: "URL do YouTube, Vimeo ou de um arquivo .mp4 direto." }
+                  - { label: "Legenda (opcional)", name: caption, widget: string, required: false }
               - { label: "Preço atual (€)", name: price, widget: number, value_type: float }
               - { label: "Preço antigo — deixe em branco se não houver desconto", name: priceOld, widget: number, value_type: float, required: false }
               - { label: "Selo de lançamento (opcional)", name: launchNote, widget: string, required: false }
@@ -47,6 +58,12 @@ collections:
                   - { label: Pergunta, name: q, widget: string }
                   - { label: Resposta, name: a, widget: text }
               - { label: "Link de pagamento do Stripe (Payment Link)", name: stripeLink, widget: string, required: false, hint: "Cole aqui o link gerado no painel do Stripe para este produto." }
+              - label: "Combo com outros produtos (bundle)"
+                name: bundleWith
+                widget: list
+                required: false
+                hint: "Cole o \"slug\" de outro produto digital (o campo Slug dele, lá em cima) pra formar um combo. O desconto do combo é calculado sozinho pela página: 10% com 2 produtos, 15% com 3, 20% com 4 ou mais."
+                field: { label: "Slug do outro produto", name: slug, widget: string }
 
   - name: produtos_estudo
     label: "Produtos de estudo (afiliados)"

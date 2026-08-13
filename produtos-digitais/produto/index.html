@@ -81,8 +81,324 @@
 
 <script src="/assets/js/main.js"></script>
 <script type="module">
-  import { fetchJSON, imgSlotHTML, escapeHtml, formatPrice, qs } from "/assets/js/render.js";
+  import { fetchJSON, escapeHtml, formatPrice, qs } from "/assets/js/render.js";
   import { initBuyBox } from "/assets/js/purchase.js";
+
+  // Mesma URL do Worker configurada em admin/config.yml (base_url).
+  const WORKER_BASE = "https://por-dentro-cms-oauth.ingrydigitalmanagement.workers.dev";
+
+  const ICON_CHECK =
+    '<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"></path></svg>';
+  const ICON_BOLT =
+    '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L4 14h6l-1 8 9-12h-6l1-8z"></path></svg>';
+  const ICON_REPEAT =
+    '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 2l4 4-4 4M21 6H9a5 5 0 000 10h1M7 22l-4-4 4-4M3 18h12a5 5 0 000-10h-1"></path></svg>';
+  const ICON_SHIELD =
+    '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l8 4v6c0 5-3.5 8-8 10-4.5-2-8-5-8-10V6l8-4z"></path></svg>';
+  const ICON_LOCK =
+    '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="10" rx="2"></rect><path d="M8 10V7a4 4 0 018 0v3"></path></svg>';
+
+  function starString(rating) {
+    const r = Math.max(0, Math.min(5, Math.round(rating)));
+    return "★".repeat(r) + "☆".repeat(5 - r);
+  }
+
+  function productHref(slug) {
+    return "/produtos-digitais/produto/?slug=" + encodeURIComponent(slug);
+  }
+
+  // ---- galeria: normaliza o campo `gallery` do CMS (ou cai pra `image` sozinho) ----
+  function normalizeGallery(p) {
+    const items = (p.gallery || []).filter((g) => (g.type === "Vídeo" && g.videoUrl) || (g.type !== "Vídeo" && g.image));
+    if (items.length) return items;
+    if (p.image) return [{ type: "Foto", image: p.image, caption: p.title }];
+    return [{ type: "Foto", image: "", caption: p.title }];
+  }
+
+  function videoEmbedHTML(url, caption) {
+    const yt = url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/))([\w-]+)/);
+    if (yt) {
+      return '<iframe src="https://www.youtube-nocookie.com/embed/' + yt[1] + '" title="' + escapeHtml(caption || "") + '" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>';
+    }
+    const vimeo = url.match(/vimeo\.com\/(\d+)/);
+    if (vimeo) {
+      return '<iframe src="https://player.vimeo.com/video/' + vimeo[1] + '" title="' + escapeHtml(caption || "") + '" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe>';
+    }
+    return '<video src="' + escapeHtml(url) + '" controls playsinline></video>';
+  }
+
+  function mediaHTML(item, alt) {
+    if (item.type === "Vídeo") return videoEmbedHTML(item.videoUrl, alt);
+    if (!item.image) return '<span class="img-slot-label">Foto a adicionar</span>';
+    return '<img src="' + escapeHtml(item.image) + '" alt="' + escapeHtml(alt || "") + '" loading="lazy">';
+  }
+
+  function carouselHTML(gallery, title) {
+    const thumbs = gallery
+      .map((item, i) => {
+        if (item.type === "Vídeo") {
+          return '<button type="button" class="pdp-thumb is-video' + (i === 0 ? " is-active" : "") + '" data-idx="' + i + '" aria-label="Vídeo"></button>';
+        }
+        return (
+          '<button type="button" class="pdp-thumb' + (i === 0 ? " is-active" : "") + '" data-idx="' + i + '" aria-label="Foto ' + (i + 1) + '">' +
+          (item.image ? '<img src="' + escapeHtml(item.image) + '" alt="">' : "") +
+          "</button>"
+        );
+      })
+      .join("");
+
+    return (
+      '<div class="pdp-carousel" data-carousel>' +
+        '<div class="pdp-carousel-main">' +
+          '<div class="pdp-carousel-viewport" data-carousel-viewport>' + mediaHTML(gallery[0], title) + "</div>" +
+          (gallery.length > 1
+            ? '<button type="button" class="pdp-car-nav prev" data-car-prev aria-label="Foto anterior">‹</button>' +
+              '<button type="button" class="pdp-car-nav next" data-car-next aria-label="Próxima foto">›</button>'
+            : "") +
+        "</div>" +
+        (gallery.length > 1 ? '<div class="pdp-carousel-thumbs">' + thumbs + "</div>" : "") +
+      "</div>"
+    );
+  }
+
+  function initCarousel(root, gallery, title) {
+    const host = root.querySelector("[data-carousel]");
+    if (!host) return;
+    const viewport = host.querySelector("[data-carousel-viewport]");
+    const thumbs = Array.from(host.querySelectorAll(".pdp-thumb"));
+    let idx = 0;
+
+    function show(i) {
+      idx = (i + gallery.length) % gallery.length;
+      viewport.innerHTML = mediaHTML(gallery[idx], title);
+      thumbs.forEach((t, ti) => t.classList.toggle("is-active", ti === idx));
+    }
+    thumbs.forEach((t, ti) => t.addEventListener("click", () => show(ti)));
+    const prev = host.querySelector("[data-car-prev]");
+    const next = host.querySelector("[data-car-next]");
+    if (prev) prev.addEventListener("click", () => show(idx - 1));
+    if (next) next.addEventListener("click", () => show(idx + 1));
+  }
+
+  // ---- bundle: combo automático com desconto por quantidade + piso de margem ----
+  function computeBundlePrice(items) {
+    const sum = items.reduce((s, it) => s + Number(it.price || 0), 0);
+    const n = items.length;
+    const tier = n >= 4 ? 0.2 : n === 3 ? 0.15 : 0.1;
+    const floor = sum * 0.5; // nunca desconta mais de 50% da soma dos preços
+    const finalPrice = Math.max(sum * (1 - tier), floor);
+    const pct = sum > 0 ? Math.round((1 - finalPrice / sum) * 100) : 0;
+    return { sum, finalPrice, pct };
+  }
+
+  function bundleHTML(p, allItems) {
+    const others = (p.bundleWith || [])
+      .map((slug) => allItems.find((it) => it.slug === slug))
+      .filter(Boolean);
+
+    if (!others.length) {
+      return (
+        '<div class="pdp-bundle-empty"><strong>Combo com outros produtos</strong><br>' +
+        "Nenhum produto vinculado a este combo ainda. Quando lançarem um novo template, associem o slug dele aqui pelo <code>/admin</code> — o desconto é calculado automaticamente." +
+        "</div>"
+      );
+    }
+
+    const bundleItems = [p, ...others];
+    const calc = computeBundlePrice(bundleItems);
+    const itemsHtml = bundleItems
+      .map(
+        (it) =>
+          '<a class="pdp-bundle-item" href="' + productHref(it.slug) + '" style="color:inherit;">' +
+            '<span class="thumb">' + (it.image ? '<img src="' + escapeHtml(it.image) + '" alt="">' : "") + "</span>" +
+            '<span class="name">' + escapeHtml(it.title) + "</span>" +
+            '<span class="unit-price">' + formatPrice(it.price) + "</span>" +
+          "</a>"
+      )
+      .join("");
+
+    return (
+      '<div class="pdp-bundle">' +
+        "<h3>Complete o combo</h3>" +
+        '<p class="pdp-bundle-sub">Leve estes produtos juntos e pague menos que a soma dos preços individuais.</p>' +
+        '<div class="pdp-bundle-items">' + itemsHtml + "</div>" +
+        '<div class="pdp-bundle-price-row">' +
+          '<span class="pdp-bundle-old">' + formatPrice(calc.sum) + "</span>" +
+          '<span class="pdp-bundle-price">' + formatPrice(calc.finalPrice) + "</span>" +
+          (calc.pct > 0 ? '<span class="pdp-bundle-pct">-' + calc.pct + "%</span>" : "") +
+        "</div>" +
+        '<p class="muted" style="font-size:12px;">Cada produto ainda tem seu próprio checkout — esse preço de combo é a referência do quanto vocês economizam comprando os dois. Um checkout único pra pagar o combo de uma vez é a próxima peça a construir (carrinho, ver <code>GUIA-DE-IMPLEMENTACAO.md</code>).</p>' +
+      "</div>"
+    );
+  }
+
+  // ---- avaliações: carrega do Worker e permite escrever uma nova ----
+  function distRowHTML(star, count, total) {
+    const pct = total ? Math.round((count / total) * 100) : 0;
+    return (
+      '<div class="pdp-dist-row"><span>' + star + "★</span>" +
+      '<div class="pdp-dist-bar"><div style="width:' + pct + '%;"></div></div>' +
+      "<span>" + count + "</span></div>"
+    );
+  }
+
+  function renderReviewSummary(root, summary) {
+    root.querySelector("#pdp-stars-big").textContent = starString(summary.average);
+    root.querySelector("#pdp-reviews-count").textContent = summary.count
+      ? summary.average.toFixed(1).replace(".", ",") + " de 5 · " + summary.count + " avaliação(ões)"
+      : "Ainda sem avaliações";
+    root.querySelector("#pdp-reviews-sub").textContent = summary.count
+      ? ""
+      : "Seja a primeira pessoa a avaliar este produto";
+    const dist = root.querySelector("#pdp-dist");
+    dist.innerHTML = [5, 4, 3, 2, 1].map((s) => distRowHTML(s, summary.distribution[s] || 0, summary.count)).join("");
+  }
+
+  function renderReviewList(root, reviews) {
+    const list = root.querySelector("#pdp-review-list");
+    if (!reviews.length) {
+      list.innerHTML = '<div class="pdp-review-empty">Nenhum comentário ainda — os comentários aparecem aqui assim que forem aprovados.</div>';
+      return;
+    }
+    list.innerHTML = reviews
+      .map(
+        (r) =>
+          '<div class="pdp-review-item">' +
+            '<div class="pdp-review-item-head">' +
+              '<span class="pdp-review-item-name">' + escapeHtml(r.name) + "</span>" +
+              '<span class="pdp-review-item-stars">' + starString(r.rating) + "</span>" +
+            "</div>" +
+            '<div class="pdp-review-item-date">' + new Date(r.createdAt).toLocaleDateString("pt-BR") + "</div>" +
+            "<p>" + escapeHtml(r.comment) + "</p>" +
+          "</div>"
+      )
+      .join("");
+  }
+
+  async function loadReviews(root, slug) {
+    try {
+      const res = await fetch(WORKER_BASE + "/api/reviews?slug=" + encodeURIComponent(slug));
+      if (!res.ok) throw new Error("falhou");
+      const data = await res.json();
+      renderReviewSummary(root, data.summary);
+      renderReviewList(root, data.reviews);
+    } catch (e) {
+      // Worker ainda não publicado, ou KV não configurada — mostra o estado
+      // vazio normalmente, sem quebrar o resto da página.
+      renderReviewSummary(root, { count: 0, average: 0, distribution: {} });
+      renderReviewList(root, []);
+    }
+  }
+
+  function initReviewForm(root, slug) {
+    const toggle = root.querySelector("#pdp-review-toggle");
+    const form = root.querySelector("#pdp-review-form");
+    const starsWrap = root.querySelector("#pdp-rf-stars");
+    const starButtons = Array.from(starsWrap.querySelectorAll("button"));
+    const nameInput = root.querySelector("#pdp-rf-name");
+    const commentInput = root.querySelector("#pdp-rf-comment");
+    const hpInput = root.querySelector("#pdp-rf-hp");
+    const submitBtn = root.querySelector("#pdp-review-submit");
+    const errorEl = root.querySelector("#pdp-review-error");
+    const successEl = root.querySelector("#pdp-review-success");
+    let rating = 0;
+
+    toggle.addEventListener("click", () => {
+      form.hidden = !form.hidden;
+    });
+
+    starButtons.forEach((btn, i) => {
+      btn.addEventListener("click", () => {
+        rating = i + 1;
+        starButtons.forEach((b, bi) => {
+          const filled = bi <= i;
+          b.textContent = filled ? "★" : "☆";
+          b.classList.toggle("is-filled", filled);
+        });
+      });
+    });
+
+    submitBtn.addEventListener("click", async () => {
+      errorEl.classList.remove("is-visible");
+      successEl.classList.remove("is-visible");
+
+      const name = nameInput.value.trim();
+      const comment = commentInput.value.trim();
+      if (!name || !comment || !rating) {
+        errorEl.textContent = "Preencha seu nome, uma nota e um comentário.";
+        errorEl.classList.add("is-visible");
+        return;
+      }
+
+      submitBtn.disabled = true;
+      let res;
+      try {
+        res = await fetch(WORKER_BASE + "/api/reviews", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ slug, name, rating, comment, hp: hpInput.value }),
+        });
+      } catch (e) {
+        // rede/CORS falhou (ex.: worker ainda não publicado) — mensagem genérica,
+        // sem expor o erro técnico do navegador.
+        errorEl.textContent = "Não foi possível enviar agora — tente novamente mais tarde.";
+        errorEl.classList.add("is-visible");
+        submitBtn.disabled = false;
+        return;
+      }
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        errorEl.textContent = data.error || "Não foi possível enviar agora — tente novamente mais tarde.";
+        errorEl.classList.add("is-visible");
+        submitBtn.disabled = false;
+        return;
+      }
+
+      successEl.classList.add("is-visible");
+      nameInput.value = "";
+      commentInput.value = "";
+      rating = 0;
+      starButtons.forEach((b) => {
+        b.textContent = "☆";
+        b.classList.remove("is-filled");
+      });
+      submitBtn.disabled = false;
+    });
+  }
+
+  function faqHTML(faq) {
+    if (!faq || !faq.length) return "";
+    return (
+      '<div style="max-width:640px; margin-bottom:56px;"><h2>Perguntas frequentes</h2>' +
+      '<div class="rt-faq">' +
+      faq
+        .map(
+          (item, i) =>
+            '<div class="rt-faq-item" data-faq-item>' +
+              '<button class="rt-faq-q" data-faq-q type="button">' +
+                "<span>" + escapeHtml(item.q) + "</span>" +
+                '<span class="rt-faq-arrow">⌄</span>' +
+              "</button>" +
+              '<div class="rt-faq-a" data-faq-a><div class="rt-faq-a-inner">' + escapeHtml(item.a) + "</div></div>" +
+            "</div>"
+        )
+        .join("") +
+      "</div></div>"
+    );
+  }
+
+  function initFaq(root) {
+    root.querySelectorAll("[data-faq-item]").forEach((item) => {
+      const q = item.querySelector("[data-faq-q]");
+      const a = item.querySelector("[data-faq-a]");
+      q.addEventListener("click", () => {
+        const open = q.classList.contains("is-open");
+        q.classList.toggle("is-open", !open);
+        a.style.maxHeight = open ? null : a.scrollHeight + "px";
+      });
+    });
+  }
 
   (async function () {
     const root = document.getElementById("product-root");
@@ -102,33 +418,45 @@
 
     document.title = p.title + " — Por Dentro";
 
-    const featuresHtml = (p.features || []).map((f) =>
-      '<li style="display:flex; gap:10px; font-size:14px; margin-bottom:8px;"><span style="color:#577328; font-weight:700;">✓</span>' + escapeHtml(f) + "</li>"
-    ).join("");
+    const gallery = normalizeGallery(p);
 
-    const faqHtml = (p.faq || []).map((item) =>
-      '<div style="padding:16px 0; border-top:1px solid var(--borda-suave);"><h3 style="font-size:15px; margin:0 0 6px;">' +
-      escapeHtml(item.q) + '</h3><p style="font-size:14px; margin:0;">' + escapeHtml(item.a) + "</p></div>"
-    ).join("");
+    const featuresHtml = (p.features || [])
+      .map(
+        (f) =>
+          '<div class="pdp-benefit"><div class="ic">' + ICON_CHECK + "</div><span>" + escapeHtml(f) + "</span></div>"
+      )
+      .join("");
+
+    const trustBarText = [
+      p.guaranteeDays ? "GARANTIA " + p.guaranteeDays + " DIAS" : null,
+      "ENTREGA IMEDIATA",
+      "PAGAMENTO SEGURO",
+    ]
+      .filter(Boolean)
+      .join(" · ");
 
     root.innerHTML =
-      '<div class="hero" style="padding-top:16px;">' +
-        "<div>" +
-          '<span class="eyebrow" style="color:#577328;">Produtos digitais</span>' +
-          "<h1>" + escapeHtml(p.summary) + "</h1>" +
-          "<p>" + escapeHtml(p.description) + "</p>" +
-        "</div>" +
-        imgSlotHTML(p.image, p.title, "Print / preview do produto") +
-      "</div>" +
+      '<div class="pdp-trustbar">' + escapeHtml(trustBarText) + "</div>" +
 
-      '<div class="buy-box" style="max-width:480px; margin:0 0 56px;">' +
+      '<p class="pdp-breadcrumb"><a href="/produtos-digitais/">Produtos digitais</a> / <strong>' + escapeHtml(p.title) + "</strong></p>" +
+
+      (p.kicker ? '<span class="pdp-pill">' + escapeHtml(p.kicker) + "</span>" : "") +
+      "<h1>" + escapeHtml(p.title) + "</h1>" +
+      '<p class="muted" style="max-width:56ch; font-size:16px; margin-bottom:24px;">' + escapeHtml(p.summary) + "</p>" +
+
+      carouselHTML(gallery, p.title) +
+
+      (featuresHtml ? '<div class="pdp-benefits">' + featuresHtml + "</div>" : "") +
+
+      "<p>" + escapeHtml(p.description) + "</p>" +
+
+      '<div class="buy-box" id="pdp-buybox" style="max-width:480px; margin:24px 0 0;">' +
         '<div style="display:flex; align-items:baseline; gap:12px; margin-bottom:6px;">' +
           (p.priceOld ? '<span style="text-decoration:line-through; color:#A8AF9E; font-weight:700; font-size:14px;">de ' + formatPrice(p.priceOld) + "</span>" : "") +
           '<span class="price" style="font-size:30px;">' + (p.priceOld ? "por " : "") + formatPrice(p.price) + "</span>" +
           (p.priceOld && p.priceOld > p.price ? '<span style="background:#577328; color:#fff; font-weight:700; font-size:12px; padding:3px 8px; border-radius:20px;">-' + Math.round((1 - p.price / p.priceOld) * 100) + "%</span>" : "") +
         "</div>" +
         (p.launchNote ? '<div style="font-weight:600; font-size:13px; color:#577328; margin-bottom:20px;">' + escapeHtml(p.launchNote) + "</div>" : "") +
-        (featuresHtml ? '<ul style="list-style:none; padding:0; margin:0 0 22px;">' + featuresHtml + "</ul>" : "") +
 
         '<div class="pay-badges" style="margin-bottom:18px;">' +
           '<span class="pay-badge"><svg width="18" height="13" viewBox="0 0 24 18" fill="none"><rect x="1" y="1" width="22" height="16" rx="2.5" stroke="#6E6862" stroke-width="1.4"></rect><rect x="1" y="5" width="22" height="3" fill="#6E6862"></rect></svg>Cartão</span>' +
@@ -138,15 +466,59 @@
         '<label class="gate-checkbox"><input type="checkbox" data-gate-checkbox><span>Entendo que o acesso ao arquivo é imediato e renuncio ao meu direito de retratação de 14 dias.</span></label>' +
         '<button class="btn btn-block" data-gate-button disabled style="background:#577328;">Ir para pagamento seguro — ' + formatPrice(p.price) + "</button>" +
         '<p class="gate-message" data-gate-message></p>' +
-        '<p class="muted" style="font-size:12px; text-align:center; margin:14px 0 0;">' +
-          (p.guaranteeDays ? "Garantia de " + p.guaranteeDays + " dias. " : "") +
-          "Você será redirecionado(a) para o Stripe, nosso processador de pagamentos." +
-        "</p>" +
       "</div>" +
 
-      (faqHtml ? '<div style="max-width:640px; margin-bottom:64px;"><h2>Perguntas frequentes</h2>' + faqHtml + "</div>" : "");
+      '<div class="pdp-trustgrid">' +
+        '<div class="pdp-trust-item"><span class="ic">' + ICON_BOLT + '</span><div><b>Entrega imediata</b><p>Acesso liberado na hora</p></div></div>' +
+        '<div class="pdp-trust-item"><span class="ic">' + ICON_CHECK + '</span><div><b>Compra única</b><p>Sem assinatura</p></div></div>' +
+        '<div class="pdp-trust-item"><span class="ic">' + ICON_SHIELD + "</span><div><b>" + (p.guaranteeDays ? "Garantia " + p.guaranteeDays + " dias" : "Garantia") + "</b><p>Devolução sem burocracia</p></div></div>" +
+        '<div class="pdp-trust-item"><span class="ic">' + ICON_LOCK + '</span><div><b>Pagamento seguro</b><p>Processado via Stripe</p></div></div>' +
+      "</div>" +
+
+      bundleHTML(p, data.items) +
+
+      '<div class="pdp-reviews">' +
+        '<div class="pdp-reviews-head">' +
+          '<div class="pdp-stars-big" id="pdp-stars-big">☆☆☆☆☆</div>' +
+          '<div><div class="pdp-reviews-count" id="pdp-reviews-count">Carregando avaliações…</div><div class="pdp-reviews-sub" id="pdp-reviews-sub"></div></div>' +
+        "</div>" +
+        '<div class="pdp-dist" id="pdp-dist"></div>' +
+        '<button type="button" class="pdp-review-cta" id="pdp-review-toggle">Escrever uma avaliação</button>' +
+        '<div class="pdp-review-form" id="pdp-review-form" hidden>' +
+          '<span class="pdp-rf-label">Sua nota</span>' +
+          '<div class="pdp-rf-stars" id="pdp-rf-stars">' +
+            [1, 2, 3, 4, 5].map((i) => '<button type="button" data-star="' + i + '">☆</button>').join("") +
+          "</div>" +
+          '<input type="text" id="pdp-rf-name" placeholder="Seu nome" maxlength="80">' +
+          '<textarea id="pdp-rf-comment" placeholder="Conte como foi usar o produto..." maxlength="600"></textarea>' +
+          '<input type="text" id="pdp-rf-hp" tabindex="-1" autocomplete="off" style="position:absolute; left:-9999px; width:1px; height:1px;" aria-hidden="true">' +
+          '<button type="button" class="pdp-review-submit" id="pdp-review-submit">Publicar avaliação</button>' +
+          '<p class="pdp-review-error" id="pdp-review-error"></p>' +
+          '<p class="pdp-review-success" id="pdp-review-success">Recebemos sua avaliação — ela aparece por aqui assim que for aprovada.</p>' +
+          '<p class="pdp-review-note">As avaliações passam por aprovação antes de aparecer na página.</p>' +
+        "</div>" +
+        '<div class="pdp-review-list" id="pdp-review-list"></div>' +
+      "</div>" +
+
+      faqHTML(p.faq);
 
     initBuyBox(root, p.stripeLink);
+    initCarousel(root, gallery, p.title);
+    initFaq(root);
+    initReviewForm(root, p.slug);
+    loadReviews(root, p.slug);
+
+    // barra fixa de compra no mobile
+    document.body.classList.add("has-pdp-sticky");
+    const sticky = document.createElement("div");
+    sticky.className = "pdp-sticky";
+    sticky.innerHTML =
+      '<div class="p"><small>' + escapeHtml(p.title) + "</small>" + formatPrice(p.price) + "</div>" +
+      '<button type="button" class="btn" style="background:#577328;">Comprar agora</button>';
+    sticky.querySelector("button").addEventListener("click", () => {
+      document.getElementById("pdp-buybox").scrollIntoView({ behavior: "smooth", block: "center" });
+    });
+    document.body.appendChild(sticky);
   })();
 </script>
 </body>

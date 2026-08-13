@@ -65,10 +65,36 @@ O `/admin` é um painel visual (Decap CMS) pra editar produtos, banners e posts 
 | Home | Foto do hero | 1200×960px | 5:4, horizontal |
 | Banners vitrine → blog (3 categorias) | Foto | 1200×675px | 16:9, horizontal |
 | Banner lateral do blog | Foto | 1200×900px | 4:3, horizontal |
+| Galeria da página de produto (cada foto) | Foto/Vídeo | 1200×1200px | 1:1, quadrada — é o carrossel estilo Amazon, cada slide aparece no mesmo enquadramento |
 
 **Depois de publicar, a mudança pode demorar até uns minutos pra aparecer no site** — o GitHub Pages usa um CDN (Fastly) que guarda o conteúdo em cache por até 10 minutos. Se editar e não ver a mudança na hora, não é erro: espera um pouco e dá um refresh forçado (Cmd+Shift+R) antes de desconfiar que algo quebrou.
 
 **Cuidado ao editar listas** (produtos, artigos, itens de afiliado): o painel edita a lista inteira de uma vez — é fácil apagar um item sem querer ao invés de só editar o que você queria. Depois de publicar, vale conferir se os outros itens da lista continuam lá.
+
+## Avaliações de produto (estrelas + comentário)
+
+Cada página de produto digital mostra nota média, distribuição por estrela e um formulário pra
+qualquer visitante escrever uma avaliação. As avaliações **não aparecem sozinhas** — toda avaliação
+nova entra como pendente e só fica pública depois que você aprovar em `seudominio.com/admin/avaliacoes/`
+(login com a mesma conta GitHub do `/admin`).
+
+Isso depende do Worker em [`cms-oauth-worker/`](cms-oauth-worker/) ter uma **KV namespace** configurada
+— sem isso as rotas `/api/reviews/*` não funcionam, mas o resto do site continua normal (a seção mostra
+"ainda sem avaliações" em vez de quebrar). Passo a passo de configuração no
+[`README.md` do worker](cms-oauth-worker/README.md#6-criar-a-kv-das-avaliações).
+
+## Combo entre produtos digitais (cross-sell)
+
+Cada produto pode listar os slugs de outros produtos com quem forma um "combo" (campo `bundleWith`
+no `/admin`). Quando há pelo menos 2 produtos no combo, a página calcula o desconto sozinha — **10%
+com 2 produtos, 15% com 3, 20% com 4 ou mais**, nunca passando de 50% de desconto sobre a soma dos
+preços (piso de margem). Sem produtos vinculados, a seção mostra um aviso reservando o espaço em vez
+de ficar em branco.
+
+**O preço de combo mostrado hoje é só referência** — cada produto ainda tem seu próprio Payment Link
+do Stripe, não existe checkout único pra cobrar o combo de uma vez (isso é o carrinho com múltiplos
+produtos já listado na Fase 11 do `GUIA-DE-IMPLEMENTACAO.md`). Enquanto isso não existir, quem quiser
+o combo compra os produtos separadamente pelos links individuais.
 
 ## Pendências herdadas da especificação
 

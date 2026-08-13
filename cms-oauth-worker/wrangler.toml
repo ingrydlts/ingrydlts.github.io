@@ -4,3 +4,9 @@ compatibility_date = "2024-01-01"
 
 # GITHUB_CLIENT_ID e GITHUB_CLIENT_SECRET são configurados como Secrets
 # (painel do Cloudflare ou `wrangler secret put`), não aqui — ver README.md.
+
+# KV usada pelas rotas /api/reviews (avaliações de produto). Troque
+# "id-da-sua-kv-aqui" pelo ID gerado ao criar a namespace — ver README.md.
+[[kv_namespaces]]
+binding = "REVIEWS_KV"
+id = "id-da-sua-kv-aqui"

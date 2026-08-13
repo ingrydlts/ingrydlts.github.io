@@ -23,6 +23,11 @@
       ],
       "title": "Planilha Financeira Super Integrada",
       "image": "/images/uploads/imagem-template-de-gastos.png",
+      "gallery": [
+        { "type": "Foto", "image": "/images/uploads/imagem-template-de-gastos.png", "caption": "Visão geral da planilha" },
+        { "type": "Foto", "image": "/images/produtos/planilha-financeira-capa.png", "caption": "Capa do produto" },
+        { "type": "Foto", "image": "/images/uploads/img-planilha-financeira-controle-real.png", "caption": "Controle real de gastos" }
+      ],
       "description": "Feita pra quem organiza a vida em euros, mora fora do Brasil e não tem paciência pra reeditar planilha todo mês. Uma planilha em Google Sheets que roda praticamente sozinha: você cadastra o gasto fixo ou parcelado uma vez, e ela lança automaticamente todo dia 1º — parcela certa, sem duplicar, sabendo sozinha quando parar.",
       "features": [
         "Planilha com 7 painéis + automação real",
@@ -31,7 +36,8 @@
         "Funciona em PC, Mac, tablet e celular"
       ],
       "priceOld": 39,
-      "guaranteeDays": 14
+      "guaranteeDays": 14,
+      "bundleWith": []
     }
   ]
 }

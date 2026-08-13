@@ -203,8 +203,10 @@ Checklist antes de divulgar:
 ## Fase 11 — Evolução (pós-lançamento) 🔲
 
 Não bloqueia o lançamento — são melhorias pra depois:
-- Carrinho com múltiplos produtos numa cobrança só (Stripe Checkout Session dinâmica via Cloudflare Worker).
-- Trocar bloco "Confiança" do produto por depoimentos reais, assim que os primeiros compradores derem feedback.
+- Carrinho com múltiplos produtos numa cobrança só (Stripe Checkout Session dinâmica via Cloudflare Worker) — é o que falta pra cobrar o preço de combo calculado na seção de cross-sell da página de produto de uma vez só, hoje cada produto do combo ainda paga separado.
+- ✅ Feito: página de produto redesenhada estilo "Sales Convert" — carrossel de fotos/vídeo, benefícios em ícone, selos de confiança, FAQ em acordeão, barra fixa de compra no mobile.
+- ✅ Feito: avaliações com estrelas e comentário, com moderação em `/admin/avaliacoes/` antes de publicar (worker + KV em `cms-oauth-worker/`).
+- ✅ Feito: combo entre produtos digitais com desconto automático por quantidade — falta o carrinho acima pra virar checkout único.
 - URLs "bonitas" por artigo (`/artigos/nome-do-artigo/`) em vez de `?slug=`, se isso importar pra SEO.
 - Novos produtos digitais (Notion, etc.) — só adicionar no `produtos-digitais.json` via `/admin`.
 

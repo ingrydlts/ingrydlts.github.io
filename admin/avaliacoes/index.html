@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Moderar avaliações — Por Dentro</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,600;9..144,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/css/style.css">
+<style>
+  .mod-wrap { max-width: 760px; margin: 0 auto; padding: 48px 24px 96px; }
+  .mod-head { margin-bottom: 32px; }
+  .mod-login { background: #fff; border: 1px solid var(--borda); border-radius: 8px; padding: 32px; text-align: center; }
+  .mod-login[hidden] { display: none; }
+  .mod-list[hidden] { display: none; }
+  .mod-group { margin-bottom: 40px; }
+  .mod-group h2 { font-size: 18px; margin-bottom: 14px; }
+  .mod-card { background: #fff; border: 1px solid var(--borda); border-radius: 8px; padding: 18px 20px; margin-bottom: 12px; }
+  .mod-card-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 6px; flex-wrap: wrap; }
+  .mod-name { font-weight: 700; font-size: 14px; }
+  .mod-stars { color: var(--ouro); letter-spacing: 1px; font-size: 14px; }
+  .mod-date { font-size: 11.5px; color: var(--texto-secundario); }
+  .mod-comment { font-size: 14px; line-height: 1.6; margin: 0 0 14px; }
+  .mod-actions { display: flex; gap: 10px; }
+  .mod-btn { font-family: var(--font-body); font-weight: 600; font-size: 13px; padding: 9px 16px; border-radius: 4px; border: 1px solid var(--borda); background: #fff; cursor: pointer; }
+  .mod-btn.approve { background: var(--verde-moss); border-color: var(--verde-moss); color: #fff; }
+  .mod-btn.reject { color: var(--merlot); border-color: var(--merlot); }
+  .mod-empty { color: var(--texto-secundario); font-size: 14px; padding: 24px 0; }
+  .mod-error { color: var(--merlot); font-size: 13px; margin-top: 14px; }
+  .mod-status { font-size: 13px; color: var(--texto-secundario); margin-bottom: 20px; }
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="/" class="site-logo">Por Dentro</a>
+</header>
+
+<main class="mod-wrap">
+  <div class="mod-head">
+    <span class="eyebrow" style="color:#577328;">Painel interno</span>
+    <h1 style="margin-bottom:6px;">Moderar avaliações</h1>
+    <p class="muted" style="margin:0;">Aprove ou rejeite os comentários e notas enviados na página de cada produto. Só o que for aprovado aqui aparece pro público.</p>
+  </div>
+
+  <div class="mod-login" id="mod-login">
+    <p class="muted" style="margin-bottom:16px;">Entre com a mesma conta do GitHub usada no <code>/admin</code> pra ver as avaliações pendentes.</p>
+    <button class="btn" id="mod-login-btn">Entrar com GitHub</button>
+    <p class="mod-error" id="mod-login-error"></p>
+  </div>
+
+  <div id="mod-list" hidden>
+    <p class="mod-status" id="mod-status">Carregando avaliações pendentes…</p>
+    <div id="mod-groups"></div>
+  </div>
+</main>
+
+<script>
+  // Mesma URL do Worker configurada em admin/config.yml (base_url).
+  var WORKER_BASE = "https://por-dentro-cms-oauth.ingrydigitalmanagement.workers.dev";
+
+  var token = null;
+  var popup = null;
+
+  var loginBox = document.getElementById("mod-login");
+  var loginBtn = document.getElementById("mod-login-btn");
+  var loginError = document.getElementById("mod-login-error");
+  var listBox = document.getElementById("mod-list");
+  var statusEl = document.getElementById("mod-status");
+  var groupsEl = document.getElementById("mod-groups");
+
+  loginBtn.addEventListener("click", function () {
+    loginError.textContent = "";
+    popup = window.open(WORKER_BASE + "/auth", "github-oauth", "width=600,height=700");
+    window.addEventListener("message", handleAuthMessage);
+  });
+
+  function handleAuthMessage(e) {
+    if (e.data === "authorizing:github") {
+      // avisa o popup que o opener está pronto — ele então manda o token de verdade
+      if (popup) popup.postMessage("confirm", "*");
+      return;
+    }
+    if (typeof e.data === "string" && e.data.indexOf("authorization:github:") === 0) {
+      window.removeEventListener("message", handleAuthMessage);
+      var rest = e.data.slice("authorization:github:".length);
+      var sep = rest.indexOf(":");
+      var status = rest.slice(0, sep);
+      var payload;
+      try { payload = JSON.parse(rest.slice(sep + 1)); } catch (err) { payload = {}; }
+      if (popup) { popup.close(); popup = null; }
+
+      if (status === "success" && payload.token) {
+        token = payload.token;
+        onLoggedIn();
+      } else {
+        loginError.textContent = payload.message || "Não foi possível entrar com o GitHub.";
+      }
+    }
+  }
+
+  function onLoggedIn() {
+    loginBox.hidden = true;
+    listBox.hidden = false;
+    loadPending();
+  }
+
+  function loadPending() {
+    statusEl.textContent = "Carregando avaliações pendentes…";
+    groupsEl.innerHTML = "";
+
+    Promise.all([
+      fetch(WORKER_BASE + "/api/reviews/pending", { headers: { Authorization: "Bearer " + token } }).then(function (r) {
+        if (!r.ok) throw new Error(r.status === 401 ? "Essa conta não tem permissão de escrita no repositório." : "Falha ao carregar avaliações.");
+        return r.json();
+      }),
+      fetch("/content/produtos-digitais.json").then(function (r) { return r.json(); }).catch(function () { return { items: [] }; })
+    ]).then(function (results) {
+      renderPending(results[0].pending || [], results[1].items || []);
+    }).catch(function (err) {
+      statusEl.textContent = "";
+      groupsEl.innerHTML = '<p class="mod-error">' + escapeHtml(err.message) + "</p>";
+    });
+  }
+
+  function renderPending(pending, products) {
+    if (!pending.length) {
+      statusEl.textContent = "";
+      groupsEl.innerHTML = '<p class="mod-empty">Nenhuma avaliação pendente no momento.</p>';
+      return;
+    }
+    statusEl.textContent = pending.length + " avaliação(ões) aguardando aprovação.";
+
+    var bySlug = {};
+    pending.forEach(function (r) { (bySlug[r.slug] = bySlug[r.slug] || []).push(r); });
+
+    var titleBySlug = {};
+    products.forEach(function (p) { titleBySlug[p.slug] = p.title; });
+
+    groupsEl.innerHTML = "";
+    Object.keys(bySlug).forEach(function (slug) {
+      var group = document.createElement("div");
+      group.className = "mod-group";
+      var title = titleBySlug[slug] || slug;
+      group.innerHTML = "<h2>" + escapeHtml(title) + "</h2>";
+
+      bySlug[slug].forEach(function (r) {
+        var card = document.createElement("div");
+        card.className = "mod-card";
+        card.innerHTML =
+          '<div class="mod-card-head">' +
+            '<span class="mod-name">' + escapeHtml(r.name) + "</span>" +
+            '<span class="mod-stars">' + "★".repeat(r.rating) + "☆".repeat(5 - r.rating) + "</span>" +
+          "</div>" +
+          '<div class="mod-date">' + new Date(r.createdAt).toLocaleDateString("pt-BR") + "</div>" +
+          '<p class="mod-comment">' + escapeHtml(r.comment) + "</p>" +
+          '<div class="mod-actions">' +
+            '<button class="mod-btn approve" data-action="approve">Aprovar</button>' +
+            '<button class="mod-btn reject" data-action="reject">Rejeitar</button>' +
+          "</div>";
+
+        card.querySelectorAll("[data-action]").forEach(function (btn) {
+          btn.addEventListener("click", function () { moderate(r.id, slug, btn.dataset.action, card); });
+        });
+
+        group.appendChild(card);
+      });
+
+      groupsEl.appendChild(group);
+    });
+  }
+
+  function moderate(id, slug, action, card) {
+    card.querySelectorAll("button").forEach(function (b) { b.disabled = true; });
+    fetch(WORKER_BASE + "/api/reviews/moderate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: "Bearer " + token },
+      body: JSON.stringify({ id: id, slug: slug, action: action }),
+    }).then(function (r) {
+      if (!r.ok) throw new Error("Falha ao processar.");
+      card.remove();
+    }).catch(function () {
+      card.querySelectorAll("button").forEach(function (b) { b.disabled = false; });
+    });
+  }
+
+  function escapeHtml(str) {
+    return String(str == null ? "" : str).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+</script>
+</body>
+</html>
