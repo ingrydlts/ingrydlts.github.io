@@ -336,6 +336,7 @@ p { margin: 0 0 1em; color: var(--grafite); }
 }
 
 .pdp-carousel { margin-bottom: 28px; }
+@media (min-width: 900px) { .pdp-carousel { max-width: 440px; } }
 .pdp-carousel-main { position: relative; }
 .pdp-carousel-viewport {
   aspect-ratio: 1/1; background: var(--off-white-soft); border: 1px solid var(--borda-suave);
