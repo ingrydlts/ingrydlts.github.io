@@ -53,14 +53,22 @@ O site assume que vai rodar na raiz do domínio (links tipo `/produtos-digitais/
 
 ## Configurar o /admin (Decap CMS)
 
-O `/admin` é um painel visual (Decap CMS) pra editar produtos, banners e posts sem mexer em código — mas como o site não usa Netlify, a autenticação com o GitHub precisa de um pequeno proxy OAuth. O código desse proxy já está pronto em [`cms-oauth-worker/worker.js`](cms-oauth-worker/worker.js), e `admin/config.yml` já aponta pro repositório real (`ingrydlts/ingrydlts.github.io`). Falta publicar o worker — passo a passo completo em [`cms-oauth-worker/README.md`](cms-oauth-worker/README.md):
+O `/admin` é um painel visual (Decap CMS) pra editar produtos, banners e posts sem mexer em código, com login via GitHub (proxy OAuth em [`cms-oauth-worker/`](cms-oauth-worker/)) — **já publicado e funcionando** em `ingrydlts.github.io/admin`. Editar um produto/banner/post e clicar em "Publish" cria um commit direto no repositório.
 
-1. Publicar o Worker no Cloudflare (painel, sem precisar instalar nada).
-2. Criar o GitHub OAuth App e apontar o callback pra URL do worker.
-3. Colar a URL final do worker no campo `base_url` de `admin/config.yml`.
-4. Acessar `seudominio.com/admin`, fazer login com a conta GitHub, e pronto — editar produto/banner/post vira só preencher formulário e clicar em "Publish" (isso cria um commit no repositório automaticamente).
+**Tamanho ideal de cada foto** (evita imagem cortada ou esticada — o painel também mostra essa dica no campo, na hora do upload):
 
-Sem esse passo, o `/admin` carrega mas não consegue salvar — os arquivos `/content/*.json` continuam editáveis manualmente enquanto isso não for configurado.
+| Onde | Campo | Tamanho ideal | Proporção |
+|---|---|---|---|
+| Produto digital (card + página do produto) | Imagem | 1200×900px | 4:3, horizontal |
+| Produto de estudo / compras (card) | Imagem | 1200×900px | 4:3, horizontal |
+| Artigo do blog (capa) | Foto de capa | 1600×900px | 16:9, bem panorâmica — aparece cortada de dois jeitos (card e topo do artigo) |
+| Home | Foto do hero | 1200×960px | 5:4, horizontal |
+| Banners vitrine → blog (3 categorias) | Foto | 1200×675px | 16:9, horizontal |
+| Banner lateral do blog | Foto | 1200×900px | 4:3, horizontal |
+
+**Depois de publicar, a mudança pode demorar até uns minutos pra aparecer no site** — o GitHub Pages usa um CDN (Fastly) que guarda o conteúdo em cache por até 10 minutos. Se editar e não ver a mudança na hora, não é erro: espera um pouco e dá um refresh forçado (Cmd+Shift+R) antes de desconfiar que algo quebrou.
+
+**Cuidado ao editar listas** (produtos, artigos, itens de afiliado): o painel edita a lista inteira de uma vez — é fácil apagar um item sem querer ao invés de só editar o que você queria. Depois de publicar, vale conferir se os outros itens da lista continuam lá.
 
 ## Pendências herdadas da especificação
 
