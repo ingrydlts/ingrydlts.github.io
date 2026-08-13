@@ -81,7 +81,9 @@ nova entra como pendente e só fica pública depois que você aprovar em `seudom
 Isso depende do Worker em [`cms-oauth-worker/`](cms-oauth-worker/) ter uma **KV namespace** configurada
 — sem isso as rotas `/api/reviews/*` não funcionam, mas o resto do site continua normal (a seção mostra
 "ainda sem avaliações" em vez de quebrar). Passo a passo de configuração no
-[`README.md` do worker](cms-oauth-worker/README.md#6-criar-a-kv-das-avaliações).
+[`README.md` do worker](cms-oauth-worker/README.md#6-criar-a-kv-das-avaliações) — inclusive de como
+receber um **e-mail automático** (via Resend) toda vez que chegar avaliação nova pra aprovar
+([passo 8](cms-oauth-worker/README.md#8-receber-e-mail-quando-chegar-avaliação-pendente-opcional)).
 
 ## Combo entre produtos digitais (cross-sell)
 

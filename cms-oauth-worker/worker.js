@@ -12,6 +12,11 @@
  *
  * Variáveis de ambiente necessárias (Settings → Variables and Secrets no Worker):
  *   GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET  — do GitHub OAuth App (ver README.md)
+ *   RESEND_API_KEY, NOTIFY_EMAIL            — opcionais: avisam por e-mail toda
+ *                                              vez que chega avaliação pendente
+ *                                              (ver README.md). Sem elas, as
+ *                                              avaliações continuam funcionando
+ *                                              normalmente, só não avisam.
  * Binding de KV necessário (Settings → Bindings):
  *   REVIEWS_KV — namespace vazia, só usada por este Worker
  */
@@ -77,6 +82,37 @@ function summarize(reviews) {
   };
 }
 
+function escapeHtml(str) {
+  return String(str == null ? '' : str).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+// Avisa por e-mail (via Resend) que chegou avaliação pendente. Silenciosa se
+// as variáveis não estiverem configuradas, e nunca deixa uma falha de envio
+// impedir a avaliação de ser salva — é só uma notificação, não é crítico.
+async function sendModerationEmail(env, review) {
+  if (!env.RESEND_API_KEY || !env.NOTIFY_EMAIL) return;
+  try {
+    await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${env.RESEND_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        from: 'Por Dentro <onboarding@resend.dev>',
+        to: env.NOTIFY_EMAIL,
+        subject: 'Nova avaliação pendente — ' + review.slug,
+        html:
+          '<p><strong>' + escapeHtml(review.name) + '</strong> deu ' + review.rating + ' estrela(s) em <strong>' + escapeHtml(review.slug) + '</strong>:</p>' +
+          '<p>"' + escapeHtml(review.comment) + '"</p>' +
+          `<p><a href="https://${REPO_OWNER}.github.io/admin/avaliacoes/">Aprovar ou rejeitar</a></p>`,
+      }),
+    });
+  } catch (err) {
+    // segue o jogo — a avaliação já foi salva, o e-mail é só um aviso a mais
+  }
+}
+
 // Confere se o dono do token tem permissão de escrita no repo — mesmo token
 // que o Decap CMS já usa pra publicar. Não precisamos de um sistema de conta
 // separado: quem consegue editar o site pelo /admin também pode moderar.
@@ -120,7 +156,7 @@ async function handleGetReviews(request, env, url) {
   return json({ reviews: approved, summary: summarize(approved) });
 }
 
-async function handlePostReview(request, env) {
+async function handlePostReview(request, env, ctx) {
   let body;
   try {
     body = await request.json();
@@ -159,6 +195,8 @@ async function handlePostReview(request, env) {
     status: 'pending',
   });
   await saveDB(env, db);
+
+  ctx.waitUntil(sendModerationEmail(env, { slug, name, rating, comment }));
 
   return json({ ok: true }, 201);
 }
@@ -211,7 +249,7 @@ async function handleModerate(request, env) {
 }
 
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     const url = new URL(request.url);
 
     if (request.method === 'OPTIONS' && url.pathname.startsWith('/api/')) {
@@ -264,7 +302,7 @@ export default {
         return await handleGetReviews(request, env, url);
       }
       if (url.pathname === '/api/reviews' && request.method === 'POST') {
-        return await handlePostReview(request, env);
+        return await handlePostReview(request, env, ctx);
       }
       if (url.pathname === '/api/reviews/pending' && request.method === 'GET') {
         return await handlePendingReviews(request, env);

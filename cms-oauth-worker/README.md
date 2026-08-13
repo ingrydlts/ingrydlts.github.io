@@ -71,6 +71,27 @@ Acesse `seudominio.com/admin/avaliacoes/` (mesmo login do passo 5 — qualquer c
 de escrita ao repositório pode moderar). Lá aparecem as avaliações pendentes agrupadas por produto,
 com botões **Aprovar** e **Rejeitar**. Só avaliações aprovadas aparecem na página pública do produto.
 
+## 8. Receber e-mail quando chegar avaliação pendente (opcional)
+
+Sem configurar isso, tudo continua funcionando normalmente — só não avisa sozinho, e você precisa
+checar `/admin/avaliacoes/` de vez em quando pra ver se tem algo novo. Pra receber um e-mail a cada
+avaliação nova, usamos o [Resend](https://resend.com) (tem plano gratuito, dá pra mandar pro seu
+próprio e-mail sem precisar verificar domínio próprio).
+
+1. Crie uma conta em [resend.com](https://resend.com) (pode ser com o mesmo e-mail que você quer
+   receber os avisos, ex. `ingrydigitalmanagement@gmail.com`).
+2. No painel do Resend → **API Keys** → **Create API Key** → dê um nome (ex. `por-dentro-reviews`) →
+   copie a chave gerada (só aparece uma vez).
+3. Volte no Worker (`por-dentro-cms-oauth`) → **Settings** → **Variables and Secrets** → **Add**:
+   - `RESEND_API_KEY` (tipo **Secret**) = a chave copiada no passo 2.
+   - `NOTIFY_EMAIL` (tipo **Secret** ou **Text**, tanto faz) = o e-mail que deve receber o aviso.
+4. Salvar/Deploy.
+
+Enquanto o domínio do Resend não for verificado, os e-mails só chegam na própria conta usada pra
+criar a chave (`onboarding@resend.dev` como remetente) — perfeito pra esse caso, já que é você mesma
+recebendo. Se um dia quiser mandar de um endereço com o seu domínio (ex. `avisos@seudominio.com`),
+aí sim precisa verificar o domínio no Resend.
+
 ---
 
 Alternativa via linha de comando (`wrangler`), se preferir a esse passo a passo pelo painel:
