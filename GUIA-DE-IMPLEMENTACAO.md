@@ -17,7 +17,7 @@ Documento-guia da concepção do site, do zero ao ar. Cada fase depende da anter
 | 3 | Conteúdo (dados) | Estrutura `/content/*.json` com dados de exemplo | ✅ | Fase 2 |
 | 4 | Domínio e hospedagem | Site publicado, no ar, em domínio próprio | 🔲 | Fase 2 |
 | 5 | Pagamento (Stripe) | Compra de verdade, ponta a ponta | 🔲 | Fase 4 |
-| 6 | Painel de conteúdo (CMS) | Editar produto/banner/post sem código | 🟡 | Fase 4 |
+| 6 | Painel de conteúdo (CMS) | Editar produto/banner/post sem código | ✅ | Fase 4 |
 | 7 | Entrega automática | E-mail automático com o arquivo após a compra | 🔲 | Fase 5 |
 | 8 | Conteúdo real e jurídico | Fotos, textos finais, dados legais preenchidos | 🔲 | Fase 2 (pode andar em paralelo) |
 | 9 | QA final | Checklist completo antes de divulgar | 🔲 | Fases 4–8 |
@@ -125,18 +125,22 @@ O que falta, na ordem:
 
 ---
 
-## Fase 6 — Painel de conteúdo / CMS 🟡
+## Fase 6 — Painel de conteúdo / CMS ✅
 
-Já existe `/admin/index.html` e `/admin/config.yml` (Decap CMS). O repositório real (`ingrydlts/ingrydlts.github.io`)
-já está preenchido em `admin/config.yml`. O código do proxy de autenticação também já está pronto,
-em `cms-oauth-worker/worker.js` — falta só publicá-lo, o que só você pode fazer (exige login na sua conta Cloudflare):
+`/admin` (Decap CMS) funcionando de ponta a ponta:
 
-1. ✅ Worker publicado no Cloudflare: `https://por-dentro-cms-oauth.ingrydigitalmanagement.workers.dev`.
+1. ✅ Worker de OAuth publicado no Cloudflare: `https://por-dentro-cms-oauth.ingrydigitalmanagement.workers.dev` (código em `cms-oauth-worker/worker.js`).
 2. ✅ GitHub OAuth App criado, com `GITHUB_CLIENT_ID`/`GITHUB_CLIENT_SECRET` salvos como secrets no worker.
-3. ✅ `admin/config.yml` já aponta `base_url` pro worker publicado.
-4. 🔲 Testar login em `ingrydlts.github.io/admin` e uma edição de ponta a ponta: editar um produto → Publish → conferir que virou commit no GitHub → conferir que o site atualizou.
+3. ✅ `admin/config.yml` aponta pro repositório real (`ingrydlts/ingrydlts.github.io`) e pro worker publicado.
+4. ✅ Testado: login em `ingrydlts.github.io/admin` com GitHub, edição publicada gerou commit no repositório.
 
-Enquanto o passo 1–2 não estiver pronto, os arquivos `content/*.json` continuam 100% editáveis à mão (por você ou por mim).
+**Ressalva importante:** dos 9 artigos do blog, 6 (exame cívico, cursos de francês, VLS-TS, ANEF, ajudas de
+moradia, bolsa de estudo) têm um campo `url` em `content/posts.json` que os faz renderizar a partir de um
+HTML próprio em `artigos/post/<slug>/index.html`, e não do campo `body` do JSON — decisão tomada numa sessão
+anterior pra deixar esses 6 fiéis ao HTML original. Nesses 6, editar **título/resumo/imagem** pelo `/admin`
+funciona normalmente (aparece no card do blog), mas editar o **corpo do texto** pelo painel não muda nada
+no site — pra esses, o corpo se edita direto no arquivo HTML. Os outros 3 artigos (e qualquer um novo
+criado só no JSON, sem `url`) são 100% editáveis pelo `/admin`, corpo incluído.
 
 ---
 
@@ -208,4 +212,4 @@ Não bloqueia o lançamento — são melhorias pra depois:
 
 ## Onde estamos agora
 
-Fases **0 a 3 concluídas** — o site funciona localmente, de ponta a ponta, com conteúdo de exemplo. A partir daqui, as próximas fases (4, 5, 6) dependem principalmente de **contas e decisões suas** (GitHub, domínio, Stripe) — me chame quando tiver isso à mão e eu sigo a implementação técnica de cada uma.
+Fases **0, 1, 2, 3 e 6 concluídas** — o site está publicado no GitHub Pages (`ingrydlts.github.io`), com conteúdo de exemplo, e o painel `/admin` já edita e publica de verdade. Faltam a Fase 4 (domínio próprio — hoje usa o domínio padrão do GitHub Pages), a Fase 5 (Stripe) e a Fase 7 (entrega automática por e-mail), que dependem de **contas e decisões suas** — me chame quando tiver isso à mão e eu sigo a implementação técnica de cada uma.
