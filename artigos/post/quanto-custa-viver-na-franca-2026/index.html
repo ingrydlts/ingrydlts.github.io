@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Quanto custa viver na França em 2026? | Por Dentro</title>
+<meta name="description" content="Comparativo completo de custo de vida entre Paris, Lyon, Toulouse, Nice e Montpellier em 2026 — aluguel, transporte e alimentação, com dados do INSEE. Monte sua própria estimativa.">
+<meta name="robots" content="index, follow">
+
+<meta property="og:type" content="website">
+<meta property="og:title" content="Quanto custa viver na França em 2026?">
+<meta property="og:description" content="Comparativo completo entre 5 cidades francesas, com simulador interativo de aluguel. Dados oficiais do INSEE.">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,600;9..144,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/css/style.css">
+<style>:root { --nav-active: #5F87AE; }</style>
+
+<!-- Google Analytics 4 (mesma propriedade reaproveitada das demais páginas do funil Por Dentro) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-K418SX0PL6"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-K418SX0PL6');
+</script>
+
+<!-- Microsoft Clarity (mesmo projeto reaproveitado das demais páginas do funil) -->
+<script type="text/javascript">
+    (function(c,l,a,r,i,t,y){
+        c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+        t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+        y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+    })(window, document, "clarity", "script", "xfc3y2g7lc");
+</script>
+
+<style>
+  /* ---------- componentes específicos desta página ---------- */
+  .cc-hero-stats{display:flex;justify-content:center;gap:28px;flex-wrap:wrap;margin-top:18px;}
+  .cc-hero-stat{text-align:center;}
+  .cc-hero-stat b{font-family:var(--font-display);font-weight:700;font-size:22px;display:block;color:var(--accent);}
+  .cc-hero-stat span{font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--texto-secundario);}
+
+  /* calculadora */
+  .calc-box{background:#fff;border:1px solid var(--borda);border-radius:var(--radius-md);padding:22px;box-shadow:var(--shadow-card);}
+  @media (min-width:640px){ .calc-box{padding:32px;} }
+  .calc-row-label{font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--texto-secundario);margin-bottom:10px;}
+  .calc-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px;}
+  .calc-tab{background:var(--off-white);border:1px solid var(--borda);border-radius:var(--radius-pill);padding:9px 16px;font-family:var(--font-body);font-size:13px;font-weight:600;color:var(--grafite);cursor:pointer;}
+  .calc-tab[aria-selected="true"]{background:var(--accent);border-color:var(--accent);color:#fff;}
+  .calc-type-tabs{display:flex;gap:8px;margin-bottom:24px;flex-wrap:wrap;}
+  .calc-type-tabs .calc-tab{flex:1;min-width:130px;text-align:center;}
+
+  /* preview clicável do Instagram (Reels) */
+  .ig-preview-card{display:block;max-width:300px;margin:24px auto 0;background:#fff;border:1px solid var(--borda);border-radius:var(--radius-md);overflow:hidden;box-shadow:var(--shadow-card);text-decoration:none;transition:transform .18s ease, box-shadow .18s ease;}
+  .ig-preview-card:hover{transform:translateY(-4px);box-shadow:0 14px 30px -10px rgba(43,43,43,0.28);color:inherit;}
+  .ig-preview-thumb{position:relative;aspect-ratio:9/16;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#405DE6 0%,#5B51D8 15%,#833AB4 30%,#C13584 45%,#E1306C 60%,#FD1D1D 75%,#F77737 90%,#FCAF45 100%);}
+  .ig-preview-badge{position:absolute;top:12px;left:12px;right:12px;background:rgba(0,0,0,.32);color:#fff;font-size:10.5px;font-weight:700;padding:6px 10px;border-radius:999px;backdrop-filter:blur(4px);text-align:left;}
+  .ig-preview-play{width:60px;height:60px;border-radius:50%;background:rgba(255,255,255,.94);display:flex;align-items:center;justify-content:center;color:#833AB4;box-shadow:0 6px 18px rgba(0,0,0,.3);padding-left:3px;}
+  .ig-preview-card:hover .ig-preview-play{background:#fff;}
+  .ig-preview-body{padding:16px 18px;display:block;}
+  .ig-preview-caption{display:block;font-size:14px;font-weight:600;color:var(--grafite);margin:0 0 12px;line-height:1.45;}
+  .ig-preview-cta{display:inline-flex;align-items:center;gap:5px;font-size:12.5px;font-weight:700;color:var(--downtown-brown);}
+
+  .calc-slider-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px;flex-wrap:wrap;gap:6px;}
+  .calc-slider-head .lbl{font-size:14px;font-weight:600;color:var(--grafite);}
+  .calc-slider-head .val{font-family:var(--font-display);font-weight:700;font-size:26px;color:var(--accent);}
+  input[type="range"].calc-slider{-webkit-appearance:none;appearance:none;width:100%;height:6px;border-radius:999px;background:var(--borda);outline:none;margin:6px 0 6px;cursor:grab;}
+  input[type="range"].calc-slider:active{cursor:grabbing;}
+  input[type="range"].calc-slider::-webkit-slider-thumb{-webkit-appearance:none;width:26px;height:26px;border-radius:50%;background:var(--accent);border:4px solid #fff;box-shadow:0 2px 8px rgba(43,43,43,0.35);cursor:grab;}
+  input[type="range"].calc-slider::-moz-range-thumb{width:26px;height:26px;border-radius:50%;background:var(--accent);border:4px solid #fff;box-shadow:0 2px 8px rgba(43,43,43,0.35);cursor:grab;border:none;box-shadow:0 2px 8px rgba(43,43,43,0.35),0 0 0 4px #fff inset;}
+  .calc-range-labels{display:flex;justify-content:space-between;font-size:11.5px;color:var(--texto-secundario);margin-bottom:22px;}
+
+  .calc-breakdown{display:flex;flex-direction:column;gap:0;border-top:1px solid var(--borda-suave);margin-top:6px;}
+  .calc-line{display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--borda-suave);font-size:14px;}
+  .calc-line span:first-child{color:var(--texto-secundario);}
+  .calc-line span:last-child{font-weight:600;}
+  .calc-line.total{border-bottom:none;padding-top:16px;}
+  .calc-line.total span:first-child{font-weight:700;color:var(--grafite);font-size:15px;}
+  .calc-line.total span:last-child{font-family:var(--font-display);font-weight:700;font-size:24px;color:var(--grafite);}
+  .calc-hint{font-size:12px;color:var(--texto-secundario);margin-top:4px;}
+
+  /* comparativo — barras */
+  .cc-bar-row{background:#fff;border:1px solid var(--borda);border-radius:var(--radius-sm);padding:12px 16px;margin-bottom:9px;position:relative;overflow:hidden;transition:border-color .15s;}
+  .cc-bar-row.is-selected{border-color:var(--accent);border-width:2px;padding:11px 15px;}
+  .cc-bar-row .bar{position:absolute;left:0;top:0;bottom:0;background:rgba(95,135,174,0.10);z-index:0;}
+  .cc-bar-row .row-content{position:relative;z-index:1;display:flex;justify-content:space-between;align-items:center;gap:10px;}
+  .cc-bar-row .city{font-weight:600;font-size:14px;}
+  .cc-bar-row .range{font-size:12px;color:var(--texto-secundario);}
+  .cc-bar-row .val{font-weight:700;font-size:14.5px;color:var(--accent);white-space:nowrap;}
+
+  .fonte-note{font-size:12px;color:var(--texto-secundario);margin-top:14px;line-height:1.55;}
+
+  /* promo planilha */
+  .promo-wrap{background:var(--placid-blue);border-radius:var(--radius-md);padding:40px 24px;}
+  @media (min-width:900px){ .promo-wrap{padding:56px;} }
+  .promo-grid{display:grid;gap:36px;grid-template-columns:1fr;align-items:start;}
+  @media (min-width:960px){ .promo-grid{grid-template-columns:1fr 1fr;align-items:center;} }
+  .promo-copy .eyebrow{color:var(--downtown-brown);}
+  .promo-copy h2{color:var(--grafite);text-align:left;}
+  .promo-copy p{color:rgba(43,43,43,.72);}
+  .promo-pains{list-style:none;padding:0;margin:18px 0 0;display:flex;flex-direction:column;gap:10px;}
+  .promo-pains li{font-size:14px;color:var(--grafite);padding-left:22px;position:relative;}
+  .promo-pains li::before{content:'✕';position:absolute;left:0;color:var(--merlot);font-weight:700;}
+
+  .promo-shot{display:flex;align-items:center;justify-content:center;padding:0 8px;}
+  .promo-shot img{width:100%;height:auto;object-fit:contain;display:block;filter:drop-shadow(0 18px 30px rgba(43,43,43,0.22));}
+
+  .promo-card{background:#fff;border-radius:var(--radius-md);padding:26px;margin-top:24px;}
+  .promo-price-row{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:4px;}
+  .promo-price{font-family:var(--font-display);font-weight:700;font-size:34px;color:var(--grafite);}
+  .promo-price-old{font-size:16px;color:var(--texto-secundario);text-decoration:line-through;}
+  .promo-badge{display:inline-block;background:var(--merlot);color:#fff;font-size:10.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:4px 9px;border-radius:2px;}
+  .promo-launch{background:var(--off-white);border-radius:var(--radius-sm);padding:12px 14px;font-size:13px;color:var(--grafite);margin:14px 0 18px;}
+  .promo-launch strong{color:var(--merlot);}
+  .promo-features{list-style:none;padding:0;margin:0 0 20px;display:flex;flex-direction:column;gap:9px;}
+  .promo-features li{font-size:13.5px;color:var(--grafite);padding-left:24px;position:relative;}
+  .promo-features li::before{content:'✓';position:absolute;left:0;width:16px;height:16px;border-radius:50%;background:var(--verde-moss);color:#fff;font-size:10px;display:flex;align-items:center;justify-content:center;top:1px;}
+  .promo-micro{text-align:center;font-size:12px;color:var(--texto-secundario);margin-top:10px;}
+
+  .lead-mini{margin-top:24px;padding-top:22px;border-top:1px solid var(--borda-suave);}
+  .lead-mini-lead{color:var(--texto-secundario);font-size:13.5px;margin-bottom:12px;line-height:1.5;}
+  .lead-mini-lead strong{color:var(--grafite);}
+  .lead-mini-row{display:flex;gap:8px;flex-wrap:wrap;}
+  .lead-mini-row input{flex:1;min-width:180px;padding:12px 14px;border-radius:var(--radius-sm);border:1px solid var(--borda);background:#fff;color:var(--grafite);font-family:var(--font-body);font-size:14px;}
+  .lead-mini-row input:focus{outline:none;border-color:var(--downtown-brown);}
+  .lead-mini-row input::placeholder{color:var(--texto-secundario);opacity:.7;}
+  #lead-success{display:none;margin-top:12px;font-size:13.5px;font-weight:600;color:var(--grafite);background:#eef3e5;border:1px solid rgba(87,115,40,.3);padding:12px 14px;border-radius:var(--radius-sm);}
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="/" class="site-logo">Por Dentro</a>
+  <nav class="site-nav" aria-label="Navegação principal">
+    <a href="/produtos-digitais/">Produtos digitais</a>
+    <a href="/produtos-de-estudo/">Produtos de estudo</a>
+    <a href="/produtos-de-compras/">Produtos de compras</a>
+    <a href="/artigos/" aria-current="page">Blog</a>
+    <a href="/sobre/">Sobre</a>
+  </nav>
+  <button class="nav-toggle" aria-label="Abrir menu" aria-expanded="false"><span></span><span></span><span></span></button>
+</header>
+<nav class="mobile-nav" aria-label="Navegação mobile">
+  <a href="/produtos-digitais/">Produtos digitais</a>
+  <a href="/produtos-de-estudo/">Produtos de estudo</a>
+  <a href="/produtos-de-compras/">Produtos de compras</a>
+  <a href="/artigos/" aria-current="page">Blog</a>
+  <a href="/sobre/">Sobre</a>
+</nav>
+
+<main style="--accent:#5F87AE;">
+  <div class="container">
+    <a class="back-link" href="/artigos/">← Voltar aos artigos</a>
+
+    <article class="rt-hero">
+      <span class="eyebrow">Dados INSEE · Ago/2026</span>
+      <h1>Quanto custa viver na França em 2026?</h1>
+      <p class="rt-lead">Os números são do INSEE — pensa nele como o IBGE francês. Compare cinco cidades e depois arraste o simulador abaixo pra montar a sua própria estimativa, com o seu aluguel.</p>
+      <div class="cc-hero-stats">
+        <div class="cc-hero-stat"><b>5</b><span>Cidades</span></div>
+        <div class="cc-hero-stat"><b>4</b><span>Cenários de moradia</span></div>
+        <div class="cc-hero-stat"><b>100%</b><span>Fontes oficiais</span></div>
+      </div>
+      <div style="text-align:center;margin-top:28px;">
+        <a href="#simulador" class="btn btn-pill" style="background:var(--accent);" onclick="gtag('event','select_content',{content_type:'cta_scroll',item_id:'ver-simulador'})">Montar minha estimativa →</a>
+      </div>
+    </article>
+
+    <!-- ================= SIMULADOR INTERATIVO ================= -->
+    <section class="section" id="simulador">
+      <span class="rt-section-label">Simulador de custo de vida</span>
+      <h2>Arraste e monte sua própria estimativa</h2>
+      <p class="muted" style="max-width:62ch;margin-bottom:24px;">Escolhe a cidade e o tipo de moradia, depois arrasta o controle do aluguel — os valores já vêm calibrados na faixa real de mercado de cada cidade.</p>
+
+      <div class="calc-box">
+        <div class="calc-row-label">1. Cidade</div>
+        <div class="calc-tabs" role="tablist" id="calc-city-tabs">
+          <button class="calc-tab" role="tab" aria-selected="true" data-city="paris">Paris</button>
+          <button class="calc-tab" role="tab" aria-selected="false" data-city="nice">Nice</button>
+          <button class="calc-tab" role="tab" aria-selected="false" data-city="lyon">Lyon</button>
+          <button class="calc-tab" role="tab" aria-selected="false" data-city="montpellier">Montpellier</button>
+          <button class="calc-tab" role="tab" aria-selected="false" data-city="toulouse">Toulouse</button>
+        </div>
+
+        <div class="calc-row-label">2. Tipo de moradia</div>
+        <div class="calc-type-tabs" role="tablist" id="calc-type-tabs">
+          <button class="calc-tab" role="tab" aria-selected="true" data-type="colocation">Colocation</button>
+          <button class="calc-tab" role="tab" aria-selected="false" data-type="studio">Studio</button>
+          <button class="calc-tab" role="tab" aria-selected="false" data-type="t2">T2</button>
+          <button class="calc-tab" role="tab" aria-selected="false" data-type="crous">Apto estudantil (CROUS)</button>
+        </div>
+
+        <div class="calc-row-label">3. Seu aluguel estimado</div>
+        <div class="calc-slider-head">
+          <span class="lbl" id="calc-slider-city-label">Paris · Colocation</span>
+          <span class="val"><span id="calc-rent-val">750</span>€<span style="font-size:13px;font-weight:600;color:var(--texto-secundario);">/mês</span></span>
+        </div>
+        <input type="range" class="calc-slider" id="calc-slider" min="650" max="850" step="5" value="750">
+        <div class="calc-range-labels"><span id="calc-min-label">650€ (mais em conta)</span><span id="calc-max-label">850€ (topo de mercado)</span></div>
+
+        <div class="calc-breakdown">
+          <div class="calc-line"><span>Aluguel (seu ajuste)</span><span id="calc-line-rent">750€</span></div>
+          <div class="calc-line"><span>Transporte + alimentação (fixo da cidade)</span><span id="calc-line-fixed">411,80€</span></div>
+          <div class="calc-line total"><span>Total estimado / mês</span><span id="calc-line-total">1.161,80€</span></div>
+        </div>
+        <p class="calc-hint">Transporte: passe mensal oficial de cada operadora. Alimentação: média INSEE. Esses dois não mudam com o slider — só o aluguel é ajustável.</p>
+      </div>
+
+      <div style="margin-top:32px;">
+        <div class="calc-row-label" id="calc-compare-label">Comparativo — Colocation em todas as cidades</div>
+        <div id="calc-compare-list"></div>
+        <p class="fonte-note">Quarto em colocation. Fonte: OLAP (Observatoire des Loyers de l'Agglomération Parisienne) para Paris; LocService e portais de colocation para as demais cidades. Studio/T2: calculado a partir do €/m² médio do SeLoger por cidade (studio ~25m², T2 ~45m²). Faixa do simulador: ±100€ (colocation/studio) e ±200€ (T2) em torno da média de mercado, com o teto no valor mediano oficial.<br><br><strong>Apto estudantil (CROUS):</strong> faixa oficial de tarifas de cada Crous regional, da chambre simples ao studio, tarifas 2025/2026 — <a href="https://www.crous-paris.fr/se-loger/" target="_blank" rel="noopener">Crous Paris</a>, <a href="https://www.crous-lyon.fr/wp-content/uploads/sites/16/2026/07/A09_Tarifs_hebergement.pdf" target="_blank" rel="noopener">Crous Lyon</a>, <a href="https://www.crous-toulouse.fr/se-loger/je-cherche-un-logement/loyers-tarifs/" target="_blank" rel="noopener">Crous Toulouse</a>, <a href="https://www.crous-nice.fr/wp-content/uploads/sites/21/2025/03/Annexe-4-Tarifs-des-residences-25-26.pdf" target="_blank" rel="noopener">Crous Nice-Toulon</a>, <a href="https://www.crous-montpellier.fr/se-loger/" target="_blank" rel="noopener">Crous Montpellier-Occitanie</a>. Vagas CROUS são atribuídas por critérios sociais (bolsa, renda) via Dossier Social Étudiant — nem todo mundo tem acesso, e a demanda é sempre maior que as vagas disponíveis. Valores medianos, ago/2026.</p>
+      </div>
+    </section>
+
+    <!-- ================= AVISO: ESTIMATIVA ================= -->
+    <section class="section" id="aviso-estimativa" style="padding-top:0;">
+      <div class="callout callout-warn" style="max-width:720px;margin:0 auto;">
+        <strong>⚠️ Isso aqui é uma estimativa, não um preço fechado.</strong> Os valores desse simulador servem pra te dar uma noção realista de custo de vida — eles não substituem uma pesquisa de verdade. Antes de fechar qualquer contrato, confira os valores atualizados direto nas plataformas de locação (SeLoger, LocService, apps de colocation, site do Crous da sua região) e desconfie de anúncio "bom demais pra ser verdade".
+      </div>
+    </section>
+
+    <!-- ================= PROMOÇÃO DA PLANILHA ================= -->
+    <section class="section" id="reserva" style="padding-top:0;">
+      <div class="promo-wrap">
+        <div class="promo-grid">
+          <div class="promo-copy">
+            <span class="eyebrow">Planilha Financeira Super Integrada</span>
+            <h2>A planilha que lança seus gastos fixos sozinha — todo mês, sem você copiar e colar nada</h2>
+            <p>Essas tabelas acima são o ponto de partida. Agora imagina isso rodando com o seu aluguel, suas assinaturas e suas parcelas, atualizando sozinho todo dia 1º.</p>
+            <ul class="promo-pains">
+              <li>Reabrir a planilha todo mês só pra copiar e colar aluguel, assinaturas e parcelas de novo</li>
+              <li>Esquecer de lançar uma parcela e no fim do mês os números não baterem</li>
+              <li>Não saber quanto dá pra gastar até o próximo salário cair</li>
+              <li>Apps de banco e planilhas genéricas em real — nenhuma pensada pra quem vive a vida em euros</li>
+            </ul>
+          </div>
+          <div class="promo-shot">
+            <img src="/images/produtos/planilha-financeira-capa.png" alt="Planilha Financeira Super Integrada — dashboard com resumo de contas, evolução de saldo, gastos fixos x variáveis e poupança por objetivo" loading="lazy" width="1200" height="1200">
+          </div>
+        </div>
+
+        <div class="promo-card">
+          <span class="promo-badge">Lançamento 21 de setembro</span>
+          <div class="promo-price-row" style="margin-top:12px;">
+            <span class="promo-price">€25</span>
+            <span class="promo-price-old">€39</span>
+            <span class="muted" style="font-size:13px;">compra única</span>
+          </div>
+          <div class="promo-launch">
+            <strong>Reserva antecipada:</strong> os primeiros 30 compradores garantem a planilha por €25. Depois do lançamento, o preço sobe.
+          </div>
+          <ul class="promo-features">
+            <li>Planilha em Google Sheets com 7 painéis + automação real (lança fixos e parcelas sozinha)</li>
+            <li>Prompt Mestre de IA, manual de preenchimento e guia de instalação inclusos</li>
+            <li>Compra única — sem assinatura, reutiliza todo ano</li>
+            <li>Funciona em PC, Mac, tablet e celular, sem instalar nada</li>
+            <li>Garantia de 7 dias — não gostou, devolvo o valor</li>
+          </ul>
+          <a href="https://buy.stripe.com/7sY28rcgB4sxazj8u5aR203" target="_blank" rel="noopener" class="btn btn-pill btn-block" style="background:var(--verde-moss);" onclick="gtag('event','select_content',{content_type:'cta_stripe',item_id:'planilha_financeira'})">Garantir minha vaga por €25 →</a>
+          <p class="promo-micro">Pagamento seguro via Stripe. Acesso liberado no lançamento, dia 21/09.</p>
+
+          <div class="lead-mini">
+            <p class="lead-mini-lead"><strong>Ainda não tem certeza?</strong> Deixa seu e-mail e eu aviso assim que abrir, sem compromisso.</p>
+            <form id="lead-form" action="#BREVO-FORM-ACTION-AQUI" method="POST">
+              <div class="lead-mini-row">
+                <input type="email" id="email" name="EMAIL" placeholder="seu@email.com" required>
+                <button type="submit" class="btn" style="background:var(--downtown-brown);">Só me avisa</button>
+              </div>
+            </form>
+            <div id="lead-success">Prontinho — você tá na lista. Aviso primeiro, antes de abrir pra todo mundo.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= VÍDEO: COMO NÃO CAIR EM GOLPE ================= -->
+    <section class="section" id="golpe-video">
+      <div style="max-width:420px;margin:0 auto;text-align:center;">
+        <span class="rt-section-label" style="text-align:center;">Antes de fechar qualquer aluguel</span>
+        <h2>Como não cair em golpe de aluguel na França</h2>
+        <p class="muted">Gravei um vídeo com a dica principal pra você não cair em golpe procurando apartamento — assiste antes de mandar qualquer depósito ou caução.</p>
+
+        <a class="ig-preview-card" href="https://www.instagram.com/p/Db5Yw9ThHTY/" target="_blank" rel="noopener" onclick="gtag('event','select_content',{content_type:'cta_instagram_video',item_id:'golpe_aluguel'})">
+          <span class="ig-preview-thumb">
+            <span class="ig-preview-badge">🎬 Reels · @ingryd.podentro</span>
+            <span class="ig-preview-play" aria-hidden="true">
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M8 5.5V18.5L19 12L8 5.5Z" fill="currentColor"/></svg>
+            </span>
+          </span>
+          <span class="ig-preview-body">
+            <span class="ig-preview-caption">🚩 A dica pra não cair em golpe de aluguel na França</span>
+            <span class="ig-preview-cta">Assistir no Instagram <svg width="13" height="13" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M7 17L17 7M17 7H8M17 7V16" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+          </span>
+        </a>
+      </div>
+    </section>
+  </div>
+</main>
+
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-grid">
+      <div>
+        <div class="site-logo" style="color:#F4F1EC; margin-bottom:14px;">Por Dentro</div>
+        <p style="color:#A8A29C; max-width:32ch; font-size:13px;">Templates, indicações de estudo e de compras para quem vive a vida real fora do Brasil.</p>
+      </div>
+      <div>
+        <div class="footer-col-title">Navegação</div>
+        <div class="footer-links">
+          <a href="/produtos-digitais/">Produtos digitais</a>
+          <a href="/produtos-de-estudo/">Produtos de estudo</a>
+          <a href="/produtos-de-compras/">Produtos de compras</a>
+          <a href="/artigos/">Blog</a>
+          <a href="/sobre/">Sobre</a>
+        </div>
+      </div>
+      <div>
+        <div class="footer-col-title">Legal</div>
+        <div class="footer-links">
+          <a href="/mentions-legales/">Mentions légales</a>
+          <a href="/cgv/">CGV</a>
+          <a href="/confidentialite/">Confidentialité</a>
+        </div>
+      </div>
+      <div>
+        <div class="footer-col-title">Fontes</div>
+        <div class="footer-links">
+          <a href="https://www.insee.fr" target="_blank" rel="noopener">INSEE</a>
+          <a href="https://www.olap.asso.fr" target="_blank" rel="noopener">OLAP — Observatoire des Loyers</a>
+          <a href="https://www.seloger.com" target="_blank" rel="noopener">SeLoger</a>
+        </div>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>© Por Dentro · France</span>
+      <span>Dados oficiais: INSEE, SeLoger, OLAP, LocService e operadoras de transporte de cada cidade (ago/2026).</span>
+    </div>
+  </div>
+</footer>
+
+<script src="/assets/js/main.js"></script>
+<script>
+(function(){
+  // Faixas do simulador — colocation/studio/T2: min = max (valor mediano oficial) - 2x a variação
+  // combinada (±100€ ou ±200€). CROUS: min/max = tarifa oficial real (da chambre ao studio),
+  // direto das grades tarifárias de cada Crous regional (ver fontes no rodapé do simulador).
+  var DATA = {
+    paris:       { label:'Paris',       fixed: 411.80, colocation:{min:650, max:850},  studio:{min:625, max:825},  t2:{min:1085, max:1485}, crous:{min:332, max:541} },
+    nice:        { label:'Nice',        fixed: 340.00, colocation:{min:461, max:661},  studio:{min:300, max:500},  t2:{min:500,  max:900},  crous:{min:176, max:423} },
+    lyon:        { label:'Lyon',        fixed: 375.90, colocation:{min:295, max:495},  studio:{min:225, max:425},  t2:{min:365,  max:765},  crous:{min:230, max:420} },
+    montpellier: { label:'Montpellier', fixed: 300.00, colocation:{min:250, max:450},  studio:{min:175, max:375},  t2:{min:275,  max:675},  crous:{min:257, max:396} },
+    toulouse:    { label:'Toulouse',    fixed: 359.00, colocation:{min:215, max:415},  studio:{min:150, max:350},  t2:{min:230,  max:630},  crous:{min:196, max:370} }
+  };
+  var TYPE_LABEL = { colocation:'Colocation', studio:'Studio', t2:'T2', crous:'Apto estudantil (CROUS)' };
+  var CITY_ORDER = ['paris','nice','lyon','montpellier','toulouse'];
+
+  var state = { city:'paris', type:'colocation' };
+
+  var cityTabs = document.querySelectorAll('#calc-city-tabs .calc-tab');
+  var typeTabs = document.querySelectorAll('#calc-type-tabs .calc-tab');
+  var slider = document.getElementById('calc-slider');
+  var rentVal = document.getElementById('calc-rent-val');
+  var sliderLabel = document.getElementById('calc-slider-city-label');
+  var minLabel = document.getElementById('calc-min-label');
+  var maxLabel = document.getElementById('calc-max-label');
+  var lineRent = document.getElementById('calc-line-rent');
+  var lineFixed = document.getElementById('calc-line-fixed');
+  var lineTotal = document.getElementById('calc-line-total');
+  var compareLabel = document.getElementById('calc-compare-label');
+  var compareList = document.getElementById('calc-compare-list');
+
+  function fmt(n){
+    return n.toLocaleString('pt-BR', {minimumFractionDigits: (n % 1 === 0 ? 0 : 2), maximumFractionDigits:2});
+  }
+
+  function range(city, type){
+    var d = DATA[city][type];
+    return { min: d.min, max: d.max, mean: Math.round((d.min + d.max) / 2) };
+  }
+
+  function renderCompare(){
+    compareLabel.textContent = 'Comparativo — ' + TYPE_LABEL[state.type] + ' em todas as cidades';
+    var maxOfType = 0;
+    CITY_ORDER.forEach(function(c){ maxOfType = Math.max(maxOfType, DATA[c][state.type].max); });
+    compareList.innerHTML = '';
+    CITY_ORDER.forEach(function(c){
+      var r = range(c, state.type);
+      var pct = Math.round((r.max / maxOfType) * 100);
+      var row = document.createElement('div');
+      row.className = 'cc-bar-row' + (c === state.city ? ' is-selected' : '');
+      row.innerHTML = '<span class="bar" style="width:' + pct + '%"></span>' +
+        '<span class="row-content">' +
+          '<span class="city">' + DATA[c].label + '</span>' +
+          '<span class="range">' + fmt(r.min) + '€ – ' + fmt(r.max) + '€</span>' +
+          '<span class="val">até ' + fmt(r.max) + '€</span>' +
+        '</span>';
+      compareList.appendChild(row);
+    });
+  }
+
+  function renderSlider(){
+    var r = range(state.city, state.type);
+    slider.min = r.min;
+    slider.max = r.max;
+    slider.step = 5;
+    slider.value = r.mean;
+    minLabel.textContent = fmt(r.min) + '€ (mais em conta)';
+    maxLabel.textContent = fmt(r.max) + '€ (topo de mercado)';
+    sliderLabel.textContent = DATA[state.city].label + ' · ' + TYPE_LABEL[state.type];
+    updateTotals();
+  }
+
+  function updateTotals(){
+    var rent = parseFloat(slider.value);
+    var fixed = DATA[state.city].fixed;
+    var total = rent + fixed;
+    rentVal.textContent = fmt(rent);
+    lineRent.textContent = fmt(rent) + '€';
+    lineFixed.textContent = fmt(fixed) + '€';
+    lineTotal.textContent = fmt(total) + '€';
+  }
+
+  cityTabs.forEach(function(btn){
+    btn.addEventListener('click', function(){
+      state.city = btn.getAttribute('data-city');
+      cityTabs.forEach(function(b){ b.setAttribute('aria-selected', b === btn ? 'true' : 'false'); });
+      renderSlider();
+      renderCompare();
+      gtag('event','select_content',{content_type:'calc_city',item_id:state.city});
+    });
+  });
+
+  typeTabs.forEach(function(btn){
+    btn.addEventListener('click', function(){
+      state.type = btn.getAttribute('data-type');
+      typeTabs.forEach(function(b){ b.setAttribute('aria-selected', b === btn ? 'true' : 'false'); });
+      renderSlider();
+      renderCompare();
+      gtag('event','select_content',{content_type:'calc_type',item_id:state.type});
+    });
+  });
+
+  slider.addEventListener('input', updateTotals);
+  slider.addEventListener('change', function(){
+    gtag('event','select_content',{content_type:'calc_rent_drag',item_id:state.city + '_' + state.type,value:slider.value});
+  });
+
+  renderSlider();
+  renderCompare();
+})();
+
+  // Lead form: enquanto o Brevo real não está plugado (action ainda é o placeholder),
+  // mostra a microcopy de sucesso localmente em vez de tentar enviar pra lugar nenhum.
+  // Assim que o <form action="..."> apontar pro Brevo de verdade, remova este bloco
+  // e deixe o Brevo cuidar da confirmação/redirecionamento.
+  var leadForm = document.getElementById('lead-form');
+  if (leadForm && leadForm.getAttribute('action') === '#BREVO-FORM-ACTION-AQUI') {
+    leadForm.addEventListener('submit', function(e){
+      e.preventDefault();
+      document.getElementById('lead-success').style.display = 'block';
+      gtag('event','generate_lead',{content_type:'reserva_planilha'});
+      leadForm.reset();
+    });
+  }
+</script>
+
+</body>
+</html>
