@@ -29,7 +29,7 @@ collections:
               - { label: "Categoria curta (ex. Template Excel)", name: kicker, widget: string }
               - { label: "Resumo (aparece no card)", name: summary, widget: string }
               - { label: "Descrição (aparece na página do produto)", name: description, widget: text }
-              - { label: Imagem, name: image, widget: image, required: false }
+              - { label: Imagem, name: image, widget: image, required: false, hint: "Tamanho ideal: 1200×900px (proporção 4:3), foto na horizontal. Aparece no card da lista e no topo da página do produto." }
               - { label: "Preço atual (€)", name: price, widget: number, value_type: float }
               - { label: "Preço antigo — deixe em branco se não houver desconto", name: priceOld, widget: number, value_type: float, required: false }
               - { label: "Selo de lançamento (opcional)", name: launchNote, widget: string, required: false }
@@ -62,7 +62,7 @@ collections:
             fields:
               - { label: Título, name: title, widget: string }
               - { label: Descrição curta, name: desc, widget: string }
-              - { label: Imagem, name: image, widget: image, required: false }
+              - { label: Imagem, name: image, widget: image, required: false, hint: "Tamanho ideal: 1200×900px (proporção 4:3), foto na horizontal. Aparece no card da lista." }
               - { label: "Link de afiliado", name: affiliateUrl, widget: string, required: false }
 
   - name: produtos_compras
@@ -79,7 +79,7 @@ collections:
             fields:
               - { label: Título, name: title, widget: string }
               - { label: Descrição curta, name: desc, widget: string }
-              - { label: Imagem, name: image, widget: image, required: false }
+              - { label: Imagem, name: image, widget: image, required: false, hint: "Tamanho ideal: 1200×900px (proporção 4:3), foto na horizontal. Aparece no card da lista." }
               - { label: "Link de afiliado", name: affiliateUrl, widget: string, required: false }
 
   - name: posts
@@ -98,7 +98,7 @@ collections:
               - { label: Título, name: title, widget: string }
               - { label: "Resumo (aparece no card)", name: excerpt, widget: string }
               - { label: "Categoria (usada nos filtros)", name: category, widget: string }
-              - { label: "Foto de capa", name: image, widget: image, required: false }
+              - { label: "Foto de capa", name: image, widget: image, required: false, hint: "Tamanho ideal: 1600×900px (proporção 16:9), foto na horizontal e bem ampla. A mesma foto aparece cortada no card do blog (mais quadrada) e larga no topo do artigo — por isso precisa ser bem panorâmica." }
               - { label: "Data de publicação", name: date, widget: datetime, format: "YYYY-MM-DD", date_format: "YYYY-MM-DD", time_format: false }
               - { label: "Tempo de leitura (min)", name: readMinutes, widget: number, required: false }
               - { label: "Corpo do artigo", name: body, widget: markdown, hint: "Use ## para subtítulo, - para lista, **negrito**, [texto](link)." }
@@ -114,7 +114,7 @@ collections:
             name: home
             widget: object
             fields:
-              - { label: "Foto do hero", name: heroImage, widget: image, required: false }
+              - { label: "Foto do hero", name: heroImage, widget: image, required: false, hint: "Tamanho ideal: 1200×960px (proporção 5:4), foto na horizontal. É a foto grande de destaque no topo da Home." }
               - { label: "Texto alternativo da foto", name: heroImageAlt, widget: string, required: false }
           - label: "Banners vitrine → blog (um por categoria)"
             name: categoryBanners
@@ -126,7 +126,7 @@ collections:
                 fields:
                   - { label: Selo, name: kicker, widget: string }
                   - { label: Título, name: title, widget: string }
-                  - { label: Foto, name: image, widget: image, required: false }
+                  - { label: Foto, name: image, widget: image, required: false, hint: "Tamanho ideal: 1200×675px (proporção 16:9), foto na horizontal e ampla." }
                   - { label: "Cor (hex)", name: color, widget: string }
                   - { label: "Texto do botão", name: ctaText, widget: string }
                   - { label: "Slug do artigo pra onde o botão leva", name: postSlug, widget: string }
@@ -136,7 +136,7 @@ collections:
                 fields:
                   - { label: Selo, name: kicker, widget: string }
                   - { label: Título, name: title, widget: string }
-                  - { label: Foto, name: image, widget: image, required: false }
+                  - { label: Foto, name: image, widget: image, required: false, hint: "Tamanho ideal: 1200×675px (proporção 16:9), foto na horizontal e ampla." }
                   - { label: "Cor (hex)", name: color, widget: string }
                   - { label: "Texto do botão", name: ctaText, widget: string }
                   - { label: "Slug do artigo pra onde o botão leva", name: postSlug, widget: string }
@@ -146,7 +146,7 @@ collections:
                 fields:
                   - { label: Selo, name: kicker, widget: string }
                   - { label: Título, name: title, widget: string }
-                  - { label: Foto, name: image, widget: image, required: false }
+                  - { label: Foto, name: image, widget: image, required: false, hint: "Tamanho ideal: 1200×675px (proporção 16:9), foto na horizontal e ampla." }
                   - { label: "Cor (hex)", name: color, widget: string }
                   - { label: "Texto do botão", name: ctaText, widget: string }
                   - { label: "Slug do artigo pra onde o botão leva", name: postSlug, widget: string }
@@ -157,7 +157,7 @@ collections:
               - { label: Selo, name: kicker, widget: string }
               - { label: Título, name: title, widget: string }
               - { label: Texto, name: body, widget: text }
-              - { label: Foto, name: image, widget: image, required: false }
+              - { label: Foto, name: image, widget: image, required: false, hint: "Tamanho ideal: 1200×900px (proporção 4:3), foto na horizontal." }
               - { label: "Cor (hex)", name: color, widget: string }
               - { label: "Texto do botão", name: ctaText, widget: string }
               - { label: "Link do botão", name: ctaHref, widget: string }
