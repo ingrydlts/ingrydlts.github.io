@@ -10,17 +10,17 @@
       "gallery": [
         {
           "type": "Foto",
+          "image": "/images/uploads/img1.png",
+          "caption": "Capa do produto"
+        },
+        {
+          "type": "Foto",
           "image": "/images/uploads/img-2.png",
           "caption": "Visão geral da planilha"
         },
         {
           "type": "Foto",
-          "image": "/images/uploads/img3.png",
-          "caption": "Capa do produto"
-        },
-        {
-          "type": "Foto",
-          "image": "/images/uploads/img4.png",
+          "image": "/images/uploads/img1.png",
           "caption": "Controle real de gastos"
         }
       ],
