@@ -1,22 +1,3 @@
 {
-  "items": [
-    {
-      "title": "Trench coat — indicação",
-      "desc": "Peça de guarda-roupa indicada para o clima de outono em Paris.",
-      "image": "",
-      "affiliateUrl": ""
-    },
-    {
-      "title": "Bota de chuva",
-      "desc": "A que aguenta o inverno parisiense sem sofrimento.",
-      "image": "",
-      "affiliateUrl": ""
-    },
-    {
-      "title": "Cachecol de lã",
-      "desc": "Simples, quente, e combina com tudo — o básico que vale o investimento.",
-      "image": "",
-      "affiliateUrl": ""
-    }
-  ]
+  "items": []
 }
