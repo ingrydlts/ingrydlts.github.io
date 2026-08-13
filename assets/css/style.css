@@ -335,8 +335,30 @@ p { margin: 0 0 1em; color: var(--grafite); }
   padding: 6px 12px; border-radius: var(--radius-pill); margin-bottom: 14px;
 }
 
+/* título/subtítulo + bullets + descrição ao lado da imagem no desktop;
+   no mobile fica tudo em coluna única, na ordem em que aparece no HTML */
+.pdp-hero-grid { margin-bottom: 8px; }
+@media (min-width: 900px) {
+  .pdp-hero-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-areas:
+      "title   media"
+      "bullets media"
+      "desc    media";
+    column-gap: 48px;
+    align-items: start;
+  }
+  .pdp-hero-title { grid-area: title; }
+  .pdp-hero-media { grid-area: media; }
+  .pdp-hero-bullets { grid-area: bullets; }
+  .pdp-hero-desc { grid-area: desc; }
+}
+.pdp-hero-bullets { list-style: none; padding: 0; margin: 20px 0; display: flex; flex-direction: column; gap: 10px; }
+.pdp-hero-bullets li { display: flex; gap: 10px; align-items: flex-start; font-size: 14px; color: var(--grafite); line-height: 1.5; }
+.pdp-hero-bullets .ic { color: var(--verde-moss); flex-shrink: 0; margin-top: 2px; }
+
 .pdp-carousel { margin-bottom: 28px; }
-@media (min-width: 900px) { .pdp-carousel { max-width: 440px; } }
 .pdp-carousel-main { position: relative; }
 .pdp-carousel-viewport {
   aspect-ratio: 1/1; background: var(--off-white-soft); border: 1px solid var(--borda-suave);
@@ -361,11 +383,6 @@ p { margin: 0 0 1em; color: var(--grafite); }
   background: rgba(43,43,43,.5); color: #fff; font-size: 14px;
 }
 
-.pdp-benefits { display: grid; grid-template-columns: repeat(2,1fr); gap: 16px; margin-bottom: 28px; }
-@media (min-width: 520px) { .pdp-benefits { grid-template-columns: repeat(4,1fr); } }
-.pdp-benefit { text-align: center; }
-.pdp-benefit .ic { width: 44px; height: 44px; margin: 0 auto 8px; border-radius: 50%; background: #EAF0E1; color: var(--verde-moss); display: flex; align-items: center; justify-content: center; }
-.pdp-benefit span { font-size: 12px; font-weight: 600; line-height: 1.35; display: block; }
 
 .pdp-trustgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 28px 0; }
 .pdp-trust-item { background: #fff; border: 1px solid var(--borda); border-radius: 6px; padding: 14px 16px; display: flex; gap: 10px; align-items: flex-start; }

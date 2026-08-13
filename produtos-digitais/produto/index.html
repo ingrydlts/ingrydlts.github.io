@@ -420,11 +420,8 @@
 
     const gallery = normalizeGallery(p);
 
-    const featuresHtml = (p.features || [])
-      .map(
-        (f) =>
-          '<div class="pdp-benefit"><div class="ic">' + ICON_CHECK + "</div><span>" + escapeHtml(f) + "</span></div>"
-      )
+    const bulletsHtml = (p.features || [])
+      .map((f) => '<li><span class="ic">' + ICON_CHECK + "</span>" + escapeHtml(f) + "</li>")
       .join("");
 
     const trustBarText = [
@@ -440,15 +437,19 @@
 
       '<p class="pdp-breadcrumb"><a href="/produtos-digitais/">Produtos digitais</a> / <strong>' + escapeHtml(p.title) + "</strong></p>" +
 
-      (p.kicker ? '<span class="pdp-pill">' + escapeHtml(p.kicker) + "</span>" : "") +
-      "<h1>" + escapeHtml(p.title) + "</h1>" +
-      '<p class="muted" style="max-width:56ch; font-size:16px; margin-bottom:24px;">' + escapeHtml(p.summary) + "</p>" +
+      '<div class="pdp-hero-grid">' +
+        '<div class="pdp-hero-title">' +
+          (p.kicker ? '<span class="pdp-pill">' + escapeHtml(p.kicker) + "</span>" : "") +
+          "<h1>" + escapeHtml(p.title) + "</h1>" +
+          '<p class="muted" style="font-size:16px; margin-bottom:0;">' + escapeHtml(p.summary) + "</p>" +
+        "</div>" +
 
-      carouselHTML(gallery, p.title) +
+        '<div class="pdp-hero-media">' + carouselHTML(gallery, p.title) + "</div>" +
 
-      (featuresHtml ? '<div class="pdp-benefits">' + featuresHtml + "</div>" : "") +
+        (bulletsHtml ? '<ul class="pdp-hero-bullets">' + bulletsHtml + "</ul>" : "") +
 
-      "<p>" + escapeHtml(p.description) + "</p>" +
+        '<p class="pdp-hero-desc">' + escapeHtml(p.description) + "</p>" +
+      "</div>" +
 
       '<div class="buy-box" id="pdp-buybox" style="max-width:480px; margin:24px 0 0;">' +
         '<div style="display:flex; align-items:baseline; gap:12px; margin-bottom:6px;">' +
