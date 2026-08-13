@@ -90,9 +90,12 @@ function escapeHtml(str) {
 // as variáveis não estiverem configuradas, e nunca deixa uma falha de envio
 // impedir a avaliação de ser salva — é só uma notificação, não é crítico.
 async function sendModerationEmail(env, review) {
-  if (!env.RESEND_API_KEY || !env.NOTIFY_EMAIL) return;
+  if (!env.RESEND_API_KEY || !env.NOTIFY_EMAIL) {
+    console.log('sendModerationEmail: RESEND_API_KEY ou NOTIFY_EMAIL não configurados — pulando envio.');
+    return;
+  }
   try {
-    await fetch('https://api.resend.com/emails', {
+    const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${env.RESEND_API_KEY}`,
@@ -108,8 +111,15 @@ async function sendModerationEmail(env, review) {
           `<p><a href="https://${REPO_OWNER}.github.io/admin/avaliacoes/">Aprovar ou rejeitar</a></p>`,
       }),
     });
+    const bodyText = await res.text();
+    if (!res.ok) {
+      console.error('sendModerationEmail: Resend respondeu ' + res.status + ' — ' + bodyText);
+    } else {
+      console.log('sendModerationEmail: enviado com sucesso — ' + bodyText);
+    }
   } catch (err) {
     // segue o jogo — a avaliação já foi salva, o e-mail é só um aviso a mais
+    console.error('sendModerationEmail: falhou — ' + String(err));
   }
 }
 
