@@ -2,7 +2,7 @@ backend:
   name: github
   repo: ingrydlts/ingrydlts.github.io
   branch: main
-  base_url: https://SEU-WORKER.workers.dev # Cloudflare Worker de OAuth — ver cms-oauth-worker/README.md
+  base_url: https://por-dentro-cms-oauth.ingrydigitalmanagement.workers.dev
   auth_endpoint: auth
 
 # Imagens enviadas pelo painel caem aqui e ficam disponíveis em /images/uploads/...

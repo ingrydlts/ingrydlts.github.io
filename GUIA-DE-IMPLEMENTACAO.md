@@ -131,9 +131,10 @@ Já existe `/admin/index.html` e `/admin/config.yml` (Decap CMS). O repositório
 já está preenchido em `admin/config.yml`. O código do proxy de autenticação também já está pronto,
 em `cms-oauth-worker/worker.js` — falta só publicá-lo, o que só você pode fazer (exige login na sua conta Cloudflare):
 
-1. 🔲 **Você**: publicar o Worker no Cloudflare e criar o GitHub OAuth App — passo a passo completo em [`cms-oauth-worker/README.md`](../cms-oauth-worker/README.md).
-2. 🔲 **Você (ou eu, se me passar a URL)**: colar a URL final do worker em `base_url` de `admin/config.yml` (hoje ainda `SEU-WORKER.workers.dev`).
-3. 🔲 Testar login em `ingrydlts.github.io/admin` (ou no domínio final, quando a Fase 4 estiver completa) e uma edição de ponta a ponta: editar um produto → Publish → conferir que virou commit no GitHub → conferir que o site atualizou.
+1. ✅ Worker publicado no Cloudflare: `https://por-dentro-cms-oauth.ingrydigitalmanagement.workers.dev`.
+2. ✅ GitHub OAuth App criado, com `GITHUB_CLIENT_ID`/`GITHUB_CLIENT_SECRET` salvos como secrets no worker.
+3. ✅ `admin/config.yml` já aponta `base_url` pro worker publicado.
+4. 🔲 Testar login em `ingrydlts.github.io/admin` e uma edição de ponta a ponta: editar um produto → Publish → conferir que virou commit no GitHub → conferir que o site atualizou.
 
 Enquanto o passo 1–2 não estiver pronto, os arquivos `content/*.json` continuam 100% editáveis à mão (por você ou por mim).
 
