@@ -4,8 +4,26 @@
       "launchNote": "Preço de lançamento — válido para os primeiros 30 compradores",
       "summary": "A planilha financeira que lança seus gastos fixos sozinha, todo mês, sem você precisar copiar e colar nada.",
       "stripeLink": "https://buy.stripe.com/7sY28rcgB4sxazj8u5aR203",
+      "bundleWith": [],
       "price": 25,
       "slug": "planilha-financeira-super-integrada",
+      "gallery": [
+        {
+          "type": "Foto",
+          "image": "/images/uploads/imagem-template-de-gastos.png",
+          "caption": "Visão geral da planilha"
+        },
+        {
+          "type": "Foto",
+          "image": "/images/produtos/planilha-financeira-capa.png",
+          "caption": "Capa do produto"
+        },
+        {
+          "type": "Foto",
+          "image": "/images/uploads/img-planilha-financeira-controle-real.png",
+          "caption": "Controle real de gastos"
+        }
+      ],
       "kicker": "Template Excel e Google Sheets",
       "faq": [
         {
@@ -22,12 +40,7 @@
         }
       ],
       "title": "Planilha Financeira Super Integrada",
-      "image": "/images/uploads/imagem-template-de-gastos.png",
-      "gallery": [
-        { "type": "Foto", "image": "/images/uploads/imagem-template-de-gastos.png", "caption": "Visão geral da planilha" },
-        { "type": "Foto", "image": "/images/produtos/planilha-financeira-capa.png", "caption": "Capa do produto" },
-        { "type": "Foto", "image": "/images/uploads/img-planilha-financeira-controle-real.png", "caption": "Controle real de gastos" }
-      ],
+      "image": "/images/uploads/image-1786656384876.png",
       "description": "Feita pra quem organiza a vida em euros, mora fora do Brasil e não tem paciência pra reeditar planilha todo mês. Uma planilha em Google Sheets que roda praticamente sozinha: você cadastra o gasto fixo ou parcelado uma vez, e ela lança automaticamente todo dia 1º — parcela certa, sem duplicar, sabendo sozinha quando parar.",
       "features": [
         "Planilha com 7 painéis + automação real",
@@ -36,8 +49,7 @@
         "Funciona no Microsof Excel e Google Sheets"
       ],
       "priceOld": 39,
-      "guaranteeDays": 5,
-      "bundleWith": []
+      "guaranteeDays": 5
     }
   ]
 }
