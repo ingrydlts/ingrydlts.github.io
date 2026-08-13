@@ -17,7 +17,7 @@ Documento-guia da concepção do site, do zero ao ar. Cada fase depende da anter
 | 3 | Conteúdo (dados) | Estrutura `/content/*.json` com dados de exemplo | ✅ | Fase 2 |
 | 4 | Domínio e hospedagem | Site publicado, no ar, em domínio próprio | 🔲 | Fase 2 |
 | 5 | Pagamento (Stripe) | Compra de verdade, ponta a ponta | 🔲 | Fase 4 |
-| 6 | Painel de conteúdo (CMS) | Editar produto/banner/post sem código | 🔲 | Fase 4 |
+| 6 | Painel de conteúdo (CMS) | Editar produto/banner/post sem código | 🟡 | Fase 4 |
 | 7 | Entrega automática | E-mail automático com o arquivo após a compra | 🔲 | Fase 5 |
 | 8 | Conteúdo real e jurídico | Fotos, textos finais, dados legais preenchidos | 🔲 | Fase 2 (pode andar em paralelo) |
 | 9 | QA final | Checklist completo antes de divulgar | 🔲 | Fases 4–8 |
@@ -125,18 +125,17 @@ O que falta, na ordem:
 
 ---
 
-## Fase 6 — Painel de conteúdo / CMS 🔲
+## Fase 6 — Painel de conteúdo / CMS 🟡
 
-Já existe `/admin/index.html` e `/admin/config.yml` (Decap CMS), mas autenticação com GitHub puro (sem Netlify) precisa de uma peça extra:
+Já existe `/admin/index.html` e `/admin/config.yml` (Decap CMS). O repositório real (`ingrydlts/ingrydlts.github.io`)
+já está preenchido em `admin/config.yml`. O código do proxy de autenticação também já está pronto,
+em `cms-oauth-worker/worker.js` — falta só publicá-lo, o que só você pode fazer (exige login na sua conta Cloudflare):
 
-1. Criar um **GitHub OAuth App** (GitHub → Settings → Developer settings → OAuth Apps).
-2. Publicar um **Cloudflare Worker de OAuth** pro Decap CMS (proxy pequeno, gratuito — templates prontos existem pra isso).
-3. Editar `admin/config.yml`: trocar `SEU-USUARIO/SEU-REPOSITORIO` pelo repo real e `SEU-WORKER.workers.dev` pela URL do worker.
-4. Testar login em `seudominio.com/admin` e uma edição de ponta a ponta (editar um produto → Publish → conferir que virou commit no GitHub → conferir que o site atualizou).
+1. 🔲 **Você**: publicar o Worker no Cloudflare e criar o GitHub OAuth App — passo a passo completo em [`cms-oauth-worker/README.md`](../cms-oauth-worker/README.md).
+2. 🔲 **Você (ou eu, se me passar a URL)**: colar a URL final do worker em `base_url` de `admin/config.yml` (hoje ainda `SEU-WORKER.workers.dev`).
+3. 🔲 Testar login em `ingrydlts.github.io/admin` (ou no domínio final, quando a Fase 4 estiver completa) e uma edição de ponta a ponta: editar um produto → Publish → conferir que virou commit no GitHub → conferir que o site atualizou.
 
-**Ação necessária seu lado:** criar o OAuth App (2 minutos, só preencher formulário). Eu escrevo e publico o Worker quando chegarmos aqui.
-
-Enquanto esta fase não estiver pronta, os arquivos `content/*.json` continuam 100% editáveis à mão (por você ou por mim).
+Enquanto o passo 1–2 não estiver pronto, os arquivos `content/*.json` continuam 100% editáveis à mão (por você ou por mim).
 
 ---
 

@@ -1,8 +1,8 @@
 backend:
   name: github
-  repo: SEU-USUARIO/SEU-REPOSITORIO # troque pelo owner/repo real no GitHub antes de publicar
+  repo: ingrydlts/ingrydlts.github.io
   branch: main
-  base_url: https://SEU-WORKER.workers.dev # Cloudflare Worker de OAuth — ver README.md, seção "Configurar o /admin"
+  base_url: https://SEU-WORKER.workers.dev # Cloudflare Worker de OAuth — ver cms-oauth-worker/README.md
   auth_endpoint: auth
 
 # Imagens enviadas pelo painel caem aqui e ficam disponíveis em /images/uploads/...

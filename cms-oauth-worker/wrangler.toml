@@ -1,0 +1,6 @@
+name = "por-dentro-cms-oauth"
+main = "worker.js"
+compatibility_date = "2024-01-01"
+
+# GITHUB_CLIENT_ID e GITHUB_CLIENT_SECRET são configurados como Secrets
+# (painel do Cloudflare ou `wrangler secret put`), não aqui — ver README.md.

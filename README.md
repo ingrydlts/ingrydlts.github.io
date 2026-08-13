@@ -53,12 +53,12 @@ O site assume que vai rodar na raiz do domínio (links tipo `/produtos-digitais/
 
 ## Configurar o /admin (Decap CMS)
 
-O `/admin` é um painel visual (Decap CMS) pra editar produtos, banners e posts sem mexer em código — mas como o site não usa Netlify, a autenticação com o GitHub precisa de um pequeno proxy OAuth. Passo a passo:
+O `/admin` é um painel visual (Decap CMS) pra editar produtos, banners e posts sem mexer em código — mas como o site não usa Netlify, a autenticação com o GitHub precisa de um pequeno proxy OAuth. O código desse proxy já está pronto em [`cms-oauth-worker/worker.js`](cms-oauth-worker/worker.js), e `admin/config.yml` já aponta pro repositório real (`ingrydlts/ingrydlts.github.io`). Falta publicar o worker — passo a passo completo em [`cms-oauth-worker/README.md`](cms-oauth-worker/README.md):
 
-1. Crie um **GitHub OAuth App** (GitHub → Settings → Developer settings → OAuth Apps). Homepage URL = seu domínio; Authorization callback URL = a URL do worker do passo 2 + `/callback`.
-2. Publique um **Cloudflare Worker** de OAuth para Decap CMS — existem templates prontos e gratuitos pra isso (busque "decap-cms-oauth-provider cloudflare worker"); configure o `Client ID`/`Client Secret` do OAuth App como variáveis de ambiente do worker.
-3. Em `admin/config.yml`, troque `SEU-USUARIO/SEU-REPOSITORIO` pelo repositório real no GitHub, e `SEU-WORKER.workers.dev` pela URL do worker publicado.
-4. Acesse `seudominio.com/admin`, faça login com sua conta GitHub, e pronto — editar produto/banner/post vira só preencher formulário e clicar em "Publish" (isso cria um commit no repositório automaticamente).
+1. Publicar o Worker no Cloudflare (painel, sem precisar instalar nada).
+2. Criar o GitHub OAuth App e apontar o callback pra URL do worker.
+3. Colar a URL final do worker no campo `base_url` de `admin/config.yml`.
+4. Acessar `seudominio.com/admin`, fazer login com a conta GitHub, e pronto — editar produto/banner/post vira só preencher formulário e clicar em "Publish" (isso cria um commit no repositório automaticamente).
 
 Sem esse passo, o `/admin` carrega mas não consegue salvar — os arquivos `/content/*.json` continuam editáveis manualmente enquanto isso não for configurado.
 
