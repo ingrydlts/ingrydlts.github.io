@@ -10,21 +10,30 @@
       "gallery": [
         {
           "type": "Foto",
-          "image": "/images/uploads/img1.png",
+          "image": "/images/uploads/asset-capa.png",
           "caption": "Capa do produto"
         },
         {
           "type": "Foto",
-          "image": "/images/uploads/img-2.png",
+          "image": "/images/uploads/2.png",
           "caption": "Visão geral da planilha"
         },
         {
           "type": "Foto",
-          "image": "/images/uploads/img1.png",
+          "image": "/images/uploads/3.png",
           "caption": "Controle real de gastos"
+        },
+        {
+          "type": "Foto",
+          "image": "/images/uploads/asset-automatizaçao.png",
+          "caption": "automatização"
+        },
+        {
+          "type": "Foto",
+          "image": "/images/uploads/4.png"
         }
       ],
-      "kicker": "Template Excel e Google Sheets",
+      "kicker": "Template Google Sheets",
       "faq": [
         {
           "q": "Funciona só no Google Sheets, ou também no Excel?",
