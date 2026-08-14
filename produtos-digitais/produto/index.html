@@ -513,8 +513,15 @@
     document.body.classList.add("has-pdp-sticky");
     const sticky = document.createElement("div");
     sticky.className = "pdp-sticky";
+    const stickyPct = p.priceOld && p.priceOld > p.price ? Math.round((1 - p.price / p.priceOld) * 100) : 0;
     sticky.innerHTML =
-      '<div class="p"><small>' + escapeHtml(p.title) + "</small>" + formatPrice(p.price) + "</div>" +
+      '<div class="p"><small>' + escapeHtml(p.title) + "</small>" +
+        '<span class="pdp-sticky-price-row">' +
+          (p.priceOld ? '<span class="pdp-sticky-old">' + formatPrice(p.priceOld) + "</span>" : "") +
+          '<span class="pdp-sticky-price">' + formatPrice(p.price) + "</span>" +
+          (stickyPct ? '<span class="pdp-sticky-pct">-' + stickyPct + "%</span>" : "") +
+        "</span>" +
+      "</div>" +
       '<button type="button" class="btn" style="background:#577328;">Comprar agora</button>';
     sticky.querySelector("button").addEventListener("click", () => {
       document.getElementById("pdp-buybox").scrollIntoView({ behavior: "smooth", block: "center" });
