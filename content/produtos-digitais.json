@@ -41,6 +41,10 @@
         {
           "q": "Como eu ativo a automação?",
           "a": "Preenche seus gastos fixos e parcelados nos modelos prontos da planilha e clica no botão Finanças, no menu do Google Sheets. Pronto — ela já fica rodando sozinha, lançando os valores certos todo mês."
+        },
+        {
+          "q": "Posso pedir reembolso depois de comprar?",
+          "a": "Não. Por ser um arquivo digital de entrega imediata, a compra é final — não fazemos reembolso nem devolução após o acesso liberado."
         }
       ],
       "title": "Planilha Financeira Super Integrada",
@@ -54,7 +58,7 @@
         "Funciona no Microsoft Excel e Google Sheets"
       ],
       "priceOld": 39,
-      "guaranteeDays": 5
+      "guaranteeDays": 0
     }
   ]
 }
