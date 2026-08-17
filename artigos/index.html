@@ -48,7 +48,11 @@
 
     <div class="blog-toolbar">
       <input type="search" class="blog-search" id="search-input" placeholder="Buscar artigos...">
-      <div class="filter-pills" id="filter-pills"></div>
+      <button type="button" class="filter-toggle-btn" id="filter-toggle-btn" aria-haspopup="true" aria-expanded="false" aria-controls="filter-drawer">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 6h16M7 12h10M10 18h4" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+        Filtros
+        <span class="filter-count" id="filter-count" hidden>1</span>
+      </button>
     </div>
 
     <div class="blog-layout">
@@ -59,6 +63,16 @@
     </div>
   </div>
 </main>
+
+<div class="filter-drawer-overlay" id="filter-drawer-overlay"></div>
+<aside class="filter-drawer" id="filter-drawer" aria-hidden="true" aria-label="Filtrar artigos por categoria">
+  <div class="filter-drawer-header">
+    <h3>Filtrar por categoria</h3>
+    <button type="button" class="filter-drawer-close" id="filter-drawer-close" aria-label="Fechar filtros">✕</button>
+  </div>
+  <p class="filter-drawer-hint">Em ordem alfabética.</p>
+  <ul class="filter-drawer-list" id="filter-drawer-list"></ul>
+</aside>
 
 <footer class="site-footer">
   <div class="container">
@@ -164,19 +178,54 @@
 
       document.getElementById("sidebar-banner").innerHTML = bannerHTML(banner);
 
+      // categorias em ordem alfabética (pt-BR), com "Todos" sempre fixo no topo
       const categories = ["Todos"].concat(
-        Array.from(new Set(ALL_POSTS.map((p) => p.category)))
+        Array.from(new Set(ALL_POSTS.map((p) => p.category))).sort((a, b) => a.localeCompare(b, "pt-BR"))
       );
-      const pillsEl = document.getElementById("filter-pills");
-      pillsEl.innerHTML = categories.map((c) =>
-        '<button type="button" class="filter-pill' + (c === "Todos" ? " is-active" : "") + '" data-category="' + escapeHtml(c) + '">' + escapeHtml(c) + "</button>"
-      ).join("");
-      pillsEl.addEventListener("click", function (e) {
-        const btn = e.target.closest(".filter-pill");
+
+      const listEl = document.getElementById("filter-drawer-list");
+      const toggleBtn = document.getElementById("filter-toggle-btn");
+      const drawerEl = document.getElementById("filter-drawer");
+      const overlayEl = document.getElementById("filter-drawer-overlay");
+      const closeBtn = document.getElementById("filter-drawer-close");
+      const countEl = document.getElementById("filter-count");
+
+      function renderDrawerList() {
+        listEl.innerHTML = categories.map((c) =>
+          '<li><button type="button" class="filter-drawer-item' + (c === activeCategory ? " is-active" : "") + '" data-category="' + escapeHtml(c) + '">' + escapeHtml(c) + "</button></li>"
+        ).join("");
+      }
+
+      function openDrawer() {
+        drawerEl.classList.add("is-open");
+        overlayEl.classList.add("is-open");
+        drawerEl.setAttribute("aria-hidden", "false");
+        toggleBtn.setAttribute("aria-expanded", "true");
+      }
+      function closeDrawer() {
+        drawerEl.classList.remove("is-open");
+        overlayEl.classList.remove("is-open");
+        drawerEl.setAttribute("aria-hidden", "true");
+        toggleBtn.setAttribute("aria-expanded", "false");
+      }
+
+      toggleBtn.addEventListener("click", function () {
+        renderDrawerList();
+        openDrawer();
+      });
+      closeBtn.addEventListener("click", closeDrawer);
+      overlayEl.addEventListener("click", closeDrawer);
+      document.addEventListener("keydown", function (e) {
+        if (e.key === "Escape") closeDrawer();
+      });
+      listEl.addEventListener("click", function (e) {
+        const btn = e.target.closest(".filter-drawer-item");
         if (!btn) return;
         activeCategory = btn.dataset.category;
-        pillsEl.querySelectorAll(".filter-pill").forEach((el) => el.classList.toggle("is-active", el === btn));
+        countEl.hidden = activeCategory === "Todos";
+        if (!countEl.hidden) countEl.textContent = "1";
         render(banner);
+        closeDrawer();
       });
 
       document.getElementById("search-input").addEventListener("input", () => render(banner));
