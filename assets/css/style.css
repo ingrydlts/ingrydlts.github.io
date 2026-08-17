@@ -93,12 +93,22 @@ p { margin: 0 0 1em; color: var(--grafite); }
 @media (min-width: 1024px) { .site-header { padding: 24px 64px; } }
 
 .site-logo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   font-family: var(--font-display);
   font-weight: 700;
   font-size: 20px;
   color: var(--grafite);
 }
 @media (min-width: 1024px) { .site-logo { font-size: 24px; } }
+
+.site-logo-img {
+  height: 28px;
+  width: auto;
+  display: block;
+}
+@media (min-width: 1024px) { .site-logo-img { height: 32px; } }
 
 .site-nav {
   display: none;
