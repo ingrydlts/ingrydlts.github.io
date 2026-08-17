@@ -92,6 +92,61 @@ criar a chave (`onboarding@resend.dev` como remetente) — perfeito pra esse cas
 recebendo. Se um dia quiser mandar de um endereço com o seu domínio (ex. `avisos@seudominio.com`),
 aí sim precisa verificar o domínio no Resend.
 
+## 9. Atualizar o Worker (toda vez que o código dele mudar)
+
+O `git push` só sobe o código pro GitHub — ele **não** atualiza sozinho o Worker publicado no
+Cloudflare. Toda vez que `worker.js` mudar (como aconteceu pro paywall dos artigos premium), repita:
+
+1. [dash.cloudflare.com](https://dash.cloudflare.com) → **Workers & Pages** → clique no worker
+   `por-dentro-cms-oauth`.
+2. **Edit code** → apague tudo → cole o conteúdo atual de [`worker.js`](./worker.js) (pegue direto do
+   GitHub, já atualizado) → **Deploy**.
+
+## 10. Configurar o paywall dos artigos premium (assinatura + compra avulsa)
+
+Depois de atualizar o código (passo 9 acima), faltam três coisas: os dois produtos no Stripe, as
+variáveis novas no Worker, e a KV que guarda o texto pago.
+
+**No Stripe** ([dashboard.stripe.com](https://dashboard.stripe.com)):
+
+1. **Products** → **Add product** → crie um com preço **recorrente** (ex. 4,99€/mês). Depois de
+   criado, na página do produto → **Create payment link** → modo assinatura (é automático, já que o
+   preço é recorrente).
+2. Repita pra um segundo produto com preço **único** (ex. 10€) → **Create payment link** → modo
+   pagamento único.
+3. Em **cada um dos dois Payment Links** → edite → **After payment** → escolha "Redirecionar para uma
+   URL personalizada" e cole exatamente:
+   `https://SEUDOMINIO/artigos/assinatura-confirmada/?session_id={CHECKOUT_SESSION_ID}`
+   (troque `SEUDOMINIO` pelo domínio real, ex. `ingrydlts.github.io` enquanto não houver domínio
+   próprio). É a mesma URL nos dois links — o site descobre sozinho qual artigo foi pago.
+4. **Settings → Billing → Customer portal** → ative. Copie o link do portal (é fixo, sempre o mesmo).
+5. Anote os dois **Payment Links** (URLs que começam com `buy.stripe.com/...`), os dois **Price IDs**
+   (em cada produto, ao lado do preço — começam com `price_...`) e a sua **Secret key** (em
+   **Developers → API keys** → "Secret key", começa com `sk_live_...` ou `sk_test_...` se estiver
+   testando).
+
+**No Worker** (mesma tela do passo 6 acima):
+
+6. **Settings → Variables and Secrets** → adicione, todas como **Secret**:
+   - `STRIPE_SECRET_KEY` = a secret key do passo 5.
+   - `STRIPE_PRICE_ID` = o Price ID do produto de assinatura.
+   - `STRIPE_ARTICLE_PRICE_ID` = o Price ID do produto de compra avulsa.
+   - `ACCESS_TOKEN_SECRET` = qualquer string aleatória longa (ex. gerada em
+     [1password.com/password-generator](https://1password.com/password-generator) ou similar) — só
+     precisa ser difícil de adivinhar, você não vai precisar lembrar dela.
+7. **Settings → Bindings → Add binding** → tipo **KV Namespace** → crie uma nova (nome sugerido
+   `por-dentro-premium`) → **Variable name**: `PREMIUM_KV` (tem que ser exatamente esse nome).
+
+**No `/admin`** (o painel do site):
+
+8. Acesse `seudominio.com/admin` → coleção **"Assinatura de artigos premium"** → cole os dois Payment
+   Links do passo 5 (assinatura e compra avulsa) e o link do Customer Portal do passo 4 → Publish.
+
+**Teste**: marque um artigo como "premium" (se ainda não tiver nenhum), publique, e abra a página dele
+— os dois botões de pagamento devem aparecer. Um pagamento de teste real com [cartão de teste do
+Stripe](https://docs.stripe.com/testing#cards) (`4242 4242 4242 4242`, qualquer data futura e CVC)
+confirma o fluxo inteiro, do clique até o artigo desbloqueado.
+
 ---
 
 Alternativa via linha de comando (`wrangler`), se preferir a esse passo a passo pelo painel:
