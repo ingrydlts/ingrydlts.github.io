@@ -51,30 +51,44 @@ O site assume que vai rodar na raiz do domínio (links tipo `/produtos-digitais/
 
 **O que não está implementado:** o carrinho com múltiplos produtos que existia no mockup. Um Payment Link do Stripe é fixo por produto — pra um carrinho de verdade com Stripe (vários itens, uma cobrança só) é preciso montar a sessão de checkout dinamicamente, o que exige um backend leve (o Cloudflare Worker que a especificação já previa pra o webhook de entrega, seção 5.2). Por ora, cada produto tem sua própria página de venda com seu próprio botão — funciona hoje, sem servidor. Se quiser o carrinho funcionando de verdade depois, é a próxima peça a construir.
 
-## Artigos premium (assinatura via Stripe)
+## Artigos premium (assinatura ou compra avulsa via Stripe)
 
 Qualquer artigo do blog pode ser marcado como "premium" no `/admin` — o texto que fica no campo
 "Corpo do artigo" vira a prévia grátis, e a continuação paga é escrita à parte, em
 `seudominio.com/admin/premium/` (login com a mesma conta GitHub do `/admin`). O texto pago **nunca é
-salvo no repositório** — fica só numa KV do Cloudflare Worker, e só é entregue a quem prova ter
-assinatura ativa. Isso é proposital: `content/posts.json` é um arquivo público, então qualquer coisa
-salva ali (mesmo que a interface esconda) pode ser lida por qualquer pessoa.
+salvo no repositório** — fica só numa KV do Cloudflare Worker, e só é entregue a quem prova ter acesso.
+Isso é proposital: `content/posts.json` é um arquivo público, então qualquer coisa salva ali (mesmo que
+a interface esconda) pode ser lida por qualquer pessoa.
+
+A leitora vê **duas formas de desbloquear** um artigo premium: assinar (acesso a todos os artigos
+premium, cobrança recorrente) ou comprar só aquele artigo avulso (pagamento único, acesso permanente
+só àquele artigo). As duas usam o mesmo mecanismo por baixo — só muda o Payment Link e o que o token
+resultante cobre.
 
 Passo a passo de configuração:
 
-1. **No Stripe**: crie um produto com preço recorrente (ex. 4,99€/mês) e um **Payment Link** em modo
-   assinatura pra esse preço. Nas configurações "After payment" do Payment Link, use uma URL de
-   confirmação customizada apontando de volta pro artigo, incluindo `{CHECKOUT_SESSION_ID}` na query —
-   ex. `https://seudominio.com/artigos/post/?slug=nome-do-artigo&session_id={CHECKOUT_SESSION_ID}`.
+1. **No Stripe**, crie dois produtos e um Payment Link pra cada:
+   - Um preço **recorrente** (ex. 4,99€/mês) → Payment Link em **modo assinatura**.
+   - Um preço **único** (ex. 10€) → Payment Link em **modo pagamento único** (não assinatura).
+
+   Nas configurações "After payment" **dos dois links**, use a mesma URL de confirmação genérica:
+   `https://seudominio.com/artigos/assinatura-confirmada/?session_id={CHECKOUT_SESSION_ID}`. Essa
+   página do site troca o `session_id` pelo token de acesso e já redireciona a leitora de volta pro
+   artigo certo sozinha — não precisa (e não dá pra) configurar uma URL diferente por artigo, porque
+   o mesmo link é reaproveitado pra todos os artigos premium.
+
    Habilite também o **Customer Portal** (Settings → Billing → Customer portal) — é o link de
-   cancelamento self-service que a lei francesa exige (résiliation en trois clics, decreto nº 2023-663).
+   cancelamento self-service que a lei francesa exige pra assinaturas (résiliation en trois clics,
+   decreto nº 2023-663).
 2. **No Worker** ([`cms-oauth-worker/`](cms-oauth-worker/)), adicione em Settings → Variables and Secrets:
-   `STRIPE_SECRET_KEY` (chave secreta do Stripe), `STRIPE_PRICE_ID` (o Price ID da assinatura — evita
-   liberar acesso pra assinatura de outro produto Stripe) e `ACCESS_TOKEN_SECRET` (uma string aleatória
+   `STRIPE_SECRET_KEY` (chave secreta do Stripe), `STRIPE_PRICE_ID` (Price ID da assinatura),
+   `STRIPE_ARTICLE_PRICE_ID` (Price ID da compra avulsa — os dois evitam liberar acesso pra outro
+   produto Stripe que porventura exista na mesma conta) e `ACCESS_TOKEN_SECRET` (uma string aleatória
    qualquer, usada pra assinar os tokens de acesso). Em Settings → Bindings, crie uma KV namespace vazia
    e associe como `PREMIUM_KV`.
-3. **No `/admin`**: cole o Payment Link e o link do Customer Portal em "Assinatura de artigos premium"
-   (`content/premium-config.json`), e ajuste o texto do bloco de assinatura se quiser.
+3. **No `/admin`**: cole os dois Payment Links e o link do Customer Portal em "Assinatura de artigos
+   premium" (`content/premium-config.json`), e ajuste os textos/preços mostrados no bloco de
+   pagamento se quiser.
 4. Marque o artigo desejado como premium, escreva a prévia grátis normalmente, publique, e depois
    escreva a continuação paga em `/admin/premium/`.
 
@@ -83,10 +97,12 @@ os 6 artigos que já têm página própria (`/artigos/post/nome-do-artigo/`, HTM
 suporte a premium automaticamente. Se quiser tornar um desses premium, é um ajuste manual pontual naquela
 página específica.
 
-**Sem webhook do Stripe nesta versão**: o acesso é revalidado só quando alguém paga ou usa "já é
-assinante" — o token de acesso expira sozinho em 14 dias, forçando revalidação. Isso significa que, se
-uma pessoa cancelar ou tiver o pagamento recusado, o acesso pode continuar funcionando por até 14 dias
-até expirar — uma troca deliberada por simplicidade, mas fica registrado aqui pra não ser surpresa depois.
+**Sem webhook do Stripe nesta versão**: o acesso é revalidado só quando alguém paga ou usa "já assino
+ou já comprei" — o token de assinatura expira sozinho em 14 dias, forçando revalidação. Isso significa
+que, se uma pessoa cancelar a assinatura ou tiver o pagamento recusado, o acesso pode continuar
+funcionando por até 14 dias até expirar — uma troca deliberada por simplicidade, mas fica registrado
+aqui pra não ser surpresa depois. Já o token de **compra avulsa** não expira de propósito — é um
+pagamento único, sem cobrança recorrente pra reconferir, então o acesso àquele artigo é permanente.
 
 ## Configurar o /admin (Decap CMS)
 

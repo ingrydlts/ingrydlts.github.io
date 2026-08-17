@@ -132,7 +132,9 @@ collections:
         file: content/premium-config.json
         fields:
           - { label: "Link de pagamento do Stripe (modo assinatura)", name: stripePaymentLink, widget: string, required: false, hint: "Cole aqui o Payment Link criado no Stripe em modo assinatura — não o de compra avulsa." }
-          - { label: "Texto do preço (aparece no botão)", name: priceLabel, widget: string, default: "4,99€/mês" }
+          - { label: "Texto do preço da assinatura (aparece no botão)", name: priceLabel, widget: string, default: "4,99€/mês" }
+          - { label: "Link de pagamento do Stripe (compra avulsa, um artigo só)", name: articlePaymentLink, widget: string, required: false, hint: "Cole aqui o Payment Link criado no Stripe em modo pagamento único (não assinatura). É o mesmo link pra qualquer artigo — o site identifica sozinho qual artigo foi comprado." }
+          - { label: "Texto do preço da compra avulsa (aparece no botão)", name: articlePriceLabel, widget: string, default: "10€ (só este artigo)" }
           - { label: "Título do bloco de assinatura", name: paywallTitle, widget: string, default: "Continue lendo com a assinatura" }
           - { label: "Texto do bloco de assinatura", name: paywallBody, widget: text, default: "Assine para ter acesso completo a este e a outros artigos premium." }
           - { label: "Link do portal de gerenciamento (Stripe Customer Portal)", name: customerPortalUrl, widget: string, required: false, hint: "Link fixo para a assinante cancelar ou gerenciar a assinatura sozinha. Gere em Stripe → Settings → Billing → Customer portal." }

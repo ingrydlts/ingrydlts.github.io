@@ -10,20 +10,34 @@
  *    (protegidas — exigem token de alguém com permissão de escrita no
  *    repositório, o mesmo token que o /auth acima gera).
  *
- * 3. Paywall dos artigos premium (assinatura via Stripe).
- *    O texto pago nunca é commitado no repo — fica só no KV, servido apenas
- *    pra quem prova ter assinatura ativa. Rotas:
+ * 3. Paywall dos artigos premium — assinatura mensal OU compra avulsa por
+ *    artigo, via Stripe. O texto pago nunca é commitado no repo — fica só no
+ *    KV, servido apenas pra quem prova ter acesso (assinatura ativa ou compra
+ *    daquele artigo específico). Rotas:
  *      GET/POST/DELETE /api/premium/content   — escrita do texto pago (protegidas,
  *                                                usadas pelo painel /admin/premium/)
  *      POST /api/premium/verify-session       — público: troca um Checkout Session
- *                                                do Stripe por um token de acesso
- *      POST /api/premium/restore              — público: reemite token a partir do
- *                                                e-mail, pra quem já assina
+ *                                                do Stripe (assinatura OU compra
+ *                                                avulsa, detecta pelo `mode`) por
+ *                                                um token de acesso
+ *      POST /api/premium/restore              — público: reemite token(s) a partir
+ *                                                do e-mail — cobre tanto assinatura
+ *                                                ativa quanto artigos comprados
+ *                                                avulsos no passado
  *      GET  /api/premium/article              — exige Authorization: Bearer <token>,
- *                                                devolve o texto pago de um slug
- *    Sem webhook do Stripe: o status da assinatura só é reconferido quando um
- *    token é emitido; o token expira sozinho (ver TOKEN_TTL_SECONDS), forçando
- *    revalidação periódica em vez de revogação em tempo real.
+ *                                                devolve o texto pago de um slug se
+ *                                                o token cobrir esse slug
+ *    Dois tipos de token: assinatura (`scope: "all"`, cobre qualquer artigo
+ *    premium, expira em ~14 dias — sem webhook, é o que força revalidar) e
+ *    compra avulsa (`scope: "article", slug`, cobre só aquele artigo,
+ *    permanente — não tem cobrança recorrente pra reconferir).
+ *    Os dois links de pagamento do Stripe (assinatura e avulso) devem apontar,
+ *    depois do pagamento, pra mesma página de confirmação genérica do site
+ *    (`/artigos/assinatura-confirmada/?session_id={CHECKOUT_SESSION_ID}`), que
+ *    troca o session_id pelo token e redireciona de volta pro artigo certo
+ *    usando o `client_reference_id` — por isso o site sempre anexa
+ *    `?client_reference_id=<slug>` nos dois links antes de mandar a leitora
+ *    pro Stripe.
  *
  * Variáveis de ambiente necessárias (Settings → Variables and Secrets no Worker):
  *   GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET  — do GitHub OAuth App (ver README.md)
@@ -38,6 +52,9 @@
  *                                              da assinatura, pra confirmar que a
  *                                              assinatura ativa é a certa (e não
  *                                              algum outro produto Stripe).
+ *   STRIPE_ARTICLE_PRICE_ID                 — opcional, mas recomendado: Price ID
+ *                                              da compra avulsa por artigo, mesmo
+ *                                              motivo do STRIPE_PRICE_ID acima.
  *   ACCESS_TOKEN_SECRET                     — string aleatória qualquer, usada
  *                                              pra assinar os tokens de acesso
  *                                              premium (HMAC). Necessária pro
@@ -52,7 +69,8 @@ const REPO_NAME = 'ingrydlts.github.io';
 const REVIEWS_KEY = 'reviews_db';
 const RATING_VALUES = [1, 2, 3, 4, 5];
 const PREMIUM_KEY = 'premium_content';
-const TOKEN_TTL_SECONDS = 14 * 24 * 60 * 60; // 14 dias — sem webhook do Stripe, é isso que força revalidar
+const SUBSCRIPTION_TOKEN_TTL_SECONDS = 14 * 24 * 60 * 60; // 14 dias — sem webhook do Stripe, é isso que força revalidar
+const ARTICLE_TOKEN_TTL_SECONDS = 20 * 365 * 24 * 60 * 60; // compra avulsa: paga uma vez, acesso permanente na prática
 const ACTIVE_SUBSCRIPTION_STATUSES = ['active', 'trialing'];
 
 function renderCallbackPage(status, payload) {
@@ -141,15 +159,33 @@ function hmacKey(env) {
   );
 }
 
-async function mintAccessToken(email, env) {
-  const exp = Math.floor(Date.now() / 1000) + TOKEN_TTL_SECONDS;
-  const payloadB64 = bytesToBase64Url(new TextEncoder().encode(JSON.stringify({ email, exp })));
+async function mintAccessToken(payload, ttlSeconds, env) {
+  const exp = Math.floor(Date.now() / 1000) + ttlSeconds;
+  const payloadB64 = bytesToBase64Url(new TextEncoder().encode(JSON.stringify({ ...payload, exp })));
   const key = await hmacKey(env);
   const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(payloadB64));
   return payloadB64 + '.' + bytesToBase64Url(new Uint8Array(sig));
 }
 
-// Retorna { email, exp } se o token for válido e ainda não tiver expirado, senão null.
+// Token de assinatura: cobre qualquer artigo premium, expira em ~14 dias
+// (sem webhook do Stripe, é a expiração que força revalidar).
+function mintSubscriptionToken(email, env) {
+  return mintAccessToken({ email, scope: 'all' }, SUBSCRIPTION_TOKEN_TTL_SECONDS, env);
+}
+
+// Token de compra avulsa: cobre só um slug específico, "permanente" na prática
+// (não tem cobrança recorrente pra reconferir, então não faz sentido expirar cedo).
+function mintArticleToken(email, slug, env) {
+  return mintAccessToken({ email, scope: 'article', slug }, ARTICLE_TOKEN_TTL_SECONDS, env);
+}
+
+// Confere se um token dá acesso a um slug específico.
+function tokenCoversSlug(payload, slug) {
+  return payload.scope === 'all' || (payload.scope === 'article' && payload.slug === slug);
+}
+
+// Retorna o payload (email, scope, slug?, exp) se o token for válido e ainda
+// não tiver expirado, senão null.
 async function verifyAccessToken(token, env) {
   if (!token || typeof token !== 'string') return null;
   const parts = token.split('.');
@@ -196,6 +232,14 @@ function subscriptionMatchesPrice(subscription, env) {
   if (!env.STRIPE_PRICE_ID) return true;
   const priceIds = ((subscription.items && subscription.items.data) || []).map((item) => item.price && item.price.id);
   return priceIds.includes(env.STRIPE_PRICE_ID);
+}
+
+// Mesma ideia, mas pra line items de uma Checkout Session em modo pagamento
+// único (compra avulsa) — evita liberar acesso pra outro produto Stripe.
+function lineItemsMatchPrice(lineItems, env) {
+  if (!env.STRIPE_ARTICLE_PRICE_ID) return true;
+  const priceIds = ((lineItems && lineItems.data) || []).map((item) => item.price && item.price.id);
+  return priceIds.includes(env.STRIPE_ARTICLE_PRICE_ID);
 }
 
 async function getPremiumDB(env) {
@@ -448,25 +492,45 @@ async function handleVerifySession(request, env) {
   const { ok, data: session } = await stripeFetch(
     env,
     '/checkout/sessions/' + encodeURIComponent(sessionId),
-    'expand[]=subscription'
+    'expand[]=subscription&expand[]=line_items'
   );
-  if (!ok || !session || session.mode !== 'subscription') {
-    return json({ error: 'Sessão de pagamento inválida.' }, 400);
-  }
-
-  const subscription = session.subscription;
-  if (!subscription || !ACTIVE_SUBSCRIPTION_STATUSES.includes(subscription.status)) {
-    return json({ error: 'Assinatura ainda não está ativa.' }, 400);
-  }
-  if (!subscriptionMatchesPrice(subscription, env)) {
-    return json({ error: 'Assinatura não corresponde ao plano esperado.' }, 400);
-  }
+  if (!ok || !session) return json({ error: 'Sessão de pagamento inválida.' }, 400);
 
   const email = (session.customer_details && session.customer_details.email) || session.customer_email;
-  if (!email) return json({ error: 'Não foi possível identificar o e-mail da assinatura.' }, 400);
+  if (!email) return json({ error: 'Não foi possível identificar o e-mail do pagamento.' }, 400);
 
-  const token = await mintAccessToken(email, env);
-  return json({ token, email });
+  // client_reference_id carrega o slug do artigo em que a leitora clicou pra
+  // pagar — usado aqui pra saber pra onde redirecionar depois da confirmação
+  // (e, na compra avulsa, também define QUAL artigo o token cobre).
+  const returnSlug = session.client_reference_id || null;
+
+  if (session.mode === 'subscription') {
+    const subscription = session.subscription;
+    if (!subscription || !ACTIVE_SUBSCRIPTION_STATUSES.includes(subscription.status)) {
+      return json({ error: 'Assinatura ainda não está ativa.' }, 400);
+    }
+    if (!subscriptionMatchesPrice(subscription, env)) {
+      return json({ error: 'Assinatura não corresponde ao plano esperado.' }, 400);
+    }
+    const token = await mintSubscriptionToken(email, env);
+    return json({ token, email, scope: 'all', returnSlug });
+  }
+
+  if (session.mode === 'payment') {
+    if (session.payment_status !== 'paid') {
+      return json({ error: 'Pagamento ainda não confirmado.' }, 400);
+    }
+    if (!returnSlug) {
+      return json({ error: 'Não foi possível identificar qual artigo foi comprado.' }, 400);
+    }
+    if (!lineItemsMatchPrice(session.line_items, env)) {
+      return json({ error: 'Compra não corresponde ao produto esperado.' }, 400);
+    }
+    const token = await mintArticleToken(email, returnSlug, env);
+    return json({ token, email, scope: 'article', slug: returnSlug, returnSlug });
+  }
+
+  return json({ error: 'Modo de pagamento não suportado.' }, 400);
 }
 
 async function handleRestoreAccess(request, env) {
@@ -497,35 +561,59 @@ async function handleRestoreAccess(request, env) {
     env.PREMIUM_KV.put(emailKey, '1', { expirationTtl: 60 }),
   ]);
 
-  // Resposta genérica em qualquer caminho onde não achamos assinatura válida —
-  // não dá pra usar esse endpoint pra descobrir se um e-mail é assinante ou não.
+  // Resposta genérica em qualquer caminho onde não achamos nada — não dá pra
+  // usar esse endpoint pra descobrir se um e-mail tem acesso ou não.
   const genericResponse = () =>
     json({
       ok: true,
       found: false,
-      message: 'Se este e-mail tiver uma assinatura ativa, o acesso é liberado automaticamente. Caso contrário, nada acontece.',
+      message: 'Se este e-mail tiver assinatura ativa ou algum artigo comprado, o acesso é liberado automaticamente. Caso contrário, nada acontece.',
     });
 
   const { ok, data: customerList } = await stripeFetch(env, '/customers', 'email=' + encodeURIComponent(email) + '&limit=20');
   if (!ok || !customerList || !Array.isArray(customerList.data)) return genericResponse();
 
+  const tokens = [];
+
   for (const customer of customerList.data) {
+    // Assinatura ativa cobre qualquer artigo — basta achar uma.
+    let hasSubscription = false;
     for (const status of ACTIVE_SUBSCRIPTION_STATUSES) {
+      if (hasSubscription) break;
       const { ok: subOk, data: subList } = await stripeFetch(
         env,
         '/subscriptions',
         `customer=${encodeURIComponent(customer.id)}&status=${status}&limit=20`
       );
       if (!subOk || !subList || !Array.isArray(subList.data)) continue;
-      const match = subList.data.find((sub) => subscriptionMatchesPrice(sub, env));
-      if (match) {
-        const token = await mintAccessToken(email, env);
-        return json({ ok: true, found: true, token, email });
+      if (subList.data.some((sub) => subscriptionMatchesPrice(sub, env))) hasSubscription = true;
+    }
+    if (hasSubscription) {
+      tokens.push({ token: await mintSubscriptionToken(email, env), scope: 'all' });
+    }
+
+    // Compras avulsas: sessões de checkout em modo pagamento, pagas, com
+    // client_reference_id (o slug do artigo comprado).
+    const { ok: sessOk, data: sessList } = await stripeFetch(
+      env,
+      '/checkout/sessions',
+      `customer=${encodeURIComponent(customer.id)}&limit=100&expand[]=data.line_items`
+    );
+    if (sessOk && sessList && Array.isArray(sessList.data)) {
+      const seenSlugs = new Set();
+      for (const session of sessList.data) {
+        if (session.mode !== 'payment' || session.payment_status !== 'paid') continue;
+        const slug = session.client_reference_id;
+        if (!slug || seenSlugs.has(slug)) continue;
+        if (!lineItemsMatchPrice(session.line_items, env)) continue;
+        seenSlugs.add(slug);
+        tokens.push({ token: await mintArticleToken(email, slug, env), scope: 'article', slug });
       }
     }
   }
 
-  return genericResponse();
+  if (!tokens.length) return genericResponse();
+  return json({ ok: true, found: true, email, tokens });
 }
 
 // ---- Leitura do artigo premium (exige token válido) ----
@@ -538,6 +626,7 @@ async function handleGetPremiumArticle(request, env, url) {
   const token = auth.replace(/^Bearer\s+/i, '').trim();
   const payload = await verifyAccessToken(token, env);
   if (!payload) return json({ error: 'Acesso expirado ou inválido.' }, 401);
+  if (!tokenCoversSlug(payload, slug)) return json({ error: 'Este acesso não cobre este artigo.' }, 403);
 
   const db = await getPremiumDB(env);
   const articleBody = db[slug];

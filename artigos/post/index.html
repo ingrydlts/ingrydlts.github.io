@@ -86,16 +86,36 @@
   import { initBuyBox } from "/assets/js/purchase.js";
   import { fetchPremiumBody, verifySessionFromUrl, restoreAccess } from "/assets/js/premium.js";
 
+  // Anexa ?client_reference_id=<slug> ao link do Stripe — é assim que a sessão
+  // de checkout guarda de qual artigo veio, tanto pra saber pra onde
+  // redirecionar depois quanto (na compra avulsa) pra saber o que liberar.
+  function withReturnSlug(paymentLink, slug) {
+    if (!paymentLink) return "";
+    const sep = paymentLink.includes("?") ? "&" : "?";
+    return paymentLink + sep + "client_reference_id=" + encodeURIComponent(slug);
+  }
+
   function premiumGateHTML(cfg) {
     return (
-      '<div class="buy-box" id="premium-buybox" style="max-width:520px; margin:32px auto 0;">' +
+      '<div class="buy-box" style="max-width:520px; margin:32px auto 0;">' +
       '<span class="eyebrow" style="color:#604034;">' + escapeHtml(cfg.paywallTitle || "Continue lendo com a assinatura") + "</span>" +
       '<p class="muted" style="margin:6px 0 16px;">' + escapeHtml(cfg.paywallBody || "") + "</p>" +
+
+      '<div id="premium-buybox-sub" style="margin-bottom:22px; padding-bottom:22px; border-bottom:1px solid var(--borda);">' +
       '<label class="gate-checkbox"><input type="checkbox" data-gate-checkbox><span>Entendo que o acesso ao conteúdo é imediato e renuncio ao meu direito de retratação de 14 dias.</span></label>' +
       '<button class="btn btn-block" data-gate-button disabled style="background:#604034;">Assinar — ' + escapeHtml(cfg.priceLabel || "") + "</button>" +
       '<p class="gate-message" data-gate-message></p>' +
+      "</div>" +
+
+      '<div id="premium-buybox-article" style="margin-bottom:8px;">' +
+      '<p style="font-size:13px; font-weight:600; margin:0 0 8px;">Ou compre só este artigo</p>' +
+      '<label class="gate-checkbox"><input type="checkbox" data-gate-checkbox><span>Entendo que o acesso ao conteúdo é imediato e renuncio ao meu direito de retratação de 14 dias.</span></label>' +
+      '<button class="btn btn-block" data-gate-button disabled style="background:#8AACD2;">Comprar este artigo — ' + escapeHtml(cfg.articlePriceLabel || "") + "</button>" +
+      '<p class="gate-message" data-gate-message></p>' +
+      "</div>" +
+
       '<div style="margin-top:18px; padding-top:18px; border-top:1px solid var(--borda);">' +
-      '<p style="font-size:13px; font-weight:600; margin:0 0 8px;">Já é assinante?</p>' +
+      '<p style="font-size:13px; font-weight:600; margin:0 0 8px;">Já assina ou já comprou este artigo?</p>' +
       '<form id="premium-restore-form" style="display:flex; gap:8px; flex-wrap:wrap;">' +
       '<input type="email" required placeholder="seu@email.com" id="premium-restore-email" style="flex:1; min-width:180px; padding:9px 12px; border:1px solid var(--borda); border-radius:4px; font-family:var(--font-body); font-size:13px;">' +
       '<button type="submit" class="btn" style="padding:9px 16px; font-size:13px;">Recuperar acesso</button>' +
@@ -109,10 +129,12 @@
     );
   }
 
-  function wirePremiumGate(cfg, onUnlocked) {
-    const gate = document.getElementById("premium-buybox");
-    if (!gate) return;
-    initBuyBox(gate, cfg.stripePaymentLink);
+  function wirePremiumGate(cfg, slug, onUnlocked) {
+    const subBox = document.getElementById("premium-buybox-sub");
+    const articleBox = document.getElementById("premium-buybox-article");
+    if (!subBox || !articleBox) return;
+    initBuyBox(subBox, withReturnSlug(cfg.stripePaymentLink, slug));
+    initBuyBox(articleBox, withReturnSlug(cfg.articlePaymentLink, slug));
 
     const form = document.getElementById("premium-restore-form");
     const emailInput = document.getElementById("premium-restore-email");
@@ -164,7 +186,7 @@
       (result.reason === "not-ready"
         ? '<p class="muted" style="margin-top:10px;">Esse artigo ainda está sendo preparado — volte em breve.</p>'
         : "");
-    wirePremiumGate(cfg, function () {
+    wirePremiumGate(cfg, slug, function () {
       resolvePremiumSlot(slug);
     });
   }

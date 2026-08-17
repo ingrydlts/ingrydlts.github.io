@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pagamento confirmado — Por Dentro</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,600;9..144,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/css/style.css">
+<style>:root { --nav-active: #604034; }</style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="/" class="site-logo"><img src="/images/logo-por-dentro.png" alt="Por Dentro" class="site-logo-img">Por Dentro</a>
+  <nav class="site-nav" aria-label="Navegação principal">
+    <a href="/produtos-digitais/">Produtos digitais</a>
+    <a href="/produtos-de-estudo/">Produtos de estudo</a>
+    <a href="/produtos-de-compras/">Produtos de compras</a>
+    <a href="/artigos/">Blog</a>
+    <a href="/sobre/">Sobre</a>
+  </nav>
+  <button class="nav-toggle" aria-label="Abrir menu" aria-expanded="false">
+    <span></span><span></span><span></span>
+  </button>
+</header>
+<nav class="mobile-nav" aria-label="Navegação mobile">
+  <a href="/produtos-digitais/">Produtos digitais</a>
+  <a href="/produtos-de-estudo/">Produtos de estudo</a>
+  <a href="/produtos-de-compras/">Produtos de compras</a>
+  <a href="/artigos/">Blog</a>
+  <a href="/sobre/">Sobre</a>
+</nav>
+
+<main>
+  <div class="container" style="max-width:560px; padding:72px 24px; text-align:center;">
+    <div id="confirm-root">
+      <p class="muted">Confirmando pagamento…</p>
+    </div>
+  </div>
+</main>
+
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-grid">
+      <div>
+        <div class="site-logo" style="color:#F4F1EC; margin-bottom:14px;"><img src="/images/logo-por-dentro.png" alt="Por Dentro" class="site-logo-img">Por Dentro</div>
+        <p style="color:#A8A29C; max-width:32ch; font-size:13px;">Templates, indicações de estudo e de compras para quem vive a vida real fora do Brasil.</p>
+      </div>
+      <div>
+        <div class="footer-col-title">Navegação</div>
+        <div class="footer-links">
+          <a href="/produtos-digitais/">Produtos digitais</a>
+          <a href="/produtos-de-estudo/">Produtos de estudo</a>
+          <a href="/produtos-de-compras/">Produtos de compras</a>
+          <a href="/artigos/">Blog</a>
+          <a href="/sobre/">Sobre</a>
+        </div>
+      </div>
+      <div>
+        <div class="footer-col-title">Legal</div>
+        <div class="footer-links">
+          <a href="/mentions-legales/">Mentions légales</a>
+          <a href="/cgv/">CGV</a>
+          <a href="/confidentialite/">Confidentialité</a>
+        </div>
+      </div>
+      <div>
+        <div class="footer-col-title">Redes</div>
+        <div class="footer-links"><a href="https://instagram.com/" target="_blank" rel="noopener">@ingryd.pordentro</a></div>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>© Por Dentro · France</span>
+      <span>Feito por quem vive isso.</span>
+    </div>
+  </div>
+</footer>
+
+<script src="/assets/js/main.js"></script>
+<script type="module">
+  import { verifySessionFromUrl } from "/assets/js/premium.js";
+
+  (async function () {
+    const root = document.getElementById("confirm-root");
+    const result = await verifySessionFromUrl();
+
+    if (!result) {
+      root.innerHTML =
+        '<p class="empty-state">Não foi possível confirmar o pagamento agora. Se você já pagou, abra o artigo de novo — o acesso costuma aparecer sozinho.</p>' +
+        '<p style="margin-top:16px;"><a class="btn" href="/artigos/">Ver o blog</a></p>';
+      return;
+    }
+
+    if (result.returnSlug) {
+      root.innerHTML = '<p class="muted">Pagamento confirmado! Levando você de volta ao artigo…</p>';
+      window.location.replace("/artigos/post/?slug=" + encodeURIComponent(result.returnSlug));
+      return;
+    }
+
+    root.innerHTML =
+      '<p><strong>Pagamento confirmado!</strong> Seu acesso já está liberado.</p>' +
+      '<p style="margin-top:16px;"><a class="btn" href="/artigos/">Ver o blog</a></p>';
+  })();
+</script>
+</body>
+</html>
