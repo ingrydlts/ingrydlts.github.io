@@ -120,7 +120,22 @@ collections:
               - { label: "Foto de capa", name: image, widget: image, required: false, hint: "Tamanho ideal: 1600×900px (proporção 16:9), foto na horizontal e bem ampla. A mesma foto aparece cortada no card do blog (mais quadrada) e larga no topo do artigo — por isso precisa ser bem panorâmica." }
               - { label: "Data de publicação", name: date, widget: datetime, format: "YYYY-MM-DD", date_format: "YYYY-MM-DD", time_format: false }
               - { label: "Tempo de leitura (min)", name: readMinutes, widget: number, required: false }
-              - { label: "Corpo do artigo", name: body, widget: markdown, hint: "Use ## para subtítulo, - para lista, **negrito**, [texto](link)." }
+              - { label: "Corpo do artigo", name: body, widget: markdown, hint: "Use ## para subtítulo, - para lista, **negrito**, [texto](link). Se o artigo for premium, este texto é a prévia gratuita — a continuação paga é escrita à parte, em /admin/premium/." }
+              - { label: "Artigo premium (assinatura)", name: premium, widget: boolean, default: false, required: false, hint: "Marque para exigir assinatura pra ler o conteúdo completo. O texto pago não fica aqui — escreva-o no painel /admin/premium/ depois de salvar este artigo." }
+              - { label: "URL fixa (não editar manualmente)", name: url, widget: string, required: false, hint: "Usado internamente para os artigos que têm página própria. Deixe como está — não apague nem edite este campo." }
+
+  - name: premium_config
+    label: "Assinatura de artigos premium"
+    files:
+      - name: premium_config
+        label: "Configuração da assinatura"
+        file: content/premium-config.json
+        fields:
+          - { label: "Link de pagamento do Stripe (modo assinatura)", name: stripePaymentLink, widget: string, required: false, hint: "Cole aqui o Payment Link criado no Stripe em modo assinatura — não o de compra avulsa." }
+          - { label: "Texto do preço (aparece no botão)", name: priceLabel, widget: string, default: "4,99€/mês" }
+          - { label: "Título do bloco de assinatura", name: paywallTitle, widget: string, default: "Continue lendo com a assinatura" }
+          - { label: "Texto do bloco de assinatura", name: paywallBody, widget: text, default: "Assine para ter acesso completo a este e a outros artigos premium." }
+          - { label: "Link do portal de gerenciamento (Stripe Customer Portal)", name: customerPortalUrl, widget: string, required: false, hint: "Link fixo para a assinante cancelar ou gerenciar a assinatura sozinha. Gere em Stripe → Settings → Billing → Customer portal." }
 
   - name: banners
     label: "Banners e destaques"

@@ -51,6 +51,43 @@ O site assume que vai rodar na raiz do domínio (links tipo `/produtos-digitais/
 
 **O que não está implementado:** o carrinho com múltiplos produtos que existia no mockup. Um Payment Link do Stripe é fixo por produto — pra um carrinho de verdade com Stripe (vários itens, uma cobrança só) é preciso montar a sessão de checkout dinamicamente, o que exige um backend leve (o Cloudflare Worker que a especificação já previa pra o webhook de entrega, seção 5.2). Por ora, cada produto tem sua própria página de venda com seu próprio botão — funciona hoje, sem servidor. Se quiser o carrinho funcionando de verdade depois, é a próxima peça a construir.
 
+## Artigos premium (assinatura via Stripe)
+
+Qualquer artigo do blog pode ser marcado como "premium" no `/admin` — o texto que fica no campo
+"Corpo do artigo" vira a prévia grátis, e a continuação paga é escrita à parte, em
+`seudominio.com/admin/premium/` (login com a mesma conta GitHub do `/admin`). O texto pago **nunca é
+salvo no repositório** — fica só numa KV do Cloudflare Worker, e só é entregue a quem prova ter
+assinatura ativa. Isso é proposital: `content/posts.json` é um arquivo público, então qualquer coisa
+salva ali (mesmo que a interface esconda) pode ser lida por qualquer pessoa.
+
+Passo a passo de configuração:
+
+1. **No Stripe**: crie um produto com preço recorrente (ex. 4,99€/mês) e um **Payment Link** em modo
+   assinatura pra esse preço. Nas configurações "After payment" do Payment Link, use uma URL de
+   confirmação customizada apontando de volta pro artigo, incluindo `{CHECKOUT_SESSION_ID}` na query —
+   ex. `https://seudominio.com/artigos/post/?slug=nome-do-artigo&session_id={CHECKOUT_SESSION_ID}`.
+   Habilite também o **Customer Portal** (Settings → Billing → Customer portal) — é o link de
+   cancelamento self-service que a lei francesa exige (résiliation en trois clics, decreto nº 2023-663).
+2. **No Worker** ([`cms-oauth-worker/`](cms-oauth-worker/)), adicione em Settings → Variables and Secrets:
+   `STRIPE_SECRET_KEY` (chave secreta do Stripe), `STRIPE_PRICE_ID` (o Price ID da assinatura — evita
+   liberar acesso pra assinatura de outro produto Stripe) e `ACCESS_TOKEN_SECRET` (uma string aleatória
+   qualquer, usada pra assinar os tokens de acesso). Em Settings → Bindings, crie uma KV namespace vazia
+   e associe como `PREMIUM_KV`.
+3. **No `/admin`**: cole o Payment Link e o link do Customer Portal em "Assinatura de artigos premium"
+   (`content/premium-config.json`), e ajuste o texto do bloco de assinatura se quiser.
+4. Marque o artigo desejado como premium, escreva a prévia grátis normalmente, publique, e depois
+   escreva a continuação paga em `/admin/premium/`.
+
+**Limitação atual**: isso só funciona pra artigos que usam o template dinâmico (`/artigos/post/?slug=`) —
+os 6 artigos que já têm página própria (`/artigos/post/nome-do-artigo/`, HTML gerado à mão) não ganham
+suporte a premium automaticamente. Se quiser tornar um desses premium, é um ajuste manual pontual naquela
+página específica.
+
+**Sem webhook do Stripe nesta versão**: o acesso é revalidado só quando alguém paga ou usa "já é
+assinante" — o token de acesso expira sozinho em 14 dias, forçando revalidação. Isso significa que, se
+uma pessoa cancelar ou tiver o pagamento recusado, o acesso pode continuar funcionando por até 14 dias
+até expirar — uma troca deliberada por simplicidade, mas fica registrado aqui pra não ser surpresa depois.
+
 ## Configurar o /admin (Decap CMS)
 
 O `/admin` é um painel visual (Decap CMS) pra editar produtos, banners e posts sem mexer em código, com login via GitHub (proxy OAuth em [`cms-oauth-worker/`](cms-oauth-worker/)) — **já publicado e funcionando** em `ingrydlts.github.io/admin`. Editar um produto/banner/post e clicar em "Publish" cria um commit direto no repositório.

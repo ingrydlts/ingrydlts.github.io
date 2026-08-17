@@ -1,5 +1,5 @@
 /**
- * Worker único que serve duas coisas pro site Por Dentro:
+ * Worker único que serve o que o site Por Dentro precisa:
  *
  * 1. Proxy OAuth entre o Decap CMS (/admin) e o GitHub.
  *    Rotas: /auth (inicia o login) e /callback (troca o code pelo token).
@@ -10,6 +10,21 @@
  *    (protegidas — exigem token de alguém com permissão de escrita no
  *    repositório, o mesmo token que o /auth acima gera).
  *
+ * 3. Paywall dos artigos premium (assinatura via Stripe).
+ *    O texto pago nunca é commitado no repo — fica só no KV, servido apenas
+ *    pra quem prova ter assinatura ativa. Rotas:
+ *      GET/POST/DELETE /api/premium/content   — escrita do texto pago (protegidas,
+ *                                                usadas pelo painel /admin/premium/)
+ *      POST /api/premium/verify-session       — público: troca um Checkout Session
+ *                                                do Stripe por um token de acesso
+ *      POST /api/premium/restore              — público: reemite token a partir do
+ *                                                e-mail, pra quem já assina
+ *      GET  /api/premium/article              — exige Authorization: Bearer <token>,
+ *                                                devolve o texto pago de um slug
+ *    Sem webhook do Stripe: o status da assinatura só é reconferido quando um
+ *    token é emitido; o token expira sozinho (ver TOKEN_TTL_SECONDS), forçando
+ *    revalidação periódica em vez de revogação em tempo real.
+ *
  * Variáveis de ambiente necessárias (Settings → Variables and Secrets no Worker):
  *   GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET  — do GitHub OAuth App (ver README.md)
  *   RESEND_API_KEY, NOTIFY_EMAIL            — opcionais: avisam por e-mail toda
@@ -17,14 +32,28 @@
  *                                              (ver README.md). Sem elas, as
  *                                              avaliações continuam funcionando
  *                                              normalmente, só não avisam.
- * Binding de KV necessário (Settings → Bindings):
- *   REVIEWS_KV — namespace vazia, só usada por este Worker
+ *   STRIPE_SECRET_KEY                       — chave secreta do Stripe (sk_...),
+ *                                              necessária pro paywall funcionar.
+ *   STRIPE_PRICE_ID                         — opcional, mas recomendado: Price ID
+ *                                              da assinatura, pra confirmar que a
+ *                                              assinatura ativa é a certa (e não
+ *                                              algum outro produto Stripe).
+ *   ACCESS_TOKEN_SECRET                     — string aleatória qualquer, usada
+ *                                              pra assinar os tokens de acesso
+ *                                              premium (HMAC). Necessária pro
+ *                                              paywall funcionar.
+ * Bindings de KV necessários (Settings → Bindings):
+ *   REVIEWS_KV — namespace vazia, usada pelas avaliações
+ *   PREMIUM_KV — namespace vazia, usada pelo texto pago dos artigos premium
  */
 
 const REPO_OWNER = 'ingrydlts';
 const REPO_NAME = 'ingrydlts.github.io';
 const REVIEWS_KEY = 'reviews_db';
 const RATING_VALUES = [1, 2, 3, 4, 5];
+const PREMIUM_KEY = 'premium_content';
+const TOKEN_TTL_SECONDS = 14 * 24 * 60 * 60; // 14 dias — sem webhook do Stripe, é isso que força revalidar
+const ACTIVE_SUBSCRIPTION_STATUSES = ['active', 'trialing'];
 
 function renderCallbackPage(status, payload) {
   const message = `authorization:github:${status}:${JSON.stringify(payload)}`;
@@ -84,6 +113,98 @@ function summarize(reviews) {
 
 function escapeHtml(str) {
   return String(str == null ? '' : str).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+// ---- Token de acesso premium (HMAC assinado, sem estado no servidor) ----
+
+function bytesToBase64Url(bytes) {
+  let bin = '';
+  for (const b of bytes) bin += String.fromCharCode(b);
+  return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+function base64UrlToBytes(str) {
+  const padded = str.replace(/-/g, '+').replace(/_/g, '/') + '='.repeat((4 - (str.length % 4)) % 4);
+  const bin = atob(padded);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return bytes;
+}
+
+function hmacKey(env) {
+  return crypto.subtle.importKey(
+    'raw',
+    new TextEncoder().encode(env.ACCESS_TOKEN_SECRET),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign', 'verify']
+  );
+}
+
+async function mintAccessToken(email, env) {
+  const exp = Math.floor(Date.now() / 1000) + TOKEN_TTL_SECONDS;
+  const payloadB64 = bytesToBase64Url(new TextEncoder().encode(JSON.stringify({ email, exp })));
+  const key = await hmacKey(env);
+  const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(payloadB64));
+  return payloadB64 + '.' + bytesToBase64Url(new Uint8Array(sig));
+}
+
+// Retorna { email, exp } se o token for válido e ainda não tiver expirado, senão null.
+async function verifyAccessToken(token, env) {
+  if (!token || typeof token !== 'string') return null;
+  const parts = token.split('.');
+  if (parts.length !== 2) return null;
+  const [payloadB64, sigB64] = parts;
+
+  let valid = false;
+  try {
+    const key = await hmacKey(env);
+    valid = await crypto.subtle.verify(
+      'HMAC',
+      key,
+      base64UrlToBytes(sigB64),
+      new TextEncoder().encode(payloadB64)
+    );
+  } catch {
+    return null;
+  }
+  if (!valid) return null;
+
+  let payload;
+  try {
+    payload = JSON.parse(new TextDecoder().decode(base64UrlToBytes(payloadB64)));
+  } catch {
+    return null;
+  }
+  if (!payload.email || !payload.exp || payload.exp < Math.floor(Date.now() / 1000)) return null;
+  return payload;
+}
+
+// ---- Stripe (chamadas simples via REST, sem SDK) ----
+
+async function stripeFetch(env, path, query) {
+  const url = new URL('https://api.stripe.com/v1' + path);
+  if (query) url.search = query;
+  const res = await fetch(url.toString(), { headers: { Authorization: `Bearer ${env.STRIPE_SECRET_KEY}` } });
+  const data = await res.json().catch(() => ({}));
+  return { ok: res.ok, data };
+}
+
+// Confere se uma subscription bate com o price configurado (se STRIPE_PRICE_ID
+// estiver setado) — evita liberar acesso pra assinatura de outro produto Stripe.
+function subscriptionMatchesPrice(subscription, env) {
+  if (!env.STRIPE_PRICE_ID) return true;
+  const priceIds = ((subscription.items && subscription.items.data) || []).map((item) => item.price && item.price.id);
+  return priceIds.includes(env.STRIPE_PRICE_ID);
+}
+
+async function getPremiumDB(env) {
+  const raw = await env.PREMIUM_KV.get(PREMIUM_KEY);
+  return raw ? JSON.parse(raw) : {};
+}
+
+async function savePremiumDB(env, db) {
+  await env.PREMIUM_KV.put(PREMIUM_KEY, JSON.stringify(db));
 }
 
 // Avisa por e-mail (via Resend) que chegou avaliação pendente. Silenciosa se
@@ -263,6 +384,168 @@ async function handleModerate(request, env) {
   return json({ ok: true });
 }
 
+// ---- Painel /admin/premium/ — escrita do texto pago, protegida igual à moderação ----
+
+async function handleListPremiumContent(request, env) {
+  const moderator = await requireCollaborator(request, env);
+  if (!moderator) return json({ error: 'Sem permissão. Faça login com uma conta que tem acesso ao repositório.' }, 401);
+
+  const db = await getPremiumDB(env);
+  return json({ items: db });
+}
+
+async function handleSavePremiumContent(request, env) {
+  const moderator = await requireCollaborator(request, env);
+  if (!moderator) return json({ error: 'Sem permissão. Faça login com uma conta que tem acesso ao repositório.' }, 401);
+
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return json({ error: 'JSON inválido.' }, 400);
+  }
+  const slug = String(body.slug || '').trim().slice(0, 100);
+  const text = String(body.body || '');
+  if (!slug) return json({ error: 'Faltou o slug do artigo.' }, 400);
+  if (!text.trim()) return json({ error: 'O conteúdo não pode ficar vazio.' }, 400);
+
+  const db = await getPremiumDB(env);
+  db[slug] = text;
+  await savePremiumDB(env, db);
+
+  return json({ ok: true });
+}
+
+async function handleDeletePremiumContent(request, env, url) {
+  const moderator = await requireCollaborator(request, env);
+  if (!moderator) return json({ error: 'Sem permissão. Faça login com uma conta que tem acesso ao repositório.' }, 401);
+
+  const slug = url.searchParams.get('slug');
+  if (!slug) return json({ error: 'Faltou o parâmetro "slug".' }, 400);
+
+  const db = await getPremiumDB(env);
+  delete db[slug];
+  await savePremiumDB(env, db);
+
+  return json({ ok: true });
+}
+
+// ---- Checkout e restauração de acesso (público) ----
+
+async function handleVerifySession(request, env) {
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return json({ error: 'JSON inválido.' }, 400);
+  }
+  const sessionId = String(body.session_id || '').trim();
+  if (!sessionId) return json({ error: 'Faltou o parâmetro "session_id".' }, 400);
+  if (!env.STRIPE_SECRET_KEY || !env.ACCESS_TOKEN_SECRET) {
+    return json({ error: 'Assinatura ainda não configurada neste site.' }, 500);
+  }
+
+  const { ok, data: session } = await stripeFetch(
+    env,
+    '/checkout/sessions/' + encodeURIComponent(sessionId),
+    'expand[]=subscription'
+  );
+  if (!ok || !session || session.mode !== 'subscription') {
+    return json({ error: 'Sessão de pagamento inválida.' }, 400);
+  }
+
+  const subscription = session.subscription;
+  if (!subscription || !ACTIVE_SUBSCRIPTION_STATUSES.includes(subscription.status)) {
+    return json({ error: 'Assinatura ainda não está ativa.' }, 400);
+  }
+  if (!subscriptionMatchesPrice(subscription, env)) {
+    return json({ error: 'Assinatura não corresponde ao plano esperado.' }, 400);
+  }
+
+  const email = (session.customer_details && session.customer_details.email) || session.customer_email;
+  if (!email) return json({ error: 'Não foi possível identificar o e-mail da assinatura.' }, 400);
+
+  const token = await mintAccessToken(email, env);
+  return json({ token, email });
+}
+
+async function handleRestoreAccess(request, env) {
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return json({ error: 'JSON inválido.' }, 400);
+  }
+  const email = String(body.email || '').trim().toLowerCase().slice(0, 200);
+  if (!email || !email.includes('@')) return json({ error: 'Digite um e-mail válido.' }, 400);
+  if (!env.STRIPE_SECRET_KEY || !env.ACCESS_TOKEN_SECRET) {
+    return json({ error: 'Assinatura ainda não configurada neste site.' }, 500);
+  }
+
+  // Throttle por IP e por e-mail — o segundo evita que alguém teste um e-mail
+  // específico repetidas vezes de IPs diferentes pra tentar adivinhar assinantes.
+  const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
+  const ipKey = `throttle:restore:ip:${ip}`;
+  const emailKey = `throttle:restore:email:${email}`;
+  const [ipThrottled, emailThrottled] = await Promise.all([
+    env.PREMIUM_KV.get(ipKey),
+    env.PREMIUM_KV.get(emailKey),
+  ]);
+  if (ipThrottled || emailThrottled) return json({ error: 'Aguarde um minuto antes de tentar de novo.' }, 429);
+  await Promise.all([
+    env.PREMIUM_KV.put(ipKey, '1', { expirationTtl: 60 }),
+    env.PREMIUM_KV.put(emailKey, '1', { expirationTtl: 60 }),
+  ]);
+
+  // Resposta genérica em qualquer caminho onde não achamos assinatura válida —
+  // não dá pra usar esse endpoint pra descobrir se um e-mail é assinante ou não.
+  const genericResponse = () =>
+    json({
+      ok: true,
+      found: false,
+      message: 'Se este e-mail tiver uma assinatura ativa, o acesso é liberado automaticamente. Caso contrário, nada acontece.',
+    });
+
+  const { ok, data: customerList } = await stripeFetch(env, '/customers', 'email=' + encodeURIComponent(email) + '&limit=20');
+  if (!ok || !customerList || !Array.isArray(customerList.data)) return genericResponse();
+
+  for (const customer of customerList.data) {
+    for (const status of ACTIVE_SUBSCRIPTION_STATUSES) {
+      const { ok: subOk, data: subList } = await stripeFetch(
+        env,
+        '/subscriptions',
+        `customer=${encodeURIComponent(customer.id)}&status=${status}&limit=20`
+      );
+      if (!subOk || !subList || !Array.isArray(subList.data)) continue;
+      const match = subList.data.find((sub) => subscriptionMatchesPrice(sub, env));
+      if (match) {
+        const token = await mintAccessToken(email, env);
+        return json({ ok: true, found: true, token, email });
+      }
+    }
+  }
+
+  return genericResponse();
+}
+
+// ---- Leitura do artigo premium (exige token válido) ----
+
+async function handleGetPremiumArticle(request, env, url) {
+  const slug = url.searchParams.get('slug');
+  if (!slug) return json({ error: 'Faltou o parâmetro "slug".' }, 400);
+
+  const auth = request.headers.get('Authorization') || '';
+  const token = auth.replace(/^Bearer\s+/i, '').trim();
+  const payload = await verifyAccessToken(token, env);
+  if (!payload) return json({ error: 'Acesso expirado ou inválido.' }, 401);
+
+  const db = await getPremiumDB(env);
+  const articleBody = db[slug];
+  if (!articleBody) return json({ error: 'Conteúdo ainda não disponível.' }, 404);
+
+  return json({ body: articleBody });
+}
+
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
@@ -324,6 +607,24 @@ export default {
       }
       if (url.pathname === '/api/reviews/moderate' && request.method === 'POST') {
         return await handleModerate(request, env);
+      }
+      if (url.pathname === '/api/premium/content' && request.method === 'GET') {
+        return await handleListPremiumContent(request, env);
+      }
+      if (url.pathname === '/api/premium/content' && request.method === 'POST') {
+        return await handleSavePremiumContent(request, env);
+      }
+      if (url.pathname === '/api/premium/content' && request.method === 'DELETE') {
+        return await handleDeletePremiumContent(request, env, url);
+      }
+      if (url.pathname === '/api/premium/verify-session' && request.method === 'POST') {
+        return await handleVerifySession(request, env);
+      }
+      if (url.pathname === '/api/premium/restore' && request.method === 'POST') {
+        return await handleRestoreAccess(request, env);
+      }
+      if (url.pathname === '/api/premium/article' && request.method === 'GET') {
+        return await handleGetPremiumArticle(request, env, url);
       }
     } catch (err) {
       return json({ error: 'Erro interno.', detail: String(err) }, 500);

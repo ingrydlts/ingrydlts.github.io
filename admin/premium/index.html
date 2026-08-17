@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Conteúdo premium — Por Dentro</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,600;9..144,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/css/style.css">
+<style>
+  .prem-wrap { max-width: 760px; margin: 0 auto; padding: 48px 24px 96px; }
+  .prem-head { margin-bottom: 32px; }
+  .prem-login { background: #fff; border: 1px solid var(--borda); border-radius: 8px; padding: 32px; text-align: center; }
+  .prem-login[hidden] { display: none; }
+  .prem-list[hidden] { display: none; }
+  .prem-card { background: #fff; border: 1px solid var(--borda); border-radius: 8px; padding: 20px 22px; margin-bottom: 16px; }
+  .prem-card-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 4px; flex-wrap: wrap; }
+  .prem-title { font-weight: 700; font-size: 15px; }
+  .prem-slug { font-size: 11.5px; color: var(--texto-secundario); font-family: monospace; }
+  .prem-status { font-size: 12px; font-weight: 600; margin-bottom: 12px; }
+  .prem-status.is-empty { color: var(--merlot); }
+  .prem-status.is-saved { color: var(--verde-moss); }
+  .prem-textarea { width: 100%; min-height: 220px; font-family: var(--font-body); font-size: 14px; line-height: 1.6; padding: 12px; border: 1px solid var(--borda); border-radius: 6px; resize: vertical; box-sizing: border-box; }
+  .prem-actions { display: flex; gap: 10px; margin-top: 12px; align-items: center; }
+  .prem-btn { font-family: var(--font-body); font-weight: 600; font-size: 13px; padding: 9px 16px; border-radius: 4px; border: 1px solid var(--borda); background: #fff; cursor: pointer; }
+  .prem-btn.save { background: var(--verde-moss); border-color: var(--verde-moss); color: #fff; }
+  .prem-btn.remove { color: var(--merlot); border-color: var(--merlot); }
+  .prem-btn:disabled { opacity: .6; cursor: default; }
+  .prem-empty { color: var(--texto-secundario); font-size: 14px; padding: 24px 0; }
+  .prem-error { color: var(--merlot); font-size: 13px; margin-top: 14px; }
+  .prem-hint { font-size: 12px; color: var(--texto-secundario); margin: 0 0 10px; }
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="/" class="site-logo"><img src="/images/logo-por-dentro.png" alt="Por Dentro" class="site-logo-img">Por Dentro</a>
+</header>
+
+<main class="prem-wrap">
+  <div class="prem-head">
+    <span class="eyebrow" style="color:#604034;">Painel interno</span>
+    <h1 style="margin-bottom:6px;">Conteúdo premium</h1>
+    <p class="muted" style="margin:0;">Escreva aqui a continuação paga de cada artigo marcado como "premium" no /admin. Esse texto <strong>não vai pro GitHub</strong> — fica só neste painel, e só é entregue pra quem provar assinatura ativa.</p>
+  </div>
+
+  <div class="prem-login" id="prem-login">
+    <p class="muted" style="margin-bottom:16px;">Entre com a mesma conta do GitHub usada no <code>/admin</code>.</p>
+    <button class="btn" id="prem-login-btn">Entrar com GitHub</button>
+    <p class="prem-error" id="prem-login-error"></p>
+  </div>
+
+  <div id="prem-list" hidden>
+    <p class="prem-hint" id="prem-status">Carregando artigos premium…</p>
+    <div id="prem-cards"></div>
+  </div>
+</main>
+
+<script>
+  // Mesma URL do Worker configurada em admin/config.yml (base_url).
+  var WORKER_BASE = "https://por-dentro-cms-oauth.ingrydigitalmanagement.workers.dev";
+
+  var token = null;
+  var popup = null;
+
+  var loginBox = document.getElementById("prem-login");
+  var loginBtn = document.getElementById("prem-login-btn");
+  var loginError = document.getElementById("prem-login-error");
+  var listBox = document.getElementById("prem-list");
+  var statusEl = document.getElementById("prem-status");
+  var cardsEl = document.getElementById("prem-cards");
+
+  loginBtn.addEventListener("click", function () {
+    loginError.textContent = "";
+    popup = window.open(WORKER_BASE + "/auth", "github-oauth", "width=600,height=700");
+    window.addEventListener("message", handleAuthMessage);
+  });
+
+  function handleAuthMessage(e) {
+    if (e.data === "authorizing:github") {
+      if (popup) popup.postMessage("confirm", "*");
+      return;
+    }
+    if (typeof e.data === "string" && e.data.indexOf("authorization:github:") === 0) {
+      window.removeEventListener("message", handleAuthMessage);
+      var rest = e.data.slice("authorization:github:".length);
+      var sep = rest.indexOf(":");
+      var status = rest.slice(0, sep);
+      var payload;
+      try { payload = JSON.parse(rest.slice(sep + 1)); } catch (err) { payload = {}; }
+      if (popup) { popup.close(); popup = null; }
+
+      if (status === "success" && payload.token) {
+        token = payload.token;
+        onLoggedIn();
+      } else {
+        loginError.textContent = payload.message || "Não foi possível entrar com o GitHub.";
+      }
+    }
+  }
+
+  function onLoggedIn() {
+    loginBox.hidden = true;
+    listBox.hidden = false;
+    loadAll();
+  }
+
+  function loadAll() {
+    statusEl.textContent = "Carregando artigos premium…";
+    cardsEl.innerHTML = "";
+
+    Promise.all([
+      fetch("/content/posts.json", { cache: "no-store" }).then(function (r) { return r.json(); }),
+      fetch(WORKER_BASE + "/api/premium/content", { headers: { Authorization: "Bearer " + token } }).then(function (r) {
+        if (!r.ok) throw new Error(r.status === 401 ? "Essa conta não tem permissão de escrita no repositório." : "Falha ao carregar o conteúdo premium.");
+        return r.json();
+      }),
+    ]).then(function (results) {
+      var posts = (results[0].items || []).filter(function (p) { return p.premium; });
+      var contentDB = results[1].items || {};
+      renderAll(posts, contentDB);
+    }).catch(function (err) {
+      statusEl.textContent = "";
+      cardsEl.innerHTML = '<p class="prem-error">' + escapeHtml(err.message) + "</p>";
+    });
+  }
+
+  function renderAll(posts, contentDB) {
+    if (!posts.length) {
+      statusEl.textContent = "";
+      cardsEl.innerHTML = '<p class="prem-empty">Nenhum artigo está marcado como premium ainda. Marque a caixa "Artigo premium" em /admin, na edição do artigo, e ele aparece aqui.</p>';
+      return;
+    }
+    statusEl.textContent = posts.length + " artigo(s) marcado(s) como premium.";
+    cardsEl.innerHTML = "";
+    posts.forEach(function (post) {
+      cardsEl.appendChild(buildCard(post, contentDB[post.slug] || ""));
+    });
+  }
+
+  function buildCard(post, savedBody) {
+    var card = document.createElement("div");
+    card.className = "prem-card";
+
+    var hasSaved = savedBody.trim().length > 0;
+    card.innerHTML =
+      '<div class="prem-card-head">' +
+        '<span class="prem-title">' + escapeHtml(post.title) + "</span>" +
+        '<span class="prem-slug">' + escapeHtml(post.slug) + "</span>" +
+      "</div>" +
+      '<p class="prem-status ' + (hasSaved ? "is-saved" : "is-empty") + '">' +
+        (hasSaved ? "Conteúdo pago salvo." : "Ainda sem conteúdo pago — a leitora só vê a prévia grátis.") +
+      "</p>" +
+      '<textarea class="prem-textarea" placeholder="Escreva aqui a continuação paga do artigo, em markdown (## subtítulo, - lista, **negrito**, [texto](link))...">' + escapeHtml(savedBody) + "</textarea>" +
+      '<div class="prem-actions">' +
+        '<button class="prem-btn save" data-action="save">Salvar</button>' +
+        (hasSaved ? '<button class="prem-btn remove" data-action="remove">Remover conteúdo pago</button>' : "") +
+        '<span class="prem-save-msg" style="font-size:12px;"></span>' +
+      "</div>";
+
+    var textarea = card.querySelector("textarea");
+    var msg = card.querySelector(".prem-save-msg");
+
+    card.querySelector('[data-action="save"]').addEventListener("click", function (e) {
+      var btn = e.currentTarget;
+      var text = textarea.value;
+      if (!text.trim()) {
+        msg.textContent = "Escreva algo antes de salvar.";
+        msg.style.color = "var(--merlot)";
+        return;
+      }
+      btn.disabled = true;
+      msg.textContent = "Salvando…";
+      msg.style.color = "var(--texto-secundario)";
+      fetch(WORKER_BASE + "/api/premium/content", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: "Bearer " + token },
+        body: JSON.stringify({ slug: post.slug, body: text }),
+      }).then(function (r) {
+        if (!r.ok) throw new Error("Falha ao salvar.");
+        msg.textContent = "Salvo!";
+        msg.style.color = "var(--verde-moss)";
+        btn.disabled = false;
+        card.querySelector(".prem-status").textContent = "Conteúdo pago salvo.";
+        card.querySelector(".prem-status").className = "prem-status is-saved";
+        if (!card.querySelector('[data-action="remove"]')) {
+          var removeBtn = document.createElement("button");
+          removeBtn.className = "prem-btn remove";
+          removeBtn.dataset.action = "remove";
+          removeBtn.textContent = "Remover conteúdo pago";
+          card.querySelector(".prem-actions").insertBefore(removeBtn, msg);
+          wireRemove(removeBtn, post, textarea, card, msg);
+        }
+      }).catch(function () {
+        msg.textContent = "Não foi possível salvar. Tente de novo.";
+        msg.style.color = "var(--merlot)";
+        btn.disabled = false;
+      });
+    });
+
+    var removeBtnInitial = card.querySelector('[data-action="remove"]');
+    if (removeBtnInitial) wireRemove(removeBtnInitial, post, textarea, card, msg);
+
+    return card;
+  }
+
+  function wireRemove(btn, post, textarea, card, msg) {
+    btn.addEventListener("click", function () {
+      if (!window.confirm("Remover o conteúdo pago deste artigo? As assinantes deixam de ver a continuação até você escrever de novo.")) return;
+      btn.disabled = true;
+      fetch(WORKER_BASE + "/api/premium/content?slug=" + encodeURIComponent(post.slug), {
+        method: "DELETE",
+        headers: { Authorization: "Bearer " + token },
+      }).then(function (r) {
+        if (!r.ok) throw new Error("Falha ao remover.");
+        textarea.value = "";
+        msg.textContent = "Removido.";
+        msg.style.color = "var(--texto-secundario)";
+        card.querySelector(".prem-status").textContent = "Ainda sem conteúdo pago — a leitora só vê a prévia grátis.";
+        card.querySelector(".prem-status").className = "prem-status is-empty";
+        btn.remove();
+      }).catch(function () {
+        msg.textContent = "Não foi possível remover. Tente de novo.";
+        msg.style.color = "var(--merlot)";
+        btn.disabled = false;
+      });
+    });
+  }
+
+  function escapeHtml(str) {
+    return String(str == null ? "" : str).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+</script>
+</body>
+</html>
