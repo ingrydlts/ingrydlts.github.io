@@ -34,7 +34,9 @@ collections:
                 name: gallery
                 widget: list
                 required: false
-                hint: "Se deixar vazio, a página do produto usa só a imagem de capa acima."
+                min: 0
+                max: 6
+                hint: "Até 6 itens (fotos e/ou vídeos). Se deixar vazio, a página do produto usa só a imagem de capa acima."
                 summary: "{{fields.type}} — {{fields.caption}}"
                 fields:
                   - { label: Tipo, name: type, widget: select, options: ["Foto", "Vídeo"], default: "Foto" }
