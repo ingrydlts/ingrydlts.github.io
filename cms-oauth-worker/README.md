@@ -134,6 +134,12 @@ variáveis novas no Worker, e a KV que guarda o texto pago.
    - `ACCESS_TOKEN_SECRET` = qualquer string aleatória longa (ex. gerada em
      [1password.com/password-generator](https://1password.com/password-generator) ou similar) — só
      precisa ser difícil de adivinhar, você não vai precisar lembrar dela.
+   - `ADMIN_EMAILS` (opcional) = um e-mail seu (ou vários, separados por vírgula) que sempre recebe
+     acesso total aos artigos premium pelo formulário "recuperar acesso" do site, sem precisar de
+     assinatura real no Stripe — útil pra você mesma revisar como o conteúdo pago fica pra quem paga.
+     **Trate esse e-mail como senha**: use um endereço que não apareça em nenhum lugar público do
+     site (ex. um alias tipo `seuemail+admin7x9k@gmail.com`, se o seu provedor suportar) — se esse
+     e-mail vazar ou for adivinhado, quem descobrir ele destrava todo o conteúdo pago de graça.
 7. **Settings → Bindings → Add binding** → tipo **KV Namespace** → crie uma nova (nome sugerido
    `por-dentro-premium`) → **Variable name**: `PREMIUM_KV` (tem que ser exatamente esse nome).
 

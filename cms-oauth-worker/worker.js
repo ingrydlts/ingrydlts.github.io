@@ -59,6 +59,14 @@
  *                                              pra assinar os tokens de acesso
  *                                              premium (HMAC). Necessária pro
  *                                              paywall funcionar.
+ *   ADMIN_EMAILS                            — opcional: lista de e-mails
+ *                                              separados por vírgula que sempre
+ *                                              recebem acesso total via
+ *                                              /api/premium/restore, sem passar
+ *                                              pelo Stripe — útil pra revisar
+ *                                              como o conteúdo pago aparece.
+ *                                              Trate como senha: não use um
+ *                                              e-mail que já é público no site.
  * Bindings de KV necessários (Settings → Bindings):
  *   REVIEWS_KV — namespace vazia, usada pelas avaliações
  *   PREMIUM_KV — namespace vazia, usada pelo texto pago dos artigos premium
@@ -542,7 +550,26 @@ async function handleRestoreAccess(request, env) {
   }
   const email = String(body.email || '').trim().toLowerCase().slice(0, 200);
   if (!email || !email.includes('@')) return json({ error: 'Digite um e-mail válido.' }, 400);
-  if (!env.STRIPE_SECRET_KEY || !env.ACCESS_TOKEN_SECRET) {
+  if (!env.ACCESS_TOKEN_SECRET) {
+    return json({ error: 'Assinatura ainda não configurada neste site.' }, 500);
+  }
+
+  // Acesso de administradora: e-mails em ADMIN_EMAILS pulam a checagem do
+  // Stripe e sempre recebem um token de acesso total — pra revisar como o
+  // conteúdo pago aparece pra quem paga, sem precisar de uma assinatura real.
+  // Trate esse e-mail como uma senha: quem descobrir ele destrava tudo de
+  // graça, então não use um endereço que já apareça em algum lugar público
+  // do site.
+  const adminEmails = (env.ADMIN_EMAILS || '')
+    .split(',')
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean);
+  if (adminEmails.includes(email)) {
+    const token = await mintSubscriptionToken(email, env);
+    return json({ ok: true, found: true, email, tokens: [{ token, scope: 'all' }] });
+  }
+
+  if (!env.STRIPE_SECRET_KEY) {
     return json({ error: 'Assinatura ainda não configurada neste site.' }, 500);
   }
 
