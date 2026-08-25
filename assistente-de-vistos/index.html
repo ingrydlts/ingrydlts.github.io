@@ -446,6 +446,7 @@
   function resultadoC(){
     return { key:'result', type:'result', tag:{cls:'paid', label:'Maior intenção · direto pra consultoria'},
       bot:'Você já sabe que quer ' + state.tipo + ' e já tentou sozinho — isso me diz que o problema não é falta de informação genérica, é a sua situação específica. Vamos conversar 1:1 sobre isso?',
+      artigos: artigosPara(state.objetivo),
       ctas:[
         {label:'📅 Quero fazer um 1:1', cls:'paid', popup: popup1a1('Já sei que quero ' + state.tipo + ' e já tentei sozinho(a), sem sucesso.')},
         {label:'💬 Pergunta única', cls:'ghost', popup: popupPerguntaUnica('Já sei que quero ' + state.tipo + ' e já tentei sozinho(a), sem sucesso.')}
