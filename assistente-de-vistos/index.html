@@ -167,6 +167,26 @@
   .tag.paid{background:var(--accent-paid-bg); color:var(--accent-paid);}
   .tag.warn{background:var(--accent-warn-bg); color:var(--accent-warn);}
 
+  .artigos-row{
+    display:flex; align-items:flex-start; flex-shrink:0; gap:10px; overflow-x:auto; padding:6px 2px 10px;
+    -webkit-overflow-scrolling:touch; scrollbar-width:thin;
+  }
+  .artigo-card{
+    flex:0 0 128px; display:block; text-decoration:none; color:inherit;
+    border:1px solid var(--border); border-radius:12px; overflow:hidden; background:var(--surface);
+  }
+  .artigo-cover{
+    width:100%; aspect-ratio:4/3; background:var(--surface-2); background-size:cover; background-position:center;
+    display:flex; align-items:center; justify-content:center;
+    font-size:10.5px; font-weight:600; color:var(--ink-soft); text-align:center; padding:6px;
+  }
+  .artigo-info{padding:8px 9px 10px;}
+  .artigo-cat{font-size:9.5px; text-transform:uppercase; letter-spacing:.03em; color:var(--accent-paid); font-weight:600;}
+  .artigo-title{
+    font-size:12px; line-height:1.35; margin-top:3px;
+    display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden;
+  }
+
   form.inputbar{
     display:flex; gap:8px; padding:10px 12px; border-top:1px solid var(--border); flex:0 0 auto;
   }
@@ -286,6 +306,28 @@
 
   const state = { nome:null, ue:null, idade:null, jaEsta:null, objetivo:null, tipo:null, prontidao:null, instagram:null, done:false };
 
+  // ---------- Artigos do blog no desfecho "Não sei ainda" ----------
+  // Puxa direto de /content/posts.json (mesmo arquivo que o /admin edita) — publicar um
+  // artigo novo não muda nada aqui, só edite as listas de slugs abaixo pra incluí-lo.
+  const ARTIGOS_POR_OBJETIVO = {
+    'Estudar': ['como-conseguir-bolsa-de-estudo', 'cursos-de-frances-gratuitos-4-caminhos', 'quanto-custa-viver-na-franca-2026'],
+    'Trabalhar': ['cursos-de-frances-gratuitos-4-caminhos', 'burocracia-primeiro-ano', 'quanto-custa-viver-na-franca-2026'],
+    'Estar com cônjuge ou filho(a) francês(a) ou da UE': ['tudo-sobre-o-exame-civico', 'passo-a-passo-da-anef', 'ajudas-de-moradia-apl-alf-als']
+  };
+
+  let ARTIGOS_CACHE = null;
+  fetch('/content/posts.json').then(function(r){ return r.ok ? r.json() : null; }).then(function(data){
+    ARTIGOS_CACHE = (data && data.items) ? data.items : [];
+  }).catch(function(){ ARTIGOS_CACHE = []; });
+
+  function artigosPara(objetivo){
+    if (!ARTIGOS_CACHE) return [];
+    const slugs = ARTIGOS_POR_OBJETIVO[objetivo] || [];
+    return slugs
+      .map(function(slug){ return ARTIGOS_CACHE.find(function(a){ return a.slug === slug; }); })
+      .filter(Boolean);
+  }
+
   function waLink(extraLine){
     const lines = [
       'Oi! Vim do quiz do link na bio.',
@@ -380,10 +422,11 @@
 
   function resultadoA(){
     return { key:'result', type:'result', tag:{cls:'paid', label:'Escolha: pergunta única ou 1:1'},
-      bot:'Entendi — muita gente chega até aqui sem saber por onde começar, e tudo bem. Tem dois caminhos daqui pra frente:',
+      bot:'Entendi — muita gente chega até aqui sem saber por onde começar, e tudo bem. Tenho alguns artigos que podem clarear suas ideias, mas caso ainda não seja o que você procura, tenho 2 caminhos daqui pra frente:',
+      artigos: artigosPara(state.objetivo),
       ctas:[
         {label:'📅 Quero fazer um 1:1', cls:'paid', popup: popup1a1('Ainda não sei qual caminho seguir.')},
-        {label:'💬 Pergunta única', cls:'free', popup: popupPerguntaUnica('Ainda não sei qual caminho seguir.')}
+        {label:'💬 Pergunta única (grátis)', cls:'free', popup: popupPerguntaUnica('Ainda não sei qual caminho seguir.')}
       ] };
   }
 
@@ -535,6 +578,44 @@
         textInput.focus();
       } else if (step.type === 'result'){
         inputbar.classList.add('hidden');
+
+        if (step.artigos && step.artigos.length){
+          const artRow = document.createElement('div');
+          artRow.className = 'artigos-row';
+          step.artigos.forEach(function(a){
+            const card = document.createElement('a');
+            card.className = 'artigo-card';
+            // Alguns posts mais novos não têm "url" salvo no JSON — mesmo fallback do assets/js/render.js.
+            card.href = a.url || ('/artigos/post/?slug=' + encodeURIComponent(a.slug));
+            card.target = '_blank';
+            card.rel = 'noopener';
+
+            const cover = document.createElement('div');
+            cover.className = 'artigo-cover';
+            if (a.image){
+              cover.style.backgroundImage = "url('" + a.image + "')";
+            } else {
+              cover.textContent = a.category || 'Artigo';
+            }
+
+            const info = document.createElement('div');
+            info.className = 'artigo-info';
+            const cat = document.createElement('div');
+            cat.className = 'artigo-cat';
+            cat.textContent = a.category || '';
+            const title = document.createElement('div');
+            title.className = 'artigo-title';
+            title.textContent = a.title;
+            info.appendChild(cat);
+            info.appendChild(title);
+
+            card.appendChild(cover);
+            card.appendChild(info);
+            artRow.appendChild(card);
+          });
+          chat.appendChild(artRow);
+        }
+
         const box = document.createElement('div');
         box.className = 'cta-row';
         step.ctas.forEach(function(c){
