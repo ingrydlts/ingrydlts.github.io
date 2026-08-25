@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Assistente de Vistos — Por Dentro</title>
+<meta name="description" content="Responda algumas perguntas e descubra o caminho certo pro seu visto pra França.">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=IBM+Plex+Sans:wght@400;500;600&display=swap');
+
+  :root{
+    --bg:#EEF2F6;
+    --surface:#FFFFFF;
+    --surface-2:#E7ECF1;
+    --bubble-bot:#F1F4F7;
+    --bubble-user:#182430;
+    --bubble-user-text:#F5F7F9;
+    --ink:#182430;
+    --ink-soft:#5B6B78;
+    --border:#D7DEE5;
+    --accent-paid:#2B5797;
+    --accent-paid-bg:#E7EEF7;
+    --accent-free:#A8752E;
+    --accent-free-bg:#F5ECDC;
+    --accent-warn:#A8452F;
+    --accent-warn-bg:#F6E6E1;
+    --shadow: 0 1px 2px rgba(20,30,40,.06), 0 8px 24px rgba(20,30,40,.06);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#0F1319;
+      --surface:#1A222A;
+      --surface-2:#212B34;
+      --bubble-bot:#212B34;
+      --bubble-user:#E7ECF1;
+      --bubble-user-text:#182430;
+      --ink:#E7ECF1;
+      --ink-soft:#93A2AF;
+      --border:#2E3944;
+      --accent-paid:#7EA6DC;
+      --accent-paid-bg:#1E2E42;
+      --accent-free:#D8AA63;
+      --accent-free-bg:#3A3020;
+      --accent-warn:#E0937E;
+      --accent-warn-bg:#3B241E;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.35);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#0F1319; --surface:#1A222A; --surface-2:#212B34; --bubble-bot:#212B34;
+    --bubble-user:#E7ECF1; --bubble-user-text:#182430; --ink:#E7ECF1; --ink-soft:#93A2AF;
+    --border:#2E3944; --accent-paid:#7EA6DC; --accent-paid-bg:#1E2E42;
+    --accent-free:#D8AA63; --accent-free-bg:#3A3020; --accent-warn:#E0937E; --accent-warn-bg:#3B241E;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.35);
+  }
+
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--ink);
+    font-family:'IBM Plex Sans', system-ui, sans-serif;
+    display:flex;
+    justify-content:center;
+    padding:24px 12px;
+  }
+  .phone{
+    width:100%;
+    max-width:460px;
+    background:var(--surface);
+    border-radius:22px;
+    box-shadow:var(--shadow);
+    border:1px solid var(--border);
+    display:flex;
+    flex-direction:column;
+    height:min(820px, 92vh);
+    overflow:hidden;
+  }
+  header{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding:14px 16px;
+    border-bottom:1px solid var(--border);
+    flex:0 0 auto;
+  }
+  .avatar{
+    width:38px; height:38px; border-radius:50%;
+    background:var(--accent-paid-bg);
+    color:var(--accent-paid);
+    display:flex; align-items:center; justify-content:center;
+    font-family:'Fraunces', serif; font-weight:600; font-size:15px;
+    flex:0 0 auto;
+  }
+  header .who{display:flex; flex-direction:column; line-height:1.25;}
+  header .name{font-weight:600; font-size:14.5px;}
+  header .status{font-size:12px; color:var(--ink-soft); display:flex; align-items:center; gap:5px;}
+  header .status::before{content:''; width:7px; height:7px; border-radius:50%; background:#4CA868; display:inline-block;}
+
+  .chat{
+    flex:1 1 auto;
+    overflow-y:auto;
+    padding:16px;
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+  }
+  .row{display:flex; width:100%;}
+  .row.bot{justify-content:flex-start;}
+  .row.user{justify-content:flex-end;}
+  .bubble{
+    max-width:80%;
+    padding:10px 14px;
+    border-radius:16px;
+    font-size:14px;
+    line-height:1.5;
+    white-space:pre-line;
+  }
+  .row.bot .bubble{background:var(--bubble-bot); color:var(--ink); border-bottom-left-radius:5px;}
+  .row.user .bubble{background:var(--bubble-user); color:var(--bubble-user-text); border-bottom-right-radius:5px;}
+
+  .typing{display:flex; gap:4px; padding:12px 14px;}
+  .typing span{width:6px; height:6px; border-radius:50%; background:var(--ink-soft); opacity:.5; animation:blink 1.1s infinite;}
+  .typing span:nth-child(2){animation-delay:.15s;} .typing span:nth-child(3){animation-delay:.3s;}
+  @keyframes blink{ 0%,80%,100%{opacity:.25;} 40%{opacity:.8;} }
+
+  .options{display:flex; flex-direction:column; gap:8px; padding:2px 4px 4px;}
+  .opt-btn{
+    text-align:left;
+    padding:11px 14px;
+    border-radius:12px;
+    border:1px solid var(--border);
+    background:var(--surface);
+    color:var(--ink);
+    font-family:inherit;
+    font-size:13.5px;
+    cursor:pointer;
+    transition:border-color .15s, background .15s;
+  }
+  .opt-btn:hover{border-color:var(--accent-paid); background:var(--accent-paid-bg);}
+
+  .cta-row{display:flex; flex-direction:column; gap:8px; padding:4px;}
+  .cta{
+    display:block;
+    width:100%;
+    text-align:center;
+    padding:12px 16px;
+    border-radius:12px;
+    font-size:13.5px;
+    font-weight:600;
+    font-family:inherit;
+    text-decoration:none;
+    cursor:pointer;
+    border:1.5px solid transparent;
+    -webkit-appearance:none;
+    appearance:none;
+  }
+  .cta.paid{background:var(--accent-paid); color:#fff;}
+  .cta.free{background:var(--accent-free-bg); color:var(--accent-free); border-color:var(--accent-free);}
+  .cta.ghost{background:transparent; color:var(--ink-soft); border-color:var(--border);}
+  .tag{
+    display:inline-block; font-size:10px; font-weight:600; letter-spacing:.04em; text-transform:uppercase;
+    padding:2px 8px; border-radius:999px; margin-bottom:6px;
+  }
+  .tag.free{background:var(--accent-free-bg); color:var(--accent-free);}
+  .tag.paid{background:var(--accent-paid-bg); color:var(--accent-paid);}
+  .tag.warn{background:var(--accent-warn-bg); color:var(--accent-warn);}
+
+  form.inputbar{
+    display:flex; gap:8px; padding:10px 12px; border-top:1px solid var(--border); flex:0 0 auto;
+  }
+  form.inputbar input{
+    flex:1; border:1px solid var(--border); background:var(--surface-2); color:var(--ink);
+    border-radius:20px; padding:10px 14px; font-size:14px; font-family:inherit; outline:none;
+  }
+  form.inputbar input:focus{border-color:var(--accent-paid);}
+  form.inputbar button{
+    width:40px; height:40px; border-radius:50%; border:none; background:var(--ink); color:var(--bg);
+    display:flex; align-items:center; justify-content:center; cursor:pointer; flex:0 0 auto;
+  }
+  form.inputbar.hidden{display:none;}
+
+  .footnote{
+    text-align:center; font-size:11px; color:var(--ink-soft); padding:14px 8px 0; max-width:460px;
+  }
+
+  .modal-overlay{
+    position:fixed; inset:0; background:rgba(10,14,18,.5);
+    display:flex; align-items:center; justify-content:center; padding:20px;
+    z-index:50; opacity:0; pointer-events:none; transition:opacity .15s;
+  }
+  .modal-overlay.open{opacity:1; pointer-events:auto;}
+  .modal-card{
+    background:var(--surface); border:1px solid var(--border); border-radius:16px;
+    padding:22px 20px 20px; max-width:340px; width:100%;
+    box-shadow:0 16px 44px rgba(0,0,0,.28); position:relative;
+  }
+  .modal-close{
+    position:absolute; top:8px; right:10px; width:28px; height:28px; border-radius:50%;
+    background:none; border:none; font-size:20px; line-height:1; color:var(--ink-soft); cursor:pointer;
+  }
+  .modal-close:hover{background:var(--surface-2);}
+  .modal-title{margin:0 0 4px; font-family:'Fraunces', serif; font-weight:600; font-size:17px; color:var(--ink);}
+  .modal-subtitle{margin:0 0 12px; font-size:13px; line-height:1.45; color:var(--ink-soft);}
+  #modalTextarea{
+    width:100%; min-height:88px; padding:10px 12px; border-radius:10px;
+    border:1px solid var(--border); background:var(--surface-2); color:var(--ink);
+    font-family:inherit; font-size:13.5px; resize:vertical; box-sizing:border-box;
+  }
+  #modalTextarea:focus{outline:none; border-color:var(--accent-paid);}
+  .modal-submit{
+    margin-top:12px; width:100%; padding:12px 16px; border-radius:12px; border:none;
+    background:var(--accent-paid); color:#fff; font-weight:600; font-size:13.5px;
+    font-family:inherit; cursor:pointer;
+  }
+  .modal-confirm{font-size:13px; color:var(--ink-soft); margin-top:10px;}
+</style>
+</head>
+<body>
+
+<div class="phone">
+  <header>
+    <div class="avatar">IG</div>
+    <div class="who">
+      <span class="name">Assistente da Ingryd</span>
+      <span class="status">online agora</span>
+    </div>
+  </header>
+  <div class="chat" id="chat"></div>
+  <form class="inputbar" id="inputbar">
+    <input id="textInput" type="text" autocomplete="off" placeholder="Escreva aqui..." />
+    <button type="submit" aria-label="Enviar">→</button>
+  </form>
+</div>
+<p class="footnote">Um projeto <a href="/" style="color:inherit;">Por Dentro</a>.</p>
+
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <button type="button" class="modal-close" id="modalClose" aria-label="Fechar">×</button>
+    <h3 class="modal-title" id="modalTitle"></h3>
+    <p class="modal-subtitle" id="modalSubtitle"></p>
+    <form id="modalForm">
+      <textarea id="modalTextarea" rows="4" placeholder="Escreva aqui..."></textarea>
+      <button type="submit" class="modal-submit" id="modalSubmit">Enviar</button>
+    </form>
+  </div>
+</div>
+
+<script>
+(function(){
+  // ============================================================
+  // CONFIGURAÇÃO — troque estes valores pelos seus links reais
+  // ============================================================
+  const CONFIG = {
+    whatsappNumber: '33744822313', // DDI+DDD+número, só dígitos, sem espaços ou +
+    calLink: 'https://cal.com/ingryd-silva-jf1cnx/1-1',
+    // Checkout do guia pago: seu marketplace (https://ingrydlts.github.io/), não Hotmart.
+    // Troque cada linha pelo link direto do produto correspondente em /produtos-digitais/
+    // assim que ele existir lá. Até criar o produto específico, pode apontar pra página
+    // da categoria (como abaixo) — a pessoa vê o guia dentro da vitrine de produtos.
+    guiaPago: {
+      'Visto Estudante': 'https://ingrydlts.github.io/produtos-digitais/',
+      'Passeport Talent (pesquisa/doutorado)': '',
+      'Vacances-Travail (PVT)': '',
+      'Assalariado': '',
+      'Busca de emprego / negócio': '',
+      'Cônjuge de francês(a)': '',
+      'Cônjuge de cidadão(ã) da UE (não francês)': 'https://ingrydlts.github.io/produtos-digitais/',
+      'Pai/mãe de filho(a) francês(a)': '',
+      'Residência de longa data': ''
+    }
+  };
+
+  const TIPO_CONTENT = {
+    'Visto Estudante': 'Pelo Campus France, obrigatório pra cursos com mais de 90 dias. Dá pra trabalhar até 60% da carga horária legal enquanto estuda. Depois de chegar, precisa validar o visto no OFII em até 3 meses. Sem limite de idade.\n\nQuer fazer alternância (apprentissage)? Não existe "visto de alternância" — o caminho é esse mesmo visto de estudante, seguido de uma Autorização Provisória de Trabalho (APT) depois de fechar o contrato. Pra quem é de fora da UE, a regra geral é ter completado 1 ano de formação inicial na França antes — exceto mestrado ou grande école, que libera direto. O contrato tradicional tem teto de 29 anos, com exceções.',
+    'Passeport Talent (pesquisa/doutorado)': 'Pra quem vai fazer doutorado, pesquisa ou é professor-pesquisador. Exige diploma de mestrado e, na maioria dos casos, uma convenção de acolhimento com a instituição francesa. Sem limite de idade.',
+    'Vacances-Travail (PVT)': 'Só entre 18 e 30 anos. Cota de cerca de 500 vagas por ano pra brasileiros — costuma esgotar rápido. Só dá pra usar uma vez na vida e não é renovável. Exige por volta de €2.500 em conta, seguro saúde pros 12 meses e antecedentes criminais limpos.',
+    'Assalariado': 'Pra quem já tem uma proposta ou contrato de trabalho fechado com um empregador francês — geralmente é o próprio empregador quem inicia o processo de autorização.',
+    'Busca de emprego / negócio': 'Pra quem já terminou um diploma na França e quer continuar no país procurando emprego ou abrindo o próprio negócio.',
+    'Cônjuge de francês(a)': 'Exige casamento válido e provas reais de vida em comum — contrato de aluguel, contas conjuntas, entre outros. Sem limite de idade.',
+    'Cônjuge de cidadão(ã) da UE (não francês)': 'Caminho diferente do cônjuge de francês(a): se seu cônjuge tem outra cidadania da UE/EEE (portuguesa, italiana, espanhola etc.), o direito vem da livre circulação, não do casamento com francês. É o cartão de "membro de família de cidadão UE" — grátis (a VPF custa a partir de ~350€), sem teste de francês nem exame cívico, com validade inicial de 5 anos. Pode ser exigido um visto de longa duração antes de entrar, mas por lei ele também deve ser emitido de graça e em regime acelerado. Seu cônjuge precisa comprovar que exerce o direito de residência na França (trabalho, estudo ou recursos próprios). Sem limite de idade.',
+    'Pai/mãe de filho(a) francês(a)': 'Exige filiação legalmente estabelecida e contribuição efetiva ao sustento e à educação da criança. Sem limite de idade.',
+    'Residência de longa data': 'Pra quem já mora na França há muitos anos (na prática, entre 5 e 10) e tem vínculo pessoal consolidado no país. Sem limite de idade.'
+  };
+
+  const state = { nome:null, ue:null, idade:null, jaEsta:null, objetivo:null, tipo:null, prontidao:null, instagram:null, done:false };
+
+  function waLink(extraLine){
+    const lines = [
+      'Oi! Vim do quiz do link na bio.',
+      state.nome ? ('Nome: ' + state.nome) : null,
+      state.instagram ? ('Instagram: ' + state.instagram) : null,
+      state.ue ? ('Cidadania UE: ' + state.ue) : null,
+      state.idade ? ('Idade: ' + state.idade) : null,
+      state.jaEsta ? ('Já está na França: ' + state.jaEsta) : null,
+      state.objetivo ? ('Objetivo: ' + state.objetivo) : null,
+      state.tipo ? ('Tipo: ' + state.tipo) : null,
+      state.prontidao ? ('Situação: ' + state.prontidao) : null,
+      extraLine || null
+    ].filter(Boolean).join('\n');
+    return 'https://wa.me/' + CONFIG.whatsappNumber + '?text=' + encodeURIComponent(lines);
+  }
+
+  // Link do Cal.com com uma nota pré-preenchida no campo de notas
+  // (o Cal.com aceita ?notes= na URL pública de agendamento).
+  function calLinkComNotas(notas){
+    if (!notas) return CONFIG.calLink;
+    const sep = CONFIG.calLink.indexOf('?') === -1 ? '?' : '&';
+    return CONFIG.calLink + sep + 'notes=' + encodeURIComponent(notas);
+  }
+
+  // ---------- Os 2 botões padrão, presentes em todo desfecho ----------
+  // "Pergunta única" abre um popup pra pessoa escrever a dúvida e manda pro WhatsApp.
+  // "Quero fazer um 1:1" abre um popup pra escrever o motivo e manda pro Cal.com.
+  function popupPerguntaUnica(contexto){
+    return {
+      title: 'Pergunta única',
+      subtitle: 'Descreva sua situação e sua dúvida — vou entrar em contato.',
+      placeholder: 'Escreva aqui...',
+      submitLabel: 'Enviar',
+      onSubmit: function(texto){
+        const extra = [contexto, texto ? ('Dúvida: ' + texto) : null].filter(Boolean).join(' ');
+        window.open(waLink(extra), '_blank', 'noopener');
+        addBubble('Pergunta enviada — te respondo por lá. 😊', 'bot');
+      }
+    };
+  }
+
+  function popup1a1(contexto){
+    return {
+      title: 'Quero fazer um 1:1',
+      subtitle: 'Conta rapidinho por que você quer marcar — assim eu já chego preparada pra conversa.',
+      placeholder: 'Escreva aqui...',
+      submitLabel: 'Enviar',
+      onSubmit: function(texto){
+        const notas = [contexto, texto].filter(Boolean).join(' — ');
+        window.open(calLinkComNotas(notas), '_blank', 'noopener');
+        addBubble('Combinado! É só finalizar o agendamento na aba que abriu. 😊', 'bot');
+      }
+    };
+  }
+
+  function tipoOptionsFor(objetivo){
+    if (objetivo === 'Estudar') return ['Visto Estudante','Passeport Talent (pesquisa/doutorado)','Não sei ainda'];
+    if (objetivo === 'Trabalhar'){
+      const opts = [];
+      if (state.idade === 'Abaixo de 30') opts.push('Vacances-Travail (PVT)');
+      opts.push('Assalariado','Busca de emprego / negócio','Não sei ainda');
+      return opts;
+    }
+    if (objetivo === 'Estar com cônjuge ou filho(a) francês(a) ou da UE') return ['Cônjuge de francês(a)','Cônjuge de cidadão(ã) da UE (não francês)','Pai/mãe de filho(a) francês(a)','Residência de longa data','Não sei ainda'];
+    return [];
+  }
+
+  // Retorna o próximo passo: { bot: texto, type: 'buttons'|'text'|'result', options, placeholder, result }
+  function getNextStep(){
+    if (state.nome === null) return { key:'nome', bot:'Oi! Antes de começar, como posso te chamar?', type:'text', placeholder:'Seu nome' };
+    if (state.ue === null) return { key:'ue', bot: 'Prazer, ' + state.nome + '! Primeira pergunta: você já tem cidadania de algum país da União Europeia?', type:'buttons', options:['Sim','Não'] };
+    if (state.ue === 'Sim') return resultadoD();
+    if (state.idade === null) return { key:'idade', bot:'Beleza. Qual sua faixa de idade?', type:'buttons', options:['Abaixo de 30','30 ou mais'] };
+    if (state.jaEsta === null) return { key:'jaEsta', bot:'Você já está na França?', type:'buttons', options:['Sim','Não'] };
+    if (state.objetivo === null) return { key:'objetivo', bot:'Qual é o seu principal objetivo?', type:'buttons', options:['Estudar','Trabalhar','Estar com cônjuge ou filho(a) francês(a) ou da UE','Acompanhar alguém que já está na França'] };
+    if (state.objetivo === 'Acompanhar alguém que já está na França') return resultadoE();
+    if (state.tipo === null) return { key:'tipo', bot: state.jaEsta === 'Sim' ? 'Qual desses já é a sua situação hoje?' : 'Qual desses você pretende pedir?', type:'buttons', options: tipoOptionsFor(state.objetivo) };
+    if (state.tipo === 'Não sei ainda') return resultadoA();
+    if (state.prontidao === null) return { key:'prontidao', bot:'Você está começando a pesquisar sobre isso, ou já tentou e não conseguiu?', type:'buttons', options:['Estou começando agora','Já tentei e não deu certo'] };
+    if (state.instagram === null) return { key:'instagram', bot:'Última coisa — se quiser, deixa seu @ do Instagram (opcional, aperta enviar em branco pra pular).', type:'text', placeholder:'@seuinstagram', optional:true };
+    return state.prontidao === 'Estou começando agora' ? resultadoB() : resultadoC();
+  }
+
+  function resultadoD(){
+    return { key:'result', type:'result', tag:{cls:'free', label:'Grátis · sem burocracia de visto'},
+      bot:'Boa notícia: como cidadão da UE, você não precisa de visto nenhum pra entrar ou trabalhar na França — é livre circulação. A dúvida real costuma ser outra: como se candidatar, currículo em formato francês, timing de contratação de alternância. Vagas de alternância aparecem o ano inteiro, mas costumam abrir mais forte a partir de setembro.',
+      ctas:[
+        {label:'💬 Pergunta única', cls:'free', popup: popupPerguntaUnica('Sou cidadão(ã) da UE e quero saber mais sobre mercado de trabalho / alternância na França.')},
+        {label:'📅 Quero fazer um 1:1', cls:'paid', popup: popup1a1('Sou cidadão(ã) da UE.')}
+      ] };
+  }
+
+  function resultadoA(){
+    return { key:'result', type:'result', tag:{cls:'paid', label:'Escolha: pergunta única ou 1:1'},
+      bot:'Entendi — muita gente chega até aqui sem saber por onde começar, e tudo bem. Tem dois caminhos daqui pra frente:',
+      ctas:[
+        {label:'📅 Quero fazer um 1:1', cls:'paid', popup: popup1a1('Ainda não sei qual caminho seguir.')},
+        {label:'💬 Pergunta única', cls:'free', popup: popupPerguntaUnica('Ainda não sei qual caminho seguir.')}
+      ] };
+  }
+
+  function resultadoB(){
+    const link = CONFIG.guiaPago[state.tipo];
+    const opcoes = [
+      {label:'💬 Pergunta única', cls:'ghost', popup: popupPerguntaUnica('Tenho uma dúvida sobre ' + state.tipo + '.')},
+      {label:'📅 Quero fazer um 1:1', cls:'ghost', popup: popup1a1('Quero conversar sobre ' + state.tipo + '.')}
+    ];
+    return { key:'result', type:'result', tag:{cls:'free', label:'Pré-requisitos grátis'},
+      bot: TIPO_CONTENT[state.tipo] + '\n\nIsso é só o resumo. Tem um guia completo com passo a passo, prazos e modelos de documento.',
+      ctas: link
+        ? [ {label:'Quero o guia completo', cls:'paid', href: link} ].concat(opcoes)
+        : opcoes };
+  }
+
+  function resultadoC(){
+    return { key:'result', type:'result', tag:{cls:'paid', label:'Maior intenção · direto pra consultoria'},
+      bot:'Você já sabe que quer ' + state.tipo + ' e já tentou sozinho — isso me diz que o problema não é falta de informação genérica, é a sua situação específica. Vamos conversar 1:1 sobre isso?',
+      ctas:[
+        {label:'📅 Quero fazer um 1:1', cls:'paid', popup: popup1a1('Já sei que quero ' + state.tipo + ' e já tentei sozinho(a), sem sucesso.')},
+        {label:'💬 Pergunta única', cls:'ghost', popup: popupPerguntaUnica('Já sei que quero ' + state.tipo + ' e já tentei sozinho(a), sem sucesso.')}
+      ] };
+  }
+
+  function resultadoE(){
+    return { key:'result', type:'result', tag:{cls:'warn', label:'Atenção antes de mais nada'},
+      bot:'Não existe um "visto de namorado(a)". Se ainda não há casamento, PACS ou filho em comum, os caminhos reais são os mesmos de sempre — estudante, PVT (se tiver até 30 anos) — só que escolhidos por outro motivo. Uma coisa importante: ir como turista e tentar "resolver o visto estando lá" quase sempre não funciona, porque não dá pra regularizar vindo como turista Schengen.',
+      ctas:[
+        {label:'💬 Pergunta única', cls:'free', popup: popupPerguntaUnica('Quero acompanhar alguém que já está na França e não sei por onde começar.')},
+        {label:'📅 Quero fazer um 1:1', cls:'paid', popup: popup1a1('Quero acompanhar alguém que já está na França.')}
+      ] };
+  }
+
+  // ---------- Render ----------
+  const chat = document.getElementById('chat');
+  const inputbar = document.getElementById('inputbar');
+  const textInput = document.getElementById('textInput');
+  let currentStep = null;
+
+  // ---------- Popup (modal) ----------
+  const modalOverlay = document.getElementById('modalOverlay');
+  const modalTitle = document.getElementById('modalTitle');
+  const modalSubtitle = document.getElementById('modalSubtitle');
+  const modalTextarea = document.getElementById('modalTextarea');
+  const modalForm = document.getElementById('modalForm');
+  const modalSubmit = document.getElementById('modalSubmit');
+  const modalClose = document.getElementById('modalClose');
+  let modalOnSubmit = null;
+
+  function openPopup(cfg){
+    modalTitle.textContent = cfg.title;
+    modalSubtitle.textContent = cfg.subtitle;
+    modalTextarea.value = '';
+    modalTextarea.placeholder = cfg.placeholder || 'Escreva aqui...';
+    modalSubmit.textContent = cfg.submitLabel || 'Enviar';
+    modalOnSubmit = cfg.onSubmit;
+    modalOverlay.classList.add('open');
+    setTimeout(function(){ modalTextarea.focus(); }, 50);
+  }
+
+  function closePopup(){
+    modalOverlay.classList.remove('open');
+    modalOnSubmit = null;
+  }
+
+  modalClose.addEventListener('click', closePopup);
+  modalOverlay.addEventListener('click', function(e){ if (e.target === modalOverlay) closePopup(); });
+  modalForm.addEventListener('submit', function(e){
+    e.preventDefault();
+    const texto = modalTextarea.value.trim();
+    const cb = modalOnSubmit;
+    closePopup();
+    if (cb) cb(texto);
+  });
+
+  function scrollDown(){ chat.scrollTop = chat.scrollHeight; }
+
+  function addBubble(text, who){
+    const row = document.createElement('div');
+    row.className = 'row ' + who;
+    const b = document.createElement('div');
+    b.className = 'bubble';
+    b.textContent = text;
+    row.appendChild(b);
+    chat.appendChild(row);
+    scrollDown();
+  }
+
+  function addTyping(cb){
+    const row = document.createElement('div');
+    row.className = 'row bot';
+    const b = document.createElement('div');
+    b.className = 'bubble typing';
+    b.innerHTML = '<span></span><span></span><span></span>';
+    row.appendChild(b);
+    chat.appendChild(row);
+    scrollDown();
+    setTimeout(function(){ row.remove(); cb(); }, 550);
+  }
+
+  function clearInteractive(){
+    const old = chat.querySelector('.options, .cta-row');
+    if (old) old.remove();
+  }
+
+  function showStep(step){
+    currentStep = step;
+    addTyping(function(){
+      if (step.type === 'result' && step.tag){
+        const row = document.createElement('div');
+        row.className = 'row bot';
+        const wrap = document.createElement('div');
+        wrap.style.maxWidth = '84%';
+        const tagEl = document.createElement('span');
+        tagEl.className = 'tag ' + step.tag.cls;
+        tagEl.textContent = step.tag.label;
+        const b = document.createElement('div');
+        b.className = 'bubble';
+        b.style.borderBottomLeftRadius = '5px';
+        b.textContent = step.bot;
+        wrap.appendChild(tagEl);
+        wrap.appendChild(document.createElement('br'));
+        wrap.appendChild(b);
+        row.appendChild(wrap);
+        chat.appendChild(row);
+      } else {
+        addBubble(step.bot, 'bot');
+      }
+      scrollDown();
+
+      if (step.type === 'buttons'){
+        inputbar.classList.add('hidden');
+        const box = document.createElement('div');
+        box.className = 'options';
+        step.options.forEach(function(opt){
+          const btn = document.createElement('button');
+          btn.className = 'opt-btn';
+          btn.type = 'button';
+          btn.textContent = opt;
+          btn.onclick = function(){ answer(step.key, opt); };
+          box.appendChild(btn);
+        });
+        chat.appendChild(box);
+      } else if (step.type === 'text'){
+        inputbar.classList.remove('hidden');
+        textInput.placeholder = step.placeholder || 'Escreva aqui...';
+        textInput.value = '';
+        textInput.focus();
+      } else if (step.type === 'result'){
+        inputbar.classList.add('hidden');
+        const box = document.createElement('div');
+        box.className = 'cta-row';
+        step.ctas.forEach(function(c){
+          // CTA com link (href) vira <a> que abre em nova aba; CTA com popup vira <button> que abre o modal.
+          const el = document.createElement(c.href ? 'a' : 'button');
+          el.className = 'cta ' + c.cls;
+          el.textContent = c.label;
+          if (c.href){
+            el.href = c.href;
+            el.target = '_blank';
+            el.rel = 'noopener';
+          } else {
+            el.type = 'button';
+          }
+          if (c.popup){
+            el.addEventListener('click', function(){
+              openPopup(typeof c.popup === 'function' ? c.popup() : c.popup);
+            });
+          }
+          box.appendChild(el);
+        });
+        chat.appendChild(box);
+      }
+      scrollDown();
+    });
+  }
+
+  function answer(key, value){
+    clearInteractive();
+    addBubble(value, 'user');
+    state[key] = value;
+    showStep(getNextStep());
+  }
+
+  inputbar.addEventListener('submit', function(e){
+    e.preventDefault();
+    if (!currentStep || currentStep.type !== 'text') return;
+    const val = textInput.value.trim();
+    if (!val && !currentStep.optional) return;
+    clearInteractive();
+    if (val) addBubble(val, 'user');
+    state[currentStep.key] = val || (currentStep.optional ? '' : val);
+    inputbar.classList.add('hidden');
+    showStep(getNextStep());
+  });
+
+  // start
+  showStep(getNextStep());
+})();
+</script>
+</body>
+</html>
