@@ -54,6 +54,7 @@
       <span class="eyebrow">Guia gratuito</span>
       <h1>VLS-TS: o prazo que a maioria descobre tarde demais</h1>
       <p class="rt-lead">Você tem 3 meses corridos pra validar seu visto na França — não da data dele, da data que você entrou no país. Perder isso vira problema sério.</p>
+      <div id="article-updated-mount"></div>
       <a href="#form" class="btn btn-pill" style="background:var(--downtown-brown);">Quero o checklist completo</a>
       <p class="muted" style="font-size:13px; margin-top:10px;">Grátis. Direto no seu e-mail.</p>
     </article>
@@ -208,6 +209,8 @@
         <a href="https://ingrydigital.gumroad.com/l/jmfbf" target="_blank" rel="noopener" class="btn btn-pill btn-block" style="background:var(--downtown-brown);">Baixar grátis agora!</a>
       </div>
     </section>
+
+    <div id="article-related-mount"></div>
   </div>
 </main>
 
@@ -252,6 +255,10 @@
 </footer>
 
 <script src="/assets/js/main.js"></script>
+<script type="module">
+  import { mountArticleExtras } from "/assets/js/article-extras.js";
+  mountArticleExtras({ slug: "vls-ts-3-meses-para-validar", updatedMountId: "article-updated-mount", relatedMountId: "article-related-mount" });
+</script>
 <link rel="stylesheet" href="https://sibforms.com/forms/end-form/build/sib-styles.css">
 <script>
   window.REQUIRED_CODE_ERROR_MESSAGE = 'Escolha um código de país';

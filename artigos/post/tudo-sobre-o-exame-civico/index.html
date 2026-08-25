@@ -56,6 +56,7 @@
       <span class="eyebrow">Guia Completo — Por Dentro</span>
       <h1>O Exame Cívico da França</h1>
       <p class="rt-lead">Tudo o que você precisa saber sobre a nova exigência para conseguir o seu titre de séjour plurianual ou a carta de residente.</p>
+      <div id="article-updated-mount"></div>
       <div class="rt-hero-stats">
         <div class="rt-hero-stat"><span class="rt-hero-stat-num">40</span><span class="rt-hero-stat-label">questões</span></div>
         <div class="rt-hero-stat"><span class="rt-hero-stat-num">80%</span><span class="rt-hero-stat-label">para passar</span></div>
@@ -309,6 +310,8 @@
         <a href="https://www.instagram.com/ingrydinparis/" target="_blank" class="btn btn-pill btn-outline" style="border-color:rgba(244,241,236,.4); color:#fff;">📸 Instagram</a>
       </div>
     </section>
+
+    <div id="article-related-mount"></div>
   </div>
 </main>
 
@@ -355,7 +358,9 @@
 <script src="/assets/js/main.js"></script>
 <script type="module">
   import { resolvePremiumSlot } from "/assets/js/premium-gate.js";
+  import { mountArticleExtras } from "/assets/js/article-extras.js";
   resolvePremiumSlot("premium-slot", "tudo-sobre-o-exame-civico");
+  mountArticleExtras({ slug: "tudo-sobre-o-exame-civico", updatedMountId: "article-updated-mount", relatedMountId: "article-related-mount" });
 </script>
 <script>
   var BREVO_FORM_URL = 'https://87a2c382.sibforms.com/serve/MUIFAIwmiB8s2PzK9IQjWJAyZXYAuhMUVXEZazS6yYhy4FQ8cRUH9kxX_Lj2UOiyJYef5N7gKyAD4ocDbd2E12r4cD3IY2-H9_1nSpvDiuS-YP-M857sotXuAlqwNMjYuaA2KzBi6VyNuuwEZ2JedDRphtp9fadptPU9l3HmNmVgQWZvAhhxdTF_J33ZuTzsXMj0hMg5L_nrNJwjKw==';

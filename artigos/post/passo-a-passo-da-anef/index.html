@@ -48,10 +48,10 @@
     <article class="rt-hero" style="text-align:left; padding-top:24px;">
       <div style="margin-bottom:14px;">
         <span class="rt-tag rt-tag-green">Passo a passo completo</span>
-        <span class="rt-tag rt-tag-amber">Atualizado em maio 2026</span>
       </div>
       <h1 style="margin-left:0;">Como desbloquear seu dossier ANEF agora — sem esperar 6 meses</h1>
       <p class="rt-lead" style="margin-left:0;">A escada completa de recursos: do mais simples ao mais pesado, com links diretos, modelos de mensagem e prazos que você precisa respeitar.</p>
+      <div id="article-updated-mount"></div>
       <div style="display:flex; align-items:center; gap:12px; font-size:13.5px; color:var(--texto-secundario);">
         <span style="width:36px; height:36px; border-radius:50%; background:var(--merlot); color:#fff; font-weight:700; font-size:12px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">IL</span>
         <span>Por <strong>Ingryd Lotierzo</strong> · Canal <em>Por Dentro</em> · <a href="https://www.instagram.com/ingryd.pordentro/" target="_blank" rel="noopener">@ingryd.pordentro</a></span>
@@ -150,6 +150,8 @@
     <section class="section">
       <div id="premium-slot"><p class="muted">Carregando…</p></div>
     </section>
+
+    <div id="article-related-mount"></div>
   </div>
 </main>
 
@@ -196,7 +198,9 @@
 <script src="/assets/js/main.js"></script>
 <script type="module">
   import { resolvePremiumSlot } from "/assets/js/premium-gate.js";
+  import { mountArticleExtras } from "/assets/js/article-extras.js";
   resolvePremiumSlot("premium-slot", "passo-a-passo-da-anef");
+  mountArticleExtras({ slug: "passo-a-passo-da-anef", updatedMountId: "article-updated-mount", relatedMountId: "article-related-mount" });
 </script>
 <script>
   document.addEventListener('DOMContentLoaded', function () {

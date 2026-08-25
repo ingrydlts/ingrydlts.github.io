@@ -81,9 +81,10 @@
 
 <script src="/assets/js/main.js"></script>
 <script type="module">
-  import { fetchJSON, imgSlotHTML, escapeHtml, qs, postHref } from "/assets/js/render.js";
+  import { fetchJSON, imgSlotHTML, escapeHtml, qs } from "/assets/js/render.js";
   import { markdownToBlocks } from "/assets/js/markdown.js";
   import { resolvePremiumSlot } from "/assets/js/premium-gate.js";
+  import { pickRelated, relatedSectionHTML, updatedLineHTML } from "/assets/js/article-extras.js";
 
   function formatDate(iso) {
     if (!iso) return "";
@@ -146,13 +147,7 @@
       bodyHtml = blocks.slice(0, mid).join("") + inArticleBanner() + blocks.slice(mid).join("");
     }
 
-    const related = data.items.filter((p) => p.slug !== post.slug).slice(0, 3);
-    const relatedHtml = related.map((p) =>
-      '<a class="card" href="' + escapeHtml(postHref(p)) + '" style="color:inherit;">' +
-      imgSlotHTML(p.image, p.title, "Foto do artigo") +
-      '<div class="card-body"><h3 style="font-size:16px;">' + escapeHtml(p.title) + "</h3>" +
-      '<span style="font-weight:600; font-size:13px; color:#604034;">Ler artigo →</span></div></a>'
-    ).join("");
+    const related = pickRelated(data.items, post, 3);
 
     root.innerHTML =
       '<article>' +
@@ -160,14 +155,13 @@
       '<span class="eyebrow" style="color:#604034;">' + escapeHtml(post.category) + "</span>" +
       "<h1>" + escapeHtml(post.title) + "</h1>" +
       '<div class="article-meta">' + escapeHtml(formatDate(post.date)) + (post.readMinutes ? " · " + post.readMinutes + " min de leitura" : "") + "</div>" +
+      updatedLineHTML(post) +
       "</div>" +
       imgSlotHTML(post.image, post.title, "Foto de capa do artigo").replace('class="img-slot"', 'class="img-slot article-hero"') +
       '<div class="article-body">' + bodyHtml + "</div>" +
       endOfArticleCTA() +
       "</article>" +
-      (relatedHtml
-        ? '<div class="related"><div class="eyebrow" style="color:#6E6862;">Veja também</div><div class="related-list">' + relatedHtml + "</div></div>"
-        : "");
+      relatedSectionHTML(related);
 
     if (isPremium) {
       resolvePremiumSlot("premium-slot", post.slug);

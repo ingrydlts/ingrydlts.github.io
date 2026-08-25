@@ -119,6 +119,7 @@ collections:
               - { label: "Categoria (usada nos filtros)", name: category, widget: string }
               - { label: "Foto de capa", name: image, widget: image, required: false, hint: "Tamanho ideal: 1600×900px (proporção 16:9), foto na horizontal e bem ampla. A mesma foto aparece cortada no card do blog (mais quadrada) e larga no topo do artigo — por isso precisa ser bem panorâmica." }
               - { label: "Data de publicação", name: date, widget: datetime, format: "YYYY-MM-DD", date_format: "YYYY-MM-DD", time_format: false }
+              - { label: "Última atualização", name: updatedDate, widget: datetime, format: "YYYY-MM-DD", date_format: "YYYY-MM-DD", time_format: false, required: false, hint: "Aparece no topo do artigo como \"Atualizado em\". Mude essa data sempre que revisar ou corrigir o conteúdo — é o que mostra pra leitora que a informação ainda é confiável." }
               - { label: "Tempo de leitura (min)", name: readMinutes, widget: number, required: false }
               - { label: "Corpo do artigo", name: body, widget: markdown, hint: "Use ## para subtítulo, - para lista, **negrito**, [texto](link). Se o artigo for premium, este texto é a prévia gratuita — a continuação paga é escrita à parte, em /admin/premium/." }
               - { label: "Artigo premium (assinatura)", name: premium, widget: boolean, default: false, required: false, hint: "Marque para exigir assinatura pra ler o conteúdo completo. O texto pago não fica aqui — escreva-o no painel /admin/premium/ depois de salvar este artigo." }

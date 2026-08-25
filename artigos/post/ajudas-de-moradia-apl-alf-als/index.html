@@ -54,6 +54,7 @@
       <span class="eyebrow">Guia rápido · Moradia na França</span>
       <h1>3 ajudas de moradia na França — e se você tem direito a uma</h1>
       <p class="rt-lead">Você pode estar pagando aluguel sozinha quando tem direito a uma ajuda. Não precisa ser cidadã francesa para pedir.</p>
+      <div id="article-updated-mount"></div>
       <a href="#checklist" class="btn btn-pill" style="background:var(--verde-moss);">Quero meu checklist gratuito</a>
       <p class="muted" style="font-size:13px; margin-top:10px;">Documentos + prazos, direto no seu e-mail.</p>
     </article>
@@ -160,6 +161,8 @@
         <!-- End Brevo Form -->
       </div>
     </section>
+
+    <div id="article-related-mount"></div>
   </div>
 </main>
 
@@ -204,6 +207,10 @@
 </footer>
 
 <script src="/assets/js/main.js"></script>
+<script type="module">
+  import { mountArticleExtras } from "/assets/js/article-extras.js";
+  mountArticleExtras({ slug: "ajudas-de-moradia-apl-alf-als", updatedMountId: "article-updated-mount", relatedMountId: "article-related-mount" });
+</script>
 <link rel="stylesheet" href="https://sibforms.com/forms/end-form/build/sib-styles.css">
 <script>
   window.REQUIRED_CODE_ERROR_MESSAGE = 'Escolha um código de país';

@@ -47,6 +47,7 @@
       <span class="eyebrow">Direto do Reel · Guia completo e atualizado</span>
       <h1>Cursos de Francês Gratuitos na França</h1>
       <p class="rt-lead">4 caminhos com condições e links verificados. Encontre o que é para você — e comece.</p>
+      <div id="article-updated-mount"></div>
     </article>
 
     <div class="callout callout-info" style="max-width:640px; margin:0 auto;">
@@ -322,6 +323,8 @@
         <p style="margin:6px 0 0;">Lista de espera aberta. Entre na lista acima e garanta 60% de desconto no dia do lançamento — por tempo limitado.</p>
       </div>
     </section>
+
+    <div id="article-related-mount"></div>
   </div>
 </main>
 
@@ -366,6 +369,10 @@
 </footer>
 
 <script src="/assets/js/main.js"></script>
+<script type="module">
+  import { mountArticleExtras } from "/assets/js/article-extras.js";
+  mountArticleExtras({ slug: "cursos-de-frances-gratuitos-4-caminhos", updatedMountId: "article-updated-mount", relatedMountId: "article-related-mount" });
+</script>
 <script>
   document.querySelectorAll('.decisor-btn').forEach(function (btn) {
     btn.addEventListener('click', function () {

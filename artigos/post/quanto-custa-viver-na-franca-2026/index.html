@@ -158,6 +158,7 @@
       <span class="eyebrow">Dados INSEE · Ago/2026</span>
       <h1>Quanto custa viver na França em 2026?</h1>
       <p class="rt-lead">Os números são do INSEE — pensa nele como o IBGE francês. Compare cinco cidades e depois arraste o simulador abaixo pra montar a sua própria estimativa, com o seu aluguel.</p>
+      <div id="article-updated-mount"></div>
       <div class="cc-hero-stats">
         <div class="cc-hero-stat"><b>5</b><span>Cidades</span></div>
         <div class="cc-hero-stat"><b>4</b><span>Cenários de moradia</span></div>
@@ -297,6 +298,8 @@
         </a>
       </div>
     </section>
+
+    <div id="article-related-mount"></div>
   </div>
 </main>
 
@@ -342,6 +345,10 @@
 </footer>
 
 <script src="/assets/js/main.js"></script>
+<script type="module">
+  import { mountArticleExtras } from "/assets/js/article-extras.js";
+  mountArticleExtras({ slug: "quanto-custa-viver-na-franca-2026", updatedMountId: "article-updated-mount", relatedMountId: "article-related-mount" });
+</script>
 <script>
 (function(){
   // Faixas do simulador — colocation/studio/T2: min = max (valor mediano oficial) - 2x a variação

@@ -47,6 +47,7 @@
       <span class="eyebrow">Atualização 2026 · Visto de estudante</span>
       <h1>O visto de estudante ficou mais caro — mas ainda dá pra se planejar</h1>
       <p class="rt-lead">Um decreto mudou o valor mínimo exigido pra tirar ou renovar o visto de estudante na França. Aqui: o que mudou, as saídas possíveis e as bolsas que ainda estão de pé — bem detalhado, sem clickbait.</p>
+      <div id="article-updated-mount"></div>
       <a href="#newsletter" class="btn btn-pill" style="background:var(--beje-paris-text);">Ver opções de bolsas</a>
       <p class="muted" style="font-size:13px; margin-top:10px;">Comentou "BOLSAS" no Reels? É essa a página. Leitura de ~6 minutos.</p>
     </article>
@@ -355,6 +356,8 @@
         <span style="font-weight:600; font-size:13px; color:var(--downtown-brown);">Ver o checklist de moradia →</span>
       </a>
     </section>
+
+    <div id="article-related-mount"></div>
   </div>
 </main>
 
@@ -399,6 +402,10 @@
 </footer>
 
 <script src="/assets/js/main.js"></script>
+<script type="module">
+  import { mountArticleExtras } from "/assets/js/article-extras.js";
+  mountArticleExtras({ slug: "como-conseguir-bolsa-de-estudo", updatedMountId: "article-updated-mount", relatedMountId: "article-related-mount" });
+</script>
 <link rel="stylesheet" href="https://sibforms.com/forms/end-form/build/sib-styles.css">
 <script>
   window.REQUIRED_CODE_ERROR_MESSAGE = 'Escolha um código de país';
