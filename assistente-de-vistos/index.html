@@ -306,32 +306,7 @@
     'Residência de longa data': 'Pra quem já mora na França há muitos anos (na prática, entre 5 e 10) e tem vínculo pessoal consolidado no país. Sem limite de idade.'
   };
 
-  const state = { nome:null, ue:null, idade:null, jaEsta:null, objetivo:null, tipo:null, prontidao:null, instagram:null, done:false, shortcutConfirmed:null };
-
-  // ---------- Shortcut de entrada — ?via=... na URL ----------
-  // Cada artigo do blog já implica parte da resposta (ex: quem lê "casei com
-  // francês" quase certamente vai escolher Família > Cônjuge de francês(a)).
-  // Só pré-preenchemos aqui o que o CONTEXTO DO ARTIGO garante — nunca a
-  // cidadania UE nem "já está na França" nos casos em que isso é só provável
-  // (não certo), porque são justamente as perguntas que decidem elegibilidade.
-  // A pessoa sempre confirma antes de qualquer coisa ser pulada (ver
-  // getNextStep, chave 'shortcutConfirmed'), e pode recusar e responder tudo.
-  const SHORTCUTS = {
-    // "Casei com um(a) francês(a)" — objetivo e tipo são o próprio tema do artigo.
-    'conjuge-frances': {
-      label: 'do artigo sobre cônjuge de francês(a)',
-      preset: { objetivo: 'Estar com cônjuge ou filho(a) francês(a) ou da UE', tipo: 'Cônjuge de francês(a)' }
-    },
-    // "Reprovei no Exame Cívico" — o exame só existe pra quem já assinou o CIR:
-    // ou seja, não é cidadão UE (ue) e já está em território francês (jaEsta).
-    // Isso não é "provável", é exigido pelo próprio processo — por isso preenche,
-    // mas o tipo de visto continua em aberto, porque o exame vale pra vários.
-    'exame-civico-travado': {
-      label: 'do artigo sobre o exame cívico',
-      preset: { ue: 'Não', jaEsta: 'Sim' }
-    }
-  };
-  const shortcut = SHORTCUTS[new URLSearchParams(window.location.search).get('via')] || null;
+  const state = { nome:null, ue:null, idade:null, jaEsta:null, objetivo:null, tipo:null, prontidao:null, instagram:null, done:false };
 
   // ---------- Artigos do blog no desfecho "Não sei ainda" ----------
   // Puxa direto de /content/posts.json (mesmo arquivo que o /admin edita) — publicar um
@@ -425,8 +400,7 @@
   // Retorna o próximo passo: { bot: texto, type: 'buttons'|'text'|'result', options, placeholder, result }
   function getNextStep(){
     if (state.nome === null) return { key:'nome', bot:'Oi! Antes de começar, como posso te chamar?', type:'text', placeholder:'Seu nome' };
-    if (shortcut && state.shortcutConfirmed === null) return { key:'shortcutConfirmed', bot: 'Prazer, ' + state.nome + '! Vi que você veio ' + shortcut.label + ' — quer que eu já adiante essa parte, ou prefere responder tudo do zero?', type:'buttons', options:['Pode adiantar','Prefiro responder tudo'] };
-    if (state.ue === null) return { key:'ue', bot: (shortcut ? '' : ('Prazer, ' + state.nome + '! ')) + 'Primeira pergunta: você já tem cidadania de algum país da União Europeia?', type:'buttons', options:['Sim','Não'] };
+    if (state.ue === null) return { key:'ue', bot: 'Prazer, ' + state.nome + '! Primeira pergunta: você já tem cidadania de algum país da União Europeia?', type:'buttons', options:['Sim','Não'] };
     if (state.ue === 'Sim') return resultadoD();
     if (state.idade === null) return { key:'idade', bot:'Beleza. Qual sua faixa de idade?', type:'buttons', options:['Abaixo de 30','30 ou mais'] };
     if (state.jaEsta === null) return { key:'jaEsta', bot:'Você já está na França?', type:'buttons', options:['Sim','Não'] };
@@ -675,12 +649,7 @@
   function answer(key, value){
     clearInteractive();
     addBubble(value, 'user');
-    if (key === 'shortcutConfirmed'){
-      state.shortcutConfirmed = value;
-      if (value === 'Pode adiantar' && shortcut) Object.assign(state, shortcut.preset);
-    } else {
-      state[key] = value;
-    }
+    state[key] = value;
     showStep(getNextStep());
   }
 
