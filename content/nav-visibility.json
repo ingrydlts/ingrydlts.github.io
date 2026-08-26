@@ -2,7 +2,7 @@
   "categories": {
     "home": { "header": true, "footer": true, "logo": true },
     "produtos": { "header": true, "footer": true, "logo": true },
-    "blog": { "header": true, "footer": true, "logo": true },
+    "blog": { "header": false, "footer": false, "logo": true },
     "institucional": { "header": true, "footer": true, "logo": true }
   },
   "pages": {
