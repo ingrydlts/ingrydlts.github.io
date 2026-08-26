@@ -124,6 +124,63 @@ collections:
               - { label: "Corpo do artigo", name: body, widget: markdown, hint: "Use ## para subtítulo, - para lista, **negrito**, [texto](link). Se o artigo for premium, este texto é a prévia gratuita — a continuação paga é escrita à parte, em /admin/premium/." }
               - { label: "Artigo premium (assinatura)", name: premium, widget: boolean, default: false, required: false, hint: "Marque para exigir assinatura pra ler o conteúdo completo. O texto pago não fica aqui — escreva-o no painel /admin/premium/ depois de salvar este artigo." }
               - { label: "URL fixa (não editar manualmente)", name: url, widget: string, required: false, hint: "Usado internamente para os artigos que têm página própria. Deixe como está — não apague nem edite este campo." }
+              - label: "Cabeçalho desta página"
+                name: headerMode
+                widget: select
+                default: "padrao"
+                required: false
+                options:
+                  - { label: "Padrão do site", value: "padrao" }
+                  - { label: "Só a logo, sem menu (landing de pré-lançamento)", value: "somente-logo" }
+                hint: "Use \"Só a logo\" pra transformar este artigo numa landing page isolada, sem links pra partes do site que ainda não lançaram. Depois do lançamento, volte pra \"Padrão do site\"."
+
+  - name: header_config
+    label: "Cabeçalho do site"
+    files:
+      - name: header_config
+        label: "Links do menu (cabeçalho)"
+        file: content/header-config.json
+        fields:
+          - label: "Menu principal"
+            name: links
+            widget: object
+            hint: "Controla os links do cabeçalho em TODAS as páginas do site. Desmarque \"Mostrar\" pra esconder uma seção que ainda não foi lançada — sem precisar editar código. Pra uma página de artigo específica virar uma landing sem menu nenhum, use o campo \"Cabeçalho desta página\" lá no artigo, em Blog — artigos."
+            fields:
+              - label: "Produtos digitais"
+                name: produtos-digitais
+                widget: object
+                fields:
+                  - { label: Mostrar, name: enabled, widget: boolean, default: true }
+                  - { label: "Texto do link", name: label, widget: string, default: "Produtos digitais" }
+                  - { label: "Link (URL)", name: href, widget: string, default: "/produtos-digitais/" }
+              - label: "Produtos de estudo"
+                name: produtos-de-estudo
+                widget: object
+                fields:
+                  - { label: Mostrar, name: enabled, widget: boolean, default: true }
+                  - { label: "Texto do link", name: label, widget: string, default: "Produtos de estudo" }
+                  - { label: "Link (URL)", name: href, widget: string, default: "/produtos-de-estudo/" }
+              - label: "Produtos de compras"
+                name: produtos-de-compras
+                widget: object
+                fields:
+                  - { label: Mostrar, name: enabled, widget: boolean, default: true }
+                  - { label: "Texto do link", name: label, widget: string, default: "Produtos de compras" }
+                  - { label: "Link (URL)", name: href, widget: string, default: "/produtos-de-compras/" }
+              - label: "Blog"
+                name: blog
+                widget: object
+                fields:
+                  - { label: Mostrar, name: enabled, widget: boolean, default: true }
+                  - { label: "Texto do link", name: label, widget: string, default: "Blog" }
+                  - { label: "Link (URL)", name: href, widget: string, default: "/artigos/" }
+              - label: "Sobre"
+                name: sobre
+                widget: object
+                fields:
+                  - { label: Mostrar, name: enabled, widget: boolean, default: true }
+                  - { label: "Texto do link", name: label, widget: string, default: "Sobre" }
+                  - { label: "Link (URL)", name: href, widget: string, default: "/sobre/" }
 
   - name: premium_config
     label: "Assinatura de artigos premium"

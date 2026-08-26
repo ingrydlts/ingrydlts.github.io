@@ -29,21 +29,21 @@
 
 <header class="site-header">
   <a href="/" class="site-logo"><img src="/images/logo-por-dentro.png" alt="Por Dentro" class="site-logo-img">Por Dentro</a>
-  <nav class="site-nav" aria-label="Navegação principal">
-    <a href="/produtos-digitais/">Produtos digitais</a>
-    <a href="/produtos-de-estudo/">Produtos de estudo</a>
-    <a href="/produtos-de-compras/">Produtos de compras</a>
-    <a href="/artigos/" aria-current="page">Blog</a>
-    <a href="/sobre/">Sobre</a>
+  <nav class="site-nav" aria-label="Navegação principal" data-header-nav>
+    <a href="/produtos-digitais/" data-nav-key="produtos-digitais">Produtos digitais</a>
+    <a href="/produtos-de-estudo/" data-nav-key="produtos-de-estudo">Produtos de estudo</a>
+    <a href="/produtos-de-compras/" data-nav-key="produtos-de-compras">Produtos de compras</a>
+    <a href="/artigos/" data-nav-key="blog" aria-current="page">Blog</a>
+    <a href="/sobre/" data-nav-key="sobre">Sobre</a>
   </nav>
   <button class="nav-toggle" aria-label="Abrir menu" aria-expanded="false"><span></span><span></span><span></span></button>
 </header>
-<nav class="mobile-nav" aria-label="Navegação mobile">
-  <a href="/produtos-digitais/">Produtos digitais</a>
-  <a href="/produtos-de-estudo/">Produtos de estudo</a>
-  <a href="/produtos-de-compras/">Produtos de compras</a>
-  <a href="/artigos/" aria-current="page">Blog</a>
-  <a href="/sobre/">Sobre</a>
+<nav class="mobile-nav" aria-label="Navegação mobile" data-header-nav>
+  <a href="/produtos-digitais/" data-nav-key="produtos-digitais">Produtos digitais</a>
+  <a href="/produtos-de-estudo/" data-nav-key="produtos-de-estudo">Produtos de estudo</a>
+  <a href="/produtos-de-compras/" data-nav-key="produtos-de-compras">Produtos de compras</a>
+  <a href="/artigos/" data-nav-key="blog" aria-current="page">Blog</a>
+  <a href="/sobre/" data-nav-key="sobre">Sobre</a>
 </nav>
 
 <main style="--accent:#604034;">
@@ -255,6 +255,7 @@
 </footer>
 
 <script src="/assets/js/main.js"></script>
+<script type="module" src="/assets/js/header.js"></script>
 <script type="module">
   import { mountArticleExtras } from "/assets/js/article-extras.js";
   mountArticleExtras({ slug: "vls-ts-3-meses-para-validar", updatedMountId: "article-updated-mount", relatedMountId: "article-related-mount" });
