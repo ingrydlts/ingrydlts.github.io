@@ -81,6 +81,9 @@
 
 <script src="/assets/js/main.js"></script>
 <script type="module" src="/assets/js/header.js"></script>
+<script src="/assets/js/vendor/gsap.min.js"></script>
+<script src="/assets/js/vendor/ScrollTrigger.min.js"></script>
+<script src="/assets/js/article-animations.js"></script>
 <script type="module">
   import { fetchJSON, imgSlotHTML, escapeHtml, qs } from "/assets/js/render.js";
   import { markdownToBlocks } from "/assets/js/markdown.js";
@@ -152,7 +155,14 @@
     // (escrito como texto normal no /admin) vira um mount point pra uma ferramenta
     // JS carregada sob demanda — assim o corpo do artigo continua markdown puro e
     // editável pelo painel, e só os artigos que usam o token pagam o custo do módulo.
-    const TOOL_TOKENS = { "[[MAPA-FLE]]": { mountId: "tool-mapa-fle", module: "/assets/js/tools/mapa-fle.js" } };
+    const TOOL_TOKENS = {
+      "[[MAPA-FLE]]": { mountId: "tool-mapa-fle", module: "/assets/js/tools/mapa-fle.js" },
+      "[[VAE-CHECKLIST]]": { mountId: "tool-vae-checklist", module: "/assets/js/tools/vae-2026.js", fn: "mountChecklist" },
+      "[[VAE-ETAPAS]]": { mountId: "tool-vae-etapas", module: "/assets/js/tools/vae-2026.js", fn: "mountEtapas" },
+      "[[VAE-SIMULADOR]]": { mountId: "tool-vae-simulador", module: "/assets/js/tools/vae-2026.js", fn: "mountFinanciamento" },
+      "[[VAE-TAXA-SUCESSO]]": { mountId: "tool-vae-taxa-sucesso", module: "/assets/js/tools/vae-2026.js", fn: "mountTaxaSucesso" },
+      "[[VAE-NEWSLETTER]]": { mountId: "tool-vae-newsletter", module: "/assets/js/tools/vae-2026.js", fn: "mountNewsletter" },
+    };
     for (const [token, tool] of Object.entries(TOOL_TOKENS)) {
       bodyHtml = bodyHtml.replace("<p>" + token + "</p>", '<div id="' + tool.mountId + '"></div>');
     }
@@ -177,9 +187,16 @@
       resolvePremiumSlot("premium-slot", post.slug);
     }
 
+    if (window.initArticleAnimations) window.initArticleAnimations();
+
     for (const tool of Object.values(TOOL_TOKENS)) {
       const mountEl = document.getElementById(tool.mountId);
-      if (mountEl) import(tool.module).then((m) => m.mount(tool.mountId));
+      if (mountEl) {
+        import(tool.module).then((m) => {
+          m[tool.fn || "mount"](tool.mountId);
+          if (window.ScrollTrigger) window.ScrollTrigger.refresh();
+        });
+      }
     }
   })();
 </script>
