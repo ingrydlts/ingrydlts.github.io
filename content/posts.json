@@ -154,6 +154,30 @@
       "title": "Reprovei no Exame Cívico obrigatório — posso tentar de novo?",
       "image": "",
       "category": "Exame Cívico"
+    },
+    {
+      "excerpt": "Cônjuge de cidadão(ã) da UE não-francês é um regime diferente do de cônjuge de francês(a) — mais barato, sem exame de francês nem cívico.",
+      "body": "Se seu cônjuge tem cidadania de outro país da UE (português, italiano, espanhol...), o caminho não é o mesmo de quem casa com francês(a) — é mais barato e mais rápido.\n\n## Por que isso não é a mesma coisa que \"cônjuge de francês(a)\"\n\nO direito aqui não vem do casamento em si — vem da livre circulação europeia. A base legal é o art. L233-1 do CESEDA, que transpõe a Diretiva 2004/38/CE. Você não está pedindo o Vie Privée et Familiale (VPF) tradicional, está pedindo a carte de séjour \"membre de famille d'un citoyen de l'Union\".\n\nIsso só se aplica quando seu cônjuge tem cidadania de outro país da UE/EEE — cônjuge francês(a) segue outro regime, o VPF tradicional.\n\n## Lado a lado com o VPF\n\n* Custo: grátis (o VPF custa a partir de ~350€)\n* Teste de francês: não exige (o VPF exige A2)\n* Exame cívico: não exige (o VPF exige, desde janeiro de 2026)\n* Validade inicial: 5 anos\n\n## O requisito central\n\nSeu cônjuge europeu precisa comprovar que exerce o direito de residência na França — via trabalho, estudo ou recursos próprios suficientes. Sem isso, o regime não se aplica.\n\n## Um ponto em aberto\n\nPode ser exigido um visto de longa duração antes de entrar na França — mas duas fontes que pesquisei discordam sobre isso na prática. [Escrevi um artigo à parte só sobre esse ponto](/artigos/post/?slug=preciso-de-visto-antes-de-entrar-conjuge-ue), com os dois cenários lado a lado.\n\nFontes: Démarches Étrangers, Info Droits Étrangers, Légifrance (art. L233-1 CESEDA e Diretiva 2004/38/CE). Regras e valores mudam — confirme sempre nos canais oficiais antes de protocolar.",
+      "readMinutes": 5,
+      "slug": "casei-com-cidadao-europeu-nao-frances",
+      "date": "2026-08-26",
+      "updatedDate": "2026-08-26",
+      "url": "/artigos/post/casei-com-cidadao-europeu-nao-frances/",
+      "title": "Casei com cidadão(ã) europeu(ia), não francês(a) — meu visto é diferente?",
+      "image": "",
+      "category": "Família"
+    },
+    {
+      "excerpt": "Duas fontes oficiais divergem sobre isso. Veja os dois cenários lado a lado e o que fazer antes de comprar a passagem.",
+      "body": "Duas fontes que pesquisei chegam a respostas diferentes sobre se é preciso visto de longa duração antes de entrar na França sendo cônjuge de um cidadão da UE (não francês). Veja os dois cenários antes de decidir o que fazer.\n\n## Cenário A — visto exigido\n\nSegundo o Info Droits Étrangers, pela Diretiva 2004/38/CE art. 5(2), ainda é exigido um visto de longa duração antes da entrada — mas esse visto deve ser emitido de graça e em regime acelerado.\n\n## Cenário B — turismo já basta\n\nSegundo o Démarches Étrangers, na prática a entrada como turista já é suficiente, e a regularização acontece depois, já em território francês.\n\n## Por que isso acontece\n\nA Diretiva 2004/38/CE dá aos Estados-membros a possibilidade de exigir esse visto — não a obrigação. Isso muda de acordo com o consulado, e pode mudar sem aviso.\n\n## O que fazer antes de comprar a passagem\n\n* Ligue ou vá ao consulado francês que vai processar o seu caso e pergunte diretamente\n* Peça a resposta por escrito, se possível\n* Se pedirem o visto, lembre que ele deve ser grátis e acelerado\n* Guarde a documentação da resposta que recebeu\n\n[Veja a comparação completa com o cônjuge de francês(a)](/artigos/post/?slug=casei-com-cidadao-europeu-nao-frances).\n\nFontes: Démarches Étrangers, Info Droits Étrangers, Légifrance (Diretiva 2004/38/CE, art. 5(2)). As duas fontes divergem entre si — confirme sempre com o consulado responsável pelo seu caso antes de decidir.",
+      "readMinutes": 4,
+      "slug": "preciso-de-visto-antes-de-entrar-conjuge-ue",
+      "date": "2026-08-26",
+      "updatedDate": "2026-08-26",
+      "url": "/artigos/post/preciso-de-visto-antes-de-entrar-conjuge-ue/",
+      "title": "Preciso de visto antes de entrar sendo cônjuge de cidadão(ã) da UE?",
+      "image": "",
+      "category": "Família"
     }
   ]
 }
