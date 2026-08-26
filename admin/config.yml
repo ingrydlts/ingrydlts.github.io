@@ -12,6 +12,92 @@ public_folder: "/images/uploads"
 locale: "pt"
 
 collections:
+  - name: nav_visibility
+    label: "Cabeçalho e rodapé (menu do site)"
+    files:
+      - name: nav_visibility
+        label: "Ativar/desativar o menu por página"
+        file: content/nav-visibility.json
+        fields:
+          - label: "Ligar/desligar tudo de uma vez, por categoria"
+            name: categories
+            widget: object
+            hint: "Cada interruptor liga ou desliga o cabeçalho/rodapé de TODAS as páginas dessa categoria de uma vez — é o \"selecionar tudo / desmarcar tudo\". Só vale pra páginas que estiverem em \"Seguir categoria\" lá embaixo, em \"Cada página\"."
+            fields:
+              - label: Home
+                name: home
+                widget: object
+                fields: &category_toggle
+                  - { label: "Cabeçalho (menu no topo)", name: header, widget: boolean, default: true }
+                  - { label: "Rodapé (menu de navegação no rodapé)", name: footer, widget: boolean, default: true }
+              - label: "Produtos (digitais, de estudo, de compras)"
+                name: produtos
+                widget: object
+                fields: *category_toggle
+              - label: Blog
+                name: blog
+                widget: object
+                fields: *category_toggle
+              - label: "Institucional (Sobre, CGV, Confidentialité, Mentions légales)"
+                name: institucional
+                widget: object
+                fields: *category_toggle
+          - label: "Cada página (só preencha se essa página precisar ser diferente da categoria dela)"
+            name: pages
+            widget: object
+            hint: "Deixe em \"Seguir categoria\" na grande maioria das páginas — assim elas obedecem o interruptor da categoria, lá em cima. Só mude uma página específica pra \"Ativado\" ou \"Desativado\" quando ela for a exceção — por exemplo, o Blog inteiro ligado mas uma página de artigo isolada funcionando como landing antes do lançamento."
+            fields:
+              - label: Home
+                name: home
+                widget: object
+                fields: &page_toggle
+                  - { label: Cabeçalho, name: header, widget: select, default: "categoria", options: [{ label: "Seguir categoria", value: "categoria" }, { label: Ativado, value: "ativado" }, { label: Desativado, value: "desativado" }] }
+                  - { label: Rodapé, name: footer, widget: select, default: "categoria", options: [{ label: "Seguir categoria", value: "categoria" }, { label: Ativado, value: "ativado" }, { label: Desativado, value: "desativado" }] }
+              - label: "Produtos digitais"
+                name: produtos-digitais
+                widget: object
+                fields: *page_toggle
+              - label: "Produtos digitais — página de um produto"
+                name: produtos-digitais-produto
+                widget: object
+                fields: *page_toggle
+              - label: "Produtos de estudo"
+                name: produtos-de-estudo
+                widget: object
+                fields: *page_toggle
+              - label: "Produtos de compras"
+                name: produtos-de-compras
+                widget: object
+                fields: *page_toggle
+              - label: Sobre
+                name: sobre
+                widget: object
+                fields: *page_toggle
+              - label: CGV
+                name: cgv
+                widget: object
+                fields: *page_toggle
+              - label: Confidentialité
+                name: confidentialite
+                widget: object
+                fields: *page_toggle
+              - label: "Mentions légales"
+                name: mentions-legales
+                widget: object
+                fields: *page_toggle
+              - label: "Blog — lista de artigos"
+                name: artigos
+                widget: object
+                fields: *page_toggle
+              - label: "Blog — modelo de artigo (usado por artigos sem página própria)"
+                name: artigos-post-template
+                widget: object
+                fields: *page_toggle
+              - label: "Assinatura confirmada"
+                name: artigos-assinatura-confirmada
+                widget: object
+                fields: *page_toggle
+
   - name: produtos_digitais
     label: "Produtos digitais"
     files:
@@ -127,12 +213,23 @@ collections:
               - label: "Cabeçalho desta página"
                 name: headerMode
                 widget: select
-                default: "padrao"
+                default: "categoria"
                 required: false
                 options:
-                  - { label: "Padrão do site", value: "padrao" }
-                  - { label: "Só a logo, sem menu (landing de pré-lançamento)", value: "somente-logo" }
-                hint: "Use \"Só a logo\" pra transformar este artigo numa landing page isolada, sem links pra partes do site que ainda não lançaram. Depois do lançamento, volte pra \"Padrão do site\"."
+                  - { label: "Seguir a categoria Blog (definida em \"Cabeçalho e rodapé\")", value: "categoria" }
+                  - { label: Ativado, value: "ativado" }
+                  - { label: "Desativado — só a logo, sem menu (landing de pré-lançamento)", value: "desativado" }
+                hint: "Use \"Desativado\" pra transformar este artigo numa landing page isolada, sem links pra partes do site que ainda não lançaram. Depois do lançamento, volte pra \"Seguir a categoria Blog\"."
+              - label: "Rodapé desta página"
+                name: footerMode
+                widget: select
+                default: "categoria"
+                required: false
+                options:
+                  - { label: "Seguir a categoria Blog (definida em \"Cabeçalho e rodapé\")", value: "categoria" }
+                  - { label: Ativado, value: "ativado" }
+                  - { label: "Desativado — esconde o menu de navegação do rodapé", value: "desativado" }
+                hint: "Mesma lógica do cabeçalho, mas pro bloco \"Navegação\" do rodapé (os links pra Produtos, Blog, Sobre etc. lá embaixo da página)."
 
   - name: header_config
     label: "Cabeçalho do site"

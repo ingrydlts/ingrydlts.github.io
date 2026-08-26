@@ -482,7 +482,10 @@ p { margin: 0 0 1em; color: var(--grafite); }
 .site-footer .container { padding: 56px 24px 32px; }
 @media (min-width: 1024px) { .site-footer .container { padding: 64px 64px 32px; } }
 .footer-grid { display: grid; gap: 32px; grid-template-columns: 1fr; }
-@media (min-width: 720px) { .footer-grid { grid-template-columns: 1.4fr repeat(3, 1fr); } }
+/* auto-flow (em vez de repeat(3, 1fr) fixo) faz as colunas que sobrarem
+   se redistribuir sozinhas quando o /admin desliga o bloco "Navegação" —
+   sem isso, a coluna desligada deixava um vão vazio à direita. */
+@media (min-width: 720px) { .footer-grid { grid-template-columns: 1.4fr; grid-auto-flow: column; grid-auto-columns: 1fr; } }
 .footer-col-title { font-weight: 700; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: #8B857E; margin-bottom: 16px; }
 .footer-links { display: flex; flex-direction: column; gap: 10px; font-size: 14px; }
 .footer-links a { color: #E4DFD3; }
