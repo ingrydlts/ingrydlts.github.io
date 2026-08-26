@@ -164,7 +164,10 @@ export function mount(rootId) {
       detailEl.innerHTML = "<p>Clique em um centro no mapa ou na lista pra ver o site oficial e a localização.</p>";
       return;
     }
-    const mapsUrl = "https://www.google.com/maps/search/?api=1&query=" + pin.lat + "," + pin.lon;
+    // Busca por nome + cidade (não só lat/lon) pra abrir a ficha real do
+    // estabelecimento no Google Maps, em vez de um ponto solto sem nome.
+    const mapsQuery = encodeURIComponent(pin.name + ", " + pin.postal + " " + pin.city + ", França");
+    const mapsUrl = "https://www.google.com/maps/search/?api=1&query=" + mapsQuery;
     const phoneHtml = pin.phone && pin.phone !== "NULL" ? '<div class="sub">' + pin.phone + "</div>" : "";
     detailEl.className = "fle-detail";
     detailEl.innerHTML =
