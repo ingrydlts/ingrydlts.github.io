@@ -406,7 +406,7 @@
     if (state.jaEsta === null) return { key:'jaEsta', bot:'Você já está na França?', type:'buttons', options:['Sim','Não'] };
     if (state.objetivo === null) return { key:'objetivo', bot:'Qual é o seu principal objetivo?', type:'buttons', options:['Estudar','Trabalhar','Estar com cônjuge ou filho(a) francês(a) ou da UE','Acompanhar alguém que já está na França'] };
     if (state.objetivo === 'Acompanhar alguém que já está na França') return resultadoE();
-    if (state.tipo === null) return { key:'tipo', bot: state.jaEsta === 'Sim' ? 'Qual desses já é a sua situação hoje?' : 'Qual desses você pretende pedir?', type:'buttons', options: tipoOptionsFor(state.objetivo) };
+    if (state.tipo === null) return { key:'tipo', bot: 'Aqui estão as possibilidades de visto que você pode pedir — clique em cada um pra entender os pré-requisitos.', type:'tipoExplorer', options: tipoOptionsFor(state.objetivo) };
     if (state.tipo === 'Não sei ainda') return resultadoA();
     if (state.prontidao === null) return { key:'prontidao', bot:'Você está começando a pesquisar sobre isso, ou já tentou e não conseguiu?', type:'buttons', options:['Estou começando agora','Já tentei e não deu certo'] };
     if (state.instagram === null) return { key:'instagram', bot:'Última coisa — se quiser, deixa seu @ do Instagram (opcional, aperta enviar em branco pra pular).', type:'text', placeholder:'@seuinstagram', optional:true };
@@ -439,7 +439,7 @@
       {label:'📅 Quero fazer um 1:1', cls:'ghost', popup: popup1a1('Quero conversar sobre ' + state.tipo + '.')}
     ];
     return { key:'result', type:'result', tag:{cls:'free', label:'Pré-requisitos grátis'},
-      bot: TIPO_CONTENT[state.tipo] + '\n\nIsso é só o resumo. Tem um guia completo com passo a passo, prazos e modelos de documento.',
+      bot: 'Você já viu os pré-requisitos de ' + state.tipo + ' ali atrás — isso foi só o resumo. Tem um guia completo com passo a passo, prazos e modelos de documento.',
       ctas: link
         ? [ {label:'Quero o guia completo', cls:'paid', href: link} ].concat(opcoes)
         : opcoes };
@@ -532,8 +532,32 @@
   }
 
   function clearInteractive(){
-    const old = chat.querySelector('.options, .cta-row');
-    if (old) old.remove();
+    chat.querySelectorAll('.options, .cta-row, .tipo-preview-wrap').forEach(function(el){ el.remove(); });
+  }
+
+  // Mostra o pré-requisito do tipo clicado, sem avançar o passo — a pessoa
+  // pode clicar em vários botões antes de decidir. Só avança quando aperta
+  // "Seguir com [tipo]", que aí sim chama answer() e segue o fluxo normal.
+  function renderTipoPreview(step, opt, previewWrap){
+    previewWrap.innerHTML = '';
+    const row = document.createElement('div');
+    row.className = 'row bot';
+    const b = document.createElement('div');
+    b.className = 'bubble';
+    b.textContent = TIPO_CONTENT[opt] || '';
+    row.appendChild(b);
+    previewWrap.appendChild(row);
+
+    const ctaRow = document.createElement('div');
+    ctaRow.className = 'cta-row';
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'cta paid';
+    btn.textContent = 'Seguir com ' + opt + ' →';
+    btn.onclick = function(){ answer(step.key, opt); };
+    ctaRow.appendChild(btn);
+    previewWrap.appendChild(ctaRow);
+    scrollDown();
   }
 
   function showStep(step){
@@ -574,6 +598,26 @@
           box.appendChild(btn);
         });
         chat.appendChild(box);
+      } else if (step.type === 'tipoExplorer'){
+        inputbar.classList.add('hidden');
+        const box = document.createElement('div');
+        box.className = 'options';
+        const previewWrap = document.createElement('div');
+        previewWrap.className = 'tipo-preview-wrap';
+        step.options.forEach(function(opt){
+          const btn = document.createElement('button');
+          btn.className = 'opt-btn';
+          btn.type = 'button';
+          btn.textContent = opt;
+          // "Não sei ainda" (ou qualquer opção sem prerequisito mapeado) não tem
+          // o que explorar — comete direto, como um botão normal.
+          btn.onclick = (opt === 'Não sei ainda' || !TIPO_CONTENT[opt])
+            ? function(){ answer(step.key, opt); }
+            : function(){ renderTipoPreview(step, opt, previewWrap); };
+          box.appendChild(btn);
+        });
+        chat.appendChild(box);
+        chat.appendChild(previewWrap);
       } else if (step.type === 'text'){
         inputbar.classList.remove('hidden');
         textInput.placeholder = step.placeholder || 'Escreva aqui...';
