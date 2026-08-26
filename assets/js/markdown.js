@@ -132,7 +132,10 @@ export function markdownToBlocks(md) {
       flushList();
       return;
     }
-    if (line.startsWith("## ") || line.startsWith("# ")) {
+    if (line.startsWith("### ")) {
+      flushList();
+      blocks.push("<h3>" + inline(line.slice(4)) + "</h3>");
+    } else if (line.startsWith("## ") || line.startsWith("# ")) {
       flushList();
       const text = line.startsWith("## ") ? line.slice(3) : line.slice(2);
       blocks.push("<h2>" + inline(text) + "</h2>");
