@@ -1,22 +1,22 @@
 {
   "categories": {
-    "home": { "header": true, "footer": true },
-    "produtos": { "header": true, "footer": true },
-    "blog": { "header": true, "footer": true },
-    "institucional": { "header": true, "footer": true }
+    "home": { "header": true, "footer": true, "logo": true },
+    "produtos": { "header": true, "footer": true, "logo": true },
+    "blog": { "header": true, "footer": true, "logo": true },
+    "institucional": { "header": true, "footer": true, "logo": true }
   },
   "pages": {
-    "home": { "header": "categoria", "footer": "categoria" },
-    "produtos-digitais": { "header": "categoria", "footer": "categoria" },
-    "produtos-digitais-produto": { "header": "categoria", "footer": "categoria" },
-    "produtos-de-estudo": { "header": "categoria", "footer": "categoria" },
-    "produtos-de-compras": { "header": "categoria", "footer": "categoria" },
-    "sobre": { "header": "categoria", "footer": "categoria" },
-    "cgv": { "header": "categoria", "footer": "categoria" },
-    "confidentialite": { "header": "categoria", "footer": "categoria" },
-    "mentions-legales": { "header": "categoria", "footer": "categoria" },
-    "artigos": { "header": "categoria", "footer": "categoria" },
-    "artigos-post-template": { "header": "categoria", "footer": "categoria" },
-    "artigos-assinatura-confirmada": { "header": "categoria", "footer": "categoria" }
+    "home": { "header": "categoria", "footer": "categoria", "logo": "categoria" },
+    "produtos-digitais": { "header": "categoria", "footer": "categoria", "logo": "categoria" },
+    "produtos-digitais-produto": { "header": "categoria", "footer": "categoria", "logo": "categoria" },
+    "produtos-de-estudo": { "header": "categoria", "footer": "categoria", "logo": "categoria" },
+    "produtos-de-compras": { "header": "categoria", "footer": "categoria", "logo": "categoria" },
+    "sobre": { "header": "categoria", "footer": "categoria", "logo": "categoria" },
+    "cgv": { "header": "categoria", "footer": "categoria", "logo": "categoria" },
+    "confidentialite": { "header": "categoria", "footer": "categoria", "logo": "categoria" },
+    "mentions-legales": { "header": "categoria", "footer": "categoria", "logo": "categoria" },
+    "artigos": { "header": "categoria", "footer": "categoria", "logo": "categoria" },
+    "artigos-post-template": { "header": "categoria", "footer": "categoria", "logo": "categoria" },
+    "artigos-assinatura-confirmada": { "header": "categoria", "footer": "categoria", "logo": "categoria" }
   }
 }

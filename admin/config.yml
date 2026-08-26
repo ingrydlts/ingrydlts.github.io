@@ -30,6 +30,7 @@ collections:
                 fields: &category_toggle
                   - { label: "Cabeçalho (menu no topo)", name: header, widget: boolean, default: true }
                   - { label: "Rodapé (menu de navegação no rodapé)", name: footer, widget: boolean, default: true }
+                  - { label: "Logo redireciona pra Home", name: logo, widget: boolean, default: true }
               - label: "Produtos (digitais, de estudo, de compras)"
                 name: produtos
                 widget: object
@@ -53,6 +54,7 @@ collections:
                 fields: &page_toggle
                   - { label: Cabeçalho, name: header, widget: select, default: "categoria", options: [{ label: "Seguir categoria", value: "categoria" }, { label: Ativado, value: "ativado" }, { label: Desativado, value: "desativado" }] }
                   - { label: Rodapé, name: footer, widget: select, default: "categoria", options: [{ label: "Seguir categoria", value: "categoria" }, { label: Ativado, value: "ativado" }, { label: Desativado, value: "desativado" }] }
+                  - { label: "Logo redireciona pra Home", name: logo, widget: select, default: "categoria", options: [{ label: "Seguir categoria", value: "categoria" }, { label: Ativado, value: "ativado" }, { label: Desativado, value: "desativado" }] }
               - label: "Produtos digitais"
                 name: produtos-digitais
                 widget: object
@@ -230,6 +232,16 @@ collections:
                   - { label: Ativado, value: "ativado" }
                   - { label: "Desativado — esconde o menu de navegação do rodapé", value: "desativado" }
                 hint: "Mesma lógica do cabeçalho, mas pro bloco \"Navegação\" do rodapé (os links pra Produtos, Blog, Sobre etc. lá embaixo da página)."
+              - label: "Logo redireciona pra Home, nesta página"
+                name: logoMode
+                widget: select
+                default: "categoria"
+                required: false
+                options:
+                  - { label: "Seguir a categoria Blog (definida em \"Cabeçalho e rodapé\")", value: "categoria" }
+                  - { label: Ativado, value: "ativado" }
+                  - { label: "Desativado — a logo aparece, mas não é um link", value: "desativado" }
+                hint: "Desative junto com o Cabeçalho quando este artigo for uma landing isolada — assim nem a logo leva de volta pro site."
 
   - name: header_config
     label: "Cabeçalho do site"

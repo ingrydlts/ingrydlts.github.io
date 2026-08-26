@@ -12,9 +12,10 @@
 //     categoria de página (Home, Produtos, Blog, Institucional) — o
 //     "select all / unselect all" pedido — e, se precisar, por página
 //     individual (sobrepõe a categoria).
-//   - content/posts.json (campos "headerMode"/"footerMode" de cada artigo)
-//     — sobrepõe a categoria Blog pra um artigo específico, ex. transformar
-//     um artigo numa landing page isolada antes do site lançar.
+//   - content/posts.json (campos "headerMode"/"footerMode"/"logoMode" de
+//     cada artigo) — sobrepõe a categoria Blog pra um artigo específico,
+//     ex. transformar um artigo numa landing page isolada antes do site
+//     lançar.
 import { fetchJSON } from "/assets/js/render.js";
 
 // Páginas que não são artigo de blog: caminho -> { key, category }. As
@@ -66,6 +67,16 @@ function hideFooterNav() {
   });
 }
 
+// Tira só o link (href) da logo, mantendo a imagem/texto no lugar — não
+// remove o elemento, então o layout do cabeçalho não muda.
+function disableLogoLink() {
+  document.querySelectorAll("[data-logo-link]").forEach(function (a) {
+    a.removeAttribute("href");
+    a.style.cursor = "default";
+    a.setAttribute("aria-disabled", "true");
+  });
+}
+
 // Artigos no template dinâmico (/artigos/post/?slug=) não têm URL própria
 // no pathname — identifica o post pelo slug na querystring nesse caso;
 // nas páginas de artigo com URL própria, casa pelo pathname.
@@ -97,20 +108,23 @@ function resolveMode(pageMode, category, visibility, field) {
 
   var registryEntry = PAGE_REGISTRY[normalizedPath()];
 
-  var category, headerMode, footerMode;
+  var category, headerMode, footerMode, logoMode;
   if (registryEntry) {
     category = registryEntry.category;
     var pageCfg = visibility && visibility.pages && visibility.pages[registryEntry.key];
     headerMode = (pageCfg && pageCfg.header) || "categoria";
     footerMode = (pageCfg && pageCfg.footer) || "categoria";
+    logoMode = (pageCfg && pageCfg.logo) || "categoria";
   } else {
     var post = findCurrentPost(posts);
     category = "blog";
     headerMode = (post && post.headerMode) || "categoria";
     footerMode = (post && post.footerMode) || "categoria";
+    logoMode = (post && post.logoMode) || "categoria";
   }
 
   if (config && config.links) applyLinks(config.links);
   if (!resolveMode(headerMode, category, visibility, "header")) hideHeaderNav();
   if (!resolveMode(footerMode, category, visibility, "footer")) hideFooterNav();
+  if (!resolveMode(logoMode, category, visibility, "logo")) disableLogoLink();
 })();
