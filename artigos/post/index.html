@@ -92,7 +92,7 @@
   import { markdownToBlocks } from "/assets/js/markdown.js";
   import { resolvePremiumSlot } from "/assets/js/premium-gate.js";
   import { pickRelated, relatedSectionHTML, updatedLineHTML } from "/assets/js/article-extras.js";
-  import { getAdsConfig, slotHTML, insertAtIndices, activateNetworkAds } from "/assets/js/ad-slots.js";
+  import { getAdsConfig, slotHTML, insertAtIndices, activateNetworkAds, ownBannerHTML } from "/assets/js/ad-slots.js";
 
   function formatDate(iso) {
     if (!iso) return "";
@@ -101,27 +101,46 @@
     return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" });
   }
 
-  function inArticleBanner() {
+  // Publicidade própria embutida no artigo ("vitrine") — conteúdo E posição
+  // vêm de /content/vitrine-artigo.json, editável em /admin ("Vitrine dentro
+  // dos artigos"). Sem config carregada, os banners simplesmente não aparecem.
+  function vitrineBannerHTML(cfg, variant) {
+    if (!cfg || !cfg.enabled) return "";
+    const color = cfg.color || (variant === "in" ? "#5F87AE" : "#577328");
+    const ctaText = cfg.ctaText || "Ver mais →";
+    const ctaHref = cfg.ctaHref || "#";
+    if (variant === "in") {
+      return (
+        '<div class="in-article-banner"><div class="blog-banner">' +
+        imgSlotHTML(cfg.image || "", cfg.title || "", "Foto do item indicado") +
+        '<div class="blog-banner-body">' +
+        '<div><span class="eyebrow" style="color:' + escapeHtml(color) + ';">' + escapeHtml(cfg.kicker || "") + "</span>" +
+        "<h3>" + escapeHtml(cfg.title || "") + "</h3></div>" +
+        '<a class="btn btn-pill" href="' + escapeHtml(ctaHref) + '" style="background:' + escapeHtml(color) + ';">' + escapeHtml(ctaText) + "</a>" +
+        "</div></div></div>"
+      );
+    }
     return (
-      '<div class="in-article-banner"><div class="blog-banner">' +
-      imgSlotHTML("", "", "Foto do item indicado") +
-      '<div class="blog-banner-body">' +
-      '<div><span class="eyebrow" style="color:#5F87AE;">Da vitrine · Produtos de estudo</span>' +
-      "<h3>Livros e indicações pra quem tá estudando francês</h3></div>" +
-      '<a class="btn btn-pill" href="/produtos-de-estudo/" style="background:#8AACD2;">Ver indicações →</a>' +
-      "</div></div></div>"
+      '<div class="buy-box" style="display:flex; align-items:center; justify-content:space-between; gap:24px; flex-wrap:wrap; margin:40px 0;">' +
+      '<div><span class="eyebrow" style="color:' + escapeHtml(color) + ';">' + escapeHtml(cfg.kicker || "") + "</span>" +
+      '<h3 style="margin:0 0 6px;">' + escapeHtml(cfg.title || "") + "</h3>" +
+      (cfg.body ? '<p class="muted" style="margin:0; font-size:13px;">' + escapeHtml(cfg.body) + "</p>" : "") +
+      "</div>" +
+      '<a class="btn btn-pill" href="' + escapeHtml(ctaHref) + '" style="background:' + escapeHtml(color) + '; flex-shrink:0;">' + escapeHtml(ctaText) + "</a>" +
+      "</div>"
     );
   }
 
-  function endOfArticleCTA() {
-    return (
-      '<div class="buy-box" style="display:flex; align-items:center; justify-content:space-between; gap:24px; flex-wrap:wrap; margin:40px 0;">' +
-      '<div><span class="eyebrow" style="color:#577328;">Da vitrine · Produtos digitais</span>' +
-      '<h3 style="margin:0 0 6px;">Depois do artigo vem a papelada</h3>' +
-      '<p class="muted" style="margin:0; font-size:13px;">Conheça os Templates Organizadores da Por Dentro.</p></div>' +
-      '<a class="btn btn-pill" href="/produtos-digitais/" style="background:#577328; flex-shrink:0;">Ver produtos →</a>' +
-      "</div>"
-    );
+  // Traduz a posição escolhida em /admin (Meio automático / Depois de um
+  // bloco específico) num índice do array de blocos. "Fim" e "Não mostrar"
+  // não passam por aqui — são tratados fora do fluxo de blocos.
+  function vitrineBlockIndex(cfg, blocks) {
+    if (!cfg || !cfg.enabled || cfg.position === "none" || cfg.position === "fim") return null;
+    if (cfg.position === "bloco") {
+      const n = Math.max(1, Math.floor(cfg.afterBlock || 4));
+      return Math.min(n, blocks.length);
+    }
+    return Math.ceil(blocks.length / 2); // "meio"
   }
 
   (async function () {
@@ -147,25 +166,59 @@
 
     const isPremium = !!post.premium;
     const adsCfg = await getAdsConfig();
+    let vitrineCfg;
+    try {
+      vitrineCfg = await fetchJSON("/content/vitrine-artigo.json");
+    } catch (e) {
+      vitrineCfg = {};
+    }
+    const inBannerCfg = vitrineCfg.inArticleBanner;
+    const endBannerCfg = vitrineCfg.endArticleBanner;
     const blocks = markdownToBlocks(post.body, { slug: post.slug });
     const adMidAfter = Math.min((adsCfg.positions && adsCfg.positions.midAfterBlock) || 4, blocks.length);
+
+    // Posicionamento manual: quando alguém arrasta o banner/propaganda pra um
+    // lugar específico no editor visual do /admin, isso vira uma linha própria
+    // — "[[VITRINE-BANNER]]" ou "[[PROPAGANDA]]" — dentro do corpo do artigo.
+    // Presença dessas linhas tem prioridade sobre a posição padrão do site
+    // inteiro (vitrine-artigo.json / ads-config.json).
+    const hasManualBanner = blocks.includes("<p>[[VITRINE-BANNER]]</p>");
+    const hasManualPropaganda = blocks.includes("<p>[[PROPAGANDA]]</p>");
+
+    // "Meio do artigo" e "Depois de um bloco específico" entram no meio do
+    // texto; "Fim do artigo" e "Não mostrar" ficam de fora (tratados abaixo).
+    const insertions = [
+      { index: 0, html: slotHTML(adsCfg, "top") },
+      { index: adMidAfter, html: slotHTML(adsCfg, "mid") }
+    ];
+    if (!isPremium && !hasManualBanner) {
+      const inIdx = vitrineBlockIndex(inBannerCfg, blocks);
+      if (inIdx !== null) insertions.push({ index: inIdx, html: vitrineBannerHTML(inBannerCfg, "in") });
+    }
+    const endIdx = vitrineBlockIndex(endBannerCfg, blocks);
+    if (endIdx !== null) insertions.push({ index: endIdx, html: vitrineBannerHTML(endBannerCfg, "end") });
+
     let bodyHtml;
     if (isPremium) {
       bodyHtml =
-        insertAtIndices(blocks, [
-          { index: 0, html: slotHTML(adsCfg, "top") },
-          { index: adMidAfter, html: slotHTML(adsCfg, "mid") }
-        ]) +
+        insertAtIndices(blocks, insertions) +
         slotHTML(adsCfg, "beforePaywall") +
         '<div id="premium-slot"><p class="muted">Carregando…</p></div>';
     } else {
-      const mid = Math.ceil(blocks.length / 2);
-      bodyHtml = insertAtIndices(blocks, [
-        { index: 0, html: slotHTML(adsCfg, "top") },
-        { index: adMidAfter, html: slotHTML(adsCfg, "mid") },
-        { index: mid, html: inArticleBanner() }
-      ]);
+      bodyHtml = insertAtIndices(blocks, insertions);
     }
+    if (hasManualBanner) {
+      bodyHtml = bodyHtml.replace("<p>[[VITRINE-BANNER]]</p>", vitrineBannerHTML(inBannerCfg, "in"));
+    }
+    if (hasManualPropaganda) {
+      bodyHtml = bodyHtml.replace("<p>[[PROPAGANDA]]</p>", adsCfg && adsCfg.enabled ? ownBannerHTML(adsCfg) : "");
+    }
+
+    // Faixa própria depois do texto do artigo acabar — é a posição "Fim do
+    // artigo" (ou o banner do meio, se marcado como premium-only "fim").
+    const trailingBannerHtml =
+      (!isPremium && inBannerCfg && inBannerCfg.enabled && inBannerCfg.position === "fim" ? vitrineBannerHTML(inBannerCfg, "in") : "") +
+      (endBannerCfg && endBannerCfg.enabled && endBannerCfg.position === "fim" ? vitrineBannerHTML(endBannerCfg, "end") : "");
 
     // Marcadores especiais: um parágrafo isolado com "[[NOME-DO-TOKEN]]" no corpo
     // (escrito como texto normal no /admin) vira um mount point pra uma ferramenta
@@ -197,7 +250,7 @@
       "</div>" +
       imgSlotHTML(post.image, post.title, "Foto de capa do artigo").replace('class="img-slot"', 'class="img-slot article-hero"') +
       '<div class="article-body">' + bodyHtml + "</div>" +
-      endOfArticleCTA() +
+      trailingBannerHtml +
       "</article>" +
       relatedSectionHTML(related);
     document.dispatchEvent(new CustomEvent("pd:blocks-rendered"));

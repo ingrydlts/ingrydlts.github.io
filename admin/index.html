@@ -10,5 +10,9 @@
      sem mexer em código. Configuração em ./config.yml — ver README.md
      ("Configurar o /admin") para o passo a passo de autenticação com o GitHub. -->
 <script src="https://unpkg.com/decap-cms@^3.0.0/dist/decap-cms.js"></script>
+<!-- Editor visual do corpo do artigo (arrastar blocos, banner/propaganda) —
+     precisa carregar DEPOIS do decap-cms.js (usa os globais CMS/createClass/h)
+     e ANTES do painel inicializar. Ver admin/widgets/article-composer.js -->
+<script src="./widgets/article-composer.js"></script>
 </body>
 </html>

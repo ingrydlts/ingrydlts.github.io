@@ -1,0 +1,23 @@
+{
+  "inArticleBanner": {
+    "enabled": true,
+    "position": "meio",
+    "afterBlock": 4,
+    "kicker": "Da vitrine · Produtos de estudo",
+    "title": "Livros e indicações pra quem tá estudando francês",
+    "image": "",
+    "color": "#8AACD2",
+    "ctaText": "Ver indicações →",
+    "ctaHref": "/produtos-de-estudo/"
+  },
+  "endArticleBanner": {
+    "enabled": true,
+    "position": "fim",
+    "kicker": "Da vitrine · Produtos digitais",
+    "title": "Depois do artigo vem a papelada",
+    "body": "Conheça os Templates Organizadores da Por Dentro.",
+    "color": "#577328",
+    "ctaText": "Ver produtos →",
+    "ctaHref": "/produtos-digitais/"
+  }
+}

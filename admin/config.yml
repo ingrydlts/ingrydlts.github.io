@@ -209,7 +209,10 @@ collections:
               - { label: "Data de publicação", name: date, widget: datetime, format: "YYYY-MM-DD", date_format: "YYYY-MM-DD", time_format: false }
               - { label: "Última atualização", name: updatedDate, widget: datetime, format: "YYYY-MM-DD", date_format: "YYYY-MM-DD", time_format: false, required: false, hint: "Aparece no topo do artigo como \"Atualizado em\". Mude essa data sempre que revisar ou corrigir o conteúdo — é o que mostra pra leitora que a informação ainda é confiável." }
               - { label: "Tempo de leitura (min)", name: readMinutes, widget: number, required: false }
-              - { label: "Corpo do artigo", name: body, widget: markdown, hint: "Use ## para subtítulo, - para lista, **negrito**, [texto](link). Se o artigo for premium, este texto é a prévia gratuita — a continuação paga é escrita à parte, em /admin/premium/.\n\n⚠️ TODO artigo precisa terminar com [[FAQ]] (sempre em dropdown, nunca solto no texto) e [[FEEDBACK]] — é a regra de captação de audiência do site (ver README.md e GUIA-DE-IMPLEMENTACAO.md). Use [[CHECKLIST]] quando o tema tiver um critério de elegibilidade ou passo a passo verificável, e [[RESOURCES]] pra toda fonte oficial citada — cada pergunta aberta e cada fonte clicada vira dado em /admin/dashboard.\n\nBlocos ricos (cole exatamente assim, cada linha com \"|\" separando as colunas):\n[[STEPS]]\nTítulo do passo | Descrição\n[[/STEPS]]\n\n[[FAQ]] (obrigatório)\nPergunta | Resposta\n[[/FAQ]]\n\n[[RESOURCES]]\nTítulo | Descrição | Texto do link | URL\n[[/RESOURCES]]\n\n[[CHECKLIST]]\nTítulo da checklist\nItem 1\nItem 2\n[[/CHECKLIST]]\n\n[[FEEDBACK]] (obrigatório)\nPergunta (opcional)\n[[/FEEDBACK]]\n\nTambém dá pra usar [[BAND]], [[STATS]], [[CARDS]] e [[LIST]] — mesmo formato de colunas com \"|\"." }
+              - label: "Corpo do artigo"
+                name: body
+                widget: article-composer
+                hint: "Clique em \"Editar artigo visualmente\" pra ver o artigo em blocos arrastáveis, lado a lado com a pré-visualização de verdade do site. Ligue \"Banner de vitrine\" ou \"Propaganda\" e arraste o bloco (destacado em azul) até a posição desejada — isso escreve uma linha \"[[VITRINE-BANNER]]\" ou \"[[PROPAGANDA]]\" no texto, que tem prioridade sobre a posição padrão configurada em \"Vitrine dentro dos artigos\" e \"Anúncios nos artigos\".\n\n🔒 Ligue \"Bloqueio premium\" pra posicionar estrategicamente onde o artigo vira pago — tudo que ficar DEPOIS desse bloco (arraste-o pra qualquer lugar) é a continuação paga, tudo ANTES continua sendo a prévia grátis normal. Diferente dos outros dois, o conteúdo pago não é salvo automaticamente: use os botões \"Carregar já salvo\" / \"Salvar conteúdo pago\" / \"Remover do servidor\" que aparecem quando o bloqueio está ativo — eles pedem login com GitHub na hora (mesma conta do /admin) e falam direto com o mesmo lugar que o painel /admin/premium/ usa. O texto pago nunca é gravado no corpo do artigo nem vai pro GitHub. Só funciona de verdade com \"Artigo premium (assinatura)\", mais abaixo, também marcado.\n\n⚠️ TODO artigo precisa terminar com [[FAQ]] (sempre em dropdown, nunca solto no texto) e [[FEEDBACK]] — é a regra de captação de audiência do site (ver README.md e GUIA-DE-IMPLEMENTACAO.md). Use [[CHECKLIST]] quando o tema tiver um critério de elegibilidade ou passo a passo verificável, e [[RESOURCES]] pra toda fonte oficial citada — cada pergunta aberta e cada fonte clicada vira dado em /admin/dashboard.\n\nBotão \"Ver texto bruto\", dentro do editor visual, mostra o markdown puro — útil pra colar um bloco rico pronto (cole exatamente assim, cada linha com \"|\" separando as colunas):\n[[STEPS]]\nTítulo do passo | Descrição\n[[/STEPS]]\n\n[[FAQ]] (obrigatório)\nPergunta | Resposta\n[[/FAQ]]\n\n[[RESOURCES]]\nTítulo | Descrição | Texto do link | URL\n[[/RESOURCES]]\n\n[[CHECKLIST]]\nTítulo da checklist\nItem 1\nItem 2\n[[/CHECKLIST]]\n\n[[FEEDBACK]] (obrigatório)\nPergunta (opcional)\n[[/FEEDBACK]]\n\nTambém dá pra usar [[BAND]], [[STATS]], [[CARDS]] e [[LIST]] — mesmo formato de colunas com \"|\"."
               - { label: "Artigo premium (assinatura)", name: premium, widget: boolean, default: false, required: false, hint: "Marque para exigir assinatura pra ler o conteúdo completo. O texto pago não fica aqui — escreva-o no painel /admin/premium/ depois de salvar este artigo." }
               - { label: "URL fixa (não editar manualmente)", name: url, widget: string, required: false, hint: "Usado internamente para os artigos que têm página própria. Deixe como está — não apague nem edite este campo." }
               - label: "Cabeçalho desta página"
@@ -377,6 +380,55 @@ collections:
                 widget: select
                 default: none
                 options: *position_options
+
+  - name: vitrine_artigo
+    label: "Vitrine dentro dos artigos"
+    files:
+      - name: vitrine_artigo
+        label: "Publicidade própria nos artigos do blog"
+        file: content/vitrine-artigo.json
+        fields:
+          - label: "Banner no meio do artigo"
+            name: inArticleBanner
+            widget: object
+            hint: "O bloco com foto que aparece encaixado no meio do texto do artigo. Só aparece em artigos que NÃO são premium."
+            fields:
+              - { label: "Mostrar este banner", name: enabled, widget: boolean, default: true }
+              - label: "Onde colocar"
+                name: position
+                widget: select
+                default: "meio"
+                options: &vitrine_position_options
+                  - { label: "Não mostrar em nenhum artigo", value: "none" }
+                  - { label: "Meio do artigo (calculado automaticamente)", value: "meio" }
+                  - { label: "Depois de um bloco específico", value: "bloco" }
+                hint: "\"Meio do artigo\" se ajusta sozinho ao tamanho de cada artigo. Escolha \"Depois de um bloco específico\" pra fixar sempre no mesmo lugar (ex. sempre depois do 4º bloco), não importa o tamanho do artigo."
+              - { label: "Se for \"Depois de um bloco específico\": depois de qual bloco (1, 2, 3...)", name: afterBlock, widget: number, default: 4, min: 1, hint: "Cada parágrafo, título ou bloco rico (STEPS, FAQ, CHECKLIST...) conta como 1 bloco." }
+              - { label: Selo, name: kicker, widget: string }
+              - { label: Título, name: title, widget: string }
+              - { label: Foto, name: image, widget: image, required: false, hint: "Tamanho ideal: 1200×675px (proporção 16:9), foto na horizontal e ampla." }
+              - { label: "Cor (barra e botão)", name: color, widget: color, hint: "Escolha a cor visualmente — o botão do banner usa essa cor." }
+              - { label: "Texto do botão", name: ctaText, widget: string }
+              - { label: "Link do botão", name: ctaHref, widget: string }
+          - label: "Banner no fim do artigo"
+            name: endArticleBanner
+            widget: object
+            hint: "A faixa de destaque que aparece depois do texto do artigo terminar (antes dos \"artigos relacionados\"). Aparece em todo artigo, inclusive premium."
+            fields:
+              - { label: "Mostrar este banner", name: enabled, widget: boolean, default: true }
+              - label: "Onde colocar"
+                name: position
+                widget: select
+                default: "fim"
+                options: *vitrine_position_options
+                hint: "Normalmente fica em \"Fim do artigo\" — é o formato de faixa larga, pensado pra fechar o artigo."
+              - { label: "Se for \"Depois de um bloco específico\": depois de qual bloco (1, 2, 3...)", name: afterBlock, widget: number, default: 4, min: 1, hint: "Cada parágrafo, título ou bloco rico (STEPS, FAQ, CHECKLIST...) conta como 1 bloco." }
+              - { label: Selo, name: kicker, widget: string }
+              - { label: Título, name: title, widget: string }
+              - { label: Texto, name: body, widget: text }
+              - { label: "Cor (barra e botão)", name: color, widget: color, hint: "Escolha a cor visualmente — o botão do banner usa essa cor." }
+              - { label: "Texto do botão", name: ctaText, widget: string }
+              - { label: "Link do botão", name: ctaHref, widget: string }
 
   - name: banners
     label: "Banners e destaques"
