@@ -591,8 +591,9 @@ p { margin: 0 0 1em; color: var(--grafite); }
 /* ---------------------------------- article ------------------------------- */
 .article-header { max-width: 720px; margin: 0 auto; padding: 40px 0 0; }
 .article-body { max-width: 720px; margin: 0 auto; padding: 32px 0 0; font-size: 17px; line-height: 1.8; }
-.article-body h2 { margin-top: 1.4em; }
+.article-body h2 { margin-top: 1.4em; scroll-margin-top: 90px; }
 .article-hero { max-width: 720px; margin: 24px auto 0; aspect-ratio: 16/9; border-radius: 6px; border: none; }
+.skip-intro-link { display: flex; width: fit-content; margin: 16px auto 0; font-size: 13px; padding: 8px 18px; }
 .article-meta { font-size: 13px; color: var(--texto-secundario); margin-bottom: 24px; }
 .article-updated { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--texto-secundario); background: var(--off-white); border-radius: var(--radius-pill); padding: 4px 12px; margin: 4px 0 20px; }
 

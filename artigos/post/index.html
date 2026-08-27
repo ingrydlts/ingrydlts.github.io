@@ -312,6 +312,25 @@
       bodyHtml = bodyHtml.replace("<p>" + token + "</p>", '<div id="' + tool.mountId + '"></div>');
     }
 
+    // Foto de capa dentro do artigo: opcional, controlada pelo campo
+    // "Mostrar a foto de capa dentro do artigo" (padrão: ligada). A foto
+    // continua aparecendo no card da lista de artigos de qualquer jeito —
+    // isso só decide se ela também aparece grande, no topo do artigo.
+    const showCover = post.showCoverInArticle !== false;
+    const heroHtml = showCover
+      ? imgSlotHTML(post.image, post.title, "Foto de capa do artigo").replace('class="img-slot"', 'class="img-slot article-hero"')
+      : "";
+
+    // Botão "Pular introdução": padronizado em todo artigo, sem precisar de
+    // nada no /admin — acha o primeiro "##" do corpo (a primeira seção de
+    // verdade, depois da introdução) e cria um link direto pra lá. Some
+    // sozinho em artigos sem nenhum "##" (nada pra pular).
+    let skipButtonHtml = "";
+    if (/<h2(?![^>]*\bid=)/.test(bodyHtml)) {
+      bodyHtml = bodyHtml.replace(/<h2/, '<h2 id="primeira-secao"');
+      skipButtonHtml = '<a href="#primeira-secao" class="btn btn-outline btn-pill skip-intro-link">Pular introdução ↓</a>';
+    }
+
     const related = pickRelated(data.items, post, 3);
 
     root.innerHTML =
@@ -322,7 +341,8 @@
       '<div class="article-meta">' + escapeHtml(formatDate(post.date)) + (post.readMinutes ? " · " + post.readMinutes + " min de leitura" : "") + "</div>" +
       updatedLineHTML(post) +
       "</div>" +
-      imgSlotHTML(post.image, post.title, "Foto de capa do artigo").replace('class="img-slot"', 'class="img-slot article-hero"') +
+      heroHtml +
+      skipButtonHtml +
       '<div class="article-body">' + bodyHtml + "</div>" +
       trailingBannerHtml +
       "</article>" +
