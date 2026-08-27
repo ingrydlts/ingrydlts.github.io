@@ -212,6 +212,14 @@
     }
     document.title = post.title + " — Por Dentro";
 
+    // "← Voltar aos artigos" é HTML estático (fora do #article-root, pra
+    // aparecer mesmo antes do JS carregar) — por isso é ajustado aqui, assim
+    // que a gente já sabe qual artigo é, em vez de vir do corpo do artigo.
+    if (post.showBackLink === false) {
+      const backLink = document.querySelector(".back-link");
+      if (backLink) backLink.remove();
+    }
+
     const isPremium = !!post.premium;
     const adsCfg = await getAdsConfig();
     let vitrineCfg;
