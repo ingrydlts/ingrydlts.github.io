@@ -1,22 +1,86 @@
 {
   "categories": {
-    "home": { "header": true, "footer": true, "logo": true },
-    "produtos": { "header": true, "footer": true, "logo": true },
-    "blog": { "header": false, "footer": false, "logo": true },
-    "institucional": { "header": true, "footer": true, "logo": true }
+    "home": {
+      "header": true,
+      "footer": true,
+      "logo": true
+    },
+    "produtos": {
+      "header": false,
+      "footer": false,
+      "logo": false
+    },
+    "blog": {
+      "header": true,
+      "footer": false,
+      "logo": true
+    },
+    "institucional": {
+      "header": true,
+      "footer": true,
+      "logo": true
+    }
   },
   "pages": {
-    "home": { "header": "categoria", "footer": "categoria", "logo": "categoria" },
-    "produtos-digitais": { "header": "categoria", "footer": "categoria", "logo": "categoria" },
-    "produtos-digitais-produto": { "header": "categoria", "footer": "categoria", "logo": "categoria" },
-    "produtos-de-estudo": { "header": "categoria", "footer": "categoria", "logo": "categoria" },
-    "produtos-de-compras": { "header": "categoria", "footer": "categoria", "logo": "categoria" },
-    "sobre": { "header": "categoria", "footer": "categoria", "logo": "categoria" },
-    "cgv": { "header": "categoria", "footer": "categoria", "logo": "categoria" },
-    "confidentialite": { "header": "categoria", "footer": "categoria", "logo": "categoria" },
-    "mentions-legales": { "header": "categoria", "footer": "categoria", "logo": "categoria" },
-    "artigos": { "header": "categoria", "footer": "categoria", "logo": "categoria" },
-    "artigos-post-template": { "header": "categoria", "footer": "categoria", "logo": "categoria" },
-    "artigos-assinatura-confirmada": { "header": "categoria", "footer": "categoria", "logo": "categoria" }
+    "mentions-legales": {
+      "header": "categoria",
+      "footer": "categoria",
+      "logo": "categoria"
+    },
+    "artigos": {
+      "header": "categoria",
+      "footer": "categoria",
+      "logo": "categoria"
+    },
+    "produtos-digitais": {
+      "header": "categoria",
+      "footer": "categoria",
+      "logo": "categoria"
+    },
+    "cgv": {
+      "header": "categoria",
+      "footer": "categoria",
+      "logo": "categoria"
+    },
+    "confidentialite": {
+      "header": "categoria",
+      "footer": "categoria",
+      "logo": "categoria"
+    },
+    "produtos-de-estudo": {
+      "header": "categoria",
+      "footer": "categoria",
+      "logo": "categoria"
+    },
+    "artigos-assinatura-confirmada": {
+      "header": "categoria",
+      "footer": "categoria",
+      "logo": "categoria"
+    },
+    "sobre": {
+      "header": "categoria",
+      "footer": "categoria",
+      "logo": "categoria"
+    },
+    "produtos-de-compras": {
+      "header": "categoria",
+      "footer": "categoria",
+      "logo": "categoria"
+    },
+    "produtos-digitais-produto": {
+      "header": "categoria",
+      "footer": "categoria",
+      "logo": "categoria"
+    },
+    "home": {
+      "header": "categoria",
+      "footer": "categoria",
+      "logo": "categoria"
+    },
+    "artigos-post-template": {
+      "header": "categoria",
+      "footer": "categoria",
+      "logo": "categoria"
+    }
   }
 }
