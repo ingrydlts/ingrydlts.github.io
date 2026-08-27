@@ -42,6 +42,78 @@
     PREMIUM_SPLIT_TOKEN
   ]);
 
+  // --- banner de vitrine com produto específico ------------------------------
+  // "[[VITRINE-BANNER]]" sozinho continua sendo o banner genérico (texto de
+  // /content/vitrine-artigo.json). Escolher um produto no seletor vira
+  // "[[VITRINE-BANNER|catalogo|ref]]" — catalogo é "digital"/"estudo"/
+  // "compras", ref é o slug (produtos digitais) ou o título com
+  // encodeURIComponent (produtos de estudo/compras, que não têm slug).
+  function isBannerToken(raw) {
+    return raw === VITRINE_BANNER_TOKEN || raw.indexOf("[[VITRINE-BANNER|") === 0;
+  }
+
+  function parseBannerToken(raw) {
+    if (raw === VITRINE_BANNER_TOKEN) return { catalog: null, ref: null };
+    var inner = raw.slice(2, -2);
+    var parts = inner.split("|");
+    if (parts.length < 3) return { catalog: null, ref: null };
+    return { catalog: parts[1], ref: parts.slice(2).join("|") };
+  }
+
+  function buildBannerToken(catalog, ref) {
+    if (!catalog || !ref) return VITRINE_BANNER_TOKEN;
+    return "[[VITRINE-BANNER|" + catalog + "|" + ref + "]]";
+  }
+
+  function findProduct(catalogs, catalog, ref) {
+    if (!catalogs) return null;
+    var list = catalog === "digital" ? catalogs.digital : catalog === "estudo" ? catalogs.estudo : catalog === "compras" ? catalogs.compras : null;
+    if (!list) return null;
+    if (catalog === "digital") return list.find(function (p) { return p.slug === ref; }) || null;
+    var title = decodeURIComponent(ref);
+    return list.find(function (p) { return p.title === title; }) || null;
+  }
+
+  function bannerState(blocks) {
+    var block = null;
+    for (var i = 0; i < blocks.length; i++) {
+      if (blocks[i].type === "token" && isBannerToken(blocks[i].raw)) { block = blocks[i]; break; }
+    }
+    if (block) return { state: "ativado", block: block };
+    if (hasToken(blocks, NO_VITRINE_BANNER_TOKEN)) return { state: "desativado", block: null };
+    return { state: "padrao", block: null };
+  }
+
+  function setBannerState(blocks, newState, catalog, ref) {
+    var copy = blocks.filter(function (b) {
+      return !(b.type === "token" && (isBannerToken(b.raw) || b.raw === NO_VITRINE_BANNER_TOKEN));
+    });
+    if (newState === "padrao") return copy;
+    var raw = newState === "ativado" ? buildBannerToken(catalog, ref) : NO_VITRINE_BANNER_TOKEN;
+    var pos = Math.max(0, Math.ceil(copy.length / 2));
+    copy.splice(pos, 0, { id: uid(), type: "token", raw: raw });
+    return copy;
+  }
+
+  // Catálogos de produtos (pra popular o seletor) — carregados uma vez só,
+  // sob demanda, e compartilhados entre todos os artigos abertos na página.
+  var sharedCatalogsPromise = null;
+  function fetchCatalogs() {
+    if (!sharedCatalogsPromise) {
+      function safeFetch(url) {
+        return fetch(url).then(function (r) { return r.json(); }).then(function (d) { return d.items || []; }).catch(function () { return []; });
+      }
+      sharedCatalogsPromise = Promise.all([
+        safeFetch("/content/produtos-digitais.json"),
+        safeFetch("/content/produtos-estudo.json"),
+        safeFetch("/content/produtos-compras.json")
+      ]).then(function (results) {
+        return { digital: results[0], estudo: results[1], compras: results[2] };
+      });
+    }
+    return sharedCatalogsPromise;
+  }
+
   // --- conteúdo pago: mesmo Worker e mesmos endpoints de /admin/premium/,
   // só que agora acessíveis também daqui, arrastando o marcador de bloqueio
   // pro meio do artigo. O texto pago NUNCA passa por onChange/body — ele é
@@ -170,7 +242,7 @@
         continue;
       }
 
-      if (SINGLE_TOKENS.indexOf(line) !== -1) {
+      if (SINGLE_TOKENS.indexOf(line) !== -1 || isBannerToken(line)) {
         flushList();
         blocks.push({ id: uid(), type: "token", raw: line });
         i += 1;
@@ -269,8 +341,18 @@
   SPECIAL_TOKEN_LABEL[NO_PROPAGANDA_TOKEN] = "🚫 Sem propaganda aqui";
   SPECIAL_TOKEN_LABEL[PREMIUM_SPLIT_TOKEN] = "🔒 Bloqueio premium";
 
-  function blockLabel(b) {
-    if (b.type === "token") return SPECIAL_TOKEN_LABEL[b.raw] || ("🧩 " + b.raw);
+  function blockLabel(b, catalogs) {
+    if (b.type === "token") {
+      if (isBannerToken(b.raw)) {
+        var parsed = parseBannerToken(b.raw);
+        if (parsed.catalog) {
+          var product = findProduct(catalogs, parsed.catalog, parsed.ref);
+          return "🎯 Banner: " + (product ? product.title : "carregando produto…");
+        }
+        return "🎯 Banner de vitrine (genérico)";
+      }
+      return SPECIAL_TOKEN_LABEL[b.raw] || ("🧩 " + b.raw);
+    }
     if (b.type === "list") return "• Lista";
     if (b.type === "richblock") return "📦 Bloco " + b.name;
     var t = b.raw.trim();
@@ -279,14 +361,20 @@
   }
 
   // --- pré-visualização de UM bloco, com as classes reais do site -----------
-  function renderBlockPreviewHTML(b) {
+  function renderBlockPreviewHTML(b, catalogs) {
     if (b.type === "token") {
-      if (b.raw === VITRINE_BANNER_TOKEN) {
+      if (isBannerToken(b.raw)) {
+        var parsed = parseBannerToken(b.raw);
+        var product = parsed.catalog ? findProduct(catalogs, parsed.catalog, parsed.ref) : null;
+        var title = product ? product.title : "Banner de vitrine — posição atual";
+        var image = product ? product.image || "" : "";
         return (
           '<div class="in-article-banner"><div class="blog-banner">' +
-          '<div class="img-slot" style="display:flex;align-items:center;justify-content:center;color:var(--texto-secundario);font-size:12px;">Foto do item indicado</div>' +
+          (image
+            ? '<div class="img-slot"><img src="' + escapeHtml(image) + '" alt=""></div>'
+            : '<div class="img-slot" style="display:flex;align-items:center;justify-content:center;color:var(--texto-secundario);font-size:12px;">Foto do item indicado</div>') +
           '<div class="blog-banner-body"><div><span class="eyebrow" style="color:#5F87AE;">Da vitrine</span>' +
-          "<h3>Banner de vitrine — posição atual</h3></div>" +
+          "<h3>" + escapeHtml(title) + "</h3></div>" +
           '<a class="btn btn-pill" style="background:#8AACD2;">Ver mais →</a></div></div></div>'
         );
       }
@@ -337,8 +425,8 @@
     return "<p>" + inlineLite(t) + "</p>";
   }
 
-  function renderPreviewHTML(blocks) {
-    return blocks.map(renderBlockPreviewHTML).join("");
+  function renderPreviewHTML(blocks, catalogs) {
+    return blocks.map(function (b) { return renderBlockPreviewHTML(b, catalogs); }).join("");
   }
 
   // --- injeta o CSS real do site uma única vez, pra pré-visualização bater --
@@ -399,7 +487,8 @@
         rawDraft: "",
         dragIndex: null,
         premiumStatus: "idle", // idle | loading | loaded | empty | saving | saved | error
-        premiumError: ""
+        premiumError: "",
+        catalogs: null
       };
     },
 
@@ -436,7 +525,11 @@
     },
 
     open: function () {
+      var self = this;
       this.setState({ open: true });
+      if (!this.state.catalogs) {
+        fetchCatalogs().then(function (catalogs) { self.setState({ catalogs: catalogs }); });
+      }
     },
 
     close: function () {
@@ -586,7 +679,7 @@
 
     render: function () {
       var blocks = this.state.blocks;
-      var bannerState = overrideState(blocks, VITRINE_BANNER_TOKEN, NO_VITRINE_BANNER_TOKEN);
+      var bannerInfo = bannerState(blocks);
       var adState = overrideState(blocks, PROPAGANDA_TOKEN, NO_PROPAGANDA_TOKEN);
       var hasPremiumMarker = hasToken(blocks, PREMIUM_SPLIT_TOKEN);
       return h(
@@ -596,7 +689,7 @@
           "div",
           { style: SUMMARY_BAR_STYLE },
           h("span", null, blocks.length + " bloco(s)"),
-          h("span", null, "Banner: " + bannerState),
+          h("span", null, "Banner: " + bannerInfo.state),
           h("span", null, "Propaganda: " + adState),
           h("span", null, "Bloqueio premium: " + (hasPremiumMarker ? "ativado" : "desativado")),
           h("button", { type: "button", onClick: this.open, style: BTN_STYLE }, "Editar artigo visualmente")
@@ -663,7 +756,7 @@
           h(
             "div",
             { style: TOOLBAR_STYLE },
-            this.renderOverrideSelect("Banner de vitrine", VITRINE_BANNER_TOKEN, NO_VITRINE_BANNER_TOKEN),
+            this.renderBannerControl(),
             this.renderOverrideSelect("Propaganda", PROPAGANDA_TOKEN, NO_PROPAGANDA_TOKEN),
             h(
               "label",
@@ -679,7 +772,7 @@
         h(
           "div",
           { style: PREVIEW_COL_STYLE },
-          h("div", { className: "article-body", style: PREVIEW_INNER_STYLE, dangerouslySetInnerHTML: { __html: renderPreviewHTML(blocks) } })
+          h("div", { className: "article-body", style: PREVIEW_INNER_STYLE, dangerouslySetInnerHTML: { __html: renderPreviewHTML(blocks, this.state.catalogs) } })
         )
       );
     },
@@ -698,7 +791,7 @@
     renderBlockRow: function (b, i) {
       var self = this;
       var isPremiumMarker = b.type === "token" && b.raw === PREMIUM_SPLIT_TOKEN;
-      var isSpecial = b.type === "token" && (b.raw === VITRINE_BANNER_TOKEN || b.raw === PROPAGANDA_TOKEN);
+      var isSpecial = b.type === "token" && (isBannerToken(b.raw) || b.raw === PROPAGANDA_TOKEN);
       var editableValue = b.type === "richblock" ? b.inner : b.raw;
       var showTextarea = b.type === "text" || b.type === "list" || b.type === "richblock";
       var rowStyle = isPremiumMarker
@@ -717,7 +810,7 @@
           style: rowStyle
         },
         h("span", { style: DRAG_HANDLE_STYLE }, "⠿"),
-        h("span", { style: ROW_LABEL_STYLE }, blockLabel(b)),
+        h("span", { style: ROW_LABEL_STYLE }, blockLabel(b, self.state.catalogs)),
         showTextarea
           ? h("textarea", {
               value: editableValue,
@@ -749,6 +842,94 @@
           h("option", { value: "ativado" }, "Ativado aqui (arrastável)"),
           h("option", { value: "desativado" }, "Desativado aqui")
         )
+      );
+    },
+
+    renderBannerControl: function () {
+      var self = this;
+      var info = bannerState(this.state.blocks);
+      var parsed = info.block ? parseBannerToken(info.block.raw) : { catalog: null, ref: null };
+      return h(
+        "div",
+        null,
+        h(
+          "div",
+          { style: OVERRIDE_ROW_STYLE },
+          h("span", { style: OVERRIDE_LABEL_STYLE }, "Banner de vitrine"),
+          h(
+            "select",
+            {
+              value: info.state,
+              style: OVERRIDE_SELECT_STYLE,
+              onChange: function (e) {
+                self.updateValue(setBannerState(self.state.blocks, e.target.value, parsed.catalog, parsed.ref));
+              }
+            },
+            h("option", { value: "padrao" }, "Seguir padrão do site"),
+            h("option", { value: "ativado" }, "Ativado aqui (arrastável)"),
+            h("option", { value: "desativado" }, "Desativado aqui")
+          )
+        ),
+        info.state === "ativado" ? this.renderProductPicker(parsed) : null
+      );
+    },
+
+    renderProductPicker: function (parsed) {
+      var self = this;
+      var catalogs = this.state.catalogs;
+      if (!catalogs) {
+        return h("p", { style: Object.assign({}, HINT_STYLE, { margin: "0 0 10px 120px" }) }, "Carregando produtos…");
+      }
+      var value = parsed.catalog && parsed.ref ? parsed.catalog + "|" + parsed.ref : "";
+      var options = [h("option", { key: "none", value: "" }, "Genérico (texto de \"Vitrine dentro dos artigos\")")];
+      if (catalogs.digital.length) {
+        options.push(
+          h(
+            "optgroup",
+            { key: "og-digital", label: "Produtos digitais" },
+            catalogs.digital.map(function (p) { return h("option", { key: "digital-" + p.slug, value: "digital|" + p.slug }, p.title); })
+          )
+        );
+      }
+      if (catalogs.estudo.length) {
+        options.push(
+          h(
+            "optgroup",
+            { key: "og-estudo", label: "Produtos de estudo" },
+            catalogs.estudo.map(function (p, i) { return h("option", { key: "estudo-" + i, value: "estudo|" + encodeURIComponent(p.title) }, p.title); })
+          )
+        );
+      }
+      if (catalogs.compras.length) {
+        options.push(
+          h(
+            "optgroup",
+            { key: "og-compras", label: "Produtos de compras" },
+            catalogs.compras.map(function (p, i) { return h("option", { key: "compras-" + i, value: "compras|" + encodeURIComponent(p.title) }, p.title); })
+          )
+        );
+      }
+      return h(
+        "div",
+        { style: { margin: "0 0 10px 120px" } },
+        h(
+          "select",
+          {
+            value: value,
+            style: OVERRIDE_SELECT_STYLE,
+            onChange: function (e) {
+              var v = e.target.value;
+              if (!v) {
+                self.updateValue(setBannerState(self.state.blocks, "ativado", null, null));
+                return;
+              }
+              var sep = v.indexOf("|");
+              self.updateValue(setBannerState(self.state.blocks, "ativado", v.slice(0, sep), v.slice(sep + 1)));
+            }
+          },
+          options
+        ),
+        h("p", { style: HINT_STYLE }, "Escolha um produto pra este banner puxar título, imagem e link automaticamente dele.")
       );
     },
 

@@ -131,6 +131,54 @@
     );
   }
 
+  // "[[VITRINE-BANNER]]" (genérico) vira "[[VITRINE-BANNER|catalogo|ref]]"
+  // quando alguém escolhe um produto específico pra esse banner, no editor
+  // visual do /admin. "ref" é o slug (produtos digitais) ou o título
+  // codificado com encodeURIComponent (produtos de estudo/compras, que não
+  // têm slug próprio).
+  function parseBannerToken(raw) {
+    if (raw === "[[VITRINE-BANNER]]") return { catalog: null, ref: null };
+    const inner = raw.slice(2, -2);
+    const parts = inner.split("|");
+    if (parts.length < 3) return { catalog: null, ref: null };
+    return { catalog: parts[1], ref: parts.slice(2).join("|") };
+  }
+
+  function findProductInCatalog(items, catalog, ref) {
+    if (!items) return null;
+    if (catalog === "digital") return items.find((p) => p.slug === ref) || null;
+    const title = decodeURIComponent(ref);
+    return items.find((p) => p.title === title) || null;
+  }
+
+  const CATALOG_FILE = {
+    digital: "/content/produtos-digitais.json",
+    estudo: "/content/produtos-estudo.json",
+    compras: "/content/produtos-compras.json"
+  };
+  const CATALOG_KICKER = {
+    digital: "Da vitrine · Produtos digitais",
+    estudo: "Da vitrine · Produtos de estudo",
+    compras: "Da vitrine · Produtos de compras"
+  };
+  const CATALOG_COLOR = { digital: "#577328", estudo: "#8AACD2", compras: "#B8933F" };
+  const CATALOG_FALLBACK_HREF = { digital: "/produtos-digitais/", estudo: "/produtos-de-estudo/", compras: "/produtos-de-compras/" };
+
+  function productBannerHTML(product, catalog) {
+    const href =
+      catalog === "digital"
+        ? "/produtos-digitais/produto/?slug=" + encodeURIComponent(product.slug)
+        : product.affiliateUrl || CATALOG_FALLBACK_HREF[catalog];
+    const color = CATALOG_COLOR[catalog];
+    return (
+      '<div class="in-article-banner"><div class="blog-banner">' +
+      imgSlotHTML(product.image || "", product.title || "", "Foto do item indicado") +
+      '<div class="blog-banner-body"><div><span class="eyebrow" style="color:' + color + ';">' + escapeHtml(CATALOG_KICKER[catalog]) + "</span>" +
+      "<h3>" + escapeHtml(product.title || "") + "</h3></div>" +
+      '<a class="btn btn-pill" href="' + escapeHtml(href) + '" style="background:' + color + ';">Ver mais →</a></div></div></div>'
+    );
+  }
+
   // Traduz a posição escolhida em /admin (Meio automático / Depois de um
   // bloco específico) num índice do array de blocos. "Fim" e "Não mostrar"
   // não passam por aqui — são tratados fora do fluxo de blocos.
@@ -184,10 +232,31 @@
     // inteiro (vitrine-artigo.json / ads-config.json). "[[NO-VITRINE-BANNER]]"
     // e "[[NO-PROPAGANDA]]" são o oposto: desligam o padrão do site só PRA
     // ESTE artigo, sem precisar desligar pro site inteiro.
-    const hasManualBanner = blocks.includes("<p>[[VITRINE-BANNER]]</p>");
+    const bannerBlockMatch = blocks.find((b) => /^<p>\[\[VITRINE-BANNER(?:\|[^<]+)?\]\]<\/p>$/.test(b));
+    const hasManualBanner = !!bannerBlockMatch;
     const hasManualPropaganda = blocks.includes("<p>[[PROPAGANDA]]</p>");
     const hasNoBanner = blocks.includes("<p>[[NO-VITRINE-BANNER]]</p>");
     const hasNoPropaganda = blocks.includes("<p>[[NO-PROPAGANDA]]</p>");
+
+    // Se o banner manual aponta pra um produto específico (escolhido no
+    // seletor do editor visual), busca o catálogo certo e monta o banner com
+    // o título/imagem/link daquele produto — com fallback pro banner
+    // genérico se o produto não existir mais (ex.: foi removido do catálogo).
+    let manualBannerHtml = "";
+    if (hasManualBanner) {
+      const rawToken = bannerBlockMatch.slice(3, -4); // tira "<p>" e "</p>"
+      const parsed = parseBannerToken(rawToken);
+      let product = null;
+      if (parsed.catalog) {
+        try {
+          const catalogData = await fetchJSON(CATALOG_FILE[parsed.catalog]);
+          product = findProductInCatalog(catalogData.items, parsed.catalog, parsed.ref);
+        } catch (e) {
+          product = null;
+        }
+      }
+      manualBannerHtml = product ? productBannerHTML(product, parsed.catalog) : vitrineBannerHTML(inBannerCfg, "in");
+    }
 
     // "Meio do artigo" e "Depois de um bloco específico" entram no meio do
     // texto; "Fim do artigo" e "Não mostrar" ficam de fora (tratados abaixo).
@@ -213,7 +282,7 @@
     }
     bodyHtml = bodyHtml.replace("<p>[[NO-VITRINE-BANNER]]</p>", "").replace("<p>[[NO-PROPAGANDA]]</p>", "");
     if (hasManualBanner) {
-      bodyHtml = bodyHtml.replace("<p>[[VITRINE-BANNER]]</p>", hasNoBanner ? "" : vitrineBannerHTML(inBannerCfg, "in"));
+      bodyHtml = bodyHtml.replace(bannerBlockMatch, hasNoBanner ? "" : manualBannerHtml);
     }
     if (hasManualPropaganda) {
       bodyHtml = bodyHtml.replace("<p>[[PROPAGANDA]]</p>", !hasNoPropaganda && adsCfg && adsCfg.enabled ? ownBannerHTML(adsCfg) : "");
