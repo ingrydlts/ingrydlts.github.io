@@ -153,6 +153,28 @@ variáveis novas no Worker, e a KV que guarda o texto pago.
 Stripe](https://docs.stripe.com/testing#cards) (`4242 4242 4242 4242`, qualquer data futura e CVC)
 confirma o fluxo inteiro, do clique até o artigo desbloqueado.
 
+## 11. Criar o banco D1 de eventos (feedback, bot, blocos interativos)
+
+Depois de atualizar o código (passo 9), a rota `/api/events` — que registra feedback dos artigos,
+interações do assistente de vistos e (depois) dos blocos interativos — precisa de um banco **D1**
+(SQL, incluso no plano gratuito). Sem ele, `/api/events` responde erro 500, mas o resto do site
+continua funcionando normalmente (o botão de feedback, por exemplo, some silenciosamente).
+
+1. [dash.cloudflare.com](https://dash.cloudflare.com) → **Workers & Pages** → aba **D1** (menu
+   lateral) → **Create database**.
+2. Nome sugerido: `por-dentro-events`. Criar.
+3. Abra o banco recém-criado → aba **Console** → cole o conteúdo de
+   [`schema.sql`](./schema.sql) deste projeto → **Execute** (cria a tabela `events`).
+4. Volte no Worker (`por-dentro-cms-oauth`) → **Settings** → **Bindings** → **Add binding** → tipo
+   **D1 database**.
+5. **Variable name**: `EVENTS_DB` (tem que ser exatamente esse nome, é o que o `worker.js` espera).
+   **D1 database**: escolha a `por-dentro-events` criada no passo 2. Salvar/Deploy.
+
+**No `/admin`**: acesse a coleção **"Consentimento e cookies"** e confira o texto do banner que vai
+aparecer pros visitantes — o interruptor "Ligar/desligar toda a medição de audiência" nesse mesmo
+painel desliga tudo de uma vez (banner, eventos, e futuramente GA4/Clarity/anúncios) sem precisar
+mexer em código.
+
 ---
 
 Alternativa via linha de comando (`wrangler`), se preferir a esse passo a passo pelo painel:
@@ -164,4 +186,12 @@ wrangler login
 wrangler secret put GITHUB_CLIENT_ID
 wrangler secret put GITHUB_CLIENT_SECRET
 wrangler deploy
+```
+
+Pra criar e popular o banco D1 do passo 11 via linha de comando (edite `database_id` em
+`wrangler.toml` com o ID que o primeiro comando devolve):
+
+```bash
+wrangler d1 create por-dentro-events
+wrangler d1 execute por-dentro-events --remote --file=./schema.sql
 ```

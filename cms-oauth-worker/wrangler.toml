@@ -10,3 +10,10 @@ compatibility_date = "2024-01-01"
 [[kv_namespaces]]
 binding = "REVIEWS_KV"
 id = "id-da-sua-kv-aqui"
+
+# D1 usada pela rota /api/events (feedback dos artigos, interações do bot,
+# blocos interativos). Rode schema.sql nela antes de usar — ver README.md.
+[[d1_databases]]
+binding = "EVENTS_DB"
+database_name = "por-dentro-events"
+database_id = "id-do-seu-d1-aqui"

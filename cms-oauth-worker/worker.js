@@ -340,6 +340,48 @@ async function requireCollaborator(request, env) {
   return null;
 }
 
+// ---- Eventos de produto (feedback, bot, blocos interativos) — D1, público ----
+
+async function handlePostEvent(request, env, ctx) {
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return json({ error: 'JSON inválido.' }, 400);
+  }
+
+  const eventType = String(body.event_type || '').trim();
+  if (!ALLOWED_EVENT_TYPES.includes(eventType)) {
+    return json({ error: 'Tipo de evento inválido.' }, 400);
+  }
+  const articleSlug = body.article_slug ? String(body.article_slug).trim().slice(0, 150) : null;
+  const sessionId = body.session_id ? String(body.session_id).trim().slice(0, 100) : null;
+  let payload;
+  try {
+    payload = JSON.stringify(body.payload == null ? {} : body.payload).slice(0, 2000);
+  } catch {
+    payload = '{}';
+  }
+
+  // throttle curto por IP — não é pra impedir uso normal (várias respostas
+  // rápidas do bot, por exemplo), só flood.
+  const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
+  const throttleKey = `throttle:events:${ip}`;
+  const throttled = await env.REVIEWS_KV.get(throttleKey);
+  if (throttled) return json({ error: 'Muitas requisições — tente de novo em instantes.' }, 429);
+  await env.REVIEWS_KV.put(throttleKey, '1', { expirationTtl: EVENTS_THROTTLE_SECONDS });
+
+  if (!env.EVENTS_DB) return json({ error: 'Banco de eventos ainda não configurado.' }, 500);
+
+  await env.EVENTS_DB.prepare(
+    'INSERT INTO events (id, event_type, article_slug, payload, session_id, created_at) VALUES (?, ?, ?, ?, ?, ?)'
+  )
+    .bind(crypto.randomUUID(), eventType, articleSlug, payload, sessionId, new Date().toISOString())
+    .run();
+
+  return json({ ok: true }, 201);
+}
+
 async function handleGetReviews(request, env, url) {
   const slug = url.searchParams.get('slug');
   if (!slug) return json({ error: 'Faltou o parâmetro "slug".' }, 400);
@@ -727,6 +769,9 @@ export default {
     }
 
     try {
+      if (url.pathname === '/api/events' && request.method === 'POST') {
+        return await handlePostEvent(request, env, ctx);
+      }
       if (url.pathname === '/api/reviews' && request.method === 'GET') {
         return await handleGetReviews(request, env, url);
       }

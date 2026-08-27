@@ -36,8 +36,17 @@
   <h1 style="padding:40px 24px 0; max-width:760px; margin:0 auto;">Politique de confidentialité</h1>
   <p class="muted" style="max-width:760px; margin:8px auto 0; padding:0 24px;">Rascunho gerado a partir da especificação do projeto — não é aconselhamento jurídico. Confirme com um expert-comptable ou avocat antes do lançamento.</p>
   <div style="max-width:760px; margin:0 auto; padding:0 24px 72px;">
-    <h2>Quelles données sont collectées</h2>
-    <p>Ce site ne dépose pas de cookies de suivi : les statistiques de visite sont mesurées via Cloudflare Web Analytics, un outil sans cookies et sans donnée personnelle identifiable.</p>
+    <h2>Cookies et outils de mesure</h2>
+    <p>Lors de votre première visite, un bandeau vous demande votre consentement. Tant que vous n'avez pas répondu, ou si vous refusez, aucun cookie ni identifiant de mesure n'est déposé.</p>
+    <p>Si vous acceptez, ce site peut charger :</p>
+    <ul>
+      <li><strong>Google Analytics (GA4)</strong> — mesure d'audience (pages vues, provenance du trafic).</li>
+      <li><strong>Microsoft Clarity</strong> — enregistrement anonyme de la navigation (heatmaps, sessions), pour comprendre comment les articles et l'assistant de visa sont utilisés.</li>
+      <li>Un identifiant anonyme, stocké uniquement dans votre navigateur (pas de compte, pas d'e-mail associé), utilisé pour relier entre elles vos réponses au bouton « cet article vous a-t-il aidé ? » et vos interactions avec l'assistant de visa.</li>
+    </ul>
+    <p>Vous pouvez changer d'avis à tout moment : <button type="button" id="pd-consent-manage" class="btn btn-outline btn-pill" style="font-size:13px; padding:8px 16px;">Modifier mes préférences de cookies</button></p>
+
+    <h2>Autres données collectées</h2>
     <p>Lors d'un achat, le paiement et les données associées (nom, e-mail, informations de carte) sont collectés directement par Stripe, notre prestataire de paiement — ces données ne transitent jamais par nos serveurs.</p>
 
     <h2>Utilisation des données</h2>
@@ -92,6 +101,8 @@
 </footer>
 
 <script src="/assets/js/main.js"></script>
+<script src="/assets/js/consent.js"></script>
+<script src="/assets/js/events.js"></script>
 <script type="module" src="/assets/js/header.js"></script>
 </body>
 </html>
