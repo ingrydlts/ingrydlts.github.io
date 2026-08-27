@@ -178,6 +178,8 @@
       "[[VAE-SIMULADOR]]": { mountId: "tool-vae-simulador", module: "/assets/js/tools/vae-2026.js", fn: "mountFinanciamento" },
       "[[VAE-TAXA-SUCESSO]]": { mountId: "tool-vae-taxa-sucesso", module: "/assets/js/tools/vae-2026.js", fn: "mountTaxaSucesso" },
       "[[VAE-NEWSLETTER]]": { mountId: "tool-vae-newsletter", module: "/assets/js/tools/vae-2026.js", fn: "mountNewsletter" },
+      "[[EXAME-TEMPLATE-GRATIS]]": { mountId: "tool-exame-template-gratis", module: "/assets/js/tools/exame-civico.js", fn: "mountTemplateGratis" },
+      "[[EXAME-PRICING]]": { mountId: "tool-exame-pricing", module: "/assets/js/tools/exame-civico.js", fn: "mountPricing" },
     };
     for (const [token, tool] of Object.entries(TOOL_TOKENS)) {
       bodyHtml = bodyHtml.replace("<p>" + token + "</p>", '<div id="' + tool.mountId + '"></div>');
