@@ -200,10 +200,12 @@
       "updatedDate": "2026-08-26",
       "slug": "vae-franca-2026",
       "date": "2026-08-26",
+      "headerMode": "desativado",
       "premium": false,
       "title": "VAE em 2026: transforme sua experiência profissional em diploma francês",
       "image": "",
-      "category": "Formação"
+      "category": "Formação",
+      "footerMode": "desativado"
     }
   ]
 }
