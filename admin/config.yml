@@ -306,6 +306,25 @@ collections:
           - { label: "Texto do bloco de assinatura", name: paywallBody, widget: text, default: "Assine para ter acesso completo a este e a outros artigos premium." }
           - { label: "Link do portal de gerenciamento (Stripe Customer Portal)", name: customerPortalUrl, widget: string, required: false, hint: "Link fixo para a assinante cancelar ou gerenciar a assinatura sozinha. Gere em Stripe → Settings → Billing → Customer portal." }
 
+  - name: analytics_config
+    label: "Consentimento e cookies"
+    files:
+      - name: analytics_config
+        label: "Banner de consentimento"
+        file: content/analytics-config.json
+        fields:
+          - { label: "Ligar/desligar toda a medição de audiência", name: trackingEnabled, widget: boolean, default: true, hint: "Desligado = o banner nunca aparece e nada é medido (nem quando o Google Analytics/Clarity forem ativados). É o interruptor de emergência." }
+          - label: "Texto do banner"
+            name: consentBanner
+            widget: object
+            fields:
+              - { label: Título, name: title, widget: string }
+              - { label: "Texto explicativo", name: body, widget: text }
+              - { label: "Botão de aceitar", name: acceptLabel, widget: string, default: "Aceitar" }
+              - { label: "Botão de recusar", name: declineLabel, widget: string, default: "Recusar" }
+              - { label: "Texto do link \"saiba mais\"", name: linkLabel, widget: string, default: "Saiba mais" }
+              - { label: "Link do \"saiba mais\"", name: linkHref, widget: string, default: "/confidentialite/" }
+
   - name: banners
     label: "Banners e destaques"
     files:

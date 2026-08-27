@@ -39,6 +39,15 @@
  *    `?client_reference_id=<slug>` nos dois links antes de mandar a leitora
  *    pro Stripe.
  *
+ * 4. Eventos de produto (feedback dos artigos, interações do bot, blocos
+ *    interativos) — grava num banco D1, não numa KV, porque o painel de
+ *    insights (/admin/insights/) precisa consultar/agregar essas linhas
+ *    depois. Rota: POST /api/events (público, sem autenticação — mesma
+ *    lógica das avaliações: qualquer visitante pode gerar um evento, com
+ *    throttle por IP contra flood). event_type é validado contra uma lista
+ *    fixa (ALLOWED_EVENT_TYPES) — adicione o tipo novo aí antes de usá-lo
+ *    no site.
+ *
  * Variáveis de ambiente necessárias (Settings → Variables and Secrets no Worker):
  *   GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET  — do GitHub OAuth App (ver README.md)
  *   RESEND_API_KEY, NOTIFY_EMAIL            — opcionais: avisam por e-mail toda
@@ -68,8 +77,12 @@
  *                                              Trate como senha: não use um
  *                                              e-mail que já é público no site.
  * Bindings de KV necessários (Settings → Bindings):
- *   REVIEWS_KV — namespace vazia, usada pelas avaliações
+ *   REVIEWS_KV — namespace vazia, usada pelas avaliações (e também pelo
+ *                throttle de /api/events, ver EVENTS_THROTTLE_SECONDS)
  *   PREMIUM_KV — namespace vazia, usada pelo texto pago dos artigos premium
+ * Binding de D1 necessário (Settings → Bindings):
+ *   EVENTS_DB — banco criado com o schema de schema.sql, usado por
+ *               /api/events — ver README.md
  */
 
 const REPO_OWNER = 'ingrydlts';
@@ -77,6 +90,8 @@ const REPO_NAME = 'ingrydlts.github.io';
 const REVIEWS_KEY = 'reviews_db';
 const RATING_VALUES = [1, 2, 3, 4, 5];
 const PREMIUM_KEY = 'premium_content';
+const ALLOWED_EVENT_TYPES = ['feedback', 'bot', 'block'];
+const EVENTS_THROTTLE_SECONDS = 2; // curto de propósito — eventos são esperados com mais frequência que avaliações
 const SUBSCRIPTION_TOKEN_TTL_SECONDS = 14 * 24 * 60 * 60; // 14 dias — sem webhook do Stripe, é isso que força revalidar
 const ARTICLE_TOKEN_TTL_SECONDS = 20 * 365 * 24 * 60 * 60; // compra avulsa: paga uma vez, acesso permanente na prática
 const ACTIVE_SUBSCRIPTION_STATUSES = ['active', 'trialing'];
