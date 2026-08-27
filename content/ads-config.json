@@ -1,0 +1,22 @@
+{
+  "enabled": true,
+  "network": {
+    "headSnippet": "",
+    "adSnippet": ""
+  },
+  "ownBanner": {
+    "kicker": "",
+    "title": "",
+    "body": "",
+    "image": "",
+    "color": "",
+    "ctaText": "",
+    "ctaHref": ""
+  },
+  "positions": {
+    "top": "none",
+    "mid": "none",
+    "midAfterBlock": 4,
+    "beforePaywall": "none"
+  }
+}

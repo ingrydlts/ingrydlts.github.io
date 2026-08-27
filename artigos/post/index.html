@@ -91,6 +91,7 @@
   import { markdownToBlocks } from "/assets/js/markdown.js";
   import { resolvePremiumSlot } from "/assets/js/premium-gate.js";
   import { pickRelated, relatedSectionHTML, updatedLineHTML } from "/assets/js/article-extras.js";
+  import { getAdsConfig, slotHTML, insertAtIndices, activateNetworkAds } from "/assets/js/ad-slots.js";
 
   function formatDate(iso) {
     if (!iso) return "";
@@ -144,13 +145,25 @@
     document.title = post.title + " — Por Dentro";
 
     const isPremium = !!post.premium;
+    const adsCfg = await getAdsConfig();
+    const blocks = markdownToBlocks(post.body, { slug: post.slug });
+    const adMidAfter = Math.min((adsCfg.positions && adsCfg.positions.midAfterBlock) || 4, blocks.length);
     let bodyHtml;
     if (isPremium) {
-      bodyHtml = markdownToBlocks(post.body, { slug: post.slug }).join("") + '<div id="premium-slot"><p class="muted">Carregando…</p></div>';
+      bodyHtml =
+        insertAtIndices(blocks, [
+          { index: 0, html: slotHTML(adsCfg, "top") },
+          { index: adMidAfter, html: slotHTML(adsCfg, "mid") }
+        ]) +
+        slotHTML(adsCfg, "beforePaywall") +
+        '<div id="premium-slot"><p class="muted">Carregando…</p></div>';
     } else {
-      const blocks = markdownToBlocks(post.body, { slug: post.slug });
       const mid = Math.ceil(blocks.length / 2);
-      bodyHtml = blocks.slice(0, mid).join("") + inArticleBanner() + blocks.slice(mid).join("");
+      bodyHtml = insertAtIndices(blocks, [
+        { index: 0, html: slotHTML(adsCfg, "top") },
+        { index: adMidAfter, html: slotHTML(adsCfg, "mid") },
+        { index: mid, html: inArticleBanner() }
+      ]);
     }
 
     // Marcadores especiais: um parágrafo isolado com "[[NOME-DO-TOKEN]]" no corpo
@@ -185,6 +198,7 @@
       "</article>" +
       relatedSectionHTML(related);
     document.dispatchEvent(new CustomEvent("pd:blocks-rendered"));
+    activateNetworkAds(adsCfg);
 
     if (isPremium) {
       resolvePremiumSlot("premium-slot", post.slug);

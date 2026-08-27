@@ -325,6 +325,57 @@ collections:
               - { label: "Texto do link \"saiba mais\"", name: linkLabel, widget: string, default: "Saiba mais" }
               - { label: "Link do \"saiba mais\"", name: linkHref, widget: string, default: "/confidentialite/" }
 
+  - name: ads_config
+    label: "Anúncios nos artigos"
+    files:
+      - name: ads_config
+        label: "Posições e anúncios"
+        file: content/ads-config.json
+        fields:
+          - { label: "Ligar/desligar todos os anúncios", name: enabled, widget: boolean, default: true, hint: "Desligado = nenhum anúncio aparece em lugar nenhum, mesmo que as posições abaixo estejam preenchidas. É o interruptor de emergência — útil pra pausar tudo rápido, sem mexer em código." }
+          - label: "Anúncio de rede (ex. Google AdSense)"
+            name: network
+            widget: object
+            hint: "Cole aqui exatamente o código que a rede de anúncios te der."
+            fields:
+              - { label: "Código do <head> (carrega a rede — aparece 1x por página, só se algum anúncio de rede estiver ativo)", name: headSnippet, widget: text, required: false }
+              - { label: "Código do anúncio (o bloco em si, repete em cada posição marcada como \"Anúncio de rede\" abaixo)", name: adSnippet, widget: text, required: false }
+          - label: "Banner próprio (promove seus produtos)"
+            name: ownBanner
+            widget: object
+            hint: "Aparece nas posições marcadas como \"Banner próprio\" abaixo — o mesmo banner em todas elas."
+            fields:
+              - { label: Selo, name: kicker, widget: string, required: false }
+              - { label: Título, name: title, widget: string, required: false }
+              - { label: Texto, name: body, widget: text, required: false }
+              - { label: "Cor (hex)", name: color, widget: string, required: false }
+              - { label: "Texto do botão", name: ctaText, widget: string, required: false }
+              - { label: "Link do botão", name: ctaHref, widget: string, required: false }
+          - label: Posições
+            name: positions
+            widget: object
+            hint: "Escolha o que aparece em cada posição do artigo — sem disputa automática entre rede e banner próprio, é você quem decide cada uma."
+            fields:
+              - label: "Topo do artigo (antes do texto começar)"
+                name: top
+                widget: select
+                default: none
+                options: &position_options
+                  - { label: Nenhum, value: "none" }
+                  - { label: "Anúncio de rede", value: "network" }
+                  - { label: "Banner próprio", value: "own" }
+              - label: "Meio do artigo"
+                name: mid
+                widget: select
+                default: none
+                options: *position_options
+              - { label: "Meio do artigo aparece depois de quantos blocos de conteúdo", name: midAfterBlock, widget: number, default: 4, hint: "Cada parágrafo, título ou bloco rico (STEPS, FAQ, CHECKLIST...) conta como 1 bloco." }
+              - label: "Antes do bloqueio de artigo premium"
+                name: beforePaywall
+                widget: select
+                default: none
+                options: *position_options
+
   - name: banners
     label: "Banners e destaques"
     files:
