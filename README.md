@@ -151,6 +151,23 @@ do Stripe, não existe checkout único pra cobrar o combo de uma vez (isso é o 
 produtos já listado na Fase 11 do `GUIA-DE-IMPLEMENTACAO.md`). Enquanto isso não existir, quem quiser
 o combo compra os produtos separadamente pelos links individuais.
 
+## Regra de todo artigo: interação + dado de audiência
+
+Todo artigo do blog precisa dar pra leitora pelo menos um jeito de clicar em algo — e esse clique precisa
+virar dado, não só ficar bonito. O mínimo obrigatório, em qualquer artigo novo:
+
+- **`[[FAQ]]`** no fim — sempre em dropdown (acordeão), nunca perguntas soltas no meio do texto.
+- **`[[FEEDBACK]]`** no fim — o "esse artigo te ajudou? 👍/👎".
+
+Use também `[[CHECKLIST]]` quando o tema tiver um critério de elegibilidade ou passo a passo verificável, e
+`[[RESOURCES]]` pra toda fonte oficial citada (cada link já sai rastreado, abrindo em nova aba). Todo clique
+nesses blocos vira 1 evento no bot (`window.PDEvents`) e aparece agregado em `/admin/dashboard` — perguntas
+mais abertas no FAQ, fontes mais clicadas, checklists completadas, feedback por artigo. O campo "Corpo do
+artigo" no `/admin` já mostra essa lista de blocos no hint, com FAQ e Feedback marcados como obrigatórios.
+
+Detalhe técnico completo (como cada bloco vira evento, e o que ainda falta nos artigos com HTML próprio) em
+[`GUIA-DE-IMPLEMENTACAO.md`](GUIA-DE-IMPLEMENTACAO.md#regra--interação-e-instrumentação-de-audiência-em-artigos-).
+
 ## Pendências herdadas da especificação
 
 - **Fotos reais**: todo produto/banner/post sem imagem mostra um bloco de placeholder — suba fotos reais pelo `/admin` (ou preencha o campo `image` nos JSON) quando tiver.

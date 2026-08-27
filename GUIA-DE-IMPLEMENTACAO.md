@@ -144,6 +144,75 @@ criado só no JSON, sem `url`) são 100% editáveis pelo `/admin`, corpo incluí
 
 ---
 
+## Regra — Interação e instrumentação de audiência em artigos 🟡
+
+**Por quê:** cada artigo do blog é uma chance de aprender algo sobre quem lê — não só publicar texto. Todo
+artigo novo (e, com o tempo, os antigos) precisa dar pelo menos um jeito de a leitora **clicar em algo**, e
+esse clique precisa **virar dado** em `/admin/dashboard`, não só ficar bonito na tela.
+
+### O mínimo obrigatório em todo artigo novo
+
+1. **`[[FAQ]]`** — sempre em formato dropdown/acordeão (é o padrão de `renderFaq` em `assets/js/markdown.js`,
+   não precisa fazer nada além de usar o marcador). 3 a 6 perguntas reais, as que a leitora resolveria
+   perguntando no Instagram se pudesse.
+2. **`[[FEEDBACK]]`** — sempre no fim do artigo. Pode usar a pergunta padrão ("Esse artigo foi útil pra
+   você?") ou uma pergunta customizada, mas o bloco tem que existir.
+
+### Use quando fizer sentido pro tema (não é todo artigo que precisa)
+
+- **`[[CHECKLIST]]`** — quando o artigo tiver um critério de elegibilidade ("você pode pedir X se...") ou um
+  passo a passo que vale a leitora ir marcando.
+- **`[[RESOURCES]]`** — toda vez que citar uma fonte oficial (France-Visas, Légifrance, site de um órgão).
+  Cada link já sai com `target="_blank"` e rastreio de clique — não precisa fazer nada além de preencher a
+  URL.
+
+O widget "Corpo do artigo" no `/admin` já mostra essa regra no hint do campo, com o `[[FAQ]]`/`[[FEEDBACK]]`
+marcados como obrigatórios — ver `admin/config.yml`.
+
+### Como cada clique vira dado
+
+Todo bloco interativo manda 1 evento pro Worker (`window.PDEvents.send(...)`, código em
+`assets/js/events.js` → `POST /api/events` → D1) **só depois que a leitora aceita o banner de cookies**
+(`window.PDConsent`). `/admin/dashboard` lê esses eventos agregados via `GET /api/insights/summary`
+(`handleInsightsSummary` em `cms-oauth-worker/worker.js`).
+
+| Interação | Dispara em | `event_type` | `payload.type` | Aparece em `/admin/dashboard` como |
+|---|---|---|---|---|
+| Abrir uma pergunta do FAQ | `initFaqAccordion`, `assets/js/main.js` | `block` | `faq_open` | "Perguntas do FAQ mais abertas" |
+| Trocar de aba (`.rt-tab-btn`) | `initTabSwitcher`, `assets/js/main.js` | `block` | `tab_click` | (agregação ainda não tem seção própria — dá pra somar direto no D1 se precisar) |
+| Clicar num link de `[[RESOURCES]]` | `initResourceTracking`, `assets/js/main.js` | `block` | `resource_click` | "Fontes mais clicadas" |
+| Completar uma `[[CHECKLIST]]` até 100% | `initChecklist`, `assets/js/main.js` | `block` | `checklist_complete` | "Checklists completadas" |
+| Votar 👍/👎 no `[[FEEDBACK]]` | `initFeedbackButtons`, `assets/js/main.js` | `feedback` | — (usa `payload.vote`) | "Feedback dos artigos" |
+
+Pra criar um novo tipo de interação clicável no futuro, o padrão é sempre o mesmo: escolher um `payload.type`
+novo, mandar via `window.PDEvents.send("block", slug, { type: "...", id: "..." })`, e (se quiser ver agregado
+no painel) somar uma query em `handleInsightsSummary` + uma tabela em `admin/dashboard/index.html`. Não
+precisa mexer no schema do D1 nem no `ALLOWED_EVENT_TYPES` do Worker — `payload` é JSON livre.
+
+### Artigos com HTML próprio (os que têm campo `url` em `content/posts.json`)
+
+Esses não passam pelo `body` em markdown, então os marcadores `[[...]]` não funcionam neles direto. O
+Feedback já foi resolvido de um jeito genérico: `assets/js/article-extras.js` (`mountArticleExtras`) agora
+aceita um `feedbackMountId` e monta um `[[FEEDBACK]]` padrão sozinho — todos os artigos com HTML próprio já
+têm `<div id="article-feedback-mount"></div>` + a chamada atualizada. Um artigo novo desse tipo só precisa
+repetir o mesmo padrão (mount point + `feedbackMountId` na chamada).
+
+O FAQ desses artigos **não tem um equivalente automático** — precisa copiar a estrutura HTML de
+`renderFaq` (ver `assets/js/markdown.js`) direto no arquivo, com `data-article-slug` no wrapper. Ainda
+pendente nos artigos com HTML próprio (14) e no `selo-qualite-fle-mapa-cursos-de-frances` (não tem FAQ
+ainda, embora já use o corpo em markdown).
+
+### Status desta regra (2026-08-27)
+
+- ✅ Instrumentação de clique (FAQ, abas, recursos) implementada em `assets/js/main.js` + agregação no
+  Worker/painel.
+- ✅ `[[FEEDBACK]]` presente em `tudo-sobre-o-exame-civico`, `vae-franca-2026`,
+  `selo-qualite-fle-mapa-cursos-de-frances`, e montado automaticamente nos 14 artigos com HTML próprio.
+- 🟡 `[[FAQ]]` ainda falta em `selo-qualite-fle-mapa-cursos-de-frances` e nos 14 artigos com HTML próprio —
+  fica pendente de conteúdo real (perguntas de verdade por artigo), não é mudança mecânica.
+
+---
+
 ## Fase 7 — Entrega automática por e-mail (backend) 🔲
 
 Fluxo já desenhado na especificação (seção 5.2), ainda não construído:

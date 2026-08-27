@@ -89,6 +89,18 @@
       <p class="muted">Quantas vezes cada checklist interativa dentro de um artigo foi marcada até o fim.</p>
       <div id="ins-checklist"></div>
     </div>
+
+    <div class="ins-section">
+      <h2>Perguntas do FAQ mais abertas</h2>
+      <p class="muted">Quais dúvidas do "Perguntas frequentes" a audiência mais clica pra ler — é sinal direto do que ela quer saber, mesmo sem escrever nada.</p>
+      <div id="ins-faq"></div>
+    </div>
+
+    <div class="ins-section">
+      <h2>Fontes mais clicadas</h2>
+      <p class="muted">Links de fonte oficial ([[RESOURCES]]) que a audiência realmente segue, por artigo.</p>
+      <div id="ins-resources"></div>
+    </div>
   </div>
 </main>
 
@@ -182,6 +194,8 @@
     renderBotOutcomes(data.botOutcomes || []);
     renderFeedback(data.feedback || []);
     renderChecklist(data.checklist || []);
+    renderFaqOpens(data.faqOpens || []);
+    renderResourceClicks(data.resourceClicks || []);
   }
 
   function renderStats(overview) {
@@ -261,6 +275,38 @@
     var html = '<table class="ins-table"><thead><tr><th>Checklist</th><th>Conclusões</th></tr></thead><tbody>';
     rows.forEach(function (r) {
       html += "<tr><td>" + escapeHtml(r.checklist_id || "—") + '</td><td class="num">' + r.completions + "</td></tr>";
+    });
+    html += "</tbody></table>";
+    el.innerHTML = html;
+  }
+
+  function renderFaqOpens(rows) {
+    var el = document.getElementById("ins-faq");
+    if (!rows.length) {
+      el.innerHTML = '<p class="ins-empty">Ainda ninguém abriu uma pergunta do FAQ.</p>';
+      return;
+    }
+    var html = '<table class="ins-table"><thead><tr><th>Artigo (slug)</th><th>Pergunta</th><th>Aberturas</th></tr></thead><tbody>';
+    rows.forEach(function (r) {
+      html +=
+        "<tr><td>" + escapeHtml(r.article_slug || "(sem slug)") + '</td><td>' + escapeHtml(r.question || "—") +
+        '</td><td class="num">' + r.opens + "</td></tr>";
+    });
+    html += "</tbody></table>";
+    el.innerHTML = html;
+  }
+
+  function renderResourceClicks(rows) {
+    var el = document.getElementById("ins-resources");
+    if (!rows.length) {
+      el.innerHTML = '<p class="ins-empty">Ainda ninguém clicou num link de fonte.</p>';
+      return;
+    }
+    var html = '<table class="ins-table"><thead><tr><th>Artigo (slug)</th><th>Fonte</th><th>Cliques</th></tr></thead><tbody>';
+    rows.forEach(function (r) {
+      html +=
+        "<tr><td>" + escapeHtml(r.article_slug || "(sem slug)") + '</td><td>' + escapeHtml(r.resource || "—") +
+        '</td><td class="num">' + r.clicks + "</td></tr>";
     });
     html += "</tbody></table>";
     el.innerHTML = html;

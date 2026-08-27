@@ -151,6 +151,7 @@
       <div id="premium-slot"><p class="muted">Carregando…</p></div>
     </section>
 
+    <div id="article-feedback-mount"></div>
     <div id="article-related-mount"></div>
   </div>
 </main>
@@ -204,7 +205,7 @@
   import { resolvePremiumSlot } from "/assets/js/premium-gate.js";
   import { mountArticleExtras } from "/assets/js/article-extras.js";
   resolvePremiumSlot("premium-slot", "passo-a-passo-da-anef");
-  mountArticleExtras({ slug: "passo-a-passo-da-anef", updatedMountId: "article-updated-mount", relatedMountId: "article-related-mount" });
+  mountArticleExtras({ slug: "passo-a-passo-da-anef", updatedMountId: "article-updated-mount", feedbackMountId: "article-feedback-mount", relatedMountId: "article-related-mount" });
 </script>
 <script>
   document.addEventListener('DOMContentLoaded', function () {

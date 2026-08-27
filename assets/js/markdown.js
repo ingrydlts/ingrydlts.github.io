@@ -36,11 +36,15 @@
 //   Pergunta 1 | Resposta 1
 //   Pergunta 2 | Resposta 2
 //   [[/FAQ]]
-//   (o acordeão já funciona sozinho — clique é tratado em assets/js/main.js)
+//   (o acordeão já funciona sozinho — clique é tratado em assets/js/main.js;
+//   toda pergunta aberta também vira 1 evento no bot, pra saber quais
+//   dúvidas a audiência mais tem em cada artigo)
 //
 //   [[RESOURCES]]
 //   Título | Descrição curta | Texto do link | URL
 //   [[/RESOURCES]]
+//   (cada link abre em nova aba e o clique vira 1 evento no bot — mostra
+//   quais fontes a audiência realmente confere)
 //
 //   [[CHECKLIST]]
 //   Título da checklist
@@ -138,31 +142,42 @@ function renderSteps(lines) {
   return '<div class="rt-steps">' + items + "</div>";
 }
 
-function renderFaq(lines) {
+// data-article-slug (no wrapper) + data-faq-id/data-faq-question (por item)
+// deixam assets/js/main.js registrar, no bot, qual pergunta foi aberta em
+// qual artigo — ver initFaqAccordion.
+function renderFaq(lines, ctx) {
+  const slug = (ctx && ctx.slug) || "artigo";
+  const blockId = slug + "-faq-" + ((ctx && ctx.index) || 0);
   const items = lines
-    .map((line) => {
+    .map((line, i) => {
       const [q, a] = line.split("|").map((s) => s.trim());
       return (
-        '<div class="rt-faq-item"><button type="button" class="rt-faq-q">' + inline(q || "") +
+        '<div class="rt-faq-item"><button type="button" class="rt-faq-q" data-faq-id="' +
+        escapeAttr(blockId + "-" + i) + '" data-faq-question="' + escapeAttr(q || "") + '">' + inline(q || "") +
         '<span class="rt-faq-arrow">▼</span></button><div class="rt-faq-a"><div class="rt-faq-a-inner">' +
         inline(a || "") + "</div></div></div>"
       );
     })
     .join("");
-  return '<div class="rt-faq">' + items + "</div>";
+  return '<div class="rt-faq" data-article-slug="' + escapeAttr(slug) + '">' + items + "</div>";
 }
 
-function renderResources(lines) {
+// target="_blank" pra não tirar a leitora do artigo ao seguir uma fonte
+// externa. data-article-slug + data-resource-title alimentam o rastreio de
+// clique em assets/js/main.js (initResourceTracking).
+function renderResources(lines, ctx) {
+  const slug = (ctx && ctx.slug) || "artigo";
   const items = lines
     .map((line) => {
       const [title, desc, linkText, href] = line.split("|").map((s) => s.trim());
       return (
         '<div class="rt-resource-card"><h4>' + inline(title || "") + "</h4><p>" + inline(desc || "") + "</p>" +
-        '<a href="' + escapeAttr(href || "#") + '">' + inline(linkText || "Saiba mais") + " →</a></div>"
+        '<a href="' + escapeAttr(href || "#") + '" target="_blank" rel="noopener" data-resource-title="' +
+        escapeAttr(title || href || "") + '">' + inline(linkText || "Saiba mais") + " →</a></div>"
       );
     })
     .join("");
-  return '<div class="rt-resource-grid">' + items + "</div>";
+  return '<div class="rt-resource-grid" data-article-slug="' + escapeAttr(slug) + '">' + items + "</div>";
 }
 
 // 1ª linha = título, o resto vira itens marcáveis. blockIndex (posição do
@@ -192,7 +207,7 @@ function renderChecklist(lines, ctx) {
   );
 }
 
-function renderFeedback(lines, ctx) {
+export function renderFeedback(lines, ctx) {
   const question = lines.join(" ").trim() || "Esse artigo foi útil pra você?";
   const slug = (ctx && ctx.slug) || "artigo";
   const blockId = slug + "-feedback-" + ((ctx && ctx.index) || 0);

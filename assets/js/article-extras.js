@@ -2,6 +2,7 @@
 // Compartilhado entre o template dinâmico (/artigos/post/) e as páginas
 // estáticas (/artigos/post/<slug>/) — um lugar só pra manter os dois iguais.
 import { fetchJSON, imgSlotHTML, escapeHtml, postHref } from "/assets/js/render.js";
+import { renderFeedback } from "/assets/js/markdown.js";
 
 function formatDate(iso) {
   if (!iso) return "";
@@ -46,8 +47,8 @@ export function updatedLineHTML(post) {
 }
 
 // Pras páginas estáticas: acha o post pelo slug fixo da página e substitui os
-// dois mount points pelo conteúdo renderizado. Se algo falhar (fetch, slug
-// não encontrado), a página continua normal — só sem esses dois blocos.
+// mount points pelo conteúdo renderizado. Se algo falhar (fetch, slug não
+// encontrado), a página continua normal — só sem esses blocos.
 export async function mountArticleExtras(opts) {
   const slug = opts.slug;
   let data;
@@ -63,8 +64,17 @@ export async function mountArticleExtras(opts) {
     const el = document.getElementById(opts.updatedMountId);
     if (el) el.outerHTML = updatedLineHTML(post);
   }
+  // Bloco genérico de "esse artigo te ajudou?" — regra: todo artigo tem
+  // Feedback, mesmo os com HTML próprio (que não passam pelo corpo em
+  // markdown, então não podem usar [[FEEDBACK]] direto). index fixo
+  // ("static") porque cada página estática só tem 1 bloco de feedback.
+  if (opts.feedbackMountId) {
+    const el = document.getElementById(opts.feedbackMountId);
+    if (el) el.outerHTML = renderFeedback([], { slug: post.slug, index: "static" });
+  }
   if (opts.relatedMountId) {
     const el = document.getElementById(opts.relatedMountId);
     if (el) el.outerHTML = relatedSectionHTML(pickRelated(data.items, post, opts.relatedMax));
   }
+  document.dispatchEvent(new CustomEvent("pd:blocks-rendered"));
 }

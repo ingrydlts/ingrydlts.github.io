@@ -57,22 +57,46 @@
     });
   }
 
+  // Slug do artigo pra anexar aos eventos do bot (ver assets/js/events.js).
+  // Ordem de prioridade: 1) atributo data-article-slug mais próximo do
+  // elemento clicado (blocos ricos do markdown.js já vêm com isso), 2) o
+  // parâmetro ?slug= da URL (template dinâmico /artigos/post/), 3)
+  // data-article-slug no <body> (páginas com HTML próprio, ex. Exame Cívico
+  // — precisa ser adicionado à mão nelas pra essa 3ª opção valer).
+  function getArticleSlug(el) {
+    var withSlug = el && el.closest ? el.closest("[data-article-slug]") : null;
+    if (withSlug) return withSlug.dataset.articleSlug;
+    try {
+      var qsSlug = new URLSearchParams(window.location.search).get("slug");
+      if (qsSlug) return qsSlug;
+    } catch (e) {}
+    return document.body.dataset.articleSlug || null;
+  }
+
   // Abas de conteúdo (ex. "Os 5 temas" da página do Exame Cívico) e acordeão
   // de FAQ — mesmo motivo da delegação acima: em seções premium, esses
   // elementos só existem depois do desbloqueio, não no carregamento inicial.
+  // Toda troca de aba pra uma aba diferente da atual vira 1 evento no bot —
+  // mostra qual opção a audiência mais explora.
   function initTabSwitcher() {
     document.addEventListener("click", function (e) {
       var btn = e.target.closest(".rt-tab-btn");
       if (!btn) return;
       var panel = document.getElementById(btn.dataset.tab);
       if (!panel) return;
+      var wasActive = btn.classList.contains("is-active");
       document.querySelectorAll(".rt-tab-panel").forEach(function (p) { p.classList.remove("is-active"); });
       document.querySelectorAll(".rt-tab-btn").forEach(function (b) { b.classList.remove("is-active"); });
       panel.classList.add("is-active");
       btn.classList.add("is-active");
+      if (!wasActive && window.PDEvents) {
+        window.PDEvents.send("block", getArticleSlug(btn), { type: "tab_click", id: btn.dataset.tab });
+      }
     });
   }
 
+  // Toda pergunta aberta (não o fechar) vira 1 evento no bot — ver
+  // renderFaq em assets/js/markdown.js pra data-faq-id/data-faq-question.
   function initFaqAccordion() {
     document.addEventListener("click", function (e) {
       var q = e.target.closest(".rt-faq-q");
@@ -86,7 +110,29 @@
       if (!isOpen && answer) {
         q.classList.add("is-open");
         answer.style.maxHeight = answer.scrollHeight + "px";
+        if (window.PDEvents) {
+          window.PDEvents.send("block", getArticleSlug(q), {
+            type: "faq_open",
+            id: q.dataset.faqId || null,
+            question: (q.dataset.faqQuestion || "").slice(0, 80)
+          });
+        }
       }
+    });
+  }
+
+  // Clique em fonte externa ([[RESOURCES]], ver markdown.js) vira 1 evento
+  // no bot — mostra quais fontes a audiência realmente confere. O link abre
+  // em nova aba (target="_blank"), então o fetch do evento não é cortado
+  // pela navegação.
+  function initResourceTracking() {
+    document.addEventListener("click", function (e) {
+      var link = e.target.closest(".rt-resource-card a");
+      if (!link || !window.PDEvents) return;
+      window.PDEvents.send("block", getArticleSlug(link), {
+        type: "resource_click",
+        id: link.dataset.resourceTitle || link.href
+      });
     });
   }
 
@@ -217,6 +263,7 @@
     initCopyButtons();
     initTabSwitcher();
     initFaqAccordion();
+    initResourceTracking();
     initChecklist();
     initFeedbackButtons();
     hydrateInteractiveBlocks();
