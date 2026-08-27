@@ -90,11 +90,136 @@
     });
   }
 
+  // ---- Checklist (bloco [[CHECKLIST]], ver assets/js/markdown.js) ----
+  // Progresso fica salvo no navegador de quem lê (localStorage), por
+  // checklist (data-checklist-id) — sobrevive a reload, não é enviado a
+  // lugar nenhum. Ao chegar em 100%, dispara 1 evento de conclusão
+  // (window.PDEvents, só se o consentimento tiver sido aceito).
+  var checklistCompletedThisVisit = {};
+
+  function checklistStorageKey(id) {
+    return "pd_checklist_" + id;
+  }
+
+  function updateChecklistUI(wrap) {
+    var total = parseInt(wrap.dataset.checklistTotal, 10) || 0;
+    var checked = wrap.querySelectorAll('input[data-checklist-item]:checked').length;
+    var fill = wrap.querySelector(".rt-checklist-fill");
+    var count = wrap.querySelector(".rt-checklist-count");
+    if (fill) fill.style.width = (total ? Math.round((checked / total) * 100) : 0) + "%";
+    if (count) count.textContent = checked + " de " + total;
+    wrap.querySelectorAll(".rt-checklist-item").forEach(function (item) {
+      var input = item.querySelector("input");
+      item.classList.toggle("is-checked", !!(input && input.checked));
+    });
+    return { checked: checked, total: total };
+  }
+
+  function saveChecklistState(wrap) {
+    var state = {};
+    wrap.querySelectorAll("input[data-checklist-item]").forEach(function (input) {
+      state[input.dataset.checklistItem] = input.checked;
+    });
+    try {
+      window.localStorage.setItem(checklistStorageKey(wrap.dataset.checklistId), JSON.stringify(state));
+    } catch (e) {}
+  }
+
+  function restoreChecklistState(wrap) {
+    var raw;
+    try {
+      raw = window.localStorage.getItem(checklistStorageKey(wrap.dataset.checklistId));
+    } catch (e) {
+      return;
+    }
+    if (!raw) return;
+    var state;
+    try {
+      state = JSON.parse(raw);
+    } catch (e) {
+      return;
+    }
+    wrap.querySelectorAll("input[data-checklist-item]").forEach(function (input) {
+      if (state[input.dataset.checklistItem]) input.checked = true;
+    });
+  }
+
+  function initChecklist() {
+    document.addEventListener("change", function (e) {
+      var input = e.target.closest("[data-checklist-item]");
+      if (!input) return;
+      var wrap = input.closest(".rt-checklist");
+      if (!wrap) return;
+      var result = updateChecklistUI(wrap);
+      saveChecklistState(wrap);
+      var id = wrap.dataset.checklistId;
+      if (result.total && result.checked === result.total && !checklistCompletedThisVisit[id]) {
+        checklistCompletedThisVisit[id] = true;
+        if (window.PDEvents) window.PDEvents.send("block", null, { type: "checklist_complete", id: id });
+      }
+    });
+  }
+
+  // ---- Feedback (bloco [[FEEDBACK]], ver assets/js/markdown.js) ----
+  // Um voto por checklist/pessoa (localStorage evita reenvio ao recarregar
+  // a página). O evento em si vai pro Worker/D1 via window.PDEvents.
+  function showFeedbackThanks(wrap, vote) {
+    wrap.querySelectorAll(".rt-feedback-btn").forEach(function (btn) {
+      btn.disabled = true;
+      btn.classList.toggle("is-selected", btn.dataset.vote === vote);
+    });
+    var thanks = wrap.querySelector(".rt-feedback-thanks");
+    if (thanks) thanks.hidden = false;
+  }
+
+  function initFeedbackButtons() {
+    document.addEventListener("click", function (e) {
+      var btn = e.target.closest(".rt-feedback-btn");
+      if (!btn) return;
+      var wrap = btn.closest(".rt-feedback");
+      if (!wrap) return;
+      var id = wrap.dataset.feedbackId;
+      var already = null;
+      try {
+        already = window.localStorage.getItem("pd_feedback_" + id);
+      } catch (e) {}
+      if (already) return;
+      var vote = btn.dataset.vote;
+      try {
+        window.localStorage.setItem("pd_feedback_" + id, vote);
+      } catch (e) {}
+      showFeedbackThanks(wrap, vote);
+      if (window.PDEvents) window.PDEvents.send("feedback", wrap.dataset.articleSlug, { vote: vote });
+    });
+  }
+
+  // Roda toda vez que blocos ricos entram na página — no carregamento
+  // inicial E de novo depois que o template dinâmico injeta o corpo do
+  // artigo via fetch (que acontece depois do DOMContentLoaded). Restaura
+  // checklists marcadas e feedback já respondido, sem reenviar nada.
+  function hydrateInteractiveBlocks() {
+    document.querySelectorAll(".rt-checklist").forEach(function (wrap) {
+      restoreChecklistState(wrap);
+      updateChecklistUI(wrap);
+    });
+    document.querySelectorAll(".rt-feedback").forEach(function (wrap) {
+      var voted = null;
+      try {
+        voted = window.localStorage.getItem("pd_feedback_" + wrap.dataset.feedbackId);
+      } catch (e) {}
+      if (voted) showFeedbackThanks(wrap, voted);
+    });
+  }
+
   document.addEventListener("DOMContentLoaded", function () {
     initMobileNav();
     markActiveNav();
     initCopyButtons();
     initTabSwitcher();
     initFaqAccordion();
+    initChecklist();
+    initFeedbackButtons();
+    hydrateInteractiveBlocks();
   });
+  document.addEventListener("pd:blocks-rendered", hydrateInteractiveBlocks);
 })();

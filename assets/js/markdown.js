@@ -3,7 +3,7 @@
 // Não é um parser completo — é o suficiente para texto editorial simples,
 // sem depender de nenhuma biblioteca externa.
 //
-// Além do markdown básico, suporta 4 blocos "ricos" (mesmos componentes
+// Além do markdown básico, suporta blocos "ricos" (mesmos componentes
 // visuais rt-* usados nos artigos com página própria, ver assets/css/style.css)
 // via marcadores de texto simples — assim qualquer artigo editado pelo /admin
 // pode usá-los, sem precisar de HTML feito à mão:
@@ -27,9 +27,40 @@
 //   📄 | O "estatuto" concedido | Confirme se dá direito a trabalho.
 //   [[/LIST]]
 //
-// Cada linha dentro de STATS/CARDS/LIST usa "|" pra separar as colunas.
-// Um parágrafo que comece com "**Atenção:**" também vira automaticamente
-// uma caixa de aviso colorida (callout-warn) — não precisa de marcador.
+//   [[STEPS]]
+//   Título do passo 1 | Descrição do passo 1
+//   Título do passo 2 | Descrição do passo 2
+//   [[/STEPS]]
+//
+//   [[FAQ]]
+//   Pergunta 1 | Resposta 1
+//   Pergunta 2 | Resposta 2
+//   [[/FAQ]]
+//   (o acordeão já funciona sozinho — clique é tratado em assets/js/main.js)
+//
+//   [[RESOURCES]]
+//   Título | Descrição curta | Texto do link | URL
+//   [[/RESOURCES]]
+//
+//   [[CHECKLIST]]
+//   Título da checklist
+//   Item 1
+//   Item 2
+//   [[/CHECKLIST]]
+//   (a 1ª linha é sempre o título; as demais viram itens marcáveis, com
+//   barra de progresso que atualiza sozinha — o estado marcado fica salvo
+//   no navegador de quem lê, entre visitas)
+//
+//   [[FEEDBACK]]
+//   Esse artigo te ajudou?
+//   [[/FEEDBACK]]
+//   (texto opcional — sem nada dentro, usa a pergunta padrão. Os votos
+//   👍/👎 alimentam o painel de insights, via window.PDEvents)
+//
+// Cada linha dentro de STATS/CARDS/LIST/STEPS/FAQ/RESOURCES usa "|" pra
+// separar as colunas. Um parágrafo que comece com "**Atenção:**" também
+// vira automaticamente uma caixa de aviso colorida (callout-warn) — não
+// precisa de marcador.
 
 function inline(text) {
   return text
@@ -41,7 +72,15 @@ function inline(text) {
     .replace(/\[(.+?)\]\((.+?)\)/g, '<a href="$2">$1</a>');
 }
 
-const BLOCK_TAGS = ["BAND", "STATS", "CARDS", "LIST"];
+const BLOCK_TAGS = ["BAND", "STATS", "CARDS", "LIST", "STEPS", "FAQ", "RESOURCES", "CHECKLIST", "FEEDBACK"];
+
+function escapeAttr(str) {
+  return String(str == null ? "" : str)
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
 
 function renderBand(lines) {
   return '<div class="rt-band">' + inline(lines.join(" ")) + "</div>";
@@ -86,12 +125,107 @@ function renderList(lines) {
   return '<div class="rt-stat-list">' + items + "</div>";
 }
 
-const BLOCK_RENDERERS = { BAND: renderBand, STATS: renderStats, CARDS: renderCards, LIST: renderList };
+function renderSteps(lines) {
+  const items = lines
+    .map((line, i) => {
+      const [title, desc] = line.split("|").map((s) => s.trim());
+      return (
+        '<div class="rt-step"><div class="rt-step-num">' + (i + 1) + '</div><div><h4>' + inline(title || "") +
+        "</h4><p>" + inline(desc || "") + "</p></div></div>"
+      );
+    })
+    .join("");
+  return '<div class="rt-steps">' + items + "</div>";
+}
+
+function renderFaq(lines) {
+  const items = lines
+    .map((line) => {
+      const [q, a] = line.split("|").map((s) => s.trim());
+      return (
+        '<div class="rt-faq-item"><button type="button" class="rt-faq-q">' + inline(q || "") +
+        '<span class="rt-faq-arrow">▼</span></button><div class="rt-faq-a"><div class="rt-faq-a-inner">' +
+        inline(a || "") + "</div></div></div>"
+      );
+    })
+    .join("");
+  return '<div class="rt-faq">' + items + "</div>";
+}
+
+function renderResources(lines) {
+  const items = lines
+    .map((line) => {
+      const [title, desc, linkText, href] = line.split("|").map((s) => s.trim());
+      return (
+        '<div class="rt-resource-card"><h4>' + inline(title || "") + "</h4><p>" + inline(desc || "") + "</p>" +
+        '<a href="' + escapeAttr(href || "#") + '">' + inline(linkText || "Saiba mais") + " →</a></div>"
+      );
+    })
+    .join("");
+  return '<div class="rt-resource-grid">' + items + "</div>";
+}
+
+// 1ª linha = título, o resto vira itens marcáveis. blockIndex (posição do
+// bloco no artigo) entra no id pra dar um identificador estável e único —
+// tanto pra guardar o progresso no navegador de quem lê quanto pra permitir
+// mais de uma checklist no mesmo artigo sem colidir.
+function renderChecklist(lines, ctx) {
+  if (!lines.length) return "";
+  const title = lines[0];
+  const items = lines.slice(1);
+  const slug = (ctx && ctx.slug) || "artigo";
+  const blockId = slug + "-checklist-" + ((ctx && ctx.index) || 0);
+  const itemsHtml = items
+    .map(
+      (label, i) =>
+        '<label class="rt-checklist-item"><input type="checkbox" data-checklist-item="' + i + '"><span>' +
+        inline(label) + "</span></label>"
+    )
+    .join("");
+  return (
+    '<div class="rt-checklist rt-progress-wrap" data-checklist-id="' + escapeAttr(blockId) +
+    '" data-checklist-total="' + items.length + '">' +
+    '<div class="rt-progress-label"><span>' + inline(title) +
+    '</span><strong class="rt-checklist-count">0 de ' + items.length + "</strong></div>" +
+    '<div class="rt-progress-bar"><div class="rt-checklist-fill rt-progress-fill" style="width:0%; background:var(--verde-moss);"></div></div>' +
+    '<div class="rt-checklist-items">' + itemsHtml + "</div></div>"
+  );
+}
+
+function renderFeedback(lines, ctx) {
+  const question = lines.join(" ").trim() || "Esse artigo foi útil pra você?";
+  const slug = (ctx && ctx.slug) || "artigo";
+  const blockId = slug + "-feedback-" + ((ctx && ctx.index) || 0);
+  return (
+    '<div class="rt-feedback" data-feedback-id="' + escapeAttr(blockId) + '" data-article-slug="' + escapeAttr(slug) + '">' +
+    '<p class="rt-feedback-q">' + inline(question) + "</p>" +
+    '<div class="rt-feedback-actions">' +
+    '<button type="button" class="rt-feedback-btn" data-vote="up" aria-label="Sim, ajudou">👍</button>' +
+    '<button type="button" class="rt-feedback-btn" data-vote="down" aria-label="Não ajudou">👎</button>' +
+    "</div>" +
+    '<p class="rt-feedback-thanks" hidden>Obrigada pelo retorno! 🙏</p>' +
+    "</div>"
+  );
+}
+
+const BLOCK_RENDERERS = {
+  BAND: renderBand,
+  STATS: renderStats,
+  CARDS: renderCards,
+  LIST: renderList,
+  STEPS: renderSteps,
+  FAQ: renderFaq,
+  RESOURCES: renderResources,
+  CHECKLIST: renderChecklist,
+  FEEDBACK: renderFeedback
+};
 
 // Devolve um array de blocos HTML (cada parágrafo/título/lista/bloco rico é
 // 1 item), útil pra quem precisar inserir algo (como o banner in-article) no
-// meio do texto.
-export function markdownToBlocks(md) {
+// meio do texto. ctx opcional ({ slug }) é repassado aos blocos que precisam
+// saber em que artigo estão (CHECKLIST, FEEDBACK) — sem ele, ainda funcionam,
+// só com um id genérico em vez do slug real.
+export function markdownToBlocks(md, ctx) {
   if (!md) return [];
   const lines = md.replace(/\r\n/g, "\n").split("\n");
   const blocks = [];
@@ -111,7 +245,7 @@ export function markdownToBlocks(md) {
 
     if (blockTag) {
       if (line === "[[/" + blockTag + "]]") {
-        blocks.push(BLOCK_RENDERERS[blockTag](blockLines));
+        blocks.push(BLOCK_RENDERERS[blockTag](blockLines, { slug: ctx && ctx.slug, index: blocks.length }));
         blockTag = null;
         blockLines = null;
       } else if (line) {
@@ -153,10 +287,10 @@ export function markdownToBlocks(md) {
     }
   });
   flushList();
-  if (blockTag) blocks.push(BLOCK_RENDERERS[blockTag](blockLines));
+  if (blockTag) blocks.push(BLOCK_RENDERERS[blockTag](blockLines, { slug: ctx && ctx.slug, index: blocks.length }));
   return blocks;
 }
 
-export function markdownToHtml(md) {
-  return markdownToBlocks(md).join("");
+export function markdownToHtml(md, ctx) {
+  return markdownToBlocks(md, ctx).join("");
 }

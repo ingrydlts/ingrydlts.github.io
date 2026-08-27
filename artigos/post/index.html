@@ -146,9 +146,9 @@
     const isPremium = !!post.premium;
     let bodyHtml;
     if (isPremium) {
-      bodyHtml = markdownToBlocks(post.body).join("") + '<div id="premium-slot"><p class="muted">Carregando…</p></div>';
+      bodyHtml = markdownToBlocks(post.body, { slug: post.slug }).join("") + '<div id="premium-slot"><p class="muted">Carregando…</p></div>';
     } else {
-      const blocks = markdownToBlocks(post.body);
+      const blocks = markdownToBlocks(post.body, { slug: post.slug });
       const mid = Math.ceil(blocks.length / 2);
       bodyHtml = blocks.slice(0, mid).join("") + inArticleBanner() + blocks.slice(mid).join("");
     }
@@ -184,6 +184,7 @@
       endOfArticleCTA() +
       "</article>" +
       relatedSectionHTML(related);
+    document.dispatchEvent(new CustomEvent("pd:blocks-rendered"));
 
     if (isPremium) {
       resolvePremiumSlot("premium-slot", post.slug);

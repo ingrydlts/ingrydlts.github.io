@@ -13,10 +13,10 @@ import { fetchPremiumBody, verifySessionFromUrl, restoreAccess } from "/assets/j
 // nas páginas herdadas de antes do paywall — isso precisa chegar intacto,
 // sem passar pelo parser de markdown (que escapa `<` e `>`). A regra é
 // simples e previsível: se o texto começa com `<`, é tratado como HTML puro.
-function renderPremiumBody(raw) {
+function renderPremiumBody(raw, slug) {
   const trimmed = (raw || "").trim();
   if (trimmed.startsWith("<")) return trimmed;
-  return markdownToBlocks(raw).join("");
+  return markdownToBlocks(raw, { slug }).join("");
 }
 
 // Anexa ?client_reference_id=<slug> ao link do Stripe — é assim que a sessão
@@ -107,7 +107,8 @@ export async function resolvePremiumSlot(slotId, slug) {
 
   const result = await fetchPremiumBody(slug);
   if (result.ok) {
-    slot.outerHTML = renderPremiumBody(result.body);
+    slot.outerHTML = renderPremiumBody(result.body, slug);
+    document.dispatchEvent(new CustomEvent("pd:blocks-rendered"));
     return;
   }
 
