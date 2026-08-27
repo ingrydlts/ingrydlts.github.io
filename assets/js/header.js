@@ -106,7 +106,15 @@ function resolveMode(pageMode, category, visibility, field) {
   var postsData = await postsPromise;
   var posts = postsData && Array.isArray(postsData.items) ? postsData.items : [];
 
-  var registryEntry = PAGE_REGISTRY[normalizedPath()];
+  // "/artigos/post/" é o MESMO caminho pra qualquer artigo do template
+  // dinâmico — só o "?slug=" na querystring diferencia um artigo do outro.
+  // Por isso, quando tem slug, isso NUNCA pode cair no branch do
+  // PAGE_REGISTRY (que é a config genérica do template inteiro, em
+  // "Blog — modelo de artigo") — senão o headerMode/footerMode/logoMode
+  // configurado em CADA ARTIGO (em Blog — artigos) nunca é lido, e todo
+  // artigo usando o template dinâmico ignora sua própria configuração.
+  var hasSlugParam = new URLSearchParams(window.location.search).has("slug");
+  var registryEntry = hasSlugParam ? null : PAGE_REGISTRY[normalizedPath()];
 
   var category, headerMode, footerMode, logoMode;
   if (registryEntry) {
