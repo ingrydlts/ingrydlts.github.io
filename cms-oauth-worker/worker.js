@@ -42,12 +42,19 @@
  * 4. Eventos de produto (feedback dos artigos, interações do bot, blocos
  *    interativos) — grava num banco D1, não numa KV, porque o painel de
  *    insights (/admin/insights/) precisa consultar/agregar essas linhas
- *    depois. Rota: POST /api/events (público, sem autenticação — mesma
- *    lógica das avaliações: qualquer visitante pode gerar um evento, com
- *    throttle por IP contra flood). event_type é validado contra uma lista
- *    fixa (ALLOWED_EVENT_TYPES) — adicione o tipo novo aí antes de usá-lo
- *    no site.
+ *    depois. Rotas:
+ *      POST /api/events           — público, sem autenticação (mesma
+ *                                    lógica das avaliações: qualquer
+ *                                    visitante pode gerar um evento, com
+ *                                    throttle por IP contra flood).
+ *                                    event_type é validado contra uma lista
+ *                                    fixa (ALLOWED_EVENT_TYPES) — adicione
+ *                                    o tipo novo aí antes de usá-lo no site.
+ *      GET  /api/insights/summary — protegida (mesmo token de quem tem
+ *                                    acesso de escrita no repositório),
+ *                                    usada pelo painel /admin/insights/.
  *
+
  * Variáveis de ambiente necessárias (Settings → Variables and Secrets no Worker):
  *   GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET  — do GitHub OAuth App (ver README.md)
  *   RESEND_API_KEY, NOTIFY_EMAIL            — opcionais: avisam por e-mail toda
@@ -387,6 +394,50 @@ async function handlePostEvent(request, env, ctx) {
     .run();
 
   return json({ ok: true }, 201);
+}
+
+// Agrega os eventos gravados acima pro painel /admin/insights/ — protegida
+// igual à moderação de avaliações (mesmo token de quem tem acesso de
+// escrita no repositório). "sessions" conta session_id distintos, não
+// linhas — evita inflar o funil se a mesma visitante reabrir o assistente.
+async function handleInsightsSummary(request, env) {
+  const moderator = await requireCollaborator(request, env);
+  if (!moderator) return json({ error: 'Sem permissão. Faça login com uma conta que tem acesso ao repositório.' }, 401);
+  if (!env.EVENTS_DB) return json({ error: 'Banco de eventos ainda não configurado.' }, 500);
+
+  const [overview, feedback, botFunnel, botOutcomes, checklist, daily] = await Promise.all([
+    env.EVENTS_DB.prepare('SELECT COUNT(*) as total, COUNT(DISTINCT session_id) as sessions FROM events').all(),
+    env.EVENTS_DB.prepare(
+      `SELECT article_slug,
+              SUM(CASE WHEN json_extract(payload,'$.vote')='up' THEN 1 ELSE 0 END) as up,
+              SUM(CASE WHEN json_extract(payload,'$.vote')='down' THEN 1 ELSE 0 END) as down
+       FROM events WHERE event_type='feedback' GROUP BY article_slug`
+    ).all(),
+    env.EVENTS_DB.prepare(
+      `SELECT json_extract(payload,'$.step') as step, COUNT(DISTINCT session_id) as sessions
+       FROM events WHERE event_type='bot' GROUP BY step`
+    ).all(),
+    env.EVENTS_DB.prepare(
+      `SELECT json_extract(payload,'$.outcome') as outcome, COUNT(DISTINCT session_id) as sessions
+       FROM events WHERE event_type='bot' AND json_extract(payload,'$.step')='result' GROUP BY outcome ORDER BY sessions DESC`
+    ).all(),
+    env.EVENTS_DB.prepare(
+      `SELECT json_extract(payload,'$.id') as checklist_id, COUNT(*) as completions
+       FROM events WHERE event_type='block' AND json_extract(payload,'$.type')='checklist_complete' GROUP BY checklist_id ORDER BY completions DESC`
+    ).all(),
+    env.EVENTS_DB.prepare(
+      `SELECT substr(created_at,1,10) as day, COUNT(*) as count FROM events WHERE created_at >= date('now','-30 days') GROUP BY day ORDER BY day`
+    ).all()
+  ]);
+
+  return json({
+    overview: (overview.results && overview.results[0]) || { total: 0, sessions: 0 },
+    feedback: feedback.results || [],
+    botFunnel: botFunnel.results || [],
+    botOutcomes: botOutcomes.results || [],
+    checklist: checklist.results || [],
+    daily: daily.results || []
+  });
 }
 
 async function handleGetReviews(request, env, url) {
@@ -778,6 +829,9 @@ export default {
     try {
       if (url.pathname === '/api/events' && request.method === 'POST') {
         return await handlePostEvent(request, env, ctx);
+      }
+      if (url.pathname === '/api/insights/summary' && request.method === 'GET') {
+        return await handleInsightsSummary(request, env);
       }
       if (url.pathname === '/api/reviews' && request.method === 'GET') {
         return await handleGetReviews(request, env, url);

@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Insights — Por Dentro</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,600;9..144,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/css/style.css">
+<style>
+  .ins-wrap { max-width: 880px; margin: 0 auto; padding: 48px 24px 96px; }
+  .ins-head { margin-bottom: 32px; }
+  .ins-login { background: #fff; border: 1px solid var(--borda); border-radius: 8px; padding: 32px; text-align: center; }
+  .ins-login[hidden] { display: none; }
+  .ins-content[hidden] { display: none; }
+  .ins-error { color: var(--merlot); font-size: 13px; margin-top: 14px; }
+  .ins-status { font-size: 13px; color: var(--texto-secundario); margin-bottom: 20px; }
+
+  .ins-stats { display: grid; grid-template-columns: 1fr; gap: 12px; margin-bottom: 40px; }
+  @media (min-width: 600px) { .ins-stats { grid-template-columns: repeat(3, 1fr); } }
+  .ins-stat { background: #fff; border: 1px solid var(--borda); border-radius: 8px; padding: 18px 20px; }
+  .ins-stat-num { font-family: var(--font-display); font-size: 28px; font-weight: 700; color: var(--grafite); display: block; }
+  .ins-stat-label { font-size: 12.5px; color: var(--texto-secundario); }
+
+  .ins-section { margin-bottom: 44px; }
+  .ins-section h2 { font-size: 18px; margin-bottom: 4px; }
+  .ins-section .muted { font-size: 13px; margin: 0 0 16px; }
+
+  table.ins-table { width: 100%; border-collapse: collapse; background: #fff; border: 1px solid var(--borda); border-radius: 8px; overflow: hidden; font-size: 13.5px; }
+  table.ins-table th, table.ins-table td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--borda-suave); }
+  table.ins-table th { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--texto-secundario); font-weight: 700; background: var(--off-white-soft); }
+  table.ins-table tr:last-child td { border-bottom: none; }
+  table.ins-table td.num { text-align: right; font-variant-numeric: tabular-nums; }
+
+  .ins-bar-wrap { display: flex; align-items: center; gap: 8px; }
+  .ins-bar { height: 8px; border-radius: 4px; background: var(--placid-blue); flex-shrink: 0; }
+  .ins-bar.result { background: var(--verde-moss); }
+  .ins-pct-up { color: var(--verde-moss); font-weight: 600; }
+  .ins-pct-down { color: var(--merlot); font-weight: 600; }
+  .ins-empty { color: var(--texto-secundario); font-size: 13.5px; padding: 16px 0; }
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="/" class="site-logo"><img src="/images/logo-por-dentro.png" alt="Por Dentro" class="site-logo-img">Por Dentro</a>
+</header>
+
+<main class="ins-wrap">
+  <div class="ins-head">
+    <span class="eyebrow" style="color:#577328;">Painel interno</span>
+    <h1 style="margin-bottom:6px;">Insights</h1>
+    <p class="muted" style="margin:0;">Funil do assistente de vistos, feedback dos artigos e conclusão de checklists — tudo que os visitantes que aceitaram o consentimento de cookies geraram no site.</p>
+  </div>
+
+  <div class="ins-login" id="ins-login">
+    <p class="muted" style="margin-bottom:16px;">Entre com a mesma conta do GitHub usada no <code>/admin</code> pra ver os dados.</p>
+    <button class="btn" id="ins-login-btn">Entrar com GitHub</button>
+    <p class="ins-error" id="ins-login-error"></p>
+  </div>
+
+  <div id="ins-content" hidden>
+    <p class="ins-status" id="ins-status">Carregando…</p>
+
+    <div class="ins-stats" id="ins-stats"></div>
+
+    <div class="ins-section">
+      <h2>Funil do assistente de vistos</h2>
+      <p class="muted">Quantas sessões (visitantes distintos) alcançaram cada etapa da conversa, na ordem em que ela acontece. A queda entre uma linha e a seguinte mostra onde as pessoas abandonam.</p>
+      <div id="ins-bot-funnel"></div>
+    </div>
+
+    <div class="ins-section">
+      <h2>Resultados do assistente</h2>
+      <p class="muted">Entre quem chegou ao fim da conversa, qual caminho apareceu com mais frequência.</p>
+      <div id="ins-bot-outcomes"></div>
+    </div>
+
+    <div class="ins-section">
+      <h2>Feedback dos artigos</h2>
+      <p class="muted">Votos no botão "esse artigo te ajudou?", por artigo — os com mais 👎 proporcional valem revisão.</p>
+      <div id="ins-feedback"></div>
+    </div>
+
+    <div class="ins-section">
+      <h2>Checklists completadas</h2>
+      <p class="muted">Quantas vezes cada checklist interativa dentro de um artigo foi marcada até o fim.</p>
+      <div id="ins-checklist"></div>
+    </div>
+  </div>
+</main>
+
+<script>
+  // Mesma URL do Worker configurada em admin/config.yml (base_url).
+  var WORKER_BASE = "https://por-dentro-cms-oauth.ingrydigitalmanagement.workers.dev";
+
+  // Ordem real do funil em assistente-de-vistos/index.html (getNextStep) —
+  // usada só pra ordenar a tabela; os dados em si vêm da API.
+  var BOT_STEP_ORDER = ["nome", "ue", "idade", "jaEsta", "objetivo", "tipo", "prontidao", "instagram", "result"];
+  var BOT_STEP_LABELS = {
+    nome: "Começou (deu o nome)",
+    ue: "Cidadania UE?",
+    idade: "Faixa etária",
+    jaEsta: "Já está na França?",
+    objetivo: "Objetivo",
+    tipo: "Explorou tipos de visto",
+    prontidao: "Nível de prontidão",
+    instagram: "Instagram (opcional)",
+    result: "Chegou ao resultado"
+  };
+
+  var token = null;
+  var popup = null;
+
+  var loginBox = document.getElementById("ins-login");
+  var loginBtn = document.getElementById("ins-login-btn");
+  var loginError = document.getElementById("ins-login-error");
+  var contentBox = document.getElementById("ins-content");
+  var statusEl = document.getElementById("ins-status");
+
+  loginBtn.addEventListener("click", function () {
+    loginError.textContent = "";
+    popup = window.open(WORKER_BASE + "/auth", "github-oauth", "width=600,height=700");
+    window.addEventListener("message", handleAuthMessage);
+  });
+
+  function handleAuthMessage(e) {
+    if (e.data === "authorizing:github") {
+      if (popup) popup.postMessage("confirm", "*");
+      return;
+    }
+    if (typeof e.data === "string" && e.data.indexOf("authorization:github:") === 0) {
+      window.removeEventListener("message", handleAuthMessage);
+      var rest = e.data.slice("authorization:github:".length);
+      var sep = rest.indexOf(":");
+      var status = rest.slice(0, sep);
+      var payload;
+      try { payload = JSON.parse(rest.slice(sep + 1)); } catch (err) { payload = {}; }
+      if (popup) { popup.close(); popup = null; }
+
+      if (status === "success" && payload.token) {
+        token = payload.token;
+        onLoggedIn();
+      } else {
+        loginError.textContent = payload.message || "Não foi possível entrar com o GitHub.";
+      }
+    }
+  }
+
+  function onLoggedIn() {
+    loginBox.hidden = true;
+    contentBox.hidden = false;
+    load();
+  }
+
+  function escapeHtml(str) {
+    return String(str == null ? "" : str).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+
+  function load() {
+    statusEl.textContent = "Carregando…";
+    fetch(WORKER_BASE + "/api/insights/summary", { headers: { Authorization: "Bearer " + token } })
+      .then(function (r) {
+        if (!r.ok) throw new Error(r.status === 401 ? "Essa conta não tem permissão de escrita no repositório." : "Falha ao carregar os dados.");
+        return r.json();
+      })
+      .then(renderAll)
+      .catch(function (err) {
+        statusEl.textContent = "";
+        contentBox.innerHTML = '<p class="ins-error">' + escapeHtml(err.message) + "</p>";
+      });
+  }
+
+  function renderAll(data) {
+    statusEl.textContent = "";
+    renderStats(data.overview);
+    renderBotFunnel(data.botFunnel || []);
+    renderBotOutcomes(data.botOutcomes || []);
+    renderFeedback(data.feedback || []);
+    renderChecklist(data.checklist || []);
+  }
+
+  function renderStats(overview) {
+    var el = document.getElementById("ins-stats");
+    el.innerHTML =
+      '<div class="ins-stat"><span class="ins-stat-num">' + (overview.total || 0) + '</span><span class="ins-stat-label">Eventos registrados no total</span></div>' +
+      '<div class="ins-stat"><span class="ins-stat-num">' + (overview.sessions || 0) + '</span><span class="ins-stat-label">Visitantes distintos que geraram algum evento</span></div>';
+  }
+
+  function renderBotFunnel(rows) {
+    var el = document.getElementById("ins-bot-funnel");
+    if (!rows.length) {
+      el.innerHTML = '<p class="ins-empty">Ainda não há interações registradas no assistente de vistos.</p>';
+      return;
+    }
+    var bySter = {};
+    rows.forEach(function (r) { bySter[r.step] = r.sessions; });
+    var max = Math.max.apply(null, rows.map(function (r) { return r.sessions; }).concat([1]));
+    var startCount = bySter["nome"] || max;
+
+    var html = '<table class="ins-table"><thead><tr><th>Etapa</th><th>Sessões</th><th>Chegou até aqui</th></tr></thead><tbody>';
+    BOT_STEP_ORDER.forEach(function (step) {
+      var count = bySter[step] || 0;
+      if (!count && !(step in bySter)) return; // etapa que ainda nunca aconteceu — não polui a tabela
+      var pct = startCount ? Math.round((count / startCount) * 100) : 0;
+      var barPct = max ? Math.round((count / max) * 100) : 0;
+      html +=
+        "<tr><td>" + escapeHtml(BOT_STEP_LABELS[step] || step) + '</td><td class="num">' + count + '</td>' +
+        '<td><div class="ins-bar-wrap"><div class="ins-bar' + (step === "result" ? " result" : "") + '" style="width:' + Math.max(barPct, 3) + '%;"></div>' + pct + "%</div></td></tr>";
+    });
+    html += "</tbody></table>";
+    el.innerHTML = html;
+  }
+
+  function renderBotOutcomes(rows) {
+    var el = document.getElementById("ins-bot-outcomes");
+    if (!rows.length) {
+      el.innerHTML = '<p class="ins-empty">Ninguém chegou ao resultado final ainda.</p>';
+      return;
+    }
+    var total = rows.reduce(function (sum, r) { return sum + r.sessions; }, 0);
+    var html = '<table class="ins-table"><thead><tr><th>Resultado</th><th>Sessões</th><th>% do total</th></tr></thead><tbody>';
+    rows.forEach(function (r) {
+      var pct = total ? Math.round((r.sessions / total) * 100) : 0;
+      html += "<tr><td>" + escapeHtml(r.outcome || "(sem categoria)") + '</td><td class="num">' + r.sessions + '</td><td class="num">' + pct + "%</td></tr>";
+    });
+    html += "</tbody></table>";
+    el.innerHTML = html;
+  }
+
+  function renderFeedback(rows) {
+    var el = document.getElementById("ins-feedback");
+    if (!rows.length) {
+      el.innerHTML = '<p class="ins-empty">Ainda não há votos de feedback em nenhum artigo.</p>';
+      return;
+    }
+    rows.sort(function (a, b) { return (b.up + b.down) - (a.up + a.down); });
+    var html = '<table class="ins-table"><thead><tr><th>Artigo (slug)</th><th>👍</th><th>👎</th><th>% positivo</th></tr></thead><tbody>';
+    rows.forEach(function (r) {
+      var total = r.up + r.down;
+      var pct = total ? Math.round((r.up / total) * 100) : 0;
+      var pctClass = pct >= 60 ? "ins-pct-up" : (pct <= 40 ? "ins-pct-down" : "");
+      html +=
+        "<tr><td>" + escapeHtml(r.article_slug || "(sem slug)") + '</td><td class="num">' + r.up + '</td><td class="num">' + r.down +
+        '</td><td class="num ' + pctClass + '">' + pct + "%</td></tr>";
+    });
+    html += "</tbody></table>";
+    el.innerHTML = html;
+  }
+
+  function renderChecklist(rows) {
+    var el = document.getElementById("ins-checklist");
+    if (!rows.length) {
+      el.innerHTML = '<p class="ins-empty">Nenhuma checklist foi completada até o fim ainda.</p>';
+      return;
+    }
+    var html = '<table class="ins-table"><thead><tr><th>Checklist</th><th>Conclusões</th></tr></thead><tbody>';
+    rows.forEach(function (r) {
+      html += "<tr><td>" + escapeHtml(r.checklist_id || "—") + '</td><td class="num">' + r.completions + "</td></tr>";
+    });
+    html += "</tbody></table>";
+    el.innerHTML = html;
+  }
+</script>
+</body>
+</html>

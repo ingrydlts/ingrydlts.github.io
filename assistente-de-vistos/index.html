@@ -562,6 +562,15 @@
 
   function showStep(step){
     currentStep = step;
+    // Um evento por passo alcançado — dá pra montar o funil (nome → ue →
+    // idade → jaEsta → objetivo → tipo → prontidao → instagram → result) e
+    // ver onde as pessoas abandonam. No passo final, o "outcome" é a
+    // categoria do resultado (ex. "Grátis · sem burocracia de visto").
+    if (window.PDEvents) {
+      var eventPayload = { step: step.key };
+      if (step.type === 'result' && step.tag) eventPayload.outcome = step.tag.label;
+      window.PDEvents.send('bot', null, eventPayload);
+    }
     addTyping(function(){
       if (step.type === 'result' && step.tag){
         const row = document.createElement('div');
