@@ -1,9 +1,29 @@
 {
   "links": {
-    "produtos-digitais": { "enabled": true, "label": "Produtos digitais", "href": "/produtos-digitais/" },
-    "produtos-de-estudo": { "enabled": true, "label": "Produtos de estudo", "href": "/produtos-de-estudo/" },
-    "produtos-de-compras": { "enabled": true, "label": "Produtos de compras", "href": "/produtos-de-compras/" },
-    "blog": { "enabled": true, "label": "Blog", "href": "/artigos/" },
-    "sobre": { "enabled": true, "label": "Sobre", "href": "/sobre/" }
+    "produtos-digitais": {
+      "enabled": true,
+      "label": "Produtos digitais",
+      "href": "/produtos-digitais/"
+    },
+    "produtos-de-estudo": {
+      "enabled": true,
+      "label": "Produtos de estudo",
+      "href": "/produtos-de-estudo/"
+    },
+    "produtos-de-compras": {
+      "enabled": true,
+      "label": "Produtos de compras",
+      "href": "/produtos-de-compras/"
+    },
+    "blog": {
+      "enabled": false,
+      "label": "Blog",
+      "href": "/artigos/"
+    },
+    "sobre": {
+      "enabled": true,
+      "label": "Sobre",
+      "href": "/sobre/"
+    }
   }
 }
