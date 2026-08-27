@@ -108,6 +108,9 @@ function mountNetworkAds(cfg) {
 // sem precisar recarregar a página).
 export function activateNetworkAds(cfg) {
   if (!cfg || !cfg.enabled || !cfg.network || !cfg.network.adSnippet) return;
-  mountNetworkAds(cfg);
-  if (window.PDConsent) window.PDConsent.onChange(() => mountNetworkAds(cfg));
+  if (!window.PDConsent) return;
+  // Espera a config real de consentimento (trackingEnabled definitivo) antes
+  // da 1ª checagem — ver PDConsent.ready em consent.js.
+  window.PDConsent.ready.then(() => mountNetworkAds(cfg));
+  window.PDConsent.onChange(() => mountNetworkAds(cfg));
 }

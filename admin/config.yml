@@ -314,6 +314,8 @@ collections:
         file: content/analytics-config.json
         fields:
           - { label: "Ligar/desligar toda a medição de audiência", name: trackingEnabled, widget: boolean, default: true, hint: "Desligado = o banner nunca aparece e nada é medido (nem quando o Google Analytics/Clarity forem ativados). É o interruptor de emergência." }
+          - { label: "ID de medição do Google Analytics (GA4)", name: ga4MeasurementId, widget: string, required: false, hint: "Formato G-XXXXXXXXXX. Encontre em analytics.google.com → Administrador → Fluxos de dados → seu site → \"ID da métrica\". Deixe em branco pra não carregar o GA4." }
+          - { label: "ID do projeto Microsoft Clarity", name: clarityProjectId, widget: string, required: false, hint: "Encontre em clarity.microsoft.com → seu projeto → Settings → Overview → \"Project ID\" (só o código, sem o resto do link). Deixe em branco pra não carregar o Clarity." }
           - label: "Texto do banner"
             name: consentBanner
             widget: object

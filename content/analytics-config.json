@@ -1,5 +1,7 @@
 {
   "trackingEnabled": true,
+  "ga4MeasurementId": "",
+  "clarityProjectId": "",
   "consentBanner": {
     "title": "Usamos cookies e ferramentas de medição",
     "body": " Guardamos sua escolha no seu navegador e, se você aceitar, usamos ferramentas de medição de audiência (como Google Analytics e Microsoft Clarity) e registramos de forma anônima interações como respostas de utilidade dos artigos. Você pode recusar sem prejudicar a navegação.",

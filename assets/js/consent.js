@@ -21,6 +21,13 @@
   var STORAGE_KEY = "pd_consent"; // "granted" | "denied"
   var STORAGE_TS_KEY = "pd_consent_ts";
   var listeners = [];
+  // Otimista até a config carregar (mesmo comportamento de sempre: nada é
+  // bloqueado por atraso de rede). Uma vez lido, se o interruptor geral
+  // estiver desligado, isGranted() nunca mais retorna true nesta página —
+  // mesmo que exista uma escolha "granted" salva de antes do interruptor
+  // ser desligado.
+  var trackingEnabled = true;
+  var readyResolve;
 
   var DEFAULT_CONFIG = {
     trackingEnabled: true,
@@ -128,20 +135,29 @@
   }
 
   function boot(cfg) {
+    trackingEnabled = cfg.trackingEnabled !== false;
     wireManageButtons(cfg);
-    if (cfg.trackingEnabled === false) return; // interruptor geral desligado — nunca mostra o banner
-    var stored = getStoredChoice();
-    if (stored === null) {
-      renderBanner(cfg);
-    } else {
-      notify(stored === "granted");
+    if (trackingEnabled) {
+      var stored = getStoredChoice();
+      if (stored === null) {
+        renderBanner(cfg);
+      } else {
+        notify(stored === "granted");
+      }
     }
+    readyResolve();
   }
 
   window.PDConsent = {
     get: getStoredChoice,
-    isGranted: function () { return getStoredChoice() === "granted"; },
-    onChange: function (cb) { if (typeof cb === "function") listeners.push(cb); }
+    isGranted: function () { return trackingEnabled && getStoredChoice() === "granted"; },
+    onChange: function (cb) { if (typeof cb === "function") listeners.push(cb); },
+    // Resolve quando a config real já foi lida (trackingEnabled definitivo).
+    // Scripts que decidem algo baseado em isGranted() logo ao carregar (ex.
+    // analytics.js, ad-slots.js) devem esperar isso antes da 1ª checagem —
+    // sem isso, um "granted" salvo de antes do interruptor geral ser
+    // desligado passaria pela checagem otimista de trackingEnabled=true.
+    ready: new Promise(function (resolve) { readyResolve = resolve; })
   };
 
   fetch("/content/analytics-config.json")
