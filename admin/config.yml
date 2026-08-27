@@ -246,7 +246,7 @@ collections:
                   - { label: "Seguir a categoria Blog (definida em \"Cabeçalho e rodapé\")", value: "categoria" }
                   - { label: Ativado, value: "ativado" }
                   - { label: "Desativado — a logo aparece, mas não é um link", value: "desativado" }
-                hint: "Desative junto com o Cabeçalho quando este artigo for uma landing isolada — assim nem a logo leva de volta pro site."
+                hint: "Afeta a logo no cabeçalho E no rodapé da página, ao mesmo tempo. Desative junto com o Cabeçalho quando este artigo for uma landing isolada — assim nem a logo leva de volta pro site."
 
   - name: header_config
     label: "Cabeçalho do site"
