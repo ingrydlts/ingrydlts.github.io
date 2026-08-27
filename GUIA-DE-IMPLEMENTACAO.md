@@ -144,7 +144,7 @@ criado só no JSON, sem `url`) são 100% editáveis pelo `/admin`, corpo incluí
 
 ---
 
-## Regra — Interação e instrumentação de audiência em artigos 🟡
+## Regra — Interação e instrumentação de audiência em artigos ✅
 
 **Por quê:** cada artigo do blog é uma chance de aprender algo sobre quem lê — não só publicar texto. Todo
 artigo novo (e, com o tempo, os antigos) precisa dar pelo menos um jeito de a leitora **clicar em algo**, e
@@ -198,9 +198,9 @@ têm `<div id="article-feedback-mount"></div>` + a chamada atualizada. Um artigo
 repetir o mesmo padrão (mount point + `feedbackMountId` na chamada).
 
 O FAQ desses artigos **não tem um equivalente automático** — precisa copiar a estrutura HTML de
-`renderFaq` (ver `assets/js/markdown.js`) direto no arquivo, com `data-article-slug` no wrapper. Ainda
-pendente nos artigos com HTML próprio (14) e no `selo-qualite-fle-mapa-cursos-de-frances` (não tem FAQ
-ainda, embora já use o corpo em markdown).
+`renderFaq` (ver `assets/js/markdown.js`) direto no arquivo, com `data-article-slug` no wrapper e
+`data-faq-id`/`data-faq-question` em cada pergunta. Já feito nos 14 artigos com HTML próprio (8 já tinham
+FAQ escrito à mão, só faltava o rastreio; os outros 6 ganharam perguntas novas).
 
 ### Status desta regra (2026-08-27)
 
@@ -208,8 +208,7 @@ ainda, embora já use o corpo em markdown).
   Worker/painel.
 - ✅ `[[FEEDBACK]]` presente em `tudo-sobre-o-exame-civico`, `vae-franca-2026`,
   `selo-qualite-fle-mapa-cursos-de-frances`, e montado automaticamente nos 14 artigos com HTML próprio.
-- 🟡 `[[FAQ]]` ainda falta em `selo-qualite-fle-mapa-cursos-de-frances` e nos 14 artigos com HTML próprio —
-  fica pendente de conteúdo real (perguntas de verdade por artigo), não é mudança mecânica.
+- ✅ `[[FAQ]]`/FAQ com HTML próprio presente em todos os 17 artigos publicados hoje.
 
 ---
 
