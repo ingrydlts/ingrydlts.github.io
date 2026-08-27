@@ -1,6 +1,6 @@
 -- Por Dentro — banco D1 de eventos (feedback dos artigos, interações do
 -- bot, blocos interativos). Usado pela rota POST /api/events em worker.js
--- e, futuramente, pelo painel /admin/insights/.
+-- e, futuramente, pelo painel /admin/dashboard/.
 --
 -- Como rodar: painel Cloudflare → Workers & Pages → D1 → seu banco →
 -- aba "Console" → cole tudo abaixo → Execute. Ver README.md, seção

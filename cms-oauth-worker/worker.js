@@ -41,7 +41,7 @@
  *
  * 4. Eventos de produto (feedback dos artigos, interações do bot, blocos
  *    interativos) — grava num banco D1, não numa KV, porque o painel de
- *    insights (/admin/insights/) precisa consultar/agregar essas linhas
+ *    insights (/admin/dashboard/) precisa consultar/agregar essas linhas
  *    depois. Rotas:
  *      POST /api/events           — público, sem autenticação (mesma
  *                                    lógica das avaliações: qualquer
@@ -52,7 +52,7 @@
  *                                    o tipo novo aí antes de usá-lo no site.
  *      GET  /api/insights/summary — protegida (mesmo token de quem tem
  *                                    acesso de escrita no repositório),
- *                                    usada pelo painel /admin/insights/.
+ *                                    usada pelo painel /admin/dashboard/.
  *
 
  * Variáveis de ambiente necessárias (Settings → Variables and Secrets no Worker):
@@ -396,7 +396,7 @@ async function handlePostEvent(request, env, ctx) {
   return json({ ok: true }, 201);
 }
 
-// Agrega os eventos gravados acima pro painel /admin/insights/ — protegida
+// Agrega os eventos gravados acima pro painel /admin/dashboard/ — protegida
 // igual à moderação de avaliações (mesmo token de quem tem acesso de
 // escrita no repositório). "sessions" conta session_id distintos, não
 // linhas — evita inflar o funil se a mesma visitante reabrir o assistente.
