@@ -91,7 +91,11 @@ const REVIEWS_KEY = 'reviews_db';
 const RATING_VALUES = [1, 2, 3, 4, 5];
 const PREMIUM_KEY = 'premium_content';
 const ALLOWED_EVENT_TYPES = ['feedback', 'bot', 'block'];
-const EVENTS_THROTTLE_SECONDS = 2; // curto de propósito — eventos são esperados com mais frequência que avaliações
+// KV exige TTL mínimo de 60s, então o throttle é por janela (contador), não
+// por trava única como o das avaliações — eventos são esperados com mais
+// frequência (várias respostas do bot numa sessão, por exemplo).
+const EVENTS_WINDOW_SECONDS = 60;
+const EVENTS_MAX_PER_WINDOW = 20;
 const SUBSCRIPTION_TOKEN_TTL_SECONDS = 14 * 24 * 60 * 60; // 14 dias — sem webhook do Stripe, é isso que força revalidar
 const ARTICLE_TOKEN_TTL_SECONDS = 20 * 365 * 24 * 60 * 60; // compra avulsa: paga uma vez, acesso permanente na prática
 const ACTIVE_SUBSCRIPTION_STATUSES = ['active', 'trialing'];
@@ -363,13 +367,16 @@ async function handlePostEvent(request, env, ctx) {
     payload = '{}';
   }
 
-  // throttle curto por IP — não é pra impedir uso normal (várias respostas
-  // rápidas do bot, por exemplo), só flood.
+  // throttle por janela — não é pra impedir uso normal (várias respostas do
+  // bot, ou duas pessoas na mesma rede), só flood.
   const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
   const throttleKey = `throttle:events:${ip}`;
-  const throttled = await env.REVIEWS_KV.get(throttleKey);
-  if (throttled) return json({ error: 'Muitas requisições — tente de novo em instantes.' }, 429);
-  await env.REVIEWS_KV.put(throttleKey, '1', { expirationTtl: EVENTS_THROTTLE_SECONDS });
+  const current = await env.REVIEWS_KV.get(throttleKey);
+  const count = current ? parseInt(current, 10) || 0 : 0;
+  if (count >= EVENTS_MAX_PER_WINDOW) {
+    return json({ error: 'Muitas requisições — tente de novo em instantes.' }, 429);
+  }
+  await env.REVIEWS_KV.put(throttleKey, String(count + 1), { expirationTtl: EVENTS_WINDOW_SECONDS });
 
   if (!env.EVENTS_DB) return json({ error: 'Banco de eventos ainda não configurado.' }, 500);
 
