@@ -206,7 +206,8 @@
       "title": "VAE em 2026: transforme sua experiência profissional em diploma francês",
       "image": "",
       "category": "Formação",
-      "footerMode": "desativado"
+      "footerMode": "desativado",
+      "showBackLink": false
     }
   ]
 }
