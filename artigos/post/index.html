@@ -181,17 +181,21 @@
     // lugar específico no editor visual do /admin, isso vira uma linha própria
     // — "[[VITRINE-BANNER]]" ou "[[PROPAGANDA]]" — dentro do corpo do artigo.
     // Presença dessas linhas tem prioridade sobre a posição padrão do site
-    // inteiro (vitrine-artigo.json / ads-config.json).
+    // inteiro (vitrine-artigo.json / ads-config.json). "[[NO-VITRINE-BANNER]]"
+    // e "[[NO-PROPAGANDA]]" são o oposto: desligam o padrão do site só PRA
+    // ESTE artigo, sem precisar desligar pro site inteiro.
     const hasManualBanner = blocks.includes("<p>[[VITRINE-BANNER]]</p>");
     const hasManualPropaganda = blocks.includes("<p>[[PROPAGANDA]]</p>");
+    const hasNoBanner = blocks.includes("<p>[[NO-VITRINE-BANNER]]</p>");
+    const hasNoPropaganda = blocks.includes("<p>[[NO-PROPAGANDA]]</p>");
 
     // "Meio do artigo" e "Depois de um bloco específico" entram no meio do
     // texto; "Fim do artigo" e "Não mostrar" ficam de fora (tratados abaixo).
     const insertions = [
-      { index: 0, html: slotHTML(adsCfg, "top") },
-      { index: adMidAfter, html: slotHTML(adsCfg, "mid") }
+      { index: 0, html: hasNoPropaganda ? "" : slotHTML(adsCfg, "top") },
+      { index: adMidAfter, html: hasNoPropaganda ? "" : slotHTML(adsCfg, "mid") }
     ];
-    if (!isPremium && !hasManualBanner) {
+    if (!isPremium && !hasManualBanner && !hasNoBanner) {
       const inIdx = vitrineBlockIndex(inBannerCfg, blocks);
       if (inIdx !== null) insertions.push({ index: inIdx, html: vitrineBannerHTML(inBannerCfg, "in") });
     }
@@ -202,16 +206,17 @@
     if (isPremium) {
       bodyHtml =
         insertAtIndices(blocks, insertions) +
-        slotHTML(adsCfg, "beforePaywall") +
+        (hasNoPropaganda ? "" : slotHTML(adsCfg, "beforePaywall")) +
         '<div id="premium-slot"><p class="muted">Carregando…</p></div>';
     } else {
       bodyHtml = insertAtIndices(blocks, insertions);
     }
+    bodyHtml = bodyHtml.replace("<p>[[NO-VITRINE-BANNER]]</p>", "").replace("<p>[[NO-PROPAGANDA]]</p>", "");
     if (hasManualBanner) {
-      bodyHtml = bodyHtml.replace("<p>[[VITRINE-BANNER]]</p>", vitrineBannerHTML(inBannerCfg, "in"));
+      bodyHtml = bodyHtml.replace("<p>[[VITRINE-BANNER]]</p>", hasNoBanner ? "" : vitrineBannerHTML(inBannerCfg, "in"));
     }
     if (hasManualPropaganda) {
-      bodyHtml = bodyHtml.replace("<p>[[PROPAGANDA]]</p>", adsCfg && adsCfg.enabled ? ownBannerHTML(adsCfg) : "");
+      bodyHtml = bodyHtml.replace("<p>[[PROPAGANDA]]</p>", !hasNoPropaganda && adsCfg && adsCfg.enabled ? ownBannerHTML(adsCfg) : "");
     }
 
     // Faixa própria depois do texto do artigo acabar — é a posição "Fim do

@@ -31,8 +31,16 @@
   ];
   var VITRINE_BANNER_TOKEN = "[[VITRINE-BANNER]]";
   var PROPAGANDA_TOKEN = "[[PROPAGANDA]]";
+  var NO_VITRINE_BANNER_TOKEN = "[[NO-VITRINE-BANNER]]";
+  var NO_PROPAGANDA_TOKEN = "[[NO-PROPAGANDA]]";
   var PREMIUM_SPLIT_TOKEN = "[[PREMIUM-SPLIT]]";
-  var SINGLE_TOKENS = TOOL_TOKENS.concat([VITRINE_BANNER_TOKEN, PROPAGANDA_TOKEN, PREMIUM_SPLIT_TOKEN]);
+  var SINGLE_TOKENS = TOOL_TOKENS.concat([
+    VITRINE_BANNER_TOKEN,
+    PROPAGANDA_TOKEN,
+    NO_VITRINE_BANNER_TOKEN,
+    NO_PROPAGANDA_TOKEN,
+    PREMIUM_SPLIT_TOKEN
+  ]);
 
   // --- conteúdo pago: mesmo Worker e mesmos endpoints de /admin/premium/,
   // só que agora acessíveis também daqui, arrastando o marcador de bloqueio
@@ -230,9 +238,35 @@
     return copy;
   }
 
+  // Banner de vitrine e propaganda têm 3 estados possíveis nesse artigo:
+  // "padrao" (segue o que estiver configurado pro site inteiro, em "Vitrine
+  // dentro dos artigos" / "Anúncios nos artigos"), "ativado" (força aparecer
+  // AQUI, na posição arrastada) e "desativado" (força NÃO aparecer aqui,
+  // mesmo que o site inteiro esteja com esse banner ligado). Sem o estado
+  // "desativado" não tinha como tirar um banner que só aparece por causa do
+  // padrão do site — cada artigo só sabia "ligar", nunca "desligar".
+  function overrideState(blocks, positiveToken, negativeToken) {
+    if (hasToken(blocks, positiveToken)) return "ativado";
+    if (hasToken(blocks, negativeToken)) return "desativado";
+    return "padrao";
+  }
+
+  function setOverrideState(blocks, positiveToken, negativeToken, newState) {
+    var copy = blocks.filter(function (b) {
+      return !(b.type === "token" && (b.raw === positiveToken || b.raw === negativeToken));
+    });
+    if (newState === "padrao") return copy;
+    var tokenToInsert = newState === "ativado" ? positiveToken : negativeToken;
+    var pos = Math.max(0, Math.ceil(copy.length / 2));
+    copy.splice(pos, 0, { id: uid(), type: "token", raw: tokenToInsert });
+    return copy;
+  }
+
   var SPECIAL_TOKEN_LABEL = {};
   SPECIAL_TOKEN_LABEL[VITRINE_BANNER_TOKEN] = "🎯 Banner de vitrine";
   SPECIAL_TOKEN_LABEL[PROPAGANDA_TOKEN] = "📢 Propaganda";
+  SPECIAL_TOKEN_LABEL[NO_VITRINE_BANNER_TOKEN] = "🚫 Sem banner de vitrine aqui";
+  SPECIAL_TOKEN_LABEL[NO_PROPAGANDA_TOKEN] = "🚫 Sem propaganda aqui";
   SPECIAL_TOKEN_LABEL[PREMIUM_SPLIT_TOKEN] = "🔒 Bloqueio premium";
 
   function blockLabel(b) {
@@ -270,6 +304,9 @@
           '<div style="flex:1; border-top:2px dashed var(--merlot);"></div>' +
           "</div>"
         );
+      }
+      if (b.raw === NO_VITRINE_BANNER_TOKEN || b.raw === NO_PROPAGANDA_TOKEN) {
+        return ""; // nada aparece no site de verdade — nada aparece aqui também
       }
       return (
         '<div style="border:1px dashed var(--borda); border-radius:6px; padding:10px 14px; font-size:13px; color:var(--texto-secundario);">🧩 Ferramenta embutida: ' +
@@ -333,6 +370,9 @@
   var PREVIEW_INNER_STYLE = { maxWidth: "720px", margin: "0 auto" };
   var TOOLBAR_STYLE = { marginBottom: "16px" };
   var TOGGLE_LABEL_STYLE = { display: "flex", alignItems: "center", gap: "8px", fontSize: "13px", fontWeight: 600, marginBottom: "8px", cursor: "pointer" };
+  var OVERRIDE_ROW_STYLE = { display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" };
+  var OVERRIDE_LABEL_STYLE = { fontSize: "13px", fontWeight: 600, width: "112px", flexShrink: 0 };
+  var OVERRIDE_SELECT_STYLE = { fontFamily: FONT, fontSize: "12px", padding: "4px 6px", borderRadius: "4px", border: "1px solid rgba(43,43,43,0.14)", background: "#fff" };
   var HINT_STYLE = { fontSize: "12px", color: "#6E6862", margin: "6px 0 0" };
   var ROW_STYLE = { display: "flex", alignItems: "flex-start", gap: "8px", padding: "8px 10px", marginBottom: "2px", border: "1px solid rgba(43,43,43,0.10)", borderRadius: "6px", background: "#fff", cursor: "grab" };
   var ROW_SPECIAL_STYLE = { borderColor: "#8AACD2", background: "#F0F5FA" };
@@ -546,8 +586,8 @@
 
     render: function () {
       var blocks = this.state.blocks;
-      var hasBanner = hasToken(blocks, VITRINE_BANNER_TOKEN);
-      var hasAd = hasToken(blocks, PROPAGANDA_TOKEN);
+      var bannerState = overrideState(blocks, VITRINE_BANNER_TOKEN, NO_VITRINE_BANNER_TOKEN);
+      var adState = overrideState(blocks, PROPAGANDA_TOKEN, NO_PROPAGANDA_TOKEN);
       var hasPremiumMarker = hasToken(blocks, PREMIUM_SPLIT_TOKEN);
       return h(
         "div",
@@ -556,8 +596,8 @@
           "div",
           { style: SUMMARY_BAR_STYLE },
           h("span", null, blocks.length + " bloco(s)"),
-          h("span", null, "Banner: " + (hasBanner ? "ativado" : "desativado")),
-          h("span", null, "Propaganda: " + (hasAd ? "ativada" : "desativada")),
+          h("span", null, "Banner: " + bannerState),
+          h("span", null, "Propaganda: " + adState),
           h("span", null, "Bloqueio premium: " + (hasPremiumMarker ? "ativado" : "desativado")),
           h("button", { type: "button", onClick: this.open, style: BTN_STYLE }, "Editar artigo visualmente")
         ),
@@ -597,14 +637,20 @@
     renderVisualEditor: function () {
       var self = this;
       var blocks = this.state.blocks;
-      var hasBanner = hasToken(blocks, VITRINE_BANNER_TOKEN);
-      var hasAd = hasToken(blocks, PROPAGANDA_TOKEN);
       var hasPremiumMarker = hasToken(blocks, PREMIUM_SPLIT_TOKEN);
 
+      // O marcador de bloqueio premium e os tokens "sem banner/propaganda
+      // aqui" não têm posição própria no artigo (não é algo pra arrastar) —
+      // por isso não entram na lista de blocos arrastáveis, só nos controles
+      // do topo. Tudo o mais aparece na lista, na ordem em que vai sair.
+      var draggableBlocks = blocks.filter(function (b) {
+        return !(b.type === "token" && (b.raw === NO_VITRINE_BANNER_TOKEN || b.raw === NO_PROPAGANDA_TOKEN));
+      });
       var rows = [];
-      blocks.forEach(function (b, i) {
-        rows.push(self.renderDropZone(i));
-        rows.push(self.renderBlockRow(b, i));
+      draggableBlocks.forEach(function (b) {
+        var realIndex = blocks.indexOf(b);
+        rows.push(self.renderDropZone(realIndex));
+        rows.push(self.renderBlockRow(b, realIndex));
       });
       rows.push(self.renderDropZone(blocks.length));
 
@@ -617,25 +663,15 @@
           h(
             "div",
             { style: TOOLBAR_STYLE },
-            h(
-              "label",
-              { style: TOGGLE_LABEL_STYLE },
-              h("input", { type: "checkbox", checked: hasBanner, onChange: function () { self.updateValue(toggleToken(self.state.blocks, VITRINE_BANNER_TOKEN)); } }),
-              " Banner de vitrine"
-            ),
-            h(
-              "label",
-              { style: TOGGLE_LABEL_STYLE },
-              h("input", { type: "checkbox", checked: hasAd, onChange: function () { self.updateValue(toggleToken(self.state.blocks, PROPAGANDA_TOKEN)); } }),
-              " Propaganda"
-            ),
+            this.renderOverrideSelect("Banner de vitrine", VITRINE_BANNER_TOKEN, NO_VITRINE_BANNER_TOKEN),
+            this.renderOverrideSelect("Propaganda", PROPAGANDA_TOKEN, NO_PROPAGANDA_TOKEN),
             h(
               "label",
               { style: TOGGLE_LABEL_STYLE },
               h("input", { type: "checkbox", checked: hasPremiumMarker, onChange: this.togglePremiumMarker }),
               " 🔒 Bloqueio premium"
             ),
-            h("p", { style: HINT_STYLE }, "Ative e arraste o bloco (destacado em azul) até a posição onde ele deve aparecer no artigo. A pré-visualização à direita mostra o resultado."),
+            h("p", { style: HINT_STYLE }, "\"Ativado aqui\" ativa e deixa arrastável (destacado em azul) até a posição onde deve aparecer. \"Desativado aqui\" desliga só pra este artigo, mesmo que o padrão do site esteja ligado. A pré-visualização à direita mostra o resultado."),
             hasPremiumMarker ? this.renderPremiumPanel() : null
           ),
           rows
@@ -690,6 +726,29 @@
             })
           : null,
         h("button", { type: "button", onClick: function () { self.removeBlock(b.id); }, style: ROW_REMOVE_STYLE }, "×")
+      );
+    },
+
+    renderOverrideSelect: function (label, positiveToken, negativeToken) {
+      var self = this;
+      var current = overrideState(this.state.blocks, positiveToken, negativeToken);
+      return h(
+        "div",
+        { style: OVERRIDE_ROW_STYLE },
+        h("span", { style: OVERRIDE_LABEL_STYLE }, label),
+        h(
+          "select",
+          {
+            value: current,
+            style: OVERRIDE_SELECT_STYLE,
+            onChange: function (e) {
+              self.updateValue(setOverrideState(self.state.blocks, positiveToken, negativeToken, e.target.value));
+            }
+          },
+          h("option", { value: "padrao" }, "Seguir padrão do site"),
+          h("option", { value: "ativado" }, "Ativado aqui (arrastável)"),
+          h("option", { value: "desativado" }, "Desativado aqui")
+        )
       );
     },
 
