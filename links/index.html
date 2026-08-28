@@ -10,7 +10,18 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,600;9..144,700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/assets/css/style.css">
 <style>
-  :root { --nav-active: #604034; }
+  :root {
+    --nav-active: #604034;
+    /* paleta desta página (bio hub) — fundo escuro, blocos claros */
+    --pd-bg: #604034;
+    --pd-block: #F4F1EC;
+    --pd-arrow: #DEB975;
+    --pd-title: #2B2B2B;
+    --pd-text: #604034;
+    --pd-text-2: #F4F1EC;
+  }
+
+  body { background: var(--pd-bg); }
 
   .pd-links-hero {
     padding: 48px 0 8px;
@@ -23,8 +34,8 @@
     width: 88px;
     height: 88px;
     border-radius: 50%;
-    background: var(--off-white-soft);
-    border: 1px solid var(--borda);
+    background: var(--pd-block);
+    border: 2px solid var(--pd-arrow);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -32,11 +43,11 @@
     margin-bottom: 16px;
   }
   .pd-links-avatar img { width: 100%; height: 100%; object-fit: cover; }
-  .pd-links-avatar span { font-size: 11px; color: var(--texto-secundario); text-align: center; padding: 0 8px; }
-  .pd-links-hero h1 { margin-bottom: 6px; }
-  .pd-links-hero p { max-width: 46ch; margin: 0 auto 20px; }
+  .pd-links-avatar span { font-size: 11px; color: var(--pd-text); text-align: center; padding: 0 8px; }
+  .pd-links-hero h1 { margin-bottom: 6px; color: var(--pd-text-2); }
+  .pd-links-hero p { max-width: 46ch; margin: 0 auto 20px; color: rgba(244,241,236,0.82); }
 
-  .pd-links-arrow { color: var(--texto-secundario); font-size: 20px; margin: -8px 0 20px; animation: pd-bounce 1.8s ease-in-out infinite; }
+  .pd-links-arrow { color: var(--pd-arrow); font-size: 20px; margin: -8px 0 20px; animation: pd-bounce 1.8s ease-in-out infinite; }
   @keyframes pd-bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(5px); } }
 
   .pd-social-row { display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; margin-bottom: 8px; }
@@ -44,23 +55,23 @@
     width: 48px;
     height: 48px;
     border-radius: 50%;
-    border: 1px solid var(--borda);
-    background: #fff;
+    border: none;
+    background: var(--pd-block);
     display: flex;
     align-items: center;
     justify-content: center;
-    color: var(--downtown-brown);
+    color: var(--pd-text);
     transition: transform .25s cubic-bezier(.4,0,.2,1), background .25s, color .25s;
   }
-  .pd-social-icon:hover { background: var(--downtown-brown); color: #fff; transform: translateY(-3px); }
+  .pd-social-icon:hover { background: var(--pd-arrow); color: var(--pd-title); transform: translateY(-3px); }
   .pd-social-icon svg { width: 20px; height: 20px; }
 
   .pd-bot-cta {
     display: flex;
     align-items: center;
     gap: 16px;
-    background: var(--grafite);
-    color: var(--off-white);
+    background: var(--pd-block);
+    color: var(--pd-text);
     border-radius: var(--radius-md);
     padding: 20px 22px;
     margin: 28px 0 4px;
@@ -68,24 +79,24 @@
     transition: transform .25s cubic-bezier(.4,0,.2,1);
   }
   .pd-bot-cta:hover { transform: translateY(-3px); }
-  .pd-bot-cta-icon { flex: none; width: 40px; height: 40px; border-radius: 50%; background: rgba(244,241,236,0.12); display: flex; align-items: center; justify-content: center; font-size: 18px; }
+  .pd-bot-cta-icon { flex: none; width: 40px; height: 40px; border-radius: 50%; background: rgba(96,64,52,0.10); display: flex; align-items: center; justify-content: center; font-size: 18px; }
   .pd-bot-cta-body { flex: 1; min-width: 0; }
-  .pd-bot-cta-body h3 { color: var(--off-white); font-size: 16px; margin: 0 0 4px; }
-  .pd-bot-cta-body p { color: #C9C4BC; font-size: 13px; margin: 0; }
-  .pd-bot-cta-arrow { flex: none; font-size: 18px; color: #C9C4BC; }
+  .pd-bot-cta-body h3 { color: var(--pd-title); font-size: 16px; margin: 0 0 4px; }
+  .pd-bot-cta-body p { color: var(--pd-text); font-size: 13px; margin: 0; }
+  .pd-bot-cta-arrow { flex: none; font-size: 18px; color: var(--pd-arrow); }
 
   .pd-carousel { display: flex; gap: 16px; overflow-x: auto; padding: 4px 2px 16px; margin: 0 -2px; scroll-snap-type: x proximity; -webkit-overflow-scrolling: touch; }
-  .pd-carousel .card { flex: 0 0 200px; scroll-snap-align: start; }
+  .pd-carousel .card { flex: 0 0 200px; scroll-snap-align: start; background: var(--pd-block); border-color: transparent; }
   .pd-carousel::-webkit-scrollbar { height: 6px; }
-  .pd-carousel::-webkit-scrollbar-thumb { background: var(--borda); border-radius: 999px; }
+  .pd-carousel::-webkit-scrollbar-thumb { background: var(--pd-arrow); border-radius: 999px; }
 
   .pd-links-section { padding: 28px 0; }
-  .pd-links-section + .pd-links-section { border-top: 1px solid var(--borda-suave); }
-  .pd-links-section .eyebrow { color: var(--downtown-brown); text-align: left; }
+  .pd-links-section + .pd-links-section { border-top: 1px solid rgba(244,241,236,0.18); }
+  .pd-links-section .eyebrow { color: var(--pd-arrow); text-align: left; }
 
   .pd-link-card {
-    background: #fff;
-    border: 1px solid var(--borda);
+    background: var(--pd-block);
+    border: 1px solid transparent;
     border-radius: var(--radius-md);
     padding: 18px 20px;
     display: flex;
@@ -99,21 +110,21 @@
     width: 40px;
     height: 40px;
     border-radius: 50%;
-    background: var(--off-white-soft);
+    background: rgba(96,64,52,0.10);
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 18px;
   }
   .pd-link-card-body { flex: 1; min-width: 0; }
-  .pd-link-card-body a { display: block; color: var(--grafite); }
+  .pd-link-card-body a { display: block; color: var(--pd-title); }
   .pd-link-card-body a::after { content: ""; position: absolute; inset: 0; }
   .pd-link-card { position: relative; }
-  .pd-link-card-body h3 { font-size: 16px; margin: 0 0 4px; }
-  .pd-link-card-body p { font-size: 13px; color: var(--texto-secundario); margin: 0; }
-  .pd-link-card-arrow { flex: none; color: var(--texto-secundario); font-size: 18px; transition: transform .25s cubic-bezier(.4,0,.2,1); }
-  .pd-link-card:hover .pd-link-card-arrow { transform: translateX(4px); color: var(--downtown-brown); }
-  .pd-link-card-price { flex: none; font-family: var(--font-body); font-weight: 700; font-size: 15px; color: var(--ouro); }
+  .pd-link-card-body h3 { font-size: 16px; margin: 0 0 4px; color: var(--pd-title); }
+  .pd-link-card-body p { font-size: 13px; color: var(--pd-text); margin: 0; }
+  .pd-link-card-arrow { flex: none; color: var(--pd-arrow); font-size: 18px; transition: transform .25s cubic-bezier(.4,0,.2,1); }
+  .pd-link-card:hover .pd-link-card-arrow { transform: translateX(4px); color: var(--pd-title); }
+  .pd-link-card-price { flex: none; font-family: var(--font-body); font-weight: 700; font-size: 15px; color: var(--pd-arrow); }
 
   .pd-links-grid { display: grid; gap: 14px; grid-template-columns: 1fr; }
   @media (min-width: 640px) { .pd-links-grid-2 { grid-template-columns: repeat(2, 1fr); } }
@@ -145,131 +156,18 @@
 <main>
   <div class="container" style="max-width:640px;">
 
-    <section class="pd-links-hero">
-      <div class="pd-links-avatar">
-        <img src="/images/uploads/foto-de-perfil.jpg" alt="Ingryd">
-      </div>
-      <span class="eyebrow" style="color:#604034;">@ingryd.pordentro</span>
-      <h1>Tô Por Dentro</h1>
-      <p class="muted">Te ajudo a ficar por dentro das possibilidades pra viver na França — sem romantizar.</p>
-      <div class="pd-links-arrow" aria-hidden="true">↓</div>
-      <div class="pd-social-row">
-        <a class="pd-social-icon" href="https://www.instagram.com/ingryd.pordentro/" target="_blank" rel="noopener" aria-label="Instagram" data-track-link="instagram">
-          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="3" y="3" width="18" height="18" rx="5" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="12" r="4.2" stroke="currentColor" stroke-width="1.8"/><circle cx="17.2" cy="6.8" r="1.1" fill="currentColor"/></svg>
-        </a>
-        <a class="pd-social-icon" href="https://www.youtube.com/@ingrydlotierzo" target="_blank" rel="noopener" aria-label="YouTube" data-track-link="youtube">
-          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="2.5" y="5.5" width="19" height="13" rx="4" stroke="currentColor" stroke-width="1.8"/><path d="M10.3 9.3v5.4l4.7-2.7-4.7-2.7Z" fill="currentColor"/></svg>
-        </a>
-      </div>
+    <section class="pd-links-hero" id="pd-hero">
+      <p class="muted">Carregando...</p>
     </section>
 
-    <a class="pd-bot-cta" href="/assistente-de-vistos/" data-track-link="bot-assistente-vistos">
-      <span class="pd-bot-cta-icon" aria-hidden="true">⚡</span>
-      <span class="pd-bot-cta-body">
-        <h3>Qual é o seu caminho pra França?</h3>
-        <p>Responda algumas perguntas rápidas e eu te indico o visto certo pro seu perfil.</p>
-      </span>
-      <span class="pd-bot-cta-arrow" aria-hidden="true">→</span>
-    </a>
+    <div id="pd-bot-mount"></div>
 
-    <section class="pd-links-section">
-      <span class="eyebrow">Em destaque agora</span>
-      <div class="pd-links-grid pd-links-grid-2">
-        <div class="pd-link-card">
-          <div class="pd-link-card-icon">📋</div>
-          <div class="pd-link-card-body">
-            <h3><a href="/artigos/post/?slug=tudo-sobre-o-exame-civico" data-track-link="exame-civico">Exame Cívico virou obrigatório</a></h3>
-            <p>O que estudar e como se preparar sem enrolação.</p>
-          </div>
-          <span class="pd-link-card-arrow">→</span>
-        </div>
-        <div class="pd-link-card">
-          <div class="pd-link-card-icon">🗂️</div>
-          <div class="pd-link-card-body">
-            <h3><a href="/artigos/post/?slug=passo-a-passo-da-anef" data-track-link="anef">Dossier ANEF travado?</a></h3>
-            <p>Dicas pra renovar seu título de séjour sem se perder no site.</p>
-          </div>
-          <span class="pd-link-card-arrow">→</span>
-        </div>
-      </div>
-    </section>
-
-    <section class="pd-links-section">
-      <span class="eyebrow">Vídeos</span>
-      <div class="pd-links-grid">
-        <div class="pd-link-card">
-          <div class="pd-link-card-icon">▶️</div>
-          <div class="pd-link-card-body">
-            <h3><a href="https://www.youtube.com/@ingrydlotierzo" target="_blank" rel="noopener" data-track-link="youtube-canal">Assista no canal</a></h3>
-            <p>Toda semana, um vídeo sobre viver, trabalhar e resolver a burocracia da França.</p>
-          </div>
-          <span class="pd-link-card-arrow">↗</span>
-        </div>
-      </div>
-    </section>
-
-    <section class="pd-links-section">
-      <span class="eyebrow">Documentos & processos</span>
-      <div class="pd-links-grid pd-links-grid-2">
-        <div class="pd-link-card">
-          <div class="pd-link-card-icon">📋</div>
-          <div class="pd-link-card-body">
-            <h3><a href="/artigos/post/?slug=tudo-sobre-o-exame-civico" data-track-link="exame-civico-doc">Tudo sobre o Exame Cívico</a></h3>
-            <p>O que estudar e como se preparar sem enrolação.</p>
-          </div>
-          <span class="pd-link-card-arrow">→</span>
-        </div>
-        <div class="pd-link-card">
-          <div class="pd-link-card-icon">🗂️</div>
-          <div class="pd-link-card-body">
-            <h3><a href="/artigos/post/?slug=passo-a-passo-da-anef" data-track-link="anef-doc">Passo a passo da ANEF</a></h3>
-            <p>Dicas pra renovar seu título de séjour sem se perder no site.</p>
-          </div>
-          <span class="pd-link-card-arrow">→</span>
-        </div>
-      </div>
-    </section>
-
-    <section class="pd-links-section">
-      <span class="eyebrow">Bolsas & moradia</span>
-      <div class="pd-links-grid pd-links-grid-2">
-        <div class="pd-link-card">
-          <div class="pd-link-card-icon">🎓</div>
-          <div class="pd-link-card-body">
-            <h3><a href="/artigos/post/?slug=como-conseguir-bolsa-de-estudo" data-track-link="bolsas">Dicas para conseguir bolsa de estudo</a></h3>
-            <p>Os critérios que realmente importam na hora de aplicar.</p>
-          </div>
-          <span class="pd-link-card-arrow">→</span>
-        </div>
-        <div class="pd-link-card">
-          <div class="pd-link-card-icon">🏠</div>
-          <div class="pd-link-card-body">
-            <h3><a href="/artigos/post/?slug=ajudas-de-moradia-apl-alf-als" data-track-link="moradia">3 ajudas de moradia que talvez você tenha direito</a></h3>
-            <p>APL, ALF ou ALS — qual delas é a sua, mesmo sem ser cidadã francesa.</p>
-          </div>
-          <span class="pd-link-card-arrow">→</span>
-        </div>
-      </div>
-    </section>
-
-    <section class="pd-links-section">
-      <span class="eyebrow">Ferramentas</span>
-      <div class="pd-links-grid">
-        <div class="pd-link-card">
-          <div class="pd-link-card-icon">🧮</div>
-          <div class="pd-link-card-body">
-            <h3><a href="/produtos-digitais/produto/?slug=planilha-financeira-super-integrada" data-track-link="planilha-financeira">Planilha Financeira Super Integrada</a></h3>
-            <p>A planilha que lança seus gastos fixos sozinha, todo mês — sem copiar e colar nada.</p>
-          </div>
-          <span class="pd-link-card-price">25€</span>
-        </div>
-      </div>
-    </section>
+    <div id="pd-sections-mount"></div>
 
     <section class="pd-links-section">
       <div style="display:flex; align-items:baseline; justify-content:space-between; gap:16px;">
         <span class="eyebrow" style="margin-bottom:14px;">Últimos artigos</span>
-        <a href="/artigos/" style="font-weight:600; font-size:13px; color:#604034;">Ver todos →</a>
+        <a href="/artigos/" style="font-weight:600; font-size:13px; color:#DEB975;">Ver todos →</a>
       </div>
       <div class="pd-carousel" id="pd-latest-posts">
         <p class="muted">Carregando artigos...</p>
@@ -325,6 +223,78 @@
 <script src="/assets/js/analytics.js"></script>
 <script type="module" src="/assets/js/header.js"></script>
 <script type="module">
+  // Conteúdo desta página (foto, bio, redes, card do bot e os links por
+  // seção) vem de content/links.json, editável em /admin → "Página de Links
+  // (bio)" — nada aqui é hardcoded, então publicar no painel já atualiza a
+  // página sem precisar tocar em HTML.
+  import { fetchJSON, escapeHtml } from "/assets/js/render.js";
+
+  function linkCardHTML(item) {
+    var target = item.external ? ' target="_blank" rel="noopener"' : "";
+    var priceHTML = item.price
+      ? '<span class="pd-link-card-price">' + escapeHtml(item.price) + "</span>"
+      : '<span class="pd-link-card-arrow">' + (item.external ? "↗" : "→") + "</span>";
+    return (
+      '<div class="pd-link-card">' +
+      '<div class="pd-link-card-icon">' + escapeHtml(item.icon || "") + "</div>" +
+      '<div class="pd-link-card-body">' +
+      '<h3><a href="' + escapeHtml(item.href) + '"' + target + ' data-track-link="' + escapeHtml(item.trackId || "") + '">' + escapeHtml(item.title) + "</a></h3>" +
+      "<p>" + escapeHtml(item.description || "") + "</p>" +
+      "</div>" +
+      priceHTML +
+      "</div>"
+    );
+  }
+
+  function sectionHTML(section) {
+    var gridClass = "pd-links-grid" + ((section.items || []).length > 1 ? " pd-links-grid-2" : "");
+    return (
+      '<section class="pd-links-section">' +
+      '<span class="eyebrow">' + escapeHtml(section.title) + "</span>" +
+      '<div class="' + gridClass + '">' +
+      (section.items || []).map(linkCardHTML).join("") +
+      "</div></section>"
+    );
+  }
+
+  (async function () {
+    try {
+      var data = await fetchJSON("/content/links.json");
+      var hero = data.hero || {};
+      var bot = data.bot || {};
+
+      document.getElementById("pd-hero").innerHTML =
+        '<div class="pd-links-avatar">' +
+        (hero.avatar
+          ? '<img src="' + escapeHtml(hero.avatar) + '" alt="' + escapeHtml(hero.title || "") + '">'
+          : '<span>Foto a adicionar</span>') +
+        "</div>" +
+        '<span class="eyebrow" style="color:#DEB975;">' + escapeHtml(hero.handle || "") + "</span>" +
+        "<h1>" + escapeHtml(hero.title || "") + "</h1>" +
+        '<p class="muted">' + escapeHtml(hero.bio || "") + "</p>" +
+        '<div class="pd-links-arrow" aria-hidden="true">↓</div>' +
+        '<div class="pd-social-row">' +
+        (hero.instagramUrl ? '<a class="pd-social-icon" href="' + escapeHtml(hero.instagramUrl) + '" target="_blank" rel="noopener" aria-label="Instagram" data-track-link="instagram"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="3" y="3" width="18" height="18" rx="5" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="12" r="4.2" stroke="currentColor" stroke-width="1.8"/><circle cx="17.2" cy="6.8" r="1.1" fill="currentColor"/></svg></a>' : "") +
+        (hero.youtubeUrl ? '<a class="pd-social-icon" href="' + escapeHtml(hero.youtubeUrl) + '" target="_blank" rel="noopener" aria-label="YouTube" data-track-link="youtube"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="2.5" y="5.5" width="19" height="13" rx="4" stroke="currentColor" stroke-width="1.8"/><path d="M10.3 9.3v5.4l4.7-2.7-4.7-2.7Z" fill="currentColor"/></svg></a>' : "") +
+        "</div>";
+
+      if (bot.href) {
+        document.getElementById("pd-bot-mount").innerHTML =
+          '<a class="pd-bot-cta" href="' + escapeHtml(bot.href) + '" data-track-link="bot-assistente-vistos">' +
+          '<span class="pd-bot-cta-icon" aria-hidden="true">⚡</span>' +
+          '<span class="pd-bot-cta-body"><h3>' + escapeHtml(bot.title || "") + "</h3><p>" + escapeHtml(bot.description || "") + "</p></span>" +
+          '<span class="pd-bot-cta-arrow" aria-hidden="true">→</span>' +
+          "</a>";
+      }
+
+      document.getElementById("pd-sections-mount").innerHTML = (data.sections || []).map(sectionHTML).join("");
+    } catch (e) {
+      console.warn(e);
+      document.getElementById("pd-hero").innerHTML = '<p class="empty-state">Não foi possível carregar o conteúdo da página agora.</p>';
+    }
+  })();
+</script>
+<script type="module">
   import { fetchJSON, imgSlotHTML, escapeHtml, postHref } from "/assets/js/render.js";
 
   (async function () {
@@ -337,7 +307,7 @@
           '<a class="card" href="' + escapeHtml(postHref(post)) + '" style="color:inherit;" data-track-link="artigo-' + escapeHtml(post.slug) + '">' +
           imgSlotHTML(post.image, post.title, "Foto do artigo") +
           '<div class="card-body">' +
-          '<span class="eyebrow" style="color:#6E6862; margin-bottom:2px;">' + escapeHtml(post.category) + "</span>" +
+          '<span class="eyebrow" style="color:#DEB975; margin-bottom:2px;">' + escapeHtml(post.category) + "</span>" +
           "<h3>" + escapeHtml(post.title) + "</h3>" +
           '<span style="font-weight:600; font-size:13px; color:#604034;">Ler artigo <span class="card-arrow">→</span></span>' +
           "</div></a>"

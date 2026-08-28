@@ -104,6 +104,49 @@ collections:
                 widget: object
                 fields: *page_toggle
 
+  - name: links_page
+    label: "Página de Links (bio)"
+    files:
+      - name: links_page
+        label: "Conteúdo da /links/"
+        file: content/links.json
+        fields:
+          - label: "Topo (foto, bio, redes)"
+            name: hero
+            widget: object
+            fields:
+              - { label: "Handle (@usuário)", name: handle, widget: string }
+              - { label: "Título", name: title, widget: string }
+              - { label: "Bio", name: bio, widget: text }
+              - { label: "Foto", name: avatar, widget: image, required: false, hint: "Tamanho ideal: quadrada (ex. 400×400px) — aparece cortada em círculo." }
+              - { label: "Link do Instagram", name: instagramUrl, widget: string }
+              - { label: "Link do YouTube", name: youtubeUrl, widget: string }
+          - label: "Card do assistente (bot)"
+            name: bot
+            widget: object
+            fields:
+              - { label: "Título", name: title, widget: string }
+              - { label: "Descrição", name: description, widget: text }
+              - { label: "Link (ex. /assistente-de-vistos/)", name: href, widget: string }
+          - label: "Seções de links"
+            name: sections
+            widget: list
+            summary: "{{fields.title}}"
+            fields:
+              - { label: "Título da seção", name: title, widget: string }
+              - label: "Itens"
+                name: items
+                widget: list
+                summary: "{{fields.title}}"
+                fields:
+                  - { label: "Emoji do ícone", name: icon, widget: string }
+                  - { label: "Título", name: title, widget: string }
+                  - { label: "Descrição", name: description, widget: text }
+                  - { label: "Link", name: href, widget: string, hint: "Link interno (ex. /artigos/post/?slug=...) ou externo (https://...)." }
+                  - { label: "Id de rastreamento (sem espaço/acento)", name: trackId, widget: string, hint: "Usado só pra identificar o clique em /admin/dashboard — não aparece pra leitora." }
+                  - { label: "Link externo (abre em nova aba)", name: external, widget: boolean, default: false }
+                  - { label: "Preço (opcional, ex. 25€)", name: price, widget: string, required: false }
+
   - name: produtos_digitais
     label: "Produtos digitais"
     files:

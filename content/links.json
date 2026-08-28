@@ -1,0 +1,107 @@
+{
+  "hero": {
+    "handle": "@ingryd.pordentro",
+    "title": "Tô Por Dentro",
+    "bio": "Te ajudo a ficar por dentro das possibilidades pra viver na França — sem romantizar.",
+    "avatar": "/images/uploads/foto-de-perfil.jpg",
+    "instagramUrl": "https://www.instagram.com/ingryd.pordentro/",
+    "youtubeUrl": "https://www.youtube.com/@ingrydlotierzo"
+  },
+  "bot": {
+    "title": "Qual é o seu caminho pra França?",
+    "description": "Responda algumas perguntas rápidas e eu te indico o visto certo pro seu perfil.",
+    "href": "/assistente-de-vistos/"
+  },
+  "sections": [
+    {
+      "title": "Em destaque agora",
+      "items": [
+        {
+          "icon": "📋",
+          "title": "Exame Cívico virou obrigatório",
+          "description": "O que estudar e como se preparar sem enrolação.",
+          "href": "/artigos/post/?slug=tudo-sobre-o-exame-civico",
+          "trackId": "exame-civico",
+          "external": false
+        },
+        {
+          "icon": "🗂️",
+          "title": "Dossier ANEF travado?",
+          "description": "Dicas pra renovar seu título de séjour sem se perder no site.",
+          "href": "/artigos/post/?slug=passo-a-passo-da-anef",
+          "trackId": "anef",
+          "external": false
+        }
+      ]
+    },
+    {
+      "title": "Vídeos",
+      "items": [
+        {
+          "icon": "▶️",
+          "title": "Assista no canal",
+          "description": "Toda semana, um vídeo sobre viver, trabalhar e resolver a burocracia da França.",
+          "href": "https://www.youtube.com/@ingrydlotierzo",
+          "trackId": "youtube-canal",
+          "external": true
+        }
+      ]
+    },
+    {
+      "title": "Documentos & processos",
+      "items": [
+        {
+          "icon": "📋",
+          "title": "Tudo sobre o Exame Cívico",
+          "description": "O que estudar e como se preparar sem enrolação.",
+          "href": "/artigos/post/?slug=tudo-sobre-o-exame-civico",
+          "trackId": "exame-civico-doc",
+          "external": false
+        },
+        {
+          "icon": "🗂️",
+          "title": "Passo a passo da ANEF",
+          "description": "Dicas pra renovar seu título de séjour sem se perder no site.",
+          "href": "/artigos/post/?slug=passo-a-passo-da-anef",
+          "trackId": "anef-doc",
+          "external": false
+        }
+      ]
+    },
+    {
+      "title": "Bolsas & moradia",
+      "items": [
+        {
+          "icon": "🎓",
+          "title": "Dicas para conseguir bolsa de estudo",
+          "description": "Os critérios que realmente importam na hora de aplicar.",
+          "href": "/artigos/post/?slug=como-conseguir-bolsa-de-estudo",
+          "trackId": "bolsas",
+          "external": false
+        },
+        {
+          "icon": "🏠",
+          "title": "3 ajudas de moradia que talvez você tenha direito",
+          "description": "APL, ALF ou ALS — qual delas é a sua, mesmo sem ser cidadã francesa.",
+          "href": "/artigos/post/?slug=ajudas-de-moradia-apl-alf-als",
+          "trackId": "moradia",
+          "external": false
+        }
+      ]
+    },
+    {
+      "title": "Ferramentas",
+      "items": [
+        {
+          "icon": "🧮",
+          "title": "Planilha Financeira Super Integrada",
+          "description": "A planilha que lança seus gastos fixos sozinha, todo mês — sem copiar e colar nada.",
+          "href": "/produtos-digitais/produto/?slug=planilha-financeira-super-integrada",
+          "trackId": "planilha-financeira",
+          "external": false,
+          "price": "25€"
+        }
+      ]
+    }
+  ]
+}
