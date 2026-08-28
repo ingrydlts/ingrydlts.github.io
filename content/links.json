@@ -9,7 +9,7 @@
   },
   "bot": {
     "title": "Qual é o seu caminho pra França?",
-    "description": "Responda algumas perguntas rápidas e eu te indico o visto certo pro seu perfil.",
+    "description": "Responda algumas perguntas rápidas para eu entender quais as melhores dicas eu posso te dar!",
     "href": "/assistente-de-vistos/"
   },
   "sections": [
