@@ -11,9 +11,9 @@
       "logo": false
     },
     "blog": {
-      "header": true,
+      "header": false,
       "footer": false,
-      "logo": true
+      "logo": false
     },
     "institucional": {
       "header": true,
