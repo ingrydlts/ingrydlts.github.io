@@ -166,9 +166,11 @@
       "slug": "pvt-franca-brasil-cota-requisitos",
       "date": "2026-08-26",
       "url": "/artigos/post/pvt-franca-brasil-cota-requisitos/",
+      "showCoverInArticle": false,
       "title": "PVT França-Brasil: cota, requisitos e como não perder a vaga",
       "image": "",
-      "category": "Visto"
+      "category": "Visto",
+      "showBackLink": false
     },
     {
       "excerpt": "Não dá pra tentar de novo esse ano — mas dá pra se planejar melhor pro próximo, e existem outros caminhos enquanto isso.",
@@ -178,6 +180,7 @@
       "slug": "cota-pvt-esgotou-o-que-fazer",
       "date": "2026-08-26",
       "url": "/artigos/post/cota-pvt-esgotou-o-que-fazer/",
+      "showCoverInArticle": false,
       "title": "A cota do PVT esgotou — o que fazer agora?",
       "image": "",
       "category": "Visto"
@@ -189,9 +192,11 @@
       "updatedDate": "2026-08-26",
       "slug": "selo-qualite-fle-mapa-cursos-de-frances",
       "date": "2026-08-26",
+      "showCoverInArticle": true,
       "title": "O selo que garante que seu curso de francês é oficial (com mapa dos 110 centros)",
       "image": "/images/uploads/selo-qualite-fle-capa.png",
-      "category": "Francês"
+      "category": "Francês",
+      "showBackLink": false
     },
     {
       "excerpt": "Sem exigência de 1 ano mínimo, dá pra validar só um bloco de competência, e o CPF pode pagar (quase) tudo. Descubra se você é elegível, quanto custa e como funciona o processo.",
