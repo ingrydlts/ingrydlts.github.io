@@ -29,6 +29,7 @@ var PAGE_REGISTRY = {
   "/produtos-de-estudo/": { key: "produtos-de-estudo", category: "produtos" },
   "/produtos-de-compras/": { key: "produtos-de-compras", category: "produtos" },
   "/sobre/": { key: "sobre", category: "institucional" },
+  "/links/": { key: "links", category: "institucional" },
   "/cgv/": { key: "cgv", category: "institucional" },
   "/confidentialite/": { key: "confidentialite", category: "institucional" },
   "/mentions-legales/": { key: "mentions-legales", category: "institucional" },

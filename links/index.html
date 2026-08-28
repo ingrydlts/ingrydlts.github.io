@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Todos os links — Por Dentro</title>
+<meta name="description" content="Vídeos, artigos e ferramentas do Por Dentro pra quem quer ficar por dentro da vida na França — tudo num só lugar.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,600;9..144,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/css/style.css">
+<style>
+  :root { --nav-active: #604034; }
+
+  .pd-links-hero {
+    padding: 48px 0 8px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .pd-links-avatar {
+    width: 88px;
+    height: 88px;
+    border-radius: 50%;
+    background: var(--off-white-soft);
+    border: 1px solid var(--borda);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    margin-bottom: 16px;
+  }
+  .pd-links-avatar img { width: 100%; height: 100%; object-fit: cover; }
+  .pd-links-avatar span { font-size: 11px; color: var(--texto-secundario); text-align: center; padding: 0 8px; }
+  .pd-links-hero h1 { margin-bottom: 6px; }
+  .pd-links-hero p { max-width: 46ch; margin: 0 auto 20px; }
+
+  .pd-links-arrow { color: var(--texto-secundario); font-size: 20px; margin: -8px 0 20px; animation: pd-bounce 1.8s ease-in-out infinite; }
+  @keyframes pd-bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(5px); } }
+
+  .pd-social-row { display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; margin-bottom: 8px; }
+  .pd-social-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    border: 1px solid var(--borda);
+    background: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--downtown-brown);
+    transition: transform .25s cubic-bezier(.4,0,.2,1), background .25s, color .25s;
+  }
+  .pd-social-icon:hover { background: var(--downtown-brown); color: #fff; transform: translateY(-3px); }
+  .pd-social-icon svg { width: 20px; height: 20px; }
+
+  .pd-bot-cta {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    background: var(--grafite);
+    color: var(--off-white);
+    border-radius: var(--radius-md);
+    padding: 20px 22px;
+    margin: 28px 0 4px;
+    position: relative;
+    transition: transform .25s cubic-bezier(.4,0,.2,1);
+  }
+  .pd-bot-cta:hover { transform: translateY(-3px); }
+  .pd-bot-cta-icon { flex: none; width: 40px; height: 40px; border-radius: 50%; background: rgba(244,241,236,0.12); display: flex; align-items: center; justify-content: center; font-size: 18px; }
+  .pd-bot-cta-body { flex: 1; min-width: 0; }
+  .pd-bot-cta-body h3 { color: var(--off-white); font-size: 16px; margin: 0 0 4px; }
+  .pd-bot-cta-body p { color: #C9C4BC; font-size: 13px; margin: 0; }
+  .pd-bot-cta-arrow { flex: none; font-size: 18px; color: #C9C4BC; }
+
+  .pd-carousel { display: flex; gap: 16px; overflow-x: auto; padding: 4px 2px 16px; margin: 0 -2px; scroll-snap-type: x proximity; -webkit-overflow-scrolling: touch; }
+  .pd-carousel .card { flex: 0 0 200px; scroll-snap-align: start; }
+  .pd-carousel::-webkit-scrollbar { height: 6px; }
+  .pd-carousel::-webkit-scrollbar-thumb { background: var(--borda); border-radius: 999px; }
+
+  .pd-links-section { padding: 28px 0; }
+  .pd-links-section + .pd-links-section { border-top: 1px solid var(--borda-suave); }
+  .pd-links-section .eyebrow { color: var(--downtown-brown); text-align: left; }
+
+  .pd-link-card {
+    background: #fff;
+    border: 1px solid var(--borda);
+    border-radius: var(--radius-md);
+    padding: 18px 20px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    transition: transform .25s cubic-bezier(.4,0,.2,1), box-shadow .25s cubic-bezier(.4,0,.2,1);
+  }
+  .pd-link-card:hover, .pd-link-card:focus-within { transform: translateY(-3px); box-shadow: var(--shadow-card); }
+  .pd-link-card-icon {
+    flex: none;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: var(--off-white-soft);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+  }
+  .pd-link-card-body { flex: 1; min-width: 0; }
+  .pd-link-card-body a { display: block; color: var(--grafite); }
+  .pd-link-card-body a::after { content: ""; position: absolute; inset: 0; }
+  .pd-link-card { position: relative; }
+  .pd-link-card-body h3 { font-size: 16px; margin: 0 0 4px; }
+  .pd-link-card-body p { font-size: 13px; color: var(--texto-secundario); margin: 0; }
+  .pd-link-card-arrow { flex: none; color: var(--texto-secundario); font-size: 18px; transition: transform .25s cubic-bezier(.4,0,.2,1); }
+  .pd-link-card:hover .pd-link-card-arrow { transform: translateX(4px); color: var(--downtown-brown); }
+  .pd-link-card-price { flex: none; font-family: var(--font-body); font-weight: 700; font-size: 15px; color: var(--ouro); }
+
+  .pd-links-grid { display: grid; gap: 14px; grid-template-columns: 1fr; }
+  @media (min-width: 640px) { .pd-links-grid-2 { grid-template-columns: repeat(2, 1fr); } }
+</style>
+</head>
+<body data-article-slug="links">
+
+<header class="site-header">
+  <a href="/" class="site-logo" data-logo-link><img src="/images/logo-por-dentro.png" alt="Por Dentro" class="site-logo-img">Por Dentro</a>
+  <nav class="site-nav" aria-label="Navegação principal" data-header-nav>
+    <a href="/produtos-digitais/" data-nav-key="produtos-digitais">Produtos digitais</a>
+    <a href="/produtos-de-estudo/" data-nav-key="produtos-de-estudo">Produtos de estudo</a>
+    <a href="/produtos-de-compras/" data-nav-key="produtos-de-compras">Produtos de compras</a>
+    <a href="/artigos/" data-nav-key="blog">Blog</a>
+    <a href="/sobre/" data-nav-key="sobre">Sobre</a>
+  </nav>
+  <button class="nav-toggle" aria-label="Abrir menu" aria-expanded="false">
+    <span></span><span></span><span></span>
+  </button>
+</header>
+<nav class="mobile-nav" aria-label="Navegação mobile" data-header-nav>
+  <a href="/produtos-digitais/" data-nav-key="produtos-digitais">Produtos digitais</a>
+  <a href="/produtos-de-estudo/" data-nav-key="produtos-de-estudo">Produtos de estudo</a>
+  <a href="/produtos-de-compras/" data-nav-key="produtos-de-compras">Produtos de compras</a>
+  <a href="/artigos/" data-nav-key="blog">Blog</a>
+  <a href="/sobre/" data-nav-key="sobre">Sobre</a>
+</nav>
+
+<main>
+  <div class="container" style="max-width:640px;">
+
+    <section class="pd-links-hero">
+      <div class="pd-links-avatar">
+        <img src="/images/uploads/foto-de-perfil.jpg" alt="Ingryd">
+      </div>
+      <span class="eyebrow" style="color:#604034;">@ingryd.pordentro</span>
+      <h1>Tô Por Dentro</h1>
+      <p class="muted">Te ajudo a ficar por dentro das possibilidades pra viver na França — sem romantizar.</p>
+      <div class="pd-links-arrow" aria-hidden="true">↓</div>
+      <div class="pd-social-row">
+        <a class="pd-social-icon" href="https://www.instagram.com/ingryd.pordentro/" target="_blank" rel="noopener" aria-label="Instagram" data-track-link="instagram">
+          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="3" y="3" width="18" height="18" rx="5" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="12" r="4.2" stroke="currentColor" stroke-width="1.8"/><circle cx="17.2" cy="6.8" r="1.1" fill="currentColor"/></svg>
+        </a>
+        <a class="pd-social-icon" href="https://www.youtube.com/@ingrydlotierzo" target="_blank" rel="noopener" aria-label="YouTube" data-track-link="youtube">
+          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="2.5" y="5.5" width="19" height="13" rx="4" stroke="currentColor" stroke-width="1.8"/><path d="M10.3 9.3v5.4l4.7-2.7-4.7-2.7Z" fill="currentColor"/></svg>
+        </a>
+      </div>
+    </section>
+
+    <a class="pd-bot-cta" href="/assistente-de-vistos/" data-track-link="bot-assistente-vistos">
+      <span class="pd-bot-cta-icon" aria-hidden="true">⚡</span>
+      <span class="pd-bot-cta-body">
+        <h3>Qual é o seu caminho pra França?</h3>
+        <p>Responda algumas perguntas rápidas e eu te indico o visto certo pro seu perfil.</p>
+      </span>
+      <span class="pd-bot-cta-arrow" aria-hidden="true">→</span>
+    </a>
+
+    <section class="pd-links-section">
+      <span class="eyebrow">Em destaque agora</span>
+      <div class="pd-links-grid pd-links-grid-2">
+        <div class="pd-link-card">
+          <div class="pd-link-card-icon">📋</div>
+          <div class="pd-link-card-body">
+            <h3><a href="/artigos/post/?slug=tudo-sobre-o-exame-civico" data-track-link="exame-civico">Exame Cívico virou obrigatório</a></h3>
+            <p>O que estudar e como se preparar sem enrolação.</p>
+          </div>
+          <span class="pd-link-card-arrow">→</span>
+        </div>
+        <div class="pd-link-card">
+          <div class="pd-link-card-icon">🗂️</div>
+          <div class="pd-link-card-body">
+            <h3><a href="/artigos/post/?slug=passo-a-passo-da-anef" data-track-link="anef">Dossier ANEF travado?</a></h3>
+            <p>Dicas pra renovar seu título de séjour sem se perder no site.</p>
+          </div>
+          <span class="pd-link-card-arrow">→</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="pd-links-section">
+      <span class="eyebrow">Vídeos</span>
+      <div class="pd-links-grid">
+        <div class="pd-link-card">
+          <div class="pd-link-card-icon">▶️</div>
+          <div class="pd-link-card-body">
+            <h3><a href="https://www.youtube.com/@ingrydlotierzo" target="_blank" rel="noopener" data-track-link="youtube-canal">Assista no canal</a></h3>
+            <p>Toda semana, um vídeo sobre viver, trabalhar e resolver a burocracia da França.</p>
+          </div>
+          <span class="pd-link-card-arrow">↗</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="pd-links-section">
+      <span class="eyebrow">Documentos & processos</span>
+      <div class="pd-links-grid pd-links-grid-2">
+        <div class="pd-link-card">
+          <div class="pd-link-card-icon">📋</div>
+          <div class="pd-link-card-body">
+            <h3><a href="/artigos/post/?slug=tudo-sobre-o-exame-civico" data-track-link="exame-civico-doc">Tudo sobre o Exame Cívico</a></h3>
+            <p>O que estudar e como se preparar sem enrolação.</p>
+          </div>
+          <span class="pd-link-card-arrow">→</span>
+        </div>
+        <div class="pd-link-card">
+          <div class="pd-link-card-icon">🗂️</div>
+          <div class="pd-link-card-body">
+            <h3><a href="/artigos/post/?slug=passo-a-passo-da-anef" data-track-link="anef-doc">Passo a passo da ANEF</a></h3>
+            <p>Dicas pra renovar seu título de séjour sem se perder no site.</p>
+          </div>
+          <span class="pd-link-card-arrow">→</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="pd-links-section">
+      <span class="eyebrow">Bolsas & moradia</span>
+      <div class="pd-links-grid pd-links-grid-2">
+        <div class="pd-link-card">
+          <div class="pd-link-card-icon">🎓</div>
+          <div class="pd-link-card-body">
+            <h3><a href="/artigos/post/?slug=como-conseguir-bolsa-de-estudo" data-track-link="bolsas">Dicas para conseguir bolsa de estudo</a></h3>
+            <p>Os critérios que realmente importam na hora de aplicar.</p>
+          </div>
+          <span class="pd-link-card-arrow">→</span>
+        </div>
+        <div class="pd-link-card">
+          <div class="pd-link-card-icon">🏠</div>
+          <div class="pd-link-card-body">
+            <h3><a href="/artigos/post/?slug=ajudas-de-moradia-apl-alf-als" data-track-link="moradia">3 ajudas de moradia que talvez você tenha direito</a></h3>
+            <p>APL, ALF ou ALS — qual delas é a sua, mesmo sem ser cidadã francesa.</p>
+          </div>
+          <span class="pd-link-card-arrow">→</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="pd-links-section">
+      <span class="eyebrow">Ferramentas</span>
+      <div class="pd-links-grid">
+        <div class="pd-link-card">
+          <div class="pd-link-card-icon">🧮</div>
+          <div class="pd-link-card-body">
+            <h3><a href="/produtos-digitais/produto/?slug=planilha-financeira-super-integrada" data-track-link="planilha-financeira">Planilha Financeira Super Integrada</a></h3>
+            <p>A planilha que lança seus gastos fixos sozinha, todo mês — sem copiar e colar nada.</p>
+          </div>
+          <span class="pd-link-card-price">25€</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="pd-links-section">
+      <div style="display:flex; align-items:baseline; justify-content:space-between; gap:16px;">
+        <span class="eyebrow" style="margin-bottom:14px;">Últimos artigos</span>
+        <a href="/artigos/" style="font-weight:600; font-size:13px; color:#604034;">Ver todos →</a>
+      </div>
+      <div class="pd-carousel" id="pd-latest-posts">
+        <p class="muted">Carregando artigos...</p>
+      </div>
+    </section>
+
+  </div>
+</main>
+
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-grid">
+      <div>
+        <a href="/" class="site-logo" data-logo-link style="color:#F4F1EC; margin-bottom:14px;"><img src="/images/logo-por-dentro.png" alt="Por Dentro" class="site-logo-img">Por Dentro</a>
+        <p style="color:#A8A29C; max-width:32ch; font-size:13px;">Templates, indicações de estudo e de compras para quem vive a vida real fora do Brasil.</p>
+      </div>
+      <div data-footer-nav>
+        <div class="footer-col-title">Navegação</div>
+        <div class="footer-links">
+          <a href="/produtos-digitais/" data-nav-key="produtos-digitais">Produtos digitais</a>
+          <a href="/produtos-de-estudo/" data-nav-key="produtos-de-estudo">Produtos de estudo</a>
+          <a href="/produtos-de-compras/" data-nav-key="produtos-de-compras">Produtos de compras</a>
+          <a href="/artigos/" data-nav-key="blog">Blog</a>
+          <a href="/sobre/" data-nav-key="sobre">Sobre</a>
+        </div>
+      </div>
+      <div>
+        <div class="footer-col-title">Legal</div>
+        <div class="footer-links">
+          <a href="/mentions-legales/">Mentions légales</a>
+          <a href="/cgv/">CGV</a>
+          <a href="/confidentialite/">Confidentialité</a>
+        </div>
+      </div>
+      <div>
+        <div class="footer-col-title">Redes</div>
+        <div class="footer-links">
+          <a href="https://www.instagram.com/ingryd.pordentro/" target="_blank" rel="noopener">@ingryd.pordentro</a>
+          <a href="https://www.youtube.com/@ingrydlotierzo" target="_blank" rel="noopener">YouTube</a>
+        </div>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>© Por Dentro · France</span>
+      <span>Feito por quem vive isso.</span>
+    </div>
+  </div>
+</footer>
+
+<script src="/assets/js/main.js"></script>
+<script src="/assets/js/consent.js"></script>
+<script src="/assets/js/events.js"></script>
+<script src="/assets/js/analytics.js"></script>
+<script type="module" src="/assets/js/header.js"></script>
+<script type="module">
+  import { fetchJSON, imgSlotHTML, escapeHtml, postHref } from "/assets/js/render.js";
+
+  (async function () {
+    var el = document.getElementById("pd-latest-posts");
+    try {
+      var data = await fetchJSON("/content/posts.json");
+      var latest = data.items.slice().sort(function (a, b) { return a.date < b.date ? 1 : -1; }).slice(0, 6);
+      el.innerHTML = latest.map(function (post) {
+        return (
+          '<a class="card" href="' + escapeHtml(postHref(post)) + '" style="color:inherit;" data-track-link="artigo-' + escapeHtml(post.slug) + '">' +
+          imgSlotHTML(post.image, post.title, "Foto do artigo") +
+          '<div class="card-body">' +
+          '<span class="eyebrow" style="color:#6E6862; margin-bottom:2px;">' + escapeHtml(post.category) + "</span>" +
+          "<h3>" + escapeHtml(post.title) + "</h3>" +
+          '<span style="font-weight:600; font-size:13px; color:#604034;">Ler artigo <span class="card-arrow">→</span></span>' +
+          "</div></a>"
+        );
+      }).join("");
+    } catch (e) {
+      el.innerHTML = '<p class="empty-state">Não foi possível carregar os artigos agora.</p>';
+    }
+  })();
+</script>
+<script>
+  // Cada card/link desta página tem [data-track-link] — mesmo esquema de
+  // evento das fontes de artigo ([[RESOURCES]], ver assets/js/main.js:
+  // initResourceTracking), então os cliques aqui já aparecem agrupados em
+  // /admin/dashboard (article_slug="links") sem precisar de nada novo no
+  // Worker.
+  document.addEventListener("click", function (e) {
+    var link = e.target.closest("[data-track-link]");
+    if (!link || !window.PDEvents) return;
+    window.PDEvents.send("block", "links", { type: "resource_click", id: link.dataset.trackLink });
+  });
+</script>
+</body>
+</html>

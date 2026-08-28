@@ -75,6 +75,10 @@ collections:
                 name: sobre
                 widget: object
                 fields: *page_toggle
+              - label: "Links (bio)"
+                name: links
+                widget: object
+                fields: *page_toggle
               - label: CGV
                 name: cgv
                 widget: object
