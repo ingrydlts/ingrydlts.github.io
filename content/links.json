@@ -88,20 +88,6 @@
           "external": false
         }
       ]
-    },
-    {
-      "title": "Ferramentas",
-      "items": [
-        {
-          "icon": "🧮",
-          "title": "Planilha Financeira Super Integrada",
-          "description": "A planilha que lança seus gastos fixos sozinha, todo mês — sem copiar e colar nada.",
-          "href": "/produtos-digitais/produto/?slug=planilha-financeira-super-integrada",
-          "trackId": "planilha-financeira",
-          "external": false,
-          "price": "25€"
-        }
-      ]
     }
   ]
 }
