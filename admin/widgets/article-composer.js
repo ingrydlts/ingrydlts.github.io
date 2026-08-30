@@ -27,7 +27,9 @@
     "[[VAE-TAXA-SUCESSO]]",
     "[[VAE-NEWSLETTER]]",
     "[[EXAME-TEMPLATE-GRATIS]]",
-    "[[EXAME-PRICING]]"
+    "[[EXAME-PRICING]]",
+    "[[GALERIA]]",
+    "[[GALERIA-2]]"
   ];
   var VITRINE_BANNER_TOKEN = "[[VITRINE-BANNER]]";
   var PROPAGANDA_TOKEN = "[[PROPAGANDA]]";

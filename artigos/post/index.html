@@ -320,6 +320,29 @@
       bodyHtml = bodyHtml.replace("<p>" + token + "</p>", '<div id="' + tool.mountId + '"></div>');
     }
 
+    // "[[GALERIA]]" / "[[GALERIA-2]]" são diferentes dos tokens acima: não têm
+    // módulo fixo por artigo — as fotos vêm dos campos "Galeria de fotos" /
+    // "Galeria de fotos 2" do próprio artigo (`gallery` / `gallery2` em
+    // content/posts.json), então cada mount point carrega sua lista via
+    // atributo data-images em vez de vir hardcoded no dicionário TOOL_TOKENS.
+    // Dois campos fixos (não uma lista de N galerias) porque é só isso que os
+    // artigos precisam até agora — mais um seria só copiar o padrão abaixo.
+    const GALERIA_BLOCKS = [
+      { token: "[[GALERIA]]", field: "gallery", mountId: "tool-galeria-fotos" },
+      { token: "[[GALERIA-2]]", field: "gallery2", mountId: "tool-galeria-fotos-2" },
+    ];
+    const activeGalerias = [];
+    for (const g of GALERIA_BLOCKS) {
+      const has = bodyHtml.indexOf("<p>" + g.token + "</p>") !== -1 && Array.isArray(post[g.field]) && post[g.field].length > 0;
+      if (has) {
+        const imagesJson = JSON.stringify(post[g.field].map((im) => ({ image: im.image, caption: im.caption || "" })));
+        bodyHtml = bodyHtml.replace("<p>" + g.token + "</p>", '<div id="' + g.mountId + '" data-images="' + escapeHtml(imagesJson) + '"></div>');
+        activeGalerias.push(g.mountId);
+      } else {
+        bodyHtml = bodyHtml.replace("<p>" + g.token + "</p>", "");
+      }
+    }
+
     // Foto de capa dentro do artigo: opcional, controlada pelo campo
     // "Mostrar a foto de capa dentro do artigo" (padrão: ligada). A foto
     // continua aparecendo no card da lista de artigos de qualquer jeito —
@@ -372,6 +395,12 @@
           if (window.ScrollTrigger) window.ScrollTrigger.refresh();
         });
       }
+    }
+    for (const mountId of activeGalerias) {
+      import("/assets/js/tools/galeria-fotos.js").then((m) => {
+        m.mount(mountId);
+        if (window.ScrollTrigger) window.ScrollTrigger.refresh();
+      });
     }
   })();
 </script>
