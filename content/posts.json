@@ -247,7 +247,9 @@
       "readMinutes": 6,
       "updatedDate": "2026-08-30",
       "slug": "24h-em-reims-bares-de-champagne",
+      "logoMode": "desativado",
       "date": "2026-08-30",
+      "headerMode": "desativado",
       "gallery": [
         {
           "image": "/images/uploads/reims-degustacao-le-privileg.jpg",
@@ -269,7 +271,9 @@
       "premium": false,
       "title": "24h em Reims: os bares de champagne que valem mais que Paris",
       "image": "/images/uploads/img_1841.heic",
-      "category": "Viagens"
+      "category": "Viagens",
+      "footerMode": "desativado",
+      "showBackLink": false
     }
   ]
 }
