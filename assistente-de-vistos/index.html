@@ -6,51 +6,51 @@
 <title>Assistente de Vistos — Por Dentro</title>
 <meta name="description" content="Responda algumas perguntas e descubra o caminho certo pro seu visto pra França.">
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=IBM+Plex+Sans:wght@400;500;600&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap');
 
   :root{
-    --bg:#EEF2F6;
+    --bg:#F4F1EC;
     --surface:#FFFFFF;
-    --surface-2:#E7ECF1;
-    --bubble-bot:#F1F4F7;
-    --bubble-user:#182430;
-    --bubble-user-text:#F5F7F9;
-    --ink:#182430;
-    --ink-soft:#5B6B78;
-    --border:#D7DEE5;
-    --accent-paid:#2B5797;
-    --accent-paid-bg:#E7EEF7;
-    --accent-free:#A8752E;
+    --surface-2:#EFE9E1;
+    --bubble-bot:#F1ECE4;
+    --bubble-user:#604034;
+    --bubble-user-text:#F4F1EC;
+    --ink:#2B2B2B;
+    --ink-soft:#6E6862;
+    --border:rgba(43,43,43,.14);
+    --accent-paid:#604034;
+    --accent-paid-bg:#EDE6E1;
+    --accent-free:#B8933F;
     --accent-free-bg:#F5ECDC;
-    --accent-warn:#A8452F;
-    --accent-warn-bg:#F6E6E1;
-    --shadow: 0 1px 2px rgba(20,30,40,.06), 0 8px 24px rgba(20,30,40,.06);
+    --accent-warn:#501318;
+    --accent-warn-bg:#F3E3E1;
+    --shadow: 0 1px 2px rgba(43,30,20,.06), 0 8px 24px rgba(43,30,20,.06);
   }
   @media (prefers-color-scheme: dark){
     :root:not([data-theme="light"]){
-      --bg:#0F1319;
-      --surface:#1A222A;
-      --surface-2:#212B34;
-      --bubble-bot:#212B34;
-      --bubble-user:#E7ECF1;
-      --bubble-user-text:#182430;
-      --ink:#E7ECF1;
-      --ink-soft:#93A2AF;
-      --border:#2E3944;
-      --accent-paid:#7EA6DC;
-      --accent-paid-bg:#1E2E42;
-      --accent-free:#D8AA63;
+      --bg:#17130F;
+      --surface:#211A14;
+      --surface-2:#2A2119;
+      --bubble-bot:#2A2119;
+      --bubble-user:#EDE6DE;
+      --bubble-user-text:#211A14;
+      --ink:#F1EAE0;
+      --ink-soft:#B4A99C;
+      --border:rgba(241,234,224,.14);
+      --accent-paid:#D2B7A3;
+      --accent-paid-bg:#3A2C22;
+      --accent-free:#E3C077;
       --accent-free-bg:#3A3020;
-      --accent-warn:#E0937E;
-      --accent-warn-bg:#3B241E;
+      --accent-warn:#E3A3A0;
+      --accent-warn-bg:#3B2020;
       --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.35);
     }
   }
   :root[data-theme="dark"]{
-    --bg:#0F1319; --surface:#1A222A; --surface-2:#212B34; --bubble-bot:#212B34;
-    --bubble-user:#E7ECF1; --bubble-user-text:#182430; --ink:#E7ECF1; --ink-soft:#93A2AF;
-    --border:#2E3944; --accent-paid:#7EA6DC; --accent-paid-bg:#1E2E42;
-    --accent-free:#D8AA63; --accent-free-bg:#3A3020; --accent-warn:#E0937E; --accent-warn-bg:#3B241E;
+    --bg:#17130F; --surface:#211A14; --surface-2:#2A2119; --bubble-bot:#2A2119;
+    --bubble-user:#EDE6DE; --bubble-user-text:#211A14; --ink:#F1EAE0; --ink-soft:#B4A99C;
+    --border:rgba(241,234,224,.14); --accent-paid:#D2B7A3; --accent-paid-bg:#3A2C22;
+    --accent-free:#E3C077; --accent-free-bg:#3A3020; --accent-warn:#E3A3A0; --accent-warn-bg:#3B2020;
     --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.35);
   }
 
@@ -60,41 +60,40 @@
     margin:0;
     background:var(--bg);
     color:var(--ink);
-    font-family:'IBM Plex Sans', system-ui, sans-serif;
+    font-family:'Inter', system-ui, sans-serif;
     display:flex;
     justify-content:center;
-    padding:24px 12px;
+    height:100dvh;
+    overflow:hidden;
   }
   .phone{
     width:100%;
-    max-width:460px;
+    max-width:720px;
     background:var(--surface);
-    border-radius:22px;
-    box-shadow:var(--shadow);
-    border:1px solid var(--border);
     display:flex;
     flex-direction:column;
-    height:min(820px, 92vh);
+    height:100dvh;
     overflow:hidden;
+  }
+  @media (min-width:721px){
+    .phone{ border-left:1px solid var(--border); border-right:1px solid var(--border); }
   }
   header{
     display:flex;
     align-items:center;
     gap:10px;
-    padding:14px 16px;
+    padding:calc(14px + env(safe-area-inset-top)) 16px 14px;
     border-bottom:1px solid var(--border);
     flex:0 0 auto;
   }
   .avatar{
-    width:38px; height:38px; border-radius:50%;
-    background:var(--accent-paid-bg);
-    color:var(--accent-paid);
-    display:flex; align-items:center; justify-content:center;
-    font-family:'Fraunces', serif; font-weight:600; font-size:15px;
+    width:40px; height:40px; border-radius:50%;
+    object-fit:cover;
+    background:var(--surface-2);
     flex:0 0 auto;
   }
   header .who{display:flex; flex-direction:column; line-height:1.25;}
-  header .name{font-weight:600; font-size:14.5px;}
+  header .name{font-family:'Fraunces', serif; font-weight:600; font-size:15.5px;}
   header .status{font-size:12px; color:var(--ink-soft); display:flex; align-items:center; gap:5px;}
   header .status::before{content:''; width:7px; height:7px; border-radius:50%; background:#4CA868; display:inline-block;}
 
@@ -188,7 +187,7 @@
   }
 
   form.inputbar{
-    display:flex; gap:8px; padding:10px 12px; border-top:1px solid var(--border); flex:0 0 auto;
+    display:flex; gap:8px; padding:10px 12px calc(10px + env(safe-area-inset-bottom)); border-top:1px solid var(--border); flex:0 0 auto;
   }
   form.inputbar input{
     flex:1; border:1px solid var(--border); background:var(--surface-2); color:var(--ink);
@@ -200,10 +199,6 @@
     display:flex; align-items:center; justify-content:center; cursor:pointer; flex:0 0 auto;
   }
   form.inputbar.hidden{display:none;}
-
-  .footnote{
-    text-align:center; font-size:11px; color:var(--ink-soft); padding:14px 8px 0; max-width:460px;
-  }
 
   .modal-overlay{
     position:fixed; inset:0; background:rgba(10,14,18,.5);
@@ -241,9 +236,9 @@
 
 <div class="phone">
   <header>
-    <div class="avatar">IG</div>
+    <img class="avatar" src="/images/uploads/foto-de-perfil.jpg" alt="Ingryd Lo Tierzo">
     <div class="who">
-      <span class="name">Assistente da Ingryd</span>
+      <span class="name">Ingryd Lo Tierzo</span>
       <span class="status">online agora</span>
     </div>
   </header>
@@ -253,7 +248,6 @@
     <button type="submit" aria-label="Enviar">→</button>
   </form>
 </div>
-<p class="footnote">Um projeto <a href="/" style="color:inherit;">Por Dentro</a>.</p>
 
 <div class="modal-overlay" id="modalOverlay">
   <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
