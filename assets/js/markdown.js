@@ -61,6 +61,15 @@
 //   (texto opcional — sem nada dentro, usa a pergunta padrão. Os votos
 //   👍/👎 alimentam o painel de insights, via window.PDEvents)
 //
+//   [[AFILIADO]]
+//   Texto do botão | URL de afiliado | URL da imagem (opcional)
+//   [[/AFILIADO]]
+//   (link afiliado avulso — cada um é seu próprio bloco independente,
+//   criado pelo botão "+ Link afiliado" no editor visual do /admin e
+//   arrastável pra qualquer posição do artigo, sem depender de nenhum
+//   catálogo. Abre em nova aba com rel="sponsored", como pede a lei pra
+//   conteúdo patrocinado)
+//
 // Cada linha dentro de STATS/CARDS/LIST/STEPS/FAQ/RESOURCES usa "|" pra
 // separar as colunas. Um parágrafo que comece com "**Atenção:**" também
 // vira automaticamente uma caixa de aviso colorida (callout-warn) — não
@@ -76,7 +85,7 @@ function inline(text) {
     .replace(/\[(.+?)\]\((.+?)\)/g, '<a href="$2">$1</a>');
 }
 
-const BLOCK_TAGS = ["BAND", "STATS", "CARDS", "LIST", "STEPS", "FAQ", "RESOURCES", "CHECKLIST", "FEEDBACK"];
+const BLOCK_TAGS = ["BAND", "STATS", "CARDS", "LIST", "STEPS", "FAQ", "RESOURCES", "CHECKLIST", "FEEDBACK", "AFILIADO"];
 
 function escapeAttr(str) {
   return String(str == null ? "" : str)
@@ -223,6 +232,22 @@ export function renderFeedback(lines, ctx) {
   );
 }
 
+// Link afiliado avulso — 1 linha só: "texto do botão | url | imagem (opcional)".
+// rel="sponsored" (além de "noopener") é a marcação que Google recomenda pra
+// link patrocinado/afiliado; "nofollow" fica implícito em "sponsored".
+function renderAfiliado(lines) {
+  const [label, url, image] = (lines[0] || "").split("|").map((s) => (s || "").trim());
+  const text = label || "Ver oferta";
+  const href = url || "#";
+  return (
+    '<div class="in-article-banner"><div class="blog-banner">' +
+    (image ? '<div class="img-slot"><img src="' + escapeAttr(image) + '" alt="" loading="lazy"></div>' : "") +
+    '<div class="blog-banner-body"><div><span class="badge badge-publicite">Publicidade</span></div>' +
+    '<a class="btn btn-pill" href="' + escapeAttr(href) + '" target="_blank" rel="sponsored noopener" style="background:var(--merlot); margin-top:10px;">' +
+    inline(text) + " →</a></div></div></div>"
+  );
+}
+
 const BLOCK_RENDERERS = {
   BAND: renderBand,
   STATS: renderStats,
@@ -232,7 +257,8 @@ const BLOCK_RENDERERS = {
   FAQ: renderFaq,
   RESOURCES: renderResources,
   CHECKLIST: renderChecklist,
-  FEEDBACK: renderFeedback
+  FEEDBACK: renderFeedback,
+  AFILIADO: renderAfiliado
 };
 
 // Devolve um array de blocos HTML (cada parágrafo/título/lista/bloco rico é

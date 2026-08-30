@@ -18,7 +18,8 @@
     return;
   }
 
-  var PAIR_TAGS = ["BAND", "STATS", "CARDS", "LIST", "STEPS", "FAQ", "RESOURCES", "CHECKLIST", "FEEDBACK"];
+  var PAIR_TAGS = ["BAND", "STATS", "CARDS", "LIST", "STEPS", "FAQ", "RESOURCES", "CHECKLIST", "FEEDBACK", "AFILIADO"];
+  var AFILIADO_NAME = "AFILIADO";
   var TOOL_TOKENS = [
     "[[MAPA-FLE]]",
     "[[VAE-CHECKLIST]]",
@@ -221,6 +222,23 @@
     return s;
   }
 
+  // --- link afiliado avulso: 1 linha, "texto do botão | url | imagem" -------
+  // Cada clique em "+ Link afiliado" cria um bloco novo e independente (não
+  // um estado único como Banner/Propaganda) — por isso pode haver quantos o
+  // artigo precisar, cada um arrastável pra sua própria posição.
+  function parseAffiliateInner(inner) {
+    var parts = String(inner || "").split("|");
+    return {
+      label: (parts[0] || "").trim(),
+      url: (parts[1] || "").trim(),
+      image: (parts[2] || "").trim()
+    };
+  }
+
+  function buildAffiliateInner(label, url, image) {
+    return [label || "", url || "", image || ""].join("|");
+  }
+
   // --- parse: texto markdown → array de blocos -----------------------------
   function parseBody(text) {
     var lines = String(text || "").replace(/\r\n/g, "\n").split("\n");
@@ -313,29 +331,17 @@
     return copy;
   }
 
-  // Banner de vitrine e propaganda têm 3 estados possíveis nesse artigo:
-  // "padrao" (segue o que estiver configurado pro site inteiro, em "Vitrine
-  // dentro dos artigos" / "Anúncios nos artigos"), "ativado" (força aparecer
-  // AQUI, na posição arrastada) e "desativado" (força NÃO aparecer aqui,
-  // mesmo que o site inteiro esteja com esse banner ligado). Sem o estado
-  // "desativado" não tinha como tirar um banner que só aparece por causa do
-  // padrão do site — cada artigo só sabia "ligar", nunca "desligar".
-  function overrideState(blocks, positiveToken, negativeToken) {
-    if (hasToken(blocks, positiveToken)) return "ativado";
-    if (hasToken(blocks, negativeToken)) return "desativado";
-    return "padrao";
-  }
-
-  function setOverrideState(blocks, positiveToken, negativeToken, newState) {
-    var copy = blocks.filter(function (b) {
-      return !(b.type === "token" && (b.raw === positiveToken || b.raw === negativeToken));
-    });
-    if (newState === "padrao") return copy;
-    var tokenToInsert = newState === "ativado" ? positiveToken : negativeToken;
-    var pos = Math.max(0, Math.ceil(copy.length / 2));
-    copy.splice(pos, 0, { id: uid(), type: "token", raw: tokenToInsert });
-    return copy;
-  }
+  // Banner de vitrine tem 3 estados possíveis nesse artigo: "padrao" (segue
+  // o que estiver configurado pro site inteiro, em "Vitrine dentro dos
+  // artigos"), "ativado" (força aparecer AQUI, na posição arrastada) e
+  // "desativado" (força NÃO aparecer aqui, mesmo que o site inteiro esteja
+  // com esse banner ligado) — ver bannerState/setBannerState, acima.
+  //
+  // "[[PROPAGANDA]]" e "[[NO-PROPAGANDA]]" foram o mesmo tipo de controle
+  // pra publicidade, antes do botão "+ Link afiliado" (abaixo) substituir
+  // esse fluxo por blocos de link avulsos, repetíveis e arrastáveis. Os
+  // tokens continuam reconhecidos aqui só pra não quebrar artigos antigos
+  // que já os usam — não há mais como CRIAR um novo a partir desta tela.
 
   var SPECIAL_TOKEN_LABEL = {};
   SPECIAL_TOKEN_LABEL[VITRINE_BANNER_TOKEN] = "🎯 Banner de vitrine";
@@ -357,7 +363,13 @@
       return SPECIAL_TOKEN_LABEL[b.raw] || ("🧩 " + b.raw);
     }
     if (b.type === "list") return "• Lista";
-    if (b.type === "richblock") return "📦 Bloco " + b.name;
+    if (b.type === "richblock") {
+      if (b.name === AFILIADO_NAME) {
+        var affInfo = parseAffiliateInner(b.inner);
+        return "🔗 Link afiliado: " + (affInfo.label || "(sem texto)");
+      }
+      return "📦 Bloco " + b.name;
+    }
     var t = b.raw.trim();
     if (/^#{1,3}\s/.test(t)) return "Título: " + t.replace(/^#{1,3}\s*/, "").slice(0, 44);
     return "Parágrafo: " + (t.slice(0, 44) || "(vazio)");
@@ -410,6 +422,18 @@
       return "<ul>" + items.map(function (it) { return "<li>" + inlineLite(it) + "</li>"; }).join("") + "</ul>";
     }
     if (b.type === "richblock") {
+      if (b.name === AFILIADO_NAME) {
+        var affInfo = parseAffiliateInner(b.inner);
+        var affText = affInfo.label || "Ver oferta";
+        return (
+          '<div class="in-article-banner"><div class="blog-banner">' +
+          (affInfo.image
+            ? '<div class="img-slot"><img src="' + escapeHtml(affInfo.image) + '" alt=""></div>'
+            : '') +
+          '<div class="blog-banner-body"><div><span class="badge badge-publicite">Publicidade</span></div>' +
+          '<a class="btn btn-pill" style="background:var(--merlot,#501318); margin-top:10px;">' + escapeHtml(affText) + ' →</a></div></div></div>'
+        );
+      }
       var lineCount = b.inner.split("\n").filter(function (l) { return l.trim(); }).length;
       return (
         '<div style="border:1px dashed var(--borda); border-radius:6px; padding:12px 14px; background:#FAF8F4; margin:12px 0;">' +
@@ -475,6 +499,13 @@
   var PREMIUM_ERROR_STYLE = { fontSize: "12px", color: "#501318", margin: "8px 0 0", fontWeight: 600 };
   var ROW_LABEL_STYLE = { fontSize: "12px", fontWeight: 600, width: "130px", flexShrink: 0, paddingTop: "6px", color: "#3A3632" };
   var ROW_TEXTAREA_STYLE = { flex: "1 1 auto", minHeight: "40px", fontSize: "13px", fontFamily: FONT, border: "1px solid rgba(43,43,43,0.14)", borderRadius: "4px", padding: "6px 8px", resize: "vertical", boxSizing: "border-box" };
+  // "flex: 1 1 0" (não "1 1 auto") é o que faz esta coluna preencher o
+  // espaço da linha — com "auto" o navegador tenta calcular a largura pelo
+  // conteúdo, mas os filhos só têm largura em "%", que não conta pra esse
+  // cálculo, e a coluna inteira colapsa quase a zero.
+  var AFFILIATE_FIELDS_STYLE = { flex: "1 1 0", minWidth: 0, display: "flex", flexDirection: "column", gap: "4px" };
+  var AFFILIATE_INPUT_STYLE = { fontSize: "13px", fontFamily: FONT, border: "1px solid rgba(43,43,43,0.14)", borderRadius: "4px", padding: "6px 8px", boxSizing: "border-box", width: "100%" };
+  var ADD_AFFILIATE_BTN_STYLE = { fontFamily: FONT, fontWeight: 600, fontSize: "13px", padding: "8px 14px", borderRadius: "4px", border: "1px solid #501318", background: "#fff", color: "#501318", cursor: "pointer", marginBottom: "8px" };
   var DRAG_HANDLE_STYLE = { cursor: "grab", color: "#A8A29C", paddingTop: "6px", userSelect: "none" };
   var ROW_REMOVE_STYLE = { border: "none", background: "transparent", color: "#8A6A5C", cursor: "pointer", fontSize: "16px", lineHeight: 1, paddingTop: "4px" };
   var RAW_TEXTAREA_STYLE = { flex: "1 1 auto", width: "100%", boxSizing: "border-box", padding: "20px", fontFamily: "monospace", fontSize: "13px", border: "none", resize: "none" };
@@ -662,6 +693,15 @@
       this.updateValue(this.state.blocks.filter(function (b) { return b.id !== id; }));
     },
 
+    // Cada clique cria um bloco novo no FIM da lista (arrastável, como
+    // qualquer outro) — pode ser clicado quantas vezes for preciso, sem
+    // limite, ao contrário do Banner de vitrine (que é um estado único).
+    addAffiliateBlock: function () {
+      var copy = this.state.blocks.slice();
+      copy.push({ id: uid(), type: "richblock", name: AFILIADO_NAME, inner: buildAffiliateInner("Ver oferta", "", "") });
+      this.updateValue(copy);
+    },
+
     handleDragStart: function (index, e) {
       this.setState({ dragIndex: index });
       e.dataTransfer.effectAllowed = "move";
@@ -683,7 +723,7 @@
     render: function () {
       var blocks = this.state.blocks;
       var bannerInfo = bannerState(blocks);
-      var adState = overrideState(blocks, PROPAGANDA_TOKEN, NO_PROPAGANDA_TOKEN);
+      var affiliateCount = blocks.filter(function (b) { return b.type === "richblock" && b.name === AFILIADO_NAME; }).length;
       var hasPremiumMarker = hasToken(blocks, PREMIUM_SPLIT_TOKEN);
       return h(
         "div",
@@ -693,7 +733,7 @@
           { style: SUMMARY_BAR_STYLE },
           h("span", null, blocks.length + " bloco(s)"),
           h("span", null, "Banner: " + bannerInfo.state),
-          h("span", null, "Propaganda: " + adState),
+          h("span", null, "Links afiliados: " + affiliateCount),
           h("span", null, "Bloqueio premium: " + (hasPremiumMarker ? "ativado" : "desativado")),
           h("button", { type: "button", onClick: this.open, style: BTN_STYLE }, "Editar artigo visualmente")
         ),
@@ -760,14 +800,15 @@
             "div",
             { style: TOOLBAR_STYLE },
             this.renderBannerControl(),
-            this.renderOverrideSelect("Propaganda", PROPAGANDA_TOKEN, NO_PROPAGANDA_TOKEN),
             h(
               "label",
               { style: TOGGLE_LABEL_STYLE },
               h("input", { type: "checkbox", checked: hasPremiumMarker, onChange: this.togglePremiumMarker }),
               " 🔒 Bloqueio premium"
             ),
-            h("p", { style: HINT_STYLE }, "\"Ativado aqui\" ativa e deixa arrastável (destacado em azul) até a posição onde deve aparecer. \"Desativado aqui\" desliga só pra este artigo, mesmo que o padrão do site esteja ligado. A pré-visualização à direita mostra o resultado."),
+            h("p", { style: HINT_STYLE }, "\"Ativado aqui\" ativa e deixa arrastável (destacado em azul) até a posição onde deve aparecer. A pré-visualização à direita mostra o resultado."),
+            h("button", { type: "button", onClick: this.addAffiliateBlock, style: ADD_AFFILIATE_BTN_STYLE }, "+ Link afiliado"),
+            h("p", { style: HINT_STYLE }, "Clique quantas vezes precisar — cada clique cria um bloco novo, independente, que aparece no fim da lista abaixo e pode ser arrastado pra qualquer posição do artigo."),
             hasPremiumMarker ? this.renderPremiumPanel() : null
           ),
           rows
@@ -794,9 +835,10 @@
     renderBlockRow: function (b, i) {
       var self = this;
       var isPremiumMarker = b.type === "token" && b.raw === PREMIUM_SPLIT_TOKEN;
-      var isSpecial = b.type === "token" && (isBannerToken(b.raw) || b.raw === PROPAGANDA_TOKEN);
+      var isAffiliate = b.type === "richblock" && b.name === AFILIADO_NAME;
+      var isSpecial = (b.type === "token" && (isBannerToken(b.raw) || b.raw === PROPAGANDA_TOKEN)) || isAffiliate;
       var editableValue = b.type === "richblock" ? b.inner : b.raw;
-      var showTextarea = b.type === "text" || b.type === "list" || b.type === "richblock";
+      var showTextarea = (b.type === "text" || b.type === "list" || b.type === "richblock") && !isAffiliate;
       var rowStyle = isPremiumMarker
         ? Object.assign({}, ROW_STYLE, ROW_PREMIUM_STYLE)
         : isSpecial
@@ -814,7 +856,9 @@
         },
         h("span", { style: DRAG_HANDLE_STYLE }, "⠿"),
         h("span", { style: ROW_LABEL_STYLE }, blockLabel(b, self.state.catalogs)),
-        showTextarea
+        isAffiliate
+          ? this.renderAffiliateFields(b)
+          : showTextarea
           ? h("textarea", {
               value: editableValue,
               onChange: function (e) { self.editBlock(b.id, e.target.value); },
@@ -825,26 +869,38 @@
       );
     },
 
-    renderOverrideSelect: function (label, positiveToken, negativeToken) {
+    renderAffiliateFields: function (b) {
       var self = this;
-      var current = overrideState(this.state.blocks, positiveToken, negativeToken);
+      var info = parseAffiliateInner(b.inner);
+      function update(patch) {
+        var next = { label: info.label, url: info.url, image: info.image };
+        Object.assign(next, patch);
+        self.editBlock(b.id, buildAffiliateInner(next.label, next.url, next.image));
+      }
       return h(
         "div",
-        { style: OVERRIDE_ROW_STYLE },
-        h("span", { style: OVERRIDE_LABEL_STYLE }, label),
-        h(
-          "select",
-          {
-            value: current,
-            style: OVERRIDE_SELECT_STYLE,
-            onChange: function (e) {
-              self.updateValue(setOverrideState(self.state.blocks, positiveToken, negativeToken, e.target.value));
-            }
-          },
-          h("option", { value: "padrao" }, "Seguir padrão do site"),
-          h("option", { value: "ativado" }, "Ativado aqui (arrastável)"),
-          h("option", { value: "desativado" }, "Desativado aqui")
-        )
+        { style: AFFILIATE_FIELDS_STYLE },
+        h("input", {
+          type: "text",
+          value: info.label,
+          placeholder: "Texto do botão (ex: Ver oferta)",
+          style: AFFILIATE_INPUT_STYLE,
+          onChange: function (e) { update({ label: e.target.value }); }
+        }),
+        h("input", {
+          type: "text",
+          value: info.url,
+          placeholder: "URL de afiliado (https://...)",
+          style: AFFILIATE_INPUT_STYLE,
+          onChange: function (e) { update({ url: e.target.value }); }
+        }),
+        h("input", {
+          type: "text",
+          value: info.image,
+          placeholder: "Imagem (opcional, URL)",
+          style: AFFILIATE_INPUT_STYLE,
+          onChange: function (e) { update({ image: e.target.value }); }
+        })
       );
     },
 
