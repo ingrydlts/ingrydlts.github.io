@@ -11,9 +11,9 @@
       "logo": false
     },
     "blog": {
-      "header": true,
+      "header": false,
       "footer": false,
-      "logo": true
+      "logo": false
     },
     "institucional": {
       "header": true,
@@ -63,9 +63,9 @@
       "logo": "categoria"
     },
     "links": {
-      "header": "categoria",
+      "header": "desativado",
       "footer": "categoria",
-      "logo": "categoria"
+      "logo": "desativado"
     },
     "produtos-de-compras": {
       "header": "categoria",
