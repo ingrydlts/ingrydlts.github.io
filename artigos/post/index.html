@@ -230,6 +230,12 @@
     }
     const inBannerCfg = vitrineCfg.inArticleBanner;
     const endBannerCfg = vitrineCfg.endArticleBanner;
+    let gygPartnerId = "";
+    try {
+      gygPartnerId = (await fetchJSON("/content/analytics-config.json")).gygPartnerId || "";
+    } catch (e) {
+      gygPartnerId = "";
+    }
     const blocks = markdownToBlocks(post.body, { slug: post.slug });
     const adMidAfter = Math.min((adsCfg.positions && adsCfg.positions.midAfterBlock) || 4, blocks.length);
 
@@ -342,6 +348,19 @@
         bodyHtml = bodyHtml.replace("<p>" + g.token + "</p>", "");
       }
     }
+
+    // "[[GYG-WIDGET]]" vira o carrossel de experiências GetYourGuide (o mesmo
+    // "auto widget" configurado no painel de parceiro deles) — o ID vem do
+    // campo "ID de parceiro GetYourGuide" em /admin ("Consentimento e
+    // cookies") pra não duplicar o valor em dois lugares. O script que
+    // desenha esse carrossel é o mesmo já carregado em assets/js/analytics.js
+    // (só depois do consentimento de cookies) — este token só precisa
+    // desenhar o <div> que esse script procura.
+    const GYG_WIDGET_TOKEN = "[[GYG-WIDGET]]";
+    bodyHtml = bodyHtml.replace(
+      "<p>" + GYG_WIDGET_TOKEN + "</p>",
+      gygPartnerId ? '<div data-gyg-widget="auto" data-gyg-partner-id="' + escapeHtml(gygPartnerId) + '"></div>' : ""
+    );
 
     // Foto de capa dentro do artigo: opcional, controlada pelo campo
     // "Mostrar a foto de capa dentro do artigo" (padrão: ligada). A foto

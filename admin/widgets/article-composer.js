@@ -29,7 +29,8 @@
     "[[EXAME-TEMPLATE-GRATIS]]",
     "[[EXAME-PRICING]]",
     "[[GALERIA]]",
-    "[[GALERIA-2]]"
+    "[[GALERIA-2]]",
+    "[[GYG-WIDGET]]"
   ];
   var VITRINE_BANNER_TOKEN = "[[VITRINE-BANNER]]";
   var PROPAGANDA_TOKEN = "[[PROPAGANDA]]";
