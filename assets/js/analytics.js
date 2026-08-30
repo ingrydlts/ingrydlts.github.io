@@ -1,7 +1,8 @@
-// Por Dentro — carrega Google Analytics (GA4) e Microsoft Clarity, só depois
-// do consentimento aceito (window.PDConsent, definido em consent.js — inclua
-// esse script ANTES deste). IDs editáveis em /admin ("Consentimento e
-// cookies"). Sem IDs preenchidos, nada é carregado — mesmo com consentimento.
+// Por Dentro — carrega Google Analytics (GA4), Microsoft Clarity e o widget
+// GetYourGuide Analytics, só depois do consentimento aceito (window.PDConsent,
+// definido em consent.js — inclua esse script ANTES deste). IDs editáveis em
+// /admin ("Consentimento e cookies"). Sem IDs preenchidos, nada é carregado —
+// mesmo com consentimento.
 
 (function () {
   var loaded = false;
@@ -30,6 +31,16 @@
     })(window, document, "clarity", "script", projectId);
   }
 
+  function loadGetYourGuide(partnerId) {
+    if (!partnerId) return;
+    var s = document.createElement("script");
+    s.async = true;
+    s.defer = true;
+    s.src = "https://widget.getyourguide.com/dist/pa.umd.production.min.js";
+    s.setAttribute("data-gyg-partner-id", partnerId);
+    document.head.appendChild(s);
+  }
+
   function load() {
     if (loaded) return;
     loaded = true;
@@ -38,6 +49,7 @@
       .then(function (cfg) {
         if (cfg.ga4MeasurementId) loadGA4(cfg.ga4MeasurementId);
         if (cfg.clarityProjectId) loadClarity(cfg.clarityProjectId);
+        if (cfg.gygPartnerId) loadGetYourGuide(cfg.gygPartnerId);
       })
       .catch(function () {});
   }
