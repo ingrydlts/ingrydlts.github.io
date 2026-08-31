@@ -321,6 +321,7 @@
       "[[VAE-NEWSLETTER]]": { mountId: "tool-vae-newsletter", module: "/assets/js/tools/vae-2026.js", fn: "mountNewsletter" },
       "[[EXAME-TEMPLATE-GRATIS]]": { mountId: "tool-exame-template-gratis", module: "/assets/js/tools/exame-civico.js", fn: "mountTemplateGratis" },
       "[[EXAME-PRICING]]": { mountId: "tool-exame-pricing", module: "/assets/js/tools/exame-civico.js", fn: "mountPricing" },
+      "[[DIPLOMA-DOSSIE]]": { mountId: "tool-diploma-dossie", module: "/assets/js/tools/profissoes-reguladas.js" },
     };
     for (const [token, tool] of Object.entries(TOOL_TOKENS)) {
       bodyHtml = bodyHtml.replace("<p>" + token + "</p>", '<div id="' + tool.mountId + '"></div>');
