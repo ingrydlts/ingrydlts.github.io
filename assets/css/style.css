@@ -593,8 +593,15 @@ p { margin: 0 0 1em; color: var(--grafite); }
 .article-body { max-width: 720px; margin: 0 auto; padding: 32px 0 0; font-size: 17px; line-height: 1.8; }
 .article-body h2 { margin-top: 1.4em; scroll-margin-top: 90px; }
 .article-hero { max-width: 720px; margin: 24px auto 0; aspect-ratio: 16/9; border-radius: 6px; border: none; }
-.skip-intro-link { display: flex; width: fit-content; margin: 16px auto 0; font-size: 13px; padding: 8px 18px; }
 .article-meta { font-size: 13px; color: var(--texto-secundario); margin-bottom: 24px; }
+
+.article-toc { max-width: 720px; margin: 24px auto 0; padding: 18px 22px; background: var(--off-white); border: 1px solid var(--borda); border-radius: var(--radius-md); }
+.article-toc-title { display: block; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--texto-secundario); margin-bottom: 10px; }
+.article-toc ol { list-style: none; margin: 0; padding: 0; counter-reset: toc; display: flex; flex-direction: column; gap: 6px; }
+.article-toc li { counter-increment: toc; }
+.article-toc li::before { content: counter(toc) "."; color: var(--accent, var(--downtown-brown)); font-weight: 600; margin-right: 8px; }
+.article-toc a { font-size: 14px; color: var(--grafite); text-decoration: none; }
+.article-toc a:hover { text-decoration: underline; }
 .article-updated { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--texto-secundario); background: var(--off-white); border-radius: var(--radius-pill); padding: 4px 12px; margin: 4px 0 20px; }
 
 .in-article-banner { max-width: 720px; margin: 32px auto; }
