@@ -760,7 +760,8 @@ p { margin: 0 0 1em; color: var(--grafite); }
 .rt-product-features li::before { content: '✓'; width: 16px; height: 16px; border-radius: 50%; background: var(--accent, var(--downtown-brown)); color: #fff; font-size: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 
 /* ---------------------------------- utility -------------------------------- */
-.section { padding: 40px 0; }
+.section { padding: 40px 0; scroll-margin-top: 90px; }
+.section h2 { scroll-margin-top: 90px; }
 .section-lg { padding: 56px 0; }
 .text-center { text-align: center; }
 .stack { display: flex; flex-direction: column; }
