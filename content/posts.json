@@ -35,7 +35,7 @@
       "date": "2026-08-01",
       "premium": true,
       "title": "Tudo sobre o Exame Cívico: o que estudar e como se preparar",
-      "image": "",
+      "image": "/images/uploads/exame-civico-capa.png",
       "category": "Exame Cívico"
     },
     {
@@ -47,7 +47,7 @@
       "date": "2026-08-11",
       "url": "/artigos/post/cursos-de-frances-gratuitos-4-caminhos/",
       "title": "4 caminhos pra estudar francês de graça na França",
-      "image": "",
+      "image": "/images/uploads/cursos-frances-gratuitos-capa.png",
       "category": "Francês"
     },
     {
@@ -59,7 +59,7 @@
       "date": "2026-08-08",
       "url": "/artigos/post/vls-ts-3-meses-para-validar/",
       "title": "VLS-TS: o prazo que a maioria descobre tarde demais",
-      "image": "",
+      "image": "/images/uploads/vls-ts-capa.png",
       "category": "Visto"
     },
     {
@@ -84,7 +84,7 @@
       "date": "2026-08-05",
       "url": "/artigos/post/ajudas-de-moradia-apl-alf-als/",
       "title": "3 ajudas de moradia que talvez você tenha direito e não sabe",
-      "image": "",
+      "image": "/images/uploads/ajudas-moradia-capa.png",
       "category": "Moradia"
     },
     {
@@ -96,7 +96,7 @@
       "date": "2026-07-02",
       "url": "/artigos/post/como-conseguir-bolsa-de-estudo/",
       "title": "Dicas para conseguir bolsa de estudo",
-      "image": "",
+      "image": "/images/uploads/bolsa-de-estudo-capa.png",
       "category": "Bolsas de Estudo"
     },
     {
@@ -108,7 +108,7 @@
       "date": "2026-08-25",
       "url": "/artigos/post/quantos-tipos-de-visto-franca-2026/",
       "title": "Quantos tipos de visto existem pra brasileiro morar na França em 2026?",
-      "image": "",
+      "image": "/images/uploads/tipos-de-visto-capa.png",
       "category": "Visto"
     },
     {
@@ -132,7 +132,7 @@
       "date": "2026-08-25",
       "url": "/artigos/post/reprovei-exame-civico-posso-tentar-de-novo/",
       "title": "Reprovei no Exame Cívico obrigatório — posso tentar de novo?",
-      "image": "",
+      "image": "/images/uploads/reprovei-exame-civico-capa.png",
       "category": "Exame Cívico"
     },
     {
@@ -144,7 +144,7 @@
       "date": "2026-08-26",
       "url": "/artigos/post/casei-com-cidadao-europeu-nao-frances/",
       "title": "Casei com cidadão(ã) europeu(ia), não francês(a) — meu visto é diferente?",
-      "image": "",
+      "image": "/images/uploads/casei-cidadao-europeu-capa.png",
       "category": "Família"
     },
     {
@@ -156,7 +156,7 @@
       "date": "2026-08-26",
       "url": "/artigos/post/preciso-de-visto-antes-de-entrar-conjuge-ue/",
       "title": "Preciso de visto antes de entrar sendo cônjuge de cidadão(ã) da UE?",
-      "image": "",
+      "image": "/images/uploads/conjuge-ue-visto-capa.png",
       "category": "Família"
     },
     {
@@ -168,7 +168,7 @@
       "date": "2026-08-26",
       "url": "/artigos/post/acompanhar-alguem-franca-caminhos-reais/",
       "title": "Namorando com alguém que mora ou vai morar na França?",
-      "image": "",
+      "image": "/images/uploads/acompanhar-alguem-franca-capa.png",
       "category": "Relacionamento"
     },
     {
@@ -181,7 +181,7 @@
       "url": "/artigos/post/pvt-franca-brasil-cota-requisitos/",
       "showCoverInArticle": false,
       "title": "PVT França-Brasil: cota, requisitos e como não perder a vaga",
-      "image": "",
+      "image": "/images/uploads/pvt-cota-requisitos-capa.png",
       "category": "Visto",
       "showBackLink": false
     },
@@ -195,7 +195,7 @@
       "url": "/artigos/post/cota-pvt-esgotou-o-que-fazer/",
       "showCoverInArticle": false,
       "title": "A cota do PVT esgotou — o que fazer agora?",
-      "image": "",
+      "image": "/images/uploads/pvt-esgotou-capa.png",
       "category": "Visto"
     },
     {
