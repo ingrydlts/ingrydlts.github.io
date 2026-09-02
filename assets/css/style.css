@@ -588,6 +588,54 @@ p { margin: 0 0 1em; color: var(--grafite); }
 
 .empty-state { padding: 40px 0; color: var(--texto-secundario); font-size: 14px; grid-column: 1 / -1; }
 
+/* chips de categoria — usados na home do blog (linkam pra /artigos/categoria/)
+   e no topo da própria subpágina de categoria (breadcrumb) */
+.category-chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 20px 0 4px; }
+.category-chip {
+  font-family: var(--font-body); font-size: 13px; font-weight: 600; color: var(--grafite);
+  background: #fff; border: 1px solid var(--borda); border-radius: var(--radius-pill);
+  padding: 8px 16px; white-space: nowrap; transition: border-color .15s ease, color .15s ease;
+}
+.category-chip:hover, .category-chip:focus-visible { border-color: var(--downtown-brown); color: var(--downtown-brown); }
+.category-breadcrumb { font-size: 13px; color: var(--texto-secundario); margin: 0 0 8px; }
+.category-breadcrumb a { color: var(--texto-secundario); text-decoration: underline; }
+.category-breadcrumb a:hover { color: var(--downtown-brown); }
+
+/* "Últimos lançamentos" — card grande em destaque no topo de /artigos/ e de
+   cada /artigos/categoria/ */
+.featured-post {
+  display: grid; grid-template-columns: 1fr; gap: 0;
+  background: #fff; border: 1px solid var(--borda); border-radius: var(--radius-md);
+  overflow: hidden; color: inherit; margin: 8px 0 40px;
+  transition: box-shadow .25s ease, transform .25s ease;
+}
+.featured-post:hover, .featured-post:focus-visible { box-shadow: var(--shadow-card); transform: translateY(-2px); }
+@media (min-width: 780px) { .featured-post { grid-template-columns: 1.1fr 1fr; align-items: stretch; } }
+.featured-post .img-slot { aspect-ratio: 16/9; border-bottom: none; }
+@media (min-width: 780px) { .featured-post .img-slot { aspect-ratio: auto; height: 100%; } }
+.featured-post-body { padding: 24px; display: flex; flex-direction: column; gap: 10px; justify-content: center; }
+@media (min-width: 780px) { .featured-post-body { padding: 40px; } }
+.featured-post-tag {
+  display: inline-flex; align-self: flex-start; align-items: center; gap: 6px;
+  font-family: var(--font-body); font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+  background: var(--downtown-brown); color: #fff; border-radius: var(--radius-pill); padding: 6px 14px;
+}
+.featured-post-body h2 { margin: 4px 0 0; font-size: clamp(22px, 3vw, 28px); }
+.featured-post-body p { font-size: 14.5px; }
+
+/* "Mais curtidos" — linha de cards menores, ordenados por quantidade de
+   curtidas (ver GET /api/likes/summary) */
+.mais-curtidos { margin: 8px 0 40px; }
+.mais-curtidos-list { display: grid; gap: 16px; grid-template-columns: 1fr; }
+@media (min-width: 640px) { .mais-curtidos-list { grid-template-columns: repeat(2, 1fr); } }
+@media (min-width: 980px) { .mais-curtidos-list { grid-template-columns: repeat(4, 1fr); } }
+.mais-curtidos-card { display: flex; gap: 12px; align-items: center; background: #fff; border: 1px solid var(--borda); border-radius: var(--radius-md); padding: 12px; color: inherit; transition: border-color .15s ease, transform .15s ease; }
+.mais-curtidos-card:hover, .mais-curtidos-card:focus-visible { border-color: var(--merlot); transform: translateY(-2px); }
+.mais-curtidos-thumb { width: 56px; height: 56px; flex-shrink: 0; border-radius: var(--radius-sm); overflow: hidden; background: var(--off-white-soft); }
+.mais-curtidos-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.mais-curtidos-info h4 { margin: 0 0 4px; font-size: 13.5px; line-height: 1.35; }
+.mais-curtidos-count { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: var(--merlot); font-weight: 600; }
+
 /* ---------------------------------- article ------------------------------- */
 .article-header { max-width: 720px; margin: 0 auto; padding: 40px 0 0; }
 .article-body { max-width: 720px; margin: 0 auto; padding: 32px 0 0; font-size: 17px; line-height: 1.8; }

@@ -41,6 +41,23 @@ export function postHref(post) {
   return post.url || "/artigos/post/?slug=" + encodeURIComponent(post.slug);
 }
 
+// Slug de categoria pra URL (ex.: "Custo de Vida" → "custo-de-vida") — usado
+// pela subpágina /artigos/categoria/?cat=. Não é persistido em lugar nenhum:
+// é sempre recalculado a partir do nome da categoria em posts.json, então
+// renomear uma categoria no /admin já muda a URL correspondente sozinho.
+export function categorySlug(category) {
+  return String(category || "")
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+export function categoryHref(category) {
+  return "/artigos/categoria/?cat=" + encodeURIComponent(categorySlug(category));
+}
+
 // Um artigo só fica visível no site depois que "Publicado no site" é ligado
 // em /admin — até lá, fica pronto mas invisível: fora de qualquer lista
 // (home, blog, "Veja também", banners de categoria) e fora do acesso direto

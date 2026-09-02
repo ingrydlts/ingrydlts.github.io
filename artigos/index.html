@@ -46,12 +46,18 @@
       <p class="muted" style="max-width:60ch;">Guias e artigos sobre viver na França — burocracia, estudo e rotina, sem enrolação.</p>
     </section>
 
+    <div id="featured-post-slot"></div>
+
+    <section class="mais-curtidos" id="mais-curtidos-section" hidden>
+      <div class="eyebrow" style="color:#501318;">🔥 Mais curtidos</div>
+      <div class="mais-curtidos-list" id="mais-curtidos-list"></div>
+    </section>
+
     <div class="blog-toolbar">
       <input type="search" class="blog-search" id="search-input" placeholder="Buscar artigos...">
       <button type="button" class="filter-toggle-btn" id="filter-toggle-btn" aria-haspopup="true" aria-expanded="false" aria-controls="filter-drawer">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 6h16M7 12h10M10 18h4" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
-        Filtros
-        <span class="filter-count" id="filter-count" hidden>1</span>
+        Categorias
       </button>
     </div>
 
@@ -65,12 +71,12 @@
 </main>
 
 <div class="filter-drawer-overlay" id="filter-drawer-overlay"></div>
-<aside class="filter-drawer" id="filter-drawer" aria-hidden="true" aria-label="Filtrar artigos por categoria">
+<aside class="filter-drawer" id="filter-drawer" aria-hidden="true" aria-label="Navegar artigos por categoria">
   <div class="filter-drawer-header">
-    <h3>Filtrar por categoria</h3>
-    <button type="button" class="filter-drawer-close" id="filter-drawer-close" aria-label="Fechar filtros">✕</button>
+    <h3>Ver por categoria</h3>
+    <button type="button" class="filter-drawer-close" id="filter-drawer-close" aria-label="Fechar categorias">✕</button>
   </div>
-  <p class="filter-drawer-hint">Em ordem alfabética.</p>
+  <p class="filter-drawer-hint">Em ordem alfabética. Cada categoria tem sua própria página.</p>
   <ul class="filter-drawer-list" id="filter-drawer-list"></ul>
 </aside>
 
@@ -117,10 +123,9 @@
 <script src="/assets/js/analytics.js"></script>
 <script type="module" src="/assets/js/header.js"></script>
 <script type="module">
-  import { fetchJSON, imgSlotHTML, escapeHtml, postHref, publishedItems } from "/assets/js/render.js";
+  import { fetchJSON, imgSlotHTML, escapeHtml, postHref, publishedItems, categoryHref } from "/assets/js/render.js";
 
   let ALL_POSTS = [];
-  let activeCategory = "Todos";
 
   function postCardHTML(post) {
     return (
@@ -133,6 +138,53 @@
       '<span style="font-weight:600; font-size:13px; color:#604034;">Ler artigo →</span>' +
       "</div></a>"
     );
+  }
+
+  function featuredPostHTML(post) {
+    return (
+      '<a class="featured-post" href="' + escapeHtml(postHref(post)) + '">' +
+      imgSlotHTML(post.image, post.title, "Foto do artigo") +
+      '<div class="featured-post-body">' +
+      '<span class="featured-post-tag">✦ Últimos lançamentos</span>' +
+      "<h2>" + escapeHtml(post.title) + "</h2>" +
+      "<p>" + escapeHtml(post.excerpt) + "</p>" +
+      '<span style="font-weight:600; font-size:13px; color:#604034;">Ler artigo →</span>' +
+      "</div></a>"
+    );
+  }
+
+  function maisCurtidoCardHTML(post, count) {
+    return (
+      '<a class="mais-curtidos-card" href="' + escapeHtml(postHref(post)) + '">' +
+      '<div class="mais-curtidos-thumb">' + imgSlotHTML(post.image, post.title, "") + "</div>" +
+      '<div class="mais-curtidos-info">' +
+      "<h4>" + escapeHtml(post.title) + "</h4>" +
+      '<span class="mais-curtidos-count">♥ ' + count + (count === 1 ? " curtida" : " curtidas") + "</span>" +
+      "</div></a>"
+    );
+  }
+
+  // "Mais curtidos" só aparece quando já existe curtida de verdade registrada
+  // — sem isso, a seção fica escondida em vez de mostrar um ranking vazio ou
+  // arbitrário. Falha de rede (Worker fora do ar, sem consentimento etc.)
+  // tem o mesmo resultado: seção some, o resto da página funciona normal.
+  async function renderMaisCurtidos() {
+    let data;
+    try {
+      const res = await fetch("https://por-dentro-cms-oauth.ingrydigitalmanagement.workers.dev/api/likes/summary");
+      data = res.ok ? await res.json() : null;
+    } catch (e) {
+      data = null;
+    }
+    const counts = (data && data.counts) || {};
+    const ranked = ALL_POSTS
+      .map((post) => ({ post: post, count: counts[post.slug] || 0 }))
+      .filter((item) => item.count > 0)
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 4);
+    if (!ranked.length) return;
+    document.getElementById("mais-curtidos-list").innerHTML = ranked.map((item) => maisCurtidoCardHTML(item.post, item.count)).join("");
+    document.getElementById("mais-curtidos-section").hidden = false;
   }
 
   function bannerHTML(banner, extraClass) {
@@ -152,9 +204,7 @@
     const grid = document.getElementById("posts-grid");
     const term = (document.getElementById("search-input").value || "").trim().toLowerCase();
     const filtered = ALL_POSTS.filter((p) => {
-      const matchesCategory = activeCategory === "Todos" || p.category === activeCategory;
-      const matchesTerm = !term || (p.title + " " + p.excerpt).toLowerCase().indexOf(term) !== -1;
-      return matchesCategory && matchesTerm;
+      return !term || (p.title + " " + p.excerpt).toLowerCase().indexOf(term) !== -1;
     });
 
     if (!filtered.length) {
@@ -182,23 +232,25 @@
 
       document.getElementById("sidebar-banner").innerHTML = bannerHTML(banner);
 
-      // categorias em ordem alfabética (pt-BR), com "Todos" sempre fixo no topo
-      const categories = ["Todos"].concat(
-        Array.from(new Set(ALL_POSTS.map((p) => p.category))).sort((a, b) => a.localeCompare(b, "pt-BR"))
-      );
+      if (ALL_POSTS.length) {
+        document.getElementById("featured-post-slot").innerHTML = featuredPostHTML(ALL_POSTS[0]);
+      }
+      renderMaisCurtidos();
+
+      // categorias em ordem alfabética (pt-BR) — cada uma vira um link pra
+      // sua própria subpágina (/artigos/categoria/?cat=), não mais um filtro
+      // client-side nesta página
+      const categories = Array.from(new Set(ALL_POSTS.map((p) => p.category))).sort((a, b) => a.localeCompare(b, "pt-BR"));
 
       const listEl = document.getElementById("filter-drawer-list");
       const toggleBtn = document.getElementById("filter-toggle-btn");
       const drawerEl = document.getElementById("filter-drawer");
       const overlayEl = document.getElementById("filter-drawer-overlay");
       const closeBtn = document.getElementById("filter-drawer-close");
-      const countEl = document.getElementById("filter-count");
 
-      function renderDrawerList() {
-        listEl.innerHTML = categories.map((c) =>
-          '<li><button type="button" class="filter-drawer-item' + (c === activeCategory ? " is-active" : "") + '" data-category="' + escapeHtml(c) + '">' + escapeHtml(c) + "</button></li>"
-        ).join("");
-      }
+      listEl.innerHTML = categories.map((c) =>
+        '<li><a class="filter-drawer-item" href="' + escapeHtml(categoryHref(c)) + '">' + escapeHtml(c) + "</a></li>"
+      ).join("");
 
       function openDrawer() {
         drawerEl.classList.add("is-open");
@@ -213,23 +265,11 @@
         toggleBtn.setAttribute("aria-expanded", "false");
       }
 
-      toggleBtn.addEventListener("click", function () {
-        renderDrawerList();
-        openDrawer();
-      });
+      toggleBtn.addEventListener("click", openDrawer);
       closeBtn.addEventListener("click", closeDrawer);
       overlayEl.addEventListener("click", closeDrawer);
       document.addEventListener("keydown", function (e) {
         if (e.key === "Escape") closeDrawer();
-      });
-      listEl.addEventListener("click", function (e) {
-        const btn = e.target.closest(".filter-drawer-item");
-        if (!btn) return;
-        activeCategory = btn.dataset.category;
-        countEl.hidden = activeCategory === "Todos";
-        if (!countEl.hidden) countEl.textContent = "1";
-        render(banner);
-        closeDrawer();
       });
 
       document.getElementById("search-input").addEventListener("input", () => render(banner));

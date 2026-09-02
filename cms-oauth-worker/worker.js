@@ -53,6 +53,12 @@
  *      GET  /api/insights/summary — protegida (mesmo token de quem tem
  *                                    acesso de escrita no repositório),
  *                                    usada pelo painel /admin/dashboard/.
+ *      GET  /api/likes/summary    — público, contagem de 👍 do bloco de
+ *                                    feedback (event_type 'feedback',
+ *                                    payload.vote='up') agrupada por
+ *                                    article_slug — usada pela seção "Mais
+ *                                    curtidos" de /artigos/. Não é um botão
+ *                                    novo, reaproveita o feedback existente.
  *
 
  * Variáveis de ambiente necessárias (Settings → Variables and Secrets no Worker):
@@ -455,6 +461,25 @@ async function handleInsightsSummary(request, env) {
   });
 }
 
+// Contagem de curtidas por artigo, pra seção "Mais curtidos" de /artigos/.
+// Não é um botão novo — reaproveita o 👍 do bloco de feedback que já existe
+// em todo artigo ("Esse artigo foi útil pra você?"), então não precisa de
+// UI nova nem de mais um tipo de evento. Pública (só números agregados, sem
+// session_id nem payload) — igual à leitura de avaliações (GET /api/reviews).
+async function handleLikesSummary(request, env) {
+  if (!env.EVENTS_DB) return json({ counts: {} });
+  const rows = await env.EVENTS_DB.prepare(
+    `SELECT article_slug, COUNT(*) as count FROM events
+     WHERE event_type='feedback' AND json_extract(payload,'$.vote')='up' AND article_slug IS NOT NULL
+     GROUP BY article_slug`
+  ).all();
+  const counts = {};
+  for (const row of rows.results || []) {
+    counts[row.article_slug] = row.count;
+  }
+  return json({ counts });
+}
+
 async function handleGetReviews(request, env, url) {
   const slug = url.searchParams.get('slug');
   if (!slug) return json({ error: 'Faltou o parâmetro "slug".' }, 400);
@@ -847,6 +872,9 @@ export default {
       }
       if (url.pathname === '/api/insights/summary' && request.method === 'GET') {
         return await handleInsightsSummary(request, env);
+      }
+      if (url.pathname === '/api/likes/summary' && request.method === 'GET') {
+        return await handleLikesSummary(request, env);
       }
       if (url.pathname === '/api/reviews' && request.method === 'GET') {
         return await handleGetReviews(request, env, url);
