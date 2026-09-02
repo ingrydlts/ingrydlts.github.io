@@ -23,7 +23,7 @@
       "url": "/artigos/post/quanto-custa-viver-na-franca-2026/",
       "premium": false,
       "title": "Quanto custa viver na França em 2026?",
-      "image": "",
+      "image": "/images/uploads/custo-de-vida-franca-capa.png",
       "category": "Custo de Vida"
     },
     {
@@ -72,7 +72,7 @@
       "url": "/artigos/post/passo-a-passo-da-anef/",
       "premium": true,
       "title": "Passo a passo da ANEF",
-      "image": "",
+      "image": "/images/uploads/anef-capa.png",
       "category": "ANEF"
     },
     {
@@ -120,7 +120,7 @@
       "date": "2026-08-25",
       "url": "/artigos/post/casei-com-frances-titulo-de-residencia/",
       "title": "Casei com um(a) francês(a): o caminho completo até o título de residência",
-      "image": "",
+      "image": "/images/uploads/casei-com-frances-capa.png",
       "category": "Família"
     },
     {
@@ -283,7 +283,7 @@
       ],
       "premium": false,
       "title": "24h em Reims: os bares de champagne que valem mais que Paris",
-      "image": "/images/uploads/reims-capa-pommery.jpg",
+      "image": "/images/uploads/reims-champagne-capa.png",
       "category": "Viagens",
       "footerMode": "desativado",
       "showBackLink": false
