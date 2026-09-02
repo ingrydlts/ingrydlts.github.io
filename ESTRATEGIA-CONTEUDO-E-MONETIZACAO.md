@@ -54,9 +54,23 @@ Você resumiu isso nos stories: a rede que você quer construir (leitoras + pess
 
 ---
 
-## 4. Próximos passos concretos
+## 4. Sinais de demanda validados (respostas aos stories de hoje)
 
-1. Transformar a lista de "prometi conteúdo sobre X nos stories" em fila de artigos — primeiro item: VAE x profissões regulamentadas (OAB/CRM/CRP e equivalente francês).
+As reações que chegaram por DM no mesmo dia em que o roteiro foi ao ar já confirmam a tese da seção 1 — que tem gente disposta a pagar por informação que devia ser de graça — e apontam temas concretos pra fila de artigos. Resumo anonimizado (sem nome/@ de quem escreveu, são DMs privadas):
+
+- **Au pair em transição pós-visto**: salário de au pair não cobre o preço dos cursos/e-books que vendem essa informação; a pessoa está perdida sobre o que fazer depois do au pair pra não cair em situação irregular. → tema de artigo: "o que fazer depois do au pair" / opções de status pra não ficar ilegal.
+- **Enfermeira buscando equivalência de diploma**: já pesquisou por conta própria e sente que falta algo que não encontrou sozinha — está esperando ansiosa por conteúdo sobre validação de diploma pra profissão regulamentada. Reforça o item 1 abaixo (VAE x profissão regulamentada) e sugere um recorte específico pra enfermagem.
+- **Casal binacional em plano de contingência (Canadá → França)**: já é casada com francês, mora fora hoje mas tem plano B de voltar pra França; dúvida não é "como imigrar" mas "como me reposicionar profissionalmente" numa mudança de país dentro da própria vida já estabelecida. → tema de artigo: equivalência de experiência profissional (não só de diploma) ao mudar de país já estando estabelecida.
+- Reação recorrente ao próprio ato de responder DM 1:1 fazendo perguntas de triagem antes de indicar caminho: reforça, na prática, a ideia que você já registrou em story de resposta — "isso sempre prova meu ponto que as informações não estão de fácil acesso" e a vontade de criar uma rede que facilite esse acesso. É o mesmo racional da Fase 2 (seção 2): a triagem manual que você já faz por DM é, em miniatura, o pitch de indicação que a métrica vai te ajudar a escalar depois.
+
+---
+
+## 5. Próximos passos concretos
+
+1. Transformar a lista de "prometi conteúdo sobre X nos stories" em fila de artigos — nessa ordem, pelo que já está validado por DM:
+   - VAE x profissões regulamentadas (OAB/CRM/CRP e equivalente francês), com recorte específico pra enfermagem.
+   - O que fazer depois do au pair pra não ficar em situação irregular.
+   - Equivalência de experiência profissional (não só diploma) pra quem já está estabelecida fora e migra de novo.
 2. Definir o ritmo mínimo de publicação em `/artigos/` durante a pausa das redes, pra manter a promessa de "porta de entrada sempre tem pra onde levar".
 3. Quando o volume de artigos publicados estiver estável: primeira leitura de GA4/Clarity focada em quais posts geram mais permanência/retorno — isso vira a base do primeiro pitch de indicação (fase 2), não o ponto de partida.
 4. Só depois disso, revisitar `produtos-de-estudo.json` / `produtos-de-compras.json` e decidir as primeiras indicações com base no que a métrica mostrou, e responder às pessoas que já pediram pra ser indicadas com esse critério em mãos.
