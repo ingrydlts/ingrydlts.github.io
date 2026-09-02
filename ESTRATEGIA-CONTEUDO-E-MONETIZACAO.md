@@ -9,7 +9,7 @@ Este documento organiza por escrito o plano que você descreveu nos stories de h
 - Você vinha postando reel 2x/semana + posts informativos, com boa resposta — mas identificou um teto: Instagram é porta de entrada, não pode ser a informação final. Tem assunto que não cabe (ou ninguém quer abordar de forma estratégica) em 60 segundos de vídeo.
 - Toda vez que você direciona pra uma página externa depois de um reel, tem gente pedindo essa página — sinal de demanda real por aprofundamento, não só por mais vídeo.
 - Decisão: pausar o ritmo de postagem nas redes por um tempo pra construir o projeto (o site) que resolve isso de vez, em vez de empilhar mais conteúdo raso.
-- Princípio que você deixou explícito e que vira critério de produto, não só discurso: **não esconder em palestra/e-book/aula paga informação que já está de graça na internet.** Quem cobra, cobra por profundidade, organização e direcionamento — não por acesso à informação básica.
+- Princípio que você deixou explícito e que vira critério de produto, não só discurso: **não esconder em palestra/e-book/aula paga informação que já está de graça na internet.** Você não cobra por *acesso* a informação — cobra por *sistema*: planilhas de organização financeira, templates de Notion pra organizar documentação/estudo, e curadoria de ferramentas/serviços/produtos que você já testou. Curso vazio (aula gravada reempacotando o que já está no Google) é exatamente o que você não quer construir. Esse valor de marca já está documentado em `/sobre/`.
 - Outro ponto levantado nos stories, que já virou gancho de conteúdo próprio: VAE (validação de habilidades adquiridas) não serve pra profissão regulamentada por ordem/conselho (OAB, CRM, CRP e equivalentes na França) — o caminho de validação nesse caso é outro, e você já sinalizou que vai soltar conteúdo específico sobre isso (não hoje).
 
 ---
@@ -22,7 +22,7 @@ Objetivo: todo reel/story vira porta de entrada; toda dúvida que "não cabe" no
 
 O que já existe no site pra isso (não precisa construir):
 - `/artigos/` com busca e filtro por categoria, `content/posts.json` editável pelo `/admin` sem precisar de git.
-- Artigos premium (assinatura ou compra avulsa via Stripe) — pra quando fizer sentido cobrar por aprofundamento *extra*, mantendo a base gratuita. Isso já é coerente com o princípio da seção 1: a prévia grátis nunca desaparece.
+- Artigos premium (assinatura ou compra avulsa via Stripe) — mecanismo já pronto, mas usar com cuidado: coerente com o princípio da seção 1 só se o que fica trancado for sistema/planilha/curadoria anexados ao artigo, não a informação básica em si. A prévia grátis nunca deveria virar "metade da explicação".
 - Cross-promoção pronta entre blog e vitrine: `content/banners.json` já linka posts específicos (ex. "Tudo sobre o Exame Cívico", "Como organizar toda sua burocracia") às categorias de produto correspondentes.
 
 O que falta decidir, não construir:
@@ -48,8 +48,8 @@ O que falta decidir, não construir:
 ## 3. Princípio de tom que atravessa as duas fases
 
 Você resumiu isso nos stories: a rede que você quer construir (leitoras + pessoas que pedem indicação) **não deveria custar mais do que a imigração já custa**. Isso é um critério prático, não só um valor:
-- Informação básica: sempre grátis no blog.
-- Cobrança (premium, produto próprio, indicação paga): sempre em cima de profundidade, organização ou economia de tempo/risco — nunca em cima de reter o básico.
+- Informação básica: sempre grátis no blog — nunca é o produto pago.
+- Cobrança (produto próprio, indicação paga): sempre em cima de *sistema construído* (planilha, template de Notion, automação) ou de *curadoria testada* — nunca em cima de reter informação que já existe de graça. Curso vazio (aula reempacotando o óbvio) está fora do modelo.
 - Indicação de terceiro (afiliado/patrocínio): só entra depois que a métrica mostrar que resolve um problema real da audiência, não porque alguém pediu pra ser indicado.
 
 ---
