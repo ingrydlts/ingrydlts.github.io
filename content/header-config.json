@@ -16,7 +16,7 @@
       "href": "/produtos-de-compras/"
     },
     "blog": {
-      "enabled": false,
+      "enabled": true,
       "label": "Blog",
       "href": "/artigos/"
     },
