@@ -1,0 +1,459 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Por Dentro — template de capa de blog</title>
+
+<!--
+  ═══════════════════════════════════════════════════════════════════
+  TEMPLATE DE CAPA DE BLOG — "Por Dentro"
+  ═══════════════════════════════════════════════════════════════════
+
+  O QUE É
+  Gera as imagens de capa dos artigos (content/posts.json → campo "image").
+  Formato 1600×900 (16:9) — mesma proporção usada em .article-hero e
+  .blog-banner no site (ver assets/css/style.css). O card de listagem em
+  /artigos usa .img-slot em 4:3, que corta as laterais: por isso o texto
+  fica centrado, longe das bordas, e só o motivo/ilustração pode sangrar.
+
+  POR QUE FUNDO CHAPADO (não off-white)
+  O site inteiro usa off-white (#F4F1EC) como fundo. Uma capa no mesmo
+  tom "some" no feed e no topo do artigo. Aqui o fundo é sempre a cor
+  cheia do pilar temático — nunca off-white/creme do site.
+
+  OS 5 PILARES DE COR (1 cor = 1 grupo de categorias do blog)
+  Cada cor já existe no design system da marca (colors_and_type.css,
+  seção "role colours") — isso só aplica esse sistema às capas:
+
+    .p-tramites     verde-moss  #577328  → Visto · ANEF · Exame Cívico
+                    (ancoragem/estabilidade — trâmite oficial, tenso)
+    .p-pratico      placid-blue #8AACD2  → Custo de Vida · Moradia
+                    (didático/acessível — organização prática)
+    .p-vinculo      beje-paris  #DEB975  → Família · Relacionamento
+                    (identidade emocional — o lado humano)
+    .p-crescimento  esmeralda   #063B35  → Francês · Formação · Bolsas
+                    (introspecção/profundidade — investimento em si)
+    .p-leveza       creme       #F4E7CE  → Viagens
+                    (leveza — lifestyle, sem peso institucional)
+
+  Cor da letra: cada classe já define --ink (texto principal) e
+  --ink-dim (texto secundário, ~80% de opacidade) corretos para o
+  contraste daquele fundo — nunca escolha a cor da letra à mão.
+
+  COMO CRIAR UMA CAPA NOVA
+  1. Duplique a <section class="cover p-XXXXX"> do pilar certo
+     (copie o bloco inteiro, do <section> ao </section>).
+  2. Troque o texto:
+     - .eyebrow      → "Guia · CATEGORIA" (categoria exata do posts.json)
+     - .cover-title  → título grande; envolva a(s) palavra(s)-chave em
+                       <em>…</em> (fica em itálico + cor cheia; o resto
+                       do título fica em --ink-dim, mais discreto)
+     - .cover-desc   → 1–2 linhas, tipo meta description otimizada
+     - .cover-badge  → .diff = o diferencial numérico do artigo
+                       (ex.: "7 ETAPAS MAPEADAS", "110 CENTROS…")
+                       .updated = "Atualizado · Mês AAAA"
+  3. O ícone (.cover-motif svg): reaproveite o de um pilar já pronto,
+     ou desenhe um novo seguindo a receita abaixo. Não é obrigatório
+     mudar por artigo — o mesmo ícone serve para vários posts do
+     mesmo pilar.
+  4. Exporte como PNG 1600×900 (veja "COMO EXPORTAR" no fim do arquivo)
+     e suba em /images/uploads/, referenciando no campo "image" do
+     post em content/posts.json.
+
+  RECEITA DO ÍCONE ("papel colado" — alto relevo, elaborado)
+  Todo ícone segue o mesmo material: recorte de papel off-white/creme
+  com sombra projetada (feDropShadow), linhas de detalhe em grafite,
+  leve rotação e uma "fita washi" ou pop de cor na tonalidade --shade
+  do próprio pilar (nunca uma cor nova). É a aplicação literal dos
+  tokens --shadow-paper ("photo-on-desk") e --shadow-clip
+  ("taped/clipped") que já existem no design system da marca — só
+  nunca tinham sido usados nas capas. Composição de 2–3 elementos
+  (ex.: passaporte + carimbo) fica mais rica que um ícone só.
+
+  Os 5 exemplos abaixo são reais e prontos pra usar — ANEF, Custo de
+  Vida, Família e Reims ainda não têm capa nenhuma no posts.json, e a
+  de Francês (selo Qualité FLE) substitui a atual, que usa fundo
+  off-white igual ao do site.
+  ═══════════════════════════════════════════════════════════════════
+-->
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,700;0,9..144,800;0,9..144,900;1,9..144,500&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --grafite:#2B2B2B;
+    --off-white-soft:#FBFAF7;
+    --font-display:'Fraunces', Georgia, serif;
+    --font-body:'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{background:#ccc;}
+
+  .cover{
+    position:relative;
+    width:1600px;
+    height:900px;
+    overflow:hidden;
+    font-family:var(--font-body);
+    display:flex;
+    align-items:center;
+  }
+  .cover + .cover{ margin-top:24px; }
+
+  .cover-inner{
+    position:relative;
+    z-index:2;
+    padding:0 0 0 100px;
+    max-width:900px;
+  }
+
+  .eyebrow{
+    display:flex; align-items:center; gap:10px;
+    font-family:var(--font-body); font-weight:700; font-size:14px;
+    letter-spacing:.09em; text-transform:uppercase;
+    margin-bottom:26px;
+    color:var(--ink);
+  }
+  .eyebrow .rule{ width:34px; height:2px; background:var(--ink); display:block; }
+
+  .cover-title{
+    font-family:var(--font-display);
+    font-weight:800;
+    font-size:66px;
+    line-height:1.08;
+    letter-spacing:-0.01em;
+    max-width:740px;
+    color:var(--ink-dim);
+    margin-bottom:30px;
+  }
+  .cover-title em{
+    font-style:italic;
+    font-weight:700;
+    color:var(--ink);
+  }
+
+  .cover-desc{
+    font-family:var(--font-body);
+    font-weight:500;
+    font-size:19px;
+    line-height:1.5;
+    max-width:500px;
+    color:var(--ink-dim);
+    margin-bottom:40px;
+  }
+
+  .cover-badge{
+    display:inline-flex;
+    flex-direction:column;
+    gap:6px;
+    border:1.5px solid var(--ink);
+    border-radius:4px;
+    padding:16px 20px;
+    background:rgba(255,255,255,.06);
+  }
+  .cover-badge .diff{
+    font-family:var(--font-body); font-weight:700; font-size:14px;
+    letter-spacing:.03em; color:var(--ink);
+  }
+  .cover-badge .updated{
+    font-family:var(--font-body); font-weight:600; font-size:12px;
+    letter-spacing:.06em; text-transform:uppercase; color:var(--ink-dim);
+  }
+
+  .cover-motif{
+    position:absolute;
+    right:20px;
+    top:50%;
+    transform:translateY(-50%);
+    width:680px;
+    height:680px;
+    z-index:1;
+  }
+  .cover-motif svg{ width:100%; height:100%; overflow:visible; }
+
+  .brandmark{
+    position:absolute;
+    top:44px; right:56px;
+    z-index:2;
+    font-family:var(--font-body); font-weight:700; font-size:13px;
+    letter-spacing:.07em; text-transform:uppercase;
+    color:var(--ink);
+    opacity:.7;
+  }
+
+  /* ── pilares ───────────────────────────────────────────── */
+
+  .p-tramites{ background:#577328; --ink:#FBFAF7; --ink-dim:rgba(251,250,247,.82); --shade:#3B5219; }
+  .p-pratico{  background:#8AACD2; --ink:#2B2B2B; --ink-dim:rgba(43,43,43,.78); --shade:#5F87AE; }
+  .p-vinculo{  background:#DEB975; --ink:#2B2B2B; --ink-dim:rgba(43,43,43,.78); --shade:#B8933F; }
+  .p-crescimento{ background:#063B35; --ink:#FBFAF7; --ink-dim:rgba(251,250,247,.82); --shade:#3D7A70; }
+  .p-leveza{   background:#F4E7CE; --ink:#2B2B2B; --ink-dim:rgba(43,43,43,.78); --shade:#C9A85C; }
+
+</style>
+</head>
+<body>
+
+  <!-- 1 · TRÂMITES OFICIAIS — verde-moss — Visto / ANEF / Exame Cívico -->
+  <section class="cover p-tramites">
+    <div class="cover-motif">
+      <svg viewBox="0 0 400 400">
+        <defs>
+          <linearGradient id="paper1" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="#FFFFFF"/>
+            <stop offset="1" stop-color="#ECE6D8"/>
+          </linearGradient>
+          <filter id="shadow1" x="-50%" y="-50%" width="220%" height="220%">
+            <feDropShadow dx="10" dy="18" stdDeviation="14" flood-color="#3B5219" flood-opacity="0.45"/>
+          </filter>
+        </defs>
+
+        <!-- passport card -->
+        <g filter="url(#shadow1)" transform="rotate(-7 180 190)">
+          <rect x="70" y="60" width="210" height="270" rx="14" fill="url(#paper1)"/>
+          <rect x="98" y="90" width="70" height="86" rx="4" fill="none" stroke="#2B2B2B" stroke-width="3"/>
+          <circle cx="133" cy="118" r="14" fill="none" stroke="#2B2B2B" stroke-width="3"/>
+          <path d="M110 168c6-18 40-18 46 0" fill="none" stroke="#2B2B2B" stroke-width="3" stroke-linecap="round"/>
+          <path d="M188 100h68M188 118h68M188 136h48" stroke="#2B2B2B" stroke-width="4" stroke-linecap="round" opacity="0.55"/>
+          <path d="M98 210h150M98 230h150M98 250h110" stroke="#2B2B2B" stroke-width="4" stroke-linecap="round" opacity="0.3"/>
+        </g>
+
+        <!-- washi tape -->
+        <g transform="rotate(-7 180 190)">
+          <rect x="150" y="46" width="90" height="30" fill="#3B5219" opacity="0.85"/>
+        </g>
+
+        <!-- wax seal / stamp -->
+        <g filter="url(#shadow1)" transform="rotate(10 300 300)">
+          <circle cx="300" cy="300" r="82" fill="url(#paper1)"/>
+          <circle cx="300" cy="300" r="63" fill="none" stroke="#3B5219" stroke-width="4"/>
+          <path d="M270 300l20 20 38-42" fill="none" stroke="#2B2B2B" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+        </g>
+      </svg>
+    </div>
+    <div class="brandmark">Por Dentro</div>
+    <div class="cover-inner">
+      <div class="eyebrow"><span class="rule"></span>Guia · ANEF</div>
+      <h1 class="cover-title">Passo a passo da <em>ANEF</em> sem travar no upload</h1>
+      <p class="cover-desc">O fluxo completo da plataforma de regularização francesa — cada etapa, cada documento, sem re-trabalho.</p>
+      <div class="cover-badge">
+        <span class="diff">7 ETAPAS MAPEADAS</span>
+        <span class="updated">Atualizado · Set 2026</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2 · VIDA PRÁTICA — placid-blue — Custo de Vida / Moradia -->
+  <section class="cover p-pratico">
+    <div class="cover-motif">
+      <svg viewBox="0 0 400 400">
+        <defs>
+          <linearGradient id="paper2" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="#FFFFFF"/>
+            <stop offset="1" stop-color="#ECE6D8"/>
+          </linearGradient>
+          <filter id="shadow2" x="-50%" y="-50%" width="220%" height="220%">
+            <feDropShadow dx="10" dy="18" stdDeviation="14" flood-color="#5F87AE" flood-opacity="0.45"/>
+          </filter>
+        </defs>
+
+        <!-- receipt strip -->
+        <g filter="url(#shadow2)" transform="rotate(-6 130 220)">
+          <path d="M60 90h140v230l-12-10-12 10-12-10-12 10-12-10-12 10-12-10-12 10-12-10-12 10-12-10-12 10z" fill="url(#paper2)"/>
+          <text x="130" y="128" font-family="Georgia, serif" font-size="30" font-weight="700" fill="#5F87AE" text-anchor="middle">€</text>
+          <path d="M82 155h96M82 172h96M82 189h70M82 214h96M82 231h60" stroke="#2B2B2B" stroke-width="3.5" stroke-linecap="round" opacity="0.4"/>
+        </g>
+
+        <!-- house -->
+        <g filter="url(#shadow2)" transform="rotate(5 290 230)">
+          <path d="M215 235l75-64 75 64" fill="none" stroke="#2B2B2B" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M235 220v110h110V220" fill="url(#paper2)" stroke="#2B2B2B" stroke-width="4"/>
+          <rect x="273" y="270" width="34" height="60" fill="none" stroke="#2B2B2B" stroke-width="3.5"/>
+          <rect x="245" y="240" width="26" height="26" fill="none" stroke="#2B2B2B" stroke-width="3"/>
+        </g>
+
+        <!-- coin stack -->
+        <g filter="url(#shadow2)">
+          <ellipse cx="235" cy="345" rx="34" ry="12" fill="url(#paper2)" stroke="#5F87AE" stroke-width="3"/>
+          <ellipse cx="235" cy="330" rx="34" ry="12" fill="url(#paper2)" stroke="#5F87AE" stroke-width="3"/>
+          <ellipse cx="235" cy="315" rx="34" ry="12" fill="url(#paper2)" stroke="#5F87AE" stroke-width="3"/>
+          <text x="235" y="320" font-family="Georgia, serif" font-size="16" font-weight="700" fill="#5F87AE" text-anchor="middle">€</text>
+        </g>
+      </svg>
+    </div>
+    <div class="brandmark">Por Dentro</div>
+    <div class="cover-inner">
+      <div class="eyebrow"><span class="rule"></span>Guia · Custo de Vida</div>
+      <h1 class="cover-title">Quanto custa <em>viver na França</em> em 2026</h1>
+      <p class="cover-desc">Aluguel, mercado, transporte e as ajudas que reduzem a conta — um orçamento real, mês a mês.</p>
+      <div class="cover-badge">
+        <span class="diff">ORÇAMENTO POR CIDADE</span>
+        <span class="updated">Atualizado · Set 2026</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3 · VÍNCULOS — beje-paris — Família / Relacionamento -->
+  <section class="cover p-vinculo">
+    <div class="cover-motif">
+      <svg viewBox="0 0 400 400">
+        <defs>
+          <linearGradient id="paper3" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="#FFFFFF"/>
+            <stop offset="1" stop-color="#ECE6D8"/>
+          </linearGradient>
+          <filter id="shadow3" x="-50%" y="-50%" width="220%" height="220%">
+            <feDropShadow dx="10" dy="18" stdDeviation="14" flood-color="#B8933F" flood-opacity="0.45"/>
+          </filter>
+        </defs>
+
+        <!-- polaroid -->
+        <g filter="url(#shadow3)" transform="rotate(-6 190 190)">
+          <rect x="70" y="50" width="240" height="270" rx="6" fill="url(#paper3)"/>
+          <rect x="90" y="70" width="200" height="180" fill="#EFE3C6"/>
+          <circle cx="150" cy="150" r="34" fill="none" stroke="#2B2B2B" stroke-width="5"/>
+          <circle cx="215" cy="150" r="34" fill="none" stroke="#2B2B2B" stroke-width="5"/>
+          <path d="M182 128v46" stroke="#2B2B2B" stroke-width="4" stroke-linecap="round"/>
+        </g>
+
+        <!-- washi tape -->
+        <g transform="rotate(-6 190 190)">
+          <rect x="150" y="36" width="90" height="28" fill="#B8933F" opacity="0.85"/>
+        </g>
+
+        <!-- heart sticker -->
+        <g filter="url(#shadow3)" transform="rotate(14 300 300)">
+          <path d="M300 322s-38-24-38-52a24 24 0 0 1 38-18 24 24 0 0 1 38 18c0 28-38 52-38 52z" fill="url(#paper3)" stroke="#B8933F" stroke-width="4"/>
+        </g>
+      </svg>
+    </div>
+    <div class="brandmark">Por Dentro</div>
+    <div class="cover-inner">
+      <div class="eyebrow"><span class="rule"></span>Guia · Família</div>
+      <h1 class="cover-title">Casei com <em>francês(a)</em>: o caminho completo até o título</h1>
+      <p class="cover-desc">Do casamento ao cartão de residência — os documentos, os prazos e onde o processo costuma travar.</p>
+      <div class="cover-badge">
+        <span class="diff">LINHA DO TEMPO COMPLETA</span>
+        <span class="updated">Atualizado · Set 2026</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4 · CRESCIMENTO — esmeralda — Francês / Formação / Bolsas -->
+  <section class="cover p-crescimento">
+    <div class="cover-motif">
+      <svg viewBox="0 0 400 400">
+        <defs>
+          <linearGradient id="paper4" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="#FFFFFF"/>
+            <stop offset="1" stop-color="#ECE6D8"/>
+          </linearGradient>
+          <filter id="shadow4" x="-50%" y="-50%" width="220%" height="220%">
+            <feDropShadow dx="10" dy="18" stdDeviation="14" flood-color="#3D7A70" flood-opacity="0.45"/>
+          </filter>
+        </defs>
+
+        <!-- open book -->
+        <g filter="url(#shadow4)" transform="rotate(-4 200 250)">
+          <path d="M70 140c40-22 80-22 120 0v170c-40-22-80-22-120 0z" fill="url(#paper4)"/>
+          <path d="M320 140c-40-22-80-22-120 0v170c40-22 80-22 120 0z" fill="url(#paper4)"/>
+          <path d="M100 170h56M100 192h56M100 214h40" stroke="#2B2B2B" stroke-width="3.5" stroke-linecap="round" opacity="0.4"/>
+          <path d="M244 170h56M244 192h56M244 214h40" stroke="#2B2B2B" stroke-width="3.5" stroke-linecap="round" opacity="0.4"/>
+          <path d="M190 138v172" stroke="#2B2B2B" stroke-width="3" opacity="0.3"/>
+        </g>
+
+        <!-- bookmark ribbon -->
+        <g transform="rotate(-4 200 250)">
+          <path d="M186 60h20v90l-10-8-10 8z" fill="#3D7A70"/>
+        </g>
+
+        <!-- grad cap -->
+        <g filter="url(#shadow4)" transform="rotate(6 200 110)">
+          <path d="M200 68l96 34-96 34-96-34z" fill="url(#paper4)" stroke="#2B2B2B" stroke-width="3"/>
+          <rect x="176" y="102" width="48" height="30" fill="#EFE9DC" stroke="#2B2B2B" stroke-width="3"/>
+          <path d="M280 104v34c0 10-16 18-30 18" fill="none" stroke="#2B2B2B" stroke-width="3.5" stroke-linecap="round"/>
+          <circle cx="200" cy="68" r="6" fill="#3D7A70"/>
+        </g>
+
+        <!-- sparkle -->
+        <g fill="#FBFAF7" opacity="0.9">
+          <path d="M320 260l6 16 16 6-16 6-6 16-6-16-16-6 16-6z"/>
+        </g>
+      </svg>
+    </div>
+    <div class="brandmark">Por Dentro</div>
+    <div class="cover-inner">
+      <div class="eyebrow"><span class="rule"></span>Guia · Francês</div>
+      <h1 class="cover-title">O selo que garante seu <em>curso de francês</em></h1>
+      <p class="cover-desc">110 centros credenciados com o Label Qualité FLE — como checar antes de matricular.</p>
+      <div class="cover-badge">
+        <span class="diff">110 CENTROS CREDENCIADOS</span>
+        <span class="updated">Atualizado · Set 2026</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- 5 · LEVEZA — creme — Viagens -->
+  <section class="cover p-leveza">
+    <div class="cover-motif">
+      <svg viewBox="0 0 400 400">
+        <defs>
+          <linearGradient id="paper5" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="#FFFFFF"/>
+            <stop offset="1" stop-color="#ECE6D8"/>
+          </linearGradient>
+          <filter id="shadow5" x="-50%" y="-50%" width="220%" height="220%">
+            <feDropShadow dx="10" dy="18" stdDeviation="14" flood-color="#C9A85C" flood-opacity="0.5"/>
+          </filter>
+        </defs>
+
+        <!-- flight path -->
+        <path d="M40 300c80 10 140-10 200-70s130-70 150-40" fill="none" stroke="#2B2B2B" stroke-width="3" stroke-dasharray="2 14" stroke-linecap="round" opacity="0.35"/>
+
+        <!-- paper airplane -->
+        <g filter="url(#shadow5)" transform="rotate(-18 230 190)">
+          <path d="M120 210L310 110l-58 190-40-70-46 34-2-54z" fill="url(#paper5)" stroke="#2B2B2B" stroke-width="3.5" stroke-linejoin="round"/>
+          <path d="M212 160l40 70" stroke="#2B2B2B" stroke-width="3" opacity="0.5"/>
+          <path d="M166 190l46-34" stroke="#2B2B2B" stroke-width="3" opacity="0.5"/>
+        </g>
+
+        <!-- luggage tag -->
+        <g filter="url(#shadow5)" transform="rotate(9 300 300)">
+          <path d="M270 270h70a10 10 0 0 1 10 10v50a10 10 0 0 1-10 10h-70a10 10 0 0 1-10-10v-50a10 10 0 0 1 10-10z" fill="url(#paper5)" stroke="#2B2B2B" stroke-width="2.5"/>
+          <circle cx="285" cy="285" r="5" fill="none" stroke="#2B2B2B" stroke-width="2.5"/>
+          <path d="M300 300q30-14 30 18" fill="none" stroke="#C9A85C" stroke-width="4" stroke-linecap="round"/>
+          <text x="317" y="320" font-family="'Fraunces', Georgia, serif" font-size="22" font-weight="700" fill="#C9A85C" text-anchor="middle">PD</text>
+        </g>
+      </svg>
+    </div>
+    <div class="brandmark">Por Dentro</div>
+    <div class="cover-inner">
+      <div class="eyebrow"><span class="rule"></span>Guia · Viagens</div>
+      <h1 class="cover-title">24h em <em>Reims</em>: os bares de champagne que valem mais</h1>
+      <p class="cover-desc">Roteiro de um dia — da Maison Pommery às caves menos óbvias, sem gastar o fim de semana inteiro.</p>
+      <div class="cover-badge">
+        <span class="diff">ROTEIRO DE 1 DIA</span>
+        <span class="updated">Atualizado · Set 2026</span>
+      </div>
+    </div>
+  </section>
+
+  <!--
+    COMO EXPORTAR CADA CAPA COMO PNG (1600×900)
+
+    Opção A — DevTools (sem instalar nada):
+      1. Abra este arquivo no Chrome.
+      2. F12 → seletor de elemento → clique numa <section class="cover …">.
+      3. No painel Elements, clique com o botão direito na tag <section>
+         destacada → "Capture node screenshot".
+      4. O Chrome salva um PNG já recortado exatamente no tamanho da seção.
+
+    Opção B — linha de comando (Playwright, se já usar Node no projeto):
+      1x: npm install -D playwright && npx playwright install chromium
+      Depois, um script curto abre este arquivo e tira
+      `page.locator('.p-tramites').screenshot({ path: 'capa.png' })`
+      trocando a classe do pilar desejado.
+  -->
+
+</body>
+</html>
