@@ -55,11 +55,8 @@
 
     <div class="blog-toolbar">
       <input type="search" class="blog-search" id="search-input" placeholder="Buscar artigos...">
-      <button type="button" class="filter-toggle-btn" id="filter-toggle-btn" aria-haspopup="true" aria-expanded="false" aria-controls="filter-drawer">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 6h16M7 12h10M10 18h4" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
-        Categorias
-      </button>
     </div>
+    <div class="category-chips" id="category-chips"></div>
 
     <div class="blog-layout">
       <div class="grid grid-2" id="posts-grid">
@@ -69,16 +66,6 @@
     </div>
   </div>
 </main>
-
-<div class="filter-drawer-overlay" id="filter-drawer-overlay"></div>
-<aside class="filter-drawer" id="filter-drawer" aria-hidden="true" aria-label="Navegar artigos por categoria">
-  <div class="filter-drawer-header">
-    <h3>Ver por categoria</h3>
-    <button type="button" class="filter-drawer-close" id="filter-drawer-close" aria-label="Fechar categorias">✕</button>
-  </div>
-  <p class="filter-drawer-hint">Em ordem alfabética. Cada categoria tem sua própria página.</p>
-  <ul class="filter-drawer-list" id="filter-drawer-list"></ul>
-</aside>
 
 <footer class="site-footer">
   <div class="container">
@@ -237,40 +224,13 @@
       }
       renderMaisCurtidos();
 
-      // categorias em ordem alfabética (pt-BR) — cada uma vira um link pra
-      // sua própria subpágina (/artigos/categoria/?cat=), não mais um filtro
-      // client-side nesta página
+      // categorias em ordem alfabética (pt-BR) — expostas direto embaixo da
+      // busca, cada uma como link pra sua própria subpágina
+      // (/artigos/categoria/?cat=), sem precisar abrir nada
       const categories = Array.from(new Set(ALL_POSTS.map((p) => p.category))).sort((a, b) => a.localeCompare(b, "pt-BR"));
-
-      const listEl = document.getElementById("filter-drawer-list");
-      const toggleBtn = document.getElementById("filter-toggle-btn");
-      const drawerEl = document.getElementById("filter-drawer");
-      const overlayEl = document.getElementById("filter-drawer-overlay");
-      const closeBtn = document.getElementById("filter-drawer-close");
-
-      listEl.innerHTML = categories.map((c) =>
-        '<li><a class="filter-drawer-item" href="' + escapeHtml(categoryHref(c)) + '">' + escapeHtml(c) + "</a></li>"
+      document.getElementById("category-chips").innerHTML = categories.map((c) =>
+        '<a class="category-chip" href="' + escapeHtml(categoryHref(c)) + '">' + escapeHtml(c) + "</a>"
       ).join("");
-
-      function openDrawer() {
-        drawerEl.classList.add("is-open");
-        overlayEl.classList.add("is-open");
-        drawerEl.setAttribute("aria-hidden", "false");
-        toggleBtn.setAttribute("aria-expanded", "true");
-      }
-      function closeDrawer() {
-        drawerEl.classList.remove("is-open");
-        overlayEl.classList.remove("is-open");
-        drawerEl.setAttribute("aria-hidden", "true");
-        toggleBtn.setAttribute("aria-expanded", "false");
-      }
-
-      toggleBtn.addEventListener("click", openDrawer);
-      closeBtn.addEventListener("click", closeDrawer);
-      overlayEl.addEventListener("click", closeDrawer);
-      document.addEventListener("keydown", function (e) {
-        if (e.key === "Escape") closeDrawer();
-      });
 
       document.getElementById("search-input").addEventListener("input", () => render(banner));
 
