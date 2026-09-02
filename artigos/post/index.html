@@ -378,15 +378,39 @@
       ? imgSlotHTML(post.image, post.title, "Foto de capa do artigo").replace('class="img-slot"', 'class="img-slot article-hero"')
       : "";
 
-    // Botão "Pular introdução": padronizado em todo artigo, sem precisar de
-    // nada no /admin — acha o primeiro "##" do corpo (a primeira seção de
-    // verdade, depois da introdução) e cria um link direto pra lá. Some
-    // sozinho em artigos sem nenhum "##" (nada pra pular).
-    let skipButtonHtml = "";
-    if (/<h2(?![^>]*\bid=)/.test(bodyHtml)) {
-      bodyHtml = bodyHtml.replace(/<h2/, '<h2 id="primeira-secao"');
-      skipButtonHtml = '<a href="#primeira-secao" class="btn btn-outline btn-pill skip-intro-link">Pular introdução ↓</a>';
+    // Índice do artigo: dá um id único a cada "##" (h2) do corpo e monta uma
+    // lista de links "Nesta página" — assim quem já sabe o que procura vai
+    // direto pra seção, sem rolar o artigo inteiro. Só aparece com 2+ seções
+    // (com 0 ou 1, não há nada de fato pra navegar).
+    const usedTocIds = new Set();
+    function slugifyHeading(text) {
+      const base =
+        text
+          .normalize("NFD")
+          .replace(/[̀-ͯ]/g, "")
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/^-+|-+$/g, "") || "secao";
+      let id = base;
+      let n = 2;
+      while (usedTocIds.has(id)) id = base + "-" + n++;
+      usedTocIds.add(id);
+      return id;
     }
+    const tocItems = [];
+    bodyHtml = bodyHtml.replace(/<h2>(.*?)<\/h2>/g, (match, inner) => {
+      const id = slugifyHeading(inner.replace(/<[^>]+>/g, ""));
+      tocItems.push({ id, text: inner });
+      return '<h2 id="' + id + '">' + inner + "</h2>";
+    });
+    const tocHtml =
+      tocItems.length > 1
+        ? '<nav class="article-toc" aria-label="Sumário do artigo">' +
+          '<span class="article-toc-title">Nesta página</span>' +
+          "<ol>" +
+          tocItems.map((item) => '<li><a href="#' + item.id + '">' + item.text + "</a></li>").join("") +
+          "</ol></nav>"
+        : "";
 
     const related = pickRelated(data.items, post, 3);
 
@@ -399,7 +423,7 @@
       updatedLineHTML(post) +
       "</div>" +
       heroHtml +
-      skipButtonHtml +
+      tocHtml +
       '<div class="article-body">' + bodyHtml + "</div>" +
       trailingBannerHtml +
       "</article>" +
