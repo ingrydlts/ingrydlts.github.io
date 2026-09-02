@@ -11,10 +11,16 @@
 
   O QUE É
   Gera as imagens de capa dos artigos (content/posts.json → campo "image").
-  Formato 1600×900 (16:9) — mesma proporção usada em .article-hero e
-  .blog-banner no site (ver assets/css/style.css). O card de listagem em
-  /artigos usa .img-slot em 4:3, que corta as laterais: por isso o texto
-  fica centrado, longe das bordas, e só o motivo/ilustração pode sangrar.
+  Formato 1600×900 (16:9) — mesma proporção usada em .article-hero, mas
+  o CARD (.card .img-slot, usado em /artigos e no .blog-banner abaixo de
+  700px) SEMPRE recorta pra 4:3 com object-fit:cover centrado — em TODAS
+  as larguras de tela, não só mobile. Isso corta 200px de cada lado de
+  uma imagem 1600px (25% da largura some, 12,5% de cada lado). ZONA
+  SEGURA DE TEXTO: todo conteúdo de leitura (eyebrow, título, descrição,
+  quadro) tem que começar a partir de x≈260px — nunca mais perto da
+  borda esquerda que isso, mesmo que pareça "centrado, com sobra" no
+  preview 16:9 cheio. Só o ícone/motivo, puramente decorativo, pode
+  sangrar até a borda.
 
   POR QUE FUNDO CHAPADO (não off-white)
   O site inteiro usa off-white (#F4F1EC) como fundo. Uma capa no mesmo
@@ -104,7 +110,7 @@
   .cover-inner{
     position:relative;
     z-index:2;
-    padding:0 0 0 100px;
+    padding:0 0 0 260px; /* zona segura do recorte 4:3 do card — ver comentário no topo */
     max-width:900px;
   }
 
@@ -174,7 +180,7 @@
 
   .brandmark{
     position:absolute;
-    top:44px; right:56px;
+    top:44px; right:230px; /* zona segura do recorte 4:3 do card — ver comentário no topo */
     z-index:2;
     font-family:var(--font-body); font-weight:700; font-size:13px;
     letter-spacing:.07em; text-transform:uppercase;
