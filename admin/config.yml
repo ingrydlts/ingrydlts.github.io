@@ -248,6 +248,7 @@ collections:
             widget: list
             summary: "{{title}} ({{category}})"
             fields:
+              - { label: "🔴 Publicado no site", name: published, widget: boolean, default: false, required: false, hint: "Botão de ativação: desligado = artigo fica pronto mas INVISÍVEL no site — não aparece na home, no blog, nos filtros de categoria, em \"Veja também\" nem nos banners que puxam artigo. Quem tentar abrir o link direto também cai num aviso de \"ainda não publicado\", em vez do conteúdo. Ligue quando quiser lançar este artigo de verdade." }
               - { label: "Slug (parte da URL, sem espaço/acento)", name: slug, widget: string }
               - { label: Título, name: title, widget: string }
               - { label: "Resumo (aparece no card)", name: excerpt, widget: string }

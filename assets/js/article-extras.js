@@ -1,7 +1,7 @@
 // Por Dentro — "atualizado em" + sugestões relacionadas no fim do artigo.
 // Compartilhado entre o template dinâmico (/artigos/post/) e as páginas
 // estáticas (/artigos/post/<slug>/) — um lugar só pra manter os dois iguais.
-import { fetchJSON, imgSlotHTML, escapeHtml, postHref } from "/assets/js/render.js";
+import { fetchJSON, imgSlotHTML, escapeHtml, postHref, isPublished } from "/assets/js/render.js";
 import { renderFeedback } from "/assets/js/markdown.js";
 
 function formatDate(iso) {
@@ -15,7 +15,7 @@ function formatDate(iso) {
 // depois completa com os demais — sempre os mais recentes primeiro.
 export function pickRelated(items, post, max) {
   max = max || 3;
-  const others = items.filter((p) => p.slug !== post.slug);
+  const others = items.filter((p) => p.slug !== post.slug && isPublished(p));
   const byRecency = (a, b) =>
     new Date(b.updatedDate || b.date || 0) - new Date(a.updatedDate || a.date || 0);
   const sameCategory = others.filter((p) => p.category === post.category).sort(byRecency);
@@ -40,6 +40,18 @@ export function relatedSectionHTML(items) {
   );
 }
 
+// Mensagem que substitui o conteúdo do artigo quando ele ainda não foi
+// publicado (campo "Publicado no site" desligado em /admin) — usada tanto
+// pelo template dinâmico (/artigos/post/?slug=) quanto pelas páginas
+// estáticas, via mountArticleExtras.
+export function notPublishedHTML() {
+  return (
+    '<div class="container" style="padding:80px 0; text-align:center;">' +
+    '<p class="empty-state">Este artigo ainda não foi publicado. <a href="/artigos/">Voltar ao blog</a>.</p>' +
+    "</div>"
+  );
+}
+
 export function updatedLineHTML(post) {
   const updated = post.updatedDate || post.date;
   if (!updated) return "";
@@ -59,6 +71,18 @@ export async function mountArticleExtras(opts) {
   }
   const post = data.items.find((p) => p.slug === slug);
   if (!post) return;
+
+  // Páginas estáticas (/artigos/post/<slug>/) já têm o corpo do artigo
+  // cravado no HTML — a única forma de deixá-las de fato invisíveis (não só
+  // fora das listas) é trocar o conteúdo do <main> por este aviso enquanto
+  // "Publicado no site" estiver desligado em /admin.
+  if (!isPublished(post)) {
+    const main = document.querySelector("main");
+    if (main) main.innerHTML = notPublishedHTML();
+    const metaRobots = document.querySelector('meta[name="robots"]');
+    if (metaRobots) metaRobots.setAttribute("content", "noindex, nofollow");
+    return;
+  }
 
   if (opts.updatedMountId) {
     const el = document.getElementById(opts.updatedMountId);

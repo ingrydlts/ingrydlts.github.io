@@ -295,13 +295,13 @@
   })();
 </script>
 <script type="module">
-  import { fetchJSON, imgSlotHTML, escapeHtml, postHref } from "/assets/js/render.js";
+  import { fetchJSON, imgSlotHTML, escapeHtml, postHref, publishedItems } from "/assets/js/render.js";
 
   (async function () {
     var el = document.getElementById("pd-latest-posts");
     try {
       var data = await fetchJSON("/content/posts.json");
-      var latest = data.items.slice().sort(function (a, b) { return a.date < b.date ? 1 : -1; }).slice(0, 6);
+      var latest = publishedItems(data.items).sort(function (a, b) { return a.date < b.date ? 1 : -1; }).slice(0, 6);
       el.innerHTML = latest.map(function (post) {
         return (
           '<a class="card" href="' + escapeHtml(postHref(post)) + '" style="color:inherit;" data-track-link="artigo-' + escapeHtml(post.slug) + '">' +

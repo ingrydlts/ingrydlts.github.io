@@ -40,3 +40,15 @@ export function qs(name) {
 export function postHref(post) {
   return post.url || "/artigos/post/?slug=" + encodeURIComponent(post.slug);
 }
+
+// Um artigo só fica visível no site depois que "Publicado no site" é ligado
+// em /admin — até lá, fica pronto mas invisível: fora de qualquer lista
+// (home, blog, "Veja também", banners de categoria) e fora do acesso direto
+// (ver o gate correspondente em article-extras.js e artigos/post/index.html).
+export function isPublished(post) {
+  return !!(post && post.published === true);
+}
+
+export function publishedItems(items) {
+  return (items || []).filter(isPublished);
+}

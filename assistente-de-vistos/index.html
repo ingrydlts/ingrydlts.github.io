@@ -321,7 +321,7 @@
     const slugs = ARTIGOS_POR_OBJETIVO[objetivo] || [];
     return slugs
       .map(function(slug){ return ARTIGOS_CACHE.find(function(a){ return a.slug === slug; }); })
-      .filter(Boolean);
+      .filter(function(a){ return a && a.published === true; });
   }
 
   function waLink(extraLine){

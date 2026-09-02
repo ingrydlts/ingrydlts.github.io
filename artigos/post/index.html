@@ -91,7 +91,7 @@
   import { fetchJSON, imgSlotHTML, escapeHtml, qs } from "/assets/js/render.js";
   import { markdownToBlocks } from "/assets/js/markdown.js";
   import { resolvePremiumSlot } from "/assets/js/premium-gate.js";
-  import { pickRelated, relatedSectionHTML, updatedLineHTML } from "/assets/js/article-extras.js";
+  import { pickRelated, relatedSectionHTML, updatedLineHTML, notPublishedHTML } from "/assets/js/article-extras.js";
   import { getAdsConfig, slotHTML, insertAtIndices, activateNetworkAds, ownBannerHTML } from "/assets/js/ad-slots.js";
 
   function formatDate(iso) {
@@ -204,6 +204,12 @@
     const post = data.items.find((p) => p.slug === slug);
     if (!post) {
       root.innerHTML = '<p class="empty-state">Artigo não encontrado. <a href="/artigos/">Voltar ao blog</a>.</p>';
+      return;
+    }
+    if (post.published !== true) {
+      root.innerHTML = notPublishedHTML();
+      const metaRobots = document.querySelector('meta[name="robots"]');
+      if (metaRobots) metaRobots.setAttribute("content", "noindex, nofollow");
       return;
     }
     if (post.url) {

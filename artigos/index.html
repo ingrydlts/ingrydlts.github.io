@@ -117,7 +117,7 @@
 <script src="/assets/js/analytics.js"></script>
 <script type="module" src="/assets/js/header.js"></script>
 <script type="module">
-  import { fetchJSON, imgSlotHTML, escapeHtml, postHref } from "/assets/js/render.js";
+  import { fetchJSON, imgSlotHTML, escapeHtml, postHref, publishedItems } from "/assets/js/render.js";
 
   let ALL_POSTS = [];
   let activeCategory = "Todos";
@@ -177,7 +177,7 @@
         fetchJSON("/content/posts.json"),
         fetchJSON("/content/banners.json"),
       ]);
-      ALL_POSTS = postsData.items.slice().sort((a, b) => (a.date < b.date ? 1 : -1));
+      ALL_POSTS = publishedItems(postsData.items).sort((a, b) => (a.date < b.date ? 1 : -1));
       banner = bannersData.blogSidebar;
 
       document.getElementById("sidebar-banner").innerHTML = bannerHTML(banner);

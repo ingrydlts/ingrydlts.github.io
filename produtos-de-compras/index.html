@@ -100,7 +100,7 @@
 <script src="/assets/js/analytics.js"></script>
 <script type="module" src="/assets/js/header.js"></script>
 <script type="module">
-  import { fetchJSON, imgSlotHTML, escapeHtml, postHref } from "/assets/js/render.js";
+  import { fetchJSON, imgSlotHTML, escapeHtml, postHref, isPublished } from "/assets/js/render.js";
 
   (async function () {
     const grid = document.getElementById("product-grid");
@@ -133,7 +133,7 @@
         fetchJSON("/content/posts.json"),
       ]);
       const b = banners.categoryBanners["produtos-de-compras"];
-      const post = posts.items.find((p) => p.slug === b.postSlug);
+      const post = posts.items.find((p) => p.slug === b.postSlug && isPublished(p));
       const href = post ? postHref(post) : "/artigos/";
       document.getElementById("category-banner").innerHTML =
         '<div class="blog-banner">' +

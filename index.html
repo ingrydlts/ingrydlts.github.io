@@ -133,7 +133,7 @@
 <script src="/assets/js/vendor/ScrollTrigger.min.js"></script>
 <script src="/assets/js/scroll-animations.js"></script>
 <script type="module">
-  import { fetchJSON, imgSlotHTML, escapeHtml, postHref } from "/assets/js/render.js";
+  import { fetchJSON, imgSlotHTML, escapeHtml, postHref, publishedItems } from "/assets/js/render.js";
 
   (async function () {
     try {
@@ -148,7 +148,7 @@
 
     try {
       const posts = await fetchJSON("/content/posts.json");
-      const latest = posts.items.slice().sort((a, b) => (a.date < b.date ? 1 : -1)).slice(0, 3);
+      const latest = publishedItems(posts.items).sort((a, b) => (a.date < b.date ? 1 : -1)).slice(0, 3);
       const el = document.getElementById("home-blog-teaser");
       el.innerHTML = latest.map(function (post) {
         return (
