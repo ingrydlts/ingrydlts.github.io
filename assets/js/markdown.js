@@ -70,6 +70,19 @@
 //   catálogo. Abre em nova aba com rel="sponsored", como pede a lei pra
 //   conteúdo patrocinado)
 //
+//   [[POLL]]
+//   Pergunta da enquete
+//   Opção 1
+//   Opção 2
+//   [[/POLL]]
+//   (a 1ª linha é a pergunta, as demais viram botões de resposta única —
+//   clique é tratado em assets/js/main.js. Cada resposta vira 1 evento
+//   event_type="poll" no bot [payload: poll_id + option], pra dar
+//   conhecer a audiência sem depender de assunto sensível — idade,
+//   planos futuros etc. Some pro painel de insights, agrupado por
+//   pergunta e opção. Um voto por pessoa por enquete, travado no
+//   navegador de quem lê — igual ao FEEDBACK)
+//
 // Cada linha dentro de STATS/CARDS/LIST/STEPS/FAQ/RESOURCES usa "|" pra
 // separar as colunas. Um parágrafo que comece com "**Atenção:**" também
 // vira automaticamente uma caixa de aviso colorida (callout-warn) — não
@@ -85,7 +98,7 @@ function inline(text) {
     .replace(/\[(.+?)\]\((.+?)\)/g, '<a href="$2">$1</a>');
 }
 
-const BLOCK_TAGS = ["BAND", "STATS", "CARDS", "LIST", "STEPS", "FAQ", "RESOURCES", "CHECKLIST", "FEEDBACK", "AFILIADO"];
+const BLOCK_TAGS = ["BAND", "STATS", "CARDS", "LIST", "STEPS", "FAQ", "RESOURCES", "CHECKLIST", "FEEDBACK", "AFILIADO", "POLL"];
 
 function escapeAttr(str) {
   return String(str == null ? "" : str)
@@ -248,6 +261,33 @@ function renderAfiliado(lines) {
   );
 }
 
+// 1ª linha = pergunta, as demais viram botões de resposta única. Sem
+// aggregate ao vivo pro leitor (diferente do FEEDBACK) — o objetivo aqui é
+// dar à autora um retrato da audiência (faixa etária, planos etc.), não
+// mostrar resultado pra quem responde. Mesmo padrão de id estável do
+// CHECKLIST/FEEDBACK (slug + posição no artigo).
+function renderPoll(lines, ctx) {
+  if (!lines.length) return "";
+  const question = lines[0];
+  const options = lines.slice(1);
+  const slug = (ctx && ctx.slug) || "artigo";
+  const blockId = slug + "-poll-" + ((ctx && ctx.index) || 0);
+  const optionsHtml = options
+    .map(
+      (label, i) =>
+        '<button type="button" class="rt-poll-option" data-poll-option="' + escapeAttr(label) + '">' +
+        inline(label) + "</button>"
+    )
+    .join("");
+  return (
+    '<div class="rt-poll" data-poll-id="' + escapeAttr(blockId) + '" data-article-slug="' + escapeAttr(slug) + '">' +
+    '<p class="rt-poll-q">' + inline(question) + "</p>" +
+    '<div class="rt-poll-options">' + optionsHtml + "</div>" +
+    '<p class="rt-poll-thanks" hidden>Valeu por responder! 🙏</p>' +
+    "</div>"
+  );
+}
+
 const BLOCK_RENDERERS = {
   BAND: renderBand,
   STATS: renderStats,
@@ -258,7 +298,8 @@ const BLOCK_RENDERERS = {
   RESOURCES: renderResources,
   CHECKLIST: renderChecklist,
   FEEDBACK: renderFeedback,
-  AFILIADO: renderAfiliado
+  AFILIADO: renderAfiliado,
+  POLL: renderPoll
 };
 
 // Devolve um array de blocos HTML (cada parágrafo/título/lista/bloco rico é

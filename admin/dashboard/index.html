@@ -79,6 +79,12 @@
     </div>
 
     <div class="ins-section">
+      <h2>Enquetes nos artigos</h2>
+      <p class="muted">Respostas do bloco [[POLL]] — perfil de audiência (faixa etária, planos futuros etc.), agrupado por pergunta e opção escolhida.</p>
+      <div id="ins-polls"></div>
+    </div>
+
+    <div class="ins-section">
       <h2>Feedback dos artigos</h2>
       <p class="muted">Votos no botão "esse artigo te ajudou?", por artigo — os com mais 👎 proporcional valem revisão.</p>
       <div id="ins-feedback"></div>
@@ -192,6 +198,7 @@
     renderStats(data.overview);
     renderBotFunnel(data.botFunnel || []);
     renderBotOutcomes(data.botOutcomes || []);
+    renderPolls(data.polls || []);
     renderFeedback(data.feedback || []);
     renderChecklist(data.checklist || []);
     renderFaqOpens(data.faqOpens || []);
@@ -243,6 +250,36 @@
       html += "<tr><td>" + escapeHtml(r.outcome || "(sem categoria)") + '</td><td class="num">' + r.sessions + '</td><td class="num">' + pct + "%</td></tr>";
     });
     html += "</tbody></table>";
+    el.innerHTML = html;
+  }
+
+  // Genérico por design — não tem lista fixa de perguntas (diferente do
+  // funil do bot), então qualquer [[POLL]] novo adicionado a um artigo já
+  // aparece aqui sem precisar mexer nesse painel.
+  function renderPolls(rows) {
+    var el = document.getElementById("ins-polls");
+    if (!rows.length) {
+      el.innerHTML = '<p class="ins-empty">Ainda não há respostas de enquete em nenhum artigo.</p>';
+      return;
+    }
+    var byPoll = {};
+    rows.forEach(function (r) {
+      var key = r.poll_id || "(sem id)";
+      if (!byPoll[key]) byPoll[key] = [];
+      byPoll[key].push(r);
+    });
+    var html = "";
+    Object.keys(byPoll).forEach(function (pollId) {
+      var opts = byPoll[pollId];
+      var total = opts.reduce(function (sum, r) { return sum + r.votes; }, 0);
+      html += '<div style="margin-bottom:18px;"><p style="font-weight:600; font-size:13.5px; margin:0 0 8px;">' + escapeHtml(pollId) + ' <span class="muted" style="font-weight:400;">(' + total + " " + (total === 1 ? "resposta" : "respostas") + ')</span></p>';
+      html += '<table class="ins-table"><thead><tr><th>Opção</th><th>Votos</th><th>%</th></tr></thead><tbody>';
+      opts.forEach(function (r) {
+        var pct = total ? Math.round((r.votes / total) * 100) : 0;
+        html += "<tr><td>" + escapeHtml(r.option || "(sem opção)") + '</td><td class="num">' + r.votes + '</td><td class="num">' + pct + "%</td></tr>";
+      });
+      html += "</tbody></table></div>";
+    });
     el.innerHTML = html;
   }
 
