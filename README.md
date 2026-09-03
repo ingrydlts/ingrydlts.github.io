@@ -104,6 +104,18 @@ funcionando por até 14 dias até expirar — uma troca deliberada por simplicid
 aqui pra não ser surpresa depois. Já o token de **compra avulsa** não expira de propósito — é um
 pagamento único, sem cobrança recorrente pra reconferir, então o acesso àquele artigo é permanente.
 
+## Assistente de Parcerias (`/admin/parcerias/`)
+
+Ferramenta privada — não linkada em nenhuma navegação pública, feita pra você mesma usar ao
+receber uma proposta de parceria/publi. Cruza os dados da proposta com sua bússola de marca
+(pilares editoriais, tom de voz, limites inegociáveis do Por Dentro) e com uma tabela de valores
+que você preenche uma vez, e devolve: um veredito (aceitar / negociar / recusar), os motivos,
+o valor sugerido comparado ao ofertado, e um texto pronto pra responder em cada um dos três tons.
+
+Roda 100% no navegador — sem backend, sem IA, sem envio de dados a servidor nenhum. Tabela de
+valores e histórico de propostas avaliadas ficam salvos só em `localStorage`, só nesse aparelho;
+trocar de navegador ou limpar dados do site apaga o que foi salvo.
+
 ## Configurar o /admin (Decap CMS)
 
 O `/admin` é um painel visual (Decap CMS) pra editar produtos, banners e posts sem mexer em código, com login via GitHub (proxy OAuth em [`cms-oauth-worker/`](cms-oauth-worker/)) — **já publicado e funcionando** em `ingrydlts.github.io/admin`. Editar um produto/banner/post e clicar em "Publish" cria um commit direto no repositório.

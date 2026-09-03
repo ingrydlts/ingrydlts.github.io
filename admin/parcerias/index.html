@@ -1,0 +1,728 @@
+<!-- Ferramenta privada: avalia propostas de parceria/publi contra o posicionamento
+     do Por Dentro (pilares editoriais, tom de voz, limites inegociáveis) e contra
+     uma tabela de valores que a Ingryd preenche. Roda 100% no navegador — nada é
+     enviado a servidor nenhum, tudo fica salvo em localStorage, só neste aparelho.
+     Não está linkada em nenhuma navegação pública. -->
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Assistente de Parcerias — Por Dentro</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,600;9..144,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/css/style.css">
+<style>
+  .par-wrap { max-width: 780px; margin: 0 auto; padding: 40px 20px 96px; }
+  .par-head { margin-bottom: 28px; }
+  .par-head p.lead { max-width: 62ch; color: var(--texto-secundario); }
+
+  .par-section { margin-bottom: 36px; }
+  .par-section h2 { font-size: 19px; margin: 0 0 4px; }
+  .par-section .muted { font-size: 13.5px; color: var(--texto-secundario); margin: 0 0 16px; }
+
+  details.compass { background: #fff; border: 1px solid var(--borda); border-radius: var(--radius-md); padding: 18px 22px; margin-bottom: 36px; }
+  details.compass summary { cursor: pointer; font-family: var(--font-display); font-weight: 700; font-size: 17px; list-style: none; display: flex; align-items: center; justify-content: space-between; }
+  details.compass summary::-webkit-details-marker { display: none; }
+  details.compass summary .car { transition: transform .2s; color: var(--texto-secundario); font-size: 13px; }
+  details.compass[open] summary .car { transform: rotate(180deg); }
+  .compass-body { margin-top: 16px; }
+  .compass-grid { display: grid; gap: 18px; }
+  @media (min-width: 620px) { .compass-grid { grid-template-columns: 1fr 1fr; } }
+  .compass-block h3 { font-size: 13px; text-transform: uppercase; letter-spacing: .05em; color: var(--downtown-brown); margin: 0 0 8px; }
+  .compass-block ul { margin: 0; padding-left: 18px; font-size: 13.5px; color: var(--grafite); }
+  .compass-block li { margin-bottom: 6px; }
+  .compass-block.limites h3 { color: var(--merlot); }
+  .compass-note { font-size: 12.5px; color: var(--texto-secundario); margin-top: 14px; border-top: 1px solid var(--borda-suave); padding-top: 12px; }
+
+  .card-box { background: #fff; border: 1px solid var(--borda); border-radius: var(--radius-md); padding: 22px 22px 24px; }
+
+  .field-grid { display: grid; grid-template-columns: 1fr; gap: 14px; }
+  @media (min-width: 560px) { .field-grid.cols-2 { grid-template-columns: 1fr 1fr; } }
+  @media (min-width: 620px) { .field-grid.cols-3 { grid-template-columns: 1fr 1fr 1fr; } }
+  .field label { display: block; font-size: 12.5px; font-weight: 600; color: var(--grafite); margin-bottom: 5px; }
+  .field .hint { display: block; font-size: 11.5px; font-weight: 400; color: var(--texto-secundario); margin-top: 3px; }
+  .field input[type="text"], .field input[type="number"], .field select, .field textarea {
+    width: 100%; font-family: var(--font-body); font-size: 14px; padding: 10px 12px;
+    border: 1px solid var(--borda); border-radius: var(--radius-sm); background: var(--off-white-soft); color: var(--grafite);
+  }
+  .field input:focus, .field select:focus, .field textarea:focus { outline: 2px solid var(--placid-blue); outline-offset: 1px; }
+  .check-row { display: flex; align-items: flex-start; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--borda-suave); }
+  .check-row:last-child { border-bottom: none; }
+  .check-row input { margin-top: 3px; flex-shrink: 0; }
+  .check-row .txt { font-size: 13.5px; }
+  .check-row .txt b { display: block; font-size: 13.5px; }
+  .check-row .txt span { color: var(--texto-secundario); font-size: 12.5px; }
+
+  fieldset { border: none; padding: 0; margin: 0 0 22px; }
+  fieldset legend { font-family: var(--font-display); font-weight: 700; font-size: 15px; margin-bottom: 10px; padding: 0; }
+
+  .rate-saved { font-size: 12px; color: var(--verde-moss); margin-top: 10px; min-height: 16px; }
+
+  .qty-row { display: grid; grid-template-columns: 1fr 90px; gap: 10px; align-items: end; margin-bottom: 12px; }
+
+  .result-box[hidden] { display: none; }
+  .verdict-banner { border-radius: var(--radius-md); padding: 20px 22px; margin-bottom: 20px; }
+  .verdict-banner.aceitar { background: #EEF3E7; border: 1px solid var(--verde-moss); }
+  .verdict-banner.negociar { background: #F5ECDC; border: 1px solid var(--beje-paris-text); }
+  .verdict-banner.recusar { background: #F3E3E1; border: 1px solid var(--merlot); }
+  .verdict-title { font-family: var(--font-display); font-weight: 700; font-size: 22px; margin: 0 0 4px; }
+  .verdict-banner.aceitar .verdict-title { color: var(--verde-moss); }
+  .verdict-banner.negociar .verdict-title { color: var(--beje-paris-text); }
+  .verdict-banner.recusar .verdict-title { color: var(--merlot); }
+  .verdict-sub { font-size: 13.5px; color: var(--grafite); margin: 0; }
+
+  .fit-bar-wrap { display: flex; align-items: center; gap: 10px; margin: 14px 0 4px; }
+  .fit-bar-track { flex: 1; height: 8px; border-radius: 4px; background: var(--borda-suave); overflow: hidden; }
+  .fit-bar-fill { height: 100%; border-radius: 4px; background: var(--downtown-brown); }
+  .fit-label { font-size: 12px; color: var(--texto-secundario); white-space: nowrap; }
+
+  .money-compare { display: flex; gap: 16px; flex-wrap: wrap; margin: 16px 0; }
+  .money-tile { background: #fff; border: 1px solid var(--borda); border-radius: var(--radius-sm); padding: 12px 16px; min-width: 140px; }
+  .money-tile .lbl { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--texto-secundario); display: block; margin-bottom: 4px; }
+  .money-tile .val { font-family: var(--font-display); font-weight: 700; font-size: 20px; color: var(--grafite); }
+
+  .reason-list { margin: 0 0 18px; }
+  .reason-list h4 { font-size: 12.5px; text-transform: uppercase; letter-spacing: .04em; margin: 0 0 8px; }
+  .reason-list.deal h4 { color: var(--merlot); }
+  .reason-list.risk h4 { color: var(--beje-paris-text); }
+  .reason-list.pos h4 { color: var(--verde-moss); }
+  .reason-list ul { margin: 0; padding-left: 18px; font-size: 13.5px; }
+  .reason-list li { margin-bottom: 6px; }
+  .reason-list[hidden] { display: none; }
+
+  .script-tabs { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+  .script-tab { font-size: 12.5px; font-weight: 600; padding: 7px 14px; border-radius: var(--radius-pill); border: 1px solid var(--borda); background: #fff; color: var(--grafite); cursor: pointer; }
+  .script-tab.active { background: var(--downtown-brown); border-color: var(--downtown-brown); color: #fff; }
+  .script-out { width: 100%; min-height: 200px; font-family: var(--font-body); font-size: 13.5px; line-height: 1.55; padding: 16px; border: 1px solid var(--borda); border-radius: var(--radius-sm); background: var(--off-white-soft); color: var(--grafite); resize: vertical; }
+  .copy-row { display: flex; justify-content: flex-end; margin-top: 10px; }
+  .copy-msg { font-size: 12px; color: var(--verde-moss); align-self: center; margin-right: 10px; }
+
+  table.hist-table { width: 100%; border-collapse: collapse; background: #fff; border: 1px solid var(--borda); border-radius: 8px; overflow: hidden; font-size: 13px; }
+  table.hist-table th, table.hist-table td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--borda-suave); vertical-align: top; }
+  table.hist-table th { font-size: 10.5px; text-transform: uppercase; letter-spacing: .04em; color: var(--texto-secundario); font-weight: 700; background: var(--off-white-soft); }
+  table.hist-table tr:last-child td { border-bottom: none; }
+  .hist-empty { color: var(--texto-secundario); font-size: 13.5px; padding: 14px 0; }
+  .hist-tag { display: inline-block; font-size: 10.5px; font-weight: 700; text-transform: uppercase; padding: 3px 8px; border-radius: 3px; }
+  .hist-tag.aceitar { background: #EEF3E7; color: var(--verde-moss); }
+  .hist-tag.negociar { background: #F5ECDC; color: var(--beje-paris-text); }
+  .hist-tag.recusar { background: #F3E3E1; color: var(--merlot); }
+  .hist-remove { background: none; border: none; color: var(--texto-secundario); font-size: 12px; cursor: pointer; text-decoration: underline; padding: 0; }
+
+  .checklist-ref ul { margin: 0; padding-left: 20px; font-size: 13.5px; }
+  .checklist-ref li { margin-bottom: 8px; }
+
+  .privacy-note { font-size: 12px; color: var(--texto-secundario); text-align: center; margin-top: 48px; }
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="/" class="site-logo"><img src="/images/logo-por-dentro.png" alt="Por Dentro" class="site-logo-img">Por Dentro</a>
+</header>
+
+<main class="par-wrap">
+
+  <div class="par-head">
+    <span class="eyebrow" style="color:#604034;">Ferramenta privada</span>
+    <h1 style="margin-bottom:8px;">Assistente de Parcerias</h1>
+    <p class="lead">Pra decidir cada proposta que chega olhando pros dois lados de uma vez: o financeiro de agora e a marca que você tá construindo a longo prazo. Preenche a proposta, a ferramenta cruza com sua bússola de marca e sua tabela de valores, e te devolve um veredito, os motivos e um texto pronto pra responder.</p>
+  </div>
+
+  <details class="compass" id="compass" open>
+    <summary>Sua bússola de marca <span class="car">▾</span></summary>
+    <div class="compass-body">
+      <div class="compass-grid">
+        <div class="compass-block">
+          <h3>Pilares editoriais</h3>
+          <ul>
+            <li>Burocracia e documentos (vistos, ANEF, exame cívico, títulos de séjour)</li>
+            <li>Trabalho e mercado de trabalho francês</li>
+            <li>Moradia e vida prática</li>
+            <li>Estudos (incluindo sua própria trajetória — CAP, Mestrado em Alternância)</li>
+            <li>Imigração e adaptação no dia a dia</li>
+          </ul>
+        </div>
+        <div class="compass-block">
+          <h3>Tom de voz</h3>
+          <ul>
+            <li>Conversa entre amigas inteligentes — nunca aula, nunca desabafo, nunca propaganda de turismo</li>
+            <li>Primeira pessoa, experiência real, sem prometer milagre e sem colocar medo</li>
+            <li>Fontes oficiais, nunca "dizem por aí"</li>
+            <li>Teste: "isso soa como eu diria pra uma amiga que acabou de chegar em Paris?"</li>
+          </ul>
+        </div>
+        <div class="compass-block limites" style="grid-column: 1 / -1;">
+          <h3>Limites inegociáveis</h3>
+          <ul>
+            <li>Publi sempre identificada como publi — nunca escondida (além de ser lei na França, é a base da confiança que você construiu)</li>
+            <li>Nunca prometer resultado migratório, financeiro ou de saúde garantido — nem pra você, nem em nome da marca</li>
+            <li>Você mantém aprovação final do que vai ao ar, e escreve com a sua própria voz — roteiro corporativo fechado não passa no teste da "amiga inteligente"</li>
+            <li>Nada que compita ou confunda a audiência com seus próprios produtos digitais</li>
+          </ul>
+        </div>
+      </div>
+      <p class="compass-note">Esse resumo foi montado a partir do que já está documentado sobre o Por Dentro (site, "Sobre", guia de marca). Edite mentalmente onde não bater 100% com o que você pensa hoje — é ponto de partida, não sentença.</p>
+    </div>
+  </details>
+
+  <section class="par-section">
+    <h2>Sua tabela de valores</h2>
+    <p class="muted">Preenche uma vez com o que você cobra por formato (em €). A ferramenta usa isso — e só isso — pra calcular o valor sugerido de cada proposta. Fica salvo só neste navegador.</p>
+    <div class="card-box">
+      <div class="field-grid cols-3">
+        <div class="field">
+          <label for="rate-reel">Reel / vídeo curto</label>
+          <input type="number" id="rate-reel" min="0" step="1" placeholder="0">
+        </div>
+        <div class="field">
+          <label for="rate-stories">Pacote de Stories (3)</label>
+          <input type="number" id="rate-stories" min="0" step="1" placeholder="0">
+        </div>
+        <div class="field">
+          <label for="rate-carrossel">Carrossel / post estático</label>
+          <input type="number" id="rate-carrossel" min="0" step="1" placeholder="0">
+        </div>
+        <div class="field">
+          <label for="rate-youtube">Vídeo dedicado (YouTube)</label>
+          <input type="number" id="rate-youtube" min="0" step="1" placeholder="0">
+        </div>
+        <div class="field">
+          <label for="rate-newsletter">Menção em newsletter / link na bio</label>
+          <input type="number" id="rate-newsletter" min="0" step="1" placeholder="0">
+        </div>
+      </div>
+      <div class="field-grid cols-3" style="margin-top:18px;">
+        <div class="field">
+          <label for="rate-exclusividade">Acréscimo por exclusividade <span class="hint">% por mês pedido</span></label>
+          <input type="number" id="rate-exclusividade" min="0" step="1">
+        </div>
+        <div class="field">
+          <label for="rate-ads">Acréscimo se a marca for impulsionar em anúncio <span class="hint">%</span></label>
+          <input type="number" id="rate-ads" min="0" step="1">
+        </div>
+        <div class="field">
+          <label for="rate-urgencia">Acréscimo por prazo apertado <span class="hint">%</span></label>
+          <input type="number" id="rate-urgencia" min="0" step="1">
+        </div>
+      </div>
+      <p class="rate-saved" id="rate-saved-msg"></p>
+    </div>
+  </section>
+
+  <section class="par-section">
+    <h2>Avaliar uma proposta nova</h2>
+    <p class="muted">Preenche com o que a marca te mandou. Quanto mais completo, mais preciso o veredito.</p>
+    <form class="card-box" id="proposta-form">
+
+      <fieldset>
+        <legend>A marca</legend>
+        <div class="field-grid cols-2">
+          <div class="field">
+            <label for="p-marca">Nome da marca</label>
+            <input type="text" id="p-marca" placeholder="Ex: Nome da empresa">
+          </div>
+          <div class="field">
+            <label for="p-segmento">Segmento</label>
+            <select id="p-segmento">
+              <option value="alinhado">Fala direto com seus pilares (imigração, burocracia, trabalho, estudos, vida na França)</option>
+              <option value="geral">Vida cotidiana, viagem, produto de uso pessoal — compatível mas não é seu tema central</option>
+              <option value="financeiro">Produto financeiro / investimento / crédito</option>
+              <option value="saude">Saúde, estética ou emagrecimento</option>
+              <option value="sem-relacao">Sem relação nenhuma com o canal</option>
+            </select>
+          </div>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>O que estão pedindo</legend>
+        <div class="qty-row">
+          <div class="field" style="margin:0;"><label style="margin:0;">Reels / vídeos curtos</label></div>
+          <div class="field" style="margin:0;"><input type="number" id="p-qtd-reel" min="0" step="1" value="0"></div>
+        </div>
+        <div class="qty-row">
+          <div class="field" style="margin:0;"><label style="margin:0;">Pacotes de Stories (3 cada)</label></div>
+          <div class="field" style="margin:0;"><input type="number" id="p-qtd-stories" min="0" step="1" value="0"></div>
+        </div>
+        <div class="qty-row">
+          <div class="field" style="margin:0;"><label style="margin:0;">Carrosséis / posts estáticos</label></div>
+          <div class="field" style="margin:0;"><input type="number" id="p-qtd-carrossel" min="0" step="1" value="0"></div>
+        </div>
+        <div class="qty-row">
+          <div class="field" style="margin:0;"><label style="margin:0;">Vídeos dedicados (YouTube)</label></div>
+          <div class="field" style="margin:0;"><input type="number" id="p-qtd-youtube" min="0" step="1" value="0"></div>
+        </div>
+        <div class="qty-row">
+          <div class="field" style="margin:0;"><label style="margin:0;">Menções em newsletter / bio</label></div>
+          <div class="field" style="margin:0;"><input type="number" id="p-qtd-newsletter" min="0" step="1" value="0"></div>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Condições</legend>
+        <div class="field-grid cols-2">
+          <div class="field">
+            <label for="p-valor-ofertado">Valor ofertado pela marca (€)</label>
+            <input type="number" id="p-valor-ofertado" min="0" step="1" placeholder="0 se for só permuta">
+          </div>
+          <div class="field">
+            <label for="p-prazo">Prazo de entrega (dias)</label>
+            <input type="number" id="p-prazo" min="0" step="1" placeholder="Ex: 10">
+          </div>
+        </div>
+        <div class="field-grid cols-2" style="margin-top:14px;">
+          <div class="field">
+            <label for="p-exclusividade-meses">Exclusividade de categoria pedida <span class="hint">meses (0 = não pediram)</span></label>
+            <input type="number" id="p-exclusividade-meses" min="0" step="1" value="0">
+          </div>
+          <div class="field">
+            <label for="p-direitos">Direitos de uso do conteúdo</label>
+            <select id="p-direitos">
+              <option value="perfil">Só no seu perfil</option>
+              <option value="organico">Marca pode repostar no orgânico dela</option>
+              <option value="ads">Marca pode impulsionar em anúncio pago</option>
+              <option value="indeterminado">Uso por tempo indeterminado / perpétuo</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="check-row">
+          <input type="checkbox" id="p-esconder-publi">
+          <label class="txt" for="p-esconder-publi"><b>Pede pra não identificar como publi</b><span>Ilegal na França e quebra a confiança da audiência — limite inegociável.</span></label>
+        </div>
+        <div class="check-row">
+          <input type="checkbox" id="p-resultado-garantido">
+          <label class="txt" for="p-resultado-garantido"><b>Pede promessa de resultado garantido</b><span>Migratório, financeiro ou de saúde — algo que você não controla e não deveria prometer.</span></label>
+        </div>
+        <div class="check-row">
+          <input type="checkbox" id="p-concorre-produto">
+          <label class="txt" for="p-concorre-produto"><b>Concorre direto com um produto seu</b><span>Um template, curso ou indicação que você já vende ou recomenda.</span></label>
+        </div>
+        <div class="check-row">
+          <input type="checkbox" id="p-roteiro-fechado">
+          <label class="txt" for="p-roteiro-fechado"><b>Vem com roteiro fechado da marca</b><span>Texto pronto, sem espaço pra escrever do seu jeito.</span></label>
+        </div>
+        <div class="check-row">
+          <input type="checkbox" id="p-sem-aprovacao">
+          <label class="txt" for="p-sem-aprovacao"><b>Você não teria aprovação final antes de publicar</b><span>A marca publica ou decide sem te mostrar a versão final.</span></label>
+        </div>
+        <div class="check-row">
+          <input type="checkbox" id="p-permuta-ok">
+          <label class="txt" for="p-permuta-ok"><b>Se for só permuta, tudo bem</b><span>Marque se é um produto/serviço que você compraria ou testaria mesmo sem parceria.</span></label>
+        </div>
+      </fieldset>
+
+      <button type="submit" class="btn btn-pill" style="background:var(--downtown-brown); color:#fff;">Avaliar proposta</button>
+    </form>
+  </section>
+
+  <section class="par-section result-box" id="result-box" hidden>
+    <h2>Resultado</h2>
+
+    <div class="verdict-banner" id="verdict-banner">
+      <p class="verdict-title" id="verdict-title"></p>
+      <p class="verdict-sub" id="verdict-sub"></p>
+      <div class="fit-bar-wrap">
+        <div class="fit-bar-track"><div class="fit-bar-fill" id="fit-bar-fill" style="width:0%;"></div></div>
+        <span class="fit-label" id="fit-label">0/100</span>
+      </div>
+    </div>
+
+    <div class="money-compare">
+      <div class="money-tile"><span class="lbl">Valor sugerido</span><span class="val" id="money-sugerido">€0</span></div>
+      <div class="money-tile"><span class="lbl">Valor ofertado</span><span class="val" id="money-ofertado">€0</span></div>
+    </div>
+
+    <div class="reason-list deal" id="reason-deal" hidden>
+      <h4>Limites inegociáveis atingidos</h4>
+      <ul id="reason-deal-list"></ul>
+    </div>
+    <div class="reason-list risk" id="reason-risk" hidden>
+      <h4>Pontos de atenção — dá pra negociar</h4>
+      <ul id="reason-risk-list"></ul>
+    </div>
+    <div class="reason-list pos" id="reason-pos" hidden>
+      <h4>A favor</h4>
+      <ul id="reason-pos-list"></ul>
+    </div>
+
+    <button type="button" class="btn btn-outline btn-pill" id="save-history-btn">Salvar essa avaliação no histórico</button>
+
+    <div style="margin-top:32px;">
+      <h2 style="font-size:17px;">Texto pronto pra responder</h2>
+      <p class="muted">Ajusta os detalhes antes de enviar — é ponto de partida, não texto final.</p>
+      <div class="script-tabs">
+        <button type="button" class="script-tab" data-tone="aceitar">Aceitar</button>
+        <button type="button" class="script-tab" data-tone="negociar">Contrapropor</button>
+        <button type="button" class="script-tab" data-tone="recusar">Recusar</button>
+      </div>
+      <textarea class="script-out" id="script-out" readonly></textarea>
+      <div class="copy-row">
+        <span class="copy-msg" id="copy-msg"></span>
+        <button type="button" class="btn btn-pill" style="background:var(--downtown-brown); color:#fff;" id="copy-btn">Copiar texto</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="par-section">
+    <h2>Histórico</h2>
+    <p class="muted">Fica salvo só neste navegador — dá pra acompanhar quantas propostas chegam e como você respondeu.</p>
+    <div id="history-wrap"></div>
+  </section>
+
+  <section class="par-section checklist-ref">
+    <h2>Antes de assinar qualquer contrato</h2>
+    <p class="muted">Referência fixa — vale reler mesmo quando o veredito já foi "aceitar".</p>
+    <div class="card-box">
+      <ul>
+        <li><b>Pagamento:</b> valor, prazo de pagamento e quem emite a nota fiscal, escritos no contrato — não só combinados por e-mail.</li>
+        <li><b>Direitos de imagem:</b> por quanto tempo e onde a marca pode usar o conteúdo. "Indeterminado" é uma cláusula, não um detalhe.</li>
+        <li><b>Aprovação final:</b> você vê e aprova a versão final antes de qualquer publicação, sua ou da marca.</li>
+        <li><b>Exclusividade:</b> categoria e prazo exatos — nunca "concorrentes" de forma vaga.</li>
+        <li><b>Rescisão:</b> como qualquer um dos dois lados pode sair do acordo, e o que acontece com o que já foi pago/publicado.</li>
+        <li><b>Lei aplicável:</b> qual país rege o contrato, especialmente com marcas fora da França/Brasil.</li>
+      </ul>
+    </div>
+  </section>
+
+  <p class="privacy-note">Tudo nesta página — tabela de valores, propostas, histórico — fica salvo só no armazenamento local deste navegador. Nada é enviado pra nenhum servidor.</p>
+
+</main>
+
+<script>
+(function(){
+  "use strict";
+
+  var RATE_KEY = "pd_parcerias_ratecard_v1";
+  var HISTORY_KEY = "pd_parcerias_historico_v1";
+
+  function euros(n){
+    n = Math.round(n || 0);
+    return "€" + n.toLocaleString("pt-BR");
+  }
+  function num(id){
+    var el = document.getElementById(id);
+    var v = parseFloat(el.value);
+    return isNaN(v) ? 0 : v;
+  }
+  function checked(id){ return document.getElementById(id).checked; }
+  function val(id){ return document.getElementById(id).value; }
+  function txt(id){ return document.getElementById(id).value.trim(); }
+
+  // ---------- rate card: load / save ----------
+  var rateFields = ["rate-reel","rate-stories","rate-carrossel","rate-youtube","rate-newsletter","rate-exclusividade","rate-ads","rate-urgencia"];
+  var rateDefaults = { "rate-exclusividade": 15, "rate-ads": 25, "rate-urgencia": 20 };
+
+  function loadRateCard(){
+    var saved = {};
+    try { saved = JSON.parse(localStorage.getItem(RATE_KEY) || "{}"); } catch(e){ saved = {}; }
+    rateFields.forEach(function(id){
+      var el = document.getElementById(id);
+      if (saved[id] !== undefined) el.value = saved[id];
+      else if (rateDefaults[id] !== undefined) el.value = rateDefaults[id];
+    });
+  }
+  function saveRateCard(){
+    var data = {};
+    rateFields.forEach(function(id){ data[id] = document.getElementById(id).value; });
+    localStorage.setItem(RATE_KEY, JSON.stringify(data));
+    var msg = document.getElementById("rate-saved-msg");
+    msg.textContent = "Salvo.";
+    clearTimeout(saveRateCard._t);
+    saveRateCard._t = setTimeout(function(){ msg.textContent = ""; }, 1800);
+  }
+  rateFields.forEach(function(id){
+    document.getElementById(id).addEventListener("change", saveRateCard);
+  });
+  loadRateCard();
+
+  function getRateCard(){
+    return {
+      reel: num("rate-reel"), stories: num("rate-stories"), carrossel: num("rate-carrossel"),
+      youtube: num("rate-youtube"), newsletter: num("rate-newsletter"),
+      pctExclusividade: num("rate-exclusividade"), pctAds: num("rate-ads"), pctUrgencia: num("rate-urgencia")
+    };
+  }
+
+  // ---------- evaluation engine ----------
+  function evaluate(input, rate){
+    var dealbreakers = [];
+    var risks = [];
+    var positives = [];
+
+    if (input.esconderPubli) dealbreakers.push("Pede pra não identificar como publi — ilegal na França e quebra a confiança que sustenta sua audiência.");
+    if (input.resultadoGarantido) dealbreakers.push("Pede promessa de resultado garantido (migratório, financeiro ou de saúde) — fora do que você controla e do que deveria prometer.");
+
+    if (input.concorreProduto) risks.push("Concorre direto com um produto que você já vende ou recomenda — pode confundir sua audiência sobre o que indicar.");
+    if (input.roteiroFechado) risks.push("Vem com roteiro fechado da marca — sem espaço pra escrever com sua própria voz, o teste da 'amiga inteligente' não passa.");
+    if (input.semAprovacao) risks.push("Você não teria aprovação final do conteúdo antes de publicar.");
+    if (input.direitos === "indeterminado") risks.push("Uso do conteúdo por tempo indeterminado — vale negociar um prazo definido.");
+    if (input.exclusividadeMeses > 6) risks.push("Exclusividade de categoria por " + input.exclusividadeMeses + " meses é um período longo — pesa na decisão além do valor.");
+    if (input.valorOfertado <= 0 && !input.permutaOk) risks.push("Pagamento é só permuta/produto, e você não marcou que topa nessa condição.");
+    if (input.prazoDias > 0 && input.prazoDias < 5 && (input.qtdReel + input.qtdStories + input.qtdCarrossel + input.qtdYoutube) > 0) risks.push("Prazo de entrega apertado (" + input.prazoDias + " dias) pra produzir com qualidade.");
+
+    if (input.segmento === "alinhado") positives.push("Fala direto com os pilares do canal — reforça sua autoridade no tema.");
+    if (input.segmento === "geral") positives.push("Compatível com o dia a dia da audiência, mesmo sem ser o tema central.");
+    if (input.direitos === "perfil") positives.push("Uso do conteúdo fica restrito ao seu perfil.");
+    if (!input.roteiroFechado) positives.push("Liberdade pra escrever com sua própria voz.");
+    if (input.exclusividadeMeses === 0) positives.push("Não pede exclusividade de categoria.");
+
+    // fit score
+    var fit;
+    if (input.segmento === "alinhado") fit = 85;
+    else if (input.segmento === "geral") fit = 60;
+    else if (input.segmento === "financeiro" || input.segmento === "saude") fit = 30;
+    else fit = 20;
+
+    if (input.concorreProduto) fit -= 25;
+    if (input.roteiroFechado) fit -= 20;
+    if (input.semAprovacao) fit -= 15;
+    if (input.direitos === "indeterminado") fit -= 15;
+    if (input.exclusividadeMeses > 6) fit -= 10;
+    if (input.valorOfertado <= 0 && !input.permutaOk) fit -= 25;
+    fit = Math.max(0, Math.min(100, fit));
+
+    // suggested value
+    var base = input.qtdReel * rate.reel + input.qtdStories * rate.stories + input.qtdCarrossel * rate.carrossel +
+               input.qtdYoutube * rate.youtube + input.qtdNewsletter * rate.newsletter;
+    var mult = 1;
+    if (input.exclusividadeMeses > 0) mult += (rate.pctExclusividade / 100) * input.exclusividadeMeses;
+    if (input.direitos === "ads") mult += rate.pctAds / 100;
+    if (input.prazoDias > 0 && input.prazoDias < 5) mult += rate.pctUrgencia / 100;
+    var sugerido = base * mult;
+
+    var ratio = sugerido > 0 ? (input.valorOfertado / sugerido) : (input.valorOfertado > 0 ? 2 : 0);
+
+    var veredito;
+    if (dealbreakers.length > 0) {
+      veredito = "recusar";
+    } else if (fit < 40) {
+      veredito = "recusar";
+    } else if (ratio < 1.0 || risks.length >= 2) {
+      veredito = "negociar";
+    } else {
+      veredito = "aceitar";
+    }
+
+    return { dealbreakers: dealbreakers, risks: risks, positives: positives, fit: fit, sugerido: sugerido, veredito: veredito };
+  }
+
+  var VERDICT_LABEL = {
+    aceitar: "Aceitar",
+    negociar: "Negociar",
+    recusar: "Recusar"
+  };
+  var VERDICT_SUB = {
+    aceitar: "O valor cobre sua tabela e não bateu em nenhum limite importante da marca.",
+    negociar: "Tem potencial, mas o valor e/ou as condições precisam de ajuste antes de seguir.",
+    recusar: "O custo pra sua marca de longo prazo (ou os limites inegociáveis) pesa mais do que o retorno de agora."
+  };
+
+  // ---------- form submit ----------
+  var lastResult = null;
+  var lastInput = null;
+
+  document.getElementById("proposta-form").addEventListener("submit", function(e){
+    e.preventDefault();
+
+    var input = {
+      marca: txt("p-marca") || "Essa marca",
+      segmento: val("p-segmento"),
+      qtdReel: num("p-qtd-reel"), qtdStories: num("p-qtd-stories"), qtdCarrossel: num("p-qtd-carrossel"),
+      qtdYoutube: num("p-qtd-youtube"), qtdNewsletter: num("p-qtd-newsletter"),
+      valorOfertado: num("p-valor-ofertado"), prazoDias: num("p-prazo"),
+      exclusividadeMeses: num("p-exclusividade-meses"), direitos: val("p-direitos"),
+      esconderPubli: checked("p-esconder-publi"), resultadoGarantido: checked("p-resultado-garantido"),
+      concorreProduto: checked("p-concorre-produto"), roteiroFechado: checked("p-roteiro-fechado"),
+      semAprovacao: checked("p-sem-aprovacao"), permutaOk: checked("p-permuta-ok")
+    };
+
+    var rate = getRateCard();
+    var result = evaluate(input, rate);
+    lastResult = result; lastInput = input;
+    renderResult(input, result);
+    document.getElementById("result-box").hidden = false;
+    document.getElementById("result-box").scrollIntoView({ behavior: "smooth", block: "start" });
+    setScriptTone(result.veredito);
+  });
+
+  function renderResult(input, r){
+    var banner = document.getElementById("verdict-banner");
+    banner.className = "verdict-banner " + r.veredito;
+    document.getElementById("verdict-title").textContent = VERDICT_LABEL[r.veredito] + " — " + input.marca;
+    document.getElementById("verdict-sub").textContent = VERDICT_SUB[r.veredito];
+    document.getElementById("fit-bar-fill").style.width = r.fit + "%";
+    document.getElementById("fit-label").textContent = r.fit + "/100 de aderência à marca";
+
+    document.getElementById("money-sugerido").textContent = euros(r.sugerido);
+    document.getElementById("money-ofertado").textContent = input.valorOfertado > 0 ? euros(input.valorOfertado) : "Permuta / não informado";
+
+    fillReasons("reason-deal", "reason-deal-list", r.dealbreakers);
+    fillReasons("reason-risk", "reason-risk-list", r.risks);
+    fillReasons("reason-pos", "reason-pos-list", r.positives);
+  }
+  function fillReasons(boxId, listId, items){
+    var box = document.getElementById(boxId);
+    var list = document.getElementById(listId);
+    list.innerHTML = "";
+    if (!items.length) { box.hidden = true; return; }
+    box.hidden = false;
+    items.forEach(function(t){
+      var li = document.createElement("li");
+      li.textContent = t;
+      list.appendChild(li);
+    });
+  }
+
+  // ---------- negotiation scripts ----------
+  function buildScript(tone, input, r){
+    var marca = input.marca;
+    var sug = euros(r.sugerido);
+    var asks = [];
+    if (input.roteiroFechado) asks.push("escrever o texto com a minha própria linguagem, mantendo a essência do que vocês querem comunicar");
+    if (input.semAprovacao) asks.push("ter aprovação da versão final antes de qualquer publicação");
+    if (input.direitos === "indeterminado") asks.push("definir um prazo claro de uso do conteúdo (ex: 6 ou 12 meses), em vez de indeterminado");
+    if (input.exclusividadeMeses > 6) asks.push("reduzir o período de exclusividade de categoria");
+
+    if (tone === "aceitar") {
+      var t = "Oi! Tudo bem?\n\nObrigada pela proposta, adorei a ideia de parceria com a " + marca + ". Topo seguir nos termos que vocês mandaram";
+      if (input.valorOfertado > 0) t += " (" + euros(input.valorOfertado) + " pelo combo combinado)";
+      t += ".\n\n";
+      if (asks.length) {
+        t += "Só alguns pontos pra alinharmos antes de fechar:\n";
+        asks.forEach(function(a){ t += "- " + a + "\n"; });
+        t += "\n";
+      }
+      t += "Me confirma esses pontos e já te mando os próximos passos. Bora começar!";
+      return t;
+    }
+
+    if (tone === "recusar") {
+      var reasons = r.dealbreakers.length ? r.dealbreakers : r.risks;
+      var t2 = "Oi! Tudo bem?\n\nObrigada por pensar no Por Dentro pra essa parceria com a " + marca + ". Fiquei pensando com calma, e dessa vez não vai dar certo pra mim";
+      if (reasons.length) {
+        t2 += " — " + (r.dealbreakers.length ? "principalmente porque " : "principalmente porque ") + reasons[0].toLowerCase();
+      }
+      t2 += ".\n\nFica a porta aberta pra uma próxima oportunidade que faça mais sentido pro formato que eu trabalho aqui. Um abraço e sucesso com a campanha!";
+      return t2;
+    }
+
+    // negociar
+    var t3 = "Oi! Tudo bem?\n\nObrigada pela proposta da " + marca + "! Gostei da ideia";
+    t3 += input.valorOfertado > 0 ? ", mas o valor de " + euros(input.valorOfertado) + " ficou abaixo do que costumo cobrar pra esse escopo" : ", mas pra esse formato eu trabalho com um valor fixo, sem ser só permuta";
+    t3 += ".\n\nPensando no que foi pedido (" + describeDeliverables(input) + "), o valor que fecha pra mim é " + sug + ".\n\n";
+    if (asks.length) {
+      t3 += "Também preciso alinhar:\n";
+      asks.forEach(function(a){ t3 += "- " + a + "\n"; });
+      t3 += "\n";
+    }
+    t3 += "Topa ajustarmos nessas condições? Fico à disposição pra fechar rápido.";
+    return t3;
+  }
+
+  function describeDeliverables(input){
+    var parts = [];
+    if (input.qtdReel) parts.push(input.qtdReel + " Reel(s)");
+    if (input.qtdStories) parts.push(input.qtdStories + " pacote(s) de Stories");
+    if (input.qtdCarrossel) parts.push(input.qtdCarrossel + " carrossel(éis)/post(s)");
+    if (input.qtdYoutube) parts.push(input.qtdYoutube + " vídeo(s) de YouTube");
+    if (input.qtdNewsletter) parts.push(input.qtdNewsletter + " menção(ões) em newsletter");
+    return parts.length ? parts.join(", ") : "o escopo combinado";
+  }
+
+  var currentTone = "negociar";
+  function setScriptTone(tone){
+    currentTone = tone;
+    document.querySelectorAll(".script-tab").forEach(function(btn){
+      btn.classList.toggle("active", btn.getAttribute("data-tone") === tone);
+    });
+    if (lastInput && lastResult) {
+      document.getElementById("script-out").value = buildScript(tone, lastInput, lastResult);
+    }
+  }
+  document.querySelectorAll(".script-tab").forEach(function(btn){
+    btn.addEventListener("click", function(){ setScriptTone(btn.getAttribute("data-tone")); });
+  });
+
+  document.getElementById("copy-btn").addEventListener("click", function(){
+    var out = document.getElementById("script-out");
+    out.select();
+    var ok = false;
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(out.value);
+        ok = true;
+      } else {
+        ok = document.execCommand("copy");
+      }
+    } catch(e){ ok = false; }
+    var msg = document.getElementById("copy-msg");
+    msg.textContent = ok ? "Copiado!" : "Não deu pra copiar automaticamente — seleciona o texto e copia manualmente.";
+    setTimeout(function(){ msg.textContent = ""; }, 2200);
+  });
+
+  // ---------- history ----------
+  function loadHistory(){
+    try { return JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]"); } catch(e){ return []; }
+  }
+  function saveHistory(list){ localStorage.setItem(HISTORY_KEY, JSON.stringify(list)); }
+
+  function renderHistory(){
+    var list = loadHistory();
+    var wrap = document.getElementById("history-wrap");
+    if (!list.length) {
+      wrap.innerHTML = '<p class="hist-empty">Nenhuma proposta salva ainda.</p>';
+      return;
+    }
+    var rows = list.slice().reverse().map(function(item){
+      return "<tr>" +
+        "<td>" + item.data + "</td>" +
+        "<td>" + escapeHtml(item.marca) + "</td>" +
+        '<td><span class="hist-tag ' + item.veredito + '">' + VERDICT_LABEL[item.veredito] + "</span></td>" +
+        "<td>" + euros(item.sugerido) + "</td>" +
+        "<td>" + (item.ofertado > 0 ? euros(item.ofertado) : "Permuta") + "</td>" +
+        '<td><button class="hist-remove" data-id="' + item.id + '">remover</button></td>' +
+        "</tr>";
+    }).join("");
+    wrap.innerHTML = '<div style="overflow-x:auto;"><table class="hist-table"><thead><tr>' +
+      "<th>Data</th><th>Marca</th><th>Veredito</th><th>Sugerido</th><th>Ofertado</th><th></th>" +
+      "</tr></thead><tbody>" + rows + "</tbody></table></div>";
+
+    wrap.querySelectorAll(".hist-remove").forEach(function(btn){
+      btn.addEventListener("click", function(){
+        var id = btn.getAttribute("data-id");
+        var updated = loadHistory().filter(function(it){ return String(it.id) !== id; });
+        saveHistory(updated);
+        renderHistory();
+      });
+    });
+  }
+  function escapeHtml(s){
+    return String(s).replace(/[&<>"']/g, function(c){
+      return ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c];
+    });
+  }
+
+  document.getElementById("save-history-btn").addEventListener("click", function(){
+    if (!lastInput || !lastResult) return;
+    var list = loadHistory();
+    list.push({
+      id: Date.now(),
+      data: new Date().toLocaleDateString("pt-BR"),
+      marca: lastInput.marca,
+      veredito: lastResult.veredito,
+      sugerido: lastResult.sugerido,
+      ofertado: lastInput.valorOfertado
+    });
+    saveHistory(list);
+    renderHistory();
+  });
+
+  renderHistory();
+})();
+</script>
+</body>
+</html>
