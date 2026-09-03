@@ -50,6 +50,7 @@
   }
   .field input:focus, .field select:focus, .field textarea:focus { outline: 2px solid var(--placid-blue); outline-offset: 1px; }
   .check-row { display: flex; align-items: flex-start; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--borda-suave); }
+  .check-row[hidden] { display: none; }
   .check-row:last-child { border-bottom: none; }
   .check-row input { margin-top: 3px; flex-shrink: 0; }
   .check-row .txt { font-size: 13.5px; }
@@ -123,6 +124,25 @@
   .mode-tab.active { border-color: var(--downtown-brown); background: #FBF1DE; }
   .mode-tab.active span { color: var(--downtown-brown); }
   .mode-panel[hidden] { display: none; }
+
+  .file-chip-list { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+  .file-chip { display: inline-flex; align-items: center; gap: 8px; background: var(--off-white-soft); border: 1px solid var(--borda); border-radius: var(--radius-pill); padding: 6px 12px; font-size: 12.5px; }
+  .file-chip a { color: var(--downtown-brown); font-weight: 600; text-decoration: none; }
+  .file-chip a:hover { text-decoration: underline; }
+  .file-chip .size { color: var(--texto-secundario); }
+  .file-chip button { background: none; border: none; color: var(--texto-secundario); cursor: pointer; font-size: 14px; line-height: 1; padding: 0; }
+  .file-chip button:hover { color: var(--merlot); }
+
+  .link-chip-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+  .link-chip { display: inline-flex; align-items: center; gap: 6px; background: #fff; border: 1px solid var(--placid-blue); color: var(--placid-blue-text); border-radius: var(--radius-pill); padding: 6px 12px; font-size: 12.5px; font-weight: 600; text-decoration: none; }
+  .link-chip:hover { background: #EAF1F8; }
+
+  .side-checklist { background: var(--off-white-soft); border: 1px solid var(--borda-suave); border-radius: var(--radius-sm); padding: 14px 16px; margin-top: 12px; }
+  .side-checklist p { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--texto-secundario); margin: 0 0 8px; }
+  .side-checklist ul { margin: 0; padding-left: 18px; font-size: 13px; }
+  .side-checklist li { margin-bottom: 5px; }
+
+  .hist-tag.tipo { background: #EDE6E1; color: var(--downtown-brown); }
 </style>
 </head>
 <body>
@@ -216,6 +236,16 @@
           <input type="number" id="rate-urgencia" min="0" step="1">
         </div>
       </div>
+      <div class="field-grid cols-2" style="margin-top:18px; padding-top:18px; border-top:1px solid var(--borda-suave);">
+        <div class="field">
+          <label for="rate-palestra-presencial">Palestra presencial <span class="hint">cachê base, viagem inclusa</span></label>
+          <input type="number" id="rate-palestra-presencial" min="0" step="1" placeholder="0">
+        </div>
+        <div class="field">
+          <label for="rate-palestra-online">Palestra online</label>
+          <input type="number" id="rate-palestra-online" min="0" step="1" placeholder="0">
+        </div>
+      </div>
       <p class="rate-saved" id="rate-saved-msg"></p>
     </div>
   </section>
@@ -263,9 +293,16 @@
 
       <fieldset>
         <legend>A marca</legend>
+        <div class="field" style="margin-bottom:14px;">
+          <label for="p-tipo">Tipo de proposta</label>
+          <select id="p-tipo">
+            <option value="marca">Parceria de marca / publi (conteúdo pra Instagram, YouTube etc.)</option>
+            <option value="palestra">Palestra / conferência / evento</option>
+          </select>
+        </div>
         <div class="field-grid cols-2">
           <div class="field">
-            <label for="p-marca">Nome da marca</label>
+            <label for="p-marca" id="p-marca-label">Nome da marca</label>
             <input type="text" id="p-marca" placeholder="Ex: Nome da empresa">
           </div>
           <div class="field">
@@ -281,6 +318,7 @@
         </div>
       </fieldset>
 
+      <div id="bloco-marca">
       <fieldset>
         <legend>O que estão pedindo</legend>
         <div class="qty-row">
@@ -304,6 +342,44 @@
           <div class="field" style="margin:0;"><input type="number" id="p-qtd-newsletter" min="0" step="1" value="0"></div>
         </div>
       </fieldset>
+      </div>
+
+      <div id="bloco-palestra" hidden>
+      <fieldset>
+        <legend>Detalhes da palestra / evento</legend>
+        <div class="field-grid cols-2">
+          <div class="field">
+            <label for="p-palestra-formato">Formato</label>
+            <select id="p-palestra-formato">
+              <option value="presencial">Presencial</option>
+              <option value="online">Online</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="p-palestra-duracao">Duração <span class="hint">minutos</span></label>
+            <input type="number" id="p-palestra-duracao" min="0" step="5" placeholder="Ex: 45">
+          </div>
+        </div>
+        <div class="field-grid cols-2" style="margin-top:14px;">
+          <div class="field">
+            <label for="p-palestra-publico">Público estimado <span class="hint">opcional</span></label>
+            <input type="number" id="p-palestra-publico" min="0" step="1" placeholder="Ex: 200">
+          </div>
+          <div class="field">
+            <label for="p-palestra-tipo-evento">Tipo de evento</label>
+            <select id="p-palestra-tipo-evento">
+              <option value="pago-publico">Conferência/evento pago pro público</option>
+              <option value="corporativo">Evento corporativo interno</option>
+              <option value="gratuito">Evento gratuito/comunitário</option>
+            </select>
+          </div>
+        </div>
+        <div class="check-row" style="margin-top:4px;">
+          <input type="checkbox" id="p-palestra-viagem-inclusa" checked>
+          <label class="txt" for="p-palestra-viagem-inclusa"><b>Viagem e hospedagem por conta da organização</b><span>Desmarque se for presencial e isso não estiver incluso — vira ponto de atenção no veredito.</span></label>
+        </div>
+      </fieldset>
+      </div>
 
       <fieldset>
         <legend>Condições</legend>
@@ -333,7 +409,7 @@
           </div>
         </div>
 
-        <div class="check-row">
+        <div class="check-row" id="row-esconder-publi">
           <input type="checkbox" id="p-esconder-publi">
           <label class="txt" for="p-esconder-publi"><b>Pede pra não identificar como publi</b><span>Ilegal na França e quebra a confiança da audiência — limite inegociável.</span></label>
         </div>
@@ -356,6 +432,36 @@
         <div class="check-row">
           <input type="checkbox" id="p-permuta-ok">
           <label class="txt" for="p-permuta-ok"><b>Se for só permuta, tudo bem</b><span>Marque se é um produto/serviço que você compraria ou testaria mesmo sem parceria.</span></label>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Materiais da proposta</legend>
+        <div class="field">
+          <label for="p-mensagem">Mensagem que mandaram <span class="hint">opcional — cola aqui o e-mail/DM da proposta pra ter tudo num lugar só</span></label>
+          <textarea id="p-mensagem" rows="4" placeholder="Cole aqui a mensagem da proposta"></textarea>
+        </div>
+
+        <div class="field" style="margin-top:14px;">
+          <label for="p-arquivos">Fotos e arquivos <span class="hint">deck, one-pager, brief da empresa/projeto, logo...</span></label>
+          <input type="file" id="p-arquivos" multiple accept="image/*,.pdf,.doc,.docx,.ppt,.pptx,.key,.xls,.xlsx">
+          <div class="file-chip-list" id="p-arquivos-list"></div>
+          <span class="hint">Fica só nesta aba, enquanto você avalia — não é salvo no histórico nem sai do seu navegador. Recarregar a página apaga os arquivos.</span>
+        </div>
+
+        <div class="field" style="margin-top:14px;">
+          <label for="p-links">Links pra conferir antes de decidir <span class="hint">site, Instagram, LinkedIn — um por linha</span></label>
+          <textarea id="p-links" rows="3" placeholder="https://..."></textarea>
+          <div class="link-chip-row" id="p-links-list"></div>
+          <div class="side-checklist">
+            <p>Roteiro rápido pra abrir e olhar</p>
+            <ul>
+              <li>Site institucional claro — dá pra ver quem são, CNPJ, contato de verdade?</li>
+              <li>Já trabalharam com outras criadoras? Que tipo de conteúdo pediram?</li>
+              <li>O discurso bate com o que você defende, sem promessa exagerada?</li>
+              <li>Redes sociais ativas — não é perfil parado?</li>
+            </ul>
+          </div>
         </div>
       </fieldset>
 
@@ -547,7 +653,7 @@
   function txt(id){ return document.getElementById(id).value.trim(); }
 
   // ---------- rate card: load / save ----------
-  var rateFields = ["rate-reel","rate-stories","rate-carrossel","rate-youtube","rate-newsletter","rate-exclusividade","rate-ads","rate-urgencia"];
+  var rateFields = ["rate-reel","rate-stories","rate-carrossel","rate-youtube","rate-newsletter","rate-exclusividade","rate-ads","rate-urgencia","rate-palestra-presencial","rate-palestra-online"];
   var rateDefaults = { "rate-exclusividade": 15, "rate-ads": 25, "rate-urgencia": 20 };
 
   function loadRateCard(){
@@ -577,32 +683,109 @@
     return {
       reel: num("rate-reel"), stories: num("rate-stories"), carrossel: num("rate-carrossel"),
       youtube: num("rate-youtube"), newsletter: num("rate-newsletter"),
-      pctExclusividade: num("rate-exclusividade"), pctAds: num("rate-ads"), pctUrgencia: num("rate-urgencia")
+      pctExclusividade: num("rate-exclusividade"), pctAds: num("rate-ads"), pctUrgencia: num("rate-urgencia"),
+      palestraPresencial: num("rate-palestra-presencial"), palestraOnline: num("rate-palestra-online")
     };
   }
+
+  // ---------- tipo de proposta: marca vs palestra ----------
+  function updateTipoUI(){
+    var tipo = val("p-tipo");
+    document.getElementById("bloco-marca").hidden = tipo !== "marca";
+    document.getElementById("bloco-palestra").hidden = tipo !== "palestra";
+    document.getElementById("row-esconder-publi").hidden = tipo !== "marca";
+    document.getElementById("p-marca-label").textContent = tipo === "palestra" ? "Nome da organização/evento" : "Nome da marca";
+  }
+  document.getElementById("p-tipo").addEventListener("change", updateTipoUI);
+  updateTipoUI();
+
+  // ---------- materiais: arquivos (só em memória, não persistem) ----------
+  var currentAttachments = [];
+  function renderAttachments(){
+    var list = document.getElementById("p-arquivos-list");
+    list.innerHTML = "";
+    currentAttachments.forEach(function(entry, idx){
+      var chip = document.createElement("span");
+      chip.className = "file-chip";
+      var a = document.createElement("a");
+      a.href = entry.url;
+      a.target = "_blank";
+      a.rel = "noopener";
+      a.textContent = entry.file.name;
+      var size = document.createElement("span");
+      size.className = "size";
+      size.textContent = entry.file.size > 1024 * 1024
+        ? (entry.file.size / (1024 * 1024)).toFixed(1) + " MB"
+        : Math.round(entry.file.size / 1024) + " KB";
+      var rm = document.createElement("button");
+      rm.type = "button";
+      rm.textContent = "×";
+      rm.addEventListener("click", function(){
+        URL.revokeObjectURL(entry.url);
+        currentAttachments.splice(idx, 1);
+        renderAttachments();
+      });
+      chip.appendChild(a);
+      chip.appendChild(size);
+      chip.appendChild(rm);
+      list.appendChild(chip);
+    });
+  }
+  document.getElementById("p-arquivos").addEventListener("change", function(e){
+    Array.prototype.forEach.call(e.target.files, function(file){
+      currentAttachments.push({ file: file, url: URL.createObjectURL(file) });
+    });
+    e.target.value = "";
+    renderAttachments();
+  });
+
+  // ---------- materiais: links pra abrir e conferir ----------
+  function parseLinks(raw){
+    return raw.split(/\n|,/).map(function(s){ return s.trim(); }).filter(function(s){ return /^https?:\/\//i.test(s); });
+  }
+  function renderLinkChips(){
+    var links = parseLinks(txt("p-links"));
+    var list = document.getElementById("p-links-list");
+    list.innerHTML = "";
+    links.forEach(function(url){
+      var a = document.createElement("a");
+      a.className = "link-chip";
+      a.href = url;
+      a.target = "_blank";
+      a.rel = "noopener";
+      a.textContent = "Abrir ↗ " + url.replace(/^https?:\/\//i, "").split("/")[0];
+      list.appendChild(a);
+    });
+  }
+  document.getElementById("p-links").addEventListener("input", renderLinkChips);
 
   // ---------- evaluation engine ----------
   function evaluate(input, rate){
     var dealbreakers = [];
     var risks = [];
     var positives = [];
+    var isPalestra = input.tipo === "palestra";
 
-    if (input.esconderPubli) dealbreakers.push("Pede pra não identificar como publi — ilegal na França e quebra a confiança que sustenta sua audiência.");
+    if (!isPalestra && input.esconderPubli) dealbreakers.push("Pede pra não identificar como publi — ilegal na França e quebra a confiança que sustenta sua audiência.");
     if (input.resultadoGarantido) dealbreakers.push("Pede promessa de resultado garantido (migratório, financeiro ou de saúde) — fora do que você controla e do que deveria prometer.");
 
     if (input.concorreProduto) risks.push("Concorre direto com um produto que você já vende ou recomenda — pode confundir sua audiência sobre o que indicar.");
-    if (input.roteiroFechado) risks.push("Vem com roteiro fechado da marca — sem espaço pra escrever com sua própria voz, o teste da 'amiga inteligente' não passa.");
+    if (input.roteiroFechado) risks.push(isPalestra ? "Vem com roteiro/pauta fechada da organização — sem espaço pra falar do seu jeito." : "Vem com roteiro fechado da marca — sem espaço pra escrever com sua própria voz, o teste da 'amiga inteligente' não passa.");
     if (input.semAprovacao) risks.push("Você não teria aprovação final do conteúdo antes de publicar.");
-    if (input.direitos === "indeterminado") risks.push("Uso do conteúdo por tempo indeterminado — vale negociar um prazo definido.");
+    if (!isPalestra && input.direitos === "indeterminado") risks.push("Uso do conteúdo por tempo indeterminado — vale negociar um prazo definido.");
+    if (isPalestra && input.direitos === "indeterminado") risks.push("Uso da gravação da palestra por tempo indeterminado — vale negociar um prazo definido.");
     if (input.exclusividadeMeses > 6) risks.push("Exclusividade de categoria por " + input.exclusividadeMeses + " meses é um período longo — pesa na decisão além do valor.");
-    if (input.valorOfertado <= 0 && !input.permutaOk) risks.push("Pagamento é só permuta/produto, e você não marcou que topa nessa condição.");
-    if (input.prazoDias > 0 && input.prazoDias < 5 && (input.qtdReel + input.qtdStories + input.qtdCarrossel + input.qtdYoutube) > 0) risks.push("Prazo de entrega apertado (" + input.prazoDias + " dias) pra produzir com qualidade.");
+    if (input.valorOfertado <= 0 && !input.permutaOk) risks.push(isPalestra ? "Não há cachê definido, e você não marcou que topa fazer sem cachê." : "Pagamento é só permuta/produto, e você não marcou que topa nessa condição.");
+    if (!isPalestra && input.prazoDias > 0 && input.prazoDias < 5 && (input.qtdReel + input.qtdStories + input.qtdCarrossel + input.qtdYoutube) > 0) risks.push("Prazo de entrega apertado (" + input.prazoDias + " dias) pra produzir com qualidade.");
+    if (isPalestra && input.prazoDias > 0 && input.prazoDias < 5) risks.push("Prazo apertado até o evento (" + input.prazoDias + " dias) pra se preparar.");
+    if (isPalestra && input.palestraFormato === "presencial" && !input.palestraViagemInclusa) risks.push("Presencial, mas viagem e hospedagem não estão inclusas — negocie isso à parte ou embuta no cachê.");
 
     if (input.segmento === "alinhado") positives.push("Fala direto com os pilares do canal — reforça sua autoridade no tema.");
     if (input.segmento === "geral") positives.push("Compatível com o dia a dia da audiência, mesmo sem ser o tema central.");
-    if (input.direitos === "perfil") positives.push("Uso do conteúdo fica restrito ao seu perfil.");
-    if (!input.roteiroFechado) positives.push("Liberdade pra escrever com sua própria voz.");
+    if (!isPalestra && input.direitos === "perfil") positives.push("Uso do conteúdo fica restrito ao seu perfil.");
+    if (!input.roteiroFechado) positives.push("Liberdade pra falar com sua própria voz.");
     if (input.exclusividadeMeses === 0) positives.push("Não pede exclusividade de categoria.");
+    if (isPalestra && input.palestraFormato === "presencial" && input.palestraViagemInclusa) positives.push("Presencial com viagem e hospedagem inclusas.");
 
     // fit score
     var fit;
@@ -617,14 +800,20 @@
     if (input.direitos === "indeterminado") fit -= 15;
     if (input.exclusividadeMeses > 6) fit -= 10;
     if (input.valorOfertado <= 0 && !input.permutaOk) fit -= 25;
+    if (isPalestra && input.palestraFormato === "presencial" && !input.palestraViagemInclusa) fit -= 5;
     fit = Math.max(0, Math.min(100, fit));
 
     // suggested value
-    var base = input.qtdReel * rate.reel + input.qtdStories * rate.stories + input.qtdCarrossel * rate.carrossel +
-               input.qtdYoutube * rate.youtube + input.qtdNewsletter * rate.newsletter;
+    var base;
+    if (isPalestra) {
+      base = input.palestraFormato === "online" ? rate.palestraOnline : rate.palestraPresencial;
+    } else {
+      base = input.qtdReel * rate.reel + input.qtdStories * rate.stories + input.qtdCarrossel * rate.carrossel +
+             input.qtdYoutube * rate.youtube + input.qtdNewsletter * rate.newsletter;
+    }
     var mult = 1;
     if (input.exclusividadeMeses > 0) mult += (rate.pctExclusividade / 100) * input.exclusividadeMeses;
-    if (input.direitos === "ads") mult += rate.pctAds / 100;
+    if (!isPalestra && input.direitos === "ads") mult += rate.pctAds / 100;
     if (input.prazoDias > 0 && input.prazoDias < 5) mult += rate.pctUrgencia / 100;
     var sugerido = base * mult;
 
@@ -663,15 +852,20 @@
     e.preventDefault();
 
     var input = {
+      tipo: val("p-tipo"),
       marca: txt("p-marca") || "Essa marca",
       segmento: val("p-segmento"),
       qtdReel: num("p-qtd-reel"), qtdStories: num("p-qtd-stories"), qtdCarrossel: num("p-qtd-carrossel"),
       qtdYoutube: num("p-qtd-youtube"), qtdNewsletter: num("p-qtd-newsletter"),
+      palestraFormato: val("p-palestra-formato"), palestraDuracao: num("p-palestra-duracao"),
+      palestraPublico: num("p-palestra-publico"), palestraTipoEvento: val("p-palestra-tipo-evento"),
+      palestraViagemInclusa: checked("p-palestra-viagem-inclusa"),
       valorOfertado: num("p-valor-ofertado"), prazoDias: num("p-prazo"),
       exclusividadeMeses: num("p-exclusividade-meses"), direitos: val("p-direitos"),
       esconderPubli: checked("p-esconder-publi"), resultadoGarantido: checked("p-resultado-garantido"),
       concorreProduto: checked("p-concorre-produto"), roteiroFechado: checked("p-roteiro-fechado"),
-      semAprovacao: checked("p-sem-aprovacao"), permutaOk: checked("p-permuta-ok")
+      semAprovacao: checked("p-sem-aprovacao"), permutaOk: checked("p-permuta-ok"),
+      mensagem: txt("p-mensagem"), links: parseLinks(txt("p-links"))
     };
 
     var rate = getRateCard();
@@ -715,15 +909,18 @@
   function buildScript(tone, input, r){
     var marca = input.marca;
     var sug = euros(r.sugerido);
+    var isPalestra = input.tipo === "palestra";
+    var rotulo = isPalestra ? "convite" : "proposta";
     var asks = [];
-    if (input.roteiroFechado) asks.push("escrever o texto com a minha própria linguagem, mantendo a essência do que vocês querem comunicar");
+    if (input.roteiroFechado) asks.push(isPalestra ? "ter liberdade pra falar do meu jeito, dentro do tema combinado" : "escrever o texto com a minha própria linguagem, mantendo a essência do que vocês querem comunicar");
     if (input.semAprovacao) asks.push("ter aprovação da versão final antes de qualquer publicação");
     if (input.direitos === "indeterminado") asks.push("definir um prazo claro de uso do conteúdo (ex: 6 ou 12 meses), em vez de indeterminado");
+    if (isPalestra && input.palestraFormato === "presencial" && !input.palestraViagemInclusa) asks.push("incluir viagem e hospedagem, ou embutir esse custo no cachê");
     if (input.exclusividadeMeses > 6) asks.push("reduzir o período de exclusividade de categoria");
 
     if (tone === "aceitar") {
-      var t = "Oi! Tudo bem?\n\nObrigada pela proposta, adorei a ideia de parceria com a " + marca + ". Topo seguir nos termos que vocês mandaram";
-      if (input.valorOfertado > 0) t += " (" + euros(input.valorOfertado) + " pelo combo combinado)";
+      var t = "Oi! Tudo bem?\n\nObrigada pel" + (isPalestra ? "o" : "a") + " " + rotulo + ", adorei a ideia de " + (isPalestra ? "participar do evento da " : "parceria com a ") + marca + ". Topo seguir nos termos que vocês mandaram";
+      if (input.valorOfertado > 0) t += " (" + euros(input.valorOfertado) + (isPalestra ? " pelo cachê" : " pelo combo combinado") + ")";
       t += ".\n\n";
       if (asks.length) {
         t += "Só alguns pontos pra alinharmos antes de fechar:\n";
@@ -736,7 +933,7 @@
 
     if (tone === "recusar") {
       var reasons = r.dealbreakers.length ? r.dealbreakers : r.risks;
-      var t2 = "Oi! Tudo bem?\n\nObrigada por pensar no Por Dentro pra essa parceria com a " + marca + ". Fiquei pensando com calma, e dessa vez não vai dar certo pra mim";
+      var t2 = "Oi! Tudo bem?\n\nObrigada por pensar no Por Dentro pra " + (isPalestra ? "esse convite da " : "essa parceria com a ") + marca + ". Fiquei pensando com calma, e dessa vez não vai dar certo pra mim";
       if (reasons.length) {
         t2 += " — " + (r.dealbreakers.length ? "principalmente porque " : "principalmente porque ") + reasons[0].toLowerCase();
       }
@@ -745,9 +942,9 @@
     }
 
     // negociar
-    var t3 = "Oi! Tudo bem?\n\nObrigada pela proposta da " + marca + "! Gostei da ideia";
-    t3 += input.valorOfertado > 0 ? ", mas o valor de " + euros(input.valorOfertado) + " ficou abaixo do que costumo cobrar pra esse escopo" : ", mas pra esse formato eu trabalho com um valor fixo, sem ser só permuta";
-    t3 += ".\n\nPensando no que foi pedido (" + describeDeliverables(input) + "), o valor que fecha pra mim é " + sug + ".\n\n";
+    var t3 = "Oi! Tudo bem?\n\nObrigada pel" + (isPalestra ? "o convite d" : "a proposta d") + "a " + marca + "! Gostei da ideia";
+    t3 += input.valorOfertado > 0 ? ", mas o valor de " + euros(input.valorOfertado) + (isPalestra ? " ficou abaixo do meu cachê pra esse formato" : " ficou abaixo do que costumo cobrar pra esse escopo") : ", mas pra esse formato eu trabalho com um valor fixo, sem ser só permuta";
+    t3 += ".\n\nConsiderando o combinado (" + describeDeliverables(input) + "), o valor que fecha pra mim é " + sug + ".\n\n";
     if (asks.length) {
       t3 += "Também preciso alinhar:\n";
       asks.forEach(function(a){ t3 += "- " + a + "\n"; });
@@ -758,6 +955,11 @@
   }
 
   function describeDeliverables(input){
+    if (input.tipo === "palestra") {
+      var formato = input.palestraFormato === "online" ? "online" : "presencial";
+      var dur = input.palestraDuracao > 0 ? " de " + input.palestraDuracao + " minutos" : "";
+      return "a palestra " + formato + dur;
+    }
     var parts = [];
     if (input.qtdReel) parts.push(input.qtdReel + " Reel(s)");
     if (input.qtdStories) parts.push(input.qtdStories + " pacote(s) de Stories");
@@ -815,6 +1017,7 @@
       return "<tr>" +
         "<td>" + item.data + "</td>" +
         "<td>" + escapeHtml(item.marca) + "</td>" +
+        '<td><span class="hist-tag tipo">' + (item.tipo === "palestra" ? "Palestra" : "Marca") + "</span></td>" +
         '<td><span class="hist-tag ' + item.veredito + '">' + VERDICT_LABEL[item.veredito] + "</span></td>" +
         "<td>" + euros(item.sugerido) + "</td>" +
         "<td>" + (item.ofertado > 0 ? euros(item.ofertado) : "Permuta") + "</td>" +
@@ -822,7 +1025,7 @@
         "</tr>";
     }).join("");
     wrap.innerHTML = '<div style="overflow-x:auto;"><table class="hist-table"><thead><tr>' +
-      "<th>Data</th><th>Marca</th><th>Veredito</th><th>Sugerido</th><th>Ofertado</th><th></th>" +
+      "<th>Data</th><th>Marca</th><th>Tipo</th><th>Veredito</th><th>Sugerido</th><th>Ofertado</th><th></th>" +
       "</tr></thead><tbody>" + rows + "</tbody></table></div>";
 
     wrap.querySelectorAll(".hist-remove").forEach(function(btn){
@@ -847,6 +1050,7 @@
       id: Date.now(),
       data: new Date().toLocaleDateString("pt-BR"),
       marca: lastInput.marca,
+      tipo: lastInput.tipo,
       veredito: lastResult.veredito,
       sugerido: lastResult.sugerido,
       ofertado: lastInput.valorOfertado
