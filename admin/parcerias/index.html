@@ -115,6 +115,14 @@
   .checklist-ref li { margin-bottom: 8px; }
 
   .privacy-note { font-size: 12px; color: var(--texto-secundario); text-align: center; margin-top: 48px; }
+
+  .mode-tabs { display: flex; gap: 10px; margin-bottom: 28px; flex-wrap: wrap; }
+  .mode-tab { flex: 1; min-width: 220px; text-align: left; font-family: var(--font-body); font-weight: 600; font-size: 14px;
+    padding: 14px 18px; border-radius: var(--radius-md); border: 1px solid var(--borda); background: #fff; color: var(--grafite); cursor: pointer; }
+  .mode-tab span { display: block; font-weight: 400; font-size: 12px; color: var(--texto-secundario); margin-top: 2px; }
+  .mode-tab.active { border-color: var(--downtown-brown); background: #FBF1DE; }
+  .mode-tab.active span { color: var(--downtown-brown); }
+  .mode-panel[hidden] { display: none; }
 </style>
 </head>
 <body>
@@ -128,7 +136,7 @@
   <div class="par-head">
     <span class="eyebrow" style="color:#604034;">Ferramenta privada</span>
     <h1 style="margin-bottom:8px;">Assistente de Parcerias</h1>
-    <p class="lead">Pra decidir cada proposta que chega olhando pros dois lados de uma vez: o financeiro de agora e a marca que você tá construindo a longo prazo. Preenche a proposta, a ferramenta cruza com sua bússola de marca e sua tabela de valores, e te devolve um veredito, os motivos e um texto pronto pra responder.</p>
+    <p class="lead">Pra decidir cada proposta que chega — e pra ir atrás das marcas que você mesma quer perto do Por Dentro — olhando pros dois lados de uma vez: o financeiro de agora e a imagem que você tá construindo a longo prazo. A ferramenta cruza tudo com sua bússola de marca e sua tabela de valores, e devolve um veredito ou um pitch, os motivos e um texto pronto pra mandar.</p>
   </div>
 
   <details class="compass" id="compass" open>
@@ -212,6 +220,42 @@
     </div>
   </section>
 
+  <section class="par-section">
+    <h2>Seus números</h2>
+    <p class="muted">Opcional, mas deixa seu pitch muito mais forte quando você for atrás de uma marca. Preenche o que tiver de mais atual — só entra no texto o que estiver preenchido.</p>
+    <div class="card-box">
+      <div class="field-grid cols-3">
+        <div class="field">
+          <label for="num-instagram">Seguidores no Instagram</label>
+          <input type="number" id="num-instagram" min="0" step="1" placeholder="0">
+        </div>
+        <div class="field">
+          <label for="num-youtube">Inscritos no YouTube</label>
+          <input type="number" id="num-youtube" min="0" step="1" placeholder="0">
+        </div>
+        <div class="field">
+          <label for="num-engajamento">Taxa média de engajamento <span class="hint">%</span></label>
+          <input type="number" id="num-engajamento" min="0" step="0.1" placeholder="0">
+        </div>
+        <div class="field">
+          <label for="num-alcance-story">Alcance médio por Story</label>
+          <input type="number" id="num-alcance-story" min="0" step="1" placeholder="0">
+        </div>
+        <div class="field">
+          <label for="num-alcance-reel">Alcance médio por Reel</label>
+          <input type="number" id="num-alcance-reel" min="0" step="1" placeholder="0">
+        </div>
+      </div>
+      <p class="rate-saved" id="num-saved-msg"></p>
+    </div>
+  </section>
+
+  <div class="mode-tabs">
+    <button type="button" class="mode-tab" data-mode="recebida">Recebi uma proposta<span>Avaliar quem chegou até mim</span></button>
+    <button type="button" class="mode-tab" data-mode="pitch">Quero puxar uma parceria<span>Montar um pitch pra uma marca dos sonhos</span></button>
+  </div>
+
+  <div class="mode-panel" id="mode-recebida">
   <section class="par-section">
     <h2>Avaliar uma proposta nova</h2>
     <p class="muted">Preenche com o que a marca te mandou. Quanto mais completo, mais preciso o veredito.</p>
@@ -355,9 +399,9 @@
       <h2 style="font-size:17px;">Texto pronto pra responder</h2>
       <p class="muted">Ajusta os detalhes antes de enviar — é ponto de partida, não texto final.</p>
       <div class="script-tabs">
-        <button type="button" class="script-tab" data-tone="aceitar">Aceitar</button>
-        <button type="button" class="script-tab" data-tone="negociar">Contrapropor</button>
-        <button type="button" class="script-tab" data-tone="recusar">Recusar</button>
+        <button type="button" class="script-tab proposta-tab" data-tone="aceitar">Aceitar</button>
+        <button type="button" class="script-tab proposta-tab" data-tone="negociar">Contrapropor</button>
+        <button type="button" class="script-tab proposta-tab" data-tone="recusar">Recusar</button>
       </div>
       <textarea class="script-out" id="script-out" readonly></textarea>
       <div class="copy-row">
@@ -372,6 +416,96 @@
     <p class="muted">Fica salvo só neste navegador — dá pra acompanhar quantas propostas chegam e como você respondeu.</p>
     <div id="history-wrap"></div>
   </section>
+  </div>
+
+  <div class="mode-panel" id="mode-pitch" hidden>
+  <section class="par-section">
+    <h2>Montar um pitch pra uma marca</h2>
+    <p class="muted">Pra ir atrás de marcas que você quer perto do Por Dentro, em vez de só esperar chegar proposta. Preenche e a ferramenta monta um texto pronto pra mandar por e-mail ou DM.</p>
+    <form class="card-box" id="pitch-form">
+
+      <fieldset>
+        <legend>A marca dos sonhos</legend>
+        <div class="field-grid cols-2">
+          <div class="field">
+            <label for="g-marca">Nome da marca</label>
+            <input type="text" id="g-marca" placeholder="Ex: Nome da empresa">
+          </div>
+          <div class="field">
+            <label for="g-pilar">Pilar que conecta</label>
+            <select id="g-pilar">
+              <option value="burocracia">Burocracia e documentos</option>
+              <option value="trabalho">Trabalho e mercado de trabalho</option>
+              <option value="moradia">Moradia e vida prática</option>
+              <option value="estudos">Estudos</option>
+              <option value="cotidiano">Vida cotidiana / imigração no geral</option>
+            </select>
+          </div>
+        </div>
+        <div class="field" style="margin-top:14px;">
+          <label for="g-gancho">Por que essa marca, na sua visão <span class="hint">o gancho pessoal do pitch — algo real, não genérico</span></label>
+          <textarea id="g-gancho" rows="3" placeholder="Ex: uso o produto desde que cheguei / resolveria a dor X que minha audiência mais me pergunta / etc."></textarea>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>O que você quer propor</legend>
+        <div class="qty-row">
+          <div class="field" style="margin:0;"><label style="margin:0;">Reels / vídeos curtos</label></div>
+          <div class="field" style="margin:0;"><input type="number" id="g-qtd-reel" min="0" step="1" value="0"></div>
+        </div>
+        <div class="qty-row">
+          <div class="field" style="margin:0;"><label style="margin:0;">Pacotes de Stories (3 cada)</label></div>
+          <div class="field" style="margin:0;"><input type="number" id="g-qtd-stories" min="0" step="1" value="0"></div>
+        </div>
+        <div class="qty-row">
+          <div class="field" style="margin:0;"><label style="margin:0;">Carrosséis / posts estáticos</label></div>
+          <div class="field" style="margin:0;"><input type="number" id="g-qtd-carrossel" min="0" step="1" value="0"></div>
+        </div>
+        <div class="qty-row">
+          <div class="field" style="margin:0;"><label style="margin:0;">Vídeos dedicados (YouTube)</label></div>
+          <div class="field" style="margin:0;"><input type="number" id="g-qtd-youtube" min="0" step="1" value="0"></div>
+        </div>
+        <div class="qty-row">
+          <div class="field" style="margin:0;"><label style="margin:0;">Menções em newsletter / bio</label></div>
+          <div class="field" style="margin:0;"><input type="number" id="g-qtd-newsletter" min="0" step="1" value="0"></div>
+        </div>
+      </fieldset>
+
+      <button type="submit" class="btn btn-pill" style="background:var(--downtown-brown); color:#fff;">Montar pitch</button>
+    </form>
+  </section>
+
+  <section class="par-section result-box" id="pitch-result-box" hidden>
+    <h2>Seu investimento sugerido</h2>
+    <div class="money-compare">
+      <div class="money-tile"><span class="lbl">Pelo escopo proposto</span><span class="val" id="pitch-money-sugerido">€0</span></div>
+    </div>
+
+    <button type="button" class="btn btn-outline btn-pill" id="save-pitch-history-btn">Salvar esse pitch no histórico</button>
+
+    <div style="margin-top:32px;">
+      <h2 style="font-size:17px;">Texto pronto pra mandar</h2>
+      <p class="muted">Escolhe o objetivo desse primeiro contato — dá pra mudar de ideia e reenviar noutro tom depois.</p>
+      <div class="script-tabs">
+        <button type="button" class="script-tab pitch-tab" data-tone="fechar-pago">Já propor valor</button>
+        <button type="button" class="script-tab pitch-tab" data-tone="testar-permuta">Propor um piloto em permuta</button>
+        <button type="button" class="script-tab pitch-tab" data-tone="construir-relacao">Só abrir a conversa</button>
+      </div>
+      <textarea class="script-out" id="pitch-script-out" readonly></textarea>
+      <div class="copy-row">
+        <span class="copy-msg" id="pitch-copy-msg"></span>
+        <button type="button" class="btn btn-pill" style="background:var(--downtown-brown); color:#fff;" id="pitch-copy-btn">Copiar texto</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="par-section">
+    <h2>Histórico de pitches</h2>
+    <p class="muted">Marcas que você já foi atrás — atualiza o status conforme a conversa andar.</p>
+    <div id="pitch-history-wrap"></div>
+  </section>
+  </div>
 
   <section class="par-section checklist-ref">
     <h2>Antes de assinar qualquer contrato</h2>
@@ -636,14 +770,14 @@
   var currentTone = "negociar";
   function setScriptTone(tone){
     currentTone = tone;
-    document.querySelectorAll(".script-tab").forEach(function(btn){
+    document.querySelectorAll(".proposta-tab").forEach(function(btn){
       btn.classList.toggle("active", btn.getAttribute("data-tone") === tone);
     });
     if (lastInput && lastResult) {
       document.getElementById("script-out").value = buildScript(tone, lastInput, lastResult);
     }
   }
-  document.querySelectorAll(".script-tab").forEach(function(btn){
+  document.querySelectorAll(".proposta-tab").forEach(function(btn){
     btn.addEventListener("click", function(){ setScriptTone(btn.getAttribute("data-tone")); });
   });
 
@@ -722,6 +856,215 @@
   });
 
   renderHistory();
+
+  // ---------- "seus números" persistence ----------
+  var NUMBERS_KEY = "pd_parcerias_numeros_v1";
+  var numberFields = ["num-instagram","num-youtube","num-engajamento","num-alcance-story","num-alcance-reel"];
+  function loadNumbers(){
+    var saved = {};
+    try { saved = JSON.parse(localStorage.getItem(NUMBERS_KEY) || "{}"); } catch(e){ saved = {}; }
+    numberFields.forEach(function(id){
+      var el = document.getElementById(id);
+      if (saved[id] !== undefined) el.value = saved[id];
+    });
+  }
+  function saveNumbers(){
+    var data = {};
+    numberFields.forEach(function(id){ data[id] = document.getElementById(id).value; });
+    localStorage.setItem(NUMBERS_KEY, JSON.stringify(data));
+    var msg = document.getElementById("num-saved-msg");
+    msg.textContent = "Salvo.";
+    clearTimeout(saveNumbers._t);
+    saveNumbers._t = setTimeout(function(){ msg.textContent = ""; }, 1800);
+  }
+  numberFields.forEach(function(id){
+    document.getElementById(id).addEventListener("change", saveNumbers);
+  });
+  loadNumbers();
+
+  function getNumbers(){
+    return {
+      instagram: num("num-instagram"), youtube: num("num-youtube"), engajamento: num("num-engajamento"),
+      alcanceStory: num("num-alcance-story"), alcanceReel: num("num-alcance-reel")
+    };
+  }
+
+  // ---------- mode tabs ----------
+  function setMode(mode){
+    document.querySelectorAll(".mode-tab").forEach(function(btn){
+      btn.classList.toggle("active", btn.getAttribute("data-mode") === mode);
+    });
+    document.getElementById("mode-recebida").hidden = mode !== "recebida";
+    document.getElementById("mode-pitch").hidden = mode !== "pitch";
+  }
+  document.querySelectorAll(".mode-tab").forEach(function(btn){
+    btn.addEventListener("click", function(){ setMode(btn.getAttribute("data-mode")); });
+  });
+  setMode("recebida");
+
+  // ---------- pitch engine ----------
+  var lastPitchInput = null;
+  var lastPitchValue = 0;
+
+  var PILAR_LABEL = {
+    burocracia: "burocracia e documentos",
+    trabalho: "trabalho e mercado de trabalho francês",
+    moradia: "moradia e vida prática",
+    estudos: "estudos",
+    cotidiano: "vida cotidiana e imigração no geral"
+  };
+
+  document.getElementById("pitch-form").addEventListener("submit", function(e){
+    e.preventDefault();
+    var input = {
+      marca: txt("g-marca") || "Essa marca",
+      pilar: val("g-pilar"),
+      gancho: txt("g-gancho"),
+      qtdReel: num("g-qtd-reel"), qtdStories: num("g-qtd-stories"), qtdCarrossel: num("g-qtd-carrossel"),
+      qtdYoutube: num("g-qtd-youtube"), qtdNewsletter: num("g-qtd-newsletter")
+    };
+    var rate = getRateCard();
+    var valorProposto = input.qtdReel * rate.reel + input.qtdStories * rate.stories + input.qtdCarrossel * rate.carrossel +
+                         input.qtdYoutube * rate.youtube + input.qtdNewsletter * rate.newsletter;
+
+    lastPitchInput = input; lastPitchValue = valorProposto;
+
+    document.getElementById("pitch-money-sugerido").textContent = euros(valorProposto);
+    document.getElementById("pitch-result-box").hidden = false;
+    document.getElementById("pitch-result-box").scrollIntoView({ behavior: "smooth", block: "start" });
+    setPitchTone("fechar-pago");
+  });
+
+  function buildPitch(tone, input, valorProposto){
+    var numbers = getNumbers();
+    var t = "Oi! Tudo bem? Meu nome é Ingryd, crio o Por Dentro (@ingryd.pordentro) — conteúdo sobre viver, trabalhar e resolver a burocracia da França pra brasileiros que estão migrando ou já migraram pra cá.\n\n";
+
+    var statParts = [];
+    if (numbers.instagram > 0) statParts.push(numbers.instagram.toLocaleString("pt-BR") + " seguidores no Instagram");
+    if (numbers.youtube > 0) statParts.push(numbers.youtube.toLocaleString("pt-BR") + " inscritos no YouTube");
+    if (statParts.length) {
+      t += "Hoje minha comunidade tem " + statParts.join(" e ");
+      var reachParts = [];
+      if (numbers.alcanceReel > 0) reachParts.push("alcance médio de " + numbers.alcanceReel.toLocaleString("pt-BR") + " por Reel");
+      if (numbers.alcanceStory > 0) reachParts.push(numbers.alcanceStory.toLocaleString("pt-BR") + " por Story");
+      if (numbers.engajamento > 0) reachParts.push("engajamento em torno de " + numbers.engajamento + "%");
+      if (reachParts.length) t += ", com " + reachParts.join(", ");
+      t += ".\n\n";
+    }
+
+    t += "Um dos pilares mais fortes do meu conteúdo é " + PILAR_LABEL[input.pilar] + " — e é exatamente aí que enxergo a " + input.marca + " fazendo sentido pra minha audiência";
+    if (input.gancho) t += ": " + input.gancho;
+    t += ".\n\n";
+
+    var escopo = describeDeliverables(input);
+
+    if (tone === "fechar-pago") {
+      t += "Pensei numa proposta de conteúdo: " + escopo + ". Pra esse escopo, meu investimento seria " + euros(valorProposto) + ".\n\nTopa marcarmos uma call rápida de 15 minutos pra alinhar os detalhes?";
+    } else if (tone === "testar-permuta") {
+      t += "Pra começar, proponho um piloto: " + escopo + ", em troca do produto/serviço de vocês — e se fizer sentido pros dois lados, seguimos com uma parceria paga daqui pra frente.\n\nO que acha?";
+    } else {
+      t += "Antes de falar de formato e valor, queria só abrir a conversa: queria entender melhor os planos de vocês pro público brasileiro/imigrante e ver onde faz sentido a gente somar.\n\nTopa um bate-papo rápido?";
+    }
+
+    t += "\n\nUm abraço,\nIngryd — Por Dentro";
+    return t;
+  }
+
+  var currentPitchTone = "fechar-pago";
+  function setPitchTone(tone){
+    currentPitchTone = tone;
+    document.querySelectorAll(".pitch-tab").forEach(function(btn){
+      btn.classList.toggle("active", btn.getAttribute("data-tone") === tone);
+    });
+    if (lastPitchInput) {
+      document.getElementById("pitch-script-out").value = buildPitch(tone, lastPitchInput, lastPitchValue);
+    }
+  }
+  document.querySelectorAll(".pitch-tab").forEach(function(btn){
+    btn.addEventListener("click", function(){ setPitchTone(btn.getAttribute("data-tone")); });
+  });
+
+  document.getElementById("pitch-copy-btn").addEventListener("click", function(){
+    var out = document.getElementById("pitch-script-out");
+    out.select();
+    var ok = false;
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(out.value);
+        ok = true;
+      } else {
+        ok = document.execCommand("copy");
+      }
+    } catch(e){ ok = false; }
+    var msg = document.getElementById("pitch-copy-msg");
+    msg.textContent = ok ? "Copiado!" : "Não deu pra copiar automaticamente — seleciona o texto e copia manualmente.";
+    setTimeout(function(){ msg.textContent = ""; }, 2200);
+  });
+
+  // ---------- pitch history ----------
+  var PITCH_HISTORY_KEY = "pd_parcerias_pitches_v1";
+  var PITCH_STATUS_LABEL = {
+    enviado: "Enviado", respondeu: "Respondeu", negociando: "Negociando", fechou: "Fechou", "sem-resposta": "Sem resposta"
+  };
+  function loadPitchHistory(){
+    try { return JSON.parse(localStorage.getItem(PITCH_HISTORY_KEY) || "[]"); } catch(e){ return []; }
+  }
+  function savePitchHistory(list){ localStorage.setItem(PITCH_HISTORY_KEY, JSON.stringify(list)); }
+
+  function renderPitchHistory(){
+    var list = loadPitchHistory();
+    var wrap = document.getElementById("pitch-history-wrap");
+    if (!list.length) {
+      wrap.innerHTML = '<p class="hist-empty">Nenhum pitch salvo ainda.</p>';
+      return;
+    }
+    var statusOptions = Object.keys(PITCH_STATUS_LABEL).map(function(k){ return "<option value='" + k + "'>" + PITCH_STATUS_LABEL[k] + "</option>"; }).join("");
+    var rows = list.slice().reverse().map(function(item){
+      var opts = statusOptions.replace("value='" + item.status + "'", "value='" + item.status + "' selected");
+      return "<tr>" +
+        "<td>" + item.data + "</td>" +
+        "<td>" + escapeHtml(item.marca) + "</td>" +
+        "<td>" + euros(item.valor) + "</td>" +
+        '<td><select class="pitch-status-select" data-id="' + item.id + '" style="font-size:12.5px; padding:5px 8px; border:1px solid var(--borda); border-radius:4px; background:#fff;">' + opts + "</select></td>" +
+        '<td><button class="hist-remove" data-id="' + item.id + '">remover</button></td>' +
+        "</tr>";
+    }).join("");
+    wrap.innerHTML = '<div style="overflow-x:auto;"><table class="hist-table"><thead><tr>' +
+      "<th>Data</th><th>Marca</th><th>Valor proposto</th><th>Status</th><th></th>" +
+      "</tr></thead><tbody>" + rows + "</tbody></table></div>";
+
+    wrap.querySelectorAll(".hist-remove").forEach(function(btn){
+      btn.addEventListener("click", function(){
+        var id = btn.getAttribute("data-id");
+        savePitchHistory(loadPitchHistory().filter(function(it){ return String(it.id) !== id; }));
+        renderPitchHistory();
+      });
+    });
+    wrap.querySelectorAll(".pitch-status-select").forEach(function(sel){
+      sel.addEventListener("change", function(){
+        var id = sel.getAttribute("data-id");
+        var list2 = loadPitchHistory();
+        list2.forEach(function(it){ if (String(it.id) === id) it.status = sel.value; });
+        savePitchHistory(list2);
+      });
+    });
+  }
+
+  document.getElementById("save-pitch-history-btn").addEventListener("click", function(){
+    if (!lastPitchInput) return;
+    var list = loadPitchHistory();
+    list.push({
+      id: Date.now(),
+      data: new Date().toLocaleDateString("pt-BR"),
+      marca: lastPitchInput.marca,
+      valor: lastPitchValue,
+      status: "enviado"
+    });
+    savePitchHistory(list);
+    renderPitchHistory();
+  });
+
+  renderPitchHistory();
 })();
 </script>
 </body>
