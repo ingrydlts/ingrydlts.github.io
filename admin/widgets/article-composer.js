@@ -18,7 +18,7 @@
     return;
   }
 
-  var PAIR_TAGS = ["BAND", "STATS", "CARDS", "LIST", "STEPS", "FAQ", "RESOURCES", "CHECKLIST", "FEEDBACK", "AFILIADO"];
+  var PAIR_TAGS = ["BAND", "STATS", "CARDS", "LIST", "STEPS", "FAQ", "RESOURCES", "CHECKLIST", "FEEDBACK", "AFILIADO", "POLL"];
   var AFILIADO_NAME = "AFILIADO";
   var TOOL_TOKENS = [
     "[[MAPA-FLE]]",

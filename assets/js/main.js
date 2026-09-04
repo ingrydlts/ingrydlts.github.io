@@ -239,10 +239,48 @@
     });
   }
 
+  // ---- Enquete (bloco [[POLL]], ver assets/js/markdown.js) ----
+  // Objetivo é conhecer a audiência (faixa etária, planos futuros etc.),
+  // não devolver resultado ao vivo pra quem responde — por isso, ao votar,
+  // só mostra "obrigada" (sem percentual). 1 voto por pessoa por enquete,
+  // travado no navegador (localStorage), igual ao FEEDBACK.
+  function showPollThanks(wrap, option) {
+    wrap.querySelectorAll(".rt-poll-option").forEach(function (btn) {
+      btn.disabled = true;
+      btn.classList.toggle("is-selected", btn.dataset.pollOption === option);
+    });
+    var thanks = wrap.querySelector(".rt-poll-thanks");
+    if (thanks) thanks.hidden = false;
+  }
+
+  function initPollButtons() {
+    document.addEventListener("click", function (e) {
+      var btn = e.target.closest(".rt-poll-option");
+      if (!btn) return;
+      var wrap = btn.closest(".rt-poll");
+      if (!wrap) return;
+      var id = wrap.dataset.pollId;
+      var already = null;
+      try {
+        already = window.localStorage.getItem("pd_poll_" + id);
+      } catch (e) {}
+      if (already) return;
+      var option = btn.dataset.pollOption;
+      try {
+        window.localStorage.setItem("pd_poll_" + id, option);
+      } catch (e) {}
+      showPollThanks(wrap, option);
+      if (window.PDEvents) {
+        window.PDEvents.send("poll", wrap.dataset.articleSlug, { poll_id: id, option: option });
+      }
+    });
+  }
+
   // Roda toda vez que blocos ricos entram na página — no carregamento
   // inicial E de novo depois que o template dinâmico injeta o corpo do
   // artigo via fetch (que acontece depois do DOMContentLoaded). Restaura
-  // checklists marcadas e feedback já respondido, sem reenviar nada.
+  // checklists marcadas, feedback e enquetes já respondidos, sem reenviar
+  // nada.
   function hydrateInteractiveBlocks() {
     document.querySelectorAll(".rt-checklist").forEach(function (wrap) {
       restoreChecklistState(wrap);
@@ -255,6 +293,13 @@
       } catch (e) {}
       if (voted) showFeedbackThanks(wrap, voted);
     });
+    document.querySelectorAll(".rt-poll").forEach(function (wrap) {
+      var answered = null;
+      try {
+        answered = window.localStorage.getItem("pd_poll_" + wrap.dataset.pollId);
+      } catch (e) {}
+      if (answered) showPollThanks(wrap, answered);
+    });
   }
 
   document.addEventListener("DOMContentLoaded", function () {
@@ -266,6 +311,7 @@
     initResourceTracking();
     initChecklist();
     initFeedbackButtons();
+    initPollButtons();
     hydrateInteractiveBlocks();
   });
   document.addEventListener("pd:blocks-rendered", hydrateInteractiveBlocks);

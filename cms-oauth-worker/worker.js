@@ -59,6 +59,12 @@
  *                                    article_slug — usada pela seção "Mais
  *                                    curtidos" de /artigos/. Não é um botão
  *                                    novo, reaproveita o feedback existente.
+ *    event_type 'poll' vem do bloco [[POLL]] (ver assets/js/markdown.js) —
+ *    enquete de resposta única embutida no corpo do artigo (payload:
+ *    poll_id + option), pensada pra perfil de audiência sem tocar em
+ *    assunto sensível (faixa etária, planos futuros etc.). Some agregada
+ *    em /api/insights/summary (campo "polls"), não tem endpoint público
+ *    próprio — ninguém vê resultado ao vivo, só a autora no painel.
  *
 
  * Variáveis de ambiente necessárias (Settings → Variables and Secrets no Worker):
@@ -103,7 +109,7 @@ const REPO_NAME = 'ingrydlts.github.io';
 const REVIEWS_KEY = 'reviews_db';
 const RATING_VALUES = [1, 2, 3, 4, 5];
 const PREMIUM_KEY = 'premium_content';
-const ALLOWED_EVENT_TYPES = ['feedback', 'bot', 'block'];
+const ALLOWED_EVENT_TYPES = ['feedback', 'bot', 'block', 'poll'];
 // KV exige TTL mínimo de 60s, então o throttle é por janela (contador), não
 // por trava única como o das avaliações — eventos são esperados com mais
 // frequência (várias respostas do bot numa sessão, por exemplo).
@@ -411,7 +417,7 @@ async function handleInsightsSummary(request, env) {
   if (!moderator) return json({ error: 'Sem permissão. Faça login com uma conta que tem acesso ao repositório.' }, 401);
   if (!env.EVENTS_DB) return json({ error: 'Banco de eventos ainda não configurado.' }, 500);
 
-  const [overview, feedback, botFunnel, botAnswers, botOutcomes, checklist, faqOpens, resourceClicks, shareOpens, shareClicks, daily] = await Promise.all([
+  const [overview, feedback, botFunnel, botAnswers, botOutcomes, checklist, faqOpens, resourceClicks, polls, shareOpens, shareClicks, daily] = await Promise.all([
     env.EVENTS_DB.prepare('SELECT COUNT(*) as total, COUNT(DISTINCT session_id) as sessions FROM events').all(),
     env.EVENTS_DB.prepare(
       `SELECT article_slug,
@@ -452,6 +458,16 @@ async function handleInsightsSummary(request, env) {
        FROM events WHERE event_type='block' AND json_extract(payload,'$.type')='resource_click'
        GROUP BY article_slug, resource ORDER BY clicks DESC LIMIT 30`
     ).all(),
+    // Enquetes ([[POLL]], ver assets/js/markdown.js) — pergunta de perfil de
+    // audiência (faixa etária, planos futuros etc.), 1 linha por opção
+    // respondida. DISTINCT session_id evita inflar se a mesma leitora abrir
+    // o artigo de novo (o front já trava 1 voto por navegador, isso é
+    // reforço).
+    env.EVENTS_DB.prepare(
+      `SELECT json_extract(payload,'$.poll_id') as poll_id, json_extract(payload,'$.option') as option,
+              COUNT(DISTINCT session_id) as votes
+       FROM events WHERE event_type='poll' GROUP BY poll_id, option ORDER BY poll_id, votes DESC`
+    ).all(),
     // Botão flutuante "Compartilhar" (assets/js/share-button.js) —
     // shareOpens conta o aperto no botão (abriu o popup); shareClicks
     // conta pra onde a pessoa mandou de fato (destination), por artigo.
@@ -477,6 +493,7 @@ async function handleInsightsSummary(request, env) {
     checklist: checklist.results || [],
     faqOpens: faqOpens.results || [],
     resourceClicks: resourceClicks.results || [],
+    polls: polls.results || [],
     shareOpens: (shareOpens.results && shareOpens.results[0] && shareOpens.results[0].opens) || 0,
     shareClicks: shareClicks.results || [],
     daily: daily.results || []
