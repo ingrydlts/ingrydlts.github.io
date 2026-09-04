@@ -13,6 +13,28 @@
     };
   }
 
+  // Mesmo padrão de slug usado no resto do site (getArticleSlug em
+  // assets/js/main.js) — lido direto da URL porque este script roda fora
+  // do #article-root e não tem acesso ao objeto `post`.
+  function getArticleSlug() {
+    try {
+      return new URLSearchParams(window.location.search).get("slug");
+    } catch (e) {
+      return null;
+    }
+  }
+
+  // Reaproveita o pipeline de eventos já usado pelo resto do site
+  // (assets/js/events.js → Worker → D1 → /admin/dashboard/). "share_open"
+  // é o aperto no botão flutuante; "share_click" é o destino escolhido no
+  // popup (whatsapp / instagram_dm / instagram_stories / email).
+  function trackShare(type, id) {
+    if (!window.PDEvents) return;
+    var payload = { type: type };
+    if (id) payload.id = id;
+    window.PDEvents.send("block", getArticleSlug(), payload);
+  }
+
   // Busca a imagem de capa do artigo (guardada em data-image pelo
   // artigos/post/index.html) e converte pra File — é o formato que o
   // Web Share API (nível 2) aceita pra anexar imagem numa story real.
@@ -80,6 +102,7 @@
 
   function handleInstagramShare(target) {
     var data = getShareData();
+    trackShare("share_click", target === "dm" ? "instagram_dm" : "instagram_stories");
 
     if (target === "stories" && navigator.share) {
       shareStoryWithCover(data).catch(function (err) {
@@ -119,6 +142,7 @@
     if (fab) fab.setAttribute("aria-expanded", "true");
     document.addEventListener("keydown", onKeydown);
     getCoverImageFile().catch(function () {}); // aquece o cache da capa
+    trackShare("share_open");
   }
 
   function closeModal() {
@@ -149,5 +173,9 @@
     if (dmBtn) dmBtn.addEventListener("click", function () { handleInstagramShare("dm"); });
     var storiesBtn = overlay.querySelector('[data-share="instagram-stories"]');
     if (storiesBtn) storiesBtn.addEventListener("click", function () { handleInstagramShare("stories"); });
+    var waLink = overlay.querySelector('[data-share="whatsapp"]');
+    if (waLink) waLink.addEventListener("click", function () { trackShare("share_click", "whatsapp"); });
+    var emailLink = overlay.querySelector('[data-share="email"]');
+    if (emailLink) emailLink.addEventListener("click", function () { trackShare("share_click", "email"); });
   });
 })();

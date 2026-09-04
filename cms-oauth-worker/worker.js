@@ -411,7 +411,7 @@ async function handleInsightsSummary(request, env) {
   if (!moderator) return json({ error: 'Sem permissão. Faça login com uma conta que tem acesso ao repositório.' }, 401);
   if (!env.EVENTS_DB) return json({ error: 'Banco de eventos ainda não configurado.' }, 500);
 
-  const [overview, feedback, botFunnel, botOutcomes, checklist, faqOpens, resourceClicks, daily] = await Promise.all([
+  const [overview, feedback, botFunnel, botOutcomes, checklist, faqOpens, resourceClicks, shareOpens, shareClicks, daily] = await Promise.all([
     env.EVENTS_DB.prepare('SELECT COUNT(*) as total, COUNT(DISTINCT session_id) as sessions FROM events').all(),
     env.EVENTS_DB.prepare(
       `SELECT article_slug,
@@ -444,6 +444,17 @@ async function handleInsightsSummary(request, env) {
        FROM events WHERE event_type='block' AND json_extract(payload,'$.type')='resource_click'
        GROUP BY article_slug, resource ORDER BY clicks DESC LIMIT 30`
     ).all(),
+    // Botão flutuante "Compartilhar" (assets/js/share-button.js) —
+    // shareOpens conta o aperto no botão (abriu o popup); shareClicks
+    // conta pra onde a pessoa mandou de fato (destination), por artigo.
+    env.EVENTS_DB.prepare(
+      `SELECT COUNT(*) as opens FROM events WHERE event_type='block' AND json_extract(payload,'$.type')='share_open'`
+    ).all(),
+    env.EVENTS_DB.prepare(
+      `SELECT article_slug, json_extract(payload,'$.id') as destination, COUNT(*) as clicks
+       FROM events WHERE event_type='block' AND json_extract(payload,'$.type')='share_click'
+       GROUP BY article_slug, destination ORDER BY clicks DESC LIMIT 30`
+    ).all(),
     env.EVENTS_DB.prepare(
       `SELECT substr(created_at,1,10) as day, COUNT(*) as count FROM events WHERE created_at >= date('now','-30 days') GROUP BY day ORDER BY day`
     ).all()
@@ -457,6 +468,8 @@ async function handleInsightsSummary(request, env) {
     checklist: checklist.results || [],
     faqOpens: faqOpens.results || [],
     resourceClicks: resourceClicks.results || [],
+    shareOpens: (shareOpens.results && shareOpens.results[0] && shareOpens.results[0].opens) || 0,
+    shareClicks: shareClicks.results || [],
     daily: daily.results || []
   });
 }
