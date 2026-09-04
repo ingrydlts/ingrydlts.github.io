@@ -79,6 +79,38 @@
   </div>
 </footer>
 
+<button id="share-fab" class="share-fab" type="button" aria-label="Compartilhar este artigo" aria-haspopup="dialog" aria-expanded="false">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.6" y1="10.5" x2="15.4" y2="6.5"></line><line x1="8.6" y1="13.5" x2="15.4" y2="17.5"></line></svg>
+</button>
+
+<div id="share-modal-overlay" class="share-modal-overlay" hidden>
+  <div class="share-modal" role="dialog" aria-modal="true" aria-labelledby="share-modal-title">
+    <div class="share-modal-header">
+      <span id="share-modal-title" class="share-modal-title">Compartilhar artigo</span>
+      <button class="share-modal-close" type="button" aria-label="Fechar">×</button>
+    </div>
+    <div class="share-options">
+      <a class="share-option" data-share="whatsapp" href="#" target="_blank" rel="noopener">
+        <span class="share-option-icon share-icon-whatsapp"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.5 14.4c-.3-.1-1.6-.8-1.9-.9-.3-.1-.4-.1-.6.1-.2.3-.6.9-.8 1-.1.2-.3.2-.6.1-.3-.1-1.2-.5-2.3-1.4-.9-.8-1.4-1.7-1.6-2-.2-.3 0-.5.1-.6l.4-.5c.1-.1.2-.3.2-.4.1-.1.1-.3 0-.4-.1-.1-.6-1.4-.8-1.9-.2-.5-.4-.4-.6-.4h-.5c-.2 0-.5.1-.7.3-.2.3-.9.9-.9 2.1s.9 2.4 1.1 2.6c.1.2 1.9 2.9 4.6 4 .6.3 1.1.4 1.5.6.6.2 1.2.2 1.6.1.5-.1 1.6-.6 1.8-1.3.2-.6.2-1.2.2-1.3-.1-.1-.3-.2-.6-.3z"></path><path d="M12 2C6.5 2 2 6.5 2 12c0 1.9.5 3.6 1.4 5.1L2 22l5.1-1.3C8.5 21.5 10.2 22 12 22c5.5 0 10-4.5 10-10S17.5 2 12 2zm0 18c-1.6 0-3.1-.4-4.4-1.2l-.3-.2-3 .8.8-2.9-.2-.3C4.4 15 4 13.5 4 12c0-4.4 3.6-8 8-8s8 3.6 8 8-3.6 8-8 8z"></path></svg></span>
+        <span>WhatsApp</span>
+      </a>
+      <button class="share-option" data-share="instagram-dm" type="button">
+        <span class="share-option-icon share-icon-instagram"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="5"></rect><circle cx="12" cy="12" r="4"></circle><circle cx="17.5" cy="6.5" r="1"></circle></svg></span>
+        <span>Instagram (mensagem)</span>
+      </button>
+      <button class="share-option" data-share="instagram-stories" type="button">
+        <span class="share-option-icon share-icon-instagram"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M12 3a9 9 0 019 9"></path></svg></span>
+        <span>Instagram Stories</span>
+      </button>
+      <a class="share-option" data-share="email" href="#">
+        <span class="share-option-icon share-icon-email"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"></rect><path d="M3 7l9 6 9-6"></path></svg></span>
+        <span>E-mail</span>
+      </a>
+    </div>
+    <p class="share-modal-hint" id="share-modal-hint" hidden></p>
+  </div>
+</div>
+
 <script src="/assets/js/main.js"></script>
 <script src="/assets/js/consent.js"></script>
 <script src="/assets/js/events.js"></script>
@@ -87,6 +119,7 @@
 <script src="/assets/js/vendor/gsap.min.js"></script>
 <script src="/assets/js/vendor/ScrollTrigger.min.js"></script>
 <script src="/assets/js/article-animations.js"></script>
+<script src="/assets/js/share-button.js"></script>
 <script type="module">
   import { fetchJSON, imgSlotHTML, escapeHtml, qs } from "/assets/js/render.js";
   import { markdownToBlocks } from "/assets/js/markdown.js";
@@ -217,6 +250,13 @@
       return;
     }
     document.title = post.title + " — Por Dentro";
+
+    // Guarda a imagem de capa do artigo no próprio botão de compartilhar —
+    // é o jeito mais simples de deixá-la acessível pro share-button.js, que
+    // roda fora do #article-root e não tem acesso a `post` (usada pra levar
+    // a capa como fundo real ao compartilhar nos Stories do Instagram).
+    const shareFab = document.getElementById("share-fab");
+    if (shareFab) shareFab.dataset.image = post.image || "";
 
     // "← Voltar aos artigos" é HTML estático (fora do #article-root, pra
     // aparecer mesmo antes do JS carregar) — por isso é ajustado aqui, assim
