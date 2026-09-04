@@ -107,6 +107,12 @@
       <p class="muted">Links de fonte oficial ([[RESOURCES]]) que a audiência realmente segue, por artigo.</p>
       <div id="ins-resources"></div>
     </div>
+
+    <div class="ins-section">
+      <h2>Botão de compartilhar</h2>
+      <p class="muted" id="ins-share-summary"></p>
+      <div id="ins-share"></div>
+    </div>
   </div>
 </main>
 
@@ -203,6 +209,7 @@
     renderChecklist(data.checklist || []);
     renderFaqOpens(data.faqOpens || []);
     renderResourceClicks(data.resourceClicks || []);
+    renderShare(data.shareOpens || 0, data.shareClicks || []);
   }
 
   function renderStats(overview) {
@@ -351,6 +358,41 @@
     rows.forEach(function (r) {
       html +=
         "<tr><td>" + escapeHtml(r.article_slug || "(sem slug)") + '</td><td>' + escapeHtml(r.resource || "—") +
+        '</td><td class="num">' + r.clicks + "</td></tr>";
+    });
+    html += "</tbody></table>";
+    el.innerHTML = html;
+  }
+
+  // Rótulos legíveis pro "id" gravado em payload.id pelo
+  // assets/js/share-button.js — ver DESTINATION_LABELS lá se algum destino
+  // novo for adicionado.
+  var SHARE_DESTINATION_LABELS = {
+    whatsapp: "WhatsApp",
+    instagram_dm: "Instagram (mensagem)",
+    instagram_stories: "Instagram Stories",
+    email: "E-mail"
+  };
+
+  function renderShare(opens, rows) {
+    var totalClicks = rows.reduce(function (sum, r) { return sum + r.clicks; }, 0);
+    var summaryEl = document.getElementById("ins-share-summary");
+    var pct = opens ? Math.round((totalClicks / opens) * 100) : 0;
+    summaryEl.textContent =
+      opens || totalClicks
+        ? "Botão apertado " + opens + " vez(es) · " + totalClicks + " compartilhamento(s) de fato enviado(s) (" + pct + "% dos que abriram o popup escolheram um destino)."
+        : "Ainda ninguém apertou o botão flutuante de compartilhar.";
+
+    var el = document.getElementById("ins-share");
+    if (!rows.length) {
+      el.innerHTML = '<p class="ins-empty">Ainda não há destino escolhido no popup de compartilhar.</p>';
+      return;
+    }
+    var html = '<table class="ins-table"><thead><tr><th>Artigo (slug)</th><th>Enviado para</th><th>Cliques</th></tr></thead><tbody>';
+    rows.forEach(function (r) {
+      var label = SHARE_DESTINATION_LABELS[r.destination] || r.destination || "—";
+      html +=
+        "<tr><td>" + escapeHtml(r.article_slug || "(sem slug)") + '</td><td>' + escapeHtml(label) +
         '</td><td class="num">' + r.clicks + "</td></tr>";
     });
     html += "</tbody></table>";
