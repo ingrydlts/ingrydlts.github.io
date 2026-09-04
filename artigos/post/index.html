@@ -251,6 +251,13 @@
     }
     document.title = post.title + " — Por Dentro";
 
+    // Guarda a imagem de capa do artigo no próprio botão de compartilhar —
+    // é o jeito mais simples de deixá-la acessível pro share-button.js, que
+    // roda fora do #article-root e não tem acesso a `post` (usada pra levar
+    // a capa como fundo real ao compartilhar nos Stories do Instagram).
+    const shareFab = document.getElementById("share-fab");
+    if (shareFab) shareFab.dataset.image = post.image || "";
+
     // "← Voltar aos artigos" é HTML estático (fora do #article-root, pra
     // aparecer mesmo antes do JS carregar) — por isso é ajustado aqui, assim
     // que a gente já sabe qual artigo é, em vez de vir do corpo do artigo.

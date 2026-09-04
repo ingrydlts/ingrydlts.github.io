@@ -13,6 +13,48 @@
     };
   }
 
+  // Busca a imagem de capa do artigo (guardada em data-image pelo
+  // artigos/post/index.html) e converte pra File — é o formato que o
+  // Web Share API (nível 2) aceita pra anexar imagem numa story real.
+  function loadCoverImageFile() {
+    var fab = document.getElementById("share-fab");
+    var src = fab && fab.dataset.image;
+    if (!src) return Promise.reject(new Error("sem imagem de capa"));
+    var absoluteUrl = new URL(src, window.location.origin).href;
+    return fetch(absoluteUrl)
+      .then(function (res) {
+        if (!res.ok) throw new Error("falha ao buscar a capa");
+        return res.blob();
+      })
+      .then(function (blob) {
+        var ext = (blob.type && blob.type.split("/")[1]) || "jpg";
+        return new File([blob], "capa." + ext, { type: blob.type || "image/jpeg" });
+      });
+  }
+
+  // Cache do File da capa — o navigator.share precisa rodar bem perto do
+  // clique (o navegador pode revogar a permissão de "gesto do usuário" se
+  // demorar), então a busca da imagem começa assim que o popup abre em vez
+  // de só quando a pessoa clica em "Instagram Stories".
+  var coverFilePromise = null;
+  function getCoverImageFile() {
+    if (!coverFilePromise) coverFilePromise = loadCoverImageFile();
+    return coverFilePromise;
+  }
+
+  // Compartilha os Stories com a capa do artigo como imagem de fundo —
+  // só funciona onde o Web Share API aceita arquivos (a maioria dos
+  // navegadores mobile atuais). Sem suporte a arquivo, cai pro
+  // compartilhamento simples (só título + link).
+  function shareStoryWithCover(data) {
+    return getCoverImageFile().then(function (file) {
+      if (navigator.canShare && !navigator.canShare({ files: [file] })) {
+        throw new Error("compartilhamento de arquivo não suportado");
+      }
+      return navigator.share({ files: [file], title: data.title, url: data.url });
+    });
+  }
+
   function buildWhatsAppUrl(data) {
     return "https://wa.me/?text=" + encodeURIComponent(data.title + " " + data.url);
   }
@@ -38,15 +80,24 @@
 
   function handleInstagramShare(target) {
     var data = getShareData();
+
+    if (target === "stories" && navigator.share) {
+      shareStoryWithCover(data).catch(function (err) {
+        if (err && err.name === "AbortError") return; // usuário cancelou o share sheet
+        navigator.share({ title: data.title, url: data.url }).catch(function () {});
+      });
+      return;
+    }
+
     if (navigator.share) {
       navigator.share({ title: data.title, url: data.url }).catch(function () {});
       return;
     }
+
     copyLink(data.url).then(function (copied) {
-      var dest = target === "stories" ? "https://www.instagram.com/stories/camera/" : "https://www.instagram.com/direct/inbox/";
-      window.open(dest, "_blank", "noopener");
+      if (target === "dm") window.open("https://www.instagram.com/direct/inbox/", "_blank", "noopener");
       var where = target === "stories" ? "story" : "mensagem";
-      showHint(copied ? "Link copiado! Cole na sua " + where + " do Instagram." : "Copie o link e cole no Instagram: " + data.url);
+      showHint(copied ? "Link copiado! Abra o Instagram no celular e cole na sua " + where + "." : "Copie o link e cole no Instagram: " + data.url);
     });
   }
 
@@ -67,6 +118,7 @@
     requestAnimationFrame(function () { overlay.classList.add("is-open"); });
     if (fab) fab.setAttribute("aria-expanded", "true");
     document.addEventListener("keydown", onKeydown);
+    getCoverImageFile().catch(function () {}); // aquece o cache da capa
   }
 
   function closeModal() {
