@@ -68,8 +68,14 @@
 
     <div class="ins-section">
       <h2>Funil do assistente de vistos</h2>
-      <p class="muted">Quantas sessões (visitantes distintos) alcançaram cada etapa da conversa, na ordem em que ela acontece. A queda entre uma linha e a seguinte mostra onde as pessoas abandonam.</p>
+      <p class="muted">Quantas sessões (visitantes distintos) alcançaram cada etapa da conversa, na ordem em que ela acontece, e quantas pararam exatamente ali (não avançaram pra próxima).</p>
       <div id="ins-bot-funnel"></div>
+    </div>
+
+    <div class="ins-section">
+      <h2>Respostas do assistente</h2>
+      <p class="muted">O que a audiência de fato respondeu em cada etapa de múltipla escolha — não só quem chegou até lá.</p>
+      <div id="ins-bot-answers"></div>
     </div>
 
     <div class="ins-section">
@@ -191,6 +197,7 @@
     statusEl.textContent = "";
     renderStats(data.overview);
     renderBotFunnel(data.botFunnel || []);
+    renderBotAnswers(data.botAnswers || []);
     renderBotOutcomes(data.botOutcomes || []);
     renderFeedback(data.feedback || []);
     renderChecklist(data.checklist || []);
@@ -216,17 +223,55 @@
     var max = Math.max.apply(null, rows.map(function (r) { return r.sessions; }).concat([1]));
     var startCount = bySter["nome"] || max;
 
-    var html = '<table class="ins-table"><thead><tr><th>Etapa</th><th>Sessões</th><th>Chegou até aqui</th></tr></thead><tbody>';
-    BOT_STEP_ORDER.forEach(function (step) {
+    // Etapas que realmente aconteceram, na ordem do funil.
+    var present = BOT_STEP_ORDER.filter(function (step) { return step in bySter; });
+
+    var html = '<table class="ins-table"><thead><tr><th>Etapa</th><th>Sessões</th><th>Chegou até aqui</th><th>Parou aqui</th></tr></thead><tbody>';
+    present.forEach(function (step, i) {
       var count = bySter[step] || 0;
-      if (!count && !(step in bySter)) return; // etapa que ainda nunca aconteceu — não polui a tabela
       var pct = startCount ? Math.round((count / startCount) * 100) : 0;
       var barPct = max ? Math.round((count / max) * 100) : 0;
+      // "Parou aqui" = chegou nesta etapa mas não chegou na próxima registrada.
+      // No resultado final não existe "abandono" (é o fim natural do fluxo).
+      var next = present[i + 1];
+      var dropped = step === "result" ? null : Math.max(0, count - (next ? (bySter[next] || 0) : 0));
       html +=
         "<tr><td>" + escapeHtml(BOT_STEP_LABELS[step] || step) + '</td><td class="num">' + count + '</td>' +
-        '<td><div class="ins-bar-wrap"><div class="ins-bar' + (step === "result" ? " result" : "") + '" style="width:' + Math.max(barPct, 3) + '%;"></div>' + pct + "%</div></td></tr>";
+        '<td><div class="ins-bar-wrap"><div class="ins-bar' + (step === "result" ? " result" : "") + '" style="width:' + Math.max(barPct, 3) + '%;"></div>' + pct + "%</div></td>" +
+        '<td class="num">' + (dropped === null ? "—" : dropped) + "</td></tr>";
     });
     html += "</tbody></table>";
+    el.innerHTML = html;
+  }
+
+  function renderBotAnswers(rows) {
+    var el = document.getElementById("ins-bot-answers");
+    if (!rows.length) {
+      el.innerHTML = '<p class="ins-empty">Ainda não há respostas de múltipla escolha registradas.</p>';
+      return;
+    }
+    var byStep = {};
+    rows.forEach(function (r) {
+      var step = r.step || "(sem etapa)";
+      if (!byStep[step]) byStep[step] = [];
+      byStep[step].push(r);
+    });
+
+    var stepsInOrder = BOT_STEP_ORDER.filter(function (step) { return byStep[step]; })
+      .concat(Object.keys(byStep).filter(function (step) { return BOT_STEP_ORDER.indexOf(step) === -1; }));
+
+    var html = "";
+    stepsInOrder.forEach(function (step) {
+      var answers = byStep[step];
+      var total = answers.reduce(function (sum, r) { return sum + r.sessions; }, 0);
+      html += "<p style=\"font-size:13.5px;font-weight:600;margin:0 0 6px;\">" + escapeHtml(BOT_STEP_LABELS[step] || step) + "</p>";
+      html += '<table class="ins-table" style="margin-bottom:20px;"><thead><tr><th>Resposta</th><th>Sessões</th><th>% da etapa</th></tr></thead><tbody>';
+      answers.forEach(function (r) {
+        var pct = total ? Math.round((r.sessions / total) * 100) : 0;
+        html += "<tr><td>" + escapeHtml(r.answer || "(vazio)") + '</td><td class="num">' + r.sessions + '</td><td class="num">' + pct + "%</td></tr>";
+      });
+      html += "</tbody></table>";
+    });
     el.innerHTML = html;
   }
 

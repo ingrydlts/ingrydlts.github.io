@@ -411,7 +411,7 @@ async function handleInsightsSummary(request, env) {
   if (!moderator) return json({ error: 'Sem permissão. Faça login com uma conta que tem acesso ao repositório.' }, 401);
   if (!env.EVENTS_DB) return json({ error: 'Banco de eventos ainda não configurado.' }, 500);
 
-  const [overview, feedback, botFunnel, botOutcomes, checklist, faqOpens, resourceClicks, daily] = await Promise.all([
+  const [overview, feedback, botFunnel, botAnswers, botOutcomes, checklist, faqOpens, resourceClicks, daily] = await Promise.all([
     env.EVENTS_DB.prepare('SELECT COUNT(*) as total, COUNT(DISTINCT session_id) as sessions FROM events').all(),
     env.EVENTS_DB.prepare(
       `SELECT article_slug,
@@ -422,6 +422,14 @@ async function handleInsightsSummary(request, env) {
     env.EVENTS_DB.prepare(
       `SELECT json_extract(payload,'$.step') as step, COUNT(DISTINCT session_id) as sessions
        FROM events WHERE event_type='bot' GROUP BY step`
+    ).all(),
+    // Igual ao funil acima, mas por resposta escolhida dentro de cada etapa
+    // de múltipla escolha — só existe payload.answer nos passos que chamam
+    // answer() no assistente (nunca nome/Instagram, que são texto livre).
+    env.EVENTS_DB.prepare(
+      `SELECT json_extract(payload,'$.step') as step, json_extract(payload,'$.answer') as answer, COUNT(DISTINCT session_id) as sessions
+       FROM events WHERE event_type='bot' AND json_extract(payload,'$.answer') IS NOT NULL
+       GROUP BY step, answer ORDER BY step, sessions DESC`
     ).all(),
     env.EVENTS_DB.prepare(
       `SELECT json_extract(payload,'$.outcome') as outcome, COUNT(DISTINCT session_id) as sessions
@@ -453,6 +461,7 @@ async function handleInsightsSummary(request, env) {
     overview: (overview.results && overview.results[0]) || { total: 0, sessions: 0 },
     feedback: feedback.results || [],
     botFunnel: botFunnel.results || [],
+    botAnswers: botAnswers.results || [],
     botOutcomes: botOutcomes.results || [],
     checklist: checklist.results || [],
     faqOpens: faqOpens.results || [],

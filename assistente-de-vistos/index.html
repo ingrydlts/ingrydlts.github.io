@@ -697,6 +697,10 @@
     clearInteractive();
     addBubble(value, 'user');
     state[key] = value;
+    // Só as respostas de múltipla escolha (nunca as de texto livre, como nome
+    // ou Instagram) — dá pra ver não só que a pessoa passou pela etapa, mas
+    // o que ela escolheu, sem guardar nada identificável.
+    if (window.PDEvents) window.PDEvents.send('bot', null, { step: key, answer: value });
     showStep(getNextStep());
   }
 
