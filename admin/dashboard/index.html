@@ -115,6 +115,12 @@
     </div>
 
     <div class="ins-section">
+      <h2>De onde vêm os leitores</h2>
+      <p class="muted">Por artigo, o site/link que trouxe a visita — domínio do referrer, ou o <code>?utm_source=</code> quando o link foi marcado à mão. "(direto)" cobre quem colou a URL direto ou veio de um app que não repassa o referrer (WhatsApp, Instagram etc.); "(navegação interna)" é quem já estava no site.</p>
+      <div id="ins-traffic"></div>
+    </div>
+
+    <div class="ins-section">
       <h2>Botão de compartilhar</h2>
       <p class="muted" id="ins-share-summary"></p>
       <div id="ins-share"></div>
@@ -216,6 +222,7 @@
     renderChecklist(data.checklist || []);
     renderFaqOpens(data.faqOpens || []);
     renderResourceClicks(data.resourceClicks || []);
+    renderTrafficSources(data.trafficSources || []);
     renderShare(data.shareOpens || 0, data.shareClicks || []);
   }
 
@@ -398,6 +405,40 @@
         '</td><td class="num">' + r.clicks + "</td></tr>";
     });
     html += "</tbody></table>";
+    el.innerHTML = html;
+  }
+
+  // Agrupado por artigo (mesmo padrão de renderPolls) — cada linha é o
+  // volume de visitas daquele artigo vindas daquela fonte.
+  function renderTrafficSources(rows) {
+    var el = document.getElementById("ins-traffic");
+    if (!rows.length) {
+      el.innerHTML = '<p class="ins-empty">Ainda não há visitas registradas com fonte identificada.</p>';
+      return;
+    }
+    var bySlug = {};
+    rows.forEach(function (r) {
+      var key = r.article_slug || "(sem slug)";
+      if (!bySlug[key]) bySlug[key] = [];
+      bySlug[key].push(r);
+    });
+    var slugs = Object.keys(bySlug).sort(function (a, b) {
+      var totalA = bySlug[a].reduce(function (sum, r) { return sum + r.views; }, 0);
+      var totalB = bySlug[b].reduce(function (sum, r) { return sum + r.views; }, 0);
+      return totalB - totalA;
+    });
+    var html = "";
+    slugs.forEach(function (slug) {
+      var sources = bySlug[slug];
+      var total = sources.reduce(function (sum, r) { return sum + r.views; }, 0);
+      html += '<div style="margin-bottom:18px;"><p style="font-weight:600; font-size:13.5px; margin:0 0 8px;">' + escapeHtml(slug) + ' <span class="muted" style="font-weight:400;">(' + total + " " + (total === 1 ? "visita" : "visitas") + ')</span></p>';
+      html += '<table class="ins-table"><thead><tr><th>Fonte</th><th>Visitas</th><th>%</th></tr></thead><tbody>';
+      sources.forEach(function (r) {
+        var pct = total ? Math.round((r.views / total) * 100) : 0;
+        html += "<tr><td>" + escapeHtml(r.source || "(desconhecida)") + '</td><td class="num">' + r.views + '</td><td class="num">' + pct + "%</td></tr>";
+      });
+      html += "</tbody></table></div>";
+    });
     el.innerHTML = html;
   }
 

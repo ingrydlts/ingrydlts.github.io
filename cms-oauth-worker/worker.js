@@ -417,7 +417,7 @@ async function handleInsightsSummary(request, env) {
   if (!moderator) return json({ error: 'Sem permissão. Faça login com uma conta que tem acesso ao repositório.' }, 401);
   if (!env.EVENTS_DB) return json({ error: 'Banco de eventos ainda não configurado.' }, 500);
 
-  const [overview, feedback, botFunnel, botAnswers, botOutcomes, checklist, faqOpens, resourceClicks, polls, shareOpens, shareClicks, daily] = await Promise.all([
+  const [overview, feedback, botFunnel, botAnswers, botOutcomes, checklist, faqOpens, resourceClicks, trafficSources, polls, shareOpens, shareClicks, daily] = await Promise.all([
     env.EVENTS_DB.prepare('SELECT COUNT(*) as total, COUNT(DISTINCT session_id) as sessions FROM events').all(),
     env.EVENTS_DB.prepare(
       `SELECT article_slug,
@@ -458,6 +458,16 @@ async function handleInsightsSummary(request, env) {
        FROM events WHERE event_type='block' AND json_extract(payload,'$.type')='resource_click'
        GROUP BY article_slug, resource ORDER BY clicks DESC LIMIT 30`
     ).all(),
+    // De onde vêm as visitas de cada artigo (payload.source, ver
+    // trackPageSource em assets/js/main.js) — domínio do referrer, ou
+    // ?utm_source= quando presente, ou "(direto)"/"(navegação interna)".
+    // 1 linha por carregamento de página, então "views" aqui é volume de
+    // visitas, não sessões únicas (diferente do funil do bot).
+    env.EVENTS_DB.prepare(
+      `SELECT article_slug, json_extract(payload,'$.source') as source, COUNT(*) as views
+       FROM events WHERE event_type='block' AND json_extract(payload,'$.type')='page_view'
+       GROUP BY article_slug, source ORDER BY article_slug, views DESC LIMIT 200`
+    ).all(),
     // Enquetes ([[POLL]], ver assets/js/markdown.js) — pergunta de perfil de
     // audiência (faixa etária, planos futuros etc.), 1 linha por opção
     // respondida. DISTINCT session_id evita inflar se a mesma leitora abrir
@@ -493,6 +503,7 @@ async function handleInsightsSummary(request, env) {
     checklist: checklist.results || [],
     faqOpens: faqOpens.results || [],
     resourceClicks: resourceClicks.results || [],
+    trafficSources: trafficSources.results || [],
     polls: polls.results || [],
     shareOpens: (shareOpens.results && shareOpens.results[0] && shareOpens.results[0].opens) || 0,
     shareClicks: shareClicks.results || [],

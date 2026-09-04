@@ -136,6 +136,48 @@
     });
   }
 
+  // De onde a leitora veio até o artigo — 1 evento por carregamento de
+  // página (não trava por localStorage como feedback/enquete: aqui o
+  // interesse é contar visitas, não pessoas únicas). "source" é, em ordem
+  // de prioridade: 1) ?utm_source= da URL (link marcado à mão, ex.
+  // newsletter, bio do Instagram), 2) o domínio de document.referrer se for
+  // de outro site, 3) "(navegação interna)" se o referrer for o próprio
+  // site, 4) "(direto)" se não houver referrer nenhum — caso comum de
+  // link colado em WhatsApp/Instagram, que não repassam o referrer.
+  function trackPageSource() {
+    if (!window.PDEvents) return;
+    var slug = getArticleSlug();
+    if (!slug) return; // só interessa em página de artigo
+
+    var qs;
+    try { qs = new URLSearchParams(window.location.search); } catch (e) { qs = null; }
+    var utmSource = qs ? qs.get("utm_source") : null;
+
+    var refHost = null;
+    if (document.referrer) {
+      try { refHost = new URL(document.referrer).hostname.replace(/^www\./, ""); } catch (e) {}
+    }
+    var siteHost = window.location.hostname;
+
+    var source;
+    if (utmSource) {
+      source = utmSource.trim().toLowerCase().slice(0, 60);
+    } else if (refHost && refHost !== siteHost) {
+      source = refHost;
+    } else if (refHost === siteHost) {
+      source = "(navegação interna)";
+    } else {
+      source = "(direto)";
+    }
+
+    window.PDEvents.send("block", slug, {
+      type: "page_view",
+      source: source,
+      medium: qs ? (qs.get("utm_medium") || null) : null,
+      referrer: document.referrer ? document.referrer.slice(0, 300) : null
+    });
+  }
+
   // ---- Checklist (bloco [[CHECKLIST]], ver assets/js/markdown.js) ----
   // Progresso fica salvo no navegador de quem lê (localStorage), por
   // checklist (data-checklist-id) — sobrevive a reload, não é enviado a
@@ -313,6 +355,7 @@
     initFeedbackButtons();
     initPollButtons();
     hydrateInteractiveBlocks();
+    trackPageSource();
   });
   document.addEventListener("pd:blocks-rendered", hydrateInteractiveBlocks);
 })();
