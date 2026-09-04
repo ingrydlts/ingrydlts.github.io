@@ -58,7 +58,7 @@
       </div>
     </article>
 
-    <nav class="article-toc" aria-label="Sumário do artigo"><span class="article-toc-title">Nesta página</span><ol><li><a href="#o-que-aconteceu-com-a-anef">O que aconteceu com a ANEF</a></li><li><a href="#faq">FAQ</a></li></ol></nav>
+    <nav class="article-toc" aria-label="Sumário do artigo"><span class="article-toc-title">Nesta página</span><ol><li><a href="#o-que-aconteceu-com-a-anef">O que aconteceu com a ANEF</a></li><li><a href="#os-4-niveis-de-recurso">Os 4 níveis de recurso</a></li><li><a href="#resumo-dos-prazos">Resumo dos prazos</a></li><li><a href="#faq">FAQ</a></li></ol></nav>
 
     <section class="section">
       <h2 id="o-que-aconteceu-com-a-anef">O que aconteceu com a ANEF</h2>
@@ -150,7 +150,241 @@
     <style>@media (max-width: 520px) { .sib-form-fields-row { grid-template-columns: 1fr !important; } }</style>
 
     <section class="section">
-      <div id="premium-slot"><p class="muted">Carregando…</p></div>
+      <h2 id="os-4-niveis-de-recurso" style="font-size:24px;">Os 4 níveis de recurso — do mais simples ao mais pesado</h2>
+      <p class="muted" style="margin-bottom:24px;">Use nessa ordem. Cada nível cria evidência legal para o próximo. Não pule etapas sem antes ter registro das tentativas anteriores.</p>
+
+      <!-- NÍVEL 1 -->
+      <div class="card" style="padding:26px 28px; margin-bottom:20px;">
+        <div style="display:flex; gap:18px; align-items:flex-start; margin-bottom:16px;">
+          <span class="rt-step-num" style="background:var(--merlot);">1</span>
+          <div>
+            <h3 style="margin-bottom:8px;">Relance pela messagerie ANEF + e-mail para a prefeitura</h3>
+            <div><span class="rt-tag rt-tag-green">Gratuito</span><span class="rt-tag rt-tag-green">Sem advogado</span><span class="rt-tag rt-tag-blue">Primeiro passo obrigatório</span></div>
+          </div>
+        </div>
+        <p>Antes de qualquer recurso formal, você precisa criar <strong>rastro documental</strong> das suas tentativas. O relance pela messagerie da ANEF e o e-mail para a prefeitura servem para isso — e às vezes já são suficientes para desbloquear dossiers travados por erro técnico ou fila interna.</p>
+        <h4 style="font-size:14px; margin:18px 0 10px;">Passo a passo:</h4>
+        <ol style="padding-left:20px; font-size:14px; line-height:1.7;">
+          <li style="margin-bottom:16px;"><strong>Acesse sua conta na ANEF</strong><p style="margin:4px 0 8px;">Entre no site oficial e vá até a messagerie do seu dossier.</p><a href="https://administration-etrangers-en-france.interieur.gouv.fr/particuliers/#/" target="_blank" rel="noopener" style="font-weight:600;">→ Acessar a ANEF</a></li>
+          <li style="margin-bottom:16px;"><strong>Envie uma mensagem de relance pelo sistema</strong><p style="margin:4px 0 8px;">Na messagerie do seu dossier, envie a mensagem abaixo. Copie exatamente, substituindo o que está entre colchetes.</p>
+            <div class="rt-template-box">
+              <div class="rt-template-label">📋 Modelo — messagerie ANEF</div>
+              <pre id="tpl-anef">Madame, Monsieur,
+
+Je me permets de vous contacter au sujet de ma demande de [renouvellement / première demande] de titre de séjour, référence numéro [NÚMERO DO SEU DOSSIER], déposée le [DATA DO DEPÓSITO].
+
+À ce jour, soit [NÚMERO] jours / mois après le dépôt de mon dossier, je n'ai reçu aucune réponse et le statut de ma demande n'a pas évolué.
+
+Cette situation me place dans une situation administrative précaire, m'empêchant de [travailler / renouveler mon contrat / voyager].
+
+Je vous demande de bien vouloir examiner ma demande dans les meilleurs délais et de m'informer de son avancement.
+
+Dans l'attente de votre retour,
+[SEU NOME]
+[DATA]</pre>
+              <button type="button" class="rt-copy-btn" data-target="tpl-anef">📋 Copiar mensagem</button>
+            </div>
+          </li>
+          <li style="margin-bottom:16px;"><strong>Envie também um e-mail para a prefeitura responsável</strong><p style="margin:4px 0 8px;">Cada dossier é vinculado a uma prefeitura. Encontre o e-mail do setor de étrangers no site da sua préfecture.</p><a href="https://lannuaire.service-public.fr/navigation/prefecture" target="_blank" rel="noopener" style="font-weight:600;">→ Encontrar minha préfecture</a>
+            <div class="rt-template-box" style="margin-top:14px;">
+              <div class="rt-template-label">📋 Modelo — e-mail para a préfecture</div>
+              <pre id="tpl-pref">Objet : Relance — Dossier de titre de séjour en attente — [SEU NOME]
+
+Madame, Monsieur,
+
+Je vous contacte concernant ma demande de [renouvellement / première demande] de titre de séjour déposée via la plateforme ANEF le [DATA], référence [NÚMERO].
+
+Malgré plusieurs semaines / mois d'attente, ma demande n'a reçu aucun traitement visible. Mon titre de séjour actuel est [valide jusqu'au / expiré depuis le] [DATA].
+
+Je vous rappelle que, conformément à la décision du Conseil d'État du 5 mai 2026, les délais excessifs de traitement constituent une atteinte grave aux droits des étrangers en situation régulière.
+
+Je sollicite un accusé de réception de ce message et une mise à jour sur l'état de traitement de mon dossier dans un délai raisonnable.
+
+Coordonnées :
+Nom complet : [SEU NOME]
+Date de naissance : [DATA DE NASCIMENTO]
+Nationalité : Brésilienne
+Adresse : [SEU ENDEREÇO COMPLETO]
+Téléphone : [SEU NÚMERO]
+
+Dans l'attente de votre retour,
+[SEU NOME]</pre>
+              <button type="button" class="rt-copy-btn" data-target="tpl-pref">📋 Copiar e-mail</button>
+            </div>
+          </li>
+          <li><strong>Guarde tudo com data</strong><p style="margin:4px 0 0;">Faça print da tela da messagerie com o horário do envio. Salve o e-mail enviado e qualquer resposta recebida. Esses registros são prova para os recursos seguintes.</p></li>
+        </ol>
+        <div class="callout callout-warn" style="margin-bottom:0;"><strong>⏱️ Quanto esperar:</strong> Se depois de <strong>3 a 4 semanas</strong> não houver nenhuma resposta ou movimentação no dossier, avance para o Nível 2. Não espere mais do que isso.</div>
+      </div>
+
+      <!-- NÍVEL 2 -->
+      <div class="card" style="padding:26px 28px; margin-bottom:20px;">
+        <div style="display:flex; gap:18px; align-items:flex-start; margin-bottom:16px;">
+          <span class="rt-step-num" style="background:var(--merlot);">2</span>
+          <div>
+            <h3 style="margin-bottom:8px;">Saisine do Défenseur des Droits</h3>
+            <div><span class="rt-tag rt-tag-green">Gratuito</span><span class="rt-tag rt-tag-green">Sem advogado</span><span class="rt-tag rt-tag-blue">~60% de sucesso</span></div>
+          </div>
+        </div>
+        <p>O <strong>Défenseur des Droits</strong> é uma autoridade constitucional independente do Estado francês — não é um tribunal, mas tem poder de <em>intermediar</em> e pressionar a administração. É gratuito, não exige advogado, e tem sido particularmente eficaz em casos de bloqueio da ANEF desde 2023.</p>
+        <p>A saisine pode ser feita 100% online em menos de 20 minutos. Você descreve o problema, anexa documentos e o Défenseur entra em contato com a prefeitura em seu nome.</p>
+        <h4 style="font-size:14px; margin:18px 0 10px;">Passo a passo:</h4>
+        <ol style="padding-left:20px; font-size:14px; line-height:1.7;">
+          <li style="margin-bottom:16px;"><strong>Acesse o formulário online do Défenseur des Droits</strong><p style="margin:4px 0 8px;">Na categoria, escolha <em>"Relations avec un service public"</em> → <em>"Étrangers"</em>.</p><a href="https://www.defenseurdesdroits.fr/faire-une-reclamation" target="_blank" rel="noopener" style="font-weight:600;">→ Fazer a reclamação online</a></li>
+          <li style="margin-bottom:16px;"><strong>Preencha o formulário com esses dados</strong>
+            <ul style="font-size:13.5px; padding-left:18px; margin-top:6px; color:var(--grafite);">
+              <li>Número de referência do seu dossier ANEF</li><li>Data de depósito do pedido</li><li>Data de vencimento do titre atual</li><li>Prints da messagerie com as tentativas anteriores (Nível 1)</li><li>Cópia do récépissé ou do titre em vigor</li>
+            </ul>
+          </li>
+          <li style="margin-bottom:16px;"><strong>Descreva o caso em francês — use este modelo</strong>
+            <div class="rt-template-box" style="margin-top:10px;">
+              <div class="rt-template-label">📋 Modelo — descrição para o Défenseur des Droits</div>
+              <pre id="tpl-ddd">Je sollicite l'intervention du Défenseur des Droits en raison d'un dysfonctionnement grave de la plateforme ANEF (Administration Numérique pour les Étrangers en France), qui bloque le traitement de ma demande de [renouvellement / première demande] de titre de séjour depuis [NÚMERO DE MESES] mois.
+
+Ma demande, référence [NÚMERO], a été déposée le [DATA] via la plateforme ANEF. À ce jour, aucune décision n'a été rendue et mon dossier reste en statut "en cours de traitement" sans évolution.
+
+Cette situation me prive de mon droit au séjour régulier et compromet [mon emploi / mon contrat de travail / mon accès aux prestations sociales].
+
+J'ai déjà tenté :
+- Un message de relance via la messagerie ANEF le [DATA]
+- Un e-mail à la Préfecture de [DEPARTAMENTO] le [DATA]
+
+Sans réponse satisfaisante à ce jour.
+
+Le Conseil d'État, dans sa décision du 5 mai 2026, a reconnu que les délais excessifs de traitement de l'ANEF constituent une atteinte grave aux droits fondamentaux des étrangers en situation régulière. Je demande votre intervention pour qu'une décision soit rendue dans les meilleurs délais.</pre>
+              <button type="button" class="rt-copy-btn" data-target="tpl-ddd">📋 Copiar descrição</button>
+            </div>
+          </li>
+          <li><strong>Confirme o recebimento e guarde o número de dossier</strong><p style="margin:4px 0 0;">Após o envio, você receberá um e-mail de confirmação com um número de dossier do Défenseur. Guarde esse número.</p></li>
+        </ol>
+        <div class="callout callout-info">📖 Mais informações: <a href="https://www.service-public.fr/particuliers/vosdroits/F10435" target="_blank" rel="noopener">Service-Public.fr — Défenseur des Droits</a></div>
+        <div class="callout callout-warn" style="margin-bottom:0;"><strong>⏱️ Quanto esperar:</strong> O Défenseur normalmente responde em <strong>4 a 8 semanas</strong>. Se depois de 2 meses sem resultado, avance para o Nível 3. Você pode acionar o Nível 3 em paralelo, sem precisar esperar a resolução do Nível 2.</div>
+      </div>
+
+      <!-- NÍVEL 3 -->
+      <div class="card" style="padding:26px 28px; margin-bottom:20px;">
+        <div style="display:flex; gap:18px; align-items:flex-start; margin-bottom:16px;">
+          <span class="rt-step-num" style="background:var(--merlot);">3</span>
+          <div>
+            <h3 style="margin-bottom:8px;">Carta registrada com AR ao Préfet</h3>
+            <div><span class="rt-tag rt-tag-green">Gratuito</span><span class="rt-tag rt-tag-amber">Prazo legal importante</span><span class="rt-tag rt-tag-blue">Cria evidência formal</span></div>
+          </div>
+        </div>
+        <p>Este é o recurso formal que cria <strong>validade jurídica</strong> para o próximo passo — o tribunal. A carta registrada com acuse de recebimento (AR) enviada ao Préfet transforma seu pedido em uma demanda administrativa oficial, com prazo legal obrigatório de resposta.</p>
+        <div class="callout callout-warn"><strong>⚠️ Atenção ao prazo:</strong> Esta carta só deve ser enviada após <strong>4 meses de silêncio da administração</strong> desde o depósito do dossier original. A partir do envio, o Estado tem <strong>2 meses</strong> para responder. Se não responder, isso constitui um "rejet implicite" que você pode contestar no tribunal.</div>
+        <h4 style="font-size:14px; margin:20px 0 10px;">Linha do tempo que você precisa respeitar:</h4>
+        <div class="rt-timeline">
+          <div class="rt-tl-item"><div class="rt-tl-time">Mês 0 — Dia X</div><div class="rt-tl-desc">Você depositou o dossier na ANEF.</div></div>
+          <div class="rt-tl-item"><div class="rt-tl-time">Meses 1–3 — Nível 1 e 2</div><div class="rt-tl-desc">Relances pela messagerie e Défenseur des Droits.</div></div>
+          <div class="rt-tl-item is-alert"><div class="rt-tl-time">Mês 4 — Carta registrada (este nível)</div><div class="rt-tl-desc">Após 4 meses sem resposta, você envia a carta registrada com AR ao Préfet. Guarde o comprovante dos Correios (La Poste) com a data.</div></div>
+          <div class="rt-tl-item is-alert"><div class="rt-tl-time">Mês 4 + 2 meses = Mês 6 — Prazo de resposta</div><div class="rt-tl-desc">O Estado tem 2 meses para responder após receber a carta. Sem resposta = rejet implicite.</div></div>
+          <div class="rt-tl-item is-danger"><div class="rt-tl-time">Após o mês 6 — Nível 4 (tribunal)</div><div class="rt-tl-desc">Você pode acionar o tribunal administrativo. O rejet implicite é a base legal para o référé.</div></div>
+        </div>
+        <h4 style="font-size:14px; margin:22px 0 10px;">Como enviar a carta:</h4>
+        <ol style="padding-left:20px; font-size:14px; line-height:1.7;">
+          <li style="margin-bottom:16px;"><strong>Encontre o endereço postal da sua préfecture</strong><p style="margin:4px 0 8px;">Você precisa do endereço físico do serviço de étrangers da préfecture do seu departamento.</p><a href="https://lannuaire.service-public.fr/navigation/prefecture" target="_blank" rel="noopener" style="font-weight:600;">→ Encontrar minha préfecture</a></li>
+          <li style="margin-bottom:16px;"><strong>Redija a carta — use o modelo abaixo</strong>
+            <div class="rt-template-box" style="margin-top:10px;">
+              <div class="rt-template-label">📋 Modelo — Carta registrada ao Préfet</div>
+              <pre id="tpl-prefet">[SEU NOME]
+[SEU ENDEREÇO COMPLETO]
+[CEP] [CIDADE]
+[E-MAIL]
+[TELEFONE]
+
+À l'attention de :
+Monsieur/Madame le/la Préfet(e) de [NOME DO DEPARTAMENTO]
+Service des étrangers
+[ENDEREÇO DA PRÉFECTURE]
+
+[CIDADE], le [DATA]
+
+Objet : Recours gracieux — Demande de décision sur dossier en attente depuis plus de 4 mois
+Référence dossier ANEF : [NÚMERO]
+
+Madame, Monsieur le/la Préfet(e),
+
+Par la présente, je me permets de vous adresser un recours gracieux concernant ma demande de [renouvellement / première délivrance] de titre de séjour, déposée via la plateforme ANEF le [DATA], sous la référence [NÚMERO].
+
+À ce jour, soit plus de [NÚMERO] mois après le dépôt de mon dossier, aucune décision n'a été rendue. Cette situation m'a été préjudiciable car [précisez : elle compromet mon emploi / mon accès aux allocations / ma situation régulière].
+
+J'ai tenté à plusieurs reprises de contacter vos services :
+— Messagerie ANEF : le [DATA]
+— E-mail à la préfecture : le [DATA]
+— Saisine du Défenseur des Droits : le [DATA], référence n° [NÚMERO]
+
+Sans réponse satisfaisante à ce jour.
+
+Le Conseil d'État, dans sa décision du 5 mai 2026, a formellement reconnu que les délais excessifs de traitement de l'ANEF portent atteinte aux droits fondamentaux des étrangers en attente de renouvellement.
+
+Je vous demande de bien vouloir statuer sur ma demande dans un délai de deux mois à compter de la réception de ce courrier. Sans réponse de votre part dans ce délai, je me verrai contraint(e) d'engager un recours contentieux devant le Tribunal Administratif compétent.
+
+Dans l'attente de votre décision,
+
+[ASSINATURA]
+[SEU NOME COMPLETO]
+
+Pièces jointes :
+— Copie du titre de séjour / récépissé actuel
+— Accusé de dépôt du dossier ANEF
+— Copies des relances effectuées
+— Référence de la saisine Défenseur des Droits</pre>
+              <button type="button" class="rt-copy-btn" data-target="tpl-prefet">📋 Copiar carta completa</button>
+            </div>
+          </li>
+          <li style="margin-bottom:16px;"><strong>Envie pela La Poste — Lettre Recommandée avec AR</strong><p style="margin:4px 0 8px;">Vá a qualquer agência dos Correios (La Poste) e envie como <em>"lettre recommandée avec accusé de réception"</em>. Custa em torno de 4 a 6€.</p><a href="https://www.laposte.fr/lettre-recommandee" target="_blank" rel="noopener" style="font-weight:600;">→ Informações — La Poste</a></li>
+          <li><strong>Registre a data do envio e do recebimento do AR</strong><p style="margin:4px 0 0;">O prazo de 2 meses começa a contar da data em que a préfecture recebeu a carta (indicada no AR), não da data do envio.</p></li>
+        </ol>
+      </div>
+
+      <!-- NÍVEL 4 -->
+      <div class="card" style="padding:26px 28px;">
+        <div style="display:flex; gap:18px; align-items:flex-start; margin-bottom:16px;">
+          <span class="rt-step-num" style="background:var(--merlot);">4</span>
+          <div>
+            <h3 style="margin-bottom:8px;">Référé mesures utiles — Tribunal Administratif</h3>
+            <div><span class="rt-tag rt-tag-red">Via judicial</span><span class="rt-tag rt-tag-amber">Urgência reconhecida automaticamente</span><span class="rt-tag rt-tag-blue">~70% de sucesso</span></div>
+          </div>
+        </div>
+        <p>O <em>référé mesures utiles</em> é um procedimento de urgência no Tribunal Administratif — o equivalente a um "pedido de medida cautelar" no direito brasileiro. Ele força a administração a agir sem esperar o processo principal.</p>
+        <p>Para casos de renovação de titre de séjour bloqueada pela ANEF, a urgência é <strong>reconhecida automaticamente pelos tribunais</strong> — não é preciso provar que é urgente. A taxa de sucesso gira em torno de 70%, especialmente após a decisão do Conseil d'État de maio de 2026.</p>
+        <div class="callout callout-info"><strong>💡 Você precisa de advogado?</strong> Não obrigatoriamente para o référé — você pode se representar. Mas para este nível, é altamente recomendável consultar pelo menos uma vez com um jurista ou associação de ajuda aos imigrantes.</div>
+        <h4 style="font-size:14px; margin:18px 0 10px;">Passo a passo:</h4>
+        <ol style="padding-left:20px; font-size:14px; line-height:1.7;">
+          <li style="margin-bottom:16px;"><strong>Identifique o tribunal administrativo competente</strong><p style="margin:4px 0 8px;">É o tribunal do departamento onde você reside.</p><a href="https://www.conseil-etat.fr/tribunaux-cours/ou-s-adresser" target="_blank" rel="noopener" style="font-weight:600;">→ Encontrar meu tribunal</a></li>
+          <li style="margin-bottom:16px;"><strong>Prepare o dossiê de prova — você vai precisar de tudo isso</strong>
+            <ul style="font-size:13.5px; padding-left:18px; margin-top:6px; color:var(--grafite);">
+              <li>Comprovante de depósito do dossier na ANEF (data + número de referência)</li>
+              <li>Prints do status atual ("en cours de traitement" sem evolução)</li>
+              <li>Cópia do titre de séjour vencido ou do récépissé</li>
+              <li>Registros de todas as relances (messagerie + e-mails)</li>
+              <li>Comprovante de saisine do Défenseur des Droits (Nível 2)</li>
+              <li>Carta registrada ao Préfet + AR (Nível 3) + comprovante de que 2 meses se passaram sem resposta</li>
+              <li>Documentos que comprovem o prejuízo: contrato de trabalho, ficha de pague, documentação de alocações, etc.</li>
+            </ul>
+          </li>
+          <li style="margin-bottom:16px;"><strong>Deposite a requête en référé mesures utiles</strong><p style="margin:4px 0 8px;">Pode ser feito presencialmente no tribunal ou, em alguns casos, pelo sistema Télérecours.</p><a href="https://www.service-public.fr/particuliers/vosdroits/F10443" target="_blank" rel="noopener" style="font-weight:600;">→ Service-Public: Référé administratif</a></li>
+          <li><strong>Consulte antes com uma associação de apoio jurídico gratuito</strong><p style="margin:4px 0 8px;">Antes de ir ao tribunal, recomendo fortemente uma consulta gratuita:</p>
+            <div><a href="https://www.gisti.org/" target="_blank" rel="noopener" style="font-weight:600; display:block; margin-bottom:6px;">→ GISTI — Groupe d'information et de soutien des immigrés</a>
+            <a href="https://www.lacimade.org/" target="_blank" rel="noopener" style="font-weight:600; display:block; margin-bottom:6px;">→ La Cimade — Aide aux étrangers</a>
+            <a href="https://www.aide-juridictionnelle.justice.fr/" target="_blank" rel="noopener" style="font-weight:600; display:block;">→ Aide Juridictionnelle</a></div>
+          </li>
+        </ol>
+        <div class="callout callout-warn" style="margin-bottom:0;"><strong>📌 Lembrete estratégico:</strong> O référé não substitui o processo principal (recours au fond). Muitas pessoas conseguem a regularização ainda na fase do référé — o Estado regulariza o dossier antes mesmo da audiência para evitar a condenação.</div>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2 id="resumo-dos-prazos">Resumo dos prazos — o que fazer e quando</h2>
+      <p class="muted" style="margin-bottom:20px;">Guia rápido para não perder nenhuma janela de recurso</p>
+      <div class="rt-timeline">
+        <div class="rt-tl-item"><div class="rt-tl-time">Agora — Semana 1</div><div class="rt-tl-desc"><strong>Nível 1:</strong> Envie a mensagem de relance pela messagerie da ANEF e o e-mail para a préfecture. Guarde prints com data e hora.</div></div>
+        <div class="rt-tl-item"><div class="rt-tl-time">Semanas 3–4 (sem resposta)</div><div class="rt-tl-desc"><strong>Nível 2:</strong> Acione o Défenseur des Droits online. Processo leva 4–8 semanas. Pode ser feito em paralelo com o Nível 3.</div></div>
+        <div class="rt-tl-item is-alert"><div class="rt-tl-time">Mês 4 (após o depósito do dossier)</div><div class="rt-tl-desc"><strong>Nível 3:</strong> Envio da carta registrada com AR ao Préfet. <em>Esta data é um gatilho legal — não a ignore.</em></div></div>
+        <div class="rt-tl-item is-alert"><div class="rt-tl-time">Mês 4 + 2 meses sem resposta</div><div class="rt-tl-desc">Silêncio da préfecture = rejet implicite. A partir daqui, você tem 2 meses adicionais para contestar no tribunal.</div></div>
+        <div class="rt-tl-item is-danger"><div class="rt-tl-time">Meses 6–8 (último recurso)</div><div class="rt-tl-desc"><strong>Nível 4:</strong> Référé mesures utiles no tribunal administrativo. Urgência reconhecida automaticamente. ~70% de sucesso.</div></div>
+      </div>
+      <div class="callout callout-info">💡 <strong>Dica:</strong> Não espere terminar um nível para começar o próximo. Os Níveis 2 e 3 podem — e devem — ser acionados em paralelo. O que importa é ter registro escrito de cada tentativa antes de ir ao tribunal.</div>
     </section>
 
     <section class="section" id="faq">
@@ -215,9 +449,7 @@
 <script src="/assets/js/analytics.js"></script>
 <script type="module" src="/assets/js/header.js"></script>
 <script type="module">
-  import { resolvePremiumSlot } from "/assets/js/premium-gate.js";
   import { mountArticleExtras } from "/assets/js/article-extras.js";
-  resolvePremiumSlot("premium-slot", "passo-a-passo-da-anef");
   mountArticleExtras({ slug: "passo-a-passo-da-anef", updatedMountId: "article-updated-mount", feedbackMountId: "article-feedback-mount", relatedMountId: "article-related-mount" });
 </script>
 <script>
