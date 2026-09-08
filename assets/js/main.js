@@ -144,37 +144,57 @@
   // de outro site, 3) "(navegação interna)" se o referrer for o próprio
   // site, 4) "(direto)" se não houver referrer nenhum — caso comum de
   // link colado em WhatsApp/Instagram, que não repassam o referrer.
+  //
+  // O envio em si espera o consentimento (mesmo padrão de analytics.js):
+  // no carregamento a config de cookies ainda não chegou, e a maioria das
+  // visitantes de primeira vez só aceita o banner DEPOIS do DOMContentLoaded
+  // — então não dá pra checar isGranted() só uma vez na hora do load, tem
+  // que também escutar PDConsent.onChange pra pegar quem aceita durante a
+  // própria visita.
   function trackPageSource() {
-    if (!window.PDEvents) return;
+    if (!window.PDEvents || !window.PDConsent) return;
     var slug = getArticleSlug();
     if (!slug) return; // só interessa em página de artigo
 
-    var qs;
-    try { qs = new URLSearchParams(window.location.search); } catch (e) { qs = null; }
-    var utmSource = qs ? qs.get("utm_source") : null;
+    var sent = false;
+    function sendOnce() {
+      if (sent) return;
+      sent = true;
 
-    var refHost = null;
-    if (document.referrer) {
-      try { refHost = new URL(document.referrer).hostname.replace(/^www\./, ""); } catch (e) {}
+      var qs;
+      try { qs = new URLSearchParams(window.location.search); } catch (e) { qs = null; }
+      var utmSource = qs ? qs.get("utm_source") : null;
+
+      var refHost = null;
+      if (document.referrer) {
+        try { refHost = new URL(document.referrer).hostname.replace(/^www\./, ""); } catch (e) {}
+      }
+      var siteHost = window.location.hostname;
+
+      var source;
+      if (utmSource) {
+        source = utmSource.trim().toLowerCase().slice(0, 60);
+      } else if (refHost && refHost !== siteHost) {
+        source = refHost;
+      } else if (refHost === siteHost) {
+        source = "(navegação interna)";
+      } else {
+        source = "(direto)";
+      }
+
+      window.PDEvents.send("block", slug, {
+        type: "page_view",
+        source: source,
+        medium: qs ? (qs.get("utm_medium") || null) : null,
+        referrer: document.referrer ? document.referrer.slice(0, 300) : null
+      });
     }
-    var siteHost = window.location.hostname;
 
-    var source;
-    if (utmSource) {
-      source = utmSource.trim().toLowerCase().slice(0, 60);
-    } else if (refHost && refHost !== siteHost) {
-      source = refHost;
-    } else if (refHost === siteHost) {
-      source = "(navegação interna)";
-    } else {
-      source = "(direto)";
-    }
-
-    window.PDEvents.send("block", slug, {
-      type: "page_view",
-      source: source,
-      medium: qs ? (qs.get("utm_medium") || null) : null,
-      referrer: document.referrer ? document.referrer.slice(0, 300) : null
+    window.PDConsent.ready.then(function () {
+      if (window.PDConsent.isGranted()) sendOnce();
+    });
+    window.PDConsent.onChange(function (granted) {
+      if (granted) sendOnce();
     });
   }
 
