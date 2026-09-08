@@ -179,9 +179,10 @@
 
   function findProductInCatalog(items, catalog, ref) {
     if (!items) return null;
-    if (catalog === "digital") return items.find((p) => p.slug === ref) || null;
+    const active = items.filter((p) => p.active !== false);
+    if (catalog === "digital") return active.find((p) => p.slug === ref) || null;
     const title = decodeURIComponent(ref);
-    return items.find((p) => p.title === title) || null;
+    return active.find((p) => p.title === title) || null;
   }
 
   const CATALOG_FILE = {

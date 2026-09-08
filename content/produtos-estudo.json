@@ -1,24 +1,28 @@
 {
   "items": [
     {
+      "active": true,
       "title": "Le Robert Junior — Dicionário",
       "desc": "Indicação de dicionário de francês para reforço de vocabulário.",
       "image": "",
       "affiliateUrl": ""
     },
     {
+      "active": true,
       "title": "Caderno Clairefontaine",
       "desc": "A papelaria francesa clássica — a que realmente uso para anotar aulas.",
       "image": "",
       "affiliateUrl": ""
     },
     {
+      "active": true,
       "title": "Bescherelle — Conjugação",
       "desc": "O guia de conjugação que salva na hora da redação.",
       "image": "",
       "affiliateUrl": ""
     },
     {
+      "active": true,
       "title": "Le DELF B2 100% Réussite",
       "desc": "Livro de preparação para o DELF B2 com 4 provas completas, dicas e correções — o que usei para treinar antes do exame.",
       "image": "",

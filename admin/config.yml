@@ -214,6 +214,7 @@ collections:
             widget: list
             summary: "{{title}}"
             fields:
+              - { label: "🔴 Ativo no site", name: active, widget: boolean, default: true, required: false, hint: "Botão de ativação: desligado = produto fica cadastrado mas INVISÍVEL no site — some da lista de produtos de estudo e de qualquer banner de artigo que o indique. Ligue quando quiser que ele apareça de verdade." }
               - { label: Título, name: title, widget: string }
               - { label: Descrição curta, name: desc, widget: string }
               - { label: Imagem, name: image, widget: image, required: false, hint: "Tamanho ideal: 1200×900px (proporção 4:3), foto na horizontal. Aparece no card da lista." }
@@ -523,6 +524,7 @@ collections:
                 name: produtos-digitais
                 widget: object
                 fields:
+                  - { label: "Mostrar este banner?", name: enabled, widget: boolean, default: true, hint: "Desative pra esconder o bloco na página sem apagar o conteúdo." }
                   - { label: Selo, name: kicker, widget: string }
                   - { label: Título, name: title, widget: string }
                   - { label: Foto, name: image, widget: image, required: false, hint: "Tamanho ideal: 1200×675px (proporção 16:9), foto na horizontal e ampla." }
@@ -533,6 +535,7 @@ collections:
                 name: produtos-de-estudo
                 widget: object
                 fields:
+                  - { label: "Mostrar este banner?", name: enabled, widget: boolean, default: true, hint: "Desative pra esconder o bloco na página sem apagar o conteúdo." }
                   - { label: Selo, name: kicker, widget: string }
                   - { label: Título, name: title, widget: string }
                   - { label: Foto, name: image, widget: image, required: false, hint: "Tamanho ideal: 1200×675px (proporção 16:9), foto na horizontal e ampla." }
@@ -543,6 +546,7 @@ collections:
                 name: produtos-de-compras
                 widget: object
                 fields:
+                  - { label: "Mostrar este banner?", name: enabled, widget: boolean, default: true, hint: "Desative pra esconder o bloco na página sem apagar o conteúdo." }
                   - { label: Selo, name: kicker, widget: string }
                   - { label: Título, name: title, widget: string }
                   - { label: Foto, name: image, widget: image, required: false, hint: "Tamanho ideal: 1200×675px (proporção 16:9), foto na horizontal e ampla." }

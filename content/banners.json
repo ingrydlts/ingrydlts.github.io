@@ -6,6 +6,7 @@
   },
   "categoryBanners": {
     "produtos-digitais": {
+      "enabled": true,
       "kicker": "Do blog · Guia",
       "title": "Como organizar toda sua burocracia em um só lugar",
       "image": "",
@@ -14,6 +15,7 @@
       "postSlug": "burocracia-primeiro-ano"
     },
     "produtos-de-estudo": {
+      "enabled": true,
       "kicker": "Do blog · Guia",
       "title": "Tudo sobre o Exame Cívico: o que estudar e como se preparar",
       "image": "",
@@ -22,6 +24,7 @@
       "postSlug": "tudo-sobre-o-exame-civico"
     },
     "produtos-de-compras": {
+      "enabled": false,
       "kicker": "Do blog · Estilo de vida",
       "title": "O que realmente uso pra enfrentar o inverno parisiense",
       "image": "",
