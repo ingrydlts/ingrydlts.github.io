@@ -6,9 +6,9 @@
       "logo": true
     },
     "produtos": {
-      "header": false,
-      "footer": false,
-      "logo": false
+      "header": true,
+      "footer": true,
+      "logo": true
     },
     "blog": {
       "header": false,
