@@ -133,16 +133,18 @@
         fetchJSON("/content/posts.json"),
       ]);
       const b = banners.categoryBanners["produtos-de-compras"];
-      const post = posts.items.find((p) => p.slug === b.postSlug && isPublished(p));
-      const href = post ? postHref(post) : "/artigos/";
-      document.getElementById("category-banner").innerHTML =
-        '<div class="blog-banner">' +
-        imgSlotHTML(b.image, b.title, "Foto do artigo") +
-        '<div class="blog-banner-body">' +
-        '<div><span class="eyebrow" style="color:' + b.color + ';">' + escapeHtml(b.kicker) + "</span>" +
-        "<h3>" + escapeHtml(b.title) + "</h3></div>" +
-        '<a class="btn btn-pill" href="' + href + '" style="background:' + b.color + ';">' + escapeHtml(b.ctaText) + "</a>" +
-        "</div></div>";
+      if (b.enabled !== false) {
+        const post = posts.items.find((p) => p.slug === b.postSlug && isPublished(p));
+        const href = post ? postHref(post) : "/artigos/";
+        document.getElementById("category-banner").innerHTML =
+          '<div class="blog-banner">' +
+          imgSlotHTML(b.image, b.title, "Foto do artigo") +
+          '<div class="blog-banner-body">' +
+          '<div><span class="eyebrow" style="color:' + b.color + ';">' + escapeHtml(b.kicker) + "</span>" +
+          "<h3>" + escapeHtml(b.title) + "</h3></div>" +
+          '<a class="btn btn-pill" href="' + href + '" style="background:' + b.color + ';">' + escapeHtml(b.ctaText) + "</a>" +
+          "</div></div>";
+      }
     } catch (e) { console.warn(e); }
   })();
 </script>
