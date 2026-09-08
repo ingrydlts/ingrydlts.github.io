@@ -512,7 +512,8 @@ collections:
             name: home
             widget: object
             fields:
-              - { label: "Foto do hero", name: heroImage, widget: image, required: false, hint: "Tamanho ideal: 1200×960px (proporção 5:4), foto na horizontal. É a foto grande de destaque no topo da Home." }
+              - { label: "Foto do hero (mobile)", name: heroImage, widget: image, required: false, hint: "Foto na vertical (proporção 2:3). Usada em telas menores que 900px." }
+              - { label: "Foto do hero (desktop)", name: heroImageDesktop, widget: image, required: false, hint: "Foto na horizontal (proporção 3:2). Usada em telas a partir de 900px." }
               - { label: "Texto alternativo da foto", name: heroImageAlt, widget: string, required: false }
           - label: "Banners vitrine → blog (um por categoria)"
             name: categoryBanners

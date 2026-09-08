@@ -138,10 +138,16 @@
   (async function () {
     try {
       const banners = await fetchJSON("/content/banners.json");
+      const heroAlt = escapeHtml(banners.home.heroImageAlt || "");
       document.getElementById("hero-image").innerHTML =
-        '<div class="img-slot" style="border-radius:6px; border:none; aspect-ratio:5/4;">' +
+        '<div class="img-slot" style="border-radius:6px; border:none;">' +
         (banners.home.heroImage
-          ? '<img src="' + escapeHtml(banners.home.heroImage) + '" alt="' + escapeHtml(banners.home.heroImageAlt || "") + '">'
+          ? '<picture>' +
+            (banners.home.heroImageDesktop
+              ? '<source media="(min-width: 900px)" srcset="' + escapeHtml(banners.home.heroImageDesktop) + '">'
+              : "") +
+            '<img src="' + escapeHtml(banners.home.heroImage) + '" alt="' + heroAlt + '">' +
+            '</picture>'
           : '<span class="img-slot-label">' + escapeHtml(banners.home.heroImageAlt || "Foto real — mesa, luz natural") + "</span>") +
         "</div>";
     } catch (e) { console.warn(e); }

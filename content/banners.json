@@ -1,7 +1,8 @@
 {
   "home": {
-    "heroImage": "/images/uploads/img-planilha-financeira-controle-real.png",
-    "heroImageAlt": "Foto real — mesa, luz natural"
+    "heroImage": "/images/uploads/capa-home-aviao-chegada-paris.jpg",
+    "heroImageDesktop": "",
+    "heroImageAlt": "Vista da janela do avião chegando em Paris, com a Torre Eiffel ao longe"
   },
   "categoryBanners": {
     "produtos-digitais": {

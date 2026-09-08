@@ -227,6 +227,7 @@ p { margin: 0 0 1em; color: var(--grafite); }
   overflow: hidden;
 }
 .img-slot img { width: 100%; height: 100%; object-fit: cover; }
+.img-slot picture { display: block; width: 100%; height: 100%; }
 .img-slot .img-slot-label {
   font-family: var(--font-body);
   font-size: 12px;
@@ -281,8 +282,8 @@ p { margin: 0 0 1em; color: var(--grafite); }
 }
 .hero h1 { margin-bottom: 20px; }
 .hero p { max-width: 46ch; font-size: 17px; color: var(--texto-secundario); }
-.hero .img-slot { aspect-ratio: 4/3; border-radius: 6px; border: none; }
-@media (min-width: 900px) { .hero .img-slot { aspect-ratio: 5/4; } }
+.hero .img-slot { aspect-ratio: 2/3; border-radius: 6px; border: none; max-width: 420px; margin: 0 auto; }
+@media (min-width: 900px) { .hero .img-slot { aspect-ratio: 3/2; max-width: none; margin: 0; } }
 
 /* ---------------------------------- vitrine → blog banner ------------------ */
 .blog-banner {
