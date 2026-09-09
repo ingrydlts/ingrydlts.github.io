@@ -334,6 +334,26 @@
     return blocks.some(function (b) { return b.type === "token" && b.raw === tokenLine; });
   }
 
+  // Acha o botão de "Salvar"/"Publicar" do Decap CMS, fora do nosso overlay
+  // (que cobre a tela inteira e escondia esse botão). Não existe, na API
+  // pública de widgets do Decap, um jeito de disparar o salvamento
+  // programaticamente — então procuramos o botão de verdade pelo texto (é
+  // resiliente a mudanças de classe/estrutura interna do Decap entre
+  // versões, já que o config.yml usa "decap-cms@^3.0.0" sem travar a
+  // versão exata).
+  function findHostSaveButton() {
+    var candidates = document.querySelectorAll("button");
+    var re = /^(salvar|guardar|save|publicar|publish)\b/i;
+    for (var i = 0; i < candidates.length; i++) {
+      var btn = candidates[i];
+      if (btn.disabled) continue;
+      if (btn.closest && btn.closest(".pdac-overlay")) continue;
+      var text = (btn.textContent || "").trim();
+      if (re.test(text)) return btn;
+    }
+    return null;
+  }
+
   // Banner de vitrine tem 3 estados possíveis nesse artigo: "padrao" (segue
   // o que estiver configurado pro site inteiro, em "Vitrine dentro dos
   // artigos" — nenhum bloco presente), "ativado" (um bloco 🎯 na lista, na
@@ -488,13 +508,18 @@
       ".pdac-header-actions{display:flex;gap:6px;flex-wrap:wrap;}",
       ".pdac-icon-btn{font-family:" + FONT_STACK + ";font-weight:600;font-size:13px;padding:8px 12px;border-radius:8px;border:1px solid rgba(43,43,43,.16);background:#fff;color:#3A3632;cursor:pointer;min-height:38px;}",
       ".pdac-icon-btn.primary{background:#604034;border-color:#604034;color:#fff;}",
+      ".pdac-icon-btn.save{background:#3F6B47;border-color:#3F6B47;color:#fff;}",
+      ".pdac-icon-btn:active{transform:scale(.96);}",
+      ".pdac-save-toast{padding:8px 14px;font-size:12.5px;font-weight:600;text-align:center;transition:opacity .2s;}",
+      ".pdac-save-toast.ok{background:#EAF3EA;color:#2F5233;}",
+      ".pdac-save-toast.warn{background:#FBF0E4;color:#8A4B10;}",
       ".pdac-summary{display:flex;gap:8px;flex-wrap:wrap;padding:8px 14px;font-size:12px;color:#6E6862;background:#fff;border-bottom:1px solid rgba(43,43,43,.08);}",
       ".pdac-summary span{padding:3px 9px;border-radius:999px;background:#F4F1EC;}",
       ".pdac-canvas-scroll{flex:1 1 auto;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:18px 12px 130px;box-sizing:border-box;}",
       ".pdac-canvas{max-width:720px;margin:0 auto;}",
       ".pdac-block{position:relative;margin:2px 0;border-radius:10px;border:1px solid transparent;}",
       ".pdac-block.is-selected{border-color:rgba(96,64,52,.4);background:rgba(255,255,255,.7);}",
-      ".pdac-block.is-dragging{opacity:.45;}",
+      ".pdac-block.is-dragging{opacity:.9;box-shadow:0 10px 24px rgba(43,43,43,.18);background:#fff;border-radius:12px;transform:scale(1.015);z-index:5;transition:box-shadow .15s,transform .15s;}",
       ".pdac-block.is-special{border-left:3px solid #8AACD2;}",
       ".pdac-block.is-premium{border-left:3px solid #501318;}",
       ".pdac-block-bar{display:flex;align-items:center;gap:2px;padding:2px;}",
@@ -624,20 +649,91 @@
         selectedId: null,
         draggingId: null,
         sheetOpen: false,
+        saveFeedback: null, // null | "ok" | "missing"
         premiumStatus: "idle", // idle | loading | loaded | empty | saving | saved | error
         premiumError: "",
         catalogs: null
       };
     },
 
-    componentDidUpdate: function (prevProps) {
+    // FLIP (First-Last-Invert-Play): antes de qualquer atualização que muda a
+    // ORDEM dos blocos (arrastar ou ▲▼), guarda a posição atual de cada linha
+    // na tela — o DOM aqui ainda reflete a ordem antiga. Não mede nada quando
+    // a mudança foi só edição de texto/troca de conteúdo (mesma referência de
+    // array) ou quando um bloco foi adicionado/removido (a lista muda de
+    // tamanho — deixa aparecer/sumir direto, sem animação de posição).
+    getSnapshotBeforeUpdate: function (prevProps, prevState) {
+      if (!this._canvasEl) return null;
+      if (prevState.blocks === this.state.blocks) return null;
+      if (prevState.blocks.length !== this.state.blocks.length) return null;
+      var rows = this._canvasEl.querySelectorAll("[data-block-row]");
+      var tops = {};
+      for (var i = 0; i < rows.length; i++) {
+        tops[rows[i].getAttribute("data-block-row")] = rows[i].getBoundingClientRect().top;
+      }
+      return tops;
+    },
+
+    // Com o DOM já atualizado pra nova ordem, compara com as posições
+    // guardadas no snapshot e, pra cada bloco que "pulou" de lugar, aplica um
+    // transform invertido sem transição (parece que nunca saiu do lugar) e,
+    // no quadro seguinte, anima de volta a zero — o bloco desliza suavemente
+    // até a posição nova em vez de saltar. O bloco sendo arrastado ativamente
+    // fica de fora: ele já segue o dedo/cursor em tempo real.
+    componentDidUpdate: function (prevProps, prevState, snapshot) {
       if (prevProps.value !== this.props.value && this.props.value !== this.state.lastSerialized) {
         this.setState({ blocks: parseBody(this.props.value), lastSerialized: this.props.value });
+      }
+      if (!snapshot || !this._canvasEl) return;
+      var draggingId = this.state.draggingId;
+      var rows = this._canvasEl.querySelectorAll("[data-block-row]");
+      for (var i = 0; i < rows.length; i++) {
+        var el = rows[i];
+        var id = el.getAttribute("data-block-row");
+        if (id === draggingId) continue;
+        var oldTop = snapshot[id];
+        if (oldTop == null) continue;
+        var delta = oldTop - el.getBoundingClientRect().top;
+        if (Math.abs(delta) < 1) continue;
+        el.style.transition = "none";
+        el.style.transform = "translateY(" + delta + "px)";
+        /* eslint-disable no-unused-expressions */
+        el.offsetHeight; // força o navegador a aplicar o transform acima antes da transição de baixo
+        (function (target) {
+          requestAnimationFrame(function () {
+            target.style.transition = "transform 220ms cubic-bezier(0.22, 1, 0.36, 1)";
+            target.style.transform = "";
+          });
+        })(el);
       }
     },
 
     componentWillUnmount: function () {
       this._detachDragListeners();
+    },
+
+    // Não existe, na API pública de widgets do Decap, um jeito de disparar o
+    // "Salvar"/"Publicar" do painel a partir daqui — então clicamos no botão
+    // de verdade (ele fica escondido atrás do nosso overlay em tela cheia
+    // enquanto o editor visual está aberto). Se o modo bruto estiver aberto,
+    // aplica esse texto primeiro. Se não achar o botão (versão futura do
+    // Decap mudou o texto, por exemplo), avisa em vez de falhar silenciosamente.
+    saveNow: function () {
+      var self = this;
+      if (this.state.mode === "raw") {
+        this.updateValue(parseBody(this.state.rawDraft));
+        this.setState({ mode: "visual" });
+      }
+      setTimeout(function () {
+        var btn = findHostSaveButton();
+        if (btn) {
+          btn.click();
+          self.setState({ saveFeedback: "ok" });
+        } else {
+          self.setState({ saveFeedback: "missing" });
+        }
+        setTimeout(function () { self.setState({ saveFeedback: null }); }, btn ? 1800 : 5000);
+      }, 30);
     },
 
     // Correlaciona este campo com o item correspondente em content/posts.json
@@ -890,8 +986,27 @@
       this.setState({ draggingId: id });
     },
 
+    // Só guarda a posição mais recente do dedo/cursor aqui — o reordenamento
+    // de verdade roda no máximo 1x por quadro (via requestAnimationFrame,
+    // em _flushDragMove), não em toda pointermove crua. Sem isso, um
+    // trackpad/tela que dispare eventos mais rápido que 60fps recalcula e
+    // re-renderiza a lista mais vezes do que a tela consegue mostrar, o que
+    // é o principal motivo de um arraste "engasgar" em vez de fluir.
     _onPointerMoveDrag: function (e) {
       if (this.state.draggingId == null || e.pointerId !== this._dragPointerId) return;
+      this._lastDragY = e.clientY;
+      if (this._dragRafPending) return;
+      this._dragRafPending = true;
+      var self = this;
+      requestAnimationFrame(function () {
+        self._dragRafPending = false;
+        self._flushDragMove();
+      });
+    },
+
+    _flushDragMove: function () {
+      var draggingId = this.state.draggingId;
+      if (draggingId == null || this._lastDragY == null) return;
       var container = this._canvasEl;
       if (!container) return;
       var rows = container.querySelectorAll("[data-block-row]");
@@ -899,12 +1014,11 @@
       for (var r = 0; r < rows.length; r++) {
         rects[rows[r].getAttribute("data-block-row")] = rows[r].getBoundingClientRect();
       }
-      var draggingId = this.state.draggingId;
       var blocks = this.state.blocks;
       var dragged = blocks.filter(function (b) { return b.id === draggingId; })[0];
       if (!dragged) return;
       var without = blocks.filter(function (b) { return b.id !== draggingId; });
-      var y = e.clientY;
+      var y = this._lastDragY;
       var insertIdx = without.length;
       for (var i = 0; i < without.length; i++) {
         var rect = rects[without[i].id];
@@ -925,6 +1039,8 @@
 
     _detachDragListeners: function () {
       this._dragPointerId = null;
+      this._dragRafPending = false;
+      this._lastDragY = null;
       if (this._boundMove) window.removeEventListener("pointermove", this._boundMove);
       if (this._boundUp) {
         window.removeEventListener("pointerup", this._boundUp);
@@ -959,6 +1075,15 @@
         "div",
         { className: "pdac-overlay" },
         this.renderHeader(),
+        this.state.saveFeedback
+          ? h(
+              "div",
+              { className: "pdac-save-toast " + (this.state.saveFeedback === "ok" ? "ok" : "warn") },
+              this.state.saveFeedback === "ok"
+                ? "✓ Clicado no botão de salvar do painel."
+                : "⚠️ Não encontrei o botão de salvar do painel — feche este editor (✕ Fechar) e clique em \"Salvar\"/\"Publicar\" no topo da página."
+            )
+          : null,
         this.renderSummary(),
         this.state.mode === "raw" ? this.renderRawEditor() : this.renderCanvas(),
         this.state.mode === "visual"
@@ -977,6 +1102,7 @@
           "div",
           { className: "pdac-header-actions" },
           h("button", { type: "button", className: "pdac-icon-btn", onClick: this.toggleMode }, this.state.mode === "visual" ? "Ver texto bruto" : "Ver visual"),
+          h("button", { type: "button", className: "pdac-icon-btn save", onClick: this.saveNow }, "💾 Salvar"),
           h("button", { type: "button", className: "pdac-icon-btn primary", onClick: this.close }, "Fechar")
         )
       );
