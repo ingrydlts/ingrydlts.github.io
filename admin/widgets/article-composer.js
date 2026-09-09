@@ -1,14 +1,20 @@
-// Editor visual do corpo do artigo — substitui a caixa de markdown puro por
-// uma lista de blocos arrastável (parágrafos, títulos, listas e blocos ricos
-// como FAQ/STEPS) com pré-visualização ao vivo, usando o CSS de verdade do
-// site. Banner de vitrine e propaganda viram blocos como qualquer outro —
-// ativar/desativar liga ou tira o bloco da lista, e arrastar decide a posição.
+// Editor visual do corpo do artigo — WYSIWYG mobile-first: os blocos
+// aparecem na mesma coluna, com a mesma largura e estilo que a leitora vê
+// no site (parágrafos, títulos, imagens, banners, FAQ, checklist etc.),
+// em vez de uma lista de formulário ao lado de uma pré-visualização
+// separada. Cada bloco é independente: toque para editar o conteúdo dele,
+// arraste pela alcinha "⠿" (funciona com o dedo, no celular, e com o
+// mouse) ou use as setas ▲▼ pra reordenar, e um botão "+" flutuante abre
+// uma gaveta (bottom sheet) com todos os tipos de bloco que dá pra inserir
+// — parágrafo, título, lista, blocos ricos (FAQ/Checklist/Steps/...),
+// banner de vitrine, link afiliado, galeria e o bloqueio premium.
 //
 // Armazenamento: continua sendo o MESMO texto markdown de sempre (com os
-// tokens [[STEPS]]...[[/STEPS]], [[FAQ]]...[[/FAQ]] etc. já usados nos 17
+// tokens [[STEPS]]...[[/STEPS]], [[FAQ]]...[[/FAQ]] etc. já usados nos
 // artigos existentes) — este editor só lê/escreve esse texto de um jeito
-// mais fácil de mexer. Nada muda no site (/artigos/post/) além do que já foi
-// feito pra reconhecer as novas linhas "[[VITRINE-BANNER]]" e "[[PROPAGANDA]]".
+// mais fácil de mexer, principalmente no celular. Nada muda no site
+// (/artigos/post/) além do que já foi feito pra reconhecer as linhas
+// "[[VITRINE-BANNER]]" e "[[PROPAGANDA]]".
 //
 // Decap CMS expõe "createClass" e "h" (alias de React.createElement)
 // globalmente — por isso este arquivo não usa JSX nem precisa de build.
@@ -88,13 +94,20 @@
     return { state: "padrao", block: null };
   }
 
-  function setBannerState(blocks, newState, catalog, ref) {
+  // Troca o produto (ou volta a genérico) do banner de vitrine já existente
+  // no artigo. Preserva a posição atual do bloco (oldIndex) — só cai para o
+  // meio da lista quando não havia nenhum banner antes (inserção nova).
+  function setBannerState(blocks, newState, catalog, ref, atIndex) {
+    var oldIndex = -1;
+    for (var i = 0; i < blocks.length; i++) {
+      if (blocks[i].type === "token" && (isBannerToken(blocks[i].raw) || blocks[i].raw === NO_VITRINE_BANNER_TOKEN)) { oldIndex = i; break; }
+    }
     var copy = blocks.filter(function (b) {
       return !(b.type === "token" && (isBannerToken(b.raw) || b.raw === NO_VITRINE_BANNER_TOKEN));
     });
     if (newState === "padrao") return copy;
     var raw = newState === "ativado" ? buildBannerToken(catalog, ref) : NO_VITRINE_BANNER_TOKEN;
-    var pos = Math.max(0, Math.ceil(copy.length / 2));
+    var pos = atIndex != null ? atIndex : oldIndex !== -1 ? Math.min(oldIndex, copy.length) : Math.max(0, Math.ceil(copy.length / 2));
     copy.splice(pos, 0, { id: uid(), type: "token", raw: raw });
     return copy;
   }
@@ -223,9 +236,9 @@
   }
 
   // --- link afiliado avulso: 1 linha, "texto do botão | url | imagem" -------
-  // Cada clique em "+ Link afiliado" cria um bloco novo e independente (não
-  // um estado único como Banner/Propaganda) — por isso pode haver quantos o
-  // artigo precisar, cada um arrastável pra sua própria posição.
+  // Cada bloco novo é independente (não um estado único como Banner) — por
+  // isso pode haver quantos o artigo precisar, cada um arrastável pra sua
+  // própria posição.
   function parseAffiliateInner(inner) {
     var parts = String(inner || "").split("|");
     return {
@@ -321,27 +334,17 @@
     return blocks.some(function (b) { return b.type === "token" && b.raw === tokenLine; });
   }
 
-  function toggleToken(blocks, tokenLine) {
-    if (hasToken(blocks, tokenLine)) {
-      return blocks.filter(function (b) { return !(b.type === "token" && b.raw === tokenLine); });
-    }
-    var copy = blocks.slice();
-    var pos = Math.max(0, Math.ceil(copy.length / 2));
-    copy.splice(pos, 0, { id: uid(), type: "token", raw: tokenLine });
-    return copy;
-  }
-
   // Banner de vitrine tem 3 estados possíveis nesse artigo: "padrao" (segue
   // o que estiver configurado pro site inteiro, em "Vitrine dentro dos
-  // artigos"), "ativado" (força aparecer AQUI, na posição arrastada) e
-  // "desativado" (força NÃO aparecer aqui, mesmo que o site inteiro esteja
-  // com esse banner ligado) — ver bannerState/setBannerState, acima.
+  // artigos" — nenhum bloco presente), "ativado" (um bloco 🎯 na lista, na
+  // posição arrastada) e "desativado" (um bloco 🚫 na lista, força NÃO
+  // aparecer aqui mesmo que o site inteiro esteja com esse banner ligado).
   //
   // "[[PROPAGANDA]]" e "[[NO-PROPAGANDA]]" foram o mesmo tipo de controle
-  // pra publicidade, antes do botão "+ Link afiliado" (abaixo) substituir
-  // esse fluxo por blocos de link avulsos, repetíveis e arrastáveis. Os
-  // tokens continuam reconhecidos aqui só pra não quebrar artigos antigos
-  // que já os usam — não há mais como CRIAR um novo a partir desta tela.
+  // pra publicidade, antes do bloco "Link afiliado" (ver ADD_MENU) substituir
+  // esse fluxo por blocos avulsos, repetíveis e arrastáveis. Os tokens
+  // continuam reconhecidos aqui só pra não quebrar artigos antigos que já os
+  // usam — não há mais como criar um novo a partir desta tela.
 
   var SPECIAL_TOKEN_LABEL = {};
   SPECIAL_TOKEN_LABEL[VITRINE_BANNER_TOKEN] = "🎯 Banner de vitrine";
@@ -441,7 +444,7 @@
         escapeHtml(b.name) +
         '</strong><p class="muted" style="margin:6px 0 0; font-size:13px;">' +
         lineCount +
-        " linha(s) — edite o conteúdo na lista à esquerda.</p></div>"
+        " linha(s) — toque no bloco pra editar o conteúdo.</p></div>"
       );
     }
     var t = b.raw.trim();
@@ -472,43 +475,142 @@
   }
   ensureSiteStyles();
 
-  // --- estilos do editor (inline, sem depender de classes do Decap) --------
-  var FONT = "'Inter', -apple-system, BlinkMacSystemFont, sans-serif";
-  var SUMMARY_BAR_STYLE = { display: "flex", gap: "14px", alignItems: "center", flexWrap: "wrap", padding: "10px 12px", border: "1px solid rgba(43,43,43,0.14)", borderRadius: "6px", background: "#fff", fontSize: "13px", fontFamily: FONT };
-  var BTN_STYLE = { fontFamily: FONT, fontWeight: 600, fontSize: "13px", padding: "8px 14px", borderRadius: "4px", border: "1px solid #604034", background: "#604034", color: "#fff", cursor: "pointer" };
-  var BTN_GHOST_STYLE = { fontFamily: FONT, fontWeight: 600, fontSize: "13px", padding: "8px 14px", borderRadius: "4px", border: "1px solid rgba(43,43,43,0.14)", background: "#fff", color: "#3A3632", cursor: "pointer", marginRight: "8px" };
-  var OVERLAY_STYLE = { position: "fixed", top: 0, left: 0, right: 0, bottom: 0, width: "100vw", height: "100vh", zIndex: 999999, background: "#F4F1EC", display: "flex", flexDirection: "column", boxSizing: "border-box" };
-  var OVERLAY_HEADER_STYLE = { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 20px", borderBottom: "1px solid rgba(43,43,43,0.14)", background: "#fff", fontFamily: FONT, flexShrink: 0 };
-  var BODY_ROW_STYLE = { display: "flex", flex: "1 1 auto", minHeight: 0 };
-  var LEFT_COL_STYLE = { width: "42%", maxWidth: "560px", borderRight: "1px solid rgba(43,43,43,0.14)", overflowY: "auto", padding: "16px 20px", boxSizing: "border-box", fontFamily: FONT, background: "#F4F1EC" };
-  var PREVIEW_COL_STYLE = { flex: "1 1 auto", overflowY: "auto", padding: "40px 24px", boxSizing: "border-box", background: "#fff" };
-  var PREVIEW_INNER_STYLE = { maxWidth: "720px", margin: "0 auto" };
-  var TOOLBAR_STYLE = { marginBottom: "16px" };
-  var TOGGLE_LABEL_STYLE = { display: "flex", alignItems: "center", gap: "8px", fontSize: "13px", fontWeight: 600, marginBottom: "8px", cursor: "pointer" };
-  var OVERRIDE_ROW_STYLE = { display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" };
-  var OVERRIDE_LABEL_STYLE = { fontSize: "13px", fontWeight: 600, width: "112px", flexShrink: 0 };
-  var OVERRIDE_SELECT_STYLE = { fontFamily: FONT, fontSize: "12px", padding: "4px 6px", borderRadius: "4px", border: "1px solid rgba(43,43,43,0.14)", background: "#fff" };
-  var HINT_STYLE = { fontSize: "12px", color: "#6E6862", margin: "6px 0 0" };
-  var ROW_STYLE = { display: "flex", alignItems: "flex-start", gap: "8px", padding: "8px 10px", marginBottom: "2px", border: "1px solid rgba(43,43,43,0.10)", borderRadius: "6px", background: "#fff", cursor: "grab" };
-  var ROW_SPECIAL_STYLE = { borderColor: "#8AACD2", background: "#F0F5FA" };
-  var ROW_PREMIUM_STYLE = { borderColor: "#501318", background: "#FBF0F1" };
-  var PREMIUM_PANEL_STYLE = { border: "1px solid #501318", borderRadius: "6px", padding: "10px 12px", margin: "4px 0 12px", background: "#FBF0F1" };
-  var PREMIUM_STATUS_STYLE = { fontSize: "12px", fontWeight: 600, margin: "0 0 8px", color: "#501318" };
-  var PREMIUM_BTN_STYLE = { fontFamily: FONT, fontWeight: 600, fontSize: "12px", padding: "6px 10px", borderRadius: "4px", border: "1px solid #501318", background: "#fff", color: "#501318", cursor: "pointer" };
-  var PREMIUM_BTN_DANGER_STYLE = { fontFamily: FONT, fontWeight: 600, fontSize: "12px", padding: "6px 10px", borderRadius: "4px", border: "1px solid #501318", background: "#501318", color: "#fff", cursor: "pointer" };
-  var PREMIUM_ERROR_STYLE = { fontSize: "12px", color: "#501318", margin: "8px 0 0", fontWeight: 600 };
-  var ROW_LABEL_STYLE = { fontSize: "12px", fontWeight: 600, width: "130px", flexShrink: 0, paddingTop: "6px", color: "#3A3632" };
-  var ROW_TEXTAREA_STYLE = { flex: "1 1 auto", minHeight: "40px", fontSize: "13px", fontFamily: FONT, border: "1px solid rgba(43,43,43,0.14)", borderRadius: "4px", padding: "6px 8px", resize: "vertical", boxSizing: "border-box" };
-  // "flex: 1 1 0" (não "1 1 auto") é o que faz esta coluna preencher o
-  // espaço da linha — com "auto" o navegador tenta calcular a largura pelo
-  // conteúdo, mas os filhos só têm largura em "%", que não conta pra esse
-  // cálculo, e a coluna inteira colapsa quase a zero.
-  var AFFILIATE_FIELDS_STYLE = { flex: "1 1 0", minWidth: 0, display: "flex", flexDirection: "column", gap: "4px" };
-  var AFFILIATE_INPUT_STYLE = { fontSize: "13px", fontFamily: FONT, border: "1px solid rgba(43,43,43,0.14)", borderRadius: "4px", padding: "6px 8px", boxSizing: "border-box", width: "100%" };
-  var ADD_AFFILIATE_BTN_STYLE = { fontFamily: FONT, fontWeight: 600, fontSize: "13px", padding: "8px 14px", borderRadius: "4px", border: "1px solid #501318", background: "#fff", color: "#501318", cursor: "pointer", marginBottom: "8px" };
-  var DRAG_HANDLE_STYLE = { cursor: "grab", color: "#A8A29C", paddingTop: "6px", userSelect: "none" };
-  var ROW_REMOVE_STYLE = { border: "none", background: "transparent", color: "#8A6A5C", cursor: "pointer", fontSize: "16px", lineHeight: 1, paddingTop: "4px" };
+  // --- CSS do editor mobile-first (injetado uma única vez) -------------------
+  var FONT_STACK = "'Inter', -apple-system, BlinkMacSystemFont, sans-serif";
+  function ensureEditorStyles() {
+    if (document.getElementById("pdac-editor-styles")) return;
+    var style = document.createElement("style");
+    style.id = "pdac-editor-styles";
+    style.textContent = [
+      ".pdac-overlay{position:fixed;inset:0;z-index:999999;background:#F4F1EC;display:flex;flex-direction:column;box-sizing:border-box;height:100vh;height:100dvh;font-family:" + FONT_STACK + ";}",
+      ".pdac-header{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 14px;padding-top:calc(10px + env(safe-area-inset-top));border-bottom:1px solid rgba(43,43,43,.14);background:#fff;flex-shrink:0;}",
+      ".pdac-header strong{font-size:14px;}",
+      ".pdac-header-actions{display:flex;gap:6px;flex-wrap:wrap;}",
+      ".pdac-icon-btn{font-family:" + FONT_STACK + ";font-weight:600;font-size:13px;padding:8px 12px;border-radius:8px;border:1px solid rgba(43,43,43,.16);background:#fff;color:#3A3632;cursor:pointer;min-height:38px;}",
+      ".pdac-icon-btn.primary{background:#604034;border-color:#604034;color:#fff;}",
+      ".pdac-summary{display:flex;gap:8px;flex-wrap:wrap;padding:8px 14px;font-size:12px;color:#6E6862;background:#fff;border-bottom:1px solid rgba(43,43,43,.08);}",
+      ".pdac-summary span{padding:3px 9px;border-radius:999px;background:#F4F1EC;}",
+      ".pdac-canvas-scroll{flex:1 1 auto;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:18px 12px 130px;box-sizing:border-box;}",
+      ".pdac-canvas{max-width:720px;margin:0 auto;}",
+      ".pdac-block{position:relative;margin:2px 0;border-radius:10px;border:1px solid transparent;}",
+      ".pdac-block.is-selected{border-color:rgba(96,64,52,.4);background:rgba(255,255,255,.7);}",
+      ".pdac-block.is-dragging{opacity:.45;}",
+      ".pdac-block.is-special{border-left:3px solid #8AACD2;}",
+      ".pdac-block.is-premium{border-left:3px solid #501318;}",
+      ".pdac-block-bar{display:flex;align-items:center;gap:2px;padding:2px;}",
+      ".pdac-bar-btn{border:none;background:transparent;cursor:pointer;font-size:15px;line-height:1;padding:6px;border-radius:6px;color:#8A7A6C;min-width:34px;min-height:34px;}",
+      ".pdac-bar-btn:active{background:rgba(43,43,43,.08);}",
+      ".pdac-bar-btn.drag{cursor:grab;touch-action:none;}",
+      ".pdac-bar-label{font-size:11px;font-weight:600;color:#8A7A6C;flex:1 1 auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;}",
+      ".pdac-block-content{padding:2px 8px 12px;cursor:pointer;}",
+      ".pdac-block-empty{color:#9C948A;font-style:italic;font-size:13px;padding:10px 8px;}",
+      ".pdac-edit-area{padding:0 8px 14px;}",
+      ".pdac-textarea{width:100%;box-sizing:border-box;font-family:" + FONT_STACK + ";font-size:15px;line-height:1.55;border:1px solid rgba(43,43,43,.2);border-radius:8px;padding:10px 12px;resize:vertical;}",
+      ".pdac-input{width:100%;box-sizing:border-box;font-family:" + FONT_STACK + ";font-size:14px;border:1px solid rgba(43,43,43,.2);border-radius:8px;padding:9px 10px;margin-bottom:6px;}",
+      ".pdac-hint{font-size:11.5px;color:#8A7A6C;margin:6px 2px 0;line-height:1.4;}",
+      ".pdac-add-inline{display:flex;align-items:center;justify-content:center;gap:8px;margin:18px auto 0;max-width:720px;width:100%;padding:14px;border:1.5px dashed rgba(96,64,52,.4);border-radius:10px;color:#604034;font-weight:600;font-size:14px;cursor:pointer;background:transparent;font-family:" + FONT_STACK + ";}",
+      ".pdac-fab{position:fixed;right:18px;bottom:calc(18px + env(safe-area-inset-bottom));width:58px;height:58px;border-radius:50%;background:#604034;color:#fff;border:none;font-size:28px;box-shadow:0 6px 18px rgba(0,0,0,.28);cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:2;line-height:0;}",
+      ".pdac-sheet-backdrop{position:fixed;inset:0;background:rgba(20,16,14,.45);z-index:1000000;display:flex;align-items:flex-end;justify-content:center;}",
+      ".pdac-sheet{background:#fff;width:100%;max-width:560px;max-height:78vh;overflow-y:auto;-webkit-overflow-scrolling:touch;border-radius:16px 16px 0 0;padding:8px 0 calc(18px + env(safe-area-inset-bottom));box-sizing:border-box;font-family:" + FONT_STACK + ";}",
+      ".pdac-sheet-grabber{width:36px;height:4px;background:rgba(43,43,43,.2);border-radius:2px;margin:8px auto 6px;}",
+      ".pdac-sheet-header{display:flex;justify-content:space-between;align-items:center;padding:4px 16px 8px;}",
+      ".pdac-sheet-header strong{font-size:15px;}",
+      ".pdac-sheet-group-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#8A7A6C;padding:14px 16px 6px;}",
+      ".pdac-sheet-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;padding:0 16px;}",
+      ".pdac-sheet-item{display:flex;flex-direction:column;align-items:flex-start;gap:3px;text-align:left;border:1px solid rgba(43,43,43,.14);border-radius:10px;padding:10px 12px;background:#FAF8F4;cursor:pointer;font-family:" + FONT_STACK + ";min-height:56px;}",
+      ".pdac-sheet-item:active{background:#F0EAE3;}",
+      ".pdac-sheet-item .emoji{font-size:18px;}",
+      ".pdac-sheet-item .label{font-size:12.5px;font-weight:600;color:#3A3632;}",
+      ".pdac-raw-wrap{flex:1 1 auto;display:flex;min-height:0;}"
+    ].join("\n");
+    document.head.appendChild(style);
+  }
+  ensureEditorStyles();
+
+  // --- estilos inline usados só na barra fechada do campo (fora do overlay) -
+  var SUMMARY_BAR_STYLE = { display: "flex", gap: "14px", alignItems: "center", flexWrap: "wrap", padding: "10px 12px", border: "1px solid rgba(43,43,43,0.14)", borderRadius: "6px", background: "#fff", fontSize: "13px", fontFamily: FONT_STACK };
+  var BTN_STYLE = { fontFamily: FONT_STACK, fontWeight: 600, fontSize: "13px", padding: "8px 14px", borderRadius: "4px", border: "1px solid #604034", background: "#604034", color: "#fff", cursor: "pointer" };
   var RAW_TEXTAREA_STYLE = { flex: "1 1 auto", width: "100%", boxSizing: "border-box", padding: "20px", fontFamily: "monospace", fontSize: "13px", border: "none", resize: "none" };
+  var PREMIUM_BTN_STYLE = { fontFamily: FONT_STACK, fontWeight: 600, fontSize: "12px", padding: "8px 12px", borderRadius: "6px", border: "1px solid #501318", background: "#fff", color: "#501318", cursor: "pointer" };
+  var PREMIUM_BTN_DANGER_STYLE = { fontFamily: FONT_STACK, fontWeight: 600, fontSize: "12px", padding: "8px 12px", borderRadius: "6px", border: "1px solid #501318", background: "#501318", color: "#fff", cursor: "pointer" };
+  var PREMIUM_STATUS_STYLE = { fontSize: "12px", fontWeight: 600, margin: "0 0 8px", color: "#501318" };
+  var PREMIUM_ERROR_STYLE = { fontSize: "12px", color: "#501318", margin: "8px 0 0", fontWeight: 600 };
+
+  // --- exemplos/instruções por tipo de bloco rico (mesmo formato que o site
+  // espera em assets/js/markdown.js) — usados como conteúdo inicial ao
+  // inserir e como dica permanente enquanto o bloco está sendo editado.
+  var RICH_TEMPLATE = {
+    BAND: "Texto de destaque",
+    STATS: "110 | Legenda",
+    CARDS: "🎯 | Título | Descrição",
+    LIST: "🎯 | Título | Descrição",
+    STEPS: "Passo 1 | Descrição",
+    FAQ: "Pergunta | Resposta",
+    RESOURCES: "Título | Descrição | Saiba mais | https://",
+    CHECKLIST: "Título da checklist\nItem 1\nItem 2",
+    FEEDBACK: "Esse artigo te ajudou?",
+    POLL: "Pergunta da enquete\nOpção 1\nOpção 2"
+  };
+  var RICH_HINT = {
+    BAND: "Texto livre da faixa de destaque.",
+    STATS: "Uma linha por item: número | legenda",
+    CARDS: "Uma linha por item: emoji | título | descrição",
+    LIST: "Uma linha por item: emoji | título | descrição",
+    STEPS: "Uma linha por passo: título do passo | descrição",
+    FAQ: "Uma linha por pergunta: pergunta | resposta",
+    RESOURCES: "Uma linha por fonte: título | descrição | texto do link | URL",
+    CHECKLIST: "1ª linha = título da checklist, as demais = itens marcáveis.",
+    FEEDBACK: "Pergunta opcional — em branco usa a pergunta padrão.",
+    POLL: "1ª linha = pergunta, as demais = opções de resposta única."
+  };
+
+  function richBlock(name) {
+    return { id: uid(), type: "richblock", name: name, inner: RICH_TEMPLATE[name] || "" };
+  }
+
+  // --- menu do botão "+" flutuante -------------------------------------------
+  var ADD_MENU = [
+    {
+      group: "Texto", items: [
+        { key: "p", emoji: "📝", label: "Parágrafo", make: function () { return { id: uid(), type: "text", raw: "" }; } },
+        { key: "h2", emoji: "H2", label: "Título", make: function () { return { id: uid(), type: "text", raw: "## Título" }; } },
+        { key: "h3", emoji: "H3", label: "Subtítulo", make: function () { return { id: uid(), type: "text", raw: "### Subtítulo" }; } },
+        { key: "ul", emoji: "•≡", label: "Lista", make: function () { return { id: uid(), type: "list", raw: "- Item 1\n- Item 2" }; } }
+      ]
+    },
+    {
+      group: "Blocos ricos", items: [
+        { key: "FAQ", emoji: "❓", label: "Pergunta frequente", make: function () { return richBlock("FAQ"); } },
+        { key: "CHECKLIST", emoji: "✅", label: "Checklist", make: function () { return richBlock("CHECKLIST"); } },
+        { key: "RESOURCES", emoji: "📚", label: "Fontes / recursos", make: function () { return richBlock("RESOURCES"); } },
+        { key: "STEPS", emoji: "🪜", label: "Passo a passo", make: function () { return richBlock("STEPS"); } },
+        { key: "POLL", emoji: "🗳️", label: "Enquete", make: function () { return richBlock("POLL"); } },
+        { key: "FEEDBACK", emoji: "🙏", label: "Pergunta de feedback", make: function () { return richBlock("FEEDBACK"); } },
+        { key: "BAND", emoji: "🎗️", label: "Faixa de destaque", make: function () { return richBlock("BAND"); } },
+        { key: "STATS", emoji: "📊", label: "Números", make: function () { return richBlock("STATS"); } },
+        { key: "CARDS", emoji: "🗂️", label: "Cartões", make: function () { return richBlock("CARDS"); } },
+        { key: "LIST", emoji: "📋", label: "Lista com ícones", make: function () { return richBlock("LIST"); } }
+      ]
+    },
+    {
+      group: "Vitrine & links", items: [
+        { key: "banner-on", emoji: "🎯", label: "Banner de vitrine", special: "banner-on" },
+        { key: "banner-off", emoji: "🚫", label: "Sem banner aqui", special: "banner-off" },
+        { key: "AFILIADO", emoji: "🔗", label: "Card de afiliado", make: function () { return { id: uid(), type: "richblock", name: AFILIADO_NAME, inner: buildAffiliateInner("Ver oferta", "", "") }; } }
+      ]
+    },
+    {
+      group: "Mídia", items: [
+        { key: "GALERIA", emoji: "🖼️", label: "Galeria de fotos", make: function () { return { id: uid(), type: "token", raw: "[[GALERIA]]" }; } },
+        { key: "GALERIA-2", emoji: "🖼️", label: "Galeria de fotos 2", make: function () { return { id: uid(), type: "token", raw: "[[GALERIA-2]]" }; } }
+      ]
+    },
+    {
+      group: "Estrutura", items: [
+        { key: "premium", emoji: "🔒", label: "Bloqueio premium", special: "premium" }
+      ]
+    }
+  ];
 
   var ArticleComposerControl = createClass({
     getInitialState: function () {
@@ -519,7 +621,9 @@
         open: false,
         mode: "visual",
         rawDraft: "",
-        dragIndex: null,
+        selectedId: null,
+        draggingId: null,
+        sheetOpen: false,
         premiumStatus: "idle", // idle | loading | loaded | empty | saving | saved | error
         premiumError: "",
         catalogs: null
@@ -530,6 +634,10 @@
       if (prevProps.value !== this.props.value && this.props.value !== this.state.lastSerialized) {
         this.setState({ blocks: parseBody(this.props.value), lastSerialized: this.props.value });
       }
+    },
+
+    componentWillUnmount: function () {
+      this._detachDragListeners();
     },
 
     // Correlaciona este campo com o item correspondente em content/posts.json
@@ -560,7 +668,7 @@
 
     open: function () {
       var self = this;
-      this.setState({ open: true });
+      this.setState({ open: true, selectedId: null, sheetOpen: false });
       if (!this.state.catalogs) {
         fetchCatalogs().then(function (catalogs) { self.setState({ catalogs: catalogs }); });
       }
@@ -576,23 +684,7 @@
       if (this.state.mode === "raw") {
         this.updateValue(parseBody(this.state.rawDraft));
       }
-      this.setState({ open: false, mode: "visual" });
-    },
-
-    togglePremiumMarker: function () {
-      var hasMarker = hasToken(this.state.blocks, PREMIUM_SPLIT_TOKEN);
-      if (hasMarker) {
-        // Remove só o marcador — o que estava depois dele volta a ser
-        // conteúdo comum, visível e editável (nada se perde silenciosamente).
-        this.updateValue(this.state.blocks.filter(function (b) { return !(b.type === "token" && b.raw === PREMIUM_SPLIT_TOKEN); }));
-        this.setState({ premiumStatus: "idle", premiumError: "" });
-        return;
-      }
-      var copy = this.state.blocks.slice();
-      var pos = Math.max(0, Math.ceil(copy.length / 2));
-      copy.splice(pos, 0, { id: uid(), type: "token", raw: PREMIUM_SPLIT_TOKEN });
-      this.updateValue(copy);
-      this.loadPremiumContent();
+      this.setState({ open: false, mode: "visual", selectedId: null, sheetOpen: false });
     },
 
     // Busca o conteúdo pago já salvo (se houver) e junta depois do marcador,
@@ -639,7 +731,7 @@
       var split = splitAtPremiumMarker(this.state.blocks);
       var text = serializeBlocks(split.premium);
       if (!text.trim()) {
-        this.setState({ premiumStatus: "error", premiumError: "Arraste algum bloco pra depois do 🔒 Bloqueio premium antes de salvar." });
+        this.setState({ premiumStatus: "error", premiumError: "Mova algum bloco pra depois do 🔒 Bloqueio premium antes de salvar." });
         return;
       }
       this.setState({ premiumStatus: "saving", premiumError: "" });
@@ -673,7 +765,7 @@
 
     toggleMode: function () {
       if (this.state.mode === "visual") {
-        this.setState({ mode: "raw", rawDraft: serializeBlocks(this.state.blocks) });
+        this.setState({ mode: "raw", rawDraft: serializeBlocks(this.state.blocks), selectedId: null, sheetOpen: false });
       } else {
         this.updateValue(parseBody(this.state.rawDraft));
         this.setState({ mode: "visual" });
@@ -690,34 +782,154 @@
     },
 
     removeBlock: function (id) {
+      var removed = this.state.blocks.filter(function (b) { return b.id === id; })[0];
       this.updateValue(this.state.blocks.filter(function (b) { return b.id !== id; }));
+      if (this.state.selectedId === id) this.setState({ selectedId: null });
+      if (removed && removed.type === "token" && removed.raw === PREMIUM_SPLIT_TOKEN) {
+        this.setState({ premiumStatus: "idle", premiumError: "" });
+      }
     },
 
-    // Cada clique cria um bloco novo no FIM da lista (arrastável, como
-    // qualquer outro) — pode ser clicado quantas vezes for preciso, sem
-    // limite, ao contrário do Banner de vitrine (que é um estado único).
-    addAffiliateBlock: function () {
-      var copy = this.state.blocks.slice();
-      copy.push({ id: uid(), type: "richblock", name: AFILIADO_NAME, inner: buildAffiliateInner("Ver oferta", "", "") });
-      this.updateValue(copy);
-    },
-
-    handleDragStart: function (index, e) {
-      this.setState({ dragIndex: index });
-      e.dataTransfer.effectAllowed = "move";
-      e.dataTransfer.setData("text/plain", String(index));
-    },
-
-    handleDrop: function (targetIndex, e) {
-      e.preventDefault();
-      var from = this.state.dragIndex;
-      this.setState({ dragIndex: null });
-      if (from === null || from === undefined || from === targetIndex) return;
+    // Insere um bloco novo logo depois do bloco selecionado no momento (o
+    // último em que a autora tocou) — ou no fim da lista, se nada estiver
+    // selecionado — e já deixa ele selecionado/aberto pra edição.
+    insertBlock: function (makeFn) {
       var blocks = this.state.blocks.slice();
-      var moved = blocks.splice(from, 1)[0];
-      var insertAt = from < targetIndex ? targetIndex - 1 : targetIndex;
-      blocks.splice(insertAt, 0, moved);
+      var newBlock = makeFn();
+      var idx = blocks.length;
+      var selId = this.state.selectedId;
+      if (selId) {
+        for (var i = 0; i < blocks.length; i++) {
+          if (blocks[i].id === selId) { idx = i + 1; break; }
+        }
+      }
+      blocks.splice(idx, 0, newBlock);
       this.updateValue(blocks);
+      this.setState({ selectedId: newBlock.id, sheetOpen: false });
+    },
+
+    // Banner de vitrine é um estado único (só pode haver um "ativado" ou um
+    // "desativado" por artigo) — tocar de novo no mesmo tipo só seleciona o
+    // bloco que já existe, em vez de duplicar.
+    addBannerBlock: function (mode) {
+      var blocks = this.state.blocks;
+      var info = bannerState(blocks);
+      if (mode === "on" && info.state === "ativado") { this.setState({ selectedId: info.block.id, sheetOpen: false }); return; }
+      var existingOff = blocks.filter(function (b) { return b.type === "token" && b.raw === NO_VITRINE_BANNER_TOKEN; })[0];
+      if (mode === "off" && existingOff) { this.setState({ selectedId: existingOff.id, sheetOpen: false }); return; }
+      var copy = blocks.filter(function (b) {
+        return !(b.type === "token" && (isBannerToken(b.raw) || b.raw === NO_VITRINE_BANNER_TOKEN));
+      });
+      var idx = copy.length;
+      var selId = this.state.selectedId;
+      if (selId) {
+        for (var i = 0; i < copy.length; i++) {
+          if (copy[i].id === selId) { idx = i + 1; break; }
+        }
+      }
+      var raw = mode === "on" ? VITRINE_BANNER_TOKEN : NO_VITRINE_BANNER_TOKEN;
+      var newBlock = { id: uid(), type: "token", raw: raw };
+      copy.splice(idx, 0, newBlock);
+      this.updateValue(copy);
+      this.setState({ selectedId: newBlock.id, sheetOpen: false });
+    },
+
+    addPremiumBlock: function () {
+      var existing = this.state.blocks.filter(function (b) { return b.type === "token" && b.raw === PREMIUM_SPLIT_TOKEN; })[0];
+      if (existing) { this.setState({ selectedId: existing.id, sheetOpen: false }); return; }
+      var copy = this.state.blocks.slice();
+      var idx = copy.length;
+      var selId = this.state.selectedId;
+      if (selId) {
+        for (var i = 0; i < copy.length; i++) {
+          if (copy[i].id === selId) { idx = i + 1; break; }
+        }
+      }
+      var newBlock = { id: uid(), type: "token", raw: PREMIUM_SPLIT_TOKEN };
+      copy.splice(idx, 0, newBlock);
+      this.updateValue(copy);
+      this.setState({ selectedId: newBlock.id, sheetOpen: false });
+      this.loadPremiumContent();
+    },
+
+    insertFromMenu: function (item) {
+      if (item.special === "banner-on") return this.addBannerBlock("on");
+      if (item.special === "banner-off") return this.addBannerBlock("off");
+      if (item.special === "premium") return this.addPremiumBlock();
+      this.insertBlock(item.make);
+    },
+
+    moveBlock: function (id, dir) {
+      var blocks = this.state.blocks.slice();
+      var idx = -1;
+      for (var i = 0; i < blocks.length; i++) {
+        if (blocks[i].id === id) { idx = i; break; }
+      }
+      if (idx === -1) return;
+      var swapIdx = idx + dir;
+      if (swapIdx < 0 || swapIdx >= blocks.length) return;
+      var tmp = blocks[idx];
+      blocks[idx] = blocks[swapIdx];
+      blocks[swapIdx] = tmp;
+      this.updateValue(blocks);
+    },
+
+    // --- arrastar pra reordenar, via Pointer Events (funciona igual com o
+    // dedo no celular e com o mouse no desktop — API unificada, sem
+    // depender do HTML5 drag-and-drop nativo, que não funciona em touch). A
+    // cada movimento, recalcula em qual posição o bloco arrastado deveria
+    // estar comparando a posição do dedo/cursor com o meio de cada linha.
+    handleDragHandleDown: function (id, e) {
+      e.preventDefault();
+      this._dragPointerId = e.pointerId;
+      if (!this._boundMove) this._boundMove = this._onPointerMoveDrag.bind(this);
+      if (!this._boundUp) this._boundUp = this._onPointerUpDrag.bind(this);
+      window.addEventListener("pointermove", this._boundMove);
+      window.addEventListener("pointerup", this._boundUp);
+      window.addEventListener("pointercancel", this._boundUp);
+      this.setState({ draggingId: id });
+    },
+
+    _onPointerMoveDrag: function (e) {
+      if (this.state.draggingId == null || e.pointerId !== this._dragPointerId) return;
+      var container = this._canvasEl;
+      if (!container) return;
+      var rows = container.querySelectorAll("[data-block-row]");
+      var rects = {};
+      for (var r = 0; r < rows.length; r++) {
+        rects[rows[r].getAttribute("data-block-row")] = rows[r].getBoundingClientRect();
+      }
+      var draggingId = this.state.draggingId;
+      var blocks = this.state.blocks;
+      var dragged = blocks.filter(function (b) { return b.id === draggingId; })[0];
+      if (!dragged) return;
+      var without = blocks.filter(function (b) { return b.id !== draggingId; });
+      var y = e.clientY;
+      var insertIdx = without.length;
+      for (var i = 0; i < without.length; i++) {
+        var rect = rects[without[i].id];
+        if (!rect) continue;
+        var mid = rect.top + rect.height / 2;
+        if (y < mid) { insertIdx = i; break; }
+      }
+      without.splice(insertIdx, 0, dragged);
+      var changed = without.length !== blocks.length || without.some(function (b, i) { return b.id !== blocks[i].id; });
+      if (changed) this.updateValue(without);
+    },
+
+    _onPointerUpDrag: function (e) {
+      if (e.pointerId !== this._dragPointerId) return;
+      this._detachDragListeners();
+      this.setState({ draggingId: null });
+    },
+
+    _detachDragListeners: function () {
+      this._dragPointerId = null;
+      if (this._boundMove) window.removeEventListener("pointermove", this._boundMove);
+      if (this._boundUp) {
+        window.removeEventListener("pointerup", this._boundUp);
+        window.removeEventListener("pointercancel", this._boundUp);
+      }
     },
 
     render: function () {
@@ -745,127 +957,154 @@
       var self = this;
       return h(
         "div",
-        { style: OVERLAY_STYLE },
+        { className: "pdac-overlay" },
+        this.renderHeader(),
+        this.renderSummary(),
+        this.state.mode === "raw" ? this.renderRawEditor() : this.renderCanvas(),
+        this.state.mode === "visual"
+          ? h("button", { type: "button", className: "pdac-fab", "aria-label": "Adicionar bloco", onClick: function () { self.setState({ sheetOpen: true }); } }, "+")
+          : null,
+        this.state.sheetOpen ? this.renderAddSheet() : null
+      );
+    },
+
+    renderHeader: function () {
+      return h(
+        "div",
+        { className: "pdac-header" },
+        h("strong", null, "Editor visual do artigo"),
         h(
           "div",
-          { style: OVERLAY_HEADER_STYLE },
-          h("strong", null, "Editor visual do artigo"),
-          h(
-            "div",
-            null,
-            h("button", { type: "button", onClick: this.toggleMode, style: BTN_GHOST_STYLE }, this.state.mode === "visual" ? "Ver texto bruto" : "Ver visual"),
-            h("button", { type: "button", onClick: this.close, style: BTN_STYLE }, "Fechar")
-          )
-        ),
-        this.state.mode === "raw" ? this.renderRawEditor() : this.renderVisualEditor()
+          { className: "pdac-header-actions" },
+          h("button", { type: "button", className: "pdac-icon-btn", onClick: this.toggleMode }, this.state.mode === "visual" ? "Ver texto bruto" : "Ver visual"),
+          h("button", { type: "button", className: "pdac-icon-btn primary", onClick: this.close }, "Fechar")
+        )
+      );
+    },
+
+    renderSummary: function () {
+      var blocks = this.state.blocks;
+      var bannerInfo = bannerState(blocks);
+      var affiliateCount = blocks.filter(function (b) { return b.type === "richblock" && b.name === AFILIADO_NAME; }).length;
+      var hasPremiumMarker = hasToken(blocks, PREMIUM_SPLIT_TOKEN);
+      return h(
+        "div",
+        { className: "pdac-summary" },
+        h("span", null, blocks.length + " bloco(s)"),
+        h("span", null, "Banner: " + bannerInfo.state),
+        h("span", null, "Afiliados: " + affiliateCount),
+        h("span", null, "Premium: " + (hasPremiumMarker ? "ativado" : "desativado")),
+        h("span", null, "Toque num bloco pra editar • arraste ⠿ ou use ▲▼ pra reordenar")
       );
     },
 
     renderRawEditor: function () {
       var self = this;
-      return h("textarea", {
-        style: RAW_TEXTAREA_STYLE,
-        value: this.state.rawDraft,
-        onChange: function (e) { self.setState({ rawDraft: e.target.value }); }
-      });
-    },
-
-    renderVisualEditor: function () {
-      var self = this;
-      var blocks = this.state.blocks;
-      var hasPremiumMarker = hasToken(blocks, PREMIUM_SPLIT_TOKEN);
-
-      // O marcador de bloqueio premium e os tokens "sem banner/propaganda
-      // aqui" não têm posição própria no artigo (não é algo pra arrastar) —
-      // por isso não entram na lista de blocos arrastáveis, só nos controles
-      // do topo. Tudo o mais aparece na lista, na ordem em que vai sair.
-      var draggableBlocks = blocks.filter(function (b) {
-        return !(b.type === "token" && (b.raw === NO_VITRINE_BANNER_TOKEN || b.raw === NO_PROPAGANDA_TOKEN));
-      });
-      var rows = [];
-      draggableBlocks.forEach(function (b) {
-        var realIndex = blocks.indexOf(b);
-        rows.push(self.renderDropZone(realIndex));
-        rows.push(self.renderBlockRow(b, realIndex));
-      });
-      rows.push(self.renderDropZone(blocks.length));
-
       return h(
         "div",
-        { style: BODY_ROW_STYLE },
+        { className: "pdac-raw-wrap" },
+        h("textarea", {
+          style: RAW_TEXTAREA_STYLE,
+          value: this.state.rawDraft,
+          onChange: function (e) { self.setState({ rawDraft: e.target.value }); }
+        })
+      );
+    },
+
+    renderCanvas: function () {
+      var self = this;
+      var blocks = this.state.blocks;
+      return h(
+        "div",
+        {
+          className: "pdac-canvas-scroll",
+          ref: function (el) { self._canvasEl = el; },
+          // Toque num espaço vazio (fora de qualquer bloco) desmarca o bloco
+          // selecionado — assim o próximo "+" volta a inserir no fim, em vez
+          // de logo depois do último bloco editado.
+          onClick: function (e) { if (e.target === e.currentTarget) self.setState({ selectedId: null }); }
+        },
+        h("div", { className: "article-body pdac-canvas" }, blocks.map(function (b) { return self.renderBlock(b); })),
         h(
-          "div",
-          { style: LEFT_COL_STYLE },
-          h(
-            "div",
-            { style: TOOLBAR_STYLE },
-            this.renderBannerControl(),
-            h(
-              "label",
-              { style: TOGGLE_LABEL_STYLE },
-              h("input", { type: "checkbox", checked: hasPremiumMarker, onChange: this.togglePremiumMarker }),
-              " 🔒 Bloqueio premium"
-            ),
-            h("p", { style: HINT_STYLE }, "\"Ativado aqui\" ativa e deixa arrastável (destacado em azul) até a posição onde deve aparecer. A pré-visualização à direita mostra o resultado."),
-            h("button", { type: "button", onClick: this.addAffiliateBlock, style: ADD_AFFILIATE_BTN_STYLE }, "+ Link afiliado"),
-            h("p", { style: HINT_STYLE }, "Clique quantas vezes precisar — cada clique cria um bloco novo, independente, que aparece no fim da lista abaixo e pode ser arrastado pra qualquer posição do artigo."),
-            hasPremiumMarker ? this.renderPremiumPanel() : null
-          ),
-          rows
-        ),
-        h(
-          "div",
-          { style: PREVIEW_COL_STYLE },
-          h("div", { className: "article-body", style: PREVIEW_INNER_STYLE, dangerouslySetInnerHTML: { __html: renderPreviewHTML(blocks, this.state.catalogs) } })
+          "button",
+          { type: "button", className: "pdac-add-inline", onClick: function () { self.setState({ selectedId: null, sheetOpen: true }); } },
+          "+ Adicionar bloco no fim do artigo"
         )
       );
     },
 
-    renderDropZone: function (index) {
+    renderBlock: function (b) {
       var self = this;
-      var active = this.state.dragIndex !== null && this.state.dragIndex !== undefined;
-      return h("div", {
-        key: "drop-" + index,
-        onDragOver: function (e) { e.preventDefault(); },
-        onDrop: function (e) { self.handleDrop(index, e); },
-        style: { height: active ? "12px" : "4px", transition: "height .1s" }
-      });
-    },
-
-    renderBlockRow: function (b, i) {
-      var self = this;
+      var selected = this.state.selectedId === b.id;
+      var dragging = this.state.draggingId === b.id;
       var isPremiumMarker = b.type === "token" && b.raw === PREMIUM_SPLIT_TOKEN;
+      var isBanner = b.type === "token" && isBannerToken(b.raw);
+      var isBannerOff = b.type === "token" && b.raw === NO_VITRINE_BANNER_TOKEN;
       var isAffiliate = b.type === "richblock" && b.name === AFILIADO_NAME;
-      var isSpecial = (b.type === "token" && (isBannerToken(b.raw) || b.raw === PROPAGANDA_TOKEN)) || isAffiliate;
-      var editableValue = b.type === "richblock" ? b.inner : b.raw;
-      var showTextarea = (b.type === "text" || b.type === "list" || b.type === "richblock") && !isAffiliate;
-      var rowStyle = isPremiumMarker
-        ? Object.assign({}, ROW_STYLE, ROW_PREMIUM_STYLE)
-        : isSpecial
-        ? Object.assign({}, ROW_STYLE, ROW_SPECIAL_STYLE)
-        : ROW_STYLE;
+      var isSpecial = isBanner || isBannerOff || isAffiliate;
+      var canEdit = b.type === "text" || b.type === "list" || b.type === "richblock" || isBanner || isPremiumMarker;
+      var className = "pdac-block" +
+        (selected ? " is-selected" : "") +
+        (dragging ? " is-dragging" : "") +
+        (isSpecial ? " is-special" : "") +
+        (isPremiumMarker ? " is-premium" : "");
+
+      function selectBlock() { self.setState({ selectedId: selected ? null : b.id }); }
 
       return h(
         "div",
-        {
-          key: b.id,
-          draggable: true,
-          onDragStart: function (e) { self.handleDragStart(i, e); },
-          onDragEnd: function () { self.setState({ dragIndex: null }); },
-          style: rowStyle
-        },
-        h("span", { style: DRAG_HANDLE_STYLE }, "⠿"),
-        h("span", { style: ROW_LABEL_STYLE }, blockLabel(b, self.state.catalogs)),
-        isAffiliate
-          ? this.renderAffiliateFields(b)
-          : showTextarea
-          ? h("textarea", {
-              value: editableValue,
-              onChange: function (e) { self.editBlock(b.id, e.target.value); },
-              style: ROW_TEXTAREA_STYLE
-            })
-          : null,
-        h("button", { type: "button", onClick: function () { self.removeBlock(b.id); }, style: ROW_REMOVE_STYLE }, "×")
+        { key: b.id, "data-block-row": b.id, className: className },
+        h(
+          "div",
+          { className: "pdac-block-bar" },
+          h("button", {
+            type: "button",
+            className: "pdac-bar-btn drag",
+            onPointerDown: function (e) { self.handleDragHandleDown(b.id, e); },
+            "aria-label": "Arrastar pra reordenar"
+          }, "⠿"),
+          h("button", { type: "button", className: "pdac-bar-btn", onClick: function () { self.moveBlock(b.id, -1); }, "aria-label": "Mover pra cima" }, "▲"),
+          h("button", { type: "button", className: "pdac-bar-btn", onClick: function () { self.moveBlock(b.id, 1); }, "aria-label": "Mover pra baixo" }, "▼"),
+          h("span", { className: "pdac-bar-label" }, blockLabel(b, self.state.catalogs)),
+          canEdit ? h("button", { type: "button", className: "pdac-bar-btn", onClick: selectBlock, "aria-label": "Editar bloco" }, selected ? "✅" : "✏️") : null,
+          h("button", { type: "button", className: "pdac-bar-btn", onClick: function () { self.removeBlock(b.id); }, "aria-label": "Excluir bloco" }, "🗑")
+        ),
+        selected && canEdit ? this.renderBlockEditor(b) : this.renderBlockReadOnly(b, selectBlock)
+      );
+    },
+
+    renderBlockReadOnly: function (b, onSelect) {
+      var html = renderBlockPreviewHTML(b, this.state.catalogs);
+      if (!html) {
+        return h("div", { className: "pdac-block-content pdac-block-empty", onClick: onSelect }, blockLabel(b, this.state.catalogs) + " — não aparece no site.");
+      }
+      return h("div", { className: "pdac-block-content", onClick: onSelect, dangerouslySetInnerHTML: { __html: html } });
+    },
+
+    renderBlockEditor: function (b) {
+      var self = this;
+      if (b.type === "richblock" && b.name === AFILIADO_NAME) {
+        return h("div", { className: "pdac-edit-area" }, this.renderAffiliateFields(b));
+      }
+      if (b.type === "token" && isBannerToken(b.raw)) {
+        return h("div", { className: "pdac-edit-area" }, this.renderProductPicker(parseBannerToken(b.raw)));
+      }
+      if (b.type === "token" && b.raw === PREMIUM_SPLIT_TOKEN) {
+        return h("div", { className: "pdac-edit-area" }, this.renderPremiumPanel());
+      }
+      var value = b.type === "richblock" ? b.inner : b.raw;
+      return h(
+        "div",
+        { className: "pdac-edit-area" },
+        h("textarea", {
+          className: "pdac-textarea",
+          value: value,
+          autoFocus: true,
+          style: { minHeight: b.type === "richblock" ? "96px" : "56px" },
+          onChange: function (e) { self.editBlock(b.id, e.target.value); }
+        }),
+        b.type === "richblock" && RICH_HINT[b.name] ? h("p", { className: "pdac-hint" }, RICH_HINT[b.name]) : null,
+        b.type === "text" ? h("p", { className: "pdac-hint" }, "Use \"## \" pra título ou \"### \" pra subtítulo no início da linha.") : null
       );
     },
 
@@ -879,57 +1118,28 @@
       }
       return h(
         "div",
-        { style: AFFILIATE_FIELDS_STYLE },
+        null,
         h("input", {
           type: "text",
+          className: "pdac-input",
           value: info.label,
           placeholder: "Texto do botão (ex: Ver oferta)",
-          style: AFFILIATE_INPUT_STYLE,
           onChange: function (e) { update({ label: e.target.value }); }
         }),
         h("input", {
           type: "text",
+          className: "pdac-input",
           value: info.url,
           placeholder: "URL de afiliado (https://...)",
-          style: AFFILIATE_INPUT_STYLE,
           onChange: function (e) { update({ url: e.target.value }); }
         }),
         h("input", {
           type: "text",
+          className: "pdac-input",
           value: info.image,
           placeholder: "Imagem (opcional, URL)",
-          style: AFFILIATE_INPUT_STYLE,
           onChange: function (e) { update({ image: e.target.value }); }
         })
-      );
-    },
-
-    renderBannerControl: function () {
-      var self = this;
-      var info = bannerState(this.state.blocks);
-      var parsed = info.block ? parseBannerToken(info.block.raw) : { catalog: null, ref: null };
-      return h(
-        "div",
-        null,
-        h(
-          "div",
-          { style: OVERRIDE_ROW_STYLE },
-          h("span", { style: OVERRIDE_LABEL_STYLE }, "Banner de vitrine"),
-          h(
-            "select",
-            {
-              value: info.state,
-              style: OVERRIDE_SELECT_STYLE,
-              onChange: function (e) {
-                self.updateValue(setBannerState(self.state.blocks, e.target.value, parsed.catalog, parsed.ref));
-              }
-            },
-            h("option", { value: "padrao" }, "Seguir padrão do site"),
-            h("option", { value: "ativado" }, "Ativado aqui (arrastável)"),
-            h("option", { value: "desativado" }, "Desativado aqui")
-          )
-        ),
-        info.state === "ativado" ? this.renderProductPicker(parsed) : null
       );
     },
 
@@ -937,7 +1147,7 @@
       var self = this;
       var catalogs = this.state.catalogs;
       if (!catalogs) {
-        return h("p", { style: Object.assign({}, HINT_STYLE, { margin: "0 0 10px 120px" }) }, "Carregando produtos…");
+        return h("p", { className: "pdac-hint" }, "Carregando produtos…");
       }
       var value = parsed.catalog && parsed.ref ? parsed.catalog + "|" + parsed.ref : "";
       var options = [h("option", { key: "none", value: "" }, "Genérico (texto de \"Vitrine dentro dos artigos\")")];
@@ -970,30 +1180,29 @@
       }
       return h(
         "div",
-        { style: { margin: "0 0 10px 120px" } },
+        null,
         h(
           "select",
           {
+            className: "pdac-input",
             value: value,
-            style: OVERRIDE_SELECT_STYLE,
             onChange: function (e) {
               var v = e.target.value;
-              if (!v) {
-                self.updateValue(setBannerState(self.state.blocks, "ativado", null, null));
-                return;
-              }
-              var sep = v.indexOf("|");
-              self.updateValue(setBannerState(self.state.blocks, "ativado", v.slice(0, sep), v.slice(sep + 1)));
+              var newBlocks = !v
+                ? setBannerState(self.state.blocks, "ativado", null, null)
+                : setBannerState(self.state.blocks, "ativado", v.slice(0, v.indexOf("|")), v.slice(v.indexOf("|") + 1));
+              self.updateValue(newBlocks);
+              var newBannerBlock = newBlocks.filter(function (bb) { return bb.type === "token" && isBannerToken(bb.raw); })[0];
+              self.setState({ selectedId: newBannerBlock ? newBannerBlock.id : null });
             }
           },
           options
         ),
-        h("p", { style: HINT_STYLE }, "Escolha um produto pra este banner puxar título, imagem e link automaticamente dele.")
+        h("p", { className: "pdac-hint" }, "Escolha um produto pra este banner puxar título, imagem e link automaticamente dele.")
       );
     },
 
     renderPremiumPanel: function () {
-      var self = this;
       var status = this.state.premiumStatus;
       var STATUS_LABEL = {
         idle: "ainda não carregado nem salvo",
@@ -1006,7 +1215,7 @@
       };
       return h(
         "div",
-        { style: PREMIUM_PANEL_STYLE },
+        null,
         h("p", { style: PREMIUM_STATUS_STYLE }, "Conteúdo pago: " + (STATUS_LABEL[status] || status)),
         h(
           "div",
@@ -1016,7 +1225,45 @@
           h("button", { type: "button", onClick: this.removePremiumContent, style: PREMIUM_BTN_DANGER_STYLE, disabled: status === "saving" }, "Remover do servidor")
         ),
         this.state.premiumError ? h("p", { style: PREMIUM_ERROR_STYLE }, this.state.premiumError) : null,
-        h("p", { style: HINT_STYLE }, "Tudo que estiver DEPOIS do bloco 🔒 vira a continuação paga. Só é enviado ao clicar em \"Salvar conteúdo pago\" — nunca vai pro Git/GitHub, só pro Worker do conteúdo pago (mesmo lugar que /admin/premium/ usa). Só funciona de verdade se \"Artigo premium (assinatura)\", mais abaixo no formulário, também estiver marcado.")
+        h("p", { className: "pdac-hint" }, "Tudo que estiver DEPOIS deste bloco vira a continuação paga. Só é enviado ao clicar em \"Salvar conteúdo pago\" — nunca vai pro Git/GitHub, só pro Worker do conteúdo pago (mesmo lugar que /admin/premium/ usa). Só funciona de verdade se \"Artigo premium (assinatura)\", mais abaixo no formulário, também estiver marcado.")
+      );
+    },
+
+    renderAddSheet: function () {
+      var self = this;
+      return h(
+        "div",
+        { className: "pdac-sheet-backdrop", onClick: function () { self.setState({ sheetOpen: false }); } },
+        h(
+          "div",
+          { className: "pdac-sheet", onClick: function (e) { e.stopPropagation(); } },
+          h("div", { className: "pdac-sheet-grabber" }),
+          h(
+            "div",
+            { className: "pdac-sheet-header" },
+            h("strong", null, "Adicionar bloco"),
+            h("button", { type: "button", className: "pdac-bar-btn", onClick: function () { self.setState({ sheetOpen: false }); }, "aria-label": "Fechar" }, "✕")
+          ),
+          ADD_MENU.map(function (group) {
+            return h(
+              "div",
+              { key: group.group },
+              h("div", { className: "pdac-sheet-group-title" }, group.group),
+              h(
+                "div",
+                { className: "pdac-sheet-grid" },
+                group.items.map(function (item) {
+                  return h(
+                    "button",
+                    { type: "button", key: item.key, className: "pdac-sheet-item", onClick: function () { self.insertFromMenu(item); } },
+                    h("span", { className: "emoji" }, item.emoji),
+                    h("span", { className: "label" }, item.label)
+                  );
+                })
+              )
+            );
+          })
+        )
       );
     }
   });
