@@ -56,6 +56,26 @@ import { fetchJSON, escapeHtml, qs } from "/assets/js/render.js";
     }
   }
 
+  function renderHowItWorks(cfg) {
+    var how = cfg.howItWorks;
+    var mount = document.getElementById("pdq-how-mount");
+    if (!mount || !how) return;
+
+    var items = (how.items || []).map(function (item) {
+      return '<div class="pd-quiz-how-item"><span class="pd-quiz-how-item-icon" aria-hidden="true">' + escapeHtml(item.icon || "✅") + "</span><p>" + escapeHtml(item.text || "") + "</p></div>";
+    }).join("");
+
+    var expectations = (how.expectations || []).map(function (item) {
+      return "<li>" + escapeHtml(item) + "</li>";
+    }).join("");
+
+    mount.innerHTML =
+      '<span class="eyebrow">' + escapeHtml(how.eyebrow || "") + "</span>" +
+      "<h2>" + escapeHtml(how.title || "") + "</h2>" +
+      '<div class="pd-quiz-how-items">' + items + "</div>" +
+      '<div class="pd-quiz-expect"><h3>' + escapeHtml(how.expectationsTitle || "O que esperar") + "</h3><ul>" + expectations + "</ul></div>";
+  }
+
   function renderForm(cfg) {
     var form = cfg.form || {};
     var questions = (form.questions || []).map(fieldHTML).join("");
@@ -186,6 +206,7 @@ import { fetchJSON, escapeHtml, qs } from "/assets/js/render.js";
     if (cfg.meta && cfg.meta.pageTitle) document.title = cfg.meta.pageTitle;
 
     renderHero(cfg);
+    renderHowItWorks(cfg);
     renderForm(cfg);
     renderFaq(cfg);
     wireForm(cfg);

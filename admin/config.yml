@@ -401,6 +401,24 @@ collections:
               - { label: Título, name: title, widget: string }
               - { label: Subtítulo, name: subtitle, widget: text }
               - { label: "Texto ao lado do número de vagas", name: vagasLabel, widget: string, default: "vagas restantes" }
+          - label: "Como funciona (antes do formulário)"
+            name: howItWorks
+            widget: object
+            hint: "Aparece entre o topo da página e o formulário — mostra o que a pessoa vai testar e o que esperar, antes de pedir pra ela responder."
+            fields:
+              - { label: "Selo acima do título", name: eyebrow, widget: string, default: "Como funciona o teste" }
+              - { label: Título, name: title, widget: string, default: "O que você vai testar" }
+              - label: "Destaques do produto"
+                name: items
+                widget: list
+                fields:
+                  - { label: "Emoji/ícone", name: icon, widget: string, default: "✅" }
+                  - { label: Texto, name: text, widget: string }
+              - { label: "Título do bloco \"o que esperar\"", name: expectationsTitle, widget: string, default: "O que esperar" }
+              - label: "Itens do \"o que esperar\" (duração do teste, versão beta, cupom, etc.)"
+                name: expectations
+                widget: list
+                field: { label: Item, name: item, widget: string }
           - label: "Formulário"
             name: form
             widget: object
