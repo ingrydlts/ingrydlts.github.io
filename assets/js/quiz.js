@@ -15,6 +15,28 @@ import { fetchJSON, escapeHtml, qs } from "/assets/js/render.js";
 (function () {
   var WORKER_BASE = "https://por-dentro-cms-oauth.ingrydigitalmanagement.workers.dev";
 
+  // Ícones em SVG (linha, currentColor) — escolhidos pelo /admin por chave,
+  // não emoji livre. "Dinâmico" = ganham um pop de escala ao entrar na tela
+  // (ver .pd-quiz-how-icon.is-visible no CSS da página), emoji não anima bem.
+  var ICONS = {
+    chart: '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="4" y="12" width="3.5" height="8" rx="1" stroke="currentColor" stroke-width="1.8"/><rect x="10.25" y="7" width="3.5" height="13" rx="1" stroke="currentColor" stroke-width="1.8"/><rect x="16.5" y="3" width="3.5" height="17" rx="1" stroke="currentColor" stroke-width="1.8"/></svg>',
+    cycle: '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M20 11a8 8 0 1 0-2.6 6.4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M20 5v6h-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    target: '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="8" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="12" r="1" fill="currentColor"/></svg>',
+    calendar: '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="3.5" y="5" width="17" height="15" rx="2.5" stroke="currentColor" stroke-width="1.8"/><path d="M3.5 9.5h17M8 3v4M16 3v4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
+    beta: '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9.5 3h5M10 3v6l-5.2 8.6A2 2 0 0 0 6.5 21h11a2 2 0 0 0 1.7-3.4L14 9V3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M8 15h8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
+    discount: '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="8" cy="8" r="1.6" stroke="currentColor" stroke-width="1.8"/><circle cx="16" cy="16" r="1.6" stroke="currentColor" stroke-width="1.8"/><path d="M17 7 7 17" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
+    star: '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 3.5l2.6 5.4 5.9.8-4.3 4.2 1 5.9-5.2-2.8-5.2 2.8 1-5.9-4.3-4.2 5.9-.8L12 3.5Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>',
+    check: '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="8.5" stroke="currentColor" stroke-width="1.8"/><path d="M8.5 12.5l2.4 2.4 4.6-5.4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    clock: '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="8.5" stroke="currentColor" stroke-width="1.8"/><path d="M12 7v5l3.5 2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    money: '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="2.5" y="6.5" width="19" height="11" rx="2" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="12" r="2.6" stroke="currentColor" stroke-width="1.8"/></svg>',
+    heart: '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 20.2S3.8 15 3.8 9.3A4.3 4.3 0 0 1 12 7.1a4.3 4.3 0 0 1 8.2 2.2C20.2 15 12 20.2 12 20.2Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>',
+    lightbulb: '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 18h6M10 21h4M8 14a4.8 4.8 0 1 1 8 0c-.9 1-1.5 1.8-1.5 3.2h-5c0-1.4-.6-2.2-1.5-3.2Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+  };
+
+  function iconHTML(key) {
+    return '<span class="pd-quiz-how-icon" aria-hidden="true">' + (ICONS[key] || ICONS.star) + "</span>";
+  }
+
   function fieldHTML(q) {
     var req = q.required !== false;
     var label = '<label for="pdq-' + escapeHtml(q.id) + '">' + escapeHtml(q.label) + (req ? " *" : "") + "</label>";
@@ -59,26 +81,37 @@ import { fetchJSON, escapeHtml, qs } from "/assets/js/render.js";
 
   var DELAY_CLASSES = ["pd-reveal-d1", "pd-reveal-d2", "pd-reveal-d3", "pd-reveal-d4", "pd-reveal-d5"];
 
+  // Bloco com ícone + título curto (palavra/número-chave) + descrição de 1
+  // linha — pensado pra leitura periférica (escaneável), não frase corrida.
+  // Usado tanto pros destaques do produto quanto pro "o que esperar".
+  function statBlockHTML(item, delayClass) {
+    return '<div class="pd-quiz-how-item pd-reveal ' + delayClass + '">' +
+      iconHTML(item.icon) +
+      '<div class="pd-quiz-how-item-body">' +
+      '<strong class="pd-quiz-how-item-title">' + escapeHtml(item.title || "") + "</strong>" +
+      '<p class="pd-quiz-how-item-desc">' + escapeHtml(item.description || "") + "</p>" +
+      "</div></div>";
+  }
+
   function renderHowItWorks(cfg) {
     var how = cfg.howItWorks;
     var mount = document.getElementById("pdq-how-mount");
     if (!mount || !how) return;
 
     var items = (how.items || []).map(function (item, i) {
-      var delay = DELAY_CLASSES[i % DELAY_CLASSES.length];
-      return '<div class="pd-quiz-how-item pd-reveal ' + delay + '"><span class="pd-quiz-how-item-icon" aria-hidden="true">' + escapeHtml(item.icon || "✅") + "</span><p>" + escapeHtml(item.text || "") + "</p></div>";
+      return statBlockHTML(item, DELAY_CLASSES[i % DELAY_CLASSES.length]);
     }).join("");
 
     var expectations = (how.expectations || []).map(function (item, i) {
-      var delay = DELAY_CLASSES[i % DELAY_CLASSES.length];
-      return '<li class="pd-reveal ' + delay + '">' + escapeHtml(item) + "</li>";
+      return statBlockHTML(item, DELAY_CLASSES[i % DELAY_CLASSES.length]);
     }).join("");
 
     mount.innerHTML =
       '<span class="eyebrow pd-reveal">' + escapeHtml(how.eyebrow || "") + "</span>" +
       '<h2 class="pd-reveal pd-reveal-d1">' + escapeHtml(how.title || "") + "</h2>" +
       '<div class="pd-quiz-how-items">' + items + "</div>" +
-      '<div class="pd-quiz-expect pd-reveal"><h3>' + escapeHtml(how.expectationsTitle || "O que esperar") + "</h3><ul>" + expectations + "</ul></div>";
+      '<h2 class="pd-quiz-expect-title pd-reveal">' + escapeHtml(how.expectationsTitle || "O que esperar") + "</h2>" +
+      '<div class="pd-quiz-how-items">' + expectations + "</div>";
   }
 
   // Revelação em blocos curtos conforme a rolagem chega em cada um — leitura

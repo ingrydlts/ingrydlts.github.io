@@ -6,22 +6,22 @@
   "hero": {
     "eyebrow": "Vagas de teste — só 10 gratuitas",
     "title": "Teste minha Planilha Financeira antes de todo mundo",
-    "subtitle": "Criei uma planilha financeira super integrada — automática, com dashboard e tudo — e quero 10 pessoas testando de verdade por 7 dias antes de lançar. Em troca do seu feedback, o acesso é gratuito. Responda 5 perguntas rápidas pra garantir sua vaga.",
+    "subtitle": "10 vagas gratuitas pra testar minha planilha financeira automática por 7 dias — em troca só do seu feedback.",
     "vagasLabel": "vagas restantes"
   },
   "howItWorks": {
     "eyebrow": "Como funciona o teste",
     "title": "O que você vai testar",
     "items": [
-      { "icon": "📊", "text": "Dashboard automático (Visão Mensal) que mostra pra onde seu dinheiro está indo, com status colorido por categoria" },
-      { "icon": "🔁", "text": "Gastos fixos e parcelados lançados automaticamente — você não recadastra nada todo mês" },
-      { "icon": "🎯", "text": "Aba de metas de poupança, pra acompanhar quanto falta pro seu objetivo" }
+      { "icon": "chart", "title": "Dashboard automático", "description": "Visão mensal com status colorido por categoria — você vê na hora pra onde o dinheiro vai." },
+      { "icon": "cycle", "title": "Gastos no automático", "description": "Fixos e parcelados lançados sozinhos — você não recadastra nada todo mês." },
+      { "icon": "target", "title": "Metas de poupança", "description": "Acompanhe quanto falta pro seu objetivo, direto na planilha." }
     ],
     "expectationsTitle": "O que esperar",
     "expectations": [
-      "É um teste de 7 dias — a ideia é usar com gastos reais, não só espiar",
-      "É uma versão beta: é bem provável que a versão final mude com base no seu feedback",
-      "Quem quiser adquirir a versão final depois do lançamento ganha um cupom de 50% de desconto, só por ter testado"
+      { "icon": "calendar", "title": "7 dias", "description": "de teste com gastos reais — não é só espiar." },
+      { "icon": "beta", "title": "Versão beta", "description": "é bem provável que a versão final mude com base no seu feedback." },
+      { "icon": "discount", "title": "50% OFF", "description": "cupom de desconto na versão final, só por ter testado." }
     ]
   },
   "form": {

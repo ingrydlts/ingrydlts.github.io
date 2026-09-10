@@ -411,14 +411,17 @@ collections:
               - label: "Destaques do produto"
                 name: items
                 widget: list
-                fields:
-                  - { label: "Emoji/ícone", name: icon, widget: string, default: "✅" }
-                  - { label: Texto, name: text, widget: string }
+                hint: "Cada item vira um bloco com ícone + título curto + descrição — pensado pra leitura rápida, não frase longa."
+                fields: &how_item_fields
+                  - { label: "Ícone", name: icon, widget: select, options: ["chart", "cycle", "target", "calendar", "beta", "discount", "star", "check", "clock", "money", "heart", "lightbulb"], default: "star" }
+                  - { label: "Título curto (palavra-chave ou número)", name: title, widget: string }
+                  - { label: "Descrição curta (1 linha)", name: description, widget: string }
               - { label: "Título do bloco \"o que esperar\"", name: expectationsTitle, widget: string, default: "O que esperar" }
               - label: "Itens do \"o que esperar\" (duração do teste, versão beta, cupom, etc.)"
                 name: expectations
                 widget: list
-                field: { label: Item, name: item, widget: string }
+                hint: "Mesmo formato dos destaques acima: ícone + título curto (ex. \"7 dias\", \"50% OFF\") + descrição de 1 linha."
+                fields: *how_item_fields
           - label: "Formulário"
             name: form
             widget: object

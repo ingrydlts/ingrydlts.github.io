@@ -25,24 +25,44 @@
   .pd-quiz-badge { background: var(--pd-gold); color: var(--pd-bg); }
   .pd-quiz-hero h1 {
     color: var(--pd-cream);
-    font-size: clamp(38px, 8vw, 80px);
-    line-height: 1.04;
-    max-width: 16ch;
+    font-size: clamp(30px, 5.5vw, 52px);
+    line-height: 1.08;
+    max-width: 18ch;
   }
   .pd-quiz-hero .pd-quiz-subtitle {
     color: rgba(244,241,236,0.82);
-    font-size: clamp(17px, 2.2vw, 21px);
-    max-width: 42ch;
+    font-size: clamp(16px, 2vw, 19px);
+    max-width: 38ch;
   }
   .pd-quiz-how .eyebrow { color: var(--pd-gold); }
-  .pd-quiz-how h2 { color: var(--pd-cream); font-size: clamp(26px, 4vw, 38px); }
-  .pd-quiz-how-item { background: rgba(244,241,236,0.07); border-color: rgba(244,241,236,0.14); }
-  .pd-quiz-how-item p { color: var(--pd-cream); font-size: clamp(16px, 2vw, 18px); }
-  .pd-quiz-expect h3 { color: rgba(244,241,236,0.55); }
-  .pd-quiz-expect li { color: rgba(244,241,236,0.85); font-size: clamp(15px, 1.8vw, 17px); }
+  .pd-quiz-how h2 { color: var(--pd-cream); font-size: clamp(24px, 3.6vw, 34px); }
+  .pd-quiz-expect-title { color: rgba(244,241,236,0.55); }
+
+  /* blocos com relevo: sombra + gradiente sutil simulando profundidade
+     contra o fundo escuro chapado, em vez de um retângulo plano */
+  .pd-quiz-how-item {
+    background: linear-gradient(160deg, rgba(244,241,236,0.11), rgba(244,241,236,0.04));
+    border-color: rgba(244,241,236,0.14);
+    box-shadow: 0 12px 28px -16px rgba(0,0,0,0.6), inset 0 1px 0 rgba(244,241,236,0.14);
+  }
+  .pd-quiz-how-icon { background: rgba(222,185,117,0.16); color: var(--pd-gold); }
+  .pd-quiz-how-item-title { color: var(--pd-cream); font-size: clamp(16px, 2vw, 19px); }
+  .pd-quiz-how-item-desc { color: rgba(244,241,236,0.72); font-size: clamp(13.5px, 1.6vw, 15px); }
+
   .pd-quiz-counter { background: rgba(244,241,236,0.08); border-color: rgba(244,241,236,0.2); }
   .pd-quiz-counter strong { color: var(--pd-gold); }
   .pd-quiz-counter span { color: rgba(244,241,236,0.75); }
+
+  /* ícone "dinâmico": pop de escala com leve giro ao entrar na tela — não é
+     emoji estático, ganha vida no mesmo instante em que o bloco aparece
+     (herda o delay do bloco pai via transition-delay: inherit) */
+  .pd-quiz-how-icon {
+    transform: scale(.4) rotate(-10deg);
+    opacity: 0;
+    transition: transform .5s cubic-bezier(.34,1.56,.64,1), opacity .4s ease;
+    transition-delay: inherit;
+  }
+  .pd-reveal.is-visible .pd-quiz-how-icon { transform: scale(1) rotate(0deg); opacity: 1; }
 
   /* incentiva o deslize: seta pulsando logo abaixo do título */
   .pdq-scroll-hint {
