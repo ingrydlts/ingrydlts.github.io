@@ -401,6 +401,7 @@ collections:
               - { label: "Título — linha principal (negrito)", name: titleMain, widget: string, hint: "Ex.: \"Teste minha planilha financeira\" — mesmo estilo tipográfico do post/story de divulgação." }
               - { label: "Título — linha de destaque (dourado, itálico)", name: titleAccent, widget: string, hint: "Ex.: \"10 vagas grátis\" — o número/oferta-chave, igual à segunda linha do post." }
               - { label: Subtítulo, name: subtitle, widget: text }
+              - { label: "Subtítulo — trecho em destaque (negrito e sublinhado)", name: subtitleHighlight, widget: string, hint: "Aparece em negrito e sublinhado logo depois do subtítulo — ex.: \"Em troca só do seu feedback.\"" }
               - { label: "Texto ao lado do número de vagas", name: vagasLabel, widget: string, default: "vagas restantes" }
           - label: "Como funciona (antes do formulário)"
             name: howItWorks

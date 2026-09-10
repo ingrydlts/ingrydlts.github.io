@@ -43,6 +43,7 @@
   }
   .pd-quiz-title-main { color: var(--pd-cream); font-weight: 700; }
   .pd-quiz-title-accent { color: var(--pd-gold); font-style: italic; font-weight: 600; }
+  .pd-quiz-subtitle-highlight { color: var(--pd-cream); font-weight: 700; text-decoration: underline; text-decoration-color: var(--pd-gold); text-underline-offset: 3px; }
   .pd-quiz-hero .pd-quiz-subtitle {
     color: rgba(244,241,236,0.82);
     font-size: clamp(16px, 2vw, 19px);
@@ -124,7 +125,13 @@
 <main>
   <div class="container" style="max-width:640px;">
     <section class="pd-quiz-hero" id="pdq-hero">
-      <p class="muted">Carregando...</p>
+      <!-- Conteúdo estático de fallback — aparece na hora, sem esperar o
+           JS/fetch de content/quiz-config.json. assets/js/quiz.js troca por
+           este mesmo conteúdo (ou a versão editada no /admin) assim que
+           carrega; isso evita título "sumido" em conexão lenta no mobile. -->
+      <span class="pd-quiz-badge is-visible"><span class="pd-quiz-badge-dot" aria-hidden="true"></span>Planilha Financeira Super Integrada</span>
+      <h1 class="is-visible"><span class="pd-quiz-title-main">Teste minha planilha financeira</span><span class="pd-quiz-title-accent">10 vagas grátis</span></h1>
+      <p class="pd-quiz-subtitle is-visible">10 vagas gratuitas pra testar minha planilha financeira automática por 7 dias. <strong class="pd-quiz-subtitle-highlight">Em troca só do seu feedback.</strong></p>
     </section>
 
     <section class="pd-quiz-how" id="pdq-how-mount"></section>

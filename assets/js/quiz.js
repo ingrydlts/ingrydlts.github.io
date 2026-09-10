@@ -67,7 +67,9 @@ import { fetchJSON, escapeHtml, qs } from "/assets/js/render.js";
       '<span class="pd-quiz-title-main">' + escapeHtml(hero.titleMain || "") + "</span>" +
       '<span class="pd-quiz-title-accent">' + escapeHtml(hero.titleAccent || "") + "</span>" +
       "</h1>" +
-      '<p class="pd-quiz-subtitle pd-reveal is-visible pd-reveal-d2">' + escapeHtml(hero.subtitle || "") + "</p>" +
+      '<p class="pd-quiz-subtitle pd-reveal is-visible pd-reveal-d2">' + escapeHtml(hero.subtitle || "") +
+      (hero.subtitleHighlight ? ' <strong class="pd-quiz-subtitle-highlight">' + escapeHtml(hero.subtitleHighlight) + "</strong>" : "") +
+      "</p>" +
       '<div class="pdq-scroll-hint pd-reveal is-visible pd-reveal-d3"><span>Deslize</span><span class="pdq-scroll-hint-arrow" aria-hidden="true">↓</span></div>' +
       '<div id="pdq-counter"></div>';
   }
