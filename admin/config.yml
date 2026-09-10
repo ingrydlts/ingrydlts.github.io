@@ -398,7 +398,8 @@ collections:
             widget: object
             fields:
               - { label: "Selo acima do título", name: eyebrow, widget: string, default: "Vagas limitadas — só 10 pessoas" }
-              - { label: Título, name: title, widget: string }
+              - { label: "Título — linha principal (negrito)", name: titleMain, widget: string, hint: "Ex.: \"Teste minha planilha financeira\" — mesmo estilo tipográfico do post/story de divulgação." }
+              - { label: "Título — linha de destaque (dourado, itálico)", name: titleAccent, widget: string, hint: "Ex.: \"10 vagas grátis\" — o número/oferta-chave, igual à segunda linha do post." }
               - { label: Subtítulo, name: subtitle, widget: text }
               - { label: "Texto ao lado do número de vagas", name: vagasLabel, widget: string, default: "vagas restantes" }
           - label: "Como funciona (antes do formulário)"

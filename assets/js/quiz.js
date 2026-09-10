@@ -63,7 +63,10 @@ import { fetchJSON, escapeHtml, qs } from "/assets/js/render.js";
     var hero = cfg.hero || {};
     document.getElementById("pdq-hero").innerHTML =
       '<span class="pd-quiz-badge pd-reveal is-visible"><span class="pd-quiz-badge-dot" aria-hidden="true"></span>' + escapeHtml(hero.eyebrow || "") + "</span>" +
-      '<h1 class="pd-reveal is-visible pd-reveal-d1">' + escapeHtml(hero.title || "") + "</h1>" +
+      '<h1 class="pd-reveal is-visible pd-reveal-d1">' +
+      '<span class="pd-quiz-title-main">' + escapeHtml(hero.titleMain || "") + "</span>" +
+      '<span class="pd-quiz-title-accent">' + escapeHtml(hero.titleAccent || "") + "</span>" +
+      "</h1>" +
       '<p class="pd-quiz-subtitle pd-reveal is-visible pd-reveal-d2">' + escapeHtml(hero.subtitle || "") + "</p>" +
       '<div class="pdq-scroll-hint pd-reveal is-visible pd-reveal-d3"><span>Deslize</span><span class="pdq-scroll-hint-arrow" aria-hidden="true">↓</span></div>' +
       '<div id="pdq-counter"></div>';

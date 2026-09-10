@@ -4,8 +4,9 @@
     "description": "Responda 5 perguntas rápidas e garanta uma das 10 vagas gratuitas pra testar a Planilha Financeira Super Integrada por 7 dias."
   },
   "hero": {
-    "eyebrow": "Vagas de teste — só 10 gratuitas",
-    "title": "Teste minha Planilha Financeira antes de todo mundo",
+    "eyebrow": "Planilha Financeira Super Integrada",
+    "titleMain": "Teste minha planilha financeira",
+    "titleAccent": "10 vagas grátis",
     "subtitle": "10 vagas gratuitas pra testar minha planilha financeira automática por 7 dias — em troca só do seu feedback.",
     "vagasLabel": "vagas restantes"
   },
