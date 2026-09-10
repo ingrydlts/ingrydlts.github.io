@@ -1,0 +1,83 @@
+{
+  "meta": {
+    "pageTitle": "Acesso VIP — 10 vagas | Por Dentro",
+    "description": "Responda 3 perguntas rápidas e garanta acesso gratuito ao material — só as 10 primeiras pessoas entram."
+  },
+  "hero": {
+    "eyebrow": "Vagas limitadas — só 10 pessoas",
+    "title": "Garanta seu acesso gratuito antes que as vagas acabem",
+    "subtitle": "Responda 3 perguntas rápidas sobre sua situação hoje e eu libero, na hora, o link do material que preparei pra te ajudar a resolver isso — mas só pras primeiras 10 pessoas.",
+    "vagasLabel": "vagas restantes"
+  },
+  "form": {
+    "submitLabel": "Quero minha vaga",
+    "loadingLabel": "Enviando...",
+    "privacyNote": "Seus dados são usados só pra eu liberar seu acesso e entrar em contato — nunca são compartilhados.",
+    "questions": [
+      {
+        "id": "situacao",
+        "label": "Qual é a sua situação hoje?",
+        "type": "select",
+        "required": true,
+        "options": [
+          "Ainda no Brasil, me preparando pra vir",
+          "Já estou na França, chegando agora",
+          "Já estou na França há mais de 1 ano",
+          "Outro país, não é a França"
+        ]
+      },
+      {
+        "id": "dificuldade",
+        "label": "Qual é a maior dificuldade que você enfrenta agora?",
+        "type": "textarea",
+        "required": true,
+        "placeholder": "Conte com suas palavras — isso me ajuda a te ajudar melhor."
+      },
+      {
+        "id": "urgencia",
+        "label": "Se você não resolver isso logo, o que acontece?",
+        "type": "select",
+        "required": true,
+        "options": [
+          "Perco tempo, mas não é grave",
+          "Perco dinheiro",
+          "Coloco meu visto/situação legal em risco",
+          "Não sei nem por onde começar"
+        ]
+      }
+    ]
+  },
+  "success": {
+    "title": "Você garantiu sua vaga! 🎉",
+    "body": "Aqui está o link do material — e fica de olho no seu Instagram, porque eu mesma vou te chamar na DM pra te guiar nos próximos passos.",
+    "ctaLabel": "Abrir material no Google Drive",
+    "pendingLinkNotice": "Sua vaga foi confirmada, mas o link ainda está sendo configurado — já aviso você assim que estiver disponível."
+  },
+  "locked": {
+    "title": "As 10 vagas gratuitas já foram preenchidas",
+    "body": "Suas respostas ficaram salvas e eu vou olhar cada uma — mas o acesso gratuito já encerrou. Se quiser continuar comigo mesmo assim, tem uma opção abaixo.",
+    "etapa2": {
+      "enabled": true,
+      "title": "Quer continuar comigo mesmo assim?",
+      "body": "Por 5€, eu te acompanho na Etapa 2 e continuo te ajudando a resolver isso na prática.",
+      "priceLabel": "5€",
+      "ctaLabel": "Quero a Etapa 2 por 5€",
+      "link": "",
+      "pendingNotice": "Essa opção está sendo configurada — em breve você recebe um aviso no Instagram com o link de pagamento."
+    }
+  },
+  "faq": [
+    {
+      "q": "Preciso pagar alguma coisa pra pegar o material grátis?",
+      "a": "Não. As 10 primeiras respostas recebem o link do Google Drive sem nenhum custo, na hora."
+    },
+    {
+      "q": "Como você vai entrar em contato comigo?",
+      "a": "Pelo Instagram, na mesma conversa em que você chegou até essa página — por isso o @ do Instagram é obrigatório no formulário."
+    },
+    {
+      "q": "As vagas já acabaram, ainda vale a pena responder?",
+      "a": "Vale — sua resposta fica salva e você pode continuar comigo pela Etapa 2 paga, ou aguardar uma próxima rodada de vagas gratuitas."
+    }
+  ]
+}

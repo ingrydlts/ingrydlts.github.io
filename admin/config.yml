@@ -380,6 +380,77 @@ collections:
           - { label: "Texto do bloco de assinatura", name: paywallBody, widget: text, default: "Assine para ter acesso completo a este e a outros artigos premium." }
           - { label: "Link do portal de gerenciamento (Stripe Customer Portal)", name: customerPortalUrl, widget: string, required: false, hint: "Link fixo para a assinante cancelar ou gerenciar a assinatura sozinha. Gere em Stripe → Settings → Billing → Customer portal." }
 
+  - name: quiz_config
+    label: "Questionário de vagas limitadas (/acesso-vip/)"
+    files:
+      - name: quiz_config
+        label: "Página e formulário"
+        file: content/quiz-config.json
+        fields:
+          - label: "Aba do navegador"
+            name: meta
+            widget: object
+            fields:
+              - { label: "Título da página (aba do navegador)", name: pageTitle, widget: string }
+              - { label: "Descrição (SEO/compartilhamento)", name: description, widget: text }
+          - label: "Topo da página"
+            name: hero
+            widget: object
+            fields:
+              - { label: "Selo acima do título", name: eyebrow, widget: string, default: "Vagas limitadas — só 10 pessoas" }
+              - { label: Título, name: title, widget: string }
+              - { label: Subtítulo, name: subtitle, widget: text }
+              - { label: "Texto ao lado do número de vagas", name: vagasLabel, widget: string, default: "vagas restantes" }
+          - label: "Formulário"
+            name: form
+            widget: object
+            fields:
+              - { label: "Texto do botão de enviar", name: submitLabel, widget: string, default: "Quero minha vaga" }
+              - { label: "Texto do botão enquanto envia", name: loadingLabel, widget: string, default: "Enviando..." }
+              - { label: "Aviso de privacidade (abaixo do botão)", name: privacyNote, widget: text }
+              - label: "Perguntas do questionário"
+                name: questions
+                widget: list
+                hint: "Nome, e-mail e Instagram já são pedidos automaticamente, não precisa adicionar aqui — essas perguntas são as de qualificação/interesse."
+                fields:
+                  - { label: "Identificador (sem espaços, ex. dificuldade)", name: id, widget: string }
+                  - { label: Pergunta, name: label, widget: string }
+                  - { label: "Tipo de resposta", name: type, widget: select, options: ["text", "textarea", "select"], default: "text" }
+                  - { label: "Obrigatória?", name: required, widget: boolean, default: true }
+                  - { label: "Texto de exemplo (só pro tipo texto/parágrafo)", name: placeholder, widget: string, required: false }
+                  - { label: "Opções (só pro tipo múltipla escolha, 1 por linha)", name: options, widget: list, field: { label: Opção, name: option, widget: string }, required: false }
+          - label: "Tela de sucesso (vaga liberada)"
+            name: success
+            widget: object
+            fields:
+              - { label: Título, name: title, widget: string }
+              - { label: Texto, name: body, widget: text }
+              - { label: "Texto do botão do Drive", name: ctaLabel, widget: string, default: "Abrir material no Google Drive" }
+              - { label: "Aviso se o link ainda não foi configurado", name: pendingLinkNotice, widget: text }
+          - label: "Tela de vagas encerradas"
+            name: locked
+            widget: object
+            fields:
+              - { label: Título, name: title, widget: string }
+              - { label: Texto, name: body, widget: text }
+              - label: "Oferta da Etapa 2 (paga)"
+                name: etapa2
+                widget: object
+                fields:
+                  - { label: "Mostrar esta oferta?", name: enabled, widget: boolean, default: true }
+                  - { label: Título, name: title, widget: string }
+                  - { label: Texto, name: body, widget: text }
+                  - { label: "Texto do preço", name: priceLabel, widget: string, default: "5€" }
+                  - { label: "Texto do botão", name: ctaLabel, widget: string, default: "Quero a Etapa 2 por 5€" }
+                  - { label: "Link de pagamento do Stripe", name: link, widget: string, required: false, hint: "Cole aqui o Payment Link do Stripe (produto de 5€) quando criar — enquanto estiver vazio, o botão mostra o aviso abaixo em vez de um link quebrado." }
+                  - { label: "Aviso enquanto o link não existe", name: pendingNotice, widget: text }
+          - label: "Perguntas frequentes"
+            name: faq
+            widget: list
+            fields:
+              - { label: Pergunta, name: q, widget: string }
+              - { label: Resposta, name: a, widget: text }
+
   - name: analytics_config
     label: "Consentimento e cookies"
     files:

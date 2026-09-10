@@ -18,3 +18,29 @@ CREATE TABLE IF NOT EXISTS events (
 CREATE INDEX IF NOT EXISTS idx_events_type ON events(event_type);
 CREATE INDEX IF NOT EXISTS idx_events_slug ON events(article_slug);
 CREATE INDEX IF NOT EXISTS idx_events_created ON events(created_at);
+
+-- Questionário de vagas limitadas (link do Drive) — POST/GET /api/quiz/*
+-- em worker.js. quiz_counters tem 1 linha fixa ("default") com quantas
+-- vagas já foram liberadas; a trava na 10ª resposta (ou no valor de
+-- QUIZ_LIMIT) depende do UPDATE em worker.js ser uma única instrução SQL
+-- condicional — não crie outro jeito de incrementar essa coluna.
+CREATE TABLE IF NOT EXISTS quiz_counters (
+  id TEXT PRIMARY KEY,
+  liberadas INTEGER NOT NULL DEFAULT 0
+);
+INSERT OR IGNORE INTO quiz_counters (id, liberadas) VALUES ('default', 0);
+
+CREATE TABLE IF NOT EXISTS quiz_submissions (
+  id TEXT PRIMARY KEY,
+  name TEXT,
+  instagram TEXT,
+  email TEXT,
+  ref TEXT,                     -- identificador do ManyChat, se veio no link (?ref=)
+  answers TEXT,                  -- JSON livre com as respostas do questionário
+  liberado INTEGER NOT NULL,     -- 1 = ficou entre as vagas liberadas, 0 = vagas já tinham encerrado
+  posicao INTEGER,               -- em qual posição (1..QUIZ_LIMIT) essa resposta ficou, null se não liberada
+  created_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_quiz_email ON quiz_submissions(email);
+CREATE INDEX IF NOT EXISTS idx_quiz_ref ON quiz_submissions(ref);

@@ -11,6 +11,7 @@ Site estático (HTML/CSS/JS puro, sem framework, sem build step) para a vitrine 
 /produtos-de-estudo/                 Indicações afiliadas (livros, papelaria)
 /produtos-de-compras/                Indicações afiliadas (roupas, acessórios)
 /sobre/                              Página institucional
+/acesso-vip/                         Questionário de vagas limitadas (libera link do Drive pras 10 primeiras respostas)
 /artigos/                            Índice do blog (busca + filtro por categoria)
 /artigos/post/                       Template genérico de artigo (?slug=...)
 /mentions-legales/  /cgv/  /confidentialite/    Páginas legais (rascunho)
@@ -170,6 +171,28 @@ de ficar em branco.
 do Stripe, não existe checkout único pra cobrar o combo de uma vez (isso é o carrinho com múltiplos
 produtos já listado na Fase 11 do `GUIA-DE-IMPLEMENTACAO.md`). Enquanto isso não existir, quem quiser
 o combo compra os produtos separadamente pelos links individuais.
+
+## Questionário de vagas limitadas (`/acesso-vip/`)
+
+Página isolada (sem menu, pensada pra tráfego de link direto — ex. um botão numa automação do
+ManyChat) que só libera um link do Google Drive pras **N primeiras respostas** de um formulário
+(padrão: 10), travando sozinha depois disso. A trava é decidida pelo Worker num contador do banco D1
+(mesma lógica de segurança do `/api/events` — ver seção "Artigos premium" acima sobre por que dados
+sensíveis não ficam em `content/*.json`), não por automação de e-mail: um envio de e-mail não
+consegue impedir, de forma confiável, que a 11ª pessoa também receba o link se duas respostas
+chegarem quase ao mesmo tempo.
+
+- **Conteúdo** (título, perguntas, textos de sucesso/vagas encerradas, oferta paga da "Etapa 2",
+  FAQ) é 100% editável em `/admin` → "Questionário de vagas limitadas" — `content/quiz-config.json`.
+- **Rastreio**: se o link trouxer `?ref=<algo>` na URL (ex. um identificador do ManyChat), a página
+  guarda isso junto com a resposta — além do @ do Instagram, sempre pedido no formulário, pra você
+  conseguir entrar em contato direto na DM com quem ganhou a vaga (ou reimpactar quem não ganhou).
+- **Configuração** (variável do link do Drive, tabela no banco D1, como reabrir uma nova rodada de
+  vagas): [`cms-oauth-worker/README.md`, seção 12](cms-oauth-worker/README.md#12-configurar-o-questionário-de-vagas-limitadas-acesso-vip).
+- **Pendências**: a integração de pagamento da "Etapa 2" (5€) usa o campo `link` de
+  `content/quiz-config.json` → `locked.etapa2` — cole ali o Payment Link do Stripe quando criar o
+  produto; enquanto estiver vazio, o botão mostra um aviso em vez de um link quebrado (mesmo padrão
+  dos produtos digitais).
 
 ## Regra de todo artigo: interação + dado de audiência
 

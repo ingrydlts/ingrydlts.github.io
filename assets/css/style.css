@@ -910,6 +910,62 @@ p { margin: 0 0 1em; color: var(--grafite); }
 
 .share-modal-hint { margin: 16px 0 0; font-size: 12.5px; color: var(--texto-secundario); text-align: center; }
 
+/* ---------------------------------- /acesso-vip/ (questionário de vagas limitadas) ---------------- */
+.pd-quiz-hero { padding: 56px 0 8px; text-align: center; }
+.pd-quiz-badge {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: var(--merlot); color: var(--off-white);
+  font-weight: 700; font-size: 13px; padding: 7px 16px; border-radius: var(--radius-pill);
+  margin-bottom: 18px;
+}
+.pd-quiz-badge-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--beje-paris); flex-shrink: 0; animation: pd-quiz-pulse 1.6s ease-in-out infinite; }
+@keyframes pd-quiz-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
+.pd-quiz-hero h1 { max-width: 22ch; margin: 0 auto 14px; }
+.pd-quiz-hero .pd-quiz-subtitle { max-width: 56ch; margin: 0 auto 24px; font-size: 17px; color: var(--texto-secundario); }
+
+.pd-quiz-counter {
+  display: inline-flex; align-items: baseline; gap: 8px; background: var(--off-white-soft);
+  border: 1px solid var(--borda); border-radius: var(--radius-pill); padding: 10px 20px; margin-bottom: 8px;
+}
+.pd-quiz-counter strong { font-family: var(--font-display); font-size: 22px; color: var(--merlot); }
+.pd-quiz-counter span { font-size: 13px; color: var(--texto-secundario); }
+
+.pd-quiz-form {
+  max-width: 480px; margin: 32px auto 0; background: var(--off-white-soft);
+  border: 1px solid var(--borda-suave); border-radius: var(--radius-md); box-shadow: var(--shadow-card);
+  padding: 28px; display: flex; flex-direction: column; gap: 16px; text-align: left;
+}
+.pd-quiz-field { display: flex; flex-direction: column; gap: 6px; }
+.pd-quiz-field label { font-size: 13px; font-weight: 700; color: var(--grafite); }
+.pd-quiz-field input, .pd-quiz-field select, .pd-quiz-field textarea {
+  font-family: var(--font-body); font-size: 15px; padding: 11px 14px;
+  border: 1px solid var(--borda); border-radius: var(--radius-sm); background: #fff; color: var(--grafite);
+}
+.pd-quiz-field textarea { min-height: 90px; resize: vertical; }
+.pd-quiz-field input:focus, .pd-quiz-field select:focus, .pd-quiz-field textarea:focus {
+  outline: 2px solid var(--placid-blue); outline-offset: 1px;
+}
+.pd-quiz-honeypot { position: absolute; left: -9999px; width: 1px; height: 1px; opacity: 0; }
+.pd-quiz-privacy { font-size: 12px; color: var(--texto-secundario); margin: 0; }
+.pd-quiz-error { font-size: 13px; color: var(--merlot); font-weight: 600; margin: 0; }
+
+.pd-quiz-result { max-width: 480px; margin: 32px auto 0; text-align: center; }
+.pd-quiz-result.is-success { background: var(--off-white-soft); border: 1px solid var(--verde-moss); border-radius: var(--radius-md); padding: 32px 24px; }
+.pd-quiz-result.is-locked { background: var(--off-white-soft); border: 1px solid var(--borda); border-radius: var(--radius-md); padding: 32px 24px; }
+.pd-quiz-result h2 { margin-bottom: 10px; }
+.pd-quiz-result p { color: var(--texto-secundario); max-width: 46ch; margin: 0 auto 20px; }
+
+.pd-quiz-etapa2 { margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--borda-suave); }
+.pd-quiz-etapa2 h3 { font-size: 18px; margin-bottom: 6px; }
+.pd-quiz-etapa2-price { display: block; font-family: var(--font-display); font-size: 24px; color: var(--beje-paris-text); margin-bottom: 10px; }
+
+.pd-quiz-faq { max-width: 640px; margin: 56px auto 0; }
+
+@media (max-width: 640px) {
+  .pd-quiz-hero { padding: 36px 0 4px; }
+  .pd-quiz-form, .pd-quiz-result { padding: 22px 18px; }
+}
+
 /* ---------------------------------- motion / acessibilidade ---------------- */
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }

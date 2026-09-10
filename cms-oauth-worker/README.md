@@ -175,6 +175,37 @@ aparecer pros visitantes — o interruptor "Ligar/desligar toda a medição de a
 painel desliga tudo de uma vez (banner, eventos, e futuramente GA4/Clarity/anúncios) sem precisar
 mexer em código.
 
+## 12. Configurar o questionário de vagas limitadas (`/acesso-vip/`)
+
+Página que só libera um link do Google Drive pras N primeiras respostas de um formulário (padrão:
+10), travando sozinha depois disso. Usa o **mesmo banco D1** do passo 11 (`EVENTS_DB`) — se você já
+criou esse banco, só falta rodar o `schema.sql` de novo (ele é seguro de repetir: usa
+`CREATE TABLE IF NOT EXISTS`, não apaga nem duplica nada) e configurar duas variáveis novas.
+
+1. Se ainda não tiver o banco D1 do passo 11, crie ele primeiro (é o mesmo banco, não precisa de um
+   segundo).
+2. No banco (`por-dentro-events` ou o nome que você deu) → aba **Console** → cole o conteúdo
+   atualizado de [`schema.sql`](./schema.sql) → **Execute**. Isso cria as tabelas `quiz_counters`
+   (o contador de vagas) e `quiz_submissions` (cada resposta), sem mexer na tabela `events` já
+   existente.
+3. No Worker → **Settings** → **Variables and Secrets** → adicione:
+   - `QUIZ_DRIVE_LINK` — a URL do Google Drive que vai ser liberada. Fica só aqui, nunca em
+     `content/*.json` (esse arquivo é público) — é a mesma lógica do texto pago dos artigos
+     premium. Enquanto não preencher, quem for aprovada recebe a confirmação mas vê um aviso no
+     lugar do botão, em vez de um link quebrado.
+   - `QUIZ_LIMIT` — opcional, número de vagas antes de travar (padrão `10` se não definir).
+4. **No `/admin`**: acesse a coleção **"Questionário de vagas limitadas (/acesso-vip/)"** pra editar
+   título, subtítulo, as perguntas do formulário, os textos de sucesso/vagas encerradas, o link de
+   pagamento da Etapa 2 (5€) e o FAQ — nada disso precisa de código.
+5. **Pra ver quem respondeu** (nome, Instagram, e-mail, respostas, se ganhou a vaga) — útil pra
+   fazer o contato direto na DM ou reimpactar quem ficou de fora com a oferta paga — chame
+   `GET /api/quiz/submissions` no Worker com o mesmo login que você usa no `/admin` (é a rota
+   protegida, mesmo esquema das avaliações — ainda não tem uma tela própria no
+   `/admin/dashboard/` pra isso, é consultar a rota diretamente por enquanto).
+6. **Pra reabrir uma nova rodada de vagas** depois que travar: no Console do D1, rode
+   `UPDATE quiz_counters SET liberadas = 0 WHERE id = 'default';` — isso zera o contador sem apagar
+   o histórico de quem já respondeu (`quiz_submissions` continua intacto).
+
 ---
 
 Alternativa via linha de comando (`wrangler`), se preferir a esse passo a passo pelo painel:

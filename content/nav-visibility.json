@@ -86,6 +86,11 @@
       "header": "categoria",
       "footer": "categoria",
       "logo": "categoria"
+    },
+    "acesso-vip": {
+      "header": "desativado",
+      "footer": "desativado",
+      "logo": "desativado"
     }
   }
 }

@@ -33,6 +33,7 @@ var PAGE_REGISTRY = {
   "/cgv/": { key: "cgv", category: "institucional" },
   "/confidentialite/": { key: "confidentialite", category: "institucional" },
   "/mentions-legales/": { key: "mentions-legales", category: "institucional" },
+  "/acesso-vip/": { key: "acesso-vip", category: "institucional" },
   "/artigos/": { key: "artigos", category: "blog" },
   "/artigos/post/": { key: "artigos-post-template", category: "blog" },
   "/artigos/assinatura-confirmada/": { key: "artigos-assinatura-confirmada", category: "blog" }

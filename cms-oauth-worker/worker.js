@@ -66,6 +66,35 @@
  *    em /api/insights/summary (campo "polls"), não tem endpoint público
  *    próprio — ninguém vê resultado ao vivo, só a autora no painel.
  *
+ * 5. Questionário de vagas limitadas (ex. /acesso-vip/) — libera um link
+ *    (Google Drive) só pras N primeiras respostas (QUIZ_LIMIT, padrão 10),
+ *    depois disso trava sozinho. A trava é um contador no D1 (EVENTS_DB,
+ *    mesma tabela dos eventos) incrementado com UMA única instrução SQL
+ *    condicional (`UPDATE ... WHERE liberadas < ? RETURNING liberadas`) —
+ *    D1 serializa as escritas, então isso é seguro mesmo se duas pessoas
+ *    enviarem o formulário ao mesmo tempo (diferente de um contador em KV,
+ *    que só é eventualmente consistente). Rotas:
+ *      GET  /api/quiz/status      — público: quantas vagas já foram
+ *                                    usadas, pra mostrar "restam N vagas"
+ *                                    sem revelar o link antes da hora.
+ *      POST /api/quiz/submit      — público: grava a resposta, tenta
+ *                                    consumir 1 vaga, devolve o link do
+ *                                    Drive só se conseguiu (liberado=true).
+ *                                    Idempotente por e-mail/ref — reenviar
+ *                                    o mesmo formulário nunca consome 2
+ *                                    vagas nem muda o resultado já dado.
+ *      GET  /api/quiz/submissions — protegida (mesmo esquema de permissão
+ *                                    das avaliações/insights): lista todo
+ *                                    mundo que respondeu (nome, Instagram,
+ *                                    e-mail, respostas, se foi liberado),
+ *                                    pra fazer o contato direto na DM ou
+ *                                    reimpactar quem ficou de fora com a
+ *                                    oferta paga.
+ *    O link do Drive em si (QUIZ_DRIVE_LINK) NUNCA fica em content/*.json
+ *    nem é devolvido antes do formulário ser aprovado — mesma lógica do
+ *    texto pago dos artigos premium: content/*.json é público, então
+ *    qualquer coisa salva ali pode ser lida por qualquer pessoa antes da
+ *    hora.
 
  * Variáveis de ambiente necessárias (Settings → Variables and Secrets no Worker):
  *   GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET  — do GitHub OAuth App (ver README.md)
@@ -95,13 +124,24 @@
  *                                              como o conteúdo pago aparece.
  *                                              Trate como senha: não use um
  *                                              e-mail que já é público no site.
+ *   QUIZ_DRIVE_LINK                         — URL do Google Drive liberada pro
+ *                                              questionário de vagas limitadas.
+ *                                              Fica só aqui (nunca em content/
+ *                                              *.json), igual ao texto premium —
+ *                                              sem ela, quem for aprovada recebe
+ *                                              liberado=true mas sem link (o
+ *                                              front mostra aviso, não quebra).
+ *   QUIZ_LIMIT                              — opcional: número de vagas antes
+ *                                              de travar. Padrão 10 se não
+ *                                              definida.
  * Bindings de KV necessários (Settings → Bindings):
  *   REVIEWS_KV — namespace vazia, usada pelas avaliações (e também pelo
  *                throttle de /api/events, ver EVENTS_THROTTLE_SECONDS)
  *   PREMIUM_KV — namespace vazia, usada pelo texto pago dos artigos premium
  * Binding de D1 necessário (Settings → Bindings):
  *   EVENTS_DB — banco criado com o schema de schema.sql, usado por
- *               /api/events — ver README.md
+ *               /api/events e, agora, também por /api/quiz/* (tabelas
+ *               quiz_counters e quiz_submissions) — ver README.md
  */
 
 const REPO_OWNER = 'ingrydlts';
@@ -867,6 +907,108 @@ async function handleGetPremiumArticle(request, env, url) {
   return json({ body: articleBody });
 }
 
+// ---- Questionário de vagas limitadas (link do Drive), D1 ----
+
+const QUIZ_COUNTER_ID = 'default';
+
+function quizLimit(env) {
+  const n = Number(env.QUIZ_LIMIT);
+  return Number.isFinite(n) && n > 0 ? Math.floor(n) : 10;
+}
+
+// Público — usado antes de mostrar o formulário, pra exibir "restam N
+// vagas" sem revelar o link nem quantas respostas exatamente já chegaram
+// pra quem ainda não tentou (só o essencial pra decidir se tenta ou não).
+async function handleQuizStatus(request, env) {
+  if (!env.EVENTS_DB) return json({ error: 'Banco ainda não configurado.' }, 500);
+  const limit = quizLimit(env);
+  const row = await env.EVENTS_DB.prepare('SELECT liberadas FROM quiz_counters WHERE id = ?').bind(QUIZ_COUNTER_ID).first();
+  const liberadas = row ? row.liberadas : 0;
+  return json({ limit, liberadas, restantes: Math.max(0, limit - liberadas), esgotado: liberadas >= limit });
+}
+
+// Público — grava a resposta e tenta consumir 1 vaga. A trava em si é o
+// UPDATE condicional abaixo: como o D1 serializa escritas na mesma tabela,
+// essa única instrução SQL é atômica mesmo com envios simultâneos — não
+// tem como passar de QUIZ_LIMIT liberações, diferente de um contador em KV
+// (que é só eventualmente consistente).
+async function handleQuizSubmit(request, env, ctx) {
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return json({ error: 'JSON inválido.' }, 400);
+  }
+
+  // honeypot: campo invisível pra humanos, se veio preenchido é bot —
+  // responde sucesso sem gravar nada, mesmo padrão de handlePostReview.
+  if (body.hp) return json({ ok: true, liberado: false });
+
+  const name = String(body.name || '').trim().slice(0, 80);
+  const instagram = String(body.instagram || '').trim().replace(/^@/, '').slice(0, 60);
+  const email = String(body.email || '').trim().slice(0, 150);
+  const ref = body.ref ? String(body.ref).trim().slice(0, 150) : null;
+  let answers;
+  try {
+    answers = JSON.stringify(body.answers == null ? {} : body.answers).slice(0, 4000);
+  } catch {
+    answers = '{}';
+  }
+
+  if (!name) return json({ error: 'Preencha seu nome.' }, 400);
+  if (!instagram) return json({ error: 'Preencha seu @ do Instagram.' }, 400);
+  if (!email || !email.includes('@')) return json({ error: 'Preencha um e-mail válido.' }, 400);
+
+  const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
+  const throttleKey = `throttle:quiz:${ip}`;
+  const throttled = await env.REVIEWS_KV.get(throttleKey);
+  if (throttled) return json({ error: 'Você já enviou agora há pouco — aguarde 1 minuto e tente de novo.' }, 429);
+  await env.REVIEWS_KV.put(throttleKey, '1', { expirationTtl: 60 });
+
+  if (!env.EVENTS_DB) return json({ error: 'Banco ainda não configurado.' }, 500);
+
+  // Idempotência: mesmo e-mail OU mesmo ref do ManyChat que já respondeu
+  // antes recebe de volta o mesmo resultado, sem consumir outra vaga — evita
+  // que um clique duplo ou um reenvio de rede tire a vaga de outra pessoa.
+  const existing = await env.EVENTS_DB.prepare(
+    'SELECT liberado FROM quiz_submissions WHERE email = ?1 OR (?2 IS NOT NULL AND ref = ?2) ORDER BY created_at ASC LIMIT 1'
+  ).bind(email, ref).first();
+  if (existing) {
+    return json({ ok: true, liberado: !!existing.liberado, driveLink: existing.liberado ? (env.QUIZ_DRIVE_LINK || null) : null });
+  }
+
+  const limit = quizLimit(env);
+  const updated = await env.EVENTS_DB.prepare(
+    'UPDATE quiz_counters SET liberadas = liberadas + 1 WHERE id = ? AND liberadas < ? RETURNING liberadas'
+  ).bind(QUIZ_COUNTER_ID, limit).first();
+
+  const liberado = !!updated;
+  const posicao = updated ? updated.liberadas : null;
+
+  await env.EVENTS_DB.prepare(
+    'INSERT INTO quiz_submissions (id, name, instagram, email, ref, answers, liberado, posicao, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
+  )
+    .bind(crypto.randomUUID(), name, instagram, email, ref, answers, liberado ? 1 : 0, posicao, new Date().toISOString())
+    .run();
+
+  return json({ ok: true, liberado, driveLink: liberado ? (env.QUIZ_DRIVE_LINK || null) : null }, liberado ? 201 : 200);
+}
+
+// Protegida (mesmo esquema de permissão das avaliações/insights) — lista
+// todo mundo que respondeu, liberado ou não, pra você fazer o contato
+// direto na DM ou reimpactar quem ficou de fora com a oferta paga.
+async function handleQuizSubmissions(request, env) {
+  const moderator = await requireCollaborator(request, env);
+  if (!moderator) return json({ error: 'Sem permissão. Faça login com uma conta que tem acesso ao repositório.' }, 401);
+  if (!env.EVENTS_DB) return json({ error: 'Banco ainda não configurado.' }, 500);
+
+  const { results } = await env.EVENTS_DB.prepare(
+    'SELECT name, instagram, email, ref, answers, liberado, posicao, created_at FROM quiz_submissions ORDER BY created_at ASC'
+  ).all();
+
+  return json({ submissions: results });
+}
+
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
@@ -955,6 +1097,15 @@ export default {
       }
       if (url.pathname === '/api/premium/article' && request.method === 'GET') {
         return await handleGetPremiumArticle(request, env, url);
+      }
+      if (url.pathname === '/api/quiz/status' && request.method === 'GET') {
+        return await handleQuizStatus(request, env);
+      }
+      if (url.pathname === '/api/quiz/submit' && request.method === 'POST') {
+        return await handleQuizSubmit(request, env, ctx);
+      }
+      if (url.pathname === '/api/quiz/submissions' && request.method === 'GET') {
+        return await handleQuizSubmissions(request, env);
       }
     } catch (err) {
       return json({ error: 'Erro interno.', detail: String(err) }, 500);
