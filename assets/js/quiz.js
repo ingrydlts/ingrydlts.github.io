@@ -40,9 +40,10 @@ import { fetchJSON, escapeHtml, qs } from "/assets/js/render.js";
   function renderHero(cfg) {
     var hero = cfg.hero || {};
     document.getElementById("pdq-hero").innerHTML =
-      '<span class="pd-quiz-badge"><span class="pd-quiz-badge-dot" aria-hidden="true"></span>' + escapeHtml(hero.eyebrow || "") + "</span>" +
-      "<h1>" + escapeHtml(hero.title || "") + "</h1>" +
-      '<p class="pd-quiz-subtitle">' + escapeHtml(hero.subtitle || "") + "</p>" +
+      '<span class="pd-quiz-badge pd-reveal is-visible"><span class="pd-quiz-badge-dot" aria-hidden="true"></span>' + escapeHtml(hero.eyebrow || "") + "</span>" +
+      '<h1 class="pd-reveal is-visible pd-reveal-d1">' + escapeHtml(hero.title || "") + "</h1>" +
+      '<p class="pd-quiz-subtitle pd-reveal is-visible pd-reveal-d2">' + escapeHtml(hero.subtitle || "") + "</p>" +
+      '<div class="pdq-scroll-hint pd-reveal is-visible pd-reveal-d3"><span>Deslize</span><span class="pdq-scroll-hint-arrow" aria-hidden="true">↓</span></div>' +
       '<div id="pdq-counter"></div>';
   }
 
@@ -56,24 +57,51 @@ import { fetchJSON, escapeHtml, qs } from "/assets/js/render.js";
     }
   }
 
+  var DELAY_CLASSES = ["pd-reveal-d1", "pd-reveal-d2", "pd-reveal-d3", "pd-reveal-d4", "pd-reveal-d5"];
+
   function renderHowItWorks(cfg) {
     var how = cfg.howItWorks;
     var mount = document.getElementById("pdq-how-mount");
     if (!mount || !how) return;
 
-    var items = (how.items || []).map(function (item) {
-      return '<div class="pd-quiz-how-item"><span class="pd-quiz-how-item-icon" aria-hidden="true">' + escapeHtml(item.icon || "✅") + "</span><p>" + escapeHtml(item.text || "") + "</p></div>";
+    var items = (how.items || []).map(function (item, i) {
+      var delay = DELAY_CLASSES[i % DELAY_CLASSES.length];
+      return '<div class="pd-quiz-how-item pd-reveal ' + delay + '"><span class="pd-quiz-how-item-icon" aria-hidden="true">' + escapeHtml(item.icon || "✅") + "</span><p>" + escapeHtml(item.text || "") + "</p></div>";
     }).join("");
 
-    var expectations = (how.expectations || []).map(function (item) {
-      return "<li>" + escapeHtml(item) + "</li>";
+    var expectations = (how.expectations || []).map(function (item, i) {
+      var delay = DELAY_CLASSES[i % DELAY_CLASSES.length];
+      return '<li class="pd-reveal ' + delay + '">' + escapeHtml(item) + "</li>";
     }).join("");
 
     mount.innerHTML =
-      '<span class="eyebrow">' + escapeHtml(how.eyebrow || "") + "</span>" +
-      "<h2>" + escapeHtml(how.title || "") + "</h2>" +
+      '<span class="eyebrow pd-reveal">' + escapeHtml(how.eyebrow || "") + "</span>" +
+      '<h2 class="pd-reveal pd-reveal-d1">' + escapeHtml(how.title || "") + "</h2>" +
       '<div class="pd-quiz-how-items">' + items + "</div>" +
-      '<div class="pd-quiz-expect"><h3>' + escapeHtml(how.expectationsTitle || "O que esperar") + "</h3><ul>" + expectations + "</ul></div>";
+      '<div class="pd-quiz-expect pd-reveal"><h3>' + escapeHtml(how.expectationsTitle || "O que esperar") + "</h3><ul>" + expectations + "</ul></div>";
+  }
+
+  // Revelação em blocos curtos conforme a rolagem chega em cada um — leitura
+  // periférica (não parágrafo denso), incentivando continuar descendo até o
+  // formulário. Um só IntersectionObserver observa todo .pd-reveal que
+  // ainda não apareceu; uma vez visível, para de observar (não some de novo
+  // ao rolar pra cima).
+  function initScrollReveal() {
+    var targets = document.querySelectorAll(".pd-reveal:not(.is-visible)");
+    if (!targets.length) return;
+    if (!("IntersectionObserver" in window)) {
+      targets.forEach(function (el) { el.classList.add("is-visible"); });
+      return;
+    }
+    var observer = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (entry.isIntersecting) {
+          entry.target.classList.add("is-visible");
+          observer.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.2, rootMargin: "0px 0px -10% 0px" });
+    targets.forEach(function (el) { observer.observe(el); });
   }
 
   function renderForm(cfg) {
@@ -210,6 +238,7 @@ import { fetchJSON, escapeHtml, qs } from "/assets/js/render.js";
     renderForm(cfg);
     renderFaq(cfg);
     wireForm(cfg);
+    initScrollReveal();
 
     try {
       var status = await fetch(WORKER_BASE + "/api/quiz/status").then(function (r) { return r.json(); });

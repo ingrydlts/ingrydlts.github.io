@@ -10,12 +10,64 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,600;9..144,700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/assets/css/style.css">
-<style>:root { --nav-active: #501318; }</style>
+<style>
+  :root {
+    --nav-active: #DEB975;
+    --pd-bg: #4A3128;
+    --pd-cream: #F4F1EC;
+    --pd-gold: #DEB975;
+  }
+
+  body { background: var(--pd-bg); color: var(--pd-cream); }
+  .site-header { background: var(--pd-bg); border-bottom-color: rgba(244,241,236,0.12); }
+
+  .pd-quiz-hero, .pd-quiz-how { color: var(--pd-cream); }
+  .pd-quiz-badge { background: var(--pd-gold); color: var(--pd-bg); }
+  .pd-quiz-hero h1 {
+    color: var(--pd-cream);
+    font-size: clamp(38px, 8vw, 80px);
+    line-height: 1.04;
+    max-width: 16ch;
+  }
+  .pd-quiz-hero .pd-quiz-subtitle {
+    color: rgba(244,241,236,0.82);
+    font-size: clamp(17px, 2.2vw, 21px);
+    max-width: 42ch;
+  }
+  .pd-quiz-how .eyebrow { color: var(--pd-gold); }
+  .pd-quiz-how h2 { color: var(--pd-cream); font-size: clamp(26px, 4vw, 38px); }
+  .pd-quiz-how-item { background: rgba(244,241,236,0.07); border-color: rgba(244,241,236,0.14); }
+  .pd-quiz-how-item p { color: var(--pd-cream); font-size: clamp(16px, 2vw, 18px); }
+  .pd-quiz-expect h3 { color: rgba(244,241,236,0.55); }
+  .pd-quiz-expect li { color: rgba(244,241,236,0.85); font-size: clamp(15px, 1.8vw, 17px); }
+  .pd-quiz-counter { background: rgba(244,241,236,0.08); border-color: rgba(244,241,236,0.2); }
+  .pd-quiz-counter strong { color: var(--pd-gold); }
+  .pd-quiz-counter span { color: rgba(244,241,236,0.75); }
+
+  /* incentiva o deslize: seta pulsando logo abaixo do título */
+  .pdq-scroll-hint {
+    display: flex; flex-direction: column; align-items: center; gap: 6px;
+    margin: 8px 0 4px; color: rgba(244,241,236,0.65);
+    font-size: 11px; letter-spacing: .08em; text-transform: uppercase; font-weight: 700;
+  }
+  .pdq-scroll-hint-arrow { font-size: 20px; color: var(--pd-gold); animation: pdq-bounce 1.8s ease-in-out infinite; }
+  @keyframes pdq-bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(8px); } }
+
+  /* revelação dos textos conforme a rolagem — leitura periférica, em blocos
+     curtos, não parágrafo denso. Ver initScrollReveal em assets/js/quiz.js */
+  .pd-reveal { opacity: 0; transform: translateY(26px); transition: opacity .7s cubic-bezier(.4,0,.2,1), transform .7s cubic-bezier(.4,0,.2,1); }
+  .pd-reveal.is-visible { opacity: 1; transform: translateY(0); }
+  .pd-reveal-d1 { transition-delay: .08s; }
+  .pd-reveal-d2 { transition-delay: .16s; }
+  .pd-reveal-d3 { transition-delay: .24s; }
+  .pd-reveal-d4 { transition-delay: .32s; }
+  .pd-reveal-d5 { transition-delay: .4s; }
+</style>
 </head>
 <body data-article-slug="acesso-vip">
 
 <header class="site-header">
-  <a href="/" class="site-logo" data-logo-link><img src="/images/logo-por-dentro.png" alt="Por Dentro" class="site-logo-img">Por Dentro</a>
+  <a href="/" class="site-logo" data-logo-link style="color:#F4F1EC;"><img src="/images/logo-por-dentro.png" alt="Por Dentro" class="site-logo-img">Por Dentro</a>
   <nav class="site-nav" aria-label="Navegação principal" data-header-nav>
     <a href="/produtos-digitais/" data-nav-key="produtos-digitais">Produtos digitais</a>
     <a href="/produtos-de-estudo/" data-nav-key="produtos-de-estudo">Produtos de estudo</a>
