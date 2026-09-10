@@ -1,75 +1,98 @@
 {
   "meta": {
-    "pageTitle": "Acesso VIP — 10 vagas | Por Dentro",
-    "description": "Responda 3 perguntas rápidas e garanta acesso gratuito ao material — só as 10 primeiras pessoas entram."
+    "pageTitle": "Teste a Planilha Financeira — 10 vagas | Por Dentro",
+    "description": "Responda 5 perguntas rápidas e garanta uma das 10 vagas gratuitas pra testar a Planilha Financeira Super Integrada por 7 dias."
   },
   "hero": {
-    "eyebrow": "Vagas limitadas — só 10 pessoas",
-    "title": "Garanta seu acesso gratuito antes que as vagas acabem",
-    "subtitle": "Responda 3 perguntas rápidas sobre sua situação hoje e eu libero, na hora, o link do material que preparei pra te ajudar a resolver isso — mas só pras primeiras 10 pessoas.",
+    "eyebrow": "Vagas de teste — só 10 gratuitas",
+    "title": "Teste minha Planilha Financeira antes de todo mundo",
+    "subtitle": "Criei uma planilha financeira super integrada — automática, com dashboard e tudo — e quero 10 pessoas testando de verdade por 7 dias antes de lançar. Em troca do seu feedback, o acesso é gratuito. Responda 5 perguntas rápidas pra garantir sua vaga.",
     "vagasLabel": "vagas restantes"
   },
   "form": {
-    "submitLabel": "Quero minha vaga",
+    "submitLabel": "Quero minha vaga de teste",
     "loadingLabel": "Enviando...",
-    "privacyNote": "Seus dados são usados só pra eu liberar seu acesso e entrar em contato — nunca são compartilhados.",
+    "privacyNote": "Seus dados são usados só pra eu liberar seu acesso, entender seu perfil e entrar em contato — nunca são compartilhados.",
     "questions": [
       {
-        "id": "situacao",
-        "label": "Qual é a sua situação hoje?",
+        "id": "controle_hoje",
+        "label": "Hoje, como você controla (ou não) seus gastos?",
         "type": "select",
         "required": true,
         "options": [
-          "Ainda no Brasil, me preparando pra vir",
-          "Já estou na França, chegando agora",
-          "Já estou na França há mais de 1 ano",
-          "Outro país, não é a França"
+          "Não controlo nada",
+          "Tento de cabeça, sem anotar",
+          "Anoto solto (papel, notas do celular)",
+          "Uso um app pronto",
+          "Já uso planilha, mas não é integrada/automática"
         ]
       },
       {
-        "id": "dificuldade",
-        "label": "Qual é a maior dificuldade que você enfrenta agora?",
+        "id": "maior_dificuldade",
+        "label": "Qual é a sua maior dificuldade com dinheiro hoje?",
         "type": "textarea",
         "required": true,
-        "placeholder": "Conte com suas palavras — isso me ajuda a te ajudar melhor."
+        "placeholder": "Conte com suas palavras — ex.: esquecer de lançar os gastos, não saber pra onde o dinheiro vai, nunca sobrar nada..."
       },
       {
-        "id": "urgencia",
-        "label": "Se você não resolver isso logo, o que acontece?",
+        "id": "nivel_sheets",
+        "label": "Qual é o seu nível com Google Sheets?",
         "type": "select",
         "required": true,
         "options": [
-          "Perco tempo, mas não é grave",
-          "Perco dinheiro",
-          "Coloco meu visto/situação legal em risco",
-          "Não sei nem por onde começar"
+          "Uso todo dia",
+          "Uso de vez em quando",
+          "Nunca usei, mas topo aprender",
+          "Não tenho paciência pra ferramenta nova"
         ]
+      },
+      {
+        "id": "compromisso",
+        "label": "Você consegue dedicar uns 10-15 min por dia essa semana pra lançar gastos reais e testar de verdade?",
+        "type": "select",
+        "required": true,
+        "options": [
+          "Sim, consigo separar esse tempo todo dia",
+          "Consigo, mas só em alguns dias",
+          "Não tenho certeza se vou conseguir ser constante"
+        ]
+      },
+      {
+        "id": "objetivo_financeiro",
+        "label": "Qual objetivo financeiro você mais quer alcançar nos próximos meses?",
+        "type": "textarea",
+        "required": true,
+        "placeholder": "Ex.: parar de estourar o orçamento, guardar pra uma viagem, entender pra onde o dinheiro vai..."
       }
     ]
   },
   "success": {
-    "title": "Você garantiu sua vaga! 🎉",
-    "body": "Aqui está o link do material — e fica de olho no seu Instagram, porque eu mesma vou te chamar na DM pra te guiar nos próximos passos.",
-    "ctaLabel": "Abrir material no Google Drive",
+    "title": "Sua vaga de teste está confirmada! 🎉",
+    "body": "Você é uma das 10 testers da Planilha Financeira Super Integrada. Abra o link abaixo pra fazer sua cópia — e fica de olho no seu Instagram, porque eu mesma vou te chamar na DM com o passo a passo dos 7 dias de teste.",
+    "ctaLabel": "Abrir minha cópia da planilha",
     "pendingLinkNotice": "Sua vaga foi confirmada, mas o link ainda está sendo configurado — já aviso você assim que estiver disponível."
   },
   "locked": {
-    "title": "As 10 vagas gratuitas já foram preenchidas",
-    "body": "Suas respostas ficaram salvas e eu vou olhar cada uma — mas o acesso gratuito já encerrou. Se quiser continuar comigo mesmo assim, tem uma opção abaixo.",
+    "title": "As 10 vagas de teste gratuitas já foram preenchidas",
+    "body": "Suas respostas ficaram salvas e eu vou ler cada uma delas. O teste gratuito já fechou, mas você pode entrar na lista de espera do lançamento com preço baixo — ou aguardar uma próxima rodada de vagas.",
     "etapa2": {
       "enabled": true,
-      "title": "Quer continuar comigo mesmo assim?",
-      "body": "Por 5€, eu te acompanho na Etapa 2 e continuo te ajudando a resolver isso na prática.",
-      "priceLabel": "5€",
-      "ctaLabel": "Quero a Etapa 2 por 5€",
+      "title": "Quer garantir seu acesso no lançamento?",
+      "body": "Quando eu abrir a Planilha Financeira Super Integrada pro público, é com preço de lançamento — bem abaixo do valor final. Deixando seu contato aqui, você é avisada em primeira mão.",
+      "priceLabel": "5€ no lançamento",
+      "ctaLabel": "Quero ser avisada no lançamento",
       "link": "",
-      "pendingNotice": "Essa opção está sendo configurada — em breve você recebe um aviso no Instagram com o link de pagamento."
+      "pendingNotice": "O link de acesso ao lançamento ainda está sendo preparado — assim que estiver pronto, aviso você direto no Instagram."
     }
   },
   "faq": [
     {
-      "q": "Preciso pagar alguma coisa pra pegar o material grátis?",
-      "a": "Não. As 10 primeiras respostas recebem o link do Google Drive sem nenhum custo, na hora."
+      "q": "Preciso pagar alguma coisa pra testar a planilha?",
+      "a": "Não. As 10 primeiras respostas recebem acesso gratuito em troca do feedback ao final dos 7 dias de teste."
+    },
+    {
+      "q": "Preciso saber usar Google Sheets pra participar?",
+      "a": "Não precisa já saber — só topar aprender. A instalação da automação tem passo a passo, e eu acompanho você por DM durante o teste."
     },
     {
       "q": "Como você vai entrar em contato comigo?",
@@ -77,7 +100,7 @@
     },
     {
       "q": "As vagas já acabaram, ainda vale a pena responder?",
-      "a": "Vale — sua resposta fica salva e você pode continuar comigo pela Etapa 2 paga, ou aguardar uma próxima rodada de vagas gratuitas."
+      "a": "Vale — sua resposta fica salva, você entra na lista de espera do lançamento com preço baixo, e pode ser chamada numa próxima rodada de testes."
     }
   ]
 }
