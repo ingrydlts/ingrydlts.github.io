@@ -415,7 +415,7 @@ collections:
                 widget: list
                 hint: "Cada item vira um bloco com ícone + título curto + descrição — pensado pra leitura rápida, não frase longa."
                 fields: &how_item_fields
-                  - { label: "Ícone", name: icon, widget: select, options: ["chart", "cycle", "target", "calendar", "beta", "discount", "star", "check", "clock", "money", "heart", "lightbulb"], default: "star" }
+                  - { label: "Ícone", name: icon, widget: select, options: ["chart", "cycle", "target", "calendar", "beta", "discount", "star", "check", "clock", "money", "heart", "lightbulb", "copy", "message"], default: "star" }
                   - { label: "Título curto (palavra-chave ou número)", name: title, widget: string }
                   - { label: "Descrição curta (1 linha)", name: description, widget: string }
               - { label: "Título do bloco \"o que esperar\"", name: expectationsTitle, widget: string, default: "O que esperar" }
@@ -447,7 +447,12 @@ collections:
             widget: object
             fields:
               - { label: Título, name: title, widget: string }
-              - { label: Texto, name: body, widget: text }
+              - { label: "Texto (introdução curta)", name: body, widget: text }
+              - label: "Próximos passos (ícone + título + descrição)"
+                name: steps
+                widget: list
+                hint: "Ex.: duplicar e renomear a planilha, contato pelo direct, retorno em ~14 dias."
+                fields: *how_item_fields
               - { label: "Texto do botão do Drive", name: ctaLabel, widget: string, default: "Abrir material no Google Drive" }
               - { label: "Aviso se o link ainda não foi configurado", name: pendingLinkNotice, widget: text }
           - label: "Tela de vagas encerradas"

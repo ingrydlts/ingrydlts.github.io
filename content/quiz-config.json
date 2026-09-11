@@ -85,7 +85,12 @@
   },
   "success": {
     "title": "Sua vaga de teste está confirmada! 🎉",
-    "body": "Você é uma das 10 testers da Planilha Financeira Super Integrada. Abra o link abaixo pra fazer sua cópia — e fica de olho no seu Instagram, porque eu mesma vou te chamar na DM com o passo a passo dos 7 dias de teste.",
+    "body": "Você é uma das 10 testers da Planilha Financeira Super Integrada.",
+    "steps": [
+      { "icon": "copy", "title": "Duplique e renomeie", "description": "O passo a passo e a planilha pra copiar estão no link abaixo. Depois de duplicar, renomeie sua cópia de um jeito fácil de encontrar depois." },
+      { "icon": "message", "title": "Dúvidas? Me chama no direct", "description": "Qualquer travamento, me manda mensagem no Instagram. Eu também vou te chamar ao longo desses 7 dias pra entender onde você travou." },
+      { "icon": "clock", "title": "Retorno em ~14 dias", "description": "Depois de umas 2 semanas eu volto a falar com você, pra ver se a automação rodou certinho na virada do mês ou se deu algum problema." }
+    ],
     "ctaLabel": "Abrir minha cópia da planilha",
     "pendingLinkNotice": "Sua vaga foi confirmada, mas o link ainda está sendo configurado — já aviso você assim que estiver disponível."
   },

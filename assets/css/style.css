@@ -967,6 +967,14 @@ p { margin: 0 0 1em; color: var(--grafite); }
 .pd-quiz-result h2 { margin-bottom: 10px; }
 .pd-quiz-result p { color: var(--texto-secundario); max-width: 46ch; margin: 0 auto 20px; }
 
+.pd-quiz-success-steps { display: flex; flex-direction: column; gap: 16px; margin: 4px 0 24px; text-align: left; }
+.pd-quiz-success-step { display: flex; gap: 12px; align-items: flex-start; }
+.pd-quiz-success-step-icon { flex-shrink: 0; width: 34px; height: 34px; border-radius: 50%; background: rgba(96,64,52,0.08); color: var(--downtown-brown); display: flex; align-items: center; justify-content: center; }
+.pd-quiz-success-step-icon svg { width: 18px; height: 18px; }
+.pd-quiz-success-step-body { min-width: 0; }
+.pd-quiz-success-step-body strong { display: block; font-family: var(--font-display); font-size: 15px; color: var(--grafite); margin-bottom: 2px; }
+.pd-quiz-success-step-body p { margin: 0; font-size: 13.5px; color: var(--texto-secundario); line-height: 1.5; }
+
 .pd-quiz-etapa2 { margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--borda-suave); }
 .pd-quiz-etapa2 h3 { font-size: 18px; margin-bottom: 6px; }
 .pd-quiz-etapa2-price { display: block; font-family: var(--font-display); font-size: 24px; color: var(--beje-paris-text); margin-bottom: 10px; }

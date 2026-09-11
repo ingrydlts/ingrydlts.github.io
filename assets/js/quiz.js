@@ -30,7 +30,9 @@ import { fetchJSON, escapeHtml, qs } from "/assets/js/render.js";
     clock: '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="8.5" stroke="currentColor" stroke-width="1.8"/><path d="M12 7v5l3.5 2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
     money: '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="2.5" y="6.5" width="19" height="11" rx="2" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="12" r="2.6" stroke="currentColor" stroke-width="1.8"/></svg>',
     heart: '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 20.2S3.8 15 3.8 9.3A4.3 4.3 0 0 1 12 7.1a4.3 4.3 0 0 1 8.2 2.2C20.2 15 12 20.2 12 20.2Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>',
-    lightbulb: '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 18h6M10 21h4M8 14a4.8 4.8 0 1 1 8 0c-.9 1-1.5 1.8-1.5 3.2h-5c0-1.4-.6-2.2-1.5-3.2Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+    lightbulb: '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 18h6M10 21h4M8 14a4.8 4.8 0 1 1 8 0c-.9 1-1.5 1.8-1.5 3.2h-5c0-1.4-.6-2.2-1.5-3.2Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    copy: '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="8.5" y="8.5" width="12" height="12" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="M15.5 8.5V5.5a2 2 0 0 0-2-2h-8a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    message: '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 4.5h16a1 1 0 0 1 1 1V15a1 1 0 0 1-1 1H9l-4.6 3.4a.5.5 0 0 1-.8-.4V16H4a1 1 0 0 1-1-1V5.5a1 1 0 0 1 1-1Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>'
   };
 
   function iconHTML(key) {
@@ -158,13 +160,25 @@ import { fetchJSON, escapeHtml, qs } from "/assets/js/render.js";
       "</form>";
   }
 
+  // Blocos de "próximos passos" na tela de sucesso — mesma lógica de ícone
+  // + título curto + descrição das seções anteriores, só que num cartão
+  // claro (fundo do card de sucesso), então sem as cores do tema escuro.
+  function successStepHTML(step) {
+    return '<div class="pd-quiz-success-step"><span class="pd-quiz-success-step-icon" aria-hidden="true">' +
+      (ICONS[step.icon] || ICONS.star) + "</span>" +
+      '<div class="pd-quiz-success-step-body"><strong>' + escapeHtml(step.title || "") + "</strong><p>" + escapeHtml(step.description || "") + "</p></div></div>";
+  }
+
   function renderSuccess(cfg, driveLink) {
     var s = cfg.success || {};
     var cta = driveLink
       ? '<a class="btn" href="' + escapeHtml(driveLink) + '" target="_blank" rel="noopener">' + escapeHtml(s.ctaLabel || "Abrir material") + "</a>"
       : '<p class="muted">' + escapeHtml(s.pendingLinkNotice || "") + "</p>";
+    var steps = (s.steps || []).map(successStepHTML).join("");
     document.getElementById("pdq-form-mount").innerHTML =
-      '<div class="pd-quiz-result is-success"><h2>' + escapeHtml(s.title || "") + "</h2><p>" + escapeHtml(s.body || "") + "</p>" + cta + "</div>";
+      '<div class="pd-quiz-result is-success"><h2>' + escapeHtml(s.title || "") + "</h2><p>" + escapeHtml(s.body || "") + "</p>" +
+      (steps ? '<div class="pd-quiz-success-steps">' + steps + "</div>" : "") +
+      cta + "</div>";
   }
 
   function renderLocked(cfg) {
