@@ -91,6 +91,14 @@
   .ins-legend-item { display: flex; align-items: center; gap: 8px; }
   .ins-legend-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
   .ins-legend-pct { margin-left: auto; font-variant-numeric: tabular-nums; color: var(--texto-secundario); }
+
+  .ins-quiz-toggle { font: inherit; font-size: 12px; font-weight: 600; color: var(--downtown-brown); background: none; border: 1px solid var(--borda); border-radius: 999px; padding: 4px 10px; cursor: pointer; }
+  .ins-quiz-toggle:hover { border-color: var(--downtown-brown); }
+  .ins-quiz-answers td { background: var(--off-white-soft); }
+  .ins-quiz-answers[hidden] { display: none; }
+  .ins-quiz-answer { margin: 4px 0; font-size: 13px; }
+  .ins-quiz-status-ok { color: var(--verde-moss); font-weight: 600; }
+  .ins-quiz-status-wait { color: var(--texto-secundario); }
 </style>
 </head>
 <body>
@@ -138,6 +146,7 @@
       <button type="button" class="ins-tab" data-target="faq">FAQ</button>
       <button type="button" class="ins-tab" data-target="recursos">Fontes clicadas</button>
       <button type="button" class="ins-tab" data-target="compartilhar">Compartilhar</button>
+      <button type="button" class="ins-tab" data-target="vagas">Vagas — Planilha</button>
     </nav>
 
     <div class="ins-panels">
@@ -196,6 +205,12 @@
         <p class="muted" id="ins-share-summary"></p>
         <div id="ins-share"></div>
       </section>
+
+      <section class="ins-panel" id="panel-vagas" hidden>
+        <h2>Questionário de vagas limitadas — Planilha Financeira</h2>
+        <p class="muted">Todo mundo que respondeu o formulário em <code>/acesso-vip/</code>, liberado ou não. Clique em "Ver respostas" pra abrir o questionário completo daquela pessoa.</p>
+        <div id="ins-quiz"></div>
+      </section>
     </div>
   </div>
 </main>
@@ -227,7 +242,8 @@
     heart: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.8 1-1a5.5 5.5 0 0 0 0-7.6z"/></svg>',
     arrowUpRight: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg>',
     share: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="2.6"/><circle cx="6" cy="12" r="2.6"/><circle cx="18" cy="19" r="2.6"/><path d="M8.4 10.6l7.2-4.2M8.4 13.4l7.2 4.2"/></svg>',
-    alert: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 2 20h20L12 3z"/><line x1="12" y1="9" x2="12" y2="13.5"/><circle cx="12" cy="16.5" r="0.9" fill="currentColor" stroke="none"/></svg>'
+    alert: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 2 20h20L12 3z"/><line x1="12" y1="9" x2="12" y2="13.5"/><circle cx="12" cy="16.5" r="0.9" fill="currentColor" stroke="none"/></svg>',
+    ticket: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v2a2 2 0 0 0 0 4v2a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-2a2 2 0 0 0 0-4V8Z"/></svg>'
   };
   var DONUT_COLORS = ["#604034", "#DEB975", "#8AACD2", "#577328", "#BB9351", "#A79B8E"];
 
@@ -248,6 +264,17 @@
     if (!trigger) return;
     e.preventDefault();
     activateTab(trigger.getAttribute("data-target"));
+  });
+
+  // Abre/fecha a linha com as respostas completas de uma pessoa, na aba
+  // "Vagas — Planilha" (ver renderQuiz).
+  document.addEventListener("click", function (e) {
+    var toggle = e.target.closest("[data-quiz-toggle]");
+    if (!toggle) return;
+    var row = document.getElementById("quiz-answers-" + toggle.getAttribute("data-quiz-toggle"));
+    if (!row) return;
+    row.hidden = !row.hidden;
+    toggle.textContent = row.hidden ? "Ver respostas" : "Ocultar respostas";
   });
 
   function activateTab(name) {
@@ -302,19 +329,24 @@
 
   function load() {
     statusEl.textContent = "Carregando…";
-    fetch(WORKER_BASE + "/api/insights/summary", { headers: { Authorization: "Bearer " + token } })
-      .then(function (r) {
+    Promise.all([
+      fetch(WORKER_BASE + "/api/insights/summary", { headers: { Authorization: "Bearer " + token } }).then(function (r) {
         if (!r.ok) throw new Error(r.status === 401 ? "Essa conta não tem permissão de escrita no repositório." : "Falha ao carregar os dados.");
         return r.json();
-      })
-      .then(renderAll)
+      }),
+      // Público, sem token — só pra traduzir o "id" de cada pergunta do
+      // questionário (ex. "maior_dificuldade") pro texto que a pessoa viu de
+      // verdade em /acesso-vip/. Se falhar, a aba de vagas mostra o id cru.
+      fetch("/content/quiz-config.json").then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; })
+    ])
+      .then(function (results) { renderAll(results[0], results[1]); })
       .catch(function (err) {
         statusEl.textContent = "";
         contentBox.innerHTML = '<p class="ins-error">' + escapeHtml(err.message) + "</p>";
       });
   }
 
-  function renderAll(data) {
+  function renderAll(data, quizCfg) {
     var now = new Date();
     var hh = String(now.getHours()).padStart(2, "0");
     var mm = String(now.getMinutes()).padStart(2, "0");
@@ -333,6 +365,7 @@
     renderFaqOpens(data.faqOpens || []);
     renderResourceClicks(data.resourceClicks || []);
     renderShare(data.shareOpens || 0, data.shareClicks || []);
+    renderQuiz(data.quiz || {}, quizCfg);
   }
 
   // ---- 1. KPI cards ---------------------------------------------------
@@ -374,6 +407,8 @@
     var shareOpens = data.shareOpens || 0;
     var shareRate = shareOpens ? Math.round((totalShares / shareOpens) * 100) : null;
 
+    var quiz = data.quiz || {};
+
     return {
       sessions: overview.sessions || 0,
       events: overview.total || 0,
@@ -382,7 +417,10 @@
       topSource: topSource,
       topSourcePct: topSourcePct,
       totalShares: totalShares,
-      shareRate: shareRate
+      shareRate: shareRate,
+      quizLiberadas: quiz.liberadas != null ? quiz.liberadas : null,
+      quizLimit: quiz.limit != null ? quiz.limit : null,
+      quizTotal: (quiz.submissions || []).length
     };
   }
 
@@ -428,6 +466,13 @@
       k.totalShares,
       k.shareRate != null ? "Compartilhamentos enviados (" + k.shareRate + "% de conversão)" : "Compartilhamentos enviados",
       "", false, "compartilhar"
+    ));
+    cards.push(kpiCard(
+      ICONS.ticket,
+      k.quizLimit != null ? (k.quizLiberadas + "/" + k.quizLimit) : "—",
+      "Vagas usadas — Planilha Financeira (" + k.quizTotal + (k.quizTotal === 1 ? " resposta" : " respostas") + ")",
+      k.quizLimit != null && k.quizLiberadas >= k.quizLimit ? "warn" : "",
+      true, "vagas"
     ));
     el.innerHTML = cards.join("");
 
@@ -761,6 +806,49 @@
         "<tr><td>" + escapeHtml(r.article_slug || "(sem slug)") + '</td><td>' + escapeHtml(label) +
         '</td><td class="num">' + r.clicks + "</td></tr>";
     });
+    html += "</tbody></table>";
+    el.innerHTML = html;
+  }
+
+  // ---- Questionário de vagas limitadas (/acesso-vip/) ------------------
+  // quizCfg vem de content/quiz-config.json (público) só pra traduzir o
+  // "id" de cada pergunta (ex. "maior_dificuldade") no texto real que a
+  // pessoa viu no formulário — sem ele, a coluna some/aparecem os ids crus.
+  function renderQuiz(quiz, quizCfg) {
+    var el = document.getElementById("ins-quiz");
+    var submissions = quiz.submissions || [];
+    if (!submissions.length) {
+      el.innerHTML = '<p class="ins-empty">Ainda não há respostas do questionário.</p>';
+      return;
+    }
+
+    var labels = {};
+    if (quizCfg && quizCfg.form && quizCfg.form.questions) {
+      quizCfg.form.questions.forEach(function (q) { labels[q.id] = q.label || q.id; });
+    }
+
+    var html = '<p style="font-size:13.5px; margin:0 0 14px;"><strong>' + (quiz.liberadas || 0) + '</strong> de <strong>' +
+      (quiz.limit != null ? quiz.limit : "—") + "</strong> vagas usadas.</p>";
+    html += '<table class="ins-table"><thead><tr><th>Nome</th><th>Instagram</th><th>E-mail</th><th>Status</th><th>Data</th><th></th></tr></thead><tbody>';
+
+    submissions.forEach(function (r, i) {
+      var status = r.liberado
+        ? '<span class="ins-quiz-status-ok">✓ Liberada' + (r.posicao ? " (#" + r.posicao + ")" : "") + "</span>"
+        : '<span class="ins-quiz-status-wait">Lista de espera</span>';
+      var date = (r.created_at || "").replace("T", " ").slice(0, 16);
+      var answers = r.answers || {};
+      var answersHTML = Object.keys(answers).map(function (key) {
+        return '<p class="ins-quiz-answer"><strong>' + escapeHtml(labels[key] || key) + ":</strong> " + escapeHtml(String(answers[key])) + "</p>";
+      }).join("") || '<p class="ins-quiz-answer muted">Sem respostas adicionais.</p>';
+
+      html +=
+        "<tr><td>" + escapeHtml(r.name || "—") + "</td><td>" + (r.instagram ? "@" + escapeHtml(r.instagram) : "—") +
+        "</td><td>" + escapeHtml(r.email || "—") + "</td><td>" + status + "</td><td>" + escapeHtml(date) + "</td>" +
+        '<td><button type="button" class="ins-quiz-toggle" data-quiz-toggle="' + i + '">Ver respostas</button></td></tr>';
+      html += '<tr class="ins-quiz-answers" id="quiz-answers-' + i + '" hidden><td colspan="6">' + answersHTML +
+        (r.ref ? '<p class="ins-quiz-answer muted">ref (ManyChat): ' + escapeHtml(r.ref) + "</p>" : "") + "</td></tr>";
+    });
+
     html += "</tbody></table>";
     el.innerHTML = html;
   }

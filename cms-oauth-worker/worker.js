@@ -457,7 +457,7 @@ async function handleInsightsSummary(request, env) {
   if (!moderator) return json({ error: 'Sem permissão. Faça login com uma conta que tem acesso ao repositório.' }, 401);
   if (!env.EVENTS_DB) return json({ error: 'Banco de eventos ainda não configurado.' }, 500);
 
-  const [overview, feedback, botFunnel, botAnswers, botOutcomes, checklist, faqOpens, resourceClicks, trafficSources, polls, shareOpens, shareClicks, daily] = await Promise.all([
+  const [overview, feedback, botFunnel, botAnswers, botOutcomes, checklist, faqOpens, resourceClicks, trafficSources, polls, shareOpens, shareClicks, daily, quizCounter, quizRows] = await Promise.all([
     env.EVENTS_DB.prepare('SELECT COUNT(*) as total, COUNT(DISTINCT session_id) as sessions FROM events').all(),
     env.EVENTS_DB.prepare(
       `SELECT article_slug,
@@ -531,8 +531,23 @@ async function handleInsightsSummary(request, env) {
     ).all(),
     env.EVENTS_DB.prepare(
       `SELECT substr(created_at,1,10) as day, COUNT(*) as count FROM events WHERE created_at >= date('now','-30 days') GROUP BY day ORDER BY day`
+    ).all(),
+    // Questionário de vagas limitadas (/acesso-vip/) — ver handleQuizSubmit.
+    // Traz o contador (quantas vagas já foram usadas) e a lista completa de
+    // respostas, mais recente primeiro, pro painel /admin/dashboard/ mostrar
+    // sem precisar consultar o D1 na mão.
+    env.EVENTS_DB.prepare('SELECT liberadas FROM quiz_counters WHERE id = ?').bind(QUIZ_COUNTER_ID).first(),
+    env.EVENTS_DB.prepare(
+      `SELECT name, instagram, email, ref, answers, liberado, posicao, created_at
+       FROM quiz_submissions ORDER BY created_at DESC`
     ).all()
   ]);
+
+  const quizSubmissions = (quizRows.results || []).map((r) => {
+    let answers;
+    try { answers = JSON.parse(r.answers || '{}'); } catch { answers = {}; }
+    return { ...r, answers };
+  });
 
   return json({
     overview: (overview.results && overview.results[0]) || { total: 0, sessions: 0 },
@@ -547,7 +562,12 @@ async function handleInsightsSummary(request, env) {
     polls: polls.results || [],
     shareOpens: (shareOpens.results && shareOpens.results[0] && shareOpens.results[0].opens) || 0,
     shareClicks: shareClicks.results || [],
-    daily: daily.results || []
+    daily: daily.results || [],
+    quiz: {
+      limit: quizLimit(env),
+      liberadas: (quizCounter && quizCounter.liberadas) || 0,
+      submissions: quizSubmissions
+    }
   });
 }
 
