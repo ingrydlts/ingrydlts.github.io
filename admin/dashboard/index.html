@@ -10,22 +10,43 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,600;9..144,700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/assets/css/style.css">
 <style>
-  .ins-wrap { max-width: 880px; margin: 0 auto; padding: 48px 24px 96px; }
-  .ins-head { margin-bottom: 32px; }
+  .ins-wrap { max-width: 960px; margin: 0 auto; padding: 40px 24px 96px; }
+  .ins-head { margin-bottom: 24px; }
   .ins-login { background: #fff; border: 1px solid var(--borda); border-radius: 8px; padding: 32px; text-align: center; }
   .ins-login[hidden] { display: none; }
   .ins-content[hidden] { display: none; }
   .ins-error { color: var(--merlot); font-size: 13px; margin-top: 14px; }
-  .ins-status { font-size: 13px; color: var(--texto-secundario); margin-bottom: 20px; }
+  .ins-status { font-size: 13px; color: var(--texto-secundario); margin-bottom: 24px; }
+  .ins-status a { color: var(--downtown-brown); font-weight: 600; }
 
-  .ins-stats { display: grid; grid-template-columns: 1fr; gap: 12px; margin-bottom: 40px; }
-  @media (min-width: 600px) { .ins-stats { grid-template-columns: repeat(3, 1fr); } }
-  .ins-stat { background: #fff; border: 1px solid var(--borda); border-radius: 8px; padding: 18px 20px; }
-  .ins-stat-num { font-family: var(--font-display); font-size: 28px; font-weight: 700; color: var(--grafite); display: block; }
-  .ins-stat-label { font-size: 12.5px; color: var(--texto-secundario); }
+  /* 1. KPI cards — números chave, escaneáveis, no topo */
+  .ins-kpis { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 14px; }
+  @media (min-width: 640px) { .ins-kpis { grid-template-columns: repeat(3, 1fr); } }
+  @media (min-width: 980px) { .ins-kpis { grid-template-columns: repeat(6, 1fr); } }
+  .ins-kpi { background: #fff; border: 1px solid var(--borda); border-radius: 10px; padding: 16px 14px; display: flex; flex-direction: column; gap: 9px; }
+  .ins-kpi-icon { width: 30px; height: 30px; border-radius: 8px; display: flex; align-items: center; justify-content: center; background: rgba(96,64,52,0.08); color: var(--downtown-brown); }
+  .ins-kpi-icon svg { width: 16px; height: 16px; }
+  .ins-kpi.good .ins-kpi-icon { background: rgba(87,115,40,0.12); color: var(--verde-moss); }
+  .ins-kpi.warn .ins-kpi-icon { background: rgba(80,19,24,0.1); color: var(--merlot); }
+  .ins-kpi-num { font-family: var(--font-display); font-size: 24px; font-weight: 700; color: var(--grafite); line-height: 1.1; }
+  .ins-kpi-num.small { font-size: 16px; }
+  .ins-kpi-label { font-size: 11px; color: var(--texto-secundario); line-height: 1.35; }
 
-  .ins-section { margin-bottom: 44px; }
+  /* Alerta acionável — decision-making flow */
+  .ins-alert { display: flex; align-items: flex-start; gap: 10px; background: rgba(80,19,24,0.06); border: 1px solid rgba(80,19,24,0.18); border-radius: 8px; padding: 12px 16px; margin-bottom: 24px; font-size: 13.5px; color: var(--grafite); }
+  .ins-alert[hidden] { display: none; }
+  .ins-alert svg { flex-shrink: 0; width: 16px; height: 16px; color: var(--merlot); margin-top: 2px; }
+  .ins-alert a { color: var(--merlot); font-weight: 600; }
+
+  /* 3. Navegação — simples, previsível, pra pular entre seções */
+  .ins-nav { display: flex; gap: 8px; overflow-x: auto; margin-bottom: 36px; padding-bottom: 2px; -webkit-overflow-scrolling: touch; }
+  .ins-nav a { flex-shrink: 0; font-size: 12.5px; font-weight: 600; color: var(--texto-secundario); background: #fff; border: 1px solid var(--borda); border-radius: 999px; padding: 7px 14px; text-decoration: none; white-space: nowrap; }
+  .ins-nav a:hover { color: var(--grafite); border-color: var(--downtown-brown); }
+
+  /* 5. Hierarquia — seções com espaço pra respirar e âncoras de rolagem */
+  .ins-section { margin-bottom: 44px; scroll-margin-top: 88px; }
   .ins-section h2 { font-size: 18px; margin-bottom: 4px; }
+  .ins-section h3 { font-size: 14.5px; margin: 26px 0 4px; color: var(--grafite); }
   .ins-section .muted { font-size: 13px; margin: 0 0 16px; }
 
   table.ins-table { width: 100%; border-collapse: collapse; background: #fff; border: 1px solid var(--borda); border-radius: 8px; overflow: hidden; font-size: 13.5px; }
@@ -40,6 +61,18 @@
   .ins-pct-up { color: var(--verde-moss); font-weight: 600; }
   .ins-pct-down { color: var(--merlot); font-weight: 600; }
   .ins-empty { color: var(--texto-secundario); font-size: 13.5px; padding: 16px 0; }
+
+  /* 2. Visualização — donut de fontes de tráfego, no lugar certo pro dado certo */
+  .ins-donut-wrap { display: flex; gap: 28px; align-items: center; flex-wrap: wrap; margin-bottom: 22px; }
+  .ins-donut { width: 152px; height: 152px; border-radius: 50%; flex-shrink: 0; position: relative; }
+  .ins-donut::before { content: ""; position: absolute; inset: 23px; background: #fff; border-radius: 50%; box-shadow: inset 0 0 0 1px var(--borda-suave); }
+  .ins-donut-center { position: absolute; inset: 23px; z-index: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  .ins-donut-center .num { font-family: var(--font-display); font-size: 21px; font-weight: 700; color: var(--grafite); }
+  .ins-donut-center .lbl { font-size: 10px; color: var(--texto-secundario); text-transform: uppercase; letter-spacing: .04em; }
+  .ins-legend { display: flex; flex-direction: column; gap: 8px; font-size: 13.5px; min-width: 180px; }
+  .ins-legend-item { display: flex; align-items: center; gap: 8px; }
+  .ins-legend-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+  .ins-legend-pct { margin-left: auto; font-variant-numeric: tabular-nums; color: var(--texto-secundario); }
 </style>
 </head>
 <body>
@@ -64,67 +97,73 @@
   <div id="ins-content" hidden>
     <p class="ins-status" id="ins-status">Carregando…</p>
 
-    <div class="ins-stats" id="ins-stats"></div>
+    <div class="ins-kpis" id="ins-kpis"></div>
+    <div class="ins-alert" id="ins-alert" hidden></div>
 
-    <div class="ins-section">
+    <nav class="ins-nav">
+      <a href="#funil">Funil do bot</a>
+      <a href="#feedback">Feedback dos artigos</a>
+      <a href="#trafego">Tráfego</a>
+      <a href="#compartilhar">Compartilhar</a>
+    </nav>
+
+    <section class="ins-section" id="funil">
       <h2>Funil do assistente de vistos</h2>
       <p class="muted">Quantas sessões (visitantes distintos) alcançaram cada etapa da conversa, na ordem em que ela acontece, e quantas pararam exatamente ali (não avançaram pra próxima).</p>
       <div id="ins-bot-funnel"></div>
-    </div>
 
-    <div class="ins-section">
-      <h2>Respostas do assistente</h2>
+      <h3>Respostas por etapa</h3>
       <p class="muted">O que a audiência de fato respondeu em cada etapa de múltipla escolha — não só quem chegou até lá.</p>
       <div id="ins-bot-answers"></div>
-    </div>
 
-    <div class="ins-section">
-      <h2>Resultados do assistente</h2>
+      <h3>Resultados finais</h3>
       <p class="muted">Entre quem chegou ao fim da conversa, qual caminho apareceu com mais frequência.</p>
       <div id="ins-bot-outcomes"></div>
-    </div>
+    </section>
 
-    <div class="ins-section">
-      <h2>Enquetes nos artigos</h2>
-      <p class="muted">Respostas do bloco [[POLL]] — perfil de audiência (faixa etária, planos futuros etc.), agrupado por pergunta e opção escolhida.</p>
-      <div id="ins-polls"></div>
-    </div>
-
-    <div class="ins-section">
+    <section class="ins-section" id="feedback">
       <h2>Feedback dos artigos</h2>
       <p class="muted">Votos no botão "esse artigo te ajudou?", por artigo — os com mais 👎 proporcional valem revisão.</p>
       <div id="ins-feedback"></div>
-    </div>
+    </section>
 
-    <div class="ins-section">
+    <section class="ins-section" id="trafego">
+      <h2>De onde vêm os leitores</h2>
+      <p class="muted">Domínio do referrer, ou o <code>?utm_source=</code> quando o link foi marcado à mão. "(direto)" cobre quem colou a URL direto ou veio de um app que não repassa o referrer (WhatsApp, Instagram etc.); "(navegação interna)" é quem já estava no site.</p>
+      <div id="ins-traffic-donut"></div>
+      <p class="muted" style="margin:0 0 10px;font-weight:600;color:var(--grafite);">Por artigo</p>
+      <div id="ins-traffic"></div>
+    </section>
+
+    <section class="ins-section" id="enquetes">
+      <h2>Enquetes nos artigos</h2>
+      <p class="muted">Respostas do bloco [[POLL]] — perfil de audiência (faixa etária, planos futuros etc.), agrupado por pergunta e opção escolhida.</p>
+      <div id="ins-polls"></div>
+    </section>
+
+    <section class="ins-section" id="checklist">
       <h2>Checklists completadas</h2>
       <p class="muted">Quantas vezes cada checklist interativa dentro de um artigo foi marcada até o fim.</p>
       <div id="ins-checklist"></div>
-    </div>
+    </section>
 
-    <div class="ins-section">
+    <section class="ins-section" id="faq">
       <h2>Perguntas do FAQ mais abertas</h2>
       <p class="muted">Quais dúvidas do "Perguntas frequentes" a audiência mais clica pra ler — é sinal direto do que ela quer saber, mesmo sem escrever nada.</p>
       <div id="ins-faq"></div>
-    </div>
+    </section>
 
-    <div class="ins-section">
+    <section class="ins-section" id="recursos">
       <h2>Fontes mais clicadas</h2>
       <p class="muted">Links de fonte oficial ([[RESOURCES]]) que a audiência realmente segue, por artigo.</p>
       <div id="ins-resources"></div>
-    </div>
+    </section>
 
-    <div class="ins-section">
-      <h2>De onde vêm os leitores</h2>
-      <p class="muted">Por artigo, o site/link que trouxe a visita — domínio do referrer, ou o <code>?utm_source=</code> quando o link foi marcado à mão. "(direto)" cobre quem colou a URL direto ou veio de um app que não repassa o referrer (WhatsApp, Instagram etc.); "(navegação interna)" é quem já estava no site.</p>
-      <div id="ins-traffic"></div>
-    </div>
-
-    <div class="ins-section">
+    <section class="ins-section" id="compartilhar">
       <h2>Botão de compartilhar</h2>
       <p class="muted" id="ins-share-summary"></p>
       <div id="ins-share"></div>
-    </div>
+    </section>
   </div>
 </main>
 
@@ -146,6 +185,18 @@
     instagram: "Instagram (opcional)",
     result: "Chegou ao resultado"
   };
+
+  // Ícones lineares simples (estilo do print de referência), herdam a cor via currentColor.
+  var ICONS = {
+    users: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"/><circle cx="10" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.9"/><path d="M16 3.1a4 4 0 0 1 0 7.8"/></svg>',
+    activity: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>',
+    target: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.3" fill="currentColor" stroke="none"/></svg>',
+    heart: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.8 1-1a5.5 5.5 0 0 0 0-7.6z"/></svg>',
+    arrowUpRight: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg>',
+    share: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="2.6"/><circle cx="6" cy="12" r="2.6"/><circle cx="18" cy="19" r="2.6"/><path d="M8.4 10.6l7.2-4.2M8.4 13.4l7.2 4.2"/></svg>',
+    alert: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 2 20h20L12 3z"/><line x1="12" y1="9" x2="12" y2="13.5"/><circle cx="12" cy="16.5" r="0.9" fill="currentColor" stroke="none"/></svg>'
+  };
+  var DONUT_COLORS = ["#604034", "#DEB975", "#8AACD2", "#577328", "#BB9351", "#A79B8E"];
 
   var token = null;
   var popup = null;
@@ -212,26 +263,136 @@
   }
 
   function renderAll(data) {
-    statusEl.textContent = "";
-    renderStats(data.overview);
+    var now = new Date();
+    var hh = String(now.getHours()).padStart(2, "0");
+    var mm = String(now.getMinutes()).padStart(2, "0");
+    statusEl.innerHTML = "Atualizado às " + hh + ":" + mm + " · <a href=\"#\" id=\"ins-refresh\">atualizar</a>";
+    document.getElementById("ins-refresh").addEventListener("click", function (e) { e.preventDefault(); load(); });
+
+    renderKpis(data);
     renderBotFunnel(data.botFunnel || []);
     renderBotAnswers(data.botAnswers || []);
     renderBotOutcomes(data.botOutcomes || []);
-    renderPolls(data.polls || []);
     renderFeedback(data.feedback || []);
+    renderTrafficSources(data.trafficSources || []);
+    renderPolls(data.polls || []);
     renderChecklist(data.checklist || []);
     renderFaqOpens(data.faqOpens || []);
     renderResourceClicks(data.resourceClicks || []);
-    renderTrafficSources(data.trafficSources || []);
     renderShare(data.shareOpens || 0, data.shareClicks || []);
   }
 
-  function renderStats(overview) {
-    var el = document.getElementById("ins-stats");
-    el.innerHTML =
-      '<div class="ins-stat"><span class="ins-stat-num">' + (overview.total || 0) + '</span><span class="ins-stat-label">Eventos registrados no total</span></div>' +
-      '<div class="ins-stat"><span class="ins-stat-num">' + (overview.sessions || 0) + '</span><span class="ins-stat-label">Visitantes distintos que geraram algum evento</span></div>';
+  // ---- 1. KPI cards ---------------------------------------------------
+
+  function aggregateBySource(rows) {
+    var map = {};
+    rows.forEach(function (r) {
+      var key = r.source || "(desconhecida)";
+      map[key] = (map[key] || 0) + r.views;
+    });
+    var list = Object.keys(map).map(function (k) { return { source: k, views: map[k] }; });
+    list.sort(function (a, b) { return b.views - a.views; });
+    return list;
   }
+
+  function computeKpis(data) {
+    var overview = data.overview || {};
+    var botFunnel = data.botFunnel || [];
+    var feedback = data.feedback || [];
+    var shareClicks = data.shareClicks || [];
+
+    var bySter = {};
+    botFunnel.forEach(function (r) { bySter[r.step] = r.sessions; });
+    var started = bySter.nome || 0;
+    var finished = bySter.result || 0;
+    var funnelRate = started ? Math.round((finished / started) * 100) : null;
+
+    var upTotal = 0, downTotal = 0;
+    feedback.forEach(function (r) { upTotal += r.up; downTotal += r.down; });
+    var feedbackTotal = upTotal + downTotal;
+    var feedbackRate = feedbackTotal ? Math.round((upTotal / feedbackTotal) * 100) : null;
+
+    var sourceEntries = aggregateBySource(data.trafficSources || []);
+    var totalViews = sourceEntries.reduce(function (s, r) { return s + r.views; }, 0);
+    var topSource = sourceEntries[0] || null;
+    var topSourcePct = topSource && totalViews ? Math.round((topSource.views / totalViews) * 100) : null;
+
+    var totalShares = shareClicks.reduce(function (s, r) { return s + r.clicks; }, 0);
+    var shareRate = overview_shareOpens(data) ? Math.round((totalShares / overview_shareOpens(data)) * 100) : null;
+
+    return {
+      sessions: overview.sessions || 0,
+      events: overview.total || 0,
+      funnelRate: funnelRate,
+      feedbackRate: feedbackRate,
+      topSource: topSource,
+      topSourcePct: topSourcePct,
+      totalShares: totalShares,
+      shareRate: shareRate
+    };
+  }
+
+  function overview_shareOpens(data) { return data.shareOpens || 0; }
+
+  function kpiCard(icon, num, label, tone, small) {
+    return '<div class="ins-kpi' + (tone ? " " + tone : "") + '">' +
+      '<div class="ins-kpi-icon">' + icon + '</div>' +
+      '<span class="ins-kpi-num' + (small ? " small" : "") + '">' + num + '</span>' +
+      '<span class="ins-kpi-label">' + label + '</span></div>';
+  }
+
+  function renderKpis(data) {
+    var k = computeKpis(data);
+    var el = document.getElementById("ins-kpis");
+    var cards = [];
+    cards.push(kpiCard(ICONS.users, k.sessions, "Visitantes distintos"));
+    cards.push(kpiCard(ICONS.activity, k.events, "Eventos registrados"));
+    cards.push(kpiCard(
+      ICONS.target,
+      k.funnelRate == null ? "—" : k.funnelRate + "%",
+      "Concluíram o funil do bot",
+      k.funnelRate == null ? "" : (k.funnelRate >= 40 ? "good" : "")
+    ));
+    cards.push(kpiCard(
+      ICONS.heart,
+      k.feedbackRate == null ? "—" : k.feedbackRate + "%",
+      "Feedback positivo nos artigos",
+      k.feedbackRate == null ? "" : (k.feedbackRate >= 60 ? "good" : (k.feedbackRate <= 40 ? "warn" : ""))
+    ));
+    cards.push(kpiCard(
+      ICONS.arrowUpRight,
+      k.topSource ? escapeHtml(k.topSource.source) : "—",
+      k.topSourcePct != null ? "Principal fonte de tráfego (" + k.topSourcePct + "%)" : "Principal fonte de tráfego",
+      "",
+      true
+    ));
+    cards.push(kpiCard(
+      ICONS.share,
+      k.totalShares,
+      k.shareRate != null ? "Compartilhamentos enviados (" + k.shareRate + "% de conversão)" : "Compartilhamentos enviados"
+    ));
+    el.innerHTML = cards.join("");
+
+    renderAlert(data.feedback || []);
+  }
+
+  // Decision-making flow: sinaliza de cara o que precisa de ação.
+  function renderAlert(feedbackRows) {
+    var el = document.getElementById("ins-alert");
+    var flagged = feedbackRows.filter(function (r) {
+      var total = r.up + r.down;
+      return total >= 3 && (r.up / total) <= 0.4;
+    });
+    if (!flagged.length) { el.hidden = true; el.innerHTML = ""; return; }
+    flagged.sort(function (a, b) { return (a.up / (a.up + a.down)) - (b.up / (b.up + b.down)); });
+    var names = flagged.slice(0, 3).map(function (r) { return escapeHtml(r.article_slug || "(sem slug)"); }).join(", ");
+    el.hidden = false;
+    el.innerHTML = ICONS.alert +
+      "<span>" + flagged.length + (flagged.length === 1 ? " artigo precisa" : " artigos precisam") +
+      ' de revisão — 60% ou mais de feedback negativo: <a href="#feedback">' + names + (flagged.length > 3 ? "…" : "") + "</a></span>";
+  }
+
+  // ---- Funil do assistente ---------------------------------------------
 
   function renderBotFunnel(rows) {
     var el = document.getElementById("ins-bot-funnel");
@@ -408,9 +569,51 @@
     el.innerHTML = html;
   }
 
+  // ---- 2. Donut de fontes de tráfego (visão agregada) ------------------
+
+  function renderTrafficDonut(rows) {
+    var wrap = document.getElementById("ins-traffic-donut");
+    var entries = aggregateBySource(rows);
+    if (!entries.length) { wrap.innerHTML = ""; return; }
+
+    var total = entries.reduce(function (s, r) { return s + r.views; }, 0);
+    var top = entries.slice(0, 5);
+    var rest = entries.slice(5);
+    if (rest.length) {
+      var restViews = rest.reduce(function (s, r) { return s + r.views; }, 0);
+      top.push({ source: "Outras (" + rest.length + ")", views: restViews });
+    }
+
+    var gradientParts = [];
+    var legendParts = [];
+    var acc = 0;
+    top.forEach(function (r, i) {
+      var pct = total ? (r.views / total) * 100 : 0;
+      var start = acc;
+      var end = acc + pct;
+      var color = DONUT_COLORS[i % DONUT_COLORS.length];
+      gradientParts.push(color + " " + start.toFixed(2) + "% " + end.toFixed(2) + "%");
+      legendParts.push(
+        '<div class="ins-legend-item"><span class="ins-legend-dot" style="background:' + color + ';"></span>' +
+        escapeHtml(r.source) + '<span class="ins-legend-pct">' + Math.round(pct) + "%</span></div>"
+      );
+      acc = end;
+    });
+
+    wrap.innerHTML =
+      '<div class="ins-donut-wrap">' +
+        '<div class="ins-donut" style="background:conic-gradient(' + gradientParts.join(", ") + ');">' +
+          '<div class="ins-donut-center"><span class="num">' + total + '</span><span class="lbl">visitas</span></div>' +
+        "</div>" +
+        '<div class="ins-legend">' + legendParts.join("") + "</div>" +
+      "</div>";
+  }
+
   // Agrupado por artigo (mesmo padrão de renderPolls) — cada linha é o
   // volume de visitas daquele artigo vindas daquela fonte.
   function renderTrafficSources(rows) {
+    renderTrafficDonut(rows);
+
     var el = document.getElementById("ins-traffic");
     if (!rows.length) {
       el.innerHTML = '<p class="ins-empty">Ainda não há visitas registradas com fonte identificada.</p>';
