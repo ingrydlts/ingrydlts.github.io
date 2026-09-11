@@ -19,11 +19,14 @@
   .ins-status { font-size: 13px; color: var(--texto-secundario); margin-bottom: 24px; }
   .ins-status a { color: var(--downtown-brown); font-weight: 600; }
 
-  /* 1. KPI cards — números chave, escaneáveis, no topo */
+  /* 1. KPI cards — números chave, escaneáveis, no topo. Os clicáveis abrem a seção relacionada abaixo. */
   .ins-kpis { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 14px; }
   @media (min-width: 640px) { .ins-kpis { grid-template-columns: repeat(3, 1fr); } }
   @media (min-width: 980px) { .ins-kpis { grid-template-columns: repeat(6, 1fr); } }
-  .ins-kpi { background: #fff; border: 1px solid var(--borda); border-radius: 10px; padding: 16px 14px; display: flex; flex-direction: column; gap: 9px; }
+  .ins-kpi { background: #fff; border: 1px solid var(--borda); border-radius: 10px; padding: 16px 14px; display: flex; flex-direction: column; gap: 9px; width: 100%; }
+  button.ins-kpi { appearance: none; font: inherit; text-align: left; margin: 0; }
+  .ins-kpi.clickable { cursor: pointer; transition: border-color .15s ease, box-shadow .15s ease; }
+  .ins-kpi.clickable:hover, .ins-kpi.clickable:focus-visible { border-color: var(--downtown-brown); box-shadow: var(--shadow-card); }
   .ins-kpi-icon { width: 30px; height: 30px; border-radius: 8px; display: flex; align-items: center; justify-content: center; background: rgba(96,64,52,0.08); color: var(--downtown-brown); }
   .ins-kpi-icon svg { width: 16px; height: 16px; }
   .ins-kpi.good .ins-kpi-icon { background: rgba(87,115,40,0.12); color: var(--verde-moss); }
@@ -36,18 +39,34 @@
   .ins-alert { display: flex; align-items: flex-start; gap: 10px; background: rgba(80,19,24,0.06); border: 1px solid rgba(80,19,24,0.18); border-radius: 8px; padding: 12px 16px; margin-bottom: 24px; font-size: 13.5px; color: var(--grafite); }
   .ins-alert[hidden] { display: none; }
   .ins-alert svg { flex-shrink: 0; width: 16px; height: 16px; color: var(--merlot); margin-top: 2px; }
-  .ins-alert a { color: var(--merlot); font-weight: 600; }
+  .ins-alert a { color: var(--merlot); font-weight: 600; cursor: pointer; }
 
-  /* 3. Navegação — simples, previsível, pra pular entre seções */
-  .ins-nav { display: flex; gap: 8px; overflow-x: auto; margin-bottom: 36px; padding-bottom: 2px; -webkit-overflow-scrolling: touch; }
-  .ins-nav a { flex-shrink: 0; font-size: 12.5px; font-weight: 600; color: var(--texto-secundario); background: #fff; border: 1px solid var(--borda); border-radius: 999px; padding: 7px 14px; text-decoration: none; white-space: nowrap; }
-  .ins-nav a:hover { color: var(--grafite); border-color: var(--downtown-brown); }
+  /* 2. Visualização — todos os gráficos ficam fixos no topo, sempre visíveis */
+  .ins-charts { display: grid; grid-template-columns: 1fr; gap: 14px; margin-bottom: 28px; }
+  @media (min-width: 760px) { .ins-charts { grid-template-columns: 1fr 1fr; } }
+  .ins-chart-card { background: #fff; border: 1px solid var(--borda); border-radius: 10px; padding: 18px 20px; }
+  .ins-chart-card h2 { font-size: 14.5px; margin: 0 0 14px; color: var(--grafite); }
+  .ins-chart-card .ins-donut-wrap { margin-bottom: 0; }
 
-  /* 5. Hierarquia — seções com espaço pra respirar e âncoras de rolagem */
-  .ins-section { margin-bottom: 44px; scroll-margin-top: 88px; }
-  .ins-section h2 { font-size: 18px; margin-bottom: 4px; }
-  .ins-section h3 { font-size: 14.5px; margin: 26px 0 4px; color: var(--grafite); }
-  .ins-section .muted { font-size: 13px; margin: 0 0 16px; }
+  .ins-funnel-chart { display: flex; flex-direction: column; gap: 11px; }
+  .ins-funnel-row { display: grid; grid-template-columns: minmax(0,120px) 1fr 34px; align-items: center; gap: 10px; }
+  .ins-funnel-row .lbl { font-size: 12px; color: var(--texto-secundario); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ins-funnel-row .bar-track { background: var(--off-white-soft); border: 1px solid var(--borda-suave); border-radius: 4px; height: 10px; overflow: hidden; }
+  .ins-funnel-row .bar-fill { display: block; height: 100%; border-radius: 4px; background: var(--placid-blue); }
+  .ins-funnel-row .bar-fill.result { background: var(--verde-moss); }
+  .ins-funnel-row .val { text-align: right; font-size: 12.5px; font-variant-numeric: tabular-nums; color: var(--grafite); font-weight: 600; }
+
+  /* 3. Navegação por abas — clique troca o painel abaixo, sem rolar nem sair da página */
+  .ins-tabnav { display: flex; gap: 8px; overflow-x: auto; margin-bottom: 20px; padding-bottom: 2px; -webkit-overflow-scrolling: touch; }
+  .ins-tab { flex-shrink: 0; font: inherit; font-size: 12.5px; font-weight: 600; color: var(--texto-secundario); background: #fff; border: 1px solid var(--borda); border-radius: 999px; padding: 7px 14px; white-space: nowrap; cursor: pointer; }
+  .ins-tab:hover { color: var(--grafite); border-color: var(--downtown-brown); }
+  .ins-tab.is-active { background: var(--downtown-brown); border-color: var(--downtown-brown); color: #fff; }
+
+  /* Painéis — só um visível por vez, como se fosse outra página */
+  .ins-panel[hidden] { display: none; }
+  .ins-panel h2 { font-size: 18px; margin-bottom: 4px; }
+  .ins-panel h3 { font-size: 14.5px; margin: 26px 0 4px; color: var(--grafite); }
+  .ins-panel .muted { font-size: 13px; margin: 0 0 16px; }
 
   table.ins-table { width: 100%; border-collapse: collapse; background: #fff; border: 1px solid var(--borda); border-radius: 8px; overflow: hidden; font-size: 13.5px; }
   table.ins-table th, table.ins-table td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--borda-suave); }
@@ -62,14 +81,13 @@
   .ins-pct-down { color: var(--merlot); font-weight: 600; }
   .ins-empty { color: var(--texto-secundario); font-size: 13.5px; padding: 16px 0; }
 
-  /* 2. Visualização — donut de fontes de tráfego, no lugar certo pro dado certo */
   .ins-donut-wrap { display: flex; gap: 28px; align-items: center; flex-wrap: wrap; margin-bottom: 22px; }
-  .ins-donut { width: 152px; height: 152px; border-radius: 50%; flex-shrink: 0; position: relative; }
-  .ins-donut::before { content: ""; position: absolute; inset: 23px; background: #fff; border-radius: 50%; box-shadow: inset 0 0 0 1px var(--borda-suave); }
-  .ins-donut-center { position: absolute; inset: 23px; z-index: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-  .ins-donut-center .num { font-family: var(--font-display); font-size: 21px; font-weight: 700; color: var(--grafite); }
-  .ins-donut-center .lbl { font-size: 10px; color: var(--texto-secundario); text-transform: uppercase; letter-spacing: .04em; }
-  .ins-legend { display: flex; flex-direction: column; gap: 8px; font-size: 13.5px; min-width: 180px; }
+  .ins-donut { width: 140px; height: 140px; border-radius: 50%; flex-shrink: 0; position: relative; }
+  .ins-donut::before { content: ""; position: absolute; inset: 21px; background: #fff; border-radius: 50%; box-shadow: inset 0 0 0 1px var(--borda-suave); }
+  .ins-donut-center { position: absolute; inset: 21px; z-index: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  .ins-donut-center .num { font-family: var(--font-display); font-size: 19px; font-weight: 700; color: var(--grafite); }
+  .ins-donut-center .lbl { font-size: 9.5px; color: var(--texto-secundario); text-transform: uppercase; letter-spacing: .04em; }
+  .ins-legend { display: flex; flex-direction: column; gap: 8px; font-size: 13px; min-width: 150px; }
   .ins-legend-item { display: flex; align-items: center; gap: 8px; }
   .ins-legend-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
   .ins-legend-pct { margin-left: auto; font-variant-numeric: tabular-nums; color: var(--texto-secundario); }
@@ -100,70 +118,85 @@
     <div class="ins-kpis" id="ins-kpis"></div>
     <div class="ins-alert" id="ins-alert" hidden></div>
 
-    <nav class="ins-nav">
-      <a href="#funil">Funil do bot</a>
-      <a href="#feedback">Feedback dos artigos</a>
-      <a href="#trafego">Tráfego</a>
-      <a href="#compartilhar">Compartilhar</a>
+    <div class="ins-charts">
+      <div class="ins-chart-card">
+        <h2>Funil do assistente de vistos</h2>
+        <div class="ins-funnel-chart" id="ins-funnel-chart"></div>
+      </div>
+      <div class="ins-chart-card">
+        <h2>De onde vêm os leitores</h2>
+        <div id="ins-traffic-donut"></div>
+      </div>
+    </div>
+
+    <nav class="ins-tabnav">
+      <button type="button" class="ins-tab is-active" data-target="funil">Funil do bot</button>
+      <button type="button" class="ins-tab" data-target="feedback">Feedback dos artigos</button>
+      <button type="button" class="ins-tab" data-target="trafego">Tráfego por artigo</button>
+      <button type="button" class="ins-tab" data-target="enquetes">Enquetes</button>
+      <button type="button" class="ins-tab" data-target="checklist">Checklists</button>
+      <button type="button" class="ins-tab" data-target="faq">FAQ</button>
+      <button type="button" class="ins-tab" data-target="recursos">Fontes clicadas</button>
+      <button type="button" class="ins-tab" data-target="compartilhar">Compartilhar</button>
     </nav>
 
-    <section class="ins-section" id="funil">
-      <h2>Funil do assistente de vistos</h2>
-      <p class="muted">Quantas sessões (visitantes distintos) alcançaram cada etapa da conversa, na ordem em que ela acontece, e quantas pararam exatamente ali (não avançaram pra próxima).</p>
-      <div id="ins-bot-funnel"></div>
+    <div class="ins-panels">
+      <section class="ins-panel" id="panel-funil">
+        <h2>Funil do assistente de vistos — detalhes</h2>
+        <p class="muted">Quantas sessões (visitantes distintos) alcançaram cada etapa da conversa, na ordem em que ela acontece, e quantas pararam exatamente ali (não avançaram pra próxima).</p>
+        <div id="ins-bot-funnel"></div>
 
-      <h3>Respostas por etapa</h3>
-      <p class="muted">O que a audiência de fato respondeu em cada etapa de múltipla escolha — não só quem chegou até lá.</p>
-      <div id="ins-bot-answers"></div>
+        <h3>Respostas por etapa</h3>
+        <p class="muted">O que a audiência de fato respondeu em cada etapa de múltipla escolha — não só quem chegou até lá.</p>
+        <div id="ins-bot-answers"></div>
 
-      <h3>Resultados finais</h3>
-      <p class="muted">Entre quem chegou ao fim da conversa, qual caminho apareceu com mais frequência.</p>
-      <div id="ins-bot-outcomes"></div>
-    </section>
+        <h3>Resultados finais</h3>
+        <p class="muted">Entre quem chegou ao fim da conversa, qual caminho apareceu com mais frequência.</p>
+        <div id="ins-bot-outcomes"></div>
+      </section>
 
-    <section class="ins-section" id="feedback">
-      <h2>Feedback dos artigos</h2>
-      <p class="muted">Votos no botão "esse artigo te ajudou?", por artigo — os com mais 👎 proporcional valem revisão.</p>
-      <div id="ins-feedback"></div>
-    </section>
+      <section class="ins-panel" id="panel-feedback" hidden>
+        <h2>Feedback dos artigos</h2>
+        <p class="muted">Votos no botão "esse artigo te ajudou?", por artigo — os com mais 👎 proporcional valem revisão.</p>
+        <div id="ins-feedback"></div>
+      </section>
 
-    <section class="ins-section" id="trafego">
-      <h2>De onde vêm os leitores</h2>
-      <p class="muted">Domínio do referrer, ou o <code>?utm_source=</code> quando o link foi marcado à mão. "(direto)" cobre quem colou a URL direto ou veio de um app que não repassa o referrer (WhatsApp, Instagram etc.); "(navegação interna)" é quem já estava no site.</p>
-      <div id="ins-traffic-donut"></div>
-      <p class="muted" style="margin:0 0 10px;font-weight:600;color:var(--grafite);">Por artigo</p>
-      <div id="ins-traffic"></div>
-    </section>
+      <section class="ins-panel" id="panel-trafego" hidden>
+        <h2>De onde vêm os leitores — por artigo</h2>
+        <p class="muted">Domínio do referrer, ou o <code>?utm_source=</code> quando o link foi marcado à mão. "(direto)" cobre quem colou a URL direto ou veio de um app que não repassa o referrer (WhatsApp, Instagram etc.); "(navegação interna)" é quem já estava no site.</p>
+        <div id="ins-traffic"></div>
+      </section>
 
-    <section class="ins-section" id="enquetes">
-      <h2>Enquetes nos artigos</h2>
-      <p class="muted">Respostas do bloco [[POLL]] — perfil de audiência (faixa etária, planos futuros etc.), agrupado por pergunta e opção escolhida.</p>
-      <div id="ins-polls"></div>
-    </section>
+      <section class="ins-panel" id="panel-enquetes" hidden>
+        <h2>Enquetes nos artigos</h2>
+        <p class="muted">Respostas do bloco [[POLL]] — perfil de audiência (faixa etária, planos futuros etc.), agrupado por pergunta e opção escolhida.</p>
+        <div id="ins-polls"></div>
+      </section>
 
-    <section class="ins-section" id="checklist">
-      <h2>Checklists completadas</h2>
-      <p class="muted">Quantas vezes cada checklist interativa dentro de um artigo foi marcada até o fim.</p>
-      <div id="ins-checklist"></div>
-    </section>
+      <section class="ins-panel" id="panel-checklist" hidden>
+        <h2>Checklists completadas</h2>
+        <p class="muted">Quantas vezes cada checklist interativa dentro de um artigo foi marcada até o fim.</p>
+        <div id="ins-checklist"></div>
+      </section>
 
-    <section class="ins-section" id="faq">
-      <h2>Perguntas do FAQ mais abertas</h2>
-      <p class="muted">Quais dúvidas do "Perguntas frequentes" a audiência mais clica pra ler — é sinal direto do que ela quer saber, mesmo sem escrever nada.</p>
-      <div id="ins-faq"></div>
-    </section>
+      <section class="ins-panel" id="panel-faq" hidden>
+        <h2>Perguntas do FAQ mais abertas</h2>
+        <p class="muted">Quais dúvidas do "Perguntas frequentes" a audiência mais clica pra ler — é sinal direto do que ela quer saber, mesmo sem escrever nada.</p>
+        <div id="ins-faq"></div>
+      </section>
 
-    <section class="ins-section" id="recursos">
-      <h2>Fontes mais clicadas</h2>
-      <p class="muted">Links de fonte oficial ([[RESOURCES]]) que a audiência realmente segue, por artigo.</p>
-      <div id="ins-resources"></div>
-    </section>
+      <section class="ins-panel" id="panel-recursos" hidden>
+        <h2>Fontes mais clicadas</h2>
+        <p class="muted">Links de fonte oficial ([[RESOURCES]]) que a audiência realmente segue, por artigo.</p>
+        <div id="ins-resources"></div>
+      </section>
 
-    <section class="ins-section" id="compartilhar">
-      <h2>Botão de compartilhar</h2>
-      <p class="muted" id="ins-share-summary"></p>
-      <div id="ins-share"></div>
-    </section>
+      <section class="ins-panel" id="panel-compartilhar" hidden>
+        <h2>Botão de compartilhar</h2>
+        <p class="muted" id="ins-share-summary"></p>
+        <div id="ins-share"></div>
+      </section>
+    </div>
   </div>
 </main>
 
@@ -206,6 +239,25 @@
   var loginError = document.getElementById("ins-login-error");
   var contentBox = document.getElementById("ins-content");
   var statusEl = document.getElementById("ins-status");
+
+  // 3. Navegação por abas — troca o painel visível na hora, sem rolar a
+  // página e sem sair dela. Delegado no document porque os botões (nav,
+  // KPIs clicáveis e o link do alerta) são recriados a cada carregamento.
+  document.addEventListener("click", function (e) {
+    var trigger = e.target.closest("[data-target]");
+    if (!trigger) return;
+    e.preventDefault();
+    activateTab(trigger.getAttribute("data-target"));
+  });
+
+  function activateTab(name) {
+    document.querySelectorAll(".ins-panel").forEach(function (panel) {
+      panel.hidden = panel.id !== "panel-" + name;
+    });
+    document.querySelectorAll(".ins-tab").forEach(function (tab) {
+      tab.classList.toggle("is-active", tab.getAttribute("data-target") === name);
+    });
+  }
 
   loginBtn.addEventListener("click", function () {
     loginError.textContent = "";
@@ -270,6 +322,7 @@
     document.getElementById("ins-refresh").addEventListener("click", function (e) { e.preventDefault(); load(); });
 
     renderKpis(data);
+    renderFunnelChart(data.botFunnel || []);
     renderBotFunnel(data.botFunnel || []);
     renderBotAnswers(data.botAnswers || []);
     renderBotOutcomes(data.botOutcomes || []);
@@ -318,7 +371,8 @@
     var topSourcePct = topSource && totalViews ? Math.round((topSource.views / totalViews) * 100) : null;
 
     var totalShares = shareClicks.reduce(function (s, r) { return s + r.clicks; }, 0);
-    var shareRate = overview_shareOpens(data) ? Math.round((totalShares / overview_shareOpens(data)) * 100) : null;
+    var shareOpens = data.shareOpens || 0;
+    var shareRate = shareOpens ? Math.round((totalShares / shareOpens) * 100) : null;
 
     return {
       sessions: overview.sessions || 0,
@@ -332,13 +386,15 @@
     };
   }
 
-  function overview_shareOpens(data) { return data.shareOpens || 0; }
-
-  function kpiCard(icon, num, label, tone, small) {
-    return '<div class="ins-kpi' + (tone ? " " + tone : "") + '">' +
-      '<div class="ins-kpi-icon">' + icon + '</div>' +
-      '<span class="ins-kpi-num' + (small ? " small" : "") + '">' + num + '</span>' +
-      '<span class="ins-kpi-label">' + label + '</span></div>';
+  // target (opcional) = id do painel que esse KPI deve abrir ao ser clicado.
+  function kpiCard(icon, num, label, tone, small, target) {
+    var cls = "ins-kpi" + (tone ? " " + tone : "") + (target ? " clickable" : "");
+    var tag = target ? "button" : "div";
+    var attrs = target ? ' type="button" data-target="' + target + '"' : "";
+    return "<" + tag + ' class="' + cls + '"' + attrs + ">" +
+      '<div class="ins-kpi-icon">' + icon + "</div>" +
+      '<span class="ins-kpi-num' + (small ? " small" : "") + '">' + num + "</span>" +
+      '<span class="ins-kpi-label">' + label + "</span></" + tag + ">";
   }
 
   function renderKpis(data) {
@@ -351,25 +407,27 @@
       ICONS.target,
       k.funnelRate == null ? "—" : k.funnelRate + "%",
       "Concluíram o funil do bot",
-      k.funnelRate == null ? "" : (k.funnelRate >= 40 ? "good" : "")
+      k.funnelRate == null ? "" : (k.funnelRate >= 40 ? "good" : ""),
+      false, "funil"
     ));
     cards.push(kpiCard(
       ICONS.heart,
       k.feedbackRate == null ? "—" : k.feedbackRate + "%",
       "Feedback positivo nos artigos",
-      k.feedbackRate == null ? "" : (k.feedbackRate >= 60 ? "good" : (k.feedbackRate <= 40 ? "warn" : ""))
+      k.feedbackRate == null ? "" : (k.feedbackRate >= 60 ? "good" : (k.feedbackRate <= 40 ? "warn" : "")),
+      false, "feedback"
     ));
     cards.push(kpiCard(
       ICONS.arrowUpRight,
       k.topSource ? escapeHtml(k.topSource.source) : "—",
       k.topSourcePct != null ? "Principal fonte de tráfego (" + k.topSourcePct + "%)" : "Principal fonte de tráfego",
-      "",
-      true
+      "", true, "trafego"
     ));
     cards.push(kpiCard(
       ICONS.share,
       k.totalShares,
-      k.shareRate != null ? "Compartilhamentos enviados (" + k.shareRate + "% de conversão)" : "Compartilhamentos enviados"
+      k.shareRate != null ? "Compartilhamentos enviados (" + k.shareRate + "% de conversão)" : "Compartilhamentos enviados",
+      "", false, "compartilhar"
     ));
     el.innerHTML = cards.join("");
 
@@ -389,10 +447,37 @@
     el.hidden = false;
     el.innerHTML = ICONS.alert +
       "<span>" + flagged.length + (flagged.length === 1 ? " artigo precisa" : " artigos precisam") +
-      ' de revisão — 60% ou mais de feedback negativo: <a href="#feedback">' + names + (flagged.length > 3 ? "…" : "") + "</a></span>";
+      ' de revisão — 60% ou mais de feedback negativo: <a href="#" data-target="feedback">' + names + (flagged.length > 3 ? "…" : "") + "</a></span>";
   }
 
-  // ---- Funil do assistente ---------------------------------------------
+  // ---- 2. Gráfico do funil (visão compacta, sempre visível no topo) ----
+
+  function renderFunnelChart(rows) {
+    var el = document.getElementById("ins-funnel-chart");
+    if (!rows.length) {
+      el.innerHTML = '<p class="ins-empty">Ainda não há interações registradas.</p>';
+      return;
+    }
+    var bySter = {};
+    rows.forEach(function (r) { bySter[r.step] = r.sessions; });
+    var present = BOT_STEP_ORDER.filter(function (step) { return step in bySter; });
+    var max = Math.max.apply(null, present.map(function (step) { return bySter[step]; }).concat([1]));
+
+    var html = "";
+    present.forEach(function (step) {
+      var count = bySter[step] || 0;
+      var pct = max ? Math.max(Math.round((count / max) * 100), 3) : 3;
+      html +=
+        '<div class="ins-funnel-row">' +
+          '<span class="lbl">' + escapeHtml(BOT_STEP_LABELS[step] || step) + "</span>" +
+          '<span class="bar-track"><span class="bar-fill' + (step === "result" ? " result" : "") + '" style="width:' + pct + '%;"></span></span>' +
+          '<span class="val">' + count + "</span>" +
+        "</div>";
+    });
+    el.innerHTML = html;
+  }
+
+  // ---- Funil do assistente (tabelas detalhadas, dentro do painel) ------
 
   function renderBotFunnel(rows) {
     var el = document.getElementById("ins-bot-funnel");
@@ -569,12 +654,12 @@
     el.innerHTML = html;
   }
 
-  // ---- 2. Donut de fontes de tráfego (visão agregada) ------------------
+  // ---- 2. Donut de fontes de tráfego (visão agregada, sempre visível) --
 
   function renderTrafficDonut(rows) {
     var wrap = document.getElementById("ins-traffic-donut");
     var entries = aggregateBySource(rows);
-    if (!entries.length) { wrap.innerHTML = ""; return; }
+    if (!entries.length) { wrap.innerHTML = '<p class="ins-empty">Ainda não há visitas registradas com fonte identificada.</p>'; return; }
 
     var total = entries.reduce(function (s, r) { return s + r.views; }, 0);
     var top = entries.slice(0, 5);
