@@ -104,6 +104,16 @@
 
   (async function () {
     const grid = document.getElementById("product-grid");
+
+    // Clique em link de afiliado — 1 evento por clique, agregado em
+    // /admin/dashboard/ (aba Revenue). Delegado no grid porque os cards são
+    // injetados depois, de forma assíncrona.
+    grid.addEventListener("click", function (e) {
+      const link = e.target.closest("a.card");
+      if (!link || !window.PDEvents) return;
+      window.PDEvents.send("block", null, { type: "affiliate_click", id: link.dataset.affiliateTitle || link.href, category: "compras" });
+    });
+
     try {
       const data = await fetchJSON("/content/produtos-compras.json");
       if (!data.items.length) {
@@ -112,7 +122,7 @@
         grid.innerHTML = data.items.map(function (item) {
           const href = item.affiliateUrl || "#";
           return (
-            '<a class="card" href="' + escapeHtml(href) + '" target="_blank" rel="sponsored nofollow noopener" style="color:inherit; position:relative;">' +
+            '<a class="card" href="' + escapeHtml(href) + '" target="_blank" rel="sponsored nofollow noopener" style="color:inherit; position:relative;" data-affiliate-title="' + escapeHtml(item.title) + '">' +
             imgSlotHTML(item.image, item.title, "Foto do item") +
             '<div class="card-body">' +
             "<h3>" + escapeHtml(item.title) + "</h3>" +

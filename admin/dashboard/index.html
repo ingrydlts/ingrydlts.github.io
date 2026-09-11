@@ -56,6 +56,13 @@
   .ins-funnel-row .bar-fill.result { background: var(--verde-moss); }
   .ins-funnel-row .val { text-align: right; font-size: 12.5px; font-variant-numeric: tabular-nums; color: var(--grafite); font-weight: 600; }
 
+  /* Navegação de página (Insights / Revenue) — nível acima da navegação por
+     abas dentro de cada página. Mesmo estilo visual do .ins-tab, um pouco
+     maior pra marcar a hierarquia. */
+  .ins-pagenav { display: flex; gap: 8px; margin-bottom: 24px; border-bottom: 1px solid var(--borda); padding-bottom: 18px; }
+  .ins-pagenav .ins-tab { font-size: 13.5px; padding: 9px 18px; }
+  .ins-page[hidden] { display: none; }
+
   /* 3. Navegação por abas — clique troca o painel abaixo, sem rolar nem sair da página */
   .ins-tabnav { display: flex; gap: 8px; overflow-x: auto; margin-bottom: 20px; padding-bottom: 2px; -webkit-overflow-scrolling: touch; }
   .ins-tab { flex-shrink: 0; font: inherit; font-size: 12.5px; font-weight: 600; color: var(--texto-secundario); background: #fff; border: 1px solid var(--borda); border-radius: 999px; padding: 7px 14px; white-space: nowrap; cursor: pointer; }
@@ -123,6 +130,12 @@
   <div id="ins-content" hidden>
     <p class="ins-status" id="ins-status">Carregando…</p>
 
+    <nav class="ins-pagenav">
+      <button type="button" class="ins-tab is-active" data-page="insights">Insights</button>
+      <button type="button" class="ins-tab" data-page="revenue">Revenue</button>
+    </nav>
+
+    <div id="page-insights" class="ins-page">
     <div class="ins-kpis" id="ins-kpis"></div>
     <div class="ins-alert" id="ins-alert" hidden></div>
 
@@ -212,6 +225,41 @@
         <div id="ins-quiz"></div>
       </section>
     </div>
+    </div>
+
+    <div id="page-revenue" class="ins-page" hidden>
+    <div class="ins-kpis" id="rev-kpis"></div>
+
+    <div class="ins-charts">
+      <div class="ins-chart-card">
+        <h2>Vendas por produto</h2>
+        <div class="ins-funnel-chart" id="ins-purchases-chart"></div>
+      </div>
+      <div class="ins-chart-card">
+        <h2>Cliques em afiliados (top 6)</h2>
+        <div class="ins-funnel-chart" id="ins-affiliate-chart"></div>
+      </div>
+    </div>
+
+    <nav class="ins-tabnav">
+      <button type="button" class="ins-tab is-active" data-target="vendas">Vendas</button>
+      <button type="button" class="ins-tab" data-target="afiliados">Afiliados</button>
+    </nav>
+
+    <div class="ins-panels">
+      <section class="ins-panel" id="panel-vendas">
+        <h2>Vendas confirmadas por produto</h2>
+        <p class="muted">Contadas só depois que o Stripe confirma o pagamento (ver /produtos-digitais/obrigado/) — nada aqui é estimativa de clique.</p>
+        <div id="ins-purchases-table"></div>
+      </section>
+
+      <section class="ins-panel" id="panel-afiliados" hidden>
+        <h2>Cliques em links de afiliado</h2>
+        <p class="muted">Cliques nos cards de /produtos-de-compras/ e /produtos-de-estudo/ — o clique é contado, a compra em si acontece no site do parceiro (fora do nosso alcance rastrear).</p>
+        <div id="ins-affiliate-table"></div>
+      </section>
+    </div>
+    </div>
   </div>
 </main>
 
@@ -243,9 +291,19 @@
     arrowUpRight: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg>',
     share: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="2.6"/><circle cx="6" cy="12" r="2.6"/><circle cx="18" cy="19" r="2.6"/><path d="M8.4 10.6l7.2-4.2M8.4 13.4l7.2 4.2"/></svg>',
     alert: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 2 20h20L12 3z"/><line x1="12" y1="9" x2="12" y2="13.5"/><circle cx="12" cy="16.5" r="0.9" fill="currentColor" stroke="none"/></svg>',
-    ticket: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v2a2 2 0 0 0 0 4v2a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-2a2 2 0 0 0 0-4V8Z"/></svg>'
+    ticket: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v2a2 2 0 0 0 0 4v2a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-2a2 2 0 0 0 0-4V8Z"/></svg>',
+    coin: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M15 8.5c-.7-.8-1.8-1.3-3-1.3-2.2 0-4 1.7-4 3.8s1.8 3.8 4 3.8c1.2 0 2.3-.5 3-1.3M7.5 10h5M7.5 13.2h4"/></svg>',
+    file: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8z"/><path d="M14 3v5h5"/></svg>',
+    click: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4l7 17 2-7 7-2z"/></svg>'
   };
   var DONUT_COLORS = ["#604034", "#DEB975", "#8AACD2", "#577328", "#BB9351", "#A79B8E"];
+
+  // Slug do produto (ver client_reference_id em assets/js/purchase.js e
+  // content/produtos-digitais.json) → nome legível na aba Revenue.
+  var PRODUCT_LABELS = {
+    "planilha-financeira-super-integrada": "Planilha — 25€",
+    "planilha-financeira-super-integrada-teste": "Planilha — teste (5€)"
+  };
 
   var token = null;
   var popup = null;
@@ -259,12 +317,32 @@
   // 3. Navegação por abas — troca o painel visível na hora, sem rolar a
   // página e sem sair dela. Delegado no document porque os botões (nav,
   // KPIs clicáveis e o link do alerta) são recriados a cada carregamento.
+  // Escopado ao .ins-page mais próximo do clique — Insights e Revenue têm
+  // cada um sua própria .ins-tabnav/.ins-panels, então trocar de aba numa
+  // página nunca esconde o painel ativo da outra.
   document.addEventListener("click", function (e) {
     var trigger = e.target.closest("[data-target]");
     if (!trigger) return;
     e.preventDefault();
-    activateTab(trigger.getAttribute("data-target"));
+    activateTab(trigger.getAttribute("data-target"), trigger.closest(".ins-page"));
   });
+
+  // Menu Insights/Revenue — mesma ideia de troca de painel, um nível acima.
+  document.addEventListener("click", function (e) {
+    var trigger = e.target.closest("[data-page]");
+    if (!trigger) return;
+    e.preventDefault();
+    activatePage(trigger.getAttribute("data-page"));
+  });
+
+  function activatePage(name) {
+    document.querySelectorAll(".ins-page").forEach(function (page) {
+      page.hidden = page.id !== "page-" + name;
+    });
+    document.querySelectorAll(".ins-pagenav .ins-tab").forEach(function (tab) {
+      tab.classList.toggle("is-active", tab.getAttribute("data-page") === name);
+    });
+  }
 
   // Abre/fecha a linha com as respostas completas de uma pessoa, na aba
   // "Vagas — Planilha" (ver renderQuiz).
@@ -277,11 +355,12 @@
     toggle.textContent = row.hidden ? "Ver respostas" : "Ocultar respostas";
   });
 
-  function activateTab(name) {
-    document.querySelectorAll(".ins-panel").forEach(function (panel) {
+  function activateTab(name, scope) {
+    scope = scope || document;
+    scope.querySelectorAll(".ins-panel").forEach(function (panel) {
       panel.hidden = panel.id !== "panel-" + name;
     });
-    document.querySelectorAll(".ins-tab").forEach(function (tab) {
+    scope.querySelectorAll(".ins-tab").forEach(function (tab) {
       tab.classList.toggle("is-active", tab.getAttribute("data-target") === name);
     });
   }
@@ -366,6 +445,12 @@
     renderResourceClicks(data.resourceClicks || []);
     renderShare(data.shareOpens || 0, data.shareClicks || []);
     renderQuiz(data.quiz || {}, quizCfg);
+
+    renderRevenueKpis(data);
+    renderPurchasesChart(data.purchases || []);
+    renderPurchasesTable(data.purchases || []);
+    renderAffiliateChart(data.affiliateClicks || []);
+    renderAffiliateTable(data.affiliateClicks || []);
   }
 
   // ---- 1. KPI cards ---------------------------------------------------
@@ -512,9 +597,10 @@
     present.forEach(function (step) {
       var count = bySter[step] || 0;
       var pct = max ? Math.max(Math.round((count / max) * 100), 3) : 3;
+      var label = BOT_STEP_LABELS[step] || step;
       html +=
         '<div class="ins-funnel-row">' +
-          '<span class="lbl">' + escapeHtml(BOT_STEP_LABELS[step] || step) + "</span>" +
+          '<span class="lbl" title="' + escapeHtml(label) + '">' + escapeHtml(label) + "</span>" +
           '<span class="bar-track"><span class="bar-fill' + (step === "result" ? " result" : "") + '" style="width:' + pct + '%;"></span></span>' +
           '<span class="val">' + count + "</span>" +
         "</div>";
@@ -849,6 +935,123 @@
         (r.ref ? '<p class="ins-quiz-answer muted">ref (ManyChat): ' + escapeHtml(r.ref) + "</p>" : "") + "</td></tr>";
     });
 
+    html += "</tbody></table>";
+    el.innerHTML = html;
+  }
+
+  // ---- Revenue — vendas de produto digital + cliques em afiliados ------
+  // Vendas só entram aqui depois que POST /api/purchase/verify-session (ver
+  // worker.js) confirma o pagamento com o Stripe — não é clique no botão
+  // "comprar", é venda de verdade. Cliques de afiliado vêm direto do
+  // front-end (produtos-de-compras/produtos-de-estudo), sem Stripe envolvido.
+
+  function formatEuro(n) {
+    return (n || 0).toFixed(2).replace(".", ",") + "€";
+  }
+
+  function computeRevenueKpis(data) {
+    var purchases = data.purchases || [];
+    var affiliateClicks = data.affiliateClicks || [];
+    var byProduct = {};
+    var totalRevenue = 0;
+    purchases.forEach(function (r) {
+      byProduct[r.product_slug] = r;
+      totalRevenue += r.revenue || 0;
+    });
+    var totalAffiliateClicks = affiliateClicks.reduce(function (s, r) { return s + r.clicks; }, 0);
+    return {
+      totalRevenue: totalRevenue,
+      testeCount: (byProduct["planilha-financeira-super-integrada-teste"] || {}).count || 0,
+      completaCount: (byProduct["planilha-financeira-super-integrada"] || {}).count || 0,
+      totalAffiliateClicks: totalAffiliateClicks
+    };
+  }
+
+  function renderRevenueKpis(data) {
+    var k = computeRevenueKpis(data);
+    var el = document.getElementById("rev-kpis");
+    var cards = [];
+    cards.push(kpiCard(ICONS.coin, formatEuro(k.totalRevenue), "Receita total confirmada", "good", true));
+    cards.push(kpiCard(ICONS.file, k.testeCount, "Vendas — planilha teste (5€)", "", false, "vendas"));
+    cards.push(kpiCard(ICONS.file, k.completaCount, "Vendas — planilha completa (25€)", "", false, "vendas"));
+    cards.push(kpiCard(ICONS.click, k.totalAffiliateClicks, "Cliques em links de afiliado", "", false, "afiliados"));
+    el.innerHTML = cards.join("");
+  }
+
+  function renderPurchasesChart(rows) {
+    var el = document.getElementById("ins-purchases-chart");
+    if (!rows.length) {
+      el.innerHTML = '<p class="ins-empty">Ainda não há vendas confirmadas.</p>';
+      return;
+    }
+    var max = Math.max.apply(null, rows.map(function (r) { return r.revenue || 0; }).concat([1]));
+    var html = "";
+    rows.forEach(function (r) {
+      var pct = max ? Math.max(Math.round(((r.revenue || 0) / max) * 100), 3) : 3;
+      var label = PRODUCT_LABELS[r.product_slug] || r.product_slug || "(produto desconhecido)";
+      html +=
+        '<div class="ins-funnel-row">' +
+          '<span class="lbl" title="' + escapeHtml(label) + '">' + escapeHtml(label) + "</span>" +
+          '<span class="bar-track"><span class="bar-fill result" style="width:' + pct + '%;"></span></span>' +
+          '<span class="val">' + formatEuro(r.revenue) + "</span>" +
+        "</div>";
+    });
+    el.innerHTML = html;
+  }
+
+  function renderPurchasesTable(rows) {
+    var el = document.getElementById("ins-purchases-table");
+    if (!rows.length) {
+      el.innerHTML = '<p class="ins-empty">Ainda não há vendas confirmadas.</p>';
+      return;
+    }
+    var html = '<table class="ins-table"><thead><tr><th>Produto</th><th>Vendas</th><th>Receita</th></tr></thead><tbody>';
+    rows.forEach(function (r) {
+      html +=
+        "<tr><td>" + escapeHtml(PRODUCT_LABELS[r.product_slug] || r.product_slug || "(produto desconhecido)") + '</td><td class="num">' +
+        r.count + '</td><td class="num">' + formatEuro(r.revenue) + "</td></tr>";
+    });
+    html += "</tbody></table>";
+    el.innerHTML = html;
+  }
+
+  // Só o top 6 — a tabela completa (por categoria) fica na aba "Afiliados".
+  function renderAffiliateChart(rows) {
+    var el = document.getElementById("ins-affiliate-chart");
+    if (!rows.length) {
+      el.innerHTML = '<p class="ins-empty">Ainda não há cliques em links de afiliado.</p>';
+      return;
+    }
+    var top = rows.slice(0, 6);
+    var max = Math.max.apply(null, top.map(function (r) { return r.clicks; }).concat([1]));
+    var html = "";
+    top.forEach(function (r) {
+      var pct = max ? Math.max(Math.round((r.clicks / max) * 100), 3) : 3;
+      var label = r.item || "(sem nome)";
+      html +=
+        '<div class="ins-funnel-row">' +
+          '<span class="lbl" title="' + escapeHtml(label) + '">' + escapeHtml(label) + "</span>" +
+          '<span class="bar-track"><span class="bar-fill" style="width:' + pct + '%;"></span></span>' +
+          '<span class="val">' + r.clicks + "</span>" +
+        "</div>";
+    });
+    el.innerHTML = html;
+  }
+
+  var AFFILIATE_CATEGORY_LABELS = { compras: "Produtos de compras", estudo: "Produtos de estudo" };
+
+  function renderAffiliateTable(rows) {
+    var el = document.getElementById("ins-affiliate-table");
+    if (!rows.length) {
+      el.innerHTML = '<p class="ins-empty">Ainda não há cliques em links de afiliado.</p>';
+      return;
+    }
+    var html = '<table class="ins-table"><thead><tr><th>Categoria</th><th>Item</th><th>Cliques</th></tr></thead><tbody>';
+    rows.forEach(function (r) {
+      html +=
+        "<tr><td>" + escapeHtml(AFFILIATE_CATEGORY_LABELS[r.category] || r.category || "—") + "</td><td>" +
+        escapeHtml(r.item || "—") + '</td><td class="num">' + r.clicks + "</td></tr>";
+    });
     html += "</tbody></table>";
     el.innerHTML = html;
   }

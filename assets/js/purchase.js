@@ -3,7 +3,18 @@
 // pessoa marca a checkbox manualmente (checkbox pré-marcada não vale).
 // Ver seção 3.3 da especificação.
 
-export function initBuyBox(root, stripeLink) {
+// Anexa ?client_reference_id=<slug> ao link do Stripe — mesma técnica de
+// assets/js/premium-gate.js (withReturnSlug), aqui pro checkout de produto
+// digital: é assim que POST /api/purchase/verify-session (ver worker.js)
+// sabe qual produto foi comprado quando a leitora volta pra
+// /produtos-digitais/obrigado/ depois de pagar.
+function withProductSlug(paymentLink, slug) {
+  if (!paymentLink || !slug) return paymentLink;
+  const sep = paymentLink.includes("?") ? "&" : "?";
+  return paymentLink + sep + "client_reference_id=" + encodeURIComponent(slug);
+}
+
+export function initBuyBox(root, stripeLink, slug) {
   const checkbox = root.querySelector('[data-gate-checkbox]');
   const button = root.querySelector('[data-gate-button]');
   const message = root.querySelector('[data-gate-message]');
@@ -25,6 +36,6 @@ export function initBuyBox(root, stripeLink) {
       }
       return;
     }
-    window.location.href = stripeLink;
+    window.location.href = withProductSlug(stripeLink, slug);
   });
 }

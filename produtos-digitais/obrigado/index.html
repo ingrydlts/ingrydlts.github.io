@@ -3,13 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Produtos de estudo — Por Dentro</title>
-<meta name="description" content="Livros, dicionários e papelaria que valeram a pena para aprender francês de verdade.">
+<title>Pagamento confirmado — Por Dentro</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,600;9..144,700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/assets/css/style.css">
-<style>:root { --nav-active: #5F87AE; }</style>
+<style>:root { --nav-active: #577328; }</style>
 </head>
 <body>
 
@@ -35,22 +34,10 @@
 </nav>
 
 <main>
-  <div class="container">
-    <section class="section-lg">
-      <span class="eyebrow" style="color:#5F87AE;">Produtos de estudo</span>
-      <h1>O que ajudou a aprender francês de verdade</h1>
-      <p class="muted" style="max-width:60ch;">Indicações honestas — sem curso, sem promessa milagrosa.</p>
-    </section>
-
-    <section class="grid grid-3" id="product-grid" aria-label="Indicações de estudo">
-      <p class="muted">Carregando indicações...</p>
-    </section>
-
-    <p class="muted" style="font-size:13px; max-width:70ch; margin:24px 0 0;">
-      En tant que Partenaire Amazon, je réalise un bénéfice sur les achats remplissant les conditions requises.
-    </p>
-
-    <div id="category-banner"></div>
+  <div class="container" style="max-width:560px; padding:72px 24px; text-align:center;">
+    <div id="confirm-root">
+      <p class="muted">Confirmando pagamento…</p>
+    </div>
   </div>
 </main>
 
@@ -97,63 +84,65 @@
 <script src="/assets/js/analytics.js"></script>
 <script type="module" src="/assets/js/header.js"></script>
 <script type="module">
-  import { fetchJSON, imgSlotHTML, escapeHtml, postHref, isPublished } from "/assets/js/render.js";
+  import { fetchJSON, formatPrice, escapeHtml } from "/assets/js/render.js";
+
+  const WORKER_BASE = "https://por-dentro-cms-oauth.ingrydigitalmanagement.workers.dev";
+
+  // Lê ?session_id= (retorno do Stripe), confirma o pagamento com o Worker
+  // (POST /api/purchase/verify-session, que já confere com o Stripe e grava
+  // a venda) e limpa o parâmetro da URL. Mesmo padrão de
+  // /artigos/assinatura-confirmada/ e assets/js/premium.js
+  // (verifySessionFromUrl), só que sem emitir token de acesso — essa página
+  // não libera nenhum conteúdo pago, só confirma pro painel de vendas.
+  async function verifyPurchaseFromUrl() {
+    const url = new URL(window.location.href);
+    const sessionId = url.searchParams.get("session_id");
+    if (!sessionId) return null;
+
+    url.searchParams.delete("session_id");
+    window.history.replaceState({}, "", url.pathname + url.search + url.hash);
+
+    try {
+      const res = await fetch(WORKER_BASE + "/api/purchase/verify-session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ session_id: sessionId }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.ok) return null;
+      return data;
+    } catch {
+      return null;
+    }
+  }
 
   (async function () {
-    const grid = document.getElementById("product-grid");
+    const root = document.getElementById("confirm-root");
+    const result = await verifyPurchaseFromUrl();
 
-    // Clique em link de afiliado — 1 evento por clique, agregado em
-    // /admin/dashboard/ (aba Revenue). Delegado no grid porque os cards são
-    // injetados depois, de forma assíncrona.
-    grid.addEventListener("click", function (e) {
-      const link = e.target.closest("a.card");
-      if (!link || !window.PDEvents) return;
-      window.PDEvents.send("block", null, { type: "affiliate_click", id: link.dataset.affiliateTitle || link.href, category: "estudo" });
-    });
-
-    try {
-      const data = await fetchJSON("/content/produtos-estudo.json");
-      const items = data.items.filter((item) => item.active !== false);
-      if (!items.length) {
-        grid.innerHTML = '<p class="empty-state">Nenhuma indicação cadastrada ainda — adicione uma em /admin.</p>';
-      } else {
-        grid.innerHTML = items.map(function (item) {
-          const href = item.affiliateUrl || "#";
-          return (
-            '<a class="card" href="' + escapeHtml(href) + '" target="_blank" rel="sponsored nofollow noopener" style="color:inherit; position:relative;" data-affiliate-title="' + escapeHtml(item.title) + '">' +
-            imgSlotHTML(item.image, item.title, "Foto do item") +
-            '<div class="card-body">' +
-            "<h3>" + escapeHtml(item.title) + "</h3>" +
-            "<p>" + escapeHtml(item.desc) + "</p>" +
-            '<span class="badge badge-publicite" style="align-self:flex-start;">Publicité</span>' +
-            "</div></a>"
-          );
-        }).join("");
-      }
-    } catch (e) {
-      grid.innerHTML = '<p class="empty-state">Não foi possível carregar as indicações agora.</p>';
-      console.error(e);
+    if (!result) {
+      root.innerHTML =
+        '<p class="empty-state">Não foi possível confirmar o pagamento agora. Se você já pagou, o recibo do Stripe confirma a compra — qualquer dúvida, é só chamar.</p>' +
+        '<p style="margin-top:16px;"><a class="btn" href="/produtos-digitais/">Ver produtos digitais</a></p>';
+      return;
     }
 
+    let productTitle = "";
     try {
-      const [banners, posts] = await Promise.all([
-        fetchJSON("/content/banners.json"),
-        fetchJSON("/content/posts.json"),
-      ]);
-      const b = banners.categoryBanners["produtos-de-estudo"];
-      if (b.enabled !== false) {
-        const post = posts.items.find((p) => p.slug === b.postSlug && isPublished(p));
-        const href = post ? postHref(post) : "/artigos/";
-        document.getElementById("category-banner").innerHTML =
-          '<div class="blog-banner">' +
-          imgSlotHTML(b.image, b.title, "Foto do artigo") +
-          '<div class="blog-banner-body">' +
-          '<div><span class="eyebrow" style="color:' + b.color + ';">' + escapeHtml(b.kicker) + "</span>" +
-          "<h3>" + escapeHtml(b.title) + "</h3></div>" +
-          '<a class="btn btn-pill" href="' + href + '" style="background:' + b.color + ';">' + escapeHtml(b.ctaText) + "</a>" +
-          "</div></div>";
-      }
-    } catch (e) { console.warn(e); }
+      const data = await fetchJSON("/content/produtos-digitais.json");
+      const product = data.items.find((p) => p.slug === result.slug);
+      if (product) productTitle = product.title;
+    } catch {
+      // segue sem o título — a confirmação em si já aconteceu
+    }
+
+    root.innerHTML =
+      '<p><strong>Pagamento confirmado!</strong>' +
+      (productTitle ? " " + escapeHtml(productTitle) : "") +
+      (result.amount != null ? " — " + formatPrice(result.amount) : "") +
+      "</p>" +
+      '<p class="muted" style="margin-top:10px;">O acesso chega do jeito combinado na hora da compra. Qualquer dúvida, é só chamar no Instagram.</p>' +
+      '<p style="margin-top:16px;"><a class="btn" href="/produtos-digitais/">Ver produtos digitais</a></p>';
   })();
 </script>
 </body>

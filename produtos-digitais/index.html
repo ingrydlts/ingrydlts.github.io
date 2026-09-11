@@ -99,10 +99,11 @@
     const grid = document.getElementById("product-grid");
     try {
       const data = await fetchJSON("/content/produtos-digitais.json");
-      if (!data.items.length) {
+      const items = data.items.filter((p) => p.active !== false);
+      if (!items.length) {
         grid.innerHTML = '<p class="empty-state">Nenhum produto cadastrado ainda — adicione um em /admin.</p>';
       } else {
-        grid.innerHTML = data.items.map(function (p) {
+        grid.innerHTML = items.map(function (p) {
           return (
             '<a class="card" href="/produtos-digitais/produto/?slug=' + encodeURIComponent(p.slug) + '" style="color:inherit;">' +
             imgSlotHTML(p.image, p.title, "Preview do template") +

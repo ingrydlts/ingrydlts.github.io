@@ -10,7 +10,8 @@ CREATE TABLE IF NOT EXISTS events (
   id TEXT PRIMARY KEY,
   event_type TEXT NOT NULL,     -- 'feedback' | 'bot' | 'block' — ver ALLOWED_EVENT_TYPES em worker.js
   article_slug TEXT,            -- slug do artigo, quando aplicável (null pro assistente de vistos, que não é um artigo)
-  payload TEXT,                 -- JSON livre por tipo de evento (ex.: {"vote":"up"}, {"step":"objetivo","answer":"trabalho"})
+  payload TEXT,                 -- JSON livre por tipo de evento (ex.: {"vote":"up"}, {"step":"objetivo","answer":"trabalho"},
+                                 -- {"type":"purchase","session_id":...,"amount":25,"currency":"eur"}, {"type":"affiliate_click","id":...,"category":"compras"})
   session_id TEXT,               -- id anônimo gerado no navegador (localStorage), agrupa eventos da mesma visita sem identificar a pessoa
   created_at TEXT NOT NULL
 );

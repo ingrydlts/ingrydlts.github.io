@@ -159,6 +159,7 @@ collections:
             widget: list
             summary: "{{title}} — {{price}} €"
             fields:
+              - { label: "🔴 Ativo no site", name: active, widget: boolean, default: true, required: false, hint: "Botão de ativação: desligado = produto fica cadastrado mas INVISÍVEL na vitrine de /produtos-digitais/ — some da lista, mas a página do produto continua acessível por link direto. Use pra ofertas que você divulga só por link (ex. preço de teste) sem anunciar publicamente." }
               - { label: "Slug (parte da URL, sem espaço/acento)", name: slug, widget: string }
               - { label: Título, name: title, widget: string }
               - { label: "Categoria curta (ex. Template Excel)", name: kicker, widget: string }

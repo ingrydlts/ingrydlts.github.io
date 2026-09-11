@@ -95,6 +95,22 @@
  *    texto pago dos artigos premium: content/*.json é público, então
  *    qualquer coisa salva ali pode ser lida por qualquer pessoa antes da
  *    hora.
+ *
+ * 6. Confirmação de compra de produto digital (planilhas) — mesma técnica do
+ *    paywall (item 3): o link de pagamento do Stripe leva `?client_reference_id=
+ *    <slug do produto>` (ver assets/js/purchase.js), e o "After payment" do
+ *    Payment Link redireciona pra `/produtos-digitais/obrigado/?session_id=
+ *    {CHECKOUT_SESSION_ID}`, que troca o session_id pela confirmação. Rota:
+ *      POST /api/purchase/verify-session — público: confere com o Stripe que
+ *                                           a sessão foi paga e grava 1 evento
+ *                                           de venda em D1 (event_type='block',
+ *                                           payload.type='purchase'), idempotente
+ *                                           por session_id.
+ *    Cliques em link de afiliado (produtos de compras/estudo) usam o mesmo
+ *    event_type='block' (payload.type='affiliate_click'), gravados direto do
+ *    front-end (sem Stripe envolvido) — ver produtos-de-compras/index.html e
+ *    produtos-de-estudo/index.html. Ambos agregados em /api/insights/summary
+ *    (campos "purchases" e "affiliateClicks") pro painel /admin/dashboard/.
 
  * Variáveis de ambiente necessárias (Settings → Variables and Secrets no Worker):
  *   GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET  — do GitHub OAuth App (ver README.md)
@@ -155,6 +171,10 @@ const ALLOWED_EVENT_TYPES = ['feedback', 'bot', 'block', 'poll'];
 // frequência (várias respostas do bot numa sessão, por exemplo).
 const EVENTS_WINDOW_SECONDS = 60;
 const EVENTS_MAX_PER_WINDOW = 20;
+// Throttle da confirmação de compra (chama a API do Stripe a cada request) —
+// mais apertado que o de eventos porque não é esperado volume alto por IP.
+const PURCHASE_VERIFY_WINDOW_SECONDS = 60;
+const PURCHASE_VERIFY_MAX_PER_WINDOW = 10;
 const SUBSCRIPTION_TOKEN_TTL_SECONDS = 14 * 24 * 60 * 60; // 14 dias — sem webhook do Stripe, é isso que força revalidar
 const ARTICLE_TOKEN_TTL_SECONDS = 20 * 365 * 24 * 60 * 60; // compra avulsa: paga uma vez, acesso permanente na prática
 const ACTIVE_SUBSCRIPTION_STATUSES = ['active', 'trialing'];
@@ -457,7 +477,7 @@ async function handleInsightsSummary(request, env) {
   if (!moderator) return json({ error: 'Sem permissão. Faça login com uma conta que tem acesso ao repositório.' }, 401);
   if (!env.EVENTS_DB) return json({ error: 'Banco de eventos ainda não configurado.' }, 500);
 
-  const [overview, feedback, botFunnel, botAnswers, botOutcomes, checklist, faqOpens, resourceClicks, trafficSources, polls, shareOpens, shareClicks, daily, quizCounter, quizRows] = await Promise.all([
+  const [overview, feedback, botFunnel, botAnswers, botOutcomes, checklist, faqOpens, resourceClicks, trafficSources, polls, shareOpens, shareClicks, daily, quizCounter, quizRows, purchases, affiliateClicks] = await Promise.all([
     env.EVENTS_DB.prepare('SELECT COUNT(*) as total, COUNT(DISTINCT session_id) as sessions FROM events').all(),
     env.EVENTS_DB.prepare(
       `SELECT article_slug,
@@ -540,6 +560,22 @@ async function handleInsightsSummary(request, env) {
     env.EVENTS_DB.prepare(
       `SELECT name, instagram, email, ref, answers, liberado, posicao, created_at
        FROM quiz_submissions ORDER BY created_at DESC`
+    ).all(),
+    // Vendas confirmadas de produto digital (ver handleVerifyPurchase) — 1
+    // linha por venda, article_slug é o slug do produto comprado.
+    env.EVENTS_DB.prepare(
+      `SELECT article_slug as product_slug, COUNT(*) as count,
+              SUM(CAST(json_extract(payload,'$.amount') AS REAL)) as revenue
+       FROM events WHERE event_type='block' AND json_extract(payload,'$.type')='purchase'
+       GROUP BY article_slug ORDER BY revenue DESC`
+    ).all(),
+    // Cliques em link de afiliado (produtos de compras/estudo — ver tracking
+    // em produtos-de-compras/index.html e produtos-de-estudo/index.html).
+    env.EVENTS_DB.prepare(
+      `SELECT json_extract(payload,'$.category') as category, json_extract(payload,'$.id') as item,
+              COUNT(*) as clicks
+       FROM events WHERE event_type='block' AND json_extract(payload,'$.type')='affiliate_click'
+       GROUP BY category, item ORDER BY clicks DESC LIMIT 30`
     ).all()
   ]);
 
@@ -563,6 +599,8 @@ async function handleInsightsSummary(request, env) {
     shareOpens: (shareOpens.results && shareOpens.results[0] && shareOpens.results[0].opens) || 0,
     shareClicks: shareClicks.results || [],
     daily: daily.results || [],
+    purchases: purchases.results || [],
+    affiliateClicks: affiliateClicks.results || [],
     quiz: {
       limit: quizLimit(env),
       liberadas: (quizCounter && quizCounter.liberadas) || 0,
@@ -804,6 +842,72 @@ async function handleVerifySession(request, env) {
   }
 
   return json({ error: 'Modo de pagamento não suportado.' }, 400);
+}
+
+// ---- Confirmação de compra de produto digital (planilhas) — D1, público ----
+//
+// Mesma técnica do paywall acima (client_reference_id na Checkout Session),
+// mas aqui não emite token de acesso — só confirma o pagamento com o Stripe
+// e grava 1 evento de venda em D1, pro /api/insights/summary agregar.
+// Chamada pela página /produtos-digitais/obrigado/ depois do redirect do
+// Stripe. Idempotente por session_id: recarregar a página de confirmação
+// não conta a venda duas vezes.
+async function handleVerifyPurchase(request, env) {
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return json({ error: 'JSON inválido.' }, 400);
+  }
+  const sessionId = String(body.session_id || '').trim();
+  if (!sessionId) return json({ error: 'Faltou o parâmetro "session_id".' }, 400);
+  if (!env.STRIPE_SECRET_KEY) {
+    return json({ error: 'Pagamento ainda não configurado neste site.' }, 500);
+  }
+  if (!env.EVENTS_DB) return json({ error: 'Banco de eventos ainda não configurado.' }, 500);
+
+  const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
+  const throttleKey = `throttle:purchase:${ip}`;
+  const current = await env.REVIEWS_KV.get(throttleKey);
+  const count = current ? parseInt(current, 10) || 0 : 0;
+  if (count >= PURCHASE_VERIFY_MAX_PER_WINDOW) {
+    return json({ error: 'Muitas requisições — tente de novo em instantes.' }, 429);
+  }
+  await env.REVIEWS_KV.put(throttleKey, String(count + 1), { expirationTtl: PURCHASE_VERIFY_WINDOW_SECONDS });
+
+  const { ok, data: session } = await stripeFetch(env, '/checkout/sessions/' + encodeURIComponent(sessionId));
+  if (!ok || !session) return json({ error: 'Sessão de pagamento inválida.' }, 400);
+  if (session.mode !== 'payment' || session.payment_status !== 'paid') {
+    return json({ error: 'Pagamento ainda não confirmado.' }, 400);
+  }
+  const slug = session.client_reference_id || null;
+  if (!slug) return json({ error: 'Não foi possível identificar qual produto foi comprado.' }, 400);
+
+  // Idempotência — não duplica a venda se a página de confirmação recarregar.
+  const already = await env.EVENTS_DB.prepare(
+    `SELECT id FROM events WHERE event_type='block' AND json_extract(payload,'$.type')='purchase'
+       AND json_extract(payload,'$.session_id')=? LIMIT 1`
+  ).bind(sessionId).first();
+
+  const amount = typeof session.amount_total === 'number' ? session.amount_total / 100 : null;
+  const currency = session.currency || null;
+
+  if (!already) {
+    await env.EVENTS_DB.prepare(
+      'INSERT INTO events (id, event_type, article_slug, payload, session_id, created_at) VALUES (?, ?, ?, ?, ?, ?)'
+    )
+      .bind(
+        crypto.randomUUID(),
+        'block',
+        slug,
+        JSON.stringify({ type: 'purchase', session_id: sessionId, amount, currency }),
+        null,
+        new Date().toISOString()
+      )
+      .run();
+  }
+
+  return json({ ok: true, slug, amount, currency });
 }
 
 async function handleRestoreAccess(request, env) {
@@ -1114,6 +1218,9 @@ export default {
       }
       if (url.pathname === '/api/premium/restore' && request.method === 'POST') {
         return await handleRestoreAccess(request, env);
+      }
+      if (url.pathname === '/api/purchase/verify-session' && request.method === 'POST') {
+        return await handleVerifyPurchase(request, env);
       }
       if (url.pathname === '/api/premium/article' && request.method === 'GET') {
         return await handleGetPremiumArticle(request, env, url);
