@@ -76,14 +76,19 @@ import { fetchJSON, escapeHtml, qs } from "/assets/js/render.js";
       '<div id="pdq-counter"></div>';
   }
 
+  // O contador mostra contra um total maior que o limite das vagas grátis
+  // (hero.vagasTotalDisplay, ex. 20 = 10 grátis + 10 pagas) — sem isso, o
+  // número zera assim que a gratuita esgota e parece que fechou de vez,
+  // mesmo ainda tendo vaga paga disponível. Como a Etapa 2 é vendida pelo
+  // Stripe sem passar de novo pelo formulário, esse total maior não desce
+  // sozinho conforme as pagas são compradas — é só pra não parecer
+  // encerrado, não é uma contagem exata das vagas pagas.
   function renderCounter(hero, status) {
     var el = document.getElementById("pdq-counter");
     if (!el || !status) return;
-    if (status.esgotado) {
-      el.innerHTML = '<div class="pd-quiz-counter"><strong>0</strong><span>' + escapeHtml(hero.vagasLabel || "vagas restantes") + "</span></div>";
-    } else {
-      el.innerHTML = '<div class="pd-quiz-counter"><strong>' + escapeHtml(String(status.restantes)) + '</strong><span>' + escapeHtml(hero.vagasLabel || "vagas restantes") + "</span></div>";
-    }
+    var total = hero.vagasTotalDisplay || status.limit;
+    var restantes = Math.max(0, total - status.liberadas);
+    el.innerHTML = '<div class="pd-quiz-counter"><strong>' + escapeHtml(String(restantes)) + '</strong><span>' + escapeHtml(hero.vagasLabel || "vagas restantes") + "</span></div>";
   }
 
   var DELAY_CLASSES = ["pd-reveal-d1", "pd-reveal-d2", "pd-reveal-d3", "pd-reveal-d4", "pd-reveal-d5"];

@@ -9,7 +9,8 @@
     "titleAccent": "10 vagas grátis",
     "subtitle": "10 vagas gratuitas pra testar minha planilha financeira automática por 7 dias.",
     "subtitleHighlight": "Em troca só do seu feedback.",
-    "vagasLabel": "vagas restantes"
+    "vagasLabel": "vagas restantes",
+    "vagasTotalDisplay": 20
   },
   "howItWorks": {
     "eyebrow": "Como funciona o teste",

@@ -404,6 +404,7 @@ collections:
               - { label: Subtítulo, name: subtitle, widget: text }
               - { label: "Subtítulo — trecho em destaque (negrito e sublinhado)", name: subtitleHighlight, widget: string, hint: "Aparece em negrito e sublinhado logo depois do subtítulo — ex.: \"Em troca só do seu feedback.\"" }
               - { label: "Texto ao lado do número de vagas", name: vagasLabel, widget: string, default: "vagas restantes" }
+              - { label: "Total de vagas mostrado no contador", name: vagasTotalDisplay, widget: number, default: 20, hint: "Some grátis + pagas (ex.: 10 grátis + 10 pagas = 20) — evita o contador zerar e parecer encerrado assim que as gratuitas acabarem. Não conta as vagas pagas em tempo real (o pagamento é feito no Stripe, sem passar de novo pelo formulário)." }
           - label: "Como funciona (antes do formulário)"
             name: howItWorks
             widget: object
