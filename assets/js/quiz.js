@@ -247,7 +247,10 @@ import { fetchJSON, escapeHtml, qs } from "/assets/js/render.js";
       .then(function (result) {
         if (!result.ok || !result.data.clientSecret) throw new Error("Sem client secret.");
         var stripe = window.Stripe(e2.stripePublishableKey);
-        return stripe.initEmbeddedCheckout({ clientSecret: result.data.clientSecret });
+        // Stripe renomeou initEmbeddedCheckout() pra createEmbeddedCheckoutPage()
+        // em mar/2026 (junto com ui_mode "embedded" -> "embedded_page", ver
+        // handleCreateEmbeddedCheckout em worker.js).
+        return stripe.createEmbeddedCheckoutPage({ clientSecret: result.data.clientSecret });
       })
       .then(function (checkout) {
         mount.innerHTML = "";

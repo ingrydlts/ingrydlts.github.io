@@ -117,7 +117,7 @@
  *    /acesso-vip/ cria a sessão na hora e monta o formulário de cartão
  *    direto na tela, sem sair do site (Stripe Embedded Checkout). Rota:
  *      POST /api/purchase/create-embedded-session — público: cria a sessão
- *        (mode='payment', ui_mode='embedded') com QUIZ_ETAPA2_PRICE_ID e
+ *        (mode='payment', ui_mode='embedded_page') com QUIZ_ETAPA2_PRICE_ID e
  *        client_reference_id=PLANILHA_ETAPA2_SLUG, devolve só o
  *        client_secret pro Stripe.js montar o formulário. return_url usa o
  *        header Origin da requisição, então funciona em qualquer domínio
@@ -967,7 +967,10 @@ async function handleCreateEmbeddedCheckout(request, env) {
 
   const params = new URLSearchParams();
   params.set('mode', 'payment');
-  params.set('ui_mode', 'embedded');
+  // Stripe renomeou "embedded" pra "embedded_page" em mar/2026 (changelog
+  // "dahlia") — o valor antigo passou a dar erro 500 direto na criação da
+  // sessão. Ver também stripe.createEmbeddedCheckoutPage() em quiz.js.
+  params.set('ui_mode', 'embedded_page');
   params.set('client_reference_id', PLANILHA_ETAPA2_SLUG);
   params.set('return_url', returnUrl);
   params.set('line_items[0][price]', env.QUIZ_ETAPA2_PRICE_ID);
