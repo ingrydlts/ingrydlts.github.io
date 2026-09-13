@@ -978,6 +978,8 @@ p { margin: 0 0 1em; color: var(--grafite); }
 .pd-quiz-etapa2 { margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--borda-suave); }
 .pd-quiz-etapa2 h3 { font-size: 18px; margin-bottom: 6px; }
 .pd-quiz-etapa2-price { display: block; font-family: var(--font-display); font-size: 24px; color: var(--beje-paris-text); margin-bottom: 10px; }
+.pdq-etapa2-checkout { text-align: left; min-height: 60px; }
+.pdq-etapa2-checkout .muted { text-align: center; }
 
 .pd-quiz-faq { max-width: 640px; margin: 56px auto 0; }
 

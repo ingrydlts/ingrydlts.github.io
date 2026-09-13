@@ -96,21 +96,22 @@
   },
   "locked": {
     "title": "As 10 vagas de teste gratuitas já foram preenchidas",
-    "body": "Suas respostas ficaram salvas e eu vou ler cada uma delas. O teste gratuito já fechou, mas você pode entrar na lista de espera do lançamento com preço baixo — ou aguardar uma próxima rodada de vagas.",
+    "body": "Suas respostas ficaram salvas e eu vou ler cada uma delas. Mas ainda dá pra participar: abri mais 10 vagas de teste por um valor simbólico. Quem entra nessa leva passa pelo mesmo processo de 7 dias e garante a versão final da planilha de graça, quando eu lançar.",
     "etapa2": {
       "enabled": true,
-      "title": "Quer garantir seu acesso no lançamento?",
-      "body": "Quando eu abrir a Planilha Financeira Super Integrada pro público, é com preço de lançamento — bem abaixo do valor final. Deixando seu contato aqui, você é avisada em primeira mão.",
-      "priceLabel": "5€ no lançamento",
-      "ctaLabel": "Quero ser avisada no lançamento",
+      "title": "Quero uma das 10 vagas pagas",
+      "body": "Por 5€, você entra na próxima leva de teste — mesmo processo de 7 dias, mesma planilha — e garante a versão final gratuita quando eu lançar.",
+      "priceLabel": "5€",
+      "ctaLabel": "Quero minha vaga por 5€",
       "link": "https://buy.stripe.com/6oUaEXfsN3otazjdOpaR204",
-      "pendingNotice": "O link de acesso ao lançamento ainda está sendo preparado — assim que estiver pronto, aviso você direto no Instagram."
+      "stripePublishableKey": "pk_live_51U3LD0FRLmE1pnVN25avzeZpEU5tIdVGUerbVZs4kSBLrZflOvBemXdpm8wFvjULQOiQAIJLy3zTNBO6AcI5OQZ400CxBnk3ku",
+      "pendingNotice": "O pagamento ainda está sendo preparado — assim que estiver pronto, aviso você direto no Instagram."
     }
   },
   "faq": [
     {
       "q": "Preciso pagar alguma coisa pra testar a planilha?",
-      "a": "Não. As 10 primeiras respostas recebem acesso gratuito em troca do feedback ao final dos 7 dias de teste."
+      "a": "As 10 primeiras respostas recebem acesso gratuito em troca do feedback ao final dos 7 dias de teste. Depois que essas fecharem, tem mais 10 vagas por um valor simbólico de 5€, com o mesmo processo de teste."
     },
     {
       "q": "Preciso saber usar Google Sheets pra participar?",
@@ -122,11 +123,11 @@
     },
     {
       "q": "As vagas já acabaram, ainda vale a pena responder?",
-      "a": "Vale — sua resposta fica salva, você entra na lista de espera do lançamento com preço baixo, e pode ser chamada numa próxima rodada de testes."
+      "a": "Vale — sua resposta fica salva, e você pode entrar numa das 10 vagas pagas (5€) pra testar comigo do mesmo jeito, garantindo a versão final de graça no lançamento."
     },
     {
       "q": "Se eu quiser comprar a versão final depois, tenho desconto por ter testado?",
-      "a": "Tem sim — quem participa do teste ganha um cupom de 50% de desconto na versão final, quando ela for lançada."
+      "a": "Tem sim, e o desconto depende de como você testou: quem entrou nas 10 vagas gratuitas ganha 50% de desconto na versão final; quem entrou numa das 10 vagas pagas (5€) ganha a versão final de graça."
     }
   ]
 }

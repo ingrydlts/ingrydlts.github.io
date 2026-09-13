@@ -471,8 +471,9 @@ collections:
                   - { label: Texto, name: body, widget: text }
                   - { label: "Texto do preço", name: priceLabel, widget: string, default: "5€" }
                   - { label: "Texto do botão", name: ctaLabel, widget: string, default: "Quero a Etapa 2 por 5€" }
-                  - { label: "Link de pagamento do Stripe", name: link, widget: string, required: false, hint: "Cole aqui o Payment Link do Stripe (produto de 5€) quando criar — enquanto estiver vazio, o botão mostra o aviso abaixo em vez de um link quebrado." }
-                  - { label: "Aviso enquanto o link não existe", name: pendingNotice, widget: text }
+                  - { label: "Link de pagamento do Stripe (reserva, se o checkout embutido falhar)", name: link, widget: string, required: false, hint: "Payment Link do Stripe (produto de 5€) — usado só como reforço se o formulário de cartão embutido não carregar." }
+                  - { label: "Publishable Key do Stripe (pk_live_... ou pk_test_...)", name: stripePublishableKey, widget: string, required: false, hint: "Stripe → Developers → API keys. É segura de expor — o formulário de cartão só aparece na tela se esse campo estiver preenchido." }
+                  - { label: "Aviso enquanto o pagamento não está configurado", name: pendingNotice, widget: text }
           - label: "Perguntas frequentes"
             name: faq
             widget: list

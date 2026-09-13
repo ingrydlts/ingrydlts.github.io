@@ -111,6 +111,20 @@
  *    front-end (sem Stripe envolvido) — ver produtos-de-compras/index.html e
  *    produtos-de-estudo/index.html. Ambos agregados em /api/insights/summary
  *    (campos "purchases" e "affiliateClicks") pro painel /admin/dashboard/.
+ *
+ * 7. Checkout embutido da Etapa 2 (vagas pagas de teste, 5€, ver
+ *    assets/js/quiz.js) — em vez de um Payment Link estático, a página
+ *    /acesso-vip/ cria a sessão na hora e monta o formulário de cartão
+ *    direto na tela, sem sair do site (Stripe Embedded Checkout). Rota:
+ *      POST /api/purchase/create-embedded-session — público: cria a sessão
+ *        (mode='payment', ui_mode='embedded') com QUIZ_ETAPA2_PRICE_ID e
+ *        client_reference_id=PLANILHA_ETAPA2_SLUG, devolve só o
+ *        client_secret pro Stripe.js montar o formulário. return_url usa o
+ *        header Origin da requisição, então funciona em qualquer domínio
+ *        que sirva o site (github.io ou um domínio próprio depois).
+ *    A confirmação em si continua pela rota do item 6 (verify-session) —
+ *    o client_reference_id é lido do jeito de sempre, não importa se a
+ *    sessão nasceu de um Payment Link ou criada na hora por aqui.
 
  * Variáveis de ambiente necessárias (Settings → Variables and Secrets no Worker):
  *   GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET  — do GitHub OAuth App (ver README.md)
@@ -150,6 +164,10 @@
  *   QUIZ_LIMIT                              — opcional: número de vagas antes
  *                                              de travar. Padrão 10 se não
  *                                              definida.
+ *   QUIZ_ETAPA2_PRICE_ID                    — Price ID (não o link) do produto
+ *                                              de 5€ da Etapa 2 no Stripe —
+ *                                              necessário pro checkout embutido
+ *                                              (/api/purchase/create-embedded-session).
  * Bindings de KV necessários (Settings → Bindings):
  *   REVIEWS_KV — namespace vazia, usada pelas avaliações (e também pelo
  *                throttle de /api/events, ver EVENTS_THROTTLE_SECONDS)
@@ -175,6 +193,11 @@ const EVENTS_MAX_PER_WINDOW = 20;
 // mais apertado que o de eventos porque não é esperado volume alto por IP.
 const PURCHASE_VERIFY_WINDOW_SECONDS = 60;
 const PURCHASE_VERIFY_MAX_PER_WINDOW = 10;
+// Throttle de criação de sessão de checkout embutido — roda sozinho ao
+// carregar a tela de vagas encerradas (sem clique), então precisa de mais
+// folga que o de verify-session (que só roda 1x por compra de verdade).
+const EMBEDDED_CHECKOUT_WINDOW_SECONDS = 60;
+const EMBEDDED_CHECKOUT_MAX_PER_WINDOW = 20;
 const SUBSCRIPTION_TOKEN_TTL_SECONDS = 14 * 24 * 60 * 60; // 14 dias — sem webhook do Stripe, é isso que força revalidar
 const ARTICLE_TOKEN_TTL_SECONDS = 20 * 365 * 24 * 60 * 60; // compra avulsa: paga uma vez, acesso permanente na prática
 const ACTIVE_SUBSCRIPTION_STATUSES = ['active', 'trialing'];
@@ -917,6 +940,55 @@ async function handleVerifyPurchase(request, env) {
   return json({ ok: true, slug, amount, currency, driveLink });
 }
 
+// Cria a sessão de Checkout embutida da Etapa 2 (5€) na hora — a página
+// /acesso-vip/ chama isso assim que mostra a tela de vagas encerradas, sem
+// esperar clique nenhum (Stripe Embedded Checkout). Devolve só o
+// client_secret; o Stripe.js no front-end usa ele pra montar o formulário
+// de cartão. A confirmação de pagamento continua em handleVerifyPurchase,
+// lendo o mesmo client_reference_id de sempre.
+async function handleCreateEmbeddedCheckout(request, env) {
+  if (!env.STRIPE_SECRET_KEY) return json({ error: 'Pagamento ainda não configurado neste site.' }, 500);
+  if (!env.QUIZ_ETAPA2_PRICE_ID) return json({ error: 'Vaga paga ainda não configurada.' }, 500);
+
+  const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
+  const throttleKey = `throttle:embedded:${ip}`;
+  const current = await env.REVIEWS_KV.get(throttleKey);
+  const count = current ? parseInt(current, 10) || 0 : 0;
+  if (count >= EMBEDDED_CHECKOUT_MAX_PER_WINDOW) {
+    return json({ error: 'Muitas requisições — tente de novo em instantes.' }, 429);
+  }
+  await env.REVIEWS_KV.put(throttleKey, String(count + 1), { expirationTtl: EMBEDDED_CHECKOUT_WINDOW_SECONDS });
+
+  // Origin da própria página que chamou (ex. https://ingrydlts.github.io, ou
+  // um domínio próprio no futuro) — assim o return_url sempre aponta pro
+  // site certo, sem hardcodar um domínio fixo aqui.
+  const origin = request.headers.get('Origin') || 'https://ingrydlts.github.io';
+  const returnUrl = origin + '/produtos-digitais/obrigado/?session_id={CHECKOUT_SESSION_ID}';
+
+  const params = new URLSearchParams();
+  params.set('mode', 'payment');
+  params.set('ui_mode', 'embedded');
+  params.set('client_reference_id', PLANILHA_ETAPA2_SLUG);
+  params.set('return_url', returnUrl);
+  params.set('line_items[0][price]', env.QUIZ_ETAPA2_PRICE_ID);
+  params.set('line_items[0][quantity]', '1');
+
+  const res = await fetch('https://api.stripe.com/v1/checkout/sessions', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${env.STRIPE_SECRET_KEY}`,
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: params.toString(),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || !data.client_secret) {
+    return json({ error: (data.error && data.error.message) || 'Não deu pra iniciar o pagamento agora.' }, 500);
+  }
+
+  return json({ clientSecret: data.client_secret });
+}
+
 async function handleRestoreAccess(request, env) {
   let body;
   try {
@@ -1234,6 +1306,9 @@ export default {
       }
       if (url.pathname === '/api/purchase/verify-session' && request.method === 'POST') {
         return await handleVerifyPurchase(request, env);
+      }
+      if (url.pathname === '/api/purchase/create-embedded-session' && request.method === 'POST') {
+        return await handleCreateEmbeddedCheckout(request, env);
       }
       if (url.pathname === '/api/premium/article' && request.method === 'GET') {
         return await handleGetPremiumArticle(request, env, url);

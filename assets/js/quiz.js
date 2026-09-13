@@ -194,20 +194,77 @@ import { fetchJSON, escapeHtml, qs } from "/assets/js/render.js";
     return paymentLink + sep + "client_reference_id=" + encodeURIComponent(slug);
   }
 
+  // Carrega o Stripe.js uma única vez (mesmo se renderLocked rodar mais de
+  // uma vez) — script externo, não dá pra usar import().
+  var stripeJsPromise = null;
+  function loadStripeJs() {
+    if (window.Stripe) return Promise.resolve();
+    if (!stripeJsPromise) {
+      stripeJsPromise = new Promise(function (resolve, reject) {
+        var script = document.createElement("script");
+        script.src = "https://js.stripe.com/v3/";
+        script.onload = resolve;
+        script.onerror = reject;
+        document.head.appendChild(script);
+      });
+    }
+    return stripeJsPromise;
+  }
+
+  // Monta o formulário de cartão direto na tela, sem precisar de clique —
+  // cria a sessão na hora (POST /api/purchase/create-embedded-session, ver
+  // handleCreateEmbeddedCheckout em worker.js) e deixa o Stripe.js desenhar
+  // o checkout embutido (Stripe Embedded Checkout). Qualquer falha no
+  // caminho (chave não configurada, rede, Stripe fora do ar) cai pro link
+  // de pagamento normal como reforço, em vez de deixar a área em branco.
+  function mountEtapa2Checkout(e2) {
+    var mount = document.getElementById("pdq-etapa2-checkout");
+    if (!mount) return;
+
+    function fallbackToLink() {
+      if (!e2.link) {
+        mount.innerHTML = '<p class="muted">' + escapeHtml(e2.pendingNotice || "") + "</p>";
+        return;
+      }
+      mount.innerHTML = '<a class="btn" href="' + escapeHtml(withClientReferenceId(e2.link, ETAPA2_SLUG)) + '" target="_blank" rel="noopener">' + escapeHtml(e2.ctaLabel || "Quero continuar") + "</a>";
+    }
+
+    if (!e2.stripePublishableKey) {
+      fallbackToLink();
+      return;
+    }
+
+    loadStripeJs()
+      .then(function () {
+        return fetch(WORKER_BASE + "/api/purchase/create-embedded-session", { method: "POST" });
+      })
+      .then(function (res) { return res.json().then(function (data) { return { ok: res.ok, data: data }; }); })
+      .then(function (result) {
+        if (!result.ok || !result.data.clientSecret) throw new Error("Sem client secret.");
+        var stripe = window.Stripe(e2.stripePublishableKey);
+        return stripe.initEmbeddedCheckout({ clientSecret: result.data.clientSecret });
+      })
+      .then(function (checkout) {
+        mount.innerHTML = "";
+        checkout.mount("#pdq-etapa2-checkout");
+      })
+      .catch(fallbackToLink);
+  }
+
   function renderLocked(cfg) {
     var l = cfg.locked || {};
     var e2 = l.etapa2 || {};
     var etapa2HTML = "";
     if (e2.enabled !== false) {
-      var cta = e2.link
-        ? '<a class="btn" href="' + escapeHtml(withClientReferenceId(e2.link, ETAPA2_SLUG)) + '" target="_blank" rel="noopener">' + escapeHtml(e2.ctaLabel || "Quero continuar") + "</a>"
-        : '<p class="muted">' + escapeHtml(e2.pendingNotice || "") + "</p>";
       etapa2HTML =
         '<div class="pd-quiz-etapa2"><h3>' + escapeHtml(e2.title || "") + '</h3><span class="pd-quiz-etapa2-price">' +
-        escapeHtml(e2.priceLabel || "") + "</span><p>" + escapeHtml(e2.body || "") + "</p>" + cta + "</div>";
+        escapeHtml(e2.priceLabel || "") + "</span><p>" + escapeHtml(e2.body || "") + "</p>" +
+        '<div id="pdq-etapa2-checkout" class="pdq-etapa2-checkout"><p class="muted">Carregando pagamento...</p></div></div>';
     }
     document.getElementById("pdq-form-mount").innerHTML =
       '<div class="pd-quiz-result is-locked"><h2>' + escapeHtml(l.title || "") + "</h2><p>" + escapeHtml(l.body || "") + "</p>" + etapa2HTML + "</div>";
+
+    if (e2.enabled !== false) mountEtapa2Checkout(e2);
   }
 
   function renderFaq(cfg) {
