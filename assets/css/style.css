@@ -978,6 +978,8 @@ p { margin: 0 0 1em; color: var(--grafite); }
 .pd-quiz-etapa2 { margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--borda-suave); }
 .pd-quiz-etapa2 h3 { font-size: 18px; margin-bottom: 6px; }
 .pd-quiz-etapa2-price { display: block; font-family: var(--font-display); font-size: 24px; color: var(--beje-paris-text); margin-bottom: 10px; }
+.pd-quiz-etapa2-benefit-title { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--texto-secundario); margin: 4px 0 10px; text-align: left; }
+.pd-quiz-etapa2 .pd-quiz-success-step { background: var(--off-white-soft); border: 1px solid var(--borda-suave); border-radius: var(--radius-md); padding: 14px 16px; margin-bottom: 16px; text-align: left; }
 .pdq-etapa2-checkout { text-align: left; min-height: 60px; }
 .pdq-etapa2-checkout .muted { text-align: center; }
 

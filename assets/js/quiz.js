@@ -264,13 +264,21 @@ import { fetchJSON, escapeHtml, qs } from "/assets/js/render.js";
     var e2 = l.etapa2 || {};
     var etapa2HTML = "";
     if (e2.enabled !== false) {
+      var benefitHTML = e2.benefitStat
+        ? '<p class="pd-quiz-etapa2-benefit-title">' + escapeHtml(e2.benefitTitle || "O que você recebe em troca") + "</p>" +
+          successStepHTML({ icon: e2.benefitIcon, title: e2.benefitStat, description: e2.benefitDescription })
+        : "";
       etapa2HTML =
         '<div class="pd-quiz-etapa2"><h3>' + escapeHtml(e2.title || "") + '</h3><span class="pd-quiz-etapa2-price">' +
-        escapeHtml(e2.priceLabel || "") + "</span><p>" + escapeHtml(e2.body || "") + "</p>" +
+        escapeHtml(e2.priceLabel || "") + "</span>" +
+        benefitHTML +
+        "<p>" + escapeHtml(e2.body || "") + "</p>" +
         '<div id="pdq-etapa2-checkout" class="pdq-etapa2-checkout"><p class="muted">Carregando pagamento...</p></div></div>';
     }
     document.getElementById("pdq-form-mount").innerHTML =
-      '<div class="pd-quiz-result is-locked"><h2>' + escapeHtml(l.title || "") + "</h2><p>" + escapeHtml(l.body || "") + "</p>" + etapa2HTML + "</div>";
+      '<div class="pd-quiz-result is-locked"><h2>' + escapeHtml(l.title || "") + "</h2>" +
+      (l.body ? "<p>" + escapeHtml(l.body) + "</p>" : "") +
+      etapa2HTML + "</div>";
 
     if (e2.enabled !== false) mountEtapa2Checkout(e2);
   }
