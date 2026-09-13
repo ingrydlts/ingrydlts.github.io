@@ -127,6 +127,24 @@
       return;
     }
 
+    // Etapa 2 do /acesso-vip/ (planilha financeira, 5€) não é um produto do
+    // catálogo — é a mesma venda avulsa pra quem ficou de fora das 10 vagas
+    // grátis. O Worker só devolve driveLink quando reconhece esse slug
+    // (client_reference_id fixo, ver assets/js/quiz.js) E já confirmou o
+    // pagamento — nunca mostra o link sem isso.
+    if (result.slug === "planilha-financeira-etapa-2") {
+      const cta = result.driveLink
+        ? '<a class="btn" href="' + escapeHtml(result.driveLink) + '" target="_blank" rel="noopener">Abrir a planilha no Google Drive</a>'
+        : '<p class="muted" style="margin-top:10px;">Pagamento confirmado, mas o link ainda está sendo configurado — já aviso você direto no Instagram.</p>';
+      root.innerHTML =
+        '<p><strong>Pagamento confirmado!</strong> Planilha Financeira Super Integrada' +
+        (result.amount != null ? " — " + formatPrice(result.amount) : "") +
+        "</p>" +
+        '<p class="muted" style="margin-top:10px;">Abra o link abaixo pra fazer sua cópia. Qualquer dúvida, me chama no Instagram.</p>' +
+        '<p style="margin-top:16px;">' + cta + "</p>";
+      return;
+    }
+
     let productTitle = "";
     try {
       const data = await fetchJSON("/content/produtos-digitais.json");

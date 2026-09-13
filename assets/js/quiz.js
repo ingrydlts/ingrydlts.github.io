@@ -181,13 +181,26 @@ import { fetchJSON, escapeHtml, qs } from "/assets/js/render.js";
       cta + "</div>";
   }
 
+  // client_reference_id fixo — é assim que POST /api/purchase/verify-session
+  // (worker.js) sabe, quando a compradora volta do Stripe pra
+  // /produtos-digitais/obrigado/, que essa venda é a Etapa 2 e devolve o
+  // link do Drive em vez de só confirmar a compra. Mesma técnica de
+  // assets/js/purchase.js (withProductSlug).
+  var ETAPA2_SLUG = "planilha-financeira-etapa-2";
+
+  function withClientReferenceId(paymentLink, slug) {
+    if (!paymentLink) return paymentLink;
+    var sep = paymentLink.indexOf("?") === -1 ? "?" : "&";
+    return paymentLink + sep + "client_reference_id=" + encodeURIComponent(slug);
+  }
+
   function renderLocked(cfg) {
     var l = cfg.locked || {};
     var e2 = l.etapa2 || {};
     var etapa2HTML = "";
     if (e2.enabled !== false) {
       var cta = e2.link
-        ? '<a class="btn" href="' + escapeHtml(e2.link) + '" target="_blank" rel="noopener">' + escapeHtml(e2.ctaLabel || "Quero continuar") + "</a>"
+        ? '<a class="btn" href="' + escapeHtml(withClientReferenceId(e2.link, ETAPA2_SLUG)) + '" target="_blank" rel="noopener">' + escapeHtml(e2.ctaLabel || "Quero continuar") + "</a>"
         : '<p class="muted">' + escapeHtml(e2.pendingNotice || "") + "</p>";
       etapa2HTML =
         '<div class="pd-quiz-etapa2"><h3>' + escapeHtml(e2.title || "") + '</h3><span class="pd-quiz-etapa2-price">' +

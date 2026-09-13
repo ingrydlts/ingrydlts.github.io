@@ -907,7 +907,14 @@ async function handleVerifyPurchase(request, env) {
       .run();
   }
 
-  return json({ ok: true, slug, amount, currency });
+  // A Etapa 2 (5€) não é um produto do catálogo — é a mesma planilha do
+  // /acesso-vip/, vendida pra quem ficou de fora das 10 vagas grátis. Só
+  // devolve o link do Drive quando o slug bate com esse, e só depois de já
+  // ter confirmado acima (session.payment_status === 'paid') que essa
+  // sessão específica foi paga de verdade.
+  const driveLink = slug === PLANILHA_ETAPA2_SLUG ? (env.QUIZ_DRIVE_LINK || null) : null;
+
+  return json({ ok: true, slug, amount, currency, driveLink });
 }
 
 async function handleRestoreAccess(request, env) {
@@ -1034,6 +1041,12 @@ async function handleGetPremiumArticle(request, env, url) {
 // ---- Questionário de vagas limitadas (link do Drive), D1 ----
 
 const QUIZ_COUNTER_ID = 'default';
+// slug fixo do client_reference_id anexado ao Payment Link da Etapa 2
+// (5€, oferta de quem ficou de fora das 10 vagas grátis em /acesso-vip/) —
+// ver renderLocked em assets/js/quiz.js. Não é um produto do catálogo
+// (content/produtos-digitais.json), então handleVerifyPurchase trata esse
+// slug à parte pra devolver o link do Drive em vez de só confirmar a venda.
+const PLANILHA_ETAPA2_SLUG = 'planilha-financeira-etapa-2';
 
 function quizLimit(env) {
   const n = Number(env.QUIZ_LIMIT);
