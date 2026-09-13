@@ -97,13 +97,13 @@
   },
   "locked": {
     "title": "As 10 vagas de teste gratuitas já foram preenchidas",
-    "body": "Suas respostas ficaram salvas e eu vou ler cada uma delas. Mas ainda dá pra participar: abri mais 10 vagas de teste por um valor simbólico. Quem entra nessa leva passa pelo mesmo processo de 7 dias e garante a versão final da planilha de graça, quando eu lançar.",
+    "body": "Suas respostas ficaram salvas e eu vou ler cada uma delas. Mas ainda dá pra participar: abri mais 10 vagas de tester Premium, por um valor simbólico.",
     "etapa2": {
       "enabled": true,
-      "title": "Quero uma das 10 vagas pagas",
-      "body": "Por 5€, você entra na próxima leva de teste — mesmo processo de 7 dias, mesma planilha — e garante a versão final gratuita quando eu lançar.",
-      "priceLabel": "5€",
-      "ctaLabel": "Quero minha vaga por 5€",
+      "title": "Vire uma tester Premium",
+      "body": "Você passa pelo mesmo processo de 7 dias de teste e garante, de graça, a versão final da Planilha Financeira quando eu lançar. Esses 5€ são simbólicos — é o seu jeito de apoiar o desenvolvimento de sistemas que facilitam a vida de quem migra pra França, como esse.",
+      "priceLabel": "5€ simbólicos",
+      "ctaLabel": "Quero ser tester Premium",
       "link": "https://buy.stripe.com/6oUaEXfsN3otazjdOpaR204",
       "stripePublishableKey": "pk_live_51U3LD0FRLmE1pnVN25avzeZpEU5tIdVGUerbVZs4kSBLrZflOvBemXdpm8wFvjULQOiQAIJLy3zTNBO6AcI5OQZ400CxBnk3ku",
       "pendingNotice": "O pagamento ainda está sendo preparado — assim que estiver pronto, aviso você direto no Instagram."
@@ -112,7 +112,7 @@
   "faq": [
     {
       "q": "Preciso pagar alguma coisa pra testar a planilha?",
-      "a": "As 10 primeiras respostas recebem acesso gratuito em troca do feedback ao final dos 7 dias de teste. Depois que essas fecharem, tem mais 10 vagas por um valor simbólico de 5€, com o mesmo processo de teste."
+      "a": "As 10 primeiras respostas recebem acesso gratuito em troca do feedback ao final dos 7 dias de teste. Depois que essas fecharem, tem mais 10 vagas de tester Premium por um valor simbólico de 5€, com o mesmo processo de teste."
     },
     {
       "q": "Preciso saber usar Google Sheets pra participar?",
@@ -124,11 +124,11 @@
     },
     {
       "q": "As vagas já acabaram, ainda vale a pena responder?",
-      "a": "Vale — sua resposta fica salva, e você pode entrar numa das 10 vagas pagas (5€) pra testar comigo do mesmo jeito, garantindo a versão final de graça no lançamento."
+      "a": "Vale — sua resposta fica salva, e você pode virar uma tester Premium (5€ simbólicos) pra testar comigo do mesmo jeito, garantindo a versão final de graça no lançamento e apoiando o desenvolvimento de novos sistemas."
     },
     {
       "q": "Se eu quiser comprar a versão final depois, tenho desconto por ter testado?",
-      "a": "Tem sim, e o desconto depende de como você testou: quem entrou nas 10 vagas gratuitas ganha 50% de desconto na versão final; quem entrou numa das 10 vagas pagas (5€) ganha a versão final de graça."
+      "a": "Tem sim, e o desconto depende de como você testou: quem entrou nas 10 vagas gratuitas ganha 50% de desconto na versão final; quem virou tester Premium (5€) ganha a versão final de graça."
     }
   ]
 }
