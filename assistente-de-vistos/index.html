@@ -331,7 +331,7 @@
       state.instagram ? ('Instagram: ' + state.instagram) : null,
       state.ue ? ('Cidadania UE: ' + state.ue) : null,
       state.idade ? ('Idade: ' + state.idade) : null,
-      state.jaEsta ? ('Já está na França: ' + state.jaEsta) : null,
+      state.jaEsta ? ('Chegada na França: ' + state.jaEsta) : null,
       state.objetivo ? ('Objetivo: ' + state.objetivo) : null,
       state.tipo ? ('Tipo: ' + state.tipo) : null,
       state.prontidao ? ('Situação: ' + state.prontidao) : null,
@@ -397,7 +397,7 @@
     if (state.ue === null) return { key:'ue', bot: 'Prazer, ' + state.nome + '! Primeira pergunta: você já tem cidadania de algum país da União Europeia?', type:'buttons', options:['Sim','Não'] };
     if (state.ue === 'Sim') return resultadoD();
     if (state.idade === null) return { key:'idade', bot:'Beleza. Qual sua faixa de idade?', type:'buttons', options:['Abaixo de 30','30 ou mais'] };
-    if (state.jaEsta === null) return { key:'jaEsta', bot:'Você já está na França?', type:'buttons', options:['Sim','Não'] };
+    if (state.jaEsta === null) return { key:'jaEsta', bot:'Qual é a sua data de chegada na França?', type:'text', placeholder:'dd/mm/aaaa', fallbackLabel:'Ainda não tenho' };
     if (state.objetivo === null) return { key:'objetivo', bot:'Qual é o seu principal objetivo?', type:'buttons', options:['Estudar','Trabalhar','Estar com cônjuge ou filho(a) francês(a) ou da UE','Acompanhar alguém que já está na França'] };
     if (state.objetivo === 'Acompanhar alguém que já está na França') return resultadoE();
     if (state.tipo === null) return { key:'tipo', bot: 'Aqui estão as possibilidades de visto que você pode pedir — clique em cada um pra entender os pré-requisitos.', type:'tipoExplorer', options: tipoOptionsFor(state.objetivo) };
@@ -626,6 +626,18 @@
         textInput.placeholder = step.placeholder || 'Escreva aqui...';
         textInput.value = '';
         textInput.focus();
+        if (step.fallbackLabel){
+          const box = document.createElement('div');
+          box.className = 'options';
+          const btn = document.createElement('button');
+          btn.className = 'opt-btn';
+          btn.type = 'button';
+          btn.textContent = step.fallbackLabel;
+          btn.onclick = function(){ inputbar.classList.add('hidden'); answer(step.key, step.fallbackLabel); };
+          box.appendChild(btn);
+          chat.appendChild(box);
+          scrollDown();
+        }
       } else if (step.type === 'result'){
         inputbar.classList.add('hidden');
 
