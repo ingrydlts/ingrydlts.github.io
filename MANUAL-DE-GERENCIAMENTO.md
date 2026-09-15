@@ -61,11 +61,22 @@ Pronto — o botão "Ir para pagamento seguro" passa a levar direto pra lá assi
 
 ## 4. Adicionar ou editar uma indicação de afiliado
 
-Vale tanto pra "Produtos de estudo" quanto "Produtos de compras" — mesma estrutura nas duas seções do `/admin`.
+Vale tanto pra "Produtos de estudo" quanto "Produtos de compras" — mesma estrutura nas duas seções do `/admin`, passo a passo idêntico.
 
-1. Adicione um item: **título**, **descrição curta**, **foto** e **link de afiliado**.
-2. Não precisa adicionar o selo "Publicité" manualmente — ele aparece sozinho em todo card dessas duas categorias, porque é exigência legal (Loi Influenceurs) e não pode depender de alguém lembrar de marcar.
-3. Se o link for da Amazon, lembre que o texto fixo exigido pelo programa de afiliados ("En tant que Partenaire Amazon...") já está no rodapé da página — não precisa repetir por produto.
+1. Acesse `seusite.com/admin` (ex.: `ingrydlts.github.io/admin`) e entre com sua conta do GitHub — só precisa fazer login uma vez por sessão.
+2. No menu lateral, clique em **"Produtos de estudo (afiliados)"** ou **"Produtos de compras (afiliados)"**, conforme o caso.
+3. Clique em **"Lista de indicações de estudo/de compras"** (é um arquivo só, com todos os itens dentro).
+4. Clique em **"+ Adicionar item"**, dentro do bloco "Itens", para criar uma indicação nova (ou clique numa já existente pra editar).
+5. Preencha os campos:
+   - **Ativo no site** *(só aparece em "Produtos de estudo")* — deixe ligado. Serve pra tirar do ar sem apagar o item, caso um dia queira.
+   - **Título** — nome do produto.
+   - **Descrição curta** — a frase que aparece no card, embaixo do título.
+   - **Imagem** — clique no campo e envie a foto do computador (ideal: 1200×900px, horizontal). Ela sobe sozinha pro `/images/uploads/`.
+   - **Link de afiliado** — cole aqui a URL de rastreamento do programa (Amazon Partenaires, Awin, Sovrn etc.).
+6. **Regra que não abre exceção: sem link de afiliado preenchido, o item não aparece no site** — mesmo que você salve/publique. É assim de propósito, pra nunca existir um card clicável que não vai a lugar nenhum. Então só publique quando já tiver o link em mãos; se quiser deixar o rascunho pronto antes de ter o link, salve sem clicar em "Publish" (fica guardado, mas não visível).
+7. Clique em **"Publish"**. Espere ~1 minuto (tempo do GitHub Pages republicar) e confira na página real (`/produtos-de-estudo/` ou `/produtos-de-compras/`).
+8. Não precisa adicionar o selo "Publicité" manualmente — ele aparece sozinho em todo card dessas duas categorias, porque é exigência legal (Loi Influenceurs) e não pode depender de alguém lembrar de marcar.
+9. Se o link for da Amazon, lembre que o texto fixo exigido pelo programa de afiliados ("En tant que Partenaire Amazon...") já está no rodapé da página de compras — não precisa repetir por produto.
 
 ---
 
