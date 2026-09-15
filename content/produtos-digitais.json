@@ -72,11 +72,11 @@
     },
     {
       "active": false,
-      "launchNote": "Preço de teste — acesso completo à planilha, por tempo limitado",
+      "launchNote": "Preço de teste — válido para as próximas 10 compradoras",
       "summary": "A planilha financeira que lança seus gastos fixos sozinha, todo mês, sem você precisar copiar e colar nada.",
-      "stripeLink": "",
+      "stripeLink": "https://buy.stripe.com/6oUaEXfsN3otazjdOpaR204",
       "bundleWith": [],
-      "price": 5,
+      "price": 6,
       "slug": "planilha-financeira-super-integrada-teste",
       "gallery": [
         {
