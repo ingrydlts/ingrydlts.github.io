@@ -113,7 +113,7 @@
 
     try {
       const data = await fetchJSON("/content/produtos-estudo.json");
-      const items = data.items.filter((item) => item.active !== false);
+      const items = data.items.filter((item) => item.active !== false && item.affiliateUrl && item.affiliateUrl.trim());
       if (!items.length) {
         grid.innerHTML = '<p class="empty-state">Nenhuma indicação cadastrada ainda — adicione uma em /admin.</p>';
       } else {

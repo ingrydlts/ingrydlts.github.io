@@ -116,10 +116,11 @@
 
     try {
       const data = await fetchJSON("/content/produtos-compras.json");
-      if (!data.items.length) {
+      const items = data.items.filter((item) => item.affiliateUrl && item.affiliateUrl.trim());
+      if (!items.length) {
         grid.innerHTML = '<p class="empty-state">Nenhuma indicação cadastrada ainda — adicione uma em /admin.</p>';
       } else {
-        grid.innerHTML = data.items.map(function (item) {
+        grid.innerHTML = items.map(function (item) {
           const href = item.affiliateUrl || "#";
           return (
             '<a class="card" href="' + escapeHtml(href) + '" target="_blank" rel="sponsored nofollow noopener" style="color:inherit; position:relative;" data-affiliate-title="' + escapeHtml(item.title) + '">' +
