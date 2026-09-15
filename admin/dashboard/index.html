@@ -107,6 +107,131 @@
   .ins-quiz-status-ok { color: var(--verde-moss); font-weight: 600; }
   .ins-quiz-status-wait { color: var(--texto-secundario); }
 </style>
+
+<!-- Aba "Links UTM" — gerador de links marcados (ver assets/js/main.js,
+     trackAttribution) pra qualquer origem de saída (Instagram, ManyChat,
+     WhatsApp, e-mail, anúncio pago...). Estilo isolado do resto do painel
+     (tudo prefixado .pdlink-*), tema próprio (painel de embarque de
+     aeroporto) — de propósito diferente do visual claro do resto do
+     /admin/dashboard/. -->
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Archivo:wght@600;800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+
+  .pdlink-root, .pdlink-root * { box-sizing: border-box; }
+
+  .pdlink-root {
+    --board-bg: #1A1D22;
+    --panel: #22262C;
+    --line: #3A4048;
+    --line-soft: #2C3138;
+    --amber: #F5A623;
+    --amber-dim: #8A611E;
+    --cyan: #5EC8D8;
+    --ivory: #ECE6D8;
+    --text: #E7E4DC;
+    --text-dim: #9AA0A6;
+    --text-faint: #5F656C;
+    --danger: #E2685A;
+
+    background: var(--board-bg);
+    color: var(--text);
+    font-family: 'IBM Plex Sans', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    padding: 28px 20px 36px;
+    border-radius: 12px;
+  }
+
+  .pdlink-wrap { max-width: 760px; margin: 0 auto; display: flex; flex-direction: column; gap: 22px; }
+
+  .pdlink-board-header { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 22px 22px 20px; position: relative; overflow: hidden; }
+  .pdlink-board-header::before {
+    content: ""; position: absolute; inset: 0;
+    background: repeating-linear-gradient(to bottom, rgba(0,0,0,0.16) 0px, rgba(0,0,0,0.16) 1px, transparent 1px, transparent 4px);
+    pointer-events: none; opacity: .5;
+  }
+  .pdlink-board-eyebrow { font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; letter-spacing: .14em; color: var(--cyan); text-transform: uppercase; display: flex; align-items: center; gap: 8px; position: relative; z-index: 1; }
+  .pdlink-board-eyebrow .pdlink-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--amber); box-shadow: 0 0 6px var(--amber); }
+  @media (prefers-reduced-motion: no-preference) {
+    .pdlink-board-eyebrow .pdlink-dot { animation: pdlinkBlink 2.6s steps(1,end) infinite; }
+  }
+  @keyframes pdlinkBlink { 0%,60% { opacity: 1; } 62%,68% { opacity: .15; } 70%,100% { opacity: 1; } }
+
+  .pdlink-h1 { font-family: 'Archivo', sans-serif; font-weight: 800; font-size: clamp(24px,4.4vw,32px); letter-spacing: .01em; margin: 10px 0 6px; text-wrap: balance; color: var(--ivory); position: relative; z-index: 1; }
+  .pdlink-board-sub { font-size: 14px; color: var(--text-dim); max-width: 52ch; line-height: 1.5; margin: 0; position: relative; z-index: 1; }
+
+  .pdlink-panel { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 22px; }
+  .pdlink-field { display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px; }
+  .pdlink-field:last-child { margin-bottom: 0; }
+  .pdlink-label { font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--text-faint); }
+
+  .pdlink-input { background: var(--board-bg); border: 1px solid var(--line); border-radius: 4px; color: var(--ivory); font-family: 'IBM Plex Mono', monospace; font-size: 14.5px; padding: 11px 12px; width: 100%; outline: none; transition: border-color .15s ease; }
+  .pdlink-input:focus { border-color: var(--amber); }
+  .pdlink-input::placeholder { color: var(--text-faint); }
+
+  .pdlink-gates { display: flex; flex-wrap: wrap; gap: 8px; }
+  .pdlink-gate { font-family: 'IBM Plex Mono', monospace; font-size: 13px; letter-spacing: .03em; background: var(--board-bg); border: 1px solid var(--line); color: var(--text-dim); padding: 9px 14px; border-radius: 4px; cursor: pointer; display: flex; align-items: center; gap: 7px; }
+  .pdlink-gate:hover { border-color: var(--text-faint); }
+  .pdlink-gate:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+  .pdlink-gate[aria-pressed="true"] { background: rgba(245,166,35,.12); border-color: var(--amber); color: var(--amber); }
+  .pdlink-gate .pdlink-code { color: var(--text-faint); font-size: 11px; }
+  .pdlink-gate[aria-pressed="true"] .pdlink-code { color: var(--amber-dim); }
+
+  .pdlink-custom-medium { margin-top: 10px; display: none; }
+  .pdlink-custom-medium.show { display: block; }
+
+  .pdlink-row-suggest { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .pdlink-chip-suggest { font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; color: var(--text-faint); background: transparent; border: 1px dashed var(--line); border-radius: 3px; padding: 4px 9px; cursor: pointer; }
+  .pdlink-chip-suggest:hover { color: var(--cyan); border-color: var(--cyan); }
+
+  .pdlink-issue-btn { font-family: 'IBM Plex Mono', monospace; font-weight: 600; font-size: 14px; letter-spacing: .06em; text-transform: uppercase; background: var(--amber); color: #1A1200; border: none; border-radius: 4px; padding: 13px 20px; cursor: pointer; width: 100%; margin-top: 6px; transition: filter .15s ease; }
+  .pdlink-issue-btn:hover { filter: brightness(1.08); }
+  .pdlink-issue-btn:active { filter: brightness(.95); }
+  .pdlink-issue-btn:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+
+  .pdlink-hint { font-size: 12.5px; color: var(--text-faint); margin: 2px 0 0; line-height: 1.5; }
+
+  .pdlink-stub { display: none; background: var(--ivory); color: #2B2620; border-radius: 6px; position: relative; padding: 20px 22px 22px; box-shadow: 0 10px 26px rgba(0,0,0,.32); }
+  .pdlink-stub.show { display: block; }
+  .pdlink-stub::before, .pdlink-stub::after { content: ""; position: absolute; width: 20px; height: 20px; background: var(--board-bg); border-radius: 50%; top: 50%; transform: translateY(-50%); }
+  .pdlink-stub::before { left: -10px; }
+  .pdlink-stub::after { right: -10px; }
+  .pdlink-stub-cut { position: absolute; top: 0; bottom: 0; left: 72%; border-left: 2px dashed rgba(43,38,32,.28); }
+  .pdlink-stub-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 14px; flex-wrap: wrap; }
+  .pdlink-stub-label { font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; letter-spacing: .12em; text-transform: uppercase; color: #7A6F5C; }
+  .pdlink-stub-dest { font-family: 'Archivo', sans-serif; font-weight: 800; font-size: 17px; word-break: break-word; margin-top: 3px; }
+  .pdlink-stub-meta { text-align: right; font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: #7A6F5C; }
+  .pdlink-stub-link-row { margin-top: 16px; display: flex; gap: 10px; align-items: stretch; flex-wrap: wrap; }
+  .pdlink-stub-link { flex: 1; min-width: 0; background: #fff; border: 1px solid rgba(43,38,32,.18); border-radius: 4px; padding: 10px 12px; font-family: 'IBM Plex Mono', monospace; font-size: 12.5px; line-height: 1.5; word-break: break-all; }
+  .pdlink-copy-btn { font-family: 'IBM Plex Mono', monospace; font-weight: 600; font-size: 12.5px; letter-spacing: .05em; text-transform: uppercase; background: #2B2620; color: var(--ivory); border: none; border-radius: 4px; padding: 10px 16px; cursor: pointer; white-space: nowrap; }
+  .pdlink-copy-btn:hover { background: #3a332a; }
+  .pdlink-copy-btn:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+  .pdlink-copy-btn[data-copied="true"] { background: #3f6b3f; color: #fff; }
+
+  .pdlink-manifest-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+  .pdlink-h2 { font-family: 'Archivo', sans-serif; font-weight: 800; font-size: 15px; letter-spacing: .03em; text-transform: uppercase; color: var(--text-dim); margin: 0; }
+  .pdlink-clear-btn { background: none; border: none; color: var(--text-faint); font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; text-decoration: underline; cursor: pointer; padding: 4px; }
+  .pdlink-clear-btn:hover { color: var(--danger); }
+
+  .pdlink-manifest-table { margin-top: 10px; border-top: 1px solid var(--line-soft); }
+  /* Linhas geradas pelo JS deste painel (o bloco de script logo depois do
+     HTML da aba "Links UTM") — classes sem prefixo
+     (.manifest-row/.time/.dest/.channel-chip/.row-copy), escopadas aqui
+     pelo id único do container (#manifestTable) em vez de renomear o
+     template literal do JS. */
+  #manifestTable .manifest-row { display: grid; grid-template-columns: 64px 1fr 96px 30px; gap: 10px; align-items: center; padding: 11px 4px; border-bottom: 1px solid var(--line-soft); font-size: 12.5px; }
+  #manifestTable .time { font-family: 'IBM Plex Mono', monospace; font-variant-numeric: tabular-nums; color: var(--text-faint); font-size: 12px; }
+  #manifestTable .dest { color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: 'IBM Plex Mono', monospace; font-size: 12px; }
+  #manifestTable .channel-chip { font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; letter-spacing: .05em; text-transform: uppercase; color: var(--cyan); border: 1px solid rgba(94,200,216,.35); border-radius: 3px; padding: 3px 7px; text-align: center; white-space: nowrap; }
+  #manifestTable .row-copy { background: none; border: none; color: var(--text-faint); cursor: pointer; font-size: 14px; padding: 2px; }
+  #manifestTable .row-copy:hover { color: var(--amber); }
+  #manifestTable .manifest-empty { padding: 22px 4px; color: var(--text-faint); font-size: 13px; text-align: center; }
+
+  @media (max-width: 480px) {
+    #manifestTable .manifest-row { grid-template-columns: 52px 1fr 30px; }
+    #manifestTable .channel-chip { display: none; }
+    .pdlink-stub-meta { text-align: left; }
+  }
+</style>
 </head>
 <body>
 
@@ -131,9 +256,325 @@
     <p class="ins-status" id="ins-status">Carregando…</p>
 
     <nav class="ins-pagenav">
+      <button type="button" class="ins-tab" data-page="links">Links UTM</button>
       <button type="button" class="ins-tab is-active" data-page="insights">Insights</button>
       <button type="button" class="ins-tab" data-page="revenue">Revenue</button>
     </nav>
+
+    <div id="page-links" class="ins-page pdlink-root" hidden>
+      <div class="pdlink-wrap">
+
+        <div class="pdlink-board-header">
+          <div class="pdlink-board-eyebrow"><span class="pdlink-dot"></span> Por Dentro &middot; controle de saída</div>
+          <h1 class="pdlink-h1">Painel de embarque de links</h1>
+          <p class="pdlink-board-sub">Qualquer link de saída pro seu site — bio do Instagram, ManyChat, WhatsApp, e-mail, anúncio pago — sai daqui carimbado com utm_source, utm_medium e utm_campaign. Assim o dashboard deixa de jogar tudo em "(direto)", venha o clique de onde vier.</p>
+        </div>
+
+        <div class="pdlink-panel">
+          <div class="pdlink-field">
+            <label class="pdlink-label" for="destino">Destino &mdash; URL do artigo ou página</label>
+            <input type="url" class="pdlink-input" id="destino" placeholder="https://seusite.com/au-pair-franca-direitos-e-sinais-de-alerta" autocomplete="off">
+            <p class="pdlink-hint">Cole a URL completa. Se ela já tiver parâmetros (?algo=), os utms são adicionados sem estragar o resto.</p>
+          </div>
+
+          <div class="pdlink-field">
+            <label class="pdlink-label">Portão de origem &mdash; de onde vem esse link (utm_source)</label>
+            <div class="pdlink-gates" id="originGroup" role="group" aria-label="Origem">
+              <button type="button" class="pdlink-gate" data-value="instagram" aria-pressed="true">Instagram <span class="pdlink-code">IG</span></button>
+              <button type="button" class="pdlink-gate" data-value="manychat" aria-pressed="false">ManyChat <span class="pdlink-code">BOT</span></button>
+              <button type="button" class="pdlink-gate" data-value="whatsapp" aria-pressed="false">WhatsApp <span class="pdlink-code">WA</span></button>
+              <button type="button" class="pdlink-gate" data-value="youtube" aria-pressed="false">YouTube <span class="pdlink-code">YT</span></button>
+              <button type="button" class="pdlink-gate" data-value="newsletter" aria-pressed="false">Newsletter <span class="pdlink-code">MAIL</span></button>
+              <button type="button" class="pdlink-gate" data-value="google" aria-pressed="false">Google <span class="pdlink-code">SEO</span></button>
+              <button type="button" class="pdlink-gate" data-value="meta-ads" aria-pressed="false">Anúncio Meta <span class="pdlink-code">ADS</span></button>
+              <button type="button" class="pdlink-gate" data-value="tiktok" aria-pressed="false">TikTok <span class="pdlink-code">TT</span></button>
+              <button type="button" class="pdlink-gate" data-value="outro-origem" aria-pressed="false">Outro <span class="pdlink-code">--</span></button>
+            </div>
+            <div class="pdlink-custom-medium" id="customOriginWrap">
+              <input type="text" class="pdlink-input" id="customOrigin" placeholder="nome da origem, ex: linktree, podcast, parceria-marca-x">
+            </div>
+          </div>
+
+          <div class="pdlink-field">
+            <label class="pdlink-label">Portão de meio &mdash; tipo de canal (utm_medium)</label>
+            <div class="pdlink-gates" id="mediumGroup" role="group" aria-label="Meio">
+              <button type="button" class="pdlink-gate" data-value="social" aria-pressed="true">Social <span class="pdlink-code">soc</span></button>
+              <button type="button" class="pdlink-gate" data-value="chat" aria-pressed="false">Chat/Bot <span class="pdlink-code">bot</span></button>
+              <button type="button" class="pdlink-gate" data-value="email" aria-pressed="false">E-mail <span class="pdlink-code">mail</span></button>
+              <button type="button" class="pdlink-gate" data-value="cpc" aria-pressed="false">Anúncio pago <span class="pdlink-code">cpc</span></button>
+              <button type="button" class="pdlink-gate" data-value="organic" aria-pressed="false">Organico <span class="pdlink-code">org</span></button>
+              <button type="button" class="pdlink-gate" data-value="referral" aria-pressed="false">Indicação <span class="pdlink-code">ref</span></button>
+              <button type="button" class="pdlink-gate" data-value="outro-meio" aria-pressed="false">Outro <span class="pdlink-code">--</span></button>
+            </div>
+            <div class="pdlink-custom-medium" id="customMediumWrap">
+              <input type="text" class="pdlink-input" id="customMedium" placeholder="nome do meio, ex: afiliado">
+            </div>
+            <p class="pdlink-hint" id="mediumAutoHint"></p>
+          </div>
+
+          <div class="pdlink-field">
+            <label class="pdlink-label" for="conteudo">Assento &mdash; utm_content, o ponto exato do link (opcional)</label>
+            <input type="text" class="pdlink-input" id="conteudo" placeholder="ex: bio-link, story-15h, post-carrossel, botao-header" autocomplete="off">
+            <p class="pdlink-hint">Use pra saber qual botão/story/posição específica trouxe o clique — não só o canal.</p>
+          </div>
+
+          <div class="pdlink-field">
+            <label class="pdlink-label" for="campanha">Número do voo &mdash; campanha (opcional)</label>
+            <input type="text" class="pdlink-input" id="campanha" list="campanhaSuggest" placeholder="ex: boas-vindas, acesso-vip, promo-etapa2" autocomplete="off">
+            <datalist id="campanhaSuggest">
+              <option value="boas-vindas">
+              <option value="acesso-vip">
+              <option value="au-pair-franca">
+              <option value="promo-etapa2">
+            </datalist>
+            <div class="pdlink-row-suggest">
+              <button type="button" class="pdlink-chip-suggest" data-fill="boas-vindas">boas-vindas</button>
+              <button type="button" class="pdlink-chip-suggest" data-fill="acesso-vip">acesso-vip</button>
+              <button type="button" class="pdlink-chip-suggest" data-fill="promo-etapa2">promo-etapa2</button>
+            </div>
+          </div>
+
+          <button type="button" class="pdlink-issue-btn" id="issueBtn">Emitir link</button>
+        </div>
+
+        <div class="pdlink-stub" id="stub">
+          <div class="pdlink-stub-cut"></div>
+          <div class="pdlink-stub-top">
+            <div>
+              <div class="pdlink-stub-label">Destino</div>
+              <div class="pdlink-stub-dest" id="stubDest">&mdash;</div>
+            </div>
+            <div class="pdlink-stub-meta">
+              <div id="stubChannel">&mdash;</div>
+              <div id="stubTime">&mdash;</div>
+            </div>
+          </div>
+          <div class="pdlink-stub-link-row">
+            <div class="pdlink-stub-link" id="stubLink">&mdash;</div>
+            <button type="button" class="pdlink-copy-btn" id="copyBtn">Copiar link</button>
+          </div>
+        </div>
+
+        <div class="pdlink-panel">
+          <div class="pdlink-manifest-head">
+            <h2 class="pdlink-h2">Manifesto de emissões</h2>
+            <button type="button" class="pdlink-clear-btn" id="clearBtn">limpar histórico</button>
+          </div>
+          <div class="pdlink-manifest-table" id="manifestTable"></div>
+        </div>
+
+      </div>
+    </div>
+
+    <script>
+    (function(){
+      var originGroup = document.getElementById('originGroup');
+      var mediumGroup = document.getElementById('mediumGroup');
+      var customOriginWrap = document.getElementById('customOriginWrap');
+      var customOrigin = document.getElementById('customOrigin');
+      var customMediumWrap = document.getElementById('customMediumWrap');
+      var customMedium = document.getElementById('customMedium');
+      var mediumAutoHint = document.getElementById('mediumAutoHint');
+      var destinoInput = document.getElementById('destino');
+      var conteudoInput = document.getElementById('conteudo');
+      var campanhaInput = document.getElementById('campanha');
+      var issueBtn = document.getElementById('issueBtn');
+      var stub = document.getElementById('stub');
+      var stubDest = document.getElementById('stubDest');
+      var stubChannel = document.getElementById('stubChannel');
+      var stubTime = document.getElementById('stubTime');
+      var stubLink = document.getElementById('stubLink');
+      var copyBtn = document.getElementById('copyBtn');
+      var manifestTable = document.getElementById('manifestTable');
+      var clearBtn = document.getElementById('clearBtn');
+
+      var selectedOrigin = 'instagram';
+      var selectedMedium = 'social';
+      var mediumTouchedByUser = false;
+
+      var ORIGIN_DEFAULT_MEDIUM = {
+        instagram: 'social', manychat: 'chat', whatsapp: 'chat', youtube: 'social',
+        newsletter: 'email', google: 'organic', 'meta-ads': 'cpc', tiktok: 'social'
+      };
+
+      function setPressed(group, value) {
+        group.querySelectorAll('.pdlink-gate').forEach(function (g) {
+          g.setAttribute('aria-pressed', String(g.dataset.value === value));
+        });
+      }
+
+      originGroup.addEventListener('click', function (e) {
+        var btn = e.target.closest('.pdlink-gate');
+        if (!btn) return;
+        selectedOrigin = btn.dataset.value;
+        setPressed(originGroup, selectedOrigin);
+        customOriginWrap.classList.toggle('show', selectedOrigin === 'outro-origem');
+        if (selectedOrigin === 'outro-origem') customOrigin.focus();
+
+        if (!mediumTouchedByUser) {
+          var suggestion = ORIGIN_DEFAULT_MEDIUM[selectedOrigin];
+          if (suggestion) {
+            selectedMedium = suggestion;
+            setPressed(mediumGroup, suggestion);
+            customMediumWrap.classList.remove('show');
+            mediumAutoHint.textContent = 'Sugerido automaticamente pela origem — clique em outro se quiser trocar.';
+          }
+        }
+      });
+
+      mediumGroup.addEventListener('click', function (e) {
+        var btn = e.target.closest('.pdlink-gate');
+        if (!btn) return;
+        mediumTouchedByUser = true;
+        selectedMedium = btn.dataset.value;
+        setPressed(mediumGroup, selectedMedium);
+        customMediumWrap.classList.toggle('show', selectedMedium === 'outro-meio');
+        if (selectedMedium === 'outro-meio') customMedium.focus();
+        mediumAutoHint.textContent = '';
+      });
+
+      document.querySelectorAll('.pdlink-chip-suggest').forEach(function (chip) {
+        chip.addEventListener('click', function () { campanhaInput.value = chip.dataset.fill; });
+      });
+
+      function slugify(str) {
+        return str.trim().toLowerCase()
+          .normalize('NFD').replace(/[̀-ͯ]/g, '')
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/^-+|-+$/g, '');
+      }
+
+      function buildLink(base, source, medium, campaign, content) {
+        var params = [];
+        if (source) params.push(['utm_source', source]);
+        if (medium) params.push(['utm_medium', medium]);
+        if (campaign) params.push(['utm_campaign', campaign]);
+        if (content) params.push(['utm_content', content]);
+        try {
+          var url = new URL(base);
+          params.forEach(function (p) { url.searchParams.set(p[0], p[1]); });
+          return url.toString();
+        } catch (e) {
+          var sep = base.indexOf('?') === -1 ? '?' : '&';
+          var qs = params.map(function (p) { return p[0] + '=' + encodeURIComponent(p[1]); }).join('&');
+          return base + (qs ? sep + qs : '');
+        }
+      }
+
+      function loadHistory() {
+        try { return JSON.parse(localStorage.getItem('pd_link_utm_history') || '[]'); }
+        catch (e) { return []; }
+      }
+      function saveHistory(list) {
+        try { localStorage.setItem('pd_link_utm_history', JSON.stringify(list.slice(0, 20))); }
+        catch (e) {}
+      }
+
+      function renderManifest() {
+        var list = loadHistory();
+        if (!list.length) {
+          manifestTable.innerHTML = '<div class="manifest-empty">Nenhum link emitido ainda nesta aba.</div>';
+          return;
+        }
+        manifestTable.innerHTML = list.map(function (item, i) {
+          return '<div class="manifest-row">' +
+            '<div class="time">' + item.time + '</div>' +
+            '<div class="dest" title="' + item.link + '">' + item.dest + '</div>' +
+            '<div class="channel-chip">' + item.channel + '</div>' +
+            '<button type="button" class="row-copy" data-idx="' + i + '" title="Copiar link" aria-label="Copiar link">&#10697;</button>' +
+            '</div>';
+        }).join('');
+      }
+
+      manifestTable.addEventListener('click', function (e) {
+        var btn = e.target.closest('.row-copy');
+        if (!btn) return;
+        var list = loadHistory();
+        var item = list[Number(btn.dataset.idx)];
+        if (item) copyText(item.link, btn);
+      });
+
+      clearBtn.addEventListener('click', function () {
+        saveHistory([]);
+        renderManifest();
+      });
+
+      function copyText(text, feedbackEl) {
+        function done() {
+          if (!feedbackEl) return;
+          var original = feedbackEl.textContent;
+          var wasCopyBtn = feedbackEl.id === 'copyBtn';
+          if (wasCopyBtn) {
+            feedbackEl.textContent = 'Copiado!';
+            feedbackEl.dataset.copied = 'true';
+            setTimeout(function () { feedbackEl.textContent = original; feedbackEl.dataset.copied = 'false'; }, 1800);
+          }
+        }
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).then(done).catch(function () { fallbackCopy(text, done); });
+        } else {
+          fallbackCopy(text, done);
+        }
+      }
+      function fallbackCopy(text, cb) {
+        try {
+          var ta = document.createElement('textarea');
+          ta.value = text;
+          ta.style.position = 'fixed';
+          ta.style.opacity = '0';
+          document.body.appendChild(ta);
+          ta.select();
+          document.execCommand('copy');
+          document.body.removeChild(ta);
+          cb();
+        } catch (e) {}
+      }
+
+      issueBtn.addEventListener('click', function () {
+        var base = destinoInput.value.trim();
+        if (!base) {
+          destinoInput.focus();
+          destinoInput.style.borderColor = '#E2685A';
+          setTimeout(function () { destinoInput.style.borderColor = ''; }, 1200);
+          return;
+        }
+        var source = selectedOrigin === 'outro-origem' ? (slugify(customOrigin.value) || 'outro') : selectedOrigin;
+        var medium = selectedMedium === 'outro-meio' ? (slugify(customMedium.value) || 'outro') : selectedMedium;
+        var campaign = slugify(campanhaInput.value);
+        var content = slugify(conteudoInput.value);
+        var link = buildLink(base, source, medium, campaign, content);
+
+        var destLabel = base;
+        try { destLabel = new URL(base).pathname.replace(/^\//, '') || new URL(base).hostname; } catch (e) {}
+
+        stubDest.textContent = destLabel;
+        stubChannel.textContent = source.toUpperCase() + ' · ' + medium.toUpperCase();
+        stubTime.textContent = new Date().toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+        stubLink.textContent = link;
+        stub.classList.add('show');
+        copyBtn.dataset.copied = 'false';
+        copyBtn.textContent = 'Copiar link';
+
+        var list = loadHistory();
+        list.unshift({
+          time: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+          dest: destLabel,
+          channel: source,
+          link: link
+        });
+        saveHistory(list);
+        renderManifest();
+
+        stub.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      });
+
+      copyBtn.addEventListener('click', function () {
+        copyText(stubLink.textContent, copyBtn);
+      });
+
+      renderManifest();
+    })();
+    </script>
 
     <div id="page-insights" class="ins-page">
     <div class="ins-kpis" id="ins-kpis"></div>
