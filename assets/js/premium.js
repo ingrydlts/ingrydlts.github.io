@@ -113,11 +113,18 @@ export async function verifySessionFromUrl() {
   url.searchParams.delete("session_id");
   window.history.replaceState({}, "", url.pathname + url.search + url.hash);
 
+  // Atribuição de venda (de onde essa leitora veio, ver trackAttribution em
+  // assets/js/main.js) — mandada junto pro Worker gravar a compra já
+  // carimbada com a origem, pro dashboard mostrar receita por fonte.
+  const attribution = window.PDAttribution
+    ? { first: window.PDAttribution.getFirstTouch(), last: window.PDAttribution.getLastTouch() }
+    : null;
+
   try {
     const res = await fetch(WORKER_BASE + "/api/premium/verify-session", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ session_id: sessionId }),
+      body: JSON.stringify({ session_id: sessionId, attribution }),
     });
     if (!res.ok) return null;
     const data = await res.json();

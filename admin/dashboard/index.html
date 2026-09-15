@@ -243,6 +243,7 @@
 
     <nav class="ins-tabnav">
       <button type="button" class="ins-tab is-active" data-target="vendas">Vendas</button>
+      <button type="button" class="ins-tab" data-target="origem">Vendas por origem</button>
       <button type="button" class="ins-tab" data-target="afiliados">Afiliados</button>
     </nav>
 
@@ -251,6 +252,12 @@
         <h2>Vendas confirmadas por produto</h2>
         <p class="muted">Contadas só depois que o Stripe confirma o pagamento (ver /produtos-digitais/obrigado/) — nada aqui é estimativa de clique.</p>
         <div id="ins-purchases-table"></div>
+      </section>
+
+      <section class="ins-panel" id="panel-origem" hidden>
+        <h2>Receita por origem do clique</h2>
+        <p class="muted">De onde veio a leitora antes de comprar — Instagram, ManyChat, WhatsApp, e-mail, anúncio pago, o que estiver marcado no link (ver o gerador de links UTM). "(sem atribuição)" é venda de antes dessa marcação existir, ou sem localStorage disponível no navegador.</p>
+        <div id="ins-revenue-source-table"></div>
       </section>
 
       <section class="ins-panel" id="panel-afiliados" hidden>
@@ -302,7 +309,8 @@
   // content/produtos-digitais.json) → nome legível na aba Revenue.
   var PRODUCT_LABELS = {
     "planilha-financeira-super-integrada": "Planilha — 25€",
-    "planilha-financeira-super-integrada-teste": "Planilha — teste (5€)"
+    "planilha-financeira-super-integrada-teste": "Planilha — teste (6€)",
+    "assinatura": "Assinatura mensal (artigos premium)"
   };
 
   var token = null;
@@ -449,6 +457,7 @@
     renderRevenueKpis(data);
     renderPurchasesChart(data.purchases || []);
     renderPurchasesTable(data.purchases || []);
+    renderRevenueBySource(data.revenueBySource || []);
     renderAffiliateChart(data.affiliateClicks || []);
     renderAffiliateTable(data.affiliateClicks || []);
   }
@@ -972,7 +981,7 @@
     var el = document.getElementById("rev-kpis");
     var cards = [];
     cards.push(kpiCard(ICONS.coin, formatEuro(k.totalRevenue), "Receita total confirmada", "good", true));
-    cards.push(kpiCard(ICONS.file, k.testeCount, "Vendas — planilha teste (5€)", "", false, "vendas"));
+    cards.push(kpiCard(ICONS.file, k.testeCount, "Vendas — planilha teste (6€)", "", false, "vendas"));
     cards.push(kpiCard(ICONS.file, k.completaCount, "Vendas — planilha completa (25€)", "", false, "vendas"));
     cards.push(kpiCard(ICONS.click, k.totalAffiliateClicks, "Cliques em links de afiliado", "", false, "afiliados"));
     el.innerHTML = cards.join("");
@@ -1009,6 +1018,23 @@
     rows.forEach(function (r) {
       html +=
         "<tr><td>" + escapeHtml(PRODUCT_LABELS[r.product_slug] || r.product_slug || "(produto desconhecido)") + '</td><td class="num">' +
+        r.count + '</td><td class="num">' + formatEuro(r.revenue) + "</td></tr>";
+    });
+    html += "</tbody></table>";
+    el.innerHTML = html;
+  }
+
+  function renderRevenueBySource(rows) {
+    var el = document.getElementById("ins-revenue-source-table");
+    if (!rows.length) {
+      el.innerHTML = '<p class="ins-empty">Ainda não há vendas confirmadas.</p>';
+      return;
+    }
+    var html = '<table class="ins-table"><thead><tr><th>Origem</th><th>Meio</th><th>Vendas</th><th>Receita</th></tr></thead><tbody>';
+    rows.forEach(function (r) {
+      html +=
+        "<tr><td>" + escapeHtml(r.source || "(sem atribuição)") + "</td><td>" +
+        escapeHtml(r.medium || "—") + '</td><td class="num">' +
         r.count + '</td><td class="num">' + formatEuro(r.revenue) + "</td></tr>";
     });
     html += "</tbody></table>";

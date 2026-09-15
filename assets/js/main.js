@@ -151,6 +151,56 @@
   // — então não dá pra checar isGranted() só uma vez na hora do load, tem
   // que também escutar PDConsent.onChange pra pegar quem aceita durante a
   // própria visita.
+  // Resolve de onde essa leitura da página veio — "source" é, em ordem de
+  // prioridade: 1) ?utm_source= da URL (link marcado à mão, ex. ManyChat,
+  // newsletter, bio do Instagram), 2) o domínio de document.referrer se for
+  // de outro site, 3) "(navegação interna)" se o referrer for o próprio
+  // site, 4) "(direto)" se não houver referrer nenhum — caso comum de link
+  // colado em WhatsApp/Instagram, que não repassam o referrer. Usada tanto
+  // pelo evento de page_view (trackPageSource) quanto pela atribuição de
+  // venda (trackAttribution) — as duas precisam do mesmo cálculo.
+  function computeTouch() {
+    var qs;
+    try { qs = new URLSearchParams(window.location.search); } catch (e) { qs = null; }
+    var utmSource = qs ? qs.get("utm_source") : null;
+
+    var refHost = null;
+    if (document.referrer) {
+      try { refHost = new URL(document.referrer).hostname.replace(/^www\./, ""); } catch (e) {}
+    }
+    var siteHost = window.location.hostname;
+
+    var source;
+    if (utmSource) {
+      source = utmSource.trim().toLowerCase().slice(0, 60);
+    } else if (refHost && refHost !== siteHost) {
+      source = refHost;
+    } else if (refHost === siteHost) {
+      source = "(navegação interna)";
+    } else {
+      source = "(direto)";
+    }
+
+    return {
+      source: source,
+      medium: qs ? (qs.get("utm_medium") || null) : null,
+      campaign: qs ? (qs.get("utm_campaign") || null) : null,
+      content: qs ? (qs.get("utm_content") || null) : null,
+      referrer: document.referrer ? document.referrer.slice(0, 300) : null,
+      ts: Date.now()
+    };
+  }
+
+  // De onde a leitora veio até o artigo — 1 evento por carregamento de
+  // página (não trava por localStorage como feedback/enquete: aqui o
+  // interesse é contar visitas, não pessoas únicas).
+  //
+  // O envio em si espera o consentimento (mesmo padrão de analytics.js):
+  // no carregamento a config de cookies ainda não chegou, e a maioria das
+  // visitantes de primeira vez só aceita o banner DEPOIS do DOMContentLoaded
+  // — então não dá pra checar isGranted() só uma vez na hora do load, tem
+  // que também escutar PDConsent.onChange pra pegar quem aceita durante a
+  // própria visita.
   function trackPageSource() {
     if (!window.PDEvents || !window.PDConsent) return;
     var slug = getArticleSlug();
@@ -160,33 +210,14 @@
     function sendOnce() {
       if (sent) return;
       sent = true;
-
-      var qs;
-      try { qs = new URLSearchParams(window.location.search); } catch (e) { qs = null; }
-      var utmSource = qs ? qs.get("utm_source") : null;
-
-      var refHost = null;
-      if (document.referrer) {
-        try { refHost = new URL(document.referrer).hostname.replace(/^www\./, ""); } catch (e) {}
-      }
-      var siteHost = window.location.hostname;
-
-      var source;
-      if (utmSource) {
-        source = utmSource.trim().toLowerCase().slice(0, 60);
-      } else if (refHost && refHost !== siteHost) {
-        source = refHost;
-      } else if (refHost === siteHost) {
-        source = "(navegação interna)";
-      } else {
-        source = "(direto)";
-      }
-
+      var touch = computeTouch();
       window.PDEvents.send("block", slug, {
         type: "page_view",
-        source: source,
-        medium: qs ? (qs.get("utm_medium") || null) : null,
-        referrer: document.referrer ? document.referrer.slice(0, 300) : null
+        source: touch.source,
+        medium: touch.medium,
+        campaign: touch.campaign,
+        content: touch.content,
+        referrer: touch.referrer
       });
     }
 
@@ -197,6 +228,54 @@
       if (granted) sendOnce();
     });
   }
+
+  // Atribuição de venda: guarda o "primeiro toque" (a primeira origem que
+  // trouxe essa leitora, uma vez só) e o "último toque" (a origem mais
+  // recente, atualizada a cada carregamento de página) no localStorage.
+  // Diferente de trackPageSource, roda em QUALQUER página — não só artigo —
+  // porque uma compra pode nascer de /produtos-digitais/, /acesso-vip/ etc.
+  // Quando a compra é confirmada (assets/js/premium.js e
+  // produtos-digitais/obrigado/index.html), esses dois valores são lidos
+  // via window.PDAttribution e mandados junto pro Worker, que grava a venda
+  // já carimbada com a origem — assim o dashboard mostra receita por fonte,
+  // não só visitas por fonte.
+  var ATTRIBUTION_LAST_KEY = "pd_last_touch";
+  var ATTRIBUTION_FIRST_KEY = "pd_first_touch";
+
+  function trackAttribution() {
+    if (!window.PDConsent) return;
+
+    function persist() {
+      var touch = computeTouch();
+      try {
+        window.localStorage.setItem(ATTRIBUTION_LAST_KEY, JSON.stringify(touch));
+        if (!window.localStorage.getItem(ATTRIBUTION_FIRST_KEY)) {
+          window.localStorage.setItem(ATTRIBUTION_FIRST_KEY, JSON.stringify(touch));
+        }
+      } catch (e) {}
+    }
+
+    window.PDConsent.ready.then(function () {
+      if (window.PDConsent.isGranted()) persist();
+    });
+    window.PDConsent.onChange(function (granted) {
+      if (granted) persist();
+    });
+  }
+
+  function readStoredTouch(key) {
+    try {
+      var raw = window.localStorage.getItem(key);
+      return raw ? JSON.parse(raw) : null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  window.PDAttribution = {
+    getFirstTouch: function () { return readStoredTouch(ATTRIBUTION_FIRST_KEY); },
+    getLastTouch: function () { return readStoredTouch(ATTRIBUTION_LAST_KEY); }
+  };
 
   // ---- Checklist (bloco [[CHECKLIST]], ver assets/js/markdown.js) ----
   // Progresso fica salvo no navegador de quem lê (localStorage), por
@@ -376,6 +455,7 @@
     initPollButtons();
     hydrateInteractiveBlocks();
     trackPageSource();
+    trackAttribution();
   });
   document.addEventListener("pd:blocks-rendered", hydrateInteractiveBlocks);
 })();

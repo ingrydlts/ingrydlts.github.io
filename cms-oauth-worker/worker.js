@@ -37,7 +37,9 @@
  *    troca o session_id pelo token e redireciona de volta pro artigo certo
  *    usando o `client_reference_id` — por isso o site sempre anexa
  *    `?client_reference_id=<slug>` nos dois links antes de mandar a leitora
- *    pro Stripe.
+ *    pro Stripe. Além do token, também grava 1 evento de venda em D1 (ver
+ *    logPremiumRevenue) — mesmo formato do item 6, pra entrar no relatório
+ *    de receita por fonte do /admin/dashboard/.
  *
  * 4. Eventos de produto (feedback dos artigos, interações do bot, blocos
  *    interativos) — grava num banco D1, não numa KV, porque o painel de
@@ -105,7 +107,15 @@
  *                                           a sessão foi paga e grava 1 evento
  *                                           de venda em D1 (event_type='block',
  *                                           payload.type='purchase'), idempotente
- *                                           por session_id.
+ *                                           por session_id. O front manda junto
+ *                                           `attribution: {first, last}` (ver
+ *                                           trackAttribution em assets/js/main.js)
+ *                                           — de onde veio o clique que originou
+ *                                           essa venda — gravado no mesmo payload
+ *                                           (source/medium/campaign/content e
+ *                                           first_*), agregado em
+ *                                           /api/insights/summary como
+ *                                           "revenueBySource".
  *    Cliques em link de afiliado (produtos de compras/estudo) usam o mesmo
  *    event_type='block' (payload.type='affiliate_click'), gravados direto do
  *    front-end (sem Stripe envolvido) — ver produtos-de-compras/index.html e
@@ -371,6 +381,51 @@ function lineItemsMatchPrice(lineItems, env) {
   return priceIds.includes(env.STRIPE_ARTICLE_PRICE_ID);
 }
 
+// ---- Atribuição de venda (de onde veio o clique, ver trackAttribution em
+// assets/js/main.js) ----
+//
+// O front manda { first: {...}, last: {...} } — "primeiro toque" (a origem
+// que trouxe a leitora na primeira vez) e "último toque" (a origem mais
+// recente antes da compra) — cada um com source/medium/campaign/content
+// vindos do localStorage do navegador. Nunca confia nesses campos sem
+// limpar: são texto livre mandado pelo cliente, então cada valor é cortado
+// e validado antes de entrar no payload gravado em D1.
+function cleanAttrField(value) {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim().slice(0, 60);
+  return trimmed || null;
+}
+
+function cleanAttrTouch(touch) {
+  if (!touch || typeof touch !== 'object') return {};
+  return {
+    source: cleanAttrField(touch.source),
+    medium: cleanAttrField(touch.medium),
+    campaign: cleanAttrField(touch.campaign),
+    content: cleanAttrField(touch.content)
+  };
+}
+
+// Devolve o objeto pronto pra espalhar dentro do payload do evento —
+// last_* como source/medium/campaign/content "sem prefixo" (é o que os
+// outros agregados, ex. trafficSources, já usam) e first_* com prefixo,
+// pra distinguir "o que trouxe essa venda" de "o que trouxe essa leitora
+// originalmente".
+function attributionPayloadFields(attribution) {
+  const last = cleanAttrTouch(attribution && attribution.last);
+  const first = cleanAttrTouch(attribution && attribution.first);
+  return {
+    source: last.source,
+    medium: last.medium,
+    campaign: last.campaign,
+    content: last.content,
+    first_source: first.source,
+    first_medium: first.medium,
+    first_campaign: first.campaign,
+    first_content: first.content
+  };
+}
+
 async function getPremiumDB(env) {
   const raw = await env.PREMIUM_KV.get(PREMIUM_KEY);
   return raw ? JSON.parse(raw) : {};
@@ -500,7 +555,7 @@ async function handleInsightsSummary(request, env) {
   if (!moderator) return json({ error: 'Sem permissão. Faça login com uma conta que tem acesso ao repositório.' }, 401);
   if (!env.EVENTS_DB) return json({ error: 'Banco de eventos ainda não configurado.' }, 500);
 
-  const [overview, feedback, botFunnel, botAnswers, botOutcomes, checklist, faqOpens, resourceClicks, trafficSources, polls, shareOpens, shareClicks, daily, quizCounter, quizRows, purchases, affiliateClicks] = await Promise.all([
+  const [overview, feedback, botFunnel, botAnswers, botOutcomes, checklist, faqOpens, resourceClicks, trafficSources, polls, shareOpens, shareClicks, daily, quizCounter, quizRows, purchases, revenueBySource, affiliateClicks] = await Promise.all([
     env.EVENTS_DB.prepare('SELECT COUNT(*) as total, COUNT(DISTINCT session_id) as sessions FROM events').all(),
     env.EVENTS_DB.prepare(
       `SELECT article_slug,
@@ -584,13 +639,28 @@ async function handleInsightsSummary(request, env) {
       `SELECT name, instagram, email, ref, answers, liberado, posicao, created_at
        FROM quiz_submissions ORDER BY created_at DESC`
     ).all(),
-    // Vendas confirmadas de produto digital (ver handleVerifyPurchase) — 1
-    // linha por venda, article_slug é o slug do produto comprado.
+    // Vendas confirmadas (produto digital — handleVerifyPurchase — e agora
+    // também assinatura/artigo premium — logPremiumRevenue). article_slug é
+    // null pra assinatura, por isso o COALESCE com payload.product (ver
+    // PRODUCT_LABELS em admin/dashboard/index.html, chave "assinatura").
     env.EVENTS_DB.prepare(
-      `SELECT article_slug as product_slug, COUNT(*) as count,
+      `SELECT COALESCE(article_slug, json_extract(payload,'$.product')) as product_slug, COUNT(*) as count,
               SUM(CAST(json_extract(payload,'$.amount') AS REAL)) as revenue
        FROM events WHERE event_type='block' AND json_extract(payload,'$.type')='purchase'
-       GROUP BY article_slug ORDER BY revenue DESC`
+       GROUP BY product_slug ORDER BY revenue DESC`
+    ).all(),
+    // Mesmas vendas confirmadas, mas agrupadas pela origem do último toque
+    // antes da compra (payload.source/medium, ver trackAttribution em
+    // assets/js/main.js) — pra saber não só QUANTO vendeu, mas DE ONDE veio
+    // quem comprou. "(sem atribuição)" cobre vendas de antes dessa
+    // funcionalidade existir, ou de sessões sem localStorage disponível.
+    env.EVENTS_DB.prepare(
+      `SELECT COALESCE(json_extract(payload,'$.source'), '(sem atribuição)') as source,
+              json_extract(payload,'$.medium') as medium,
+              COUNT(*) as count,
+              SUM(CAST(json_extract(payload,'$.amount') AS REAL)) as revenue
+       FROM events WHERE event_type='block' AND json_extract(payload,'$.type')='purchase'
+       GROUP BY source, medium ORDER BY revenue DESC`
     ).all(),
     // Cliques em link de afiliado (produtos de compras/estudo — ver tracking
     // em produtos-de-compras/index.html e produtos-de-estudo/index.html).
@@ -623,6 +693,7 @@ async function handleInsightsSummary(request, env) {
     shareClicks: shareClicks.results || [],
     daily: daily.results || [],
     purchases: purchases.results || [],
+    revenueBySource: revenueBySource.results || [],
     affiliateClicks: affiliateClicks.results || [],
     quiz: {
       limit: quizLimit(env),
@@ -847,6 +918,7 @@ async function handleVerifySession(request, env) {
       return json({ error: 'Assinatura não corresponde ao plano esperado.' }, 400);
     }
     const token = await mintSubscriptionToken(email, env);
+    await logPremiumRevenue(env, session, sessionId, 'assinatura', null, body.attribution);
     return json({ token, email, scope: 'all', returnSlug });
   }
 
@@ -861,10 +933,52 @@ async function handleVerifySession(request, env) {
       return json({ error: 'Compra não corresponde ao produto esperado.' }, 400);
     }
     const token = await mintArticleToken(email, returnSlug, env);
+    await logPremiumRevenue(env, session, sessionId, 'artigo', returnSlug, body.attribution);
     return json({ token, email, scope: 'article', slug: returnSlug, returnSlug });
   }
 
   return json({ error: 'Modo de pagamento não suportado.' }, 400);
+}
+
+// Grava 1 evento de venda (mesmo formato de handleVerifyPurchase) pra
+// assinatura/compra avulsa de artigo premium — até agora só emitiam token
+// de acesso, sem entrar no "Vendas confirmadas" do /admin/dashboard/. Nunca
+// bloqueia a emissão do token: se o D1 falhar ou não estiver configurado,
+// a leitora ainda recebe o acesso, só não soma nesse relatório.
+async function logPremiumRevenue(env, session, sessionId, product, slug, attribution) {
+  if (!env.EVENTS_DB) return;
+  try {
+    const already = await env.EVENTS_DB.prepare(
+      `SELECT id FROM events WHERE event_type='block' AND json_extract(payload,'$.type')='purchase'
+         AND json_extract(payload,'$.session_id')=? LIMIT 1`
+    ).bind(sessionId).first();
+    if (already) return;
+
+    const amount = typeof session.amount_total === 'number' ? session.amount_total / 100 : null;
+    const attrFields = attributionPayloadFields(attribution);
+
+    await env.EVENTS_DB.prepare(
+      'INSERT INTO events (id, event_type, article_slug, payload, session_id, created_at) VALUES (?, ?, ?, ?, ?, ?)'
+    )
+      .bind(
+        crypto.randomUUID(),
+        'block',
+        slug,
+        JSON.stringify({
+          type: 'purchase',
+          session_id: sessionId,
+          amount,
+          currency: session.currency || null,
+          product,
+          ...attrFields
+        }),
+        null,
+        new Date().toISOString()
+      )
+      .run();
+  } catch (e) {
+    // Não deixa um problema no D1 impedir a leitora de receber o acesso pago.
+  }
 }
 
 // ---- Confirmação de compra de produto digital (planilhas) — D1, público ----
@@ -914,6 +1028,7 @@ async function handleVerifyPurchase(request, env) {
 
   const amount = typeof session.amount_total === 'number' ? session.amount_total / 100 : null;
   const currency = session.currency || null;
+  const attrFields = attributionPayloadFields(body.attribution);
 
   if (!already) {
     await env.EVENTS_DB.prepare(
@@ -923,7 +1038,7 @@ async function handleVerifyPurchase(request, env) {
         crypto.randomUUID(),
         'block',
         slug,
-        JSON.stringify({ type: 'purchase', session_id: sessionId, amount, currency }),
+        JSON.stringify({ type: 'purchase', session_id: sessionId, amount, currency, ...attrFields }),
         null,
         new Date().toISOString()
       )
