@@ -9,6 +9,10 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,600;9..144,700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/assets/css/style.css">
 <style>:root { --nav-active: #604034; }</style>
+<link rel="icon" href="/favicon.png" type="image/png">
+<link rel="icon" href="/favicon-32x32.png" sizes="32x32" type="image/png">
+<link rel="icon" href="/favicon-16x16.png" sizes="16x16" type="image/png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
 </head>
 <body>
 
@@ -369,6 +373,7 @@
       "[[EXAME-TEMPLATE-GRATIS]]": { mountId: "tool-exame-template-gratis", module: "/assets/js/tools/exame-civico.js", fn: "mountTemplateGratis" },
       "[[EXAME-PRICING]]": { mountId: "tool-exame-pricing", module: "/assets/js/tools/exame-civico.js", fn: "mountPricing" },
       "[[DIPLOMA-DOSSIE]]": { mountId: "tool-diploma-dossie", module: "/assets/js/tools/profissoes-reguladas.js" },
+      "[[AU-PAIR-FLE-SCROLL]]": { mountId: "tool-au-pair-fle-scroll", module: "/assets/js/tools/au-pair-fle-scroll.js" },
     };
     for (const [token, tool] of Object.entries(TOOL_TOKENS)) {
       bodyHtml = bodyHtml.replace("<p>" + token + "</p>", '<div id="' + tool.mountId + '"></div>');

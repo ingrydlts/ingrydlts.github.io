@@ -313,6 +313,11 @@
     var overlay = document.getElementById("share-modal-overlay");
     if (!fab || !overlay) return;
     fab.addEventListener("click", openModal);
+    // Ponto de entrada extra pro mesmo popup, usado por botões "Guardar pra
+    // depois" embutidos dentro de ferramentas do artigo (ex.: cartões de
+    // rolagem) — em vez de duplicar WhatsApp/Instagram/e-mail em cada
+    // ferramenta, elas só disparam este evento.
+    document.addEventListener("pd:request-share", openModal);
     overlay.addEventListener("click", function (e) {
       if (e.target === overlay) closeModal();
     });
