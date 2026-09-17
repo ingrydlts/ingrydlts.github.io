@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Seu Checklist — Por Dentro</title>
+<meta name="description" content="Responda 3 perguntas rápidas e veja como fica o seu checklist de imigração personalizado, com prazos reais.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,600;9..144,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/css/style.css">
+<style>
+  :root { --nav-active: #604034; }
+
+  .preview-wrap{ max-width:640px; margin:0 auto; padding:48px 0 80px; }
+
+  .preview-hero h1{ margin-bottom:16px; }
+  .preview-hero .lede{ font-size:17px; color:var(--texto-secundario); max-width:52ch; margin-bottom:26px; }
+
+  .btn-primary{
+    display:inline-flex; align-items:center; gap:8px; justify-content:center;
+    width:fit-content; font-weight:600; font-size:15.5px;
+    padding:15px 26px; border-radius:var(--radius-sm); border:none; cursor:pointer;
+    background:var(--verde-moss); color:#fff; text-decoration:none;
+    box-shadow:var(--shadow-card);
+    transition:transform .15s ease, filter .15s ease;
+  }
+  .btn-primary:hover{ filter:brightness(1.08); color:#fff; transform:translateY(-1px); }
+  .hero-meta{ font-size:13.5px; color:var(--texto-secundario); margin-top:12px; }
+
+  .preview-section{ padding-top:56px; border-top:1px solid var(--borda-suave); margin-top:56px; scroll-margin-top:88px; }
+  .preview-hero{ padding-top:0; border-top:none; margin-top:0; }
+  section[hidden], div[hidden]{ display:none !important; }
+
+  .quiz-progress{ height:4px; background:var(--borda-suave); border-radius:var(--radius-pill); overflow:hidden; margin-bottom:32px; }
+  .quiz-progress-bar{ height:100%; width:0; background:var(--verde-moss); transition:width .35s ease; }
+  .step h2{ margin-bottom:20px; }
+  .options{ display:grid; gap:10px; }
+  .option-card{
+    display:flex; align-items:center; text-align:left;
+    background:var(--off-white-soft); border:1px solid var(--borda); border-radius:var(--radius-md);
+    padding:16px 18px; cursor:pointer; font-size:15.5px; color:var(--grafite);
+    transition:border-color .15s ease, background .15s ease; font-family:inherit;
+  }
+  .option-card:hover{ border-color:var(--verde-moss); }
+  .option-card.is-selected{ border-color:var(--verde-moss); background:var(--off-white); }
+  .option-card .opt-title{ font-weight:600; }
+  .option-card .opt-sub{ display:block; font-size:13px; color:var(--texto-secundario); font-weight:400; margin-top:2px; }
+
+  .field-row{ display:flex; flex-direction:column; gap:8px; margin-bottom:20px; }
+  .field-row label{ font-size:13.5px; font-weight:600; color:var(--texto-secundario); }
+  .field-row input{
+    font-family:inherit; font-size:16px; padding:13px 14px;
+    border-radius:var(--radius-md); border:1px solid var(--borda); background:#fff; color:var(--grafite);
+  }
+  .field-row input:focus{ border-color:var(--verde-moss); outline:none; }
+
+  .phase-note{ color:var(--texto-secundario); font-size:15px; margin-bottom:26px; }
+  .checklist-mock{
+    background:#fff; border:1px solid var(--borda); border-radius:14px;
+    box-shadow:var(--shadow-card); overflow:hidden;
+  }
+  .cl-item{ display:flex; gap:14px; padding:18px 20px; border-bottom:1px solid var(--borda-suave); }
+  .cl-item:last-child{ border-bottom:none; }
+  .cl-check{ flex:none; width:22px; height:22px; border-radius:6px; border:1.5px solid var(--borda); margin-top:2px; }
+  .cl-item.is-locked{ background:var(--off-white); }
+  .cl-body{ flex:1; min-width:0; }
+  .cl-cat{ font-size:11.5px; font-weight:600; letter-spacing:.05em; text-transform:uppercase; color:var(--verde-moss); margin-bottom:4px; }
+  .cl-label{ font-size:15px; font-weight:500; line-height:1.35; margin:0; }
+  .cl-item.is-locked .cl-label{ color:var(--texto-secundario); filter:blur(2.5px); user-select:none; }
+  .cl-tip{ display:inline-flex; gap:6px; margin-top:8px; font-size:12.5px; font-weight:600; color:var(--beje-paris-text); background:#F5ECDC; padding:5px 10px; border-radius:var(--radius-pill); }
+  .cl-deadline{ font-size:12px; color:var(--texto-secundario); margin-top:6px; }
+  .cl-lock-badge{ flex:none; font-size:11px; font-weight:700; letter-spacing:.03em; text-transform:uppercase; color:var(--downtown-brown); align-self:flex-start; margin-top:2px; }
+  .reveal-cta-row{ margin-top:26px; display:flex; flex-direction:column; align-items:flex-start; gap:10px; }
+  .reveal-cta-note{ font-size:13.5px; color:var(--texto-secundario); }
+
+  .thanks h2{ margin-bottom:12px; }
+  .thanks p{ color:var(--texto-secundario); font-size:15.5px; margin-bottom:24px; max-width:50ch; }
+</style>
+<link rel="icon" href="/favicon.png" type="image/png">
+<link rel="icon" href="/favicon-32x32.png" sizes="32x32" type="image/png">
+<link rel="icon" href="/favicon-16x16.png" sizes="16x16" type="image/png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+</head>
+<body>
+
+<header class="site-header">
+  <a href="/" class="site-logo" data-logo-link><img src="/images/logo-por-dentro.png" alt="Por Dentro" class="site-logo-img">Por Dentro</a>
+  <nav class="site-nav" aria-label="Navegação principal" data-header-nav>
+    <a href="/produtos-digitais/" data-nav-key="produtos-digitais">Produtos digitais</a>
+    <a href="/produtos-de-estudo/" data-nav-key="produtos-de-estudo">Produtos de estudo</a>
+    <a href="/produtos-de-compras/" data-nav-key="produtos-de-compras">Produtos de compras</a>
+    <a href="/artigos/" data-nav-key="blog">Blog</a>
+    <a href="/sobre/" data-nav-key="sobre">Sobre</a>
+  </nav>
+  <button class="nav-toggle" aria-label="Abrir menu" aria-expanded="false">
+    <span></span><span></span><span></span>
+  </button>
+</header>
+<nav class="mobile-nav" aria-label="Navegação mobile" data-header-nav>
+  <a href="/produtos-digitais/" data-nav-key="produtos-digitais">Produtos digitais</a>
+  <a href="/produtos-de-estudo/" data-nav-key="produtos-de-estudo">Produtos de estudo</a>
+  <a href="/produtos-de-compras/" data-nav-key="produtos-de-compras">Produtos de compras</a>
+  <a href="/artigos/" data-nav-key="blog">Blog</a>
+  <a href="/sobre/" data-nav-key="sobre">Sobre</a>
+</nav>
+
+<main>
+  <div class="container preview-wrap">
+
+    <header class="preview-hero">
+      <span class="eyebrow" style="color:var(--verde-moss);">Por Dentro · checklist rápido</span>
+      <h1>Sua burocracia francesa não devia caber num grupo de Facebook às 2 da manhã.</h1>
+      <p class="lede" id="hero-lede">Responda 3 perguntas rápidas e veja como fica o seu checklist de imigração — com prazos reais, não dicas genéricas de grupo.</p>
+      <button class="btn-primary" id="start-btn" type="button">Descobrir meu checklist →</button>
+      <p class="hero-meta" id="hero-meta">Leva menos de 1 minuto. Nada de cadastro pra começar.</p>
+    </header>
+
+    <section class="preview-section" id="quiz" hidden>
+      <div class="quiz-progress"><div class="quiz-progress-bar" id="progress-bar"></div></div>
+
+      <div class="step" data-step="1">
+        <h2>Qual é o seu perfil migratório?</h2>
+        <div class="options" id="opts-persona"></div>
+      </div>
+
+      <div class="step" data-step="2" hidden>
+        <h2>Em que fase você está agora?</h2>
+        <div class="options" id="opts-phase"></div>
+      </div>
+
+      <div class="step" data-step="2b" hidden>
+        <h2>Seu prazo atual (visto, titre de séjour) tá vencendo em breve?</h2>
+        <div class="options" id="opts-urgency"></div>
+      </div>
+
+      <div class="step" data-step="3" hidden>
+        <h2>O que mais tira o seu sono hoje?</h2>
+        <div class="options" id="opts-worry"></div>
+      </div>
+
+      <div class="step" data-step="4" hidden>
+        <h2>Quase lá — só pra eu saber quem eu tô ajudando.</h2>
+        <div class="field-row">
+          <label for="name-input">Seu primeiro nome</label>
+          <input id="name-input" type="text" autocomplete="given-name" placeholder="Como você se chama?">
+        </div>
+        <button class="btn-primary" id="see-checklist-btn" type="button">Ver meu checklist →</button>
+      </div>
+    </section>
+
+    <section class="preview-section" id="reveal" hidden>
+      <span class="eyebrow" style="color:var(--verde-moss);" id="persona-eyebrow">Seu checklist</span>
+      <h2 id="reveal-title">Aqui está o que você vai precisar resolver.</h2>
+      <p class="phase-note" id="phase-note"></p>
+      <div class="checklist-mock" id="checklist-items"></div>
+      <div class="reveal-cta-row">
+        <button class="btn-primary" id="reveal-cta" type="button">Ver o que libera na versão completa →</button>
+        <p class="reveal-cta-note">Os itens borrados têm prazo e dica de aceleração — isso é o que fica na versão paga.</p>
+      </div>
+    </section>
+
+    <section class="preview-section" id="pricing" hidden>
+      <span class="eyebrow" style="color:var(--verde-moss);">Última pergunta</span>
+      <h2>Se existisse uma versão completa — todos os prazos liberados + um 1:1 comigo — você pagaria por isso?</h2>
+      <div class="options" id="pricing-options">
+        <button class="option-card" data-price="pacote" type="button">
+          <span><span class="opt-title">Sim, um pacote único</span><span class="opt-sub">algo entre 100–250€ até eu resolver meu status</span></span>
+        </button>
+        <button class="option-card" data-price="assinatura" type="button">
+          <span><span class="opt-title">Sim, prefiro assinatura mensal</span><span class="opt-sub">algo entre 15–30€/mês enquanto eu precisar</span></span>
+        </button>
+        <button class="option-card" data-price="talvez" type="button">
+          <span><span class="opt-title">Talvez</span><span class="opt-sub">quero entender melhor antes de decidir</span></span>
+        </button>
+        <button class="option-card" data-price="nao" type="button">
+          <span><span class="opt-title">Não pagaria por isso hoje</span><span class="opt-sub">prefiro continuar me virando sozinha</span></span>
+        </button>
+      </div>
+    </section>
+
+    <section class="preview-section thanks" id="thanks" hidden>
+      <span class="eyebrow" style="color:var(--verde-moss);">Obrigada!</span>
+      <h2 id="thanks-title">Perfeito — é exatamente isso que eu precisava saber.</h2>
+      <p id="thanks-body">Suas respostas me ajudam a decidir como construir a versão completa do Por Dentro. Confirma seu interesse por e-mail que eu te aviso pessoalmente assim que ela estiver pronta.</p>
+      <a class="btn-primary" id="mailto-cta" href="#">Confirmar meu interesse por e-mail →</a>
+    </section>
+
+  </div>
+</main>
+
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-grid">
+      <div>
+        <a href="/" class="site-logo" data-logo-link style="color:#F4F1EC; margin-bottom:14px;"><img src="/images/logo-por-dentro.png" alt="Por Dentro" class="site-logo-img">Por Dentro</a>
+        <p style="color:#A8A29C; max-width:32ch; font-size:13px;">Templates, indicações de estudo e de compras para quem vive a vida real fora do Brasil.</p>
+      </div>
+      <div data-footer-nav>
+        <div class="footer-col-title">Navegação</div>
+        <div class="footer-links">
+          <a href="/produtos-digitais/" data-nav-key="produtos-digitais">Produtos digitais</a>
+          <a href="/produtos-de-estudo/" data-nav-key="produtos-de-estudo">Produtos de estudo</a>
+          <a href="/produtos-de-compras/" data-nav-key="produtos-de-compras">Produtos de compras</a>
+          <a href="/artigos/" data-nav-key="blog">Blog</a>
+          <a href="/sobre/" data-nav-key="sobre">Sobre</a>
+        </div>
+      </div>
+      <div>
+        <div class="footer-col-title">Legal</div>
+        <div class="footer-links">
+          <a href="/mentions-legales/">Mentions légales</a>
+          <a href="/cgv/">CGV</a>
+          <a href="/confidentialite/">Confidentialité</a>
+        </div>
+      </div>
+      <div>
+        <div class="footer-col-title">Redes</div>
+        <div class="footer-links"><a href="https://instagram.com/" target="_blank" rel="noopener">@ingryd.pordentro</a></div>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>© Por Dentro · France</span>
+      <span>Feito por quem vive isso.</span>
+    </div>
+  </div>
+</footer>
+
+<script src="/assets/js/main.js"></script>
+<script src="/assets/js/consent.js"></script>
+<script src="/assets/js/events.js"></script>
+<script src="/assets/js/analytics.js"></script>
+<script type="module" src="/assets/js/header.js"></script>
+<script>
+(function(){
+  "use strict";
+
+  var CONTACT_EMAIL = "ingrydigitalmanagement@gmail.com";
+
+  var PERSONAS = [
+    { key:"au_pair_estudante", title:"Au Pair / Estudante", sub:"vim como au pair ou já estudo aqui" },
+    { key:"campus_france", title:"Campus France", sub:"vim direto para estudar com visto de estudante" },
+    { key:"alternancia_emprego", title:"Alternância / Emprego", sub:"tenho contrato de trabalho ou alternância" },
+    { key:"conjuge", title:"Cônjuge", sub:"vim por casamento ou união com francês(a)" },
+    { key:"pvt", title:"PVT", sub:"vim com o Programa Vacances-Travail" }
+  ];
+
+  var PHASES = [
+    { key:"planejando", title:"Ainda no Brasil, planejando", sub:"quero chegar já sabendo o que fazer" },
+    { key:"adaptando", title:"Já estou na França, me adaptando", sub:"cheguei há pouco tempo" },
+    { key:"urgente", title:"Prazo vencendo, com urgência", sub:"meu status legal tá em risco agora" }
+  ];
+
+  var URGENCY = [
+    { key:"sim", title:"Sim, é urgente", sub:"meu prazo tá correndo e eu sinto isso" },
+    { key:"nao", title:"Não, ainda tenho tempo", sub:"tô adaptando sem pressão de prazo por enquanto" },
+    { key:"incerta", title:"Não tenho certeza", sub:"nem sei exatamente qual prazo se aplica a mim" }
+  ];
+
+  var WORRIES = [
+    { key:"prazo", title:"Perder o prazo e o status legal", sub:"o medo de fazer tudo errado" },
+    { key:"comeco", title:"Não saber por onde começar", sub:"muita informação solta, nenhuma ordem" },
+    { key:"sozinha", title:"Fazer tudo sozinha, sem apoio", sub:"sem ninguém pra tirar dúvida de verdade" },
+    { key:"caro", title:"Pagar caro por uma consultoria", sub:"pro meu caso, parece desproporcional" }
+  ];
+
+  // Espelha content/checklist-templates.json do app Por Dentro.
+  // "locked" = itens com prazo/dica — o que a versão paga libera.
+  var CHECKLISTS = {
+    au_pair_estudante: [
+      { cat:"Instalação", label:"Validar o VLS-TS no OFII (fase au pair)" },
+      { cat:"Moradia", label:"Buscar moradia própria, saindo da casa da família anfitriã" },
+      { cat:"Documentação", label:"Comprovar recursos financeiros de estudante (~877,50€/mês)" },
+      { cat:"Documentação", label:"Protocolar o changement de statut na préfecture (ANEF) antes do titre atual vencer", tip:"Prazo legal: entre 4 e 2 meses antes do título vencer, não é sugestão.", locked:true },
+      { cat:"Sécurité sociale", label:"Atualizar o regime na Ameli (de au pair pra régime étudiant)", locked:true }
+    ],
+    campus_france: [
+      { cat:"Instalação", label:"Validar o VLS-TS no OFII", deadlineDays:90, tip:"Agende assim que a taxe OFII for paga — a fila costuma estourar o prazo de 3 meses.", locked:true },
+      { cat:"Instalação", label:"Confirmar matrícula definitiva na instituição" },
+      { cat:"Moradia", label:"Fechar moradia (CROUS ou aluguel privado) antes ou logo após chegar" },
+      { cat:"Sécurité sociale", label:"Ativar a conta na Ameli (sécurité sociale étudiant)", deadlineDays:45, locked:true },
+      { cat:"Trabalho e ajudas", label:"Solicitar o auxílio-moradia (CAF/APL)" }
+    ],
+    alternancia_emprego: [
+      { cat:"Busca de emprego", label:"CV e lettre de motivation prontos em formato francês" },
+      { cat:"Busca de emprego", label:"Fechar o contrato de alternância dentro do prazo aceito pela préfecture", tip:"Sem contrato até o prazo, o status de estudante fica em risco — priorize isso sobre tudo.", locked:true },
+      { cat:"Moradia", label:"Reavaliar moradia conforme a localização da empresa contratante" },
+      { cat:"Sécurité sociale", label:"Trocar do regime étudiant pro regime général ao assinar o contrato" },
+      { cat:"Conta bancária", label:"Deixar o RIB pronto pra folha de pagamento assim que fechar contrato" }
+    ],
+    conjuge: [
+      { cat:"Documentação civil", label:"Transcrição da certidão de casamento no consulado" },
+      { cat:"Documentação civil", label:"Traduções juramentadas anexadas ao dossiê" },
+      { cat:"Moradia", label:"Comprovante de endereço em seu nome, não só do cônjuge" },
+      { cat:"Sécurité sociale", label:"Cadastro na Ameli (sécurité sociale)", deadlineDays:60, tip:"Leve o RIB provisório se ainda não tiver o definitivo — a Ameli aceita e você regulariza depois.", locked:true },
+      { cat:"Integração (CIR)", label:"Convocação OFII / assinatura do Contrat d'Intégration Républicaine" }
+    ],
+    pvt: [
+      { cat:"Instalação", label:"Resolver moradia temporária pra chegada (hostel, Airbnb, colocation curta)" },
+      { cat:"Conta bancária", label:"Abrir conta em banco online — mais rápido sem endereço fixo" },
+      { cat:"Sécurité sociale", label:"Contratar seguro privado de complemento enquanto não tiver contrato de trabalho", tip:"PVT não dá cobertura automática — sem contrato de trabalho, você fica descoberto.", locked:true },
+      { cat:"Plano de saída", label:"Definir com 3-4 meses de antecedência o próximo passo pra quando o PVT acabar", deadlineDays:240, tip:"O PVT não é renovável — decidir cedo muda toda a estratégia do ano.", locked:true }
+    ]
+  };
+
+  var state = { persona:null, phase:null, worry:null, name:"", price:null, origem:null, urgencyUnclear:false };
+  var totalSteps = 4;
+
+  function track(eventType, payload){
+    if (window.PDEvents) window.PDEvents.send(eventType, null, payload || {});
+  }
+
+  // ---------- Handoff do Assistente de Vistos ----------
+  var VALID_PERSONAS = ["au_pair_estudante", "campus_france", "alternancia_emprego", "conjuge", "pvt"];
+  var VALID_PHASES = ["planejando", "adaptando", "urgente"];
+  var VALID_WORRIES = ["prazo", "comeco", "sozinha", "caro"];
+  var handoffPersona = null, handoffFase = null, handoffWorry = null, handoffNome = null;
+  try {
+    var params = new URLSearchParams(window.location.search);
+    var p = params.get("persona");
+    if (p && VALID_PERSONAS.indexOf(p) !== -1) handoffPersona = p;
+    var f = params.get("fase");
+    if (f && VALID_PHASES.indexOf(f) !== -1) handoffFase = f;
+    var w = params.get("worry");
+    if (w && VALID_WORRIES.indexOf(w) !== -1) handoffWorry = w;
+    var n = params.get("nome");
+    if (n && n.trim()) handoffNome = n.trim().slice(0, 60);
+    state.origem = params.get("origem") || null;
+  } catch(e){ /* URLSearchParams indisponível — segue sem handoff */ }
+
+  function byId(id){ return document.getElementById(id); }
+
+  function renderOptions(container, items, onPick){
+    container.innerHTML = "";
+    items.forEach(function(item){
+      var btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "option-card";
+      btn.dataset.key = item.key;
+      btn.innerHTML = '<span><span class="opt-title">' + item.title + '</span>' +
+        '<span class="opt-sub">' + item.sub + '</span></span>';
+      btn.addEventListener("click", function(){
+        Array.prototype.forEach.call(container.children, function(c){ c.classList.remove("is-selected"); });
+        btn.classList.add("is-selected");
+        onPick(item.key);
+      });
+      container.appendChild(btn);
+    });
+  }
+
+  var STEP_PROGRESS = { "1":25, "2":50, "2b":62, "3":75, "4":100 };
+
+  function goToStep(n){
+    document.querySelectorAll(".step").forEach(function(s){
+      s.hidden = s.dataset.step !== String(n);
+    });
+    var pct = STEP_PROGRESS[String(n)];
+    if (pct === undefined) pct = (n / totalSteps * 100);
+    byId("progress-bar").style.width = pct + "%";
+  }
+
+  function startQuiz(){
+    if (handoffPersona) state.persona = handoffPersona;
+    if (handoffFase) state.phase = handoffFase;
+    if (handoffWorry) state.worry = handoffWorry;
+    if (handoffNome) state.name = handoffNome;
+
+    track("checklist_preview_start", { handoff: !!handoffPersona, origem: state.origem });
+
+    // Handoff completo (persona + fase + worry + nome, ex.: vindo do
+    // assistente de vistos) — a pessoa já respondeu tudo isso lá atrás, não
+    // faz sentido perguntar de novo. Pula direto pro resultado.
+    if (handoffPersona && handoffFase && handoffWorry && handoffNome){
+      showReveal();
+      return;
+    }
+
+    byId("quiz").hidden = false;
+    byId("quiz").scrollIntoView({ behavior: "smooth", block: "start" });
+    var startAt = 1;
+    if (handoffPersona) startAt = 2;
+    if (handoffPersona && handoffFase) startAt = 3;
+    if (handoffPersona && handoffFase && handoffWorry) startAt = 4;
+    goToStep(startAt);
+  }
+
+  function applyHandoffHero(){
+    if (!handoffPersona) return;
+    var skipped = 1 + (handoffFase ? 1 : 0) + (handoffWorry ? 1 : 0);
+    if (handoffFase && handoffWorry && handoffNome){
+      byId("hero-lede").textContent = handoffNome + ", já sei que seu perfil é " + personaTitle(handoffPersona) +
+        " e o que mais pesa pra você agora — seu checklist já está pronto.";
+      byId("hero-meta").textContent = "Sem mais perguntas. Nada de cadastro.";
+      byId("start-btn").textContent = "Ver meu checklist →";
+    } else if (skipped >= 3){
+      byId("hero-lede").textContent = "Já sei que seu perfil é " + personaTitle(handoffPersona) +
+        " e mais um pouco da sua situação — só falta seu nome pra eu te mostrar o checklist.";
+      byId("hero-meta").textContent = "Leva 10 segundos. Nada de cadastro pra começar.";
+      byId("start-btn").textContent = "Ver meu checklist →";
+    } else {
+      byId("hero-lede").textContent = "Já sei que seu perfil é " + personaTitle(handoffPersona) +
+        " — vamos direto pras outras perguntas e eu te mostro como fica o seu checklist.";
+      byId("hero-meta").textContent = "Leva menos de 30 segundos. Nada de cadastro pra começar.";
+      byId("start-btn").textContent = "Continuar →";
+    }
+  }
+
+  function buildChecklist(){
+    var items = CHECKLISTS[state.persona] || [];
+    var wrap = byId("checklist-items");
+    wrap.innerHTML = "";
+    items.forEach(function(item){
+      var row = document.createElement("div");
+      row.className = "cl-item" + (item.locked ? " is-locked" : "");
+      var extra = "";
+      if(!item.locked && item.deadlineDays){
+        extra += '<p class="cl-deadline">Prazo de referência: ' + item.deadlineDays + ' dias</p>';
+      }
+      if(!item.locked && item.tip){
+        extra += '<p class="cl-tip">💡 ' + item.tip + '</p>';
+      }
+      row.innerHTML =
+        '<div class="cl-check" aria-hidden="true"></div>' +
+        '<div class="cl-body">' +
+          '<p class="cl-cat">' + item.cat + '</p>' +
+          '<p class="cl-label">' + item.label + '</p>' +
+          extra +
+        '</div>' +
+        (item.locked ? '<span class="cl-lock-badge">🔒 Pago</span>' : '');
+      wrap.appendChild(row);
+    });
+  }
+
+  function phaseNoteText(){
+    if (state.urgencyUnclear){
+      return "Como você não tem certeza de qual prazo se aplica a você, isso merece prioridade — é exatamente pra isso que o checklist com prazos serve.";
+    }
+    var map = {
+      planejando: "Como você ainda está no Brasil planejando, dá tempo de resolver tudo isso sem correria de última hora.",
+      adaptando: "Como você já está na França se adaptando, alguns desses prazos já podem estar correndo agora.",
+      urgente: "Como seu prazo tá vencendo, os itens com prazo marcado abaixo são os que mais importam agora."
+    };
+    return map[state.phase] || "";
+  }
+
+  function personaTitle(key){
+    var p = PERSONAS.filter(function(p){ return p.key === key; })[0];
+    return p ? p.title : "";
+  }
+
+  function showReveal(){
+    byId("persona-eyebrow").textContent = "Seu checklist — " + personaTitle(state.persona);
+    byId("reveal-title").textContent = state.name
+      ? state.name + ", aqui está o que você vai precisar resolver."
+      : "Aqui está o que você vai precisar resolver.";
+    byId("phase-note").textContent = phaseNoteText();
+    buildChecklist();
+    byId("quiz").hidden = true;
+    byId("reveal").hidden = false;
+    byId("reveal").scrollIntoView({ behavior: "smooth", block: "start" });
+    track("checklist_preview_reveal", { persona: state.persona, phase: state.phase });
+  }
+
+  function showPricing(){
+    byId("reveal").hidden = true;
+    byId("pricing").hidden = false;
+    byId("pricing").scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  function mailtoBody(){
+    var worryLabel = (WORRIES.filter(function(w){ return w.key === state.worry; })[0] || {}).title || state.worry;
+    var phaseLabel = (PHASES.filter(function(p){ return p.key === state.phase; })[0] || {}).title || state.phase;
+    var priceLabel = {
+      pacote: "Sim, pacote único (100–250€)",
+      assinatura: "Sim, assinatura mensal (15–30€/mês)",
+      talvez: "Talvez, quer entender melhor",
+      nao: "Não pagaria hoje"
+    }[state.price] || state.price;
+
+    var lines = [
+      "Oi Ingryd, acabei de responder o preview do Por Dentro!",
+      "",
+      "Nome: " + (state.name || "(não informado)"),
+      "Perfil: " + personaTitle(state.persona),
+      "Fase: " + phaseLabel,
+      "Maior preocupação: " + worryLabel,
+      "Pagaria pela versão completa? " + priceLabel,
+      state.origem ? ("Veio de: " + state.origem) : null,
+      "",
+      "Me avisa quando a versão completa estiver pronta!"
+    ].filter(function(l){ return l !== null; });
+    return lines.join("\n");
+  }
+
+  function showThanks(){
+    byId("pricing").hidden = true;
+    byId("thanks").hidden = false;
+    byId("thanks").scrollIntoView({ behavior: "smooth", block: "start" });
+
+    if(state.price === "nao"){
+      byId("thanks-title").textContent = "Obrigada pela sinceridade — isso também é dado.";
+      byId("thanks-body").textContent = "Saber o que não funciona é tão importante quanto saber o que funciona. Se um dia isso mudar, meu e-mail está sempre aberto.";
+    }
+
+    track("checklist_preview_pricing", { persona: state.persona, price: state.price });
+
+    var subject = encodeURIComponent("Novo interesse no Por Dentro — preview respondido");
+    var body = encodeURIComponent(mailtoBody());
+    byId("mailto-cta").href = "mailto:" + CONTACT_EMAIL + "?subject=" + subject + "&body=" + body;
+  }
+
+  renderOptions(byId("opts-persona"), PERSONAS, function(key){
+    state.persona = key;
+    setTimeout(function(){ goToStep(2); }, 220);
+  });
+  renderOptions(byId("opts-phase"), PHASES, function(key){
+    state.phase = key;
+    var showUrgency = (key === "adaptando" && !handoffFase);
+    setTimeout(function(){ goToStep(showUrgency ? "2b" : 3); }, 220);
+  });
+  renderOptions(byId("opts-urgency"), URGENCY, function(key){
+    if (key === "sim") state.phase = "urgente";
+    if (key === "incerta") state.urgencyUnclear = true;
+    setTimeout(function(){ goToStep(3); }, 220);
+  });
+  renderOptions(byId("opts-worry"), WORRIES, function(key){
+    state.worry = key;
+    setTimeout(function(){ goToStep(4); }, 220);
+  });
+
+  applyHandoffHero();
+
+  byId("start-btn").addEventListener("click", startQuiz);
+
+  byId("see-checklist-btn").addEventListener("click", function(){
+    state.name = byId("name-input").value.trim();
+    showReveal();
+  });
+
+  byId("reveal-cta").addEventListener("click", showPricing);
+
+  byId("pricing-options").addEventListener("click", function(ev){
+    var btn = ev.target.closest(".option-card");
+    if(!btn) return;
+    Array.prototype.forEach.call(byId("pricing-options").children, function(c){ c.classList.remove("is-selected"); });
+    btn.classList.add("is-selected");
+    state.price = btn.dataset.price;
+    setTimeout(showThanks, 220);
+  });
+
+})();
+</script>
+</body>
+</html>

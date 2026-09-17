@@ -231,6 +231,10 @@
   }
   .modal-confirm{font-size:13px; color:var(--ink-soft); margin-top:10px;}
 </style>
+<link rel="icon" href="/favicon.png" type="image/png">
+<link rel="icon" href="/favicon-32x32.png" sizes="32x32" type="image/png">
+<link rel="icon" href="/favicon-16x16.png" sizes="16x16" type="image/png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
 </head>
 <body>
 
@@ -269,29 +273,56 @@
   const CONFIG = {
     whatsappNumber: '33744822313', // DDI+DDD+número, só dígitos, sem espaços ou +
     calLink: 'https://cal.com/ingryd-silva-jf1cnx/1-1',
-    // Checkout do guia pago: seu marketplace (https://ingrydlts.github.io/), não Hotmart.
-    // Troque cada linha pelo link direto do produto correspondente em /produtos-digitais/
-    // assim que ele existir lá. Enquanto o campo estiver vazio, o botão "Quero o guia
-    // completo" simplesmente não aparece — sem produto de visto cadastrado ainda (hoje
-    // o marketplace só tem a Planilha Financeira, sem relação com nenhum tipo de visto),
-    // apontar pra vitrine geral confundiria mais do que ajudaria.
-    guiaPago: {
-      'Visto Estudante': '',
-      'Passeport Talent (pesquisa/doutorado)': '',
-      'Vacances-Travail (PVT)': '',
-      'Assalariado': '',
-      'Busca de emprego / negócio': '',
-      'Cônjuge de francês(a)': '',
-      'Cônjuge de cidadão(ã) da UE (não francês)': '',
-      'Pai/mãe de filho(a) francês(a)': '',
-      'Residência de longa data': ''
-    }
+    // Preview de validação do Por Dentro (SaaS de checklist com prazos + 1:1 contínuo) —
+    // é o CTA principal dos desfechos B e C, só pros tipos de visto com persona
+    // equivalente no Por Dentro (ver MAP_TIPO_PARA_PERSONA abaixo). Sem guia pago avulso.
+    porDentroUrl: 'https://ingrydlts.github.io/checklist-preview/'
   };
+
+  // Nem todo tipo de visto daqui tem persona equivalente no Por Dentro hoje — Passeport
+  // Talent, Pai/mãe de filho(a) francês(a) e Residência de longa data ficam de fora
+  // até o checklist desses perfis existir.
+  const MAP_TIPO_PARA_PERSONA = {
+    'Au-pair': 'au_pair_estudante',
+    'Visto Estudante': 'campus_france',
+    'Vacances-Travail (PVT)': 'pvt',
+    'Assalariado': 'alternancia_emprego',
+    'Busca de emprego / negócio': 'alternancia_emprego',
+    'Cônjuge de francês(a)': 'conjuge',
+    'Cônjuge de cidadão(ã) da UE (não francês)': 'conjuge'
+  };
+
+  // Deriva fase e maior preocupação (perguntas do Por Dentro) a partir de respostas
+  // que a pessoa JÁ deu aqui — nada de perguntar de novo. Cobre a maioria dos casos;
+  // fica None quando não dá pra inferir com confiança, e o Por Dentro pergunta direto.
+  function inferirFaseEPreocupacao(){
+    let fase = null;
+    if (state.jaEsta === 'Não') fase = 'planejando';
+    else if (state.jaEsta === 'Sim') fase = (state.prontidao === 'Já tentei e não deu certo') ? 'urgente' : 'adaptando';
+
+    let worry = null;
+    if (state.prontidao === 'Já tentei e não deu certo') worry = 'sozinha';
+    else if (state.prontidao === 'Estou começando agora') worry = 'comeco';
+
+    return { fase: fase, worry: worry };
+  }
+
+  function ctaPorDentro(tipo){
+    const persona = MAP_TIPO_PARA_PERSONA[tipo];
+    if (!persona || !CONFIG.porDentroUrl) return null;
+    const inferido = inferirFaseEPreocupacao();
+    let href = CONFIG.porDentroUrl + '?persona=' + encodeURIComponent(persona) + '&origem=assistente_vistos';
+    if (inferido.fase) href += '&fase=' + encodeURIComponent(inferido.fase);
+    if (inferido.worry) href += '&worry=' + encodeURIComponent(inferido.worry);
+    if (state.nome) href += '&nome=' + encodeURIComponent(state.nome);
+    return { label: '📋 Ver meu checklist personalizado', cls: 'paid', href: href };
+  }
 
   const TIPO_CONTENT = {
     'Visto Estudante': 'Pelo Campus France, obrigatório pra cursos com mais de 90 dias. Dá pra trabalhar até 60% da carga horária legal enquanto estuda. Depois de chegar, precisa validar o visto no OFII em até 3 meses. Sem limite de idade.\n\nQuer fazer alternância (apprentissage)? Não existe "visto de alternância" — o caminho é esse mesmo visto de estudante, seguido de uma Autorização Provisória de Trabalho (APT) depois de fechar o contrato. Pra quem é de fora da UE, a regra geral é ter completado 1 ano de formação inicial na França antes — exceto mestrado ou grande école, que libera direto. O contrato tradicional tem teto de 29 anos, com exceções.',
     'Passeport Talent (pesquisa/doutorado)': 'Pra quem vai fazer doutorado, pesquisa ou é professor-pesquisador. Exige diploma de mestrado e, na maioria dos casos, uma convenção de acolhimento com a instituição francesa. Sem limite de idade.',
     'Vacances-Travail (PVT)': 'Só entre 18 e 30 anos. Cota de cerca de 500 vagas por ano pra brasileiros — costuma esgotar rápido. Só dá pra usar uma vez na vida e não é renovável. Exige por volta de €2.500 em conta, seguro saúde pros 12 meses e antecedentes criminais limpos.',
+    'Au-pair': 'Troca regulada por convenção — não é emprego doméstico nem intercâmbio informal: você ajuda a família com as crianças e tarefas leves de casa, e recebe em troca moradia, alimentação e um mínimo de 320€ de argent de poche por mês. Trabalho limitado a 25h por semana. Conhecimento básico de francês é exigência do visto, e a família precisa organizar as tarefas pra você conseguir frequentar curso de francês. Idade entre 17 e 30 anos (na prática, 18-30 pra quem pede visto), duração máxima de 2 anos na França.\n\nA convenção (modelo Cerfa nº 15973-01) precisa ser assinada com a família e apresentada no consulado (se você ainda está fora da França) ou na préfecture da sua região (se já está no país) — é essa etapa que dá direito ao título "jeune au pair". Sem ela, a situação já nasce fora do previsto.',
     'Assalariado': 'Pra quem já tem uma proposta ou contrato de trabalho fechado com um empregador francês — geralmente é o próprio empregador quem inicia o processo de autorização.',
     'Busca de emprego / negócio': 'Pra quem já terminou um diploma na França e quer continuar no país procurando emprego ou abrindo o próprio negócio.',
     'Cônjuge de francês(a)': 'Exige casamento válido e provas reais de vida em comum — contrato de aluguel, contas conjuntas, entre outros. Sem limite de idade.',
@@ -311,14 +342,20 @@
     'Estar com cônjuge ou filho(a) francês(a) ou da UE': ['tudo-sobre-o-exame-civico', 'passo-a-passo-da-anef', 'ajudas-de-moradia-apl-alf-als']
   };
 
+  // Sub-lista por tipo específico — quando existe, substitui a lista genérica do objetivo
+  // (ex.: quem escolhe Au-pair não precisa dos artigos gerais de Estudar/Trabalhar).
+  const ARTIGOS_POR_TIPO = {
+    'Au-pair': ['au-pair-franca-o-que-e-plataformas-e-riscos', 'au-pair-franca-direitos-e-sinais-de-alerta']
+  };
+
   let ARTIGOS_CACHE = null;
   fetch('/content/posts.json').then(function(r){ return r.ok ? r.json() : null; }).then(function(data){
     ARTIGOS_CACHE = (data && data.items) ? data.items : [];
   }).catch(function(){ ARTIGOS_CACHE = []; });
 
-  function artigosPara(objetivo){
+  function artigosPara(objetivo, tipo){
     if (!ARTIGOS_CACHE) return [];
-    const slugs = ARTIGOS_POR_OBJETIVO[objetivo] || [];
+    const slugs = (tipo && ARTIGOS_POR_TIPO[tipo]) ? ARTIGOS_POR_TIPO[tipo] : (ARTIGOS_POR_OBJETIVO[objetivo] || []);
     return slugs
       .map(function(slug){ return ARTIGOS_CACHE.find(function(a){ return a.slug === slug; }); })
       .filter(function(a){ return a && a.published === true; });
@@ -380,11 +417,18 @@
   }
 
   function tipoOptionsFor(objetivo){
-    if (objetivo === 'Estudar') return ['Visto Estudante','Passeport Talent (pesquisa/doutorado)','Não sei ainda'];
+    if (objetivo === 'Estudar'){
+      const opts = ['Visto Estudante','Passeport Talent (pesquisa/doutorado)'];
+      if (state.idade === 'Abaixo de 30') opts.push('Au-pair');
+      opts.push('Não sei ainda');
+      return opts;
+    }
     if (objetivo === 'Trabalhar'){
       const opts = [];
       if (state.idade === 'Abaixo de 30') opts.push('Vacances-Travail (PVT)');
-      opts.push('Assalariado','Busca de emprego / negócio','Não sei ainda');
+      opts.push('Assalariado','Busca de emprego / negócio');
+      if (state.idade === 'Abaixo de 30') opts.push('Au-pair');
+      opts.push('Não sei ainda');
       return opts;
     }
     if (objetivo === 'Estar com cônjuge ou filho(a) francês(a) ou da UE') return ['Cônjuge de francês(a)','Cônjuge de cidadão(ã) da UE (não francês)','Pai/mãe de filho(a) francês(a)','Residência de longa data','Não sei ainda'];
@@ -419,7 +463,7 @@
   function resultadoA(){
     return { key:'result', type:'result', tag:{cls:'paid', label:'Escolha: pergunta única ou 1:1'},
       bot:'Entendi — muita gente chega até aqui sem saber por onde começar, e tudo bem. Tenho alguns artigos que podem clarear suas ideias, mas caso ainda não seja o que você procura, tenho 2 caminhos daqui pra frente:',
-      artigos: artigosPara(state.objetivo),
+      artigos: artigosPara(state.objetivo, state.tipo),
       ctas:[
         {label:'📅 Quero fazer um 1:1', cls:'paid', popup: popup1a1('Ainda não sei qual caminho seguir.')},
         {label:'💬 Pergunta única (grátis)', cls:'free', popup: popupPerguntaUnica('Ainda não sei qual caminho seguir.')}
@@ -427,26 +471,32 @@
   }
 
   function resultadoB(){
-    const link = CONFIG.guiaPago[state.tipo];
+    const porDentro = ctaPorDentro(state.tipo);
     const opcoes = [
       {label:'💬 Pergunta única', cls:'ghost', popup: popupPerguntaUnica('Tenho uma dúvida sobre ' + state.tipo + '.')},
       {label:'📅 Quero fazer um 1:1', cls:'ghost', popup: popup1a1('Quero conversar sobre ' + state.tipo + '.')}
     ];
+    const ctas = [];
+    if (porDentro) ctas.push(porDentro);
     return { key:'result', type:'result', tag:{cls:'free', label:'Pré-requisitos grátis'},
-      bot: 'Você já viu os pré-requisitos de ' + state.tipo + ' ali atrás — isso foi só o resumo. Tem um guia completo com passo a passo, prazos e modelos de documento.',
-      ctas: link
-        ? [ {label:'Quero o guia completo', cls:'paid', href: link} ].concat(opcoes)
-        : opcoes };
+      bot: 'Você já viu os pré-requisitos de ' + state.tipo + ' ali atrás — isso foi só o resumo.' + (porDentro
+        ? ' Quer acompanhar cada etapa com prazo certo e um espaço só seu?'
+        : ' Os artigos abaixo aprofundam.'),
+      artigos: artigosPara(state.objetivo, state.tipo),
+      ctas: ctas.concat(opcoes) };
   }
 
   function resultadoC(){
+    const porDentro = ctaPorDentro(state.tipo);
+    const ctas = [
+      {label:'📅 Quero fazer um 1:1', cls:'paid', popup: popup1a1('Já sei que quero ' + state.tipo + ' e já tentei sozinho(a), sem sucesso.')}
+    ];
+    if (porDentro) ctas.push(porDentro);
+    ctas.push({label:'💬 Pergunta única', cls:'ghost', popup: popupPerguntaUnica('Já sei que quero ' + state.tipo + ' e já tentei sozinho(a), sem sucesso.')});
     return { key:'result', type:'result', tag:{cls:'paid', label:'Maior intenção · direto pra consultoria'},
       bot:'Você já sabe que quer ' + state.tipo + ' e já tentou sozinho — isso me diz que o problema não é falta de informação genérica, é a sua situação específica. Vamos conversar 1:1 sobre isso?',
-      artigos: artigosPara(state.objetivo),
-      ctas:[
-        {label:'📅 Quero fazer um 1:1', cls:'paid', popup: popup1a1('Já sei que quero ' + state.tipo + ' e já tentei sozinho(a), sem sucesso.')},
-        {label:'💬 Pergunta única', cls:'ghost', popup: popupPerguntaUnica('Já sei que quero ' + state.tipo + ' e já tentei sozinho(a), sem sucesso.')}
-      ] };
+      artigos: artigosPara(state.objetivo, state.tipo),
+      ctas: ctas };
   }
 
   function resultadoE(){
