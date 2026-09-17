@@ -54,6 +54,14 @@
     border-radius:var(--radius-md); border:1px solid var(--borda); background:#fff; color:var(--grafite);
   }
   .field-row input:focus{ border-color:var(--verde-moss); outline:none; }
+  .options-inline{ display:flex; flex-wrap:wrap; gap:8px; }
+  .options-inline .opt-toggle{
+    font-family:inherit; font-size:13.5px; font-weight:600; color:var(--grafite);
+    background:var(--off-white-soft); border:1px solid var(--borda); border-radius:var(--radius-pill);
+    padding:9px 16px; cursor:pointer; transition:border-color .15s ease, background .15s ease;
+  }
+  .options-inline .opt-toggle:hover{ border-color:var(--verde-moss); }
+  .options-inline .opt-toggle.is-selected{ border-color:var(--verde-moss); background:var(--off-white); color:var(--verde-moss); }
 
   .phase-note{ color:var(--texto-secundario); font-size:15px; margin-bottom:26px; }
   .checklist-mock{
@@ -147,6 +155,35 @@
         </div>
         <button class="btn-primary" id="see-checklist-btn" type="button">Ver meu checklist →</button>
       </div>
+
+      <!-- Só pra quem é au_pair_estudante — mesmas perguntas do onboarding do
+           app pago (au_pair_estudante oficial — checklist LANDING PAGE
+           detalhado por caminho, no Miro), mas nenhuma é obrigatória aqui:
+           dá pra pular tudo e ver o checklist genérico mesmo assim. -->
+      <div class="step" data-step="extra" hidden>
+        <h2>Só mais um pouco — isso afina seu checklist (pode pular qualquer uma).</h2>
+        <div class="field-row">
+          <label for="extra-data-chegada">Qual é a sua data de chegada na França? (se já souber)</label>
+          <input id="extra-data-chegada" type="date">
+        </div>
+        <div class="field-row">
+          <label>Você tem diploma de uma profissão regulamentada (enfermagem, odontologia, medicina, etc.)?</label>
+          <div class="options-inline" id="extra-profissao"></div>
+        </div>
+        <div class="field-row">
+          <label>Sua moradia na França já está resolvida?</label>
+          <div class="options-inline" id="extra-moradia"></div>
+        </div>
+        <div class="field-row">
+          <label>Você já tem conta bancária francesa?</label>
+          <div class="options-inline" id="extra-conta"></div>
+        </div>
+        <div class="field-row">
+          <label>Já está cadastrado(a) na sécurité sociale (Ameli)?</label>
+          <div class="options-inline" id="extra-securite"></div>
+        </div>
+        <button class="btn-primary" id="extra-continuar-btn" type="button">Ver meu checklist completo →</button>
+      </div>
     </section>
 
     <section class="preview-section" id="reveal" hidden>
@@ -155,34 +192,15 @@
       <p class="phase-note" id="phase-note"></p>
       <div class="checklist-mock" id="checklist-items"></div>
       <div class="reveal-cta-row">
-        <button class="btn-primary" id="reveal-cta" type="button">Ver o que libera na versão completa →</button>
-        <p class="reveal-cta-note">Os itens borrados têm prazo e dica de aceleração — isso é o que fica na versão paga.</p>
-      </div>
-    </section>
-
-    <section class="preview-section" id="pricing" hidden>
-      <span class="eyebrow" style="color:var(--verde-moss);">Última pergunta</span>
-      <h2>Se existisse uma versão completa — todos os prazos liberados + um 1:1 comigo — você pagaria por isso?</h2>
-      <div class="options" id="pricing-options">
-        <button class="option-card" data-price="pacote" type="button">
-          <span><span class="opt-title">Sim, um pacote único</span><span class="opt-sub">algo entre 100–250€ até eu resolver meu status</span></span>
-        </button>
-        <button class="option-card" data-price="assinatura" type="button">
-          <span><span class="opt-title">Sim, prefiro assinatura mensal</span><span class="opt-sub">algo entre 15–30€/mês enquanto eu precisar</span></span>
-        </button>
-        <button class="option-card" data-price="talvez" type="button">
-          <span><span class="opt-title">Talvez</span><span class="opt-sub">quero entender melhor antes de decidir</span></span>
-        </button>
-        <button class="option-card" data-price="nao" type="button">
-          <span><span class="opt-title">Não pagaria por isso hoje</span><span class="opt-sub">prefiro continuar me virando sozinha</span></span>
-        </button>
+        <button class="btn-primary" id="reveal-cta" type="button">Quero começar meu trial grátis de 30 dias →</button>
+        <p class="reveal-cta-note">Os itens borrados têm prazo e dica de aceleração — isso é o que libera no trial.</p>
       </div>
     </section>
 
     <section class="preview-section thanks" id="thanks" hidden>
-      <span class="eyebrow" style="color:var(--verde-moss);">Obrigada!</span>
-      <h2 id="thanks-title">Perfeito — é exatamente isso que eu precisava saber.</h2>
-      <p id="thanks-body">Suas respostas me ajudam a decidir como construir a versão completa do Por Dentro. Confirma seu interesse por e-mail que eu te aviso pessoalmente assim que ela estiver pronta.</p>
+      <span class="eyebrow" style="color:var(--verde-moss);">Quase lá!</span>
+      <h2 id="thanks-title">Perfeito — confirma seu interesse por e-mail.</h2>
+      <p id="thanks-body">O trial gratuito de 30 dias ainda está sendo preparado. Confirma seu interesse por e-mail que eu te aviso pessoalmente assim que ele estiver no ar, com prioridade pra quem já respondeu o preview.</p>
       <a class="btn-primary" id="mailto-cta" href="#">Confirmar meu interesse por e-mail →</a>
     </section>
 
@@ -269,10 +287,10 @@
   var CHECKLISTS = {
     au_pair_estudante: [
       { cat:"Instalação", label:"Validar o VLS-TS no OFII (fase au pair)" },
-      { cat:"Moradia", label:"Buscar moradia própria, saindo da casa da família anfitriã" },
+      { cat:"Moradia", label:"Buscar moradia própria, saindo da casa da família anfitriã", skipIf:"moradiaResolvida" },
       { cat:"Documentação", label:"Comprovar recursos financeiros de estudante (~877,50€/mês)" },
       { cat:"Documentação", label:"Protocolar o changement de statut na préfecture (ANEF) antes do titre atual vencer", tip:"Prazo legal: entre 4 e 2 meses antes do título vencer, não é sugestão.", locked:true },
-      { cat:"Sécurité sociale", label:"Atualizar o regime na Ameli (de au pair pra régime étudiant)", locked:true }
+      { cat:"Sécurité sociale", label:"Atualizar o regime na Ameli (de au pair pra régime étudiant)", locked:true, skipIf:"securiteResolvida" }
     ],
     campus_france: [
       { cat:"Instalação", label:"Validar o VLS-TS no OFII", deadlineDays:90, tip:"Agende assim que a taxe OFII for paga — a fila costuma estourar o prazo de 3 meses.", locked:true },
@@ -303,7 +321,13 @@
     ]
   };
 
-  var state = { persona:null, phase:null, worry:null, name:"", price:null, origem:null, urgencyUnclear:false };
+  var state = {
+    persona:null, phase:null, worry:null, name:"", origem:null, urgencyUnclear:false,
+    // Só preenchidos pra quem é au_pair_estudante e passa pela etapa "extra"
+    // (au_pair_estudante oficial — checklist LANDING PAGE detalhado por
+    // caminho, no Miro) — nenhum é obrigatório, ficam null se pulados.
+    dataChegada:null, profissaoRegulamentada:null, moradiaResolvida:null, contaResolvida:null, securiteResolvida:null
+  };
   var totalSteps = 4;
 
   function track(eventType, payload){
@@ -348,7 +372,30 @@
     });
   }
 
-  var STEP_PROGRESS = { "1":25, "2":50, "2b":62, "3":75, "4":100 };
+  // Grupo compacto de botões (etapa "extra") — sem sub-texto, sem avançar de
+  // step ao clicar (a pessoa continua vendo o resto do formulário e decide
+  // quando seguir). Clicar de novo no mesmo botão desmarca — nenhuma dessas
+  // perguntas é obrigatória, então "não respondida" é um estado válido.
+  function renderToggle(container, items, onPick){
+    container.innerHTML = "";
+    items.forEach(function(item){
+      var btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "opt-toggle";
+      btn.dataset.key = item.key;
+      btn.textContent = item.title;
+      btn.addEventListener("click", function(){
+        var jaSelecionado = btn.classList.contains("is-selected");
+        Array.prototype.forEach.call(container.children, function(c){ c.classList.remove("is-selected"); });
+        if (jaSelecionado){ onPick(null); return; }
+        btn.classList.add("is-selected");
+        onPick(item.key);
+      });
+      container.appendChild(btn);
+    });
+  }
+
+  var STEP_PROGRESS = { "1":20, "2":40, "2b":50, "3":60, "4":80, "extra":95 };
 
   function goToStep(n){
     document.querySelectorAll(".step").forEach(function(s){
@@ -369,9 +416,10 @@
 
     // Handoff completo (persona + fase + worry + nome, ex.: vindo do
     // assistente de vistos) — a pessoa já respondeu tudo isso lá atrás, não
-    // faz sentido perguntar de novo. Pula direto pro resultado.
+    // faz sentido perguntar de novo. Pula direto pro resultado (ou pra etapa
+    // "extra" primeiro, se for au_pair_estudante — ver goToResultado).
     if (handoffPersona && handoffFase && handoffWorry && handoffNome){
-      showReveal();
+      goToResultado();
       return;
     }
 
@@ -406,7 +454,9 @@
   }
 
   function buildChecklist(){
-    var items = CHECKLISTS[state.persona] || [];
+    var items = (CHECKLISTS[state.persona] || []).filter(function(item){
+      return !(item.skipIf && state[item.skipIf] === true);
+    });
     var wrap = byId("checklist-items");
     wrap.innerHTML = "";
     items.forEach(function(item){
@@ -448,6 +498,22 @@
     return p ? p.title : "";
   }
 
+  // Ponto único de decisão entre "mostrar resultado" e "perguntar mais um
+  // pouco antes" — só au_pair_estudante tem a etapa extra hoje (é a única
+  // com o fluxo "checklist LANDING PAGE detalhado por caminho" no Miro).
+  function goToResultado(){
+    if (state.persona === "au_pair_estudante") showExtra();
+    else showReveal();
+  }
+
+  function showExtra(){
+    byId("quiz").hidden = false;
+    document.querySelectorAll(".step").forEach(function(s){ s.hidden = s.dataset.step !== "extra"; });
+    byId("progress-bar").style.width = STEP_PROGRESS.extra + "%";
+    byId("quiz").scrollIntoView({ behavior: "smooth", block: "start" });
+    track("checklist_preview_extra", { persona: state.persona });
+  }
+
   function showReveal(){
     byId("persona-eyebrow").textContent = "Seu checklist — " + personaTitle(state.persona);
     byId("reveal-title").textContent = state.name
@@ -461,50 +527,44 @@
     track("checklist_preview_reveal", { persona: state.persona, phase: state.phase });
   }
 
-  function showPricing(){
-    byId("reveal").hidden = true;
-    byId("pricing").hidden = false;
-    byId("pricing").scrollIntoView({ behavior: "smooth", block: "start" });
-  }
+  var PROFISSAO_LABELS = {
+    nao: "Não é o caso",
+    enfermagem: "Enfermagem",
+    odontologia_medicina: "Odontologia ou Medicina",
+    outra: "Outra profissão regulamentada"
+  };
 
   function mailtoBody(){
     var worryLabel = (WORRIES.filter(function(w){ return w.key === state.worry; })[0] || {}).title || state.worry;
     var phaseLabel = (PHASES.filter(function(p){ return p.key === state.phase; })[0] || {}).title || state.phase;
-    var priceLabel = {
-      pacote: "Sim, pacote único (100–250€)",
-      assinatura: "Sim, assinatura mensal (15–30€/mês)",
-      talvez: "Talvez, quer entender melhor",
-      nao: "Não pagaria hoje"
-    }[state.price] || state.price;
 
     var lines = [
-      "Oi Ingryd, acabei de responder o preview do Por Dentro!",
+      "Oi Ingryd, acabei de responder o preview do Por Dentro e quero o trial grátis!",
       "",
       "Nome: " + (state.name || "(não informado)"),
       "Perfil: " + personaTitle(state.persona),
       "Fase: " + phaseLabel,
       "Maior preocupação: " + worryLabel,
-      "Pagaria pela versão completa? " + priceLabel,
+      state.dataChegada ? ("Data de chegada: " + state.dataChegada) : null,
+      state.profissaoRegulamentada ? ("Profissão regulamentada: " + (PROFISSAO_LABELS[state.profissaoRegulamentada] || state.profissaoRegulamentada)) : null,
+      state.moradiaResolvida !== null ? ("Moradia resolvida: " + (state.moradiaResolvida ? "Sim" : "Não")) : null,
+      state.contaResolvida !== null ? ("Conta bancária francesa: " + (state.contaResolvida ? "Sim" : "Não")) : null,
+      state.securiteResolvida !== null ? ("Cadastrado na Ameli: " + (state.securiteResolvida ? "Sim" : "Não")) : null,
       state.origem ? ("Veio de: " + state.origem) : null,
       "",
-      "Me avisa quando a versão completa estiver pronta!"
+      "Me avisa quando o trial estiver no ar!"
     ].filter(function(l){ return l !== null; });
     return lines.join("\n");
   }
 
   function showThanks(){
-    byId("pricing").hidden = true;
+    byId("reveal").hidden = true;
     byId("thanks").hidden = false;
     byId("thanks").scrollIntoView({ behavior: "smooth", block: "start" });
 
-    if(state.price === "nao"){
-      byId("thanks-title").textContent = "Obrigada pela sinceridade — isso também é dado.";
-      byId("thanks-body").textContent = "Saber o que não funciona é tão importante quanto saber o que funciona. Se um dia isso mudar, meu e-mail está sempre aberto.";
-    }
+    track("checklist_preview_trial_interest", { persona: state.persona });
 
-    track("checklist_preview_pricing", { persona: state.persona, price: state.price });
-
-    var subject = encodeURIComponent("Novo interesse no Por Dentro — preview respondido");
+    var subject = encodeURIComponent("Novo interesse no trial do Por Dentro — preview respondido");
     var body = encodeURIComponent(mailtoBody());
     byId("mailto-cta").href = "mailto:" + CONTACT_EMAIL + "?subject=" + subject + "&body=" + body;
   }
@@ -528,25 +588,38 @@
     setTimeout(function(){ goToStep(4); }, 220);
   });
 
+  renderToggle(byId("extra-profissao"), [
+    { key:"nao", title:"Não é o meu caso" },
+    { key:"enfermagem", title:"Enfermagem" },
+    { key:"odontologia_medicina", title:"Odontologia ou Medicina" },
+    { key:"outra", title:"Outra" }
+  ], function(key){ state.profissaoRegulamentada = key === "nao" ? null : key; });
+
+  renderToggle(byId("extra-moradia"), [{ key:"sim", title:"Sim" }, { key:"nao", title:"Não" }], function(key){
+    state.moradiaResolvida = key === null ? null : (key === "sim");
+  });
+  renderToggle(byId("extra-conta"), [{ key:"sim", title:"Sim" }, { key:"nao", title:"Não" }], function(key){
+    state.contaResolvida = key === null ? null : (key === "sim");
+  });
+  renderToggle(byId("extra-securite"), [{ key:"sim", title:"Sim" }, { key:"nao", title:"Não" }], function(key){
+    state.securiteResolvida = key === null ? null : (key === "sim");
+  });
+
   applyHandoffHero();
 
   byId("start-btn").addEventListener("click", startQuiz);
 
   byId("see-checklist-btn").addEventListener("click", function(){
     state.name = byId("name-input").value.trim();
+    goToResultado();
+  });
+
+  byId("extra-continuar-btn").addEventListener("click", function(){
+    state.dataChegada = byId("extra-data-chegada").value || null;
     showReveal();
   });
 
-  byId("reveal-cta").addEventListener("click", showPricing);
-
-  byId("pricing-options").addEventListener("click", function(ev){
-    var btn = ev.target.closest(".option-card");
-    if(!btn) return;
-    Array.prototype.forEach.call(byId("pricing-options").children, function(c){ c.classList.remove("is-selected"); });
-    btn.classList.add("is-selected");
-    state.price = btn.dataset.price;
-    setTimeout(showThanks, 220);
-  });
+  byId("reveal-cta").addEventListener("click", showThanks);
 
 })();
 </script>
