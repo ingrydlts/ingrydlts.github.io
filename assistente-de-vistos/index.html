@@ -281,9 +281,12 @@
 
   // Nem todo tipo de visto daqui tem persona equivalente no Por Dentro hoje — Passeport
   // Talent, Pai/mãe de filho(a) francês(a) e Residência de longa data ficam de fora
-  // até o checklist desses perfis existir.
+  // até o checklist desses perfis existir. "Au-pair" também fica de fora de propósito:
+  // a Ingryd não atende quem ainda QUER virar au pair (decisão de escopo, não falta de
+  // conteúdo) — só a burocracia de quem já chegou com o visto em mãos. Quem já é au pair
+  // e quer virar estudante ainda cai em au_pair_estudante, mas por uma regra própria em
+  // ctaPorDentro() (vistoAtual === 'Au-pair'), não por este mapa genérico.
   const MAP_TIPO_PARA_PERSONA = {
-    'Au-pair': 'au_pair_estudante',
     'Visto Estudante': 'campus_france',
     'Vacances-Travail (PVT)': 'pvt',
     'Assalariado': 'alternancia_emprego',
