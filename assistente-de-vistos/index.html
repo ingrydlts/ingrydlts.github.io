@@ -308,7 +308,12 @@
   }
 
   function ctaPorDentro(tipo){
-    const persona = MAP_TIPO_PARA_PERSONA[tipo];
+    let persona = MAP_TIPO_PARA_PERSONA[tipo];
+    // Quem já é au pair e quer Visto Estudante está fazendo a MESMA transição
+    // que o checklist au_pair_estudante cobre inteiro (changement de statut,
+    // FLE/CAP AEPE/Master em alternância) — não é alguém chegando direto como
+    // campus_france. O "tipo" sozinho não basta aqui, precisa do visto atual.
+    if (state.vistoAtual === 'Au-pair' && tipo === 'Visto Estudante') persona = 'au_pair_estudante';
     if (!persona || !CONFIG.porDentroUrl) return null;
     const inferido = inferirFaseEPreocupacao();
     let href = CONFIG.porDentroUrl + '?persona=' + encodeURIComponent(persona) + '&origem=assistente_vistos';
