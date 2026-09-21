@@ -316,6 +316,13 @@
     // FLE/CAP AEPE/Master em alternância) — não é alguém chegando direto como
     // campus_france. O "tipo" sozinho não basta aqui, precisa do visto atual.
     if (state.vistoAtual === 'Au-pair' && tipo === 'Visto Estudante') persona = 'au_pair_estudante';
+    // Quem JÁ MORA na França e quer Visto Estudante com qualquer outro visto
+    // (PVT, salariado, "não sei dizer"...) também não é o público do checklist
+    // campus_france: ele é pra quem chega do Brasil, e o Campus France é definido
+    // pelo país de residência no momento da candidatura, não pela nacionalidade.
+    // Ainda não existe uma persona pra essa troca de status dentro da França —
+    // até existir, sem CTA de checklist: só o contato direto (pergunta única / 1:1).
+    if (tipo === 'Visto Estudante' && state.jaEsta === 'Sim' && persona !== 'au_pair_estudante') return null;
     if (!persona || !CONFIG.porDentroUrl) return null;
     const inferido = inferirFaseEPreocupacao();
     let href = CONFIG.porDentroUrl + '?persona=' + encodeURIComponent(persona) + '&origem=assistente_vistos';
