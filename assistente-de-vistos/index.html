@@ -273,10 +273,13 @@
   const CONFIG = {
     whatsappNumber: '33744822313', // DDI+DDD+número, só dígitos, sem espaços ou +
     calLink: 'https://cal.com/ingryd-silva-jf1cnx/1-1',
-    // Preview de validação do Por Dentro (SaaS de checklist com prazos + 1:1 contínuo) —
-    // é o CTA principal dos desfechos B e C, só pros tipos de visto com persona
-    // equivalente no Por Dentro (ver MAP_TIPO_PARA_PERSONA abaixo). Sem guia pago avulso.
-    porDentroUrl: 'https://ingrydlts.github.io/checklist-preview/'
+    // Preview interativo do Por Dentro (SaaS de checklist com prazos + 1:1
+    // contínuo) — é o CTA principal dos desfechos B e C, só pros tipos de
+    // visto com persona equivalente no Por Dentro (ver MAP_TIPO_PARA_PERSONA
+    // abaixo). Sem guia pago avulso. Caminho relativo (não domínio fixo) —
+    // funciona local e em produção sem trocar nada aqui; quem decide pra
+    // onde ir depois (app real, no caso do au pair) é o próprio preview.
+    porDentroUrl: '/checklist-preview/'
   };
 
   // Nem todo tipo de visto daqui tem persona equivalente no Por Dentro hoje — Passeport
@@ -295,19 +298,15 @@
     'Cônjuge de cidadão(ã) da UE (não francês)': 'conjuge'
   };
 
-  // Deriva fase e maior preocupação (perguntas do Por Dentro) a partir de respostas
-  // que a pessoa JÁ deu aqui — nada de perguntar de novo. Cobre a maioria dos casos;
-  // fica None quando não dá pra inferir com confiança, e o Por Dentro pergunta direto.
+  // Deriva fase (pergunta do Por Dentro) a partir de respostas que a pessoa JÁ deu
+  // aqui — nada de perguntar de novo. "worry" fica sempre null: o bot não pergunta
+  // mais sobre prontidão, então o Por Dentro pergunta isso direto por lá.
   function inferirFaseEPreocupacao(){
     let fase = null;
     if (state.jaEsta === 'Não') fase = 'planejando';
-    else if (state.jaEsta === 'Sim') fase = (state.prontidao === 'Já tentei e não deu certo') ? 'urgente' : 'adaptando';
+    else if (state.jaEsta === 'Sim') fase = 'adaptando';
 
-    let worry = null;
-    if (state.prontidao === 'Já tentei e não deu certo') worry = 'sozinha';
-    else if (state.prontidao === 'Estou começando agora') worry = 'comeco';
-
-    return { fase: fase, worry: worry };
+    return { fase: fase, worry: null };
   }
 
   function ctaPorDentro(tipo){
@@ -327,7 +326,7 @@
   }
 
   const TIPO_CONTENT = {
-    'Visto Estudante': 'Pelo Campus France, obrigatório pra cursos com mais de 90 dias. Dá pra trabalhar até 60% da carga horária legal enquanto estuda. Depois de chegar, precisa validar o visto no OFII em até 3 meses. Sem limite de idade.\n\nQuer fazer alternância (apprentissage)? Não existe "visto de alternância" — o caminho é esse mesmo visto de estudante, seguido de uma Autorização Provisória de Trabalho (APT) depois de fechar o contrato. Pra quem é de fora da UE, a regra geral é ter completado 1 ano de formação inicial na França antes — exceto mestrado ou grande école, que libera direto. O contrato tradicional tem teto de 29 anos, com exceções.',
+    'Visto Estudante': 'Pra quem ainda mora fora da França, a candidatura passa pelo Campus France (Études en France), obrigatório pra cursos com mais de 90 dias — o que define isso é o país de residência no momento da candidatura, não a nacionalidade; quem já mora na França candidata direto com cada universidade. Dá pra trabalhar até 964 horas por ano (60% da carga horária legal) enquanto estuda. Depois de chegar, precisa validar o visto no OFII em até 3 meses. Sem limite de idade.\n\nQuer fazer alternância (apprentissage)? Não existe "visto de alternância" — o caminho é esse mesmo visto de estudante, seguido de uma Autorização Provisória de Trabalho (APT) depois de fechar o contrato. Pra quem é de fora da UE, a regra geral é ter completado 1 ano de formação inicial na França antes — exceto mestrado ou grande école, que libera direto. O contrato tradicional tem teto de 29 anos, com exceções.',
     'Passeport Talent (pesquisa/doutorado)': 'Pra quem vai fazer doutorado, pesquisa ou é professor-pesquisador. Exige diploma de mestrado e, na maioria dos casos, uma convenção de acolhimento com a instituição francesa. Sem limite de idade.',
     'Vacances-Travail (PVT)': 'Só entre 18 e 30 anos. Cota de cerca de 500 vagas por ano pra brasileiros — costuma esgotar rápido. Só dá pra usar uma vez na vida e não é renovável. Exige por volta de €2.500 em conta, seguro saúde pros 12 meses e antecedentes criminais limpos.',
     'Au-pair': 'Troca regulada por convenção — não é emprego doméstico nem intercâmbio informal: você ajuda a família com as crianças e tarefas leves de casa, e recebe em troca moradia, alimentação e um mínimo de 320€ de argent de poche por mês. Trabalho limitado a 25h por semana. Conhecimento básico de francês é exigência do visto, e a família precisa organizar as tarefas pra você conseguir frequentar curso de francês. Idade entre 17 e 30 anos (na prática, 18-30 pra quem pede visto), duração máxima de 2 anos na França.\n\nA convenção (modelo Cerfa nº 15973-01) precisa ser assinada com a família e apresentada no consulado (se você ainda está fora da França) ou na préfecture da sua região (se já está no país) — é essa etapa que dá direito ao título "jeune au pair". Sem ela, a situação já nasce fora do previsto.',
@@ -339,7 +338,7 @@
     'Residência de longa data': 'Pra quem já mora na França há muitos anos (na prática, entre 5 e 10) e tem vínculo pessoal consolidado no país. Sem limite de idade.'
   };
 
-  const state = { nome:null, ue:null, idade:null, jaEsta:null, vistoAtual:null, objetivo:null, tipo:null, prontidao:null, instagram:null, done:false };
+  const state = { nome:null, ue:null, idade:null, jaEsta:null, vistoAtual:null, objetivo:null, tipo:null, instagram:null, done:false };
 
   // ---------- Artigos do blog no desfecho "Não sei ainda" ----------
   // Puxa direto de /content/posts.json (mesmo arquivo que o /admin edita) — publicar um
@@ -380,7 +379,6 @@
       state.vistoAtual ? ('Visto atual: ' + state.vistoAtual) : null,
       state.objetivo ? ('Objetivo: ' + state.objetivo) : null,
       state.tipo ? ('Tipo: ' + state.tipo) : null,
-      state.prontidao ? ('Situação: ' + state.prontidao) : null,
       extraLine || null
     ].filter(Boolean).join('\n');
     return 'https://wa.me/' + CONFIG.whatsappNumber + '?text=' + encodeURIComponent(lines);
@@ -445,6 +443,9 @@
       opts = [];
       if (state.idade === 'Abaixo de 30') opts.push('Vacances-Travail (PVT)');
       opts.push('Assalariado','Busca de emprego / negócio');
+      // Visto Estudante também aparece pra quem quer TRABALHAR: ele já dá direito
+      // a trabalhar (até 964h/ano) e é o caminho de quem ainda não tem contrato.
+      opts.push('Visto Estudante');
       if (state.idade === 'Abaixo de 30') opts.push('Au-pair');
       opts.push('Não sei ainda');
     } else if (objetivo === 'Estar com cônjuge ou filho(a) francês(a) ou da UE'){
@@ -468,11 +469,10 @@
     if (state.jaEsta === 'Sim' && state.vistoAtual === null) return { key:'vistoAtual', bot:'Qual visto você tem hoje?', type:'buttons', options: vistoAtualOptions() };
     if (state.objetivo === null) return { key:'objetivo', bot:'Qual é o seu principal objetivo?', type:'buttons', options:['Estudar','Trabalhar','Estar com cônjuge ou filho(a) francês(a) ou da UE','Acompanhar alguém que já está na França'] };
     if (state.objetivo === 'Acompanhar alguém que já está na França') return resultadoE();
-    if (state.tipo === null) return { key:'tipo', bot: 'Aqui estão as possibilidades de visto que você pode pedir — clique em cada um pra entender os pré-requisitos.', type:'tipoExplorer', options: tipoOptionsFor(state.objetivo) };
+    if (state.tipo === null) return { key:'tipo', bot: 'Aqui estão as possibilidades de visto que você pode pedir:', type:'buttons', options: tipoOptionsFor(state.objetivo) };
     if (state.tipo === 'Não sei ainda') return resultadoA();
-    if (state.prontidao === null) return { key:'prontidao', bot:'Você está começando a pesquisar sobre isso, ou já tentou e não conseguiu?', type:'buttons', options:['Estou começando agora','Já tentei e não deu certo'] };
     if (state.instagram === null) return { key:'instagram', bot:'Última coisa — se quiser, deixa seu @ do Instagram (opcional, aperta enviar em branco pra pular).', type:'text', placeholder:'@seuinstagram', optional:true };
-    return state.prontidao === 'Estou começando agora' ? resultadoB() : resultadoC();
+    return resultadoB();
   }
 
   function resultadoD(){
@@ -503,7 +503,7 @@
     const ctas = [];
     if (porDentro) ctas.push(porDentro);
     return { key:'result', type:'result', tag:{cls:'free', label:'Pré-requisitos grátis'},
-      bot: 'Você já viu os pré-requisitos de ' + state.tipo + ' ali atrás — isso foi só o resumo.' + (porDentro
+      bot: 'Beleza, ' + state.tipo + ' é o caminho pro seu caso.' + (porDentro
         ? ' Quer acompanhar cada etapa com prazo certo e um espaço só seu?'
         : ' Os artigos abaixo aprofundam.'),
       artigos: artigosPara(state.objetivo, state.tipo),
@@ -600,38 +600,13 @@
   }
 
   function clearInteractive(){
-    chat.querySelectorAll('.options, .cta-row, .tipo-preview-wrap').forEach(function(el){ el.remove(); });
-  }
-
-  // Mostra o pré-requisito do tipo clicado, sem avançar o passo — a pessoa
-  // pode clicar em vários botões antes de decidir. Só avança quando aperta
-  // "Seguir com [tipo]", que aí sim chama answer() e segue o fluxo normal.
-  function renderTipoPreview(step, opt, previewWrap){
-    previewWrap.innerHTML = '';
-    const row = document.createElement('div');
-    row.className = 'row bot';
-    const b = document.createElement('div');
-    b.className = 'bubble';
-    b.textContent = TIPO_CONTENT[opt] || '';
-    row.appendChild(b);
-    previewWrap.appendChild(row);
-
-    const ctaRow = document.createElement('div');
-    ctaRow.className = 'cta-row';
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'cta paid';
-    btn.textContent = 'Seguir com ' + opt + ' →';
-    btn.onclick = function(){ answer(step.key, opt); };
-    ctaRow.appendChild(btn);
-    previewWrap.appendChild(ctaRow);
-    scrollDown();
+    chat.querySelectorAll('.options, .cta-row').forEach(function(el){ el.remove(); });
   }
 
   function showStep(step){
     currentStep = step;
     // Um evento por passo alcançado — dá pra montar o funil (nome → ue →
-    // idade → jaEsta → objetivo → tipo → prontidao → instagram → result) e
+    // idade → jaEsta → objetivo → tipo → instagram → result) e
     // ver onde as pessoas abandonam. No passo final, o "outcome" é a
     // categoria do resultado (ex. "Grátis · sem burocracia de visto").
     if (window.PDEvents) {
@@ -675,26 +650,6 @@
           box.appendChild(btn);
         });
         chat.appendChild(box);
-      } else if (step.type === 'tipoExplorer'){
-        inputbar.classList.add('hidden');
-        const box = document.createElement('div');
-        box.className = 'options';
-        const previewWrap = document.createElement('div');
-        previewWrap.className = 'tipo-preview-wrap';
-        step.options.forEach(function(opt){
-          const btn = document.createElement('button');
-          btn.className = 'opt-btn';
-          btn.type = 'button';
-          btn.textContent = opt;
-          // "Não sei ainda" (ou qualquer opção sem prerequisito mapeado) não tem
-          // o que explorar — comete direto, como um botão normal.
-          btn.onclick = (opt === 'Não sei ainda' || !TIPO_CONTENT[opt])
-            ? function(){ answer(step.key, opt); }
-            : function(){ renderTipoPreview(step, opt, previewWrap); };
-          box.appendChild(btn);
-        });
-        chat.appendChild(box);
-        chat.appendChild(previewWrap);
       } else if (step.type === 'text'){
         inputbar.classList.remove('hidden');
         textInput.placeholder = step.placeholder || 'Escreva aqui...';
