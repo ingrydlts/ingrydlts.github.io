@@ -139,6 +139,7 @@ collections:
                 widget: list
                 summary: "{{fields.title}}"
                 fields:
+                  - { label: "🔴 Link ativo", name: active, widget: boolean, default: true, required: false, hint: "Botão de ativação: desligado = link fica cadastrado mas INVISÍVEL em /links/ — some da página sem precisar apagar nada. Ligue quando quiser que ele apareça de novo." }
                   - { label: "Emoji do ícone", name: icon, widget: string }
                   - { label: "Título", name: title, widget: string }
                   - { label: "Descrição", name: description, widget: text }

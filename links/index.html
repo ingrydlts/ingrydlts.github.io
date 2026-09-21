@@ -251,12 +251,14 @@
   }
 
   function sectionHTML(section) {
-    var gridClass = "pd-links-grid" + ((section.items || []).length > 1 ? " pd-links-grid-2" : "");
+    var items = (section.items || []).filter(function (item) { return item.active !== false; });
+    if (!items.length) return "";
+    var gridClass = "pd-links-grid" + (items.length > 1 ? " pd-links-grid-2" : "");
     return (
       '<section class="pd-links-section">' +
       '<span class="eyebrow">' + escapeHtml(section.title) + "</span>" +
       '<div class="' + gridClass + '">' +
-      (section.items || []).map(linkCardHTML).join("") +
+      items.map(linkCardHTML).join("") +
       "</div></section>"
     );
   }
