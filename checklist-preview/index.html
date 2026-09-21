@@ -30,10 +30,50 @@
 
   .preview-section{ padding-top:56px; border-top:1px solid var(--borda-suave); margin-top:56px; scroll-margin-top:88px; }
   .preview-hero{ padding-top:0; border-top:none; margin-top:0; }
+  /* O quiz é a continuação direta do hero (a primeira pergunta já aparece na
+     página, sem botão no meio) — não é uma seção separada, então sem a
+     separação visual das outras .preview-section. */
+  #quiz{ padding-top:0; border-top:none; margin-top:8px; }
   section[hidden], div[hidden]{ display:none !important; }
 
   .quiz-progress{ height:4px; background:var(--borda-suave); border-radius:var(--radius-pill); overflow:hidden; margin-bottom:32px; }
   .quiz-progress-bar{ height:100%; width:0; background:var(--verde-moss); transition:width .35s ease; }
+
+  .step{
+    position:relative;
+    background:#fff;
+    border:1px solid var(--borda-suave);
+    border-radius:18px;
+    padding:30px 28px;
+    animation:
+      stepIn .5s cubic-bezier(.22,1,.36,1) both,
+      stepFloat 4.6s ease-in-out .5s infinite,
+      stepGlow 3.4s ease-in-out .5s infinite;
+  }
+  .step.step-exiting{
+    animation: stepOut .26s cubic-bezier(.4,0,1,1) forwards;
+  }
+  @media (prefers-reduced-motion: reduce){
+    .step{ animation: stepIn .01s linear both; }
+    .step.step-exiting{ animation: stepOut .01s linear forwards; }
+  }
+  @keyframes stepIn{
+    from{ opacity:0; transform:translateY(20px) scale(.97); }
+    to{ opacity:1; transform:translateY(0) scale(1); }
+  }
+  @keyframes stepOut{
+    from{ opacity:1; transform:translateY(0) scale(1); }
+    to{ opacity:0; transform:translateY(-14px) scale(.97); }
+  }
+  @keyframes stepFloat{
+    0%,100%{ transform:translateY(0); }
+    50%{ transform:translateY(-7px); }
+  }
+  @keyframes stepGlow{
+    0%,100%{ box-shadow: var(--shadow-card), 0 0 26px -4px rgba(87,115,40,.22); }
+    50%{ box-shadow: var(--shadow-card), 0 0 46px 2px rgba(87,115,40,.4); }
+  }
+
   .step h2{ margin-bottom:20px; }
   .options{ display:grid; gap:10px; }
   .option-card{
@@ -54,14 +94,6 @@
     border-radius:var(--radius-md); border:1px solid var(--borda); background:#fff; color:var(--grafite);
   }
   .field-row input:focus{ border-color:var(--verde-moss); outline:none; }
-  .options-inline{ display:flex; flex-wrap:wrap; gap:8px; }
-  .options-inline .opt-toggle{
-    font-family:inherit; font-size:13.5px; font-weight:600; color:var(--grafite);
-    background:var(--off-white-soft); border:1px solid var(--borda); border-radius:var(--radius-pill);
-    padding:9px 16px; cursor:pointer; transition:border-color .15s ease, background .15s ease;
-  }
-  .options-inline .opt-toggle:hover{ border-color:var(--verde-moss); }
-  .options-inline .opt-toggle.is-selected{ border-color:var(--verde-moss); background:var(--off-white); color:var(--verde-moss); }
 
   .phase-note{ color:var(--texto-secundario); font-size:15px; margin-bottom:26px; }
   .checklist-mock{
@@ -118,10 +150,8 @@
 
     <header class="preview-hero">
       <span class="eyebrow" style="color:var(--verde-moss);">Por Dentro · checklist rápido</span>
-      <h1>Sua burocracia francesa não devia caber num grupo de Facebook às 2 da manhã.</h1>
-      <p class="lede" id="hero-lede">Responda 3 perguntas rápidas e veja como fica o seu checklist de imigração — com prazos reais, não dicas genéricas de grupo.</p>
-      <button class="btn-primary" id="start-btn" type="button">Descobrir meu checklist →</button>
-      <p class="hero-meta" id="hero-meta">Leva menos de 1 minuto. Nada de cadastro pra começar.</p>
+      <h1 id="hero-title">Aqui você encontra suporte para realizar seu projeto!</h1>
+      <p class="lede" id="hero-lede">Diz seu perfil e seu nome, e a gente já mostra como fica o seu checklist de imigração — com prazos reais, não dicas genéricas de grupo.</p>
     </header>
 
     <section class="preview-section" id="quiz" hidden>
@@ -132,57 +162,73 @@
         <div class="options" id="opts-persona"></div>
       </div>
 
-      <div class="step" data-step="2" hidden>
-        <h2>Em que fase você está agora?</h2>
-        <div class="options" id="opts-phase"></div>
-      </div>
-
-      <div class="step" data-step="2b" hidden>
-        <h2>Seu prazo atual (visto, titre de séjour) tá vencendo em breve?</h2>
-        <div class="options" id="opts-urgency"></div>
-      </div>
-
-      <div class="step" data-step="3" hidden>
-        <h2>O que mais tira o seu sono hoje?</h2>
-        <div class="options" id="opts-worry"></div>
-      </div>
-
       <div class="step" data-step="4" hidden>
         <h2>Quase lá — só pra eu saber quem eu tô ajudando.</h2>
         <div class="field-row">
           <label for="name-input">Seu primeiro nome</label>
           <input id="name-input" type="text" autocomplete="given-name" placeholder="Como você se chama?">
         </div>
-        <button class="btn-primary" id="see-checklist-btn" type="button">Ver meu checklist →</button>
+        <button class="btn-primary" id="see-checklist-btn" type="button">Continuar →</button>
       </div>
 
-      <!-- Só pra quem é au_pair_estudante — mesmas perguntas do onboarding do
-           app pago (au_pair_estudante oficial — checklist LANDING PAGE
-           detalhado por caminho, no Miro), mas nenhuma é obrigatória aqui:
-           dá pra pular tudo e ver o checklist genérico mesmo assim. -->
-      <div class="step" data-step="extra" hidden>
-        <h2>Só mais um pouco — isso afina seu checklist (pode pular qualquer uma).</h2>
+      <!-- Universal pras 5 personas — vem logo depois do nome e antes de
+           qualquer ramificação (ap1-ap5 pro au pair, ou reveal pras outras
+           4). O valor vira parte do e-mail de interesse (mailtoBody) e da
+           nota de fase mostrada no reveal, não é só decoração. -->
+      <div class="step" data-step="worry" hidden>
+        <h2>O que mais tira o seu sono hoje?</h2>
+        <div class="options" id="opts-worry"></div>
+      </div>
+
+      <!-- Universal pras 5 personas, logo depois do sono — não é decoração:
+           equivalência de diploma, mestrado em alternância e até o próprio
+           1:1 (quando a pessoa marca "não sei ainda" no caminho de estudo,
+           dentro do app) dependem de saber até onde a pessoa foi nos
+           estudos. Sem "não sei ainda" aqui de propósito: nível concluído é
+           um fato, não uma decisão em aberto. -->
+      <div class="step" data-step="estudos" hidden>
+        <h2>Até onde você foi nos estudos, no Brasil?</h2>
+        <p class="phase-note" style="margin-bottom:20px;">Isso muda a conta pra quem pensa em equivalência de diploma, mestrado ou alternância — melhor eu já saber.</p>
+        <div class="options" id="opts-estudos"></div>
+      </div>
+
+      <!-- Só pra quem é au_pair_estudante — segue exatamente a árvore de
+           decisão do board "au_pair_estudante oficial — checklist LANDING
+           PAGE detalhado por caminho" no Miro. Ao terminar, manda direto
+           pro checklist de verdade dentro do app (ver irParaChecklistReal),
+           sem mostrar um preview mockado aqui. -->
+      <div class="step" data-step="ap1" hidden>
+        <h2>Você está no primeiro ou segundo ano de au pair?</h2>
+        <div class="options" id="opts-ap1"></div>
+      </div>
+
+      <div class="step" data-step="ap2a" hidden>
+        <h2>E depois você pretende:</h2>
+        <div class="options" id="opts-ap2a"></div>
+      </div>
+
+      <div class="step" data-step="ap2b" hidden>
+        <h2>Qual é a data final do seu contrato atual de au pair?</h2>
         <div class="field-row">
-          <label for="extra-data-chegada">Qual é a sua data de chegada na França? (se já souber)</label>
-          <input id="extra-data-chegada" type="date">
+          <label for="ap-data-final">Mês e ano (o dia exato não é necessário)</label>
+          <input id="ap-data-final" type="month">
         </div>
-        <div class="field-row">
-          <label>Você tem diploma de uma profissão regulamentada (enfermagem, odontologia, medicina, etc.)?</label>
-          <div class="options-inline" id="extra-profissao"></div>
-        </div>
-        <div class="field-row">
-          <label>Sua moradia na França já está resolvida?</label>
-          <div class="options-inline" id="extra-moradia"></div>
-        </div>
-        <div class="field-row">
-          <label>Você já tem conta bancária francesa?</label>
-          <div class="options-inline" id="extra-conta"></div>
-        </div>
-        <div class="field-row">
-          <label>Já está cadastrado(a) na sécurité sociale (Ameli)?</label>
-          <div class="options-inline" id="extra-securite"></div>
-        </div>
-        <button class="btn-primary" id="extra-continuar-btn" type="button">Ver meu checklist completo →</button>
+        <button class="btn-primary" id="ap2b-continuar-btn" type="button">Continuar →</button>
+      </div>
+
+      <div class="step" data-step="ap3" hidden>
+        <h2>Você já tem certificado de matrícula em uma instituição reconhecida?</h2>
+        <div class="options" id="opts-ap3"></div>
+      </div>
+
+      <div class="step" data-step="ap4" hidden>
+        <h2>Você consegue comprovar cerca de 877,50€/mês de recursos?</h2>
+        <div class="options" id="opts-ap4"></div>
+      </div>
+
+      <div class="step" data-step="ap5" hidden>
+        <h2>Você tem um sponsor que possa comprovar recursos por você?</h2>
+        <div class="options" id="opts-ap5"></div>
       </div>
     </section>
 
@@ -282,16 +328,89 @@
     { key:"caro", title:"Pagar caro por uma consultoria", sub:"pro meu caso, parece desproporcional" }
   ];
 
+  // Sem "não sei ainda" de propósito — o "não sei ainda" mora no pop-up de
+  // escolha de caminho de estudo, dentro do app (dashboard), que é uma
+  // decisão em aberto. Nível de estudos concluído é um fato que a pessoa já
+  // sabe, mesmo que ainda não saiba o que fazer com ele.
+  var NIVEL_ESTUDOS = [
+    { key:"ensino_medio", title:"Ensino médio completo", sub:"parei antes da faculdade" },
+    { key:"superior_incompleto", title:"Superior incompleto", sub:"comecei uma graduação e não terminei" },
+    { key:"superior_completo", title:"Superior completo (graduação)", sub:"terminei uma faculdade" },
+    { key:"pos_graduacao", title:"Pós-graduação, mestrado ou doutorado", sub:"fui além da graduação" }
+  ];
+
+  // Frases naturais pra usar dentro de uma sentença do hero — diferente do
+  // "title" acima, que é rótulo de card de seleção ("Au Pair / Estudante").
+  // Numa frase corrida, o rótulo soa como categoria de formulário; aqui soa
+  // como alguém que entendeu a situação da pessoa.
+  var PERSONA_LEDE = {
+    au_pair_estudante: "você é au pair e quer virar estudante",
+    campus_france: "você veio pela Campus France",
+    alternancia_emprego: "você tá em alternância buscando emprego",
+    conjuge: "você é cônjuge de francês(a) ou de alguém da UE",
+    pvt: "você veio pelo PVT"
+  };
+  var WORRY_LEDE = {
+    prazo: "o medo de perder o prazo e o status legal",
+    comeco: "não saber por onde começar",
+    sozinha: "ter que fazer tudo sozinha, sem apoio",
+    caro: "o medo de pagar caro por uma consultoria que não serve pro seu caso"
+  };
+  function capitalizarNome(nome){
+    if (!nome) return nome;
+    return nome.charAt(0).toLocaleUpperCase("pt-BR") + nome.slice(1);
+  }
+
+  var MESES_PT = ["janeiro","fevereiro","março","abril","maio","junho","julho","agosto","setembro","outubro","novembro","dezembro"];
+  function formatMonthYear(value){
+    if (!value) return "";
+    var parts = value.split("-");
+    var y = parts[0], m = parseInt(parts[1], 10);
+    if (!y || !m) return value;
+    return MESES_PT[m - 1] + " de " + y;
+  }
+
   // Espelha content/checklist-templates.json do app Por Dentro.
   // "locked" = itens com prazo/dica — o que a versão paga libera.
   var CHECKLISTS = {
-    au_pair_estudante: [
-      { cat:"Instalação", label:"Validar o VLS-TS no OFII (fase au pair)" },
-      { cat:"Moradia", label:"Buscar moradia própria, saindo da casa da família anfitriã", skipIf:"moradiaResolvida" },
-      { cat:"Documentação", label:"Comprovar recursos financeiros de estudante (~877,50€/mês)" },
-      { cat:"Documentação", label:"Protocolar o changement de statut na préfecture (ANEF) antes do titre atual vencer", tip:"Prazo legal: entre 4 e 2 meses antes do título vencer, não é sugestão.", locked:true },
-      { cat:"Sécurité sociale", label:"Atualizar o regime na Ameli (de au pair pra régime étudiant)", locked:true, skipIf:"securiteResolvida" }
-    ],
+    // au_pair_estudante segue a árvore de decisão do board "au_pair_estudante
+    // oficial — checklist LANDING PAGE detalhado por caminho" no Miro: cada
+    // resposta da etapa ap1-ap5 acrescenta (ou não) um item aqui, em vez de
+    // uma lista fixa.
+    au_pair_estudante: function(state){
+      var items = [
+        { cat:"Instalação", label:"Validar o VLS-TS no OFII (fase au pair)" }
+      ];
+
+      if (state.apAno === "segundo" && state.apDataFinal){
+        items.push({ cat:"Documentação", label:"Contrato atual de au pair vence em " + formatMonthYear(state.apDataFinal) });
+      }
+
+      if (state.apCertificado === "nao"){
+        items.push({
+          cat:"Documentação",
+          label:"Fechar matrícula em instituição reconhecida antes do fim do contrato de au pair",
+          tip:"Isso precisa estar fechado antes do final do seu contrato como au pair — é o que permite solicitar a troca de status.",
+          locked:true
+        });
+      }
+
+      if (state.apRecursos === "sim"){
+        items.push({ cat:"Documentação", label:"Reunir extrato bancário com menos de 3 meses" });
+      } else if (state.apRecursos === "nao"){
+        if (state.apSponsor === "sim"){
+          items.push({ cat:"Documentação", label:"Solicitar contracheque do sponsor, traduzido pro francês se necessário" });
+        } else if (state.apSponsor === "nao"){
+          items.push({ cat:"Documentação", label:"Encontrar um sponsor que comprove recursos por você" });
+        }
+      }
+
+      items.push({ cat:"Moradia", label:"Buscar moradia própria, saindo da casa da família anfitriã" });
+      items.push({ cat:"Documentação", label:"Protocolar o changement de statut na préfecture (ANEF) antes do titre atual vencer", tip:"Prazo legal: entre 4 e 2 meses antes do título vencer, não é sugestão.", locked:true });
+      items.push({ cat:"Sécurité sociale", label:"Atualizar o regime na Ameli (de au pair pra régime étudiant)", locked:true });
+
+      return items;
+    },
     campus_france: [
       { cat:"Instalação", label:"Validar o VLS-TS no OFII", deadlineDays:90, tip:"Agende assim que a taxe OFII for paga — a fila costuma estourar o prazo de 3 meses.", locked:true },
       { cat:"Instalação", label:"Confirmar matrícula definitiva na instituição" },
@@ -322,11 +441,11 @@
   };
 
   var state = {
-    persona:null, phase:null, worry:null, name:"", origem:null, urgencyUnclear:false,
-    // Só preenchidos pra quem é au_pair_estudante e passa pela etapa "extra"
+    persona:null, phase:null, worry:null, nivelEstudos:null, name:"", origem:null, urgencyUnclear:false,
+    // Só preenchidos pra quem é au_pair_estudante, na árvore ap1-ap5
     // (au_pair_estudante oficial — checklist LANDING PAGE detalhado por
-    // caminho, no Miro) — nenhum é obrigatório, ficam null se pulados.
-    dataChegada:null, profissaoRegulamentada:null, moradiaResolvida:null, contaResolvida:null, securiteResolvida:null
+    // caminho, no Miro).
+    apAno:null, apPretende:null, apDataFinal:null, apCertificado:null, apRecursos:null, apSponsor:null
   };
   var totalSteps = 4;
 
@@ -338,7 +457,8 @@
   var VALID_PERSONAS = ["au_pair_estudante", "campus_france", "alternancia_emprego", "conjuge", "pvt"];
   var VALID_PHASES = ["planejando", "adaptando", "urgente"];
   var VALID_WORRIES = ["prazo", "comeco", "sozinha", "caro"];
-  var handoffPersona = null, handoffFase = null, handoffWorry = null, handoffNome = null;
+  var VALID_NIVEL_ESTUDOS = ["ensino_medio", "superior_incompleto", "superior_completo", "pos_graduacao"];
+  var handoffPersona = null, handoffFase = null, handoffWorry = null, handoffNivelEstudos = null, handoffNome = null;
   try {
     var params = new URLSearchParams(window.location.search);
     var p = params.get("persona");
@@ -347,8 +467,10 @@
     if (f && VALID_PHASES.indexOf(f) !== -1) handoffFase = f;
     var w = params.get("worry");
     if (w && VALID_WORRIES.indexOf(w) !== -1) handoffWorry = w;
+    var ne = params.get("nivelEstudos");
+    if (ne && VALID_NIVEL_ESTUDOS.indexOf(ne) !== -1) handoffNivelEstudos = ne;
     var n = params.get("nome");
-    if (n && n.trim()) handoffNome = n.trim().slice(0, 60);
+    if (n && n.trim()) handoffNome = capitalizarNome(n.trim().slice(0, 60));
     state.origem = params.get("origem") || null;
   } catch(e){ /* URLSearchParams indisponível — segue sem handoff */ }
 
@@ -364,6 +486,7 @@
       btn.innerHTML = '<span><span class="opt-title">' + item.title + '</span>' +
         '<span class="opt-sub">' + item.sub + '</span></span>';
       btn.addEventListener("click", function(){
+        trackStartOnce();
         Array.prototype.forEach.call(container.children, function(c){ c.classList.remove("is-selected"); });
         btn.classList.add("is-selected");
         onPick(item.key);
@@ -372,91 +495,117 @@
     });
   }
 
-  // Grupo compacto de botões (etapa "extra") — sem sub-texto, sem avançar de
-  // step ao clicar (a pessoa continua vendo o resto do formulário e decide
-  // quando seguir). Clicar de novo no mesmo botão desmarca — nenhuma dessas
-  // perguntas é obrigatória, então "não respondida" é um estado válido.
-  function renderToggle(container, items, onPick){
-    container.innerHTML = "";
-    items.forEach(function(item){
-      var btn = document.createElement("button");
-      btn.type = "button";
-      btn.className = "opt-toggle";
-      btn.dataset.key = item.key;
-      btn.textContent = item.title;
-      btn.addEventListener("click", function(){
-        var jaSelecionado = btn.classList.contains("is-selected");
-        Array.prototype.forEach.call(container.children, function(c){ c.classList.remove("is-selected"); });
-        if (jaSelecionado){ onPick(null); return; }
-        btn.classList.add("is-selected");
-        onPick(item.key);
+  var STEP_PROGRESS = { "1":26, "4":42, "worry":56, "estudos":68, "ap1":78, "ap2a":83, "ap2b":83, "ap3":88, "ap4":93, "ap5":97 };
+
+  // Ainda não existe domínio de produção pro app (só roda em localhost hoje) —
+  // TROCAR pelo domínio real antes de publicar essa página no ar.
+  var APP_URL = "http://localhost:8000/";
+
+  // Troca animada: a pergunta atual "sai" (fade + leve deslize pra cima) e só
+  // depois a próxima "entra" (fade + flutua + brilha) — em vez de trocar o
+  // hidden na marra. instant=true pula a animação (usado no roteamento
+  // inicial do handoff, antes da seção do quiz ficar visível).
+  function swapStep(nextEl, instant){
+    if (!nextEl) return;
+    var current = document.querySelector(".step:not([hidden])");
+    if (instant || !current || current === nextEl){
+      document.querySelectorAll(".step").forEach(function(s){
+        s.hidden = s !== nextEl;
+        s.classList.remove("step-exiting");
       });
-      container.appendChild(btn);
-    });
+      return;
+    }
+    current.classList.add("step-exiting");
+    var done = false;
+    function finish(){
+      if (done) return;
+      done = true;
+      current.hidden = true;
+      current.classList.remove("step-exiting");
+      nextEl.hidden = false;
+    }
+    current.addEventListener("animationend", finish, { once:true });
+    setTimeout(finish, 320);
   }
 
-  var STEP_PROGRESS = { "1":20, "2":40, "2b":50, "3":60, "4":80, "extra":95 };
-
-  function goToStep(n){
-    document.querySelectorAll(".step").forEach(function(s){
-      s.hidden = s.dataset.step !== String(n);
-    });
+  function goToStep(n, instant){
+    var target = document.querySelector('.step[data-step="' + n + '"]');
+    swapStep(target, instant);
     var pct = STEP_PROGRESS[String(n)];
     if (pct === undefined) pct = (n / totalSteps * 100);
     byId("progress-bar").style.width = pct + "%";
+  }
+
+  // "checklist_preview_start" marcava o clique no botão do hero. Sem o botão
+  // (a primeira pergunta já está na página), o equivalente é a primeira
+  // resposta — disparar no load contaria toda visita como início de quiz.
+  var startTracked = false;
+  function trackStartOnce(){
+    if (startTracked) return;
+    startTracked = true;
+    track("checklist_preview_start", { handoff: !!handoffPersona, origem: state.origem });
   }
 
   function startQuiz(){
     if (handoffPersona) state.persona = handoffPersona;
     if (handoffFase) state.phase = handoffFase;
     if (handoffWorry) state.worry = handoffWorry;
+    if (handoffNivelEstudos) state.nivelEstudos = handoffNivelEstudos;
     if (handoffNome) state.name = handoffNome;
 
-    track("checklist_preview_start", { handoff: !!handoffPersona, origem: state.origem });
+    byId("quiz").hidden = false;
 
-    // Handoff completo (persona + fase + worry + nome, ex.: vindo do
-    // assistente de vistos) — a pessoa já respondeu tudo isso lá atrás, não
-    // faz sentido perguntar de novo. Pula direto pro resultado (ou pra etapa
-    // "extra" primeiro, se for au_pair_estudante — ver goToResultado).
-    if (handoffPersona && handoffFase && handoffWorry && handoffNome){
-      goToResultado();
+    // Handoff com persona + nome (ex.: vindo do assistente de vistos) — não
+    // pergunta de novo quem a pessoa é, mas ainda pergunta o que falta: a
+    // maior preocupação e o nível de estudos (hoje sempre vêm null — o bot
+    // do site não pergunta isso) e, pro au pair, a árvore ap1-ap5. Pula
+    // direto pra próxima pergunta ainda sem resposta, na mesma ordem do
+    // fluxo normal — só cai no resultado quando TUDO já é conhecido.
+    if (handoffPersona && handoffNome){
+      if (!handoffWorry) goToStep("worry", true);
+      else if (!handoffNivelEstudos) goToStep("estudos", true);
+      else goToResultado();
       return;
     }
 
-    byId("quiz").hidden = false;
-    byId("quiz").scrollIntoView({ behavior: "smooth", block: "start" });
-    var startAt = 1;
-    if (handoffPersona) startAt = 2;
-    if (handoffPersona && handoffFase) startAt = 3;
-    if (handoffPersona && handoffFase && handoffWorry) startAt = 4;
-    goToStep(startAt);
+    goToStep(handoffPersona ? 4 : 1, true);
   }
 
   function applyHandoffHero(){
+    // O título é o mesmo pra qualquer persona e qualquer dor — só ganha o
+    // nome quando ele já veio do bot.
+    if (handoffNome){
+      byId("hero-title").textContent = handoffNome + ", aqui você encontra suporte para realizar seu projeto!";
+    }
     if (!handoffPersona) return;
-    var skipped = 1 + (handoffFase ? 1 : 0) + (handoffWorry ? 1 : 0);
-    if (handoffFase && handoffWorry && handoffNome){
-      byId("hero-lede").textContent = handoffNome + ", já sei que seu perfil é " + personaTitle(handoffPersona) +
-        " e o que mais pesa pra você agora — seu checklist já está pronto.";
-      byId("hero-meta").textContent = "Sem mais perguntas. Nada de cadastro.";
-      byId("start-btn").textContent = "Ver meu checklist →";
-    } else if (skipped >= 3){
-      byId("hero-lede").textContent = "Já sei que seu perfil é " + personaTitle(handoffPersona) +
-        " e mais um pouco da sua situação — só falta seu nome pra eu te mostrar o checklist.";
-      byId("hero-meta").textContent = "Leva 10 segundos. Nada de cadastro pra começar.";
-      byId("start-btn").textContent = "Ver meu checklist →";
+
+    // Au pair → estudante tem texto próprio (board "au_pair_estudante oficial").
+    if (handoffPersona === "au_pair_estudante"){
+      byId("hero-lede").textContent = "Eu já sei que você é au pair e quer migrar pro visto de estudante. " +
+        "Agora precisamos entrar mais no detalhe, pra eu poder te ajudar a trilhar o caminho ideal pro seu sucesso.";
+      return;
+    }
+
+    if (handoffNome){
+      // handoffWorry/handoffNivelEstudos quase nunca vêm preenchidos (o bot
+      // do site não pergunta isso) — o texto precisa ser honesto sobre ainda
+      // faltar pergunta, em vez de prometer "sem mais perguntas" e entregar
+      // mais de uma pergunta.
+      var perguntasFaltando = (handoffWorry ? 0 : 1) + (handoffNivelEstudos ? 0 : 1);
+      byId("hero-lede").textContent = "Já sei que " + PERSONA_LEDE[handoffPersona] +
+        (handoffWorry ? " e que " + WORRY_LEDE[handoffWorry] + " é o que mais pesa agora" : "") +
+        (perguntasFaltando ? (" — falta só " + perguntasFaltando + (perguntasFaltando === 1 ? " pergunta rápida" : " perguntas rápidas") + " pro seu checklist.") : " — seu checklist já está pronto.");
     } else {
-      byId("hero-lede").textContent = "Já sei que seu perfil é " + personaTitle(handoffPersona) +
-        " — vamos direto pras outras perguntas e eu te mostro como fica o seu checklist.";
-      byId("hero-meta").textContent = "Leva menos de 30 segundos. Nada de cadastro pra começar.";
-      byId("start-btn").textContent = "Continuar →";
+      byId("hero-lede").textContent = "Já sei que " + PERSONA_LEDE[handoffPersona] +
+        " — só falta seu nome pra eu te mostrar o checklist.";
     }
   }
 
   function buildChecklist(){
-    var items = (CHECKLISTS[state.persona] || []).filter(function(item){
-      return !(item.skipIf && state[item.skipIf] === true);
-    });
+    var entry = CHECKLISTS[state.persona];
+    var items = typeof entry === "function"
+      ? entry(state)
+      : (entry || []).filter(function(item){ return !(item.skipIf && state[item.skipIf] === true); });
     var wrap = byId("checklist-items");
     wrap.innerHTML = "";
     items.forEach(function(item){
@@ -498,20 +647,54 @@
     return p ? p.title : "";
   }
 
-  // Ponto único de decisão entre "mostrar resultado" e "perguntar mais um
-  // pouco antes" — só au_pair_estudante tem a etapa extra hoje (é a única
-  // com o fluxo "checklist LANDING PAGE detalhado por caminho" no Miro).
+  // Só au_pair_estudante tem uma árvore de perguntas própria (ap1-ap5, board
+  // "au_pair_estudante oficial — checklist LANDING PAGE detalhado por
+  // caminho" no Miro) — as outras 4 personas vão direto pro preview mockado.
   function goToResultado(){
-    if (state.persona === "au_pair_estudante") showExtra();
+    if (state.persona === "au_pair_estudante") showApBranch();
     else showReveal();
   }
 
-  function showExtra(){
+  function showApBranch(){
+    var wasHidden = byId("quiz").hidden;
     byId("quiz").hidden = false;
-    document.querySelectorAll(".step").forEach(function(s){ s.hidden = s.dataset.step !== "extra"; });
-    byId("progress-bar").style.width = STEP_PROGRESS.extra + "%";
+    swapStep(document.querySelector('.step[data-step="ap1"]'), wasHidden);
+    byId("progress-bar").style.width = STEP_PROGRESS.ap1 + "%";
     byId("quiz").scrollIntoView({ behavior: "smooth", block: "start" });
     track("checklist_preview_extra", { persona: state.persona });
+  }
+
+  // Ao terminar a árvore ap1-ap5, não mostra o preview mockado aqui — manda
+  // direto pro checklist de verdade dentro do app. Repassa tudo que a pessoa
+  // já respondeu aqui (persona, nome, origem, fase, sono, nível de estudos)
+  // pela mesma query string que o app já sabe ler (ver assets/js/handoff.js
+  // no POR DENTRO APP) — sem isso, ela reencontraria a tela de login sem
+  // nenhum contexto e teria que dizer quem é de novo.
+  function irParaChecklistReal(){
+    track("checklist_preview_trial_interest", { persona: state.persona });
+    var params = new URLSearchParams();
+    params.set("persona", state.persona);
+    if (state.name) params.set("nome", state.name);
+    if (state.origem) params.set("origem", state.origem);
+    if (state.phase) params.set("fase", state.phase);
+    if (state.worry) params.set("worry", state.worry);
+    if (state.nivelEstudos) params.set("nivelEstudos", state.nivelEstudos);
+
+    // As respostas da árvore ap1-ap5 (o app não pergunta de novo o que já foi
+    // respondido aqui — ele só mostra o resumo pra pessoa confirmar) vão no
+    // FRAGMENTO da URL (#), não na query string: o fragmento não é enviado a
+    // servidor nenhum nem entra em log ou no Referer, e essas respostas são
+    // financeiras (recursos, sponsor) e de situação migratória.
+    var respostas = new URLSearchParams();
+    if (state.apAno) respostas.set("apAno", state.apAno);
+    if (state.apPretende) respostas.set("apPretende", state.apPretende);
+    if (state.apDataFinal) respostas.set("apDataFinal", state.apDataFinal);
+    if (state.apCertificado) respostas.set("apCertificado", state.apCertificado);
+    if (state.apRecursos) respostas.set("apRecursos", state.apRecursos);
+    if (state.apSponsor) respostas.set("apSponsor", state.apSponsor);
+    var fragmento = respostas.toString();
+
+    window.location.href = APP_URL + "?" + params.toString() + (fragmento ? "#" + fragmento : "");
   }
 
   function showReveal(){
@@ -527,29 +710,19 @@
     track("checklist_preview_reveal", { persona: state.persona, phase: state.phase });
   }
 
-  var PROFISSAO_LABELS = {
-    nao: "Não é o caso",
-    enfermagem: "Enfermagem",
-    odontologia_medicina: "Odontologia ou Medicina",
-    outra: "Outra profissão regulamentada"
-  };
-
   function mailtoBody(){
     var worryLabel = (WORRIES.filter(function(w){ return w.key === state.worry; })[0] || {}).title || state.worry;
     var phaseLabel = (PHASES.filter(function(p){ return p.key === state.phase; })[0] || {}).title || state.phase;
+    var nivelLabel = (NIVEL_ESTUDOS.filter(function(n){ return n.key === state.nivelEstudos; })[0] || {}).title || state.nivelEstudos;
 
     var lines = [
       "Oi Ingryd, acabei de responder o preview do Por Dentro e quero o trial grátis!",
       "",
       "Nome: " + (state.name || "(não informado)"),
       "Perfil: " + personaTitle(state.persona),
-      "Fase: " + phaseLabel,
-      "Maior preocupação: " + worryLabel,
-      state.dataChegada ? ("Data de chegada: " + state.dataChegada) : null,
-      state.profissaoRegulamentada ? ("Profissão regulamentada: " + (PROFISSAO_LABELS[state.profissaoRegulamentada] || state.profissaoRegulamentada)) : null,
-      state.moradiaResolvida !== null ? ("Moradia resolvida: " + (state.moradiaResolvida ? "Sim" : "Não")) : null,
-      state.contaResolvida !== null ? ("Conta bancária francesa: " + (state.contaResolvida ? "Sim" : "Não")) : null,
-      state.securiteResolvida !== null ? ("Cadastrado na Ameli: " + (state.securiteResolvida ? "Sim" : "Não")) : null,
+      state.phase ? ("Fase: " + phaseLabel) : null,
+      state.worry ? ("Maior preocupação: " + worryLabel) : null,
+      state.nivelEstudos ? ("Nível de estudos no Brasil: " + nivelLabel) : null,
       state.origem ? ("Veio de: " + state.origem) : null,
       "",
       "Me avisa quando o trial estiver no ar!"
@@ -571,52 +744,79 @@
 
   renderOptions(byId("opts-persona"), PERSONAS, function(key){
     state.persona = key;
-    setTimeout(function(){ goToStep(2); }, 220);
-  });
-  renderOptions(byId("opts-phase"), PHASES, function(key){
-    state.phase = key;
-    var showUrgency = (key === "adaptando" && !handoffFase);
-    setTimeout(function(){ goToStep(showUrgency ? "2b" : 3); }, 220);
-  });
-  renderOptions(byId("opts-urgency"), URGENCY, function(key){
-    if (key === "sim") state.phase = "urgente";
-    if (key === "incerta") state.urgencyUnclear = true;
-    setTimeout(function(){ goToStep(3); }, 220);
-  });
-  renderOptions(byId("opts-worry"), WORRIES, function(key){
-    state.worry = key;
     setTimeout(function(){ goToStep(4); }, 220);
   });
 
-  renderToggle(byId("extra-profissao"), [
-    { key:"nao", title:"Não é o meu caso" },
-    { key:"enfermagem", title:"Enfermagem" },
-    { key:"odontologia_medicina", title:"Odontologia ou Medicina" },
-    { key:"outra", title:"Outra" }
-  ], function(key){ state.profissaoRegulamentada = key === "nao" ? null : key; });
+  renderOptions(byId("opts-worry"), WORRIES, function(key){
+    state.worry = key;
+    setTimeout(function(){ goToStep("estudos"); }, 220);
+  });
 
-  renderToggle(byId("extra-moradia"), [{ key:"sim", title:"Sim" }, { key:"nao", title:"Não" }], function(key){
-    state.moradiaResolvida = key === null ? null : (key === "sim");
+  renderOptions(byId("opts-estudos"), NIVEL_ESTUDOS, function(key){
+    state.nivelEstudos = key;
+    setTimeout(goToResultado, 220);
   });
-  renderToggle(byId("extra-conta"), [{ key:"sim", title:"Sim" }, { key:"nao", title:"Não" }], function(key){
-    state.contaResolvida = key === null ? null : (key === "sim");
+
+  // Árvore ap1-ap5 (au_pair_estudante oficial — checklist LANDING PAGE
+  // detalhado por caminho, no Miro): cada resposta decide a próxima
+  // pergunta, seguindo exatamente os ramos do board.
+  renderOptions(byId("opts-ap1"), [
+    { key:"primeiro", title:"Primeiro ano", sub:"ainda no meu primeiro contrato de au pair" },
+    { key:"segundo", title:"Segundo ano", sub:"já renovei pelo menos uma vez" }
+  ], function(key){
+    state.apAno = key;
+    setTimeout(function(){ goToStep(key === "primeiro" ? "ap2a" : "ap2b"); }, 220);
   });
-  renderToggle(byId("extra-securite"), [{ key:"sim", title:"Sim" }, { key:"nao", title:"Não" }], function(key){
-    state.securiteResolvida = key === null ? null : (key === "sim");
+
+  renderOptions(byId("opts-ap2a"), [
+    { key:"renovar", title:"Renovar mais um ano", sub:"continuar como au pair por enquanto" },
+    { key:"migrar", title:"Migrar de status para estudante", sub:"trocar o visto agora" }
+  ], function(key){
+    state.apPretende = key;
+    // Quem vai migrar também informa o fim do contrato (é a âncora dos prazos
+    // do changement de statut) — mesma pergunta do segundo ano, ap2b.
+    setTimeout(function(){ goToStep(key === "migrar" ? "ap2b" : "ap4"); }, 220);
+  });
+
+  byId("ap2b-continuar-btn").addEventListener("click", function(){
+    state.apDataFinal = byId("ap-data-final").value || null;
+    goToStep("ap3");
+  });
+
+  renderOptions(byId("opts-ap3"), [
+    { key:"sim", title:"Sim", sub:"já fechei minha matrícula" },
+    { key:"nao", title:"Não", sub:"ainda não fechei" }
+  ], function(key){
+    state.apCertificado = key;
+    setTimeout(function(){ goToStep("ap4"); }, 220);
+  });
+
+  renderOptions(byId("opts-ap4"), [
+    { key:"sim", title:"Sim", sub:"consigo comprovar esse valor" },
+    { key:"nao", title:"Não", sub:"não chego nesse valor sozinha(o)" }
+  ], function(key){
+    state.apRecursos = key;
+    setTimeout(function(){ key === "sim" ? irParaChecklistReal() : goToStep("ap5"); }, 220);
+  });
+
+  renderOptions(byId("opts-ap5"), [
+    { key:"sim", title:"Sim", sub:"tenho alguém que pode comprovar por mim" },
+    { key:"nao", title:"Não", sub:"não tenho ninguém pra isso ainda" }
+  ], function(key){
+    state.apSponsor = key;
+    setTimeout(irParaChecklistReal, 220);
   });
 
   applyHandoffHero();
 
-  byId("start-btn").addEventListener("click", startQuiz);
+  // Sem botão de início: a primeira pergunta ainda sem resposta já aparece
+  // na própria página, logo abaixo do hero.
+  startQuiz();
 
   byId("see-checklist-btn").addEventListener("click", function(){
-    state.name = byId("name-input").value.trim();
-    goToResultado();
-  });
-
-  byId("extra-continuar-btn").addEventListener("click", function(){
-    state.dataChegada = byId("extra-data-chegada").value || null;
-    showReveal();
+    trackStartOnce();
+    state.name = capitalizarNome(byId("name-input").value.trim());
+    goToStep("worry");
   });
 
   byId("reveal-cta").addEventListener("click", showThanks);

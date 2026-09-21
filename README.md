@@ -15,6 +15,11 @@ Site estático (HTML/CSS/JS puro, sem framework, sem build step) para a vitrine 
 /artigos/                            Índice do blog (busca + filtro por categoria)
 /artigos/post/                       Template genérico de artigo (?slug=...)
 /mentions-legales/  /cgv/  /confidentialite/    Páginas legais (rascunho)
+/assistente-de-vistos/               Bot público: quiz que classifica o tipo de visto/persona
+/checklist-preview/                  Landing pública pós-bot: perguntas específicas da persona
+                                      + preview do checklist — o que não existe ainda vira
+                                      e-mail de interesse; au_pair_estudante já entrega no app
+                                      de verdade (ver POR DENTRO APP/README.md, "A jornada completa")
 /content/*.json                      Todo o conteúdo editável (produtos, posts, banners)
 /admin/                              Painel Decap CMS — edita os arquivos acima sem git/código
 /assets/css/style.css                Estilos (tokens de marca, mobile-first)
