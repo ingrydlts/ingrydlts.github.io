@@ -95,6 +95,12 @@
   }
   .field-row input:focus{ border-color:var(--verde-moss); outline:none; }
 
+  /* Campo-isca contra spam automatizado: fora da tela (não display:none —
+     alguns bots simples pulam campos com display:none, mas não os que só
+     estão posicionados fora da área visível), nunca visível nem alcançável
+     por Tab. Gente de verdade nunca vê nem preenche isto. */
+  .hp-field{ position:absolute; left:-9999px; top:-9999px; width:1px; height:1px; overflow:hidden; }
+
   .phase-note{ color:var(--texto-secundario); font-size:15px; margin-bottom:26px; }
   .checklist-mock{
     background:#fff; border:1px solid var(--borda); border-radius:14px;
@@ -113,6 +119,16 @@
   .cl-lock-badge{ flex:none; font-size:11px; font-weight:700; letter-spacing:.03em; text-transform:uppercase; color:var(--downtown-brown); align-self:flex-start; margin-top:2px; }
   .reveal-cta-row{ margin-top:26px; display:flex; flex-direction:column; align-items:flex-start; gap:10px; }
   .reveal-cta-note{ font-size:13.5px; color:var(--texto-secundario); }
+
+  .artigos-list{ display:grid; gap:10px; }
+  .artigo-link{
+    display:block; text-decoration:none; color:var(--grafite);
+    background:#fff; border:1px solid var(--borda); border-radius:var(--radius-md);
+    padding:16px 18px; transition:border-color .15s ease;
+  }
+  .artigo-link:hover{ border-color:var(--verde-moss); color:var(--grafite); }
+  .artigo-link .cl-cat{ margin-bottom:4px; }
+  .artigo-link .artigo-titulo{ font-weight:600; font-size:15.5px; line-height:1.35; }
 
   .thanks h2{ margin-bottom:12px; }
   .thanks p{ color:var(--texto-secundario); font-size:15.5px; margin-bottom:24px; max-width:50ch; }
@@ -151,15 +167,28 @@
     <header class="preview-hero">
       <span class="eyebrow" style="color:var(--verde-moss);">Por Dentro · checklist rápido</span>
       <h1 id="hero-title">Aqui você encontra suporte para realizar seu projeto!</h1>
-      <p class="lede" id="hero-lede">Diz seu perfil e seu nome, e a gente já mostra como fica o seu checklist de imigração — com prazos reais, não dicas genéricas de grupo.</p>
+      <p class="lede" id="hero-lede">Responde umas perguntas rápidas e a gente já mostra como fica o seu checklist de imigração — com prazos reais, não dicas genéricas de grupo.</p>
     </header>
 
     <section class="preview-section" id="quiz" hidden>
       <div class="quiz-progress"><div class="quiz-progress-bar" id="progress-bar"></div></div>
 
-      <div class="step" data-step="1">
-        <h2>Qual é o seu perfil migratório?</h2>
-        <div class="options" id="opts-persona"></div>
+      <!-- Entrada direta (sem handoff do bot): em vez de pedir o "perfil
+           migratório" (técnico demais), pergunta onde a pessoa está, o visto
+           e o objetivo — a persona é deduzida disso em derivarPersona(). -->
+      <div class="step" data-step="franca">
+        <h2>Você já está na França?</h2>
+        <div class="options" id="opts-franca"></div>
+      </div>
+
+      <div class="step" data-step="visto" hidden>
+        <h2 id="visto-title">Qual visto você tem?</h2>
+        <div class="options" id="opts-visto"></div>
+      </div>
+
+      <div class="step" data-step="objetivo" hidden>
+        <h2>Qual é o seu principal objetivo na França?</h2>
+        <div class="options" id="opts-objetivo"></div>
       </div>
 
       <div class="step" data-step="4" hidden>
@@ -173,8 +202,8 @@
 
       <!-- Universal pras 5 personas — vem logo depois do nome e antes de
            qualquer ramificação (ap1-ap5 pro au pair, ou reveal pras outras
-           4). O valor vira parte do e-mail de interesse (mailtoBody) e da
-           nota de fase mostrada no reveal, não é só decoração. -->
+           4). O valor vira parte do payload de capturar_lead e da nota de
+           fase mostrada no reveal, não é só decoração. -->
       <div class="step" data-step="worry" hidden>
         <h2>O que mais tira o seu sono hoje?</h2>
         <div class="options" id="opts-worry"></div>
@@ -194,9 +223,9 @@
 
       <!-- Só pra quem é au_pair_estudante — segue exatamente a árvore de
            decisão do board "au_pair_estudante oficial — checklist LANDING
-           PAGE detalhado por caminho" no Miro. Ao terminar, manda direto
-           pro checklist de verdade dentro do app (ver irParaChecklistReal),
-           sem mostrar um preview mockado aqui. -->
+           PAGE detalhado por caminho" no Miro. Ao terminar, cai direto no
+           passo de e-mail (ver goToEmailStep), sem mostrar um preview
+           mockado aqui. -->
       <div class="step" data-step="ap1" hidden>
         <h2>Você está no primeiro ou segundo ano de au pair?</h2>
         <div class="options" id="opts-ap1"></div>
@@ -243,11 +272,50 @@
       </div>
     </section>
 
+    <!-- Quem não se encaixa em nenhum checklist que já existe (ver
+         derivarPersona) — em vez de empurrar um checklist errado, mostra
+         artigos do percurso dela e o 1:1. -->
+    <section class="preview-section" id="sem-checklist" hidden>
+      <span class="eyebrow" style="color:var(--verde-moss);">Seu caminho</span>
+      <h2>Pro seu caso, o melhor começo é outro.</h2>
+      <p class="phase-note" id="sem-checklist-note">Ainda não tenho um checklist pronto pra essa combinação — e prefiro não te entregar um que não serve. Separei o que ler primeiro e, se quiser, a gente olha o seu caso juntas num 1:1.</p>
+      <div class="artigos-list" id="sem-checklist-artigos"></div>
+      <div class="reveal-cta-row">
+        <a class="btn-primary" id="sem-checklist-1a1" href="#" target="_blank" rel="noopener">Quero fazer um 1:1 →</a>
+        <p class="reveal-cta-note">Uma conversa sobre a sua situação específica, não dica genérica.</p>
+      </div>
+    </section>
+
+    <section class="preview-section" id="email-step" hidden>
+      <span class="eyebrow" style="color:var(--verde-moss);">Quase lá</span>
+      <h2 id="email-step-title">Só falta confirmar seu e-mail.</h2>
+      <p class="phase-note" id="email-step-note">É pra esse e-mail que eu mando o link de acesso ao seu checklist — sem senha, você só clica e entra.</p>
+      <form id="email-form">
+        <div class="field-row">
+          <label for="email-input">Seu e-mail</label>
+          <input id="email-input" type="email" autocomplete="email" placeholder="seu@email.com" required>
+        </div>
+        <div class="hp-field" aria-hidden="true">
+          <label for="hp-website">Deixe este campo em branco</label>
+          <input type="text" id="hp-website" name="website" tabindex="-1" autocomplete="off">
+        </div>
+        <label class="gate-checkbox">
+          <input type="checkbox" id="consent-servico" required>
+          <span>Li e aceito a <a href="/confidentialite/" target="_blank" rel="noopener">Política de Privacidade</a> do Por Dentro. *</span>
+        </label>
+        <label class="gate-checkbox">
+          <input type="checkbox" id="consent-novidades">
+          <span>Quero receber novidades e conteúdos do Por Dentro por e-mail.</span>
+        </label>
+        <p class="gate-message" id="email-step-error"></p>
+        <button class="btn-primary" id="email-step-btn" type="submit">Receber meu link de acesso →</button>
+      </form>
+    </section>
+
     <section class="preview-section thanks" id="thanks" hidden>
       <span class="eyebrow" style="color:var(--verde-moss);">Quase lá!</span>
-      <h2 id="thanks-title">Perfeito — confirma seu interesse por e-mail.</h2>
-      <p id="thanks-body">O trial gratuito de 30 dias ainda está sendo preparado. Confirma seu interesse por e-mail que eu te aviso pessoalmente assim que ele estiver no ar, com prioridade pra quem já respondeu o preview.</p>
-      <a class="btn-primary" id="mailto-cta" href="#">Confirmar meu interesse por e-mail →</a>
+      <h2 id="thanks-title">Prontinho — confira seu e-mail.</h2>
+      <p id="thanks-body">Mandei um link de acesso pro e-mail que você digitou. Clica nele (e dá uma olhada no spam, se não achar) pra entrar direto no seu checklist completo.</p>
     </section>
 
   </div>
@@ -295,11 +363,18 @@
 <script src="/assets/js/events.js"></script>
 <script src="/assets/js/analytics.js"></script>
 <script type="module" src="/assets/js/header.js"></script>
-<script>
+<script type="module">
+import { supabase } from '/assets/js/supabase-client.js';
+
 (function(){
   "use strict";
 
-  var CONTACT_EMAIL = "ingrydigitalmanagement@gmail.com";
+  // Versão do texto de consentimento mostrado abaixo — sobe quando o texto dos
+  // checkboxes mudar de sentido, pra o CRM saber sob qual versão cada pessoa
+  // aceitou (ver db/crm-fase1.sql no POR DENTRO APP).
+  var CONSENTIMENTO_VERSAO = "site-v1";
+  var TEXTO_SERVICO = "Li e aceito a Política de Privacidade do Por Dentro.";
+  var TEXTO_NOVIDADES = "Quero receber novidades e conteúdos do Por Dentro por e-mail.";
 
   var PERSONAS = [
     { key:"au_pair_estudante", title:"Au Pair / Estudante", sub:"vim como au pair ou já estudo aqui" },
@@ -308,6 +383,66 @@
     { key:"conjuge", title:"Cônjuge", sub:"vim por casamento ou união com francês(a)" },
     { key:"pvt", title:"PVT", sub:"vim com o Programa Vacances-Travail" }
   ];
+
+  // Entrada direta: onde a pessoa está → visto → objetivo. As opções de visto
+  // são as mesmas nas duas perguntas ("tem" / "pretende tirar"); cada uma
+  // corresponde a um perfil que já tem checklist, mais "outro".
+  var NA_FRANCA = [
+    { key:"sim", title:"Sim, já moro na França", sub:"já cheguei e estou com um visto" },
+    { key:"nao", title:"Não, ainda não", sub:"estou no Brasil ou em outro país" }
+  ];
+
+  var VISTOS = [
+    { key:"au_pair", title:"Au pair", sub:"morar com uma família e cuidar das crianças" },
+    { key:"estudante", title:"Estudante", sub:"faculdade, mestrado, curso de francês" },
+    { key:"trabalho", title:"Trabalho", sub:"contrato de trabalho ou alternância" },
+    { key:"conjuge", title:"Cônjuge", sub:"casamento ou união com francês(a) ou cidadão(ã) da UE" },
+    { key:"pvt", title:"PVT (Vacances-Travail)", sub:"um ano pra viajar e trabalhar" },
+    { key:"outro", title:"Outro / não sei", sub:"não é nenhum desses, ou não tenho certeza" }
+  ];
+
+  var OBJETIVOS = [
+    { key:"estudar", title:"Estudar", sub:"fazer um curso, faculdade ou mestrado" },
+    { key:"trabalhar", title:"Trabalhar", sub:"construir carreira e ter renda aqui" },
+    { key:"parceiro", title:"Morar com meu parceiro(a)", sub:"construir a vida a dois na França" },
+    { key:"outro", title:"Outro objetivo", sub:"viver a experiência, acompanhar alguém..." }
+  ];
+
+  // Deduz a persona do checklist a partir de onde a pessoa está, do visto e
+  // do objetivo. null = nenhum checklist existente serve (vai pra tela de
+  // artigos + 1:1, ver showSemChecklist).
+  function derivarPersona(){
+    var naFranca = state.naFranca === "sim";
+    var o = state.objetivo;
+    switch (state.visto){
+      // Só quem JÁ é au pair e quer estudar é a transição au pair → estudante.
+      // Quem ainda vai virar au pair não tem checklist (a árvore ap1-ap5
+      // começa em "primeiro ou segundo ano?").
+      case "au_pair": return (naFranca && o === "estudar") ? "au_pair_estudante" : null;
+      case "estudante":
+        if (!naFranca) return "campus_france";
+        if (o === "estudar") return "campus_france";
+        if (o === "trabalhar") return "alternancia_emprego";
+        return null;
+      case "trabalho": return "alternancia_emprego";
+      case "conjuge": return "conjuge";
+      // PVT que quer estudar é troca de status dentro da França — o checklist
+      // de PVT não cobre isso (mesma regra do assistente de vistos).
+      case "pvt": return (naFranca && o === "estudar") ? null : "pvt";
+      default: return null;
+    }
+  }
+
+  // Artigos da tela sem checklist — puxa de /content/posts.json (mesmo
+  // arquivo que o /admin edita), só os publicados, na ordem abaixo.
+  var ARTIGOS_AU_PAIR = ["au-pair-franca-o-que-e-plataformas-e-riscos", "au-pair-franca-direitos-e-sinais-de-alerta", "au-pair-para-estudante-fle-o-que-muda"];
+  var ARTIGOS_POR_OBJETIVO = {
+    estudar: ["como-conseguir-bolsa-de-estudo", "selo-qualite-fle-mapa-cursos-de-frances", "cursos-de-frances-gratuitos-4-caminhos"],
+    trabalhar: ["profissoes-regulamentadas-franca-diploma-estrangeiro", "vae-franca-2026", "cursos-de-frances-gratuitos-4-caminhos"],
+    parceiro: ["tudo-sobre-o-exame-civico", "passo-a-passo-da-anef", "ajudas-de-moradia-apl-alf-als"],
+    outro: ["quantos-tipos-de-visto-franca-2026", "passo-a-passo-da-anef", "cursos-de-frances-gratuitos-4-caminhos"]
+  };
+  var CAL_LINK = "https://cal.com/ingryd-silva-jf1cnx/1-1";
 
   var PHASES = [
     { key:"planejando", title:"Ainda no Brasil, planejando", sub:"quero chegar já sabendo o que fazer" },
@@ -442,6 +577,8 @@
 
   var state = {
     persona:null, phase:null, worry:null, nivelEstudos:null, name:"", origem:null, urgencyUnclear:false,
+    // Só na entrada direta (sem handoff do bot).
+    naFranca:null, visto:null, objetivo:null,
     // Só preenchidos pra quem é au_pair_estudante, na árvore ap1-ap5
     // (au_pair_estudante oficial — checklist LANDING PAGE detalhado por
     // caminho, no Miro).
@@ -495,7 +632,7 @@
     });
   }
 
-  var STEP_PROGRESS = { "1":26, "4":42, "worry":56, "estudos":68, "ap1":78, "ap2a":83, "ap2b":83, "ap3":88, "ap4":93, "ap5":97 };
+  var STEP_PROGRESS = { "franca":8, "visto":18, "objetivo":28, "4":42, "worry":56, "estudos":68, "ap1":78, "ap2a":83, "ap2b":83, "ap3":88, "ap4":93, "ap5":97 };
 
   // Ainda não existe domínio de produção pro app (só roda em localhost hoje) —
   // TROCAR pelo domínio real antes de publicar essa página no ar.
@@ -568,7 +705,7 @@
       return;
     }
 
-    goToStep(handoffPersona ? 4 : 1, true);
+    goToStep(handoffPersona ? 4 : "franca", true);
   }
 
   function applyHandoffHero(){
@@ -664,14 +801,19 @@
     track("checklist_preview_extra", { persona: state.persona });
   }
 
-  // Ao terminar a árvore ap1-ap5, não mostra o preview mockado aqui — manda
-  // direto pro checklist de verdade dentro do app. Repassa tudo que a pessoa
-  // já respondeu aqui (persona, nome, origem, fase, sono, nível de estudos)
-  // pela mesma query string que o app já sabe ler (ver assets/js/handoff.js
-  // no POR DENTRO APP) — sem isso, ela reencontraria a tela de login sem
-  // nenhum contexto e teria que dizer quem é de novo.
-  function irParaChecklistReal(){
-    track("checklist_preview_trial_interest", { persona: state.persona });
+  // URL do app pra onde o link de acesso (magic link) redireciona depois do
+  // clique. Repassa o que a pessoa já respondeu aqui (persona, nome, origem,
+  // fase, sono, nível de estudos) pela mesma query string que o app já sabe
+  // ler (ver assets/js/handoff.js no POR DENTRO APP) — sem isso, ela cairia
+  // no app sem nenhum contexto e teria que dizer quem é de novo.
+  //
+  // As respostas da árvore ap1-ap5 (financeiras e de situação migratória) NÃO
+  // vão mais aqui: iam antes no fragmento da URL, mas o próprio magic link do
+  // Supabase usa o fragmento pra entregar o token de sessão — colocar as duas
+  // coisas juntas arriscava perder uma ou a outra. Elas já ficam salvas no
+  // CRM (capturar_lead, campo `respostas`) e, se preciso, a pessoa confirma
+  // de novo no percurso dentro do app.
+  function appHandoffUrl(){
     var params = new URLSearchParams();
     params.set("persona", state.persona);
     if (state.name) params.set("nome", state.name);
@@ -679,22 +821,7 @@
     if (state.phase) params.set("fase", state.phase);
     if (state.worry) params.set("worry", state.worry);
     if (state.nivelEstudos) params.set("nivelEstudos", state.nivelEstudos);
-
-    // As respostas da árvore ap1-ap5 (o app não pergunta de novo o que já foi
-    // respondido aqui — ele só mostra o resumo pra pessoa confirmar) vão no
-    // FRAGMENTO da URL (#), não na query string: o fragmento não é enviado a
-    // servidor nenhum nem entra em log ou no Referer, e essas respostas são
-    // financeiras (recursos, sponsor) e de situação migratória.
-    var respostas = new URLSearchParams();
-    if (state.apAno) respostas.set("apAno", state.apAno);
-    if (state.apPretende) respostas.set("apPretende", state.apPretende);
-    if (state.apDataFinal) respostas.set("apDataFinal", state.apDataFinal);
-    if (state.apCertificado) respostas.set("apCertificado", state.apCertificado);
-    if (state.apRecursos) respostas.set("apRecursos", state.apRecursos);
-    if (state.apSponsor) respostas.set("apSponsor", state.apSponsor);
-    var fragmento = respostas.toString();
-
-    window.location.href = APP_URL + "?" + params.toString() + (fragmento ? "#" + fragmento : "");
+    return APP_URL + "?" + params.toString();
   }
 
   function showReveal(){
@@ -710,41 +837,188 @@
     track("checklist_preview_reveal", { persona: state.persona, phase: state.phase });
   }
 
-  function mailtoBody(){
-    var worryLabel = (WORRIES.filter(function(w){ return w.key === state.worry; })[0] || {}).title || state.worry;
-    var phaseLabel = (PHASES.filter(function(p){ return p.key === state.phase; })[0] || {}).title || state.phase;
-    var nivelLabel = (NIVEL_ESTUDOS.filter(function(n){ return n.key === state.nivelEstudos; })[0] || {}).title || state.nivelEstudos;
+  // Última pergunta do funil, pras 5 personas: em vez do mailto manual de
+  // antes, pede e-mail + os dois consentimentos e chama capturar_lead — quem
+  // termina a árvore ap1-ap5 (au pair) cai aqui também, não só quem vê o
+  // preview mockado.
+  // Quando a etapa de e-mail aparece — junto com o campo-isca (hp-website),
+  // é a segunda camada do anti-spam: um envio antes de ~2.5s de ela aparecer
+  // é rápido demais pra alguém ter lido e decidido, típico de bot preenchendo
+  // o formulário assim que o encontra no HTML.
+  var emailStepShownAt = null;
 
-    var lines = [
-      "Oi Ingryd, acabei de responder o preview do Por Dentro e quero o trial grátis!",
-      "",
-      "Nome: " + (state.name || "(não informado)"),
-      "Perfil: " + personaTitle(state.persona),
-      state.phase ? ("Fase: " + phaseLabel) : null,
-      state.worry ? ("Maior preocupação: " + worryLabel) : null,
-      state.nivelEstudos ? ("Nível de estudos no Brasil: " + nivelLabel) : null,
-      state.origem ? ("Veio de: " + state.origem) : null,
-      "",
-      "Me avisa quando o trial estiver no ar!"
-    ].filter(function(l){ return l !== null; });
-    return lines.join("\n");
+  function goToEmailStep(){
+    if (!state.persona){
+      byId("email-step-title").textContent = "Antes de te mostrar o seu caminho, qual é o seu e-mail?";
+      byId("email-step-note").textContent = "É por ele que eu te mando conteúdo do seu percurso e te respondo se você tiver uma dúvida.";
+      byId("email-step-btn").textContent = "Ver meu caminho →";
+    }
+    byId("quiz").hidden = true;
+    byId("reveal").hidden = true;
+    byId("email-step").hidden = false;
+    byId("email-step").scrollIntoView({ behavior: "smooth", block: "start" });
+    emailStepShownAt = Date.now();
+    track("checklist_preview_email_step", { persona: state.persona });
+  }
+
+  function showSemChecklist(){
+    var slugs = (state.visto === "au_pair" && state.naFranca === "nao")
+      ? ARTIGOS_AU_PAIR
+      : (ARTIGOS_POR_OBJETIVO[state.objetivo] || ARTIGOS_POR_OBJETIVO.outro);
+    var wrap = byId("sem-checklist-artigos");
+    wrap.innerHTML = "";
+    fetch("/content/posts.json")
+      .then(function(r){ return r.ok ? r.json() : null; })
+      .then(function(data){
+        var items = (data && data.items) || [];
+        slugs.forEach(function(slug){
+          var a = items.filter(function(i){ return i.slug === slug && i.published === true; })[0];
+          if (!a) return;
+          var link = document.createElement("a");
+          link.className = "artigo-link";
+          link.href = a.url || ("/artigos/post/?slug=" + encodeURIComponent(a.slug));
+          var cat = document.createElement("p");
+          cat.className = "cl-cat";
+          cat.textContent = (a.category || "Artigo") + (a.readMinutes ? " · " + a.readMinutes + " min" : "");
+          var titulo = document.createElement("span");
+          titulo.className = "artigo-titulo";
+          titulo.textContent = a.title;
+          link.appendChild(cat);
+          link.appendChild(titulo);
+          wrap.appendChild(link);
+        });
+      })
+      .catch(function(){ /* sem artigos — o 1:1 continua lá */ });
+
+    // Leva as respostas pro Cal.com como nota, pra a conversa já começar
+    // sabendo o contexto.
+    var notas = [
+      "Vim do checklist do site",
+      "Já está na França: " + (state.naFranca === "sim" ? "sim" : "não"),
+      "Visto" + (state.naFranca === "sim" ? " atual: " : " que pretende tirar: ") + labelDe(VISTOS, state.visto),
+      "Objetivo: " + labelDe(OBJETIVOS, state.objetivo)
+    ].join(" · ");
+    byId("sem-checklist-1a1").href = CAL_LINK + "?notes=" + encodeURIComponent(notas);
+
+    byId("quiz").hidden = true;
+    byId("email-step").hidden = true;
+    byId("sem-checklist").hidden = false;
+    byId("sem-checklist").scrollIntoView({ behavior: "smooth", block: "start" });
+    track("checklist_preview_sem_checklist", { naFranca: state.naFranca, visto: state.visto, objetivo: state.objetivo });
+  }
+
+  function labelDe(lista, key){
+    var item = lista.filter(function(i){ return i.key === key; })[0];
+    return item ? item.title : "";
   }
 
   function showThanks(){
-    byId("reveal").hidden = true;
+    byId("email-step").hidden = true;
     byId("thanks").hidden = false;
     byId("thanks").scrollIntoView({ behavior: "smooth", block: "start" });
-
-    track("checklist_preview_trial_interest", { persona: state.persona });
-
-    var subject = encodeURIComponent("Novo interesse no trial do Por Dentro — preview respondido");
-    var body = encodeURIComponent(mailtoBody());
-    byId("mailto-cta").href = "mailto:" + CONTACT_EMAIL + "?subject=" + subject + "&body=" + body;
   }
 
-  renderOptions(byId("opts-persona"), PERSONAS, function(key){
-    state.persona = key;
-    setTimeout(function(){ goToStep(4); }, 220);
+  function setEmailStepError(msg){
+    var el = byId("email-step-error");
+    el.textContent = msg;
+    el.classList.toggle("is-visible", !!msg);
+  }
+
+  byId("email-form").addEventListener("submit", async function(e){
+    e.preventDefault();
+
+    // Bot preencheu o campo-isca, ou respondeu rápido demais pra ser gente —
+    // finge sucesso, sem chamar a API nem avisar que foi pego (avisar só
+    // ensinaria o bot a se adaptar).
+    var pareceBot = !!byId("hp-website").value ||
+      (emailStepShownAt !== null && (Date.now() - emailStepShownAt) < 2500);
+    if (pareceBot){
+      state.persona ? showThanks() : showSemChecklist();
+      return;
+    }
+
+    var email = byId("email-input").value.trim();
+    var aceitaServico = byId("consent-servico").checked;
+    var aceitaNovidades = byId("consent-novidades").checked;
+
+    setEmailStepError("");
+    if (!aceitaServico){
+      setEmailStepError("Preciso que você aceite a Política de Privacidade pra continuar.");
+      return;
+    }
+
+    var btn = byId("email-step-btn");
+    btn.disabled = true;
+    btn.textContent = "Confirmando...";
+
+    var payload = {
+      email: email,
+      nome: state.name || null,
+      persona: state.persona,
+      fase: state.phase,
+      nivel_estudos: state.nivelEstudos,
+      preocupacao: state.worry,
+      origem: state.origem,
+      respostas: {
+        naFranca: state.naFranca, visto: state.visto, objetivo: state.objetivo,
+        apAno: state.apAno, apPretende: state.apPretende, apDataFinal: state.apDataFinal,
+        apCertificado: state.apCertificado, apRecursos: state.apRecursos, apSponsor: state.apSponsor
+      },
+      aceita_servico: true,
+      aceita_novidades: aceitaNovidades,
+      consentimento_versao: CONSENTIMENTO_VERSAO,
+      texto_servico: TEXTO_SERVICO,
+      texto_novidades: TEXTO_NOVIDADES
+    };
+
+    try {
+      var capturaResult = await supabase.rpc("capturar_lead", { payload: payload });
+      if (capturaResult.error) throw capturaResult.error;
+
+      // Sem persona não há checklist no app — nada de link de acesso, só os
+      // artigos + 1:1.
+      if (!state.persona){
+        byId("email-step").hidden = true;
+        showSemChecklist();
+        return;
+      }
+
+      track("checklist_preview_trial_interest", { persona: state.persona });
+
+      var otpResult = await supabase.auth.signInWithOtp({
+        email: email,
+        options: { emailRedirectTo: appHandoffUrl() }
+      });
+      if (otpResult.error) throw otpResult.error;
+
+      showThanks();
+    } catch (err){
+      console.error("Erro ao confirmar e-mail:", err);
+      setEmailStepError("Não consegui confirmar — confere o e-mail e tenta de novo.");
+      btn.disabled = false;
+      btn.textContent = state.persona ? "Receber meu link de acesso →" : "Ver meu caminho →";
+    }
+  });
+
+  renderOptions(byId("opts-franca"), NA_FRANCA, function(key){
+    state.naFranca = key;
+    // Mesmo critério do assistente de vistos pra fase.
+    state.phase = key === "sim" ? "adaptando" : "planejando";
+    byId("visto-title").textContent = key === "sim" ? "Qual visto você tem?" : "Qual visto você pretende tirar?";
+    setTimeout(function(){ goToStep("visto"); }, 220);
+  });
+
+  renderOptions(byId("opts-visto"), VISTOS, function(key){
+    state.visto = key;
+    setTimeout(function(){ goToStep("objetivo"); }, 220);
+  });
+
+  renderOptions(byId("opts-objetivo"), OBJETIVOS, function(key){
+    state.objetivo = key;
+    state.persona = derivarPersona();
+    // Sem checklist pro caso dela: pede o e-mail antes dos artigos + 1:1
+    // (entra no CRM do mesmo jeito, só não recebe link de acesso ao app).
+    setTimeout(function(){ state.persona ? goToStep(4) : goToEmailStep(); }, 220);
   });
 
   renderOptions(byId("opts-worry"), WORRIES, function(key){
@@ -796,7 +1070,7 @@
     { key:"nao", title:"Não", sub:"não chego nesse valor sozinha(o)" }
   ], function(key){
     state.apRecursos = key;
-    setTimeout(function(){ key === "sim" ? irParaChecklistReal() : goToStep("ap5"); }, 220);
+    setTimeout(function(){ key === "sim" ? goToEmailStep() : goToStep("ap5"); }, 220);
   });
 
   renderOptions(byId("opts-ap5"), [
@@ -804,7 +1078,7 @@
     { key:"nao", title:"Não", sub:"não tenho ninguém pra isso ainda" }
   ], function(key){
     state.apSponsor = key;
-    setTimeout(irParaChecklistReal, 220);
+    setTimeout(goToEmailStep, 220);
   });
 
   applyHandoffHero();
@@ -819,7 +1093,7 @@
     goToStep("worry");
   });
 
-  byId("reveal-cta").addEventListener("click", showThanks);
+  byId("reveal-cta").addEventListener("click", goToEmailStep);
 
 })();
 </script>
