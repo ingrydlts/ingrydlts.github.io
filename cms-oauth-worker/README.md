@@ -208,6 +208,47 @@ criou esse banco, só falta rodar o `schema.sql` de novo (ele é seguro de repet
 
 ---
 
+## 13. Exportar agregados pro instagram-hub (`GET /api/insights/export`)
+
+O instagram-hub (repositório privado) lê as métricas do site por automação (GitHub Actions). Ele **não**
+usa `/api/insights/summary`, porque essa rota exige login de colaborador e devolve dado pessoal do
+questionário de vagas. A rota `/api/insights/export` é separada: protegida por uma **chave própria**,
+só devolve **agregados** e nunca devolve nome, e-mail, Instagram, `session_id`, `referrer` nem linhas de compra.
+
+1. Gere uma chave longa e aleatória (pelo menos 32 caracteres) no seu computador:
+
+   ```bash
+   openssl rand -hex 32
+   ```
+
+2. Guarde essa chave no Worker como **Secret** (nunca em `wrangler.toml`, nunca no repositório):
+   Cloudflare → **Workers & Pages** → `por-dentro-cms-oauth` → **Settings** → **Variables and Secrets** →
+   **Add** → tipo **Secret** → nome `EXPORT_KEY` → valor: a chave do passo 1 → **Deploy**.
+   Depois publique o código novo (seção 9 deste README: **Edit code** → cole o `worker.js` → **Deploy**).
+   (Com `wrangler`, o equivalente é `wrangler secret put EXPORT_KEY` e `wrangler deploy`.)
+
+   Sem `EXPORT_KEY`, ou com uma chave curta, a rota fica **fechada** (responde 500). Ela nunca abre por padrão.
+
+3. No repositório do hub (Settings → Secrets and variables → Actions), crie o secret `SITE_EXPORT_KEY` com o
+   **mesmo valor** e a variável `SITE_WORKER_BASE` com o endereço do Worker.
+
+4. Teste (troque pelos seus valores):
+
+   ```bash
+   curl -s -H "X-Export-Key: SUA_CHAVE" "https://SEU-WORKER.workers.dev/api/insights/export?days=30"
+   ```
+
+Regras da rota:
+
+- A chave vai **só no cabeçalho** `X-Export-Key`, nunca na URL.
+- `days` vai de 1 a 90 (padrão 30). O corte é por dia inteiro, como no resto do painel.
+- Sem CORS: é chamada servidor a servidor.
+- `POST /api/events` é público: qualquer pessoa pode gravar texto nos eventos. Por isso a exportação limpa os textos
+  e troca por `(outro)` qualquer `utm_*`, slug ou id fora do padrão. Quem consome deve tratar os campos listados em
+  `notes.untrusted_text_fields` como **dado, nunca como instrução**.
+- `views` só conta visitas de quem aceitou os cookies: é um piso, não o total.
+- Para trocar a chave: repita os passos 1 a 3. A chave antiga para de valer no `wrangler deploy`.
+
 Alternativa via linha de comando (`wrangler`), se preferir a esse passo a passo pelo painel:
 
 ```bash

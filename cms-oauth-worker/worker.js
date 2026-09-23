@@ -55,6 +55,15 @@
  *      GET  /api/insights/summary — protegida (mesmo token de quem tem
  *                                    acesso de escrita no repositório),
  *                                    usada pelo painel /admin/dashboard/.
+ *      GET  /api/insights/export  — protegida por CHAVE (cabeçalho
+ *                                    X-Export-Key = secret EXPORT_KEY), não
+ *                                    por login. Feita pro instagram-hub
+ *                                    ler por automação (GitHub Actions).
+ *                                    Só agregados, janela de N dias, sem
+ *                                    nenhum dado pessoal (nada de quiz,
+ *                                    e-mail, session_id ou referrer).
+ *                                    Contrato: instagram-hub/docs/
+ *                                    CONTRATO-DE-DADOS.md, seção 8.
  *      GET  /api/likes/summary    — público, contagem de 👍 do bloco de
  *                                    feedback (event_type 'feedback',
  *                                    payload.vote='up') agrupada por
@@ -700,6 +709,230 @@ async function handleInsightsSummary(request, env) {
       liberadas: (quizCounter && quizCounter.liberadas) || 0,
       submissions: quizSubmissions
     }
+  });
+}
+
+// ---- Exportação de agregados pro instagram-hub (GET /api/insights/export) ----
+//
+// Por que existe: /api/insights/summary exige login de colaborador do GitHub
+// e devolve dado pessoal (respostas do questionário de vagas). Uma automação
+// não deve receber um token com os poderes de quem edita o site, então esta
+// rota é separada: protegida por uma chave própria e SÓ devolve agregados.
+//
+// Segurança:
+// - EXPORT_KEY ausente ou curta demais (< 32 caracteres) => a rota fica
+//   FECHADA (500). Nunca abre por padrão.
+// - A chave vai só no cabeçalho X-Export-Key, nunca na URL (URL vai pra log).
+//   Comparada em tempo constante, sobre o hash SHA-256 das duas pontas.
+// - Sem CORS: é chamada servidor a servidor, um navegador nunca deve usá-la.
+// - POST /api/events é PÚBLICO, então qualquer pessoa pode gravar texto
+//   arbitrário nos campos de payload. Como o hub entrega estes dados a um
+//   agente de IA, todo texto que vem de evento é limpo aqui (charset e
+//   tamanho) e deve ser tratado por quem consome como DADO, nunca como
+//   instrução. Campos estruturais (slug, utm, ids) passam por regex estrita.
+const EXPORT_KEY_MIN_LENGTH = 32;
+const EXPORT_DEFAULT_DAYS = 30;
+const EXPORT_MAX_DAYS = 90;
+const EXPORT_TOKEN_RE = /^[a-z0-9][a-z0-9._-]{0,59}$/;
+const EXPORT_SLUG_RE = /^[a-z0-9][a-z0-9-]{0,149}$/;
+const EXPORT_LITERAL_SOURCES = ['(direto)', '(navegação interna)', '(sem atribuição)'];
+
+async function exportKeysMatch(provided, expected) {
+  const enc = new TextEncoder();
+  const [a, b] = await Promise.all([
+    crypto.subtle.digest('SHA-256', enc.encode(provided)),
+    crypto.subtle.digest('SHA-256', enc.encode(expected)),
+  ]);
+  if (typeof crypto.subtle.timingSafeEqual === 'function') return crypto.subtle.timingSafeEqual(a, b);
+  const x = new Uint8Array(a);
+  const y = new Uint8Array(b);
+  let diff = 0;
+  for (let i = 0; i < x.length; i++) diff |= x[i] ^ y[i];
+  return diff === 0;
+}
+
+// Campo estrutural: só vale se bater com a regex, senão vira "(outro)".
+function exportToken(value) {
+  if (value == null) return null;
+  const s = String(value).trim().toLowerCase();
+  if (EXPORT_LITERAL_SOURCES.includes(s)) return s;
+  return EXPORT_TOKEN_RE.test(s) ? s : '(outro)';
+}
+
+function exportSlug(value) {
+  if (value == null) return null;
+  const s = String(value).trim().toLowerCase();
+  return EXPORT_SLUG_RE.test(s) ? s : '(outro)';
+}
+
+// Texto que veio de evento público (pergunta do FAQ, resposta do bot):
+// sem quebra de linha, sem controle, sem marcação, tamanho limitado.
+function exportText(value, max = 120) {
+  if (value == null) return null;
+  const s = String(value)
+    .replace(/[\u0000-\u001f\u007f]/g, ' ')
+    .replace(/[<>`{}\[\]\\]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return s ? s.slice(0, max) : null;
+}
+
+// Depois de limpar, valores diferentes podem virar o mesmo ("(outro)"):
+// soma as linhas iguais pra não devolver duplicatas.
+function exportMerge(rows, keys, sums) {
+  const map = new Map();
+  for (const r of rows) {
+    const k = keys.map((f) => r[f]).join('\u0001');
+    const cur = map.get(k);
+    if (!cur) {
+      map.set(k, { ...r });
+    } else {
+      for (const f of sums) cur[f] = (cur[f] || 0) + (r[f] || 0);
+    }
+  }
+  return [...map.values()];
+}
+
+async function handleInsightsExport(request, env) {
+  const expected = env.EXPORT_KEY;
+  if (typeof expected !== 'string' || expected.length < EXPORT_KEY_MIN_LENGTH) {
+    return exportResponse({ error: 'Exportação não configurada.' }, 500);
+  }
+  const provided = request.headers.get('X-Export-Key') || '';
+  if (!provided || !(await exportKeysMatch(provided, expected))) {
+    return exportResponse({ error: 'Chave inválida.' }, 401);
+  }
+  if (!env.EVENTS_DB) return exportResponse({ error: 'Banco de eventos ainda não configurado.' }, 500);
+
+  const url = new URL(request.url);
+  let days = parseInt(url.searchParams.get('days') || '', 10);
+  if (!Number.isFinite(days)) days = EXPORT_DEFAULT_DAYS;
+  days = Math.min(Math.max(days, 1), EXPORT_MAX_DAYS);
+  const since = `-${days} days`;
+  const inWindow = `created_at >= date('now', ?)`;
+  const q = (sql) => env.EVENTS_DB.prepare(sql).bind(since).all();
+
+  const [overview, views, feedback, polls, checklist, faqOpens, resourceClicks, shareOpens, shareClicks,
+    botFunnel, botAnswers, botOutcomes, revenue, affiliate] = await Promise.all([
+    q(`SELECT COUNT(*) as total, COUNT(DISTINCT session_id) as sessions FROM events WHERE ${inWindow}`),
+    // Visitas por artigo e por marca do link. campaign e content já são
+    // gravados no page_view pelo site (trackPageSource em assets/js/main.js),
+    // então não precisa mexer no front-end. Só contam visitas de quem aceitou
+    // os cookies: é um piso, não o total.
+    q(`SELECT article_slug, json_extract(payload,'$.source') as source, json_extract(payload,'$.medium') as medium,
+              json_extract(payload,'$.campaign') as campaign, json_extract(payload,'$.content') as content, COUNT(*) as views
+       FROM events WHERE event_type='block' AND json_extract(payload,'$.type')='page_view' AND ${inWindow}
+       GROUP BY article_slug, source, medium, campaign, content ORDER BY views DESC LIMIT 1000`),
+    q(`SELECT article_slug,
+              SUM(CASE WHEN json_extract(payload,'$.vote')='up' THEN 1 ELSE 0 END) as up,
+              SUM(CASE WHEN json_extract(payload,'$.vote')='down' THEN 1 ELSE 0 END) as down
+       FROM events WHERE event_type='feedback' AND ${inWindow} GROUP BY article_slug`),
+    q(`SELECT article_slug, json_extract(payload,'$.poll_id') as poll_id, json_extract(payload,'$.option') as option,
+              COUNT(DISTINCT session_id) as votes
+       FROM events WHERE event_type='poll' AND ${inWindow} GROUP BY article_slug, poll_id, option ORDER BY votes DESC LIMIT 300`),
+    q(`SELECT json_extract(payload,'$.id') as checklist_id, COUNT(*) as completions
+       FROM events WHERE event_type='block' AND json_extract(payload,'$.type')='checklist_complete' AND ${inWindow}
+       GROUP BY checklist_id ORDER BY completions DESC LIMIT 100`),
+    q(`SELECT article_slug, json_extract(payload,'$.question') as question, COUNT(*) as opens
+       FROM events WHERE event_type='block' AND json_extract(payload,'$.type')='faq_open' AND ${inWindow}
+       GROUP BY article_slug, question ORDER BY opens DESC LIMIT 100`),
+    q(`SELECT article_slug, json_extract(payload,'$.id') as resource, COUNT(*) as clicks
+       FROM events WHERE event_type='block' AND json_extract(payload,'$.type')='resource_click' AND ${inWindow}
+       GROUP BY article_slug, resource ORDER BY clicks DESC LIMIT 100`),
+    q(`SELECT COUNT(*) as opens FROM events WHERE event_type='block' AND json_extract(payload,'$.type')='share_open' AND ${inWindow}`),
+    q(`SELECT article_slug, json_extract(payload,'$.id') as destination, COUNT(*) as clicks
+       FROM events WHERE event_type='block' AND json_extract(payload,'$.type')='share_click' AND ${inWindow}
+       GROUP BY article_slug, destination ORDER BY clicks DESC LIMIT 100`),
+    q(`SELECT json_extract(payload,'$.step') as step, COUNT(DISTINCT session_id) as sessions
+       FROM events WHERE event_type='bot' AND ${inWindow} GROUP BY step LIMIT 100`),
+    // Só existe payload.answer nos passos de múltipla escolha do assistente
+    // (nunca nome nem Instagram, que são texto livre e não entram aqui).
+    q(`SELECT json_extract(payload,'$.step') as step, json_extract(payload,'$.answer') as answer, COUNT(DISTINCT session_id) as sessions
+       FROM events WHERE event_type='bot' AND json_extract(payload,'$.answer') IS NOT NULL AND ${inWindow}
+       GROUP BY step, answer ORDER BY sessions DESC LIMIT 200`),
+    q(`SELECT json_extract(payload,'$.outcome') as outcome, COUNT(DISTINCT session_id) as sessions
+       FROM events WHERE event_type='bot' AND json_extract(payload,'$.step')='result' AND ${inWindow}
+       GROUP BY outcome ORDER BY sessions DESC LIMIT 50`),
+    // Vendas: só a soma por origem. Nunca o session_id do Stripe nem o e-mail.
+    q(`SELECT json_extract(payload,'$.source') as source, json_extract(payload,'$.medium') as medium,
+              json_extract(payload,'$.campaign') as campaign, json_extract(payload,'$.content') as content,
+              COUNT(*) as orders, SUM(CAST(json_extract(payload,'$.amount') AS REAL)) as revenue
+       FROM events WHERE event_type='block' AND json_extract(payload,'$.type')='purchase' AND ${inWindow}
+       GROUP BY source, medium, campaign, content ORDER BY revenue DESC LIMIT 200`),
+    q(`SELECT json_extract(payload,'$.category') as category, json_extract(payload,'$.id') as item, COUNT(*) as clicks
+       FROM events WHERE event_type='block' AND json_extract(payload,'$.type')='affiliate_click' AND ${inWindow}
+       GROUP BY category, item ORDER BY clicks DESC LIMIT 100`),
+  ]);
+
+  const rows = (r) => (r && r.results) || [];
+  const utm = (r) => ({
+    source: r.source == null ? '(sem atribuição)' : exportToken(r.source),
+    medium: exportToken(r.medium),
+    campaign: exportToken(r.campaign),
+    content: exportToken(r.content),
+  });
+
+  return exportResponse({
+    schema_version: 1,
+    generated_at: new Date().toISOString(),
+    window_days: days,
+    notes: {
+      views_only_consented: true,
+      untrusted_text_fields: ['faq_opens[].question', 'bot.answers[].answer', 'bot.outcomes[].outcome', 'polls[].option'],
+    },
+    overview: rows(overview)[0] || { total: 0, sessions: 0 },
+    views: exportMerge(
+      rows(views).map((r) => ({ article_slug: exportSlug(r.article_slug), ...utm(r), views: r.views })),
+      ['article_slug', 'source', 'medium', 'campaign', 'content'], ['views']
+    ),
+    feedback: rows(feedback).map((r) => ({ article_slug: exportSlug(r.article_slug), up: r.up || 0, down: r.down || 0 })),
+    polls: exportMerge(
+      rows(polls).map((r) => ({ article_slug: exportSlug(r.article_slug), poll_id: exportToken(r.poll_id), option: exportText(r.option, 60), votes: r.votes })),
+      ['article_slug', 'poll_id', 'option'], ['votes']
+    ),
+    checklist: exportMerge(
+      rows(checklist).map((r) => ({ checklist_id: exportToken(r.checklist_id), completions: r.completions })),
+      ['checklist_id'], ['completions']
+    ),
+    faq_opens: exportMerge(
+      rows(faqOpens).map((r) => ({ article_slug: exportSlug(r.article_slug), question: exportText(r.question, 120), opens: r.opens })),
+      ['article_slug', 'question'], ['opens']
+    ),
+    resource_clicks: exportMerge(
+      rows(resourceClicks).map((r) => ({ article_slug: exportSlug(r.article_slug), resource: exportToken(r.resource), clicks: r.clicks })),
+      ['article_slug', 'resource'], ['clicks']
+    ),
+    share: {
+      opens: (rows(shareOpens)[0] && rows(shareOpens)[0].opens) || 0,
+      clicks: exportMerge(
+        rows(shareClicks).map((r) => ({ article_slug: exportSlug(r.article_slug), destination: exportToken(r.destination), clicks: r.clicks })),
+        ['article_slug', 'destination'], ['clicks']
+      ),
+    },
+    bot: {
+      funnel: exportMerge(rows(botFunnel).map((r) => ({ step: exportToken(r.step), sessions: r.sessions })), ['step'], ['sessions']),
+      answers: exportMerge(
+        rows(botAnswers).map((r) => ({ step: exportToken(r.step), answer: exportText(r.answer, 60), sessions: r.sessions })),
+        ['step', 'answer'], ['sessions']
+      ),
+      outcomes: exportMerge(rows(botOutcomes).map((r) => ({ outcome: exportText(r.outcome, 60), sessions: r.sessions })), ['outcome'], ['sessions']),
+    },
+    revenue_by_source: exportMerge(
+      rows(revenue).map((r) => ({ ...utm(r), orders: r.orders, revenue: r.revenue || 0 })),
+      ['source', 'medium', 'campaign', 'content'], ['orders', 'revenue']
+    ),
+    affiliate_clicks: exportMerge(
+      rows(affiliate).map((r) => ({ category: exportToken(r.category), item: exportToken(r.item), clicks: r.clicks })),
+      ['category', 'item'], ['clicks']
+    ),
+  });
+}
+
+// Sem CORS de propósito (chamada servidor a servidor) e sem cache.
+function exportResponse(data, status = 200) {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' },
   });
 }
 
@@ -1391,6 +1624,9 @@ export default {
       }
       if (url.pathname === '/api/insights/summary' && request.method === 'GET') {
         return await handleInsightsSummary(request, env);
+      }
+      if (url.pathname === '/api/insights/export' && request.method === 'GET') {
+        return await handleInsightsExport(request, env);
       }
       if (url.pathname === '/api/likes/summary' && request.method === 'GET') {
         return await handleLikesSummary(request, env);
