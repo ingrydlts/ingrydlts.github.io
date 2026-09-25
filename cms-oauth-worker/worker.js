@@ -125,6 +125,14 @@
  *                                           first_*), agregado em
  *                                           /api/insights/summary como
  *                                           "revenueBySource".
+ *    O link de acesso de produtos que não são um arquivo baixável (ex.: um
+ *    template de Notion, que precisa de "Duplicar") segue a mesma regra do
+ *    QUIZ_DRIVE_LINK acima — fica só numa variável de ambiente do Worker
+ *    (nunca em content/produtos-digitais.json), e só é devolvido depois que
+ *    o Stripe confirma que aquela sessão específica foi paga. Hoje isso
+ *    cobre o slug 'hub-de-estudos' (ver HUB_ESTUDOS_NOTION_LINK abaixo) — pra
+ *    adicionar outro produto assim, é só seguir o mesmo padrão em
+ *    handleVerifyPurchase.
  *    Cliques em link de afiliado (produtos de compras/estudo) usam o mesmo
  *    event_type='block' (payload.type='affiliate_click'), gravados direto do
  *    front-end (sem Stripe envolvido) — ver produtos-de-compras/index.html e
@@ -187,6 +195,18 @@
  *                                              de 5€ da Etapa 2 no Stripe —
  *                                              necessário pro checkout embutido
  *                                              (/api/purchase/create-embedded-session).
+ *   HUB_ESTUDOS_NOTION_LINK                 — URL do Notion (com "source=
+ *                                              copy_link") liberada depois que
+ *                                              o Stripe confirma a compra do
+ *                                              produto 'hub-de-estudos'. Fica
+ *                                              só aqui (nunca em content/
+ *                                              *.json), mesma lógica do
+ *                                              QUIZ_DRIVE_LINK — sem ela, a
+ *                                              compra continua sendo
+ *                                              confirmada normalmente, só não
+ *                                              redireciona pro Notion sozinha
+ *                                              (o front mostra aviso, não
+ *                                              quebra).
  * Bindings de KV necessários (Settings → Bindings):
  *   REVIEWS_KV — namespace vazia, usada pelas avaliações (e também pelo
  *                throttle de /api/events, ver EVENTS_THROTTLE_SECONDS)
@@ -1278,14 +1298,17 @@ async function handleVerifyPurchase(request, env) {
       .run();
   }
 
-  // A Etapa 2 (5€) não é um produto do catálogo — é a mesma planilha do
-  // /acesso-vip/, vendida pra quem ficou de fora das 10 vagas grátis. Só
-  // devolve o link do Drive quando o slug bate com esse, e só depois de já
+  // Link de acesso pra produtos cujo link em si não pode ficar em
+  // content/produtos-digitais.json (público) — só devolvido depois de já
   // ter confirmado acima (session.payment_status === 'paid') que essa
-  // sessão específica foi paga de verdade.
-  const driveLink = slug === PLANILHA_ETAPA2_SLUG ? (env.QUIZ_DRIVE_LINK || null) : null;
+  // sessão específica foi paga de verdade. A Etapa 2 (5€) nem é um produto
+  // do catálogo — é a mesma planilha do /acesso-vip/, vendida pra quem
+  // ficou de fora das 10 vagas grátis.
+  let accessLink = null;
+  if (slug === PLANILHA_ETAPA2_SLUG) accessLink = env.QUIZ_DRIVE_LINK || null;
+  else if (slug === HUB_ESTUDOS_SLUG) accessLink = env.HUB_ESTUDOS_NOTION_LINK || null;
 
-  return json({ ok: true, slug, amount, currency, driveLink });
+  return json({ ok: true, slug, amount, currency, accessLink, driveLink: accessLink });
 }
 
 // Cria a sessão de Checkout embutida da Etapa 2 (5€) na hora — a página
@@ -1470,6 +1493,11 @@ const QUIZ_COUNTER_ID = 'default';
 // (content/produtos-digitais.json), então handleVerifyPurchase trata esse
 // slug à parte pra devolver o link do Drive em vez de só confirmar a venda.
 const PLANILHA_ETAPA2_SLUG = 'planilha-financeira-etapa-2';
+// slug do produto 'Hub de Estudos' (content/produtos-digitais.json) — ao
+// contrário da Etapa 2 acima, este É um produto normal do catálogo; só o
+// link de acesso (Notion) fica fora do JSON público, ver
+// HUB_ESTUDOS_NOTION_LINK e handleVerifyPurchase.
+const HUB_ESTUDOS_SLUG = 'hub-de-estudos';
 
 function quizLimit(env) {
   const n = Number(env.QUIZ_LIMIT);
