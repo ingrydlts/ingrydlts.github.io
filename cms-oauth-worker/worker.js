@@ -833,7 +833,7 @@ async function handleInsightsExport(request, env) {
   const q = (sql) => env.EVENTS_DB.prepare(sql).bind(since).all();
 
   const [overview, views, feedback, polls, checklist, faqOpens, resourceClicks, shareOpens, shareClicks,
-    botFunnel, botAnswers, botOutcomes, revenue, affiliate] = await Promise.all([
+    botFunnel, botAnswers, botOutcomes, revenue, affiliate, revenueAllTotal, revenueAllByProduct, revenueAllBySource] = await Promise.all([
     q(`SELECT COUNT(*) as total, COUNT(DISTINCT session_id) as sessions FROM events WHERE ${inWindow}`),
     // Visitas por artigo e por marca do link. campaign e content já são
     // gravados no page_view pelo site (trackPageSource em assets/js/main.js),
@@ -882,6 +882,26 @@ async function handleInsightsExport(request, env) {
     q(`SELECT json_extract(payload,'$.category') as category, json_extract(payload,'$.id') as item, COUNT(*) as clicks
        FROM events WHERE event_type='block' AND json_extract(payload,'$.type')='affiliate_click' AND ${inWindow}
        GROUP BY category, item ORDER BY clicks DESC LIMIT 100`),
+    // Receita de TODO o período (sem janela): é o número do card "Receita total
+    // confirmada" do /admin/dashboard/. Só somas; nunca session_id nem e-mail.
+    env.EVENTS_DB.prepare(
+      `SELECT COUNT(*) as orders, SUM(CAST(json_extract(payload,'$.amount') AS REAL)) as revenue,
+              MIN(created_at) as first_at, MAX(created_at) as last_at
+       FROM events WHERE event_type='block' AND json_extract(payload,'$.type')='purchase'`
+    ).all(),
+    env.EVENTS_DB.prepare(
+      `SELECT COALESCE(article_slug, json_extract(payload,'$.product')) as product, COUNT(*) as orders,
+              SUM(CAST(json_extract(payload,'$.amount') AS REAL)) as revenue
+       FROM events WHERE event_type='block' AND json_extract(payload,'$.type')='purchase'
+       GROUP BY product ORDER BY revenue DESC LIMIT 100`
+    ).all(),
+    env.EVENTS_DB.prepare(
+      `SELECT json_extract(payload,'$.source') as source, json_extract(payload,'$.medium') as medium,
+              json_extract(payload,'$.campaign') as campaign, json_extract(payload,'$.content') as content,
+              COUNT(*) as orders, SUM(CAST(json_extract(payload,'$.amount') AS REAL)) as revenue
+       FROM events WHERE event_type='block' AND json_extract(payload,'$.type')='purchase'
+       GROUP BY source, medium, campaign, content ORDER BY revenue DESC LIMIT 200`
+    ).all(),
   ]);
 
   const rows = (r) => (r && r.results) || [];
@@ -941,6 +961,20 @@ async function handleInsightsExport(request, env) {
       rows(revenue).map((r) => ({ ...utm(r), orders: r.orders, revenue: r.revenue || 0 })),
       ['source', 'medium', 'campaign', 'content'], ['orders', 'revenue']
     ),
+    revenue_all: {
+      orders: (rows(revenueAllTotal)[0] && rows(revenueAllTotal)[0].orders) || 0,
+      revenue: (rows(revenueAllTotal)[0] && rows(revenueAllTotal)[0].revenue) || 0,
+      first_at: (rows(revenueAllTotal)[0] && rows(revenueAllTotal)[0].first_at) || null,
+      last_at: (rows(revenueAllTotal)[0] && rows(revenueAllTotal)[0].last_at) || null,
+      by_product: exportMerge(
+        rows(revenueAllByProduct).map((r) => ({ product: exportSlug(r.product), orders: r.orders, revenue: r.revenue || 0 })),
+        ['product'], ['orders', 'revenue']
+      ),
+      by_source: exportMerge(
+        rows(revenueAllBySource).map((r) => ({ ...utm(r), orders: r.orders, revenue: r.revenue || 0 })),
+        ['source', 'medium', 'campaign', 'content'], ['orders', 'revenue']
+      ),
+    },
     affiliate_clicks: exportMerge(
       rows(affiliate).map((r) => ({ category: exportToken(r.category), item: exportToken(r.item), clicks: r.clicks })),
       ['category', 'item'], ['clicks']
