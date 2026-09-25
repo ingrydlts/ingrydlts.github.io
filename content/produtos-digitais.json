@@ -2,6 +2,52 @@
   "items": [
     {
       "active": true,
+      "summary": "O hub de Notion que junta matérias, cronograma e prazos do seu master num só lugar — pra você nunca mais correr atrás de última hora.",
+      "stripeLink": "https://buy.stripe.com/eVqdR95Sd6AFfTD6lXaR205",
+      "bundleWith": [],
+      "price": 14.9,
+      "slug": "hub-de-estudos",
+      "gallery": [
+        {
+          "type": "Foto",
+          "image": "/images/uploads/hub-de-estudos-capa.png",
+          "caption": "Hub de Estudos no Notion"
+        }
+      ],
+      "kicker": "Template Notion",
+      "faq": [
+        {
+          "q": "Preciso pagar assinatura do Notion pra usar?",
+          "a": "Não. O hub funciona na versão gratuita do Notion, direto no navegador, no computador ou no app do celular."
+        },
+        {
+          "q": "Como eu recebo o hub depois de comprar?",
+          "a": "Você recebe o link pra duplicar o template direto na sua conta do Notion — a cópia é sua, pra editar e organizar do seu jeito."
+        },
+        {
+          "q": "Funciona só pra master, ou serve pra qualquer curso?",
+          "a": "Foi pensado pra quem faz um master, mas serve pra qualquer curso ou faculdade — é só adaptar as matérias e o cronograma."
+        },
+        {
+          "q": "Posso pedir reembolso depois de comprar?",
+          "a": "Não. Por ser um acesso digital de entrega imediata, a compra é final — não fazemos reembolso nem devolução após o link ser liberado."
+        }
+      ],
+      "title": "Hub de Estudos",
+      "image": "/images/uploads/hub-de-estudos-capa.png",
+      "description": "Feito pra quem faz um master (ou qualquer curso) fora do Brasil e vive com a matéria num app, o prazo em outro e o material perdido no chat. O Hub de Estudos junta tudo dentro do Notion: suas matérias, o cronograma de aulas, a grade de horários da semana e cada projeto ou atividade — com visões prontas por Hoje, Em atraso, Deadline próxima, Timeline e Essa semana, pra você abrir uma aba só e já saber o que fazer primeiro.",
+      "features": [
+        "Hub central com matérias, cronograma e prazos organizados",
+        "Grade de horários (créneaux) da semana",
+        "Aulas organizadas por matéria — próximas e já dadas",
+        "Projetos e atividades com 5 visões: Hoje, Em atraso, Deadline próxima, Timeline e Essa semana",
+        "Template pronto pra duplicar no Notion — funciona no navegador, celular e app",
+        "Compra única — sem assinatura"
+      ],
+      "guaranteeDays": 0
+    },
+    {
+      "active": true,
       "launchNote": "Preço de lançamento — válido para os primeiros 30 compradores",
       "summary": "A planilha financeira que lança seus gastos fixos sozinha, todo mês, sem você precisar copiar e colar nada.",
       "stripeLink": "https://buy.stripe.com/7sY28rcgB4sxazj8u5aR203",

@@ -267,3 +267,27 @@ Pra criar e popular o banco D1 do passo 11 via linha de comando (edite `database
 wrangler d1 create por-dentro-events
 wrangler d1 execute por-dentro-events --remote --file=./schema.sql
 ```
+
+---
+
+## 15. Configurar o link de acesso do Hub de Estudos (Notion)
+
+Produto digital do catálogo (`content/produtos-digitais.json`, slug `hub-de-estudos`) cujo "arquivo"
+é uma página do Notion, liberada via **Duplicar** depois da compra. Mesma lógica do `QUIZ_DRIVE_LINK`
+do passo 12: o link em si nunca fica em `content/*.json` (é público) — fica só como variável do
+Worker, e só é devolvido depois que o Stripe confirma que aquela sessão específica foi paga
+(`POST /api/purchase/verify-session`). A página `/produtos-digitais/obrigado/` já sabe redirecionar
+sozinha pro Notion assim que recebe esse link de volta — não precisa mexer no front-end.
+
+1. No Worker (`por-dentro-cms-oauth`) → **Settings** → **Variables and Secrets** → **Add** → tipo
+   **Secret** → nome `HUB_ESTUDOS_NOTION_LINK` → valor: o link do Notion (o mesmo de
+   "Compartilhar" → "Copiar link", com `?source=copy_link`) → **Deploy**.
+   (Com `wrangler`: `wrangler secret put HUB_ESTUDOS_NOTION_LINK` e depois `wrangler deploy`.)
+2. Publique o `worker.js` atualizado (seção 9 deste README, ou `wrangler deploy`).
+3. Confira que a página do Notion está com **"Permitir duplicar"** ativado (menu **···** da página →
+   **Duplicar como modelo** / compartilhamento público com duplicação) — sem isso, quem chegar lá
+   consegue ver a página mas não duplicar pra própria conta.
+
+Sem essa variável configurada, a compra continua sendo confirmada e registrada normalmente — só que
+a página de confirmação mostra um aviso ("o link ainda está sendo configurado") em vez de redirecionar,
+nunca um link quebrado.

@@ -156,6 +156,30 @@
       return;
     }
 
+    // Hub de Estudos (template de Notion) — assim que o pagamento é
+    // confirmado, manda direto pra página do Notion pra duplicar, em vez de
+    // ficar nesta página. O link em si nunca fica em
+    // content/produtos-digitais.json (ver HUB_ESTUDOS_NOTION_LINK no
+    // Worker) — só chega aqui depois que o Stripe confirma a sessão paga.
+    if (result.slug === "hub-de-estudos") {
+      if (result.accessLink) {
+        root.innerHTML =
+          '<p><strong>Pagamento confirmado!</strong> Hub de Estudos' +
+          (result.amount != null ? " — " + formatPrice(result.amount) : "") +
+          "</p>" +
+          '<p class="muted" style="margin-top:10px;">Redirecionando você pro Notion pra duplicar o hub…</p>' +
+          '<p style="margin-top:16px;"><a class="btn" href="' + escapeHtml(result.accessLink) + '">Abrir o Hub de Estudos agora</a></p>';
+        window.location.href = result.accessLink;
+      } else {
+        root.innerHTML =
+          '<p><strong>Pagamento confirmado!</strong> Hub de Estudos' +
+          (result.amount != null ? " — " + formatPrice(result.amount) : "") +
+          "</p>" +
+          '<p class="muted" style="margin-top:10px;">Pagamento confirmado, mas o link ainda está sendo configurado — já aviso você direto no Instagram.</p>';
+      }
+      return;
+    }
+
     let productTitle = "";
     try {
       const data = await fetchJSON("/content/produtos-digitais.json");
