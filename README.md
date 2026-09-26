@@ -107,6 +107,12 @@ no site nem no formato dos arquivos; o "Publicar" continua sendo o do Decap.
 - **Produtos digitais** (`admin/widgets/product-studio.js`): ordem da vitrine, liga/desliga, card,
   preço (desconto calculado), galeria, descrição, "O que inclui", FAQ, combo e pagamento/garantia.
   Abre pelo botão "Abrir estúdio de produtos" em `/admin` → Produtos digitais.
+- **Link na bio** (`admin/widgets/links-studio.js`): topo (foto, bio, redes), card do assistente e
+  seções — arraste a seção pela alça do título e os links entre as seções, liga/desliga cada link.
+- **Menu do site** (`admin/widgets/menu-studio.js`, coleção "Cabeçalho do site"): arraste pra mudar a
+  ordem dos links (vale pro topo, celular e rodapé), texto, endereço e liga/desliga.
+- **Cabeçalho e rodapé** (mesmo arquivo, coleção "Cabeçalho e rodapé (menu do site)"): tabela com as
+  categorias e as páginas; toque numa página pra ver a prévia dela.
 - **Corpo do artigo** (`admin/widgets/article-composer.js`): o editor em blocos, que já existia.
 
 Como funciona por baixo (pra criar o próximo estúdio): `admin/widgets/studio-kit.js` tem a lista
@@ -115,7 +121,9 @@ abre a página do site num `<iframe name="pd-preview">`; `fetchJSON` em `assets/
 dados em edição de `window.parent.PDPreview` em vez do arquivo publicado, e `assets/js/consent.js`
 não mostra banner nem mede nada ali dentro. Um estúdio novo é um widget do Decap registrado com
 `CMS.registerWidget`, carregado em `admin/index.html` depois do kit, e ligado ao campo em
-`admin/config.yml` (`widget: nome-do-estudio`).
+`admin/config.yml` (`widget: nome-do-estudio`). Quando o arquivo tem mais de um campo no topo (ex.
+`links.json`: hero, bot, sections), o estúdio fica num campo e os outros usam `widget: studio-part`,
+pra que um estúdio só edite todos (`PDStudio.part("hero")` no kit).
 
 ## Avaliações de produto (estrelas + comentário)
 

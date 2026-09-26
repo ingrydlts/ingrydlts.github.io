@@ -59,7 +59,8 @@
     ".pds-tabs button{border:0;background:none;padding:6px 11px;border-radius:8px;color:#6E6862;font:500 13px " + FONT + ";cursor:pointer;}",
     ".pds-tabs button[aria-pressed=true]{background:#fff;color:#2B2B2B;box-shadow:0 1px 3px rgba(43,35,25,.12);}",
     ".pds-mobile-tabs{display:none;padding:8px 16px;background:#FBFAF7;border-bottom:1px solid #E2DCD2;}",
-    ".pds-btn{display:inline-flex;align-items:center;gap:6px;border:1px solid #CFC7BA;background:#fff;border-radius:9px;padding:7px 12px;font:500 13px " + FONT + ";color:#2B2B2B;cursor:pointer;min-height:36px;}",
+    "html.pds-dragging,html.pds-dragging *{-webkit-user-select:none!important;user-select:none!important;cursor:grabbing!important;}",
+    ".pds-btn{white-space:nowrap;display:inline-flex;align-items:center;gap:6px;border:1px solid #CFC7BA;background:#fff;border-radius:9px;padding:7px 12px;font:500 13px " + FONT + ";color:#2B2B2B;cursor:pointer;min-height:36px;}",
     ".pds-btn:hover{border-color:#2B2B2B;}",
     ".pds-btn.primary{background:#577328;border-color:#577328;color:#fff;}",
     ".pds-btn.ghost{border-color:transparent;background:none;color:#6E6862;}",
@@ -156,6 +157,12 @@
         dragClass: "pds-drag",
         scrollSensitivity: 90,
         bubbleScroll: true,
+        // sem isso, arrastar com o mouse vai selecionando o texto da tela
+        onChoose: function () { document.documentElement.classList.add("pds-dragging"); },
+        onUnchoose: function () {
+          document.documentElement.classList.remove("pds-dragging");
+          try { window.getSelection().removeAllRanges(); } catch (e) {}
+        },
         onEnd: function (evt) {
           var from = evt.from, to = evt.to, item = evt.item;
           var moved = from !== to || evt.oldIndex !== evt.newIndex;
@@ -358,13 +365,101 @@
       .toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 80);
   }
 
+  // --- campos "irmãos" -------------------------------------------------------
+  // No Decap, cada widget só consegue gravar o próprio campo. Quando um
+  // arquivo tem vários campos no topo (ex. links.json: hero, bot, sections),
+  // os outros campos usam o widget "studio-part": ele não desenha formulário,
+  // só se registra aqui pelo nome do campo, e o estúdio lê e grava por ele.
+  //   K.part("hero")              → { value (JS), set(novoValor), pickImage(alvo, atual, cb) } ou null
+  // Ao trocar de coleção sem recarregar, o Decap pode manter por um tempo um
+  // formulário antigo montado — então guarda todas as instâncias vivas e
+  // escolhe a que pertence ao conteúdo aberto (os dados dela têm esse campo).
+  var live = [];
+  function findPart(name) {
+    for (var i = live.length - 1; i >= 0; i--) {
+      var inst = live[i], pr = inst.props;
+      if (!pr.field || pr.field.get("name") !== name || pr.value == null) continue;
+      var data = pr.entry && pr.entry.get && pr.entry.get("data");
+      if (data && data.has && !data.has(name)) continue;
+      return inst;
+    }
+    return null;
+  }
+  function part(name) {
+    var inst = findPart(name);
+    if (!inst) return null;
+    return {
+      value: toJS(inst.props.value, null),
+      set: function (v) { inst.props.onChange(v); },
+      pickImage: function (target, current, cb) {
+        inst._pdsPick = inst._pdsPick || {};
+        inst._pdsPick[target] = cb;
+        Media.open(inst, target, current);
+      },
+      props: inst.props
+    };
+  }
+  var StudioPart = createClass({
+    componentDidMount: function () { live.push(this); },
+    componentDidUpdate: function () {
+      var self = this;
+      Media.collect(this, function (target, path) {
+        var cb = self._pdsPick && self._pdsPick[target];
+        if (cb) { delete self._pdsPick[target]; cb(path); }
+      });
+    },
+    componentWillUnmount: function () {
+      var i = live.indexOf(this);
+      if (i !== -1) live.splice(i, 1);
+    },
+    // O Decap já mostra o "hint" do campo (ver config.yml); nada a desenhar.
+    render: function () { return null; }
+  });
+  if (typeof CMS !== "undefined") CMS.registerWidget("studio-part", StudioPart);
+
   // Liga/desliga o modo "estúdio aberto" (ver html.pds-open acima).
   function lockPage(on) {
     document.documentElement.classList.toggle("pds-open", !!on);
   }
 
+  // Molde da tela de um estúdio: topo com "Concluir", abas Editar/Ver prévia
+  // no celular, edição à esquerda e prévia real à direita. "comp" é o widget
+  // (usa comp.state.tab/device e comp.setState).
+  function shell(comp, opts) {
+    return h("div", { className: "pds-overlay", role: "dialog", "aria-modal": "true", "aria-label": opts.label || opts.title },
+      h("div", { className: "pds-top" },
+        h("h2", null, opts.title),
+        h("small", null, "As mudanças vão pro site quando você clicar em Publicar no /admin."),
+        h("button", { type: "button", className: "pds-btn primary", onClick: opts.onClose }, "Concluir")
+      ),
+      h("div", { className: "pds-mobile-tabs" },
+        h("div", { className: "pds-tabs" },
+          h("button", { type: "button", "aria-pressed": String(comp.state.tab !== "preview"), onClick: function () { comp.setState({ tab: "edit" }); } }, "Editar"),
+          h("button", { type: "button", "aria-pressed": String(comp.state.tab === "preview"), onClick: function () { comp.setState({ tab: "preview" }); } }, "Ver prévia"))),
+      h("div", { className: "pds-body", "data-tab": comp.state.tab === "preview" ? "preview" : "edit" },
+        h("div", { className: "pds-edit" }, opts.edit),
+        h("div", { className: "pds-side" },
+          h(Preview, {
+            url: opts.url, device: comp.state.device || opts.device || "mobile", version: opts.version,
+            onDevice: function (d) { comp.setState({ device: d }); }, extra: opts.previewExtra
+          }),
+          opts.below || null)
+      )
+    );
+  }
+
+  // Barra que fica no formulário do Decap, com o botão que abre o estúdio.
+  function launcher(summary, label, onOpen) {
+    return h("div", { style: { display: "flex", gap: "12px", alignItems: "center", flexWrap: "wrap", padding: "10px 12px", border: "1px solid rgba(43,43,43,.14)", borderRadius: "6px", background: "#fff", fontSize: "13px", fontFamily: FONT } },
+      summary.map(function (s, i) { return h("span", { key: i }, s); }),
+      h("button", { type: "button", className: "pds-btn primary", onClick: onOpen }, label));
+  }
+
   window.PDStudio = {
     lockPage: lockPage,
+    part: part,
+    shell: shell,
+    launcher: launcher,
     css: css,
     SortableList: SortableList,
     moveIn: moveIn,

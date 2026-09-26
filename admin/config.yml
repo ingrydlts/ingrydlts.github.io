@@ -19,86 +19,18 @@ collections:
         label: "Ativar/desativar o menu por página"
         file: content/nav-visibility.json
         fields:
+          # Estúdio "Cabeçalho e rodapé" (admin/widgets/menu-studio.js):
+          # tabela com as categorias e as páginas, e a página real como
+          # prévia. Mesmo formato de sempre: categories.<categoria>.{header,
+          # footer, logo} = true/false e pages.<página>.{header, footer, logo}
+          # = "categoria" | "ativado" | "desativado".
           - label: "Ligar/desligar tudo de uma vez, por categoria"
             name: categories
-            widget: object
-            hint: "Cada interruptor liga ou desliga o cabeçalho/rodapé de TODAS as páginas dessa categoria de uma vez — é o \"selecionar tudo / desmarcar tudo\". Só vale pra páginas que estiverem em \"Seguir categoria\" lá embaixo, em \"Cada página\"."
-            fields:
-              - label: Home
-                name: home
-                widget: object
-                fields: &category_toggle
-                  - { label: "Cabeçalho (menu no topo)", name: header, widget: boolean, default: true }
-                  - { label: "Rodapé (menu de navegação no rodapé)", name: footer, widget: boolean, default: true }
-                  - { label: "Logo redireciona pra Home", name: logo, widget: boolean, default: true }
-              - label: "Produtos (digitais, de estudo, de compras)"
-                name: produtos
-                widget: object
-                fields: *category_toggle
-              - label: Blog
-                name: blog
-                widget: object
-                fields: *category_toggle
-              - label: "Institucional (Sobre, CGV, Confidentialité, Mentions légales)"
-                name: institucional
-                widget: object
-                fields: *category_toggle
-          - label: "Cada página (só preencha se essa página precisar ser diferente da categoria dela)"
+            widget: studio-part
+            hint: "As categorias ficam na tabela do estúdio, logo abaixo."
+          - label: "Cada página"
             name: pages
-            widget: object
-            hint: "Deixe em \"Seguir categoria\" na grande maioria das páginas — assim elas obedecem o interruptor da categoria, lá em cima. Só mude uma página específica pra \"Ativado\" ou \"Desativado\" quando ela for a exceção — por exemplo, o Blog inteiro ligado mas uma página de artigo isolada funcionando como landing antes do lançamento."
-            fields:
-              - label: Home
-                name: home
-                widget: object
-                fields: &page_toggle
-                  - { label: Cabeçalho, name: header, widget: select, default: "categoria", options: [{ label: "Seguir categoria", value: "categoria" }, { label: Ativado, value: "ativado" }, { label: Desativado, value: "desativado" }] }
-                  - { label: Rodapé, name: footer, widget: select, default: "categoria", options: [{ label: "Seguir categoria", value: "categoria" }, { label: Ativado, value: "ativado" }, { label: Desativado, value: "desativado" }] }
-                  - { label: "Logo redireciona pra Home", name: logo, widget: select, default: "categoria", options: [{ label: "Seguir categoria", value: "categoria" }, { label: Ativado, value: "ativado" }, { label: Desativado, value: "desativado" }] }
-              - label: "Produtos digitais"
-                name: produtos-digitais
-                widget: object
-                fields: *page_toggle
-              - label: "Produtos digitais — página de um produto"
-                name: produtos-digitais-produto
-                widget: object
-                fields: *page_toggle
-              - label: "Produtos de estudo"
-                name: produtos-de-estudo
-                widget: object
-                fields: *page_toggle
-              - label: "Produtos de compras"
-                name: produtos-de-compras
-                widget: object
-                fields: *page_toggle
-              - label: Sobre
-                name: sobre
-                widget: object
-                fields: *page_toggle
-              - label: "Links (bio)"
-                name: links
-                widget: object
-                fields: *page_toggle
-              - label: CGV
-                name: cgv
-                widget: object
-                fields: *page_toggle
-              - label: Confidentialité
-                name: confidentialite
-                widget: object
-                fields: *page_toggle
-              - label: "Mentions légales"
-                name: mentions-legales
-                widget: object
-                fields: *page_toggle
-              - label: "Blog — lista de artigos"
-                name: artigos
-                widget: object
-                fields: *page_toggle
-              - label: "Blog — modelo de artigo (usado por artigos sem página própria)"
-                name: artigos-post-template
-                widget: object
-                fields: *page_toggle
+            widget: visibility-studio
 
   - name: links_page
     label: "Página de Links (bio)"
@@ -107,42 +39,23 @@ collections:
         label: "Conteúdo da /links/"
         file: content/links.json
         fields:
+          # Estúdio da Link na bio (admin/widgets/links-studio.js): topo,
+          # card do assistente e seções/links com arrastar e soltar, e a
+          # /links/ de verdade como prévia. Mesmos campos de sempre: hero
+          # {handle, title, bio, avatar, instagramUrl, youtubeUrl}, bot
+          # {title, description, href}, sections[{title, items[{active, icon,
+          # title, description, href, trackId, external, price}]}].
           - label: "Topo (foto, bio, redes)"
             name: hero
-            widget: object
-            fields:
-              - { label: "Handle (@usuário)", name: handle, widget: string }
-              - { label: "Título", name: title, widget: string }
-              - { label: "Bio", name: bio, widget: text }
-              - { label: "Foto", name: avatar, widget: image, required: false, hint: "Tamanho ideal: quadrada (ex. 400×400px) — aparece cortada em círculo." }
-              - { label: "Link do Instagram", name: instagramUrl, widget: string }
-              - { label: "Link do YouTube", name: youtubeUrl, widget: string }
+            widget: studio-part
+            hint: "O topo é editado no estúdio, logo abaixo."
           - label: "Card do assistente (bot)"
             name: bot
-            widget: object
-            fields:
-              - { label: "Título", name: title, widget: string }
-              - { label: "Descrição", name: description, widget: text }
-              - { label: "Link (ex. /assistente-de-vistos/)", name: href, widget: string }
+            widget: studio-part
+            hint: "O card do assistente é editado no estúdio, logo abaixo."
           - label: "Seções de links"
             name: sections
-            widget: list
-            summary: "{{fields.title}}"
-            fields:
-              - { label: "Título da seção", name: title, widget: string }
-              - label: "Itens"
-                name: items
-                widget: list
-                summary: "{{fields.title}}"
-                fields:
-                  - { label: "🔴 Link ativo", name: active, widget: boolean, default: true, required: false, hint: "Botão de ativação: desligado = link fica cadastrado mas INVISÍVEL em /links/ — some da página sem precisar apagar nada. Ligue quando quiser que ele apareça de novo." }
-                  - { label: "Emoji do ícone", name: icon, widget: string }
-                  - { label: "Título", name: title, widget: string }
-                  - { label: "Descrição", name: description, widget: text }
-                  - { label: "Link", name: href, widget: string, hint: "Link interno (ex. /artigos/post/?slug=...) ou externo (https://...)." }
-                  - { label: "Id de rastreamento (sem espaço/acento)", name: trackId, widget: string, hint: "Usado só pra identificar o clique em /admin/dashboard — não aparece pra leitora." }
-                  - { label: "Link externo (abre em nova aba)", name: external, widget: boolean, default: false }
-                  - { label: "Preço (opcional, ex. 25€)", name: price, widget: string, required: false }
+            widget: links-studio
 
   - name: produtos_digitais
     label: "Produtos digitais"
@@ -293,46 +206,13 @@ collections:
         label: "Links do menu (cabeçalho)"
         file: content/header-config.json
         fields:
+          # Estúdio do menu (admin/widgets/menu-studio.js): arrastar pra mudar
+          # a ordem, texto, endereço e liga/desliga de cada link. Mesmo
+          # formato: links.<chave>.{enabled, label, href}; a ordem das chaves
+          # é a ordem no site (ver orderLinks em assets/js/header.js).
           - label: "Menu principal"
             name: links
-            widget: object
-            hint: "Controla os links do cabeçalho em TODAS as páginas do site. Desmarque \"Mostrar\" pra esconder uma seção que ainda não foi lançada — sem precisar editar código. Pra uma página de artigo específica virar uma landing sem menu nenhum, use o campo \"Cabeçalho desta página\" lá no artigo, em Blog — artigos."
-            fields:
-              - label: "Produtos digitais"
-                name: produtos-digitais
-                widget: object
-                fields:
-                  - { label: Mostrar, name: enabled, widget: boolean, default: true }
-                  - { label: "Texto do link", name: label, widget: string, default: "Produtos digitais" }
-                  - { label: "Link (URL)", name: href, widget: string, default: "/produtos-digitais/" }
-              - label: "Produtos de estudo"
-                name: produtos-de-estudo
-                widget: object
-                fields:
-                  - { label: Mostrar, name: enabled, widget: boolean, default: true }
-                  - { label: "Texto do link", name: label, widget: string, default: "Produtos de estudo" }
-                  - { label: "Link (URL)", name: href, widget: string, default: "/produtos-de-estudo/" }
-              - label: "Produtos de compras"
-                name: produtos-de-compras
-                widget: object
-                fields:
-                  - { label: Mostrar, name: enabled, widget: boolean, default: true }
-                  - { label: "Texto do link", name: label, widget: string, default: "Produtos de compras" }
-                  - { label: "Link (URL)", name: href, widget: string, default: "/produtos-de-compras/" }
-              - label: "Blog"
-                name: blog
-                widget: object
-                fields:
-                  - { label: Mostrar, name: enabled, widget: boolean, default: true }
-                  - { label: "Texto do link", name: label, widget: string, default: "Blog" }
-                  - { label: "Link (URL)", name: href, widget: string, default: "/artigos/" }
-              - label: "Sobre"
-                name: sobre
-                widget: object
-                fields:
-                  - { label: Mostrar, name: enabled, widget: boolean, default: true }
-                  - { label: "Texto do link", name: label, widget: string, default: "Sobre" }
-                  - { label: "Link (URL)", name: href, widget: string, default: "/sobre/" }
+            widget: menu-studio
 
   - name: quiz_config
     label: "Questionário de vagas limitadas (/acesso-vip/)"
