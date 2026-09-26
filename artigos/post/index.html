@@ -125,9 +125,8 @@
 <script src="/assets/js/article-animations.js"></script>
 <script src="/assets/js/share-button.js"></script>
 <script type="module">
-  import { fetchJSON, imgSlotHTML, escapeHtml, qs } from "/assets/js/render.js";
+  import { fetchJSON, imgSlotHTML, escapeHtml, qs, isPublished, IN_PREVIEW, previewDraftNoteHTML } from "/assets/js/render.js";
   import { markdownToBlocks } from "/assets/js/markdown.js";
-  import { resolvePremiumSlot } from "/assets/js/premium-gate.js";
   import { pickRelated, relatedSectionHTML, updatedLineHTML, notPublishedHTML } from "/assets/js/article-extras.js";
   import { getAdsConfig, slotHTML, insertAtIndices, activateNetworkAds, ownBannerHTML } from "/assets/js/ad-slots.js";
 
@@ -244,7 +243,7 @@
       root.innerHTML = '<p class="empty-state">Artigo não encontrado. <a href="/artigos/">Voltar ao blog</a>.</p>';
       return;
     }
-    if (post.published !== true) {
+    if (!isPublished(post) && !IN_PREVIEW) {
       root.innerHTML = notPublishedHTML();
       const metaRobots = document.querySelector('meta[name="robots"]');
       if (metaRobots) metaRobots.setAttribute("content", "noindex, nofollow");
@@ -271,7 +270,6 @@
       if (backLink) backLink.remove();
     }
 
-    const isPremium = !!post.premium;
     const adsCfg = await getAdsConfig();
     let vitrineCfg;
     try {
@@ -329,22 +327,14 @@
       { index: 0, html: hasNoPropaganda ? "" : slotHTML(adsCfg, "top") },
       { index: adMidAfter, html: hasNoPropaganda ? "" : slotHTML(adsCfg, "mid") }
     ];
-    if (!isPremium && !hasManualBanner && !hasNoBanner) {
+    if (!hasManualBanner && !hasNoBanner) {
       const inIdx = vitrineBlockIndex(inBannerCfg, blocks);
       if (inIdx !== null) insertions.push({ index: inIdx, html: vitrineBannerHTML(inBannerCfg, "in") });
     }
     const endIdx = vitrineBlockIndex(endBannerCfg, blocks);
     if (endIdx !== null) insertions.push({ index: endIdx, html: vitrineBannerHTML(endBannerCfg, "end") });
 
-    let bodyHtml;
-    if (isPremium) {
-      bodyHtml =
-        insertAtIndices(blocks, insertions) +
-        (hasNoPropaganda ? "" : slotHTML(adsCfg, "beforePaywall")) +
-        '<div id="premium-slot"><p class="muted">Carregando…</p></div>';
-    } else {
-      bodyHtml = insertAtIndices(blocks, insertions);
-    }
+    let bodyHtml = insertAtIndices(blocks, insertions);
     bodyHtml = bodyHtml.replace("<p>[[NO-VITRINE-BANNER]]</p>", "").replace("<p>[[NO-PROPAGANDA]]</p>", "");
     if (hasManualBanner) {
       bodyHtml = bodyHtml.replace(bannerBlockMatch, hasNoBanner ? "" : manualBannerHtml);
@@ -354,9 +344,9 @@
     }
 
     // Faixa própria depois do texto do artigo acabar — é a posição "Fim do
-    // artigo" (ou o banner do meio, se marcado como premium-only "fim").
+    // artigo" (ou o banner do meio, se a posição dele for "fim").
     const trailingBannerHtml =
-      (!isPremium && inBannerCfg && inBannerCfg.enabled && inBannerCfg.position === "fim" ? vitrineBannerHTML(inBannerCfg, "in") : "") +
+      (inBannerCfg && inBannerCfg.enabled && inBannerCfg.position === "fim" ? vitrineBannerHTML(inBannerCfg, "in") : "") +
       (endBannerCfg && endBannerCfg.enabled && endBannerCfg.position === "fim" ? vitrineBannerHTML(endBannerCfg, "end") : "");
 
     // Marcadores especiais: um parágrafo isolado com "[[NOME-DO-TOKEN]]" no corpo
@@ -462,6 +452,7 @@
 
     root.innerHTML =
       '<article>' +
+      (IN_PREVIEW && !isPublished(post) ? previewDraftNoteHTML(post) : "") +
       '<div class="article-header">' +
       '<span class="eyebrow" style="color:#604034;">' + escapeHtml(post.category) + "</span>" +
       "<h1>" + escapeHtml(post.title) + "</h1>" +
@@ -476,10 +467,6 @@
       relatedSectionHTML(related);
     document.dispatchEvent(new CustomEvent("pd:blocks-rendered"));
     activateNetworkAds(adsCfg);
-
-    if (isPremium) {
-      resolvePremiumSlot("premium-slot", post.slug);
-    }
 
     if (window.initArticleAnimations) window.initArticleAnimations();
 

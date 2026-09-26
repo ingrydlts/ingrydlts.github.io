@@ -8,6 +8,7 @@ Site estático (HTML/CSS/JS puro, sem framework, sem build step) para a vitrine 
 /index.html                          Home
 /produtos-digitais/                  Grade de templates próprios
 /produtos-digitais/produto/          Template genérico de página de produto (?slug=...)
+/produtos-digitais/obrigado/         Compra confirmada (confere o pagamento e mostra os próximos passos)
 /produtos-de-estudo/                 Indicações afiliadas (livros, papelaria)
 /produtos-de-compras/                Indicações afiliadas (roupas, acessórios)
 /sobre/                              Página institucional
@@ -24,6 +25,10 @@ Site estático (HTML/CSS/JS puro, sem framework, sem build step) para a vitrine 
 /admin/                              Painel Decap CMS — edita os arquivos acima sem git/código
 /assets/css/style.css                Estilos (tokens de marca, mobile-first)
 /assets/js/                          render.js, purchase.js, markdown.js, main.js
+/assets/css/vitrine.css + /assets/js/vitrine.js
+                                      Loja de produtos digitais: grade, página do produto e
+                                      compra confirmada (botões com estado, galeria com toque,
+                                      barra de compra fixa no celular, avaliações, combo)
 ```
 
 Todo texto/preço/imagem de produto, banner e post vive em `/content/*.json` — é isso que o `/admin` edita. Alterar esses arquivos (à mão ou pelo painel) já atualiza o site, sem tocar em HTML.
@@ -56,59 +61,6 @@ O site assume que vai rodar na raiz do domínio (links tipo `/produtos-digitais/
 4. Enquanto o campo estiver vazio, o botão de compra mostra um aviso em vez de navegar pra um link quebrado — não vai vazar um link falso pros seus clientes.
 
 **O que não está implementado:** o carrinho com múltiplos produtos que existia no mockup. Um Payment Link do Stripe é fixo por produto — pra um carrinho de verdade com Stripe (vários itens, uma cobrança só) é preciso montar a sessão de checkout dinamicamente, o que exige um backend leve (o Cloudflare Worker que a especificação já previa pra o webhook de entrega, seção 5.2). Por ora, cada produto tem sua própria página de venda com seu próprio botão — funciona hoje, sem servidor. Se quiser o carrinho funcionando de verdade depois, é a próxima peça a construir.
-
-## Artigos premium (assinatura ou compra avulsa via Stripe)
-
-Qualquer artigo do blog pode ser marcado como "premium" no `/admin` — o texto que fica no campo
-"Corpo do artigo" vira a prévia grátis, e a continuação paga é escrita à parte, em
-`seudominio.com/admin/premium/` (login com a mesma conta GitHub do `/admin`). O texto pago **nunca é
-salvo no repositório** — fica só numa KV do Cloudflare Worker, e só é entregue a quem prova ter acesso.
-Isso é proposital: `content/posts.json` é um arquivo público, então qualquer coisa salva ali (mesmo que
-a interface esconda) pode ser lida por qualquer pessoa.
-
-A leitora vê **duas formas de desbloquear** um artigo premium: assinar (acesso a todos os artigos
-premium, cobrança recorrente) ou comprar só aquele artigo avulso (pagamento único, acesso permanente
-só àquele artigo). As duas usam o mesmo mecanismo por baixo — só muda o Payment Link e o que o token
-resultante cobre.
-
-Passo a passo de configuração:
-
-1. **No Stripe**, crie dois produtos e um Payment Link pra cada:
-   - Um preço **recorrente** (ex. 4,99€/mês) → Payment Link em **modo assinatura**.
-   - Um preço **único** (ex. 10€) → Payment Link em **modo pagamento único** (não assinatura).
-
-   Nas configurações "After payment" **dos dois links**, use a mesma URL de confirmação genérica:
-   `https://seudominio.com/artigos/assinatura-confirmada/?session_id={CHECKOUT_SESSION_ID}`. Essa
-   página do site troca o `session_id` pelo token de acesso e já redireciona a leitora de volta pro
-   artigo certo sozinha — não precisa (e não dá pra) configurar uma URL diferente por artigo, porque
-   o mesmo link é reaproveitado pra todos os artigos premium.
-
-   Habilite também o **Customer Portal** (Settings → Billing → Customer portal) — é o link de
-   cancelamento self-service que a lei francesa exige pra assinaturas (résiliation en trois clics,
-   decreto nº 2023-663).
-2. **No Worker** ([`cms-oauth-worker/`](cms-oauth-worker/)), adicione em Settings → Variables and Secrets:
-   `STRIPE_SECRET_KEY` (chave secreta do Stripe), `STRIPE_PRICE_ID` (Price ID da assinatura),
-   `STRIPE_ARTICLE_PRICE_ID` (Price ID da compra avulsa — os dois evitam liberar acesso pra outro
-   produto Stripe que porventura exista na mesma conta) e `ACCESS_TOKEN_SECRET` (uma string aleatória
-   qualquer, usada pra assinar os tokens de acesso). Em Settings → Bindings, crie uma KV namespace vazia
-   e associe como `PREMIUM_KV`.
-3. **No `/admin`**: cole os dois Payment Links e o link do Customer Portal em "Assinatura de artigos
-   premium" (`content/premium-config.json`), e ajuste os textos/preços mostrados no bloco de
-   pagamento se quiser.
-4. Marque o artigo desejado como premium, escreva a prévia grátis normalmente, publique, e depois
-   escreva a continuação paga em `/admin/premium/`.
-
-**Limitação atual**: isso só funciona pra artigos que usam o template dinâmico (`/artigos/post/?slug=`) —
-os 6 artigos que já têm página própria (`/artigos/post/nome-do-artigo/`, HTML gerado à mão) não ganham
-suporte a premium automaticamente. Se quiser tornar um desses premium, é um ajuste manual pontual naquela
-página específica.
-
-**Sem webhook do Stripe nesta versão**: o acesso é revalidado só quando alguém paga ou usa "já assino
-ou já comprei" — o token de assinatura expira sozinho em 14 dias, forçando revalidação. Isso significa
-que, se uma pessoa cancelar a assinatura ou tiver o pagamento recusado, o acesso pode continuar
-funcionando por até 14 dias até expirar — uma troca deliberada por simplicidade, mas fica registrado
-aqui pra não ser surpresa depois. Já o token de **compra avulsa** não expira de propósito — é um
-pagamento único, sem cobrança recorrente pra reconferir, então o acesso àquele artigo é permanente.
 
 ## Assistente de Parcerias (`/admin/parcerias/`)
 
@@ -150,6 +102,56 @@ O `/admin` é um painel visual (Decap CMS) pra editar produtos, banners e posts 
 
 **Cuidado ao editar listas** (produtos, artigos, itens de afiliado): o painel edita a lista inteira de uma vez — é fácil apagar um item sem querer ao invés de só editar o que você queria. Depois de publicar, vale conferir se os outros itens da lista continuam lá.
 
+### Estúdios (telas com arrastar e soltar e prévia real)
+
+O `/admin` está sendo atualizado coleção por coleção com **estúdios**: telas que abrem por cima do
+formulário do Decap, editam os **mesmos campos** do mesmo arquivo de `content/`, e mostram ao lado a
+página real do site já com as mudanças (celular, tablet ou computador) — antes de publicar. Nada muda
+no site nem no formato dos arquivos; o "Publicar" continua sendo o do Decap.
+
+- **Produtos digitais** (`admin/widgets/product-studio.js`): lista na ordem da vitrine (bolinha verde =
+  no ar e completo, laranja = no ar mas falta algo, cinza = escondido), um medidor de "página pronta"
+  com atalhos pro que falta, e seções que seguem a página de cima pra baixo — card da vitrine, topo,
+  preço e selo, galeria, FAQ, combo, depois da compra e pagamento/endereço. Abrir uma seção leva a
+  prévia até aquela parte (vitrine, página do produto ou compra confirmada). Tem "Desfazer" e avisos
+  na hora (preço antigo menor que o atual, link do Stripe estranho, endereço repetido…). Abre pelo
+  botão "Abrir estúdio de produtos" em `/admin` → Produtos digitais.
+- **Link na bio** (`admin/widgets/links-studio.js`): topo (foto, bio, redes), card do assistente e
+  seções — arraste a seção pela alça do título e os links entre as seções, liga/desliga cada link.
+- **Menu do site** (`admin/widgets/menu-studio.js`, coleção "Cabeçalho do site"): arraste pra mudar a
+  ordem dos links (vale pro topo, celular e rodapé), texto, endereço e liga/desliga.
+- **Cabeçalho e rodapé** (mesmo arquivo, coleção "Cabeçalho e rodapé (menu do site)"): tabela com as
+  categorias e as páginas; toque numa página pra ver a prévia dela.
+- **Artigos** (`admin/widgets/posts-board.js`, botão "Abrir quadro de artigos"): quadro com as
+  etapas do campo `status` — Ideia, Escrevendo, Revisão, Agendado e No ar. Arraste o cartão entre as
+  colunas (ou toque nele e escolha a etapa); ir pro ar sem data usa a de hoje, e Agendado pede a data.
+  O cartão abre título, resumo, categoria, capa, datas e endereço, e avisa o que falta (capa, FAQ,
+  Feedback…). A prévia mostra o blog ou o artigo — inclusive rascunho, com uma faixa "ainda não está
+  no ar" que só aparece na prévia. "Editar o texto" abre o editor visual daquele artigo. A lista de
+  sempre continua embaixo do botão, com todos os campos.
+- **Corpo do artigo** (`admin/widgets/article-composer.js`): o editor em blocos, agora com
+  "Prévia no site" — a página real do artigo com o texto de agora, no celular, tablet ou computador.
+- **Banners dentro do artigo** (`admin/widgets/article-ads-studio.js`, em "Anúncios nos artigos" e em
+  "Vitrine dentro dos artigos"): um mapa do artigo (topo, blocos, meio automático, fim). Arraste o
+  banner próprio, o anúncio de rede, o banner com foto ou a faixa de fechamento pro lugar em que
+  aparecem em todos os artigos; a prévia é um artigo de verdade. Cada coleção grava o seu arquivo —
+  as peças da outra aparecem com cadeado, só pra você ver o artigo inteiro.
+- **Banners e destaques** (`admin/widgets/banners-studio.js`): foto do topo da home (celular e
+  computador), o banner "vitrine → blog" de cada página de produtos (com a lista de artigos pra
+  escolher e aviso quando o artigo não existe ou não está no ar) e o banner lateral do blog.
+
+Como funciona por baixo (pra criar o próximo estúdio): `admin/widgets/studio-kit.js` tem a lista
+arrastável (SortableJS, em `admin/vendor/`), a prévia e o acesso à biblioteca de imagens. A prévia
+abre a página do site num `<iframe name="pd-preview">`; `fetchJSON` em `assets/js/render.js` lê os
+dados em edição de `window.parent.PDPreview` em vez do arquivo publicado, e `assets/js/consent.js`
+não mostra banner nem mede nada ali dentro. `render.js` também ouve o pedido `pd-focus` do painel
+(rola a prévia até a parte que você está editando) e exporta `IN_PREVIEW`, usado pra mostrar artigo
+em rascunho só dentro da prévia. Um estúdio novo é um widget do Decap registrado com
+`CMS.registerWidget`, carregado em `admin/index.html` depois do kit, e ligado ao campo em
+`admin/config.yml` (`widget: nome-do-estudio`). Quando o arquivo tem mais de um campo no topo (ex.
+`links.json`: hero, bot, sections), o estúdio fica num campo e os outros usam `widget: studio-part`,
+pra que um estúdio só edite todos (`PDStudio.part("hero")` no kit).
+
 ## Avaliações de produto (estrelas + comentário)
 
 Cada página de produto digital mostra nota média, distribuição por estrela e um formulário pra
@@ -167,7 +169,7 @@ receber um **e-mail automático** (via Resend) toda vez que chegar avaliação n
 ## Combo entre produtos digitais (cross-sell)
 
 Cada produto pode listar os slugs de outros produtos com quem forma um "combo" (campo `bundleWith`
-no `/admin`). Quando há pelo menos 2 produtos no combo, a página calcula o desconto sozinha — **10%
+— no estúdio de produtos do `/admin`, é só arrastar os outros produtos pra caixa "No combo"). Quando há pelo menos 2 produtos no combo, a página calcula o desconto sozinha — **10%
 com 2 produtos, 15% com 3, 20% com 4 ou mais**, nunca passando de 50% de desconto sobre a soma dos
 preços (piso de margem). Sem produtos vinculados, a seção mostra um aviso reservando o espaço em vez
 de ficar em branco.
@@ -182,8 +184,8 @@ o combo compra os produtos separadamente pelos links individuais.
 Página isolada (sem menu, pensada pra tráfego de link direto — ex. um botão numa automação do
 ManyChat) que só libera um link do Google Drive pras **N primeiras respostas** de um formulário
 (padrão: 10), travando sozinha depois disso. A trava é decidida pelo Worker num contador do banco D1
-(mesma lógica de segurança do `/api/events` — ver seção "Artigos premium" acima sobre por que dados
-sensíveis não ficam em `content/*.json`), não por automação de e-mail: um envio de e-mail não
+(mesma lógica de segurança do `/api/events` — dados sensíveis não ficam em `content/*.json`, que é
+público), não por automação de e-mail: um envio de e-mail não
 consegue impedir, de forma confiável, que a 11ª pessoa também receba o link se duas respostas
 chegarem quase ao mesmo tempo.
 

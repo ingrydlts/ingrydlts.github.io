@@ -30,9 +30,8 @@
   }
 
   // Botão "copiar" dos modelos de mensagem/carta (páginas de artigo com
-  // estrutura própria, ex. ANEF). Delegado no document porque, em artigos
-  // premium, esses botões só existem depois que o conteúdo pago é
-  // desbloqueado e injetado na página — não estão lá no carregamento inicial.
+  // estrutura própria, ex. ANEF). Delegado no document pra também pegar
+  // botões injetados depois do carregamento inicial.
   function initCopyButtons() {
     document.addEventListener("click", function (e) {
       var btn = e.target.closest(".rt-copy-btn");
@@ -74,8 +73,7 @@
   }
 
   // Abas de conteúdo (ex. "Os 5 temas" da página do Exame Cívico) e acordeão
-  // de FAQ — mesmo motivo da delegação acima: em seções premium, esses
-  // elementos só existem depois do desbloqueio, não no carregamento inicial.
+  // de FAQ — delegados no document pelo mesmo motivo dos botões acima.
   // Toda troca de aba pra uma aba diferente da atual vira 1 evento no bot —
   // mostra qual opção a audiência mais explora.
   function initTabSwitcher() {
@@ -234,8 +232,8 @@
   // recente, atualizada a cada carregamento de página) no localStorage.
   // Diferente de trackPageSource, roda em QUALQUER página — não só artigo —
   // porque uma compra pode nascer de /produtos-digitais/, /acesso-vip/ etc.
-  // Quando a compra é confirmada (assets/js/premium.js e
-  // produtos-digitais/obrigado/index.html), esses dois valores são lidos
+  // Quando a compra é confirmada (produtos-digitais/obrigado/index.html),
+  // esses dois valores são lidos
   // via window.PDAttribution e mandados junto pro Worker, que grava a venda
   // já carimbada com a origem — assim o dashboard mostra receita por fonte,
   // não só visitas por fonte.

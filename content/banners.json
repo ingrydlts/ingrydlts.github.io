@@ -6,7 +6,7 @@
   },
   "categoryBanners": {
     "produtos-digitais": {
-      "enabled": true,
+      "enabled": false,
       "kicker": "Do blog · Guia",
       "title": "Como organizar toda sua burocracia em um só lugar",
       "image": "",

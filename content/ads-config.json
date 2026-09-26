@@ -16,7 +16,6 @@
   "positions": {
     "top": "none",
     "mid": "none",
-    "midAfterBlock": 4,
-    "beforePaywall": "none"
+    "midAfterBlock": 4
   }
 }

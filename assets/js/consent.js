@@ -160,6 +160,14 @@
     ready: new Promise(function (resolve) { readyResolve = resolve; })
   };
 
+  // Dentro da prévia do /admin (ver previewData em assets/js/render.js):
+  // sem banner e sem medição nenhuma — quem está ali é a autora editando.
+  if (window.name === "pd-preview") {
+    trackingEnabled = false;
+    readyResolve();
+    return;
+  }
+
   fetch("/content/analytics-config.json")
     .then(function (r) { return r.ok ? r.json() : DEFAULT_CONFIG; })
     .then(function (cfg) {

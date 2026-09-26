@@ -18,5 +18,16 @@
      precisa carregar DEPOIS do decap-cms.js (usa os globais CMS/createClass/h)
      e ANTES do painel inicializar. Ver admin/widgets/article-composer.js -->
 <script src="./widgets/article-composer.js"></script>
+<!-- Estúdios: telas com arrastar e soltar e a página real do site como
+     prévia, em cima das mesmas coleções (ver admin/widgets/studio-kit.js).
+     O kit precisa vir antes dos estúdios. -->
+<script src="./vendor/Sortable.min.js"></script>
+<script src="./widgets/studio-kit.js"></script>
+<script src="./widgets/product-studio.js"></script>
+<script src="./widgets/links-studio.js"></script>
+<script src="./widgets/menu-studio.js"></script>
+<script src="./widgets/posts-board.js"></script>
+<script src="./widgets/article-ads-studio.js"></script>
+<script src="./widgets/banners-studio.js"></script>
 </body>
 </html>

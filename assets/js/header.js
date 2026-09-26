@@ -35,8 +35,7 @@ var PAGE_REGISTRY = {
   "/mentions-legales/": { key: "mentions-legales", category: "institucional" },
   "/acesso-vip/": { key: "acesso-vip", category: "institucional" },
   "/artigos/": { key: "artigos", category: "blog" },
-  "/artigos/post/": { key: "artigos-post-template", category: "blog" },
-  "/artigos/assinatura-confirmada/": { key: "artigos-assinatura-confirmada", category: "blog" }
+  "/artigos/post/": { key: "artigos-post-template", category: "blog" }
 };
 
 function normalizedPath() {
@@ -52,6 +51,26 @@ function applyLinks(links) {
     }
     if (cfg.label) a.textContent = cfg.label;
     if (cfg.href) a.setAttribute("href", cfg.href);
+  });
+}
+
+// A ordem dos links segue a ordem em content/header-config.json (o estúdio
+// "Menu do site" no /admin muda essa ordem arrastando). Vale pro menu do
+// topo, o menu do celular e o bloco "Navegação" do rodapé.
+function orderLinks(links) {
+  var order = Object.keys(links);
+  var parents = [];
+  document.querySelectorAll("[data-nav-key]").forEach(function (a) {
+    if (parents.indexOf(a.parentNode) === -1) parents.push(a.parentNode);
+  });
+  parents.forEach(function (parent) {
+    var anchors = Array.prototype.filter.call(parent.children, function (el) { return el.hasAttribute("data-nav-key"); });
+    if (anchors.length < 2) return;
+    var after = anchors[anchors.length - 1].nextSibling;
+    anchors
+      .map(function (a, i) { var r = order.indexOf(a.dataset.navKey); return { a: a, r: r === -1 ? order.length + i : r }; })
+      .sort(function (x, y) { return x.r - y.r; })
+      .forEach(function (x) { parent.insertBefore(x.a, after); });
   });
 }
 
@@ -115,8 +134,11 @@ function resolveMode(pageMode, category, visibility, field) {
   // "Blog — modelo de artigo") — senão o headerMode/footerMode/logoMode
   // configurado em CADA ARTIGO (em Blog — artigos) nunca é lido, e todo
   // artigo usando o template dinâmico ignora sua própria configuração.
-  var hasSlugParam = new URLSearchParams(window.location.search).has("slug");
-  var registryEntry = hasSlugParam ? null : PAGE_REGISTRY[normalizedPath()];
+  // Só o template de artigo: a página de produto também usa "?slug=", mas
+  // segue a própria linha ("produtos-digitais-produto") na tabela.
+  var path = normalizedPath();
+  var isArticleBySlug = path === "/artigos/post/" && new URLSearchParams(window.location.search).has("slug");
+  var registryEntry = isArticleBySlug ? null : PAGE_REGISTRY[path];
 
   var category, headerMode, footerMode, logoMode;
   if (registryEntry) {
@@ -133,7 +155,10 @@ function resolveMode(pageMode, category, visibility, field) {
     logoMode = (post && post.logoMode) || "categoria";
   }
 
-  if (config && config.links) applyLinks(config.links);
+  if (config && config.links) {
+    orderLinks(config.links);
+    applyLinks(config.links);
+  }
   if (!resolveMode(headerMode, category, visibility, "header")) hideHeaderNav();
   if (!resolveMode(footerMode, category, visibility, "footer")) hideFooterNav();
   if (!resolveMode(logoMode, category, visibility, "logo")) disableLogoLink();

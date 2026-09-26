@@ -362,6 +362,20 @@
     'Au-pair': ['au-pair-franca-o-que-e-plataformas-e-riscos', 'au-pair-franca-direitos-e-sinais-de-alerta']
   };
 
+  // Mesma regra de isPublished() em /assets/js/render.js (este <script> não
+  // é módulo, então não dá pra importar): "publicado", ou "agendado" com a
+  // data já chegada; artigos sem "status" usam o booleano antigo "published".
+  function artigoNoAr(a){
+    if (!a) return false;
+    if (typeof a.status === 'string' && a.status) {
+      if (a.status === 'publicado') return true;
+      if (a.status !== 'agendado' || !a.date) return false;
+      const d = new Date(), pad = function(n){ return String(n).padStart(2, '0'); };
+      return String(a.date).slice(0, 10) <= d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+    }
+    return a.published === true;
+  }
+
   let ARTIGOS_CACHE = null;
   fetch('/content/posts.json').then(function(r){ return r.ok ? r.json() : null; }).then(function(data){
     ARTIGOS_CACHE = (data && data.items) ? data.items : [];
@@ -372,7 +386,7 @@
     const slugs = (tipo && ARTIGOS_POR_TIPO[tipo]) ? ARTIGOS_POR_TIPO[tipo] : (ARTIGOS_POR_OBJETIVO[objetivo] || []);
     return slugs
       .map(function(slug){ return ARTIGOS_CACHE.find(function(a){ return a.slug === slug; }); })
-      .filter(function(a){ return a && a.published === true; });
+      .filter(artigoNoAr);
   }
 
   function waLink(extraLine){

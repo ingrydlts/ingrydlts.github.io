@@ -365,6 +365,7 @@
 <script type="module" src="/assets/js/header.js"></script>
 <script type="module">
 import { supabase } from '/assets/js/supabase-client.js';
+import { isPublished } from '/assets/js/render.js';
 
 (function(){
   "use strict";
@@ -872,7 +873,7 @@ import { supabase } from '/assets/js/supabase-client.js';
       .then(function(data){
         var items = (data && data.items) || [];
         slugs.forEach(function(slug){
-          var a = items.filter(function(i){ return i.slug === slug && i.published === true; })[0];
+          var a = items.filter(function(i){ return i.slug === slug && isPublished(i); })[0];
           if (!a) return;
           var link = document.createElement("a");
           link.className = "artigo-link";
