@@ -1,7 +1,25 @@
 // Por Dentro — helpers compartilhados para ler o conteúdo em /content/*.json
 // e desenhar cards/banners na tela. Sem framework, sem build step.
 
+// Prévia do /admin: as telas do painel abrem a página real do site num
+// <iframe name="pd-preview"> e deixam em window.parent.PDPreview os dados
+// que ainda estão sendo editados (antes de publicar). Aqui, se a página
+// estiver dentro dessa prévia, lê esses dados em vez do arquivo publicado.
+// Fora da prévia (window.name diferente), nada muda.
+function previewData(path) {
+  if (window.name !== "pd-preview") return undefined;
+  try {
+    const store = window.parent && window.parent.PDPreview;
+    const data = store && store.get(path);
+    return data === undefined ? undefined : JSON.parse(JSON.stringify(data));
+  } catch (e) {
+    return undefined;
+  }
+}
+
 export async function fetchJSON(path) {
+  const override = previewData(path);
+  if (override !== undefined) return override;
   const res = await fetch(path, { cache: "no-store" });
   if (!res.ok) throw new Error("Não consegui carregar " + path);
   return res.json();

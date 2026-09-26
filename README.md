@@ -97,6 +97,26 @@ O `/admin` é um painel visual (Decap CMS) pra editar produtos, banners e posts 
 
 **Cuidado ao editar listas** (produtos, artigos, itens de afiliado): o painel edita a lista inteira de uma vez — é fácil apagar um item sem querer ao invés de só editar o que você queria. Depois de publicar, vale conferir se os outros itens da lista continuam lá.
 
+### Estúdios (telas com arrastar e soltar e prévia real)
+
+O `/admin` está sendo atualizado coleção por coleção com **estúdios**: telas que abrem por cima do
+formulário do Decap, editam os **mesmos campos** do mesmo arquivo de `content/`, e mostram ao lado a
+página real do site já com as mudanças (celular, tablet ou computador) — antes de publicar. Nada muda
+no site nem no formato dos arquivos; o "Publicar" continua sendo o do Decap.
+
+- **Produtos digitais** (`admin/widgets/product-studio.js`): ordem da vitrine, liga/desliga, card,
+  preço (desconto calculado), galeria, descrição, "O que inclui", FAQ, combo e pagamento/garantia.
+  Abre pelo botão "Abrir estúdio de produtos" em `/admin` → Produtos digitais.
+- **Corpo do artigo** (`admin/widgets/article-composer.js`): o editor em blocos, que já existia.
+
+Como funciona por baixo (pra criar o próximo estúdio): `admin/widgets/studio-kit.js` tem a lista
+arrastável (SortableJS, em `admin/vendor/`), a prévia e o acesso à biblioteca de imagens. A prévia
+abre a página do site num `<iframe name="pd-preview">`; `fetchJSON` em `assets/js/render.js` lê os
+dados em edição de `window.parent.PDPreview` em vez do arquivo publicado, e `assets/js/consent.js`
+não mostra banner nem mede nada ali dentro. Um estúdio novo é um widget do Decap registrado com
+`CMS.registerWidget`, carregado em `admin/index.html` depois do kit, e ligado ao campo em
+`admin/config.yml` (`widget: nome-do-estudio`).
+
 ## Avaliações de produto (estrelas + comentário)
 
 Cada página de produto digital mostra nota média, distribuição por estrela e um formulário pra
@@ -114,7 +134,7 @@ receber um **e-mail automático** (via Resend) toda vez que chegar avaliação n
 ## Combo entre produtos digitais (cross-sell)
 
 Cada produto pode listar os slugs de outros produtos com quem forma um "combo" (campo `bundleWith`
-no `/admin`). Quando há pelo menos 2 produtos no combo, a página calcula o desconto sozinha — **10%
+— no estúdio de produtos do `/admin`, é só arrastar os outros produtos pra caixa "No combo"). Quando há pelo menos 2 produtos no combo, a página calcula o desconto sozinha — **10%
 com 2 produtos, 15% com 3, 20% com 4 ou mais**, nunca passando de 50% de desconto sobre a soma dos
 preços (piso de margem). Sem produtos vinculados, a seção mostra um aviso reservando o espaço em vez
 de ficar em branco.

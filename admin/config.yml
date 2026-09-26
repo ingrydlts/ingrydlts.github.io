@@ -151,54 +151,16 @@ collections:
         label: "Lista de produtos digitais"
         file: content/produtos-digitais.json
         fields:
+          # Estúdio de produtos (admin/widgets/product-studio.js): lista,
+          # galeria, "O que inclui", FAQ e combo com arrastar e soltar, e a
+          # página real do produto como prévia. Grava os MESMOS campos de
+          # sempre em content/produtos-digitais.json: active, slug, title,
+          # kicker, summary, description, image, gallery[{type, image,
+          # videoUrl, caption}], price, priceOld, launchNote, guaranteeDays,
+          # features[], faq[{q, a}], stripeLink, bundleWith[].
           - label: Produtos
             name: items
-            widget: list
-            summary: "{{title}} — {{price}} €"
-            fields:
-              - { label: "🔴 Ativo no site", name: active, widget: boolean, default: true, required: false, hint: "Botão de ativação: desligado = produto fica cadastrado mas INVISÍVEL na vitrine de /produtos-digitais/ — some da lista, mas a página do produto continua acessível por link direto. Use pra ofertas que você divulga só por link (ex. preço de teste) sem anunciar publicamente." }
-              - { label: "Slug (parte da URL, sem espaço/acento)", name: slug, widget: string }
-              - { label: Título, name: title, widget: string }
-              - { label: "Categoria curta (ex. Template Excel)", name: kicker, widget: string }
-              - { label: "Resumo (aparece no card)", name: summary, widget: string }
-              - { label: "Descrição (aparece na página do produto)", name: description, widget: text }
-              - { label: "Imagem de capa (aparece no card da lista)", name: image, widget: image, required: false, hint: "Tamanho ideal: 1200×900px (proporção 4:3), foto na horizontal." }
-              - label: "Galeria da página do produto (fotos e vídeos)"
-                name: gallery
-                widget: list
-                required: false
-                min: 0
-                max: 6
-                hint: "Até 6 itens (fotos e/ou vídeos). Se deixar vazio, a página do produto usa só a imagem de capa acima."
-                summary: "{{fields.type}} — {{fields.caption}}"
-                fields:
-                  - { label: Tipo, name: type, widget: select, options: ["Foto", "Vídeo"], default: "Foto" }
-                  - { label: "Foto (se tipo = Foto)", name: image, widget: image, required: false, hint: "Tamanho ideal: 1200×900px (proporção 4:3), foto na horizontal." }
-                  - { label: "Link do vídeo (se tipo = Vídeo)", name: videoUrl, widget: string, required: false, hint: "URL do YouTube, Vimeo ou de um arquivo .mp4 direto." }
-                  - { label: "Legenda (opcional)", name: caption, widget: string, required: false }
-              - { label: "Preço atual (€)", name: price, widget: number, value_type: float }
-              - { label: "Preço antigo — deixe em branco se não houver desconto", name: priceOld, widget: number, value_type: float, required: false }
-              - { label: "Selo de lançamento (opcional)", name: launchNote, widget: string, required: false }
-              - { label: "Dias de garantia", name: guaranteeDays, widget: number, required: false, default: 14 }
-              - label: "O que inclui (lista de recursos)"
-                name: features
-                widget: list
-                required: false
-                field: { label: Item, name: item, widget: string }
-              - label: "Perguntas frequentes"
-                name: faq
-                widget: list
-                required: false
-                fields:
-                  - { label: Pergunta, name: q, widget: string }
-                  - { label: Resposta, name: a, widget: text }
-              - { label: "Link de pagamento do Stripe (Payment Link)", name: stripeLink, widget: string, required: false, hint: "Cole aqui o link gerado no painel do Stripe para este produto." }
-              - label: "Combo com outros produtos (bundle)"
-                name: bundleWith
-                widget: list
-                required: false
-                hint: "Cole o \"slug\" de outro produto digital (o campo Slug dele, lá em cima) pra formar um combo. O desconto do combo é calculado sozinho pela página: 10% com 2 produtos, 15% com 3, 20% com 4 ou mais."
-                field: { label: "Slug do outro produto", name: slug, widget: string }
+            widget: product-studio
 
   - name: produtos_estudo
     label: "Produtos de estudo (afiliados)"
