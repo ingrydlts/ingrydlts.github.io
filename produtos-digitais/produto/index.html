@@ -112,6 +112,11 @@
       const c = document.getElementById("vt-combo");
       if (c) c.scrollIntoView({ block: "start" });
     }
+    // Veio pelo "Pegar cupom" da lista: leva até a faixa do cupom.
+    if (location.hash === "#cupom") {
+      const c = document.getElementById("vt-coupon");
+      if (c) { c.scrollIntoView({ block: "center" }); c.classList.add("is-hi"); }
+    }
   })();
 </script>
 </body>

@@ -122,7 +122,11 @@ no site nem no formato dos arquivos; o "Publicar" continua sendo o do Decap.
   com atalhos pro que falta, e seções que seguem a página de cima pra baixo — card da vitrine, topo,
   preço e selo, galeria, FAQ, combo, depois da compra e pagamento/endereço. Abrir uma seção leva a
   prévia até aquela parte (vitrine, página do produto ou compra confirmada). Tem "Desfazer" e avisos
-  na hora (preço antigo menor que o atual, link do Stripe estranho, endereço repetido…). Abre pelo
+  na hora (preço antigo menor que o atual, link do Stripe estranho, endereço repetido…). Em "Preço, selo
+  e cupom" dá pra pôr um **cupom** (código, o que ele dá, % opcional e validade): aparece como faixa
+  com botão "Copiar" na página do produto e como etiqueta "Cupom" + "Pegar cupom →" no card da lista;
+  some sozinho quando vence. O código vai preenchido no pagamento (`prefilled_promo_code`), mas precisa
+  existir no Stripe com o mesmo nome e o Payment Link precisa "Permitir códigos promocionais". Abre pelo
   botão "Abrir estúdio de produtos" em `/admin` → Produtos digitais.
 - **Link na bio** (`admin/widgets/links-studio.js`): topo (foto, bio, redes), card do assistente e
   seções — arraste a seção pela alça do título e os links entre as seções, liga/desliga cada link.

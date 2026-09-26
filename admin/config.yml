@@ -72,7 +72,10 @@ collections:
           # videoUrl, caption}], price, priceOld, launchNote, guaranteeDays,
           # features[], faq[{q, a}], stripeLink, bundleWith[] — e, opcional,
           # nextSteps[{title, text}]: os próximos passos da tela de compra
-          # confirmada (/produtos-digitais/obrigado/).
+          # confirmada (/produtos-digitais/obrigado/); e coupon{enabled, code,
+          # label, percent, until}: faixa de cupom na página do produto e
+          # etiqueta "Cupom" no card da lista (o código vai preenchido no
+          # Stripe via prefilled_promo_code).
           - label: Produtos
             name: items
             widget: product-studio

@@ -282,6 +282,8 @@
     if (noStripe.length) tasks.push({ kind: "bad", icon: "bag", title: plural(noStripe.length, "produto no ar sem pagamento", "produtos no ar sem pagamento"), sub: noStripe.map(function (p) { return p.title; }).join(" · "), btn: "Abrir", go: "produtos" });
     var hidden = prods.filter(function (p) { return !p.active; });
     if (hidden.length) tasks.push({ kind: "info", icon: "bag", title: plural(hidden.length, "produto escondido da vitrine", "produtos escondidos da vitrine"), sub: hidden.map(function (p) { return p.title + (p.price ? " (" + String(p.price).replace(".", ",") + " €)" : ""); }).join(" · "), btn: "Abrir", go: "produtos" });
+    var expiredCp = prods.filter(function (p) { return p.coupon && p.coupon.code && p.coupon.enabled !== false && p.coupon.until && String(p.coupon.until).slice(0, 10) < todayISO(); });
+    if (expiredCp.length) tasks.push({ kind: "info", icon: "tag", title: plural(expiredCp.length, "cupom venceu", "cupons venceram"), sub: expiredCp.map(function (p) { return p.coupon.code + " · " + p.title; }).join(" · ") + " — já saiu do site", btn: "Ver", go: "produtos" });
     var noSteps = prods.filter(function (p) { return p.active && !(p.nextSteps && p.nextSteps.length); });
     if (noSteps.length) tasks.push({ kind: "info", icon: "list", title: "Próximos passos da compra em branco", sub: noSteps.map(function (p) { return p.title; }).join(" · "), btn: "Preencher", go: "produtos" });
     var order = { bad: 0, warn: 1, info: 2 };
