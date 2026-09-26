@@ -46,6 +46,50 @@ function priceHTML(p) {
     "</span>"
   );
 }
+// Cupom do produto (campo "coupon" em content/produtos-digitais.json):
+// { enabled, code, label, percent?, until? }. Só aparece ligado, com código e
+// dentro da validade. O código também vai preenchido no pagamento do Stripe
+// (prefilled_promo_code) — pra funcionar, o mesmo código precisa existir no
+// Stripe e o Payment Link precisa aceitar códigos promocionais.
+function todayISO() {
+  const d = new Date(), pad = (n) => String(n).padStart(2, "0");
+  return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate());
+}
+export function activeCoupon(p) {
+  const c = p && p.coupon;
+  if (!c || c.enabled === false || !c.code) return null;
+  if (c.until && String(c.until).slice(0, 10) < todayISO()) return null;
+  return c;
+}
+function couponLabel(c) {
+  return c.label || (c.percent ? Number(c.percent) + "% de desconto" : "desconto");
+}
+function couponUntil(c) {
+  if (!c.until) return "";
+  const d = new Date(String(c.until).slice(0, 10) + "T00:00:00");
+  return isNaN(d) ? "" : d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
+}
+function couponBandHTML(p, c) {
+  const pct = Number(c.percent) || 0;
+  const withPrice = pct > 0 && pct < 100 ? formatPrice(Math.round(p.price * (1 - pct / 100) * 100) / 100) : "";
+  const until = couponUntil(c);
+  return (
+    '<div class="vt-coupon" id="vt-coupon">' +
+      '<div class="vt-coupon-l"><span class="vt-coupon-k">Cupom</span>' +
+        "<b>" + escapeHtml(couponLabel(c)) + "</b>" +
+        '<small>' + (withPrice ? "Com o cupom, fica " + withPrice + ". " : "") + (until ? "Válido até " + until + ". " : "") + "Ele já vai preenchido no pagamento — se não aparecer, é só colar.</small>" +
+      "</div>" +
+      '<button type="button" class="vt-coupon-code" data-copy="' + escapeHtml(c.code) + '" aria-label="Copiar o cupom ' + escapeHtml(c.code) + '"><code>' + escapeHtml(c.code) + '</code><span data-copy-label>Copiar</span></button>' +
+    "</div>"
+  );
+}
+function checkoutUrl(p) {
+  let url = withProductSlug(p.stripeLink, p.slug);
+  const c = activeCoupon(p);
+  if (url && c) url += (url.includes("?") ? "&" : "?") + "prefilled_promo_code=" + encodeURIComponent(c.code);
+  return url;
+}
+
 // Mesma regra de sempre: 10% com 2 produtos, 15% com 3, 20% com 4 ou mais,
 // nunca mais que 50% da soma.
 export function bundlePrice(items) {
@@ -109,19 +153,22 @@ function cardHTML(p) {
   const photos = (p.gallery || []).filter((g) => g.type !== "Vídeo" && g.image).map((g) => g.image);
   const main = p.image || photos[0] || "";
   const alt = photos.find((src) => src !== main) || "";
+  const cp = activeCoupon(p);
   return (
-    '<a class="vt-card" href="' + productHref(p.slug) + '">' +
+    '<a class="vt-card' + (cp ? " has-coupon" : "") + '" href="' + productHref(p.slug) + (cp ? "#cupom" : "") + '">' +
       '<div class="vt-card-ph">' +
         (main ? '<img src="' + escapeHtml(main) + '" alt="' + escapeHtml(p.title) + '" loading="lazy">' : "") +
         (alt ? '<img class="is-alt" src="' + escapeHtml(alt) + '" alt="" loading="lazy">' : "") +
         (p.launchNote ? '<span class="vt-badge is-brand">' + (discount(p) ? "Preço de lançamento" : "Novo") + "</span>" : "") +
+        (cp ? '<span class="vt-ctag"><i aria-hidden="true"></i>Cupom' + (cp.percent ? " −" + Number(cp.percent) + "%" : "") + "</span>" : "") +
       "</div>" +
       '<div class="vt-card-bd">' +
         (p.kicker ? '<span class="vt-eyebrow">' + escapeHtml(p.kicker) + "</span>" : "") +
         "<h3>" + escapeHtml(p.title) + "</h3>" +
         (p.summary ? "<p>" + escapeHtml(p.summary) + "</p>" : "") +
         ((p.features || []).length ? '<ul class="vt-inc">' + p.features.slice(0, 2).map((f) => "<li>" + escapeHtml(f) + "</li>").join("") + "</ul>" : "") +
-        '<div class="vt-card-row">' + priceHTML(p) + '<span class="vt-go">Ver produto <i aria-hidden="true">→</i></span></div>' +
+        (cp ? '<p class="vt-card-coupon">Tem cupom de ' + escapeHtml(couponLabel(cp).replace(/ de desconto$/, "")) + (couponUntil(cp) ? " até " + couponUntil(cp) : "") + " — o código está na página.</p>" : "") +
+        '<div class="vt-card-row">' + priceHTML(p) + '<span class="vt-go">' + (cp ? "Pegar cupom" : "Ver produto") + ' <i aria-hidden="true">→</i></span></div>' +
       "</div>" +
     "</a>"
   );
@@ -270,6 +317,7 @@ export function renderProduct(root, p, items) {
         (p.summary ? '<p class="vt-promise-line">' + escapeHtml(p.summary) + "</p>" : "") +
         '<div id="vt-rating-slot"></div>' +
         '<div id="vt-price">' + priceHTML(p) + "</div>" +
+        (activeCoupon(p) ? couponBandHTML(p, activeCoupon(p)) : "") +
         (p.launchNote ? '<div class="vt-launch"><i aria-hidden="true"></i>' + escapeHtml(p.launchNote) + "</div>" : "") +
         (top3.length ? '<ul class="vt-top3">' + top3.map((f) => "<li>" + escapeHtml(f) + "</li>").join("") + "</ul>" : "") +
         '<label class="vt-gate" id="vt-gate"><input type="checkbox" id="vt-gatebox"><span class="vt-box" aria-hidden="true">' + ICON.check + "</span>" +
@@ -349,11 +397,34 @@ function initBuy(root, p) {
     if (IS_PREVIEW) { toast("Na prévia do /admin o pagamento não abre."); return; }
     btn.classList.add("is-loading");
     btn.setAttribute("aria-busy", "true");
-    window.location.href = withProductSlug(p.stripeLink, p.slug);
+    window.location.href = checkoutUrl(p);
     // Se a pessoa voltar pelo "voltar" do navegador, o botão não fica girando.
     window.addEventListener("pageshow", () => { btn.classList.remove("is-loading"); btn.removeAttribute("aria-busy"); }, { once: true });
   }
   root.addEventListener("click", (e) => {
+    const cpy = e.target.closest("[data-copy]");
+    if (cpy) {
+      const code = cpy.getAttribute("data-copy");
+      const l = cpy.querySelector("[data-copy-label]");
+      const done = (ok) => {
+        if (l) l.textContent = ok ? "Copiado ✓" : "Selecione e copie";
+        cpy.classList.toggle("is-copied", ok);
+        if (ok) toast("Cupom " + code + " copiado");
+        setTimeout(() => { if (l) l.textContent = "Copiar"; cpy.classList.remove("is-copied"); }, 2400);
+      };
+      const fallback = () => {
+        const ta = document.createElement("textarea");
+        ta.value = code; ta.setAttribute("readonly", ""); ta.style.position = "fixed"; ta.style.opacity = "0";
+        document.body.appendChild(ta); ta.select();
+        let ok = false;
+        try { ok = document.execCommand("copy"); } catch (err) { ok = false; }
+        ta.remove();
+        done(ok);
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(code).then(() => done(true), fallback);
+      else fallback();
+      return;
+    }
     const b = e.target.closest("#vt-buy-btn, #vt-sticky-btn");
     if (b) attempt(b);
   });

@@ -23,6 +23,9 @@
   var GALLERY_MAX = 6;
   var STRIPE_RE = /^https:\/\/buy\.stripe\.com\//;
 
+  K.css("pds-product-coupon", [
+    ".pdx-coupon{display:flex;flex-direction:column;gap:10px;border:1.5px dashed #CDB8AE;background:#FAF4F1;border-radius:12px;padding:12px;}"
+  ].join("\n"));
   K.css("pds-product-style", [
     ".pdx{position:fixed;inset:0;z-index:999999;background:#F4F1EC;color:#2B2B2B;display:flex;flex-direction:column;height:100vh;height:100dvh;font:14px/1.5 " + K.FONT + ";}",
     ".pdx *,.pdx *::before,.pdx *::after{box-sizing:border-box;}",
@@ -146,6 +149,7 @@
       if (p.priceOld === null || p.priceOld === "" || p.priceOld === undefined) delete p.priceOld;
       if (p.launchNote === "") delete p.launchNote;
       if (p.nextSteps && !p.nextSteps.length) delete p.nextSteps;
+      if (p.coupon && !p.coupon.code && !p.coupon.label && !p.coupon.percent && !p.coupon.until) delete p.coupon;
     });
     return items;
   }
@@ -333,6 +337,43 @@
         open ? h("div", { className: "pdx-sec-in" }, h("span", { className: "pdx-where" }, "↗ " + where), body) : null);
     },
 
+    // Cupom: faixa na página do produto + etiqueta "Cupom" no card da lista.
+    // O código vai preenchido no pagamento (prefilled_promo_code do Stripe).
+    renderCoupon: function (p, i) {
+      var self = this;
+      var c = p.coupon || {};
+      var set = function (k, v) {
+        self.change(function (it) { it[i].coupon = Object.assign({}, it[i].coupon || {}, (function () { var o = {}; o[k] = v; return o; })()); });
+      };
+      var today = new Date().toISOString().slice(0, 10);
+      var expired = c.until && String(c.until).slice(0, 10) < today;
+      var badCode = c.code && !/^[A-Z0-9_-]{3,}$/.test(c.code);
+      var on = !!c.code && c.enabled !== false && !expired;
+      var pct = Number(c.percent) || 0;
+      var status = !c.code ? "Sem cupom" : c.enabled === false ? "Pausado — não aparece" : expired ? "Venceu — sumiu do site" : "Aparecendo na página e na lista";
+      return h("div", { key: "cp", className: "pdx-coupon" },
+        h("div", { className: "pds-row", style: { justifyContent: "space-between" } },
+          h("div", null, h("b", { style: { fontSize: "13.5px" } }, "Cupom"), h("span", { className: "pds-pill " + (on ? "on" : c.code ? "warn" : "off"), style: { marginLeft: "8px" } }, status)),
+          c.code ? h("button", { type: "button", role: "switch", className: "pds-switch", "aria-checked": String(c.enabled !== false), "aria-label": "Mostrar o cupom",
+            onClick: function () { self.change(function (it) { it[i].coupon = Object.assign({}, it[i].coupon, { enabled: c.enabled === false }); }, c.enabled === false ? "Cupom ligado" : "Cupom pausado", true); } }) : null),
+        h("div", { className: "pds-grid2" },
+          h("label", { className: "pds-field" }, h("span", { className: "pds-label" }, "Código"),
+            h("input", { className: "pds-input" + (badCode ? " is-err" : ""), value: c.code || "", placeholder: "Ex.: BEMVINDA10", style: { fontFamily: "ui-monospace,Menlo,monospace", textTransform: "uppercase" },
+              onChange: function (e) { set("code", e.target.value.toUpperCase().replace(/\s+/g, "")); } })),
+          h("label", { className: "pds-field" }, h("span", { className: "pds-label" }, "O que ele dá"),
+            h("input", { className: "pds-input", value: c.label || "", placeholder: pct ? pct + "% de desconto" : "Ex.: 10% de desconto", onChange: function (e) { set("label", e.target.value); } }))),
+        h("div", { className: "pds-grid2" },
+          h("label", { className: "pds-field" }, h("span", { className: "pds-label" }, "Desconto em % (opcional)"),
+            h("input", { className: "pds-input", inputMode: "numeric", value: c.percent == null ? "" : String(c.percent), placeholder: "mostra o preço com cupom",
+              onChange: function (e) { var n = parseInt(e.target.value, 10); set("percent", isNaN(n) ? undefined : Math.max(1, Math.min(99, n))); } })),
+          h("label", { className: "pds-field" }, h("span", { className: "pds-label" }, "Válido até (opcional)"),
+            h("input", { type: "date", className: "pds-input" + (expired ? " is-err" : ""), value: c.until ? String(c.until).slice(0, 10) : "", onChange: function (e) { set("until", e.target.value || undefined); } }))),
+        badCode ? h("p", { className: "pdx-msg err" }, "⚠ Use só letras, números, - ou _ (pelo menos 3).") : null,
+        expired ? h("p", { className: "pdx-msg warn" }, "Venceu em " + String(c.until).slice(0, 10).split("-").reverse().join("/") + " — o site já parou de mostrar.") : null,
+        pct ? h("p", { className: "pdx-msg tip" }, "Com o cupom: " + eur(Math.round(p.price * (1 - pct / 100) * 100) / 100) + ".") : null,
+        h("p", { className: "pdx-msg tip" }, "Crie o mesmo código no Stripe (Produtos → Cupons → código promocional) e, no Payment Link, ligue “Permitir códigos promocionais”. O site já manda o código preenchido quando a pessoa clica em Comprar."));
+    },
+
     renderList: function (items) {
       var self = this, props = this.props;
       var on = items.filter(function (p) { return p.active; }).length;
@@ -445,13 +486,14 @@
             h("button", { type: "button", className: "pds-x", "aria-label": "Tirar item", onClick: function () { self.change(function (it) { it[i].features.splice(fi, 1); }, "Item tirado", true); } }, "×"));
         }, "+ Item", function () { return ""; }, function (e) { return e.newIndex < 3 ? "Item foi pro topo da página" : "Nova ordem de “O que inclui”"; }))),
 
-        this.section("preco", "€", "Preço e selo", eur(p.price) + (d ? " · −" + d + "%" : "") + (p.launchNote ? " · com selo" : ""), "Preço, selo e botão de compra", [
+        this.section("preco", "€", "Preço, selo e cupom", eur(p.price) + (d ? " · −" + d + "%" : "") + (p.launchNote ? " · com selo" : "") + (p.coupon && p.coupon.code && p.coupon.enabled !== false ? " · cupom " + p.coupon.code : ""), "Preço, selo e botão de compra", [
           h("div", { key: "g", className: "pds-grid3" },
             this.numInput("price", "Preço atual (€)", p, { err: !(p.price > 0), msg: !(p.price > 0) ? "⚠ Coloque um preço maior que zero." : null, msgKind: "err" }),
             this.numInput("priceOld", "Preço antigo (€)", p, { optional: true, ph: "sem desconto", err: badOld, msg: badOld ? "⚠ Precisa ser maior que o atual pra mostrar desconto." : null, msgKind: "err" }),
             h("div", { className: "pds-field" }, h("span", { className: "pds-label" }, "Desconto"), h("div", { className: "pdx-disc" + (d ? "" : " none") }, d ? "−" + d + "%" : "nenhum"))),
           this.input("launchNote", "Selo de lançamento (opcional)", p, { ph: "Ex.: Preço de lançamento — válido para os primeiros 30 compradores",
             msg: "Use só se for verdade: escassez inventada quebra a confiança.", msgKind: "tip" }),
+          this.renderCoupon(p, i),
           h("p", { key: "r", className: "pdx-msg tip" }, "As avaliações aparecem perto do preço quando existem. Aprove as novas em /admin/avaliacoes.")
         ]),
 
