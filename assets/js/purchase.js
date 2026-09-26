@@ -7,7 +7,7 @@
 // é assim que POST /api/purchase/verify-session (ver worker.js)
 // sabe qual produto foi comprado quando a leitora volta pra
 // /produtos-digitais/obrigado/ depois de pagar.
-function withProductSlug(paymentLink, slug) {
+export function withProductSlug(paymentLink, slug) {
   if (!paymentLink || !slug) return paymentLink;
   const sep = paymentLink.includes("?") ? "&" : "?";
   return paymentLink + sep + "client_reference_id=" + encodeURIComponent(slug);

@@ -70,7 +70,9 @@ collections:
           # sempre em content/produtos-digitais.json: active, slug, title,
           # kicker, summary, description, image, gallery[{type, image,
           # videoUrl, caption}], price, priceOld, launchNote, guaranteeDays,
-          # features[], faq[{q, a}], stripeLink, bundleWith[].
+          # features[], faq[{q, a}], stripeLink, bundleWith[] — e, opcional,
+          # nextSteps[{title, text}]: os próximos passos da tela de compra
+          # confirmada (/produtos-digitais/obrigado/).
           - label: Produtos
             name: items
             widget: product-studio

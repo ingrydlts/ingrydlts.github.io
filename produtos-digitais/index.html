@@ -9,6 +9,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,600;9..144,700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/assets/css/style.css">
+<link rel="stylesheet" href="/assets/css/vitrine.css">
 <style>:root { --nav-active: #577328; }</style>
 <link rel="icon" href="/favicon.png" type="image/png">
 <link rel="icon" href="/favicon-32x32.png" sizes="32x32" type="image/png">
@@ -39,19 +40,8 @@
 </nav>
 
 <main>
-  <div class="container">
-    <section class="section-lg">
-      <span class="eyebrow" style="color:#577328;">Produtos digitais</span>
-      <h1>Templates para organizar a vida por aqui</h1>
-      <p class="muted" style="max-width:60ch;">Acesso imediato após a compra — sem espera, sem plataforma no meio.</p>
-    </section>
-
-    <section class="grid grid-2" id="product-grid" aria-label="Lista de produtos digitais">
-      <p class="muted">Carregando produtos...</p>
-    </section>
-
-    <div id="category-banner"></div>
-  </div>
+  <div class="container vt" id="vt-root"></div>
+  <div class="container"><div id="category-banner"></div></div>
 </main>
 
 <footer class="site-footer">
@@ -97,36 +87,19 @@
 <script src="/assets/js/analytics.js"></script>
 <script type="module" src="/assets/js/header.js"></script>
 <script type="module">
-  import { fetchJSON, imgSlotHTML, escapeHtml, formatPrice, postHref, isPublished } from "/assets/js/render.js";
+  import { fetchJSON, imgSlotHTML, escapeHtml, postHref, isPublished } from "/assets/js/render.js";
+  import { renderListShell, renderListItems } from "/assets/js/vitrine.js";
 
   (async function () {
-    const grid = document.getElementById("product-grid");
+    const root = document.getElementById("vt-root");
+    renderListShell(root);
     try {
       const data = await fetchJSON("/content/produtos-digitais.json");
-      const items = data.items.filter((p) => p.active !== false);
-      if (!items.length) {
-        grid.innerHTML = '<p class="empty-state">Nenhum produto cadastrado ainda — adicione um em /admin.</p>';
-      } else {
-        grid.innerHTML = items.map(function (p) {
-          return (
-            '<a class="card" href="/produtos-digitais/produto/?slug=' + encodeURIComponent(p.slug) + '" style="color:inherit;">' +
-            imgSlotHTML(p.image, p.title, "Preview do template") +
-            '<div class="card-body">' +
-            '<span class="eyebrow" style="color:#6E6862;">' + escapeHtml(p.kicker) + "</span>" +
-            "<h3>" + escapeHtml(p.title) + "</h3>" +
-            "<p>" + escapeHtml(p.summary) + "</p>" +
-            '<div class="card-cta-row">' +
-            '<span class="price">' + formatPrice(p.price) + "</span>" +
-            '<span class="btn" style="background:#577328;">Ver produto →</span>' +
-            "</div></div></a>"
-          );
-        }).join("");
-      }
+      renderListItems(root, data.items);
     } catch (e) {
-      grid.innerHTML = '<p class="empty-state">Não foi possível carregar os produtos agora.</p>';
+      root.querySelector("#vt-grid").innerHTML = '<p class="empty-state">Não foi possível carregar os produtos agora.</p>';
       console.error(e);
     }
-
     try {
       const [banners, posts] = await Promise.all([
         fetchJSON("/content/banners.json"),

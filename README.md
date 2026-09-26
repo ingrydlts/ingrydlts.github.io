@@ -8,6 +8,7 @@ Site estático (HTML/CSS/JS puro, sem framework, sem build step) para a vitrine 
 /index.html                          Home
 /produtos-digitais/                  Grade de templates próprios
 /produtos-digitais/produto/          Template genérico de página de produto (?slug=...)
+/produtos-digitais/obrigado/         Compra confirmada (confere o pagamento e mostra os próximos passos)
 /produtos-de-estudo/                 Indicações afiliadas (livros, papelaria)
 /produtos-de-compras/                Indicações afiliadas (roupas, acessórios)
 /sobre/                              Página institucional
@@ -24,6 +25,10 @@ Site estático (HTML/CSS/JS puro, sem framework, sem build step) para a vitrine 
 /admin/                              Painel Decap CMS — edita os arquivos acima sem git/código
 /assets/css/style.css                Estilos (tokens de marca, mobile-first)
 /assets/js/                          render.js, purchase.js, markdown.js, main.js
+/assets/css/vitrine.css + /assets/js/vitrine.js
+                                      Loja de produtos digitais: grade, página do produto e
+                                      compra confirmada (botões com estado, galeria com toque,
+                                      barra de compra fixa no celular, avaliações, combo)
 ```
 
 Todo texto/preço/imagem de produto, banner e post vive em `/content/*.json` — é isso que o `/admin` edita. Alterar esses arquivos (à mão ou pelo painel) já atualiza o site, sem tocar em HTML.
@@ -104,9 +109,13 @@ formulário do Decap, editam os **mesmos campos** do mesmo arquivo de `content/`
 página real do site já com as mudanças (celular, tablet ou computador) — antes de publicar. Nada muda
 no site nem no formato dos arquivos; o "Publicar" continua sendo o do Decap.
 
-- **Produtos digitais** (`admin/widgets/product-studio.js`): ordem da vitrine, liga/desliga, card,
-  preço (desconto calculado), galeria, descrição, "O que inclui", FAQ, combo e pagamento/garantia.
-  Abre pelo botão "Abrir estúdio de produtos" em `/admin` → Produtos digitais.
+- **Produtos digitais** (`admin/widgets/product-studio.js`): lista na ordem da vitrine (bolinha verde =
+  no ar e completo, laranja = no ar mas falta algo, cinza = escondido), um medidor de "página pronta"
+  com atalhos pro que falta, e seções que seguem a página de cima pra baixo — card da vitrine, topo,
+  preço e selo, galeria, FAQ, combo, depois da compra e pagamento/endereço. Abrir uma seção leva a
+  prévia até aquela parte (vitrine, página do produto ou compra confirmada). Tem "Desfazer" e avisos
+  na hora (preço antigo menor que o atual, link do Stripe estranho, endereço repetido…). Abre pelo
+  botão "Abrir estúdio de produtos" em `/admin` → Produtos digitais.
 - **Link na bio** (`admin/widgets/links-studio.js`): topo (foto, bio, redes), card do assistente e
   seções — arraste a seção pela alça do título e os links entre as seções, liga/desliga cada link.
 - **Menu do site** (`admin/widgets/menu-studio.js`, coleção "Cabeçalho do site"): arraste pra mudar a

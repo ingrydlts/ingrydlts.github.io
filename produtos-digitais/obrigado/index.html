@@ -8,6 +8,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,600;9..144,700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/assets/css/style.css">
+<link rel="stylesheet" href="/assets/css/vitrine.css">
 <style>:root { --nav-active: #577328; }</style>
 <link rel="icon" href="/favicon.png" type="image/png">
 <link rel="icon" href="/favicon-32x32.png" sizes="32x32" type="image/png">
@@ -38,9 +39,12 @@
 </nav>
 
 <main>
-  <div class="container" style="max-width:560px; padding:72px 24px; text-align:center;">
+  <div class="container vt">
     <div id="confirm-root">
-      <p class="muted">Confirmando pagamento…</p>
+      <section class="vt-done" aria-busy="true">
+        <span class="vt-sk" style="width:88px;height:88px;border-radius:50%"></span>
+        <p class="vt-muted">Confirmando pagamento…</p>
+      </section>
     </div>
   </div>
 </main>
@@ -88,7 +92,8 @@
 <script src="/assets/js/analytics.js"></script>
 <script type="module" src="/assets/js/header.js"></script>
 <script type="module">
-  import { fetchJSON, formatPrice, escapeHtml } from "/assets/js/render.js";
+  import { fetchJSON, formatPrice, escapeHtml, qs } from "/assets/js/render.js";
+  import { renderConfirm } from "/assets/js/vitrine.js";
 
   const WORKER_BASE = "https://por-dentro-cms-oauth.ingrydigitalmanagement.workers.dev";
 
@@ -125,75 +130,79 @@
     }
   }
 
+  async function catalogItem(slug) {
+    try {
+      const data = await fetchJSON("/content/produtos-digitais.json");
+      return data.items.find((p) => p.slug === slug) || null;
+    } catch {
+      return null; // segue sem o produto — a confirmação em si já aconteceu
+    }
+  }
+
   (async function () {
     const root = document.getElementById("confirm-root");
+
+    // Prévia do /admin (estúdio de produtos): mostra a tela de um produto
+    // com os dados em edição, sem verificar pagamento nenhum.
+    if (window.name === "pd-preview" && qs("preview")) {
+      const p = await catalogItem(qs("preview"));
+      renderConfirm(root, p, { amount: p ? p.price : null });
+      return;
+    }
+
     const result = await verifyPurchaseFromUrl();
 
     if (!result) {
       root.innerHTML =
-        '<p class="empty-state">Não foi possível confirmar o pagamento agora. Se você já pagou, o recibo do Stripe confirma a compra — qualquer dúvida, é só chamar.</p>' +
-        '<p style="margin-top:16px;"><a class="btn" href="/produtos-digitais/">Ver produtos digitais</a></p>';
+        '<section class="vt-done"><h1 style="font-size:26px">Não deu pra confirmar o pagamento agora</h1>' +
+        '<p class="lead">Se você já pagou, o recibo do Stripe confirma a compra. Qualquer dúvida, é só me chamar no Instagram.</p>' +
+        '<div class="vt-actions"><a class="vt-btn" href="/produtos-digitais/">Ver produtos digitais</a></div></section>';
       return;
     }
 
-    // Etapa 2 do /acesso-vip/ (planilha financeira, 5€) não é um produto do
-    // catálogo — é a mesma venda avulsa pra quem ficou de fora das 10 vagas
+    // Etapa 2 do /acesso-vip/ (planilha financeira) não é um produto do
+    // catálogo — é a mesma venda avulsa pra quem ficou de fora das vagas
     // grátis. O Worker só devolve driveLink quando reconhece esse slug
     // (client_reference_id fixo, ver assets/js/quiz.js) E já confirmou o
     // pagamento — nunca mostra o link sem isso.
     if (result.slug === "planilha-financeira-etapa-2") {
-      const cta = result.driveLink
-        ? '<a class="btn" href="' + escapeHtml(result.driveLink) + '" target="_blank" rel="noopener">Abrir a planilha no Google Drive</a>'
-        : '<p class="muted" style="margin-top:10px;">Pagamento confirmado, mas o link ainda está sendo configurado — já aviso você direto no Instagram.</p>';
-      root.innerHTML =
-        '<p><strong>Pagamento confirmado!</strong> Planilha Financeira Super Integrada' +
-        (result.amount != null ? " — " + formatPrice(result.amount) : "") +
-        "</p>" +
-        '<p class="muted" style="margin-top:10px;">Abra o link abaixo pra fazer sua cópia. Qualquer dúvida, me chama no Instagram.</p>' +
-        '<p style="margin-top:16px;">' + cta + "</p>";
+      renderConfirm(root, { slug: result.slug, title: "Planilha Financeira Super Integrada", nextSteps: [] }, {
+        amount: result.amount,
+        lead: result.driveLink
+          ? "Abra o link abaixo pra fazer sua cópia. Qualquer dúvida, me chama no Instagram."
+          : "Pagamento confirmado, mas o link ainda está sendo configurado — já aviso você direto no Instagram.",
+        cta: result.driveLink
+          ? '<a class="vt-btn" href="' + escapeHtml(result.driveLink) + '" target="_blank" rel="noopener">Abrir a planilha no Google Drive</a>'
+          : "",
+      });
       return;
     }
 
-    // Hub de Estudos (template de Notion) — assim que o pagamento é
-    // confirmado, manda direto pra página do Notion pra duplicar, em vez de
-    // ficar nesta página. O link em si nunca fica em
+    const product = await catalogItem(result.slug);
+
+    // Hub de Estudos (template de Notion) — o link em si nunca fica em
     // content/produtos-digitais.json (ver HUB_ESTUDOS_NOTION_LINK no
-    // Worker) — só chega aqui depois que o Stripe confirma a sessão paga.
+    // Worker); só chega aqui depois que o Stripe confirma a sessão paga.
+    // Mostra a confirmação por um instante e abre o Notion pra duplicar.
     if (result.slug === "hub-de-estudos") {
+      const p = product || { slug: result.slug, title: "Hub de Estudos", nextSteps: [] };
       if (result.accessLink) {
-        root.innerHTML =
-          '<p><strong>Pagamento confirmado!</strong> Hub de Estudos' +
-          (result.amount != null ? " — " + formatPrice(result.amount) : "") +
-          "</p>" +
-          '<p class="muted" style="margin-top:10px;">Redirecionando você pro Notion pra duplicar o hub…</p>' +
-          '<p style="margin-top:16px;"><a class="btn" href="' + escapeHtml(result.accessLink) + '">Abrir o Hub de Estudos agora</a></p>';
-        window.location.href = result.accessLink;
+        renderConfirm(root, p, {
+          amount: result.amount,
+          lead: "Abrindo o Notion pra você duplicar o hub…",
+          cta: '<a class="vt-btn" href="' + escapeHtml(result.accessLink) + '">Abrir o Hub de Estudos agora</a>',
+        });
+        setTimeout(() => { window.location.href = result.accessLink; }, 2500);
       } else {
-        root.innerHTML =
-          '<p><strong>Pagamento confirmado!</strong> Hub de Estudos' +
-          (result.amount != null ? " — " + formatPrice(result.amount) : "") +
-          "</p>" +
-          '<p class="muted" style="margin-top:10px;">Pagamento confirmado, mas o link ainda está sendo configurado — já aviso você direto no Instagram.</p>';
+        renderConfirm(root, p, {
+          amount: result.amount,
+          lead: "Pagamento confirmado, mas o link ainda está sendo configurado — já aviso você direto no Instagram.",
+        });
       }
       return;
     }
 
-    let productTitle = "";
-    try {
-      const data = await fetchJSON("/content/produtos-digitais.json");
-      const product = data.items.find((p) => p.slug === result.slug);
-      if (product) productTitle = product.title;
-    } catch {
-      // segue sem o título — a confirmação em si já aconteceu
-    }
-
-    root.innerHTML =
-      '<p><strong>Pagamento confirmado!</strong>' +
-      (productTitle ? " " + escapeHtml(productTitle) : "") +
-      (result.amount != null ? " — " + formatPrice(result.amount) : "") +
-      "</p>" +
-      '<p class="muted" style="margin-top:10px;">O acesso chega do jeito combinado na hora da compra. Qualquer dúvida, é só chamar no Instagram.</p>' +
-      '<p style="margin-top:16px;"><a class="btn" href="/produtos-digitais/">Ver produtos digitais</a></p>';
+    renderConfirm(root, product, { amount: result.amount });
   })();
 </script>
 </body>

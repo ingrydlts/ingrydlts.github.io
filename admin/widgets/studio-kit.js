@@ -259,11 +259,25 @@
       back.onload = function () {
         // espera o script da página desenhar (ele é assíncrono)
         setTimeout(function () {
-          try { back.contentWindow.scrollTo(0, scrollY); } catch (e) {}
+          try { back.contentWindow.scrollTo(0, self.pendingFocus ? 0 : scrollY); } catch (e) {}
           self.setState({ front: backIdx, loading: false });
-        }, first ? 50 : 450);
+          if (self.pendingFocus) { self.post(self.pendingFocus); }
+        }, first ? 350 : 450);
       };
       back.src = this.frameUrl();
+    },
+    // Rola a página da prévia até um elemento e destaca (a página precisa
+    // ouvir a mensagem "pd-focus" — ver o fim de assets/js/vitrine.js).
+    focus: function (selector) {
+      this.pendingFocus = selector;
+      if (!this.state.loading) this.post(selector);
+    },
+    post: function (selector) {
+      var f = (this.frames || [])[this.state.front];
+      try { f.contentWindow.postMessage({ type: "pd-focus", selector: selector }, window.location.origin); } catch (e) {}
+      var self = this;
+      clearTimeout(this.focusTimer);
+      this.focusTimer = setTimeout(function () { self.pendingFocus = null; }, 1200);
     },
     render: function () {
       var self = this;
