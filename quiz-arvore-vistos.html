@@ -1,0 +1,355 @@
+<title>Árvore do Quiz de Vistos</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap');
+
+  :root{
+    --bg:#F1F5F8;
+    --surface:#FFFFFF;
+    --surface-2:#E8EEF2;
+    --ink:#182430;
+    --ink-soft:#5B6B78;
+    --border:#CFDAE2;
+    --accent-paid:#2B5797;
+    --accent-paid-bg:#E7EEF7;
+    --accent-free:#A8752E;
+    --accent-free-bg:#F5ECDC;
+    --accent-strategic:#7757B3;
+    --accent-strategic-bg:#EEE7F7;
+    --accent-warn:#A8452F;
+    --accent-warn-bg:#F6E6E1;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#11161C;
+      --surface:#1A222A;
+      --surface-2:#212B34;
+      --ink:#E7ECF1;
+      --ink-soft:#93A2AF;
+      --border:#31404C;
+      --accent-paid:#7EA6DC;
+      --accent-paid-bg:#1E2E42;
+      --accent-free:#D8AA63;
+      --accent-free-bg:#3A3020;
+      --accent-strategic:#B49BE0;
+      --accent-strategic-bg:#2C2440;
+      --accent-warn:#E0937E;
+      --accent-warn-bg:#3B241E;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#11161C;
+    --surface:#1A222A;
+    --surface-2:#212B34;
+    --ink:#E7ECF1;
+    --ink-soft:#93A2AF;
+    --border:#31404C;
+    --accent-paid:#7EA6DC;
+    --accent-paid-bg:#1E2E42;
+    --accent-free:#D8AA63;
+    --accent-free-bg:#3A3020;
+    --accent-strategic:#B49BE0;
+    --accent-strategic-bg:#2C2440;
+    --accent-warn:#E0937E;
+    --accent-warn-bg:#3B241E;
+  }
+
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--ink);
+    font-family:'IBM Plex Sans', system-ui, sans-serif;
+    padding:36px 20px 60px;
+  }
+  .wrap{max-width:1180px; margin:0 auto;}
+  h1{
+    font-family:'Fraunces', Georgia, serif;
+    font-weight:600;
+    font-size:clamp(26px,4vw,36px);
+    margin:0 0 6px;
+    text-wrap:balance;
+  }
+  .kicker{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12px;
+    letter-spacing:0.08em;
+    text-transform:uppercase;
+    color:var(--ink-soft);
+    margin:0 0 14px;
+  }
+  .intro{
+    color:var(--ink-soft);
+    max-width:66ch;
+    line-height:1.55;
+    margin:0 0 20px;
+    font-size:15px;
+  }
+  .sync-note{
+    background:var(--accent-free-bg);
+    border:1px solid var(--accent-free);
+    border-radius:10px;
+    padding:12px 16px;
+    font-size:13.5px;
+    line-height:1.5;
+    color:var(--ink);
+    max-width:72ch;
+    margin:0 0 28px;
+  }
+  .sync-note b{color:var(--accent-free);}
+  figure{margin:0;}
+  .diagram-frame{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:16px;
+    padding:18px;
+    overflow-x:auto;
+  }
+  svg{display:block; width:100%; height:auto; max-width:100%;}
+  figcaption{
+    margin-top:14px;
+    font-size:13.5px;
+    color:var(--ink-soft);
+    line-height:1.5;
+    max-width:70ch;
+  }
+
+  .legend{
+    margin-top:28px;
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+    gap:10px 24px;
+  }
+  .legend-item{
+    display:flex;
+    align-items:flex-start;
+    gap:10px;
+    font-size:13.5px;
+    color:var(--ink-soft);
+    line-height:1.4;
+  }
+  .swatch{
+    flex:0 0 auto;
+    width:14px; height:14px;
+    border-radius:4px;
+    margin-top:2px;
+    border:1px solid var(--border);
+  }
+  .sw-free{background:var(--accent-free-bg); border-color:var(--accent-free);}
+  .sw-paid{background:var(--accent-paid-bg); border-color:var(--accent-paid);}
+  .sw-strategic{background:var(--accent-strategic-bg); border-color:var(--accent-strategic);}
+  .sw-warn{background:var(--accent-warn-bg); border-color:var(--accent-warn);}
+  .sw-dash{background:transparent; border:1.5px dashed var(--ink-soft);}
+
+  /* SVG element classes */
+  .node-fill{fill:var(--surface);}
+  .node-stroke{stroke:var(--ink-soft); stroke-width:1.5;}
+  .node-text{fill:var(--ink); font-family:'IBM Plex Sans', sans-serif;}
+  .node-text-soft{fill:var(--ink-soft); font-family:'IBM Plex Sans', sans-serif;}
+  .node-label{fill:var(--ink-soft); font-family:'IBM Plex Mono', monospace;}
+  .bus-line{stroke:var(--ink-soft); stroke-width:1.5; fill:none;}
+  .arrow{stroke:var(--ink-soft); stroke-width:1.5; fill:none;}
+  .arrow-dashed{stroke:var(--ink-soft); stroke-width:1.5; fill:none; stroke-dasharray:5 4;}
+  .arrowhead{fill:var(--ink-soft);}
+  .free-fill{fill:var(--accent-free-bg);} .free-stroke{stroke:var(--accent-free); stroke-width:1.75;} .free-text{fill:var(--accent-free); font-family:'IBM Plex Mono',monospace;}
+  .paid-fill{fill:var(--accent-paid-bg);} .paid-stroke{stroke:var(--accent-paid); stroke-width:1.75;} .paid-text{fill:var(--accent-paid); font-family:'IBM Plex Mono',monospace;}
+  .strategic-fill{fill:var(--accent-strategic-bg);} .strategic-stroke{stroke:var(--accent-strategic); stroke-width:1.75;}
+  .warn-text{fill:var(--accent-warn); font-family:'IBM Plex Mono',monospace;}
+  .divider{stroke:var(--border); stroke-width:1;}
+</style>
+
+<div class="wrap">
+  <p class="kicker">Ingryd · Produtos Digitais · França</p>
+  <h1>Árvore do quiz de triagem de vistos</h1>
+  <p class="intro">Do primeiro clique no link da bio até a captura de contato e a divisão entre conteúdo gratuito e oferta paga. As linhas tracejadas marcam os três desvios que pulam a lógica de visto (ou parte dela) — a barra cinza no meio é o único ponto por onde todo mundo passa.</p>
+  <p class="sync-note"><b>Reconstruído em 26/09/2026</b> a partir do código em produção (<code>assistente-de-vistos/index.html</code>), não da versão anterior deste diagrama. Duas mudanças em relação à versão anterior: (1) existe agora a pergunta <b>"Visto atual"</b> pra quem já está na França; (2) a pergunta de <b>Prontidão</b> e o desfecho C foram desenhados numa sessão que nunca chegou a ser publicada — não existem em produção hoje, então não estão neste diagrama. Ver <code>manual-quiz-vistos.md</code> para o detalhe completo dessa divergência.</p>
+
+  <figure class="diagram-frame">
+    <svg viewBox="0 0 1760 1300" role="img" aria-label="Fluxograma do quiz em produção: nome, cidadania, idade, já está na França, visto atual (se aplicável), objetivo, tipo de visto, Instagram e quatro desfechos finais, gratuitos ou pagos.">
+      <defs>
+        <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <polygon points="0,0 10,5 0,10" class="arrowhead"></polygon>
+        </marker>
+      </defs>
+
+      <!-- START -->
+      <rect x="740" y="18" width="280" height="40" rx="20" class="node-fill node-stroke"></rect>
+      <text x="880" y="43" text-anchor="middle" class="node-text" font-size="13" font-weight="600">Início · link na bio · nome</text>
+
+      <line x1="880" y1="58" x2="880" y2="104" class="arrow" marker-end="url(#arrow)"></line>
+
+      <!-- GATE UE -->
+      <rect x="740" y="106" width="280" height="64" rx="12" class="strategic-fill strategic-stroke"></rect>
+      <text x="880" y="132" text-anchor="middle" class="node-text" font-size="13.5" font-weight="600">Gate 0 — Cidadania da UE?</text>
+      <text x="880" y="150" text-anchor="middle" class="node-text-soft" font-size="11.5">pergunta feita antes de qualquer coisa</text>
+
+      <text x="700" y="140" text-anchor="end" class="node-text-soft" font-size="11.5" font-style="italic">Sim</text>
+      <path d="M 738 138 L 60 138 L 60 950" class="arrow-dashed" marker-end="url(#arrow)"></path>
+
+      <text x="895" y="192" class="node-text-soft" font-size="11.5" font-style="italic">Não</text>
+      <line x1="880" y1="170" x2="880" y2="214" class="arrow" marker-end="url(#arrow)"></line>
+
+      <!-- IDADE -->
+      <rect x="760" y="216" width="240" height="56" rx="10" class="node-fill node-stroke"></rect>
+      <text x="880" y="240" text-anchor="middle" class="node-text" font-size="13" font-weight="600">Idade: &lt;30 ou 30+</text>
+      <text x="880" y="257" text-anchor="middle" class="node-text-soft" font-size="11">filtra opções mais à frente — não bifurca aqui</text>
+
+      <line x1="880" y1="272" x2="880" y2="316" class="arrow" marker-end="url(#arrow)"></line>
+
+      <!-- JA ESTA -->
+      <rect x="720" y="318" width="320" height="56" rx="10" class="node-fill node-stroke"></rect>
+      <text x="880" y="342" text-anchor="middle" class="node-text" font-size="13" font-weight="600">Já está na França?  Sim / Não</text>
+      <text x="880" y="359" text-anchor="middle" class="node-text-soft" font-size="11">ajusta o texto do resultado — não bifurca por si só</text>
+
+      <!-- Sim -> Visto atual -->
+      <text x="895" y="392" class="node-text-soft" font-size="11.5" font-style="italic">Sim</text>
+      <line x1="880" y1="374" x2="880" y2="416" class="arrow" marker-end="url(#arrow)"></line>
+
+      <!-- VISTO ATUAL (novo) -->
+      <rect x="680" y="418" width="400" height="68" rx="10" class="free-fill free-stroke"></rect>
+      <text x="880" y="444" text-anchor="middle" class="node-text" font-size="13" font-weight="600">Visto atual: qual você já tem hoje?</text>
+      <text x="880" y="462" text-anchor="middle" class="node-text-soft" font-size="10.5">todos os tipos + "não sei dizer" — nunca reoferece esse mesmo tipo depois</text>
+      <text x="880" y="478" text-anchor="middle" class="free-text" font-size="10" font-weight="600">NOVO desde a última sincronização do diagrama</text>
+
+      <!-- Não bypasses straight down (dashed, short) -->
+      <text x="700" y="405" text-anchor="end" class="node-text-soft" font-size="11" font-style="italic">Não</text>
+      <path d="M 738 372 L 500 372 L 500 520" class="arrow-dashed" marker-end="url(#arrow)"></path>
+
+      <line x1="880" y1="486" x2="880" y2="524" class="arrow" marker-end="url(#arrow)"></line>
+
+      <!-- bus line to objetivo -->
+      <line x1="230" y1="524" x2="1530" y2="524" class="bus-line"></line>
+      <line x1="230" y1="524" x2="230" y2="558" class="arrow" marker-end="url(#arrow)"></line>
+      <line x1="660" y1="524" x2="660" y2="558" class="arrow" marker-end="url(#arrow)"></line>
+      <line x1="1090" y1="524" x2="1090" y2="558" class="arrow" marker-end="url(#arrow)"></line>
+      <line x1="1530" y1="524" x2="1530" y2="558" class="arrow" marker-end="url(#arrow)"></line>
+      <text x="880" y="518" text-anchor="middle" class="node-label" font-size="10.5">objetivo — 4 respostas possíveis</text>
+
+      <!-- OBJETIVO row -->
+      <rect x="120" y="560" width="220" height="62" rx="10" class="node-fill node-stroke"></rect>
+      <text x="230" y="586" text-anchor="middle" class="node-text" font-size="13.5" font-weight="600">Estudar</text>
+      <text x="230" y="604" text-anchor="middle" class="node-text-soft" font-size="10.5">Campus France / Parcoursup</text>
+
+      <rect x="550" y="560" width="220" height="62" rx="10" class="node-fill node-stroke"></rect>
+      <text x="660" y="586" text-anchor="middle" class="node-text" font-size="13.5" font-weight="600">Trabalhar</text>
+      <text x="660" y="604" text-anchor="middle" class="node-text-soft" font-size="10.5">emprego, PVT, negócio próprio</text>
+
+      <rect x="980" y="560" width="220" height="62" rx="10" class="strategic-fill strategic-stroke"></rect>
+      <text x="1090" y="586" text-anchor="middle" class="node-text" font-size="13.5" font-weight="600">Família</text>
+      <text x="1090" y="604" text-anchor="middle" class="node-text-soft" font-size="10.5">vínculo civil — pilar estratégico</text>
+
+      <rect x="1420" y="560" width="220" height="62" rx="10" class="node-fill node-stroke"></rect>
+      <text x="1530" y="586" text-anchor="middle" class="node-text" font-size="13.5" font-weight="600">Acompanhar alguém</text>
+      <text x="1530" y="604" text-anchor="middle" class="node-text-soft" font-size="10.5">namoro ainda não oficializado</text>
+
+      <line x1="230" y1="622" x2="230" y2="686" class="arrow" marker-end="url(#arrow)"></line>
+      <line x1="660" y1="622" x2="660" y2="686" class="arrow" marker-end="url(#arrow)"></line>
+      <line x1="1090" y1="622" x2="1090" y2="686" class="arrow" marker-end="url(#arrow)"></line>
+
+      <!-- TIPO list boxes -->
+      <rect x="100" y="688" width="260" height="150" rx="10" class="node-fill node-stroke"></rect>
+      <text x="230" y="712" text-anchor="middle" class="node-text" font-size="12" font-weight="600">Tipo de visto</text>
+      <text x="120" y="734" class="node-text-soft" font-size="11.5">•  Visto Estudante</text>
+      <text x="120" y="756" class="node-text-soft" font-size="11.5">•  Passeport Talent</text>
+      <text x="120" y="776" class="node-text-soft" font-size="11.5" font-style="italic">○  não sei ainda</text>
+      <line x1="118" y1="800" x2="342" y2="800" class="divider"></line>
+      <text x="230" y="818" text-anchor="middle" class="node-text-soft" font-size="9.5">alternância vem embutida no Estudante</text>
+
+      <rect x="530" y="688" width="260" height="150" rx="10" class="node-fill node-stroke"></rect>
+      <text x="660" y="712" text-anchor="middle" class="node-text" font-size="12" font-weight="600">Tipo de visto</text>
+      <text x="550" y="734" class="node-text-soft" font-size="11.5">•  Vacances-Travail ＊</text>
+      <text x="550" y="754" class="node-text-soft" font-size="11.5">•  Assalariado</text>
+      <text x="550" y="774" class="node-text-soft" font-size="11.5">•  Busca de emprego / negócio</text>
+      <text x="550" y="794" class="node-text-soft" font-size="11.5" font-style="italic">○  não sei ainda</text>
+      <text x="660" y="818" text-anchor="middle" class="warn-text" font-size="9.5">＊ some se idade for 30+</text>
+
+      <rect x="960" y="688" width="260" height="150" rx="10" class="strategic-fill strategic-stroke"></rect>
+      <text x="1090" y="712" text-anchor="middle" class="node-text" font-size="12" font-weight="600">Tipo de vínculo</text>
+      <text x="980" y="732" class="node-text-soft" font-size="11">•  Cônjuge de francês(a)</text>
+      <text x="980" y="750" class="node-text-soft" font-size="11">•  Cônjuge de outro país da UE</text>
+      <text x="980" y="768" class="node-text-soft" font-size="11">•  Pai/mãe de filho(a) francês(a)</text>
+      <text x="980" y="786" class="node-text-soft" font-size="11">•  Residência de longa data</text>
+      <text x="980" y="804" class="node-text-soft" font-size="11" font-style="italic">○  não sei ainda</text>
+
+      <!-- Acompanhar alguém direct bypass to captura (resultado E) -->
+      <path d="M 1530 622 L 1700 622 L 1700 950" class="arrow-dashed" marker-end="url(#arrow)"></path>
+      <text x="1650" y="660" class="node-text-soft" font-size="10.5" font-style="italic">sem sub-lista —</text>
+      <text x="1650" y="674" class="node-text-soft" font-size="10.5" font-style="italic">vai direto pro desfecho E</text>
+
+      <!-- specific type -> instagram bus; "não sei ainda" -> resultado A bypass -->
+      <line x1="230" y1="838" x2="230" y2="864" class="arrow"></line>
+      <line x1="660" y1="838" x2="660" y2="864" class="arrow"></line>
+      <line x1="1090" y1="838" x2="1090" y2="864" class="arrow"></line>
+      <line x1="180" y1="864" x2="1140" y2="864" class="bus-line"></line>
+      <text x="660" y="858" text-anchor="middle" class="node-label" font-size="10.5">escolheu um tipo específico</text>
+      <line x1="660" y1="864" x2="660" y2="898" class="arrow" marker-end="url(#arrow)"></line>
+
+      <path d="M 300 838 C 300 880, 20 900, 20 950" class="arrow-dashed" marker-end="url(#arrow)"></path>
+      <path d="M 350 838 C 380 890, 380 950, 380 950" class="arrow-dashed" marker-end="url(#arrow)"></path>
+      <path d="M 1220 838 C 1260 900, 1260 950, 1260 950" class="arrow-dashed" marker-end="url(#arrow)"></path>
+      <text x="1270" y="900" class="node-text-soft" font-size="10" font-style="italic">"não sei</text>
+      <text x="1270" y="913" class="node-text-soft" font-size="10" font-style="italic">ainda" ↓ (resultado A)</text>
+
+      <!-- INSTAGRAM (captura final) -->
+      <rect x="440" y="900" width="440" height="52" rx="10" class="node-fill node-stroke"></rect>
+      <text x="660" y="932" text-anchor="middle" class="node-text" font-size="13" font-weight="600">Instagram (opcional)</text>
+
+      <line x1="660" y1="952" x2="660" y2="1000" class="arrow" marker-end="url(#arrow)"></line>
+
+      <!-- CAPTURA / convergência -->
+      <rect x="90" y="1002" width="1580" height="52" rx="10" class="node-fill node-stroke"></rect>
+      <text x="880" y="1032" text-anchor="middle" class="node-text" font-size="13.5" font-weight="600">Todos os caminhos convergem aqui antes do resultado</text>
+
+      <!-- fan out to 4 outcomes -->
+      <line x1="250" y1="1054" x2="250" y2="1104" class="arrow" marker-end="url(#arrow)"></line>
+      <line x1="660" y1="1054" x2="660" y2="1104" class="arrow" marker-end="url(#arrow)"></line>
+      <line x1="1090" y1="1054" x2="1090" y2="1104" class="arrow" marker-end="url(#arrow)"></line>
+      <line x1="1500" y1="1054" x2="1500" y2="1104" class="arrow" marker-end="url(#arrow)"></line>
+
+      <!-- OUTCOME D: UE -->
+      <rect x="110" y="1106" width="280" height="150" rx="10" class="free-fill free-stroke"></rect>
+      <text x="250" y="1130" text-anchor="middle" class="node-text" font-size="12.5" font-weight="600">D · cidadão da UE</text>
+      <text x="130" y="1152" class="node-text-soft" font-size="10.5">Conteúdo de mercado</text>
+      <text x="130" y="1166" class="node-text-soft" font-size="10.5">de trabalho e alternância,</text>
+      <text x="130" y="1180" class="node-text-soft" font-size="10.5">sem burocracia de visto</text>
+      <text x="250" y="1240" text-anchor="middle" class="free-text" font-size="10.5" font-weight="600">GRÁTIS · autoridade</text>
+
+      <!-- OUTCOME A: não sei ainda -->
+      <rect x="520" y="1106" width="280" height="150" rx="10" class="node-fill node-stroke"></rect>
+      <text x="660" y="1130" text-anchor="middle" class="node-text" font-size="12.5" font-weight="600">A · "não sei ainda"</text>
+      <text x="540" y="1152" class="node-text-soft" font-size="10.5">Artigos do blog +</text>
+      <text x="540" y="1166" class="node-text-soft" font-size="10.5">duas portas de saída</text>
+      <line x1="540" y1="1186" x2="780" y2="1186" class="divider"></line>
+      <text x="540" y="1204" class="paid-text" font-size="10.5" font-weight="600">Quero fazer um 1:1</text>
+      <text x="540" y="1224" class="free-text" font-size="10.5" font-weight="600">ou pergunta única (grátis)</text>
+      <text x="660" y="1244" text-anchor="middle" class="node-text-soft" font-size="10">GRÁTIS + PAGO, à escolha</text>
+
+      <!-- OUTCOME B: tipo definido -->
+      <rect x="950" y="1106" width="280" height="150" rx="10" class="paid-fill paid-stroke"></rect>
+      <text x="1090" y="1130" text-anchor="middle" class="node-text" font-size="12.5" font-weight="600">B · sabe o tipo de visto</text>
+      <text x="970" y="1152" class="node-text-soft" font-size="10.5">Pré-requisitos daquele visto,</text>
+      <text x="970" y="1166" class="node-text-soft" font-size="10.5">grátis — CTA pro Por Dentro</text>
+      <text x="970" y="1180" class="node-text-soft" font-size="10.5">SE houver persona equivalente</text>
+      <text x="1090" y="1200" text-anchor="middle" class="warn-text" font-size="9.5">Au-pair só entra via "visto atual"</text>
+      <text x="1090" y="1213" text-anchor="middle" class="warn-text" font-size="9.5">= Au-pair, não pelo tipo direto</text>
+      <text x="1090" y="1244" text-anchor="middle" class="paid-text" font-size="10.5" font-weight="600">GRÁTIS → CTA condicional</text>
+
+      <!-- OUTCOME E: acompanhar -->
+      <rect x="1360" y="1106" width="280" height="150" rx="10" class="node-fill node-stroke"></rect>
+      <text x="1500" y="1130" text-anchor="middle" class="node-text" font-size="12.5" font-weight="600">E · acompanhar alguém</text>
+      <text x="1380" y="1152" class="node-text-soft" font-size="10.5">Guia dos caminhos reais</text>
+      <text x="1380" y="1166" class="node-text-soft" font-size="10.5">sem vínculo formal ainda</text>
+      <text x="1380" y="1186" class="warn-text" font-size="10" font-weight="600">＊ desmonta o mito do</text>
+      <text x="1380" y="1200" class="warn-text" font-size="10" font-weight="600">"vou como turista e resolvo lá"</text>
+      <text x="1500" y="1240" text-anchor="middle" class="free-text" font-size="10.5" font-weight="600">GRÁTIS · autoridade</text>
+
+    </svg>
+  </figure>
+  <figcaption>Não existe mais desfecho C nem pergunta de Prontidão em produção — ver nota de sincronização acima. O desfecho B é hoje o único caminho pago condicional: o CTA pro Por Dentro (checklist com prazos) só aparece quando o tipo de visto tem persona equivalente, com duas regras especiais no código (`ctaPorDentro()`): Au-pair só libera o CTA quando a pessoa respondeu "visto atual = Au-pair" e escolheu "Visto Estudante" agora; e quem já mora na França e escolhe Visto Estudante com qualquer outro visto atual não recebe o CTA (não é o público do Campus France).</figcaption>
+
+  <div class="legend">
+    <div class="legend-item"><span class="swatch sw-free"></span>Conteúdo gratuito — constrói autoridade, sem cobrança direta</div>
+    <div class="legend-item"><span class="swatch sw-paid"></span>Caminho com CTA pago condicional — Por Dentro ou 1:1</div>
+    <div class="legend-item"><span class="swatch sw-strategic"></span>Pilar estratégico — Família/Vida Privada, menor concorrência de conteúdo</div>
+    <div class="legend-item"><span class="swatch sw-dash"></span>Desvio — pula etapas porque não se aplicam a esse perfil</div>
+  </div>
+</div>
