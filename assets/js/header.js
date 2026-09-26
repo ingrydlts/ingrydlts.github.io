@@ -134,8 +134,11 @@ function resolveMode(pageMode, category, visibility, field) {
   // "Blog — modelo de artigo") — senão o headerMode/footerMode/logoMode
   // configurado em CADA ARTIGO (em Blog — artigos) nunca é lido, e todo
   // artigo usando o template dinâmico ignora sua própria configuração.
-  var hasSlugParam = new URLSearchParams(window.location.search).has("slug");
-  var registryEntry = hasSlugParam ? null : PAGE_REGISTRY[normalizedPath()];
+  // Só o template de artigo: a página de produto também usa "?slug=", mas
+  // segue a própria linha ("produtos-digitais-produto") na tabela.
+  var path = normalizedPath();
+  var isArticleBySlug = path === "/artigos/post/" && new URLSearchParams(window.location.search).has("slug");
+  var registryEntry = isArticleBySlug ? null : PAGE_REGISTRY[path];
 
   var category, headerMode, footerMode, logoMode;
   if (registryEntry) {
