@@ -109,6 +109,14 @@ formulário do Decap, editam os **mesmos campos** do mesmo arquivo de `content/`
 página real do site já com as mudanças (celular, tablet ou computador) — antes de publicar. Nada muda
 no site nem no formato dos arquivos; o "Publicar" continua sendo o do Decap.
 
+- **Início / "Hoje"** (`admin/home.js`): a tela de entrada do painel, no lugar da lista de coleções
+  do Decap. Tem um menu agrupado (Conteúdo, Vitrine, Site, Acompanhar) e, em "Hoje", o que pede atenção:
+  avaliações esperando, banner apontando pra artigo que não está no ar, anúncio de rede sem código,
+  produto no ar sem pagamento, artigos em revisão, próximos passos da compra em branco… Mostra também o
+  próximo artigo agendado, as etapas dos artigos, as últimas mudanças (histórico do GitHub de
+  `content/`) e atalhos. "Ir para…" (⌘K / Ctrl+K) acha telas e artigos. Cada item abre a coleção de
+  sempre e já abre o estúdio dela; a seta "←" do Decap volta pro início. Só lê — não grava nada. "Lista
+  clássica do Decap", no pé do menu, mostra a tela antiga até fechar a aba.
 - **Produtos digitais** (`admin/widgets/product-studio.js`): lista na ordem da vitrine (bolinha verde =
   no ar e completo, laranja = no ar mas falta algo, cinza = escondido), um medidor de "página pronta"
   com atalhos pro que falta, e seções que seguem a página de cima pra baixo — card da vitrine, topo,
