@@ -3,9 +3,8 @@
 // pessoa marca a checkbox manualmente (checkbox pré-marcada não vale).
 // Ver seção 3.3 da especificação.
 
-// Anexa ?client_reference_id=<slug> ao link do Stripe — mesma técnica de
-// assets/js/premium-gate.js (withReturnSlug), aqui pro checkout de produto
-// digital: é assim que POST /api/purchase/verify-session (ver worker.js)
+// Anexa ?client_reference_id=<slug> ao link do Stripe do produto digital:
+// é assim que POST /api/purchase/verify-session (ver worker.js)
 // sabe qual produto foi comprado quando a leitora volta pra
 // /produtos-digitais/obrigado/ depois de pagar.
 function withProductSlug(paymentLink, slug) {

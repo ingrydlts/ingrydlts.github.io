@@ -7,7 +7,7 @@
 // mouse) ou use as setas ▲▼ pra reordenar, e um botão "+" flutuante abre
 // uma gaveta (bottom sheet) com todos os tipos de bloco que dá pra inserir
 // — parágrafo, título, lista, blocos ricos (FAQ/Checklist/Steps/...),
-// banner de vitrine, link afiliado, galeria e o bloqueio premium.
+// banner de vitrine, link afiliado e galeria.
 //
 // Armazenamento: continua sendo o MESMO texto markdown de sempre (com os
 // tokens [[STEPS]]...[[/STEPS]], [[FAQ]]...[[/FAQ]] etc. já usados nos
@@ -43,13 +43,11 @@
   var PROPAGANDA_TOKEN = "[[PROPAGANDA]]";
   var NO_VITRINE_BANNER_TOKEN = "[[NO-VITRINE-BANNER]]";
   var NO_PROPAGANDA_TOKEN = "[[NO-PROPAGANDA]]";
-  var PREMIUM_SPLIT_TOKEN = "[[PREMIUM-SPLIT]]";
   var SINGLE_TOKENS = TOOL_TOKENS.concat([
     VITRINE_BANNER_TOKEN,
     PROPAGANDA_TOKEN,
     NO_VITRINE_BANNER_TOKEN,
-    NO_PROPAGANDA_TOKEN,
-    PREMIUM_SPLIT_TOKEN
+    NO_PROPAGANDA_TOKEN
   ]);
 
   // --- banner de vitrine com produto específico ------------------------------
@@ -129,91 +127,6 @@
       });
     }
     return sharedCatalogsPromise;
-  }
-
-  // --- conteúdo pago: mesmo Worker e mesmos endpoints de /admin/premium/,
-  // só que agora acessíveis também daqui, arrastando o marcador de bloqueio
-  // pro meio do artigo. O texto pago NUNCA passa por onChange/body — ele é
-  // sempre separado do texto livre ANTES de qualquer envio (ver updateValue),
-  // e só é gravado quando alguém clica "Salvar conteúdo pago", direto no
-  // Worker (não vai pro Git). Token e cache ficam em variáveis do módulo,
-  // compartilhadas entre os widgets de todos os artigos abertos na página —
-  // login com o GitHub uma vez só por sessão, não uma vez por artigo.
-  var PREMIUM_WORKER_BASE = "https://por-dentro-cms-oauth.ingrydigitalmanagement.workers.dev";
-  var sharedPremiumToken = null;
-  var sharedPremiumContentPromise = null;
-
-  function openPremiumLoginPopup() {
-    return new Promise(function (resolve, reject) {
-      var popup = window.open(PREMIUM_WORKER_BASE + "/auth", "github-oauth-premium", "width=600,height=700");
-      function handleMessage(e) {
-        if (e.data === "authorizing:github") {
-          if (popup) popup.postMessage("confirm", "*");
-          return;
-        }
-        if (typeof e.data === "string" && e.data.indexOf("authorization:github:") === 0) {
-          window.removeEventListener("message", handleMessage);
-          var rest = e.data.slice("authorization:github:".length);
-          var sep = rest.indexOf(":");
-          var status = rest.slice(0, sep);
-          var payload;
-          try { payload = JSON.parse(rest.slice(sep + 1)); } catch (err) { payload = {}; }
-          if (popup) popup.close();
-          if (status === "success" && payload.token) {
-            sharedPremiumToken = payload.token;
-            resolve(payload.token);
-          } else {
-            reject(new Error(payload.message || "Não foi possível entrar com o GitHub."));
-          }
-        }
-      }
-      window.addEventListener("message", handleMessage);
-    });
-  }
-
-  function withPremiumToken() {
-    return sharedPremiumToken ? Promise.resolve(sharedPremiumToken) : openPremiumLoginPopup();
-  }
-
-  function fetchAllPremiumContent(token) {
-    return fetch(PREMIUM_WORKER_BASE + "/api/premium/content", { headers: { Authorization: "Bearer " + token } })
-      .then(function (r) {
-        if (!r.ok) throw new Error(r.status === 401 ? "Essa conta não tem permissão de escrita no repositório." : "Falha ao carregar o conteúdo pago.");
-        return r.json();
-      })
-      .then(function (data) { return data.items || {}; });
-  }
-
-  function savePremiumContentApi(token, slug, body) {
-    return fetch(PREMIUM_WORKER_BASE + "/api/premium/content", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: "Bearer " + token },
-      body: JSON.stringify({ slug: slug, body: body })
-    }).then(function (r) {
-      if (!r.ok) throw new Error("Falha ao salvar o conteúdo pago.");
-    });
-  }
-
-  function deletePremiumContentApi(token, slug) {
-    return fetch(PREMIUM_WORKER_BASE + "/api/premium/content?slug=" + encodeURIComponent(slug), {
-      method: "DELETE",
-      headers: { Authorization: "Bearer " + token }
-    }).then(function (r) {
-      if (!r.ok) throw new Error("Falha ao remover o conteúdo pago.");
-    });
-  }
-
-  // Acha o índice do marcador de bloqueio premium (se houver) e separa os
-  // blocos em duas listas. "free" é SEMPRE a única coisa que vira o valor do
-  // campo body/Decap — "premium" nunca sai do estado local deste widget a
-  // não ser via savePremiumContentApi, explicitamente.
-  function splitAtPremiumMarker(blocks) {
-    var idx = -1;
-    for (var i = 0; i < blocks.length; i++) {
-      if (blocks[i].type === "token" && blocks[i].raw === PREMIUM_SPLIT_TOKEN) { idx = i; break; }
-    }
-    if (idx === -1) return { free: blocks, premium: [] };
-    return { free: blocks.slice(0, idx), premium: blocks.slice(idx + 1) };
   }
 
   var uidCounter = 0;
@@ -351,7 +264,6 @@
   SPECIAL_TOKEN_LABEL[PROPAGANDA_TOKEN] = "📢 Propaganda";
   SPECIAL_TOKEN_LABEL[NO_VITRINE_BANNER_TOKEN] = "🚫 Sem banner de vitrine aqui";
   SPECIAL_TOKEN_LABEL[NO_PROPAGANDA_TOKEN] = "🚫 Sem propaganda aqui";
-  SPECIAL_TOKEN_LABEL[PREMIUM_SPLIT_TOKEN] = "🔒 Bloqueio premium";
 
   function blockLabel(b, catalogs) {
     if (b.type === "token") {
@@ -400,15 +312,6 @@
         return (
           '<div class="ad-slot ad-slot-own" style="border-top:3px solid var(--merlot);">' +
           '<span class="eyebrow">Publicidade</span><h3>Propaganda — posição atual</h3></div>'
-        );
-      }
-      if (b.raw === PREMIUM_SPLIT_TOKEN) {
-        return (
-          '<div style="display:flex; align-items:center; gap:12px; margin:28px 0; color:var(--merlot);">' +
-          '<div style="flex:1; border-top:2px dashed var(--merlot);"></div>' +
-          '<strong style="font-family:var(--font-body); font-size:12px; text-transform:uppercase; letter-spacing:.04em; white-space:nowrap;">🔒 A partir daqui, só assinantes</strong>' +
-          '<div style="flex:1; border-top:2px dashed var(--merlot);"></div>' +
-          "</div>"
         );
       }
       if (b.raw === NO_VITRINE_BANNER_TOKEN || b.raw === NO_PROPAGANDA_TOKEN) {
@@ -496,7 +399,6 @@
       ".pdac-block.is-selected{border-color:rgba(96,64,52,.4);background:rgba(255,255,255,.7);}",
       ".pdac-block.is-dragging{opacity:.45;}",
       ".pdac-block.is-special{border-left:3px solid #8AACD2;}",
-      ".pdac-block.is-premium{border-left:3px solid #501318;}",
       ".pdac-block-bar{display:flex;align-items:center;gap:2px;padding:2px;}",
       ".pdac-bar-btn{border:none;background:transparent;cursor:pointer;font-size:15px;line-height:1;padding:6px;border-radius:6px;color:#8A7A6C;min-width:34px;min-height:34px;}",
       ".pdac-bar-btn:active{background:rgba(43,43,43,.08);}",
@@ -531,10 +433,6 @@
   var SUMMARY_BAR_STYLE = { display: "flex", gap: "14px", alignItems: "center", flexWrap: "wrap", padding: "10px 12px", border: "1px solid rgba(43,43,43,0.14)", borderRadius: "6px", background: "#fff", fontSize: "13px", fontFamily: FONT_STACK };
   var BTN_STYLE = { fontFamily: FONT_STACK, fontWeight: 600, fontSize: "13px", padding: "8px 14px", borderRadius: "4px", border: "1px solid #604034", background: "#604034", color: "#fff", cursor: "pointer" };
   var RAW_TEXTAREA_STYLE = { flex: "1 1 auto", width: "100%", boxSizing: "border-box", padding: "20px", fontFamily: "monospace", fontSize: "13px", border: "none", resize: "none" };
-  var PREMIUM_BTN_STYLE = { fontFamily: FONT_STACK, fontWeight: 600, fontSize: "12px", padding: "8px 12px", borderRadius: "6px", border: "1px solid #501318", background: "#fff", color: "#501318", cursor: "pointer" };
-  var PREMIUM_BTN_DANGER_STYLE = { fontFamily: FONT_STACK, fontWeight: 600, fontSize: "12px", padding: "8px 12px", borderRadius: "6px", border: "1px solid #501318", background: "#501318", color: "#fff", cursor: "pointer" };
-  var PREMIUM_STATUS_STYLE = { fontSize: "12px", fontWeight: 600, margin: "0 0 8px", color: "#501318" };
-  var PREMIUM_ERROR_STYLE = { fontSize: "12px", color: "#501318", margin: "8px 0 0", fontWeight: 600 };
 
   // --- exemplos/instruções por tipo de bloco rico (mesmo formato que o site
   // espera em assets/js/markdown.js) — usados como conteúdo inicial ao
@@ -604,11 +502,6 @@
         { key: "GALERIA", emoji: "🖼️", label: "Galeria de fotos", make: function () { return { id: uid(), type: "token", raw: "[[GALERIA]]" }; } },
         { key: "GALERIA-2", emoji: "🖼️", label: "Galeria de fotos 2", make: function () { return { id: uid(), type: "token", raw: "[[GALERIA-2]]" }; } }
       ]
-    },
-    {
-      group: "Estrutura", items: [
-        { key: "premium", emoji: "🔒", label: "Bloqueio premium", special: "premium" }
-      ]
     }
   ];
 
@@ -624,8 +517,6 @@
         selectedId: null,
         draggingId: null,
         sheetOpen: false,
-        premiumStatus: "idle", // idle | loading | loaded | empty | saving | saved | error
-        premiumError: "",
         catalogs: null
       };
     },
@@ -640,30 +531,10 @@
       this._detachDragListeners();
     },
 
-    // Correlaciona este campo com o item correspondente em content/posts.json
-    // (pra saber o "slug" do artigo, necessário pra falar com o Worker do
-    // conteúdo pago) comparando o texto do body — não existe, na API pública
-    // de widgets do Decap, um jeito documentado de ler o "slug" do campo
-    // irmão diretamente, então usamos o valor atual do próprio campo como
-    // chave de correspondência dentro de entry.data.items.
-    getCurrentItem: function () {
-      try {
-        var entryData = this.props.entry && this.props.entry.toJS ? this.props.entry.toJS().data : null;
-        var items = entryData && entryData.items;
-        if (!items || !items.length) return null;
-        var value = this.props.value || "";
-        var matches = items.filter(function (it) { return it.body === value; });
-        return matches.length === 1 ? matches[0] : null;
-      } catch (e) {
-        return null;
-      }
-    },
-
     updateValue: function (newBlocks) {
-      var split = splitAtPremiumMarker(newBlocks);
-      var freeText = serializeBlocks(split.free);
-      this.setState({ blocks: newBlocks, lastSerialized: freeText });
-      this.props.onChange(freeText);
+      var text = serializeBlocks(newBlocks);
+      this.setState({ blocks: newBlocks, lastSerialized: text });
+      this.props.onChange(text);
     },
 
     open: function () {
@@ -675,92 +546,10 @@
     },
 
     close: function () {
-      var split = splitAtPremiumMarker(this.state.blocks);
-      var hasUnsavedPremium = split.premium.length > 0 && this.state.premiumStatus !== "saved" && this.state.premiumStatus !== "loaded";
-      if (hasUnsavedPremium) {
-        var ok = window.confirm("O conteúdo depois do bloqueio premium ainda não foi salvo — ele SÓ existe aqui nesta tela. Fechar sem clicar em \"Salvar conteúdo pago\" descarta essa parte. Fechar mesmo assim?");
-        if (!ok) return;
-      }
       if (this.state.mode === "raw") {
         this.updateValue(parseBody(this.state.rawDraft));
       }
       this.setState({ open: false, mode: "visual", selectedId: null, sheetOpen: false });
-    },
-
-    // Busca o conteúdo pago já salvo (se houver) e junta depois do marcador,
-    // pra quem está reabrindo um artigo premium já existente ver tudo junto
-    // e poder arrastar o marcador pra uma posição diferente da atual.
-    loadPremiumContent: function () {
-      var self = this;
-      var item = this.getCurrentItem();
-      if (!item || !item.slug) {
-        this.setState({ premiumStatus: "error", premiumError: "Salve o artigo (com um slug preenchido) antes de carregar o conteúdo pago." });
-        return;
-      }
-      this.setState({ premiumStatus: "loading", premiumError: "" });
-      withPremiumToken()
-        .then(function (token) {
-          if (!sharedPremiumContentPromise) sharedPremiumContentPromise = fetchAllPremiumContent(token);
-          return sharedPremiumContentPromise;
-        })
-        .then(function (allItems) {
-          var text = (allItems[item.slug] || "").trim();
-          if (text) {
-            var blocks = self.state.blocks.slice();
-            var alreadyHasContent = splitAtPremiumMarker(blocks).premium.length > 0;
-            if (!alreadyHasContent) {
-              blocks = blocks.concat(parseBody(text));
-              self.updateValue(blocks);
-            }
-          }
-          self.setState({ premiumStatus: text ? "loaded" : "empty" });
-        })
-        .catch(function (err) {
-          sharedPremiumContentPromise = null;
-          self.setState({ premiumStatus: "error", premiumError: err.message || "Erro ao carregar o conteúdo pago." });
-        });
-    },
-
-    savePremiumNow: function () {
-      var self = this;
-      var item = this.getCurrentItem();
-      if (!item || !item.slug) {
-        this.setState({ premiumStatus: "error", premiumError: "Salve o artigo (com um slug preenchido) antes de salvar o conteúdo pago." });
-        return;
-      }
-      var split = splitAtPremiumMarker(this.state.blocks);
-      var text = serializeBlocks(split.premium);
-      if (!text.trim()) {
-        this.setState({ premiumStatus: "error", premiumError: "Mova algum bloco pra depois do 🔒 Bloqueio premium antes de salvar." });
-        return;
-      }
-      this.setState({ premiumStatus: "saving", premiumError: "" });
-      withPremiumToken()
-        .then(function (token) { return savePremiumContentApi(token, item.slug, text); })
-        .then(function () {
-          sharedPremiumContentPromise = null;
-          self.setState({ premiumStatus: "saved" });
-        })
-        .catch(function (err) {
-          self.setState({ premiumStatus: "error", premiumError: err.message || "Erro ao salvar o conteúdo pago." });
-        });
-    },
-
-    removePremiumContent: function () {
-      var self = this;
-      var item = this.getCurrentItem();
-      if (!item || !item.slug) return;
-      if (!window.confirm("Remover o conteúdo pago salvo no servidor pra este artigo? As assinantes deixam de ver essa continuação até você salvar de novo.")) return;
-      this.setState({ premiumStatus: "saving", premiumError: "" });
-      withPremiumToken()
-        .then(function (token) { return deletePremiumContentApi(token, item.slug); })
-        .then(function () {
-          sharedPremiumContentPromise = null;
-          self.setState({ premiumStatus: "empty" });
-        })
-        .catch(function (err) {
-          self.setState({ premiumStatus: "error", premiumError: err.message || "Erro ao remover o conteúdo pago." });
-        });
     },
 
     toggleMode: function () {
@@ -782,12 +571,8 @@
     },
 
     removeBlock: function (id) {
-      var removed = this.state.blocks.filter(function (b) { return b.id === id; })[0];
       this.updateValue(this.state.blocks.filter(function (b) { return b.id !== id; }));
       if (this.state.selectedId === id) this.setState({ selectedId: null });
-      if (removed && removed.type === "token" && removed.raw === PREMIUM_SPLIT_TOKEN) {
-        this.setState({ premiumStatus: "idle", premiumError: "" });
-      }
     },
 
     // Insere um bloco novo logo depois do bloco selecionado no momento (o
@@ -834,28 +619,9 @@
       this.setState({ selectedId: newBlock.id, sheetOpen: false });
     },
 
-    addPremiumBlock: function () {
-      var existing = this.state.blocks.filter(function (b) { return b.type === "token" && b.raw === PREMIUM_SPLIT_TOKEN; })[0];
-      if (existing) { this.setState({ selectedId: existing.id, sheetOpen: false }); return; }
-      var copy = this.state.blocks.slice();
-      var idx = copy.length;
-      var selId = this.state.selectedId;
-      if (selId) {
-        for (var i = 0; i < copy.length; i++) {
-          if (copy[i].id === selId) { idx = i + 1; break; }
-        }
-      }
-      var newBlock = { id: uid(), type: "token", raw: PREMIUM_SPLIT_TOKEN };
-      copy.splice(idx, 0, newBlock);
-      this.updateValue(copy);
-      this.setState({ selectedId: newBlock.id, sheetOpen: false });
-      this.loadPremiumContent();
-    },
-
     insertFromMenu: function (item) {
       if (item.special === "banner-on") return this.addBannerBlock("on");
       if (item.special === "banner-off") return this.addBannerBlock("off");
-      if (item.special === "premium") return this.addPremiumBlock();
       this.insertBlock(item.make);
     },
 
@@ -936,7 +702,6 @@
       var blocks = this.state.blocks;
       var bannerInfo = bannerState(blocks);
       var affiliateCount = blocks.filter(function (b) { return b.type === "richblock" && b.name === AFILIADO_NAME; }).length;
-      var hasPremiumMarker = hasToken(blocks, PREMIUM_SPLIT_TOKEN);
       return h(
         "div",
         null,
@@ -946,7 +711,6 @@
           h("span", null, blocks.length + " bloco(s)"),
           h("span", null, "Banner: " + bannerInfo.state),
           h("span", null, "Links afiliados: " + affiliateCount),
-          h("span", null, "Bloqueio premium: " + (hasPremiumMarker ? "ativado" : "desativado")),
           h("button", { type: "button", onClick: this.open, style: BTN_STYLE }, "Editar artigo visualmente")
         ),
         this.state.open ? this.renderOverlay() : null
@@ -986,14 +750,12 @@
       var blocks = this.state.blocks;
       var bannerInfo = bannerState(blocks);
       var affiliateCount = blocks.filter(function (b) { return b.type === "richblock" && b.name === AFILIADO_NAME; }).length;
-      var hasPremiumMarker = hasToken(blocks, PREMIUM_SPLIT_TOKEN);
       return h(
         "div",
         { className: "pdac-summary" },
         h("span", null, blocks.length + " bloco(s)"),
         h("span", null, "Banner: " + bannerInfo.state),
         h("span", null, "Afiliados: " + affiliateCount),
-        h("span", null, "Premium: " + (hasPremiumMarker ? "ativado" : "desativado")),
         h("span", null, "Toque num bloco pra editar • arraste ⠿ ou use ▲▼ pra reordenar")
       );
     },
@@ -1037,17 +799,15 @@
       var self = this;
       var selected = this.state.selectedId === b.id;
       var dragging = this.state.draggingId === b.id;
-      var isPremiumMarker = b.type === "token" && b.raw === PREMIUM_SPLIT_TOKEN;
       var isBanner = b.type === "token" && isBannerToken(b.raw);
       var isBannerOff = b.type === "token" && b.raw === NO_VITRINE_BANNER_TOKEN;
       var isAffiliate = b.type === "richblock" && b.name === AFILIADO_NAME;
       var isSpecial = isBanner || isBannerOff || isAffiliate;
-      var canEdit = b.type === "text" || b.type === "list" || b.type === "richblock" || isBanner || isPremiumMarker;
+      var canEdit = b.type === "text" || b.type === "list" || b.type === "richblock" || isBanner;
       var className = "pdac-block" +
         (selected ? " is-selected" : "") +
         (dragging ? " is-dragging" : "") +
-        (isSpecial ? " is-special" : "") +
-        (isPremiumMarker ? " is-premium" : "");
+        (isSpecial ? " is-special" : "");
 
       function selectBlock() { self.setState({ selectedId: selected ? null : b.id }); }
 
@@ -1088,9 +848,6 @@
       }
       if (b.type === "token" && isBannerToken(b.raw)) {
         return h("div", { className: "pdac-edit-area" }, this.renderProductPicker(parseBannerToken(b.raw)));
-      }
-      if (b.type === "token" && b.raw === PREMIUM_SPLIT_TOKEN) {
-        return h("div", { className: "pdac-edit-area" }, this.renderPremiumPanel());
       }
       var value = b.type === "richblock" ? b.inner : b.raw;
       return h(
@@ -1199,33 +956,6 @@
           options
         ),
         h("p", { className: "pdac-hint" }, "Escolha um produto pra este banner puxar título, imagem e link automaticamente dele.")
-      );
-    },
-
-    renderPremiumPanel: function () {
-      var status = this.state.premiumStatus;
-      var STATUS_LABEL = {
-        idle: "ainda não carregado nem salvo",
-        loading: "carregando conteúdo já salvo…",
-        loaded: "conteúdo já salvo foi carregado abaixo",
-        empty: "nenhum conteúdo salvo ainda pra este artigo",
-        saving: "salvando…",
-        saved: "salvo no servidor ✓",
-        error: "erro — veja abaixo"
-      };
-      return h(
-        "div",
-        null,
-        h("p", { style: PREMIUM_STATUS_STYLE }, "Conteúdo pago: " + (STATUS_LABEL[status] || status)),
-        h(
-          "div",
-          { style: { display: "flex", gap: "6px", flexWrap: "wrap" } },
-          h("button", { type: "button", onClick: this.loadPremiumContent, style: PREMIUM_BTN_STYLE, disabled: status === "loading" }, "Carregar já salvo"),
-          h("button", { type: "button", onClick: this.savePremiumNow, style: PREMIUM_BTN_STYLE, disabled: status === "saving" }, "Salvar conteúdo pago"),
-          h("button", { type: "button", onClick: this.removePremiumContent, style: PREMIUM_BTN_DANGER_STYLE, disabled: status === "saving" }, "Remover do servidor")
-        ),
-        this.state.premiumError ? h("p", { style: PREMIUM_ERROR_STYLE }, this.state.premiumError) : null,
-        h("p", { className: "pdac-hint" }, "Tudo que estiver DEPOIS deste bloco vira a continuação paga. Só é enviado ao clicar em \"Salvar conteúdo pago\" — nunca vai pro Git/GitHub, só pro Worker do conteúdo pago (mesmo lugar que /admin/premium/ usa). Só funciona de verdade se \"Artigo premium (assinatura)\", mais abaixo no formulário, também estiver marcado.")
       );
     },
 

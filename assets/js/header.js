@@ -35,8 +35,7 @@ var PAGE_REGISTRY = {
   "/mentions-legales/": { key: "mentions-legales", category: "institucional" },
   "/acesso-vip/": { key: "acesso-vip", category: "institucional" },
   "/artigos/": { key: "artigos", category: "blog" },
-  "/artigos/post/": { key: "artigos-post-template", category: "blog" },
-  "/artigos/assinatura-confirmada/": { key: "artigos-assinatura-confirmada", category: "blog" }
+  "/artigos/post/": { key: "artigos-post-template", category: "blog" }
 };
 
 function normalizedPath() {

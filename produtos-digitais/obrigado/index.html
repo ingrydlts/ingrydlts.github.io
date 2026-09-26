@@ -94,10 +94,8 @@
 
   // Lê ?session_id= (retorno do Stripe), confirma o pagamento com o Worker
   // (POST /api/purchase/verify-session, que já confere com o Stripe e grava
-  // a venda) e limpa o parâmetro da URL. Mesmo padrão de
-  // /artigos/assinatura-confirmada/ e assets/js/premium.js
-  // (verifySessionFromUrl), só que sem emitir token de acesso — essa página
-  // não libera nenhum conteúdo pago, só confirma pro painel de vendas.
+  // a venda) e limpa o parâmetro da URL. Essa página não libera nenhum
+  // conteúdo, só confirma a venda pro painel.
   async function verifyPurchaseFromUrl() {
     const url = new URL(window.location.href);
     const sessionId = url.searchParams.get("session_id");

@@ -99,10 +99,6 @@ collections:
                 name: artigos-post-template
                 widget: object
                 fields: *page_toggle
-              - label: "Assinatura confirmada"
-                name: artigos-assinatura-confirmada
-                widget: object
-                fields: *page_toggle
 
   - name: links_page
     label: "Página de Links (bio)"
@@ -295,8 +291,7 @@ collections:
               - label: "Corpo do artigo"
                 name: body
                 widget: article-composer
-                hint: "Clique em \"Editar artigo visualmente\" pra abrir o editor em blocos, no MESMO layout que a leitora vê no site (funciona bem no celular). Cada parágrafo, título, imagem, banner ou link é um bloco independente: toque num bloco pra editar o conteúdo dele, arraste pela alcinha \"⠿\" (com o dedo ou o mouse) ou use as setas ▲▼ pra reordenar, e o \"🗑\" apaga. O botão \"+\" flutuante (canto inferior direito) abre a lista de blocos pra adicionar — Parágrafo, Título, Lista, FAQ, Checklist, Recursos, Passo a passo, Enquete, Faixa de destaque, Números, Cartões, Banner de vitrine, Link afiliado, Galeria e Bloqueio premium. O novo bloco entra logo depois do bloco em que você tocou por último (ou no fim, se nada estiver selecionado).\n\n🎯 \"Banner de vitrine\": adicione pelo \"+\" — sem nenhum bloco de banner no artigo, ele segue o padrão configurado em \"Vitrine dentro dos artigos\"; adicionar \"Banner de vitrine\" força aparecer aqui (arraste pra escolher a posição, toque nele pra escolher QUAL produto aparece — lista tudo que já está cadastrado em \"Produtos digitais\", \"Produtos de estudo\" e \"Produtos de compras\", puxando título, imagem e link automaticamente, ou deixe em \"Genérico\" pra usar o texto de \"Vitrine dentro dos artigos\"); adicionar \"Sem banner aqui\" força NÃO aparecer neste artigo, mesmo com o padrão do site ligado. Apagar o bloco volta ao padrão do site.\n\n🔗 \"Card de afiliado\" (no \"+\"): adicione quantos precisar — cada um é um bloco de link independente (texto do botão, URL de afiliado e imagem opcional), arrastável pra qualquer posição do artigo. Sem limite de quantidade.\n\n🔒 \"Bloqueio premium\" (no \"+\"): posiciona estrategicamente onde o artigo vira pago — tudo que ficar DEPOIS desse bloco (arraste-o pra qualquer lugar) é a continuação paga, tudo ANTES continua sendo a prévia grátis normal. Diferente do resto do artigo, o conteúdo pago não é salvo automaticamente: toque no bloco 🔒 pra ver os botões \"Carregar já salvo\" / \"Salvar conteúdo pago\" / \"Remover do servidor\" — eles pedem login com GitHub na hora (mesma conta do /admin) e falam direto com o mesmo lugar que o painel /admin/premium/ usa. O texto pago nunca é gravado no corpo do artigo nem vai pro GitHub. Só funciona de verdade com \"Artigo premium (assinatura)\", mais abaixo, também marcado.\n\n⚠️ TODO artigo precisa terminar com um bloco FAQ (nunca solto no texto) e um bloco de Feedback — é a regra de captação de audiência do site (ver README.md e GUIA-DE-IMPLEMENTACAO.md). Use Checklist quando o tema tiver um critério de elegibilidade ou passo a passo verificável, e Recursos pra toda fonte oficial citada — cada pergunta aberta e cada fonte clicada vira dado em /admin/dashboard.\n\nBotão \"Ver texto bruto\", no topo do editor visual, mostra o markdown puro — útil pra colar um bloco rico pronto (cole exatamente assim, cada linha com \"|\" separando as colunas):\n[[STEPS]]\nTítulo do passo | Descrição\n[[/STEPS]]\n\n[[FAQ]] (obrigatório)\nPergunta | Resposta\n[[/FAQ]]\n\n[[RESOURCES]]\nTítulo | Descrição | Texto do link | URL\n[[/RESOURCES]]\n\n[[CHECKLIST]]\nTítulo da checklist\nItem 1\nItem 2\n[[/CHECKLIST]]\n\n[[FEEDBACK]] (obrigatório)\nPergunta (opcional)\n[[/FEEDBACK]]\n\nTambém dá pra usar [[BAND]], [[STATS]], [[CARDS]] e [[LIST]] — mesmo formato de colunas com \"|\"."
-              - { label: "Artigo premium (assinatura)", name: premium, widget: boolean, default: false, required: false, hint: "Marque para exigir assinatura pra ler o conteúdo completo. O texto pago não fica aqui — escreva-o no painel /admin/premium/ depois de salvar este artigo." }
+                hint: "Clique em \"Editar artigo visualmente\" pra abrir o editor em blocos, no MESMO layout que a leitora vê no site (funciona bem no celular). Cada parágrafo, título, imagem, banner ou link é um bloco independente: toque num bloco pra editar o conteúdo dele, arraste pela alcinha \"⠿\" (com o dedo ou o mouse) ou use as setas ▲▼ pra reordenar, e o \"🗑\" apaga. O botão \"+\" flutuante (canto inferior direito) abre a lista de blocos pra adicionar — Parágrafo, Título, Lista, FAQ, Checklist, Recursos, Passo a passo, Enquete, Faixa de destaque, Números, Cartões, Banner de vitrine, Link afiliado e Galeria. O novo bloco entra logo depois do bloco em que você tocou por último (ou no fim, se nada estiver selecionado).\n\n🎯 \"Banner de vitrine\": adicione pelo \"+\" — sem nenhum bloco de banner no artigo, ele segue o padrão configurado em \"Vitrine dentro dos artigos\"; adicionar \"Banner de vitrine\" força aparecer aqui (arraste pra escolher a posição, toque nele pra escolher QUAL produto aparece — lista tudo que já está cadastrado em \"Produtos digitais\", \"Produtos de estudo\" e \"Produtos de compras\", puxando título, imagem e link automaticamente, ou deixe em \"Genérico\" pra usar o texto de \"Vitrine dentro dos artigos\"); adicionar \"Sem banner aqui\" força NÃO aparecer neste artigo, mesmo com o padrão do site ligado. Apagar o bloco volta ao padrão do site.\n\n🔗 \"Card de afiliado\" (no \"+\"): adicione quantos precisar — cada um é um bloco de link independente (texto do botão, URL de afiliado e imagem opcional), arrastável pra qualquer posição do artigo. Sem limite de quantidade.\n\n⚠️ TODO artigo precisa terminar com um bloco FAQ (nunca solto no texto) e um bloco de Feedback — é a regra de captação de audiência do site (ver README.md e GUIA-DE-IMPLEMENTACAO.md). Use Checklist quando o tema tiver um critério de elegibilidade ou passo a passo verificável, e Recursos pra toda fonte oficial citada — cada pergunta aberta e cada fonte clicada vira dado em /admin/dashboard.\n\nBotão \"Ver texto bruto\", no topo do editor visual, mostra o markdown puro — útil pra colar um bloco rico pronto (cole exatamente assim, cada linha com \"|\" separando as colunas):\n[[STEPS]]\nTítulo do passo | Descrição\n[[/STEPS]]\n\n[[FAQ]] (obrigatório)\nPergunta | Resposta\n[[/FAQ]]\n\n[[RESOURCES]]\nTítulo | Descrição | Texto do link | URL\n[[/RESOURCES]]\n\n[[CHECKLIST]]\nTítulo da checklist\nItem 1\nItem 2\n[[/CHECKLIST]]\n\n[[FEEDBACK]] (obrigatório)\nPergunta (opcional)\n[[/FEEDBACK]]\n\nTambém dá pra usar [[BAND]], [[STATS]], [[CARDS]] e [[LIST]] — mesmo formato de colunas com \"|\"."
               - { label: "URL fixa (não editar manualmente)", name: url, widget: string, required: false, hint: "Usado internamente para os artigos que têm página própria. Deixe como está — não apague nem edite este campo." }
               - label: "Cabeçalho desta página"
                 name: headerMode
@@ -376,21 +371,6 @@ collections:
                   - { label: Mostrar, name: enabled, widget: boolean, default: true }
                   - { label: "Texto do link", name: label, widget: string, default: "Sobre" }
                   - { label: "Link (URL)", name: href, widget: string, default: "/sobre/" }
-
-  - name: premium_config
-    label: "Assinatura de artigos premium"
-    files:
-      - name: premium_config
-        label: "Configuração da assinatura"
-        file: content/premium-config.json
-        fields:
-          - { label: "Link de pagamento do Stripe (modo assinatura)", name: stripePaymentLink, widget: string, required: false, hint: "Cole aqui o Payment Link criado no Stripe em modo assinatura — não o de compra avulsa." }
-          - { label: "Texto do preço da assinatura (aparece no botão)", name: priceLabel, widget: string, default: "4,99€/mês" }
-          - { label: "Link de pagamento do Stripe (compra avulsa, um artigo só)", name: articlePaymentLink, widget: string, required: false, hint: "Cole aqui o Payment Link criado no Stripe em modo pagamento único (não assinatura). É o mesmo link pra qualquer artigo — o site identifica sozinho qual artigo foi comprado." }
-          - { label: "Texto do preço da compra avulsa (aparece no botão)", name: articlePriceLabel, widget: string, default: "10€ (só este artigo)" }
-          - { label: "Título do bloco de assinatura", name: paywallTitle, widget: string, default: "Continue lendo com a assinatura" }
-          - { label: "Texto do bloco de assinatura", name: paywallBody, widget: text, default: "Assine para ter acesso completo a este e a outros artigos premium." }
-          - { label: "Link do portal de gerenciamento (Stripe Customer Portal)", name: customerPortalUrl, widget: string, required: false, hint: "Link fixo para a assinante cancelar ou gerenciar a assinatura sozinha. Gere em Stripe → Settings → Billing → Customer portal." }
 
   - name: quiz_config
     label: "Questionário de vagas limitadas (/acesso-vip/)"
@@ -564,11 +544,6 @@ collections:
                 default: none
                 options: *position_options
               - { label: "Meio do artigo aparece depois de quantos blocos de conteúdo", name: midAfterBlock, widget: number, default: 4, hint: "Cada parágrafo, título ou bloco rico (STEPS, FAQ, CHECKLIST...) conta como 1 bloco." }
-              - label: "Antes do bloqueio de artigo premium"
-                name: beforePaywall
-                widget: select
-                default: none
-                options: *position_options
 
   - name: vitrine_artigo
     label: "Vitrine dentro dos artigos"
@@ -580,7 +555,7 @@ collections:
           - label: "Banner no meio do artigo"
             name: inArticleBanner
             widget: object
-            hint: "O bloco com foto que aparece encaixado no meio do texto do artigo. Só aparece em artigos que NÃO são premium."
+            hint: "O bloco com foto que aparece encaixado no meio do texto do artigo."
             fields:
               - { label: "Mostrar este banner", name: enabled, widget: boolean, default: true }
               - label: "Onde colocar"
@@ -602,7 +577,7 @@ collections:
           - label: "Banner no fim do artigo"
             name: endArticleBanner
             widget: object
-            hint: "A faixa de destaque que aparece depois do texto do artigo terminar (antes dos \"artigos relacionados\"). Aparece em todo artigo, inclusive premium."
+            hint: "A faixa de destaque que aparece depois do texto do artigo terminar (antes dos \"artigos relacionados\"). Aparece em todo artigo."
             fields:
               - { label: "Mostrar este banner", name: enabled, widget: boolean, default: true }
               - label: "Onde colocar"
