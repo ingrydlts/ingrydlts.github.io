@@ -125,7 +125,7 @@
 <script src="/assets/js/article-animations.js"></script>
 <script src="/assets/js/share-button.js"></script>
 <script type="module">
-  import { fetchJSON, imgSlotHTML, escapeHtml, qs, isPublished } from "/assets/js/render.js";
+  import { fetchJSON, imgSlotHTML, escapeHtml, qs, isPublished, IN_PREVIEW, previewDraftNoteHTML } from "/assets/js/render.js";
   import { markdownToBlocks } from "/assets/js/markdown.js";
   import { pickRelated, relatedSectionHTML, updatedLineHTML, notPublishedHTML } from "/assets/js/article-extras.js";
   import { getAdsConfig, slotHTML, insertAtIndices, activateNetworkAds, ownBannerHTML } from "/assets/js/ad-slots.js";
@@ -243,7 +243,7 @@
       root.innerHTML = '<p class="empty-state">Artigo não encontrado. <a href="/artigos/">Voltar ao blog</a>.</p>';
       return;
     }
-    if (!isPublished(post)) {
+    if (!isPublished(post) && !IN_PREVIEW) {
       root.innerHTML = notPublishedHTML();
       const metaRobots = document.querySelector('meta[name="robots"]');
       if (metaRobots) metaRobots.setAttribute("content", "noindex, nofollow");
@@ -452,6 +452,7 @@
 
     root.innerHTML =
       '<article>' +
+      (IN_PREVIEW && !isPublished(post) ? previewDraftNoteHTML(post) : "") +
       '<div class="article-header">' +
       '<span class="eyebrow" style="color:#604034;">' + escapeHtml(post.category) + "</span>" +
       "<h1>" + escapeHtml(post.title) + "</h1>" +

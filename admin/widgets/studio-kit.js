@@ -240,6 +240,7 @@
     schedule: function () {
       var self = this;
       clearTimeout(this.timer);
+      this.scheduled = true;
       this.timer = setTimeout(function () { self.load(false); }, 350);
     },
     frameUrl: function () {
@@ -252,6 +253,7 @@
       var backIdx = first ? this.state.front : 1 - this.state.front;
       var frames = this.frames || [];
       var back = frames[backIdx], front = frames[this.state.front];
+      this.scheduled = false;
       if (!back) return;
       var scrollY = 0;
       try { scrollY = front && front.contentWindow ? front.contentWindow.scrollY : 0; } catch (e) {}
@@ -260,24 +262,23 @@
         // espera o script da página desenhar (ele é assíncrono)
         setTimeout(function () {
           try { back.contentWindow.scrollTo(0, self.pendingFocus ? 0 : scrollY); } catch (e) {}
-          self.setState({ front: backIdx, loading: false });
-          if (self.pendingFocus) { self.post(self.pendingFocus); }
+          self.setState({ front: backIdx, loading: false }, function () {
+            if (self.pendingFocus && !self.scheduled) { self.post(self.pendingFocus); self.pendingFocus = null; }
+          });
         }, first ? 350 : 450);
       };
       back.src = this.frameUrl();
     },
     // Rola a página da prévia até um elemento e destaca (a página precisa
     // ouvir a mensagem "pd-focus" — ver o fim de assets/js/vitrine.js).
+    // Se a prévia vai trocar de página (ou está carregando), espera a nova.
     focus: function (selector) {
       this.pendingFocus = selector;
-      if (!this.state.loading) this.post(selector);
+      if (!this.state.loading && !this.scheduled) { this.post(selector); this.pendingFocus = null; }
     },
     post: function (selector) {
       var f = (this.frames || [])[this.state.front];
       try { f.contentWindow.postMessage({ type: "pd-focus", selector: selector }, window.location.origin); } catch (e) {}
-      var self = this;
-      clearTimeout(this.focusTimer);
-      this.focusTimer = setTimeout(function () { self.pendingFocus = null; }, 1200);
     },
     render: function () {
       var self = this;
@@ -469,7 +470,31 @@
       h("button", { type: "button", className: "pds-btn primary", onClick: onOpen }, label));
   }
 
+  // Cor da marca com atalhos (as cores que o site já usa) + qualquer outra.
+  var SWATCHES = [
+    ["#577328", "Musgo"], ["#604034", "Marrom"], ["#5F87AE", "Azul"], ["#8AACD2", "Azul claro"], ["#B8933F", "Dourado"], ["#2B2B2B", "Grafite"]
+  ];
+  css("pds-color-style", [
+    ".pds-colors{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}",
+    ".pds-sw{width:26px;height:26px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1px #E2DCD2;cursor:pointer;padding:0;}",
+    ".pds-sw[aria-pressed=true]{box-shadow:0 0 0 2px #2B2B2B;}",
+    ".pds-colors input[type=color]{width:30px;height:28px;border:1px solid #E2DCD2;border-radius:8px;background:#fff;padding:2px;cursor:pointer;}",
+    ".pds-colors code{font-size:11.5px;color:#6E6862;}"
+  ].join("\n"));
+  function colorField(label, value, onChange) {
+    var v = String(value || "").toUpperCase();
+    return h("div", { className: "pds-field" },
+      h("span", { className: "pds-label" }, label),
+      h("div", { className: "pds-colors", role: "group", "aria-label": label },
+        SWATCHES.map(function (s) {
+          return h("button", { key: s[0], type: "button", className: "pds-sw", title: s[1], "aria-label": s[1], "aria-pressed": String(v === s[0]), style: { background: s[0] }, onClick: function () { onChange(s[0]); } });
+        }),
+        h("input", { type: "color", "aria-label": "Outra cor", value: /^#[0-9A-F]{6}$/.test(v) ? v.toLowerCase() : "#577328", onChange: function (e) { onChange(e.target.value.toUpperCase()); } }),
+        h("code", null, v || "sem cor")));
+  }
+
   window.PDStudio = {
+    colorField: colorField,
     lockPage: lockPage,
     part: part,
     shell: shell,

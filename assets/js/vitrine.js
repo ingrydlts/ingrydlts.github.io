@@ -525,15 +525,5 @@ export function renderConfirm(root, p, opts) {
 }
 
 // ============================================================ prévia =====
-// Dentro da prévia do /admin: rola até a parte que está sendo editada.
-if (IS_PREVIEW) {
-  window.addEventListener("message", (e) => {
-    if (e.origin !== window.location.origin || !e.data || e.data.type !== "pd-focus") return;
-    const el = document.querySelector(e.data.selector);
-    if (!el) return;
-    el.scrollIntoView({ behavior: "smooth", block: "center" });
-    document.querySelectorAll(".vt-flash").forEach((x) => x.classList.remove("vt-flash"));
-    el.classList.add("vt-flash");
-    setTimeout(() => el.classList.remove("vt-flash"), 1600);
-  });
-}
+// Dentro da prévia do /admin, rolar até a parte que está sendo editada é
+// feito em assets/js/render.js (vale pra todas as páginas).

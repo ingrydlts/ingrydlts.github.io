@@ -1,7 +1,7 @@
 // Por Dentro — "atualizado em" + sugestões relacionadas no fim do artigo.
 // Compartilhado entre o template dinâmico (/artigos/post/) e as páginas
 // estáticas (/artigos/post/<slug>/) — um lugar só pra manter os dois iguais.
-import { fetchJSON, imgSlotHTML, escapeHtml, postHref, isPublished } from "/assets/js/render.js";
+import { fetchJSON, imgSlotHTML, escapeHtml, postHref, isPublished, IN_PREVIEW, previewDraftNoteHTML } from "/assets/js/render.js";
 import { renderFeedback } from "/assets/js/markdown.js";
 
 function formatDate(iso) {
@@ -76,7 +76,10 @@ export async function mountArticleExtras(opts) {
   // cravado no HTML — a única forma de deixá-las de fato invisíveis (não só
   // fora das listas) é trocar o conteúdo do <main> por este aviso enquanto
   // o "Status" do artigo em /admin não estiver em "Publicado no site".
-  if (!isPublished(post)) {
+  if (!isPublished(post) && IN_PREVIEW) {
+    const main = document.querySelector("main");
+    if (main) main.insertAdjacentHTML("afterbegin", '<div class="container" style="padding-top:18px;">' + previewDraftNoteHTML(post) + "</div>");
+  } else if (!isPublished(post)) {
     const main = document.querySelector("main");
     if (main) main.innerHTML = notPublishedHTML();
     const metaRobots = document.querySelector('meta[name="robots"]');

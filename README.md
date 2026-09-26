@@ -122,13 +122,31 @@ no site nem no formato dos arquivos; o "Publicar" continua sendo o do Decap.
   ordem dos links (vale pro topo, celular e rodapé), texto, endereço e liga/desliga.
 - **Cabeçalho e rodapé** (mesmo arquivo, coleção "Cabeçalho e rodapé (menu do site)"): tabela com as
   categorias e as páginas; toque numa página pra ver a prévia dela.
-- **Corpo do artigo** (`admin/widgets/article-composer.js`): o editor em blocos, que já existia.
+- **Artigos** (`admin/widgets/posts-board.js`, botão "Abrir quadro de artigos"): quadro com as
+  etapas do campo `status` — Ideia, Escrevendo, Revisão, Agendado e No ar. Arraste o cartão entre as
+  colunas (ou toque nele e escolha a etapa); ir pro ar sem data usa a de hoje, e Agendado pede a data.
+  O cartão abre título, resumo, categoria, capa, datas e endereço, e avisa o que falta (capa, FAQ,
+  Feedback…). A prévia mostra o blog ou o artigo — inclusive rascunho, com uma faixa "ainda não está
+  no ar" que só aparece na prévia. "Editar o texto" abre o editor visual daquele artigo. A lista de
+  sempre continua embaixo do botão, com todos os campos.
+- **Corpo do artigo** (`admin/widgets/article-composer.js`): o editor em blocos, agora com
+  "Prévia no site" — a página real do artigo com o texto de agora, no celular, tablet ou computador.
+- **Banners dentro do artigo** (`admin/widgets/article-ads-studio.js`, em "Anúncios nos artigos" e em
+  "Vitrine dentro dos artigos"): um mapa do artigo (topo, blocos, meio automático, fim). Arraste o
+  banner próprio, o anúncio de rede, o banner com foto ou a faixa de fechamento pro lugar em que
+  aparecem em todos os artigos; a prévia é um artigo de verdade. Cada coleção grava o seu arquivo —
+  as peças da outra aparecem com cadeado, só pra você ver o artigo inteiro.
+- **Banners e destaques** (`admin/widgets/banners-studio.js`): foto do topo da home (celular e
+  computador), o banner "vitrine → blog" de cada página de produtos (com a lista de artigos pra
+  escolher e aviso quando o artigo não existe ou não está no ar) e o banner lateral do blog.
 
 Como funciona por baixo (pra criar o próximo estúdio): `admin/widgets/studio-kit.js` tem a lista
 arrastável (SortableJS, em `admin/vendor/`), a prévia e o acesso à biblioteca de imagens. A prévia
 abre a página do site num `<iframe name="pd-preview">`; `fetchJSON` em `assets/js/render.js` lê os
 dados em edição de `window.parent.PDPreview` em vez do arquivo publicado, e `assets/js/consent.js`
-não mostra banner nem mede nada ali dentro. Um estúdio novo é um widget do Decap registrado com
+não mostra banner nem mede nada ali dentro. `render.js` também ouve o pedido `pd-focus` do painel
+(rola a prévia até a parte que você está editando) e exporta `IN_PREVIEW`, usado pra mostrar artigo
+em rascunho só dentro da prévia. Um estúdio novo é um widget do Decap registrado com
 `CMS.registerWidget`, carregado em `admin/index.html` depois do kit, e ligado ao campo em
 `admin/config.yml` (`widget: nome-do-estudio`). Quando o arquivo tem mais de um campo no topo (ex.
 `links.json`: hero, bot, sections), o estúdio fica num campo e os outros usam `widget: studio-part`,

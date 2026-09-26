@@ -17,6 +17,42 @@ function previewData(path) {
   }
 }
 
+// Dentro da prévia do /admin (ver acima)?
+export const IN_PREVIEW = window.name === "pd-preview";
+
+// Na prévia, o painel pede pra rolar até a parte que está sendo editada
+// ({type:"pd-focus", selector}) — a página rola até ela e dá um destaque.
+if (IN_PREVIEW) {
+  window.addEventListener("message", (e) => {
+    if (e.origin !== window.location.origin || !e.data || e.data.type !== "pd-focus") return;
+    const selector = e.data.selector;
+    // A página desenha depois de buscar os dados — tenta por um tempinho.
+    let tries = 0;
+    (function attempt() {
+      let el = null;
+      try { el = document.querySelector(selector); } catch (err) { return; }
+      if (!el || !el.offsetHeight) {
+        if (++tries < 10) setTimeout(attempt, 200);
+        return;
+      }
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      const prev = el.style.outline, prevOff = el.style.outlineOffset;
+      el.style.outline = "2.5px solid #604034";
+      el.style.outlineOffset = "6px";
+      setTimeout(() => { el.style.outline = prev; el.style.outlineOffset = prevOff; }, 1600);
+    })();
+  });
+}
+
+// Faixa que só aparece na prévia do /admin, em artigo que ainda não está no
+// ar — assim dá pra ver o artigo antes de publicar, sabendo que a leitora
+// ainda não vê.
+export function previewDraftNoteHTML(post) {
+  const labels = { ideia: "Ideia", escrevendo: "Escrevendo", revisao: "Revisão", agendado: "Agendado" };
+  const st = labels[post && post.status] || "Rascunho";
+  return '<p style="margin:0 0 18px;padding:9px 14px;border-radius:10px;background:#F6ECD6;color:#8A5F12;font-size:13px;font-weight:600;">Prévia · ainda não está no ar (' + escapeHtml(st) + ")</p>";
+}
+
 export async function fetchJSON(path) {
   const override = previewData(path);
   if (override !== undefined) return override;

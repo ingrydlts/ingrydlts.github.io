@@ -119,9 +119,13 @@ collections:
         label: "Lista de artigos"
         file: content/posts.json
         fields:
+          # Quadro de artigos (admin/widgets/posts-board.js): o botão "Abrir
+          # quadro de artigos" mostra as etapas (status) em colunas, com
+          # arrastar e soltar e a prévia real do blog/artigo. Embaixo dele fica
+          # esta mesma lista, com todos os campos de sempre.
           - label: Artigos
             name: items
-            widget: list
+            widget: posts-board
             summary: "{{title}} ({{category}})"
             fields:
               - label: "🔴 Status"
@@ -137,8 +141,8 @@ collections:
                 hint: "Só \"Publicado no site\" aparece pra leitora — e \"Agendado\" entra no ar sozinho quando chega a \"Data de publicação\" (mais abaixo). Nas outras etapas o artigo fica INVISÍVEL: fora da home, do blog, dos filtros de categoria, do \"Veja também\" e dos banners que puxam artigo; quem abrir o link direto cai num aviso de \"ainda não publicado\"."
               - { label: "Slug (parte da URL, sem espaço/acento)", name: slug, widget: string }
               - { label: Título, name: title, widget: string }
-              - { label: "Resumo (aparece no card)", name: excerpt, widget: string }
-              - { label: "Categoria (usada nos filtros)", name: category, widget: string }
+              - { label: "Resumo (aparece no card)", name: excerpt, widget: string, required: false }
+              - { label: "Categoria (usada nos filtros)", name: category, widget: string, required: false }
               - { label: "Foto de capa", name: image, widget: image, required: false, hint: "Tamanho ideal: 1600×900px (proporção 16:9), foto na horizontal e bem ampla. A mesma foto aparece cortada no card do blog (mais quadrada) e larga no topo do artigo — por isso precisa ser bem panorâmica." }
               - { label: "Mostrar a foto de capa dentro do artigo", name: showCoverInArticle, widget: boolean, default: true, required: false, hint: "Desligue pra pular a foto grande no topo do artigo (ex. artigos sem uma boa foto, ou que você quer que comecem direto pelo texto). A foto continua aparecendo normalmente no card da lista de artigos — isso só afeta o topo do artigo em si." }
               - label: "Galeria de fotos"
@@ -162,12 +166,13 @@ collections:
                   - { label: Foto, name: image, widget: image, hint: "Tamanho ideal: 1200×900px (proporção 4:3), foto na horizontal." }
                   - { label: "Legenda (opcional)", name: caption, widget: string, required: false }
               - { label: "Mostrar \"← Voltar aos artigos\"", name: showBackLink, widget: boolean, default: true, required: false, hint: "Desligue pra tirar o link \"← Voltar aos artigos\" do topo desta página — útil junto com \"Cabeçalho desta página\" desativado, pra transformar o artigo numa landing isolada, sem nenhum caminho de volta pro blog." }
-              - { label: "Data de publicação", name: date, widget: datetime, format: "YYYY-MM-DD", date_format: "YYYY-MM-DD", time_format: false }
+              - { label: "Data de publicação", name: date, widget: datetime, format: "YYYY-MM-DD", date_format: "YYYY-MM-DD", time_format: false, required: false, hint: "Ideias podem ficar sem data. Ao ir pro ar pelo quadro sem data, entra a de hoje." }
               - { label: "Última atualização", name: updatedDate, widget: datetime, format: "YYYY-MM-DD", date_format: "YYYY-MM-DD", time_format: false, required: false, hint: "Aparece no topo do artigo como \"Atualizado em\". Mude essa data sempre que revisar ou corrigir o conteúdo — é o que mostra pra leitora que a informação ainda é confiável." }
               - { label: "Tempo de leitura (min)", name: readMinutes, widget: number, required: false }
               - label: "Corpo do artigo"
                 name: body
                 widget: article-composer
+                required: false
                 hint: "Clique em \"Editar artigo visualmente\" pra abrir o editor em blocos, no MESMO layout que a leitora vê no site (funciona bem no celular). Cada parágrafo, título, imagem, banner ou link é um bloco independente: toque num bloco pra editar o conteúdo dele, arraste pela alcinha \"⠿\" (com o dedo ou o mouse) ou use as setas ▲▼ pra reordenar, e o \"🗑\" apaga. O botão \"+\" flutuante (canto inferior direito) abre a lista de blocos pra adicionar — Parágrafo, Título, Lista, FAQ, Checklist, Recursos, Passo a passo, Enquete, Faixa de destaque, Números, Cartões, Banner de vitrine, Link afiliado e Galeria. O novo bloco entra logo depois do bloco em que você tocou por último (ou no fim, se nada estiver selecionado).\n\n🎯 \"Banner de vitrine\": adicione pelo \"+\" — sem nenhum bloco de banner no artigo, ele segue o padrão configurado em \"Vitrine dentro dos artigos\"; adicionar \"Banner de vitrine\" força aparecer aqui (arraste pra escolher a posição, toque nele pra escolher QUAL produto aparece — lista tudo que já está cadastrado em \"Produtos digitais\", \"Produtos de estudo\" e \"Produtos de compras\", puxando título, imagem e link automaticamente, ou deixe em \"Genérico\" pra usar o texto de \"Vitrine dentro dos artigos\"); adicionar \"Sem banner aqui\" força NÃO aparecer neste artigo, mesmo com o padrão do site ligado. Apagar o bloco volta ao padrão do site.\n\n🔗 \"Card de afiliado\" (no \"+\"): adicione quantos precisar — cada um é um bloco de link independente (texto do botão, URL de afiliado e imagem opcional), arrastável pra qualquer posição do artigo. Sem limite de quantidade.\n\n⚠️ TODO artigo precisa terminar com um bloco FAQ (nunca solto no texto) e um bloco de Feedback — é a regra de captação de audiência do site (ver README.md e GUIA-DE-IMPLEMENTACAO.md). Use Checklist quando o tema tiver um critério de elegibilidade ou passo a passo verificável, e Recursos pra toda fonte oficial citada — cada pergunta aberta e cada fonte clicada vira dado em /admin/dashboard.\n\nBotão \"Ver texto bruto\", no topo do editor visual, mostra o markdown puro — útil pra colar um bloco rico pronto (cole exatamente assim, cada linha com \"|\" separando as colunas):\n[[STEPS]]\nTítulo do passo | Descrição\n[[/STEPS]]\n\n[[FAQ]] (obrigatório)\nPergunta | Resposta\n[[/FAQ]]\n\n[[RESOURCES]]\nTítulo | Descrição | Texto do link | URL\n[[/RESOURCES]]\n\n[[CHECKLIST]]\nTítulo da checklist\nItem 1\nItem 2\n[[/CHECKLIST]]\n\n[[FEEDBACK]] (obrigatório)\nPergunta (opcional)\n[[/FEEDBACK]]\n\nTambém dá pra usar [[BAND]], [[STATS]], [[CARDS]] e [[LIST]] — mesmo formato de colunas com \"|\"."
               - { label: "URL fixa (não editar manualmente)", name: url, widget: string, required: false, hint: "Usado internamente para os artigos que têm página própria. Deixe como está — não apague nem edite este campo." }
               - label: "Cabeçalho desta página"
@@ -350,44 +355,21 @@ collections:
         label: "Posições e anúncios"
         file: content/ads-config.json
         fields:
-          - { label: "Ligar/desligar todos os anúncios", name: enabled, widget: boolean, default: true, hint: "Desligado = nenhum anúncio aparece em lugar nenhum, mesmo que as posições abaixo estejam preenchidas. É o interruptor de emergência — útil pra pausar tudo rápido, sem mexer em código." }
-          - label: "Anúncio de rede (ex. Google AdSense)"
-            name: network
-            widget: object
-            hint: "Cole aqui exatamente o código que a rede de anúncios te der."
-            fields:
-              - { label: "Código do <head> (carrega a rede — aparece 1x por página, só se algum anúncio de rede estiver ativo)", name: headSnippet, widget: text, required: false }
-              - { label: "Código do anúncio (o bloco em si, repete em cada posição marcada como \"Anúncio de rede\" abaixo)", name: adSnippet, widget: text, required: false }
-          - label: "Banner próprio (promove seus produtos)"
-            name: ownBanner
-            widget: object
-            hint: "Aparece nas posições marcadas como \"Banner próprio\" abaixo — o mesmo banner em todas elas."
-            fields:
-              - { label: Selo, name: kicker, widget: string, required: false }
-              - { label: Título, name: title, widget: string, required: false }
-              - { label: Texto, name: body, widget: text, required: false }
-              - { label: "Cor (hex)", name: color, widget: string, required: false }
-              - { label: "Texto do botão", name: ctaText, widget: string, required: false }
-              - { label: "Link do botão", name: ctaHref, widget: string, required: false }
-          - label: Posições
+          # Mapa do artigo (admin/widgets/article-ads-studio.js): arraste o
+          # "Banner próprio" ou o "Anúncio de rede" pro topo ou pra depois de
+          # um bloco, com a prévia de um artigo real. Grava os mesmos campos
+          # de sempre: enabled, network{headSnippet, adSnippet},
+          # ownBanner{kicker, title, body, color, ctaText, ctaHref},
+          # positions{top, mid ("none"/"network"/"own"), midAfterBlock}.
+          # Os campos do topo que não são o mapa usam "studio-part": o mapa
+          # edita todos juntos.
+          - label: "Mapa do artigo"
             name: positions
-            widget: object
-            hint: "Escolha o que aparece em cada posição do artigo — sem disputa automática entre rede e banner próprio, é você quem decide cada uma."
-            fields:
-              - label: "Topo do artigo (antes do texto começar)"
-                name: top
-                widget: select
-                default: none
-                options: &position_options
-                  - { label: Nenhum, value: "none" }
-                  - { label: "Anúncio de rede", value: "network" }
-                  - { label: "Banner próprio", value: "own" }
-              - label: "Meio do artigo"
-                name: mid
-                widget: select
-                default: none
-                options: *position_options
-              - { label: "Meio do artigo aparece depois de quantos blocos de conteúdo", name: midAfterBlock, widget: number, default: 4, hint: "Cada parágrafo, título ou bloco rico (STEPS, FAQ, CHECKLIST...) conta como 1 bloco." }
+            widget: article-ads-studio
+            studio: ads
+          - { label: "Ligar/desligar todos os anúncios", name: enabled, widget: studio-part, hint: "Fica no topo do mapa do artigo. Desligado = nenhum anúncio aparece — o botão de emergência." }
+          - { label: "Anúncio de rede (ex. Google AdSense)", name: network, widget: studio-part, hint: "Os códigos da rede ficam no mapa do artigo, no cartão \"Anúncio de rede\"." }
+          - { label: "Banner próprio (promove seus produtos)", name: ownBanner, widget: studio-part, hint: "Texto, botão e cor ficam no mapa do artigo, no cartão \"Banner próprio\"." }
 
   - name: vitrine_artigo
     label: "Vitrine dentro dos artigos"
@@ -396,47 +378,16 @@ collections:
         label: "Publicidade própria nos artigos do blog"
         file: content/vitrine-artigo.json
         fields:
-          - label: "Banner no meio do artigo"
+          # Mesmo mapa do artigo de "Anúncios nos artigos"
+          # (admin/widgets/article-ads-studio.js), com os dois banners da
+          # vitrine. Grava os campos de sempre em cada banner: enabled,
+          # position ("none"/"meio"/"bloco"/"fim"), afterBlock, kicker, title,
+          # image (só o do meio), body (só o do fim), color, ctaText, ctaHref.
+          - label: "Mapa do artigo"
             name: inArticleBanner
-            widget: object
-            hint: "O bloco com foto que aparece encaixado no meio do texto do artigo."
-            fields:
-              - { label: "Mostrar este banner", name: enabled, widget: boolean, default: true }
-              - label: "Onde colocar"
-                name: position
-                widget: select
-                default: "meio"
-                options: &vitrine_position_options
-                  - { label: "Não mostrar em nenhum artigo", value: "none" }
-                  - { label: "Meio do artigo (calculado automaticamente)", value: "meio" }
-                  - { label: "Depois de um bloco específico", value: "bloco" }
-                hint: "\"Meio do artigo\" se ajusta sozinho ao tamanho de cada artigo. Escolha \"Depois de um bloco específico\" pra fixar sempre no mesmo lugar (ex. sempre depois do 4º bloco), não importa o tamanho do artigo."
-              - { label: "Se for \"Depois de um bloco específico\": depois de qual bloco (1, 2, 3...)", name: afterBlock, widget: number, default: 4, min: 1, hint: "Cada parágrafo, título ou bloco rico (STEPS, FAQ, CHECKLIST...) conta como 1 bloco." }
-              - { label: Selo, name: kicker, widget: string }
-              - { label: Título, name: title, widget: string }
-              - { label: Foto, name: image, widget: image, required: false, hint: "Tamanho ideal: 1200×675px (proporção 16:9), foto na horizontal e ampla." }
-              - { label: "Cor (barra e botão)", name: color, widget: color, hint: "Escolha a cor visualmente — o botão do banner usa essa cor." }
-              - { label: "Texto do botão", name: ctaText, widget: string }
-              - { label: "Link do botão", name: ctaHref, widget: string }
-          - label: "Banner no fim do artigo"
-            name: endArticleBanner
-            widget: object
-            hint: "A faixa de destaque que aparece depois do texto do artigo terminar (antes dos \"artigos relacionados\"). Aparece em todo artigo."
-            fields:
-              - { label: "Mostrar este banner", name: enabled, widget: boolean, default: true }
-              - label: "Onde colocar"
-                name: position
-                widget: select
-                default: "fim"
-                options: *vitrine_position_options
-                hint: "Normalmente fica em \"Fim do artigo\" — é o formato de faixa larga, pensado pra fechar o artigo."
-              - { label: "Se for \"Depois de um bloco específico\": depois de qual bloco (1, 2, 3...)", name: afterBlock, widget: number, default: 4, min: 1, hint: "Cada parágrafo, título ou bloco rico (STEPS, FAQ, CHECKLIST...) conta como 1 bloco." }
-              - { label: Selo, name: kicker, widget: string }
-              - { label: Título, name: title, widget: string }
-              - { label: Texto, name: body, widget: text }
-              - { label: "Cor (barra e botão)", name: color, widget: color, hint: "Escolha a cor visualmente — o botão do banner usa essa cor." }
-              - { label: "Texto do botão", name: ctaText, widget: string }
-              - { label: "Link do botão", name: ctaHref, widget: string }
+            widget: article-ads-studio
+            studio: vitrine
+          - { label: "Banner no fim do artigo", name: endArticleBanner, widget: studio-part, hint: "Fica no mapa do artigo, no cartão \"Faixa de fechamento\"." }
 
   - name: banners
     label: "Banners e destaques"
@@ -445,58 +396,17 @@ collections:
         label: "Banners do site"
         file: content/banners.json
         fields:
-          - label: Home
+          # Estúdio de banners (admin/widgets/banners-studio.js): foto do topo
+          # da home, o banner "vitrine → blog" de cada página de produtos e o
+          # banner lateral do blog, cada um com a prévia da página em que
+          # aparece. Grava os mesmos campos de sempre:
+          #   home{heroImage, heroImageDesktop, heroImageAlt}
+          #   categoryBanners{produtos-digitais|produtos-de-estudo|
+          #     produtos-de-compras: {enabled, kicker, title, image, color,
+          #     ctaText, postSlug}}
+          #   blogSidebar{kicker, title, body, image, color, ctaText, ctaHref}
+          - label: "Banners e destaques"
             name: home
-            widget: object
-            fields:
-              - { label: "Foto do hero (mobile)", name: heroImage, widget: image, required: false, hint: "Foto na vertical (proporção 2:3). Usada em telas menores que 900px." }
-              - { label: "Foto do hero (desktop)", name: heroImageDesktop, widget: image, required: false, hint: "Foto na horizontal (proporção 3:2). Usada em telas a partir de 900px." }
-              - { label: "Texto alternativo da foto", name: heroImageAlt, widget: string, required: false }
-          - label: "Banners vitrine → blog (um por categoria)"
-            name: categoryBanners
-            widget: object
-            fields:
-              - label: "Produtos digitais"
-                name: produtos-digitais
-                widget: object
-                fields:
-                  - { label: "Mostrar este banner?", name: enabled, widget: boolean, default: true, hint: "Desative pra esconder o bloco na página sem apagar o conteúdo." }
-                  - { label: Selo, name: kicker, widget: string }
-                  - { label: Título, name: title, widget: string }
-                  - { label: Foto, name: image, widget: image, required: false, hint: "Tamanho ideal: 1200×675px (proporção 16:9), foto na horizontal e ampla." }
-                  - { label: "Cor (hex)", name: color, widget: string }
-                  - { label: "Texto do botão", name: ctaText, widget: string }
-                  - { label: "Slug do artigo pra onde o botão leva", name: postSlug, widget: string }
-              - label: "Produtos de estudo"
-                name: produtos-de-estudo
-                widget: object
-                fields:
-                  - { label: "Mostrar este banner?", name: enabled, widget: boolean, default: true, hint: "Desative pra esconder o bloco na página sem apagar o conteúdo." }
-                  - { label: Selo, name: kicker, widget: string }
-                  - { label: Título, name: title, widget: string }
-                  - { label: Foto, name: image, widget: image, required: false, hint: "Tamanho ideal: 1200×675px (proporção 16:9), foto na horizontal e ampla." }
-                  - { label: "Cor (hex)", name: color, widget: string }
-                  - { label: "Texto do botão", name: ctaText, widget: string }
-                  - { label: "Slug do artigo pra onde o botão leva", name: postSlug, widget: string }
-              - label: "Produtos de compras"
-                name: produtos-de-compras
-                widget: object
-                fields:
-                  - { label: "Mostrar este banner?", name: enabled, widget: boolean, default: true, hint: "Desative pra esconder o bloco na página sem apagar o conteúdo." }
-                  - { label: Selo, name: kicker, widget: string }
-                  - { label: Título, name: title, widget: string }
-                  - { label: Foto, name: image, widget: image, required: false, hint: "Tamanho ideal: 1200×675px (proporção 16:9), foto na horizontal e ampla." }
-                  - { label: "Cor (hex)", name: color, widget: string }
-                  - { label: "Texto do botão", name: ctaText, widget: string }
-                  - { label: "Slug do artigo pra onde o botão leva", name: postSlug, widget: string }
-          - label: "Banner lateral do blog (promove um produto)"
-            name: blogSidebar
-            widget: object
-            fields:
-              - { label: Selo, name: kicker, widget: string }
-              - { label: Título, name: title, widget: string }
-              - { label: Texto, name: body, widget: text }
-              - { label: Foto, name: image, widget: image, required: false, hint: "Tamanho ideal: 1200×900px (proporção 4:3), foto na horizontal." }
-              - { label: "Cor (hex)", name: color, widget: string }
-              - { label: "Texto do botão", name: ctaText, widget: string }
-              - { label: "Link do botão", name: ctaHref, widget: string }
+            widget: banners-studio
+          - { label: "Banners vitrine → blog (um por categoria)", name: categoryBanners, widget: studio-part, hint: "Ficam no estúdio de banners, um cartão por página de produtos." }
+          - { label: "Banner lateral do blog", name: blogSidebar, widget: studio-part, hint: "Fica no estúdio de banners, no cartão \"Banner lateral do blog\"." }

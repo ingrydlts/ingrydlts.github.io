@@ -423,7 +423,16 @@
       ".pdac-sheet-item:active{background:#F0EAE3;}",
       ".pdac-sheet-item .emoji{font-size:18px;}",
       ".pdac-sheet-item .label{font-size:12.5px;font-weight:600;color:#3A3632;}",
-      ".pdac-raw-wrap{flex:1 1 auto;display:flex;min-height:0;}"
+      ".pdac-raw-wrap{flex:1 1 auto;display:flex;min-height:0;}",
+      // prévia no site, ao lado do editor (no celular, no lugar dele)
+      ".pdac-main{flex:1 1 auto;min-height:0;display:flex;}",
+      ".pdac-main > .pdac-canvas-scroll,.pdac-main > .pdac-raw-wrap{flex:1 1 auto;min-width:0;}",
+      ".pdac-prev{width:46%;min-width:380px;border-left:1px solid rgba(43,43,43,.14);display:flex;flex-direction:column;min-height:0;background:#FBFAF7;}",
+      ".pdac-prev-note{margin:0;padding:8px 12px;font-size:12px;color:#8A5F12;background:#F6ECD6;}",
+      ".pdac-prev-empty{margin:auto;padding:24px;text-align:center;color:#8A7A6C;font-size:13px;}",
+      ".pdac-icon-btn[aria-pressed=true]{background:#2B2B2B;border-color:#2B2B2B;color:#fff;}",
+      ".pdac-overlay.with-prev .pdac-fab{right:calc(46% + 18px);}",
+      "@media (max-width:1100px){.pdac-main.has-prev > .pdac-canvas-scroll,.pdac-main.has-prev > .pdac-raw-wrap{display:none;}.pdac-prev{width:100%;min-width:0;border-left:0;}.pdac-overlay.with-prev .pdac-fab{display:none;}}"
     ].join("\n");
     document.head.appendChild(style);
   }
@@ -535,11 +544,58 @@
       var text = serializeBlocks(newBlocks);
       this.setState({ blocks: newBlocks, lastSerialized: text });
       this.props.onChange(text);
+      if (this.state.preview) this.pushPreview(text);
+    },
+
+    // --- prévia no site (admin/widgets/studio-kit.js) -------------------------
+    // Este editor é o campo "body" de UM artigo da lista de content/posts.json.
+    // Pra prévia, acha qual artigo é (pelo texto que ele tinha ao abrir) e
+    // entrega a lista inteira com o texto novo pra página real do artigo.
+    findPost: function () {
+      var entry = this.props.entry;
+      var data = entry && entry.get && entry.get("data");
+      var raw = data && data.get && data.get("items");
+      var items = raw && typeof raw.toJS === "function" ? raw.toJS() : [];
+      return items;
+    },
+    pushPreview: function (text) {
+      if (!window.PDPreview || this._postIdx == null) return;
+      var items = this.findPost();
+      if (!items[this._postIdx]) return;
+      items[this._postIdx].body = text;
+      window.PDPreview.set("/content/posts.json", { items: items });
+      this.setState({ previewVersion: (this.state.previewVersion || 0) + 1 });
+    },
+    togglePreview: function () {
+      var on = !this.state.preview;
+      this.setState({ preview: on });
+      if (on) this.pushPreview(this.state.lastSerialized || "");
+    },
+    renderPreviewPane: function () {
+      var self = this;
+      var K = window.PDStudio;
+      var post = this._postIdx != null ? this.findPost()[this._postIdx] : null;
+      if (!K || !post || !post.slug) {
+        return h("div", { className: "pdac-prev" }, h("p", { className: "pdac-prev-empty" }, "Dê um endereço (slug) a este artigo pra ver a prévia."));
+      }
+      var url = post.url || "/artigos/post/?slug=" + encodeURIComponent(post.slug);
+      return h("div", { className: "pdac-prev" },
+        post.url ? h("p", { className: "pdac-prev-note" }, "Este artigo tem página própria (" + post.url + "): no site aparece o texto do HTML fixo, não o daqui.") : null,
+        h(K.Preview, {
+          url: url, device: this.state.previewDevice || "mobile", version: this.state.previewVersion || 0,
+          onDevice: function (d) { self.setState({ previewDevice: d }); }
+        }));
     },
 
     open: function () {
       var self = this;
+      var current = this.props.value || "";
+      var items = this.findPost();
+      var idx = -1;
+      for (var i = 0; i < items.length; i++) { if ((items[i].body || "") === current) { idx = i; break; } }
+      this._postIdx = idx === -1 ? null : idx;
       this.setState({ open: true, selectedId: null, sheetOpen: false });
+      if (this.state.preview) setTimeout(function () { self.pushPreview(current); }, 0);
       if (!this.state.catalogs) {
         fetchCatalogs().then(function (catalogs) { self.setState({ catalogs: catalogs }); });
       }
@@ -550,6 +606,7 @@
         this.updateValue(parseBody(this.state.rawDraft));
       }
       this.setState({ open: false, mode: "visual", selectedId: null, sheetOpen: false });
+      if (window.PDPreview) window.PDPreview.clear("/content/posts.json");
     },
 
     toggleMode: function () {
@@ -719,12 +776,15 @@
 
     renderOverlay: function () {
       var self = this;
+      var withPreview = !!(this.state.preview && window.PDStudio);
       return h(
         "div",
-        { className: "pdac-overlay" },
+        { className: "pdac-overlay" + (withPreview ? " with-prev" : "") },
         this.renderHeader(),
         this.renderSummary(),
-        this.state.mode === "raw" ? this.renderRawEditor() : this.renderCanvas(),
+        h("div", { className: "pdac-main" + (withPreview ? " has-prev" : "") },
+          this.state.mode === "raw" ? this.renderRawEditor() : this.renderCanvas(),
+          withPreview ? this.renderPreviewPane() : null),
         this.state.mode === "visual"
           ? h("button", { type: "button", className: "pdac-fab", "aria-label": "Adicionar bloco", onClick: function () { self.setState({ sheetOpen: true }); } }, "+")
           : null,
@@ -740,6 +800,7 @@
         h(
           "div",
           { className: "pdac-header-actions" },
+          window.PDStudio ? h("button", { type: "button", className: "pdac-icon-btn", "aria-pressed": String(!!this.state.preview), onClick: this.togglePreview, title: "Mostra a página real do artigo com o texto de agora, no celular, tablet ou computador" }, this.state.preview ? "Fechar prévia" : "Prévia no site") : null,
           h("button", { type: "button", className: "pdac-icon-btn", onClick: this.toggleMode }, this.state.mode === "visual" ? "Ver texto bruto" : "Ver visual"),
           h("button", { type: "button", className: "pdac-icon-btn primary", onClick: this.close }, "Fechar")
         )
