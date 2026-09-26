@@ -47,8 +47,8 @@
       "guaranteeDays": 0
     },
     {
-      "active": true,
       "launchNote": "Preço de lançamento — válido para os primeiros 30 compradores",
+      "active": true,
       "summary": "A planilha financeira que lança seus gastos fixos sozinha, todo mês, sem você precisar copiar e colar nada.",
       "stripeLink": "https://buy.stripe.com/7sY28rcgB4sxazj8u5aR203",
       "bundleWith": [],
@@ -117,8 +117,8 @@
       "guaranteeDays": 0
     },
     {
-      "active": false,
       "launchNote": "Preço de teste — válido para as próximas 10 compradoras",
+      "active": false,
       "summary": "A planilha financeira que lança seus gastos fixos sozinha, todo mês, sem você precisar copiar e colar nada.",
       "stripeLink": "https://buy.stripe.com/6oUaEXfsN3otazjdOpaR204",
       "bundleWith": [],
