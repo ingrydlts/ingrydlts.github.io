@@ -41,7 +41,7 @@ export function relatedSectionHTML(items) {
 }
 
 // Mensagem que substitui o conteúdo do artigo quando ele ainda não foi
-// publicado (campo "Publicado no site" desligado em /admin) — usada tanto
+// publicado (campo "Status" do artigo em /admin diferente de "Publicado no site") — usada tanto
 // pelo template dinâmico (/artigos/post/?slug=) quanto pelas páginas
 // estáticas, via mountArticleExtras.
 export function notPublishedHTML() {
@@ -75,7 +75,7 @@ export async function mountArticleExtras(opts) {
   // Páginas estáticas (/artigos/post/<slug>/) já têm o corpo do artigo
   // cravado no HTML — a única forma de deixá-las de fato invisíveis (não só
   // fora das listas) é trocar o conteúdo do <main> por este aviso enquanto
-  // "Publicado no site" estiver desligado em /admin.
+  // o "Status" do artigo em /admin não estiver em "Publicado no site".
   if (!isPublished(post)) {
     const main = document.querySelector("main");
     if (main) main.innerHTML = notPublishedHTML();

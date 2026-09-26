@@ -58,12 +58,29 @@ export function categoryHref(category) {
   return "/artigos/categoria/?cat=" + encodeURIComponent(categorySlug(category));
 }
 
-// Um artigo só fica visível no site depois que "Publicado no site" é ligado
-// em /admin — até lá, fica pronto mas invisível: fora de qualquer lista
-// (home, blog, "Veja também", banners de categoria) e fora do acesso direto
-// (ver o gate correspondente em article-extras.js e artigos/post/index.html).
+// Etapa do artigo, escolhida em /admin no campo "Status" (content/posts.json):
+//   ideia → escrevendo → revisao → agendado → publicado
+// Só "publicado" aparece no site — e "agendado" aparece sozinho quando a
+// "Data de publicação" chega. Qualquer outra etapa deixa o artigo invisível:
+// fora de qualquer lista (home, blog, "Veja também", banners de categoria) e
+// fora do acesso direto (ver o gate em article-extras.js e artigos/post/).
+// Artigos antigos, sem "status", continuam usando o booleano "published".
+export const POST_STATUSES = ["ideia", "escrevendo", "revisao", "agendado", "publicado"];
+
+function todayISO() {
+  const d = new Date();
+  const pad = (n) => String(n).padStart(2, "0");
+  return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate());
+}
+
 export function isPublished(post) {
-  return !!(post && post.published === true);
+  if (!post) return false;
+  if (typeof post.status === "string" && post.status) {
+    if (post.status === "publicado") return true;
+    if (post.status === "agendado") return !!post.date && String(post.date).slice(0, 10) <= todayISO();
+    return false;
+  }
+  return post.published === true;
 }
 
 export function publishedItems(items) {

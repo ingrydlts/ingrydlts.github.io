@@ -125,7 +125,7 @@
 <script src="/assets/js/article-animations.js"></script>
 <script src="/assets/js/share-button.js"></script>
 <script type="module">
-  import { fetchJSON, imgSlotHTML, escapeHtml, qs } from "/assets/js/render.js";
+  import { fetchJSON, imgSlotHTML, escapeHtml, qs, isPublished } from "/assets/js/render.js";
   import { markdownToBlocks } from "/assets/js/markdown.js";
   import { resolvePremiumSlot } from "/assets/js/premium-gate.js";
   import { pickRelated, relatedSectionHTML, updatedLineHTML, notPublishedHTML } from "/assets/js/article-extras.js";
@@ -244,7 +244,7 @@
       root.innerHTML = '<p class="empty-state">Artigo não encontrado. <a href="/artigos/">Voltar ao blog</a>.</p>';
       return;
     }
-    if (post.published !== true) {
+    if (!isPublished(post)) {
       root.innerHTML = notPublishedHTML();
       const metaRobots = document.querySelector('meta[name="robots"]');
       if (metaRobots) metaRobots.setAttribute("content", "noindex, nofollow");
