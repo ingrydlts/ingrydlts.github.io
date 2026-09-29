@@ -191,6 +191,12 @@ do Stripe, não existe checkout único pra cobrar o combo de uma vez (isso é o 
 produtos já listado na Fase 11 do `GUIA-DE-IMPLEMENTACAO.md`). Enquanto isso não existir, quem quiser
 o combo compra os produtos separadamente pelos links individuais.
 
+## CRM (`/admin/crm/`)
+
+Painel interno de contatos, funil, perguntas únicas e reimpacto, ligado ao Supabase do app (login por link no
+e-mail; só quem está na tabela `admins` entra). Desenho, etapas e o que falta: [`admin/crm/PLANO.md`](admin/crm/PLANO.md).
+Banco: [`admin/crm/db/crm-fase2.sql`](admin/crm/db/crm-fase2.sql) (roda depois da fase 1 do repositório POR-DENTRO-APP).
+
 ## Questionário de vagas limitadas (`/acesso-vip/`)
 
 Página isolada (sem menu, pensada pra tráfego de link direto — ex. um botão numa automação do
