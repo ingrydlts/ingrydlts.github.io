@@ -635,9 +635,9 @@ import { isPublished } from '/assets/js/render.js';
 
   var STEP_PROGRESS = { "franca":8, "visto":18, "objetivo":28, "4":42, "worry":56, "estudos":68, "ap1":78, "ap2a":83, "ap2b":83, "ap3":88, "ap4":93, "ap5":97 };
 
-  // Ainda não existe domínio de produção pro app (só roda em localhost hoje) —
-  // TROCAR pelo domínio real antes de publicar essa página no ar.
-  var APP_URL = "http://localhost:8000/";
+  // Endereço do app em produção (Cloudflare, repositório POR-DENTRO-APP). Precisa estar
+  // nas Redirect URLs do Supabase (Authentication → URL Configuration).
+  var APP_URL = "https://plataforma.imigrantepordentro.com/";
 
   // Troca animada: a pergunta atual "sai" (fade + leve deslize pra cima) e só
   // depois a próxima "entra" (fade + flutua + brilha) — em vez de trocar o
