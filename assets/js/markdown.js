@@ -83,6 +83,67 @@
 //   pergunta e opção. Um voto por pessoa por enquete, travado no
 //   navegador de quem lê — igual ao FEEDBACK)
 //
+//
+// ---- Microengajamento e ferramenta-assinatura (ver MICROENGAJAMENTO.md) ----
+// Comportamento em assets/js/microengajamento.js; todo clique vira evento
+// "block" no PDEvents (payload.type = nome do bloco em minúsculas + ação).
+//
+//   [[RESUMO]]                      → "Sem tempo? O resumo em 20 segundos"
+//   Ponto 1                           (cada linha vira um tópico)
+//   [[/RESUMO]]
+//
+//   [[CONFIANCA]]                   → "quão segura você está?" de 1 a 5.
+//   Quão segura você está sobre X?    O "depois" aparece sozinho no fim do
+//   [[/CONFIANCA]]                    artigo, com a diferença.
+//
+//   [[MITO]]
+//   Afirmação | mito | Explicação    (2ª coluna: "mito" ou "verdade")
+//   [[/MITO]]
+//
+//   [[QUIZ]]
+//   Título do quiz
+//   Pergunta | opção | *opção certa | opção || Explicação
+//   [[/QUIZ]]
+//
+//   [[SELETOR]]                     → "qual é o seu caso?" (soma pontos)
+//   Título
+//   ? Pergunta | Opção > chave | Opção > chave1, chave2
+//   = chave | Título do resultado | Texto | Texto do botão | URL
+//   [[/SELETOR]]
+//
+//   [[PRAZO]]                       → calculadora de prazo com status
+//   Título
+//   Rótulo da data | 3 meses          (ou "90 dias", "1 ano")
+//   [[/PRAZO]]
+//
+//   [[LINHA-DO-TEMPO]]              → marcos a partir de uma data
+//   Título
+//   Rótulo da data
+//   -12 meses | O que fazer          ("+30 dias", "-2 semanas", "0")
+//   [[/LINHA-DO-TEMPO]]
+//
+//   [[ROTEIRO]]                     → lista salvável "quero ir / já fui"
+//   Título
+//   Nome | descrição | link (opcional)
+//   [[/ROTEIRO]]
+//
+//   [[PERGUNTA]]                    → caixa anônima "pergunta pra Ingryd"
+//   Texto de chamada (opcional)
+//   [[/PERGUNTA]]
+//
+//   [[PROXIMO-PASSO]]               → recomenda uma Solução digital de
+//   se prazo<=45 | Título | Texto | Botão | URL      acordo com as respostas
+//   se enquete=Opção exata | Título | Texto | Botão | URL
+//   se seletor=chave | ...   se quiz<60 | ...   se checklist=completo | ...
+//   padrao | Título | Texto | Botão | URL
+//   [[/PROXIMO-PASSO]]
+//
+//   [[TRILHA]]                      → "você está no passo 2 de 3"
+//   Nome da trilha
+//   slug-do-artigo-1
+//   slug-do-artigo-2
+//   [[/TRILHA]]
+//
 // Cada linha dentro de STATS/CARDS/LIST/STEPS/FAQ/RESOURCES usa "|" pra
 // separar as colunas. Um parágrafo que comece com "**Atenção:**" também
 // vira automaticamente uma caixa de aviso colorida (callout-warn) — não
@@ -98,7 +159,8 @@ function inline(text) {
     .replace(/\[(.+?)\]\((.+?)\)/g, '<a href="$2">$1</a>');
 }
 
-const BLOCK_TAGS = ["BAND", "STATS", "CARDS", "LIST", "STEPS", "FAQ", "RESOURCES", "CHECKLIST", "FEEDBACK", "AFILIADO", "POLL"];
+const BLOCK_TAGS = ["BAND", "STATS", "CARDS", "LIST", "STEPS", "FAQ", "RESOURCES", "CHECKLIST", "FEEDBACK", "AFILIADO", "POLL",
+  "RESUMO", "CONFIANCA", "MITO", "QUIZ", "SELETOR", "PRAZO", "LINHA-DO-TEMPO", "ROTEIRO", "PERGUNTA", "PROXIMO-PASSO", "TRILHA"];
 
 function escapeAttr(str) {
   return String(str == null ? "" : str)
@@ -288,6 +350,157 @@ function renderPoll(lines, ctx) {
   );
 }
 
+
+// ---- microengajamento ------------------------------------------------------
+// Cada bloco sai com data-mx (tipo), data-mx-id (id estável: slug + tipo +
+// posição) e os dados que o microengajamento.js precisa. O conteúdo que a
+// leitora lê já vem no HTML (funciona mesmo antes do JS carregar).
+function cols(line) {
+  return line.split("|").map((x) => x.trim());
+}
+function mxOpen(type, ctx, label, extra) {
+  const slug = (ctx && ctx.slug) || "artigo";
+  const id = slug + "-" + type + "-" + ((ctx && ctx.index) || 0);
+  return (
+    '<div class="mx mx-' + type + '" data-mx="' + type + '" data-mx-id="' + escapeAttr(id) + '" data-article-slug="' + escapeAttr(slug) + '"' +
+    (extra || "") + ">" + (label ? '<span class="mx-lab">' + label + "</span>" : "")
+  );
+}
+
+function renderResumo(lines, ctx) {
+  const slug = (ctx && ctx.slug) || "artigo";
+  return (
+    '<details class="mx mx-resumo" data-mx="resumo" data-article-slug="' + escapeAttr(slug) + '"><summary>Sem tempo? O resumo em 20 segundos</summary><ul>' +
+    lines.map((l) => "<li>" + inline(l.replace(/^[-*]\s+/, "")) + "</li>").join("") + "</ul></details>"
+  );
+}
+
+const CONF_LABELS = ["perdida", "insegura", "mais ou menos", "segura", "tranquila"];
+function confScale(moment) {
+  return '<div class="mx-scale" data-moment="' + moment + '">' +
+    CONF_LABELS.map((l, i) => '<button type="button" data-v="' + (i + 1) + '">' + (i + 1) + "<small>" + l + "</small></button>").join("") + "</div>";
+}
+function renderConfianca(lines, ctx) {
+  const q = lines.join(" ").trim() || "Quão segura você está sobre esse assunto?";
+  return mxOpen("confianca", ctx, "Antes de ler", ' data-question="' + escapeAttr(q) + '"') +
+    "<h3>" + inline(q) + "</h3>" + confScale("antes") + '<p class="mx-note" hidden>Anotado. No fim do artigo eu te pergunto de novo.</p></div>';
+}
+
+function renderMito(lines, ctx) {
+  let title = "Mito ou verdade?";
+  const rows = [];
+  lines.forEach((l) => {
+    const c = cols(l);
+    if (c.length >= 2 && /^(mito|verdade)$/i.test(c[1])) rows.push(c);
+    else if (!rows.length) title = l;
+  });
+  return mxOpen("mito", ctx, "Mito ou verdade?") + "<h3>" + inline(title) + "</h3>" +
+    rows.map((c, i) =>
+      '<div class="mx-myth" data-i="' + i + '" data-answer="' + c[1].toLowerCase() + '"><p>“' + inline(c[0]) + '”</p>' +
+      '<div class="mx-choices"><button type="button" data-guess="verdade">Verdade</button><button type="button" data-guess="mito">Mito</button></div>' +
+      '<div class="mx-answer" hidden><b></b> ' + inline(c[2] || "") + "</div></div>"
+    ).join("") + '<p class="mx-score" hidden></p></div>';
+}
+
+function renderQuiz(lines, ctx) {
+  const title = lines[0] || "Teste rápido";
+  const qs = lines.slice(1).map((l) => {
+    const [main, expl] = l.split("||");
+    const c = cols(main);
+    return { q: c[0], opts: c.slice(1).filter(Boolean), expl: (expl || "").trim() };
+  }).filter((q) => q.q && q.opts.length > 1);
+  return mxOpen("quiz", ctx, "Teste rápido", ' data-total="' + qs.length + '"') + "<h3>" + inline(title) + "</h3>" +
+    qs.map((q, i) =>
+      '<div class="mx-q" data-i="' + i + '"><p class="mx-q-t"><span>' + (i + 1) + "/" + qs.length + "</span> " + inline(q.q) + "</p>" +
+      '<div class="mx-opts">' + q.opts.map((o) => {
+        const ok = o.startsWith("*");
+        return '<button type="button"' + (ok ? ' data-ok="1"' : "") + ">" + inline(ok ? o.slice(1).trim() : o) + "</button>";
+      }).join("") + "</div>" +
+      (q.expl ? '<p class="mx-expl" hidden>' + inline(q.expl) + "</p>" : "") + "</div>"
+    ).join("") + '<div class="mx-result" hidden></div></div>';
+}
+
+function renderSeletor(lines, ctx) {
+  let title = "Qual é o seu caso?";
+  const qs = [];
+  const res = [];
+  lines.forEach((l, i) => {
+    if (l.startsWith("?")) {
+      const c = cols(l.slice(1));
+      qs.push({ q: c[0], opts: c.slice(1).map((o) => { const [t, k] = o.split(">"); return { t: (t || "").trim(), k: (k || "").trim() }; }) });
+    } else if (l.startsWith("=")) {
+      const c = cols(l.slice(1));
+      res.push({ k: c[0], t: c[1] || c[0], d: c[2] || "", b: c[3] || "", u: c[4] || "" });
+    } else if (i === 0) title = l;
+  });
+  return mxOpen("seletor", ctx, "Descubra o seu caso") + "<h3>" + inline(title) + "</h3>" +
+    qs.map((q, i) =>
+      '<div class="mx-q" data-i="' + i + '"' + (i ? " hidden" : "") + '><p class="mx-q-t"><span>' + (i + 1) + "/" + qs.length + "</span> " + inline(q.q) + "</p>" +
+      '<div class="mx-opts">' + q.opts.map((o) => '<button type="button" data-keys="' + escapeAttr(o.k) + '">' + inline(o.t) + "</button>").join("") + "</div></div>"
+    ).join("") +
+    res.map((r) =>
+      '<div class="mx-res" data-key="' + escapeAttr(r.k) + '" hidden><span class="mx-lab">Seu resultado</span><h4>' + inline(r.t) + "</h4><p>" + inline(r.d) + "</p>" +
+      (r.u ? '<a class="btn btn-pill" href="' + escapeAttr(r.u) + '" data-mx-link="seletor">' + inline(r.b || "Ver mais") + " →</a>" : "") + "</div>"
+    ).join("") + '<button type="button" class="mx-restart" hidden>Refazer</button></div>';
+}
+
+function renderPrazo(lines, ctx) {
+  const title = lines[0] || "Quantos dias você ainda tem?";
+  const [label, dur] = cols(lines[1] || "Data de início | 3 meses");
+  return mxOpen("prazo", ctx, "Calculadora", ' data-duration="' + escapeAttr(dur || "3 meses") + '"') + "<h3>" + inline(title) + "</h3>" +
+    '<label class="mx-field"><span>' + inline(label || "Data de início") + '</span><input type="date"></label>' +
+    '<div class="mx-out" aria-live="polite"></div></div>';
+}
+
+function renderLinha(lines, ctx) {
+  const title = lines[0] || "Sua linha do tempo";
+  const label = lines[1] || "Data de referência";
+  const steps = lines.slice(2).map(cols).filter((c) => c[1]);
+  return mxOpen("linha", ctx, "Linha do tempo") + "<h3>" + inline(title) + "</h3>" +
+    '<label class="mx-field"><span>' + inline(label) + '</span><input type="date"></label><ol class="mx-steps">' +
+    steps.map((c) => '<li data-offset="' + escapeAttr(c[0]) + '"><span class="mx-when">' + inline(c[0]) + "</span><span>" + inline(c[1]) + "</span></li>").join("") +
+    "</ol></div>";
+}
+
+function renderRoteiro(lines, ctx) {
+  const title = lines[0] || "Seu roteiro";
+  const items = lines.slice(1).map(cols).filter((c) => c[0]);
+  return mxOpen("roteiro", ctx, "Monte seu roteiro") + "<h3>" + inline(title) + "</h3>" +
+    '<p class="mx-note">Marque o que você quer fazer. Fica salvo neste aparelho.</p><ul class="mx-spots">' +
+    items.map((c, i) =>
+      '<li data-i="' + i + '"><div><b>' + inline(c[0]) + "</b>" + (c[1] ? "<small>" + inline(c[1]) + "</small>" : "") +
+      (c[2] ? ' <a href="' + escapeAttr(c[2]) + '" target="_blank" rel="noopener">ver →</a>' : "") + "</div>" +
+      '<div class="mx-spot-btns"><button type="button" data-s="quero">Quero ir</button><button type="button" data-s="fui">Já fui</button></div></li>'
+    ).join("") + "</ul></div>";
+}
+
+function renderPergunta(lines, ctx) {
+  const t = lines.join(" ").trim() || "Ficou alguma dúvida? Pergunta pra mim. As mais pedidas viram artigo.";
+  return mxOpen("pergunta", ctx, "Pergunta pra Ingryd") + "<h3>" + inline(t) + "</h3>" +
+    '<textarea rows="3" maxlength="280" placeholder="Escreva sua dúvida (sem nome, sem e-mail)" aria-label="Sua pergunta"></textarea>' +
+    '<div class="mx-row"><small class="mx-count">0/280</small><button type="button" class="btn btn-pill mx-send">Enviar pergunta</button></div></div>';
+}
+
+function renderProximo(lines, ctx) {
+  const rules = lines.map((l) => {
+    const c = cols(l);
+    const cond = c[0].replace(/^se\s+/i, "").trim();
+    return { cond: /^padr[aã]o$/i.test(cond) ? "padrao" : cond, t: c[1] || "", d: c[2] || "", b: c[3] || "Ver solução", u: c[4] || "" };
+  }).filter((r) => r.t);
+  return mxOpen("proximo", ctx, "Seu próximo passo · Soluções digitais") +
+    rules.map((r, i) =>
+      '<div class="mx-rule" data-cond="' + escapeAttr(r.cond) + '"' + (r.cond === "padrao" ? "" : " hidden") + "><h3>" + inline(r.t) + "</h3><p>" + inline(r.d) + "</p>" +
+      '<p class="mx-why" hidden></p>' + (r.u ? '<a class="btn btn-pill" href="' + escapeAttr(r.u) + '" data-mx-link="proximo" data-rule="' + i + '">' + inline(r.b) + " →</a>" : "") + "</div>"
+    ).join("") + '<a class="mx-all" href="/produtos-digitais/" data-mx-link="proximo-todas">Ver todas as soluções digitais</a></div>';
+}
+
+function renderTrilha(lines, ctx) {
+  const name = lines[0] || "Trilha";
+  const slugs = lines.slice(1).map((l) => l.trim()).filter(Boolean);
+  return mxOpen("trilha", ctx, "Trilha · " + inline(name), ' data-slugs="' + escapeAttr(slugs.join(",")) + '"') +
+    '<div class="mx-trail">' + slugs.map((s) => '<a href="/artigos/post/?slug=' + escapeAttr(s) + '" data-slug="' + escapeAttr(s) + '"></a>').join("") + "</div></div>";
+}
+
 const BLOCK_RENDERERS = {
   BAND: renderBand,
   STATS: renderStats,
@@ -299,7 +512,18 @@ const BLOCK_RENDERERS = {
   CHECKLIST: renderChecklist,
   FEEDBACK: renderFeedback,
   AFILIADO: renderAfiliado,
-  POLL: renderPoll
+  POLL: renderPoll,
+  RESUMO: renderResumo,
+  CONFIANCA: renderConfianca,
+  MITO: renderMito,
+  QUIZ: renderQuiz,
+  SELETOR: renderSeletor,
+  PRAZO: renderPrazo,
+  "LINHA-DO-TEMPO": renderLinha,
+  ROTEIRO: renderRoteiro,
+  PERGUNTA: renderPergunta,
+  "PROXIMO-PASSO": renderProximo,
+  TRILHA: renderTrilha
 };
 
 // Devolve um array de blocos HTML (cada parágrafo/título/lista/bloco rico é

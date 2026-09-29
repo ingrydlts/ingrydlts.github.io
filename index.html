@@ -137,7 +137,7 @@
 <script src="/assets/js/vendor/ScrollTrigger.min.js"></script>
 <script src="/assets/js/scroll-animations.js"></script>
 <script type="module">
-  import { fetchJSON, imgSlotHTML, escapeHtml, postHref, publishedItems } from "/assets/js/render.js";
+  import { fetchJSON, imgSlotHTML, postCoverHTML, escapeHtml, postHref, publishedItems } from "/assets/js/render.js";
 
   (async function () {
     try {
@@ -163,7 +163,7 @@
       el.innerHTML = latest.map(function (post) {
         return (
           '<a class="card" href="' + escapeHtml(postHref(post)) + '" style="color:inherit;">' +
-          imgSlotHTML(post.image, post.title, "Foto do artigo") +
+          postCoverHTML(post, "Foto do artigo") +
           '<div class="card-body">' +
           '<span class="eyebrow" style="color:#6E6862; margin-bottom:2px;">' + escapeHtml(post.category) + "</span>" +
           "<h3>" + escapeHtml(post.title) + "</h3>" +

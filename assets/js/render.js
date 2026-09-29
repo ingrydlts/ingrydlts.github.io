@@ -6,6 +6,8 @@
 // que ainda estão sendo editados (antes de publicar). Aqui, se a página
 // estiver dentro dessa prévia, lê esses dados em vez do arquivo publicado.
 // Fora da prévia (window.name diferente), nada muda.
+import "./cover.js";
+
 function previewData(path) {
   if (window.name !== "pd-preview") return undefined;
   try {
@@ -83,6 +85,16 @@ export function imgSlotHTML(src, alt, label) {
     escapeHtml(label || "Foto a adicionar") +
     "</span></div>"
   );
+}
+
+// Capa do artigo: se o post tem "coverKeyword" (sistema de capas por
+// palavra-chave, ver assets/js/cover.js), desenha a capa; senão, cai na foto
+// do campo "image" como antes. opts.mini = miniatura quadrada (só a palavra).
+export function postCoverHTML(post, label, opts) {
+  if (window.PDCover && window.PDCover.has(post)) {
+    return '<div class="img-slot pdc-slot">' + window.PDCover.html(post, opts) + "</div>";
+  }
+  return imgSlotHTML(post.image, post.title, label);
 }
 
 export function qs(name) {

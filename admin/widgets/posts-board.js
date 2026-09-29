@@ -108,7 +108,19 @@
     "  .pdb-brand small{display:none;}",
     "  .pdb-new-label{display:none;}",
     "}",
-    "@media (prefers-reduced-motion:reduce){.pdb *{animation:none!important;transition:none!important;}}"
+    "@media (prefers-reduced-motion:reduce){.pdb *{animation:none!important;transition:none!important;}}",
+    ".pdb-robot{position:absolute;inset:0;z-index:5;background:rgba(43,43,43,.45);display:flex;align-items:center;justify-content:center;padding:16px;}",
+    ".pdb-robot-box{background:#FBFAF7;border-radius:16px;width:min(1100px,100%);max-height:100%;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 20px 60px -20px rgba(0,0,0,.5);}",
+    ".pdb-robot-h{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid #E6E0D6;}",
+    ".pdb-robot-b{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:16px;padding:16px 18px;overflow:auto;min-height:0;}",
+    "@media (max-width:800px){.pdb-robot-b{grid-template-columns:1fr;}}",
+    ".pdb-robot textarea{width:100%;min-height:52vh;font:12.5px/1.5 ui-monospace,Menlo,monospace;border:1px solid #CFC7BA;border-radius:10px;padding:12px;resize:vertical;background:#fff;}",
+    ".pdb-robot-f{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;padding:12px 18px;border-top:1px solid #E6E0D6;}",
+    ".pdb-ck{display:grid;gap:5px;font-size:12.5px;margin-top:10px;}",
+    ".pdb-ck span{display:flex;gap:7px;align-items:flex-start;}",
+    ".pdb-ck i{font-style:normal;width:16px;height:16px;border-radius:50%;flex:none;display:grid;place-items:center;color:#fff;font-size:10px;font-weight:700;margin-top:1px;}",
+    ".pdb-cover-prev{border-radius:10px;overflow:hidden;margin-top:6px;}",
+    ".pdb-notes{white-space:pre-wrap;font-size:12.5px;background:#fff;border:1px solid #E6E0D6;border-radius:10px;padding:10px 12px;max-height:220px;overflow:auto;}",
   ].join("\n"));
 
   // --- ajudantes -------------------------------------------------------------
@@ -140,15 +152,91 @@
     if (!p.title) out.push("Sem título");
     if (!p.excerpt) out.push("Sem resumo");
     if (!p.category) out.push("Sem categoria");
-    if (!p.image) out.push("Sem capa");
+    if (!p.image && !p.coverKeyword) out.push("Sem capa");
     if (!p.url) {
       var body = p.body || "";
       if (!/\[\[FAQ\]\]/.test(body)) out.push("Falta FAQ");
       if (!/\[\[FEEDBACK\]\]/.test(body)) out.push("Falta Feedback");
+      if (body && !hasSignature(body)) out.push("Falta ferramenta-assinatura");
+      if (body && !/\[\[PROXIMO-PASSO\]\]/.test(body)) out.push("Falta próximo passo");
+    } else {
+      if (!hasSignature(p.mxBlocks)) out.push("Falta ferramenta-assinatura");
+      if (!/\[\[PROXIMO-PASSO\]\]/.test(p.mxBlocks || "")) out.push("Falta próximo passo");
     }
     if (p.status === "agendado" && !p.date) out.push("Sem data");
     return out;
   }
+
+
+  // --- microengajamento e "Colar do robô" -------------------------------------
+  // Ferramenta-assinatura = um dos blocos-ferramenta genéricos ou uma
+  // ferramenta própria já existente (token de linha única).
+  var SIGNATURE_RE = /\[\[(PRAZO|QUIZ|SELETOR|LINHA-DO-TEMPO|ROTEIRO|MAPA-FLE|VAE-SIMULADOR|DIPLOMA-DOSSIE|AU-PAIR-FLE-SCROLL|EXAME-TEMPLATE-GRATIS)\]\]/;
+  function hasSignature(body) { return SIGNATURE_RE.test(body || ""); }
+  var MX_PARTS = [
+    { re: SIGNATURE_RE, label: "Ferramenta-assinatura", need: true },
+    { re: /\[\[RESUMO\]\]/, label: "Resumo em 20s" },
+    { re: /\[\[CONFIANCA\]\]/, label: "Termômetro de confiança" },
+    { re: /\[\[(MITO|POLL|CHECKLIST)\]\]/, label: "Mito / enquete / checklist" },
+    { re: /\[\[PERGUNTA\]\]/, label: "Pergunta pra Ingryd" },
+    { re: /\[\[PROXIMO-PASSO\]\]/, label: "Próximo passo (Soluções digitais)", need: true },
+    { re: /\[\[FAQ\]\]/, label: "FAQ", need: true },
+    { re: /\[\[FEEDBACK\]\]/, label: "Feedback", need: true }
+  ];
+
+  var ROBOT_KEYS = {
+    "titulo": "title", "título": "title", "slug": "slug", "categoria": "category", "resumo": "excerpt",
+    "tempo": "readMinutes", "tempo-de-leitura": "readMinutes", "capa-palavra": "coverKeyword", "capa-apoio": "coverTags",
+    "capa-formato": "coverFormat", "reacoes-por-secao": "sectionReactions", "reações-por-seção": "sectionReactions", "data": "date"
+  };
+  // Formato do pacote (ver admin/prompts/robo-escritor-de-artigos.md):
+  //   ===ARTIGO POR DENTRO===  chave: valor …  ===CORPO===  markdown  ===NOTAS===  texto  ===FIM===
+  function parseRobot(text) {
+    var t = String(text || "").replace(/\r\n/g, "\n").replace(/^\s*```[a-z]*\n?/i, "").replace(/\n?```\s*$/, "");
+    var out = { fields: {}, body: "", notes: "", errors: [] };
+    var iBody = t.indexOf("===CORPO===");
+    if (iBody === -1) { out.errors.push("Não achei a linha ===CORPO===. Cole o pacote inteiro, do ===ARTIGO POR DENTRO=== até o ===FIM==="); return out; }
+    var head = t.slice(0, iBody).replace(/^[\s\S]*?===ARTIGO POR DENTRO===/, "");
+    var rest = t.slice(iBody + 11);
+    var iNotes = rest.indexOf("===NOTAS===");
+    var iEnd = rest.indexOf("===FIM===");
+    var bodyEnd = iNotes !== -1 ? iNotes : iEnd !== -1 ? iEnd : rest.length;
+    out.body = rest.slice(0, bodyEnd).trim() + "\n";
+    if (iNotes !== -1) out.notes = rest.slice(iNotes + 11, iEnd !== -1 && iEnd > iNotes ? iEnd : rest.length).trim();
+    head.split("\n").forEach(function (line) {
+      var m = line.match(/^\s*([A-Za-zÀ-ú-]+)\s*:\s*(.*)$/);
+      if (!m) return;
+      var key = ROBOT_KEYS[m[1].trim().toLowerCase()];
+      if (!key) return;
+      var v = m[2].trim();
+      if (key === "readMinutes") v = parseInt(v, 10) || undefined;
+      else if (key === "coverTags") v = v.split(",").map(function (x) { return x.trim(); }).filter(Boolean).slice(0, 3);
+      else if (key === "sectionReactions") v = /^(sim|s|true|yes)$/i.test(v);
+      out.fields[key] = v;
+    });
+    if (!out.fields.title) out.errors.push("Falta o título (titulo: …).");
+    return out;
+  }
+
+  function robotChecks(parsed, items, skipIdx) {
+    var f = parsed.fields, body = parsed.body, res = [];
+    var ok = function (c, good, bad, warnOnly) { res.push({ ok: !!c, warn: !c && !!warnOnly, text: c ? good : bad }); };
+    ok(!!f.title, "Título", "Sem título");
+    ok(f.excerpt && f.excerpt.length <= 180, "Resumo com " + (f.excerpt || "").length + " caracteres", f.excerpt ? "Resumo longo (" + f.excerpt.length + "): no card fica cortado" : "Sem resumo", !!f.excerpt);
+    ok(!!f.category, "Categoria: " + (f.category || ""), "Sem categoria");
+    var kw = String(f.coverKeyword || "");
+    ok(kw && kw.length <= 10, "Palavra da capa: " + kw, kw ? "Palavra da capa com " + kw.length + " caracteres (máx. 10)" : "Sem palavra da capa", !!kw);
+    if (kw && window.PDCover) {
+      var pil = window.PDCover.pillarOf(f.category);
+      var dup = items.filter(function (o, i) { return i !== skipIdx && String(o.coverKeyword || "").toLowerCase() === kw.toLowerCase() && window.PDCover.pillarOf(o.category) === pil; })[0];
+      if (dup) res.push({ ok: false, warn: false, text: "“" + kw + "” já é a capa de “" + (dup.title || "outro artigo") + "” no mesmo pilar" });
+    }
+    var slug = f.slug || K.slugify(f.title || "");
+    if (items.some(function (o, i) { return i !== skipIdx && o.slug === slug; })) res.push({ ok: false, warn: false, text: "Outro artigo já usa o endereço " + slug });
+    MX_PARTS.forEach(function (m) { ok(m.re.test(body), m.label, "Falta: " + m.label, !m.need); });
+    return res;
+  }
+
 
   // O Decap guarda a lista como Immutable (List de Map). O formulário de
   // baixo (a lista do Decap) precisa receber de volta no mesmo formato — então
@@ -287,6 +375,57 @@
       }, "Ideia nova no quadro", true);
       this.setState({ sel: 0, view: "artigo", q: "", cat: "", tab: "quadro", confirmDelete: false });
       setTimeout(function () { var t = document.getElementById("pdb-title"); if (t) t.focus(); }, 80);
+    },
+
+
+    openRobot: function () { this.setState({ robot: true, robotText: this.state.robotText || "" }); },
+    applyRobot: function (mode) {
+      var parsed = parseRobot(this.state.robotText);
+      if (parsed.errors.length) return;
+      var f = parsed.fields, idx = this.state.sel;
+      var data = {
+        title: f.title, slug: f.slug || K.slugify(f.title || ""), excerpt: f.excerpt || "", category: f.category || "",
+        readMinutes: f.readMinutes || Math.max(1, Math.round(words(parsed.body) / 200)), body: parsed.body,
+        coverKeyword: f.coverKeyword || "", coverTags: f.coverTags || [], coverFormat: f.coverFormat || "Guia",
+        sectionReactions: !!f.sectionReactions, editorNotes: parsed.notes || ""
+      };
+      if (f.date) data.date = f.date;
+      if (mode === "replace" && idx >= 0) {
+        this.change(function (items) { Object.keys(data).forEach(function (k) { items[idx][k] = data[k]; }); }, "Artigo substituído pelo texto do robô", true);
+        this.setState({ robot: false, view: "artigo" });
+      } else {
+        this.change(function (items) { items.unshift(Object.assign({ status: "revisao" }, data)); }, "Artigo do robô criado em Revisão", true);
+        this.setState({ robot: false, robotText: "", sel: 0, view: "artigo", q: "", tab: "quadro" });
+      }
+    },
+    renderRobot: function (items) {
+      var self = this;
+      var text = this.state.robotText || "";
+      var parsed = text.trim() ? parseRobot(text) : null;
+      var skip = this.state.sel;
+      var checks = parsed && !parsed.errors.length ? robotChecks(parsed, items, -1) : [];
+      var sel = this.state.sel >= 0 ? items[this.state.sel] : null;
+      var coverHtml = parsed && window.PDCover && parsed.fields.coverKeyword ? window.PDCover.html(Object.assign({}, parsed.fields, { readMinutes: parsed.fields.readMinutes })) : "";
+      return h("div", { className: "pdb-robot", role: "dialog", "aria-modal": "true", "aria-label": "Colar artigo do robô" },
+        h("div", { className: "pdb-robot-box" },
+          h("div", { className: "pdb-robot-h" },
+            h("div", null, h("h3", null, "Colar do robô"), h("small", { style: { color: "#6E6862" } }, "Cole o pacote inteiro que o robô escreveu, de ===ARTIGO POR DENTRO=== até ===FIM===. Os campos, a capa e os blocos são preenchidos sozinhos.")),
+            h("button", { type: "button", className: "pds-x", "aria-label": "Fechar", onClick: function () { self.setState({ robot: false }); } }, "×")),
+          h("div", { className: "pdb-robot-b" },
+            h("textarea", { "aria-label": "Texto do robô", value: text, placeholder: "===ARTIGO POR DENTRO===\ntitulo: …\n…\n===CORPO===\n…\n===FIM===", onChange: function (e) { self.setState({ robotText: e.target.value }); } }),
+            h("div", null,
+              !parsed ? h("p", { style: { color: "#6E6862", fontSize: "13px" } }, "A prévia da capa e a conferência aparecem aqui assim que você colar.")
+                : parsed.errors.length ? h("div", { className: "pdb-ck" }, parsed.errors.map(function (er, i) { return h("span", { key: i }, h("i", { style: { background: "#A63A2E" } }, "×"), er); }))
+                : h("div", null,
+                    h("b", { style: { fontFamily: K.DISPLAY, fontSize: "17px" } }, parsed.fields.title),
+                    coverHtml ? h("div", { className: "pdb-cover-prev", dangerouslySetInnerHTML: { __html: coverHtml } }) : null,
+                    h("div", { className: "pdb-ck" }, checks.map(function (c, i) {
+                      return h("span", { key: i }, h("i", { style: { background: c.ok ? "#577328" : c.warn ? "#B07A1E" : "#A63A2E" } }, c.ok ? "✓" : c.warn ? "!" : "×"), c.text);
+                    })),
+                    parsed.notes ? h("div", { style: { marginTop: "12px" } }, h("span", { className: "pds-label" }, "Notas do robô (não vão pro site)"), h("div", { className: "pdb-notes" }, parsed.notes)) : null))),
+          h("div", { className: "pdb-robot-f" },
+            sel ? h("button", { type: "button", className: "pds-btn", disabled: !parsed || parsed.errors.length > 0, onClick: function () { self.applyRobot("replace"); } }, "Substituir “" + String(sel.title || "artigo aberto").slice(0, 30) + "”") : null,
+            h("button", { type: "button", className: "pds-btn primary", disabled: !parsed || parsed.errors.length > 0, onClick: function () { self.applyRobot("new"); } }, "Criar artigo (vai pra Revisão)"))));
     },
 
     remove: function (idx) {
@@ -451,6 +590,8 @@
               h("button", { type: "button", role: "switch", className: "pds-switch", "aria-checked": String(p.showCoverInArticle !== false), "aria-label": "Mostrar a capa no topo do artigo",
                 onClick: function () { self.set("showCoverInArticle", p.showCoverInArticle === false); } }),
               "Mostrar a capa no topo do artigo")),
+          this.renderCoverFields(p, items, idx),
+          this.renderMx(p),
           h("div", { className: "pds-grid2" },
             this.field("pdb-date", "Data de publicação", h("input", { id: "pdb-date", type: "date", className: "pds-input" + (st === "agendado" && (!p.date || day(p.date) <= today) ? " pdb-input-err" : ""), value: day(p.date),
               onChange: function (e) { self.set("date", e.target.value); } })),
@@ -475,6 +616,43 @@
                 h("button", { type: "button", className: "pds-btn danger sm", onClick: function () { self.remove(idx); } }, "Apagar"),
                 h("button", { type: "button", className: "pds-btn ghost sm", onClick: function () { self.setState({ confirmDelete: false }); } }, "Cancelar"))
             : h("button", { type: "button", className: "pds-btn danger sm", style: { alignSelf: "flex-start" }, onClick: function () { self.setState({ confirmDelete: true }); } }, "Apagar artigo…")));
+    },
+
+
+    renderCoverFields: function (p, items, idx) {
+      var self = this;
+      var kw = String(p.coverKeyword || "");
+      var tags = Array.isArray(p.coverTags) ? p.coverTags.map(function (t) { return t && t.tag != null ? t.tag : t; }) : [];
+      var pil = window.PDCover ? window.PDCover.pillarOf(p.category) : "";
+      var dup = kw && window.PDCover ? items.filter(function (o, i) { return i !== idx && String(o.coverKeyword || "").toLowerCase() === kw.toLowerCase() && window.PDCover.pillarOf(o.category) === pil; })[0] : null;
+      var FORMATS = ["Guia", "Passo a passo", "Comparativo", "Mapa", "Roteiro", "Checklist", "Série · ep. 1", "Série · ep. 2", "Série · ep. 3", "Série · ep. 4", "Série · ep. 5"];
+      return h("div", { className: "pds-field", key: "cover-kw" },
+        h("span", { className: "pds-label" }, "Capa por palavra-chave" + (window.PDCover && p.category ? " · pilar " + window.PDCover.PILLARS[pil].name : "")),
+        kw && window.PDCover ? h("div", { className: "pdb-cover-prev", dangerouslySetInnerHTML: { __html: window.PDCover.html(p) } }) : null,
+        h("div", { className: "pds-grid2" },
+          this.field("pdb-kw", "Palavra (até 10)", h("input", { id: "pdb-kw", className: "pds-input" + (kw.length > 10 || dup ? " pdb-input-err" : ""), value: kw, onChange: function (e) { self.set("coverKeyword", e.target.value); } }),
+            dup ? "Já é a capa de “" + (dup.title || "outro artigo") + "” no mesmo pilar." : kw.length > 10 ? kw.length + " caracteres: use sigla ou termo mais curto." : null, dup || kw.length > 10 ? "err" : ""),
+          this.field("pdb-fmt", "Formato", h("select", { id: "pdb-fmt", className: "pds-input", value: p.coverFormat || "Guia", onChange: function (e) { self.set("coverFormat", e.target.value); } },
+            FORMATS.map(function (f) { return h("option", { key: f, value: f }, f); })))),
+        this.field("pdb-tags", "3 palavras de apoio (separe com vírgula)", h("input", { id: "pdb-tags", className: "pds-input", value: tags.join(", "),
+          onChange: function (e) { self.set("coverTags", e.target.value.split(",").map(function (x) { return x.replace(/^\s+/, ""); }).slice(0, 3)); } })));
+    },
+    renderMx: function (p) {
+      var self = this;
+      var body = p.url ? p.mxBlocks || "" : p.body || "";
+      var parts = p.url ? MX_PARTS.filter(function (m) { return !/FAQ|Feedback/.test(m.label); }) : MX_PARTS;
+      return h("div", { className: "pds-field", key: "mx" },
+        h("span", { className: "pds-label" }, "Microengajamento"),
+        p.url ? h("p", { className: "pdb-msg" }, "Página própria: os blocos ficam no campo “Blocos de microengajamento”, no formulário embaixo do quadro.") : null,
+        h("div", { className: "pdb-ck", style: { marginTop: 0 } }, parts.map(function (m, i) {
+          var on = m.re.test(body);
+          return h("span", { key: i }, h("i", { style: { background: on ? "#577328" : m.need ? "#B07A1E" : "#CFC7BA" } }, on ? "✓" : m.need ? "!" : "–"), m.label);
+        })),
+        h("label", { className: "pds-row", style: { gap: "8px", fontSize: "12.5px", color: "#2B2B2B" } },
+          p.url ? null : h("button", { type: "button", role: "switch", className: "pds-switch", "aria-checked": String(!!p.sectionReactions), "aria-label": "Perguntar se cada seção ficou clara",
+            onClick: function () { self.set("sectionReactions", !p.sectionReactions); } }),
+          p.url ? null : "“Essa parte ficou clara?” em cada seção"),
+        p.editorNotes ? h("details", null, h("summary", { style: { cursor: "pointer", fontSize: "12.5px" } }, "Notas do robô (propostas que não entraram)"), h("div", { className: "pdb-notes" }, p.editorNotes)) : null);
     },
 
     renderPreview: function (items) {
@@ -505,6 +683,7 @@
             h("div", { style: { minWidth: 0 } }, h("b", null, "Artigos"), h("small", null, live + " no ar · " + sched + " agendado(s) · arraste entre as colunas pra mudar a etapa"))),
           h("input", { className: "pds-input pdb-search", type: "search", placeholder: "Buscar artigo…", "aria-label": "Buscar artigo", value: this.state.q, onChange: function (e) { self.setState({ q: e.target.value }); } }),
           h("button", { type: "button", className: "pds-btn", onClick: this.newPost }, "+", h("span", { className: "pdb-new-label" }, " Novo artigo")),
+          h("button", { type: "button", className: "pds-btn", onClick: this.openRobot, title: "Colar o pacote que o robô escreveu" }, "🧠", h("span", { className: "pdb-new-label" }, " Colar do robô")),
           h("button", { type: "button", className: "pds-btn ghost sm pdb-toggle-prev", "aria-pressed": String(this.state.showPrev), onClick: function () { self.setState({ showPrev: !self.state.showPrev }); } }, this.state.showPrev ? "Esconder prévia" : "Mostrar prévia"),
           h("button", { type: "button", className: "pds-btn ghost sm", onClick: this.undo, disabled: !(this.history && this.history.length), title: "Desfazer a última mudança" }, "↶", h("span", { className: "pdb-new-label" }, " Desfazer")),
           h("button", { type: "button", className: "pds-btn primary", onClick: this.close }, "Concluir")),
@@ -513,7 +692,8 @@
           this.renderBoard(items), this.renderPreview(items)),
         this.state.toast ? h("div", { className: "pdb-toast", role: "status" },
           h("span", null, this.state.toast.text),
-          this.state.toast.undo ? h("button", { type: "button", onClick: this.undo }, "Desfazer") : null) : null);
+          this.state.toast.undo ? h("button", { type: "button", onClick: this.undo }, "Desfazer") : null) : null,
+        this.state.robot ? this.renderRobot(items) : null);
     },
 
     render: function () {

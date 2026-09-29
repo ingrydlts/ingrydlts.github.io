@@ -125,7 +125,7 @@
 <script src="/assets/js/article-animations.js"></script>
 <script src="/assets/js/share-button.js"></script>
 <script type="module">
-  import { fetchJSON, imgSlotHTML, escapeHtml, qs, isPublished, IN_PREVIEW, previewDraftNoteHTML } from "/assets/js/render.js";
+  import { fetchJSON, imgSlotHTML, postCoverHTML, escapeHtml, qs, isPublished, publishedItems, IN_PREVIEW, previewDraftNoteHTML } from "/assets/js/render.js";
   import { markdownToBlocks } from "/assets/js/markdown.js";
   import { pickRelated, relatedSectionHTML, updatedLineHTML, notPublishedHTML } from "/assets/js/article-extras.js";
   import { getAdsConfig, slotHTML, insertAtIndices, activateNetworkAds, ownBannerHTML } from "/assets/js/ad-slots.js";
@@ -411,7 +411,7 @@
     // isso só decide se ela também aparece grande, no topo do artigo.
     const showCover = post.showCoverInArticle !== false;
     const heroHtml = showCover
-      ? imgSlotHTML(post.image, post.title, "Foto de capa do artigo").replace('class="img-slot"', 'class="img-slot article-hero"')
+      ? postCoverHTML(post, "Foto de capa do artigo").replace('class="img-slot', 'class="img-slot article-hero')
       : "";
 
     // Índice do artigo: dá um id único a cada "##" (h2) do corpo e monta uma
@@ -469,6 +469,11 @@
     activateNetworkAds(adsCfg);
 
     if (window.initArticleAnimations) window.initArticleAnimations();
+
+    // Microengajamento e ferramenta-assinatura ([[QUIZ]], [[PRAZO]],
+    // [[PROXIMO-PASSO]]…) + barra de progresso, sumário marcado e grifo —
+    // ver assets/js/microengajamento.js e MICROENGAJAMENTO.md.
+    import("/assets/js/microengajamento.js").then((m) => m.init({ slug: post.slug, post, posts: publishedItems(data.items) }));
 
     for (const tool of Object.values(TOOL_TOKENS)) {
       const mountEl = document.getElementById(tool.mountId);
