@@ -57,8 +57,11 @@ O site assume que vai rodar na raiz do domínio (links tipo `/produtos-digitais/
 
 Todo artigo tem 1 ferramenta-assinatura (`[[PRAZO]]`, `[[QUIZ]]`, `[[SELETOR]]`,
 `[[LINHA-DO-TEMPO]]` ou `[[ROTEIRO]]`), blocos de microengajamento (`[[RESUMO]]`,
-`[[CONFIANCA]]`, `[[MITO]]`, `[[PERGUNTA]]`, `[[TRILHA]]`) e fecha com `[[PROXIMO-PASSO]]`,
-que recomenda uma Solução digital conforme as respostas da leitora. A capa é desenhada pelo
+`[[CONFIANCA]]`, `[[MITO]]`, `[[TRILHA]]`) e fecha com `[[PROXIMO-PASSO]]`,
+que recomenda uma Solução digital conforme as respostas da leitora. No fim de todo artigo, antes do
+rodapé, fica o formulário "Pergunta pra Ingryd" (nome, e-mail e pergunta); ele e o lembrete da
+calculadora de prazo vão pro Brevo e pro seu e-mail (`assets/js/leads.js` + `POST /api/leads`,
+setup em `cms-oauth-worker/README.md`, seção 16). A capa é desenhada pelo
 site a partir da palavra-chave (`coverKeyword`, `coverTags`, `coverFormat`). Referência completa
 em [MICROENGAJAMENTO.md](MICROENGAJAMENTO.md).
 

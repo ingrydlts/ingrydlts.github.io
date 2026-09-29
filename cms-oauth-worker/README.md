@@ -252,3 +252,59 @@ sozinha pro Notion assim que recebe esse link de volta — não precisa mexer no
 Sem essa variável configurada, a compra continua sendo confirmada e registrada normalmente — só que
 a página de confirmação mostra um aviso ("o link ainda está sendo configurado") em vez de redirecionar,
 nunca um link quebrado.
+
+## 16. Perguntas e lembretes do blog → Brevo (CRM) e seu e-mail
+
+No fim de todo artigo existe o formulário **"Pergunta pra Ingryd"** (nome, e-mail e pergunta), e a
+calculadora de prazo (`[[PRAZO]]`) tem o **"Me avisa antes do prazo"** (nome e e-mail). Os dois
+mandam pra `POST /api/leads`, que:
+
+1. guarda tudo na tabela `leads` do D1 (aparece em `/admin/dashboard/` → aba **Perguntas e lembretes**);
+2. cria ou atualiza o contato no **Brevo**, na lista certa, com os atributos abaixo;
+3. no caso de pergunta, te manda um e-mail (Resend, mesmo `NOTIFY_EMAIL` das avaliações) — é só
+   **responder** esse e-mail que a resposta vai direto pra leitora.
+
+### Passo a passo (uma vez só)
+
+**a) Criar a tabela.** Cloudflare → D1 → `por-dentro-events` → **Console** → cole o bloco
+`CREATE TABLE IF NOT EXISTS leads …` do fim de `schema.sql` → Execute.
+
+**b) No Brevo, criar os atributos.** Contatos → **Configurações** → **Atributos de contato** → Adicionar:
+
+| Nome | Tipo |
+|---|---|
+| `PERGUNTA_BLOG` | Texto |
+| `ARTIGO_ORIGEM` | Texto |
+| `PRAZO_DATA` | **Data** |
+| `PRAZO_ARTIGO` | Texto |
+
+(`FIRSTNAME` já existe no Brevo.) Sem esses atributos o Brevo recusa o contato — o envio continua
+salvo no D1 e a aba do painel mostra "erro 400" na coluna Brevo.
+
+**c) Criar as listas.** Contatos → **Listas** → crie `Perguntas do blog` e `Lembretes de prazo`.
+Anote o número (ID) de cada uma. Se quiser, use a lista da newsletter que você já tem pra quem
+marcar "Quero receber a newsletter" (anote o ID dela também).
+
+**d) Gerar a chave da API.** Brevo → seu nome (canto superior direito) → **SMTP & API** → aba
+**Chaves de API** → Gerar nova chave → copie.
+
+**e) Colocar no Worker.** Cloudflare → Workers & Pages → `por-dentro-cms-oauth` → **Settings** →
+**Variables and Secrets** → Add:
+
+| Nome | Tipo | Valor |
+|---|---|---|
+| `BREVO_API_KEY` | Secret | a chave do passo d |
+| `BREVO_LIST_PERGUNTAS` | Text | ID da lista "Perguntas do blog" |
+| `BREVO_LIST_LEMBRETES` | Text | ID da lista "Lembretes de prazo" |
+| `BREVO_LIST_NEWSLETTER` | Text | ID da lista da newsletter (opcional) |
+
+**f) Publicar o `worker.js` atualizado** (seção 9).
+
+**g) Criar a automação do lembrete no Brevo.** Automações → Criar → **Data de aniversário**
+(*Anniversary date*) → atributo `PRAZO_DATA` → disparar **15 dias antes** → **sem repetir todo
+ano** → condição: contato na lista "Lembretes de prazo" → e-mail. No texto, use
+`{{ contact.FIRSTNAME }}`, `{{ contact.PRAZO_DATA }}` e `{{ contact.PRAZO_ARTIGO }}`, por exemplo:
+"Oi, {{ contact.FIRSTNAME }}! Faltam 15 dias pro seu prazo ({{ contact.PRAZO_DATA }}). Já validou?"
+
+Enquanto a chave do Brevo não estiver no Worker, nada se perde: tudo fica no D1 e no painel, e
+as perguntas continuam chegando no seu e-mail (se o Resend já estiver configurado, seção 8).

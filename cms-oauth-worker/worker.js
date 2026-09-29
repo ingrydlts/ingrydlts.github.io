@@ -1199,6 +1199,140 @@ async function handleQuizSubmissions(request, env) {
   return json({ submissions: results });
 }
 
+// ---- Perguntas e lembretes do blog (POST /api/leads, GET /api/leads) ----
+//
+// Dois formulários do blog mandam contato aqui:
+//   kind "pergunta" — o formulário "Pergunta pra Ingryd" no fim de todo
+//                     artigo (nome, e-mail, pergunta)
+//   kind "lembrete" — o "Me avisa antes do prazo" da calculadora [[PRAZO]]
+//                     (nome, e-mail, data-limite)
+// Cada envio é gravado na tabela leads (D1) e, se configurado:
+//   - vai pro Brevo (CRM) como contato, na lista certa, com os atributos
+//     PERGUNTA_BLOG / ARTIGO_ORIGEM / PRAZO_DATA / PRAZO_ARTIGO — o e-mail de
+//     lembrete é disparado por uma automação do Brevo em cima de PRAZO_DATA;
+//   - pergunta nova chega no seu e-mail (Resend, NOTIFY_EMAIL), com
+//     "responder" apontando pro e-mail da leitora.
+// Nada disso impede o envio de ser salvo: Brevo e Resend rodam depois da
+// resposta (ctx.waitUntil) e só registram erro no log.
+const LEAD_KINDS = ['pergunta', 'lembrete'];
+const LEADS_WINDOW_SECONDS = 60;
+const LEADS_MAX_PER_WINDOW = 3;
+
+async function handlePostLead(request, env, ctx) {
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return json({ error: 'JSON inválido.' }, 400);
+  }
+  if (body.hp) return json({ ok: true }); // honeypot: bot preenche, humano não vê
+
+  const kind = String(body.kind || '').trim();
+  if (!LEAD_KINDS.includes(kind)) return json({ error: 'Tipo inválido.' }, 400);
+  const name = String(body.name || '').trim().slice(0, 80);
+  const email = String(body.email || '').trim().toLowerCase().slice(0, 150);
+  const question = String(body.question || '').trim().slice(0, 1500);
+  const articleSlug = body.article_slug ? String(body.article_slug).trim().slice(0, 150) : null;
+  const articleTitle = body.article_title ? String(body.article_title).trim().slice(0, 200) : null;
+  const deadline = /^\d{4}-\d{2}-\d{2}$/.test(String(body.deadline || '')) ? String(body.deadline) : null;
+  const newsletter = body.newsletter === true;
+
+  if (!name) return json({ error: 'Preencha seu nome.' }, 400);
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return json({ error: 'Confira o e-mail: parece que falta alguma parte.' }, 400);
+  if (kind === 'pergunta' && question.length < 8) return json({ error: 'Escreva sua pergunta (pelo menos uma frase).' }, 400);
+  if (kind === 'lembrete' && !deadline) return json({ error: 'Falta a data do prazo.' }, 400);
+
+  const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
+  const throttleKey = `throttle:leads:${ip}`;
+  const current = await env.REVIEWS_KV.get(throttleKey);
+  const count = current ? parseInt(current, 10) || 0 : 0;
+  if (count >= LEADS_MAX_PER_WINDOW) return json({ error: 'Você já enviou agora há pouco. Tente de novo em 1 minuto.' }, 429);
+  await env.REVIEWS_KV.put(throttleKey, String(count + 1), { expirationTtl: LEADS_WINDOW_SECONDS });
+
+  if (!env.EVENTS_DB) return json({ error: 'Banco ainda não configurado.' }, 500);
+  const id = crypto.randomUUID();
+  const lead = { id, kind, name, email, question: kind === 'pergunta' ? question : null, articleSlug, articleTitle, deadline, newsletter };
+  await env.EVENTS_DB.prepare(
+    'INSERT INTO leads (id, kind, name, email, question, article_slug, deadline, newsletter, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
+  )
+    .bind(id, kind, name, email, lead.question, articleSlug, deadline, newsletter ? 1 : 0, new Date().toISOString())
+    .run();
+
+  ctx.waitUntil(syncLeadToBrevo(env, lead));
+  if (kind === 'pergunta') ctx.waitUntil(sendQuestionEmail(env, lead));
+  return json({ ok: true }, 201);
+}
+
+function brevoListIds(env, lead) {
+  const ids = [];
+  const add = (v) => { const n = parseInt(v, 10); if (n && !ids.includes(n)) ids.push(n); };
+  add(lead.kind === 'pergunta' ? env.BREVO_LIST_PERGUNTAS : env.BREVO_LIST_LEMBRETES);
+  if (lead.newsletter) add(env.BREVO_LIST_NEWSLETTER);
+  return ids;
+}
+
+async function syncLeadToBrevo(env, lead) {
+  if (!env.BREVO_API_KEY) {
+    console.log('syncLeadToBrevo: BREVO_API_KEY não configurada — contato ficou só no D1.');
+    return;
+  }
+  const attributes = { FIRSTNAME: lead.name, ARTIGO_ORIGEM: lead.articleSlug || '' };
+  if (lead.kind === 'pergunta') attributes.PERGUNTA_BLOG = lead.question;
+  if (lead.kind === 'lembrete') {
+    attributes.PRAZO_DATA = lead.deadline;
+    attributes.PRAZO_ARTIGO = lead.articleTitle || lead.articleSlug || '';
+  }
+  try {
+    const res = await fetch('https://api.brevo.com/v3/contacts', {
+      method: 'POST',
+      headers: { 'api-key': env.BREVO_API_KEY, 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({ email: lead.email, attributes, listIds: brevoListIds(env, lead), updateEnabled: true }),
+    });
+    const text = await res.text();
+    const status = res.ok ? 'ok' : 'erro ' + res.status;
+    if (!res.ok) console.error('syncLeadToBrevo: Brevo respondeu ' + res.status + ' — ' + text);
+    await env.EVENTS_DB.prepare('UPDATE leads SET brevo_status = ? WHERE id = ?').bind(status, lead.id).run();
+  } catch (err) {
+    console.error('syncLeadToBrevo: falhou — ' + String(err));
+  }
+}
+
+async function sendQuestionEmail(env, lead) {
+  if (!env.RESEND_API_KEY || !env.NOTIFY_EMAIL) return;
+  try {
+    const where = lead.articleTitle || lead.articleSlug || 'o blog';
+    const res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        from: 'Por Dentro <onboarding@resend.dev>',
+        to: env.NOTIFY_EMAIL,
+        reply_to: lead.email,
+        subject: 'Pergunta nova de ' + lead.name + ' — ' + where,
+        html:
+          '<p><strong>' + escapeHtml(lead.name) + '</strong> (' + escapeHtml(lead.email) + ') perguntou em <strong>' + escapeHtml(where) + '</strong>:</p>' +
+          '<blockquote style="border-left:3px solid #BB9351;margin:0;padding:4px 12px;">' + escapeHtml(lead.question).replace(/\n/g, '<br>') + '</blockquote>' +
+          '<p>Responda este e-mail pra falar direto com ela.' + (lead.newsletter ? ' Ela também pediu pra receber a newsletter.' : '') + '</p>',
+      }),
+    });
+    if (!res.ok) console.error('sendQuestionEmail: Resend respondeu ' + res.status + ' — ' + (await res.text()));
+  } catch (err) {
+    console.error('sendQuestionEmail: falhou — ' + String(err));
+  }
+}
+
+// Protegida (mesmo login do painel) — lista pra aba "Perguntas e lembretes"
+// do /admin/dashboard/.
+async function handleGetLeads(request, env) {
+  const moderator = await requireCollaborator(request, env);
+  if (!moderator) return json({ error: 'Sem permissão. Faça login com uma conta que tem acesso ao repositório.' }, 401);
+  if (!env.EVENTS_DB) return json({ error: 'Banco ainda não configurado.' }, 500);
+  const { results } = await env.EVENTS_DB.prepare(
+    'SELECT kind, name, email, question, article_slug, deadline, newsletter, brevo_status, created_at FROM leads ORDER BY created_at DESC LIMIT 500'
+  ).all();
+  return json({ leads: results, brevo: !!env.BREVO_API_KEY });
+}
+
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
@@ -1284,6 +1418,12 @@ export default {
       }
       if (url.pathname === '/api/quiz/submit' && request.method === 'POST') {
         return await handleQuizSubmit(request, env, ctx);
+      }
+      if (url.pathname === '/api/leads' && request.method === 'POST') {
+        return await handlePostLead(request, env, ctx);
+      }
+      if (url.pathname === '/api/leads' && request.method === 'GET') {
+        return await handleGetLeads(request, env);
       }
       if (url.pathname === '/api/quiz/submissions' && request.method === 'GET') {
         return await handleQuizSubmissions(request, env);

@@ -127,10 +127,6 @@
 //   Nome | descrição | link (opcional)
 //   [[/ROTEIRO]]
 //
-//   [[PERGUNTA]]                    → caixa anônima "pergunta pra Ingryd"
-//   Texto de chamada (opcional)
-//   [[/PERGUNTA]]
-//
 //   [[PROXIMO-PASSO]]               → recomenda uma Solução digital de
 //   se prazo<=45 | Título | Texto | Botão | URL      acordo com as respostas
 //   se enquete=Opção exata | Título | Texto | Botão | URL
@@ -474,11 +470,12 @@ function renderRoteiro(lines, ctx) {
     ).join("") + "</ul></div>";
 }
 
-function renderPergunta(lines, ctx) {
-  const t = lines.join(" ").trim() || "Ficou alguma dúvida? Pergunta pra mim. As mais pedidas viram artigo.";
-  return mxOpen("pergunta", ctx, "Pergunta pra Ingryd") + "<h3>" + inline(t) + "</h3>" +
-    '<textarea rows="3" maxlength="280" placeholder="Escreva sua dúvida (sem nome, sem e-mail)" aria-label="Sua pergunta"></textarea>' +
-    '<div class="mx-row"><small class="mx-count">0/280</small><button type="button" class="btn btn-pill mx-send">Enviar pergunta</button></div></div>';
+// [[PERGUNTA]] foi substituído pelo formulário "Pergunta pra Ingryd" (nome,
+// e-mail e pergunta) que aparece sozinho no fim de todo artigo — ver
+// assets/js/leads.js. O marcador continua reconhecido só pra não aparecer
+// como texto solto em artigo antigo.
+function renderPergunta() {
+  return "";
 }
 
 function renderProximo(lines, ctx) {

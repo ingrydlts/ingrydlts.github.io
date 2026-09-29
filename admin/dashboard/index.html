@@ -605,6 +605,7 @@
       <button type="button" class="ins-tab" data-target="recursos">Fontes clicadas</button>
       <button type="button" class="ins-tab" data-target="compartilhar">Compartilhar</button>
       <button type="button" class="ins-tab" data-target="vagas">Vagas — Planilha</button>
+      <button type="button" class="ins-tab" data-target="leads">Perguntas e lembretes</button>
     </nav>
 
     <div class="ins-panels">
@@ -668,6 +669,12 @@
         <h2>Questionário de vagas limitadas — Planilha Financeira</h2>
         <p class="muted">Todo mundo que respondeu o formulário em <code>/acesso-vip/</code>, liberado ou não. Clique em "Ver respostas" pra abrir o questionário completo daquela pessoa.</p>
         <div id="ins-quiz"></div>
+      </section>
+
+      <section class="ins-panel" id="panel-leads" hidden>
+        <h2>Perguntas e lembretes do blog</h2>
+        <p class="muted">Quem mandou pergunta no fim dos artigos ou pediu lembrete na calculadora de prazo. Cada contato também vai pro Brevo (coluna "Brevo"). Responda pelo e-mail que chega pra você, ou pelo link "responder".</p>
+        <div id="ins-leads"><p class="muted">Carregando…</p></div>
       </section>
     </div>
     </div>
@@ -870,10 +877,37 @@
       // verdade em /acesso-vip/. Se falhar, a aba de vagas mostra o id cru.
       fetch("/content/quiz-config.json").then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; })
     ])
-      .then(function (results) { renderAll(results[0], results[1]); })
+      .then(function (results) { renderAll(results[0], results[1]); loadLeads(); })
       .catch(function (err) {
         statusEl.textContent = "";
         contentBox.innerHTML = '<p class="ins-error">' + escapeHtml(err.message) + "</p>";
+      });
+  }
+
+
+  // Aba "Perguntas e lembretes" — rota própria (/api/leads), carregada à parte
+  // pra não derrubar o painel inteiro se o Worker ainda não tiver essa rota.
+  function loadLeads() {
+    var box = document.getElementById("ins-leads");
+    if (!box) return;
+    fetch(WORKER_BASE + "/api/leads", { headers: { Authorization: "Bearer " + token } })
+      .then(function (r) { if (!r.ok) throw new Error(r.status === 404 ? "old" : "Falha ao carregar."); return r.json(); })
+      .then(function (d) {
+        var rows = d.leads || [];
+        var q = rows.filter(function (l) { return l.kind === "pergunta"; }).length;
+        var head = '<p class="muted"><b>' + q + "</b> pergunta(s) · <b>" + (rows.length - q) + "</b> lembrete(s)" + (d.brevo ? "" : " · <b>Brevo ainda não configurado</b>: os contatos estão guardados só aqui (ver README do Worker).") + "</p>";
+        if (!rows.length) { box.innerHTML = head + '<p class="muted">Ainda ninguém enviou.</p>'; return; }
+        box.innerHTML = head + '<div style="overflow-x:auto"><table class="ins-table"><thead><tr><th>Data</th><th>Tipo</th><th>Nome</th><th>E-mail</th><th>Pergunta / prazo</th><th>Artigo</th><th>Brevo</th></tr></thead><tbody>' +
+          rows.map(function (l) {
+            var when = String(l.created_at || "").slice(0, 10).split("-").reverse().join("/");
+            var what = l.kind === "pergunta" ? escapeHtml(l.question || "") : "Prazo: " + escapeHtml(String(l.deadline || "").split("-").reverse().join("/"));
+            var mail = escapeHtml(l.email || "");
+            return "<tr><td>" + when + "</td><td>" + (l.kind === "pergunta" ? "Pergunta" : "Lembrete") + (l.newsletter ? " · newsletter" : "") + "</td><td>" + escapeHtml(l.name || "") +
+              '</td><td><a href="mailto:' + mail + '">' + mail + "</a></td><td style=\"max-width:360px;white-space:pre-wrap\">" + what + "</td><td>" + escapeHtml(l.article_slug || "") + "</td><td>" + escapeHtml(l.brevo_status || "—") + "</td></tr>";
+          }).join("") + "</tbody></table></div>";
+      })
+      .catch(function (err) {
+        box.innerHTML = '<p class="muted">' + (err.message === "old" ? "O Worker publicado ainda não tem a rota de perguntas — publique o worker.js atualizado (README do Worker, seção 9)." : escapeHtml(err.message)) + "</p>";
       });
   }
 

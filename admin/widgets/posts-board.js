@@ -178,7 +178,6 @@
     { re: /\[\[RESUMO\]\]/, label: "Resumo em 20s" },
     { re: /\[\[CONFIANCA\]\]/, label: "Termômetro de confiança" },
     { re: /\[\[(MITO|POLL|CHECKLIST)\]\]/, label: "Mito / enquete / checklist" },
-    { re: /\[\[PERGUNTA\]\]/, label: "Pergunta pra Ingryd" },
     { re: /\[\[PROXIMO-PASSO\]\]/, label: "Próximo passo (Soluções digitais)", need: true },
     { re: /\[\[FAQ\]\]/, label: "FAQ", need: true },
     { re: /\[\[FEEDBACK\]\]/, label: "Feedback", need: true }

@@ -14,7 +14,6 @@ campo **Blocos de microengajamento**.
 | **Ferramenta-assinatura** | **1** | `[[PRAZO]]`, `[[QUIZ]]`, `[[SELETOR]]`, `[[LINHA-DO-TEMPO]]` ou `[[ROTEIRO]]` |
 | Apoio | até 3 | `[[MITO]]`, `[[POLL]]`, `[[CHECKLIST]]`, `[[STEPS]]`… |
 | FAQ | 1 | `[[FAQ]]` |
-| Pergunta pra Ingryd | 1 | `[[PERGUNTA]]` |
 | Próximo passo → Soluções digitais | 1 | `[[PROXIMO-PASSO]]` |
 | Trilha | se o artigo fizer parte de uma | `[[TRILHA]]` |
 | Feedback | 1, sempre por último | `[[FEEDBACK]]` |
@@ -107,8 +106,6 @@ Ferramentas próprias que já existem e contam como assinatura: `[[MAPA-FLE]]`,
 
 **`[[MITO]]`**: `afirmação | mito ou verdade | explicação`. A 1ª linha (opcional) é o título.
 
-**`[[PERGUNTA]]`**: texto da chamada (pode ficar vazio). A pergunta chega anônima no painel de dados.
-
 **`[[PROXIMO-PASSO]]`**: uma regra por linha, de cima pra baixo; a primeira que bater aparece.
 ```
 [[PROXIMO-PASSO]]
@@ -124,6 +121,12 @@ Condições: `prazo<=45`, `prazo<0` (dias restantes do `[[PRAZO]]`) · `enquete=
 
 ### Na página, sem bloco
 
+- **Pergunta pra Ingryd**: formulário com nome, e-mail e pergunta no fim de todo artigo, logo antes
+  do rodapé (`assets/js/leads.js`). A pergunta chega no seu e-mail, vai pro Brevo e aparece no
+  painel de dados, aba "Perguntas e lembretes".
+- **Lembrete de prazo**: dentro do resultado do `[[PRAZO]]`, quando faltam mais de 15 dias, a
+  leitora deixa nome e e-mail e recebe um aviso 15 dias antes (automação do Brevo).
+
 - Barra de progresso de leitura no topo, com eventos em 25/50/75/100%.
 - Sumário "Nesta página" marca ✓ nas seções já lidas.
 - Selecionar uma frase abre "Grifar / Copiar / Perguntar sobre isso".
@@ -135,10 +138,14 @@ Tudo sai por `PDEvents.send("block", slug, { type, … })`, só depois do consen
 cookies, e é gravado no D1 pelo Worker (que já aceita, sem mudança). Tipos novos:
 
 `read_progress` · `confidence` · `tool_use` · `quiz_result` · `selector_result` · `myth_answer` ·
-`roteiro_mark` · `question_submit` · `solution_click` · `series_click` · `section_reaction` ·
+`roteiro_mark` · `lead_submit` (sem nome nem e-mail) · `solution_click` · `series_click` · `section_reaction` ·
 `highlight` · `highlight_copy` · `tldr_open`
 
 O Worker aceita 20 eventos por minuto por pessoa, por isso só vira evento o que é resposta ou decisão.
+
+Nome, e-mail, pergunta e data do lembrete não passam pelos eventos: vão por `POST /api/leads`, que
+grava na tabela `leads`, sincroniza com o Brevo e te avisa por e-mail. Configuração em
+`cms-oauth-worker/README.md`, seção 16.
 
 ## Escrever um artigo novo com o robô
 

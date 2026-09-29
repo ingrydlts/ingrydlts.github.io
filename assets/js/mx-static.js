@@ -8,6 +8,7 @@
 //
 // Onde entram: [[RESUMO]] e [[CONFIANCA]] logo depois do topo do artigo;
 // o resto numa seção nova antes do FAQ (ou no fim, se não houver FAQ).
+// No fim, antes do rodapé, entra o formulário "Pergunta pra Ingryd" (leads.js).
 // Uso na página: <script type="module" src="/assets/js/mx-static.js" data-slug="slug"></script>
 import { fetchJSON } from "/assets/js/render.js";
 import { markdownToBlocks } from "/assets/js/markdown.js";
@@ -19,9 +20,14 @@ const SLUG = (me && me.dataset.slug) || location.pathname.split("/").filter(Bool
   let data;
   try { data = await fetchJSON("/content/posts.json"); } catch (e) { return; }
   const post = (data.items || []).find((p) => p.slug === SLUG);
-  if (!post || !post.mxBlocks) return;
   const root = document.querySelector("main");
   if (!root) return;
+  if (!post || !post.mxBlocks) {
+    // sem blocos: ainda assim, "Pergunta pra Ingryd" no fim da página
+    const { mountAskForm } = await import("/assets/js/leads.js");
+    mountAskForm({ slug: SLUG, title: (post && post.title) || document.title });
+    return;
+  }
   const html = markdownToBlocks(post.mxBlocks, { slug: SLUG });
   const top = [], rest = [];
   html.forEach((b) => (/data-mx="(resumo|confianca)"/.test(b) ? top : rest).push(b));

@@ -491,7 +491,7 @@
     PRAZO: "1ª linha = título. 2ª = rótulo da data | duração (3 meses, 90 dias, 1 ano). Mostra dias restantes e status; alimenta o Próximo passo (se prazo<=45).",
     "LINHA-DO-TEMPO": "1ª linha = título. 2ª = rótulo da data. Depois: deslocamento | o que fazer (-12 meses, -2 semanas, +30 dias, 0).",
     ROTEIRO: "1ª linha = título. Depois: nome | descrição | link opcional. A leitora marca \"Quero ir / Já fui\".",
-    PERGUNTA: "Texto da chamada (opcional). A pergunta chega anônima no painel de dados.",
+    PERGUNTA: "Não é mais usado: o formulário \"Pergunta pra Ingryd\" (nome, e-mail e pergunta) aparece sozinho no fim de todo artigo. Pode apagar este bloco.",
     "PROXIMO-PASSO": "Uma regra por linha, de cima pra baixo: se condição | título | texto | botão | link. Condições: prazo<=45, prazo<0, enquete=Opção exata, seletor=chave, quiz<60, checklist=completo, confianca<=2. A linha padrao aparece quando nada bate.",
     TRILHA: "1ª linha = nome da trilha. Depois, um slug de artigo por linha, na ordem da trilha (inclua o slug deste artigo)."
   };
@@ -499,7 +499,7 @@
   var RICH_NAME = {
     PRAZO: "⏳ Ferramenta: calculadora de prazo", QUIZ: "🎓 Ferramenta: mini-simulado", SELETOR: "🧭 Ferramenta: qual é o seu caso?",
     "LINHA-DO-TEMPO": "🗓️ Ferramenta: linha do tempo", ROTEIRO: "📍 Ferramenta: roteiro salvável", RESUMO: "⚡ Resumo em 20s",
-    CONFIANCA: "🌡️ Termômetro de confiança", MITO: "🤔 Mito ou verdade", PERGUNTA: "💬 Pergunta pra Ingryd",
+    CONFIANCA: "🌡️ Termômetro de confiança", MITO: "🤔 Mito ou verdade", PERGUNTA: "💬 (antigo) Pergunta — pode apagar",
     "PROXIMO-PASSO": "➡️ Próximo passo (Soluções digitais)", TRILHA: "🧵 Trilha de artigos"
   };
 
@@ -545,7 +545,6 @@
         { key: "RESUMO", emoji: "⚡", label: "Resumo em 20s", make: function () { return richBlock("RESUMO"); } },
         { key: "CONFIANCA", emoji: "🌡️", label: "Termômetro de confiança", make: function () { return richBlock("CONFIANCA"); } },
         { key: "MITO", emoji: "🤔", label: "Mito ou verdade", make: function () { return richBlock("MITO"); } },
-        { key: "PERGUNTA", emoji: "💬", label: "Pergunta pra Ingryd", make: function () { return richBlock("PERGUNTA"); } },
         { key: "PROXIMO-PASSO", emoji: "➡️", label: "Próximo passo (Soluções)", make: function () { return richBlock("PROXIMO-PASSO"); } },
         { key: "TRILHA", emoji: "🧵", label: "Trilha de artigos", make: function () { return richBlock("TRILHA"); } }
       ]

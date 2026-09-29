@@ -12,9 +12,11 @@
 // confianca) e o bloco [[PROXIMO-PASSO]] escolhe a regra que bate com elas.
 
 import { escapeHtml } from "/assets/js/render.js";
+import { mountAskForm, reminderFormHTML, bindReminderForm } from "/assets/js/leads.js";
 
 const ANSWERS = {};
 let SLUG = "artigo";
+let TITLE = "";
 
 function send(type, payload) {
   try {
@@ -164,7 +166,10 @@ function initPrazo(el) {
     else { st = "Tranquila"; cls = "ok"; msg = "Seu prazo vai até <b>" + fmt(end) + "</b>. Use a folga pra organizar tudo com calma."; }
     const pct = Math.max(0, Math.min(100, Math.round((Math.max(left, 0) / total) * 100)));
     out.innerHTML = '<div class="mx-dial mx-' + cls + '" style="--p:' + pct + '"><div><b>' + Math.max(left, 0) + "</b><small>dias restantes</small></div></div>" +
-      '<div><span class="mx-status mx-' + cls + '">' + st + "</span><p>" + msg + '</p><p class="mx-note">A data fica salva neste aparelho.</p></div>';
+      '<div><span class="mx-status mx-' + cls + '">' + st + "</span><p>" + msg + '</p><p class="mx-note">A data fica salva neste aparelho.</p></div>' +
+      (left > 15 ? reminderFormHTML() : "");
+    const rf = out.querySelector(".mx-remind");
+    if (rf) bindReminderForm(rf, { slug: SLUG, title: TITLE, deadline: end.getFullYear() + "-" + String(end.getMonth() + 1).padStart(2, "0") + "-" + String(end.getDate()).padStart(2, "0"), daysLeft: left });
     store("prazo:" + el.dataset.mxId, input.value);
     answer("prazo", left);
     if (log) send("tool_use", { tool: "prazo", id: el.dataset.mxId, days_left: left, status: st.toLowerCase() });
@@ -210,19 +215,6 @@ function initRoteiro(el) {
     if (state[i]) send("roteiro_mark", { id: el.dataset.mxId, item: +i, mark: state[i] });
   });
   paint();
-}
-
-// ---- PERGUNTA ---------------------------------------------------------------
-function initPergunta(el) {
-  const ta = el.querySelector("textarea"), n = el.querySelector(".mx-count");
-  ta.addEventListener("input", () => (n.textContent = ta.value.length + "/280"));
-  el.querySelector(".mx-send").addEventListener("click", () => {
-    const q = ta.value.trim();
-    if (q.length < 8) { n.textContent = "Escreve um pouquinho mais pra eu entender"; return; }
-    send("question_submit", { text: q.slice(0, 280) });
-    el.querySelector(".mx-row").innerHTML = '<p class="mx-note mx-ok">Recebi! Se mais gente perguntar isso, vira artigo.</p>';
-    ta.disabled = true;
-  });
 }
 
 // ---- PRÓXIMO PASSO ----------------------------------------------------------
@@ -363,7 +355,7 @@ function initHighlight(body) {
     pop.className = "mx-hlpop";
     pop.style.left = Math.max(8, Math.min(innerWidth - 260, rc.left + rc.width / 2 - 120 + scrollX)) + "px";
     pop.style.top = rc.top + scrollY - 46 + "px";
-    const ask = body.querySelector(".mx-pergunta textarea");
+    const ask = document.querySelector(".ask-ingryd textarea");
     pop.innerHTML = '<button type="button" data-a="hl">Grifar</button><button type="button" data-a="cp">Copiar</button>' + (ask ? '<button type="button" data-a="ask">Perguntar sobre isso</button>' : "");
     pop.addEventListener("mousedown", (e) => e.preventDefault());
     pop.addEventListener("click", async (e) => {
@@ -384,10 +376,11 @@ function initHighlight(body) {
 export function init(opts) {
   opts = opts || {};
   SLUG = opts.slug || "artigo";
+  TITLE = (opts.post && opts.post.title) || document.title;
   const body = opts.root || document.querySelector(".article-body");
   if (!body) return;
   const article = body.closest("article") || body;
-  const INIT = { confianca: (el) => initConfianca(el, body), mito: initMito, quiz: initQuiz, seletor: initSeletor, prazo: initPrazo, linha: initLinha, roteiro: initRoteiro, pergunta: initPergunta, trilha: (el) => initTrilha(el, opts.posts) };
+  const INIT = { confianca: (el) => initConfianca(el, body), mito: initMito, quiz: initQuiz, seletor: initSeletor, prazo: initPrazo, linha: initLinha, roteiro: initRoteiro, trilha: (el) => initTrilha(el, opts.posts) };
   body.querySelectorAll("[data-mx]").forEach((el) => {
     const fn = INIT[el.dataset.mx];
     if (fn) { try { fn(el); } catch (e) { console.error("[microengajamento]", el.dataset.mx, e); } }
@@ -403,4 +396,6 @@ export function init(opts) {
   if (post.sectionReactions) initReactions(body);
   if (post.highlight !== false) initHighlight(body);
   initProgress(article);
+  // "Pergunta pra Ingryd" (nome, e-mail, pergunta) no fim de todo artigo, antes do rodapé.
+  mountAskForm({ slug: SLUG, title: TITLE });
 }

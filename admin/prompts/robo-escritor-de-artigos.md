@@ -52,10 +52,12 @@ reacoes-por-secao: sim (artigo longo, 5+ seções) ou não
 6. Até 3 blocos de apoio espalhados: `[[MITO]]`, `[[POLL]]`, `[[CHECKLIST]]`, `[[STEPS]]`, `[[CARDS]]`, `[[STATS]]`.
 7. `## Perguntas frequentes` + `[[FAQ]]` com 3 a 5 perguntas.
 8. `[[RESOURCES]]` com as fontes.
-9. `[[PERGUNTA]]`.
-10. `[[PROXIMO-PASSO]]` com 2 ou 3 regras + `padrao`.
-11. `[[TRILHA]]`, se o artigo fizer parte de uma sequência.
-12. `[[FEEDBACK]]`, sempre por último.
+9. `[[PROXIMO-PASSO]]` com 2 ou 3 regras + `padrao`.
+10. `[[TRILHA]]`, se o artigo fizer parte de uma sequência.
+11. `[[FEEDBACK]]`, sempre por último.
+
+Não coloque bloco de pergunta: o formulário "Pergunta pra Ingryd" (nome, e-mail e pergunta) já
+aparece sozinho no fim de todo artigo.
 
 Parágrafo que começa com `**Atenção:**` vira caixa de aviso.
 
@@ -138,10 +140,6 @@ Pergunta | Resposta
 [[RESOURCES]]
 Título da fonte | Descrição curta | Acessar | https://
 [[/RESOURCES]]
-
-[[PERGUNTA]]
-Ficou alguma dúvida? Pergunta pra mim. As mais pedidas viram artigo.
-[[/PERGUNTA]]
 
 [[PROXIMO-PASSO]]
 se prazo<=45 | Título | Texto | Botão | link
