@@ -28,6 +28,29 @@ var TYPE_META = {
   artigo: ['Artigo', 'tp-artigo'], uma_um: ['1:1', 'out'], email: ['E-mail', 'out'], sinal: ['Sinal no dashboard', 'out']
 };
 
+var WORKER_BASE = 'https://por-dentro-cms-oauth.ingrydigitalmanagement.workers.dev';
+// Link que vai nos e-mails ("[link do acesso]"). Enquanto estiver vazio o trecho fica entre colchetes e o
+// Worker RECUSA o envio — de propósito, pra nunca sair e-mail com placeholder. Preencha com o endereço do app.
+var APP_LINK = '';
+var EXIGEM_NOVIDADES = { naoclicou: 1, parouapp: 1 };   // igual ao Worker (CRM_MODELOS_EXIGEM_NOVIDADES)
+function pn(c) { return displayName(c).trim().split(/\s+/)[0]; }
+function lk() { return APP_LINK || '[link do acesso]'; }
+var TPLS = {
+  boas_vindas: { label: 'Boas-vindas + link de acesso', when: 'Sai assim que a pessoa deixa o e-mail no funil.', lever: 'Dispara o gatilho',
+    make: function (c) { return ['Assunto: ' + pn(c) + ', seu link de acesso chegou', 'Oi ' + pn(c) + '! Aqui está o link pra ver o seu checklist de ' + personaLabel(c).toLowerCase() + ', já com prazos reais: ' + lk() + '\n\nÉ sem senha — um clique e você já entra.\n\nIngryd · Por Dentro']; } },
+  naoabriu: { label: 'Reimpacto — não abriu o e-mail', when: 'Entregue e não aberto há 3+ dias.', lever: 'Gatilho ausente',
+    make: function (c) { return ['Assunto: ' + pn(c) + ', isso ainda te interessa?', 'Oi ' + pn(c) + '! Vi que o link do seu checklist ainda não foi aberto — deixo de novo aqui: ' + lk() + '\n\nSe caiu no spam, vale marcar como "não é spam" pra não perder os próximos.\n\nIngryd · Por Dentro']; } },
+  naoclicou: { label: 'Reimpacto — abriu, não clicou', when: 'Aberto e não clicado há 3+ dias.', lever: 'Falta motivação/prova',
+    make: function (c) { return ['Assunto: outras ' + (c.persona === 'au_pair_estudante' ? 'au pairs' : 'pessoas') + ' que já passaram por isso', 'Oi ' + pn(c) + '! Talvez o e-mail anterior não tenha deixado claro o que você ganha — várias pessoas no seu mesmo caminho já organizaram o dossiê usando o checklist: ' + lk() + '\n\nQualquer dúvida, é só responder.\nIngryd · Por Dentro']; } },
+  cliquenaoapp: { label: 'Reimpacto — clicou, não abriu o app', when: 'Clicou no link mas nunca chegou a ativar.', lever: 'Fricção de capacidade',
+    make: function (c) { return ['Assunto: seu link ainda funciona, ' + pn(c), 'Oi ' + pn(c) + '! Vi que você chegou a clicar mas não chegou a entrar — o acesso é sem senha, um clique só: ' + lk() + '\n\nSe travou em algo, me conta que eu ajudo.\nIngryd · Por Dentro']; } },
+  parouapp: { label: 'Reimpacto — abriu o app e parou', when: 'Ativado ou em uso, sem sinal há 7+ dias.', lever: 'Motivação caiu',
+    make: function (c) { return ['Assunto: uma dica rápida pro seu caso', 'Oi ' + pn(c) + '! Separei uma dica que não estava no seu checklist, específica pro seu momento: [dica]\n\n' + (c.motivo ? 'Também vi que ' + c.motivo + ' — vale resolver isso antes de qualquer outra coisa.\n\n' : '') + 'Ingryd · Por Dentro']; } }
+};
+var TPL_ORDER = ['boas_vindas', 'naoabriu', 'naoclicou', 'cliquenaoapp', 'parouapp'];
+function defaultTpl(c) { return c.segmento || 'boas_vindas'; }
+function splitTpl(c, k) { var t = TPLS[k].make(c); return { subject: t[0].replace(/^Assunto: /, ''), body: t[1] }; }
+
 var C = [], Q = [], SUBS = {};
 var state = { view: 'hoje', persona: '', sub: '', urg: '', stage: '', orig: '', q: '', sel: null, qs: 'nova', qsel: null, preset: 'todos', seg: '', prevView: 'contatos' };
 var activeCid = null;
@@ -287,7 +310,7 @@ function renderReimpacto() {
       '<td><span class="persona">' + esc(personaLabel(c)) + '</span><div class="sub">' + esc(subLabel(c)) + '</div></td>' +
       '<td><span class="pill st-' + esc(c.email_status) + '">' + esc(MAIL_ST[c.email_status] || '—') + '</span></td>' +
       '<td class="sub">' + esc(sg ? sg.t : '—') + ' · ' + ago(c.dias) + '</td>' +
-      '<td>' + (c.aceita_novidades ? '' : '<span class="sub">sem aceite de novidades</span>') + '</td></tr>';
+      '<td>' + (EXIGEM_NOVIDADES[c.segmento] && !c.aceita_novidades ? '<span class="sub">sem aceite de novidades</span>' : '<button class="btn primary" type="button" data-emailfor="' + esc(c.id) + '">Preparar e-mail</button>') + '</td></tr>';
   }).join('');
   $('seg-empty').hidden = list.length > 0;
 }
@@ -344,7 +367,7 @@ async function renderPessoa() {
     '<div class="ctx" style="margin-top:8px">' + urgPill(c.urgencia) + '<span class="pill">' + esc(stageLabel(c.estagio)) + '</span><span class="pill">' + esc(personaLabel(c)) + (subLabel(c) ? ' · ' + esc(subLabel(c)) : '') + '</span></div></div></div>' +
     '<p class="sub" style="margin-top:10px">' + (c.motivo ? 'Por que precisa de atenção: ' + esc(c.motivo) : 'Urgência ' + esc(URG[c.urgencia].toLowerCase()) + ': ' + esc(URG_WHY[c.urgencia])) + '</p>' +
     '<div class="actions" style="margin-top:14px">' +
-    '<button class="btn" type="button" disabled title="Envio de e-mail entra na fase 3">Escrever e-mail</button>' +
+    '<button class="btn primary" type="button" data-emailfor="' + esc(c.id) + '">Escrever e-mail</button>' +
     '<button class="btn" type="button" data-open1a1="' + esc(c.id) + '">Marcar 1:1</button>' +
     '<button class="btn" type="button" data-opensinal="' + esc(c.id) + '">Enviar sinal ao dashboard</button>' +
     '<div class="sel"><select id="stage-pick" aria-label="Mudar estágio">' + STAGES.map(function (s) { return '<option value="' + s.k + '"' + (s.k === c.estagio ? ' selected' : '') + '>Estágio: ' + s.l + '</option>'; }).join('') + '</select></div></div>' +
@@ -384,6 +407,57 @@ function openSinal(cid) {
     '<textarea id="compose-txt" maxlength="500" placeholder="Escreva a mensagem do sinal..." style="min-height:110px"></textarea></div>' +
     '<div class="actions"><button class="btn" type="button" id="modal-cancel">Cancelar</button><button class="btn primary" type="button" id="sinal-send">Enviar sinal →</button></div>');
 }
+
+function renderModelos() {
+  var c = C.filter(function (x) { return x.id === state.mdContact; })[0] || C[0];
+  state.tplKey = state.tplKey || 'boas_vindas';
+  $('mod-contact').innerHTML = C.map(function (x) { return '<option value="' + esc(x.id) + '"' + (c && x.id === c.id ? ' selected' : '') + '>' + esc(displayName(x)) + '</option>'; }).join('');
+  $('mod-list').innerHTML = TPL_ORDER.map(function (k) {
+    var t = TPLS[k];
+    return '<button class="tplcard" data-tpl-pick="' + k + '" aria-pressed="' + (state.tplKey === k) + '" type="button"><b>' + esc(t.label) + '</b><span>' + esc(t.when) + '</span>' +
+      '<span class="vartag">' + esc(t.lever) + '</span>' + (EXIGEM_NOVIDADES[k] ? '<span class="vartag" style="background:var(--brown-soft);color:var(--brown)">só p/ quem aceitou novidades</span>' : '') + '</button>';
+  }).join('');
+  if (!c) { $('mod-preview').innerHTML = '<div class="empty">Sem contatos ainda.</div>'; return; }
+  var t = splitTpl(c, state.tplKey);
+  $('mod-preview').innerHTML = '<p class="previewsubj">' + esc(t.subject) + '</p><div class="mailbody">' + esc(t.body) + '</div>' +
+    '<div class="actions"><button class="btn primary" type="button" data-emailfor="' + esc(c.id) + '" data-tplk="' + state.tplKey + '">Escrever este e-mail →</button></div>' +
+    '<p class="sub" style="margin-top:8px">Preenchido sozinho com o nome, a persona (' + esc(personaLabel(c)) + ')' + (state.tplKey === 'parouapp' && c.motivo ? ' e o motivo (' + esc(c.motivo) + ')' : '') + '. Você edita antes de enviar.</p>';
+}
+function openCompose(cid, key) {
+  var c = byC(cid); if (!c) return;
+  activeCid = cid;
+  var k = key || defaultTpl(c), t = splitTpl(c, k);
+  var bloqueado = EXIGEM_NOVIDADES[k] && !c.aceita_novidades;
+  modalOpen(modalTop(c) +
+    '<div class="ctx" style="margin-top:12px"><div class="sel"><select id="compose-tpl" aria-label="Modelo">' + TPL_ORDER.map(function (m) { return '<option value="' + m + '"' + (m === k ? ' selected' : '') + '>' + esc(TPLS[m].label) + '</option>'; }).join('') + '</select></div><span class="lever" style="display:inline-block;font-size:10.5px;font-weight:700;text-transform:uppercase;color:var(--brown);background:var(--brown-soft);padding:2px 8px;border-radius:999px">' + esc(TPLS[k].lever) + '</span></div>' +
+    (bloqueado ? '<p class="sub" style="color:var(--red);margin:8px 0 0">Essa pessoa não aceitou novidades por e-mail — este modelo não pode ser enviado a ela.</p>' : '') +
+    '<div class="reply" style="margin-top:14px"><label for="compose-subj">Assunto</label><input id="compose-subj" maxlength="200" style="height:38px;border:1px solid var(--line-2);border-radius:var(--r);padding:0 10px;background:var(--surface-2)" value="' + esc(t.subject) + '">' +
+    '<label for="compose-txt">Mensagem — edite antes de enviar</label><textarea id="compose-txt" style="min-height:210px">' + esc(t.body) + '</textarea>' +
+    '<p class="sub" id="compose-err" style="margin:0;color:var(--red)" role="alert" hidden></p></div>' +
+    '<div class="actions"><button class="btn" type="button" id="modal-cancel">Cancelar</button><button class="btn primary" type="button" id="compose-send" data-tpl="' + k + '"' + (bloqueado ? ' disabled' : '') + '>Enviar e-mail</button></div>');
+}
+async function sendEmail(btn) {
+  var err = $('compose-err'); err.hidden = true;
+  var sess = await supabase.auth.getSession();
+  if (!sess.data.session) { err.textContent = 'Sessão expirada. Recarregue a página e entre de novo.'; err.hidden = false; return; }
+  btn.disabled = true; btn.textContent = 'Enviando…';
+  try {
+    var res = await fetch(WORKER_BASE + '/api/crm/enviar', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + sess.data.session.access_token },
+      body: JSON.stringify({ contato_id: activeCid, modelo: btn.dataset.tpl, assunto: $('compose-subj').value.trim(), corpo: $('compose-txt').value.trim() })
+    });
+    var data = await res.json().catch(function () { return {}; });
+    if (!res.ok) throw new Error(data.error || ('Erro ' + res.status));
+    closeCompose(); await reload();
+    if (state.view === 'pessoa') renderPessoa(); else if (state.view === 'reimpacto') renderReimpacto();
+    toast(data.aviso || 'E-mail enviado');
+  } catch (e) {
+    err.textContent = e.message; err.hidden = false;
+    btn.disabled = false; btn.textContent = 'Enviar e-mail';
+  }
+}
+
 function open1a1(cid) {
   var c = byC(cid); activeCid = cid;
   modalOpen(modalTop(c) + '<div class="reply" style="margin-top:14px"><label for="modal-date">Data e horário do 1:1</label><input id="modal-date" type="datetime-local"></div>' +
@@ -399,6 +473,7 @@ function show(view) {
   if (view === 'funil') renderBoard();
   if (view === 'perguntas') renderQuestions();
   if (view === 'reimpacto') renderReimpacto();
+  if (view === 'modelos') renderModelos();
   if (view === 'pessoa') renderPessoa();
   window.scrollTo({ top: 0 });
 }
@@ -436,6 +511,9 @@ document.addEventListener('click', async function (e) {
   if (t.dataset.open1a1) return open1a1(t.dataset.open1a1);
   if (t.dataset.sinalpick) { $('compose-txt').value = SINAIS[+t.dataset.sinalpick].body(byC(activeCid)); return; }
   if (t.id === 'modal-cancel') return closeCompose();
+  if (t.dataset.emailfor) return openCompose(t.dataset.emailfor, t.dataset.tplk);
+  if (t.dataset.tplPick) { state.tplKey = t.dataset.tplPick; return renderModelos(); }
+  if (t.id === 'compose-send') return sendEmail(t);
 
   if (t.id === 'send-reply') {
     var txt = $('reply-txt').value.trim();
@@ -469,6 +547,8 @@ document.addEventListener('click', async function (e) {
   }
 });
 document.addEventListener('change', async function (e) {
+  if (e.target.id === 'compose-tpl') return openCompose(activeCid, e.target.value);
+  if (e.target.id === 'mod-contact') { state.mdContact = e.target.value; return renderModelos(); }
   if (e.target.id !== 'stage-pick') return;
   var c = byC(state.sel), novo = e.target.value;
   var r = await supabase.from('contatos').update({ estagio: novo }).eq('id', c.id);

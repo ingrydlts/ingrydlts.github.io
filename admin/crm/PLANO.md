@@ -13,8 +13,8 @@ Backend: o **mesmo Supabase** do app (projeto `hslhpktfgxwfvljvsxkj`). Painel: e
 | Página da pessoa (feed, anotações, consentimento, mudar estágio) | `eventos`, `consentimentos`, `contatos.nota` | pronto |
 | Marcar 1:1 / Enviar sinal | `um_a_um`, `sinais` (o app lê com `meus_sinais()`) | pronto no painel; **falta o dashboard do app mostrar o sinal** |
 | Perguntas únicas | `perguntas_unicas` | painel pronto; **falta o formulário nos artigos** chamar `enviar_pergunta_unica` e o **envio da resposta por e-mail** (fase 3) |
-| Reimpactar (segmentos) | coluna `segmento` de `crm_contatos` (regras na view) | lista pronta; **botão de enviar = fase 3** |
-| Modelos de e-mail | — | fase 3 |
+| Reimpactar (segmentos) | coluna `segmento` de `crm_contatos` (regras na view) | pronto (envio via Worker → Brevo; ver README do Worker, seção 16) |
+| Modelos de e-mail | `TPLS` em `crm.js` | pronto |
 
 ## Etapas
 
@@ -29,7 +29,7 @@ Backend: o **mesmo Supabase** do app (projeto `hslhpktfgxwfvljvsxkj`). Painel: e
    - App (`registrar_evento`): chamar `app_aberto`, `checklist_marcado`, `artigo_lido` — é isso que faz o estágio andar sozinho.
    - App: mostrar `meus_sinais()` no dashboard e chamar `marcar_sinal_lido()`.
    - Site: formulário "pergunta única" dos artigos → `supabase.rpc('enviar_pergunta_unica', { payload })`.
-5. **Fase 3 — e-mail** (Cloudflare Worker em `cms-oauth-worker/` + provedor Resend/Brevo):
+5. **Fase 3 — e-mail** (código pronto; falta configurar o Brevo — `cms-oauth-worker/README.md`, seção 16) (Cloudflare Worker em `cms-oauth-worker/` + provedor Resend/Brevo):
    - `POST /api/crm/enviar` (exige o token de admin): manda o e-mail e grava em `emails_enviados`.
    - Webhook do provedor → atualiza `status` (`entregue → aberto → clicado`) com service_role, só no Worker.
    - Só enviar novidades/reimpacto a quem tem `aceita_novidades = true`; link de descadastro grava `consentimentos` com `aceito = false`.

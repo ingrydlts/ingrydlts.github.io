@@ -1199,6 +1199,171 @@ async function handleQuizSubmissions(request, env) {
   return json({ submissions: results });
 }
 
+// ---- CRM: envio de e-mail pelo Brevo + webhook de status (fase 3 do painel /admin/crm/) ----
+//
+// Quem chama /api/crm/enviar é o painel do CRM, logado no Supabase (não no GitHub): o Worker
+// confere o token com o Supabase, confere que a pessoa está na tabela `admins` e só então
+// manda o e-mail. A gravação em emails_enviados usa o PRÓPRIO token da admin (RLS deixa).
+// A chave service_role só existe pro webhook do Brevo, que não tem login nenhum.
+//
+//   Variáveis: BREVO_API_KEY, BREVO_SENDER_EMAIL, BREVO_SENDER_NAME (opcional),
+//              BREVO_WEBHOOK_SECRET (>= 24 caracteres), SUPABASE_SERVICE_ROLE_KEY.
+//   Ver README.md, seção 16.
+const CRM_SUPABASE_URL = 'https://hslhpktfgxwfvljvsxkj.supabase.co';
+const CRM_SUPABASE_ANON_KEY = 'sb_publishable_nYVeQ3hGiMCGA0IzYqYeyQ_H9VcEXni'; // pública por design (mesma do site)
+const CRM_MODELOS = ['boas_vindas', 'naoabriu', 'naoclicou', 'cliquenaoapp', 'parouapp'];
+// Modelos que oferecem conteúdo novo (prova social, dica extra) só saem pra quem aceitou novidades.
+// Os demais só lembram do acesso que a própria pessoa pediu ao deixar o e-mail.
+const CRM_MODELOS_EXIGEM_NOVIDADES = ['naoclicou', 'parouapp'];
+const CRM_UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function crmEscapeHtml(t) {
+  return String(t).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+// Texto puro -> HTML simples: escapa tudo, mantém quebras de linha e transforma http(s)://... em link.
+function crmTextToHtml(text) {
+  const safe = crmEscapeHtml(text).replace(/(https?:\/\/[^\s<]+)/g, (u) => `<a href="${u}">${u}</a>`);
+  return `<div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.6;color:#2B2B2B">${safe.replace(/\n/g, '<br>')}</div>`;
+}
+
+async function crmRequireAdmin(request) {
+  const token = (request.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '').trim();
+  if (!token) return null;
+  const headers = { apikey: CRM_SUPABASE_ANON_KEY, Authorization: `Bearer ${token}` };
+  const userRes = await fetch(`${CRM_SUPABASE_URL}/auth/v1/user`, { headers });
+  if (!userRes.ok) return null;
+  const user = await userRes.json();
+  if (!user || !user.id) return null;
+  const admRes = await fetch(`${CRM_SUPABASE_URL}/rest/v1/admins?select=user_id&user_id=eq.${encodeURIComponent(user.id)}`, { headers });
+  if (!admRes.ok) return null;
+  const rows = await admRes.json();
+  return Array.isArray(rows) && rows.length ? { token, user } : null;
+}
+
+async function handleCrmEnviar(request, env) {
+  const admin = await crmRequireAdmin(request);
+  if (!admin) return json({ error: 'Sem permissão. Entre de novo no CRM.' }, 401);
+  if (!env.BREVO_API_KEY || !env.BREVO_SENDER_EMAIL) {
+    return json({ error: 'Brevo ainda não configurado no Worker (BREVO_API_KEY / BREVO_SENDER_EMAIL).' }, 500);
+  }
+
+  let body;
+  try { body = await request.json(); } catch (e) { return json({ error: 'Corpo inválido.' }, 400); }
+  const contatoId = String((body && body.contato_id) || '');
+  const modelo = String((body && body.modelo) || '');
+  const assunto = String((body && body.assunto) || '').trim();
+  const corpo = String((body && body.corpo) || '').trim();
+  if (!CRM_UUID_RE.test(contatoId)) return json({ error: 'Contato inválido.' }, 400);
+  if (!CRM_MODELOS.includes(modelo)) return json({ error: 'Modelo inválido.' }, 400);
+  if (!assunto || assunto.length > 200) return json({ error: 'Assunto vazio ou grande demais.' }, 400);
+  if (!corpo || corpo.length > 10000) return json({ error: 'Mensagem vazia ou grande demais.' }, 400);
+  // Trava contra mandar "[link do acesso]" de verdade pra alguém.
+  if (/\[[^\]\n]{2,60}\]/.test(corpo) || /\[[^\]\n]{2,60}\]/.test(assunto)) {
+    return json({ error: 'Ainda há um trecho entre [colchetes] na mensagem. Troque pelo texto ou link real antes de enviar.' }, 400);
+  }
+
+  const auth = { apikey: CRM_SUPABASE_ANON_KEY, Authorization: `Bearer ${admin.token}` };
+  const cRes = await fetch(
+    `${CRM_SUPABASE_URL}/rest/v1/crm_contatos?select=id,email,nome,aceita_novidades&id=eq.${contatoId}`,
+    { headers: auth }
+  );
+  const contatos = cRes.ok ? await cRes.json() : [];
+  const contato = contatos && contatos[0];
+  if (!contato) return json({ error: 'Contato não encontrado.' }, 404);
+  if (CRM_MODELOS_EXIGEM_NOVIDADES.includes(modelo) && !contato.aceita_novidades) {
+    return json({ error: 'Essa pessoa não aceitou receber novidades por e-mail. Este modelo não pode ser enviado a ela.' }, 403);
+  }
+
+  const marketing = modelo !== 'boas_vindas';
+  const rodape = marketing ? '\n\n—\nPra não receber mais e-mails, é só responder este com a palavra "sair".' : '';
+  const brevoBody = {
+    sender: { email: env.BREVO_SENDER_EMAIL, name: env.BREVO_SENDER_NAME || 'Ingryd · Por Dentro' },
+    to: [contato.nome ? { email: contato.email, name: contato.nome } : { email: contato.email }],
+    replyTo: { email: env.BREVO_SENDER_EMAIL },
+    subject: assunto,
+    htmlContent: crmTextToHtml(corpo + rodape),
+    textContent: corpo + rodape,
+    tags: ['crm', modelo],
+  };
+  if (marketing) brevoBody.headers = { 'List-Unsubscribe': `<mailto:${env.BREVO_SENDER_EMAIL}?subject=sair>` };
+
+  const bRes = await fetch('https://api.brevo.com/v3/smtp/email', {
+    method: 'POST',
+    headers: { 'api-key': env.BREVO_API_KEY, 'Content-Type': 'application/json', Accept: 'application/json' },
+    body: JSON.stringify(brevoBody),
+  });
+  const bText = await bRes.text();
+  if (!bRes.ok) {
+    console.error('crm/enviar: Brevo respondeu ' + bRes.status + ' — ' + bText);
+    return json({ error: 'O Brevo recusou o envio (' + bRes.status + '). Confira a chave da API e se o remetente está verificado.' }, 502);
+  }
+  let messageId = null;
+  try { messageId = JSON.parse(bText).messageId || null; } catch (e) { /* segue sem id */ }
+
+  // Fica 'agendado' até o webhook confirmar a entrega; sem webhook, o segmento de reimpacto não dispara.
+  const ins = await fetch(`${CRM_SUPABASE_URL}/rest/v1/emails_enviados`, {
+    method: 'POST',
+    headers: { ...auth, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+    body: JSON.stringify({
+      contato_id: contatoId, modelo, assunto, corpo, status: 'agendado',
+      provedor_id: messageId, enviado_em: new Date().toISOString(),
+    }),
+  });
+  if (!ins.ok) {
+    console.error('crm/enviar: e-mail enviado mas não registrado — ' + ins.status + ' ' + (await ins.text()));
+    return json({ ok: true, aviso: 'E-mail enviado, mas não consegui registrar no histórico.' });
+  }
+  return json({ ok: true });
+}
+
+// Brevo chama aqui a cada evento. Autenticação: segredo na URL (?k=...), já que o webhook não tem login.
+async function handleCrmBrevoWebhook(request, env, url) {
+  const secret = env.BREVO_WEBHOOK_SECRET || '';
+  const given = url.searchParams.get('k') || '';
+  if (secret.length < 24 || given.length !== secret.length) return new Response('Unauthorized', { status: 401 });
+  let diff = 0;
+  for (let i = 0; i < secret.length; i++) diff |= secret.charCodeAt(i) ^ given.charCodeAt(i);
+  if (diff !== 0) return new Response('Unauthorized', { status: 401 });
+  if (!env.SUPABASE_SERVICE_ROLE_KEY) return json({ error: 'SUPABASE_SERVICE_ROLE_KEY não configurada.' }, 500);
+
+  let ev;
+  try { ev = await request.json(); } catch (e) { return json({ ok: true }); }
+  const tipo = String((ev && ev.event) || '').toLowerCase();
+  const messageId = ev && (ev['message-id'] || ev.messageId);
+  const sb = {
+    apikey: env.SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
+    'Content-Type': 'application/json', Prefer: 'return=minimal',
+  };
+  const agora = new Date().toISOString();
+  const patch = (from, values) => fetch(
+    `${CRM_SUPABASE_URL}/rest/v1/emails_enviados?provedor_id=eq.${encodeURIComponent(messageId)}&status=in.(${from})`,
+    { method: 'PATCH', headers: sb, body: JSON.stringify(values) }
+  );
+
+  // O status só avança: agendado -> entregue -> aberto -> clicado (nunca volta).
+  if (messageId) {
+    if (tipo === 'delivered') await patch('agendado', { status: 'entregue' });
+    else if (['opened', 'unique_opened', 'proxy_open', 'loaded_by_proxy'].includes(tipo)) await patch('agendado,entregue', { status: 'aberto', aberto_em: agora });
+    else if (tipo === 'click' || tipo === 'clicks') await patch('agendado,entregue,aberto', { status: 'clicado', clicado_em: agora });
+    else if (['hard_bounce', 'blocked', 'invalid_email', 'error'].includes(tipo)) await patch('agendado,entregue', { status: 'nao_entregue' });
+  }
+
+  // Pediu pra sair pelo link do Brevo: registra a retirada do consentimento (linha nova, nunca update).
+  if (['unsubscribed', 'unsubscribe'].includes(tipo) && ev.email) {
+    const email = String(ev.email).trim().toLowerCase();
+    const cRes = await fetch(`${CRM_SUPABASE_URL}/rest/v1/contatos?select=id&email=eq.${encodeURIComponent(email)}`, { headers: sb });
+    const c = cRes.ok ? (await cRes.json())[0] : null;
+    if (c) {
+      await fetch(`${CRM_SUPABASE_URL}/rest/v1/consentimentos`, {
+        method: 'POST', headers: sb,
+        body: JSON.stringify({ contato_id: c.id, finalidade: 'novidades_email', aceito: false, origem: 'brevo' }),
+      });
+    }
+  }
+  return json({ ok: true });
+}
+
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
@@ -1287,6 +1452,12 @@ export default {
       }
       if (url.pathname === '/api/quiz/submissions' && request.method === 'GET') {
         return await handleQuizSubmissions(request, env);
+      }
+      if (url.pathname === '/api/crm/enviar' && request.method === 'POST') {
+        return await handleCrmEnviar(request, env);
+      }
+      if (url.pathname === '/api/crm/brevo-webhook' && request.method === 'POST') {
+        return await handleCrmBrevoWebhook(request, env, url);
       }
     } catch (err) {
       return json({ error: 'Erro interno.', detail: String(err) }, 500);
