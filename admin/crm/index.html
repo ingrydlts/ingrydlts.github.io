@@ -137,7 +137,6 @@
     <section data-panel="reimpacto" hidden>
       <div class="head">
         <div><h2>Reimpactar por e-mail</h2><p>Quem recebeu e-mail e não avançou — antes de desistir, um novo toque certo</p></div>
-        <span class="soon">Envio na fase 3</span>
       </div>
       <div class="segs" style="margin-top:14px" id="segs"></div>
       <div class="panel" style="margin-top:16px">
@@ -154,10 +153,16 @@
 
     <section data-panel="modelos" hidden>
       <div class="head">
-        <div><h2>Modelos de e-mail</h2><p>Um modelo por gatilho, preenchido com o que você sabe da pessoa</p></div>
-        <span class="soon">Fase 3</span>
+        <div><h2>Modelos de e-mail</h2><p>Um modelo por gatilho, preenchido com o que você sabe da pessoa. Envio pelo Brevo.</p></div>
       </div>
-      <div class="note" style="margin-top:14px"><span class="tag">Falta</span><span>Esta tela chega junto com o envio de e-mail: precisa do provedor (Resend/Brevo) ligado ao Worker e da tabela <b>emails_enviados</b>, que já existe no banco. O desenho fica no artefato "CRM Por Dentro".</span></div>
+      <div class="autobar" style="margin-top:14px">
+        <span class="sub" style="font-weight:600">Pré-visualizar para</span>
+        <div class="sel"><select id="mod-contact" aria-label="Escolher pessoa"></select></div>
+      </div>
+      <div class="tplgrid">
+        <div id="mod-list"></div>
+        <div class="panel" style="padding:16px" id="mod-preview"></div>
+      </div>
     </section>
 
     <section data-panel="pessoa" hidden>

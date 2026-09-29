@@ -252,3 +252,44 @@ sozinha pro Notion assim que recebe esse link de volta — não precisa mexer no
 Sem essa variável configurada, a compra continua sendo confirmada e registrada normalmente — só que
 a página de confirmação mostra um aviso ("o link ainda está sendo configurado") em vez de redirecionar,
 nunca um link quebrado.
+
+## 16. Enviar e-mails do CRM pelo Brevo (`/admin/crm/`)
+
+O painel do CRM manda e-mail (boas-vindas e reimpacto) pelo Worker, que chama o Brevo. Quem pode enviar:
+só quem está logada no CRM **e** na tabela `admins` do Supabase (o Worker confere isso a cada envio).
+
+**No Brevo**
+1. **Remetente**: menu do perfil → **Senders, Domains & Dedicated IPs** → **Senders** → adicione o e-mail de onde
+   os e-mails saem e confirme pelo link que chega. Depois, em **Domains**, autentique o domínio (DKIM/DMARC) —
+   sem isso boa parte cai no spam.
+2. **Chave**: **SMTP & API** → **API Keys** → **Generate a new API key** (nome: `crm-por-dentro`). Copie: só aparece uma vez.
+
+**No Supabase**
+3. **Project Settings → API Keys** → copie a chave **service_role** (secret). Ela só é usada pelo webhook do
+   passo 6; nunca vai pro navegador.
+
+**No Worker** (Settings → Variables and Secrets)
+4. Adicione:
+   - `BREVO_API_KEY` (Secret) = a chave do passo 2
+   - `BREVO_SENDER_EMAIL` (Text) = o remetente verificado
+   - `BREVO_SENDER_NAME` (Text, opcional) = ex. `Ingryd · Por Dentro`
+   - `BREVO_WEBHOOK_SECRET` (Secret) = uma senha longa inventada (24+ caracteres; ex. `openssl rand -hex 24`)
+   - `SUPABASE_SERVICE_ROLE_KEY` (Secret) = a chave do passo 3
+5. Atualize o código do Worker (seção 9) — as rotas novas são `/api/crm/enviar` e `/api/crm/brevo-webhook`.
+
+**De volta ao Brevo**
+6. **Transactional** → **Settings** → **Webhook** → **Add a new webhook**:
+   - URL: `https://por-dentro-cms-oauth.ingrydigitalmanagement.workers.dev/api/crm/brevo-webhook?k=` + o valor de `BREVO_WEBHOOK_SECRET`
+   - Eventos: *Delivered, Opened, Clicked, Hard bounce, Blocked, Invalid email, Error, Unsubscribed*.
+
+   Sem o webhook o e-mail sai, mas fica "agendado" pra sempre e os segmentos do Reimpactar não funcionam.
+
+**No painel**
+7. Em `admin/crm/crm.js`, preencha `APP_LINK` com o endereço do app. Enquanto estiver vazio, o texto continua com
+   `[link do acesso]` e o Worker **recusa** o envio (de propósito).
+
+Regras que o Worker aplica: modelos *abriu, não clicou* e *abriu o app e parou* só saem pra quem aceitou
+novidades; e-mails que não são boas-vindas levam um rodapé "responda *sair*" e o cabeçalho `List-Unsubscribe`.
+Quem pedir pra sair: registre em Consentimento (o link de descadastro do Brevo faz isso sozinho pelo webhook).
+Limite de honestidade: "abriu" no Brevo não é 100% confiável (Apple Mail e outros pré-carregam a imagem), então
+use como sinal, não como certeza.
