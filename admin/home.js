@@ -31,6 +31,7 @@
     quiz: '<circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6V14"/><path d="M12 17.5v.01"/>',
     cookie: '<circle cx="12" cy="12" r="9"/><path d="M8.5 9.5v.01M14 8v.01M15.5 14v.01M9.5 15v.01"/>',
     chart: '<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>',
+    people: '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18 14a6 6 0 0 1 3.5 6"/>',
     star: '<path d="M12 3l2.8 5.8 6.2.9-4.5 4.4 1 6.2L12 17.4 6.5 20.3l1-6.2L3 9.7l6.2-.9L12 3z"/>',
     hands: '<path d="M8 12l3 3 5-5"/><circle cx="12" cy="12" r="9"/>',
     search: '<circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/>',
@@ -70,6 +71,7 @@
     { id: "quiz", label: "Questionário VIP", icon: "quiz", c: "quiz_config", e: "quiz_config" },
     { id: "cookies", label: "Consentimento e cookies", icon: "cookie", c: "analytics_config", e: "analytics_config" },
     { group: "Acompanhar" },
+    { id: "crm", label: "CRM", icon: "people", href: "/admin/crm/" },
     { id: "numeros", label: "Números", icon: "chart", href: "/admin/dashboard/" },
     { id: "avaliacoes", label: "Avaliações", icon: "star", href: "/admin/avaliacoes/" },
     { id: "parcerias", label: "Parcerias", icon: "hands", href: "/admin/parcerias/" }
