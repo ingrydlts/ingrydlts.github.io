@@ -29,9 +29,9 @@ var TYPE_META = {
 };
 
 var WORKER_BASE = 'https://por-dentro-cms-oauth.ingrydigitalmanagement.workers.dev';
-// Link que vai nos e-mails ("[link do acesso]"). Enquanto estiver vazio o trecho fica entre colchetes e o
-// Worker RECUSA o envio — de propósito, pra nunca sair e-mail com placeholder. Preencha com o endereço do app.
-var APP_LINK = '';
+// Link que vai nos e-mails ("[link do acesso]"). Se ficar vazio, o trecho fica entre colchetes e o
+// Worker RECUSA o envio — de propósito, pra nunca sair e-mail com placeholder.
+var APP_LINK = 'https://plataforma.imigrantepordentro.com/';
 var EXIGEM_NOVIDADES = { naoclicou: 1, parouapp: 1 };   // igual ao Worker (CRM_MODELOS_EXIGEM_NOVIDADES)
 function pn(c) { return displayName(c).trim().split(/\s+/)[0]; }
 function lk() { return APP_LINK || '[link do acesso]'; }
