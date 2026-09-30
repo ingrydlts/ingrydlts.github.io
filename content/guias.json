@@ -1,0 +1,22 @@
+{
+  "intro": {
+    "titulo": "Guias gratuitos para quem mora (ou vai morar) na França",
+    "texto": "Passo a passo prático, escrito por quem já passou pela burocracia francesa. Sem juridiquês, com links oficiais e modelos prontos."
+  },
+  "calendlyUrl": "",
+  "calendlyTexto": "Agendar uma conversa sobre o meu caso",
+  "items": [
+    {
+      "slug": "vls-ts-validacao-travou",
+      "url": "/guias/vls-ts-validacao-travou/",
+      "categoria": "Visto de estudante",
+      "titulo": "VLS-TS travou na ANEF? O que fazer antes do prazo acabar",
+      "resumo": "O site não valida, o suporte só diz “problema técnico” e os 3 meses estão correndo. Veja como provar que você agiu a tempo e quem acionar.",
+      "leituraMin": 6,
+      "atualizadoEm": "2026-09-30",
+      "publicado": true
+    }
+  ],
+  "notionUrl": "https://topordentroviagens.notion.site/Manual-o-que-fazer-quando-a-valida-o-do-VLS-TS-estudante-trava-Fran-a-3ebd602254ce80b6af68cad9f77a0bb5",
+  "notionTexto": "Abrir no Notion"
+}

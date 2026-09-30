@@ -224,6 +224,37 @@ collections:
             name: links
             widget: menu-studio
 
+  - name: guias
+    label: "Guias gratuitos (/guias/)"
+    files:
+      - name: guias
+        label: "Página de guias e link do Calendly"
+        file: content/guias.json
+        fields:
+          - label: "Topo da página /guias/"
+            name: intro
+            widget: object
+            fields:
+              - { label: Título, name: titulo, widget: string }
+              - { label: Texto, name: texto, widget: text }
+          - { label: "Link público do guia no Notion", name: notionUrl, widget: string, required: false, hint: "Página do Notion publicada na web (notion.site). Aparece como botão depois do cadastro. Vazio = o botão some." }
+          - { label: "Texto do botão do Notion", name: notionTexto, widget: string, required: false, default: "Abrir no Notion" }
+          - { label: "Link do Calendly", name: calendlyUrl, widget: string, required: false, hint: "Aparece no fim de cada guia, depois do cadastro. Vazio = o bloco de convite some." }
+          - { label: "Texto do botão do Calendly", name: calendlyTexto, widget: string, required: false, default: "Agendar uma conversa" }
+          - label: "Guias (lista)"
+            name: items
+            widget: list
+            hint: "Só controla o cartão na lista /guias/. O texto de cada guia fica na própria página dele."
+            fields:
+              - { label: "Identificador (slug)", name: slug, widget: string }
+              - { label: "Endereço da página", name: url, widget: string, hint: "Ex.: /guias/vls-ts-validacao-travou/" }
+              - { label: Categoria, name: categoria, widget: string }
+              - { label: Título, name: titulo, widget: string }
+              - { label: Resumo, name: resumo, widget: text }
+              - { label: "Minutos de leitura", name: leituraMin, widget: number, required: false }
+              - { label: "Atualizado em", name: atualizadoEm, widget: string, required: false }
+              - { label: Publicado, name: publicado, widget: boolean, default: true }
+
   - name: quiz_config
     label: "Questionário de vagas limitadas (/acesso-vip/)"
     files:

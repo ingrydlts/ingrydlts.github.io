@@ -3,13 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Produtos digitais — Por Dentro</title>
-<meta name="description" content="Templates para organizar a vida na França. Acesso imediato após a compra.">
+<title>Guias gratuitos — Por Dentro</title>
+<meta name="description" content="Guias práticos e gratuitos para quem mora ou vai morar na França: visto, prefeitura, prazos e burocracia explicados passo a passo.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,600;9..144,700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/assets/css/style.css">
-<link rel="stylesheet" href="/assets/css/vitrine.css">
 <style>:root { --nav-active: #577328; }</style>
 <link rel="icon" href="/favicon.png" type="image/png">
 <link rel="icon" href="/favicon-32x32.png" sizes="32x32" type="image/png">
@@ -24,7 +23,7 @@
     <a href="/produtos-digitais/" data-nav-key="produtos-digitais">Produtos digitais</a>
     <a href="/produtos-de-estudo/" data-nav-key="produtos-de-estudo">Produtos de estudo</a>
     <a href="/produtos-de-compras/" data-nav-key="produtos-de-compras">Produtos de compras</a>
-    <a href="/guias/" data-nav-key="guias">Guias</a>
+    <a href="/guias/" data-nav-key="guias" aria-current="page">Guias</a>
     <a href="/artigos/" data-nav-key="blog">Blog</a>
     <a href="/sobre/" data-nav-key="sobre">Sobre</a>
   </nav>
@@ -36,14 +35,24 @@
   <a href="/produtos-digitais/" data-nav-key="produtos-digitais">Produtos digitais</a>
   <a href="/produtos-de-estudo/" data-nav-key="produtos-de-estudo">Produtos de estudo</a>
   <a href="/produtos-de-compras/" data-nav-key="produtos-de-compras">Produtos de compras</a>
-  <a href="/guias/" data-nav-key="guias">Guias</a>
+  <a href="/guias/" data-nav-key="guias" aria-current="page">Guias</a>
   <a href="/artigos/" data-nav-key="blog">Blog</a>
   <a href="/sobre/" data-nav-key="sobre">Sobre</a>
 </nav>
 
 <main>
-  <div class="container vt" id="vt-root"></div>
-  <div class="container"><div id="category-banner"></div></div>
+  <div class="container">
+    <section class="section" style="padding-bottom:0;">
+      <span class="eyebrow" style="color:#577328;">Guias gratuitos</span>
+      <h1 id="guias-titulo" style="max-width:24ch;">Guias gratuitos para quem mora (ou vai morar) na França</h1>
+      <p id="guias-texto" style="max-width:58ch; font-size:17px; color:var(--texto-secundario);">Passo a passo prático, escrito por quem já passou pela burocracia francesa.</p>
+    </section>
+
+    <section class="section" aria-label="Lista de guias">
+      <div class="grid grid-3" id="guias-lista"></div>
+      <p id="guias-vazio" hidden style="color:var(--texto-secundario);">Novos guias chegando em breve.</p>
+    </section>
+  </div>
 </main>
 
 <footer class="site-footer">
@@ -89,40 +98,44 @@
 <script src="/assets/js/events.js"></script>
 <script src="/assets/js/analytics.js"></script>
 <script type="module" src="/assets/js/header.js"></script>
-<script type="module">
-  import { fetchJSON, imgSlotHTML, escapeHtml, postHref, isPublished } from "/assets/js/render.js";
-  import { renderListShell, renderListItems } from "/assets/js/vitrine.js";
-
-  (async function () {
-    const root = document.getElementById("vt-root");
-    renderListShell(root);
-    try {
-      const data = await fetchJSON("/content/produtos-digitais.json");
-      renderListItems(root, data.items);
-    } catch (e) {
-      root.querySelector("#vt-grid").innerHTML = '<p class="empty-state">Não foi possível carregar os produtos agora.</p>';
-      console.error(e);
-    }
-    try {
-      const [banners, posts] = await Promise.all([
-        fetchJSON("/content/banners.json"),
-        fetchJSON("/content/posts.json"),
-      ]);
-      const b = banners.categoryBanners["produtos-digitais"];
-      if (b.enabled !== false) {
-        const post = posts.items.find((p) => p.slug === b.postSlug && isPublished(p));
-        const href = post ? postHref(post) : "/artigos/";
-        document.getElementById("category-banner").innerHTML =
-          '<div class="blog-banner">' +
-          imgSlotHTML(b.image, b.title, "Foto do artigo") +
-          '<div class="blog-banner-body">' +
-          '<div><span class="eyebrow" style="color:' + b.color + ';">' + escapeHtml(b.kicker) + "</span>" +
-          "<h3>" + escapeHtml(b.title) + "</h3></div>" +
-          '<a class="btn btn-pill" href="' + href + '" style="background:' + b.color + ';">' + escapeHtml(b.ctaText) + "</a>" +
-          "</div></div>";
+<script>
+(function () {
+  function el(tag, cls, text) {
+    var e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text) e.textContent = text;
+    return e;
+  }
+  fetch("/content/guias.json")
+    .then(function (r) { return r.ok ? r.json() : null; })
+    .then(function (d) {
+      if (!d) return;
+      if (d.intro) {
+        if (d.intro.titulo) document.getElementById("guias-titulo").textContent = d.intro.titulo;
+        if (d.intro.texto) document.getElementById("guias-texto").textContent = d.intro.texto;
       }
-    } catch (e) { console.warn(e); }
-  })();
+      var lista = document.getElementById("guias-lista");
+      var itens = (d.items || []).filter(function (i) { return i.publicado !== false; });
+      if (!itens.length) { document.getElementById("guias-vazio").hidden = false; return; }
+      itens.forEach(function (g) {
+        var a = el("a", "card");
+        a.href = g.url || ("/guias/" + g.slug + "/");
+        a.style.color = "inherit";
+        a.appendChild(el("div")).style.cssText = "height:6px;background:#577328;";
+        var body = el("div", "card-body");
+        body.appendChild(el("span", "eyebrow", g.categoria || "Guia")).style.color = "#577328";
+        body.appendChild(el("h3", "", g.titulo));
+        body.appendChild(el("p", "", g.resumo || ""));
+        var meta = el("p", "", "Gratuito" + (g.leituraMin ? " · " + g.leituraMin + " min de leitura" : ""));
+        meta.style.cssText = "font-weight:600;font-size:13px;margin-top:6px;";
+        body.appendChild(meta);
+        body.appendChild(el("span", "card-arrow", "Ler o guia →")).style.cssText = "font-weight:600;font-size:14px;color:#604034;";
+        a.appendChild(body);
+        lista.appendChild(a);
+      });
+    })
+    .catch(function () {});
+})();
 </script>
 </body>
 </html>

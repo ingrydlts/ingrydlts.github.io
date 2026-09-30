@@ -38,6 +38,7 @@ function discount(p) {
   return p.priceOld && Number(p.priceOld) > Number(p.price) ? Math.round((1 - p.price / p.priceOld) * 100) : 0;
 }
 function priceHTML(p) {
+  if (p.free) return '<span class="vt-price"><b>Grátis</b></span>';
   const d = discount(p);
   return (
     '<span class="vt-price"><b>' + formatPrice(p.price) + "</b>" +
@@ -159,7 +160,7 @@ function cardHTML(p) {
       '<div class="vt-card-ph">' +
         (main ? '<img src="' + escapeHtml(main) + '" alt="' + escapeHtml(p.title) + '" loading="lazy">' : "") +
         (alt ? '<img class="is-alt" src="' + escapeHtml(alt) + '" alt="" loading="lazy">' : "") +
-        (p.launchNote ? '<span class="vt-badge is-brand">' + (discount(p) ? "Preço de lançamento" : "Novo") + "</span>" : "") +
+        (p.free ? '<span class="vt-badge is-brand">Grátis</span>' : p.launchNote ? '<span class="vt-badge is-brand">' + (discount(p) ? "Preço de lançamento" : "Novo") + "</span>" : "") +
         (cp ? '<span class="vt-ctag"><i aria-hidden="true"></i>Cupom' + (cp.percent ? " −" + Number(cp.percent) + "%" : "") + "</span>" : "") +
       "</div>" +
       '<div class="vt-card-bd">' +
@@ -301,6 +302,12 @@ function starString(r) {
   return "★".repeat(n) + "☆".repeat(5 - n);
 }
 
+// Selo da faixa de confiança de um produto gratuito: usa p.freeTrust[i] ({t, s})
+// se existir, senão o texto padrão.
+function freeTrustItem(p, i, icon, t, s) {
+  const c = (p.freeTrust && p.freeTrust[i]) || {};
+  return "<div>" + icon + '<p style="margin:0"><b>' + escapeHtml(c.t || t) + "</b><span>" + escapeHtml(c.s || s) + "</span></p></div>";
+}
 export function renderProduct(root, p, items) {
   const gallery = normalizeGallery(p);
   const combo = bundleOf(p, items);
@@ -320,19 +327,29 @@ export function renderProduct(root, p, items) {
         (activeCoupon(p) ? couponBandHTML(p, activeCoupon(p)) : "") +
         (p.launchNote ? '<div class="vt-launch"><i aria-hidden="true"></i>' + escapeHtml(p.launchNote) + "</div>" : "") +
         (top3.length ? '<ul class="vt-top3">' + top3.map((f) => "<li>" + escapeHtml(f) + "</li>").join("") + "</ul>" : "") +
-        '<label class="vt-gate" id="vt-gate"><input type="checkbox" id="vt-gatebox"><span class="vt-box" aria-hidden="true">' + ICON.check + "</span>" +
+        (p.free ? "" :
+          '<label class="vt-gate" id="vt-gate"><input type="checkbox" id="vt-gatebox"><span class="vt-box" aria-hidden="true">' + ICON.check + "</span>" +
           "<span>Entendo que o acesso ao arquivo é imediato e renuncio ao meu direito de retratação de 14 dias.</span></label>" +
-        '<p class="vt-gate-msg" id="vt-gatemsg" role="alert"></p>' +
-        '<button type="button" class="vt-btn is-block" id="vt-buy-btn" aria-disabled="true">Comprar agora · ' + formatPrice(p.price) + ' <span class="vt-arrow" aria-hidden="true">→</span></button>' +
-        '<div class="vt-secure">' + ICON.lock + "Pagamento seguro pelo Stripe · acesso na hora</div>" +
+          '<p class="vt-gate-msg" id="vt-gatemsg" role="alert"></p>') +
+        (p.free
+          ? '<button type="button" class="vt-btn is-block" id="vt-buy-btn">' + escapeHtml(p.ctaLabel || "Acessar grátis") + ' <span class="vt-arrow" aria-hidden="true">→</span></button>' +
+            '<div class="vt-secure">' + ICON.lock + escapeHtml(p.freeNote || "Gratuito · basta um e-mail para liberar o guia completo") + "</div>"
+          : '<button type="button" class="vt-btn is-block" id="vt-buy-btn" aria-disabled="true">Comprar agora · ' + formatPrice(p.price) + ' <span class="vt-arrow" aria-hidden="true">→</span></button>' +
+            '<div class="vt-secure">' + ICON.lock + "Pagamento seguro pelo Stripe · acesso na hora</div>") +
       "</div>" +
     "</section>" +
-    '<section class="vt-trust" aria-label="Garantias da compra">' +
+    (p.free
+      ? '<section class="vt-trust" aria-label="Sobre o guia gratuito">' +
+          freeTrustItem(p, 0, ICON.bolt, "Acesso na hora", "Liberado após o cadastro") +
+          freeTrustItem(p, 1, ICON.once, "100% gratuito", "Sem cartão, sem assinatura") +
+          freeTrustItem(p, 2, ICON.shield, "Fontes oficiais", "Links e base legal no guia") +
+        "</section>"
+      : '<section class="vt-trust" aria-label="Garantias da compra">' +
       "<div>" + ICON.bolt + "<p style=\"margin:0\"><b>Entrega imediata</b><span>Acesso liberado na hora</span></p></div>" +
       "<div>" + ICON.once + "<p style=\"margin:0\"><b>Compra única</b><span>Sem assinatura</span></p></div>" +
       "<div>" + ICON.shield + "<p style=\"margin:0\"><b>" + (p.guaranteeDays ? "Garantia " + p.guaranteeDays + " dias" : "Compra final") + "</b><span>" + (p.guaranteeDays ? "Devolução sem burocracia" : "Sem reembolso após o acesso") + "</span></p></div>" +
       "<div>" + ICON.lock + "<p style=\"margin:0\"><b>Pagamento seguro</b><span>Processado via Stripe</span></p></div>" +
-    "</section>" +
+    "</section>") +
     '<section class="vt-two">' +
       (p.description ? '<div class="vt-desc"><div class="vt-section-t"><h2>Sobre o produto</h2></div><p>' + escapeHtml(p.description) + "</p></div>" : "<div></div>") +
       ((p.features || []).length ? '<div><div class="vt-section-t"><h2>O que você recebe</h2></div><ol class="vt-inc-list">' + p.features.filter(Boolean).map((f, i) => "<li><b>" + (i + 1) + "</b>" + escapeHtml(f) + "</li>").join("") + "</ol></div>" : "") +
@@ -373,6 +390,18 @@ export function renderProduct(root, p, items) {
 }
 
 function initBuy(root, p) {
+  if (p.free) {
+    // Produto gratuito: sem Stripe nem renúncia de retratação. O botão leva pra
+    // página do guia, onde o e-mail libera o conteúdo (capturar_lead no CRM).
+    root._vtAttempt = () => {
+      if (IS_PREVIEW) { toast("Na prévia do /admin o botão não abre."); return; }
+      window.location.href = p.freeUrl || "/guias/";
+    };
+    root.addEventListener("click", (e) => {
+      if (e.target.closest("#vt-buy-btn")) root._vtAttempt();
+    });
+    return;
+  }
   const box = root.querySelector("#vt-gatebox"), gate = root.querySelector("#vt-gate"), msg = root.querySelector("#vt-gatemsg");
   const buttons = [root.querySelector("#vt-buy-btn")];
   function sync() {
@@ -529,7 +558,7 @@ function initSticky(root, p) {
   const bar = document.createElement("div");
   bar.className = "vt-sticky vt";
   bar.setAttribute("aria-hidden", "true");
-  bar.innerHTML = '<div class="t"><small>' + escapeHtml(p.title) + "</small>" + priceHTML(p) + '</div><button type="button" class="vt-btn" id="vt-sticky-btn" tabindex="-1">Comprar</button>';
+  bar.innerHTML = '<div class="t"><small>' + escapeHtml(p.title) + "</small>" + priceHTML(p) + '</div><button type="button" class="vt-btn" id="vt-sticky-btn" tabindex="-1">' + (p.free ? escapeHtml(p.ctaLabel || "Acessar grátis") : "Comprar") + "</button>";
   document.body.appendChild(bar);
   document.body.classList.add("has-vt-sticky");
   bar.querySelector("button").addEventListener("click", () => {

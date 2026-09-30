@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VLS-TS travou na ANEF? O que fazer antes do prazo — Por Dentro</title>
+<meta name="description" content="Validação do VLS-TS estudante travou no site da ANEF e o prazo está acabando? Guia gratuito: como provar que você agiu a tempo, quem contatar e quando escalar.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,600;9..144,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/css/style.css">
+<link rel="canonical" href="https://imigrantepordentro.com/guias/vls-ts-validacao-travou/">
+<style>:root { --nav-active: #577328; }</style>
+<link rel="icon" href="/favicon.png" type="image/png">
+<link rel="icon" href="/favicon-32x32.png" sizes="32x32" type="image/png">
+<link rel="icon" href="/favicon-16x16.png" sizes="16x16" type="image/png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<style>
+.guia-wrap{max-width:680px;margin:0 auto;padding:40px 0 80px}
+.guia-wrap h1{margin:8px 0 16px}
+.guia-lede{font-size:17px;color:var(--texto-secundario);margin-bottom:10px}
+.guia-meta{font-size:13px;color:var(--texto-secundario);margin-bottom:22px}
+.guia-aviso{background:var(--off-white-soft);border:1px solid var(--borda-suave);border-left:4px solid #604034;border-radius:var(--radius-sm);padding:14px 16px;font-size:14px;color:var(--texto-secundario);margin:0 0 8px}
+.guia-sec{padding-top:40px;margin-top:40px;border-top:1px solid var(--borda-suave);scroll-margin-top:88px}
+.guia-sec h2{font-size:26px;margin:0 0 14px}
+.guia-sec h3{font-size:19px;margin:0 0 10px}
+.guia-sec p,.guia-sec li{font-size:16px;line-height:1.65}
+.guia-sec ul{padding-left:20px}
+.guia-sec a{color:#604034;text-decoration:underline}
+.guia-check{list-style:none;padding:0!important}
+.guia-check li{display:flex;gap:10px;align-items:flex-start;margin:0 0 10px;cursor:pointer}
+.guia-check input{margin-top:5px;width:18px;height:18px;accent-color:var(--verde-moss);flex-shrink:0}
+.guia-check input:checked+span{color:var(--texto-secundario);text-decoration:line-through}
+.calc{background:var(--off-white-soft);border:1px solid var(--borda-suave);border-radius:var(--radius-sm);padding:20px;margin-top:16px}
+.calc label{display:block;font-size:13.5px;font-weight:600;color:var(--texto-secundario);margin-bottom:8px}
+.calc input[type=date]{font:inherit;padding:11px 12px;border:1px solid var(--borda-suave);border-radius:var(--radius-sm);background:#fff;width:100%;max-width:240px}
+.calc-out{margin-top:16px;display:none;gap:10px;flex-direction:column}
+.calc-out.on{display:flex}
+.calc-out div{background:#fff;border:1px solid var(--borda-suave);border-radius:var(--radius-sm);padding:12px 14px;font-size:15px}
+.calc-out b{display:block;font-size:12px;letter-spacing:.04em;text-transform:uppercase;color:var(--texto-secundario);margin-bottom:2px}
+.calc-out .alerta{border-color:var(--merlot);color:var(--merlot)}
+.calc-note{font-size:12.5px;color:var(--texto-secundario);margin-top:12px}
+.gate{background:#fff;border:1px solid var(--borda-suave);box-shadow:var(--shadow-card);border-radius:var(--radius-sm);padding:26px;margin-top:40px}
+.gate h2{font-size:24px;margin:0 0 8px}
+.gate p{font-size:15px;color:var(--texto-secundario)}
+.gate .lista{font-size:14.5px;color:var(--grafite);padding-left:18px;margin:12px 0 18px}
+.g-field{display:flex;flex-direction:column;gap:8px;margin-bottom:14px}
+.g-field label{font-size:13.5px;font-weight:600;color:var(--texto-secundario)}
+.g-field input{font:inherit;padding:13px 14px;border:1px solid var(--borda-suave);border-radius:var(--radius-sm);background:#fff}
+.g-field input:focus{border-color:var(--verde-moss);outline:none}
+.hp-field{position:absolute;left:-9999px;top:-9999px;width:1px;height:1px;overflow:hidden}
+.btn-guia{display:inline-flex;align-items:center;justify-content:center;gap:8px;font-weight:600;font-size:15.5px;padding:15px 26px;border-radius:var(--radius-sm);border:none;cursor:pointer;background:var(--verde-moss);color:#fff!important;text-decoration:none!important;box-shadow:var(--shadow-card);transition:transform .15s ease,filter .15s ease}
+.btn-guia:hover{filter:brightness(1.08);transform:translateY(-1px)}
+.btn-guia[disabled]{opacity:.6;cursor:wait}
+.btn-ghost{background:#fff;color:var(--grafite)!important;border:1px solid var(--borda-suave);box-shadow:none}
+.modelo{background:var(--off-white-soft);border:1px solid var(--borda-suave);border-radius:var(--radius-sm);padding:16px;font-size:15px;line-height:1.6;white-space:pre-wrap;margin:0 0 12px}
+.aviso-priv{background:var(--off-white-soft);border-left:4px solid var(--merlot);padding:12px 14px;font-size:14px;border-radius:var(--radius-sm);margin:14px 0}
+.cta-final{background:var(--grafite);color:var(--off-white);border-radius:var(--radius-sm);padding:28px;margin-top:48px}
+.cta-final h2{color:var(--off-white);font-size:26px;margin:0 0 10px}
+.cta-final p{color:#D9D4CC;font-size:16px}
+.acoes{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px}
+[hidden]{display:none!important}
+@media print{.site-header,.mobile-nav,.site-footer,.gate,.acoes,.cta-final,.calc input,.no-print{display:none!important}.guia-wrap{max-width:none;padding:0}.guia-sec{page-break-inside:avoid}}
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="/" class="site-logo" data-logo-link><img src="/images/logo-por-dentro.png" alt="Por Dentro" class="site-logo-img">Por Dentro</a>
+  <nav class="site-nav" aria-label="Navegação principal" data-header-nav>
+    <a href="/produtos-digitais/" data-nav-key="produtos-digitais">Produtos digitais</a>
+    <a href="/produtos-de-estudo/" data-nav-key="produtos-de-estudo">Produtos de estudo</a>
+    <a href="/produtos-de-compras/" data-nav-key="produtos-de-compras">Produtos de compras</a>
+    <a href="/guias/" data-nav-key="guias" aria-current="page">Guias</a>
+    <a href="/artigos/" data-nav-key="blog">Blog</a>
+    <a href="/sobre/" data-nav-key="sobre">Sobre</a>
+  </nav>
+  <button class="nav-toggle" aria-label="Abrir menu" aria-expanded="false">
+    <span></span><span></span><span></span>
+  </button>
+</header>
+<nav class="mobile-nav" aria-label="Navegação mobile" data-header-nav>
+  <a href="/produtos-digitais/" data-nav-key="produtos-digitais">Produtos digitais</a>
+  <a href="/produtos-de-estudo/" data-nav-key="produtos-de-estudo">Produtos de estudo</a>
+  <a href="/produtos-de-compras/" data-nav-key="produtos-de-compras">Produtos de compras</a>
+  <a href="/guias/" data-nav-key="guias" aria-current="page">Guias</a>
+  <a href="/artigos/" data-nav-key="blog">Blog</a>
+  <a href="/sobre/" data-nav-key="sobre">Sobre</a>
+</nav>
+
+<main>
+  <div class="container">
+    <article class="guia-wrap">
+
+      <span class="eyebrow" style="color:#577328;">Guia gratuito · Visto de estudante</span>
+      <h1>VLS-TS travou na ANEF? O que fazer antes do prazo acabar</h1>
+      <p class="guia-lede">Você tentou validar, o erro não sai, o suporte só diz “problema técnico” e os 3 meses continuam correndo. Este guia é para estudantes brasileiros na França nessa situação: como provar que você agiu a tempo e quem acionar, em ordem.</p>
+      <p class="guia-meta">Atualizado em 30/09/2026 · 6 min de leitura</p>
+      <p class="guia-aviso">⚠️ Conteúdo de orientação, sem caráter de aconselhamento jurídico. As regras e os sites mudam; confira sempre nas fontes oficiais linkadas.</p>
+
+      <section class="guia-sec" id="resumo">
+        <h2>O que você precisa saber agora</h2>
+        <ul>
+          <li>O VLS-TS estudante precisa ser validado <strong>online</strong>, em até <strong>3 meses</strong> da data de entrada na França.</li>
+          <li>A validação é feita no <a href="https://administration-etrangers-en-france.interieur.gouv.fr/particuliers/#/vls-ts/demarches/etape/numero-visa" target="_blank" rel="noopener">site da ANEF</a>.</li>
+          <li>A taxa é de 150 € (fonte oficial: <a href="https://www.service-public.gouv.fr/particuliers/vosdroits/F2231" target="_blank" rel="noopener">Service-Public</a>).</li>
+          <li>Quando o site falha e o suporte responde só “problema técnico”, o que protege o estudante é <strong>provar que tentou e agiu dentro do prazo</strong>.</li>
+          <li>Não há, nas fontes oficiais consultadas, texto confirmando que o prazo é suspenso por falha do site. Por isso, agir cedo é essencial.</li>
+        </ul>
+      </section>
+
+      <section class="guia-sec" id="prazo">
+        <h2>Quanto tempo você ainda tem?</h2>
+        <p>Conta-se 3 meses a partir da data de entrada (carimbo no passaporte ou cartão de embarque). Exemplo: entrada em 31/07 = limite por volta de 30/10. Adote uma data de segurança alguns dias antes do limite.</p>
+        <div class="calc">
+          <label for="calc-entrada">Qual foi a sua data de entrada na França?</label>
+          <input type="date" id="calc-entrada">
+          <div class="calc-out" id="calc-out" aria-live="polite">
+            <div><b>Limite estimado (3 meses)</b><span id="calc-limite"></span></div>
+            <div><b>Data de segurança (7 dias antes)</b><span id="calc-seguranca"></span></div>
+            <div id="calc-restam"></div>
+          </div>
+          <p class="calc-note">Estimativa para organização. A contagem oficial é da préfecture: na dúvida, use a data mais cedo.</p>
+        </div>
+      </section>
+
+      <section class="guia-sec" id="passo-1">
+        <h2>O que fazer, na ordem</h2>
+        <h3>1. Guarde as provas hoje (antes de tentar de novo)</h3>
+        <ul class="guia-check" data-check="vlsts-provas">
+          <li><label style="display:flex;gap:10px;width:100%;cursor:pointer"><input type="checkbox"><span>Prints <strong>datados</strong> do erro, mostrando a mensagem e a etapa em que trava</span></label></li>
+          <li><label style="display:flex;gap:10px;width:100%;cursor:pointer"><input type="checkbox"><span>E-mails recebidos do suporte (por exemplo, “problema técnico”)</span></label></li>
+          <li><label style="display:flex;gap:10px;width:100%;cursor:pointer"><input type="checkbox"><span>Registro das ligações (dia, hora, o que foi respondido)</span></label></li>
+          <li><label style="display:flex;gap:10px;width:100%;cursor:pointer"><input type="checkbox"><span>Prova da data de entrada (carimbo ou cartão de embarque)</span></label></li>
+          <li><label style="display:flex;gap:10px;width:100%;cursor:pointer"><input type="checkbox"><span>Tentativa em outro navegador, aparelho e rede, anotando cada uma</span></label></li>
+        </ul>
+      </section>
+
+      <section class="gate" id="gate">
+        <span class="eyebrow" style="color:#577328;">Prazo correndo? Continue daqui</span>
+        <h2>Agora vem o que faz a diferença: quem acionar e como</h2>
+        <p>Você já sabe o seu prazo e o que guardar. Informe seu e-mail para liberar o resto, é grátis:</p>
+        <ul class="lista">
+          <li>Como acionar a ANEF e a préfecture deixando prova de que você agiu no prazo</li>
+          <li>Onde publicar o caso para a administração responder em público</li>
+          <li>Ajuda jurídica gratuita (Cimade) e quando é hora de procurar um advogado</li>
+          <li>Mensagem pronta em francês pedindo validação manual ou attestation</li>
+        </ul>
+        <form id="gate-form" novalidate>
+          <div class="g-field">
+            <label for="g-nome">Seu nome (opcional)</label>
+            <input id="g-nome" type="text" autocomplete="given-name" maxlength="100">
+          </div>
+          <div class="g-field">
+            <label for="g-email">Seu e-mail</label>
+            <input id="g-email" type="email" autocomplete="email" placeholder="seu@email.com" required>
+          </div>
+          <div class="hp-field" aria-hidden="true">
+            <label for="hp-website">Deixe este campo em branco</label>
+            <input type="text" id="hp-website" name="website" tabindex="-1" autocomplete="off">
+          </div>
+          <label class="gate-checkbox">
+            <input type="checkbox" id="consent-servico" required>
+            <span>Li e aceito a <a href="/confidentialite/" target="_blank" rel="noopener">Política de Privacidade</a> do Por Dentro. *</span>
+          </label>
+          <label class="gate-checkbox">
+            <input type="checkbox" id="consent-novidades">
+            <span>Quero receber novidades e conteúdos do Por Dentro por e-mail.</span>
+          </label>
+          <p class="gate-message" id="gate-erro"></p>
+          <button class="btn-guia" id="gate-btn" type="submit">Liberar os passos 2 a 6 →</button>
+        </form>
+      </section>
+
+      <div id="locked" hidden>
+
+        <section class="guia-sec" id="passo-2">
+          <h3>2. Contatar a ANEF pelo formulário oficial</h3>
+          <p>Formulário: <a href="https://administration-etrangers-en-france.interieur.gouv.fr/usagers/#/contact" target="_blank" rel="noopener">administration-etrangers-en-france.interieur.gouv.fr/usagers/#/contact</a></p>
+          <p>É provável que não haja resposta, mas o registro é protocolo padrão para documentar que você fez tudo o que estava ao seu alcance e permite escalar depois. A mensagem deve trazer todo o percurso da tentativa de validação e, ao final, pedir <strong>validação manual</strong> ou <strong>attestation</strong>.</p>
+        </section>
+
+        <section class="guia-sec" id="passo-3">
+          <h3>3. Enviar o mesmo texto à préfecture</h3>
+          <ul>
+            <li>Enviar por <strong>e-mail</strong> e por <strong>carta registrada com AR</strong> (isso prova a diligência dentro do prazo).</li>
+            <li>Em Paris, é a Préfecture de Police: <a href="https://www.prefecturedepolice.interieur.gouv.fr/demarches/titres-de-sejour-nous-contacter" target="_blank" rel="noopener">contato para títulos de séjour</a>. O endereço postal está nessa página.</li>
+            <li>Fora de Paris, usar a préfecture do departamento de residência.</li>
+          </ul>
+        </section>
+
+        <section class="guia-sec" id="passo-4">
+          <h3>4. Publicar o caso no Services Publics+</h3>
+          <p>Plataforma: <a href="https://www.plus.transformation.gouv.fr/je-donne-mon-avis-et-partage-mon-experience" target="_blank" rel="noopener">plus.transformation.gouv.fr</a> (ANEF/préfecture). É onde a administração costuma responder publicamente.</p>
+          <p class="aviso-priv">🔒 O texto fica público. Não incluir número do visto, número de estrangeiro, endereço ou data de nascimento.</p>
+        </section>
+
+        <section class="guia-sec" id="passo-5">
+          <h3>5. Buscar ajuda jurídica em paralelo</h3>
+          <p>A <strong>Cimade</strong> oferece atendimento jurídico gratuito para questões de séjour. Como é gratuito, pode não ser rápido, então convém contatar ao mesmo tempo que os passos acima.</p>
+          <ul>
+            <li><a href="https://www.lacimade.org/regions/ile-de-france/" target="_blank" rel="noopener">Cimade Île-de-France</a>: agendar a permanence de titres de séjour</li>
+            <li><a href="https://www.lacimade.org/etre-aide-par-la-cimade/" target="_blank" rel="noopener">Como ser ajudado pela Cimade</a>: inclui informações sobre <em>aide juridictionnelle</em> (advogado gratuito, para quem tem poucos recursos)</li>
+          </ul>
+        </section>
+
+        <section class="guia-sec" id="passo-6">
+          <h3>6. Escalar cerca de 15 dias antes do prazo final</h3>
+          <p>Sem resposta, procurar um <strong>advogado de direito dos estrangeiros</strong>. Um caminho usado é o <em>référé-mesures utiles</em> (art. L521-3 do Code de justice administrative), em que o juiz pode determinar que a administração aja em situação de urgência. Não há garantia de resultado.</p>
+        </section>
+
+        <section class="guia-sec" id="modelo">
+          <h2>Mensagem pronta para enviar (em francês)</h2>
+          <p class="no-print" style="font-size:14px;color:var(--texto-secundario)">Substitua os campos entre colchetes. Se você usou a calculadora acima, as datas já entram preenchidas ao copiar.</p>
+          <div class="modelo" id="modelo-texto">Bonjour, je n'arrive pas à valider mon VLS-TS étudiant sur le site de l'ANEF depuis le [DATA] (erreur technique, captures d'écran jointes). Je suis entré(e) en France le [DATA DE ENTRADA]. Le délai de 3 mois prévu par l'article R431-17 du CESEDA expire le [DATA-LIMITE]. Je demande la validation manuelle de mon visa ou, à défaut, une attestation. Cordialement, [NOME].</div>
+          <button class="btn-guia btn-ghost no-print" id="copiar" type="button">Copiar mensagem</button>
+        </section>
+
+        <section class="guia-sec" id="base-legal">
+          <h2>Base legal e leitura complementar</h2>
+          <ul>
+            <li><a href="https://www.service-public.gouv.fr/particuliers/vosdroits/F2231" target="_blank" rel="noopener">Ficha oficial do estudante: prazo e taxa (Service-Public)</a></li>
+            <li><a href="https://www.service-public.gouv.fr/particuliers/vosdroits/R52684" target="_blank" rel="noopener">Validação e pagamento (Service-Public)</a></li>
+            <li>Art. R431-17 do CESEDA (validação em 3 meses pelo téléservice): <a href="https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000042806968" target="_blank" rel="noopener">Légifrance</a></li>
+            <li>Art. L436-4 do CESEDA (taxa de regularização para quem passa do prazo, segundo fontes secundárias; conferir valor atual): <a href="https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000042776294" target="_blank" rel="noopener">Légifrance</a></li>
+            <li><a href="https://kohenavocats.com/visa-long-sejour-valant-titre-de-sejour-vls-ts-validation-anef-delai-recours/" target="_blank" rel="noopener">Artigo explicativo do escritório Kohen Avocats</a> (fonte secundária, conferir nos textos oficiais)</li>
+          </ul>
+        </section>
+
+        <div class="acoes no-print">
+          <a class="btn-guia" id="notion-link" href="#" target="_blank" rel="noopener" hidden>Abrir no Notion →</a>
+          <button class="btn-guia btn-ghost" id="imprimir" type="button">Salvar como PDF / imprimir</button>
+        </div>
+
+        <aside class="cta-final no-print" id="cta">
+          <span class="eyebrow" style="color:#C9D6A8;">Faltam poucos dias e ninguém responde?</span>
+          <h2>Quer uma segunda opinião sobre o seu caso?</h2>
+          <p>Cada caso tem detalhes que um guia não cobre: a data de entrada, o que aparece na tela, o que o suporte respondeu. Se quiser, converso com você sobre a sua situação e mostro como a plataforma do Por Dentro pode te acompanhar até resolver.</p>
+          <div class="acoes">
+            <a class="btn-guia" id="cta-link" href="#" target="_blank" rel="noopener" hidden>Agendar uma conversa →</a>
+          </div>
+        </aside>
+
+      </div>
+    </article>
+  </div>
+</main>
+
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-grid">
+      <div>
+        <a href="/" class="site-logo" data-logo-link style="color:#F4F1EC; margin-bottom:14px;"><img src="/images/logo-por-dentro.png" alt="Por Dentro" class="site-logo-img">Por Dentro</a>
+        <p style="color:#A8A29C; max-width:32ch; font-size:13px;">Templates, indicações de estudo e de compras para quem vive a vida real fora do Brasil.</p>
+      </div>
+      <div data-footer-nav>
+        <div class="footer-col-title">Navegação</div>
+        <div class="footer-links">
+          <a href="/produtos-digitais/" data-nav-key="produtos-digitais">Produtos digitais</a>
+          <a href="/produtos-de-estudo/" data-nav-key="produtos-de-estudo">Produtos de estudo</a>
+          <a href="/produtos-de-compras/" data-nav-key="produtos-de-compras">Produtos de compras</a>
+          <a href="/guias/" data-nav-key="guias">Guias</a>
+          <a href="/artigos/" data-nav-key="blog">Blog</a>
+          <a href="/sobre/" data-nav-key="sobre">Sobre</a>
+        </div>
+      </div>
+      <div>
+        <div class="footer-col-title">Legal</div>
+        <div class="footer-links">
+          <a href="/mentions-legales/">Mentions légales</a>
+          <a href="/cgv/">CGV</a>
+          <a href="/confidentialite/">Confidentialité</a>
+        </div>
+      </div>
+      <div>
+        <div class="footer-col-title">Redes</div>
+        <div class="footer-links"><a href="https://instagram.com/" target="_blank" rel="noopener">@ingryd.pordentro</a></div>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>© Por Dentro · France</span>
+      <span>Feito por quem vive isso.</span>
+    </div>
+  </div>
+</footer>
+
+<script src="/assets/js/main.js"></script>
+<script src="/assets/js/consent.js"></script>
+<script src="/assets/js/events.js"></script>
+<script src="/assets/js/analytics.js"></script>
+<script type="module" src="/assets/js/header.js"></script>
+
+<script type="module">
+import { supabase } from '/assets/js/supabase-client.js';
+
+var GUIA = "vls-ts-validacao-travou";
+var LS_KEY = "pd_guia_" + GUIA;
+var CONSENTIMENTO_VERSAO = "site-v1";
+var TEXTO_SERVICO = "Li e aceito a Política de Privacidade do Por Dentro.";
+var TEXTO_NOVIDADES = "Quero receber novidades e conteúdos do Por Dentro por e-mail.";
+var byId = function (i) { return document.getElementById(i); };
+function track(t, p) { if (window.PDEvents) window.PDEvents.send(t, null, p || {}); }
+function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+
+/* ---------- Calculadora de prazo ---------- */
+var datas = { entrada: "", limite: "" };
+function fmt(d) { return d.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric" }); }
+function addMeses(d, n) {
+  var r = new Date(d.getFullYear(), d.getMonth() + n, d.getDate());
+  if (r.getDate() !== d.getDate()) r = new Date(d.getFullYear(), d.getMonth() + n + 1, 0);
+  return r;
+}
+byId("calc-entrada").addEventListener("change", function () {
+  var v = this.value;
+  var out = byId("calc-out");
+  if (!v) { out.classList.remove("on"); return; }
+  var p = v.split("-");
+  var entrada = new Date(+p[0], +p[1] - 1, +p[2]);
+  var limite = addMeses(entrada, 3); limite.setDate(limite.getDate() - 1);
+  var seg = new Date(limite); seg.setDate(seg.getDate() - 7);
+  var hoje = new Date(); hoje.setHours(0, 0, 0, 0);
+  var dias = Math.round((limite - hoje) / 86400000);
+  byId("calc-limite").textContent = fmt(limite);
+  byId("calc-seguranca").textContent = fmt(seg);
+  var r = byId("calc-restam");
+  r.className = dias < 15 ? "alerta" : "";
+  r.innerHTML = "<b>Tempo restante</b>" + (dias < 0 ? "O prazo estimado já passou. Aja hoje e guarde todas as provas." : dias + " dias até o limite estimado" + (dias < 15 ? " — é hora de escalar (passo 6)." : "."));
+  out.classList.add("on");
+  datas.entrada = fmt(entrada); datas.limite = fmt(limite);
+  track("guia_calculadora", { guia: GUIA, dias_restantes: dias });
+});
+
+/* ---------- Checklist (fica salvo neste aparelho) ---------- */
+document.querySelectorAll("[data-check]").forEach(function (ul) {
+  var key = "pd_check_" + ul.dataset.check;
+  var saved = []; try { saved = JSON.parse(lsGet(key) || "[]"); } catch (e) {}
+  var boxes = ul.querySelectorAll("input");
+  boxes.forEach(function (b, i) {
+    b.checked = !!saved[i];
+    b.addEventListener("change", function () { lsSet(key, JSON.stringify(Array.prototype.map.call(boxes, function (x) { return x.checked; }))); });
+  });
+});
+
+/* ---------- Liberar conteúdo ---------- */
+function liberar(scroll) {
+  byId("gate").hidden = true;
+  byId("locked").hidden = false;
+  var cta = byId("cta-link");
+  fetch("/content/guias.json").then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
+    var nl = byId("notion-link");
+    if (d && d.notionUrl) {
+      nl.href = d.notionUrl;
+      if (d.notionTexto) nl.textContent = d.notionTexto + " →";
+      nl.hidden = false;
+      nl.addEventListener("click", function () { track("guia_abrir_notion", { guia: GUIA }); });
+    }
+    if (d && d.calendlyUrl) {
+      cta.href = d.calendlyUrl + (d.calendlyUrl.indexOf("?") === -1 ? "?" : "&") + "utm_source=guia&utm_campaign=" + GUIA;
+      if (d.calendlyTexto) cta.textContent = d.calendlyTexto + " →";
+      cta.hidden = false;
+      cta.addEventListener("click", function () { track("guia_cta_calendly", { guia: GUIA }); });
+    } else {
+      byId("cta").hidden = true;
+    }
+  }).catch(function () { byId("cta").hidden = true; });
+  if (scroll) byId("passo-2").scrollIntoView({ behavior: "smooth", block: "start" });
+}
+if (lsGet(LS_KEY) === "1") liberar(false);
+
+var shownAt = Date.now();
+function erro(m) { var e = byId("gate-erro"); e.textContent = m; e.classList.toggle("is-visible", !!m); }
+
+byId("gate-form").addEventListener("submit", async function (ev) {
+  ev.preventDefault();
+  erro("");
+  var email = byId("g-email").value.trim();
+  if (byId("hp-website").value || (Date.now() - shownAt) < 2500) { return; }
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { erro("Confere o e-mail e tenta de novo."); return; }
+  if (!byId("consent-servico").checked) { erro("Preciso que você aceite a Política de Privacidade pra continuar."); return; }
+  var btn = byId("gate-btn");
+  btn.disabled = true; btn.textContent = "Liberando...";
+  var params = new URLSearchParams(window.location.search);
+  var payload = {
+    email: email,
+    nome: byId("g-nome").value.trim() || null,
+    origem: "guia-vls-ts",
+    respostas: { visto: "estudante", objetivo: "validar-vls-ts" },
+    aceita_servico: true,
+    aceita_novidades: byId("consent-novidades").checked,
+    consentimento_versao: CONSENTIMENTO_VERSAO,
+    texto_servico: TEXTO_SERVICO,
+    texto_novidades: TEXTO_NOVIDADES
+  };
+  try {
+    var r = await supabase.rpc("capturar_lead", { payload: payload });
+    if (r.error) throw r.error;
+    lsSet(LS_KEY, "1");
+    track("guia_lead_capturado", { guia: GUIA, utm_campaign: params.get("utm_campaign") || null });
+    liberar(true);
+  } catch (e) {
+    console.error("capturar_lead:", e);
+    erro("Não consegui confirmar agora. Confere o e-mail e tenta de novo.");
+    btn.disabled = false; btn.textContent = "Liberar os passos 2 a 6 →";
+  }
+});
+
+/* ---------- Copiar modelo / imprimir ---------- */
+byId("copiar").addEventListener("click", function () {
+  var t = byId("modelo-texto").textContent;
+  if (datas.entrada) t = t.replace("[DATA DE ENTRADA]", datas.entrada).replace("[DATA-LIMITE]", datas.limite);
+  var b = this;
+  (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(function () {
+    b.textContent = "Copiado ✓"; setTimeout(function () { b.textContent = "Copiar mensagem"; }, 2000);
+    track("guia_copiar_modelo", { guia: GUIA });
+  }).catch(function () {
+    var r = document.createRange(); r.selectNodeContents(byId("modelo-texto"));
+    var s = getSelection(); s.removeAllRanges(); s.addRange(r);
+    b.textContent = "Selecionado: use Ctrl/Cmd+C";
+  });
+});
+byId("imprimir").addEventListener("click", function () { track("guia_imprimir", { guia: GUIA }); window.print(); });
+</script>
+</body>
+</html>
