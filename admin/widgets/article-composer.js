@@ -24,7 +24,8 @@
     return;
   }
 
-  var PAIR_TAGS = ["BAND", "STATS", "CARDS", "LIST", "STEPS", "FAQ", "RESOURCES", "CHECKLIST", "FEEDBACK", "AFILIADO", "POLL"];
+  var PAIR_TAGS = ["BAND", "STATS", "CARDS", "LIST", "STEPS", "FAQ", "RESOURCES", "CHECKLIST", "FEEDBACK", "AFILIADO", "POLL",
+    "RESUMO", "CONFIANCA", "MITO", "QUIZ", "SELETOR", "PRAZO", "LINHA-DO-TEMPO", "ROTEIRO", "PERGUNTA", "PROXIMO-PASSO", "TRILHA"];
   var AFILIADO_NAME = "AFILIADO";
   var TOOL_TOKENS = [
     "[[MAPA-FLE]]",
@@ -35,6 +36,8 @@
     "[[VAE-NEWSLETTER]]",
     "[[EXAME-TEMPLATE-GRATIS]]",
     "[[EXAME-PRICING]]",
+    "[[DIPLOMA-DOSSIE]]",
+    "[[AU-PAIR-FLE-SCROLL]]",
     "[[GALERIA]]",
     "[[GALERIA-2]]",
     "[[GYG-WIDGET]]"
@@ -283,7 +286,7 @@
         var affInfo = parseAffiliateInner(b.inner);
         return "🔗 Link afiliado: " + (affInfo.label || "(sem texto)");
       }
-      return "📦 Bloco " + b.name;
+      return (RICH_NAME[b.name] || "📦 Bloco " + b.name);
     }
     var t = b.raw.trim();
     if (/^#{1,3}\s/.test(t)) return "Título: " + t.replace(/^#{1,3}\s*/, "").slice(0, 44);
@@ -456,7 +459,18 @@
     RESOURCES: "Título | Descrição | Saiba mais | https://",
     CHECKLIST: "Título da checklist\nItem 1\nItem 2",
     FEEDBACK: "Esse artigo te ajudou?",
-    POLL: "Pergunta da enquete\nOpção 1\nOpção 2"
+    POLL: "Pergunta da enquete\nOpção 1\nOpção 2",
+    RESUMO: "Ponto principal 1\nPonto principal 2\nPonto principal 3",
+    CONFIANCA: "Quão segura você está sobre esse assunto?",
+    MITO: "Mito ou verdade?\nAfirmação que circula nos grupos | mito | Explicação curta do porquê\nOutra afirmação | verdade | Explicação curta",
+    QUIZ: "Título do teste\nPergunta 1 | opção | *opção certa | opção || Explicação\nPergunta 2 | *opção certa | opção || Explicação",
+    SELETOR: "Qual é o seu caso?\n? Primeira pergunta | Opção A > caso1 | Opção B > caso2\n? Segunda pergunta | Opção A > caso1 | Opção B > caso2\n= caso1 | Título do resultado 1 | Texto curto | Ler o guia | /artigos/\n= caso2 | Título do resultado 2 | Texto curto | Ler o guia | /artigos/",
+    PRAZO: "Quantos dias você ainda tem?\nData de entrada na França | 3 meses",
+    "LINHA-DO-TEMPO": "Sua linha do tempo\nData de referência\n-6 meses | Primeira etapa\n-3 meses | Segunda etapa\n0 | O dia D",
+    ROTEIRO: "Seu roteiro\nLugar 1 | Descrição curta | https://\nLugar 2 | Descrição curta",
+    PERGUNTA: "Ficou alguma dúvida? Pergunta pra mim. As mais pedidas viram artigo.",
+    "PROXIMO-PASSO": "se prazo<=45 | Título pra quem está com pressa | Texto | Texto do botão | /produtos-digitais/\npadrao | Título padrão | Texto | Ver soluções | /produtos-digitais/",
+    TRILHA: "Nome da trilha\nslug-do-artigo-1\nslug-do-artigo-2\nslug-do-artigo-3"
   };
   var RICH_HINT = {
     BAND: "Texto livre da faixa de destaque.",
@@ -468,7 +482,25 @@
     RESOURCES: "Uma linha por fonte: título | descrição | texto do link | URL",
     CHECKLIST: "1ª linha = título da checklist, as demais = itens marcáveis.",
     FEEDBACK: "Pergunta opcional — em branco usa a pergunta padrão.",
-    POLL: "1ª linha = pergunta, as demais = opções de resposta única."
+    POLL: "1ª linha = pergunta, as demais = opções de resposta única. A resposta também alimenta o Próximo passo (se enquete=Opção exata).",
+    RESUMO: "Uma linha por tópico. Aparece fechado no topo: \"Sem tempo? O resumo em 20 segundos\".",
+    CONFIANCA: "A pergunta de 1 a 5. Coloque no começo — a versão \"depois\" aparece sozinha no fim do artigo, com a diferença.",
+    MITO: "1ª linha = título. Depois, uma por afirmação: afirmação | mito ou verdade | explicação.",
+    QUIZ: "1ª linha = título. Depois: pergunta | opções separadas por | (a certa com * na frente) || explicação. A nota alimenta o Próximo passo (se quiz<60).",
+    SELETOR: "1ª linha = título. \"?\" = pergunta, cada opção \"texto > chave\" (várias chaves com vírgula). \"=\" = resultado: chave | título | texto | botão | link. Ganha a chave mais escolhida.",
+    PRAZO: "1ª linha = título. 2ª = rótulo da data | duração (3 meses, 90 dias, 1 ano). Mostra dias restantes e status; alimenta o Próximo passo (se prazo<=45).",
+    "LINHA-DO-TEMPO": "1ª linha = título. 2ª = rótulo da data. Depois: deslocamento | o que fazer (-12 meses, -2 semanas, +30 dias, 0).",
+    ROTEIRO: "1ª linha = título. Depois: nome | descrição | link opcional. A leitora marca \"Quero ir / Já fui\".",
+    PERGUNTA: "Não é mais usado: o formulário \"Pergunta pra Ingryd\" (nome, e-mail e pergunta) aparece sozinho no fim de todo artigo. Pode apagar este bloco.",
+    "PROXIMO-PASSO": "Uma regra por linha, de cima pra baixo: se condição | título | texto | botão | link. Condições: prazo<=45, prazo<0, enquete=Opção exata, seletor=chave, quiz<60, checklist=completo, confianca<=2. A linha padrao aparece quando nada bate.",
+    TRILHA: "1ª linha = nome da trilha. Depois, um slug de artigo por linha, na ordem da trilha (inclua o slug deste artigo)."
+  };
+
+  var RICH_NAME = {
+    PRAZO: "⏳ Ferramenta: calculadora de prazo", QUIZ: "🎓 Ferramenta: mini-simulado", SELETOR: "🧭 Ferramenta: qual é o seu caso?",
+    "LINHA-DO-TEMPO": "🗓️ Ferramenta: linha do tempo", ROTEIRO: "📍 Ferramenta: roteiro salvável", RESUMO: "⚡ Resumo em 20s",
+    CONFIANCA: "🌡️ Termômetro de confiança", MITO: "🤔 Mito ou verdade", PERGUNTA: "💬 (antigo) Pergunta — pode apagar",
+    "PROXIMO-PASSO": "➡️ Próximo passo (Soluções digitais)", TRILHA: "🧵 Trilha de artigos"
   };
 
   function richBlock(name) {
@@ -497,6 +529,24 @@
         { key: "STATS", emoji: "📊", label: "Números", make: function () { return richBlock("STATS"); } },
         { key: "CARDS", emoji: "🗂️", label: "Cartões", make: function () { return richBlock("CARDS"); } },
         { key: "LIST", emoji: "📋", label: "Lista com ícones", make: function () { return richBlock("LIST"); } }
+      ]
+    },
+    {
+      group: "Ferramenta-assinatura (1 por artigo)", items: [
+        { key: "PRAZO", emoji: "⏳", label: "Calculadora de prazo", make: function () { return richBlock("PRAZO"); } },
+        { key: "QUIZ", emoji: "🎓", label: "Mini-simulado", make: function () { return richBlock("QUIZ"); } },
+        { key: "SELETOR", emoji: "🧭", label: "Qual é o seu caso?", make: function () { return richBlock("SELETOR"); } },
+        { key: "LINHA-DO-TEMPO", emoji: "🗓️", label: "Linha do tempo", make: function () { return richBlock("LINHA-DO-TEMPO"); } },
+        { key: "ROTEIRO", emoji: "📍", label: "Roteiro salvável", make: function () { return richBlock("ROTEIRO"); } }
+      ]
+    },
+    {
+      group: "Microengajamento", items: [
+        { key: "RESUMO", emoji: "⚡", label: "Resumo em 20s", make: function () { return richBlock("RESUMO"); } },
+        { key: "CONFIANCA", emoji: "🌡️", label: "Termômetro de confiança", make: function () { return richBlock("CONFIANCA"); } },
+        { key: "MITO", emoji: "🤔", label: "Mito ou verdade", make: function () { return richBlock("MITO"); } },
+        { key: "PROXIMO-PASSO", emoji: "➡️", label: "Próximo passo (Soluções)", make: function () { return richBlock("PROXIMO-PASSO"); } },
+        { key: "TRILHA", emoji: "🧵", label: "Trilha de artigos", make: function () { return richBlock("TRILHA"); } }
       ]
     },
     {

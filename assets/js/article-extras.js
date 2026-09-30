@@ -1,7 +1,7 @@
 // Por Dentro — "atualizado em" + sugestões relacionadas no fim do artigo.
 // Compartilhado entre o template dinâmico (/artigos/post/) e as páginas
 // estáticas (/artigos/post/<slug>/) — um lugar só pra manter os dois iguais.
-import { fetchJSON, imgSlotHTML, escapeHtml, postHref, isPublished, IN_PREVIEW, previewDraftNoteHTML } from "/assets/js/render.js";
+import { fetchJSON, imgSlotHTML, postCoverHTML, escapeHtml, postHref, isPublished, IN_PREVIEW, previewDraftNoteHTML } from "/assets/js/render.js";
 import { renderFeedback } from "/assets/js/markdown.js";
 
 function formatDate(iso) {
@@ -29,7 +29,7 @@ export function relatedSectionHTML(items) {
     .map(
       (p) =>
         '<a class="card" href="' + escapeHtml(postHref(p)) + '" style="color:inherit;">' +
-        imgSlotHTML(p.image, p.title, "Foto do artigo") +
+        postCoverHTML(p, "Foto do artigo") +
         '<div class="card-body"><h3 style="font-size:16px;">' + escapeHtml(p.title) + "</h3>" +
         '<span style="font-weight:600; font-size:13px; color:#604034;">Ler artigo →</span></div></a>'
     )

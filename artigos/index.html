@@ -117,14 +117,14 @@
 <script src="/assets/js/analytics.js"></script>
 <script type="module" src="/assets/js/header.js"></script>
 <script type="module">
-  import { fetchJSON, imgSlotHTML, escapeHtml, postHref, publishedItems, categoryHref } from "/assets/js/render.js";
+  import { fetchJSON, imgSlotHTML, postCoverHTML, escapeHtml, postHref, publishedItems, categoryHref } from "/assets/js/render.js";
 
   let ALL_POSTS = [];
 
   function postCardHTML(post) {
     return (
       '<a class="card" href="' + escapeHtml(postHref(post)) + '" style="color:inherit;">' +
-      imgSlotHTML(post.image, post.title, "Foto do artigo") +
+      postCoverHTML(post, "Foto do artigo") +
       '<div class="card-body">' +
       '<span class="eyebrow" style="color:#6E6862;">' + escapeHtml(post.category) + "</span>" +
       "<h3>" + escapeHtml(post.title) + "</h3>" +
@@ -137,7 +137,7 @@
   function featuredPostHTML(post) {
     return (
       '<a class="featured-post" href="' + escapeHtml(postHref(post)) + '">' +
-      imgSlotHTML(post.image, post.title, "Foto do artigo") +
+      postCoverHTML(post, "Foto do artigo") +
       '<div class="featured-post-body">' +
       '<span class="featured-post-tag">✦ Últimos lançamentos</span>' +
       "<h2>" + escapeHtml(post.title) + "</h2>" +
@@ -150,7 +150,7 @@
   function maisCurtidoCardHTML(post, count) {
     return (
       '<a class="mais-curtidos-card" href="' + escapeHtml(postHref(post)) + '">' +
-      '<div class="mais-curtidos-thumb">' + imgSlotHTML(post.image, post.title, "") + "</div>" +
+      '<div class="mais-curtidos-thumb">' + postCoverHTML(post, "", { mini: true }) + "</div>" +
       '<div class="mais-curtidos-info">' +
       "<h4>" + escapeHtml(post.title) + "</h4>" +
       '<span class="mais-curtidos-count">♥ ' + count + (count === 1 ? " curtida" : " curtidas") + "</span>" +

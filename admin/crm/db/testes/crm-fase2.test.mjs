@@ -13,6 +13,7 @@ import { fileURLToPath } from 'node:url';
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const APP_DB = process.env.APP_DB_DIR || path.resolve(HERE, '../../../../../../por-dentro-app/db');
 const FASE2 = path.resolve(HERE, '../crm-fase2.sql');
+const FASE2C = path.resolve(HERE, '../crm-fase2c-lembretes.sql');
 const db = new PGlite();
 
 let passed = 0, failed = 0;
@@ -52,6 +53,11 @@ async function main() {
   const idem = await attempt(() => db.exec(sql2));
   check('fase 2 é idempotente (roda 2x sem erro)', idem.ok);
   if (!idem.ok) console.log(idem.error.message);
+  const sql2c = readFileSync(FASE2C, 'utf8');
+  await db.exec(sql2c);
+  const idemC = await attempt(() => db.exec(sql2c));
+  check('fase 2c (lembretes) é idempotente', idemC.ok);
+  if (!idemC.ok) console.log(idemC.error.message);
 
   const [admin] = await q("insert into auth.users (email) values ('admin@example.com') returning id");
   await db.query('insert into admins (user_id) values ($1)', [admin.id]);
@@ -191,6 +197,55 @@ async function main() {
   check('marca quem sumiu há 30+ dias', (await estagio('sumiu@example.com')) === 'inativo' && n >= 1);
   check('não mexe em quem está ativo', (await estagio('recente@example.com')) === 'em_uso');
   check('não conta a mudança como atividade', (await vis('sumiu@example.com')).dias >= 31);
+
+  console.log('\n== Público: pergunta com newsletter ==');
+  const pn = { email: 'news@example.com', nome: 'News', texto: 'Tenho uma dúvida sobre a APL', artigo: 'ajudas-de-moradia-apl-alf-als',
+    aceita_servico: true, aceita_novidades: true, consentimento_versao: 'v1', texto_servico: 'Li e aceito.', texto_novidades: 'Quero a newsletter.' };
+  check('pergunta com newsletter passa', (await attempt(() => asAnon(() => db.query('select enviar_pergunta_unica($1)', [JSON.stringify(pn)])))).ok);
+  const [news] = await q("select id from contatos where email='news@example.com'");
+  const nov = await q("select aceito from consentimentos where contato_id=$1 and finalidade='novidades_email'", [news.id]);
+  check('registra aceite de novidades', nov.length === 1 && nov[0].aceito === true);
+  await attempt(() => asAnon(() => db.query('select enviar_pergunta_unica($1)', [JSON.stringify({ ...pn, aceita_novidades: false })])));
+  const nov2 = await q("select aceito from consentimentos where contato_id=$1 and finalidade='novidades_email' order by criado_em", [news.id]);
+  check('caixinha desmarcada não retira o aceite nem duplica', nov2.length === 1);
+
+  console.log('\n== Público: pedir_lembrete_prazo ==');
+  const daqui = (d) => { const x = new Date(); x.setDate(x.getDate() + d); return x.toISOString().slice(0, 10); };
+  const lb = { email: 'Bia@Example.com', nome: 'Bia', prazo: daqui(60), artigo: 'vls-ts-3-meses-para-validar',
+    aceita_servico: true, consentimento_versao: 'v1', texto_servico: 'Li e aceito.' };
+  check('anon pede lembrete', (await attempt(() => asAnon(() => db.query('select pedir_lembrete_prazo($1)', [JSON.stringify(lb)])))).ok);
+  const [bia] = await q("select * from contatos where email='bia@example.com'");
+  check('cria o contato com origem = artigo', bia?.origem === 'vls-ts-3-meses-para-validar');
+  const [lem] = await q('select * from lembretes_prazo where contato_id=$1', [bia.id]);
+  const fmtD = (d) => (d instanceof Date ? d.toISOString() : String(d)).slice(0, 10);
+  check('grava o lembrete 15 dias antes do prazo', lem && fmtD(lem.prazo) === daqui(60) && fmtD(lem.avisar_em) === daqui(45) && lem.status === 'agendado');
+  const evB = (await q('select tipo from eventos where contato_id=$1', [bia.id])).map((r) => r.tipo);
+  check('eventos email_capturado + lembrete_pedido', evB.includes('email_capturado') && evB.includes('lembrete_pedido'));
+  await attempt(() => asAnon(() => db.query('select pedir_lembrete_prazo($1)', [JSON.stringify(lb)])));
+  check('mesmo prazo de novo não duplica', (await q('select count(*)::int n from lembretes_prazo where contato_id=$1', [bia.id]))[0].n === 1);
+  await attempt(() => asAnon(() => db.query('select pedir_lembrete_prazo($1)', [JSON.stringify({ ...lb, prazo: daqui(5) })])));
+  const [perto] = await q('select avisar_em from lembretes_prazo where contato_id=$1 and prazo=$2', [bia.id, daqui(5)]);
+  check('prazo perto: avisa amanhã', perto && fmtD(perto.avisar_em) === daqui(1));
+  for (const [label, p, re] of [
+    ['exige aceite', { ...lb, aceita_servico: false }, /consentimento_obrigatorio/],
+    ['rejeita e-mail inválido', { ...lb, email: 'x' }, /email_invalido/],
+    ['rejeita prazo passado', { ...lb, prazo: daqui(-3) }, /prazo_invalido/],
+    ['rejeita prazo sem data', { ...lb, prazo: 'amanhã' }, /prazo_invalido/],
+    ['rejeita prazo a mais de 2 anos', { ...lb, prazo: daqui(800) }, /prazo_invalido/],
+  ]) {
+    const r = await attempt(() => asAnon(() => db.query('select pedir_lembrete_prazo($1)', [JSON.stringify(p)])));
+    check(`pedir_lembrete_prazo ${label}`, !r.ok && re.test(r.error.message));
+  }
+  await attempt(() => asAnon(() => db.query('select pedir_lembrete_prazo($1)', [JSON.stringify({ ...lb, prazo: daqui(90) })])));
+  const quarto = await attempt(() => asAnon(() => db.query('select pedir_lembrete_prazo($1)', [JSON.stringify({ ...lb, prazo: daqui(120) })])));
+  check('limita a 3 lembretes agendados por pessoa', !quarto.ok && /muitos_lembretes/.test(quarto.error.message));
+  check('anon não lê lembretes_prazo', !(await attempt(() => asAnon(() => db.query('select * from lembretes_prazo limit 1')))).ok);
+  const rOutra = await attempt(() => asUser(outra.id, () => db.query('select * from lembretes_prazo')));
+  check('não-admin vê 0 lembretes', rOutra.ok && rOutra.value.rows.length === 0);
+  const rAdm = await asUser(admin.id, () => db.query("update lembretes_prazo set status='avisado', avisado_em=now() where contato_id=$1 and prazo=$2 returning id", [bia.id, daqui(60)]));
+  check('admin marca como avisado', rAdm.rows.length === 1);
+  await db.query('delete from contatos where id=$1', [bia.id]);
+  check('apagar o contato leva os lembretes junto', (await q('select count(*)::int n from lembretes_prazo where contato_id=$1', [bia.id]))[0].n === 0);
 
   console.log('\n== Apagamento em cascata ==');
   await db.query('delete from contatos where id=$1', [ana.id]);

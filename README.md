@@ -53,6 +53,26 @@ Depois acesse `http://localhost:8000`.
 
 O site assume que vai rodar na raiz do domínio (links tipo `/produtos-digitais/`). Se em algum momento ele for publicado em `usuario.github.io/nome-do-repo/` (sem domínio próprio), esses links quebram — nesse caso me avise que ajusto para caminhos relativos.
 
+## Microengajamento, ferramenta-assinatura e capas por palavra-chave
+
+Todo artigo tem 1 ferramenta-assinatura (`[[PRAZO]]`, `[[QUIZ]]`, `[[SELETOR]]`,
+`[[LINHA-DO-TEMPO]]` ou `[[ROTEIRO]]`), blocos de microengajamento (`[[RESUMO]]`,
+`[[CONFIANCA]]`, `[[MITO]]`, `[[TRILHA]]`) e fecha com `[[PROXIMO-PASSO]]`,
+que recomenda uma Solução digital conforme as respostas da leitora. No fim de todo artigo, antes do
+rodapé, fica o formulário "Pergunta pra Ingryd" (nome, e-mail e pergunta); ele e o lembrete da
+calculadora de prazo vão pro CRM em /admin/crm (`assets/js/leads.js` →
+`enviar_pergunta_unica` / `pedir_lembrete_prazo`; banco em `admin/crm/db/crm-fase2c-lembretes.sql`). A capa é desenhada pelo
+site a partir da palavra-chave (`coverKeyword`, `coverTags`, `coverFormat`). Referência completa
+em [MICROENGAJAMENTO.md](MICROENGAJAMENTO.md).
+
+- Site: `assets/js/cover.js` (capa), `assets/js/markdown.js` (HTML dos blocos),
+  `assets/js/microengajamento.js` (comportamento e eventos), `assets/js/mx-static.js` (artigos com
+  página própria, que usam o campo `mxBlocks`).
+- /admin: os blocos novos estão no "+" do editor visual (grupos "Ferramenta-assinatura" e
+  "Microengajamento"); o quadro de artigos mostra a capa, o checklist de microengajamento de cada
+  artigo e o botão **🧠 Colar do robô**, que cria o artigo inteiro a partir do pacote do robô
+  (prompt em `admin/prompts/robo-escritor-de-artigos.md`).
+
 ## Configurar o Stripe (pagamento)
 
 1. Crie uma conta Stripe (ou use a existente) e ative pagamentos.

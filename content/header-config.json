@@ -2,7 +2,7 @@
   "links": {
     "produtos-digitais": {
       "enabled": true,
-      "label": "Produtos digitais",
+      "label": "Soluções digitais",
       "href": "/produtos-digitais/"
     },
     "produtos-de-estudo": {

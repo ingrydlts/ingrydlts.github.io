@@ -61,7 +61,7 @@ var TPL_ORDER = ['boas_vindas', 'naoabriu', 'naoclicou', 'cliquenaoapp', 'paroua
 function defaultTpl(c) { return c.segmento || (c.origem === 'guia-vls-ts' ? 'guia_chamada' : 'boas_vindas'); }
 function splitTpl(c, k) { var t = TPLS[k].make(c); return { subject: t[0].replace(/^Assunto: /, ''), body: t[1] }; }
 
-var C = [], Q = [], SUBS = {};
+var C = [], Q = [], L = [], SUBS = {};
 var state = { view: 'hoje', persona: '', sub: '', urg: '', stage: '', orig: '', q: '', sel: null, qs: 'nova', qsel: null, preset: 'todos', seg: '', prevView: 'contatos' };
 var activeCid = null;
 var me = null;
@@ -136,11 +136,15 @@ async function loadAll() {
   var r = await Promise.all([
     supabase.from('crm_contatos').select('*').order('criado_em', { ascending: false }).limit(5000),
     supabase.from('perguntas_unicas').select('*').order('criado_em', { ascending: true }).limit(2000),
-    supabase.from('caminhos_opcoes').select('persona,chave,rotulo')
+    supabase.from('caminhos_opcoes').select('persona,chave,rotulo'),
+    // Lembretes de prazo pedidos na calculadora dos artigos (db/crm-fase2c-lembretes.sql).
+    // Se a fase 2c ainda não rodou, a tabela não existe: o card só fica vazio.
+    supabase.from('lembretes_prazo').select('*').eq('status', 'agendado').order('avisar_em', { ascending: true }).limit(500)
   ]);
   if (r[0].error) return fail('carregar os contatos', r[0].error);
   C = r[0].data || [];
   Q = r[1].error ? [] : (r[1].data || []);
+  L = r[3] && !r[3].error ? (r[3].data || []) : [];
   SUBS = {};
   (r[2].data || []).forEach(function (o) { SUBS[o.persona + '|' + o.chave] = o.rotulo; });
 }
@@ -252,6 +256,25 @@ function renderToday() {
   $('today-1a1').innerHTML = um.map(function (c) {
     return '<button class="row" data-open="' + esc(c.id) + '" type="button"><div class="' + avClass(c) + '">' + esc(ini(c)) + '</div><div class="who"><b>' + esc(short(c)) + '</b><span>' + esc(personaLabel(c)) + (subLabel(c) ? ' · ' + esc(subLabel(c)) : '') + '</span></div><span class="when">' + esc(fmtWhen(c.um_a_um_quando)) + '</span></button>';
   }).join('') || '<div class="empty">Nenhum 1:1 marcado.</div>';
+  renderLembretes();
+}
+
+// Card "Lembretes de prazo" do Hoje: quem pediu, na calculadora de um artigo, pra ser
+// avisada antes de um prazo. Mostra primeiro o que já passou da data de avisar.
+function fmtDay(d) { return d ? new Date(d + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) : '—'; }
+function renderLembretes() {
+  var box = $('today-lembretes'); if (!box) return;
+  var hoje = new Date().toISOString().slice(0, 10);
+  var em7 = new Date(Date.now() + 7 * 864e5).toISOString().slice(0, 10);
+  var list = L.filter(function (l) { return l.avisar_em <= em7; });
+  box.innerHTML = list.map(function (l) {
+    var c = byC(l.contato_id), atrasado = l.avisar_em <= hoje;
+    var who = c ? '<div class="' + avClass(c) + '">' + esc(ini(c)) + '</div><div class="who"><b>' + esc(short(c)) + '</b><span>Prazo ' + esc(fmtDay(l.prazo)) + (l.artigo ? ' · ' + esc(l.artigo) : '') + '</span></div>'
+      : '<div class="who"><b>Contato</b><span>Prazo ' + esc(fmtDay(l.prazo)) + '</span></div>';
+    return '<div class="row">' + (c ? '<button class="row" style="flex:1;border:0;padding:0;background:none" type="button" data-open="' + esc(c.id) + '">' + who + '</button>' : who) +
+      '<span class="when">' + (atrasado ? 'avisar hoje' : 'avisar ' + esc(fmtDay(l.avisar_em))) + '</span>' +
+      '<button class="btn" type="button" data-avisado="' + esc(l.id) + '">Avisei</button></div>';
+  }).join('') || '<div class="empty">Ninguém pra avisar nos próximos 7 dias.' + (L.length ? ' ' + L.length + ' lembrete(s) mais adiante.' : '') + '</div>';
 }
 
 function renderContacts() {
@@ -343,6 +366,7 @@ function eventText(e) {
   var d = e.dados || {}, t = e.tipo;
   var m = {
     email_capturado: ['sistema', 'Deixou o e-mail' + (d.origem ? ' (' + d.origem + ')' : '')],
+    lembrete_pedido: ['artigo', 'Pediu lembrete do prazo de ' + fmtDay(d.prazo) + (d.artigo ? ' (' + d.artigo + ')' : '')],
     email_recapturado: ['sistema', 'Refez o quiz'],
     quiz_respondido: ['sistema', 'Respondeu o quiz do funil'],
     acesso_ativado: ['app', 'Abriu o link de acesso'],
@@ -524,6 +548,13 @@ document.addEventListener('click', async function (e) {
   }
   if (t.matches('tr[data-id]')) return openPessoa(t.dataset.id);
   if (t.dataset.open) return openPessoa(t.dataset.open);
+  if (t.dataset.avisado) {
+    t.disabled = true;
+    var up = await supabase.from('lembretes_prazo').update({ status: 'avisado', avisado_em: new Date().toISOString() }).eq('id', t.dataset.avisado);
+    if (up.error) { t.disabled = false; return fail('marcar o lembrete', up.error); }
+    L = L.filter(function (l) { return String(l.id) !== String(t.dataset.avisado); });
+    renderLembretes(); return toast('Lembrete marcado como avisado');
+  }
   if (t.dataset.back !== undefined) return show(state.prevView || 'contatos');
   if (t.dataset.openq) { var qq = Q.filter(function (y) { return String(y.id) === t.dataset.openq; })[0]; if (!qq) return; state.qs = qq.status; state.qsel = qq.id; return show('perguntas'); }
   if (t.dataset.qs) { state.qs = t.dataset.qs; state.qsel = null; return renderQuestions(); }
