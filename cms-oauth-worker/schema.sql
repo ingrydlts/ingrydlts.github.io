@@ -45,24 +45,3 @@ CREATE TABLE IF NOT EXISTS quiz_submissions (
 
 CREATE INDEX IF NOT EXISTS idx_quiz_email ON quiz_submissions(email);
 CREATE INDEX IF NOT EXISTS idx_quiz_ref ON quiz_submissions(ref);
-
--- Perguntas e lembretes do blog — POST/GET /api/leads em worker.js.
--- kind 'pergunta' = formulário "Pergunta pra Ingryd" no fim de todo artigo;
--- kind 'lembrete' = "Me avisa antes do prazo" da calculadora [[PRAZO]].
--- O mesmo contato também vai pro Brevo, se BREVO_API_KEY estiver configurada
--- (brevo_status guarda se deu certo).
-CREATE TABLE IF NOT EXISTS leads (
-  id TEXT PRIMARY KEY,
-  kind TEXT NOT NULL,            -- 'pergunta' | 'lembrete'
-  name TEXT,
-  email TEXT,
-  question TEXT,                 -- só em 'pergunta'
-  article_slug TEXT,
-  deadline TEXT,                 -- só em 'lembrete' (AAAA-MM-DD, a data-limite do prazo)
-  newsletter INTEGER NOT NULL DEFAULT 0, -- 1 = marcou que quer receber a newsletter
-  brevo_status TEXT,             -- 'ok' | 'erro 400' … | null (Brevo não configurado)
-  created_at TEXT NOT NULL
-);
-
-CREATE INDEX IF NOT EXISTS idx_leads_created ON leads(created_at);
-CREATE INDEX IF NOT EXISTS idx_leads_kind ON leads(kind);

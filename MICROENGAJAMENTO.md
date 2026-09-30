@@ -121,11 +121,13 @@ Condições: `prazo<=45`, `prazo<0` (dias restantes do `[[PRAZO]]`) · `enquete=
 
 ### Na página, sem bloco
 
-- **Pergunta pra Ingryd**: formulário com nome, e-mail e pergunta no fim de todo artigo, logo antes
-  do rodapé (`assets/js/leads.js`). A pergunta chega no seu e-mail, vai pro Brevo e aparece no
-  painel de dados, aba "Perguntas e lembretes".
+- **Pergunta pra Ingryd**: formulário com nome, e-mail, pergunta, aceite da Política de Privacidade
+  e caixinha de newsletter, no fim de todo artigo, logo antes do rodapé (`assets/js/leads.js`).
+  Vai pro CRM (`enviar_pergunta_unica`) e aparece em /admin/crm → **Perguntas únicas**, onde você
+  responde.
 - **Lembrete de prazo**: dentro do resultado do `[[PRAZO]]`, quando faltam mais de 15 dias, a
-  leitora deixa nome e e-mail e recebe um aviso 15 dias antes (automação do Brevo).
+  leitora deixa nome e e-mail. Vai pro CRM (`pedir_lembrete_prazo`) e aparece em /admin/crm →
+  Hoje → **Lembretes de prazo** na semana em que é hora de avisar (15 dias antes do prazo).
 
 - Barra de progresso de leitura no topo, com eventos em 25/50/75/100%.
 - Sumário "Nesta página" marca ✓ nas seções já lidas.
@@ -143,9 +145,9 @@ cookies, e é gravado no D1 pelo Worker (que já aceita, sem mudança). Tipos no
 
 O Worker aceita 20 eventos por minuto por pessoa, por isso só vira evento o que é resposta ou decisão.
 
-Nome, e-mail, pergunta e data do lembrete não passam pelos eventos: vão por `POST /api/leads`, que
-grava na tabela `leads`, sincroniza com o Brevo e te avisa por e-mail. Configuração em
-`cms-oauth-worker/README.md`, seção 16.
+Nome, e-mail, pergunta e data do lembrete não passam pelos eventos: vão direto pro CRM no
+Supabase (`admin/crm/db/crm-fase2.sql` e `crm-fase2c-lembretes.sql`), com o mesmo aceite e a mesma
+versão de texto do funil (`site-v1`).
 
 ## Escrever um artigo novo com o robô
 

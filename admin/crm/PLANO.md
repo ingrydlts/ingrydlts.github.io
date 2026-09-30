@@ -12,7 +12,8 @@ Backend: o **mesmo Supabase** do app (projeto `hslhpktfgxwfvljvsxkj`). Painel: e
 | Funil (kanban por estágio) | `crm_contatos.estagio` | pronto |
 | Página da pessoa (feed, anotações, consentimento, mudar estágio) | `eventos`, `consentimentos`, `contatos.nota` | pronto |
 | Marcar 1:1 / Enviar sinal | `um_a_um`, `sinais` (o app lê com `meus_sinais()`) | pronto no painel; **falta o dashboard do app mostrar o sinal** |
-| Perguntas únicas | `perguntas_unicas` | painel pronto; **falta o formulário nos artigos** chamar `enviar_pergunta_unica` e o **envio da resposta por e-mail** (fase 3) |
+| Perguntas únicas | `perguntas_unicas` | painel e formulário do fim dos artigos (`assets/js/leads.js`) prontos; falta o **envio da resposta por e-mail** (fase 3) |
+| Lembretes de prazo (Hoje) | `lembretes_prazo` (`db/crm-fase2c-lembretes.sql`) | pronto: a calculadora `[[PRAZO]]` dos artigos chama `pedir_lembrete_prazo`; o card mostra quem avisar nos próximos 7 dias |
 | Reimpactar (segmentos) | coluna `segmento` de `crm_contatos` (regras na view) | pronto (envio via Worker → Brevo; ver README do Worker, seção 16) |
 | Modelos de e-mail | `TPLS` em `crm.js` | pronto |
 
@@ -28,7 +29,8 @@ Backend: o **mesmo Supabase** do app (projeto `hslhpktfgxwfvljvsxkj`). Painel: e
 4. **Fase 2c — ligar as pontas** (fora deste repo):
    - App (`registrar_evento`): chamar `app_aberto`, `checklist_marcado`, `artigo_lido` — é isso que faz o estágio andar sozinho.
    - App: mostrar `meus_sinais()` no dashboard e chamar `marcar_sinal_lido()`.
-   - Site: formulário "pergunta única" dos artigos → `supabase.rpc('enviar_pergunta_unica', { payload })`.
+   - Site: formulário "pergunta única" dos artigos → `supabase.rpc('enviar_pergunta_unica', { payload })` (feito, `assets/js/leads.js`).
+   - Site: lembrete de prazo da calculadora → `supabase.rpc('pedir_lembrete_prazo', { payload })` (feito). Rodar `db/crm-fase2c-lembretes.sql` no Supabase **depois** da fase 2.
 5. **Fase 3 — e-mail** (código pronto; falta configurar o Brevo — `cms-oauth-worker/README.md`, seção 16) (Cloudflare Worker em `cms-oauth-worker/` + provedor Resend/Brevo):
    - `POST /api/crm/enviar` (exige o token de admin): manda o e-mail e grava em `emails_enviados`.
    - Webhook do provedor → atualiza `status` (`entregue → aberto → clicado`) com service_role, só no Worker.

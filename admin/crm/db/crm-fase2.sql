@@ -204,6 +204,17 @@ begin
       coalesce(v_origem, 'artigo'));
   end if;
 
+  -- Caixinha "quero receber a newsletter" do formulário do artigo: só registra o SIM
+  -- (deixar desmarcada numa pergunta não retira um aceite que a pessoa já deu antes).
+  if coalesce(payload->>'aceita_novidades', '') = 'true' and coalesce((select cn.aceito from consentimentos cn
+       where cn.contato_id = v_id and cn.finalidade = 'novidades_email' order by cn.criado_em desc limit 1), false) = false then
+    insert into consentimentos (contato_id, finalidade, aceito, versao, texto, origem)
+    values (v_id, 'novidades_email', true,
+      nullif(left(coalesce(payload->>'consentimento_versao', ''), 20), ''),
+      nullif(left(coalesce(payload->>'texto_novidades', ''), 600), ''),
+      coalesce(v_origem, 'artigo'));
+  end if;
+
   if v_novo then
     insert into eventos (contato_id, tipo, dados)
     values (v_id, 'email_capturado', jsonb_build_object('origem', coalesce(v_origem, 'artigo')));

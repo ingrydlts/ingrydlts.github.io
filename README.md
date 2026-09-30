@@ -60,8 +60,8 @@ Todo artigo tem 1 ferramenta-assinatura (`[[PRAZO]]`, `[[QUIZ]]`, `[[SELETOR]]`,
 `[[CONFIANCA]]`, `[[MITO]]`, `[[TRILHA]]`) e fecha com `[[PROXIMO-PASSO]]`,
 que recomenda uma Solução digital conforme as respostas da leitora. No fim de todo artigo, antes do
 rodapé, fica o formulário "Pergunta pra Ingryd" (nome, e-mail e pergunta); ele e o lembrete da
-calculadora de prazo vão pro Brevo e pro seu e-mail (`assets/js/leads.js` + `POST /api/leads`,
-setup em `cms-oauth-worker/README.md`, seção 16). A capa é desenhada pelo
+calculadora de prazo vão pro CRM em /admin/crm (`assets/js/leads.js` →
+`enviar_pergunta_unica` / `pedir_lembrete_prazo`; banco em `admin/crm/db/crm-fase2c-lembretes.sql`). A capa é desenhada pelo
 site a partir da palavra-chave (`coverKeyword`, `coverTags`, `coverFormat`). Referência completa
 em [MICROENGAJAMENTO.md](MICROENGAJAMENTO.md).
 
