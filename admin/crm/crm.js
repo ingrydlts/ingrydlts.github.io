@@ -261,7 +261,6 @@ function renderToday() {
 
 // Card "Lembretes de prazo" do Hoje: quem pediu, na calculadora de um artigo, pra ser
 // avisada antes de um prazo. Mostra primeiro o que já passou da data de avisar.
-function fmtDay(d) { return d ? new Date(d + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) : '—'; }
 function renderLembretes() {
   var box = $('today-lembretes'); if (!box) return;
   var hoje = new Date().toISOString().slice(0, 10);
