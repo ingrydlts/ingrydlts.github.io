@@ -253,58 +253,43 @@ Sem essa variável configurada, a compra continua sendo confirmada e registrada 
 a página de confirmação mostra um aviso ("o link ainda está sendo configurado") em vez de redirecionar,
 nunca um link quebrado.
 
-## 16. Perguntas e lembretes do blog → Brevo (CRM) e seu e-mail
+## 16. Enviar e-mails do CRM pelo Brevo (`/admin/crm/`)
 
-No fim de todo artigo existe o formulário **"Pergunta pra Ingryd"** (nome, e-mail e pergunta), e a
-calculadora de prazo (`[[PRAZO]]`) tem o **"Me avisa antes do prazo"** (nome e e-mail). Os dois
-mandam pra `POST /api/leads`, que:
+O painel do CRM manda e-mail (boas-vindas e reimpacto) pelo Worker, que chama o Brevo. Quem pode enviar:
+só quem está logada no CRM **e** na tabela `admins` do Supabase (o Worker confere isso a cada envio).
 
-1. guarda tudo na tabela `leads` do D1 (aparece em `/admin/dashboard/` → aba **Perguntas e lembretes**);
-2. cria ou atualiza o contato no **Brevo**, na lista certa, com os atributos abaixo;
-3. no caso de pergunta, te manda um e-mail (Resend, mesmo `NOTIFY_EMAIL` das avaliações) — é só
-   **responder** esse e-mail que a resposta vai direto pra leitora.
+**No Brevo**
+1. **Remetente**: menu do perfil → **Senders, Domains & Dedicated IPs** → **Senders** → adicione o e-mail de onde
+   os e-mails saem e confirme pelo link que chega. Depois, em **Domains**, autentique o domínio (DKIM/DMARC) —
+   sem isso boa parte cai no spam.
+2. **Chave**: **SMTP & API** → **API Keys** → **Generate a new API key** (nome: `crm-por-dentro`). Copie: só aparece uma vez.
 
-### Passo a passo (uma vez só)
+**No Supabase**
+3. **Project Settings → API Keys** → copie a chave **service_role** (secret). Ela só é usada pelo webhook do
+   passo 6; nunca vai pro navegador.
 
-**a) Criar a tabela.** Cloudflare → D1 → `por-dentro-events` → **Console** → cole o bloco
-`CREATE TABLE IF NOT EXISTS leads …` do fim de `schema.sql` → Execute.
+**No Worker** (Settings → Variables and Secrets)
+4. Adicione:
+   - `BREVO_API_KEY` (Secret) = a chave do passo 2
+   - `BREVO_SENDER_EMAIL` (Text) = o remetente verificado
+   - `BREVO_SENDER_NAME` (Text, opcional) = ex. `Ingryd · Por Dentro`
+   - `BREVO_WEBHOOK_SECRET` (Secret) = uma senha longa inventada (24+ caracteres; ex. `openssl rand -hex 24`)
+   - `SUPABASE_SERVICE_ROLE_KEY` (Secret) = a chave do passo 3
+5. Atualize o código do Worker (seção 9) — as rotas novas são `/api/crm/enviar` e `/api/crm/brevo-webhook`.
 
-**b) No Brevo, criar os atributos.** Contatos → **Configurações** → **Atributos de contato** → Adicionar:
+**De volta ao Brevo**
+6. **Transactional** → **Settings** → **Webhook** → **Add a new webhook**:
+   - URL: `https://por-dentro-cms-oauth.ingrydigitalmanagement.workers.dev/api/crm/brevo-webhook?k=` + o valor de `BREVO_WEBHOOK_SECRET`
+   - Eventos: *Delivered, Opened, Clicked, Hard bounce, Blocked, Invalid email, Error, Unsubscribed*.
 
-| Nome | Tipo |
-|---|---|
-| `PERGUNTA_BLOG` | Texto |
-| `ARTIGO_ORIGEM` | Texto |
-| `PRAZO_DATA` | **Data** |
-| `PRAZO_ARTIGO` | Texto |
+   Sem o webhook o e-mail sai, mas fica "agendado" pra sempre e os segmentos do Reimpactar não funcionam.
 
-(`FIRSTNAME` já existe no Brevo.) Sem esses atributos o Brevo recusa o contato — o envio continua
-salvo no D1 e a aba do painel mostra "erro 400" na coluna Brevo.
+**No painel**
+7. Em `admin/crm/crm.js`, preencha `APP_LINK` com o endereço do app. Enquanto estiver vazio, o texto continua com
+   `[link do acesso]` e o Worker **recusa** o envio (de propósito).
 
-**c) Criar as listas.** Contatos → **Listas** → crie `Perguntas do blog` e `Lembretes de prazo`.
-Anote o número (ID) de cada uma. Se quiser, use a lista da newsletter que você já tem pra quem
-marcar "Quero receber a newsletter" (anote o ID dela também).
-
-**d) Gerar a chave da API.** Brevo → seu nome (canto superior direito) → **SMTP & API** → aba
-**Chaves de API** → Gerar nova chave → copie.
-
-**e) Colocar no Worker.** Cloudflare → Workers & Pages → `por-dentro-cms-oauth` → **Settings** →
-**Variables and Secrets** → Add:
-
-| Nome | Tipo | Valor |
-|---|---|---|
-| `BREVO_API_KEY` | Secret | a chave do passo d |
-| `BREVO_LIST_PERGUNTAS` | Text | ID da lista "Perguntas do blog" |
-| `BREVO_LIST_LEMBRETES` | Text | ID da lista "Lembretes de prazo" |
-| `BREVO_LIST_NEWSLETTER` | Text | ID da lista da newsletter (opcional) |
-
-**f) Publicar o `worker.js` atualizado** (seção 9).
-
-**g) Criar a automação do lembrete no Brevo.** Automações → Criar → **Data de aniversário**
-(*Anniversary date*) → atributo `PRAZO_DATA` → disparar **15 dias antes** → **sem repetir todo
-ano** → condição: contato na lista "Lembretes de prazo" → e-mail. No texto, use
-`{{ contact.FIRSTNAME }}`, `{{ contact.PRAZO_DATA }}` e `{{ contact.PRAZO_ARTIGO }}`, por exemplo:
-"Oi, {{ contact.FIRSTNAME }}! Faltam 15 dias pro seu prazo ({{ contact.PRAZO_DATA }}). Já validou?"
-
-Enquanto a chave do Brevo não estiver no Worker, nada se perde: tudo fica no D1 e no painel, e
-as perguntas continuam chegando no seu e-mail (se o Resend já estiver configurado, seção 8).
+Regras que o Worker aplica: modelos *abriu, não clicou* e *abriu o app e parou* só saem pra quem aceitou
+novidades; e-mails que não são boas-vindas levam um rodapé "responda *sair*" e o cabeçalho `List-Unsubscribe`.
+Quem pedir pra sair: registre em Consentimento (o link de descadastro do Brevo faz isso sozinho pelo webhook).
+Limite de honestidade: "abriu" no Brevo não é 100% confiável (Apple Mail e outros pré-carregam a imagem), então
+use como sinal, não como certeza.

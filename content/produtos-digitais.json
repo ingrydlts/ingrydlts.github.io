@@ -184,6 +184,73 @@
         "Pensada para Google Sheets"
       ],
       "guaranteeDays": 0
+    },
+    {
+      "active": true,
+      "free": true,
+      "freeUrl": "/guias/vls-ts-validacao-travou/",
+      "slug": "guia-vls-ts-validacao-travou",
+      "kicker": "Guia gratuito · VLS-TS estudante",
+      "title": "VLS-TS travou na ANEF? O que fazer antes do prazo acabar",
+      "summary": "O site não valida, o suporte só diz “problema técnico” e os 3 meses estão correndo. Veja como provar que você agiu a tempo e quem acionar, passo a passo.",
+      "description": "Você entrou na França com visto de estudante, tentou validar o VLS-TS no site da ANEF e o erro não sai. O suporte responde “problema técnico” e o prazo de 3 meses continua correndo. Este guia é para esse momento: em vez de tentar de novo e de novo, você monta hoje as provas de que tentou e agiu dentro do prazo, aciona a ANEF e a préfecture de um jeito que deixa registro, e sabe quando buscar ajuda jurídica. Nas fontes oficiais consultadas não há texto confirmando que o prazo é suspenso por falha do site, por isso o foco é agir cedo e documentar tudo. É conteúdo de orientação, sem caráter de aconselhamento jurídico, e não garante o resultado.",
+      "image": "/images/uploads/guia-vls-ts-capa.png",
+      "gallery": [
+        {
+          "type": "Foto",
+          "image": "/images/uploads/guia-vls-ts-capa.png",
+          "caption": "Capa do guia"
+        }
+      ],
+      "price": 0,
+      "guaranteeDays": 0,
+      "features": [
+        "Calculadora do seu prazo de 3 meses, com data de segurança",
+        "Checklist do que registrar hoje: prints datados, e-mails do suporte, ligações",
+        "Como acionar a ANEF e a préfecture deixando prova (e-mail e carta registrada com AR)",
+        "Mensagem pronta em francês pedindo validação manual ou attestation",
+        "Ajuda jurídica gratuita (Cimade) e o momento certo de procurar um advogado",
+        "Links oficiais e base legal, para você conferir tudo na fonte"
+      ],
+      "faq": [
+        {
+          "q": "O site da ANEF dá erro e o suporte só diz “problema técnico”. O prazo para?",
+          "a": "Nas fontes oficiais consultadas não há texto confirmando que o prazo é suspenso por falha do site. Por isso o guia foca no que protege você: provar que tentou e agiu dentro do prazo."
+        },
+        {
+          "q": "E se o prazo de 3 meses já passou?",
+          "a": "Aja hoje e guarde todas as provas. O guia cita o artigo do CESEDA sobre a taxa de regularização para quem passa do prazo (segundo fontes secundárias; confira o valor atual nos textos oficiais) e indica onde buscar ajuda jurídica gratuita."
+        },
+        {
+          "q": "Preciso de advogado?",
+          "a": "Nem sempre de imediato. O guia mostra primeiro o caminho gratuito (formulário da ANEF, préfecture, Services Publics+, Cimade) e indica procurar um advogado de direito dos estrangeiros cerca de 15 dias antes do prazo final, se ninguém responder."
+        },
+        {
+          "q": "O guia garante que meu visto será validado?",
+          "a": "Não. Ele mostra como documentar que você agiu a tempo e quais caminhos existem. Não há garantia de resultado, e o guia não substitui aconselhamento jurídico."
+        },
+        {
+          "q": "É gratuito mesmo?",
+          "a": "Sim. Você só informa seu e-mail para liberar os passos 2 a 6. Sem cartão e sem assinatura."
+        }
+      ],
+      "bundleWith": [],
+      "ctaLabel": "Ver os passos, grátis",
+      "freeNote": "Gratuito · leva 2 minutos para liberar, só com seu e-mail",
+      "freeTrust": [
+        {
+          "t": "Comece hoje",
+          "s": "O checklist de provas já está aberto"
+        },
+        {
+          "t": "Sem juridiquês",
+          "s": "Passo a passo e mensagem pronta"
+        },
+        {
+          "t": "Fontes oficiais",
+          "s": "Service-Public e Légifrance linkados"
+        }
+      ]
     }
   ]
 }

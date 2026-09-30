@@ -15,6 +15,11 @@
       "label": "Produtos de compras",
       "href": "/produtos-de-compras/"
     },
+    "guias": {
+      "enabled": true,
+      "label": "Guias",
+      "href": "/guias/"
+    },
     "blog": {
       "enabled": true,
       "label": "Blog",

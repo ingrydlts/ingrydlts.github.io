@@ -146,6 +146,7 @@
     <a href="/produtos-digitais/" data-nav-key="produtos-digitais">Produtos digitais</a>
     <a href="/produtos-de-estudo/" data-nav-key="produtos-de-estudo">Produtos de estudo</a>
     <a href="/produtos-de-compras/" data-nav-key="produtos-de-compras">Produtos de compras</a>
+    <a href="/guias/" data-nav-key="guias">Guias</a>
     <a href="/artigos/" data-nav-key="blog">Blog</a>
     <a href="/sobre/" data-nav-key="sobre">Sobre</a>
   </nav>
@@ -157,6 +158,7 @@
   <a href="/produtos-digitais/" data-nav-key="produtos-digitais">Produtos digitais</a>
   <a href="/produtos-de-estudo/" data-nav-key="produtos-de-estudo">Produtos de estudo</a>
   <a href="/produtos-de-compras/" data-nav-key="produtos-de-compras">Produtos de compras</a>
+  <a href="/guias/" data-nav-key="guias">Guias</a>
   <a href="/artigos/" data-nav-key="blog">Blog</a>
   <a href="/sobre/" data-nav-key="sobre">Sobre</a>
 </nav>
@@ -334,6 +336,7 @@
           <a href="/produtos-digitais/" data-nav-key="produtos-digitais">Produtos digitais</a>
           <a href="/produtos-de-estudo/" data-nav-key="produtos-de-estudo">Produtos de estudo</a>
           <a href="/produtos-de-compras/" data-nav-key="produtos-de-compras">Produtos de compras</a>
+          <a href="/guias/" data-nav-key="guias">Guias</a>
           <a href="/artigos/" data-nav-key="blog">Blog</a>
           <a href="/sobre/" data-nav-key="sobre">Sobre</a>
         </div>
@@ -635,9 +638,9 @@ import { isPublished } from '/assets/js/render.js';
 
   var STEP_PROGRESS = { "franca":8, "visto":18, "objetivo":28, "4":42, "worry":56, "estudos":68, "ap1":78, "ap2a":83, "ap2b":83, "ap3":88, "ap4":93, "ap5":97 };
 
-  // Ainda não existe domínio de produção pro app (só roda em localhost hoje) —
-  // TROCAR pelo domínio real antes de publicar essa página no ar.
-  var APP_URL = "http://localhost:8000/";
+  // Endereço do app em produção (Cloudflare, repositório POR-DENTRO-APP). Precisa estar
+  // nas Redirect URLs do Supabase (Authentication → URL Configuration).
+  var APP_URL = "https://plataforma.imigrantepordentro.com/";
 
   // Troca animada: a pergunta atual "sai" (fade + leve deslize pra cima) e só
   // depois a próxima "entra" (fade + flutua + brilha) — em vez de trocar o

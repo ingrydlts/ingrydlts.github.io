@@ -177,6 +177,7 @@
   }
   function status(p) {
     if (!p.active) return ["off", "Escondido"];
+    if (p.free) return ["ok", "No ar · gratuito (campos free/freeUrl no JSON)"];
     if (!STRIPE_RE.test(p.stripeLink || "")) return ["warn", "No ar · falta o pagamento"];
     var miss = checks(p).filter(function (c) { return !c[2]; }).length;
     return miss ? ["warn", "No ar · " + miss + " a completar"] : ["ok", "No ar · completo"];
