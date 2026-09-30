@@ -60,6 +60,21 @@
 .cta-final p{color:#D9D4CC;font-size:16px}
 .acoes{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px}
 [hidden]{display:none!important}
+.gate{margin-top:24px;padding:22px}
+.gate-lead{font-size:17px;color:var(--grafite)!important;margin:0 0 16px;line-height:1.5}
+.btn-full{width:100%}
+.trust-row{list-style:none;padding:0;margin:16px 0 0;display:flex;flex-wrap:wrap;gap:6px 16px;font-size:13.5px;color:var(--texto-secundario)}
+.mini-aviso{font-size:12.5px!important;margin:10px 0 0;color:var(--texto-secundario)}
+.ok-banner{background:#EEF3E4;border:1px solid #C9D6A8;border-radius:var(--radius-sm);padding:16px 18px;margin-top:24px;display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px}
+.ok-banner .acoes{margin:0;flex-basis:100%}
+.nome-form{flex-basis:100%;font-size:14px}
+.nome-form label{display:block;font-weight:600;color:var(--texto-secundario);margin-bottom:6px}
+.nome-form small{font-weight:400}
+.nome-form div{display:flex;gap:8px}
+.nome-form input{flex:1;min-width:0;font:inherit;padding:10px 12px;border:1px solid var(--borda-suave);border-radius:var(--radius-sm);background:#fff}
+.nome-form .btn-guia{padding:10px 18px;font-size:14px}
+.guia-wrap h1{font-size:clamp(27px,7.2vw,42px);line-height:1.1}
+@media(max-width:560px){.gate{padding:18px;margin-top:18px}.gate-lead{font-size:15.5px;margin-bottom:12px}.gate-checkbox{margin:12px 0}.guia-wrap{padding-top:24px}}
 @media print{.site-header,.mobile-nav,.site-footer,.gate,.acoes,.cta-final,.calc input,.no-print{display:none!important}.guia-wrap{max-width:none;padding:0}.guia-sec{page-break-inside:avoid}}
 </style>
 </head>
@@ -92,26 +107,54 @@
   <div class="container">
     <article class="guia-wrap">
 
-      <span class="eyebrow" style="color:#577328;">Guia gratuito · Visto de estudante</span>
-      <h1>VLS-TS travou na ANEF? O que fazer antes do prazo acabar</h1>
-      <p class="guia-lede">Você tentou validar, o erro não sai, o suporte só diz “problema técnico” e os 3 meses continuam correndo. Este guia é para estudantes brasileiros na França nessa situação: como provar que você agiu a tempo e quem acionar, em ordem.</p>
-      <p class="guia-meta">Atualizado em 30/09/2026 · 6 min de leitura</p>
-      <p class="guia-aviso">⚠️ Conteúdo de orientação, sem caráter de aconselhamento jurídico. As regras e os sites mudam; confira sempre nas fontes oficiais linkadas.</p>
+      <span class="eyebrow" style="color:#577328;">Guia gratuito · VLS-TS estudante</span>
+      <h1>VLS-TS travou na ANEF? Faça isto antes do prazo acabar</h1>
 
-      <section class="guia-sec" id="resumo">
-        <h2>O que você precisa saber agora</h2>
-        <ul>
-          <li>O VLS-TS estudante precisa ser validado <strong>online</strong>, em até <strong>3 meses</strong> da data de entrada na França.</li>
-          <li>A validação é feita no <a href="https://administration-etrangers-en-france.interieur.gouv.fr/particuliers/#/vls-ts/demarches/etape/numero-visa" target="_blank" rel="noopener">site da ANEF</a>.</li>
-          <li>A taxa é de 150 € (fonte oficial: <a href="https://www.service-public.gouv.fr/particuliers/vosdroits/F2231" target="_blank" rel="noopener">Service-Public</a>).</li>
-          <li>Quando o site falha e o suporte responde só “problema técnico”, o que protege o estudante é <strong>provar que tentou e agiu dentro do prazo</strong>.</li>
-          <li>Não há, nas fontes oficiais consultadas, texto confirmando que o prazo é suspenso por falha do site. Por isso, agir cedo é essencial.</li>
+      <section class="gate" id="gate" aria-label="Liberar o guia gratuito">
+        <p class="gate-lead">Libere o <strong>checklist de provas</strong>, a <strong>mensagem pronta em francês</strong> e o passo a passo para acionar ANEF e préfecture.</p>
+        <form id="gate-form" novalidate>
+          <div class="g-field">
+            <label for="g-email">Seu e-mail</label>
+            <input id="g-email" type="email" autocomplete="email" placeholder="seu@email.com" required>
+          </div>
+          <div class="hp-field" aria-hidden="true">
+            <label for="hp-website">Deixe este campo em branco</label>
+            <input type="text" id="hp-website" name="website" tabindex="-1" autocomplete="off">
+          </div>
+          <label class="gate-checkbox">
+            <input type="checkbox" id="consent-servico" required>
+            <span>Li e aceito a <a href="/confidentialite/" target="_blank" rel="noopener">Política de Privacidade</a>. *</span>
+          </label>
+          <label class="gate-checkbox">
+            <input type="checkbox" id="consent-novidades">
+            <span>Quero receber e-mails do Por Dentro, inclusive sobre a plataforma para quem mora na França. Cancelo quando quiser.</span>
+          </label>
+          <p class="gate-message" id="gate-erro"></p>
+          <button class="btn-guia btn-full" id="gate-btn" type="submit">Liberar o guia grátis →</button>
+        </form>
+        <ul class="trust-row">
+          <li>✓ 100% gratuito</li>
+          <li>✓ Fontes oficiais linkadas</li>
+          <li>✓ Feito por quem vive isso na França</li>
         </ul>
+        <p class="mini-aviso">Conteúdo de orientação, sem caráter de aconselhamento jurídico.</p>
       </section>
+
+      <div class="ok-banner" id="ok-banner" hidden>
+        <strong>✓ Guia liberado.</strong>
+        <span>Abra no Notion ou leia aqui embaixo.</span>
+        <form class="nome-form no-print" id="nome-form" hidden>
+          <label for="nome-input">Como posso te chamar? <small>(opcional)</small></label>
+          <div><input id="nome-input" type="text" autocomplete="given-name" maxlength="100"><button class="btn-guia btn-ghost" type="submit">Salvar</button></div>
+        </form>
+        <div class="acoes no-print">
+          <a class="btn-guia" id="notion-link" href="#" target="_blank" rel="noopener" hidden>Abrir no Notion →</a>
+        </div>
+      </div>
 
       <section class="guia-sec" id="prazo">
         <h2>Quanto tempo você ainda tem?</h2>
-        <p>Conta-se 3 meses a partir da data de entrada (carimbo no passaporte ou cartão de embarque). Exemplo: entrada em 31/07 = limite por volta de 30/10. Adote uma data de segurança alguns dias antes do limite.</p>
+        <p>Conta-se 3 meses a partir da data de entrada (carimbo ou cartão de embarque). Calcule o seu:</p>
         <div class="calc">
           <label for="calc-entrada">Qual foi a sua data de entrada na França?</label>
           <input type="date" id="calc-entrada">
@@ -124,7 +167,20 @@
         </div>
       </section>
 
-      <section class="guia-sec" id="passo-1">
+      <div id="locked" hidden>
+
+        <p class="guia-aviso">⚠️ Conteúdo de orientação, sem caráter de aconselhamento jurídico. As regras e os sites mudam; confira sempre nas fontes oficiais linkadas.</p>
+        <section class="guia-sec" id="resumo">
+        <h2>O que você precisa saber agora</h2>
+        <ul>
+          <li>O VLS-TS estudante precisa ser validado <strong>online</strong>, em até <strong>3 meses</strong> da data de entrada na França.</li>
+          <li>A validação é feita no <a href="https://administration-etrangers-en-france.interieur.gouv.fr/particuliers/#/vls-ts/demarches/etape/numero-visa" target="_blank" rel="noopener">site da ANEF</a>.</li>
+          <li>A taxa é de 150 € (fonte oficial: <a href="https://www.service-public.gouv.fr/particuliers/vosdroits/F2231" target="_blank" rel="noopener">Service-Public</a>).</li>
+          <li>Quando o site falha e o suporte responde só “problema técnico”, o que protege o estudante é <strong>provar que tentou e agiu dentro do prazo</strong>.</li>
+          <li>Não há, nas fontes oficiais consultadas, texto confirmando que o prazo é suspenso por falha do site. Por isso, agir cedo é essencial.</li>
+        </ul>
+      </section>
+        <section class="guia-sec" id="passo-1">
         <h2>O que fazer, na ordem</h2>
         <h3>1. Guarde as provas hoje (antes de tentar de novo)</h3>
         <ul class="guia-check" data-check="vlsts-provas">
@@ -135,44 +191,6 @@
           <li><label style="display:flex;gap:10px;width:100%;cursor:pointer"><input type="checkbox"><span>Tentativa em outro navegador, aparelho e rede, anotando cada uma</span></label></li>
         </ul>
       </section>
-
-      <section class="gate" id="gate">
-        <span class="eyebrow" style="color:#577328;">Prazo correndo? Continue daqui</span>
-        <h2>Agora vem o que faz a diferença: quem acionar e como</h2>
-        <p>Você já sabe o seu prazo e o que guardar. Informe seu e-mail para liberar o resto, é grátis:</p>
-        <ul class="lista">
-          <li>Como acionar a ANEF e a préfecture deixando prova de que você agiu no prazo</li>
-          <li>Onde publicar o caso para a administração responder em público</li>
-          <li>Ajuda jurídica gratuita (Cimade) e quando é hora de procurar um advogado</li>
-          <li>Mensagem pronta em francês pedindo validação manual ou attestation</li>
-        </ul>
-        <form id="gate-form" novalidate>
-          <div class="g-field">
-            <label for="g-nome">Seu nome (opcional)</label>
-            <input id="g-nome" type="text" autocomplete="given-name" maxlength="100">
-          </div>
-          <div class="g-field">
-            <label for="g-email">Seu e-mail</label>
-            <input id="g-email" type="email" autocomplete="email" placeholder="seu@email.com" required>
-          </div>
-          <div class="hp-field" aria-hidden="true">
-            <label for="hp-website">Deixe este campo em branco</label>
-            <input type="text" id="hp-website" name="website" tabindex="-1" autocomplete="off">
-          </div>
-          <label class="gate-checkbox">
-            <input type="checkbox" id="consent-servico" required>
-            <span>Li e aceito a <a href="/confidentialite/" target="_blank" rel="noopener">Política de Privacidade</a> do Por Dentro. *</span>
-          </label>
-          <label class="gate-checkbox">
-            <input type="checkbox" id="consent-novidades">
-            <span>Quero receber novidades e conteúdos do Por Dentro por e-mail.</span>
-          </label>
-          <p class="gate-message" id="gate-erro"></p>
-          <button class="btn-guia" id="gate-btn" type="submit">Liberar os passos 2 a 6 →</button>
-        </form>
-      </section>
-
-      <div id="locked" hidden>
 
         <section class="guia-sec" id="passo-2">
           <h3>2. Contatar a ANEF pelo formulário oficial</h3>
@@ -228,7 +246,6 @@
         </section>
 
         <div class="acoes no-print">
-          <a class="btn-guia" id="notion-link" href="#" target="_blank" rel="noopener" hidden>Abrir no Notion →</a>
           <button class="btn-guia btn-ghost" id="imprimir" type="button">Salvar como PDF / imprimir</button>
         </div>
 
@@ -295,9 +312,9 @@ import { supabase } from '/assets/js/supabase-client.js';
 
 var GUIA = "vls-ts-validacao-travou";
 var LS_KEY = "pd_guia_" + GUIA;
-var CONSENTIMENTO_VERSAO = "site-v1";
-var TEXTO_SERVICO = "Li e aceito a Política de Privacidade do Por Dentro.";
-var TEXTO_NOVIDADES = "Quero receber novidades e conteúdos do Por Dentro por e-mail.";
+var CONSENTIMENTO_VERSAO = "guia-v1";
+var TEXTO_SERVICO = "Li e aceito a Política de Privacidade.";
+var TEXTO_NOVIDADES = "Quero receber e-mails do Por Dentro, inclusive sobre a plataforma para quem mora na França. Cancelo quando quiser.";
 var byId = function (i) { return document.getElementById(i); };
 function track(t, p) { if (window.PDEvents) window.PDEvents.send(t, null, p || {}); }
 function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
@@ -345,6 +362,7 @@ document.querySelectorAll("[data-check]").forEach(function (ul) {
 /* ---------- Liberar conteúdo ---------- */
 function liberar(scroll) {
   byId("gate").hidden = true;
+  byId("ok-banner").hidden = false;
   byId("locked").hidden = false;
   var cta = byId("cta-link");
   fetch("/content/guias.json").then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
@@ -364,11 +382,23 @@ function liberar(scroll) {
       byId("cta").hidden = true;
     }
   }).catch(function () { byId("cta").hidden = true; });
-  if (scroll) byId("passo-2").scrollIntoView({ behavior: "smooth", block: "start" });
+  if (scroll) byId("ok-banner").scrollIntoView({ behavior: "smooth", block: "center" });
 }
 if (lsGet(LS_KEY) === "1") liberar(false);
 
 var shownAt = Date.now();
+var lastPayload = null;
+byId("nome-form").addEventListener("submit", async function (ev) {
+  ev.preventDefault();
+  var nome = byId("nome-input").value.trim();
+  if (!nome || !lastPayload) return;
+  var b = this.querySelector("button"); b.disabled = true;
+  try {
+    var r = await supabase.rpc("capturar_lead", { payload: Object.assign({}, lastPayload, { nome: nome }) });
+    if (r.error) throw r.error;
+    b.textContent = "Salvo ✓";
+  } catch (e) { console.error("capturar_lead(nome):", e); b.disabled = false; b.textContent = "Tentar de novo"; }
+});
 function erro(m) { var e = byId("gate-erro"); e.textContent = m; e.classList.toggle("is-visible", !!m); }
 
 byId("gate-form").addEventListener("submit", async function (ev) {
@@ -383,7 +413,7 @@ byId("gate-form").addEventListener("submit", async function (ev) {
   var params = new URLSearchParams(window.location.search);
   var payload = {
     email: email,
-    nome: byId("g-nome").value.trim() || null,
+    nome: null,
     origem: "guia-vls-ts",
     respostas: { visto: "estudante", objetivo: "validar-vls-ts" },
     aceita_servico: true,
@@ -396,12 +426,14 @@ byId("gate-form").addEventListener("submit", async function (ev) {
     var r = await supabase.rpc("capturar_lead", { payload: payload });
     if (r.error) throw r.error;
     lsSet(LS_KEY, "1");
+    lastPayload = payload;
+    byId("nome-form").hidden = false;
     track("guia_lead_capturado", { guia: GUIA, utm_campaign: params.get("utm_campaign") || null });
     liberar(true);
   } catch (e) {
     console.error("capturar_lead:", e);
     erro("Não consegui confirmar agora. Confere o e-mail e tenta de novo.");
-    btn.disabled = false; btn.textContent = "Liberar os passos 2 a 6 →";
+    btn.disabled = false; btn.textContent = "Liberar o guia grátis →";
   }
 });
 
