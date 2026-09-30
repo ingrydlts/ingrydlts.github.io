@@ -16,6 +16,15 @@ Backend: o **mesmo Supabase** do app (projeto `hslhpktfgxwfvljvsxkj`). Painel: e
 | Reimpactar (segmentos) | coluna `segmento` de `crm_contatos` (regras na view) | pronto (envio via Worker → Brevo; ver README do Worker, seção 16) |
 | Modelos de e-mail | `TPLS` em `crm.js` | pronto |
 
+## Extensão: prazo do VLS-TS (guia gratuito)
+
+`db/crm-prazo-vlsts.sql` (rodar no SQL Editor do Supabase **depois** das fases 1, 1b e 2; idempotente):
+`contatos.data_entrada`, `capturar_lead` aceitando `payload.data_entrada`, e `crm_contatos` com
+`data_entrada`, `prazo_limite` e `dias_para_prazo`. Urgência **alta** = vence em até 30 dias ou venceu
+há até 90; **média** = vence em 31 a 60 dias. O painel ordena por prazo dentro de cada urgência e tem o
+filtro "Prazo VLS-TS curto". Modelos de e-mail `guia_chamada` e `guia_plataforma` (só para quem aceitou
+novidades; o Worker também confere). Testes: `db/testes` → `APP_DB_DIR=<POR DENTRO APP>/db npm run test:prazo`.
+
 ## Etapas
 
 1. **Fase 1 — captura** (feita, repo POR-DENTRO-APP): `contatos`, `eventos`, `consentimentos`, `capturar_lead()`, `admins`.

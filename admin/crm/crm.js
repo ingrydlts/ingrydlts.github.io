@@ -32,8 +32,9 @@ var WORKER_BASE = 'https://por-dentro-cms-oauth.ingrydigitalmanagement.workers.d
 // Link que vai nos e-mails ("[link do acesso]"). Se ficar vazio, o trecho fica entre colchetes e o
 // Worker RECUSA o envio — de propósito, pra nunca sair e-mail com placeholder.
 var APP_LINK = 'https://plataforma.imigrantepordentro.com/';
-var EXIGEM_NOVIDADES = { naoclicou: 1, parouapp: 1 };   // igual ao Worker (CRM_MODELOS_EXIGEM_NOVIDADES)
+var EXIGEM_NOVIDADES = { naoclicou: 1, parouapp: 1, guia_chamada: 1, guia_plataforma: 1 };   // igual ao Worker (CRM_MODELOS_EXIGEM_NOVIDADES)
 function pn(c) { return displayName(c).trim().split(/\s+/)[0]; }
+var CAL_LINK = 'https://cal.com/ingryd-silva-jf1cnx/1-1?overlayCalendar=true';
 function lk() { return APP_LINK || '[link do acesso]'; }
 var TPLS = {
   boas_vindas: { label: 'Boas-vindas + link de acesso', when: 'Sai assim que a pessoa deixa o e-mail no funil.', lever: 'Dispara o gatilho',
@@ -47,8 +48,17 @@ var TPLS = {
   parouapp: { label: 'Reimpacto — abriu o app e parou', when: 'Ativado ou em uso, sem sinal há 7+ dias.', lever: 'Motivação caiu',
     make: function (c) { return ['Assunto: uma dica rápida pro seu caso', 'Oi ' + pn(c) + '! Separei uma dica que não estava no seu checklist, específica pro seu momento: [dica]\n\n' + (c.motivo ? 'Também vi que ' + c.motivo + ' — vale resolver isso antes de qualquer outra coisa.\n\n' : '') + 'Ingryd · Por Dentro']; } }
 };
-var TPL_ORDER = ['boas_vindas', 'naoabriu', 'naoclicou', 'cliquenaoapp', 'parouapp'];
-function defaultTpl(c) { return c.segmento || 'boas_vindas'; }
+TPLS.guia_chamada = { label: 'Guia VLS-TS — convite pra conversa', when: 'Quem baixou o guia do VLS-TS (1º e-mail). Usa o prazo, se a pessoa informou a data.', lever: 'Ajuda de perto',
+  make: function (c) {
+    var prazo = c.dias_para_prazo == null ? '' :
+      Number(c.dias_para_prazo) < 0 ? 'Pelas suas contas, o prazo de 3 meses venceu em ' + fmtDay(c.prazo_limite) + ' — então vale agir logo.\n\n' :
+      'Pelas suas contas, o prazo de 3 meses vence em ' + fmtDay(c.prazo_limite) + ' (' + c.dias_para_prazo + ' dias).\n\n';
+    return ['Assunto: ' + pn(c) + ', como está o seu VLS-TS?', 'Oi ' + pn(c) + '! Vi que você pegou o guia sobre o VLS-TS que travou na ANEF.\n\n' + prazo +
+      'Se ninguém te respondeu ainda ou você ficou em dúvida em algum passo, posso olhar o seu caso numa conversa rápida. É só escolher um horário: ' + CAL_LINK + '&utm_source=email&utm_campaign=guia-chamada\n\nIngryd · Por Dentro']; } };
+TPLS.guia_plataforma = { label: 'Guia VLS-TS — apresentar a plataforma (tester)', when: 'Depois do convite pra conversa, pra quem aceitou novidades.', lever: 'Convite de teste',
+  make: function (c) { return ['Assunto: ' + pn(c) + ', quer testar a plataforma do Por Dentro?', 'Oi ' + pn(c) + '! Estou abrindo algumas vagas de teste da plataforma do Por Dentro: checklist com prazos reais, pra você acompanhar cada etapa do seu processo na França num lugar só.\n\nSe quiser testar, o acesso é por aqui: ' + lk() + '\n\nÉ sem senha, um clique e você entra. Em troca, só peço o seu feedback.\n\nIngryd · Por Dentro']; } };
+var TPL_ORDER = ['boas_vindas', 'naoabriu', 'naoclicou', 'cliquenaoapp', 'parouapp', 'guia_chamada', 'guia_plataforma'];
+function defaultTpl(c) { return c.segmento || (c.origem === 'guia-vls-ts' ? 'guia_chamada' : 'boas_vindas'); }
 function splitTpl(c, k) { var t = TPLS[k].make(c); return { subject: t[0].replace(/^Assunto: /, ''), body: t[1] }; }
 
 var C = [], Q = [], SUBS = {};
@@ -71,6 +81,18 @@ function stageLabel(k) { for (var i = 0; i < STAGES.length; i++) if (STAGES[i].k
 function ago(d) { return d === 0 ? 'hoje' : d === 1 ? 'ontem' : d + ' dias'; }
 function hrsSince(iso) { return Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 36e5)); }
 function hrs(h) { return h < 24 ? h + 'h' : Math.round(h / 24) + ' dias'; }
+function fmtDay(s) { var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s || ''); return m ? m[3] + '/' + m[2] + '/' + m[1] : '—'; }
+function prazoKey(c) { return c.dias_para_prazo == null ? 99999 : Number(c.dias_para_prazo); }
+function prazoTxt(c) {
+  if (c.dias_para_prazo == null) return '';
+  var d = Number(c.dias_para_prazo);
+  return d < 0 ? 'venceu há ' + (-d) + ' d' : d === 0 ? 'vence hoje' : 'faltam ' + d + ' d';
+}
+function prazoCell(c) {
+  if (c.dias_para_prazo == null) return '<span class="sub">—</span>';
+  var d = Number(c.dias_para_prazo), hot = d <= 30 && d >= -90;
+  return '<b class="num" style="' + (hot ? 'color:var(--red)' : '') + '">' + esc(fmtDay(c.prazo_limite)) + '</b><div class="sub num">' + esc(prazoTxt(c)) + '</div>';
+}
 function fmtDate(iso) { return iso ? new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) : '—'; }
 function fmtWhen(iso) { return iso ? new Date(iso).toLocaleString('pt-BR', { weekday: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : 'a combinar'; }
 function toast(msg) { var t = $('toast'); t.textContent = msg; t.hidden = false; clearTimeout(toast._t); toast._t = setTimeout(function () { t.hidden = true; }, 2600); }
@@ -175,10 +197,11 @@ function filtered() {
     if (state.stage && c.estagio !== state.stage) return false;
     if (state.orig && c.origem !== state.orig) return false;
     if (state.preset === 'parados' && !(c.dias >= 7 && c.estagio !== 'concluido')) return false;
+    if (state.preset === 'prazo' && !(c.dias_para_prazo != null && c.dias_para_prazo <= 30 && c.dias_para_prazo >= -90 && c.estagio !== 'concluido')) return false;
     if (state.preset === 'aupair' && !(c.persona === 'au_pair_estudante' && c.respostas && c.respostas.apCertificado === 'nao')) return false;
     if (q && ((c.nome || '') + ' ' + c.email).toLowerCase().indexOf(q) === -1) return false;
     return true;
-  }).sort(function (a, b) { var o = { alta: 0, media: 1, baixa: 2 }; return o[a.urgencia] - o[b.urgencia] || a.dias - b.dias; });
+  }).sort(function (a, b) { var o = { alta: 0, media: 1, baixa: 2 }; return o[a.urgencia] - o[b.urgencia] || prazoKey(a) - prazoKey(b) || a.dias - b.dias; });
 }
 function applyPreset(p) {
   state.preset = p; state.persona = ''; state.sub = ''; state.urg = ''; state.stage = ''; state.orig = ''; state.q = '';
@@ -192,7 +215,7 @@ function renderToday() {
   var d = new Date();
   $('hello').textContent = (d.getHours() < 12 ? 'Bom dia' : d.getHours() < 18 ? 'Boa tarde' : 'Boa noite') + ', Ingryd';
   var att = C.filter(function (c) { return c.motivo && c.estagio !== 'concluido' && c.estagio !== 'inativo'; })
-    .sort(function (a, b) { var o = { alta: 0, media: 1, baixa: 2 }; return o[a.urgencia] - o[b.urgencia] || b.dias - a.dias; }).slice(0, 6);
+    .sort(function (a, b) { var o = { alta: 0, media: 1, baixa: 2 }; return o[a.urgencia] - o[b.urgencia] || prazoKey(a) - prazoKey(b) || b.dias - a.dias; }).slice(0, 6);
   $('attention').innerHTML = att.map(function (c) {
     return '<button class="row" data-open="' + esc(c.id) + '" type="button"><div class="' + avClass(c) + '">' + esc(ini(c)) + '</div><div class="who"><b>' + esc(short(c)) +
       ' <span class="persona" style="display:inline;font-size:11.5px">· ' + esc(personaLabel(c)) + '</span></b><span>' + esc(c.motivo) + '</span></div>' + urgPill(c.urgencia) + '</button>';
@@ -239,7 +262,7 @@ function renderContacts() {
       '<td><div class="nm"><div class="' + avClass(c) + '">' + esc(ini(c)) + '</div><div><b>' + esc(displayName(c)) + '</b><span>' + esc(c.email) + '</span></div></div></td>' +
       '<td><span class="persona">' + esc(personaLabel(c)) + '</span><div class="sub">' + esc(subLabel(c)) + '</div></td>' +
       '<td>' + urgPill(c.urgencia) + '</td><td><span class="stage">' + esc(stageLabel(c.estagio)) + '</span></td>' +
-      '<td class="sub num">' + ago(c.dias) + '</td></tr>';
+      '<td>' + prazoCell(c) + '</td><td class="sub num">' + ago(c.dias) + '</td></tr>';
   }).join('');
   $('empty').hidden = list.length > 0;
   var chips = [];
@@ -357,7 +380,7 @@ async function renderPessoa() {
   var last = function (f) { var x = cons.filter(function (k) { return k.finalidade === f; })[0]; return x ? x.aceito : false; };
   var perg = Q.filter(function (x) { return x.contato_id === c.id; });
   var resp = c.respostas || {};
-  var kv = [['Fase', c.fase || '—'], ['Nível de estudos', c.nivel_estudos || '—'], ['Preocupação', c.preocupacao || '—'], ['Origem', ORIG[c.origem] || c.origem || '—']]
+  var kv = [['Entrada na França', fmtDay(c.data_entrada)], ['Prazo do VLS-TS', c.prazo_limite ? fmtDay(c.prazo_limite) + ' (' + prazoTxt(c) + ')' : '—'], ['Fase', c.fase || '—'], ['Nível de estudos', c.nivel_estudos || '—'], ['Preocupação', c.preocupacao || '—'], ['Origem', ORIG[c.origem] || c.origem || '—']]
     .concat(Object.keys(resp).map(function (k) { return [k, resp[k]]; }));
   var h4 = 'font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-3); margin:0 0 8px';
   $('pessoa-page').innerHTML =
@@ -479,11 +502,11 @@ function show(view) {
 }
 
 function csv(rows) {
-  var head = ['nome', 'email', 'persona', 'subpersona', 'urgencia', 'estagio', 'origem', 'dias_sem_sinal', 'aceita_novidades'];
+  var head = ['nome', 'email', 'persona', 'subpersona', 'urgencia', 'estagio', 'origem', 'dias_sem_sinal', 'aceita_novidades', 'data_entrada', 'prazo_limite', 'dias_para_prazo'];
   // Neutraliza fórmulas (=,+,-,@) pra a planilha não executar texto vindo do formulário público.
   var cell = function (v) { var s = String(v == null ? '' : v); if (/^[=+\-@\t\r]/.test(s)) s = "'" + s; return '"' + s.replace(/"/g, '""') + '"'; };
   return [head.join(',')].concat(rows.map(function (c) {
-    return [c.nome, c.email, personaLabel(c), subLabel(c), c.urgencia, c.estagio, c.origem, c.dias, c.aceita_novidades ? 'sim' : 'não'].map(cell).join(',');
+    return [c.nome, c.email, personaLabel(c), subLabel(c), c.urgencia, c.estagio, c.origem, c.dias, c.aceita_novidades ? 'sim' : 'não', c.data_entrada, c.prazo_limite, c.dias_para_prazo].map(cell).join(',');
   })).join('\n');
 }
 

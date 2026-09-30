@@ -2,6 +2,11 @@
   "name": "por-dentro-crm-fase2-testes",
   "private": true,
   "type": "module",
-  "scripts": { "test": "node crm-fase2.test.mjs" },
-  "dependencies": { "@electric-sql/pglite": "^0.5.8" }
+  "scripts": {
+    "test": "node crm-fase2.test.mjs",
+    "test:prazo": "node crm-prazo-vlsts.test.mjs"
+  },
+  "dependencies": {
+    "@electric-sql/pglite": "^0.5.8"
+  }
 }

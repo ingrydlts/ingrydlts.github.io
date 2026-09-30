@@ -1211,10 +1211,11 @@ async function handleQuizSubmissions(request, env) {
 //   Ver README.md, seção 16.
 const CRM_SUPABASE_URL = 'https://hslhpktfgxwfvljvsxkj.supabase.co';
 const CRM_SUPABASE_ANON_KEY = 'sb_publishable_nYVeQ3hGiMCGA0IzYqYeyQ_H9VcEXni'; // pública por design (mesma do site)
-const CRM_MODELOS = ['boas_vindas', 'naoabriu', 'naoclicou', 'cliquenaoapp', 'parouapp'];
+const CRM_MODELOS = ['boas_vindas', 'naoabriu', 'naoclicou', 'cliquenaoapp', 'parouapp', 'guia_chamada', 'guia_plataforma'];
 // Modelos que oferecem conteúdo novo (prova social, dica extra) só saem pra quem aceitou novidades.
 // Os demais só lembram do acesso que a própria pessoa pediu ao deixar o e-mail.
-const CRM_MODELOS_EXIGEM_NOVIDADES = ['naoclicou', 'parouapp'];
+// Os dois do guia (convite pra chamada e apresentação da plataforma) são oferta comercial: só pra quem aceitou.
+const CRM_MODELOS_EXIGEM_NOVIDADES = ['naoclicou', 'parouapp', 'guia_chamada', 'guia_plataforma'];
 const CRM_UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 function crmEscapeHtml(t) {

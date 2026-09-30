@@ -291,5 +291,10 @@ só quem está logada no CRM **e** na tabela `admins` do Supabase (o Worker conf
 Regras que o Worker aplica: modelos *abriu, não clicou* e *abriu o app e parou* só saem pra quem aceitou
 novidades; e-mails que não são boas-vindas levam um rodapé "responda *sair*" e o cabeçalho `List-Unsubscribe`.
 Quem pedir pra sair: registre em Consentimento (o link de descadastro do Brevo faz isso sozinho pelo webhook).
+Modelos do guia do VLS-TS (`guia_chamada` e `guia_plataforma`): o primeiro convida pra uma conversa (Cal.com) e
+usa o prazo do VLS-TS quando a pessoa informou a data de entrada; o segundo apresenta a plataforma como teste.
+Os dois são oferta comercial, então o Worker **só deixa enviar a quem aceitou novidades**. Se você mudar a lista
+`CRM_MODELOS` no `worker.js`, lembre de atualizar o Worker publicado (seção 9).
+
 Limite de honestidade: "abriu" no Brevo não é 100% confiável (Apple Mail e outros pré-carregam a imagem), então
 use como sinal, não como certeza.

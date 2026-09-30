@@ -130,7 +130,7 @@
             <div><b>Data de segurança</b><span id="calc-seguranca"></span></div>
             <div id="calc-restam"></div>
           </div>
-          <p class="calc-note">Estimativa. A contagem oficial é da préfecture: na dúvida, use a data mais cedo.</p>
+          <p class="calc-note">Estimativa. A contagem oficial é da préfecture: na dúvida, use a data mais cedo. Ao liberar o guia, essa data é enviada junto com o seu e-mail para eu priorizar quem está com o prazo curto.</p>
         </div>
         <form id="gate-form" novalidate>
           <div class="g-row">
@@ -388,10 +388,16 @@ function liberar(scroll) {
       nl.addEventListener("click", function () { track("guia_abrir_notion", { guia: GUIA }); });
     }
     if (d && d.calendlyUrl) {
-      cta.href = d.calendlyUrl + (d.calendlyUrl.indexOf("?") === -1 ? "?" : "&") + "utm_source=guia&utm_campaign=" + GUIA;
+      var base = d.calendlyUrl + (d.calendlyUrl.indexOf("?") === -1 ? "?" : "&") + "utm_source=guia&utm_campaign=" + GUIA;
+      cta.href = base;
       if (d.calendlyTexto) cta.textContent = d.calendlyTexto + " →";
       cta.hidden = false;
-      cta.addEventListener("click", function () { track("guia_cta_calendly", { guia: GUIA }); });
+      cta.addEventListener("click", function () {
+        // A calculadora pode ter sido usada depois de liberar o guia: monta a nota só agora.
+        var nota = "Vim do guia VLS-TS travou na ANEF." + (datas.entrada ? " Entrada na França: " + datas.entrada + ". Prazo estimado: " + datas.limite + "." : "");
+        cta.href = base + "&notes=" + encodeURIComponent(nota);
+        track("guia_cta_agendar", { guia: GUIA, com_prazo: !!datas.entrada });
+      });
     } else {
       byId("cta").hidden = true;
     }
@@ -416,6 +422,7 @@ byId("gate-form").addEventListener("submit", async function (ev) {
   var payload = {
     email: email,
     nome: byId("g-nome").value.trim() || null,
+    data_entrada: byId("calc-entrada").value || null,
     origem: "guia-vls-ts",
     respostas: { visto: "estudante", objetivo: "validar-vls-ts" },
     aceita_servico: true,

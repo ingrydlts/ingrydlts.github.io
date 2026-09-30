@@ -239,8 +239,8 @@ collections:
               - { label: Texto, name: texto, widget: text }
           - { label: "Link público do guia no Notion", name: notionUrl, widget: string, required: false, hint: "Página do Notion publicada na web (notion.site). Aparece como botão depois do cadastro. Vazio = o botão some." }
           - { label: "Texto do botão do Notion", name: notionTexto, widget: string, required: false, default: "Abrir no Notion" }
-          - { label: "Link do Calendly", name: calendlyUrl, widget: string, required: false, hint: "Aparece no fim de cada guia, depois do cadastro. Vazio = o bloco de convite some." }
-          - { label: "Texto do botão do Calendly", name: calendlyTexto, widget: string, required: false, default: "Agendar uma conversa" }
+          - { label: "Link de agendamento (Cal.com ou Calendly)", name: calendlyUrl, widget: string, required: false, hint: "Aparece no fim de cada guia, depois do cadastro. O prazo do VLS-TS (se a pessoa usou a calculadora) vai junto como nota do agendamento. Vazio = o bloco de convite some." }
+          - { label: "Texto do botão de agendamento", name: calendlyTexto, widget: string, required: false, default: "Agendar uma conversa" }
           - label: "Guias (lista)"
             name: items
             widget: list
