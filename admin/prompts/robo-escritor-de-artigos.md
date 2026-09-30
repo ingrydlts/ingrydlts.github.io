@@ -163,6 +163,7 @@ Condições do PROXIMO-PASSO: `prazo<=45`, `prazo<0`, `enquete=Opção exata`, `
 
 ## Soluções digitais (use só estas no PROXIMO-PASSO)
 - Assistente de vistos (grátis): `/assistente-de-vistos/` — pra quem ainda não sabe qual visto é o seu.
+- Guia gratuito "VLS-TS travou na ANEF?": `/guias/vls-ts-validacao-travou/` — pra quem está com prazo do VLS-TS apertado ou com a validação travada.
 - Checklist personalizado (grátis): `/checklist-preview/` — pra quem precisa organizar documentos e prazos.
 - Planilha Financeira Super Integrada (€ 25): `/produtos-digitais/produto/?slug=planilha-financeira-super-integrada` — orçamento em euros, custo de vida, ajudas.
 - Hub de Estudos (€ 14,90): `/produtos-digitais/produto/?slug=hub-de-estudos` — estudo, curso, exame, candidatura.
