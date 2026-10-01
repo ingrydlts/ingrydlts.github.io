@@ -104,7 +104,7 @@ Roda 100% no navegador — sem backend, sem IA, sem envio de dados a servidor ne
 
 ## Configurar o /admin (Decap CMS)
 
-O `/admin` é um painel visual (Decap CMS) pra editar produtos, banners e posts sem mexer em código, com login via GitHub (proxy OAuth em [`cms-oauth-worker/`](cms-oauth-worker/)) — **já publicado e funcionando** em `ingrydlts.github.io/admin`. Editar um produto/banner/post e clicar em "Publish" cria um commit direto no repositório.
+O `/admin` é um painel visual (Decap CMS) pra editar produtos, banners e posts sem mexer em código, com login via GitHub (proxy OAuth em [`cms-oauth-worker/`](cms-oauth-worker/)) — **já publicado e funcionando** em `imigrantepordentro.com/admin`. Editar um produto/banner/post e clicar em "Publish" cria um commit direto no repositório.
 
 **Tamanho ideal de cada foto** (evita imagem cortada ou esticada — o painel também mostra essa dica no campo, na hora do upload):
 

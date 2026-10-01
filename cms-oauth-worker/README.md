@@ -25,7 +25,7 @@ instalar nada):
 1. Acesse [github.com/settings/developers](https://github.com/settings/developers) → **OAuth Apps** → **New OAuth App**.
 2. Preencha:
    - **Application name**: `Por Dentro — CMS` (ou o que preferir)
-   - **Homepage URL**: a URL do seu site (ex. `https://ingrydlts.github.io` ou seu domínio final)
+   - **Homepage URL**: a URL do seu site (`https://imigrantepordentro.com`)
    - **Authorization callback URL**: a URL do Worker do passo 1 + `/callback`, ex. `https://por-dentro-cms-oauth.SEU-SUBDOMINIO.workers.dev/callback`
 3. Clique em **Register application**.
 4. Anote o **Client ID** e gere um **Client Secret** (clique em "Generate a new client secret") — o secret só aparece uma vez, copie na hora.
@@ -46,7 +46,7 @@ você mesma a linha `base_url:`.
 
 ## 5. Testar o /admin
 
-1. Acesse `seudominio.com/admin` (ou `https://ingrydlts.github.io/admin` enquanto não houver domínio próprio).
+1. Acesse `https://imigrantepordentro.com/admin`.
 2. Clique em **Login with GitHub** — deve abrir um popup, pedir autorização e fechar sozinho.
 3. Edite qualquer produto/banner/post e clique em **Publish** — confira que virou um commit novo no
    repositório `ingrydlts/ingrydlts.github.io` no GitHub, e que o site atualizou depois do deploy do GitHub Pages.

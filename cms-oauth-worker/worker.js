@@ -118,7 +118,7 @@
  *        client_reference_id=PLANILHA_ETAPA2_SLUG, devolve só o
  *        client_secret pro Stripe.js montar o formulário. return_url usa o
  *        header Origin da requisição, então funciona em qualquer domínio
- *        que sirva o site (github.io ou um domínio próprio depois).
+ *        que sirva o site (hoje imigrantepordentro.com).
  *    A confirmação em si continua pela rota do item 6 (verify-session) —
  *    o client_reference_id é lido do jeito de sempre, não importa se a
  *    sessão nasceu de um Payment Link ou criada na hora por aqui.
@@ -325,7 +325,7 @@ async function sendModerationEmail(env, review) {
         html:
           '<p><strong>' + escapeHtml(review.name) + '</strong> deu ' + review.rating + ' estrela(s) em <strong>' + escapeHtml(review.slug) + '</strong>:</p>' +
           '<p>"' + escapeHtml(review.comment) + '"</p>' +
-          `<p><a href="https://${REPO_OWNER}.github.io/admin/avaliacoes/">Aprovar ou rejeitar</a></p>`,
+          `<p><a href="https://imigrantepordentro.com/admin/avaliacoes/">Aprovar ou rejeitar</a></p>`,
       }),
     });
     const bodyText = await res.text();
@@ -1053,10 +1053,11 @@ async function handleCreateEmbeddedCheckout(request, env) {
   }
   await env.REVIEWS_KV.put(throttleKey, String(count + 1), { expirationTtl: EMBEDDED_CHECKOUT_WINDOW_SECONDS });
 
-  // Origin da própria página que chamou (ex. https://ingrydlts.github.io, ou
-  // um domínio próprio no futuro) — assim o return_url sempre aponta pro
-  // site certo, sem hardcodar um domínio fixo aqui.
-  const origin = request.headers.get('Origin') || 'https://ingrydlts.github.io';
+  // Origin da própria página que chamou (hoje https://imigrantepordentro.com)
+  // — assim o return_url sempre aponta pro site certo, sem hardcodar um
+  // domínio fixo aqui. O fallback abaixo só entra em jogo se a requisição
+  // chegar sem header Origin.
+  const origin = request.headers.get('Origin') || 'https://imigrantepordentro.com';
   const returnUrl = origin + '/produtos-digitais/obrigado/?session_id={CHECKOUT_SESSION_ID}';
 
   const params = new URLSearchParams();

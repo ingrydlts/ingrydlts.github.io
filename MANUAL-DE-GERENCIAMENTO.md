@@ -63,7 +63,7 @@ Pronto — o botão "Ir para pagamento seguro" passa a levar direto pra lá assi
 
 Vale tanto pra "Produtos de estudo" quanto "Produtos de compras" — mesma estrutura nas duas seções do `/admin`, passo a passo idêntico.
 
-1. Acesse `seusite.com/admin` (ex.: `ingrydlts.github.io/admin`) e entre com sua conta do GitHub — só precisa fazer login uma vez por sessão.
+1. Acesse `imigrantepordentro.com/admin` e entre com sua conta do GitHub — só precisa fazer login uma vez por sessão.
 2. No menu lateral, clique em **"Produtos de estudo (afiliados)"** ou **"Produtos de compras (afiliados)"**, conforme o caso.
 3. Clique em **"Lista de indicações de estudo/de compras"** (é um arquivo só, com todos os itens dentro).
 4. Clique em **"+ Adicionar item"**, dentro do bloco "Itens", para criar uma indicação nova (ou clique numa já existente pra editar).

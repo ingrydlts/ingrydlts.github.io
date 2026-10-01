@@ -282,4 +282,4 @@ Não bloqueia o lançamento — são melhorias pra depois:
 
 ## Onde estamos agora
 
-Fases **0, 1, 2, 3 e 6 concluídas** — o site está publicado no GitHub Pages (`ingrydlts.github.io`), com conteúdo de exemplo, e o painel `/admin` já edita e publica de verdade. Faltam a Fase 4 (domínio próprio — hoje usa o domínio padrão do GitHub Pages), a Fase 5 (Stripe) e a Fase 7 (entrega automática por e-mail), que dependem de **contas e decisões suas** — me chame quando tiver isso à mão e eu sigo a implementação técnica de cada uma.
+Fases **0, 1, 2, 3 e 6 concluídas** — o site está publicado no GitHub Pages, com domínio próprio já apontado (`imigrantepordentro.com`, ver `CNAME`) e conteúdo de exemplo, e o painel `/admin` já edita e publica de verdade. A Fase 4 ainda não fecha: falta confirmar o HTTPS ativo no domínio próprio (tarefa em andamento). Faltam também a Fase 5 (Stripe) e a Fase 7 (entrega automática por e-mail), que dependem de **contas e decisões suas** — me chame quando tiver isso à mão e eu sigo a implementação técnica de cada uma.
