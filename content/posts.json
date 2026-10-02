@@ -22,7 +22,531 @@
         "pauta": "P-0002",
         "dor": "Carte Vitale e número de sécu: como pedir e o que fazer na espera",
         "enviado_em": "2026-10-02T14:32:44.982Z"
-      }
+      },
+      "conferencia": [
+        {
+          "marca": "diferença oficial entre número provisório e número definitivo de sécurité sociale, e em que momento cada um é atribuído",
+          "status": "conferida",
+          "sugestao": "Quando você chega, costuma receber primeiro um número provisório. Segundo a Ameli, ele dá os mesmos direitos que o definitivo, mas ainda não dá acesso ao compte ameli nem à Carte Vitale. O número definitivo e certificado vem depois, quando sua identidade é certificada pelo SANDIA, e não precisa de nenhum novo pedido seu. Atenção: essa explicação está no fórum oficial da Ameli, respondida por atendentes da Assurance Maladie, e não numa página institucional. Vale confirmar com a sua CPAM.",
+          "fontes": [
+            {
+              "url": "https://forum-assures.ameli.fr/questions/2404582-numero-provisoire-vs-numero-definitif",
+              "titulo": "Forum ameli – Numéro provisoire vs numéro définitif",
+              "trecho": "Le numéro de sécurité sociale provisoire vous donne les mêmes droits qu'un numéro permanent.",
+              "status": "conferida"
+            },
+            {
+              "url": "https://forum-assures.ameli.fr/questions/2031867-delai-carte-vitale-numero-secu-definitif",
+              "titulo": "Forum ameli – Délai carte Vitale et numéro de sécu définitif",
+              "trecho": "Seul un numéro de sécurité sociale définitif permet d'obtenir une carte Vitale.",
+              "status": "trecho_nao_encontrado"
+            }
+          ],
+          "buscas": [
+            "numéro de sécurité sociale provisoire définitif",
+            "numéro provisoire carte Vitale ameli",
+            "NIR certifié SANDIA délai"
+          ]
+        },
+        {
+          "marca": "em que momento exato a Carte Vitale é emitida e enviada, segundo a Ameli",
+          "status": "conferida",
+          "sugestao": "Segundo a Ameli, você só pode pedir a Carte Vitale depois de ter o número de sécu definitivo. Aí o pedido é feito no compte ameli, no app ou pelo formulário que chega por correio. Pelo site, o cartão chega em cerca de 2 semanas. Pelo formulário em papel, em cerca de 3 semanas. Enquanto isso, você apresenta uma attestation de droits aos profissionais de saúde.",
+          "fontes": [
+            {
+              "url": "https://www.ameli.fr/assure/remboursements/etre-bien-rembourse/carte-vitale/carte-vitale-application/demander-sa-carte-vitale-conditions-et-demarches",
+              "titulo": "Demander sa carte Vitale : conditions et démarches",
+              "trecho": "Dès que vous avez obtenu votre numéro de sécurité sociale définitif, vous pouvez commander une carte Vitale soit sur internet depuis le compte ameli soit avec un formulaire papier que vous allez recevoir, à renvoyer à votre caisse d’assurance maladie.",
+              "status": "conferida"
+            },
+            {
+              "url": "https://www.ameli.fr/assure/remboursements/etre-bien-rembourse/carte-vitale/carte-vitale-application/demander-sa-carte-vitale-conditions-et-demarches",
+              "titulo": "Demander sa carte Vitale : conditions et démarches (délais et attestation)",
+              "trecho": "Vous obtiendrez la carte Vitale dans un délai de 2 semaines environ, accompagnée d'une copie papier des informations qu'elle contient.",
+              "status": "conferida"
+            }
+          ],
+          "buscas": [
+            "demander sa carte Vitale première fois",
+            "carte Vitale délai de réception",
+            "attestation de droits en attendant carte Vitale"
+          ]
+        },
+        {
+          "marca": "órgão competente e procedimento de inscrição no regime de saúde para cônjuge/familiar",
+          "status": "conferida",
+          "sugestao": "Hoje cada adulto se inscreve em nome próprio, e não como dependente do cônjuge. A Ameli explica que quem mora na França de forma estável e regular tem direito à cobertura de saúde a título pessoal. O pedido vai para a CPAM da cidade onde você mora. Se precisar de ajuda com o dossiê, dá pra marcar atendimento na CPAM pelo 36 46. Esse trecho também vem do fórum oficial da Ameli. Confirme com a sua CPAM antes de publicar.",
+          "fontes": [
+            {
+              "url": "https://forum-assures.ameli.fr/questions/3038906-demande-rattachement-conjoint-etrangers",
+              "titulo": "Forum ameli – Demande de rattachement conjoint étrangers",
+              "trecho": "La demande devra être adressée à la caisse primaire d'assurance maladie (CPAM) de votre lieu de résidence.",
+              "status": "conferida"
+            },
+            {
+              "url": "https://forum-assures.ameli.fr/questions/3262661-rattachement-conjoint",
+              "titulo": "Forum ameli – Rattachement Conjoint ?",
+              "trecho": "Depuis la mise en place de la protection universelle maladie (PUMa), toute personne qui travaille ou réside en France de manière stable et régulière (depuis plus de 3 mois) a droit à la prise en charge de ses frais de santé à titre personnel.",
+              "status": "trecho_nao_encontrado"
+            }
+          ],
+          "buscas": [
+            "affiliation conjoint étranger CPAM",
+            "conjoint ayant droit PUMa",
+            "première affiliation assurance maladie"
+          ]
+        },
+        {
+          "marca": "por qual via o titular de PVT se inscreve no regime de saúde francês",
+          "status": "conferida",
+          "sugestao": "Atenção: aqui o caminho não é o que você imagina. Segundo a Ameli, quem tem visto de PVT e trabalha na França não pode se afiliar ao seguro saúde, porque esse visto não cumpre a condição de regularidade de estadia. Por isso, a Ameli indica contratar um seguro privado. Essa resposta está no fórum oficial da Ameli e é antiga. Confirme com a sua CPAM antes de publicar.",
+          "fontes": [
+            {
+              "url": "https://forum-assures.ameli.fr/questions/1548940-visa-vacance-travail-immatriculation",
+              "titulo": "Forum ameli – visa vacance travail immatriculation",
+              "trecho": "Les bénéficiaires d'un visa dans le cadre d'un programme vacances travail et qui exercent une activité en France ne peuvent être affiliés à l'assurance maladie.",
+              "status": "conferida"
+            },
+            {
+              "url": "https://forum-assures.ameli.fr/questions/1548940-visa-vacance-travail-immatriculation",
+              "titulo": "Forum ameli – visa vacance travail immatriculation (seguro privado)",
+              "trecho": "Vous pouvez donc souscrire à une assurance privée pour vous couvrir.",
+              "status": "conferida"
+            }
+          ],
+          "buscas": [
+            "visa vacances-travail assurance maladie France",
+            "PVT affiliation assurance maladie",
+            "Cleiss programme vacances-travail France"
+          ]
+        },
+        {
+          "marca": "se a inscrição é feita pelo empregador ou pela própria pessoa, e em qual organismo",
+          "status": "conferida",
+          "sugestao": "Se você tem contrato, o seu empregador entra no processo. Segundo o Cleiss, no primeiro emprego na França é ele quem pede sua imatriculação pela DPAE (déclaration préalable à l'embauche). Mas a Ameli diz que o funcionário precisa fornecer um número provisório ou definitivo. Se você não tiver, é preciso pedir a imatriculação na CPAM do seu local de residência. Para estrangeiros, a Ameli também prevê um serviço online que o empregador pode usar. Pergunte ao RH qual caminho a empresa usa.",
+          "fontes": [
+            {
+              "url": "https://www.cleiss.fr/faq/immatriculation_numero_de_securite_sociale.html",
+              "titulo": "Cleiss – FAQ Immatriculation – Numéro de sécurité sociale",
+              "trecho": "C'est votre employeur qui effectue les démarches pour votre immatriculation via la Déclaration préalable à l'embauche (DPAE) [voir question 5].",
+              "status": "conferida"
+            },
+            {
+              "url": "https://www.ameli.fr/entreprise/vos-salaries/embaucher-salarie/numero-securite-sociale-salarie",
+              "titulo": "Ameli entreprise – Numéro de sécurité sociale pour un salarié",
+              "trecho": "vous demandez au salarié de se rapprocher de a caisse primaire d’assurance maladie de son lieu de résidence pour demander l’obtention de son **numéro de sécurité sociale**.",
+              "status": "pagina_ilegivel"
+            }
+          ],
+          "buscas": [
+            "immatriculation salarié étranger DPAE",
+            "numéro de sécurité sociale salarié étranger employeur",
+            "demande immatriculation travailleurs étrangers ameli"
+          ]
+        },
+        {
+          "marca": "organismo e procedimento de inscrição para trabalhador independente",
+          "status": "conferida",
+          "sugestao": "Se você é freelance ou micro-empreendedora, o caminho passa pela declaração da atividade no CFE (Centre de formalités des entreprises). Segundo a Ameli, é o CFE que reúne o dossiê e repassa aos órgãos envolvidos, incluindo a CPAM. Quando o dossiê está completo, ele vale como declaração a todos eles. Depois, a cobertura de saúde é pela Assurance Maladie, na CPAM do seu local de residência. Como o seu caso envolve número de sécu novo, confirme com a CPAM se ela precisa de algo a mais além do CFE.",
+          "fontes": [
+            {
+              "url": "https://www.ameli.fr/assure/droits-demarches/vie-professionnelle-retraite/emploi-independant-non-salarie/travailleur-independant/artisan-commercant",
+              "titulo": "Artisan, commerçant : la déclaration de l'entreprise et la prise en charge des frais de santé",
+              "trecho": "Le CFE a une compétence territoriale, il centralise les pièces de votre dossier de demande d’immatriculation puis les transmet aux différents organismes concernés par la création de votre entreprise : les CPAM ou CGSS (caisses primaires d'assurance maladie ou caisses générales de sécurité sociale), le service des impôts des entreprises (SIE), l’institut national de la statistique et des études économiques (Insee)…",
+              "status": "conferida"
+            },
+            {
+              "url": "https://www.ameli.fr/assure/droits-demarches/vie-professionnelle-retraite/emploi-independant-non-salarie/travailleur-independant/profession-liberale",
+              "titulo": "Profession libérale : la déclaration de l'entreprise et la prise en charge des frais de santé",
+              "trecho": "Votre dossier CFE vaut déclaration auprès de l’ensemble des organismes destinataires dès lors qu’il est complet.",
+              "status": "conferida"
+            }
+          ],
+          "buscas": [
+            "travailleur indépendant ameli CFE",
+            "profession libérale déclaration entreprise ameli",
+            "micro-entrepreneur affiliation assurance maladie"
+          ]
+        },
+        {
+          "marca": "existência de condição de residência estável na França para abertura de direitos à saúde e como ela é comprovada",
+          "status": "conferida",
+          "sugestao": "a Ameli pede que você trabalhe ou more na França de forma estável e regular. Pra quem não tem atividade profissional, \"estável\" quer dizer morar na França sem interrupção há mais de 3 meses. Mesmo depois de aprovada, a Ameli pode fazer controles e pedir comprovante de residência, de 6 meses nos últimos 12. Guarde seus comprovantes. Que documentos exatamente mandar na abertura do dossiê, confira no formulário e na página da sua CPAM, porque não achei isso numa página institucional.",
+          "fontes": [
+            {
+              "url": "https://www.ameli.fr/assure/droits-demarches/vie-professionnelle-retraite/sans-emploi",
+              "titulo": "Sans emploi, au chômage ou bénéficiaire du RSA : les modalités de votre prise en charge",
+              "trecho": "Pour être rattaché sur critère de résidence, vous devez résider en France de manière stable, c'est-à-dire de manière ininterrompue depuis plus de 3 mois.",
+              "status": "conferida"
+            },
+            {
+              "url": "https://www.ameli.fr/assure/droits-demarches/principes/protection-universelle-maladie",
+              "titulo": "La protection universelle maladie",
+              "trecho": "Depuis le 1er janvier 2016, avec la **protection universelle maladie (PUMa)**, toute personne qui travaille ou réside en France de manière stable et régulière a droit à la **prise en charge de ses frais de santé**.",
+              "status": "trecho_nao_encontrado"
+            }
+          ],
+          "buscas": [
+            "résidence stable et régulière ameli",
+            "protection universelle maladie conditions",
+            "rattachement critère de résidence 3 mois"
+          ]
+        },
+        {
+          "marca": "procedimento oficial quando existe um pedido anterior em outro status",
+          "status": "sem_fonte",
+          "sugestao": "",
+          "fontes": [],
+          "buscas": [
+            "ancien dossier affiliation ameli doublon",
+            "contacter ma CPAM 3646",
+            "adresses et contacts ameli CPAM"
+          ]
+        },
+        {
+          "marca": "canais oficiais de acompanhamento do pedido e prazo médio de análise informado pela Ameli",
+          "status": "sem_fonte",
+          "sugestao": "",
+          "fontes": [],
+          "buscas": [
+            "suivre ma demande d'ouverture de droits ameli",
+            "délai de traitement CPAM affiliation",
+            "consulter les délais de traitement de ma CPAM"
+          ]
+        },
+        {
+          "marca": "se a Ameli exige certidão de nascimento emitida há menos de 1 ano — aparece em resposta de expert no fórum oficial, mas sem confirmação em página institucional",
+          "status": "sem_fonte",
+          "sugestao": "",
+          "fontes": [],
+          "buscas": [
+            "acte de naissance étranger affiliation ameli",
+            "pièces état civil immatriculation sécurité sociale",
+            "formulaire S1106 acte de naissance"
+          ]
+        },
+        {
+          "marca": "se a certidão brasileira precisa de apostila para o cadastro em etudiant-etranger.ameli.fr, e se o extrato plurilíngue dispensa a exigência",
+          "status": "conferida",
+          "sugestao": "A Ameli diz que, dependendo do país de origem, pode ser pedida apostila no documento original. Pro Brasil, não achei uma frase oficial que diga \"sim\" ou \"não\" com todas as letras, então confirme no seu dossiê em etudiant-etranger.ameli.fr. Já o extrato plurilíngue (aquele com campos em vários idiomas) fica dispensado de tradução. Isso é sobre a tradução, não sobre a apostila. Se a apostila vale pro seu caso, pergunte pra Ameli.",
+          "fontes": [
+            {
+              "url": "https://forum-assures.ameli.fr/questions/3618315-etudiants-etrangers-traduction-acte-naissance",
+              "titulo": "Forum ameli – Étudiants étrangers, traduction acte de naissance",
+              "trecho": "Je vous précise que, selon le pays de provenance, une apostille peut être demandée sur le document d'origine étrangère.",
+              "status": "conferida"
+            },
+            {
+              "url": "https://forum-assures.ameli.fr/questions/3323102-acte-naissance-hors-traduire-europeen",
+              "titulo": "Forum ameli – Acte de naissance hors EU à traduire",
+              "trecho": "En effet, certaines pièces d’état civil sont recevables sans traduction :\n\n- soit parce qu’elles peuvent être rédigées également en langue française par un État étranger. Ce sont des actes plurilingues",
+              "status": "trecho_nao_encontrado"
+            }
+          ],
+          "buscas": [
+            "apostille acte de naissance étudiant étranger ameli",
+            "acte plurilingue traduction ameli",
+            "etudiant-etranger.ameli.fr pièces état civil"
+          ]
+        },
+        {
+          "marca": "existência de regra com vigência em 01/06/2026 sobre apostila e validade de certidão estrangeira",
+          "status": "sem_fonte",
+          "sugestao": "",
+          "fontes": [],
+          "buscas": [
+            "apostille acte de naissance 1er juin 2026",
+            "acte de naissance étranger moins d'un an ameli",
+            "légalisation apostille acte état civil étranger service-public"
+          ]
+        },
+        {
+          "marca": "se a tradução é exigida, e se precisa ser feita na França por tradutor juramentado de cour d'appel",
+          "status": "conferida",
+          "sugestao": "Pra quem nasceu fora da União Europeia, a Ameli diz que a tradução é exigida. Ela precisa ser de um tradutor que conste nas listas dos tribunais franceses (cour d'appel, Cour de cassation). A tradução feita pelo consulado também é aceita. O que encontrei não diz que a tradução tem de ser feita na França. Se o seu documento já vier em francês, ou for plurilíngue, a tradução não é pedida. Na dúvida, confirme com a sua CPAM antes de pagar.",
+          "fontes": [
+            {
+              "url": "https://forum-assures.ameli.fr/questions/2783153-tant-etudiante-ukrainienne-nouvelle-france-acte-naissance-ukr-obligatoirement-apostille",
+              "titulo": "Forum ameli – Acte de naissance et apostille (étudiante)",
+              "trecho": "Je vous précise que pour les ressortissants étrangers hors UE, la traduction est exigée. Les traducteurs doivent être vérifiés dans la liste des traducteurs assermentés auprès des Cours d’Appel",
+              "status": "conferida"
+            },
+            {
+              "url": "https://forum-assures.ameli.fr/questions/3323102-acte-naissance-hors-traduire-europeen",
+              "titulo": "Forum ameli – Acte de naissance hors EU à traduire",
+              "trecho": "Une traduction établie par le Consulat ou un traducteur assermenté peut aussi être réclamée pour les personnes nées hors de l'Union européenne.",
+              "status": "conferida"
+            }
+          ],
+          "buscas": [
+            "traduction acte de naissance traducteur assermenté ameli",
+            "traducteur cour d'appel acte de naissance étranger CPAM",
+            "acte plurilingue dispense traduction"
+          ]
+        },
+        {
+          "marca": "se a Ameli exige que o IBAN/RIB seja de conta francesa e em nome do titular",
+          "status": "conferida",
+          "sugestao": "Mas atenção: conta francesa não é obrigatória pra se cadastrar. No etudiant-etranger.ameli.fr, o RIB de banco europeu pode ser enviado e é aceito, e o RIB nem faz parte dos primeiros documentos obrigatórios. Depois que você tiver o número definitivo, o compte ameli não deixa registrar RIB estrangeiro. Aí vale abrir conta na França. Não achei texto oficial sobre exigir que a conta esteja no seu nome.",
+          "fontes": [
+            {
+              "url": "https://www.ameli.fr/assure/droits-demarches/europe-international/protection-sociale-france/vous-venez-etudier-en-france",
+              "titulo": "Ameli – Vous êtes étudiant étranger et vous venez étudier en France",
+              "trecho": "IBAN (international bank account number) ou relevé d’identité bancaire (RIB) pour vos remboursements ;",
+              "status": "conferida"
+            },
+            {
+              "url": "https://forum-assures.ameli.fr/questions/3340077-creer-compte-ameli-etudiant-etranger-iban-francais",
+              "titulo": "Forum ameli – Compte ameli étudiant étranger sans IBAN français",
+              "trecho": "Depuis le site etudiant-etranger.ameli.fr, un relevé d'identité bancaire issu d'une banque européenne, peut être transmis et sera accepté.",
+              "status": "trecho_nao_encontrado"
+            }
+          ],
+          "buscas": [
+            "IBAN étudiant étranger ameli",
+            "RIB étranger compte ameli",
+            "relevé d'identité bancaire titulaire ameli"
+          ]
+        },
+        {
+          "marca": "nome e formato do documento que o médico entrega quando o paciente não tem Carte Vitale, e como ele é usado no pedido de reembolso",
+          "status": "conferida",
+          "sugestao": "O documento se chama feuille de soins papier (folha de atendimento em papel). Se você não tem a Carte Vitale, o médico entrega essa folha. Preencha com seu número de sécu e assine embaixo, à direita. Depois mande pra sua CPAM pra pedir o reembolso: pelo app Compte ameli, por correio ou entregando no balcão. Você tem até 2 anos pra enviar. Guarde o original.",
+          "fontes": [
+            {
+              "url": "https://www.ameli.fr/assure/remboursements/etre-bien-rembourse/feuille-soins-papier",
+              "titulo": "Ameli – La feuille de soins papier",
+              "trecho": "si vous avez oublié votre carte Vitale ou si le professionnel de santé n'est pas équipé informatiquement pour la lire, il vous remettra une feuille de soins papier. Pour être remboursé, vous devez la remplir et l’adresser à votre caisse primaire d'assurance maladie (CPAM)",
+              "status": "conferida"
+            },
+            {
+              "url": "https://www.ameli.fr/assure/remboursements/etre-bien-rembourse/feuille-soins-papier",
+              "titulo": "Ameli – La feuille de soins papier (délai)",
+              "trecho": "Vous disposez de 2 ans maximum** pour envoyer à votre CPAM la feuille de soins papier que vous a remis votre médecin et vous faire rembourser.",
+              "status": "trecho_nao_encontrado"
+            }
+          ],
+          "buscas": [
+            "feuille de soins papier",
+            "consultation sans carte Vitale remboursement",
+            "envoyer feuille de soins CPAM"
+          ]
+        },
+        {
+          "marca": "prazo oficial para pedir reembolso de consulta e medicamento pagos sem Carte Vitale, e forma de envio dos comprovantes",
+          "status": "conferida",
+          "sugestao": "Guarde a feuille de soins (a folha de atendimento em papel) que o médico ou o farmacêutico te entregar. Você tem até 2 anos pra mandar pra sua CPAM, contados a partir da data do atendimento (o prazo vence no fim do trimestre civil correspondente). Dá pra enviar pelo app Compte ameli, quando for possível, ou por correio. Pelo app, tem limite: só consulta com generalista ou especialista fora de hospital, até 100 €, e no máximo 5 pedidos em 30 dias. Quanto tempo a CPAM leva pra pagar varia, e dá pra ver a estimativa da sua caixa no Compte ameli, em «Mes démarches».",
+          "fontes": [
+            {
+              "url": "https://www.ameli.fr/assure/remboursements/etre-bien-rembourse/feuille-soins-papier",
+              "titulo": "La feuille de soins papier (ameli)",
+              "trecho": "Pour être remboursé, vous devez la remplir et l’adresser à votre caisse primaire d'assurance maladie (CPAM), soit avec l’application Compte ameli quand c’est possible, soit par courrier postal.",
+              "status": "conferida"
+            },
+            {
+              "url": "https://www.ameli.fr/assure/remboursements/etre-bien-rembourse/feuille-soins-papier",
+              "titulo": "La feuille de soins papier (ameli)",
+              "trecho": "**Vous disposez de 2 ans maximum** pour envoyer à votre CPAM la feuille de soins papier que vous a remis votre médecin et vous faire rembourser.",
+              "status": "trecho_nao_encontrado"
+            }
+          ],
+          "buscas": [
+            "feuille de soins papier délai 2 ans",
+            "envoyer feuille de soins CPAM sans carte Vitale",
+            "délai de traitement CPAM feuille de soins"
+          ]
+        },
+        {
+          "marca": "regras oficiais de reembolso de consultas e medicamentos para quem ainda não tem Carte Vitale",
+          "status": "conferida",
+          "sugestao": "Sem a Carte Vitale, a regra é: você paga o atendimento e, no lugar da transmissão eletrônica, o profissional te dá a feuille de soins em papel, que você preenche e manda pra CPAM pra pedir o reembolso. Na farmácia vale a mesma lógica: peça a feuille de soins e mande junto com a ordonnance (a receita). Sem a Vitale, o reembolso passa por esse papel e costuma demorar mais do que com o cartão.",
+          "fontes": [
+            {
+              "url": "https://forum-assures.ameli.fr/questions/1821424-remboursement-soins-carte-vitale",
+              "titulo": "Remboursement soins (sans carte vitale) – Forum ameli (resposta de agente)",
+              "trecho": "Vous devez adresser votre feuille de soins papier, accompagnée de la prescription médicale (ordonnance), par voie postale, à votre caisse primaire d'assurance maladie (CPAM).",
+              "status": "conferida"
+            },
+            {
+              "url": "https://www.ameli.fr/assure/remboursements/etre-bien-rembourse/feuille-soins-papier",
+              "titulo": "La feuille de soins papier (ameli)",
+              "trecho": "Sans carte Vitale, vous pouvez être remboursé de vos frais de santé en adressant une feuille de soins papier à votre caisse primaire d'assurance maladie",
+              "status": "pagina_ilegivel"
+            }
+          ],
+          "buscas": [
+            "remboursement médicaments sans carte Vitale",
+            "feuille de soins pharmacie ordonnance CPAM",
+            "remboursement consultation sans carte Vitale"
+          ]
+        },
+        {
+          "marca": "papel do médecin traitant e efeito da declaração sobre o percentual de reembolso",
+          "status": "conferida",
+          "sugestao": "Você é livre pra declarar ou não, mas declarar compensa: com o médecin traitant declarado e respeitando o parcours de soins coordonnés, o reembolso é melhor. Exemplo da própria Assurance Maladie: numa consulta de 30 € com generalista de setor 1, são 19 € reembolsados com médico declarado, contra só 8,40 € sem declarar. Pra crianças com menos de 16 anos não há redução. Pra declarar, você preenche com o médico o formulário S3704 e manda pra CPAM, ou ele registra na hora da consulta com a sua Vitale.",
+          "fontes": [
+            {
+              "url": "https://www.ameli.fr/assure/remboursements/etre-bien-rembourse/medecin-traitant-parcours-soins-coordonnes",
+              "titulo": "Le rôle du médecin traitant et le parcours de soins coordonnés (ameli)",
+              "trecho": "Si vous désignez un médecin traitant et respectez le parcours de soins coordonnés, vous serez mieux remboursé.",
+              "status": "conferida"
+            },
+            {
+              "url": "https://www.ameli.fr/assure/remboursements/etre-bien-rembourse/medecin-traitant-parcours-soins-coordonnes",
+              "titulo": "Le rôle du médecin traitant et le parcours de soins coordonnés (ameli)",
+              "trecho": "s'il s'agit de votre médecin traitant déclaré, l'Assurance Maladie vous rembourse 70 % du tarif de la consultation, moins 2 euros au titre de la participation forfaitaire, soit un remboursement de 19 euros (contre seulement 8,40 euros sinon).",
+              "status": "trecho_nao_encontrado"
+            }
+          ],
+          "buscas": [
+            "choisir et déclarer médecin traitant",
+            "médecin traitant parcours de soins remboursement",
+            "formulaire S3704 déclaration médecin traitant"
+          ]
+        },
+        {
+          "marca": "o que é a mutuelle, o que ela cobre além do regime obrigatório e quais dispositivos públicos existem para quem tem baixa renda",
+          "status": "conferida",
+          "sugestao": "A mutuelle cobre a parte que o seguro obrigatório (Assurance Maladie) não paga. Se a renda for baixa, existe a Complémentaire santé solidaire (C2S), um dispositivo público que cobre essa parte complementar. Ela depende da sua situação e dos seus recursos: pode ser sem custo ou com participação de 8 a 30 € por mês por pessoa. Dura 1 ano e precisa ser renovada. Você pode pedir pelo Compte ameli.",
+          "fontes": [
+            {
+              "url": "https://www.ameli.fr/assure/droits-demarches/difficultes-acces-droits-soins/complementaire-sante/complementaire-sante-solidaire",
+              "titulo": "La Complémentaire santé solidaire : l'essentiel (ameli)",
+              "trecho": "Elle permet la prise en charge de la part complémentaire de vos frais de santé, c’est-à-dire la part qui n’est pas prise en charge par l’assurance maladie obligatoire.",
+              "status": "conferida"
+            },
+            {
+              "url": "https://www.ameli.fr/assure/droits-demarches/difficultes-acces-droits-soins/complementaire-sante/complementaire-sante-solidaire",
+              "titulo": "La Complémentaire santé solidaire : l'essentiel (ameli)",
+              "trecho": "**ou avec une participation financière allant de 8 à 30 euros maximum par mois et par personne**.",
+              "status": "trecho_nao_encontrado"
+            }
+          ],
+          "buscas": [
+            "Complémentaire santé solidaire conditions",
+            "Complémentaire santé solidaire demande compte ameli",
+            "plafonds de ressources C2S"
+          ]
+        },
+        {
+          "marca": "qual conta/aplicativo oficial a pessoa deve ativar após receber a Carte Vitale e como se faz",
+          "status": "conferida",
+          "sugestao": "Crie seu compte ameli (no site ou no app Compte ameli). Você vai precisar do RIB que já mandou pra CPAM e da Carte Vitale: sem o número de sécu ou sem o cartão, não dá pra criar. Depois, é lá, em «Mes paiements», que você acompanha os reembolsos. O app Carte Vitale (versão no celular) é opcional e funciona como alternativa ao cartão físico.",
+          "fontes": [
+            {
+              "url": "https://www.ameli.fr/assure/remboursements/suivre-remboursements/se-connecter-compte-ameli",
+              "titulo": "Création de votre compte ameli et connexion (ameli)",
+              "trecho": "munissez-vous de votre relevé d’identité bancaire (RIB) et de votre carte Vitale ;",
+              "status": "conferida"
+            },
+            {
+              "url": "https://www.ameli.fr/hauts-de-seine/assure/remboursements/suivre-remboursements/delai-remboursement",
+              "titulo": "Délais de remboursement des frais médicaux (ameli)",
+              "trecho": "vos relevés de remboursement ne sont plus envoyés par courrier postal, ils sont **accessibles dans votre compte ameli**, rubrique Mes paiements.",
+              "status": "trecho_nao_encontrado"
+            }
+          ],
+          "buscas": [
+            "créer compte ameli",
+            "compte ameli attestation de droits",
+            "appli carte Vitale activer"
+          ]
+        },
+        {
+          "marca": "como e com que frequência a Carte Vitale deve ser atualizada",
+          "status": "conferida",
+          "sugestao": "O site oficial da Ameli diz pra atualizar a Carte Vitale a cada mudança de situação e pelo menos uma vez por ano. A atualização se faz numa máquina (borne) em farmácia. Faz parte da rotina, então já coloca no calendário.",
+          "fontes": [
+            {
+              "url": "https://www.ameli.fr/assure/remboursements/etre-bien-rembourse/carte-vitale/carte-vitale",
+              "titulo": "Carte Vitale et application : présentation et utilisation au quotidien",
+              "trecho": "mettez à jour votre carte Vitale à chaque changement de situation – et au minimum 1 fois par an.",
+              "status": "conferida"
+            },
+            {
+              "url": "https://www.ameli.fr/assure/adresses-et-contacts/votre-carte-vitale-appli-carte-vitale-carte-europeenne-d-assurance-maladie-ceam/mettre-jour-votre-carte-vitale",
+              "titulo": "Mettre à jour votre carte Vitale",
+              "trecho": "Vous pouvez mettre à jour votre carte Vitale dans la plupart des pharmacies.",
+              "status": "conferida"
+            }
+          ],
+          "buscas": [
+            "mettre à jour carte Vitale",
+            "carte Vitale mise à jour pharmacie",
+            "carte Vitale changement de situation"
+          ]
+        },
+        {
+          "marca": "documento exato e procedimento oficial de reembolso",
+          "status": "conferida",
+          "sugestao": "O documento é a feuille de soins papier (folha de atendimento em papel), que o médico te entrega se você não tem a Carte Vitale. Você preenche e manda pra sua CPAM, pelo app Compte ameli quando for possível ou por correio. Você tem até 2 anos pra mandar.",
+          "fontes": [
+            {
+              "url": "https://www.ameli.fr/assure/remboursements/etre-bien-rembourse/feuille-soins-papier",
+              "titulo": "La feuille de soins papier",
+              "trecho": "Pour être remboursé, vous devez la remplir et l’adresser à votre caisse primaire d'assurance maladie (CPAM), soit avec l’application Compte ameli quand c’est possible, soit par courrier postal.",
+              "status": "conferida"
+            },
+            {
+              "url": "https://www.ameli.fr/assure/remboursements/etre-bien-rembourse/feuille-soins-papier",
+              "titulo": "La feuille de soins papier (prazo)",
+              "trecho": "Vous disposez de 2 ans maximum pour envoyer à votre CPAM la feuille de soins papier que vous a remis votre médecin et vous faire rembourser.",
+              "status": "conferida"
+            }
+          ],
+          "buscas": [
+            "feuille de soins papier",
+            "remboursement sans carte Vitale",
+            "feuille de soins papier délai 2 ans"
+          ]
+        },
+        {
+          "marca": "exigência de apostila para certidão brasileira no cadastro de estudante estrangeiro",
+          "status": "sem_fonte",
+          "sugestao": "",
+          "fontes": [],
+          "buscas": [
+            "étudiant étranger acte de naissance apostille",
+            "etudiant-etranger.ameli.fr pièces justificatives",
+            "légalisation apostille acte de naissance étranger"
+          ]
+        },
+        {
+          "marca": "procedimento oficial nesses casos",
+          "status": "sem_fonte",
+          "sugestao": "",
+          "fontes": [],
+          "buscas": [
+            "étudiant étranger ancienne demande numéro sécurité sociale",
+            "assistant de langue au pair affiliation sécurité sociale",
+            "doublon dossier affiliation ameli"
+          ]
+        },
+        {
+          "marca": "prazo oficial de análise do dossiê e de envio da Carte Vitale",
+          "status": "conferida",
+          "sugestao": "Segundo a Ameli, se você pedir a Carte Vitale pelo seu compte ameli, ela chega em cerca de 2 semanas. Se pedir por correio, com o formulário, são cerca de 3 semanas. Esse prazo conta a partir do pedido do cartão, depois que você já tem o número definitivo. Não achei na página oficial o prazo de análise do dossiê, que muda conforme a CPAM.",
+          "fontes": [
+            {
+              "url": "https://www.ameli.fr/assure/remboursements/etre-bien-rembourse/carte-vitale/carte-vitale-application/demander-sa-carte-vitale-conditions-et-demarches",
+              "titulo": "Demander sa carte Vitale : conditions et démarches",
+              "trecho": "Vous obtiendrez votre carte Vitale dans un délai de 2 semaines, accompagnée d'une copie papier des informations qu'elle contient.",
+              "status": "conferida"
+            },
+            {
+              "url": "https://www.ameli.fr/assure/remboursements/etre-bien-rembourse/carte-vitale/carte-vitale-application/demander-sa-carte-vitale-conditions-et-demarches",
+              "titulo": "Demander sa carte Vitale : conditions et démarches (courrier)",
+              "trecho": "Vous recevrez la carte Vitale dans un délai de 3 semaines environ, accompagnée d'une copie papier des informations qu'elle contient.",
+              "status": "conferida"
+            }
+          ],
+          "buscas": [
+            "délai réception carte Vitale",
+            "demander sa carte Vitale première fois",
+            "délai traitement dossier CPAM"
+          ]
+        }
+      ]
     },
     {
       "excerpt": "Os pré-requisitos reais pra migrar de au pair pra estudante FLE, o mito da bolsa CROUS, a mudança na regra da APL em 2026 e o caminho de carreira depois do curso.",
