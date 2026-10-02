@@ -18,8 +18,8 @@
 // marcado pra conferir ({{VERIFICAR: …}} ou [CONFERIR: …]), o quadro não
 // deixa mover pra Agendado nem pra No ar.
 (function () {
-  if (typeof CMS === "undefined" || typeof createClass === "undefined" || typeof h === "undefined" || !window.PDStudio) {
-    console.error("[posts-board] Decap CMS ou studio-kit.js não carregados — confira a ordem dos <script> em admin/index.html.");
+  if (typeof CMS === "undefined" || typeof createClass === "undefined" || typeof h === "undefined" || !window.PDStudio || !window.PDConferencia) {
+    console.error("[posts-board] Decap CMS, studio-kit.js ou conferencia.js não carregados — confira a ordem dos <script> em admin/index.html.");
     return;
   }
   var K = window.PDStudio;
@@ -80,15 +80,6 @@
     ".pdb-origin dt{color:#6E6862;}.pdb-origin dd{margin:0;}",
     ".pdb-marks{display:flex;flex-direction:column;gap:6px;background:#fff;border:1px solid #E6E0D6;border-radius:12px;padding:10px 12px;}",
     ".pdb-marks code{font:11.5px ui-monospace,Menlo,monospace;background:#F6ECD6;color:#8A5F12;border-radius:5px;padding:2px 6px;overflow-wrap:anywhere;}",
-    ".pdb-conf{display:flex;flex-direction:column;gap:9px;background:#fff;border:1px solid #E6E0D6;border-radius:12px;padding:11px 12px;}",
-    ".pdb-conf-h{display:flex;align-items:center;gap:6px;font-size:11.5px;color:#6E6862;}",
-    ".pdb-conf-h b{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;}",
-    ".pdb-conf-q{font-size:13.5px;font-weight:600;line-height:1.4;margin:0;}",
-    ".pdb-src{display:flex;flex-direction:column;gap:5px;border:1px solid #E6E0D6;border-radius:10px;padding:9px 10px;background:#FBFAF7;}",
-    ".pdb-src a{color:#3F6E2B;font-weight:600;font-size:12.5px;overflow-wrap:anywhere;}",
-    ".pdb-src q{font-size:12.5px;font-style:italic;color:#6E6862;line-height:1.5;quotes:'«' '»';}",
-    ".pdb-sug{font-size:13.5px;line-height:1.55;border-left:3px solid #577328;padding:2px 0 2px 10px;margin:0;}",
-    ".pdb-conf textarea{min-height:70px;}",
     ".pdb-lock{font-size:12.5px;border-radius:10px;padding:8px 10px;background:#F5E1DD;color:#A63A2E;margin:0;}",
     ".pdb-empty{font-size:12px;color:#9A938A;text-align:center;padding:16px 6px;border:1.5px dashed #D8D0C3;border-radius:10px;}",
     ".pdb-prev{border-left:1px solid #E6E0D6;display:flex;flex-direction:column;min-height:0;background:#FBFAF7;}",
@@ -163,51 +154,11 @@
     if (p.status === "agendado") return !!p.date && day(p.date) <= todayISO();
     return false;
   }
-  // Trechos que ainda precisam ser conferidos na fonte oficial: {{VERIFICAR: …}}
-  // (escritor do Cérebro) e [CONFERIR: …] (robô, ver admin/prompts/).
-  var MARK_RE = /\{\{\s*VERIFICAR[^}]*\}\}|\[\s*CONFERIR[^\]]*\]/gi;
-  function marks(p) {
-    return ([p.title, p.excerpt, p.url ? p.mxBlocks : p.body].join("\n").match(MARK_RE)) || [];
-  }
+  // Trechos a conferir e as fontes deles: regras em admin/widgets/conferencia.js (as mesmas do editor do artigo).
+  var C = window.PDConferencia;
+  var plural = C.plural, markText = C.markText, norm = C.norm;
+  function marks(p) { return C.marksIn([p.title, p.excerpt, p.url ? p.mxBlocks : p.body].join("\n")); }
   function fromBrain(p) { return !!(p.origem && p.origem.sistema === "cerebro"); }
-
-  // Fontes de cada trecho a conferir: o hub pesquisa em sites oficiais, confere em código se o
-  // trecho citado está na página e manda o resultado no campo "conferencia" do artigo.
-  var OFFICIAL_SITES = ["ameli.fr", "service-public.gouv.fr", "legifrance.gouv.fr", "france-visas.gouv.fr"];
-  function markText(tok) { return String(tok).replace(/^\{\{\s*VERIFICAR\s*:?|^\[\s*CONFERIR\s*:?|\}\}$|\]$/gi, "").trim(); }
-  function norm(s) { return String(s || "").replace(/\s+/g, " ").trim().toLowerCase(); }
-  function sourceFor(p, tok) {
-    var list = Array.isArray(p.conferencia) ? p.conferencia : [], k = norm(markText(tok));
-    for (var i = 0; i < list.length; i++) if (list[i] && norm(list[i].marca) === k) return list[i];
-    return null;
-  }
-  function safeUrl(u) { return /^https:\/\/[^\s"'<>]+$/.test(String(u || "")) ? String(u) : ""; }
-  function hostOf(u) { try { return new URL(u).hostname.replace(/^www\./, ""); } catch (e) { return ""; } }
-  // O fórum oficial da Ameli vale como fonte, mas não é página institucional: quem responde é um
-  // atendente, caso a caso. O selo diz isso pra você pesar antes de usar.
-  function isForum(u) { return hostOf(u) === "forum-assures.ameli.fr"; }
-  function searchUrl(terms) {
-    return "https://www.google.com/search?q=" + encodeURIComponent(terms + " " + OFFICIAL_SITES.map(function (s) { return "site:" + s; }).join(" OR "));
-  }
-  // Acrescenta a página usada no bloco de fontes do artigo (cria o bloco antes do próximo passo, se não houver).
-  function addResource(body, src) {
-    var url = safeUrl(src && src.url);
-    if (!url || body.indexOf(url) !== -1) return body;
-    var line = String(src.titulo || hostOf(url)).replace(/\s*\|\s*/g, " / ") + " | " + hostOf(url) + " | Acessar | " + url;
-    var end = body.indexOf("[[/RESOURCES]]");
-    if (end !== -1) return body.slice(0, end).replace(/\s*$/, "\n") + line + "\n" + body.slice(end);
-    var block = "[[RESOURCES]]\n" + line + "\n[[/RESOURCES]]\n\n";
-    var at = body.indexOf("[[PROXIMO-PASSO]]");
-    if (at === -1) at = body.indexOf("[[FEEDBACK]]");
-    return at === -1 ? body.replace(/\s*$/, "\n\n") + block : body.slice(0, at) + block + body.slice(at);
-  }
-  // Troca a 1ª ocorrência da marca pelo texto (vazio = só tira a marca) e arruma o espaço que sobra.
-  function swapMark(text, tok, by) {
-    var i = String(text || "").indexOf(tok);
-    if (i === -1) return null;
-    var out = text.slice(0, i) + by + text.slice(i + tok.length);
-    return by ? out : out.replace(/[ \t]{2,}/g, " ").replace(/ +([.,;:!?])/g, "$1").replace(/[ \t]+\n/g, "\n");
-  }
   function pruneSources(p) {
     if (!Array.isArray(p.conferencia)) return;
     var left = {};
@@ -215,7 +166,6 @@
     p.conferencia = p.conferencia.filter(function (c) { return c && left[norm(c.marca)]; });
     if (!p.conferencia.length) delete p.conferencia;
   }
-  function plural(n, one, many) { return n + " " + (n === 1 ? one : many); }
   function words(text) { return String(text || "").replace(/\[\[[^\]]*\]\]/g, " ").split(/\s+/).filter(Boolean).length; }
   function statusOf(p) { return LABEL[p.status] ? p.status : "ideia"; }
 
@@ -491,7 +441,7 @@
       var skip = this.state.sel;
       var checks = parsed && !parsed.errors.length ? robotChecks(parsed, items, -1) : [];
       if (parsed && !parsed.errors.length) {
-        var rm = (parsed.body.match(MARK_RE) || []).length;
+        var rm = C.marksIn(parsed.body).length;
         if (rm) checks.push({ ok: false, warn: true, text: plural(rm, "trecho", "trechos") + " a conferir: agendar e publicar ficam bloqueados até resolver" });
       }
       var sel = this.state.sel >= 0 ? items[this.state.sel] : null;
@@ -525,9 +475,9 @@
       this.change(function (items) {
         var p = items[idx], fields = ["title", "excerpt", p.url ? "mxBlocks" : "body"];
         for (var i = 0; i < fields.length; i++) {
-          var out = swapMark(p[fields[i]], tok, by);
+          var out = C.swapMark(p[fields[i]], tok, by);
           if (out == null) continue;
-          p[fields[i]] = fields[i] === "body" && src ? addResource(out, src) : out;
+          p[fields[i]] = fields[i] === "body" && src ? C.addResource(out, src) : out;
           break;
         }
         pruneSources(p);
@@ -754,43 +704,16 @@
         return h("div", { className: "pds-field", key: "marks" }, h("span", { className: "pds-label" }, "Conferência antes de publicar"), h("p", { className: "pdb-msg ok" }, "Nenhum trecho marcado pra conferir."));
       }
       var at = Math.min(this.state.markAt || 0, pending.length - 1), tok = pending[at];
-      var c = sourceFor(p, tok), own = this.state.markOwn;
-      var srcs = c && Array.isArray(c.fontes) ? c.fontes.filter(function (f) { return f && safeUrl(f.url); }) : [];
-      var checked = !!(c && c.status === "conferida"), src = srcs[0];
-      var go = function (d) { self.setState({ markAt: (at + d + pending.length) % pending.length, markOwn: null }); };
-      var withSource = (Array.isArray(p.conferencia) ? p.conferencia : []).filter(function (x) { return x && x.status !== "sem_fonte"; }).length;
-      var searches = c && Array.isArray(c.buscas) && c.buscas.length ? c.buscas : [markText(tok)];
+      var withSource = Array.isArray(p.conferencia) ? p.conferencia.filter(function (x) { return x && x.status !== "sem_fonte"; }).length : null;
       return h("div", { className: "pds-field", key: "marks" },
         h("span", { className: "pds-label" }, "Conferência antes de publicar"),
-        h("div", { className: "pdb-conf" },
-          h("div", { className: "pdb-conf-h" },
-            h("b", null, "Trecho " + (at + 1) + " de " + pending.length),
-            Array.isArray(p.conferencia) ? h("span", null, "· " + withSource + " com fonte") : null,
-            h("span", { style: { marginLeft: "auto" } }),
-            h("button", { type: "button", className: "pds-btn sm", "aria-label": "Trecho anterior", disabled: pending.length < 2, onClick: function () { go(-1); } }, "←"),
-            h("button", { type: "button", className: "pds-btn sm", "aria-label": "Próximo trecho", disabled: pending.length < 2, onClick: function () { go(1); } }, "→")),
-          h("p", { className: "pdb-conf-q" }, markText(tok)),
-          src ? h("div", { className: "pdb-src" },
-              h("div", { className: "pds-row", style: { gap: "5px", flexWrap: "wrap" } },
-                h("span", { className: "pdb-flag " + (checked ? "ok" : "") }, checked ? "trecho conferido na página" : "link oficial · o sistema não conseguiu conferir o trecho"),
-                isForum(src.url) ? h("span", { className: "pdb-flag", title: "Resposta de atendente no fórum oficial da Ameli, não página institucional" }, "resposta no fórum oficial") : null),
-              h("a", { href: safeUrl(src.url), target: "_blank", rel: "noopener noreferrer" }, (src.titulo || hostOf(src.url)) + " · " + hostOf(src.url) + " ↗"),
-              src.trecho ? h("q", null, src.trecho) : null,
-              srcs[1] ? h("a", { href: safeUrl(srcs[1].url), target: "_blank", rel: "noopener noreferrer" }, "Outra página: " + (srcs[1].titulo || hostOf(srcs[1].url)) + " ↗") : null)
-            : h("div", { className: "pdb-src" },
-              h("span", { className: "pdb-flag", style: { alignSelf: "flex-start" } }, c ? "nenhuma página oficial com resposta clara" : "as fontes deste trecho ainda não chegaram do Cérebro"),
-              h("span", { className: "pdb-msg" }, "Buscas prontas nos sites oficiais:"),
-              searches.slice(0, 3).map(function (t, i) { return h("a", { key: i, href: searchUrl(t), target: "_blank", rel: "noopener noreferrer" }, t + " ↗"); })),
-          src && c.sugestao ? h("div", null, h("span", { className: "pds-label" }, "Texto sugerido" + (checked ? "" : " · confira na página antes de usar")), h("p", { className: "pdb-sug" }, c.sugestao)) : null,
-          own != null ? h("textarea", { className: "pds-input", "aria-label": "Seu texto para este trecho", value: own, placeholder: "Escreva o texto que entra no lugar da marca", onChange: function (e) { self.setState({ markOwn: e.target.value }); } }) : null,
-          h("div", { className: "pds-row", style: { gap: "6px", flexWrap: "wrap" } },
-            own != null
-              ? [h("button", { key: "ok", type: "button", className: "pds-btn primary sm", disabled: !own.trim(), onClick: function () { self.resolveMark(idx, tok, own.trim(), null); } }, "Trocar pelo meu texto"),
-                 h("button", { key: "no", type: "button", className: "pds-btn ghost sm", onClick: function () { self.setState({ markOwn: null }); } }, "Cancelar")]
-              : [src && c.sugestao ? h("button", { key: "use", type: "button", className: "pds-btn primary sm", onClick: function () { self.resolveMark(idx, tok, c.sugestao, src); } }, "Usar este texto") : null,
-                 h("button", { key: "own", type: "button", className: "pds-btn sm", onClick: function () { self.setState({ markOwn: "" }); } }, "Escrever eu mesma"),
-                 h("button", { key: "cut", type: "button", className: "pds-btn sm", title: "Tira só a marca; o texto em volta fica como está", onClick: function () { self.resolveMark(idx, tok, "", null); } }, "Tirar a marca")]),
-          src && c.sugestao && own == null ? h("p", { className: "pdb-msg" }, "“Usar este texto” troca a marca pela frase e acrescenta a página no bloco Fontes do artigo.") : null),
+        C.card({
+          tok: tok, entry: C.sourceFor(p.conferencia, tok), at: at, total: pending.length, withSource: withSource, own: this.state.markOwn,
+          onNav: function (d) { self.setState({ markAt: (at + d + pending.length) % pending.length, markOwn: null }); },
+          onUse: function (text, src) { self.resolveMark(idx, tok, text, src); },
+          onOwn: function (text) { self.setState({ markOwn: text }); },
+          onCut: function () { self.resolveMark(idx, tok, "", null); }
+        }),
         h("p", { className: "pdb-lock", role: "status" }, h("b", null, "Agendar e publicar estão bloqueados. "), "Falta resolver " + plural(pending.length, "trecho", "trechos") + "."),
         !p.url ? h("button", { type: "button", className: "pds-btn sm", style: { alignSelf: "flex-start" }, onClick: function () { self.editBody(idx); } }, "Abrir o texto no editor →") : null);
     },

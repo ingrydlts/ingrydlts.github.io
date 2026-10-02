@@ -80,6 +80,12 @@ em [MICROENGAJAMENTO.md](MICROENGAJAMENTO.md).
   no campo `conferencia` do artigo. A gaveta do cartão mostra um trecho por vez, com o link da página,
   o trecho dela e uma frase sugerida; "Usar este texto" troca a marca e acrescenta a página no bloco
   `[[RESOURCES]]`. O campo some sozinho quando o artigo é agendado ou publicado.
+- Editor do artigo (`admin/widgets/article-composer.js`): mesa de revisão em três colunas. Estrutura
+  (títulos e módulos, com a contagem de trechos a conferir), texto como a leitora vê (toque num trecho
+  marcado pra abrir ele no painel) e painel com "Conferir" (um trecho por vez, com a fonte) e "Módulos"
+  (tirar, subir, descer, acrescentar a ferramenta-assinatura). "Desfazer" volta a última mudança. No
+  celular as colunas viram três abas. As regras de trecho a conferir ficam em
+  `admin/widgets/conferencia.js`, usadas também pelo quadro.
 - Trecho a conferir: enquanto o texto de um artigo tiver `{{VERIFICAR: …}}` ou `[CONFERIR: …]`, o
   quadro não deixa mover pra **Agendado** nem pra **No ar**. O arquivo
   `admin/prompts/robo-escritor-de-artigos.md` é a fonte única do formato: o hub lê ele a cada artigo.
