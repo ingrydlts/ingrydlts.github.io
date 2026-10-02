@@ -72,6 +72,13 @@ em [MICROENGAJAMENTO.md](MICROENGAJAMENTO.md).
   "Microengajamento"); o quadro de artigos mostra a capa, o checklist de microengajamento de cada
   artigo e o botão **🧠 Colar do robô**, que cria o artigo inteiro a partir do pacote do robô
   (prompt em `admin/prompts/robo-escritor-de-artigos.md`).
+- Artigo vindo do Cérebro (hub): o botão "Enviar ao Admin" do hub grava o artigo direto em
+  `content/posts.json`, em **Revisão**, com o campo `origem` (pauta e dor). A home do /admin mostra
+  esses artigos no bloco "Chegou do Cérebro", o cartão ganha o selo "do Cérebro", e o link
+  `/admin/?abrir=<slug>#/collections/posts/entries/posts` abre o quadro já nesse cartão.
+- Trecho a conferir: enquanto o texto de um artigo tiver `{{VERIFICAR: …}}` ou `[CONFERIR: …]`, o
+  quadro não deixa mover pra **Agendado** nem pra **No ar**. O arquivo
+  `admin/prompts/robo-escritor-de-artigos.md` é a fonte única do formato: o hub lê ele a cada artigo.
 
 ## Configurar o Stripe (pagamento)
 

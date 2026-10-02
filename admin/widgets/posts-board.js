@@ -11,6 +11,12 @@
 //
 // Grava os mesmos campos de sempre em content/posts.json. Nada vai pro site
 // até você clicar em "Publicar" no /admin.
+//
+// Artigo que chega do Cérebro (hub, botão "Enviar ao admin") vem com o campo
+// "origem" e cai direto em Revisão: o cartão mostra o selo "do Cérebro" e a
+// gaveta, de onde veio. Enquanto o texto de QUALQUER artigo tiver trecho
+// marcado pra conferir ({{VERIFICAR: …}} ou [CONFERIR: …]), o quadro não
+// deixa mover pra Agendado nem pra No ar.
 (function () {
   if (typeof CMS === "undefined" || typeof createClass === "undefined" || typeof h === "undefined" || !window.PDStudio) {
     console.error("[posts-board] Decap CMS ou studio-kit.js não carregados — confira a ordem dos <script> em admin/index.html.");
@@ -68,6 +74,13 @@
     ".pdb-flag{font-size:10.5px;font-weight:600;border-radius:20px;padding:1px 7px;background:#F6ECD6;color:#8A5F12;}",
     ".pdb-flag.ok{background:#E3EDDA;color:#3F6E2B;}",
     ".pdb-flag.muted{background:#EFEBE4;color:#6E6862;}",
+    ".pdb-flag.bad{background:#F5E1DD;color:#A63A2E;}",
+    ".pdb-seg button:disabled{opacity:.45;cursor:not-allowed;}",
+    ".pdb-origin{display:grid;grid-template-columns:auto minmax(0,1fr);gap:3px 12px;font-size:12.5px;margin:0;}",
+    ".pdb-origin dt{color:#6E6862;}.pdb-origin dd{margin:0;}",
+    ".pdb-marks{display:flex;flex-direction:column;gap:6px;background:#fff;border:1px solid #E6E0D6;border-radius:12px;padding:10px 12px;}",
+    ".pdb-marks code{font:11.5px ui-monospace,Menlo,monospace;background:#F6ECD6;color:#8A5F12;border-radius:5px;padding:2px 6px;overflow-wrap:anywhere;}",
+    ".pdb-lock{font-size:12.5px;border-radius:10px;padding:8px 10px;background:#F5E1DD;color:#A63A2E;margin:0;}",
     ".pdb-empty{font-size:12px;color:#9A938A;text-align:center;padding:16px 6px;border:1.5px dashed #D8D0C3;border-radius:10px;}",
     ".pdb-prev{border-left:1px solid #E6E0D6;display:flex;flex-direction:column;min-height:0;background:#FBFAF7;}",
     // gaveta com os dados do artigo
@@ -141,6 +154,14 @@
     if (p.status === "agendado") return !!p.date && day(p.date) <= todayISO();
     return false;
   }
+  // Trechos que ainda precisam ser conferidos na fonte oficial: {{VERIFICAR: …}}
+  // (escritor do Cérebro) e [CONFERIR: …] (robô, ver admin/prompts/).
+  var MARK_RE = /\{\{\s*VERIFICAR[^}]*\}\}|\[\s*CONFERIR[^\]]*\]/gi;
+  function marks(p) {
+    return ([p.title, p.excerpt, p.url ? p.mxBlocks : p.body].join("\n").match(MARK_RE)) || [];
+  }
+  function fromBrain(p) { return !!(p.origem && p.origem.sistema === "cerebro"); }
+  function plural(n, one, many) { return n + " " + (n === 1 ? one : many); }
   function words(text) { return String(text || "").replace(/\[\[[^\]]*\]\]/g, " ").split(/\s+/).filter(Boolean).length; }
   function statusOf(p) { return LABEL[p.status] ? p.status : "ideia"; }
 
@@ -149,6 +170,8 @@
   // daqui não vale pra eles.
   function issues(p) {
     var out = [];
+    var nm = marks(p).length;
+    if (nm) out.push(plural(nm, "trecho", "trechos") + " a conferir");
     if (!p.title) out.push("Sem título");
     if (!p.excerpt) out.push("Sem resumo");
     if (!p.category) out.push("Sem categoria");
@@ -339,6 +362,12 @@
     moveTo: function (idx, status) {
       var p = this.items()[idx];
       if (!p || statusOf(p) === status) return;
+      var nm = marks(p).length;
+      if (nm && (status === "agendado" || status === "publicado")) {
+        this.select(idx);
+        this.showToast("Bloqueado: " + plural(nm, "trecho", "trechos") + " a conferir. Resolva no texto antes de " + (status === "agendado" ? "agendar" : "publicar") + ".");
+        return;
+      }
       var today = todayISO(), msg, askDate = false;
       if (status === "publicado") {
         if (!p.date) msg = "No ar · data de publicação: hoje";
@@ -403,6 +432,10 @@
       var parsed = text.trim() ? parseRobot(text) : null;
       var skip = this.state.sel;
       var checks = parsed && !parsed.errors.length ? robotChecks(parsed, items, -1) : [];
+      if (parsed && !parsed.errors.length) {
+        var rm = (parsed.body.match(MARK_RE) || []).length;
+        if (rm) checks.push({ ok: false, warn: true, text: plural(rm, "trecho", "trechos") + " a conferir: agendar e publicar ficam bloqueados até resolver" });
+      }
       var sel = this.state.sel >= 0 ? items[this.state.sel] : null;
       var coverHtml = parsed && window.PDCover && parsed.fields.coverKeyword ? window.PDCover.html(Object.assign({}, parsed.fields, { readMinutes: parsed.fields.readMinutes })) : "";
       return h("div", { className: "pdb-robot", role: "dialog", "aria-modal": "true", "aria-label": "Colar artigo do robô" },
@@ -465,7 +498,7 @@
       if (st === "agendado") dateLine = p.date ? (isLive(p) ? "já no ar desde " + fmt(p.date) : "entra no ar " + fmt(p.date)) : "sem data";
       else if (st === "publicado") dateLine = fmt(p.date);
       return h("div", {
-        key: (p.slug || "") + ":" + idx, className: "pdb-card" + (idx === this.state.sel ? " is-sel" : ""), "data-idx": idx,
+        key: (p.slug || "") + ":" + idx, className: "pdb-card" + (idx === this.state.sel ? " is-sel" : ""), "data-idx": idx, "data-slug": p.slug || "",
         role: "button", tabIndex: 0, "aria-label": (p.title || "Artigo sem título") + " — " + LABEL[st],
         onClick: function () { self.select(idx); },
         onKeyDown: function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); self.select(idx); } }
@@ -476,10 +509,11 @@
           p.category ? h("span", null, p.category) : null,
           p.readMinutes ? h("span", null, p.readMinutes + " min") : null,
           dateLine ? h("span", null, dateLine) : null),
-        (isFeatured || flags.length || p.url) ? h("div", { className: "pdb-flags" },
+        (isFeatured || flags.length || p.url || fromBrain(p)) ? h("div", { className: "pdb-flags" },
+          fromBrain(p) ? h("span", { className: "pdb-flag ok" }, "do Cérebro") : null,
           isFeatured ? h("span", { className: "pdb-flag ok" }, "destaque do blog") : null,
           p.url ? h("span", { className: "pdb-flag muted", title: "Tem página própria em " + p.url }, "página própria") : null,
-          flags.slice(0, 3).map(function (f) { return h("span", { key: f, className: "pdb-flag" }, f); }),
+          flags.slice(0, 3).map(function (f) { return h("span", { key: f, className: "pdb-flag" + (/a conferir$/.test(f) ? " bad" : "") }, f); }),
           flags.length > 3 ? h("span", { className: "pdb-flag" }, "+" + (flags.length - 3)) : null) : null);
     },
 
@@ -552,6 +586,7 @@
         dateMsg = "Data futura num artigo “No ar”: ele já aparece, e fica no topo do blog até lá."; dateKind = "warn";
       }
       var mins = Math.max(1, Math.round(words(p.body) / 200));
+      var pending = marks(p);
       return h("aside", { className: "pdb-drawer", "aria-label": "Dados do artigo" },
         h("div", { className: "pdb-drawer-h" },
           h("h3", null, p.title || "Artigo novo"),
@@ -560,8 +595,11 @@
           h("div", { className: "pds-field" },
             h("span", { className: "pds-label" }, "Etapa"),
             h("div", { className: "pdb-seg", role: "group", "aria-label": "Etapa do artigo" }, COLS.map(function (c) {
-              return h("button", { key: c.k, type: "button", "aria-pressed": String(st === c.k), onClick: function () { self.moveTo(idx, c.k); } }, h("i", { style: { background: c.color } }), c.label);
+              var locked = pending.length > 0 && (c.k === "agendado" || c.k === "publicado") && st !== c.k;
+              return h("button", { key: c.k, type: "button", "aria-pressed": String(st === c.k), disabled: locked, title: locked ? "Bloqueado enquanto houver trecho a conferir" : null, onClick: function () { self.moveTo(idx, c.k); } }, h("i", { style: { background: c.color } }), c.label);
             }))),
+          this.renderOrigin(p),
+          this.renderMarks(p, idx, pending),
           this.field("pdb-title", "Título", h("input", { id: "pdb-title", className: "pds-input" + (p.title ? "" : " pdb-input-err"), value: p.title || "", placeholder: "Sobre o que é o artigo?",
             onChange: function (e) {
               var v = e.target.value;
@@ -617,6 +655,33 @@
             : h("button", { type: "button", className: "pds-btn danger sm", style: { alignSelf: "flex-start" }, onClick: function () { self.setState({ confirmDelete: true }); } }, "Apagar artigo…")));
     },
 
+
+    // Artigo enviado pelo Cérebro (hub): de qual pauta e de qual dor ele nasceu.
+    renderOrigin: function (p) {
+      if (!fromBrain(p)) return null;
+      var o = p.origem, when = o.enviado_em ? new Date(o.enviado_em) : null;
+      return h("div", { className: "pds-field", key: "origin" },
+        h("span", { className: "pds-label" }, "De onde veio"),
+        h("dl", { className: "pdb-origin" },
+          h("dt", null, "Origem"), h("dd", null, "Cérebro (hub), botão “Enviar ao admin”"),
+          o.pauta ? h("dt", null, "Pauta") : null, o.pauta ? h("dd", null, String(o.pauta)) : null,
+          o.dor ? h("dt", null, "Dor") : null, o.dor ? h("dd", null, String(o.dor)) : null,
+          when && !isNaN(when) ? h("dt", null, "Chegou") : null,
+          when && !isNaN(when) ? h("dd", null, when.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }) + ", " + when.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) + ", direto em Revisão") : null));
+    },
+
+    // Conferência antes de publicar: cada trecho marcado no texto trava Agendado e No ar.
+    renderMarks: function (p, idx, pending) {
+      var self = this;
+      if (!pending.length && !fromBrain(p)) return null;
+      return h("div", { className: "pds-field", key: "marks" },
+        h("span", { className: "pds-label" }, "Conferência antes de publicar"),
+        pending.length
+          ? h("div", { className: "pdb-marks", "aria-label": "Trechos a conferir" }, pending.map(function (m, i) { return h("code", { key: i }, m); }))
+          : h("p", { className: "pdb-msg ok" }, "Nenhum trecho marcado pra conferir."),
+        pending.length ? h("p", { className: "pdb-lock", role: "status" }, h("b", null, "Agendar e publicar estão bloqueados. "), "Confira " + (pending.length === 1 ? "o trecho" : "cada trecho") + " na fonte oficial e troque a marca pelo texto certo.") : null,
+        pending.length && !p.url ? h("button", { type: "button", className: "pds-btn sm", style: { alignSelf: "flex-start" }, onClick: function () { self.editBody(idx); } }, "Resolver no texto →") : null);
+    },
 
     renderCoverFields: function (p, items, idx) {
       var self = this;

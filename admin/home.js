@@ -1,9 +1,14 @@
-// Início do /admin ("Estúdio") — a tela de entrada do painel, no lugar da
+// Início do /admin ("Admin") — a tela de entrada do painel, no lugar da
 // lista de coleções do Decap: menu agrupado (Conteúdo, Vitrine, Site,
 // Acompanhar), "Hoje" com o que pede atenção (calculado dos arquivos de
 // content/ e das avaliações pendentes), o próximo artigo agendado, as
 // últimas mudanças (histórico do GitHub) e atalhos. "Ir para…" (⌘K / Ctrl+K)
 // procura telas e artigos.
+//
+// "Chegou do Cérebro": os artigos que o hub mandou pelo botão "Enviar ao
+// admin" (campo "origem" em content/posts.json) e ainda estão em Revisão,
+// num carrossel. O link /admin/?abrir=<slug>#/collections/posts/entries/posts
+// (o que o hub mostra depois de enviar) abre o quadro já no cartão do artigo.
 //
 // Não muda nada no Decap: cada item do menu abre a mesma coleção de sempre
 // (#/collections/<coleção>/entries/<arquivo>) e já abre o estúdio dela. A
@@ -31,6 +36,8 @@
     quiz: '<circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6V14"/><path d="M12 17.5v.01"/>',
     cookie: '<circle cx="12" cy="12" r="9"/><path d="M8.5 9.5v.01M14 8v.01M15.5 14v.01M9.5 15v.01"/>',
     chart: '<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>',
+    prev: '<path d="M15 5l-7 7 7 7"/>',
+    next: '<path d="M9 5l7 7-7 7"/>',
     people: '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18 14a6 6 0 0 1 3.5 6"/>',
     star: '<path d="M12 3l2.8 5.8 6.2.9-4.5 4.4 1 6.2L12 17.4 6.5 20.3l1-6.2L3 9.7l6.2-.9L12 3z"/>',
     hands: '<path d="M8 12l3 3 5-5"/><circle cx="12" cy="12" r="9"/>',
@@ -153,6 +160,26 @@
     ".pdh-feed div{display:flex;gap:10px;padding:9px 16px;font-size:13px;border-bottom:1px solid var(--line);}",
     ".pdh-feed div:last-child{border-bottom:0;}",
     ".pdh-feed time{font:11px ui-monospace,Menlo,monospace;color:var(--faint);width:52px;flex:none;padding-top:2px;}",
+    // Chegou do Cérebro (carrossel: o próximo artigo entra pela direita)
+    ".pdh-wrap{display:flex;flex-direction:column;gap:14px;max-width:1180px;}",
+    ".pdh-arr{border-color:var(--accent);padding:14px 16px;display:flex;flex-direction:column;gap:10px;}",
+    ".pdh-arr-h{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:13.5px;font-weight:700;}",
+    ".pdh-new{font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;background:var(--accent);color:var(--accent-ink);border-radius:4px;padding:1px 6px;}",
+    ".pdh-cnav{margin-left:auto;display:flex;align-items:center;gap:6px;font-size:11.5px;font-weight:500;color:var(--muted);font-variant-numeric:tabular-nums;}",
+    ".pdh-arw{width:30px;height:30px;border-radius:50%;border:1px solid var(--line-strong);background:var(--surface);color:var(--ink);display:grid;place-items:center;padding:0;}",
+    ".pdh-arw .pdh-i{width:15px;height:15px;stroke-width:2;}",
+    ".pdh-arw:hover{border-color:var(--ink);}",
+    ".pdh-arw:disabled{opacity:.35;cursor:default;border-color:var(--line-strong);}",
+    ".pdh-car{display:flex;gap:16px;overflow-x:auto;scroll-snap-type:x mandatory;scroll-behavior:smooth;scrollbar-width:none;min-width:0;}",
+    ".pdh-car::-webkit-scrollbar{display:none;}",
+    ".pdh-slide{flex:0 0 100%;min-width:0;scroll-snap-align:start;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:center;}",
+    ".pdh-slide h3{font-size:18px;line-height:1.25;}",
+    ".pdh-slide small{display:block;color:var(--muted);font-size:12.5px;margin-top:4px;}",
+    ".pdh-chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;}",
+    ".pdh-pill{border-radius:999px;padding:1px 8px;font-size:11px;font-weight:600;white-space:nowrap;background:var(--surface-2);color:var(--muted);}",
+    ".pdh-pill.bad{background:var(--bad-soft);color:var(--bad);}.pdh-pill.ok{background:var(--accent-soft);color:var(--accent-text);}",
+    ".pdh .pdh-go{border:0;border-radius:9px;padding:9px 14px;background:var(--accent);color:var(--accent-ink);font-weight:600;font-size:13px;white-space:nowrap;}",
+    ".pdh .pdh-go:hover{filter:brightness(.94);}",
     ".pdh-note{font-size:12px;color:var(--faint);font-style:italic;margin:0;}",
     ".pdh-empty{padding:14px 16px;color:var(--muted);font-size:13px;}",
     ".pdh-sk{height:14px;border-radius:6px;background:linear-gradient(90deg,var(--surface-2),var(--line),var(--surface-2));background-size:200% 100%;animation:pdhsk 1.2s linear infinite;margin:14px 16px;}",
@@ -175,6 +202,7 @@
     "  .pdh.rail-open .pdh-rail{transform:none;}",
     "  .pdh-scrim{position:fixed;inset:0;background:rgba(20,16,14,.35);z-index:4;}",
     "  .pdh-today{grid-template-columns:minmax(0,1fr);}",
+    "  .pdh-slide{grid-template-columns:minmax(0,1fr);}",
     "  .pdh-quick button{padding:10px;font-size:12.5px;gap:6px;}",
     "  .pdh-top{padding:10px 16px;padding-top:calc(10px + env(safe-area-inset-top));}",
     "  .pdh-view{padding:16px 16px 100px;}",
@@ -185,7 +213,7 @@
     "  .pdh-tabbar button[aria-current=page]{color:var(--accent-text);background:var(--accent-soft);}",
     "}",
     "@media (min-width:901px){.pdh-scrim,.pdh-burger{display:none;}}",
-    "@media (prefers-reduced-motion:reduce){.pdh *{animation:none!important;transition:none!important;}}",
+    "@media (prefers-reduced-motion:reduce){.pdh *{animation:none!important;transition:none!important;}.pdh-car{scroll-behavior:auto;}}",
     "html.pdh-open,html.pdh-open body{overflow:hidden!important;}"
   ].join("\n");
 
@@ -238,6 +266,24 @@
   }
   function plural(n, one, many) { return n + " " + (n === 1 ? one : many); }
 
+  // Mesmas regras do quadro (admin/widgets/posts-board.js): trecho marcado pra
+  // conferir trava Agendado e No ar; "origem" diz que o artigo veio do Cérebro.
+  var MARK_RE = /\{\{\s*VERIFICAR[^}]*\}\}|\[\s*CONFERIR[^\]]*\]/gi;
+  function marks(p) { return ([p.title, p.excerpt, p.url ? p.mxBlocks : p.body].join("\n").match(MARK_RE)) || []; }
+  function fromBrain(p) { return !!(p.origem && p.origem.sistema === "cerebro"); }
+  function arrived(d) {
+    return ((d && d.posts && d.posts.items) || []).filter(function (p) { return fromBrain(p) && p.status === "revisao"; })
+      .sort(function (a, b) { return String(b.origem.enviado_em || "") < String(a.origem.enviado_em || "") ? -1 : 1; });
+  }
+  function when(iso) {
+    var d = new Date(iso);
+    if (isNaN(d)) return "";
+    var t = d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+    // Dias de calendário (não blocos de 24 h): enviado ontem às 18h é "ontem", mesmo de manhã.
+    var now = new Date(), days = Math.round((new Date(now.getFullYear(), now.getMonth(), now.getDate()) - new Date(d.getFullYear(), d.getMonth(), d.getDate())) / 86400000);
+    return (days <= 0 ? "hoje" : days === 1 ? "ontem" : d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })) + ", " + t;
+  }
+
   // Mensagens de commit do Decap ("Update Coleção “arquivo”") em português.
   function commitText(msg) {
     var line = String(msg || "").split("\n")[0];
@@ -273,6 +319,13 @@
       var p = posts.filter(function (x) { return x.slug === b.postSlug; })[0];
       if (!p || !isLive(p)) tasks.push({ kind: "warn", icon: "image", title: "Banner de " + k.replace(/-/g, " ") + " sem artigo no ar", sub: p ? "“" + p.title + "” ainda não está publicado" : "O artigo escolhido não existe — o botão leva pra lista do blog", btn: "Escolher", go: "banners" });
     });
+    var liveMarks = posts.filter(function (p) { return (p.status === "publicado" || p.status === "agendado") && marks(p).length; });
+    if (liveMarks.length) tasks.push({ kind: "bad", icon: "alert", title: plural(liveMarks.length, "artigo no ar ou agendado com trecho a conferir", "artigos no ar ou agendados com trecho a conferir"), sub: liveMarks.map(function (p) { return p.title; }).join(" · "), btn: "Abrir", go: "artigos", slug: liveMarks[0].slug });
+    var draftMarks = posts.filter(function (p) { return p.status !== "publicado" && p.status !== "agendado" && marks(p).length; });
+    if (draftMarks.length) {
+      var total = draftMarks.reduce(function (s, p) { return s + marks(p).length; }, 0);
+      tasks.push({ kind: "warn", icon: "alert", title: plural(total, "trecho a conferir", "trechos a conferir") + " em " + plural(draftMarks.length, "artigo", "artigos"), sub: "Agendar e publicar ficam bloqueados até você conferir · " + draftMarks.map(function (p) { return p.title; }).join(" · "), btn: "Conferir", go: "artigos", slug: draftMarks[0].slug });
+    }
     var noDate = posts.filter(function (p) { return p.status === "agendado" && !p.date; });
     if (noDate.length) tasks.push({ kind: "warn", icon: "send", title: plural(noDate.length, "artigo agendado sem data", "artigos agendados sem data"), sub: noDate.map(function (p) { return p.title; }).join(" · "), btn: "Ver quadro", go: "artigos" });
     var review = posts.filter(function (p) { return p.status === "revisao"; });
@@ -293,7 +346,7 @@
   }
 
   // --- tela --------------------------------------------------------------------
-  var root, state = { data: null, loading: false, loadedAt: 0, railOpen: false };
+  var root, state = { data: null, loading: false, loadedAt: 0, railOpen: false, car: 0 };
 
   function theme() { try { return localStorage.getItem("pd-theme") || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"); } catch (e) { return "light"; } }
 
@@ -304,7 +357,7 @@
       artigos: posts.filter(function (p) { return p.status === "escrevendo" || p.status === "revisao"; }).length,
       avaliacoes: d.reviews && d.reviews.pending ? d.reviews.pending.length : 0
     };
-    var out = '<div class="pdh-brand"><span class="pdh-mark">P</span><div><b>Estúdio</b><span>Por Dentro · admin</span></div></div>' +
+    var out = '<div class="pdh-brand"><span class="pdh-mark">P</span><div><b>Admin</b><span>Por Dentro · site</span></div></div>' +
       '<button type="button" class="pdh-nav" aria-current="page" data-go="home">' + icon("home") + "Hoje</button>";
     NAV.forEach(function (n) {
       if (n.group) { out += '<div class="pdh-group">' + esc(n.group) + "</div>"; return; }
@@ -319,6 +372,40 @@
     return out;
   }
 
+  // Artigos que o hub mandou e ainda esperam você em Revisão.
+  function renderArrived(d) {
+    var list = arrived(d);
+    if (!list.length) return "";
+    var slides = list.map(function (p, i) {
+      var n = marks(p).length, o = p.origem;
+      var meta = ["Enviado do hub" + (o.enviado_em ? " " + when(o.enviado_em) : ""), o.pauta ? "pauta " + o.pauta : "", o.dor ? "dor “" + o.dor + "”" : ""].filter(Boolean).join(" · ");
+      var done = /\[\[FAQ\]\]/.test(p.body || "") && /\[\[FEEDBACK\]\]/.test(p.body || "");
+      return '<div class="pdh-slide" role="group" aria-label="Artigo ' + (i + 1) + " de " + list.length + '"><div><h3>' + esc(p.title || "Artigo sem título") + "</h3><small>" + esc(meta) + '</small><div class="pdh-chips">' +
+        (n ? '<span class="pdh-pill bad">' + plural(n, "trecho", "trechos") + " a conferir</span>" : '<span class="pdh-pill ok">Nada a conferir</span>') +
+        '<span class="pdh-pill' + (done ? " ok" : "") + '">' + (done ? "FAQ e Feedback" : "Falta FAQ ou Feedback") + "</span>" +
+        (p.coverKeyword ? '<span class="pdh-pill">Capa: ' + esc(p.coverKeyword) + "</span>" : "") +
+        '</div></div><button type="button" class="pdh-go" data-go="artigos" data-slug="' + esc(p.slug || "") + '">Abrir o cartão</button></div>';
+    }).join("");
+    var nav = list.length > 1 ? '<span class="pdh-cnav"><span data-car-n aria-live="polite">1 de ' + list.length + '</span><button type="button" class="pdh-arw" data-car="-1" aria-label="Artigo anterior">' + icon("prev") + '</button><button type="button" class="pdh-arw" data-car="1" aria-label="Próximo artigo">' + icon("next") + "</button></span>" : "";
+    return '<section class="pdh-card pdh-arr" aria-label="Chegou do Cérebro"><div class="pdh-arr-h"><span class="pdh-new">novo</span><span>Chegou do Cérebro</span>' + nav + '</div><div class="pdh-car" tabindex="0" aria-label="Artigos que chegaram do Cérebro">' + slides + "</div></section>";
+  }
+  // Posição do carrossel: sobrevive ao redesenho da tela e atualiza o "1 de 3" e as setas.
+  var CAR_GAP = 16;
+  function wireCarousel() {
+    var c = root && root.querySelector(".pdh-car");
+    if (!c) return;
+    var total = c.children.length, n = root.querySelector("[data-car-n]"), arrows = root.querySelectorAll("[data-car]");
+    function paint() {
+      state.car = Math.max(0, Math.min(total - 1, Math.round(c.scrollLeft / (c.clientWidth + CAR_GAP))));
+      if (n) n.textContent = (state.car + 1) + " de " + total;
+      if (arrows.length) { arrows[0].disabled = state.car === 0; arrows[1].disabled = state.car === total - 1; }
+    }
+    state.car = Math.min(state.car || 0, total - 1);
+    c.style.scrollBehavior = "auto"; c.scrollLeft = state.car * (c.clientWidth + CAR_GAP); c.style.scrollBehavior = "";
+    c.addEventListener("scroll", paint);
+    paint();
+  }
+
   function renderToday() {
     var d = state.data;
     var now = new Date();
@@ -328,15 +415,16 @@
     var first = u && (u.name || u.login) ? String(u.name || u.login).split(" ")[0] : "";
     var dateLine = now.toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" });
     if (!d) {
-      return '<div class="pdh-today"><div class="pdh-col"><div class="pdh-hello"><div class="pdh-eyebrow">' + esc(dateLine) + "</div><h2>" + esc(hi) + (first ? ", " + esc(first) : "") + '.</h2><p>Olhando o que mudou…</p></div><div class="pdh-card"><div class="pdh-sk"></div><div class="pdh-sk"></div><div class="pdh-sk"></div></div></div><div class="pdh-col"><div class="pdh-card"><div class="pdh-sk"></div></div></div></div>';
+      return '<div class="pdh-wrap"><div class="pdh-hello"><div class="pdh-eyebrow">' + esc(dateLine) + "</div><h2>" + esc(hi) + (first ? ", " + esc(first) : "") + '.</h2><p>Olhando o que mudou…</p></div><div class="pdh-today"><div class="pdh-col"><div class="pdh-card"><div class="pdh-sk"></div><div class="pdh-sk"></div><div class="pdh-sk"></div></div></div><div class="pdh-col"><div class="pdh-card"><div class="pdh-sk"></div></div></div></div></div>';
     }
     var tasks = buildTasks(d);
     var urgent = tasks.filter(function (t) { return t.kind !== "info"; }).length;
+    var nArr = arrived(d).length;
     var lead = !tasks.length ? "Nada pedindo atenção. Está tudo no ar e funcionando."
       : urgent ? plural(urgent, "coisa pede", "coisas pedem") + " sua atenção" + (tasks.length > urgent ? ", e " + plural(tasks.length - urgent, "lembrete", "lembretes") + "." : ".")
       : plural(tasks.length, "lembrete", "lembretes") + " pra quando der. O resto está no ar e funcionando.";
     var taskHtml = tasks.length ? tasks.map(function (t) {
-      return '<div class="pdh-task ' + t.kind + '"><span class="ic">' + icon(t.icon) + '</span><div class="tt"><b>' + esc(t.title) + "</b><small title=\"" + esc(t.sub) + "\">" + esc(t.sub) + '</small></div><button type="button" class="pdh-btn" data-go="' + t.go + '">' + esc(t.btn) + "</button></div>";
+      return '<div class="pdh-task ' + t.kind + '"><span class="ic">' + icon(t.icon) + '</span><div class="tt"><b>' + esc(t.title) + "</b><small title=\"" + esc(t.sub) + "\">" + esc(t.sub) + '</small></div><button type="button" class="pdh-btn" data-go="' + t.go + '"' + (t.slug ? ' data-slug="' + esc(t.slug) + '"' : "") + ">" + esc(t.btn) + "</button></div>";
     }).join("") : '<div class="pdh-task ok"><span class="ic">' + icon("check") + '</span><div class="tt"><b>Tudo em ordem</b><small>Sem pendência nos artigos, produtos e banners.</small></div></div>';
 
     var posts = (d.posts && d.posts.items) || [];
@@ -356,9 +444,11 @@
       : d.commits.length ? '<div class="pdh-feed">' + d.commits.map(function (c) { return "<div><time>" + esc(rel(c.date)) + "</time><span>" + commitText(c.message) + "</span></div>"; }).join("") + "</div>"
       : '<div class="pdh-empty">Nenhuma mudança ainda.</div>';
 
-    return '<div class="pdh-today">' +
+    return '<div class="pdh-wrap">' +
+      '<div class="pdh-hello"><div class="pdh-eyebrow">' + esc(dateLine) + "</div><h2>" + esc(hi) + (first ? ", " + esc(first) : "") + ".</h2><p>" + esc((nArr ? plural(nArr, "artigo chegou", "artigos chegaram") + " do Cérebro. " : "") + lead) + "</p></div>" +
+      renderArrived(d) +
+      '<div class="pdh-today">' +
       '<div class="pdh-col">' +
-        '<div class="pdh-hello"><div class="pdh-eyebrow">' + esc(dateLine) + "</div><h2>" + esc(hi) + (first ? ", " + esc(first) : "") + ".</h2><p>" + esc(lead) + "</p></div>" +
         '<div class="pdh-card">' + taskHtml + "</div>" +
         '<div class="pdh-quick">' +
           '<button type="button" data-go="artigos" data-action="new">' + icon("plus") + "Novo artigo</button>" +
@@ -371,7 +461,7 @@
         '<div class="pdh-card"><div class="pdh-card-h"><span>Últimas mudanças</span><a href="https://github.com/' + REPO + '/commits/main" target="_blank" rel="noopener">ver tudo ↗</a></div>' + feed + "</div>" +
         '<p class="pdh-note">Pendências calculadas dos arquivos publicados' + (token() ? " (versão mais nova do GitHub)" : "") + ". Atualiza sempre que você volta pra cá.</p>" +
       "</div>" +
-    "</div>";
+    "</div></div>";
   }
 
   function render() {
@@ -399,6 +489,7 @@
         '<button type="button" data-go="bio">' + icon("link") + "Bio</button>" +
         '<button type="button" data-open-rail="1">' + icon("dots") + "Mais</button>" +
       "</nav>";
+    wireCarousel();
   }
 
   function load() {
@@ -479,6 +570,13 @@
         var re = id === "artigos" ? /Novo artigo/ : /^\s*\+\s*Novo\s*$/;
         waitFor(function () { return buttonByText(re); }, function (b) { b.click(); }, 4000);
       }
+      if (opts.slug) {
+        waitFor(function () {
+          var cards = document.querySelectorAll(".pdb-card");
+          for (var i = 0; i < cards.length; i++) if (cards[i].getAttribute("data-slug") === opts.slug) return cards[i];
+          return null;
+        }, function (c) { c.click(); }, 6000);
+      }
       if (opts.article) {
         waitFor(function () {
           var cards = document.querySelectorAll(".pdb-card");
@@ -538,7 +636,26 @@
   }
   function classic() { try { return sessionStorage.getItem("pd-classic") === "1"; } catch (e) { return false; } }
 
+  // /admin/?abrir=<slug>: abre o quadro de artigos no cartão desse artigo, uma vez,
+  // assim que o login estiver feito. O parâmetro sai do endereço pra não reabrir.
+  var pendingOpen = (function () {
+    try {
+      var s = new URLSearchParams(window.location.search).get("abrir") || "";
+      return /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(s) ? s : "";
+    } catch (e) { return ""; }
+  })();
+  function openPending() {
+    // O link já cai na tela da coleção, que não tem o cabeçalho que loggedIn() procura:
+    // ali, o sinal de que o painel carregou é o próprio botão do quadro.
+    if (!pendingOpen || !(loggedIn() || buttonByText(/^\s*Abrir quadro de artigos\s*$/))) return;
+    var slug = pendingOpen;
+    pendingOpen = "";
+    try { window.history.replaceState(null, "", window.location.pathname + window.location.hash); } catch (e) {}
+    go("artigos", { slug: slug });
+  }
+
   function update() {
+    openPending();
     var show = isHomeRoute() && loggedIn() && !classic() && !document.documentElement.classList.contains("pds-open");
     if (!root) {
       if (!show) return;
@@ -564,9 +681,14 @@
 
   function bind() {
     root.addEventListener("click", function (e) {
-      var el = e.target.closest("[data-go],[data-classic],[data-theme-toggle],[data-palette],[data-open-rail],[data-close-rail]");
+      var el = e.target.closest("[data-go],[data-classic],[data-theme-toggle],[data-palette],[data-open-rail],[data-close-rail],[data-car]");
       if (!el) return;
-      if (el.hasAttribute("data-go")) { e.preventDefault(); go(el.getAttribute("data-go"), { action: el.getAttribute("data-action"), article: el.getAttribute("data-article") }); }
+      if (el.hasAttribute("data-car")) {
+        var car = root.querySelector(".pdh-car");
+        if (car) car.scrollTo({ left: (state.car + Number(el.getAttribute("data-car"))) * (car.clientWidth + CAR_GAP) });
+        return;
+      }
+      if (el.hasAttribute("data-go")) { e.preventDefault(); go(el.getAttribute("data-go"), { action: el.getAttribute("data-action"), article: el.getAttribute("data-article"), slug: el.getAttribute("data-slug") }); }
       else if (el.hasAttribute("data-classic")) { try { sessionStorage.setItem("pd-classic", "1"); } catch (err) {} update(); }
       else if (el.hasAttribute("data-theme-toggle")) { try { localStorage.setItem("pd-theme", theme() === "dark" ? "light" : "dark"); } catch (err) {} render(); }
       else if (el.hasAttribute("data-palette")) openPalette();
