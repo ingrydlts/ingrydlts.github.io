@@ -9,8 +9,9 @@
 // (editor visual) seguem lá. "Editar o texto" no quadro abre direto o
 // editor visual do artigo escolhido.
 //
-// Grava os mesmos campos de sempre em content/posts.json. Nada vai pro site
-// até você clicar em "Publicar" no /admin.
+// Grava os mesmos campos de sempre em content/posts.json. Salva sozinho
+// (PDStudio.Save, em studio-kit.js): ao clicar em "Concluir" e depois de uma
+// pausa nas mudanças, sem depender do "Publicar" do Decap.
 //
 // Artigo que chega do Cérebro (hub, botão "Enviar ao admin") vem com o campo
 // "origem" e cai direto em Revisão: o cartão mostra o selo "do Cérebro" e a
@@ -301,9 +302,15 @@
         self.change(function (items) { if (items[idx]) items[idx].image = path; }, "Capa trocada", true);
       });
     },
+    componentDidMount: function () {
+      var self = this;
+      this.unsubSave = K.Save.subscribe(function () { if (self.state.open) self.forceUpdate(); });
+    },
     componentWillUnmount: function () {
       K.lockPage(false);
       clearTimeout(this.toastTimer);
+      if (this.unsubSave) this.unsubSave();
+      if (window.PDArticleReturn && window.PDArticleReturn.owner === this) window.PDArticleReturn = null;
     },
 
     items: function () { return K.toJS(this.props.value, []); },
@@ -319,9 +326,11 @@
       if (label) this.showToast(label, undoable);
     },
     commit: function (items) {
+      var self = this;
       this.props.onChange(toImmutable(this.props.value, items));
       this.pushPreview(items);
       this.setState({ version: this.state.version + 1 });
+      K.Save.touch(function () { self.props.onChange(self.props.value); });
     },
     undo: function () {
       var prev = (this.history || []).pop();
@@ -347,12 +356,27 @@
       K.lockPage(true);
       this.setState({ open: true, sel: -1, tab: "quadro", view: "blog", confirmDelete: false, showPrev: window.innerWidth >= 1280 });
     },
+    // "Concluir": grava o que mudou e fecha o quadro.
+    done: function () {
+      K.Save.now();
+      this.close();
+    },
     close: function () {
       K.lockPage(false);
       window.PDPreview.clear(DATA_PATH);
       // A lista do Decap embaixo guarda a ordem/abertura dos itens por conta
       // própria — recria ela pra acompanhar o que mudou no quadro.
+      // Os campos antigos somem junto: sem limpar, um aviso de "campo obrigatório"
+      // deles ficaria preso no Decap e nenhuma gravação passaria até recarregar a página.
+      // (O Decap confere tudo de novo a cada gravação: erro de verdade reaparece.)
+      var errs = this.props.fieldsErrors, clear = this.props.clearFieldErrors;
+      if (errs && errs.keySeq && typeof clear === "function") errs.keySeq().toArray().forEach(function (id) { clear(id); });
       this.setState({ open: false, confirmDelete: false, listKey: this.state.listKey + 1 });
+    },
+    // Volta do editor do artigo: o quadro reabre no cartão de onde ela saiu.
+    reopen: function (idx) {
+      this.open();
+      if (this.items()[idx]) this.select(idx);
     },
 
     select: function (idx) {
@@ -495,6 +519,10 @@
     // formulário de baixo (a lista do Decap).
     editBody: function (idx) {
       var self = this;
+      // O "Concluir" do editor (article-composer.js) chama isto pra voltar pro quadro.
+      var back = function () { self.reopen(idx); };
+      back.owner = this;
+      window.PDArticleReturn = back;
       this.close();
       setTimeout(function () {
         var list = self.listInst;
@@ -785,7 +813,8 @@
           h("button", { type: "button", className: "pds-btn", onClick: this.openRobot, title: "Colar o pacote que o robô escreveu" }, "🧠", h("span", { className: "pdb-new-label" }, " Colar do robô")),
           h("button", { type: "button", className: "pds-btn ghost sm pdb-toggle-prev", "aria-pressed": String(this.state.showPrev), onClick: function () { self.setState({ showPrev: !self.state.showPrev }); } }, this.state.showPrev ? "Esconder prévia" : "Mostrar prévia"),
           h("button", { type: "button", className: "pds-btn ghost sm", onClick: this.undo, disabled: !(this.history && this.history.length), title: "Desfazer a última mudança" }, "↶", h("span", { className: "pdb-new-label" }, " Desfazer")),
-          h("button", { type: "button", className: "pds-btn primary", onClick: this.close }, "Concluir")),
+          K.Save.badge(),
+          h("button", { type: "button", className: "pds-btn primary", onClick: this.done, title: "Salva e fecha o quadro" }, "Concluir")),
         h("div", { className: "pdb-mtabs" }, h("div", { className: "pds-tabs" }, mtab("quadro", "Quadro"), mtab("previa", "Ver prévia"))),
         h("div", { className: "pdb-app" + (this.state.showPrev || window.innerWidth < 1100 ? "" : " no-prev"), "data-tab": this.state.tab },
           this.renderBoard(items), this.renderPreview(items)),

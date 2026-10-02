@@ -10,6 +10,7 @@
 //   PDStudio.Preview              prévia com a página real, por aparelho
 //   PDStudio.Media                escolher imagem na biblioteca do Decap
 //   PDStudio.assetUrl             mostrar imagem ainda não publicada
+//   PDStudio.Save                 gravar no site sem o botão "Publicar" do Decap
 //
 // Como a prévia funciona: a página do site abre num <iframe name=
 // "pd-preview">, e assets/js/render.js (fetchJSON) lê os dados de
@@ -493,7 +494,107 @@
         h("code", null, v || "sem cor")));
   }
 
+  // --- salvar sozinho --------------------------------------------------------
+  // O Decap só grava quando alguém clica em "Publicar > Publicar agora", lá no
+  // formulário atrás do estúdio. Quem trabalha no quadro ou no editor do artigo
+  // não vê esse botão e saía sem gravar. Aqui o estúdio aciona esse mesmo botão:
+  // ao clicar em "Concluir" e sozinho, depois de uma pausa nas mudanças.
+  //
+  // Cada gravação é um commit e republica o site. O GitHub Pages aguenta por
+  // volta de 10 publicações por hora, então a gravação sozinha espera pelo menos
+  // GAP entre uma e outra. "Concluir" e "Salvar agora" gravam na hora.
+  // Entre uma gravação e outra, o Decap guarda um rascunho neste navegador e
+  // avisa antes de fechar a aba.
+  var Save = (function () {
+    var IDLE = 20 * 1000, GAP = 7 * 60 * 1000;
+    var st = { state: "idle", at: null }, subs = [], timer = null, running = null, lastSave = 0, during = false, reemit = null;
+    function set(state) { st = { state: state, at: state === "saved" ? new Date() : st.at }; subs.slice().forEach(function (fn) { try { fn(st); } catch (e) {} }); }
+    // Os botões do Decap, fora das nossas telas. Texto em português: locale "pt" no config.yml.
+    function decap(sel, re) {
+      return Array.prototype.filter.call(document.querySelectorAll(sel), function (b) {
+        return re.test((b.textContent || "").trim()) && !b.closest(".pds-overlay,.pdb,.pdac-overlay,.pdh");
+      })[0] || null;
+    }
+    function pendingBtn() { return decap("[role=button]", /^Publicar$/); }
+    function savedBtn() { return decap("button", /^Publicado$/); }
+    function wait(test, ms, step) {
+      return new Promise(function (resolve) {
+        var t0 = Date.now();
+        (function tick() {
+          var v = test();
+          if (v || Date.now() - t0 > ms) return resolve(v || null);
+          setTimeout(tick, step || 120);
+        })();
+      });
+    }
+    function run() {
+      var wasDirty = st.state === "dirty" || st.state === "error";
+      during = false;
+      set("saving");
+      // A mudança acabou de ser feita: o botão do Decap pode levar um instante pra virar "Publicar".
+      return wait(function () { return pendingBtn() || (!wasDirty && savedBtn()); }, 2500).then(function (btn) {
+        if (!btn || /^Publicado$/.test(btn.textContent.trim())) return !!savedBtn(); // nada a gravar
+        btn.click();
+        return wait(function () { return decap("[role=menuitem]", /^Publicar agora$/); }, 2500).then(function (item) {
+          if (!item) return false;
+          item.click();
+          var seen = false, t0 = Date.now();
+          return wait(function () {
+            if (savedBtn()) return "ok";
+            if (decap("[role=button],button", /^Publicando/)) { seen = true; return null; }
+            // Voltou pra "Publicar" sem gravar: campo obrigatório vazio ou falha do GitHub.
+            if (pendingBtn() && (seen || Date.now() - t0 > 4000)) return "erro";
+            return null;
+          }, 60000, 200).then(function (r) { return r === "ok"; });
+        });
+      }).then(function (ok) {
+        running = null;
+        if (!ok) { set("error"); return false; }
+        lastSave = Date.now();
+        set("saved");
+        // Mudou algo enquanto gravava: o Decap acha que está tudo gravado. Reenvia o valor e agenda de novo.
+        if (during) { if (reemit) try { reemit(); } catch (e) {} touch(reemit); }
+        return true;
+      });
+    }
+    function now() {
+      clearTimeout(timer);
+      if (!running) running = run();
+      return running;
+    }
+    // Chamado a cada mudança. again = função que reenvia o valor atual pro Decap (ver "during").
+    function touch(again) {
+      if (again) reemit = again;
+      if (running) { during = true; return; }
+      set("dirty");
+      clearTimeout(timer);
+      timer = setTimeout(now, Math.max(IDLE, lastSave + GAP - Date.now()));
+    }
+    function subscribe(fn) { subs.push(fn); return function () { var i = subs.indexOf(fn); if (i !== -1) subs.splice(i, 1); }; }
+    function hhmm(d) { return ("0" + d.getHours()).slice(-2) + ":" + ("0" + d.getMinutes()).slice(-2); }
+    // O aviso que vai no topo do estúdio: diz se está gravado e deixa gravar na hora.
+    function badge() {
+      var s = st.state;
+      if (s === "idle") return null;
+      // No celular só cabe o essencial: "Salvo", "Salvando…" ou o botão.
+      var short = s === "saving" ? "Salvando…" : s === "saved" ? "Salvo" : "";
+      var more = s === "saved" ? " às " + hhmm(st.at) : s === "error" ? "Não salvou" : s === "dirty" ? "Mudanças por salvar" : "";
+      return h("span", { className: "pds-save " + s, role: "status" },
+        h("span", null, short, more ? h("span", { className: "pds-save-more" }, more) : null),
+        s === "dirty" || s === "error" ? h("button", { type: "button", onClick: now, title: s === "error" ? "Confira se algum campo obrigatório ficou vazio e tente de novo" : "Grava no site agora" }, s === "error" ? "Tentar de novo" : "Salvar agora") : null);
+    }
+    return { touch: touch, now: now, subscribe: subscribe, badge: badge, state: function () { return st.state; } };
+  })();
+  css("pds-save-style", [
+    ".pds-save{display:inline-flex;align-items:center;gap:6px;font:600 12px/1.3 " + FONT + ";color:#6E6862;white-space:nowrap;}",
+    ".pds-save.saved{color:#3F6E2B;}",
+    ".pds-save.error{color:#A63A2E;}",
+    ".pds-save button{font:inherit;color:inherit;background:none;border:0;padding:0;text-decoration:underline;cursor:pointer;}",
+    "@media (max-width:720px){.pds-save-more{display:none;}}"
+  ].join("\n"));
+
   window.PDStudio = {
+    Save: Save,
     colorField: colorField,
     lockPage: lockPage,
     part: part,
