@@ -206,6 +206,8 @@
     { re: /\[\[FEEDBACK\]\]/, label: "Feedback", need: true }
   ];
 
+  // Limite da palavra-chave da capa (a letra diminui pra caber: ver kwSize em assets/js/cover.js).
+  var KW_MAX = 15;
   var ROBOT_KEYS = {
     "titulo": "title", "título": "title", "slug": "slug", "categoria": "category", "resumo": "excerpt",
     "tempo": "readMinutes", "tempo-de-leitura": "readMinutes", "capa-palavra": "coverKeyword", "capa-apoio": "coverTags",
@@ -247,7 +249,7 @@
     ok(f.excerpt && f.excerpt.length <= 180, "Resumo com " + (f.excerpt || "").length + " caracteres", f.excerpt ? "Resumo longo (" + f.excerpt.length + "): no card fica cortado" : "Sem resumo", !!f.excerpt);
     ok(!!f.category, "Categoria: " + (f.category || ""), "Sem categoria");
     var kw = String(f.coverKeyword || "");
-    ok(kw && kw.length <= 10, "Palavra da capa: " + kw, kw ? "Palavra da capa com " + kw.length + " caracteres (máx. 10)" : "Sem palavra da capa", !!kw);
+    ok(kw && kw.length <= KW_MAX, "Palavra da capa: " + kw, kw ? "Palavra da capa com " + kw.length + " caracteres (máx. " + KW_MAX + ")" : "Sem palavra da capa", !!kw);
     if (kw && window.PDCover) {
       var pil = window.PDCover.pillarOf(f.category);
       var dup = items.filter(function (o, i) { return i !== skipIdx && String(o.coverKeyword || "").toLowerCase() === kw.toLowerCase() && window.PDCover.pillarOf(o.category) === pil; })[0];
@@ -694,11 +696,11 @@
         h("span", { className: "pds-label" }, "Capa por palavra-chave" + (window.PDCover && p.category ? " · pilar " + window.PDCover.PILLARS[pil].name : "")),
         kw && window.PDCover ? h("div", { className: "pdb-cover-prev", dangerouslySetInnerHTML: { __html: window.PDCover.html(p) } }) : null,
         h("div", { className: "pds-grid2" },
-          this.field("pdb-kw", "Palavra (até 10)", h("input", { id: "pdb-kw", className: "pds-input" + (kw.length > 10 || dup ? " pdb-input-err" : ""), value: kw, onChange: function (e) { self.set("coverKeyword", e.target.value); } }),
-            dup ? "Já é a capa de “" + (dup.title || "outro artigo") + "” no mesmo pilar." : kw.length > 10 ? kw.length + " caracteres: use sigla ou termo mais curto." : null, dup || kw.length > 10 ? "err" : ""),
+          this.field("pdb-kw", "Palavra (até " + KW_MAX + ")", h("input", { id: "pdb-kw", className: "pds-input" + (kw.length > KW_MAX || dup ? " pdb-input-err" : ""), value: kw, onChange: function (e) { self.set("coverKeyword", e.target.value); } }),
+            dup ? "Já é a capa de “" + (dup.title || "outro artigo") + "” no mesmo pilar." : kw.length > KW_MAX ? kw.length + " caracteres: use sigla ou termo mais curto." : null, dup || kw.length > KW_MAX ? "err" : ""),
           this.field("pdb-fmt", "Formato", h("select", { id: "pdb-fmt", className: "pds-input", value: p.coverFormat || "Guia", onChange: function (e) { self.set("coverFormat", e.target.value); } },
             FORMATS.map(function (f) { return h("option", { key: f, value: f }, f); })))),
-        this.field("pdb-tags", "3 palavras de apoio (separe com vírgula)", h("input", { id: "pdb-tags", className: "pds-input", value: tags.join(", "),
+        this.field("pdb-tags", "3 palavras de apoio (separe com vírgula) · a capa quebra a linha a cada 25 caracteres", h("input", { id: "pdb-tags", className: "pds-input", value: tags.join(", "),
           onChange: function (e) { self.set("coverTags", e.target.value.split(",").map(function (x) { return x.replace(/^\s+/, ""); }).slice(0, 3)); } })));
     },
     renderMx: function (p) {
