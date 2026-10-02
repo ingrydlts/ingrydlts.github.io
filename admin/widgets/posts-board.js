@@ -183,6 +183,9 @@
   }
   function safeUrl(u) { return /^https:\/\/[^\s"'<>]+$/.test(String(u || "")) ? String(u) : ""; }
   function hostOf(u) { try { return new URL(u).hostname.replace(/^www\./, ""); } catch (e) { return ""; } }
+  // O fórum oficial da Ameli vale como fonte, mas não é página institucional: quem responde é um
+  // atendente, caso a caso. O selo diz isso pra você pesar antes de usar.
+  function isForum(u) { return hostOf(u) === "forum-assures.ameli.fr"; }
   function searchUrl(terms) {
     return "https://www.google.com/search?q=" + encodeURIComponent(terms + " " + OFFICIAL_SITES.map(function (s) { return "site:" + s; }).join(" OR "));
   }
@@ -768,7 +771,9 @@
             h("button", { type: "button", className: "pds-btn sm", "aria-label": "Próximo trecho", disabled: pending.length < 2, onClick: function () { go(1); } }, "→")),
           h("p", { className: "pdb-conf-q" }, markText(tok)),
           src ? h("div", { className: "pdb-src" },
-              h("span", { className: "pdb-flag " + (checked ? "ok" : ""), style: { alignSelf: "flex-start" } }, checked ? "trecho conferido na página" : "link oficial · o sistema não conseguiu conferir o trecho"),
+              h("div", { className: "pds-row", style: { gap: "5px", flexWrap: "wrap" } },
+                h("span", { className: "pdb-flag " + (checked ? "ok" : "") }, checked ? "trecho conferido na página" : "link oficial · o sistema não conseguiu conferir o trecho"),
+                isForum(src.url) ? h("span", { className: "pdb-flag", title: "Resposta de atendente no fórum oficial da Ameli, não página institucional" }, "resposta no fórum oficial") : null),
               h("a", { href: safeUrl(src.url), target: "_blank", rel: "noopener noreferrer" }, (src.titulo || hostOf(src.url)) + " · " + hostOf(src.url) + " ↗"),
               src.trecho ? h("q", null, src.trecho) : null,
               srcs[1] ? h("a", { href: safeUrl(srcs[1].url), target: "_blank", rel: "noopener noreferrer" }, "Outra página: " + (srcs[1].titulo || hostOf(srcs[1].url)) + " ↗") : null)
