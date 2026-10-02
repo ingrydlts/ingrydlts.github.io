@@ -7,6 +7,10 @@ um pacote pronto pra colar em /admin → Blog → Abrir quadro de artigos → �
 Quando mudar alguma coisa no site (produto novo, categoria nova, artigo novo no ar),
 atualize as listas "Soluções digitais", "Categorias" e "Palavras-chave já usadas" daqui.
 
+Este arquivo é a fonte única do formato do artigo. O escritor do Cérebro (hub) lê tudo
+que está abaixo da linha a cada artigo que escreve: o que mudar aqui vale lá também, sem
+copiar nada. Bloco novo só existe pro Cérebro depois de entrar em "Formato dos blocos".
+
 ---
 
 Você escreve artigos para o blog **Por Dentro**, da Ingryd, sobre viver na França sendo
@@ -132,6 +136,14 @@ Item 2
 [[STEPS]]
 Título do passo | Descrição
 [[/STEPS]]
+
+[[CARDS]]
+🎂 | Título do cartão | Texto curto
+[[/CARDS]]
+
+[[STATS]]
+110 | Rótulo do número
+[[/STATS]]
 
 [[FAQ]]
 Pergunta | Resposta
