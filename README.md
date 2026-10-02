@@ -86,6 +86,10 @@ em [MICROENGAJAMENTO.md](MICROENGAJAMENTO.md).
   (tirar, subir, descer, acrescentar a ferramenta-assinatura). "Desfazer" volta a última mudança. No
   celular as colunas viram três abas. As regras de trecho a conferir ficam em
   `admin/widgets/conferencia.js`, usadas também pelo quadro.
+- Versão dos arquivos do painel: `admin/index.html` carrega cada `.js` com `?v=<versão>`. O GitHub
+  Pages manda o navegador guardar os `.js` por 4 horas; sem trocar a versão, a tela antiga continua
+  aparecendo depois de uma mudança. **Mudou qualquer arquivo de `/admin/` ou o `cover.js`: troque
+  `VERSAO` em `admin/index.html`.**
 - Trecho a conferir: enquanto o texto de um artigo tiver `{{VERIFICAR: …}}` ou `[CONFERIR: …]`, o
   quadro não deixa mover pra **Agendado** nem pra **No ar**. O arquivo
   `admin/prompts/robo-escritor-de-artigos.md` é a fonte única do formato: o hub lê ele a cada artigo.
