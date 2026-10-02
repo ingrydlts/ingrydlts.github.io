@@ -76,6 +76,10 @@ em [MICROENGAJAMENTO.md](MICROENGAJAMENTO.md).
   `content/posts.json`, em **Revisão**, com o campo `origem` (pauta e dor). A home do /admin mostra
   esses artigos no bloco "Chegou do Cérebro", o cartão ganha o selo "do Cérebro", e o link
   `/admin/?abrir=<slug>#/collections/posts/entries/posts` abre o quadro já nesse cartão.
+- Fontes de cada trecho: o hub pesquisa cada trecho a conferir em sites oficiais e manda o resultado
+  no campo `conferencia` do artigo. A gaveta do cartão mostra um trecho por vez, com o link da página,
+  o trecho dela e uma frase sugerida; "Usar este texto" troca a marca e acrescenta a página no bloco
+  `[[RESOURCES]]`. O campo some sozinho quando o artigo é agendado ou publicado.
 - Trecho a conferir: enquanto o texto de um artigo tiver `{{VERIFICAR: …}}` ou `[CONFERIR: …]`, o
   quadro não deixa mover pra **Agendado** nem pra **No ar**. O arquivo
   `admin/prompts/robo-escritor-de-artigos.md` é a fonte única do formato: o hub lê ele a cada artigo.

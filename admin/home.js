@@ -382,6 +382,7 @@
       var done = /\[\[FAQ\]\]/.test(p.body || "") && /\[\[FEEDBACK\]\]/.test(p.body || "");
       return '<div class="pdh-slide" role="group" aria-label="Artigo ' + (i + 1) + " de " + list.length + '"><div><h3>' + esc(p.title || "Artigo sem título") + "</h3><small>" + esc(meta) + '</small><div class="pdh-chips">' +
         (n ? '<span class="pdh-pill bad">' + plural(n, "trecho", "trechos") + " a conferir</span>" : '<span class="pdh-pill ok">Nada a conferir</span>') +
+        (n && Array.isArray(p.conferencia) && p.conferencia.length ? '<span class="pdh-pill ok">' + p.conferencia.filter(function (c) { return c && c.status !== "sem_fonte"; }).length + " com fonte pronta</span>" : "") +
         '<span class="pdh-pill' + (done ? " ok" : "") + '">' + (done ? "FAQ e Feedback" : "Falta FAQ ou Feedback") + "</span>" +
         (p.coverKeyword ? '<span class="pdh-pill">Capa: ' + esc(p.coverKeyword) + "</span>" : "") +
         '</div></div><button type="button" class="pdh-go" data-go="artigos" data-slug="' + esc(p.slug || "") + '">Abrir o cartão</button></div>';
