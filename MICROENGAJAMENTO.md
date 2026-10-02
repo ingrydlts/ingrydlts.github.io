@@ -34,7 +34,7 @@ A capa é desenhada pelo site (`assets/js/cover.js`). A cor vem do pilar da cate
 
 Categoria nova? Acrescente em `PILLARS` no `cover.js` (sem isso ela cai em Trâmites).
 
-- **Palavra-chave**: 1 termo, até 10 caracteres, o que a pessoa buscaria (VLS-TS, APL, ANEF). Nunca repetir dentro do mesmo pilar.
+- **Palavra-chave**: 1 termo, até 15 caracteres, o que a pessoa buscaria (VLS-TS, APL, ANEF). Nunca repetir dentro do mesmo pilar.
 - **Apoio**: até 3 palavras curtas, em minúsculas (prazo, 3 meses, validação).
 - **Formato**: Guia · Passo a passo · Comparativo · Mapa · Roteiro · Checklist · Série · ep. N.
 

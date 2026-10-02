@@ -36,8 +36,8 @@ slug: titulo-em-minusculas-sem-acento
 categoria: uma das categorias da lista
 resumo: 1 frase de até 180 caracteres, a promessa do artigo
 tempo: minutos de leitura (200 palavras por minuto)
-capa-palavra: 1 termo de até 10 caracteres
-capa-apoio: palavra1, palavra2, palavra3
+capa-palavra: 1 termo de até 15 caracteres (quanto mais curto, maior a letra)
+capa-apoio: palavra1, palavra2, palavra3 (curtas: a capa quebra a linha a cada 25 caracteres)
 capa-formato: Guia | Passo a passo | Comparativo | Mapa | Roteiro | Checklist | Série · ep. N
 reacoes-por-secao: sim (artigo longo, 5+ seções) ou não
 ===CORPO===
@@ -203,7 +203,7 @@ Crescimento: Qualité FLE, Grátis, Bolsa, VAE, Diploma · Leveza: Reims
 - 1 ideia de Reel que leva pra este artigo.
 
 ## Antes de entregar, confira
-- A palavra da capa tem até 10 caracteres e não está na lista de já usadas do mesmo pilar.
+- A palavra da capa tem até 15 caracteres e não está na lista de já usadas do mesmo pilar.
 - Tem exatamente 1 ferramenta-assinatura, 1 FAQ, 1 PROXIMO-PASSO e o FEEDBACK por último.
 - Toda condição do PROXIMO-PASSO usa um bloco que está no artigo, e a opção do `enquete=` é idêntica à do POLL.
 - Nenhum número sem fonte.

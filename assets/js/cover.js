@@ -3,8 +3,10 @@
 // A capa não é mais uma imagem exportada: é desenhada pelo navegador a
 // partir de 3 campos do artigo em content/posts.json:
 //
-//   coverKeyword  → a palavra enorme (1 termo, até 10 caracteres: "VLS-TS")
-//   coverTags     → até 3 palavras de apoio (["prazo", "3 meses", "validação"])
+//   coverKeyword  → a palavra enorme (1 termo, até 15 caracteres: "VLS-TS",
+//                   "Carte Vitale"); a letra diminui pra caber na largura
+//   coverTags     → até 3 palavras de apoio (["prazo", "3 meses", "validação"]);
+//                   a linha quebra a cada 25 caracteres, mais ou menos
 //   coverFormat   → Guia · Passo a passo · Comparativo · Mapa · Roteiro ·
 //                   Checklist · Série · ep. N
 //
@@ -57,8 +59,9 @@
     ".pdc-mark{display:flex;gap:.8cqw;align-items:center;}",
     ".pdc-mark i{width:1.6cqw;height:1.6cqw;border-radius:50%;background:var(--pdc-dim);}",
     ".pdc-kw{font-family:'Fraunces',Georgia,serif;font-weight:600;line-height:.9;letter-spacing:-.035em;color:var(--pdc-ink);white-space:nowrap;}",
-    ".pdc-tags{display:flex;gap:1.4cqw;align-items:center;font:500 2.1cqw/1 'Inter',sans-serif;color:var(--pdc-dim);margin-top:2.6cqw;white-space:nowrap;}",
-    ".pdc-tags span+span::before{content:'';display:inline-block;width:.7cqw;height:.7cqw;border-radius:50%;background:var(--pdc-dim);opacity:.6;margin-right:1.4cqw;vertical-align:middle;}",
+    // apoio: texto corrido que quebra a cada ~25 caracteres (25ch); o ponto separador fica no fim da linha, nunca no começo
+    ".pdc-tags{font:500 2.1cqw/1.35 'Inter',sans-serif;color:var(--pdc-dim);margin-top:2.6cqw;max-width:25ch;overflow-wrap:break-word;}",
+    ".pdc-tags span:not(:last-child)::after{content:'';display:inline-block;width:.7cqw;height:.7cqw;border-radius:50%;background:var(--pdc-dim);opacity:.6;margin:0 1.2cqw;vertical-align:middle;}",
     ".pdc-foot{display:flex;justify-content:space-between;font:700 1.35cqw/1 'Inter',sans-serif;letter-spacing:.14em;text-transform:uppercase;color:var(--pdc-dim);border-top:1px solid var(--pdc-rule);padding-top:1.8cqw;}",
     // caixa com altura própria (destaque do blog no desktop): a capa enche a caixa
     ".img-slot.pdc-slot{aspect-ratio:16/9;background:none;border:none;}",
