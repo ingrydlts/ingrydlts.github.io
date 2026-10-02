@@ -16,6 +16,16 @@
 // (/artigos/post/) além do que já foi feito pra reconhecer as linhas
 // "[[VITRINE-BANNER]]" e "[[PROPAGANDA]]".
 //
+// Mesa de revisão (2026-10): a tela aberta tem três colunas. À esquerda, a
+// ESTRUTURA do artigo (títulos e módulos, com a contagem de trechos a
+// conferir). No centro, o TEXTO como a leitora vê; a barra de cada bloco só
+// aparece no bloco em que você está. À direita, o PAINEL: "Conferir" mostra
+// um trecho a conferir por vez, com a fonte que o hub pesquisou (regras em
+// admin/widgets/conferencia.js), e "Módulos" lista os blocos de
+// microengajamento pra tirar, subir, descer ou acrescentar a
+// ferramenta-assinatura. No celular as três colunas viram três abas.
+// "Desfazer" volta a última mudança.
+//
 // Decap CMS expõe "createClass" e "h" (alias de React.createElement)
 // globalmente — por isso este arquivo não usa JSX nem precisa de build.
 (function () {
@@ -131,6 +141,22 @@
     }
     return sharedCatalogsPromise;
   }
+
+  // --- o que cada bloco é, pra estrutura e pro painel de módulos ---------------
+  var MX_NAMES = { RESUMO: 1, CONFIANCA: 1, MITO: 1, POLL: 1, CHECKLIST: 1, "PROXIMO-PASSO": 1, TRILHA: 1, FEEDBACK: 1 };
+  var SIG_NAMES = { PRAZO: 1, QUIZ: 1, SELETOR: 1, "LINHA-DO-TEMPO": 1, ROTEIRO: 1 };
+  // Ferramentas próprias já existentes também contam como ferramenta-assinatura (mesma lista do quadro de artigos).
+  var SIG_TOKENS = ["[[MAPA-FLE]]", "[[VAE-SIMULADOR]]", "[[DIPLOMA-DOSSIE]]", "[[AU-PAIR-FLE-SCROLL]]", "[[EXAME-TEMPLATE-GRATIS]]"];
+  function kindOf(b) {
+    if (b.type === "richblock") return SIG_NAMES[b.name] ? "sig" : MX_NAMES[b.name] ? "mx" : "rich";
+    if (b.type === "token") return SIG_TOKENS.indexOf(b.raw) !== -1 ? "sig" : "token";
+    if (b.type === "list") return "list";
+    var t = b.raw.trim();
+    return /^#{1,2}\s/.test(t) ? "h2" : /^###\s/.test(t) ? "h3" : "p";
+  }
+  var KIND_LABEL = { sig: "ferramenta-assinatura", mx: "microengajamento", rich: "bloco do artigo", token: "bloco do site" };
+  function conf() { return window.PDConferencia; }
+  function marksOf(b) { return conf() ? conf().marksIn(blockToRaw(b)) : []; }
 
   var uidCounter = 0;
   function uid() {
@@ -343,14 +369,13 @@
           '<a class="btn btn-pill" style="background:var(--merlot,#501318); margin-top:10px;">' + escapeHtml(affText) + ' →</a></div></div></div>'
         );
       }
-      var lineCount = b.inner.split("\n").filter(function (l) { return l.trim(); }).length;
+      var richLines = b.inner.split("\n").filter(function (l) { return l.trim(); });
       return (
-        '<div style="border:1px dashed var(--borda); border-radius:6px; padding:12px 14px; background:#FAF8F4; margin:12px 0;">' +
-        '<strong style="font-family:var(--font-body); font-size:12px; text-transform:uppercase; letter-spacing:.04em; color:var(--texto-secundario);">Bloco ' +
-        escapeHtml(b.name) +
-        '</strong><p class="muted" style="margin:6px 0 0; font-size:13px;">' +
-        lineCount +
-        " linha(s) — toque no bloco pra editar o conteúdo.</p></div>"
+        '<div class="pdac-rich"><strong>' + escapeHtml(plainName(b)) + "</strong>" +
+        richLines.slice(0, 6).map(function (l) { return "<p>" + inlineLite(l) + "</p>"; }).join("") +
+        (richLines.length > 6 ? '<p class="more">+ ' + (richLines.length - 6) + " linha(s) — toque no bloco pra ver e editar tudo.</p>" : "") +
+        (richLines.length ? "" : '<p class="more">Vazio — toque pra preencher.</p>') +
+        "</div>"
       );
     }
     var t = b.raw.trim();
@@ -359,6 +384,26 @@
     if (t.indexOf("# ") === 0) return "<h2>" + inlineLite(t.slice(2)) + "</h2>";
     if (!t) return "";
     return "<p>" + inlineLite(t) + "</p>";
+  }
+
+  // Nome curto do bloco, sem emoji (estrutura, painel de módulos e prévia).
+  function plainName(b) {
+    if (b.type === "richblock") return MENU_LABEL[b.name] || "Bloco " + b.name;
+    return blockLabel(b).replace(/^[^A-Za-zÀ-ú]+/, "");
+  }
+
+  // Destaca cada trecho a conferir dentro do HTML do bloco. `first` é a posição do 1º trecho deste
+  // bloco na lista geral; `current`, o trecho aberto no painel.
+  function highlightMarks(html, first, current) {
+    if (!conf()) return html;
+    var n = 0;
+    return html.replace(conf().markRe(), function (tok) {
+      var i = first + n++;
+      var plain = tok.replace(/&#39;/g, "'").replace(/&quot;/g, '"').replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&");
+      var text = conf().markText(plain);
+      return '<mark class="pdac-mk' + (i === current ? " cur" : "") + '" data-mk="' + i + '" title="Trecho a conferir: abrir no painel">conferir: ' +
+        escapeHtml(text.length > 52 ? text.slice(0, 50) + "…" : text) + "</mark>";
+    });
   }
 
   function renderPreviewHTML(blocks, catalogs) {
@@ -389,24 +434,82 @@
     style.id = "pdac-editor-styles";
     style.textContent = [
       ".pdac-overlay{position:fixed;inset:0;z-index:999999;background:#F4F1EC;display:flex;flex-direction:column;box-sizing:border-box;height:100vh;height:100dvh;font-family:" + FONT_STACK + ";}",
-      ".pdac-header{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 14px;padding-top:calc(10px + env(safe-area-inset-top));border-bottom:1px solid rgba(43,43,43,.14);background:#fff;flex-shrink:0;}",
-      ".pdac-header strong{font-size:14px;}",
+      ".pdac-header{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 14px;padding-top:calc(10px + env(safe-area-inset-top));border-bottom:1px solid #E6E0D6;background:#FBFAF7;flex-shrink:0;}",
+      ".pdac-title{min-width:0;flex:1 1 200px;}",
+      ".pdac-title small{display:block;font-size:11.5px;color:#6E6862;}",
+      ".pdac-title strong{display:block;font:600 16px/1.25 'Fraunces',Georgia,serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}",
+      ".pdac-pill{font-size:11px;font-weight:600;border-radius:999px;padding:2px 9px;white-space:nowrap;background:#E3EDDA;color:#3F6E2B;}",
+      ".pdac-pill.bad{background:#F5E1DD;color:#A63A2E;}",
+      ".pdac-icon-btn:disabled{opacity:.45;cursor:not-allowed;}",
+      // três colunas: estrutura · texto · painel
+      ".pdac-main{flex:1 1 auto;min-height:0;display:grid;grid-template-columns:240px minmax(0,1fr) 380px;}",
+      ".pdac-main.raw{grid-template-columns:minmax(0,1fr);}",
+      ".pdac-main.has-prev{grid-template-columns:220px minmax(0,1fr) minmax(380px,46%);}",
+      ".pdac-out{border-right:1px solid #E6E0D6;background:#FBFAF7;overflow-y:auto;padding:12px 8px 30px 12px;display:flex;flex-direction:column;gap:8px;min-height:0;}",
+      ".pdac-colh{font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;color:#6E6862;font-weight:700;display:flex;align-items:center;gap:8px;}",
+      ".pdac-colh span{font-weight:600;letter-spacing:0;text-transform:none;background:#EFEBE4;border-radius:999px;padding:0 8px;font-size:11px;}",
+      ".pdac-sw{display:flex;align-items:center;gap:7px;font-size:12px;color:#6E6862;cursor:pointer;}",
+      ".pdac-sw input{accent-color:#577328;width:15px;height:15px;}",
+      ".pdac-oi{display:grid;grid-template-columns:20px minmax(0,1fr) auto;gap:6px;align-items:center;border:0;background:none;text-align:left;border-radius:7px;padding:4px 6px;font:12px " + FONT_STACK + ";color:#6E6862;width:100%;cursor:pointer;}",
+      ".pdac-oi:hover{background:#EFEBE4;}",
+      ".pdac-oi[aria-current=true]{background:#E3EDDA;color:#3F6E2B;}",
+      ".pdac-oi i{font:700 9.5px ui-monospace,Menlo,monospace;font-style:normal;text-align:center;color:#9A938A;}",
+      ".pdac-oi span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}",
+      ".pdac-oi.h2{font-weight:700;color:#2B2B2B;margin-top:8px;font-size:12.5px;}",
+      ".pdac-oi.mx span,.pdac-oi.mx i{color:#3F6E9E;font-weight:600;}",
+      ".pdac-oi.sig span,.pdac-oi.sig i{color:#8A5F12;font-weight:600;}",
+      ".pdac-oi em{font-style:normal;font-size:10.5px;font-weight:700;border-radius:999px;padding:0 6px;background:#F5E1DD;color:#A63A2E;}",
+      ".pdac-center{position:relative;min-width:0;min-height:0;display:flex;flex-direction:column;}",
+      ".pdac-side{border-left:1px solid #E6E0D6;background:#FBFAF7;overflow-y:auto;padding:12px 12px 40px;display:flex;flex-direction:column;gap:11px;min-height:0;}",
+      ".pdac-tabs{display:flex;gap:4px;flex-wrap:wrap;}",
+      ".pdac-tabs button{border:1px solid #E6E0D6;background:#fff;border-radius:999px;padding:4px 11px;font:600 12.5px " + FONT_STACK + ";color:#6E6862;cursor:pointer;}",
+      ".pdac-tabs button[aria-pressed=true]{background:#2B2B2B;border-color:#2B2B2B;color:#fff;}",
+      ".pdac-prog{height:7px;border-radius:4px;background:#EFEBE4;overflow:hidden;}",
+      ".pdac-prog i{display:block;height:100%;background:#577328;border-radius:4px;}",
+      ".pdac-note{font-size:12px;color:#6E6862;margin:0;line-height:1.45;}",
+      ".pdac-mlist{display:flex;flex-direction:column;gap:2px;}",
+      ".pdac-mi{display:grid;grid-template-columns:12px minmax(0,1fr);gap:8px;align-items:baseline;border:0;background:none;text-align:left;border-radius:7px;padding:5px 6px;font:12px " + FONT_STACK + ";color:#6E6862;width:100%;cursor:pointer;}",
+      ".pdac-mi:hover{background:#EFEBE4;}",
+      ".pdac-mi[aria-current=true]{background:#fff;color:#2B2B2B;box-shadow:inset 0 0 0 1px #CFC7BA;}",
+      ".pdac-mi i{width:9px;height:9px;border-radius:50%;background:#A63A2E;margin-top:3px;}",
+      ".pdac-mi i.ok{background:#577328;}.pdac-mi i.nf{background:#BB9351;}",
+      ".pdac-mod{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center;border:1px solid #E6E0D6;border-radius:10px;padding:8px 10px;background:#fff;}",
+      ".pdac-mod button.nm{border:0;background:none;text-align:left;padding:0;cursor:pointer;font-family:" + FONT_STACK + ";min-width:0;}",
+      ".pdac-mod b{font-size:13px;font-weight:600;display:block;color:#2B2B2B;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}",
+      ".pdac-mod small{font-size:11.5px;color:#6E6862;}",
+      ".pdac-mod .acts{display:flex;gap:4px;}",
+      ".pdac-miss{border:1px dashed #BB9351;border-radius:10px;padding:10px 12px;background:#F6ECD6;display:flex;flex-direction:column;gap:8px;font-size:12.5px;color:#2B2B2B;}",
+      ".pdac-miss .acts{display:flex;gap:6px;flex-wrap:wrap;}",
+      ".pdac-mtabs{display:none;gap:0;padding:8px 14px;background:#FBFAF7;border-bottom:1px solid #E6E0D6;}",
+      ".pdac-mtabs button{flex:1;border:1px solid #CFC7BA;background:#fff;padding:6px 8px;font:600 12.5px " + FONT_STACK + ";color:#6E6862;cursor:pointer;}",
+      ".pdac-mtabs button:first-child{border-radius:9px 0 0 9px;}.pdac-mtabs button:last-child{border-radius:0 9px 9px 0;}",
+      ".pdac-mtabs button[aria-pressed=true]{background:#2B2B2B;border-color:#2B2B2B;color:#fff;}",
+      // bloco rico com as linhas à vista e trecho a conferir destacado no texto
+      ".pdac-rich{border:1px dashed rgba(43,43,43,.25);border-radius:8px;padding:10px 14px;background:#FAF8F4;margin:8px 0;}",
+      ".pdac-rich strong{display:block;font:700 11px " + FONT_STACK + ";text-transform:uppercase;letter-spacing:.06em;color:#6E6862;margin-bottom:4px;}",
+      ".pdac-rich p{margin:2px 0;font-size:13.5px;line-height:1.5;color:#3A3632;}",
+      ".pdac-rich p.more{color:#8A7A6C;font-style:italic;font-size:12.5px;}",
+      ".pdac-mk{background:#F5E1DD;color:#A63A2E;border-radius:5px;padding:0 5px;font:600 .82em " + FONT_STACK + ";cursor:pointer;white-space:normal;}",
+      ".pdac-mk.cur{outline:2px solid #A63A2E;}",
       ".pdac-header-actions{display:flex;gap:6px;flex-wrap:wrap;}",
       ".pdac-icon-btn{font-family:" + FONT_STACK + ";font-weight:600;font-size:13px;padding:8px 12px;border-radius:8px;border:1px solid rgba(43,43,43,.16);background:#fff;color:#3A3632;cursor:pointer;min-height:38px;}",
       ".pdac-icon-btn.primary{background:#604034;border-color:#604034;color:#fff;}",
-      ".pdac-summary{display:flex;gap:8px;flex-wrap:wrap;padding:8px 14px;font-size:12px;color:#6E6862;background:#fff;border-bottom:1px solid rgba(43,43,43,.08);}",
-      ".pdac-summary span{padding:3px 9px;border-radius:999px;background:#F4F1EC;}",
       ".pdac-canvas-scroll{flex:1 1 auto;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:18px 12px 130px;box-sizing:border-box;}",
       ".pdac-canvas{max-width:720px;margin:0 auto;}",
-      ".pdac-block{position:relative;margin:2px 0;border-radius:10px;border:1px solid transparent;}",
+      ".pdac-block{position:relative;margin:2px 0;border-radius:10px;border:1px solid transparent;scroll-margin:70px;}",
+      ".pdac-block:hover{border-color:rgba(43,43,43,.12);}",
+      ".pdac-block.is-focus{border-color:#577328;background:rgba(255,255,255,.7);}",
       ".pdac-block.is-selected{border-color:rgba(96,64,52,.4);background:rgba(255,255,255,.7);}",
       ".pdac-block.is-dragging{opacity:.45;}",
       ".pdac-block.is-special{border-left:3px solid #8AACD2;}",
-      ".pdac-block-bar{display:flex;align-items:center;gap:2px;padding:2px;}",
-      ".pdac-bar-btn{border:none;background:transparent;cursor:pointer;font-size:15px;line-height:1;padding:6px;border-radius:6px;color:#8A7A6C;min-width:34px;min-height:34px;}",
+      ".pdac-block-bar{display:none;position:absolute;top:-15px;right:8px;z-index:1;align-items:center;gap:0;padding:1px 2px;background:#fff;border:1px solid #CFC7BA;border-radius:9px;max-width:calc(100% - 16px);}",
+      ".pdac-block.is-focus > .pdac-block-bar,.pdac-block.is-selected > .pdac-block-bar,.pdac-block.is-dragging > .pdac-block-bar{display:flex;}",
+      "@media (hover:hover){.pdac-block:hover > .pdac-block-bar{display:flex;}}",
+      ".pdac-bar-btn{border:none;background:transparent;cursor:pointer;font-size:14px;line-height:1;padding:5px;border-radius:6px;color:#8A7A6C;min-width:30px;min-height:28px;}",
+      ".pdac-bar-btn:hover{background:#EFEBE4;color:#2B2B2B;}",
       ".pdac-bar-btn:active{background:rgba(43,43,43,.08);}",
       ".pdac-bar-btn.drag{cursor:grab;touch-action:none;}",
-      ".pdac-bar-label{font-size:11px;font-weight:600;color:#8A7A6C;flex:1 1 auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;}",
+      ".pdac-bar-label{font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#8A7A6C;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;padding:0 6px;}",
       ".pdac-block-content{padding:2px 8px 12px;cursor:pointer;}",
       ".pdac-block-empty{color:#9C948A;font-style:italic;font-size:13px;padding:10px 8px;}",
       ".pdac-edit-area{padding:0 8px 14px;}",
@@ -414,7 +517,7 @@
       ".pdac-input{width:100%;box-sizing:border-box;font-family:" + FONT_STACK + ";font-size:14px;border:1px solid rgba(43,43,43,.2);border-radius:8px;padding:9px 10px;margin-bottom:6px;}",
       ".pdac-hint{font-size:11.5px;color:#8A7A6C;margin:6px 2px 0;line-height:1.4;}",
       ".pdac-add-inline{display:flex;align-items:center;justify-content:center;gap:8px;margin:18px auto 0;max-width:720px;width:100%;padding:14px;border:1.5px dashed rgba(96,64,52,.4);border-radius:10px;color:#604034;font-weight:600;font-size:14px;cursor:pointer;background:transparent;font-family:" + FONT_STACK + ";}",
-      ".pdac-fab{position:fixed;right:18px;bottom:calc(18px + env(safe-area-inset-bottom));width:58px;height:58px;border-radius:50%;background:#604034;color:#fff;border:none;font-size:28px;box-shadow:0 6px 18px rgba(0,0,0,.28);cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:2;line-height:0;}",
+      ".pdac-fab{position:absolute;right:18px;bottom:calc(18px + env(safe-area-inset-bottom));width:58px;height:58px;border-radius:50%;background:#604034;color:#fff;border:none;font-size:28px;box-shadow:0 6px 18px rgba(0,0,0,.28);cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:2;line-height:0;}",
       ".pdac-sheet-backdrop{position:fixed;inset:0;background:rgba(20,16,14,.45);z-index:1000000;display:flex;align-items:flex-end;justify-content:center;}",
       ".pdac-sheet{background:#fff;width:100%;max-width:560px;max-height:78vh;overflow-y:auto;-webkit-overflow-scrolling:touch;border-radius:16px 16px 0 0;padding:8px 0 calc(18px + env(safe-area-inset-bottom));box-sizing:border-box;font-family:" + FONT_STACK + ";}",
       ".pdac-sheet-grabber{width:36px;height:4px;background:rgba(43,43,43,.2);border-radius:2px;margin:8px auto 6px;}",
@@ -428,14 +531,22 @@
       ".pdac-sheet-item .label{font-size:12.5px;font-weight:600;color:#3A3632;}",
       ".pdac-raw-wrap{flex:1 1 auto;display:flex;min-height:0;}",
       // prévia no site, ao lado do editor (no celular, no lugar dele)
-      ".pdac-main{flex:1 1 auto;min-height:0;display:flex;}",
-      ".pdac-main > .pdac-canvas-scroll,.pdac-main > .pdac-raw-wrap{flex:1 1 auto;min-width:0;}",
-      ".pdac-prev{width:46%;min-width:380px;border-left:1px solid rgba(43,43,43,.14);display:flex;flex-direction:column;min-height:0;background:#FBFAF7;}",
+      ".pdac-prev{min-width:0;border-left:1px solid rgba(43,43,43,.14);display:flex;flex-direction:column;min-height:0;background:#FBFAF7;}",
       ".pdac-prev-note{margin:0;padding:8px 12px;font-size:12px;color:#8A5F12;background:#F6ECD6;}",
       ".pdac-prev-empty{margin:auto;padding:24px;text-align:center;color:#8A7A6C;font-size:13px;}",
       ".pdac-icon-btn[aria-pressed=true]{background:#2B2B2B;border-color:#2B2B2B;color:#fff;}",
-      ".pdac-overlay.with-prev .pdac-fab{right:calc(46% + 18px);}",
-      "@media (max-width:1100px){.pdac-main.has-prev > .pdac-canvas-scroll,.pdac-main.has-prev > .pdac-raw-wrap{display:none;}.pdac-prev{width:100%;min-width:0;border-left:0;}.pdac-overlay.with-prev .pdac-fab{display:none;}}"
+      "@media (max-width:1180px){.pdac-main{grid-template-columns:210px minmax(0,1fr) 330px;}}",
+      // celular e tablet em pé: uma coluna por vez, escolhida nas abas
+      "@media (max-width:960px){",
+      "  .pdac-mtabs{display:flex;}",
+      "  .pdac-main,.pdac-main.has-prev{grid-template-columns:minmax(0,1fr);}",
+      "  .pdac-main > .pdac-out,.pdac-main > .pdac-center,.pdac-main > .pdac-side{display:none;border:0;}",
+      "  .pdac-main[data-pane=out] > .pdac-out,.pdac-main[data-pane=doc] > .pdac-center,.pdac-main[data-pane=side] > .pdac-side{display:flex;}",
+      "  .pdac-main.raw > .pdac-center{display:flex;}",
+      "  .pdac-main.has-prev > .pdac-out,.pdac-main.has-prev > .pdac-center{display:none;}",
+      "  .pdac-prev{border-left:0;}",
+      "  .pdac-title strong{font-size:14.5px;}",
+      "}"
     ].join("\n");
     document.head.appendChild(style);
   }
@@ -564,6 +675,10 @@
     }
   ];
 
+  // Nome de cada bloco rico, tirado do próprio menu de "+" (uma lista só).
+  var MENU_LABEL = {};
+  ADD_MENU.forEach(function (g) { g.items.forEach(function (it) { if (!it.special) MENU_LABEL[it.key] = it.label; }); });
+
   var ArticleComposerControl = createClass({
     getInitialState: function () {
       var text = this.props.value || "";
@@ -576,7 +691,15 @@
         selectedId: null,
         draggingId: null,
         sheetOpen: false,
-        catalogs: null
+        catalogs: null,
+        focusId: null,        // bloco destacado (vindo da estrutura, do painel ou de um trecho)
+        panelTab: "conferir", // painel da direita: "conferir" ou "modulos"
+        markAt: 0,            // qual trecho a conferir está aberto
+        markOwn: null,        // texto próprio sendo digitado pro trecho (null = fechado)
+        outlineOnlyMods: false,
+        pane: "doc",          // no celular: "out" (estrutura), "doc" (texto) ou "side" (painel)
+        addSig: false,
+        canUndo: false
       };
     },
 
@@ -590,11 +713,27 @@
       this._detachDragListeners();
     },
 
-    updateValue: function (newBlocks) {
+    // typing = mudança de digitação: várias seguidas no mesmo bloco viram um passo só do Desfazer.
+    updateValue: function (newBlocks, typing) {
+      var now = Date.now();
+      if (!typing || !this._lastTyping || now - this._lastTyping > 1500) {
+        this._history = (this._history || []).concat([this.state.blocks]).slice(-30);
+      }
+      this._lastTyping = typing ? now : 0;
+      this.commit(newBlocks);
+    },
+    commit: function (newBlocks) {
       var text = serializeBlocks(newBlocks);
-      this.setState({ blocks: newBlocks, lastSerialized: text });
+      this.setState({ blocks: newBlocks, lastSerialized: text, canUndo: !!(this._history && this._history.length) });
       this.props.onChange(text);
       if (this.state.preview) this.pushPreview(text);
+    },
+    undo: function () {
+      var prev = (this._history || []).pop();
+      if (!prev) return;
+      this._lastTyping = 0;
+      this.commit(prev);
+      this.setState({ selectedId: null, markOwn: null });
     },
 
     // --- prévia no site (admin/widgets/studio-kit.js) -------------------------
@@ -644,7 +783,10 @@
       var idx = -1;
       for (var i = 0; i < items.length; i++) { if ((items[i].body || "") === current) { idx = i; break; } }
       this._postIdx = idx === -1 ? null : idx;
-      this.setState({ open: true, selectedId: null, sheetOpen: false });
+      this._history = [];
+      var hasMarks = this.pending().length > 0;
+      this.setState({ open: true, selectedId: null, sheetOpen: false, focusId: null, markAt: 0, markOwn: null, addSig: false, canUndo: false,
+        panelTab: hasMarks ? "conferir" : "modulos", pane: hasMarks ? "side" : "doc" });
       if (this.state.preview) setTimeout(function () { self.pushPreview(current); }, 0);
       if (!this.state.catalogs) {
         fetchCatalogs().then(function (catalogs) { self.setState({ catalogs: catalogs }); });
@@ -674,12 +816,69 @@
         if (b.type === "richblock") return { id: b.id, type: b.type, name: b.name, inner: newValue };
         return { id: b.id, type: b.type, raw: newValue };
       });
-      this.updateValue(blocks);
+      this.updateValue(blocks, true);
+    },
+
+    // --- trechos a conferir ------------------------------------------------------
+    // Todos os trechos do corpo, na ordem do texto, cada um com o bloco em que está.
+    pending: function () {
+      var out = [];
+      this.state.blocks.forEach(function (b) { marksOf(b).forEach(function (tok) { out.push({ tok: tok, blockId: b.id }); }); });
+      return out;
+    },
+    // A conferência que o hub mandou pra este artigo (campo irmão do corpo, em content/posts.json).
+    sources: function () {
+      var post = this._postIdx != null ? this.findPost()[this._postIdx] : null;
+      return post && Array.isArray(post.conferencia) ? post.conferencia : null;
+    },
+    showBlock: function (id) {
+      this.setState({ focusId: id });
+      var root = this._canvasEl;
+      setTimeout(function () {
+        var el = root && root.querySelector('[data-block-row="' + id + '"]');
+        if (el) el.scrollIntoView({ block: "center" });
+      }, 40);
+    },
+    goMark: function (i, fromText) {
+      var list = this.pending();
+      if (!list.length) return;
+      var at = (i + list.length) % list.length;
+      this.setState({ markAt: at, markOwn: null, panelTab: "conferir", pane: fromText ? "side" : this.state.pane });
+      this.showBlock(list[at].blockId);
+    },
+    // Troca a marca pelo texto (vazio = só tira a marca) e, se veio de uma fonte, acrescenta a página
+    // no bloco de fontes. Mexe no texto inteiro e remonta os blocos: é a mesma regra do quadro.
+    resolveMark: function (tok, by, src) {
+      var C = conf();
+      var out = C.swapMark(serializeBlocks(this.state.blocks), tok, by);
+      if (out == null) return;
+      if (src) out = C.addResource(out, src);
+      this._lastTyping = 0;
+      this.updateValue(parseBody(out));
+      this.setState({ markOwn: null, selectedId: null, focusId: null });
     },
 
     removeBlock: function (id) {
       this.updateValue(this.state.blocks.filter(function (b) { return b.id !== id; }));
-      if (this.state.selectedId === id) this.setState({ selectedId: null });
+      if (this.state.selectedId === id || this.state.focusId === id) this.setState({ selectedId: null, focusId: null });
+    },
+
+    // A ferramenta-assinatura entra depois do bloco em que você está; sem bloco escolhido, antes das
+    // perguntas frequentes (ou do próximo passo), que é onde o artigo começa a fechar.
+    addSignature: function (name) {
+      var blocks = this.state.blocks.slice(), at = -1, ref = this.state.selectedId || this.state.focusId;
+      for (var i = 0; i < blocks.length && ref; i++) if (blocks[i].id === ref) { at = i + 1; break; }
+      if (at === -1) {
+        for (var j = 0; j < blocks.length; j++) {
+          var b = blocks[j];
+          if ((b.type === "text" && /^##\s+perguntas frequentes/i.test(b.raw.trim())) || (b.type === "richblock" && (b.name === "FAQ" || b.name === "PROXIMO-PASSO"))) { at = j; break; }
+        }
+      }
+      var novo = richBlock(name);
+      blocks.splice(at === -1 ? blocks.length : at, 0, novo);
+      this.updateValue(blocks);
+      this.setState({ addSig: false, selectedId: novo.id, pane: "doc" });
+      this.showBlock(novo.id);
     },
 
     // Insere um bloco novo logo depois do bloco selecionado no momento (o
@@ -826,49 +1025,145 @@
 
     renderOverlay: function () {
       var self = this;
+      var raw = this.state.mode === "raw";
       var withPreview = !!(this.state.preview && window.PDStudio);
+      var pending = this.pending();
       return h(
         "div",
-        { className: "pdac-overlay" + (withPreview ? " with-prev" : "") },
-        this.renderHeader(),
-        this.renderSummary(),
-        h("div", { className: "pdac-main" + (withPreview ? " has-prev" : "") },
-          this.state.mode === "raw" ? this.renderRawEditor() : this.renderCanvas(),
-          withPreview ? this.renderPreviewPane() : null),
-        this.state.mode === "visual"
-          ? h("button", { type: "button", className: "pdac-fab", "aria-label": "Adicionar bloco", onClick: function () { self.setState({ sheetOpen: true }); } }, "+")
-          : null,
+        { className: "pdac-overlay" },
+        this.renderHeader(pending),
+        raw || withPreview ? null : this.renderPaneTabs(pending),
+        h("div", { className: "pdac-main" + (raw ? " raw" : "") + (withPreview ? " has-prev" : ""), "data-pane": this.state.pane },
+          raw ? null : this.renderOutline(),
+          h("div", { className: "pdac-center" },
+            raw ? this.renderRawEditor() : this.renderCanvas(pending),
+            raw ? null : h("button", { type: "button", className: "pdac-fab", "aria-label": "Adicionar bloco", onClick: function () { self.setState({ sheetOpen: true }); } }, "+")),
+          raw ? null : withPreview ? this.renderPreviewPane() : this.renderSide(pending)),
         this.state.sheetOpen ? this.renderAddSheet() : null
       );
     },
 
-    renderHeader: function () {
+    renderHeader: function (pending) {
+      var post = this._postIdx != null ? this.findPost()[this._postIdx] : null;
+      var n = pending.length;
       return h(
         "div",
         { className: "pdac-header" },
-        h("strong", null, "Editor visual do artigo"),
+        h("div", { className: "pdac-title" }, h("small", null, "Editor do artigo"), h("strong", null, (post && post.title) || "Artigo sem título")),
+        conf() ? h("span", { className: "pdac-pill" + (n ? " bad" : "") }, n ? conf().plural(n, "trecho", "trechos") + " a conferir" : "nada a conferir") : null,
         h(
           "div",
           { className: "pdac-header-actions" },
+          h("button", { type: "button", className: "pdac-icon-btn", onClick: this.undo, disabled: !this.state.canUndo, title: "Volta a última mudança" }, "↶ Desfazer"),
           window.PDStudio ? h("button", { type: "button", className: "pdac-icon-btn", "aria-pressed": String(!!this.state.preview), onClick: this.togglePreview, title: "Mostra a página real do artigo com o texto de agora, no celular, tablet ou computador" }, this.state.preview ? "Fechar prévia" : "Prévia no site") : null,
           h("button", { type: "button", className: "pdac-icon-btn", onClick: this.toggleMode }, this.state.mode === "visual" ? "Ver texto bruto" : "Ver visual"),
-          h("button", { type: "button", className: "pdac-icon-btn primary", onClick: this.close }, "Fechar")
+          h("button", { type: "button", className: "pdac-icon-btn primary", onClick: this.close }, "Concluir")
         )
       );
     },
 
-    renderSummary: function () {
+    // No celular, as três colunas viram três abas.
+    renderPaneTabs: function (pending) {
+      var self = this, pane = this.state.pane;
+      var tab = function (k, label) {
+        return h("button", { key: k, type: "button", "aria-pressed": String(pane === k), onClick: function () { self.setState({ pane: k }); } }, label);
+      };
+      return h("div", { className: "pdac-mtabs", role: "group", "aria-label": "Parte do editor" },
+        tab("out", "Estrutura"), tab("doc", "Texto"), tab("side", pending.length ? "Conferir · " + pending.length : "Painel"));
+    },
+
+    // --- estrutura: títulos e módulos, com a contagem de trechos por bloco -----------
+    renderOutline: function () {
+      var self = this;
+      var blocks = this.state.blocks, only = this.state.outlineOnlyMods;
+      var ICON = { h2: "H2", h3: "H3", p: "¶", list: "•", sig: "★", mx: "◆", rich: "▣", token: "▣" };
+      return h("aside", { className: "pdac-out", "aria-label": "Estrutura do artigo" },
+        h("div", { className: "pdac-colh" }, "Estrutura", h("span", null, blocks.length + " blocos")),
+        h("label", { className: "pdac-sw" },
+          h("input", { type: "checkbox", checked: only, onChange: function (e) { self.setState({ outlineOnlyMods: e.target.checked }); } }), "Só títulos e módulos"),
+        h("div", null, blocks.map(function (b) {
+          var k = kindOf(b);
+          if (only && (k === "p" || k === "list" || k === "h3")) return null;
+          var n = marksOf(b).length;
+          var text = k === "p" || k === "list" ? b.raw.replace(/\{\{[^}]*\}\}|\[\s*CONFERIR[^\]]*\]/gi, "…").replace(/[*#]/g, "").replace(/^\s*-\s+/, "").trim()
+            : k === "h2" || k === "h3" ? b.raw.replace(/^#+\s*/, "") : plainName(b);
+          return h("button", {
+            key: b.id, type: "button", className: "pdac-oi " + k, "aria-current": String(self.state.focusId === b.id || self.state.selectedId === b.id),
+            onClick: function () { self.setState({ pane: "doc" }); self.showBlock(b.id); }
+          }, h("i", null, ICON[k]), h("span", null, text || "(vazio)"), n ? h("em", { title: "Trechos a conferir neste bloco" }, n) : h("b", null));
+        })));
+    },
+
+    // --- painel: conferir os trechos ou cuidar dos módulos -----------------------------
+    renderSide: function (pending) {
+      var self = this, tab = this.state.panelTab;
+      var btn = function (k, label) {
+        return h("button", { key: k, type: "button", "aria-pressed": String(tab === k), onClick: function () { self.setState({ panelTab: k }); } }, label);
+      };
+      return h("aside", { className: "pdac-side", "aria-label": "Painel de trabalho" },
+        h("div", { className: "pdac-tabs", role: "group", "aria-label": "Painel" }, btn("conferir", "Conferir · " + pending.length), btn("modulos", "Módulos")),
+        tab === "conferir" ? this.renderConfer(pending) : this.renderModules());
+    },
+
+    renderConfer: function (pending) {
+      var self = this, C = conf();
+      if (!C) return h("p", { className: "pdac-note" }, "A conferência não carregou (admin/widgets/conferencia.js).");
+      if (!pending.length) return h("p", { className: "pdac-note" }, "Nenhum trecho marcado pra conferir neste texto. No quadro, o artigo já pode ir pra Agendado ou No ar.");
+      var sources = this.sources();
+      var at = Math.min(this.state.markAt, pending.length - 1), cur = pending[at];
+      var left = {};
+      pending.forEach(function (m) { left[C.norm(C.markText(m.tok))] = 1; });
+      var withSource = sources ? sources.filter(function (x) { return x && x.status !== "sem_fonte" && left[C.norm(x.marca)]; }).length : null;
+      return [
+        h("p", { key: "n", className: "pdac-note" }, h("b", null, C.plural(pending.length, "trecho", "trechos")), " a conferir. Enquanto houver algum, agendar e publicar ficam bloqueados no quadro."),
+        h("div", { key: "c" }, C.card({
+          tok: cur.tok, entry: C.sourceFor(sources, cur.tok), at: at, total: pending.length, withSource: withSource, own: this.state.markOwn,
+          onNav: function (d) { self.goMark(at + d); },
+          onUse: function (text, src) { self.resolveMark(cur.tok, text, src); },
+          onOwn: function (text) { self.setState({ markOwn: text }); },
+          onCut: function () { self.resolveMark(cur.tok, "", null); }
+        })),
+        h("div", { key: "h", className: "pdac-colh" }, "Todos os trechos"),
+        h("div", { key: "l", className: "pdac-mlist" }, pending.map(function (m, i) {
+          var e = C.sourceFor(sources, m.tok), text = C.markText(m.tok);
+          return h("button", { key: i, type: "button", className: "pdac-mi", "aria-current": String(i === at), onClick: function () { self.goMark(i); } },
+            h("i", { className: e && e.status === "conferida" ? "ok" : e && e.status === "sem_conferencia" ? "" : "nf" }),
+            h("span", null, text.length > 74 ? text.slice(0, 72) + "…" : text));
+        })),
+        h("p", { key: "leg", className: "pdac-note" }, "Verde: fonte com trecho conferido na página. Vermelho: link oficial sem conferência. Dourado: sem fonte encontrada.")
+      ];
+    },
+
+    renderModules: function () {
+      var self = this;
       var blocks = this.state.blocks;
-      var bannerInfo = bannerState(blocks);
-      var affiliateCount = blocks.filter(function (b) { return b.type === "richblock" && b.name === AFILIADO_NAME; }).length;
-      return h(
-        "div",
-        { className: "pdac-summary" },
-        h("span", null, blocks.length + " bloco(s)"),
-        h("span", null, "Banner: " + bannerInfo.state),
-        h("span", null, "Afiliados: " + affiliateCount),
-        h("span", null, "Toque num bloco pra editar • arraste ⠿ ou use ▲▼ pra reordenar")
-      );
+      var mods = blocks.filter(function (b) { var k = kindOf(b); return k === "sig" || k === "mx" || k === "rich"; });
+      var hasSig = blocks.some(function (b) { return kindOf(b) === "sig"; });
+      return [
+        hasSig ? null : h("div", { key: "miss", className: "pdac-miss" },
+          h("b", null, "Falta a ferramenta-assinatura."),
+          h("span", null, "Todo artigo leva uma, na seção em que ela resolve a dúvida."),
+          this.state.addSig
+            ? h("div", { className: "acts" }, Object.keys(SIG_NAMES).map(function (name) {
+                return h("button", { key: name, type: "button", className: "pdac-icon-btn", onClick: function () { self.addSignature(name); } }, MENU_LABEL[name] || name);
+              }))
+            : h("div", { className: "acts" }, h("button", { type: "button", className: "pdac-icon-btn", onClick: function () { self.setState({ addSig: true }); } }, "+ Adicionar ferramenta")),
+          this.state.addSig ? h("span", { className: "pdac-note" }, "Ela entra depois do bloco em que você está; sem bloco escolhido, antes das perguntas frequentes.") : null),
+        h("div", { key: "h", className: "pdac-colh" }, "Módulos do artigo", h("span", null, mods.length)),
+        mods.length ? mods.map(function (b) {
+          var lines = b.type === "richblock" ? b.inner.split("\n").filter(function (l) { return l.trim(); }).length : 0;
+          var n = marksOf(b).length;
+          return h("div", { key: b.id, className: "pdac-mod" },
+            h("button", { type: "button", className: "nm", onClick: function () { self.setState({ pane: "doc" }); self.showBlock(b.id); } },
+              h("b", null, plainName(b)),
+              h("small", null, KIND_LABEL[kindOf(b)] + (lines ? " · " + lines + " linha(s)" : "") + (n ? " · " + n + " a conferir" : ""))),
+            h("span", { className: "acts" },
+              h("button", { type: "button", className: "pdac-bar-btn", "aria-label": "Subir " + plainName(b), onClick: function () { self.moveBlock(b.id, -1); self.showBlock(b.id); } }, "▲"),
+              h("button", { type: "button", className: "pdac-bar-btn", "aria-label": "Descer " + plainName(b), onClick: function () { self.moveBlock(b.id, 1); self.showBlock(b.id); } }, "▼"),
+              h("button", { type: "button", className: "pdac-icon-btn", onClick: function () { self.removeBlock(b.id); } }, "Tirar")));
+        }) : h("p", { key: "none", className: "pdac-note" }, "Este artigo ainda não tem módulos. Use o + pra acrescentar."),
+        h("p", { key: "tip", className: "pdac-note" }, "▲ e ▼ movem o módulo um bloco por vez. Tirou sem querer? “Desfazer”, lá em cima, traz de volta.")
+      ];
     },
 
     renderRawEditor: function () {
@@ -884,20 +1179,29 @@
       );
     },
 
-    renderCanvas: function () {
+    renderCanvas: function (pending) {
       var self = this;
       var blocks = this.state.blocks;
+      // posição do 1º trecho de cada bloco na lista geral (pra destacar e abrir o trecho certo)
+      var first = {}, n = 0;
+      blocks.forEach(function (b) { first[b.id] = n; n += marksOf(b).length; });
+      var current = this.state.panelTab === "conferir" && pending.length ? Math.min(this.state.markAt, pending.length - 1) : -1;
       return h(
         "div",
         {
           className: "pdac-canvas-scroll",
           ref: function (el) { self._canvasEl = el; },
-          // Toque num espaço vazio (fora de qualquer bloco) desmarca o bloco
-          // selecionado — assim o próximo "+" volta a inserir no fim, em vez
-          // de logo depois do último bloco editado.
-          onClick: function (e) { if (e.target === e.currentTarget) self.setState({ selectedId: null }); }
+          // Toque num trecho a conferir abre ele no painel. Toque num espaço vazio (fora de qualquer
+          // bloco) desmarca o bloco selecionado: o próximo "+" volta a inserir no fim.
+          onClickCapture: function (e) {
+            var mk = e.target.closest && e.target.closest(".pdac-mk");
+            if (!mk) return;
+            e.stopPropagation();
+            self.goMark(Number(mk.getAttribute("data-mk")), true);
+          },
+          onClick: function (e) { if (e.target === e.currentTarget) self.setState({ selectedId: null, focusId: null }); }
         },
-        h("div", { className: "article-body pdac-canvas" }, blocks.map(function (b) { return self.renderBlock(b); })),
+        h("div", { className: "article-body pdac-canvas" }, blocks.map(function (b) { return self.renderBlock(b, first[b.id], current); })),
         h(
           "button",
           { type: "button", className: "pdac-add-inline", onClick: function () { self.setState({ selectedId: null, sheetOpen: true }); } },
@@ -906,9 +1210,10 @@
       );
     },
 
-    renderBlock: function (b) {
+    renderBlock: function (b, firstMark, currentMark) {
       var self = this;
       var selected = this.state.selectedId === b.id;
+      var focus = this.state.focusId === b.id;
       var dragging = this.state.draggingId === b.id;
       var isBanner = b.type === "token" && isBannerToken(b.raw);
       var isBannerOff = b.type === "token" && b.raw === NO_VITRINE_BANNER_TOKEN;
@@ -917,10 +1222,11 @@
       var canEdit = b.type === "text" || b.type === "list" || b.type === "richblock" || isBanner;
       var className = "pdac-block" +
         (selected ? " is-selected" : "") +
+        (focus && !selected ? " is-focus" : "") +
         (dragging ? " is-dragging" : "") +
         (isSpecial ? " is-special" : "");
 
-      function selectBlock() { self.setState({ selectedId: selected ? null : b.id }); }
+      function selectBlock() { self.setState({ selectedId: selected ? null : b.id, focusId: b.id }); }
 
       return h(
         "div",
@@ -928,6 +1234,7 @@
         h(
           "div",
           { className: "pdac-block-bar" },
+          h("span", { className: "pdac-bar-label" }, plainName(b)),
           h("button", {
             type: "button",
             className: "pdac-bar-btn drag",
@@ -936,16 +1243,15 @@
           }, "⠿"),
           h("button", { type: "button", className: "pdac-bar-btn", onClick: function () { self.moveBlock(b.id, -1); }, "aria-label": "Mover pra cima" }, "▲"),
           h("button", { type: "button", className: "pdac-bar-btn", onClick: function () { self.moveBlock(b.id, 1); }, "aria-label": "Mover pra baixo" }, "▼"),
-          h("span", { className: "pdac-bar-label" }, blockLabel(b, self.state.catalogs)),
-          canEdit ? h("button", { type: "button", className: "pdac-bar-btn", onClick: selectBlock, "aria-label": "Editar bloco" }, selected ? "✅" : "✏️") : null,
-          h("button", { type: "button", className: "pdac-bar-btn", onClick: function () { self.removeBlock(b.id); }, "aria-label": "Excluir bloco" }, "🗑")
+          canEdit ? h("button", { type: "button", className: "pdac-bar-btn", onClick: selectBlock, "aria-label": selected ? "Fechar edição" : "Editar bloco" }, selected ? "✓" : "✎") : null,
+          h("button", { type: "button", className: "pdac-bar-btn", onClick: function () { self.removeBlock(b.id); }, "aria-label": "Tirar bloco" }, "✕")
         ),
-        selected && canEdit ? this.renderBlockEditor(b) : this.renderBlockReadOnly(b, selectBlock)
+        selected && canEdit ? this.renderBlockEditor(b) : this.renderBlockReadOnly(b, selectBlock, firstMark, currentMark)
       );
     },
 
-    renderBlockReadOnly: function (b, onSelect) {
-      var html = renderBlockPreviewHTML(b, this.state.catalogs);
+    renderBlockReadOnly: function (b, onSelect, firstMark, currentMark) {
+      var html = highlightMarks(renderBlockPreviewHTML(b, this.state.catalogs), firstMark || 0, currentMark);
       if (!html) {
         return h("div", { className: "pdac-block-content pdac-block-empty", onClick: onSelect }, blockLabel(b, this.state.catalogs) + " — não aparece no site.");
       }
