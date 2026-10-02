@@ -22,7 +22,7 @@ var SEGMENTS = [
   { k: 'parouapp', t: 'Abriu o app mas parou', lever: 'Motivação caiu', why: 'Entrou, viu o checklist e não voltou. Ação: uma dica extra de graça + o prazo real dela, nunca um prazo inventado.' }
 ];
 var MAIL_ST = { clicado: 'Clicou', aberto: 'Abriu', entregue: 'Entregue, não abriu', nao_entregue: 'Não entregue', agendado: 'Ainda não enviado' };
-var MODELO = { boas_vindas: 'Boas-vindas + link de acesso', naoabriu: 'Reimpacto — não abriu', naoclicou: 'Reimpacto — abriu, não clicou', cliquenaoapp: 'Reimpacto — clicou, não abriu o app', parouapp: 'Reimpacto — abriu o app e parou' };
+var MODELO = { boas_vindas: 'Boas-vindas + link de acesso', naoabriu: 'Reimpacto — não abriu', naoclicou: 'Reimpacto — abriu, não clicou', cliquenaoapp: 'Reimpacto — clicou, não abriu o app', parouapp: 'Reimpacto — abriu o app e parou', resposta_pergunta: 'Resposta à pergunta única' };
 var TYPE_META = {
   sistema: ['Sistema', ''], app: ['Abriu o app', 'u-baixa'], checklist: ['Checklist', 'u-baixa'], pergunta: ['Pergunta única', 'tp-pergunta'],
   artigo: ['Artigo', 'tp-artigo'], uma_um: ['1:1', 'out'], email: ['E-mail', 'out'], sinal: ['Sinal no dashboard', 'out']
@@ -331,10 +331,12 @@ function renderQuestions() {
     '<blockquote>' + esc(x.texto) + '</blockquote>' +
     '<div class="ctx">' + urgPill(c.urgencia) + '<span class="pill">' + esc(personaLabel(c)) + (subLabel(c) ? ' · ' + esc(subLabel(c)) : '') + '</span><span class="pill">Estágio: ' + esc(stageLabel(c.estagio)) + '</span></div>' +
     (x.status === 'nova'
-      ? '<div class="reply"><label for="reply-txt">Sua resposta · fica salva na ficha de ' + esc(c.email) + '</label>' +
+      ? '<div class="reply"><label for="reply-subj">Assunto do e-mail</label>' +
+        '<input id="reply-subj" maxlength="200" style="height:38px;border:1px solid var(--line-2);border-radius:var(--r);padding:0 10px;background:var(--surface-2)" value="' + esc(pn(c) + ', aqui está a resposta pra sua pergunta') + '">' +
+        '<label for="reply-txt">Sua resposta · enviada por e-mail de verdade para ' + esc(c.email) + '</label>' +
         '<textarea id="reply-txt" placeholder="Escreva aqui."></textarea>' +
-        '<p class="sub" id="reply-err" style="margin:0;color:var(--red)" hidden>Escreva a resposta antes de salvar.</p>' +
-        '<div class="reply-foot"><small>O envio por e-mail entra na fase 3 — por ora copie a resposta e mande pelo seu e-mail.</small><button class="btn primary" type="button" id="send-reply">Marcar como respondida</button></div></div>'
+        '<p class="sub" id="reply-err" style="margin:0;color:var(--red)" role="alert" hidden></p>' +
+        '<div class="reply-foot"><small>Só marca como respondida depois que o e-mail for aceito pelo Brevo.</small><button class="btn primary" type="button" id="send-reply">Responder por e-mail →</button></div></div>'
       : '<div class="sec" style="margin:0"><h4>Sua resposta · ' + esc(fmtDate(x.respondida_em)) + '</h4><div class="sent" style="white-space:pre-wrap">' + esc(x.resposta) + '</div></div>');
 }
 
@@ -569,12 +571,36 @@ document.addEventListener('click', async function (e) {
   if (t.id === 'compose-send') return sendEmail(t);
 
   if (t.id === 'send-reply') {
+    var rerr = $('reply-err'); rerr.hidden = true;
+    var subj = $('reply-subj').value.trim();
     var txt = $('reply-txt').value.trim();
-    if (!txt) { $('reply-err').hidden = false; return; }
-    t.disabled = true;
-    var r = await supabase.from('perguntas_unicas').update({ status: 'respondida', resposta: txt, respondida_em: new Date().toISOString() }).eq('id', state.qsel);
-    if (r.error) { t.disabled = false; return fail('salvar a resposta', r.error); }
-    await reload(); renderQuestions(); return toast('Pergunta marcada como respondida');
+    if (!subj || !txt) { rerr.textContent = 'Escreva o assunto e a resposta antes de enviar.'; rerr.hidden = false; return; }
+    var qx = Q.filter(function (y) { return y.id === state.qsel; })[0];
+    if (!qx) return;
+    var sess = await supabase.auth.getSession();
+    if (!sess.data.session) { rerr.textContent = 'Sessão expirada. Recarregue a página e entre de novo.'; rerr.hidden = false; return; }
+    t.disabled = true; t.textContent = 'Enviando…';
+    try {
+      var res = await fetch(WORKER_BASE + '/api/crm/enviar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + sess.data.session.access_token },
+        body: JSON.stringify({ contato_id: qx.contato_id, modelo: 'resposta_pergunta', assunto: subj, corpo: txt })
+      });
+      var data = await res.json().catch(function () { return {}; });
+      if (!res.ok) throw new Error(data.error || ('Erro ' + res.status));
+      // E-mail aceito pelo Brevo — só agora marca a pergunta como respondida.
+      var r = await supabase.from('perguntas_unicas').update({ status: 'respondida', resposta: txt, respondida_em: new Date().toISOString() }).eq('id', state.qsel);
+      if (r.error) {
+        // O e-mail já saiu: não tenta de novo (duplicaria o envio), só avisa pra recarregar.
+        rerr.textContent = 'O e-mail foi enviado, mas não consegui atualizar o status aqui — recarregue a página. (' + r.error.message + ')';
+        rerr.hidden = false; t.textContent = 'E-mail já enviado';
+        return;
+      }
+      await reload(); renderQuestions(); return toast(data.aviso || 'Resposta enviada por e-mail');
+    } catch (e) {
+      rerr.textContent = e.message; rerr.hidden = false;
+      t.disabled = false; t.textContent = 'Responder por e-mail →';
+    }
   }
   if (t.id === 'sinal-send') {
     var msg = $('compose-txt').value.trim(); if (!msg) return;
@@ -616,7 +642,7 @@ document.addEventListener('focusout', async function (e) {
   if (r.error) return fail('salvar a anotação', r.error);
   c.nota = v || null; toast('Anotação salva');
 });
-document.addEventListener('input', function (e) { if (e.target.id === 'reply-txt') $('reply-err').hidden = true; });
+document.addEventListener('input', function (e) { if (e.target.id === 'reply-txt' || e.target.id === 'reply-subj') $('reply-err').hidden = true; });
 document.addEventListener('keydown', function (e) {
   if (e.key === 'Enter' && e.target.matches('tr[data-id]')) openPessoa(e.target.dataset.id);
   if (e.key === 'Escape' && !$('compose-modal').hidden) closeCompose();

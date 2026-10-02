@@ -255,8 +255,9 @@ nunca um link quebrado.
 
 ## 16. Enviar e-mails do CRM pelo Brevo (`/admin/crm/`)
 
-O painel do CRM manda e-mail (boas-vindas e reimpacto) pelo Worker, que chama o Brevo. Quem pode enviar:
-só quem está logada no CRM **e** na tabela `admins` do Supabase (o Worker confere isso a cada envio).
+O painel do CRM manda e-mail (boas-vindas, reimpacto e resposta de pergunta única) pelo Worker, que chama
+o Brevo. Quem pode enviar: só quem está logada no CRM **e** na tabela `admins` do Supabase (o Worker
+confere isso a cada envio).
 
 **No Brevo**
 1. **Remetente**: menu do perfil → **Senders, Domains & Dedicated IPs** → **Senders** → adicione o e-mail de onde
@@ -293,8 +294,11 @@ novidades; e-mails que não são boas-vindas levam um rodapé "responda *sair*" 
 Quem pedir pra sair: registre em Consentimento (o link de descadastro do Brevo faz isso sozinho pelo webhook).
 Modelos do guia do VLS-TS (`guia_chamada` e `guia_plataforma`): o primeiro convida pra uma conversa (Cal.com) e
 usa o prazo do VLS-TS quando a pessoa informou a data de entrada; o segundo apresenta a plataforma como teste.
-Os dois são oferta comercial, então o Worker **só deixa enviar a quem aceitou novidades**. Se você mudar a lista
-`CRM_MODELOS` no `worker.js`, lembre de atualizar o Worker publicado (seção 9).
+Os dois são oferta comercial, então o Worker **só deixa enviar a quem aceitou novidades**. O modelo
+`resposta_pergunta` (aba **Perguntas únicas** do CRM) é diferente dos outros: é a resposta direta a uma
+pergunta que a própria pessoa mandou pelo formulário do artigo, então o Worker deixa enviar **mesmo que ela
+não tenha aceitado novidades** — só a marca `perguntas_unicas.status = 'respondida'` depois que o Brevo aceita
+o envio. Se você mudar a lista `CRM_MODELOS` no `worker.js`, lembre de atualizar o Worker publicado (seção 9).
 
 Limite de honestidade: "abriu" no Brevo não é 100% confiável (Apple Mail e outros pré-carregam a imagem), então
 use como sinal, não como certeza.
