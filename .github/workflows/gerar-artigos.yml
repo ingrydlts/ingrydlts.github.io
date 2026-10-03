@@ -1,0 +1,50 @@
+# Gera /artigos/<slug>/ (uma página estática por artigo publicado), sitemap.xml e robots.txt.
+# Roda quando o /admin salva content/posts.json, quando uma página feita à mão muda, e todo dia
+# às 6h de Paris (para artigos "agendado" entrarem no ar sozinhos). Ver scripts/gerar-artigos.mjs.
+name: Gerar páginas dos artigos
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - content/posts.json
+      - artigos/post/**
+      - assets/js/markdown.js
+      - scripts/gerar-artigos.mjs
+      - .github/workflows/gerar-artigos.yml
+  schedule:
+    - cron: "0 4 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: gerar-artigos
+  cancel-in-progress: false
+
+jobs:
+  gerar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node scripts/gerar-artigos.mjs
+      - name: Gravar o que mudou
+        run: |
+          git add -A artigos sitemap.xml robots.txt
+          if git diff --cached --quiet; then
+            echo "Nada mudou."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "SEO: páginas dos artigos e sitemap gerados a partir de content/posts.json"
+          # O /admin pode ter gravado outro commit enquanto isto rodava.
+          for tentativa in 1 2 3; do
+            git push && exit 0
+            git pull --rebase
+          done
+          exit 1

@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /acesso-vip/
+
+Sitemap: https://imigrantepordentro.com/sitemap.xml

@@ -134,7 +134,7 @@ const SLIDES = [
 
 function getArticleSlug() {
   try {
-    return new URLSearchParams(window.location.search).get("slug");
+    return new URLSearchParams(window.location.search).get("slug") || document.body.dataset.articleSlug || null;
   } catch (e) {
     return null;
   }
