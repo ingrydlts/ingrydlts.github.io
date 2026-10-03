@@ -1,53 +1,8 @@
 {
   "items": [
     {
-      "status": "revisao",
-      "title": "Número de sécu e Carte Vitale: como pedir e o que fazer enquanto o cartão não chega",
-      "slug": "carte-vitale",
       "excerpt": "Número de sécu, abertura de direitos e Carte Vitale são três coisas diferentes: entenda cada uma, monte a papelada e saiba o que guardar na espera.",
-      "category": "Família",
-      "readMinutes": 11,
-      "body": "Você ficou doente na terceira semana na França. O médico pediu a *Carte Vitale* (cartão do seguro-saúde) e você não tem nem número de *sécu*. Paga do bolso e perde o dinheiro? A resposta curta é não — mas só se você souber o que pedir na hora e o que guardar.\n\nO que trava quase todo mundo é confundir três coisas distintas. Vamos separar.\n\n[[RESUMO]]\nNúmero de sécu, abertura de direitos e Carte Vitale física são etapas diferentes do mesmo caminho\nEstudante estrangeiro faz o cadastro em um site próprio da Ameli, separado do ameli.fr comum\nEnquanto o cartão não chega, dá pra se consultar pagando e guardar o comprovante do médico para pedir reembolso depois\n[[/RESUMO]]\n\n## Número de sécu, abertura de direitos e Carte Vitale: qual é a diferença?\n\nAs três coisas aparecem misturadas nos grupos, e é por isso que o processo parece travado quando na verdade só está em outra etapa.\n\n- **Número de sécurité sociale**: o número que identifica você no sistema. A própria Ameli diz que uma das peças que você envia é justamente a \"pièce d'état-civil nécessaire à la création de votre numéro d'identification\" — ou seja, o documento de estado civil existe para criar esse número.\n- **Abertura de direitos**: é o reconhecimento de que você está coberta e pode ser reembolsada. {{VERIFICAR: diferença oficial entre número provisório e número definitivo de sécurité sociale, e em que momento cada um é atribuído}}\n- **Carte Vitale física**: o cartão verde que você passa no consultório. Ele vem depois, e não é o que define se você tem direito. {{VERIFICAR: em que momento exato a Carte Vitale é emitida e enviada, segundo a Ameli}}\n\n**Atenção:** não ter o cartão na mão não significa não ter direito. Significa que, por enquanto, você paga e pede reembolso depois — guardando o papel certo.\n\n## Você pede onde? O caminho muda conforme o seu perfil\n\nAqui está a parte que ninguém explica direito: a porta de entrada não é a mesma pra todo mundo.\n\nPara **estudante estrangeiro**, a Ameli é clara: o cadastro é feito em *etudiant-etranger.ameli.fr*, que é um site separado do ameli.fr comum, próprio para estudante estrangeiro. Se você tentar fazer pelo ameli.fr normal, vai girar em falso.\n\nPara os outros perfis, o caminho e o órgão competente variam e precisam ser confirmados antes de você montar dossiê:\n\n- Cônjuge ou familiar de residente: {{VERIFICAR: órgão competente e procedimento de inscrição no regime de saúde para cônjuge/familiar}}\n- PVT (*Programme Vacances-Travail*): {{VERIFICAR: por qual via o titular de PVT se inscreve no regime de saúde francês}}\n- Assalariada com contrato: {{VERIFICAR: se a inscrição é feita pelo empregador ou pela própria pessoa, e em qual organismo}}\n- Trabalhadora independente / freelance: {{VERIFICAR: organismo e procedimento de inscrição para trabalhador independente}}\n\nE tem um ponto que vale confirmar para qualquer perfil: {{VERIFICAR: existência de condição de residência estável na França para abertura de direitos à saúde e como ela é comprovada}}\n\n[[POLL]]\nEm que fase você está?\nAinda não pedi nada\nEnviei o dossiê e estou esperando\nJá tenho o número, mas não o cartão\nJá tenho a Carte Vitale\n[[/POLL]]\n\n## Passo a passo do pedido, do zero ao acompanhamento\n\nEsse roteiro vale para o caminho do estudante estrangeiro, que é o único com fonte oficial detalhada aqui. Para os outros perfis, confirme cada etapa antes.\n\n[[STEPS]]\nAntes de abrir qualquer cadastro | Se você já teve um pedido anterior em outro status (por exemplo, como au pair), ligue para o atendimento indicado na página da Ameli e confirme se aquele dossiê ainda existe. Abrir um cadastro novo por cima pode gerar duplicidade. {{VERIFICAR: procedimento oficial quando existe um pedido anterior em outro status}}\nCriar a conta no site certo | Para estudante estrangeiro, o cadastro é em etudiant-etranger.ameli.fr, que não é o mesmo que o ameli.fr comum.\nReunir e enviar os documentos | Identidade ou passaporte, título de residência, atestado de escolaridade do ano em curso, IBAN ou RIB e a peça de estado civil. A lista completa está na seção seguinte.\nAcompanhar o dossiê | {{VERIFICAR: canais oficiais de acompanhamento do pedido e prazo médio de análise informado pela Ameli}}\nResponder a pedido de documento complementar | Se pedirem um documento a mais, responda rápido: enquanto falta peça, o dossiê fica parado. Se o cadastro online travar, a própria Ameli indica ligar para os números de atendimento da página — tem um para a França e outro para o exterior, com atendimento em inglês disponível.\n[[/STEPS]]\n\n**Atenção:** prazos de análise e de envio do cartão variam e mudam com frequência. Confira sempre na página oficial antes de contar com uma data.\n\n## A papelada que faz o brasileiro travar\n\nA lista que a Ameli publica para estudante estrangeiro é esta (trecho da própria fonte):\n\n- carte nationale d'identité ou passaporte\n- *titre de séjour* (título de residência)\n- *attestation de scolarité* (atestado de escolaridade) do ano em curso\n- *attestation d'autorisation parentale* (autorização dos pais), se a pessoa tiver menos de 16 anos\n- IBAN ou *relevé d'identité bancaire* (RIB), o comprovante de conta bancária\n- *pièce d'état-civil* (documento de estado civil) necessária para criar o seu número de identificação\n\nSobre a peça de estado civil, a Ameli aceita: cópia integral da certidão de nascimento, extrato com filiação (ou documento emitido por consulado), *livret de famille* ou certidão de casamento.\n\nAgora, o erro clássico de cada item:\n\n- **Certidão de nascimento**: o problema quase nunca é não ter, é ter a versão errada. Peça a cópia integral ou o extrato com filiação, não a versão resumida.\n- **Validade da certidão**: {{VERIFICAR: se a Ameli exige certidão de nascimento emitida há menos de 1 ano — aparece em resposta de expert no fórum oficial, mas sem confirmação em página institucional}}\n- **Apostila de Haia**: {{VERIFICAR: se a certidão brasileira precisa de apostila para o cadastro em etudiant-etranger.ameli.fr, e se o extrato plurilíngue dispensa a exigência}} Circula o alerta de que, desde 01/06/2026, a maioria dos países precisaria de apostila e certidão com menos de 1 ano, mas a origem é um guia de consultoria privada, e não achei texto equivalente no ameli.fr, no service-public nem no Légifrance. {{VERIFICAR: existência de regra com vigência em 01/06/2026 sobre apostila e validade de certidão estrangeira}}\n- **Tradução juramentada**: {{VERIFICAR: se a tradução é exigida, e se precisa ser feita na França por tradutor juramentado de cour d'appel}}\n- **RIB francês**: o RIB tem que estar no seu nome. Conta de terceiro costuma ser recusada. {{VERIFICAR: se a Ameli exige que o IBAN/RIB seja de conta francesa e em nome do titular}}\n- **Título de residência**: tem que estar válido e legível na cópia, com o número visível.\n\nAntes de enviar, vale ligar no número da página da Ameli e confirmar apostila, validade e onde traduzir. É cinco minutos de telefone contra semanas de dossiê devolvido.\n\n[[CHECKLIST]]\nDossiê do pedido (perfil estudante estrangeiro)\nPassaporte ou documento de identidade em cópia legível\nTítulo de residência válido\nAtestado de escolaridade do ano em curso\nIBAN ou RIB em meu nome\nPeça de estado civil (cópia integral da certidão, extrato com filiação, livret de famille ou certidão de casamento)\nLiguei na Ameli para confirmar apostila, validade e tradução\nConfirmei que não existe dossiê antigo meu em outro status\n[[/CHECKLIST]]\n\n## Enquanto não sai: como se consultar e guardar tudo\n\nVocê não precisa esperar o cartão para ir ao médico. Precisa é sair do consultório com o papel certo na mão.\n\n- Avise na marcação que você ainda não tem Carte Vitale.\n- Pague a consulta e peça o comprovante de atendimento que o médico emite nesse caso. {{VERIFICAR: nome e formato do documento que o médico entrega quando o paciente não tem Carte Vitale, e como ele é usado no pedido de reembolso}}\n- Guarde também o comprovante de pagamento e, no caso de remédio, o papel que a farmácia entrega.\n- Fotografe tudo no mesmo dia e salve numa pasta única, por data.\n\nSobre o reembolso em si, nada de chute: {{VERIFICAR: prazo oficial para pedir reembolso de consulta e medicamento pagos sem Carte Vitale, e forma de envio dos comprovantes}} e {{VERIFICAR: regras oficiais de reembolso de consultas e medicamentos para quem ainda não tem Carte Vitale}}\n\n**Atenção:** não jogue fora nenhum papel de saúde no primeiro ano. Mesmo o que parece irrelevante pode ser o comprovante que falta no pedido de reembolso.\n\n## Chegou o número, chegou o cartão: e agora?\n\nReceber o cartão não é o fim. Tem três movimentos que mudam o seu dia a dia depois:\n\n- **Declarar o *médecin traitant*** (médico de referência). {{VERIFICAR: papel do médecin traitant e efeito da declaração sobre o percentual de reembolso}}\n- **Vincular a *mutuelle*** (complementar de saúde), se você tiver uma. {{VERIFICAR: o que é a mutuelle, o que ela cobre além do regime obrigatório e quais dispositivos públicos existem para quem tem baixa renda}}\n- **Ativar a conta e o aplicativo** para acompanhar reembolsos e baixar atestados. {{VERIFICAR: qual conta/aplicativo oficial a pessoa deve ativar após receber a Carte Vitale e como se faz}}\n\nE mantenha o cartão atualizado sempre que mudar algo na sua situação: endereço, status, trabalho, estudo. {{VERIFICAR: como e com que frequência a Carte Vitale deve ser atualizada}}\n\n## E quando o dossiê empaca?\n\nSinais de que algo parou:\n\n- Semanas sem nenhuma mudança no status do pedido.\n- Pedido de documento complementar que você respondeu e ninguém confirmou o recebimento.\n- Você teve um pedido anterior em outro status e o novo não avança — pode ser duplicidade.\n\nO caminho mais direto é o telefone indicado na página oficial da Ameli, que tem número para quem está na França e número para quem liga do exterior, com atendimento em inglês. Anote sempre data, hora e nome de quem atendeu.\n\nSe o seu caso envolve título de residência e o travamento vem dali, vale olhar também o texto de lei que rege o seu *titre de séjour* no Légifrance, que está nas fontes abaixo.\n\n## Perguntas frequentes\n\n[[FAQ]]\nPosso ir ao médico sem Carte Vitale? | Pode. Você paga na hora e guarda o comprovante que o médico entrega para pedir reembolso depois. {{VERIFICAR: documento exato e procedimento oficial de reembolso}}\nSou estudante estrangeiro, faço o cadastro no ameli.fr normal? | Não. A Ameli indica o site etudiant-etranger.ameli.fr, que é separado do ameli.fr comum e próprio para estudante estrangeiro.\nMinha certidão de nascimento precisa de apostila? | {{VERIFICAR: exigência de apostila para certidão brasileira no cadastro de estudante estrangeiro}} Circula esse alerta desde 2026, mas a origem é consultoria privada, não página oficial. Ligue no atendimento da Ameli antes de enviar.\nJá tive um pedido antigo como au pair. Abro um novo cadastro? | Antes de abrir, ligue e confirme se o dossiê antigo ainda existe, para não criar duplicidade. {{VERIFICAR: procedimento oficial nesses casos}}\nQuanto tempo demora até o cartão chegar? | {{VERIFICAR: prazo oficial de análise do dossiê e de envio da Carte Vitale}} Confira sempre na página oficial, porque esses prazos mudam.\n[[/FAQ]]\n\n[[RESOURCES]]\nAmeli — Vous venez étudier en France | Página oficial com a lista de documentos e o site de cadastro para estudante estrangeiro | Acessar | https://www.ameli.fr/assure/droits-demarches/europe-international/protection-sociale-france/vous-venez-etudier-en-france\nLégifrance — CESEDA L422-10 | Texto de lei sobre título de residência, no site oficial da legislação francesa | Acessar | https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000049052670\n[[/RESOURCES]]\n\n[[PROXIMO-PASSO]]\nse enquete=Ainda não pedi nada | Monte seu checklist antes de abrir o cadastro | Organize documentos e prazos num só lugar para não enviar dossiê incompleto. | Montar checklist | /checklist-preview/\nse confianca<=2 | Comece pelo começo | Se ainda tem dúvida sobre o seu status na França, o assistente ajuda a mapear qual é o seu caminho. | Usar o assistente | /assistente-de-vistos/\npadrao | Organize a espera sem gastar do próprio bolso | Enquanto o cartão não chega, controle o que você pagou e o que ainda vai pedir de reembolso. | Ver a planilha | /produtos-digitais/produto/?slug=planilha-financeira-super-integrada\n[[/PROXIMO-PASSO]]\n\n[[TRILHA]]\nChegada na França\nquantos-tipos-de-visto-franca-2026\nvls-ts-3-meses-para-validar\npasso-a-passo-da-anef\ntudo-sobre-o-exame-civico\n[[/TRILHA]]\n\nEste texto é apoio informativo, não aconselhamento jurídico. Confirme cada regra, prazo e documento na fonte oficial antes de agir.\n\n[[FEEDBACK]]\nEsse artigo resolveu sua dúvida?\n[[/FEEDBACK]]\n",
-      "coverKeyword": "Sécu",
-      "coverTags": [
-        "Carte Vitale",
-        "Ameli",
-        "Reembolso"
-      ],
-      "coverFormat": "Passo a passo",
-      "sectionReactions": true,
-      "editorNotes": "**Categoria:** não existe categoria \"Saúde\" na lista, então coloquei em Família por ser o pilar mais próximo de vida prática/cobertura. Se preferir, \"Custo de Vida\" também serve — avalia aí.\n\n**Alerta de cobertura:** a pauta pede 7 seções, mas só temos fonte oficial para o perfil estudante estrangeiro (ameli.fr). Todo o resto (cônjuge, PVT, assalariado, freelance, reembolso, mutuelle, médecin traitant, prazos) ficou com {{VERIFICAR}}. São muitas marcas. Vale, antes de publicar, ou (a) você fechar as fontes dos outros perfis, ou (b) reposicionar o artigo como \"guia para estudante estrangeiro\" e fazer os outros perfis em artigos separados. Da forma atual, o artigo depende muito da sua rodada de checagem.\n\n**2 outras ideias de ferramenta-assinatura pro mesmo artigo:**\n- `[[SELETOR]]` \"Por qual porta você entra?\" — mede o perfil da leitora (estudante, cônjuge, PVT, assalariada, freelance) e manda cada uma para o órgão/caminho certo. É a melhor opção assim que você tiver fonte oficial para os cinco perfis; hoje seria meio seletor vazio.\n- `[[PRAZO]]` \"Há quantos dias você enviou o dossiê?\" — mede o tempo desde o envio e dispara o próximo passo \"ligar no atendimento\" quando passa de um limite. Depende de confirmar o prazo oficial de análise.\n\n**Microengajamento que eu usaria além dos que entraram:**\n- `[[CARDS]]` com os três conceitos (número / direitos / cartão) em cartões visuais: a confusão é conceitual, e cartão fixa melhor que parágrafo.\n- `[[STATS]]` com prazo médio e percentual de reembolso — não usei porque não tenho nenhum número com fonte, e número sem fonte não entra.\n- `[[QUIZ]]` \"o que você leva pro consultório sem Carte Vitale\" — vira bom material de Reel, mas depende de confirmar o documento que o médico entrega.\n\n**Reel:** tela dividida. De um lado, a mão segurando uma Carte Vitale; do outro, uma tela de celular com cadastro em andamento. Texto: \"Isso aqui não é a mesma coisa que isso aqui — e é por isso que seu pedido parece travado.\" Três cortes rápidos (número → direitos → cartão) e CTA para o artigo. Fecha com: \"estudante estrangeiro não se cadastra no ameli.fr comum. É outro site.\"",
-      "origem": {
-        "sistema": "cerebro",
-        "pauta": "P-0002",
-        "dor": "Carte Vitale e número de sécu: como pedir e o que fazer na espera",
-        "enviado_em": "2026-10-02T14:32:44.982Z"
-      },
       "conferencia": [
-        {
-          "marca": "diferença oficial entre número provisório e número definitivo de sécurité sociale, e em que momento cada um é atribuído",
-          "status": "conferida",
-          "sugestao": "Quando você chega, costuma receber primeiro um número provisório. Segundo a Ameli, ele dá os mesmos direitos que o definitivo, mas ainda não dá acesso ao compte ameli nem à Carte Vitale. O número definitivo e certificado vem depois, quando sua identidade é certificada pelo SANDIA, e não precisa de nenhum novo pedido seu. Atenção: essa explicação está no fórum oficial da Ameli, respondida por atendentes da Assurance Maladie, e não numa página institucional. Vale confirmar com a sua CPAM.",
-          "fontes": [
-            {
-              "url": "https://forum-assures.ameli.fr/questions/2404582-numero-provisoire-vs-numero-definitif",
-              "titulo": "Forum ameli – Numéro provisoire vs numéro définitif",
-              "trecho": "Le numéro de sécurité sociale provisoire vous donne les mêmes droits qu'un numéro permanent.",
-              "status": "conferida"
-            },
-            {
-              "url": "https://forum-assures.ameli.fr/questions/2031867-delai-carte-vitale-numero-secu-definitif",
-              "titulo": "Forum ameli – Délai carte Vitale et numéro de sécu définitif",
-              "trecho": "Seul un numéro de sécurité sociale définitif permet d'obtenir une carte Vitale.",
-              "status": "trecho_nao_encontrado"
-            }
-          ],
-          "buscas": [
-            "numéro de sécurité sociale provisoire définitif",
-            "numéro provisoire carte Vitale ameli",
-            "NIR certifié SANDIA délai"
-          ]
-        },
         {
           "marca": "em que momento exato a Carte Vitale é emitida e enviada, segundo a Ameli",
           "status": "conferida",
@@ -546,25 +501,46 @@
             "délai traitement dossier CPAM"
           ]
         }
-      ]
+      ],
+      "body": "Você ficou doente na terceira semana na França. O médico pediu a *Carte Vitale* (cartão do seguro-saúde) e você não tem nem número de *sécu*. Paga do bolso e perde o dinheiro? A resposta curta é não — mas só se você souber o que pedir na hora e o que guardar.\n\nO que trava quase todo mundo é confundir três coisas distintas. Vamos separar.\n\n[[RESUMO]]\nNúmero de sécu, abertura de direitos e Carte Vitale física são etapas diferentes do mesmo caminho\nEstudante estrangeiro faz o cadastro em um site próprio da Ameli, separado do ameli.fr comum\nEnquanto o cartão não chega, dá pra se consultar pagando e guardar o comprovante do médico para pedir reembolso depois\n[[/RESUMO]]\n\n## Número de sécu, abertura de direitos e Carte Vitale: qual é a diferença?\n\nAs três coisas aparecem misturadas nos grupos, e é por isso que o processo parece travado quando na verdade só está em outra etapa.\n\n- **Número de sécurité sociale**: o número que identifica você no sistema. A própria Ameli diz que uma das peças que você envia é justamente a \"pièce d'état-civil nécessaire à la création de votre numéro d'identification\" — ou seja, o documento de estado civil existe para criar esse número.\n- **Abertura de direitos**: é o reconhecimento de que você está coberta e pode ser reembolsada. Quando você chega, costuma receber primeiro um número provisório. Segundo a Ameli, ele dá os mesmos direitos que o definitivo, mas ainda não dá acesso ao compte ameli nem à Carte Vitale. O número definitivo e certificado vem depois, quando sua identidade é certificada pelo SANDIA, e não precisa de nenhum novo pedido seu. Atenção: essa explicação está no fórum oficial da Ameli, respondida por atendentes da Assurance Maladie, e não numa página institucional. Vale confirmar com a sua CPAM.\n- **Carte Vitale física**: o cartão verde que você passa no consultório. Ele vem depois, e não é o que define se você tem direito. Segundo a Ameli, você só pode pedir a Carte Vitale depois de ter o número de sécu definitivo. Aí o pedido é feito no compte ameli, no app ou pelo formulário que chega por correio. Pelo site, o cartão chega em cerca de 2 semanas. Pelo formulário em papel, em cerca de 3 semanas. Enquanto isso, você apresenta uma attestation de droits aos profissionais de saúde.\n\n**Atenção:** não ter o cartão na mão não significa não ter direito. Significa que, por enquanto, você paga e pede reembolso depois — guardando o papel certo.\n\n## Você pede onde? O caminho muda conforme o seu perfil\n\nAqui está a parte que ninguém explica direito: a porta de entrada não é a mesma pra todo mundo.\n\nPara **estudante estrangeiro**, a Ameli é clara: o cadastro é feito em *etudiant-etranger.ameli.fr*, que é um site separado do ameli.fr comum, próprio para estudante estrangeiro. Se você tentar fazer pelo ameli.fr normal, vai girar em falso.\n\nPara os outros perfis, o caminho e o órgão competente variam e precisam ser confirmados antes de você montar dossiê:\n\n- Cônjuge ou familiar de residente: {{VERIFICAR: órgão competente e procedimento de inscrição no regime de saúde para cônjuge/familiar}}\n- PVT (*Programme Vacances-Travail*): {{VERIFICAR: por qual via o titular de PVT se inscreve no regime de saúde francês}}\n- Assalariada com contrato: {{VERIFICAR: se a inscrição é feita pelo empregador ou pela própria pessoa, e em qual organismo}}\n- Trabalhadora independente / freelance: {{VERIFICAR: organismo e procedimento de inscrição para trabalhador independente}}\n\nE tem um ponto que vale confirmar para qualquer perfil: {{VERIFICAR: existência de condição de residência estável na França para abertura de direitos à saúde e como ela é comprovada}}\n\n[[POLL]]\nEm que fase você está?\nAinda não pedi nada\nEnviei o dossiê e estou esperando\nJá tenho o número, mas não o cartão\nJá tenho a Carte Vitale\n[[/POLL]]\n\n## Passo a passo do pedido, do zero ao acompanhamento\n\nEsse roteiro vale para o caminho do estudante estrangeiro, que é o único com fonte oficial detalhada aqui. Para os outros perfis, confirme cada etapa antes.\n\n[[STEPS]]\nAntes de abrir qualquer cadastro | Se você já teve um pedido anterior em outro status (por exemplo, como au pair), ligue para o atendimento indicado na página da Ameli e confirme se aquele dossiê ainda existe. Abrir um cadastro novo por cima pode gerar duplicidade. {{VERIFICAR: procedimento oficial quando existe um pedido anterior em outro status}}\nCriar a conta no site certo | Para estudante estrangeiro, o cadastro é em etudiant-etranger.ameli.fr, que não é o mesmo que o ameli.fr comum.\nReunir e enviar os documentos | Identidade ou passaporte, título de residência, atestado de escolaridade do ano em curso, IBAN ou RIB e a peça de estado civil. A lista completa está na seção seguinte.\nAcompanhar o dossiê | {{VERIFICAR: canais oficiais de acompanhamento do pedido e prazo médio de análise informado pela Ameli}}\nResponder a pedido de documento complementar | Se pedirem um documento a mais, responda rápido: enquanto falta peça, o dossiê fica parado. Se o cadastro online travar, a própria Ameli indica ligar para os números de atendimento da página — tem um para a França e outro para o exterior, com atendimento em inglês disponível.\n[[/STEPS]]\n\n**Atenção:** prazos de análise e de envio do cartão variam e mudam com frequência. Confira sempre na página oficial antes de contar com uma data.\n\n## A papelada que faz o brasileiro travar\n\nA lista que a Ameli publica para estudante estrangeiro é esta (trecho da própria fonte):\n\n- carte nationale d'identité ou passaporte\n- *titre de séjour* (título de residência)\n- *attestation de scolarité* (atestado de escolaridade) do ano em curso\n- *attestation d'autorisation parentale* (autorização dos pais), se a pessoa tiver menos de 16 anos\n- IBAN ou *relevé d'identité bancaire* (RIB), o comprovante de conta bancária\n- *pièce d'état-civil* (documento de estado civil) necessária para criar o seu número de identificação\n\nSobre a peça de estado civil, a Ameli aceita: cópia integral da certidão de nascimento, extrato com filiação (ou documento emitido por consulado), *livret de famille* ou certidão de casamento.\n\nAgora, o erro clássico de cada item:\n\n- **Certidão de nascimento**: o problema quase nunca é não ter, é ter a versão errada. Peça a cópia integral ou o extrato com filiação, não a versão resumida.\n- **Validade da certidão**: {{VERIFICAR: se a Ameli exige certidão de nascimento emitida há menos de 1 ano — aparece em resposta de expert no fórum oficial, mas sem confirmação em página institucional}}\n- **Apostila de Haia**: {{VERIFICAR: se a certidão brasileira precisa de apostila para o cadastro em etudiant-etranger.ameli.fr, e se o extrato plurilíngue dispensa a exigência}} Circula o alerta de que, desde 01/06/2026, a maioria dos países precisaria de apostila e certidão com menos de 1 ano, mas a origem é um guia de consultoria privada, e não achei texto equivalente no ameli.fr, no service-public nem no Légifrance. {{VERIFICAR: existência de regra com vigência em 01/06/2026 sobre apostila e validade de certidão estrangeira}}\n- **Tradução juramentada**: {{VERIFICAR: se a tradução é exigida, e se precisa ser feita na França por tradutor juramentado de cour d'appel}}\n- **RIB francês**: o RIB tem que estar no seu nome. Conta de terceiro costuma ser recusada. {{VERIFICAR: se a Ameli exige que o IBAN/RIB seja de conta francesa e em nome do titular}}\n- **Título de residência**: tem que estar válido e legível na cópia, com o número visível.\n\nAntes de enviar, vale ligar no número da página da Ameli e confirmar apostila, validade e onde traduzir. É cinco minutos de telefone contra semanas de dossiê devolvido.\n\n[[CHECKLIST]]\nDossiê do pedido (perfil estudante estrangeiro)\nPassaporte ou documento de identidade em cópia legível\nTítulo de residência válido\nAtestado de escolaridade do ano em curso\nIBAN ou RIB em meu nome\nPeça de estado civil (cópia integral da certidão, extrato com filiação, livret de famille ou certidão de casamento)\nLiguei na Ameli para confirmar apostila, validade e tradução\nConfirmei que não existe dossiê antigo meu em outro status\n[[/CHECKLIST]]\n\n## Enquanto não sai: como se consultar e guardar tudo\n\nVocê não precisa esperar o cartão para ir ao médico. Precisa é sair do consultório com o papel certo na mão.\n\n- Avise na marcação que você ainda não tem Carte Vitale.\n- Pague a consulta e peça o comprovante de atendimento que o médico emite nesse caso. {{VERIFICAR: nome e formato do documento que o médico entrega quando o paciente não tem Carte Vitale, e como ele é usado no pedido de reembolso}}\n- Guarde também o comprovante de pagamento e, no caso de remédio, o papel que a farmácia entrega.\n- Fotografe tudo no mesmo dia e salve numa pasta única, por data.\n\nSobre o reembolso em si, nada de chute: {{VERIFICAR: prazo oficial para pedir reembolso de consulta e medicamento pagos sem Carte Vitale, e forma de envio dos comprovantes}} e {{VERIFICAR: regras oficiais de reembolso de consultas e medicamentos para quem ainda não tem Carte Vitale}}\n\n**Atenção:** não jogue fora nenhum papel de saúde no primeiro ano. Mesmo o que parece irrelevante pode ser o comprovante que falta no pedido de reembolso.\n\n## Chegou o número, chegou o cartão: e agora?\n\nReceber o cartão não é o fim. Tem três movimentos que mudam o seu dia a dia depois:\n\n- **Declarar o *médecin traitant*** (médico de referência). {{VERIFICAR: papel do médecin traitant e efeito da declaração sobre o percentual de reembolso}}\n- **Vincular a *mutuelle*** (complementar de saúde), se você tiver uma. {{VERIFICAR: o que é a mutuelle, o que ela cobre além do regime obrigatório e quais dispositivos públicos existem para quem tem baixa renda}}\n- **Ativar a conta e o aplicativo** para acompanhar reembolsos e baixar atestados. {{VERIFICAR: qual conta/aplicativo oficial a pessoa deve ativar após receber a Carte Vitale e como se faz}}\n\nE mantenha o cartão atualizado sempre que mudar algo na sua situação: endereço, status, trabalho, estudo. {{VERIFICAR: como e com que frequência a Carte Vitale deve ser atualizada}}\n\n## E quando o dossiê empaca?\n\nSinais de que algo parou:\n\n- Semanas sem nenhuma mudança no status do pedido.\n- Pedido de documento complementar que você respondeu e ninguém confirmou o recebimento.\n- Você teve um pedido anterior em outro status e o novo não avança — pode ser duplicidade.\n\nO caminho mais direto é o telefone indicado na página oficial da Ameli, que tem número para quem está na França e número para quem liga do exterior, com atendimento em inglês. Anote sempre data, hora e nome de quem atendeu.\n\nSe o seu caso envolve título de residência e o travamento vem dali, vale olhar também o texto de lei que rege o seu *titre de séjour* no Légifrance, que está nas fontes abaixo.\n\n## Perguntas frequentes\n\n[[FAQ]]\nPosso ir ao médico sem Carte Vitale? | Pode. Você paga na hora e guarda o comprovante que o médico entrega para pedir reembolso depois. {{VERIFICAR: documento exato e procedimento oficial de reembolso}}\nSou estudante estrangeiro, faço o cadastro no ameli.fr normal? | Não. A Ameli indica o site etudiant-etranger.ameli.fr, que é separado do ameli.fr comum e próprio para estudante estrangeiro.\nMinha certidão de nascimento precisa de apostila? | {{VERIFICAR: exigência de apostila para certidão brasileira no cadastro de estudante estrangeiro}} Circula esse alerta desde 2026, mas a origem é consultoria privada, não página oficial. Ligue no atendimento da Ameli antes de enviar.\nJá tive um pedido antigo como au pair. Abro um novo cadastro? | Antes de abrir, ligue e confirme se o dossiê antigo ainda existe, para não criar duplicidade. {{VERIFICAR: procedimento oficial nesses casos}}\nQuanto tempo demora até o cartão chegar? | {{VERIFICAR: prazo oficial de análise do dossiê e de envio da Carte Vitale}} Confira sempre na página oficial, porque esses prazos mudam.\n[[/FAQ]]\n\n[[RESOURCES]]\nAmeli — Vous venez étudier en France | Página oficial com a lista de documentos e o site de cadastro para estudante estrangeiro | Acessar | https://www.ameli.fr/assure/droits-demarches/europe-international/protection-sociale-france/vous-venez-etudier-en-france\nLégifrance — CESEDA L422-10 | Texto de lei sobre título de residência, no site oficial da legislação francesa | Acessar | https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000049052670\nForum ameli – Numéro provisoire vs numéro définitif | forum-assures.ameli.fr | Acessar | https://forum-assures.ameli.fr/questions/2404582-numero-provisoire-vs-numero-definitif\nDemander sa carte Vitale : conditions et démarches | ameli.fr | Acessar | https://www.ameli.fr/assure/remboursements/etre-bien-rembourse/carte-vitale/carte-vitale-application/demander-sa-carte-vitale-conditions-et-demarches\n[[/RESOURCES]]\n\n[[PROXIMO-PASSO]]\nse enquete=Ainda não pedi nada | Monte seu checklist antes de abrir o cadastro | Organize documentos e prazos num só lugar para não enviar dossiê incompleto. | Montar checklist | /checklist-preview/\nse confianca<=2 | Comece pelo começo | Se ainda tem dúvida sobre o seu status na França, o assistente ajuda a mapear qual é o seu caminho. | Usar o assistente | /assistente-de-vistos/\npadrao | Organize a espera sem gastar do próprio bolso | Enquanto o cartão não chega, controle o que você pagou e o que ainda vai pedir de reembolso. | Ver a planilha | /produtos-digitais/produto/?slug=planilha-financeira-super-integrada\n[[/PROXIMO-PASSO]]\n\n[[TRILHA]]\nChegada na França\nquantos-tipos-de-visto-franca-2026\nvls-ts-3-meses-para-validar\npasso-a-passo-da-anef\ntudo-sobre-o-exame-civico\n[[/TRILHA]]\n\nEste texto é apoio informativo, não aconselhamento jurídico. Confirme cada regra, prazo e documento na fonte oficial antes de agir.\n\n[[FEEDBACK]]\nEsse artigo resolveu sua dúvida?\n[[/FEEDBACK]]\n",
+      "sectionReactions": true,
+      "readMinutes": 11,
+      "origem": {
+        "sistema": "cerebro",
+        "pauta": "P-0002",
+        "dor": "Carte Vitale e número de sécu: como pedir e o que fazer na espera",
+        "enviado_em": "2026-10-02T14:32:44.982Z"
+      },
+      "slug": "carte-vitale",
+      "coverFormat": "Passo a passo",
+      "coverTags": [
+        "Carte Vitale",
+        "Ameli",
+        "Reembolso"
+      ],
+      "coverKeyword": "Sécu",
+      "status": "revisao",
+      "editorNotes": "**Categoria:** não existe categoria \"Saúde\" na lista, então coloquei em Família por ser o pilar mais próximo de vida prática/cobertura. Se preferir, \"Custo de Vida\" também serve — avalia aí.\n\n**Alerta de cobertura:** a pauta pede 7 seções, mas só temos fonte oficial para o perfil estudante estrangeiro (ameli.fr). Todo o resto (cônjuge, PVT, assalariado, freelance, reembolso, mutuelle, médecin traitant, prazos) ficou com {{VERIFICAR}}. São muitas marcas. Vale, antes de publicar, ou (a) você fechar as fontes dos outros perfis, ou (b) reposicionar o artigo como \"guia para estudante estrangeiro\" e fazer os outros perfis em artigos separados. Da forma atual, o artigo depende muito da sua rodada de checagem.\n\n**2 outras ideias de ferramenta-assinatura pro mesmo artigo:**\n- `[[SELETOR]]` \"Por qual porta você entra?\" — mede o perfil da leitora (estudante, cônjuge, PVT, assalariada, freelance) e manda cada uma para o órgão/caminho certo. É a melhor opção assim que você tiver fonte oficial para os cinco perfis; hoje seria meio seletor vazio.\n- `[[PRAZO]]` \"Há quantos dias você enviou o dossiê?\" — mede o tempo desde o envio e dispara o próximo passo \"ligar no atendimento\" quando passa de um limite. Depende de confirmar o prazo oficial de análise.\n\n**Microengajamento que eu usaria além dos que entraram:**\n- `[[CARDS]]` com os três conceitos (número / direitos / cartão) em cartões visuais: a confusão é conceitual, e cartão fixa melhor que parágrafo.\n- `[[STATS]]` com prazo médio e percentual de reembolso — não usei porque não tenho nenhum número com fonte, e número sem fonte não entra.\n- `[[QUIZ]]` \"o que você leva pro consultório sem Carte Vitale\" — vira bom material de Reel, mas depende de confirmar o documento que o médico entrega.\n\n**Reel:** tela dividida. De um lado, a mão segurando uma Carte Vitale; do outro, uma tela de celular com cadastro em andamento. Texto: \"Isso aqui não é a mesma coisa que isso aqui — e é por isso que seu pedido parece travado.\" Três cortes rápidos (número → direitos → cartão) e CTA para o artigo. Fecha com: \"estudante estrangeiro não se cadastra no ameli.fr comum. É outro site.\"",
+      "title": "Número de sécu e Carte Vitale: como pedir e o que fazer enquanto o cartão não chega",
+      "category": "Família"
     },
     {
       "excerpt": "Os pré-requisitos reais pra migrar de au pair pra estudante FLE, o mito da bolsa CROUS, a mudança na regra da APL em 2026 e o caminho de carreira depois do curso.",
       "body": "Au pair não é status pra sempre — tem prazo, e depois dele a pergunta que mais aparece é a mesma: dá pra virar estudante sem sair da França? Dá. Mas quase ninguém pede do jeito certo, no momento certo, e boa parte do que circula sobre bolsa e moradia por aí é otimismo demais.\n\n[[RESUMO]]\nDá pra virar estudante sem sair da França, mas o pedido precisa ser feito **antes** do título de au pair vencer.\nA bolsa CROUS quase nunca cobre ex-au pair: exige pais com imposto de renda na França por 2 anos.\nDepois de um diploma Bac+5 francês, a APS dá **12 meses** pra procurar emprego.\n[[/RESUMO]]\n\n[[CONFIANCA]]\nQuão segura você está pra pedir a mudança de au pair pra estudante?\n[[/CONFIANCA]]\n\n[[BAND]]\n**Episódio 3** da série sobre au pair na França: o que muda quando você decide virar estudante.\n[[/BAND]]\n\nArraste pelos cartões abaixo pra ver, em poucos segundos, o que pesquisei em fontes oficiais francesas — pré-requisitos, o mito da bolsa, a mudança recente na ajuda de moradia e o caminho de carreira depois do curso de francês.\n\n[[AU-PAIR-FLE-SCROLL]]\n\n[[POLL]]\nOnde você está nessa jornada agora?\nAinda sou au pair, pensando em virar estudante\nJá estou no processo de mudança de status\nJá sou estudante, quero entender meus direitos\nSó pesquisando, nem sou au pair ainda\n[[/POLL]]\n\n## O que ficou de fora dos cartões\n\n**Atenção:** cada préfecture aplica essas regras com uma margem de interpretação própria — o que está aqui é o quadro legal geral, não uma garantia de resultado no seu caso específico.\n\nUm ponto que não cabia em número grande: algumas préfectures, por desconhecimento do procedimento, tentam mandar a pessoa voltar ao país de origem pra pedir visto de estudante lá — isso é contestável, porque a Circular INT/D/02/00073/C de 2002 já prevê a mudança de status feita dentro da França, sem precisar sair. Vale levar essa referência junto no dossiê, caso a préfecture torça o nariz.\n\n[[RESOURCES]]\nService-Public — Au pair, au pair e stagiaire aide familiale | Ficha oficial sobre o regime au pair e o pedido de título de séjour. | Acessar | https://www.service-public.gouv.fr/particuliers/vosdroits/N499?lang=en\nSciences Po — Condições do título de séjour étudiant | Documento oficial da préfecture de police com as condições de entrega do título estudante. | Acessar | https://www.sciencespo.fr/students/sites/sciencespo.fr.students/files/prefecture-police-conditions-delivrance-titre-sejour-etudiant.pdf\nCAF — O que muda na APL a partir de 1º de julho de 2026 | Comunicado oficial da CAF sobre as novas condições de ajuda de moradia pra estudantes estrangeiros. | Acessar | https://www.caf.fr/allocataires/actualites/actualites-nationales/apl-ce-qui-change-pour-certains-etudiants-partir-du-1er-juillet-2026\nRéseau des Crous — Étudiant international | Página oficial do CROUS sobre as situações específicas de estudantes internacionais. | Acessar | https://www.lescrous.fr/espace-partenaires/les-situations-rencontrees-par-les-etudiants/etudiant-international/\nCampus France — Temporary Resident Permit (APS) | Explicação oficial da autorização provisória de séjour pra busca de emprego após o diploma. | Acessar | https://www.campusfrance.org/en/temporary-resident-permit-aps\nService-Public — Carte de séjour ou VLS-TS: recherche d'emploi | Condições oficiais pra transformar o título de estudante em título de trabalho. | Acessar | https://www.service-public.gouv.fr/particuliers/vosdroits/F17319?lang=en\n[[/RESOURCES]]\n\n[[MITO]]\nMito ou verdade?\nPra virar estudante, a au pair precisa voltar ao Brasil e pedir o visto lá | mito | A mudança de status pode ser feita dentro da França. Leve a referência da Circular INT/D/02/00073/C no dossiê.\nA bolsa CROUS resolve os custos de quem foi au pair | mito | Raramente: ela exige pais que declararam imposto na França por pelo menos 2 anos.\nDeixar o título de au pair vencer sem pedir a mudança pode gerar uma OQTF | verdade | Desde a Lei nº 2024-42, isso pode gerar uma ordem de saída com efeito de 3 anos.\n[[/MITO]]\n\n[[FAQ]]\nPreciso sair da França e voltar pra pedir visto de estudante? | Não necessariamente — é um changement de statut feito na própria préfecture, antes do título de au pair vencer. Algumas préfectures pedem erroneamente a saída do país; isso é contestável com base na Circular INT/D/02/00073/C de 2002.\nA bolsa CROUS cobre meus custos como ex-au pair? | Raramente. Ela exige que os pais tenham declarado imposto de renda na França por pelo menos 2 anos — quase nenhum estudante extracomunitário se qualifica.\nMoradia CROUS ainda vale a pena sem bolsa? | Sim — o aluguel já é subsidiado por natureza, independente de você receber ou não a ajuda de moradia (APL).\nO que acontece se eu deixar o título de au pair vencer sem pedir a mudança? | Desde a Lei nº 2024-42, isso pode gerar uma OQTF (ordem de expulsão) com efeito de 3 anos — por isso o pedido precisa ser feito antes do vencimento, nunca depois.\nDepois de formada, quanto tempo tenho pra procurar emprego na França? | 12 meses não renováveis com a APS, disponível só pra quem tem diploma francês nível Bac+5 (Master, Master 2, diplôme d'ingénieur ou Doutorado).\n[[/FAQ]]\n\n[[PROXIMO-PASSO]]\nse enquete=Só pesquisando, nem sou au pair ainda | Comece pelo começo | O episódio 1 explica o que é o programa, onde se candidatar e os riscos. | Ler o episódio 1 | /artigos/post/?slug=au-pair-franca-o-que-e-plataformas-e-riscos\npadrao | Organize a vida de estudante | O Hub de Estudos junta matérias, cronograma e prazos do curso num só lugar. | Ver o Hub de Estudos | /produtos-digitais/produto/?slug=hub-de-estudos\n[[/PROXIMO-PASSO]]\n\n[[TRILHA]]\nAu pair na França\nau-pair-franca-o-que-e-plataformas-e-riscos\nau-pair-franca-direitos-e-sinais-de-alerta\nau-pair-para-estudante-fle-o-que-muda\n[[/TRILHA]]\n\n[[FEEDBACK]]\nEsse resumo te ajudou a entender o caminho de au pair pra estudante FLE?\n[[/FEEDBACK]]\n\nCompilado em setembro de 2026, com base nas fontes oficiais acima. Regras de imigração e de ajuda social mudam com frequência — confirme sempre valores e prazos direto nas fontes antes de tomar qualquer decisão. Este conteúdo é material de apoio editorial e não substitui aconselhamento jurídico profissional.",
-      "slug": "au-pair-para-estudante-fle-o-que-muda",
-      "status": "publicado",
-      "date": "2026-09-17",
       "readMinutes": 6,
-      "title": "Au pair → estudante FLE: o que a França exige de verdade",
-      "image": "/images/uploads/au-pair-fle-capa.png",
-      "category": "Au Pair",
-      "coverKeyword": "FLE",
+      "slug": "au-pair-para-estudante-fle-o-que-muda",
+      "coverFormat": "Série · ep. 3",
+      "date": "2026-09-17",
       "coverTags": [
         "au pair",
         "mudança de status",
         "CROUS"
       ],
-      "coverFormat": "Série · ep. 3"
+      "coverKeyword": "FLE",
+      "status": "publicado",
+      "title": "Au pair → estudante FLE: o que a França exige de verdade",
+      "image": "/images/uploads/au-pair-fle-capa.png",
+      "category": "Au Pair"
     },
     {
       "excerpt": "Antes de topar um match: o que o programa realmente é, as plataformas mais usadas pra se candidatar, os riscos que ninguém te conta e o que considerar antes de embarcar?",
@@ -572,40 +548,40 @@
       "readMinutes": 9,
       "updatedDate": "2026-09-02",
       "slug": "au-pair-franca-o-que-e-plataformas-e-riscos",
-      "status": "publicado",
+      "coverFormat": "Série · ep. 1",
       "date": "2026-09-02",
-      "showCoverInArticle": true,
-      "title": "Au pair na França: o que é, onde se candidatar e os riscos reais do programa",
-      "image": "/images/uploads/template-capa-blog1.png",
-      "category": "Au Pair",
-      "coverKeyword": "Au pair",
       "coverTags": [
         "plataformas",
         "riscos",
         "match"
       ],
-      "coverFormat": "Série · ep. 1"
+      "coverKeyword": "Au pair",
+      "status": "publicado",
+      "showCoverInArticle": true,
+      "title": "Au pair na França: o que é, onde se candidatar e os riscos reais do programa",
+      "image": "/images/uploads/template-capa-blog1.png",
+      "category": "Au Pair"
     },
     {
       "excerpt": "25h por semana, folga garantida, argent de poche mínimo, e agora também o passo a passo do visto e da preparação pra vinda — direto do texto original do acordo internacional de 1969. Seus direitos, seus deveres, quem te protege de verdade, e os sinais de que sua host family já passou do limite.",
       "body": "Toda semana chega mensagem de au pair perguntando a mesma coisa, de formas diferentes: \"isso que a minha host family faz é normal?\" Na maioria das vezes, não é. Au pair não é emprego doméstico nem intercâmbio informal — é um regime regulado por um acordo internacional (Acordo Europeu sobre Colocação Au Pair, Conselho da Europa, Estrasburgo, 24 de novembro de 1969, ratificado pela França em 1971) e por uma convenção obrigatória que define exatamente o que a família pode e não pode pedir de você.\n\n[[RESUMO]]\nA convenção garante: **até 25h por semana**, **320€ por mês** no mínimo, quarto individual de 9m² com janela e **1 dia de folga** por semana.\nA convenção é o Cerfa 15973-01, assinado antes de sair do Brasil.\nDocumento retido, ameaça ou isolamento não é questão trabalhista: use os contatos de emergência.\n[[/RESUMO]]\n\n[[CONFIANCA]]\nQuão segura você está sobre os seus direitos como au pair?\n[[/CONFIANCA]]\n\nSe você é estrangeira (fora da UE) e veio ou vai vir como \"jeune au pair\", esse texto reúne, direto do texto original do acordo: seus direitos, seus deveres, o passo a passo do visto, o que organizar antes de embarcar, quem te protege de verdade, os sinais de que sua host family já passou do limite, e o que fazer quando isso acontece.\n\n## 1. Seus direitos: o que a convenção garante por lei\n\n[[STATS]]\n17–30 anos | faixa etária pelo acordo europeu (18–30 na prática, pra quem pede visto do Brasil)\n25h/semana | máximo de tarefas domésticas e cuidado infantil (≈5h/dia)\n320€/mês | argent de poche mínimo, sem indexação automática conhecida\n9m² | tamanho mínimo do quarto individual, com janela\n1 dia | de folga garantido, no mínimo, por semana\n2 anos | duração máxima do programa (1 ano + 1 renovação)\n[[/STATS]]\n\nEsses números não são \"o ideal\" — são o piso legal. Qualquer coisa sistematicamente fora disso já é a convenção sendo descumprida. Eles combinam duas camadas: o tratado internacional de 1969 (o texto que criou o regime) e a forma como a França aplica esse texto hoje, na prática (service-public.gouv.fr). Como essa combinação quase nunca aparece explicada artigo por artigo, aqui vai direto da fonte original:\n\n[[CARDS]]\n📖 | Art. 2 — o que é, na lei | Colocação temporária por famílias, em troca de certos serviços, de jovens estrangeiras que vêm melhorar seu conhecimento linguístico e, possivelmente, profissional, além da cultura geral do país receptor.\n📅 | Art. 3 — duração | Inicialmente até 1 ano, podendo ser prorrogada até um máximo de 2 anos.\n🎂 | Art. 4 — idade | Entre 17 e 30 anos — exceções ao limite superior podem ser concedidas pela autoridade competente do país receptor, caso a caso.\n🩺 | Art. 5 — certificado médico | Exigido antes da colocação, emitido com menos de 3 meses de antecedência, atestando seu estado geral de saúde.\n✍️ | Art. 6 — acordo por escrito | Obrigatório entre você e a família, assinado antes de sair do seu país ou, no mais tardar, na 1ª semana de colocação — com cópia guardada pela autoridade competente do país receptor.\n🏡 | Art. 7 e 8 — moradia, curso e independência | Alimentação e moradia garantidas (quarto separado, quando possível), com tempo adequado pra frequentar curso de língua e melhoria cultural — as tarefas domésticas se organizam em torno disso, não o contrário. Você participa da vida da família mantendo sua própria independência.\n🌞 | Art. 8.3 — descanso e culto | No mínimo 1 dia livre inteiro por semana, sendo ao menos 1 domingo por mês, e liberdade pra participar de culto religioso.\n🧺 | Art. 9 — suas tarefas | Participação nas tarefas do dia a dia da família (crianças + casa). O tempo ocupado com isso geralmente não deve passar de 5 horas por dia.\n🚪 | Art. 11 — como o acordo termina | Sem prazo definido, qualquer parte pode encerrar com 2 semanas de aviso. Em caso de falta grave (de qualquer lado) ou circunstância séria, o encerramento pode ser imediato — sem aviso prévio.\n[[/CARDS]]\n\nSobre o francês: a exigência oficial é \"conhecimento básico da língua, ou nível de instrução secundária, ou qualificações profissionais\" — não existe, em nenhuma fonte oficial, uma cláusula fixa do tipo \"10h de curso por semana\". Na prática, se matricular num curso é esperado e comum, e a família precisa organizar as tarefas pra você conseguir ir às aulas que você de fato fizer — mas ninguém pode te cobrar uma carga horária que não está escrita em lugar nenhum.\n\n**Atenção:** a família também precisa te declarar formalmente — e não é pelo Cesu ou Pajemploi comum, que não se aplicam a au pair. O documento certo é o Cerfa nº 11469*03 (\"Déclaration d'employeur pour emplois familiaux\"), enviado pra URSSAF da região dela em até 8 dias depois da sua chegada. É essa declaração que te afilia à segurança social — cobertura de saúde e acidente (Art. 10 do acordo). Se ninguém nunca te falou desse Cerfa, pergunte direto: é um prazo curto e fácil de \"esquecer\".\n\n## 2. Seus deveres: o que a convenção espera de você\n\nDireito e dever andam junto — e como o programa só funciona se as duas partes cumprem a parte delas, aqui vai o que cabe a você:\n\n[[LIST]]\n🧺 | Participar das tarefas do dia a dia | Cuidado com as crianças e tarefas leves de casa — é a contrapartida prevista no acordo (Art. 9), sempre dentro do limite de horas combinado.\n🤝 | Compartilhar a vida da família, com respeito | O acordo prevê que você participe da rotina da casa mantendo sua própria independência (Art. 7) — isso não é vigilância nem controle total sobre sua vida.\n🗣️ | Se dedicar ao curso de língua | A razão de existir do programa é a imersão linguística e cultural — faltar sem motivo contraria o espírito do acordo.\n📅 | Avisar com antecedência se quiser sair | Sem prazo fixo no acordo, o correto é avisar com 2 semanas (Art. 11.1) — exceto em caso de falta grave da família, quando você pode sair na hora (Art. 11.2).\n🩺 | Fornecer seu certificado médico | Documento com menos de 3 meses, exigido antes da colocação (Art. 5) — é uma exigência recíproca, não só da família.\n[[/LIST]]\n\n## 3. Como funciona a convenção (e por que \"aprovada pela DREETS\" está errado)\n\nA convenção oficial (modelo Cerfa nº 15973*01) é assinada entre você e a família antes da sua saída do Brasil. É comum circular por aí que ela precisa ser \"aprovada pela DREETS\" — isso não é verdade. Segundo as fontes oficiais (service-public.gouv.fr e code.travail.gouv.fr), a convenção vai pro **consulado** francês, se você ainda está no Brasil, ou pra **préfecture** da região onde a família mora, se você já está na França.\n\nEssa distinção importa na prática: se você precisar reclamar de algo, ir no órgão errado é perder tempo. Guarde isso — **convenção e situação migratória → préfecture ou consulado. Condições de trabalho (horas, tratamento) → DREETS regional**, com a ressalva de que a fiscalização trabalhista não entra em residências privadas do mesmo jeito que entra em empresas. O alcance ali é menor, mas ainda vale contatar pra orientação.\n\n## 4. Passo a passo: como tirar o visto\n\n[[STEPS]]\nFeche a convenção com a família | Assinatura do modelo oficial (Cerfa 15973-01), antes da sua saída do Brasil — é o documento base de todo o resto do processo.\nMonte o dossiê no France-Visas | Crie sua conta na plataforma oficial (france-visas.gouv.fr), escolha o motivo \"jeune au pair\" / longa duração, e preencha o formulário online.\nReúna os documentos exigidos | Passaporte válido, convenção assinada, certificado médico com menos de 3 meses (Art. 5), comprovante de seguro e de alojamento, fotos — a lista exata aparece dentro do próprio formulário, conforme o consulado.\nAgende e compareça ao consulado | Biometria e entrevista no consulado francês da sua região (ou centro autorizado, tipo VFS Global) — pague a taxa de visto no valor vigente, que muda com frequência.\nAguarde a decisão e receba o visto | O visto de longa duração (VLS-TS) é carimbado no seu passaporte — ele já funciona como autorização de entrada na França.\nValide o visto ao chegar na França | Dentro de 3 meses corridos a partir da sua entrada (não da data do visto), valide o VLS-TS online pela ANEF — sem isso, ele perde a validade mesmo carimbado.\n[[/STEPS]]\n\nO carimbo no passaporte não é o fim do processo — é só o começo. Se você travar na validação online ou não souber por onde começar, [tem um guia à parte com o passo a passo completo da ANEF](/artigos/post/?slug=passo-a-passo-da-anef) e [outro específico sobre o prazo dos 3 meses do VLS-TS](/artigos/post/?slug=vls-ts-3-meses-para-validar).\n\n## 5. Se preparando pra vinda: checklist antes de embarcar\n\n[[CHECKLIST]]\nChecklist antes de embarcar\nConvenção assinada com os valores mínimos corretos (25h/semana, 320€, folga, quarto individual)\nCertificado médico tirado com menos de 3 meses de antecedência (Art. 5)\nCópia digital (nuvem) e física de passaporte, visto, convenção e certificado — guardada fora do alcance só da host family\nSeguro de saúde/viagem válido até a filiação pela URSSAF se confirmar\nEndereço completo da host family e um contato de emergência com ela\nVoo e data de chegada combinados com a família, com folga pra ela te receber\nContato do consulado/préfecture da região da família salvo no celular\nNível básico de francês, mesmo que autodidata — facilita a adaptação nas primeiras semanas\nUm contato de confiança no Brasil avisado do seu itinerário completo\n[[/CHECKLIST]]\n\n## 6. Quem te protege: os órgãos oficiais\n\n[[CARDS]]\n🛂 | Préfecture ou consulado | Sua convenção e situação migratória. Consulado se você ainda está no Brasil; préfecture da região da família se já está na França — DREETS não entra aqui.\n🏛️ | DREETS regional | Condições de trabalho (horas, tratamento) — orienta mesmo com alcance menor dentro de residências privadas.\n📞 | Allô Service Public — 39 39 | Na dúvida de qual órgão exatamente te atende, esse número direciona.\n🚔 | Polícia — 17 ou 112 | Emergência, a qualquer momento, dentro ou fora da França.\n🕵️ | OCRTEH | dnpj-ocrteh-etat-major@interieur.gouv.fr — órgão federal de combate ao tráfico de pessoas, pro caso de documento retido, ameaça ou isolamento.\n🤝 | France Victimes — 116 006 | Apoio a vítimas, com acompanhamento jurídico e psicológico.\n👶 | Criança em risco — 119 | Se você é menor de idade, ou há crianças em risco na casa.\n[[/CARDS]]\n\n## 7. Os sinais de alerta: quando a host family já passou do limite\n\nNem todo desentendimento é abuso — famílias e au pairs têm ajustes normais no início. Mas alguns sinais não são \"normal\", são alerta:\n\n[[LIST]]\n🚩 | Pedirem seu passaporte ou título de residência \"pra guardar\" | É o sinal mais grave que existe. Retenção de documentos é a porta de entrada clássica pra situações de exploração e trabalho forçado. Seu documento é seu — ninguém tem direito de ficar com ele.\n⏰ | Tarefas além das 25h/semana, com frequência | \"Só hoje\" que nunca acaba sendo só hoje já não é mais exceção — é padrão.\n🇫🇷 | Dificultarem ou proibirem o curso de francês | O programa existe pra imersão cultural e linguística — impedir isso contraria o espírito da convenção.\n💶 | Atraso ou não pagamento do argent de poche | O valor mínimo não é generosidade da família — é piso legal.\n🚫 | Não te darem o dia de folga, ou vigiarem o que você faz nele | Sua folga não é um favor a ser avaliado.\n🔒 | Isolamento | Impedir contato com outras au pairs, amigos, família no Brasil, ou controlar seu celular.\n😠 | Ameaças veladas | \"Se você reclamar, eu ligo pra polícia/imigração\" é ilegal — e é justamente o tipo de ameaça que quem retém documentos costuma usar.\n[[/LIST]]\n\nSe dois ou mais desses sinais estão acontecendo ao mesmo tempo — principalmente o dos documentos — isso já passou de \"ajuste difícil\" pra uma situação que precisa de ajuda de fora.\n\n## 8. O que fazer, por gravidade\n\n**Sempre, desde o primeiro sinal:** documente. Anote datas e horas trabalhadas, guarde prints de conversas, fotos de comprovantes de pagamento (ou da falta deles). Isso transforma \"ela disse, eu digo\" em prova concreta se você precisar de ajuda depois.\n\n[[STEPS]]\nProblema administrativo ou pontual | Converse direto com a família, com a convenção em mãos — muita coisa se resolve porque ela não sabe exatamente o que assinou.\nA conversa não resolve, ou o problema é maior | Acione a préfecture (ou o consulado, se ainda não chegou) pra questões sobre a convenção e sua situação migratória — veja os contatos na seção 6.\nSobre condições de trabalho | Contate a DREETS regional — ou o Allô Service Public (39 39) se não souber qual órgão exato te atende.\nDocumento retido, ameaça, isolamento, ou qualquer controle sobre sua liberdade | Isso deixou de ser \"direitos trabalhistas\" — pode ser um quadro de exploração ou tráfico de pessoas. Use os contatos de emergência da seção 6.\n[[/STEPS]]\n\nEm qualquer um desses cenários, **sair da casa é uma opção válida** — o próprio acordo internacional prevê rescisão imediata em caso de falta grave (Art. 11.2). Você não é obrigada a continuar morando lá enquanto resolve a situação. Não existe um trâmite único de \"transferência\" que sirva pra todo mundo: o passo a passo de trocar de família varia de acordo com a plataforma ou agência pela qual você entrou no programa. Por isso, o caminho certo é ir direto na sua plataforma/agência e pedir orientação — elas conhecem o processo específico do seu caso. Em paralelo, o essencial do lado oficial é sempre avisar a préfecture, porque é a convenção nova (com a família nova) que mantém sua autorização de permanência válida.\n\n## 9. O que NÃO fazer\n\n[[LIST]]\n🗂️ | Ir embora sem documentar nada antes | Você vai precisar dessas provas se pedir ajuda depois.\n🛂 | Entregar seu passaporte \"pra guardar\" | Nunca — mesmo se disserem que é \"só praticidade\".\n📋 | Aceitar \"não precisa declarar formalmente, é mais simples assim\" | Isso tira sua cobertura de saúde e acidente, e o risco não é seu.\n⚖️ | Assumir que \"é assim mesmo, todo mundo passa por isso\" | O padrão mínimo existe por lei, não é generosidade da família.\n[[/LIST]]\n\n[[SELETOR]]\nSua host family passou do limite?\n? Com que frequência você trabalha mais de 25h por semana? | Nunca ou quase nunca > ok | Às vezes, combinado e pago > atencao | Toda semana > alerta\n? Você tem pelo menos 1 dia inteiro de folga por semana? | Sim > ok | Nem sempre > atencao | Não > alerta\n? Alguém retém seus documentos, te ameaça ou controla suas saídas? | Não > ok | Sim > grave,grave,grave\n= ok | Dentro do combinado | O que você descreveu está dentro da convenção. Guarde uma cópia dela e registre as horas, por precaução. | Ver seus direitos | \n= atencao | Hora de conversar | Exceção pontual e combinada é diferente de rotina. Converse com a família com a convenção na mão. | Ver o que fazer por gravidade | \n= alerta | Passou do limite | Se a conversa não resolve, acione a préfecture ou a DREETS. O Allô Service Public (39 39) diz qual órgão te atende. | Ver quem te protege | \n= grave | Isso é grave | Não é mais questão trabalhista. Ligue 17 ou 112 em emergência, ou France Victimes (116 006). | Ver os contatos de emergência | \n[[/SELETOR]]\n\n## Perguntas frequentes\n\n[[FAQ]]\nMinha convenção foi enviada pro consulado ou pra préfecture — isso é normal? | Sim, é assim que funciona. A convenção NÃO passa pela DREETS — vai pro consulado (se você ainda está no Brasil) ou pra préfecture da sua região (se já está na França). Se alguém te disse o contrário, vale confirmar direto na fonte oficial.\nA família pode me declarar pelo Cesu ou Pajemploi comum? | Não. O documento certo é o Cerfa nº 11469*03, enviado pra URSSAF em até 8 dias depois da sua chegada — é isso que te dá cobertura de saúde e acidente.\nPreciso pagar pra tirar o visto de au pair? | Sim, existe uma taxa consular cobrada no processo do France-Visas — confirme o valor atualizado direto na plataforma antes de agendar, porque muda com frequência.\nPosso chegar na França sem o certificado médico? | Não. Ele é exigido pelo próprio acordo internacional (Art. 5), com menos de 3 meses de emissão. Sem ele, o dossiê pode travar tanto no visto quanto na convenção.\nPosso pedir pra trocar de família (rematch) no meio do contrato? | Sim, mas não existe um trâmite único da préfecture pra isso — o processo depende da plataforma ou agência pela qual você entrou no programa. Fale direto com ela pra saber os passos do seu caso.\nE se a família reagir mal quando eu reclamar dos meus direitos? | Reação hostil — te chamar de desonesta, ameaçar, pressionar — não é normal nem motivo pra você recuar, principalmente se você tem como comprovar o que viveu.\nPreciso estar exatamente nas 25h ou posso ultrapassar às vezes? | Uma exceção pontual, combinada e remunerada, é diferente de virar rotina. O problema é quando o excesso vira o padrão, não a exceção.\n[[/FAQ]]\n\n## De onde vieram essas informações\n\nA base legal de tudo isso é o Acordo Europeu sobre Colocação Au Pair (Conselho da Europa, ETS n.º 68, Estrasburgo, 24 de novembro de 1969) — o tratado internacional original, ratificado pela França em 1971. Os artigos citados ao longo deste texto (idade, duração, horas, folga, certificado médico, rescisão) vêm direto dele. A versão ratificada e em vigor na lei francesa está disponível no Légifrance, na lista abaixo.\n\n[[RESOURCES]]\nService-Public.gouv.fr — Jeune au pair | Horas máximas, argent de poche, alojamento, descanso, duração e destino da convenção. | Acessar | https://www.service-public.gouv.fr/particuliers/vosdroits/F15813\nCode du travail numérique — Stagiaire aide familial étranger et jeune au pair | Ficha oficial do Ministério do Trabalho sobre o regime au pair. | Acessar | https://code.travail.gouv.fr/fiche-service-public/stagiaire-aide-familial-etranger-et-jeune-au-pair\nFrance-Visas — Modelo oficial da convenção (Cerfa 15973-01) | O formulário assinado entre au pair e família, base de qualquer reclamação — e também onde o pedido de visto é montado. | Acessar | https://france-visas.gouv.fr/documents/d/france-visas/cerfa_15973-01_convention_jeune_au_pair\nURSSAF — Cerfa n° 11469*03, Déclaration d'employeur pour emplois familiaux | A declaração obrigatória em 8 dias — confirma que Cesu/Pajemploi comum não se aplica a au pair. | Acessar | https://www.urssaf.fr/files/live/sites/urssaffr/files/outils-documentation/formulaires-modeles/cerfa-declaration-employeur-pour-des-emplois-familiaux.pdf\nLégifrance — Décret n°71-797, ratificação francesa do Acordo Europeu sobre Colocação Au Pair (Conselho da Europa, ETS n.º 68, 1969) | Base legal do regime — idade de 17 a 30 anos, duração, certificado médico e limite de 5h/dia, artigo por artigo. | Acessar | https://www.legifrance.gouv.fr/jorf/id/JORFTEXT000000336159\nÉgalité femmes-hommes.gouv.fr — Contatos contra a Traite des Êtres Humains | Contatos oficiais de emergência e denúncia (OCRTEH, 119, 3919). | Acessar | https://www.egalite-femmes-hommes.gouv.fr/contacts-lutte-TEH\n[[/RESOURCES]]\n\n[[PROXIMO-PASSO]]\nse seletor=grave | Procure ajuda agora | Emergência: 17 ou 112. Apoio a vítimas: France Victimes, 116 006. | Ver os contatos | \npadrao | Planeje o depois do au pair | O episódio 3 mostra o que a França exige pra virar estudante sem sair do país. | Ler o episódio 3 | /artigos/post/?slug=au-pair-para-estudante-fle-o-que-muda\n[[/PROXIMO-PASSO]]\n\n[[TRILHA]]\nAu pair na França\nau-pair-franca-o-que-e-plataformas-e-riscos\nau-pair-franca-direitos-e-sinais-de-alerta\nau-pair-para-estudante-fle-o-que-muda\n[[/TRILHA]]\n\n[[FEEDBACK]]\nEsse artigo te ajudou a entender seus direitos, deveres e o passo a passo do visto como au pair?\n[[/FEEDBACK]]\n\nCompilado em setembro de 2026, com base nas fontes oficiais acima e no texto original do acordo europeu sobre colocação au pair (Estrasburgo, 1969). Regras de imigração mudam com frequência — confirme sempre os valores e prazos direto nas fontes antes de tomar qualquer decisão. Este conteúdo é material de apoio editorial e não substitui aconselhamento jurídico profissional.",
+      "sectionReactions": true,
       "readMinutes": 12,
       "updatedDate": "2026-09-14",
       "slug": "au-pair-franca-direitos-e-sinais-de-alerta",
-      "status": "publicado",
+      "coverFormat": "Série · ep. 2",
       "date": "2026-09-03",
-      "showCoverInArticle": true,
-      "title": "Au pair na França: direitos, deveres, visto e quem te protege (Guia 2026)",
-      "image": "/images/uploads/aupairofcguia.png",
-      "category": "Au Pair",
-      "coverKeyword": "Direitos",
       "coverTags": [
         "au pair",
         "25h por semana",
         "host family"
       ],
-      "coverFormat": "Série · ep. 2",
-      "sectionReactions": true
+      "coverKeyword": "Direitos",
+      "status": "publicado",
+      "showCoverInArticle": true,
+      "title": "Au pair na França: direitos, deveres, visto e quem te protege (Guia 2026)",
+      "image": "/images/uploads/aupairofcguia.png",
+      "category": "Au Pair"
     },
     {
       "excerpt": "Do médico ao psicólogo, do arquiteto ao engenheiro — o mapa de quais profissões exigem autorização pra exercer na França com diploma de fora da UE, o que cada uma pede e onde é só o título que trava.",
@@ -613,19 +589,19 @@
       "readMinutes": 12,
       "updatedDate": "2026-08-31",
       "slug": "profissoes-regulamentadas-franca-diploma-estrangeiro",
-      "status": "publicado",
+      "coverFormat": "Mapa",
       "date": "2026-08-31",
-      "showCoverInArticle": false,
-      "title": "Essas profissões na França pedem autorização para serem exercidas.",
-      "image": "/images/uploads/profissoes-regulamentadas-capa.png",
-      "category": "Formação",
-      "coverKeyword": "Diploma",
       "coverTags": [
         "profissões",
         "autorização",
         "fora da UE"
       ],
-      "coverFormat": "Mapa"
+      "coverKeyword": "Diploma",
+      "status": "publicado",
+      "showCoverInArticle": false,
+      "title": "Essas profissões na França pedem autorização para serem exercidas.",
+      "image": "/images/uploads/profissoes-regulamentadas-capa.png",
+      "category": "Formação"
     },
     {
       "excerpt": "Paris, Lyon, Toulouse, Nice e Montpellier comparadas — com simulador pra você montar sua própria estimativa de aluguel.",
@@ -633,39 +609,39 @@
       "readMinutes": 8,
       "updatedDate": "2026-08-17",
       "slug": "quanto-custa-viver-na-franca-2026",
-      "status": "escrevendo",
+      "coverFormat": "Guia",
       "date": "2026-08-17",
       "url": "/artigos/post/quanto-custa-viver-na-franca-2026/",
-      "title": "Quanto custa viver na França em 2026?",
-      "image": "/images/uploads/custo-de-vida-franca-capa.png",
-      "category": "Custo de Vida",
-      "coverKeyword": "Custo",
       "coverTags": [
         "orçamento",
         "aluguel",
         "2026"
       ],
-      "coverFormat": "Guia"
+      "coverKeyword": "Custo",
+      "status": "escrevendo",
+      "title": "Quanto custa viver na França em 2026?",
+      "image": "/images/uploads/custo-de-vida-franca-capa.png",
+      "category": "Custo de Vida"
     },
     {
       "excerpt": "O que estudar e como se preparar sem enrolação.",
       "body": "[[BAND]]\n⚠️ Em vigor desde 1º de janeiro de 2026 — Obrigatório para qualquer pedido de primeiro título de longa duração na França\n[[/BAND]]\n\n[[RESUMO]]\nObrigatório desde 1º de janeiro de 2026 pro **primeiro** titre plurianual ou carte de résident.\n**40 questões, 45 minutos**: precisa acertar pelo menos 32 (80%).\nAs 28 questões de conhecimento são **públicas**. Maiores de 65 anos são dispensados.\n[[/RESUMO]]\n\n[[CONFIANCA]]\nQuão preparada você se sente pro exame cívico?\n[[/CONFIANCA]]\n\nTudo o que você precisa saber sobre a nova exigência para conseguir o seu titre de séjour plurianual ou a carta de residente.\n\n[[STATS]]\n40 | questões\n80% | para passar\n45min | de duração\n5 | temas cobertos\n[[/STATS]]\n\n## Do VLS-TS ao exame cívico: o caminho que a OFII exige\n\nSe você chegou até aqui depois de validar seu visto, essa é a continuação que ninguém avisa. Veja onde o exame cívico entra na sua jornada — e se ele te afeta.\n\n[[STEPS]]\nVocê chega com o VLS-TS | O visto de longa duração já funciona como título de residência — mas só depois de validado.\nValidação em até 3 meses | No site da prefeitura, com passaporte, visto original, comprovante de moradia e contato de alguém daqui com vínculo profissional ou acadêmico.\nA OFII te convoca pro CIR | Se o seu visto é de trabalho, família ou visitante, a OFII marca a assinatura do Contrat d'Intégration Républicaine.\nCurso cívico + francês obrigatório | De 1 a 4 dias de formação cívica. Desde janeiro de 2026, também é obrigatório o curso de francês com meta A2.\nO exame cívico decide se você passa | 40 perguntas, 80% de acerto pra aprovar. É pré-requisito pro seu primeiro título plurianual.\n[[/STEPS]]\n\n**Atenção:** você pode estar dispensado. Se o seu VLS-TS é de estudante ou sazonal, você não é convocado pra assinar o CIR — e não precisa prestar o exame cívico nessa etapa. A mesma dispensa vale pra quem já estudou 3 anos ou mais no ensino médio francês, ou fez pós-graduação na França por 1 ano ou mais.\n\n## Enquanto isso, organize seus estudos\n\nSeja pro exame cívico ou pro nível de francês exigido, esse é o primeiro passo — sem custo e sem cadastro.\n\n[[EXAME-TEMPLATE-GRATIS]]\n\n## O sistema francês está mudando — e rápido\n\nA lei de 26 de janeiro de 2024 reforçou as exigências de integração para estrangeiros que querem se estabelecer na França de forma duradoura. O exame cívico é a principal novidade.\n\n[[CARDS]]\n📋 | A Lei de Janeiro de 2024 | A *loi pour contrôler l'immigration, améliorer l'intégration* foi aprovada criando novas exigências. Entre elas: a criação do exame cívico e o reforço das exigências de nível de francês.\n📜 | O Arrêté de Outubro de 2025 | O decreto de 10 de outubro de 2025 definiu o programa, as provas e as modalidades de organização do exame. As perguntas oficiais foram publicadas para consulta.\n🚀 | Entrada em vigor: 1° Jan 2026 | A partir desta data, qualquer pessoa que pede uma primeira carte de séjour pluriannuelle ou une carte de résident precisa apresentar o atestado de aprovação no exame cívico.\n🎯 | Objetivo declarado | Verificar que o candidato conhece os princípios e valores da República, o modo de organização do Estado e o funcionamento da sociedade francesa antes de obter um visto de longa duração.\n[[/CARDS]]\n\n## Quem precisa fazer o exame?\n\nNem todo mundo está sujeito. Veja os casos em que o exame é exigido — e quando você está dispensado.\n\n[[CARDS]]\n📄 | Carte de Séjour Pluriannuelle (CSP) — Obrigatório | Obrigatório para o primeiro pedido do CSP — o título que permite residir por 2 a 4 anos. Renouvellement não exige.\n🏠 | Carte de Résident (CR) — Obrigatório | Exigido para o primeiro pedido da carta de residente (10 anos), incluindo cônjuge de francês, pai/mãe de filho francês e reagrupamento familiar.\n🌟 | Carte de Résident Longue Durée - UE — Obrigatório | Para quem reside regularmente há pelo menos 5 anos, incluindo os beneficiários do Passeport Talent/Carte Bleue e refugiados.\n🎓 | Naturalização — Modalidade especial | Para a naturalização, existe uma modalidade específica — o *examen civique mention naturalisation* — com um programa mais aprofundado.\n🚫 | Quem está dispensado | Maiores de 65 anos, beneficiários de proteção internacional (BPI), e cidadãos de países com acordos bilaterais específicos.\n♻️ | Renovação: não precisa | Se você já tem um CSP ou CR e está apenas renovando, não precisa fazer o exame de novo. A obrigação é apenas para o primeiro pedido.\n[[/CARDS]]\n\n**Atenção:** o exame cívico é exigido apenas para estrangeiros não-europeus (ressortissants de pays tiers) signatários do Contrat d'Intégration Républicaine (CIR). Cidadãos da UE, EEE e Suíça não são afetados.\n\n## Como funciona a prova?\n\nUm QCM (questionnaire à choix multiples) feito em suporte digital — tablette ou computador — com tempo controlado e critério de aprovação claro.\n\n[[LIST]]\n📝 | 40 questões no total | QCM com 1 única resposta correta entre 4 opções, em língua francesa.\n📚 | 28 questões de conhecimento | Baseadas na lista oficial publicada pelo Ministério do Interior — as perguntas são públicas!\n🧩 | 12 questões situacionais | Cenários da vida cotidiana — confidenciais para preservar a equidade do exame.\n⏱️ | 45 minutos de duração | Realizável em suporte digital, só ampliado por motivo médico.\n✅ | Mínimo de 32/40 para aprovação | Você precisa acertar pelo menos 32 das 40 questões (80% de aproveitamento).\n♾️ | Validade do atestado: sem prazo | Uma vez aprovado, o atestado não tem prazo de validade.\n[[/LIST]]\n\n## E o nível de francês?\n\nO exame cívico não é o único requisito. Você também precisa comprovar um nível mínimo de francês — e o nível exigido depende do tipo de título que você quer.\n\n[[CARDS]]\n🟦 | Nível A2 — Carte de Séjour Pluriannuelle | Para o primeiro pedido do titre plurianual (CSP), você precisa comprovar francês no nível A2 — \"nível elementar\". Certificados aceitos: TCF, TEF, DELF A2 — reconhecidos pelo Estado francês.\n🟩 | Nível B1 — Carte de Résident (10 anos) | Para a carte de résident, o nível exigido sobe para B1 — \"nível limiar\". Certificados aceitos: TCF, TEF, DELF B1 — reconhecidos pelo Estado francês.\n[[/CARDS]]\n\n**Atenção:** o certificado de francês deve estar em mãos no momento da solicitação do título de séjour. Não adianta dizer que está estudando — planeje com antecedência!\n\n## Casos de dispensa do exame\n\nAlgumas situações garantem dispensa do exame cívico — seja total ou com adaptações.\n\n[[CARDS]]\n👴 | Maiores de 65 anos | Pessoas com 65 anos ou mais ficam automaticamente dispensadas do exame cívico.\n🛡️ | Beneficiários de proteção internacional | BPIs (réfugiés, protection subsidiaire) e suas famílias não são submetidos à mesma obrigação.\n🤝 | Acordos bilaterais | Cidadãos de países com acordos bilaterais específicos com a França podem ter dispensas.\n🏥 | Motivos médicos / deficiência | Quem tem deficiência ou condição de saúde pode pedir adaptações ou até dispensa total.\n♻️ | Renovação de título | Quem já tem CSP ou CR e está apenas renovando não precisa fazer o exame de novo.\n🇪🇺 | Cidadãos europeus | Cidadãos da UE, EEE e Suíça não precisam do CIR e não estão sujeitos ao exame cívico.\n🎓 | VLS-TS estudante ou sazonal | Quem entra com esse tipo de visto não é convocado pela OFII pra assinar o CIR.\n📖 | 3 anos+ de ensino médio francês, ou pós na França | Quem já estudou pelo menos 3 anos no ensino médio francês, ou fez pós na França por 1 ano+, também está dispensado.\n[[/CARDS]]\n\n## Como se inscrever no exame\n\nDois organismos credenciados pelo Ministério do Interior organizam o exame em centros espalhados pela França e no exterior.\n\n[[STEPS]]\nEscolha o organismo | Existem dois organismos credenciados: a CCIP (Chambre de Commerce et d'Industrie de Paris Île-de-France) e a France Éducation International (FEI). Os dois oferecem o mesmo exame.\nEncontre um centro próximo | [Buscar centros — CCIP](https://francais.cci-paris-idf.fr/candidat?produit=21) · [Buscar centros — FEI](https://www.france-education-international.fr/centres-d-examen/carte?type-centre=examen_civique) · [Inscrição online — FEI](https://test-civique.fr/inscription). Custo aproximado: ~€70.\nEstude e se prepare | Consulte o site oficial de formação cívica, as fichas temáticas e a lista oficial de perguntas. Não há limite de tentativas.\nFaça o exame (digital, 45 min) | O exame é feito em suporte digital (tablette ou ordinateur) em um centro credenciado.\nReceba seu atestado de aprovação | Com o atestado em mãos (sem prazo de validade!), você está pronto para incluir no processo do seu titre de séjour.\n[[/STEPS]]\n\nSem pressa: o exame pode ser feito a qualquer momento — não é necessário esperar um agendamento específico com a préfecture.\n\n[[QUIZ]]\nMini-simulado: você passaria?\nQuantas questões tem o exame cívico? | 20 | *40 | 60 || São 40 questões: 28 de conhecimento e 12 situacionais.\nQuantas você precisa acertar pra passar? | *32 | 24 | 36 || O mínimo é 32 de 40, ou 80%.\nQuanto tempo dura a prova? | 30 minutos | *45 minutos | 2 horas || São 45 minutos, em tablet ou computador, num centro credenciado.\nAs perguntas de conhecimento são secretas? | Sim, ninguém vê antes | *Não, a lista oficial é pública || O Ministério publicou as 28 questões de conhecimento. Só as 12 situacionais são confidenciais.\nQuem renova a carte de séjour pluriannuelle precisa fazer o exame? | Sim, a cada renovação | *Não, só no primeiro pedido || O exame é exigido no primeiro pedido do CSP. A renovação não exige.\n[[/QUIZ]]\n\n[[MITO]]\nMito ou verdade?\nO exame pode ser feito em português | mito | É inteiramente em francês, numa linguagem acessível ao nível A2 no caso do CSP.\nQuem tem 65 anos ou mais está dispensado | verdade | A dispensa é automática a partir dos 65 anos.\nQuem tenta fraude pode refazer no mês seguinte | mito | Com fraude detectada, a pessoa fica proibida de refazer o exame por 2 anos.\n[[/MITO]]\n\n## Como se preparar de graça\n\nO Ministério do Interior reforça: não é necessário pagar para se preparar. Todos os recursos oficiais são gratuitos.\n\n[[RESOURCES]]\nSite oficial de formação cívica | O hub principal do governo. Fichas por temática e toda a informação do programa. | Acessar | https://formation-civique.interieur.gouv.fr\nLista oficial de perguntas (CSP) | O Ministério publicou as 28 questões de conhecimento na íntegra. | Ver perguntas | https://formation-civique.interieur.gouv.fr/examen-civique/liste-officielle-des-questions-de-connaissance-csp/\nQuiz gratuito de treino | A associação France Fraternité criou um quiz com 50 perguntas para treinar. | Treinar agora | https://www.ensemble-en-france.org/quiz-examen-civique-gratuit-debutant/\nFichas por Journée | O conteúdo da formação civique está dividido em 3 journées de estudo. | Acessar | https://formation-civique.interieur.gouv.fr/fiches-par-journ%C3%A9e/journ%C3%A9e-1/\nInscrição pelo FEI | Portal de inscrição oficial da France Éducation International. | Inscrever-se | https://test-civique.fr/inscription\nDecreto oficial do exame | O Arrêté de 10 de outubro de 2025 está disponível no Legifrance. | Ler decreto | https://www.legifrance.gouv.fr/jorf/id/JORFTEXT000052381620\n[[/RESOURCES]]\n\n**Atenção:** cuidado com sites pagos! O Ministério alerta: sites que cobram para acessar questões ou simulados não são oficiais. Use sempre as fontes oficiais listadas acima.\n\n## Um sistema de preparação para os exames de integração\n\nSistema Notion estruturado com o método GTD para preparação em língua e exame cívico. Cada sessão tem um próximo passo definido. Os prazos do processo estão mapeados — da inscrição ao resultado.\n\n[[EXAME-PRICING]]\n\n## FAQ\n\nAs perguntas que todo mundo faz — respondidas de forma direta.\n\n[[FAQ]]\nPosso fazer o exame quantas vezes precisar? | Sim. Não há limite de tentativas. Você pode refazer o exame quantas vezes quiser até passar. O atestado de aprovação não tem prazo de validade — então quando passar, o documento é definitivo.\nPreciso ter feito a formação cívica (les 4 journées) antes do exame? | Para a carte de séjour pluriannuelle, sim — o exame acontece ao final das 4 jornadas de formação cívica (24h). Para a carte de résident, as modalidades podem ser diferentes. Verifique com seu organismo de inscrição.\nO exame é em francês? Preciso ter bom francês pra entender as perguntas? | Sim, o exame é inteiramente em francês. Como o nível mínimo exigido para o CSP é o A2, as perguntas são formuladas numa linguagem acessível a esse nível. Para a CR (B1), a dificuldade linguística é um pouco maior.\nQuem já tem título de séjour precisa fazer o exame na renovação? | Não. A obrigação do exame cívico é exclusiva para o primeiro pedido do CSP ou CR. Renovações não exigem o exame.\nO exame vale para qualquer tipo de titre de séjour? | Não. Apenas títulos de longa duração — CSP e CR — exigem o exame. Títulos temporários (estudante, visiteur, salarié etc.) não estão sujeitos.\nO exame civique para naturalização é o mesmo? | Não. O exame para naturalização é uma modalidade separada, com um programa mais aprofundado. Consulte as informações específicas no site do Ministério do Interior.\nO que acontece se tentar fraude no exame? | Em caso de fraude detectada, o candidato fica proibido de refazer o exame por 2 anos.\nPosso passar direto para o exame sem fazer a formação nas 4 journées? | Para o CSP, o exame está vinculado à conclusão da formação cívica de 24h. Para o CR, é possível se inscrever diretamente no exame. Consulte o organismo de inscrição.\n[[/FAQ]]\n\n[[PROXIMO-PASSO]]\nse quiz<80 | Estude com um plano, não na véspera | O Hub de Estudos organiza os temas, o cronograma e as revisões até a data da prova. | Ver o Hub de Estudos | /produtos-digitais/produto/?slug=hub-de-estudos\npadrao | Chegue na prova com tudo organizado | O Hub de Estudos junta temas, cronograma e prazos num só lugar no Notion. | Ver o Hub de Estudos | /produtos-digitais/produto/?slug=hub-de-estudos\n[[/PROXIMO-PASSO]]\n\n[[TRILHA]]\nChegada na França\nquantos-tipos-de-visto-franca-2026\nvls-ts-3-meses-para-validar\npasso-a-passo-da-anef\ntudo-sobre-o-exame-civico\n[[/TRILHA]]\n\n[[FEEDBACK]]\n[[/FEEDBACK]]\n\nBaseado em fontes oficiais do governo francês (formation-civique.interieur.gouv.fr, Légifrance — Arrêté de 10 de outubro de 2025). Regras e valores mudam com frequência — confirme sempre nos canais oficiais antes de agir.",
+      "sectionReactions": true,
       "readMinutes": 12,
       "updatedDate": "2026-08-01",
       "slug": "tudo-sobre-o-exame-civico",
-      "status": "publicado",
+      "coverFormat": "Guia",
       "date": "2026-08-01",
-      "title": "Tudo sobre o Exame Cívico: o que estudar e como se preparar",
-      "image": "/images/uploads/exame-civico-capa.png",
-      "category": "Exame Cívico",
-      "coverKeyword": "Cívico",
       "coverTags": [
         "exame",
         "32 de 40",
         "preparação"
       ],
-      "coverFormat": "Guia",
-      "sectionReactions": true
+      "coverKeyword": "Cívico",
+      "status": "publicado",
+      "title": "Tudo sobre o Exame Cívico: o que estudar e como se preparar",
+      "image": "/images/uploads/exame-civico-capa.png",
+      "category": "Exame Cívico"
     },
     {
       "excerpt": "OFII, France Travail, CPF ou associations — qual caminho é o seu, com links verificados.",
@@ -673,20 +649,20 @@
       "readMinutes": 9,
       "updatedDate": "2026-08-11",
       "slug": "cursos-de-frances-gratuitos-4-caminhos",
-      "status": "publicado",
+      "coverFormat": "Comparativo",
       "date": "2026-08-11",
       "url": "/artigos/post/cursos-de-frances-gratuitos-4-caminhos/",
-      "title": "4 caminhos pra estudar francês de graça na França",
-      "image": "/images/uploads/cursos-frances-gratuitos-capa.png",
-      "category": "Francês",
-      "coverKeyword": "Grátis",
       "coverTags": [
         "francês",
         "OFII",
         "CPF"
       ],
-      "coverFormat": "Comparativo",
-      "mxBlocks": "[[RESUMO]]\n**OFII / CIR**: pra quem chegou com VLS-TS ou carte de séjour. De 100h a 600h grátis, conforme o nível.\n**France Travail + AIF**: pra quem está inscrita como demandante de emprego.\n**CPF**: pra quem trabalha na França e quer certificação. Desde 2025 há uma participação de €103,20.\n**Associations**: pra começar agora, sem burocracia.\n[[/RESUMO]]\n\n[[CONFIANCA]]\nQuão segura você está sobre por onde começar a estudar francês de graça?\n[[/CONFIANCA]]\n\n[[SELETOR]]\nQual caminho gratuito é o seu?\n? Você chegou com VLS-TS ou carte de séjour e foi convocada pelo OFII? | Sim > ofii | Não > ft,cpf,assoc\n? Você está inscrita no France Travail como demandante de emprego? | Sim > ft | Não > cpf,assoc\n? Você trabalha na França e quer uma certificação (TCF, DELF, DALF)? | Sim > cpf | Não > assoc\n= ofii | Caminho 1 — OFII / CIR | Até 600h de curso gratuito, conforme o seu nível. Se não foi convocada, dá pra assinar voluntariamente num escritório OFII. | Ver o Caminho 1 | \n= ft | Caminho 2 — France Travail + AIF | O curso precisa estar ligado ao seu projeto profissional. Chegue com curso, organismo, preço e FORMACODE 15235 pesquisados. | Ver o Caminho 2 | \n= cpf | Caminho 3 — CPF | Cobre curso preparatório e exame, com participação obrigatória de €103,20. Use só o site oficial. | Ver o Caminho 3 | \n= assoc | Caminho 4 — Associations | O jeito mais rápido de começar, sem burocracia. | Ver o Caminho 4 | \n[[/SELETOR]]\n\n[[PROXIMO-PASSO]]\npadrao | Estude francês com um sistema | O Hub de Estudos organiza matérias, cronograma e prazos num só lugar no Notion. | Ver o Hub de Estudos | /produtos-digitais/produto/?slug=hub-de-estudos\n[[/PROXIMO-PASSO]]\n\n[[TRILHA]]\nEstudar na França\ncursos-de-frances-gratuitos-4-caminhos\nselo-qualite-fle-mapa-cursos-de-frances\ncomo-conseguir-bolsa-de-estudo\n[[/TRILHA]]\n"
+      "mxBlocks": "[[RESUMO]]\n**OFII / CIR**: pra quem chegou com VLS-TS ou carte de séjour. De 100h a 600h grátis, conforme o nível.\n**France Travail + AIF**: pra quem está inscrita como demandante de emprego.\n**CPF**: pra quem trabalha na França e quer certificação. Desde 2025 há uma participação de €103,20.\n**Associations**: pra começar agora, sem burocracia.\n[[/RESUMO]]\n\n[[CONFIANCA]]\nQuão segura você está sobre por onde começar a estudar francês de graça?\n[[/CONFIANCA]]\n\n[[SELETOR]]\nQual caminho gratuito é o seu?\n? Você chegou com VLS-TS ou carte de séjour e foi convocada pelo OFII? | Sim > ofii | Não > ft,cpf,assoc\n? Você está inscrita no France Travail como demandante de emprego? | Sim > ft | Não > cpf,assoc\n? Você trabalha na França e quer uma certificação (TCF, DELF, DALF)? | Sim > cpf | Não > assoc\n= ofii | Caminho 1 — OFII / CIR | Até 600h de curso gratuito, conforme o seu nível. Se não foi convocada, dá pra assinar voluntariamente num escritório OFII. | Ver o Caminho 1 | \n= ft | Caminho 2 — France Travail + AIF | O curso precisa estar ligado ao seu projeto profissional. Chegue com curso, organismo, preço e FORMACODE 15235 pesquisados. | Ver o Caminho 2 | \n= cpf | Caminho 3 — CPF | Cobre curso preparatório e exame, com participação obrigatória de €103,20. Use só o site oficial. | Ver o Caminho 3 | \n= assoc | Caminho 4 — Associations | O jeito mais rápido de começar, sem burocracia. | Ver o Caminho 4 | \n[[/SELETOR]]\n\n[[PROXIMO-PASSO]]\npadrao | Estude francês com um sistema | O Hub de Estudos organiza matérias, cronograma e prazos num só lugar no Notion. | Ver o Hub de Estudos | /produtos-digitais/produto/?slug=hub-de-estudos\n[[/PROXIMO-PASSO]]\n\n[[TRILHA]]\nEstudar na França\ncursos-de-frances-gratuitos-4-caminhos\nselo-qualite-fle-mapa-cursos-de-frances\ncomo-conseguir-bolsa-de-estudo\n[[/TRILHA]]\n",
+      "coverKeyword": "Grátis",
+      "status": "publicado",
+      "title": "4 caminhos pra estudar francês de graça na França",
+      "image": "/images/uploads/cursos-frances-gratuitos-capa.png",
+      "category": "Francês"
     },
     {
       "excerpt": "3 meses corridos pra validar o visto — e o que trava o processo no meio do caminho.",
@@ -694,20 +670,20 @@
       "readMinutes": 6,
       "updatedDate": "2026-08-08",
       "slug": "vls-ts-3-meses-para-validar",
-      "status": "publicado",
+      "coverFormat": "Guia",
       "date": "2026-08-08",
       "url": "/artigos/post/vls-ts-3-meses-para-validar/",
-      "title": "VLS-TS: o prazo que a maioria descobre tarde demais",
-      "image": "/images/uploads/vls-ts-capa.png",
-      "category": "Visto",
-      "coverKeyword": "VLS-TS",
       "coverTags": [
         "prazo",
         "3 meses",
         "validação"
       ],
-      "coverFormat": "Guia",
-      "mxBlocks": "[[RESUMO]]\nO VLS-TS precisa ser **validado online em até 3 meses corridos**.\nO prazo conta da **data de entrada na França**, não da data do visto.\nNome diferente do passaporte, timbre na categoria errada e endereço desatualizado na ANEF são os bloqueios mais comuns.\n[[/RESUMO]]\n\n[[CONFIANCA]]\nQuão segura você está sobre o prazo do seu visto?\n[[/CONFIANCA]]\n\n[[PRAZO]]\nQuantos dias você ainda tem pra validar?\nData de entrada na França (carimbo no passaporte) | 3 meses\n[[/PRAZO]]\n\n[[MITO]]\n3 afirmações que circulam nos grupos\nO prazo de 3 meses conta a partir da data em que o visto foi emitido | mito | Conta da data de entrada na França, a do carimbo no passaporte.\nSe eu digitar o nome sem acento, a ANEF corrige depois | mito | Nome diferente do passaporte é um dos bloqueios mais comuns: acentos e hífens contam.\nMesmo carimbado, o VLS-TS perde a validade se eu não validar no prazo | verdade | Sem a validação online você fica em situação irregular, mesmo com o visto colado no passaporte.\n[[/MITO]]\n\n[[POLL]]\nEm que fase você está agora?\nAinda não cheguei na França\nCheguei, ainda não validei\nComecei e travou\nJá validei\n[[/POLL]]\n\n[[PROXIMO-PASSO]]\nse prazo<=45 | Não deixe pra última semana | O guia gratuito mostra o que fazer antes do prazo, com o passo a passo na ANEF e o modelo de mensagem em francês. | Abrir o guia gratuito | /guias/vls-ts-validacao-travou/\nse enquete=Comecei e travou | Destrave a validação | O guia gratuito \"VLS-TS travou na ANEF?\" traz o caminho oficial pra desbloquear, com modelo em francês. | Abrir o guia gratuito | /guias/vls-ts-validacao-travou/\nse enquete=Ainda não cheguei na França | Confirme se o seu visto é mesmo esse | O Assistente de vistos faz poucas perguntas e mostra o caminho certo pro seu caso. | Abrir o Assistente de vistos | /assistente-de-vistos/\npadrao | Validou? Organize a vida em euros | A Planilha Financeira Super Integrada lança seus gastos fixos sozinha, todo mês. | Ver a planilha | /produtos-digitais/produto/?slug=planilha-financeira-super-integrada\n[[/PROXIMO-PASSO]]\n\n[[TRILHA]]\nChegada na França\nquantos-tipos-de-visto-franca-2026\nvls-ts-3-meses-para-validar\npasso-a-passo-da-anef\ntudo-sobre-o-exame-civico\n[[/TRILHA]]\n"
+      "mxBlocks": "[[RESUMO]]\nO VLS-TS precisa ser **validado online em até 3 meses corridos**.\nO prazo conta da **data de entrada na França**, não da data do visto.\nNome diferente do passaporte, timbre na categoria errada e endereço desatualizado na ANEF são os bloqueios mais comuns.\n[[/RESUMO]]\n\n[[CONFIANCA]]\nQuão segura você está sobre o prazo do seu visto?\n[[/CONFIANCA]]\n\n[[PRAZO]]\nQuantos dias você ainda tem pra validar?\nData de entrada na França (carimbo no passaporte) | 3 meses\n[[/PRAZO]]\n\n[[MITO]]\n3 afirmações que circulam nos grupos\nO prazo de 3 meses conta a partir da data em que o visto foi emitido | mito | Conta da data de entrada na França, a do carimbo no passaporte.\nSe eu digitar o nome sem acento, a ANEF corrige depois | mito | Nome diferente do passaporte é um dos bloqueios mais comuns: acentos e hífens contam.\nMesmo carimbado, o VLS-TS perde a validade se eu não validar no prazo | verdade | Sem a validação online você fica em situação irregular, mesmo com o visto colado no passaporte.\n[[/MITO]]\n\n[[POLL]]\nEm que fase você está agora?\nAinda não cheguei na França\nCheguei, ainda não validei\nComecei e travou\nJá validei\n[[/POLL]]\n\n[[PROXIMO-PASSO]]\nse prazo<=45 | Não deixe pra última semana | O guia gratuito mostra o que fazer antes do prazo, com o passo a passo na ANEF e o modelo de mensagem em francês. | Abrir o guia gratuito | /guias/vls-ts-validacao-travou/\nse enquete=Comecei e travou | Destrave a validação | O guia gratuito \"VLS-TS travou na ANEF?\" traz o caminho oficial pra desbloquear, com modelo em francês. | Abrir o guia gratuito | /guias/vls-ts-validacao-travou/\nse enquete=Ainda não cheguei na França | Confirme se o seu visto é mesmo esse | O Assistente de vistos faz poucas perguntas e mostra o caminho certo pro seu caso. | Abrir o Assistente de vistos | /assistente-de-vistos/\npadrao | Validou? Organize a vida em euros | A Planilha Financeira Super Integrada lança seus gastos fixos sozinha, todo mês. | Ver a planilha | /produtos-digitais/produto/?slug=planilha-financeira-super-integrada\n[[/PROXIMO-PASSO]]\n\n[[TRILHA]]\nChegada na França\nquantos-tipos-de-visto-franca-2026\nvls-ts-3-meses-para-validar\npasso-a-passo-da-anef\ntudo-sobre-o-exame-civico\n[[/TRILHA]]\n",
+      "coverKeyword": "VLS-TS",
+      "status": "publicado",
+      "title": "VLS-TS: o prazo que a maioria descobre tarde demais",
+      "image": "/images/uploads/vls-ts-capa.png",
+      "category": "Visto"
     },
     {
       "excerpt": "Dicas para renovar seu título de séjour sem se perder no site.",
@@ -715,20 +691,20 @@
       "readMinutes": 11,
       "updatedDate": "2026-07-18",
       "slug": "passo-a-passo-da-anef",
-      "status": "publicado",
+      "coverFormat": "Passo a passo",
       "date": "2026-07-18",
       "url": "/artigos/post/passo-a-passo-da-anef/",
-      "title": "Passo a passo da ANEF",
-      "image": "/images/uploads/anef-capa.png",
-      "category": "ANEF",
-      "coverKeyword": "ANEF",
       "coverTags": [
         "dossiê travado",
         "recursos",
         "prazos"
       ],
-      "coverFormat": "Passo a passo",
-      "mxBlocks": "[[RESUMO]]\nUse os recursos **nessa ordem**: relance na ANEF e e-mail à préfecture, Défenseur des Droits, carta registrada ao Préfet e, por último, o référé no tribunal.\nOs níveis 2 e 3 podem andar **em paralelo**.\nDepois que a préfecture recebe a carta, ela tem **2 meses** pra responder. Silêncio vira *rejet implicite*.\n[[/RESUMO]]\n\n[[CONFIANCA]]\nQuão segura você está sobre o que fazer com o seu dossiê parado?\n[[/CONFIANCA]]\n\n[[LINHA-DO-TEMPO]]\nSeu calendário de recursos\nData em que você depositou o dossiê na ANEF\n0 | Dossiê depositado na ANEF\n+1 mês | Nível 1: relance pela messagerie da ANEF e e-mail pra préfecture\n+2 meses | Nível 2: saisine do Défenseur des Droits (responde em 4 a 8 semanas)\n+4 meses | Nível 3: carta registrada com AR ao Préfet\n+6 meses | Sem resposta 2 meses depois da carta = rejet implicite\n+6 meses | Nível 4: référé mesures utiles no tribunal administratif\n[[/LINHA-DO-TEMPO]]\n\n[[SELETOR]]\nEm que nível você está?\n? Você já mandou relance pela messagerie da ANEF e e-mail pra préfecture? | Ainda não > n1 | Já mandei > n2,n3\n? Já acionou o Défenseur des Droits? | Ainda não > n2 | Já acionei > n3\n? Já mandou a carta registrada com AR ao Préfet há mais de 2 meses, sem resposta? | Não mandei ainda > n3 | Mandei e já passou de 2 meses > n4,n4\n= n1 | Comece pelo Nível 1 | Relance pela messagerie da ANEF e e-mail pra préfecture: é gratuito e cria o rastro que os outros níveis pedem. | Ver os modelos de mensagem | \n= n2 | Siga pro Nível 2 | Acione o Défenseur des Droits online, em menos de 20 minutos. Pode fazer junto com o Nível 3. | Ver o passo a passo | \n= n3 | Hora do Nível 3 | Envie a carta registrada com AR ao Préfet e guarde o comprovante: o prazo de 2 meses conta do recebimento. | Ver o modelo da carta | \n= n4 | Você já pode ir ao Nível 4 | Com o rejet implicite, o référé mesures utiles no tribunal administratif é o próximo passo. Consulte antes uma associação de apoio jurídico. | Ver o Nível 4 | \n[[/SELETOR]]\n\n[[PROXIMO-PASSO]]\nse seletor=n1 | Organize os documentos antes do primeiro relance | O checklist personalizado junta o que a sua situação pede, na ordem certa. | Gerar meu checklist | /checklist-preview/\nse seletor=n4 | Não chegue ao tribunal sem os comprovantes | Monte o dossiê com os registros de cada nível. O checklist ajuda a não esquecer nada. | Gerar meu checklist | /checklist-preview/\npadrao | Enquanto espera, organize a vida em euros | A Planilha Financeira Super Integrada lança seus gastos fixos sozinha, todo mês. | Ver a planilha | /produtos-digitais/produto/?slug=planilha-financeira-super-integrada\n[[/PROXIMO-PASSO]]\n\n[[TRILHA]]\nChegada na França\nquantos-tipos-de-visto-franca-2026\nvls-ts-3-meses-para-validar\npasso-a-passo-da-anef\ntudo-sobre-o-exame-civico\n[[/TRILHA]]\n"
+      "mxBlocks": "[[RESUMO]]\nUse os recursos **nessa ordem**: relance na ANEF e e-mail à préfecture, Défenseur des Droits, carta registrada ao Préfet e, por último, o référé no tribunal.\nOs níveis 2 e 3 podem andar **em paralelo**.\nDepois que a préfecture recebe a carta, ela tem **2 meses** pra responder. Silêncio vira *rejet implicite*.\n[[/RESUMO]]\n\n[[CONFIANCA]]\nQuão segura você está sobre o que fazer com o seu dossiê parado?\n[[/CONFIANCA]]\n\n[[LINHA-DO-TEMPO]]\nSeu calendário de recursos\nData em que você depositou o dossiê na ANEF\n0 | Dossiê depositado na ANEF\n+1 mês | Nível 1: relance pela messagerie da ANEF e e-mail pra préfecture\n+2 meses | Nível 2: saisine do Défenseur des Droits (responde em 4 a 8 semanas)\n+4 meses | Nível 3: carta registrada com AR ao Préfet\n+6 meses | Sem resposta 2 meses depois da carta = rejet implicite\n+6 meses | Nível 4: référé mesures utiles no tribunal administratif\n[[/LINHA-DO-TEMPO]]\n\n[[SELETOR]]\nEm que nível você está?\n? Você já mandou relance pela messagerie da ANEF e e-mail pra préfecture? | Ainda não > n1 | Já mandei > n2,n3\n? Já acionou o Défenseur des Droits? | Ainda não > n2 | Já acionei > n3\n? Já mandou a carta registrada com AR ao Préfet há mais de 2 meses, sem resposta? | Não mandei ainda > n3 | Mandei e já passou de 2 meses > n4,n4\n= n1 | Comece pelo Nível 1 | Relance pela messagerie da ANEF e e-mail pra préfecture: é gratuito e cria o rastro que os outros níveis pedem. | Ver os modelos de mensagem | \n= n2 | Siga pro Nível 2 | Acione o Défenseur des Droits online, em menos de 20 minutos. Pode fazer junto com o Nível 3. | Ver o passo a passo | \n= n3 | Hora do Nível 3 | Envie a carta registrada com AR ao Préfet e guarde o comprovante: o prazo de 2 meses conta do recebimento. | Ver o modelo da carta | \n= n4 | Você já pode ir ao Nível 4 | Com o rejet implicite, o référé mesures utiles no tribunal administratif é o próximo passo. Consulte antes uma associação de apoio jurídico. | Ver o Nível 4 | \n[[/SELETOR]]\n\n[[PROXIMO-PASSO]]\nse seletor=n1 | Organize os documentos antes do primeiro relance | O checklist personalizado junta o que a sua situação pede, na ordem certa. | Gerar meu checklist | /checklist-preview/\nse seletor=n4 | Não chegue ao tribunal sem os comprovantes | Monte o dossiê com os registros de cada nível. O checklist ajuda a não esquecer nada. | Gerar meu checklist | /checklist-preview/\npadrao | Enquanto espera, organize a vida em euros | A Planilha Financeira Super Integrada lança seus gastos fixos sozinha, todo mês. | Ver a planilha | /produtos-digitais/produto/?slug=planilha-financeira-super-integrada\n[[/PROXIMO-PASSO]]\n\n[[TRILHA]]\nChegada na França\nquantos-tipos-de-visto-franca-2026\nvls-ts-3-meses-para-validar\npasso-a-passo-da-anef\ntudo-sobre-o-exame-civico\n[[/TRILHA]]\n",
+      "coverKeyword": "ANEF",
+      "status": "publicado",
+      "title": "Passo a passo da ANEF",
+      "image": "/images/uploads/anef-capa.png",
+      "category": "ANEF"
     },
     {
       "excerpt": "APL, ALF ou ALS — qual delas é a sua, mesmo sem ser cidadã francesa.",
@@ -736,20 +712,20 @@
       "readMinutes": 4,
       "updatedDate": "2026-08-05",
       "slug": "ajudas-de-moradia-apl-alf-als",
-      "status": "publicado",
+      "coverFormat": "Comparativo",
       "date": "2026-08-05",
       "url": "/artigos/post/ajudas-de-moradia-apl-alf-als/",
-      "title": "3 ajudas de moradia que talvez você tenha direito e não sabe",
-      "image": "/images/uploads/ajudas-moradia-capa.png",
-      "category": "Moradia",
-      "coverKeyword": "APL",
       "coverTags": [
         "ALF",
         "ALS",
         "CAF"
       ],
-      "coverFormat": "Comparativo",
-      "mxBlocks": "[[RESUMO]]\n**APL**: aluguel em imóvel privado. A mais comum.\n**ALF**: HLM ou foyer.\n**ALS**: pra quem não se encaixa nas duas.\nNão precisa ser francesa: titre de séjour, récépissé ou visto de estudante já permitem se inscrever na CAF.\n[[/RESUMO]]\n\n[[CONFIANCA]]\nQuão segura você está sobre qual ajuda de moradia pedir?\n[[/CONFIANCA]]\n\n[[SELETOR]]\nQual ajuda de moradia é a sua?\n? Onde você mora? | Aluguel em imóvel privado > apl | HLM ou foyer > alf | Outro tipo de moradia > als\n? Você tem titre de séjour, récépissé ou visto de estudante? | Sim > apl,alf,als | Ainda não > sem\n= apl | APL | A mais comum, pra aluguel em imóvel privado. Pode ser pedida desde o primeiro mês de aluguel. | Simular na CAF | https://www.caf.fr/allocataires/mes-services-en-ligne/faire-une-simulation\n= alf | ALF | Pra quem mora em HLM ou foyer. O valor é menor que a APL. | Simular na CAF | https://www.caf.fr/allocataires/mes-services-en-ligne/faire-une-simulation\n= als | ALS | A opção pra quem não se encaixa na APL nem na ALF. Valor mais baixo, mas existe. | Simular na CAF | https://www.caf.fr/allocataires/mes-services-en-ligne/faire-une-simulation\n= sem | Primeiro, o documento | A inscrição na CAF pede titre de séjour, récépissé ou visto de estudante. Veja qual visto é o seu. | Abrir o Assistente de vistos | /assistente-de-vistos/\n[[/SELETOR]]\n\n[[MITO]]\nMito ou verdade?\nSó cidadã francesa pode pedir ajuda de moradia | mito | Quem tem titre de séjour, récépissé ou visto de estudante já pode se inscrever na CAF.\nA APL só pode ser pedida depois de alguns meses de aluguel | mito | Dá pra pedir desde o primeiro mês de aluguel.\nO valor depende da região, do salário e do tamanho do imóvel | verdade | A CAF calcula na simulação. Em média, fica entre €150 e €400 por mês.\n[[/MITO]]\n\n[[PROXIMO-PASSO]]\nse seletor=sem | Descubra qual visto é o seu | O Assistente de vistos mostra o caminho certo pro seu caso em poucas perguntas. | Abrir o Assistente de vistos | /assistente-de-vistos/\npadrao | Coloque a ajuda no seu orçamento | A Planilha Financeira Super Integrada lança seus gastos fixos sozinha, todo mês, em euros — aluguel, CAF e tudo. | Ver a planilha | /produtos-digitais/produto/?slug=planilha-financeira-super-integrada\n[[/PROXIMO-PASSO]]\n"
+      "mxBlocks": "[[RESUMO]]\n**APL**: aluguel em imóvel privado. A mais comum.\n**ALF**: HLM ou foyer.\n**ALS**: pra quem não se encaixa nas duas.\nNão precisa ser francesa: titre de séjour, récépissé ou visto de estudante já permitem se inscrever na CAF.\n[[/RESUMO]]\n\n[[CONFIANCA]]\nQuão segura você está sobre qual ajuda de moradia pedir?\n[[/CONFIANCA]]\n\n[[SELETOR]]\nQual ajuda de moradia é a sua?\n? Onde você mora? | Aluguel em imóvel privado > apl | HLM ou foyer > alf | Outro tipo de moradia > als\n? Você tem titre de séjour, récépissé ou visto de estudante? | Sim > apl,alf,als | Ainda não > sem\n= apl | APL | A mais comum, pra aluguel em imóvel privado. Pode ser pedida desde o primeiro mês de aluguel. | Simular na CAF | https://www.caf.fr/allocataires/mes-services-en-ligne/faire-une-simulation\n= alf | ALF | Pra quem mora em HLM ou foyer. O valor é menor que a APL. | Simular na CAF | https://www.caf.fr/allocataires/mes-services-en-ligne/faire-une-simulation\n= als | ALS | A opção pra quem não se encaixa na APL nem na ALF. Valor mais baixo, mas existe. | Simular na CAF | https://www.caf.fr/allocataires/mes-services-en-ligne/faire-une-simulation\n= sem | Primeiro, o documento | A inscrição na CAF pede titre de séjour, récépissé ou visto de estudante. Veja qual visto é o seu. | Abrir o Assistente de vistos | /assistente-de-vistos/\n[[/SELETOR]]\n\n[[MITO]]\nMito ou verdade?\nSó cidadã francesa pode pedir ajuda de moradia | mito | Quem tem titre de séjour, récépissé ou visto de estudante já pode se inscrever na CAF.\nA APL só pode ser pedida depois de alguns meses de aluguel | mito | Dá pra pedir desde o primeiro mês de aluguel.\nO valor depende da região, do salário e do tamanho do imóvel | verdade | A CAF calcula na simulação. Em média, fica entre €150 e €400 por mês.\n[[/MITO]]\n\n[[PROXIMO-PASSO]]\nse seletor=sem | Descubra qual visto é o seu | O Assistente de vistos mostra o caminho certo pro seu caso em poucas perguntas. | Abrir o Assistente de vistos | /assistente-de-vistos/\npadrao | Coloque a ajuda no seu orçamento | A Planilha Financeira Super Integrada lança seus gastos fixos sozinha, todo mês, em euros — aluguel, CAF e tudo. | Ver a planilha | /produtos-digitais/produto/?slug=planilha-financeira-super-integrada\n[[/PROXIMO-PASSO]]\n",
+      "coverKeyword": "APL",
+      "status": "publicado",
+      "title": "3 ajudas de moradia que talvez você tenha direito e não sabe",
+      "image": "/images/uploads/ajudas-moradia-capa.png",
+      "category": "Moradia"
     },
     {
       "excerpt": "Os critérios que realmente importam na hora de aplicar.",
@@ -757,20 +733,20 @@
       "readMinutes": 13,
       "updatedDate": "2026-07-02",
       "slug": "como-conseguir-bolsa-de-estudo",
-      "status": "publicado",
+      "coverFormat": "Guia",
       "date": "2026-07-02",
       "url": "/artigos/post/como-conseguir-bolsa-de-estudo/",
-      "title": "Dicas para conseguir bolsa de estudo",
-      "image": "/images/uploads/bolsa-de-estudo-capa.png",
-      "category": "Bolsas de Estudo",
-      "coverKeyword": "Bolsa",
       "coverTags": [
         "877,50€",
         "Eiffel",
         "BGF"
       ],
-      "coverFormat": "Guia",
-      "mxBlocks": "[[RESUMO]]\nDesde 01/08/2026, o visto de estudante exige **877,50€ por mês** (47% do SMIC bruto), contra 615€ antes.\nPais ou responsável podem assinar uma *attestation de prise en charge* no lugar dos recursos próprios.\nBolsas como Eiffel, BGF e Erasmus Mundus continuam abertas, cada uma com um perfil.\n[[/RESUMO]]\n\n[[CONFIANCA]]\nQuão segura você está sobre como financiar seu estudo na França?\n[[/CONFIANCA]]\n\n[[SELETOR]]\nQual bolsa combina com o seu perfil?\n? Pra qual nível você quer a bolsa? | Master 2 > eiffel,bgf | Doutorado ou estadia de pesquisa > eiffel,bgf | Mestrado conjunto em mais de um país > erasmus\n? Você já foi admitida (ou pré-admitida) numa universidade francesa? | Sim > eiffel,bgf | Ainda não > erasmus\n? Seu perfil acadêmico é muito forte? | Sim, bem acima da média > eiffel | Bom, mas não excepcional > bgf,erasmus\n= eiffel | Bourse Eiffel | Bolsa de excelência do governo francês. A candidatura é feita pela universidade, entre outubro e janeiro. | Ver os detalhes da Eiffel | \n= bgf | BGF — Bourses du Gouvernement Français | Convênio Brasil-França, pelo Campus France Brasil. O edital de Master 2 costuma abrir em abril. | Ver o passo a passo da BGF | \n= erasmus | Erasmus Mundus | Mestrados conjuntos com mensalidade, manutenção, seguro e viagem cobertos. Confira programa por programa. | Ver os detalhes | \n[[/SELETOR]]\n\n[[MITO]]\nMito ou verdade?\nQuem já estava com o pedido em análise antes de 01/08/2026 segue a regra antiga | verdade | Esses pedidos continuaram com o valor de 615€ por mês.\nO novo valor mínimo fica congelado por anos, como o antigo | mito | Agora ele é 47% do SMIC bruto e é reajustado automaticamente, pelo menos uma vez por ano.\nNa Bourse Eiffel você se inscreve direto no site do governo | mito | A candidatura é feita pela universidade francesa, não pela estudante.\n[[/MITO]]\n\n[[PROXIMO-PASSO]]\nse seletor=erasmus | Organize candidaturas em vários países | O Hub de Estudos junta programas, prazos e documentos num só lugar no Notion. | Ver o Hub de Estudos | /produtos-digitais/produto/?slug=hub-de-estudos\npadrao | Faça a conta dos 877,50€ por mês | A Planilha Financeira Super Integrada mostra quanto você precisa guardar por mês até o pedido. | Ver a planilha | /produtos-digitais/produto/?slug=planilha-financeira-super-integrada\n[[/PROXIMO-PASSO]]\n\n[[TRILHA]]\nEstudar na França\ncursos-de-frances-gratuitos-4-caminhos\nselo-qualite-fle-mapa-cursos-de-frances\ncomo-conseguir-bolsa-de-estudo\n[[/TRILHA]]\n"
+      "mxBlocks": "[[RESUMO]]\nDesde 01/08/2026, o visto de estudante exige **877,50€ por mês** (47% do SMIC bruto), contra 615€ antes.\nPais ou responsável podem assinar uma *attestation de prise en charge* no lugar dos recursos próprios.\nBolsas como Eiffel, BGF e Erasmus Mundus continuam abertas, cada uma com um perfil.\n[[/RESUMO]]\n\n[[CONFIANCA]]\nQuão segura você está sobre como financiar seu estudo na França?\n[[/CONFIANCA]]\n\n[[SELETOR]]\nQual bolsa combina com o seu perfil?\n? Pra qual nível você quer a bolsa? | Master 2 > eiffel,bgf | Doutorado ou estadia de pesquisa > eiffel,bgf | Mestrado conjunto em mais de um país > erasmus\n? Você já foi admitida (ou pré-admitida) numa universidade francesa? | Sim > eiffel,bgf | Ainda não > erasmus\n? Seu perfil acadêmico é muito forte? | Sim, bem acima da média > eiffel | Bom, mas não excepcional > bgf,erasmus\n= eiffel | Bourse Eiffel | Bolsa de excelência do governo francês. A candidatura é feita pela universidade, entre outubro e janeiro. | Ver os detalhes da Eiffel | \n= bgf | BGF — Bourses du Gouvernement Français | Convênio Brasil-França, pelo Campus France Brasil. O edital de Master 2 costuma abrir em abril. | Ver o passo a passo da BGF | \n= erasmus | Erasmus Mundus | Mestrados conjuntos com mensalidade, manutenção, seguro e viagem cobertos. Confira programa por programa. | Ver os detalhes | \n[[/SELETOR]]\n\n[[MITO]]\nMito ou verdade?\nQuem já estava com o pedido em análise antes de 01/08/2026 segue a regra antiga | verdade | Esses pedidos continuaram com o valor de 615€ por mês.\nO novo valor mínimo fica congelado por anos, como o antigo | mito | Agora ele é 47% do SMIC bruto e é reajustado automaticamente, pelo menos uma vez por ano.\nNa Bourse Eiffel você se inscreve direto no site do governo | mito | A candidatura é feita pela universidade francesa, não pela estudante.\n[[/MITO]]\n\n[[PROXIMO-PASSO]]\nse seletor=erasmus | Organize candidaturas em vários países | O Hub de Estudos junta programas, prazos e documentos num só lugar no Notion. | Ver o Hub de Estudos | /produtos-digitais/produto/?slug=hub-de-estudos\npadrao | Faça a conta dos 877,50€ por mês | A Planilha Financeira Super Integrada mostra quanto você precisa guardar por mês até o pedido. | Ver a planilha | /produtos-digitais/produto/?slug=planilha-financeira-super-integrada\n[[/PROXIMO-PASSO]]\n\n[[TRILHA]]\nEstudar na França\ncursos-de-frances-gratuitos-4-caminhos\nselo-qualite-fle-mapa-cursos-de-frances\ncomo-conseguir-bolsa-de-estudo\n[[/TRILHA]]\n",
+      "coverKeyword": "Bolsa",
+      "status": "publicado",
+      "title": "Dicas para conseguir bolsa de estudo",
+      "image": "/images/uploads/bolsa-de-estudo-capa.png",
+      "category": "Bolsas de Estudo"
     },
     {
       "excerpt": "Estudo, trabalho, família, PVT — antes de garimpar qualquer requisito, descubra qual desses caminhos é o seu.",
@@ -778,20 +754,20 @@
       "readMinutes": 4,
       "updatedDate": "2026-08-25",
       "slug": "quantos-tipos-de-visto-franca-2026",
-      "status": "publicado",
+      "coverFormat": "Comparativo",
       "date": "2026-08-25",
       "url": "/artigos/post/quantos-tipos-de-visto-franca-2026/",
-      "title": "Quantos tipos de visto existem pra brasileiro morar na França em 2026?",
-      "image": "/images/uploads/tipos-de-visto-capa.png",
-      "category": "Visto",
-      "coverKeyword": "Vistos",
       "coverTags": [
         "estudo",
         "trabalho",
         "PVT"
       ],
-      "coverFormat": "Comparativo",
-      "mxBlocks": "[[RESUMO]]\nPrimeiro filtro: com cidadania de outro país da UE, você **não precisa de visto**.\nSem cidadania UE, são 4 grupos: estudar, trabalhar, família e acompanhar alguém.\nNão existe visto de namorado, e entrar como turista pra regularizar depois quase nunca funciona.\n[[/RESUMO]]\n\n[[CONFIANCA]]\nQuão segura você está sobre qual visto é o seu?\n[[/CONFIANCA]]\n\n[[SELETOR]]\nQual grupo de visto é o seu?\n? Você tem cidadania de algum país da União Europeia? | Sim > ue | Não > estudo,trabalho,familia,acompanhar\n? Qual é o motivo principal da sua ida? | Estudar > estudo | Trabalhar > trabalho | Casamento ou filho francês > familia | Acompanhar alguém sem vínculo formal > acompanhar\n? Você tem entre 18 e 30 anos? | Sim > pvt | Não > estudo,trabalho,familia\n= ue | Você não precisa de visto | Cidadão europeu mora, estuda e trabalha na França sem visto. O caminho é outro, sem a camada de imigração. | Ver o assistente | /assistente-de-vistos/\n= estudo | Estudar | VLS-TS Étudiant pra cursos com mais de 90 dias, via Campus France. Precisa ser validado em até 3 meses depois de chegar. | Ler sobre o VLS-TS | /artigos/post/?slug=vls-ts-3-meses-para-validar\n= trabalho | Trabalhar | Salarié pra quem já tem contrato com empregador francês, ou Passeport Talent em casos específicos. | Descobrir o meu | /assistente-de-vistos/\n= familia | Família | Cônjuge de francês(a), cônjuge de cidadão UE ou pai/mãe de criança francesa: cada um tem regras diferentes. | Descobrir o meu | /assistente-de-vistos/\n= pvt | PVT (Vacances-Travail) | Só entre 18 e 30 anos, com cota de cerca de 500 vagas por ano pra brasileiros. Uma vez na vida. | Descobrir o meu | /assistente-de-vistos/\n= acompanhar | Acompanhar alguém | Sem casamento ou PACS não existe visto de namorado. O caminho passa por formalizar o vínculo ou ir por estudo ou trabalho. | Descobrir o meu | /assistente-de-vistos/\n[[/SELETOR]]\n\n[[PROXIMO-PASSO]]\nse seletor=ue | Cidadania europeia muda o jogo | O Assistente de vistos confirma o seu caminho e o que pedir primeiro. | Abrir o Assistente de vistos | /assistente-de-vistos/\npadrao | Confirme o seu caminho em 2 minutos | O Assistente de vistos faz as mesmas perguntas deste guia, com o resultado personalizado. | Abrir o Assistente de vistos | /assistente-de-vistos/\n[[/PROXIMO-PASSO]]\n\n[[TRILHA]]\nChegada na França\nquantos-tipos-de-visto-franca-2026\nvls-ts-3-meses-para-validar\npasso-a-passo-da-anef\ntudo-sobre-o-exame-civico\n[[/TRILHA]]\n"
+      "mxBlocks": "[[RESUMO]]\nPrimeiro filtro: com cidadania de outro país da UE, você **não precisa de visto**.\nSem cidadania UE, são 4 grupos: estudar, trabalhar, família e acompanhar alguém.\nNão existe visto de namorado, e entrar como turista pra regularizar depois quase nunca funciona.\n[[/RESUMO]]\n\n[[CONFIANCA]]\nQuão segura você está sobre qual visto é o seu?\n[[/CONFIANCA]]\n\n[[SELETOR]]\nQual grupo de visto é o seu?\n? Você tem cidadania de algum país da União Europeia? | Sim > ue | Não > estudo,trabalho,familia,acompanhar\n? Qual é o motivo principal da sua ida? | Estudar > estudo | Trabalhar > trabalho | Casamento ou filho francês > familia | Acompanhar alguém sem vínculo formal > acompanhar\n? Você tem entre 18 e 30 anos? | Sim > pvt | Não > estudo,trabalho,familia\n= ue | Você não precisa de visto | Cidadão europeu mora, estuda e trabalha na França sem visto. O caminho é outro, sem a camada de imigração. | Ver o assistente | /assistente-de-vistos/\n= estudo | Estudar | VLS-TS Étudiant pra cursos com mais de 90 dias, via Campus France. Precisa ser validado em até 3 meses depois de chegar. | Ler sobre o VLS-TS | /artigos/post/?slug=vls-ts-3-meses-para-validar\n= trabalho | Trabalhar | Salarié pra quem já tem contrato com empregador francês, ou Passeport Talent em casos específicos. | Descobrir o meu | /assistente-de-vistos/\n= familia | Família | Cônjuge de francês(a), cônjuge de cidadão UE ou pai/mãe de criança francesa: cada um tem regras diferentes. | Descobrir o meu | /assistente-de-vistos/\n= pvt | PVT (Vacances-Travail) | Só entre 18 e 30 anos, com cota de cerca de 500 vagas por ano pra brasileiros. Uma vez na vida. | Descobrir o meu | /assistente-de-vistos/\n= acompanhar | Acompanhar alguém | Sem casamento ou PACS não existe visto de namorado. O caminho passa por formalizar o vínculo ou ir por estudo ou trabalho. | Descobrir o meu | /assistente-de-vistos/\n[[/SELETOR]]\n\n[[PROXIMO-PASSO]]\nse seletor=ue | Cidadania europeia muda o jogo | O Assistente de vistos confirma o seu caminho e o que pedir primeiro. | Abrir o Assistente de vistos | /assistente-de-vistos/\npadrao | Confirme o seu caminho em 2 minutos | O Assistente de vistos faz as mesmas perguntas deste guia, com o resultado personalizado. | Abrir o Assistente de vistos | /assistente-de-vistos/\n[[/PROXIMO-PASSO]]\n\n[[TRILHA]]\nChegada na França\nquantos-tipos-de-visto-franca-2026\nvls-ts-3-meses-para-validar\npasso-a-passo-da-anef\ntudo-sobre-o-exame-civico\n[[/TRILHA]]\n",
+      "coverKeyword": "Vistos",
+      "status": "publicado",
+      "title": "Quantos tipos de visto existem pra brasileiro morar na França em 2026?",
+      "image": "/images/uploads/tipos-de-visto-capa.png",
+      "category": "Visto"
     },
     {
       "excerpt": "Vie Privée et Familiale — requisitos, taxas, francês A2 e o exame cívico, num só lugar.",
@@ -799,19 +775,19 @@
       "readMinutes": 6,
       "updatedDate": "2026-08-25",
       "slug": "casei-com-frances-titulo-de-residencia",
-      "status": "escrevendo",
+      "coverFormat": "Passo a passo",
       "date": "2026-08-25",
       "url": "/artigos/post/casei-com-frances-titulo-de-residencia/",
-      "title": "Casei com um(a) francês(a): o caminho completo até o título de residência",
-      "image": "/images/uploads/casei-com-frances-capa.png",
-      "category": "Família",
-      "coverKeyword": "Cônjuge",
       "coverTags": [
         "casamento",
         "francês(a)",
         "título"
       ],
-      "coverFormat": "Passo a passo"
+      "coverKeyword": "Cônjuge",
+      "status": "escrevendo",
+      "title": "Casei com um(a) francês(a): o caminho completo até o título de residência",
+      "image": "/images/uploads/casei-com-frances-capa.png",
+      "category": "Família"
     },
     {
       "excerpt": "Sim — mas tem detalhes que fazem diferença na hora de remarcar.",
@@ -819,19 +795,19 @@
       "readMinutes": 4,
       "updatedDate": "2026-08-25",
       "slug": "reprovei-exame-civico-posso-tentar-de-novo",
-      "status": "escrevendo",
+      "coverFormat": "Guia",
       "date": "2026-08-25",
       "url": "/artigos/post/reprovei-exame-civico-posso-tentar-de-novo/",
-      "title": "Reprovei no Exame Cívico obrigatório — posso tentar de novo?",
-      "image": "/images/uploads/reprovei-exame-civico-capa.png",
-      "category": "Exame Cívico",
-      "coverKeyword": "Reprovei",
       "coverTags": [
         "exame cívico",
         "nova tentativa",
         "prazos"
       ],
-      "coverFormat": "Guia"
+      "coverKeyword": "Reprovei",
+      "status": "escrevendo",
+      "title": "Reprovei no Exame Cívico obrigatório — posso tentar de novo?",
+      "image": "/images/uploads/reprovei-exame-civico-capa.png",
+      "category": "Exame Cívico"
     },
     {
       "excerpt": "Cônjuge de cidadão(ã) da UE não-francês é um regime diferente do de cônjuge de francês(a) — mais barato, sem exame de francês nem cívico.",
@@ -839,19 +815,19 @@
       "readMinutes": 5,
       "updatedDate": "2026-08-26",
       "slug": "casei-com-cidadao-europeu-nao-frances",
-      "status": "escrevendo",
+      "coverFormat": "Guia",
       "date": "2026-08-26",
       "url": "/artigos/post/casei-com-cidadao-europeu-nao-frances/",
-      "title": "Casei com cidadão(ã) europeu(ia), não francês(a) — meu visto é diferente?",
-      "image": "/images/uploads/casei-cidadao-europeu-capa.png",
-      "category": "Família",
-      "coverKeyword": "Cônjuge UE",
       "coverTags": [
         "casamento",
         "cidadão UE",
         "título"
       ],
-      "coverFormat": "Guia"
+      "coverKeyword": "Cônjuge UE",
+      "status": "escrevendo",
+      "title": "Casei com cidadão(ã) europeu(ia), não francês(a) — meu visto é diferente?",
+      "image": "/images/uploads/casei-cidadao-europeu-capa.png",
+      "category": "Família"
     },
     {
       "excerpt": "Duas fontes oficiais divergem sobre isso. Veja os dois cenários lado a lado e o que fazer antes de comprar a passagem.",
@@ -859,19 +835,19 @@
       "readMinutes": 4,
       "updatedDate": "2026-08-26",
       "slug": "preciso-de-visto-antes-de-entrar-conjuge-ue",
-      "status": "escrevendo",
+      "coverFormat": "Guia",
       "date": "2026-08-26",
       "url": "/artigos/post/preciso-de-visto-antes-de-entrar-conjuge-ue/",
-      "title": "Preciso de visto antes de entrar sendo cônjuge de cidadão(ã) da UE?",
-      "image": "/images/uploads/conjuge-ue-visto-capa.png",
-      "category": "Família",
-      "coverKeyword": "Entrada",
       "coverTags": [
         "cônjuge UE",
         "visto",
         "fronteira"
       ],
-      "coverFormat": "Guia"
+      "coverKeyword": "Entrada",
+      "status": "escrevendo",
+      "title": "Preciso de visto antes de entrar sendo cônjuge de cidadão(ã) da UE?",
+      "image": "/images/uploads/conjuge-ue-visto-capa.png",
+      "category": "Família"
     },
     {
       "excerpt": "Não existe visto de namorado(a). Veja os caminhos reais quando o vínculo ainda não é formal, e por que 'ir como turista e resolver depois' quase nunca funciona.",
@@ -879,19 +855,19 @@
       "readMinutes": 5,
       "updatedDate": "2026-08-26",
       "slug": "acompanhar-alguem-franca-caminhos-reais",
-      "status": "escrevendo",
+      "coverFormat": "Guia",
       "date": "2026-08-26",
       "url": "/artigos/post/acompanhar-alguem-franca-caminhos-reais/",
-      "title": "Namorando com alguém que mora ou vai morar na França?",
-      "image": "/images/uploads/acompanhar-alguem-franca-capa.png",
-      "category": "Relacionamento",
-      "coverKeyword": "Namoro",
       "coverTags": [
         "casal",
         "PACS",
         "caminhos"
       ],
-      "coverFormat": "Guia"
+      "coverKeyword": "Namoro",
+      "status": "escrevendo",
+      "title": "Namorando com alguém que mora ou vai morar na França?",
+      "image": "/images/uploads/acompanhar-alguem-franca-capa.png",
+      "category": "Relacionamento"
     },
     {
       "excerpt": "Vacances-Travail entre 18 e 30 anos, cota limitada por ano, uma vez na vida. Veja quem pode, os documentos exigidos e por que a cota esgota rápido.",
@@ -899,21 +875,21 @@
       "readMinutes": 6,
       "updatedDate": "2026-08-26",
       "slug": "pvt-franca-brasil-cota-requisitos",
-      "status": "escrevendo",
+      "coverFormat": "Guia",
       "date": "2026-08-26",
       "url": "/artigos/post/pvt-franca-brasil-cota-requisitos/",
-      "showCoverInArticle": false,
-      "title": "PVT França-Brasil: cota, requisitos e como não perder a vaga",
-      "image": "/images/uploads/pvt-cota-requisitos-capa.png",
-      "category": "Visto",
-      "showBackLink": false,
-      "coverKeyword": "PVT",
       "coverTags": [
         "cota",
         "requisitos",
         "18 a 30 anos"
       ],
-      "coverFormat": "Guia"
+      "coverKeyword": "PVT",
+      "status": "escrevendo",
+      "showCoverInArticle": false,
+      "title": "PVT França-Brasil: cota, requisitos e como não perder a vaga",
+      "image": "/images/uploads/pvt-cota-requisitos-capa.png",
+      "category": "Visto",
+      "showBackLink": false
     },
     {
       "excerpt": "Não dá pra tentar de novo esse ano — mas dá pra se planejar melhor pro próximo, e existem outros caminhos enquanto isso.",
@@ -921,20 +897,20 @@
       "readMinutes": 4,
       "updatedDate": "2026-08-26",
       "slug": "cota-pvt-esgotou-o-que-fazer",
-      "status": "escrevendo",
+      "coverFormat": "Guia",
       "date": "2026-08-26",
       "url": "/artigos/post/cota-pvt-esgotou-o-que-fazer/",
-      "showCoverInArticle": false,
-      "title": "A cota do PVT esgotou — o que fazer agora?",
-      "image": "/images/uploads/pvt-esgotou-capa.png",
-      "category": "Visto",
-      "coverKeyword": "Cota PVT",
       "coverTags": [
         "esgotou",
         "plano B",
         "alternativas"
       ],
-      "coverFormat": "Guia"
+      "coverKeyword": "Cota PVT",
+      "status": "escrevendo",
+      "showCoverInArticle": false,
+      "title": "A cota do PVT esgotou — o que fazer agora?",
+      "image": "/images/uploads/pvt-esgotou-capa.png",
+      "category": "Visto"
     },
     {
       "excerpt": "Existe um selo do governo francês pra cursos de FLE — e quase ninguém sabe que ele existe. Reuni os 110 centros credenciados num mapa interativo, com busca por cidade, universidade ou diploma.",
@@ -942,20 +918,20 @@
       "readMinutes": 7,
       "updatedDate": "2026-09-17",
       "slug": "selo-qualite-fle-mapa-cursos-de-frances",
-      "status": "publicado",
+      "coverFormat": "Mapa",
       "date": "2026-08-26",
-      "showCoverInArticle": true,
-      "title": "O selo que garante que seu curso de francês é oficial (com mapa dos 110 centros)",
-      "image": "/images/uploads/selo-qualite-fle-capa.png",
-      "category": "Francês",
-      "showBackLink": false,
-      "coverKeyword": "Qualité FLE",
       "coverTags": [
         "selo oficial",
         "110 centros",
         "mapa"
       ],
-      "coverFormat": "Mapa"
+      "coverKeyword": "Qualité FLE",
+      "status": "publicado",
+      "showCoverInArticle": true,
+      "title": "O selo que garante que seu curso de francês é oficial (com mapa dos 110 centros)",
+      "image": "/images/uploads/selo-qualite-fle-capa.png",
+      "category": "Francês",
+      "showBackLink": false
     },
     {
       "excerpt": "Sem exigência de 1 ano mínimo, dá pra validar só um bloco de competência, e o CPF pode pagar (quase) tudo. Descubra se você é elegível, quanto custa e como funciona o processo.",
@@ -963,23 +939,23 @@
       "readMinutes": 10,
       "updatedDate": "2026-08-26",
       "slug": "vae-franca-2026",
-      "status": "publicado",
       "logoMode": "desativado",
+      "coverFormat": "Guia",
       "date": "2026-08-26",
-      "headerMode": "desativado",
-      "showCoverInArticle": false,
-      "title": "VAE em 2026: transforme sua experiência profissional em diploma francês",
-      "image": "/images/uploads/vae-franca-capa.png",
-      "category": "Formação",
-      "footerMode": "desativado",
-      "showBackLink": false,
-      "coverKeyword": "VAE",
       "coverTags": [
         "diploma",
         "experiência",
         "CPF"
       ],
-      "coverFormat": "Guia"
+      "headerMode": "desativado",
+      "coverKeyword": "VAE",
+      "status": "publicado",
+      "showCoverInArticle": false,
+      "title": "VAE em 2026: transforme sua experiência profissional em diploma francês",
+      "image": "/images/uploads/vae-franca-capa.png",
+      "category": "Formação",
+      "footerMode": "desativado",
+      "showBackLink": false
     },
     {
       "gallery2": [
@@ -1013,10 +989,16 @@
       "readMinutes": 6,
       "updatedDate": "2026-08-31",
       "slug": "24h-em-reims-bares-de-champagne",
-      "status": "publicado",
       "logoMode": "desativado",
+      "coverFormat": "Roteiro",
       "date": "2026-08-30",
+      "coverTags": [
+        "champagne",
+        "24h",
+        "bares"
+      ],
       "headerMode": "desativado",
+      "coverKeyword": "Reims",
       "gallery": [
         {
           "image": "/images/uploads/reims-degustacao-le-privileg.jpg",
@@ -1035,18 +1017,12 @@
           "caption": "Ficha técnica do Blanc de Blancs — 100% Chardonnay, 11 anos sur lies."
         }
       ],
+      "status": "publicado",
       "title": "24h em Reims: os bares de champagne que valem mais que Paris",
       "image": "/images/uploads/reims-capa-pommery.jpg",
       "category": "Viagens",
       "footerMode": "desativado",
-      "showBackLink": false,
-      "coverKeyword": "Reims",
-      "coverTags": [
-        "champagne",
-        "24h",
-        "bares"
-      ],
-      "coverFormat": "Roteiro"
+      "showBackLink": false
     }
   ]
 }
