@@ -105,7 +105,7 @@ function disableLogoLink() {
 // nas páginas de artigo com URL própria, casa pelo pathname.
 function findCurrentPost(posts) {
   var params = new URLSearchParams(window.location.search);
-  var slug = params.get("slug");
+  var slug = params.get("slug") || document.body.dataset.articleSlug;
   if (slug) return posts.find(function (p) { return p.slug === slug; }) || null;
   var path = normalizedPath();
   return posts.find(function (p) { return p.url && p.url.replace(/index\.html$/, "") === path; }) || null;
@@ -139,7 +139,8 @@ function resolveMode(pageMode, category, visibility, field) {
   // Só o template de artigo: a página de produto também usa "?slug=", mas
   // segue a própria linha ("produtos-digitais-produto") na tabela.
   var path = normalizedPath();
-  var isArticleBySlug = path === "/artigos/post/" && new URLSearchParams(window.location.search).has("slug");
+  // Páginas estáticas de artigo (/artigos/<slug>/) trazem o slug no <body data-article-slug>.
+  var isArticleBySlug = (path === "/artigos/post/" && new URLSearchParams(window.location.search).has("slug")) || !!document.body.dataset.articleSlug;
   var registryEntry = isArticleBySlug ? null : PAGE_REGISTRY[path];
 
   var category, headerMode, footerMode, logoMode;
