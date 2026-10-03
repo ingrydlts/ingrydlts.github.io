@@ -150,6 +150,13 @@ formulário do Decap, editam os **mesmos campos** do mesmo arquivo de `content/`
 página real do site já com as mudanças (celular, tablet ou computador) — antes de publicar. Nada muda
 no site nem no formato dos arquivos; o "Publicar" continua sendo o do Decap.
 
+**O quadro de artigos e o editor do artigo salvam sozinhos** (`PDStudio.Save`, em
+`admin/widgets/studio-kit.js`): acionam o "Publicar agora" do Decap ao clicar em "Concluir" e, sem
+ninguém clicar, 20 segundos depois da última mudança, com no mínimo 7 minutos entre uma gravação
+automática e outra (cada gravação é um commit e republica o site; o GitHub Pages aguenta por volta de
+10 por hora). O topo da tela diz "Salvo às HH:MM", "Mudanças por salvar" ou "Não salvou". O "Concluir"
+do editor volta pro quadro, no cartão do artigo. Os outros estúdios ainda dependem do "Publicar".
+
 - **Início / "Hoje"** (`admin/home.js`): a tela de entrada do painel, no lugar da lista de coleções
   do Decap. Tem um menu agrupado (Conteúdo, Vitrine, Site, Acompanhar) e, em "Hoje", o que pede atenção:
   avaliações esperando, banner apontando pra artigo que não está no ar, anúncio de rede sem código,

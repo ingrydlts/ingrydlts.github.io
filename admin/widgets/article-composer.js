@@ -156,6 +156,8 @@
   }
   var KIND_LABEL = { sig: "ferramenta-assinatura", mx: "microengajamento", rich: "bloco do artigo", token: "bloco do site" };
   function conf() { return window.PDConferencia; }
+  // Gravação no site (admin/widgets/studio-kit.js carrega depois deste arquivo: só usar na hora).
+  function saver() { return window.PDStudio && window.PDStudio.Save; }
   function marksOf(b) { return conf() ? conf().marksIn(blockToRaw(b)) : []; }
 
   var uidCounter = 0;
@@ -491,7 +493,7 @@
       ".pdac-rich p.more{color:#8A7A6C;font-style:italic;font-size:12.5px;}",
       ".pdac-mk{background:#F5E1DD;color:#A63A2E;border-radius:5px;padding:0 5px;font:600 .82em " + FONT_STACK + ";cursor:pointer;white-space:normal;}",
       ".pdac-mk.cur{outline:2px solid #A63A2E;}",
-      ".pdac-header-actions{display:flex;gap:6px;flex-wrap:wrap;}",
+      ".pdac-header-actions{display:flex;gap:6px;flex-wrap:wrap;align-items:center;}",
       ".pdac-icon-btn{font-family:" + FONT_STACK + ";font-weight:600;font-size:13px;padding:8px 12px;border-radius:8px;border:1px solid rgba(43,43,43,.16);background:#fff;color:#3A3632;cursor:pointer;min-height:38px;}",
       ".pdac-icon-btn.primary{background:#604034;border-color:#604034;color:#fff;}",
       ".pdac-canvas-scroll{flex:1 1 auto;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:18px 12px 130px;box-sizing:border-box;}",
@@ -709,8 +711,13 @@
       }
     },
 
+    componentDidMount: function () {
+      var self = this;
+      if (saver()) this._unsubSave = saver().subscribe(function () { if (self.state.open) self.forceUpdate(); });
+    },
     componentWillUnmount: function () {
       this._detachDragListeners();
+      if (this._unsubSave) this._unsubSave();
     },
 
     // typing = mudança de digitação: várias seguidas no mesmo bloco viram um passo só do Desfazer.
@@ -727,6 +734,8 @@
       this.setState({ blocks: newBlocks, lastSerialized: text, canUndo: !!(this._history && this._history.length) });
       this.props.onChange(text);
       if (this.state.preview) this.pushPreview(text);
+      var self = this;
+      if (saver()) saver().touch(function () { self.props.onChange(self.state.lastSerialized); });
     },
     undo: function () {
       var prev = (this._history || []).pop();
@@ -799,6 +808,11 @@
       }
       this.setState({ open: false, mode: "visual", selectedId: null, sheetOpen: false });
       if (window.PDPreview) window.PDPreview.clear("/content/posts.json");
+      // "Concluir" grava no site e, se o editor foi aberto pelo quadro de artigos, volta pro cartão.
+      if (saver()) saver().now();
+      var back = window.PDArticleReturn;
+      window.PDArticleReturn = null;
+      if (back) back();
     },
 
     toggleMode: function () {
@@ -1057,7 +1071,8 @@
           h("button", { type: "button", className: "pdac-icon-btn", onClick: this.undo, disabled: !this.state.canUndo, title: "Volta a última mudança" }, "↶ Desfazer"),
           window.PDStudio ? h("button", { type: "button", className: "pdac-icon-btn", "aria-pressed": String(!!this.state.preview), onClick: this.togglePreview, title: "Mostra a página real do artigo com o texto de agora, no celular, tablet ou computador" }, this.state.preview ? "Fechar prévia" : "Prévia no site") : null,
           h("button", { type: "button", className: "pdac-icon-btn", onClick: this.toggleMode }, this.state.mode === "visual" ? "Ver texto bruto" : "Ver visual"),
-          h("button", { type: "button", className: "pdac-icon-btn primary", onClick: this.close }, "Concluir")
+          saver() ? saver().badge() : null,
+          h("button", { type: "button", className: "pdac-icon-btn primary", onClick: this.close, title: "Salva e volta pro quadro de artigos" }, "Concluir")
         )
       );
     },
