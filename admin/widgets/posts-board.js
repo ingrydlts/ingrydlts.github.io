@@ -101,7 +101,8 @@
     ".pdb-checks{display:flex;flex-direction:column;gap:5px;background:#fff;border:1px solid #E6E0D6;border-radius:12px;padding:10px 12px;}",
     ".pdb-checks span{font-size:12.5px;display:flex;gap:7px;align-items:baseline;}",
     ".pdb-actions{display:flex;flex-wrap:wrap;gap:8px;padding-top:4px;}",
-    ".pdb-live{display:inline-flex;align-items:center;font:600 13px/1 inherit;color:#3F6E2B;padding:0 4px;}",
+    ".pdb-live{display:inline-flex;align-items:center;font:600 13px/1 inherit;color:#3F6E2B;padding:0 4px;text-decoration:none;}",
+    ".pdb-live:hover{text-decoration:underline;}",
     ".pdb-reuse{display:flex;flex-direction:column;gap:6px;margin:8px 0;}",
     ".pdb-reuse-row{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;}",
     ".pdb-reuse-it{flex:0 0 64px;height:36px;border:1px solid rgba(43,43,43,.18);border-radius:6px;background-size:cover;background-position:center;cursor:pointer;padding:0;}",
@@ -163,6 +164,19 @@
   // Trechos a conferir e as fontes deles: regras em admin/widgets/conferencia.js (as mesmas do editor do artigo).
   var C = window.PDConferencia;
   var plural = C.plural, markText = C.markText, norm = C.norm;
+  // html-to-image (cdnjs): só é baixado quando alguém usa a capa como foto.
+  var h2iPromise = null;
+  function loadHtmlToImage() {
+    if (window.htmlToImage) return Promise.resolve(window.htmlToImage);
+    if (!h2iPromise) h2iPromise = new Promise(function (resolve, reject) {
+      var sc = document.createElement("script");
+      sc.src = "https://cdnjs.cloudflare.com/ajax/libs/html-to-image/1.11.11/html-to-image.min.js";
+      sc.onload = function () { window.htmlToImage ? resolve(window.htmlToImage) : reject(new Error("biblioteca não carregou")); };
+      sc.onerror = function () { h2iPromise = null; reject(new Error("sem acesso à biblioteca de captura")); };
+      document.head.appendChild(sc);
+    });
+    return h2iPromise;
+  }
   function marks(p) { return C.marksIn([p.title, p.excerpt, p.url ? p.mxBlocks : p.body].join("\n")); }
   function fromBrain(p) { return !!(p.origem && p.origem.sistema === "cerebro"); }
   function pruneSources(p) {
@@ -736,7 +750,7 @@
             !p.url && flags.some(function (f) { return /FAQ|Feedback/.test(f); }) ? h("small", { style: { color: "#6E6862", fontSize: "11.5px" } }, "Regra do site: todo artigo termina com um bloco FAQ e um de Feedback (no editor visual, pelo +).") : null),
           h("div", { className: "pdb-actions" },
             st === "publicado"
-              ? h("span", { className: "pdb-live" }, "✓ No ar", isLive(p) ? "" : " (entra na data marcada)")
+              ? h("a", { className: "pdb-live", href: p.url || "/artigos/" + p.slug + "/", target: "_blank", rel: "noopener", title: "Abrir o artigo no site" }, "✓ No ar ↗", isLive(p) ? "" : " (entra na data marcada)")
               : h("button", { type: "button", className: "pds-btn primary", title: "Põe o artigo no ar e grava no site agora", onClick: function () { self.publish(idx); } }, st === "agendado" ? "Publicar agora" : "Publicar no site"),
             !p.url ? h("button", { type: "button", className: "pds-btn" + (st === "publicado" ? " primary" : ""), onClick: function () { self.editBody(idx); } }, "Editar o texto →") : null,
             h("button", { type: "button", className: "pds-btn", onClick: function () { self.setState({ view: "artigo", tab: "previa" }); } }, "Ver prévia")),
@@ -748,6 +762,38 @@
             : h("button", { type: "button", className: "pds-btn danger sm", style: { alignSelf: "flex-start" }, onClick: function () { self.setState({ confirmDelete: true }); } }, "Apagar artigo…")));
     },
 
+
+    // Desenha a capa por palavra-chave (PDCover) como PNG 1600×900 no navegador, manda pra
+    // biblioteca de mídia do Decap (sobe junto com o próximo "salvar") e põe no campo Foto de capa.
+    coverToPhoto: function (idx) {
+      var self = this, p = this.items()[idx];
+      if (!p || !window.PDCover || this.state.coverBusy) return;
+      if (typeof this.props.onPersistMedia !== "function") { this.showToast("Não consegui acessar a biblioteca de mídia por aqui. Use \"Escolher foto\"."); return; }
+      this.setState({ coverBusy: true });
+      function done(msg) { self.setState({ coverBusy: false }); self.showToast(msg); }
+      loadHtmlToImage().then(function (lib) {
+        var box = document.createElement("div");
+        box.style.cssText = "position:fixed;left:-20000px;top:0;width:1600px;pointer-events:none;";
+        box.innerHTML = window.PDCover.html(p);
+        document.body.appendChild(box);
+        var node = box.querySelector(".pdc") || box.firstElementChild;
+        return (document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve())
+          .then(function () { return lib.toBlob(node, { width: 1600, height: 900, pixelRatio: 1, cacheBust: true }); })
+          .then(function (blob) { box.remove(); return blob; }, function (e) { box.remove(); throw e; });
+      }).then(function (blob) {
+        if (!blob) throw new Error("imagem vazia");
+        var name = "capa-" + (p.slug || "artigo") + "-" + Date.now().toString(36) + ".png";
+        var file = new File([blob], name, { type: "image/png" });
+        return Promise.resolve(self.props.onPersistMedia(file, { field: self.props.field })).then(function () {
+          // public_folder do config.yml
+          var path = "/images/uploads/" + name;
+          self.change(function (it) { it[idx].image = path; }, "Capa virou a foto de capa", true);
+          done("Pronto: a capa agora é a foto de capa. Clique em Publicar no site (ou espere o salvamento) pra gravar.");
+        });
+      }).catch(function (e) {
+        done("Não consegui gerar a imagem da capa" + (e && e.message ? ": " + e.message : "") + ". Use \"Escolher foto\".");
+      });
+    },
 
     // Fotos que outros artigos já usam, pra reaproveitar como capa com um toque.
     renderReuse: function (items, idx) {
@@ -813,6 +859,9 @@
       return h("div", { className: "pds-field", key: "cover-kw" },
         h("span", { className: "pds-label" }, "Capa por palavra-chave" + (window.PDCover && p.category ? " · pilar " + window.PDCover.PILLARS[pil].name : "")),
         kw && window.PDCover ? h("div", { className: "pdb-cover-prev", dangerouslySetInnerHTML: { __html: window.PDCover.html(p) } }) : null,
+        kw && window.PDCover ? h("button", { type: "button", className: "pds-btn sm", style: { alignSelf: "flex-start" }, disabled: !!this.state.coverBusy,
+          title: "Desenha esta capa como imagem e coloca no campo Foto de capa",
+          onClick: function () { self.coverToPhoto(idx); } }, this.state.coverBusy ? "Gerando a imagem…" : (p.image ? "Trocar a foto de capa por esta capa" : "Usar esta capa como foto de capa")) : null,
         h("div", { className: "pds-grid2" },
           this.field("pdb-kw", "Palavra (até " + KW_MAX + ")", h("input", { id: "pdb-kw", className: "pds-input" + (kw.length > KW_MAX || dup ? " pdb-input-err" : ""), value: kw, onChange: function (e) { self.set("coverKeyword", e.target.value); } }),
             dup ? "Já é a capa de “" + (dup.title || "outro artigo") + "” no mesmo pilar." : kw.length > KW_MAX ? kw.length + " caracteres: use sigla ou termo mais curto." : null, dup || kw.length > KW_MAX ? "err" : ""),
