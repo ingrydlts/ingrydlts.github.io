@@ -1136,6 +1136,7 @@ p { margin: 0 0 1em; color: var(--grafite); }
 .ask-form input:focus, .ask-form textarea:focus { outline: 2px solid #D8B46F; outline-offset: 1px; }
 .ask-form label.ask-check { display: flex; align-items: flex-start; gap: 8px; font-weight: 500; line-height: 1.45; }
 .ask-form label.ask-check a { color: #EBD3A4; text-decoration: underline; }
+.ask-form .ask-aviso { margin: 0; font-size: 14px; line-height: 1.5; opacity: .85; }
 .ask-check input { width: 18px; height: 18px; accent-color: #D8B46F; flex: none; margin-top: 1px; }
 .ask-actions { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
 .ask-actions .btn { background: #D8B46F; color: #2B211C; border: 0; }

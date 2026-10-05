@@ -16,6 +16,10 @@ import { escapeHtml } from "/assets/js/render.js";
 const CONSENTIMENTO_VERSAO = "site-v1";
 const TEXTO_SERVICO = "Li e aceito a Política de Privacidade do Por Dentro.";
 const TEXTO_NOVIDADES = "Quero receber novidades e conteúdos do Por Dentro por e-mail.";
+// Só o formulário da pergunta única usa a versão 2: o aceite cobre também o uso da pergunta, sem
+// identificação, para criar conteúdo (o cérebro do hub só lê pergunta com esse aceite).
+const CONSENTIMENTO_VERSAO_PERGUNTA = "site-v2";
+const TEXTO_SERVICO_PERGUNTA = "Li e aceito a Política de Privacidade do Por Dentro, inclusive o uso da minha pergunta, sem identificação, para criar conteúdo.";
 
 // Erros que o banco devolve (raise exception) → texto pra leitora
 const ERROS = {
@@ -57,6 +61,14 @@ function consentPayload(newsletter) {
   };
 }
 
+function perguntaConsentPayload(newsletter) {
+  return Object.assign(consentPayload(newsletter), {
+    aceita_uso_conteudo: true,
+    consentimento_versao: CONSENTIMENTO_VERSAO_PERGUNTA,
+    texto_servico: TEXTO_SERVICO_PERGUNTA
+  });
+}
+
 function track(type, slug, payload) {
   try { if (window.PDEvents) window.PDEvents.send("block", slug, Object.assign({ type: type }, payload || {})); } catch (e) {}
 }
@@ -64,6 +76,8 @@ function track(type, slug, payload) {
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const ACEITE = 'Li e aceito a <a href="/confidentialite/">Política de Privacidade</a> do Por Dentro.';
 const NEWS = "Quero receber novidades e conteúdos do Por Dentro por e-mail.";
+const ACEITE_PERGUNTA = 'Li e aceito a <a href="/confidentialite/">Política de Privacidade</a> do Por Dentro, inclusive o uso da minha pergunta, sem identificação, para criar conteúdo.';
+const AVISO_PERGUNTA = "Sua pergunta fica só comigo. Se ajudar outras pessoas, posso usá-la em artigos e posts, sempre sem seu nome, e-mail ou qualquer dado que identifique você.";
 
 // Seção "Pergunta pra Ingryd", inserida antes do rodapé do site.
 export function mountAskForm(opts) {
@@ -83,7 +97,8 @@ export function mountAskForm(opts) {
     '<label><span>Seu e-mail</span><input name="email" type="email" autocomplete="email" required maxlength="254"></label>' +
     "</div>" +
     '<label><span>Sua pergunta</span><textarea name="question" rows="4" required maxlength="2000" placeholder="Conte seu caso em poucas linhas"></textarea></label>' +
-    '<label class="ask-check"><input type="checkbox" name="aceite" required> <span>' + ACEITE + "</span></label>" +
+    '<p class="ask-aviso">' + AVISO_PERGUNTA + "</p>" +
+    '<label class="ask-check"><input type="checkbox" name="aceite" required> <span>' + ACEITE_PERGUNTA + "</span></label>" +
     '<label class="ask-check"><input type="checkbox" name="newsletter"> <span>' + NEWS + "</span></label>" +
     '<div class="ask-actions"><button type="submit" class="btn btn-pill">Enviar pergunta</button></div>' +
     '<p class="ask-msg" role="status" aria-live="polite"></p>' +
@@ -107,7 +122,7 @@ export function mountAskForm(opts) {
     msg.className = "ask-msg";
     msg.textContent = "";
     try {
-      await rpc("enviar_pergunta_unica", Object.assign({ email, nome: name, texto: question, artigo: artigoToken(opts.slug) }, consentPayload(f.get("newsletter"))));
+      await rpc("enviar_pergunta_unica", Object.assign({ email, nome: name, texto: question, artigo: artigoToken(opts.slug) }, perguntaConsentPayload(f.get("newsletter"))));
       track("lead_submit", opts.slug, { kind: "pergunta", newsletter: !!f.get("newsletter") });
       form.innerHTML = '<p class="ask-done"><b>Recebi, ' + escapeHtml(name.split(" ")[0]) + "!</b> Vou te responder no " + escapeHtml(email) + ".</p>";
     } catch (err) {
