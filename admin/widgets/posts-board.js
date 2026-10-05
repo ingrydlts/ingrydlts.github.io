@@ -368,7 +368,7 @@
         self.saving = false;
         if (ok !== false) return self.close();
         var why = K.Save.why();
-        self.showToast("Não salvou" + (why ? ": " + why : ". Confira se algum artigo está sem título ou slug") + " — o quadro continua aberto.");
+        self.showToast("Não salvou" + (why ? ": " + why : "") + " — o quadro continua aberto.");
       });
     },
     close: function () {

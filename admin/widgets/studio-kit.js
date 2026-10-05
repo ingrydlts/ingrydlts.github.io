@@ -128,7 +128,10 @@
     // mínimas de computador) fica recortada no tamanho da janela — senão o
     // celular reduz a página inteira pra caber, e o estúdio fica minúsculo.
     "html.pds-open,html.pds-open body{overflow:hidden!important;height:100%;min-width:0!important;}",
-    "html.pds-open #nc-root{position:relative;width:100%;height:100%;overflow:hidden;}"
+    "html.pds-open #nc-root{position:relative;width:100%;height:100%;overflow:hidden;}",
+    // A biblioteca de mídia do Decap (ReactModal) abre por cima do estúdio; sem isso ela ficava
+    // atrás da tela cheia (z-index 999999) e "Escolher foto" parecia não fazer nada.
+    ".ReactModal__Overlay{z-index:2000000 !important;}"
   ].join("\n"));
 
   // --- lista arrastável ------------------------------------------------------
@@ -507,7 +510,7 @@
   // avisa antes de fechar a aba.
   var Save = (function () {
     var IDLE = 20 * 1000, GAP = 7 * 60 * 1000;
-    var st = { state: "idle", at: null }, subs = [], timer = null, running = null, lastSave = 0, during = false, reemit = null, why = "";
+    var st = { state: "idle", at: null }, subs = [], timer = null, running = null, lastSave = 0, during = false, reemit = null, why = "", step = "";
     function set(state) { st = { state: state, at: state === "saved" ? new Date() : st.at }; subs.slice().forEach(function (fn) { try { fn(st); } catch (e) {} }); }
     // Os botões do Decap, fora das nossas telas. Texto em português: locale "pt" no config.yml.
     function decap(sel, re) {
@@ -536,13 +539,15 @@
     function run() {
       var wasDirty = st.state === "dirty" || st.state === "error";
       during = false;
+      step = "";
       set("saving");
       // A mudança acabou de ser feita: o botão do Decap pode levar um instante pra virar "Publicar".
       return wait(function () { return pendingBtn() || (!wasDirty && savedBtn()); }, 2500).then(function (btn) {
-        if (!btn || /^Publicado$/.test(btn.textContent.trim())) return !!savedBtn(); // nada a gravar
+        if (!btn) { step = "não achei o botão Publicar do Decap atrás do quadro"; return false; }
+        if (/^Publicado$/.test(btn.textContent.trim())) return !!savedBtn(); // nada a gravar
         btn.click();
         return wait(function () { return decap("[role=menuitem]", /^Publicar agora$/); }, 2500).then(function (item) {
-          if (!item) return false;
+          if (!item) { step = "o menu do botão Publicar não abriu"; return false; }
           item.click();
           var seen = false, t0 = Date.now();
           return wait(function () {
@@ -555,7 +560,7 @@
         });
       }).then(function (ok) {
         running = null;
-        if (!ok) { why = reason(); set("error"); return false; }
+        if (!ok) { why = reason() || step || "o Decap voltou pra Publicar sem gravar (campo obrigatório vazio ou erro do GitHub)"; set("error"); return false; }
         why = "";
         lastSave = Date.now();
         set("saved");
