@@ -133,6 +133,8 @@ Condições: `prazo<=45`, `prazo<0` (dias restantes do `[[PRAZO]]`) · `enquete=
 - Sumário "Nesta página" marca ✓ nas seções já lidas.
 - Selecionar uma frase abre "Grifar / Copiar / Perguntar sobre isso".
 - "Essa parte ficou clara?" no fim de cada seção, ligado pelo campo do artigo `sectionReactions`.
+  Pra tirar de uma seção específica, escreva `{sem-reacao}` no fim do título: `## Título da seção {sem-reacao}`.
+  O texto some do título na página e a pergunta não aparece no fim daquela seção.
 
 ## Os dados
 

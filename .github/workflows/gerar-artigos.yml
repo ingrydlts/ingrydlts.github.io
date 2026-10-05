@@ -10,7 +10,10 @@ on:
       - content/posts.json
       - artigos/post/**
       - assets/js/markdown.js
+      - assets/js/cover.js
       - scripts/gerar-artigos.mjs
+      - scripts/gerar-capas.mjs
+      - scripts/capas-lib.mjs
       - .github/workflows/gerar-artigos.yml
   schedule:
     - cron: "0 4 * * *"
@@ -31,10 +34,20 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+      # Capa por palavra-chave vira PNG pro og:image. O navegador só é instalado quando falta alguma capa.
+      - name: Ver se faltam capas
+        id: capas
+        run: echo "faltam=$(node scripts/gerar-capas.mjs --pendentes)" >> "$GITHUB_OUTPUT"
+      - name: Instalar o navegador das capas
+        if: steps.capas.outputs.faltam != '0'
+        run: |
+          npm install --no-save --no-package-lock playwright
+          npx playwright install --with-deps chromium
+      - run: node scripts/gerar-capas.mjs
       - run: node scripts/gerar-artigos.mjs
       - name: Gravar o que mudou
         run: |
-          git add -A artigos sitemap.xml robots.txt
+          git add -A artigos images/capas sitemap.xml robots.txt
           if git diff --cached --quiet; then
             echo "Nada mudou."
             exit 0

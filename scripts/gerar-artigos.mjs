@@ -22,6 +22,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { markdownToBlocks } from "../assets/js/markdown.js";
+import { precisaDeCapa, nomeDaCapa } from "./capas-lib.mjs";
 
 const SITE = "https://imigrantepordentro.com";
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -119,7 +120,9 @@ function descricao(post, corpoHtml) {
 // dois escritos por alguém.
 function blocoSeo(post, desc, { comTituloEDescricao = true } = {}) {
   const url = urlDoArtigo(post.slug);
-  const imagem = urlAbsoluta(post.image);
+  // Sem foto própria, usa o PNG da capa por palavra-chave (scripts/gerar-capas.mjs), se já existir.
+  const capaPng = precisaDeCapa(post) ? nomeDaCapa(post) : "";
+  const imagem = urlAbsoluta(post.image || (capaPng && existe(capaPng) ? "/" + capaPng : ""));
   const publicadoEm = post.date ? String(post.date).slice(0, 10) : "";
   const atualizadoEm = post.updatedDate ? String(post.updatedDate).slice(0, 10) : publicadoEm;
   const ld = {

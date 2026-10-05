@@ -317,10 +317,13 @@ function initProgress(article) {
 function initReactions(body) {
   const heads = Array.from(body.querySelectorAll(":scope > h2"));
   if (heads.length < 2) return;
-  const spots = heads.slice(1).map((h, i) => ({ before: h, section: heads[i].id || "secao-" + i }));
+  // A pergunta fica no fim de cada seção; "## Título {sem-reacao}" (data-no-react) pula a dela.
+  const spots = heads.slice(1).map((h, i) => ({ before: h, section: heads[i].id || "secao-" + i, skip: heads[i].hasAttribute("data-no-react") }));
   const lastEnd = body.querySelector(":scope > .rt-faq, :scope > .mx-proximo, :scope > .rt-feedback");
-  if (lastEnd) spots.push({ before: lastEnd, section: heads[heads.length - 1].id || "fim" });
+  const lastHead = heads[heads.length - 1];
+  if (lastEnd) spots.push({ before: lastEnd, section: lastHead.id || "fim", skip: lastHead.hasAttribute("data-no-react") });
   spots.forEach((s) => {
+    if (s.skip) return;
     const el = document.createElement("div");
     el.className = "mx-react";
     el.innerHTML = "<span>Essa parte ficou clara?</span>" +

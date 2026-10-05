@@ -585,8 +585,11 @@ export function markdownToBlocks(md, ctx) {
       blocks.push("<h3>" + inline(line.slice(4)) + "</h3>");
     } else if (line.startsWith("## ") || line.startsWith("# ")) {
       flushList();
-      const text = line.startsWith("## ") ? line.slice(3) : line.slice(2);
-      blocks.push("<h2>" + inline(text) + "</h2>");
+      let text = line.startsWith("## ") ? line.slice(3) : line.slice(2);
+      // "## Título {sem-reacao}": tira o "Essa parte ficou clara?" só no fim desta seção.
+      const noReact = /\s*\{sem-rea[cç][aã]o\}\s*$/i.test(text);
+      if (noReact) text = text.replace(/\s*\{sem-rea[cç][aã]o\}\s*$/i, "");
+      blocks.push("<h2" + (noReact ? ' data-no-react="1"' : "") + ">" + inline(text) + "</h2>");
     } else if (line.startsWith("- ") || line.startsWith("* ")) {
       if (!listBuffer) listBuffer = [];
       listBuffer.push("<li>" + inline(line.slice(2)) + "</li>");

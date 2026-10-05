@@ -65,6 +65,9 @@ aparece sozinho no fim de todo artigo.
 
 Parágrafo que começa com `**Atenção:**` vira caixa de aviso.
 
+Com `reacoes-por-secao: sim`, o "Essa parte ficou clara?" aparece no fim de toda seção. Pra pular uma
+seção (curta, de modelo de e-mail, de fontes), termine o título com `{sem-reacao}`: `## Onde confirmar {sem-reacao}`.
+
 ## Como escolher a ferramenta-assinatura
 Pergunte: "que conta ou decisão a leitora precisa fazer depois de ler?"
 - Tem um **prazo contado a partir de uma data** → `[[PRAZO]]`

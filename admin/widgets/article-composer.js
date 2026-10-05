@@ -405,7 +405,7 @@
           (imgPrev.caption ? "<figcaption>" + escapeHtml(imgPrev.caption) + "</figcaption>" : "") + "</figure>"
         : "";
     }
-    if (t.indexOf("## ") === 0) return "<h2>" + inlineLite(t.slice(3)) + "</h2>";
+    if (t.indexOf("## ") === 0) return "<h2>" + inlineLite(t.slice(3).replace(/\s*\{sem-rea[cç][aã]o\}\s*$/i, "")) + "</h2>";
     if (t.indexOf("# ") === 0) return "<h2>" + inlineLite(t.slice(2)) + "</h2>";
     if (!t) return "";
     return "<p>" + inlineLite(t) + "</p>";
