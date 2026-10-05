@@ -545,9 +545,24 @@
       return wait(function () { return pendingBtn() || (!wasDirty && savedBtn()); }, 2500).then(function (btn) {
         if (!btn) { step = "não achei o botão Publicar do Decap atrás do quadro"; return false; }
         if (/^Publicado$/.test(btn.textContent.trim())) return !!savedBtn(); // nada a gravar
+        function findItem() {
+          return decap("[role=menuitem]", /^Publicar agora$/) || decap("li,[role=option],[role=menuitem],button,a", /^Publicar agora$/);
+        }
+        // O menu do Decap abre com clique; se não abrir, tenta de novo com foco e Enter.
+        try { btn.focus(); } catch (e) {}
         btn.click();
-        return wait(function () { return decap("[role=menuitem]", /^Publicar agora$/); }, 2500).then(function (item) {
-          if (!item) { step = "o menu do botão Publicar não abriu"; return false; }
+        return wait(findItem, 1200).then(function (it) {
+          if (it) return it;
+          if (btn.getAttribute("aria-expanded") !== "true") {
+            try { btn.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true })); } catch (e) {}
+          }
+          return wait(findItem, 1800);
+        }).then(function (item) {
+          if (!item) {
+            var itens = Array.prototype.map.call(document.querySelectorAll("[role=menuitem]"), function (n) { return (n.textContent || "").trim(); }).filter(Boolean).slice(0, 4).join(" / ");
+            step = "o menu do botão Publicar não abriu (botão \"" + btn.textContent.trim() + "\", aberto=" + btn.getAttribute("aria-expanded") + ", itens: " + (itens || "nenhum") + ")";
+            return false;
+          }
           item.click();
           var seen = false, t0 = Date.now();
           return wait(function () {
