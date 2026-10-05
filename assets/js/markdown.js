@@ -8,6 +8,9 @@
 // via marcadores de texto simples — assim qualquer artigo editado pelo /admin
 // pode usá-los, sem precisar de HTML feito à mão:
 //
+//   ![Legenda opcional](/images/uploads/foto.jpg)
+//   (imagem solta no texto, numa linha só; o editor do /admin tem o bloco "Imagem")
+//
 //   [[BAND]]
 //   Texto da faixa colorida de destaque no topo do artigo
 //   [[/BAND]]
@@ -569,7 +572,15 @@ export function markdownToBlocks(md, ctx) {
       flushList();
       return;
     }
-    if (line.startsWith("### ")) {
+    const img = line.match(/^!\[([^\]]*)\]\((.+)\)$/);
+    if (img) {
+      flushList();
+      const cap = img[1].trim();
+      blocks.push(
+        '<figure class="article-figure"><img src="' + escapeAttr(img[2]) + '" alt="' + escapeAttr(cap) + '" loading="lazy">' +
+          (cap ? "<figcaption>" + inline(cap) + "</figcaption>" : "") + "</figure>"
+      );
+    } else if (line.startsWith("### ")) {
       flushList();
       blocks.push("<h3>" + inline(line.slice(4)) + "</h3>");
     } else if (line.startsWith("## ") || line.startsWith("# ")) {

@@ -179,6 +179,20 @@
     return s;
   }
 
+  // --- imagem solta no texto: 1 linha, "![legenda](/images/uploads/foto.jpg)" ---
+  function parseImageRaw(raw) {
+    var m = String(raw || "").trim().match(/^!\[([^\]]*)\]\((.*)\)$/);
+    return m ? { caption: m[1], url: m[2] } : null;
+  }
+  function buildImageRaw(caption, url) {
+    return "![" + String(caption || "").replace(/[\[\]\r\n]/g, " ") + "](" + (url || "") + ")";
+  }
+  var currentComposer = null; // instância aberta; a prévia usa pra mostrar foto ainda não publicada
+  function imageSrc(comp, url) {
+    var K = window.PDStudio;
+    return K && K.assetUrl && comp ? K.assetUrl(comp.props, url) : url;
+  }
+
   // --- link afiliado avulso: 1 linha, "texto do botão | url | imagem" -------
   // Cada bloco novo é independente (não um estado único como Banner) — por
   // isso pode haver quantos o artigo precisar, cada um arrastável pra sua
@@ -317,6 +331,8 @@
       return (RICH_NAME[b.name] || "📦 Bloco " + b.name);
     }
     var t = b.raw.trim();
+    var imgInfo = parseImageRaw(t);
+    if (imgInfo) return "🖼️ Imagem: " + (imgInfo.caption.slice(0, 44) || (imgInfo.url ? "(sem legenda)" : "(escolha a foto)"));
     if (/^#{1,3}\s/.test(t)) return "Título: " + t.replace(/^#{1,3}\s*/, "").slice(0, 44);
     return "Parágrafo: " + (t.slice(0, 44) || "(vazio)");
   }
@@ -382,6 +398,13 @@
     }
     var t = b.raw.trim();
     if (t.indexOf("### ") === 0) return "<h3>" + inlineLite(t.slice(4)) + "</h3>";
+    var imgPrev = parseImageRaw(t);
+    if (imgPrev) {
+      return imgPrev.url
+        ? '<figure class="article-figure"><img src="' + escapeHtml(imageSrc(currentComposer, imgPrev.url)) + '" alt="' + escapeHtml(imgPrev.caption) + '">' +
+          (imgPrev.caption ? "<figcaption>" + escapeHtml(imgPrev.caption) + "</figcaption>" : "") + "</figure>"
+        : "";
+    }
     if (t.indexOf("## ") === 0) return "<h2>" + inlineLite(t.slice(3)) + "</h2>";
     if (t.indexOf("# ") === 0) return "<h2>" + inlineLite(t.slice(2)) + "</h2>";
     if (!t) return "";
@@ -517,6 +540,10 @@
       ".pdac-edit-area{padding:0 8px 14px;}",
       ".pdac-textarea{width:100%;box-sizing:border-box;font-family:" + FONT_STACK + ";font-size:15px;line-height:1.55;border:1px solid rgba(43,43,43,.2);border-radius:8px;padding:10px 12px;resize:vertical;}",
       ".pdac-input{width:100%;box-sizing:border-box;font-family:" + FONT_STACK + ";font-size:14px;border:1px solid rgba(43,43,43,.2);border-radius:8px;padding:9px 10px;margin-bottom:6px;}",
+      ".ReactModal__Overlay{z-index:2000000 !important;}",
+      ".pdac-block-content figure.article-figure{margin:0;}",
+      ".pdac-block-content figure.article-figure img{width:100%;height:auto;border-radius:6px;display:block;}",
+      ".pdac-block-content figure.article-figure figcaption{font-size:13px;color:#8A7A6C;margin-top:6px;text-align:center;}",
       ".pdac-hint{font-size:11.5px;color:#8A7A6C;margin:6px 2px 0;line-height:1.4;}",
       ".pdac-add-inline{display:flex;align-items:center;justify-content:center;gap:8px;margin:18px auto 0;max-width:720px;width:100%;padding:14px;border:1.5px dashed rgba(96,64,52,.4);border-radius:10px;color:#604034;font-weight:600;font-size:14px;cursor:pointer;background:transparent;font-family:" + FONT_STACK + ";}",
       ".pdac-fab{position:absolute;right:18px;bottom:calc(18px + env(safe-area-inset-bottom));width:58px;height:58px;border-radius:50%;background:#604034;color:#fff;border:none;font-size:28px;box-shadow:0 6px 18px rgba(0,0,0,.28);cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:2;line-height:0;}",
@@ -671,6 +698,7 @@
     },
     {
       group: "Mídia", items: [
+        { key: "IMAGEM", emoji: "📷", label: "Imagem", make: function () { return { id: uid(), type: "text", raw: buildImageRaw("", "") }; } },
         { key: "GALERIA", emoji: "🖼️", label: "Galeria de fotos", make: function () { return { id: uid(), type: "token", raw: "[[GALERIA]]" }; } },
         { key: "GALERIA-2", emoji: "🖼️", label: "Galeria de fotos 2", make: function () { return { id: uid(), type: "token", raw: "[[GALERIA-2]]" }; } }
       ]
@@ -706,6 +734,16 @@
     },
 
     componentDidUpdate: function (prevProps) {
+      var K = window.PDStudio;
+      if (K && K.Media && this._pdsMedia) {
+        var self = this;
+        K.Media.collect(this, function (target, path) {
+          var id = String(target).replace(/^img:/, "");
+          var blk = self.state.blocks.filter(function (x) { return x.id === id; })[0];
+          var cur = blk && parseImageRaw(blk.raw);
+          if (cur) self.editBlock(id, buildImageRaw(cur.caption, path));
+        });
+      }
       if (prevProps.value !== this.props.value && this.props.value !== this.state.lastSerialized) {
         this.setState({ blocks: parseBody(this.props.value), lastSerialized: this.props.value });
       }
@@ -1266,6 +1304,7 @@
     },
 
     renderBlockReadOnly: function (b, onSelect, firstMark, currentMark) {
+      currentComposer = this;
       var html = highlightMarks(renderBlockPreviewHTML(b, this.state.catalogs), firstMark || 0, currentMark);
       if (!html) {
         return h("div", { className: "pdac-block-content pdac-block-empty", onClick: onSelect }, blockLabel(b, this.state.catalogs) + " — não aparece no site.");
@@ -1281,6 +1320,9 @@
       if (b.type === "token" && isBannerToken(b.raw)) {
         return h("div", { className: "pdac-edit-area" }, this.renderProductPicker(parseBannerToken(b.raw)));
       }
+      if (b.type === "text" && parseImageRaw(b.raw)) {
+        return h("div", { className: "pdac-edit-area" }, this.renderImageFields(b));
+      }
       var value = b.type === "richblock" ? b.inner : b.raw;
       return h(
         "div",
@@ -1294,6 +1336,34 @@
         }),
         b.type === "richblock" && RICH_HINT[b.name] ? h("p", { className: "pdac-hint" }, RICH_HINT[b.name]) : null,
         b.type === "text" ? h("p", { className: "pdac-hint" }, "Use \"## \" pra título ou \"### \" pra subtítulo no início da linha.") : null
+      );
+    },
+
+    renderImageFields: function (b) {
+      var self = this;
+      var info = parseImageRaw(b.raw);
+      var K = window.PDStudio;
+      function update(patch) {
+        var next = { caption: info.caption, url: info.url };
+        Object.assign(next, patch);
+        self.editBlock(b.id, buildImageRaw(next.caption, next.url));
+      }
+      return h(
+        "div",
+        null,
+        info.url ? h("img", { src: imageSrc(self, info.url), alt: "", style: { maxWidth: "100%", maxHeight: "220px", borderRadius: "6px", display: "block", marginBottom: "8px" } }) : null,
+        K && K.Media && this.props.onOpenMediaLibrary
+          ? h("button", { type: "button", className: "pdac-icon-btn primary", style: { marginBottom: "8px" }, onClick: function () { K.Media.open(self, "img:" + b.id, info.url); } },
+              info.url ? "Trocar foto" : "Escolher / enviar foto")
+          : h("p", { className: "pdac-hint" }, "A biblioteca de fotos não abriu — recarregue o /admin."),
+        h("input", {
+          type: "text",
+          className: "pdac-input",
+          value: info.caption,
+          placeholder: "Legenda (opcional — também serve de texto alternativo)",
+          onChange: function (e) { update({ caption: e.target.value }); }
+        }),
+        h("p", { className: "pdac-hint" }, "Tamanho ideal: foto na horizontal, ~1200px de largura. A foto aparece na largura do texto do artigo.")
       );
     },
 
