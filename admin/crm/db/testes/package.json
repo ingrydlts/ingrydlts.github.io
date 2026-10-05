@@ -5,7 +5,8 @@
   "scripts": {
     "test": "node crm-fase2.test.mjs",
     "test:prazo": "node crm-prazo-vlsts.test.mjs",
-    "test:cerebro": "node crm-fase3-cerebro.test.mjs"
+    "test:cerebro": "node crm-fase3-cerebro.test.mjs",
+    "test:agregados": "node crm-fase3c-agregados.test.mjs"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.8"
