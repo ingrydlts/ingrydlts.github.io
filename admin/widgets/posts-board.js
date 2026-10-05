@@ -305,10 +305,13 @@
     componentDidMount: function () {
       var self = this;
       this.unsubSave = K.Save.subscribe(function () { if (self.state.open) self.forceUpdate(); });
+      // Ao entrar em "Blog — artigos" o quadro já abre: o formulário do Decap embaixo é só a lista de apoio.
+      this.autoOpen = setTimeout(function () { if (!self.state.open && self.items().length) self.open(); }, 150);
     },
     componentWillUnmount: function () {
       K.lockPage(false);
       clearTimeout(this.toastTimer);
+      clearTimeout(this.autoOpen);
       if (this.unsubSave) this.unsubSave();
       if (window.PDArticleReturn && window.PDArticleReturn.owner === this) window.PDArticleReturn = null;
     },
