@@ -369,7 +369,12 @@
       this.showToast("Salvando…");
       K.Save.now().then(function (ok) {
         self.saving = false;
-        if (ok !== false) return self.close();
+        if (ok !== false) {
+          self.close();
+          // Sai do formulário do Decap (a tela "velha") e volta pro início do Admin.
+          window.location.hash = "#/";
+          return;
+        }
         var why = K.Save.why();
         self.showToast("Não salvou" + (why ? ": " + why : "") + " — o quadro continua aberto.");
       });
