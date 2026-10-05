@@ -1335,8 +1335,24 @@
           onChange: function (e) { self.editBlock(b.id, e.target.value); }
         }),
         b.type === "richblock" && RICH_HINT[b.name] ? h("p", { className: "pdac-hint" }, RICH_HINT[b.name]) : null,
+        b.type === "text" && /^## /.test(b.raw) ? this.renderReactionToggle(b) : null,
         b.type === "text" ? h("p", { className: "pdac-hint" }, "Use \"## \" pra título ou \"### \" pra subtítulo no início da linha.") : null
       );
+    },
+
+    // "Essa parte ficou clara?" no fim desta seção. Vale só se o artigo tem a pergunta ligada
+    // (interruptor "Perguntar se cada seção ficou clara", na gaveta do artigo). Desligar escreve
+    // {sem-reacao} no fim do título; ligar tira.
+    renderReactionToggle: function (b) {
+      var self = this;
+      var RE = /\s*\{sem-rea[cç][aã]o\}\s*$/i;
+      var off = RE.test(b.raw);
+      return h("label", { className: "pdac-hint", style: { display: "flex", alignItems: "center", gap: "8px", cursor: "pointer", fontSize: "13px", color: "#3A3632", margin: "10px 2px 0" } },
+        h("input", {
+          type: "checkbox", checked: !off,
+          onChange: function (e) { self.editBlock(b.id, e.target.checked ? b.raw.replace(RE, "") : b.raw.replace(RE, "") + " {sem-reacao}"); }
+        }),
+        "Perguntar \"Essa parte ficou clara?\" no fim desta seção");
     },
 
     renderImageFields: function (b) {
