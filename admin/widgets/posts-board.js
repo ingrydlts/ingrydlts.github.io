@@ -356,10 +356,20 @@
       K.lockPage(true);
       this.setState({ open: true, sel: -1, tab: "quadro", view: "blog", confirmDelete: false, showPrev: window.innerWidth >= 1280 });
     },
-    // "Concluir": grava o que mudou e fecha o quadro.
+    // "Concluir": grava o que mudou e fecha o quadro. Se a gravação falhar, o quadro
+    // continua aberto: fechar mostraria o formulário antigo do Decap, com "alterações
+    // não salvas" e sem explicação.
     done: function () {
-      K.Save.now();
-      this.close();
+      var self = this;
+      if (this.saving) return;
+      this.saving = true;
+      this.showToast("Salvando…");
+      K.Save.now().then(function (ok) {
+        self.saving = false;
+        if (ok !== false) return self.close();
+        var why = K.Save.why();
+        self.showToast("Não salvou" + (why ? ": " + why : ". Confira se algum artigo está sem título ou slug") + " — o quadro continua aberto.");
+      });
     },
     close: function () {
       K.lockPage(false);

@@ -507,13 +507,19 @@
   // avisa antes de fechar a aba.
   var Save = (function () {
     var IDLE = 20 * 1000, GAP = 7 * 60 * 1000;
-    var st = { state: "idle", at: null }, subs = [], timer = null, running = null, lastSave = 0, during = false, reemit = null;
+    var st = { state: "idle", at: null }, subs = [], timer = null, running = null, lastSave = 0, during = false, reemit = null, why = "";
     function set(state) { st = { state: state, at: state === "saved" ? new Date() : st.at }; subs.slice().forEach(function (fn) { try { fn(st); } catch (e) {} }); }
     // Os botões do Decap, fora das nossas telas. Texto em português: locale "pt" no config.yml.
     function decap(sel, re) {
       return Array.prototype.filter.call(document.querySelectorAll(sel), function (b) {
         return re.test((b.textContent || "").trim()) && !b.closest(".pds-overlay,.pdb,.pdac-overlay,.pdh");
       })[0] || null;
+    }
+    // O motivo da falha, como o Decap mostrou (aviso no canto ou campo com erro).
+    function reason() {
+      var el = document.querySelector(".Toastify__toast--error, .Toastify__toast, [class*=ErrorMessage]");
+      var t = el && (el.textContent || "").trim();
+      return t ? t.slice(0, 160) : "";
     }
     function pendingBtn() { return decap("[role=button]", /^Publicar$/); }
     function savedBtn() { return decap("button", /^Publicado$/); }
@@ -549,7 +555,8 @@
         });
       }).then(function (ok) {
         running = null;
-        if (!ok) { set("error"); return false; }
+        if (!ok) { why = reason(); set("error"); return false; }
+        why = "";
         lastSave = Date.now();
         set("saved");
         // Mudou algo enquanto gravava: o Decap acha que está tudo gravado. Reenvia o valor e agenda de novo.
@@ -581,9 +588,9 @@
       var more = s === "saved" ? " às " + hhmm(st.at) : s === "error" ? "Não salvou" : s === "dirty" ? "Mudanças por salvar" : "";
       return h("span", { className: "pds-save " + s, role: "status" },
         h("span", null, short, more ? h("span", { className: "pds-save-more" }, more) : null),
-        s === "dirty" || s === "error" ? h("button", { type: "button", onClick: now, title: s === "error" ? "Confira se algum campo obrigatório ficou vazio e tente de novo" : "Grava no site agora" }, s === "error" ? "Tentar de novo" : "Salvar agora") : null);
+        s === "dirty" || s === "error" ? h("button", { type: "button", onClick: now, title: s === "error" ? (why || "Confira se algum campo obrigatório ficou vazio e tente de novo") : "Grava no site agora" }, s === "error" ? "Tentar de novo" : "Salvar agora") : null);
     }
-    return { touch: touch, now: now, subscribe: subscribe, badge: badge, state: function () { return st.state; } };
+    return { why: function () { return why; }, touch: touch, now: now, subscribe: subscribe, badge: badge, state: function () { return st.state; } };
   })();
   css("pds-save-style", [
     ".pds-save{display:inline-flex;align-items:center;gap:6px;font:600 12px/1.3 " + FONT + ";color:#6E6862;white-space:nowrap;}",
