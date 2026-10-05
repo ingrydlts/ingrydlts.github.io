@@ -544,6 +544,11 @@
       ".pdac-block-content figure.article-figure{margin:0;}",
       ".pdac-block-content figure.article-figure img{width:100%;height:auto;border-radius:6px;display:block;}",
       ".pdac-block-content figure.article-figure figcaption{font-size:13px;color:#8A7A6C;margin-top:6px;text-align:center;}",
+      ".pdac-link-btn{font-family:" + FONT_STACK + ";font-size:13px;font-weight:600;color:#604034;background:#fff;border:1px solid rgba(96,64,52,.35);border-radius:8px;padding:7px 12px;margin-top:8px;cursor:pointer;}",
+      ".pdac-link-btn:disabled{opacity:.4;cursor:default;}",
+      ".pdac-link-ok{background:#604034;color:#fff;border-color:#604034;}",
+      ".pdac-link-panel{margin-top:8px;}",
+      ".pdac-link-actions{display:flex;gap:8px;}",
       ".pdac-hint{font-size:11.5px;color:#8A7A6C;margin:6px 2px 0;line-height:1.4;}",
       ".pdac-add-inline{display:flex;align-items:center;justify-content:center;gap:8px;margin:18px auto 0;max-width:720px;width:100%;padding:14px;border:1.5px dashed rgba(96,64,52,.4);border-radius:10px;color:#604034;font-weight:600;font-size:14px;cursor:pointer;background:transparent;font-family:" + FONT_STACK + ";}",
       ".pdac-fab{position:absolute;right:18px;bottom:calc(18px + env(safe-area-inset-bottom));width:58px;height:58px;border-radius:50%;background:#604034;color:#fff;border:none;font-size:28px;box-shadow:0 6px 18px rgba(0,0,0,.28);cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:2;line-height:0;}",
@@ -1332,12 +1337,58 @@
           value: value,
           autoFocus: true,
           style: { minHeight: b.type === "richblock" ? "96px" : "56px" },
+          ref: function (el) { if (el) { self._textareas = self._textareas || {}; self._textareas[b.id] = el; } },
           onChange: function (e) { self.editBlock(b.id, e.target.value); }
         }),
+        b.type === "text" ? this.renderLinkTool(b) : null,
         b.type === "richblock" && RICH_HINT[b.name] ? h("p", { className: "pdac-hint" }, RICH_HINT[b.name]) : null,
         b.type === "text" && /^## /.test(b.raw) ? this.renderReactionToggle(b) : null,
-        b.type === "text" ? h("p", { className: "pdac-hint" }, "Use \"## \" pra título ou \"### \" pra subtítulo no início da linha.") : null
+        b.type === "text" ? h("p", { className: "pdac-hint" }, "Use \"## \" pra título ou \"### \" pra subtítulo no início da linha. Link no meio do texto: [texto que a pessoa clica](https://endereco.com) — links de fora abrem em nova aba. Negrito: **assim**.") : null
       );
+    },
+
+    // Botão "Link": pega o trecho selecionado no parágrafo, pede o endereço e escreve [trecho](endereço).
+    // Sem trecho selecionado, pede também o texto que a pessoa vai clicar.
+    openLinkTool: function (b) {
+      var ta = this._textareas && this._textareas[b.id];
+      var start = ta ? ta.selectionStart : b.raw.length;
+      var end = ta ? ta.selectionEnd : b.raw.length;
+      this.setState({ linkDraft: { id: b.id, start: start, end: end, text: b.raw.slice(start, end), url: "" } });
+    },
+
+    applyLinkTool: function (b) {
+      var d = this.state.linkDraft;
+      if (!d || d.id !== b.id) return;
+      var url = (d.url || "").trim();
+      var text = (d.text || "").trim();
+      if (!url || !text) return;
+      if (/^www\./i.test(url)) url = "https://" + url;
+      if (!/^(https?:\/\/|mailto:|\/|#)/i.test(url)) return;
+      url = url.replace(/\)/g, "%29");
+      var raw = b.raw.slice(0, d.start) + "[" + text + "](" + url + ")" + b.raw.slice(d.end);
+      this.setState({ linkDraft: null });
+      this.editBlock(b.id, raw);
+    },
+
+    renderLinkTool: function (b) {
+      var self = this;
+      var d = this.state.linkDraft;
+      if (!d || d.id !== b.id) {
+        return h("button", {
+          type: "button",
+          className: "pdac-link-btn",
+          onMouseDown: function (e) { e.preventDefault(); },
+          onClick: function () { self.openLinkTool(b); }
+        }, "🔗 Link");
+      }
+      var valid = (d.text || "").trim() && /^(https?:\/\/|www\.|mailto:|\/|#)/i.test((d.url || "").trim());
+      function set(k) { return function (e) { var n = {}; n[k] = e.target.value; self.setState({ linkDraft: Object.assign({}, d, n) }); }; }
+      return h("div", { className: "pdac-link-panel" },
+        h("input", { className: "pdac-input", placeholder: "Texto que a pessoa clica", value: d.text, onChange: set("text") }),
+        h("input", { className: "pdac-input", placeholder: "Endereço (https://...)", value: d.url, autoFocus: true, onChange: set("url") }),
+        h("div", { className: "pdac-link-actions" },
+          h("button", { type: "button", className: "pdac-link-btn pdac-link-ok", disabled: !valid, onClick: function () { self.applyLinkTool(b); } }, "Inserir link"),
+          h("button", { type: "button", className: "pdac-link-btn", onClick: function () { self.setState({ linkDraft: null }); } }, "Cancelar")));
     },
 
     // "Essa parte ficou clara?" no fim desta seção. Vale só se o artigo tem a pergunta ligada

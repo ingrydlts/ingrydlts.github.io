@@ -101,6 +101,11 @@
     ".pdb-checks{display:flex;flex-direction:column;gap:5px;background:#fff;border:1px solid #E6E0D6;border-radius:12px;padding:10px 12px;}",
     ".pdb-checks span{font-size:12.5px;display:flex;gap:7px;align-items:baseline;}",
     ".pdb-actions{display:flex;flex-wrap:wrap;gap:8px;padding-top:4px;}",
+    ".pdb-live{display:inline-flex;align-items:center;font:600 13px/1 inherit;color:#3F6E2B;padding:0 4px;}",
+    ".pdb-reuse{display:flex;flex-direction:column;gap:6px;margin:8px 0;}",
+    ".pdb-reuse-row{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;}",
+    ".pdb-reuse-it{flex:0 0 64px;height:36px;border:1px solid rgba(43,43,43,.18);border-radius:6px;background-size:cover;background-position:center;cursor:pointer;padding:0;}",
+    ".pdb-reuse-it:hover{outline:2px solid #3F6E2B;}",
     ".pdb-toast{position:fixed;left:50%;bottom:calc(22px + env(safe-area-inset-bottom));transform:translateX(-50%);background:#2B2B2B;color:#fff;border-radius:12px;padding:10px 14px;font-size:13px;display:flex;gap:12px;align-items:center;z-index:1000001;box-shadow:0 12px 30px -12px rgba(0,0,0,.5);max-width:calc(100% - 32px);}",
     ".pdb-toast button{border:0;background:#fff;color:#2B2B2B;border-radius:8px;padding:4px 10px;font:600 12.5px " + K.FONT + ";cursor:pointer;}",
     ".pdb-bar{display:flex;gap:12px;align-items:center;flex-wrap:wrap;padding:10px 12px;border:1px solid rgba(43,43,43,.14);border-radius:6px;background:#fff;font:13px " + K.FONT + ";margin-bottom:12px;}",
@@ -406,6 +411,19 @@
       }, 40);
     },
 
+    // "Publicar no site": muda a etapa pra No ar e grava na hora (sem esperar o salvamento sozinho).
+    publish: function (idx) {
+      var self = this, p = this.items()[idx];
+      if (!p) return;
+      if (marks(p).length) return this.moveTo(idx, "publicado"); // avisa dos trechos a conferir
+      this.moveTo(idx, "publicado");
+      this.showToast("Publicando…");
+      K.Save.now().then(function (ok) {
+        if (ok === false) self.showToast("Não salvou" + (K.Save.why() ? ": " + K.Save.why() : "") + " — o artigo não foi pro ar.");
+        else self.showToast("Publicado. O site atualiza em 1 a 2 minutos.");
+      });
+    },
+
     // Muda a etapa e aplica as regras de data do site.
     moveTo: function (idx, status) {
       var p = this.items()[idx];
@@ -420,7 +438,7 @@
       if (status === "publicado") {
         if (!p.date) msg = "No ar · data de publicação: hoje";
         else if (day(p.date) > today) msg = "No ar agora (a data marcada é futura — pra esperar a data, use Agendado)";
-        else msg = "No ar · vai pro blog quando você publicar no /admin";
+        else msg = "No ar";
       } else if (status === "agendado") {
         askDate = !p.date || day(p.date) <= today;
         msg = askDate ? "Agendado · escolha a data em que ele entra no ar" : "Agendado pra " + fmt(p.date);
@@ -694,6 +712,7 @@
             h("div", { className: "pds-img pdb-cover" + (img ? " has" : ""), role: "button", tabIndex: 0, style: img ? { backgroundImage: "url(" + JSON.stringify(img) + ")" } : null,
               onClick: function () { K.Media.open(self, "cover:" + idx, p.image); },
               onKeyDown: function (e) { if (e.key === "Enter") K.Media.open(self, "cover:" + idx, p.image); } }, img ? null : "Escolher foto"),
+            this.renderReuse(items, idx),
             h("label", { className: "pds-row", style: { gap: "8px", fontSize: "12.5px", color: "#2B2B2B" } },
               h("button", { type: "button", role: "switch", className: "pds-switch", "aria-checked": String(p.showCoverInArticle !== false), "aria-label": "Mostrar a capa no topo do artigo",
                 onClick: function () { self.set("showCoverInArticle", p.showCoverInArticle === false); } }),
@@ -716,7 +735,10 @@
               : [h("span", { key: "ok" }, h("b", { style: { color: "#577328" } }, "✓"), "Tudo certo pra ir pro ar")],
             !p.url && flags.some(function (f) { return /FAQ|Feedback/.test(f); }) ? h("small", { style: { color: "#6E6862", fontSize: "11.5px" } }, "Regra do site: todo artigo termina com um bloco FAQ e um de Feedback (no editor visual, pelo +).") : null),
           h("div", { className: "pdb-actions" },
-            !p.url ? h("button", { type: "button", className: "pds-btn primary", onClick: function () { self.editBody(idx); } }, "Editar o texto →") : null,
+            st === "publicado"
+              ? h("span", { className: "pdb-live" }, "✓ No ar", isLive(p) ? "" : " (entra na data marcada)")
+              : h("button", { type: "button", className: "pds-btn primary", title: "Põe o artigo no ar e grava no site agora", onClick: function () { self.publish(idx); } }, st === "agendado" ? "Publicar agora" : "Publicar no site"),
+            !p.url ? h("button", { type: "button", className: "pds-btn" + (st === "publicado" ? " primary" : ""), onClick: function () { self.editBody(idx); } }, "Editar o texto →") : null,
             h("button", { type: "button", className: "pds-btn", onClick: function () { self.setState({ view: "artigo", tab: "previa" }); } }, "Ver prévia")),
           h("p", { className: "pdb-msg" }, "Galerias, cabeçalho e rodapé deste artigo continuam no formulário do artigo, embaixo do quadro."),
           this.state.confirmDelete
@@ -726,6 +748,23 @@
             : h("button", { type: "button", className: "pds-btn danger sm", style: { alignSelf: "flex-start" }, onClick: function () { self.setState({ confirmDelete: true }); } }, "Apagar artigo…")));
     },
 
+
+    // Fotos que outros artigos já usam, pra reaproveitar como capa com um toque.
+    renderReuse: function (items, idx) {
+      var self = this, seen = {}, cur = (items[idx] || {}).image;
+      var opts = items.filter(function (q, i) {
+        if (i === idx || !q.image || q.image === cur || seen[q.image]) return false;
+        return (seen[q.image] = true);
+      }).slice(0, 12);
+      if (!opts.length) return null;
+      return h("div", { className: "pdb-reuse" },
+        h("span", { className: "pds-label" }, "Reutilizar a foto de outro artigo"),
+        h("div", { className: "pdb-reuse-row" }, opts.map(function (q) {
+          return h("button", { key: q.image, type: "button", className: "pdb-reuse-it", title: q.title || q.slug,
+            style: { backgroundImage: "url(" + JSON.stringify(K.assetUrl(self.props, q.image)) + ")" },
+            onClick: function () { self.change(function (it) { it[idx].image = q.image; }, "Capa trocada", true); } });
+        })));
+    },
 
     // Artigo enviado pelo Cérebro (hub): de qual pauta e de qual dor ele nasceu.
     renderOrigin: function (p) {
