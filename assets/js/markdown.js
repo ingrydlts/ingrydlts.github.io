@@ -146,7 +146,7 @@
 // Cada linha dentro de STATS/CARDS/LIST/STEPS/FAQ/RESOURCES usa "|" pra
 // separar as colunas. Um parágrafo que comece com "**Atenção:**" também
 // vira automaticamente uma caixa de aviso colorida (callout-warn) — não
-// precisa de marcador. "**Template grátis:**" vira caixa azul (callout-info).
+// precisa de marcador. "**Template grátis:** texto [rótulo](destino)" vira o cartão freebie-card, acima da propaganda.
 
 function inline(text) {
   return text
@@ -599,7 +599,18 @@ export function markdownToBlocks(md, ctx) {
       if (html.startsWith("<strong>Atenção:</strong>")) {
         blocks.push('<div class="callout callout-warn"><p>' + html + "</p></div>");
       } else if (html.startsWith("<strong>Template grátis:</strong>")) {
-        blocks.push('<div class="callout callout-info"><p>' + html + "</p></div>");
+        // Aviso de freebie: cartão clicável (mesmo desenho do índice do artigo). O link do
+        // parágrafo vira o destino do cartão; o resto do texto, a descrição.
+        const m = html.match(/<a href="([^"]+)"[^>]*>.*?<\/a>/);
+        let desc = html.replace(/<strong>Template grátis:<\/strong>/, "").replace(/<a [^>]*>.*?<\/a>/g, "").trim();
+        desc = desc.charAt(0).toUpperCase() + desc.slice(1);
+        if (m) {
+          blocks.push('<a class="freebie-card" href="' + m[1] + '"><span class="freebie-ico" aria-hidden="true">✉</span>' +
+            '<span class="freebie-txt"><strong>Template grátis</strong><span>' + desc + '</span></span>' +
+            '<span class="freebie-arrow" aria-hidden="true">→</span></a>');
+        } else {
+          blocks.push('<div class="callout callout-info"><p>' + html + "</p></div>");
+        }
       } else {
         blocks.push("<p>" + html + "</p>");
       }
