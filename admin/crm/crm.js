@@ -76,7 +76,7 @@ function defaultTpl(c) { return c.segmento || (c.origem === 'guia-vls-ts' ? 'gui
 function splitTpl(c, k) { var t = TPLS[k].make(c); return { subject: t[0].replace(/^Assunto: /, ''), body: t[1] }; }
 
 var C = [], Q = [], L = [], SUBS = {};
-var state = { view: 'hoje', persona: '', sub: '', urg: '', stage: '', orig: '', q: '', sel: null, qs: 'nova', qsel: null, preset: 'todos', seg: '', prevView: 'contatos' };
+var state = { view: 'hoje', persona: '', sub: '', urg: '', stage: '', orig: '', camp: '', q: '', sel: null, qs: 'nova', qsel: null, preset: 'todos', seg: '', prevView: 'contatos' };
 var activeCid = null;
 var me = null;
 
@@ -162,13 +162,24 @@ async function loadAll() {
   SUBS = {};
   (r[2].data || []).forEach(function (o) { SUBS[o.persona + '|' + o.chave] = o.rotulo; });
 }
-async function reload() { await loadAll(); renderToday(); renderReimpacto(); }
+async function reload() { await loadAll(); fillCampanhas(); renderToday(); renderReimpacto(); }
 
 // ---------- Filtros ----------
 function fillSelect(el, first, map) {
   var html = '<option value="">' + esc(first) + '</option>';
   Object.keys(map).forEach(function (k) { html += '<option value="' + esc(k) + '">' + esc(map[k]) + '</option>'; });
   el.innerHTML = html;
+}
+// Campanhas (UTM) que aparecem nos contatos, com a contagem. "__sem" = chegou sem campanha.
+function fillCampanhas() {
+  var el = $('f-camp'); if (!el) return;
+  var n = {}, sem = 0;
+  C.forEach(function (c) { if (c.utm_campaign) n[c.utm_campaign] = (n[c.utm_campaign] || 0) + 1; else sem++; });
+  var map = {};
+  Object.keys(n).sort().forEach(function (k) { map[k] = k + ' (' + n[k] + ')'; });
+  if (sem) map.__sem = 'Sem campanha (' + sem + ')';
+  fillSelect(el, 'Toda campanha', map);
+  el.value = state.camp;
 }
 function subsOf(persona) {
   var m = {};
@@ -183,8 +194,8 @@ function refreshSub() {
 }
 function syncControls() {
   $('f-persona').value = state.persona; refreshSub();
-  $('f-urg').value = state.urg; $('f-stage').value = state.stage; $('f-orig').value = state.orig; $('q').value = state.q;
-  ['f-persona', 'f-sub', 'f-urg', 'f-stage', 'f-orig'].forEach(function (id) { $(id).classList.toggle('on', !!$(id).value); });
+  $('f-urg').value = state.urg; $('f-stage').value = state.stage; $('f-orig').value = state.orig; $('f-camp').value = state.camp; $('q').value = state.q;
+  ['f-persona', 'f-sub', 'f-urg', 'f-stage', 'f-orig', 'f-camp'].forEach(function (id) { $(id).classList.toggle('on', !!$(id).value); });
   document.querySelectorAll('[data-preset]').forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.preset === state.preset)); });
 }
 function initControls() {
@@ -195,9 +206,10 @@ function initControls() {
   var origs = {}; Object.keys(ORIG).forEach(function (k) { origs[k] = ORIG[k]; });
   C.forEach(function (c) { if (c.origem && !origs[c.origem]) origs[c.origem] = c.origem; });
   fillSelect($('f-orig'), 'Toda origem', origs);
+  fillCampanhas();
   fillSelect($('funil-persona'), 'Toda persona', PERSONAS);
   syncControls();
-  [['f-persona', 'persona'], ['f-sub', 'sub'], ['f-urg', 'urg'], ['f-stage', 'stage'], ['f-orig', 'orig']].forEach(function (p) {
+  [['f-persona', 'persona'], ['f-sub', 'sub'], ['f-urg', 'urg'], ['f-stage', 'stage'], ['f-orig', 'orig'], ['f-camp', 'camp']].forEach(function (p) {
     $(p[0]).addEventListener('change', function () {
       state[p[1]] = this.value; if (p[1] === 'persona') state.sub = ''; state.preset = '';
       syncControls(); renderContacts();
@@ -214,6 +226,7 @@ function filtered() {
     if (state.urg && c.urgencia !== state.urg) return false;
     if (state.stage && c.estagio !== state.stage) return false;
     if (state.orig && c.origem !== state.orig) return false;
+    if (state.camp && (state.camp === '__sem' ? !!c.utm_campaign : c.utm_campaign !== state.camp)) return false;
     if (state.preset === 'parados' && !(c.dias >= 7 && c.estagio !== 'concluido')) return false;
     if (state.preset === 'prazo' && !(c.dias_para_prazo != null && c.dias_para_prazo <= 30 && c.dias_para_prazo >= -90 && c.estagio !== 'concluido')) return false;
     if (state.preset === 'aupair' && !(c.persona === 'au_pair_estudante' && c.respostas && c.respostas.apCertificado === 'nao')) return false;
@@ -222,7 +235,7 @@ function filtered() {
   }).sort(function (a, b) { var o = { alta: 0, media: 1, baixa: 2 }; return o[a.urgencia] - o[b.urgencia] || prazoKey(a) - prazoKey(b) || a.dias - b.dias; });
 }
 function applyPreset(p) {
-  state.preset = p; state.persona = ''; state.sub = ''; state.urg = ''; state.stage = ''; state.orig = ''; state.q = '';
+  state.preset = p; state.persona = ''; state.sub = ''; state.urg = ''; state.stage = ''; state.orig = ''; state.camp = ''; state.q = '';
   if (p === 'urgentes') state.urg = 'alta';
   if (p === 'semchecklist') state.persona = 'sem';
   syncControls(); renderContacts();
@@ -307,6 +320,7 @@ function renderContacts() {
   if (state.urg) chips.push(['urg', 'Urgência ' + URG[state.urg].toLowerCase()]);
   if (state.stage) chips.push(['stage', stageLabel(state.stage)]);
   if (state.orig) chips.push(['orig', ORIG[state.orig] || state.orig]);
+  if (state.camp) chips.push(['camp', state.camp === '__sem' ? 'Sem campanha' : 'Campanha ' + state.camp]);
   $('active-f').innerHTML = chips.length ? 'Filtrando por: ' + chips.map(function (x) {
     return '<button class="x" data-clear="' + x[0] + '" type="button" aria-label="Remover filtro ' + esc(x[1]) + '">' + esc(x[1]) + ' ×</button>';
   }).join('') + ' <button class="link" data-clear="all" type="button">Limpar tudo</button>' : '';
