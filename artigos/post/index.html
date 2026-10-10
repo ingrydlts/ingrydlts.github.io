@@ -299,6 +299,9 @@
       gygPartnerId = "";
     }
     const blocks = markdownToBlocks(post.body, { slug: post.slug });
+    // Cartão de freebie ("**Template grátis:** ...") fica sempre no topo, ACIMA da capa e da propaganda.
+    let freebieHtml = "";
+    if (blocks.length && blocks[0].indexOf('class="freebie-card"') !== -1) freebieHtml = blocks.shift();
     const adMidAfter = Math.min((adsCfg.positions && adsCfg.positions.midAfterBlock) || 4, blocks.length);
 
     // Posicionamento manual: quando alguém arrasta o banner/propaganda pra um
@@ -472,6 +475,7 @@
       '<div class="article-meta">' + escapeHtml(formatDate(post.date)) + (post.readMinutes ? " · " + post.readMinutes + " min de leitura" : "") + "</div>" +
       updatedLineHTML(post) +
       "</div>" +
+      freebieHtml +
       heroHtml +
       tocHtml +
       '<div class="article-body">' + bodyHtml + "</div>" +
