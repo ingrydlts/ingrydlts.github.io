@@ -441,7 +441,29 @@
     });
   }
 
+  // Repassa a origem do clique (UTM e "ig", o ID do contato na automação) para os links de guia
+  // (/guias/<slug>/). Sem isso a UTM do artigo some quando a pessoa clica no freebie e o cadastro
+  // chega ao CRM sem campanha. Sem estado no navegador: lê a URL atual e acrescenta no clique.
+  var ORIGEM_PARAMS = ["utm_source", "utm_medium", "utm_campaign", "utm_content", "ig"];
+  function initOrigemPassada() {
+    var qs;
+    try { qs = new URLSearchParams(window.location.search); } catch (e) { return; }
+    var found = ORIGEM_PARAMS.filter(function (k) { return qs.get(k); });
+    if (!found.length) return;
+    function tag(ev) {
+      var a = ev.target && ev.target.closest ? ev.target.closest('a[href^="/guias/"]') : null;
+      if (!a) return;
+      var u;
+      try { u = new URL(a.getAttribute("href"), window.location.origin); } catch (e) { return; }
+      if (u.pathname === "/guias/" || u.pathname === "/guias") return; // menu: não é um guia
+      found.forEach(function (k) { if (!u.searchParams.has(k)) u.searchParams.set(k, qs.get(k).slice(0, 100)); });
+      a.setAttribute("href", u.pathname + u.search + u.hash);
+    }
+    ["mousedown", "touchstart", "click"].forEach(function (name) { document.addEventListener(name, tag, true); });
+  }
+
   document.addEventListener("DOMContentLoaded", function () {
+    initOrigemPassada();
     initMobileNav();
     markActiveNav();
     initCopyButtons();

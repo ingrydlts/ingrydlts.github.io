@@ -3,13 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>VLS-TS travou na ANEF? O que fazer antes do prazo — Por Dentro</title>
-<meta name="description" content="Validação do VLS-TS estudante travou no site da ANEF e o prazo está acabando? Guia gratuito: como provar que você agiu a tempo, quem contatar e quando escalar.">
+<title>Modelo de e-mail para a escola: alternância depois dos 30 — Por Dentro</title>
+<meta name="description" content="Modelo gratuito de e-mail em francês para pedir alternância depois dos 30 anos, com base legal (art. L6222-2) e o que pedir por escrito à escola.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,600;9..144,700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/assets/css/style.css">
-<link rel="canonical" href="https://imigrantepordentro.com/guias/vls-ts-validacao-travou/">
+<link rel="canonical" href="https://imigrantepordentro.com/guias/email-alternancia-30-mais/">
 <style>:root { --nav-active: #577328; }</style>
 <link rel="icon" href="/favicon.png" type="image/png">
 <link rel="icon" href="/favicon-32x32.png" sizes="32x32" type="image/png">
@@ -57,7 +57,8 @@
 .g-field{display:flex;flex-direction:column;gap:8px;margin-bottom:14px}
 .g-field label{font-size:13.5px;font-weight:600;color:var(--texto-secundario)}
 .g-field input{font:inherit;padding:13px 14px;border:1px solid var(--borda-suave);border-radius:var(--radius-sm);background:#fff}
-.g-field input:focus{border-color:var(--verde-moss);outline:none}
+.g-field select{font:inherit;padding:13px 14px;border:1px solid var(--borda-suave);border-radius:var(--radius-sm);background:#fff}
+.g-field input:focus,.g-field select:focus{border-color:var(--verde-moss);outline:none}
 .hp-field{position:absolute;left:-9999px;top:-9999px;width:1px;height:1px;overflow:hidden}
 .btn-guia{display:inline-flex;align-items:center;justify-content:center;gap:8px;font-weight:600;font-size:15.5px;padding:15px 26px;border-radius:var(--radius-sm);border:none;cursor:pointer;background:var(--verde-moss);color:#fff!important;text-decoration:none!important;box-shadow:var(--shadow-card);transition:transform .15s ease,filter .15s ease}
 .btn-guia:hover{filter:brightness(1.08);transform:translateY(-1px)}
@@ -111,37 +112,37 @@
   <div class="container">
     <article class="guia-wrap">
 
-      <span class="eyebrow" style="color:#577328;">Guia gratuito · VLS-TS estudante</span>
-      <h1>VLS-TS travou na ANEF? Faça isto antes do prazo acabar</h1>
+      <span class="eyebrow" style="color:#577328;">Guia gratuito · Alternância depois dos 30</span>
+      <h1>O e-mail em francês para a escola, pronto para copiar</h1>
 
-      <section class="gate" id="gate" aria-label="Liberar o guia gratuito">
-        <p class="gate-lead">Libere o <strong>checklist de provas</strong>, a <strong>mensagem pronta em francês</strong> e o passo a passo para acionar ANEF e préfecture.</p>
-        <ul class="gate-inc" aria-label="O que o checklist inclui">
-          <li>Prints datados do erro e e-mails do suporte</li>
-          <li>Registro das ligações (dia, hora, resposta)</li>
-          <li>Prova da data de entrada</li>
-          <li>Testes em outro navegador, aparelho e rede</li>
+      <section class="gate" id="gate" aria-label="Liberar o modelo gratuito">
+        <p class="gate-lead">Libere o <strong>modelo de e-mail em francês</strong>, o <strong>checklist de antes de enviar</strong> e a lista das exceções do limite de 29 anos.</p>
+        <ul class="gate-inc" aria-label="O que está incluído">
+          <li>E-mail pronto em francês, com a base legal (art. L6222-2)</li>
+          <li>O que pedir por escrito à escola</li>
+          <li>Checklist para preparar antes de mandar</li>
         </ul>
-        <div class="calc" id="calc-block">
-          <label for="calc-entrada">Quando você entrou na França? Veja quanto tempo ainda tem</label>
-          <input type="date" id="calc-entrada">
-          <div class="calc-out" id="calc-out" aria-live="polite">
-            <div><b>Limite estimado</b><span id="calc-limite"></span></div>
-            <div><b>Data de segurança</b><span id="calc-seguranca"></span></div>
-            <div id="calc-restam"></div>
-          </div>
-          <p class="calc-note">Estimativa. A contagem oficial é da préfecture: na dúvida, use a data mais cedo. Ao liberar o guia, essa data é enviada junto com o seu e-mail para eu priorizar quem está com o prazo curto.</p>
-        </div>
         <form id="gate-form" novalidate>
           <div class="g-row">
             <div class="g-field">
-              <label for="g-nome">Nome <small>(opcional)</small></label>
-              <input id="g-nome" type="text" autocomplete="given-name" maxlength="100">
+              <label for="g-nome">Seu nome</label>
+              <input id="g-nome" type="text" autocomplete="given-name" maxlength="100" required>
             </div>
             <div class="g-field">
               <label for="g-email">Seu e-mail</label>
               <input id="g-email" type="email" autocomplete="email" placeholder="seu@email.com" required>
             </div>
+          </div>
+          <div class="g-field">
+            <label for="g-etapa">Em que ponto da alternância você está?</label>
+            <select id="g-etapa" required>
+              <option value="">Escolha a que mais se parece com você</option>
+              <option value="alt-pesquisando">Ainda estou entendendo se posso, com mais de 29 anos</option>
+              <option value="alt-escolhendo-escola">Estou escolhendo escola e curso</option>
+              <option value="alt-recusa-idade">Já falei com uma escola e ouvi “só até 29”</option>
+              <option value="alt-buscando-empresa">Tenho escola, mas ainda preciso achar empresa</option>
+              <option value="alt-montando-contrato">Tenho empresa e estou montando o contrato</option>
+            </select>
           </div>
           <div class="hp-field" aria-hidden="true">
             <label for="hp-website">Deixe este campo em branco</label>
@@ -156,124 +157,94 @@
             <span>Quero receber e-mails do Por Dentro, inclusive sobre a plataforma para quem mora na França. Cancelo quando quiser.</span>
           </label>
           <p class="gate-message" id="gate-erro"></p>
-          <button class="btn-guia btn-full" id="gate-btn" type="submit">Liberar o guia grátis →</button>
+          <button class="btn-guia btn-full" id="gate-btn" type="submit">Liberar o modelo grátis →</button>
         </form>
         <ul class="trust-row">
           <li>✓ 100% gratuito</li>
-          <li>✓ Fontes oficiais linkadas</li>
+          <li>✓ Base legal linkada</li>
           <li>✓ Feito por quem vive isso na França</li>
         </ul>
         <p class="mini-aviso">Conteúdo de orientação, sem caráter de aconselhamento jurídico.</p>
       </section>
 
       <div class="ok-banner" id="ok-banner" hidden>
-        <strong>✓ Guia liberado.</strong>
-        <span>Abra no Notion ou leia aqui embaixo.</span>
+        <strong>✓ Modelo liberado.</strong>
+        <span>Copie abaixo ou abra no Notion.</span>
         <div class="acoes no-print">
           <a class="btn-guia" id="notion-link" href="#" target="_blank" rel="noopener" hidden>Abrir no Notion →</a>
         </div>
       </div>
 
-
       <div id="locked" hidden>
+        <p class="guia-aviso">⚠️ Conteúdo de orientação, sem caráter de aconselhamento jurídico. Confirme cada condição em fonte oficial (Légifrance, service-public.gouv.fr, ANEF) e com a escola, por escrito, antes de assinar qualquer contrato.</p>
 
-        <section class="guia-sec" id="prazo" style="margin-top:0;padding-top:0;border-top:none">
-          <h2>Quanto tempo você ainda tem?</h2>
-          <div id="calc-slot"></div>
-        </section>
-
-        <p class="guia-aviso">⚠️ Conteúdo de orientação, sem caráter de aconselhamento jurídico. As regras e os sites mudam; confira sempre nas fontes oficiais linkadas.</p>
-        <section class="guia-sec" id="resumo">
-        <h2>O que você precisa saber agora</h2>
-        <ul>
-          <li>O VLS-TS estudante precisa ser validado <strong>online</strong>, em até <strong>3 meses</strong> da data de entrada na França.</li>
-          <li>A validação é feita no <a href="https://administration-etrangers-en-france.interieur.gouv.fr/particuliers/#/vls-ts/demarches/etape/numero-visa" target="_blank" rel="noopener">site da ANEF</a>.</li>
-          <li>A taxa é de 150 € (fonte oficial: <a href="https://www.service-public.gouv.fr/particuliers/vosdroits/F2231" target="_blank" rel="noopener">Service-Public</a>).</li>
-          <li>Quando o site falha e o suporte responde só “problema técnico”, o que protege o estudante é <strong>provar que tentou e agiu dentro do prazo</strong>.</li>
-          <li>Não há, nas fontes oficiais consultadas, texto confirmando que o prazo é suspenso por falha do site. Por isso, agir cedo é essencial.</li>
-        </ul>
-      </section>
-        <section class="guia-sec" id="passo-1">
-        <h2>O que fazer, na ordem</h2>
-        <h3>1. Guarde as provas hoje (antes de tentar de novo)</h3>
-        <ul class="guia-check" data-check="vlsts-provas">
-          <li><label style="display:flex;gap:10px;width:100%;cursor:pointer"><input type="checkbox"><span>Prints <strong>datados</strong> do erro, mostrando a mensagem e a etapa em que trava</span></label></li>
-          <li><label style="display:flex;gap:10px;width:100%;cursor:pointer"><input type="checkbox"><span>E-mails recebidos do suporte (por exemplo, “problema técnico”)</span></label></li>
-          <li><label style="display:flex;gap:10px;width:100%;cursor:pointer"><input type="checkbox"><span>Registro das ligações (dia, hora, o que foi respondido)</span></label></li>
-          <li><label style="display:flex;gap:10px;width:100%;cursor:pointer"><input type="checkbox"><span>Prova da data de entrada (carimbo ou cartão de embarque)</span></label></li>
-          <li><label style="display:flex;gap:10px;width:100%;cursor:pointer"><input type="checkbox"><span>Tentativa em outro navegador, aparelho e rede, anotando cada uma</span></label></li>
-        </ul>
-      </section>
-
-        <section class="guia-sec" id="passo-2">
-          <h3>2. Contatar a ANEF pelo formulário oficial</h3>
-          <p>Formulário: <a href="https://administration-etrangers-en-france.interieur.gouv.fr/usagers/#/contact" target="_blank" rel="noopener">administration-etrangers-en-france.interieur.gouv.fr/usagers/#/contact</a></p>
-          <p>É provável que não haja resposta, mas o registro é protocolo padrão para documentar que você fez tudo o que estava ao seu alcance e permite escalar depois. A mensagem deve trazer todo o percurso da tentativa de validação e, ao final, pedir <strong>validação manual</strong> ou <strong>attestation</strong>.</p>
-        </section>
-
-        <section class="guia-sec" id="passo-3">
-          <h3>3. Enviar o mesmo texto à préfecture</h3>
-          <ul>
-            <li>Enviar por <strong>e-mail</strong> e por <strong>carta registrada com AR</strong> (isso prova a diligência dentro do prazo).</li>
-            <li>Em Paris, é a Préfecture de Police: <a href="https://www.prefecturedepolice.interieur.gouv.fr/demarches/titres-de-sejour-nous-contacter" target="_blank" rel="noopener">contato para títulos de séjour</a>. O endereço postal está nessa página.</li>
-            <li>Fora de Paris, usar a préfecture do departamento de residência.</li>
+        <section class="guia-sec" id="antes" style="margin-top:24px">
+          <h2>Antes de enviar</h2>
+          <ul class="guia-check" data-check="alt30-antes">
+            <li><label style="display:flex;gap:10px;width:100%;cursor:pointer"><input type="checkbox"><span>Escrevi quantos anos tenho e a data em que completo 30</span></label></li>
+            <li><label style="display:flex;gap:10px;width:100%;cursor:pointer"><input type="checkbox"><span>Sei dizer qual dos 5 casos do art. L6222-2 é o meu (ou que nenhum é)</span></label></li>
+            <li><label style="display:flex;gap:10px;width:100%;cursor:pointer"><input type="checkbox"><span>Tenho o nível e o nome do diploma que já tenho e do que quero</span></label></li>
+            <li><label style="display:flex;gap:10px;width:100%;cursor:pointer"><input type="checkbox"><span>Se já fiz apprentissage na França, anotei a data de fim do contrato</span></label></li>
+            <li><label style="display:flex;gap:10px;width:100%;cursor:pointer"><input type="checkbox"><span>Verifiquei o que o meu título de residência permite</span></label></li>
+            <li><label style="display:flex;gap:10px;width:100%;cursor:pointer"><input type="checkbox"><span>Decidi o que posso oferecer: já ter empresa, ou começar a busca antes do início das aulas</span></label></li>
           </ul>
-        </section>
-
-        <section class="guia-sec" id="passo-4">
-          <h3>4. Publicar o caso no Services Publics+</h3>
-          <p>Plataforma: <a href="https://www.plus.transformation.gouv.fr/je-donne-mon-avis-et-partage-mon-experience" target="_blank" rel="noopener">plus.transformation.gouv.fr</a> (ANEF/préfecture). É onde a administração costuma responder publicamente.</p>
-          <p class="aviso-priv">🔒 O texto fica público. Não incluir número do visto, número de estrangeiro, endereço ou data de nascimento.</p>
-        </section>
-
-        <section class="guia-sec" id="passo-5">
-          <h3>5. Buscar ajuda jurídica em paralelo</h3>
-          <p>A <strong>Cimade</strong> oferece atendimento jurídico gratuito para questões de séjour. Como é gratuito, pode não ser rápido, então convém contatar ao mesmo tempo que os passos acima.</p>
-          <ul>
-            <li><a href="https://www.lacimade.org/regions/ile-de-france/" target="_blank" rel="noopener">Cimade Île-de-France</a>: agendar a permanence de titres de séjour</li>
-            <li><a href="https://www.lacimade.org/etre-aide-par-la-cimade/" target="_blank" rel="noopener">Como ser ajudado pela Cimade</a>: inclui informações sobre <em>aide juridictionnelle</em> (advogado gratuito, para quem tem poucos recursos)</li>
-          </ul>
-        </section>
-
-        <section class="guia-sec" id="passo-6">
-          <h3>6. Escalar cerca de 15 dias antes do prazo final</h3>
-          <p>Sem resposta, procurar um <strong>advogado de direito dos estrangeiros</strong>. Um caminho usado é o <em>référé-mesures utiles</em> (art. L521-3 do Code de justice administrative), em que o juiz pode determinar que a administração aja em situação de urgência. Não há garantia de resultado.</p>
         </section>
 
         <section class="guia-sec" id="modelo">
-          <h2>Mensagem pronta para enviar (em francês)</h2>
-          <p class="no-print" style="font-size:14px;color:var(--texto-secundario)">Substitua os campos entre colchetes. Se você usou a calculadora acima, as datas já entram preenchidas ao copiar.</p>
-          <div class="modelo" id="modelo-texto">Bonjour, je n'arrive pas à valider mon VLS-TS étudiant sur le site de l'ANEF depuis le [DATA] (erreur technique, captures d'écran jointes). Je suis entré(e) en France le [DATA DE ENTRADA]. Le délai de 3 mois prévu par l'article R431-17 du CESEDA expire le [DATA-LIMITE]. Je demande la validation manuelle de mon visa ou, à défaut, une attestation. Cordialement, [NOME].</div>
-          <button class="btn-guia btn-ghost no-print" id="copiar" type="button">Copiar mensagem</button>
+          <h2>O e-mail (modelo em francês)</h2>
+          <p class="no-print" style="font-size:14px;color:var(--texto-secundario)">Curto, direto e por escrito. Troque o que está entre colchetes.</p>
+          <div class="modelo" id="modelo-texto">Objet : Candidature en alternance : question sur la limite d'âge
+
+Bonjour,
+
+Je vous contacte car je souhaite candidater à la formation [nom de la formation] en alternance et, malgré la limite d'âge de 29 ans, j'ai [XX] ans. Je précise que la limite d'âge de 29 ans pour le contrat d'apprentissage ne s'applique pas dans les cas listés à l'article L6222-2 du Code du travail. Dans ma situation : [cas 1 : j'ai déjà effectué un contrat d'apprentissage terminé le [date] et cette formation conduit à un diplôme de niveau supérieur / cas 4 : mon projet de création d'entreprise dépend de l'obtention de ce diplôme].
+
+Pourriez-vous me confirmer par écrit ce qui est nécessaire dans ma situation (titre de séjour étudiant) pour signer ce contrat ?
+
+Je suis prêt(e) à [commencer ma recherche d'entreprise dès maintenant / vous présenter une entreprise partenaire]. Merci d'avance pour votre réponse écrite.
+
+Cordialement,
+[Prénom Nom]</div>
+          <button class="btn-guia btn-ghost no-print" id="copiar" type="button">Copiar e-mail</button>
+          <p style="margin-top:14px">Duas coisas fazem diferença: <strong>nacionalidade e status desde a primeira mensagem</strong>, e <strong>resposta por e-mail</strong>, porque promessa verbal não vale no guichê.</p>
         </section>
 
-        <section class="guia-sec" id="base-legal">
-          <h2>Base legal e leitura complementar</h2>
+        <section class="guia-sec" id="excecoes">
+          <h2>Quais são as exceções (art. L6222-2)</h2>
+          <p>O teto de 29 anos é do contrato de apprentissage, não da candidatura. Ele não se aplica nestes casos:</p>
+          <ol>
+            <li><strong>Nível de diploma superior:</strong> novo contrato que leva a diploma de nível superior ao do contrato anterior de apprentissage (idade máxima 35, no máximo 1 ano entre os contratos).</li>
+            <li><strong>Ruptura independente da sua vontade</strong> ou inaptidão física temporária (idade máxima 35).</li>
+            <li><strong>Trabalhadora com deficiência</strong> reconhecida.</li>
+            <li><strong>Projeto de criar ou retomar uma empresa</strong> que depende de obter o diploma ou título.</li>
+            <li><strong>Esportista de alto nível</strong> na lista oficial.</li>
+          </ol>
+          <p>Se nenhuma for a sua, o caminho usual é o <em>contrat de professionnalisation</em> (26+ que buscam emprego, com inscrição no France Travail). A exceção diz que o teto de idade não se aplica: ela não obriga a escola a te aceitar nem a empresa a te contratar.</p>
+        </section>
+
+        <section class="guia-sec" id="fontes">
+          <h2>Onde confirmar</h2>
           <ul>
-            <li><a href="https://www.service-public.gouv.fr/particuliers/vosdroits/F2231" target="_blank" rel="noopener">Ficha oficial do estudante: prazo e taxa (Service-Public)</a></li>
-            <li><a href="https://www.service-public.gouv.fr/particuliers/vosdroits/R52684" target="_blank" rel="noopener">Validação e pagamento (Service-Public)</a></li>
-            <li>Art. R431-17 do CESEDA (validação em 3 meses pelo téléservice): <a href="https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000042806968" target="_blank" rel="noopener">Légifrance</a></li>
-            <li>Art. L436-4 do CESEDA (taxa de regularização para quem passa do prazo, segundo fontes secundárias; conferir valor atual): <a href="https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000042776294" target="_blank" rel="noopener">Légifrance</a></li>
-            <li><a href="https://kohenavocats.com/visa-long-sejour-valant-titre-de-sejour-vls-ts-validation-anef-delai-recours/" target="_blank" rel="noopener">Artigo explicativo do escritório Kohen Avocats</a> (fonte secundária, conferir nos textos oficiais)</li>
+            <li><a href="https://www.service-public.gouv.fr/particuliers/vosdroits/F2918" target="_blank" rel="noopener">Service-public: contrat d'apprentissage</a></li>
+            <li><a href="https://www.legifrance.gouv.fr/codes/texte_lc/LEGITEXT000006072050/" target="_blank" rel="noopener">Légifrance: Code du travail</a> (arts. L6222-1, L6222-2, L6325-1 e D6222-1)</li>
+            <li><a href="https://labonnealternance.apprentissage.beta.gouv.fr/recherche-apprentissage-formation" target="_blank" rel="noopener">La bonne alternance</a>: formações e empresas que recrutam</li>
+            <li>Seu direito a trabalhar: ANEF e DREETS</li>
           </ul>
+          <p>Quer o contexto completo? <a href="/artigos/post/?slug=alternancia-depois-30">Leia o artigo: alternância depois dos 30</a>.</p>
         </section>
-
-        <div class="acoes no-print">
-          <button class="btn-guia btn-ghost" id="imprimir" type="button">Salvar como PDF / imprimir</button>
-        </div>
 
         <aside class="cta-final no-print" id="cta">
-          <span class="eyebrow" style="color:#C9D6A8;">Faltam poucos dias e ninguém responde?</span>
-          <h2>Quer uma segunda opinião sobre o seu caso?</h2>
-          <p>Cada caso tem detalhes que um guia não cobre: a data de entrada, o que aparece na tela, o que o suporte respondeu. Se quiser, converso com você sobre a sua situação e mostro como a plataforma do Por Dentro pode te acompanhar até resolver.</p>
+          <span class="eyebrow" style="color:#C9D6A8;">Quer uma segunda opinião?</span>
+          <h2>Converse comigo sobre o seu caso</h2>
+          <p>Cada caso tem detalhes que um modelo não cobre: seu título de residência, o curso, a empresa. Se quiser, conversamos sobre a sua situação.</p>
           <div class="acoes">
             <a class="btn-guia" id="cta-link" href="#" target="_blank" rel="noopener" hidden>Agendar uma conversa →</a>
           </div>
         </aside>
-
       </div>
     </article>
   </div>
+</main>
 </main>
 
 <footer class="site-footer">
@@ -323,7 +294,7 @@
 <script type="module">
 import { supabase } from '/assets/js/supabase-client.js';
 
-var GUIA = "vls-ts-validacao-travou";
+var GUIA = "email-alternancia-30-mais";
 var LS_KEY = "pd_guia_" + GUIA;
 var CONSENTIMENTO_VERSAO = "guia-v1";
 var TEXTO_SERVICO = "Li e aceito a Política de Privacidade.";
@@ -333,35 +304,6 @@ function track(t, p) { if (window.PDEvents) window.PDEvents.send(t, null, p || {
 function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
 function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
 
-/* ---------- Calculadora de prazo ---------- */
-var datas = { entrada: "", limite: "" };
-function fmt(d) { return d.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric" }); }
-function addMeses(d, n) {
-  var r = new Date(d.getFullYear(), d.getMonth() + n, d.getDate());
-  if (r.getDate() !== d.getDate()) r = new Date(d.getFullYear(), d.getMonth() + n + 1, 0);
-  return r;
-}
-byId("calc-entrada").addEventListener("change", function () {
-  var v = this.value;
-  var out = byId("calc-out");
-  if (!v) { out.classList.remove("on"); return; }
-  var p = v.split("-");
-  var entrada = new Date(+p[0], +p[1] - 1, +p[2]);
-  var limite = addMeses(entrada, 3); limite.setDate(limite.getDate() - 1);
-  var seg = new Date(limite); seg.setDate(seg.getDate() - 7);
-  var hoje = new Date(); hoje.setHours(0, 0, 0, 0);
-  var dias = Math.round((limite - hoje) / 86400000);
-  byId("calc-limite").textContent = fmt(limite);
-  byId("calc-seguranca").textContent = fmt(seg);
-  var r = byId("calc-restam");
-  r.className = dias < 15 ? "alerta" : "";
-  r.innerHTML = "<b>Tempo restante</b>" + (dias < 0 ? "O prazo estimado já passou. Aja hoje e guarde todas as provas." : dias + " dias até o limite estimado" + (dias < 15 ? " — é hora de escalar (passo 6)." : "."));
-  out.classList.add("on");
-  datas.entrada = fmt(entrada); datas.limite = fmt(limite);
-  track("guia_calculadora", { guia: GUIA, dias_restantes: dias });
-});
-
-/* ---------- Checklist (fica salvo neste aparelho) ---------- */
 document.querySelectorAll("[data-check]").forEach(function (ul) {
   var key = "pd_check_" + ul.dataset.check;
   var saved = []; try { saved = JSON.parse(lsGet(key) || "[]"); } catch (e) {}
@@ -372,32 +314,23 @@ document.querySelectorAll("[data-check]").forEach(function (ul) {
   });
 });
 
-/* ---------- Liberar conteúdo ---------- */
 function liberar(scroll) {
-  byId("calc-slot").appendChild(byId("calc-block"));
   byId("gate").hidden = true;
   byId("ok-banner").hidden = false;
   byId("locked").hidden = false;
   var cta = byId("cta-link");
   fetch("/content/guias.json").then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
+    var item = d && (d.items || []).filter(function (i) { return i.slug === GUIA; })[0];
     var nl = byId("notion-link");
-    if (d && d.notionUrl) {
-      nl.href = d.notionUrl;
-      if (d.notionTexto) nl.textContent = d.notionTexto + " →";
+    if (item && item.notionUrl) {
+      nl.href = item.notionUrl;
       nl.hidden = false;
       nl.addEventListener("click", function () { track("guia_abrir_notion", { guia: GUIA }); });
     }
     if (d && d.calendlyUrl) {
-      var base = d.calendlyUrl + (d.calendlyUrl.indexOf("?") === -1 ? "?" : "&") + "utm_source=guia&utm_campaign=" + GUIA;
-      cta.href = base;
-      if (d.calendlyTexto) cta.textContent = d.calendlyTexto + " →";
+      cta.href = d.calendlyUrl + (d.calendlyUrl.indexOf("?") === -1 ? "?" : "&") + "utm_source=guia&utm_campaign=" + GUIA;
       cta.hidden = false;
-      cta.addEventListener("click", function () {
-        // A calculadora pode ter sido usada depois de liberar o guia: monta a nota só agora.
-        var nota = "Vim do guia VLS-TS travou na ANEF." + (datas.entrada ? " Entrada na França: " + datas.entrada + ". Prazo estimado: " + datas.limite + "." : "");
-        cta.href = base + "&notes=" + encodeURIComponent(nota);
-        track("guia_cta_agendar", { guia: GUIA, com_prazo: !!datas.entrada });
-      });
+      cta.addEventListener("click", function () { track("guia_cta_agendar", { guia: GUIA }); });
     } else {
       byId("cta").hidden = true;
     }
@@ -413,18 +346,22 @@ byId("gate-form").addEventListener("submit", async function (ev) {
   ev.preventDefault();
   erro("");
   var email = byId("g-email").value.trim();
+  var nome = byId("g-nome").value.trim();
+  var etapa = byId("g-etapa").value;
   if (byId("hp-website").value || (Date.now() - shownAt) < 2500) { return; }
+  if (!nome) { erro("Conta seu nome pra eu saber com quem estou falando."); return; }
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { erro("Confere o e-mail e tenta de novo."); return; }
+  if (!etapa) { erro("Escolhe em que ponto você está. É isso que me ajuda a te orientar melhor."); return; }
   if (!byId("consent-servico").checked) { erro("Preciso que você aceite a Política de Privacidade pra continuar."); return; }
   var btn = byId("gate-btn");
   btn.disabled = true; btn.textContent = "Liberando...";
   var params = new URLSearchParams(window.location.search);
   var payload = {
     email: email,
-    nome: byId("g-nome").value.trim() || null,
-    data_entrada: byId("calc-entrada").value || null,
-    origem: "guia-vls-ts",
-    respostas: { visto: "estudante", objetivo: "validar-vls-ts" },
+    nome: nome,
+    persona: "alternancia_emprego",
+    origem: "guia-email-alt30",
+    respostas: { objetivo: etapa },
     aceita_servico: true,
     aceita_novidades: byId("consent-novidades").checked,
     consentimento_versao: CONSENTIMENTO_VERSAO,
@@ -439,22 +376,20 @@ byId("gate-form").addEventListener("submit", async function (ev) {
     var r = await supabase.rpc("capturar_lead", { payload: payload });
     if (r.error) throw r.error;
     lsSet(LS_KEY, "1");
-    track("guia_lead_capturado", { guia: GUIA, utm_campaign: params.get("utm_campaign") || null });
+    track("guia_lead_capturado", { guia: GUIA, etapa: etapa, utm_campaign: params.get("utm_campaign") || null });
     liberar(true);
   } catch (e) {
     console.error("capturar_lead:", e);
     erro("Não consegui confirmar agora. Confere o e-mail e tenta de novo.");
-    btn.disabled = false; btn.textContent = "Liberar o guia grátis →";
+    btn.disabled = false; btn.textContent = "Liberar o modelo grátis →";
   }
 });
 
-/* ---------- Copiar modelo / imprimir ---------- */
 byId("copiar").addEventListener("click", function () {
   var t = byId("modelo-texto").textContent;
-  if (datas.entrada) t = t.replace("[DATA DE ENTRADA]", datas.entrada).replace("[DATA-LIMITE]", datas.limite);
   var b = this;
   (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(function () {
-    b.textContent = "Copiado ✓"; setTimeout(function () { b.textContent = "Copiar mensagem"; }, 2000);
+    b.textContent = "Copiado ✓"; setTimeout(function () { b.textContent = "Copiar e-mail"; }, 2000);
     track("guia_copiar_modelo", { guia: GUIA });
   }).catch(function () {
     var r = document.createRange(); r.selectNodeContents(byId("modelo-texto"));
@@ -462,7 +397,6 @@ byId("copiar").addEventListener("click", function () {
     b.textContent = "Selecionado: use Ctrl/Cmd+C";
   });
 });
-byId("imprimir").addEventListener("click", function () { track("guia_imprimir", { guia: GUIA }); window.print(); });
 </script>
 </body>
 </html>
