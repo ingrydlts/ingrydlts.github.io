@@ -146,7 +146,7 @@
 // Cada linha dentro de STATS/CARDS/LIST/STEPS/FAQ/RESOURCES usa "|" pra
 // separar as colunas. Um parágrafo que comece com "**Atenção:**" também
 // vira automaticamente uma caixa de aviso colorida (callout-warn) — não
-// precisa de marcador.
+// precisa de marcador. "**Template grátis:**" vira caixa azul (callout-info).
 
 function inline(text) {
   return text
@@ -598,6 +598,8 @@ export function markdownToBlocks(md, ctx) {
       const html = inline(line);
       if (html.startsWith("<strong>Atenção:</strong>")) {
         blocks.push('<div class="callout callout-warn"><p>' + html + "</p></div>");
+      } else if (html.startsWith("<strong>Template grátis:</strong>")) {
+        blocks.push('<div class="callout callout-info"><p>' + html + "</p></div>");
       } else {
         blocks.push("<p>" + html + "</p>");
       }
