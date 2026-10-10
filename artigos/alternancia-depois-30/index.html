@@ -59,7 +59,7 @@
     <div id="article-root">
       <article><div class="article-header"><span class="eyebrow" style="color:#604034;">Formação</span><h1>Alternância depois dos 30 na França: como negociar o contrato com a escola</h1><div class="article-meta">05 de outubro de 2026 · 10 min de leitura</div><div class="article-updated">↻ Atualizado em 05 de outubro de 2026</div></div>
 <div class="article-body">
-<div class="callout callout-info"><p><strong>Template grátis:</strong> este artigo tem um e-mail pronto, em francês, para você mandar às escolas. <a href="#o-e-mail-modelo-em-frances">Ir direto para o modelo</a></p></div>
+<a class="freebie-card" href="#o-e-mail-modelo-em-frances"><span class="freebie-ico" aria-hidden="true">✉</span><span class="freebie-txt"><strong>Template grátis</strong><span>E-mail pronto, em francês, para você mandar às escolas.</span></span><span class="freebie-arrow" aria-hidden="true">→</span></a>
 <p>"Tenho 32, já era, né?" É a frase que mais chega na minha DM de quem quer fazer alternância na França depois dos 30. E quase sempre vem com uma segunda frase: "a escola disse que só aceita até 29". Só que o limite de 29 anos não é do curso. É do contrato de <em>apprentissage</em> (aprendizagem), e o Code du travail (a lei trabalhista francesa) prevê exceções que pouca secretaria de escola conhece de cabeça.</p>
 <p>Este artigo não é sobre perguntar à escola "qual contrato vocês fazem". É sobre chegar na conversa já sabendo quais exceções existem, qual delas é a sua e como pedir isso por escrito, sem cobrar favor e sem se deixar encerrar com um "não temos vaga pra 30+".</p>
 <details class="mx mx-resumo" data-mx="resumo" data-article-slug="alternancia-depois-30"><summary>Sem tempo? O resumo em 20 segundos</summary><ul><li>O limite de 29 anos é do contrato de apprentissage, não da candidatura ao curso, e a lei prevê exceções (art. L6222-2)</li><li>Quem passa dos 30 tem dois caminhos: apprentissage por exceção ou <em>professionnalisation</em> (para quem busca emprego), cada um com exigências próprias para estrangeira com título de estudante</li><li>A escola resiste porque tem risco (você não achar empresa e desistir): você negocia mostrando a base legal e reduzindo esse risco</li></ul></details>
@@ -361,6 +361,9 @@
       gygPartnerId = "";
     }
     const blocks = markdownToBlocks(post.body, { slug: post.slug });
+    // Cartão de freebie ("**Template grátis:** ...") fica sempre no topo, ACIMA da capa e da propaganda.
+    let freebieHtml = "";
+    if (blocks.length && blocks[0].indexOf('class="freebie-card"') !== -1) freebieHtml = blocks.shift();
     const adMidAfter = Math.min((adsCfg.positions && adsCfg.positions.midAfterBlock) || 4, blocks.length);
 
     // Posicionamento manual: quando alguém arrasta o banner/propaganda pra um
@@ -534,6 +537,7 @@
       '<div class="article-meta">' + escapeHtml(formatDate(post.date)) + (post.readMinutes ? " · " + post.readMinutes + " min de leitura" : "") + "</div>" +
       updatedLineHTML(post) +
       "</div>" +
+      freebieHtml +
       heroHtml +
       tocHtml +
       '<div class="article-body">' + bodyHtml + "</div>" +
