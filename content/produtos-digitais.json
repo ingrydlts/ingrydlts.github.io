@@ -48,7 +48,7 @@
     },
     {
       "launchNote": "Preço de lançamento — válido para os primeiros 30 compradores",
-      "active": true,
+      "active": false,
       "summary": "A planilha financeira que lança seus gastos fixos sozinha, todo mês, sem você precisar copiar e colar nada.",
       "stripeLink": "https://buy.stripe.com/7sY28rcgB4sxazj8u5aR203",
       "bundleWith": [],
@@ -186,15 +186,28 @@
       "guaranteeDays": 0
     },
     {
-      "active": true,
-      "free": true,
       "freeUrl": "/guias/vls-ts-validacao-travou/",
-      "slug": "guia-vls-ts-validacao-travou",
-      "kicker": "Guia gratuito · VLS-TS estudante",
-      "title": "VLS-TS travou na ANEF? O que fazer antes do prazo acabar",
+      "ctaLabel": "Ver os passos, grátis",
+      "active": true,
       "summary": "O site não valida, o suporte só diz “problema técnico” e os 3 meses estão correndo. Veja como provar que você agiu a tempo e quem acionar, passo a passo.",
-      "description": "Você entrou na França com visto de estudante, tentou validar o VLS-TS no site da ANEF e o erro não sai. O suporte responde “problema técnico” e o prazo de 3 meses continua correndo. Este guia é para esse momento: em vez de tentar de novo e de novo, você monta hoje as provas de que tentou e agiu dentro do prazo, aciona a ANEF e a préfecture de um jeito que deixa registro, e sabe quando buscar ajuda jurídica. Nas fontes oficiais consultadas não há texto confirmando que o prazo é suspenso por falha do site, por isso o foco é agir cedo e documentar tudo. É conteúdo de orientação, sem caráter de aconselhamento jurídico, e não garante o resultado.",
-      "image": "/images/uploads/guia-vls-ts-capa.png",
+      "bundleWith": [],
+      "price": 0,
+      "slug": "guia-vls-ts-validacao-travou",
+      "free": true,
+      "freeTrust": [
+        {
+          "t": "Comece hoje",
+          "s": "O checklist de provas já está aberto"
+        },
+        {
+          "t": "Sem juridiquês",
+          "s": "Passo a passo e mensagem pronta"
+        },
+        {
+          "t": "Fontes oficiais",
+          "s": "Service-Public e Légifrance linkados"
+        }
+      ],
       "gallery": [
         {
           "type": "Foto",
@@ -202,16 +215,7 @@
           "caption": "Capa do guia"
         }
       ],
-      "price": 0,
-      "guaranteeDays": 0,
-      "features": [
-        "Calculadora do seu prazo de 3 meses, com data de segurança",
-        "Checklist do que registrar hoje: prints datados, e-mails do suporte, ligações",
-        "Como acionar a ANEF e a préfecture deixando prova (e-mail e carta registrada com AR)",
-        "Mensagem pronta em francês pedindo validação manual ou attestation",
-        "Ajuda jurídica gratuita (Cimade) e o momento certo de procurar um advogado",
-        "Links oficiais e base legal, para você conferir tudo na fonte"
-      ],
+      "kicker": "Guia gratuito · VLS-TS estudante",
       "faq": [
         {
           "q": "O site da ANEF dá erro e o suporte só diz “problema técnico”. O prazo para?",
@@ -234,23 +238,19 @@
           "a": "Sim. Você só informa seu e-mail para liberar os passos 2 a 6. Sem cartão e sem assinatura."
         }
       ],
-      "bundleWith": [],
-      "ctaLabel": "Ver os passos, grátis",
+      "title": "VLS-TS travou na ANEF? O que fazer antes do prazo acabar",
+      "image": "/images/uploads/guia-vls-ts-capa.png",
+      "description": "Você entrou na França com visto de estudante, tentou validar o VLS-TS no site da ANEF e o erro não sai. O suporte responde “problema técnico” e o prazo de 3 meses continua correndo. Este guia é para esse momento: em vez de tentar de novo e de novo, você monta hoje as provas de que tentou e agiu dentro do prazo, aciona a ANEF e a préfecture de um jeito que deixa registro, e sabe quando buscar ajuda jurídica. Nas fontes oficiais consultadas não há texto confirmando que o prazo é suspenso por falha do site, por isso o foco é agir cedo e documentar tudo. É conteúdo de orientação, sem caráter de aconselhamento jurídico, e não garante o resultado.",
+      "features": [
+        "Calculadora do seu prazo de 3 meses, com data de segurança",
+        "Checklist do que registrar hoje: prints datados, e-mails do suporte, ligações",
+        "Como acionar a ANEF e a préfecture deixando prova (e-mail e carta registrada com AR)",
+        "Mensagem pronta em francês pedindo validação manual ou attestation",
+        "Ajuda jurídica gratuita (Cimade) e o momento certo de procurar um advogado",
+        "Links oficiais e base legal, para você conferir tudo na fonte"
+      ],
       "freeNote": "Gratuito · leva 2 minutos para liberar, só com seu e-mail",
-      "freeTrust": [
-        {
-          "t": "Comece hoje",
-          "s": "O checklist de provas já está aberto"
-        },
-        {
-          "t": "Sem juridiquês",
-          "s": "Passo a passo e mensagem pronta"
-        },
-        {
-          "t": "Fontes oficiais",
-          "s": "Service-Public e Légifrance linkados"
-        }
-      ]
+      "guaranteeDays": 0
     }
   ]
 }
