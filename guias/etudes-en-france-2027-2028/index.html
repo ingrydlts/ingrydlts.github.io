@@ -121,7 +121,7 @@
         <ul class="gate-inc" aria-label="O que está incluído">
           <li>Prazos por nível: 14/12/2026 e 17/01/2027</li>
           <li>Os 12 passos com caixa para marcar, que ficam salvos no seu navegador</li>
-          <li>Versão em PDF de 1 página e página no Notion</li>
+          <li>O checklist no Notion, para abrir quando quiser</li>
         </ul>
         <form id="gate-form" novalidate>
           <div class="g-row">
@@ -170,10 +170,9 @@
 
       <div class="ok-banner" id="ok-banner" hidden>
         <strong>✓ Guia liberado.</strong>
-        <span>Marque os passos abaixo, abra no Notion ou baixe o PDF.</span>
+        <span>Marque os passos abaixo ou abra o checklist no Notion.</span>
         <div class="acoes no-print">
           <a class="btn-guia" id="notion-link" href="#" target="_blank" rel="noopener" hidden>Abrir no Notion →</a>
-          <a class="btn-guia btn-ghost" id="pdf-link" href="/guias/etudes-en-france-2027-2028/checklist-etudes-en-france-2027-2028.pdf" download>Baixar o PDF (1 página)</a>
         </div>
       </div>
 
@@ -343,7 +342,6 @@ function liberar(scroll) {
   byId("gate").hidden = true;
   byId("ok-banner").hidden = false;
   byId("locked").hidden = false;
-  byId("pdf-link").addEventListener("click", function () { track("guia_baixar_pdf", { guia: GUIA }); });
   var cta = byId("cta-link");
   fetch("/content/guias.json").then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
     var item = d && (d.items || []).filter(function (i) { return i.slug === GUIA; })[0];
