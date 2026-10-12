@@ -130,6 +130,32 @@
   .artigo-link .cl-cat{ margin-bottom:4px; }
   .artigo-link .artigo-titulo{ font-weight:600; font-size:15.5px; line-height:1.35; }
 
+  /* ---------- Campus France: revelação da candidatura ---------- */
+  .cf-prazo{ display:flex; align-items:baseline; gap:14px; flex-wrap:wrap; margin:6px 0 10px; }
+  .cf-prazo-dias{ font-family:'Fraunces', Georgia, serif; font-weight:700; font-size:56px; line-height:1; color:var(--verde-moss); font-variant-numeric:tabular-nums; }
+  .cf-prazo-txt{ font-size:15px; color:var(--texto-secundario); max-width:34ch; }
+  .cf-bloco{ background:#fff; border:1px solid var(--borda); border-radius:14px; box-shadow:var(--shadow-card); padding:20px 22px; margin-top:18px; }
+  .cf-bloco-titulo{ font-size:11.5px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--verde-moss); margin:0 0 12px; display:flex; justify-content:space-between; gap:12px; }
+  .cf-bloco-titulo span{ color:var(--texto-secundario); letter-spacing:.02em; font-weight:600; text-transform:none; }
+  .cf-linha{ list-style:none; margin:0; padding:0; }
+  .cf-linha li{ display:flex; gap:14px; padding:7px 0; font-size:14px; border-top:1px solid var(--borda-suave); }
+  .cf-linha li:first-child{ border-top:none; }
+  .cf-linha .d{ flex:0 0 92px; font-weight:600; color:var(--texto-secundario); font-variant-numeric:tabular-nums; }
+  .cf-linha li.is-limite .d, .cf-linha li.is-limite .l{ color:var(--grafite); font-weight:700; }
+  .cf-linha li.is-hoje .d, .cf-linha li.is-hoje .l{ color:var(--verde-moss); font-weight:700; }
+  .cf-grupo{ font-size:12px; font-weight:700; color:var(--downtown-brown); margin:14px 0 4px; }
+  .cf-grupo:first-child{ margin-top:0; }
+  .cf-passo{ display:flex; gap:12px; padding:8px 0; border-top:1px solid var(--borda-suave); }
+  .cf-passo .n{ flex:none; width:24px; height:24px; border-radius:50%; background:var(--off-white); border:1px solid var(--borda); font-size:12px; font-weight:700; display:flex; align-items:center; justify-content:center; font-variant-numeric:tabular-nums; }
+  .cf-passo .t{ font-size:14.5px; font-weight:500; line-height:1.4; }
+  .cf-passo .dica{ display:block; font-size:13px; color:var(--texto-secundario); font-weight:400; margin-top:3px; }
+  .cf-passo.is-fechado .t{ color:var(--texto-secundario); }
+  .cf-docs{ margin:0; padding-left:18px; display:grid; gap:6px; font-size:14.5px; }
+  .cf-alerta{ margin-top:18px; padding:14px 16px; border-radius:var(--radius-md); background:#F5ECDC; color:var(--downtown-brown); font-size:14px; line-height:1.5; }
+  .cf-fonte{ font-size:12px; color:var(--texto-secundario); margin-top:12px; }
+  .codigo-form{ display:flex; flex-direction:column; gap:12px; max-width:360px; }
+  .codigo-form input{ font-family:inherit; font-size:24px; letter-spacing:6px; text-align:center; padding:12px 14px; border-radius:var(--radius-md); border:1px solid var(--borda); }
+  .codigo-form input:focus{ border-color:var(--verde-moss); outline:none; }
   .thanks h2{ margin-bottom:12px; }
   .thanks p{ color:var(--texto-secundario); font-size:15.5px; margin-bottom:24px; max-width:50ch; }
 </style>
@@ -223,6 +249,22 @@
         <div class="options" id="opts-estudos"></div>
       </div>
 
+      <!-- Campus France (proposta CAMPUS-FRANCE-2027-JORNADA.md no app, 2.3):
+           o nível de candidatura decide prazo, número de formações e
+           documentos. As opções vêm filtradas pelo nível de estudos; quando
+           só sobra uma, ela é deduzida e esta pergunta nem aparece. -->
+      <div class="step" data-step="cfnivel" hidden>
+        <h2>Em que nível você vai se candidatar?</h2>
+        <p class="phase-note" style="margin-bottom:20px;">É o que define o seu prazo, quantas formações você pode escolher e quais documentos juntar.</p>
+        <div class="options" id="opts-cfnivel"></div>
+      </div>
+
+      <div class="step" data-step="cfteste" hidden>
+        <h2>E o teste de francês?</h2>
+        <p class="phase-note" style="margin-bottom:20px;">Nível de francês insuficiente é o principal motivo de recusa no Études en France.</p>
+        <div class="options" id="opts-cfteste"></div>
+      </div>
+
       <!-- Só pra quem é au_pair_estudante — segue exatamente a árvore de
            decisão do board "au_pair_estudante oficial — checklist LANDING
            PAGE detalhado por caminho" no Miro. Ao terminar, cai direto no
@@ -274,6 +316,26 @@
       </div>
     </section>
 
+    <!-- Revelação do Campus France: a candidatura (prazo real, linha do
+         tempo, 12 passos do guia, documentos do nível) em vez dos itens de
+         chegada, que só servem daqui a meses. Dados em
+         /content/campus-france-ciclo.json. -->
+    <section class="preview-section" id="reveal-cf" hidden>
+      <span class="eyebrow" style="color:var(--verde-moss);" id="cf-eyebrow">Sua candidatura · Études en France</span>
+      <h2 id="cf-titulo">Seu prazo</h2>
+      <div class="cf-prazo" id="cf-prazo"></div>
+      <p class="phase-note" id="cf-nota"></p>
+      <div class="cf-bloco"><p class="cf-bloco-titulo">Linha do tempo do ciclo</p><ul class="cf-linha" id="cf-linha"></ul></div>
+      <div class="cf-bloco"><p class="cf-bloco-titulo">Os 12 passos do guia <span id="cf-passos-nota"></span></p><div id="cf-passos"></div></div>
+      <div class="cf-bloco"><p class="cf-bloco-titulo">Documentos do seu nível</p><ul class="cf-docs" id="cf-docs"></ul></div>
+      <div class="cf-alerta" id="cf-alerta" hidden></div>
+      <p class="cf-fonte" id="cf-fonte"></p>
+      <div class="reveal-cta-row">
+        <button class="btn-primary" id="reveal-cf-cta" type="button">Salvar meu painel da candidatura →</button>
+        <p class="reveal-cta-note">No painel: o prazo contando, os passos que você já fez marcados e cada documento com o estado dele.</p>
+      </div>
+    </section>
+
     <!-- Quem não se encaixa em nenhum checklist que já existe (ver
          derivarPersona) — em vez de empurrar um checklist errado, mostra
          artigos do percurso dela e o 1:1. -->
@@ -291,7 +353,7 @@
     <section class="preview-section" id="email-step" hidden>
       <span class="eyebrow" style="color:var(--verde-moss);">Quase lá</span>
       <h2 id="email-step-title">Só falta confirmar seu e-mail.</h2>
-      <p class="phase-note" id="email-step-note">É pra esse e-mail que eu mando o link de acesso ao seu checklist — sem senha, você só clica e entra.</p>
+      <p class="phase-note" id="email-step-note">É pra esse e-mail que eu mando o código de acesso ao seu painel — sem senha: você digita o código aqui mesmo e entra.</p>
       <form id="email-form">
         <div class="field-row">
           <label for="email-input">Seu e-mail</label>
@@ -310,14 +372,23 @@
           <span>Quero receber novidades e conteúdos do Por Dentro por e-mail.</span>
         </label>
         <p class="gate-message" id="email-step-error"></p>
-        <button class="btn-primary" id="email-step-btn" type="submit">Receber meu link de acesso →</button>
+        <button class="btn-primary" id="email-step-btn" type="submit">Receber meu código de acesso →</button>
       </form>
     </section>
 
     <section class="preview-section thanks" id="thanks" hidden>
       <span class="eyebrow" style="color:var(--verde-moss);">Quase lá!</span>
       <h2 id="thanks-title">Prontinho — confira seu e-mail.</h2>
-      <p id="thanks-body">Mandei um link de acesso pro e-mail que você digitou. Clica nele (e dá uma olhada no spam, se não achar) pra entrar direto no seu checklist completo.</p>
+      <p id="thanks-body">Mandei um código pro e-mail que você digitou. Digite aqui embaixo pra entrar no seu painel, sem sair desta página. Se preferir, o link do mesmo e-mail também funciona.</p>
+      <!-- Código na mesma tela (decisão 2 da proposta Campus France): quem
+           veio pelo navegador do Instagram não precisa trocar de app. -->
+      <form class="codigo-form" id="codigo-form">
+        <label for="codigo-input" class="field-row" style="margin:0;"><span style="font-size:13.5px; font-weight:600; color:var(--texto-secundario);">Código que chegou no seu e-mail</span></label>
+        <input id="codigo-input" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="10" placeholder="00000000" required>
+        <p class="gate-message" id="codigo-erro"></p>
+        <button class="btn-primary" id="codigo-btn" type="submit">Entrar no meu painel →</button>
+      </form>
+      <p class="reveal-cta-note" style="margin-top:14px;">Não chegou? Confira o spam e a aba Promoções.</p>
     </section>
 
   </div>
@@ -382,7 +453,7 @@ import { isPublished } from '/assets/js/render.js';
 
   var PERSONAS = [
     { key:"au_pair_estudante", title:"Au Pair / Estudante", sub:"vim como au pair ou já estudo aqui" },
-    { key:"campus_france", title:"Campus France", sub:"vim direto para estudar com visto de estudante" },
+    { key:"campus_france", title:"Campus France", sub:"vou estudar na França pelo Études en France" },
     { key:"alternancia_emprego", title:"Alternância / Emprego", sub:"tenho contrato de trabalho ou alternância" },
     { key:"conjuge", title:"Cônjuge", sub:"vim por casamento ou união com francês(a)" },
     { key:"pvt", title:"PVT", sub:"vim com o Programa Vacances-Travail" }
@@ -474,6 +545,7 @@ import { isPublished } from '/assets/js/render.js';
   var NIVEL_ESTUDOS = [
     { key:"ensino_medio", title:"Ensino médio completo", sub:"parei antes da faculdade" },
     { key:"superior_incompleto", title:"Superior incompleto", sub:"comecei uma graduação e não terminei" },
+    { key:"superior_tecnologo", title:"Tecnólogo", sub:"fiz (ou estou terminando) uma graduação tecnológica" },
     { key:"superior_completo", title:"Superior completo (graduação)", sub:"terminei uma faculdade" },
     { key:"pos_graduacao", title:"Pós-graduação, mestrado ou doutorado", sub:"fui além da graduação" }
   ];
@@ -484,7 +556,7 @@ import { isPublished } from '/assets/js/render.js';
   // como alguém que entendeu a situação da pessoa.
   var PERSONA_LEDE = {
     au_pair_estudante: "você é au pair e quer virar estudante",
-    campus_france: "você veio pela Campus France",
+    campus_france: "você vai estudar na França pelo Campus France",
     alternancia_emprego: "você tá em alternância buscando emprego",
     conjuge: "você é cônjuge de francês(a) ou de alguém da UE",
     pvt: "você veio pelo PVT"
@@ -579,7 +651,31 @@ import { isPublished } from '/assets/js/render.js';
     ]
   };
 
+  // Campus France: opções de nível filtradas pelo nível de estudos (mesma
+  // tabela do app, assets/js/percurso.js → campus_france). Sem nível de
+  // estudos, todas aparecem.
+  var CF_NIVEIS = [
+    { key:"l1", title:"1º ano de Licence ou BUT", sub:"começar a graduação na França", para:["ensino_medio","superior_incompleto"] },
+    { key:"arq", title:"Arquitetura (ENSA)", sub:"diploma de arquiteto numa escola nacional", para:["ensino_medio","superior_incompleto"] },
+    { key:"tecnologo", title:"Ainda não sei: vou perguntar aos cursos", sub:"cada curso decide em que nível aceita o tecnólogo; o prazo é o mesmo", para:["superior_tecnologo"] },
+    { key:"l2l3", title:"2º ou 3º ano de Licence", sub:"já completei pelo menos 1 ano de graduação", para:["superior_incompleto","superior_completo","superior_tecnologo"] },
+    { key:"lpro", title:"Licence Pro", sub:"outra graduação, profissionalizante", para:["superior_completo","superior_tecnologo"] },
+    { key:"master", title:"Master", sub:"tenho graduação (ou termino até junho do ano que vem)", para:["superior_completo","pos_graduacao","superior_tecnologo"] },
+    { key:"escola", title:"Escola de engenharia ou de comércio", sub:"o ano de entrada eu respondo depois, no painel", para:["superior_incompleto","superior_completo"] }
+  ];
+  var CF_TESTES = [
+    { key:"tenho", title:"Já tenho resultado válido", sub:"DELF B2 ou mais, DALF ou TCF com expressão escrita" },
+    { key:"inscrito", title:"Estou inscrita, ainda não fiz a prova", sub:"tenho data marcada" },
+    { key:"nada", title:"Ainda não fiz nem me inscrevi", sub:"vou resolver isso agora" }
+  ];
+  var cicloCf = null;
+  var cicloCfPromise = fetch("/content/campus-france-ciclo.json")
+    .then(function(r){ return r.ok ? r.json() : null; })
+    .then(function(d){ cicloCf = d; return d; })
+    .catch(function(){ return null; });
+
   var state = {
+    cfNivel:null, cfTeste:null, cfNivelDeduzido:false,
     persona:null, phase:null, worry:null, nivelEstudos:null, name:"", origem:null, urgencyUnclear:false,
     // Só na entrada direta (sem handoff do bot).
     naFranca:null, visto:null, objetivo:null,
@@ -598,7 +694,7 @@ import { isPublished } from '/assets/js/render.js';
   var VALID_PERSONAS = ["au_pair_estudante", "campus_france", "alternancia_emprego", "conjuge", "pvt"];
   var VALID_PHASES = ["planejando", "adaptando", "urgente"];
   var VALID_WORRIES = ["prazo", "comeco", "sozinha", "caro"];
-  var VALID_NIVEL_ESTUDOS = ["ensino_medio", "superior_incompleto", "superior_completo", "pos_graduacao"];
+  var VALID_NIVEL_ESTUDOS = ["ensino_medio", "superior_incompleto", "superior_completo", "superior_tecnologo", "pos_graduacao"];
   var handoffPersona = null, handoffFase = null, handoffWorry = null, handoffNivelEstudos = null, handoffNome = null;
   try {
     var params = new URLSearchParams(window.location.search);
@@ -636,7 +732,7 @@ import { isPublished } from '/assets/js/render.js';
     });
   }
 
-  var STEP_PROGRESS = { "franca":8, "visto":18, "objetivo":28, "4":42, "worry":56, "estudos":68, "ap1":78, "ap2a":83, "ap2b":83, "ap3":88, "ap4":93, "ap5":97 };
+  var STEP_PROGRESS = { "franca":8, "visto":18, "objetivo":28, "4":42, "worry":56, "estudos":68, "cfnivel":80, "cfteste":90, "ap1":78, "ap2a":83, "ap2b":83, "ap3":88, "ap4":93, "ap5":97 };
 
   // Endereço do app em produção (Cloudflare, repositório POR-DENTRO-APP). Precisa estar
   // nas Redirect URLs do Supabase (Authentication → URL Configuration).
@@ -703,6 +799,14 @@ import { isPublished } from '/assets/js/render.js';
     // direto pra próxima pergunta ainda sem resposta, na mesma ordem do
     // fluxo normal — só cai no resultado quando TUDO já é conhecido.
     if (handoffPersona && handoffNome){
+      // Campus France: a preocupação sai do caminho crítico (vira pergunta no
+      // painel); o que falta aqui é o nível de estudos, o nível de
+      // candidatura e o teste.
+      if (handoffPersona === "campus_france"){
+        if (!handoffNivelEstudos) goToStep("estudos", true);
+        else goToCfNivel(true);
+        return;
+      }
       if (!handoffWorry) goToStep("worry", true);
       else if (!handoffNivelEstudos) goToStep("estudos", true);
       else goToResultado();
@@ -732,7 +836,9 @@ import { isPublished } from '/assets/js/render.js';
       // do site não pergunta isso) — o texto precisa ser honesto sobre ainda
       // faltar pergunta, em vez de prometer "sem mais perguntas" e entregar
       // mais de uma pergunta.
-      var perguntasFaltando = (handoffWorry ? 0 : 1) + (handoffNivelEstudos ? 0 : 1);
+      var perguntasFaltando = handoffPersona === "campus_france"
+        ? (handoffNivelEstudos ? 2 : 3)
+        : (handoffWorry ? 0 : 1) + (handoffNivelEstudos ? 0 : 1);
       byId("hero-lede").textContent = "Já sei que " + PERSONA_LEDE[handoffPersona] +
         (handoffWorry ? " e que " + WORRY_LEDE[handoffWorry] + " é o que mais pesa agora" : "") +
         (perguntasFaltando ? (" — falta só " + perguntasFaltando + (perguntasFaltando === 1 ? " pergunta rápida" : " perguntas rápidas") + " pro seu checklist.") : " — seu checklist já está pronto.");
@@ -793,7 +899,129 @@ import { isPublished } from '/assets/js/render.js';
   // caminho" no Miro) — as outras 4 personas vão direto pro preview mockado.
   function goToResultado(){
     if (state.persona === "au_pair_estudante") showApBranch();
+    else if (state.persona === "campus_france") goToCfNivel();
     else showReveal();
+  }
+
+  // ---------- Campus France ----------
+  function cfNiveisVisiveis(){
+    if (!state.nivelEstudos) return CF_NIVEIS;
+    return CF_NIVEIS.filter(function(n){ return n.para.indexOf(state.nivelEstudos) !== -1; });
+  }
+
+  function goToCfNivel(instant){
+    var ops = cfNiveisVisiveis();
+    if (ops.length === 1){
+      state.cfNivel = ops[0].key;
+      state.cfNivelDeduzido = true;
+      goToStep("cfteste", instant);
+      return;
+    }
+    state.cfNivelDeduzido = false;
+    renderOptions(byId("opts-cfnivel"), ops, function(key){
+      state.cfNivel = key;
+      setTimeout(function(){ goToStep("cfteste"); }, 220);
+    });
+    byId("quiz").hidden = false;
+    goToStep("cfnivel", instant);
+  }
+
+  function dataBR(iso){ var p = iso.split("-"); return p[2] + "/" + p[1] + "/" + p[0]; }
+  function diasAte(iso){
+    var hoje = new Date(); hoje.setHours(0,0,0,0);
+    return Math.round((new Date(iso + "T00:00:00") - hoje) / 86400000);
+  }
+  function porNivel(obj, nivel){
+    if (!obj) return null;
+    return obj[nivel] != null ? obj[nivel] : (obj.outros != null ? obj.outros : null);
+  }
+
+  async function showRevealCampusFrance(){
+    var c = cicloCf || await cicloCfPromise;
+    if (!c){ showReveal(); return; }   // sem os dados do ciclo, cai no preview antigo
+    var nivel = state.cfNivel;
+    var prazoIso = porNivel(c.dossie_ate, nivel);
+    var dias = prazoIso ? diasAte(prazoIso) : null;
+    var nivelLabel = c.niveis[nivel] || "";
+
+    byId("cf-eyebrow").textContent = "Sua candidatura · Études en France " + c.ciclo;
+    byId("cf-titulo").textContent = (state.name ? state.name + ", seu" : "Seu") + " prazo para submeter o dossiê é " + dataBR(prazoIso) + ".";
+    byId("cf-prazo").innerHTML = "";
+    if (dias !== null && dias >= 0){
+      var n = document.createElement("span"); n.className = "cf-prazo-dias"; n.textContent = dias;
+      var t = document.createElement("span"); t.className = "cf-prazo-txt";
+      t.textContent = (dias === 1 ? "dia" : "dias") + " até lá. A verificação é por ordem de chegada: quem submete e paga antes, anda antes na fila.";
+      byId("cf-prazo").appendChild(n); byId("cf-prazo").appendChild(t);
+    }
+    byId("cf-nota").textContent = "Nível: " + nivelLabel + (state.cfNivelDeduzido ? " (pelo que você estudou)" : "") +
+      ". Esse é o prazo da plataforma; se uma das suas formações fechar antes, vale a dela. Você pode escolher até " +
+      (c.escolhas_max[nivel] || "") + " formações.";
+
+    // Linha do tempo com "hoje" no meio.
+    var hojeIso = new Date().toISOString().slice(0, 10);
+    var marcos = [
+      { d:c.abertura, l:"Plataforma aberta" },
+      { d:prazoIso, l:"Seu prazo para submeter o dossiê", limite:true },
+      { d:porNivel(c.teste_validade, nivel), l:"Teste de francês (TCF-TP) válido até aqui" },
+      { d:c.teste_resultado_ate, l:"Resultado do teste e entrevista feitos" },
+      { d:c.respostas_ate, l:"Respostas das instituições" },
+      { d:c.escolha_definitiva_ate, l:"Escolha definitiva" }
+    ].filter(function(m){ return m.d; }).sort(function(a, b){ return a.d < b.d ? -1 : 1; });
+    var ul = byId("cf-linha"); ul.innerHTML = "";
+    var hojeFeito = false;
+    function li(d, l, cls){
+      var el = document.createElement("li"); if (cls) el.className = cls;
+      var a = document.createElement("span"); a.className = "d"; a.textContent = dataBR(d);
+      var b = document.createElement("span"); b.className = "l"; b.textContent = l;
+      el.appendChild(a); el.appendChild(b); ul.appendChild(el);
+    }
+    marcos.forEach(function(m){
+      if (!hojeFeito && m.d > hojeIso){ li(hojeIso, "Hoje: você está aqui", "is-hoje"); hojeFeito = true; }
+      li(m.d, m.l, m.limite ? "is-limite" : "");
+    });
+    if (!hojeFeito) li(hojeIso, "Hoje: você está aqui", "is-hoje");
+
+    // 12 passos: os dois primeiros abertos, com a dica; o resto com o
+    // título (o passo a passo e o prazo de cada um ficam no painel).
+    var passosWrap = byId("cf-passos"); passosWrap.innerHTML = "";
+    var grupoAtual = null;
+    c.passos.forEach(function(p){
+      if (p.grupo !== grupoAtual){
+        grupoAtual = p.grupo;
+        var g = document.createElement("p"); g.className = "cf-grupo"; g.textContent = p.grupo;
+        passosWrap.appendChild(g);
+      }
+      var row = document.createElement("div"); row.className = "cf-passo" + (p.n > 2 ? " is-fechado" : "");
+      var num = document.createElement("span"); num.className = "n"; num.textContent = p.n;
+      var tx = document.createElement("span"); tx.className = "t"; tx.textContent = p.label;
+      if (p.n <= 2 && p.dica){ var dc = document.createElement("span"); dc.className = "dica"; dc.textContent = p.dica; tx.appendChild(dc); }
+      row.appendChild(num); row.appendChild(tx); passosWrap.appendChild(row);
+    });
+    byId("cf-passos-nota").textContent = "passo a passo de cada um no painel";
+
+    var docs = (c.documentos.comum || []).concat(c.documentos[nivel] || []);
+    var dl = byId("cf-docs"); dl.innerHTML = "";
+    docs.forEach(function(d){ var i = document.createElement("li"); i.textContent = d; dl.appendChild(i); });
+
+    var alerta = byId("cf-alerta");
+    var validade = porNivel(c.teste_validade, nivel);
+    if (state.cfTeste === "nada"){
+      alerta.hidden = false;
+      alerta.textContent = "O teste de francês é o item que mais vale começar hoje: o TCF-TP precisa estar válido até " +
+        (validade ? dataBR(validade) : "o prazo do seu nível") + ", e as vagas de prova lotam.";
+    } else if (state.cfTeste === "inscrito"){
+      alerta.hidden = false;
+      alerta.textContent = "A inscrição só vale se a prova for até fevereiro e o resultado chegar ao Campus France até " +
+        dataBR(c.teste_resultado_ate) + ". Confira se a data da sua prova cabe.";
+    } else {
+      alerta.hidden = true;
+    }
+    byId("cf-fonte").textContent = "Fonte: " + c.fonte + ".";
+
+    byId("quiz").hidden = true;
+    byId("reveal-cf").hidden = false;
+    byId("reveal-cf").scrollIntoView({ behavior: "smooth", block: "start" });
+    track("checklist_preview_reveal", { persona: state.persona, cfNivel: nivel, cfTeste: state.cfTeste });
   }
 
   function showApBranch(){
@@ -825,6 +1053,8 @@ import { isPublished } from '/assets/js/render.js';
     if (state.phase) params.set("fase", state.phase);
     if (state.worry) params.set("worry", state.worry);
     if (state.nivelEstudos) params.set("nivelEstudos", state.nivelEstudos);
+    if (state.cfNivel) params.set("cfNivel", state.cfNivel);
+    if (state.cfTeste) params.set("cfTeste", state.cfTeste);
     return APP_URL + "?" + params.toString();
   }
 
@@ -850,6 +1080,7 @@ import { isPublished } from '/assets/js/render.js';
   // é rápido demais pra alguém ter lido e decidido, típico de bot preenchendo
   // o formulário assim que o encontra no HTML.
   var emailStepShownAt = null;
+  var emailEnviado = "";
 
   function goToEmailStep(){
     if (!state.persona){
@@ -859,6 +1090,7 @@ import { isPublished } from '/assets/js/render.js';
     }
     byId("quiz").hidden = true;
     byId("reveal").hidden = true;
+    byId("reveal-cf").hidden = true;
     byId("email-step").hidden = false;
     byId("email-step").scrollIntoView({ behavior: "smooth", block: "start" });
     emailStepShownAt = Date.now();
@@ -966,7 +1198,8 @@ import { isPublished } from '/assets/js/render.js';
       respostas: {
         naFranca: state.naFranca, visto: state.visto, objetivo: state.objetivo,
         apAno: state.apAno, apPretende: state.apPretende, apDataFinal: state.apDataFinal,
-        apCertificado: state.apCertificado, apRecursos: state.apRecursos, apSponsor: state.apSponsor
+        apCertificado: state.apCertificado, apRecursos: state.apRecursos, apSponsor: state.apSponsor,
+        cfNivel: state.cfNivel, cfTeste: state.cfTeste
       },
       aceita_servico: true,
       aceita_novidades: aceitaNovidades,
@@ -989,6 +1222,7 @@ import { isPublished } from '/assets/js/render.js';
 
       track("checklist_preview_trial_interest", { persona: state.persona });
 
+      emailEnviado = email;
       var otpResult = await supabase.auth.signInWithOtp({
         email: email,
         options: { emailRedirectTo: appHandoffUrl() }
@@ -1000,7 +1234,7 @@ import { isPublished } from '/assets/js/render.js';
       console.error("Erro ao confirmar e-mail:", err);
       setEmailStepError("Não consegui confirmar — confere o e-mail e tenta de novo.");
       btn.disabled = false;
-      btn.textContent = state.persona ? "Receber meu link de acesso →" : "Ver meu caminho →";
+      btn.textContent = state.persona ? "Receber meu código de acesso →" : "Ver meu caminho →";
     }
   });
 
@@ -1094,10 +1328,46 @@ import { isPublished } from '/assets/js/render.js';
   byId("see-checklist-btn").addEventListener("click", function(){
     trackStartOnce();
     state.name = capitalizarNome(byId("name-input").value.trim());
-    goToStep("worry");
+    goToStep(state.persona === "campus_france" ? "estudos" : "worry");
   });
 
   byId("reveal-cta").addEventListener("click", goToEmailStep);
+  byId("reveal-cf-cta").addEventListener("click", goToEmailStep);
+
+  renderOptions(byId("opts-cfteste"), CF_TESTES, function(key){
+    state.cfTeste = key;
+    setTimeout(showRevealCampusFrance, 220);
+  });
+
+  // Código digitado aqui: confirma no Supabase e leva a sessão pro app pelo
+  // mesmo caminho do link do e-mail (tokens no fragmento da URL, que o app lê
+  // e limpa), junto com o que a pessoa respondeu (query string).
+  byId("codigo-form").addEventListener("submit", async function(e){
+    e.preventDefault();
+    var token = byId("codigo-input").value.replace(/\D/g, "");
+    var erro = byId("codigo-erro");
+    erro.textContent = ""; erro.classList.remove("is-visible");
+    if (!token || !emailEnviado) return;
+    var btn = byId("codigo-btn");
+    btn.disabled = true; btn.textContent = "Conferindo...";
+    try {
+      var r = await supabase.auth.verifyOtp({ email: emailEnviado, token: token, type: "email" });
+      if (r.error || !r.data || !r.data.session) throw r.error || new Error("sem sessão");
+      var s = r.data.session;
+      track("codigo_ok", { persona: state.persona, origem: state.origem });
+      var hash = new URLSearchParams({
+        access_token: s.access_token, refresh_token: s.refresh_token,
+        expires_in: String(s.expires_in || 3600), expires_at: String(s.expires_at || ""),
+        token_type: "bearer", type: "magiclink"
+      }).toString();
+      window.location.href = appHandoffUrl() + "#" + hash;
+    } catch (err){
+      console.error("Código não confirmado:", err);
+      erro.textContent = "Esse código não funcionou. Confira os números ou use o link do mesmo e-mail.";
+      erro.classList.add("is-visible");
+      btn.disabled = false; btn.textContent = "Entrar no meu painel →";
+    }
+  });
 
 })();
 </script>
