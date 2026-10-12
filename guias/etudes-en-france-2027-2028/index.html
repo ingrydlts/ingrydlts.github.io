@@ -120,7 +120,7 @@
         <p class="gate-lead">Libere a <strong>linha do tempo com os prazos por nível</strong> e o <strong>checklist dos 12 passos</strong> da candidatura, na ordem do guia do Campus France Brasil.</p>
         <ul class="gate-inc" aria-label="O que está incluído">
           <li>Prazos por nível: 14/12/2026 e 17/01/2027</li>
-          <li>Os 12 passos com caixa para marcar, que ficam salvos no seu navegador</li>
+          <li>Os 12 passos da candidatura, na ordem</li>
           <li>O checklist no Notion, para abrir quando quiser</li>
         </ul>
         <form id="gate-form" novalidate>
@@ -170,90 +170,13 @@
 
       <div class="ok-banner" id="ok-banner" hidden>
         <strong>✓ Guia liberado.</strong>
-        <span>Marque os passos abaixo ou abra o checklist no Notion.</span>
+        <span>Ele está no Notion e abre numa aba nova. Guarde o link para voltar quando precisar.</span>
         <div class="acoes no-print">
           <a class="btn-guia" id="notion-link" href="#" target="_blank" rel="noopener" hidden>Abrir no Notion →</a>
         </div>
       </div>
 
       <div id="locked" hidden>
-        <p class="guia-aviso">⚠️ Conteúdo de orientação, sem caráter de aconselhamento jurídico. Datas e valores vêm do Guia do Candidato 2027-2028 (Campus France Brasil, setembro de 2026) e podem mudar. Cada instituição pode ter prazo próprio: vale sempre o menor. Confirme na plataforma Études en France.</p>
-
-        <section class="guia-sec" id="prazo" style="margin-top:24px">
-          <h2>Quanto falta</h2>
-          <p>O prazo do dossiê depende do nível do curso que você escolheu.</p>
-          <div class="calc">
-            <div class="calc-out on" id="falta">
-              <div><b>1º ano de Licence, BUT ou Arquitetura</b><span id="d1"></span></div>
-              <div><b>L2, L3, Licence Pro, Master e outros</b><span id="d2"></span></div>
-            </div>
-            <p class="calc-note">Contados a partir de hoje, até 14/12/2026 e 17/01/2027.</p>
-          </div>
-        </section>
-
-        <section class="guia-sec" id="linha">
-          <h2>Linha do tempo</h2>
-          <ul>
-            <li><strong>01/10/2026:</strong> abre a plataforma. Dá para preencher o dossiê.</li>
-            <li><strong>14/12/2026:</strong> fim do dossiê do 1º ano de Licence, BUT e Arquitetura.</li>
-            <li><strong>17/01/2027:</strong> fim do dossiê dos demais níveis (L2, L3, Licence Pro, Master e alguns cursos de engenharia e comércio).</li>
-            <li><strong>05/03/2027:</strong> entrevistas e envio do resultado do teste de francês.</li>
-            <li><strong>30/04/2027:</strong> respostas no dossiê, até o fim de abril. Sem resposta até 30/04, escreva direto à instituição.</li>
-            <li><strong>31/05/2027:</strong> escolha definitiva. Não pode ser alterada.</li>
-          </ul>
-          <p><strong>Quantas escolhas:</strong> L1 até 3 (DAP Blanc), Arquitetura até 2 (DAP Jaune) e demais níveis até 7 (Réseau Polytech: 3, em ordem de prioridade). Dá para se candidatar a várias formações com um dossiê só, respeitando o menor prazo entre elas.</p>
-        </section>
-
-        <section class="guia-sec" id="passos">
-          <h2>Os 12 passos</h2>
-          <p class="no-print" style="font-size:14px;color:var(--texto-secundario)">Marque conforme for resolvendo. As caixas ficam salvas neste navegador.</p>
-          <ul class="guia-check" data-check="cf-2027-passos">
-            <li><label style="display:flex;gap:10px;width:100%;cursor:pointer"><input type="checkbox"><span><strong>1. Monte o projeto de estudos.</strong> <span class="d" style="display:block;font-size:14.5px;color:var(--texto-secundario)">Área ligada aos seus objetivos e competências, com projeto coerente. Veja a <a href="https://www.youtube.com/playlist?list=PLg7V5bsl8UPVRmosnqrwyZ6caN0q7Vrem" target="_blank" rel="noopener">série sobre áreas de estudo</a> no YouTube do Campus France Brasil.</span></span></label></li>
-            <li><label style="display:flex;gap:10px;width:100%;cursor:pointer"><input type="checkbox"><span><strong>2. Localize os cursos.</strong> <span class="d" style="display:block;font-size:14.5px;color:var(--texto-secundario)"><a href="https://www.bresil.campusfrance.org/" target="_blank" rel="noopener">Catálogo do Campus France Brasil</a>, <a href="https://www.onisep.fr/" target="_blank" rel="noopener">onisep.fr</a>, <a href="https://www.letudiant.fr/" target="_blank" rel="noopener">letudiant.fr</a>, <a href="https://www.etudiant.gouv.fr/" target="_blank" rel="noopener">etudiant.gouv.fr</a> e os sites das instituições. Confira pré-requisitos, procedimento paralelo e nível de francês exigido.</span></span></label></li>
-            <li><label style="display:flex;gap:10px;width:100%;cursor:pointer"><input type="checkbox"><span><strong>3. Junte os documentos.</strong> <span class="d" style="display:block;font-size:14.5px;color:var(--texto-secundario)">A lista muda por nível. Tradução juramentada; diploma de instituição estrangeira com apostila antes da tradução.</span></span></label></li>
-            <li><label style="display:flex;gap:10px;width:100%;cursor:pointer"><input type="checkbox"><span><strong>4. Escreva as motivações.</strong> <span class="d" style="display:block;font-size:14.5px;color:var(--texto-secundario)">Até 4.000 caracteres, com espaços, pedidos em cada candidatura. Dicas no <a href="https://www.youtube.com/watch?v=86Sk8ghJKpE" target="_blank" rel="noopener">vídeo do Campus France Brasil</a> e no <a href="https://www.bresil.campusfrance.org/carta-de-motivacao" target="_blank" rel="noopener">site oficial</a>.</span></span></label></li>
-            <li><label style="display:flex;gap:10px;width:100%;cursor:pointer"><input type="checkbox"><span><strong>5. Faça o teste de francês.</strong> <span class="d" style="display:block;font-size:14.5px;color:var(--texto-secundario)">Teste oficial, escrito e oral. Veja na Aliança Francesa os prazos de inscrição e de resultado.</span></span></label></li>
-            <li><label style="display:flex;gap:10px;width:100%;cursor:pointer"><input type="checkbox"><span><strong>6. Planeje o orçamento.</strong> <span class="d" style="display:block;font-size:14.5px;color:var(--texto-secundario)">Custo de vida, alojamento, trabalho, auxílios, bolsas e a comprovação de rendimentos que o Consulado pede.</span></span></label></li>
-            <li><label style="display:flex;gap:10px;width:100%;cursor:pointer"><input type="checkbox"><span><strong>7. Crie a conta e preencha o dossiê.</strong> <span class="d" style="display:block;font-size:14.5px;color:var(--texto-secundario)">Em francês ou inglês, conforme os cursos. Anexe os documentos. Veja os <a href="https://www.youtube.com/playlist?list=PLg7V5bsl8UPWbc_xcANzYqViYyi0JPYf0" target="_blank" rel="noopener">tutoriais do Campus France Brasil</a>.</span></span></label></li>
-            <li><label style="display:flex;gap:10px;width:100%;cursor:pointer"><input type="checkbox"><span><strong>8. Submeta o dossiê.</strong> <span class="d" style="display:block;font-size:14.5px;color:var(--texto-secundario)">Assim que puder, dentro do calendário do seu nível.</span></span></label></li>
-            <li><label style="display:flex;gap:10px;width:100%;cursor:pointer"><input type="checkbox"><span><strong>9. Pague a taxa.</strong> <span class="d" style="display:block;font-size:14.5px;color:var(--texto-secundario)">R$ 600 por Pix e declare o pagamento na plataforma. A equipe só verifica depois, por ordem de chegada.</span></span></label></li>
-            <li><label style="display:flex;gap:10px;width:100%;cursor:pointer"><input type="checkbox"><span><strong>10. Faça as correções pedidas.</strong> <span class="d" style="display:block;font-size:14.5px;color:var(--texto-secundario)">Acompanhe o dossiê e responda à equipe do Campus France.</span></span></label></li>
-            <li><label style="display:flex;gap:10px;width:100%;cursor:pointer"><input type="checkbox"><span><strong>11. Faça a entrevista.</strong> <span class="d" style="display:block;font-size:14.5px;color:var(--texto-secundario)">Em local habilitado no Brasil, em até duas semanas depois da validação. É em francês.</span></span></label></li>
-            <li><label style="display:flex;gap:10px;width:100%;cursor:pointer"><input type="checkbox"><span><strong>12. Faça a escolha definitiva.</strong> <span class="d" style="display:block;font-size:14.5px;color:var(--texto-secundario)">Confira os aceites e submeta até 31/05. Não pode ser alterada.</span></span></label></li>
-          </ul>
-        </section>
-
-        <section class="guia-sec" id="nao-garante">
-          <h2>O que a plataforma não garante</h2>
-          <p>O Études en France não garante pré-inscrição, visto de estudante nem bolsa. Escolher o curso e conferir os pré-requisitos é responsabilidade de quem se candidata.</p>
-          <p>Formação marcada como “Encerrada pela instituição” ou “Ponto de entrada inativo”: escreva direto para a universidade para saber se o curso será oferecido a candidatos internacionais.</p>
-        </section>
-
-        <section class="guia-sec" id="fontes">
-          <h2>Todos os links do post</h2>
-          <p>Os endereços são os do guia do Campus France Brasil.</p>
-          <h3>Para escolher o curso</h3>
-          <ul>
-            <li><a href="https://www.bresil.campusfrance.org/" target="_blank" rel="noopener">Site do Campus France Brasil</a>: catálogo de formações</li>
-            <li><a href="https://www.onisep.fr/" target="_blank" rel="noopener">onisep.fr</a>, <a href="https://www.letudiant.fr/" target="_blank" rel="noopener">letudiant.fr</a> e <a href="https://www.etudiant.gouv.fr/" target="_blank" rel="noopener">etudiant.gouv.fr</a></li>
-            <li><a href="https://www.youtube.com/playlist?list=PLg7V5bsl8UPVRmosnqrwyZ6caN0q7Vrem" target="_blank" rel="noopener">Série sobre áreas de estudo (YouTube)</a></li>
-            <li>Os sites das instituições: prazos próprios e procedimentos paralelos</li>
-          </ul>
-          <h3 style="margin-top:20px">Para a candidatura</h3>
-          <ul>
-            <li><a href="https://www.youtube.com/playlist?list=PLg7V5bsl8UPWbc_xcANzYqViYyi0JPYf0" target="_blank" rel="noopener">Tutoriais de preenchimento do dossiê (YouTube)</a></li>
-            <li><a href="https://www.youtube.com/watch?v=86Sk8ghJKpE" target="_blank" rel="noopener">Vídeo com dicas para as motivações (YouTube)</a></li>
-            <li><a href="https://www.bresil.campusfrance.org/carta-de-motivacao" target="_blank" rel="noopener">Carta de motivação, no site do Campus France Brasil</a></li>
-            <li><a href="https://www.bresil.campusfrance.org/como-agendar-atendimento" target="_blank" rel="noopener">Agendar uma sessão de orientação online</a></li>
-          </ul>
-          <h3 style="margin-top:20px">Outros links do guia</h3>
-          <ul>
-            <li><a href="https://www.bresil.campusfrance.org/situacao-nacionalidade-residencia-0" target="_blank" rel="noopener">Candidato com cidadania europeia ou estrangeiro: o processo é por outro meio</a></li>
-            <li><a href="https://www.service-public.gouv.fr/particuliers/vosdroits/F2713" target="_blank" rel="noopener">Alternância: detalhes do contrato de aprendizagem (service-public.gouv.fr)</a></li>
-          </ul>
-          <p>Fonte: Guia do Candidato 2027-2028, Campus France Brasil (setembro de 2026), p. 3 a 6. Para o dinheiro, veja o artigo <a href="/artigos/post/?slug=como-conseguir-bolsa-de-estudo">como conseguir bolsa de estudo</a>. Depois que o visto sair, o prazo que corre é outro: <a href="/guias/vls-ts-validacao-travou/">o guia do VLS-TS</a>.</p>
-        </section>
-
         <aside class="cta-final no-print" id="cta">
           <span class="eyebrow" style="color:#C9D6A8;">Quer uma segunda opinião?</span>
           <h2>Converse comigo sobre o seu caso</h2>
@@ -330,42 +253,22 @@ function track(t, p) { if (window.PDEvents) window.PDEvents.send(t, null, p || {
 function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
 function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
 
-document.querySelectorAll("[data-check]").forEach(function (ul) {
-  var key = "pd_check_" + ul.dataset.check;
-  var saved = []; try { saved = JSON.parse(lsGet(key) || "[]"); } catch (e) {}
-  var boxes = ul.querySelectorAll("input");
-  boxes.forEach(function (b, i) {
-    b.checked = !!saved[i];
-    b.addEventListener("change", function () { lsSet(key, JSON.stringify(Array.prototype.map.call(boxes, function (x) { return x.checked; }))); });
-  });
-});
-
-// Quanto falta: dias corridos de hoje até cada prazo do guia (14/12/2026 e 17/01/2027).
-function diasAte(ano, mes, dia) {
-  var hoje = new Date(); hoje = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
-  return Math.round((new Date(ano, mes - 1, dia) - hoje) / 86400000);
+function lerLink() { try { var v = JSON.parse(lsGet(LS_KEY) || "null"); return v && v.url ? v : null; } catch (e) { return null; } }
+function mostrarLink(link) {
+  var nl = byId("notion-link");
+  nl.href = link.url;
+  if (link.texto) nl.textContent = link.texto + " →";
+  nl.hidden = false;
 }
-function mostrarFalta(id, n) {
-  var e = byId(id);
-  e.textContent = n > 1 ? "faltam " + n + " dias" : n === 1 ? "falta 1 dia" : n === 0 ? "é hoje" : "prazo encerrado";
-  e.style.fontWeight = "600";
-}
-mostrarFalta("d1", diasAte(2026, 12, 14));
-mostrarFalta("d2", diasAte(2027, 1, 17));
+byId("notion-link").addEventListener("click", function () { track("guia_abrir_notion", { guia: GUIA }); });
 
-function liberar(scroll) {
+function liberar(link, scroll) {
+  mostrarLink(link);
   byId("gate").hidden = true;
   byId("ok-banner").hidden = false;
   byId("locked").hidden = false;
   var cta = byId("cta-link");
   fetch("/content/guias.json").then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
-    var item = d && (d.items || []).filter(function (i) { return i.slug === GUIA; })[0];
-    var nl = byId("notion-link");
-    if (item && item.notionUrl) {
-      nl.href = item.notionUrl;
-      nl.hidden = false;
-      nl.addEventListener("click", function () { track("guia_abrir_notion", { guia: GUIA }); });
-    }
     if (d && d.calendlyUrl) {
       cta.href = d.calendlyUrl + (d.calendlyUrl.indexOf("?") === -1 ? "?" : "&") + "utm_source=guia&utm_campaign=" + GUIA;
       cta.hidden = false;
@@ -376,7 +279,8 @@ function liberar(scroll) {
   }).catch(function () { byId("cta").hidden = true; });
   if (scroll) byId("ok-banner").scrollIntoView({ behavior: "smooth", block: "center" });
 }
-if (lsGet(LS_KEY) === "1") liberar(false);
+var salvo = lerLink();
+if (salvo) liberar(salvo, false);
 
 var shownAt = Date.now();
 function erro(m) { var e = byId("gate-erro"); e.textContent = m; e.classList.toggle("is-visible", !!m); }
@@ -396,6 +300,7 @@ byId("gate-form").addEventListener("submit", async function (ev) {
   btn.disabled = true; btn.textContent = "Liberando...";
   var params = new URLSearchParams(window.location.search);
   var payload = {
+    guia: GUIA,
     email: email,
     nome: nome,
     persona: "campus_france",
@@ -412,14 +317,16 @@ byId("gate-form").addEventListener("submit", async function (ev) {
   });
   var igId = params.get("ig"); if (igId) payload.ig = igId.slice(0, 60);
   try {
-    var r = await supabase.rpc("capturar_lead", { payload: payload });
+    var r = await supabase.rpc("capturar_lead_guia", { payload: payload });
     if (r.error) throw r.error;
-    lsSet(LS_KEY, "1");
+    var link = r.data && r.data.notion_url ? { url: r.data.notion_url, texto: r.data.notion_texto || null } : null;
+    if (!link) throw new Error("sem_link");
+    lsSet(LS_KEY, JSON.stringify(link));
     track("guia_lead_capturado", { guia: GUIA, etapa: etapa, utm_campaign: params.get("utm_campaign") || null });
-    liberar(true);
+    liberar(link, true);
   } catch (e) {
-    console.error("capturar_lead:", e);
-    erro("Não consegui confirmar agora. Confere o e-mail e tenta de novo.");
+    console.error("capturar_lead_guia:", e);
+    erro(e && e.message === "sem_link" ? "Seu cadastro foi feito, mas o link do guia não carregou. Tenta de novo em instantes." : "Não consegui confirmar agora. Confere o e-mail e tenta de novo.");
     btn.disabled = false; btn.textContent = "Liberar o guia grátis →";
   }
 });
