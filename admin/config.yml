@@ -247,14 +247,12 @@ collections:
             fields:
               - { label: Título, name: titulo, widget: string }
               - { label: Texto, name: texto, widget: text }
-          - { label: "Link público do guia no Notion", name: notionUrl, widget: string, required: false, hint: "Página do Notion publicada na web (notion.site). Aparece como botão depois do cadastro. Vazio = o botão some." }
-          - { label: "Texto do botão do Notion", name: notionTexto, widget: string, required: false, default: "Abrir no Notion" }
           - { label: "Link de agendamento (Cal.com ou Calendly)", name: calendlyUrl, widget: string, required: false, hint: "Aparece no fim de cada guia, depois do cadastro. O prazo do VLS-TS (se a pessoa usou a calculadora) vai junto como nota do agendamento. Vazio = o bloco de convite some." }
           - { label: "Texto do botão de agendamento", name: calendlyTexto, widget: string, required: false, default: "Agendar uma conversa" }
           - label: "Guias (lista)"
             name: items
             widget: list
-            hint: "Só controla o cartão na lista /guias/. O texto de cada guia fica na própria página dele."
+            hint: "Só controla o cartão na lista /guias/. O link do Notion de cada guia NÃO fica aqui (este arquivo é público): fica no Supabase, tabela guias_links, e só aparece para quem se cadastra."
             fields:
               - { label: "Identificador (slug)", name: slug, widget: string }
               - { label: "Endereço da página", name: url, widget: string, hint: "Ex.: /guias/vls-ts-validacao-travou/" }
