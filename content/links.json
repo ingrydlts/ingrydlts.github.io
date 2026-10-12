@@ -14,27 +14,6 @@
   },
   "sections": [
     {
-      "title": "Em destaque agora",
-      "items": [
-        {
-          "icon": "📋",
-          "title": "Exame Cívico virou obrigatório",
-          "description": "O que estudar e como se preparar sem enrolação.",
-          "href": "/artigos/post/?slug=tudo-sobre-o-exame-civico",
-          "trackId": "exame-civico",
-          "external": false
-        },
-        {
-          "icon": "🗂️",
-          "title": "Dossier ANEF travado?",
-          "description": "Dicas pra renovar seu título de séjour sem se perder no site.",
-          "href": "/artigos/post/?slug=passo-a-passo-da-anef",
-          "trackId": "anef",
-          "external": false
-        }
-      ]
-    },
-    {
       "title": "Vídeos",
       "items": [
         {
@@ -64,7 +43,8 @@
           "description": "Dicas pra renovar seu título de séjour sem se perder no site.",
           "href": "/artigos/post/?slug=passo-a-passo-da-anef",
           "trackId": "anef-doc",
-          "external": false
+          "external": false,
+          "active": false
         }
       ]
     },
