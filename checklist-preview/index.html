@@ -143,14 +143,6 @@
   .cf-linha .d{ flex:0 0 92px; font-weight:600; color:var(--texto-secundario); font-variant-numeric:tabular-nums; }
   .cf-linha li.is-limite .d, .cf-linha li.is-limite .l{ color:var(--grafite); font-weight:700; }
   .cf-linha li.is-hoje .d, .cf-linha li.is-hoje .l{ color:var(--verde-moss); font-weight:700; }
-  .cf-grupo{ font-size:12px; font-weight:700; color:var(--downtown-brown); margin:14px 0 4px; }
-  .cf-grupo:first-child{ margin-top:0; }
-  .cf-passo{ display:flex; gap:12px; padding:8px 0; border-top:1px solid var(--borda-suave); }
-  .cf-passo .n{ flex:none; width:24px; height:24px; border-radius:50%; background:var(--off-white); border:1px solid var(--borda); font-size:12px; font-weight:700; display:flex; align-items:center; justify-content:center; font-variant-numeric:tabular-nums; }
-  .cf-passo .t{ font-size:14.5px; font-weight:500; line-height:1.4; }
-  .cf-passo .dica{ display:block; font-size:13px; color:var(--texto-secundario); font-weight:400; margin-top:3px; }
-  .cf-passo.is-fechado .t{ color:var(--texto-secundario); }
-  .cf-docs{ margin:0; padding-left:18px; display:grid; gap:6px; font-size:14.5px; }
   .cf-alerta{ margin-top:18px; padding:14px 16px; border-radius:var(--radius-md); background:#F5ECDC; color:var(--downtown-brown); font-size:14px; line-height:1.5; }
   .cf-fonte{ font-size:12px; color:var(--texto-secundario); margin-top:12px; }
   .codigo-form{ display:flex; flex-direction:column; gap:12px; max-width:360px; }
@@ -326,13 +318,11 @@
       <div class="cf-prazo" id="cf-prazo"></div>
       <p class="phase-note" id="cf-nota"></p>
       <div class="cf-bloco"><p class="cf-bloco-titulo">Linha do tempo do ciclo</p><ul class="cf-linha" id="cf-linha"></ul></div>
-      <div class="cf-bloco"><p class="cf-bloco-titulo">Os 12 passos do guia <span id="cf-passos-nota"></span></p><div id="cf-passos"></div></div>
-      <div class="cf-bloco"><p class="cf-bloco-titulo">Documentos do seu nível</p><ul class="cf-docs" id="cf-docs"></ul></div>
       <div class="cf-alerta" id="cf-alerta" hidden></div>
       <p class="cf-fonte" id="cf-fonte"></p>
       <div class="reveal-cta-row">
         <button class="btn-primary" id="reveal-cf-cta" type="button">Salvar meu painel da candidatura →</button>
-        <p class="reveal-cta-note">No painel: o prazo contando, os passos que você já fez marcados e cada documento com o estado dele.</p>
+        <p class="reveal-cta-note">No painel: os 12 passos do guia na ordem, os documentos do seu nível e o prazo contando.</p>
       </div>
     </section>
 
@@ -980,28 +970,6 @@ import { isPublished } from '/assets/js/render.js';
       li(m.d, m.l, m.limite ? "is-limite" : "");
     });
     if (!hojeFeito) li(hojeIso, "Hoje: você está aqui", "is-hoje");
-
-    // 12 passos: os dois primeiros abertos, com a dica; o resto com o
-    // título (o passo a passo e o prazo de cada um ficam no painel).
-    var passosWrap = byId("cf-passos"); passosWrap.innerHTML = "";
-    var grupoAtual = null;
-    c.passos.forEach(function(p){
-      if (p.grupo !== grupoAtual){
-        grupoAtual = p.grupo;
-        var g = document.createElement("p"); g.className = "cf-grupo"; g.textContent = p.grupo;
-        passosWrap.appendChild(g);
-      }
-      var row = document.createElement("div"); row.className = "cf-passo" + (p.n > 2 ? " is-fechado" : "");
-      var num = document.createElement("span"); num.className = "n"; num.textContent = p.n;
-      var tx = document.createElement("span"); tx.className = "t"; tx.textContent = p.label;
-      if (p.n <= 2 && p.dica){ var dc = document.createElement("span"); dc.className = "dica"; dc.textContent = p.dica; tx.appendChild(dc); }
-      row.appendChild(num); row.appendChild(tx); passosWrap.appendChild(row);
-    });
-    byId("cf-passos-nota").textContent = "passo a passo de cada um no painel";
-
-    var docs = (c.documentos.comum || []).concat(c.documentos[nivel] || []);
-    var dl = byId("cf-docs"); dl.innerHTML = "";
-    docs.forEach(function(d){ var i = document.createElement("li"); i.textContent = d; dl.appendChild(i); });
 
     var alerta = byId("cf-alerta");
     var validade = porNivel(c.teste_validade, nivel);
