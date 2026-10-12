@@ -1,0 +1,45 @@
+{
+  "_comentario": "Espelha o bloco eventos.etudes_en_france_2027_28 de content/datas-oficiais.json do POR-DENTRO-APP e os 12 passos/documentos de content/checklist-templates.json (persona campus_france). Atualizar junto com o app: o site ainda nao consegue ler o JSON do app direto (outro dominio). Usado so pelo /checklist-preview/ (revelacao da candidatura).",
+  "ciclo": "2027-2028",
+  "abertura": "2026-10-01",
+  "dossie_ate": { "l1": "2026-12-14", "arq": "2026-12-14", "l2l3": "2027-01-17", "lpro": "2027-01-17", "master": "2027-01-17", "escola": "2027-01-17", "tecnologo": "2027-01-17" },
+  "escolhas_max": { "l1": 3, "arq": 2, "l2l3": 7, "lpro": 7, "master": 7, "escola": 7, "tecnologo": 7 },
+  "teste_validade": { "l1": "2026-12-15", "arq": "2026-12-15", "outros": "2027-03-15" },
+  "teste_resultado_ate": "2027-03-05",
+  "respostas_ate": "2027-04-30",
+  "escolha_definitiva_ate": "2027-05-31",
+  "fonte": "Guia do Candidato 2027-2028, Campus France Brasil, set/2026",
+  "niveis": {
+    "l1": "1º ano de Licence ou BUT",
+    "arq": "Arquitetura (ENSA)",
+    "l2l3": "2º ou 3º ano de Licence",
+    "lpro": "Licence Pro",
+    "master": "Master",
+    "escola": "Escola de engenharia ou de comércio",
+    "tecnologo": "Tecnólogo: nível a confirmar com os cursos"
+  },
+  "passos": [
+    { "n": 1, "grupo": "Preparar", "label": "Definir o projeto de estudos", "dica": "O curso precisa fazer sentido com o que você já estudou e com o que quer fazer depois." },
+    { "n": 2, "grupo": "Preparar", "label": "Escolher as formações e conferir o prazo de cada uma", "dica": "Algumas fecham antes da plataforma: vale sempre o menor prazo." },
+    { "n": 3, "grupo": "Preparar", "label": "Reunir documentos e traduções juramentadas" },
+    { "n": 4, "grupo": "Preparar", "label": "Escrever as motivações (até 4.000 caracteres)" },
+    { "n": 5, "grupo": "Preparar", "label": "Fazer o teste de francês e enviar o resultado" },
+    { "n": 6, "grupo": "Preparar", "label": "Planejar o orçamento e a renda que o consulado pede" },
+    { "n": 7, "grupo": "Candidatar", "label": "Criar e preencher o dossiê na plataforma" },
+    { "n": 8, "grupo": "Candidatar", "label": "Submeter o dossiê" },
+    { "n": 9, "grupo": "Candidatar", "label": "Pagar a taxa e declarar o pagamento" },
+    { "n": 10, "grupo": "Candidatar", "label": "Fazer as correções pedidas" },
+    { "n": 11, "grupo": "Decidir", "label": "Fazer a entrevista presencial" },
+    { "n": 12, "grupo": "Decidir", "label": "Fazer a escolha definitiva" }
+  ],
+  "documentos": {
+    "comum": ["Passaporte (ou RG/CIN por enquanto)", "Currículo", "Comprovante de acesso ao ensino superior (ENEM, admissão MEC ou SISU)"],
+    "l1": ["Histórico e certificado do ensino médio, traduzidos"],
+    "arq": ["Histórico e certificado do ensino médio, traduzidos", "Portfólio em francês"],
+    "l2l3": ["Histórico e certificado do ensino médio, traduzidos", "Histórico oficial da graduação"],
+    "lpro": ["Histórico e certificado do ensino médio, traduzidos", "Histórico e diploma da graduação"],
+    "master": ["Diploma (ou declaração de provável conclusão) e histórico"],
+    "escola": ["Histórico e certificado do ensino médio, traduzidos", "Documentos da graduação, conforme o ano de entrada"],
+    "tecnologo": ["Histórico e certificado do ensino médio", "Histórico oficial do tecnólogo", "Diploma ou declaração de conclusão", "Carga horária e ementas"]
+  }
+}
