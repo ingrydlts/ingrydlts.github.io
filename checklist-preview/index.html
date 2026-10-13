@@ -148,6 +148,11 @@
   .codigo-form{ display:flex; flex-direction:column; gap:12px; max-width:360px; }
   .codigo-form input{ font-family:inherit; font-size:24px; letter-spacing:6px; text-align:center; padding:12px 14px; border-radius:var(--radius-md); border:1px solid var(--borda); }
   .codigo-form input:focus{ border-color:var(--verde-moss); outline:none; }
+  /* Voltar: pra quem errou uma resposta. Discreto, acima do card da pergunta
+     (ou no topo da revelação e do e-mail), sem competir com as opções. */
+  .btn-voltar{ display:inline-flex; align-items:center; gap:6px; background:none; border:none; padding:6px 0; margin:0 0 14px; font-family:inherit; font-size:14px; font-weight:600; color:var(--texto-secundario); cursor:pointer; }
+  .btn-voltar:hover{ color:var(--grafite); }
+  .btn-voltar:focus-visible{ outline:2px solid var(--verde-moss); outline-offset:3px; border-radius:4px; }
   .thanks h2{ margin-bottom:12px; }
   .thanks p{ color:var(--texto-secundario); font-size:15.5px; margin-bottom:24px; max-width:50ch; }
 </style>
@@ -192,6 +197,7 @@
 
     <section class="preview-section" id="quiz" hidden>
       <div class="quiz-progress"><div class="quiz-progress-bar" id="progress-bar"></div></div>
+      <button type="button" class="btn-voltar" id="quiz-voltar" data-voltar hidden>← Voltar</button>
 
       <!-- Entrada direta (sem handoff do bot): em vez de pedir o "perfil
            migratório" (técnico demais), pergunta onde a pessoa está, o visto
@@ -298,6 +304,7 @@
     </section>
 
     <section class="preview-section" id="reveal" hidden>
+      <button type="button" class="btn-voltar" data-voltar>← Voltar e mudar uma resposta</button>
       <span class="eyebrow" style="color:var(--verde-moss);" id="persona-eyebrow">Seu checklist</span>
       <h2 id="reveal-title">Aqui está o que você vai precisar resolver.</h2>
       <p class="phase-note" id="phase-note"></p>
@@ -313,6 +320,7 @@
          chegada, que só servem daqui a meses. Dados em
          /content/campus-france-ciclo.json. -->
     <section class="preview-section" id="reveal-cf" hidden>
+      <button type="button" class="btn-voltar" data-voltar>← Voltar e mudar uma resposta</button>
       <span class="eyebrow" style="color:var(--verde-moss);" id="cf-eyebrow">Sua candidatura · Études en France</span>
       <h2 id="cf-titulo">Seu prazo</h2>
       <div class="cf-prazo" id="cf-prazo"></div>
@@ -341,6 +349,7 @@
     </section>
 
     <section class="preview-section" id="email-step" hidden>
+      <button type="button" class="btn-voltar" data-voltar>← Voltar</button>
       <span class="eyebrow" style="color:var(--verde-moss);">Quase lá</span>
       <h2 id="email-step-title">Só falta confirmar seu e-mail.</h2>
       <p class="phase-note" id="email-step-note">É pra esse e-mail que eu mando o código de acesso ao seu painel — sem senha: você digita o código aqui mesmo e entra.</p>
@@ -732,9 +741,21 @@ import { isPublished } from '/assets/js/render.js';
   // depois a próxima "entra" (fade + flutua + brilha) — em vez de trocar o
   // hidden na marra. instant=true pula a animação (usado no roteamento
   // inicial do handoff, antes da seção do quiz ficar visível).
+  // Pilha das perguntas por onde a pessoa passou — o "← Voltar" desempilha.
+  // A resposta dada continua marcada no card (is-selected), pra trocar ou
+  // seguir igual.
+  var historico = [];
+  var voltando = false;
+  function atualizarVoltarQuiz(){ byId("quiz-voltar").hidden = historico.length === 0; }
+
   function swapStep(nextEl, instant){
     if (!nextEl) return;
     var current = document.querySelector(".step:not([hidden])");
+    // Roteamento inicial (instant) não entra: quem chegou do bot pulou perguntas
+    // de propósito e não deve "voltar" pra elas.
+    if (current && current !== nextEl && !voltando && !instant) historico.push(current.dataset.step);
+    voltando = false;
+    atualizarVoltarQuiz();
     if (instant || !current || current === nextEl){
       document.querySelectorAll(".step").forEach(function(s){
         s.hidden = s !== nextEl;
@@ -1050,7 +1071,9 @@ import { isPublished } from '/assets/js/render.js';
   var emailStepShownAt = null;
   var emailEnviado = "";
 
+  var emailVeioDe = "quiz";
   function goToEmailStep(){
+    emailVeioDe = !byId("reveal-cf").hidden ? "reveal-cf" : (!byId("reveal").hidden ? "reveal" : "quiz");
     if (!state.persona){
       byId("email-step-title").textContent = "Antes de te mostrar o seu caminho, qual é o seu e-mail?";
       byId("email-step-note").textContent = "É por ele que eu te mando conteúdo do seu percurso e te respondo se você tiver uma dúvida.";
@@ -1298,6 +1321,33 @@ import { isPublished } from '/assets/js/render.js';
     state.name = capitalizarNome(byId("name-input").value.trim());
     goToStep(state.persona === "campus_france" ? "estudos" : "worry");
   });
+
+  function voltar(){
+    // Do e-mail: volta pra tela de onde veio (revelação ou a última pergunta).
+    if (!byId("email-step").hidden){
+      byId("email-step").hidden = true;
+      if (emailVeioDe === "quiz") byId("quiz").hidden = false;
+      else byId(emailVeioDe).hidden = false;
+      byId(emailVeioDe === "quiz" ? "quiz" : emailVeioDe).scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
+    }
+    // Da revelação: volta pra última pergunta respondida (ela ficou visível
+    // dentro do quiz, que só tinha sido escondido).
+    if (!byId("reveal").hidden || !byId("reveal-cf").hidden){
+      byId("reveal").hidden = true;
+      byId("reveal-cf").hidden = true;
+      byId("quiz").hidden = false;
+      atualizarVoltarQuiz();
+      byId("quiz").scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
+    }
+    var anterior = historico.pop();
+    if (anterior === undefined) return;
+    voltando = true;
+    goToStep(anterior);
+    track("checklist_preview_voltar", { para: anterior });
+  }
+  document.querySelectorAll("[data-voltar]").forEach(function(b){ b.addEventListener("click", voltar); });
 
   byId("reveal-cta").addEventListener("click", goToEmailStep);
   byId("reveal-cf-cta").addEventListener("click", goToEmailStep);
