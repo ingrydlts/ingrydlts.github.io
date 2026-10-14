@@ -14,7 +14,9 @@ var STAGES = [
   { k: 'em_uso', l: 'Em uso', d: 'marcando itens' }, { k: 'um_a_um', l: '1:1', d: 'agendou conversa' },
   { k: 'concluido', l: 'Concluído', d: 'terminou o percurso' }, { k: 'inativo', l: 'Inativo', d: 'sumiu há 30+ dias' }
 ];
-var ORIG = { instagram: 'Instagram', bot: 'Assistente de vistos', blog: 'Blog', direto: 'Direto', artigo: 'Artigo', login_direto: 'Login direto' };
+var ORIG = { instagram: 'Instagram', bot: 'Assistente de vistos', blog: 'Blog', direto: 'Direto', artigo: 'Artigo', login_direto: 'Login direto',
+  'guia-vls-ts': 'Guia VLS-TS', 'guia-email-alt30': 'Guia alternância 30+', 'guia-etudes-en-france-2027': 'Guia Campus France' };
+function origLabel(o) { return ORIG[o] || o; }
 var SEGMENTS = [
   { k: 'naoabriu', t: 'Não abriu o e-mail', lever: 'Gatilho ausente', why: 'O e-mail chegou mas nunca foi aberto — sem gatilho, nada acontece. Ação: reenviar com outro assunto, ou checar se caiu no spam.' },
   { k: 'naoclicou', t: 'Abriu mas não clicou', lever: 'Falta motivação/prova', why: 'Leu e não sentiu motivo pra agir. Ação: prova social (quem já passou pelo mesmo) e botão mais simples.' },
@@ -72,7 +74,19 @@ TPLS.guia_alternancia = { label: 'Guia alternância 30+ — convite pra conversa
       'Se quiser rever o modelo, ele continua aqui: https://imigrantepordentro.com/guias/email-alternancia-30-mais/\n\n' +
       'E se quiser que eu olhe o seu caso antes de você escrever pra escola, é só escolher um horário: ' + CAL_LINK + '&utm_source=email&utm_campaign=guia-alternancia\n\nIngryd · Por Dentro']; } };
 var TPL_ORDER = ['boas_vindas', 'naoabriu', 'naoclicou', 'cliquenaoapp', 'parouapp', 'guia_chamada', 'guia_plataforma', 'guia_alternancia'];
-function defaultTpl(c) { return c.segmento || (c.origem === 'guia-vls-ts' ? 'guia_chamada' : c.origem === 'guia-email-alt30' ? 'guia_alternancia' : 'boas_vindas'); }
+// Jornada da pessoa. Sem a migração crm-enriquecimento.sql as colunas novas não existem: cai na origem da ficha.
+function origensDe(c) { return c.origens && c.origens.length ? c.origens : (c.origem ? [c.origem] : []); }
+function ultimaOrigem(c) { return c.ultima_origem || c.origem; }
+function nCapturas(c) { return Math.max(1, c.capturas || 0); }
+function voltou(c) { return nCapturas(c) >= 2; }
+// Voltou a deixar o e-mail depois do último e-mail que você mandou (ou nunca recebeu e-mail).
+function voltouDepoisDoEmail(c) { return voltou(c) && !!c.ultima_captura_em && (!c.email_enviado_em || c.ultima_captura_em > c.email_enviado_em); }
+function guiaTpl(o) { return o === 'guia-vls-ts' ? 'guia_chamada' : o === 'guia-email-alt30' ? 'guia_alternancia' : null; }
+function defaultTpl(c) {
+  var g = guiaTpl(ultimaOrigem(c));
+  if (g && (!c.segmento || voltouDepoisDoEmail(c))) return g;
+  return c.segmento || 'boas_vindas';
+}
 function splitTpl(c, k) { var t = TPLS[k].make(c); return { subject: t[0].replace(/^Assunto: /, ''), body: t[1] }; }
 
 var C = [], Q = [], L = [], SUBS = {};
@@ -204,7 +218,7 @@ function initControls() {
   var stMap = {}; STAGES.forEach(function (s) { stMap[s.k] = s.l; });
   fillSelect($('f-stage'), 'Todo estágio', stMap);
   var origs = {}; Object.keys(ORIG).forEach(function (k) { origs[k] = ORIG[k]; });
-  C.forEach(function (c) { if (c.origem && !origs[c.origem]) origs[c.origem] = c.origem; });
+  C.forEach(function (c) { origensDe(c).forEach(function (o) { if (!origs[o]) origs[o] = o; }); });
   fillSelect($('f-orig'), 'Toda origem', origs);
   fillCampanhas();
   fillSelect($('funil-persona'), 'Toda persona', PERSONAS);
@@ -225,8 +239,9 @@ function filtered() {
     if (state.sub && c.subpersona !== state.sub) return false;
     if (state.urg && c.urgencia !== state.urg) return false;
     if (state.stage && c.estagio !== state.stage) return false;
-    if (state.orig && c.origem !== state.orig) return false;
+    if (state.orig && origensDe(c).indexOf(state.orig) === -1) return false;
     if (state.camp && (state.camp === '__sem' ? !!c.utm_campaign : c.utm_campaign !== state.camp)) return false;
+    if (state.preset === 'voltaram' && !voltou(c)) return false;
     if (state.preset === 'parados' && !(c.dias >= 7 && c.estagio !== 'concluido')) return false;
     if (state.preset === 'prazo' && !(c.dias_para_prazo != null && c.dias_para_prazo <= 30 && c.dias_para_prazo >= -90 && c.estagio !== 'concluido')) return false;
     if (state.preset === 'aupair' && !(c.persona === 'au_pair_estudante' && c.respostas && c.respostas.apCertificado === 'nao')) return false;
@@ -284,6 +299,27 @@ function renderToday() {
     return '<button class="row" data-open="' + esc(c.id) + '" type="button"><div class="' + avClass(c) + '">' + esc(ini(c)) + '</div><div class="who"><b>' + esc(short(c)) + '</b><span>' + esc(personaLabel(c)) + (subLabel(c) ? ' · ' + esc(subLabel(c)) : '') + '</span></div><span class="when">' + esc(fmtWhen(c.um_a_um_quando)) + '</span></button>';
   }).join('') || '<div class="empty">Nenhum 1:1 marcado.</div>';
   renderLembretes();
+  renderGuias();
+}
+
+// Visão macro: por guia/origem, quantas pessoas passaram, quantas voltaram e quantas aceitam novidades.
+// Clicar abre a lista de contatos já filtrada naquela origem.
+function renderGuias() {
+  var box = $('today-guias'); if (!box) return;
+  var g = {};
+  C.forEach(function (c) {
+    origensDe(c).forEach(function (o) {
+      var x = g[o] || (g[o] = { n: 0, volta: 0, aceita: 0 });
+      x.n++; if (voltou(c)) x.volta++; if (c.aceita_novidades) x.aceita++;
+    });
+  });
+  var rows = Object.keys(g).filter(function (o) { return o.indexOf('guia-') === 0; })
+    .sort(function (a, b) { return g[b].n - g[a].n; });
+  box.innerHTML = rows.map(function (o) {
+    var x = g[o];
+    return '<button class="row" data-guia="' + esc(o) + '" type="button"><div class="who"><b>' + esc(origLabel(o)) + '</b><span>' + x.n + (x.n === 1 ? ' pessoa' : ' pessoas') +
+      ' · ' + x.volta + ' voltaram · ' + x.aceita + ' aceitam novidades</span></div></button>';
+  }).join('') || '<div class="empty">Nenhum guia com cadastro ainda.</div>';
 }
 
 // Card "Lembretes de prazo" do Hoje: quem pediu, na calculadora de um artigo, pra ser
@@ -308,8 +344,8 @@ function renderContacts() {
   $('result-count').textContent = list.length;
   $('tbody').innerHTML = list.map(function (c) {
     return '<tr data-id="' + esc(c.id) + '" aria-selected="' + (c.id === state.sel) + '" tabindex="0">' +
-      '<td><div class="nm"><div class="' + avClass(c) + '">' + esc(ini(c)) + '</div><div><b>' + esc(displayName(c)) + '</b><span>' + esc(c.email) + '</span></div></div></td>' +
-      '<td><span class="persona">' + esc(personaLabel(c)) + '</span><div class="sub">' + esc(subLabel(c)) + '</div></td>' +
+      '<td><div class="nm"><div class="' + avClass(c) + '">' + esc(ini(c)) + '</div><div><b>' + esc(displayName(c)) + (voltou(c) ? ' <span class="pill" title="Deixou o e-mail ' + nCapturas(c) + ' vezes">voltou ×' + nCapturas(c) + '</span>' : '') + '</b><span>' + esc(c.email) + '</span></div></div></td>' +
+      '<td><span class="persona">' + esc(personaLabel(c)) + '</span><div class="sub">' + esc(subLabel(c)) + '</div>' + (origensDe(c).length > 1 ? '<div class="sub">' + esc(origensDe(c).map(origLabel).join(' · ')) + '</div>' : '') + '</td>' +
       '<td>' + urgPill(c.urgencia) + '</td><td><span class="stage">' + esc(stageLabel(c.estagio)) + '</span></td>' +
       '<td>' + prazoCell(c) + '</td><td class="sub num">' + ago(c.dias) + '</td></tr>';
   }).join('');
@@ -392,9 +428,9 @@ function renderReimpacto() {
 function eventText(e) {
   var d = e.dados || {}, t = e.tipo;
   var m = {
-    email_capturado: ['sistema', 'Deixou o e-mail' + (d.origem ? ' (' + d.origem + ')' : '')],
+    email_capturado: ['sistema', 'Deixou o e-mail' + (d.origem ? ' (' + origLabel(d.origem) + ')' : '')],
     lembrete_pedido: ['artigo', 'Pediu lembrete do prazo de ' + fmtDay(d.prazo) + (d.artigo ? ' (' + d.artigo + ')' : '')],
-    email_recapturado: ['sistema', 'Refez o quiz'],
+    email_recapturado: ['sistema', 'Voltou a deixar o e-mail' + (d.origem ? ' (' + origLabel(d.origem) + ')' : '')],
     quiz_respondido: ['sistema', 'Respondeu o quiz do funil'],
     acesso_ativado: ['app', 'Abriu o link de acesso'],
     senha_definida: ['sistema', 'Definiu uma senha'],
@@ -417,6 +453,21 @@ async function openPessoa(id) {
   state.sel = id;
   show('pessoa');
 }
+// Resumo da jornada: por onde a pessoa passou, quantas vezes voltou e qual e-mail faz sentido agora.
+function jornadaPanel(c, h4) {
+  var os = origensDe(c), ps = (c.personas && c.personas.length > 1) ? c.personas : [];
+  var k = defaultTpl(c), t = TPLS[k];
+  var linhas = [];
+  linhas.push('<p style="margin:0 0 6px;font-size:13px"><b>Deixou o e-mail ' + nCapturas(c) + (nCapturas(c) === 1 ? ' vez' : ' vezes') + '</b>' +
+    (c.ultima_captura_em ? ' · última em ' + esc(fmtDay(c.ultima_captura_em)) : '') + '</p>');
+  if (os.length) linhas.push('<div class="ctx" style="margin:0 0 8px">' + os.map(function (o) { return '<span class="pill">' + esc(origLabel(o)) + '</span>'; }).join('') + '</div>');
+  if (ps.length) linhas.push('<p class="sub" style="margin:0 0 8px">Personas: ' + esc(ps.map(function (p) { return PERSONAS[p] || p; }).join(' → ')) + '</p>');
+  linhas.push('<p class="sub" style="margin:0 0 8px">' + (voltouDepoisDoEmail(c) ? 'Voltou depois do seu último e-mail: ' : 'E-mail sugerido agora: ') + '<b>' + esc(t.label) + '</b>.</p>');
+  var bloq = EXIGEM_NOVIDADES[k] && !c.aceita_novidades;
+  linhas.push(bloq ? '<p class="sub" style="margin:0;color:var(--red)">Não aceitou novidades por e-mail: este modelo não pode ser enviado.</p>'
+    : '<button class="btn primary" type="button" data-emailfor="' + esc(c.id) + '" data-tplk="' + esc(k) + '">Escrever este e-mail →</button>');
+  return '<div class="panel" style="padding:16px"><h4 style="' + h4 + '">Jornada</h4>' + linhas.join('') + '</div>';
+}
 async function renderPessoa() {
   var c = byC(state.sel);
   if (!c) { $('pessoa-page').innerHTML = '<div class="empty">Pessoa não encontrada.</div>'; return; }
@@ -431,7 +482,7 @@ async function renderPessoa() {
   var last = function (f) { var x = cons.filter(function (k) { return k.finalidade === f; })[0]; return x ? x.aceito : false; };
   var perg = Q.filter(function (x) { return x.contato_id === c.id; });
   var resp = c.respostas || {};
-  var kv = [['Entrada na França', fmtDay(c.data_entrada)], ['Prazo do VLS-TS', c.prazo_limite ? fmtDay(c.prazo_limite) + ' (' + prazoTxt(c) + ')' : '—'], ['Fase', c.fase || '—'], ['Nível de estudos', c.nivel_estudos || '—'], ['Preocupação', c.preocupacao || '—'], ['Origem', ORIG[c.origem] || c.origem || '—'], ['Campanha (UTM)', c.utm_campaign || '—'], ['Conteúdo / post (UTM)', c.utm_content || '—'], ['Fonte (UTM)', c.utm_source || '—']]
+  var kv = [['Entrada na França', fmtDay(c.data_entrada)], ['Prazo do VLS-TS', c.prazo_limite ? fmtDay(c.prazo_limite) + ' (' + prazoTxt(c) + ')' : '—'], ['Fase', c.fase || '—'], ['Nível de estudos', c.nivel_estudos || '—'], ['Preocupação', c.preocupacao || '—'], ['Origem (1ª vez)', origLabel(c.origem) || '—'], ['Última origem', origLabel(ultimaOrigem(c)) || '—'], ['Campanha (UTM)', c.utm_campaign || '—'], ['Conteúdo / post (UTM)', c.utm_content || '—'], ['Fonte (UTM)', c.utm_source || '—']]
     .concat(Object.keys(resp).map(function (k) { return [k, resp[k]]; }));
   var h4 = 'font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-3); margin:0 0 8px';
   $('pessoa-page').innerHTML =
@@ -453,6 +504,7 @@ async function renderPessoa() {
       return '<div class="feeditem"><span class="pill ' + m[1] + '">' + esc(m[0]) + '</span><div class="fbody"><p>' + esc(tx[1]) + '</p><time>' + esc(fmtDate(e.criado_em)) + '</time></div></div>';
     }).join('') || '<div class="empty">Nada registrado ainda.</div>') + '</div></div>' +
     '<div style="display:flex; flex-direction:column; gap:16px">' +
+    jornadaPanel(c, h4) +
     '<div class="panel" style="padding:16px"><h4 style="' + h4 + '">O que respondeu no funil</h4><dl class="kv">' + kv.map(function (x) { return '<dt>' + esc(x[0]) + '</dt><dd>' + esc(x[1]) + '</dd>'; }).join('') + '</dl></div>' +
     (perg.length ? '<div class="panel" style="padding:16px"><h4 style="' + h4 + '">Perguntas únicas</h4>' + perg.map(function (x) { return '<p style="margin:0 0 6px;font-size:13px">"' + esc(x.texto) + '" <button class="link" data-openq="' + x.id + '" type="button">' + (x.status === 'nova' ? 'Responder' : 'Ver resposta') + ' →</button></p>'; }).join('') + '</div>' : '') +
     '<div class="panel" style="padding:16px"><h4 style="' + h4 + '">E-mails enviados</h4>' + (mails.map(function (m) {
@@ -560,11 +612,11 @@ function show(view) {
 }
 
 function csv(rows) {
-  var head = ['nome', 'email', 'persona', 'subpersona', 'urgencia', 'estagio', 'origem', 'dias_sem_sinal', 'aceita_novidades', 'data_entrada', 'prazo_limite', 'dias_para_prazo', 'utm_source', 'utm_campaign', 'utm_content', 'instagram', 'ig_id'];
+  var head = ['nome', 'email', 'persona', 'subpersona', 'urgencia', 'estagio', 'origem', 'origens', 'capturas', 'dias_sem_sinal', 'aceita_novidades', 'data_entrada', 'prazo_limite', 'dias_para_prazo', 'utm_source', 'utm_campaign', 'utm_content', 'instagram', 'ig_id'];
   // Neutraliza fórmulas (=,+,-,@) pra a planilha não executar texto vindo do formulário público.
   var cell = function (v) { var s = String(v == null ? '' : v); if (/^[=+\-@\t\r]/.test(s)) s = "'" + s; return '"' + s.replace(/"/g, '""') + '"'; };
   return [head.join(',')].concat(rows.map(function (c) {
-    return [c.nome, c.email, personaLabel(c), subLabel(c), c.urgencia, c.estagio, c.origem, c.dias, c.aceita_novidades ? 'sim' : 'não', c.data_entrada, c.prazo_limite, c.dias_para_prazo, c.utm_source, c.utm_campaign, c.utm_content, c.instagram, c.ig_id].map(cell).join(',');
+    return [c.nome, c.email, personaLabel(c), subLabel(c), c.urgencia, c.estagio, c.origem, origensDe(c).join(' | '), nCapturas(c), c.dias, c.aceita_novidades ? 'sim' : 'não', c.data_entrada, c.prazo_limite, c.dias_para_prazo, c.utm_source, c.utm_campaign, c.utm_content, c.instagram, c.ig_id].map(cell).join(',');
   })).join('\n');
 }
 
@@ -575,6 +627,7 @@ document.addEventListener('click', async function (e) {
   if (t.matches('.nav')) return show(t.dataset.view);
   if (t.dataset.go) { if (t.dataset.viewPreset) applyPreset(t.dataset.viewPreset); return show(t.dataset.go); }
   if (t.dataset.preset) return applyPreset(t.dataset.preset);
+  if (t.dataset.guia) { applyPreset('todos'); state.orig = t.dataset.guia; syncControls(); return show('contatos'); }
   if (t.dataset.clear) {
     if (t.dataset.clear === 'all') return applyPreset('todos');
     state[t.dataset.clear] = ''; if (t.dataset.clear === 'persona') state.sub = ''; state.preset = '';
