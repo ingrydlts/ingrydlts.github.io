@@ -8,7 +8,8 @@
     "test:cerebro": "node crm-fase3-cerebro.test.mjs",
     "test:agregados": "node crm-fase3c-agregados.test.mjs",
     "test:guias": "node guias-link-privado.test.mjs",
-    "test:enriquecimento": "node crm-enriquecimento.test.mjs"
+    "test:enriquecimento": "node crm-enriquecimento.test.mjs",
+    "test:fase0": "node crm-fase0-email-guia.test.mjs"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.8"
