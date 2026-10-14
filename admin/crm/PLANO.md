@@ -12,7 +12,7 @@ Backend: o **mesmo Supabase** do app (projeto `hslhpktfgxwfvljvsxkj`). Painel: e
 | Funil (kanban por estágio) | `crm_contatos.estagio` | pronto |
 | Página da pessoa (feed, anotações, consentimento, mudar estágio) | `eventos`, `consentimentos`, `contatos.nota` | pronto |
 | Marcar 1:1 / Enviar sinal | `um_a_um`, `sinais` (o app lê com `meus_sinais()`) | pronto no painel; **falta o dashboard do app mostrar o sinal** |
-| Perguntas únicas | `perguntas_unicas` | painel e formulário do fim dos artigos (`assets/js/leads.js`) prontos; falta o **envio da resposta por e-mail** (fase 3) |
+| Caixa de entrada (Perguntas únicas + Respostas por e-mail) | `perguntas_unicas`, `respostas_email` (`db/crm-fase0-email-guia.sql`) | perguntas: painel e formulário dos artigos prontos. Respostas por e-mail: chegam por `respostas@imigrantepordentro.com` (Email Routing → Worker `email()`), README do Worker seção 17 |
 | Lembretes de prazo (Hoje) | `lembretes_prazo` (`db/crm-fase2c-lembretes.sql`) | pronto: a calculadora `[[PRAZO]]` dos artigos chama `pedir_lembrete_prazo`; o card mostra quem avisar nos próximos 7 dias |
 | Reimpactar (segmentos) | coluna `segmento` de `crm_contatos` (regras na view) | pronto (envio via Worker → Brevo; ver README do Worker, seção 16) |
 | Modelos de e-mail | `TPLS` em `crm.js` | pronto |
@@ -25,6 +25,15 @@ Backend: o **mesmo Supabase** do app (projeto `hslhpktfgxwfvljvsxkj`). Painel: e
 há até 90; **média** = vence em 31 a 60 dias. O painel ordena por prazo dentro de cada urgência e tem o
 filtro "Prazo VLS-TS curto". Modelos de e-mail `guia_chamada` e `guia_plataforma` (só para quem aceitou
 novidades; o Worker também confere). Testes: `db/testes` → `APP_DB_DIR=<POR DENTRO APP>/db npm run test:prazo`.
+
+## Fase 0 — freebie Campus France (14/10)
+
+`db/crm-fase0-email-guia.sql` (rodar **depois** de `crm-enriquecimento.sql`; idempotente): o guia
+`etudes-en-france-2027-2028` grava o nível (`respostas.cfNivel`), o banco pede o e-mail 1 (`cf_guia_1`) ao Worker
+pelo pg_net (desligado até existir o segredo `crm_worker_url` no Vault) e as respostas por e-mail entram em
+`respostas_email`, com evento `email_respondido` e motivo "respondeu o seu e-mail" no Hoje. Passo a passo de ligar:
+`cms-oauth-worker/README.md`, seção 17. Testes: `db/testes` → `APP_DB_DIR=<POR DENTRO APP>/db npm run test:fase0`
+e `node cms-oauth-worker/testes/crm-email.test.mjs`.
 
 ## Etapas
 

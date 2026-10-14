@@ -1211,7 +1211,9 @@ async function handleQuizSubmissions(request, env) {
 //   Ver README.md, seção 16.
 const CRM_SUPABASE_URL = 'https://hslhpktfgxwfvljvsxkj.supabase.co';
 const CRM_SUPABASE_ANON_KEY = 'sb_publishable_nYVeQ3hGiMCGA0IzYqYeyQ_H9VcEXni'; // pública por design (mesma do site)
-const CRM_MODELOS = ['boas_vindas', 'naoabriu', 'naoclicou', 'cliquenaoapp', 'parouapp', 'guia_chamada', 'guia_plataforma', 'guia_alternancia'];
+const CRM_MODELOS = ['boas_vindas', 'naoabriu', 'naoclicou', 'cliquenaoapp', 'parouapp', 'guia_chamada', 'guia_plataforma', 'guia_alternancia', 'cf_guia_1'];
+// cf_guia_1 (e-mail 1 do guia Études en France) é serviço: sai sozinho pela rota /api/crm/guia-capturado,
+// para todo mundo que pediu o guia, sem exigir novidades e sem rodapé de descadastro.
 // Modelos que oferecem conteúdo novo (prova social, dica extra) só saem pra quem aceitou novidades.
 // Os demais só lembram do acesso que a própria pessoa pediu ao deixar o e-mail.
 // Os dois do guia (convite pra chamada e apresentação da plataforma) são oferta comercial: só pra quem aceitou.
@@ -1276,12 +1278,12 @@ async function handleCrmEnviar(request, env) {
     return json({ error: 'Essa pessoa não aceitou receber novidades por e-mail. Este modelo não pode ser enviado a ela.' }, 403);
   }
 
-  const marketing = modelo !== 'boas_vindas';
+  const marketing = modelo !== 'boas_vindas' && modelo !== 'cf_guia_1';
   const rodape = marketing ? '\n\n—\nPra não receber mais e-mails, é só responder este com a palavra "sair".' : '';
   const brevoBody = {
     sender: { email: env.BREVO_SENDER_EMAIL, name: env.BREVO_SENDER_NAME || 'Ingryd · Por Dentro' },
     to: [contato.nome ? { email: contato.email, name: contato.nome } : { email: contato.email }],
-    replyTo: { email: env.BREVO_SENDER_EMAIL },
+    replyTo: { email: crmReplyTo(env) },
     subject: assunto,
     htmlContent: crmTextToHtml(corpo + rodape),
     textContent: corpo + rodape,
@@ -1363,6 +1365,344 @@ async function handleCrmBrevoWebhook(request, env, url) {
     }
   }
   return json({ ok: true });
+}
+
+// ---------- CRM fase 0: e-mail 1 do guia (cf_guia_1) e respostas por e-mail ----------
+// O banco (admin/crm/db/crm-fase0-email-guia.sql) chama POST /api/crm/guia-capturado pelo pg_net
+// quando alguém se cadastra no guia; o segredo vai no cabeçalho X-Crm-Hook. Quem responde a um
+// e-mail do CRM escreve para CRM_REPLY_TO; o Email Routing entrega a mensagem ao handler email()
+// lá embaixo, que grava em respostas_email e reencaminha para a caixa da Ingryd.
+//
+//   Variáveis novas: CRM_HOOK_SECRET (>= 24 caracteres, igual ao 'crm_hook_secret' do Vault),
+//                    CRM_REPLY_TO (respostas@imigrantepordentro.com, só depois do Email Routing),
+//                    CRM_ENCAMINHAR_PARA (o e-mail da Ingryd, destino verificado no Email Routing).
+//   Ver README.md, seção 17.
+function crmReplyTo(env) { return env.CRM_REPLY_TO || env.BREVO_SENDER_EMAIL; }
+
+function crmSegredoIgual(given, secret) {
+  if (secret.length < 24 || given.length !== secret.length) return false;
+  let diff = 0;
+  for (let i = 0; i < secret.length; i++) diff |= secret.charCodeAt(i) ^ given.charCodeAt(i);
+  return diff === 0;
+}
+
+function crmServiceHeaders(env) {
+  return {
+    apikey: env.SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
+    'Content-Type': 'application/json',
+  };
+}
+
+// Guia → modelo do e-mail 1. Só estes guias mandam e-mail sozinhos.
+const CRM_GUIAS_EMAIL = { 'etudes-en-france-2027-2028': 'cf_guia_1' };
+const CF_UTM = 'utm_source=email&utm_medium=email&utm_campaign=guia-etudes-en-france-2027&utm_content=cf_guia_1';
+// Texto aprovado no artefato "Jornada do freebie Campus France" (fonte: guia do Campus France Brasil, set/2026).
+const CF_ETAPA_TXT = {
+  'cf-nao-comecei': 'que ainda não começou',
+  'cf-escolhendo-curso': 'que está escolhendo o curso',
+  'cf-juntando-documentos': 'que está juntando documentos, traduções e o teste',
+  'cf-dossie-enviado': 'que já enviou o dossiê',
+  'cf-entrevista-resposta': 'que está esperando a entrevista ou a resposta',
+};
+const CF_PASSO = {
+  'cf-nao-comecei': ['Comece pelo passo 1: o projeto de estudos.', 'Escreva em 3 ou 4 linhas o que você estudou até aqui e o que quer estudar na França. Os outros onze passos se apoiam nele, inclusive as motivações e a entrevista.'],
+  'cf-escolhendo-curso': ['Anote o prazo de cada curso que você escolher.', 'Alguns cursos fecham antes do calendário geral, e vale sempre o menor prazo. Para procurar: o catálogo de formações do site do Campus France Brasil, onisep.fr e letudiant.fr.'],
+  'cf-juntando-documentos': ['Comece pelo que depende de outras pessoas.', 'Peça os históricos e faça a apostila antes da tradução juramentada. E garanta a inscrição no teste de francês: o resultado precisa chegar ao Campus France até 05/03/2027.'],
+  'cf-dossie-enviado': ['Pague a taxa e declare o pagamento.', 'A taxa é de R$ 600, por Pix. A verificação do seu dossiê só começa depois que você declara o pagamento na plataforma.'],
+  'cf-entrevista-resposta': ['Treine a entrevista em voz alta.', 'Ela é marcada em até duas semanas depois da validação e acontece prioritariamente em francês. Treine em voz alta, em francês, como você explica o seu projeto de estudos e cada escolha.'],
+};
+const CF_NIVEIS = {
+  l1: ['1º ano de Licence', '14/12/2026'], arq: ['Arquitetura', '14/12/2026'], l2l3: ['2º ou 3º ano de Licence', '17/01/2027'],
+  lpro: ['Licence Pro', '17/01/2027'], master: ['Master', '17/01/2027'], escola: ['Escola (engenharia, comércio)', '17/01/2027'],
+};
+
+function crmPrimeiroNome(nome) {
+  return (String(nome || '').replace(/[\r\n\t]+/g, ' ').trim().split(/\s+/)[0] || '').slice(0, 40);
+}
+
+// Monta o e-mail 1 (assunto, prévia, texto puro e HTML) a partir da ficha e do link do Notion.
+function cfGuia1(contato, notionUrl) {
+  const nome = crmPrimeiroNome(contato.nome);
+  const resp = contato.respostas || {};
+  const passo = CF_PASSO[resp.objetivo];
+  const nivel = CF_NIVEIS[resp.cfNivel];
+  const link = notionUrl + (notionUrl.includes('?') ? '&' : '?') + CF_UTM;
+  const assunto = (nome ? nome + ', aqui' : 'Aqui') + ' está o seu checklist do Études en France';
+  const titulo = nome ? nome + ', o seu checklist está aqui' : 'O seu checklist está aqui';
+  const pre = nivel ? 'O link para guardar, o prazo do seu nível e o seu próximo passo.' : 'O link para guardar, os prazos e o seu próximo passo.';
+  const abertura = 'Para você não perder o link, ele fica guardado neste e-mail. Abra quando quiser, no computador ou no celular.';
+  const quem = 'Antes de você ir: eu sou a Ingryd. Moro na França e criei o Por Dentro para quem está fazendo esse caminho agora. Montei este checklist lendo o guia oficial do Campus France passo a passo, para você ir direto ao que importa.';
+  const perguntaB = 'Uma pergunta, se puder me responder aqui mesmo:';
+  const perguntaT = 'qual curso, ou qual cidade, você está de olho? Eu leio cada resposta.';
+  const rodape = 'Você recebeu este e-mail porque pediu o checklist Études en France no Por Dentro com ' + contato.email + '.';
+
+  const t = [titulo, '', abertura, '', 'Abrir o checklist no Notion: ' + link, ''];
+  if (nivel) t.push('O prazo do seu nível · ' + nivel[0] + ': ' + nivel[1], 'Se algum curso que você escolher tiver prazo próprio, vale o menor.', '');
+  else t.push('Prazos para submeter o dossiê · ciclo 2027-2028', '14/12/2026 · 1º ano de Licence e Arquitetura', '17/01/2027 · 2º e 3º ano de Licence, Licence Pro, Master e escolas', 'Se algum curso tiver prazo próprio, vale o menor.', '');
+  if (passo) t.push('Para quem está na etapa ' + CF_ETAPA_TXT[resp.objetivo] + ':', passo[0], passo[1], '');
+  t.push(quem, '', perguntaB + ' ' + perguntaT, '', 'Ingryd · Por Dentro', '', '—', rodape);
+  const texto = t.join('\n');
+
+  const e = crmEscapeHtml;
+  const sans = "font-family:'Inter', Arial, Helvetica, sans-serif;";
+  const serif = "font-family:'Fraunces', Georgia, 'Times New Roman', serif;";
+  const p = (txt, extra) => `<p style="margin:0 0 16px; ${sans} font-size:15px; line-height:1.6; color:#2B2B2B;${extra || ''}">${txt}</p>`;
+  const prazoHtml = nivel
+    ? `<div style="${sans} font-size:12px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:#6E6862;">O prazo do seu nível · ${e(nivel[0])}</div>
+       <div style="${serif} font-size:26px; font-weight:700; color:#577328; line-height:1.3; margin:4px 0;">${e(nivel[1])}</div>
+       <div style="${sans} font-size:13px; line-height:1.5; color:#6E6862;">Se algum curso que você escolher tiver prazo próprio, vale o menor.</div>`
+    : `<div style="${sans} font-size:12px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:#6E6862;">Prazos para submeter o dossiê · ciclo 2027-2028</div>
+       <div style="${sans} font-size:14px; line-height:1.6; color:#2B2B2B; margin:6px 0;"><b>14/12/2026</b> · 1º ano de Licence e Arquitetura<br><b>17/01/2027</b> · 2º e 3º ano de Licence, Licence Pro, Master e escolas</div>
+       <div style="${sans} font-size:13px; line-height:1.5; color:#6E6862;">Se algum curso tiver prazo próprio, vale o menor.</div>`;
+  const passoHtml = passo
+    ? `<p style="margin:0 0 4px; ${sans} font-size:12px; color:#6E6862;">Para quem está na etapa ${e(CF_ETAPA_TXT[resp.objetivo])}:</p>
+       ${p('<b>' + e(passo[0]) + '</b><br>' + e(passo[1]))}`
+    : '';
+  const html = `<!DOCTYPE html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="color-scheme" content="light"><title>${e(assunto)}</title></head>
+<body style="margin:0; padding:0; background:#F4F1EC;">
+<div style="display:none; max-height:0; overflow:hidden; mso-hide:all;">${e(pre)}&#8199;&#847;&#8199;&#847;&#8199;&#847;&#8199;&#847;&#8199;&#847;</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#F4F1EC;"><tr><td align="center" style="padding:32px 16px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;">
+<tr><td style="padding:0 4px 20px; ${serif} font-size:22px; font-weight:700; color:#2B2B2B;">Por <span style="color:#604034;">Dentro</span></td></tr>
+<tr><td style="background:#FBFAF7; border:1px solid #E2DED7; border-radius:8px; padding:32px 28px;">
+<h1 style="margin:0 0 14px; ${serif} font-size:24px; line-height:1.25; font-weight:700; color:#2B2B2B;">${e(titulo)}</h1>
+${p(e(abertura))}
+<p style="margin:0 0 24px;"><a href="${e(link)}" style="display:inline-block; background:#577328; color:#FBFAF7; ${sans} font-size:15px; font-weight:600; text-decoration:none; padding:13px 22px; border-radius:4px;">Abrir o checklist no Notion</a></p>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 24px;"><tr><td style="background:#F4F1EC; border:1px solid #DEB975; border-radius:8px; padding:16px 18px;">${prazoHtml}</td></tr></table>
+${passoHtml}
+<div style="border-top:1px solid #E2DED7; margin:8px 0 20px;"></div>
+${p(e(quem))}
+${p('<b>' + e(perguntaB) + '</b> ' + e(perguntaT))}
+<p style="margin:0; ${serif} font-size:16px; font-style:italic; color:#2B2B2B;">Ingryd · Por Dentro</p>
+</td></tr>
+<tr><td style="padding:20px 4px 0; ${sans} font-size:12px; line-height:1.55; color:#6E6862;">${e(rodape)}</td></tr>
+</table></td></tr></table>
+</body></html>`;
+  return { assunto, pre, texto, html };
+}
+
+async function handleCrmGuiaCapturado(request, env) {
+  if (!crmSegredoIgual(request.headers.get('X-Crm-Hook') || '', env.CRM_HOOK_SECRET || '')) {
+    return new Response('Unauthorized', { status: 401 });
+  }
+  if (!env.SUPABASE_SERVICE_ROLE_KEY || !env.BREVO_API_KEY || !env.BREVO_SENDER_EMAIL) {
+    return json({ error: 'Worker sem SUPABASE_SERVICE_ROLE_KEY ou Brevo configurados.' }, 500);
+  }
+  let body;
+  try { body = await request.json(); } catch (e) { return json({ error: 'Corpo inválido.' }, 400); }
+  const contatoId = String((body && body.contato_id) || '');
+  const guia = String((body && body.guia) || '');
+  const modelo = CRM_GUIAS_EMAIL[guia];
+  if (!CRM_UUID_RE.test(contatoId) || !modelo) return json({ error: 'Contato ou guia inválido.' }, 400);
+
+  const sb = crmServiceHeaders(env);
+  const [cRes, lRes] = await Promise.all([
+    fetch(`${CRM_SUPABASE_URL}/rest/v1/contatos?select=id,email,nome,respostas&id=eq.${contatoId}`, { headers: sb }),
+    fetch(`${CRM_SUPABASE_URL}/rest/v1/guias_links?select=notion_url&slug=eq.${encodeURIComponent(guia)}`, { headers: sb }),
+  ]);
+  const contato = cRes.ok ? (await cRes.json())[0] : null;
+  const link = lRes.ok ? (await lRes.json())[0] : null;
+  if (!contato) return json({ error: 'Contato não encontrado.' }, 404);
+  if (!link || !/^https:\/\//.test(link.notion_url || '')) return json({ error: 'Guia sem link do Notion em guias_links.' }, 500);
+
+  const mail = cfGuia1(contato, link.notion_url);
+  // Reserva primeiro: o índice emails_um_por_guia_idx deixa só uma linha por pessoa e modelo,
+  // então só quem conseguiu gravar envia (duas chamadas juntas não mandam dois e-mails).
+  const ins = await fetch(`${CRM_SUPABASE_URL}/rest/v1/emails_enviados`, {
+    method: 'POST', headers: { ...sb, Prefer: 'return=representation' },
+    body: JSON.stringify({ contato_id: contatoId, modelo, assunto: mail.assunto, corpo: mail.texto, status: 'agendado', enviado_em: new Date().toISOString() }),
+  });
+  if (ins.status === 409) return json({ ok: true, ja_enviado: true });
+  if (!ins.ok) {
+    console.error('crm/guia-capturado: não consegui reservar o envio — ' + ins.status + ' ' + (await ins.text()));
+    return json({ error: 'Não consegui registrar o envio.' }, 500);
+  }
+  const linha = (await ins.json())[0];
+
+  const bRes = await fetch('https://api.brevo.com/v3/smtp/email', {
+    method: 'POST',
+    headers: { 'api-key': env.BREVO_API_KEY, 'Content-Type': 'application/json', Accept: 'application/json' },
+    body: JSON.stringify({
+      sender: { email: env.BREVO_SENDER_EMAIL, name: env.BREVO_SENDER_NAME || 'Ingryd · Por Dentro' },
+      to: [contato.nome ? { email: contato.email, name: String(contato.nome).slice(0, 100) } : { email: contato.email }],
+      replyTo: { email: crmReplyTo(env) },
+      subject: mail.assunto,
+      htmlContent: mail.html,
+      textContent: mail.texto,
+      tags: ['crm', modelo],
+    }),
+  });
+  const bText = await bRes.text();
+  if (!bRes.ok) {
+    // Desfaz a reserva para a pessoa receber se voltar a se cadastrar.
+    console.error('crm/guia-capturado: Brevo respondeu ' + bRes.status + ' — ' + bText);
+    await fetch(`${CRM_SUPABASE_URL}/rest/v1/emails_enviados?id=eq.${linha.id}`, { method: 'DELETE', headers: sb });
+    await fetch(`${CRM_SUPABASE_URL}/rest/v1/eventos?contato_id=eq.${contatoId}&tipo=eq.email_enviado&dados->>modelo=eq.${modelo}`, { method: 'DELETE', headers: sb });
+    return json({ error: 'O Brevo recusou o envio (' + bRes.status + ').' }, 502);
+  }
+  let messageId = null;
+  try { messageId = JSON.parse(bText).messageId || null; } catch (e) { /* segue sem id */ }
+  if (messageId) {
+    await fetch(`${CRM_SUPABASE_URL}/rest/v1/emails_enviados?id=eq.${linha.id}`, {
+      method: 'PATCH', headers: { ...sb, Prefer: 'return=minimal' }, body: JSON.stringify({ provedor_id: messageId }),
+    });
+  }
+  return json({ ok: true });
+}
+
+// ----- Leitor mínimo de e-mail (sem biblioteca: o Worker é colado no painel, sem build) -----
+// Trabalha com "texto binário" (1 caractere = 1 byte) e só decodifica o charset no fim.
+const CRM_RESPOSTA_MAX = 5000;
+
+function crmBytesParaBinario(u8) {
+  let s = '';
+  for (let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000));
+  return s;
+}
+function crmBinarioParaTexto(bin, charset) {
+  const cs = String(charset || 'utf-8').trim().toLowerCase();
+  if (/^(us-)?ascii$|^iso-8859-1$|^latin-?1$/.test(cs)) return bin;   // 1 byte = 1 caractere
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i) & 255;
+  if (!/^utf-?8$/.test(cs)) { try { return new TextDecoder(cs).decode(bytes); } catch (e) { /* charset que o runtime não conhece */ } }
+  try { return new TextDecoder('utf-8', { fatal: true }).decode(bytes); } catch (e) { return bin; }
+}
+function crmSepararCabecalho(bin) {
+  const m = /\r?\n\r?\n/.exec(bin);
+  return m ? [bin.slice(0, m.index), bin.slice(m.index + m[0].length)] : [bin, ''];
+}
+function crmLerCabecalhos(bloco) {
+  const out = {};
+  bloco.replace(/\r?\n[ \t]+/g, ' ').split(/\r?\n/).forEach((l) => {
+    const i = l.indexOf(':');
+    if (i > 0) { const k = l.slice(0, i).trim().toLowerCase(); if (!(k in out)) out[k] = l.slice(i + 1).trim(); }
+  });
+  return out;
+}
+function crmParam(valor, nome) {
+  const m = new RegExp('(?:^|;)\\s*' + nome + '\\s*=\\s*(?:"([^"]*)"|([^;\\s]*))', 'i').exec(valor || '');
+  return m ? (m[1] != null ? m[1] : m[2]) : null;
+}
+function crmDecodeQP(s) {
+  return s.replace(/=\r?\n/g, '').replace(/=([0-9A-Fa-f]{2})/g, (_, h) => String.fromCharCode(parseInt(h, 16)));
+}
+function crmDecodeB64(s) {
+  try { return atob(s.replace(/[^A-Za-z0-9+/=]/g, '')); } catch (e) { return ''; }
+}
+// Cabeçalho com =?utf-8?B?...?= ou =?iso-8859-1?Q?...?= (RFC 2047).
+function crmDecodePalavras(v) {
+  // Cabeçalho com UTF-8 cru (sem =?...?=) também acontece: decodifica antes, se for UTF-8 válido.
+  return crmBinarioParaTexto(String(v || ''), 'utf-8')
+    .replace(/(=\?[^?]+\?[bBqQ]\?[^?]*\?=)\s+(?==\?)/g, '$1')
+    .replace(/=\?([^?]+)\?([bBqQ])\?([^?]*)\?=/g, (_, cs, enc, txt) =>
+      crmBinarioParaTexto(enc.toUpperCase() === 'B' ? crmDecodeB64(txt) : crmDecodeQP(txt.replace(/_/g, ' ')), cs.split('*')[0]));
+}
+// Procura a parte text/plain (ou, se não houver, a text/html) dentro do multipart.
+function crmAcharTexto(cab, corpo, prof) {
+  const ct = cab['content-type'] || 'text/plain; charset=us-ascii';
+  const tipo = ct.split(';')[0].trim().toLowerCase();
+  if (tipo.startsWith('multipart/')) {
+    const b = crmParam(ct, 'boundary');
+    if (!b || prof > 6) return {};
+    const out = {};
+    for (const parte of corpo.split('--' + b).slice(1)) {
+      if (parte.startsWith('--')) break;   // fim do multipart
+      const [h, c] = crmSepararCabecalho(parte);
+      const r = crmAcharTexto(crmLerCabecalhos(h), c.replace(/\r?\n$/, ''), prof + 1);
+      if (r.texto != null && out.texto == null) out.texto = r.texto;
+      if (r.html != null && out.html == null) out.html = r.html;
+      if (out.texto != null) break;
+    }
+    return out;
+  }
+  if (/^attachment/i.test(cab['content-disposition'] || '')) return {};
+  if (tipo !== 'text/plain' && tipo !== 'text/html') return {};
+  const enc = (cab['content-transfer-encoding'] || '').trim().toLowerCase();
+  const bin = enc === 'base64' ? crmDecodeB64(corpo) : enc === 'quoted-printable' ? crmDecodeQP(corpo) : corpo;
+  const txt = crmBinarioParaTexto(bin, crmParam(ct, 'charset'));
+  return tipo === 'text/plain' ? { texto: txt } : { html: txt };
+}
+function crmHtmlParaTexto(html) {
+  const ent = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ' };
+  return html
+    .replace(/<(style|script|head)[\s\S]*?<\/\1>/gi, '')
+    .replace(/<div[^>]*class="?gmail_quote[\s\S]*$/i, '')   // a citação do Gmail vai até o fim
+    .replace(/<blockquote[\s\S]*?<\/blockquote>/gi, '')
+    .replace(/<br\s*\/?>/gi, '\n').replace(/<\/(p|div|li|tr|h\d)>/gi, '\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&(#\d+|#x[0-9a-f]+|[a-z]+);/gi, (m, k) => k[0] === '#'
+      ? String.fromCodePoint(k[1].toLowerCase() === 'x' ? parseInt(k.slice(2), 16) : parseInt(k.slice(1), 10))
+      : (ent[k.toLowerCase()] != null ? ent[k.toLowerCase()] : m));
+}
+// Corta a citação do e-mail original ("Em ... escreveu:", "On ... wrote:", "> ...") e a assinatura "-- ".
+function crmTirarCitacao(texto) {
+  let s = String(texto || '').replace(/\r\n?/g, '\n');
+  const marcas = [
+    /^[ \t]*(?:Em|On|Le|El|Am)\b[^\n]*(?:\n[^\n]*){0,2}?(?:escreveu|wrote|a écrit|escribió|schrieb)[ \t]*:[ \t]*$/m,
+    /^[ \t]*-{2,}[ \t]*(?:Original Message|Mensagem original|Message d'origine)/im,
+    /^[ \t]*_{10,}[ \t]*$/m,
+    /^[ \t]*(?:De|From)[ \t]*:[^\n]*\n[ \t]*(?:Enviad[oa]|Sent|Envoyé|Data|Date)[ \t]*:/im,
+    /^-- ?$/m,
+  ];
+  let corte = s.length;
+  for (const re of marcas) { const m = re.exec(s); if (m && m.index < corte) corte = m.index; }
+  s = s.slice(0, corte).split('\n').filter((l) => !/^[ \t]*>/.test(l)).join('\n');
+  return s.replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
+}
+function crmLerRemetente(v) {
+  const d = crmDecodePalavras(v);
+  const m = /<\s*([^<>\s]+@[^<>\s]+)\s*>/.exec(d) || /([^\s<>"',;]+@[^\s<>"',;]+)/.exec(d);
+  const email = m ? m[1].toLowerCase() : '';
+  const nome = m && m[0].startsWith('<') ? d.slice(0, d.indexOf('<')).trim().replace(/^"|"$/g, '').trim() : '';
+  return { email, nome };
+}
+function crmPrimeiroId(v) {
+  const m = /<[^<>\s]+>/.exec(v || '');
+  return (m ? m[0] : String(v || '').trim().split(/\s+/)[0] || '').slice(0, 300) || null;
+}
+function crmEhAutomatica(cab, de, assunto) {
+  const as = (cab['auto-submitted'] || '').trim().toLowerCase();
+  if (as && as !== 'no') return true;
+  if (cab['x-autoreply'] || cab['x-autorespond'] || cab['x-autoreply-from']) return true;
+  if (/^(auto_reply|auto-reply|bulk|junk|list)$/i.test((cab['precedence'] || '').trim())) return true;
+  if (/^(mailer-daemon|postmaster|no-?reply)@/i.test(de)) return true;
+  return /^(out of office|automatic reply|auto(matic)?[- ]?reply|resposta autom[aá]tica|r[ée]ponse automatique|absence|ausente|fora do escrit[oó]rio)\b/i.test(assunto.trim());
+}
+// E-mail cru (texto binário) → campos de respostas_email.
+function crmLerEmail(bin) {
+  const [h, corpo] = crmSepararCabecalho(bin);
+  const cab = crmLerCabecalhos(h);
+  const de = crmLerRemetente(cab['from'] || '');
+  const assunto = crmDecodePalavras(cab['subject'] || '').replace(/\s+/g, ' ').trim();
+  const partes = crmAcharTexto(cab, corpo, 0);
+  let texto = crmTirarCitacao(partes.texto != null ? partes.texto : crmHtmlParaTexto(partes.html || ''));
+  if (texto.length > CRM_RESPOSTA_MAX) texto = texto.slice(0, CRM_RESPOSTA_MAX) + '…';
+  return {
+    de_email: de.email, de_nome: de.nome.slice(0, 200) || null, assunto: assunto.slice(0, 300) || null,
+    texto: texto || '(sem texto: veja a mensagem no seu e-mail)',
+    message_id: crmPrimeiroId(cab['message-id']), em_resposta_a: crmPrimeiroId(cab['in-reply-to']),
+    automatica: crmEhAutomatica(cab, de.email, assunto),
+  };
+}
+
+async function handleCrmEmailRecebido(message, env) {
+  const raw = new Uint8Array(await new Response(message.raw).arrayBuffer());
+  const m = crmLerEmail(crmBytesParaBinario(raw.subarray(0, 3000000)));
+  const de = m.de_email || String(message.from || '').trim().toLowerCase();
+  const proprios = [env.BREVO_SENDER_EMAIL, env.CRM_REPLY_TO, env.CRM_ENCAMINHAR_PARA].filter(Boolean).map((x) => x.toLowerCase());
+  if (m.automatica || !de || proprios.includes(de)) return { gravou: false, motivo: 'automatica_ou_propria' };
+  if (!env.SUPABASE_SERVICE_ROLE_KEY) { console.error('crm/email: SUPABASE_SERVICE_ROLE_KEY não configurada'); return { gravou: false }; }
+  const res = await fetch(`${CRM_SUPABASE_URL}/rest/v1/respostas_email`, {
+    method: 'POST', headers: { ...crmServiceHeaders(env), Prefer: 'return=minimal' },
+    body: JSON.stringify({
+      de_email: de, de_nome: m.de_nome, assunto: m.assunto, texto: m.texto,
+      message_id: m.message_id, em_resposta_a: m.em_resposta_a,
+    }),
+  });
+  if (res.status === 409) return { gravou: false, motivo: 'repetida' };
+  if (!res.ok) { console.error('crm/email: não gravou — ' + res.status + ' ' + (await res.text())); return { gravou: false }; }
+  return { gravou: true };
 }
 
 export default {
@@ -1460,10 +1800,24 @@ export default {
       if (url.pathname === '/api/crm/brevo-webhook' && request.method === 'POST') {
         return await handleCrmBrevoWebhook(request, env, url);
       }
+      if (url.pathname === '/api/crm/guia-capturado' && request.method === 'POST') {
+        return await handleCrmGuiaCapturado(request, env);
+      }
     } catch (err) {
       return json({ error: 'Erro interno.', detail: String(err) }, 500);
     }
 
     return new Response('Not found', { status: 404 });
+  },
+
+  // Email Routing: respostas@imigrantepordentro.com → aqui. Grava a resposta no CRM e SEMPRE
+  // reencaminha a mensagem original para a Ingryd, mesmo se a gravação falhar.
+  async email(message, env, ctx) {
+    try { await handleCrmEmailRecebido(message, env); } catch (e) { console.error('crm/email: ' + e); }
+    if (env.CRM_ENCAMINHAR_PARA) {
+      try { await message.forward(env.CRM_ENCAMINHAR_PARA); } catch (e) { console.error('crm/email: não consegui reencaminhar — ' + e); }
+    } else {
+      console.error('crm/email: CRM_ENCAMINHAR_PARA não configurada; a mensagem ficou só no CRM.');
+    }
   },
 };

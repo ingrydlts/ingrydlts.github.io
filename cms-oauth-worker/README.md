@@ -298,3 +298,68 @@ Os dois são oferta comercial, então o Worker **só deixa enviar a quem aceitou
 
 Limite de honestidade: "abriu" no Brevo não é 100% confiável (Apple Mail e outros pré-carregam a imagem), então
 use como sinal, não como certeza.
+
+## 17. CRM fase 0: e-mail 1 do guia sozinho e respostas por e-mail no CRM
+
+O que faz: quem se cadastra no guia `/guias/etudes-en-france-2027-2028/` recebe na hora o **e-mail 1**
+(`cf_guia_1`: o link do Notion, o prazo do nível, o próximo passo da etapa e uma pergunta). Quem responde a um e-mail
+do CRM escreve para `respostas@imigrantepordentro.com`; a resposta entra na **Caixa de entrada** do `/admin/crm/`
+e também chega no seu e-mail. Pré-requisito: a seção 16 pronta (Brevo, `SUPABASE_SERVICE_ROLE_KEY`).
+
+Como funciona: a função `capturar_lead_guia` do Supabase chama `POST /api/crm/guia-capturado` pelo **pg_net**,
+com um segredo no cabeçalho `X-Crm-Hook`. O Worker confere o segredo, lê a ficha e o link do Notion com a
+service_role, reserva a linha em `emails_enviados` (um índice só deixa **um** `cf_guia_1` por pessoa), envia pelo
+Brevo e guarda o id da mensagem. A resposta chega pelo **Email Routing** da Cloudflare no handler `email()` do
+Worker, que lê só o texto (sem a citação do e-mail original, até 5.000 caracteres), ignora respostas automáticas,
+grava em `respostas_email` e **sempre** reencaminha a mensagem original para você.
+
+Faça nesta ordem (o passo 7 é o que liga o envio):
+
+**1. Banco** — Supabase → SQL Editor, rode `admin/crm/db/crm-enriquecimento.sql` (se ainda não rodou) e depois
+`admin/crm/db/crm-fase0-email-guia.sql`. Depois: Database → Extensions → procure **pg_net** → ligue.
+
+**2. Segredo da rota** — no SQL Editor:
+```sql
+select vault.create_secret(encode(extensions.gen_random_bytes(24), 'hex'), 'crm_hook_secret', 'Segredo da rota /api/crm/guia-capturado');
+select decrypted_secret from vault.decrypted_secrets where name = 'crm_hook_secret';
+```
+Copie o valor que aparece (48 letras e números). Ele ainda **não** liga nada: falta o endereço do Worker (passo 7).
+
+**3. Variáveis do Worker** (Settings → Variables and Secrets):
+   - `CRM_HOOK_SECRET` (Secret) = o valor do passo 2
+   - `CRM_ENCAMINHAR_PARA` (Text) = o seu e-mail, para onde as respostas são reencaminhadas. Ele precisa estar
+     verificado em Email Routing → **Destination addresses** (se outra regra já manda para ele, já está).
+   - `CRM_REPLY_TO` (Text) = `respostas@imigrantepordentro.com`. **Só crie depois do passo 5**: enquanto ela não
+     existir, o Reply-To continua sendo o remetente (`BREVO_SENDER_EMAIL`), como hoje.
+
+**4. Código do Worker** — seção 9 (colar o `worker.js` novo e Deploy). Rotas novas: `/api/crm/guia-capturado`
+e o handler `email()`.
+
+**5. Email Routing** — dash.cloudflare.com → `imigrantepordentro.com` → **Email** → **Email Routing**:
+   1. Aba **Routing rules**: anote as regras que já existem e **não mexa nelas**.
+   2. **Create address** → Custom address: `respostas` → Action: **Send to a Worker** → Destination:
+      `por-dentro-cms-oauth` → Save.
+   3. Agora crie a variável `CRM_REPLY_TO` do passo 3.
+
+**6. Teste das respostas** — mande, do seu Gmail, um e-mail para `respostas@imigrantepordentro.com`. Ele deve
+aparecer em CRM → Caixa de entrada → **Respostas por e-mail** (como "sem ficha" se o seu e-mail não tiver ficha)
+e voltar para a sua caixa, reencaminhado. Se não aparecer: Workers → `por-dentro-cms-oauth` → **Logs**.
+
+**7. Ligar o e-mail 1** (só depois de aprovar o texto final) — no SQL Editor:
+```sql
+select vault.create_secret('https://por-dentro-cms-oauth.ingrydigitalmanagement.workers.dev', 'crm_worker_url', 'Worker do CRM (e-mail 1 do guia)');
+```
+A partir daí, cada cadastro novo no guia manda o e-mail 1. **Para desligar**: Project Settings → Vault → apague
+`crm_worker_url` (o cadastro continua funcionando igual).
+
+**8. Teste de ponta a ponta** — cadastre-se no guia com o seu Gmail (aba anônima) → o e-mail 1 chega na caixa
+principal (não no spam) → responda → a resposta aparece na Caixa de entrada do CRM e chega reencaminhada no seu e-mail.
+Para testar de novo com o mesmo e-mail, apague a linha `cf_guia_1` dela em Table Editor → `emails_enviados`.
+
+Se o e-mail 1 não chegar: Supabase → SQL Editor → `select status_code, content from net._http_response order by created desc limit 5;`
+(401 = segredo diferente entre Vault e Worker; 500 = falta variável no Worker) e os **Logs** do Worker.
+
+Regras: `cf_guia_1` é **serviço** (sai para todo mundo que pediu o guia, sem exigir novidades, sem rodapé de
+descadastro). O texto mora em `cfGuia1()` no `worker.js`; trocou o texto, atualize o Worker (seção 9).
+Se o Brevo recusar o envio, o Worker desfaz a reserva: a pessoa recebe se voltar a se cadastrar.
+Testes: `node cms-oauth-worker/testes/crm-email.test.mjs` (sem dependências, sem rede).

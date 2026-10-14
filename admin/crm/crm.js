@@ -14,7 +14,9 @@ var STAGES = [
   { k: 'em_uso', l: 'Em uso', d: 'marcando itens' }, { k: 'um_a_um', l: '1:1', d: 'agendou conversa' },
   { k: 'concluido', l: 'Concluído', d: 'terminou o percurso' }, { k: 'inativo', l: 'Inativo', d: 'sumiu há 30+ dias' }
 ];
-var ORIG = { instagram: 'Instagram', bot: 'Assistente de vistos', blog: 'Blog', direto: 'Direto', artigo: 'Artigo', login_direto: 'Login direto' };
+var ORIG = { instagram: 'Instagram', bot: 'Assistente de vistos', blog: 'Blog', direto: 'Direto', artigo: 'Artigo', login_direto: 'Login direto',
+  'guia-vls-ts': 'Guia VLS-TS', 'guia-email-alt30': 'Guia alternância 30+', 'guia-etudes-en-france-2027': 'Guia Campus France' };
+function origLabel(o) { return ORIG[o] || o; }
 var SEGMENTS = [
   { k: 'naoabriu', t: 'Não abriu o e-mail', lever: 'Gatilho ausente', why: 'O e-mail chegou mas nunca foi aberto — sem gatilho, nada acontece. Ação: reenviar com outro assunto, ou checar se caiu no spam.' },
   { k: 'naoclicou', t: 'Abriu mas não clicou', lever: 'Falta motivação/prova', why: 'Leu e não sentiu motivo pra agir. Ação: prova social (quem já passou pelo mesmo) e botão mais simples.' },
@@ -22,11 +24,17 @@ var SEGMENTS = [
   { k: 'parouapp', t: 'Abriu o app mas parou', lever: 'Motivação caiu', why: 'Entrou, viu o checklist e não voltou. Ação: uma dica extra de graça + o prazo real dela, nunca um prazo inventado.' }
 ];
 var MAIL_ST = { clicado: 'Clicou', aberto: 'Abriu', entregue: 'Entregue, não abriu', nao_entregue: 'Não entregue', agendado: 'Ainda não enviado' };
-var MODELO = { boas_vindas: 'Boas-vindas + link de acesso', naoabriu: 'Reimpacto — não abriu', naoclicou: 'Reimpacto — abriu, não clicou', cliquenaoapp: 'Reimpacto — clicou, não abriu o app', parouapp: 'Reimpacto — abriu o app e parou', guia_alternancia: 'Guia alternância 30+ — convite pra conversa' };
+var MODELO = { boas_vindas: 'Boas-vindas + link de acesso', naoabriu: 'Reimpacto — não abriu', naoclicou: 'Reimpacto — abriu, não clicou', cliquenaoapp: 'Reimpacto — clicou, não abriu o app', parouapp: 'Reimpacto — abriu o app e parou', guia_alternancia: 'Guia alternância 30+ — convite pra conversa', cf_guia_1: 'Guia Campus France — e-mail 1 (checklist, automático)' };
 var TYPE_META = {
   sistema: ['Sistema', ''], app: ['Abriu o app', 'u-baixa'], checklist: ['Checklist', 'u-baixa'], pergunta: ['Pergunta única', 'tp-pergunta'],
-  artigo: ['Artigo', 'tp-artigo'], uma_um: ['1:1', 'out'], email: ['E-mail', 'out'], sinal: ['Sinal no dashboard', 'out']
+  artigo: ['Artigo', 'tp-artigo'], uma_um: ['1:1', 'out'], email: ['E-mail', 'out'], sinal: ['Sinal no dashboard', 'out'],
+  resposta: ['Respondeu e-mail', 'tp-pergunta']
 };
+
+// Respostas do funil com rótulo legível na ficha (o resto aparece com a chave crua).
+var CF_NIVEL = { l1: '1º ano de Licence', arq: 'Arquitetura', l2l3: '2º ou 3º ano de Licence', lpro: 'Licence Pro', master: 'Master', escola: 'Escola (engenharia, comércio)' };
+var RESP_LABEL = { cfNivel: ['Nível da candidatura (Campus France)', function (v) { return CF_NIVEL[v] || v; }] };
+var RS_TABS = [['nova', 'Novas'], ['respondida', 'Respondidas'], ['arquivada', 'Arquivadas']];
 
 var WORKER_BASE = 'https://por-dentro-cms-oauth.ingrydigitalmanagement.workers.dev';
 // Link que vai nos e-mails ("[link do acesso]"). Se ficar vazio, o trecho fica entre colchetes e o
@@ -72,11 +80,23 @@ TPLS.guia_alternancia = { label: 'Guia alternância 30+ — convite pra conversa
       'Se quiser rever o modelo, ele continua aqui: https://imigrantepordentro.com/guias/email-alternancia-30-mais/\n\n' +
       'E se quiser que eu olhe o seu caso antes de você escrever pra escola, é só escolher um horário: ' + CAL_LINK + '&utm_source=email&utm_campaign=guia-alternancia\n\nIngryd · Por Dentro']; } };
 var TPL_ORDER = ['boas_vindas', 'naoabriu', 'naoclicou', 'cliquenaoapp', 'parouapp', 'guia_chamada', 'guia_plataforma', 'guia_alternancia'];
-function defaultTpl(c) { return c.segmento || (c.origem === 'guia-vls-ts' ? 'guia_chamada' : c.origem === 'guia-email-alt30' ? 'guia_alternancia' : 'boas_vindas'); }
+// Jornada da pessoa. Sem a migração crm-enriquecimento.sql as colunas novas não existem: cai na origem da ficha.
+function origensDe(c) { return c.origens && c.origens.length ? c.origens : (c.origem ? [c.origem] : []); }
+function ultimaOrigem(c) { return c.ultima_origem || c.origem; }
+function nCapturas(c) { return Math.max(1, c.capturas || 0); }
+function voltou(c) { return nCapturas(c) >= 2; }
+// Voltou a deixar o e-mail depois do último e-mail que você mandou (ou nunca recebeu e-mail).
+function voltouDepoisDoEmail(c) { return voltou(c) && !!c.ultima_captura_em && (!c.email_enviado_em || c.ultima_captura_em > c.email_enviado_em); }
+function guiaTpl(o) { return o === 'guia-vls-ts' ? 'guia_chamada' : o === 'guia-email-alt30' ? 'guia_alternancia' : null; }
+function defaultTpl(c) {
+  var g = guiaTpl(ultimaOrigem(c));
+  if (g && (!c.segmento || voltouDepoisDoEmail(c))) return g;
+  return c.segmento || 'boas_vindas';
+}
 function splitTpl(c, k) { var t = TPLS[k].make(c); return { subject: t[0].replace(/^Assunto: /, ''), body: t[1] }; }
 
-var C = [], Q = [], L = [], SUBS = {};
-var state = { view: 'hoje', persona: '', sub: '', urg: '', stage: '', orig: '', camp: '', q: '', sel: null, qs: 'nova', qsel: null, preset: 'todos', seg: '', prevView: 'contatos' };
+var C = [], Q = [], L = [], R = [], RM = {}, SUBS = {};
+var state = { view: 'hoje', persona: '', sub: '', urg: '', stage: '', orig: '', camp: '', q: '', sel: null, qs: 'nova', qsel: null, inbox: 'perguntas', rs: 'nova', rsel: null, preset: 'todos', seg: '', prevView: 'contatos' };
 var activeCid = null;
 var me = null;
 
@@ -153,12 +173,22 @@ async function loadAll() {
     supabase.from('caminhos_opcoes').select('persona,chave,rotulo'),
     // Lembretes de prazo pedidos na calculadora dos artigos (db/crm-fase2c-lembretes.sql).
     // Se a fase 2c ainda não rodou, a tabela não existe: o card só fica vazio.
-    supabase.from('lembretes_prazo').select('*').eq('status', 'agendado').order('avisar_em', { ascending: true }).limit(500)
+    supabase.from('lembretes_prazo').select('*').eq('status', 'agendado').order('avisar_em', { ascending: true }).limit(500),
+    // Respostas por e-mail (db/crm-fase0-email-guia.sql). Sem a migração, a aba só fica vazia.
+    supabase.from('respostas_email').select('*').order('recebido_em', { ascending: true }).limit(2000)
   ]);
   if (r[0].error) return fail('carregar os contatos', r[0].error);
   C = r[0].data || [];
   Q = r[1].error ? [] : (r[1].data || []);
   L = r[3] && !r[3].error ? (r[3].data || []) : [];
+  R = r[4] && !r[4].error ? (r[4].data || []) : [];
+  // O e-mail do CRM a que cada resposta respondeu (assunto e modelo).
+  RM = {};
+  var ids = R.map(function (x) { return x.email_id; }).filter(function (v, i, a) { return v && a.indexOf(v) === i; });
+  if (ids.length) {
+    var em = await supabase.from('emails_enviados').select('id,modelo,assunto').in('id', ids.slice(0, 500));
+    (em.data || []).forEach(function (m) { RM[m.id] = m; });
+  }
   SUBS = {};
   (r[2].data || []).forEach(function (o) { SUBS[o.persona + '|' + o.chave] = o.rotulo; });
 }
@@ -204,7 +234,7 @@ function initControls() {
   var stMap = {}; STAGES.forEach(function (s) { stMap[s.k] = s.l; });
   fillSelect($('f-stage'), 'Todo estágio', stMap);
   var origs = {}; Object.keys(ORIG).forEach(function (k) { origs[k] = ORIG[k]; });
-  C.forEach(function (c) { if (c.origem && !origs[c.origem]) origs[c.origem] = c.origem; });
+  C.forEach(function (c) { origensDe(c).forEach(function (o) { if (!origs[o]) origs[o] = o; }); });
   fillSelect($('f-orig'), 'Toda origem', origs);
   fillCampanhas();
   fillSelect($('funil-persona'), 'Toda persona', PERSONAS);
@@ -225,8 +255,9 @@ function filtered() {
     if (state.sub && c.subpersona !== state.sub) return false;
     if (state.urg && c.urgencia !== state.urg) return false;
     if (state.stage && c.estagio !== state.stage) return false;
-    if (state.orig && c.origem !== state.orig) return false;
+    if (state.orig && origensDe(c).indexOf(state.orig) === -1) return false;
     if (state.camp && (state.camp === '__sem' ? !!c.utm_campaign : c.utm_campaign !== state.camp)) return false;
+    if (state.preset === 'voltaram' && !voltou(c)) return false;
     if (state.preset === 'parados' && !(c.dias >= 7 && c.estagio !== 'concluido')) return false;
     if (state.preset === 'prazo' && !(c.dias_para_prazo != null && c.dias_para_prazo <= 30 && c.dias_para_prazo >= -90 && c.estagio !== 'concluido')) return false;
     if (state.preset === 'aupair' && !(c.persona === 'au_pair_estudante' && c.respostas && c.respostas.apCertificado === 'nao')) return false;
@@ -253,10 +284,17 @@ function renderToday() {
   }).join('') || '<div class="empty">Ninguém pedindo atenção agora.</div>';
 
   var nq = Q.filter(function (x) { return x.status === 'nova'; }).sort(function (a, b) { return a.criado_em < b.criado_em ? -1 : 1; });
-  $('today-q').innerHTML = nq.slice(0, 5).map(function (x) {
-    var c = byC(x.contato_id); if (!c) return '';
-    var h = hrsSince(x.criado_em);
-    return '<button class="row" data-openq="' + x.id + '" type="button"><div class="' + avClass(c) + '">' + esc(ini(c)) + '</div><div class="who"><b>' + esc(short(c)) + '</b><span>' + esc(x.texto) + '</span></div><span class="sla num ' + (h >= 72 ? 'late' : 'ok') + '">' + hrs(h) + '</span></button>';
+  var nr = R.filter(function (x) { return x.status === 'nova'; });
+  // Caixa de entrada: perguntas e respostas por e-mail juntas, a mais antiga primeiro.
+  var caixa = nq.map(function (x) { return { k: 'q', x: x, em: x.criado_em }; })
+    .concat(nr.map(function (x) { return { k: 'r', x: x, em: x.recebido_em }; }))
+    .sort(function (a, b) { return a.em < b.em ? -1 : 1; });
+  $('today-q').innerHTML = caixa.slice(0, 5).map(function (it) {
+    var x = it.x, c = byC(x.contato_id), h = hrsSince(it.em);
+    if (it.k === 'q' && !c) return '';
+    var who = c ? esc(short(c)) : esc(x.de_email) + ' <span class="persona" style="display:inline;font-size:11.5px">· sem ficha</span>';
+    return '<button class="row" ' + (it.k === 'q' ? 'data-openq' : 'data-openr') + '="' + x.id + '" type="button">' + (c ? '<div class="' + avClass(c) + '">' + esc(ini(c)) + '</div>' : '<div class="av b">@</div>') +
+      '<div class="who"><b>' + who + '</b><span>' + (it.k === 'r' ? '✉ ' : '') + esc(x.texto) + '</span></div><span class="sla num ' + (h >= 72 ? 'late' : 'ok') + '">' + hrs(h) + '</span></button>';
   }).join('') || '<div class="empty">Tudo respondido.</div>';
 
   var week = Date.now() - 7 * 864e5, prev = Date.now() - 14 * 864e5;
@@ -269,14 +307,14 @@ function renderToday() {
   $('k-leads-sub').className = leads7 >= leadsPrev ? 'up' : '';
   $('k-app').textContent = recentes.length ? Math.round(100 * abriram / recentes.length) + '%' : '—';
   $('k-app-sub').textContent = abriram + ' de ' + recentes.length;
-  $('k-perg').textContent = nq.length;
-  var atrasadas = nq.filter(function (x) { return hrsSince(x.criado_em) >= 72; }).length;
+  $('k-perg').textContent = nq.length + nr.length;
+  var atrasadas = caixa.filter(function (it) { return hrsSince(it.em) >= 72; }).length;
   $('k-perg-sub').textContent = atrasadas ? atrasadas + ' passou de 72h' : 'nenhuma passou de 72h';
   $('k-urg').textContent = C.filter(function (c) { return c.urgencia === 'alta' && c.estagio !== 'concluido' && c.estagio !== 'inativo'; }).length;
   $('hello-sub').textContent = new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' }) +
-    ' · ' + (att.length + nq.length) + ' coisas pedem você hoje';
+    ' · ' + (att.length + nq.length + nr.length) + ' coisas pedem você hoje';
 
-  $('c-perguntas').textContent = nq.length; $('c-perguntas').hidden = nq.length === 0;
+  $('c-perguntas').textContent = nq.length + nr.length; $('c-perguntas').hidden = nq.length + nr.length === 0;
   $('c-contatos').textContent = C.length;
 
   var um = C.filter(function (c) { return c.estagio === 'um_a_um'; });
@@ -284,6 +322,27 @@ function renderToday() {
     return '<button class="row" data-open="' + esc(c.id) + '" type="button"><div class="' + avClass(c) + '">' + esc(ini(c)) + '</div><div class="who"><b>' + esc(short(c)) + '</b><span>' + esc(personaLabel(c)) + (subLabel(c) ? ' · ' + esc(subLabel(c)) : '') + '</span></div><span class="when">' + esc(fmtWhen(c.um_a_um_quando)) + '</span></button>';
   }).join('') || '<div class="empty">Nenhum 1:1 marcado.</div>';
   renderLembretes();
+  renderGuias();
+}
+
+// Visão macro: por guia/origem, quantas pessoas passaram, quantas voltaram e quantas aceitam novidades.
+// Clicar abre a lista de contatos já filtrada naquela origem.
+function renderGuias() {
+  var box = $('today-guias'); if (!box) return;
+  var g = {};
+  C.forEach(function (c) {
+    origensDe(c).forEach(function (o) {
+      var x = g[o] || (g[o] = { n: 0, volta: 0, aceita: 0 });
+      x.n++; if (voltou(c)) x.volta++; if (c.aceita_novidades) x.aceita++;
+    });
+  });
+  var rows = Object.keys(g).filter(function (o) { return o.indexOf('guia-') === 0; })
+    .sort(function (a, b) { return g[b].n - g[a].n; });
+  box.innerHTML = rows.map(function (o) {
+    var x = g[o];
+    return '<button class="row" data-guia="' + esc(o) + '" type="button"><div class="who"><b>' + esc(origLabel(o)) + '</b><span>' + x.n + (x.n === 1 ? ' pessoa' : ' pessoas') +
+      ' · ' + x.volta + ' voltaram · ' + x.aceita + ' aceitam novidades</span></div></button>';
+  }).join('') || '<div class="empty">Nenhum guia com cadastro ainda.</div>';
 }
 
 // Card "Lembretes de prazo" do Hoje: quem pediu, na calculadora de um artigo, pra ser
@@ -308,8 +367,8 @@ function renderContacts() {
   $('result-count').textContent = list.length;
   $('tbody').innerHTML = list.map(function (c) {
     return '<tr data-id="' + esc(c.id) + '" aria-selected="' + (c.id === state.sel) + '" tabindex="0">' +
-      '<td><div class="nm"><div class="' + avClass(c) + '">' + esc(ini(c)) + '</div><div><b>' + esc(displayName(c)) + '</b><span>' + esc(c.email) + '</span></div></div></td>' +
-      '<td><span class="persona">' + esc(personaLabel(c)) + '</span><div class="sub">' + esc(subLabel(c)) + '</div></td>' +
+      '<td><div class="nm"><div class="' + avClass(c) + '">' + esc(ini(c)) + '</div><div><b>' + esc(displayName(c)) + (voltou(c) ? ' <span class="pill" title="Deixou o e-mail ' + nCapturas(c) + ' vezes">voltou ×' + nCapturas(c) + '</span>' : '') + '</b><span>' + esc(c.email) + '</span></div></div></td>' +
+      '<td><span class="persona">' + esc(personaLabel(c)) + '</span><div class="sub">' + esc(subLabel(c)) + '</div>' + (origensDe(c).length > 1 ? '<div class="sub">' + esc(origensDe(c).map(origLabel).join(' · ')) + '</div>' : '') + '</td>' +
       '<td>' + urgPill(c.urgencia) + '</td><td><span class="stage">' + esc(stageLabel(c.estagio)) + '</span></td>' +
       '<td>' + prazoCell(c) + '</td><td class="sub num">' + ago(c.dias) + '</td></tr>';
   }).join('');
@@ -338,11 +397,17 @@ function renderBoard() {
   }).join('');
 }
 
+// Caixa de entrada: duas abas (perguntas únicas e respostas por e-mail), cada uma com os seus status.
 function renderQuestions() {
+  var nq = Q.filter(function (x) { return x.status === 'nova'; }).length, nr = R.filter(function (x) { return x.status === 'nova'; }).length;
+  $('c-ib-perguntas').textContent = nq; $('c-ib-perguntas').hidden = !nq;
+  $('c-ib-emails').textContent = nr; $('c-ib-emails').hidden = !nr;
+  document.querySelectorAll('.itab').forEach(function (t) { t.setAttribute('aria-selected', String(t.dataset.inbox === state.inbox)); });
+  if (state.inbox === 'emails') return renderRespostas();
+  $('qtabs').innerHTML = [['nova', 'Novas'], ['respondida', 'Respondidas']].map(function (k) {
+    return '<button class="qtab" role="tab" data-qs="' + k[0] + '" aria-selected="' + (state.qs === k[0]) + '" type="button">' + k[1] + ' <span class="num">' + Q.filter(function (x) { return x.status === k[0]; }).length + '</span></button>';
+  }).join('');
   var list = Q.filter(function (x) { return x.status === state.qs; }).sort(function (a, b) { return state.qs === 'nova' ? (a.criado_em < b.criado_em ? -1 : 1) : (a.respondida_em < b.respondida_em ? 1 : -1); });
-  $('qn').textContent = Q.filter(function (x) { return x.status === 'nova'; }).length;
-  $('qr').textContent = Q.filter(function (x) { return x.status === 'respondida'; }).length;
-  document.querySelectorAll('.qtab').forEach(function (t) { t.setAttribute('aria-selected', String(t.dataset.qs === state.qs)); });
   if (!list.some(function (x) { return x.id === state.qsel; })) state.qsel = list.length ? list[0].id : null;
   $('qitems').innerHTML = list.map(function (x) {
     var c = byC(x.contato_id); if (!c) return '';
@@ -364,6 +429,37 @@ function renderQuestions() {
         '<p class="sub" id="reply-err" style="margin:0;color:var(--red)" hidden>Escreva a resposta antes de salvar.</p>' +
         '<div class="reply-foot"><small>O envio por e-mail entra na fase 3 — por ora copie a resposta e mande pelo seu e-mail.</small><button class="btn primary" type="button" id="send-reply">Marcar como respondida</button></div></div>'
       : '<div class="sec" style="margin:0"><h4>Sua resposta · ' + esc(fmtDate(x.respondida_em)) + '</h4><div class="sent" style="white-space:pre-wrap">' + esc(x.resposta) + '</div></div>');
+}
+
+function renderRespostas() {
+  $('qtabs').innerHTML = RS_TABS.map(function (k) {
+    return '<button class="qtab" role="tab" data-rs="' + k[0] + '" aria-selected="' + (state.rs === k[0]) + '" type="button">' + k[1] + ' <span class="num">' + R.filter(function (x) { return x.status === k[0]; }).length + '</span></button>';
+  }).join('');
+  var list = R.filter(function (x) { return x.status === state.rs; }).sort(function (a, b) { return state.rs === 'nova' ? (a.recebido_em < b.recebido_em ? -1 : 1) : (a.recebido_em < b.recebido_em ? 1 : -1); });
+  if (!list.some(function (x) { return x.id === state.rsel; })) state.rsel = list.length ? list[0].id : null;
+  $('qitems').innerHTML = list.map(function (x) {
+    var c = byC(x.contato_id), h = hrsSince(x.recebido_em);
+    return '<button class="qitem" data-r="' + x.id + '" aria-current="' + (x.id === state.rsel) + '" type="button"><div class="l1"><b>' + esc(c ? short(c) : x.de_email) + '</b>' +
+      (x.status === 'nova' ? '<span class="sla num ' + (h >= 72 ? 'late' : 'ok') + '">' + (h >= 72 ? 'atrasada · ' : '') + hrs(h) + '</span>' : '<span class="sla ok">' + (x.status === 'respondida' ? 'respondida' : 'arquivada') + '</span>') +
+      '</div><p>' + esc(x.texto) + '</p><span class="persona">' + (c ? esc(personaLabel(c)) : 'sem ficha') + (x.assunto ? ' · ' + esc(x.assunto) : '') + '</span></button>';
+  }).join('') || '<div class="empty">' + (state.rs === 'nova' ? 'Nenhuma resposta nova por e-mail.' : 'Nada aqui ainda.') + '</div>';
+  var x = R.filter(function (y) { return y.id === state.rsel; })[0];
+  if (!x) { $('qdetail').innerHTML = '<div class="empty">' + (R.length ? 'Escolha uma resposta na lista.' : 'Quando alguém responder a um e-mail do CRM, a resposta aparece aqui e também chega no seu e-mail.') + '</div>'; return; }
+  var c = byC(x.contato_id), m = x.email_id && RM[x.email_id];
+  var aQue = m ? (MODELO[m.modelo] || m.modelo) + (m.assunto ? ' · "' + m.assunto + '"' : '') : (x.assunto ? 'assunto "' + x.assunto + '"' : '—');
+  var mailto = 'mailto:' + encodeURIComponent(x.de_email) + '?subject=' + encodeURIComponent(/^re:/i.test(x.assunto || '') ? x.assunto : 'Re: ' + (x.assunto || ''));
+  $('qdetail').innerHTML =
+    '<div style="display:flex;gap:12px;align-items:center">' + (c ? '<div class="' + avClass(c) + '">' + esc(ini(c)) + '</div>' : '<div class="av b">@</div>') +
+    '<div style="min-width:0"><b style="font-weight:600">' + esc(c ? displayName(c) : (x.de_nome || 'Sem nome')) + '</b><div class="mail">' + esc(x.de_email) + ' · recebida há ' + hrs(hrsSince(x.recebido_em)) + '</div></div>' +
+    (c ? '<button class="link" style="margin-left:auto" data-open="' + esc(c.id) + '" type="button">Abrir ficha →</button>' : '<span class="pill" style="margin-left:auto">Sem ficha no CRM</span>') + '</div>' +
+    '<p class="sub" style="margin:12px 0 0">Respondeu a: ' + esc(aQue) + '</p>' +
+    '<blockquote style="white-space:pre-wrap">' + esc(x.texto) + '</blockquote>' +
+    (c ? '<div class="ctx">' + urgPill(c.urgencia) + '<span class="pill">' + esc(personaLabel(c)) + (subLabel(c) ? ' · ' + esc(subLabel(c)) : '') + '</span><span class="pill">Estágio: ' + esc(stageLabel(c.estagio)) + '</span></div>' : '') +
+    '<div class="reply"><div class="reply-foot"><small>A mensagem completa também chegou no seu e-mail. Responda por lá (ou pelo botão) e marque aqui.</small><div class="btns">' +
+    (x.status === 'nova'
+      ? '<a class="btn" href="' + esc(mailto) + '">Responder pelo e-mail</a><button class="btn" type="button" data-rstatus="arquivada">Arquivar</button><button class="btn primary" type="button" data-rstatus="respondida">Marcar como respondida</button>'
+      : '<button class="btn" type="button" data-rstatus="nova">Voltar para novas</button>') +
+    '</div></div></div>';
 }
 
 function renderReimpacto() {
@@ -392,9 +488,9 @@ function renderReimpacto() {
 function eventText(e) {
   var d = e.dados || {}, t = e.tipo;
   var m = {
-    email_capturado: ['sistema', 'Deixou o e-mail' + (d.origem ? ' (' + d.origem + ')' : '')],
+    email_capturado: ['sistema', 'Deixou o e-mail' + (d.origem ? ' (' + origLabel(d.origem) + ')' : '')],
     lembrete_pedido: ['artigo', 'Pediu lembrete do prazo de ' + fmtDay(d.prazo) + (d.artigo ? ' (' + d.artigo + ')' : '')],
-    email_recapturado: ['sistema', 'Refez o quiz'],
+    email_recapturado: ['sistema', 'Voltou a deixar o e-mail' + (d.origem ? ' (' + origLabel(d.origem) + ')' : '')],
     quiz_respondido: ['sistema', 'Respondeu o quiz do funil'],
     acesso_ativado: ['app', 'Abriu o link de acesso'],
     senha_definida: ['sistema', 'Definiu uma senha'],
@@ -408,6 +504,7 @@ function eventText(e) {
     um_a_um_agendado: ['uma_um', '1:1 marcado · ' + fmtWhen(d.quando)],
     sinal_enviado: ['sinal', 'Sinal enviado: ' + (d.mensagem || '')],
     email_enviado: ['email', 'E-mail enviado: ' + (MODELO[d.modelo] || d.assunto || d.modelo || '')],
+    email_respondido: ['resposta', 'Respondeu o seu e-mail' + (d.assunto ? ': "' + d.assunto + '"' : '')],
     estagio_alterado: ['sistema', 'Estágio: ' + stageLabel(d.de) + ' → ' + stageLabel(d.para)]
   };
   return m[t] || ['sistema', t];
@@ -416,6 +513,21 @@ async function openPessoa(id) {
   if (state.view !== 'pessoa') state.prevView = state.view;
   state.sel = id;
   show('pessoa');
+}
+// Resumo da jornada: por onde a pessoa passou, quantas vezes voltou e qual e-mail faz sentido agora.
+function jornadaPanel(c, h4) {
+  var os = origensDe(c), ps = (c.personas && c.personas.length > 1) ? c.personas : [];
+  var k = defaultTpl(c), t = TPLS[k];
+  var linhas = [];
+  linhas.push('<p style="margin:0 0 6px;font-size:13px"><b>Deixou o e-mail ' + nCapturas(c) + (nCapturas(c) === 1 ? ' vez' : ' vezes') + '</b>' +
+    (c.ultima_captura_em ? ' · última em ' + esc(fmtDay(c.ultima_captura_em)) : '') + '</p>');
+  if (os.length) linhas.push('<div class="ctx" style="margin:0 0 8px">' + os.map(function (o) { return '<span class="pill">' + esc(origLabel(o)) + '</span>'; }).join('') + '</div>');
+  if (ps.length) linhas.push('<p class="sub" style="margin:0 0 8px">Personas: ' + esc(ps.map(function (p) { return PERSONAS[p] || p; }).join(' → ')) + '</p>');
+  linhas.push('<p class="sub" style="margin:0 0 8px">' + (voltouDepoisDoEmail(c) ? 'Voltou depois do seu último e-mail: ' : 'E-mail sugerido agora: ') + '<b>' + esc(t.label) + '</b>.</p>');
+  var bloq = EXIGEM_NOVIDADES[k] && !c.aceita_novidades;
+  linhas.push(bloq ? '<p class="sub" style="margin:0;color:var(--red)">Não aceitou novidades por e-mail: este modelo não pode ser enviado.</p>'
+    : '<button class="btn primary" type="button" data-emailfor="' + esc(c.id) + '" data-tplk="' + esc(k) + '">Escrever este e-mail →</button>');
+  return '<div class="panel" style="padding:16px"><h4 style="' + h4 + '">Jornada</h4>' + linhas.join('') + '</div>';
 }
 async function renderPessoa() {
   var c = byC(state.sel);
@@ -430,9 +542,10 @@ async function renderPessoa() {
   var eventos = r[0].data || [], cons = r[1].data || [], mails = r[2].data || [];
   var last = function (f) { var x = cons.filter(function (k) { return k.finalidade === f; })[0]; return x ? x.aceito : false; };
   var perg = Q.filter(function (x) { return x.contato_id === c.id; });
+  var resps = R.filter(function (x) { return x.contato_id === c.id; });
   var resp = c.respostas || {};
-  var kv = [['Entrada na França', fmtDay(c.data_entrada)], ['Prazo do VLS-TS', c.prazo_limite ? fmtDay(c.prazo_limite) + ' (' + prazoTxt(c) + ')' : '—'], ['Fase', c.fase || '—'], ['Nível de estudos', c.nivel_estudos || '—'], ['Preocupação', c.preocupacao || '—'], ['Origem', ORIG[c.origem] || c.origem || '—'], ['Campanha (UTM)', c.utm_campaign || '—'], ['Conteúdo / post (UTM)', c.utm_content || '—'], ['Fonte (UTM)', c.utm_source || '—']]
-    .concat(Object.keys(resp).map(function (k) { return [k, resp[k]]; }));
+  var kv = [['Entrada na França', fmtDay(c.data_entrada)], ['Prazo do VLS-TS', c.prazo_limite ? fmtDay(c.prazo_limite) + ' (' + prazoTxt(c) + ')' : '—'], ['Fase', c.fase || '—'], ['Nível de estudos', c.nivel_estudos || '—'], ['Preocupação', c.preocupacao || '—'], ['Origem (1ª vez)', origLabel(c.origem) || '—'], ['Última origem', origLabel(ultimaOrigem(c)) || '—'], ['Campanha (UTM)', c.utm_campaign || '—'], ['Conteúdo / post (UTM)', c.utm_content || '—'], ['Fonte (UTM)', c.utm_source || '—']]
+    .concat(Object.keys(resp).map(function (k) { var l = RESP_LABEL[k]; return l ? [l[0], l[1](resp[k])] : [k, resp[k]]; }));
   var h4 = 'font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-3); margin:0 0 8px';
   $('pessoa-page').innerHTML =
     '<button class="link" data-back type="button">← Voltar</button>' +
@@ -453,8 +566,10 @@ async function renderPessoa() {
       return '<div class="feeditem"><span class="pill ' + m[1] + '">' + esc(m[0]) + '</span><div class="fbody"><p>' + esc(tx[1]) + '</p><time>' + esc(fmtDate(e.criado_em)) + '</time></div></div>';
     }).join('') || '<div class="empty">Nada registrado ainda.</div>') + '</div></div>' +
     '<div style="display:flex; flex-direction:column; gap:16px">' +
+    jornadaPanel(c, h4) +
     '<div class="panel" style="padding:16px"><h4 style="' + h4 + '">O que respondeu no funil</h4><dl class="kv">' + kv.map(function (x) { return '<dt>' + esc(x[0]) + '</dt><dd>' + esc(x[1]) + '</dd>'; }).join('') + '</dl></div>' +
     (perg.length ? '<div class="panel" style="padding:16px"><h4 style="' + h4 + '">Perguntas únicas</h4>' + perg.map(function (x) { return '<p style="margin:0 0 6px;font-size:13px">"' + esc(x.texto) + '" <button class="link" data-openq="' + x.id + '" type="button">' + (x.status === 'nova' ? 'Responder' : 'Ver resposta') + ' →</button></p>'; }).join('') + '</div>' : '') +
+    (resps.length ? '<div class="panel" style="padding:16px"><h4 style="' + h4 + '">Respostas por e-mail</h4>' + resps.map(function (x) { return '<p style="margin:0 0 6px;font-size:13px">"' + esc(x.texto.length > 160 ? x.texto.slice(0, 160) + '…' : x.texto) + '" <span class="sub">' + esc(fmtDate(x.recebido_em)) + '</span> <button class="link" data-openr="' + x.id + '" type="button">' + (x.status === 'nova' ? 'Abrir na caixa' : 'Ver') + ' →</button></p>'; }).join('') + '</div>' : '') +
     '<div class="panel" style="padding:16px"><h4 style="' + h4 + '">E-mails enviados</h4>' + (mails.map(function (m) {
       return '<div class="mailrow"><button class="mh" data-mailtoggle="' + m.id + '" type="button"><b>' + esc(MODELO[m.modelo] || m.modelo) + '</b><span class="pill st-' + esc(m.status) + '">' + esc(MAIL_ST[m.status] || m.status) + '</span><time>' + esc(fmtDate(m.enviado_em || m.criado_em)) + '</time></button><div class="mailbody" id="mb-' + m.id + '" hidden>' + esc(m.corpo || '(sem corpo salvo)') + '</div></div>';
     }).join('') || '<p class="sub" style="margin:0">Nenhum e-mail enviado por aqui ainda.</p>') + '</div>' +
@@ -560,11 +675,11 @@ function show(view) {
 }
 
 function csv(rows) {
-  var head = ['nome', 'email', 'persona', 'subpersona', 'urgencia', 'estagio', 'origem', 'dias_sem_sinal', 'aceita_novidades', 'data_entrada', 'prazo_limite', 'dias_para_prazo', 'utm_source', 'utm_campaign', 'utm_content', 'instagram', 'ig_id'];
+  var head = ['nome', 'email', 'persona', 'subpersona', 'urgencia', 'estagio', 'origem', 'origens', 'capturas', 'dias_sem_sinal', 'aceita_novidades', 'data_entrada', 'prazo_limite', 'dias_para_prazo', 'utm_source', 'utm_campaign', 'utm_content', 'instagram', 'ig_id'];
   // Neutraliza fórmulas (=,+,-,@) pra a planilha não executar texto vindo do formulário público.
   var cell = function (v) { var s = String(v == null ? '' : v); if (/^[=+\-@\t\r]/.test(s)) s = "'" + s; return '"' + s.replace(/"/g, '""') + '"'; };
   return [head.join(',')].concat(rows.map(function (c) {
-    return [c.nome, c.email, personaLabel(c), subLabel(c), c.urgencia, c.estagio, c.origem, c.dias, c.aceita_novidades ? 'sim' : 'não', c.data_entrada, c.prazo_limite, c.dias_para_prazo, c.utm_source, c.utm_campaign, c.utm_content, c.instagram, c.ig_id].map(cell).join(',');
+    return [c.nome, c.email, personaLabel(c), subLabel(c), c.urgencia, c.estagio, c.origem, origensDe(c).join(' | '), nCapturas(c), c.dias, c.aceita_novidades ? 'sim' : 'não', c.data_entrada, c.prazo_limite, c.dias_para_prazo, c.utm_source, c.utm_campaign, c.utm_content, c.instagram, c.ig_id].map(cell).join(',');
   })).join('\n');
 }
 
@@ -575,6 +690,7 @@ document.addEventListener('click', async function (e) {
   if (t.matches('.nav')) return show(t.dataset.view);
   if (t.dataset.go) { if (t.dataset.viewPreset) applyPreset(t.dataset.viewPreset); return show(t.dataset.go); }
   if (t.dataset.preset) return applyPreset(t.dataset.preset);
+  if (t.dataset.guia) { applyPreset('todos'); state.orig = t.dataset.guia; syncControls(); return show('contatos'); }
   if (t.dataset.clear) {
     if (t.dataset.clear === 'all') return applyPreset('todos');
     state[t.dataset.clear] = ''; if (t.dataset.clear === 'persona') state.sub = ''; state.preset = '';
@@ -590,9 +706,21 @@ document.addEventListener('click', async function (e) {
     renderLembretes(); return toast('Lembrete marcado como avisado');
   }
   if (t.dataset.back !== undefined) return show(state.prevView || 'contatos');
-  if (t.dataset.openq) { var qq = Q.filter(function (y) { return String(y.id) === t.dataset.openq; })[0]; if (!qq) return; state.qs = qq.status; state.qsel = qq.id; return show('perguntas'); }
+  if (t.dataset.openq) { var qq = Q.filter(function (y) { return String(y.id) === t.dataset.openq; })[0]; if (!qq) return; state.inbox = 'perguntas'; state.qs = qq.status; state.qsel = qq.id; return show('perguntas'); }
+  if (t.dataset.openr) { var rr = R.filter(function (y) { return String(y.id) === t.dataset.openr; })[0]; if (!rr) return; state.inbox = 'emails'; state.rs = rr.status; state.rsel = rr.id; return show('perguntas'); }
+  if (t.dataset.inbox) { state.inbox = t.dataset.inbox; return renderQuestions(); }
   if (t.dataset.qs) { state.qs = t.dataset.qs; state.qsel = null; return renderQuestions(); }
   if (t.dataset.q) { state.qsel = Number(t.dataset.q); return renderQuestions(); }
+  if (t.dataset.rs) { state.rs = t.dataset.rs; state.rsel = null; return renderQuestions(); }
+  if (t.dataset.r) { state.rsel = Number(t.dataset.r); return renderQuestions(); }
+  if (t.dataset.rstatus) {
+    var novo = t.dataset.rstatus, rid = state.rsel;
+    t.disabled = true;
+    var ru = await supabase.from('respostas_email').update({ status: novo, respondida_em: novo === 'respondida' ? new Date().toISOString() : null }).eq('id', rid);
+    if (ru.error) { t.disabled = false; return fail('mudar a resposta', ru.error); }
+    await reload(); renderQuestions();
+    return toast(novo === 'respondida' ? 'Resposta marcada como respondida' : novo === 'arquivada' ? 'Resposta arquivada' : 'Resposta de volta em Novas');
+  }
   if (t.dataset.seg) { state.seg = state.seg === t.dataset.seg ? '' : t.dataset.seg; return renderReimpacto(); }
   if (t.dataset.mailtoggle) { var mb = $('mb-' + t.dataset.mailtoggle); mb.hidden = !mb.hidden; return; }
   if (t.dataset.opensinal) return openSinal(t.dataset.opensinal);
