@@ -29,7 +29,9 @@
 --   drop function public.crm_respostas_ligar(); drop function public.crm_on_resposta_email();
 --   drop table public.respostas_email; drop function public.crm_guia_email_pedir(uuid, text);
 --   drop index emails_um_por_guia_idx;
---   rodar de novo guias-link-privado.sql (capturar_lead_guia antiga) e crm-enriquecimento.sql (a view).
+--   rodar de novo guias-link-privado.sql (capturar_lead_guia antiga); para a visão antiga: drop view crm_contatos;
+--   e rodar crm-enriquecimento.sql. Atenção: com esta migração no ar, NÃO rode crm-enriquecimento.sql sozinho
+--   (a visão dele tem uma coluna a menos e o Postgres recusa: "cannot drop columns from view").
 
 -- ---------- 1. Um e-mail por pessoa por guia ----------
 create unique index if not exists emails_um_por_guia_idx
