@@ -145,6 +145,18 @@
               <option value="cf-entrevista-resposta">Estou esperando a entrevista ou a resposta</option>
             </select>
           </div>
+          <div class="g-field">
+            <label for="g-nivel">Para qual nível você vai se candidatar?</label>
+            <select id="g-nivel">
+              <option value="">Ainda não sei</option>
+              <option value="l1">1º ano de Licence</option>
+              <option value="arq">Arquitetura</option>
+              <option value="l2l3">2º ou 3º ano de Licence</option>
+              <option value="lpro">Licence Pro</option>
+              <option value="master">Master</option>
+              <option value="escola">Escola (engenharia, comércio)</option>
+            </select>
+          </div>
           <div class="hp-field" aria-hidden="true">
             <label for="hp-website">Deixe este campo em branco</label>
             <input type="text" id="hp-website" name="website" tabindex="-1" autocomplete="off">
@@ -291,6 +303,7 @@ byId("gate-form").addEventListener("submit", async function (ev) {
   var email = byId("g-email").value.trim();
   var nome = byId("g-nome").value.trim();
   var etapa = byId("g-etapa").value;
+  var nivel = byId("g-nivel").value;
   if (byId("hp-website").value || (Date.now() - shownAt) < 2500) { return; }
   if (!nome) { erro("Conta seu nome pra eu saber com quem estou falando."); return; }
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { erro("Confere o e-mail e tenta de novo."); return; }
@@ -305,7 +318,7 @@ byId("gate-form").addEventListener("submit", async function (ev) {
     nome: nome,
     persona: "campus_france",
     origem: "guia-etudes-en-france-2027",
-    respostas: { objetivo: etapa },
+    respostas: nivel ? { objetivo: etapa, cfNivel: nivel } : { objetivo: etapa },
     aceita_servico: true,
     aceita_novidades: byId("consent-novidades").checked,
     consentimento_versao: CONSENTIMENTO_VERSAO,
@@ -322,7 +335,7 @@ byId("gate-form").addEventListener("submit", async function (ev) {
     var link = r.data && r.data.notion_url ? { url: r.data.notion_url, texto: r.data.notion_texto || null } : null;
     if (!link) throw new Error("sem_link");
     lsSet(LS_KEY, JSON.stringify(link));
-    track("guia_lead_capturado", { guia: GUIA, etapa: etapa, utm_campaign: params.get("utm_campaign") || null });
+    track("guia_lead_capturado", { guia: GUIA, etapa: etapa, nivel: nivel || null, utm_campaign: params.get("utm_campaign") || null });
     liberar(link, true);
   } catch (e) {
     console.error("capturar_lead_guia:", e);
