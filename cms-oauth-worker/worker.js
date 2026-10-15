@@ -1431,16 +1431,16 @@ function cfGuia1(contato, notionUrl) {
   const titulo = nome ? nome + ', o seu checklist está aqui' : 'O seu checklist está aqui';
   const pre = nivel ? 'O link para guardar, o prazo do seu nível e o seu próximo passo.' : 'O link para guardar, os prazos e o seu próximo passo.';
   const abertura = 'Para você não perder o link, ele fica guardado neste e-mail. Abra quando quiser, no computador ou no celular.';
-  const quem = 'Antes de você ir: eu sou a Ingryd. Moro na França e criei o Por Dentro para quem está fazendo esse caminho agora. Montei este checklist lendo o guia oficial do Campus France passo a passo, para você ir direto ao que importa.';
-  const perguntaB = 'Uma pergunta, se puder me responder aqui mesmo:';
-  const perguntaT = 'qual curso, ou qual cidade, você está de olho? Eu leio cada resposta.';
+  // Versão aprovada em 15/10: a apresentação e a pergunta foram para o e-mail 2 (cfGuiaConversa).
+  const duvidaB = 'Ficou com dúvida?';
+  const duvidaT = 'É só responder este e-mail. Chega direto para mim.';
   const rodape = 'Você recebeu este e-mail porque pediu o checklist Études en France no Por Dentro com ' + contato.email + '.';
 
   const t = [titulo, '', abertura, '', 'Abrir o checklist no Notion: ' + link, ''];
   if (nivel) t.push('O prazo do seu nível · ' + nivel[0] + ': ' + nivel[1], 'Se algum curso que você escolher tiver prazo próprio, vale o menor.', '');
   else t.push('Prazos para submeter o dossiê · ciclo 2027-2028', '14/12/2026 · 1º ano de Licence e Arquitetura', '17/01/2027 · 2º e 3º ano de Licence, Licence Pro, Master e escolas', 'Se algum curso tiver prazo próprio, vale o menor.', '');
   if (passo) t.push('Para quem está na etapa ' + CF_ETAPA_TXT[resp.objetivo] + ':', passo[0], passo[1], '');
-  t.push(quem, '', perguntaB + ' ' + perguntaT, '', 'Ingryd · Por Dentro', '', '—', rodape);
+  t.push(duvidaB + ' ' + duvidaT, '', 'Ingryd · Por Dentro', '', '—', rodape);
   const texto = t.join('\n');
 
   const e = crmEscapeHtml;
@@ -1471,9 +1471,7 @@ ${p(e(abertura))}
 <p style="margin:0 0 24px;"><a href="${e(link)}" style="display:inline-block; background:#577328; color:#FBFAF7; ${sans} font-size:15px; font-weight:600; text-decoration:none; padding:13px 22px; border-radius:4px;">Abrir o checklist no Notion</a></p>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 24px;"><tr><td style="background:#F4F1EC; border:1px solid #DEB975; border-radius:8px; padding:16px 18px;">${prazoHtml}</td></tr></table>
 ${passoHtml}
-<div style="border-top:1px solid #E2DED7; margin:8px 0 20px;"></div>
-${p(e(quem))}
-${p('<b>' + e(perguntaB) + '</b> ' + e(perguntaT))}
+<p style="margin:8px 0 20px; background:#F4F1EC; border-radius:8px; padding:12px 14px; ${sans} font-size:14px; line-height:1.55; color:#6E6862;"><b style="color:#2B2B2B;">${e(duvidaB)}</b> ${e(duvidaT)}</p>
 <p style="margin:0; ${serif} font-size:16px; font-style:italic; color:#2B2B2B;">Ingryd · Por Dentro</p>
 </td></tr>
 <tr><td style="padding:20px 4px 0; ${sans} font-size:12px; line-height:1.55; color:#6E6862;">${e(rodape)}</td></tr>
@@ -1506,40 +1504,51 @@ async function handleCrmGuiaCapturado(request, env) {
   if (!contato) return json({ error: 'Contato não encontrado.' }, 404);
   if (!link || !/^https:\/\//.test(link.notion_url || '')) return json({ error: 'Guia sem link do Notion em guias_links.' }, 500);
 
-  const mail = cfGuia1(contato, link.notion_url);
-  // Reserva primeiro: o índice emails_um_por_guia_idx deixa só uma linha por pessoa e modelo,
-  // então só quem conseguiu gravar envia (duas chamadas juntas não mandam dois e-mails).
+  const r = await crmEnviarGuia(env, sb, contato, modelo, cfGuia1(contato, link.notion_url));
+  if (r === 'ja') return json({ ok: true, ja_enviado: true });
+  if (r === 'reserva') return json({ error: 'Não consegui registrar o envio.' }, 500);
+  if (r === 'brevo') return json({ error: 'O Brevo recusou o envio.' }, 502);
+  return json({ ok: true });
+}
+
+// Reserva, envia pelo Brevo e guarda o id da mensagem. Devolve 'enviado', 'ja' (já tinha), 'reserva' ou 'brevo'.
+// Reserva primeiro: o índice emails_um_por_guia_idx deixa só uma linha por pessoa e modelo cf_guia_*,
+// então só quem conseguiu gravar envia (duas chamadas juntas não mandam dois e-mails).
+// novidades = true: e-mail de relacionamento, com List-Unsubscribe (o rodapé "responda sair" vem no texto).
+async function crmEnviarGuia(env, sb, contato, modelo, mail, novidades) {
   const ins = await fetch(`${CRM_SUPABASE_URL}/rest/v1/emails_enviados`, {
     method: 'POST', headers: { ...sb, Prefer: 'return=representation' },
-    body: JSON.stringify({ contato_id: contatoId, modelo, assunto: mail.assunto, corpo: mail.texto, status: 'agendado', enviado_em: new Date().toISOString() }),
+    body: JSON.stringify({ contato_id: contato.id, modelo, assunto: mail.assunto, corpo: mail.texto, status: 'agendado', enviado_em: new Date().toISOString() }),
   });
-  if (ins.status === 409) return json({ ok: true, ja_enviado: true });
+  if (ins.status === 409) return 'ja';
   if (!ins.ok) {
-    console.error('crm/guia-capturado: não consegui reservar o envio — ' + ins.status + ' ' + (await ins.text()));
-    return json({ error: 'Não consegui registrar o envio.' }, 500);
+    console.error('crm/' + modelo + ': não consegui reservar o envio — ' + ins.status + ' ' + (await ins.text()));
+    return 'reserva';
   }
   const linha = (await ins.json())[0];
 
+  const brevoBody = {
+    sender: { email: env.BREVO_SENDER_EMAIL, name: env.BREVO_SENDER_NAME || 'Ingryd · Por Dentro' },
+    to: [contato.nome ? { email: contato.email, name: String(contato.nome).slice(0, 100) } : { email: contato.email }],
+    replyTo: { email: crmReplyTo(env) },
+    subject: mail.assunto,
+    htmlContent: mail.html,
+    textContent: mail.texto,
+    tags: ['crm', modelo],
+  };
+  if (novidades) brevoBody.headers = { 'List-Unsubscribe': `<mailto:${env.BREVO_SENDER_EMAIL}?subject=sair>` };
   const bRes = await fetch('https://api.brevo.com/v3/smtp/email', {
     method: 'POST',
     headers: { 'api-key': env.BREVO_API_KEY, 'Content-Type': 'application/json', Accept: 'application/json' },
-    body: JSON.stringify({
-      sender: { email: env.BREVO_SENDER_EMAIL, name: env.BREVO_SENDER_NAME || 'Ingryd · Por Dentro' },
-      to: [contato.nome ? { email: contato.email, name: String(contato.nome).slice(0, 100) } : { email: contato.email }],
-      replyTo: { email: crmReplyTo(env) },
-      subject: mail.assunto,
-      htmlContent: mail.html,
-      textContent: mail.texto,
-      tags: ['crm', modelo],
-    }),
+    body: JSON.stringify(brevoBody),
   });
   const bText = await bRes.text();
   if (!bRes.ok) {
-    // Desfaz a reserva para a pessoa receber se voltar a se cadastrar.
-    console.error('crm/guia-capturado: Brevo respondeu ' + bRes.status + ' — ' + bText);
+    // Desfaz a reserva: a pessoa recebe na próxima vez (novo cadastro ou próximo dia).
+    console.error('crm/' + modelo + ': Brevo respondeu ' + bRes.status + ' — ' + bText);
     await fetch(`${CRM_SUPABASE_URL}/rest/v1/emails_enviados?id=eq.${linha.id}`, { method: 'DELETE', headers: sb });
-    await fetch(`${CRM_SUPABASE_URL}/rest/v1/eventos?contato_id=eq.${contatoId}&tipo=eq.email_enviado&dados->>modelo=eq.${modelo}`, { method: 'DELETE', headers: sb });
-    return json({ error: 'O Brevo recusou o envio (' + bRes.status + ').' }, 502);
+    await fetch(`${CRM_SUPABASE_URL}/rest/v1/eventos?contato_id=eq.${contato.id}&tipo=eq.email_enviado&dados->>modelo=eq.${modelo}`, { method: 'DELETE', headers: sb });
+    return 'brevo';
   }
   let messageId = null;
   try { messageId = JSON.parse(bText).messageId || null; } catch (e) { /* segue sem id */ }
@@ -1548,6 +1557,219 @@ async function handleCrmGuiaCapturado(request, env) {
       method: 'PATCH', headers: { ...sb, Prefer: 'return=minimal' }, body: JSON.stringify({ provedor_id: messageId }),
     });
   }
+  return 'enviado';
+}
+
+// ---------- CRM fase 1a: e-mail 2 do guia (a conversa) e a página /conversa/ ----------
+// Todo dia às 10h de Brasília (Cron Trigger "0 13 * * *", configurado no painel) o handler scheduled()
+// pergunta ao banco quem deve receber o e-mail 2 (crm_conversa_pendentes, admin/crm/db/crm-fase1a-conversa.sql)
+// e manda. Cada botão de cidade leva a imigrantepordentro.com/conversa/?r=<cidade>&t=<link assinado>.
+// A página registra o toque por POST (os filtros de segurança dos e-mails abrem links sozinhos, mas não
+// fazem o POST da página) e deixa a pessoa escrever mais. O link assinado leva só o id da ficha e a validade.
+//
+//   Variáveis novas: CRM_LINK_SECRET (Secret, >= 32 caracteres; trocar invalida os links já enviados),
+//                    CRM_CONVERSA_LOTE (opcional, quantos e-mails 2 por dia; padrão 15).
+//   Ver README.md, seção 18.
+const CRM_LINK_DIAS = 30;
+const CRM_CONVERSA_URL = 'https://imigrantepordentro.com/conversa/';
+const CRM_FOTO_URL = 'https://imigrantepordentro.com/images/uploads/foto-de-perfil.jpg';
+const CF_GUIA_SLUG = 'etudes-en-france-2027-2028';
+// Os botões do e-mail 2, na ordem (aprovado em 15/10). A chave vai para contatos.respostas.cfCidade.
+const CF_CIDADES = [
+  ['paris', 'Paris'], ['lyon', 'Lyon'], ['toulouse', 'Toulouse'], ['montpellier', 'Montpellier'],
+  ['bordeaux', 'Bordeaux'], ['lille', 'Lille'], ['outra', 'Outra cidade'], ['nao-sei', 'Ainda não sei'],
+];
+
+function crmB64url(bytes) {
+  let s = '';
+  for (const b of bytes) s += String.fromCharCode(b);
+  return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+function crmB64urlBytes(str) {
+  const s = String(str).replace(/-/g, '+').replace(/_/g, '/');
+  const bin = atob(s + '==='.slice((s.length + 3) % 4));
+  const u8 = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+  return u8;
+}
+function crmLinkChave(env) {
+  return crypto.subtle.importKey('raw', new TextEncoder().encode(env.CRM_LINK_SECRET), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign', 'verify']);
+}
+// Link assinado: base64url("<contato_id>.<validade em segundos>") + "." + base64url(HMAC-SHA256).
+async function crmLinkAssinar(env, contatoId, agoraMs) {
+  const exp = Math.floor((agoraMs || Date.now()) / 1000) + CRM_LINK_DIAS * 86400;
+  const dados = new TextEncoder().encode(String(contatoId).toLowerCase() + '.' + exp);
+  const sig = new Uint8Array(await crypto.subtle.sign('HMAC', await crmLinkChave(env), dados));
+  return crmB64url(dados) + '.' + crmB64url(sig);
+}
+// Devolve { contato_id } ou { erro: 'config' | 'invalido' | 'vencido' }. A assinatura é conferida antes da validade.
+async function crmLinkConferir(env, token, agoraMs) {
+  if (String(env.CRM_LINK_SECRET || '').length < 32) return { erro: 'config' };
+  const partes = String(token || '').split('.');
+  if (partes.length !== 2 || !partes[0] || !partes[1] || token.length > 300) return { erro: 'invalido' };
+  let dados, sig;
+  try { dados = crmB64urlBytes(partes[0]); sig = crmB64urlBytes(partes[1]); } catch (e) { return { erro: 'invalido' }; }
+  const ok = await crypto.subtle.verify('HMAC', await crmLinkChave(env), sig, dados);
+  if (!ok) return { erro: 'invalido' };
+  const m = /^([0-9a-f-]{36})\.(\d{9,11})$/.exec(new TextDecoder().decode(dados));
+  if (!m || !CRM_UUID_RE.test(m[1])) return { erro: 'invalido' };
+  if (Number(m[2]) * 1000 < (agoraMs || Date.now())) return { erro: 'vencido' };
+  return { contato_id: m[1] };
+}
+
+// Monta o e-mail 2 (texto aprovado no artefato em 15/10). token = o link assinado da pessoa.
+function cfGuiaConversa(contato, token) {
+  const nome = crmPrimeiroNome(contato.nome);
+  const link = (k) => CRM_CONVERSA_URL + '?r=' + k + '&t=' + encodeURIComponent(token);
+  const assunto = nome ? nome + ', uma pergunta rápida' : 'Uma pergunta rápida';
+  const pre = 'Um toque e eu já sei para onde você vai.';
+  const oi = 'Oi, eu sou a Ingryd';
+  const quem = 'Moro na França e criei o Por Dentro para quem está fazendo esse caminho agora.';
+  const pergunta = (nome ? nome + ', para' : 'Para') + ' qual cidade você quer ir?';
+  const ajuda = 'Toque numa opção. Leva dois segundos e me ajuda a te mandar o que importa para o seu caso.';
+  const escrever = 'Prefere escrever? Responda este e-mail. Eu leio cada resposta.';
+  const rodape = 'Você recebe este e-mail porque pediu o checklist Études en France com ' + contato.email +
+    ' e aceitou receber novidades do Por Dentro. Para não receber mais, responda com a palavra sair.';
+
+  const texto = [oi + '. ' + quem, '', pergunta, ajuda, '',
+    ...CF_CIDADES.map(([k, rot]) => rot + ': ' + link(k)), '',
+    escrever, '', 'Ingryd · Por Dentro', '', '—', rodape].join('\n');
+
+  const e = crmEscapeHtml;
+  const sans = "font-family:'Inter', Arial, Helvetica, sans-serif;";
+  const serif = "font-family:'Fraunces', Georgia, 'Times New Roman', serif;";
+  const chips = CF_CIDADES.map(([k, rot], i) => {
+    const alt = i >= 6;
+    return `<a href="${e(link(k))}" style="display:inline-block; margin:0 6px 8px 0; ${sans} font-size:14px; font-weight:600; text-decoration:none; padding:9px 16px; border-radius:999px; ` +
+      (alt ? 'border:1.5px solid #CFC9C0; background:#FFFFFF; color:#6E6862;' : 'border:1.5px solid #577328; background:#E4EAD6; color:#3F5519;') + `">${e(rot)}</a>`;
+  }).join('');
+  const html = `<!DOCTYPE html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="color-scheme" content="light"><title>${e(assunto)}</title></head>
+<body style="margin:0; padding:0; background:#F4F1EC;">
+<div style="display:none; max-height:0; overflow:hidden; mso-hide:all;">${e(pre)}&#8199;&#847;&#8199;&#847;&#8199;&#847;&#8199;&#847;&#8199;&#847;</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#F4F1EC;"><tr><td align="center" style="padding:32px 16px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;">
+<tr><td style="padding:0 4px 20px; ${serif} font-size:22px; font-weight:700; color:#2B2B2B;">Por <span style="color:#604034;">Dentro</span></td></tr>
+<tr><td style="background:#FBFAF7; border:1px solid #E2DED7; border-radius:8px; padding:32px 28px;">
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 22px;"><tr>
+<td style="width:68px; vertical-align:middle;"><img src="${CRM_FOTO_URL}" width="68" height="68" alt="Foto da Ingryd" style="display:block; width:68px; height:68px; border-radius:50%; border:2px solid #DEB975; object-fit:cover;"></td>
+<td style="padding-left:14px; vertical-align:middle;"><div style="${serif} font-size:18px; font-weight:700; line-height:1.2; color:#2B2B2B;">${e(oi)}</div>
+<div style="${sans} font-size:13px; line-height:1.45; color:#6E6862; margin-top:2px;">${e(quem)}</div></td></tr></table>
+<h1 style="margin:0 0 10px; ${serif} font-size:24px; line-height:1.25; font-weight:700; color:#2B2B2B;">${e(pergunta)}</h1>
+<p style="margin:0 0 16px; ${sans} font-size:14px; line-height:1.55; color:#6E6862;">${e(ajuda)}</p>
+<div style="margin:0 0 12px;">${chips}</div>
+<div style="border-top:1px solid #E2DED7; margin:8px 0 16px;"></div>
+<p style="margin:0 0 16px; ${sans} font-size:14px; line-height:1.55; color:#6E6862;">${e(escrever)}</p>
+<p style="margin:0; ${serif} font-size:16px; font-style:italic; color:#2B2B2B;">Ingryd · Por Dentro</p>
+</td></tr>
+<tr><td style="padding:20px 4px 0; ${sans} font-size:12px; line-height:1.55; color:#6E6862;">${e(rodape)}</td></tr>
+</table></td></tr></table>
+</body></html>`;
+  return { assunto, pre, texto, html };
+}
+
+// O agendamento diário: quem recebeu o e-mail 1 antes de hoje, há até 7 dias, aceita novidades e ainda
+// não recebeu o e-mail 2. Devolve um resumo (também vai para os Logs do Worker).
+async function crmConversaDiaria(env, agoraMs) {
+  if (!env.SUPABASE_SERVICE_ROLE_KEY || !env.BREVO_API_KEY || !env.BREVO_SENDER_EMAIL) {
+    console.error('crm/conversa: falta SUPABASE_SERVICE_ROLE_KEY ou Brevo no Worker');
+    return { erro: 'config' };
+  }
+  if (String(env.CRM_LINK_SECRET || '').length < 32) {
+    console.error('crm/conversa: CRM_LINK_SECRET ausente ou curta (mínimo 32 caracteres)');
+    return { erro: 'config' };
+  }
+  const lote = Math.min(Math.max(parseInt(env.CRM_CONVERSA_LOTE, 10) || 15, 1), 200);
+  const sb = crmServiceHeaders(env);
+  const pRes = await fetch(`${CRM_SUPABASE_URL}/rest/v1/rpc/crm_conversa_pendentes`, {
+    method: 'POST', headers: sb, body: JSON.stringify({ p_limite: lote }),
+  });
+  if (!pRes.ok) {
+    console.error('crm/conversa: não consegui ler a lista — ' + pRes.status + ' ' + (await pRes.text()));
+    return { erro: 'lista' };
+  }
+  const lista = await pRes.json();
+  const r = { pendentes: lista.length, enviados: 0, ja_enviados: 0, falhas: 0 };
+  for (const p of lista) {
+    try {
+      if (!CRM_UUID_RE.test(String(p.contato_id || '')) || !/@/.test(String(p.email || ''))) { r.falhas++; continue; }
+      const contato = { id: p.contato_id, email: p.email, nome: p.nome };
+      const token = await crmLinkAssinar(env, contato.id, agoraMs);
+      const s = await crmEnviarGuia(env, sb, contato, 'cf_guia_conversa', cfGuiaConversa(contato, token), true);
+      if (s === 'enviado') r.enviados++; else if (s === 'ja') r.ja_enviados++; else r.falhas++;
+    } catch (e) {
+      r.falhas++;
+      console.error('crm/conversa: ' + e);
+    }
+  }
+  console.log('crm/conversa: ' + JSON.stringify(r));
+  return r;
+}
+
+// Rodar o agendamento na hora (teste): mesmo segredo do pg_net (CRM_HOOK_SECRET) no cabeçalho X-Crm-Hook.
+async function handleCrmConversaRodar(request, env) {
+  if (!crmSegredoIgual(request.headers.get('X-Crm-Hook') || '', env.CRM_HOOK_SECRET || '')) {
+    return new Response('Unauthorized', { status: 401 });
+  }
+  const r = await crmConversaDiaria(env);
+  return json(r, r.erro ? 500 : 200);
+}
+
+async function crmLerJson(request) {
+  try { const b = await request.json(); return b && typeof b === 'object' ? b : null; } catch (e) { return null; }
+}
+function crmLinkErro(link) {
+  if (link.erro === 'vencido') return json({ error: 'vencido' }, 410);
+  if (link.erro === 'config') return json({ error: 'config' }, 500);
+  return json({ error: 'invalido' }, 400);
+}
+async function crmRpc(env, nome, args) {
+  const res = await fetch(`${CRM_SUPABASE_URL}/rest/v1/rpc/${nome}`, {
+    method: 'POST', headers: crmServiceHeaders(env), body: JSON.stringify(args),
+  });
+  if (!res.ok) { console.error('crm/' + nome + ': ' + res.status + ' ' + (await res.text())); return null; }
+  return res.json();
+}
+
+// POST /api/conversa/toque { t, r } → grava a cidade e devolve o primeiro nome e o link do checklist.
+async function handleConversaToque(request, env) {
+  const body = await crmLerJson(request);
+  if (!body) return json({ error: 'invalido' }, 400);
+  const link = await crmLinkConferir(env, String(body.t || ''));
+  if (link.erro) return crmLinkErro(link);
+  const cidade = String(body.r || '');
+  if (!CF_CIDADES.some((c) => c[0] === cidade)) return json({ error: 'cidade' }, 400);
+  if (!env.SUPABASE_SERVICE_ROLE_KEY) return json({ error: 'config' }, 500);
+  const [out, links] = await Promise.all([
+    crmRpc(env, 'crm_conversa_toque', { p_contato: link.contato_id, p_cidade: cidade }),
+    fetch(`${CRM_SUPABASE_URL}/rest/v1/guias_links?select=notion_url&slug=eq.${CF_GUIA_SLUG}`, { headers: crmServiceHeaders(env) })
+      .then((r) => (r.ok ? r.json() : [])).catch(() => []),
+  ]);
+  if (!out) return json({ error: 'erro' }, 500);
+  if (out.erro === 'contato') return json({ error: 'invalido' }, 404);
+  if (out.erro) return json({ error: out.erro }, 400);
+  const notion = links && links[0] && /^https:\/\//.test(links[0].notion_url || '') ? links[0].notion_url : null;
+  const utm = 'utm_source=email&utm_medium=email&utm_campaign=guia-etudes-en-france-2027&utm_content=cf_guia_conversa';
+  return json({
+    ok: true, nome: crmPrimeiroNome(out.nome) || null, cidade: out.cidade,
+    checklist: notion ? notion + (notion.includes('?') ? '&' : '?') + utm : null,
+  });
+}
+
+// POST /api/conversa/texto { t, texto } → entra na Caixa de entrada como resposta pela página.
+async function handleConversaTexto(request, env) {
+  const body = await crmLerJson(request);
+  if (!body) return json({ error: 'invalido' }, 400);
+  const link = await crmLinkConferir(env, String(body.t || ''));
+  if (link.erro) return crmLinkErro(link);
+  const texto = String(body.texto || '').trim();
+  if (texto.length < 2 || texto.length > 2000) return json({ error: 'texto' }, 400);
+  if (!env.SUPABASE_SERVICE_ROLE_KEY) return json({ error: 'config' }, 500);
+  const out = await crmRpc(env, 'crm_conversa_texto', { p_contato: link.contato_id, p_texto: texto });
+  if (!out) return json({ error: 'erro' }, 500);
+  if (out.erro === 'contato') return json({ error: 'invalido' }, 404);
+  if (out.erro === 'limite') return json({ error: 'limite' }, 429);
+  if (out.erro) return json({ error: out.erro }, 400);
   return json({ ok: true });
 }
 
@@ -1803,11 +2025,25 @@ export default {
       if (url.pathname === '/api/crm/guia-capturado' && request.method === 'POST') {
         return await handleCrmGuiaCapturado(request, env);
       }
+      if (url.pathname === '/api/crm/conversa-rodar' && request.method === 'POST') {
+        return await handleCrmConversaRodar(request, env);
+      }
+      if (url.pathname === '/api/conversa/toque' && request.method === 'POST') {
+        return await handleConversaToque(request, env);
+      }
+      if (url.pathname === '/api/conversa/texto' && request.method === 'POST') {
+        return await handleConversaTexto(request, env);
+      }
     } catch (err) {
       return json({ error: 'Erro interno.', detail: String(err) }, 500);
     }
 
     return new Response('Not found', { status: 404 });
+  },
+
+  // Cron Trigger "0 13 * * *" (10h de Brasília): manda o e-mail 2 do guia (a conversa). Seção 18 do README.
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil(crmConversaDiaria(env).catch((e) => console.error('crm/conversa: ' + e)));
   },
 
   // Email Routing: respostas@imigrantepordentro.com → aqui. Grava a resposta no CRM e SEMPRE

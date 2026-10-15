@@ -363,3 +363,80 @@ Regras: `cf_guia_1` é **serviço** (sai para todo mundo que pediu o guia, sem e
 descadastro). O texto mora em `cfGuia1()` no `worker.js`; trocou o texto, atualize o Worker (seção 9).
 Se o Brevo recusar o envio, o Worker desfaz a reserva: a pessoa recebe se voltar a se cadastrar.
 Testes: `node cms-oauth-worker/testes/crm-email.test.mjs` (sem dependências, sem rede).
+
+## 18. CRM fase 1a: e-mail 2 do guia (a conversa) e página `/conversa/`
+
+O que faz: no dia seguinte ao e-mail 1, às **10h de Brasília**, quem pediu o guia Études en France **e aceitou
+novidades** recebe o **e-mail 2** (`cf_guia_conversa`): sua foto, a pergunta "para qual cidade você quer ir?" e um
+botão por cidade (Paris, Lyon, Toulouse, Montpellier, Bordeaux, Lille, Outra cidade, Ainda não sei). O botão abre
+`imigrantepordentro.com/conversa/`, que anota a cidade ("✓ Anotado: Lyon") e deixa a pessoa contar o curso numa
+caixa de texto. O toque e o texto entram na **Caixa de entrada** do CRM (aba Respostas, com o canal "tocou no e-mail 2"
+ou "escreveu na página da conversa") e em "Precisa de você". A cidade fica em `contatos.respostas.cfCidade` (quem
+toca de novo fica com a última). O e-mail 1 passa a ser a versão de 15/10 (sem a apresentação e sem a pergunta, com
+a linha "Ficou com dúvida? É só responder este e-mail. Chega direto para mim.").
+
+Como funciona: um **Cron Trigger** chama o handler `scheduled()` do Worker uma vez por dia. Ele pergunta ao banco
+quem deve receber (`crm_conversa_pendentes`: e-mail 1 recebido antes de hoje no fuso de Brasília, há no máximo
+7 dias, aceita novidades, ainda sem o e-mail 2), reserva a linha em `emails_enviados` (o mesmo índice da fase 0 deixa
+só **um** e-mail 2 por pessoa), envia pelo Brevo com rodapé "responda sair" e `List-Unsubscribe`, e guarda o id da
+mensagem. Cada botão leva um **link assinado** (HMAC-SHA256 com o segredo `CRM_LINK_SECRET`) que contém só o id da
+ficha e a validade (30 dias): nada de e-mail nem nome. A página só grava por **POST** (`/api/conversa/toque` e
+`/api/conversa/texto`), então os filtros de segurança que abrem os links sozinhos não registram nada. Link vencido
+mostra "Este link venceu" e pede para responder o e-mail.
+
+Pré-requisito: a seção 17 pronta (e-mail 1 no ar).
+
+Faça nesta ordem:
+
+**1. Banco** — Supabase → SQL Editor, rode `admin/crm/db/crm-fase1a-conversa.sql` (pode rodar de novo sem problema).
+
+**2. Segredo do link** — ainda no SQL Editor, gere um valor:
+```sql
+select encode(extensions.gen_random_bytes(32), 'hex');
+```
+Copie as 64 letras e números. Workers → `por-dentro-cms-oauth` → Settings → Variables and Secrets → **Add**:
+`CRM_LINK_SECRET` (tipo **Secret**) = esse valor. Não troque depois: trocar invalida os botões dos e-mails já enviados.
+(Opcional: `CRM_CONVERSA_LOTE` (Text) = quantos e-mails 2 por dia, padrão 15. No plano gratuito da Cloudflare deixe
+15: cada envio usa 3 chamadas e o limite é 50 por execução.)
+
+**3. Código do Worker** — seção 9 (colar o `worker.js` novo e Deploy). A partir daqui o e-mail 1 já sai na versão
+de 15/10. Rotas novas: `/api/conversa/toque`, `/api/conversa/texto`, `/api/crm/conversa-rodar` e o handler `scheduled()`.
+
+**4. Site** — o merge do pull request publica a página `/conversa/` (GitHub Pages) e o CRM com o canal.
+
+**5. Cron Trigger** — Workers → `por-dentro-cms-oauth` → **Settings** → **Trigger Events** (ou "Triggers") →
+**Add** → **Cron Triggers** → expressão `0 13 * * *` → Add. A Cloudflare usa o horário UTC: 13h UTC = 10h de Brasília.
+
+**6. Teste de ponta a ponta** (com o seu Gmail, que precisa ter recebido o e-mail 1 e aceitado novidades no guia):
+   1. No SQL Editor, finja que o seu e-mail 1 saiu ontem (troque o e-mail):
+      ```sql
+      update emails_enviados set enviado_em = now() - interval '1 day'
+       where modelo = 'cf_guia_1' and contato_id = (select id from contatos where email = 'SEU_EMAIL@gmail.com');
+      select * from crm_conversa_pendentes(15);   -- você deve aparecer aqui
+      ```
+   2. Rode o envio na hora, sem esperar as 10h:
+      ```sql
+      select net.http_post(
+        url := 'https://por-dentro-cms-oauth.ingrydigitalmanagement.workers.dev/api/crm/conversa-rodar',
+        headers := jsonb_build_object('X-Crm-Hook', (select decrypted_secret from vault.decrypted_secrets where name = 'crm_hook_secret')));
+      ```
+      Depois de alguns segundos: `select status_code, content from net._http_response order by created desc limit 1;`
+      → `200` com `{"pendentes":1,"enviados":1,...}`.
+   3. O e-mail 2 chega no Gmail → toque em Lyon → a página mostra "✓ Anotado: Lyon" e "Obrigada, {seu nome}!" →
+      escreva um curso e envie → no CRM, Caixa de entrada → **Respostas**, aparecem o toque e o texto; a sua ficha
+      mostra "Cidade (tocou no e-mail 2): Lyon" e "Tocou no e-mail 2: Lyon" na linha do tempo.
+   4. Para testar de novo com o mesmo e-mail, apague a linha `cf_guia_conversa` dela em Table Editor → `emails_enviados`.
+
+Se o e-mail 2 não sair: Workers → `por-dentro-cms-oauth` → **Logs** (procure `crm/conversa`). `{"erro":"config"}` =
+falta `CRM_LINK_SECRET` (ou tem menos de 32 caracteres), `SUPABASE_SERVICE_ROLE_KEY` ou o Brevo; `{"erro":"lista"}`
+= o SQL do passo 1 não rodou. Se o Brevo recusar, o Worker desfaz a reserva e a pessoa entra de novo no dia seguinte
+(enquanto estiver na janela de 7 dias).
+
+**Para desligar o e-mail 2**: apague o Cron Trigger (passo 5). A página e as rotas continuam funcionando para os links
+já enviados.
+
+Regras: `cf_guia_conversa` é **novidades** (só para quem aceitou; o banco confere o consentimento mais recente). O texto
+mora em `cfGuiaConversa()` e o do e-mail 1 em `cfGuia1()`, no `worker.js`; trocou o texto, atualize o Worker (seção 9).
+A lista de cidades está em `CF_CIDADES` (Worker), em `crm_conversa_toque` (SQL) e em `CF_CIDADE` (`admin/crm/crm.js`):
+mudou uma, mude as três. Testes: `node cms-oauth-worker/testes/crm-email.test.mjs` e, no banco,
+`cd admin/crm/db/testes && APP_DB_DIR=<POR DENTRO APP>/db npm run test:fase1a`.

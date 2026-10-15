@@ -1,4 +1,4 @@
-// Testa o que a fase 0 do CRM pôs no Worker: o leitor de e-mail (sem biblioteca), o handler
+// Testa o que as fases 0 e 1a do CRM puseram no Worker: o leitor de e-mail (sem biblioteca), o handler
 // email() e a rota /api/crm/guia-capturado (e-mail 1 do guia). Tudo com fetch falso: não chama
 // Supabase nem Brevo. Exemplos fictícios (nada de dado real neste repositório público).
 //
@@ -14,11 +14,11 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 const dir = mkdtempSync(path.join(tmpdir(), 'crm-email-'));
 const arq = path.join(dir, 'worker.mjs');
 writeFileSync(arq, readFileSync(path.resolve(HERE, '../worker.js'), 'utf8') +
-  '\nexport { crmLerEmail, crmTirarCitacao, crmDecodePalavras, cfGuia1, crmBytesParaBinario };\n');
+  '\nexport { crmLerEmail, crmTirarCitacao, crmDecodePalavras, cfGuia1, crmBytesParaBinario, cfGuiaConversa, crmLinkAssinar, crmLinkConferir, CF_CIDADES };\n');
 const mod = await import(pathToFileURL(arq).href);
 rmSync(dir, { recursive: true, force: true });
 const worker = mod.default;
-const { crmLerEmail, crmTirarCitacao, crmDecodePalavras, cfGuia1, crmBytesParaBinario } = mod;
+const { crmLerEmail, crmTirarCitacao, crmDecodePalavras, cfGuia1, crmBytesParaBinario, cfGuiaConversa, crmLinkAssinar, crmLinkConferir, CF_CIDADES } = mod;
 
 let passed = 0, failed = 0;
 function check(label, cond) { if (cond) passed++; else { failed++; console.log('  FALHOU:', label); } }
@@ -116,7 +116,10 @@ check('assunto com o primeiro nome', e1.assunto === 'Ana, aqui está o seu check
 check('prazo do nível dela', e1.texto.includes('O prazo do seu nível · Master: 17/01/2027') && !e1.texto.includes('14/12/2026'));
 check('trecho da etapa', e1.texto.includes('Para quem está na etapa que está juntando documentos, traduções e o teste:'));
 check('link com UTM', e1.texto.includes(NOTION + '?utm_source=email&utm_medium=email&utm_campaign=guia-etudes-en-france-2027&utm_content=cf_guia_1'));
-check('pergunta para responder', e1.texto.includes('qual curso, ou qual cidade, você está de olho?'));
+check('versão de 15/10: sem a apresentação e sem a pergunta', !e1.texto.includes('eu sou a Ingryd') && !e1.texto.includes('qual curso, ou qual cidade'));
+check('linha "Ficou com dúvida?" antes da assinatura', /Ficou com dúvida\? É só responder este e-mail\. Chega direto para mim\.\n\nIngryd · Por Dentro/.test(e1.texto));
+check('linha da dúvida em destaque no HTML', /<b[^>]*>Ficou com dúvida\?<\/b> É só responder este e-mail\. Chega direto para mim\.<\/p>\s*<p[^>]*>Ingryd · Por Dentro/.test(e1.html));
+check('um botão só (o do Notion)', (e1.html.match(/<a /g) || []).length === 1);
 check('rodapé de serviço, sem descadastro', e1.texto.includes('porque pediu o checklist Études en France') && !/sair|descadastr/i.test(e1.texto));
 check('nenhum [placeholder] no texto nem no HTML', !/\[[^\]\n]{2,60}\]/.test(e1.texto + e1.html));
 e1 = cfGuia1({ email: 'b@example.com', nome: '', respostas: { objetivo: 'cf-dossie-enviado' } }, NOTION);
@@ -212,6 +215,129 @@ let estourou = false;
 try { await worker.email(msg, env, {}); } catch (e) { estourou = true; }
 check('forward com erro não derruba o handler', !estourou);
 console.error = errosAntes;
+
+console.log('\n== Fase 1a: link assinado ==');
+const LINK = 'segredo-do-link-de-teste-com-mais-de-32-caracteres';
+const envL = { ...env, CRM_LINK_SECRET: LINK };
+const AGORA = Date.UTC(2026, 9, 16, 13, 0, 0);
+let tk = await crmLinkAssinar(envL, CID, AGORA);
+check('formato base64url.base64url', /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(tk));
+const conteudo = Buffer.from(tk.split('.')[0], 'base64url').toString('utf8');
+check('leva só o id e a validade (sem e-mail nem nome)', conteudo === CID + '.' + (AGORA / 1000 + 30 * 86400) && !/@|Ana/.test(conteudo));
+check('confere: devolve o contato', (await crmLinkConferir(envL, tk, AGORA + 1000)).contato_id === CID);
+check('dia 29: ainda vale', !(await crmLinkConferir(envL, tk, AGORA + 29 * 864e5)).erro);
+check('dia 31: vencido', (await crmLinkConferir(envL, tk, AGORA + 31 * 864e5)).erro === 'vencido');
+const outroId = '99999999-2222-4333-8444-555555555555';
+const falso = Buffer.from(outroId + '.' + (AGORA / 1000 + 30 * 86400)).toString('base64url') + '.' + tk.split('.')[1];
+check('trocar o contato invalida a assinatura', (await crmLinkConferir(envL, falso, AGORA)).erro === 'invalido');
+check('segredo diferente: inválido', (await crmLinkConferir({ CRM_LINK_SECRET: LINK + 'x' }, tk, AGORA)).erro === 'invalido');
+check('lixo: inválido', (await crmLinkConferir(envL, 'abc', AGORA)).erro === 'invalido' && (await crmLinkConferir(envL, '###.###', AGORA)).erro === 'invalido');
+check('vencido com assinatura falsa conta como inválido', (await crmLinkConferir(envL, Buffer.from(CID + '.1000000000').toString('base64url') + '.AAAA', AGORA)).erro === 'invalido');
+check('sem CRM_LINK_SECRET (ou curta): config', (await crmLinkConferir({ CRM_LINK_SECRET: 'curta' }, tk, AGORA)).erro === 'config');
+
+console.log('\n== Fase 1a: e-mail 2 (cf_guia_conversa) ==');
+let e2 = cfGuiaConversa({ id: CID, email: 'ana@example.com', nome: 'Ana Maria' }, tk);
+check('assunto com o primeiro nome', e2.assunto === 'Ana, uma pergunta rápida');
+check('pergunta com o nome', e2.texto.includes('Ana, para qual cidade você quer ir?') && e2.html.includes('Ana, para qual cidade você quer ir?'));
+check('foto do site', e2.html.includes('src="https://imigrantepordentro.com/images/uploads/foto-de-perfil.jpg"'));
+check('8 botões, na ordem aprovada', CF_CIDADES.map((c) => c[1]).join('|') === 'Paris|Lyon|Toulouse|Montpellier|Bordeaux|Lille|Outra cidade|Ainda não sei' &&
+  (e2.html.match(/href="https:\/\/imigrantepordentro\.com\/conversa\/\?r=/g) || []).length === 8);
+check('botão leva cidade e link assinado', e2.html.includes('href="https://imigrantepordentro.com/conversa/?r=lyon&amp;t=' + tk + '"') &&
+  e2.texto.includes('Lyon: https://imigrantepordentro.com/conversa/?r=lyon&t=' + tk));
+check('frase sobre a Ingryd', e2.texto.includes('Oi, eu sou a Ingryd. Moro na França e criei o Por Dentro para quem está fazendo esse caminho agora.'));
+check('convite para responder por e-mail', e2.texto.includes('Prefere escrever? Responda este e-mail. Eu leio cada resposta.'));
+check('rodapé de novidades com "responda sair"', /aceitou receber novidades do Por Dentro\. Para não receber mais, responda com a palavra sair\.$/.test(e2.texto));
+check('nenhum [placeholder]', !/\[[^\]\n]{2,60}\]/.test(e2.texto + e2.html));
+e2 = cfGuiaConversa({ id: CID, email: 'b@example.com', nome: '<b>' }, tk);
+check('nome escapado', !e2.html.includes('<b>,') && e2.html.includes('&lt;b&gt;'));
+e2 = cfGuiaConversa({ id: CID, email: 'b@example.com', nome: '' }, tk);
+check('sem nome: "Uma pergunta rápida" e "Para qual cidade"', e2.assunto === 'Uma pergunta rápida' && e2.texto.includes('\nPara qual cidade você quer ir?'));
+
+console.log('\n== Fase 1a: agendamento diário (scheduled) ==');
+const CID2 = '22222222-2222-4333-8444-555555555555';
+const pend = [/\/rpc\/crm_conversa_pendentes$/, { method: 'POST', body: [
+  { contato_id: CID, email: 'ana@example.com', nome: 'Ana' }, { contato_id: CID2, email: 'bia@example.com', nome: 'Bia' }] }];
+chamadas = [];
+fakeFetch([pend, [/\/emails_enviados$/, { method: 'POST', status: 201, body: [{ id: 21 }] }], [/api\.brevo\.com/, { body: { messageId: '<m2@smtp.example.net>' } }]]);
+let esperou = null;
+await worker.scheduled({ cron: '0 13 * * *' }, envL, { waitUntil(p) { esperou = p; } });
+let resumo = await esperou;
+check('scheduled usa waitUntil e envia aos dois', resumo.enviados === 2 && resumo.falhas === 0);
+const lista = chamadas.find((c) => /crm_conversa_pendentes/.test(c.url));
+check('pede a lista com a service_role e o lote padrão 15', lista.headers.apikey === 'srv' && lista.body.p_limite === 15);
+const reservas = chamadas.filter((c) => /emails_enviados$/.test(c.url) && c.method === 'POST');
+check('reserva cf_guia_conversa por pessoa', reservas.length === 2 && reservas.every((c) => c.body.modelo === 'cf_guia_conversa') && reservas[0].body.contato_id === CID);
+const envios = chamadas.filter((c) => /brevo/.test(c.url));
+check('Brevo: List-Unsubscribe (novidades) e Reply-To = respostas', envios.length === 2 && /^<mailto:/.test(envios[0].body.headers['List-Unsubscribe']) && envios[0].body.replyTo.email === 'respostas@example.org');
+check('Brevo: assunto e botões do e-mail 2', envios[1].body.subject === 'Bia, uma pergunta rápida' && envios[1].body.htmlContent.includes('/conversa/?r=paris&amp;t='));
+const tkEnviado = /t=([A-Za-z0-9_.-]+)/.exec(envios[0].body.textContent)[1];
+check('o link do e-mail confere para a pessoa certa', (await crmLinkConferir(envL, tkEnviado)).contato_id === CID);
+check('grava o provedor_id', chamadas.filter((c) => c.method === 'PATCH' && c.body.provedor_id === '<m2@smtp.example.net>').length === 2);
+
+chamadas = [];
+fakeFetch([pend, [/\/emails_enviados$/, { method: 'POST', status: 409 }]]);
+resumo = await (async () => { let p; await worker.scheduled({}, { ...envL, CRM_CONVERSA_LOTE: '3' }, { waitUntil(x) { p = x; } }); return p; })();
+check('índice barrou (409): não envia, conta como já enviado', resumo.ja_enviados === 2 && !chamadas.some((c) => /brevo/.test(c.url)));
+check('CRM_CONVERSA_LOTE muda o lote', chamadas.find((c) => /crm_conversa_pendentes/.test(c.url)).body.p_limite === 3);
+
+chamadas = [];
+fakeFetch([pend, [/\/emails_enviados$/, { method: 'POST', status: 201, body: [{ id: 30 }] }], [/api\.brevo\.com/, { status: 400, body: { message: 'x' } }]]);
+console.error = () => {};
+resumo = await (async () => { let p; await worker.scheduled({}, envL, { waitUntil(x) { p = x; } }); return p; })();
+check('Brevo recusou: desfaz a reserva (tenta de novo amanhã)', resumo.falhas === 2 &&
+  chamadas.filter((c) => c.method === 'DELETE' && /emails_enviados\?id=eq\.30/.test(c.url)).length === 2);
+chamadas = []; fakeFetch([pend]);
+resumo = await (async () => { let p; await worker.scheduled({}, env, { waitUntil(x) { p = x; } }); return p; })();
+check('sem CRM_LINK_SECRET: não chama nada', resumo.erro === 'config' && chamadas.length === 0);
+console.error = errosAntes;
+
+chamadas = []; fakeFetch([[/\/rpc\/crm_conversa_pendentes$/, { method: 'POST', body: [] }]]);
+const rodar = (seg) => worker.fetch(new Request('https://w.example/api/crm/conversa-rodar', { method: 'POST', headers: { 'X-Crm-Hook': seg } }), envL, {});
+res = await rodar('errado-errado-errado-errado-errado-err');
+check('rodar na hora: segredo errado 401', res.status === 401 && chamadas.length === 0);
+res = await rodar(SEGREDO);
+check('rodar na hora: devolve o resumo', res.status === 200 && (await res.json()).pendentes === 0);
+
+console.log('\n== Fase 1a: rotas da página /conversa/ ==');
+const post = (rota, corpo) => worker.fetch(new Request('https://w.example/api/conversa/' + rota, {
+  method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corpo) }), envL, {});
+tk = await crmLinkAssinar(envL, CID);
+chamadas = [];
+fakeFetch([[/\/rpc\/crm_conversa_toque$/, { method: 'POST', body: { ok: true, nome: 'Ana Maria', cidade: 'Lyon' } }], linkOk]);
+res = await post('toque', { t: tk, r: 'lyon' });
+let corpo = await res.json();
+check('toque: 200 com primeiro nome e cidade', res.status === 200 && corpo.nome === 'Ana' && corpo.cidade === 'Lyon');
+check('toque: link do checklist com UTM do e-mail 2', corpo.checklist === NOTION + '?utm_source=email&utm_medium=email&utm_campaign=guia-etudes-en-france-2027&utm_content=cf_guia_conversa');
+const rpcT = chamadas.find((c) => /crm_conversa_toque/.test(c.url));
+check('toque: grava pela service_role com o contato do link', rpcT.headers.apikey === 'srv' && rpcT.body.p_contato === CID && rpcT.body.p_cidade === 'lyon');
+check('toque: CORS liberado', res.headers.get('Access-Control-Allow-Origin') === '*');
+chamadas = [];
+res = await post('toque', { t: tk, r: 'marte' });
+check('toque: cidade fora da lista 400, nada gravado', res.status === 400 && chamadas.length === 0);
+res = await post('toque', { t: 'x.y', r: 'lyon' });
+check('toque: link inválido 400', res.status === 400 && (await res.json()).error === 'invalido' && chamadas.length === 0);
+const vencido = await crmLinkAssinar(envL, CID, Date.now() - 31 * 864e5);
+res = await post('toque', { t: vencido, r: 'lyon' });
+check('toque: link vencido 410', res.status === 410 && (await res.json()).error === 'vencido' && chamadas.length === 0);
+fakeFetch([[/\/rpc\/crm_conversa_toque$/, { method: 'POST', body: { erro: 'contato' } }], linkOk]);
+res = await post('toque', { t: tk, r: 'lyon' });
+check('toque: ficha apagada 404', res.status === 404);
+res = await worker.fetch(new Request('https://w.example/api/conversa/toque?r=lyon&t=' + tk), envL, {});
+check('toque: GET não grava (404)', res.status === 404);
+
+chamadas = [];
+fakeFetch([[/\/rpc\/crm_conversa_texto$/, { method: 'POST', body: { ok: true } }]]);
+res = await post('texto', { t: tk, texto: '  Master em Ciência Política na Lyon 2  ' });
+const rpcX = chamadas.find((c) => /crm_conversa_texto/.test(c.url));
+check('texto: 200 e grava sem espaços nas pontas', res.status === 200 && rpcX.body.p_texto === 'Master em Ciência Política na Lyon 2' && rpcX.body.p_contato === CID);
+chamadas = [];
+res = await post('texto', { t: tk, texto: 'x'.repeat(2001) });
+check('texto: grande demais 400, nada gravado', res.status === 400 && chamadas.length === 0);
+res = await post('texto', { t: vencido, texto: 'oi oi' });
+check('texto: link vencido 410', res.status === 410);
+fakeFetch([[/\/rpc\/crm_conversa_texto$/, { method: 'POST', body: { erro: 'limite' } }]]);
+res = await post('texto', { t: tk, texto: 'oi oi' });
+check('texto: limite do banco vira 429', res.status === 429);
 
 console.log(`\n${passed} passaram, ${failed} falharam`);
 process.exit(failed ? 1 : 0);

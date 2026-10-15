@@ -24,7 +24,7 @@ var SEGMENTS = [
   { k: 'parouapp', t: 'Abriu o app mas parou', lever: 'Motivação caiu', why: 'Entrou, viu o checklist e não voltou. Ação: uma dica extra de graça + o prazo real dela, nunca um prazo inventado.' }
 ];
 var MAIL_ST = { clicado: 'Clicou', aberto: 'Abriu', entregue: 'Entregue, não abriu', nao_entregue: 'Não entregue', agendado: 'Ainda não enviado' };
-var MODELO = { boas_vindas: 'Boas-vindas + link de acesso', naoabriu: 'Reimpacto — não abriu', naoclicou: 'Reimpacto — abriu, não clicou', cliquenaoapp: 'Reimpacto — clicou, não abriu o app', parouapp: 'Reimpacto — abriu o app e parou', guia_alternancia: 'Guia alternância 30+ — convite pra conversa', cf_guia_1: 'Guia Campus France — e-mail 1 (checklist, automático)' };
+var MODELO = { boas_vindas: 'Boas-vindas + link de acesso', naoabriu: 'Reimpacto — não abriu', naoclicou: 'Reimpacto — abriu, não clicou', cliquenaoapp: 'Reimpacto — clicou, não abriu o app', parouapp: 'Reimpacto — abriu o app e parou', guia_alternancia: 'Guia alternância 30+ — convite pra conversa', cf_guia_1: 'Guia Campus France — e-mail 1 (checklist, automático)', cf_guia_conversa: 'Guia Campus France — e-mail 2 (a conversa, automático)' };
 var TYPE_META = {
   sistema: ['Sistema', ''], app: ['Abriu o app', 'u-baixa'], checklist: ['Checklist', 'u-baixa'], pergunta: ['Pergunta única', 'tp-pergunta'],
   artigo: ['Artigo', 'tp-artigo'], uma_um: ['1:1', 'out'], email: ['E-mail', 'out'], sinal: ['Sinal no dashboard', 'out'],
@@ -33,8 +33,13 @@ var TYPE_META = {
 
 // Respostas do funil com rótulo legível na ficha (o resto aparece com a chave crua).
 var CF_NIVEL = { l1: '1º ano de Licence', arq: 'Arquitetura', l2l3: '2º ou 3º ano de Licence', lpro: 'Licence Pro', master: 'Master', escola: 'Escola (engenharia, comércio)' };
-var RESP_LABEL = { cfNivel: ['Nível da candidatura (Campus France)', function (v) { return CF_NIVEL[v] || v; }] };
+// Botões do e-mail 2 do guia (fase 1a); a chave vem de contatos.respostas.cfCidade.
+var CF_CIDADE = { paris: 'Paris', lyon: 'Lyon', toulouse: 'Toulouse', montpellier: 'Montpellier', bordeaux: 'Bordeaux', lille: 'Lille', outra: 'Outra cidade', 'nao-sei': 'Ainda não sei' };
+var RESP_LABEL = { cfNivel: ['Nível da candidatura (Campus France)', function (v) { return CF_NIVEL[v] || v; }], cfCidade: ['Cidade (tocou no e-mail 2)', function (v) { return CF_CIDADE[v] || v; }] };
 var RS_TABS = [['nova', 'Novas'], ['respondida', 'Respondidas'], ['arquivada', 'Arquivadas']];
+// Por onde a resposta chegou (respostas_email.canal, db/crm-fase1a-conversa.sql). Sem a migração, tudo é 'email'.
+var CANAL = { email: ['✉', 'por e-mail'], toque: ['☝', 'tocou no e-mail 2'], pagina: ['✎', 'escreveu na página da conversa'] };
+function canalDe(x) { return CANAL[x.canal] || CANAL.email; }
 
 var WORKER_BASE = 'https://por-dentro-cms-oauth.ingrydigitalmanagement.workers.dev';
 // Link que vai nos e-mails ("[link do acesso]"). Se ficar vazio, o trecho fica entre colchetes e o
@@ -294,7 +299,7 @@ function renderToday() {
     if (it.k === 'q' && !c) return '';
     var who = c ? esc(short(c)) : esc(x.de_email) + ' <span class="persona" style="display:inline;font-size:11.5px">· sem ficha</span>';
     return '<button class="row" ' + (it.k === 'q' ? 'data-openq' : 'data-openr') + '="' + x.id + '" type="button">' + (c ? '<div class="' + avClass(c) + '">' + esc(ini(c)) + '</div>' : '<div class="av b">@</div>') +
-      '<div class="who"><b>' + who + '</b><span>' + (it.k === 'r' ? '✉ ' : '') + esc(x.texto) + '</span></div><span class="sla num ' + (h >= 72 ? 'late' : 'ok') + '">' + hrs(h) + '</span></button>';
+      '<div class="who"><b>' + who + '</b><span>' + (it.k === 'r' ? canalDe(x)[0] + ' ' : '') + esc(x.texto) + '</span></div><span class="sla num ' + (h >= 72 ? 'late' : 'ok') + '">' + hrs(h) + '</span></button>';
   }).join('') || '<div class="empty">Tudo respondido.</div>';
 
   var week = Date.now() - 7 * 864e5, prev = Date.now() - 14 * 864e5;
@@ -441,21 +446,22 @@ function renderRespostas() {
     var c = byC(x.contato_id), h = hrsSince(x.recebido_em);
     return '<button class="qitem" data-r="' + x.id + '" aria-current="' + (x.id === state.rsel) + '" type="button"><div class="l1"><b>' + esc(c ? short(c) : x.de_email) + '</b>' +
       (x.status === 'nova' ? '<span class="sla num ' + (h >= 72 ? 'late' : 'ok') + '">' + (h >= 72 ? 'atrasada · ' : '') + hrs(h) + '</span>' : '<span class="sla ok">' + (x.status === 'respondida' ? 'respondida' : 'arquivada') + '</span>') +
-      '</div><p>' + esc(x.texto) + '</p><span class="persona">' + (c ? esc(personaLabel(c)) : 'sem ficha') + (x.assunto ? ' · ' + esc(x.assunto) : '') + '</span></button>';
+      '</div><p>' + esc(canalDe(x)[0] + ' ' + x.texto) + '</p><span class="persona">' + (c ? esc(personaLabel(c)) : 'sem ficha') + ' · ' + esc(canalDe(x)[1]) + (x.assunto ? ' · ' + esc(x.assunto) : '') + '</span></button>';
   }).join('') || '<div class="empty">' + (state.rs === 'nova' ? 'Nenhuma resposta nova por e-mail.' : 'Nada aqui ainda.') + '</div>';
   var x = R.filter(function (y) { return y.id === state.rsel; })[0];
   if (!x) { $('qdetail').innerHTML = '<div class="empty">' + (R.length ? 'Escolha uma resposta na lista.' : 'Quando alguém responder a um e-mail do CRM, a resposta aparece aqui e também chega no seu e-mail.') + '</div>'; return; }
   var c = byC(x.contato_id), m = x.email_id && RM[x.email_id];
   var aQue = m ? (MODELO[m.modelo] || m.modelo) + (m.assunto ? ' · "' + m.assunto + '"' : '') : (x.assunto ? 'assunto "' + x.assunto + '"' : '—');
-  var mailto = 'mailto:' + encodeURIComponent(x.de_email) + '?subject=' + encodeURIComponent(/^re:/i.test(x.assunto || '') ? x.assunto : 'Re: ' + (x.assunto || ''));
+  var assuntoRe = x.assunto || (m && m.assunto) || '', viaEmail = !x.canal || x.canal === 'email';
+  var mailto = 'mailto:' + encodeURIComponent(x.de_email) + '?subject=' + encodeURIComponent(/^re:/i.test(assuntoRe) ? assuntoRe : 'Re: ' + assuntoRe);
   $('qdetail').innerHTML =
     '<div style="display:flex;gap:12px;align-items:center">' + (c ? '<div class="' + avClass(c) + '">' + esc(ini(c)) + '</div>' : '<div class="av b">@</div>') +
     '<div style="min-width:0"><b style="font-weight:600">' + esc(c ? displayName(c) : (x.de_nome || 'Sem nome')) + '</b><div class="mail">' + esc(x.de_email) + ' · recebida há ' + hrs(hrsSince(x.recebido_em)) + '</div></div>' +
     (c ? '<button class="link" style="margin-left:auto" data-open="' + esc(c.id) + '" type="button">Abrir ficha →</button>' : '<span class="pill" style="margin-left:auto">Sem ficha no CRM</span>') + '</div>' +
-    '<p class="sub" style="margin:12px 0 0">Respondeu a: ' + esc(aQue) + '</p>' +
+    '<p class="sub" style="margin:12px 0 0"><span class="pill">' + esc(canalDe(x)[0] + ' ' + canalDe(x)[1]) + '</span> Respondeu a: ' + esc(aQue) + '</p>' +
     '<blockquote style="white-space:pre-wrap">' + esc(x.texto) + '</blockquote>' +
     (c ? '<div class="ctx">' + urgPill(c.urgencia) + '<span class="pill">' + esc(personaLabel(c)) + (subLabel(c) ? ' · ' + esc(subLabel(c)) : '') + '</span><span class="pill">Estágio: ' + esc(stageLabel(c.estagio)) + '</span></div>' : '') +
-    '<div class="reply"><div class="reply-foot"><small>A mensagem completa também chegou no seu e-mail. Responda por lá (ou pelo botão) e marque aqui.</small><div class="btns">' +
+    '<div class="reply"><div class="reply-foot"><small>' + (viaEmail ? 'A mensagem completa também chegou no seu e-mail. Responda por lá (ou pelo botão) e marque aqui.' : 'Veio pela página do e-mail 2 e só está aqui (não chega no seu e-mail). Responda pelo botão e marque aqui.') + '</small><div class="btns">' +
     (x.status === 'nova'
       ? '<a class="btn" href="' + esc(mailto) + '">Responder pelo e-mail</a><button class="btn" type="button" data-rstatus="arquivada">Arquivar</button><button class="btn primary" type="button" data-rstatus="respondida">Marcar como respondida</button>'
       : '<button class="btn" type="button" data-rstatus="nova">Voltar para novas</button>') +
@@ -505,7 +511,10 @@ function eventText(e) {
     sinal_enviado: ['sinal', 'Sinal enviado: ' + (d.mensagem || '')],
     email_enviado: ['email', 'E-mail enviado: ' + (MODELO[d.modelo] || d.assunto || d.modelo || '')],
     // Com email_id = respondeu a um e-mail do CRM; sem = escreveu direto para respostas@ (sem ligação com um envio).
-    email_respondido: ['resposta', (d.email_id ? 'Respondeu o seu e-mail' : 'Mandou um e-mail para você') + (d.assunto ? ': "' + d.assunto + '"' : '')],
+    // canal (fase 1a): 'toque' = tocou numa cidade do e-mail 2; 'pagina' = escreveu na página /conversa/.
+    email_respondido: ['resposta', d.canal === 'toque' ? 'Tocou no e-mail 2: ' + (d.cidade || '—')
+      : d.canal === 'pagina' ? 'Escreveu na página da conversa'
+      : (d.email_id ? 'Respondeu o seu e-mail' : 'Mandou um e-mail para você') + (d.assunto ? ': "' + d.assunto + '"' : '')],
     estagio_alterado: ['sistema', 'Estágio: ' + stageLabel(d.de) + ' → ' + stageLabel(d.para)]
   };
   return m[t] || ['sistema', t];
@@ -570,7 +579,7 @@ async function renderPessoa() {
     jornadaPanel(c, h4) +
     '<div class="panel" style="padding:16px"><h4 style="' + h4 + '">O que respondeu no funil</h4><dl class="kv">' + kv.map(function (x) { return '<dt>' + esc(x[0]) + '</dt><dd>' + esc(x[1]) + '</dd>'; }).join('') + '</dl></div>' +
     (perg.length ? '<div class="panel" style="padding:16px"><h4 style="' + h4 + '">Perguntas únicas</h4>' + perg.map(function (x) { return '<p style="margin:0 0 6px;font-size:13px">"' + esc(x.texto) + '" <button class="link" data-openq="' + x.id + '" type="button">' + (x.status === 'nova' ? 'Responder' : 'Ver resposta') + ' →</button></p>'; }).join('') + '</div>' : '') +
-    (resps.length ? '<div class="panel" style="padding:16px"><h4 style="' + h4 + '">Respostas por e-mail</h4>' + resps.map(function (x) { return '<p style="margin:0 0 6px;font-size:13px">"' + esc(x.texto.length > 160 ? x.texto.slice(0, 160) + '…' : x.texto) + '" <span class="sub">' + esc(fmtDate(x.recebido_em)) + '</span> <button class="link" data-openr="' + x.id + '" type="button">' + (x.status === 'nova' ? 'Abrir na caixa' : 'Ver') + ' →</button></p>'; }).join('') + '</div>' : '') +
+    (resps.length ? '<div class="panel" style="padding:16px"><h4 style="' + h4 + '">Respostas</h4>' + resps.map(function (x) { return '<p style="margin:0 0 6px;font-size:13px"><span title="' + esc(canalDe(x)[1]) + '">' + canalDe(x)[0] + '</span> "' + esc(x.texto.length > 160 ? x.texto.slice(0, 160) + '…' : x.texto) + '" <span class="sub">' + esc(canalDe(x)[1]) + ' · ' + esc(fmtDate(x.recebido_em)) + '</span> <button class="link" data-openr="' + x.id + '" type="button">' + (x.status === 'nova' ? 'Abrir na caixa' : 'Ver') + ' →</button></p>'; }).join('') + '</div>' : '') +
     '<div class="panel" style="padding:16px"><h4 style="' + h4 + '">E-mails enviados</h4>' + (mails.map(function (m) {
       return '<div class="mailrow"><button class="mh" data-mailtoggle="' + m.id + '" type="button"><b>' + esc(MODELO[m.modelo] || m.modelo) + '</b><span class="pill st-' + esc(m.status) + '">' + esc(MAIL_ST[m.status] || m.status) + '</span><time>' + esc(fmtDate(m.enviado_em || m.criado_em)) + '</time></button><div class="mailbody" id="mb-' + m.id + '" hidden>' + esc(m.corpo || '(sem corpo salvo)') + '</div></div>';
     }).join('') || '<p class="sub" style="margin:0">Nenhum e-mail enviado por aqui ainda.</p>') + '</div>' +

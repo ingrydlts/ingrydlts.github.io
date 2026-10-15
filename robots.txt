@@ -2,5 +2,6 @@ User-agent: *
 Allow: /
 Disallow: /admin/
 Disallow: /acesso-vip/
+Disallow: /conversa/
 
 Sitemap: https://imigrantepordentro.com/sitemap.xml

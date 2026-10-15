@@ -12,7 +12,7 @@ Backend: o **mesmo Supabase** do app (projeto `hslhpktfgxwfvljvsxkj`). Painel: e
 | Funil (kanban por estágio) | `crm_contatos.estagio` | pronto |
 | Página da pessoa (feed, anotações, consentimento, mudar estágio) | `eventos`, `consentimentos`, `contatos.nota` | pronto |
 | Marcar 1:1 / Enviar sinal | `um_a_um`, `sinais` (o app lê com `meus_sinais()`) | pronto no painel; **falta o dashboard do app mostrar o sinal** |
-| Caixa de entrada (Perguntas únicas + Respostas por e-mail) | `perguntas_unicas`, `respostas_email` (`db/crm-fase0-email-guia.sql`) | perguntas: painel e formulário dos artigos prontos. Respostas por e-mail: chegam por `respostas@imigrantepordentro.com` (Email Routing → Worker `email()`), README do Worker seção 17 |
+| Caixa de entrada (Perguntas únicas + Respostas: e-mail, toque no e-mail 2, página /conversa/) | `perguntas_unicas`, `respostas_email` (`db/crm-fase0-email-guia.sql`) | perguntas: painel e formulário dos artigos prontos. Respostas por e-mail: chegam por `respostas@imigrantepordentro.com` (Email Routing → Worker `email()`), README do Worker seção 17 |
 | Lembretes de prazo (Hoje) | `lembretes_prazo` (`db/crm-fase2c-lembretes.sql`) | pronto: a calculadora `[[PRAZO]]` dos artigos chama `pedir_lembrete_prazo`; o card mostra quem avisar nos próximos 7 dias |
 | Reimpactar (segmentos) | coluna `segmento` de `crm_contatos` (regras na view) | pronto (envio via Worker → Brevo; ver README do Worker, seção 16) |
 | Modelos de e-mail | `TPLS` em `crm.js` | pronto |
@@ -34,6 +34,16 @@ pelo pg_net (desligado até existir o segredo `crm_worker_url` no Vault) e as re
 `respostas_email`, com evento `email_respondido` e motivo "respondeu o seu e-mail" no Hoje. Passo a passo de ligar:
 `cms-oauth-worker/README.md`, seção 17. Testes: `db/testes` → `APP_DB_DIR=<POR DENTRO APP>/db npm run test:fase0`
 e `node cms-oauth-worker/testes/crm-email.test.mjs`.
+
+## Fase 1a — e-mail 2 do guia e página /conversa/ (15/10)
+
+`db/crm-fase1a-conversa.sql` (rodar **depois** de `crm-fase0-email-guia.sql`; idempotente): `respostas_email.canal`
+(`email`, `toque`, `pagina`), `crm_conversa_pendentes()` (quem recebe o e-mail 2 hoje, só service_role),
+`crm_conversa_toque()` e `crm_conversa_texto()` (gravam o que vem da página; a cidade vai para `respostas.cfCidade`),
+evento `email_respondido` com o canal e o motivo do "Precisa de você" por canal. O envio diário é o `scheduled()` do
+Worker (Cron `0 13 * * *`, 10h de Brasília) e a página é `/conversa/`. Passo a passo: `cms-oauth-worker/README.md`,
+seção 18. Testes: `db/testes` → `APP_DB_DIR=<POR DENTRO APP>/db npm run test:fase1a` e `node cms-oauth-worker/testes/crm-email.test.mjs`.
+Fica para depois: aba Conversa na ficha e responder do CRM (fase 1b) e o aquecimento (fase 1c).
 
 ## Etapas
 
