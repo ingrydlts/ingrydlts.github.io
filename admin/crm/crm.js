@@ -24,7 +24,7 @@ var SEGMENTS = [
   { k: 'parouapp', t: 'Abriu o app mas parou', lever: 'Motivação caiu', why: 'Entrou, viu o checklist e não voltou. Ação: uma dica extra de graça + o prazo real dela, nunca um prazo inventado.' }
 ];
 var MAIL_ST = { clicado: 'Clicou', aberto: 'Abriu', entregue: 'Entregue, não abriu', nao_entregue: 'Não entregue', agendado: 'Ainda não enviado' };
-var MODELO = { boas_vindas: 'Boas-vindas + link de acesso', naoabriu: 'Reimpacto — não abriu', naoclicou: 'Reimpacto — abriu, não clicou', cliquenaoapp: 'Reimpacto — clicou, não abriu o app', parouapp: 'Reimpacto — abriu o app e parou', guia_alternancia: 'Guia alternância 30+ — convite pra conversa', cf_guia_1: 'Guia Campus France — e-mail 1 (checklist, automático)', cf_guia_conversa: 'Guia Campus France — e-mail 2 (a conversa, automático)' };
+var MODELO = { boas_vindas: 'Boas-vindas + link de acesso', naoabriu: 'Reimpacto — não abriu', naoclicou: 'Reimpacto — abriu, não clicou', cliquenaoapp: 'Reimpacto — clicou, não abriu o app', parouapp: 'Reimpacto — abriu o app e parou', guia_alternancia: 'Guia alternância 30+ — convite pra conversa', cf_guia_1: 'Guia Campus France — e-mail 1 (checklist, automático)', cf_guia_conversa: 'Guia Campus France — e-mail 2 (a conversa, automático)', resposta: 'Sua resposta (aba Conversa)' };
 var TYPE_META = {
   sistema: ['Sistema', ''], app: ['Abriu o app', 'u-baixa'], checklist: ['Checklist', 'u-baixa'], pergunta: ['Pergunta única', 'tp-pergunta'],
   artigo: ['Artigo', 'tp-artigo'], uma_um: ['1:1', 'out'], email: ['E-mail', 'out'], sinal: ['Sinal no dashboard', 'out'],
@@ -36,6 +36,10 @@ var CF_NIVEL = { l1: '1º ano de Licence', arq: 'Arquitetura', l2l3: '2º ou 3º
 // Botões do e-mail 2 do guia (fase 1a); a chave vem de contatos.respostas.cfCidade.
 var CF_CIDADE = { paris: 'Paris', lyon: 'Lyon', toulouse: 'Toulouse', montpellier: 'Montpellier', bordeaux: 'Bordeaux', lille: 'Lille', outra: 'Outra cidade', 'nao-sei': 'Ainda não sei' };
 var RESP_LABEL = { cfNivel: ['Nível da candidatura (Campus France)', function (v) { return CF_NIVEL[v] || v; }], cfCidade: ['Cidade (tocou no e-mail 2)', function (v) { return CF_CIDADE[v] || v; }] };
+// Prazo de cada nível no calendário Campus France 2027-2028 (igual a CF_NIVEIS no worker.js) e a etapa do guia.
+var CF_PRAZO = { l1: '2026-12-14', arq: '2026-12-14', l2l3: '2027-01-17', lpro: '2027-01-17', master: '2027-01-17', escola: '2027-01-17' };
+var CF_ETAPA = { 'cf-nao-comecei': 'Ainda não começou', 'cf-escolhendo-curso': 'Escolhendo o curso', 'cf-juntando-documentos': 'Juntando documentos, traduções e o teste',
+  'cf-dossie-enviado': 'Já enviou o dossiê', 'cf-entrevista-resposta': 'Esperando a entrevista ou a resposta' };
 var RS_TABS = [['nova', 'Novas'], ['respondida', 'Respondidas'], ['arquivada', 'Arquivadas']];
 // Por onde a resposta chegou (respostas_email.canal, db/crm-fase1a-conversa.sql). Sem a migração, tudo é 'email'.
 var CANAL = { email: ['✉', 'por e-mail'], toque: ['☝', 'tocou no e-mail 2'], pagina: ['✎', 'escreveu na página da conversa'] };
@@ -101,7 +105,7 @@ function defaultTpl(c) {
 function splitTpl(c, k) { var t = TPLS[k].make(c); return { subject: t[0].replace(/^Assunto: /, ''), body: t[1] }; }
 
 var C = [], Q = [], L = [], R = [], RM = {}, SUBS = {};
-var state = { view: 'hoje', persona: '', sub: '', urg: '', stage: '', orig: '', camp: '', q: '', sel: null, qs: 'nova', qsel: null, inbox: 'perguntas', rs: 'nova', rsel: null, preset: 'todos', seg: '', prevView: 'contatos' };
+var state = { ptab: null, rascunho: {}, view: 'hoje', persona: '', sub: '', urg: '', stage: '', orig: '', camp: '', q: '', sel: null, qs: 'nova', qsel: null, inbox: 'perguntas', rs: 'nova', rsel: null, preset: 'todos', seg: '', prevView: 'contatos' };
 var activeCid = null;
 var me = null;
 
@@ -134,7 +138,7 @@ function prazoCell(c) {
 }
 function fmtDate(iso) { return iso ? new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) : '—'; }
 function fmtWhen(iso) { return iso ? new Date(iso).toLocaleString('pt-BR', { weekday: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : 'a combinar'; }
-function toast(msg) { var t = $('toast'); t.textContent = msg; t.hidden = false; clearTimeout(toast._t); toast._t = setTimeout(function () { t.hidden = true; }, 2600); }
+function toast(msg, ms) { var t = $('toast'); t.textContent = msg; t.hidden = false; clearTimeout(toast._t); toast._t = setTimeout(function () { t.hidden = true; }, ms || 2600); }
 function fail(what, error) { console.error(what, error); toast('Não consegui ' + what + ' — ' + (error && error.message ? error.message : 'tente de novo')); }
 
 // ---------- Acesso ----------
@@ -461,9 +465,11 @@ function renderRespostas() {
     '<p class="sub" style="margin:12px 0 0"><span class="pill">' + esc(canalDe(x)[0] + ' ' + canalDe(x)[1]) + '</span> Respondeu a: ' + esc(aQue) + '</p>' +
     '<blockquote style="white-space:pre-wrap">' + esc(x.texto) + '</blockquote>' +
     (c ? '<div class="ctx">' + urgPill(c.urgencia) + '<span class="pill">' + esc(personaLabel(c)) + (subLabel(c) ? ' · ' + esc(subLabel(c)) : '') + '</span><span class="pill">Estágio: ' + esc(stageLabel(c.estagio)) + '</span></div>' : '') +
-    '<div class="reply"><div class="reply-foot"><small>' + (viaEmail ? 'A mensagem completa também chegou no seu e-mail. Responda por lá (ou pelo botão) e marque aqui.' : 'Veio pela página do e-mail 2 e só está aqui (não chega no seu e-mail). Responda pelo botão e marque aqui.') + '</small><div class="btns">' +
+    '<div class="reply"><div class="reply-foot"><small>' + (c ? 'Responda na aba Conversa da ficha: sai do e-mail do Por Dentro, na mesma conversa do Gmail ' + (viaEmail ? 'dela' : 'dela (o toque e a página não chegam no seu e-mail)') + ', e esta resposta é marcada como respondida sozinha.'
+      : 'Sem ficha no CRM: responda pelo seu e-mail (a mensagem completa também chegou lá) e marque aqui.') + '</small><div class="btns">' +
     (x.status === 'nova'
-      ? '<a class="btn" href="' + esc(mailto) + '">Responder pelo e-mail</a><button class="btn" type="button" data-rstatus="arquivada">Arquivar</button><button class="btn primary" type="button" data-rstatus="respondida">Marcar como respondida</button>'
+      ? (c ? '<button class="btn primary" type="button" data-openconv="' + esc(c.id) + '">Abrir conversa</button>' : '<a class="btn" href="' + esc(mailto) + '">Responder pelo e-mail</a>') +
+        '<button class="btn" type="button" data-rstatus="arquivada">Arquivar</button><button class="btn' + (c ? '' : ' primary') + '" type="button" data-rstatus="respondida">Marcar como respondida</button>'
       : '<button class="btn" type="button" data-rstatus="nova">Voltar para novas</button>') +
     '</div></div></div>';
 }
@@ -519,9 +525,10 @@ function eventText(e) {
   };
   return m[t] || ['sistema', t];
 }
-async function openPessoa(id) {
+// tab: 'conversa' ou 'ficha'; sem tab, a ficha abre na Conversa se já houver alguma mensagem.
+async function openPessoa(id, tab) {
   if (state.view !== 'pessoa') state.prevView = state.view;
-  state.sel = id;
+  state.sel = id; state.ptab = tab || null;
   show('pessoa');
 }
 // Resumo da jornada: por onde a pessoa passou, quantas vezes voltou e qual e-mail faz sentido agora.
@@ -539,6 +546,99 @@ function jornadaPanel(c, h4) {
     : '<button class="btn primary" type="button" data-emailfor="' + esc(c.id) + '" data-tplk="' + esc(k) + '">Escrever este e-mail →</button>');
   return '<div class="panel" style="padding:16px"><h4 style="' + h4 + '">Jornada</h4>' + linhas.join('') + '</div>';
 }
+// ---------- Aba Conversa (fase 1b) ----------
+// Um fio só, em ordem: os e-mails que saíram (automáticos e os seus), o que ela tocou ou escreveu na
+// página /conversa/ e as respostas por e-mail. Embaixo, a caixa que responde pelo Worker
+// (/api/crm/responder) na mesma conversa do Gmail dela.
+function fmtHora(iso) { return iso ? new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : ''; }
+function fmtDia(iso) { return iso ? new Date(iso).toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit' }).replace('.', '').toUpperCase() : ''; }
+function assuntoBase(s) { var t = String(s || '').replace(/\s+/g, ' ').trim(), a; do { a = t; t = t.replace(/^(re|res|enc|fw|fwd|tr|aw)\s*:\s*/i, ''); } while (t !== a); return t; }
+// O assunto com que a resposta vai sair: o da última mensagem com Message-ID (a mesma conta do Worker).
+function assuntoDoFio(mails, resps) {
+  var ult = null;
+  mails.forEach(function (m) { var em = m.enviado_em || m.criado_em; if (m.provedor_id && (!ult || em > ult.em)) ult = { em: em, assunto: m.assunto }; });
+  resps.forEach(function (r) { if (r.message_id && (!ult || r.recebido_em > ult.em)) ult = { em: r.recebido_em, assunto: r.assunto }; });
+  return ult ? 'Re: ' + (assuntoBase(ult.assunto) || 'Por Dentro') : null;
+}
+function diasAte(ymd) { return Math.round((Date.parse(ymd + 'T12:00:00') - Date.now()) / 864e5); }
+function conversaCtx(c, h4) {
+  var r = c.respostas || {}, nivel = r.cfNivel, prazo = CF_PRAZO[nivel], top = '';
+  if (prazo) {
+    var d = diasAte(prazo);
+    top = '<div><div class="k">Prazo dela · ' + esc(CF_NIVEL[nivel] || nivel) + '</div><div class="big num">' + esc(fmtDay(prazo)) + '</div><div class="sub">' +
+      (d > 1 ? 'faltam ' + d + ' dias' : d === 1 ? 'falta 1 dia' : d === 0 ? 'vence hoje' : 'venceu há ' + (-d) + (d === -1 ? ' dia' : ' dias')) + '</div></div>';
+  } else if (c.prazo_limite) {
+    top = '<div><div class="k">Prazo do VLS-TS</div><div class="big num">' + esc(fmtDay(c.prazo_limite)) + '</div><div class="sub">' + esc(prazoTxt(c)) + '</div></div>';
+  }
+  var cidade = r.cfCidade ? esc(CF_CIDADE[r.cfCidade] || r.cfCidade) + ' <span class="pill u-baixa" style="font-size:10.5px">tocou no e-mail</span>' : '—';
+  var veio = esc(origLabel(ultimaOrigem(c)) || '—') + (c.utm_content ? ' <span class="sub">· ' + esc(c.utm_content) + '</span>' : '') +
+    (voltou(c) ? ' <span class="sub">· deixou o e-mail ' + nCapturas(c) + ' vezes</span>' : '');
+  var kv = [['Etapa', esc(CF_ETAPA[r.objetivo] || r.objetivo || '—')], ['Cidade', cidade], ['Veio de', veio],
+    ['Novidades', c.aceita_novidades ? 'Aceitou' : 'Não aceitou'], ['Estágio', esc(stageLabel(c.estagio))]];
+  return '<aside class="ctxcol">' + top + '<dl class="kv">' + kv.map(function (x) { return '<dt>' + x[0] + '</dt><dd>' + x[1] + '</dd>'; }).join('') + '</dl>' +
+    '<div><h4 style="' + h4 + '">Suas anotações</h4><textarea class="notebox" id="nota" data-nota="' + esc(c.id) + '" placeholder="Só você vê.">' + esc(c.nota || '') + '</textarea></div></aside>';
+}
+function conversaMsg(it, c) {
+  var x = it.x, quando = '<time>' + esc(fmtHora(it.em)) + '</time>';
+  if (it.k === 'm') {
+    var auto = /^cf_guia_/.test(x.modelo), resp = x.modelo === 'resposta';
+    var quem = auto ? 'Automático · ' + (x.modelo === 'cf_guia_1' ? 'e-mail 1' : x.modelo === 'cf_guia_conversa' ? 'e-mail 2' : x.modelo)
+      : resp ? 'Você · respondeu daqui' : 'Você · ' + (MODELO[x.modelo] || x.modelo);
+    var corpo = resp ? '<div class="txt">' + esc(x.corpo || '') + '</div>'
+      : '<b class="assunto">' + esc(x.assunto || '(sem assunto)') + '</b>' + (x.corpo ? '<button class="link" type="button" data-mailtoggle="' + x.id + '">ver o e-mail</button><div class="mailbody" id="mb-' + x.id + '" hidden>' + esc(x.corpo) + '</div>' : '');
+    return '<div class="msg ' + (auto ? 'auto' : 'me') + '"><span class="who">' + esc(quem) + '</span>' + corpo +
+      '<div class="stat"><span class="pill st-' + esc(x.status) + '">' + esc(MAIL_ST[x.status] || x.status) + '</span>' + quando + '</div></div>';
+  }
+  var nome = pn(c), nova = x.status === 'nova' ? '<span class="pill u-alta">nova</span>' : '';
+  if (x.canal === 'toque') return '<div class="msg her"><span class="who">' + esc(nome) + ' · tocou no e-mail 2</span><span class="tapchip">' + esc(String(x.texto).replace(/^Cidade: /, '')) + '</span><div class="stat">' + nova + quando + '</div></div>';
+  var via = x.canal === 'pagina' ? 'escreveu na página' : x.email_id ? 'respondeu por e-mail' : 'mandou um e-mail';
+  return '<div class="msg her"><span class="who">' + esc(nome) + ' · ' + via + '</span>' + (x.canal !== 'pagina' && x.assunto ? '<span class="sub">' + esc(x.assunto) + '</span>' : '') +
+    '<div class="txt">' + esc(x.texto) + '</div><div class="stat">' + nova + quando + '</div></div>';
+}
+function conversaPanel(c, mails, resps, h4) {
+  var itens = mails.map(function (m) { return { k: 'm', x: m, em: m.enviado_em || m.criado_em }; })
+    .concat(resps.map(function (r) { return { k: 'r', x: r, em: r.recebido_em }; }))
+    .sort(function (a, b) { return a.em < b.em ? -1 : a.em > b.em ? 1 : 0; });
+  var dia = '', fio = itens.map(function (it) {
+    var d = fmtDia(it.em), sep = d !== dia ? '<span class="day">' + esc(d) + '</span>' : '';
+    dia = d; return sep + conversaMsg(it, c);
+  }).join('') || '<div class="empty">Nenhuma mensagem ainda. O que você escrever aqui sai por e-mail para ' + esc(c.email) + '.</div>';
+  var assunto = assuntoDoFio(mails, resps), rasc = state.rascunho[c.id] || '';
+  return '<div class="conv">' + conversaCtx(c, h4) +
+    '<section class="thread" aria-label="Conversa com ' + esc(pn(c)) + '"><div class="msgs" id="conv-thread">' + fio + '</div>' +
+    '<div class="compose">' +
+    (assunto ? '<p class="sub" style="margin:0">Vai como <b>' + esc(assunto) + '</b></p>'
+      : '<label class="sub" for="conv-assunto">Assunto (ainda não há conversa por e-mail com ela)</label><input id="conv-assunto" maxlength="200" autocomplete="off">') +
+    '<label class="sr" for="conv-txt">Sua resposta</label><textarea id="conv-txt" maxlength="10000" data-cid="' + esc(c.id) + '" placeholder="Responder a ' + esc(pn(c)) + '…">' + esc(rasc) + '</textarea>' +
+    '<p class="sub" id="conv-err" style="margin:0;color:var(--red)" role="alert" hidden></p>' +
+    '<div class="row"><small>Sai do e-mail do Por Dentro, na mesma conversa do Gmail dela. Se ela responder, volta para esta aba e uma cópia chega no seu e-mail.</small>' +
+    '<button class="btn primary" type="button" id="conv-send" data-cid="' + esc(c.id) + '">Enviar</button></div></div></section></div>';
+}
+async function sendResposta(btn) {
+  var err = $('conv-err'), txt = $('conv-txt').value.trim(), as = $('conv-assunto'), cid = btn.dataset.cid;
+  err.hidden = true;
+  if (!txt) { err.textContent = 'Escreva a resposta antes de enviar.'; err.hidden = false; return; }
+  if (as && !as.value.trim()) { err.textContent = 'Escreva um assunto: ainda não há conversa por e-mail com ela.'; err.hidden = false; return; }
+  var sess = await supabase.auth.getSession();
+  if (!sess.data.session) { err.textContent = 'Sessão expirada. Recarregue a página e entre de novo.'; err.hidden = false; return; }
+  btn.disabled = true; btn.textContent = 'Enviando…';
+  try {
+    var res = await fetch(WORKER_BASE + '/api/crm/responder', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + sess.data.session.access_token },
+      body: JSON.stringify({ contato_id: cid, texto: txt, assunto: as ? as.value.trim() : undefined })
+    });
+    var data = await res.json().catch(function () { return {}; });
+    if (!res.ok) throw new Error(data.error || ('Erro ' + res.status));
+    delete state.rascunho[cid];
+    await reload();
+    if (state.view === 'pessoa' && state.sel === cid) { state.ptab = 'conversa'; await renderPessoa(); }
+    toast(data.aviso || 'Resposta enviada', data.aviso ? 9000 : 0);
+  } catch (e) {
+    err.textContent = e.message; err.hidden = false;
+    btn.disabled = false; btn.textContent = 'Enviar';
+  }
+}
 async function renderPessoa() {
   var c = byC(state.sel);
   if (!c) { $('pessoa-page').innerHTML = '<div class="empty">Pessoa não encontrada.</div>'; return; }
@@ -546,7 +646,7 @@ async function renderPessoa() {
   var r = await Promise.all([
     supabase.from('eventos').select('tipo,dados,criado_em').eq('contato_id', c.id).order('criado_em', { ascending: false }).limit(200),
     supabase.from('consentimentos').select('finalidade,aceito,criado_em').eq('contato_id', c.id).order('criado_em', { ascending: false }),
-    supabase.from('emails_enviados').select('id,modelo,assunto,corpo,status,enviado_em,criado_em').eq('contato_id', c.id).order('criado_em', { ascending: false })
+    supabase.from('emails_enviados').select('id,modelo,assunto,corpo,status,provedor_id,enviado_em,criado_em').eq('contato_id', c.id).order('criado_em', { ascending: false })
   ]);
   if (state.sel !== c.id || state.view !== 'pessoa') return;   // trocou de tela enquanto carregava
   var eventos = r[0].data || [], cons = r[1].data || [], mails = r[2].data || [];
@@ -557,6 +657,11 @@ async function renderPessoa() {
   var kv = [['Entrada na França', fmtDay(c.data_entrada)], ['Prazo do VLS-TS', c.prazo_limite ? fmtDay(c.prazo_limite) + ' (' + prazoTxt(c) + ')' : '—'], ['Fase', c.fase || '—'], ['Nível de estudos', c.nivel_estudos || '—'], ['Preocupação', c.preocupacao || '—'], ['Origem (1ª vez)', origLabel(c.origem) || '—'], ['Última origem', origLabel(ultimaOrigem(c)) || '—'], ['Campanha (UTM)', c.utm_campaign || '—'], ['Conteúdo / post (UTM)', c.utm_content || '—'], ['Fonte (UTM)', c.utm_source || '—']]
     .concat(Object.keys(resp).map(function (k) { var l = RESP_LABEL[k]; return l ? [l[0], l[1](resp[k])] : [k, resp[k]]; }));
   var h4 = 'font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-3); margin:0 0 8px';
+  if (!state.ptab) state.ptab = mails.length || resps.length ? 'conversa' : 'ficha';
+  var tabs = '<div class="ptabs" role="tablist" aria-label="Ficha da pessoa">' + [['conversa', 'Conversa'], ['ficha', 'Ficha']].map(function (t) {
+    return '<button class="ptab" role="tab" type="button" data-ptab="' + t[0] + '" aria-selected="' + (state.ptab === t[0]) + '">' + t[1] +
+      (t[0] === 'conversa' && resps.some(function (x) { return x.status === 'nova'; }) ? ' <span class="count">nova</span>' : '') + '</button>';
+  }).join('') + '</div>';
   $('pessoa-page').innerHTML =
     '<button class="link" data-back type="button">← Voltar</button>' +
     '<div class="pessoa-head" style="margin-top:12px"><div class="' + avClass(c) + '" style="width:52px;height:52px;font-size:16px">' + esc(ini(c)) + '</div>' +
@@ -568,6 +673,7 @@ async function renderPessoa() {
     '<button class="btn" type="button" data-open1a1="' + esc(c.id) + '">Marcar 1:1</button>' +
     '<button class="btn" type="button" data-opensinal="' + esc(c.id) + '">Enviar sinal ao dashboard</button>' +
     '<div class="sel"><select id="stage-pick" aria-label="Mudar estágio">' + STAGES.map(function (s) { return '<option value="' + s.k + '"' + (s.k === c.estagio ? ' selected' : '') + '>Estágio: ' + s.l + '</option>'; }).join('') + '</select></div></div>' +
+    tabs + (state.ptab === 'conversa' ? conversaPanel(c, mails, resps, h4) :
     '<div class="pessoa-grid" style="margin-top:18px">' +
     '<div class="panel" style="padding:16px"><h3 style="font-size:15px; margin-bottom:8px">Tudo que ela fez</h3>' +
     '<p class="sub" style="margin:0 0 10px">Checklist, pergunta única, artigos e o resto do app — mais o que você mandou pra ela. Mais recente primeiro.</p>' +
@@ -592,7 +698,9 @@ async function renderPessoa() {
       '<input id="ig-id" data-ig="ig_id" data-cid="' + esc(c.id) + '" maxlength="60" autocomplete="off" placeholder="Vem do link da automação. Pode colar à mão." value="' + esc(c.ig_id || '') + '" style="width:100%;height:38px;border:1px solid var(--line-2);border-radius:8px;padding:0 10px;font:inherit">' +
       '<p class="sub" style="margin:8px 0 0">Quando a pessoa volta a deixar o e-mail, o que estiver vazio aqui é completado. O que você escreve não é apagado.</p></div>' +
     '<div class="panel" style="padding:16px"><h4 style="' + h4 + '">Suas anotações</h4><textarea class="notebox" id="nota" data-nota="' + esc(c.id) + '" placeholder="Só você vê. Ex.: prefere falar por e-mail, tem sponsor na família.">' + esc(c.nota || '') + '</textarea></div>' +
-    '</div></div>';
+    '</div></div>');
+  var ct = $('conv-txt');
+  if (ct) { var th = $('conv-thread'); if (th) th.scrollTop = th.scrollHeight; }
 }
 
 // ---------- Modais ----------
@@ -708,6 +816,9 @@ document.addEventListener('click', async function (e) {
   }
   if (t.matches('tr[data-id]')) return openPessoa(t.dataset.id);
   if (t.dataset.open) return openPessoa(t.dataset.open);
+  if (t.dataset.openconv) return openPessoa(t.dataset.openconv, 'conversa');
+  if (t.dataset.ptab) { state.ptab = t.dataset.ptab; return renderPessoa(); }
+  if (t.id === 'conv-send') return sendResposta(t);
   if (t.dataset.avisado) {
     t.disabled = true;
     var up = await supabase.from('lembretes_prazo').update({ status: 'avisado', avisado_em: new Date().toISOString() }).eq('id', t.dataset.avisado);
@@ -808,7 +919,10 @@ document.addEventListener('focusout', async function (e) {
   if (r.error) return fail('salvar a anotação', r.error);
   c.nota = v || null; toast('Anotação salva');
 });
-document.addEventListener('input', function (e) { if (e.target.id === 'reply-txt') $('reply-err').hidden = true; });
+document.addEventListener('input', function (e) {
+  if (e.target.id === 'reply-txt') $('reply-err').hidden = true;
+  if (e.target.id === 'conv-txt') { state.rascunho[e.target.dataset.cid] = e.target.value; $('conv-err').hidden = true; }
+});
 document.addEventListener('keydown', function (e) {
   if (e.key === 'Enter' && e.target.matches('tr[data-id]')) openPessoa(e.target.dataset.id);
   if (e.key === 'Escape' && !$('compose-modal').hidden) closeCompose();

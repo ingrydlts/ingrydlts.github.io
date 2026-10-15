@@ -12,7 +12,7 @@ Backend: o **mesmo Supabase** do app (projeto `hslhpktfgxwfvljvsxkj`). Painel: e
 | Funil (kanban por estágio) | `crm_contatos.estagio` | pronto |
 | Página da pessoa (feed, anotações, consentimento, mudar estágio) | `eventos`, `consentimentos`, `contatos.nota` | pronto |
 | Marcar 1:1 / Enviar sinal | `um_a_um`, `sinais` (o app lê com `meus_sinais()`) | pronto no painel; **falta o dashboard do app mostrar o sinal** |
-| Caixa de entrada (Perguntas únicas + Respostas: e-mail, toque no e-mail 2, página /conversa/) | `perguntas_unicas`, `respostas_email` (`db/crm-fase0-email-guia.sql`) | perguntas: painel e formulário dos artigos prontos. Respostas por e-mail: chegam por `respostas@imigrantepordentro.com` (Email Routing → Worker `email()`), README do Worker seção 17 |
+| Caixa de entrada (Perguntas únicas + Respostas: e-mail, toque no e-mail 2, página /conversa/) → "Abrir conversa" leva à aba Conversa da ficha | `perguntas_unicas`, `respostas_email` (`db/crm-fase0-email-guia.sql`) | perguntas: painel e formulário dos artigos prontos. Respostas por e-mail: chegam por `respostas@imigrantepordentro.com` (Email Routing → Worker `email()`), README do Worker seção 17 |
 | Lembretes de prazo (Hoje) | `lembretes_prazo` (`db/crm-fase2c-lembretes.sql`) | pronto: a calculadora `[[PRAZO]]` dos artigos chama `pedir_lembrete_prazo`; o card mostra quem avisar nos próximos 7 dias |
 | Reimpactar (segmentos) | coluna `segmento` de `crm_contatos` (regras na view) | pronto (envio via Worker → Brevo; ver README do Worker, seção 16) |
 | Modelos de e-mail | `TPLS` em `crm.js` | pronto |
@@ -43,7 +43,15 @@ e `node cms-oauth-worker/testes/crm-email.test.mjs`.
 evento `email_respondido` com o canal e o motivo do "Precisa de você" por canal. O envio diário é o `scheduled()` do
 Worker (Cron `0 13 * * *`, 10h de Brasília) e a página é `/conversa/`. Passo a passo: `cms-oauth-worker/README.md`,
 seção 18. Testes: `db/testes` → `APP_DB_DIR=<POR DENTRO APP>/db npm run test:fase1a` e `node cms-oauth-worker/testes/crm-email.test.mjs`.
-Fica para depois: aba Conversa na ficha e responder do CRM (fase 1b) e o aquecimento (fase 1c).
+Fica para depois: o aquecimento (fase 1c).
+
+## Fase 1b — aba Conversa na ficha e responder do CRM (15/10)
+
+`db/crm-fase1b-resposta.sql` (rodar **depois** de `crm-fase1a-conversa.sql`; idempotente): as respostas que você manda da aba
+Conversa ficam em `emails_enviados` com o modelo `resposta` e não contam no Reimpactar. A ficha tem as abas Conversa e Ficha;
+a Conversa junta `emails_enviados` e `respostas_email` num fio só e responde por `POST /api/crm/responder` (Worker), com
+`In-Reply-To`/`References` para cair na mesma conversa do Gmail. Passo a passo e o limite do Brevo: `cms-oauth-worker/README.md`,
+seção 19. Testes: `db/testes` → `APP_DB_DIR=<POR DENTRO APP>/db npm run test:fase1b` e `node cms-oauth-worker/testes/crm-email.test.mjs`.
 
 ## Etapas
 

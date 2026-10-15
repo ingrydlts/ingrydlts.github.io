@@ -1,4 +1,4 @@
-// Testa o que as fases 0 e 1a do CRM puseram no Worker: o leitor de e-mail (sem biblioteca), o handler
+// Testa o que as fases 0, 1a e 1b do CRM puseram no Worker: o leitor de e-mail (sem biblioteca), o handler
 // email() e a rota /api/crm/guia-capturado (e-mail 1 do guia). Tudo com fetch falso: não chama
 // Supabase nem Brevo. Exemplos fictícios (nada de dado real neste repositório público).
 //
@@ -14,11 +14,11 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 const dir = mkdtempSync(path.join(tmpdir(), 'crm-email-'));
 const arq = path.join(dir, 'worker.mjs');
 writeFileSync(arq, readFileSync(path.resolve(HERE, '../worker.js'), 'utf8') +
-  '\nexport { crmLerEmail, crmTirarCitacao, crmDecodePalavras, cfGuia1, crmBytesParaBinario, cfGuiaConversa, crmLinkAssinar, crmLinkConferir, CF_CIDADES };\n');
+  '\nexport { crmLerEmail, crmTirarCitacao, crmDecodePalavras, cfGuia1, crmBytesParaBinario, cfGuiaConversa, crmLinkAssinar, crmLinkConferir, CF_CIDADES, crmMontarResposta, crmAssuntoBase, crmIdMsg };\n');
 const mod = await import(pathToFileURL(arq).href);
 rmSync(dir, { recursive: true, force: true });
 const worker = mod.default;
-const { crmLerEmail, crmTirarCitacao, crmDecodePalavras, cfGuia1, crmBytesParaBinario, cfGuiaConversa, crmLinkAssinar, crmLinkConferir, CF_CIDADES } = mod;
+const { crmLerEmail, crmTirarCitacao, crmDecodePalavras, cfGuia1, crmBytesParaBinario, cfGuiaConversa, crmLinkAssinar, crmLinkConferir, CF_CIDADES, crmMontarResposta, crmAssuntoBase, crmIdMsg } = mod;
 
 let passed = 0, failed = 0;
 function check(label, cond) { if (cond) passed++; else { failed++; console.log('  FALHOU:', label); } }
@@ -338,6 +338,107 @@ check('texto: link vencido 410', res.status === 410);
 fakeFetch([[/\/rpc\/crm_conversa_texto$/, { method: 'POST', body: { erro: 'limite' } }]]);
 res = await post('texto', { t: tk, texto: 'oi oi' });
 check('texto: limite do banco vira 429', res.status === 429);
+
+console.log('\n== Fase 1b: montar a resposta no fio ==');
+check('assunto base tira Re:/RES:/Fwd: empilhados', crmAssuntoBase('Re: RES: Fwd:  Ana, aqui está') === 'Ana, aqui está');
+check('Message-ID ganha <>', crmIdMsg('abc@x.net') === '<abc@x.net>' && crmIdMsg('<abc@x.net>') === '<abc@x.net>');
+check('Message-ID estranho vira null', crmIdMsg('a b@x') === null && crmIdMsg('') === null && crmIdMsg(null) === null);
+check('sem nenhuma mensagem de e-mail: null', crmMontarResposta([], [{ message_id: null, assunto: null, recebido_em: '2026-10-16T10:41:00Z' }]) === null);
+const E1 = { provedor_id: '<e1@smtp.example.net>', assunto: 'Ana, aqui está o seu checklist', enviado_em: '2026-10-15T09:02:00Z' };
+const E2 = { provedor_id: '<e2@smtp.example.net>', assunto: 'Ana, uma pergunta rápida', enviado_em: '2026-10-16T10:00:00Z' };
+const R1 = { message_id: '<r1@mail.example.com>', assunto: 'Re: Ana, aqui está o seu checklist', recebido_em: '2026-10-15T20:00:00Z' };
+let fio = crmMontarResposta([E1], [R1]);
+check('responde à resposta dela (a mais nova)', fio.inReplyTo === '<r1@mail.example.com>' && fio.assunto === 'Re: Ana, aqui está o seu checklist');
+check('References: do primeiro ao último do fio', fio.references === '<e1@smtp.example.net> <r1@mail.example.com>');
+fio = crmMontarResposta([E2, E1], [R1]);
+check('e-mail 2 mais novo: o fio passa a ser o dele', fio.inReplyTo === '<e2@smtp.example.net>' && fio.assunto === 'Re: Ana, uma pergunta rápida' && fio.references === '<e2@smtp.example.net>');
+const NOSSA = { provedor_id: '<n1@smtp.example.net>', assunto: 'Re: Ana, aqui está o seu checklist', enviado_em: '2026-10-17T11:20:00Z' };
+fio = crmMontarResposta([NOSSA, E2, E1], [R1]);
+check('depois da nossa resposta: não empilha "Re: Re:"', fio.assunto === 'Re: Ana, aqui está o seu checklist' && fio.inReplyTo === '<n1@smtp.example.net>');
+check('References sem o e-mail 2 (outro assunto)', fio.references === '<e1@smtp.example.net> <r1@mail.example.com> <n1@smtp.example.net>');
+const muitas = Array.from({ length: 14 }, (_, i) => ({ provedor_id: '<m' + i + '@x.net>', assunto: 'Re: Oi', enviado_em: new Date(Date.UTC(2026, 9, 1, i)).toISOString() }));
+fio = crmMontarResposta(muitas, []);
+check('References fica nas 10 últimas', fio.references.split(' ').length === 10 && fio.references.endsWith('<m13@x.net>'));
+check('sem assunto: "Re: Por Dentro"', crmMontarResposta([{ provedor_id: '<z@x.net>', assunto: null, criado_em: '2026-10-01T00:00:00Z' }], []).assunto === 'Re: Por Dentro');
+
+console.log('\n== Fase 1b: rota /api/crm/responder (fetch falso) ==');
+const TOKEN = 'token-da-admin';
+const responder = (corpo, token = TOKEN) => worker.fetch(new Request('https://w.example/api/crm/responder', {
+  method: 'POST', headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: 'Bearer ' + token } : {}) }, body: JSON.stringify(corpo) }), env, {});
+const adminOk = [[/\/auth\/v1\/user$/, { body: { id: 'aaaaaaaa-2222-4333-8444-555555555555' } }], [/\/admins\?/, { body: [{ user_id: 'x' }] }]];
+const fichaOk = [/\/crm_contatos\?/, { body: [{ id: CID, email: 'ana@example.com', nome: 'Ana Maria' }] }];
+const enviadosOk = [/\/emails_enviados\?select=/, { body: [E1] }];
+const recebidasOk = [/\/respostas_email\?select=/, { body: [R1] }];
+const gravaOk = [/\/emails_enviados$/, { method: 'POST', status: 201, body: [{ id: 50, modelo: 'resposta' }] }];
+const marcaOk = [/\/respostas_email\?contato_id=/, { method: 'PATCH', status: 200 }];
+
+chamadas = []; fakeFetch([]);
+res = await responder({ contato_id: CID, texto: 'oi' }, null);
+check('sem login: 401 e nada enviado', res.status === 401 && !chamadas.some((c) => /brevo/.test(c.url)));
+chamadas = []; fakeFetch([[/\/auth\/v1\/user$/, { body: { id: 'u' } }], [/\/admins\?/, { body: [] }]]);
+res = await responder({ contato_id: CID, texto: 'oi' });
+check('logada que não é admin: 401', res.status === 401 && !chamadas.some((c) => /brevo/.test(c.url)));
+fakeFetch([...adminOk]);
+check('contato inválido: 400', (await responder({ contato_id: 'x', texto: 'oi' })).status === 400);
+check('texto vazio: 400', (await responder({ contato_id: CID, texto: '   ' })).status === 400);
+check('texto grande demais: 400', (await responder({ contato_id: CID, texto: 'x'.repeat(10001) })).status === 400);
+
+chamadas = [];
+fakeFetch([...adminOk, fichaOk, enviadosOk, recebidasOk, gravaOk, marcaOk, [/api\.brevo\.com/, { status: 201, body: { messageId: '<n9@smtp.example.net>' } }]]);
+res = await responder({ contato_id: CID, texto: 'Ana, que bom saber!\nMe manda o link do Master.' });
+corpo = await res.json();
+let bv = chamadas.find((c) => /brevo/.test(c.url));
+check('envia: 200, no fio', res.status === 200 && corpo.ok && corpo.no_fio === true && !corpo.aviso);
+check('Brevo: assunto "Re: <assunto do fio>"', bv.body.subject === 'Re: Ana, aqui está o seu checklist' && corpo.assunto === bv.body.subject);
+check('Brevo: In-Reply-To e References', bv.body.headers['In-Reply-To'] === '<r1@mail.example.com>' && bv.body.headers.References === '<e1@smtp.example.net> <r1@mail.example.com>');
+check('Brevo: sem List-Unsubscribe e sem rodapé "sair"', !('List-Unsubscribe' in bv.body.headers) && !/sair/.test(bv.body.textContent));
+check('Brevo: Reply-To = respostas, para ela, texto e HTML', bv.body.replyTo.email === 'respostas@example.org' && bv.body.to[0].email === 'ana@example.com' &&
+  bv.body.textContent === 'Ana, que bom saber!\nMe manda o link do Master.' && bv.body.htmlContent.includes('Ana, que bom saber!<br>Me manda'));
+check('Brevo: tag resposta', bv.body.tags.includes('resposta'));
+const lidas = chamadas.filter((c) => /\/(crm_contatos|emails_enviados|respostas_email)\?select=/.test(c.url));
+check('lê ficha e fio com o token da admin (não a service_role)', lidas.length === 3 && lidas.every((c) => c.headers.Authorization === 'Bearer ' + TOKEN));
+check('lê só mensagens com Message-ID', lidas.some((c) => /emails_enviados\?.*provedor_id=not\.is\.null/.test(c.url)) && lidas.some((c) => /respostas_email\?.*message_id=not\.is\.null/.test(c.url)));
+const gr = chamadas.find((c) => /emails_enviados$/.test(c.url) && c.method === 'POST');
+check('grava em emails_enviados: modelo resposta, provedor_id do Brevo, assunto e corpo', gr.body.modelo === 'resposta' && gr.body.provedor_id === '<n9@smtp.example.net>' &&
+  gr.body.assunto === 'Re: Ana, aqui está o seu checklist' && gr.body.corpo.startsWith('Ana, que bom') && gr.headers.Authorization === 'Bearer ' + TOKEN);
+const mk = chamadas.find((c) => c.method === 'PATCH');
+check('marca as respostas novas dela como respondidas', /respostas_email\?contato_id=eq\.11111111-2222-4333-8444-555555555555&status=eq\.nova$/.test(mk.url) && mk.body.status === 'respondida' && !!mk.body.respondida_em);
+check('envia antes de gravar', chamadas.indexOf(bv) < chamadas.indexOf(gr));
+
+// Brevo recusa os cabeçalhos padrão: reenvia sem eles e avisa.
+chamadas = [];
+let tentativas = 0;
+fakeFetch([...adminOk, fichaOk, enviadosOk, recebidasOk, gravaOk, marcaOk]);
+const fetchBase = globalThis.fetch;
+globalThis.fetch = async (url, opt = {}) => {
+  if (/brevo/.test(String(url))) { tentativas++; const b = JSON.parse(opt.body); chamadas.push({ url: String(url), method: 'POST', body: b });
+    return b.headers ? new Response('{"code":"invalid_parameter","message":"headers"}', { status: 400 }) : new Response('{"messageId":"<n10@x.net>"}', { status: 201 }); }
+  return fetchBase(url, opt);
+};
+console.error = () => {};
+res = await responder({ contato_id: CID, texto: 'Oi de novo' });
+console.error = errosAntes;
+corpo = await res.json();
+check('cabeçalhos recusados: reenvia sem eles e avisa', res.status === 200 && tentativas === 2 && corpo.no_fio === false && /cabeçalhos da conversa/.test(corpo.aviso) &&
+  !chamadas.filter((c) => /brevo/.test(c.url))[1].body.headers);
+
+chamadas = [];
+fakeFetch([...adminOk, fichaOk, enviadosOk, recebidasOk, [/api\.brevo\.com/, { status: 401, body: { message: 'key' } }]]);
+console.error = () => {};
+res = await responder({ contato_id: CID, texto: 'Oi' });
+console.error = errosAntes;
+check('Brevo recusou de vez: 502, nada gravado nem marcado', res.status === 502 && !chamadas.some((c) => c.method === 'POST' && /emails_enviados$/.test(c.url)) && !chamadas.some((c) => c.method === 'PATCH'));
+
+chamadas = [];
+fakeFetch([...adminOk, fichaOk, [/\/emails_enviados\?select=/, { body: [] }], [/\/respostas_email\?select=/, { body: [] }], gravaOk, marcaOk, [/api\.brevo\.com/, { status: 201, body: { messageId: '<n11@x.net>' } }]]);
+res = await responder({ contato_id: CID, texto: 'Oi' });
+check('sem conversa por e-mail e sem assunto: 400', res.status === 400 && !chamadas.some((c) => /brevo/.test(c.url)));
+res = await responder({ contato_id: CID, texto: 'Oi', assunto: 'Sobre o seu Master' });
+bv = chamadas.find((c) => /brevo/.test(c.url));
+check('sem conversa: usa o assunto escrito e não manda cabeçalhos de fio', res.status === 200 && bv.body.subject === 'Sobre o seu Master' && !bv.body.headers);
+
+fakeFetch([...adminOk, [/\/crm_contatos\?/, { body: [] }]]);
+check('ficha não encontrada: 404', (await responder({ contato_id: CID, texto: 'Oi' })).status === 404);
 
 console.log(`\n${passed} passaram, ${failed} falharam`);
 process.exit(failed ? 1 : 0);
