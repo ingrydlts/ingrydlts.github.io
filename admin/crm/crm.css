@@ -209,6 +209,7 @@ td .nm span{font-size:12px; color:var(--ink-2)}
 .pill.st-clicado{background:var(--moss-soft); color:var(--moss-ink)}
 .pill.st-aberto{background:var(--amber-soft); color:var(--amber)}
 .pill.st-entregue{background:var(--sunk); color:var(--ink-2)}
+.pill.st-enviado{background:var(--sunk); color:var(--ink-2)}
 .pill.st-nao_entregue{background:var(--red-soft); color:var(--red)}
 .pill.st-agendado{background:var(--brown-soft); color:var(--brown)}
 
