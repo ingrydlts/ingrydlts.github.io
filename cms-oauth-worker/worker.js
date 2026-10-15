@@ -1773,6 +1773,129 @@ async function handleConversaTexto(request, env) {
   return json({ ok: true });
 }
 
+// ---------- CRM fase 1b: responder da aba Conversa, na mesma conversa do Gmail ----------
+// A aba Conversa da ficha (admin/crm/crm.js) manda texto livre para POST /api/crm/responder.
+// O Worker acha a última mensagem do fio que tem Message-ID (a resposta dela por e-mail ou um e-mail
+// nosso com provedor_id) e responde com "Re: <assunto>" e In-Reply-To/References apontando para ela:
+// é isso que o Gmail usa para juntar as mensagens na mesma conversa. Reply-To = respostas@, então se
+// ela responder de novo, o handler email() liga a resposta a este envio (In-Reply-To = provedor_id).
+// Grava em emails_enviados (modelo 'resposta') e marca as respostas novas dela como respondidas, tudo
+// com o token da própria admin (RLS). Sem rodapé de descadastro: é conversa 1:1, não novidade.
+// Brevo: a documentação do campo headers fala em cabeçalhos "custom". Se o Brevo recusar o envio com
+// In-Reply-To/References, o Worker reenvia sem eles (chega como "Re: ...", fora do fio) e avisa o painel.
+//   Ver README.md, seção 19.
+const CRM_FIO_REFS = 10;
+
+// '<abc@x>' ou 'abc@x' → '<abc@x>'. Qualquer coisa estranha (espaço, < no meio) → null.
+function crmIdMsg(v) {
+  const s = String(v || '').trim().replace(/^<|>$/g, '');
+  return /^[^<>\s]{3,250}$/.test(s) ? '<' + s + '>' : null;
+}
+// "Re: RES: Fwd: Assunto" → "Assunto" (para achar o fio e não empilhar "Re: Re:").
+function crmAssuntoBase(s) {
+  let t = String(s || '').replace(/\s+/g, ' ').trim(), antes;
+  do { antes = t; t = t.replace(/^(re|res|enc|fw|fwd|tr|aw)\s*:\s*/i, ''); } while (t !== antes);
+  return t;
+}
+// enviados: linhas de emails_enviados (provedor_id, assunto, enviado_em/criado_em);
+// recebidas: linhas de respostas_email (message_id, assunto, recebido_em). Toque e página não têm
+// Message-ID e ficam de fora (não existem no Gmail dela).
+// Devolve { assunto, inReplyTo, references } ou null se não houver nenhuma mensagem de e-mail.
+function crmMontarResposta(enviados, recebidas) {
+  const msgs = [];
+  for (const e of enviados || []) { const id = crmIdMsg(e.provedor_id); if (id) msgs.push({ id, assunto: e.assunto, em: Date.parse(e.enviado_em || e.criado_em) || 0 }); }
+  for (const r of recebidas || []) { const id = crmIdMsg(r.message_id); if (id) msgs.push({ id, assunto: r.assunto, em: Date.parse(r.recebido_em) || 0 }); }
+  if (!msgs.length) return null;
+  msgs.sort((a, b) => a.em - b.em);
+  const ultima = msgs[msgs.length - 1];
+  const base = crmAssuntoBase(ultima.assunto);
+  const refs = [];
+  for (const m of msgs) if (crmAssuntoBase(m.assunto) === base && !refs.includes(m.id)) refs.push(m.id);
+  if (refs[refs.length - 1] !== ultima.id) refs.push(ultima.id);
+  return {
+    assunto: ('Re: ' + (base || 'Por Dentro')).slice(0, 200),
+    inReplyTo: ultima.id,
+    references: refs.slice(-CRM_FIO_REFS).join(' '),
+  };
+}
+
+async function handleCrmResponder(request, env) {
+  const admin = await crmRequireAdmin(request);
+  if (!admin) return json({ error: 'Sem permissão. Entre de novo no CRM.' }, 401);
+  if (!env.BREVO_API_KEY || !env.BREVO_SENDER_EMAIL) {
+    return json({ error: 'Brevo ainda não configurado no Worker (BREVO_API_KEY / BREVO_SENDER_EMAIL).' }, 500);
+  }
+  const body = await crmLerJson(request);
+  if (!body) return json({ error: 'Corpo inválido.' }, 400);
+  const contatoId = String(body.contato_id || '');
+  const texto =String(body.texto || '').replace(/\r\n?/g, '\n').trim();
+  const assuntoNovo = String(body.assunto || '').replace(/\s+/g, ' ').trim();
+  if (!CRM_UUID_RE.test(contatoId)) return json({ error: 'Contato inválido.' }, 400);
+  if (!texto || texto.length > 10000) return json({ error: 'Mensagem vazia ou grande demais.' }, 400);
+  if (assuntoNovo.length > 200) return json({ error: 'Assunto grande demais.' }, 400);
+
+  const auth = { apikey: CRM_SUPABASE_ANON_KEY, Authorization: `Bearer ${admin.token}` };
+  const ler = async (caminho) => { const r = await fetch(`${CRM_SUPABASE_URL}/rest/v1/${caminho}`, { headers: auth }); return r.ok ? r.json() : []; };
+  const [contatos, enviados, recebidas] = await Promise.all([
+    ler(`crm_contatos?select=id,email,nome&id=eq.${contatoId}`),
+    ler(`emails_enviados?select=provedor_id,assunto,enviado_em,criado_em&contato_id=eq.${contatoId}&provedor_id=not.is.null&order=criado_em.desc&limit=30`),
+    ler(`respostas_email?select=message_id,assunto,recebido_em&contato_id=eq.${contatoId}&message_id=not.is.null&order=recebido_em.desc&limit=30`),
+  ]);
+  const contato = contatos && contatos[0];
+  if (!contato) return json({ error: 'Contato não encontrado.' }, 404);
+
+  const fio = crmMontarResposta(enviados, recebidas);
+  if (!fio && !assuntoNovo) return json({ error: 'Ainda não há conversa por e-mail com essa pessoa. Escreva um assunto.' }, 400);
+  const assunto = fio ? fio.assunto : assuntoNovo;
+  const brevoBody = {
+    sender: { email: env.BREVO_SENDER_EMAIL, name: env.BREVO_SENDER_NAME || 'Ingryd · Por Dentro' },
+    to: [contato.nome ? { email: contato.email, name: String(contato.nome).slice(0, 100) } : { email: contato.email }],
+    replyTo: { email: crmReplyTo(env) },
+    subject: assunto,
+    htmlContent: crmTextToHtml(texto),
+    textContent: texto,
+    tags: ['crm', 'resposta'],
+  };
+  if (fio) brevoBody.headers = { 'In-Reply-To': fio.inReplyTo, References: fio.references };
+  const enviar = () => fetch('https://api.brevo.com/v3/smtp/email', {
+    method: 'POST',
+    headers: { 'api-key': env.BREVO_API_KEY, 'Content-Type': 'application/json', Accept: 'application/json' },
+    body: JSON.stringify(brevoBody),
+  });
+  let bRes = await enviar(), bText = await bRes.text(), semFio = false;
+  if (!bRes.ok && bRes.status === 400 && brevoBody.headers) {
+    // O Brevo pode não aceitar cabeçalhos padrão no campo headers: manda sem eles, para a resposta não se perder.
+    console.error('crm/responder: Brevo recusou os cabeçalhos do fio (' + bText + '); reenviando sem eles');
+    delete brevoBody.headers;
+    semFio = true;
+    bRes = await enviar(); bText = await bRes.text();
+  }
+  if (!bRes.ok) {
+    console.error('crm/responder: Brevo respondeu ' + bRes.status + ' — ' + bText);
+    return json({ error: 'O Brevo recusou o envio (' + bRes.status + '). Confira a chave da API e se o remetente está verificado.' }, 502);
+  }
+  let messageId = null;
+  try { messageId = JSON.parse(bText).messageId || null; } catch (e) { /* segue sem id */ }
+
+  const agora = new Date().toISOString();
+  const ins = await fetch(`${CRM_SUPABASE_URL}/rest/v1/emails_enviados`, {
+    method: 'POST',
+    headers: { ...auth, 'Content-Type': 'application/json', Prefer: 'return=representation' },
+    body: JSON.stringify({ contato_id: contatoId, modelo: 'resposta', assunto, corpo: texto, status: 'agendado', provedor_id: messageId, enviado_em: agora }),
+  });
+  const marca = await fetch(`${CRM_SUPABASE_URL}/rest/v1/respostas_email?contato_id=eq.${contatoId}&status=eq.nova`, {
+    method: 'PATCH',
+    headers: { ...auth, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+    body: JSON.stringify({ status: 'respondida', respondida_em: agora }),
+  });
+  const avisos = [];
+  if (semFio) avisos.push('O Brevo não aceitou os cabeçalhos da conversa: a resposta chegou como "' + assunto + '", mas pode aparecer separada no Gmail dela.');
+  if (!ins.ok) { console.error('crm/responder: enviado mas não registrado — ' + ins.status + ' ' + (await ins.text())); avisos.push('Enviado, mas não consegui registrar no histórico.'); }
+  if (!marca.ok) { console.error('crm/responder: não marquei as respostas — ' + marca.status); avisos.push('Enviado, mas não consegui marcar as respostas dela como respondidas.'); }
+  const linha = ins.ok ? ((await ins.json().catch(() => []))[0] || null) : null;
+  return json({ ok: true, assunto, no_fio: !!fio && !semFio, email: linha, aviso: avisos.join(' ') || undefined });
+}
+
 // ----- Leitor mínimo de e-mail (sem biblioteca: o Worker é colado no painel, sem build) -----
 // Trabalha com "texto binário" (1 caractere = 1 byte) e só decodifica o charset no fim.
 const CRM_RESPOSTA_MAX = 5000;
@@ -2018,6 +2141,9 @@ export default {
       }
       if (url.pathname === '/api/crm/enviar' && request.method === 'POST') {
         return await handleCrmEnviar(request, env);
+      }
+      if (url.pathname === '/api/crm/responder' && request.method === 'POST') {
+        return await handleCrmResponder(request, env);
       }
       if (url.pathname === '/api/crm/brevo-webhook' && request.method === 'POST') {
         return await handleCrmBrevoWebhook(request, env, url);

@@ -440,3 +440,48 @@ mora em `cfGuiaConversa()` e o do e-mail 1 em `cfGuia1()`, no `worker.js`; troco
 A lista de cidades está em `CF_CIDADES` (Worker), em `crm_conversa_toque` (SQL) e em `CF_CIDADE` (`admin/crm/crm.js`):
 mudou uma, mude as três. Testes: `node cms-oauth-worker/testes/crm-email.test.mjs` e, no banco,
 `cd admin/crm/db/testes && APP_DB_DIR=<POR DENTRO APP>/db npm run test:fase1a`.
+
+## 19. CRM fase 1b: aba Conversa na ficha e responder do CRM
+
+O que faz: a ficha de cada pessoa no `/admin/crm/` ganha as abas **Conversa** e **Ficha** (a ficha de antes, sem mudança).
+A Conversa mostra num fio só, em ordem, os e-mails que saíram (os automáticos do guia como "Automático", os seus como
+"Você"), o toque no e-mail 2, o que ela escreveu na página `/conversa/` e as respostas por e-mail. Ao lado: o prazo do
+nível dela, a etapa, a cidade, de onde veio e se aceitou novidades. Embaixo, a caixa para responder. Na Caixa de entrada,
+"Responder pelo e-mail" virou **Abrir conversa** (quem não tem ficha continua com o botão de e-mail).
+
+Como funciona: o painel chama `POST /api/crm/responder` (mesmo login de admin do `/api/crm/enviar`). O Worker pega a
+última mensagem da conversa que existe no Gmail dela (a resposta dela por e-mail ou um e-mail nosso), manda com o assunto
+`Re: <assunto>`, os cabeçalhos `In-Reply-To` e `References` apontando para ela e o Reply-To `respostas@`. Sem rodapé de
+descadastro (é resposta 1:1). Grava em `emails_enviados` com o modelo `resposta` e marca as respostas novas dela como
+respondidas. Se ela responder de novo, a resposta volta para a aba pelo caminho da fase 0 (handler `email()`).
+Se ainda não houve nenhum e-mail com a pessoa, a caixa pede um assunto.
+
+**Limite a confirmar no teste**: a documentação do Brevo diz que o campo `headers` da API é para cabeçalhos "custom"
+e que cabeçalhos padrão não são suportados; `In-Reply-To` e `References` são padrão. Se o Brevo **recusar** o envio por
+causa deles, o Worker reenvia sem eles e o painel avisa ("O Brevo não aceitou os cabeçalhos da conversa…"): a resposta
+chega como `Re: <assunto>`, mas pode aparecer separada no Gmail dela. Se o Brevo **aceitar e tirar** os cabeçalhos em
+silêncio, o painel não tem como saber: por isso o passo 4 abaixo.
+
+Faça nesta ordem:
+
+**1. Banco** — Supabase → SQL Editor, rode `admin/crm/db/crm-fase1b-resposta.sql` (depois da fase 1a; pode rodar de novo).
+Ele só tira as suas respostas do cálculo do Reimpactar.
+
+**2. Código do Worker** — seção 9 (colar o `worker.js` novo e Deploy). Rota nova: `/api/crm/responder`. Nenhuma variável nova.
+
+**3. Site** — o merge do pull request publica o CRM com a aba.
+
+**4. Teste de ponta a ponta** (com o seu Gmail, que já recebeu o e-mail 1 do guia):
+   1. Responda o e-mail 1 pelo Gmail. A resposta aparece em CRM → Caixa de entrada → Respostas.
+   2. Clique em **Abrir conversa**, escreva uma resposta e envie.
+   3. No Gmail: a resposta tem que aparecer **dentro da mesma conversa** do e-mail 1. Para conferir os cabeçalhos:
+      abra a mensagem → ⋮ → **Mostrar original** e procure `In-Reply-To:` e `References:`.
+   4. Responda essa mensagem pelo Gmail: a resposta volta para a aba Conversa como nova.
+
+Se a resposta do CRM cair numa conversa separada (ou o "Mostrar original" não tiver `In-Reply-To`), o Brevo está tirando
+os cabeçalhos. A volta (passo 4.4) continua funcionando, porque ela usa o id da mensagem que o próprio Brevo cria.
+Alternativas nesse caso: perguntar ao suporte do Brevo se libera `In-Reply-To`/`References` na API, ou mandar as respostas
+1:1 por outro serviço que aceite esses cabeçalhos.
+
+Testes: `node cms-oauth-worker/testes/crm-email.test.mjs` e, no banco,
+`cd admin/crm/db/testes && APP_DB_DIR=<POR DENTRO APP>/db npm run test:fase1b`.
