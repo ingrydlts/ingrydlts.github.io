@@ -485,3 +485,47 @@ Alternativas nesse caso: perguntar ao suporte do Brevo se libera `In-Reply-To`/`
 
 Testes: `node cms-oauth-worker/testes/crm-email.test.mjs` e, no banco,
 `cd admin/crm/db/testes && APP_DB_DIR=<POR DENTRO APP>/db npm run test:fase1b`.
+
+## 20. Estúdio de e-mails 1: os modelos no Supabase
+
+O que faz: os 10 modelos de e-mail passam a morar no Supabase, numa tabela sua (`modelos_email`), com as versões
+guardadas (`modelos_email_versoes`). A tela **Modelos de e-mail** do `/admin/crm/` lista todos, com o objetivo, o tipo
+(serviço, novidades, compra), como sai e a etapa (Rascunho, Revisão, No ar, Arquivado), e o botão **Exportar modelos**
+baixa todos num arquivo (`.json`, com o texto e o HTML de cada versão).
+
+Os dois e-mails que saem sozinhos (o e-mail 1 e o e-mail 2 do guia Campus France) passam a sair com o texto da versão
+**No ar** da tabela: trocar o texto ali muda o e-mail, sem colar o Worker. Se a tabela falhar (fora do ar, sem versão No ar,
+ou um texto com variável que não existe), o Worker manda o texto de hoje, que continua no código, e anota nos Logs
+(`crm/modelos: …`). Quem recebe e quando continua no código (`CRM_MODELOS_EXIGEM_NOVIDADES` e as conferências de cada rota).
+Os 8 modelos do painel ficam guardados na tabela, mas o painel ainda os monta com o texto do `crm.js` até o editor (entrega 2).
+
+Variáveis no texto: `{nome}` troca pelo valor; `{#nivel}…{/nivel}` só aparece se houver nível; `{^nivel}…{/nivel}` só se
+não houver. A lista de variáveis de cada modelo aparece na tela (Variáveis).
+
+Faça nesta ordem:
+
+**1. Banco** — Supabase → SQL Editor, rode `admin/crm/db/crm-modelos-email.sql` (depois da fase 1b; pode rodar de novo
+sem desfazer o que você mudou). Antes do Worker novo, nada muda nos envios.
+
+**2. Código do Worker** — seção 9 (colar o `worker.js` novo e Deploy). Nenhuma variável nova: ele lê a tabela com a
+`SUPABASE_SERVICE_ROLE_KEY` que já existe.
+
+**3. Site** — o merge do pull request publica a tela nova.
+
+**4. Teste**:
+   1. CRM → Modelos de e-mail: aparecem 10 modelos (8 em "Você envia", 2 em "Saem sozinhos"), todos "No ar · v1".
+   2. Clique em **Exportar modelos**: baixa `modelos-email-por-dentro-AAAA-MM-DD.json` com os 10.
+   3. Trocar um texto (exemplo com o assunto do e-mail 1). No SQL Editor:
+      ```sql
+      select public.modelo_email_nova_versao('cf_guia_1');   -- cria a versão 2, rascunho, cópia da 1
+      update public.modelos_email_versoes set assunto = '{#nome}{nome}, o seu{/nome}{^nome}O seu{/nome} checklist do Études en France chegou'
+       where chave = 'cf_guia_1' and versao = 2;
+      select public.publicar_modelo_email('cf_guia_1', 2);  -- a 2 vai No ar, a 1 fica guardada como Arquivada
+      ```
+      Peça o guia (`/guias/etudes-en-france-2027-2028/`) com um e-mail que ainda não pediu (o e-mail 1 sai uma vez só por
+      pessoa; no Gmail dá para usar `seunome+teste2@gmail.com`): ele chega com o assunto novo.
+      Para voltar: `select public.publicar_modelo_email('cf_guia_1', 1);`
+   4. Uma versão que já saiu (No ar ou Arquivada) não muda de texto: o banco recusa e pede uma versão nova. É o que guarda o histórico.
+
+Testes: `node cms-oauth-worker/testes/crm-email.test.mjs` (compara os e-mails montados com o texto da tabela com os de hoje)
+e, no banco, `cd admin/crm/db/testes && APP_DB_DIR=<POR DENTRO APP>/db npm run test:modelos`.

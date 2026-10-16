@@ -11,7 +11,8 @@
     "test:enriquecimento": "node crm-enriquecimento.test.mjs",
     "test:fase0": "node crm-fase0-email-guia.test.mjs",
     "test:fase1a": "node crm-fase1a-conversa.test.mjs",
-    "test:fase1b": "node crm-fase1b-resposta.test.mjs"
+    "test:fase1b": "node crm-fase1b-resposta.test.mjs",
+    "test:modelos": "node crm-modelos-email.test.mjs"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.8"

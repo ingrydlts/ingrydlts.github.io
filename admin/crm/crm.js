@@ -104,7 +104,7 @@ function defaultTpl(c) {
 }
 function splitTpl(c, k) { var t = TPLS[k].make(c); return { subject: t[0].replace(/^Assunto: /, ''), body: t[1] }; }
 
-var C = [], Q = [], L = [], R = [], RM = {}, SUBS = {};
+var C = [], Q = [], L = [], R = [], RM = {}, SUBS = {}, M = null, MV = [];
 var state = { ptab: null, rascunho: {}, view: 'hoje', persona: '', sub: '', urg: '', stage: '', orig: '', camp: '', q: '', sel: null, qs: 'nova', qsel: null, inbox: 'perguntas', rs: 'nova', rsel: null, preset: 'todos', seg: '', prevView: 'contatos' };
 var activeCid = null;
 var me = null;
@@ -184,13 +184,18 @@ async function loadAll() {
     // Se a fase 2c ainda não rodou, a tabela não existe: o card só fica vazio.
     supabase.from('lembretes_prazo').select('*').eq('status', 'agendado').order('avisar_em', { ascending: true }).limit(500),
     // Respostas por e-mail (db/crm-fase0-email-guia.sql). Sem a migração, a aba só fica vazia.
-    supabase.from('respostas_email').select('*').order('recebido_em', { ascending: true }).limit(2000)
+    supabase.from('respostas_email').select('*').order('recebido_em', { ascending: true }).limit(2000),
+    // Modelos de e-mail e as versões (db/crm-modelos-email.sql). Sem a migração, a tela mostra os modelos do código.
+    supabase.from('modelos_email').select('*').order('ordem', { ascending: true }),
+    supabase.from('modelos_email_versoes').select('*').order('versao', { ascending: false })
   ]);
   if (r[0].error) return fail('carregar os contatos', r[0].error);
   C = r[0].data || [];
   Q = r[1].error ? [] : (r[1].data || []);
   L = r[3] && !r[3].error ? (r[3].data || []) : [];
   R = r[4] && !r[4].error ? (r[4].data || []) : [];
+  M = r[5] && !r[5].error && !r[6].error ? (r[5].data || []) : null;
+  MV = M ? (r[6].data || []) : [];
   // O e-mail do CRM a que cada resposta respondeu (assunto e modelo).
   RM = {};
   var ids = R.map(function (x) { return x.email_id; }).filter(function (v, i, a) { return v && a.indexOf(v) === i; });
@@ -722,20 +727,100 @@ function openSinal(cid) {
     '<div class="actions"><button class="btn" type="button" id="modal-cancel">Cancelar</button><button class="btn primary" type="button" id="sinal-send">Enviar sinal →</button></div>');
 }
 
+// ---------- Modelos de e-mail (Estúdio de e-mails, entrega 1) ----------
+// Lista os modelos da tabela modelos_email com a versão de cada um (modelos_email_versoes). Os 2 do guia
+// Campus France saem sozinhos com o texto No ar da tabela (o Worker lê). Os 8 do painel ficam guardados na
+// tabela e o painel ainda os monta com TPLS até o editor (entrega 2). Sem a migração, mostra só os 8 do código.
+var TIPO_EMAIL = { servico: ['Serviço', 'u-baixa'], novidades: ['Novidades', 'u-media'], compra: ['Compra', 'tp-pergunta'] };
+var ETAPA_EMAIL = { rascunho: ['Rascunho', ''], revisao: ['Revisão', 'u-media'], no_ar: ['No ar', 'u-baixa'], arquivado: ['Arquivado', 'out'] };
+function versoesDe(k) { return MV.filter(function (v) { return v.chave === k; }); }   // da mais nova para a mais velha
+function versaoAtual(k) { var vs = versoesDe(k); return vs.filter(function (v) { return v.etapa === 'no_ar'; })[0] || vs[0] || null; }
+function pillDe(map, k) { var p = map[k] || [k, '']; return '<span class="pill ' + p[1] + '"><span class="dot"></span>' + esc(p[0]) + '</span>'; }
+function etapaTxt(v) { return v ? (ETAPA_EMAIL[v.etapa] || [v.etapa])[0] + ' · v' + v.versao : 'Sem versão'; }
+// Mostra as variáveis ({nome}, {#nivel}…{/nivel}) destacadas no texto guardado.
+function marcarVars(txt) { return esc(txt).replace(/\{([#^/]?)(\w+)\}/g, function (m) { return '<span class="var">' + m + '</span>'; }); }
+// Igual ao crmTextToHtml do Worker: o HTML que sai dos modelos que só têm texto.
+function textoParaHtml(text) {
+  var safe = esc(text).replace(/(https?:\/\/[^\s<]+)/g, function (u) { return '<a href="' + u + '">' + u + '</a>'; });
+  return '<div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.6;color:#2B2B2B">' + safe.replace(/\n/g, '<br>') + '</div>';
+}
+
 function renderModelos() {
+  var aviso = $('mod-aviso');
+  aviso.hidden = !!M;
+  aviso.textContent = M ? '' : 'A tabela de modelos ainda não está no banco (rode db/crm-modelos-email.sql). Mostrando só os 8 modelos do painel, com o texto do código.';
+  $('mod-export').disabled = !M;
+  var lista = M || TPL_ORDER.map(function (k) { return { chave: k, nome: TPLS[k].label, objetivo: TPLS[k].when, automatico: false }; });
+  if (!state.tplKey || !lista.some(function (m) { return m.chave === state.tplKey; })) state.tplKey = lista.length ? lista[0].chave : null;
+
+  var card = function (m) {
+    var v = M ? versaoAtual(m.chave) : null;
+    return '<button class="tplcard" data-tpl-pick="' + esc(m.chave) + '" aria-pressed="' + (state.tplKey === m.chave) + '" type="button"><b>' + esc(m.nome) + '</b><span>' + esc(m.objetivo) + '</span>' +
+      '<span class="tplpills">' + (M ? pillDe(TIPO_EMAIL, m.tipo) + '<span class="pill ' + (v ? (ETAPA_EMAIL[v.etapa] || [, ''])[1] : '') + '"><span class="dot"></span>' + esc(etapaTxt(v)) + '</span>' : '') + '</span>' +
+      (M ? '<span class="tplhow">' + esc(m.como_sai) + '</span>' : '<span class="vartag">' + esc(TPLS[m.chave].lever) + '</span>') + '</button>';
+  };
+  var grupo = function (titulo, itens) { return itens.length ? '<p class="tplgrp">' + esc(titulo) + ' · ' + itens.length + '</p>' + itens.map(card).join('') : ''; };
+  $('mod-list').innerHTML = grupo('Você envia', lista.filter(function (m) { return !m.automatico; })) + grupo('Saem sozinhos', lista.filter(function (m) { return m.automatico; }));
+  if (!state.tplKey) { $('mod-preview').innerHTML = '<div class="empty">Nenhum modelo ainda.</div>'; return; }
+
+  var k = state.tplKey, m = lista.filter(function (x) { return x.chave === k; })[0];
+  var doPainel = !!TPLS[k];
   var c = C.filter(function (x) { return x.id === state.mdContact; })[0] || C[0];
-  state.tplKey = state.tplKey || 'boas_vindas';
+  $('mod-bar').hidden = !doPainel;
   $('mod-contact').innerHTML = C.map(function (x) { return '<option value="' + esc(x.id) + '"' + (c && x.id === c.id ? ' selected' : '') + '>' + esc(displayName(x)) + '</option>'; }).join('');
-  $('mod-list').innerHTML = TPL_ORDER.map(function (k) {
-    var t = TPLS[k];
-    return '<button class="tplcard" data-tpl-pick="' + k + '" aria-pressed="' + (state.tplKey === k) + '" type="button"><b>' + esc(t.label) + '</b><span>' + esc(t.when) + '</span>' +
-      '<span class="vartag">' + esc(t.lever) + '</span>' + (EXIGEM_NOVIDADES[k] ? '<span class="vartag" style="background:var(--brown-soft);color:var(--brown)">só p/ quem aceitou novidades</span>' : '') + '</button>';
-  }).join('');
-  if (!c) { $('mod-preview').innerHTML = '<div class="empty">Sem contatos ainda.</div>'; return; }
-  var t = splitTpl(c, state.tplKey);
-  $('mod-preview').innerHTML = '<p class="previewsubj">' + esc(t.subject) + '</p><div class="mailbody">' + esc(t.body) + '</div>' +
-    '<div class="actions"><button class="btn primary" type="button" data-emailfor="' + esc(c.id) + '" data-tplk="' + state.tplKey + '">Escrever este e-mail →</button></div>' +
-    '<p class="sub" style="margin-top:8px">Preenchido sozinho com o nome, a persona (' + esc(personaLabel(c)) + ')' + (state.tplKey === 'parouapp' && c.motivo ? ' e o motivo (' + esc(c.motivo) + ')' : '') + '. Você edita antes de enviar.</p>';
+
+  var html = '<p class="previewsubj">' + esc(m.nome) + '</p>';
+  if (M) {
+    var v = versaoAtual(k), vs = versoesDe(k);
+    html += '<dl class="tplmeta"><dt>Objetivo</dt><dd>' + esc(m.objetivo) + '</dd><dt>Tipo</dt><dd>' + pillDe(TIPO_EMAIL, m.tipo) + '</dd>' +
+      '<dt>Como sai</dt><dd>' + esc(m.como_sai) + '</dd>' + (m.quem_recebe ? '<dt>Quem recebe</dt><dd>' + esc(m.quem_recebe) + '</dd>' : '') +
+      '<dt>Etapa</dt><dd>' + (v ? pillDe(ETAPA_EMAIL, v.etapa) + ' versão ' + v.versao + (v.publicado_em ? ', no ar desde ' + fmtDay(v.publicado_em) : '') : 'sem versão') + '</dd>' +
+      (vs.length > 1 ? '<dt>Versões</dt><dd>' + vs.map(function (x) { return 'v' + x.versao + ' ' + esc((ETAPA_EMAIL[x.etapa] || [x.etapa])[0].toLowerCase()); }).join(' · ') + '</dd>' : '') + '</dl>';
+    if (m.variaveis && m.variaveis.length) {
+      html += '<details class="tplvars"><summary>Variáveis (' + m.variaveis.length + ')</summary><ul>' + m.variaveis.map(function (x) {
+        return '<li><span class="var">{' + esc(x.nome) + '}</span> ' + esc(x.o_que_e) + (x.se_faltar && x.se_faltar !== '—' ? ' · <span class="sub">se faltar: ' + esc(x.se_faltar) + '</span>' : '') + '</li>';
+      }).join('') + '</ul></details>';
+    }
+  }
+  if (doPainel && c) {
+    var t = splitTpl(c, k);
+    html += '<h4 class="tplh">Como sai para ' + esc(displayName(c)) + '</h4><p class="previewsubj" style="font-size:15px">' + esc(t.subject) + '</p><div class="mailbody">' + esc(t.body) + '</div>' +
+      '<div class="actions"><button class="btn primary" type="button" data-emailfor="' + esc(c.id) + '" data-tplk="' + esc(k) + '">Escrever este e-mail →</button></div>' +
+      '<p class="sub" style="margin-top:8px">Preenchido sozinho com o nome, a persona (' + esc(personaLabel(c)) + ')' + (k === 'parouapp' && c.motivo ? ' e o motivo (' + esc(c.motivo) + ')' : '') + '. Você edita antes de enviar.' +
+      (M ? ' Por enquanto o painel monta este e-mail com o texto do código; o texto guardado abaixo passa a valer aqui com o editor.' : '') + '</p>';
+  } else if (doPainel) {
+    html += '<div class="empty">Sem contatos ainda para a prévia.</div>';
+  }
+  if (M) {
+    var vv = versaoAtual(k);
+    if (vv) {
+      html += '<h4 class="tplh">Texto guardado · ' + esc(etapaTxt(vv)) + '</h4>' +
+        (m.automatico ? '<p class="sub" style="margin:0 0 6px">É este texto que sai: o Worker lê a versão No ar na hora de enviar e troca as variáveis.</p>' : '') +
+        '<p class="previewsubj" style="font-size:15px">' + marcarVars(vv.assunto) + '</p>' + (vv.preheader ? '<p class="sub" style="margin:0">Prévia: ' + marcarVars(vv.preheader) + '</p>' : '') +
+        '<div class="mailbody">' + marcarVars(vv.corpo_texto) + '</div>' +
+        (vv.corpo_html ? '<details class="tplvars"><summary>Ver o HTML (sem preencher as variáveis)</summary><iframe class="tplframe" sandbox="allow-same-origin" title="HTML do modelo" srcdoc="' + esc(vv.corpo_html) + '"></iframe></details>' : '');
+    }
+  }
+  $('mod-preview').innerHTML = html;
+}
+
+// Baixa todos os modelos e todas as versões num arquivo só (JSON), com o texto e o HTML de cada versão.
+function exportModelos() {
+  if (!M) return toast('Rode db/crm-modelos-email.sql para exportar');
+  var dados = {
+    exportado_em: new Date().toISOString(),
+    formato: 'Variáveis: {nome} troca pelo valor; {#x}…{/x} só aparece se x tiver valor; {^x}…{/x} só se não tiver.',
+    modelos: M.map(function (m) {
+      return Object.assign({}, m, { versoes: versoesDe(m.chave).map(function (v) {
+        return Object.assign({}, v, { corpo_html: v.corpo_html || textoParaHtml(v.corpo_texto), html_gerado_do_texto: !v.corpo_html });
+      }) });
+    })
+  };
+  var blob = new Blob([JSON.stringify(dados, null, 2)], { type: 'application/json;charset=utf-8' });
+  var a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = 'modelos-email-por-dentro-' + new Date().toISOString().slice(0, 10) + '.json'; a.click();
+  setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
+  toast(M.length + ' modelos exportados');
 }
 function openCompose(cid, key) {
   var c = byC(cid); if (!c) return;
@@ -876,6 +961,7 @@ document.addEventListener('click', async function (e) {
     closeCompose(); await reload(); if (state.view === 'pessoa') renderPessoa();
     return toast('1:1 confirmado');
   }
+  if (t.id === 'mod-export') return exportModelos();
   if (t.id === 'export') {
     var blob = new Blob(['﻿' + csv(filtered())], { type: 'text/csv;charset=utf-8' });
     var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'contatos-por-dentro.csv'; a.click();
