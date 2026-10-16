@@ -585,3 +585,25 @@ este depois (ele refaz a trava e a cópia de versões com os blocos).
 
 Testes: `node cms-oauth-worker/testes/crm-email.test.mjs` (os blocos montam o e-mail 1 e o 2 com o mesmo texto de hoje, a rota
 de teste e o rodapé) e, no banco, `cd admin/crm/db/testes && APP_DB_DIR=<POR DENTRO APP>/db npm run test:estudio`.
+
+## 22. Ficha: e-mails fidedignos e o pop-up mostra o e-mail de verdade
+
+O que muda no painel (`/admin/crm/`, sem passo seu):
+
+- O status `agendado` passa a aparecer como **Enviado**: a linha só existe depois que o Brevo aceitou o envio. Entrega,
+  abertura e clique só aparecem quando o webhook do Brevo (seção 16) avisar.
+- Na aba **Ficha**, o primeiro painel da direita é **E-mails**: o último que saiu (data e hora), o **próximo sugerido** com a
+  miniatura do e-mail como ela vai ver, a sequência automática do guia Campus France (e-mail 1 e e-mail 2: saiu, ou por que
+  não saiu) e a lista de tudo que já saiu pelo CRM. Se nada saiu, diz isso; e-mails mandados direto do Gmail não entram.
+- "O que respondeu no funil" virou **Quem é ela** (só o que importa e tem valor, com nome legível: a etapa do guia
+  `cf-nao-comecei` aparece como "Etapa no Campus France: Ainda não começou") e **De onde veio** (origens e UTM).
+- O pop-up **Escrever e-mail** abre na aba **Como ela vai ver**: De, Para, Assunto e o corpo do jeito que chega. Se o modelo
+  tem desenho (versão feita no estúdio, seção 21), mostra o desenho com os dados dela; se não tem, mostra o formato simples
+  em que o Worker manda hoje. Na aba **Editar texto** você muda o texto; aí o e-mail sai no formato simples e a prévia mostra isso.
+
+**Muda no Worker (`/api/crm/enviar`):** aceita `html` (o desenho já preenchido pelo painel) junto com `modelo_versao`. Só
+usa se for um documento HTML e não tiver `[colchetes]`; senão sai em texto simples, como antes. A resposta diz
+`formato: 'html' | 'texto'`. Sem o Worker novo, o painel avisa "saiu em texto simples" em vez de deixar a prévia mentir.
+
+Faça: **Código do Worker** — seção 9 (colar o `worker.js` novo e Deploy). Nenhuma variável nova. Teste:
+`node cms-oauth-worker/testes/crm-email.test.mjs`.

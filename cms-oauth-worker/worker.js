@@ -1283,12 +1283,18 @@ async function handleCrmEnviar(request, env) {
   const temRodape = /palavra\s+"?sair"?/i.test(corpo);
   const rodape = marketing && !temRodape ? '\n\n—\nPra não receber mais e-mails, é só responder este com a palavra "sair".' : '';
   const versao = Number.isInteger(body.modelo_versao) && body.modelo_versao > 0 && body.modelo_versao < 100000 ? body.modelo_versao : null;
+  // O desenho do modelo (versão feita no estúdio), já preenchido pelo painel com os dados dela, igual à prévia do pop-up.
+  // Só vale com a versão informada e um documento HTML; se o texto foi mexido, o painel não manda e sai em texto simples.
+  const html = versao && typeof body.html === 'string' && body.html.length < 300000 && /^\s*<!DOCTYPE html/i.test(body.html) ? body.html : null;
+  if (html && /\[[^\]\n]{2,60}\]/.test(html.replace(/<[^>]*>/g, ''))) {
+    return json({ error: 'Ainda há um trecho entre [colchetes] no e-mail. Troque pelo texto ou link real antes de enviar.' }, 400);
+  }
   const brevoBody = {
     sender: { email: env.BREVO_SENDER_EMAIL, name: env.BREVO_SENDER_NAME || 'Ingryd · Por Dentro' },
     to: [contato.nome ? { email: contato.email, name: contato.nome } : { email: contato.email }],
     replyTo: { email: crmReplyTo(env) },
     subject: assunto,
-    htmlContent: crmTextToHtml(corpo + rodape),
+    htmlContent: html || crmTextToHtml(corpo + rodape),
     textContent: corpo + rodape,
     tags: ['crm', modelo],
   };
@@ -1320,9 +1326,9 @@ async function handleCrmEnviar(request, env) {
   });
   if (!ins.ok) {
     console.error('crm/enviar: e-mail enviado mas não registrado — ' + ins.status + ' ' + (await ins.text()));
-    return json({ ok: true, aviso: 'E-mail enviado, mas não consegui registrar no histórico.' });
+    return json({ ok: true, formato: html ? 'html' : 'texto', aviso: 'E-mail enviado, mas não consegui registrar no histórico.' });
   }
-  return json({ ok: true });
+  return json({ ok: true, formato: html ? 'html' : 'texto' });
 }
 
 // Brevo chama aqui a cada evento. Autenticação: segredo na URL (?k=...), já que o webhook não tem login.
