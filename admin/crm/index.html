@@ -10,7 +10,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600&display=swap">
-<link rel="stylesheet" href="crm.css?v=2026-10-16.1">
+<link rel="stylesheet" href="crm.css?v=2026-10-16.2">
 <style>
   .gate{max-width:420px;margin:12vh auto 0;text-align:center}
   .gate h1{font-size:28px;margin-bottom:6px}
@@ -165,17 +165,17 @@
 
     <section data-panel="modelos" hidden>
       <div class="head">
-        <div><h2>Modelos de e-mail</h2><p>Todos os modelos num lugar só, com o objetivo, o tipo, como saem e a etapa. Envio pelo Brevo.</p></div>
+        <div><h2>Modelos de e-mail</h2><p>O estúdio dos e-mails: escolha o modelo, edite em blocos, veja como chega para uma pessoa de verdade, teste e publique.</p></div>
         <button class="btn" type="button" id="mod-export">Exportar modelos (texto e HTML)</button>
       </div>
       <p class="sub" id="mod-aviso" style="margin:10px 0 0" hidden></p>
-      <div class="autobar" style="margin-top:14px" id="mod-bar">
-        <span class="sub" style="font-weight:600">Pré-visualizar para</span>
-        <div class="sel"><select id="mod-contact" aria-label="Escolher pessoa"></select></div>
+      <div class="st-mtabs" role="tablist" aria-label="Partes do estúdio">
+        <button type="button" data-sttab="lista">Modelos</button><button type="button" data-sttab="editar">Editar</button><button type="button" data-sttab="previa">Prévia</button>
       </div>
-      <div class="tplgrid">
-        <div id="mod-list"></div>
-        <div class="panel" style="padding:16px" id="mod-preview"></div>
+      <div class="studio" id="studio" data-tab="editar">
+        <nav class="st-list" id="mod-list" aria-label="Modelos"></nav>
+        <div class="st-edit" id="st-edit"></div>
+        <div class="st-prev" id="st-prev"></div>
       </div>
     </section>
 
@@ -189,6 +189,6 @@
 <div id="compose-backdrop" hidden style="position:fixed; inset:0; background:rgba(20,18,14,.4); z-index:9"></div>
 <div class="toast" id="toast" hidden></div>
 
-<script type="module" src="crm.js?v=2026-10-16.1"></script>
+<script type="module" src="crm.js?v=2026-10-16.2"></script>
 </body>
 </html>

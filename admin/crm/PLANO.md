@@ -15,7 +15,7 @@ Backend: o **mesmo Supabase** do app (projeto `hslhpktfgxwfvljvsxkj`). Painel: e
 | Caixa de entrada (Perguntas únicas + Respostas: e-mail, toque no e-mail 2, página /conversa/) → "Abrir conversa" leva à aba Conversa da ficha | `perguntas_unicas`, `respostas_email` (`db/crm-fase0-email-guia.sql`) | perguntas: painel e formulário dos artigos prontos. Respostas por e-mail: chegam por `respostas@imigrantepordentro.com` (Email Routing → Worker `email()`), README do Worker seção 17 |
 | Lembretes de prazo (Hoje) | `lembretes_prazo` (`db/crm-fase2c-lembretes.sql`) | pronto: a calculadora `[[PRAZO]]` dos artigos chama `pedir_lembrete_prazo`; o card mostra quem avisar nos próximos 7 dias |
 | Reimpactar (segmentos) | coluna `segmento` de `crm_contatos` (regras na view) | pronto (envio via Worker → Brevo; ver README do Worker, seção 16) |
-| Modelos de e-mail (lista, versões, Exportar) | `modelos_email`, `modelos_email_versoes` (`db/crm-modelos-email.sql`); sem a migração, `TPLS` em `crm.js` | lista pronta; o painel ainda monta os 8 manuais com `TPLS` até o editor (Estúdio de e-mails 2) |
+| Modelos de e-mail (estúdio: blocos, prévia com uma pessoa, teste, revisão, publicar, versões, Exportar) | `modelos_email`, `modelos_email_versoes` (`db/crm-modelos-email.sql` + `db/crm-estudio-emails-2.sql`); blocos em `estudio.js`; sem a migração, `TPLS` em `crm.js` | pronto; os 8 manuais abrem com o texto No ar da tabela (`TPLS` é reserva) |
 
 ## Extensão: prazo do VLS-TS (guia gratuito)
 
@@ -63,6 +63,16 @@ hoje entram como versão 1 No ar. O Worker lê a versão No ar de `cf_guia_1` e 
 como reserva. Passo a passo: `cms-oauth-worker/README.md`, seção 20. Testes: `db/testes` →
 `APP_DB_DIR=<POR DENTRO APP>/db npm run test:modelos` e `node cms-oauth-worker/testes/crm-email.test.mjs`.
 Fica para as próximas entregas: o editor (2), criar modelo e sequências (3), números por modelo e versão (4).
+
+## Estúdio de e-mails 2 — editar, testar e publicar (16/10)
+
+`db/crm-estudio-emails-2.sql` (rodar **depois** de `crm-modelos-email.sql`; idempotente, só acrescenta): `blocos`, `testado_em` e
+`testado_por` em `modelos_email_versoes`; a trava passa a valer também para os blocos e mudar o texto apaga o teste;
+`modelo_email_nova_versao()` copia os blocos; o e-mail 1 ganha `{etapa}` e `{cidade}` na lista. A tela Modelos de e-mail vira o
+estúdio (três colunas); `estudio.js` monta assunto, texto puro e HTML a partir dos blocos. "Enviar teste para mim" é
+`POST /api/crm/modelo-teste` (Worker). Passo a passo: `cms-oauth-worker/README.md`, seção 21. Testes: `db/testes` →
+`APP_DB_DIR=<POR DENTRO APP>/db npm run test:estudio` e `node cms-oauth-worker/testes/crm-email.test.mjs`.
+Fica para as próximas entregas: criar modelo novo a partir do objetivo e sequências (3), números por modelo e versão (4).
 
 ## Etapas
 

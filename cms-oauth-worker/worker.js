@@ -1279,7 +1279,10 @@ async function handleCrmEnviar(request, env) {
   }
 
   const marketing = modelo !== 'boas_vindas' && modelo !== 'cf_guia_1';
-  const rodape = marketing ? '\n\n—\nPra não receber mais e-mails, é só responder este com a palavra "sair".' : '';
+  // Os modelos montados no estúdio (entrega 2) já trazem o rodapé "responda com a palavra sair": não repete.
+  const temRodape = /palavra\s+"?sair"?/i.test(corpo);
+  const rodape = marketing && !temRodape ? '\n\n—\nPra não receber mais e-mails, é só responder este com a palavra "sair".' : '';
+  const versao = Number.isInteger(body.modelo_versao) && body.modelo_versao > 0 && body.modelo_versao < 100000 ? body.modelo_versao : null;
   const brevoBody = {
     sender: { email: env.BREVO_SENDER_EMAIL, name: env.BREVO_SENDER_NAME || 'Ingryd · Por Dentro' },
     to: [contato.nome ? { email: contato.email, name: contato.nome } : { email: contato.email }],
@@ -1311,6 +1314,8 @@ async function handleCrmEnviar(request, env) {
     body: JSON.stringify({
       contato_id: contatoId, modelo, assunto, corpo, status: 'agendado',
       provedor_id: messageId, enviado_em: new Date().toISOString(),
+      // A versão do modelo de onde o texto partiu (o painel manda quando o texto veio da tabela).
+      ...(versao ? { modelo_versao: versao } : {}),
     }),
   });
   if (!ins.ok) {
@@ -1562,8 +1567,16 @@ function cfGuia1Vars(contato, notionUrl) {
     nivel: nivel ? nivel[0] : '', prazo_nivel: nivel ? nivel[1] : '',
   };
   for (const k of Object.keys(CF_PASSO)) v['etapa_' + k.replace(/^cf-/, '').replace(/-/g, '_')] = resp.objetivo === k;
+  // Estúdio de e-mails 2: a etapa por extenso e a cidade (tocada no e-mail 2), para textos novos com plano B.
+  v.etapa = CF_ETAPA_NOME[resp.objetivo] || '';
+  const cidade = CF_CIDADES.find(([k]) => k === resp.cfCidade);
+  v.cidade = cidade ? cidade[1] : '';
   return v;
 }
+const CF_ETAPA_NOME = {
+  'cf-nao-comecei': 'ainda não começou', 'cf-escolhendo-curso': 'escolhendo o curso', 'cf-juntando-documentos': 'juntando documentos, traduções e o teste',
+  'cf-dossie-enviado': 'já enviou o dossiê', 'cf-entrevista-resposta': 'esperando a entrevista ou a resposta',
+};
 
 // Variáveis do e-mail 2. Os botões levam o link assinado da pessoa e vêm prontos do código.
 function cfGuiaConversaVars(contato, token) {
@@ -1820,6 +1833,99 @@ async function handleCrmConversaRodar(request, env) {
   }
   const r = await crmConversaDiaria(env);
   return json(r, r.erro ? 500 : 200);
+}
+
+// ---------- Estúdio de e-mails 2: "Enviar teste para mim" ----------
+// O estúdio do CRM (admin/crm/crm.js) manda { chave, versao, contato_id, vars? }. O Worker lê a versão (com o token
+// da admin: rascunho e revisão também valem), preenche com os dados daquela pessoa e manda SÓ para o e-mail de quem
+// está logada, com "[Teste]" no assunto. Não grava em emails_enviados (não conta como envio, nem no Reimpactar) e
+// marca a versão como testada (testado_em). Nos dois automáticos os dados vêm do banco, como no envio de verdade:
+// o link privado do Notion sai de guias_links; os botões do e-mail 2 levam um link de teste (não registram toque).
+// Nos manuais, os dados são os que o painel preenche hoje (vars), só texto e sim/não.
+//   Sem variável nova. Ver README.md, seção 21.
+const CRM_TESTE_VARS_MAX = 40;
+function crmVarsDoPainel(vars) {
+  const v = {};
+  if (!vars || typeof vars !== 'object' || Array.isArray(vars)) return v;
+  for (const [k, x] of Object.entries(vars).slice(0, CRM_TESTE_VARS_MAX)) {
+    if (!/^\w{1,40}$/.test(k)) continue;
+    if (typeof x === 'boolean') v[k] = x;
+    else if (typeof x === 'number' && Number.isFinite(x)) v[k] = String(x);
+    else if (typeof x === 'string') v[k] = x.slice(0, 500);
+    else if (x == null) v[k] = '';
+  }
+  return v;
+}
+
+async function handleCrmModeloTeste(request, env) {
+  const admin = await crmRequireAdmin(request);
+  if (!admin) return json({ error: 'Sem permissão. Entre de novo no CRM.' }, 401);
+  if (!env.BREVO_API_KEY || !env.BREVO_SENDER_EMAIL || !env.SUPABASE_SERVICE_ROLE_KEY) {
+    return json({ error: 'Worker sem Brevo ou SUPABASE_SERVICE_ROLE_KEY configurados.' }, 500);
+  }
+  const para = String((admin.user && admin.user.email) || '').trim();
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(para)) return json({ error: 'A sua conta não tem e-mail para receber o teste.' }, 400);
+  const body = await crmLerJson(request);
+  const chave = String((body && body.chave) || '');
+  const versao = Number(body && body.versao);
+  const contatoId = String((body && body.contato_id) || '');
+  if (!/^[a-z0-9_]{2,40}$/.test(chave) || !Number.isInteger(versao) || versao < 1) return json({ error: 'Modelo ou versão inválidos.' }, 400);
+  if (!CRM_UUID_RE.test(contatoId)) return json({ error: 'Escolha a pessoa da prévia.' }, 400);
+
+  const auth = { apikey: CRM_SUPABASE_ANON_KEY, Authorization: `Bearer ${admin.token}` };
+  const vRes = await fetch(`${CRM_SUPABASE_URL}/rest/v1/modelos_email_versoes?select=versao,etapa,assunto,preheader,corpo_texto,corpo_html` +
+    `&chave=eq.${encodeURIComponent(chave)}&versao=eq.${versao}&limit=1`, { headers: auth });
+  const linha = vRes.ok ? (await vRes.json())[0] : null;
+  if (!linha) return json({ error: 'Não achei essa versão do modelo.' }, 404);
+
+  const sb = crmServiceHeaders(env);
+  let vars;
+  if (chave === 'cf_guia_1' || chave === 'cf_guia_conversa') {
+    const cRes = await fetch(`${CRM_SUPABASE_URL}/rest/v1/contatos?select=id,email,nome,respostas&id=eq.${contatoId}`, { headers: sb });
+    const contato = cRes.ok ? (await cRes.json())[0] : null;
+    if (!contato) return json({ error: 'Contato não encontrado.' }, 404);
+    if (chave === 'cf_guia_1') {
+      const lRes = await fetch(`${CRM_SUPABASE_URL}/rest/v1/guias_links?select=notion_url&slug=eq.${encodeURIComponent(CF_GUIA_SLUG)}`, { headers: sb });
+      const link = lRes.ok ? (await lRes.json())[0] : null;
+      if (!link || !/^https:\/\//.test(link.notion_url || '')) return json({ error: 'Guia sem link do Notion em guias_links.' }, 500);
+      vars = cfGuia1Vars(contato, link.notion_url);
+    } else {
+      vars = cfGuiaConversaVars(contato, 'teste');
+    }
+  } else {
+    vars = crmVarsDoPainel(body && body.vars);
+  }
+
+  let mail;
+  try { mail = crmMontarModelo(linha, vars); }
+  catch (e) { return json({ error: 'O texto tem um erro: ' + e.message + '.' }, 400); }
+  if (/\[[^\]\n]{2,60}\]/.test(mail.assunto + '\n' + mail.texto)) {
+    return json({ error: 'Ainda há um trecho entre [colchetes]. No envio manual você troca na hora; no teste, troque no texto para ver como fica.' }, 400);
+  }
+  const bRes = await fetch('https://api.brevo.com/v3/smtp/email', {
+    method: 'POST',
+    headers: { 'api-key': env.BREVO_API_KEY, 'Content-Type': 'application/json', Accept: 'application/json' },
+    body: JSON.stringify({
+      sender: { email: env.BREVO_SENDER_EMAIL, name: env.BREVO_SENDER_NAME || 'Ingryd · Por Dentro' },
+      to: [{ email: para }],
+      replyTo: { email: crmReplyTo(env) },
+      subject: ('[Teste] ' + mail.assunto).slice(0, 200),
+      htmlContent: mail.html,
+      textContent: mail.texto,
+      tags: ['crm-teste', chave],
+    }),
+  });
+  if (!bRes.ok) {
+    console.error('crm/modelo-teste: Brevo respondeu ' + bRes.status + ' — ' + (await bRes.text()));
+    return json({ error: 'O Brevo recusou o envio (' + bRes.status + ').' }, 502);
+  }
+  // Marca a versão como testada (com o token da admin). Sem a migração da entrega 2 a coluna não existe: segue.
+  const mRes = await fetch(`${CRM_SUPABASE_URL}/rest/v1/modelos_email_versoes?chave=eq.${encodeURIComponent(chave)}&versao=eq.${versao}`, {
+    method: 'PATCH', headers: { ...auth, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+    body: JSON.stringify({ testado_em: new Date().toISOString(), testado_por: admin.user.id }),
+  });
+  if (!mRes.ok) console.error('crm/modelo-teste: teste enviado mas não marquei a versão — ' + mRes.status);
+  return json({ ok: true, para, marcado: mRes.ok });
 }
 
 async function crmLerJson(request) {
@@ -2248,6 +2354,9 @@ export default {
       }
       if (url.pathname === '/api/crm/enviar' && request.method === 'POST') {
         return await handleCrmEnviar(request, env);
+      }
+      if (url.pathname === '/api/crm/modelo-teste' && request.method === 'POST') {
+        return await handleCrmModeloTeste(request, env);
       }
       if (url.pathname === '/api/crm/responder' && request.method === 'POST') {
         return await handleCrmResponder(request, env);
