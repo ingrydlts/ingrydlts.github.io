@@ -556,9 +556,29 @@ function comRodape(k, corpo) {
 // O e-mail k pronto para ela: o texto No ar com os dados dela e, se a versão tiver HTML (feita no estúdio), esse HTML.
 function emailPronto(c, k) {
   var t = textoDoModelo(c, k), v = M && t.versao ? versaoAtual(k) : null, html = null;
-  if (v && v.versao === t.versao && v.corpo_html) { try { html = ES.montarComDados(v, dadosPara(k, c)).html; } catch (e) { html = null; } }
+  if (v && v.versao === t.versao) { var vd = comMoldura(v); if (vd) { try { html = ES.montarComDados(vd, dadosPara(k, c)).html; } catch (e) { html = null; } } }
   return { k: k, subject: t.subject, body: t.body, versao: t.versao, html: html };
 }
+// A versão com o template do Por Dentro (logo, papel, botão verde). Se ela não guardou HTML (os 8 manuais na versão 1),
+// monta a partir dos blocos dela ou, na versão 1, dos blocos de partida do estúdio, que repetem o texto da versão 1.
+function comMoldura(v) {
+  if (v.corpo_html) return v;
+  var d = v.blocos || (v.versao === 1 && ES.INICIAIS[v.chave]);
+  var mo = (M || []).filter(function (x) { return x.chave === v.chave; })[0];
+  if (!d || !mo) return null;
+  try { return Object.assign({}, v, { corpo_html: ES.montar(d, mo.tipo).corpo_html }); } catch (e) { return null; }
+}
+// Um e-mail que já saiu, do jeito que chegou: o template (automáticos sempre; manuais quando o Worker gravou formato html)
+// refeito com a versão e os dados dela; o resto, no formato simples.
+function htmlDoEnviado(m, c) {
+  var auto = /^cf_guia_/.test(m.modelo), v = m.modelo_versao ? MV.filter(function (x) { return x.chave === m.modelo && x.versao === m.modelo_versao; })[0] : null;
+  if (v && (auto || m.formato === 'html')) {
+    var vd = comMoldura(v);
+    if (vd) { try { return ES.montarComDados(vd, dadosPara(m.modelo, c)).html; } catch (e) { /* cai no simples */ } }
+  }
+  return htmlSimples(auto || m.modelo === 'resposta' ? (m.corpo || '') : comRodape(m.modelo, m.corpo || ''));
+}
+function mailView(m) { return '<div class="mailview" id="mb-' + m.id + '" hidden></div>'; }
 // O que a prévia mostra: o HTML do estúdio, ou o texto no formato simples em que o Worker manda.
 function previaDoc(k, e, editado) { return !editado && e.html ? e.html : htmlSimples(comRodape(k, editado != null ? editado : e.body)); }
 function previaFrame(doc, cls) { return '<iframe class="' + cls + '" sandbox="allow-popups" title="Prévia do e-mail" srcdoc="' + esc(doc) + '"></iframe>'; }
@@ -601,7 +621,7 @@ function emailsPanel(c, mails, h4) {
     return '<div class="mailrow"><button class="mh" data-mailtoggle="' + m.id + '" type="button"><b>' + esc(m.assunto || MODELO[m.modelo] || m.modelo) + '</b>' + mailPill(m) +
       '<time>' + esc(fmtQuando(m.enviado_em || m.criado_em)) + '</time></button><div class="sub" style="font-size:11.5px;margin-top:2px">' + esc(MODELO[m.modelo] || m.modelo) +
       (m.aberto_em ? ' · abriu ' + esc(fmtQuando(m.aberto_em)) : '') + (m.clicado_em ? ' · clicou ' + esc(fmtQuando(m.clicado_em)) : '') + '</div>' +
-      '<div class="mailbody" id="mb-' + m.id + '" hidden>' + esc(m.corpo || '(sem corpo salvo)') + '</div></div>';
+      mailView(m) + '</div>';
   }).join('');
   return '<div class="panel mailpanel" style="padding:16px"><h4 style="' + h4 + '">E-mails</h4>' + head + prox + seqGuiaCF(c, mails) +
     (hist ? '<div class="k" style="margin-top:14px">Já enviados (' + mails.length + ')</div>' + hist : '') + '</div>';
@@ -678,7 +698,7 @@ function conversaMsg(it, c) {
     var quem = auto ? 'Automático · ' + (x.modelo === 'cf_guia_1' ? 'e-mail 1' : x.modelo === 'cf_guia_conversa' ? 'e-mail 2' : x.modelo)
       : resp ? 'Você · respondeu daqui' : 'Você · ' + (MODELO[x.modelo] || x.modelo);
     var corpo = resp ? '<div class="txt">' + esc(x.corpo || '') + '</div>'
-      : '<b class="assunto">' + esc(x.assunto || '(sem assunto)') + '</b>' + (x.corpo ? '<button class="link" type="button" data-mailtoggle="' + x.id + '">ver o e-mail</button><div class="mailbody" id="mb-' + x.id + '" hidden>' + esc(x.corpo) + '</div>' : '');
+      : '<b class="assunto">' + esc(x.assunto || '(sem assunto)') + '</b>' + (x.corpo ? '<button class="link" type="button" data-mailtoggle="' + x.id + '">ver o e-mail</button>' + mailView(x) : '');
     return '<div class="msg ' + (auto ? 'auto' : 'me') + '"><span class="who">' + esc(quem) + '</span>' + corpo +
       '<div class="stat"><span class="pill st-' + esc(x.status) + '">' + esc(MAIL_ST[x.status] || x.status) + '</span>' + quando + '</div></div>';
   }
@@ -739,10 +759,11 @@ async function renderPessoa() {
   var r = await Promise.all([
     supabase.from('eventos').select('tipo,dados,criado_em').eq('contato_id', c.id).order('criado_em', { ascending: false }).limit(200),
     supabase.from('consentimentos').select('finalidade,aceito,criado_em').eq('contato_id', c.id).order('criado_em', { ascending: false }),
-    supabase.from('emails_enviados').select('id,modelo,assunto,corpo,status,provedor_id,enviado_em,aberto_em,clicado_em,criado_em').eq('contato_id', c.id).order('criado_em', { ascending: false })
+    supabase.from('emails_enviados').select('*').eq('contato_id', c.id).order('criado_em', { ascending: false })
   ]);
   if (state.sel !== c.id || state.view !== 'pessoa') return;   // trocou de tela enquanto carregava
   var eventos = r[0].data || [], cons = r[1].data || [], mails = r[2].data || [];
+  state.mails = mails;
   var last = function (f) { var x = cons.filter(function (k) { return k.finalidade === f; })[0]; return x ? x.aceito : false; };
   var perg = Q.filter(function (x) { return x.contato_id === c.id; });
   var resps = R.filter(function (x) { return x.contato_id === c.id; });
@@ -1387,7 +1408,14 @@ document.addEventListener('click', async function (e) {
     return toast(novo === 'respondida' ? 'Resposta marcada como respondida' : novo === 'arquivada' ? 'Resposta arquivada' : 'Resposta de volta em Novas');
   }
   if (t.dataset.seg) { state.seg = state.seg === t.dataset.seg ? '' : t.dataset.seg; return renderReimpacto(); }
-  if (t.dataset.mailtoggle) { var mb = $('mb-' + t.dataset.mailtoggle); mb.hidden = !mb.hidden; return; }
+  if (t.dataset.mailtoggle) {
+    var mb = $('mb-' + t.dataset.mailtoggle); mb.hidden = !mb.hidden;
+    if (!mb.hidden && !mb.firstChild) {   // monta o e-mail só quando abre
+      var mm = (state.mails || []).filter(function (x) { return String(x.id) === t.dataset.mailtoggle; })[0], cc = byC(state.sel);
+      if (mm && cc) mb.innerHTML = previaFrame(htmlDoEnviado(mm, cc), 'cmpframe');
+    }
+    return;
+  }
   if (t.dataset.opensinal) return openSinal(t.dataset.opensinal);
   if (t.dataset.open1a1) return open1a1(t.dataset.open1a1);
   if (t.dataset.sinalpick) { $('compose-txt').value = SINAIS[+t.dataset.sinalpick].body(byC(activeCid)); return; }

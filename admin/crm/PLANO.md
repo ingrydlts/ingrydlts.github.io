@@ -81,6 +81,9 @@ sequência do guia Campus France e histórico), **Quem é ela** e **De onde veio
 de e-mail mostra o e-mail como ela vai ver (desenho da versão do estúdio ou o formato simples). Worker: `/api/crm/enviar` aceita
 `html`. Passo a passo: `cms-oauth-worker/README.md`, seção 22.
 
+Na mesma data: os 8 manuais saem com o template do Por Dentro (montado dos blocos), "ver o e-mail" abre o template e
+`emails_enviados.formato` registra como saiu (`db/crm-emails-formato.sql`). README do Worker, seção 22b.
+
 ## Etapas
 
 1. **Fase 1 — captura** (feita, repo POR-DENTRO-APP): `contatos`, `eventos`, `consentimentos`, `capturar_lead()`, `admins`.

@@ -702,5 +702,29 @@ chamadas = []; fakeFetch(okEnvio());
 res = await enviar({ contato_id: CID, modelo: 'boas_vindas', assunto: 'oi', corpo: 'Oi Ana!', modelo_versao: 2, html: '<!DOCTYPE html><p>Oi [link do acesso]</p>' });
 check('HTML com [colchetes]: 400, nada enviado', res.status === 400 && !chamadas.some((c) => /brevo/.test(c.url)));
 
+console.log('\n== Ficha: o formato do envio fica gravado ==');
+chamadas = []; fakeFetch(okEnvio());
+await enviar({ contato_id: CID, modelo: 'boas_vindas', assunto: 'oi', corpo: 'Oi Ana!', modelo_versao: 2, html: DOC });
+check('com o template: grava formato html', chamadas.find((c) => c.method === 'POST' && /emails_enviados$/.test(c.url)).body.formato === 'html');
+chamadas = []; fakeFetch(okEnvio());
+await enviar({ contato_id: CID, modelo: 'boas_vindas', assunto: 'oi', corpo: 'Oi Ana!' });
+check('texto mexido: grava formato texto', chamadas.find((c) => c.method === 'POST' && /emails_enviados$/.test(c.url)).body.formato === 'texto');
+{
+  // Banco sem a coluna: o 1º POST falha falando de formato, o 2º grava sem ela.
+  chamadas = []; let n = 0;
+  fakeFetch([...adminOk, fichaNov, brevoOk]);
+  const base = globalThis.fetch;
+  globalThis.fetch = async (url, opt = {}) => {
+    if (/emails_enviados$/.test(String(url)) && opt.method === 'POST') {
+      chamadas.push({ url: String(url), method: 'POST', body: JSON.parse(opt.body) });
+      return ++n === 1 ? new Response('{"message":"Could not find the \'formato\' column"}', { status: 400 }) : new Response('', { status: 201 });
+    }
+    return base(url, opt);
+  };
+  res = await enviar({ contato_id: CID, modelo: 'boas_vindas', assunto: 'oi', corpo: 'Oi Ana!' });
+  const posts = chamadas.filter((c) => c.method === 'POST' && /emails_enviados$/.test(c.url));
+  check('banco sem a coluna formato: grava de novo sem ela e não dá aviso', posts.length === 2 && !('formato' in posts[1].body) && !(await res.json()).aviso);
+}
+
 console.log(`\n${passed} passaram, ${failed} falharam`);
 process.exit(failed ? 1 : 0);
