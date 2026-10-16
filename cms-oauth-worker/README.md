@@ -497,7 +497,7 @@ Os dois e-mails que saem sozinhos (o e-mail 1 e o e-mail 2 do guia Campus France
 **No ar** da tabela: trocar o texto ali muda o e-mail, sem colar o Worker. Se a tabela falhar (fora do ar, sem versão No ar,
 ou um texto com variável que não existe), o Worker manda o texto de hoje, que continua no código, e anota nos Logs
 (`crm/modelos: …`). Quem recebe e quando continua no código (`CRM_MODELOS_EXIGEM_NOVIDADES` e as conferências de cada rota).
-Os 8 modelos do painel ficam guardados na tabela, mas o painel ainda os monta com o texto do `crm.js` até o editor (entrega 2).
+Os 8 modelos do painel ficam guardados na tabela; desde a entrega 2 (seção 21) o painel abre com o texto No ar daqui.
 
 Variáveis no texto: `{nome}` troca pelo valor; `{#nivel}…{/nivel}` só aparece se houver nível; `{^nivel}…{/nivel}` só se
 não houver. A lista de variáveis de cada modelo aparece na tela (Variáveis).
@@ -529,3 +529,59 @@ sem desfazer o que você mudou). Antes do Worker novo, nada muda nos envios.
 
 Testes: `node cms-oauth-worker/testes/crm-email.test.mjs` (compara os e-mails montados com o texto da tabela com os de hoje)
 e, no banco, `cd admin/crm/db/testes && APP_DB_DIR=<POR DENTRO APP>/db npm run test:modelos`.
+
+## 21. Estúdio de e-mails 2: editar, testar e publicar no CRM
+
+O que faz: a tela **Modelos de e-mail** do `/admin/crm/` vira um estúdio em três colunas, como o de produtos do admin:
+à esquerda os modelos, no meio o editor em seções (Objetivo e envio, Para quem, Contexto da pessoa, Texto, Pronto para
+usar?, Versões) e à direita a prévia com uma pessoa de verdade do CRM, no computador ou no celular, com avisos (não aceitou
+novidades, não pegou o guia, dado faltando e o que aparece no lugar).
+
+O texto é feito de **blocos** (texto, título, botão, destaque, apresentação com foto, pergunta, respostas de um toque, trecho
+só para uma etapa, assinatura), sem HTML escrito à mão. O rodapé vem do tipo: novidades leva "responda com a palavra sair";
+serviço e compra não. Cada dado da pessoa (`{nome}`, `{nivel}`, `{prazo_nivel}`, `{etapa}`, `{cidade}`…) tem um **plano B**
+(o que escrever se faltar, ou "o bloco some"); um bloco pode ter o próprio texto "se faltar um dado". Os links (o do Notion,
+o do app, o da agenda) e os botões de cidade nunca são digitados: o botão escolhe o dado e o Worker preenche na hora.
+O estúdio monta o assunto, a prévia, o texto puro e o HTML a partir dos blocos e grava tudo na versão
+(`modelos_email_versoes`). O Worker continua lendo a versão No ar como na seção 20: nada muda no jeito de enviar.
+
+O caminho de uma mudança: **Editar em versão nova** (cria um rascunho; as versões de hoje viram blocos com o mesmo texto) →
+editar (guarda sozinho) → ver a prévia com duas pessoas → **Enviar teste para mim** → **Mandar para revisão** → **Publicar**.
+O botão Publicar só acende com o teste enviado depois da última mudança. A versão anterior fica guardada (Arquivada) e o
+botão **Voltar para esta** a põe No ar de novo.
+
+- Os 2 automáticos (e-mail 1 e e-mail 2 do guia Campus France): o próximo envio já sai com a versão publicada.
+- Os 8 manuais: o "Escrever este e-mail" da ficha passa a abrir com o texto No ar da tabela (você ainda edita antes de
+  enviar). Eles continuam saindo em texto simples, como hoje; o texto do `crm.js` fica só de reserva.
+
+**Rota nova:** `POST /api/crm/modelo-teste` (login de admin do CRM, como `/api/crm/enviar`). Recebe `{ chave, versao,
+contato_id, vars }`, monta a versão com os dados daquela pessoa e manda **só para o e-mail de quem está logada**, com
+`[Teste]` no assunto. Não grava em `emails_enviados` (não conta como envio nem no Reimpactar) e marca a versão como testada.
+Nos 2 automáticos os dados vêm do banco, como no envio de verdade (o link privado do Notion sai de `guias_links`); os botões
+do e-mail 2 levam um link de teste, que não registra toque na ficha de ninguém. Nos manuais vão os dados que o painel preenche.
+
+Também muda no `/api/crm/enviar`: se o texto já traz o rodapé "responda com a palavra sair" (modelos montados no estúdio),
+o Worker não põe outro; e grava `modelo_versao` quando o painel diz de qual versão o texto partiu.
+
+Faça nesta ordem:
+
+**1. Banco** — Supabase → SQL Editor, rode `admin/crm/db/crm-estudio-emails-2.sql` (depois de `crm-modelos-email.sql`;
+pode rodar de novo). Só acrescenta colunas: nada muda nos envios. Se um dia rodar `crm-modelos-email.sql` de novo, rode
+este depois (ele refaz a trava e a cópia de versões com os blocos).
+
+**2. Código do Worker** — seção 9 (colar o `worker.js` novo e Deploy). Nenhuma variável nova.
+
+**3. Site** — o merge do pull request publica a tela nova.
+
+**4. Teste** (o critério de aceite):
+   1. CRM → Modelos de e-mail → Guia Campus France · e-mail 1 → **Editar em versão nova**: abre a versão 2 (Rascunho), já em blocos.
+   2. Texto → bloco Título: troque o texto. A prévia muda na hora e aparece "Guardado".
+   3. Troque a pessoa da prévia duas vezes (uma com nível marcado, outra sem) e alterne Computador e Celular.
+   4. **Enviar teste para mim**: chega no seu e-mail, com `[Teste]` no assunto e o link do checklist de verdade.
+   5. **Mandar para revisão** e depois **Publicar (No ar)**. Em Versões, a 2 fica No ar e a 1 Arquivada.
+   6. Peça o guia (`/guias/etudes-en-france-2027-2028/`) com um e-mail que ainda não pediu (no Gmail, `seunome+teste3@gmail.com`):
+      o e-mail 1 chega com o título novo. Em `emails_enviados`, a linha dele tem `modelo_versao = 2`.
+   7. Para voltar: Versões → v1 → **Voltar para esta**.
+
+Testes: `node cms-oauth-worker/testes/crm-email.test.mjs` (os blocos montam o e-mail 1 e o 2 com o mesmo texto de hoje, a rota
+de teste e o rodapé) e, no banco, `cd admin/crm/db/testes && APP_DB_DIR=<POR DENTRO APP>/db npm run test:estudio`.

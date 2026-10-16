@@ -5,6 +5,9 @@
 // Estúdio de e-mails, entrega 1: o texto dos modelos em admin/crm/db/crm-modelos-email.sql monta os mesmos
 // e-mails de hoje (os 2 do Worker e os 8 do painel), e o Worker usa a tabela com o texto de hoje de reserva.
 //
+// Estúdio de e-mails, entrega 2: os blocos (admin/crm/estudio.js) montam o e-mail 1 e o 2 com o mesmo texto de hoje,
+// a rota /api/crm/modelo-teste manda só para a admin e não grava envio, e o rodapé não se repete no envio manual.
+//
 // Uso: node cms-oauth-worker/testes/crm-email.test.mjs   (Node 18+, sem dependências)
 import { readFileSync, writeFileSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -17,12 +20,12 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 const dir = mkdtempSync(path.join(tmpdir(), 'crm-email-'));
 const arq = path.join(dir, 'worker.mjs');
 writeFileSync(arq, readFileSync(path.resolve(HERE, '../worker.js'), 'utf8') +
-  '\nexport { crmLerEmail, crmTirarCitacao, crmDecodePalavras, cfGuia1, crmBytesParaBinario, cfGuiaConversa, crmLinkAssinar, crmLinkConferir, CF_CIDADES, crmMontarResposta, crmAssuntoBase, crmIdMsg, crmPreencher, crmMontarModelo, cfGuia1Vars, cfGuiaConversaVars };\n');
+  '\nexport { crmLerEmail, crmTirarCitacao, crmDecodePalavras, cfGuia1, crmBytesParaBinario, cfGuiaConversa, crmLinkAssinar, crmLinkConferir, CF_CIDADES, crmMontarResposta, crmAssuntoBase, crmIdMsg, crmPreencher, crmMontarModelo, cfGuia1Vars, cfGuiaConversaVars, cfBotoesCidade };\n');
 const mod = await import(pathToFileURL(arq).href);
 rmSync(dir, { recursive: true, force: true });
 const worker = mod.default;
 const { crmLerEmail, crmTirarCitacao, crmDecodePalavras, cfGuia1, crmBytesParaBinario, cfGuiaConversa, crmLinkAssinar, crmLinkConferir, CF_CIDADES, crmMontarResposta, crmAssuntoBase, crmIdMsg,
-  crmPreencher, crmMontarModelo, cfGuia1Vars, cfGuiaConversaVars } = mod;
+  crmPreencher, crmMontarModelo, cfGuia1Vars, cfGuiaConversaVars, cfBotoesCidade } = mod;
 
 let passed = 0, failed = 0;
 function check(label, cond) { if (cond) passed++; else { failed++; console.log('  FALHOU:', label); } }
@@ -575,6 +578,111 @@ check('e-mail 2: trocar o assunto na tabela muda o e-mail', chamadas.filter((c) 
 chamadas = []; fakeFetch([[/\/rpc\/crm_conversa_pendentes$/, { method: 'POST', body: [] }]]);
 resumo = await (async () => { let p; await worker.scheduled({}, envL, { waitUntil(x) { p = x; } }); return p; })();
 check('ninguém para receber: nem lê o modelo', resumo.pendentes === 0 && !chamadas.some((c) => /modelos_email/.test(c.url)));
+
+
+console.log('\n== Estúdio de e-mails 2: os blocos ==');
+const E = await import(pathToFileURL(path.resolve(HERE, '../../admin/crm/estudio.js')).href);
+const bl1 = { versao: 2, ...E.montar(E.iniciais('cf_guia_1'), 'servico') };
+difs = 0; casos = 0;
+for (const nome of ['Ana Maria', '', '<b>&"\'']) for (const objetivo of [undefined, 'cf-nao-comecei', 'cf-escolhendo-curso', 'cf-juntando-documentos', 'cf-dossie-enviado', 'cf-entrevista-resposta', 'outra'])
+  for (const cfNivel of [undefined, 'l1', 'arq', 'l2l3', 'lpro', 'master', 'escola', 'zz']) for (const url of [NOTION, NOTION + '?pvs=4']) {
+    const c = { email: 'ana@example.com', nome, respostas: { objetivo, cfNivel } };
+    const hoje = cfGuia1(c, url), blocos = crmMontarModelo(bl1, cfGuia1Vars(c, url));
+    casos++; for (const f of ['assunto', 'pre', 'texto']) if (hoje[f] !== blocos[f]) difs++;
+    if (!blocos.html.includes('href="' + url.replace(/&/g, '&amp;'))) difs++;
+  }
+check('e-mail 1 em blocos: assunto, prévia e texto puro iguais aos de hoje (' + casos + ' combinações)', difs === 0 && casos === 336);
+let h1 = crmMontarModelo(bl1, cfGuia1Vars({ email: 'ana@example.com', nome: '<i>Ana</i>', respostas: { objetivo: 'cf-dossie-enviado', cfNivel: 'master' } }, NOTION)).html;
+check('e-mail 1 em blocos: HTML com botão, destaque do nível, etapa e rodapé de serviço', /<a href="https:[^"]+utm_content=cf_guia_1"[^>]*>Abrir o checklist no Notion<\/a>/.test(h1) &&
+  h1.includes('O prazo do seu nível · Master') && h1.includes('<b>Pague a taxa e declare o pagamento.</b>') && h1.includes('porque pediu o checklist Études en France no Por Dentro com ana@example.com.') &&
+  !h1.includes('Para quem está na etapa que ainda não começou') && !/sair/.test(h1) && h1.includes('&lt;i&gt;Ana') && !/\{[#^/]?\w+\}/.test(h1));
+const bl2 = { versao: 2, ...E.montar(E.iniciais('cf_guia_conversa'), 'novidades') };
+difs = 0;
+for (const nome of ['Ana Maria', '', '<b>']) {
+  const c = { id: CID, email: 'ana@example.com', nome };
+  const hoje = cfGuiaConversa(c, tk), blocos = crmMontarModelo(bl2, cfGuiaConversaVars(c, tk));
+  for (const f of ['assunto', 'pre', 'texto']) if (hoje[f] !== blocos[f]) difs++;
+  if (!blocos.html.includes(cfBotoesCidade(tk).html) || !blocos.html.includes('responda com a palavra sair')) difs++;
+}
+check('e-mail 2 em blocos: texto puro igual ao de hoje, botões assinados e rodapé de novidades', difs === 0);
+const naoabriu = E.montar(E.iniciais('naoabriu'), 'servico'), naoclicou = E.montar(E.iniciais('naoclicou'), 'novidades');
+check('rodapé pelo tipo: serviço sem descadastro, novidades com "responda sair"', !/sair/.test(naoabriu.corpo_texto + naoabriu.corpo_html) && /palavra sair\.$/.test(naoclicou.corpo_texto));
+const dPlano = { assunto: 'Oi {nome}', itens: [{ tipo: 'texto', texto: 'Você vai para {cidade}.' }, { tipo: 'texto', texto: 'Seu nível: {nivel}.' }, { tipo: 'titulo', texto: '{nome}, olá', alt: 'Olá' }] };
+const vPlano = { versao: 9, ...E.montar(dPlano, 'servico') };
+const semDados = crmMontarModelo(vPlano, cfGuia1Vars({ email: 'a@example.com', nome: '', respostas: {} }, NOTION));
+const comDados = crmMontarModelo(vPlano, cfGuia1Vars({ email: 'a@example.com', nome: 'Ana', respostas: { cfNivel: 'master', cfCidade: 'lyon' } }, NOTION));
+check('plano B: cidade troca pelo texto de reserva, nível sem plano B tira o bloco, título usa o texto se faltar',
+  semDados.texto === 'Você vai para a cidade que você escolher.\n\nOlá' && comDados.texto === 'Você vai para Lyon.\n\nSeu nível: Master.\n\nAna, olá');
+check('{etapa} e {cidade} no e-mail 1', cfGuia1Vars({ email: 'a@example.com', respostas: { objetivo: 'cf-dossie-enviado', cfCidade: 'nao-sei' } }, NOTION).etapa === 'já enviou o dossiê' &&
+  cfGuia1Vars({ email: 'a@example.com', respostas: { cfCidade: 'nao-sei' } }, NOTION).cidade === 'Ainda não sei');
+const pv = E.dadosDe('cf_guia_1', { email: 'a@example.com', nome: 'Ana Maria', respostas: { objetivo: 'cf-dossie-enviado', cfNivel: 'master', cfCidade: 'lyon' } }, {});
+const wv = cfGuia1Vars({ email: 'a@example.com', nome: 'Ana Maria', respostas: { objetivo: 'cf-dossie-enviado', cfNivel: 'master', cfCidade: 'lyon' } }, NOTION);
+check('a prévia do painel tem os mesmos dados do Worker (menos o link privado)', Object.keys(wv).every((k) => k === 'link_checklist' || wv[k] === pv[k]) && Object.keys(pv).sort().join() === Object.keys(wv).sort().join());
+check('o painel monta igual ao Worker (preencher)', E.montarComDados(bl1, wv).texto === crmMontarModelo(bl1, wv).texto && E.montarComDados(bl1, wv).html === crmMontarModelo(bl1, wv).html);
+const conf = (d, chave, auto) => E.conferir(d, { chave }, E.montar(d, 'servico'), auto);
+check('pronto: o e-mail 1 em blocos passa em tudo o que trava', conf(E.iniciais('cf_guia_1'), 'cf_guia_1', true).every((x) => x.ok || !x.trava));
+check('pronto: link do Notion digitado trava', conf({ assunto: 'a', itens: [{ tipo: 'texto', texto: 'veja https://x.notion.site/abc' }] }, 'cf_guia_1', true).some((x) => !x.ok && x.trava && /privado/.test(x.txt)));
+check('pronto: dado que o modelo não tem trava', conf({ assunto: 'a', itens: [{ tipo: 'texto', texto: 'Oi {apelido}' }] }, 'cf_guia_1', true).some((x) => !x.ok && x.trava && /apelido/.test(x.txt)));
+check('pronto: [colchetes] travam o automático, não o manual', conf({ assunto: 'a', itens: [{ tipo: 'texto', texto: '[dica]' }] }, 'cf_guia_1', true).some((x) => !x.ok && x.trava) &&
+  conf({ assunto: 'a', itens: [{ tipo: 'texto', texto: '[dica]' }, { tipo: 'assinatura', texto: 'I' }] }, 'parouapp', false).every((x) => x.ok || !x.trava));
+check('blocos não deixam HTML escrito passar', !E.montar({ assunto: 'a', itens: [{ tipo: 'texto', texto: '<script>alert(1)</script>' }] }, 'servico').corpo_html.includes('<script>'));
+
+console.log('\n== Estúdio de e-mails 2: rota /api/crm/modelo-teste ==');
+const teste = (corpo, token = TOKEN) => worker.fetch(new Request('https://w.example/api/crm/modelo-teste', {
+  method: 'POST', headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: 'Bearer ' + token } : {}) }, body: JSON.stringify(corpo) }), env, {});
+const adminComEmail = [[/\/auth\/v1\/user$/, { body: { id: 'aaaaaaaa-2222-4333-8444-555555555555', email: 'dona@example.org' } }], [/\/admins\?/, { body: [{ user_id: 'x' }] }]];
+const versaoRota = (linha) => [/\/modelos_email_versoes\?select=/, { body: linha ? [linha] : [] }];
+const brevoOk = [/api\.brevo\.com/, { body: { messageId: '<t1@x.net>' } }];
+const marcaTeste = [/\/modelos_email_versoes\?chave=/, { method: 'PATCH', status: 200 }];
+chamadas = []; fakeFetch([]);
+res = await teste({ chave: 'cf_guia_1', versao: 2, contato_id: CID }, null);
+check('teste sem login: 401, nada enviado', res.status === 401 && !chamadas.some((c) => /brevo/.test(c.url)));
+chamadas = []; fakeFetch([...adminComEmail, versaoRota(bl1), contatoOk, linkOk, brevoOk, marcaTeste]);
+res = await teste({ chave: 'cf_guia_1', versao: 2, contato_id: CID });
+let jt = await res.json(), bt = chamadas.find((c) => /brevo/.test(c.url));
+check('teste do e-mail 1: vai só para a admin, com [Teste] no assunto', res.status === 200 && jt.para === 'dona@example.org' && bt.body.to.length === 1 && bt.body.to[0].email === 'dona@example.org' &&
+  bt.body.subject === '[Teste] Ana, aqui está o seu checklist do Études en France');
+check('teste do e-mail 1: dados da pessoa e link privado vindos do banco', bt.body.textContent.includes(NOTION + '?utm_source=email') && bt.body.textContent.includes('O prazo do seu nível · 1º ano de Licence: 14/12/2026') &&
+  chamadas.find((c) => /guias_links/.test(c.url)).headers.apikey === 'srv');
+check('teste lê a versão pedida com o token da admin (rascunho vale)', /modelos_email_versoes\?select=.*chave=eq\.cf_guia_1&versao=eq\.2/.test(chamadas.find((c) => /modelos_email_versoes\?select=/.test(c.url)).url) &&
+  chamadas.find((c) => /modelos_email_versoes\?select=/.test(c.url)).headers.Authorization === 'Bearer ' + TOKEN);
+check('teste não grava em emails_enviados (não é envio de verdade)', !chamadas.some((c) => /emails_enviados/.test(c.url)));
+const marcaV = chamadas.find((c) => c.method === 'PATCH');
+check('teste marca a versão como testada', marcaV && /chave=eq\.cf_guia_1&versao=eq\.2/.test(marcaV.url) && marcaV.body.testado_em && marcaV.body.testado_por === 'aaaaaaaa-2222-4333-8444-555555555555' && jt.marcado === true);
+chamadas = []; fakeFetch([...adminComEmail, versaoRota(bl2), contatoOk, brevoOk, marcaTeste]);
+res = await teste({ chave: 'cf_guia_conversa', versao: 2, contato_id: CID });
+bt = chamadas.find((c) => /brevo/.test(c.url));
+check('teste do e-mail 2: botões com link de teste (não registram toque de verdade)', res.status === 200 && bt.body.textContent.includes('/conversa/?r=paris&t=teste') && !chamadas.some((c) => /guias_links/.test(c.url)));
+chamadas = []; fakeFetch([...adminComEmail, versaoRota({ versao: 3, assunto: '{nome}, oi', corpo_texto: 'Oi {nome}! {#au_pair}Au pair.{/au_pair} {link_acesso}', corpo_html: null }), brevoOk, marcaTeste]);
+res = await teste({ chave: 'naoabriu', versao: 3, contato_id: CID, vars: { nome: 'Bia', au_pair: true, link_acesso: 'https://app.example/', '<x>': 'y', obj: { a: 1 } } });
+bt = chamadas.find((c) => /brevo/.test(c.url));
+check('teste de modelo manual: usa os dados do painel', res.status === 200 && bt.body.textContent === 'Oi Bia! Au pair. https://app.example/' && !chamadas.some((c) => /\/contatos\?/.test(c.url)));
+chamadas = []; fakeFetch([...adminComEmail, versaoRota({ versao: 3, assunto: 'a', corpo_texto: 'Oi {apelido}', corpo_html: null })]);
+res = await teste({ chave: 'naoabriu', versao: 3, contato_id: CID, vars: { nome: 'Bia' } });
+check('teste com dado que não existe: 400 explicando, nada enviado', res.status === 400 && /apelido/.test((await res.json()).error) && !chamadas.some((c) => /brevo/.test(c.url)));
+chamadas = []; fakeFetch([...adminComEmail, versaoRota({ versao: 3, assunto: 'a', corpo_texto: 'Oi [dica]', corpo_html: null })]);
+res = await teste({ chave: 'parouapp', versao: 3, contato_id: CID, vars: {} });
+check('teste com [colchetes]: 400, nada enviado', res.status === 400 && !chamadas.some((c) => /brevo/.test(c.url)));
+chamadas = []; fakeFetch([...adminComEmail, versaoRota(null)]);
+res = await teste({ chave: 'cf_guia_1', versao: 77, contato_id: CID });
+check('versão que não existe: 404', res.status === 404);
+chamadas = []; fakeFetch([...adminComEmail]);
+res = await teste({ chave: 'cf_guia_1', versao: 2, contato_id: 'nao-e-uuid' });
+check('sem pessoa da prévia: 400', res.status === 400);
+
+console.log('\n== Estúdio de e-mails 2: envio manual com o texto da tabela ==');
+const enviar = (corpo) => worker.fetch(new Request('https://w.example/api/crm/enviar', {
+  method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + TOKEN }, body: JSON.stringify(corpo) }), env, {});
+const fichaNov = [/\/crm_contatos\?/, { body: [{ id: CID, email: 'ana@example.com', nome: 'Ana', aceita_novidades: true }] }];
+chamadas = []; fakeFetch([...adminOk, fichaNov, brevoOk, [/\/emails_enviados$/, { method: 'POST', status: 201 }]]);
+await enviar({ contato_id: CID, modelo: 'naoclicou', assunto: 'oi', corpo: naoclicou.corpo_texto.replace(/\{[^}]+\}/g, ''), modelo_versao: 4 });
+bt = chamadas.find((c) => /brevo/.test(c.url));
+check('envio manual: o rodapé do estúdio não se repete', (bt.body.textContent.match(/sair/g) || []).length === 1);
+check('envio manual: grava a versão de onde o texto partiu', chamadas.find((c) => /emails_enviados$/.test(c.url)).body.modelo_versao === 4);
+chamadas = []; fakeFetch([...adminOk, fichaNov, brevoOk, [/\/emails_enviados$/, { method: 'POST', status: 201 }]]);
+await enviar({ contato_id: CID, modelo: 'naoclicou', assunto: 'oi', corpo: 'Oi Ana!', modelo_versao: 'x' });
+bt = chamadas.find((c) => /brevo/.test(c.url));
+check('envio manual de texto antigo: o Worker põe o rodapé, como hoje', /palavra "sair"/.test(bt.body.textContent) && !('modelo_versao' in chamadas.find((c) => /emails_enviados$/.test(c.url)).body));
 
 console.log(`\n${passed} passaram, ${failed} falharam`);
 process.exit(failed ? 1 : 0);

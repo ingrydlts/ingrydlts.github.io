@@ -2,6 +2,7 @@
 // Nada de service_role aqui. O banco é db/crm-fase2.sql; o desenho é o artefato "CRM Por Dentro".
 // Tudo que vem do banco é texto de terceiros (nome, e-mail, pergunta): passa sempre por esc().
 import { supabase } from '/assets/js/supabase-client.js';
+import * as ES from './estudio.js?v=2026-10-16.2';   // os blocos do estúdio de e-mails (entrega 2)
 
 var PERSONAS = {
   au_pair_estudante: 'Au pair → estudante', campus_france: 'Campus France', alternancia_emprego: 'Alternância / emprego',
@@ -727,14 +728,19 @@ function openSinal(cid) {
     '<div class="actions"><button class="btn" type="button" id="modal-cancel">Cancelar</button><button class="btn primary" type="button" id="sinal-send">Enviar sinal →</button></div>');
 }
 
-// ---------- Modelos de e-mail (Estúdio de e-mails, entrega 1) ----------
-// Lista os modelos da tabela modelos_email com a versão de cada um (modelos_email_versoes). Os 2 do guia
-// Campus France saem sozinhos com o texto No ar da tabela (o Worker lê). Os 8 do painel ficam guardados na
-// tabela e o painel ainda os monta com TPLS até o editor (entrega 2). Sem a migração, mostra só os 8 do código.
+// ---------- Modelos de e-mail: o estúdio (Estúdio de e-mails, entregas 1 e 2) ----------
+// Três colunas, no padrão do estúdio de produtos do admin: os modelos · o editor em seções · a prévia com uma pessoa
+// de verdade. O texto é feito de blocos (estudio.js monta o assunto, o texto puro e o HTML) e fica na versão do modelo
+// (modelos_email_versoes). Rascunho e Revisão só aparecem aqui e no teste para você; o que sai é a versão No ar: os
+// 2 automáticos pelo Worker e os 8 manuais pelo "Escrever este e-mail" da ficha (o texto vem daqui, com TPLS de reserva).
+// Sem a migração da entrega 1, a tela mostra os 8 do código; sem a da entrega 2, mostra tudo sem editar.
 var TIPO_EMAIL = { servico: ['Serviço', 'u-baixa'], novidades: ['Novidades', 'u-media'], compra: ['Compra', 'tp-pergunta'] };
 var ETAPA_EMAIL = { rascunho: ['Rascunho', ''], revisao: ['Revisão', 'u-media'], no_ar: ['No ar', 'u-baixa'], arquivado: ['Arquivado', 'out'] };
+var ST = { k: null, v: null, blk: null, sec: 'texto', who: null, q: '', dev: 'pc', marcar: true, tab: 'editar', d: null, dKey: null, montado: null, vistos: {}, foco: null, salvo: '', timer: null };
+var SECOES = [['obj', 'Objetivo e envio'], ['para', 'Para quem'], ['ctx', 'Contexto da pessoa'], ['texto', 'Texto'], ['pronto', 'Pronto para usar?'], ['versoes', 'Versões']];
 function versoesDe(k) { return MV.filter(function (v) { return v.chave === k; }); }   // da mais nova para a mais velha
 function versaoAtual(k) { var vs = versoesDe(k); return vs.filter(function (v) { return v.etapa === 'no_ar'; })[0] || vs[0] || null; }
+function versaoEmObra(k) { return versoesDe(k).filter(function (v) { return v.etapa === 'rascunho' || v.etapa === 'revisao'; })[0] || null; }
 function pillDe(map, k) { var p = map[k] || [k, '']; return '<span class="pill ' + p[1] + '"><span class="dot"></span>' + esc(p[0]) + '</span>'; }
 function etapaTxt(v) { return v ? (ETAPA_EMAIL[v.etapa] || [v.etapa])[0] + ' · v' + v.versao : 'Sem versão'; }
 // Mostra as variáveis ({nome}, {#nivel}…{/nivel}) destacadas no texto guardado.
@@ -744,64 +750,396 @@ function textoParaHtml(text) {
   var safe = esc(text).replace(/(https?:\/\/[^\s<]+)/g, function (u) { return '<a href="' + u + '">' + u + '</a>'; });
   return '<div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.6;color:#2B2B2B">' + safe.replace(/\n/g, '<br>') + '</div>';
 }
+var temBlocos = function () { return MV.length > 0 && Object.prototype.hasOwnProperty.call(MV[0], 'blocos'); };   // migração da entrega 2
+function modeloAtual() { return (M || []).filter(function (x) { return x.chave === ST.k; })[0] || null; }
+function versaoAberta() { return MV.filter(function (x) { return x.chave === ST.k && x.versao === ST.v; })[0] || null; }
+function podeEditar(v) { return !!(v && v.blocos && temBlocos() && (v.etapa === 'rascunho' || v.etapa === 'revisao')); }
+function ajudantes() { return { pn: pn, persona: personaLabel, fmtDay: fmtDay, appLink: APP_LINK, calLink: CAL_LINK }; }
+function dadosPara(k, c) { return ES.dadosDe(k, c, ajudantes()); }
+
+// O texto que o painel manda num envio manual: a versão No ar do modelo, preenchida para a pessoa. TPLS é a reserva.
+function textoDoModelo(c, k) {
+  var v = M ? versaoAtual(k) : null;
+  if (v && v.etapa === 'no_ar' && !(M.filter(function (m) { return m.chave === k; })[0] || {}).automatico) {
+    try { var r = ES.montarComDados(v, dadosPara(k, c)); return { subject: r.assunto, body: r.texto, versao: v.versao }; }
+    catch (e) { console.error('modelo ' + k + ' v' + v.versao + ': ' + e.message + ' — uso o texto do código'); }
+  }
+  var t = splitTpl(c, k); t.versao = null; return t;
+}
+
+// Abre o modelo k: a versão em obra (rascunho ou revisão), se houver; senão a No ar.
+function abrirModelo(k, versao) {
+  ST.k = k;
+  var v = versao ? MV.filter(function (x) { return x.chave === k && x.versao === versao; })[0] : (versaoEmObra(k) || versaoAtual(k));
+  ST.v = v ? v.versao : null;
+  ST.d = v && v.blocos ? JSON.parse(JSON.stringify(v.blocos)) : null;
+  ST.dKey = k + ':' + ST.v;
+  ST.montado = null;
+}
+function montarRascunho() {
+  var m = modeloAtual();
+  if (!ST.d || !m) { ST.montado = null; return null; }
+  ST.montado = ES.montar(ST.d, m.tipo);
+  return ST.montado;
+}
+// O texto que a prévia usa: o que está sendo editado, ou o guardado na versão.
+function textoDaPrevia() {
+  var v = versaoAberta();
+  if (podeEditar(v) && ST.d) return montarRascunho() || v;
+  return v;
+}
 
 function renderModelos() {
   var aviso = $('mod-aviso');
-  aviso.hidden = !!M;
-  aviso.textContent = M ? '' : 'A tabela de modelos ainda não está no banco (rode db/crm-modelos-email.sql). Mostrando só os 8 modelos do painel, com o texto do código.';
+  var msg = !M ? 'A tabela de modelos ainda não está no banco (rode db/crm-modelos-email.sql). Mostrando os 8 modelos do painel, com o texto do código, sem editar.'
+    : !temBlocos() ? 'Para editar no estúdio, rode db/crm-estudio-emails-2.sql no Supabase. Até lá, a tela mostra os modelos e as versões sem editar.' : '';
+  aviso.hidden = !msg; aviso.textContent = msg;
   $('mod-export').disabled = !M;
-  var lista = M || TPL_ORDER.map(function (k) { return { chave: k, nome: TPLS[k].label, objetivo: TPLS[k].when, automatico: false }; });
-  if (!state.tplKey || !lista.some(function (m) { return m.chave === state.tplKey; })) state.tplKey = lista.length ? lista[0].chave : null;
+  $('studio').dataset.tab = ST.tab;
+  document.querySelectorAll('[data-sttab]').forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.sttab === ST.tab)); });
+  var lista = M || TPL_ORDER.map(function (k) { return { chave: k, nome: TPLS[k].label, objetivo: TPLS[k].when, automatico: false, tipo: EXIGEM_NOVIDADES[k] ? 'novidades' : 'servico' }; });
+  if (!ST.k || !lista.some(function (m) { return m.chave === ST.k; })) { if (lista.length) abrirModelo(lista[0].chave); }
+  else if (ST.v != null && !versaoAberta() && M) abrirModelo(ST.k);
+  renderLista(lista);
+  renderEditor(lista);
+  renderPrevia();
+}
 
+function renderLista(lista) {
   var card = function (m) {
-    var v = M ? versaoAtual(m.chave) : null;
-    return '<button class="tplcard" data-tpl-pick="' + esc(m.chave) + '" aria-pressed="' + (state.tplKey === m.chave) + '" type="button"><b>' + esc(m.nome) + '</b><span>' + esc(m.objetivo) + '</span>' +
-      '<span class="tplpills">' + (M ? pillDe(TIPO_EMAIL, m.tipo) + '<span class="pill ' + (v ? (ETAPA_EMAIL[v.etapa] || [, ''])[1] : '') + '"><span class="dot"></span>' + esc(etapaTxt(v)) + '</span>' : '') + '</span>' +
-      (M ? '<span class="tplhow">' + esc(m.como_sai) + '</span>' : '<span class="vartag">' + esc(TPLS[m.chave].lever) + '</span>') + '</button>';
+    var v = M ? versaoAtual(m.chave) : null, obra = M ? versaoEmObra(m.chave) : null;
+    var dot = !v ? 'dr' : obra ? (obra.etapa === 'revisao' ? 'rev' : 'dr') : v.etapa === 'no_ar' ? 'ok' : 'dr';
+    var linha = !M ? 'Texto do código' : etapaTxt(v) + (obra ? ' · ' + etapaTxt(obra).toLowerCase() : '');
+    return '<button class="st-item" data-tpl-pick="' + esc(m.chave) + '" aria-pressed="' + (ST.k === m.chave) + '" type="button"><span class="sdot ' + dot + '"></span><span><b>' + esc(m.nome) + '</b>' +
+      '<span>' + esc(linha) + '</span></span></button>';
   };
   var grupo = function (titulo, itens) { return itens.length ? '<p class="tplgrp">' + esc(titulo) + ' · ' + itens.length + '</p>' + itens.map(card).join('') : ''; };
-  $('mod-list').innerHTML = grupo('Você envia', lista.filter(function (m) { return !m.automatico; })) + grupo('Saem sozinhos', lista.filter(function (m) { return m.automatico; }));
-  if (!state.tplKey) { $('mod-preview').innerHTML = '<div class="empty">Nenhum modelo ainda.</div>'; return; }
+  $('mod-list').innerHTML = grupo('Você envia', lista.filter(function (m) { return !m.automatico; })) + grupo('Saem sozinhos', lista.filter(function (m) { return m.automatico; })) +
+    '<div class="st-legend"><span><i class="sdot ok"></i>No ar</span><span><i class="sdot rev"></i>Em revisão</span><span><i class="sdot dr"></i>Rascunho</span></div>';
+}
 
-  var k = state.tplKey, m = lista.filter(function (x) { return x.chave === k; })[0];
-  var doPainel = !!TPLS[k];
-  var c = C.filter(function (x) { return x.id === state.mdContact; })[0] || C[0];
-  $('mod-bar').hidden = !doPainel;
-  $('mod-contact').innerHTML = C.map(function (x) { return '<option value="' + esc(x.id) + '"' + (c && x.id === c.id ? ' selected' : '') + '>' + esc(displayName(x)) + '</option>'; }).join('');
+function secao(id, titulo, dica, corpo) {
+  var on = ST.sec === id;
+  return '<div class="st-sec' + (on ? ' is-open' : '') + '"><button type="button" class="st-sec-h" data-stsec="' + id + '" aria-expanded="' + on + '"><b>' + esc(titulo) + '</b><span>' + esc(dica) + '</span><i aria-hidden="true">▾</i></button>' +
+    (on ? '<div class="st-sec-in">' + corpo + '</div>' : '') + '</div>';
+}
+function campoTxt(f, valor, rot, opts) {
+  opts = opts || {};
+  var dis = opts.ro ? ' disabled' : '';
+  var ctl = opts.area
+    ? '<textarea class="st-in" data-f="' + f + '" rows="' + (opts.rows || 3) + '"' + dis + ' placeholder="' + esc(opts.ph || '') + '">' + esc(valor || '') + '</textarea>'
+    : '<input class="st-in" data-f="' + f + '" value="' + esc(valor || '') + '"' + dis + ' placeholder="' + esc(opts.ph || '') + '" maxlength="' + (opts.max || 400) + '">';
+  return '<label class="st-fld"><span>' + esc(rot) + '</span>' + ctl + (opts.dica ? '<small>' + esc(opts.dica) + '</small>' : '') + '</label>';
+}
+function opcoes(lista, atual, primeira) {
+  return (primeira ? '<option value="">' + esc(primeira) + '</option>' : '') + lista.map(function (o) { return '<option value="' + esc(o[0]) + '"' + (o[0] === (atual || '') ? ' selected' : '') + '>' + esc(o[1]) + '</option>'; }).join('');
+}
+function varsDoTipo(k, t) { return ES.varsDoModelo(k).filter(function (x) { return ES.CAT[x] && ES.CAT[x].t === t; }); }
 
-  var html = '<p class="previewsubj">' + esc(m.nome) + '</p>';
-  if (M) {
-    var v = versaoAtual(k), vs = versoesDe(k);
-    html += '<dl class="tplmeta"><dt>Objetivo</dt><dd>' + esc(m.objetivo) + '</dd><dt>Tipo</dt><dd>' + pillDe(TIPO_EMAIL, m.tipo) + '</dd>' +
-      '<dt>Como sai</dt><dd>' + esc(m.como_sai) + '</dd>' + (m.quem_recebe ? '<dt>Quem recebe</dt><dd>' + esc(m.quem_recebe) + '</dd>' : '') +
-      '<dt>Etapa</dt><dd>' + (v ? pillDe(ETAPA_EMAIL, v.etapa) + ' versão ' + v.versao + (v.publicado_em ? ', no ar desde ' + fmtDay(v.publicado_em) : '') : 'sem versão') + '</dd>' +
-      (vs.length > 1 ? '<dt>Versões</dt><dd>' + vs.map(function (x) { return 'v' + x.versao + ' ' + esc((ETAPA_EMAIL[x.etapa] || [x.etapa])[0].toLowerCase()); }).join(' · ') + '</dd>' : '') + '</dl>';
-    if (m.variaveis && m.variaveis.length) {
-      html += '<details class="tplvars"><summary>Variáveis (' + m.variaveis.length + ')</summary><ul>' + m.variaveis.map(function (x) {
-        return '<li><span class="var">{' + esc(x.nome) + '}</span> ' + esc(x.o_que_e) + (x.se_faltar && x.se_faltar !== '—' ? ' · <span class="sub">se faltar: ' + esc(x.se_faltar) + '</span>' : '') + '</li>';
-      }).join('') + '</ul></details>';
-    }
+function blocoEditor(b, i, n, k, ro) {
+  var f = function (campo) { return 'itens.' + i + '.' + campo; };
+  var dis = ro ? ' disabled' : '';
+  var corpo = '';
+  var alt = function () { return campoTxt(f('alt'), b.alt, 'Se faltar um dado deste bloco, escrever', { ro: ro, ph: 'vazio: cada dado usa o plano B dele' }); };
+  if (b.tipo === 'texto') {
+    corpo = campoTxt(f('texto'), b.texto, 'Texto', { area: true, rows: 3, ro: ro, max: 3000 }) +
+      '<label class="st-fld"><span>Estilo</span><select class="st-in" data-f="' + f('estilo') + '"' + dis + '>' + opcoes([['', 'Normal'], ['caixa', 'Em caixa (ex.: "Ficou com dúvida?")'], ['discreto', 'Discreto, em cinza']], b.estilo) + '</select></label>' + alt();
+  } else if (b.tipo === 'titulo') {
+    corpo = campoTxt(f('texto'), b.texto, 'Título', { ro: ro }) + alt();
+  } else if (b.tipo === 'pergunta') {
+    corpo = campoTxt(f('texto'), b.texto, 'Pergunta', { ro: ro }) + alt() + campoTxt(f('ajuda'), b.ajuda, 'Linha de ajuda (opcional)', { ro: ro });
+  } else if (b.tipo === 'botao') {
+    var links = varsDoTipo(k, 'link').map(function (x) { return [x, '{' + x + '} · ' + ES.CAT[x].o]; });
+    corpo = campoTxt(f('rotulo'), b.rotulo, 'O que está escrito no botão', { ro: ro, max: 80 }) +
+      '<label class="st-fld"><span>Para onde leva</span><select class="st-in" data-f="' + f('link') + '"' + dis + '>' + opcoes(links, b.link, links.length ? 'Escolha o link' : 'Este modelo não tem link') + '</select>' +
+      '<small>O link vem do banco ou do código na hora do envio: nunca é digitado.</small></label>' +
+      campoTxt(f('complemento'), b.complemento, 'Complemento do link (opcional)', { ro: ro, ph: '&utm_source=email&utm_campaign=…', max: 200 });
+  } else if (b.tipo === 'destaque') {
+    corpo = campoTxt(f('rotulo'), b.rotulo, 'Rótulo (em cima, pequeno)', { ro: ro }) + campoTxt(f('valor'), b.valor, 'Valor (curto fica grande; várias linhas ficam em lista)', { area: true, rows: 2, ro: ro }) +
+      campoTxt(f('nota'), b.nota, 'Nota (embaixo, opcional)', { ro: ro });
+  } else if (b.tipo === 'apresentacao') {
+    corpo = '<div class="st-foto"><img src="' + esc(ES.FOTO_URL) + '" alt="" width="40" height="40"><small>A foto é sempre a sua, do site.</small></div>' +
+      campoTxt(f('titulo'), b.titulo, 'Nome', { ro: ro }) + campoTxt(f('texto'), b.texto, 'Uma linha sobre você', { ro: ro });
+  } else if (b.tipo === 'toques') {
+    var pr = varsDoTipo(k, 'pronto');
+    corpo = pr.length ? '<label class="st-fld"><span>Botões</span><select class="st-in" data-f="' + f('var') + '"' + dis + '>' + opcoes(pr.map(function (x) { return [x, ES.CAT[x].o]; }), b.var) + '</select>' +
+      '<small>Cada botão leva o link assinado dela e registra o toque na ficha. Vêm prontos do Worker.</small></label>'
+      : '<p class="st-msg warn">Este modelo não tem respostas de um toque (hoje só o e-mail 2 do guia tem os botões de cidade).</p>';
+  } else if (b.tipo === 'etapa') {
+    var etapas = ES.varsDoModelo(k).filter(function (x) { return ES.CAT[x] && ES.CAT[x].etapa; });
+    corpo = '<label class="st-fld"><span>Só para quem está na etapa</span><select class="st-in" data-f="' + f('se') + '"' + dis + '>' +
+      opcoes(etapas.map(function (x) { return ['#' + x, ES.CAT[x].o.replace(/^etapa do guia: /, '')]; }), b.se, etapas.length ? 'Escolha a etapa' : 'Este modelo não tem etapa') + '</select></label>' +
+      campoTxt(f('rotulo'), b.rotulo, 'Linha pequena de cima (opcional)', { ro: ro }) + campoTxt(f('titulo'), b.titulo, 'Frase em negrito (opcional)', { ro: ro }) +
+      campoTxt(f('texto'), b.texto, 'Texto', { area: true, rows: 3, ro: ro, max: 3000 });
+  } else {
+    corpo = campoTxt(f('texto'), b.texto, 'Assinatura', { ro: ro });
   }
-  if (doPainel && c) {
+  // "Mostrar só se…": vale para todo bloco, menos o de etapa (que já é condição).
+  if (b.tipo !== 'etapa') {
+    var cond = ES.varsDoModelo(k).filter(function (x) { return ES.CAT[x] && (ES.CAT[x].t === 'texto' || ES.CAT[x].t === 'sim'); });
+    var ops = [];
+    cond.forEach(function (x) { ops.push(['#' + x, 'Só se tiver {' + x + '}']); ops.push(['^' + x, 'Só se NÃO tiver {' + x + '}']); });
+    corpo += '<label class="st-fld"><span>Mostrar</span><select class="st-in" data-f="' + f('se') + '"' + dis + '>' + opcoes(ops, b.se, 'Sempre') + '</select></label>';
+  }
+  var cTxt = b.se ? ' · ' + (b.se[0] === '#' ? 'só se tiver ' : 'só se não tiver ') + b.se.slice(1) : '';
+  var resumo = String(b.texto || b.rotulo || b.titulo || '').replace(/\s+/g, ' ').slice(0, 60);
+  var aberto = ST.blk === i;
+  return '<div class="st-blk' + (aberto ? ' is-open' : '') + '"><div class="st-blk-h"><button type="button" class="st-blk-t" data-blkopen="' + i + '" aria-expanded="' + aberto + '"><b>' + esc((ES.TIPOS[b.tipo] || {}).nome || b.tipo) + '</b>' +
+    '<span>' + esc(resumo + cTxt) + '</span></button>' +
+    (ro ? '' : '<button type="button" class="st-ic" data-bmove="' + i + ':-1" aria-label="Subir"' + (i === 0 ? ' disabled' : '') + '>↑</button><button type="button" class="st-ic" data-bmove="' + i + ':1" aria-label="Descer"' + (i === n - 1 ? ' disabled' : '') + '>↓</button>' +
+      '<button type="button" class="st-ic" data-bdel="' + i + '" aria-label="Tirar o bloco">✕</button>') + '</div>' +
+    (aberto ? '<div class="st-blk-in">' + corpo + '</div>' : '') + '</div>';
+}
+
+function chipsDados(k) {
+  return '<div class="st-chips"><span class="sub">Inserir dado:</span>' + ES.varsDoModelo(k).filter(function (x) { return ES.CAT[x] && ES.CAT[x].t !== 'sim' && ES.CAT[x].t !== 'pronto' && !/^link_/.test(x); })
+    .map(function (x) { return '<button type="button" class="chip" data-insvar="' + esc(x) + '">{' + esc(x) + '}</button>'; }).join('') + '</div>';
+}
+
+function renderEditor(lista) {
+  var box = $('st-edit');
+  var m = (M ? modeloAtual() : null) || (lista || []).filter(function (x) { return x.chave === ST.k; })[0];
+  if (!m) { box.innerHTML = '<div class="empty">Nenhum modelo ainda.</div>'; return; }
+  if (!M) { box.innerHTML = '<h3 class="st-title">' + esc(m.nome) + '</h3><p class="sub">' + esc(m.objetivo) + '</p><p class="st-msg tip">Sem a tabela de modelos, o texto vem do código e não dá para editar aqui.</p>'; return; }
+  var v = versaoAberta(), vs = versoesDe(m.chave), ro = !podeEditar(v), k = m.chave, obra = versaoEmObra(k);
+  var d = ST.d || (v && v.blocos) || null;
+  if (!ro) montarRascunho();
+  var confs = d ? ES.conferir(d, m, ro ? v : ST.montado, m.automatico) : [];
+  var travas = confs.filter(function (x) { return !x.ok && x.trava; }).length;
+  var testado = v && v.testado_em;
+  var vistos = Object.keys(ST.vistos[ST.dKey] || {}).length;
+
+  // Topo: nome, tipo, etapa e as ações.
+  var acoes = '';
+  if (v && !ro) {
+    acoes = '<button class="btn" type="button" id="st-teste">Enviar teste para mim</button>' +
+      (v.etapa === 'rascunho' ? '<button class="btn primary" type="button" id="st-revisao"' + (travas ? ' disabled' : '') + '>Mandar para revisão</button>'
+        : '<button class="btn primary" type="button" id="st-publicar"' + (travas || !testado ? ' disabled' : '') + '>Publicar (No ar)</button>');
+  } else if (v && temBlocos()) {
+    acoes = obra && obra.versao !== v.versao ? '<button class="btn primary" type="button" data-stver="' + obra.versao + '">Abrir a ' + esc(etapaTxt(obra).toLowerCase()) + '</button>'
+      : '<button class="btn primary" type="button" id="st-nova">Editar em versão nova</button>';
+    acoes = '<button class="btn" type="button" id="st-teste">Enviar teste para mim</button>' + acoes;
+  }
+  var topo = '<div class="st-head"><div class="st-head-t"><h3 class="st-title">' + esc(m.nome) + '</h3><div class="st-pills">' + pillDe(TIPO_EMAIL, m.tipo) + (v ? pillDe(ETAPA_EMAIL, v.etapa) + '<span class="sub">versão ' + v.versao + '</span>' : '') +
+    '<span class="sub" id="st-salvo">' + esc(ST.salvo) + '</span></div></div><div class="st-acts">' + acoes + '</div></div>' +
+    (v && ro && temBlocos() ? '<p class="st-msg tip">' + (v.etapa === 'no_ar' ? 'Esta é a versão No ar: é ela que sai. ' : v.etapa === 'arquivado' ? 'Esta versão já saiu e fica guardada como está. ' : '') +
+      (v.blocos ? '' : 'Ainda está em texto corrido (como era no código). ') + 'Para mudar, crie uma versão nova: a de agora continua saindo até você publicar a nova.</p>' : '') +
+    (v && !ro && v.etapa === 'revisao' ? '<p class="st-msg tip">Em revisão. ' + (testado ? 'Teste enviado em ' + esc(fmtWhen(v.testado_em)) + '.' : 'Falta enviar o teste para você.') + ' Mudar o texto pede um teste novo.</p>' : '');
+
+  // 1. Objetivo e envio
+  var s1 = '<label class="st-fld"><span>Objetivo</span><textarea class="st-in" id="st-objetivo" rows="2" maxlength="300">' + esc(m.objetivo) + '</textarea></label>' +
+    '<dl class="tplmeta"><dt>Tipo</dt><dd>' + pillDe(TIPO_EMAIL, m.tipo) + ' <span class="sub">' + esc(ES.TIPO_RODAPE[m.tipo] || '') + '</span></dd>' +
+    '<dt>Como sai</dt><dd>' + esc(m.como_sai) + '</dd></dl>' +
+    '<p class="st-msg tip">Quem recebe e quando continuam no código: o Worker confere o aceite de novidades a cada envio, mesmo que alguém mude o texto aqui.</p>';
+  // 2. Para quem
+  var s2 = '<dl class="tplmeta"><dt>Quem recebe</dt><dd>' + esc(m.quem_recebe || 'Todos') + '</dd>' +
+    (k.indexOf('cf_') === 0 ? '<dt>Material</dt><dd>Guia Études en France 2027-2028</dd>' : k.indexOf('guia_') === 0 ? '<dt>Material</dt><dd>' + esc(k === 'guia_alternancia' ? 'Guia alternância 30+' : 'Guia VLS-TS') + '</dd>' : '') +
+    (m.automatico ? '' : '<dt>Sugerido</dt><dd>' + esc((TPLS[k] && TPLS[k].when) || '—') + '</dd>') + '</dl>';
+  // 3. Contexto da pessoa: cada dado, o que é e o que acontece se faltar (o plano B)
+  var s3 = ES.varsDoModelo(k).map(function (x) {
+    var c = ES.CAT[x] || { t: 'texto', o: x }, p = d && d.planos && Object.prototype.hasOwnProperty.call(d.planos, x) ? d.planos[x] : c.plano;
+    var se;
+    if (c.t === 'texto') {
+      se = '<div class="st-plano"><select class="st-in" data-plano="' + esc(x) + '"' + (ro ? ' disabled' : '') + '>' + opcoes([['troca', 'Se faltar, escrever:'], ['some', 'Se faltar, o bloco some']], p == null ? 'some' : 'troca') + '</select>' +
+        (p == null ? '' : '<input class="st-in" data-f="planos.' + esc(x) + '" value="' + esc(p) + '" placeholder="(fica vazio)"' + (ro ? ' disabled' : '') + '>') + '</div>';
+    } else if (c.t === 'link') se = '<small>' + (c.privado ? 'Link privado, vem do banco. ' : '') + 'Sem ele, o envio é recusado.</small>';
+    else if (c.t === 'fixo') se = '<small>Sempre existe.</small>';
+    else if (c.t === 'sim') se = '<small>Sim ou não: use em "Mostrar só se…" ou no bloco "Só para uma etapa".</small>';
+    else se = '<small>Vem pronto do Worker.</small>';
+    return '<div class="st-var"><code>{' + esc(x) + '}</code><span>' + esc(c.o) + '</span>' + se + '</div>';
+  }).join('') + '<p class="st-msg tip">O plano B vale para o modelo todo. Um bloco pode ter o próprio texto "se faltar um dado".</p>';
+  // 4. Texto
+  var s4;
+  if (!d) {
+    s4 = v ? '<p class="st-msg tip">Texto guardado desta versão (ainda sem blocos):</p><p class="previewsubj" style="font-size:15px">' + marcarVars(v.assunto) + '</p>' +
+      (v.preheader ? '<p class="sub" style="margin:0">Prévia: ' + marcarVars(v.preheader) + '</p>' : '') + '<div class="mailbody">' + marcarVars(v.corpo_texto) + '</div>' : '<div class="empty">Sem versão.</div>';
+  } else {
+    s4 = campoTxt('assunto', d.assunto, 'Assunto', { ro: ro, max: 300 }) + campoTxt('assunto_alt', d.assunto_alt, 'Assunto se faltar um dado (opcional)', { ro: ro, max: 300 }) +
+      campoTxt('pre', d.pre, 'Prévia (a linha cinza depois do assunto, opcional)', { ro: ro, max: 300 }) +
+      (ro ? '' : chipsDados(k)) +
+      '<div class="st-blks">' + (d.itens || []).map(function (b, i) { return blocoEditor(b, i, d.itens.length, k, ro); }).join('') + '</div>' +
+      (ro ? '' : '<div class="st-add"><select class="st-in" id="st-novo-bloco" aria-label="Tipo do bloco novo">' + opcoes(Object.keys(ES.TIPOS).map(function (t) { return [t, ES.TIPOS[t].nome + ' · ' + ES.TIPOS[t].d]; }), '', '+ Acrescentar um bloco') + '</select></div>') +
+      '<div class="st-rodape"><b>Rodapé (automático pelo tipo)</b>' + campoTxt('rodape', d.rodape, 'Por que ela recebe (opcional)', { ro: ro, ph: 'ex.: pediu o checklist Études en France com {email}', max: 300 }) +
+      '<small>' + esc(ES.rodapeDe(d, m.tipo) || 'Sem rodapé (serviço sem motivo escrito).') + '</small></div>';
+  }
+  // 5. Pronto para usar?
+  var s5 = d ? '<ul class="st-ready">' + confs.map(function (x) { return '<li class="' + (x.ok ? 'y' : x.trava ? 'n' : 'w') + '">' + esc(x.txt) + '</li>'; }).join('') +
+    '<li class="' + (vistos >= 2 ? 'y' : 'w') + '">Prévia vista com ' + vistos + (vistos === 1 ? ' pessoa' : ' pessoas') + (vistos >= 2 ? '' : ' (veja com pelo menos duas)') + '</li>' +
+    '<li class="' + (testado ? 'y' : 'n') + '">' + (testado ? 'Teste enviado em ' + esc(fmtWhen(v.testado_em)) : 'Teste para você ainda não enviado (precisa para publicar)') + '</li></ul>' +
+    (m.automatico ? '<p class="st-msg tip">Saem sozinhos: ao publicar, o próximo envio já sai com este texto. A versão de agora fica guardada.</p>' : '<p class="st-msg tip">Ao publicar, o "Escrever este e-mail" da ficha passa a abrir com este texto (os manuais saem em texto simples, como hoje).</p>')
+    : '<p class="st-msg tip">Crie uma versão nova para montar em blocos e conferir.</p>';
+  // 6. Versões
+  var s6 = '<ul class="st-vers">' + vs.map(function (x) {
+    var quando = x.etapa === 'no_ar' ? 'no ar desde ' + fmtDay(x.publicado_em) : x.publicado_em ? 'saiu em ' + fmtDay(x.publicado_em) : 'criada em ' + fmtDay(x.criado_em);
+    return '<li' + (x.versao === ST.v ? ' aria-current="true"' : '') + '><button type="button" class="st-verbtn" data-stver="' + x.versao + '"><b>v' + x.versao + '</b> ' + pillDe(ETAPA_EMAIL, x.etapa) +
+      '<span class="sub">' + esc(quando) + (x.nota ? ' · ' + esc(x.nota) : '') + '</span></button>' +
+      (x.etapa === 'arquivado' && temBlocos() ? '<button type="button" class="btn" data-stvoltar="' + x.versao + '">Voltar para esta</button>' : '') + '</li>';
+  }).join('') + '</ul>';
+
+  var dica3 = ES.varsDoModelo(k).length + ' dados', dica4 = d ? (d.itens || []).length + ' blocos' : 'texto corrido';
+  var dica5 = d ? (travas ? travas + ' para resolver' : testado ? 'tudo certo' : 'falta o teste') : '—';
+  box.innerHTML = topo +
+    secao('obj', 'Objetivo e envio', m.automatico ? 'sai sozinho' : 'você envia', s1) +
+    secao('para', 'Para quem', m.quem_recebe || 'Todos', s2) +
+    secao('ctx', 'Contexto da pessoa', dica3, s3) +
+    secao('texto', 'Texto', dica4, s4) +
+    secao('pronto', 'Pronto para usar?', dica5, s5) +
+    secao('versoes', 'Versões', vs.length + (vs.length === 1 ? ' versão' : ' versões'), s6);
+}
+
+// ---------- A prévia ----------
+function pessoasDaPrevia() {
+  var q = ST.q.trim().toLowerCase();
+  var l = C.filter(function (c) { return !q || (displayName(c) + ' ' + c.email).toLowerCase().indexOf(q) >= 0; });
+  return l.slice(0, 200);
+}
+function renderPrevia() {
+  var box = $('st-prev');
+  var m = M ? modeloAtual() : null, k = ST.k;
+  var lista = pessoasDaPrevia();
+  var c = C.filter(function (x) { return x.id === ST.who; })[0] || lista[0] || C[0];
+  if (c) ST.who = c.id;
+  var barra = '<div class="st-bar"><label class="st-fld" style="flex:1 1 220px"><span>Prévia para</span><input class="st-in" id="st-q" type="search" placeholder="Buscar pelo nome ou e-mail" value="' + esc(ST.q) + '">' +
+    '<select class="st-in" id="st-who" aria-label="Pessoa da prévia">' + (lista.some(function (x) { return c && x.id === c.id; }) || !c ? '' : '<option value="' + esc(c.id) + '" selected>' + esc(displayName(c)) + '</option>') +
+    lista.map(function (x) { return '<option value="' + esc(x.id) + '"' + (c && x.id === c.id ? ' selected' : '') + '>' + esc(displayName(x)) + ' · ' + esc(personaLabel(x)) + '</option>'; }).join('') + '</select></label>' +
+    '<div class="seg" role="group" aria-label="Aparelho"><button type="button" data-stdev="pc" aria-pressed="' + (ST.dev === 'pc') + '">Computador</button><button type="button" data-stdev="cel" aria-pressed="' + (ST.dev === 'cel') + '">Celular</button></div>' +
+    '<label class="st-check"><input type="checkbox" id="st-marcar"' + (ST.marcar ? ' checked' : '') + '> Destacar os dados dela</label></div>';
+  if (!c) { box.innerHTML = barra + '<div class="empty">Sem contatos ainda para a prévia.</div>'; return; }
+  if (!M) {
     var t = splitTpl(c, k);
-    html += '<h4 class="tplh">Como sai para ' + esc(displayName(c)) + '</h4><p class="previewsubj" style="font-size:15px">' + esc(t.subject) + '</p><div class="mailbody">' + esc(t.body) + '</div>' +
-      '<div class="actions"><button class="btn primary" type="button" data-emailfor="' + esc(c.id) + '" data-tplk="' + esc(k) + '">Escrever este e-mail →</button></div>' +
-      '<p class="sub" style="margin-top:8px">Preenchido sozinho com o nome, a persona (' + esc(personaLabel(c)) + ')' + (k === 'parouapp' && c.motivo ? ' e o motivo (' + esc(c.motivo) + ')' : '') + '. Você edita antes de enviar.' +
-      (M ? ' Por enquanto o painel monta este e-mail com o texto do código; o texto guardado abaixo passa a valer aqui com o editor.' : '') + '</p>';
-  } else if (doPainel) {
-    html += '<div class="empty">Sem contatos ainda para a prévia.</div>';
+    box.innerHTML = barra + '<div class="st-env"><b>' + esc(t.subject) + '</b></div><div class="mailbody">' + esc(t.body) + '</div>';
+    return;
   }
-  if (M) {
-    var vv = versaoAtual(k);
-    if (vv) {
-      html += '<h4 class="tplh">Texto guardado · ' + esc(etapaTxt(vv)) + '</h4>' +
-        (m.automatico ? '<p class="sub" style="margin:0 0 6px">É este texto que sai: o Worker lê a versão No ar na hora de enviar e troca as variáveis.</p>' : '') +
-        '<p class="previewsubj" style="font-size:15px">' + marcarVars(vv.assunto) + '</p>' + (vv.preheader ? '<p class="sub" style="margin:0">Prévia: ' + marcarVars(vv.preheader) + '</p>' : '') +
-        '<div class="mailbody">' + marcarVars(vv.corpo_texto) + '</div>' +
-        (vv.corpo_html ? '<details class="tplvars"><summary>Ver o HTML (sem preencher as variáveis)</summary><iframe class="tplframe" sandbox="allow-same-origin" title="HTML do modelo" srcdoc="' + esc(vv.corpo_html) + '"></iframe></details>' : '');
-    }
+  var v = textoDaPrevia();
+  if (!v) { box.innerHTML = barra + '<div class="empty">Este modelo ainda não tem versão.</div>'; return; }
+  var dados = dadosPara(k, c), avisos = [], erro = null, r = null;
+  try { r = ES.montarComDados(v, dados, ST.marcar); } catch (e) { erro = e.message; }
+  if (m && m.tipo === 'novidades' && !c.aceita_novidades) avisos.push(displayName(c) + ' não aceitou novidades: este e-mail não sai para essa pessoa.');
+  if (k.indexOf('cf_') === 0 && origensDe(c).indexOf('guia-etudes-en-france-2027') < 0) avisos.push(displayName(c) + ' não pegou o guia Campus France: este e-mail não sai sozinho para ela.');
+  // Dados usados no texto que ela não tem, e o que acontece (o plano B).
+  var usados = [], tudo = [v.assunto, v.preheader, v.corpo_texto].join('\n'), re = /\{[#^/]?(\w+)\}/g, mm;
+  while ((mm = re.exec(tudo))) if (usados.indexOf(mm[1]) < 0) usados.push(mm[1]);
+  var d = ST.d && podeEditar(versaoAberta()) ? ST.d : (versaoAberta() || {}).blocos;
+  var faltam = usados.filter(function (x) { return ES.CAT[x] && ES.CAT[x].t === 'texto' && (dados[x] == null || dados[x] === ''); });
+  if (faltam.length) avisos.push('Sem ' + faltam.map(function (x) {
+    var p = d && d.planos && Object.prototype.hasOwnProperty.call(d.planos, x) ? d.planos[x] : (d ? ES.CAT[x].plano : undefined);
+    return ES.CAT[x].o + ' ({' + x + '}): ' + (p === undefined || p == null ? 'o trecho que depende dele some (ou entra o que foi escrito para quem não tem)' : p === '' ? 'fica vazio' : 'aparece "' + p + '"');
+  }).join('; ') + '.');
+  var dicas = [];
+  if (usados.indexOf('link_checklist') >= 0) dicas.push('O link do checklist é privado: na prévia o botão não abre. No envio (e no teste) ele vem do banco.');
+  if (usados.indexOf('botoes_cidade') >= 0) dicas.push('Os botões de cidade levam o link assinado dela, que só existe no envio. No teste, eles levam um link de teste.');
+  if (r) { ST.vistos[ST.dKey] = ST.vistos[ST.dKey] || {}; ST.vistos[ST.dKey][c.id] = 1; }
+  var html = r ? (r.html || textoParaHtml(r.texto)) : '';
+  box.innerHTML = barra +
+    (erro ? '<div class="st-alert no">O texto tem um erro: ' + esc(erro) + '. Nada sai com ele: os automáticos usariam o texto de reserva.</div>' : '') +
+    (avisos.length ? '<div class="st-alert">' + avisos.map(esc).join('<br>') + '</div>' : (r ? '<div class="st-alert ok"><b>Pronto para ' + esc(displayName(c)) + '.</b> Todos os dados que o texto usa existem.</div>' : '')) +
+    (dicas.length ? '<p class="st-msg tip">' + dicas.map(esc).join(' ') + '</p>' : '') +
+    (r ? '<div class="st-frame' + (ST.dev === 'cel' ? ' cel' : '') + '"><div class="st-env"><span class="sub">Ingryd · Por Dentro</span><b>' + esc(r.assunto) + '</b>' + (r.pre ? '<span class="sub">' + esc(r.pre) + '</span>' : '') + '</div>' +
+      '<iframe class="st-mail" sandbox="" title="Prévia do e-mail" srcdoc="' + esc(html) + '"></iframe></div>' +
+      '<details class="tplvars"><summary>Ver o texto puro (o que sai para quem não abre HTML)</summary><div class="mailbody">' + esc(r.texto) + '</div></details>' : '') +
+    (versaoAberta() && versaoAberta().etapa !== 'no_ar' ? '<p class="sub" style="margin-top:8px">Prévia da versão ' + ST.v + ' (' + esc(etapaTxt(versaoAberta()).toLowerCase()) + '). Ela só sai depois de publicada.</p>' : '');
+}
+
+// ---------- Editar, guardar, testar, publicar ----------
+function setCampo(path, valor) {
+  var p = path.split('.'), o = ST.d;
+  for (var i = 0; i < p.length - 1; i++) { if (o[p[i]] == null) o[p[i]] = {}; o = o[p[i]]; }
+  var ult = p[p.length - 1];
+  if (valor === '' && p[0] !== 'planos') delete o[ult]; else o[ult] = valor;
+}
+function marcarSalvo(txt) { ST.salvo = txt; var el = $('st-salvo'); if (el) el.textContent = txt; }
+function agendarSalvar() { clearTimeout(ST.timer); marcarSalvo('Guardando…'); ST.timer = setTimeout(salvar, 900); }
+async function salvar() {
+  clearTimeout(ST.timer); ST.timer = null;
+  var v = versaoAberta(); if (!podeEditar(v) || !ST.d) return true;
+  var mt = montarRascunho();
+  if (!String(mt.assunto || '').trim() || !String(mt.corpo_texto || '').trim()) { marcarSalvo('Não guardado: falta o assunto ou o texto'); return false; }
+  var linha = { blocos: ST.d, assunto: mt.assunto, preheader: mt.preheader, corpo_texto: mt.corpo_texto, corpo_html: mt.corpo_html };
+  var mudou = ['assunto', 'preheader', 'corpo_texto', 'corpo_html'].some(function (f) { return (v[f] || null) !== (linha[f] || null); }) || JSON.stringify(v.blocos) !== JSON.stringify(ST.d);
+  if (!mudou) { marcarSalvo('Guardado'); return true; }
+  var r = await supabase.from('modelos_email_versoes').update(linha).eq('chave', v.chave).eq('versao', v.versao);
+  if (r.error) { marcarSalvo('Não guardado'); fail('guardar o rascunho', r.error); return false; }
+  Object.assign(v, linha, { blocos: JSON.parse(JSON.stringify(ST.d)), testado_em: null, testado_por: null });
+  marcarSalvo('Guardado'); return true;
+}
+// Depois de mudar um campo: guarda e atualiza a prévia e a lista de conferências, sem redesenhar o editor (o cursor fica).
+function aoEditar() {
+  agendarSalvar();
+  var v = versaoAberta(); if (v) { v.testado_em = null; }
+  var pub = $('st-publicar'); if (pub) pub.disabled = true;   // mudou o texto: precisa de um teste novo
+  renderPrevia();
+  if (ST.sec === 'pronto' || ST.sec === 'texto') {
+    var el = document.querySelector('.st-sec.is-open .st-rodape small');
+    if (el && ST.d) el.textContent = ES.rodapeDe(ST.d, modeloAtual().tipo) || 'Sem rodapé (serviço sem motivo escrito).';
   }
-  $('mod-preview').innerHTML = html;
+}
+async function recarregarModelos(manterVersao) {
+  var r = await Promise.all([
+    supabase.from('modelos_email').select('*').order('ordem', { ascending: true }),
+    supabase.from('modelos_email_versoes').select('*').order('versao', { ascending: false })
+  ]);
+  if (r[0].error || r[1].error) return fail('carregar os modelos', r[0].error || r[1].error);
+  M = r[0].data || []; MV = r[1].data || [];
+  abrirModelo(ST.k, manterVersao || null);
+  renderModelos();
+}
+async function novaVersao() {
+  var k = ST.k;
+  var r = await supabase.rpc('modelo_email_nova_versao', { p_chave: k });
+  if (r.error) return fail('criar a versão nova', r.error);
+  var nova = r.data;
+  await recarregarModelos(nova);
+  var v = versaoAberta();
+  if (v && !v.blocos) {
+    ST.d = ES.iniciais(k); await salvarForcado();
+    toast('Versão ' + nova + ' criada. Montei os blocos a partir do texto de hoje: confira na prévia.', 4200);
+  } else toast('Versão ' + nova + ' criada (rascunho)');
+  ST.sec = 'texto'; renderModelos();
+}
+async function salvarForcado() { var v = versaoAberta(); if (v) v.blocos = v.blocos || {}; await salvar(); }
+async function enviarTeste(btn) {
+  var c = byC(ST.who);
+  if (!c) return toast('Escolha a pessoa da prévia');
+  if (!(await salvar())) return;
+  var v = versaoAberta();
+  var sess = await supabase.auth.getSession();
+  if (!sess.data.session) return toast('Sessão expirada. Recarregue a página e entre de novo.');
+  btn.disabled = true; btn.textContent = 'Enviando…';
+  try {
+    // Nos automáticos o Worker lê os dados do banco (com o link privado); nos manuais vão os que o painel preenche.
+    var dados = (modeloAtual() || {}).automatico ? {} : dadosPara(ST.k, c), vars = {};
+    Object.keys(dados).forEach(function (x) { if (typeof dados[x] !== 'object' || dados[x] == null) vars[x] = dados[x]; });
+    var res = await fetch(WORKER_BASE + '/api/crm/modelo-teste', {
+      method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + sess.data.session.access_token },
+      body: JSON.stringify({ chave: ST.k, versao: v.versao, contato_id: c.id, vars: vars })
+    });
+    var data = await res.json().catch(function () { return {}; });
+    if (!res.ok) throw new Error(data.error || ('Erro ' + res.status));
+    toast('Teste enviado para ' + data.para + ', com os dados de ' + displayName(c), 4200);
+    await recarregarModelos(v.versao);
+  } catch (e) {
+    toast('Não enviei o teste — ' + e.message, 5000);
+    btn.disabled = false; btn.textContent = 'Enviar teste para mim';
+  }
+}
+async function mandarRevisao() {
+  if (!(await salvar())) return;
+  var v = versaoAberta();
+  var r = await supabase.from('modelos_email_versoes').update({ etapa: 'revisao' }).eq('chave', v.chave).eq('versao', v.versao);
+  if (r.error) return fail('mandar para revisão', r.error);
+  toast('Versão ' + v.versao + ' em revisão'); ST.sec = 'pronto';
+  await recarregarModelos(v.versao);
+}
+async function publicar(versao, voltando) {
+  if (!voltando && !(await salvar())) return;
+  var m = modeloAtual(), atual = versaoAtual(ST.k);
+  var msg = voltando ? 'Voltar para a versão ' + versao + '? Ela volta a sair' + (atual ? ' e a versão ' + atual.versao + ' fica guardada.' : '.')
+    : 'Publicar a versão ' + versao + ' de "' + m.nome + '"? ' + (m.automatico ? 'O próximo e-mail já sai com este texto.' : 'A ficha passa a abrir com este texto.') + (atual && atual.etapa === 'no_ar' ? ' A versão ' + atual.versao + ' fica guardada.' : '');
+  if (!window.confirm(msg)) return;
+  var r = await supabase.rpc('publicar_modelo_email', { p_chave: ST.k, p_versao: versao });
+  if (r.error) return fail('publicar', r.error);
+  toast('Versão ' + versao + ' No ar', 3200);
+  await recarregarModelos(versao);
 }
 
 // Baixa todos os modelos e todas as versões num arquivo só (JSON), com o texto e o HTML de cada versão.
@@ -809,7 +1147,7 @@ function exportModelos() {
   if (!M) return toast('Rode db/crm-modelos-email.sql para exportar');
   var dados = {
     exportado_em: new Date().toISOString(),
-    formato: 'Variáveis: {nome} troca pelo valor; {#x}…{/x} só aparece se x tiver valor; {^x}…{/x} só se não tiver.',
+    formato: 'Variáveis: {nome} troca pelo valor; {#x}…{/x} só aparece se x tiver valor; {^x}…{/x} só se não tiver. blocos = como o estúdio edita.',
     modelos: M.map(function (m) {
       return Object.assign({}, m, { versoes: versoesDe(m.chave).map(function (v) {
         return Object.assign({}, v, { corpo_html: v.corpo_html || textoParaHtml(v.corpo_texto), html_gerado_do_texto: !v.corpo_html });
@@ -825,7 +1163,7 @@ function exportModelos() {
 function openCompose(cid, key) {
   var c = byC(cid); if (!c) return;
   activeCid = cid;
-  var k = key || defaultTpl(c), t = splitTpl(c, k);
+  var k = key || defaultTpl(c), t = textoDoModelo(c, k);
   var bloqueado = EXIGEM_NOVIDADES[k] && !c.aceita_novidades;
   modalOpen(modalTop(c) +
     '<div class="ctx" style="margin-top:12px"><div class="sel"><select id="compose-tpl" aria-label="Modelo">' + TPL_ORDER.map(function (m) { return '<option value="' + m + '"' + (m === k ? ' selected' : '') + '>' + esc(TPLS[m].label) + '</option>'; }).join('') + '</select></div><span class="lever" style="display:inline-block;font-size:10.5px;font-weight:700;text-transform:uppercase;color:var(--brown);background:var(--brown-soft);padding:2px 8px;border-radius:999px">' + esc(TPLS[k].lever) + '</span></div>' +
@@ -833,7 +1171,7 @@ function openCompose(cid, key) {
     '<div class="reply" style="margin-top:14px"><label for="compose-subj">Assunto</label><input id="compose-subj" maxlength="200" style="height:38px;border:1px solid var(--line-2);border-radius:var(--r);padding:0 10px;background:var(--surface-2)" value="' + esc(t.subject) + '">' +
     '<label for="compose-txt">Mensagem — edite antes de enviar</label><textarea id="compose-txt" style="min-height:210px">' + esc(t.body) + '</textarea>' +
     '<p class="sub" id="compose-err" style="margin:0;color:var(--red)" role="alert" hidden></p></div>' +
-    '<div class="actions"><button class="btn" type="button" id="modal-cancel">Cancelar</button><button class="btn primary" type="button" id="compose-send" data-tpl="' + k + '"' + (bloqueado ? ' disabled' : '') + '>Enviar e-mail</button></div>');
+    '<div class="actions"><button class="btn" type="button" id="modal-cancel">Cancelar</button><button class="btn primary" type="button" id="compose-send" data-tpl="' + k + '" data-versao="' + (t.versao || '') + '"' + (bloqueado ? ' disabled' : '') + '>Enviar e-mail</button></div>');
 }
 async function sendEmail(btn) {
   var err = $('compose-err'); err.hidden = true;
@@ -844,7 +1182,8 @@ async function sendEmail(btn) {
     var res = await fetch(WORKER_BASE + '/api/crm/enviar', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + sess.data.session.access_token },
-      body: JSON.stringify({ contato_id: activeCid, modelo: btn.dataset.tpl, assunto: $('compose-subj').value.trim(), corpo: $('compose-txt').value.trim() })
+      body: JSON.stringify({ contato_id: activeCid, modelo: btn.dataset.tpl, assunto: $('compose-subj').value.trim(), corpo: $('compose-txt').value.trim(),
+        modelo_versao: btn.dataset.versao ? Number(btn.dataset.versao) : null })
     });
     var data = await res.json().catch(function () { return {}; });
     if (!res.ok) throw new Error(data.error || ('Erro ' + res.status));
@@ -934,7 +1273,35 @@ document.addEventListener('click', async function (e) {
   if (t.dataset.sinalpick) { $('compose-txt').value = SINAIS[+t.dataset.sinalpick].body(byC(activeCid)); return; }
   if (t.id === 'modal-cancel') return closeCompose();
   if (t.dataset.emailfor) return openCompose(t.dataset.emailfor, t.dataset.tplk);
-  if (t.dataset.tplPick) { state.tplKey = t.dataset.tplPick; return renderModelos(); }
+  if (t.dataset.tplPick) { await salvar(); abrirModelo(t.dataset.tplPick); ST.blk = null; ST.tab = 'editar'; return renderModelos(); }
+  if (t.dataset.stsec) { ST.sec = ST.sec === t.dataset.stsec ? '' : t.dataset.stsec; return renderEditor(); }
+  if (t.dataset.blkopen !== undefined) { ST.blk = ST.blk === Number(t.dataset.blkopen) ? null : Number(t.dataset.blkopen); return renderEditor(); }
+  if (t.dataset.bmove) {
+    var mv = t.dataset.bmove.split(':'), bi = Number(mv[0]), bj = bi + Number(mv[1]), its = ST.d.itens;
+    if (bj < 0 || bj >= its.length) return;
+    var tmp = its[bi]; its[bi] = its[bj]; its[bj] = tmp; if (ST.blk === bi) ST.blk = bj; else if (ST.blk === bj) ST.blk = bi;
+    aoEditar(); return renderEditor();
+  }
+  if (t.dataset.bdel !== undefined) {
+    var bd = Number(t.dataset.bdel), nomeB = (ES.TIPOS[ST.d.itens[bd].tipo] || {}).nome || 'bloco';
+    if (!window.confirm('Tirar o bloco "' + nomeB + '"?')) return;
+    ST.d.itens.splice(bd, 1); ST.blk = null; aoEditar(); return renderEditor();
+  }
+  if (t.dataset.insvar) {
+    var alvo = ST.foco && document.body.contains(ST.foco) ? ST.foco : null;
+    if (!alvo) return toast('Clique antes no campo onde o dado entra');
+    var ini0 = alvo.selectionStart == null ? alvo.value.length : alvo.selectionStart, fim0 = alvo.selectionEnd == null ? ini0 : alvo.selectionEnd, ins = '{' + t.dataset.insvar + '}';
+    alvo.value = alvo.value.slice(0, ini0) + ins + alvo.value.slice(fim0); alvo.focus(); alvo.selectionStart = alvo.selectionEnd = ini0 + ins.length;
+    setCampo(alvo.dataset.f, alvo.value); return aoEditar();
+  }
+  if (t.dataset.stdev) { ST.dev = t.dataset.stdev; return renderPrevia(); }
+  if (t.dataset.sttab) { ST.tab = t.dataset.sttab; return renderModelos(); }
+  if (t.dataset.stver) { await salvar(); abrirModelo(ST.k, Number(t.dataset.stver)); ST.blk = null; return renderModelos(); }
+  if (t.dataset.stvoltar) return publicar(Number(t.dataset.stvoltar), true);
+  if (t.id === 'st-teste') return enviarTeste(t);
+  if (t.id === 'st-revisao') return mandarRevisao();
+  if (t.id === 'st-publicar') return publicar(ST.v, false);
+  if (t.id === 'st-nova') { t.disabled = true; return novaVersao(); }
   if (t.id === 'compose-send') return sendEmail(t);
 
   if (t.id === 'send-reply') {
@@ -971,7 +1338,26 @@ document.addEventListener('click', async function (e) {
 });
 document.addEventListener('change', async function (e) {
   if (e.target.id === 'compose-tpl') return openCompose(activeCid, e.target.value);
-  if (e.target.id === 'mod-contact') { state.mdContact = e.target.value; return renderModelos(); }
+  if (e.target.id === 'st-who') { ST.who = e.target.value; return renderPrevia(); }
+  if (e.target.id === 'st-marcar') { ST.marcar = e.target.checked; return renderPrevia(); }
+  if (e.target.id === 'st-novo-bloco') {
+    if (!e.target.value || !ST.d) return;
+    ST.d.itens = ST.d.itens || []; ST.d.itens.push(ES.novoBloco(e.target.value)); ST.blk = ST.d.itens.length - 1;
+    aoEditar(); return renderEditor();
+  }
+  if (e.target.dataset && e.target.dataset.plano) {
+    var pk = e.target.dataset.plano; ST.d.planos = ST.d.planos || {};
+    ST.d.planos[pk] = e.target.value === 'some' ? null : ((ES.CAT[pk] && ES.CAT[pk].plano) || '');
+    aoEditar(); return renderEditor();
+  }
+  if (e.target.matches && e.target.matches('select[data-f]')) { setCampo(e.target.dataset.f, e.target.value); aoEditar(); return renderEditor(); }
+  if (e.target.id === 'st-objetivo') {
+    var ob = e.target.value.trim(), mo = modeloAtual();
+    if (!mo || !ob || ob === mo.objetivo) return;
+    var ru = await supabase.from('modelos_email').update({ objetivo: ob }).eq('chave', mo.chave);
+    if (ru.error) return fail('salvar o objetivo', ru.error);
+    mo.objetivo = ob; return toast('Objetivo salvo');
+  }
   if (e.target.id !== 'stage-pick') return;
   var c = byC(state.sel), novo = e.target.value;
   var r = await supabase.from('contatos').update({ estagio: novo }).eq('id', c.id);
@@ -1005,6 +1391,15 @@ document.addEventListener('focusout', async function (e) {
   if (r.error) return fail('salvar a anotação', r.error);
   c.nota = v || null; toast('Anotação salva');
 });
+// Estúdio: campos de texto dos blocos (data-f = o caminho dentro de blocos) e a busca da pessoa da prévia.
+document.addEventListener('input', function (e) {
+  if (e.target.matches && e.target.matches('input[data-f], textarea[data-f]') && ST.d) { setCampo(e.target.dataset.f, e.target.value); return aoEditar(); }
+  if (e.target.id === 'st-q') {
+    ST.q = e.target.value; var pos = e.target.selectionStart; renderPrevia();
+    var q2 = $('st-q'); if (q2) { q2.focus(); q2.selectionStart = q2.selectionEnd = pos; }
+  }
+});
+document.addEventListener('focusin', function (e) { if (e.target.dataset && e.target.dataset.f && e.target.matches('input, textarea')) ST.foco = e.target; });
 document.addEventListener('input', function (e) {
   if (e.target.id === 'reply-txt') $('reply-err').hidden = true;
   if (e.target.id === 'conv-txt') { state.rascunho[e.target.dataset.cid] = e.target.value; $('conv-err').hidden = true; }
