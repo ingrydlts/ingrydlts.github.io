@@ -684,5 +684,23 @@ await enviar({ contato_id: CID, modelo: 'naoclicou', assunto: 'oi', corpo: 'Oi A
 bt = chamadas.find((c) => /brevo/.test(c.url));
 check('envio manual de texto antigo: o Worker põe o rodapé, como hoje', /palavra "sair"/.test(bt.body.textContent) && !('modelo_versao' in chamadas.find((c) => /emails_enviados$/.test(c.url)).body));
 
+console.log('\n== Ficha: o e-mail sai como a prévia do pop-up ==');
+const DOC = '<!DOCTYPE html>\n<html><body><p>Oi Ana!</p><a href="https://app.example/">Abrir</a></body></html>';
+const okEnvio = () => [...adminOk, fichaNov, brevoOk, [/\/emails_enviados$/, { method: 'POST', status: 201 }]];
+chamadas = []; fakeFetch(okEnvio());
+res = await enviar({ contato_id: CID, modelo: 'boas_vindas', assunto: 'oi', corpo: 'Oi Ana! https://app.example/', modelo_versao: 2, html: DOC });
+bt = chamadas.find((c) => /brevo/.test(c.url));
+check('com versão e HTML: o Brevo recebe o desenho e o texto puro, e a resposta diz formato html', res.status === 200 && (await res.json()).formato === 'html' && bt.body.htmlContent === DOC && bt.body.textContent === 'Oi Ana! https://app.example/');
+chamadas = []; fakeFetch(okEnvio());
+res = await enviar({ contato_id: CID, modelo: 'boas_vindas', assunto: 'oi', corpo: 'Oi Ana!', html: DOC });
+bt = chamadas.find((c) => /brevo/.test(c.url));
+check('HTML sem versão: ignora e sai em texto simples', (await res.json()).formato === 'texto' && bt.body.htmlContent !== DOC && /Oi Ana!/.test(bt.body.htmlContent));
+chamadas = []; fakeFetch(okEnvio());
+res = await enviar({ contato_id: CID, modelo: 'boas_vindas', assunto: 'oi', corpo: 'Oi Ana!', modelo_versao: 2, html: '<script>x</script>' });
+check('HTML que não é documento: ignora', (await res.json()).formato === 'texto');
+chamadas = []; fakeFetch(okEnvio());
+res = await enviar({ contato_id: CID, modelo: 'boas_vindas', assunto: 'oi', corpo: 'Oi Ana!', modelo_versao: 2, html: '<!DOCTYPE html><p>Oi [link do acesso]</p>' });
+check('HTML com [colchetes]: 400, nada enviado', res.status === 400 && !chamadas.some((c) => /brevo/.test(c.url)));
+
 console.log(`\n${passed} passaram, ${failed} falharam`);
 process.exit(failed ? 1 : 0);

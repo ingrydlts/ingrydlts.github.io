@@ -74,6 +74,13 @@ estúdio (três colunas); `estudio.js` monta assunto, texto puro e HTML a partir
 `APP_DB_DIR=<POR DENTRO APP>/db npm run test:estudio` e `node cms-oauth-worker/testes/crm-email.test.mjs`.
 Fica para as próximas entregas: criar modelo novo a partir do objetivo e sequências (3), números por modelo e versão (4).
 
+## Ficha: e-mails fidedignos e prévia real (16/10)
+
+Sem SQL novo. `crm.js`: status `agendado` = "Enviado"; painel **E-mails** na ficha (último, próximo sugerido com miniatura,
+sequência do guia Campus France e histórico), **Quem é ela** e **De onde veio** no lugar de "O que respondeu no funil"; o pop-up
+de e-mail mostra o e-mail como ela vai ver (desenho da versão do estúdio ou o formato simples). Worker: `/api/crm/enviar` aceita
+`html`. Passo a passo: `cms-oauth-worker/README.md`, seção 22.
+
 ## Etapas
 
 1. **Fase 1 — captura** (feita, repo POR-DENTRO-APP): `contatos`, `eventos`, `consentimentos`, `capturar_lead()`, `admins`.

@@ -24,8 +24,10 @@ var SEGMENTS = [
   { k: 'cliquenaoapp', t: 'Clicou mas não abriu o app', lever: 'Fricção de capacidade', why: 'Clicou no link mas travou antes de entrar. Ação: lembrar que o acesso é sem senha, um clique só.' },
   { k: 'parouapp', t: 'Abriu o app mas parou', lever: 'Motivação caiu', why: 'Entrou, viu o checklist e não voltou. Ação: uma dica extra de graça + o prazo real dela, nunca um prazo inventado.' }
 ];
-var MAIL_ST = { clicado: 'Clicou', aberto: 'Abriu', entregue: 'Entregue, não abriu', nao_entregue: 'Não entregue', agendado: 'Ainda não enviado' };
-var MODELO = { boas_vindas: 'Boas-vindas + link de acesso', naoabriu: 'Reimpacto — não abriu', naoclicou: 'Reimpacto — abriu, não clicou', cliquenaoapp: 'Reimpacto — clicou, não abriu o app', parouapp: 'Reimpacto — abriu o app e parou', guia_alternancia: 'Guia alternância 30+ — convite pra conversa', cf_guia_1: 'Guia Campus France — e-mail 1 (checklist, automático)', cf_guia_conversa: 'Guia Campus France — e-mail 2 (a conversa, automático)', resposta: 'Sua resposta (aba Conversa)' };
+// 'agendado' = o Brevo aceitou o envio (a linha só é gravada depois disso) e ainda não avisou entrega/abertura pelo webhook.
+var MAIL_ST = { clicado: 'Clicou', aberto: 'Abriu', entregue: 'Entregue, não abriu', nao_entregue: 'Não entregue', agendado: 'Enviado' };
+var MAIL_ST_DICA = { agendado: 'O Brevo aceitou o envio. Entrega e abertura aparecem aqui quando o webhook do Brevo avisar.' };
+var MODELO = { boas_vindas: 'Boas-vindas + link de acesso', guia_chamada: 'Guia VLS-TS — convite pra conversa', guia_plataforma: 'Guia VLS-TS — teste da plataforma',naoabriu: 'Reimpacto — não abriu', naoclicou: 'Reimpacto — abriu, não clicou', cliquenaoapp: 'Reimpacto — clicou, não abriu o app', parouapp: 'Reimpacto — abriu o app e parou', guia_alternancia: 'Guia alternância 30+ — convite pra conversa', cf_guia_1: 'Guia Campus France — e-mail 1 (checklist, automático)', cf_guia_conversa: 'Guia Campus France — e-mail 2 (a conversa, automático)', resposta: 'Sua resposta (aba Conversa)' };
 var TYPE_META = {
   sistema: ['Sistema', ''], app: ['Abriu o app', 'u-baixa'], checklist: ['Checklist', 'u-baixa'], pergunta: ['Pergunta única', 'tp-pergunta'],
   artigo: ['Artigo', 'tp-artigo'], uma_um: ['1:1', 'out'], email: ['E-mail', 'out'], sinal: ['Sinal no dashboard', 'out'],
@@ -537,21 +539,106 @@ async function openPessoa(id, tab) {
   state.sel = id; state.ptab = tab || null;
   show('pessoa');
 }
-// Resumo da jornada: por onde a pessoa passou, quantas vezes voltou e qual e-mail faz sentido agora.
-function jornadaPanel(c, h4) {
-  var os = origensDe(c), ps = (c.personas && c.personas.length > 1) ? c.personas : [];
-  var k = defaultTpl(c), t = TPLS[k];
-  var linhas = [];
-  linhas.push('<p style="margin:0 0 6px;font-size:13px"><b>Deixou o e-mail ' + nCapturas(c) + (nCapturas(c) === 1 ? ' vez' : ' vezes') + '</b>' +
-    (c.ultima_captura_em ? ' · última em ' + esc(fmtDay(c.ultima_captura_em)) : '') + '</p>');
-  if (os.length) linhas.push('<div class="ctx" style="margin:0 0 8px">' + os.map(function (o) { return '<span class="pill">' + esc(origLabel(o)) + '</span>'; }).join('') + '</div>');
-  if (ps.length) linhas.push('<p class="sub" style="margin:0 0 8px">Personas: ' + esc(ps.map(function (p) { return PERSONAS[p] || p; }).join(' → ')) + '</p>');
-  linhas.push('<p class="sub" style="margin:0 0 8px">' + (voltouDepoisDoEmail(c) ? 'Voltou depois do seu último e-mail: ' : 'E-mail sugerido agora: ') + '<b>' + esc(t.label) + '</b>.</p>');
-  var bloq = EXIGEM_NOVIDADES[k] && !c.aceita_novidades;
-  linhas.push(bloq ? '<p class="sub" style="margin:0;color:var(--red)">Não aceitou novidades por e-mail: este modelo não pode ser enviado.</p>'
-    : '<button class="btn primary" type="button" data-emailfor="' + esc(c.id) + '" data-tplk="' + esc(k) + '">Escrever este e-mail →</button>');
-  return '<div class="panel" style="padding:16px"><h4 style="' + h4 + '">Jornada</h4>' + linhas.join('') + '</div>';
+// ---------- E-mails da pessoa: o que já saiu e o próximo, como ela vai ver ----------
+function fmtQuando(iso) { return iso ? fmtDay(new Date(iso).toISOString()) + ' às ' + fmtHora(iso) : '—'; }
+function mailPill(m) { return '<span class="pill st-' + esc(m.status) + '" title="' + esc(MAIL_ST_DICA[m.status] || '') + '">' + esc(MAIL_ST[m.status] || m.status) + '</span>'; }
+// Igual a crmTextToHtml do Worker: é assim que sai um e-mail cujo modelo não tem HTML (os 8 manuais na versão 1).
+function htmlSimples(texto) {
+  var safe = esc(texto).replace(/(https?:\/\/[^\s<]+)/g, function (u) { return '<a href="' + u + '">' + u + '</a>'; });
+  return '<!DOCTYPE html><html><head><meta charset="utf-8"><base target="_blank"></head><body style="margin:0;padding:20px;background:#fff">' +
+    '<div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.6;color:#2B2B2B">' + safe.replace(/\n/g, '<br>') + '</div></body></html>';
 }
+// O rodapé que o Worker acrescenta nos modelos de novidades quando o texto ainda não traz o "palavra sair".
+function comRodape(k, corpo) {
+  var mk = k !== 'boas_vindas' && k !== 'cf_guia_1' && k !== 'resposta';
+  return mk && !/palavra\s+"?sair"?/i.test(corpo) ? corpo + '\n\n—\nPra não receber mais e-mails, é só responder este com a palavra "sair".' : corpo;
+}
+// O e-mail k pronto para ela: o texto No ar com os dados dela e, se a versão tiver HTML (feita no estúdio), esse HTML.
+function emailPronto(c, k) {
+  var t = textoDoModelo(c, k), v = M && t.versao ? versaoAtual(k) : null, html = null;
+  if (v && v.versao === t.versao && v.corpo_html) { try { html = ES.montarComDados(v, dadosPara(k, c)).html; } catch (e) { html = null; } }
+  return { k: k, subject: t.subject, body: t.body, versao: t.versao, html: html };
+}
+// O que a prévia mostra: o HTML do estúdio, ou o texto no formato simples em que o Worker manda.
+function previaDoc(k, e, editado) { return !editado && e.html ? e.html : htmlSimples(comRodape(k, editado != null ? editado : e.body)); }
+function previaFrame(doc, cls) { return '<iframe class="' + cls + '" sandbox="allow-popups" title="Prévia do e-mail" srcdoc="' + esc(doc) + '"></iframe>'; }
+
+// Quando o e-mail 1 do guia Campus France passou a sair sozinho (o primeiro envio automático é de 14/10, 23h20 de Paris).
+var CF_AUTO_DESDE = '2026-10-14T21:20:00Z';
+var CF_GUIA_ORIGEM = 'guia-etudes-en-france-2027';
+// A sequência automática do guia: e-mail 1 (na hora) e e-mail 2 (no dia seguinte, 10h de Brasília, só com novidades aceitas).
+function seqGuiaCF(c, mails) {
+  if (origensDe(c).indexOf(CF_GUIA_ORIGEM) < 0) return '';
+  var m1 = mails.filter(function (m) { return m.modelo === 'cf_guia_1'; })[0], m2 = mails.filter(function (m) { return m.modelo === 'cf_guia_conversa'; })[0];
+  var desde = c.ultima_captura_em || c.criado_em, e1, e2;
+  if (m1) e1 = 'saiu em ' + fmtQuando(m1.enviado_em || m1.criado_em) + ' ' + mailPill(m1);
+  else if (desde && desde < CF_AUTO_DESDE) e1 = '<span style="color:var(--red)">não saiu</span>: ela deixou o e-mail em ' + esc(fmtDay(desde)) + ', antes de o envio automático ser ligado.';
+  else e1 = '<span style="color:var(--red)">não consta envio</span>. Confira o Worker (README, seção 17).';
+  var dias1 = m1 ? (Date.now() - new Date(m1.enviado_em || m1.criado_em).getTime()) / 864e5 : 0;
+  if (m2) e2 = 'saiu em ' + fmtQuando(m2.enviado_em || m2.criado_em) + ' ' + mailPill(m2);
+  else if (!m1) e2 = 'depende do e-mail 1.';
+  else if (!c.aceita_novidades) e2 = 'não sai: ela não aceitou novidades por e-mail.';
+  else if (dias1 > 7) e2 = 'não sai mais: passou a janela de 7 dias depois do e-mail 1.';
+  else e2 = 'sai no envio diário seguinte ao e-mail 1, às 10h de Brasília.';
+  return '<div class="seq"><div class="k">Sequência do guia Campus France</div>' +
+    '<p><b>E-mail 1 · checklist</b> ' + e1 + '</p><p><b>E-mail 2 · a conversa</b> ' + e2 + '</p></div>';
+}
+function emailsPanel(c, mails, h4) {
+  var em = function (m) { return m.enviado_em || m.criado_em; };
+  mails = mails.slice().sort(function (a, b) { return em(a) < em(b) ? 1 : em(a) > em(b) ? -1 : 0; });   // mais recente primeiro
+  var k = defaultTpl(c), t = TPLS[k], e = emailPronto(c, k);
+  var bloq = EXIGEM_NOVIDADES[k] && !c.aceita_novidades;
+  var ultimo = mails[0];
+  var head = ultimo ? '<p style="margin:0 0 12px;font-size:13px">Último: <b>' + esc(MODELO[ultimo.modelo] || ultimo.modelo) + '</b> · ' + esc(fmtQuando(ultimo.enviado_em || ultimo.criado_em)) + ' ' + mailPill(ultimo) + '</p>'
+    : '<p style="margin:0 0 12px;font-size:13px"><b>Nenhum e-mail saiu pelo CRM para ela.</b> <span class="sub">E-mails mandados direto do seu Gmail não entram aqui.</span></p>';
+  var prox = '<div class="nextmail"><div class="k">' + (voltouDepoisDoEmail(c) ? 'Voltou depois do seu último e-mail · próximo sugerido' : 'Próximo sugerido') + '</div>' +
+    '<p style="margin:2px 0 2px;font-size:13.5px"><b>' + esc(t.label) + '</b></p><p class="sub" style="margin:0 0 8px">' + esc(t.when) + '</p>' +
+    '<p class="sub" style="margin:0 0 6px">Assunto: <b style="color:var(--ink)">' + esc(e.subject) + '</b></p>' +
+    '<button class="mailthumb" type="button" data-emailfor="' + esc(c.id) + '" data-tplk="' + esc(k) + '" aria-label="Abrir o e-mail sugerido">' + previaFrame(previaDoc(k, e), 'thumbframe') + '</button>' +
+    (bloq ? '<p class="sub" style="margin:8px 0 0;color:var(--red)">Não aceitou novidades por e-mail: este modelo não pode ser enviado.</p>'
+      : '<button class="btn primary" type="button" style="margin-top:10px" data-emailfor="' + esc(c.id) + '" data-tplk="' + esc(k) + '">Revisar e enviar →</button>') + '</div>';
+  var hist = mails.map(function (m) {
+    return '<div class="mailrow"><button class="mh" data-mailtoggle="' + m.id + '" type="button"><b>' + esc(m.assunto || MODELO[m.modelo] || m.modelo) + '</b>' + mailPill(m) +
+      '<time>' + esc(fmtQuando(m.enviado_em || m.criado_em)) + '</time></button><div class="sub" style="font-size:11.5px;margin-top:2px">' + esc(MODELO[m.modelo] || m.modelo) +
+      (m.aberto_em ? ' · abriu ' + esc(fmtQuando(m.aberto_em)) : '') + (m.clicado_em ? ' · clicou ' + esc(fmtQuando(m.clicado_em)) : '') + '</div>' +
+      '<div class="mailbody" id="mb-' + m.id + '" hidden>' + esc(m.corpo || '(sem corpo salvo)') + '</div></div>';
+  }).join('');
+  return '<div class="panel mailpanel" style="padding:16px"><h4 style="' + h4 + '">E-mails</h4>' + head + prox + seqGuiaCF(c, mails) +
+    (hist ? '<div class="k" style="margin-top:14px">Já enviados (' + mails.length + ')</div>' + hist : '') + '</div>';
+}
+
+// ---------- Quem é ela: as respostas do funil com nome legível ----------
+// objetivo = a etapa que ela escolheu no guia; o prefixo diz de qual guia (cf- Campus France, alt- alternância 30+).
+var ALT_ETAPA = { 'alt-pesquisando': 'Pesquisando se pode fazer alternância depois dos 29', 'alt-escolhendo-escola': 'Escolhendo escola e curso',
+  'alt-recusa-idade': 'Ouviu "só até 29" de uma escola', 'alt-buscando-empresa': 'Tem escola, falta a empresa', 'alt-montando-contrato': 'Tem empresa, montando o contrato' };
+function etapaDe(v) { return CF_ETAPA[v] || ALT_ETAPA[v] || v; }
+function respostasKv(c) {
+  var r = c.respostas || {}, rows = [], cf = /^cf-/.test(r.objetivo || '') || r.cfNivel || origensDe(c).indexOf(CF_GUIA_ORIGEM) >= 0;
+  var add = function (l, v, falta) { if (v != null && v !== '') rows.push([l, String(v)]); else if (falta) rows.push([l, falta, 1]); };
+  add('Persona', personaLabel(c) + (subLabel(c) ? ' · ' + subLabel(c) : ''));
+  if (r.objetivo) add(/^alt-/.test(r.objetivo) ? 'Etapa na alternância' : /^cf-/.test(r.objetivo) ? 'Etapa no Campus France' : 'Etapa', etapaDe(r.objetivo));
+  if (cf) add('Nível da candidatura', CF_NIVEL[r.cfNivel] || r.cfNivel, 'não respondeu (pergunta nova, de 14/10)');
+  if (r.cfNivel && CF_PRAZO[r.cfNivel]) { var d = diasAte(CF_PRAZO[r.cfNivel]); add('Prazo Campus France', fmtDay(CF_PRAZO[r.cfNivel]) + (d >= 0 ? ' (faltam ' + d + ' dias)' : ' (venceu)')); }
+  if (cf) add('Cidade', CF_CIDADE[r.cfCidade] || r.cfCidade, 'ainda não disse (toca no e-mail 2)');
+  add('Entrada na França', c.data_entrada ? fmtDay(c.data_entrada) : '');
+  add('Prazo do VLS-TS', c.prazo_limite ? fmtDay(c.prazo_limite) + ' (' + prazoTxt(c) + ')' : '');
+  add('Fase', c.fase); add('Nível de estudos', c.nivel_estudos); add('Preocupação', c.preocupacao);
+  Object.keys(r).forEach(function (k) {
+    if (k === 'objetivo' || k === 'cfNivel' || k === 'cfCidade') return;
+    var l = RESP_LABEL[k]; add(l ? l[0] : k, l ? l[1](r[k]) : r[k]);
+  });
+  add('Novidades por e-mail', c.aceita_novidades ? 'Aceitou' : 'Não aceitou');
+  return rows;
+}
+function origemKv(c) {
+  var rows = [], add = function (l, v) { if (v) rows.push([l, String(v)]); };
+  add('Deixou o e-mail', nCapturas(c) + (nCapturas(c) === 1 ? ' vez' : ' vezes') + (c.ultima_captura_em ? ' · última em ' + fmtDay(c.ultima_captura_em) : ''));
+  add('Por onde passou', origensDe(c).map(origLabel).join(' → '));
+  if (c.personas && c.personas.length > 1) add('Personas', c.personas.map(function (p) { return PERSONAS[p] || p; }).join(' → '));
+  add('Campanha (UTM)', c.utm_campaign); add('Post / conteúdo (UTM)', c.utm_content); add('Fonte (UTM)', c.utm_source);
+  return rows;
+}
+function kvHtml(rows) { return '<dl class="kv">' + rows.map(function (x) { return '<dt>' + esc(x[0]) + '</dt><dd' + (x[2] ? ' class="falta"' : '') + '>' + esc(x[1]) + '</dd>'; }).join('') + '</dl>'; }
 // ---------- Aba Conversa (fase 1b) ----------
 // Um fio só, em ordem: os e-mails que saíram (automáticos e os seus), o que ela tocou ou escreveu na
 // página /conversa/ e as respostas por e-mail. Embaixo, a caixa que responde pelo Worker
@@ -579,7 +666,7 @@ function conversaCtx(c, h4) {
   var cidade = r.cfCidade ? esc(CF_CIDADE[r.cfCidade] || r.cfCidade) + ' <span class="pill u-baixa" style="font-size:10.5px">tocou no e-mail</span>' : '—';
   var veio = esc(origLabel(ultimaOrigem(c)) || '—') + (c.utm_content ? ' <span class="sub">· ' + esc(c.utm_content) + '</span>' : '') +
     (voltou(c) ? ' <span class="sub">· deixou o e-mail ' + nCapturas(c) + ' vezes</span>' : '');
-  var kv = [['Etapa', esc(CF_ETAPA[r.objetivo] || r.objetivo || '—')], ['Cidade', cidade], ['Veio de', veio],
+  var kv = [['Etapa', esc(r.objetivo ? etapaDe(r.objetivo) : '—')], ['Cidade', cidade], ['Veio de', veio],
     ['Novidades', c.aceita_novidades ? 'Aceitou' : 'Não aceitou'], ['Estágio', esc(stageLabel(c.estagio))]];
   return '<aside class="ctxcol">' + top + '<dl class="kv">' + kv.map(function (x) { return '<dt>' + x[0] + '</dt><dd>' + x[1] + '</dd>'; }).join('') + '</dl>' +
     '<div><h4 style="' + h4 + '">Suas anotações</h4><textarea class="notebox" id="nota" data-nota="' + esc(c.id) + '" placeholder="Só você vê.">' + esc(c.nota || '') + '</textarea></div></aside>';
@@ -652,16 +739,13 @@ async function renderPessoa() {
   var r = await Promise.all([
     supabase.from('eventos').select('tipo,dados,criado_em').eq('contato_id', c.id).order('criado_em', { ascending: false }).limit(200),
     supabase.from('consentimentos').select('finalidade,aceito,criado_em').eq('contato_id', c.id).order('criado_em', { ascending: false }),
-    supabase.from('emails_enviados').select('id,modelo,assunto,corpo,status,provedor_id,enviado_em,criado_em').eq('contato_id', c.id).order('criado_em', { ascending: false })
+    supabase.from('emails_enviados').select('id,modelo,assunto,corpo,status,provedor_id,enviado_em,aberto_em,clicado_em,criado_em').eq('contato_id', c.id).order('criado_em', { ascending: false })
   ]);
   if (state.sel !== c.id || state.view !== 'pessoa') return;   // trocou de tela enquanto carregava
   var eventos = r[0].data || [], cons = r[1].data || [], mails = r[2].data || [];
   var last = function (f) { var x = cons.filter(function (k) { return k.finalidade === f; })[0]; return x ? x.aceito : false; };
   var perg = Q.filter(function (x) { return x.contato_id === c.id; });
   var resps = R.filter(function (x) { return x.contato_id === c.id; });
-  var resp = c.respostas || {};
-  var kv = [['Entrada na França', fmtDay(c.data_entrada)], ['Prazo do VLS-TS', c.prazo_limite ? fmtDay(c.prazo_limite) + ' (' + prazoTxt(c) + ')' : '—'], ['Fase', c.fase || '—'], ['Nível de estudos', c.nivel_estudos || '—'], ['Preocupação', c.preocupacao || '—'], ['Origem (1ª vez)', origLabel(c.origem) || '—'], ['Última origem', origLabel(ultimaOrigem(c)) || '—'], ['Campanha (UTM)', c.utm_campaign || '—'], ['Conteúdo / post (UTM)', c.utm_content || '—'], ['Fonte (UTM)', c.utm_source || '—']]
-    .concat(Object.keys(resp).map(function (k) { var l = RESP_LABEL[k]; return l ? [l[0], l[1](resp[k])] : [k, resp[k]]; }));
   var h4 = 'font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-3); margin:0 0 8px';
   if (!state.ptab) state.ptab = mails.length || resps.length ? 'conversa' : 'ficha';
   var tabs = '<div class="ptabs" role="tablist" aria-label="Ficha da pessoa">' + [['conversa', 'Conversa'], ['ficha', 'Ficha']].map(function (t) {
@@ -688,13 +772,11 @@ async function renderPessoa() {
       return '<div class="feeditem"><span class="pill ' + m[1] + '">' + esc(m[0]) + '</span><div class="fbody"><p>' + esc(tx[1]) + '</p><time>' + esc(fmtDate(e.criado_em)) + '</time></div></div>';
     }).join('') || '<div class="empty">Nada registrado ainda.</div>') + '</div></div>' +
     '<div style="display:flex; flex-direction:column; gap:16px">' +
-    jornadaPanel(c, h4) +
-    '<div class="panel" style="padding:16px"><h4 style="' + h4 + '">O que respondeu no funil</h4><dl class="kv">' + kv.map(function (x) { return '<dt>' + esc(x[0]) + '</dt><dd>' + esc(x[1]) + '</dd>'; }).join('') + '</dl></div>' +
+    emailsPanel(c, mails, h4) +
+    '<div class="panel" style="padding:16px"><h4 style="' + h4 + '">Quem é ela</h4>' + kvHtml(respostasKv(c)) + '</div>' +
+    '<div class="panel" style="padding:16px"><h4 style="' + h4 + '">De onde veio</h4>' + kvHtml(origemKv(c)) + '</div>' +
     (perg.length ? '<div class="panel" style="padding:16px"><h4 style="' + h4 + '">Perguntas únicas</h4>' + perg.map(function (x) { return '<p style="margin:0 0 6px;font-size:13px">"' + esc(x.texto) + '" <button class="link" data-openq="' + x.id + '" type="button">' + (x.status === 'nova' ? 'Responder' : 'Ver resposta') + ' →</button></p>'; }).join('') + '</div>' : '') +
     (resps.length ? '<div class="panel" style="padding:16px"><h4 style="' + h4 + '">Respostas</h4>' + resps.map(function (x) { return '<p style="margin:0 0 6px;font-size:13px"><span title="' + esc(canalDe(x)[1]) + '">' + canalDe(x)[0] + '</span> "' + esc(x.texto.length > 160 ? x.texto.slice(0, 160) + '…' : x.texto) + '" <span class="sub">' + esc(canalDe(x)[1]) + ' · ' + esc(fmtDate(x.recebido_em)) + '</span> <button class="link" data-openr="' + x.id + '" type="button">' + (x.status === 'nova' ? 'Abrir na caixa' : 'Ver') + ' →</button></p>'; }).join('') + '</div>' : '') +
-    '<div class="panel" style="padding:16px"><h4 style="' + h4 + '">E-mails enviados</h4>' + (mails.map(function (m) {
-      return '<div class="mailrow"><button class="mh" data-mailtoggle="' + m.id + '" type="button"><b>' + esc(MODELO[m.modelo] || m.modelo) + '</b><span class="pill st-' + esc(m.status) + '">' + esc(MAIL_ST[m.status] || m.status) + '</span><time>' + esc(fmtDate(m.enviado_em || m.criado_em)) + '</time></button><div class="mailbody" id="mb-' + m.id + '" hidden>' + esc(m.corpo || '(sem corpo salvo)') + '</div></div>';
-    }).join('') || '<p class="sub" style="margin:0">Nenhum e-mail enviado por aqui ainda.</p>') + '</div>' +
     '<div class="panel" style="padding:16px"><h4 style="' + h4 + '">Consentimento</h4><div class="consent"><span class="pill ' + (last('servico') ? 'u-baixa' : '') + '">Política de privacidade ' + (last('servico') ? '✓' : '—') + '</span><span class="pill ' + (last('novidades_email') ? 'u-baixa' : '') + '">Novidades por e-mail ' + (last('novidades_email') ? '✓' : '—') + '</span></div></div>' +
     '<div class="panel" style="padding:16px"><h4 style="' + h4 + '">Instagram</h4>' +
       '<label class="sub" for="ig-handle" style="display:block;margin:0 0 4px">@ do Instagram</label>' +
@@ -710,7 +792,12 @@ async function renderPessoa() {
 }
 
 // ---------- Modais ----------
-function modalOpen(html) { $('compose-modal').innerHTML = '<div class="card">' + html + '</div>'; $('compose-modal').hidden = false; $('compose-backdrop').hidden = false; }
+// largo: o pop-up do e-mail, que mostra a prévia do tamanho de um e-mail de verdade.
+function modalOpen(html, largo) {
+  if (!largo) CMP = null;
+  $('compose-modal').style.maxWidth = largo ? '760px' : '560px';
+  $('compose-modal').innerHTML = '<div class="card">' + html + '</div>'; $('compose-modal').hidden = false; $('compose-backdrop').hidden = false;
+}
 function closeCompose() { $('compose-modal').hidden = true; $('compose-backdrop').hidden = true; }
 function modalTop(c) { return '<div class="top"><div class="' + avClass(c) + '">' + esc(ini(c)) + '</div><div><h3>' + esc(displayName(c)) + '</h3><div class="mail">' + esc(c.email) + '</div></div></div>'; }
 var SINAIS = [
@@ -1160,36 +1247,69 @@ function exportModelos() {
   setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
   toast(M.length + ' modelos exportados');
 }
+// O pop-up mostra o e-mail como ela vai ver (aba "Como ela vai ver") e deixa editar o texto (aba "Editar texto").
+// Se você mexer no texto, o e-mail sai no formato simples e a prévia passa a mostrar esse formato: o que você vê é o que sai.
+var CMP = null;   // { c, k, e, editado, aba }
 function openCompose(cid, key) {
   var c = byC(cid); if (!c) return;
   activeCid = cid;
-  var k = key || defaultTpl(c), t = textoDoModelo(c, k);
+  var k = key || defaultTpl(c);
+  CMP = { c: c, k: k, e: emailPronto(c, k), editado: null, aba: 'ver' };
   var bloqueado = EXIGEM_NOVIDADES[k] && !c.aceita_novidades;
   modalOpen(modalTop(c) +
     '<div class="ctx" style="margin-top:12px"><div class="sel"><select id="compose-tpl" aria-label="Modelo">' + TPL_ORDER.map(function (m) { return '<option value="' + m + '"' + (m === k ? ' selected' : '') + '>' + esc(TPLS[m].label) + '</option>'; }).join('') + '</select></div><span class="lever" style="display:inline-block;font-size:10.5px;font-weight:700;text-transform:uppercase;color:var(--brown);background:var(--brown-soft);padding:2px 8px;border-radius:999px">' + esc(TPLS[k].lever) + '</span></div>' +
+    '<p class="sub" style="margin:8px 0 0">' + esc(TPLS[k].when) + '</p>' +
     (bloqueado ? '<p class="sub" style="color:var(--red);margin:8px 0 0">Essa pessoa não aceitou novidades por e-mail — este modelo não pode ser enviado a ela.</p>' : '') +
-    '<div class="reply" style="margin-top:14px"><label for="compose-subj">Assunto</label><input id="compose-subj" maxlength="200" style="height:38px;border:1px solid var(--line-2);border-radius:var(--r);padding:0 10px;background:var(--surface-2)" value="' + esc(t.subject) + '">' +
-    '<label for="compose-txt">Mensagem — edite antes de enviar</label><textarea id="compose-txt" style="min-height:210px">' + esc(t.body) + '</textarea>' +
-    '<p class="sub" id="compose-err" style="margin:0;color:var(--red)" role="alert" hidden></p></div>' +
-    '<div class="actions"><button class="btn" type="button" id="modal-cancel">Cancelar</button><button class="btn primary" type="button" id="compose-send" data-tpl="' + k + '" data-versao="' + (t.versao || '') + '"' + (bloqueado ? ' disabled' : '') + '>Enviar e-mail</button></div>');
+    '<div class="reply" style="margin-top:14px"><label for="compose-subj">Assunto</label><input id="compose-subj" maxlength="200" style="height:38px;border:1px solid var(--line-2);border-radius:var(--r);padding:0 10px;background:var(--surface-2)" value="' + esc(CMP.e.subject) + '"></div>' +
+    '<div class="ptabs" role="tablist" aria-label="E-mail" style="margin-top:12px">' +
+    '<button class="ptab" role="tab" type="button" data-cmpaba="ver" aria-selected="true">Como ela vai ver</button>' +
+    '<button class="ptab" role="tab" type="button" data-cmpaba="editar" aria-selected="false">Editar texto</button></div>' +
+    '<div id="cmp-ver"><div class="envelope"><div><span>De</span>Ingryd · Por Dentro</div><div><span>Para</span>' + esc(c.email) + '</div><div><span>Assunto</span><b id="cmp-env-subj">' + esc(CMP.e.subject) + '</b></div></div>' +
+    '<div id="cmp-frame">' + previaFrame(previaDoc(k, CMP.e), 'cmpframe') + '</div><p class="sub" id="cmp-formato" style="margin:6px 0 0"></p></div>' +
+    '<div id="cmp-editar" class="reply" hidden><label for="compose-txt">Mensagem</label><textarea id="compose-txt" style="min-height:260px">' + esc(CMP.e.body) + '</textarea>' +
+    '<button class="link" type="button" id="cmp-restaurar" hidden>Voltar ao texto do modelo</button></div>' +
+    '<p class="sub" id="compose-err" style="margin:8px 0 0;color:var(--red)" role="alert" hidden></p>' +
+    '<div class="actions"><button class="btn" type="button" id="modal-cancel">Cancelar</button><button class="btn primary" type="button" id="compose-send" data-tpl="' + k + '" data-versao="' + (CMP.e.versao || '') + '"' + (bloqueado ? ' disabled' : '') + '>Enviar e-mail</button></div>', true);
+  cmpFormato();
+}
+function cmpFormato() {
+  var p = $('cmp-formato'); if (!p || !CMP) return;
+  p.textContent = CMP.editado != null ? 'Você mudou o texto: o e-mail sai no formato simples, como acima.'
+    : CMP.e.html ? 'É o desenho da versão ' + CMP.e.versao + ' No ar, com os dados dela.'
+    : 'Este modelo ainda não tem desenho (versão ' + (CMP.e.versao || 'do código') + '): sai em texto simples, como acima. Para ter o desenho, edite-o em Modelos de e-mail.';
+  var r = $('cmp-restaurar'); if (r) r.hidden = CMP.editado == null;
+}
+function cmpAtualizar() {
+  if (!CMP) return;
+  $('cmp-frame').innerHTML = previaFrame(previaDoc(CMP.k, CMP.e, CMP.editado), 'cmpframe');
+  $('cmp-env-subj').textContent = $('compose-subj').value; cmpFormato();
+}
+function cmpAba(a) {
+  CMP.aba = a;
+  document.querySelectorAll('[data-cmpaba]').forEach(function (b) { b.setAttribute('aria-selected', String(b.dataset.cmpaba === a)); });
+  $('cmp-ver').hidden = a !== 'ver'; $('cmp-editar').hidden = a !== 'editar';
+  if (a === 'ver') cmpAtualizar();
 }
 async function sendEmail(btn) {
   var err = $('compose-err'); err.hidden = true;
   var sess = await supabase.auth.getSession();
   if (!sess.data.session) { err.textContent = 'Sessão expirada. Recarregue a página e entre de novo.'; err.hidden = false; return; }
+  var corpo = (CMP && CMP.editado != null ? CMP.editado : (CMP ? CMP.e.body : $('compose-txt').value)).trim();
+  var html = CMP && CMP.editado == null && CMP.e.html ? CMP.e.html : null;
   btn.disabled = true; btn.textContent = 'Enviando…';
   try {
     var res = await fetch(WORKER_BASE + '/api/crm/enviar', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + sess.data.session.access_token },
-      body: JSON.stringify({ contato_id: activeCid, modelo: btn.dataset.tpl, assunto: $('compose-subj').value.trim(), corpo: $('compose-txt').value.trim(),
-        modelo_versao: btn.dataset.versao ? Number(btn.dataset.versao) : null })
+      body: JSON.stringify({ contato_id: activeCid, modelo: btn.dataset.tpl, assunto: $('compose-subj').value.trim(), corpo: corpo,
+        modelo_versao: btn.dataset.versao ? Number(btn.dataset.versao) : null, html: html || undefined })
     });
     var data = await res.json().catch(function () { return {}; });
     if (!res.ok) throw new Error(data.error || ('Erro ' + res.status));
     closeCompose(); await reload();
     if (state.view === 'pessoa') renderPessoa(); else if (state.view === 'reimpacto') renderReimpacto();
-    toast(data.aviso || 'E-mail enviado');
+    // Worker antigo ignora o HTML: avisa em vez de deixar a prévia dizer uma coisa e o e-mail outra.
+    toast(data.aviso || (html && data.formato !== 'html' ? 'E-mail enviado, mas em texto simples: o Worker ainda não foi atualizado (README, seção 22).' : 'E-mail enviado'), data.aviso || (html && data.formato !== 'html') ? 9000 : 0);
   } catch (e) {
     err.textContent = e.message; err.hidden = false;
     btn.disabled = false; btn.textContent = 'Enviar e-mail';
@@ -1273,6 +1393,8 @@ document.addEventListener('click', async function (e) {
   if (t.dataset.sinalpick) { $('compose-txt').value = SINAIS[+t.dataset.sinalpick].body(byC(activeCid)); return; }
   if (t.id === 'modal-cancel') return closeCompose();
   if (t.dataset.emailfor) return openCompose(t.dataset.emailfor, t.dataset.tplk);
+  if (t.dataset.cmpaba) return cmpAba(t.dataset.cmpaba);
+  if (t.id === 'cmp-restaurar') { CMP.editado = null; $('compose-txt').value = CMP.e.body; return cmpFormato(); }
   if (t.dataset.tplPick) { await salvar(); abrirModelo(t.dataset.tplPick); ST.blk = null; ST.tab = 'editar'; return renderModelos(); }
   if (t.dataset.stsec) { ST.sec = ST.sec === t.dataset.stsec ? '' : t.dataset.stsec; return renderEditor(); }
   if (t.dataset.blkopen !== undefined) { ST.blk = ST.blk === Number(t.dataset.blkopen) ? null : Number(t.dataset.blkopen); return renderEditor(); }
@@ -1393,6 +1515,8 @@ document.addEventListener('focusout', async function (e) {
 });
 // Estúdio: campos de texto dos blocos (data-f = o caminho dentro de blocos) e a busca da pessoa da prévia.
 document.addEventListener('input', function (e) {
+  if (CMP && e.target.id === 'compose-txt') { CMP.editado = e.target.value === CMP.e.body ? null : e.target.value; return cmpFormato(); }
+  if (CMP && e.target.id === 'compose-subj') { $('cmp-env-subj').textContent = e.target.value; return; }
   if (e.target.matches && e.target.matches('input[data-f], textarea[data-f]') && ST.d) { setCampo(e.target.dataset.f, e.target.value); return aoEditar(); }
   if (e.target.id === 'st-q') {
     ST.q = e.target.value; var pos = e.target.selectionStart; renderPrevia();
