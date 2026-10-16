@@ -34,7 +34,7 @@
     return;
   }
 
-  var PAIR_TAGS = ["BAND", "STATS", "CARDS", "LIST", "STEPS", "FAQ", "RESOURCES", "CHECKLIST", "FEEDBACK", "AFILIADO", "POLL",
+  var PAIR_TAGS = ["BAND", "STATS", "CARDS", "LIST", "STEPS", "FAQ", "RESOURCES", "CHECKLIST", "FEEDBACK", "AFILIADO", "PRODUTO", "POLL",
     "RESUMO", "CONFIANCA", "MITO", "QUIZ", "SELETOR", "PRAZO", "LINHA-DO-TEMPO", "ROTEIRO", "PERGUNTA", "PROXIMO-PASSO", "TRILHA"];
   var AFILIADO_NAME = "AFILIADO";
   var TOOL_TOKENS = [
@@ -50,7 +50,8 @@
     "[[AU-PAIR-FLE-SCROLL]]",
     "[[GALERIA]]",
     "[[GALERIA-2]]",
-    "[[GYG-WIDGET]]"
+    "[[GYG-WIDGET]]",
+    "[[NEWSLETTER-EIFFEL]]"
   ];
   var VITRINE_BANNER_TOKEN = "[[VITRINE-BANNER]]";
   var PROPAGANDA_TOKEN = "[[PROPAGANDA]]";
@@ -615,7 +616,8 @@
     ROTEIRO: "Seu roteiro\nLugar 1 | Descrição curta | https://\nLugar 2 | Descrição curta",
     PERGUNTA: "Ficou alguma dúvida? Pergunta pra mim. As mais pedidas viram artigo.",
     "PROXIMO-PASSO": "se prazo<=45 | Título pra quem está com pressa | Texto | Texto do botão | /produtos-digitais/\npadrao | Título padrão | Texto | Ver soluções | /produtos-digitais/",
-    TRILHA: "Nome da trilha\nslug-do-artigo-1\nslug-do-artigo-2\nslug-do-artigo-3"
+    TRILHA: "Nome da trilha\nslug-do-artigo-1\nslug-do-artigo-2\nslug-do-artigo-3",
+    PRODUTO: "Soluções digitais | Nome do produto | Por que ele ajuda neste ponto do artigo | Conhecer o produto | /produtos-digitais/produto/?slug= | /images/uploads/capa.png"
   };
   var RICH_HINT = {
     BAND: "Texto livre da faixa de destaque.",
@@ -638,14 +640,16 @@
     ROTEIRO: "1ª linha = título. Depois: nome | descrição | link opcional. A leitora marca \"Quero ir / Já fui\".",
     PERGUNTA: "Não é mais usado: o formulário \"Pergunta pra Ingryd\" (nome, e-mail e pergunta) aparece sozinho no fim de todo artigo. Pode apagar este bloco.",
     "PROXIMO-PASSO": "Uma regra por linha, de cima pra baixo: se condição | título | texto | botão | link. Condições: prazo<=45, prazo<0, enquete=Opção exata, seletor=chave, quiz<60, checklist=completo, confianca<=2. A linha padrao aparece quando nada bate.",
-    TRILHA: "1ª linha = nome da trilha. Depois, um slug de artigo por linha, na ordem da trilha (inclua o slug deste artigo)."
+    TRILHA: "1ª linha = nome da trilha. Depois, um slug de artigo por linha, na ordem da trilha (inclua o slug deste artigo).",
+    PRODUTO: "Uma linha: selo | título | descrição | texto do botão | link | imagem (opcional). Para produto do Por Dentro (não é publicidade: para afiliado, use o Card de afiliado)."
   };
 
   var RICH_NAME = {
     PRAZO: "⏳ Ferramenta: calculadora de prazo", QUIZ: "🎓 Ferramenta: mini-simulado", SELETOR: "🧭 Ferramenta: qual é o seu caso?",
     "LINHA-DO-TEMPO": "🗓️ Ferramenta: linha do tempo", ROTEIRO: "📍 Ferramenta: roteiro salvável", RESUMO: "⚡ Resumo em 20s",
     CONFIANCA: "🌡️ Termômetro de confiança", MITO: "🤔 Mito ou verdade", PERGUNTA: "💬 (antigo) Pergunta — pode apagar",
-    "PROXIMO-PASSO": "➡️ Próximo passo (Soluções digitais)", TRILHA: "🧵 Trilha de artigos"
+    "PROXIMO-PASSO": "➡️ Próximo passo (Soluções digitais)", TRILHA: "🧵 Trilha de artigos",
+    PRODUTO: "🛍️ Entrada de produto"
   };
 
   function richBlock(name) {
@@ -698,6 +702,7 @@
       group: "Vitrine & links", items: [
         { key: "banner-on", emoji: "🎯", label: "Banner de vitrine", special: "banner-on" },
         { key: "banner-off", emoji: "🚫", label: "Sem banner aqui", special: "banner-off" },
+        { key: "PRODUTO", emoji: "🛍️", label: "Entrada de produto", make: function () { return richBlock("PRODUTO"); } },
         { key: "AFILIADO", emoji: "🔗", label: "Card de afiliado", make: function () { return { id: uid(), type: "richblock", name: AFILIADO_NAME, inner: buildAffiliateInner("Ver oferta", "", "") }; } }
       ]
     },

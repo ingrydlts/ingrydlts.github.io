@@ -73,6 +73,14 @@
 //   catálogo. Abre em nova aba com rel="sponsored", como pede a lei pra
 //   conteúdo patrocinado)
 //
+//   [[PRODUTO]]
+//   Selo | Título | Descrição curta | Texto do botão | URL | Imagem (opcional)
+//   [[/PRODUTO]]
+//   (entrada pra um produto do próprio Por Dentro — Soluções digitais ou guia
+//   gratuito — no meio do texto, onde ele faz sentido. Diferente do AFILIADO:
+//   não é publicidade, então abre na mesma aba e não leva o selo. O clique
+//   vira 1 evento no bot, pra saber qual entrada vende)
+//
 //   [[POLL]]
 //   Pergunta da enquete
 //   Opção 1
@@ -158,7 +166,7 @@ function inline(text) {
     .replace(/\[(.+?)\]\((.+?)\)/g, '<a href="$2">$1</a>');
 }
 
-const BLOCK_TAGS = ["BAND", "STATS", "CARDS", "LIST", "STEPS", "FAQ", "RESOURCES", "CHECKLIST", "FEEDBACK", "AFILIADO", "POLL",
+const BLOCK_TAGS = ["BAND", "STATS", "CARDS", "LIST", "STEPS", "FAQ", "RESOURCES", "CHECKLIST", "FEEDBACK", "AFILIADO", "PRODUTO", "POLL",
   "RESUMO", "CONFIANCA", "MITO", "QUIZ", "SELETOR", "PRAZO", "LINHA-DO-TEMPO", "ROTEIRO", "PERGUNTA", "PROXIMO-PASSO", "TRILHA"];
 
 function escapeAttr(str) {
@@ -319,6 +327,21 @@ function renderAfiliado(lines) {
     '<div class="blog-banner-body"><div><span class="badge badge-publicite">Publicidade</span></div>' +
     '<a class="btn btn-pill" href="' + escapeAttr(href) + '" target="_blank" rel="sponsored noopener" style="background:var(--merlot); margin-top:10px;">' +
     inline(text) + " →</a></div></div></div>"
+  );
+}
+
+function renderProduto(lines) {
+  const [kicker, title, desc, label, url, image] = (lines[0] || "").split("|").map((s) => (s || "").trim());
+  const href = url || "#";
+  return (
+    '<div class="in-article-banner rt-produto"><div class="blog-banner">' +
+    (image ? '<div class="img-slot"><img src="' + escapeAttr(image) + '" alt="" loading="lazy"></div>' : "") +
+    '<div class="blog-banner-body">' +
+    (kicker ? '<span class="rt-produto-kicker">' + inline(kicker) + "</span>" : "") +
+    (title ? "<h3>" + inline(title) + "</h3>" : "") +
+    (desc ? "<p>" + inline(desc) + "</p>" : "") +
+    '<a class="btn btn-pill" href="' + escapeAttr(href) + '" data-produto-entrada="' + escapeAttr(href) + '" style="background:var(--merlot); margin-top:6px;">' +
+    inline(label || "Conhecer") + " →</a></div></div></div>"
   );
 }
 
@@ -512,6 +535,7 @@ const BLOCK_RENDERERS = {
   CHECKLIST: renderChecklist,
   FEEDBACK: renderFeedback,
   AFILIADO: renderAfiliado,
+  PRODUTO: renderProduto,
   POLL: renderPoll,
   RESUMO: renderResumo,
   CONFIANCA: renderConfianca,
