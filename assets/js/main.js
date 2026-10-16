@@ -134,6 +134,19 @@
     });
   }
 
+  // Clique numa entrada de produto do Por Dentro ([[PRODUTO]], ver markdown.js)
+  // conta como "solution_click", o mesmo evento do Próximo passo.
+  function initProdutoTracking() {
+    document.addEventListener("click", function (e) {
+      var link = e.target.closest("a[data-produto-entrada]");
+      if (!link || !window.PDEvents) return;
+      window.PDEvents.send("block", getArticleSlug(link), {
+        type: "solution_click",
+        id: ("entrada:" + link.dataset.produtoEntrada).slice(0, 120)
+      });
+    });
+  }
+
   // De onde a leitora veio até o artigo — 1 evento por carregamento de
   // página (não trava por localStorage como feedback/enquete: aqui o
   // interesse é contar visitas, não pessoas únicas). "source" é, em ordem
@@ -470,6 +483,7 @@
     initTabSwitcher();
     initFaqAccordion();
     initResourceTracking();
+    initProdutoTracking();
     initChecklist();
     initFeedbackButtons();
     initPollButtons();

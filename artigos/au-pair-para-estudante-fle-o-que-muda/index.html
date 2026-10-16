@@ -414,6 +414,7 @@
       "[[DIPLOMA-DOSSIE]]": { mountId: "tool-diploma-dossie", module: "/assets/js/tools/profissoes-reguladas.js" },
       "[[AU-PAIR-FLE-SCROLL]]": { mountId: "tool-au-pair-fle-scroll", module: "/assets/js/tools/au-pair-fle-scroll.js" },
       "[[GUIA-EMAIL-ALT30]]": { mountId: "tool-guia-email-alt30", module: "/assets/js/tools/guia-email-alt30.js" },
+      "[[NEWSLETTER-EIFFEL]]": { mountId: "tool-newsletter-eiffel", module: "/assets/js/tools/newsletter-crm.js", fn: "mountNewsletterEiffel" },
     };
     for (const [token, tool] of Object.entries(TOOL_TOKENS)) {
       bodyHtml = bodyHtml.replace("<p>" + token + "</p>", '<div id="' + tool.mountId + '"></div>');
