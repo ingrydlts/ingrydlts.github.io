@@ -127,6 +127,9 @@
     );
   }
 
+  // "estudos" reúne as categorias de estudo (link do e-mail da conversa → /conversa/)
+  const GRUPOS = { estudos: ["estudos", "formacao", "bolsas-de-estudo", "frances"] };
+
   (async function () {
     const slug = qs("cat");
     const content = document.getElementById("category-content");
@@ -142,7 +145,7 @@
       return;
     }
     const posts = publishedItems(data.items)
-      .filter((p) => categorySlug(p.category) === slug)
+      .filter((p) => (GRUPOS[slug] || [slug]).includes(categorySlug(p.category)))
       .sort((a, b) => (a.date < b.date ? 1 : -1));
 
     if (!posts.length) {
@@ -152,7 +155,7 @@
       return;
     }
 
-    const categoryName = posts[0].category;
+    const categoryName = GRUPOS[slug] ? "Estudos" : posts[0].category;
     document.title = categoryName + " — Blog — Por Dentro";
     document.getElementById("category-title").textContent = categoryName;
     document.getElementById("category-crumb-current").textContent = categoryName;

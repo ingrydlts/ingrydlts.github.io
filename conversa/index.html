@@ -42,6 +42,10 @@
 .btn-conv[disabled]{opacity:.6;cursor:wait}
 .conv-small{font-size:13px!important;margin:10px 0 0!important}
 .conv-err{font-size:13.5px!important;color:var(--merlot)!important;margin:10px 0 0!important}
+.btn-conv-link{text-decoration:none;box-sizing:border-box}
+.btn-conv-link:hover{filter:brightness(1.15)}
+.conv-more{margin-top:4px}
+.conv-more summary{cursor:pointer;font-size:14px;font-weight:600;color:#577328;padding:6px 0}
 .conv-hr{border-top:1px solid var(--borda-suave);margin:22px 0 18px}
 .conv-link{color:#577328;font-weight:600;text-decoration:none}
 .conv-link:hover{text-decoration:underline}
@@ -90,15 +94,22 @@
         <!-- 2. Ok -->
         <div id="st-ok" hidden>
           <span class="conv-ok">✓ Anotado: <span id="ok-cidade"></span></span>
-          <h1 id="ok-titulo">Obrigada! Quer me contar qual curso você está de olho?</h1>
-          <form id="f-texto" novalidate>
-            <label for="texto" class="sr-only" style="position:absolute;left:-9999px">O que você quer contar</label>
-            <textarea id="texto" maxlength="2000" placeholder="Ex.: Master em Ciência Política na Lyon 2"></textarea>
-            <button class="btn-conv" type="submit" id="b-enviar">Enviar para a Ingryd</button>
-            <p class="conv-err" id="texto-err" hidden></p>
-            <p class="conv-small">Chega direto para mim. Eu respondo no seu e-mail.</p>
-          </form>
-          <div id="texto-ok" class="conv-sent" hidden>✓ Recebi. Eu respondo no seu e-mail.</div>
+          <h1 id="ok-titulo">Obrigada pela resposta!</h1>
+          <p>Com ela, eu consigo te mandar comunicações mais personalizadas, pensadas para o seu contexto.</p>
+          <p>Enquanto isso, fique à vontade para passear pelos artigos da categoria Estudos.</p>
+          <a class="btn-conv btn-conv-link" href="/artigos/categoria/?cat=estudos">Ver os artigos de Estudos →</a>
+          <div class="conv-hr"></div>
+          <details class="conv-more" id="conv-more">
+            <summary>Quer me contar mais? (opcional)</summary>
+            <form id="f-texto" novalidate>
+              <label for="texto" class="sr-only" style="position:absolute;left:-9999px">O que você quer contar</label>
+              <textarea id="texto" maxlength="2000" placeholder="Ex.: Master em Ciência Política na Lyon 2"></textarea>
+              <button class="btn-conv" type="submit" id="b-enviar">Enviar para a Ingryd</button>
+              <p class="conv-err" id="texto-err" hidden></p>
+              <p class="conv-small">Chega direto para mim. Eu respondo no seu e-mail.</p>
+            </form>
+            <div id="texto-ok" class="conv-sent" hidden>✓ Recebi. Eu respondo no seu e-mail.</div>
+          </details>
           <div id="ok-check" hidden>
             <div class="conv-hr"></div>
             <a class="conv-link" id="ok-check-a" href="#" target="_blank" rel="noopener">Abrir o meu checklist →</a>
@@ -182,14 +193,19 @@
     });
   }
 
-  function titulo(nome, r) {
-    var oi = 'Obrigada' + (nome ? ', ' + nome : '') + '! ';
-    if (r === 'outra') return oi + 'Qual cidade, e qual curso, você está de olho?';
-    if (r === 'nao-sei') return oi + 'Quer me contar o que você está pensando em estudar?';
-    return oi + 'Quer me contar qual curso você está de olho?';
-  }
+  function titulo(nome) { return 'Obrigada' + (nome ? ', ' + nome : '') + ' pela resposta!'; }
+
+  var ROTULOS = { paris: 'Paris', lyon: 'Lyon', toulouse: 'Toulouse', montpellier: 'Montpellier', bordeaux: 'Bordeaux', lille: 'Lille', outra: 'Outra cidade', 'nao-sei': 'Ainda não sei' };
 
   function tocar() {
+    // Link do "Enviar teste" do estúdio de e-mails: não é um link assinado, então não grava nada.
+    // Mostra a página de agradecimento para conferir como fica.
+    if (p.t === 'teste' && ROTULOS[p.r]) {
+      $('ok-cidade').textContent = ROTULOS[p.r];
+      $('ok-titulo').textContent = titulo('');
+      $('f-texto').hidden = true;
+      return estado('ok');
+    }
     if (!p.t || !p.r) { $('erro-txt').textContent = 'Este link está incompleto. Volte ao e-mail e toque de novo, ou responda o e-mail: chega direto para mim.'; $('b-tentar').hidden = true; return estado('erro'); }
     estado('carregando');
     post('toque', { t: p.t, r: p.r }).then(function (j) {
@@ -202,7 +218,7 @@
         return estado('erro');
       }
       $('ok-cidade').textContent = j.cidade;
-      $('ok-titulo').textContent = titulo(j.nome, p.r);
+      $('ok-titulo').textContent = titulo(j.nome);
       if (j.checklist) { $('ok-check-a').href = j.checklist; $('ok-check').hidden = false; }
       estado('ok');
     }).catch(function () { estado('erro'); });
