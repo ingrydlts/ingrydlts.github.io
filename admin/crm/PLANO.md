@@ -15,7 +15,7 @@ Backend: o **mesmo Supabase** do app (projeto `hslhpktfgxwfvljvsxkj`). Painel: e
 | Caixa de entrada (Perguntas únicas + Respostas: e-mail, toque no e-mail 2, página /conversa/) → "Abrir conversa" leva à aba Conversa da ficha | `perguntas_unicas`, `respostas_email` (`db/crm-fase0-email-guia.sql`) | perguntas: painel e formulário dos artigos prontos. Respostas por e-mail: chegam por `respostas@imigrantepordentro.com` (Email Routing → Worker `email()`), README do Worker seção 17 |
 | Lembretes de prazo (Hoje) | `lembretes_prazo` (`db/crm-fase2c-lembretes.sql`) | pronto: a calculadora `[[PRAZO]]` dos artigos chama `pedir_lembrete_prazo`; o card mostra quem avisar nos próximos 7 dias |
 | Reimpactar (segmentos) | coluna `segmento` de `crm_contatos` (regras na view) | pronto (envio via Worker → Brevo; ver README do Worker, seção 16) |
-| Modelos de e-mail | `TPLS` em `crm.js` | pronto |
+| Modelos de e-mail (lista, versões, Exportar) | `modelos_email`, `modelos_email_versoes` (`db/crm-modelos-email.sql`); sem a migração, `TPLS` em `crm.js` | lista pronta; o painel ainda monta os 8 manuais com `TPLS` até o editor (Estúdio de e-mails 2) |
 
 ## Extensão: prazo do VLS-TS (guia gratuito)
 
@@ -52,6 +52,17 @@ Conversa ficam em `emails_enviados` com o modelo `resposta` e não contam no Rei
 a Conversa junta `emails_enviados` e `respostas_email` num fio só e responde por `POST /api/crm/responder` (Worker), com
 `In-Reply-To`/`References` para cair na mesma conversa do Gmail. Passo a passo e o limite do Brevo: `cms-oauth-worker/README.md`,
 seção 19. Testes: `db/testes` → `APP_DB_DIR=<POR DENTRO APP>/db npm run test:fase1b` e `node cms-oauth-worker/testes/crm-email.test.mjs`.
+
+## Estúdio de e-mails 1 — todos os modelos num lugar só (16/10)
+
+`db/crm-modelos-email.sql` (rodar **depois** de `crm-fase1b-resposta.sql`; idempotente, não sobrescreve o que você mudou):
+`modelos_email` (um por modelo: objetivo, tipo, como sai, quem recebe, variáveis), `modelos_email_versoes` (texto, prévia
+e HTML de cada versão; etapa rascunho → revisao → no_ar → arquivado; uma No ar por modelo; versão que já saiu não muda
+de texto), `modelo_email_nova_versao()`, `publicar_modelo_email()` e `emails_enviados.modelo_versao`. Os 10 modelos de
+hoje entram como versão 1 No ar. O Worker lê a versão No ar de `cf_guia_1` e `cf_guia_conversa` e usa o texto do código
+como reserva. Passo a passo: `cms-oauth-worker/README.md`, seção 20. Testes: `db/testes` →
+`APP_DB_DIR=<POR DENTRO APP>/db npm run test:modelos` e `node cms-oauth-worker/testes/crm-email.test.mjs`.
+Fica para as próximas entregas: o editor (2), criar modelo e sequências (3), números por modelo e versão (4).
 
 ## Etapas
 

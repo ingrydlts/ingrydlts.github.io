@@ -2,6 +2,9 @@
 // email() e a rota /api/crm/guia-capturado (e-mail 1 do guia). Tudo com fetch falso: não chama
 // Supabase nem Brevo. Exemplos fictícios (nada de dado real neste repositório público).
 //
+// Estúdio de e-mails, entrega 1: o texto dos modelos em admin/crm/db/crm-modelos-email.sql monta os mesmos
+// e-mails de hoje (os 2 do Worker e os 8 do painel), e o Worker usa a tabela com o texto de hoje de reserva.
+//
 // Uso: node cms-oauth-worker/testes/crm-email.test.mjs   (Node 18+, sem dependências)
 import { readFileSync, writeFileSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -14,11 +17,12 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 const dir = mkdtempSync(path.join(tmpdir(), 'crm-email-'));
 const arq = path.join(dir, 'worker.mjs');
 writeFileSync(arq, readFileSync(path.resolve(HERE, '../worker.js'), 'utf8') +
-  '\nexport { crmLerEmail, crmTirarCitacao, crmDecodePalavras, cfGuia1, crmBytesParaBinario, cfGuiaConversa, crmLinkAssinar, crmLinkConferir, CF_CIDADES, crmMontarResposta, crmAssuntoBase, crmIdMsg };\n');
+  '\nexport { crmLerEmail, crmTirarCitacao, crmDecodePalavras, cfGuia1, crmBytesParaBinario, cfGuiaConversa, crmLinkAssinar, crmLinkConferir, CF_CIDADES, crmMontarResposta, crmAssuntoBase, crmIdMsg, crmPreencher, crmMontarModelo, cfGuia1Vars, cfGuiaConversaVars };\n');
 const mod = await import(pathToFileURL(arq).href);
 rmSync(dir, { recursive: true, force: true });
 const worker = mod.default;
-const { crmLerEmail, crmTirarCitacao, crmDecodePalavras, cfGuia1, crmBytesParaBinario, cfGuiaConversa, crmLinkAssinar, crmLinkConferir, CF_CIDADES, crmMontarResposta, crmAssuntoBase, crmIdMsg } = mod;
+const { crmLerEmail, crmTirarCitacao, crmDecodePalavras, cfGuia1, crmBytesParaBinario, cfGuiaConversa, crmLinkAssinar, crmLinkConferir, CF_CIDADES, crmMontarResposta, crmAssuntoBase, crmIdMsg,
+  crmPreencher, crmMontarModelo, cfGuia1Vars, cfGuiaConversaVars } = mod;
 
 let passed = 0, failed = 0;
 function check(label, cond) { if (cond) passed++; else { failed++; console.log('  FALHOU:', label); } }
@@ -439,6 +443,138 @@ check('sem conversa: usa o assunto escrito e não manda cabeçalhos de fio', res
 
 fakeFetch([...adminOk, [/\/crm_contatos\?/, { body: [] }]]);
 check('ficha não encontrada: 404', (await responder({ contato_id: CID, texto: 'Oi' })).status === 404);
+
+console.log('\n== Estúdio de e-mails 1: o texto dos modelos (crm-modelos-email.sql) ==');
+// O texto de cada modelo fica entre as tags $<chave>_<campo>$ do SQL; o teste do banco confere que é o que fica gravado.
+const SQL = readFileSync(path.resolve(HERE, '../../admin/crm/db/crm-modelos-email.sql'), 'utf8');
+const tagSql = (k, campo) => { const r = new RegExp('\\$' + k + '_' + campo + '\\$([\\s\\S]*?)\\$' + k + '_' + campo + '\\$').exec(SQL); return r ? r[1] : null; };
+const linhaSql = (k, versao = 1) => ({ versao, assunto: tagSql(k, 'assunto'), preheader: tagSql(k, 'pre'), corpo_texto: tagSql(k, 'texto'), corpo_html: tagSql(k, 'html') });
+
+check('formato: variável, trecho com e sem valor', crmPreencher('{#a}A={a}{/a}{^a}sem a{/a}.{^b}sem b{/b}', { a: 'x', b: '' }, false) === 'A=x.sem b');
+check('formato: no HTML o valor é escapado; o pronto para HTML não', crmPreencher('{a}|{b}', { a: '<i>', b: { texto: 't', html: '<b>h</b>' } }, true) === '&lt;i&gt;|<b>h</b>' &&
+  crmPreencher('{b}', { b: { texto: 't', html: '<b>' } }, false) === 't');
+check('formato: trechos dentro de trechos', crmPreencher('{#a}1{#b}2{/b}3{/a}', { a: 1, b: false }, false) === '13');
+check('formato: valor com {chaves} não é lido de novo', crmPreencher('{a}', { a: '{b}' }, false) === '{b}');
+let estoura = (f) => { try { f(); return false; } catch (e) { return true; } };
+check('formato: variável desconhecida dá erro (vira reserva)', estoura(() => crmPreencher('Oi {apelido}', { nome: 'a' }, false)) && estoura(() => crmPreencher('{#x}a{/x}', {}, false)));
+check('formato: trecho sem fechamento dá erro', estoura(() => crmPreencher('{#a}aberto', { a: 1 }, false)));
+
+// O e-mail 1 e o e-mail 2 montados com o texto da tabela são idênticos aos de hoje (cfGuia1 e cfGuiaConversa).
+let difs = 0, casos = 0;
+for (const nome of ['Ana Maria', '', '  Bia  ', '<b>&"\'']) for (const objetivo of [undefined, 'cf-nao-comecei', 'cf-escolhendo-curso', 'cf-juntando-documentos', 'cf-dossie-enviado', 'cf-entrevista-resposta', 'outra'])
+  for (const cfNivel of [undefined, 'l1', 'arq', 'l2l3', 'lpro', 'master', 'escola', 'zz']) for (const url of [NOTION, NOTION + '?pvs=4']) {
+    const c = { email: 'ana@example.com', nome, respostas: { objetivo, cfNivel } };
+    const hoje = cfGuia1(c, url), tabela = crmMontarModelo(linhaSql('cf_guia_1'), cfGuia1Vars(c, url));
+    casos++; for (const f of ['assunto', 'pre', 'texto', 'html']) if (hoje[f] !== tabela[f]) difs++;
+  }
+check('e-mail 1 da tabela = e-mail 1 de hoje (' + casos + ' combinações de nome, etapa, nível e link)', difs === 0 && casos === 448);
+difs = 0;
+for (const nome of ['Ana Maria', '', '<b>']) {
+  const c = { id: CID, email: 'ana@example.com', nome };
+  const hoje = cfGuiaConversa(c, tk), tabela = crmMontarModelo(linhaSql('cf_guia_conversa'), cfGuiaConversaVars(c, tk));
+  for (const f of ['assunto', 'pre', 'texto', 'html']) if (hoje[f] !== tabela[f]) difs++;
+}
+check('e-mail 2 da tabela = e-mail 2 de hoje (com e sem nome)', difs === 0);
+check('a tabela diz a versão que saiu', crmMontarModelo(linhaSql('cf_guia_1', 3), cfGuia1Vars({ email: 'a@example.com', respostas: {} }, NOTION)).versao === 3);
+
+// Os 8 do painel: o texto da tabela, preenchido como o painel preenche hoje, dá o mesmo e-mail de TPLS (crm.js).
+const crmJs = readFileSync(path.resolve(HERE, '../../admin/crm/crm.js'), 'utf8');
+const trecho = crmJs.slice(crmJs.indexOf('var TPLS = {'), crmJs.indexOf('var TPL_ORDER'));
+const PERS = { au_pair_estudante: 'Au pair → estudante', campus_france: 'Campus France', conjuge: 'Cônjuge', sem: 'Sem checklist' };
+const CAL = 'https://cal.example/1-1?overlayCalendar=true', APP = 'https://app.example/';
+const pnT = (c) => (c.nome || c.email.split('@')[0]).trim().split(/\s+/)[0];
+const personaT = (c) => PERS[c.persona || 'sem'] || c.persona;
+const fmtT = (s) => { const r = /^(\d{4})-(\d{2})-(\d{2})/.exec(s || ''); return r ? r[3] + '/' + r[2] + '/' + r[1] : '—'; };
+const TPLS = new Function('pn', 'personaLabel', 'lk', 'fmtDay', 'CAL_LINK', trecho + '; return TPLS;')(pnT, personaT, () => APP, fmtT, CAL);
+const varsPainel = (c) => {
+  const v = { nome: pnT(c), persona: personaT(c).toLowerCase(), link_acesso: APP, link_agenda: CAL, au_pair: c.persona === 'au_pair_estudante', motivo: c.motivo || '',
+    prazo_vencido: c.dias_para_prazo != null && Number(c.dias_para_prazo) < 0, prazo_a_vencer: c.dias_para_prazo != null && Number(c.dias_para_prazo) >= 0,
+    prazo_limite: fmtT(c.prazo_limite), dias_para_prazo: c.dias_para_prazo };
+  for (const k of ['pesquisando', 'escolhendo_escola', 'recusa_idade', 'buscando_empresa', 'montando_contrato']) v['etapa_' + k] = !!(c.respostas && c.respostas.objetivo === 'alt-' + k.replace(/_/g, '-'));
+  return v;
+};
+const pessoas = [
+  { email: 'ana.maria@example.com', nome: 'Ana Maria', persona: 'au_pair_estudante', motivo: 'o prazo do VLS-TS vence em 20 dias', dias_para_prazo: 20, prazo_limite: '2026-11-05', respostas: { objetivo: 'alt-recusa-idade' } },
+  { email: 'bia@example.com', nome: null, persona: 'campus_france', dias_para_prazo: -4, prazo_limite: '2026-10-12', respostas: { objetivo: 'alt-montando-contrato' } },
+  { email: 'cris@example.com', nome: 'Cris', persona: null, dias_para_prazo: 0, prazo_limite: '2026-10-16', respostas: {} },
+  { email: 'dani@example.com', nome: 'Dani', persona: 'conjuge', dias_para_prazo: null, respostas: null },
+  ...['pesquisando', 'escolhendo-escola', 'buscando-empresa'].map((o) => ({ email: 'e@example.com', nome: 'Eva', persona: 'pvt', respostas: { objetivo: 'alt-' + o } })),
+];
+const OITO = ['boas_vindas', 'naoabriu', 'naoclicou', 'cliquenaoapp', 'parouapp', 'guia_chamada', 'guia_plataforma', 'guia_alternancia'];
+difs = 0; casos = 0;
+for (const k of OITO) for (const c of pessoas) {
+  const t = TPLS[k].make(c), m8 = crmMontarModelo(linhaSql(k), varsPainel(c));
+  casos++; if (m8.assunto !== t[0].replace(/^Assunto: /, '') || m8.texto !== t[1]) { difs++; if (difs < 3) console.log('  ', k, JSON.stringify(m8.assunto), JSON.stringify(t[0])); }
+}
+check('os 8 do painel: texto da tabela = texto de hoje (' + casos + ' casos)', difs === 0 && casos === 8 * pessoas.length);
+check('são 10 modelos no SQL', [...OITO, 'cf_guia_1', 'cf_guia_conversa'].every((k) => tagSql(k, 'assunto') && tagSql(k, 'texto')));
+
+console.log('\n== Estúdio de e-mails 1: o Worker lê a versão No ar ==');
+const modeloRota = (linha) => [/\/modelos_email_versoes\?/, { body: linha ? [linha] : [] }];
+const envioOk = [[/\/emails_enviados$/, { method: 'POST', status: 201, body: [{ id: 41 }] }], [/api\.brevo\.com/, { body: { messageId: '<m41@smtp.example.net>' } }]];
+const capturar = async (regras) => {
+  chamadas = []; fakeFetch([contatoOk, linkOk, ...regras, ...envioOk]);
+  const r = await worker.fetch(req({ contato_id: CID, guia: 'etudes-en-france-2027-2028' }), env, {});
+  return { status: r.status, brevo: chamadas.find((c) => /brevo/.test(c.url)), reserva: chamadas.find((c) => /emails_enviados$/.test(c.url) && c.method === 'POST'),
+    leitura: chamadas.find((c) => /modelos_email_versoes/.test(c.url)) };
+};
+const contatoTeste = contatoOk[1].body[0];
+const hoje1 = cfGuia1(contatoTeste, NOTION);
+let cap = await capturar([modeloRota(linhaSql('cf_guia_1'))]);
+check('e-mail 1: lê só a versão No ar de cf_guia_1, com a service_role', /modelos_email_versoes\?.*chave=eq\.cf_guia_1&etapa=eq\.no_ar/.test(cap.leitura.url) && cap.leitura.headers.apikey === 'srv');
+check('e-mail 1 com o texto da tabela sai idêntico ao de hoje', cap.status === 200 && cap.brevo.body.subject === hoje1.assunto &&
+  cap.brevo.body.textContent === hoje1.texto && cap.brevo.body.htmlContent === hoje1.html);
+check('grava a versão que saiu', cap.reserva.body.modelo_versao === 1 && cap.reserva.body.corpo === hoje1.texto);
+
+// Trocar o texto na tabela muda o e-mail, sem colar o Worker.
+const mudada = { ...linhaSql('cf_guia_1', 2), assunto: '{nome}, o seu checklist chegou', corpo_texto: tagSql('cf_guia_1', 'texto').replace('Ficou com dúvida?', 'Alguma dúvida?') };
+mudada.corpo_html = mudada.corpo_html.replace('Ficou com dúvida?', 'Alguma dúvida?');
+cap = await capturar([modeloRota(mudada)]);
+check('trocar o texto na tabela muda o e-mail', cap.brevo.body.subject === 'Ana, o seu checklist chegou' &&
+  cap.brevo.body.textContent.includes('Alguma dúvida? É só responder') && cap.brevo.body.htmlContent.includes('Alguma dúvida?</b>') && cap.reserva.body.modelo_versao === 2);
+check('o modelo novo pode ser só texto (o HTML sai do texto)', (await capturar([modeloRota({ versao: 4, assunto: 'Oi {nome}', corpo_texto: 'Seu link: {link_checklist}', corpo_html: null })]))
+  .brevo.body.htmlContent.includes('<a href="' + NOTION + '?utm_source=email'));
+
+console.error = () => {};
+cap = await capturar([[/\/modelos_email_versoes\?/, { status: 500, body: { message: 'fora do ar' } }]]);
+check('tabela fora do ar: sai o texto de hoje, sem versão', cap.status === 200 && cap.brevo.body.textContent === hoje1.texto && !('modelo_versao' in cap.reserva.body));
+cap = await capturar([modeloRota(null)]);
+check('sem versão No ar: sai o texto de hoje', cap.brevo.body.htmlContent === hoje1.html && !('modelo_versao' in cap.reserva.body));
+cap = await capturar([[/\/modelos_email_versoes\?/, { status: 404, body: { code: '42P01', message: 'relation does not exist' } }]]);
+check('antes de rodar o SQL (tabela não existe): sai o texto de hoje', cap.brevo.body.textContent === hoje1.texto);
+cap = await capturar([modeloRota({ ...linhaSql('cf_guia_1', 5), corpo_texto: 'Oi {apelido}!' })]);
+check('texto com variável que não existe: sai o texto de hoje', cap.brevo.body.textContent === hoje1.texto && !('modelo_versao' in cap.reserva.body));
+cap = await capturar([modeloRota({ ...linhaSql('cf_guia_1', 7), corpo_texto: 'Oi {nome}! [escrever aqui]' })]);
+check('texto com [colchetes] esquecido: sai o texto de hoje', cap.brevo.body.textContent === hoje1.texto);
+cap = await capturar([modeloRota({ ...linhaSql('cf_guia_1', 6), assunto: '{^nome}{/nome}' })]);
+check('assunto que fica vazio: sai o texto de hoje', cap.brevo.body.subject === hoje1.assunto);
+const fetchAntes = globalThis.fetch;
+chamadas = []; fakeFetch([contatoOk, linkOk, ...envioOk]);
+const fetchFalso = globalThis.fetch;
+globalThis.fetch = async (url, opt) => { if (/modelos_email_versoes/.test(String(url))) throw new Error('rede caiu'); return fetchFalso(url, opt); };
+res = await worker.fetch(req({ contato_id: CID, guia: 'etudes-en-france-2027-2028' }), env, {});
+check('rede caiu na leitura do modelo: sai o texto de hoje', res.status === 200 && chamadas.find((c) => /brevo/.test(c.url)).body.textContent === hoje1.texto);
+globalThis.fetch = fetchAntes;
+console.error = errosAntes;
+
+// E-mail 2: lê o modelo uma vez por rodada e preenche os botões de cada pessoa.
+chamadas = [];
+fakeFetch([pend, modeloRota(linhaSql('cf_guia_conversa')), [/\/emails_enviados$/, { method: 'POST', status: 201, body: [{ id: 51 }] }], [/api\.brevo\.com/, { body: { messageId: '<m5@smtp.example.net>' } }]]);
+resumo = await (async () => { let p; await worker.scheduled({}, envL, { waitUntil(x) { p = x; } }); return p; })();
+const env2 = chamadas.filter((c) => /brevo/.test(c.url));
+const tk2 = /t=([A-Za-z0-9_.-]+)/.exec(env2[1].body.textContent)[1];
+const hoje2 = cfGuiaConversa({ id: CID2, email: 'bia@example.com', nome: 'Bia' }, tk2);
+check('e-mail 2: lê o modelo uma vez só para os dois', resumo.enviados === 2 && chamadas.filter((c) => /modelos_email_versoes\?.*chave=eq\.cf_guia_conversa&etapa=eq\.no_ar/.test(c.url)).length === 1);
+check('e-mail 2 com o texto da tabela sai idêntico ao de hoje', env2[1].body.subject === hoje2.assunto && env2[1].body.textContent === hoje2.texto && env2[1].body.htmlContent === hoje2.html);
+check('e-mail 2: grava a versão e continua com List-Unsubscribe', chamadas.filter((c) => /emails_enviados$/.test(c.url) && c.method === 'POST').every((c) => c.body.modelo_versao === 1) &&
+  /^<mailto:/.test(env2[0].body.headers['List-Unsubscribe']));
+chamadas = [];
+fakeFetch([pend, modeloRota({ ...linhaSql('cf_guia_conversa', 2), assunto: '{nome}, para onde você vai?' }), [/\/emails_enviados$/, { method: 'POST', status: 201, body: [{ id: 52 }] }], [/api\.brevo\.com/, { body: { messageId: '<m6@x.net>' } }]]);
+resumo = await (async () => { let p; await worker.scheduled({}, envL, { waitUntil(x) { p = x; } }); return p; })();
+check('e-mail 2: trocar o assunto na tabela muda o e-mail', chamadas.filter((c) => /brevo/.test(c.url)).map((c) => c.body.subject).join('|') === 'Ana, para onde você vai?|Bia, para onde você vai?');
+chamadas = []; fakeFetch([[/\/rpc\/crm_conversa_pendentes$/, { method: 'POST', body: [] }]]);
+resumo = await (async () => { let p; await worker.scheduled({}, envL, { waitUntil(x) { p = x; } }); return p; })();
+check('ninguém para receber: nem lê o modelo', resumo.pendentes === 0 && !chamadas.some((c) => /modelos_email/.test(c.url)));
 
 console.log(`\n${passed} passaram, ${failed} falharam`);
 process.exit(failed ? 1 : 0);

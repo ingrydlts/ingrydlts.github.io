@@ -1480,6 +1480,96 @@ ${passoHtml}
   return { assunto, pre, texto, html };
 }
 
+// ---------- Estúdio de e-mails, entrega 1: o texto dos modelos mora no Supabase ----------
+// admin/crm/db/crm-modelos-email.sql guarda cada modelo em modelos_email e o texto, com as versões, em
+// modelos_email_versoes. Na hora de enviar, o Worker lê a versão No ar (service_role) e preenche as variáveis.
+// Se a tabela falhar (fora do ar, sem a migração, texto com variável que não existe), sai o texto de hoje,
+// que continua aqui no código (cfGuia1, cfGuiaConversa). Quem recebe e quando continua no código.
+//
+// Formato do texto:
+//   {nome}             troca pelo valor (no HTML, escapado). Vazio se faltar.
+//   {#nivel}…{/nivel}  o trecho só aparece se a variável tiver valor.
+//   {^nivel}…{/nivel}  o trecho só aparece se a variável NÃO tiver valor.
+// Variáveis {assunto} e {pre} (a prévia) também valem no corpo.
+function crmTemValor(v) { return !(v == null || v === false || v === ''); }
+
+function crmPreencher(tpl, vars, html) {
+  const secoes = (s) => s.replace(/\{([#^])(\w+)\}([\s\S]*?)\{\/\2\}/g, (_, tipo, k, dentro) => {
+    if (!(k in vars)) throw new Error('variável desconhecida: ' + k);
+    return (tipo === '#') === crmTemValor(vars[k]) ? secoes(dentro) : '';
+  });
+  const out = secoes(String(tpl)).replace(/\{(\w+)\}/g, (_, k) => {
+    if (!(k in vars)) throw new Error('variável desconhecida: ' + k);
+    const v = vars[k];
+    if (v && typeof v === 'object') return html ? v.html : v.texto; // já vem pronta para cada formato (ex.: botões)
+    if (!crmTemValor(v) || v === true) return '';
+    return html ? crmEscapeHtml(v) : String(v);
+  });
+  if (/\{[#^/]\w+\}/.test(out)) throw new Error('trecho {#…} sem fechamento');
+  return out;
+}
+
+// Versão do modelo (linha de modelos_email_versoes) + variáveis → { assunto, pre, texto, html, versao }.
+function crmMontarModelo(v, vars) {
+  const assunto = crmPreencher(v.assunto, vars, false);
+  if (!assunto.trim() || assunto.length > 200) throw new Error('assunto vazio ou grande demais');
+  const pre = v.preheader ? crmPreencher(v.preheader, vars, false) : '';
+  const todas = { ...vars, assunto, pre };
+  const texto = crmPreencher(v.corpo_texto, todas, false);
+  if (!texto.trim()) throw new Error('texto vazio');
+  const html = v.corpo_html ? crmPreencher(v.corpo_html, todas, true) : crmTextToHtml(texto);
+  return { assunto, pre, texto, html, versao: v.versao };
+}
+
+// A versão No ar de um modelo, ou null se não der para ler (aí vale o texto de reserva).
+async function crmModeloNoAr(env, chave) {
+  try {
+    const res = await fetch(`${CRM_SUPABASE_URL}/rest/v1/modelos_email_versoes?select=versao,assunto,preheader,corpo_texto,corpo_html` +
+      `&chave=eq.${encodeURIComponent(chave)}&etapa=eq.no_ar&limit=1`, { headers: crmServiceHeaders(env) });
+    if (!res.ok) { console.error('crm/modelos: não li ' + chave + ' (' + res.status + '), uso o texto de reserva'); return null; }
+    const rows = await res.json();
+    const v = Array.isArray(rows) ? rows[0] : null;
+    if (!v || !v.assunto || !v.corpo_texto) { console.error('crm/modelos: ' + chave + ' sem versão No ar, uso o texto de reserva'); return null; }
+    return v;
+  } catch (e) {
+    console.error('crm/modelos: ' + chave + ' — ' + e + ', uso o texto de reserva');
+    return null;
+  }
+}
+
+// vars e reserva são funções: só montamos o que vai ser usado.
+function crmMontarOuReserva(chave, tpl, vars, reserva) {
+  if (tpl) {
+    try {
+      const mail = crmMontarModelo(tpl, vars());
+      // A mesma trava do envio manual: nenhum [trecho entre colchetes] esquecido sai sozinho para a pessoa.
+      if (/\[[^\]\n]{2,60}\]/.test(mail.assunto + '\n' + mail.texto)) throw new Error('trecho entre [colchetes]');
+      return mail;
+    }
+    catch (e) { console.error('crm/modelos: ' + chave + ' v' + tpl.versao + ' com erro (' + e.message + '), uso o texto de reserva'); }
+  }
+  return reserva();
+}
+
+// Variáveis do e-mail 1. A etapa vira um sim/não por etapa ({#etapa_juntando_documentos}…), para o texto
+// de cada etapa morar no modelo; nível e prazo vêm do calendário (CF_NIVEIS).
+function cfGuia1Vars(contato, notionUrl) {
+  const resp = contato.respostas || {};
+  const nivel = CF_NIVEIS[resp.cfNivel];
+  const v = {
+    nome: crmPrimeiroNome(contato.nome), email: contato.email,
+    link_checklist: notionUrl + (notionUrl.includes('?') ? '&' : '?') + CF_UTM,
+    nivel: nivel ? nivel[0] : '', prazo_nivel: nivel ? nivel[1] : '',
+  };
+  for (const k of Object.keys(CF_PASSO)) v['etapa_' + k.replace(/^cf-/, '').replace(/-/g, '_')] = resp.objetivo === k;
+  return v;
+}
+
+// Variáveis do e-mail 2. Os botões levam o link assinado da pessoa e vêm prontos do código.
+function cfGuiaConversaVars(contato, token) {
+  return { nome: crmPrimeiroNome(contato.nome), email: contato.email, botoes_cidade: cfBotoesCidade(token) };
+}
+
 async function handleCrmGuiaCapturado(request, env) {
   if (!crmSegredoIgual(request.headers.get('X-Crm-Hook') || '', env.CRM_HOOK_SECRET || '')) {
     return new Response('Unauthorized', { status: 401 });
@@ -1504,7 +1594,9 @@ async function handleCrmGuiaCapturado(request, env) {
   if (!contato) return json({ error: 'Contato não encontrado.' }, 404);
   if (!link || !/^https:\/\//.test(link.notion_url || '')) return json({ error: 'Guia sem link do Notion em guias_links.' }, 500);
 
-  const r = await crmEnviarGuia(env, sb, contato, modelo, cfGuia1(contato, link.notion_url));
+  const tpl = await crmModeloNoAr(env, modelo);
+  const mail = crmMontarOuReserva(modelo, tpl, () => cfGuia1Vars(contato, link.notion_url), () => cfGuia1(contato, link.notion_url));
+  const r = await crmEnviarGuia(env, sb, contato, modelo, mail);
   if (r === 'ja') return json({ ok: true, ja_enviado: true });
   if (r === 'reserva') return json({ error: 'Não consegui registrar o envio.' }, 500);
   if (r === 'brevo') return json({ error: 'O Brevo recusou o envio.' }, 502);
@@ -1518,7 +1610,9 @@ async function handleCrmGuiaCapturado(request, env) {
 async function crmEnviarGuia(env, sb, contato, modelo, mail, novidades) {
   const ins = await fetch(`${CRM_SUPABASE_URL}/rest/v1/emails_enviados`, {
     method: 'POST', headers: { ...sb, Prefer: 'return=representation' },
-    body: JSON.stringify({ contato_id: contato.id, modelo, assunto: mail.assunto, corpo: mail.texto, status: 'agendado', enviado_em: new Date().toISOString() }),
+    body: JSON.stringify({ contato_id: contato.id, modelo, assunto: mail.assunto, corpo: mail.texto, status: 'agendado', enviado_em: new Date().toISOString(),
+      // Só quando o texto veio da tabela (a coluna nasce no mesmo SQL que a tabela): o texto de reserva não tem versão.
+      ...(mail.versao ? { modelo_versao: mail.versao } : {}) }),
   });
   if (ins.status === 409) return 'ja';
   if (!ins.ok) {
@@ -1617,10 +1711,24 @@ async function crmLinkConferir(env, token, agoraMs) {
   return { contato_id: m[1] };
 }
 
+// Os 8 botões de cidade do e-mail 2, no texto puro e no HTML. Vira a variável {botoes_cidade} do modelo.
+function cfBotoesCidade(token) {
+  const link = (k) => CRM_CONVERSA_URL + '?r=' + k + '&t=' + encodeURIComponent(token);
+  const e = crmEscapeHtml;
+  const sans = "font-family:'Inter', Arial, Helvetica, sans-serif;";
+  const html = CF_CIDADES.map(([k, rot], i) => {
+    const alt = i >= 6;
+    return `<a href="${e(link(k))}" style="display:inline-block; margin:0 6px 8px 0; ${sans} font-size:14px; font-weight:600; text-decoration:none; padding:9px 16px; border-radius:999px; ` +
+      (alt ? 'border:1.5px solid #CFC9C0; background:#FFFFFF; color:#6E6862;' : 'border:1.5px solid #577328; background:#E4EAD6; color:#3F5519;') + `">${e(rot)}</a>`;
+  }).join('');
+  return { texto: CF_CIDADES.map(([k, rot]) => rot + ': ' + link(k)).join('\n'), html };
+}
+
 // Monta o e-mail 2 (texto aprovado no artefato em 15/10). token = o link assinado da pessoa.
+// É a reserva: o texto que vale é o do modelo No ar em modelos_email_versoes (cfGuiaConversaVars).
 function cfGuiaConversa(contato, token) {
   const nome = crmPrimeiroNome(contato.nome);
-  const link = (k) => CRM_CONVERSA_URL + '?r=' + k + '&t=' + encodeURIComponent(token);
+  const botoes = cfBotoesCidade(token);
   const assunto = nome ? nome + ', uma pergunta rápida' : 'Uma pergunta rápida';
   const pre = 'Um toque e eu já sei para onde você vai.';
   const oi = 'Oi, eu sou a Ingryd';
@@ -1632,17 +1740,13 @@ function cfGuiaConversa(contato, token) {
     ' e aceitou receber novidades do Por Dentro. Para não receber mais, responda com a palavra sair.';
 
   const texto = [oi + '. ' + quem, '', pergunta, ajuda, '',
-    ...CF_CIDADES.map(([k, rot]) => rot + ': ' + link(k)), '',
+    botoes.texto, '',
     escrever, '', 'Ingryd · Por Dentro', '', '—', rodape].join('\n');
 
   const e = crmEscapeHtml;
   const sans = "font-family:'Inter', Arial, Helvetica, sans-serif;";
   const serif = "font-family:'Fraunces', Georgia, 'Times New Roman', serif;";
-  const chips = CF_CIDADES.map(([k, rot], i) => {
-    const alt = i >= 6;
-    return `<a href="${e(link(k))}" style="display:inline-block; margin:0 6px 8px 0; ${sans} font-size:14px; font-weight:600; text-decoration:none; padding:9px 16px; border-radius:999px; ` +
-      (alt ? 'border:1.5px solid #CFC9C0; background:#FFFFFF; color:#6E6862;' : 'border:1.5px solid #577328; background:#E4EAD6; color:#3F5519;') + `">${e(rot)}</a>`;
-  }).join('');
+  const chips = botoes.html;
   const html = `<!DOCTYPE html>
 <html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="color-scheme" content="light"><title>${e(assunto)}</title></head>
 <body style="margin:0; padding:0; background:#F4F1EC;">
@@ -1690,12 +1794,15 @@ async function crmConversaDiaria(env, agoraMs) {
   }
   const lista = await pRes.json();
   const r = { pendentes: lista.length, enviados: 0, ja_enviados: 0, falhas: 0 };
+  // O modelo No ar é lido uma vez por rodada (não uma por pessoa).
+  const tpl = lista.length ? await crmModeloNoAr(env, 'cf_guia_conversa') : null;
   for (const p of lista) {
     try {
       if (!CRM_UUID_RE.test(String(p.contato_id || '')) || !/@/.test(String(p.email || ''))) { r.falhas++; continue; }
       const contato = { id: p.contato_id, email: p.email, nome: p.nome };
       const token = await crmLinkAssinar(env, contato.id, agoraMs);
-      const s = await crmEnviarGuia(env, sb, contato, 'cf_guia_conversa', cfGuiaConversa(contato, token), true);
+      const mail = crmMontarOuReserva('cf_guia_conversa', tpl, () => cfGuiaConversaVars(contato, token), () => cfGuiaConversa(contato, token));
+      const s = await crmEnviarGuia(env, sb, contato, 'cf_guia_conversa', mail, true);
       if (s === 'enviado') r.enviados++; else if (s === 'ja') r.ja_enviados++; else r.falhas++;
     } catch (e) {
       r.falhas++;

@@ -10,7 +10,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600&display=swap">
-<link rel="stylesheet" href="crm.css?v=2026-10-15.2">
+<link rel="stylesheet" href="crm.css?v=2026-10-16.1">
 <style>
   .gate{max-width:420px;margin:12vh auto 0;text-align:center}
   .gate h1{font-size:28px;margin-bottom:6px}
@@ -165,9 +165,11 @@
 
     <section data-panel="modelos" hidden>
       <div class="head">
-        <div><h2>Modelos de e-mail</h2><p>Um modelo por gatilho, preenchido com o que você sabe da pessoa. Envio pelo Brevo.</p></div>
+        <div><h2>Modelos de e-mail</h2><p>Todos os modelos num lugar só, com o objetivo, o tipo, como saem e a etapa. Envio pelo Brevo.</p></div>
+        <button class="btn" type="button" id="mod-export">Exportar modelos (texto e HTML)</button>
       </div>
-      <div class="autobar" style="margin-top:14px">
+      <p class="sub" id="mod-aviso" style="margin:10px 0 0" hidden></p>
+      <div class="autobar" style="margin-top:14px" id="mod-bar">
         <span class="sub" style="font-weight:600">Pré-visualizar para</span>
         <div class="sel"><select id="mod-contact" aria-label="Escolher pessoa"></select></div>
       </div>
@@ -187,6 +189,6 @@
 <div id="compose-backdrop" hidden style="position:fixed; inset:0; background:rgba(20,18,14,.4); z-index:9"></div>
 <div class="toast" id="toast" hidden></div>
 
-<script type="module" src="crm.js?v=2026-10-15.2"></script>
+<script type="module" src="crm.js?v=2026-10-16.1"></script>
 </body>
 </html>
