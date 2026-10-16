@@ -607,3 +607,15 @@ usa se for um documento HTML e não tiver `[colchetes]`; senão sai em texto sim
 
 Faça: **Código do Worker** — seção 9 (colar o `worker.js` novo e Deploy). Nenhuma variável nova. Teste:
 `node cms-oauth-worker/testes/crm-email.test.mjs`.
+
+### 22b. O template do Por Dentro nos e-mails manuais e no "ver o e-mail" (16/10)
+
+- Os 8 modelos manuais saem com o **template do Por Dentro** (logo, papel claro, botão verde), igual aos e-mails do guia.
+  Enquanto a versão No ar não tiver HTML guardado, o painel monta o template a partir dos blocos dela ou, na versão 1,
+  dos blocos de partida do estúdio (o mesmo texto da versão 1) e manda junto com o texto puro.
+- **Ver o e-mail** (aba Conversa e lista da ficha) abre o e-mail como chegou: os automáticos e os manuais gravados com
+  `formato = 'html'` aparecem no template, refeitos com a versão e os dados dela; os que saíram em texto simples aparecem assim.
+- O Worker grava `emails_enviados.formato` (`html` ou `texto`). Se a coluna ainda não existir, grava sem ela.
+
+Faça, nesta ordem: **1.** Supabase → SQL Editor, rode `admin/crm/db/crm-emails-formato.sql`. **2.** Cole o `worker.js` novo (seção 9).
+Sem o passo 2 os e-mails continuam saindo em texto simples (o painel avisa a cada envio).

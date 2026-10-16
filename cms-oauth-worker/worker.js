@@ -1314,16 +1314,25 @@ async function handleCrmEnviar(request, env) {
   try { messageId = JSON.parse(bText).messageId || null; } catch (e) { /* segue sem id */ }
 
   // Fica 'agendado' até o webhook confirmar a entrega; sem webhook, o segmento de reimpacto não dispara.
-  const ins = await fetch(`${CRM_SUPABASE_URL}/rest/v1/emails_enviados`, {
+  const linhaEnvio = {
+    contato_id: contatoId, modelo, assunto, corpo, status: 'agendado',
+    provedor_id: messageId, enviado_em: new Date().toISOString(),
+    // A versão do modelo de onde o texto partiu (o painel manda quando o texto veio da tabela).
+    ...(versao ? { modelo_versao: versao } : {}),
+    // Em que formato saiu, para a ficha mostrar o e-mail como chegou (coluna de admin/crm/db/crm-emails-formato.sql).
+    formato: html ? 'html' : 'texto',
+  };
+  const gravar = (linha) => fetch(`${CRM_SUPABASE_URL}/rest/v1/emails_enviados`, {
     method: 'POST',
     headers: { ...auth, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
-    body: JSON.stringify({
-      contato_id: contatoId, modelo, assunto, corpo, status: 'agendado',
-      provedor_id: messageId, enviado_em: new Date().toISOString(),
-      // A versão do modelo de onde o texto partiu (o painel manda quando o texto veio da tabela).
-      ...(versao ? { modelo_versao: versao } : {}),
-    }),
+    body: JSON.stringify(linha),
   });
+  let ins = await gravar(linhaEnvio);
+  // Banco ainda sem a coluna formato: grava sem ela (o e-mail já saiu, o histórico não pode faltar).
+  if (!ins.ok && /formato/.test(await ins.clone().text())) {
+    const { formato, ...semFormato } = linhaEnvio;
+    ins = await gravar(semFormato);
+  }
   if (!ins.ok) {
     console.error('crm/enviar: e-mail enviado mas não registrado — ' + ins.status + ' ' + (await ins.text()));
     return json({ ok: true, formato: html ? 'html' : 'texto', aviso: 'E-mail enviado, mas não consegui registrar no histórico.' });
