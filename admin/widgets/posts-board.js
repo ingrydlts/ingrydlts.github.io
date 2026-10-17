@@ -218,7 +218,7 @@
   // --- microengajamento e "Colar do robô" -------------------------------------
   // Ferramenta-assinatura = um dos blocos-ferramenta genéricos ou uma
   // ferramenta própria já existente (token de linha única).
-  var SIGNATURE_RE = /\[\[(PRAZO|QUIZ|SELETOR|LINHA-DO-TEMPO|ROTEIRO|MAPA-FLE|VAE-SIMULADOR|DIPLOMA-DOSSIE|AU-PAIR-FLE-SCROLL|EXAME-TEMPLATE-GRATIS)\]\]/;
+  var SIGNATURE_RE = /\[\[(PRAZO|QUIZ|SELETOR|LINHA-DO-TEMPO|ROTEIRO|MAPA-FLE|SIMULADOR-CUSTO|VAE-SIMULADOR|DIPLOMA-DOSSIE|AU-PAIR-FLE-SCROLL|EXAME-TEMPLATE-GRATIS)\]\]/;
   function hasSignature(body) { return SIGNATURE_RE.test(body || ""); }
   var MX_PARTS = [
     { re: SIGNATURE_RE, label: "Ferramenta-assinatura", need: true },
