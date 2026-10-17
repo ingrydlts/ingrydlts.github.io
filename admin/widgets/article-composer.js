@@ -873,6 +873,18 @@
       }
     },
 
+    // Parágrafo editado com várias linhas (ou com título/lista/bloco no meio) → um bloco por trecho.
+    splitBlock: function (id) {
+      var blocks = this.state.blocks;
+      var at = -1;
+      blocks.forEach(function (x, i) { if (x.id === id) at = i; });
+      if (at < 0 || blocks[at].type !== "text" || !/\n/.test(blocks[at].raw)) return;
+      var parts = parseBody(blocks[at].raw);
+      if (!parts.length) return;
+      parts[0].id = id;
+      this.updateValue(blocks.slice(0, at).concat(parts, blocks.slice(at + 1)), false);
+    },
+
     editBlock: function (id, newValue) {
       var blocks = this.state.blocks.map(function (b) {
         if (b.id !== id) return b;
@@ -1263,7 +1275,7 @@
             e.stopPropagation();
             self.goMark(Number(mk.getAttribute("data-mk")), true);
           },
-          onClick: function (e) { if (e.target === e.currentTarget) self.setState({ selectedId: null, focusId: null }); }
+          onClick: function (e) { if (e.target === e.currentTarget) { if (self.state.selectedId) self.splitBlock(self.state.selectedId); self.setState({ selectedId: null, focusId: null }); } }
         },
         h("div", { className: "article-body pdac-canvas" }, blocks.map(function (b) { return self.renderBlock(b, first[b.id], current); })),
         h(
@@ -1290,7 +1302,13 @@
         (dragging ? " is-dragging" : "") +
         (isSpecial ? " is-special" : "");
 
-      function selectBlock() { self.setState({ selectedId: selected ? null : b.id, focusId: b.id }); }
+      // Ao fechar a edição (✓) ou passar pra outro bloco, o texto digitado vira parágrafos de verdade:
+      // linhas em branco, títulos e listas viram blocos separados, igual ao que o site mostra.
+      function selectBlock() {
+        var open = self.state.selectedId;
+        if (open) self.splitBlock(open);
+        self.setState({ selectedId: selected ? null : b.id, focusId: b.id });
+      }
 
       return h(
         "div",
