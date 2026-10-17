@@ -39,6 +39,7 @@
   var AFILIADO_NAME = "AFILIADO";
   var TOOL_TOKENS = [
     "[[MAPA-FLE]]",
+    "[[SIMULADOR-CUSTO]]",
     "[[VAE-CHECKLIST]]",
     "[[VAE-ETAPAS]]",
     "[[VAE-SIMULADOR]]",
@@ -147,7 +148,7 @@
   var MX_NAMES = { RESUMO: 1, CONFIANCA: 1, MITO: 1, POLL: 1, CHECKLIST: 1, "PROXIMO-PASSO": 1, TRILHA: 1, FEEDBACK: 1 };
   var SIG_NAMES = { PRAZO: 1, QUIZ: 1, SELETOR: 1, "LINHA-DO-TEMPO": 1, ROTEIRO: 1 };
   // Ferramentas próprias já existentes também contam como ferramenta-assinatura (mesma lista do quadro de artigos).
-  var SIG_TOKENS = ["[[MAPA-FLE]]", "[[VAE-SIMULADOR]]", "[[DIPLOMA-DOSSIE]]", "[[AU-PAIR-FLE-SCROLL]]", "[[EXAME-TEMPLATE-GRATIS]]"];
+  var SIG_TOKENS = ["[[MAPA-FLE]]", "[[SIMULADOR-CUSTO]]", "[[VAE-SIMULADOR]]", "[[DIPLOMA-DOSSIE]]", "[[AU-PAIR-FLE-SCROLL]]", "[[EXAME-TEMPLATE-GRATIS]]"];
   function kindOf(b) {
     if (b.type === "richblock") return SIG_NAMES[b.name] ? "sig" : MX_NAMES[b.name] ? "mx" : "rich";
     if (b.type === "token") return SIG_TOKENS.indexOf(b.raw) !== -1 ? "sig" : "token";
