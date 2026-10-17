@@ -641,7 +641,7 @@
         "economia"
       ],
       "coverKeyword": "Custo de vida",
-      "status": "escrevendo",
+      "status": "publicado",
       "editorNotes": "Conferir antes de publicar (valores que mudam todo ano): CVEC (~100 €), Navigo mensal (~90 €) e Imagine R (~400 €/ano), refeição Crous (3,30 € / 1 € bolsistas), limites da taxa de agência (12/10/8 € por m² + 3 € do état des lieux), teto do Mobili-Jeune (100 €/mês) e regras do Visale. A planilha financeira foi retirada do artigo a pedido da Ingryd; o simulador agora é o bloco [[SIMULADOR-CUSTO]] e pode ser movido como qualquer outro bloco.",
       "title": "Quanto custa viver na França em 2026?",
       "image": "/images/uploads/custo-de-vida-franca-capa.png",
