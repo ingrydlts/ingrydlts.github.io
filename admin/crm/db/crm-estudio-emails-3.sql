@@ -23,6 +23,8 @@
 --      service_role. Janela de 2 dias: quem passou do horário há mais tempo, ou antes de o Envio ser ligado, não recebe.
 --   5. crm_contatos: o reimpacto (email_status, email_enviado_em, segmento) olha só os 8 modelos do link de acesso, como
 --      hoje. Sem isto, um e-mail de sequência (ex.: o de compra) contaria como "último e-mail" e mudaria o segmento.
+--   6. modelos_email.excluido_em: o X do estúdio. Excluir esconde o modelo e desliga o Envio; as versões ficam (dá para restaurar).
+--      Os e-mails 1 e 2 do guia Campus France não podem ser excluídos (saem pelo código).
 --
 -- Segurança: só admin lê e muda os modelos e registra compra (RLS, como nas entregas 1 e 2). crm_sequencia_pendentes só
 -- a service_role (o Worker). Nada de dado de pessoa aqui.
@@ -40,7 +42,7 @@
 --      e alter table public.modelos_email drop column if exists criado_no_estudio, drop column if exists objetivo_chave,
 --      drop column if exists para_quem, drop column if exists envio_gatilho, drop column if exists envio_depois_de,
 --      drop column if exists envio_dias, drop column if exists envio_hora, drop column if exists envio_ligado,
---      drop column if exists envio_ligado_em;   (apaga as regras dos modelos novos; os textos ficam)
+--      drop column if exists envio_ligado_em, drop column if exists excluido_em;   (apaga as regras dos modelos novos; os textos ficam)
 --   Atenção: com esta migração no ar, se rodar crm-fase1b-resposta.sql (ou uma fase anterior) de novo, rode esta logo depois.
 
 -- ---------- 1. Modelos: objetivo, para quem e envio ----------
@@ -53,6 +55,9 @@ alter table public.modelos_email add column if not exists envio_dias int;
 alter table public.modelos_email add column if not exists envio_hora int;
 alter table public.modelos_email add column if not exists envio_ligado boolean not null default false;
 alter table public.modelos_email add column if not exists envio_ligado_em timestamptz;
+-- Excluído (o X do estúdio): some da lista e do "Escrever e-mail", o Envio desliga, e as versões ficam guardadas
+-- (o histórico de quem recebeu continua mostrando o texto que saiu). Restaurar = voltar para null.
+alter table public.modelos_email add column if not exists excluido_em timestamptz;
 do $$ begin
   if not exists (select 1 from pg_constraint where conname = 'modelos_email_objetivo_chave_check') then
     alter table public.modelos_email add constraint modelos_email_objetivo_chave_check check (objetivo_chave is null or objetivo_chave in
@@ -88,6 +93,10 @@ begin
   if tg_op = 'UPDATE' and new.criado_no_estudio is distinct from old.criado_no_estudio then
     raise exception 'Um modelo não muda de origem (criado no estúdio ou não).';
   end if;
+  if new.excluido_em is not null and new.chave like 'cf\_guia\_%' then
+    raise exception 'Os e-mails do guia Campus France saem pelo código: excluir aqui não pararia o envio.';
+  end if;
+  if new.excluido_em is not null then new.envio_ligado := false; end if;
   if not new.criado_no_estudio then
     if new.envio_gatilho is not null or new.envio_ligado or new.para_quem <> '{}'::jsonb or new.objetivo_chave is not null then
       raise exception 'O modelo % é um dos 10 de antes do estúdio: quem recebe e quando continuam no código. Crie um modelo novo para ter Envio.', new.chave;
@@ -152,7 +161,7 @@ as $$
            me.envio_ligado_em, v.versao
       from modelos_email me
       join modelos_email_versoes v on v.chave = me.chave and v.etapa = 'no_ar'
-     where me.criado_no_estudio and me.envio_ligado and me.envio_gatilho is not null
+     where me.criado_no_estudio and me.envio_ligado and me.envio_gatilho is not null and me.excluido_em is null
   ),
   base as (
     select m.chave, e.contato_id, min(e.enviado_em) as quando

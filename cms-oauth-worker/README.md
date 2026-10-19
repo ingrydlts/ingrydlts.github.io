@@ -643,6 +643,10 @@ novidades, só quem aceitou novidades (o aceite mais recente: quem pediu para sa
 Os 10 modelos de antes (os 8 manuais e os e-mails 1 e 2 do guia) não ganham Envio: continuam saindo como hoje. Os e-mails de sequência
 não contam no Reimpactar.
 
+**O X de cada modelo** (canto superior direito do card): exclui o modelo. Ele sai da lista e do "Escrever e-mail" e a sequência dele
+para; as versões ficam guardadas em **Excluídos**, no fim da lista, com o botão **Restaurar** (volta com o Envio desligado). Os e-mails 1
+e 2 do guia Campus France não têm o X: saem pelo código, e excluir aqui não pararia o envio.
+
 Os modelos novos sem Envio aparecem no "Escrever e-mail" da ficha depois de publicados (o Worker aceita, com o consentimento e o
 rodapé do tipo). Os de sequência não saem pela ficha.
 

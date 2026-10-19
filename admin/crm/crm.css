@@ -454,3 +454,12 @@ select.st-in{height:36px; padding:0 8px}
 .st-ligado span{flex:1 1 220px} .st-ligado b{color:var(--ink)}
 .st-ligado.on{border-color:var(--moss); background:var(--moss-soft)} .st-ligado.on b{color:var(--moss-ink)}
 @media (max-width: 520px){ .st-envio{grid-template-columns:minmax(0,1fr)} }
+/* O X de excluir no canto do card e o grupo Excluídos */
+.st-card{position:relative}
+.st-card .st-item{padding-right:32px}
+.st-x{position:absolute; top:6px; right:6px; width:24px; height:24px; border:1px solid transparent; border-radius:6px; background:none; color:var(--ink-3); font-size:16px; line-height:1}
+.st-x:hover, .st-x:focus-visible{border-color:var(--line-2); color:var(--red); background:var(--red-soft)}
+.st-excl summary{cursor:pointer; list-style:none} .st-excl summary::-webkit-details-marker{display:none}
+.st-excl summary::after{content:" ▾"}
+.st-excl-i{display:flex; gap:8px; align-items:center; justify-content:space-between; padding:6px 4px; border-top:1px solid var(--line); font-size:12.5px}
+.st-excl-i > span{min-width:0} .st-excl-i b{display:block; font-weight:600} .st-excl-i .btn{flex:none}
