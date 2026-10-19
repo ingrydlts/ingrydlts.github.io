@@ -619,3 +619,73 @@ Faça: **Código do Worker** — seção 9 (colar o `worker.js` novo e Deploy). 
 
 Faça, nesta ordem: **1.** Supabase → SQL Editor, rode `admin/crm/db/crm-emails-formato.sql`. **2.** Cole o `worker.js` novo (seção 9).
 Sem o passo 2 os e-mails continuam saindo em texto simples (o painel avisa a cada envio).
+
+## 23. Estúdio de e-mails 3: modelo novo pelo objetivo e sequências
+
+O que faz: em CRM → Modelos de e-mail, o botão **+ Modelo novo** abre os 4 passos da proposta: **Objetivo** (o catálogo: entrega
+de freebie, boas-vindas e acesso, conversa, aquecimento, reimpacto, convite para conversa, lembrete de prazo, lançamento e oferta,
+compra confirmada), **Para quem** (persona, material de origem, produto, estágio, segmento), **Contexto da pessoa** (os dados que o
+e-mail pode usar) e **Esqueleto** (os blocos sugeridos). O objetivo decide o tipo (serviço, novidades ou compra), e com ele quem pode
+receber e o rodapé. Criar grava o modelo e a versão 1 em rascunho; daí em diante é o caminho da seção 21 (editar, teste para você,
+revisão, publicar). Os `[trechos entre colchetes]` do esqueleto são para você escrever: um modelo que sai sozinho não publica com eles.
+
+**A parte Envio** (em "Objetivo e envio" do modelo novo): *Como sai* = você envia pela ficha, ou sai sozinho (sequência). Na sequência:
+depois de quê (um e-mail, pegar um material ou a compra do produto), quantos dias e em que hora de Brasília. **Ligar o envio** só acende
+com uma versão No ar. Quem já tinha passado do horário antes de ligar não recebe (não sai um e-mail velho para a base toda). Cada modelo
+de sequência sai uma vez só por pessoa. Mudar o Envio ou o Para quem com ele ligado recomeça a contagem a partir daquele momento.
+
+**Registrar compra** (ficha → Ficha → painel E-mails): grava o evento "compra" daquele produto. É o que liga as sequências de compra
+(ex.: Hub de Estudos). Por enquanto a compra pelo site não chega sozinha ao CRM: você registra aqui.
+
+Quem recebe, conferido a cada envio: só modelos criados no estúdio, versão No ar, Envio ligado, as regras de Para quem e, no tipo
+novidades, só quem aceitou novidades (o aceite mais recente: quem pediu para sair para na rodada seguinte). O banco
+(`crm_sequencia_pendentes`) filtra e o Worker confere o aceite de novo. Compra e serviço não pedem novidades e não levam "responda sair".
+Os 10 modelos de antes (os 8 manuais e os e-mails 1 e 2 do guia) não ganham Envio: continuam saindo como hoje. Os e-mails de sequência
+não contam no Reimpactar.
+
+Os modelos novos sem Envio aparecem no "Escrever e-mail" da ficha depois de publicados (o Worker aceita, com o consentimento e o
+rodapé do tipo). Os de sequência não saem pela ficha.
+
+Faça nesta ordem:
+
+**1. Banco** — Supabase → SQL Editor, rode `admin/crm/db/crm-estudio-emails-3.sql` (depois de `crm-estudio-emails-2.sql` e de
+`crm-emails-formato.sql`; pode rodar de novo). Antes do Worker novo, nada sai sozinho.
+
+**2. Código do Worker** — seção 9 (colar o `worker.js` novo e Deploy). Rota nova: `/api/crm/sequencia-rodar` (teste). Para o e-mail de
+compra do Hub de Estudos, confira que a variável `HUB_ESTUDOS_NOTION_LINK` existe (é a mesma da página de obrigado da compra): sem
+ela, o e-mail de compra não sai (o Worker recusa e anota nos Logs). Opcional: `CRM_SEQUENCIA_LOTE` (Text), quantos e-mails por hora,
+padrão 12 (no plano gratuito deixe 12: cada execução tem 50 chamadas).
+
+**3. Site** — o merge do pull request publica a tela nova.
+
+**4. Cron Trigger** — Workers → `por-dentro-cms-oauth` → Settings → Trigger Events → **Add** → Cron Triggers → `5 * * * *` → Add.
+**Não apague** o `0 13 * * *` (é o e-mail 2). Com os dois, o e-mail 2 continua às 10h e as sequências rodam cinco minutos depois de
+cada hora (uma sequência marcada para 10h sai por volta das 10h05 de Brasília).
+
+**5. Teste** (o critério de aceite, com o seu Gmail ou um `seunome+teste@gmail.com` que tenha ficha no CRM):
+   1. Modelos de e-mail → **+ Modelo novo** → Compra confirmada → nome "Hub de Estudos · compra" → produto Hub de Estudos →
+      Continuar até **Criar o modelo**. Escreva os primeiros passos no bloco Destaque, **Enviar teste para mim** (chega com o link do Hub),
+      **Mandar para revisão** e **Publicar**. Em Objetivo e envio: depois da compra, 0 dias, a hora seguinte à de agora → **Ligar o envio**.
+   2. **+ Modelo novo** → Compra confirmada → "Hub de Estudos · D+3" → mesmo produto → criar, escrever, testar, publicar. Em Objetivo e
+      envio: Depois de um e-mail → "Hub de Estudos · compra", 3 dias, 10h → **Ligar o envio**.
+   3. Na ficha da pessoa de teste: Ficha → E-mails → Registrar compra → Hub de Estudos. Na prévia do modelo, ela aparece como "Pronto";
+      outra pessoa sem a compra aparece com o aviso "não sai para essa pessoa".
+   4. Para não esperar a hora: no SQL Editor,
+      ```sql
+      select * from crm_sequencia_pendentes(12);   -- a pessoa de teste aparece aqui depois da hora marcada
+      select net.http_post(
+        url := 'https://por-dentro-cms-oauth.ingrydigitalmanagement.workers.dev/api/crm/sequencia-rodar',
+        headers := jsonb_build_object('X-Crm-Hook', (select decrypted_secret from vault.decrypted_secrets where name = 'crm_hook_secret')));
+      ```
+      Depois de alguns segundos: `select status_code, content from net._http_response order by created desc limit 1;` → `200` com
+      `{"enviados":1,...}`. O e-mail chega; na ficha, aparece em "Já enviados". Rodar de novo não manda outro.
+   5. O D+3 sai três dias depois do primeiro, às 10h05. Para testar antes, troque a data do primeiro (troque o e-mail):
+      `update emails_enviados set enviado_em = now() - interval '3 days' where modelo = '<chave do 1º>' and contato_id = (select id from contatos where email = 'SEU_EMAIL');`
+      e rode o passo 4 de novo. Quem não tem a compra registrada não recebe nenhum dos dois.
+
+**Para parar uma sequência**: no modelo, **Desligar**. Para parar todas: apague o Cron Trigger `5 * * * *` (o e-mail 2 continua).
+Se um e-mail não sair: Workers → Logs, procure `crm/sequencias` (`{"erro":"lista"}` = o SQL do passo 1 não rodou; "falta o link_produto"
+= falta `HUB_ESTUDOS_NOTION_LINK`; "não está No ar" = publique a versão).
+
+Testes: `node cms-oauth-worker/testes/crm-email.test.mjs` e, no banco,
+`cd admin/crm/db/testes && APP_DB_DIR=<POR DENTRO APP>/db npm run test:estudio3`.

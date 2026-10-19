@@ -15,7 +15,7 @@ Backend: o **mesmo Supabase** do app (projeto `hslhpktfgxwfvljvsxkj`). Painel: e
 | Caixa de entrada (Perguntas únicas + Respostas: e-mail, toque no e-mail 2, página /conversa/) → "Abrir conversa" leva à aba Conversa da ficha | `perguntas_unicas`, `respostas_email` (`db/crm-fase0-email-guia.sql`) | perguntas: painel e formulário dos artigos prontos. Respostas por e-mail: chegam por `respostas@imigrantepordentro.com` (Email Routing → Worker `email()`), README do Worker seção 17 |
 | Lembretes de prazo (Hoje) | `lembretes_prazo` (`db/crm-fase2c-lembretes.sql`) | pronto: a calculadora `[[PRAZO]]` dos artigos chama `pedir_lembrete_prazo`; o card mostra quem avisar nos próximos 7 dias |
 | Reimpactar (segmentos) | coluna `segmento` de `crm_contatos` (regras na view) | pronto (envio via Worker → Brevo; ver README do Worker, seção 16) |
-| Modelos de e-mail (estúdio: blocos, prévia com uma pessoa, teste, revisão, publicar, versões, Exportar) | `modelos_email`, `modelos_email_versoes` (`db/crm-modelos-email.sql` + `db/crm-estudio-emails-2.sql`); blocos em `estudio.js`; sem a migração, `TPLS` em `crm.js` | pronto; os 8 manuais abrem com o texto No ar da tabela (`TPLS` é reserva) |
+| Modelos de e-mail (estúdio: blocos, prévia com uma pessoa, teste, revisão, publicar, versões, Exportar, modelo novo pelo objetivo, sequências) | `modelos_email`, `modelos_email_versoes` (`db/crm-modelos-email.sql` + `db/crm-estudio-emails-2.sql` + `db/crm-estudio-emails-3.sql`); blocos e objetivos em `estudio.js`; sem a migração, `TPLS` em `crm.js` | pronto; os 8 manuais abrem com o texto No ar da tabela (`TPLS` é reserva); sequências pelo Cron `5 * * * *` |
 
 ## Extensão: prazo do VLS-TS (guia gratuito)
 
@@ -73,6 +73,19 @@ estúdio (três colunas); `estudio.js` monta assunto, texto puro e HTML a partir
 `POST /api/crm/modelo-teste` (Worker). Passo a passo: `cms-oauth-worker/README.md`, seção 21. Testes: `db/testes` →
 `APP_DB_DIR=<POR DENTRO APP>/db npm run test:estudio` e `node cms-oauth-worker/testes/crm-email.test.mjs`.
 Fica para as próximas entregas: criar modelo novo a partir do objetivo e sequências (3), números por modelo e versão (4).
+
+## Estúdio de e-mails 3 — modelo novo pelo objetivo e sequências (19/10)
+
+`db/crm-estudio-emails-3.sql` (rodar **depois** de `crm-estudio-emails-2.sql` e `crm-emails-formato.sql`; idempotente, só acrescenta):
+em `modelos_email`, `criado_no_estudio`, `objetivo_chave`, `para_quem` e a parte Envio (`envio_gatilho`, `envio_depois_de`, `envio_dias`,
+`envio_hora`, `envio_ligado`, `envio_ligado_em`), com um gatilho que não deixa os 10 de antes ganharem Envio; `emails_enviados.sequencia`
+(um e-mail de cada sequência por pessoa); `crm_registrar_compra()` (evento `compra`, botão da ficha); `crm_sequencia_pendentes()` (quem
+recebe agora; só service_role) e `crm_contatos` com o reimpacto olhando só os 8 modelos do link de acesso. O catálogo de objetivos e os
+esqueletos estão em `estudio.js` (`OBJETIVOS`); os 4 passos, o Envio e o Para quem em `crm.js`. O Worker roda as sequências no Cron
+`5 * * * *` (`crmSequenciasRodada`). Passo a passo: `cms-oauth-worker/README.md`, seção 23. Testes: `db/testes` →
+`APP_DB_DIR=<POR DENTRO APP>/db npm run test:estudio3` e `node cms-oauth-worker/testes/crm-email.test.mjs`.
+Fica para depois: a compra pelo site entrar sozinha no CRM (hoje: Registrar compra na ficha), o lembrete de prazo sair sozinho na data,
+botões de um toque em modelos novos e os números por modelo e versão (entrega 4).
 
 ## Ficha: e-mails fidedignos e prévia real (16/10)
 
