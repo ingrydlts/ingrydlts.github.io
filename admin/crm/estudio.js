@@ -29,7 +29,9 @@ export var CAT = {
   botoes_cidade: { t: 'pronto', o: 'os 8 botões de cidade, com o link assinado dela (vêm do Worker)', privado: true },
   au_pair: { t: 'sim', o: 'a persona é au pair → estudante' },
   prazo_vencido: { t: 'sim', o: 'o prazo de 3 meses já venceu' },
-  prazo_a_vencer: { t: 'sim', o: 'o prazo de 3 meses ainda vai vencer' }
+  prazo_a_vencer: { t: 'sim', o: 'o prazo de 3 meses ainda vai vencer' },
+  produto: { t: 'texto', o: 'o nome do produto que ela comprou', plano: null },
+  link_produto: { t: 'link', o: 'o link de acesso do produto (privado, vem do Worker)', privado: true }
 };
 var ETAPAS_CF = { nao_comecei: 'ainda não começou', escolhendo_curso: 'está escolhendo o curso', juntando_documentos: 'está juntando documentos, traduções e o teste',
   dossie_enviado: 'já enviou o dossiê', entrevista_resposta: 'está esperando a entrevista ou a resposta' };
@@ -47,7 +49,16 @@ export var VARS_DE = {
   cf_guia_1: ['nome', 'email', 'link_checklist', 'nivel', 'prazo_nivel', 'etapa', 'cidade'].concat(Object.keys(ETAPAS_CF).map(function (k) { return 'etapa_' + k; })),
   cf_guia_conversa: ['nome', 'email', 'botoes_cidade']
 };
-export function varsDoModelo(chave) { return VARS_DE[chave] || ['nome', 'email']; }
+// Os modelos criados no estúdio (entrega 3) têm todos os mesmos dados; os de compra ganham o produto e o link dele.
+// O Worker preenche exatamente estes (crmVarsNovos em worker.js).
+export var VARS_NOVOS = ['nome', 'email', 'persona', 'nivel', 'prazo_nivel', 'etapa', 'cidade', 'prazo_limite', 'dias_para_prazo',
+  'prazo_vencido', 'prazo_a_vencer', 'link_acesso', 'link_agenda'];
+var VARS_PRODUTO = ['produto', 'link_produto'];
+export function varsDoModelo(chave, m) {
+  if (VARS_DE[chave]) return VARS_DE[chave];
+  if (m && m.criado_no_estudio) return VARS_NOVOS.concat(m.para_quem && m.para_quem.produto ? VARS_PRODUTO : []);
+  return ['nome', 'email'];
+}
 
 // ---------- Os blocos ----------
 export var TIPOS = {
@@ -249,7 +260,7 @@ export function montarComDados(v, vars, marcar) {
 // ---------- Conferências do "Pronto para usar?" ----------
 // Devolve [{ ok, txt, trava }]: trava = não deixa publicar.
 export function conferir(d, m, montado, automatico) {
-  var r = [], vs = varsDoModelo(m.chave), usados = [];
+  var r = [], vs = varsDoModelo(m.chave, m), usados = [];
   var campos = [d.assunto, d.assunto_alt, d.pre, d.pre_alt, d.rodape];
   (d.itens || []).forEach(function (b) { Object.keys(b).forEach(function (k) { if (typeof b[k] === 'string') campos.push(b[k]); }); if (b.link) usados.push(b.link); if (b.var) usados.push(b.var); var c = condDe(b); if (c) usados.push(c.k); });
   campos.forEach(function (s) { varsEm(s).forEach(function (k) { if (usados.indexOf(k) < 0) usados.push(k); }); var re = /\{[#^/](\w+)\}/g, mm; while ((mm = re.exec(String(s || '')))) if (usados.indexOf(mm[1]) < 0) usados.push(mm[1]); });
@@ -296,8 +307,19 @@ function botoesPrevia() {
         (i >= 6 ? 'border:1.5px solid #CFC9C0; background:#FFFFFF; color:#6E6862;' : 'border:1.5px solid #577328; background:#E4EAD6; color:#3F5519;') + '">' + escH(c[1]) + '</a>';
     }).join('') };
 }
-export function dadosDe(chave, c, h) {
+export function dadosDe(chave, c, h, m) {
   var resp = c.respostas || {};
+  if (!VARS_DE[chave] && m && m.criado_no_estudio) {
+    var nv2 = CF_NIVEIS[resp.cfNivel], pq = m.para_quem || {};
+    var n = { nome: h.pn(c), email: c.email, persona: h.persona(c).toLowerCase(), nivel: nv2 ? nv2[0] : '', prazo_nivel: nv2 ? nv2[1] : '',
+      etapa: ETAPA_NOME[resp.objetivo] || '', cidade: CF_CIDADE[resp.cfCidade] || '',
+      prazo_limite: c.prazo_limite ? h.fmtDay(c.prazo_limite) : '', dias_para_prazo: c.dias_para_prazo == null ? '' : String(c.dias_para_prazo),
+      prazo_vencido: c.dias_para_prazo != null && Number(c.dias_para_prazo) < 0, prazo_a_vencer: c.dias_para_prazo != null && Number(c.dias_para_prazo) >= 0,
+      link_acesso: h.appLink, link_agenda: h.calLink };
+    // O link do produto é privado: só o Worker tem (no envio e no teste). Na prévia e na ficha fica entre colchetes.
+    if (pq.produto) { n.produto = pq.produto_nome || ''; n.link_produto = '[link do produto]'; }
+    return n;
+  }
   if (chave === 'cf_guia_1' || chave === 'cf_guia_conversa') {
     var nv = CF_NIVEIS[resp.cfNivel];
     var v = { nome: primeiroNome(c.nome), email: c.email };
@@ -391,4 +413,70 @@ export var INICIAIS = {
 export function iniciais(chave) {
   var d = INICIAIS[chave] ? JSON.parse(JSON.stringify(INICIAIS[chave])) : { assunto: '', itens: [ASS] };
   d.v = 1; d.planos = d.planos || {}; return d;
+}
+
+// ---------- Modelo novo: o catálogo de objetivos (entrega 3) ----------
+// O objetivo decide o tipo (e com ele quem pode receber e o rodapé), como sai e um esqueleto de blocos. Os [trechos entre
+// colchetes] do esqueleto são para você escrever: um modelo que sai sozinho não publica com eles (o Worker também recusa).
+// sai: 'sequencia' = sai sozinho pela parte Envio (gatilho, dias e hora sugeridos); 'manual' = você envia pela ficha.
+var ESCREVA = function (o) { return '[escreva aqui: ' + o + ']'; };
+var DUVIDA = { tipo: 'texto', estilo: 'caixa', texto: '**Ficou com dúvida?** É só responder este e-mail. Chega direto para mim.' };
+export var OBJETIVOS = [
+  { k: 'freebie', nome: 'Entrega de freebie', d: 'O que ela pediu num guia: o prazo dela e um próximo passo.', tipo: 'servico', sai: 'sequencia',
+    gatilho: 'material', dias: 0, hora: 10, quem: 'Quem pegou o material', rodape: 'pediu um material do Por Dentro com {email}',
+    aviso: 'O link privado de um guia ainda entra pelo código (como no e-mail 1 do Campus France). Use este para acompanhar o material: lembrar, explicar e dar o próximo passo.',
+    esqueleto: { assunto: '{nome}, o seu próximo passo', assunto_alt: 'O seu próximo passo', itens: [
+      { tipo: 'titulo', texto: '{nome}, ' + ESCREVA('a frase do topo'), alt: ESCREVA('a frase do topo, sem o nome') },
+      { tipo: 'texto', texto: ESCREVA('para que serve o material e como usar') },
+      { tipo: 'destaque', rotulo: 'O seu próximo passo', valor: ESCREVA('o passo, curto') }, DUVIDA, ASS] } },
+  { k: 'boas_vindas', nome: 'Boas-vindas e acesso', d: 'O link de acesso ao app, sem senha.', tipo: 'servico', sai: 'manual', quem: 'Todos',
+    esqueleto: { assunto: '{nome}, seu link de acesso chegou', itens: [
+      { tipo: 'texto', texto: 'Oi {nome}! ' + ESCREVA('o que ela encontra no checklist de {persona}') },
+      { tipo: 'botao', rotulo: 'Abrir o meu checklist', link: 'link_acesso' },
+      { tipo: 'texto', texto: 'É sem senha: um clique e você já entra.' }, ASS] } },
+  { k: 'conversa', nome: 'Conversa', d: 'Uma pergunta para ela responder por e-mail.', tipo: 'novidades', sai: 'sequencia',
+    gatilho: 'email', depois_de: 'cf_guia_1', dias: 1, hora: 10, quem: 'Só quem aceitou novidades', rodape: 'deixou o seu e-mail no Por Dentro com {email}',
+    aviso: 'Os botões de um toque (as cidades) ainda são só do e-mail 2 do guia Campus France. Aqui ela responde por e-mail.',
+    esqueleto: { assunto: '{nome}, uma pergunta rápida', assunto_alt: 'Uma pergunta rápida', itens: [
+      { tipo: 'apresentacao', titulo: 'Oi, eu sou a Ingryd', texto: 'Moro na França e criei o Por Dentro para quem está fazendo esse caminho agora.' },
+      { tipo: 'pergunta', texto: '{nome}, ' + ESCREVA('a pergunta'), alt: ESCREVA('a pergunta, sem o nome'), ajuda: 'É só responder este e-mail. Eu leio cada resposta.' }, ASS] } },
+  { k: 'aquecimento', nome: 'Aquecimento', d: 'Sequência por trilha: astúcia, sua história, bastidor, o que as pessoas responderam.', tipo: 'novidades', sai: 'sequencia',
+    gatilho: 'email', depois_de: 'cf_guia_conversa', dias: 2, hora: 10, quem: 'Só quem aceitou novidades', rodape: 'pediu um material do Por Dentro com {email}',
+    esqueleto: { assunto: ESCREVA('o assunto'), itens: [
+      { tipo: 'titulo', texto: ESCREVA('a astúcia em uma frase') },
+      { tipo: 'texto', texto: 'Oi {nome}! ' + ESCREVA('a história ou o bastidor') },
+      { tipo: 'destaque', rotulo: 'A astúcia', valor: ESCREVA('o que fazer, curto') },
+      { tipo: 'texto', estilo: 'discreto', texto: 'Quer contar como está o seu caso? É só responder este e-mail.' }, ASS] } },
+  { k: 'reimpacto', nome: 'Reimpacto', d: 'Não abriu, abriu e não clicou, clicou e não entrou, parou no app.', tipo: 'servico', sai: 'manual', quem: 'Todos',
+    esqueleto: { assunto: '{nome}, ' + ESCREVA('o assunto'), itens: [
+      { tipo: 'texto', texto: 'Oi {nome}! ' + ESCREVA('o que ela não viu ainda') },
+      { tipo: 'botao', rotulo: 'Abrir o meu checklist', link: 'link_acesso' }, ASS] } },
+  { k: 'convite', nome: 'Convite para conversa', d: 'Chamada de 1:1 pelo Cal.com, com o contexto dela.', tipo: 'novidades', sai: 'manual', quem: 'Só quem aceitou novidades',
+    esqueleto: { assunto: '{nome}, quer conversar sobre o seu caso?', itens: [
+      { tipo: 'texto', texto: 'Oi {nome}! ' + ESCREVA('por que uma conversa ajuda no caso dela') },
+      { tipo: 'botao', rotulo: 'Escolher um horário', link: 'link_agenda', complemento: '&utm_source=email&utm_campaign=convite' }, ASS] } },
+  { k: 'lembrete', nome: 'Lembrete de prazo', d: 'O aviso que ela pediu na calculadora de um artigo.', tipo: 'servico', sai: 'manual', quem: 'Quem pediu o lembrete',
+    aviso: 'Sair sozinho na data do prazo fica para uma próxima entrega: por enquanto você envia pela ficha.',
+    esqueleto: { assunto: '{nome}, o seu prazo está chegando', itens: [
+      { tipo: 'texto', texto: 'Oi {nome}! Você pediu para eu te avisar do prazo.' },
+      { tipo: 'destaque', rotulo: 'O seu prazo', valor: '{prazo_limite}', nota: ESCREVA('o que fazer antes') }, ASS] } },
+  { k: 'lancamento', nome: 'Lançamento e oferta', d: 'Apresentar um produto pago ou uma vaga de teste.', tipo: 'novidades', sai: 'manual', quem: 'Só quem aceitou novidades',
+    esqueleto: { assunto: ESCREVA('o assunto'), itens: [
+      { tipo: 'titulo', texto: ESCREVA('o que está abrindo') },
+      { tipo: 'texto', texto: 'Oi {nome}! ' + ESCREVA('para quem é e o que ela ganha') },
+      { tipo: 'botao', rotulo: 'Quero conhecer', link: 'link_acesso' }, ASS] } },
+  { k: 'compra', nome: 'Compra confirmada', d: 'Acesso, primeiros passos e onde tirar dúvida.', tipo: 'compra', sai: 'sequencia', produto: true,
+    gatilho: 'compra', dias: 0, hora: 10, quem: 'Quem comprou o produto', rodape: 'comprou o {produto} no Por Dentro',
+    esqueleto: { assunto: '{nome}, o seu acesso ao {produto} chegou', assunto_alt: 'O seu acesso ao {produto} chegou', itens: [
+      { tipo: 'titulo', texto: '{nome}, a sua compra está confirmada', alt: 'A sua compra está confirmada' },
+      { tipo: 'texto', texto: 'O {produto} já é seu. O link fica guardado neste e-mail.' },
+      { tipo: 'botao', rotulo: 'Entrar no {produto}', link: 'link_produto' },
+      { tipo: 'destaque', rotulo: 'Seus primeiros passos', valor: ESCREVA('1. … 2. … 3. …') }, DUVIDA, ASS] } }
+];
+export function objetivo(k) { return OBJETIVOS.filter(function (o) { return o.k === k; })[0] || null; }
+// O esqueleto de um objetivo, pronto para virar a versão 1 (o mesmo formato de modelos_email_versoes.blocos).
+export function esqueleto(k) {
+  var o = objetivo(k); if (!o) return null;
+  var d = JSON.parse(JSON.stringify(o.esqueleto)); d.v = 1; d.planos = {}; if (o.rodape) d.rodape = o.rodape;
+  return d;
 }

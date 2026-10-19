@@ -1258,7 +1258,7 @@ async function handleCrmEnviar(request, env) {
   const assunto = String((body && body.assunto) || '').trim();
   const corpo = String((body && body.corpo) || '').trim();
   if (!CRM_UUID_RE.test(contatoId)) return json({ error: 'Contato inválido.' }, 400);
-  if (!CRM_MODELOS.includes(modelo)) return json({ error: 'Modelo inválido.' }, 400);
+  if (!/^[a-z0-9_]{2,40}$/.test(modelo)) return json({ error: 'Modelo inválido.' }, 400);
   if (!assunto || assunto.length > 200) return json({ error: 'Assunto vazio ou grande demais.' }, 400);
   if (!corpo || corpo.length > 10000) return json({ error: 'Mensagem vazia ou grande demais.' }, 400);
   // Trava contra mandar "[link do acesso]" de verdade pra alguém.
@@ -1267,6 +1267,15 @@ async function handleCrmEnviar(request, env) {
   }
 
   const auth = { apikey: CRM_SUPABASE_ANON_KEY, Authorization: `Bearer ${admin.token}` };
+  // Um modelo criado no estúdio (entrega 3) e que você envia pela ficha: o tipo dele decide o consentimento e o rodapé.
+  // Os que saem sozinhos (com Envio) não saem por aqui.
+  let novo = null;
+  if (!CRM_MODELOS.includes(modelo)) {
+    const mRes = await fetch(`${CRM_SUPABASE_URL}/rest/v1/modelos_email?select=chave,tipo,automatico,criado_no_estudio&chave=eq.${modelo}`, { headers: auth });
+    novo = mRes.ok ? (await mRes.json())[0] : null;
+    if (!novo || !novo.criado_no_estudio) return json({ error: 'Modelo inválido.' }, 400);
+    if (novo.automatico) return json({ error: 'Este modelo sai sozinho pela sequência (parte Envio). Não sai pela ficha.' }, 400);
+  }
   const cRes = await fetch(
     `${CRM_SUPABASE_URL}/rest/v1/crm_contatos?select=id,email,nome,aceita_novidades&id=eq.${contatoId}`,
     { headers: auth }
@@ -1274,11 +1283,12 @@ async function handleCrmEnviar(request, env) {
   const contatos = cRes.ok ? await cRes.json() : [];
   const contato = contatos && contatos[0];
   if (!contato) return json({ error: 'Contato não encontrado.' }, 404);
-  if (CRM_MODELOS_EXIGEM_NOVIDADES.includes(modelo) && !contato.aceita_novidades) {
+  const exige = novo ? novo.tipo === 'novidades' : CRM_MODELOS_EXIGEM_NOVIDADES.includes(modelo);
+  if (exige && !contato.aceita_novidades) {
     return json({ error: 'Essa pessoa não aceitou receber novidades por e-mail. Este modelo não pode ser enviado a ela.' }, 403);
   }
 
-  const marketing = modelo !== 'boas_vindas' && modelo !== 'cf_guia_1';
+  const marketing = novo ? novo.tipo === 'novidades' : modelo !== 'boas_vindas' && modelo !== 'cf_guia_1';
   // Os modelos montados no estúdio (entrega 2) já trazem o rodapé "responda com a palavra sair": não repete.
   const temRodape = /palavra\s+"?sair"?/i.test(corpo);
   const rodape = marketing && !temRodape ? '\n\n—\nPra não receber mais e-mails, é só responder este com a palavra "sair".' : '';
@@ -1635,12 +1645,13 @@ async function handleCrmGuiaCapturado(request, env) {
 // Reserva primeiro: o índice emails_um_por_guia_idx deixa só uma linha por pessoa e modelo cf_guia_*,
 // então só quem conseguiu gravar envia (duas chamadas juntas não mandam dois e-mails).
 // novidades = true: e-mail de relacionamento, com List-Unsubscribe (o rodapé "responda sair" vem no texto).
-async function crmEnviarGuia(env, sb, contato, modelo, mail, novidades) {
+// extra: colunas a mais na linha (as sequências gravam sequencia = true e formato = 'html').
+async function crmEnviarGuia(env, sb, contato, modelo, mail, novidades, extra) {
   const ins = await fetch(`${CRM_SUPABASE_URL}/rest/v1/emails_enviados`, {
     method: 'POST', headers: { ...sb, Prefer: 'return=representation' },
     body: JSON.stringify({ contato_id: contato.id, modelo, assunto: mail.assunto, corpo: mail.texto, status: 'agendado', enviado_em: new Date().toISOString(),
       // Só quando o texto veio da tabela (a coluna nasce no mesmo SQL que a tabela): o texto de reserva não tem versão.
-      ...(mail.versao ? { modelo_versao: mail.versao } : {}) }),
+      ...(mail.versao ? { modelo_versao: mail.versao } : {}), ...(extra || {}) }),
   });
   if (ins.status === 409) return 'ja';
   if (!ins.ok) {
@@ -1909,10 +1920,18 @@ async function handleCrmModeloTeste(request, env) {
     }
   } else {
     vars = crmVarsDoPainel(body && body.vars);
+    // Modelo novo do estúdio (entrega 3): o link do produto é privado e vem daqui, como no envio de verdade.
+    if (!CRM_MODELOS_ANTIGOS.includes(chave)) {
+      const mRes = await fetch(`${CRM_SUPABASE_URL}/rest/v1/modelos_email?select=para_quem&chave=eq.${encodeURIComponent(chave)}`, { headers: auth });
+      const mo = mRes.ok ? (await mRes.json())[0] : null;
+      const pq = (mo && mo.para_quem) || {};
+      vars.link_produto = crmLinkProduto(env, pq.produto);
+      if (pq.produto_nome) vars.produto = String(pq.produto_nome).slice(0, 120);
+    }
   }
 
   let mail;
-  try { mail = crmMontarModelo(linha, vars); }
+  try { mail = CRM_MODELOS_ANTIGOS.includes(chave) ? crmMontarModelo(linha, vars) : crmMontarNovo(linha, vars); }
   catch (e) { return json({ error: 'O texto tem um erro: ' + e.message + '.' }, 400); }
   if (/\[[^\]\n]{2,60}\]/.test(mail.assunto + '\n' + mail.texto)) {
     return json({ error: 'Ainda há um trecho entre [colchetes]. No envio manual você troca na hora; no teste, troque no texto para ver como fica.' }, 400);
@@ -1941,6 +1960,116 @@ async function handleCrmModeloTeste(request, env) {
   });
   if (!mRes.ok) console.error('crm/modelo-teste: teste enviado mas não marquei a versão — ' + mRes.status);
   return json({ ok: true, para, marcado: mRes.ok });
+}
+
+// ---------- Estúdio de e-mails 3: modelos novos e sequências ----------
+// Um modelo criado no estúdio (modelos_email.criado_no_estudio) com a parte Envio ligada sai sozinho: de hora em hora
+// (Cron Trigger "5 * * * *", separado do "0 13 * * *" do e-mail 2) o Worker pergunta ao banco quem deve receber agora
+// (crm_sequencia_pendentes, admin/crm/db/crm-estudio-emails-3.sql: só versão No ar, só quem cumpre o "Para quem" e, se
+// o tipo for novidades, só quem aceitou) e manda a versão No ar, preenchida com os dados da pessoa. Confere de novo o
+// consentimento antes de cada envio. Um modelo de sequência sai uma vez só por pessoa (índice emails_um_por_sequencia_idx).
+// Os 10 modelos de antes do estúdio nunca saem por aqui. Ver README.md, seção 23.
+const CRM_CRON_SEQUENCIAS = '5 * * * *';
+const CRM_MODELOS_ANTIGOS = CRM_MODELOS.concat(['cf_guia_conversa']);   // os 10 de antes do estúdio
+const CRM_APP_LINK = 'https://plataforma.imigrantepordentro.com/';      // igual a APP_LINK em admin/crm/crm.js
+const CRM_CAL_LINK = 'https://cal.com/ingryd-silva-jf1cnx/1-1?overlayCalendar=true';   // igual a CAL_LINK em admin/crm/crm.js
+// Igual a PERSONAS em admin/crm/crm.js: {persona} é o nome do checklist em minúsculas.
+const CRM_PERSONAS = {
+  au_pair_estudante: 'Au pair → estudante', campus_france: 'Campus France', alternancia_emprego: 'Alternância / emprego',
+  conjuge: 'Cônjuge', pvt: 'PVT', sem: 'Sem checklist',
+};
+// O link de acesso de cada produto pago: privado, mora numa variável do Worker (nunca no texto do modelo).
+function crmLinkProduto(env, produto) {
+  if (produto === HUB_ESTUDOS_SLUG) return env.HUB_ESTUDOS_NOTION_LINK || '';
+  return '';
+}
+function crmDiaBr(ymd) { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(ymd || '')); return m ? `${m[3]}/${m[2]}/${m[1]}` : ''; }
+
+// Os dados de um modelo novo (os mesmos que o estúdio mostra em "Contexto da pessoa": ES.VARS_NOVOS em estudio.js).
+// p = uma linha de crm_sequencia_pendentes (ou o mesmo formato).
+function crmVarsNovos(env, p) {
+  const d = p.dados || {}, resp = d.respostas || {};
+  const nivel = CF_NIVEIS[resp.cfNivel];
+  const cidade = CF_CIDADES.find(([k]) => k === resp.cfCidade);
+  return {
+    nome: crmPrimeiroNome(p.nome), email: p.email,
+    persona: (CRM_PERSONAS[d.persona || 'sem'] || d.persona || '').toLowerCase(),
+    nivel: nivel ? nivel[0] : '', prazo_nivel: nivel ? nivel[1] : '',
+    etapa: CF_ETAPA_NOME[resp.objetivo] || '', cidade: cidade ? cidade[1] : '',
+    prazo_limite: crmDiaBr(d.prazo_limite), dias_para_prazo: d.dias_para_prazo == null ? '' : String(d.dias_para_prazo),
+    prazo_vencido: d.dias_para_prazo != null && Number(d.dias_para_prazo) < 0,
+    prazo_a_vencer: d.dias_para_prazo != null && Number(d.dias_para_prazo) >= 0,
+    link_acesso: CRM_APP_LINK, link_agenda: CRM_CAL_LINK,
+    produto: d.produto_nome || '', link_produto: crmLinkProduto(env, d.produto),
+  };
+}
+// Monta a versão com os dados; recusa (erro) se faltar um link que o texto usa ou sobrar um [trecho entre colchetes].
+function crmMontarNovo(tpl, vars) {
+  const usados = String(tpl.assunto) + String(tpl.preheader || '') + String(tpl.corpo_texto) + String(tpl.corpo_html || '');
+  for (const m of usados.matchAll(/\{[#^]?(link_\w+)\}/g)) {
+    if (!crmTemValor(vars[m[1]])) throw new Error('falta o ' + m[1]);
+  }
+  const mail = crmMontarModelo(tpl, vars);
+  if (/\[[^\]\n]{2,60}\]/.test(mail.assunto + '\n' + mail.texto)) throw new Error('trecho entre [colchetes]');
+  return mail;
+}
+
+async function crmSequenciasRodada(env) {
+  if (!env.SUPABASE_SERVICE_ROLE_KEY || !env.BREVO_API_KEY || !env.BREVO_SENDER_EMAIL) {
+    console.error('crm/sequencias: falta SUPABASE_SERVICE_ROLE_KEY ou Brevo no Worker');
+    return { erro: 'config' };
+  }
+  // No plano gratuito da Cloudflare cada execução tem 50 chamadas: 1 da lista, 1 por modelo, 3 por envio.
+  const lote = Math.min(Math.max(parseInt(env.CRM_SEQUENCIA_LOTE, 10) || 12, 1), 100);
+  const sb = crmServiceHeaders(env);
+  const pRes = await fetch(`${CRM_SUPABASE_URL}/rest/v1/rpc/crm_sequencia_pendentes`, {
+    method: 'POST', headers: sb, body: JSON.stringify({ p_limite: lote }),
+  });
+  if (!pRes.ok) {
+    console.error('crm/sequencias: não consegui ler a lista — ' + pRes.status + ' ' + (await pRes.text()));
+    return { erro: 'lista' };
+  }
+  const lista = await pRes.json();
+  const r = { pendentes: lista.length, enviados: 0, ja_enviados: 0, sem_consentimento: 0, falhas: 0 };
+  const versoes = {};   // a versão de cada modelo, lida uma vez por rodada
+  for (const p of lista) {
+    try {
+      const chave = String(p.chave || '');
+      if (!/^[a-z0-9_]{2,40}$/.test(chave) || CRM_MODELOS_ANTIGOS.includes(chave) || !Number.isInteger(p.versao)
+        || !CRM_UUID_RE.test(String(p.contato_id || '')) || !/@/.test(String(p.email || ''))) { r.falhas++; continue; }
+      // O banco já filtrou; o Worker confere de novo: novidades só para quem aceitou.
+      if (p.tipo === 'novidades' && p.aceita_novidades !== true) { r.sem_consentimento++; continue; }
+      const k = chave + ':' + p.versao;
+      if (!(k in versoes)) {
+        const vRes = await fetch(`${CRM_SUPABASE_URL}/rest/v1/modelos_email_versoes?select=versao,assunto,preheader,corpo_texto,corpo_html` +
+          `&chave=eq.${encodeURIComponent(chave)}&versao=eq.${p.versao}&etapa=eq.no_ar&limit=1`, { headers: sb });
+        versoes[k] = vRes.ok ? ((await vRes.json())[0] || null) : null;
+        if (!versoes[k]) console.error('crm/sequencias: ' + chave + ' v' + p.versao + ' não está No ar');
+      }
+      const tpl = versoes[k];
+      if (!tpl) { r.falhas++; continue; }
+      let mail;
+      try { mail = crmMontarNovo(tpl, crmVarsNovos(env, p)); }
+      catch (e) { console.error('crm/sequencias: ' + chave + ' v' + p.versao + ' com erro (' + e.message + '), não mandei'); r.falhas++; continue; }
+      const contato = { id: p.contato_id, email: p.email, nome: p.nome };
+      const s = await crmEnviarGuia(env, sb, contato, chave, mail, p.tipo === 'novidades', { sequencia: true, formato: 'html' });
+      if (s === 'enviado') r.enviados++; else if (s === 'ja') r.ja_enviados++; else r.falhas++;
+    } catch (e) {
+      r.falhas++;
+      console.error('crm/sequencias: ' + e);
+    }
+  }
+  console.log('crm/sequencias: ' + JSON.stringify(r));
+  return r;
+}
+
+// Rodar as sequências na hora (teste): o mesmo segredo do pg_net (CRM_HOOK_SECRET) no cabeçalho X-Crm-Hook.
+async function handleCrmSequenciaRodar(request, env) {
+  if (!crmSegredoIgual(request.headers.get('X-Crm-Hook') || '', env.CRM_HOOK_SECRET || '')) {
+    return new Response('Unauthorized', { status: 401 });
+  }
+  const r = await crmSequenciasRodada(env);
+  return json(r, r.erro ? 500 : 200);
 }
 
 async function crmLerJson(request) {
@@ -2382,6 +2511,9 @@ export default {
       if (url.pathname === '/api/crm/guia-capturado' && request.method === 'POST') {
         return await handleCrmGuiaCapturado(request, env);
       }
+      if (url.pathname === '/api/crm/sequencia-rodar' && request.method === 'POST') {
+        return await handleCrmSequenciaRodar(request, env);
+      }
       if (url.pathname === '/api/crm/conversa-rodar' && request.method === 'POST') {
         return await handleCrmConversaRodar(request, env);
       }
@@ -2399,7 +2531,13 @@ export default {
   },
 
   // Cron Trigger "0 13 * * *" (10h de Brasília): manda o e-mail 2 do guia (a conversa). Seção 18 do README.
+  // Cron Trigger "5 * * * *" (de hora em hora): as sequências do estúdio (entrega 3). Seção 23 do README.
+  // Qualquer outro horário (ou nenhum) continua sendo o e-mail 2, como antes.
   async scheduled(event, env, ctx) {
+    if (event && event.cron === CRM_CRON_SEQUENCIAS) {
+      ctx.waitUntil(crmSequenciasRodada(env).catch((e) => console.error('crm/sequencias: ' + e)));
+      return;
+    }
     ctx.waitUntil(crmConversaDiaria(env).catch((e) => console.error('crm/conversa: ' + e)));
   },
 

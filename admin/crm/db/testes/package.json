@@ -13,7 +13,8 @@
     "test:fase1a": "node crm-fase1a-conversa.test.mjs",
     "test:fase1b": "node crm-fase1b-resposta.test.mjs",
     "test:modelos": "node crm-modelos-email.test.mjs",
-    "test:estudio": "node crm-estudio-emails-2.test.mjs"
+    "test:estudio": "node crm-estudio-emails-2.test.mjs",
+    "test:estudio3": "node crm-estudio-emails-3.test.mjs"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.8"

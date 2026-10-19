@@ -8,6 +8,9 @@
 // Estúdio de e-mails, entrega 2: os blocos (admin/crm/estudio.js) montam o e-mail 1 e o 2 com o mesmo texto de hoje,
 // a rota /api/crm/modelo-teste manda só para a admin e não grava envio, e o rodapé não se repete no envio manual.
 //
+// Estúdio de e-mails, entrega 3: o Cron "5 * * * *" manda as sequências (só os modelos novos, versão No ar, consentimento
+// conferido de novo, link do produto vindo do Worker), o "0 13 * * *" continua sendo o e-mail 2, e a ficha envia um modelo novo.
+//
 // Uso: node cms-oauth-worker/testes/crm-email.test.mjs   (Node 18+, sem dependências)
 import { readFileSync, writeFileSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -724,6 +727,86 @@ check('texto mexido: grava formato texto', chamadas.find((c) => c.method === 'PO
   res = await enviar({ contato_id: CID, modelo: 'boas_vindas', assunto: 'oi', corpo: 'Oi Ana!' });
   const posts = chamadas.filter((c) => c.method === 'POST' && /emails_enviados$/.test(c.url));
   check('banco sem a coluna formato: grava de novo sem ela e não dá aviso', posts.length === 2 && !('formato' in posts[1].body) && !(await res.json()).aviso);
+}
+
+
+console.log('\n== Estúdio de e-mails 3: sequências de hora em hora ==');
+{
+  const HUB = 'https://www.notion.so/hub-exemplo-privado';
+  const envS = { ...env, HUB_ESTUDOS_NOTION_LINK: HUB };
+  // A versão No ar do modelo de compra, montada do esqueleto do catálogo com os [trechos] escritos.
+  const d = E.esqueleto('compra');
+  d.itens.forEach((b) => { if (b.valor) b.valor = '1. Escolha o seu nível · 2. Monte a semana'; });
+  const vCompra = { versao: 1, ...E.montar(d, 'compra') };
+  const dA = E.esqueleto('aquecimento');
+  dA.assunto = 'Uma astúcia para o dossiê'; dA.itens = [{ tipo: 'texto', texto: 'Oi {nome}! Uma astúcia.' }, { tipo: 'assinatura', texto: 'Ingryd · Por Dentro' }];
+  const vAquec = { versao: 2, ...E.montar(dA, 'novidades') };
+  const dadosAna = { persona: 'campus_france', respostas: { cfNivel: 'l1' }, produto: 'hub-de-estudos', produto_nome: 'Hub de Estudos' };
+  const linhas = [
+    { contato_id: CID, email: 'ana@example.com', nome: 'Ana Teste', chave: 'hub_compra_1', versao: 1, tipo: 'compra', aceita_novidades: false, dados: dadosAna },
+    { contato_id: CID2, email: 'bia@example.com', nome: 'Bia', chave: 'aquec_1', versao: 2, tipo: 'novidades', aceita_novidades: false, dados: {} },
+    { contato_id: CID2, email: 'bia@example.com', nome: 'Bia', chave: 'cf_guia_1', versao: 1, tipo: 'servico', aceita_novidades: true, dados: {} },
+    { contato_id: CID2, email: 'bia@example.com', nome: 'Bia', chave: 'aquec_1', versao: 2, tipo: 'novidades', aceita_novidades: true, dados: {} },
+  ];
+  const regras = (extra) => [...(extra || []), [/\/rpc\/crm_sequencia_pendentes$/, { method: 'POST', body: linhas }],
+    [/modelos_email_versoes\?.*chave=eq\.hub_compra_1/, { body: [vCompra] }], [/modelos_email_versoes\?.*chave=eq\.aquec_1/, { body: [vAquec] }],
+    [/\/emails_enviados$/, { method: 'POST', status: 201, body: [{ id: 41 }] }], [/api\.brevo\.com/, { body: { messageId: '<s1@x.net>' } }]];
+  const rodar = async (ev, e2) => { let p; await worker.scheduled(ev, e2 || envS, { waitUntil(x) { p = x; } }); return p; };
+  chamadas = []; fakeFetch(regras());
+  let r = await rodar({ cron: '5 * * * *' });
+  check('o Cron "5 * * * *" roda as sequências (não o e-mail 2)', chamadas.some((c) => /crm_sequencia_pendentes/.test(c.url)) && !chamadas.some((c) => /crm_conversa_pendentes/.test(c.url)));
+  check('lote padrão 12, com a service_role', chamadas.find((c) => /crm_sequencia_pendentes/.test(c.url)).body.p_limite === 12 && chamadas[0].headers.apikey === 'srv');
+  check('manda 2, pula quem não aceitou novidades e nunca manda um dos 10 de antes', r.enviados === 2 && r.sem_consentimento === 1 && r.falhas === 1);
+  const res3 = chamadas.filter((c) => /emails_enviados$/.test(c.url) && c.method === 'POST');
+  check('reserva com sequencia = true, formato html e a versão', res3.length === 2 && res3.every((c) => c.body.sequencia === true && c.body.formato === 'html') &&
+    res3[0].body.modelo === 'hub_compra_1' && res3[0].body.modelo_versao === 1);
+  const env3 = chamadas.filter((c) => /brevo/.test(c.url));
+  check('compra: o link do produto vem do Worker, com o nome dela e do produto', env3[0].body.subject === 'Ana, o seu acesso ao Hub de Estudos chegou' &&
+    env3[0].body.textContent.includes(HUB) && env3[0].body.htmlContent.includes('href="' + HUB + '"'));
+  check('compra: sem List-Unsubscribe e sem "responda sair"', !env3[0].body.headers && !/palavra sair/.test(env3[0].body.textContent));
+  check('novidades: List-Unsubscribe e o rodapé "responda sair"', /^<mailto:/.test(env3[1].body.headers['List-Unsubscribe']) && /palavra sair\.$/.test(env3[1].body.textContent));
+  check('cada versão é lida uma vez por rodada', chamadas.filter((c) => /modelos_email_versoes/.test(c.url)).length === 2 &&
+    chamadas.filter((c) => /modelos_email_versoes/.test(c.url)).every((c) => /etapa=eq\.no_ar/.test(c.url)));
+
+  chamadas = []; fakeFetch(regras());
+  r = await rodar({ cron: '5 * * * *' }, env);
+  check('sem o link do produto no Worker, o e-mail de compra não sai', r.falhas === 2 && !chamadas.filter((c) => /brevo/.test(c.url)).some((c) => /hub/i.test(c.body.subject)));
+  chamadas = []; fakeFetch(regras([[/\/emails_enviados$/, { method: 'POST', status: 409 }]]));
+  r = await rodar({ cron: '5 * * * *' });
+  check('já recebeu (índice, 409): não manda de novo', r.ja_enviados === 2 && !chamadas.some((c) => /brevo/.test(c.url)));
+  chamadas = []; fakeFetch([[/\/rpc\/crm_sequencia_pendentes$/, { method: 'POST', status: 404, body: {} }]]);
+  r = await rodar({ cron: '5 * * * *' });
+  check('sem o SQL da entrega 3: só anota nos Logs', r.erro === 'lista' && !chamadas.some((c) => /brevo/.test(c.url)));
+  chamadas = []; fakeFetch([pend, [/\/emails_enviados$/, { method: 'POST', status: 201, body: [{ id: 21 }] }], [/api\.brevo\.com/, { body: { messageId: '<m2@x.net>' } }]]);
+  r = await rodar({ cron: '0 13 * * *' }, envL);
+  check('o Cron "0 13 * * *" continua sendo só o e-mail 2', r.enviados === 2 && !chamadas.some((c) => /crm_sequencia_pendentes/.test(c.url)));
+  chamadas = [];
+  res = await worker.fetch(new Request('https://w.example/api/crm/sequencia-rodar', { method: 'POST', headers: { 'X-Crm-Hook': 'errado-errado-errado-errado-errado-err' } }), envS, {});
+  check('rodar na hora: segredo errado dá 401', res.status === 401 && chamadas.length === 0);
+  fakeFetch(regras());
+  res = await worker.fetch(new Request('https://w.example/api/crm/sequencia-rodar', { method: 'POST', headers: { 'X-Crm-Hook': SEGREDO } }), envS, {});
+  check('rodar na hora: com o segredo, manda', res.status === 200 && (await res.json()).enviados === 2);
+
+  console.log('\n== Estúdio de e-mails 3: um modelo novo pela ficha ==');
+  const modeloNovo = (m) => [/\/modelos_email\?select=chave/, { body: m ? [m] : [] }];
+  const fichaSem = [/\/crm_contatos\?/, { body: [{ id: CID, email: 'ana@example.com', nome: 'Ana', aceita_novidades: false }] }];
+  chamadas = []; fakeFetch([...adminOk, modeloNovo({ chave: 'convite_novo', tipo: 'novidades', automatico: false, criado_no_estudio: true }), fichaSem, brevoOk]);
+  res = await enviar({ contato_id: CID, modelo: 'convite_novo', assunto: 'oi', corpo: 'Oi Ana!' });
+  check('modelo novo de novidades para quem não aceitou: 403', res.status === 403 && !chamadas.some((c) => /brevo/.test(c.url)));
+  chamadas = []; fakeFetch([...adminOk, modeloNovo({ chave: 'convite_novo', tipo: 'novidades', automatico: false, criado_no_estudio: true }), fichaNov, brevoOk, [/\/emails_enviados$/, { method: 'POST', status: 201 }]]);
+  res = await enviar({ contato_id: CID, modelo: 'convite_novo', assunto: 'oi', corpo: 'Oi Ana!' });
+  bt = chamadas.find((c) => /brevo/.test(c.url));
+  check('para quem aceitou: sai com rodapé e List-Unsubscribe', res.status === 200 && /palavra "sair"/.test(bt.body.textContent) && !!bt.body.headers);
+  chamadas = []; fakeFetch([...adminOk, modeloNovo({ chave: 'boas_novas', tipo: 'servico', automatico: false, criado_no_estudio: true }), fichaSem, brevoOk, [/\/emails_enviados$/, { method: 'POST', status: 201 }]]);
+  res = await enviar({ contato_id: CID, modelo: 'boas_novas', assunto: 'oi', corpo: 'Oi Ana!' });
+  bt = chamadas.find((c) => /brevo/.test(c.url));
+  check('modelo novo de serviço: sai para todos, sem rodapé', res.status === 200 && !/sair/.test(bt.body.textContent) && !bt.body.headers);
+  chamadas = []; fakeFetch([...adminOk, modeloNovo({ chave: 'hub_compra_1', tipo: 'compra', automatico: true, criado_no_estudio: true }), fichaNov, brevoOk]);
+  res = await enviar({ contato_id: CID, modelo: 'hub_compra_1', assunto: 'oi', corpo: 'Oi Ana!' });
+  check('modelo de sequência não sai pela ficha', res.status === 400 && !chamadas.some((c) => /brevo/.test(c.url)));
+  chamadas = []; fakeFetch([...adminOk, modeloNovo(null), fichaNov, brevoOk]);
+  res = await enviar({ contato_id: CID, modelo: 'nao_existe', assunto: 'oi', corpo: 'Oi Ana!' });
+  check('modelo que não existe: 400', res.status === 400 && !chamadas.some((c) => /brevo/.test(c.url)));
 }
 
 console.log(`\n${passed} passaram, ${failed} falharam`);
