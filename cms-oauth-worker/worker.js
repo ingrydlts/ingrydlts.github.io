@@ -1271,10 +1271,11 @@ async function handleCrmEnviar(request, env) {
   // Os que saem sozinhos (com Envio) não saem por aqui.
   let novo = null;
   if (!CRM_MODELOS.includes(modelo)) {
-    const mRes = await fetch(`${CRM_SUPABASE_URL}/rest/v1/modelos_email?select=chave,tipo,automatico,criado_no_estudio&chave=eq.${modelo}`, { headers: auth });
+    const mRes = await fetch(`${CRM_SUPABASE_URL}/rest/v1/modelos_email?select=*&chave=eq.${modelo}`, { headers: auth });
     novo = mRes.ok ? (await mRes.json())[0] : null;
     if (!novo || !novo.criado_no_estudio) return json({ error: 'Modelo inválido.' }, 400);
     if (novo.automatico) return json({ error: 'Este modelo sai sozinho pela sequência (parte Envio). Não sai pela ficha.' }, 400);
+    if (novo.excluido_em) return json({ error: 'Este modelo foi excluído no estúdio. Restaure para enviar.' }, 400);
   }
   const cRes = await fetch(
     `${CRM_SUPABASE_URL}/rest/v1/crm_contatos?select=id,email,nome,aceita_novidades&id=eq.${contatoId}`,

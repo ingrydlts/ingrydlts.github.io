@@ -788,7 +788,7 @@ console.log('\n== Estúdio de e-mails 3: sequências de hora em hora ==');
   check('rodar na hora: com o segredo, manda', res.status === 200 && (await res.json()).enviados === 2);
 
   console.log('\n== Estúdio de e-mails 3: um modelo novo pela ficha ==');
-  const modeloNovo = (m) => [/\/modelos_email\?select=chave/, { body: m ? [m] : [] }];
+  const modeloNovo = (m) => [/\/modelos_email\?select=\*/, { body: m ? [m] : [] }];
   const fichaSem = [/\/crm_contatos\?/, { body: [{ id: CID, email: 'ana@example.com', nome: 'Ana', aceita_novidades: false }] }];
   chamadas = []; fakeFetch([...adminOk, modeloNovo({ chave: 'convite_novo', tipo: 'novidades', automatico: false, criado_no_estudio: true }), fichaSem, brevoOk]);
   res = await enviar({ contato_id: CID, modelo: 'convite_novo', assunto: 'oi', corpo: 'Oi Ana!' });
@@ -804,6 +804,9 @@ console.log('\n== Estúdio de e-mails 3: sequências de hora em hora ==');
   chamadas = []; fakeFetch([...adminOk, modeloNovo({ chave: 'hub_compra_1', tipo: 'compra', automatico: true, criado_no_estudio: true }), fichaNov, brevoOk]);
   res = await enviar({ contato_id: CID, modelo: 'hub_compra_1', assunto: 'oi', corpo: 'Oi Ana!' });
   check('modelo de sequência não sai pela ficha', res.status === 400 && !chamadas.some((c) => /brevo/.test(c.url)));
+  chamadas = []; fakeFetch([...adminOk, modeloNovo({ chave: 'convite_novo', tipo: 'novidades', automatico: false, criado_no_estudio: true, excluido_em: '2026-10-19T10:00:00Z' }), fichaNov, brevoOk]);
+  res = await enviar({ contato_id: CID, modelo: 'convite_novo', assunto: 'oi', corpo: 'Oi Ana!' });
+  check('modelo excluído no estúdio não sai pela ficha', res.status === 400 && !chamadas.some((c) => /brevo/.test(c.url)));
   chamadas = []; fakeFetch([...adminOk, modeloNovo(null), fichaNov, brevoOk]);
   res = await enviar({ contato_id: CID, modelo: 'nao_existe', assunto: 'oi', corpo: 'Oi Ana!' });
   check('modelo que não existe: 400', res.status === 400 && !chamadas.some((c) => /brevo/.test(c.url)));

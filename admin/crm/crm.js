@@ -58,7 +58,9 @@ var WORKER_BASE = 'https://por-dentro-cms-oauth.ingrydigitalmanagement.workers.d
 var APP_LINK = 'https://plataforma.imigrantepordentro.com/';
 var EXIGEM_NOVIDADES = { naoclicou: 1, parouapp: 1, guia_chamada: 1, guia_plataforma: 1, guia_alternancia: 1 };   // igual ao Worker (CRM_MODELOS_EXIGEM_NOVIDADES)
 // Os modelos novos do estúdio que você envia pela ficha (sem Envio) e já têm versão No ar.
-function novosManuais() { return (M || []).filter(function (m) { return m.criado_no_estudio && !m.automatico && versoesDe(m.chave).some(function (v) { return v.etapa === 'no_ar'; }); }); }
+// Excluído (o X do estúdio, db/crm-estudio-emails-3.sql): some da lista e do "Escrever e-mail"; as versões ficam e dá para restaurar.
+function excluido(k) { var m = modeloDe(k); return !!(m && m.excluido_em); }
+function novosManuais() { return (M || []).filter(function (m) { return m.criado_no_estudio && !m.automatico && !m.excluido_em && versoesDe(m.chave).some(function (v) { return v.etapa === 'no_ar'; }); }); }
 function exigeNovidades(k) { var m = modeloDe(k); return m && m.criado_no_estudio ? m.tipo === 'novidades' : !!EXIGEM_NOVIDADES[k]; }
 // Rótulo, alavanca e quando usar, para o pop-up: os 8 do código (TPLS) ou o modelo novo.
 function tplInfo(k) {
@@ -960,7 +962,7 @@ function renderModelos() {
   $('mod-export').disabled = !M;
   $('studio').dataset.tab = ST.tab;
   document.querySelectorAll('[data-sttab]').forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.sttab === ST.tab)); });
-  var lista = M || TPL_ORDER.map(function (k) { return { chave: k, nome: TPLS[k].label, objetivo: TPLS[k].when, automatico: false, tipo: EXIGEM_NOVIDADES[k] ? 'novidades' : 'servico' }; });
+  var lista = M ? M.filter(function (m) { return !m.excluido_em; }) : TPL_ORDER.map(function (k) { return { chave: k, nome: TPLS[k].label, objetivo: TPLS[k].when, automatico: false, tipo: EXIGEM_NOVIDADES[k] ? 'novidades' : 'servico' }; });
   if (!ST.k || !lista.some(function (m) { return m.chave === ST.k; })) { if (lista.length) abrirModelo(lista[0].chave); }
   else if (ST.v != null && !versaoAberta() && M) abrirModelo(ST.k);
   renderLista(lista);
@@ -974,14 +976,35 @@ function renderLista(lista) {
     var dot = !v ? 'dr' : obra ? (obra.etapa === 'revisao' ? 'rev' : 'dr') : v.etapa === 'no_ar' ? 'ok' : 'dr';
     var linha = !M ? 'Texto do código' : etapaTxt(v) + (obra && obra !== v ? ' · ' + etapaTxt(obra).toLowerCase() : '') +
       (m.criado_no_estudio && m.envio_gatilho ? ' · envio ' + (m.envio_ligado ? 'ligado' : 'desligado') : '');
-    return '<button class="st-item" data-tpl-pick="' + esc(m.chave) + '" aria-pressed="' + (!ST.criar && ST.k === m.chave) + '" type="button"><span class="sdot ' + dot + '"></span><span><b>' + esc(m.nome) + '</b>' +
-      '<span>' + esc(linha) + '</span></span></button>';
+    return '<div class="st-card"><button class="st-item" data-tpl-pick="' + esc(m.chave) + '" aria-pressed="' + (!ST.criar && ST.k === m.chave) + '" type="button"><span class="sdot ' + dot + '"></span><span><b>' + esc(m.nome) + '</b>' +
+      '<span>' + esc(linha) + '</span></span></button>' +
+      (podeExcluir(m) ? '<button class="st-x" type="button" data-stexcluir="' + esc(m.chave) + '" aria-label="Excluir ' + esc(m.nome) + '" title="Excluir">×</button>' : '') + '</div>';
   };
+  var exc = (M || []).filter(function (m) { return m.excluido_em; });
+  var lixo = exc.length ? '<details class="st-excl"><summary class="tplgrp">Excluídos · ' + exc.length + '</summary>' + exc.map(function (m) {
+    return '<div class="st-excl-i"><span><b>' + esc(m.nome) + '</b><span class="sub">excluído em ' + esc(fmtDay(m.excluido_em)) + '</span></span>' +
+      '<button class="btn" type="button" data-strestaurar="' + esc(m.chave) + '">Restaurar</button></div>';
+  }).join('') + '</details>' : '';
   var grupo = function (titulo, itens) { return itens.length ? '<p class="tplgrp">' + esc(titulo) + ' · ' + itens.length + '</p>' + itens.map(card).join('') : ''; };
-  $('mod-list').innerHTML = (temEstudio3() ? '<button class="st-new" type="button" id="st-novo-modelo" aria-pressed="' + !!ST.criar + '">+ Modelo novo</button>' : '') + grupo('Você envia', lista.filter(function (m) { return !m.automatico; })) + grupo('Saem sozinhos', lista.filter(function (m) { return m.automatico; })) +
+  $('mod-list').innerHTML = (temEstudio3() ? '<button class="st-new" type="button" id="st-novo-modelo" aria-pressed="' + !!ST.criar + '">+ Modelo novo</button>' : '') + grupo('Você envia', lista.filter(function (m) { return !m.automatico; })) + grupo('Saem sozinhos', lista.filter(function (m) { return m.automatico; })) + lixo +
     '<div class="st-legend"><span><i class="sdot ok"></i>No ar</span><span><i class="sdot rev"></i>Em revisão</span><span><i class="sdot dr"></i>Rascunho</span></div>';
 }
 
+// Os e-mails 1 e 2 do guia Campus France saem pelo código: excluir aqui não pararia o envio, então não têm o X.
+function podeExcluir(m) { return !!(M && M.length && Object.prototype.hasOwnProperty.call(M[0], 'excluido_em')) && !/^cf_guia_/.test(m.chave); }
+async function excluirModelo(k, voltar) {
+  var m = modeloDe(k); if (!m) return;
+  if (!voltar && !window.confirm('Excluir "' + m.nome + '"? Ele sai da lista e do "Escrever e-mail"' + (m.envio_ligado ? ' e a sequência para de sair' : '') +
+    '. As versões ficam guardadas em "Excluídos", no fim da lista, onde dá para restaurar.')) return;
+  await salvar();
+  var r = await supabase.from('modelos_email').update({ excluido_em: voltar ? null : new Date().toISOString() }).eq('chave', k).select();
+  if (r.error) return fail(voltar ? 'restaurar o modelo' : 'excluir o modelo', r.error);
+  Object.assign(m, (r.data && r.data[0]) || { excluido_em: voltar ? null : new Date().toISOString() });
+  if (!voltar && ST.k === k) ST.k = null;
+  if (voltar) { ST.k = k; abrirModelo(k); }
+  toast(voltar ? '"' + m.nome + '" restaurado' + (m.envio_gatilho ? ' (com o Envio desligado)' : '') : '"' + m.nome + '" excluído', 3200);
+  renderModelos();
+}
 function secao(id, titulo, dica, corpo) {
   var on = ST.sec === id;
   return '<div class="st-sec' + (on ? ' is-open' : '') + '"><button type="button" class="st-sec-h" data-stsec="' + id + '" aria-expanded="' + on + '"><b>' + esc(titulo) + '</b><span>' + esc(dica) + '</span><i aria-hidden="true">▾</i></button>' +
@@ -1552,7 +1575,7 @@ function openCompose(cid, key) {
   var k = key || defaultTpl(c);
   CMP = { c: c, k: k, e: emailPronto(c, k), editado: null, aba: 'ver' };
   var bloqueado = exigeNovidades(k) && !c.aceita_novidades;
-  var opcoesTpl = TPL_ORDER.concat(novosManuais().map(function (m) { return m.chave; }));
+  var opcoesTpl = TPL_ORDER.filter(function (m) { return !excluido(m) || m === k; }).concat(novosManuais().map(function (m) { return m.chave; }));
   modalOpen(modalTop(c) +
     '<div class="ctx" style="margin-top:12px"><div class="sel"><select id="compose-tpl" aria-label="Modelo">' + opcoesTpl.map(function (m) { return '<option value="' + m + '"' + (m === k ? ' selected' : '') + '>' + esc(tplInfo(m).label) + '</option>'; }).join('') + '</select></div><span class="lever" style="display:inline-block;font-size:10.5px;font-weight:700;text-transform:uppercase;color:var(--brown);background:var(--brown-soft);padding:2px 8px;border-radius:999px">' + esc(tplInfo(k).lever) + '</span></div>' +
     '<p class="sub" style="margin:8px 0 0">' + esc(tplInfo(k).when) + '</p>' +
@@ -1761,6 +1784,8 @@ document.addEventListener('click', async function (e) {
   if (t.dataset.novopasso) { ST.criar.passo = Number(t.dataset.novopasso); return renderModelos(); }
   if (t.id === 'novo-criar') return criarModelo(t);
   if (t.id === 'st-envio-ligar') return ligarEnvio();
+  if (t.dataset.stexcluir) return excluirModelo(t.dataset.stexcluir, false);
+  if (t.dataset.strestaurar) return excluirModelo(t.dataset.strestaurar, true);
   if (t.dataset.compra) return registrarCompra(t);
   if (t.id === 'export') {
     var blob = new Blob(['﻿' + csv(filtered())], { type: 'text/csv;charset=utf-8' });

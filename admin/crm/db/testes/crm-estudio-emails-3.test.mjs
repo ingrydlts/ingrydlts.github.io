@@ -195,6 +195,26 @@ async function main() {
   await db.query("update modelos_email set para_quem = '{}' where chave = 'aquec_1'");
   check('mudar as regras com o Envio ligado recomeça a contagem (não manda o que já venceu)', (await pendentes(`${dia(1, '10:05')}`)).filter((r) => r.chave === 'aquec_1').length === 0);
 
+  console.log('\n== O X do estúdio: excluir e restaurar ==');
+  await db.query("update modelos_email set envio_ligado_em = $1 where chave = 'hub_compra_1'", [dia(0, '08:00')]);
+  await db.query("delete from emails_enviados where contato_id = $1 and modelo = 'hub_compra_1'", [ana]);
+  check('antes de excluir, a sequência de compra sai', quem(await pendentes(dia(1, '10:05')), 'hub_compra_1') === 'Ana,Bia');
+  await asUser(admin.id, () => db.query("update modelos_email set excluido_em = now() where chave = 'hub_compra_1'"));
+  let [mx] = await q("select excluido_em, envio_ligado from modelos_email where chave = 'hub_compra_1'");
+  check('excluir desliga o Envio', !!mx.excluido_em && mx.envio_ligado === false);
+  check('excluído não sai mais', (await pendentes(dia(1, '10:05'))).filter((r) => r.chave === 'hub_compra_1').length === 0);
+  check('as versões ficam guardadas', (await q("select count(*)::int n from modelos_email_versoes where chave = 'hub_compra_1'"))[0].n === 1);
+  check('ligar o Envio de um excluído não liga', (await attempt(() => db.query("update modelos_email set envio_ligado = true where chave = 'hub_compra_1'"))).ok &&
+    (await q("select envio_ligado from modelos_email where chave = 'hub_compra_1'"))[0].envio_ligado === false);
+  await asUser(admin.id, () => db.query("update modelos_email set excluido_em = null where chave = 'hub_compra_1'"));
+  check('restaurar volta o modelo (com o Envio desligado)', (await q("select excluido_em, envio_ligado from modelos_email where chave = 'hub_compra_1'"))[0].excluido_em === null);
+  await db.query("update modelos_email set envio_ligado = true where chave = 'hub_compra_1'");
+  check('um dos 8 manuais pode ser excluído', (await attempt(() => db.query("update modelos_email set excluido_em = now() where chave = 'parouapp'"))).ok);
+  await db.query("update modelos_email set excluido_em = null where chave = 'parouapp'");
+  check('os e-mails 1 e 2 do guia não podem ser excluídos', !(await attempt(() => db.query("update modelos_email set excluido_em = now() where chave = 'cf_guia_1'"))).ok
+    && !(await attempt(() => db.query("update modelos_email set excluido_em = now() where chave = 'cf_guia_conversa'"))).ok);
+  check('quem não é admin não exclui', (await asUser(outra.id, () => q("update modelos_email set excluido_em = now() where chave = 'hub_compra_2' returning chave"))).length === 0);
+
   console.log('\n== Rodar de novo não desfaz o que você criou ==');
   await db.exec(sql);
   const novos = await q('select chave, envio_ligado from modelos_email where criado_no_estudio order by chave');
