@@ -35,16 +35,6 @@
       "leituraMin": 4,
       "atualizadoEm": "2026-10-12",
       "publicado": true
-    },
-    {
-      "slug": "painel-do-certificado",
-      "url": "/guias/painel-do-certificado/",
-      "categoria": "Template Notion",
-      "titulo": "Painel do Certificado: seu certificado de língua num lugar só",
-      "resumo": "Template de Notion gratuito para DELF, DALF, TCF, Exame Cívico, TOEIC, CAE, CPE ou outra prova: prazo, materiais, práticas e revisões num lugar só, com o resumo de cada prova.",
-      "leituraMin": 4,
-      "atualizadoEm": "2026-10-20",
-      "publicado": true
     }
   ]
 }

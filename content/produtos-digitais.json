@@ -251,6 +251,75 @@
       ],
       "freeNote": "Gratuito · leva 2 minutos para liberar, só com seu e-mail",
       "guaranteeDays": 0
+    },
+    {
+      "slug": "painel-do-certificado",
+      "active": true,
+      "free": true,
+      "price": 0,
+      "url": "/produtos-digitais/painel-do-certificado/",
+      "freeUrl": "/produtos-digitais/painel-do-certificado/",
+      "ctaLabel": "Receber o painel grátis",
+      "kicker": "Template Notion · gratuito",
+      "title": "Painel do Certificado",
+      "summary": "Seu certificado de língua num lugar só, com o próximo passo sempre à vista. Prazo, materiais, práticas e revisões no Notion, com o resumo de cada prova.",
+      "description": "Feito para quem vai fazer um certificado de língua e vive com o PDF do simulado numa pasta, a data da prova num e-mail e a anotação no caderno. O Painel do Certificado junta tudo dentro do Notion: a prova, a data, as habilidades que ela cobra, os materiais, as práticas da semana e o registro de cada sessão de estudo.\n\nA página inicial mostra o que está marcado para hoje, para amanhã e o que ficou para trás, e o bloco \"Continue de onde parou\" lembra o que você deixou combinado consigo mesma na última sessão.",
+      "image": "/images/uploads/painel-certificado-1-inicio.jpg",
+      "gallery": [
+        {
+          "type": "Foto",
+          "image": "/images/uploads/painel-certificado-1-inicio.jpg",
+          "caption": "Tela inicial do template"
+        },
+        {
+          "type": "Foto",
+          "image": "/images/uploads/painel-certificado-2-certificado.jpg",
+          "caption": "Certificado de exemplo"
+        },
+        {
+          "type": "Foto",
+          "image": "/images/uploads/painel-certificado-3-sessao.jpg",
+          "caption": "Sessão de exemplo"
+        }
+      ],
+      "features": [
+        "Contagem regressiva até a prova, com alerta de cor",
+        "A lista de hoje, de amanhã e das práticas atrasadas",
+        "Revisão espaçada: cada material avisa quando precisa voltar",
+        "Registro de sessões, com resumo e próximo passo",
+        "Resumo de 8 provas: DELF, DALF, TCF, TCF Canada, Exame Cívico francês, TOEIC, CAE e CPE",
+        "Projeto de exemplo preenchido, que explica cada área"
+      ],
+      "freeTrust": [
+        {
+          "t": "Acesso na hora",
+          "s": "Link liberado ao se cadastrar"
+        },
+        {
+          "t": "100% gratuito",
+          "s": "Sem cartão, sem assinatura"
+        },
+        {
+          "t": "Fontes oficiais",
+          "s": "Link em cada tabela"
+        }
+      ],
+      "freeNote": "Gratuito · leva 2 minutos, só com nome, e-mail e a sua prova",
+      "faq": [
+        {
+          "q": "Preciso pagar para ter o painel?",
+          "a": "Não. Você informa nome, e-mail e o certificado que está preparando, e o link para duplicar no seu Notion aparece na hora."
+        },
+        {
+          "q": "Preciso saber usar o Notion?",
+          "a": "Não. O template vem com um projeto de exemplo que explica cada área, e cada campo tem uma dica de preenchimento ao passar o mouse."
+        },
+        {
+          "q": "Serve para qualquer prova?",
+          "a": "A estrutura serve para qualquer prova de língua. A biblioteca de links vem pronta para DELF, DALF, TCF, TCF Canada, Exame Cívico francês, TOEIC, CAE e CPE."
+        }
+      ],
+      "bundleWith": []
     }
   ]
 }
