@@ -260,7 +260,7 @@
       "url": "/produtos-digitais/painel-do-certificado/",
       "freeUrl": "/produtos-digitais/painel-do-certificado/",
       "ctaLabel": "Receber o painel grátis",
-      "kicker": "Template Notion · gratuito",
+      "kicker": "Template Notion · lançamento",
       "title": "Painel do Certificado",
       "summary": "Seu certificado de língua num lugar só, com o próximo passo sempre à vista. Prazo, materiais, práticas e revisões no Notion, com o resumo de cada prova.",
       "description": "Feito para quem vai fazer um certificado de língua e vive com o PDF do simulado numa pasta, a data da prova num e-mail e a anotação no caderno. O Painel do Certificado junta tudo dentro do Notion: a prova, a data, as habilidades que ela cobra, os materiais, as práticas da semana e o registro de cada sessão de estudo.\n\nA página inicial mostra o que está marcado para hoje, para amanhã e o que ficou para trás, e o bloco \"Continue de onde parou\" lembra o que você deixou combinado consigo mesma na última sessão.",
@@ -296,19 +296,19 @@
           "s": "Link liberado ao se cadastrar"
         },
         {
-          "t": "100% gratuito",
-          "s": "Sem cartão, sem assinatura"
+          "t": "Sem cartão",
+          "s": "Valor 10 €, lançamento 0 €"
         },
         {
           "t": "Fontes oficiais",
           "s": "Link em cada tabela"
         }
       ],
-      "freeNote": "Gratuito · leva 2 minutos, só com nome, e-mail e a sua prova",
+      "freeNote": "Preço de lançamento · leva 2 minutos, com nome, e-mail e a sua prova",
       "faq": [
         {
           "q": "Preciso pagar para ter o painel?",
-          "a": "Não. Você informa nome, e-mail e o certificado que está preparando, e o link para duplicar no seu Notion aparece na hora."
+          "a": "Não. O valor do template é 10 €, e o preço de lançamento é 0 €. Você informa nome, e-mail e o certificado que está preparando, aceita os termos e a Política de Privacidade, e o link para duplicar no seu Notion aparece na hora."
         },
         {
           "q": "Preciso saber usar o Notion?",
