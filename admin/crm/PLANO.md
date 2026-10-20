@@ -93,6 +93,8 @@ botões de um toque em modelos novos e os números por modelo e versão (entrega
 (gerado por `db/modelos-revisao.mjs`; rodar **depois**; idempotente) dá a 19 deles uma versão nova em rascunho com a revisão de
 texto aprovada em 20/10, e só se a versão mais nova ainda for a de 20/10 (o que foi mudado no estúdio fica). Testes: `db/testes` →
 `APP_DB_DIR=<POR DENTRO APP>/db npm run test:prontos` e `npm run test:revisao`.
+`db/crm-modelos-reimpacto.sql` (gerado por `db/modelos-reimpacto.mjs`; rodar depois da revisão): os 4 reimpactos reescritos com a
+base da aula de CRO, em rascunho. Teste: `npm run test:reimpacto`.
 
 ## Ficha: e-mails fidedignos e prévia real (16/10)
 
