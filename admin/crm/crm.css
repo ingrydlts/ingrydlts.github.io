@@ -43,6 +43,8 @@ button{cursor:pointer}
 :focus-visible{outline:2px solid var(--focus); outline-offset:2px}
 .num{font-variant-numeric:tabular-nums}
 .app{max-width:1280px; margin:0 auto; display:grid; grid-template-columns:220px minmax(0,1fr); gap:20px}
+/* O estúdio de e-mails usa a tela inteira no computador: lista, editor e prévia lado a lado. */
+.app:has(.nav[data-view="modelos"][aria-current="page"]){max-width:none}
 
 .proposal{max-width:1280px; margin:0 auto 16px; display:flex; flex-wrap:wrap; gap:10px 16px; align-items:center; justify-content:space-between; background:var(--beige-soft); color:var(--beige-ink); border-radius:var(--r); padding:10px 14px; font-size:13px}
 .proposal b{font-weight:600}
@@ -322,7 +324,7 @@ a.btn{text-decoration:none; color:inherit; display:inline-flex; align-items:cent
 
 /* Estúdio de e-mails (entrega 2): três colunas como o estúdio de produtos do admin —
    modelos · editor em seções · prévia com uma pessoa de verdade. Abaixo de 1000px vira abas. */
-.studio{display:grid; grid-template-columns:230px minmax(0,1fr) minmax(0,1.05fr); margin-top:14px; background:var(--surface); border:1px solid var(--line); border-radius:14px; overflow:hidden; min-height:640px}
+.studio{display:grid; grid-template-columns:260px minmax(0,1fr) minmax(0,1.1fr); margin-top:14px; background:var(--surface); border:1px solid var(--line); border-radius:14px; overflow:hidden; min-height:640px}
 .st-list{border-right:1px solid var(--line); padding:12px 10px; display:flex; flex-direction:column; gap:8px; min-width:0}
 .st-list .tplgrp{margin:6px 4px 0}
 .st-item{display:flex; gap:8px; align-items:flex-start; width:100%; text-align:left; background:var(--surface-2); border:1.5px solid var(--line); border-radius:10px; padding:8px 10px}
@@ -401,7 +403,7 @@ select.st-in{height:36px; padding:0 8px}
 .st-frame{background:var(--sunk); border-radius:12px; padding:14px 12px; display:flex; flex-direction:column; align-items:center; gap:8px}
 .st-env{width:100%; max-width:600px; display:flex; flex-direction:column; gap:1px; font-size:13px; padding:0 4px}
 .st-env b{font-weight:600}
-.st-mail{width:100%; max-width:600px; height:720px; border:1px solid var(--line); border-radius:8px; background:#F4F1EC; transition:max-width .2s}
+.st-mail{width:100%; max-width:600px; height:max(720px, calc(100vh - 260px)); border:1px solid var(--line); border-radius:8px; background:#F4F1EC; transition:max-width .2s}
 .st-frame.cel .st-env, .st-frame.cel .st-mail{max-width:375px}
 .st-mtabs{display:none; margin-top:12px}
 .st-mtabs button{border:1px solid var(--line-2); background:none; border-radius:999px; padding:6px 14px; font-weight:600; font-size:13px; color:var(--ink-2); margin-right:4px}
