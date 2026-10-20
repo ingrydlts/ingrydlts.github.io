@@ -156,7 +156,7 @@ function cardHTML(p) {
   const alt = photos.find((src) => src !== main) || "";
   const cp = activeCoupon(p);
   return (
-    '<a class="vt-card' + (cp ? " has-coupon" : "") + '" href="' + productHref(p.slug) + (cp ? "#cupom" : "") + '">' +
+    '<a class="vt-card' + (cp ? " has-coupon" : "") + '" href="' + (p.url || productHref(p.slug)) + (cp ? "#cupom" : "") + '">' +
       '<div class="vt-card-ph">' +
         (main ? '<img src="' + escapeHtml(main) + '" alt="' + escapeHtml(p.title) + '" loading="lazy">' : "") +
         (alt ? '<img class="is-alt" src="' + escapeHtml(alt) + '" alt="" loading="lazy">' : "") +

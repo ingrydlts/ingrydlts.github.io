@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Painel do Certificado: seu certificado de língua num lugar só — Por Dentro</title>
+<meta name="description" content="Template de Notion gratuito para quem vai fazer DELF, DALF, TCF, Exame Cívico, TOEIC, CAE, CPE ou outra prova de língua: prazo, materiais, práticas e revisões num lugar só, com o próximo passo sempre à vista.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,600;9..144,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/css/style.css">
+<link rel="stylesheet" href="/assets/css/vitrine.css">
+<link rel="canonical" href="https://imigrantepordentro.com/produtos-digitais/painel-do-certificado/">
+<style>:root { --nav-active: #577328; }</style>
+<link rel="icon" href="/favicon.png" type="image/png">
+<link rel="icon" href="/favicon-32x32.png" sizes="32x32" type="image/png">
+<link rel="icon" href="/favicon-16x16.png" sizes="16x16" type="image/png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<style>
+/* Painel do Certificado: página de guia gratuito no desenho da página de produto. Classes pc-* só daqui. */
+[hidden] { display: none !important; }
+.pc-gal { background: var(--vt-paper); border: 1px solid var(--vt-line); border-radius: var(--vt-r-lg); padding: 14px; position: relative; }
+.pc-view { position: relative; }
+.pc-slide .pc-zoom { display: block; width: 100%; padding: 0; border: 0; background: none; cursor: zoom-in; }
+.pc-slide .pc-zoom img { width: 100%; height: auto; border-radius: 10px; display: block; border: 1px solid var(--vt-line); }
+.pc-nav { position: absolute; top: 50%; transform: translateY(-50%); width: 40px; height: 40px; border-radius: 50%; border: 0; background: rgba(255,255,255,.94); box-shadow: var(--vt-shadow); cursor: pointer; font-size: 24px; line-height: 1; color: var(--grafite); z-index: 2; }
+.pc-nav.is-prev { left: 6px; } .pc-nav.is-next { right: 6px; }
+.pc-cap { margin: 12px 2px 0; font-size: 12.5px; color: var(--vt-muted); min-height: 2.6em; }
+.pc-thumbs { display: flex; gap: 8px; margin-top: 6px; overflow-x: auto; padding: 2px; }
+.pc-thumbs button { flex: none; width: 72px; aspect-ratio: 4 / 3; border-radius: 9px; overflow: hidden; border: 2px solid transparent; padding: 0; cursor: pointer; opacity: .6; background: var(--vt-soft); transition: opacity .2s, border-color .2s; font: 700 11px var(--font-body); color: var(--vt-moss-ink); }
+.pc-thumbs button.is-on { opacity: 1; border-color: var(--vt-moss); }
+.pc-thumbs img { width: 100%; height: 100%; object-fit: cover; object-position: top; display: block; }
+.pc-lightbox { position: fixed; inset: 0; z-index: 100; background: rgba(20,18,16,.92); display: grid; place-items: center; padding: 16px; cursor: zoom-out; overflow: auto; }
+.pc-lightbox img { max-width: min(1400px, 100%); height: auto; border-radius: 8px; }
+/* capa ilustrada */
+.pc-mock { margin: 0; padding: 10px 8px 4px; font-size: 14px; line-height: 1.45; }
+@media (min-width: 901px) { .pc-mock { padding-inline: 46px; } }
+.pc-mock .topo { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; flex-wrap: wrap; }
+.pc-mock .cert { font-weight: 700; font-size: 11.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--vt-muted); }
+.pc-mock .dias { font: 600 32px/1 var(--font-display); margin-top: 4px; }
+.pc-pill { display: inline-flex; align-items: center; gap: 6px; font-weight: 700; font-size: 12px; line-height: 1; padding: 5px 9px; border-radius: 999px; background: var(--vt-moss-soft); color: var(--vt-moss-ink); }
+.pc-pill::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.pc-pill.neg { color: var(--vt-err); background: transparent; border: 1px solid currentColor; }
+.pc-pill.warn { color: #8A6A1F; background: transparent; border: 1px solid currentColor; }
+.pc-barra { height: 8px; background: var(--vt-line); border-radius: 99px; overflow: hidden; margin-top: 14px; }
+.pc-barra span { display: block; height: 100%; background: var(--vt-moss); border-radius: 99px; }
+.pc-mock .meta { margin: 6px 0 0; color: var(--vt-muted); font-size: 12.5px; }
+.pc-bl { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--vt-line); }
+.pc-bl h4 { margin: 0 0 8px; font: 700 11px var(--font-body); letter-spacing: .1em; text-transform: uppercase; color: var(--vt-muted); }
+.pc-retomar { background: var(--vt-moss-soft); border-radius: 10px; padding: 12px 14px; margin-top: 16px; }
+.pc-retomar p { margin: 2px 0 0; color: var(--grafite); }
+.pc-lista { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.pc-lista li { display: flex; gap: 10px; align-items: flex-start; justify-content: space-between; }
+.pc-lista .t { display: flex; gap: 10px; min-width: 0; }
+.pc-cx { flex: none; width: 16px; height: 16px; margin-top: 3px; border: 1.5px solid var(--vt-muted); border-radius: 4px; }
+.pc-cx.feito { background: var(--vt-moss); border-color: var(--vt-moss); }
+.pc-tag { flex: none; font-size: 12px; color: var(--vt-muted); white-space: nowrap; }
+.pc-riscado { text-decoration: line-through; color: var(--vt-muted); }
+/* formulário */
+.pc-form { display: flex; flex-direction: column; gap: 10px; }
+.pc-form .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+.pc-form input[type="text"], .pc-form input[type="email"], .pc-form select { width: 100%; min-height: 50px; font: 400 15px var(--font-body); padding: 0 14px; border-radius: 12px; border: 1.5px solid var(--vt-line-2); background: var(--vt-paper); color: var(--grafite); }
+.pc-form select { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236E6862' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; background-size: 18px; padding-right: 40px; }
+.pc-form input:focus, .pc-form select:focus { border-color: var(--vt-moss); outline: none; }
+.pc-hp { position: absolute; left: -9999px; top: -9999px; width: 1px; height: 1px; overflow: hidden; }
+.pc-chk { display: flex; gap: 10px; align-items: flex-start; font-size: 12.5px; color: var(--vt-muted); line-height: 1.45; cursor: pointer; }
+.pc-chk input { width: 18px; height: 18px; margin-top: 1px; accent-color: var(--vt-moss); flex: none; }
+.pc-chk a { color: var(--vt-brown); text-decoration: underline; }
+.pc-msg { min-height: 1.4em; margin: 0; font-size: 13px; font-weight: 600; color: var(--vt-err); }
+.pc-ok { background: var(--vt-moss-soft); border: 1px solid #C9D6A8; border-radius: var(--vt-r); padding: 16px 18px; display: flex; flex-direction: column; gap: 10px; }
+.pc-ok b { font-size: 16px; }
+.pc-ok p { margin: 0; font-size: 14px; color: var(--grafite); }
+.pc-ok .vt-btn { align-self: flex-start; text-decoration: none; }
+.pc-band { background: var(--vt-brown); border-radius: var(--vt-r-lg); padding: 28px; margin: 8px 0 40px; display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.2fr); gap: 28px; align-items: start; color: #F4EDE6; }
+.pc-band h2 { color: #fff; font-size: 26px; margin: 0 0 8px; }
+.pc-band .vt-price b { color: #fff; }
+.pc-band .vt-price s { color: #CDB9AF; }
+.pc-band .pc-chk, .pc-band .pc-msg { color: #E6D9D2; }
+.pc-band .pc-chk a { color: #fff; }
+.pc-band .pc-msg { color: #FFD9D2; }
+.pc-band .pc-ok { color: var(--grafite); }
+.pc-note { font-size: 13.5px; color: var(--vt-muted); margin: 0; }
+.pc-sec { padding-bottom: 40px; }
+.pc-antes { border: 1px solid var(--vt-line); border-radius: var(--vt-r-lg); overflow: hidden; background: var(--vt-paper); }
+.pc-ad { display: grid; grid-template-columns: 1fr 1fr; }
+.pc-ad + .pc-ad { border-top: 1px solid var(--vt-line); }
+.pc-ad > div { padding: 14px 18px; min-width: 0; font-size: 14.5px; }
+.pc-ad .de { color: var(--vt-muted); text-decoration: line-through; text-decoration-color: var(--vt-line-2); }
+.pc-ad .agora { background: var(--vt-soft); }
+.pc-ad .agora::before { content: "Agora: "; font-weight: 700; color: var(--vt-moss); }
+/* provas */
+.pc-provas { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 16px; }
+.pc-prova-btn { font: 600 14.5px var(--font-body); color: var(--grafite); background: var(--vt-paper); border: 1.5px solid var(--vt-line-2); border-radius: 999px; padding: 10px 18px; min-height: 44px; cursor: pointer; transition: background .2s, border-color .2s, color .2s; }
+.pc-prova-btn:hover { border-color: var(--grafite); }
+.pc-prova-btn[aria-pressed="true"] { background: var(--vt-moss); border-color: var(--vt-moss); color: #fff; }
+.pc-dica { color: var(--vt-muted); font-size: 14.5px; margin: 0; }
+.pc-prova { background: var(--vt-paper); border: 1px solid var(--vt-line); border-radius: var(--vt-r-lg); padding: 24px; margin-top: 4px; }
+.pc-prova h3 { font-size: 26px; margin: 0; }
+.pc-prova .serve { color: var(--vt-muted); margin: 6px 0 20px; max-width: 62ch; }
+.pc-pgrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.pc-pbox { background: var(--vt-soft); border: 1px solid var(--vt-line); border-radius: var(--vt-r); padding: 16px 18px; min-width: 0; }
+.pc-pbox h4 { margin: 0 0 8px; font: 700 11.5px var(--font-body); letter-spacing: .1em; text-transform: uppercase; color: var(--vt-moss); }
+.pc-pbox ul { margin: 0; padding-left: 18px; font-size: 14.5px; display: grid; gap: 6px; }
+.pc-pbox p { margin: 0; font-size: 14.5px; }
+.pc-pfoot { margin-top: 18px; display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: center; justify-content: space-between; }
+.pc-pfoot .conf { flex: 1 1 320px; font-size: 13px; color: var(--vt-muted); margin: 0; }
+.pc-pfoot a { font-size: 13.5px; font-weight: 600; color: var(--vt-brown); text-decoration: underline; text-underline-offset: 3px; }
+.pc-faq { border-top: 1px solid var(--vt-line); max-width: 820px; }
+.pc-faq details { border-bottom: 1px solid var(--vt-line); padding: 16px 2px; }
+.pc-faq summary { list-style: none; cursor: pointer; display: flex; justify-content: space-between; align-items: center; gap: 14px; font-weight: 600; font-size: 15px; }
+.pc-faq summary::-webkit-details-marker { display: none; }
+.pc-faq summary::after { content: "+"; width: 28px; height: 28px; border-radius: 50%; background: var(--vt-soft); border: 1px solid var(--vt-line); display: grid; place-items: center; flex: none; font-size: 18px; line-height: 1; color: var(--vt-moss); }
+.pc-faq details[open] summary::after { content: "–"; background: var(--vt-moss-soft); }
+.pc-faq details p { margin: 10px 0 0; color: var(--vt-muted); font-size: 14.5px; max-width: 64ch; }
+@media (max-width: 900px) { .pc-band { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 640px) { .pc-pgrid, .pc-ad { grid-template-columns: minmax(0, 1fr); } }
+@media (prefers-reduced-motion: reduce) { .pc-prova-btn, .pc-thumbs button { transition: none; } }
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="/" class="site-logo" data-logo-link><img src="/images/logo-por-dentro.png" alt="Por Dentro" class="site-logo-img">Por Dentro</a>
+  <nav class="site-nav" aria-label="Navegação principal" data-header-nav>
+    <a href="/produtos-digitais/" data-nav-key="produtos-digitais" aria-current="page">Produtos digitais</a>
+    <a href="/produtos-de-estudo/" data-nav-key="produtos-de-estudo">Produtos de estudo</a>
+    <a href="/produtos-de-compras/" data-nav-key="produtos-de-compras">Produtos de compras</a>
+    <a href="/guias/" data-nav-key="guias">Guias</a>
+    <a href="/artigos/" data-nav-key="blog">Blog</a>
+    <a href="/sobre/" data-nav-key="sobre">Sobre</a>
+  </nav>
+  <button class="nav-toggle" aria-label="Abrir menu" aria-expanded="false">
+    <span></span><span></span><span></span>
+  </button>
+</header>
+<nav class="mobile-nav" aria-label="Navegação mobile" data-header-nav>
+  <a href="/produtos-digitais/" data-nav-key="produtos-digitais" aria-current="page">Produtos digitais</a>
+  <a href="/produtos-de-estudo/" data-nav-key="produtos-de-estudo">Produtos de estudo</a>
+  <a href="/produtos-de-compras/" data-nav-key="produtos-de-compras">Produtos de compras</a>
+  <a href="/guias/" data-nav-key="guias">Guias</a>
+  <a href="/artigos/" data-nav-key="blog">Blog</a>
+  <a href="/sobre/" data-nav-key="sobre">Sobre</a>
+</nav>
+
+<main>
+<div class="container vt">
+  <nav class="vt-crumb" aria-label="Você está em"><a href="/produtos-digitais/">Produtos digitais</a><span aria-hidden="true">›</span><span>Painel do Certificado</span></nav>
+
+  <section class="vt-pdp">
+    <div class="pc-gal" id="gal" aria-roledescription="galeria" aria-label="Imagens do template">
+      <div class="pc-view" id="gal-view">
+        <div class="pc-slide" data-cap="Capa: o painel do certificado, com dados de exemplo." data-thumb="Capa">
+          <figure class="pc-mock">
+            <div class="topo">
+              <div><div class="cert">DELF B2 · exemplo</div><div class="dias">47 dias</div></div>
+              <span class="pc-pill">No prazo</span>
+            </div>
+            <div class="pc-barra" role="progressbar" aria-label="Práticas concluídas" aria-valuemin="0" aria-valuemax="100" aria-valuenow="38"><span style="width:38%"></span></div>
+            <p class="meta">38% das práticas feitas · 14h 30min estudadas</p>
+            <div class="pc-retomar"><b>Continue de onde parou</b><p>Ontem: simulado de escuta, parte 2 (45 min). Próximo passo: refazer as questões 7 a 12.</p></div>
+            <div class="pc-bl"><h4>Hoje</h4>
+              <ul class="pc-lista">
+                <li><span class="t"><span class="pc-cx" aria-hidden="true"></span><span>Simulado de escuta, parte 3</span></span><span class="pc-tag">30 min</span></li>
+                <li><span class="t"><span class="pc-cx" aria-hidden="true"></span><span>Subjonctif, exercícios 5 a 8</span></span><span class="pc-tag">PRIO 1 · 1 hora</span></li>
+                <li><span class="t"><span class="pc-cx feito" aria-hidden="true"></span><span class="pc-riscado">20 cartões no Anki</span></span><span class="pc-tag">RÁPIDO</span></li>
+              </ul>
+            </div>
+            <div class="pc-bl"><h4>Revisar</h4>
+              <ul class="pc-lista">
+                <li><span>Subjonctif</span><span class="pc-pill neg">Vencida</span></li>
+                <li><span>Pronomes relativos</span><span class="pc-pill warn">Hoje</span></li>
+                <li><span>Passé composé</span><span class="pc-pill">No prazo</span></li>
+              </ul>
+            </div>
+          </figure>
+        </div>
+        <div class="pc-slide" data-cap="Tela inicial do template, já com o projeto de exemplo preenchido." hidden><button type="button" class="pc-zoom" aria-label="Ampliar a imagem"><img src="/images/uploads/painel-certificado-1-inicio.jpg" alt="Tela inicial do template no Notion: certificado com contagem regressiva, bloco Continue de onde parou, lista O que fazer e habilidades" width="1098" height="938" loading="lazy"></button></div>
+        <div class="pc-slide" data-cap="Página do certificado de exemplo: contagem regressiva, progresso e as habilidades ligadas a ele." hidden><button type="button" class="pc-zoom" aria-label="Ampliar a imagem"><img src="/images/uploads/painel-certificado-2-certificado.jpg" alt="Página do certificado de exemplo, com data alvo, dias restantes, progresso e a lista de habilidades" width="748" height="848" loading="lazy"></button></div>
+        <div class="pc-slide" data-cap="Página de uma sessão de exemplo: cada área do template explica para que serve." hidden><button type="button" class="pc-zoom" aria-label="Ampliar a imagem"><img src="/images/uploads/painel-certificado-3-sessao.jpg" alt="Página de uma sessão de exemplo, com status, data, certificado, resumo e materiais" width="745" height="817" loading="lazy"></button></div>
+        <button type="button" class="pc-nav is-prev" id="gal-prev" aria-label="Imagem anterior">‹</button>
+        <button type="button" class="pc-nav is-next" id="gal-next" aria-label="Próxima imagem">›</button>
+      </div>
+      <p class="pc-cap" id="gal-cap" aria-live="polite"></p>
+      <div class="pc-thumbs" id="thumbs" role="group" aria-label="Escolher imagem"></div>
+    </div>
+
+    <div class="vt-buy" id="vt-buy">
+      <span class="vt-eyebrow">Template Notion · gratuito</span>
+      <h1>Painel do Certificado</h1>
+      <p class="vt-promise-line">Seu certificado de língua num lugar só, com o próximo passo sempre à vista.</p>
+      <div class="vt-price"><s aria-label="Valor do template: 10 euros">10 €</s><b>0 €</b><span class="vt-badge is-off">Grátis</span></div>
+      <p class="pc-note">Este template vale 10 €. Aqui ele é seu por 0 €, em troca do seu e-mail.</p>
+      <ul class="vt-top3">
+        <li>Contagem regressiva até a prova, com alerta de cor</li>
+        <li>A lista de hoje e a de amanhã assim que você abre</li>
+        <li>Projeto de exemplo que explica cada área</li>
+      </ul>
+      <div data-form></div>
+      <div class="vt-secure"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="11" width="16" height="9" rx="2"/><path d="M8 11V8a4 4 0 018 0v3"/></svg>Gratuito · o link do painel aparece assim que você se cadastra</div>
+    </div>
+  </section>
+
+  <section class="vt-trust" aria-label="Sobre o template">
+    <div><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 3L5 14h6l-1 7 8-11h-6z"/></svg><p style="margin:0"><b>Acesso na hora</b><span>Link liberado ao se cadastrar</span></p></div>
+    <div><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12a8 8 0 0114-5.3M20 12a8 8 0 01-14 5.3M18 3v4h-4M6 21v-4h4"/></svg><p style="margin:0"><b>Sem assinatura</b><span>Valor 10 €, hoje 0 €</span></p></div>
+    <div><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l8 3v6c0 4.5-3.2 8-8 9-4.8-1-8-4.5-8-9V6z"/></svg><p style="margin:0"><b>Fontes oficiais</b><span>Link em cada tabela</span></p></div>
+    <div><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8 12l3 3 5-6"/></svg><p style="margin:0"><b>Exemplo incluído</b><span>Um DELF B2 já preenchido</span></p></div>
+  </section>
+
+  <section class="vt-two">
+    <div class="vt-desc">
+      <div class="vt-section-t"><h2>Sobre o produto</h2></div>
+      <p>Feito para quem vai fazer um certificado de língua e vive com o PDF do simulado numa pasta, a data da prova num e-mail e a anotação no caderno. O Painel do Certificado junta tudo dentro do Notion: a prova, a data, as habilidades que ela cobra, os materiais, as práticas da semana e o registro de cada sessão de estudo.</p>
+      <p>A página inicial mostra o que está marcado para hoje, para amanhã e o que ficou para trás, e o bloco "Continue de onde parou" lembra o que você deixou combinado consigo mesma na última sessão. Cada material avisa quando precisa voltar para a revisão.</p>
+      <p>Funciona para qualquer prova de língua. A biblioteca de links vem pronta para DELF, DALF, TCF, TCF Canada, Exame Cívico francês, TOEIC, CAE e CPE. Para IELTS, TOEFL, DELE ou outras, a estrutura é a mesma, só a biblioteca de links não cobre essas provas ainda.</p>
+    </div>
+    <div>
+      <div class="vt-section-t"><h2>O que você recebe</h2></div>
+      <ol class="vt-inc-list">
+        <li><b>1</b>Contagem regressiva até a prova, com alerta abaixo de 45 e de 15 dias</li>
+        <li><b>2</b>Página inicial com a lista de hoje, de amanhã e das práticas atrasadas</li>
+        <li><b>3</b>Revisão espaçada: cada material avisa quando precisa voltar</li>
+        <li><b>4</b>Registro de sessões, com resumo, próximo passo e horas estudadas</li>
+        <li><b>5</b>Biblioteca por nível e certificado: sites, YouTube, podcasts e dicionários</li>
+        <li><b>6</b>Links oficiais de inscrição, simulados e checklist do dia da prova</li>
+        <li><b>7</b>Projeto de exemplo preenchido, que explica cada área</li>
+      </ol>
+    </div>
+  </section>
+
+  <section class="pc-sec">
+    <div class="vt-section-t"><h2>Onde está o seu estudo agora?</h2></div>
+    <p class="vt-muted" style="margin:-6px 0 16px;max-width:60ch">Cada coisa funciona sozinha. Juntas, fazem você gastar o começo de cada sessão procurando por onde recomeçar.</p>
+    <div class="pc-antes">
+      <div class="pc-ad"><div class="de">A data da prova, num e-mail antigo</div><div class="agora">Contagem regressiva na primeira tela</div></div>
+      <div class="pc-ad"><div class="de">O PDF do simulado, numa pasta qualquer</div><div class="agora">Anexado ao material de estudo</div></div>
+      <div class="pc-ad"><div class="de">A anotação, no caderno</div><div class="agora">Foto ou PDF no material, com tag por tema</div></div>
+      <div class="pc-ad"><div class="de">A aula, numa conversa de WhatsApp</div><div class="agora">Sessão registrada com resumo e minutos</div></div>
+      <div class="pc-ad"><div class="de">A dúvida sobre o que revisar</div><div class="agora">Alerta de revisão em cada material</div></div>
+    </div>
+  </section>
+
+  <section class="pc-sec" id="provas">
+    <div class="vt-section-t"><h2>Para qual prova?</h2></div>
+    <p class="vt-muted" style="margin:-6px 0 16px;max-width:64ch">Toque numa prova para ver o que cai, quanto tempo dura e como é pontuada. A biblioteca do template vem pronta para estas oito. Dados conferidos em outubro de 2026; formatos e valores mudam, então confirme no site oficial antes de se inscrever.</p>
+    <div class="pc-provas" id="provas-btns" role="group" aria-label="Escolha uma prova"></div>
+    <p class="pc-dica" id="prova-dica">Escolha uma prova acima. O resumo aparece aqui.</p>
+    <div class="pc-prova" id="prova-painel" hidden aria-live="polite"></div>
+  </section>
+
+  <section class="pc-sec">
+    <div class="vt-section-t"><h2>Em 10 minutos você está estudando</h2></div>
+    <p class="vt-muted" style="margin:-6px 0 16px;max-width:64ch">Antes de preencher o seu, abra o projeto de exemplo que já vem no template. É um DELF B2 inteiro, com habilidades, materiais, práticas e sessões, e cada página explica para que serve. Você descobre o sistema por conta própria, sem tutorial em vídeo.</p>
+    <div class="vt-steps">
+      <div class="vt-step"><div class="n">1</div><b>Cadastre o certificado e a data da prova</b><p>2 minutos.</p></div>
+      <div class="vt-step"><div class="n">2</div><b>Registre o primeiro material</b><p>Um tema que você precisa estudar, com a sua confiança nele. Não precisa estar perfeito. 5 minutos.</p></div>
+      <div class="vt-step"><div class="n">3</div><b>Programe a primeira prática da semana</b><p>3 minutos. Depois, uma Revisão Semanal de 10 minutos, num dia fixo, mantém o painel vivo.</p></div>
+    </div>
+    <p class="vt-muted" style="margin:16px 0 0;font-size:14.5px;max-width:70ch">No exemplo você vê uma prática atrasada, as de hoje e de amanhã, um material com revisão vencida, o progresso subindo e o bloco "Continue de onde parou". Quando entender, apague os itens com "EXEMPLO" no nome e siga os passos acima com a sua prova.</p>
+  </section>
+
+  <section class="pc-sec">
+    <div class="vt-section-t"><h2>Perguntas frequentes</h2></div>
+    <div class="pc-faq">
+      <details><summary>Preciso pagar para ter o painel?</summary><p>Não. O valor do template é 10 €, mas aqui ele sai por 0 €. Você informa nome, e-mail e o certificado que está preparando, e o link para duplicar no seu Notion aparece na hora.</p></details>
+      <details><summary>Por que vocês perguntam qual certificado eu estou preparando?</summary><p>Para saber quais provas pedem mais conteúdo e o que incluir na biblioteca. Se ainda não decidiu, escolha "Ainda não sei qual fazer".</p></details>
+      <details><summary>Preciso saber usar o Notion?</summary><p>Não. O template vem com um projeto de exemplo que explica cada área, e cada campo tem uma dica de preenchimento ao passar o mouse.</p></details>
+      <details><summary>Dá para usar no celular?</summary><p>Dá, pelo app do Notion. A tela inicial mostra a lista do dia.</p></details>
+      <details><summary>E se eu não souber qual certificado fazer?</summary><p>A aba Saiba antes tem uma tabela que cruza cada situação com o certificado indicado: trabalhar na França, naturalização, imigrar ao Canadá, entrar na universidade.</p></details>
+      <details><summary>Os valores e as regras das provas estão atualizados?</summary><p>Cada tabela traz o link oficial e o ano de referência. Valores e regras mudam, então confirme no site do centro de exame antes de pagar qualquer inscrição.</p></details>
+    </div>
+  </section>
+
+  <section class="pc-band" aria-label="Receber o painel">
+    <div>
+      <h2>Comece sabendo o que fazer amanhã.</h2>
+      <div class="vt-price"><s aria-label="Valor do template: 10 euros">10 €</s><b>0 €</b></div>
+    </div>
+    <div data-form></div>
+  </section>
+</div>
+</main>
+
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-grid">
+      <div>
+        <a href="/" class="site-logo" data-logo-link style="color:#F4F1EC; margin-bottom:14px;"><img src="/images/logo-por-dentro.png" alt="Por Dentro" class="site-logo-img">Por Dentro</a>
+        <p style="color:#A8A29C; max-width:32ch; font-size:13px;">Templates, indicações de estudo e de compras para quem vive a vida real fora do Brasil.</p>
+      </div>
+      <div data-footer-nav>
+        <div class="footer-col-title">Navegação</div>
+        <div class="footer-links">
+          <a href="/produtos-digitais/" data-nav-key="produtos-digitais">Produtos digitais</a>
+          <a href="/produtos-de-estudo/" data-nav-key="produtos-de-estudo">Produtos de estudo</a>
+          <a href="/produtos-de-compras/" data-nav-key="produtos-de-compras">Produtos de compras</a>
+          <a href="/guias/" data-nav-key="guias">Guias</a>
+          <a href="/artigos/" data-nav-key="blog">Blog</a>
+          <a href="/sobre/" data-nav-key="sobre">Sobre</a>
+        </div>
+      </div>
+      <div>
+        <div class="footer-col-title">Legal</div>
+        <div class="footer-links">
+          <a href="/mentions-legales/">Mentions légales</a>
+          <a href="/cgv/">CGV</a>
+          <a href="/confidentialite/">Confidentialité</a>
+        </div>
+      </div>
+      <div>
+        <div class="footer-col-title">Redes</div>
+        <div class="footer-links"><a href="https://instagram.com/" target="_blank" rel="noopener">@ingryd.pordentro</a></div>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>© Por Dentro · LO TIERZO SILVA INGRYD · SIRET 108 644 485 00014 · France</span>
+      <span>Feito por quem vive isso.</span>
+    </div>
+  </div>
+</footer>
+
+<div class="pc-lightbox" id="lightbox" hidden role="dialog" aria-modal="true" aria-label="Imagem ampliada"><img id="lb-img" alt=""></div>
+
+<script src="/assets/js/main.js"></script>
+<script src="/assets/js/consent.js"></script>
+<script src="/assets/js/events.js"></script>
+<script src="/assets/js/analytics.js"></script>
+<script type="module" src="/assets/js/header.js"></script>
+
+<script>
+/* Interface: galeria, imagem ampliada, resumo de cada prova e os formulários (HTML). O envio fica no módulo abaixo. */
+(function () {
+  var PROVAS = [
+    { k: "DELF", nome: "DELF", serve: "Mostra o seu nível de francês, de A1 a B2. É pedido em vistos, residência e estudos na França. Você faz o nível do seu objetivo.",
+      cai: ["No B2, são quatro provas.", "Compreensão oral: 2 exercícios, com documentos sonoros e perguntas.", "Compreensão escrita: 2 exercícios, com textos e perguntas.", "Produção escrita: 1 texto de pelo menos 250 palavras.", "Produção oral: um monólogo e depois uma interação com os examinadores."],
+      tempo: ["Provas coletivas no B2: oral 30 min, compreensão escrita 1 h e produção escrita 1 h (2 h 30 no total).", "Produção oral, individual: 20 min, depois de 30 min de preparação.", "Os níveis A1 a B1 têm tempos próprios. Veja a página de cada nível."],
+      pontos: ["Cada prova vale 25 pontos, 100 no total.", "Aprovação: 50 de 100 e pelo menos 5 de 25 em cada prova. Nota abaixo de 5 em uma prova elimina."],
+      vc: "Validade vitalícia. Custo de referência do template: de 80 a 100 € (A1) até 120 a 150 € (B2), conforme o centro.",
+      conf: "Os tempos e a nota mínima vieram da página do DELF B2 de France Éducation International na versão junior/scolaire. Confirme na versão tout public.",
+      fonte: "https://www.france-education-international.fr/diplome/delf-tout-public/niveau-b2", fl: "Página do DELF B2" },
+    { k: "DALF", nome: "DALF", serve: "Francês avançado, C1 e C2. É pedido por universidades francesas e por profissões regulamentadas.",
+      cai: ["Provas coletivas de compreensão e produção, mais uma prova oral individual.", "C1, oral: uma apresentação a partir de vários documentos escritos, seguida de discussão com o júri.", "C2, oral: você ouve um documento sonoro duas vezes, faz o resumo, um desenvolvimento pessoal e um debate com o júri."],
+      tempo: ["C1: as provas coletivas somam 4 h. Oral: 30 min, depois de 1 h de preparação.", "C2: as provas coletivas somam 3 h 30. Oral: 30 min, depois de 1 h de preparação."],
+      pontos: ["Aprovação nos dois níveis: 50 de 100.", "C1: nota mínima de 5 de 25 em cada prova.", "C2: a oral vale 50 pontos e a nota mínima exigida por prova é 10 de 50."],
+      vc: "Validade vitalícia. Custo de referência do template: C1 de 130 a 170 €, C2 de 140 a 180 €.",
+      conf: "O formato e as notas mínimas vieram dos exemplos de prova (sujets démo) do C1 e do C2 publicados pela France Éducation International. Confira a nota mínima das provas escritas.",
+      fonte: "https://www.france-education-international.fr/diplome/dalf", fl: "Página do DALF" },
+    { k: "TCF Français", nome: "TCF Français", serve: "Teste de nível para imigração, estudos e naturalização na França. O resultado diz em que nível, de A1 a C2, você está.",
+      cai: ["Três provas obrigatórias, todas de múltipla escolha com 4 alternativas.", "Compreensão oral: 29 questões.", "Domínio das estruturas da língua: 18 questões.", "Compreensão escrita: 29 questões.", "Existem também provas opcionais de expressão escrita e oral."],
+      tempo: ["Compreensão oral: 25 min.", "Estruturas da língua: 15 min.", "Compreensão escrita: 45 min.", "Total das obrigatórias: 1 h 25."],
+      pontos: ["Só acerto conta: erro e questão em branco valem 0.", "A pontuação vai de 100 a 699, com peso pela dificuldade das questões. Não é uma média simples que dê para calcular sozinha.", "O resultado é convertido nos níveis A1 a C2."],
+      vc: "Validade de 2 anos. Custo de referência do template: de 100 a 150 €.",
+      conf: "As provas opcionais e a tabela que liga pontos a níveis não foram conferidas. Veja a página oficial do TCF.",
+      fonte: "https://www.france-education-international.fr/test/tcf", fl: "Página do TCF" },
+    { k: "TCF Canada", nome: "TCF Canada", serve: "Segundo o template, é o único teste de francês aceito pelo IRCC para imigração ao Canadá (Express Entry, PEQ).",
+      cai: ["Quatro provas, todas obrigatórias.", "Compreensão oral: 39 questões de múltipla escolha, com 4 alternativas e 1 correta.", "Compreensão escrita: 39 questões no mesmo formato.", "Expressão escrita: 3 exercícios.", "Expressão oral: individual, cara a cara com um examinador, 3 exercícios."],
+      tempo: ["Compreensão oral: 35 min.", "Compreensão escrita: 60 min.", "Expressão escrita: 60 min.", "Expressão oral: 12 min, incluindo 2 min de preparação.", "Total: 2 h 47."],
+      pontos: ["Cada habilidade recebe o seu resultado.", "Confira com o IRCC o nível mínimo que o seu programa exige em cada habilidade."],
+      vc: "Validade de 2 anos. Custo de referência do template: de 180 a 220 €.",
+      conf: "A forma exata de pontuação não foi conferida. Confirme no site do IRCC e do seu programa que o TCF Canada é o teste exigido.",
+      fonte: "https://www.france-education-international.fr/test/tcf-canada", fl: "Página do TCF Canada" },
+    { k: "Exame Cívico francês", nome: "Exame Cívico francês", serve: "Obrigatório desde 1º de janeiro de 2026 na primeira carte de séjour pluriannuelle, na carte de résident e na naturalização.",
+      cai: ["40 questões de múltipla escolha, em formato digital, num centro autorizado.", "Cinco temas: valores da República, sistema político e institucional, direitos e deveres, história, geografia e cultura, e vida em sociedade."],
+      tempo: ["Até 45 min."],
+      pontos: ["Cada acerto vale 1 ponto. Erro e questão em branco valem 0.", "Aprovação com 32 acertos em 40 (80%).", "O nível de francês exigido depende do pedido: A2 para a carte pluriannuelle, B1 para a carte de résident e B2 para a naturalização."],
+      vc: "Validade vitalícia. A inscrição é paga: cada centro fixa o valor e não reembolsa quem falta sem justificativa. O que é gratuito é a preparação, no site de formação cívica do Ministério do Interior. Guias de terceiros citam cerca de 70 a 90 € por tentativa.",
+      conf: "Que o valor é fixado por cada centro vem de páginas oficiais (Service Public e Le français des affaires). O número em euros vem de guias de terceiros, então confirme no centro. Os níveis de francês por tipo de pedido vieram de imprensa e consultoria; confirme no Service Public.",
+      fonte: "https://www.france-education-international.fr/examen-civique/examen-civique-informations-pour-les-candidats", fl: "Informações para candidatos" },
+    { k: "TOEIC", nome: "TOEIC", serve: "Inglês de trabalho. É o padrão em empresas francesas e aparece em concursos públicos e grandes grupos.",
+      cai: ["Listening and Reading: 200 questões de múltipla escolha.", "Listening (100): fotos, perguntas e respostas, conversas e apresentações.", "Reading (100): frases incompletas, textos com lacunas e leitura de textos.", "Existe também a versão 4 Skills, com Speaking e Writing."],
+      tempo: ["Listening: cerca de 45 min.", "Reading: 75 min.", "Total: 2 h.", "4 Skills: Speaking 20 min (11 questões) e Writing 60 min (8 questões)."],
+      pontos: ["Escala de 10 a 990: Listening de 5 a 495, mais Reading de 5 a 495.", "Speaking e Writing: de 0 a 200 cada.", "Você recebe a nota. Quem define a nota mínima é a empresa ou o concurso."],
+      vc: "Validade de 2 anos. Custo de referência do template: cerca de 179 € (Listening and Reading) e 216 € (4 Skills).",
+      conf: "O número de questões, o total de 2 h e a escala vieram de várias fontes que concordam. As partes do teste e os tempos do Speaking e do Writing vieram de resumos, não de uma página da ETS.",
+      fonte: "https://www.etsglobal.org/fr/fr", fl: "ETS Global France" },
+    { k: "CAE", nome: "CAE (C1 Advanced)", serve: "Inglês de alto nível, C1. Aceito por universidades e empregadores na Europa.",
+      cai: ["Quatro papers.", "Reading and Use of English: 8 partes e 56 questões.", "Writing: 2 partes.", "Listening: 4 partes e 30 questões.", "Speaking: feito com outro candidato."],
+      tempo: ["Reading and Use of English: 1 h 30.", "Writing: 1 h 30.", "Listening: cerca de 40 min.", "Speaking: cerca de 15 min.", "Total: cerca de 3 h 55."],
+      pontos: ["Cada habilidade recebe uma nota na escala Cambridge, e a nota final é a média.", "A escala vai de 160 a 210. Com 180 ou mais você recebe o certificado de nível C1. De 160 a 179, o de nível B2."],
+      vc: "Validade vitalícia. Custo de referência do template: de 180 a 220 €, com 30% de desconto para estudantes com cartão válido.",
+      conf: "As faixas de nota variam um pouco entre as fontes e o tempo do Speaking não veio da página oficial. Confirme no handbook da Cambridge.",
+      fonte: "https://www.britishcouncil.fr/examen/cambridge/inscriptions", fl: "British Council France" },
+    { k: "CPE", nome: "CPE (C2 Proficiency)", serve: "O nível mais alto das provas de inglês da Cambridge, C2.",
+      cai: ["Quatro papers.", "Reading and Use of English: 7 partes e 53 questões.", "Writing: 2 partes.", "Listening: 4 partes e 30 questões, com as gravações ouvidas duas vezes.", "Speaking: feito com outro candidato."],
+      tempo: ["Reading and Use of English: 1 h 30.", "Writing: 1 h 30.", "Listening: cerca de 40 min.", "Speaking: cerca de 16 min.", "Total: cerca de 3 h 56."],
+      pontos: ["A nota final é a média das notas por habilidade, na escala Cambridge.", "A escala vai de 180 a 230. De 200 a 230 você recebe o certificado de nível C2. De 180 a 199, o de nível C1."],
+      vc: "Validade vitalícia. Custo de referência do template: de 200 a 240 €.",
+      conf: "As faixas de nota e os tempos vieram de fontes secundárias. Confirme no handbook da Cambridge.",
+      fonte: "https://www.britishcouncil.fr/examen/cambridge/inscriptions", fl: "British Council France" }
+  ];
+  var OPCOES = ["DELF", "DALF", "TCF Français", "TCF Canada", "Exame Cívico francês", "TOEIC", "CAE", "CPE", "Outro", "Ainda não sei qual fazer"];
+
+  function esc(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+  function lista(a) { return "<ul>" + a.map(function (t) { return "<li>" + esc(t) + "</li>"; }).join("") + "</ul>"; }
+
+  /* formulário: igual em todos os pontos da página */
+  var CERT_TOKENS = { "DELF": "cert-delf", "DALF": "cert-dalf", "TCF Français": "cert-tcf-francais", "TCF Canada": "cert-tcf-canada", "Exame Cívico francês": "cert-exame-civico", "TOEIC": "cert-toeic", "CAE": "cert-cae", "CPE": "cert-cpe", "Outro": "cert-outro", "Ainda não sei qual fazer": "cert-indeciso" };
+  window.PC_CERT_TOKENS = CERT_TOKENS;
+  document.querySelectorAll("[data-form]").forEach(function (host, i) {
+    var opts = '<option value="">Qual certificado você está preparando?</option>' + OPCOES.map(function (o) { return '<option value="' + esc(CERT_TOKENS[o]) + '">' + esc(o) + "</option>"; }).join("");
+    host.innerHTML =
+      '<form class="pc-form" novalidate>' +
+      '<label class="sr" for="g-nome-' + i + '">Seu nome</label>' +
+      '<input type="text" id="g-nome-' + i + '" name="nome" placeholder="Seu nome" autocomplete="given-name" maxlength="100" required>' +
+      '<label class="sr" for="g-email-' + i + '">Seu melhor e-mail</label>' +
+      '<input type="email" id="g-email-' + i + '" name="email" placeholder="Seu melhor e-mail" autocomplete="email" required>' +
+      '<label class="sr" for="g-cert-' + i + '">Qual certificado você está preparando?</label>' +
+      '<select id="g-cert-' + i + '" name="certificado" required>' + opts + "</select>" +
+      '<div class="pc-hp" aria-hidden="true"><label for="hp-' + i + '">Deixe este campo em branco</label><input type="text" id="hp-' + i + '" name="website" tabindex="-1" autocomplete="off"></div>' +
+      '<label class="pc-chk"><input type="checkbox" name="aceite" required><span>Li e aceito a <a href="/confidentialite/" target="_blank" rel="noopener">Política de Privacidade</a>. *</span></label>' +
+      '<label class="pc-chk"><input type="checkbox" name="novidades"><span>Quero receber e-mails do Por Dentro, inclusive sobre a plataforma para quem mora na França. Cancelo quando quiser.</span></label>' +
+      '<p class="pc-msg" role="alert"></p>' +
+      '<button type="submit" class="vt-btn is-block">Receber o painel grátis <span class="vt-arrow" aria-hidden="true">→</span></button></form>' +
+      '<div class="pc-ok" hidden><b>Pronto! Seu painel está liberado.</b><a class="vt-btn pc-link" href="#" target="_blank" rel="noopener">Abrir o painel no Notion →</a><p>No Notion, clique em "Duplicate" (duplicar), no canto superior direito. Depois abra o certificado "EXEMPLO · DELF B2 até fevereiro": cada página dele explica para que serve.</p></div>';
+  });
+
+  /* galeria */
+  var slides = Array.prototype.slice.call(document.querySelectorAll("#gal-view .pc-slide"));
+  var capEl = document.getElementById("gal-cap"), thumbs = document.getElementById("thumbs");
+  var gi = 0, tb = [];
+  function ir(n) {
+    gi = (n + slides.length) % slides.length;
+    slides.forEach(function (sl, k) { sl.hidden = k !== gi; });
+    tb.forEach(function (b, k) { b.classList.toggle("is-on", k === gi); b.setAttribute("aria-current", k === gi ? "true" : "false"); });
+    capEl.textContent = slides[gi].getAttribute("data-cap") || "";
+  }
+  slides.forEach(function (sl, k) {
+    var b = document.createElement("button"); b.type = "button"; b.setAttribute("aria-label", "Ver imagem " + (k + 1) + " de " + slides.length);
+    var im = sl.querySelector("img");
+    if (im) { var t = document.createElement("img"); t.src = im.getAttribute("src"); t.alt = ""; b.appendChild(t); } else { b.textContent = sl.getAttribute("data-thumb") || String(k + 1); }
+    b.addEventListener("click", function () { ir(k); });
+    thumbs.appendChild(b); tb.push(b);
+  });
+  document.getElementById("gal-prev").addEventListener("click", function () { ir(gi - 1); });
+  document.getElementById("gal-next").addEventListener("click", function () { ir(gi + 1); });
+  var x0 = null, gv = document.getElementById("gal-view");
+  gv.addEventListener("touchstart", function (e) { x0 = e.touches[0].clientX; }, { passive: true });
+  gv.addEventListener("touchend", function (e) { if (x0 === null) return; var dx = e.changedTouches[0].clientX - x0; x0 = null; if (Math.abs(dx) > 50) ir(gi + (dx < 0 ? 1 : -1)); });
+  ir(0);
+
+  var lb = document.getElementById("lightbox"), lbi = document.getElementById("lb-img"), ultimo = null;
+  document.querySelectorAll(".pc-slide .pc-zoom").forEach(function (z) {
+    z.addEventListener("click", function () { var im = z.querySelector("img"); lbi.src = im.currentSrc || im.src; lbi.alt = im.alt; ultimo = z; lb.hidden = false; lb.setAttribute("tabindex", "-1"); lb.focus(); });
+  });
+  function fechaLb() { lb.hidden = true; lbi.removeAttribute("src"); if (ultimo) ultimo.focus(); }
+  lb.addEventListener("click", fechaLb);
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape" && !lb.hidden) fechaLb(); });
+
+  /* provas */
+  var bt = document.getElementById("provas-btns"), pn = document.getElementById("prova-painel"), dica = document.getElementById("prova-dica");
+  var atual = null;
+  function fechar() { atual = null; pn.hidden = true; pn.innerHTML = ""; dica.hidden = false; bt.querySelectorAll("button").forEach(function (b) { b.setAttribute("aria-pressed", "false"); }); }
+  function abrir(k) {
+    var p = PROVAS.filter(function (x) { return x.k === k; })[0];
+    atual = k; dica.hidden = true; pn.hidden = false;
+    bt.querySelectorAll("button").forEach(function (b) { b.setAttribute("aria-pressed", String(b.dataset.k === k)); });
+    pn.innerHTML =
+      "<h3>" + esc(p.nome) + '</h3><p class="serve">' + esc(p.serve) + "</p>" +
+      '<div class="pc-pgrid">' +
+      '<div class="pc-pbox"><h4>O que cai</h4>' + lista(p.cai) + "</div>" +
+      '<div class="pc-pbox"><h4>Tempo de prova</h4>' + lista(p.tempo) + "</div>" +
+      '<div class="pc-pbox"><h4>Como é pontuada</h4>' + lista(p.pontos) + "</div>" +
+      '<div class="pc-pbox"><h4>Validade e custo</h4><p>' + esc(p.vc) + "</p></div></div>" +
+      '<div class="pc-pfoot"><p class="conf"><b>Antes de se inscrever:</b> ' + esc(p.conf) + "</p>" +
+      '<a href="' + esc(p.fonte) + '" target="_blank" rel="noopener">' + esc(p.fl) + " ↗</a></div>";
+  }
+  PROVAS.forEach(function (p) {
+    var b = document.createElement("button");
+    b.type = "button"; b.className = "pc-prova-btn"; b.dataset.k = p.k; b.setAttribute("aria-pressed", "false"); b.textContent = p.k;
+    b.addEventListener("click", function () { if (atual === p.k) fechar(); else abrir(p.k); });
+    bt.appendChild(b);
+  });
+})();
+</script>
+
+<script type="module">
+/* Cadastro: mesmo caminho dos outros guias (capturar_lead_guia grava no CRM e devolve o link privado do Notion). */
+import { supabase } from '/assets/js/supabase-client.js';
+
+var GUIA = "painel-do-certificado";
+var LS_KEY = "pd_guia_" + GUIA;
+var CONSENTIMENTO_VERSAO = "guia-v1";
+var TEXTO_SERVICO = "Li e aceito a Política de Privacidade.";
+var TEXTO_NOVIDADES = "Quero receber e-mails do Por Dentro, inclusive sobre a plataforma para quem mora na França. Cancelo quando quiser.";
+function track(t, p) { if (window.PDEvents) window.PDEvents.send(t, null, p || {}); }
+function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+function lerLink() { try { var v = JSON.parse(lsGet(LS_KEY) || "null"); return v && v.url ? v : null; } catch (e) { return null; } }
+
+function liberar(link) {
+  document.querySelectorAll("[data-form]").forEach(function (host) {
+    host.querySelector(".pc-form").hidden = true;
+    var ok = host.querySelector(".pc-ok"), a = ok.querySelector(".pc-link");
+    a.href = link.url;
+    if (link.texto) a.textContent = link.texto + " →";
+    a.addEventListener("click", function () { track("guia_abrir_notion", { guia: GUIA }); });
+    ok.hidden = false;
+  });
+}
+var salvo = lerLink();
+if (salvo) liberar(salvo);
+
+var shownAt = Date.now();
+document.querySelectorAll(".pc-form").forEach(function (form) {
+  var msg = form.querySelector(".pc-msg");
+  function erro(m) { msg.textContent = m; }
+  form.addEventListener("submit", async function (ev) {
+    ev.preventDefault();
+    erro("");
+    var f = form.elements;
+    var nome = f.nome.value.trim(), email = f.email.value.trim(), cert = f.certificado.value;
+    if (f.website.value || (Date.now() - shownAt) < 2500) { return; }
+    if (nome.length < 2) { erro("Conta seu nome pra eu saber com quem estou falando."); f.nome.focus(); return; }
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { erro("Confere o e-mail e tenta de novo."); f.email.focus(); return; }
+    if (!cert) { erro("Escolhe o certificado que você está preparando. É isso que me ajuda a melhorar a biblioteca."); f.certificado.focus(); return; }
+    if (!f.aceite.checked) { erro("Preciso que você aceite a Política de Privacidade pra continuar."); return; }
+    var btn = form.querySelector("button[type=submit]");
+    btn.disabled = true; var rotulo = btn.innerHTML; btn.textContent = "Liberando...";
+    var params = new URLSearchParams(window.location.search);
+    var payload = {
+      guia: GUIA, email: email, nome: nome,
+      origem: "guia-painel-do-certificado",
+      respostas: { objetivo: cert },
+      aceita_servico: true, aceita_novidades: f.novidades.checked,
+      consentimento_versao: CONSENTIMENTO_VERSAO, texto_servico: TEXTO_SERVICO, texto_novidades: TEXTO_NOVIDADES
+    };
+    ["utm_source", "utm_medium", "utm_campaign", "utm_content"].forEach(function (k) { var v = params.get(k); if (v) payload[k] = v.slice(0, 100); });
+    var igId = params.get("ig"); if (igId) payload.ig = igId.slice(0, 60);
+    try {
+      var r = await supabase.rpc("capturar_lead_guia", { payload: payload });
+      if (r.error) throw r.error;
+      var link = r.data && r.data.notion_url ? { url: r.data.notion_url, texto: r.data.notion_texto || null } : null;
+      if (!link) throw new Error("sem_link");
+      lsSet(LS_KEY, JSON.stringify(link));
+      track("guia_lead_capturado", { guia: GUIA, certificado: cert, utm_campaign: params.get("utm_campaign") || null });
+      liberar(link);
+    } catch (e) {
+      console.error("capturar_lead_guia:", e);
+      erro(e && e.message === "sem_link" ? "Seu cadastro foi feito, mas o link do painel não carregou. Tenta de novo em instantes." : "Não consegui confirmar agora. Confere o e-mail e tenta de novo.");
+      btn.disabled = false; btn.innerHTML = rotulo;
+    }
+  });
+});
+</script>
+</body>
+</html>
