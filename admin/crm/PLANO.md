@@ -87,6 +87,13 @@ esqueletos estão em `estudio.js` (`OBJETIVOS`); os 4 passos, o Envio e o Para q
 Fica para depois: a compra pelo site entrar sozinha no CRM (hoje: Registrar compra na ficha), o lembrete de prazo sair sozinho na data,
 botões de um toque em modelos novos e os números por modelo e versão (entrega 4).
 
+## Textos dos modelos: prontos (19/10) e revisão (20/10)
+
+`db/crm-modelos-prontos.sql` (gerado por `db/modelos-prontos.mjs`) cria todos os modelos em rascunho. `db/crm-modelos-revisao.sql`
+(gerado por `db/modelos-revisao.mjs`; rodar **depois**; idempotente) dá a 19 deles uma versão nova em rascunho com a revisão de
+texto aprovada em 20/10, e só se a versão mais nova ainda for a de 20/10 (o que foi mudado no estúdio fica). Testes: `db/testes` →
+`APP_DB_DIR=<POR DENTRO APP>/db npm run test:prontos` e `npm run test:revisao`.
+
 ## Ficha: e-mails fidedignos e prévia real (16/10)
 
 Sem SQL novo. `crm.js`: status `agendado` = "Enviado"; painel **E-mails** na ficha (último, próximo sugerido com miniatura,
