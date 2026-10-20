@@ -168,22 +168,26 @@ export function gerar() {
 -- Como desfazer (só apaga o que este arquivo criou e ainda está em rascunho ou revisão; o que você publicou fica):
 --   delete from public.modelos_email_versoes where nota = '${NOTA}' and etapa in ('rascunho', 'revisao');
 `);
-  REVISADOS.forEach(({ chave, tipo, base, blocos }) => {
-    const mt = ES.montar(blocos, tipo), t = chave, k = lit(chave);
-    out.push(`insert into public.modelos_email_versoes (chave, versao, etapa, assunto, preheader, corpo_texto, corpo_html, blocos, nota)
+  REVISADOS.forEach((r) => out.push(sqlVersao(r, NOTA)));
+  return out.join('\n');
+}
+
+// Uma versão nova em rascunho, só se a versão mais nova do modelo ainda tiver os blocos `base` e se ainda não houver
+// uma versão com esta nota. Também usado por modelos-reimpacto.mjs.
+export function sqlVersao({ chave, tipo, base, blocos }, nota) {
+  const mt = ES.montar(blocos, tipo), t = chave, k = lit(chave);
+  return `insert into public.modelos_email_versoes (chave, versao, etapa, assunto, preheader, corpo_texto, corpo_html, blocos, nota)
 select ${k}, (select coalesce(max(versao), 0) + 1 from public.modelos_email_versoes where chave = ${k}), 'rascunho',
   ${dolar(t + '_a', mt.assunto)},
   ${mt.preheader == null ? 'null' : dolar(t + '_p', mt.preheader)},
   ${dolar(t + '_t', mt.corpo_texto)},
   ${dolar(t + '_h', mt.corpo_html)},
   ${dolar(t + '_b', JSON.stringify(blocos))}::jsonb,
-  ${lit(NOTA)}
+  ${lit(nota)}
 where exists (select 1 from public.modelos_email where chave = ${k} and tipo = ${lit(tipo)})
   and (select blocos from public.modelos_email_versoes where chave = ${k} order by versao desc limit 1) = ${dolar(t + '_base', JSON.stringify(base))}::jsonb
-  and not exists (select 1 from public.modelos_email_versoes where chave = ${k} and nota = ${lit(NOTA)});
-`);
-  });
-  return out.join('\n');
+  and not exists (select 1 from public.modelos_email_versoes where chave = ${k} and nota = ${lit(nota)});
+`;
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
