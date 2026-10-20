@@ -1424,8 +1424,8 @@ function crmServiceHeaders(env) {
   };
 }
 
-// Guia → modelo do e-mail 1. Só estes guias mandam e-mail sozinhos.
-const CRM_GUIAS_EMAIL = { 'etudes-en-france-2027-2028': 'cf_guia_1' };
+// Guia → modelo do e-mail 1. Só estes guias mandam e-mail sozinhos (o painel do certificado: cert_guia_1, mais abaixo).
+const CRM_GUIAS_EMAIL = { 'etudes-en-france-2027-2028': 'cf_guia_1', 'painel-do-certificado': 'cert_guia_1' };
 const CF_UTM = 'utm_source=email&utm_medium=email&utm_campaign=guia-etudes-en-france-2027&utm_content=cf_guia_1';
 // Texto aprovado no artefato "Jornada do freebie Campus France" (fonte: guia do Campus France Brasil, set/2026).
 const CF_ETAPA_TXT = {
@@ -1509,6 +1509,89 @@ ${passoHtml}
 </table></td></tr></table>
 </body></html>`;
   return { assunto, pre, texto, html };
+}
+
+// ---------- Guia gratuito Painel do Certificado: e-mail cert_guia_1 ----------
+// Sai sozinho pela mesma rota /api/crm/guia-capturado (guia 'painel-do-certificado'), para todo mundo que pediu o painel,
+// sem exigir novidades e sem rodapé de descadastro. O link do Notion vem de guias_links na hora do envio (nunca no código).
+// A prova que a pessoa marcou no formulário (contatos.respostas.objetivo) escolhe o trecho "Para a sua prova".
+// Quem não marcou, ou marcou algo que não conhecemos, recebe o trecho de "ainda não sei qual fazer".
+const CERT_GUIA_SLUG = 'painel-do-certificado';
+const CERT_UTM = 'utm_source=email&utm_medium=email&utm_campaign=guia-painel-do-certificado&utm_content=cert_guia_1';
+const CERT_ORDEM = ['delf', 'tcf', 'exame_civico', 'ingles', 'outro', 'indeciso'];
+const CERT_PROVAS = {
+  delf: ['cert-delf', 'cert-dalf'], tcf: ['cert-tcf-francais', 'cert-tcf-canada'], exame_civico: ['cert-exame-civico'],
+  ingles: ['cert-toeic', 'cert-cae', 'cert-cpe'], outro: ['cert-outro'], indeciso: ['cert-indeciso'],
+};
+const CERT_PROVA_TXT = {
+  delf: 'Na página "TUDO QUE VOCÊ PRECISA SABER", abra o checklist "DELF / DALF" e a aba "Simulados". Comece pelos sujets oficiais da France Éducation International.',
+  tcf: 'Na página "TUDO QUE VOCÊ PRECISA SABER", abra o checklist "TCF (Français & Canada)". Para o TCF Canada, o número do processo do IRCC é pedido na inscrição.',
+  exame_civico: 'Na página "TUDO QUE VOCÊ PRECISA SABER", abra o checklist "Exame Cívico" e as fichas gratuitas de preparação do Ministério do Interior. O exame é obrigatório desde 1º de janeiro de 2026 em três pedidos: carte pluriannuelle, carte de résident e naturalização. Confirme no centro onde vai fazer o valor e a data.',
+  ingles: 'Na página "TUDO QUE VOCÊ PRECISA SABER", abra o checklist "TOEIC / CAE / CPE" e a aba "Simulados", que tem amostras oficiais.',
+  outro: 'O painel funciona para qualquer prova: cadastre a sua em CERTIFICADOS e crie as habilidades dela. A biblioteca de links não cobre a sua prova ainda. Responda este e-mail dizendo qual é, para eu saber o que incluir.',
+  indeciso: 'Na página "TUDO QUE VOCÊ PRECISA SABER", abra "Saiba antes" e a tabela "Qual certificado escolher para cada situação".',
+};
+// Em qual grupo cai o objetivo da ficha. Só um grupo vale; o que não é conhecido cai em 'indeciso'.
+function certProva(objetivo) {
+  return CERT_ORDEM.find((k) => CERT_PROVAS[k].includes(objetivo)) || 'indeciso';
+}
+
+// Monta o e-mail do painel (assunto, prévia, texto puro e HTML) a partir da ficha e do link do Notion. É o texto de reserva:
+// o mesmo que a versão No ar de cert_guia_1 (admin/crm/db/crm-cert-guia-modelo.sql); o teste confere que saem iguais.
+function certGuia1(contato, notionUrl) {
+  const nome = crmPrimeiroNome(contato.nome);
+  const prova = certProva((contato.respostas || {}).objetivo);
+  const link = notionUrl + (notionUrl.includes('?') ? '&' : '?') + CERT_UTM;
+  const assunto = 'Seu painel do certificado está aqui';
+  const pre = 'O link para duplicar e por onde começar.';
+  const ola = nome ? 'Olá, ' + nome + '.' : 'Olá.';
+  const duplicar = 'Abra o link e clique em "Duplicate" (duplicar), no canto superior direito. A cópia vai para o seu Notion e passa a ser sua.';
+  const comecar = 'Para começar, abra o certificado "EXEMPLO · DELF B2 até fevereiro". Ele já vem preenchido, e cada página dele explica para que serve. Quando entender, apague os itens com "EXEMPLO" no nome e cadastre a sua prova e a data.';
+  const revisao = 'Depois, escolha um dia fixo da semana para a Revisão Semanal, que leva 10 minutos. É ela que mantém o painel funcionando.';
+  const travar = 'Se travar em alguma parte, responda este e-mail.';
+  const assina = 'Ingryd, do Por Dentro';
+  const rodape = 'Você recebeu este e-mail porque pediu o Painel do Certificado no Por Dentro com ' + contato.email + '.';
+  const texto = [ola, '', 'Aqui está o seu painel:', '', 'Abrir o painel no Notion: ' + link, '', duplicar, '', comecar, '',
+    'Para a sua prova:', CERT_PROVA_TXT[prova], '', revisao, '', travar, '', assina, '', '—', rodape].join('\n');
+
+  const e = crmEscapeHtml;
+  const sans = "font-family:'Inter', Arial, Helvetica, sans-serif;";
+  const serif = "font-family:'Fraunces', Georgia, 'Times New Roman', serif;";
+  const p = (txt) => `<p style="margin:0 0 16px; ${sans} font-size:15px; line-height:1.6; color:#2B2B2B;">${e(txt)}</p>`;
+  const html = `<!DOCTYPE html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="color-scheme" content="light"><title>${e(assunto)}</title></head>
+<body style="margin:0; padding:0; background:#F4F1EC;">
+<div style="display:none; max-height:0; overflow:hidden; mso-hide:all;">${e(pre)}&#8199;&#847;&#8199;&#847;&#8199;&#847;&#8199;&#847;&#8199;&#847;</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#F4F1EC;"><tr><td align="center" style="padding:32px 16px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;">
+<tr><td style="padding:0 4px 20px; ${serif} font-size:22px; font-weight:700; color:#2B2B2B;">Por <span style="color:#604034;">Dentro</span></td></tr>
+<tr><td style="background:#FBFAF7; border:1px solid #E2DED7; border-radius:8px; padding:32px 28px;">
+${p(ola)}
+${p('Aqui está o seu painel:')}
+<p style="margin:0 0 24px;"><a href="${e(link)}" style="display:inline-block; background:#577328; color:#FBFAF7; ${sans} font-size:15px; font-weight:600; text-decoration:none; padding:13px 22px; border-radius:4px;">Abrir o painel no Notion</a></p>
+${p(duplicar)}
+${p(comecar)}
+<p style="margin:0 0 4px; ${sans} font-size:12px; color:#6E6862;">Para a sua prova:</p>
+       ${p(CERT_PROVA_TXT[prova])}
+${p(revisao)}
+${p(travar)}
+<p style="margin:0; ${serif} font-size:16px; font-style:italic; color:#2B2B2B;">${e(assina)}</p>
+</td></tr>
+<tr><td style="padding:20px 4px 0; ${sans} font-size:12px; line-height:1.55; color:#6E6862;">${e(rodape)}</td></tr>
+</table></td></tr></table>
+</body></html>`;
+  return { assunto, pre, texto, html };
+}
+
+// Variáveis do e-mail do painel. A prova vira um sim/não por grupo ({#prova_delf}…), para o texto de cada uma morar no modelo.
+function certGuia1Vars(contato, notionUrl) {
+  const prova = certProva((contato.respostas || {}).objetivo);
+  const v = {
+    nome: crmPrimeiroNome(contato.nome), email: contato.email,
+    link_painel: notionUrl + (notionUrl.includes('?') ? '&' : '?') + CERT_UTM,
+  };
+  for (const k of CERT_ORDEM) v['prova_' + k] = prova === k;
+  return v;
 }
 
 // ---------- Estúdio de e-mails, entrega 1: o texto dos modelos mora no Supabase ----------
@@ -1634,7 +1717,10 @@ async function handleCrmGuiaCapturado(request, env) {
   if (!link || !/^https:\/\//.test(link.notion_url || '')) return json({ error: 'Guia sem link do Notion em guias_links.' }, 500);
 
   const tpl = await crmModeloNoAr(env, modelo);
-  const mail = crmMontarOuReserva(modelo, tpl, () => cfGuia1Vars(contato, link.notion_url), () => cfGuia1(contato, link.notion_url));
+  const cert = modelo === 'cert_guia_1';
+  const mail = crmMontarOuReserva(modelo, tpl,
+    () => (cert ? certGuia1Vars : cfGuia1Vars)(contato, link.notion_url),
+    () => (cert ? certGuia1 : cfGuia1)(contato, link.notion_url));
   const r = await crmEnviarGuia(env, sb, contato, modelo, mail);
   if (r === 'ja') return json({ ok: true, ja_enviado: true });
   if (r === 'reserva') return json({ error: 'Não consegui registrar o envio.' }, 500);
@@ -1643,7 +1729,7 @@ async function handleCrmGuiaCapturado(request, env) {
 }
 
 // Reserva, envia pelo Brevo e guarda o id da mensagem. Devolve 'enviado', 'ja' (já tinha), 'reserva' ou 'brevo'.
-// Reserva primeiro: o índice emails_um_por_guia_idx deixa só uma linha por pessoa e modelo cf_guia_*,
+// Reserva primeiro: os índices emails_um_por_guia_idx e emails_um_por_guia_cert_idx deixam só uma linha por pessoa e modelo cf_guia_* / cert_guia_*,
 // então só quem conseguiu gravar envia (duas chamadas juntas não mandam dois e-mails).
 // novidades = true: e-mail de relacionamento, com List-Unsubscribe (o rodapé "responda sair" vem no texto).
 // extra: colunas a mais na linha (as sequências gravam sequencia = true e formato = 'html').
@@ -1907,15 +1993,16 @@ async function handleCrmModeloTeste(request, env) {
 
   const sb = crmServiceHeaders(env);
   let vars;
-  if (chave === 'cf_guia_1' || chave === 'cf_guia_conversa') {
+  if (chave === 'cf_guia_1' || chave === 'cf_guia_conversa' || chave === 'cert_guia_1') {
     const cRes = await fetch(`${CRM_SUPABASE_URL}/rest/v1/contatos?select=id,email,nome,respostas&id=eq.${contatoId}`, { headers: sb });
     const contato = cRes.ok ? (await cRes.json())[0] : null;
     if (!contato) return json({ error: 'Contato não encontrado.' }, 404);
-    if (chave === 'cf_guia_1') {
-      const lRes = await fetch(`${CRM_SUPABASE_URL}/rest/v1/guias_links?select=notion_url&slug=eq.${encodeURIComponent(CF_GUIA_SLUG)}`, { headers: sb });
+    if (chave === 'cf_guia_1' || chave === 'cert_guia_1') {
+      const slug = chave === 'cert_guia_1' ? CERT_GUIA_SLUG : CF_GUIA_SLUG;
+      const lRes = await fetch(`${CRM_SUPABASE_URL}/rest/v1/guias_links?select=notion_url&slug=eq.${encodeURIComponent(slug)}`, { headers: sb });
       const link = lRes.ok ? (await lRes.json())[0] : null;
       if (!link || !/^https:\/\//.test(link.notion_url || '')) return json({ error: 'Guia sem link do Notion em guias_links.' }, 500);
-      vars = cfGuia1Vars(contato, link.notion_url);
+      vars = (chave === 'cert_guia_1' ? certGuia1Vars : cfGuia1Vars)(contato, link.notion_url);
     } else {
       vars = cfGuiaConversaVars(contato, 'teste');
     }
@@ -1971,7 +2058,7 @@ async function handleCrmModeloTeste(request, env) {
 // consentimento antes de cada envio. Um modelo de sequência sai uma vez só por pessoa (índice emails_um_por_sequencia_idx).
 // Os 10 modelos de antes do estúdio nunca saem por aqui. Ver README.md, seção 23.
 const CRM_CRON_SEQUENCIAS = '5 * * * *';
-const CRM_MODELOS_ANTIGOS = CRM_MODELOS.concat(['cf_guia_conversa']);   // os 10 de antes do estúdio
+const CRM_MODELOS_ANTIGOS = CRM_MODELOS.concat(['cf_guia_conversa', 'cert_guia_1']);   // os 10 de antes do estúdio, mais o do Painel do Certificado (sai pelo código, como o cf_guia_1)
 const CRM_APP_LINK = 'https://plataforma.imigrantepordentro.com/';      // igual a APP_LINK em admin/crm/crm.js
 const CRM_CAL_LINK = 'https://cal.com/ingryd-silva-jf1cnx/1-1?overlayCalendar=true';   // igual a CAL_LINK em admin/crm/crm.js
 // Igual a PERSONAS em admin/crm/crm.js: {persona} é o nome do checklist em minúsculas.

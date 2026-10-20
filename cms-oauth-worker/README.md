@@ -693,3 +693,51 @@ Se um e-mail não sair: Workers → Logs, procure `crm/sequencias` (`{"erro":"li
 
 Testes: `node cms-oauth-worker/testes/crm-email.test.mjs` e, no banco,
 `cd admin/crm/db/testes && APP_DB_DIR=<POR DENTRO APP>/db npm run test:estudio3`.
+
+## 24. Guia Painel do Certificado: o e-mail do painel sai sozinho
+
+O que faz: quem se cadastra em `/guias/painel-do-certificado/` recebe na hora o e-mail **cert_guia_1** ("Seu painel do
+certificado está aqui"): o link do Notion (para duplicar), por onde começar e um trecho **"Para a sua prova"** que muda
+conforme o certificado marcado no formulário (DELF/DALF, TCF, Exame Cívico, TOEIC/CAE/CPE, outro ou "ainda não sei").
+Funciona igual ao e-mail 1 do Campus France (seção 17): o banco chama `POST /api/crm/guia-capturado` pelo pg_net e o Worker
+envia pelo Brevo. É **serviço**: sai para todo mundo que pediu o painel, sem exigir novidades e sem rodapé de descadastro.
+O link do Notion nunca fica no código nem no GitHub: o Worker lê de `guias_links` na hora do envio.
+
+Pré-requisito: a seção 17 pronta (pg_net ligado, `crm_hook_secret` e `crm_worker_url` no Vault, `CRM_HOOK_SECRET` no Worker).
+Se o e-mail do Campus France já sai, os segredos já existem e não precisa criar nada de novo.
+
+Faça nesta ordem:
+
+**1. Link do painel** — Supabase → Table Editor → `guias_links` → Insert row: `slug` = `painel-do-certificado`,
+`notion_url` = o link público do painel no Notion, `notion_texto` = `Abrir o painel no Notion`. Sem essa linha o cadastro
+funciona, mas nenhum link aparece e o e-mail não sai.
+
+**2. Banco** — SQL Editor, rode **nesta ordem** (cada um pode ser rodado de novo sem estragar nada):
+   1. `admin/crm/db/crm-cert-guia-email.sql` (passa a pedir o e-mail do painel e garante um por pessoa)
+   2. `admin/crm/db/crm-cert-guia-modelo.sql` (cria o modelo no Estúdio de e-mails, versão 1 No ar)
+
+**3. Código do Worker** — seção 9 (colar o `worker.js` novo e Deploy). Nada de variável nova.
+
+**4. Teste com o seu e-mail** (aba anônima, com o seu Gmail; para variar a prova, repita com `seunome+delf@gmail.com`,
+`seunome+civico@gmail.com` etc., que o Gmail entrega na mesma caixa):
+   1. Abra `imigrantepordentro.com/guias/painel-do-certificado/`, escolha uma prova e se cadastre.
+   2. Em até 1 minuto chega "Seu painel do certificado está aqui", com o trecho "Para a sua prova" da prova escolhida.
+   3. Clique em "Abrir o painel no Notion": o painel abre e o botão "Duplicate" aparece no canto superior direito.
+   4. Responda o e-mail: a resposta aparece em CRM → Caixa de entrada.
+   5. Para testar de novo com o mesmo e-mail, apague a linha `cert_guia_1` dele em Table Editor → `emails_enviados`.
+   Também dá para ver o e-mail sem se cadastrar: CRM → Estúdio de e-mails → Guia Painel do Certificado · e-mail 1 →
+   escolha uma pessoa na prévia → "Enviar teste para mim".
+
+Se não chegar: SQL Editor → `select status_code, content from net._http_response order by created desc limit 5;`
+(401 = segredo diferente entre Vault e Worker; 500 = falta a linha em `guias_links` ou variável no Worker; 400 = o Worker
+antigo ainda está no ar: faça o passo 3) e os **Logs** do Worker.
+
+**Para desligar só este e-mail**: Table Editor → `guias_links` → apague a linha `painel-do-certificado` (o Worker passa
+a recusar e o cadastro continua funcionando; o link some da página também). Para desligar todos os e-mails de guia:
+Vault → apague `crm_worker_url`.
+
+Texto: mora em `certGuia1()` no `worker.js` (reserva) e na versão No ar de `cert_guia_1` no Estúdio de e-mails, que tem
+prioridade; o teste confere que os dois saem iguais. Trocou o texto pelo Estúdio, vale no próximo envio. O e-mail do
+painel não entra nos reimpactos do CRM nem no e-mail 2 do Campus France.
+Testes: `node cms-oauth-worker/testes/cert-guia-email.test.mjs` (sem dependências, sem rede) e
+`cd admin/crm/db/testes && npm install && npm run test:cert` (banco de teste PGlite, não precisa do banco do app).

@@ -31,7 +31,7 @@ var SEGMENTS = [
 // 'agendado' = o Brevo aceitou o envio (a linha só é gravada depois disso) e ainda não avisou entrega/abertura pelo webhook.
 var MAIL_ST = { clicado: 'Clicou', aberto: 'Abriu', entregue: 'Entregue, não abriu', nao_entregue: 'Não entregue', agendado: 'Enviado' };
 var MAIL_ST_DICA = { agendado: 'O Brevo aceitou o envio. Entrega e abertura aparecem aqui quando o webhook do Brevo avisar.' };
-var MODELO = { boas_vindas: 'Boas-vindas + link de acesso', guia_chamada: 'Guia VLS-TS — convite pra conversa', guia_plataforma: 'Guia VLS-TS — teste da plataforma',naoabriu: 'Reimpacto — não abriu', naoclicou: 'Reimpacto — abriu, não clicou', cliquenaoapp: 'Reimpacto — clicou, não abriu o app', parouapp: 'Reimpacto — abriu o app e parou', guia_alternancia: 'Guia alternância 30+ — convite pra conversa', cf_guia_1: 'Guia Campus France — e-mail 1 (checklist, automático)', cf_guia_conversa: 'Guia Campus France — e-mail 2 (a conversa, automático)', resposta: 'Sua resposta (aba Conversa)' };
+var MODELO = { boas_vindas: 'Boas-vindas + link de acesso', guia_chamada: 'Guia VLS-TS — convite pra conversa', guia_plataforma: 'Guia VLS-TS — teste da plataforma',naoabriu: 'Reimpacto — não abriu', naoclicou: 'Reimpacto — abriu, não clicou', cliquenaoapp: 'Reimpacto — clicou, não abriu o app', parouapp: 'Reimpacto — abriu o app e parou', guia_alternancia: 'Guia alternância 30+ — convite pra conversa', cf_guia_1: 'Guia Campus France — e-mail 1 (checklist, automático)', cf_guia_conversa: 'Guia Campus France — e-mail 2 (a conversa, automático)', cert_guia_1: 'Guia Painel do Certificado — e-mail 1 (painel, automático)', resposta: 'Sua resposta (aba Conversa)' };
 var TYPE_META = {
   sistema: ['Sistema', ''], app: ['Abriu o app', 'u-baixa'], checklist: ['Checklist', 'u-baixa'], pergunta: ['Pergunta única', 'tp-pergunta'],
   artigo: ['Artigo', 'tp-artigo'], uma_um: ['1:1', 'out'], email: ['E-mail', 'out'], sinal: ['Sinal no dashboard', 'out'],
@@ -603,7 +603,7 @@ function comMoldura(v) {
 // Um e-mail que já saiu, do jeito que chegou: o template (automáticos sempre; manuais quando o Worker gravou formato html)
 // refeito com a versão e os dados dela; o resto, no formato simples.
 function htmlDoEnviado(m, c) {
-  var auto = /^cf_guia_/.test(m.modelo), v = m.modelo_versao ? MV.filter(function (x) { return x.chave === m.modelo && x.versao === m.modelo_versao; })[0] : null;
+  var auto = /^(cf|cert)_guia_/.test(m.modelo), v = m.modelo_versao ? MV.filter(function (x) { return x.chave === m.modelo && x.versao === m.modelo_versao; })[0] : null;
   if (v && (auto || m.formato === 'html')) {
     var vd = comMoldura(v);
     if (vd) { try { return ES.montarComDados(vd, dadosPara(m.modelo, c)).html; } catch (e) { /* cai no simples */ } }
@@ -735,8 +735,8 @@ function conversaCtx(c, h4) {
 function conversaMsg(it, c) {
   var x = it.x, quando = '<time>' + esc(fmtHora(it.em)) + '</time>';
   if (it.k === 'm') {
-    var auto = /^cf_guia_/.test(x.modelo), resp = x.modelo === 'resposta';
-    var quem = auto ? 'Automático · ' + (x.modelo === 'cf_guia_1' ? 'e-mail 1' : x.modelo === 'cf_guia_conversa' ? 'e-mail 2' : x.modelo)
+    var auto = /^(cf|cert)_guia_/.test(x.modelo), resp = x.modelo === 'resposta';
+    var quem = auto ? 'Automático · ' + (x.modelo === 'cf_guia_1' || x.modelo === 'cert_guia_1' ? 'e-mail 1' : x.modelo === 'cf_guia_conversa' ? 'e-mail 2' : x.modelo)
       : resp ? 'Você · respondeu daqui' : 'Você · ' + modeloNome(x.modelo);
     var corpo = resp ? '<div class="txt">' + esc(x.corpo || '') + '</div>'
       : '<b class="assunto">' + esc(x.assunto || '(sem assunto)') + '</b>' + (x.corpo ? '<button class="link" type="button" data-mailtoggle="' + x.id + '">ver o e-mail</button>' + mailView(x) : '');
@@ -991,7 +991,7 @@ function renderLista(lista) {
 }
 
 // Os e-mails 1 e 2 do guia Campus France saem pelo código: excluir aqui não pararia o envio, então não têm o X.
-function podeExcluir(m) { return !!(M && M.length && Object.prototype.hasOwnProperty.call(M[0], 'excluido_em')) && !/^cf_guia_/.test(m.chave); }
+function podeExcluir(m) { return !!(M && M.length && Object.prototype.hasOwnProperty.call(M[0], 'excluido_em')) && !/^(cf|cert)_guia_/.test(m.chave); }
 async function excluirModelo(k, voltar) {
   var m = modeloDe(k); if (!m) return;
   if (!voltar && !window.confirm('Excluir "' + m.nome + '"? Ele sai da lista e do "Escrever e-mail"' + (m.envio_ligado ? ' e a sequência para de sair' : '') +

@@ -15,7 +15,8 @@
     "test:modelos": "node crm-modelos-email.test.mjs",
     "test:estudio": "node crm-estudio-emails-2.test.mjs",
     "test:estudio3": "node crm-estudio-emails-3.test.mjs",
-    "test:prontos": "node crm-modelos-prontos.test.mjs"
+    "test:prontos": "node crm-modelos-prontos.test.mjs",
+    "test:cert": "node crm-cert-guia-email.test.mjs"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.8"

@@ -33,6 +33,21 @@ export var CAT = {
   produto: { t: 'texto', o: 'o nome do produto que ela comprou', plano: null },
   link_produto: { t: 'link', o: 'o link de acesso do produto (privado, vem do Worker)', privado: true }
 };
+// Guia do Painel do Certificado: o link do Notion é privado (vem de guias_links) e a prova vira um sim/não por grupo.
+CAT.link_painel = { t: 'link', o: 'o link privado do painel no Notion (vem do banco, com UTM)', privado: true };
+// Cada token de respostas.objetivo do formulário cai em um grupo; quem não escolheu ou mandou outra coisa cai em "indeciso".
+export var PROVAS_CERT = {
+  delf: ['cert-delf', 'cert-dalf'], tcf: ['cert-tcf-francais', 'cert-tcf-canada'], exame_civico: ['cert-exame-civico'],
+  ingles: ['cert-toeic', 'cert-cae', 'cert-cpe'], outro: ['cert-outro']
+};
+var PROVAS_NOME = { delf: 'DELF ou DALF', tcf: 'TCF', exame_civico: 'Exame Cívico', ingles: 'TOEIC, CAE ou CPE', outro: 'outra prova', indeciso: 'ainda não sabe qual fazer' };
+export function provasCert(objetivo) {
+  var r = {}, achou = false;
+  Object.keys(PROVAS_CERT).forEach(function (k) { r['prova_' + k] = PROVAS_CERT[k].indexOf(objetivo) >= 0; if (r['prova_' + k]) achou = true; });
+  r.prova_indeciso = !achou;
+  return r;
+}
+Object.keys(PROVAS_NOME).forEach(function (k) { CAT['prova_' + k] = { t: 'sim', o: 'a prova que ela marcou no guia: ' + PROVAS_NOME[k], etapa: true }; });
 var ETAPAS_CF = { nao_comecei: 'ainda não começou', escolhendo_curso: 'está escolhendo o curso', juntando_documentos: 'está juntando documentos, traduções e o teste',
   dossie_enviado: 'já enviou o dossiê', entrevista_resposta: 'está esperando a entrevista ou a resposta' };
 var ETAPAS_ALT = { pesquisando: 'ainda está pesquisando', escolhendo_escola: 'está escolhendo escola', recusa_idade: 'ouviu "só até 29"',
@@ -47,7 +62,8 @@ export var VARS_DE = {
   boas_vindas: PAINEL.concat(ALT), naoabriu: PAINEL.concat(ALT), naoclicou: PAINEL.concat(ALT), cliquenaoapp: PAINEL.concat(ALT),
   parouapp: PAINEL.concat(ALT), guia_chamada: PAINEL.concat(ALT), guia_plataforma: PAINEL.concat(ALT), guia_alternancia: PAINEL.concat(ALT),
   cf_guia_1: ['nome', 'email', 'link_checklist', 'nivel', 'prazo_nivel', 'etapa', 'cidade'].concat(Object.keys(ETAPAS_CF).map(function (k) { return 'etapa_' + k; })),
-  cf_guia_conversa: ['nome', 'email', 'botoes_cidade']
+  cf_guia_conversa: ['nome', 'email', 'botoes_cidade'],
+  cert_guia_1: ['nome', 'email', 'link_painel'].concat(Object.keys(PROVAS_NOME).map(function (k) { return 'prova_' + k; }))
 };
 // Os modelos criados no estúdio (entrega 3) têm todos os mesmos dados; os de compra ganham o produto e o link dele.
 // O Worker preenche exatamente estes (crmVarsNovos em worker.js).
@@ -320,6 +336,11 @@ export function dadosDe(chave, c, h, m) {
     if (pq.produto) { n.produto = pq.produto_nome || ''; n.link_produto = '[link do produto]'; }
     return n;
   }
+  if (chave === 'cert_guia_1') {
+    var vc = provasCert(resp.objetivo);
+    vc.nome = primeiroNome(c.nome); vc.email = c.email; vc.link_painel = 'https://www.notion.so/…';
+    return vc;
+  }
   if (chave === 'cf_guia_1' || chave === 'cf_guia_conversa') {
     var nv = CF_NIVEIS[resp.cfNivel];
     var v = { nome: primeiroNome(c.nome), email: c.email };
@@ -400,6 +421,25 @@ export var INICIAIS = {
       { tipo: 'etapa', se: '#etapa_entrevista_resposta', rotulo: 'Para quem está na etapa que está esperando a entrevista ou a resposta:', titulo: 'Treine a entrevista em voz alta.', texto: 'Ela é marcada em até duas semanas depois da validação e acontece prioritariamente em francês. Treine em voz alta, em francês, como você explica o seu projeto de estudos e cada escolha.' },
       { tipo: 'texto', estilo: 'caixa', texto: '**Ficou com dúvida?** É só responder este e-mail. Chega direto para mim.' },
       ASS] },
+  cert_guia_1: {
+    assunto: 'Seu painel do certificado está aqui',
+    pre: 'O link para duplicar e por onde começar.',
+    rodape: 'pediu o Painel do Certificado no Por Dentro com {email}',
+    itens: [
+      { tipo: 'texto', texto: 'Olá, {nome}.', alt: 'Olá.' },
+      { tipo: 'texto', texto: 'Aqui está o seu painel:' },
+      { tipo: 'botao', rotulo: 'Abrir o painel no Notion', link: 'link_painel' },
+      { tipo: 'texto', texto: 'Abra o link e clique em "Duplicate" (duplicar), no canto superior direito. A cópia vai para o seu Notion e passa a ser sua.' },
+      { tipo: 'texto', texto: 'Para começar, abra o certificado "EXEMPLO · DELF B2 até fevereiro". Ele já vem preenchido, e cada página dele explica para que serve. Quando entender, apague os itens com "EXEMPLO" no nome e cadastre a sua prova e a data.' },
+      { tipo: 'etapa', se: '#prova_delf', rotulo: 'Para a sua prova:', texto: 'Na página "TUDO QUE VOCÊ PRECISA SABER", abra o checklist "DELF / DALF" e a aba "Simulados". Comece pelos sujets oficiais da France Éducation International.' },
+      { tipo: 'etapa', se: '#prova_tcf', rotulo: 'Para a sua prova:', texto: 'Na página "TUDO QUE VOCÊ PRECISA SABER", abra o checklist "TCF (Français & Canada)". Para o TCF Canada, o número do processo do IRCC é pedido na inscrição.' },
+      { tipo: 'etapa', se: '#prova_exame_civico', rotulo: 'Para a sua prova:', texto: 'Na página "TUDO QUE VOCÊ PRECISA SABER", abra o checklist "Exame Cívico" e as fichas gratuitas de preparação do Ministério do Interior. O exame é obrigatório desde 1º de janeiro de 2026 em três pedidos: carte pluriannuelle, carte de résident e naturalização. Confirme no centro onde vai fazer o valor e a data.' },
+      { tipo: 'etapa', se: '#prova_ingles', rotulo: 'Para a sua prova:', texto: 'Na página "TUDO QUE VOCÊ PRECISA SABER", abra o checklist "TOEIC / CAE / CPE" e a aba "Simulados", que tem amostras oficiais.' },
+      { tipo: 'etapa', se: '#prova_outro', rotulo: 'Para a sua prova:', texto: 'O painel funciona para qualquer prova: cadastre a sua em CERTIFICADOS e crie as habilidades dela. A biblioteca de links não cobre a sua prova ainda. Responda este e-mail dizendo qual é, para eu saber o que incluir.' },
+      { tipo: 'etapa', se: '#prova_indeciso', rotulo: 'Para a sua prova:', texto: 'Na página "TUDO QUE VOCÊ PRECISA SABER", abra "Saiba antes" e a tabela "Qual certificado escolher para cada situação".' },
+      { tipo: 'texto', texto: 'Depois, escolha um dia fixo da semana para a Revisão Semanal, que leva 10 minutos. É ela que mantém o painel funcionando.' },
+      { tipo: 'texto', texto: 'Se travar em alguma parte, responda este e-mail.' },
+      { tipo: 'assinatura', texto: 'Ingryd, do Por Dentro' }] },
   cf_guia_conversa: {
     assunto: '{nome}, uma pergunta rápida', assunto_alt: 'Uma pergunta rápida', pre: 'Um toque e eu já sei para onde você vai.',
     rodape: 'pediu o checklist Études en France com {email}',
