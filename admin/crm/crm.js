@@ -1037,10 +1037,13 @@ function blocoEditor(b, i, n, k, ro) {
     corpo = campoTxt(f('texto'), b.texto, 'Pergunta', { ro: ro }) + alt() + campoTxt(f('ajuda'), b.ajuda, 'Linha de ajuda (opcional)', { ro: ro });
   } else if (b.tipo === 'botao') {
     var links = varsDoTipo(k, 'link').map(function (x) { return [x, '{' + x + '} · ' + ES.CAT[x].o]; });
+    var comUrl = !!String(b.url || '').trim();
     corpo = campoTxt(f('rotulo'), b.rotulo, 'O que está escrito no botão', { ro: ro, max: 80 }) +
-      '<label class="st-fld"><span>Para onde leva</span><select class="st-in" data-f="' + f('link') + '"' + dis + '>' + opcoes(links, b.link, links.length ? 'Escolha o link' : 'Este modelo não tem link') + '</select>' +
-      '<small>O link vem do banco ou do código na hora do envio: nunca é digitado.</small></label>' +
-      campoTxt(f('complemento'), b.complemento, 'Complemento do link (opcional)', { ro: ro, ph: '&utm_source=email&utm_campaign=…', max: 200 });
+      campoTxt(f('url'), b.url, 'Link do botão (cole o endereço inteiro)', { ro: ro, ph: 'https://…', max: 1000, dica: 'Para uma página pública. Links privados (Notion, acesso da pessoa) saem do menu abaixo.' }) +
+      (comUrl ? '<p class="st-msg">Este botão usa o endereço colado acima. Apague-o para usar um link do sistema.</p>'
+        : '<label class="st-fld"><span>Ou use um link do sistema</span><select class="st-in" data-f="' + f('link') + '"' + dis + '>' + opcoes(links, b.link, links.length ? 'Escolha o link' : 'Este modelo não tem link') + '</select>' +
+          '<small>Vem do banco na hora do envio (cada pessoa tem o seu): nunca é digitado.</small></label>' +
+          (b.link ? campoTxt(f('complemento'), b.complemento, 'Final do link, para medir cliques (opcional)', { ro: ro, ph: '&utm_source=email&utm_campaign=…', max: 200 }) : ''));
   } else if (b.tipo === 'destaque') {
     corpo = campoTxt(f('rotulo'), b.rotulo, 'Rótulo (em cima, pequeno)', { ro: ro }) + campoTxt(f('valor'), b.valor, 'Valor (curto fica grande; várias linhas ficam em lista)', { area: true, rows: 2, ro: ro }) +
       campoTxt(f('nota'), b.nota, 'Nota (embaixo, opcional)', { ro: ro });

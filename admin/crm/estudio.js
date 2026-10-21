@@ -130,7 +130,12 @@ function campo(src, alt, d, html, fora) {
   return { s: s, ess: ess };
 }
 function juntaEss() { var r = []; for (var i = 0; i < arguments.length; i++) arguments[i].forEach(function (k) { if (r.indexOf(k) < 0) r.push(k); }); return r; }
-function linkDe(b, html) { return b.link ? '{' + b.link + '}' + (html ? escH(b.complemento || '') : (b.complemento || '')) : ''; }
+// url = endereço público colado inteiro (vence o link do sistema); link = dado do Worker + complemento.
+function linkDe(b, html) {
+  var url = String(b.url || '').trim();
+  if (url) return html ? escH(url) : url;
+  return b.link ? '{' + b.link + '}' + (html ? escH(b.complemento || '') : (b.complemento || '')) : '';
+}
 
 // Um bloco → { txt, html, ess }.
 function bloco(b, d) {
@@ -272,8 +277,10 @@ export function conferir(d, m, montado, automatico) {
   r.push({ ok: !!String(d.assunto || '').trim(), txt: 'Assunto preenchido', trava: true });
   r.push({ ok: (d.itens || []).length > 0, txt: 'Pelo menos um bloco', trava: true });
   r.push({ ok: !estranhos.length, txt: estranhos.length ? 'Dados que este modelo não tem: ' + estranhos.map(function (k) { return '{' + k + '}'; }).join(', ') : 'Só usa dados que este modelo tem', trava: true });
-  var semLink = (d.itens || []).filter(function (b) { return b.tipo === 'botao' && !b.link; }).length;
+  var semLink = (d.itens || []).filter(function (b) { return b.tipo === 'botao' && !b.link && !String(b.url || '').trim(); }).length;
   r.push({ ok: !semLink, txt: semLink ? semLink + ' botão sem link' : 'Botões com link', trava: true });
+  var urlRuim = (d.itens || []).filter(function (b) { return b.tipo === 'botao' && String(b.url || '').trim() && !/^https:\/\/[^\s<>"{}]+$/.test(String(b.url).trim()); }).length;
+  r.push({ ok: !urlRuim, txt: urlRuim ? 'Link de botão inválido: cole o endereço inteiro, começando com https://' : 'Links de botão ok', trava: true });
   var escritos = campos.join('\n').match(/https?:\/\/[^\s]+/g) || [];
   var privados = escritos.filter(function (u) { return /notion\.(so|site)|[?&]t=|\/conversa\/\?/.test(u); });
   r.push({ ok: !privados.length, txt: privados.length ? 'Link privado digitado no texto: use o dado do link (vem do banco)' : 'Links privados só por dado (nenhum digitado)', trava: true });
