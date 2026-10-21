@@ -2,7 +2,7 @@
 // Nada de service_role aqui. O banco é db/crm-fase2.sql; o desenho é o artefato "CRM Por Dentro".
 // Tudo que vem do banco é texto de terceiros (nome, e-mail, pergunta): passa sempre por esc().
 import { supabase } from '/assets/js/supabase-client.js';
-import * as ES from './estudio.js?v=2026-10-19.1';   // os blocos do estúdio de e-mails (entregas 2 e 3)
+import * as ES from './estudio.js?v=2026-10-21.1';   // os blocos do estúdio de e-mails (entregas 2 e 3)
 
 var PERSONAS = {
   au_pair_estudante: 'Au pair → estudante', campus_france: 'Campus France', alternancia_emprego: 'Alternância / emprego',
@@ -1188,7 +1188,7 @@ function renderEditor(lista) {
 var temEstudio3 = function () { return !!(M && M.length && Object.prototype.hasOwnProperty.call(M[0], 'criado_no_estudio')); };
 var HORAS = []; for (var hh = 0; hh < 24; hh++) HORAS.push([String(hh), 'às ' + hh + 'h (Brasília)']);
 var GATILHO = { email: 'Depois de um e-mail', material: 'Depois de pegar um material', compra: 'Depois da compra' };
-function paraVazio() { return { personas: [], materiais: [], segmentos: [], estagios: [] }; }
+function paraVazio() { return { personas: [], materiais: [], etapas: [], segmentos: [], estagios: [] }; }
 // Os materiais (guias) que já trouxeram alguém: os rótulos conhecidos e as origens guia-* da base.
 function materiaisConhecidos() {
   var l = Object.keys(ORIG).filter(function (k) { return /^guia-/.test(k); });
@@ -1220,6 +1220,7 @@ function paraQuemHtml(para, attr, obj, produtoFixo) {
   return prod +
     grupo('Persona', 'personas', Object.keys(PERSONAS).filter(function (k) { return k !== 'sem'; }).map(function (k) { return [k, PERSONAS[k]]; }), 'Nenhuma marcada = todas.') +
     grupo('Material de origem', 'materiais', materiaisConhecidos(), 'Só quem pegou um destes guias. Nenhum = qualquer origem.') +
+    grupo('Etapa do guia', 'etapas', ES.ETAPAS_GUIA, 'Só quem marcou uma destas etapas no guia. Nenhuma = qualquer etapa (quem não marcou etapa também recebe).') +
     grupo('Estágio', 'estagios', STAGES.map(function (x) { return [x.k, x.l]; }), 'Nenhum = qualquer estágio.') +
     grupo('Segmento do reimpacto', 'segmentos', SEGMENTS.map(function (x) { return [x.k, x.t]; }), 'Nenhum = sem regra de segmento.');
 }
@@ -1228,11 +1229,13 @@ function paraResumo(m) {
   if (p.produto) r.push('comprou ' + (p.produto_nome || produtoNome(p.produto)));
   if ((p.personas || []).length) r.push(p.personas.map(function (k) { return PERSONAS[k] || k; }).join(' ou '));
   if ((p.materiais || []).length) r.push('pegou ' + p.materiais.map(origLabel).join(' ou '));
+  if ((p.etapas || []).length) r.push('etapa ' + p.etapas.map(etapaGuiaLabel).join(' ou '));
   if ((p.estagios || []).length) r.push('estágio ' + p.estagios.map(stageLabel).join(' ou '));
   if ((p.segmentos || []).length) r.push('segmento ' + p.segmentos.join(' ou '));
   if (m.tipo === 'novidades') r.push('aceitou novidades');
   return r.length ? r.join(' · ') : 'Todos';
 }
+function etapaGuiaLabel(k) { var e = ES.ETAPAS_GUIA.filter(function (x) { return x[0] === k; })[0]; return e ? e[1].replace(/^[^:]+: /, '') : k; }
 function mudarPara(para, g, valor, ligado) {
   if (g === 'produto') { para.produto = valor || undefined; para.produto_nome = valor ? produtoNome(valor) : undefined; if (!valor) { delete para.produto; delete para.produto_nome; } return; }
   var l = para[g] = (para[g] || []).slice(), i = l.indexOf(valor);
@@ -1288,7 +1291,7 @@ async function criarModelo(btn) {
   if (!o || !nome) return;
   btn.disabled = true; btn.textContent = 'Criando…';
   var chave = chaveNova(nome), para = JSON.parse(JSON.stringify(cr.para));
-  ['personas', 'materiais', 'segmentos', 'estagios'].forEach(function (g) { if (!(para[g] || []).length) delete para[g]; });
+  ['personas', 'materiais', 'etapas', 'segmentos', 'estagios'].forEach(function (g) { if (!(para[g] || []).length) delete para[g]; });
   var fake = { chave: chave, criado_no_estudio: true, tipo: o.tipo, para_quem: para };
   var linha = { chave: chave, nome: nome, objetivo: o.nome + ': ' + o.d, tipo: o.tipo, quem_recebe: paraResumo(fake), criado_no_estudio: true, objetivo_chave: o.k,
     para_quem: para, ordem: 500, como_sai: o.sai === 'sequencia' ? 'Sozinho, pela parte Envio (sequência).' : 'Você envia, pela ficha.',
@@ -1446,6 +1449,7 @@ function renderPrevia() {
     if (pqv.produto && !comprou(c.id, pqv.produto)) fora.push('não tem a compra do ' + (pqv.produto_nome || produtoNome(pqv.produto)) + ' registrada (confira na ficha)');
     if ((pqv.personas || []).length && pqv.personas.indexOf(c.persona) < 0 && !(c.personas || []).some(function (x) { return pqv.personas.indexOf(x) >= 0; })) fora.push('é de outra persona');
     if ((pqv.materiais || []).length && !origensDe(c).some(function (x) { return pqv.materiais.indexOf(x) >= 0; })) fora.push('não pegou o material');
+    if ((pqv.etapas || []).length && pqv.etapas.indexOf((c.respostas || {}).objetivo) < 0) fora.push((c.respostas || {}).objetivo ? 'marcou outra etapa no guia' : 'não marcou etapa no guia');
     if ((pqv.estagios || []).length && pqv.estagios.indexOf(c.estagio) < 0) fora.push('está em outro estágio');
     if ((pqv.segmentos || []).length && pqv.segmentos.indexOf(c.segmento) < 0) fora.push('está fora do segmento');
     if (fora.length) avisos.push(displayName(c) + ' ' + fora.join(', ') + ': pelas regras de Para quem, este e-mail não sai para essa pessoa.');
@@ -1849,7 +1853,7 @@ document.addEventListener('change', async function (e) {
   if (e.target.dataset && e.target.dataset.pq) {
     var mq = modeloAtual(), np = JSON.parse(JSON.stringify(mq.para_quem || {}));
     mudarPara(np, e.target.dataset.pq, e.target.value, e.target.checked);
-    ['personas', 'materiais', 'segmentos', 'estagios'].forEach(function (g) { if (np[g] && !np[g].length) delete np[g]; });
+    ['personas', 'materiais', 'etapas', 'segmentos', 'estagios'].forEach(function (g) { if (np[g] && !np[g].length) delete np[g]; });
     return salvarModelo({ para_quem: np, quem_recebe: paraResumo({ tipo: mq.tipo, para_quem: np }) }, 'Para quem salvo');
   }
   if (e.target.dataset && e.target.dataset.envio) return mudarEnvio(e.target.dataset.envio, e.target.value);

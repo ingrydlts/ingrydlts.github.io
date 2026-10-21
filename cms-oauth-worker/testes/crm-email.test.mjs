@@ -787,6 +787,27 @@ console.log('\n== Estúdio de e-mails 3: sequências de hora em hora ==');
   res = await worker.fetch(new Request('https://w.example/api/crm/sequencia-rodar', { method: 'POST', headers: { 'X-Crm-Hook': SEGREDO } }), envS, {});
   check('rodar na hora: com o segredo, manda', res.status === 200 && (await res.json()).enviados === 2);
 
+  console.log('\n== Filtro por etapa do guia: a etapa chega aos modelos novos ==');
+  check('o estúdio e o Worker têm as mesmas 10 etapas', E.ETAPAS_GUIA.length === 10 &&
+    E.ETAPAS_GUIA.every(([k]) => E.VARS_NOVOS.includes('etapa_' + k.replace(/^(cf|alt)-/, '').replace(/-/g, '_'))));
+  const dT = E.esqueleto('aquecimento');
+  dT.assunto = 'Uma astúcia da sua etapa';
+  dT.itens = [{ tipo: 'texto', texto: 'Oi {nome}!' }, { tipo: 'etapa', se: '#etapa_juntando_documentos', texto: 'Trecho de quem junta documentos.' },
+    { tipo: 'etapa', se: '#etapa_dossie_enviado', texto: 'Trecho de quem já enviou.' }, { tipo: 'etapa', se: '#etapa_pesquisando', texto: 'Trecho da alternância.' },
+    { tipo: 'assinatura', texto: 'Ingryd · Por Dentro' }];
+  const vTrilha = { versao: 1, ...E.montar(dT, 'novidades') };
+  const pessoaEtapa = (cid, nome, objetivo) => ({ contato_id: cid, email: nome.toLowerCase() + '@example.com', nome, chave: 'aq_b_d3', versao: 1, tipo: 'novidades',
+    aceita_novidades: true, dados: { persona: 'campus_france', respostas: objetivo ? { objetivo } : {} } });
+  chamadas = []; fakeFetch([[/\/rpc\/crm_sequencia_pendentes$/, { method: 'POST', body: [pessoaEtapa(CID, 'Ana', 'cf-juntando-documentos'), pessoaEtapa(CID2, 'Bia', null)] }],
+    [/modelos_email_versoes\?.*chave=eq\.aq_b_d3/, { body: [vTrilha] }], [/\/emails_enviados$/, { method: 'POST', status: 201, body: [{ id: 51 }] }],
+    [/api\.brevo\.com/, { body: { messageId: '<e1@x.net>' } }]]);
+  r = await rodar({ cron: '5 * * * *' });
+  const envE = chamadas.filter((c) => /brevo/.test(c.url));
+  check('quem marcou "juntando documentos" recebe só o trecho da etapa dela', r.enviados === 2 && envE[0].body.textContent.includes('Trecho de quem junta documentos.') &&
+    !envE[0].body.textContent.includes('Trecho de quem já enviou.') && !envE[0].body.textContent.includes('Trecho da alternância.') &&
+    envE[0].body.htmlContent.includes('Trecho de quem junta documentos.'));
+  check('quem não marcou etapa não recebe nenhum trecho de etapa', !/Trecho/.test(envE[1].body.textContent) && !/Trecho/.test(envE[1].body.htmlContent));
+
   console.log('\n== Estúdio de e-mails 3: um modelo novo pela ficha ==');
   const modeloNovo = (m) => [/\/modelos_email\?select=\*/, { body: m ? [m] : [] }];
   const fichaSem = [/\/crm_contatos\?/, { body: [{ id: CID, email: 'ana@example.com', nome: 'Ana', aceita_novidades: false }] }];

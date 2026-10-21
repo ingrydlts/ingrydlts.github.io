@@ -51,8 +51,12 @@ export var VARS_DE = {
 };
 // Os modelos criados no estúdio (entrega 3) têm todos os mesmos dados; os de compra ganham o produto e o link dele.
 // O Worker preenche exatamente estes (crmVarsNovos em worker.js).
+// As etapas do guia viram um sim/não cada (etapa_…), para o bloco "Só para uma etapa".
 export var VARS_NOVOS = ['nome', 'email', 'persona', 'nivel', 'prazo_nivel', 'etapa', 'cidade', 'prazo_limite', 'dias_para_prazo',
-  'prazo_vencido', 'prazo_a_vencer', 'link_acesso', 'link_agenda'];
+  'prazo_vencido', 'prazo_a_vencer', 'link_acesso', 'link_agenda'].concat(Object.keys(ETAPAS_CF).concat(Object.keys(ETAPAS_ALT)).map(function (k) { return 'etapa_' + k; }));
+// A regra "Etapa do guia" do Para quem: o valor é o que fica em contatos.respostas.objetivo (crm_sequencia_pendentes compara igual).
+export var ETAPAS_GUIA = Object.keys(ETAPAS_CF).map(function (k) { return ['cf-' + k.replace(/_/g, '-'), 'Campus France: ' + ETAPAS_CF[k]]; })
+  .concat(Object.keys(ETAPAS_ALT).map(function (k) { return ['alt-' + k.replace(/_/g, '-'), 'Alternância 30+: ' + ETAPAS_ALT[k]]; }));
 var VARS_PRODUTO = ['produto', 'link_produto'];
 export function varsDoModelo(chave, m) {
   if (VARS_DE[chave]) return VARS_DE[chave];
@@ -318,6 +322,7 @@ export function dadosDe(chave, c, h, m) {
       link_acesso: h.appLink, link_agenda: h.calLink };
     // O link do produto é privado: só o Worker tem (no envio e no teste). Na prévia e na ficha fica entre colchetes.
     if (pq.produto) { n.produto = pq.produto_nome || ''; n.link_produto = '[link do produto]'; }
+    ETAPAS_GUIA.forEach(function (e) { n['etapa_' + e[0].replace(/^(cf|alt)-/, '').replace(/-/g, '_')] = resp.objetivo === e[0]; });
     return n;
   }
   if (chave === 'cf_guia_1' || chave === 'cf_guia_conversa') {

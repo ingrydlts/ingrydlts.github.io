@@ -191,7 +191,7 @@ export function gerar() {
 --   - aq_c_d10: o [link do presente CF09] (o presente ainda não existe).
 --   - aq_a_d15, aq_b_d15, aq_c_d15: as 3 dúvidas que mais chegaram e o que você respondeu.
 --   - parouapp continua com o [dica]: é manual, você troca na hora de enviar.
---   - O aquecimento ainda não separa as trilhas pela etapa do guia: não ligue o Envio dele antes desse filtro existir,
+--   - O aquecimento separa as trilhas pela etapa do guia com crm-filtro-etapa.sql: rode ele antes de ligar o Envio,
 --     senão todo mundo que pegou o guia recebe as três trilhas.
 --
 -- Segurança: só textos e regras dos modelos. Nenhum dado de pessoa. Só admin lê e muda (RLS das entregas 1 a 3).

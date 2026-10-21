@@ -17,7 +17,8 @@
     "test:estudio3": "node crm-estudio-emails-3.test.mjs",
     "test:prontos": "node crm-modelos-prontos.test.mjs",
     "test:revisao": "node crm-modelos-revisao.test.mjs",
-    "test:reimpacto": "node crm-modelos-reimpacto.test.mjs"
+    "test:reimpacto": "node crm-modelos-reimpacto.test.mjs",
+    "test:etapa": "node crm-filtro-etapa.test.mjs"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.8"
