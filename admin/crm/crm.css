@@ -405,6 +405,38 @@ select.st-in{height:36px; padding:0 8px}
 .st-env b{font-weight:600}
 .st-mail{width:100%; max-width:600px; height:max(720px, calc(100vh - 260px)); border:1px solid var(--line); border-radius:8px; background:#F4F1EC; transition:max-width .2s}
 .st-frame.cel .st-env, .st-frame.cel .st-mail{max-width:375px}
+/* "Editar no e-mail": o e-mail como chega (sempre claro, como o e-mail de verdade), com cada texto editável no lugar */
+.ed-wrap{width:100%; max-width:600px; display:flex; flex-direction:column; gap:10px; transition:max-width .2s}
+.st-frame.cel .ed-wrap{max-width:375px}
+.ed-env{display:grid; gap:2px; padding:0 4px}
+.ed-l{font-size:11px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-3); margin-top:4px}
+.ed-mail{background:#F4F1EC; border:1px solid var(--line); border-radius:8px; padding:24px 16px; color:#2B2B2B; font-family:'Inter', Arial, Helvetica, sans-serif}
+.ed-marca{font-family:'Fraunces', Georgia, serif; font-size:22px; font-weight:700; padding:0 4px 16px} .ed-marca span{color:#604034}
+.ed-carta{background:#FBFAF7; border:1px solid #E2DED7; border-radius:8px; padding:28px 24px; display:flex; flex-direction:column; gap:16px}
+.ed-rod{font-size:12px; line-height:1.55; color:#6E6862; padding:16px 4px 0}
+.ed-blk{display:flex; flex-direction:column; gap:6px}
+.ed-cond{font-size:11px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:#7A5D1E; background:#F3E7CD; border-radius:4px; padding:2px 6px; align-self:flex-start}
+.ed-t{border-radius:4px; padding:2px 4px; margin:-2px -4px; white-space:pre-wrap; overflow-wrap:anywhere; outline:none; cursor:text; min-height:1.4em}
+.ed-t:hover{background:rgba(222,185,117,.22)} .ed-t:focus{background:#FFFFFF; box-shadow:0 0 0 2px #577328}
+.ed-t:empty::before{content:attr(data-ph); color:#9A938B}
+.ed-env .ed-t{color:var(--ink)} .ed-env .ed-t:focus{background:var(--surface-2)}
+.ed-assunto{font-weight:600; font-size:14px} .ed-pre{font-size:13px; color:var(--ink-2) !important}
+.ed-texto{font-size:15px; line-height:1.6}
+.ed-discreto{font-size:14px; line-height:1.55; color:#6E6862}
+.ed-caixa{background:#F4F1EC; border-radius:8px; padding:12px 14px; margin:0; font-size:14px; line-height:1.55; color:#6E6862}
+.ed-titulo{font-family:'Fraunces', Georgia, serif; font-size:24px; line-height:1.25; font-weight:700}
+.ed-forte{font-weight:700; font-size:15px}
+.ed-botao{align-self:flex-start; background:#577328; color:#FBFAF7; font-weight:600; font-size:15px; padding:13px 22px; border-radius:4px}
+.ed-botao .ed-t:hover{background:rgba(0,0,0,.15)} .ed-botao .ed-t:focus{background:#3F5519; box-shadow:0 0 0 2px #FBFAF7}
+.ed-nota{font-size:11px; color:#9A938B}
+.ed-dest{background:#F4F1EC; border:1px solid #DEB975; border-radius:8px; padding:16px 18px; display:flex; flex-direction:column; gap:6px}
+.ed-rot{font-size:12px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:#6E6862}
+.ed-val{font-size:14px; line-height:1.6}
+.ed-apr{display:flex; gap:14px; align-items:center} .ed-apr img{border-radius:50%; border:2px solid #DEB975; object-fit:cover; flex:none} .ed-apr > div{display:flex; flex-direction:column; gap:2px; min-width:0}
+.ed-nome{font-family:'Fraunces', Georgia, serif; font-size:18px; font-weight:700}
+.ed-toques{font-size:13px; color:#6E6862; border:1.5px dashed #CFC9C0; border-radius:999px; padding:9px 16px}
+.ed-ass{font-family:'Fraunces', Georgia, serif; font-size:16px; font-style:italic}
+.ed-alt{display:flex; flex-direction:column; gap:2px; border-left:2px solid #E2DED7; padding-left:8px} .ed-alt small{font-size:11px; color:#9A938B}
 .st-mtabs{display:none; margin-top:12px}
 .st-mtabs button{border:1px solid var(--line-2); background:none; border-radius:999px; padding:6px 14px; font-weight:600; font-size:13px; color:var(--ink-2); margin-right:4px}
 .st-mtabs button[aria-pressed="true"]{background:var(--ink); color:var(--bg); border-color:var(--ink)}

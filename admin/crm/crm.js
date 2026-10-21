@@ -899,7 +899,7 @@ function openSinal(cid) {
 // Sem a migração da entrega 1, a tela mostra os 8 do código; sem a da entrega 2, mostra tudo sem editar.
 var TIPO_EMAIL = { servico: ['Serviço', 'u-baixa'], novidades: ['Novidades', 'u-media'], compra: ['Compra', 'tp-pergunta'] };
 var ETAPA_EMAIL = { rascunho: ['Rascunho', ''], revisao: ['Revisão', 'u-media'], no_ar: ['No ar', 'u-baixa'], arquivado: ['Arquivado', 'out'] };
-var ST = { k: null, v: null, blk: null, sec: 'texto', who: null, q: '', dev: 'pc', marcar: true, tab: 'editar', d: null, dKey: null, montado: null, vistos: {}, foco: null, salvo: '', timer: null };
+var ST = { k: null, v: null, blk: null, sec: 'texto', who: null, q: '', dev: 'pc', marcar: true, modo: 'editar', tab: 'editar', d: null, dKey: null, montado: null, vistos: {}, foco: null, salvo: '', timer: null };
 var SECOES = [['obj', 'Objetivo e envio'], ['para', 'Para quem'], ['ctx', 'Contexto da pessoa'], ['texto', 'Texto'], ['pronto', 'Pronto para usar?'], ['versoes', 'Versões']];
 function versoesDe(k) { return MV.filter(function (v) { return v.chave === k; }); }   // da mais nova para a mais velha
 function versaoAtual(k) { var vs = versoesDe(k); return vs.filter(function (v) { return v.etapa === 'no_ar'; })[0] || vs[0] || null; }
@@ -1379,6 +1379,37 @@ function pessoasDaPrevia() {
   var l = C.filter(function (c) { return !q || (displayName(c) + ' ' + c.email).toLowerCase().indexOf(q) >= 0; });
   return l.slice(0, 200);
 }
+// "Editar no e-mail": o e-mail desenhado como chega, com cada texto editável no lugar (data-ef = o mesmo caminho de data-f).
+// Mostra o texto como está guardado, com os {dados} à vista; "Ver como chega" mostra com os dados de uma pessoa.
+function edCampo(path, valor, cls, rot, ph) {
+  return '<div class="ed-t ' + (cls || '') + '" contenteditable="true" role="textbox" aria-multiline="true" spellcheck="true" data-ef="' + esc(path) + '" aria-label="' + esc(rot) + '" data-ph="' + esc(ph || rot) + '">' + esc(valor || '') + '</div>';
+}
+function edAlt(i, b) {
+  return b.alt != null && b.alt !== '' ? '<div class="ed-alt"><small>Se faltar um dado deste bloco:</small>' + edCampo('itens.' + i + '.alt', b.alt, 'ed-discreto', 'Texto se faltar um dado') + '</div>' : '';
+}
+function edNoEmail(d, m) {
+  var blocos = (d.itens || []).map(function (b, i) {
+    var p = function (c) { return 'itens.' + i + '.' + c; }, h;
+    if (b.tipo === 'texto') h = edCampo(p('texto'), b.texto, b.estilo === 'caixa' ? 'ed-caixa' : b.estilo === 'discreto' ? 'ed-discreto' : 'ed-texto', 'Texto') + edAlt(i, b);
+    else if (b.tipo === 'titulo') h = edCampo(p('texto'), b.texto, 'ed-titulo', 'Título') + edAlt(i, b);
+    else if (b.tipo === 'pergunta') h = edCampo(p('texto'), b.texto, 'ed-titulo', 'Pergunta') + edAlt(i, b) + edCampo(p('ajuda'), b.ajuda, 'ed-discreto', 'Linha de ajuda', 'Linha de ajuda (opcional)');
+    else if (b.tipo === 'botao') h = '<div class="ed-botao">' + edCampo(p('rotulo'), b.rotulo, '', 'Texto do botão') + '</div><small class="ed-nota">leva para {' + esc(b.link || 'escolha o link no bloco') + '}</small>';
+    else if (b.tipo === 'destaque') h = '<div class="ed-dest">' + edCampo(p('rotulo'), b.rotulo, 'ed-rot', 'Rótulo') + edCampo(p('valor'), b.valor, 'ed-val', 'Valor') + edCampo(p('nota'), b.nota, 'ed-discreto', 'Nota', 'Nota (opcional)') + '</div>';
+    else if (b.tipo === 'apresentacao') h = '<div class="ed-apr"><img src="' + esc(ES.FOTO_URL) + '" alt="" width="56" height="56"><div>' + edCampo(p('titulo'), b.titulo, 'ed-nome', 'Nome') + edCampo(p('texto'), b.texto, 'ed-discreto', 'Uma linha sobre você') + '</div></div>';
+    else if (b.tipo === 'toques') h = '<div class="ed-toques">Os botões de um toque ({' + esc(b.var || 'botoes_cidade') + '}) entram aqui, prontos do Worker.</div>';
+    else if (b.tipo === 'etapa') h = edCampo(p('rotulo'), b.rotulo, 'ed-discreto', 'Linha pequena de cima', 'Linha pequena de cima (opcional)') + edCampo(p('titulo'), b.titulo, 'ed-forte', 'Frase em negrito', 'Frase em negrito (opcional)') + edCampo(p('texto'), b.texto, 'ed-texto', 'Texto');
+    else h = edCampo(p('texto'), b.texto, 'ed-ass', 'Assinatura');
+    var cond = b.se ? (b.tipo === 'etapa' ? 'só para a etapa: ' + ((ES.CAT[b.se.slice(1)] || {}).o || b.se.slice(1)).replace(/^etapa do guia: /, '') : (b.se[0] === '#' ? 'só se tiver {' : 'só se não tiver {') + b.se.slice(1) + '}') : '';
+    return '<div class="ed-blk" data-edblk="' + i + '">' + (cond ? '<small class="ed-cond">' + esc(cond) + '</small>' : '') + h + '</div>';
+  }).join('');
+  var rod = ES.rodapeDe(d, m.tipo);
+  return '<div class="ed-env">' +
+    '<label class="ed-l">Assunto</label>' + edCampo('assunto', d.assunto, 'ed-assunto', 'Assunto') +
+    '<label class="ed-l">Assunto se faltar um dado</label>' + edCampo('assunto_alt', d.assunto_alt, 'ed-pre', 'Assunto se faltar um dado', 'Assunto se faltar um dado (opcional)') +
+    '<label class="ed-l">Prévia</label>' + edCampo('pre', d.pre, 'ed-pre', 'Prévia', 'A linha cinza depois do assunto (opcional)') + '</div>' +
+    '<div class="ed-mail"><div class="ed-marca">Por <span>Dentro</span></div><div class="ed-carta">' + blocos + '</div>' +
+    (rod ? '<div class="ed-rod">' + esc(rod) + '</div>' : '') + '</div>';
+}
 function renderPrevia() {
   var box = $('st-prev');
   var m = M ? modeloAtual() : null, k = ST.k;
@@ -1435,7 +1466,17 @@ function renderPrevia() {
   if (usados.indexOf('botoes_cidade') >= 0) dicas.push('Os botões de cidade levam o link assinado dela, que só existe no envio. No teste, eles levam um link de teste.');
   if (r) { ST.vistos[ST.dKey] = ST.vistos[ST.dKey] || {}; ST.vistos[ST.dKey][c.id] = 1; }
   var html = r ? (r.html || textoParaHtml(r.texto)) : '';
-  box.innerHTML = barra +
+  var editavel = !!(ST.d && podeEditar(versaoAberta())), modo = editavel ? ST.modo : 'ver';
+  var modos = editavel ? '<div class="seg" role="group" aria-label="Modo da prévia"><button type="button" data-stmodo="editar" aria-pressed="' + (modo === 'editar') + '">Editar no e-mail</button>' +
+    '<button type="button" data-stmodo="ver" aria-pressed="' + (modo === 'ver') + '">Ver como chega</button></div>' : '';
+  if (modo === 'editar') {
+    box.innerHTML = barra + modos +
+      (erro ? '<div class="st-alert no">O texto tem um erro: ' + esc(erro) + '.</div>' : '') +
+      '<p class="st-msg tip">Clique em qualquer texto para mudar. Os {dados} ficam como estão; **assim** sai em negrito. Para ver com os dados de ' + esc(displayName(c)) + ', use "Ver como chega". Guarda sozinho.</p>' +
+      '<div class="st-frame' + (ST.dev === 'cel' ? ' cel' : '') + '"><div class="ed-wrap">' + edNoEmail(ST.d, m) + '</div></div>';
+    return;
+  }
+  box.innerHTML = barra + modos +
     (erro ? '<div class="st-alert no">O texto tem um erro: ' + esc(erro) + '. Nada sai com ele: os automáticos usariam o texto de reserva.</div>' : '') +
     (avisos.length ? '<div class="st-alert">' + avisos.map(esc).join('<br>') + '</div>' : (r ? '<div class="st-alert ok"><b>Pronto para ' + esc(displayName(c)) + '.</b> Todos os dados que o texto usa existem.</div>' : '')) +
     (dicas.length ? '<p class="st-msg tip">' + dicas.map(esc).join(' ') + '</p>' : '') +
@@ -1468,11 +1509,16 @@ async function salvar() {
   marcarSalvo('Guardado'); return true;
 }
 // Depois de mudar um campo: guarda e atualiza a prévia e a lista de conferências, sem redesenhar o editor (o cursor fica).
-function aoEditar() {
+// noEmail: a mudança veio do "Editar no e-mail"; a prévia não é redesenhada (o cursor fica lá) e o campo do bloco acompanha.
+function aoEditar(noEmail) {
   agendarSalvar();
   var v = versaoAberta(); if (v) { v.testado_em = null; }
   var pub = $('st-publicar'); if (pub) pub.disabled = true;   // mudou o texto: precisa de um teste novo
-  renderPrevia();
+  if (noEmail) {
+    var f = document.querySelector('#st-edit [data-f="' + noEmail.path + '"]'); if (f) f.value = noEmail.valor;
+    var res = document.querySelector('#st-edit [data-blkopen="' + noEmail.path.split('.')[1] + '"] span');
+    if (res && /^itens\./.test(noEmail.path) && ST.d.itens[+noEmail.path.split('.')[1]]) { var b = ST.d.itens[+noEmail.path.split('.')[1]]; res.textContent = String(b.texto || b.rotulo || b.titulo || '').replace(/\s+/g, ' ').slice(0, 60); }
+  } else renderPrevia();
   if (ST.sec === 'pronto' || ST.sec === 'texto') {
     var el = document.querySelector('.st-sec.is-open .st-rodape small');
     if (el && ST.d) el.textContent = ES.rodapeDe(ST.d, modeloAtual().tipo) || 'Sem rodapé (serviço sem motivo escrito).';
@@ -1739,11 +1785,13 @@ document.addEventListener('click', async function (e) {
   if (t.dataset.insvar) {
     var alvo = ST.foco && document.body.contains(ST.foco) ? ST.foco : null;
     if (!alvo) return toast('Clique antes no campo onde o dado entra');
+    if (alvo.dataset.ef) { alvo.focus(); return document.execCommand('insertText', false, '{' + t.dataset.insvar + '}'); }   // o input do e-mail guarda
     var ini0 = alvo.selectionStart == null ? alvo.value.length : alvo.selectionStart, fim0 = alvo.selectionEnd == null ? ini0 : alvo.selectionEnd, ins = '{' + t.dataset.insvar + '}';
     alvo.value = alvo.value.slice(0, ini0) + ins + alvo.value.slice(fim0); alvo.focus(); alvo.selectionStart = alvo.selectionEnd = ini0 + ins.length;
     setCampo(alvo.dataset.f, alvo.value); return aoEditar();
   }
   if (t.dataset.stdev) { ST.dev = t.dataset.stdev; return renderPrevia(); }
+  if (t.dataset.stmodo) { ST.modo = t.dataset.stmodo; return renderPrevia(); }
   if (t.dataset.sttab) { ST.tab = t.dataset.sttab; return renderModelos(); }
   if (t.dataset.stver) { await salvar(); abrirModelo(ST.k, Number(t.dataset.stver)); ST.blk = null; return renderModelos(); }
   if (t.dataset.stvoltar) return publicar(Number(t.dataset.stvoltar), true);
@@ -1862,13 +1910,24 @@ document.addEventListener('input', function (e) {
   if (CMP && e.target.id === 'compose-txt') { CMP.editado = e.target.value === CMP.e.body ? null : e.target.value; return cmpFormato(); }
   if (CMP && e.target.id === 'compose-subj') { $('cmp-env-subj').textContent = e.target.value; return; }
   if (e.target.matches && e.target.matches('input[data-f], textarea[data-f]') && ST.d) { setCampo(e.target.dataset.f, e.target.value); return aoEditar(); }
+  if (e.target.dataset && e.target.dataset.ef && ST.d && podeEditar(versaoAberta())) {
+    var val = e.target.innerText.replace(/ /g, ' ').replace(/\n$/, '');
+    if (!val.trim()) { val = ''; if (e.target.innerHTML !== '') e.target.innerHTML = ''; }   // vazio de verdade, para o texto de exemplo voltar
+    setCampo(e.target.dataset.ef, val); return aoEditar({ path: e.target.dataset.ef, valor: val });
+  }
   if (e.target.id === 'novo-nome' && ST.criar) { ST.criar.nome = e.target.value; return criarPode(); }
   if (e.target.id === 'st-q') {
     ST.q = e.target.value; var pos = e.target.selectionStart; renderPrevia();
     var q2 = $('st-q'); if (q2) { q2.focus(); q2.selectionStart = q2.selectionEnd = pos; }
   }
 });
-document.addEventListener('focusin', function (e) { if (e.target.dataset && e.target.dataset.f && e.target.matches('input, textarea')) ST.foco = e.target; });
+document.addEventListener('focusin', function (e) { if (e.target.dataset && (e.target.dataset.ef || (e.target.dataset.f && e.target.matches('input, textarea')))) ST.foco = e.target; });
+// No "Editar no e-mail", colar entra como texto puro (sem a formatação de onde veio).
+document.addEventListener('paste', function (e) {
+  if (!(e.target.closest && e.target.closest('[data-ef]'))) return;
+  e.preventDefault();
+  document.execCommand('insertText', false, (e.clipboardData || window.clipboardData).getData('text/plain'));
+});
 document.addEventListener('input', function (e) {
   if (e.target.id === 'reply-txt') $('reply-err').hidden = true;
   if (e.target.id === 'conv-txt') { state.rascunho[e.target.dataset.cid] = e.target.value; $('conv-err').hidden = true; }

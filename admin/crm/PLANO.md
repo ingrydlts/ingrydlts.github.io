@@ -96,6 +96,12 @@ texto aprovada em 20/10, e só se a versão mais nova ainda for a de 20/10 (o qu
 `db/crm-modelos-reimpacto.sql` (gerado por `db/modelos-reimpacto.mjs`; rodar depois da revisão): os 4 reimpactos reescritos com a
 base da aula de CRO, em rascunho. Teste: `npm run test:reimpacto`.
 
+## Estúdio: editar no e-mail (21/10)
+
+Sem SQL novo. Na prévia de um rascunho, "Editar no e-mail" mostra o e-mail desenhado com cada texto editável no lugar (assunto,
+prévia e blocos, com os {dados} à vista); guarda sozinho no mesmo rascunho e o campo do bloco acompanha. "Ver como chega" mostra
+com os dados de uma pessoa. Versão No ar ou arquivada só mostra como chega. Código em `crm.js` (`edNoEmail`) e `crm.css` (`.ed-*`).
+
 ## Ficha: e-mails fidedignos e prévia real (16/10)
 
 Sem SQL novo. `crm.js`: status `agendado` = "Enviado"; painel **E-mails** na ficha (último, próximo sugerido com miniatura,
