@@ -102,6 +102,16 @@ Sem SQL novo. Na prévia de um rascunho, "Editar no e-mail" mostra o e-mail dese
 prévia e blocos, com os {dados} à vista); guarda sozinho no mesmo rascunho e o campo do bloco acompanha. "Ver como chega" mostra
 com os dados de uma pessoa. Versão No ar ou arquivada só mostra como chega. Código em `crm.js` (`edNoEmail`) e `crm.css` (`.ed-*`).
 
+## Filtro por etapa do guia (21/10)
+
+`db/crm-filtro-etapa.sql` (rodar **depois** de `crm-estudio-emails-3.sql` e `crm-modelos-prontos.sql`; idempotente, só acrescenta): o "Para
+quem" dos modelos criados no estúdio ganha a regra **Etapa do guia** (`para_quem.etapas`, comparada com `contatos.respostas.objetivo`;
+quem não marcou etapa não passa) e `crm_sequencia_pendentes()` respeita a regra. Os 12 rascunhos do aquecimento ganham a trilha, se
+ainda não tiverem uma: A = não comecei e escolhendo o curso; B = juntando documentos; C = dossiê enviado e entrevista ou resposta.
+Nada é publicado nem ligado. Os modelos novos passam a ter os sim/não `etapa_*` (bloco "Só para uma etapa"): `ES.VARS_NOVOS` e
+`ES.ETAPAS_GUIA` em `estudio.js`, `crmVarsNovos` no Worker (colar o `worker.js` de novo no painel da Cloudflare). Testes: `db/testes` →
+`APP_DB_DIR=<POR DENTRO APP>/db npm run test:etapa` e `node cms-oauth-worker/testes/crm-email.test.mjs`.
+
 ## Ficha: e-mails fidedignos e prévia real (16/10)
 
 Sem SQL novo. `crm.js`: status `agendado` = "Enviado"; painel **E-mails** na ficha (último, próximo sugerido com miniatura,

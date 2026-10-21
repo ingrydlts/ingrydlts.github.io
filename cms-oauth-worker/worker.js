@@ -1988,11 +1988,16 @@ function crmDiaBr(ymd) { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(ymd ||
 
 // Os dados de um modelo novo (os mesmos que o estúdio mostra em "Contexto da pessoa": ES.VARS_NOVOS em estudio.js).
 // p = uma linha de crm_sequencia_pendentes (ou o mesmo formato).
+// As etapas do guia viram um sim/não cada (etapa_nao_comecei, etapa_pesquisando…), como ES.ETAPAS_GUIA em estudio.js.
+const CRM_ETAPAS_GUIA = Object.keys(CF_PASSO).concat(['alt-pesquisando', 'alt-escolhendo-escola', 'alt-recusa-idade', 'alt-buscando-empresa', 'alt-montando-contrato']);
 function crmVarsNovos(env, p) {
   const d = p.dados || {}, resp = d.respostas || {};
   const nivel = CF_NIVEIS[resp.cfNivel];
   const cidade = CF_CIDADES.find(([k]) => k === resp.cfCidade);
+  const etapas = {};
+  for (const k of CRM_ETAPAS_GUIA) etapas['etapa_' + k.replace(/^(cf|alt)-/, '').replace(/-/g, '_')] = resp.objetivo === k;
   return {
+    ...etapas,
     nome: crmPrimeiroNome(p.nome), email: p.email,
     persona: (CRM_PERSONAS[d.persona || 'sem'] || d.persona || '').toLowerCase(),
     nivel: nivel ? nivel[0] : '', prazo_nivel: nivel ? nivel[1] : '',
