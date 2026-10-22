@@ -14,7 +14,7 @@
 | 4 | O **caminho de estudo** é perguntado na chamada e vem no documento do onboarding. Não há segunda escolha depois. |
 | 5 | **Pró-lançamento: 30 dias de acesso completo.** Depois, a pessoa escolhe o plano. |
 | 6 | Se a assinatura for cancelada ou falhar, o acesso vale **até o fim do período pago**. |
-| 7 | **Três planos:** mensal (sem desconto), semestral (**20%** de desconto) e anual (**30%** de desconto). |
+| 7 | **Três planos:** mensal (sem desconto), semestral (6 × o mensal, **5%** de desconto) e anual (12 × o mensal, **10%** de desconto). |
 | 8 | A pessoa **escolhe a moeda (€ ou R$)**. A conta Stripe é da França. |
 | 9 | **Cartão obrigatório nos 30 dias.** Depois do dia 30 sem plano escolhido, o painel **bloqueia** (nada é apagado). |
 | 10 | **Reembolso:** só ela decide; cancela a assinatura, não a conta (seção 10). |
@@ -208,20 +208,20 @@ Nos **30 dias grátis não há nada para reembolsar**. O assunto só existe depo
 O acesso ao Por Dentro tem um **começo e um fim naturais**: o visto, a matrícula, a chegada. Depois disso a pessoa não precisa mais. Isso muda a conta:
 
 1. **Mensal puro tende a ser cancelado quando a jornada acaba**, e a pessoa só fica enquanto ainda precisa. É receita previsível por poucos meses.
-2. **Você sabe quanto tempo a jornada dura** (da candidatura à chegada, cerca de 12 meses). Isso justifica um desconto grande no pagamento de uma vez, porque o cliente vai usar o período inteiro de qualquer jeito.
+2. **Você sabe quanto tempo a jornada dura** (da candidatura à chegada, cerca de 12 meses). Isso sustenta o pagamento adiantado, mas com o desconto pequeno que você escolheu (5% e 10%) o incentivo para o anual é fraco: espere menos gente nele do que nos benchmarks (15–20%).
 3. O comparativo da cliente não é outro app: é uma **assessoria de milhares de reais**. Seu preço pode ser baixo perto dela e ainda assim alto perto de um e-book. O risco é se posicionar no meio vazio.
 
 ### 11.3 Os três planos (decisão 7) e a moeda (decisão 8)
 
-Você definiu a regra de desconto; falta só o **preço do mensal**, que é a base de tudo. Uso **R$ 69 / € 12** como ponto de partida (hipótese minha, não dado de mercado).
+Base confirmada: **R$ 69 / € 12 por mês**. O semestral é 6 × o mensal com 5% de desconto; o anual é 12 × o mensal com 10% de desconto.
 
 | Plano | Regra | Em R$ | Em € | Equivale a (por mês) |
 |---|---|---|---|---|
 | **Mensal** | sem desconto | **R$ 69**/mês | **€ 12**/mês | R$ 69 · € 12 |
-| **Semestral** | 6 meses − 20% | **R$ 329** de uma vez | **€ 57** de uma vez | R$ 55 · € 9,50 |
-| **Anual** | 12 meses − 30% | **R$ 579** de uma vez | **€ 99** de uma vez | R$ 48 · € 8,25 |
+| **Semestral** | 6 × mensal − 5% | **R$ 393** de uma vez | **€ 68** de uma vez | R$ 65,50 · € 11,33 |
+| **Anual** | 12 × mensal − 10% | **R$ 745** de uma vez | **€ 129** de uma vez | R$ 62,08 · € 10,75 |
 
-Contas: semestral = 6 × 69 × 0,8 = 331,20 → 329; anual = 12 × 69 × 0,7 = 579,60 → 579. Em euro: 6 × 12 × 0,8 = 57,60 → 57; 12 × 12 × 0,7 = 100,80 → 99. Arredondei para baixo para o preço terminar bem; o desconto real fica em 20–21% e 30–31%.
+Contas: semestral = 6 × 69 = 414 − 5% = 393,30 → **393**; anual = 12 × 69 = 828 − 10% = 745,20 → **745**. Em euro: 6 × 12 = 72 − 5% = 68,40 → **68**; 12 × 12 = 144 − 10% = 129,60 → **129**. Arredondei para baixo; o desconto real fica em 5–6% e 10%.
 
 **Dá para a pessoa escolher a moeda? Sim.** O Stripe permite um mesmo preço em várias moedas, e você fixa o valor de cada uma (não precisa converter pelo câmbio do dia). Detalhes:
 - Sua conta é da França, então o dinheiro **chega em euro**. Quem paga em reais gera uma conversão cambial, com uma taxa do Stripe **[conferir o valor]**.
@@ -229,15 +229,15 @@ Contas: semestral = 6 × 69 × 0,8 = 331,20 → 329; anual = 12 × 69 × 0,7 = 5
 - Pix recorrente existe no Stripe e contas europeias podem usá-lo ([Stripe](https://docs.stripe.com/changelog/dahlia/2026-04-22/pix-recurring-payments-support)), mas é para quem está no Brasil. Parcelamento no cartão brasileiro **não apareceu nas fontes: [conferir] antes de prometer**.
 - A página de escolha mostra € e R$ lado a lado. Sugestão de padrão: R$ para quem está no Brasil (persona `campus_france`), € para quem já mora na França.
 
-**Por que os três planos funcionam juntos:** o mensal serve de âncora e deixa o semestral e o anual parecerem uma escolha óbvia. O desconto maior do anual incentiva o compromisso de 12 meses, que é o tempo da jornada (candidatura até a chegada). Mantenha o **anual como destaque** na tela.
+**Por que os três planos funcionam juntos:** o mensal serve de âncora e deixa o semestral e o anual parecerem uma escolha óbvia. O anual cobre os 12 meses da jornada (candidatura até a chegada). Como o desconto é pequeno, o que vai puxar as pessoas para o anual é mais o **1:1 incluído** (seção 13) do que o preço. Mantenha o **anual como destaque** na tela.
 
 **Quanto a pessoa paga no total (valores confirmados):**
 
 | Plano | Em R$ | Em € | Se pagasse mês a mês | Economia |
 |---|---|---|---|---|
 | Mensal | 69/mês | 12/mês | acumulado em 6 meses: R$ 414 · € 72; em 12 meses: R$ 828 · € 144 | nenhuma |
-| Semestral | **R$ 329** | **€ 57** | R$ 414 · € 72 | R$ 85 · € 15 (20,5% · 20,8%) |
-| Anual | **R$ 579** | **€ 99** | R$ 828 · € 144 | R$ 249 · € 45 (30,1% · 31,3%) |
+| Semestral | **R$ 393** | **€ 68** | R$ 414 · € 72 | R$ 21 · € 4 (5,1% · 5,6%) |
+| Anual | **R$ 745** | **€ 129** | R$ 828 · € 144 | R$ 83 · € 15 (10,0% · 10,4%) |
 
 
 ### 11.4 Cartão nos 30 dias (decisão 9)
@@ -254,12 +254,12 @@ Como fica no Stripe, para respeitar que **o plano só é escolhido depois**:
 
 ### 11.5 Exemplo ilustrativo (as premissas são minhas)
 
-Para cada **100 pessoas que começam o teste**, com 20% no mensal (ficando em média 5 meses), 30% no semestral e 50% no anual, em R$:
+Para cada **100 pessoas que começam o teste**, com 40% no mensal (ficando em média 5 meses), 30% no semestral e 30% no anual (menos gente no anual do que antes, por causa do desconto menor), em R$:
 
 | | Sem cartão (10% pagam) | **Com cartão (30% pagam)** |
 |---|---|---|
 | Pagantes | 10 | 30 |
-| Receita (0,2 × 69 × 5 + 0,3 × 329 + 0,5 × 579, por pagante ≈ R$ 457) | ~R$ 4.600 | **~R$ 13.700** |
+| Receita (0,4 × 69 × 5 + 0,3 × 393 + 0,3 × 745, por pagante ≈ R$ 479) | ~R$ 4.800 | **~R$ 14.400** |
 
 Mostra só a ordem de grandeza. Se o cartão afastar muita gente (por exemplo, metade desistir), a vantagem some. **Meça nas primeiras 20 pessoas.**
 
