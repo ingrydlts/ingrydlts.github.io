@@ -346,7 +346,9 @@ Isso dá ao anual um benefício além do desconto, **sem prometer tempo ilimitad
 | Avisos de dados incongruentes | existe | ✔ | ✔ | ✔ |
 | Artigos escolhidos para a sua persona | existe | ✔ | ✔ | ✔ |
 | Lembretes de prazo (sininho no painel) | existe | ✔ | ✔ | ✔ |
-| Radar do seu caso, por persona | existe | ✔ | ✔ | ✔ |
+| Avisos críticos de prazo (uma linha no sininho: "mudou algo que afeta um prazo seu") | a construir | ✔ | ✔ | ✔ |
+| Central de ajuda: respostas prontas e IAssistente, antes de escrever à Ingryd | a construir (as dúvidas frequentes já existem, sem tela) | ✔ | ✔ | ✔ |
+| "Pergunta da semana": você responde uma dúvida comum para todos | a construir | ✔ | ✔ | ✔ |
 | Biblioteca (guia oficial, vídeos, sites oficiais por passo) | a construir | ✔ | ✔ | ✔ |
 | Lembretes por e-mail | a construir | ✔ | ✔ | ✔ |
 
@@ -357,9 +359,9 @@ Isso dá ao anual um benefício além do desconto, **sem prometer tempo ilimitad
 | Chamada de onboarding de 40 min | existe (é o ponto de entrada) | ✔ incluída | ✔ incluída | ✔ incluída |
 | 1:1 de 30 min por mês, com assunto informado antes | a construir | 0 | **1** | **2** |
 | 1:1 extra avulso | a construir | pago à parte | pago à parte, com desconto | pago à parte, com desconto maior |
-| Dúvidas escritas ("Tenho uma dúvida") | chat existe, com limites a construir | **1 por mês**, resposta em até 5 dias úteis | **4 por mês**, em até 48 h úteis | **sem limite razoável**, em até 24 h úteis |
+| Dúvidas escritas à Ingryd ("Tenho uma dúvida") | chat existe, limites a construir | **1 por mês** (contador visível), resposta em até 5 dias úteis | **4 por mês**, em até 48 h úteis | **sem limite razoável**, em até 24 h úteis |
 | Resumo do caso feito pela IA antes de cada 1:1 | a construir | não | ✔ | ✔ |
-| Radar com **nota pessoal** para o seu caso | existe (campo no CRM) | só o geral da persona | ✔ nos itens que afetam você | ✔ e você é avisada quando algo muda no seu caso |
+| **Radar do seu caso** (o que mudou, o que muda para você, o que fazer, fonte) | existe | **não** (bloqueado, com prévia do título) | ✔ da sua persona | ✔ da sua persona **+ nota pessoal sua + aviso quando muda algo no seu caso** |
 | Conferência de documentos (você envia, a IA pré-confere, a Ingryd valida) | a construir | não | não | **até 2 por mês** |
 | Acompanhamento proativo: a Ingryd te procura quando um prazo do seu caso se aproxima | a construir | não | não | ✔ |
 | Prioridade na agenda | a construir | normal | alta | máxima |
@@ -395,3 +397,60 @@ Fica no limite, e ainda faltam as dúvidas escritas, a conferência de documento
 3. Quantas vagas ativas por nível no começo (sugestão: Completo 5, Intermediário 15)?
 4. Você quer WhatsApp/SMS como diferencial do Completo, ou prefere não prometer isso ainda?
 5. Quanto custa o 1:1 extra de 30 min, para quem passar do que o plano inclui?
+
+### 14.6 O Radar sai do Básico: o que isso muda
+
+- O **Radar** (existe, mora na Home) passa a ser do **Intermediário** em diante. No Básico a Home mostra o bloco bloqueado com o **título** do item mais recente (sem o corpo) e "disponível no Intermediário".
+- **Não vale esconder só na tela.** A fila do Radar chega pela tabela `sinais`, lida por uma função do banco. O bloqueio tem de estar **nessa função** (conferindo o plano em `subscriptions`); esconder no JavaScript seria decoração, qualquer um abriria o item pelo console. Mesma lógica que o hub usa para segredos.
+- **O limite ético do bloqueio.** Se um item do Radar mudar um **prazo ou documento** que a pessoa precisa cumprir, ela não pode descobrir só ao assinar o nível de cima. Por isso o **aviso crítico de prazo** (uma linha, sem a análise) vai a todos os níveis. O que fica no Intermediário é a **análise**: por que mudou, o que significa para o seu caso, o que fazer.
+
+### 14.7 O chat no Básico: reflexão
+
+O chat hoje é uma conversa direta com você, com cartões Sim / Não / Depois e ações rápidas. No Básico há três jeitos de tratá-lo:
+
+| Opção | Efeito | Problema |
+|---|---|---|
+| **A. Sem chat** | Custo zero de tempo | A plataforma perde o rosto humano, que é o diferencial frente a um app de checklist. A pessoa sente que "comprou um PDF". O Básico vira descartável |
+| **B. Chat aberto com limite** | Humano sempre presente | Cada pessoa no Básico vira fila na sua caixa; você vira suporte barato de quem paga menos |
+| **C. Chat que resolve sozinho primeiro, e só depois chega a você** (recomendado) | Mantém o rosto e protege o seu tempo | Exige cuidado para a IA não inventar regra de visto |
+
+**Recomendação: C, assim:**
+1. O avatar e o chat continuam **para todos**.
+2. Quem escreve cai primeiro na **Central de ajuda**: respostas prontas do `duvidas-frequentes.json` (já escritas por você, guardadas e sem tela hoje) e a IAssistente. A resposta sempre mostra a **fonte** e é rotulada como sugestão.
+3. Se não resolveu, o botão **"Perguntar à Ingryd"** usa a **1 pergunta do mês** do Básico (contador visível: "você tem 1 pergunta este mês"). A resposta chega em até 5 dias úteis, com rascunho feito pela IA que você só ajusta.
+4. As **mensagens que você manda para todos** (cartões, avisos) chegam ao Básico normalmente: um para muitos é barato e mantém a presença.
+5. A **"Pergunta da semana"**: você responde por escrito, uma vez, a dúvida mais repetida (a tabela `perguntas_unicas` já junta isso), e a resposta aparece para todos os níveis. Transforma o seu tempo em conteúdo que atende todo mundo.
+
+**Regra de segurança da IA no chat.** Só responde a partir de conteúdo seu aprovado (dúvidas frequentes, checklist, datas oficiais). Sem fonte, não responde: encaminha. Visto é decisão com consequência, e resposta inventada custa caro.
+
+### 14.8 Como não perder o engajamento
+
+**O problema de fundo.** O Básico perdeu duas coisas que seguram gente (Radar e acesso humano). O que sobra é o checklist, que é um produto de **uso espaçado**: a pessoa abre, marca e some por semanas. E a jornada **termina** (chegada na França), então parte do cancelamento vai ser natural. A estratégia tem de (1) fazer a pessoa voltar nos momentos certos, (2) mostrar valor antes da cobrança e (3) planejar o fim da jornada.
+
+**Já existe no sistema e dá para reaproveitar:** sequências de e-mail por gatilho (Estúdio, rodam de hora em hora), lembretes de prazo, estágios do funil (`ativado`, `em_uso`, `inativo`), data do último evento, conquistas e "Precisa de você" no Hoje do CRM.
+
+| Fase | Gatilho | Ação | Mede |
+|---|---|---|---|
+| **Primeiros 7 dias (ativação)** | conta criada | Dia 0: senha e primeiro passo. Dia 1: "3 perguntas para eu conhecer o seu caso". Dia 3: você manda uma mensagem curta e pessoal. Dia 7: "você concluiu X passos" | % que conclui ≥ 3 itens do checklist em 7 dias |
+| **Hábito (semanal)** | todo domingo à noite | E-mail "seu próximo passo + prazos dos próximos 14 dias", lido da data de cada item (`checklist_items.due_date`, que já está no banco) | taxa de abertura e de retorno ao painel |
+| **Prazos** | prazo em 14, 7 e 2 dias | Lembrete no sininho e por e-mail, sempre com o link direto para o item | % de prazos cumpridos |
+| **Marcos** | passo importante concluído | Conquista no painel e e-mail curto de comemoração, com o próximo passo | reativação após o marco |
+| **Reativação** | 7, 14 e 30 dias sem abrir | Sequência por tom: lembrete, "mudou algo", e uma pergunta aberta respondida por você | % que volta em 7 dias |
+| **Valor antes da cobrança** | dia 20 e dia 27 do teste | Resumo do que ela fez ("12 de 31 passos, 3 prazos marcados") **+** a escolha do plano. Quem usou pouco recebe, em vez disso, um convite para conversar | cadastros de cartão que viram pagamento; pedidos de reembolso |
+| **Fim da jornada** | persona chega à fase de chegada | Pergunta "e agora?": pausar (o Stripe tem pausa de cobrança), descer para o Básico, ou indicar uma amiga. O conteúdo da chegada (OFII, Ameli, CAF) já existe e vira o próximo ciclo de uso | cancelamentos com motivo; indicações |
+| **Cancelamento** | clique em cancelar | Pergunta o motivo, oferece pausa ou descer de nível. O acesso continua até o fim do período pago (decisão 6) | motivo mais comum |
+| **Sinal para você** | pouco uso + prazo crítico próximo | Aparece no "Precisa de você" do CRM: "Maria não abre há 12 dias e o VLS-TS vence em 20" | prazos críticos que você evitou perder |
+
+**Duas ideias que valem destaque**
+1. **Chamada de fechamento (dia 25) só para quem tem sinal de risco**, não para todos. Aqui a sua agenda rende mais: o tempo vai para quem está prestes a abandonar com um prazo crítico.
+2. **A "vitrine" dos níveis dentro do uso, não no preço.** Quando a pessoa bate numa situação que pede conversa (caminho "Não sei ainda", prazo curto do VLS-TS, dado incongruente), o painel mostra: "Isto pede uma conversa. O Intermediário inclui 1 sessão por mês." Contextual, sem alarmismo. A subida de nível nasce da necessidade real.
+
+**Observação honesta.** O app tem hoje poucos dados de uso: a única medição disponível é o que o CRM registra de eventos. Os gatilhos acima só funcionam se o painel passar a **registrar eventos** (abrir painel, marcar item, ler artigo) em `eventos`. É pré-requisito, e entra na primeira entrega.
+
+### 14.9 Decisões que preciso de você
+
+1. **Chat do Básico: opção C** (Central de ajuda + 1 pergunta por mês) ou prefere outra?
+2. **Radar bloqueado com prévia do título** no Básico, e **aviso crítico de prazo para todos** (seção 14.6): de acordo?
+3. **A "Pergunta da semana"** vale o seu tempo (cerca de 30 min por semana)?
+4. **Mensagem pessoal no dia 3** para cada novo usuário: viável na sua agenda, ou só para quem tem sinal de risco?
+5. **Fim da jornada:** quer pausa de cobrança, descer para o Básico, ou os dois?
