@@ -23,7 +23,7 @@ function el(id) {
 const document = { getElementById: el, addEventListener: (t, f) => { (handlers[t] = handlers[t] || []).push(f); }, querySelectorAll: () => [], querySelector: () => null };
 const inserts = [];
 function qb(table, res) {
-  const b = { select: () => b, eq: () => b, order: () => b, limit: () => b, maybeSingle: async () => ({ data: null, error: null }),
+  const b = { select: () => b, eq: () => b, or: () => b, order: () => b, limit: () => b, maybeSingle: async () => ({ data: null, error: null }),
     insert: async (row) => { inserts.push({ table, row }); return { error: null }; },
     then: (ok, ko) => Promise.resolve(res[table] || { data: [], error: null }).then(ok, ko) };
   return b;

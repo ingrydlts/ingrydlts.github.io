@@ -517,3 +517,7 @@ select.st-in{height:36px; padding:0 8px}
 .dfield input,.dfield select,.dfield textarea{width:100%; border:1px solid var(--line-2); border-radius:var(--r); background:var(--surface); color:inherit; padding:9px 11px; font:inherit; line-height:1.45}
 .dfield.vazio input,.dfield.vazio select,.dfield.vazio textarea{border-style:dashed}
 .dfield textarea{resize:vertical}
+.dsub{font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-3); margin:16px 0 8px}
+.dcat{border:1px solid var(--line); border-radius:var(--r); padding:8px 12px; margin-top:8px; background:var(--surface)}
+.dcat summary{cursor:pointer; font-weight:600; font-size:13.5px}
+.dfeed{max-height:340px; overflow-y:auto}

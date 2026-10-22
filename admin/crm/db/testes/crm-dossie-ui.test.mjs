@@ -21,7 +21,7 @@ const document = { getElementById: el, addEventListener: (t, f) => { (handlers[t
 const writes = [], rpcs = [];
 let respostas = {};
 function qb(table) {
-  const b = { select: () => b, eq: () => b, order: () => b, limit: () => b,
+  const b = { select: () => b, eq: () => b, or: () => b, order: () => b, limit: () => b,
     maybeSingle: async () => respostas[table + ':one'] || { data: null, error: null },
     update: (row) => ({ eq: async () => { writes.push({ table, row }); return { error: null }; } }),
     insert: async () => ({ error: null }),
@@ -39,7 +39,7 @@ const base = { id: 'c1', email: 'ana@example.com', nome: 'Ana', estagio: 'em_uso
 const XSS = '<img src=x onerror=alert(1)>';
 mod.setC([Object.assign({}, base)]);
 async function pagina(tab, dossie, err) {
-  respostas['contatos:one'] = err ? { data: null, error: { message: 'column "dossie" does not exist' } } : { data: { dossie: dossie || {} }, error: null };
+  respostas['contatos:one'] = err ? { data: null, error: { message: 'column "dossie" does not exist' } } : { data: { dossie: dossie || {}, user_id: respostas.__uid || null }, error: null };
   mod.state.sel = 'c1'; mod.state.view = 'pessoa'; mod.state.ptab = tab;
   await mod.renderPessoa();
   return el('pessoa-page').innerHTML;
@@ -112,6 +112,43 @@ check('sim/não vira booleano, etapa vira número, mês vira dia 1', dd && dd.mo
 check('campo vazio vira null (apaga a resposta)', dd && dd.numero_secu === null);
 check('a gravação da ligação vai inteira, com quebras de linha', dd && dd.ligacao_transcricao === 'Ana: oi\nIngryd: oi' && dd.cidade === 'Lyon' && dd.data_chegada === '2026-09-01');
 check('não manda coluna de contato para o dossiê', dd && !('nome' in dd) && !('persona' in dd));
+
+console.log('\n== Checklist e cliques dentro do dossiê ==');
+const dia = (n) => new Date(Date.now() + n * 864e5).toISOString();
+const ymd = (n) => dia(n).slice(0, 10);
+respostas.__uid = 'u1';
+respostas.checklist_items = { data: [
+  { step_key: 'a', category: 'Moradia', label: 'Achar <b>moradia</b>', status: 'concluido', due_date: ymd(-5), sort_order: 1, updated_at: dia(-2) },
+  { step_key: 'b', category: 'Moradia', label: 'Comprovante de endereço', status: 'pendente', due_date: ymd(-1), sort_order: 2, updated_at: dia(-9) },
+  { step_key: 'c', category: 'Saúde', label: 'Cadastro na Ameli', status: 'pendente', due_date: ymd(10), sort_order: 3, updated_at: dia(-9) },
+  { step_key: 'd', category: 'Saúde', label: 'Carte Vitale', status: 'pendente', due_date: null, sort_order: 4, updated_at: dia(-9) }], error: null };
+respostas.plataforma_cliques = { data: [
+  { tela: '/dashboard/#checklist', alvo: 'botao', rotulo: 'Desmarcou: Achar <b>moradia</b>', criado_em: dia(-1) },
+  { tela: '/dashboard/#checklist', alvo: 'botao', rotulo: 'Marcou como concluído: Achar <b>moradia</b>', criado_em: dia(-2) },
+  { tela: '/dashboard/#checklist', alvo: 'botao', rotulo: 'Marcou como concluído: Achar <b>moradia</b>', criado_em: dia(-3) },
+  { tela: '/dashboard/#checklist', alvo: 'tela', rotulo: '', criado_em: dia(-3) },
+  { tela: '/dashboard/#checklist', alvo: 'botao', rotulo: 'Ver o guia', criado_em: dia(-4) }], error: null };
+mod.state.dosAberto = true;
+mod.setC([Object.assign({}, base)]);
+let h2 = await pagina('conversa', {});
+check('aparece na aba Conversa, dentro do dossiê', h2.includes('Checklist e cliques'));
+check('resumo: 1 de 4 concluídos, 1 atrasado', /1 de 4 \(25%\)/.test(h2) && /Atrasados[\s\S]*?1 \(Comprovante de endereço\)/.test(h2));
+check('próximo prazo é o item futuro', /Cadastro na Ameli/.test(h2) && h2.includes('Próximo prazo'));
+check('itens por categoria, com contagem', /Moradia <span class="sub">1 de 2/.test(h2) && /Saúde <span class="sub">0 de 2/.test(h2));
+check('item concluído, atrasado e pendente têm o rótulo certo', h2.includes('>Concluído<') && h2.includes('>Atrasado<') && h2.includes('>Pendente<'));
+check('conta quantas vezes ela mexeu no item', /ela mexeu 3 vezes/.test(h2));
+check('cada clique vira uma linha: Marcou, Desmarcou, Tela, Clique', ['>Marcou<', '>Desmarcou<', '>Tela<', '>Clique<'].every((x) => h2.includes(x)));
+check('texto do banco passa por esc() (item e clique)', !h2.includes('<b>moradia</b>') && h2.includes('Achar &lt;b&gt;moradia&lt;/b&gt;'));
+check('chip no resumo fechado: Checklist 1/4', (mod.state.dosAberto = false, true) && (await pagina('ficha', {})).includes('<b>Checklist</b> 1/4'));
+respostas.__uid = null;
+mod.state.dosAberto = true;
+h2 = await pagina('ficha', {});
+check('sem conta no app: diz que ainda não tem checklist', /ainda não entrou no app/.test(h2));
+respostas.__uid = 'u1';
+respostas.checklist_items = { data: null, error: { message: 'permission denied' } };
+h2 = await pagina('ficha', {});
+check('sem o SQL: avisa o arquivo e a ficha segue', /crm-checklist\.sql/.test(h2) && h2.includes('role="tablist"'));
+delete respostas.checklist_items; delete respostas.plataforma_cliques; respostas.__uid = null;
 
 console.log('\n== Linha do tempo ==');
 const t = mod.eventText({ tipo: 'dossie_atualizado', dados: { campos: 3 } });

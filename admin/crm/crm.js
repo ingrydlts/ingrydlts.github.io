@@ -983,6 +983,12 @@ function dosCampoHtml(f, c, d, rasc) {
   return '<div class="dfield' + (f.t === 'lg' ? ' wide' : '') + (v === '' ? ' vazio' : '') + '"><label for="' + id + '">' + esc(f.l) + '</label>' + ctl + (f.ajuda ? '<small>' + esc(f.ajuda) + '</small>' : '') + '</div>';
 }
 var DOS_CHIPS = ['persona', 'data_chegada', 'cidade', 'nivel_frances', 'cfNivel', 'ano_au_pair', 'trilha_estudo', 'telefone'];
+function dosChipChk(chk) {
+  if (!chk || chk.err) return '';
+  if (chk.semConta) return '<span class="dchip"><b>Checklist</b> ainda sem conta no app</span>';
+  var it = chk.itens || []; if (!it.length) return '';
+  return '<span class="dchip"><b>Checklist</b> ' + it.filter(function (i) { return i.status === 'concluido'; }).length + '/' + it.length + '</span>';
+}
 function dosChips(c, d, rasc) {
   var out = [];
   DOS_CHIPS.forEach(function (k) {
@@ -992,7 +998,57 @@ function dosChips(c, d, rasc) {
   });
   return out.join('');
 }
-function dossieHtml(c, d, err, rasc, aberto) {
+// ---------- Checklist dela dentro do dossiê (db/crm-checklist.sql) ----------
+// Os itens vêm de checklist_items (só leitura para você) e os cliques de plataforma_cliques: cada "Marcou como
+// concluído: <item>" e "Desmarcou: <item>" que o app anota (assets/js/rastreio.js), mais as telas do checklist que ela abriu.
+var CHK_FILTRO = 'tela.ilike.%checklist%,rotulo.ilike.Marcou%,rotulo.ilike.Desmarcou%';
+function chkNome(t) { return String(t || '').replace(/\s+/g, ' ').trim().toLowerCase().slice(0, 90); }
+function chkClique(x) {
+  var m = /^(Marcou como concluído|Desmarcou): (.*)$/.exec(x.rotulo || '');
+  if (m) return [m[1] === 'Desmarcou' ? 'Desmarcou' : 'Marcou', m[1] === 'Desmarcou' ? 'u-media' : 'u-baixa', m[2]];
+  if (x.alvo === 'tela') return ['Tela', 'tp-artigo', 'Abriu ' + telaNome(x.tela)];
+  return ['Clique', 'out', (x.rotulo || '(sem texto)') + ' · em ' + telaNome(x.tela)];
+}
+function checklistHtml(chk, agora) {
+  var cab = '<h4>Checklist e cliques</h4>';
+  if (!chk) return '<section class="dbloco">' + cab + '<p class="sub" style="margin:0">Carregando…</p></section>';
+  if (chk.err) return '<section class="dbloco">' + cab + '<p class="sub" style="margin:0">Falta rodar <b>db/crm-checklist.sql</b> no SQL Editor do Supabase.</p></section>';
+  var cliques = chk.cliques || [];
+  var feed = cliques.slice(0, 120).map(function (x) {
+    var t = chkClique(x);
+    return '<div class="feeditem"><span class="pill ' + t[1] + '">' + esc(t[0]) + '</span><div class="fbody"><p>' + esc(t[2]) + '</p><time>' + esc(fmtDia(x.criado_em) + ' ' + fmtHora(x.criado_em)) + '</time></div></div>';
+  }).join('') || '<div class="empty">Nenhum clique no checklist ainda.</div>';
+  var mexidas = {};
+  cliques.forEach(function (x) { var m = /^(?:Marcou como concluído|Desmarcou): (.*)$/.exec(x.rotulo || ''); if (m) mexidas[chkNome(m[1])] = (mexidas[chkNome(m[1])] || 0) + 1; });
+  var resumo, lista = '';
+  if (chk.semConta) {
+    resumo = '<p class="sub" style="margin:0 0 10px">Ela ainda não entrou no app, então ainda não tem checklist.</p>';
+  } else {
+    var itens = chk.itens || [], hoje = new Date(agora).toISOString().slice(0, 10);
+    var feitos = itens.filter(function (i) { return i.status === 'concluido'; }).length;
+    var atrasados = itens.filter(function (i) { return i.status !== 'concluido' && i.due_date && i.due_date < hoje; });
+    var prox = itens.filter(function (i) { return i.status !== 'concluido' && i.due_date && i.due_date >= hoje; }).sort(function (a, b) { return a.due_date < b.due_date ? -1 : 1; })[0];
+    var cats = [], porCat = {};
+    itens.forEach(function (i) { var k = i.category || 'Outros'; if (!porCat[k]) { porCat[k] = []; cats.push(k); } porCat[k].push(i); });
+    resumo = itens.length
+      ? kvHtml([['Concluídos', feitos + ' de ' + itens.length + ' (' + Math.round(feitos * 100 / itens.length) + '%)'],
+          ['Atrasados', atrasados.length ? atrasados.length + ' (' + atrasados.slice(0, 3).map(function (i) { return i.label; }).join(', ') + (atrasados.length > 3 ? '…' : '') + ')' : 'nenhum', atrasados.length ? 1 : 0],
+          ['Próximo prazo', prox ? fmtDay(prox.due_date) + ' · ' + prox.label : '—'],
+          ['Último clique no checklist', cliques[0] ? fmtDia(cliques[0].criado_em) + ' às ' + fmtHora(cliques[0].criado_em) : '—']])
+      : '<p class="sub" style="margin:0">O checklist dela ainda está vazio.</p>';
+    lista = cats.map(function (k) {
+      var its = porCat[k], f = its.filter(function (i) { return i.status === 'concluido'; }).length;
+      return '<details class="dcat"><summary>' + esc(k) + ' <span class="sub">' + f + ' de ' + its.length + '</span></summary>' + its.map(function (i) {
+        var feito = i.status === 'concluido', atras = !feito && i.due_date && i.due_date < hoje, n = mexidas[chkNome(i.label)];
+        return '<div class="feeditem"><span class="pill ' + (feito ? 'u-baixa' : atras ? 'u-alta' : '') + '">' + (feito ? 'Concluído' : atras ? 'Atrasado' : 'Pendente') + '</span><div class="fbody"><p>' + esc(i.label) + '</p><time>' +
+          (i.due_date ? 'prazo ' + esc(fmtDay(i.due_date)) : 'sem prazo') + (feito && i.updated_at ? ' · concluído ' + esc(fmtDia(i.updated_at) + ' ' + fmtHora(i.updated_at)) : '') +
+          (n ? ' · ela mexeu ' + n + (n === 1 ? ' vez' : ' vezes') : '') + '</time></div></div>';
+      }).join('') + '</details>';
+    }).join('');
+  }
+  return '<section class="dbloco">' + cab + resumo + lista + '<h5 class="dsub">Cada clique dela no checklist</h5><div class="feed dfeed">' + feed + '</div></section>';
+}
+function dossieHtml(c, d, err, rasc, aberto, chk) {
   if (err) return '<div class="panel dossie"><div class="dhead"><h3>Dossiê</h3></div><p class="sub" style="margin:0">Falta rodar <b>db/crm-dossie.sql</b> no SQL Editor do Supabase.</p></div>';
   var pr = dosProgresso(c, d, rasc), pct = pr.tot ? Math.round(pr.n * 100 / pr.tot) : 0, sujo = rasc && Object.keys(rasc).length;
   var corpo = '';
@@ -1000,16 +1056,16 @@ function dossieHtml(c, d, err, rasc, aberto) {
     corpo = '<div class="dcorpo">' + dosVisiveis(c, d, rasc).map(function (b) {
       return '<section class="dbloco"><h4>' + esc(b.t) + '</h4><div class="dgrid">' + b.campos.map(function (f) { return dosCampoHtml(f, c, d, rasc); }).join('') + '</div></section>';
     }).join('') + '<div class="actions" style="margin-top:6px"><button class="btn primary" type="button" data-dossalvar="' + esc(c.id) + '">Salvar dossiê</button>' +
-      (sujo ? '<span class="sub" style="align-self:center">Há alterações ainda não salvas.</span>' : '') + '</div></div>';
+      (sujo ? '<span class="sub" style="align-self:center">Há alterações ainda não salvas.</span>' : '') + '</div>' + checklistHtml(chk, Date.now()) + '</div>';
   }
   return '<div class="panel dossie"><div class="dhead"><h3>Dossiê</h3><span class="sub">' + pr.n + ' de ' + pr.tot + ' respondidas' + (pr.falta ? ' · faltam ' + pr.falta : ' · completo') + '</span>' +
     '<button class="btn" type="button" data-dostoggle="1" aria-expanded="' + !!aberto + '" style="margin-left:auto">' + (aberto ? 'Fechar dossiê' : 'Abrir dossiê completo') + '</button></div>' +
     '<div class="dprog" role="progressbar" aria-valuenow="' + pct + '" aria-valuemin="0" aria-valuemax="100"><span style="width:' + pct + '%"></span></div>' +
-    '<div class="dchips">' + (dosChips(c, d, rasc) || '<span class="sub">Nada preenchido ainda. Abra o dossiê para preencher durante a ligação.</span>') + '</div>' + corpo + '</div>';
+    '<div class="dchips">' + dosChipChk(chk) + (dosChips(c, d, rasc) || '<span class="sub">Nada preenchido ainda. Abra o dossiê para preencher durante a ligação.</span>') + '</div>' + corpo + '</div>';
 }
 function pintaDossie(c) {
   var box = $('dossie-box'); if (!box || !state.dos || state.dos.cid !== c.id) return;
-  box.innerHTML = dossieHtml(c, state.dos.d, state.dos.err, state.dos.rasc, state.dosAberto);
+  box.innerHTML = dossieHtml(c, state.dos.d, state.dos.err, state.dos.rasc, state.dosAberto, state.dos.chk);
 }
 // Salva o que mudou: colunas de contatos direto (como o estágio) e o resto por crm_salvar_dossie.
 async function salvarDossie(cid, t) {
@@ -1049,13 +1105,20 @@ async function renderPessoa() {
     supabase.from('emails_enviados').select('*').eq('contato_id', c.id).order('criado_em', { ascending: false }),
     state.ptab === 'plataforma' ? supabase.from('plataforma_cliques').select('sessao,tela,alvo,rotulo,criado_em').eq('contato_id', c.id).order('criado_em', { ascending: false }).limit(300) : null,
     state.ptab === 'plataforma' ? supabase.from('sinais').select('id,mensagem,criado_em,lido_em').eq('contato_id', c.id).order('criado_em', { ascending: false }).limit(30) : null,
-    supabase.from('contatos').select('dossie').eq('id', c.id).maybeSingle(),
+    supabase.from('contatos').select('dossie,user_id').eq('id', c.id).maybeSingle(),
     state.ptab === 'plataforma' ? supabase.from('propostas').select('id,titulo,texto,prazo,status,adiada_ate,criado_em,visto_em,respondido_em').eq('contato_id', c.id).order('criado_em', { ascending: false }).limit(30) : null
   ]);
   if (state.sel !== c.id || state.view !== 'pessoa') return;   // trocou de tela enquanto carregava
   var eventos = r[0].data || [], cons = r[1].data || [], mails = r[2].data || [];
   var rascAnt = state.dos && state.dos.cid === c.id ? state.dos.rasc : {};   // o que você digitou e ainda não salvou sobrevive à troca de aba
-  state.dos = { cid: c.id, d: (r[5].data && r[5].data.dossie) || {}, err: r[5].error, rasc: rascAnt || {} };
+  var uid = r[5].data && r[5].data.user_id;
+  var rk = await Promise.all([
+    uid ? supabase.from('checklist_items').select('step_key,category,label,status,due_date,sort_order,updated_at').eq('user_id', uid).order('sort_order', { ascending: true }) : null,
+    supabase.from('plataforma_cliques').select('tela,alvo,rotulo,criado_em').eq('contato_id', c.id).or(CHK_FILTRO).order('criado_em', { ascending: false }).limit(300)
+  ]);
+  if (state.sel !== c.id || state.view !== 'pessoa') return;
+  state.dos = { cid: c.id, d: (r[5].data && r[5].data.dossie) || {}, err: r[5].error, rasc: rascAnt || {},
+    chk: { semConta: !uid, itens: (rk[0] && rk[0].data) || [], cliques: (rk[1] && rk[1].data) || [], err: (rk[0] && rk[0].error) || null } };
   state.mails = mails;
   var last = function (f) { var x = cons.filter(function (k) { return k.finalidade === f; })[0]; return x ? x.aceito : false; };
   var perg = Q.filter(function (x) { return x.contato_id === c.id; });
@@ -1077,7 +1140,7 @@ async function renderPessoa() {
     '<button class="btn" type="button" data-open1a1="' + esc(c.id) + '">Marcar 1:1</button>' +
     '<button class="btn" type="button" data-opensinal="' + esc(c.id) + '">Enviar sinal ao dashboard</button>' +
     '<div class="sel"><select id="stage-pick" aria-label="Mudar estágio">' + STAGES.map(function (s) { return '<option value="' + s.k + '"' + (s.k === c.estagio ? ' selected' : '') + '>Estágio: ' + s.l + '</option>'; }).join('') + '</select></div></div>' +
-    '<div id="dossie-box">' + dossieHtml(c, state.dos.d, state.dos.err, state.dos.rasc, state.dosAberto) + '</div>' +
+    '<div id="dossie-box">' + dossieHtml(c, state.dos.d, state.dos.err, state.dos.rasc, state.dosAberto, state.dos.chk) + '</div>' +
     tabs + (state.ptab === 'conversa' ? conversaPanel(c, mails, resps, h4) : state.ptab === 'plataforma' ? plataformaPanel(c, r[3], r[4], h4, r[6]) :
     '<div class="pessoa-grid" style="margin-top:18px">' +
     '<div class="panel" style="padding:16px"><h3 style="font-size:15px; margin-bottom:8px">Tudo que ela fez</h3>' +

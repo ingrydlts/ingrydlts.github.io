@@ -42,3 +42,9 @@ Isso é andamento, não resposta, e a pessoa vai marcando no app.
 
 Cada pergunta só aparece quando faz sentido para a situação dela, como no app (ex.: fim do contrato só para quem está
 no 2º ano ou vai migrar; ano da escola só para quem escolheu escola).
+
+## Checklist e cliques (db/crm-checklist.sql)
+
+No fim do dossiê aberto: andamento do checklist dela (concluídos, atrasados, próximo prazo, itens por categoria, quantas
+vezes ela mexeu em cada item) e a lista de cada clique no checklist (Marcou, Desmarcou, telas, botões). Os itens vêm de
+`checklist_items` (você só lê) e os cliques de `plataforma_cliques`, que o app já grava. Resumo no topo: chip "Checklist 1/4".
