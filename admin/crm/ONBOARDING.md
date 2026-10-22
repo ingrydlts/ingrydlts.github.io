@@ -14,6 +14,11 @@
 | 4 | O **caminho de estudo** é perguntado na chamada e vem no documento do onboarding. Não há segunda escolha depois. |
 | 5 | **Pró-lançamento: 30 dias de acesso completo.** Depois, a pessoa escolhe o plano. |
 | 6 | Se a assinatura for cancelada ou falhar, o acesso vale **até o fim do período pago**. |
+| 7 | **Três planos:** mensal (sem desconto), semestral (**20%** de desconto) e anual (**30%** de desconto). |
+| 8 | A pessoa **escolhe a moeda (€ ou R$)**. A conta Stripe é da França. |
+| 9 | **Cartão obrigatório nos 30 dias.** Depois do dia 30 sem plano escolhido, o painel **bloqueia** (nada é apagado). |
+| 10 | **Reembolso:** só ela decide; cancela a assinatura, não a conta (seção 10). |
+| 11 | **1:1:** 40 min no onboarding (prioridade na agenda); 30 min dentro do app, com o assunto informado antes (seção 13). |
 
 > **Mudança em relação à versão anterior:** antes o desenho era "pagar primeiro, conta depois". Com os 30 dias de acesso, a conta nasce **no começo do período grátis** e a escolha do plano acontece **no dia 30**. As seções 3 e 4 foram refeitas por isso. A seção 11 traz a proposta de preço.
 
@@ -75,7 +80,7 @@ Botão **Enviar convite de acesso** na ficha (rota nova do Worker, só admin):
 - Mostra o nome dela e o que ela ganha: **30 dias de acesso completo**, sem escolher plano agora.
 - Mostra os termos e a política de privacidade. O aceite grava o **consentimento** com o texto exato que ela viu. Novidades por e-mail continuam opt-in separado.
 - Ao confirmar, o Worker cria a conta (seção 4).
-- **Cartão ou não nos 30 dias** é a decisão mais importante do funil: ver seção 11.4.
+- Aqui ela cadastra o **cartão** (decisão 9); não é cobrado agora.
 
 ---
 
@@ -87,12 +92,12 @@ Ao confirmar o convite, o Worker:
 2. Numa transação só (`crm_ativar_conta`): copia o Dossiê para `profiles`, grava `key_dates`, o resumo da chamada na linha do tempo, uma linha em `subscriptions` com status `trialing` e **`fim_teste` = hoje + 30 dias**, e `convite_pendente = true`. Se falhar, o usuário criado é apagado.
 3. Envia o e-mail `acesso_confirmado` (Estúdio): confirma que a entrada na plataforma deu certo e traz o **link para criar a senha**.
 
-Se for usado cartão (11.4), o Stripe entra aqui como `trialing` e um webhook mantém `subscriptions` em dia.
+O cartão é guardado no Stripe na própria página `/entrar/`, **sem cobrar e sem escolher plano** (modo "salvar cartão"). O plano e a moeda são escolhidos depois, até o dia 30, e a assinatura nasce com o primeiro pagamento marcado para o dia 30. Um webhook mantém `subscriptions` em dia (11.4).
 
 ### O que o painel faz perto do dia 30
 
 - **Dia 20:** aviso discreto no painel e e-mail "faltam 10 dias, escolha seu plano".
-- **Dia 30 sem plano escolhido:** o painel abre numa tela **"Escolha seu plano para continuar"**. Os dados dela ficam guardados, nada é apagado. Ela não vê o checklist até escolher **[decisão sua, seção 12]**.
+- **Dia 30 sem plano escolhido:** o painel abre numa tela **"Escolha seu plano para continuar"**. Os dados dela ficam guardados, nada é apagado. O painel **fica bloqueado** até ela escolher (decisão 9).
 - **Plano escolhido:** `subscriptions` vira `active`.
 - **Cancelamento ou falha de pagamento:** o acesso continua **até o fim do período já pago** (decisão 6). O painel mostra "seu acesso vai até dd/mm".
 
@@ -206,60 +211,93 @@ O acesso ao Por Dentro tem um **começo e um fim naturais**: o visto, a matrícu
 2. **Você sabe quanto tempo a jornada dura** (da candidatura à chegada, cerca de 12 meses). Isso justifica um desconto grande no pagamento de uma vez, porque o cliente vai usar o período inteiro de qualquer jeito.
 3. O comparativo da cliente não é outro app: é uma **assessoria de milhares de reais**. Seu preço pode ser baixo perto dela e ainda assim alto perto de um e-book. O risco é se posicionar no meio vazio.
 
-### 11.3 Estrutura recomendada: duas opções, nunca três
+### 11.3 Os três planos (decisão 7) e a moeda (decisão 8)
 
-Deixar a escolha com a pessoa é bom **se forem só duas opções claras**. Com três ou mais, quem está inseguro trava.
+Você definiu a regra de desconto; falta só o **preço do mensal**, que é a base de tudo. Uso **R$ 69 / € 12** como ponto de partida (hipótese minha, não dado de mercado).
 
-| Opção | Como paga | Ponto de partida (hipótese) | O que a pessoa pensa |
-|---|---|---|---|
-| **Mensal** | Todo mês, cancela quando quiser | **R$ 69/mês** | "Quero testar sem me prender" |
-| **Jornada (12 meses)** | De uma vez | **R$ 497** (equivale a R$ 41/mês, **cerca de 40% abaixo** do mensal) | "Vou precisar de qualquer jeito, pago menos" |
+| Plano | Regra | Em R$ | Em € | Equivale a (por mês) |
+|---|---|---|---|---|
+| **Mensal** | sem desconto | **R$ 69**/mês | **€ 12**/mês | R$ 69 · € 12 |
+| **Semestral** | 6 meses − 20% | **R$ 329** de uma vez | **€ 57** de uma vez | R$ 55 · € 9,50 |
+| **Anual** | 12 meses − 30% | **R$ 579** de uma vez | **€ 99** de uma vez | R$ 48 · € 8,25 |
 
-- Sobre esse desconto: ele passa do padrão de 15–20% porque o seu uso é limitado no tempo, e o objetivo é fazer a maioria escolher a Jornada. **É o que mais pesa na sua receita.**
-- **1:1 não entra como "ilimitado" em nenhum plano.** Seu tempo é o custo mais caro do produto. Venda o 1:1 à parte (ou com desconto para quem tem a Jornada). Isso também funciona como âncora: o 1:1 mostra quanto vale o seu tempo.
-- **Preço de fundadora:** quem escolher plano na janela do lançamento trava o preço para sempre. Custa nada, premia quem confiou antes e dá urgência honesta (com número de vagas real).
-- **Moeda:** todos os números acima estão em R$ só porque as referências são em R$. **[decisão sua, seção 12]**
+Contas: semestral = 6 × 69 × 0,8 = 331,20 → 329; anual = 12 × 69 × 0,7 = 579,60 → 579. Em euro: 6 × 12 × 0,8 = 57,60 → 57; 12 × 12 × 0,7 = 100,80 → 99. Arredondei para baixo para o preço terminar bem; o desconto real fica em 20–21% e 30–31%.
 
-### 11.4 Cartão nos 30 dias grátis? Minha recomendação
+**Dá para a pessoa escolher a moeda? Sim.** O Stripe permite um mesmo preço em várias moedas, e você fixa o valor de cada uma (não precisa converter pelo câmbio do dia). Detalhes:
+- Sua conta é da França, então o dinheiro **chega em euro**. Quem paga em reais gera uma conversão cambial, com uma taxa do Stripe **[conferir o valor]**.
+- A moeda vale **por assinatura**. Trocar de € para R$ depois exige uma assinatura nova **[conferir]**.
+- Pix recorrente existe no Stripe e contas europeias podem usá-lo ([Stripe](https://docs.stripe.com/changelog/dahlia/2026-04-22/pix-recurring-payments-support)), mas é para quem está no Brasil. Parcelamento no cartão brasileiro **não apareceu nas fontes: [conferir] antes de prometer**.
+- A página de escolha mostra € e R$ lado a lado. Sugestão de padrão: R$ para quem está no Brasil (persona `campus_france`), € para quem já mora na França.
 
-| | Sem cartão | Com cartão (cobra sozinho no dia 30) |
-|---|---|---|
-| Quem entra | Mais gente | Menos gente |
-| Quem paga no dia 30 | Cerca de 4–15% (benchmark de software) | Cerca de 25–60% (benchmark de software) |
-| Atrito | Nenhum | Alto, e o risco de a pessoa se sentir "pega" |
-| Combina com | Muito volume, sem contato pessoal | **Poucas pessoas, todas qualificadas numa chamada** |
+**Por que os três planos funcionam juntos:** o mensal serve de âncora e deixa o semestral e o anual parecerem uma escolha óbvia. O desconto maior do anual incentiva o compromisso de 12 meses, que é o tempo da jornada (candidatura até a chegada). Mantenha o **anual como destaque** na tela.
 
-**Recomendo com cartão, com a escolha do plano feita já no começo ou no dia 20** (o plano padrão é a Jornada, e ela troca pelo mensal com um clique). Motivo: o seu volume é pequeno, cada pessoa vem de uma chamada com você, e o gargalo não é cadastro, é converter quem já entrou. Nesse cenário a diferença de conversão pesa mais que o volume.
+### 11.4 Cartão nos 30 dias (decisão 9)
 
-Ressalva importante: **isso contraria um pouco o que você disse** ("depois ela escolhe o plano"). A alternativa fiel à sua fala é **sem cartão**, com a escolha pedida no dia 20. É mais amigável no lançamento e pode ser o certo se o objetivo agora for confiança e depoimentos, mais que receita. Os dois cabem no desenho; só muda o passo do cartão.
+Decidido: **cartão obrigatório**. Os benchmarks de software mostram 25–60% de conversão com cartão contra 4–15% sem ([ChartMogul](https://chartmogul.com/reports/saas-conversion-report/)), e o seu volume é pequeno e qualificado numa chamada, então converter pesa mais que cadastrar.
+
+Como fica no Stripe, para respeitar que **o plano só é escolhido depois**:
+1. Em `/entrar/` o cartão é guardado **sem cobrança e sem plano** (modo de salvar cartão). A autenticação do banco (3-D Secure) acontece nessa hora.
+2. Até o dia 30 ela escolhe **plano e moeda** no painel (aviso no dia 20 e no dia 27).
+3. A assinatura é criada com a **primeira cobrança no dia 30**, usando o cartão guardado.
+4. Sem escolha no dia 30: nada é cobrado e o painel bloqueia (decisão 9).
+
+**Por obrigação de transparência**, o e-mail do dia 20 e do dia 27 diz a data, o valor e como cancelar. Isso protege você de contestação de cobrança e é exigência do consumidor. **[conferir]** o texto exato com seu contador/advogado.
 
 ### 11.5 Exemplo ilustrativo (as premissas são minhas)
 
-Para cada **100 pessoas que começam o teste**, com 60% escolhendo Jornada e 40% mensal (ficando em média 5 meses):
+Para cada **100 pessoas que começam o teste**, com 20% no mensal (ficando em média 5 meses), 30% no semestral e 50% no anual, em R$:
 
-| | Sem cartão (10% pagam) | Com cartão (30% pagam) |
+| | Sem cartão (10% pagam) | **Com cartão (30% pagam)** |
 |---|---|---|
 | Pagantes | 10 | 30 |
-| Receita (6 × R$ 497 + 4 × R$ 69 × 5) | **~R$ 4.400** | **~R$ 13.100** |
+| Receita (0,2 × 69 × 5 + 0,3 × 329 + 0,5 × 579, por pagante ≈ R$ 457) | ~R$ 4.600 | **~R$ 13.700** |
 
-Só mostra a ordem de grandeza: se a conversão real ficar perto desses benchmarks, **cartão no início pode triplicar a receita por cada 100 testes**. Se o cartão derrubar muito os cadastros (por exemplo, metade das pessoas desistir), a vantagem some. **Meça nas primeiras 20 pessoas** antes de fixar.
+Mostra só a ordem de grandeza. Se o cartão afastar muita gente (por exemplo, metade desistir), a vantagem some. **Meça nas primeiras 20 pessoas.**
 
 ### 11.6 O que eu faria no lançamento
 
-1. 30 dias de acesso completo, **com cartão** (ou sem, se você preferir confiança a receita agora).
-2. Duas opções: **Mensal** e **Jornada de 12 meses**, com a Jornada como padrão.
-3. **Preço de fundadora** travado para os primeiros N (você escolhe N).
-4. 1:1 à parte, nunca incluído sem limite.
-5. Medir nas primeiras 20 pessoas: quantas começam o teste, quantas pagam, qual plano escolhem, quantas cancelam no primeiro mês. Ajustar preço **depois** dos dados.
+1. 30 dias de acesso completo, cartão guardado sem cobrar.
+2. Três planos com **anual em destaque**, moeda à escolha.
+3. **Preço de fundadora** travado para os primeiros N (N limitado pela agenda de 1:1, seção 13).
+4. 1:1 nunca ilimitado, conforme a seção 13.
+5. Medir nas primeiras 20 pessoas: quantas cadastram cartão, quantas escolhem plano, qual plano e moeda, quantas cancelam no primeiro mês.
 
 ---
 
-## 12. Decisões que preciso de você
+## 12. Decisões que ainda faltam
 
-1. **Moeda e conta Stripe:** os preços ficam em R$ ou em €? A sua conta Stripe é da França ou do Brasil? Isso muda as opções de pagamento (Pix recorrente, parcelamento).
-2. **Cartão nos 30 dias:** com cartão (recomendado para receita) ou sem cartão (fiel à sua fala, melhor para confiança)?
-3. **Os números de partida da seção 11.3** (R$ 69 / R$ 497) servem como ponto de partida ou você já tem um valor em mente?
-4. **Preço de fundadora:** quantas vagas, e por quanto tempo fica aberta a janela?
-5. **Depois do dia 30 sem plano:** o painel bloqueia até ela escolher (recomendado, nada é apagado) ou fica em modo leitura?
-6. **Reembolso:** confirma a regra da seção 10 (só você decide; cancela a assinatura, não a conta)?
-7. **Qual o seu preço e o seu limite de horas para 1:1?** Ele define o desconto que vale a pena oferecer à Jornada.
+1. **Preço do mensal.** Usei R$ 69 / € 12 como ponto de partida. Confirma ou diz o seu?
+2. **Preço de fundadora:** quantas vagas e por quanto tempo fica aberta a janela? (Veja o limite da agenda na seção 13.)
+3. **As suas 4 h de 1:1 são por semana, por mês ou por dia?** Muda o tamanho do lançamento (seção 13).
+4. **Quanto custa um 1:1 extra de 30 min** (para quem passar do que o plano inclui)?
+
+---
+
+## 13. 1:1: agenda, limite e briefing
+
+**O que você definiu:** 4 h de 1:1; cada onboarding dura 40 min e tem prioridade na agenda; 1:1 pedido dentro do app dura 30 min e o assunto precisa vir antes, para a chamada ser só encaminhamentos prontos.
+
+**A conta que importa (depende da sua resposta 3):**
+
+| Se as 4 h são... | Vagas de 40 min | Consequência |
+|---|---|---|
+| **por mês** | **6** | Só **6 onboardings por mês**, sem nenhum 1:1 do app. Insuficiente para um lançamento. |
+| **por semana** | **6 por semana (~24/mês)** | ~24 onboardings por mês se nenhum 1:1 do app existir; com 1:1 do app, menos. |
+
+Isso define o **limite do lançamento**. O CRM deve mostrar **vagas de onboarding restantes na semana** e o botão "Enviar convite" avisa quando a agenda encheu.
+
+**1:1 dentro do app (proposta):**
+- A pessoa pede o 1:1 no painel e **precisa informar o assunto** e, se quiser, anexar dúvidas ou links. Sem assunto, não envia.
+- Chega ao CRM na tabela de 1:1 que já existe (`um_a_um`), com o assunto no card.
+- A IA prepara, **antes da chamada**, um resumo do caso (Dossiê + linha do tempo + o que ela perguntou) e **rascunhos de encaminhamento**. Você ajusta e a chamada de 30 min vira conferência, não descoberta.
+- Prioridade na agenda: onboarding primeiro, depois 1:1 do app, por ordem de pedido.
+
+**O que cada plano inclui de 1:1 (proposta a discutir, não decidido):**
+
+| Plano | 1:1 de 30 min incluídos |
+|---|---|
+| Mensal | 0 (extra pago) |
+| Semestral | 1 |
+| Anual | 2 |
+
+Isso dá ao anual um benefício além do desconto, **sem prometer tempo ilimitado**. Cada 1:1 incluído é uma hora sua a menos na agenda, então some ao cálculo de vagas.
