@@ -555,6 +555,7 @@ function eventText(e) {
     pergunta_respondida: ['pergunta', 'Você respondeu a pergunta única'],
     um_a_um_agendado: ['uma_um', '1:1 marcado · ' + fmtWhen(d.quando)],
     sinal_enviado: ['sinal', 'Sinal enviado: ' + (d.mensagem || '')],
+    insights_alterados: ['sistema', 'Os insights dela mudaram' + ((d.entrou || []).length ? ' · entrou: ' + d.entrou.join(', ') : '') + ((d.saiu || []).length ? ' · saiu: ' + d.saiu.join(', ') : '')],
     dossie_atualizado: ['sistema', 'Você atualizou o dossiê' + (d.campos ? ' (' + d.campos + (d.campos === 1 ? ' campo)' : ' campos)') : '')],
     // Propostas (db/crm-propostas.sql): o título vem do banco e passa por esc() onde a linha é montada.
     proposta_enviada: ['proposta', 'Proposta enviada: ' + (d.titulo || '')],
@@ -815,6 +816,116 @@ function argumentosHtml(cons) {
   }).join('');
 }
 
+// ---------- Minha iAssistente: o que ela vê agora, o que mudou e as notas que você publica (db/crm-insights.sql) ----------
+// As notas automáticas nascem no navegador dela (assets/js/iassistente.js). O app manda para cá a lista que acabou de
+// mostrar; as suas notas voltam na mesma lista com id "ingryd:<n>", e é assim que você vê que ela já as recebeu.
+var INS_ICONES = [['💡', 'Dica'], ['⚠️', 'Alerta'], ['📄', 'Documento'], ['📅', 'Prazo'], ['🎉', 'Boa notícia']];
+function insManualId(n) { return 'ingryd:' + n; }
+async function buscaInsights(cid) {
+  var r = await Promise.all([
+    supabase.from('insights_vivos').select('notas,atualizado_em').eq('contato_id', cid).maybeSingle(),
+    supabase.from('insights_historico').select('inicial,entrou,saiu,criado_em').eq('contato_id', cid).order('criado_em', { ascending: false }).limit(30),
+    supabase.from('insights_manuais').select('id,icone,texto,ate,ativo,criado_em,retirado_em').eq('contato_id', cid).order('criado_em', { ascending: false }).limit(30)
+  ]);
+  return { cid: cid, err: r[0].error || r[1].error || r[2].error || null, vivos: r[0].data || null, hist: r[1].data || [], manuais: r[2].data || [] };
+}
+function insNota(n, quem) {
+  return '<div class="insnota"><span class="insicone" aria-hidden="true">' + esc(n.icone || '•') + '</span><div><p>' + esc(n.texto) + '</p><small>' + esc(quem) + '</small></div></div>';
+}
+function insMudanca(h) {
+  var lista = function (arr, rot, cls) {
+    return (arr || []).map(function (n) { return '<div class="feeditem"><span class="pill ' + cls + '">' + rot + '</span><div class="fbody"><p>' + esc((n.icone || '') + ' ' + (n.texto || '').slice(0, 220) + ((n.texto || '').length > 220 ? '…' : '')) + '</p></div></div>'; }).join('');
+  };
+  return '<div class="insmud"><time>' + esc(fmtDia(h.criado_em) + ' ' + fmtHora(h.criado_em)) + '</time>' + lista(h.entrou, 'Entrou', 'u-media') + lista(h.saiu, 'Saiu', 'out') + '</div>';
+}
+function insightsHtml(ins, agora) {
+  var cab = '<h3 style="font-size:15px;margin:0 0 4px">Minha iAssistente</h3>';
+  if (!ins) return '<div class="panel" style="padding:16px">' + cab + '<p class="sub" style="margin:0">Carregando…</p></div>';
+  if (ins.err) return '<div class="panel" style="padding:16px">' + cab + '<p class="sub" style="margin:0">Falta rodar <b>db/crm-insights.sql</b> no SQL Editor do Supabase.</p></div>';
+  var notas = (ins.vivos && ins.vivos.notas) || [], vivosIds = {};
+  notas.forEach(function (n) { vivosIds[n.id] = 1; });
+  var card = notas.length
+    ? '<div class="inscard"><div class="inskicker">Minha iAssistente</div>' + notas.map(function (n) { return insNota(n, /^ingryd:/.test(n.id) ? 'nota sua' : 'automática'); }).join('') + '</div>'
+    : '<div class="empty">' + (ins.vivos ? 'Nenhuma nota no ar para ela agora.' : 'Ela ainda não abriu o dashboard depois que isso foi ligado.') + '</div>';
+  var quando = ins.vivos ? 'Atualizado ' + fmtDia(ins.vivos.atualizado_em) + ' às ' + fmtHora(ins.vivos.atualizado_em) : '';
+  var mudancas = ins.hist.filter(function (h) { return !h.inicial; });
+  var recente = mudancas[0] && agora - new Date(mudancas[0].criado_em).getTime() < 10 * 60e3;
+  var manuais = ins.manuais.map(function (m) {
+    var venceu = m.ate && new Date(m.ate).getTime() <= agora, ativa = m.ativo && !venceu;
+    var st = !m.ativo ? ['Retirada', 'out'] : venceu ? ['Venceu', 'out'] : vivosIds[insManualId(m.id)] ? ['No ar, ela já recebeu', 'u-baixa'] : ['Esperando ela abrir o app', 'u-media'];
+    return '<div class="feeditem"><span class="pill ' + st[1] + '">' + esc(st[0]) + '</span><div class="fbody"><p>' + esc((m.icone || '') + ' ' + m.texto) + '</p><time>' + esc(fmtDia(m.criado_em)) +
+      (m.ate ? ' · vale até ' + esc(fmtDay(m.ate)) : '') + '</time>' + (ativa ? '<button class="link" type="button" data-insretirar="' + esc(m.id) + '">Retirar</button>' : '') + '</div></div>';
+  }).join('');
+  var inp = 'width:100%;border:1px solid var(--line-2);border-radius:var(--r);background:var(--surface);color:inherit;padding:9px 11px;font:inherit';
+  return '<div class="panel' + (recente ? ' insrecente' : '') + '" style="padding:16px" id="ins-panel">' + cab +
+    '<p class="sub" style="margin:0 0 10px">O que ela vê agora no dashboard, igual ao card dela. ' + esc(quando) + (recente ? ' <b class="insnovo">Mudou agora há pouco</b>' : '') + '</p>' + card +
+    '<h4 class="dsub">Escreva uma nota para ela</h4>' +
+    '<div class="insform"><div class="dfield"><label for="ins-icone">Tipo</label><select id="ins-icone" style="' + inp + '">' + INS_ICONES.map(function (i) { return '<option value="' + esc(i[0]) + '">' + esc(i[0] + ' ' + i[1]) + '</option>'; }).join('') + '</select></div>' +
+    '<div class="dfield"><label for="ins-ate">Vale até (opcional)</label><input id="ins-ate" type="date" style="' + inp + '"></div></div>' +
+    '<div class="dfield" style="margin-top:8px"><label for="ins-texto">Nota (primeira pessoa, como a assistente)</label><textarea id="ins-texto" maxlength="800" placeholder="Ex.: Vi que sua matrícula ainda está em aberto. Posso te ajudar a escolher o curso?" style="' + inp + ';min-height:84px"></textarea></div>' +
+    '<div class="actions" style="margin-top:8px"><button class="btn primary" type="button" data-insnova="' + esc(ins.cid) + '">Publicar para ela</button><span class="sub" style="align-self:center">Aparece no card dela na próxima vez que o dashboard abrir.</span></div>' +
+    (manuais ? '<h4 class="dsub">Suas notas</h4><div class="feed">' + manuais + '</div>' : '') +
+    '<h4 class="dsub">O que mudou no card dela</h4><div class="feed dfeed">' + (mudancas.map(insMudanca).join('') || '<div class="empty">Nada mudou desde que começamos a acompanhar.</div>') + '</div></div>';
+}
+function dosChipIns(ins) {
+  if (!ins || ins.err || !ins.vivos) return '';
+  var rec = ins.hist.filter(function (h) { return !h.inicial; })[0], novo = rec && Date.now() - new Date(rec.criado_em).getTime() < 10 * 60e3;
+  return '<span class="dchip' + (novo ? ' insnovo' : '') + '"><b>iAssistente</b> ' + ins.vivos.notas.length + (ins.vivos.notas.length === 1 ? ' nota no ar' : ' notas no ar') + (novo ? ' · mudou agora' : '') + '</span>';
+}
+// Ao vivo: o Realtime avisa quando algo dela muda e a ficha se atualiza sozinha. Se o Realtime não estiver ligado no
+// projeto, uma consulta a cada 20 s faz o mesmo mais devagar.
+var VIVO = { cid: null, ch: null, timer: null, uid: null };
+function pararAoVivo() {
+  if (VIVO.ch) { try { supabase.removeChannel(VIVO.ch); } catch (e) {} }
+  clearInterval(VIVO.timer); VIVO = { cid: null, ch: null, timer: null, uid: null };
+}
+function ligarAoVivo(c, uid) {
+  if (VIVO.cid === c.id && VIVO.uid === uid) return;
+  pararAoVivo(); VIVO.cid = c.id; VIVO.uid = uid;
+  var cid = c.id, agendado = null;
+  var avisa = function () { clearTimeout(agendado); agendado = setTimeout(function () { atualizaAoVivo(cid); }, 400); };
+  var poll = function () { if (!VIVO.timer && VIVO.cid === cid) VIVO.timer = setInterval(function () { atualizaAoVivo(cid); }, 20000); };
+  try {
+    var ch = supabase.channel('ficha-' + cid);
+    [['insights_vivos', 'contato_id=eq.' + cid], ['insights_historico', 'contato_id=eq.' + cid], ['plataforma_cliques', 'contato_id=eq.' + cid]]
+      .concat(uid ? [['checklist_items', 'user_id=eq.' + uid]] : [])
+      .forEach(function (t) { ch = ch.on('postgres_changes', { event: '*', schema: 'public', table: t[0], filter: t[1] }, avisa); });
+    VIVO.ch = ch.subscribe(function (status) { if (status !== 'SUBSCRIBED') poll(); });
+  } catch (e) { poll(); }
+}
+async function atualizaAoVivo(cid) {
+  if (state.view !== 'pessoa' || state.sel !== cid || !state.ins || state.ins.cid !== cid) return pararAoVivo();
+  var c = byC(cid); if (!c) return;
+  var antes = state.ins;
+  var rk = await Promise.all([buscaChecklist(cid, VIVO.uid), buscaInsights(cid)]);
+  if (state.view !== 'pessoa' || state.sel !== cid) return;
+  var mudouIns = JSON.stringify([rk[1].vivos && rk[1].vivos.atualizado_em, rk[1].hist.length, rk[1].manuais.length]) !== JSON.stringify([antes.vivos && antes.vivos.atualizado_em, antes.hist.length, antes.manuais.length]);
+  var mudouChk = JSON.stringify([rk[0].itens, rk[0].cliques.length]) !== JSON.stringify([state.dos && state.dos.chk && state.dos.chk.itens, state.dos && state.dos.chk && state.dos.chk.cliques.length]);
+  if (!mudouIns && !mudouChk) return;
+  state.ins = rk[1]; if (state.dos && state.dos.cid === cid) state.dos.chk = rk[0];
+  var painel = $('ins-box'); if (painel) painel.innerHTML = insightsHtml(state.ins, Date.now());
+  var cb = $('chk-box'); if (cb) cb.innerHTML = checklistHtml(state.dos && state.dos.chk, Date.now());
+  var ae = document.activeElement;   // não redesenha o dossiê enquanto você digita nele
+  if (!(ae && ae.closest && ae.closest('#dossie-box') && /^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName))) pintaDossie(c);
+  if (mudouIns && antes.vivos) toast('Os insights dela mudaram');
+}
+async function publicarInsight(cid, t) {
+  var txt = $('ins-texto').value.trim(), ate = $('ins-ate').value;
+  if (!txt) return toast('Escreva a nota');
+  t.disabled = true;
+  var r = await supabase.from('insights_manuais').insert({ contato_id: cid, icone: $('ins-icone').value || '💡', texto: txt, ate: ate ? new Date(ate + 'T23:59:59').toISOString() : null });
+  if (r.error) { t.disabled = false; return fail('publicar a nota', r.error); }
+  state.ins = await buscaInsights(cid);
+  var b = $('ins-box'); if (b) b.innerHTML = insightsHtml(state.ins, Date.now());
+  toast('Nota publicada. Ela vê na próxima vez que abrir o dashboard.');
+}
+async function retirarInsight(id) {
+  var r = await supabase.from('insights_manuais').update({ ativo: false, retirado_em: new Date().toISOString() }).eq('id', id);
+  if (r.error) return fail('retirar a nota', r.error);
+  state.ins = await buscaInsights(state.sel);
+  var b = $('ins-box'); if (b) b.innerHTML = insightsHtml(state.ins, Date.now());
+  toast('Nota retirada');
+}
 // ---------- Aba Plataforma: o que ela faz dentro do app + os sinais que você manda ----------
 // Os cliques vêm do app (assets/js/rastreio.js → registrar_cliques → plataforma_cliques, db/crm-plataforma.sql):
 // só os significativos (abrir tela, botão, link), nunca o que ela digita. Mais recente primeiro.
@@ -839,7 +950,7 @@ function propostaLinha(x, agora) {
     '<time>' + esc(fmtDia(x.criado_em) + ' ' + fmtHora(x.criado_em)) + esc(quando) +
     (x.prazo ? ' · prazo ' + esc(fmtDia(x.prazo)) : '') + '</time></div></div>';
 }
-function plataformaPanel(c, rc, rs, h4, rp) {
+function plataformaPanel(c, rc, rs, h4, rp, ins) {
   if (rc && rc.error) {
     return '<div class="panel" style="padding:16px;margin-top:18px"><h3 style="font-size:15px;margin-bottom:8px">Plataforma ainda não ligada</h3>' +
       '<p class="sub" style="margin:0">Falta rodar <b>db/crm-plataforma.sql</b> no SQL Editor do Supabase (depois dele, os cliques novos começam a aparecer aqui).</p></div>';
@@ -872,9 +983,10 @@ function plataformaPanel(c, rc, rs, h4, rp) {
       '<button class="btn primary" type="button" data-openproposta="' + esc(c.id) + '">Nova proposta</button>' +
       '<div class="feed" style="margin-top:12px">' + (propostas.map(function (x) { return propostaLinha(x, agora); }).join('') || '<div class="empty">Nenhuma proposta enviada ainda.</div>') + '</div>';
   return '<div class="pessoa-grid" style="margin-top:18px">' +
+    '<div style="display:flex; flex-direction:column; gap:16px; min-width:0"><div id="ins-box">' + insightsHtml(ins, Date.now()) + '</div>' +
     '<div class="panel" style="padding:16px"><h3 style="font-size:15px; margin-bottom:8px">O que ela fez na plataforma</h3>' +
     '<p class="sub" style="margin:0 0 10px">Telas que abriu e botões e links em que clicou. Mais recente primeiro.</p>' +
-    '<div class="feed">' + (itens || '<div class="empty">Nada registrado ainda.</div>') + '</div></div>' +
+    '<div class="feed">' + (itens || '<div class="empty">Nada registrado ainda.</div>') + '</div></div></div>' +
     '<div style="display:flex; flex-direction:column; gap:16px">' +
     '<div class="panel" style="padding:16px"><h4 style="' + h4 + '">Resumo</h4>' + resumo + '</div>' +
     '<div class="panel" style="padding:16px"><h4 style="' + h4 + '">Propostas</h4>' + propHtml + '</div>' +
@@ -1009,6 +1121,13 @@ function chkClique(x) {
   if (x.alvo === 'tela') return ['Tela', 'tp-artigo', 'Abriu ' + telaNome(x.tela)];
   return ['Clique', 'out', (x.rotulo || '(sem texto)') + ' · em ' + telaNome(x.tela)];
 }
+async function buscaChecklist(cid, uid) {
+  var rk = await Promise.all([
+    uid ? supabase.from('checklist_items').select('step_key,category,label,status,due_date,sort_order,updated_at').eq('user_id', uid).order('sort_order', { ascending: true }) : null,
+    supabase.from('plataforma_cliques').select('tela,alvo,rotulo,criado_em').eq('contato_id', cid).or(CHK_FILTRO).order('criado_em', { ascending: false }).limit(300)
+  ]);
+  return { semConta: !uid, itens: (rk[0] && rk[0].data) || [], cliques: (rk[1] && rk[1].data) || [], err: (rk[0] && rk[0].error) || null };
+}
 function checklistHtml(chk, agora) {
   var cab = '<h4>Checklist e cliques</h4>';
   if (!chk) return '<section class="dbloco">' + cab + '<p class="sub" style="margin:0">Carregando…</p></section>';
@@ -1056,12 +1175,12 @@ function dossieHtml(c, d, err, rasc, aberto, chk) {
     corpo = '<div class="dcorpo">' + dosVisiveis(c, d, rasc).map(function (b) {
       return '<section class="dbloco"><h4>' + esc(b.t) + '</h4><div class="dgrid">' + b.campos.map(function (f) { return dosCampoHtml(f, c, d, rasc); }).join('') + '</div></section>';
     }).join('') + '<div class="actions" style="margin-top:6px"><button class="btn primary" type="button" data-dossalvar="' + esc(c.id) + '">Salvar dossiê</button>' +
-      (sujo ? '<span class="sub" style="align-self:center">Há alterações ainda não salvas.</span>' : '') + '</div>' + checklistHtml(chk, Date.now()) + '</div>';
+      (sujo ? '<span class="sub" style="align-self:center">Há alterações ainda não salvas.</span>' : '') + '</div>' + '<div id="chk-box">' + checklistHtml(chk, Date.now()) + '</div></div>';
   }
   return '<div class="panel dossie"><div class="dhead"><h3>Dossiê</h3><span class="sub">' + pr.n + ' de ' + pr.tot + ' respondidas' + (pr.falta ? ' · faltam ' + pr.falta : ' · completo') + '</span>' +
     '<button class="btn" type="button" data-dostoggle="1" aria-expanded="' + !!aberto + '" style="margin-left:auto">' + (aberto ? 'Fechar dossiê' : 'Abrir dossiê completo') + '</button></div>' +
     '<div class="dprog" role="progressbar" aria-valuenow="' + pct + '" aria-valuemin="0" aria-valuemax="100"><span style="width:' + pct + '%"></span></div>' +
-    '<div class="dchips">' + dosChipChk(chk) + (dosChips(c, d, rasc) || '<span class="sub">Nada preenchido ainda. Abra o dossiê para preencher durante a ligação.</span>') + '</div>' + corpo + '</div>';
+    '<div class="dchips">' + dosChipChk(chk) + dosChipIns(state.ins) + (dosChips(c, d, rasc) || '<span class="sub">Nada preenchido ainda. Abra o dossiê para preencher durante a ligação.</span>') + '</div>' + corpo + '</div>';
 }
 function pintaDossie(c) {
   var box = $('dossie-box'); if (!box || !state.dos || state.dos.cid !== c.id) return;
@@ -1112,13 +1231,10 @@ async function renderPessoa() {
   var eventos = r[0].data || [], cons = r[1].data || [], mails = r[2].data || [];
   var rascAnt = state.dos && state.dos.cid === c.id ? state.dos.rasc : {};   // o que você digitou e ainda não salvou sobrevive à troca de aba
   var uid = r[5].data && r[5].data.user_id;
-  var rk = await Promise.all([
-    uid ? supabase.from('checklist_items').select('step_key,category,label,status,due_date,sort_order,updated_at').eq('user_id', uid).order('sort_order', { ascending: true }) : null,
-    supabase.from('plataforma_cliques').select('tela,alvo,rotulo,criado_em').eq('contato_id', c.id).or(CHK_FILTRO).order('criado_em', { ascending: false }).limit(300)
-  ]);
+  var rk = await Promise.all([buscaChecklist(c.id, uid), buscaInsights(c.id)]);
   if (state.sel !== c.id || state.view !== 'pessoa') return;
-  state.dos = { cid: c.id, d: (r[5].data && r[5].data.dossie) || {}, err: r[5].error, rasc: rascAnt || {},
-    chk: { semConta: !uid, itens: (rk[0] && rk[0].data) || [], cliques: (rk[1] && rk[1].data) || [], err: (rk[0] && rk[0].error) || null } };
+  state.ins = rk[1];
+  state.dos = { cid: c.id, d: (r[5].data && r[5].data.dossie) || {}, err: r[5].error, rasc: rascAnt || {}, chk: rk[0] };
   state.mails = mails;
   var last = function (f) { var x = cons.filter(function (k) { return k.finalidade === f; })[0]; return x ? x.aceito : false; };
   var perg = Q.filter(function (x) { return x.contato_id === c.id; });
@@ -1141,7 +1257,7 @@ async function renderPessoa() {
     '<button class="btn" type="button" data-opensinal="' + esc(c.id) + '">Enviar sinal ao dashboard</button>' +
     '<div class="sel"><select id="stage-pick" aria-label="Mudar estágio">' + STAGES.map(function (s) { return '<option value="' + s.k + '"' + (s.k === c.estagio ? ' selected' : '') + '>Estágio: ' + s.l + '</option>'; }).join('') + '</select></div></div>' +
     '<div id="dossie-box">' + dossieHtml(c, state.dos.d, state.dos.err, state.dos.rasc, state.dosAberto, state.dos.chk) + '</div>' +
-    tabs + (state.ptab === 'conversa' ? conversaPanel(c, mails, resps, h4) : state.ptab === 'plataforma' ? plataformaPanel(c, r[3], r[4], h4, r[6]) :
+    tabs + (state.ptab === 'conversa' ? conversaPanel(c, mails, resps, h4) : state.ptab === 'plataforma' ? plataformaPanel(c, r[3], r[4], h4, r[6], state.ins) :
     '<div class="pessoa-grid" style="margin-top:18px">' +
     '<div class="panel" style="padding:16px"><h3 style="font-size:15px; margin-bottom:8px">Tudo que ela fez</h3>' +
     '<p class="sub" style="margin:0 0 10px">Checklist, pergunta única, artigos e o resto do app — mais o que você mandou pra ela. Mais recente primeiro.</p>' +
@@ -1167,6 +1283,7 @@ async function renderPessoa() {
     '</div></div>');
   var ct = $('conv-txt');
   if (ct) { var th = $('conv-thread'); if (th) th.scrollTop = th.scrollHeight; }
+  ligarAoVivo(c, uid);
 }
 
 // ---------- Modais ----------
@@ -2090,6 +2207,8 @@ document.addEventListener('click', async function (e) {
     return pintaDossie(byC(state.sel));
   }
   if (t.dataset.dossalvar) return salvarDossie(t.dataset.dossalvar, t);
+  if (t.dataset.insnova) return publicarInsight(t.dataset.insnova, t);
+  if (t.dataset.insretirar) return retirarInsight(t.dataset.insretirar);
   if (t.dataset.openproposta) return openProposta(t.dataset.openproposta);
   if (t.dataset.open1a1) return open1a1(t.dataset.open1a1);
   if (t.dataset.sinalpick) { $('compose-txt').value = SINAIS[+t.dataset.sinalpick].body(byC(activeCid)); return; }

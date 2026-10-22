@@ -48,3 +48,10 @@ no 2º ano ou vai migrar; ano da escola só para quem escolheu escola).
 No fim do dossiê aberto: andamento do checklist dela (concluídos, atrasados, próximo prazo, itens por categoria, quantas
 vezes ela mexeu em cada item) e a lista de cada clique no checklist (Marcou, Desmarcou, telas, botões). Os itens vêm de
 `checklist_items` (você só lê) e os cliques de `plataforma_cliques`, que o app já grava. Resumo no topo: chip "Checklist 1/4".
+
+## Minha iAssistente (db/crm-insights.sql)
+
+Aba Plataforma da ficha: o card que ela vê agora, o que mudou nele (o que entrou e o que saiu, com hora), e as notas
+que você escreve para ela. O app manda a lista que mostrou (`registrar_insights`) e busca as suas notas
+(`meus_insights_manuais`). Resumo no topo do dossiê: chip "iAssistente 2 notas no ar". A ficha se atualiza sozinha
+quando algo dela muda (Realtime; sem ele, consulta a cada 20 s).

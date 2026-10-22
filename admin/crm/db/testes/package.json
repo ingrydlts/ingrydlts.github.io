@@ -23,7 +23,9 @@
     "test:propostas-ui": "node crm-propostas-ui.test.mjs",
     "test:dossie": "node crm-dossie.test.mjs",
     "test:dossie-ui": "node crm-dossie-ui.test.mjs",
-    "test:checklist": "node crm-checklist.test.mjs"
+    "test:checklist": "node crm-checklist.test.mjs",
+    "test:insights": "node crm-insights.test.mjs",
+    "test:insights-ui": "node crm-insights-ui.test.mjs"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.8"
