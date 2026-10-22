@@ -34,7 +34,7 @@ var MAIL_ST_DICA = { agendado: 'O Brevo aceitou o envio. Entrega e abertura apar
 var MODELO = { boas_vindas: 'Boas-vindas + link de acesso', guia_chamada: 'Guia VLS-TS — convite pra conversa', guia_plataforma: 'Guia VLS-TS — teste da plataforma',naoabriu: 'Reimpacto — não abriu', naoclicou: 'Reimpacto — abriu, não clicou', cliquenaoapp: 'Reimpacto — clicou, não abriu o app', parouapp: 'Reimpacto — abriu o app e parou', guia_alternancia: 'Guia alternância 30+ — convite pra conversa', cf_guia_1: 'Guia Campus France — e-mail 1 (checklist, automático)', cf_guia_conversa: 'Guia Campus France — e-mail 2 (a conversa, automático)', resposta: 'Sua resposta (aba Conversa)' };
 var TYPE_META = {
   sistema: ['Sistema', ''], app: ['Abriu o app', 'u-baixa'], checklist: ['Checklist', 'u-baixa'], pergunta: ['Pergunta única', 'tp-pergunta'],
-  artigo: ['Artigo', 'tp-artigo'], uma_um: ['1:1', 'out'], email: ['E-mail', 'out'], sinal: ['Sinal no dashboard', 'out'],
+  artigo: ['Artigo', 'tp-artigo'], uma_um: ['1:1', 'out'], email: ['E-mail', 'out'], sinal: ['Sinal no dashboard', 'out'], proposta: ['Proposta', 'out'],
   resposta: ['Respondeu e-mail', 'tp-pergunta']
 };
 
@@ -554,6 +554,12 @@ function eventText(e) {
     pergunta_respondida: ['pergunta', 'Você respondeu a pergunta única'],
     um_a_um_agendado: ['uma_um', '1:1 marcado · ' + fmtWhen(d.quando)],
     sinal_enviado: ['sinal', 'Sinal enviado: ' + (d.mensagem || '')],
+    // Propostas (db/crm-propostas.sql): o título vem do banco e passa por esc() onde a linha é montada.
+    proposta_enviada: ['proposta', 'Proposta enviada: ' + (d.titulo || '')],
+    proposta_vista: ['proposta', 'Viu a proposta: ' + (d.titulo || '')],
+    proposta_aceita: ['proposta', 'Aceitou a proposta: ' + (d.titulo || '')],
+    proposta_recusada: ['proposta', 'Recusou a proposta: ' + (d.titulo || '')],
+    proposta_adiada: ['proposta', 'Deixou a proposta para depois: ' + (d.titulo || '')],
     email_enviado: ['email', 'E-mail enviado: ' + (MODELO[d.modelo] || (M && modeloNome(d.modelo)) || d.assunto || d.modelo || '')],
     // Com email_id = respondeu a um e-mail do CRM; sem = escreveu direto para respostas@ (sem ligação com um envio).
     // canal (fase 1a): 'toque' = tocou numa cidade do e-mail 2; 'pagina' = escreveu na página /conversa/.
@@ -813,7 +819,25 @@ function argumentosHtml(cons) {
 var TELAS = { '/dashboard/': 'Dashboard', '/dashboard/#home': 'Início', '/dashboard/#checklist': 'Checklist', '/dashboard/#artigos': 'Artigos',
   '/perfil/': 'Perfil', '/landing/': 'Percurso (perguntas)', '/onboarding/': 'Onboarding' };
 function telaNome(t) { return TELAS[t] || t; }
-function plataformaPanel(c, rc, rs, h4) {
+// Estado da proposta como a ficha mostra. "Expirou" não existe no banco: é prazo vencido enquanto ainda aberta.
+function propostaEstado(x, agora) {
+  var aberta = x.status === 'enviada' || x.status === 'vista';
+  if (aberta && x.prazo && new Date(x.prazo).getTime() <= agora) return ['Expirou', 'u-alta'];
+  if (x.status === 'aceita') return ['Aceita', 'u-baixa'];
+  if (x.status === 'recusada') return ['Recusada', 'u-alta'];
+  if (x.status === 'vista') return [x.adiada_ate && new Date(x.adiada_ate).getTime() > agora ? 'Para depois' : 'Vista', 'u-media'];
+  return ['Enviada', ''];
+}
+function propostaLinha(x, agora) {
+  var st = propostaEstado(x, agora);
+  var quando = x.respondido_em ? ' · respondida ' + fmtDia(x.respondido_em) + ' ' + fmtHora(x.respondido_em)
+    : x.visto_em ? ' · vista ' + fmtDia(x.visto_em) + ' ' + fmtHora(x.visto_em) : ' · ainda não vista';
+  return '<div class="feeditem"><span class="pill ' + st[1] + '">' + esc(st[0]) + '</span><div class="fbody"><p><b>' + esc(x.titulo) + '</b></p>' +
+    '<p class="sub" style="margin:2px 0 0">' + esc(x.texto) + '</p>' +
+    '<time>' + esc(fmtDia(x.criado_em) + ' ' + fmtHora(x.criado_em)) + esc(quando) +
+    (x.prazo ? ' · prazo ' + esc(fmtDia(x.prazo)) : '') + '</time></div></div>';
+}
+function plataformaPanel(c, rc, rs, h4, rp) {
   if (rc && rc.error) {
     return '<div class="panel" style="padding:16px;margin-top:18px"><h3 style="font-size:15px;margin-bottom:8px">Plataforma ainda não ligada</h3>' +
       '<p class="sub" style="margin:0">Falta rodar <b>db/crm-plataforma.sql</b> no SQL Editor do Supabase (depois dele, os cliques novos começam a aparecer aqui).</p></div>';
@@ -839,12 +863,19 @@ function plataformaPanel(c, rc, rs, h4) {
     return '<div class="feeditem"><span class="pill ' + (x.lido_em ? 'u-baixa' : 'u-media') + '">' + (x.lido_em ? 'Lido' : 'Não lido') + '</span><div class="fbody"><p>' + esc(x.mensagem) + '</p>' +
       '<time>' + esc(fmtDia(x.criado_em) + ' ' + fmtHora(x.criado_em)) + (x.lido_em ? ' · lido ' + esc(fmtDia(x.lido_em) + ' ' + fmtHora(x.lido_em)) : '') + '</time></div></div>';
   }).join('') || '<div class="empty">Nenhum sinal enviado ainda.</div>';
+  var propostas = (rp && rp.data) || [], agora = Date.now();
+  var propHtml = rp && rp.error
+    ? '<p class="sub" style="margin:0">Falta rodar <b>db/crm-propostas.sql</b> no SQL Editor do Supabase.</p>'
+    : '<p class="sub" style="margin:0 0 10px">Um cartão com título, texto e botões (Aceitar, Agora não, Recusar). Aparece no sininho e num banner do dashboard dela.</p>' +
+      '<button class="btn primary" type="button" data-openproposta="' + esc(c.id) + '">Nova proposta</button>' +
+      '<div class="feed" style="margin-top:12px">' + (propostas.map(function (x) { return propostaLinha(x, agora); }).join('') || '<div class="empty">Nenhuma proposta enviada ainda.</div>') + '</div>';
   return '<div class="pessoa-grid" style="margin-top:18px">' +
     '<div class="panel" style="padding:16px"><h3 style="font-size:15px; margin-bottom:8px">O que ela fez na plataforma</h3>' +
     '<p class="sub" style="margin:0 0 10px">Telas que abriu e botões e links em que clicou. Mais recente primeiro.</p>' +
     '<div class="feed">' + (itens || '<div class="empty">Nada registrado ainda.</div>') + '</div></div>' +
     '<div style="display:flex; flex-direction:column; gap:16px">' +
     '<div class="panel" style="padding:16px"><h4 style="' + h4 + '">Resumo</h4>' + resumo + '</div>' +
+    '<div class="panel" style="padding:16px"><h4 style="' + h4 + '">Propostas</h4>' + propHtml + '</div>' +
     '<div class="panel" style="padding:16px"><h4 style="' + h4 + '">Sinais</h4>' +
     '<p class="sub" style="margin:0 0 10px">Aparecem no sininho do dashboard dela, como "Mensagem da Ingryd".</p>' +
     '<button class="btn primary" type="button" data-opensinal="' + esc(c.id) + '">Enviar sinal</button>' +
@@ -860,7 +891,8 @@ async function renderPessoa() {
     supabase.from('consentimentos').select('finalidade,aceito,texto,origem,criado_em').eq('contato_id', c.id).order('criado_em', { ascending: false }),
     supabase.from('emails_enviados').select('*').eq('contato_id', c.id).order('criado_em', { ascending: false }),
     state.ptab === 'plataforma' ? supabase.from('plataforma_cliques').select('sessao,tela,alvo,rotulo,criado_em').eq('contato_id', c.id).order('criado_em', { ascending: false }).limit(300) : null,
-    state.ptab === 'plataforma' ? supabase.from('sinais').select('id,mensagem,criado_em,lido_em').eq('contato_id', c.id).order('criado_em', { ascending: false }).limit(30) : null
+    state.ptab === 'plataforma' ? supabase.from('sinais').select('id,mensagem,criado_em,lido_em').eq('contato_id', c.id).order('criado_em', { ascending: false }).limit(30) : null,
+    state.ptab === 'plataforma' ? supabase.from('propostas').select('id,titulo,texto,prazo,status,adiada_ate,criado_em,visto_em,respondido_em').eq('contato_id', c.id).order('criado_em', { ascending: false }).limit(30) : null
   ]);
   if (state.sel !== c.id || state.view !== 'pessoa') return;   // trocou de tela enquanto carregava
   var eventos = r[0].data || [], cons = r[1].data || [], mails = r[2].data || [];
@@ -885,7 +917,7 @@ async function renderPessoa() {
     '<button class="btn" type="button" data-open1a1="' + esc(c.id) + '">Marcar 1:1</button>' +
     '<button class="btn" type="button" data-opensinal="' + esc(c.id) + '">Enviar sinal ao dashboard</button>' +
     '<div class="sel"><select id="stage-pick" aria-label="Mudar estágio">' + STAGES.map(function (s) { return '<option value="' + s.k + '"' + (s.k === c.estagio ? ' selected' : '') + '>Estágio: ' + s.l + '</option>'; }).join('') + '</select></div></div>' +
-    tabs + (state.ptab === 'conversa' ? conversaPanel(c, mails, resps, h4) : state.ptab === 'plataforma' ? plataformaPanel(c, r[3], r[4], h4) :
+    tabs + (state.ptab === 'conversa' ? conversaPanel(c, mails, resps, h4) : state.ptab === 'plataforma' ? plataformaPanel(c, r[3], r[4], h4, r[5]) :
     '<div class="pessoa-grid" style="margin-top:18px">' +
     '<div class="panel" style="padding:16px"><h3 style="font-size:15px; margin-bottom:8px">Tudo que ela fez</h3>' +
     '<p class="sub" style="margin:0 0 10px">Checklist, pergunta única, artigos e o resto do app — mais o que você mandou pra ela. Mais recente primeiro.</p>' +
@@ -935,6 +967,19 @@ function openSinal(cid) {
     SINAIS.map(function (s, i) { return '<button class="chip" type="button" data-sinalpick="' + i + '">' + esc(s.label) + '</button>'; }).join('') + '</div>' +
     '<textarea id="compose-txt" maxlength="500" placeholder="Escreva a mensagem do sinal..." style="min-height:110px"></textarea></div>' +
     '<div class="actions"><button class="btn" type="button" id="modal-cancel">Cancelar</button><button class="btn primary" type="button" id="sinal-send">Enviar sinal →</button></div>');
+}
+
+function openProposta(cid) {
+  var c = byC(cid); activeCid = cid;
+  var inp = 'width:100%;border:1px solid var(--line-2);border-radius:var(--r);background:var(--surface-2);padding:10px 12px';
+  modalOpen(modalTop(c) + '<div class="ctx" style="margin-top:12px"><span class="pill out">Aparece no sininho e no dashboard dela</span></div>' +
+    '<p class="sub" style="margin-top:8px">Ela responde dentro do app: Aceitar, Agora não (volta em 3 dias) ou Recusar. A resposta cai na linha do tempo.</p>' +
+    '<div class="reply" style="margin-top:10px"><label for="prop-titulo">Título</label><input id="prop-titulo" maxlength="120" placeholder="Ex.: Quer um 1:1 de 20 minutos?" style="' + inp + '">' +
+    '<label for="prop-texto">Texto</label><textarea id="prop-texto" maxlength="1000" placeholder="O que você está propondo e por quê..." style="min-height:110px"></textarea>' +
+    '<label for="prop-link">Link (opcional, https)</label><input id="prop-link" type="url" maxlength="500" placeholder="https://..." style="' + inp + '">' +
+    '<label for="prop-rotulo">Texto do link (opcional)</label><input id="prop-rotulo" maxlength="40" placeholder="Ex.: Ver horários" style="' + inp + '">' +
+    '<label for="prop-prazo">Vale até (opcional)</label><input id="prop-prazo" type="date" style="' + inp + '"></div>' +
+    '<div class="actions"><button class="btn" type="button" id="modal-cancel">Cancelar</button><button class="btn primary" type="button" id="proposta-send">Enviar proposta →</button></div>');
 }
 
 // ---------- Modelos de e-mail: o estúdio (Estúdio de e-mails, entregas 1 e 2) ----------
@@ -1815,6 +1860,7 @@ document.addEventListener('click', async function (e) {
     return;
   }
   if (t.dataset.opensinal) return openSinal(t.dataset.opensinal);
+  if (t.dataset.openproposta) return openProposta(t.dataset.openproposta);
   if (t.dataset.open1a1) return open1a1(t.dataset.open1a1);
   if (t.dataset.sinalpick) { $('compose-txt').value = SINAIS[+t.dataset.sinalpick].body(byC(activeCid)); return; }
   if (t.id === 'modal-cancel') return closeCompose();
@@ -1869,6 +1915,18 @@ document.addEventListener('click', async function (e) {
     if (s.error) { t.disabled = false; return fail('enviar o sinal', s.error); }
     closeCompose(); if (state.view === 'pessoa') renderPessoa();
     return toast('Sinal enviado ao dashboard da pessoa');
+  }
+  if (t.id === 'proposta-send') {
+    var pt = $('prop-titulo').value.trim(), px = $('prop-texto').value.trim(), pl = $('prop-link').value.trim(), pd = $('prop-prazo').value;
+    if (!pt || !px) return toast('Preencha o título e o texto');
+    if (pl && !/^https:\/\//i.test(pl)) return toast('O link precisa começar com https://');
+    t.disabled = true;
+    // "Vale até" é o fim daquele dia, no horário do navegador.
+    var po = await supabase.from('propostas').insert({ contato_id: activeCid, titulo: pt, texto: px, link: pl || null, link_rotulo: pl ? ($('prop-rotulo').value.trim() || null) : null,
+      prazo: pd ? new Date(pd + 'T23:59:59').toISOString() : null });
+    if (po.error) { t.disabled = false; return fail('enviar a proposta', po.error); }
+    closeCompose(); if (state.view === 'pessoa') renderPessoa();
+    return toast('Proposta enviada ao dashboard da pessoa');
   }
   if (t.id === 'um1a1-send') {
     var dv = $('modal-date').value;
