@@ -536,6 +536,10 @@ function renderReimpacto() {
 }
 
 // Página da pessoa: junta o que ela fez (eventos) com o que você mandou/marcou.
+// Campos do perfil que o app registra no dossiê (crm-dossie.sql) com nome legível.
+var PERFIL_CAMPO = { persona: 'Persona', data_chegada: 'Data de chegada', documento_vencimento: 'Vencimento do documento', data_prova_frances_master: 'Data da prova de francês',
+  profissao_regulamentada: 'Profissão regulamentada', onboarding_concluido: 'Onboarding concluído', moradia_resolvida: 'Moradia resolvida', conta_resolvida: 'Conta bancária resolvida', securite_resolvida: 'Sécurité sociale resolvida' };
+function perfilValor(v) { return v === 'true' ? 'sim' : v === 'false' ? 'não' : v == null || v === '' ? '—' : /^\d{4}-\d{2}-\d{2}$/.test(v) ? fmtDay(v) : (PERSONAS[v] || v); }
 function eventText(e) {
   var d = e.dados || {}, t = e.tipo;
   var m = {
@@ -548,7 +552,11 @@ function eventText(e) {
     senha_adiada: ['sistema', 'Adiou a criação de senha'],
     caminho_escolhido: ['sistema', 'Escolheu o caminho: ' + (d.rotulo_para || d.para || '—')],
     app_aberto: ['app', 'Abriu o app'],
-    checklist_marcado: ['checklist', 'Marcou um item do checklist' + (d.item ? ': ' + d.item : '')],
+    checklist_marcado: ['checklist', 'Marcou no checklist' + (d.item ? ': ' + d.item : '')],
+    checklist_desmarcado: ['checklist', 'Desmarcou no checklist' + (d.item ? ': ' + d.item : '')],
+    perfil_atualizado: ['sistema', 'Atualizou o perfil · ' + (PERFIL_CAMPO[d.campo] || d.campo) + ': ' + perfilValor(d.para)],
+    clique_importante: ['app', 'Clicou em "' + (d.rotulo || '—') + '"' + (d.tela ? ' (' + telaNome(d.tela) + ')' : '')],
+    sinal_lido: ['sinal', 'Leu o seu sinal: ' + (d.mensagem || '')],
     artigo_lido: ['artigo', 'Leu o artigo' + (d.titulo ? ' "' + d.titulo + '"' : d.slug ? ' ' + d.slug : '')],
     pergunta_unica: ['pergunta', 'Enviou uma pergunta única'],
     pergunta_respondida: ['pergunta', 'Você respondeu a pergunta única'],
