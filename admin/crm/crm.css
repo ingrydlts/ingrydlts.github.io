@@ -497,3 +497,56 @@ select.st-in{height:36px; padding:0 8px}
 .st-excl summary::after{content:" ▾"}
 .st-excl-i{display:flex; gap:8px; align-items:center; justify-content:space-between; padding:6px 4px; border-top:1px solid var(--line); font-size:12.5px}
 .st-excl-i > span{min-width:0} .st-excl-i b{display:block; font-weight:600} .st-excl-i .btn{flex:none}
+
+/* Dossiê: fica no topo da ficha, igual em todas as abas */
+.dossie{padding:16px; margin-top:16px}
+.dhead{display:flex; align-items:center; gap:12px; flex-wrap:wrap}
+.dhead h3{font-size:16px; margin:0}
+.dprog{height:6px; border-radius:999px; background:var(--sunk); margin:10px 0 12px; overflow:hidden}
+.dprog span{display:block; height:100%; background:var(--moss); border-radius:999px}
+.dchips{display:flex; flex-wrap:wrap; gap:6px}
+.dchip{font-size:12.5px; padding:3px 10px; border-radius:999px; background:var(--sunk); color:var(--ink-2)}
+.dchip b{font-weight:700; color:var(--ink-3); margin-right:2px}
+.dcorpo{margin-top:16px; border-top:1px solid var(--line); padding-top:14px; display:flex; flex-direction:column; gap:20px}
+.dbloco h4{font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-3); margin:0 0 10px}
+.dgrid{display:grid; grid-template-columns:repeat(auto-fill,minmax(230px,1fr)); gap:12px}
+.dfield{display:flex; flex-direction:column; gap:4px; min-width:0}
+.dfield.wide{grid-column:1/-1}
+.dfield label{font-size:12px; font-weight:600; color:var(--ink-2)}
+.dfield small{color:var(--ink-3); font-size:11.5px}
+.dfield input,.dfield select,.dfield textarea{width:100%; border:1px solid var(--line-2); border-radius:var(--r); background:var(--surface); color:inherit; padding:9px 11px; font:inherit; line-height:1.45}
+.dfield.vazio input,.dfield.vazio select,.dfield.vazio textarea{border-style:dashed}
+.dfield textarea{resize:vertical}
+.dsub{font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-3); margin:16px 0 8px}
+.dcat{border:1px solid var(--line); border-radius:var(--r); padding:8px 12px; margin-top:8px; background:var(--surface)}
+.dcat summary{cursor:pointer; font-weight:600; font-size:13.5px}
+.dfeed{max-height:340px; overflow-y:auto}
+
+/* Minha iAssistente: o card dela, como ela vê */
+.inscard{background:#FBF0DA; border:1px solid #E6CF9C; border-left:4px solid #B8933F; border-radius:12px; padding:14px 16px; display:flex; flex-direction:column; gap:12px; color:#2B2B2B}
+.inskicker{font-size:11px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:#8A6A1F}
+.insnota{display:flex; gap:10px; align-items:flex-start}
+.insnota p{margin:0; font-size:14px; line-height:1.55}
+.insnota small{color:#7A6A45; font-size:11.5px}
+.insicone{font-size:18px; line-height:1.3}
+.insmud{border-top:1px solid var(--line); padding-top:8px; margin-top:8px}
+.insmud time{display:block; font-size:11.5px; color:var(--ink-3); margin-bottom:2px}
+.insform{display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:10px}
+.insrecente{box-shadow:0 0 0 2px #DEB975}
+.insnovo{color:#8A6A1F}
+.dchip.insnovo{background:#F3DDA8}
+.fbody time + .link{margin-left:8px}
+
+/* Chat com ela */
+.chatfio{max-height:380px; padding:2px 2px 8px}
+.cm.nova{box-shadow:0 0 0 2px #DEB975}
+.cm.cprop{display:flex; flex-direction:column; gap:6px; align-items:flex-start}
+.cm.cprop p{margin:0; opacity:.92}
+.cm.cprop .pill{background:rgba(255,255,255,.2); color:inherit}
+.cacao{background:rgba(255,255,255,.18); border-radius:8px; padding:6px 9px; font-size:13px}
+.cfio{display:flex; flex-direction:column; gap:8px; overflow-y:auto}
+.cm{max-width:86%; padding:9px 12px; border-radius:12px; line-height:1.5; overflow-wrap:anywhere; font-size:13.5px}
+.cm.eu{align-self:flex-end; background:var(--moss); color:#fff}
+.cm.ela{align-self:flex-start; background:var(--sunk); color:var(--ink)}
+.cm small{display:block; opacity:.75; font-size:11px; margin-top:3px}
+.cm .pill{vertical-align:middle}
