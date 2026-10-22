@@ -122,8 +122,9 @@ function defaultTpl(c) {
 }
 function splitTpl(c, k) { var t = TPLS[k].make(c); return { subject: t[0].replace(/^Assunto: /, ''), body: t[1] }; }
 
+function lerDosAberto() { try { return localStorage.getItem('crm_dossie_aberto') === '1'; } catch (e) { return false; } }
 var C = [], Q = [], L = [], R = [], RM = {}, SUBS = {}, M = null, MV = [];
-var state = { ptab: null, rascunho: {}, view: 'hoje', persona: '', sub: '', urg: '', stage: '', orig: '', camp: '', q: '', sel: null, qs: 'nova', qsel: null, inbox: 'perguntas', rs: 'nova', rsel: null, preset: 'todos', seg: '', prevView: 'contatos' };
+var state = { dosAberto: lerDosAberto(), dos: null, ptab: null, rascunho: {}, view: 'hoje', persona: '', sub: '', urg: '', stage: '', orig: '', camp: '', q: '', sel: null, qs: 'nova', qsel: null, inbox: 'perguntas', rs: 'nova', rsel: null, preset: 'todos', seg: '', prevView: 'contatos' };
 var activeCid = null;
 var me = null;
 
@@ -554,6 +555,7 @@ function eventText(e) {
     pergunta_respondida: ['pergunta', 'Você respondeu a pergunta única'],
     um_a_um_agendado: ['uma_um', '1:1 marcado · ' + fmtWhen(d.quando)],
     sinal_enviado: ['sinal', 'Sinal enviado: ' + (d.mensagem || '')],
+    dossie_atualizado: ['sistema', 'Você atualizou o dossiê' + (d.campos ? ' (' + d.campos + (d.campos === 1 ? ' campo)' : ' campos)') : '')],
     // Propostas (db/crm-propostas.sql): o título vem do banco e passa por esc() onde a linha é montada.
     proposta_enviada: ['proposta', 'Proposta enviada: ' + (d.titulo || '')],
     proposta_vista: ['proposta', 'Viu a proposta: ' + (d.titulo || '')],
@@ -882,6 +884,161 @@ function plataformaPanel(c, rc, rs, h4, rp) {
     '<div class="feed" style="margin-top:12px">' + sin + '</div></div></div></div>';
 }
 
+// ---------- Dossiê: tudo que a plataforma pergunta, preenchido por você na ligação (db/crm-dossie.sql) ----------
+// Mora em contatos.dossie (jsonb) e nas colunas nome/persona/fase/nivel_estudos/preocupacao. As chaves são as do app
+// (ano_au_pair, cfNivel, numero_secu...), para o app copiar o dossiê para o perfil dela sem tradução. Fica no topo da
+// ficha, igual em todas as abas. Cada pergunta declara em que situação (persona) e em que condição faz sentido, como no app.
+var SN = [['true', 'Sim'], ['false', 'Não']];
+var DOS_PERSONAS = Object.keys(PERSONAS).filter(function (k) { return k !== 'sem'; }).map(function (k) { return [k, PERSONAS[k]]; });
+var DOS_ETAPAS_CF = ['Ainda não comecei', 'Já sei o que quero estudar', 'Já escolhi as formações', 'Já tenho os documentos', 'Já escrevi as motivações', 'Já resolvi o teste',
+  'Já planejei o orçamento', 'Já preenchi o dossiê', 'Já submeti', 'Já paguei a taxa', 'Dossiê validado', 'Já fiz a entrevista'].map(function (l, i) { return [String(i + 1), (i + 1) + ' · ' + l]; });
+// t: op (lista) · sn (sim/não) · tx (texto) · dt (data) · mes (mês e ano) · lg (texto longo). col: mora numa coluna de contatos.
+var DOS = [
+  { t: 'Quem é ela', campos: [
+    { k: 'nome', l: 'Nome', t: 'tx', col: 1 },
+    { k: 'persona', l: 'Situação (qual checklist)', t: 'op', col: 1, o: DOS_PERSONAS },
+    { k: 'fase', l: 'Fase', t: 'op', col: 1, o: [['planejando', 'Planejando'], ['adaptando', 'Já está se adaptando'], ['urgente', 'Urgente']] },
+    { k: 'nivel_estudos', l: 'Estudos concluídos no Brasil', t: 'op', col: 1, o: [['ensino_medio', 'Ensino médio'], ['superior_incompleto', 'Superior incompleto'],
+      ['superior_completo', 'Superior completo'], ['superior_tecnologo', 'Tecnólogo'], ['pos_graduacao', 'Pós-graduação']] },
+    { k: 'faixa_idade', l: 'Faixa de idade', t: 'op', o: [['menos_26', 'Menos de 26'], ['26_29', '26 a 29'], ['30_mais', '30 ou mais']] },
+    { k: 'profissao_regulamentada', l: 'Profissão regulamentada', t: 'op', o: [['nao', 'Não é o caso'], ['enfermagem', 'Enfermagem'], ['odontologia_medicina', 'Odontologia ou Medicina'], ['outra', 'Outra']] },
+    { k: 'preocupacao', l: 'Preocupação que marcou no funil', t: 'op', col: 1, o: [['prazo', 'Prazo'], ['comeco', 'Por onde começar'], ['sozinha', 'Fazer sozinha'], ['caro', 'Custo']] },
+    { k: 'maior_preocupacao', l: 'O que mais preocupa agora', t: 'op', o: [['prazo', 'Prazo'], ['dinheiro', 'Dinheiro'], ['papelada', 'Papelada'], ['moradia', 'Moradia'], ['frances', 'Francês']] }
+  ] },
+  { t: 'Contato', campos: [
+    { k: 'telefone', l: 'Telefone / WhatsApp', t: 'tx' },
+    { k: 'cidade', l: 'Cidade onde mora hoje', t: 'tx' },
+    { k: 'aceita_notificacao_externa', l: 'Aceita lembretes por fora do app', t: 'sn' }
+  ] },
+  { t: 'Na França', campos: [
+    { k: 'data_chegada', l: 'Data de chegada na França', t: 'dt', ajuda: 'Em branco = ainda não chegou.' },
+    { k: 'moradia_resolvida', l: 'Moradia resolvida', t: 'sn' },
+    { k: 'comprovante_endereco', l: 'Comprovante de endereço no nome dela', t: 'op', o: [['sim', 'Sim'], ['nao', 'Ainda não']], q: function (g) { return g('moradia_resolvida') !== 'false'; } },
+    { k: 'conta_resolvida', l: 'Conta bancária francesa', t: 'sn' },
+    { k: 'securite_resolvida', l: 'Cadastro na sécurité sociale (Ameli)', t: 'sn' },
+    { k: 'numero_secu', l: 'Número de sécu', t: 'op', o: [['recebi', 'Já recebeu'], ['aguardando', 'Pediu, aguardando'], ['nao_pedi', 'Ainda não pediu']] },
+    { k: 'nivel_frances', l: 'Nível de francês', t: 'op', o: [['a1_a2', 'A1 ou A2'], ['b1', 'B1'], ['b2', 'B2'], ['c1_mais', 'C1 ou mais'], ['nao_sei', 'Não sabe']] },
+    { k: 'documento_vencimento', l: 'Vencimento do documento / título', t: 'dt' }
+  ] },
+  { t: 'Au pair → estudante', p: ['au_pair_estudante'], campos: [
+    { k: 'ano_au_pair', l: 'Ano de au pair', t: 'op', o: [['primeiro', 'Primeiro ano'], ['segundo', 'Segundo ano']] },
+    { k: 'intencao_au_pair', l: 'Depois pretende', t: 'op', o: [['renovar', 'Renovar mais um ano'], ['migrar_estudante', 'Migrar para estudante']], q: function (g) { return g('ano_au_pair') === 'primeiro'; } },
+    { k: 'contrato_fim', l: 'Fim do contrato (mês e ano)', t: 'mes', q: function (g) { return g('ano_au_pair') === 'segundo' || (g('ano_au_pair') === 'primeiro' && g('intencao_au_pair') === 'migrar_estudante'); } },
+    { k: 'tem_certificado_matricula', l: 'Já tem certificado de matrícula', t: 'sn', q: function (g) { return g('intencao_au_pair') !== 'renovar'; } },
+    { k: 'comprova_recursos', l: 'Comprova cerca de 877,50 €/mês', t: 'sn' },
+    { k: 'tem_sponsor', l: 'Tem sponsor', t: 'sn', q: function (g) { return g('comprova_recursos') === 'false'; } },
+    { k: 'conta_anef', l: 'Conta na ANEF', t: 'op', o: [['sim', 'Sim'], ['nao', 'Ainda não'], ['nao_sei', 'Não sabe o que é']], q: function (g) { return g('ano_au_pair') === 'segundo' || g('intencao_au_pair') === 'migrar_estudante'; } },
+    { k: 'trilha_estudo', l: 'Caminho de estudo', t: 'op', o: [['fle', 'Curso de FLE'], ['licence', 'Licence'], ['master_alternancia', 'Master em alternância'], ['indefinido', 'Não sabe ainda']] },
+    { k: 'data_prova_frances_master', l: 'Data da prova de francês', t: 'dt', q: function (g) { return g('trilha_estudo') === 'master_alternancia'; } }
+  ] },
+  { t: 'Campus France', p: ['campus_france'], campos: [
+    { k: 'cfNivel', l: 'Nível da candidatura', t: 'op', o: [['l1', '1º ano de Licence ou BUT'], ['arq', 'Arquitetura (ENSA)'], ['l2l3', '2º ou 3º ano de Licence'], ['lpro', 'Licence Pro'],
+      ['master', 'Master'], ['escola', 'Escola de engenharia ou comércio'], ['tecnologo', 'Tecnólogo (decide com os cursos)']] },
+    { k: 'cfEscolaAno', l: 'Ano de entrada na escola', t: 'op', o: [['bac1', '1º ano (bac+1)'], ['bac2', '2º ano (bac+2)'], ['bac3', '3º ano (bac+3)'], ['bac4', '4º ano (bac+4)'], ['bac5', '5º ano (bac+5)'], ['nao_sei', 'Ainda não sabe']],
+      q: function (g) { return g('cfNivel') === 'escola'; } },
+    { k: 'cfTeste', l: 'Teste de francês', t: 'op', o: [['tenho', 'Tem resultado válido'], ['inscrito', 'Inscrita, ainda não fez'], ['nada', 'Não fez nem se inscreveu']] },
+    { k: 'cfEtapa', l: 'Etapa do guia (1 a 12)', t: 'op', o: DOS_ETAPAS_CF },
+    { k: 'cfPrazoCursoTem', l: 'Alguma formação fecha antes da plataforma', t: 'op', o: [['sim', 'Sim'], ['nao', 'Não']] },
+    { k: 'cfPrazoCurso', l: 'Prazo da formação que fecha primeiro', t: 'dt', q: function (g) { return g('cfPrazoCursoTem') === 'sim'; } }
+  ] },
+  { t: 'A ligação', livre: 1, campos: [
+    { k: 'ligacao_data', l: 'Data da ligação', t: 'dt' },
+    { k: 'ligacao_resumo', l: 'Resumo', t: 'lg', ajuda: 'O que ficou combinado, em poucas linhas.' },
+    { k: 'proximos_passos', l: 'Próximos passos', t: 'lg' },
+    { k: 'ligacao_transcricao', l: 'Gravação transcrita', t: 'lg', alto: 1, ajuda: 'Cole aqui o texto da ligação gravada.' }
+  ] }
+];
+var DOS_NUM = { cfEtapa: 1 }, DOS_MES = { contrato_fim: 1 };
+// O valor de um campo como texto de formulário: o que você já digitou e ainda não salvou, ou o que está salvo.
+function dosValor(c, d, rasc, k) {
+  var f = dosCampo(k), v;
+  if (rasc && Object.prototype.hasOwnProperty.call(rasc, k)) v = rasc[k];
+  else v = f && f.col ? c[k] : (d || {})[k];
+  if (v === null || v === undefined) return '';
+  if (DOS_MES[k] && /^\d{4}-\d{2}/.test(v)) return String(v).slice(0, 7);
+  return String(v);
+}
+function dosCampo(k) { for (var i = 0; i < DOS.length; i++) for (var j = 0; j < DOS[i].campos.length; j++) if (DOS[i].campos[j].k === k) return DOS[i].campos[j]; }
+// Blocos e campos que valem para a situação dela agora (a persona que está no formulário).
+function dosVisiveis(c, d, rasc) {
+  var g = function (k) { return dosValor(c, d, rasc, k); }, persona = g('persona') || c.persona;
+  return DOS.filter(function (b) { return !b.p || b.p.indexOf(persona) >= 0; }).map(function (b) {
+    return { t: b.t, livre: b.livre, campos: b.campos.filter(function (f) { return !f.q || f.q(g); }) };
+  });
+}
+function dosProgresso(c, d, rasc) {
+  var n = 0, tot = 0;
+  dosVisiveis(c, d, rasc).forEach(function (b) { if (b.livre) return; b.campos.forEach(function (f) { tot++; if (dosValor(c, d, rasc, f.k) !== '') n++; }); });
+  return { n: n, tot: tot, falta: tot - n };
+}
+function dosCampoHtml(f, c, d, rasc) {
+  var v = dosValor(c, d, rasc, f.k), id = 'dk-' + f.k, a = ' id="' + id + '" data-dk="' + esc(f.k) + '" data-cid="' + esc(c.id) + '"', ctl;
+  if (f.t === 'op' || f.t === 'sn') {
+    ctl = '<select' + a + '><option value="">— sem resposta</option>' + (f.t === 'sn' ? SN : f.o).map(function (o) { return '<option value="' + esc(o[0]) + '"' + (o[0] === v ? ' selected' : '') + '>' + esc(o[1]) + '</option>'; }).join('') + '</select>';
+  } else if (f.t === 'lg') {
+    ctl = '<textarea' + a + ' style="min-height:' + (f.alto ? 190 : 84) + 'px">' + esc(v) + '</textarea>';
+  } else {
+    ctl = '<input' + a + ' type="' + (f.t === 'dt' ? 'date' : f.t === 'mes' ? 'month' : 'text') + '" value="' + esc(v) + '" maxlength="300">';
+  }
+  return '<div class="dfield' + (f.t === 'lg' ? ' wide' : '') + (v === '' ? ' vazio' : '') + '"><label for="' + id + '">' + esc(f.l) + '</label>' + ctl + (f.ajuda ? '<small>' + esc(f.ajuda) + '</small>' : '') + '</div>';
+}
+var DOS_CHIPS = ['persona', 'data_chegada', 'cidade', 'nivel_frances', 'cfNivel', 'ano_au_pair', 'trilha_estudo', 'telefone'];
+function dosChips(c, d, rasc) {
+  var out = [];
+  DOS_CHIPS.forEach(function (k) {
+    var f = dosCampo(k), v = dosValor(c, d, rasc, k); if (v === '') return;
+    var txt = f.o ? (f.o.filter(function (o) { return o[0] === v; })[0] || [0, v])[1] : f.t === 'dt' ? fmtDay(v) : v;
+    out.push('<span class="dchip"><b>' + esc(f.l.replace(/ \(.*/, '')) + '</b> ' + esc(txt) + '</span>');
+  });
+  return out.join('');
+}
+function dossieHtml(c, d, err, rasc, aberto) {
+  if (err) return '<div class="panel dossie"><div class="dhead"><h3>Dossiê</h3></div><p class="sub" style="margin:0">Falta rodar <b>db/crm-dossie.sql</b> no SQL Editor do Supabase.</p></div>';
+  var pr = dosProgresso(c, d, rasc), pct = pr.tot ? Math.round(pr.n * 100 / pr.tot) : 0, sujo = rasc && Object.keys(rasc).length;
+  var corpo = '';
+  if (aberto) {
+    corpo = '<div class="dcorpo">' + dosVisiveis(c, d, rasc).map(function (b) {
+      return '<section class="dbloco"><h4>' + esc(b.t) + '</h4><div class="dgrid">' + b.campos.map(function (f) { return dosCampoHtml(f, c, d, rasc); }).join('') + '</div></section>';
+    }).join('') + '<div class="actions" style="margin-top:6px"><button class="btn primary" type="button" data-dossalvar="' + esc(c.id) + '">Salvar dossiê</button>' +
+      (sujo ? '<span class="sub" style="align-self:center">Há alterações ainda não salvas.</span>' : '') + '</div></div>';
+  }
+  return '<div class="panel dossie"><div class="dhead"><h3>Dossiê</h3><span class="sub">' + pr.n + ' de ' + pr.tot + ' respondidas' + (pr.falta ? ' · faltam ' + pr.falta : ' · completo') + '</span>' +
+    '<button class="btn" type="button" data-dostoggle="1" aria-expanded="' + !!aberto + '" style="margin-left:auto">' + (aberto ? 'Fechar dossiê' : 'Abrir dossiê completo') + '</button></div>' +
+    '<div class="dprog" role="progressbar" aria-valuenow="' + pct + '" aria-valuemin="0" aria-valuemax="100"><span style="width:' + pct + '%"></span></div>' +
+    '<div class="dchips">' + (dosChips(c, d, rasc) || '<span class="sub">Nada preenchido ainda. Abra o dossiê para preencher durante a ligação.</span>') + '</div>' + corpo + '</div>';
+}
+function pintaDossie(c) {
+  var box = $('dossie-box'); if (!box || !state.dos || state.dos.cid !== c.id) return;
+  box.innerHTML = dossieHtml(c, state.dos.d, state.dos.err, state.dos.rasc, state.dosAberto);
+}
+// Salva o que mudou: colunas de contatos direto (como o estágio) e o resto por crm_salvar_dossie.
+async function salvarDossie(cid, t) {
+  var c = byC(cid), rasc = (state.dos && state.dos.cid === cid && state.dos.rasc) || {}, cols = {}, dados = {};
+  Object.keys(rasc).forEach(function (k) {
+    var f = dosCampo(k), v = rasc[k], val;
+    if (!f) return;
+    if (v === '' || v === null || v === undefined) val = null;
+    else if (f.t === 'sn') val = v === 'true';
+    else if (DOS_NUM[k]) val = parseInt(v, 10);
+    else if (DOS_MES[k]) val = v + '-01';
+    else val = f.t === 'lg' ? v : String(v).trim();
+    if (f.col) cols[k] = val === '' ? null : val; else dados[k] = val === '' ? null : val;
+  });
+  if (!Object.keys(cols).length && !Object.keys(dados).length) return toast('Nada mudou');
+  if (t) t.disabled = true;
+  if (Object.keys(cols).length) {
+    var u = await supabase.from('contatos').update(cols).eq('id', cid);
+    if (u.error) { if (t) t.disabled = false; return fail('salvar o dossiê', u.error); }
+  }
+  if (Object.keys(dados).length) {
+    var r = await supabase.rpc('crm_salvar_dossie', { p_contato: cid, p_dados: dados });
+    if (r.error) { if (t) t.disabled = false; return fail('salvar o dossiê', r.error); }
+  }
+  state.dos.rasc = {};
+  await reload(); if (state.view === 'pessoa') renderPessoa();
+  toast('Dossiê salvo');
+}
+
 async function renderPessoa() {
   var c = byC(state.sel);
   if (!c) { $('pessoa-page').innerHTML = '<div class="empty">Pessoa não encontrada.</div>'; return; }
@@ -892,10 +1049,13 @@ async function renderPessoa() {
     supabase.from('emails_enviados').select('*').eq('contato_id', c.id).order('criado_em', { ascending: false }),
     state.ptab === 'plataforma' ? supabase.from('plataforma_cliques').select('sessao,tela,alvo,rotulo,criado_em').eq('contato_id', c.id).order('criado_em', { ascending: false }).limit(300) : null,
     state.ptab === 'plataforma' ? supabase.from('sinais').select('id,mensagem,criado_em,lido_em').eq('contato_id', c.id).order('criado_em', { ascending: false }).limit(30) : null,
+    supabase.from('contatos').select('dossie').eq('id', c.id).maybeSingle(),
     state.ptab === 'plataforma' ? supabase.from('propostas').select('id,titulo,texto,prazo,status,adiada_ate,criado_em,visto_em,respondido_em').eq('contato_id', c.id).order('criado_em', { ascending: false }).limit(30) : null
   ]);
   if (state.sel !== c.id || state.view !== 'pessoa') return;   // trocou de tela enquanto carregava
   var eventos = r[0].data || [], cons = r[1].data || [], mails = r[2].data || [];
+  var rascAnt = state.dos && state.dos.cid === c.id ? state.dos.rasc : {};   // o que você digitou e ainda não salvou sobrevive à troca de aba
+  state.dos = { cid: c.id, d: (r[5].data && r[5].data.dossie) || {}, err: r[5].error, rasc: rascAnt || {} };
   state.mails = mails;
   var last = function (f) { var x = cons.filter(function (k) { return k.finalidade === f; })[0]; return x ? x.aceito : false; };
   var perg = Q.filter(function (x) { return x.contato_id === c.id; });
@@ -917,7 +1077,8 @@ async function renderPessoa() {
     '<button class="btn" type="button" data-open1a1="' + esc(c.id) + '">Marcar 1:1</button>' +
     '<button class="btn" type="button" data-opensinal="' + esc(c.id) + '">Enviar sinal ao dashboard</button>' +
     '<div class="sel"><select id="stage-pick" aria-label="Mudar estágio">' + STAGES.map(function (s) { return '<option value="' + s.k + '"' + (s.k === c.estagio ? ' selected' : '') + '>Estágio: ' + s.l + '</option>'; }).join('') + '</select></div></div>' +
-    tabs + (state.ptab === 'conversa' ? conversaPanel(c, mails, resps, h4) : state.ptab === 'plataforma' ? plataformaPanel(c, r[3], r[4], h4, r[5]) :
+    '<div id="dossie-box">' + dossieHtml(c, state.dos.d, state.dos.err, state.dos.rasc, state.dosAberto) + '</div>' +
+    tabs + (state.ptab === 'conversa' ? conversaPanel(c, mails, resps, h4) : state.ptab === 'plataforma' ? plataformaPanel(c, r[3], r[4], h4, r[6]) :
     '<div class="pessoa-grid" style="margin-top:18px">' +
     '<div class="panel" style="padding:16px"><h3 style="font-size:15px; margin-bottom:8px">Tudo que ela fez</h3>' +
     '<p class="sub" style="margin:0 0 10px">Checklist, pergunta única, artigos e o resto do app — mais o que você mandou pra ela. Mais recente primeiro.</p>' +
@@ -1860,6 +2021,12 @@ document.addEventListener('click', async function (e) {
     return;
   }
   if (t.dataset.opensinal) return openSinal(t.dataset.opensinal);
+  if (t.dataset.dostoggle) {
+    state.dosAberto = !state.dosAberto;
+    try { localStorage.setItem('crm_dossie_aberto', state.dosAberto ? '1' : '0'); } catch (e2) {}
+    return pintaDossie(byC(state.sel));
+  }
+  if (t.dataset.dossalvar) return salvarDossie(t.dataset.dossalvar, t);
   if (t.dataset.openproposta) return openProposta(t.dataset.openproposta);
   if (t.dataset.open1a1) return open1a1(t.dataset.open1a1);
   if (t.dataset.sinalpick) { $('compose-txt').value = SINAIS[+t.dataset.sinalpick].body(byC(activeCid)); return; }
@@ -2040,6 +2207,15 @@ document.addEventListener('paste', function (e) {
   document.execCommand('insertText', false, (e.clipboardData || window.clipboardData).getData('text/plain'));
 });
 document.addEventListener('input', function (e) {
+  if (e.target.dataset && e.target.dataset.dk && state.dos && state.dos.cid === e.target.dataset.cid) {
+    var c0 = byC(e.target.dataset.cid), k0 = e.target.dataset.dk, antes = JSON.stringify(dosVisiveis(c0, state.dos.d, state.dos.rasc).map(function (b) { return b.campos.map(function (f) { return f.k; }); }));
+    state.dos.rasc[k0] = e.target.value;
+    // Uma resposta pode abrir ou esconder perguntas (persona, ano de au pair...): só redesenha quando isso muda.
+    if (JSON.stringify(dosVisiveis(c0, state.dos.d, state.dos.rasc).map(function (b) { return b.campos.map(function (f) { return f.k; }); })) !== antes) {
+      pintaDossie(c0); var el0 = $('dk-' + k0); if (el0 && el0.focus) el0.focus();
+    }
+    return;
+  }
   if (e.target.id === 'reply-txt') $('reply-err').hidden = true;
   if (e.target.id === 'conv-txt') { state.rascunho[e.target.dataset.cid] = e.target.value; $('conv-err').hidden = true; }
 });
