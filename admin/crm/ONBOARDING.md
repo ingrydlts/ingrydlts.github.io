@@ -231,6 +231,15 @@ Contas: semestral = 6 × 69 × 0,8 = 331,20 → 329; anual = 12 × 69 × 0,7 = 5
 
 **Por que os três planos funcionam juntos:** o mensal serve de âncora e deixa o semestral e o anual parecerem uma escolha óbvia. O desconto maior do anual incentiva o compromisso de 12 meses, que é o tempo da jornada (candidatura até a chegada). Mantenha o **anual como destaque** na tela.
 
+**Quanto a pessoa paga no total (valores confirmados):**
+
+| Plano | Em R$ | Em € | Se pagasse mês a mês | Economia |
+|---|---|---|---|---|
+| Mensal | 69/mês | 12/mês | acumulado em 6 meses: R$ 414 · € 72; em 12 meses: R$ 828 · € 144 | nenhuma |
+| Semestral | **R$ 329** | **€ 57** | R$ 414 · € 72 | R$ 85 · € 15 (20,5% · 20,8%) |
+| Anual | **R$ 579** | **€ 99** | R$ 828 · € 144 | R$ 249 · € 45 (30,1% · 31,3%) |
+
+
 ### 11.4 Cartão nos 30 dias (decisão 9)
 
 Decidido: **cartão obrigatório**. Os benchmarks de software mostram 25–60% de conversão com cartão contra 4–15% sem ([ChartMogul](https://chartmogul.com/reports/saas-conversion-report/)), e o seu volume é pequeno e qualificado numa chamada, então converter pesa mais que cadastrar.
@@ -266,9 +275,9 @@ Mostra só a ordem de grandeza. Se o cartão afastar muita gente (por exemplo, m
 
 ## 12. Decisões que ainda faltam
 
-1. **Preço do mensal.** Usei R$ 69 / € 12 como ponto de partida. Confirma ou diz o seu?
+1. ~~Preço do mensal~~ **Confirmado:** R$ 69 / € 12.
 2. **Preço de fundadora:** quantas vagas e por quanto tempo fica aberta a janela? (Veja o limite da agenda na seção 13.)
-3. **As suas 4 h de 1:1 são por semana, por mês ou por dia?** Muda o tamanho do lançamento (seção 13).
+3. ~~4 h de 1:1~~ **Confirmado: por semana** (6 vagas de 40 min por semana, cerca de 24 por mês, descontando os 1:1 do app).
 4. **Quanto custa um 1:1 extra de 30 min** (para quem passar do que o plano inclui)?
 
 ---
