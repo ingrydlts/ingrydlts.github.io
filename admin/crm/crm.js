@@ -905,6 +905,7 @@ async function atualizaAoVivo(cid) {
   state.ins = rk[1]; if (state.dos && state.dos.cid === cid) state.dos.chk = rk[0];
   var painel = $('ins-box'); if (painel) painel.innerHTML = insightsHtml(state.ins, Date.now());
   var cb = $('chk-box'); if (cb) cb.innerHTML = checklistHtml(state.dos && state.dos.chk, Date.now());
+  var cl = $('chk-lateral'); if (cl) cl.innerHTML = checklistLateralHtml(state.dos && state.dos.chk, Date.now(), 'font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-3); margin:0 0 8px');
   var ae = document.activeElement;   // não redesenha o dossiê enquanto você digita nele
   if (!(ae && ae.closest && ae.closest('#dossie-box') && /^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName))) pintaDossie(c);
   if (mudouIns && antes.vivos) toast('Os insights dela mudaram');
@@ -988,6 +989,7 @@ function plataformaPanel(c, rc, rs, h4, rp, ins) {
     '<p class="sub" style="margin:0 0 10px">Telas que abriu e botões e links em que clicou. Mais recente primeiro.</p>' +
     '<div class="feed">' + (itens || '<div class="empty">Nada registrado ainda.</div>') + '</div></div></div>' +
     '<div style="display:flex; flex-direction:column; gap:16px">' +
+    '<div id="chk-lateral">' + checklistLateralHtml(state.dos && state.dos.chk, Date.now(), h4) + '</div>' +
     '<div class="panel" style="padding:16px"><h4 style="' + h4 + '">Resumo</h4>' + resumo + '</div>' +
     '<div class="panel" style="padding:16px"><h4 style="' + h4 + '">Propostas</h4>' + propHtml + '</div>' +
     '<div class="panel" style="padding:16px"><h4 style="' + h4 + '">Sinais</h4>' +
@@ -1128,6 +1130,38 @@ async function buscaChecklist(cid, uid) {
   ]);
   return { semConta: !uid, itens: (rk[0] && rk[0].data) || [], cliques: (rk[1] && rk[1].data) || [], err: (rk[0] && rk[0].error) || null };
 }
+// As contas do resumo, uma vez só: o dossiê e o painel lateral mostram o mesmo número.
+function chkCalc(chk, agora) {
+  var itens = chk.itens || [], hoje = new Date(agora).toISOString().slice(0, 10);
+  var feitos = itens.filter(function (i) { return i.status === 'concluido'; }).length;
+  var atrasados = itens.filter(function (i) { return i.status !== 'concluido' && i.due_date && i.due_date < hoje; });
+  var prox = itens.filter(function (i) { return i.status !== 'concluido' && i.due_date && i.due_date >= hoje; }).sort(function (a, b) { return a.due_date < b.due_date ? -1 : 1; })[0];
+  var cats = [], porCat = {};
+  itens.forEach(function (i) { var k = i.category || 'Outros'; if (!porCat[k]) { porCat[k] = []; cats.push(k); } porCat[k].push(i); });
+  return { itens: itens, hoje: hoje, feitos: feitos, atrasados: atrasados, prox: prox, cats: cats, porCat: porCat };
+}
+function chkResumoKv(cc, cliques) {
+  if (!cc.itens.length) return '<p class="sub" style="margin:0">O checklist dela ainda está vazio.</p>';
+  return kvHtml([['Concluídos', cc.feitos + ' de ' + cc.itens.length + ' (' + Math.round(cc.feitos * 100 / cc.itens.length) + '%)'],
+    ['Atrasados', cc.atrasados.length ? cc.atrasados.length + ' (' + cc.atrasados.slice(0, 3).map(function (i) { return i.label; }).join(', ') + (cc.atrasados.length > 3 ? '…' : '') + ')' : 'nenhum', cc.atrasados.length ? 1 : 0],
+    ['Próximo prazo', cc.prox ? fmtDay(cc.prox.due_date) + ' · ' + cc.prox.label : '—'],
+    ['Último clique no checklist', cliques[0] ? fmtDia(cliques[0].criado_em) + ' às ' + fmtHora(cliques[0].criado_em) : '—']]);
+}
+// O mesmo resumo na coluna da direita das abas Plataforma e Ficha, sem abrir o dossiê.
+function checklistLateralHtml(chk, agora, h4) {
+  var cab = '<h4 style="' + h4 + '">Checklist</h4>';
+  if (!chk) return '<div class="panel" style="padding:16px">' + cab + '<p class="sub" style="margin:0">Carregando…</p></div>';
+  if (chk.err) return '<div class="panel" style="padding:16px">' + cab + '<p class="sub" style="margin:0">Falta rodar <b>db/crm-checklist.sql</b> no SQL Editor do Supabase.</p></div>';
+  if (chk.semConta) return '<div class="panel" style="padding:16px">' + cab + '<p class="sub" style="margin:0">Ela ainda não entrou no app, então ainda não tem checklist.</p></div>';
+  var cc = chkCalc(chk, agora), pct = cc.itens.length ? Math.round(cc.feitos * 100 / cc.itens.length) : 0;
+  return '<div class="panel" style="padding:16px">' + cab + chkResumoKv(cc, chk.cliques || []) +
+    (cc.itens.length ? '<div class="dprog" role="progressbar" aria-valuenow="' + pct + '" aria-valuemin="0" aria-valuemax="100"><span style="width:' + pct + '%"></span></div>' +
+      '<dl class="kv">' + cc.cats.map(function (k) {
+        var its = cc.porCat[k], f = its.filter(function (i) { return i.status === 'concluido'; }).length;
+        return '<dt>' + esc(k) + '</dt><dd>' + f + ' de ' + its.length + '</dd>';
+      }).join('') + '</dl>' : '') +
+    '<p class="sub" style="margin:10px 0 0">Itens e cliques, um a um, estão no dossiê (Abrir dossiê completo).</p></div>';
+}
 function checklistHtml(chk, agora) {
   var cab = '<h4>Checklist e cliques</h4>';
   if (!chk) return '<section class="dbloco">' + cab + '<p class="sub" style="margin:0">Carregando…</p></section>';
@@ -1143,18 +1177,8 @@ function checklistHtml(chk, agora) {
   if (chk.semConta) {
     resumo = '<p class="sub" style="margin:0 0 10px">Ela ainda não entrou no app, então ainda não tem checklist.</p>';
   } else {
-    var itens = chk.itens || [], hoje = new Date(agora).toISOString().slice(0, 10);
-    var feitos = itens.filter(function (i) { return i.status === 'concluido'; }).length;
-    var atrasados = itens.filter(function (i) { return i.status !== 'concluido' && i.due_date && i.due_date < hoje; });
-    var prox = itens.filter(function (i) { return i.status !== 'concluido' && i.due_date && i.due_date >= hoje; }).sort(function (a, b) { return a.due_date < b.due_date ? -1 : 1; })[0];
-    var cats = [], porCat = {};
-    itens.forEach(function (i) { var k = i.category || 'Outros'; if (!porCat[k]) { porCat[k] = []; cats.push(k); } porCat[k].push(i); });
-    resumo = itens.length
-      ? kvHtml([['Concluídos', feitos + ' de ' + itens.length + ' (' + Math.round(feitos * 100 / itens.length) + '%)'],
-          ['Atrasados', atrasados.length ? atrasados.length + ' (' + atrasados.slice(0, 3).map(function (i) { return i.label; }).join(', ') + (atrasados.length > 3 ? '…' : '') + ')' : 'nenhum', atrasados.length ? 1 : 0],
-          ['Próximo prazo', prox ? fmtDay(prox.due_date) + ' · ' + prox.label : '—'],
-          ['Último clique no checklist', cliques[0] ? fmtDia(cliques[0].criado_em) + ' às ' + fmtHora(cliques[0].criado_em) : '—']])
-      : '<p class="sub" style="margin:0">O checklist dela ainda está vazio.</p>';
+    var cc = chkCalc(chk, agora), itens = cc.itens, hoje = cc.hoje, cats = cc.cats, porCat = cc.porCat;
+    resumo = chkResumoKv(cc, cliques);
     lista = cats.map(function (k) {
       var its = porCat[k], f = its.filter(function (i) { return i.status === 'concluido'; }).length;
       return '<details class="dcat"><summary>' + esc(k) + ' <span class="sub">' + f + ' de ' + its.length + '</span></summary>' + its.map(function (i) {
@@ -1266,6 +1290,7 @@ async function renderPessoa() {
       return '<div class="feeditem"><span class="pill ' + m[1] + '">' + esc(m[0]) + '</span><div class="fbody"><p>' + esc(tx[1]) + '</p><time>' + esc(fmtDate(e.criado_em)) + '</time></div></div>';
     }).join('') || '<div class="empty">Nada registrado ainda.</div>') + '</div></div>' +
     '<div style="display:flex; flex-direction:column; gap:16px">' +
+    '<div id="chk-lateral">' + checklistLateralHtml(state.dos && state.dos.chk, Date.now(), h4) + '</div>' +
     emailsPanel(c, mails, h4) +
     '<div class="panel" style="padding:16px"><h4 style="' + h4 + '">Quem é ela</h4>' + kvHtml(respostasKv(c)) + '</div>' +
     '<div class="panel" style="padding:16px"><h4 style="' + h4 + '">De onde veio</h4>' + kvHtml(origemKv(c)) + '</div>' +
