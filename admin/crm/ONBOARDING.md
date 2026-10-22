@@ -359,7 +359,7 @@ Isso dá ao anual um benefício além do desconto, **sem prometer tempo ilimitad
 | Chamada de onboarding de 40 min | existe (é o ponto de entrada) | ✔ incluída | ✔ incluída | ✔ incluída |
 | 1:1 de 30 min por mês, com assunto informado antes | a construir | 0 | **1** | **2** |
 | 1:1 extra avulso | a construir | pago à parte | pago à parte, com desconto | pago à parte, com desconto maior |
-| Dúvidas escritas à Ingryd ("Tenho uma dúvida") | chat existe, limites a construir | **1 por mês** (contador visível), resposta em até 5 dias úteis | **4 por mês**, em até 48 h úteis | **sem limite razoável**, em até 24 h úteis |
+| Dúvidas escritas à Ingryd ("Tenho uma dúvida") | chat existe, limites a construir | **4 interações por mês** (contador visível), resposta em até 5 dias úteis | **8 interações por mês**, em até 48 h úteis | **sem limite razoável**, em até 24 h úteis |
 | Resumo do caso feito pela IA antes de cada 1:1 | a construir | não | ✔ | ✔ |
 | **Radar do seu caso** (o que mudou, o que muda para você, o que fazer, fonte) | existe | **não** (bloqueado, com prévia do título) | ✔ da sua persona | ✔ da sua persona **+ nota pessoal sua + aviso quando muda algo no seu caso** |
 | Conferência de documentos (você envia, a IA pré-confere, a Ingryd valida) | a construir | não | não | **até 2 por mês** |
@@ -393,7 +393,7 @@ Fica no limite, e ainda faltam as dúvidas escritas, a conferência de documento
 ### 14.5 Decisões que preciso de você
 
 1. Os preços de partida do Intermediário (R$ 149 · € 26) e do Completo (R$ 299 · € 52) valem?
-2. Os limites da tabela estão certos para o seu ritmo: 1 / 4 / ilimitado razoável de dúvidas, 0 / 1 / 2 sessões de 1:1, 0 / 0 / 2 conferências de documento?
+2. Limites: dúvidas **4 / 8 / ilimitado razoável** (confirmado); sessões de 1:1 0 / 1 / 2; conferências de documento 0 / 0 / 2 (ainda a confirmar).
 3. Quantas vagas ativas por nível no começo (sugestão: Completo 5, Intermediário 15)?
 4. Você quer WhatsApp/SMS como diferencial do Completo, ou prefere não prometer isso ainda?
 5. Quanto custa o 1:1 extra de 30 min, para quem passar do que o plano inclui?
@@ -417,7 +417,7 @@ O chat hoje é uma conversa direta com você, com cartões Sim / Não / Depois e
 **Recomendação: C, assim:**
 1. O avatar e o chat continuam **para todos**.
 2. Quem escreve cai primeiro na **Central de ajuda**: respostas prontas do `duvidas-frequentes.json` (já escritas por você, guardadas e sem tela hoje) e a IAssistente. A resposta sempre mostra a **fonte** e é rotulada como sugestão.
-3. Se não resolveu, o botão **"Perguntar à Ingryd"** usa a **1 pergunta do mês** do Básico (contador visível: "você tem 1 pergunta este mês"). A resposta chega em até 5 dias úteis, com rascunho feito pela IA que você só ajusta.
+3. Se não resolveu, o botão **"Perguntar à Ingryd"** usa uma das **4 interações do mês** do Básico (8 no Intermediário), com contador visível ("você tem 3 interações este mês"). A resposta chega em até 5 dias úteis, com rascunho feito pela IA que você só ajusta.
 4. As **mensagens que você manda para todos** (cartões, avisos) chegam ao Básico normalmente: um para muitos é barato e mantém a presença.
 5. A **"Pergunta da semana"**: você responde por escrito, uma vez, a dúvida mais repetida (a tabela `perguntas_unicas` já junta isso), e a resposta aparece para todos os níveis. Transforma o seu tempo em conteúdo que atende todo mundo.
 
@@ -449,8 +449,19 @@ O chat hoje é uma conversa direta com você, com cartões Sim / Não / Depois e
 
 ### 14.9 Decisões que preciso de você
 
-1. **Chat do Básico: opção C** (Central de ajuda + 1 pergunta por mês) ou prefere outra?
+1. ~~Chat do Básico~~ **Aprovado: opção C** (Central de ajuda + interações por mês: 4 no Básico, 8 no Intermediário).
 2. **Radar bloqueado com prévia do título** no Básico, e **aviso crítico de prazo para todos** (seção 14.6): de acordo?
 3. **A "Pergunta da semana"** vale o seu tempo (cerca de 30 min por semana)?
 4. **Mensagem pessoal no dia 3** para cada novo usuário: viável na sua agenda, ou só para quem tem sinal de risco?
 5. **Fim da jornada:** quer pausa de cobrança, descer para o Básico, ou os dois?
+
+### 14.10 Aprovado em 2026-10-22
+
+- Radar fora do Básico; **aviso crítico de prazo para todos**; bloqueio feito na função do banco.
+- Chat em três camadas (Central de ajuda → IA com fonte → você). **Interações com a Ingryd por mês: Básico 4, Intermediário 8, Completo sem limite razoável.**
+- Estratégia de engajamento da seção 14.8, incluindo o registro de eventos de uso como pré-requisito.
+- Pergunta da semana, mensagem pessoal no dia 3 e fim da jornada com pausa/descer de nível: seguem as recomendações.
+
+**O que conta como "interação".** Uma pergunta dela e a sua resposta, com réplicas dentro de 48 h na mesma conversa contando como uma só. O que ela escreve à Central de ajuda (respostas prontas e IAssistente) **não conta**. O contador zera todo mês e não acumula.
+
+**Capacidade (a conferir com dados reais).** Se todos usassem a cota inteira, 30 pessoas no Básico (120 interações) e 15 no Intermediário (120) dariam 240 respostas por mês. Com cerca de 3 minutos cada, já com o rascunho da IA, são ~12 h por mês, **fora** das 4 h semanais de 1:1. Na prática ninguém usa a cota toda, mas o painel do CRM deve mostrar **interações usadas e tempo gasto** desde o primeiro mês, para os números serem ajustados com base em uso real.
