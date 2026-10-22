@@ -807,6 +807,50 @@ function argumentosHtml(cons) {
   }).join('');
 }
 
+// ---------- Aba Plataforma: o que ela faz dentro do app + os sinais que você manda ----------
+// Os cliques vêm do app (assets/js/rastreio.js → registrar_cliques → plataforma_cliques, db/crm-plataforma.sql):
+// só os significativos (abrir tela, botão, link), nunca o que ela digita. Mais recente primeiro.
+var TELAS = { '/dashboard/': 'Dashboard', '/dashboard/#home': 'Início', '/dashboard/#checklist': 'Checklist', '/dashboard/#artigos': 'Artigos',
+  '/perfil/': 'Perfil', '/landing/': 'Percurso (perguntas)', '/onboarding/': 'Onboarding' };
+function telaNome(t) { return TELAS[t] || t; }
+function plataformaPanel(c, rc, rs, h4) {
+  if (rc && rc.error) {
+    return '<div class="panel" style="padding:16px;margin-top:18px"><h3 style="font-size:15px;margin-bottom:8px">Plataforma ainda não ligada</h3>' +
+      '<p class="sub" style="margin:0">Falta rodar <b>db/crm-plataforma.sql</b> no SQL Editor do Supabase (depois dele, os cliques novos começam a aparecer aqui).</p></div>';
+  }
+  var cliques = (rc && rc.data) || [], sinais = (rs && rs.data) || [];
+  var PILL = { tela: ['Tela', 'tp-artigo'], botao: ['Botão', 'out'], link: ['Link', 'out'] };
+  var dia = '', itens = cliques.slice(0, 150).map(function (x) {
+    var d = fmtDia(x.criado_em), sep = d !== dia ? '<p class="sub" style="margin:12px 0 4px;font-weight:600">' + esc(d) + '</p>' : '';
+    dia = d;
+    var p = PILL[x.alvo] || PILL.botao;
+    return sep + '<div class="feeditem"><span class="pill ' + p[1] + '">' + p[0] + '</span><div class="fbody"><p>' + esc(x.alvo === 'tela' ? 'Abriu ' + telaNome(x.tela) : (x.rotulo || '(sem texto)')) + '</p>' +
+      '<time>' + esc(fmtHora(x.criado_em)) + (x.alvo === 'tela' ? '' : ' · em ' + esc(telaNome(x.tela))) + '</time></div></div>';
+  }).join('');
+  var porTela = {};
+  cliques.forEach(function (x) { if (x.alvo === 'tela') porTela[telaNome(x.tela)] = (porTela[telaNome(x.tela)] || 0) + 1; });
+  var top = Object.keys(porTela).sort(function (a, b) { return porTela[b] - porTela[a]; }).slice(0, 5);
+  var ult = cliques[0];
+  var resumo = cliques.length
+    ? kvHtml([['Última atividade', fmtDia(ult.criado_em) + ' às ' + fmtHora(ult.criado_em)], ['Cliques registrados', cliques.length + (cliques.length >= 300 ? '+ (mostrando os 300 mais recentes)' : '')],
+        ['Telas mais abertas', top.length ? top.map(function (t) { return t + ' (' + porTela[t] + ')'; }).join(', ') : '—']])
+    : '<p class="sub" style="margin:0">Ainda sem cliques. Aparecem aqui quando ela entrar no app.</p>';
+  var sin = sinais.map(function (x) {
+    return '<div class="feeditem"><span class="pill ' + (x.lido_em ? 'u-baixa' : 'u-media') + '">' + (x.lido_em ? 'Lido' : 'Não lido') + '</span><div class="fbody"><p>' + esc(x.mensagem) + '</p>' +
+      '<time>' + esc(fmtDia(x.criado_em) + ' ' + fmtHora(x.criado_em)) + (x.lido_em ? ' · lido ' + esc(fmtDia(x.lido_em) + ' ' + fmtHora(x.lido_em)) : '') + '</time></div></div>';
+  }).join('') || '<div class="empty">Nenhum sinal enviado ainda.</div>';
+  return '<div class="pessoa-grid" style="margin-top:18px">' +
+    '<div class="panel" style="padding:16px"><h3 style="font-size:15px; margin-bottom:8px">O que ela fez na plataforma</h3>' +
+    '<p class="sub" style="margin:0 0 10px">Telas que abriu e botões e links em que clicou. Mais recente primeiro.</p>' +
+    '<div class="feed">' + (itens || '<div class="empty">Nada registrado ainda.</div>') + '</div></div>' +
+    '<div style="display:flex; flex-direction:column; gap:16px">' +
+    '<div class="panel" style="padding:16px"><h4 style="' + h4 + '">Resumo</h4>' + resumo + '</div>' +
+    '<div class="panel" style="padding:16px"><h4 style="' + h4 + '">Sinais</h4>' +
+    '<p class="sub" style="margin:0 0 10px">Aparecem no sininho do dashboard dela, como "Mensagem da Ingryd".</p>' +
+    '<button class="btn primary" type="button" data-opensinal="' + esc(c.id) + '">Enviar sinal</button>' +
+    '<div class="feed" style="margin-top:12px">' + sin + '</div></div></div></div>';
+}
+
 async function renderPessoa() {
   var c = byC(state.sel);
   if (!c) { $('pessoa-page').innerHTML = '<div class="empty">Pessoa não encontrada.</div>'; return; }
@@ -814,7 +858,9 @@ async function renderPessoa() {
   var r = await Promise.all([
     supabase.from('eventos').select('tipo,dados,criado_em').eq('contato_id', c.id).order('criado_em', { ascending: false }).limit(200),
     supabase.from('consentimentos').select('finalidade,aceito,texto,origem,criado_em').eq('contato_id', c.id).order('criado_em', { ascending: false }),
-    supabase.from('emails_enviados').select('*').eq('contato_id', c.id).order('criado_em', { ascending: false })
+    supabase.from('emails_enviados').select('*').eq('contato_id', c.id).order('criado_em', { ascending: false }),
+    state.ptab === 'plataforma' ? supabase.from('plataforma_cliques').select('sessao,tela,alvo,rotulo,criado_em').eq('contato_id', c.id).order('criado_em', { ascending: false }).limit(300) : null,
+    state.ptab === 'plataforma' ? supabase.from('sinais').select('id,mensagem,criado_em,lido_em').eq('contato_id', c.id).order('criado_em', { ascending: false }).limit(30) : null
   ]);
   if (state.sel !== c.id || state.view !== 'pessoa') return;   // trocou de tela enquanto carregava
   var eventos = r[0].data || [], cons = r[1].data || [], mails = r[2].data || [];
@@ -824,7 +870,7 @@ async function renderPessoa() {
   var resps = R.filter(function (x) { return x.contato_id === c.id; });
   var h4 = 'font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-3); margin:0 0 8px';
   if (!state.ptab) state.ptab = mails.length || resps.length ? 'conversa' : 'ficha';
-  var tabs = '<div class="ptabs" role="tablist" aria-label="Ficha da pessoa">' + [['conversa', 'Conversa'], ['ficha', 'Ficha']].map(function (t) {
+  var tabs = '<div class="ptabs" role="tablist" aria-label="Ficha da pessoa">' + [['conversa', 'Conversa'], ['plataforma', 'Plataforma'], ['ficha', 'Ficha']].map(function (t) {
     return '<button class="ptab" role="tab" type="button" data-ptab="' + t[0] + '" aria-selected="' + (state.ptab === t[0]) + '">' + t[1] +
       (t[0] === 'conversa' && resps.some(function (x) { return x.status === 'nova'; }) ? ' <span class="count">nova</span>' : '') + '</button>';
   }).join('') + '</div>';
@@ -839,7 +885,7 @@ async function renderPessoa() {
     '<button class="btn" type="button" data-open1a1="' + esc(c.id) + '">Marcar 1:1</button>' +
     '<button class="btn" type="button" data-opensinal="' + esc(c.id) + '">Enviar sinal ao dashboard</button>' +
     '<div class="sel"><select id="stage-pick" aria-label="Mudar estágio">' + STAGES.map(function (s) { return '<option value="' + s.k + '"' + (s.k === c.estagio ? ' selected' : '') + '>Estágio: ' + s.l + '</option>'; }).join('') + '</select></div></div>' +
-    tabs + (state.ptab === 'conversa' ? conversaPanel(c, mails, resps, h4) :
+    tabs + (state.ptab === 'conversa' ? conversaPanel(c, mails, resps, h4) : state.ptab === 'plataforma' ? plataformaPanel(c, r[3], r[4], h4) :
     '<div class="pessoa-grid" style="margin-top:18px">' +
     '<div class="panel" style="padding:16px"><h3 style="font-size:15px; margin-bottom:8px">Tudo que ela fez</h3>' +
     '<p class="sub" style="margin:0 0 10px">Checklist, pergunta única, artigos e o resto do app — mais o que você mandou pra ela. Mais recente primeiro.</p>' +
