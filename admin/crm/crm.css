@@ -550,3 +550,24 @@ select.st-in{height:36px; padding:0 8px}
 .cm.ela{align-self:flex-start; background:var(--sunk); color:var(--ink)}
 .cm small{display:block; opacity:.75; font-size:11px; margin-top:3px}
 .cm .pill{vertical-align:middle}
+
+/* Radar: o PESTEL por persona. Seis fatores em colunas; cada item é um cartão. */
+.radar-grid{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px}
+.radar-col{background:var(--surface); border:1px solid var(--line); border-radius:var(--r); padding:12px; display:flex; flex-direction:column; gap:10px; min-width:0}
+.radar-col h3{font-size:15px; display:flex; align-items:center; gap:6px}
+.radar-col h3 .n{margin-left:auto; font-family:var(--body); font-size:11.5px; font-weight:600; color:var(--ink-3)}
+.radar-vazio{font-size:12.5px; color:var(--ink-3); padding:6px 0}
+.radar-card{background:var(--surface-2); border:1px solid var(--line); border-radius:var(--r); padding:10px 12px; display:flex; flex-direction:column; gap:6px}
+.radar-card b{font-weight:600}
+.radar-card p{margin:0; font-size:12.5px; color:var(--ink-2)}
+.radar-card .meta{font-size:11.5px; color:var(--ink-3)}
+.radar-card .acts{display:flex; gap:8px; align-items:center; margin-top:2px}
+.radar-card .acts .btn{padding:4px 12px; font-size:12.5px}
+.radar-aviso{font-size:12px; font-weight:600; color:var(--amber); background:var(--amber-soft); border-radius:6px; padding:4px 8px}
+.radar-ok{font-size:12px; font-weight:600; color:var(--moss-ink); background:var(--moss-soft); border-radius:6px; padding:4px 8px}
+.radar-pessoas{max-height:220px; overflow:auto; border:1px solid var(--line); border-radius:var(--r); margin-top:8px}
+.radar-pessoas label{display:flex; gap:8px; align-items:center; padding:7px 10px; border-top:1px solid var(--line); font-size:13px}
+.radar-pessoas label:first-child{border-top:0}
+.radar-pessoas label.off{color:var(--ink-3)}
+@media (max-width: 980px){ .radar-grid{grid-template-columns:repeat(2,minmax(0,1fr))} }
+@media (max-width: 640px){ .radar-grid{grid-template-columns:1fr} }
