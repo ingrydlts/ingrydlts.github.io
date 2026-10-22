@@ -55,3 +55,12 @@ Aba Plataforma da ficha: o card que ela vê agora, o que mudou nele (o que entro
 que você escreve para ela. O app manda a lista que mostrou (`registrar_insights`) e busca as suas notas
 (`meus_insights_manuais`). Resumo no topo do dossiê: chip "iAssistente 2 notas no ar". A ficha se atualiza sozinha
 quando algo dela muda (Realtime; sem ele, consulta a cada 20 s).
+
+## Chat com ela (db/crm-chat.sql)
+
+Aba Plataforma, coluna da direita, no lugar dos Sinais (que deixam de existir: o botão "Enviar sinal" saiu da ficha).
+Um chat só: o que você escreve, o que ela escreve e as propostas (cartão com Sim / Não / Depois, com "o que acontece no
+sim"). Botões rápidos: Propor 1:1 de 20 min (abre a proposta pronta), Perguntar como está, Pedir documentos e Lembrar do
+prazo (preenchem a caixa, você revisa antes de enviar) e Nova proposta. No app dela, o seu avatar flutua e abre o mesmo
+chat; ela pode escrever ou tocar em "Quero um 1:1 de 20 min", "Tenho uma dúvida" ou "Ajuda com um documento", e isso
+chega aqui como etiqueta. Mensagens dela sem ler aparecem no título do chat e como chip no topo do dossiê.

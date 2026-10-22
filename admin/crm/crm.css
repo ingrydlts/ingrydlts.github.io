@@ -536,3 +536,17 @@ select.st-in{height:36px; padding:0 8px}
 .insnovo{color:#8A6A1F}
 .dchip.insnovo{background:#F3DDA8}
 .fbody time + .link{margin-left:8px}
+
+/* Chat com ela */
+.chatfio{max-height:380px; padding:2px 2px 8px}
+.cm.nova{box-shadow:0 0 0 2px #DEB975}
+.cm.cprop{display:flex; flex-direction:column; gap:6px; align-items:flex-start}
+.cm.cprop p{margin:0; opacity:.92}
+.cm.cprop .pill{background:rgba(255,255,255,.2); color:inherit}
+.cacao{background:rgba(255,255,255,.18); border-radius:8px; padding:6px 9px; font-size:13px}
+.cfio{display:flex; flex-direction:column; gap:8px; overflow-y:auto}
+.cm{max-width:86%; padding:9px 12px; border-radius:12px; line-height:1.5; overflow-wrap:anywhere; font-size:13.5px}
+.cm.eu{align-self:flex-end; background:var(--moss); color:#fff}
+.cm.ela{align-self:flex-start; background:var(--sunk); color:var(--ink)}
+.cm small{display:block; opacity:.75; font-size:11px; margin-top:3px}
+.cm .pill{vertical-align:middle}

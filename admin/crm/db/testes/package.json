@@ -20,12 +20,13 @@
     "test:reimpacto": "node crm-modelos-reimpacto.test.mjs",
     "test:etapa": "node crm-filtro-etapa.test.mjs",
     "test:propostas": "node crm-propostas.test.mjs",
-    "test:propostas-ui": "node crm-propostas-ui.test.mjs",
     "test:dossie": "node crm-dossie.test.mjs",
     "test:dossie-ui": "node crm-dossie-ui.test.mjs",
     "test:checklist": "node crm-checklist.test.mjs",
     "test:insights": "node crm-insights.test.mjs",
-    "test:insights-ui": "node crm-insights-ui.test.mjs"
+    "test:insights-ui": "node crm-insights-ui.test.mjs",
+    "test:chat": "node crm-chat.test.mjs",
+    "test:chat-ui": "node crm-chat-ui.test.mjs"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.8"

@@ -555,6 +555,7 @@ function eventText(e) {
     pergunta_respondida: ['pergunta', 'Você respondeu a pergunta única'],
     um_a_um_agendado: ['uma_um', '1:1 marcado · ' + fmtWhen(d.quando)],
     sinal_enviado: ['sinal', 'Sinal enviado: ' + (d.mensagem || '')],
+    chat_mensagem: ['resposta', 'Escreveu no chat' + (d.acao ? ' (' + (CHAT_ACOES[d.acao] || d.acao).toLowerCase() + ')' : '') + ': ' + (d.trecho || '')],
     insights_alterados: ['sistema', 'Os insights dela mudaram' + ((d.entrou || []).length ? ' · entrou: ' + d.entrou.join(', ') : '') + ((d.saiu || []).length ? ' · saiu: ' + d.saiu.join(', ') : '')],
     dossie_atualizado: ['sistema', 'Você atualizou o dossiê' + (d.campos ? ' (' + d.campos + (d.campos === 1 ? ' campo)' : ' campos)') : '')],
     // Propostas (db/crm-propostas.sql): o título vem do banco e passa por esc() onde a linha é montada.
@@ -887,28 +888,35 @@ function ligarAoVivo(c, uid) {
   var poll = function () { if (!VIVO.timer && VIVO.cid === cid) VIVO.timer = setInterval(function () { atualizaAoVivo(cid); }, 20000); };
   try {
     var ch = supabase.channel('ficha-' + cid);
-    [['insights_vivos', 'contato_id=eq.' + cid], ['insights_historico', 'contato_id=eq.' + cid], ['plataforma_cliques', 'contato_id=eq.' + cid]]
+    [['insights_vivos', 'contato_id=eq.' + cid], ['insights_historico', 'contato_id=eq.' + cid], ['plataforma_cliques', 'contato_id=eq.' + cid], ['chat_mensagens', 'contato_id=eq.' + cid], ['propostas', 'contato_id=eq.' + cid]]
       .concat(uid ? [['checklist_items', 'user_id=eq.' + uid]] : [])
       .forEach(function (t) { ch = ch.on('postgres_changes', { event: '*', schema: 'public', table: t[0], filter: t[1] }, avisa); });
     VIVO.ch = ch.subscribe(function (status) { if (status !== 'SUBSCRIBED') poll(); });
   } catch (e) { poll(); }
 }
-async function atualizaAoVivo(cid) {
+async function atualizaAoVivo(cid, forca) {
   if (state.view !== 'pessoa' || state.sel !== cid || !state.ins || state.ins.cid !== cid) return pararAoVivo();
   var c = byC(cid); if (!c) return;
-  var antes = state.ins;
-  var rk = await Promise.all([buscaChecklist(cid, VIVO.uid), buscaInsights(cid)]);
+  var antes = state.ins, chatAntes = state.chat;
+  var rk = await Promise.all([buscaChecklist(cid, VIVO.uid), buscaInsights(cid), buscaChat(cid)]);
   if (state.view !== 'pessoa' || state.sel !== cid) return;
+  var sigChat = function (ch) { return JSON.stringify(ch ? [ch.msgs.length, ch.msgs.length ? ch.msgs[ch.msgs.length - 1].id : 0, Object.keys(ch.props).map(function (k) { return ch.props[k].status + ch.props[k].adiada_ate; })] : null); };
   var mudouIns = JSON.stringify([rk[1].vivos && rk[1].vivos.atualizado_em, rk[1].hist.length, rk[1].manuais.length]) !== JSON.stringify([antes.vivos && antes.vivos.atualizado_em, antes.hist.length, antes.manuais.length]);
   var mudouChk = JSON.stringify([rk[0].itens, rk[0].cliques.length]) !== JSON.stringify([state.dos && state.dos.chk && state.dos.chk.itens, state.dos && state.dos.chk && state.dos.chk.cliques.length]);
-  if (!mudouIns && !mudouChk) return;
-  state.ins = rk[1]; if (state.dos && state.dos.cid === cid) state.dos.chk = rk[0];
+  var mudouChat = sigChat(rk[2]) !== sigChat(chatAntes);
+  if (!mudouIns && !mudouChk && !mudouChat && !forca) return;
+  state.ins = rk[1]; state.chat = rk[2]; if (state.dos && state.dos.cid === cid) state.dos.chk = rk[0];
   var painel = $('ins-box'); if (painel) painel.innerHTML = insightsHtml(state.ins, Date.now());
   var cb = $('chk-box'); if (cb) cb.innerHTML = checklistHtml(state.dos && state.dos.chk, Date.now());
   var cl = $('chk-lateral'); if (cl) cl.innerHTML = checklistLateralHtml(state.dos && state.dos.chk, Date.now(), 'font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-3); margin:0 0 8px');
+  pintaChat();   // só o fio: o que você está digitando na caixa fica
   var ae = document.activeElement;   // não redesenha o dossiê enquanto você digita nele
   if (!(ae && ae.closest && ae.closest('#dossie-box') && /^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName))) pintaDossie(c);
   if (mudouIns && antes.vivos) toast('Os insights dela mudaram');
+  var idAntes = chatAntes && chatAntes.msgs.length ? chatAntes.msgs[chatAntes.msgs.length - 1].id : 0;
+  var novas = state.chat.msgs.filter(function (m) { return m.id > idAntes && m.de === 'pessoa'; });
+  if (chatAntes && novas.length) toast(displayName(c) + ' escreveu no chat: ' + novas[novas.length - 1].texto.slice(0, 80));
+  if (state.ptab === 'plataforma' && novas.length) marcaChatLido(cid);
 }
 async function publicarInsight(cid, t) {
   var txt = $('ins-texto').value.trim(), ate = $('ins-ate').value;
@@ -927,7 +935,79 @@ async function retirarInsight(id) {
   var b = $('ins-box'); if (b) b.innerHTML = insightsHtml(state.ins, Date.now());
   toast('Nota retirada');
 }
-// ---------- Aba Plataforma: o que ela faz dentro do app + os sinais que você manda ----------
+// ---------- Chat com ela (db/crm-chat.sql) ----------
+// Tudo passa por aqui: o que você escreve, o que ela escreve e as propostas (cartão com Sim / Não / Depois).
+// No app dela, o seu avatar flutua e abre este mesmo chat. Os botões rápidos preenchem a caixa (você revisa antes de
+// enviar) ou abrem a proposta pronta.
+var CHAT_ACOES = { pedido_1a1: 'Pediu um 1:1 de 20 min', duvida: 'Tem uma dúvida', documento: 'Quer ajuda com um documento' };
+async function buscaChat(cid) {
+  var r = await Promise.all([
+    supabase.from('chat_mensagens').select('id,de,tipo,texto,acao,proposta_id,criado_em,lida_em').eq('contato_id', cid).order('id', { ascending: false }).limit(100),
+    supabase.from('propostas').select('id,titulo,texto,acao_sim,prazo,status,adiada_ate,criado_em,visto_em,respondido_em').eq('contato_id', cid).order('criado_em', { ascending: false }).limit(60)
+  ]);
+  var props = {}; ((r[1].data) || []).forEach(function (x) { props[x.id] = x; });
+  return { cid: cid, err: r[0].error || null, msgs: ((r[0].data) || []).slice().reverse(), props: props };
+}
+function chatNaoLidas(chat) { return chat && !chat.err ? chat.msgs.filter(function (m) { return m.de === 'pessoa' && !m.lida_em; }).length : 0; }
+function chatMsgHtml(m, chat, agora) {
+  var hora = esc(fmtDia(m.criado_em) + ' ' + fmtHora(m.criado_em));
+  if (m.tipo === 'proposta') {
+    var p = chat.props[m.proposta_id];
+    if (!p) return '<div class="cm eu">Proposta: ' + esc(m.texto) + '<small>' + hora + '</small></div>';
+    var st = propostaEstado(p, agora);
+    return '<div class="cm eu cprop"><b>Proposta: ' + esc(p.titulo) + '</b><span class="pill ' + st[1] + '">' + esc(st[0]) + '</span><p>' + esc(p.texto) + '</p>' +
+      (p.status === 'aceita' && p.acao_sim ? '<div class="cacao">Ela disse sim. Combinado: ' + esc(p.acao_sim) + '</div>' : '') +
+      '<small>' + hora + (p.prazo ? ' · responder até ' + esc(fmtDay(p.prazo)) : '') + (p.respondido_em ? ' · respondida ' + esc(fmtDia(p.respondido_em) + ' ' + fmtHora(p.respondido_em)) : '') + '</small></div>';
+  }
+  var eu = m.de === 'ingryd';
+  return '<div class="cm ' + (eu ? 'eu' : 'ela') + (!eu && !m.lida_em ? ' nova' : '') + '">' + (m.acao ? '<span class="pill u-media">' + esc(CHAT_ACOES[m.acao] || m.acao) + '</span> ' : '') + esc(m.texto) +
+    '<small>' + hora + (eu ? (m.lida_em ? ' · lida' : ' · ainda não lida') : '') + '</small></div>';
+}
+function chatFioHtml(chat, agora) {
+  if (!chat) return '<div class="empty">Carregando…</div>';
+  if (chat.err) return '<div class="empty">Falta rodar <b>db/crm-chat.sql</b> no SQL Editor do Supabase.</div>';
+  return chat.msgs.map(function (m) { return chatMsgHtml(m, chat, agora); }).join('') || '<div class="empty">Nenhuma mensagem ainda. Escreva abaixo e ela vê no chat do app.</div>';
+}
+function chatPanelHtml(c, chat, h4) {
+  var btn = function (k, rot) { return '<button class="chip" type="button" data-chatquick="' + k + '">' + esc(rot) + '</button>'; };
+  var nova = chatNaoLidas(chat);
+  return '<div class="panel" style="padding:16px"><h4 style="' + h4 + '">Chat com ela' + (nova ? ' <span class="count">' + nova + (nova === 1 ? ' nova' : ' novas') + '</span>' : '') + '</h4>' +
+    '<p class="sub" style="margin:0 0 10px">O que você escreve aparece no chat do app dela, no avatar que flutua. Substitui os sinais.</p>' +
+    '<div class="cfio chatfio" id="chat-fio" aria-live="polite">' + chatFioHtml(chat, Date.now()) + '</div>' +
+    '<div class="tpls" style="margin:10px 0 8px">' + btn('um_a_um', 'Propor 1:1 de 20 min') + btn('como_vai', 'Perguntar como está') + btn('documentos', 'Pedir documentos') + btn('prazo', 'Lembrar do prazo') + btn('proposta', 'Nova proposta') + '</div>' +
+    '<textarea class="notebox" id="chat-txt" maxlength="1000" placeholder="Escreva para ela. Aparece no chat do app." aria-label="Mensagem para ela" style="min-height:76px"></textarea>' +
+    '<div class="actions" style="margin-top:8px"><button class="btn primary" type="button" data-chatenviar="' + esc(c.id) + '">Enviar</button></div></div>';
+}
+function chatTextoRapido(k, c) {
+  var nome = (c.nome || '').split(/\s+/)[0], oi = nome ? 'Oi, ' + nome + '! ' : 'Oi! ';
+  if (k === 'como_vai') return oi + 'Passando para saber como está o seu processo. Alguma dúvida que eu possa ajudar?';
+  if (k === 'documentos') return oi + 'Me conta como está a sua documentação: o que você já tem em mãos e o que ainda falta. Com isso eu te digo o que priorizar.';
+  var prox = state.dos && state.dos.chk && !state.dos.chk.err && !state.dos.chk.semConta ? chkCalc(state.dos.chk, Date.now()).prox : null;
+  return prox ? oi + 'Lembrete: "' + prox.label + '" tem prazo em ' + fmtDay(prox.due_date) + '. Quer ajuda para resolver isso a tempo?' : oi + 'Passando para lembrar de ficar de olho nos prazos do seu checklist. Se algum estiver apertado, me avisa.';
+}
+function pintaChat() {
+  var fio = $('chat-fio'); if (!fio || !state.chat) return;
+  var no_fim = !fio.scrollHeight || fio.scrollTop + fio.clientHeight >= fio.scrollHeight - 40;
+  fio.innerHTML = chatFioHtml(state.chat, Date.now());
+  if (no_fim) fio.scrollTop = fio.scrollHeight;
+}
+// Ela abriu a aba com mensagens suas por ler: marca como lidas (o painel já foi desenhado com o destaque).
+async function marcaChatLido(cid) {
+  if (!chatNaoLidas(state.chat)) return;
+  var r = await supabase.from('chat_mensagens').update({ lida_em: new Date().toISOString() }).eq('contato_id', cid).eq('de', 'pessoa').is('lida_em', null);
+  if (!r.error && state.chat && state.chat.cid === cid) state.chat.msgs.forEach(function (m) { if (m.de === 'pessoa' && !m.lida_em) m.lida_em = new Date().toISOString(); });
+}
+async function enviarChat(cid, t) {
+  var txt = $('chat-txt').value.trim();
+  if (!txt) return;
+  if (t) t.disabled = true;
+  var r = await supabase.rpc('crm_chat_enviar', { p_contato: cid, p_texto: txt });
+  if (t) t.disabled = false;
+  if (r.error) return fail('enviar a mensagem', r.error);
+  $('chat-txt').value = '';
+  await atualizaAoVivo(cid, true);
+}
+// ---------- Aba Plataforma: o que ela faz dentro do app, a sua iAssistente e o chat com ela ----------
 // Os cliques vêm do app (assets/js/rastreio.js → registrar_cliques → plataforma_cliques, db/crm-plataforma.sql):
 // só os significativos (abrir tela, botão, link), nunca o que ela digita. Mais recente primeiro.
 var TELAS = { '/dashboard/': 'Dashboard', '/dashboard/#home': 'Início', '/dashboard/#checklist': 'Checklist', '/dashboard/#artigos': 'Artigos',
@@ -942,21 +1022,12 @@ function propostaEstado(x, agora) {
   if (x.status === 'vista') return [x.adiada_ate && new Date(x.adiada_ate).getTime() > agora ? 'Para depois' : 'Vista', 'u-media'];
   return ['Enviada', ''];
 }
-function propostaLinha(x, agora) {
-  var st = propostaEstado(x, agora);
-  var quando = x.respondido_em ? ' · respondida ' + fmtDia(x.respondido_em) + ' ' + fmtHora(x.respondido_em)
-    : x.visto_em ? ' · vista ' + fmtDia(x.visto_em) + ' ' + fmtHora(x.visto_em) : ' · ainda não vista';
-  return '<div class="feeditem"><span class="pill ' + st[1] + '">' + esc(st[0]) + '</span><div class="fbody"><p><b>' + esc(x.titulo) + '</b></p>' +
-    '<p class="sub" style="margin:2px 0 0">' + esc(x.texto) + '</p>' +
-    '<time>' + esc(fmtDia(x.criado_em) + ' ' + fmtHora(x.criado_em)) + esc(quando) +
-    (x.prazo ? ' · prazo ' + esc(fmtDia(x.prazo)) : '') + '</time></div></div>';
-}
-function plataformaPanel(c, rc, rs, h4, rp, ins) {
+function plataformaPanel(c, rc, h4, chat, ins) {
   if (rc && rc.error) {
     return '<div class="panel" style="padding:16px;margin-top:18px"><h3 style="font-size:15px;margin-bottom:8px">Plataforma ainda não ligada</h3>' +
       '<p class="sub" style="margin:0">Falta rodar <b>db/crm-plataforma.sql</b> no SQL Editor do Supabase (depois dele, os cliques novos começam a aparecer aqui).</p></div>';
   }
-  var cliques = (rc && rc.data) || [], sinais = (rs && rs.data) || [];
+  var cliques = (rc && rc.data) || [];
   var PILL = { tela: ['Tela', 'tp-artigo'], botao: ['Botão', 'out'], link: ['Link', 'out'] };
   var dia = '', itens = cliques.slice(0, 150).map(function (x) {
     var d = fmtDia(x.criado_em), sep = d !== dia ? '<p class="sub" style="margin:12px 0 4px;font-weight:600">' + esc(d) + '</p>' : '';
@@ -973,16 +1044,6 @@ function plataformaPanel(c, rc, rs, h4, rp, ins) {
     ? kvHtml([['Última atividade', fmtDia(ult.criado_em) + ' às ' + fmtHora(ult.criado_em)], ['Cliques registrados', cliques.length + (cliques.length >= 300 ? '+ (mostrando os 300 mais recentes)' : '')],
         ['Telas mais abertas', top.length ? top.map(function (t) { return t + ' (' + porTela[t] + ')'; }).join(', ') : '—']])
     : '<p class="sub" style="margin:0">Ainda sem cliques. Aparecem aqui quando ela entrar no app.</p>';
-  var sin = sinais.map(function (x) {
-    return '<div class="feeditem"><span class="pill ' + (x.lido_em ? 'u-baixa' : 'u-media') + '">' + (x.lido_em ? 'Lido' : 'Não lido') + '</span><div class="fbody"><p>' + esc(x.mensagem) + '</p>' +
-      '<time>' + esc(fmtDia(x.criado_em) + ' ' + fmtHora(x.criado_em)) + (x.lido_em ? ' · lido ' + esc(fmtDia(x.lido_em) + ' ' + fmtHora(x.lido_em)) : '') + '</time></div></div>';
-  }).join('') || '<div class="empty">Nenhum sinal enviado ainda.</div>';
-  var propostas = (rp && rp.data) || [], agora = Date.now();
-  var propHtml = rp && rp.error
-    ? '<p class="sub" style="margin:0">Falta rodar <b>db/crm-propostas.sql</b> no SQL Editor do Supabase.</p>'
-    : '<p class="sub" style="margin:0 0 10px">Um cartão com título, texto e botões (Aceitar, Agora não, Recusar). Aparece no sininho e num banner do dashboard dela.</p>' +
-      '<button class="btn primary" type="button" data-openproposta="' + esc(c.id) + '">Nova proposta</button>' +
-      '<div class="feed" style="margin-top:12px">' + (propostas.map(function (x) { return propostaLinha(x, agora); }).join('') || '<div class="empty">Nenhuma proposta enviada ainda.</div>') + '</div>';
   return '<div class="pessoa-grid" style="margin-top:18px">' +
     '<div style="display:flex; flex-direction:column; gap:16px; min-width:0"><div id="ins-box">' + insightsHtml(ins, Date.now()) + '</div>' +
     '<div class="panel" style="padding:16px"><h3 style="font-size:15px; margin-bottom:8px">O que ela fez na plataforma</h3>' +
@@ -991,11 +1052,7 @@ function plataformaPanel(c, rc, rs, h4, rp, ins) {
     '<div style="display:flex; flex-direction:column; gap:16px">' +
     '<div id="chk-lateral">' + checklistLateralHtml(state.dos && state.dos.chk, Date.now(), h4) + '</div>' +
     '<div class="panel" style="padding:16px"><h4 style="' + h4 + '">Resumo</h4>' + resumo + '</div>' +
-    '<div class="panel" style="padding:16px"><h4 style="' + h4 + '">Propostas</h4>' + propHtml + '</div>' +
-    '<div class="panel" style="padding:16px"><h4 style="' + h4 + '">Sinais</h4>' +
-    '<p class="sub" style="margin:0 0 10px">Aparecem no sininho do dashboard dela, como "Mensagem da Ingryd".</p>' +
-    '<button class="btn primary" type="button" data-opensinal="' + esc(c.id) + '">Enviar sinal</button>' +
-    '<div class="feed" style="margin-top:12px">' + sin + '</div></div></div></div>';
+    '<div id="chat-box">' + chatPanelHtml(c, chat, h4) + '</div></div></div>';
 }
 
 // ---------- Dossiê: tudo que a plataforma pergunta, preenchido por você na ligação (db/crm-dossie.sql) ----------
@@ -1097,6 +1154,10 @@ function dosCampoHtml(f, c, d, rasc) {
   return '<div class="dfield' + (f.t === 'lg' ? ' wide' : '') + (v === '' ? ' vazio' : '') + '"><label for="' + id + '">' + esc(f.l) + '</label>' + ctl + (f.ajuda ? '<small>' + esc(f.ajuda) + '</small>' : '') + '</div>';
 }
 var DOS_CHIPS = ['persona', 'data_chegada', 'cidade', 'nivel_frances', 'cfNivel', 'ano_au_pair', 'trilha_estudo', 'telefone'];
+function dosChipChat(chat) {
+  var n = chatNaoLidas(chat);
+  return n ? '<span class="dchip insnovo"><b>Chat</b> ' + n + (n === 1 ? ' mensagem dela sem ler' : ' mensagens dela sem ler') + '</span>' : '';
+}
 function dosChipChk(chk) {
   if (!chk || chk.err) return '';
   if (chk.semConta) return '<span class="dchip"><b>Checklist</b> ainda sem conta no app</span>';
@@ -1204,7 +1265,7 @@ function dossieHtml(c, d, err, rasc, aberto, chk) {
   return '<div class="panel dossie"><div class="dhead"><h3>Dossiê</h3><span class="sub">' + pr.n + ' de ' + pr.tot + ' respondidas' + (pr.falta ? ' · faltam ' + pr.falta : ' · completo') + '</span>' +
     '<button class="btn" type="button" data-dostoggle="1" aria-expanded="' + !!aberto + '" style="margin-left:auto">' + (aberto ? 'Fechar dossiê' : 'Abrir dossiê completo') + '</button></div>' +
     '<div class="dprog" role="progressbar" aria-valuenow="' + pct + '" aria-valuemin="0" aria-valuemax="100"><span style="width:' + pct + '%"></span></div>' +
-    '<div class="dchips">' + dosChipChk(chk) + dosChipIns(state.ins) + (dosChips(c, d, rasc) || '<span class="sub">Nada preenchido ainda. Abra o dossiê para preencher durante a ligação.</span>') + '</div>' + corpo + '</div>';
+    '<div class="dchips">' + dosChipChk(chk) + dosChipIns(state.ins) + dosChipChat(state.chat) + (dosChips(c, d, rasc) || '<span class="sub">Nada preenchido ainda. Abra o dossiê para preencher durante a ligação.</span>') + '</div>' + corpo + '</div>';
 }
 function pintaDossie(c) {
   var box = $('dossie-box'); if (!box || !state.dos || state.dos.cid !== c.id) return;
@@ -1247,18 +1308,16 @@ async function renderPessoa() {
     supabase.from('consentimentos').select('finalidade,aceito,texto,origem,criado_em').eq('contato_id', c.id).order('criado_em', { ascending: false }),
     supabase.from('emails_enviados').select('*').eq('contato_id', c.id).order('criado_em', { ascending: false }),
     state.ptab === 'plataforma' ? supabase.from('plataforma_cliques').select('sessao,tela,alvo,rotulo,criado_em').eq('contato_id', c.id).order('criado_em', { ascending: false }).limit(300) : null,
-    state.ptab === 'plataforma' ? supabase.from('sinais').select('id,mensagem,criado_em,lido_em').eq('contato_id', c.id).order('criado_em', { ascending: false }).limit(30) : null,
-    supabase.from('contatos').select('dossie,user_id').eq('id', c.id).maybeSingle(),
-    state.ptab === 'plataforma' ? supabase.from('propostas').select('id,titulo,texto,prazo,status,adiada_ate,criado_em,visto_em,respondido_em').eq('contato_id', c.id).order('criado_em', { ascending: false }).limit(30) : null
+    supabase.from('contatos').select('dossie,user_id').eq('id', c.id).maybeSingle()
   ]);
   if (state.sel !== c.id || state.view !== 'pessoa') return;   // trocou de tela enquanto carregava
   var eventos = r[0].data || [], cons = r[1].data || [], mails = r[2].data || [];
   var rascAnt = state.dos && state.dos.cid === c.id ? state.dos.rasc : {};   // o que você digitou e ainda não salvou sobrevive à troca de aba
-  var uid = r[5].data && r[5].data.user_id;
-  var rk = await Promise.all([buscaChecklist(c.id, uid), buscaInsights(c.id)]);
+  var uid = r[4].data && r[4].data.user_id;
+  var rk = await Promise.all([buscaChecklist(c.id, uid), buscaInsights(c.id), buscaChat(c.id)]);
   if (state.sel !== c.id || state.view !== 'pessoa') return;
-  state.ins = rk[1];
-  state.dos = { cid: c.id, d: (r[5].data && r[5].data.dossie) || {}, err: r[5].error, rasc: rascAnt || {}, chk: rk[0] };
+  state.ins = rk[1]; state.chat = rk[2];
+  state.dos = { cid: c.id, d: (r[4].data && r[4].data.dossie) || {}, err: r[4].error, rasc: rascAnt || {}, chk: rk[0] };
   state.mails = mails;
   var last = function (f) { var x = cons.filter(function (k) { return k.finalidade === f; })[0]; return x ? x.aceito : false; };
   var perg = Q.filter(function (x) { return x.contato_id === c.id; });
@@ -1278,10 +1337,9 @@ async function renderPessoa() {
     '<div class="actions" style="margin-top:14px">' +
     '<button class="btn primary" type="button" data-emailfor="' + esc(c.id) + '">Escrever e-mail</button>' +
     '<button class="btn" type="button" data-open1a1="' + esc(c.id) + '">Marcar 1:1</button>' +
-    '<button class="btn" type="button" data-opensinal="' + esc(c.id) + '">Enviar sinal ao dashboard</button>' +
     '<div class="sel"><select id="stage-pick" aria-label="Mudar estágio">' + STAGES.map(function (s) { return '<option value="' + s.k + '"' + (s.k === c.estagio ? ' selected' : '') + '>Estágio: ' + s.l + '</option>'; }).join('') + '</select></div></div>' +
     '<div id="dossie-box">' + dossieHtml(c, state.dos.d, state.dos.err, state.dos.rasc, state.dosAberto, state.dos.chk) + '</div>' +
-    tabs + (state.ptab === 'conversa' ? conversaPanel(c, mails, resps, h4) : state.ptab === 'plataforma' ? plataformaPanel(c, r[3], r[4], h4, r[6], state.ins) :
+    tabs + (state.ptab === 'conversa' ? conversaPanel(c, mails, resps, h4) : state.ptab === 'plataforma' ? plataformaPanel(c, r[3], h4, state.chat, state.ins) :
     '<div class="pessoa-grid" style="margin-top:18px">' +
     '<div class="panel" style="padding:16px"><h3 style="font-size:15px; margin-bottom:8px">Tudo que ela fez</h3>' +
     '<p class="sub" style="margin:0 0 10px">Checklist, pergunta única, artigos e o resto do app — mais o que você mandou pra ela. Mais recente primeiro.</p>' +
@@ -1309,6 +1367,7 @@ async function renderPessoa() {
   var ct = $('conv-txt');
   if (ct) { var th = $('conv-thread'); if (th) th.scrollTop = th.scrollHeight; }
   ligarAoVivo(c, uid);
+  if (state.ptab === 'plataforma') { var fio0 = $('chat-fio'); if (fio0) fio0.scrollTop = fio0.scrollHeight; marcaChatLido(c.id); }
 }
 
 // ---------- Modais ----------
@@ -1320,32 +1379,23 @@ function modalOpen(html, largo) {
 }
 function closeCompose() { $('compose-modal').hidden = true; $('compose-backdrop').hidden = true; }
 function modalTop(c) { return '<div class="top"><div class="' + avClass(c) + '">' + esc(ini(c)) + '</div><div><h3>' + esc(displayName(c)) + '</h3><div class="mail">' + esc(c.email) + '</div></div></div>'; }
-var SINAIS = [
-  { label: 'Lembrete de prazo', body: function (c) { return c.motivo ? 'Lembrete: ' + c.motivo + '.' : 'Lembrete: fique de olho no seu prazo.'; } },
-  { label: 'Dica extra', body: function () { return 'Separei uma dica extra pro seu momento — dá uma olhada no seu checklist.'; } },
-  { label: 'Convite pro 1:1', body: function () { return 'Que tal marcarmos um 1:1 pra destravar o seu caso?'; } }
-];
-function openSinal(cid) {
-  var c = byC(cid); activeCid = cid;
-  modalOpen(modalTop(c) + '<div class="ctx" style="margin-top:12px"><span class="pill out">Aparece no dashboard dela</span></div>' +
-    '<p class="sub" style="margin-top:8px">Não é e-mail — é um aviso dentro do app dela, na próxima vez que abrir.</p>' +
-    '<div class="reply" style="margin-top:10px"><label>Um ponto de partida, se quiser</label><div class="tpls">' +
-    SINAIS.map(function (s, i) { return '<button class="chip" type="button" data-sinalpick="' + i + '">' + esc(s.label) + '</button>'; }).join('') + '</div>' +
-    '<textarea id="compose-txt" maxlength="500" placeholder="Escreva a mensagem do sinal..." style="min-height:110px"></textarea></div>' +
-    '<div class="actions"><button class="btn" type="button" id="modal-cancel">Cancelar</button><button class="btn primary" type="button" id="sinal-send">Enviar sinal →</button></div>');
-}
-
-function openProposta(cid) {
-  var c = byC(cid); activeCid = cid;
+// Propostas prontas dos botões do chat. Você ainda edita tudo antes de enviar.
+var PROP_PRESETS = {
+  um_a_um: { titulo: 'Um 1:1 de 20 minutos?', texto: 'Que tal conversarmos 20 minutos para eu entender melhor o seu caso e te dizer qual é o próximo passo?',
+    acao_sim: 'Ótimo! Te mando os horários disponíveis aqui no chat.' }
+};
+function openProposta(cid, preset) {
+  var c = byC(cid), pr = PROP_PRESETS[preset] || {}; activeCid = cid;
   var inp = 'width:100%;border:1px solid var(--line-2);border-radius:var(--r);background:var(--surface-2);padding:10px 12px';
-  modalOpen(modalTop(c) + '<div class="ctx" style="margin-top:12px"><span class="pill out">Aparece no sininho e no dashboard dela</span></div>' +
-    '<p class="sub" style="margin-top:8px">Ela responde dentro do app: Aceitar, Agora não (volta em 3 dias) ou Recusar. A resposta cai na linha do tempo.</p>' +
-    '<div class="reply" style="margin-top:10px"><label for="prop-titulo">Título</label><input id="prop-titulo" maxlength="120" placeholder="Ex.: Quer um 1:1 de 20 minutos?" style="' + inp + '">' +
-    '<label for="prop-texto">Texto</label><textarea id="prop-texto" maxlength="1000" placeholder="O que você está propondo e por quê..." style="min-height:110px"></textarea>' +
+  modalOpen(modalTop(c) + '<div class="ctx" style="margin-top:12px"><span class="pill out">Chega no chat dela, como um cartão</span></div>' +
+    '<p class="sub" style="margin-top:8px">Ela responde dentro do chat: Sim, Não ou Depois (volta em 3 dias). A resposta aparece aqui e na linha do tempo.</p>' +
+    '<div class="reply" style="margin-top:10px"><label for="prop-titulo">Título</label><input id="prop-titulo" maxlength="120" placeholder="Ex.: Quer um 1:1 de 20 minutos?" value="' + esc(pr.titulo || '') + '" style="' + inp + '">' +
+    '<label for="prop-texto">Texto</label><textarea id="prop-texto" maxlength="1000" placeholder="O que você está propondo e por quê..." style="min-height:100px">' + esc(pr.texto || '') + '</textarea>' +
+    '<label for="prop-sim">O que acontece se ela disser sim</label><textarea id="prop-sim" maxlength="500" placeholder="Ex.: Reservei quinta às 10h. Te mando o link da chamada por e-mail." style="min-height:70px">' + esc(pr.acao_sim || '') + '</textarea>' +
     '<label for="prop-link">Link (opcional, https)</label><input id="prop-link" type="url" maxlength="500" placeholder="https://..." style="' + inp + '">' +
     '<label for="prop-rotulo">Texto do link (opcional)</label><input id="prop-rotulo" maxlength="40" placeholder="Ex.: Ver horários" style="' + inp + '">' +
     '<label for="prop-prazo">Vale até (opcional)</label><input id="prop-prazo" type="date" style="' + inp + '"></div>' +
-    '<div class="actions"><button class="btn" type="button" id="modal-cancel">Cancelar</button><button class="btn primary" type="button" id="proposta-send">Enviar proposta →</button></div>');
+    '<div class="actions"><button class="btn" type="button" id="modal-cancel">Cancelar</button><button class="btn primary" type="button" id="proposta-send">Enviar no chat →</button></div>');
 }
 
 // ---------- Modelos de e-mail: o estúdio (Estúdio de e-mails, entregas 1 e 2) ----------
@@ -2225,18 +2275,24 @@ document.addEventListener('click', async function (e) {
     }
     return;
   }
-  if (t.dataset.opensinal) return openSinal(t.dataset.opensinal);
   if (t.dataset.dostoggle) {
     state.dosAberto = !state.dosAberto;
     try { localStorage.setItem('crm_dossie_aberto', state.dosAberto ? '1' : '0'); } catch (e2) {}
     return pintaDossie(byC(state.sel));
   }
   if (t.dataset.dossalvar) return salvarDossie(t.dataset.dossalvar, t);
+  if (t.dataset.chatenviar) return enviarChat(t.dataset.chatenviar, t);
+  if (t.dataset.chatquick) {
+    var cq = byC(state.sel);
+    if (t.dataset.chatquick === 'um_a_um') return openProposta(cq.id, 'um_a_um');
+    if (t.dataset.chatquick === 'proposta') return openProposta(cq.id);
+    var cx = $('chat-txt'); if (cx) { cx.value = chatTextoRapido(t.dataset.chatquick, cq); cx.focus(); }
+    return;
+  }
   if (t.dataset.insnova) return publicarInsight(t.dataset.insnova, t);
   if (t.dataset.insretirar) return retirarInsight(t.dataset.insretirar);
-  if (t.dataset.openproposta) return openProposta(t.dataset.openproposta);
+  if (t.dataset.openproposta) return openProposta(t.dataset.openproposta, t.dataset.preset);
   if (t.dataset.open1a1) return open1a1(t.dataset.open1a1);
-  if (t.dataset.sinalpick) { $('compose-txt').value = SINAIS[+t.dataset.sinalpick].body(byC(activeCid)); return; }
   if (t.id === 'modal-cancel') return closeCompose();
   if (t.dataset.emailfor) return openCompose(t.dataset.emailfor, t.dataset.tplk);
   if (t.dataset.cmpaba) return cmpAba(t.dataset.cmpaba);
@@ -2282,25 +2338,17 @@ document.addEventListener('click', async function (e) {
     if (r.error) { t.disabled = false; return fail('salvar a resposta', r.error); }
     await reload(); renderQuestions(); return toast('Pergunta marcada como respondida');
   }
-  if (t.id === 'sinal-send') {
-    var msg = $('compose-txt').value.trim(); if (!msg) return;
-    t.disabled = true;
-    var s = await supabase.from('sinais').insert({ contato_id: activeCid, mensagem: msg });
-    if (s.error) { t.disabled = false; return fail('enviar o sinal', s.error); }
-    closeCompose(); if (state.view === 'pessoa') renderPessoa();
-    return toast('Sinal enviado ao dashboard da pessoa');
-  }
   if (t.id === 'proposta-send') {
     var pt = $('prop-titulo').value.trim(), px = $('prop-texto').value.trim(), pl = $('prop-link').value.trim(), pd = $('prop-prazo').value;
     if (!pt || !px) return toast('Preencha o título e o texto');
     if (pl && !/^https:\/\//i.test(pl)) return toast('O link precisa começar com https://');
     t.disabled = true;
-    // "Vale até" é o fim daquele dia, no horário do navegador.
-    var po = await supabase.from('propostas').insert({ contato_id: activeCid, titulo: pt, texto: px, link: pl || null, link_rotulo: pl ? ($('prop-rotulo').value.trim() || null) : null,
-      prazo: pd ? new Date(pd + 'T23:59:59').toISOString() : null });
+    // "Vale até" é o fim daquele dia, no horário do navegador. A proposta e a mensagem do chat nascem juntas (crm_chat_enviar).
+    var po = await supabase.rpc('crm_chat_enviar', { p_contato: activeCid, p_proposta: { titulo: pt, texto: px, acao_sim: $('prop-sim').value.trim() || null,
+      link: pl || null, link_rotulo: pl ? ($('prop-rotulo').value.trim() || null) : null, prazo: pd ? new Date(pd + 'T23:59:59').toISOString() : null } });
     if (po.error) { t.disabled = false; return fail('enviar a proposta', po.error); }
-    closeCompose(); if (state.view === 'pessoa') renderPessoa();
-    return toast('Proposta enviada ao dashboard da pessoa');
+    closeCompose(); if (state.view === 'pessoa') { await atualizaAoVivo(activeCid, true); }
+    return toast('Proposta enviada no chat dela');
   }
   if (t.id === 'um1a1-send') {
     var dv = $('modal-date').value;
