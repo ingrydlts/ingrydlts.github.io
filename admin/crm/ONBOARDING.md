@@ -310,3 +310,88 @@ Isso define o **limite do lançamento**. O CRM deve mostrar **vagas de onboardin
 | Anual | 2 |
 
 Isso dá ao anual um benefício além do desconto, **sem prometer tempo ilimitado**. Cada 1:1 incluído é uma hora sua a menos na agenda, então some ao cálculo de vagas.
+
+---
+
+## 14. Os três níveis: Básico, Intermediário e Completo
+
+> Substitui a tabela de 1:1 por plano da seção 13. O que existe hoje no app está marcado como **existe**; o que ainda não foi construído está como **a construir**. Os limites e preços dos níveis acima do Básico são **propostas** a confirmar.
+
+### 14.1 Princípios (por que a divisão é assim)
+
+1. **Nada que evita erro de prazo fica atrás de um nível maior.** Checklist, prazos reais, leitura de viabilidade e avisos de incongruência são do Básico. Perder um prazo de visto é dano real, e vender a proteção contra isso por degrau seria contra o propósito do produto.
+2. **O que muda de um nível para o outro é o seu tempo.** Os níveis se separam por acesso a você, que é o único custo que cresce com cada cliente. O software custa quase o mesmo para todos.
+3. **A IA reduz o seu tempo por cliente.** Rascunho de resposta, resumo do caso antes do 1:1 e pré-conferência de documento são feitos antes de você olhar, e você só aprova. É o que torna o Intermediário e o Completo viáveis dentro de 4 h por semana.
+4. **Nenhum nível promete tempo ilimitado.** Tudo que depende de você tem número.
+
+### 14.2 O quadro dos níveis
+
+| | **Básico** | **Intermediário** | **Completo** |
+|---|---|---|---|
+| **Mensal (R$ · €)** | 69 · 12 | 149 · 26 | 299 · 52 |
+| **Semestral (−5%)** | 393 · 68 | 849 · 148 | 1.704 · 296 |
+| **Anual (−10%)** | 745 · 129 | 1.609 · 280 | 3.229 · 561 |
+| **Para quem** | Quer se organizar sozinha, com prazos certos | Quer segurança de ter alguém para tirar dúvidas e decidir os pontos críticos | Tem um caso complexo ou pouco tempo e quer acompanhamento de perto |
+
+**Painel (software, igual em todos)**
+
+| Funcionalidade | Situação | Básico | Interm. | Completo |
+|---|---|---|---|---|
+| Home: retrato do momento, próximo passo, conquistas | existe | ✔ | ✔ | ✔ |
+| Checklist da sua persona, em ordem, com prazos reais | existe | ✔ | ✔ | ✔ |
+| Leitura de timing e viabilidade (cabe no prazo?) | existe | ✔ | ✔ | ✔ |
+| Pop-up de escolha de caminho de estudo | existe | ✔ | ✔ | ✔ |
+| Minha IAssistente (notas sobre o seu caso) | existe | ✔ | ✔ | ✔ |
+| Perguntas pertinentes e perfil | existe | ✔ | ✔ | ✔ |
+| Avisos de dados incongruentes | existe | ✔ | ✔ | ✔ |
+| Artigos escolhidos para a sua persona | existe | ✔ | ✔ | ✔ |
+| Lembretes de prazo (sininho no painel) | existe | ✔ | ✔ | ✔ |
+| Radar do seu caso, por persona | existe | ✔ | ✔ | ✔ |
+| Biblioteca (guia oficial, vídeos, sites oficiais por passo) | a construir | ✔ | ✔ | ✔ |
+| Lembretes por e-mail | a construir | ✔ | ✔ | ✔ |
+
+**Acesso a você (o que diferencia os níveis)**
+
+| Funcionalidade | Situação | Básico | Interm. | Completo |
+|---|---|---|---|---|
+| Chamada de onboarding de 40 min | existe (é o ponto de entrada) | ✔ incluída | ✔ incluída | ✔ incluída |
+| 1:1 de 30 min por mês, com assunto informado antes | a construir | 0 | **1** | **2** |
+| 1:1 extra avulso | a construir | pago à parte | pago à parte, com desconto | pago à parte, com desconto maior |
+| Dúvidas escritas ("Tenho uma dúvida") | chat existe, com limites a construir | **1 por mês**, resposta em até 5 dias úteis | **4 por mês**, em até 48 h úteis | **sem limite razoável**, em até 24 h úteis |
+| Resumo do caso feito pela IA antes de cada 1:1 | a construir | não | ✔ | ✔ |
+| Radar com **nota pessoal** para o seu caso | existe (campo no CRM) | só o geral da persona | ✔ nos itens que afetam você | ✔ e você é avisada quando algo muda no seu caso |
+| Conferência de documentos (você envia, a IA pré-confere, a Ingryd valida) | a construir | não | não | **até 2 por mês** |
+| Acompanhamento proativo: a Ingryd te procura quando um prazo do seu caso se aproxima | a construir | não | não | ✔ |
+| Prioridade na agenda | a construir | normal | alta | máxima |
+| Lembretes por WhatsApp/SMS | a construir, ainda não existe envio | não | não | ✔ |
+| **Teto de vagas ativas** | decisão sua | sem teto | teto | **teto baixo** |
+
+### 14.3 Cabe na agenda? (a conta que decide os tetos)
+
+Base: 4 h por semana ≈ 34 sessões de 30 min por mês.
+
+| Uso do mês | Sessões de 30 min |
+|---|---|
+| 10 onboardings de 40 min (≈ 1,3 sessão cada) | 13 |
+| 10 pessoas no Intermediário × 1 sessão | 10 |
+| 5 pessoas no Completo × 2 sessões | 10 |
+| **Total** | **33 de 34** |
+
+Fica no limite, e ainda faltam as dúvidas escritas, a conferência de documentos e o acompanhamento proativo, que também gastam tempo (menos, com a IA preparando). Por isso:
+- **Completo com teto baixo** (sugestão: 5 pessoas ativas no começo), e a lista de espera vira argumento de venda.
+- **Intermediário com teto médio** (sugestão: 15).
+- Os tetos sobem quando você tiver dados reais de quanto tempo cada nível consome. **Medir o tempo por cliente nos primeiros dois meses** é parte do lançamento.
+
+### 14.4 Subir e descer de nível
+
+- **Subir:** a qualquer momento, com cobrança proporcional do Stripe. A pessoa passa a ter os benefícios do nível novo na hora.
+- **Descer:** vale no fim do período já pago (mesma regra do cancelamento, decisão 6). Sessões de 1:1 incluídas não usadas **não se acumulam** de um mês para o outro.
+- **Durante os 30 dias de teste:** acesso a todo o painel, com a chamada de onboarding como único contato humano incluído. Os benefícios de cada nível começam quando o plano é escolhido.
+
+### 14.5 Decisões que preciso de você
+
+1. Os preços de partida do Intermediário (R$ 149 · € 26) e do Completo (R$ 299 · € 52) valem?
+2. Os limites da tabela estão certos para o seu ritmo: 1 / 4 / ilimitado razoável de dúvidas, 0 / 1 / 2 sessões de 1:1, 0 / 0 / 2 conferências de documento?
+3. Quantas vagas ativas por nível no começo (sugestão: Completo 5, Intermediário 15)?
+4. Você quer WhatsApp/SMS como diferencial do Completo, ou prefere não prometer isso ainda?
+5. Quanto custa o 1:1 extra de 30 min, para quem passar do que o plano inclui?
