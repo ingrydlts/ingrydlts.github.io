@@ -651,7 +651,7 @@ function emailsPanel(c, mails, h4) {
       : '<button class="btn primary" type="button" style="margin-top:10px" data-emailfor="' + esc(c.id) + '" data-tplk="' + esc(k) + '">Revisar e enviar →</button>') + '</div>';
   var hist = mails.map(function (m) {
     return '<div class="mailrow"><button class="mh" data-mailtoggle="' + m.id + '" type="button"><b>' + esc(m.assunto || modeloNome(m.modelo)) + '</b>' + mailPill(m) +
-      '<time>' + esc(fmtQuando(m.enviado_em || m.criado_em)) + '</time></button><div class="sub" style="font-size:11.5px;margin-top:2px">' + escmodeloNome(m.modelo) +
+      '<time>' + esc(fmtQuando(m.enviado_em || m.criado_em)) + '</time></button><div class="sub" style="font-size:11.5px;margin-top:2px">' + esc(modeloNome(m.modelo)) +
       (m.aberto_em ? ' · abriu ' + esc(fmtQuando(m.aberto_em)) : '') + (m.clicado_em ? ' · clicou ' + esc(fmtQuando(m.clicado_em)) : '') + '</div>' +
       mailView(m) + '</div>';
   }).join('');
