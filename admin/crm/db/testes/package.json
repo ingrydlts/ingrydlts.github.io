@@ -26,7 +26,9 @@
     "test:insights": "node crm-insights.test.mjs",
     "test:insights-ui": "node crm-insights-ui.test.mjs",
     "test:chat": "node crm-chat.test.mjs",
-    "test:chat-ui": "node crm-chat-ui.test.mjs"
+    "test:chat-ui": "node crm-chat-ui.test.mjs",
+    "test:radar": "node crm-radar.test.mjs",
+    "test:radar-ui": "node crm-radar-ui.test.mjs"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.8"

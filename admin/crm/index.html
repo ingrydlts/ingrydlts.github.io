@@ -10,7 +10,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600&display=swap">
-<link rel="stylesheet" href="crm.css?v=2026-10-22.5">
+<link rel="stylesheet" href="crm.css?v=2026-10-22.6">
 <style>
   .gate{max-width:420px;margin:12vh auto 0;text-align:center}
   .gate h1{font-size:28px;margin-bottom:6px}
@@ -44,6 +44,7 @@
     <button class="nav" data-view="hoje" aria-current="page" type="button">Hoje</button>
     <button class="nav" data-view="contatos" type="button">Contatos <span class="count num" id="c-contatos">0</span></button>
     <button class="nav" data-view="funil" type="button">Funil</button>
+    <button class="nav" data-view="radar" type="button">Radar <span class="count hot num" id="c-radar" hidden>0</span></button>
     <button class="nav" data-view="perguntas" type="button">Caixa de entrada <span class="count hot num" id="c-perguntas">0</span></button>
     <button class="nav" data-view="reimpacto" type="button">Reimpactar <span class="count hot num" id="c-reimpacto">0</span></button>
     <button class="nav" data-view="modelos" type="button">Modelos de e-mail</button>
@@ -65,6 +66,10 @@
           <div id="attention"></div>
         </div>
         <div style="display:flex; flex-direction:column; gap:16px">
+          <div class="panel">
+            <div class="panel-h"><h3>Radar por persona</h3><button class="link" data-go="radar" type="button">Abrir Radar →</button></div>
+            <div id="today-radar"></div>
+          </div>
           <div class="panel">
             <div class="panel-h"><h3>Caixa de entrada</h3><button class="link" data-go="perguntas" type="button">Abrir caixa →</button></div>
             <div id="today-q"></div>
@@ -129,6 +134,16 @@
       <div class="board" id="board" style="margin-top:14px"></div>
     </section>
 
+    <section data-panel="radar" hidden>
+      <div class="head">
+        <div><h2>Radar</h2><p>O PESTEL de cada persona. O que você manda aqui aparece na Home de quem está na plataforma e avisa no sininho.</p></div>
+        <button class="btn primary" type="button" data-radarnovo="1">Novo item</button>
+      </div>
+      <div class="views" id="radar-personas" role="group" aria-label="Persona" style="margin-top:14px"></div>
+      <p class="sub" id="radar-sub" style="margin:10px 0 0"></p>
+      <div class="radar-grid" id="radar-grid" style="margin-top:14px"></div>
+    </section>
+
     <section data-panel="perguntas" hidden>
       <div class="head">
         <div><h2>Caixa de entrada</h2><p>Perguntas únicas dos artigos e respostas aos seus e-mails. Tudo fica na ficha da pessoa.</p></div>
@@ -189,6 +204,6 @@
 <div id="compose-backdrop" hidden style="position:fixed; inset:0; background:rgba(20,18,14,.4); z-index:9"></div>
 <div class="toast" id="toast" hidden></div>
 
-<script type="module" src="crm.js?v=2026-10-22.8"></script>
+<script type="module" src="crm.js?v=2026-10-22.9"></script>
 </body>
 </html>

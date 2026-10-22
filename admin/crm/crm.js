@@ -208,7 +208,10 @@ async function loadAll() {
     supabase.from('modelos_email').select('*').order('ordem', { ascending: true }),
     supabase.from('modelos_email_versoes').select('*').order('versao', { ascending: false }),
     // As compras registradas (evento 'compra', db/crm-estudio-emails-3.sql): a prévia diz se a pessoa cumpre o "Para quem".
-    supabase.from('eventos').select('contato_id,dados').eq('tipo', 'compra').limit(5000)
+    supabase.from('eventos').select('contato_id,dados').eq('tipo', 'compra').limit(5000),
+    // O Radar (db/crm-radar.sql): os itens do PESTEL por persona e o que já foi enviado. Sem a migração, a tela avisa.
+    supabase.from('radar_itens').select('*').is('arquivado_em', null).order('criado_em', { ascending: false }).limit(500),
+    supabase.from('radar_envios').select('item_id,contato_id,visto_em').limit(20000)
   ]);
   if (r[0].error) return fail('carregar os contatos', r[0].error);
   COMPRAS = {};
@@ -228,6 +231,12 @@ async function loadAll() {
   }
   SUBS = {};
   (r[2].data || []).forEach(function (o) { SUBS[o.persona + '|' + o.chave] = o.rotulo; });
+  RD = r[8] && !r[8].error ? (r[8].data || []) : null;
+  RE = {};
+  ((r[9] && !r[9].error && r[9].data) || []).forEach(function (e) {
+    var x = RE[e.item_id] = RE[e.item_id] || { enviados: 0, vistos: 0, contatos: {} };
+    x.enviados++; if (e.visto_em) x.vistos++; x.contatos[e.contato_id] = true;
+  });
 }
 // Os produtos pagos da vitrine (content/produtos-digitais.json, público): nome e slug, para "Para quem" e "Registrar compra".
 var PRODUTOS = [], COMPRAS = {};
@@ -372,6 +381,7 @@ function renderToday() {
   }).join('') || '<div class="empty">Nenhum 1:1 marcado.</div>';
   renderLembretes();
   renderGuias();
+  renderRadarHoje();
 }
 
 // Visão macro: por guia/origem, quantas pessoas passaram, quantas voltaram e quantas aceitam novidades.
@@ -555,6 +565,7 @@ function eventText(e) {
     pergunta_respondida: ['pergunta', 'Você respondeu a pergunta única'],
     um_a_um_agendado: ['uma_um', '1:1 marcado · ' + fmtWhen(d.quando)],
     sinal_enviado: ['sinal', 'Sinal enviado: ' + (d.mensagem || '')],
+    radar_visto: ['app', 'Viu no Radar: ' + (d.titulo || '')],
     chat_mensagem: ['resposta', 'Escreveu no chat' + (d.acao ? ' (' + (CHAT_ACOES[d.acao] || d.acao).toLowerCase() + ')' : '') + ': ' + (d.trecho || '')],
     insights_alterados: ['sistema', 'Os insights dela mudaram' + ((d.entrou || []).length ? ' · entrou: ' + d.entrou.join(', ') : '') + ((d.saiu || []).length ? ' · saiu: ' + d.saiu.join(', ') : '')],
     dossie_atualizado: ['sistema', 'Você atualizou o dossiê' + (d.campos ? ' (' + d.campos + (d.campos === 1 ? ' campo)' : ' campos)') : '')],
@@ -1398,6 +1409,150 @@ function openProposta(cid, preset) {
     '<div class="actions"><button class="btn" type="button" id="modal-cancel">Cancelar</button><button class="btn primary" type="button" id="proposta-send">Enviar no chat →</button></div>');
 }
 
+// ---------- Radar: o PESTEL por persona (db/crm-radar.sql) ----------
+// O PESTEL do Cérebro é geral, por tema, e capta quem ainda não é cliente. Aqui ele vira particular: um item é um fato de
+// um fator já traduzido para UMA persona. Você manda para a persona inteira ou para pessoas específicas (com uma nota
+// sua); o item aparece na Home de quem tem conta e o aviso cai no sininho (sinais). Regra: o cliente recebe antes do
+// post — por isso cada item mostra se algum cliente já foi avisado (avisado_em).
+var FATORES = [['politico', 'Político', '🏛'], ['economico', 'Econômico', '💶'], ['social', 'Social', '👥'],
+  ['tecnologico', 'Tecnológico', '💻'], ['ambiental', 'Ambiental', '🌱'], ['legal', 'Legal', '⚖️']];
+var PERSONAS_RADAR = ['au_pair_estudante', 'campus_france', 'alternancia_emprego', 'conjuge', 'pvt'];
+var RD = null, RE = {}, RS = null;   // RD: itens (null = SQL ainda não rodado) · RE: envios por item · RS: o envio em andamento
+function fatorDe(k) { for (var i = 0; i < FATORES.length; i++) if (FATORES[i][0] === k) return FATORES[i]; return [k, k, '']; }
+function noApp(persona) { return C.filter(function (c) { return c.persona === persona && c.user_id && c.estagio !== 'inativo'; }); }
+function radarDaPersona(persona) { return (RD || []).filter(function (i) { return i.persona === persona; }); }
+function radarSemAviso(itens) { return itens.filter(function (i) { return !i.avisado_em; }); }
+function radarHoje() { return new Date().toISOString().slice(0, 10); }
+function radarLinkSeguro(u) { return typeof u === 'string' && /^https:\/\//i.test(u) ? u : null; }
+
+function renderRadarHoje() {
+  var box = $('today-radar'); if (!box) return;
+  if (RD === null) {
+    box.innerHTML = '<div class="empty">O Radar ainda não está ligado: rode <b>crm-radar.sql</b> no Supabase.</div>';
+    $('c-radar').hidden = true; return;
+  }
+  var total = 0;
+  box.innerHTML = PERSONAS_RADAR.map(function (p) {
+    var itens = radarDaPersona(p), sem = radarSemAviso(itens).length; total += sem;
+    var pill = !itens.length ? '<span class="pill out">sem itens</span>' : sem ? '<span class="pill u-media"><span class="dot"></span>' + sem + ' sem aviso</span>' : '<span class="pill u-baixa"><span class="dot"></span>em dia</span>';
+    return '<button class="row" data-radarabrir="' + p + '" type="button"><div class="who"><b>' + esc(PERSONAS[p]) + '</b><span>' + noApp(p).length + ' na plataforma · ' + itens.length + (itens.length === 1 ? ' item' : ' itens') + '</span></div>' + pill + '</button>';
+  }).join('');
+  $('c-radar').textContent = total; $('c-radar').hidden = total === 0;
+}
+
+function renderRadar() {
+  var grid = $('radar-grid'); if (!grid) return;
+  if (RD === null) {
+    $('radar-personas').innerHTML = ''; $('radar-sub').textContent = '';
+    grid.innerHTML = '<div class="empty" style="grid-column:1/-1">O Radar ainda não está ligado: rode <b>admin/crm/db/crm-radar.sql</b> no SQL Editor do Supabase e recarregue.</div>';
+    return;
+  }
+  if (!state.rpersona) {
+    var comPendencia = PERSONAS_RADAR.filter(function (p) { return radarSemAviso(radarDaPersona(p)).length; })[0];
+    state.rpersona = comPendencia || 'campus_france';
+  }
+  var p = state.rpersona, itens = radarDaPersona(p), sem = radarSemAviso(itens).length;
+  $('radar-personas').innerHTML = '<span class="lbl">Persona</span>' + PERSONAS_RADAR.map(function (k) {
+    return '<button class="chip" data-radarpersona="' + k + '" aria-pressed="' + (k === p) + '" type="button">' + esc(PERSONAS[k]) + '</button>';
+  }).join('');
+  $('radar-sub').textContent = noApp(p).length + ' pessoas dessa persona na plataforma · ' + itens.length + (itens.length === 1 ? ' item' : ' itens') +
+    (sem ? ' · ' + sem + ' ainda sem nenhum cliente avisado (o post só depois: o cliente recebe primeiro)' : '');
+  var hoje = radarHoje();
+  grid.innerHTML = FATORES.map(function (f) {
+    var doFator = itens.filter(function (i) { return i.fator === f[0]; });
+    return '<div class="radar-col"><h3><span aria-hidden="true">' + f[2] + '</span>' + esc(f[1]) + '<span class="n num">' + doFator.length + '</span></h3>' +
+      (doFator.map(function (i) {
+        var env = RE[i.id], fonte = radarLinkSeguro(i.fonte_url), venc = i.vigente_ate && i.vigente_ate < hoje;
+        return '<div class="radar-card"><b>' + esc(i.titulo) + '</b><p>' + esc(i.texto) + '</p>' +
+          (i.impacto ? '<p><b>Para ela:</b> ' + esc(i.impacto) + '</p>' : '') + (i.acao ? '<p><b>O que fazer:</b> ' + esc(i.acao) + '</p>' : '') +
+          '<div class="meta">Verificado em ' + esc(fmtDay(i.verificado_em)) + (i.fonte_rotulo ? ' · ' + (fonte ? '<a href="' + esc(fonte) + '" target="_blank" rel="noopener">' + esc(i.fonte_rotulo) + '</a>' : esc(i.fonte_rotulo)) : '') +
+          (venc ? ' · <b style="color:var(--red)">vigência encerrada</b>' : i.vigente_ate ? ' · vale até ' + esc(fmtDay(i.vigente_ate)) : '') + (i.origem === 'cerebro' ? ' · do Cérebro' : '') + '</div>' +
+          (env ? '<span class="radar-ok">Enviado a ' + env.enviados + ' · ' + env.vistos + (env.vistos === 1 ? ' viu' : ' viram') + '</span>' : '<span class="radar-aviso">Nenhum cliente avisado ainda</span>') +
+          '<div class="acts"><button class="btn primary" type="button" data-radarenviar="' + i.id + '">Enviar</button><button class="link" type="button" data-radararquivar="' + i.id + '">Arquivar</button></div></div>';
+      }).join('') || '<div class="radar-vazio">Nada neste fator.</div>') +
+      '<button class="link" type="button" data-radarnovo="1" data-radarfator="' + f[0] + '">+ Adicionar</button></div>';
+  }).join('');
+}
+
+var RADAR_INP = 'width:100%;border:1px solid var(--line-2);border-radius:var(--r);background:var(--surface-2);padding:10px 12px';
+function radarForm(persona, fator) {
+  if (RD === null) return toast('Rode o crm-radar.sql no Supabase primeiro');
+  persona = persona || state.rpersona || 'campus_france'; fator = fator || 'politico';
+  var opt = function (lista, atual) { return lista.map(function (o) { return '<option value="' + o[0] + '"' + (o[0] === atual ? ' selected' : '') + '>' + esc(o[1]) + '</option>'; }).join(''); };
+  modalOpen('<h3>Novo item do Radar</h3><p class="sub" style="margin-top:6px">Um fato, traduzido para uma persona. Quem recebe vê exatamente isto, com a fonte e a data.</p>' +
+    '<div class="reply" style="margin-top:10px">' +
+    '<label for="rd-persona">Persona</label><select id="rd-persona" style="' + RADAR_INP + '">' + opt(PERSONAS_RADAR.map(function (k) { return [k, PERSONAS[k]]; }), persona) + '</select>' +
+    '<label for="rd-fator">Fator</label><select id="rd-fator" style="' + RADAR_INP + '">' + opt(FATORES.map(function (f) { return [f[0], f[2] + ' ' + f[1]]; }), fator) + '</select>' +
+    '<label for="rd-titulo">Título (o que mudou, em uma linha)</label><input id="rd-titulo" maxlength="120" placeholder="Ex.: Recursos mínimos do visto subiram" style="' + RADAR_INP + '">' +
+    '<label for="rd-texto">O que mudou</label><textarea id="rd-texto" maxlength="600" style="min-height:80px" placeholder="O fato, com número e data."></textarea>' +
+    '<label for="rd-impacto">O que isso muda para essa persona (opcional)</label><textarea id="rd-impacto" maxlength="400" style="min-height:60px"></textarea>' +
+    '<label for="rd-acao">O que fazer (opcional)</label><textarea id="rd-acao" maxlength="300" style="min-height:50px"></textarea>' +
+    '<label for="rd-fonte-rotulo">Fonte (nome)</label><input id="rd-fonte-rotulo" maxlength="80" placeholder="Ex.: Decreto 2026-526" style="' + RADAR_INP + '">' +
+    '<label for="rd-fonte-url">Fonte (link https)</label><input id="rd-fonte-url" type="url" maxlength="500" placeholder="https://..." style="' + RADAR_INP + '">' +
+    '<label for="rd-verificado">Conferido na fonte em</label><input id="rd-verificado" type="date" value="' + radarHoje() + '" style="' + RADAR_INP + '">' +
+    '<label for="rd-vigente">Vale até (opcional)</label><input id="rd-vigente" type="date" style="' + RADAR_INP + '"></div>' +
+    '<div class="actions"><button class="btn" type="button" id="modal-cancel">Cancelar</button><button class="btn primary" type="button" id="radar-salvar">Salvar e escolher a quem enviar →</button></div>');
+}
+async function radarSalvar(btn) {
+  var v = function (id) { return $(id).value.trim(); };
+  var titulo = v('rd-titulo'), texto = v('rd-texto'), url = v('rd-fonte-url');
+  if (!titulo || !texto) return toast('Preencha o título e o que mudou');
+  if (url && !/^https:\/\//i.test(url)) return toast('O link da fonte precisa começar com https://');
+  btn.disabled = true;
+  var r = await supabase.from('radar_itens').insert({
+    persona: v('rd-persona'), fator: v('rd-fator'), titulo: titulo, texto: texto, impacto: v('rd-impacto') || null, acao: v('rd-acao') || null,
+    fonte_rotulo: v('rd-fonte-rotulo') || null, fonte_url: url || null, verificado_em: v('rd-verificado') || radarHoje(), vigente_ate: v('rd-vigente') || null
+  }).select('id,persona').single();
+  if (r.error) { btn.disabled = false; return fail('salvar o item', r.error); }
+  state.rpersona = r.data.persona;
+  await reload(); if (state.view === 'radar') renderRadar();
+  radarEnviarForm(r.data.id);
+}
+async function radarArquivar(id) {
+  var i = (RD || []).filter(function (x) { return x.id === id; })[0]; if (!i) return;
+  if (!window.confirm('Arquivar "' + i.titulo + '"? Ele some da Home de quem já recebeu.')) return;
+  var r = await supabase.from('radar_itens').update({ arquivado_em: new Date().toISOString() }).eq('id', id);
+  if (r.error) return fail('arquivar o item', r.error);
+  await reload(); renderRadar(); toast('Item arquivado');
+}
+function radarRotuloEnviar() {
+  if (!RS) return 'Enviar';
+  var i = (RD || []).filter(function (x) { return x.id === RS.item; })[0]; if (!i) return 'Enviar';
+  var ja = (RE[i.id] || { contatos: {} }).contatos;
+  var n = RS.modo === 'todos' ? noApp(i.persona).filter(function (c) { return !ja[c.id]; }).length : Object.keys(RS.sel).length;
+  return 'Enviar para ' + n + (n === 1 ? ' pessoa' : ' pessoas') + ' →';
+}
+function radarEnviarForm(id, manter) {
+  var i = (RD || []).filter(function (x) { return x.id === id; })[0]; if (!i) return;
+  var notaAtual = manter && $('radar-nota') ? $('radar-nota').value : '';
+  if (!manter || !RS || RS.item !== id) RS = { item: id, modo: 'todos', sel: {} };
+  var pessoas = noApp(i.persona), ja = (RE[id] || { contatos: {} }).contatos, f = fatorDe(i.fator);
+  var lista = pessoas.length ? pessoas.map(function (c) {
+    var recebeu = !!ja[c.id];
+    return '<label class="' + (recebeu ? 'off' : '') + '"><input type="checkbox" data-radarsel="' + esc(c.id) + '"' + (recebeu ? ' disabled' : '') + (RS.sel[c.id] ? ' checked' : '') + '> ' + esc(displayName(c)) + (recebeu ? ' <span class="sub">· já recebeu</span>' : '') + '</label>';
+  }).join('') : '<div class="radar-vazio" style="padding:10px">Ninguém dessa persona tem conta ainda.</div>';
+  modalOpen('<h3>Enviar para quem está na plataforma</h3>' +
+    '<div class="ctx" style="margin-top:10px"><span class="pill out">' + f[2] + ' ' + esc(f[1]) + ' · ' + esc(PERSONAS[i.persona]) + '</span></div>' +
+    '<p style="margin:8px 0 0"><b>' + esc(i.titulo) + '</b></p>' +
+    '<p class="sub" style="margin-top:6px">Aparece na seção "Radar do seu caso" da Home e avisa no sininho. Quem já recebeu não recebe de novo.</p>' +
+    '<div class="seg" role="group" aria-label="Para quem" style="margin-top:12px"><button type="button" data-radarmodo="todos" aria-pressed="' + (RS.modo === 'todos') + '">A persona inteira (' + pessoas.length + ')</button>' +
+    '<button type="button" data-radarmodo="escolher" aria-pressed="' + (RS.modo === 'escolher') + '">Escolher pessoas</button></div>' +
+    (RS.modo === 'escolher' ? '<div class="radar-pessoas">' + lista + '</div>' : '') +
+    '<div class="reply" style="margin-top:12px"><label for="radar-nota">Uma nota sua para quem receber (opcional)</label><textarea id="radar-nota" maxlength="300" style="min-height:60px" placeholder="Ex.: Isso muda a sua conta — vamos olhar juntas no 1:1?">' + esc(notaAtual) + '</textarea></div>' +
+    '<div class="actions"><button class="btn" type="button" id="modal-cancel">Agora não</button><button class="btn primary" type="button" id="radar-enviar-go">' + radarRotuloEnviar() + '</button></div>');
+}
+async function radarEnviar(btn) {
+  if (!RS) return;
+  var contatos = RS.modo === 'todos' ? null : Object.keys(RS.sel);
+  if (contatos && !contatos.length) return toast('Escolha pelo menos uma pessoa');
+  btn.disabled = true;
+  var r = await supabase.rpc('radar_enviar', { p_item: RS.item, p_contatos: contatos, p_nota: ($('radar-nota').value || '').trim() || null });
+  if (r.error) { btn.disabled = false; return fail('enviar o item', r.error); }
+  closeCompose(); RS = null;
+  await reload(); if (state.view === 'radar') renderRadar();
+  toast(r.data === 0 ? 'Ninguém novo para receber' : 'Enviado a ' + r.data + (r.data === 1 ? ' pessoa' : ' pessoas') + ' — o aviso já está no sininho');
+}
+
 // ---------- Modelos de e-mail: o estúdio (Estúdio de e-mails, entregas 1 e 2) ----------
 // Três colunas, no padrão do estúdio de produtos do admin: os modelos · o editor em seções · a prévia com uma pessoa
 // de verdade. O texto é feito de blocos (estudio.js monta o assunto, o texto puro e o HTML) e fica na versão do modelo
@@ -2209,6 +2364,7 @@ function show(view) {
   if (view === 'hoje') renderToday();
   if (view === 'contatos') renderContacts();
   if (view === 'funil') renderBoard();
+  if (view === 'radar') renderRadar();
   if (view === 'perguntas') renderQuestions();
   if (view === 'reimpacto') renderReimpacto();
   if (view === 'modelos') renderModelos();
@@ -2289,6 +2445,14 @@ document.addEventListener('click', async function (e) {
     var cx = $('chat-txt'); if (cx) { cx.value = chatTextoRapido(t.dataset.chatquick, cq); cx.focus(); }
     return;
   }
+  if (t.dataset.radarpersona) { state.rpersona = t.dataset.radarpersona; return renderRadar(); }
+  if (t.dataset.radarabrir) { state.rpersona = t.dataset.radarabrir; return show('radar'); }
+  if (t.dataset.radarnovo) return radarForm(state.rpersona, t.dataset.radarfator);
+  if (t.id === 'radar-salvar') return radarSalvar(t);
+  if (t.dataset.radarenviar) return radarEnviarForm(Number(t.dataset.radarenviar));
+  if (t.dataset.radararquivar) return radarArquivar(Number(t.dataset.radararquivar));
+  if (t.dataset.radarmodo) { RS.modo = t.dataset.radarmodo; return radarEnviarForm(RS.item, true); }
+  if (t.id === 'radar-enviar-go') return radarEnviar(t);
   if (t.dataset.insnova) return publicarInsight(t.dataset.insnova, t);
   if (t.dataset.insretirar) return retirarInsight(t.dataset.insretirar);
   if (t.dataset.openproposta) return openProposta(t.dataset.openproposta, t.dataset.preset);
@@ -2453,6 +2617,11 @@ document.addEventListener('input', function (e) {
     ST.q = e.target.value; var pos = e.target.selectionStart; renderPrevia();
     var q2 = $('st-q'); if (q2) { q2.focus(); q2.selectionStart = q2.selectionEnd = pos; }
   }
+});
+document.addEventListener('change', function (e) {
+  if (!e.target.dataset || !e.target.dataset.radarsel || !RS) return;
+  if (e.target.checked) RS.sel[e.target.dataset.radarsel] = true; else delete RS.sel[e.target.dataset.radarsel];
+  var go = $('radar-enviar-go'); if (go) go.textContent = radarRotuloEnviar();
 });
 document.addEventListener('focusin', function (e) { if (e.target.dataset && (e.target.dataset.ef || (e.target.dataset.f && e.target.matches('input, textarea')))) ST.foco = e.target; });
 // No "Editar no e-mail", colar entra como texto puro (sem a formatação de onde veio).
