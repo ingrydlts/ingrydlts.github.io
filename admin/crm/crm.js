@@ -60,7 +60,7 @@ var EXIGEM_NOVIDADES = { naoclicou: 1, parouapp: 1, guia_chamada: 1, guia_plataf
 // Os modelos novos do estúdio que você envia pela ficha (sem Envio) e já têm versão No ar.
 // Excluído (o X do estúdio, db/crm-estudio-emails-3.sql): some da lista e do "Escrever e-mail"; as versões ficam e dá para restaurar.
 function excluido(k) { var m = modeloDe(k); return !!(m && m.excluido_em); }
-function novosManuais() { return (M || []).filter(function (m) { return m.chave !== 'link_pagamento' && m.criado_no_estudio && !m.automatico && !m.excluido_em && versoesDe(m.chave).some(function (v) { return v.etapa === 'no_ar'; }); }); }
+function novosManuais() { return (M || []).filter(function (m) { return m.chave !== 'link_pagamento' && m.chave !== 'acesso_confirmado' && m.criado_no_estudio && !m.automatico && !m.excluido_em && versoesDe(m.chave).some(function (v) { return v.etapa === 'no_ar'; }); }); }
 function exigeNovidades(k) { var m = modeloDe(k); return m && m.criado_no_estudio ? m.tipo === 'novidades' : !!EXIGEM_NOVIDADES[k]; }
 // Rótulo, alavanca e quando usar, para o pop-up: os 8 do código (TPLS) ou o modelo novo.
 function tplInfo(k) {
@@ -569,6 +569,10 @@ function eventText(e) {
     chat_mensagem: ['resposta', 'Escreveu no chat' + (d.acao ? ' (' + (CHAT_ACOES[d.acao] || d.acao).toLowerCase() + ')' : '') + ': ' + (d.trecho || '')],
     insights_alterados: ['sistema', 'Os insights dela mudaram' + ((d.entrou || []).length ? ' · entrou: ' + d.entrou.join(', ') : '') + ((d.saiu || []).length ? ' · saiu: ' + d.saiu.join(', ') : '')],
     onboarding_documento_lido: ['sistema', 'Onboarding: documento lido' + (d.campos && d.campos.length ? ' (' + d.campos.length + (d.campos.length === 1 ? ' campo preenchido)' : ' campos preenchidos)') : ' (nenhum campo preenchido)')],
+    pagamento_confirmado: ['sistema', 'Pagamento confirmado' + (d.plano ? ': ' + d.plano : '') + (d.status === 'trialing' ? ' (teste grátis)' : '')],
+    assinatura_atualizada: ['sistema', 'Assinatura: ' + (ASSIN_ST[d.status] || d.status || 'atualizada') + (d.cancela_no_fim ? ' (cancela no fim do período)' : '')],
+    assinatura_cancelada: ['sistema', 'Assinatura cancelada'],
+    pagamento_falhou: ['sistema', 'O pagamento falhou'],
     link_pagamento_enviado: ['email', 'Link de pagamento enviado' + (d.rotulo ? ': ' + d.rotulo : d.plano ? ': ' + d.plano : '')],
     dossie_atualizado: ['sistema', 'Você atualizou o dossiê' + (d.campos ? ' (' + d.campos + (d.campos === 1 ? ' campo)' : ' campos)') : '')],
     // Propostas (db/crm-propostas.sql): o título vem do banco e passa por esc() onde a linha é montada.
@@ -1324,7 +1328,8 @@ async function renderPessoa() {
     supabase.from('emails_enviados').select('*').eq('contato_id', c.id).order('criado_em', { ascending: false }),
     state.ptab === 'plataforma' ? supabase.from('plataforma_cliques').select('sessao,tela,alvo,rotulo,criado_em').eq('contato_id', c.id).order('criado_em', { ascending: false }).limit(300) : null,
     supabase.from('contatos').select('dossie,user_id').eq('id', c.id).maybeSingle(),
-    supabase.from('contatos').select('dossie_origem,onboarding_em').eq('id', c.id).maybeSingle()
+    supabase.from('contatos').select('dossie_origem,onboarding_em').eq('id', c.id).maybeSingle(),
+    supabase.from('assinaturas').select('status,plano,moeda,teste_fim,periodo_fim,cancela_no_fim').eq('contato_id', c.id).maybeSingle()   // db/crm-assinaturas.sql
   ]);
   if (state.sel !== c.id || state.view !== 'pessoa') return;   // trocou de tela enquanto carregava
   var eventos = r[0].data || [], cons = r[1].data || [], mails = r[2].data || [];
@@ -1335,6 +1340,7 @@ async function renderPessoa() {
   state.ins = rk[1]; state.chat = rk[2];
   var ob = (r[5] && !r[5].error && r[5].data) || {};   // sem crm-onboarding.sql a ficha segue igual, sem etiquetas
   state.dos = { cid: c.id, d: (r[4].data && r[4].data.dossie) || {}, err: r[4].error, rasc: rascAnt || {}, chk: rk[0], origem: ob.dossie_origem || {}, onbEm: ob.onboarding_em || null };
+  state.assin = r[6] && !r[6].error && r[6].data ? r[6].data : null;
   var lp = eventos.filter(function (e) { return e.tipo === 'link_pagamento_enviado'; })[0];
   state.pagto = lp ? { quando: lp.criado_em, rotulo: (lp.dados && lp.dados.rotulo) || (lp.dados && lp.dados.plano) || '' } : null;
   state.mails = mails;
@@ -2581,6 +2587,15 @@ function onbFaltaHtml(c, d, rasc) {
 
 // ---------- Link de pagamento (aba Plataforma): o seletor vem de links-pagamento.json ----------
 var PAGTO = { itens: null, erro: '' };
+var ASSIN_ST = { trialing: 'em teste grátis', active: 'ativa', past_due: 'pagamento falhou', canceled: 'cancelada', unpaid: 'não paga', incomplete: 'incompleta', paused: 'pausada' };
+// A assinatura que o Stripe informou (db/crm-assinaturas.sql): o status e até quando vale. O Stripe é quem manda nas datas.
+function assinaturaHtml() {
+  var a = state.assin; if (!a) return '';
+  var ate = a.status === 'trialing' ? a.teste_fim || a.periodo_fim : a.periodo_fim;
+  return '<p class="sub" style="margin:8px 0 0"><b>Assinatura:</b> ' + esc(ASSIN_ST[a.status] || a.status) + (a.plano ? ' · ' + esc(a.plano) : '') +
+    (ate ? ' · ' + (a.status === 'trialing' ? 'teste até ' : a.status === 'active' && !a.cancela_no_fim ? 'renova em ' : 'acesso até ') + esc(fmtDay(String(ate).slice(0, 10))) : '') +
+    (a.cancela_no_fim ? ' · cancela no fim do período' : '') + '</p>';
+}
 // O arquivo é uma lista, ou { itens: [...] }. Item fora do formato é ignorado (não derruba a lista).
 function pagtoItens(j) {
   var l = Array.isArray(j) ? j : (j && Array.isArray(j.itens) ? j.itens : []);
@@ -2606,6 +2621,7 @@ function pagamentoHtml(c, h4) {
       : '<button class="btn primary" type="button" data-pagar="' + esc(c.id) + '">Enviar link de pagamento</button>') +
     '</div>' +
     (p && p.rotulo ? '<p class="sub" style="margin:8px 0 0">' + esc(p.rotulo) + '</p>' : '') +
+    assinaturaHtml() +
     '<p class="sub" style="margin:8px 0 0">Manda o e-mail “Link de pagamento” do Estúdio, com o Payment Link do plano. O link leva o e-mail dela e o id da ficha.</p></div>';
 }
 async function abrirLinkPagamento(cid) {

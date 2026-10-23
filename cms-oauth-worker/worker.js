@@ -2863,6 +2863,184 @@ async function handleCrmLinkPagamento(request, env) {
   return json({ ok: true, enviado_em: enviadoEm, aviso: avisos.join(' ') || undefined });
 }
 
+// ---------- CRM: webhook do Stripe (pagamento → assinatura na ficha → conta → e-mail de acesso) ----------
+// POST /api/stripe/webhook  (o Stripe chama; sem login: a segurança é a ASSINATURA do Stripe, conferida abaixo)
+//
+// Eventos tratados (cadastre estes quatro no Stripe): checkout.session.completed, customer.subscription.updated,
+// customer.subscription.deleted, invoice.payment_failed. Os outros são ignorados com 200.
+//
+// O que acontece num pagamento novo (checkout.session.completed, modo assinatura):
+//   1. acha a ficha (client_reference_id = id da ficha, posto pelo botão "Enviar link de pagamento"; sem ele, pelo e-mail);
+//   2. guarda a assinatura (status, fim do teste e do período vêm do Stripe) com crm_stripe_aplicar: cada evento do Stripe
+//      é aplicado uma vez só, e um reenvio do mesmo evento não faz nada de novo;
+//   3. cria a conta no Supabase Auth (sem senha) e manda o e-mail "acesso confirmado" (modelo do Estúdio) com um link que
+//      entra direto no app; lá a pessoa cria a senha (criar-senha do app). O e-mail sai uma vez só por assinatura.
+// Se algo falhar depois de gravar, o Worker responde 500 e o Stripe tenta de novo: a nova tentativa só refaz o que faltou.
+//
+//   Variáveis: STRIPE_WEBHOOK_SECRET (Secret, whsec_..., do endpoint no Stripe), STRIPE_SECRET_KEY, SUPABASE_SERVICE_ROLE_KEY,
+//              BREVO_API_KEY, BREVO_SENDER_EMAIL. Ver README.md, seção 25.
+const STRIPE_TOLERANCIA_SEG = 300;
+const STRIPE_EVENTOS = ['checkout.session.completed', 'customer.subscription.updated', 'customer.subscription.deleted', 'invoice.payment_failed'];
+
+function stripeHex(buf) { return Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, '0')).join(''); }
+// O cabeçalho Stripe-Signature é "t=...,v1=...,v1=..."; vale se algum v1 for o HMAC-SHA256 de "t.corpo" com o segredo do endpoint
+// e o carimbo for de até 5 minutos atrás (contra reenvio de um pedido capturado).
+async function stripeAssinaturaConfere(segredo, corpo, cabecalho, agoraMs) {
+  if (!segredo || !cabecalho) return false;
+  const partes = String(cabecalho).split(',').map((p) => p.trim().split('='));
+  const t = (partes.find((p) => p[0] === 't') || [])[1];
+  const v1 = partes.filter((p) => p[0] === 'v1' && p[1]).map((p) => p[1]);
+  if (!/^\d{9,12}$/.test(t || '') || !v1.length) return false;
+  if (Math.abs((agoraMs ?? Date.now()) / 1000 - Number(t)) > STRIPE_TOLERANCIA_SEG) return false;
+  const chave = await crypto.subtle.importKey('raw', new TextEncoder().encode(segredo), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  const esperado = stripeHex(await crypto.subtle.sign('HMAC', chave, new TextEncoder().encode(t + '.' + corpo)));
+  return v1.some((v) => crmSegredoIgualQualquerTamanho(v, esperado));
+}
+// Comparação sem atalho por tamanho de segredo (crmSegredoIgual exige 24+ caracteres; aqui ambos têm 64).
+function crmSegredoIgualQualquerTamanho(a, b) {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
+}
+function stripeIso(seg) { return Number.isFinite(Number(seg)) && Number(seg) > 0 ? new Date(Number(seg) * 1000).toISOString() : null; }
+// O Stripe mudou o lugar do fim do período entre versões da API: vale o do item da assinatura, ou o da própria assinatura.
+function stripeAssinaturaJson(sub, eventoCriado) {
+  const item = sub && sub.items && sub.items.data && sub.items.data[0];
+  const preco = (item && item.price) || {};
+  const produto = preco.product && typeof preco.product === 'object' ? preco.product : null;
+  return {
+    status: String(sub.status || 'incomplete'), customer: typeof sub.customer === 'string' ? sub.customer : (sub.customer && sub.customer.id) || null,
+    subscription: sub.id, plano: (produto && produto.name) || preco.nickname || preco.lookup_key || null,
+    moeda: preco.currency || sub.currency || null,
+    teste_fim: stripeIso(sub.trial_end), periodo_fim: stripeIso((item && item.current_period_end) || sub.current_period_end),
+    cancela_no_fim: !!sub.cancel_at_period_end, evento_em: stripeIso(eventoCriado)
+  };
+}
+async function stripeBuscarAssinatura(env, id) {
+  const r = await stripeFetch(env, '/subscriptions/' + encodeURIComponent(id), 'expand[]=items.data.price.product');
+  return r.ok && r.data && r.data.id ? r.data : null;
+}
+
+async function crmContatoDoPagamento(env, sessao) {
+  const sb = crmServiceHeaders(env);
+  const ref = String(sessao.client_reference_id || '');
+  if (CRM_UUID_RE.test(ref)) {
+    const r = await fetch(`${CRM_SUPABASE_URL}/rest/v1/contatos?select=id,email,nome,user_id&id=eq.${ref}`, { headers: sb });
+    const c = r.ok ? (await r.json())[0] : null;
+    if (c) return c;
+  }
+  const email = String((sessao.customer_details && sessao.customer_details.email) || sessao.customer_email || '').trim().toLowerCase();
+  if (!CRM_ONB_EMAIL_RE.test(email)) return null;
+  const r = await fetch(`${CRM_SUPABASE_URL}/rest/v1/contatos?select=id,email,nome,user_id&email=eq.${encodeURIComponent(email)}`, { headers: sb });
+  const achado = r.ok ? (await r.json())[0] : null;
+  if (achado) return achado;
+  // Pagou sem ter ficha (link mandado fora do CRM): abre a ficha agora, pelo e-mail do pagamento.
+  const nome = String((sessao.customer_details && sessao.customer_details.name) || '').trim().slice(0, 100) || null;
+  const ins = await fetch(`${CRM_SUPABASE_URL}/rest/v1/contatos?select=id,email,nome,user_id`, {
+    method: 'POST', headers: { ...sb, Prefer: 'return=representation,resolution=ignore-duplicates' }, body: JSON.stringify({ email, nome, origem: 'stripe' }) });
+  return ins.ok ? (await ins.json())[0] || null : null;
+}
+
+// Cria a conta (se ainda não existe) e devolve um link de entrada: o link entra direto no app (a sessão é criada pelo Supabase).
+async function crmLinkDeEntrada(env, email) {
+  const sb = crmServiceHeaders(env);
+  const cria = await fetch(`${CRM_SUPABASE_URL}/auth/v1/admin/users`, { method: 'POST', headers: sb, body: JSON.stringify({ email, email_confirm: true }) });
+  if (!cria.ok && cria.status !== 422) throw new Error('não criei a conta (' + cria.status + ')');   // 422 = já existe: segue
+  const gl = await fetch(`${CRM_SUPABASE_URL}/auth/v1/admin/generate_link`, {
+    method: 'POST', headers: sb, body: JSON.stringify({ type: 'magiclink', email, redirect_to: CRM_APP_LINK }) });
+  const g = gl.ok ? await gl.json().catch(() => null) : null;
+  const link = g && (g.action_link || (g.properties && g.properties.action_link));
+  if (!link || !/^https:\/\//.test(link)) throw new Error('não gerei o link de entrada (' + gl.status + ')');
+  return link;
+}
+
+async function crmEnviarAcessoConfirmado(env, contato, assinatura) {
+  const tpl = await crmModeloNoAr(env, 'acesso_confirmado');
+  if (!tpl) throw new Error('o modelo acesso_confirmado não tem versão No ar (rode crm-acesso-email.sql e publique)');
+  const link = await crmLinkDeEntrada(env, contato.email);
+  const mail = crmMontarNovo(tpl, { nome: crmPrimeiroNome(contato.nome), email: contato.email, link_entrada: link,
+    fim_teste: crmDiaBr((assinatura.teste_fim || '').slice(0, 10)) });
+  const bRes = await fetch('https://api.brevo.com/v3/smtp/email', {
+    method: 'POST', headers: { 'api-key': env.BREVO_API_KEY, 'Content-Type': 'application/json', Accept: 'application/json' },
+    body: JSON.stringify({
+      sender: { email: env.BREVO_SENDER_EMAIL, name: env.BREVO_SENDER_NAME || 'Ingryd · Por Dentro' },
+      to: [contato.nome ? { email: contato.email, name: contato.nome } : { email: contato.email }],
+      replyTo: { email: crmReplyTo(env) }, subject: mail.assunto, htmlContent: mail.html, textContent: mail.texto, tags: ['crm', 'acesso_confirmado'] })
+  });
+  const texto = await bRes.text();
+  if (!bRes.ok) throw new Error('o Brevo recusou o e-mail de acesso (' + bRes.status + ')');
+  let messageId = null; try { messageId = JSON.parse(texto).messageId || null; } catch (e) { /* segue */ }
+  const sb = crmServiceHeaders(env);
+  // O texto guardado no histórico NÃO leva o link de entrada (é uma credencial de uso único): troca pelo aviso.
+  const corpo = mail.texto.split(link).join('[link de entrada, uso único]');
+  const ins = await fetch(`${CRM_SUPABASE_URL}/rest/v1/emails_enviados`, { method: 'POST', headers: { ...sb, Prefer: 'return=minimal' },
+    body: JSON.stringify({ contato_id: contato.id, modelo: 'acesso_confirmado', assunto: mail.assunto, corpo, status: 'agendado', provedor_id: messageId,
+      enviado_em: new Date().toISOString(), modelo_versao: tpl.versao }) });
+  if (!ins.ok) console.error('crm/stripe: e-mail de acesso enviado mas não registrado — ' + ins.status);
+  // A função não devolve nada (o PostgREST responde 204, sem corpo): por isso não uso crmRpc, que lê JSON.
+  const marca = await fetch(`${CRM_SUPABASE_URL}/rest/v1/rpc/crm_stripe_acesso_enviado`, { method: 'POST', headers: sb, body: JSON.stringify({ p_contato: contato.id }) });
+  if (!marca.ok) console.error('crm/stripe: e-mail de acesso enviado mas não marquei — ' + marca.status);
+}
+
+async function handleStripeWebhook(request, env) {
+  if (!env.STRIPE_WEBHOOK_SECRET || !env.STRIPE_SECRET_KEY || !env.SUPABASE_SERVICE_ROLE_KEY) {
+    console.error('crm/stripe: faltam STRIPE_WEBHOOK_SECRET, STRIPE_SECRET_KEY ou SUPABASE_SERVICE_ROLE_KEY no Worker');
+    return json({ error: 'Webhook ainda não configurado no Worker.' }, 500);
+  }
+  const corpo = await request.text();
+  if (!(await stripeAssinaturaConfere(env.STRIPE_WEBHOOK_SECRET, corpo, request.headers.get('Stripe-Signature')))) {
+    return json({ error: 'Assinatura inválida.' }, 400);
+  }
+  let ev;
+  try { ev = JSON.parse(corpo); } catch (e) { return json({ error: 'Corpo inválido.' }, 400); }
+  if (!ev || typeof ev.id !== 'string' || !STRIPE_EVENTOS.includes(ev.type)) return json({ ok: true, ignorado: true });
+  const obj = (ev.data && ev.data.object) || {};
+
+  try {
+    let contato = null, assinatura, subId;
+    if (ev.type === 'checkout.session.completed') {
+      if (obj.mode !== 'subscription' || !obj.subscription) return json({ ok: true, ignorado: true });   // compras avulsas (produtos digitais) não são aqui
+      const sub = await stripeBuscarAssinatura(env, obj.subscription);
+      if (!sub) throw new Error('não li a assinatura no Stripe');
+      contato = await crmContatoDoPagamento(env, obj);
+      if (!contato) throw new Error('não achei nem criei a ficha deste pagamento');
+      assinatura = stripeAssinaturaJson(sub, ev.created);
+    } else if (ev.type === 'invoice.payment_failed') {
+      subId = typeof obj.subscription === 'string' ? obj.subscription : obj.subscription && obj.subscription.id
+        || (obj.parent && obj.parent.subscription_details && obj.parent.subscription_details.subscription);
+      if (!subId) return json({ ok: true, ignorado: true });
+      const sub = await stripeBuscarAssinatura(env, subId);
+      if (!sub) throw new Error('não li a assinatura no Stripe');
+      assinatura = stripeAssinaturaJson(sub, ev.created);
+    } else {
+      assinatura = stripeAssinaturaJson(obj, ev.created);
+    }
+    const res = await fetch(`${CRM_SUPABASE_URL}/rest/v1/rpc/crm_stripe_aplicar`, { method: 'POST', headers: crmServiceHeaders(env),
+      body: JSON.stringify({ p_evento: ev.id, p_tipo: ev.type, p_contato: contato ? contato.id : null, p_assinatura: assinatura }) });
+    const r = res.ok ? await res.json() : null;
+    if (!res.ok) {
+      const msg = await res.text();
+      // Assinatura de outro produto da mesma conta Stripe: não é do Por Dentro, não adianta o Stripe tentar de novo.
+      if (/contato_nao_encontrado/.test(msg) && ev.type !== 'checkout.session.completed') return json({ ok: true, ignorado: true });
+      throw new Error('crm_stripe_aplicar respondeu ' + res.status + ' ' + msg.slice(0, 200));
+    }
+    // Conta e e-mail: só no pagamento novo, e uma vez só por assinatura (o reenvio do Stripe refaz só o que faltou).
+    if (ev.type === 'checkout.session.completed' && !r.acesso_enviado_em) {
+      if (!contato) {
+        const c = await fetch(`${CRM_SUPABASE_URL}/rest/v1/contatos?select=id,email,nome,user_id&id=eq.${r.contato_id}`, { headers: crmServiceHeaders(env) });
+        contato = c.ok ? (await c.json())[0] : null;
+      }
+      if (!contato) throw new Error('ficha sumiu depois de gravar');
+      await crmEnviarAcessoConfirmado(env, contato, assinatura);
+    }
+    return json({ ok: true, duplicado: !!r.duplicado });
+  } catch (e) {
+    console.error('crm/stripe: ' + ev.type + ' ' + ev.id + ' — ' + (e && e.message));
+    return json({ error: 'Não consegui processar. O Stripe vai tentar de novo.' }, 500);
+  }
+}
+
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
@@ -2978,6 +3156,9 @@ export default {
       }
       if (url.pathname === '/api/crm/onboarding/status' && request.method === 'GET') {
         return await handleCrmOnboardingStatus(request, env);
+      }
+      if (url.pathname === '/api/stripe/webhook' && request.method === 'POST') {
+        return await handleStripeWebhook(request, env);
       }
       if (url.pathname === '/api/crm/link-pagamento' && request.method === 'POST') {
         return await handleCrmLinkPagamento(request, env);

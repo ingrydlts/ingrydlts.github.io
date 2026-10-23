@@ -237,6 +237,26 @@ check('a linha do tempo conhece os dois eventos novos', mod.eventText({ tipo: 'o
   && mod.eventText({ tipo: 'link_pagamento_enviado', dados: { rotulo: 'Básico · mensal' } })[1] === 'Link de pagamento enviado: Básico · mensal'
   && mod.eventText({ tipo: 'onboarding_documento_lido', dados: { campos: [] } })[1].includes('nenhum campo'));
 
+console.log('\n== Assinatura (Stripe) na aba Plataforma ==');
+respostas['assinaturas:one'] = { data: { status: 'trialing', plano: 'Por Dentro · Básico mensal', moeda: 'BRL', teste_fim: '2026-11-22T10:00:00Z', periodo_fim: '2026-11-22T10:00:00Z', cancela_no_fim: false }, error: null };
+mod.state.ptab = 'plataforma';
+await mod.renderPessoa();
+ph = el('pessoa-page').innerHTML;
+check('mostra o status, o plano e até quando vale o teste', /Assinatura:<\/b> em teste grátis · Por Dentro · Básico mensal · teste até 22\/11\/2026/.test(ph));
+respostas['assinaturas:one'] = { data: { status: 'active', plano: 'Básico', periodo_fim: '2026-12-22T10:00:00Z', cancela_no_fim: true }, error: null };
+await mod.renderPessoa();
+check('cancelamento no fim do período aparece', /ativa · Básico · acesso até 22\/12\/2026 · cancela no fim do período/.test(el('pessoa-page').innerHTML));
+respostas['assinaturas:one'] = { data: { status: 'past_due', plano: '<img src=x onerror=1>', periodo_fim: '2026-12-22T10:00:00Z' }, error: null };
+await mod.renderPessoa();
+check('pagamento falhou, e o nome do plano vindo do Stripe passa por esc()', /pagamento falhou/.test(el('pessoa-page').innerHTML) && !el('pessoa-page').innerHTML.includes('<img src=x onerror=1>'));
+respostas['assinaturas:one'] = { data: null, error: { message: 'relation "assinaturas" does not exist' } };
+await mod.renderPessoa();
+check('sem o SQL das assinaturas a ficha continua igual', !el('pessoa-page').innerHTML.includes('Assinatura:') && el('pessoa-page').innerHTML.includes('data-pagar'));
+delete respostas['assinaturas:one'];
+check('a linha do tempo conhece os eventos do Stripe', mod.eventText({ tipo: 'pagamento_confirmado', dados: { plano: 'Básico', status: 'trialing' } })[1] === 'Pagamento confirmado: Básico (teste grátis)'
+  && mod.eventText({ tipo: 'assinatura_atualizada', dados: { status: 'active', cancela_no_fim: true } })[1] === 'Assinatura: ativa (cancela no fim do período)'
+  && mod.eventText({ tipo: 'pagamento_falhou', dados: {} })[1] === 'O pagamento falhou' && mod.eventText({ tipo: 'assinatura_cancelada', dados: {} })[1] === 'Assinatura cancelada');
+
 console.log('\n== O arquivo links-pagamento.json ==');
 const jsonLinks = JSON.parse(readFileSync(path.resolve(HERE, '../../links-pagamento.json'), 'utf8'));
 const itensArq = mod.pagtoItens(jsonLinks);
