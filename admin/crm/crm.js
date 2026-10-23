@@ -2,7 +2,7 @@
 // Nada de service_role aqui. O banco é db/crm-fase2.sql; o desenho é o artefato "CRM Por Dentro".
 // Tudo que vem do banco é texto de terceiros (nome, e-mail, pergunta): passa sempre por esc().
 import { supabase } from '/assets/js/supabase-client.js';
-import * as ES from './estudio.js?v=2026-10-21.1';   // os blocos do estúdio de e-mails (entregas 2 e 3)
+import * as ES from './estudio.js?v=2026-10-23.3';   // os blocos do estúdio de e-mails (entregas 2 e 3)
 
 var PERSONAS = {
   au_pair_estudante: 'Au pair → estudante', campus_france: 'Campus France', alternancia_emprego: 'Alternância / emprego',
