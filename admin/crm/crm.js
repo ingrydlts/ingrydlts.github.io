@@ -124,7 +124,7 @@ function splitTpl(c, k) { var t = TPLS[k].make(c); return { subject: t[0].replac
 
 function lerDosAberto() { try { return localStorage.getItem('crm_dossie_aberto') === '1'; } catch (e) { return false; } }
 var C = [], Q = [], L = [], R = [], RM = {}, SUBS = {}, M = null, MV = [];
-var state = { dosAberto: lerDosAberto(), dos: null, ptab: null, rascunho: {}, view: 'hoje', persona: '', sub: '', urg: '', stage: '', orig: '', camp: '', q: '', sel: null, qs: 'nova', qsel: null, inbox: 'perguntas', rs: 'nova', rsel: null, preset: 'todos', seg: '', prevView: 'contatos' };
+var state = { dosAberto: lerDosAberto(), dos: null, ptab: null, pstab: 'assistente', pdias: {}, int: null, chatRasc: '', rascunho: {}, view: 'hoje', persona: '', sub: '', urg: '', stage: '', orig: '', camp: '', q: '', sel: null, qs: 'nova', qsel: null, inbox: 'perguntas', rs: 'nova', rsel: null, preset: 'todos', seg: '', prevView: 'contatos' };
 var activeCid = null;
 var me = null;
 
@@ -595,7 +595,7 @@ function eventText(e) {
 // tab: 'conversa' ou 'ficha'; sem tab, a ficha abre na Conversa se já houver alguma mensagem.
 async function openPessoa(id, tab) {
   if (state.view !== 'pessoa') state.prevView = state.view;
-  state.sel = id; state.ptab = tab || null;
+  state.sel = id; state.ptab = tab || null; state.pstab = 'assistente'; state.pdias = {}; state.chatRasc = '';
   show('pessoa');
 }
 // ---------- E-mails da pessoa: o que já saiu e o próximo, como ela vai ver ----------
@@ -915,25 +915,30 @@ async function atualizaAoVivo(cid, forca) {
   if (state.view !== 'pessoa' || state.sel !== cid || !state.ins || state.ins.cid !== cid) return pararAoVivo();
   var c = byC(cid); if (!c) return;
   var antes = state.ins, chatAntes = state.chat;
-  var rk = await Promise.all([buscaChecklist(cid, VIVO.uid), buscaInsights(cid), buscaChat(cid)]);
+  var rk = await Promise.all([buscaChecklist(cid, VIVO.uid), buscaInsights(cid), buscaChat(cid), state.ptab === 'plataforma' ? buscaInteracoes(cid) : null]);
   if (state.view !== 'pessoa' || state.sel !== cid) return;
   var sigChat = function (ch) { return JSON.stringify(ch ? [ch.msgs.length, ch.msgs.length ? ch.msgs[ch.msgs.length - 1].id : 0, Object.keys(ch.props).map(function (k) { return ch.props[k].status + ch.props[k].adiada_ate; })] : null); };
   var mudouIns = JSON.stringify([rk[1].vivos && rk[1].vivos.atualizado_em, rk[1].hist.length, rk[1].manuais.length]) !== JSON.stringify([antes.vivos && antes.vivos.atualizado_em, antes.hist.length, antes.manuais.length]);
   var mudouChk = JSON.stringify([rk[0].itens, rk[0].cliques.length]) !== JSON.stringify([state.dos && state.dos.chk && state.dos.chk.itens, state.dos && state.dos.chk && state.dos.chk.cliques.length]);
   var mudouChat = sigChat(rk[2]) !== sigChat(chatAntes);
-  if (!mudouIns && !mudouChk && !mudouChat && !forca) return;
-  state.ins = rk[1]; state.chat = rk[2]; if (state.dos && state.dos.cid === cid) state.dos.chk = rk[0];
+  var sigInt = function (i) { return i && !i.err ? JSON.stringify([i.cliques.length, i.cliques[0] && i.cliques[0].criado_em, i.evs.length, i.evs[0] && i.evs[0].criado_em]) : ''; };
+  var mudouInt = !!rk[3] && !rk[3].err && sigInt(rk[3]) !== sigInt(state.int);
+  if (!mudouIns && !mudouChk && !mudouChat && !mudouInt && !forca) return;
+  state.ins = rk[1]; state.chat = rk[2]; if (rk[3] && !rk[3].err) state.int = rk[3]; if (state.dos && state.dos.cid === cid) state.dos.chk = rk[0];
   var painel = $('ins-box'); if (painel) painel.innerHTML = insightsHtml(state.ins, Date.now());
   var cb = $('chk-box'); if (cb) cb.innerHTML = checklistHtml(state.dos && state.dos.chk, Date.now());
   var cl = $('chk-lateral'); if (cl) cl.innerHTML = checklistLateralHtml(state.dos && state.dos.chk, Date.now(), 'font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-3); margin:0 0 8px');
   pintaChat();   // só o fio: o que você está digitando na caixa fica
+  var ib = $('int-box'); if (ib) ib.innerHTML = interacoesHtml(state.int);
+  var rl = $('resumo-lateral'); if (rl) rl.innerHTML = resumoPlatHtml(H4_PLAT);
   var ae = document.activeElement;   // não redesenha o dossiê enquanto você digita nele
   if (!(ae && ae.closest && ae.closest('#dossie-box') && /^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName))) pintaDossie(c);
   if (mudouIns && antes.vivos) toast('Os insights dela mudaram');
   var idAntes = chatAntes && chatAntes.msgs.length ? chatAntes.msgs[chatAntes.msgs.length - 1].id : 0;
   var novas = state.chat.msgs.filter(function (m) { return m.id > idAntes && m.de === 'pessoa'; });
   if (chatAntes && novas.length) toast(displayName(c) + ' escreveu no chat: ' + novas[novas.length - 1].texto.slice(0, 80));
-  if (state.ptab === 'plataforma' && novas.length) marcaChatLido(cid);
+  if (state.ptab === 'plataforma' && state.pstab === 'chat' && novas.length) marcaChatLido(cid);
+  var ab = $('plat-abas'); if (ab) ab.innerHTML = platAbasHtml();
 }
 async function publicarInsight(cid, t) {
   var txt = $('ins-texto').value.trim(), ate = $('ins-ate').value;
@@ -1021,7 +1026,7 @@ async function enviarChat(cid, t) {
   var r = await supabase.rpc('crm_chat_enviar', { p_contato: cid, p_texto: txt });
   if (t) t.disabled = false;
   if (r.error) return fail('enviar a mensagem', r.error);
-  $('chat-txt').value = '';
+  $('chat-txt').value = ''; state.chatRasc = '';
   await atualizaAoVivo(cid, true);
 }
 // ---------- Aba Plataforma: o que ela faz dentro do app, a sua iAssistente e o chat com ela ----------
@@ -1039,37 +1044,110 @@ function propostaEstado(x, agora) {
   if (x.status === 'vista') return [x.adiada_ate && new Date(x.adiada_ate).getTime() > agora ? 'Para depois' : 'Vista', 'u-media'];
   return ['Enviada', ''];
 }
-function plataformaPanel(c, rc, h4, chat, ins) {
-  if (rc && rc.error) {
+// A aba Plataforma tem três sub-abas: iAssistente, Chat e Interações. A coluna da direita (pagamento, checklist e resumo)
+// fica fixa e é a mesma nas três. Interações junta cada clique dela no app (checklist, dossiê, telas, botões) com as vezes
+// em que o dossiê foi salvo, separados por dia (um dropdown por dia, o mais recente aberto).
+var PLAT_ABAS = [['assistente', 'iAssistente'], ['chat', 'Chat'], ['interacoes', 'Interações']];
+var INT_TIPOS = { checklist: ['Checklist', 'u-baixa'], dossie: ['Dossiê', 'u-media'], tela: ['Tela', 'tp-artigo'], botao: ['Botão', 'out'], link: ['Link', 'out'] };
+var TELAS_DOSSIE = /^\/(perfil|landing|onboarding)\//;   // as telas em que o app faz as perguntas do dossiê
+async function buscaInteracoes(cid) {
+  var r = await Promise.all([
+    supabase.from('plataforma_cliques').select('sessao,tela,alvo,rotulo,criado_em').eq('contato_id', cid).order('criado_em', { ascending: false }).limit(300),
+    supabase.from('eventos').select('tipo,dados,criado_em').eq('contato_id', cid).in('tipo', ['dossie_atualizado', 'onboarding_documento_lido']).order('criado_em', { ascending: false }).limit(100)
+  ]);
+  return { cid: cid, err: r[0].error || null, cliques: r[0].data || [], evs: r[1].data || [] };
+}
+function intDeClique(x) {
+  var m = /^(Marcou como concluído|Desmarcou): (.*)$/.exec(x.rotulo || ''), tela = x.tela || '';
+  if (m) return { t: 'checklist', pill: m[1] === 'Desmarcou' ? 'Desmarcou' : 'Marcou', cls: m[1] === 'Desmarcou' ? 'u-media' : 'u-baixa', txt: m[2], em: x.criado_em };
+  var t = /checklist/i.test(tela) ? 'checklist' : TELAS_DOSSIE.test(tela) ? 'dossie' : (x.alvo === 'tela' || x.alvo === 'link') ? x.alvo : 'botao';
+  return { t: t, pill: INT_TIPOS[t][0], cls: INT_TIPOS[t][1], em: x.criado_em,
+    txt: x.alvo === 'tela' ? 'Abriu ' + telaNome(tela) : (x.rotulo || '(sem texto)'), onde: x.alvo === 'tela' ? '' : telaNome(tela) };
+}
+// Tudo em uma lista só, mais recente primeiro.
+function interacoesLista(int) {
+  if (!int) return [];
+  var l = int.cliques.map(intDeClique);
+  int.evs.forEach(function (e) { l.push({ t: 'dossie', pill: 'Dossiê', cls: INT_TIPOS.dossie[1], txt: eventText(e)[1], em: e.criado_em, onde: 'no CRM' }); });
+  return l.sort(function (a, b) { return new Date(b.em) - new Date(a.em); });
+}
+function interacoesHtml(int) {
+  var cab = '<h3 style="font-size:15px;margin:0 0 4px">Interações na plataforma</h3>';
+  if (!int) return '<div class="panel" style="padding:16px">' + cab + '<p class="sub" style="margin:0">Carregando…</p></div>';
+  var lista = interacoesLista(int), dias = [], por = {};
+  lista.forEach(function (x) {
+    var k = new Date(x.em).toLocaleDateString('pt-BR');
+    if (!por[k]) { por[k] = []; dias.push(k); }
+    por[k].push(x);
+  });
+  var corpo = dias.map(function (k, i) {
+    var its = por[k], n = {}, abre = state.pdias[k] !== undefined ? state.pdias[k] : i === 0;
+    its.forEach(function (x) { n[x.t] = (n[x.t] || 0) + 1; });
+    var chips = ['checklist', 'dossie'].filter(function (t) { return n[t]; }).map(function (t) { return '<span class="dchip"><b>' + INT_TIPOS[t][0] + '</b> ' + n[t] + '</span>'; }).join('');
+    return '<details class="dcat intdia" data-dia="' + esc(k) + '"' + (abre ? ' open' : '') + '><summary><b>' + esc(fmtDia(its[0].em)) + '</b> <span class="sub">' + its.length + (its.length === 1 ? ' interação' : ' interações') + '</span>' +
+      (chips ? '<span class="dchips">' + chips + '</span>' : '') + '</summary>' + its.map(function (x) {
+        return '<div class="feeditem"><span class="pill ' + x.cls + '">' + esc(x.pill) + '</span><div class="fbody"><p>' + esc(x.txt) + '</p><time>' + esc(fmtHora(x.em)) + (x.onde ? ' · ' + esc(x.onde) : '') + '</time></div></div>';
+      }).join('') + '</details>';
+  }).join('');
+  return '<div class="panel" style="padding:16px">' + cab + '<p class="sub" style="margin:0 0 10px">Telas que ela abriu, botões e links em que clicou, itens do checklist que marcou e as vezes que o dossiê foi salvo. Um bloco por dia, o mais recente primeiro.' +
+    (int.cliques.length >= 300 ? ' Mostrando os 300 cliques mais recentes.' : '') + '</p>' + (corpo || '<div class="empty">Nada registrado ainda. Aparece aqui quando ela entrar no app.</div>') + '</div>';
+}
+document.addEventListener('toggle', function (e) {
+  var d = e.target; if (d && d.matches && d.matches('details.intdia')) state.pdias[d.dataset.dia] = d.open;
+}, true);
+function platAbasHtml() {
+  var nova = chatNaoLidas(state.chat);
+  return '<div class="ptabs" role="tablist" aria-label="Plataforma" style="margin:0 0 14px">' + PLAT_ABAS.map(function (t) {
+    return '<button class="ptab" role="tab" type="button" data-pstab="' + t[0] + '" aria-selected="' + (state.pstab === t[0]) + '">' + t[1] +
+      (t[0] === 'chat' && nova ? ' <span class="count">' + nova + '</span>' : '') + '</button>';
+  }).join('') + '</div>';
+}
+function platConteudoHtml(c, h4) {
+  if (state.pstab === 'chat') return '<div id="chat-box">' + chatPanelHtml(c, state.chat, h4) + '</div>';
+  if (state.pstab === 'interacoes') return '<div id="int-box">' + interacoesHtml(state.int) + '</div>';
+  return '<div id="ins-box">' + insightsHtml(state.ins, Date.now()) + '</div>';
+}
+function resumoPlatHtml(h4) {
+  var int = state.int, cliques = (int && int.cliques) || [], lista = interacoesLista(int);
+  var porTela = {};
+  cliques.forEach(function (x) { if (x.alvo === 'tela') porTela[telaNome(x.tela)] = (porTela[telaNome(x.tela)] || 0) + 1; });
+  var top = Object.keys(porTela).sort(function (a, b) { return porTela[b] - porTela[a]; }).slice(0, 5), ult = cliques[0];
+  var conta = function (t) { return lista.filter(function (x) { return x.t === t; }).length; };
+  return '<div class="panel" style="padding:16px"><h4 style="' + h4 + '">Resumo</h4>' + (cliques.length
+    ? kvHtml([['Última atividade', fmtDia(ult.criado_em) + ' às ' + fmtHora(ult.criado_em)], ['Cliques registrados', cliques.length + (cliques.length >= 300 ? '+ (mostrando os 300 mais recentes)' : '')],
+        ['Interações no checklist', String(conta('checklist'))], ['Interações no dossiê', String(conta('dossie'))],
+        ['Telas mais abertas', top.length ? top.map(function (t) { return t + ' (' + porTela[t] + ')'; }).join(', ') : '—']])
+    : '<p class="sub" style="margin:0">Ainda sem cliques. Aparecem aqui quando ela entrar no app.</p>') + '</div>';
+}
+var H4_PLAT = 'font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-3); margin:0 0 8px';
+// Troca de sub-aba sem recarregar a ficha: a coluna da direita não se mexe, só o miolo.
+function pintaPlat(c) {
+  var box = $('plat-conteudo'); if (!box) return;
+  box.innerHTML = platConteudoHtml(c, H4_PLAT);
+  var ab = $('plat-abas'); if (ab) ab.innerHTML = platAbasHtml();
+  var rl = $('resumo-lateral'); if (rl) rl.innerHTML = resumoPlatHtml(H4_PLAT);
+  if (state.pstab === 'chat') {
+    var tx = $('chat-txt'); if (tx && state.chatRasc) tx.value = state.chatRasc;
+    var fio = $('chat-fio'); if (fio) fio.scrollTop = fio.scrollHeight;
+    marcaChatLido(c.id).then(function () { var a2 = $('plat-abas'); if (a2) a2.innerHTML = platAbasHtml(); });
+  }
+}
+function trocaPlatAba(ab) {
+  var c = byC(state.sel); if (!c || state.pstab === ab) return;
+  var tx = $('chat-txt'); if (tx) state.chatRasc = tx.value;   // o que você digitou no chat sobrevive à troca
+  state.pstab = ab; pintaPlat(c);
+}
+function plataformaPanel(c, h4) {
+  var int = state.int;
+  if (int && int.err) {
     return '<div style="margin-top:18px">' + pagamentoHtml(c, h4) + '</div><div class="panel" style="padding:16px;margin-top:18px"><h3 style="font-size:15px;margin-bottom:8px">Plataforma ainda não ligada</h3>' +
       '<p class="sub" style="margin:0">Falta rodar <b>db/crm-plataforma.sql</b> no SQL Editor do Supabase (depois dele, os cliques novos começam a aparecer aqui).</p></div>';
   }
-  var cliques = (rc && rc.data) || [];
-  var PILL = { tela: ['Tela', 'tp-artigo'], botao: ['Botão', 'out'], link: ['Link', 'out'] };
-  var dia = '', itens = cliques.slice(0, 150).map(function (x) {
-    var d = fmtDia(x.criado_em), sep = d !== dia ? '<p class="sub" style="margin:12px 0 4px;font-weight:600">' + esc(d) + '</p>' : '';
-    dia = d;
-    var p = PILL[x.alvo] || PILL.botao;
-    return sep + '<div class="feeditem"><span class="pill ' + p[1] + '">' + p[0] + '</span><div class="fbody"><p>' + esc(x.alvo === 'tela' ? 'Abriu ' + telaNome(x.tela) : (x.rotulo || '(sem texto)')) + '</p>' +
-      '<time>' + esc(fmtHora(x.criado_em)) + (x.alvo === 'tela' ? '' : ' · em ' + esc(telaNome(x.tela))) + '</time></div></div>';
-  }).join('');
-  var porTela = {};
-  cliques.forEach(function (x) { if (x.alvo === 'tela') porTela[telaNome(x.tela)] = (porTela[telaNome(x.tela)] || 0) + 1; });
-  var top = Object.keys(porTela).sort(function (a, b) { return porTela[b] - porTela[a]; }).slice(0, 5);
-  var ult = cliques[0];
-  var resumo = cliques.length
-    ? kvHtml([['Última atividade', fmtDia(ult.criado_em) + ' às ' + fmtHora(ult.criado_em)], ['Cliques registrados', cliques.length + (cliques.length >= 300 ? '+ (mostrando os 300 mais recentes)' : '')],
-        ['Telas mais abertas', top.length ? top.map(function (t) { return t + ' (' + porTela[t] + ')'; }).join(', ') : '—']])
-    : '<p class="sub" style="margin:0">Ainda sem cliques. Aparecem aqui quando ela entrar no app.</p>';
   return '<div class="pessoa-grid" style="margin-top:18px">' +
-    '<div style="display:flex; flex-direction:column; gap:16px; min-width:0"><div id="ins-box">' + insightsHtml(ins, Date.now()) + '</div>' +
-    '<div class="panel" style="padding:16px"><h3 style="font-size:15px; margin-bottom:8px">O que ela fez na plataforma</h3>' +
-    '<p class="sub" style="margin:0 0 10px">Telas que abriu e botões e links em que clicou. Mais recente primeiro.</p>' +
-    '<div class="feed">' + (itens || '<div class="empty">Nada registrado ainda.</div>') + '</div></div></div>' +
-    '<div style="display:flex; flex-direction:column; gap:16px">' + pagamentoHtml(c, h4) +
+    '<div style="min-width:0"><div id="plat-abas">' + platAbasHtml() + '</div><div id="plat-conteudo">' + platConteudoHtml(c, h4) + '</div></div>' +
+    '<div class="plat-fixa">' + pagamentoHtml(c, h4) +
     '<div id="chk-lateral">' + checklistLateralHtml(state.dos && state.dos.chk, Date.now(), h4) + '</div>' +
-    '<div class="panel" style="padding:16px"><h4 style="' + h4 + '">Resumo</h4>' + resumo + '</div>' +
-    '<div id="chat-box">' + chatPanelHtml(c, chat, h4) + '</div></div></div>';
+    '<div id="resumo-lateral">' + resumoPlatHtml(h4) + '</div></div></div>';
 }
 
 // ---------- Dossiê: tudo que a plataforma pergunta, preenchido por você na ligação (db/crm-dossie.sql) ----------
@@ -1340,6 +1418,7 @@ async function renderPessoa() {
   var rk = await Promise.all([buscaChecklist(c.id, uid), buscaInsights(c.id), buscaChat(c.id)]);
   if (state.sel !== c.id || state.view !== 'pessoa') return;
   state.ins = rk[1]; state.chat = rk[2];
+  if (r[3]) state.int = { cid: c.id, err: r[3].error || null, cliques: r[3].data || [], evs: eventos.filter(function (e) { return e.tipo === 'dossie_atualizado' || e.tipo === 'onboarding_documento_lido'; }) };
   var ob = (r[5] && !r[5].error && r[5].data) || {};   // sem crm-onboarding.sql a ficha segue igual, sem etiquetas
   state.dos = { cid: c.id, d: (r[4].data && r[4].data.dossie) || {}, err: r[4].error, rasc: rascAnt || {}, chk: rk[0], origem: ob.dossie_origem || {}, onbEm: ob.onboarding_em || null };
   state.assin = r[6] && !r[6].error && r[6].data ? r[6].data : null;
@@ -1367,7 +1446,7 @@ async function renderPessoa() {
     '<div class="sel"><select id="stage-pick" aria-label="Mudar estágio">' + STAGES.map(function (s) { return '<option value="' + s.k + '"' + (s.k === c.estagio ? ' selected' : '') + '>Estágio: ' + s.l + '</option>'; }).join('') + '</select></div></div>' +
     onbResumoHtml(c) +
     '<div id="dossie-box">' + dossieHtml(c, state.dos.d, state.dos.err, state.dos.rasc, state.dosAberto, state.dos.chk) + '</div>' +
-    tabs + (state.ptab === 'conversa' ? conversaPanel(c, mails, resps, h4) : state.ptab === 'plataforma' ? plataformaPanel(c, r[3], h4, state.chat, state.ins) :
+    tabs + (state.ptab === 'conversa' ? conversaPanel(c, mails, resps, h4) : state.ptab === 'plataforma' ? plataformaPanel(c, h4) :
     '<div class="pessoa-grid" style="margin-top:18px">' +
     '<div class="panel" style="padding:16px"><h3 style="font-size:15px; margin-bottom:8px">Tudo que ela fez</h3>' +
     '<p class="sub" style="margin:0 0 10px">Checklist, pergunta única, artigos e o resto do app — mais o que você mandou pra ela. Mais recente primeiro.</p>' +
@@ -1395,7 +1474,7 @@ async function renderPessoa() {
   var ct = $('conv-txt');
   if (ct) { var th = $('conv-thread'); if (th) th.scrollTop = th.scrollHeight; }
   ligarAoVivo(c, uid);
-  if (state.ptab === 'plataforma') { var fio0 = $('chat-fio'); if (fio0) fio0.scrollTop = fio0.scrollHeight; marcaChatLido(c.id); }
+  if (state.ptab === 'plataforma' && state.pstab === 'chat') { var fio0 = $('chat-fio'); if (fio0) fio0.scrollTop = fio0.scrollHeight; marcaChatLido(c.id).then(function () { var a0 = $('plat-abas'); if (a0) a0.innerHTML = platAbasHtml(); }); }
 }
 
 // ---------- Modais ----------
@@ -2703,6 +2782,7 @@ document.addEventListener('click', async function (e) {
   if (t.dataset.open) return openPessoa(t.dataset.open);
   if (t.dataset.openconv) return openPessoa(t.dataset.openconv, 'conversa');
   if (t.dataset.ptab) { state.ptab = t.dataset.ptab; return renderPessoa(); }
+  if (t.dataset.pstab) return trocaPlatAba(t.dataset.pstab);
   if (t.id === 'conv-send') return sendResposta(t);
   if (t.dataset.avisado) {
     t.disabled = true;
