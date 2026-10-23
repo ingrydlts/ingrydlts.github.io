@@ -60,7 +60,7 @@ var EXIGEM_NOVIDADES = { naoclicou: 1, parouapp: 1, guia_chamada: 1, guia_plataf
 // Os modelos novos do estúdio que você envia pela ficha (sem Envio) e já têm versão No ar.
 // Excluído (o X do estúdio, db/crm-estudio-emails-3.sql): some da lista e do "Escrever e-mail"; as versões ficam e dá para restaurar.
 function excluido(k) { var m = modeloDe(k); return !!(m && m.excluido_em); }
-function novosManuais() { return (M || []).filter(function (m) { return m.criado_no_estudio && !m.automatico && !m.excluido_em && versoesDe(m.chave).some(function (v) { return v.etapa === 'no_ar'; }); }); }
+function novosManuais() { return (M || []).filter(function (m) { return m.chave !== 'link_pagamento' && m.criado_no_estudio && !m.automatico && !m.excluido_em && versoesDe(m.chave).some(function (v) { return v.etapa === 'no_ar'; }); }); }
 function exigeNovidades(k) { var m = modeloDe(k); return m && m.criado_no_estudio ? m.tipo === 'novidades' : !!EXIGEM_NOVIDADES[k]; }
 // Rótulo, alavanca e quando usar, para o pop-up: os 8 do código (TPLS) ou o modelo novo.
 function tplInfo(k) {
@@ -568,6 +568,8 @@ function eventText(e) {
     radar_visto: ['app', 'Viu no Radar: ' + (d.titulo || '')],
     chat_mensagem: ['resposta', 'Escreveu no chat' + (d.acao ? ' (' + (CHAT_ACOES[d.acao] || d.acao).toLowerCase() + ')' : '') + ': ' + (d.trecho || '')],
     insights_alterados: ['sistema', 'Os insights dela mudaram' + ((d.entrou || []).length ? ' · entrou: ' + d.entrou.join(', ') : '') + ((d.saiu || []).length ? ' · saiu: ' + d.saiu.join(', ') : '')],
+    onboarding_documento_lido: ['sistema', 'Onboarding: documento lido' + (d.campos && d.campos.length ? ' (' + d.campos.length + (d.campos.length === 1 ? ' campo preenchido)' : ' campos preenchidos)') : ' (nenhum campo preenchido)')],
+    link_pagamento_enviado: ['email', 'Link de pagamento enviado' + (d.rotulo ? ': ' + d.rotulo : d.plano ? ': ' + d.plano : '')],
     dossie_atualizado: ['sistema', 'Você atualizou o dossiê' + (d.campos ? ' (' + d.campos + (d.campos === 1 ? ' campo)' : ' campos)') : '')],
     // Propostas (db/crm-propostas.sql): o título vem do banco e passa por esc() onde a linha é montada.
     proposta_enviada: ['proposta', 'Proposta enviada: ' + (d.titulo || '')],
@@ -1035,7 +1037,7 @@ function propostaEstado(x, agora) {
 }
 function plataformaPanel(c, rc, h4, chat, ins) {
   if (rc && rc.error) {
-    return '<div class="panel" style="padding:16px;margin-top:18px"><h3 style="font-size:15px;margin-bottom:8px">Plataforma ainda não ligada</h3>' +
+    return '<div style="margin-top:18px">' + pagamentoHtml(c, h4) + '</div><div class="panel" style="padding:16px;margin-top:18px"><h3 style="font-size:15px;margin-bottom:8px">Plataforma ainda não ligada</h3>' +
       '<p class="sub" style="margin:0">Falta rodar <b>db/crm-plataforma.sql</b> no SQL Editor do Supabase (depois dele, os cliques novos começam a aparecer aqui).</p></div>';
   }
   var cliques = (rc && rc.data) || [];
@@ -1060,7 +1062,7 @@ function plataformaPanel(c, rc, h4, chat, ins) {
     '<div class="panel" style="padding:16px"><h3 style="font-size:15px; margin-bottom:8px">O que ela fez na plataforma</h3>' +
     '<p class="sub" style="margin:0 0 10px">Telas que abriu e botões e links em que clicou. Mais recente primeiro.</p>' +
     '<div class="feed">' + (itens || '<div class="empty">Nada registrado ainda.</div>') + '</div></div></div>' +
-    '<div style="display:flex; flex-direction:column; gap:16px">' +
+    '<div style="display:flex; flex-direction:column; gap:16px">' + pagamentoHtml(c, h4) +
     '<div id="chk-lateral">' + checklistLateralHtml(state.dos && state.dos.chk, Date.now(), h4) + '</div>' +
     '<div class="panel" style="padding:16px"><h4 style="' + h4 + '">Resumo</h4>' + resumo + '</div>' +
     '<div id="chat-box">' + chatPanelHtml(c, chat, h4) + '</div></div></div>';
@@ -1162,7 +1164,9 @@ function dosCampoHtml(f, c, d, rasc) {
   } else {
     ctl = '<input' + a + ' type="' + (f.t === 'dt' ? 'date' : f.t === 'mes' ? 'month' : 'text') + '" value="' + esc(v) + '" maxlength="300">';
   }
-  return '<div class="dfield' + (f.t === 'lg' ? ' wide' : '') + (v === '' ? ' vazio' : '') + '"><label for="' + id + '">' + esc(f.l) + '</label>' + ctl + (f.ajuda ? '<small>' + esc(f.ajuda) + '</small>' : '') + '</div>';
+  var og = onbOrigemDe(f.k, v);
+  return '<div class="dfield' + (f.t === 'lg' ? ' wide' : '') + (v === '' ? ' vazio' : '') + '"><label for="' + id + '">' + esc(f.l) + '</label>' + ctl + (f.ajuda ? '<small>' + esc(f.ajuda) + '</small>' : '') +
+    (og ? '<small class="orig ' + og.conf + '">' + esc(og.origem) + ' · ' + esc(ONB_CONF[og.conf]) + '</small>' : '') + '</div>';
 }
 var DOS_CHIPS = ['persona', 'data_chegada', 'cidade', 'nivel_frances', 'cfNivel', 'ano_au_pair', 'trilha_estudo', 'telefone'];
 function dosChipChat(chat) {
@@ -1276,7 +1280,7 @@ function dossieHtml(c, d, err, rasc, aberto, chk) {
   return '<div class="panel dossie"><div class="dhead"><h3>Dossiê</h3><span class="sub">' + pr.n + ' de ' + pr.tot + ' respondidas' + (pr.falta ? ' · faltam ' + pr.falta : ' · completo') + '</span>' +
     '<button class="btn" type="button" data-dostoggle="1" aria-expanded="' + !!aberto + '" style="margin-left:auto">' + (aberto ? 'Fechar dossiê' : 'Abrir dossiê completo') + '</button></div>' +
     '<div class="dprog" role="progressbar" aria-valuenow="' + pct + '" aria-valuemin="0" aria-valuemax="100"><span style="width:' + pct + '%"></span></div>' +
-    '<div class="dchips">' + dosChipChk(chk) + dosChipIns(state.ins) + dosChipChat(state.chat) + (dosChips(c, d, rasc) || '<span class="sub">Nada preenchido ainda. Abra o dossiê para preencher durante a ligação.</span>') + '</div>' + corpo + '</div>';
+    '<div class="dchips">' + dosChipChk(chk) + dosChipIns(state.ins) + dosChipChat(state.chat) + (dosChips(c, d, rasc) || '<span class="sub">Nada preenchido ainda. Abra o dossiê para preencher durante a ligação.</span>') + '</div>' + onbFaltaHtml(c, d, rasc) + corpo + '</div>';
 }
 function pintaDossie(c) {
   var box = $('dossie-box'); if (!box || !state.dos || state.dos.cid !== c.id) return;
@@ -1319,7 +1323,8 @@ async function renderPessoa() {
     supabase.from('consentimentos').select('finalidade,aceito,texto,origem,criado_em').eq('contato_id', c.id).order('criado_em', { ascending: false }),
     supabase.from('emails_enviados').select('*').eq('contato_id', c.id).order('criado_em', { ascending: false }),
     state.ptab === 'plataforma' ? supabase.from('plataforma_cliques').select('sessao,tela,alvo,rotulo,criado_em').eq('contato_id', c.id).order('criado_em', { ascending: false }).limit(300) : null,
-    supabase.from('contatos').select('dossie,user_id').eq('id', c.id).maybeSingle()
+    supabase.from('contatos').select('dossie,user_id').eq('id', c.id).maybeSingle(),
+    supabase.from('contatos').select('dossie_origem,onboarding_em').eq('id', c.id).maybeSingle()
   ]);
   if (state.sel !== c.id || state.view !== 'pessoa') return;   // trocou de tela enquanto carregava
   var eventos = r[0].data || [], cons = r[1].data || [], mails = r[2].data || [];
@@ -1328,7 +1333,10 @@ async function renderPessoa() {
   var rk = await Promise.all([buscaChecklist(c.id, uid), buscaInsights(c.id), buscaChat(c.id)]);
   if (state.sel !== c.id || state.view !== 'pessoa') return;
   state.ins = rk[1]; state.chat = rk[2];
-  state.dos = { cid: c.id, d: (r[4].data && r[4].data.dossie) || {}, err: r[4].error, rasc: rascAnt || {}, chk: rk[0] };
+  var ob = (r[5] && !r[5].error && r[5].data) || {};   // sem crm-onboarding.sql a ficha segue igual, sem etiquetas
+  state.dos = { cid: c.id, d: (r[4].data && r[4].data.dossie) || {}, err: r[4].error, rasc: rascAnt || {}, chk: rk[0], origem: ob.dossie_origem || {}, onbEm: ob.onboarding_em || null };
+  var lp = eventos.filter(function (e) { return e.tipo === 'link_pagamento_enviado'; })[0];
+  state.pagto = lp ? { quando: lp.criado_em, rotulo: (lp.dados && lp.dados.rotulo) || (lp.dados && lp.dados.plano) || '' } : null;
   state.mails = mails;
   var last = function (f) { var x = cons.filter(function (k) { return k.finalidade === f; })[0]; return x ? x.aceito : false; };
   var perg = Q.filter(function (x) { return x.contato_id === c.id; });
@@ -1349,6 +1357,7 @@ async function renderPessoa() {
     '<button class="btn primary" type="button" data-emailfor="' + esc(c.id) + '">Escrever e-mail</button>' +
     '<button class="btn" type="button" data-open1a1="' + esc(c.id) + '">Marcar 1:1</button>' +
     '<div class="sel"><select id="stage-pick" aria-label="Mudar estágio">' + STAGES.map(function (s) { return '<option value="' + s.k + '"' + (s.k === c.estagio ? ' selected' : '') + '>Estágio: ' + s.l + '</option>'; }).join('') + '</select></div></div>' +
+    onbResumoHtml(c) +
     '<div id="dossie-box">' + dossieHtml(c, state.dos.d, state.dos.err, state.dos.rasc, state.dosAberto, state.dos.chk) + '</div>' +
     tabs + (state.ptab === 'conversa' ? conversaPanel(c, mails, resps, h4) : state.ptab === 'plataforma' ? plataformaPanel(c, r[3], h4, state.chat, state.ins) :
     '<div class="pessoa-grid" style="margin-top:18px">' +
@@ -2363,6 +2372,7 @@ function show(view) {
   document.querySelectorAll('.nav').forEach(function (n) { if (n.dataset.view === view) n.setAttribute('aria-current', 'page'); else n.removeAttribute('aria-current'); });
   if (view === 'hoje') renderToday();
   if (view === 'contatos') renderContacts();
+  if (view === 'onboarding') carregarOnboarding();
   if (view === 'funil') renderBoard();
   if (view === 'radar') renderRadar();
   if (view === 'perguntas') renderQuestions();
@@ -2379,6 +2389,277 @@ function csv(rows) {
   return [head.join(',')].concat(rows.map(function (c) {
     return [c.nome, c.email, personaLabel(c), subLabel(c), c.urgencia, c.estagio, c.origem, origensDe(c).join(' | '), nCapturas(c), c.dias, c.aceita_novidades ? 'sim' : 'não', c.data_entrada, c.prazo_limite, c.dias_para_prazo, c.utm_source, c.utm_campaign, c.utm_content, c.instagram, c.ig_id].map(cell).join(',');
   })).join('\n');
+}
+
+// ---------- Onboarding: documento → ficha com o Dossiê preenchido (Worker: POST /api/crm/onboarding/ler) ----------
+// O arquivo é lido pelo Worker e descartado: o navegador também só o guarda na memória desta tela, até enviar (e o solta
+// no sucesso). Texto de terceiros (nome do arquivo, mensagens do servidor) entra na tela por textContent.
+var ONB_MAX_ARQ = 10 * 1048576, ONB_MAX_N = 5, ONB_MAX_TOTAL = 20 * 1048576, ONB_MAX_NOTAS = 20000;
+var ONB_TIPOS = { pdf: 'application/pdf', jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png' };
+var ONB = onbInicial();
+function onbInicial() { return { fase: 'form', arquivos: [], email: '', notas: '', erro: '', ia: null }; }
+function onbTipoDe(f) {
+  var t = String(f.type || '').toLowerCase();
+  if (t === 'application/pdf' || t === 'image/jpeg' || t === 'image/png') return t;
+  return t ? '' : (ONB_TIPOS[String(f.name || '').split('.').pop().toLowerCase()] || '');   // navegador sem tipo: vale a extensão (o Worker confere os bytes)
+}
+function onbMb(n) { return n >= 1048576 ? (n / 1048576).toFixed(1).replace('.', ',') + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB'; }
+// Os arquivos novos que cabem, e o motivo de cada um que não coube. A mesma regra do Worker (que confere tudo de novo).
+function onbJuntar(atuais, novos) {
+  var ok = atuais.slice(), recusas = [], total = ok.reduce(function (s, f) { return s + f.size; }, 0);
+  novos.forEach(function (f) {
+    var nome = String(f.name || 'arquivo').slice(0, 60);
+    if (ok.some(function (o) { return o.name === f.name && o.size === f.size && o.lastModified === f.lastModified; })) return;
+    if (!onbTipoDe(f)) return recusas.push(nome + ': só PDF, JPG ou PNG.');
+    if (!f.size) return recusas.push(nome + ': o arquivo está vazio.');
+    if (f.size > ONB_MAX_ARQ) return recusas.push(nome + ': passa de 10 MB.');
+    if (ok.length >= ONB_MAX_N) return recusas.push(nome + ': no máximo ' + ONB_MAX_N + ' arquivos por vez.');
+    if (total + f.size > ONB_MAX_TOTAL) return recusas.push(nome + ': os arquivos somam mais de 20 MB.');
+    ok.push(f); total += f.size;
+  });
+  return { arquivos: ok, recusas: recusas };
+}
+// O que o Dossiê ainda não tem, na ordem da ficha. Só conta o que vale para a situação dela (dosVisiveis) e não o bloco "A ligação".
+function onbFalta(c, d, rasc) {
+  var out = [];
+  dosVisiveis(c, d, rasc).forEach(function (b) {
+    if (b.livre) return;
+    b.campos.forEach(function (f) { if (dosValor(c, d, rasc, f.k) === '') out.push(f.l); });
+  });
+  return out;
+}
+// A etiqueta de origem de um campo: só vale enquanto o valor ainda é o que a IA escreveu (se você mexeu, some).
+function onbOrigemDe(k, atual) {
+  var o = state.dos && state.dos.origem && state.dos.origem[k];
+  if (!o || typeof o !== 'object') return null;
+  var guardado = o.valor === null || o.valor === undefined ? '' : String(o.valor);
+  if (DOS_MES[k] && /^\d{4}-\d{2}/.test(guardado)) guardado = guardado.slice(0, 7);
+  if (guardado === '' || guardado !== String(atual)) return null;
+  return { origem: o.origem === 'anotacao' ? 'Lido das suas anotações' : 'Lido do documento', conf: ['alta', 'media', 'baixa'].indexOf(o.confianca) >= 0 ? o.confianca : 'baixa' };
+}
+var ONB_CONF = { alta: 'confiança alta', media: 'confiança média', baixa: 'confiança baixa: confira' };
+
+function renderOnboarding() {
+  var box = $('onb-page'); if (!box) return;
+  if (ONB.fase === 'lendo') {
+    box.innerHTML = '<div class="onb"><div class="panel" role="status" aria-live="polite" aria-busy="true">' +
+      '<h3 style="font-size:16px;margin-bottom:10px">Lendo o documento…</h3>' +
+      '<div class="onb-sk" aria-hidden="true"><i></i><i></i><i></i><i></i></div>' +
+      '<p class="sub" style="margin:14px 0 0">Costuma levar de 10 a 40 segundos. Pode deixar esta aba aberta. O arquivo é lido e descartado.</p></div></div>';
+    return;
+  }
+  if (ONB.fase === 'ok') {   // a ficha não abriu sozinha (não achei a pessoa na lista): o caminho fica a um toque
+    box.innerHTML = '<div class="onb"><div class="panel"><div class="onb-ok" role="status">Pronto: a ficha foi criada.</div>' +
+      '<div class="onb-acoes" style="margin-top:12px"><button class="btn primary" type="button" id="onb-abrir">Abrir a ficha</button><button class="btn" type="button" id="onb-outra">Ler outro documento</button></div></div></div>';
+    return;
+  }
+  box.innerHTML = '<div class="onb">' +
+    '<div class="onb-aviso" id="onb-aviso" role="status" hidden></div>' +
+    '<div class="panel">' +
+      '<label class="rot" for="onb-email">E-mail da pessoa (obrigatório)</label>' +
+      '<input id="onb-email" type="email" autocomplete="off" inputmode="email" maxlength="254" placeholder="pessoa@exemplo.com" required>' +
+      '<small class="dica">A ficha é criada por este e-mail. Se já existir uma ficha com ele, ela é atualizada: o que você já digitou não é trocado.</small>' +
+    '</div>' +
+    '<div class="panel">' +
+      '<label class="rot" for="onb-file">Documentos</label>' +
+      '<label class="onb-drop" id="onb-drop" for="onb-file"><span><b>Solte aqui</b> ou toque para escolher</span>' +
+        '<span class="sub">Passaporte, visto, titre de séjour, carta de aceite, certificado de matrícula…</span>' +
+        '<span class="sub">PDF, JPG ou PNG · até 10 MB cada · até 5 arquivos</span>' +
+        '<input id="onb-file" type="file" multiple accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"></label>' +
+      '<ul class="onb-arqs" id="onb-arqs"></ul>' +
+      '<p class="sub" id="onb-vazio" style="margin:10px 0 0">Nenhum documento ainda. Solte o primeiro acima.</p>' +
+    '</div>' +
+    '<div class="panel">' +
+      '<label class="rot" for="onb-notas">Anotações da chamada (opcional)</label>' +
+      '<textarea id="onb-notas" maxlength="' + ONB_MAX_NOTAS + '" placeholder="O que a pessoa contou: situação, cidade, caminho de estudo, prazos, o que combinaram…"></textarea>' +
+      '<small class="dica">Lidas junto com o documento. O que não estiver no documento nem aqui fica vazio e aparece como “falta perguntar” na ficha.</small>' +
+    '</div>' +
+    '<div class="onb-erro" id="onb-erro" role="alert" hidden></div>' +
+    '<div class="onb-acoes"><button class="btn primary" type="button" id="onb-enviar">Ler e criar pessoa</button></div>' +
+    '</div>';
+  $('onb-email').value = ONB.email;
+  $('onb-notas').value = ONB.notas;
+  onbPintaArquivos();
+  var er = $('onb-erro');
+  if (ONB.erro) {
+    er.textContent = ONB.erro; er.hidden = false;
+    if (ONB.fase === 'erro') {
+      $('onb-enviar').textContent = 'Tentar de novo';
+      var p = document.createElement('p'); p.className = 'sub'; p.style.margin = '0'; p.textContent = 'Seus arquivos e anotações continuam aqui. Nada foi salvo.';
+      $('onb-enviar').parentNode.appendChild(p);
+    }
+  }
+  onbPintaAviso();
+}
+function onbPintaAviso() {
+  var av = $('onb-aviso'), bt = $('onb-enviar'); if (!av) return;
+  if (ONB.ia && ONB.ia.ia_configurada === false) {
+    av.textContent = (ONB.ia.aviso || 'A leitura por IA ainda não está ligada.') + ' As fichas e o Dossiê continuam funcionando: preencha à mão pela ficha da pessoa.';
+    av.hidden = false; if (bt) bt.disabled = true;
+  } else if (ONB.ia && ONB.ia.erro) {
+    av.textContent = ONB.ia.erro; av.hidden = false;
+  } else { av.hidden = true; if (bt) bt.disabled = false; }
+}
+function onbPintaArquivos() {
+  var ul = $('onb-arqs'), vazio = $('onb-vazio'); if (!ul) return;
+  ul.innerHTML = '';
+  ONB.arquivos.forEach(function (f, i) {
+    var li = document.createElement('li'), nome = document.createElement('span'), tam = document.createElement('span'), rm = document.createElement('button');
+    nome.className = 'nome'; nome.textContent = f.name || 'arquivo';
+    tam.className = 'tam num'; tam.textContent = onbMb(f.size);
+    rm.className = 'btn'; rm.type = 'button'; rm.textContent = 'Tirar'; rm.dataset.onbrem = String(i);
+    rm.setAttribute('aria-label', 'Tirar ' + (f.name || 'arquivo'));
+    li.appendChild(nome); li.appendChild(tam); li.appendChild(rm); ul.appendChild(li);
+  });
+  if (vazio) vazio.hidden = ONB.arquivos.length > 0;
+}
+function onbMostraErro(msg) { ONB.erro = msg || ''; var er = $('onb-erro'); if (er) { er.textContent = ONB.erro; er.hidden = !ONB.erro; } }
+function onbAdicionar(lista) {
+  var r = onbJuntar(ONB.arquivos, Array.prototype.slice.call(lista || []));
+  ONB.arquivos = r.arquivos; ONB.fase = 'form';
+  onbMostraErro(r.recusas.join(' '));
+  onbPintaArquivos();
+}
+async function carregarOnboarding() {
+  ONB.ia = null; renderOnboarding();
+  var sess = await supabase.auth.getSession();
+  if (!sess.data.session) return;
+  try {
+    var res = await fetch(WORKER_BASE + '/api/crm/onboarding/status', { headers: { Authorization: 'Bearer ' + sess.data.session.access_token } });
+    var data = await res.json().catch(function () { return {}; });
+    ONB.ia = res.ok ? data : { erro: 'Não consegui saber se a leitura por IA está ligada (Worker respondeu ' + res.status + '). Pode ser que o Worker ainda não tenha sido atualizado (README, seção 24).' };
+  } catch (e) { ONB.ia = { erro: 'Não consegui falar com o Worker para saber se a leitura por IA está ligada.' }; }
+  if (state.view === 'onboarding') onbPintaAviso();
+}
+async function onbEnviar() {
+  var email = String(ONB.email || '').trim();
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return onbMostraErro('Digite o e-mail da pessoa. É por ele que a ficha é criada ou encontrada.');
+  if (!ONB.arquivos.length) return onbMostraErro('Escolha pelo menos um documento (PDF, JPG ou PNG).');
+  if (String(ONB.notas || '').length > ONB_MAX_NOTAS) return onbMostraErro('As anotações passaram de ' + ONB_MAX_NOTAS + ' letras. Resuma e tente de novo.');
+  var sess = await supabase.auth.getSession();
+  if (!sess.data.session) return onbMostraErro('Sessão expirada. Recarregue a página e entre de novo.');
+  ONB.fase = 'lendo'; ONB.erro = ''; renderOnboarding();
+  var fd = new FormData();
+  fd.append('email', email); fd.append('anotacoes', String(ONB.notas || '').trim());
+  ONB.arquivos.forEach(function (f) { fd.append('arquivos', f, f.name); });
+  var ctl = new AbortController(), cedo = setTimeout(function () { ctl.abort(); }, 150000), data;
+  try {
+    var res = await fetch(WORKER_BASE + '/api/crm/onboarding/ler', { method: 'POST', headers: { Authorization: 'Bearer ' + sess.data.session.access_token }, body: fd, signal: ctl.signal });
+    data = await res.json().catch(function () { return {}; });
+    if (!res.ok) throw new Error(data.error || ('Erro ' + res.status));
+  } catch (e) {
+    ONB.fase = 'erro';
+    ONB.erro = e && e.name === 'AbortError' ? 'A leitura demorou mais de 2 minutos e foi cancelada. Tente de novo; se repetir, mande menos páginas.'
+      : e instanceof TypeError ? 'Não consegui falar com o Worker. Confira a internet e tente de novo.' : (e.message || 'Algo deu errado.');
+    if (state.view === 'onboarding') renderOnboarding();
+    return;
+  } finally { clearTimeout(cedo); }
+  // Deu certo: solta os arquivos da memória, guarda o resumo para a ficha e abre a ficha direto.
+  state.onbResumo = { cid: data.contato_id, criado: !!data.criado, preenchidos: data.preenchidos || [], ja: data.ja_preenchidos || [], custo: data.custo_estimado_usd };
+  ONB = onbInicial();
+  await reload();
+  if (byC(data.contato_id)) { openPessoa(data.contato_id, 'ficha'); return toast(state.onbResumo.criado ? 'Ficha criada. Confira o que a IA leu.' : 'Ficha atualizada. Confira o que a IA leu.', 5000); }
+  ONB.fase = 'ok'; ONB.erro = ''; ONB.contato = data.contato_id; if (state.view === 'onboarding') renderOnboarding();
+}
+// O aviso no topo da ficha logo depois do Onboarding: o que entrou e o que já estava preenchido e ficou como estava.
+function onbResumoHtml(c) {
+  var r = state.onbResumo; if (!r || r.cid !== c.id) return '';
+  var nomes = function (ks) { return ks.map(function (k) { var f = dosCampo(k); return f ? f.l : k; }).join(', '); };
+  return '<div class="panel onb-resumo" id="onb-resumo"><h3>' + (r.criado ? 'Ficha criada pelo Onboarding' : 'Ficha atualizada pelo Onboarding') + '</h3>' +
+    '<p>' + (r.preenchidos.length ? '<b>' + r.preenchidos.length + (r.preenchidos.length === 1 ? ' campo preenchido' : ' campos preenchidos') + ':</b> ' + esc(nomes(r.preenchidos)) + '.' : 'A IA não achou nenhum campo para preencher no material.') + '</p>' +
+    (r.ja.length ? '<p class="sub">Já estavam preenchidos e ficaram como você deixou: ' + esc(nomes(r.ja)) + '.</p>' : '') +
+    '<p class="sub">A IA só sugere: confira cada campo no Dossiê abaixo. Cada campo lido mostra de onde veio e quanto a IA confiou' + (r.custo != null ? ' · custo estimado da leitura: US$ ' + esc(String(r.custo).replace('.', ',')) : '') + '.</p>' +
+    '<div class="actions" style="margin-top:8px"><button class="btn" type="button" data-onbfechar="1">Entendi</button></div></div>';
+}
+function onbFaltaHtml(c, d, rasc) {
+  if (!state.dos || !state.dos.onbEm) return '';
+  var f = onbFalta(c, d, rasc), mostra = f.slice(0, 12);
+  if (!f.length) return '<div class="onb-falta"><b>Falta perguntar</b><span class="sub">Nada: o Dossiê está completo para a situação dela.</span></div>';
+  return '<div class="onb-falta"><b>Falta perguntar</b>' + mostra.map(function (l) { return '<span class="dchip falta">' + esc(l) + '</span>'; }).join('') +
+    (f.length > mostra.length ? '<span class="sub">e mais ' + (f.length - mostra.length) + '</span>' : '') + '</div>';
+}
+
+// ---------- Link de pagamento (aba Plataforma): o seletor vem de links-pagamento.json ----------
+var PAGTO = { itens: null, erro: '' };
+// O arquivo é uma lista, ou { itens: [...] }. Item fora do formato é ignorado (não derruba a lista).
+function pagtoItens(j) {
+  var l = Array.isArray(j) ? j : (j && Array.isArray(j.itens) ? j.itens : []);
+  return l.filter(function (x) {
+    return x && /^[a-z0-9_-]{1,40}$/.test(String(x.chave || '')) && typeof x.rotulo === 'string' && x.rotulo.trim() && /^[A-Z]{3}$/.test(String(x.moeda || '')) &&
+      typeof x.url === 'string' && /^https:\/\//.test(x.url);
+  }).map(function (x) { return { chave: x.chave, rotulo: x.rotulo.trim().slice(0, 80), moeda: x.moeda, url: x.url, exemplo: !!x.exemplo }; });
+}
+async function carregarLinksPagamento() {
+  if (PAGTO.itens) return PAGTO.itens;
+  try {
+    var res = await fetch('links-pagamento.json', { cache: 'no-cache' });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    PAGTO.itens = pagtoItens(await res.json()); PAGTO.erro = '';
+  } catch (e) { PAGTO.itens = null; PAGTO.erro = 'Não consegui ler links-pagamento.json (' + (e && e.message) + ').'; }
+  return PAGTO.itens;
+}
+function pagamentoHtml(c, h4) {
+  var p = state.pagto;
+  return '<div class="panel" style="padding:16px" id="pag-box"><h4 style="' + h4 + '">Pagamento</h4>' +
+    '<div class="pag-linha">' +
+    (p ? '<span class="pill u-baixa" title="' + esc(p.rotulo || '') + '">Link enviado em ' + esc(fmtDate(p.quando)) + '</span><button class="btn" type="button" data-pagar="' + esc(c.id) + '">Reenviar</button>'
+      : '<button class="btn primary" type="button" data-pagar="' + esc(c.id) + '">Enviar link de pagamento</button>') +
+    '</div>' +
+    (p && p.rotulo ? '<p class="sub" style="margin:8px 0 0">' + esc(p.rotulo) + '</p>' : '') +
+    '<p class="sub" style="margin:8px 0 0">Manda o e-mail “Link de pagamento” do Estúdio, com o Payment Link do plano. O link leva o e-mail dela e o id da ficha.</p></div>';
+}
+async function abrirLinkPagamento(cid) {
+  var c = byC(cid); if (!c) return; activeCid = cid;
+  modalOpen(modalTop(c) + '<h4 style="margin:14px 0 6px;font-size:14px">Enviar link de pagamento</h4>' +
+    '<label class="sub" for="pg-plano" style="display:block;margin:0 0 4px">Plano e moeda</label>' +
+    '<select id="pg-plano" class="pag-plano" disabled><option>Carregando…</option></select>' +
+    '<p class="sub" style="margin:8px 0 0" id="pg-dica"></p>' +
+    '<p class="sub" style="margin:8px 0 0">O e-mail “Link de pagamento” vai para <b id="pg-email"></b>.</p>' +
+    '<p class="onb-erro" id="pg-err" role="alert" hidden style="margin:10px 0 0"></p>' +
+    '<div class="actions"><button class="btn" type="button" id="modal-cancel">Cancelar</button><button class="btn primary" type="button" id="pg-enviar" disabled>Enviar e-mail</button></div>');
+  $('pg-email').textContent = c.email; $('pg-enviar').disabled = true;
+  var itens = await carregarLinksPagamento(), sel = $('pg-plano'); if (!sel) return;
+  sel.innerHTML = '';
+  if (!itens || !itens.length) {
+    var o0 = document.createElement('option'); o0.textContent = 'Nenhum plano em links-pagamento.json'; sel.appendChild(o0);
+    var er = $('pg-err'); er.textContent = PAGTO.erro || 'O arquivo links-pagamento.json não tem nenhum plano. Preencha com os seus Payment Links do Stripe.'; er.hidden = false;
+    return;
+  }
+  itens.forEach(function (it, i) {
+    var o = document.createElement('option'); o.value = String(i);
+    o.textContent = it.rotulo + ' (' + it.moeda + ')' + (it.exemplo ? ' · exemplo, troque no arquivo' : '');
+    o.disabled = it.exemplo; sel.appendChild(o);
+  });
+  var primeiro = itens.findIndex(function (it) { return !it.exemplo; });
+  sel.disabled = false;
+  if (primeiro < 0) {
+    sel.selectedIndex = 0;   // só há exemplo: mostra o nome dele (desligado) em vez de uma caixa em branco
+    $('pg-dica').textContent = 'Só há o item de exemplo. Preencha admin/crm/links-pagamento.json com os seus Payment Links do Stripe.';
+    return;
+  }
+  sel.value = String(primeiro); $('pg-enviar').disabled = false;
+}
+async function enviarLinkPagamento(btn) {
+  var err = $('pg-err'); err.hidden = true;
+  var it = (PAGTO.itens || [])[Number($('pg-plano').value)];
+  if (!it || it.exemplo) { err.textContent = 'Escolha um plano.'; err.hidden = false; return; }
+  var sess = await supabase.auth.getSession();
+  if (!sess.data.session) { err.textContent = 'Sessão expirada. Recarregue a página e entre de novo.'; err.hidden = false; return; }
+  btn.disabled = true; btn.textContent = 'Enviando…';
+  try {
+    var res = await fetch(WORKER_BASE + '/api/crm/link-pagamento', {
+      method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + sess.data.session.access_token },
+      body: JSON.stringify({ contato_id: activeCid, chave: it.chave, rotulo: it.rotulo, moeda: it.moeda, url: it.url })
+    });
+    var data = await res.json().catch(function () { return {}; });
+    if (!res.ok) throw new Error(data.error || ('Erro ' + res.status));
+    closeCompose(); await reload();
+    if (state.view === 'pessoa') renderPessoa();
+    toast(data.aviso || 'Link de pagamento enviado', data.aviso ? 9000 : 0);
+  } catch (e) {
+    err.textContent = e instanceof TypeError ? 'Não consegui falar com o Worker. Confira a internet e tente de novo.' : e.message; err.hidden = false;
+    btn.disabled = false; btn.textContent = 'Enviar e-mail';
+  }
 }
 
 // ---------- Eventos ----------
@@ -2437,6 +2718,13 @@ document.addEventListener('click', async function (e) {
     return pintaDossie(byC(state.sel));
   }
   if (t.dataset.dossalvar) return salvarDossie(t.dataset.dossalvar, t);
+  if (t.id === 'onb-enviar') return onbEnviar();
+  if (t.id === 'onb-abrir') return openPessoa(ONB.contato, 'ficha');
+  if (t.id === 'onb-outra') { ONB = onbInicial(); return carregarOnboarding(); }
+  if (t.dataset.onbrem !== undefined) { ONB.arquivos.splice(Number(t.dataset.onbrem), 1); return onbPintaArquivos(); }
+  if (t.dataset.onbfechar) { state.onbResumo = null; var rb = $('onb-resumo'); if (rb) rb.hidden = true; return; }
+  if (t.dataset.pagar) return abrirLinkPagamento(t.dataset.pagar);
+  if (t.id === 'pg-enviar') return enviarLinkPagamento(t);
   if (t.dataset.chatenviar) return enviarChat(t.dataset.chatenviar, t);
   if (t.dataset.chatquick) {
     var cq = byC(state.sel);
@@ -2642,6 +2930,23 @@ document.addEventListener('input', function (e) {
   }
   if (e.target.id === 'reply-txt') $('reply-err').hidden = true;
   if (e.target.id === 'conv-txt') { state.rascunho[e.target.dataset.cid] = e.target.value; $('conv-err').hidden = true; }
+});
+document.addEventListener('input', function (e) {
+  if (e.target.id === 'onb-email') { ONB.email = e.target.value; onbMostraErro(''); }
+  if (e.target.id === 'onb-notas') ONB.notas = e.target.value;
+});
+document.addEventListener('change', function (e) {
+  if (e.target.id !== 'onb-file') return;
+  onbAdicionar(e.target.files); e.target.value = '';
+});
+// Arrastar e soltar: só dentro da área de documentos (soltar um arquivo em outro lugar não deve abri-lo no navegador).
+function noOnbDrop(e) { return e.target && typeof e.target.closest === 'function' && e.target.closest('#onb-drop'); }
+document.addEventListener('dragover', function (e) { var z = noOnbDrop(e); if (!z) return; e.preventDefault(); z.classList.add('arrastando'); });
+document.addEventListener('dragleave', function (e) { var z = noOnbDrop(e); if (z) z.classList.remove('arrastando'); });
+document.addEventListener('drop', function (e) {
+  var z = noOnbDrop(e); if (!z) return;
+  e.preventDefault(); z.classList.remove('arrastando');
+  onbAdicionar(e.dataTransfer && e.dataTransfer.files);
 });
 document.addEventListener('keydown', function (e) {
   if (e.key === 'Enter' && e.target.matches('tr[data-id]')) openPessoa(e.target.dataset.id);

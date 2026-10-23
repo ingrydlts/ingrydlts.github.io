@@ -571,3 +571,44 @@ select.st-in{height:36px; padding:0 8px}
 .radar-pessoas label.off{color:var(--ink-3)}
 @media (max-width: 980px){ .radar-grid{grid-template-columns:repeat(2,minmax(0,1fr))} }
 @media (max-width: 640px){ .radar-grid{grid-template-columns:1fr} }
+
+/* ---------- Onboarding: documento → ficha, e o link de pagamento na aba Plataforma ---------- */
+.onb{max-width:680px; display:flex; flex-direction:column; gap:14px; margin-top:14px}
+.onb .panel{padding:16px}
+.onb label.rot{display:block; font-size:12px; font-weight:600; color:var(--ink-2); margin:0 0 4px}
+.onb input[type="email"],.onb textarea{width:100%; border:1px solid var(--line-2); border-radius:var(--r); background:var(--surface); color:inherit; padding:10px 12px; font:inherit; line-height:1.45}
+.onb textarea{min-height:110px; resize:vertical}
+.onb small.dica{display:block; color:var(--ink-3); font-size:11.5px; margin-top:4px}
+.onb-drop{display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; text-align:center; border:1.5px dashed var(--line-2); border-radius:12px; background:var(--surface); padding:22px 14px; cursor:pointer; color:var(--ink-2)}
+.onb-drop:hover,.onb-drop.arrastando{border-color:var(--moss); background:var(--moss-soft); color:var(--moss-ink)}
+.onb-drop:focus-within{outline:2px solid var(--focus); outline-offset:2px}
+.onb-drop b{color:var(--ink); font-weight:600}
+.onb-drop input[type="file"]{position:absolute; width:1px; height:1px; opacity:0; overflow:hidden; clip-path:inset(50%)}
+.onb-arqs{list-style:none; margin:10px 0 0; padding:0; display:flex; flex-direction:column; gap:6px}
+.onb-arqs li{display:flex; align-items:center; gap:8px; background:var(--sunk); border-radius:var(--r); padding:6px 6px 6px 10px; min-width:0}
+.onb-arqs .nome{flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:500}
+.onb-arqs .tam{flex:none; color:var(--ink-3); font-size:12px}
+.onb-arqs .btn{flex:none; padding:4px 10px; font-size:12px}
+.onb-aviso{background:var(--amber-soft); color:var(--amber); border-radius:var(--r); padding:10px 14px; font-size:13px}
+.onb-erro{background:var(--red-soft); color:var(--red); border-radius:var(--r); padding:10px 14px; font-size:13px}
+.onb-ok{background:var(--moss-soft); color:var(--moss-ink); border-radius:var(--r); padding:10px 14px; font-size:13px}
+.onb-acoes{display:flex; flex-wrap:wrap; gap:8px; align-items:center}
+.onb-acoes .btn.primary{padding:10px 16px}
+.onb-sk{display:flex; flex-direction:column; gap:10px}
+.onb-sk i{display:block; height:14px; border-radius:6px; background:linear-gradient(90deg,var(--sunk) 25%,var(--surface) 50%,var(--sunk) 75%); background-size:200% 100%; animation:onb-brilho 1.4s linear infinite}
+.onb-sk i:nth-child(1){width:55%; height:18px} .onb-sk i:nth-child(3){width:80%} .onb-sk i:nth-child(4){width:65%}
+@keyframes onb-brilho{from{background-position:200% 0}to{background-position:-200% 0}}
+.onb-falta{margin-top:10px; display:flex; flex-wrap:wrap; gap:6px; align-items:center}
+.onb-falta > b{font-size:12px; letter-spacing:.04em; text-transform:uppercase; color:var(--amber)}
+.dchip.falta{background:var(--amber-soft); color:var(--amber)}
+.dfield .orig{color:var(--ink-3); font-size:11.5px}
+.dfield .orig.baixa{color:var(--amber)}
+.onb-resumo{margin-top:14px; padding:14px 16px}
+.onb-resumo h3{font-size:15px; margin-bottom:6px}
+.onb-resumo p{margin:0 0 6px}
+.pag-linha{display:flex; flex-wrap:wrap; align-items:center; gap:8px}
+.pag-plano{width:100%; border:1px solid var(--line-2); border-radius:var(--r); background:var(--surface); padding:10px 12px; font:inherit}
+@media (max-width: 520px){
+  .onb-acoes .btn{flex:1 1 100%; justify-content:center; text-align:center}
+  .onb-drop{padding:18px 10px}
+}
