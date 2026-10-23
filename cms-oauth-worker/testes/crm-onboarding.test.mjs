@@ -15,11 +15,11 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 const dir = mkdtempSync(path.join(tmpdir(), 'crm-onb-'));
 const arq = path.join(dir, 'worker.mjs');
 writeFileSync(arq, readFileSync(path.resolve(HERE, '../worker.js'), 'utf8') +
-  '\nexport { crmOnbValidar, CRM_ONB_CAMPOS, crmOnbTipoReal, crmLinkPagamentoUrl, crmOnbSchemaIA, CRM_ONB_SISTEMA };\n');
+  '\nexport { crmOnbValidar, CRM_ONB_CAMPOS, crmOnbTipoReal, crmLinkPagamentoUrl, crmOnbSchemaIA, CRM_ONB_SISTEMA, crmLinkAssinar, crmLinkConferir };\n');
 const mod = await import(pathToFileURL(arq).href);
 rmSync(dir, { recursive: true, force: true });
 const worker = mod.default;
-const { crmOnbValidar, CRM_ONB_CAMPOS, crmOnbTipoReal, crmLinkPagamentoUrl, crmOnbSchemaIA, CRM_ONB_SISTEMA } = mod;
+const { crmOnbValidar, CRM_ONB_CAMPOS, crmOnbTipoReal, crmLinkPagamentoUrl, crmOnbSchemaIA, CRM_ONB_SISTEMA, crmLinkAssinar, crmLinkConferir } = mod;
 
 let passed = 0, failed = 0;
 function check(label, cond) { if (cond) passed++; else { failed++; console.log('  FALHOU:', label); } }
@@ -29,6 +29,7 @@ const CID = '11111111-2222-4333-8444-555555555555';
 const TOKEN = 'token-da-admin';
 const env = { ANTHROPIC_API_KEY: 'sk-ant-teste', ANTHROPIC_MODEL: 'modelo-de-teste', BREVO_API_KEY: 'k', BREVO_SENDER_EMAIL: 'contato@example.org',
   CRM_REPLY_TO: 'respostas@example.org', ANTHROPIC_USD_POR_MTOK_ENTRADA: '3', ANTHROPIC_USD_POR_MTOK_SAIDA: '15',
+  CRM_LINK_SECRET: 'segredo-do-link-assinado-com-mais-de-32-caracteres', SUPABASE_SERVICE_ROLE_KEY: 'srv',
   REVIEWS_KV: { get: async () => null, put: async () => {} } };   // KV que nunca conta: o limite por admin tem a sua seção própria
 
 // ---- fetch falso: cada regra é [regex, resposta | função(opt, url) → resposta]; resposta = { status, body, method } ----
@@ -165,7 +166,7 @@ let j = await res.json();
 const ia = doAnthropic()[0], rpc = doRpc()[0];
 check('200 com o id da ficha', res.status === 200 && j.ok && j.contato_id === CID && j.criado === true && j.preenchidos.includes('nome'));
 check('a chave e o modelo vão no pedido, e só ali', ia.headers['x-api-key'] === 'sk-ant-teste' && ia.body.model === 'modelo-de-teste' && !JSON.stringify(rpc.body).includes('sk-ant'));
-check('o pedido usa a ferramenta com saída estruturada, obrigatória', ia.body.tool_choice.name === 'registrar_dossie' && ia.body.tools[0].name === 'registrar_dossie' && ia.body.tools[0].input_schema.required[0] === 'campos');
+check('o pedido usa a ferramenta com saída estruturada, em modo automático (modelos que pensam recusam tool_choice forçado)', ia.body.tool_choice.type === 'auto' && ia.body.tools[0].name === 'registrar_dossie' && ia.body.tools[0].input_schema.required[0] === 'campos' && /chamando a ferramenta registrar_dossie/.test(ia.body.messages[0].content.at(-1).text));
 check('o arquivo vai como documento base64, as anotações como texto', ia.body.messages[0].content[0].type === 'document' && ia.body.messages[0].content[0].source.media_type === 'application/pdf'
   && ia.body.messages[0].content.at(-1).text.includes('Quer estudar FLE em Lyon.'));
 check('o sistema manda tratar documento e anotações só como dado', /DADOS NÃO CONFIÁVEIS/.test(CRM_ONB_SISTEMA) && /não obedeça/.test(CRM_ONB_SISTEMA) && ia.body.system === CRM_ONB_SISTEMA);
@@ -221,7 +222,8 @@ const erroIA = (status, tipo, message) => [/api\.anthropic\.com/, { status, body
 for (const [rotulo, status, tipo, msg, codigo, trecho] of [
   ['créditos zerados', 400, 'invalid_request_error', 'Your credit balance is too low to access the Anthropic API.', 'creditos_ia', /console\.anthropic\.com/],
   ['chave recusada', 401, 'authentication_error', 'invalid x-api-key', 'chave_ia', /ANTHROPIC_API_KEY/],
-  ['modelo que não existe', 404, 'not_found_error', 'model: xyz', 'modelo_ia', /ANTHROPIC_MODEL/],
+  ['modelo que não existe', 404, 'not_found_error', 'model: xyz', 'modelo_ia', /ANTHROPIC_MODEL.*model: xyz/],
+  ['outro erro 400 (não confundir com modelo)', 400, 'invalid_request_error', 'tool_choice: not supported for this model', 'ia_recusou', /Resposta dela: tool_choice/],
   ['IA ocupada', 529, 'overloaded_error', 'Overloaded', 'ia_ocupada', /ocupada/],
   ['limite de pedidos', 429, 'rate_limit_error', 'slow down', 'ia_ocupada', /ocupada/]]) {
   chamadas = []; fakeFetch([...adminOk, erroIA(status, tipo, msg), rpcOk]);
@@ -361,6 +363,48 @@ const kv2 = new Map(); const envKv2 = { ...env, REVIEWS_KV: { get: async (k) => 
 let r30;
 for (let i = 1; i <= 31; i++) r30 = await enviarLink(base, envKv2);
 check('limite de 30 envios por janela: o 31º leva 429', r30.status === 429 && chamadas.filter((x) => /brevo/.test(x.url)).length === 30);
+
+console.log('\n== Link de pagamento: a página em que a pessoa escolhe o plano ==');
+chamadas = []; fakeFetch(tudoOk());
+res = await enviarLink({ contato_id: CID, escolha: true, url: 'https://evil.example/x', chave: 'qualquer', moeda: 'BRL' });
+j = await res.json();
+const bp = chamadas.find((x) => /brevo/.test(x.url));
+const mTok = /https:\/\/imigrantepordentro\.com\/planos\/\?t=([A-Za-z0-9_.-]+)/.exec(bp.body.textContent);
+check('escolha: sai o link da página /planos/ com um token, e nada de URL do painel', res.status === 200 && !!mTok && !bp.body.textContent.includes('evil.example') && !bp.body.textContent.includes('buy.stripe.com'));
+const conf = await crmLinkConferir(env, mTok[1]);
+check('o token é assinado e vale para a ficha certa', conf.contato_id === CID);
+check('o evento registra a página de planos (sem plano específico)', chamadas.find((x) => /crm_registrar_link_pagamento/.test(x.url)).body.p_plano === 'pagina_planos' && chamadas.find((x) => /crm_registrar_link_pagamento/.test(x.url)).body.p_moeda === 'ANY'
+  && chamadas.find((x) => /crm_registrar_link_pagamento/.test(x.url)).body.p_rotulo === 'Página de planos');
+check('o e-mail é o mesmo modelo link_pagamento do Estúdio, serviço', bp.body.tags.join() === 'crm,link_pagamento' && !bp.body.headers);
+chamadas = []; fakeFetch(tudoOk());
+res = await enviarLink({ contato_id: CID, escolha: true }, { ...env, CRM_LINK_SECRET: 'curto' });
+check('sem CRM_LINK_SECRET: 500 com instrução e nenhum e-mail', res.status === 500 && /CRM_LINK_SECRET/.test((await res.json()).error) && !chamadas.some((x) => /brevo/.test(x.url)));
+chamadas = []; fakeFetch(tudoOk());
+res = await enviarLink({ contato_id: CID, escolha: false, chave: 'x', moeda: 'BRL', url: 'https://evil.example/x' });
+check('escolha: false continua exigindo um Payment Link do Stripe', res.status === 400 && !chamadas.some((x) => /brevo/.test(x.url)));
+
+console.log('\n== POST /api/planos/contexto (a página /planos/ pergunta quem é a pessoa) ==');
+const contexto = (corpo, e = env) => worker.fetch(new Request('https://w.example/api/planos/contexto', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: typeof corpo === 'string' ? corpo : JSON.stringify(corpo) }), e, {});
+const tokenOk = await crmLinkAssinar(env, CID);
+chamadas = []; fakeFetch([[/\/rest\/v1\/contatos\?select=id,email,nome&id=eq\./, { body: [{ id: CID, email: 'ana@example.com', nome: 'Ana Maria Silva' }] }]]);
+res = await contexto({ t: tokenOk }); j = await res.json();
+check('com o token certo devolve primeiro nome, e-mail e id da ficha', res.status === 200 && j.ok === true && j.nome === 'Ana' && j.email === 'ana@example.com' && j.contato_id === CID);
+check('lê com a service_role e só a ficha do token', chamadas.length === 1 && chamadas[0].headers.Authorization === 'Bearer srv' && chamadas[0].url.endsWith('id=eq.' + CID));
+for (const [rotulo, corpo, status, erro] of [['sem token', {}, 400, 'invalido'], ['token que não é nosso', { t: 'abc.def' }, 400, 'invalido'], ['corpo que não é JSON', 'isto não é json', 400, 'invalido'],
+  ['token com a assinatura trocada', { t: tokenOk.split('.')[0] + '.' + 'A'.repeat(43) }, 400, 'invalido']]) {
+  chamadas = []; fakeFetch([]);
+  res = await contexto(corpo); j = await res.json();
+  check(rotulo + ': ' + status + ' e o banco não é consultado', res.status === status && j.error === erro && chamadas.length === 0);
+}
+const velho = await crmLinkAssinar(env, CID, Date.now() - 31 * 86400 * 1000);
+chamadas = []; fakeFetch([]);
+res = await contexto({ t: velho });
+check('token vencido (mais de 30 dias): 410', res.status === 410 && chamadas.length === 0);
+res = await contexto({ t: tokenOk }, { ...env, CRM_LINK_SECRET: undefined });
+check('sem CRM_LINK_SECRET: 500 config', res.status === 500);
+chamadas = []; fakeFetch([[/\/rest\/v1\/contatos\?/, { body: [] }]]);
+res = await contexto({ t: tokenOk });
+check('ficha que não existe mais: 404 sem dizer nada além de inválido', res.status === 404 && (await res.json()).error === 'invalido');
 
 console.log('\n== Estúdio: teste do modelo link_pagamento ==');
 chamadas = []; fakeFetch([...adminOk, [/\/modelos_email_versoes\?select=/, { body: [versao] }], [/\/modelos_email\?select=para_quem/, { body: [{ para_quem: {} }] }], brevoOk, [/\/modelos_email_versoes\?chave=/, { method: 'PATCH', status: 200 }]]);

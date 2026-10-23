@@ -723,7 +723,7 @@ só PDF, JPG ou PNG (o Worker confere os primeiros bytes, não só a extensão),
 1. `admin/crm/db/crm-onboarding.sql`: cria a pessoa pelo e-mail e guarda a origem de cada campo.
 2. `admin/crm/db/crm-link-pagamento-email.sql`: cria o modelo **Link de pagamento** no Estúdio (versão 1, No ar, tipo serviço). O texto pode ser mudado no Estúdio de e-mails como qualquer modelo.
 
-**5. Os links do Stripe**: preencha `admin/crm/links-pagamento.json` (um item por plano e moeda: `chave`, `rotulo`, `moeda`, `url`) e apague o item de exemplo. O Worker acrescenta ao link `?prefilled_email=<e-mail>&client_reference_id=<id da ficha>` (o webhook, numa próxima etapa, usa o id para achar a ficha).
+**5. Os planos e os links do Stripe**: veja a seção 26 (o arquivo é `planos/planos.json`, um item por nível, periodicidade e moeda; o Worker acrescenta `?prefilled_email=<e-mail>&client_reference_id=<id da ficha>`).
 
 **Como o Worker trata o conteúdo**: documento e anotações são dado não confiável; o modelo é instruído a só extrair, a resposta tem que passar na validação campo a campo (uma tentativa a mais se não passar; depois erro claro e nada é salvo), e só entram as chaves do Dossiê. Não existe campo para número de passaporte, de documento ou foto. O que a Ingryd já digitou na ficha **prevalece** sobre o que a IA leu; o mesmo e-mail nunca cria duas fichas.
 
@@ -776,3 +776,25 @@ Se o e-mail não chegar: Workers → Logs, procure `crm/stripe`; no Stripe, Webh
 escolha de plano dentro do app e o chat/limites dos níveis.
 
 Testes: `node cms-oauth-worker/testes/stripe-webhook.test.mjs`; no banco, `cd admin/crm/db/testes && npm run test:assinaturas`; no app, `node db/testes/acesso-app.test.mjs`.
+
+
+## 26. A página de planos (`/planos/`): a pessoa escolhe nível, periodicidade e moeda
+
+O botão **Enviar link de pagamento** (aba Plataforma) manda, por padrão, o e-mail "Link de pagamento" com um link para
+`https://imigrantepordentro.com/planos/?t=...`. Nessa página a pessoa vê os níveis (Básico, Intermediário, Completo), alterna entre **moeda**
+(R$ ou €) e **periodicidade** (mensal, semestral, anual, com o desconto calculado) e clica em **Começar 30 dias grátis**, que abre o Payment Link do Stripe
+já com o e-mail dela preenchido e o id da ficha (o webhook, seção 25, casa o pagamento com a ficha por esse id). A outra opção do botão, **Só este plano**, manda direto um Payment Link.
+
+**Tudo sai de um arquivo: `planos/planos.json`.** Quem edita o texto e os preços é você, direto no GitHub (lápis → editar → Commit), sem código:
+- `niveis`: `chave`, `nome`, `para` (a frase de quem é), `destaque` (true marca "Mais escolhido") e `beneficios` (a lista).
+- `itens`: um Payment Link por combinação: `chave` (única), `nivel`, `periodicidade` (`mensal`, `semestral` ou `anual`), `moeda` (`BRL` ou `EUR`), `valor` (o preço que você cadastrou no Stripe, só o número) e `url`.
+- `teste_dias`: 30 (o texto "30 dias grátis, a cobrança só começa no dia 31"). Ponha 0 se o Payment Link **não** tiver teste grátis.
+- **A página já mostra os 3 níveis, as 3 periodicidades e as 2 moedas (18 preços)**, com os valores do quadro de preços. Enquanto a `url` de uma linha estiver vazia (`""`), a página mostra o preço e o botão **Em breve**. Quando criar o Payment Link no Stripe, cole a URL entre as aspas daquela linha e salve: o botão vira "Começar 30 dias grátis" sozinho. Hoje só o **Básico mensal em R$** tem link. Para tirar uma combinação da página, apague a linha. O seletor "Só este plano" do CRM mostra só as linhas que já têm link.
+- Os preços e os textos do Intermediário e do Completo seguem o quadro do `ONBOARDING.md` (seção 14), que ainda tem itens **a construir** e preços **propostos**. Como a página já é pública para quem receber o link, revise esses textos e valores antes de mandar o link a alguém.
+
+**O que o Worker precisa**: `CRM_LINK_SECRET` (a mesma da seção 18; assina o link da página, que vale 30 dias) e a rota pública `POST /api/planos/contexto`, que devolve só o primeiro nome, o e-mail e o id da ficha de quem tem o link. Sem `CRM_LINK_SECRET` o botão avisa e nada é enviado.
+
+**SQL**: rode de novo `admin/crm/db/crm-link-pagamento-email.sql`. Se você ainda não mexeu no texto do modelo no Estúdio, ele ganha a **versão 2** (a que fala de "escolher o plano") e a versão 1 fica arquivada; se você já editou, não é tocado.
+
+**Teste**: Onboarding de uma pessoa de ensaio → Enviar link de pagamento → "Deixar a pessoa escolher" → abra o e-mail, clique em **Escolher o meu plano** → a página abre com o nome dela → escolha um plano com um link de teste do Stripe (modo teste) e pague com `4242 4242 4242 4242`.
+Testes automáticos: `cd admin/crm/db/testes && node planos.test.mjs`.

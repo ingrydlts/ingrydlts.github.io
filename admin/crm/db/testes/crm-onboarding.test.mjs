@@ -191,6 +191,22 @@ async function main() {
     && [...(vs[0].corpo_texto + vs[0].corpo_html + vs[0].assunto).matchAll(/\{[#^/]?(\w+)\}/g)].every((x) => ['nome', 'link_pagamento', 'pre', 'assunto'].includes(x[1])));
   check('o botão aponta para {link_pagamento}', vs[0].corpo_html.includes('href="{link_pagamento}"'));
   check('sem rodapé de descadastro (não é marketing)', !/palavra\s+sair/i.test(vs[0].corpo_texto));
+  check('o texto fala de escolher o plano (a página de planos) e o botão diz isso', /escolher o plano que combina com você/.test(vs[0].corpo_texto) && /Escolher o meu plano/.test(vs[0].corpo_html));
+
+  console.log('\n== Quem já tinha a versão anterior do modelo ganha a versão 2 ==');
+  await db.exec("delete from modelos_email_versoes where chave='link_pagamento'");
+  await db.query(`insert into modelos_email_versoes (chave, versao, etapa, assunto, corpo_texto, corpo_html, nota, publicado_em)
+    values ('link_pagamento', 1, 'no_ar', 'antigo', 'Oi! Aqui está o link para você concluir o pagamento do plano que combinamos.', '<p>antigo</p>', 'link de pagamento: versão inicial', now())`);
+  check('roda sobre a versão antiga sem erro', (await attempt(() => db.exec(arqEmail))).ok);
+  const up = await q("select versao, etapa, corpo_texto from modelos_email_versoes where chave='link_pagamento' order by versao");
+  check('a versão 1 antiga fica arquivada e a 2 entra No ar com o texto novo', up.length === 2 && up[0].etapa === 'arquivado' && up[1].versao === 2 && up[1].etapa === 'no_ar' && up[1].corpo_texto === mt.corpo_texto);
+  check('rodar de novo não cria versão 3', (await attempt(() => db.exec(arqEmail))).ok && (await q("select count(*)::int n from modelos_email_versoes where chave='link_pagamento'"))[0].n === 2);
+  await db.exec("delete from modelos_email_versoes where chave='link_pagamento'");
+  await db.query(`insert into modelos_email_versoes (chave, versao, etapa, assunto, corpo_texto, corpo_html, nota, publicado_em)
+    values ('link_pagamento', 1, 'no_ar', 'meu assunto', 'Texto que eu mesma editei.', '<p>meu</p>', 'editado no estúdio', now())`);
+  await db.exec(arqEmail);
+  const keep = await q("select versao, etapa, corpo_texto from modelos_email_versoes where chave='link_pagamento'");
+  check('texto que a Ingryd já editou no Estúdio não é tocado', keep.length === 1 && keep[0].etapa === 'no_ar' && keep[0].corpo_texto === 'Texto que eu mesma editei.');
 
   console.log(`\n${passed} ok, ${failed} falharam`);
   process.exit(failed ? 1 : 0);

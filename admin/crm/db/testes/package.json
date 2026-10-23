@@ -23,6 +23,7 @@
     "test:dossie": "node crm-dossie.test.mjs",
     "test:onboarding": "node crm-onboarding.test.mjs",
     "test:assinaturas": "node crm-assinaturas.test.mjs",
+    "test:planos": "node planos.test.mjs",
     "test:onboarding-ui": "node crm-onboarding-ui.test.mjs",
     "test:dossie-ui": "node crm-dossie-ui.test.mjs",
     "test:checklist": "node crm-checklist.test.mjs",

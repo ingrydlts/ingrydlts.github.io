@@ -43,7 +43,7 @@ const mod = new Function('supabase', 'ES', 'document', 'window', 'location', 'lo
   getONB: function () { return ONB; }, setPagto: function (v) { PAGTO = v; }, setONB: function (v) { ONB = v; }, abrirLinkPagamento, enviarLinkPagamento, onbOrigemDe, dosVisiveis, setActive: function (v) { activeCid = v; } };`)(
   supabase, {}, document, { addEventListener() {}, scrollTo() {} }, { href: '' }, { getItem: (k) => store[k] ?? null, setItem: (k, v) => { store[k] = v; } });
 
-// ---- fetch falso (o crm.js chama o Worker e o links-pagamento.json) ----
+// ---- fetch falso (o crm.js chama o Worker e o planos/planos.json) ----
 let chamadas = [];
 function fakeFetch(rotas) {
   globalThis.fetch = async (url, opt = {}) => {
@@ -257,12 +257,13 @@ check('a linha do tempo conhece os eventos do Stripe', mod.eventText({ tipo: 'pa
   && mod.eventText({ tipo: 'assinatura_atualizada', dados: { status: 'active', cancela_no_fim: true } })[1] === 'Assinatura: ativa (cancela no fim do período)'
   && mod.eventText({ tipo: 'pagamento_falhou', dados: {} })[1] === 'O pagamento falhou' && mod.eventText({ tipo: 'assinatura_cancelada', dados: {} })[1] === 'Assinatura cancelada');
 
-console.log('\n== O arquivo links-pagamento.json ==');
-const jsonLinks = JSON.parse(readFileSync(path.resolve(HERE, '../../links-pagamento.json'), 'utf8'));
+console.log('\n== O arquivo planos/planos.json ==');
+const jsonLinks = JSON.parse(readFileSync(path.resolve(HERE, '../../../../planos/planos.json'), 'utf8'));
 const itensArq = mod.pagtoItens(jsonLinks);
-check('o arquivo versionado tem a estrutura certa e só links https://buy.stripe.com/ (nada de chave secreta)', itensArq.length >= 1 && itensArq.length === jsonLinks.itens.length && itensArq.every((i) => /^https:\/\/buy\.stripe\.com\//.test(i.url)) && !/sk_(live|test)_|whsec_/.test(JSON.stringify(jsonLinks)));
+check('o arquivo versionado tem a estrutura certa e só links https://buy.stripe.com/ (nada de chave secreta)', itensArq.length >= 1 && itensArq.length === jsonLinks.itens.filter((i) => i.url).length && itensArq.every((i) => /·/.test(i.rotulo)) && itensArq.every((i) => /^https:\/\/buy\.stripe\.com\//.test(i.url)) && !/sk_(live|test)_|whsec_/.test(JSON.stringify(jsonLinks)));
 check('as chaves dos planos não se repetem', new Set(itensArq.map((i) => i.chave)).size === itensArq.length);
-check('cada item tem chave, rótulo, moeda e url', jsonLinks.itens.every((i) => ['chave', 'rotulo', 'moeda', 'url'].every((k) => typeof i[k] === 'string')));
+check('cada item tem chave, nível, periodicidade, moeda, valor e url', jsonLinks.itens.every((i) => ['chave', 'nivel', 'periodicidade', 'moeda', 'url'].every((k) => typeof i[k] === 'string') && typeof i.valor === 'number'));
+check('o seletor do CRM só oferece plano que já tem link (os preços sem link ficam de fora)', itensArq.every((i) => /^https:\/\/buy\.stripe\.com\//.test(i.url)) && jsonLinks.itens.some((i) => !i.url));
 check('aceita lista pura ou { itens }', mod.pagtoItens([{ chave: 'a', rotulo: 'A', moeda: 'EUR', url: 'https://buy.stripe.com/x' }]).length === 1);
 check('item fora do formato é ignorado, os outros ficam', mod.pagtoItens({ itens: [{ chave: 'Ruim Demais', rotulo: 'x', moeda: 'BRL', url: 'https://buy.stripe.com/x' }, { chave: 'b', rotulo: 'B', moeda: 'real', url: 'https://buy.stripe.com/x' },
   { chave: 'c', rotulo: 'C', moeda: 'BRL', url: 'http://buy.stripe.com/x' }, { chave: 'd', rotulo: 'D', moeda: 'BRL', url: 'https://buy.stripe.com/d' }, null, 'texto'] }).map((i) => i.chave).join() === 'd');
@@ -275,19 +276,25 @@ const itensReais = { itens: [
   { chave: 'basico_mensal_eur', rotulo: 'Básico · mensal', moeda: 'EUR', url: 'https://buy.stripe.com/bbb' },
   { chave: 'exemplo-nao-usar', rotulo: XSS, moeda: 'BRL', url: 'https://buy.stripe.com/EXEMPLO', exemplo: true }] };
 chamadas = [];
-fakeFetch([[/links-pagamento\.json/, { body: itensReais }]]);
+fakeFetch([[/planos\.json/, { body: itensReais }]]);
 await mod.abrirLinkPagamento('n1');
 const sel = el('pg-plano');
-check('lê o links-pagamento.json sem usar cache', chamadas[0].url === 'links-pagamento.json' && chamadas[0].opt.cache === 'no-cache');
-check('uma opção por plano e moeda, texto por textContent', sel.children.length === 3 && sel.children[1].textContent === 'Básico · mensal (EUR)' && sel.children[2].textContent.includes(XSS) && !sel.innerHTML.includes('onerror'));
-check('o item de exemplo fica desligado e o primeiro real vem escolhido', sel.children[2].disabled === true && sel.value === '0' && el('pg-enviar').disabled === false);
+check('lê o planos/planos.json sem usar cache', chamadas[0].url === '/planos/planos.json' && chamadas[0].opt.cache === 'no-cache');
+check('a 1ª opção manda a página de planos; depois uma opção por plano e moeda, texto por textContent', sel.children.length === 4 && sel.children[0].value === 'escolha' && /Deixar a pessoa escolher/.test(sel.children[0].textContent)
+  && sel.children[2].textContent === 'Só este plano: Básico · mensal (EUR)' && sel.children[3].textContent.includes(XSS) && !sel.innerHTML.includes('onerror'));
+check('o item de exemplo fica desligado e a página de planos vem escolhida', sel.children[3].disabled === true && sel.value === 'escolha' && el('pg-enviar').disabled === false);
 check('mostra para quem vai o e-mail (textContent)', el('pg-email').textContent === 'ana@example.com');
-sel.value = '1';
+respostas['crm_contatos'] = { data: [NOVO], error: null };
 chamadas = [];
 fakeFetch([[/link-pagamento$/, { body: { ok: true, enviado_em: '2026-10-23T15:00:00Z' } }]]);
-respostas['crm_contatos'] = { data: [NOVO], error: null };
 await mod.enviarLinkPagamento(el('pg-enviar'));
-const lp = chamadas.find((c) => /\/api\/crm\/link-pagamento$/.test(c.url));
+let lp = chamadas.find((c) => /\/api\/crm\/link-pagamento$/.test(c.url));
+check('"Deixar a pessoa escolher" manda só a ficha e escolha: true (o Worker monta o link assinado)', JSON.parse(lp.opt.body).escolha === true && JSON.parse(lp.opt.body).contato_id === 'n1' && !('url' in JSON.parse(lp.opt.body)) && lp.opt.headers.Authorization === 'Bearer tok');
+await mod.abrirLinkPagamento('n1');
+el('pg-plano').value = '1';
+chamadas = [];
+await mod.enviarLinkPagamento(el('pg-enviar'));
+lp = chamadas.find((c) => /\/api\/crm\/link-pagamento$/.test(c.url));
 const corpo = JSON.parse(lp.opt.body);
 check('manda o plano escolhido ao Worker, com o token da admin', lp.opt.method === 'POST' && lp.opt.headers.Authorization === 'Bearer tok' && corpo.contato_id === 'n1' && corpo.chave === 'basico_mensal_eur'
   && corpo.moeda === 'EUR' && corpo.url === 'https://buy.stripe.com/bbb' && corpo.rotulo === 'Básico · mensal');
@@ -298,19 +305,19 @@ el('pg-plano').value = '2';
 chamadas = [];
 await mod.enviarLinkPagamento(el('pg-enviar'));
 check('item de exemplo nunca é enviado', !chamadas.some((c) => /link-pagamento$/.test(c.url)) && el('pg-err').hidden === false);
-el('pg-plano').value = '0';
+el('pg-plano').value = 'escolha';
 fakeFetch([[/link-pagamento$/, { status: 502, body: { error: 'O Brevo recusou o envio (401). ' + XSS } }]]);
 const bt = el('pg-enviar'); bt.textContent = 'Enviar e-mail';
 await mod.enviarLinkPagamento(bt);
 check('erro do Worker aparece no pop-up (como texto) e o botão volta', el('pg-err').hidden === false && el('pg-err').textContent.includes('Brevo recusou') && el('pg-err').textContent.includes(XSS) && bt.disabled === false && bt.textContent === 'Enviar e-mail');
 // arquivo ausente ou vazio: o pop-up explica e não deixa enviar
-for (const [rotulo, rota] of [['não existe (404)', [/links-pagamento\.json/, { status: 404, body: {} }]], ['está sem planos', [/links-pagamento\.json/, { body: { itens: [] } }]]]) {
+for (const [rotulo, rota] of [['não existe (404)', [/planos\.json/, { status: 404, body: {} }]], ['está sem planos', [/planos\.json/, { body: { itens: [] } }]]]) {
   fakeFetch([rota]);
   // o crm.js guarda a lista lida: reabre o seletor com a lista limpa (cada rodada vale por uma sessão nova do painel)
   mod.setPagto && mod.setPagto({ itens: null, erro: '' });
   els.delete('pg-plano'); els.delete('pg-err'); els.delete('pg-enviar');
   await mod.abrirLinkPagamento('n1');
-  check('links-pagamento.json ' + rotulo + ': o pop-up explica e o envio fica desligado', el('pg-err').hidden === false && /links-pagamento\.json/.test(el('pg-err').textContent) && el('pg-enviar').disabled === true);
+  check('planos.json ' + rotulo + ': o pop-up explica e o envio fica desligado', el('pg-err').hidden === false && /planos\.json/.test(el('pg-err').textContent) && el('pg-enviar').disabled === true);
 }
 
 console.log(`\n${passed} passaram, ${failed} falharam`);

@@ -2585,7 +2585,7 @@ function onbFaltaHtml(c, d, rasc) {
     (f.length > mostra.length ? '<span class="sub">e mais ' + (f.length - mostra.length) + '</span>' : '') + '</div>';
 }
 
-// ---------- Link de pagamento (aba Plataforma): o seletor vem de links-pagamento.json ----------
+// ---------- Link de pagamento (aba Plataforma): o seletor vem de planos/planos.json ----------
 var PAGTO = { itens: null, erro: '' };
 var ASSIN_ST = { trialing: 'em teste grátis', active: 'ativa', past_due: 'pagamento falhou', canceled: 'cancelada', unpaid: 'não paga', incomplete: 'incompleta', paused: 'pausada' };
 // A assinatura que o Stripe informou (db/crm-assinaturas.sql): o status e até quando vale. O Stripe é quem manda nas datas.
@@ -2596,21 +2596,24 @@ function assinaturaHtml() {
     (ate ? ' · ' + (a.status === 'trialing' ? 'teste até ' : a.status === 'active' && !a.cancela_no_fim ? 'renova em ' : 'acesso até ') + esc(fmtDay(String(ate).slice(0, 10))) : '') +
     (a.cancela_no_fim ? ' · cancela no fim do período' : '') + '</p>';
 }
-// O arquivo é uma lista, ou { itens: [...] }. Item fora do formato é ignorado (não derruba a lista).
+// planos/planos.json (o mesmo da página /planos/): { niveis, itens }, ou só uma lista de itens. O rótulo vem do item, ou do nome do nível + a
+// periodicidade. Item fora do formato é ignorado (não derruba a lista).
 function pagtoItens(j) {
   var l = Array.isArray(j) ? j : (j && Array.isArray(j.itens) ? j.itens : []);
-  return l.filter(function (x) {
-    return x && /^[a-z0-9_-]{1,40}$/.test(String(x.chave || '')) && typeof x.rotulo === 'string' && x.rotulo.trim() && /^[A-Z]{3}$/.test(String(x.moeda || '')) &&
-      typeof x.url === 'string' && /^https:\/\//.test(x.url);
-  }).map(function (x) { return { chave: x.chave, rotulo: x.rotulo.trim().slice(0, 80), moeda: x.moeda, url: x.url, exemplo: !!x.exemplo }; });
+  var nomes = {}; ((j && Array.isArray(j.niveis)) ? j.niveis : []).forEach(function (n) { if (n && n.chave && n.nome) nomes[n.chave] = String(n.nome); });
+  return l.map(function (x) {
+    if (!x || !/^[a-z0-9_-]{1,40}$/.test(String(x.chave || '')) || !/^[A-Z]{3}$/.test(String(x.moeda || '')) || typeof x.url !== 'string' || !/^https:\/\//.test(x.url)) return null;
+    var rot = typeof x.rotulo === 'string' && x.rotulo.trim() ? x.rotulo.trim() : (nomes[x.nivel] ? nomes[x.nivel] + (x.periodicidade ? ' · ' + x.periodicidade : '') : '');
+    return rot ? { chave: x.chave, rotulo: rot.slice(0, 80), moeda: x.moeda, url: x.url, exemplo: !!x.exemplo } : null;
+  }).filter(Boolean);
 }
 async function carregarLinksPagamento() {
   if (PAGTO.itens) return PAGTO.itens;
   try {
-    var res = await fetch('links-pagamento.json', { cache: 'no-cache' });
+    var res = await fetch('/planos/planos.json', { cache: 'no-cache' });
     if (!res.ok) throw new Error('HTTP ' + res.status);
     PAGTO.itens = pagtoItens(await res.json()); PAGTO.erro = '';
-  } catch (e) { PAGTO.itens = null; PAGTO.erro = 'Não consegui ler links-pagamento.json (' + (e && e.message) + ').'; }
+  } catch (e) { PAGTO.itens = null; PAGTO.erro = 'Não consegui ler planos/planos.json (' + (e && e.message) + ').'; }
   return PAGTO.itens;
 }
 function pagamentoHtml(c, h4) {
@@ -2627,7 +2630,7 @@ function pagamentoHtml(c, h4) {
 async function abrirLinkPagamento(cid) {
   var c = byC(cid); if (!c) return; activeCid = cid;
   modalOpen(modalTop(c) + '<h4 style="margin:14px 0 6px;font-size:14px">Enviar link de pagamento</h4>' +
-    '<label class="sub" for="pg-plano" style="display:block;margin:0 0 4px">Plano e moeda</label>' +
+    '<label class="sub" for="pg-plano" style="display:block;margin:0 0 4px">O que enviar</label>' +
     '<select id="pg-plano" class="pag-plano" disabled><option>Carregando…</option></select>' +
     '<p class="sub" style="margin:8px 0 0" id="pg-dica"></p>' +
     '<p class="sub" style="margin:8px 0 0">O e-mail “Link de pagamento” vai para <b id="pg-email"></b>.</p>' +
@@ -2637,35 +2640,38 @@ async function abrirLinkPagamento(cid) {
   var itens = await carregarLinksPagamento(), sel = $('pg-plano'); if (!sel) return;
   sel.innerHTML = '';
   if (!itens || !itens.length) {
-    var o0 = document.createElement('option'); o0.textContent = 'Nenhum plano em links-pagamento.json'; sel.appendChild(o0);
-    var er = $('pg-err'); er.textContent = PAGTO.erro || 'O arquivo links-pagamento.json não tem nenhum plano. Preencha com os seus Payment Links do Stripe.'; er.hidden = false;
+    var o0 = document.createElement('option'); o0.textContent = 'Nenhum plano em planos/planos.json'; sel.appendChild(o0);
+    var er = $('pg-err'); er.textContent = PAGTO.erro || 'O arquivo planos/planos.json não tem nenhum plano. Preencha com os seus Payment Links do Stripe.'; er.hidden = false;
     return;
   }
+  var reais = itens.filter(function (it) { return !it.exemplo; }).length;
+  // A primeira opção manda a página /planos/, onde a pessoa escolhe nível, periodicidade e moeda. As outras mandam um Payment Link só.
+  var oe = document.createElement('option'); oe.value = 'escolha'; oe.textContent = 'Deixar a pessoa escolher (página com todos os planos)'; oe.disabled = !reais; sel.appendChild(oe);
   itens.forEach(function (it, i) {
     var o = document.createElement('option'); o.value = String(i);
-    o.textContent = it.rotulo + ' (' + it.moeda + ')' + (it.exemplo ? ' · exemplo, troque no arquivo' : '');
+    o.textContent = 'Só este plano: ' + it.rotulo + ' (' + it.moeda + ')' + (it.exemplo ? ' · exemplo, troque no arquivo' : '');
     o.disabled = it.exemplo; sel.appendChild(o);
   });
-  var primeiro = itens.findIndex(function (it) { return !it.exemplo; });
   sel.disabled = false;
-  if (primeiro < 0) {
-    sel.selectedIndex = 0;   // só há exemplo: mostra o nome dele (desligado) em vez de uma caixa em branco
-    $('pg-dica').textContent = 'Só há o item de exemplo. Preencha admin/crm/links-pagamento.json com os seus Payment Links do Stripe.';
+  if (!reais) {
+    sel.selectedIndex = 0;   // só há exemplo: mostra a primeira opção (desligada) em vez de uma caixa em branco
+    $('pg-dica').textContent = 'Só há o item de exemplo. Preencha planos/planos.json com os seus Payment Links do Stripe.';
     return;
   }
-  sel.value = String(primeiro); $('pg-enviar').disabled = false;
+  sel.value = 'escolha'; $('pg-enviar').disabled = false;
+  $('pg-dica').textContent = 'A página de planos mostra só o que já tem link no planos.json. O link do e-mail vale 30 dias.';
 }
 async function enviarLinkPagamento(btn) {
   var err = $('pg-err'); err.hidden = true;
-  var it = (PAGTO.itens || [])[Number($('pg-plano').value)];
-  if (!it || it.exemplo) { err.textContent = 'Escolha um plano.'; err.hidden = false; return; }
+  var v = $('pg-plano').value, escolha = v === 'escolha', it = escolha ? null : (PAGTO.itens || [])[Number(v)];
+  if (!escolha && (!it || it.exemplo)) { err.textContent = 'Escolha o que enviar.'; err.hidden = false; return; }
   var sess = await supabase.auth.getSession();
   if (!sess.data.session) { err.textContent = 'Sessão expirada. Recarregue a página e entre de novo.'; err.hidden = false; return; }
   btn.disabled = true; btn.textContent = 'Enviando…';
   try {
     var res = await fetch(WORKER_BASE + '/api/crm/link-pagamento', {
       method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + sess.data.session.access_token },
-      body: JSON.stringify({ contato_id: activeCid, chave: it.chave, rotulo: it.rotulo, moeda: it.moeda, url: it.url })
+      body: JSON.stringify(escolha ? { contato_id: activeCid, escolha: true } : { contato_id: activeCid, chave: it.chave, rotulo: it.rotulo, moeda: it.moeda, url: it.url })
     });
     var data = await res.json().catch(function () { return {}; });
     if (!res.ok) throw new Error(data.error || ('Erro ' + res.status));

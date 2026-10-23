@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<title>Escolha o seu plano — Por Dentro</title>
+<script>
+// O link do e-mail traz um token pessoal (?t=). Ele sai da barra de endereço antes de qualquer outro script rodar:
+// não vai para o histórico, nem para o Referer, nem para a atribuição de UTM do main.js.
+(function () {
+  var qs = new URLSearchParams(location.search);
+  window.__planos = { t: qs.get('t') || '' };
+  if (qs.has('t')) { try { history.replaceState(null, '', location.pathname); } catch (e) { /* segue */ } }
+})();
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,600;9..144,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/css/style.css">
+<style>:root { --nav-active: #577328; }</style>
+<link rel="icon" href="/favicon.png" type="image/png">
+<link rel="icon" href="/favicon-32x32.png" sizes="32x32" type="image/png">
+<link rel="icon" href="/favicon-16x16.png" sizes="16x16" type="image/png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<style>
+.pl-wrap{max-width:1040px;margin:0 auto;padding:44px 0 88px}
+.pl-head{text-align:center;max-width:620px;margin:0 auto 28px}
+.pl-head h1{font-size:clamp(26px,6vw,38px);line-height:1.15;margin:0 0 10px}
+.pl-head p{font-size:16px;color:var(--texto-secundario);line-height:1.6;margin:0}
+.pl-ctl{display:flex;flex-wrap:wrap;gap:12px 24px;justify-content:center;margin:0 0 28px}
+.pl-seg{display:inline-flex;background:#ECE7DF;border-radius:999px;padding:4px;gap:2px}
+.pl-seg button{font:inherit;font-weight:600;font-size:14.5px;border:0;background:none;color:var(--texto-secundario);padding:9px 18px;border-radius:999px;cursor:pointer;min-height:40px}
+.pl-seg button[aria-checked="true"]{background:#fff;color:var(--grafite);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.pl-seg button:focus-visible{outline:2px solid #577328;outline-offset:2px}
+.pl-seg small{font-weight:600;color:#577328;margin-left:4px}
+.pl-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:18px;align-items:stretch}
+.pl-card{position:relative;display:flex;flex-direction:column;background:#fff;border:1px solid var(--borda-suave);border-radius:12px;padding:26px 22px;box-shadow:var(--shadow-card)}
+.pl-card.destaque{border:2px solid #577328}
+.pl-sel{position:absolute;top:-13px;left:22px;background:#577328;color:#fff;font-size:12.5px;font-weight:700;padding:4px 12px;border-radius:999px}
+.pl-card h2{font-size:22px;margin:0 0 4px}
+.pl-para{font-size:14px;color:var(--texto-secundario);line-height:1.5;margin:0 0 16px;min-height:42px}
+.pl-preco{font-family:'Fraunces',Georgia,serif;font-size:38px;font-weight:700;color:var(--grafite);line-height:1.1}
+.pl-suf{font-size:14px;color:var(--texto-secundario);margin:2px 0 0}
+.pl-eq{font-size:13px;color:#3F5519;margin:6px 0 0;font-weight:600}
+.pl-ben{list-style:none;margin:18px 0 22px;padding:0;display:flex;flex-direction:column;gap:9px;flex:1}
+.pl-ben li{position:relative;padding-left:24px;font-size:14.5px;line-height:1.45;color:var(--grafite)}
+.pl-ben li::before{content:"✓";position:absolute;left:0;top:0;color:#577328;font-weight:700}
+.pl-btn{display:flex;width:100%;align-items:center;justify-content:center;font:inherit;font-weight:600;font-size:15.5px;padding:14px 20px;border-radius:var(--radius-sm);border:0;background:#577328;color:#fff;text-decoration:none;cursor:pointer;min-height:48px}
+.pl-btn:hover{filter:brightness(1.12)}
+.pl-btn:focus-visible{outline:2px solid #577328;outline-offset:3px}
+.pl-btn.off{background:#E4E0D9;color:#6E6862;cursor:default;pointer-events:none}
+.pl-nota{max-width:640px;margin:28px auto 0;text-align:center;font-size:13.5px;color:var(--texto-secundario);line-height:1.6}
+.pl-nota a{color:#577328;font-weight:600}
+.pl-msg{max-width:520px;margin:0 auto;background:#fff;border:1px solid var(--borda-suave);border-radius:12px;padding:28px;box-shadow:var(--shadow-card)}
+.pl-msg h1{font-size:24px;margin:0 0 10px}.pl-msg p{font-size:15.5px;color:var(--texto-secundario);line-height:1.6;margin:0 0 12px}
+.pl-load{display:flex;align-items:center;justify-content:center;gap:12px;color:var(--texto-secundario);padding:48px 0}
+.pl-spin{width:20px;height:20px;border-radius:50%;border:2px solid var(--borda-suave);border-top-color:#577328;animation:pl-gira .8s linear infinite;flex:none}
+@keyframes pl-gira{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion: reduce){.pl-spin{animation:none}}
+[hidden]{display:none!important}
+@media(max-width:560px){.pl-wrap{padding-top:24px}.pl-seg button{padding:9px 14px}.pl-card{padding:22px 18px}}
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="/" class="site-logo" data-logo-link><img src="/images/logo-por-dentro.png" alt="Por Dentro" class="site-logo-img">Por Dentro</a>
+  <nav class="site-nav" aria-label="Navegação principal" data-header-nav>
+    <a href="/produtos-digitais/" data-nav-key="produtos-digitais">Produtos digitais</a>
+    <a href="/produtos-de-estudo/" data-nav-key="produtos-de-estudo">Produtos de estudo</a>
+    <a href="/produtos-de-compras/" data-nav-key="produtos-de-compras">Produtos de compras</a>
+    <a href="/guias/" data-nav-key="guias">Guias</a>
+    <a href="/artigos/" data-nav-key="blog">Blog</a>
+    <a href="/sobre/" data-nav-key="sobre">Sobre</a>
+  </nav>
+  <button class="nav-toggle" aria-label="Abrir menu" aria-expanded="false">
+    <span></span><span></span><span></span>
+  </button>
+</header>
+<nav class="mobile-nav" aria-label="Navegação mobile" data-header-nav>
+  <a href="/produtos-digitais/" data-nav-key="produtos-digitais">Produtos digitais</a>
+  <a href="/produtos-de-estudo/" data-nav-key="produtos-de-estudo">Produtos de estudo</a>
+  <a href="/produtos-de-compras/" data-nav-key="produtos-de-compras">Produtos de compras</a>
+  <a href="/guias/" data-nav-key="guias">Guias</a>
+  <a href="/artigos/" data-nav-key="blog">Blog</a>
+  <a href="/sobre/" data-nav-key="sobre">Sobre</a>
+</nav>
+
+<main>
+  <div class="container">
+    <div class="pl-wrap">
+
+      <div id="st-carregando" class="pl-load" role="status"><span class="pl-spin" aria-hidden="true"></span>Carregando os planos…</div>
+
+      <div id="st-planos" hidden>
+        <div class="pl-head">
+          <h1 id="pl-titulo">Escolha o plano que combina com você</h1>
+          <p id="pl-sub"></p>
+        </div>
+        <div class="pl-ctl">
+          <div class="pl-seg" role="radiogroup" aria-label="Moeda" id="ctl-moeda"></div>
+          <div class="pl-seg" role="radiogroup" aria-label="Periodicidade" id="ctl-periodo"></div>
+        </div>
+        <div class="pl-grid" id="pl-grid"></div>
+        <p class="pl-nota" id="pl-nota"></p>
+      </div>
+
+      <div id="st-vencido" class="pl-msg" hidden>
+        <h1>Este link venceu</h1>
+        <p>O link dos planos vale por 30 dias. Responda o e-mail que você recebeu, ou escreva para <a href="mailto:respostas@imigrantepordentro.com" style="color:#577328;font-weight:600">respostas@imigrantepordentro.com</a>, que eu mando um novo.</p>
+      </div>
+
+      <div id="st-invalido" class="pl-msg" hidden>
+        <h1>Não consegui abrir os planos</h1>
+        <p>Este link está incompleto ou não é válido. Volte ao e-mail e toque de novo no botão, ou responda o e-mail: chega direto para mim.</p>
+      </div>
+
+      <div id="st-erro" class="pl-msg" hidden>
+        <h1>Não consegui carregar os planos</h1>
+        <p>Pode ser a conexão. Tente de novo em um instante. Se não der, responda o meu e-mail: chega direto para mim.</p>
+        <button type="button" class="pl-btn" id="b-tentar">Tentar de novo</button>
+      </div>
+
+      <div id="st-vazio" class="pl-msg" hidden>
+        <h1>Os planos ainda não estão abertos</h1>
+        <p>Estou terminando de configurar os planos. Responda o meu e-mail e eu te aviso assim que abrir.</p>
+      </div>
+
+    </div>
+  </div>
+</main>
+
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-grid">
+      <div>
+        <a href="/" class="site-logo" data-logo-link style="color:#F4F1EC; margin-bottom:14px;"><img src="/images/logo-por-dentro.png" alt="Por Dentro" class="site-logo-img">Por Dentro</a>
+        <p style="color:#A8A29C; max-width:32ch; font-size:13px;">Templates, indicações de estudo e de compras para quem vive a vida real fora do Brasil.</p>
+      </div>
+      <div data-footer-nav>
+        <div class="footer-col-title">Navegação</div>
+        <div class="footer-links">
+          <a href="/produtos-digitais/" data-nav-key="produtos-digitais">Produtos digitais</a>
+          <a href="/produtos-de-estudo/" data-nav-key="produtos-de-estudo">Produtos de estudo</a>
+          <a href="/produtos-de-compras/" data-nav-key="produtos-de-compras">Produtos de compras</a>
+          <a href="/guias/" data-nav-key="guias">Guias</a>
+          <a href="/artigos/" data-nav-key="blog">Blog</a>
+          <a href="/sobre/" data-nav-key="sobre">Sobre</a>
+        </div>
+      </div>
+      <div>
+        <div class="footer-col-title">Legal</div>
+        <div class="footer-links">
+          <a href="/mentions-legales/">Mentions légales</a>
+          <a href="/cgv/">CGV</a>
+          <a href="/confidentialite/">Confidentialité</a>
+        </div>
+      </div>
+      <div>
+        <div class="footer-col-title">Redes</div>
+        <div class="footer-links"><a href="https://instagram.com/" target="_blank" rel="noopener">@ingryd.pordentro</a></div>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>© Por Dentro · LO TIERZO SILVA INGRYD · SIRET 108 644 485 00014 · France</span>
+      <span>Feito por quem vive isso.</span>
+    </div>
+  </div>
+</footer>
+
+<script type="module">
+// Página do e-mail "link de pagamento". Mostra os níveis, a moeda e a periodicidade para a pessoa escolher; cada botão vai para o
+// Payment Link do Stripe com o e-mail dela preenchido e o id da ficha (o webhook casa o pagamento com a ficha por ele).
+// A lista de planos vem de /planos/planos.json (o mesmo arquivo do botão "Enviar link de pagamento" do CRM). Sem analytics nesta página.
+import { lerPlanos, opcoes, cartoes, escolhaInicial, urlCompra } from '/planos/planos.js';
+var WORKER = location.hostname === 'localhost' ? 'http://localhost:8788' : 'https://por-dentro-cms-oauth.ingrydigitalmanagement.workers.dev';
+var t = (window.__planos || {}).t || '';
+var $ = function (id) { return document.getElementById(id); };
+var ESTADOS = ['carregando', 'planos', 'vencido', 'invalido', 'erro', 'vazio'];
+function estado(nome) { ESTADOS.forEach(function (e) { $('st-' + e).hidden = e !== nome; }); }
+var D = null, CTX = null, ESC = null;
+
+function seg(el, lista, atual, rotulo, aoEscolher) {
+  el.textContent = '';
+  lista.forEach(function (x) {
+    var b = document.createElement('button');
+    b.type = 'button'; b.setAttribute('role', 'radio'); b.setAttribute('aria-checked', String(x[0] === atual));
+    b.textContent = x[1];
+    if (rotulo && rotulo(x)) { var s = document.createElement('small'); s.textContent = rotulo(x); b.appendChild(s); }
+    b.addEventListener('click', function () { aoEscolher(x[0]); });
+    el.appendChild(b);
+  });
+}
+function desenhar() {
+  var o = opcoes(D);
+  seg($('ctl-moeda'), o.moedas, ESC.moeda, null, function (m) { ESC.moeda = m; desenhar(); });
+  $('ctl-moeda').hidden = o.moedas.length < 2;
+  // O desconto de cada periodicidade, calculado dos preços (o melhor entre os níveis na moeda escolhida).
+  seg($('ctl-periodo'), o.periodos, ESC.periodo, function (p) {
+    var e = cartoes(D, ESC.moeda, p[0]).map(function (c) { return c.economia || 0; }).reduce(function (a, b) { return Math.max(a, b); }, 0);
+    return e ? '−' + e + '%' : '';
+  }, function (p) { ESC.periodo = p; desenhar(); });
+  $('ctl-periodo').hidden = o.periodos.length < 2;
+  var grid = $('pl-grid'); grid.textContent = '';
+  cartoes(D, ESC.moeda, ESC.periodo).forEach(function (c) {
+    var card = document.createElement('section'); card.className = 'pl-card' + (c.nivel.destaque ? ' destaque' : '');
+    if (c.nivel.destaque) { var tag = document.createElement('span'); tag.className = 'pl-sel'; tag.textContent = 'Mais escolhido'; card.appendChild(tag); }
+    var h = document.createElement('h2'); h.textContent = c.nivel.nome; card.appendChild(h);
+    var para = document.createElement('p'); para.className = 'pl-para'; para.textContent = c.nivel.para; card.appendChild(para);
+    var preco = document.createElement('div'); preco.className = 'pl-preco'; preco.textContent = c.preco || 'Em breve'; card.appendChild(preco);
+    if (c.sufixo) { var suf = document.createElement('p'); suf.className = 'pl-suf'; suf.textContent = c.sufixo; card.appendChild(suf); }
+    if (c.equivale) { var eq = document.createElement('p'); eq.className = 'pl-eq'; eq.textContent = c.equivale + (c.economia ? ' · você economiza ' + c.economia + '%' : ''); card.appendChild(eq); }
+    var ul = document.createElement('ul'); ul.className = 'pl-ben';
+    c.nivel.beneficios.forEach(function (b) { var li = document.createElement('li'); li.textContent = b; ul.appendChild(li); });
+    card.appendChild(ul);
+    var url = c.comLink && CTX ? urlCompra(c.item.url, CTX) : null;
+    var a = document.createElement(url ? 'a' : 'span'); a.className = 'pl-btn' + (url ? '' : ' off');
+    if (url) { a.href = url; a.rel = 'noopener'; a.textContent = D.teste_dias ? 'Começar ' + D.teste_dias + ' dias grátis' : 'Escolher este plano'; a.setAttribute('aria-label', a.textContent + ': plano ' + c.nivel.nome); }
+    else a.textContent = c.comLink ? 'Indisponível' : 'Em breve';
+    card.appendChild(a); grid.appendChild(card);
+  });
+}
+function mostrar() {
+  D = lerPlanos(D);
+  ESC = D.niveis.length ? escolhaInicial(D) : null;
+  if (!ESC) return estado('vazio');
+  $('pl-titulo').textContent = CTX.nome ? CTX.nome + ', escolha o plano que combina com você' : 'Escolha o plano que combina com você';
+  $('pl-sub').textContent = D.teste_dias
+    ? 'Você começa com ' + D.teste_dias + ' dias de acesso grátis. O cartão é pedido agora, mas a cobrança só começa no dia ' + (D.teste_dias + 1) + '. Se cancelar antes, não paga nada.'
+    : 'Compare os planos, escolha a moeda e a periodicidade, e conclua o pagamento no ambiente seguro do Stripe.';
+  $('pl-nota').textContent = 'O pagamento é feito no ambiente seguro do Stripe, com o seu e-mail já preenchido. ';
+  var a = document.createElement('a'); a.href = 'mailto:respostas@imigrantepordentro.com'; a.textContent = 'Ficou com dúvida? Escreva para a Ingryd.';
+  $('pl-nota').appendChild(a);
+  desenhar(); estado('planos');
+}
+function carregar() {
+  if (!t) return estado('invalido');
+  estado('carregando');
+  Promise.all([
+    fetch(WORKER + '/api/planos/contexto', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ t: t }) })
+      .then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { j.status = r.status; return j; }); }),
+    fetch('/planos/planos.json', { cache: 'no-cache' }).then(function (r) { if (!r.ok) throw new Error('planos.json ' + r.status); return r.json(); })
+  ]).then(function (res) {
+    var c = res[0];
+    if (c.status === 410 || c.error === 'vencido') return estado('vencido');
+    if (c.status === 400 || c.status === 404) return estado('invalido');
+    if (!c.ok) return estado('erro');
+    CTX = c; D = res[1]; mostrar();
+  }).catch(function () { estado('erro'); });
+}
+$('b-tentar').addEventListener('click', carregar);
+carregar();
+</script>
+<script src="/assets/js/main.js"></script>
+<script type="module" src="/assets/js/header.js"></script>
+</body>
+</html>
