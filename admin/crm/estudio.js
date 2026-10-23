@@ -31,7 +31,8 @@ export var CAT = {
   prazo_vencido: { t: 'sim', o: 'o prazo de 3 meses já venceu' },
   prazo_a_vencer: { t: 'sim', o: 'o prazo de 3 meses ainda vai vencer' },
   produto: { t: 'texto', o: 'o nome do produto que ela comprou', plano: null },
-  link_produto: { t: 'link', o: 'o link de acesso do produto (privado, vem do Worker)', privado: true }
+  link_produto: { t: 'link', o: 'o link de acesso do produto (privado, vem do Worker)', privado: true },
+  link_pagamento: { t: 'link', o: 'o link de pagamento do plano (Stripe), com o e-mail dela já preenchido (vem do Worker)', privado: true }
 };
 var ETAPAS_CF = { nao_comecei: 'ainda não começou', escolhendo_curso: 'está escolhendo o curso', juntando_documentos: 'está juntando documentos, traduções e o teste',
   dossie_enviado: 'já enviou o dossiê', entrevista_resposta: 'está esperando a entrevista ou a resposta' };
@@ -47,7 +48,9 @@ export var VARS_DE = {
   boas_vindas: PAINEL.concat(ALT), naoabriu: PAINEL.concat(ALT), naoclicou: PAINEL.concat(ALT), cliquenaoapp: PAINEL.concat(ALT),
   parouapp: PAINEL.concat(ALT), guia_chamada: PAINEL.concat(ALT), guia_plataforma: PAINEL.concat(ALT), guia_alternancia: PAINEL.concat(ALT),
   cf_guia_1: ['nome', 'email', 'link_checklist', 'nivel', 'prazo_nivel', 'etapa', 'cidade'].concat(Object.keys(ETAPAS_CF).map(function (k) { return 'etapa_' + k; })),
-  cf_guia_conversa: ['nome', 'email', 'botoes_cidade']
+  cf_guia_conversa: ['nome', 'email', 'botoes_cidade'],
+  // O e-mail do botão "Enviar link de pagamento" da aba Plataforma (db/crm-link-pagamento-email.sql). O link vem do Worker, por plano e moeda.
+  link_pagamento: ['nome', 'email', 'link_pagamento']
 };
 // Os modelos criados no estúdio (entrega 3) têm todos os mesmos dados; os de compra ganham o produto e o link dele.
 // O Worker preenche exatamente estes (crmVarsNovos em worker.js).
@@ -320,6 +323,8 @@ function botoesPrevia() {
 }
 export function dadosDe(chave, c, h, m) {
   var resp = c.respostas || {};
+  // O link de pagamento é montado no envio (plano, moeda e o e-mail dela): na prévia fica entre colchetes.
+  if (chave === 'link_pagamento') return { nome: h.pn(c), email: c.email, link_pagamento: '[link de pagamento]' };
   if (!VARS_DE[chave] && m && m.criado_no_estudio) {
     var nv2 = CF_NIVEIS[resp.cfNivel], pq = m.para_quem || {};
     var n = { nome: h.pn(c), email: c.email, persona: h.persona(c).toLowerCase(), nivel: nv2 ? nv2[0] : '', prazo_nivel: nv2 ? nv2[1] : '',

@@ -21,6 +21,7 @@
     "test:etapa": "node crm-filtro-etapa.test.mjs",
     "test:propostas": "node crm-propostas.test.mjs",
     "test:dossie": "node crm-dossie.test.mjs",
+    "test:onboarding": "node crm-onboarding.test.mjs",
     "test:dossie-ui": "node crm-dossie-ui.test.mjs",
     "test:checklist": "node crm-checklist.test.mjs",
     "test:insights": "node crm-insights.test.mjs",
