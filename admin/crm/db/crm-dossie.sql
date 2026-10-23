@@ -26,7 +26,7 @@ declare
   v jsonb;
   -- texto curto (até 300), texto longo (as notas da ligação), data AAAA-MM-DD, sim/não, inteiro
   k_texto text[] := array['telefone', 'cidade', 'maior_preocupacao', 'faixa_idade', 'nivel_frances', 'profissao_regulamentada',
-    'numero_secu', 'comprovante_endereco', 'conta_anef', 'ano_au_pair', 'intencao_au_pair', 'trilha_estudo',
+    'numero_secu', 'comprovante_endereco', 'conta_anef', 'certificado_frances', 'certificado_frances_qual', 'ano_au_pair', 'intencao_au_pair', 'trilha_estudo',
     'cfNivel', 'cfEscolaAno', 'cfTeste', 'cfPrazoCursoTem'];
   k_longo text[] := array['ligacao_resumo', 'ligacao_transcricao', 'proximos_passos'];
   k_data text[] := array['data_chegada', 'contrato_fim', 'documento_vencimento', 'data_prova_frances_master', 'cfPrazoCurso', 'ligacao_data'];
