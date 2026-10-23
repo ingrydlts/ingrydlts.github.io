@@ -2666,7 +2666,7 @@ async function crmOnbChamarIA(env, arquivos, anotacoes, recusa) {
       return { ok: false, status: 502, codigo: 'creditos_ia', erro: 'Os créditos da API da Anthropic acabaram. Reponha em console.anthropic.com → Plans & Billing e tente de novo.' };
     }
     if (res.status === 401 || res.status === 403) return { ok: false, status: 502, codigo: 'chave_ia', erro: 'A API da Anthropic recusou a chave (ANTHROPIC_API_KEY). Confira o secret no Worker.' };
-    if (res.status === 404 || (res.status === 400 && /model/i.test(msg))) return { ok: false, status: 502, codigo: 'modelo_ia', erro: 'A API da Anthropic não aceitou o modelo (ANTHROPIC_MODEL). Confira o nome da variável no Worker.' };
+    if (res.status === 404 || (res.status === 400 && /model/i.test(msg))) return { ok: false, status: 502, codigo: 'modelo_ia', erro: 'A API da Anthropic não aceitou o modelo (ANTHROPIC_MODEL). Confira o nome da variável no Worker, sem espaços nem aspas. Resposta dela: ' + msg.replace(/\s+/g, ' ').slice(0, 160) };
     if (res.status === 413) return { ok: false, status: 413, codigo: 'arquivo_grande', erro: 'Os arquivos passaram do tamanho que a IA aceita. Mande menos páginas ou imagens menores.' };
     if (res.status === 429 || res.status === 529 || res.status >= 500) return { ok: false, status: 502, codigo: 'ia_ocupada', erro: 'A IA está ocupada agora. Tente de novo em instantes.' };
     return { ok: false, status: 502, codigo: 'ia_recusou', erro: 'A IA recusou o pedido (' + res.status + '). Tente de novo ou use arquivos diferentes.' };

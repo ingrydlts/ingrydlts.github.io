@@ -221,7 +221,7 @@ const erroIA = (status, tipo, message) => [/api\.anthropic\.com/, { status, body
 for (const [rotulo, status, tipo, msg, codigo, trecho] of [
   ['créditos zerados', 400, 'invalid_request_error', 'Your credit balance is too low to access the Anthropic API.', 'creditos_ia', /console\.anthropic\.com/],
   ['chave recusada', 401, 'authentication_error', 'invalid x-api-key', 'chave_ia', /ANTHROPIC_API_KEY/],
-  ['modelo que não existe', 404, 'not_found_error', 'model: xyz', 'modelo_ia', /ANTHROPIC_MODEL/],
+  ['modelo que não existe', 404, 'not_found_error', 'model: xyz', 'modelo_ia', /ANTHROPIC_MODEL.*model: xyz/],
   ['IA ocupada', 529, 'overloaded_error', 'Overloaded', 'ia_ocupada', /ocupada/],
   ['limite de pedidos', 429, 'rate_limit_error', 'slow down', 'ia_ocupada', /ocupada/]]) {
   chamadas = []; fakeFetch([...adminOk, erroIA(status, tipo, msg), rpcOk]);
