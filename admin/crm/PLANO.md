@@ -16,6 +16,7 @@ Backend: o **mesmo Supabase** do app (projeto `hslhpktfgxwfvljvsxkj`). Painel: e
 | Lembretes de prazo (Hoje) | `lembretes_prazo` (`db/crm-fase2c-lembretes.sql`) | pronto: a calculadora `[[PRAZO]]` dos artigos chama `pedir_lembrete_prazo`; o card mostra quem avisar nos próximos 7 dias |
 | Reimpactar (segmentos) | coluna `segmento` de `crm_contatos` (regras na view) | pronto (envio via Worker → Brevo; ver README do Worker, seção 16) |
 | Modelos de e-mail (estúdio: blocos, prévia com uma pessoa, teste, revisão, publicar, versões, Exportar, modelo novo pelo objetivo, sequências) | `modelos_email`, `modelos_email_versoes` (`db/crm-modelos-email.sql` + `db/crm-estudio-emails-2.sql` + `db/crm-estudio-emails-3.sql`); blocos e objetivos em `estudio.js`; sem a migração, `TPLS` em `crm.js` | pronto; os 8 manuais abrem com o texto No ar da tabela (`TPLS` é reserva); sequências pelo Cron `5 * * * *` |
+| Onboarding (documento → IA → ficha com Dossiê; botão Enviar link de pagamento na aba Plataforma) | Worker `/api/crm/onboarding/ler`, `/api/crm/link-pagamento`; `db/crm-onboarding.sql`, `db/crm-link-pagamento-email.sql`; `links-pagamento.json` | pronto no código; falta rodar o SQL, configurar `ANTHROPIC_API_KEY`/`ANTHROPIC_MODEL`, repor créditos e preencher os links (README do Worker, seção 24) |
 
 ## Extensão: prazo do VLS-TS (guia gratuito)
 

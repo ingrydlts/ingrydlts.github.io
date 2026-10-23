@@ -1,5 +1,7 @@
 # Onboarding por chamada: documento → ficha → 30 dias de acesso → plano
 
+> **Pronto em 23/10/2026 (Etapa 1 do `PLANO-PRIMEIRO-ONBOARDING.md`):** menu **Onboarding** (e-mail obrigatório, documentos, anotações da chamada), leitura por IA no Worker (`/api/crm/onboarding/ler`), ficha criada/atualizada pelo e-mail com o Dossiê preenchido (o que a Ingryd digitou prevalece), origem e confiança de cada campo, lista **"falta perguntar"** no topo da ficha, eventos `onboarding_documento_lido` e `link_pagamento_enviado` na linha do tempo, botão **Enviar link de pagamento** na aba Plataforma (`links-pagamento.json`, modelo `link_pagamento` no Estúdio). **Decisão nova:** o arquivo não é guardado (não há bucket nem "Confirmar dados": o Worker lê e descarta), o que simplifica a seção 2. **Ainda não feito:** convite, conta no Supabase Auth, `criar-senha`, webhook do Stripe, controle do dia 30, planos no app (seções 3, 4 e 11 em diante). Como ligar: README do Worker, seção 24.
+
 > Escrito em 2026-10-22, revisado após as respostas dela. **É uma proposta**: nada aqui vira código até virar item no Major Tasks do Notion.
 > Verificado no código: `admin/crm/DOSSIE.md`, `db/crm-fase1.sql` e `db/schema.sql` (app), `criar-senha/index.html` (app), `cms-oauth-worker/worker.js`.
 > O que não dá para afirmar sem testar aparece como **[conferir]**.
@@ -153,9 +155,9 @@ Roda **só no Worker** (`ANTHROPIC_API_KEY` como secret do Cloudflare, nunca no 
 | # | Entrega | O que você ganha |
 |---|---|---|
 | 1 | **Convite → conta → senha → 30 dias**, com Dossiê manual: botão, `/entrar/`, `crm_ativar_conta`, e-mails, ajuste do `criar-senha`, regra de acesso por data | Já dá para ativar quem você atender no lançamento. |
-| 2 | **Soltar documento** → cria contato, abre ficha, preenche o Dossiê, apaga o arquivo ao confirmar | Para de digitar o que está no documento |
+| 2 | **Soltar documento** → cria contato, abre ficha, preenche o Dossiê (o arquivo é descartado logo após a leitura) | Para de digitar o que está no documento. **Feito em 23/10/2026** |
 | 3 | **Escolha de plano + Stripe + webhook** (precisa do preço decidido) | A cobrança começa a valer no dia 30 |
-| 4 | **Anotações da chamada** + lista "falta perguntar" + resumo na linha do tempo | O roteiro da chamada |
+| 4 | **Anotações da chamada** + lista "falta perguntar" + resumo na linha do tempo | O roteiro da chamada. **Feito em 23/10/2026** (junto com a 2; o resumo é o `ligacao_resumo` do Dossiê) |
 | 5 | Reenviar convite/acesso, custo por leitura, estados de pagamento na ficha | Fechamento |
 
 A entrega 3 vem depois da 1 de propósito: o primeiro grupo de pessoas já usa os 30 dias, e o preço pode ser testado com elas antes de virar código.
@@ -465,3 +467,17 @@ O chat hoje é uma conversa direta com você, com cartões Sim / Não / Depois e
 **O que conta como "interação".** Uma pergunta dela e a sua resposta, com réplicas dentro de 48 h na mesma conversa contando como uma só. O que ela escreve à Central de ajuda (respostas prontas e IAssistente) **não conta**. O contador zera todo mês e não acumula.
 
 **Capacidade (a conferir com dados reais).** Se todos usassem a cota inteira, 30 pessoas no Básico (120 interações) e 15 no Intermediário (120) dariam 240 respostas por mês. Com cerca de 3 minutos cada, já com o rascunho da IA, são ~12 h por mês, **fora** das 4 h semanais de 1:1. Na prática ninguém usa a cota toda, mas o painel do CRM deve mostrar **interações usadas e tempo gasto** desde o primeiro mês, para os números serem ajustados com base em uso real.
+
+
+---
+
+## 15. Como testar com uma pessoa de ensaio (Etapa 1)
+
+Antes: README do Worker, seção 24 (créditos, `ANTHROPIC_API_KEY`, `ANTHROPIC_MODEL`, os dois SQL, `links-pagamento.json`).
+
+1. Use um e-mail seu de ensaio (`seunome+ensaio@gmail.com`) e um documento fictício ou o seu próprio, que você pode apagar depois.
+2. CRM → **Onboarding**. Se aparecer o aviso amarelo, falta configurar (ele diz o quê). Digite o e-mail, solte o PDF/JPG/PNG, escreva uma anotação (ex.: "Au pair em Lyon, quer fazer FLE, chegou em setembro") → **Ler e criar pessoa**.
+3. A ficha abre sozinha: confira o resumo no topo, as etiquetas "Lido do documento · confiança…" nos campos e a lista **Falta perguntar**. Mude um campo e salve: a etiqueta dele some.
+4. Repita com o **mesmo e-mail** e um documento diferente: deve atualizar a mesma ficha (um contato só) e **não** trocar o que você digitou.
+5. Aba **Plataforma** → **Enviar link de pagamento** → escolha o plano → o e-mail chega com o link do Stripe já com o seu e-mail preenchido. O botão passa a mostrar "Link enviado em dd/mm" e **Reenviar**. Na linha do tempo (aba Ficha) aparecem os dois eventos.
+6. Limpeza: apague a pessoa de ensaio no Supabase (Table Editor → `contatos`); o resto sai em cascata.
