@@ -730,3 +730,49 @@ só PDF, JPG ou PNG (o Worker confere os primeiros bytes, não só a extensão),
 **Teste com uma pessoa de ensaio**: veja o roteiro no fim de `admin/crm/ONBOARDING.md` (seção 15).
 Testes automáticos: `node cms-oauth-worker/testes/crm-onboarding.test.mjs` e, em `admin/crm/db/testes`, `npm run test:onboarding` e `npm run test:onboarding-ui`.
 Se algo falhar: Workers → Logs, procure `crm/onboarding` ou `crm/link-pagamento` (o log traz o status da API, nunca o conteúdo do documento).
+
+## 25. Webhook do Stripe: pagamento → assinatura → conta → e-mail de acesso, e o bloqueio por data
+
+Quando a pessoa paga o Payment Link (com o teste grátis de 30 dias), o Stripe avisa o Worker. O Worker grava a assinatura na ficha,
+cria a conta no Supabase (sem senha) e manda o e-mail **acesso confirmado** com um link que entra direto no app; lá a pessoa cria a
+senha. O app só abre para quem tem teste ou plano em dia (e, se cancelou ou o pagamento falhou, até o fim do período já pago).
+Admin sempre entra; **todas as outras contas, inclusive as de testadoras antigas, passam a precisar de assinatura**.
+
+**1. Banco (SQL Editor do Supabase, nesta ordem, depois dos de Onboarding da seção 24)**
+1. `admin/crm/db/crm-assinaturas.sql` (tabelas, `crm_stripe_aplicar`, `meu_acesso`).
+2. `admin/crm/db/crm-acesso-email.sql` (o modelo **Acesso confirmado** do Estúdio, versão 1, No ar).
+
+**2. Segredos no Cloudflare** (Settings → Variables and Secrets). Já existem de antes: `STRIPE_SECRET_KEY`, `SUPABASE_SERVICE_ROLE_KEY`,
+`BREVO_API_KEY`, `BREVO_SENDER_EMAIL`. Confira que a `STRIPE_SECRET_KEY` é da conta que vende os planos. Falta o do passo 3.
+
+**3. Criar o endpoint no Stripe**
+1. Stripe → **Desenvolvedores** → **Webhooks** → **Adicionar endpoint**. (Use o modo **teste** primeiro; depois repita no modo real: cada modo tem o seu endpoint e o seu segredo.)
+2. URL: `https://por-dentro-cms-oauth.ingrydigitalmanagement.workers.dev/api/stripe/webhook`
+3. Eventos (só estes quatro): `checkout.session.completed`, `customer.subscription.updated`, `customer.subscription.deleted`, `invoice.payment_failed`.
+4. Salve e copie o **Segredo de assinatura** (`whsec_...`).
+5. No Cloudflare: `STRIPE_WEBHOOK_SECRET` (Secret) = esse valor → **Deploy**. Sem ele o Worker responde 500 e o Stripe tenta de novo depois.
+   Atenção: a `STRIPE_SECRET_KEY` também tem que ser do mesmo modo (teste ou real) do endpoint.
+
+**4. No Stripe, nos Payment Links**: teste grátis de 30 dias (cartão pedido na hora) e, em **Após o pagamento**, redirecionar para
+`https://plataforma.imigrantepordentro.com/`.
+
+**5. No app** (repositório POR-DENTRO-APP, branch `claude/vigilant-clarke-8lrzo4`): publicar. Sem isso o bloqueio não existe (a regra só
+vale onde o app chama `meu_acesso()`). Antes de publicar, confira que **a sua conta de admin** está na tabela `admins`: ela é a única que entra sem assinatura.
+
+**Teste ponta a ponta (modo teste do Stripe, com um e-mail seu de ensaio)**
+1. Onboarding de uma pessoa de ensaio → **Enviar link de pagamento** (aba Plataforma).
+2. Abra o link do e-mail, pague com o cartão `4242 4242 4242 4242`.
+3. Em poucos segundos: a ficha mostra "Assinatura: em teste grátis · teste até dd/mm" e, na linha do tempo, "Pagamento confirmado"; chega o e-mail **acesso confirmado**.
+4. Clique no botão do e-mail: entra no app e cria a senha. Depois o painel abre normalmente.
+5. Para ver o bloqueio: no Stripe, cancele a assinatura de ensaio e adiante o fim do período (ou, no SQL Editor, `update assinaturas set status = 'canceled', periodo_fim = now() - interval '1 day' where contato_id = '<id da ficha>'`): o painel leva a `/plano/`.
+
+**Como o Worker se protege**: só aceita pedido com a assinatura do Stripe (HMAC-SHA256 do corpo, até 5 minutos de diferença); cada evento
+do Stripe é aplicado uma vez (`stripe_eventos`), então o reenvio do Stripe não duplica nada; um evento mais velho que o gravado não
+desfaz o novo; o link de entrada (uso único) nunca vai para o log nem para o histórico de e-mails. Se algo falhar depois de gravar, o
+Worker responde 500 e o Stripe repete, e a nova tentativa só refaz o que faltou (o e-mail sai uma vez só por assinatura).
+Se o e-mail não chegar: Workers → Logs, procure `crm/stripe`; no Stripe, Webhooks → o endpoint → o evento → **Reenviar**.
+
+**O que ainda não existe**: botão do cliente para trocar de plano ou cancelar sozinha (hoje ela escreve para você e você cancela no Stripe),
+escolha de plano dentro do app e o chat/limites dos níveis.
+
+Testes: `node cms-oauth-worker/testes/stripe-webhook.test.mjs`; no banco, `cd admin/crm/db/testes && npm run test:assinaturas`; no app, `node db/testes/acesso-app.test.mjs`.
