@@ -1974,6 +1974,9 @@ async function handleCrmModeloTeste(request, env) {
 // Os 10 modelos de antes do estúdio nunca saem por aqui. Ver README.md, seção 23.
 const CRM_CRON_SEQUENCIAS = '5 * * * *';
 const CRM_MODELOS_ANTIGOS = CRM_MODELOS.concat(['cf_guia_conversa']);   // os 10 de antes do estúdio
+// Link de quem já fez o onboarding online (acesso confirmado): `?origem=crm` faz o app pular as perguntas do percurso,
+// porque o dossiê já está na ficha. Os links de prospecção (APP_LINK em crm.js, link_acesso) ficam sem a marca.
+const CRM_APP_LINK_ONBOARDING = 'https://plataforma.imigrantepordentro.com/?origem=crm';
 const CRM_APP_LINK = 'https://plataforma.imigrantepordentro.com/';      // igual a APP_LINK em admin/crm/crm.js
 const CRM_CAL_LINK = 'https://cal.com/ingryd-silva-jf1cnx/1-1?overlayCalendar=true';   // igual a CAL_LINK em admin/crm/crm.js
 // Igual a PERSONAS em admin/crm/crm.js: {persona} é o nome do checklist em minúsculas.
@@ -2974,7 +2977,7 @@ async function crmLinkDeEntrada(env, email) {
   const cria = await fetch(`${CRM_SUPABASE_URL}/auth/v1/admin/users`, { method: 'POST', headers: sb, body: JSON.stringify({ email, email_confirm: true }) });
   if (!cria.ok && cria.status !== 422) throw new Error('não criei a conta (' + cria.status + ')');   // 422 = já existe: segue
   const gl = await fetch(`${CRM_SUPABASE_URL}/auth/v1/admin/generate_link`, {
-    method: 'POST', headers: sb, body: JSON.stringify({ type: 'magiclink', email, redirect_to: CRM_APP_LINK }) });
+    method: 'POST', headers: sb, body: JSON.stringify({ type: 'magiclink', email, redirect_to: CRM_APP_LINK_ONBOARDING }) });
   const g = gl.ok ? await gl.json().catch(() => null) : null;
   const link = g && (g.action_link || (g.properties && g.properties.action_link));
   if (!link || !/^https:\/\//.test(link)) throw new Error('não gerei o link de entrada (' + gl.status + ')');

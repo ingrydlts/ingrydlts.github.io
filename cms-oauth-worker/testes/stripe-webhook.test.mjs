@@ -140,7 +140,7 @@ check('pede a assinatura ao Stripe com a chave secreta (e o nome do produto)', /
 const cria = toca(/auth\/v1\/admin\/users$/)[0];
 check('cria a conta já confirmada, com o e-mail da ficha', cria.body.email === 'ana@example.com' && cria.body.email_confirm === true && !('password' in cria.body));
 const gl = toca(/generate_link/)[0];
-check('gera o link de entrada para o app', gl.body.type === 'magiclink' && gl.body.email === 'ana@example.com' && gl.body.redirect_to === 'https://plataforma.imigrantepordentro.com/');
+check('gera o link de entrada para o app', gl.body.type === 'magiclink' && gl.body.email === 'ana@example.com' && gl.body.redirect_to === 'https://plataforma.imigrantepordentro.com/?origem=crm');
 const bv = toca(/brevo/)[0];
 check('e-mail para a ficha, com o link de entrada no botão e no texto', bv.body.to[0].email === 'ana@example.com' && bv.body.textContent.includes(LINK) && bv.body.htmlContent.includes('href="' + LINK.replace(/&/g, '&amp;') + '"'));
 check('assunto com o primeiro nome e fim do teste preenchido', bv.body.subject === 'Ana, o seu acesso ao Por Dentro está liberado' && bv.body.textContent.includes('Teste grátis até: ' + new Date((agora + 30 * 86400) * 1000).toISOString().slice(8, 10)));
