@@ -1,5 +1,5 @@
 {
-  "leia_me": "Fonte única dos planos: a página /planos/ (a que a pessoa recebe) e o botão 'Enviar link de pagamento' do CRM leem este arquivo. 'niveis' é o texto de cada nível (nome, para quem, o que inclui). 'itens' são os Payment Links do Stripe, um por nível + periodicidade + moeda: chave (minúsculas, números, - e _), nivel (a chave de um nível), periodicidade (mensal, semestral ou anual), moeda (BRL ou EUR), valor (o preço que você cadastrou no Stripe, só o número) e url (o Payment Link inteiro, https://buy.stripe.com/...). Um nível só aparece na página se tiver pelo menos um link; uma combinação sem link aparece como 'em breve'. O e-mail e o id da ficha são acrescentados na hora (?prefilled_email=...&client_reference_id=...). Não ponha aqui chave secreta do Stripe: Payment Link é público.",
+  "leia_me": "Fonte única dos planos: a página /planos/ (a que a pessoa recebe) e o botão 'Enviar link de pagamento' do CRM leem este arquivo. 'niveis' é o texto de cada nível (nome, para quem, o que inclui, destaque). 'itens' é uma linha por nível + periodicidade + moeda, com o valor que aparece na página (o mesmo que você cadastrou no Stripe) e a url do Payment Link (https://buy.stripe.com/...). Enquanto a url estiver vazia (\"\"), a página mostra o preço e o botão 'Em breve': quando criar o link no Stripe, cole a URL aqui, entre as aspas, e salve. Para tirar uma combinação da página, apague a linha. Os valores dos níveis Intermediário e Completo são os PROPOSTOS no plano: confira antes de criar os links. O e-mail e o id da ficha são acrescentados na hora (?prefilled_email=...&client_reference_id=...). Não ponha aqui chave secreta do Stripe: Payment Link é público.",
   "teste_dias": 30,
   "niveis": [
     {
@@ -53,6 +53,142 @@
       "moeda": "BRL",
       "valor": 69,
       "url": "https://buy.stripe.com/8x28wPgwRe3736ReStaR207"
+    },
+    {
+      "chave": "basico_semestral_brl",
+      "nivel": "basico",
+      "periodicidade": "semestral",
+      "moeda": "BRL",
+      "valor": 393,
+      "url": ""
+    },
+    {
+      "chave": "basico_anual_brl",
+      "nivel": "basico",
+      "periodicidade": "anual",
+      "moeda": "BRL",
+      "valor": 745,
+      "url": ""
+    },
+    {
+      "chave": "basico_mensal_eur",
+      "nivel": "basico",
+      "periodicidade": "mensal",
+      "moeda": "EUR",
+      "valor": 12,
+      "url": ""
+    },
+    {
+      "chave": "basico_semestral_eur",
+      "nivel": "basico",
+      "periodicidade": "semestral",
+      "moeda": "EUR",
+      "valor": 68,
+      "url": ""
+    },
+    {
+      "chave": "basico_anual_eur",
+      "nivel": "basico",
+      "periodicidade": "anual",
+      "moeda": "EUR",
+      "valor": 129,
+      "url": ""
+    },
+    {
+      "chave": "intermediario_mensal_brl",
+      "nivel": "intermediario",
+      "periodicidade": "mensal",
+      "moeda": "BRL",
+      "valor": 149,
+      "url": ""
+    },
+    {
+      "chave": "intermediario_semestral_brl",
+      "nivel": "intermediario",
+      "periodicidade": "semestral",
+      "moeda": "BRL",
+      "valor": 849,
+      "url": ""
+    },
+    {
+      "chave": "intermediario_anual_brl",
+      "nivel": "intermediario",
+      "periodicidade": "anual",
+      "moeda": "BRL",
+      "valor": 1609,
+      "url": ""
+    },
+    {
+      "chave": "intermediario_mensal_eur",
+      "nivel": "intermediario",
+      "periodicidade": "mensal",
+      "moeda": "EUR",
+      "valor": 26,
+      "url": ""
+    },
+    {
+      "chave": "intermediario_semestral_eur",
+      "nivel": "intermediario",
+      "periodicidade": "semestral",
+      "moeda": "EUR",
+      "valor": 148,
+      "url": ""
+    },
+    {
+      "chave": "intermediario_anual_eur",
+      "nivel": "intermediario",
+      "periodicidade": "anual",
+      "moeda": "EUR",
+      "valor": 280,
+      "url": ""
+    },
+    {
+      "chave": "completo_mensal_brl",
+      "nivel": "completo",
+      "periodicidade": "mensal",
+      "moeda": "BRL",
+      "valor": 299,
+      "url": ""
+    },
+    {
+      "chave": "completo_semestral_brl",
+      "nivel": "completo",
+      "periodicidade": "semestral",
+      "moeda": "BRL",
+      "valor": 1704,
+      "url": ""
+    },
+    {
+      "chave": "completo_anual_brl",
+      "nivel": "completo",
+      "periodicidade": "anual",
+      "moeda": "BRL",
+      "valor": 3229,
+      "url": ""
+    },
+    {
+      "chave": "completo_mensal_eur",
+      "nivel": "completo",
+      "periodicidade": "mensal",
+      "moeda": "EUR",
+      "valor": 52,
+      "url": ""
+    },
+    {
+      "chave": "completo_semestral_eur",
+      "nivel": "completo",
+      "periodicidade": "semestral",
+      "moeda": "EUR",
+      "valor": 296,
+      "url": ""
+    },
+    {
+      "chave": "completo_anual_eur",
+      "nivel": "completo",
+      "periodicidade": "anual",
+      "moeda": "EUR",
+      "valor": 561,
+      "url": ""
     }
   ]
 }

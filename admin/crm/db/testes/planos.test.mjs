@@ -20,7 +20,13 @@ const arq = { teste_dias: 30, niveis, itens: [
 
 console.log('== Ler o planos.json ==');
 let d = P.lerPlanos(arq);
-check('mostra só os níveis que têm link (o Completo não tem: fica de fora)', d.niveis.map((n) => n.chave).join() === 'basico,inter' && d.itens.length === 6);
+check('mostra os níveis que têm algum preço no arquivo (o Completo não tem nenhuma linha: fica de fora)', d.niveis.map((n) => n.chave).join() === 'basico,inter' && d.itens.length === 6);
+const semLink = P.lerPlanos({ niveis, itens: [item('basico', 'mensal', 'BRL', 69, { url: '' }), item('inter', 'mensal', 'BRL', 149, { url: undefined }), { ...item('basico', 'anual', 'BRL', 745), url: null }] });
+check('preço sem link ainda (url vazia) fica na página, só sem botão de compra', semLink.itens.length === 3 && semLink.niveis.length === 2 && semLink.itens.every((i) => i.url === ''));
+const cs = P.cartoes(semLink, 'BRL', 'mensal');
+check('o cartão mostra o preço e marca que ainda não tem link ("em breve")', cs.every((c) => c.preco && c.comLink === false && c.item) && n(cs[0].preco) === 'R$ 69');
+check('e o preço sem link ainda calcula a economia contra o mensal', P.cartoes(semLink, 'BRL', 'anual')[0].economia === 10);
+check('com tudo sem link a escolha inicial é a primeira (R$ mensal)', JSON.stringify(P.escolhaInicial(semLink)) === JSON.stringify({ moeda: 'BRL', periodo: 'mensal' }));
 check('guarda os dias de teste', d.teste_dias === 30 && P.lerPlanos({ ...arq, teste_dias: 0 }).teste_dias === 0 && P.lerPlanos({ ...arq, teste_dias: 'x' }).teste_dias === 0);
 check('item de exemplo não conta: nível só com exemplo não aparece', P.lerPlanos({ niveis, itens: [item('basico', 'mensal', 'BRL', 69, { exemplo: true })] }).niveis.length === 0);
 check('item fora do formato é ignorado (url http, valor zero, moeda ou nível desconhecidos, chave repetida)', P.lerPlanos({ niveis, itens: [
@@ -31,19 +37,20 @@ check('os benefícios são texto aparado, no máximo 15', P.lerPlanos({ niveis: 
 
 console.log('\n== Opções e preços ==');
 const o = P.opcoes(d);
-check('só oferece moedas e periodicidades que têm link', o.moedas.map((m) => m[0]).join() === 'BRL,EUR' && o.periodos.map((p) => p[0]).join() === 'mensal,semestral,anual');
+check('só oferece moedas e periodicidades que têm algum preço', o.moedas.map((m) => m[0]).join() === 'BRL,EUR' && o.periodos.map((p) => p[0]).join() === 'mensal,semestral,anual');
 check('moeda única: uma só opção', P.opcoes(P.lerPlanos({ niveis, itens: [item('basico', 'mensal', 'BRL', 69)] })).moedas.length === 1);
 check('preço em reais e em euros no formato do Brasil, com espaço que não quebra linha', n(P.formatarValor(69, 'BRL')) === 'R$ 69' && n(P.formatarValor(12, 'EUR')) === '€ 12' && n(P.formatarValor(65.5, 'BRL')) === 'R$ 65,50' && P.formatarValor(69, 'BRL').includes('\u00a0'));
 let c = P.cartoes(d, 'BRL', 'mensal');
 check('um cartão por nível, com o preço e "por mês"', c.length === 2 && n(c[0].preco) === 'R$ 69' && c[0].sufixo === 'por mês' && c[0].equivale === null && c[0].economia === null);
 c = P.cartoes(d, 'BRL', 'semestral');
 check('semestral: total, equivalente por mês e a economia contra 6 meses no mensal (393 vs 414 = 5%)', n(c[0].preco) === 'R$ 393' && c[0].sufixo === 'a cada 6 meses' && n(c[0].equivale) === 'equivale a R$ 65,50 por mês' && c[0].economia === 5);
-check('combinação sem link vira "em breve" (item nulo, sem preço)', c[1].item === null && c[1].preco === null);
+check('combinação sem nenhuma linha no arquivo vira "em breve" (item nulo, sem preço)', c[1].item === null && c[1].preco === null && c[1].comLink === false);
 c = P.cartoes(d, 'BRL', 'anual');
 check('anual: 745 contra 12 × 69 = 828 dá 10%', c[0].economia === 10 && c[0].sufixo === 'por ano' && c[1].economia === 10);
 check('sem o preço mensal na mesma moeda não inventa economia', P.cartoes(d, 'EUR', 'semestral')[0].item === null && P.cartoes(P.lerPlanos({ niveis, itens: [item('basico', 'anual', 'EUR', 129)] }), 'EUR', 'anual')[0].economia === null);
 check('o destaque vem do arquivo', c[1].nivel.destaque === true && c[0].nivel.destaque === false);
 check('a escolha inicial é a combinação com mais planos (BRL mensal tem 2)', JSON.stringify(P.escolhaInicial(d)) === JSON.stringify({ moeda: 'BRL', periodo: 'mensal' }));
+check('a escolha inicial prefere a combinação com mais links de compra', JSON.stringify(P.escolhaInicial(P.lerPlanos({ niveis, itens: [item('basico', 'mensal', 'BRL', 69, { url: '' }), item('basico', 'anual', 'EUR', 129), item('inter', 'anual', 'EUR', 280)] }))) === JSON.stringify({ moeda: 'EUR', periodo: 'anual' }));
 check('sem nada para mostrar, sem escolha', P.escolhaInicial(P.lerPlanos({ niveis, itens: [] })) === null);
 
 console.log('\n== O link de compra ==');
@@ -56,10 +63,12 @@ check('só https, sem usuário e senha, e URL inválida vira nulo', P.urlCompra(
 
 console.log('\n== O arquivo e a página ==');
 const real = P.lerPlanos(JSON.parse(readFileSync(path.join(RAIZ, 'planos/planos.json'), 'utf8')));
-check('o planos.json versionado tem pelo menos um plano com link', real.itens.length >= 1 && real.niveis.length >= 1);
+check('o planos.json versionado é a página completa: 3 níveis × 3 periodicidades × 2 moedas = 18 preços', real.niveis.map((x) => x.chave).join() === 'basico,intermediario,completo' && real.itens.length === 18);
+check('e pelo menos um já tem link de compra', real.itens.filter((i) => i.url).length >= 1 && real.itens.every((i) => !i.url || /^https:\/\/buy\.stripe\.com\//.test(i.url)));
+check('cada nível mostra benefícios e a frase de quem é', real.niveis.every((x) => x.beneficios.length >= 4 && x.para.length > 10) && real.niveis.filter((x) => x.destaque).length === 1);
 const bruto = JSON.parse(readFileSync(path.join(RAIZ, 'planos/planos.json'), 'utf8'));
 check('e nenhuma chave secreta', !/sk_(live|test)_|whsec_|rk_(live|test)_/.test(JSON.stringify(bruto)));
-check('os preços dos níveis seguem o quadro do plano (BRL mensal: 69, 149, 299; semestral 5%; anual 10%) quando existirem', bruto.itens.every((i) => {
+check('os preços seguem o quadro do plano (BRL mensal: 69, 149, 299; semestral 5%; anual 10%)', bruto.itens.every((i) => {
   const base = { basico: [69, 12], intermediario: [149, 26], completo: [299, 52] }[i.nivel]; if (!base) return false;
   const m = i.moeda === 'BRL' ? base[0] : base[1], k = { mensal: 1, semestral: 6 * 0.95, anual: 12 * 0.9 }[i.periodicidade];
   return Math.abs(i.valor - m * k) <= Math.max(1.5, m * k * 0.01);

@@ -789,8 +789,8 @@ já com o e-mail dela preenchido e o id da ficha (o webhook, seção 25, casa o 
 - `niveis`: `chave`, `nome`, `para` (a frase de quem é), `destaque` (true marca "Mais escolhido") e `beneficios` (a lista).
 - `itens`: um Payment Link por combinação: `chave` (única), `nivel`, `periodicidade` (`mensal`, `semestral` ou `anual`), `moeda` (`BRL` ou `EUR`), `valor` (o preço que você cadastrou no Stripe, só o número) e `url`.
 - `teste_dias`: 30 (o texto "30 dias grátis, a cobrança só começa no dia 31"). Ponha 0 se o Payment Link **não** tiver teste grátis.
-- **Um nível só aparece na página se tiver pelo menos um link.** Uma combinação sem link aparece como "Em breve". Hoje só o Básico mensal em R$ está no arquivo: a página mostra só ele. Cada link novo que você acrescentar aparece sozinho.
-- O texto dos benefícios dos níveis acima do Básico segue o quadro do `ONBOARDING.md` (seção 14), que ainda tem itens **a construir** e preços **propostos**: revise antes de criar os links desses níveis.
+- **A página já mostra os 3 níveis, as 3 periodicidades e as 2 moedas (18 preços)**, com os valores do quadro de preços. Enquanto a `url` de uma linha estiver vazia (`""`), a página mostra o preço e o botão **Em breve**. Quando criar o Payment Link no Stripe, cole a URL entre as aspas daquela linha e salve: o botão vira "Começar 30 dias grátis" sozinho. Hoje só o **Básico mensal em R$** tem link. Para tirar uma combinação da página, apague a linha. O seletor "Só este plano" do CRM mostra só as linhas que já têm link.
+- Os preços e os textos do Intermediário e do Completo seguem o quadro do `ONBOARDING.md` (seção 14), que ainda tem itens **a construir** e preços **propostos**. Como a página já é pública para quem receber o link, revise esses textos e valores antes de mandar o link a alguém.
 
 **O que o Worker precisa**: `CRM_LINK_SECRET` (a mesma da seção 18; assina o link da página, que vale 30 dias) e a rota pública `POST /api/planos/contexto`, que devolve só o primeiro nome, o e-mail e o id da ficha de quem tem o link. Sem `CRM_LINK_SECRET` o botão avisa e nada é enviado.
 

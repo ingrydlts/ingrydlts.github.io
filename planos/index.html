@@ -215,10 +215,10 @@ function desenhar() {
     var ul = document.createElement('ul'); ul.className = 'pl-ben';
     c.nivel.beneficios.forEach(function (b) { var li = document.createElement('li'); li.textContent = b; ul.appendChild(li); });
     card.appendChild(ul);
-    var url = c.item && CTX ? urlCompra(c.item.url, CTX) : null;
+    var url = c.comLink && CTX ? urlCompra(c.item.url, CTX) : null;
     var a = document.createElement(url ? 'a' : 'span'); a.className = 'pl-btn' + (url ? '' : ' off');
     if (url) { a.href = url; a.rel = 'noopener'; a.textContent = D.teste_dias ? 'Começar ' + D.teste_dias + ' dias grátis' : 'Escolher este plano'; a.setAttribute('aria-label', a.textContent + ': plano ' + c.nivel.nome); }
-    else a.textContent = c.item ? 'Indisponível' : 'Em breve';
+    else a.textContent = c.comLink ? 'Indisponível' : 'Em breve';
     card.appendChild(a); grid.appendChild(card);
   });
 }
