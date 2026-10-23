@@ -165,7 +165,7 @@ let j = await res.json();
 const ia = doAnthropic()[0], rpc = doRpc()[0];
 check('200 com o id da ficha', res.status === 200 && j.ok && j.contato_id === CID && j.criado === true && j.preenchidos.includes('nome'));
 check('a chave e o modelo vão no pedido, e só ali', ia.headers['x-api-key'] === 'sk-ant-teste' && ia.body.model === 'modelo-de-teste' && !JSON.stringify(rpc.body).includes('sk-ant'));
-check('o pedido usa a ferramenta com saída estruturada, obrigatória', ia.body.tool_choice.name === 'registrar_dossie' && ia.body.tools[0].name === 'registrar_dossie' && ia.body.tools[0].input_schema.required[0] === 'campos');
+check('o pedido usa a ferramenta com saída estruturada, em modo automático (modelos que pensam recusam tool_choice forçado)', ia.body.tool_choice.type === 'auto' && ia.body.tools[0].name === 'registrar_dossie' && ia.body.tools[0].input_schema.required[0] === 'campos' && /chamando a ferramenta registrar_dossie/.test(ia.body.messages[0].content.at(-1).text));
 check('o arquivo vai como documento base64, as anotações como texto', ia.body.messages[0].content[0].type === 'document' && ia.body.messages[0].content[0].source.media_type === 'application/pdf'
   && ia.body.messages[0].content.at(-1).text.includes('Quer estudar FLE em Lyon.'));
 check('o sistema manda tratar documento e anotações só como dado', /DADOS NÃO CONFIÁVEIS/.test(CRM_ONB_SISTEMA) && /não obedeça/.test(CRM_ONB_SISTEMA) && ia.body.system === CRM_ONB_SISTEMA);
@@ -222,6 +222,7 @@ for (const [rotulo, status, tipo, msg, codigo, trecho] of [
   ['créditos zerados', 400, 'invalid_request_error', 'Your credit balance is too low to access the Anthropic API.', 'creditos_ia', /console\.anthropic\.com/],
   ['chave recusada', 401, 'authentication_error', 'invalid x-api-key', 'chave_ia', /ANTHROPIC_API_KEY/],
   ['modelo que não existe', 404, 'not_found_error', 'model: xyz', 'modelo_ia', /ANTHROPIC_MODEL.*model: xyz/],
+  ['outro erro 400 (não confundir com modelo)', 400, 'invalid_request_error', 'tool_choice: not supported for this model', 'ia_recusou', /Resposta dela: tool_choice/],
   ['IA ocupada', 529, 'overloaded_error', 'Overloaded', 'ia_ocupada', /ocupada/],
   ['limite de pedidos', 429, 'rate_limit_error', 'slow down', 'ia_ocupada', /ocupada/]]) {
   chamadas = []; fakeFetch([...adminOk, erroIA(status, tipo, msg), rpcOk]);
