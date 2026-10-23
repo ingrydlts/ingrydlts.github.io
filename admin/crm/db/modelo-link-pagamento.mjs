@@ -14,8 +14,8 @@ export const BLOCOS = {
   assunto: '{nome}, o seu link de pagamento chegou', assunto_alt: 'O seu link de pagamento chegou',
   pre: 'É só escolher a forma de pagamento e concluir.',
   itens: [
-    { tipo: 'texto', texto: 'Oi {nome}! Foi um prazer conversar com você. Aqui está o link para você concluir o pagamento do plano que combinamos.', alt: 'Oi! Foi um prazer conversar com você. Aqui está o link para você concluir o pagamento do plano que combinamos.' },
-    { tipo: 'botao', rotulo: 'Concluir o pagamento', link: 'link_pagamento' },
+    { tipo: 'texto', texto: 'Oi {nome}! Foi um prazer conversar com você. Aqui está o seu link para escolher o plano que combina com você e concluir o pagamento.', alt: 'Oi! Foi um prazer conversar com você. Aqui está o seu link para escolher o plano que combina com você e concluir o pagamento.' },
+    { tipo: 'botao', rotulo: 'Escolher o meu plano', link: 'link_pagamento' },
     { tipo: 'texto', estilo: 'discreto', texto: 'O pagamento é feito no ambiente seguro do Stripe. O seu e-mail já vem preenchido na página.' },
     { tipo: 'texto', estilo: 'caixa', texto: '**Ficou com dúvida?** É só responder este e-mail. Chega direto para mim.' },
     { tipo: 'assinatura', texto: 'Ingryd · Por Dentro' }
@@ -35,7 +35,7 @@ export function gerar() {
 --
 -- O modelo entra como se criado pelo "+ Modelo novo" (criado_no_estudio), tipo serviço (transacional: sem rodapé de
 -- descadastro, não exige "novidades"), sem Envio automático, e a versão 1 já No ar: o botão da ficha só funciona com ela.
--- Dados do texto: {nome} e {link_pagamento}. O link vem do Worker (links-pagamento.json + e-mail e id da pessoa).
+-- Dados do texto: {nome} e {link_pagamento}. O link vem do Worker (planos/planos.json + e-mail e id da pessoa).
 -- Um modelo "link_pagamento" que já existe não é tocado.
 --
 -- Como desfazer (só se ainda nenhum e-mail saiu com ele):
@@ -58,6 +58,23 @@ select ${lit(t)}, 1, 'no_ar',
   'link de pagamento: versão inicial', now()
 where exists (select 1 from public.modelos_email where chave = ${lit(t)} and criado_no_estudio)
   and not exists (select 1 from public.modelos_email_versoes where chave = ${lit(t)});
+
+-- Quem rodou a versão anterior deste arquivo (o texto falava de "o plano que combinamos", para um Payment Link de um plano só) ganha a
+-- versão 2, com o texto da página de escolha de planos. Só troca a versão 1 se ela continua do jeito que veio daqui: quem já editou o
+-- texto no Estúdio não é tocado. A versão 1 fica arquivada (o histórico de quem recebeu continua mostrando o que saiu).
+update public.modelos_email_versoes set etapa = 'arquivado'
+ where chave = ${lit(t)} and versao = 1 and etapa = 'no_ar' and nota = 'link de pagamento: versão inicial'
+   and corpo_texto <> ${dolar(t + '_t2', mt.corpo_texto)};
+insert into public.modelos_email_versoes (chave, versao, etapa, assunto, preheader, corpo_texto, corpo_html, blocos, nota, publicado_em)
+select ${lit(t)}, 2, 'no_ar',
+  ${dolar(t + '_a2', mt.assunto)},
+  ${mt.preheader == null ? 'null' : dolar(t + '_p2', mt.preheader)},
+  ${dolar(t + '_t3', mt.corpo_texto)},
+  ${dolar(t + '_h2', mt.corpo_html)},
+  ${dolar(t + '_b2', JSON.stringify(BLOCOS))}::jsonb,
+  'link de pagamento: texto da página de planos', now()
+where exists (select 1 from public.modelos_email_versoes where chave = ${lit(t)} and versao = 1 and etapa = 'arquivado' and nota = 'link de pagamento: versão inicial')
+  and not exists (select 1 from public.modelos_email_versoes where chave = ${lit(t)} and versao = 2);
 `;
 }
 

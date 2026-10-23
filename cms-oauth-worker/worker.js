@@ -2441,6 +2441,7 @@ const CRM_ONB_ORIGENS = ['documento', 'anotacao'];
 const CRM_ONB_CONFIANCAS = ['alta', 'media', 'baixa'];
 const CRM_ONB_EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 const CRM_LINK_PAGAMENTO_HOSTS = ['buy.stripe.com'];
+const CRM_PLANOS_URL = 'https://imigrantepordentro.com/planos/';   // a página onde a pessoa escolhe o plano (planos/index.html)
 const CRM_LINK_PAGAMENTO_EXEMPLO = 'https://buy.stripe.com/exemplo-de-teste';   // só para o teste do Estúdio (modelo-teste)
 
 // O que a IA pode preencher: as chaves do Dossiê (admin/crm/DOSSIE.md, crm.js DOS) menos o que não é resposta dela
@@ -2775,6 +2776,21 @@ function crmLinkPagamentoUrl(env, bruto, contato) {
   return u.toString();
 }
 
+// POST /api/planos/contexto { t } (público, com o link assinado do e-mail): devolve o primeiro nome, o e-mail e o id da ficha, para a página
+// /planos/ montar os botões de compra com ?prefilled_email=…&client_reference_id=… (o webhook casa o pagamento com a ficha por esse id).
+// O token vale 30 dias (CRM_LINK_DIAS); sem ele a página não mostra botão de compra. Só o dono do link vê o próprio e-mail.
+async function handlePlanosContexto(request, env) {
+  const body = await crmLerJson(request);
+  if (!body) return json({ error: 'invalido' }, 400);
+  const link = await crmLinkConferir(env, String(body.t || ''));
+  if (link.erro) return crmLinkErro(link);
+  if (!env.SUPABASE_SERVICE_ROLE_KEY) return json({ error: 'config' }, 500);
+  const r = await fetch(`${CRM_SUPABASE_URL}/rest/v1/contatos?select=id,email,nome&id=eq.${link.contato_id}`, { headers: crmServiceHeaders(env) });
+  const c = r.ok ? (await r.json())[0] : null;
+  if (!c) return json({ error: 'invalido' }, 404);
+  return json({ ok: true, contato_id: c.id, email: c.email, nome: crmPrimeiroNome(c.nome) || null });
+}
+
 async function handleCrmLinkPagamento(request, env) {
   const admin = await crmRequireAdmin(request);
   if (!admin) return json({ error: 'Sem permissão. Entre de novo no CRM.' }, 401);
@@ -2784,9 +2800,11 @@ async function handleCrmLinkPagamento(request, env) {
   const body = await crmLerJson(request);
   if (!body) return json({ error: 'Corpo inválido.' }, 400);
   const contatoId = String(body.contato_id || '');
-  const chave = String(body.chave || '');
-  const moeda = String(body.moeda || '');
-  const rotulo = String(body.rotulo || '').trim().slice(0, 80);
+  // escolha: true = manda a página /planos/ (a pessoa escolhe nível, periodicidade e moeda); sem isso, o Payment Link de um plano só.
+  const escolha = body.escolha === true;
+  const chave = escolha ? 'pagina_planos' : String(body.chave || '');
+  const moeda = escolha ? 'ANY' : String(body.moeda || '');
+  const rotulo = escolha ? 'Página de planos' : String(body.rotulo || '').trim().slice(0, 80);
   if (!CRM_UUID_RE.test(contatoId)) return json({ error: 'Contato inválido.' }, 400);
   if (!/^[a-z0-9_-]{1,40}$/.test(chave)) return json({ error: 'Plano inválido.' }, 400);
   if (!/^[A-Z]{3}$/.test(moeda)) return json({ error: 'Moeda inválida.' }, 400);
@@ -2798,8 +2816,14 @@ async function handleCrmLinkPagamento(request, env) {
   const cRes = await fetch(`${CRM_SUPABASE_URL}/rest/v1/crm_contatos?select=id,email,nome,aceita_novidades&id=eq.${contatoId}`, { headers: auth });
   const contato = cRes.ok ? (await cRes.json())[0] : null;
   if (!contato) return json({ error: 'Contato não encontrado.' }, 404);
-  const link = crmLinkPagamentoUrl(env, body.url, contato);
-  if (!link) return json({ error: 'O endereço do link de pagamento não é um Payment Link do Stripe (https://buy.stripe.com/…). Confira admin/crm/links-pagamento.json.' }, 400);
+  let link;
+  if (escolha) {
+    if (String(env.CRM_LINK_SECRET || '').length < 32) return json({ error: 'Falta o secret CRM_LINK_SECRET no Worker (README, seção 18): é ele que assina o link da página de planos.' }, 500);
+    link = CRM_PLANOS_URL + '?t=' + (await crmLinkAssinar(env, contato.id));
+  } else {
+    link = crmLinkPagamentoUrl(env, body.url, contato);
+    if (!link) return json({ error: 'O endereço do link de pagamento não é um Payment Link do Stripe (https://buy.stripe.com/…). Confira planos/planos.json.' }, 400);
+  }
 
   // O modelo do Estúdio, como no envio manual: tem que ser um modelo criado no estúdio, que sai pela ficha, não excluído.
   const mRes = await fetch(`${CRM_SUPABASE_URL}/rest/v1/modelos_email?select=chave,tipo,criado_no_estudio,automatico,excluido_em&chave=eq.link_pagamento`, { headers: auth });
@@ -3158,6 +3182,9 @@ export default {
       }
       if (url.pathname === '/api/crm/onboarding/status' && request.method === 'GET') {
         return await handleCrmOnboardingStatus(request, env);
+      }
+      if (url.pathname === '/api/planos/contexto' && request.method === 'POST') {
+        return await handlePlanosContexto(request, env);
       }
       if (url.pathname === '/api/stripe/webhook' && request.method === 'POST') {
         return await handleStripeWebhook(request, env);

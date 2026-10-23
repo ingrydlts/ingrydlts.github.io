@@ -1,0 +1,58 @@
+{
+  "leia_me": "Fonte única dos planos: a página /planos/ (a que a pessoa recebe) e o botão 'Enviar link de pagamento' do CRM leem este arquivo. 'niveis' é o texto de cada nível (nome, para quem, o que inclui). 'itens' são os Payment Links do Stripe, um por nível + periodicidade + moeda: chave (minúsculas, números, - e _), nivel (a chave de um nível), periodicidade (mensal, semestral ou anual), moeda (BRL ou EUR), valor (o preço que você cadastrou no Stripe, só o número) e url (o Payment Link inteiro, https://buy.stripe.com/...). Um nível só aparece na página se tiver pelo menos um link; uma combinação sem link aparece como 'em breve'. O e-mail e o id da ficha são acrescentados na hora (?prefilled_email=...&client_reference_id=...). Não ponha aqui chave secreta do Stripe: Payment Link é público.",
+  "teste_dias": 30,
+  "niveis": [
+    {
+      "chave": "basico",
+      "nome": "Básico",
+      "para": "Quer se organizar sozinha, com prazos certos.",
+      "destaque": false,
+      "beneficios": [
+        "Checklist da sua situação, em ordem, com prazos reais",
+        "Leitura de timing e viabilidade: cabe no prazo?",
+        "Minha IAssistente: notas sobre o seu caso",
+        "Avisos de dados que não batem e lembretes de prazo",
+        "Artigos escolhidos para a sua situação",
+        "Chamada de onboarding de 40 minutos com a Ingryd",
+        "4 dúvidas por mês direto com a Ingryd"
+      ]
+    },
+    {
+      "chave": "intermediario",
+      "nome": "Intermediário",
+      "para": "Quer segurança de ter alguém para tirar dúvidas e decidir os pontos críticos.",
+      "destaque": true,
+      "beneficios": [
+        "Tudo do Básico",
+        "1 conversa de 30 minutos por mês, com assunto combinado antes",
+        "8 dúvidas por mês, com resposta em até 48 h úteis",
+        "Radar do seu caso: o que mudou e o que isso muda para você",
+        "Resumo do seu caso feito antes de cada conversa"
+      ]
+    },
+    {
+      "chave": "completo",
+      "nome": "Completo",
+      "para": "Tem um caso complexo ou pouco tempo e quer acompanhamento de perto.",
+      "destaque": false,
+      "beneficios": [
+        "Tudo do Intermediário",
+        "2 conversas de 30 minutos por mês",
+        "Dúvidas sem limite razoável, com resposta em até 24 h úteis",
+        "Conferência de até 2 documentos por mês",
+        "A Ingryd te procura quando um prazo do seu caso se aproxima",
+        "Prioridade máxima na agenda"
+      ]
+    }
+  ],
+  "itens": [
+    {
+      "chave": "basico_mensal_brl",
+      "nivel": "basico",
+      "periodicidade": "mensal",
+      "moeda": "BRL",
+      "valor": 69,
+      "url": "https://buy.stripe.com/8x28wPgwRe3736ReStaR207"
+    }
+  ]
+}
