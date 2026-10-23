@@ -260,7 +260,8 @@ check('a linha do tempo conhece os eventos do Stripe', mod.eventText({ tipo: 'pa
 console.log('\n== O arquivo links-pagamento.json ==');
 const jsonLinks = JSON.parse(readFileSync(path.resolve(HERE, '../../links-pagamento.json'), 'utf8'));
 const itensArq = mod.pagtoItens(jsonLinks);
-check('o arquivo versionado tem a estrutura e um item de exemplo marcado', itensArq.length === 1 && itensArq[0].exemplo === true && /EXEMPLO/.test(itensArq[0].rotulo) && /^https:\/\/buy\.stripe\.com\//.test(itensArq[0].url));
+check('o arquivo versionado tem a estrutura certa e só links https://buy.stripe.com/ (nada de chave secreta)', itensArq.length >= 1 && itensArq.length === jsonLinks.itens.length && itensArq.every((i) => /^https:\/\/buy\.stripe\.com\//.test(i.url)) && !/sk_(live|test)_|whsec_/.test(JSON.stringify(jsonLinks)));
+check('as chaves dos planos não se repetem', new Set(itensArq.map((i) => i.chave)).size === itensArq.length);
 check('cada item tem chave, rótulo, moeda e url', jsonLinks.itens.every((i) => ['chave', 'rotulo', 'moeda', 'url'].every((k) => typeof i[k] === 'string')));
 check('aceita lista pura ou { itens }', mod.pagtoItens([{ chave: 'a', rotulo: 'A', moeda: 'EUR', url: 'https://buy.stripe.com/x' }]).length === 1);
 check('item fora do formato é ignorado, os outros ficam', mod.pagtoItens({ itens: [{ chave: 'Ruim Demais', rotulo: 'x', moeda: 'BRL', url: 'https://buy.stripe.com/x' }, { chave: 'b', rotulo: 'B', moeda: 'real', url: 'https://buy.stripe.com/x' },
