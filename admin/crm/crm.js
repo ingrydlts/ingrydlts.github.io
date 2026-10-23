@@ -1053,7 +1053,7 @@ var TELAS_DOSSIE = /^\/(perfil|landing|onboarding)\//;   // as telas em que o ap
 async function buscaInteracoes(cid) {
   var r = await Promise.all([
     supabase.from('plataforma_cliques').select('sessao,tela,alvo,rotulo,criado_em').eq('contato_id', cid).order('criado_em', { ascending: false }).limit(300),
-    supabase.from('eventos').select('tipo,dados,criado_em').eq('contato_id', cid).in('tipo', ['dossie_atualizado', 'onboarding_documento_lido']).order('criado_em', { ascending: false }).limit(100)
+    supabase.from('eventos').select('tipo,dados,criado_em').eq('contato_id', cid).or('tipo.eq.dossie_atualizado,tipo.eq.onboarding_documento_lido').order('criado_em', { ascending: false }).limit(100)
   ]);
   return { cid: cid, err: r[0].error || null, cliques: r[0].data || [], evs: r[1].data || [] };
 }

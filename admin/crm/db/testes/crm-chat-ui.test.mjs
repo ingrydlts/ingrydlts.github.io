@@ -47,7 +47,7 @@ function fixture(msgs, props) {
   respostas = { 'contatos:one': { data: { dossie: {}, user_id: 'u1' }, error: null }, chat_mensagens: { data: msgs.slice().reverse(), error: null }, propostas: { data: props || [], error: null },
     checklist_items: { data: [], error: null }, plataforma_cliques: { data: [], error: null }, insights_historico: { data: [], error: null }, insights_manuais: { data: [], error: null }, 'insights_vivos:one': { data: null, error: null } };
 }
-async function pagina(tab) { mod.state.sel = 'c1'; mod.state.view = 'pessoa'; mod.state.ptab = tab; await mod.renderPessoa(); return el('pessoa-page').innerHTML; }
+async function pagina(tab) { mod.state.sel = 'c1'; mod.state.view = 'pessoa'; mod.state.ptab = tab; mod.state.pstab = 'chat'; /* o chat é a sub-aba Chat da Plataforma */ await mod.renderPessoa(); return el('pessoa-page').innerHTML; }
 const click = async (ds) => { const b = { id: '', dataset: ds, disabled: false, matches: () => false }; await handlers.click[0]({ target: { id: '', closest: () => b } }); return b; };
 const clickId = async (id) => { const b = { id, dataset: {}, disabled: false, matches: () => false }; await handlers.click[0]({ target: { id, closest: () => b } }); return b; };
 
