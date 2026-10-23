@@ -1105,6 +1105,8 @@ var DOS = [
     { k: 'conta_resolvida', l: 'Conta bancária francesa', t: 'sn' },
     { k: 'securite_resolvida', l: 'Cadastro na sécurité sociale (Ameli)', t: 'sn' },
     { k: 'numero_secu', l: 'Número de sécu', t: 'op', o: [['recebi', 'Já recebeu'], ['aguardando', 'Pediu, aguardando'], ['nao_pedi', 'Ainda não pediu']] },
+    { k: 'certificado_frances', l: 'Tem certificado de francês?', t: 'op', o: [['tenho', 'Sim, tem'], ['nao', 'Ainda não']], ajuda: 'Quem ainda não tem recebe, na plataforma, o Painel do Certificado (template de estudos gratuito).' },
+    { k: 'certificado_frances_qual', l: 'Qual certificado de francês', t: 'op', o: [['delf', 'DELF'], ['dalf', 'DALF'], ['tcf', 'TCF'], ['tef', 'TEF'], ['outro', 'Outro']], q: function (g) { return g('certificado_frances') === 'tenho'; } },
     { k: 'nivel_frances', l: 'Nível de francês', t: 'op', o: [['a1_a2', 'A1 ou A2'], ['b1', 'B1'], ['b2', 'B2'], ['c1_mais', 'C1 ou mais'], ['nao_sei', 'Não sabe']] },
     { k: 'documento_vencimento', l: 'Vencimento do documento / título', t: 'dt' }
   ] },
