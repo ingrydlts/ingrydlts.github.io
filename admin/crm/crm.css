@@ -243,6 +243,9 @@ td .nm span{font-size:12px; color:var(--ink-2)}
 .pessoa-head{display:flex; gap:14px; align-items:flex-start}
 .pessoa-grid{display:grid; grid-template-columns:minmax(0,1.4fr) minmax(0,1fr); gap:16px; align-items:start}
 .feed{display:flex; flex-direction:column}
+.plat-fixa{display:flex; flex-direction:column; gap:16px; min-width:0; position:sticky; top:12px; max-height:calc(100vh - 24px); overflow-y:auto}
+.intdia summary{display:flex; flex-wrap:wrap; gap:8px; align-items:center}
+.intdia summary .dchips{margin-left:auto}
 .feeditem{display:flex; gap:10px; align-items:baseline; padding:9px 0; border-top:1px solid var(--line)}
 .feeditem:first-child{border-top:0}
 .feeditem .pill{flex:none}
@@ -256,6 +259,7 @@ td .nm span{font-size:12px; color:var(--ink-2)}
   .split{grid-template-columns:minmax(0,1fr)}
   .today{grid-template-columns:minmax(0,1fr)}
   .pessoa-grid{grid-template-columns:minmax(0,1fr)}
+  .plat-fixa{position:static; max-height:none; overflow:visible}
   .tplgrid{grid-template-columns:minmax(0,1fr)}
 }
 @media (max-width: 820px){
