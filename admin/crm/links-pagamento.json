@@ -1,0 +1,11 @@
+{
+  "leia_me": "Os Payment Links do Stripe que o botão 'Enviar link de pagamento' (aba Plataforma da ficha) oferece. Um item por plano e moeda: chave (minúsculas, números, - e _; identifica o plano na linha do tempo), rotulo (o que aparece no seletor), moeda (BRL ou EUR) e url (o Payment Link inteiro, https://buy.stripe.com/...). O e-mail e o id da ficha são acrescentados pelo Worker na hora de enviar (?prefilled_email=...&client_reference_id=...). Item com \"exemplo\": true aparece desligado no seletor: apague o item de exemplo e preencha os seus. Não ponha aqui chave secreta do Stripe: Payment Link é público.",
+  "itens": [
+    {
+      "chave": "basico_mensal_brl",
+      "rotulo": "Básico · mensal · R$ 69",
+      "moeda": "BRL",
+      "url": "https://buy.stripe.com/8x28wPgwRe3736ReStaR207"
+    }
+  ]
+}

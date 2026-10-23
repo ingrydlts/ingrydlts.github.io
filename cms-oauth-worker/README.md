@@ -693,3 +693,86 @@ Se um e-mail não sair: Workers → Logs, procure `crm/sequencias` (`{"erro":"li
 
 Testes: `node cms-oauth-worker/testes/crm-email.test.mjs` e, no banco,
 `cd admin/crm/db/testes && APP_DB_DIR=<POR DENTRO APP>/db npm run test:estudio3`.
+
+## 24. Onboarding: ler o documento com IA e enviar o link de pagamento (`/admin/crm/` → Onboarding)
+
+No CRM, o item **Onboarding** recebe o documento da pessoa (passaporte, visto, carta de aceite…), a IA lê, e o CRM cria a ficha
+com o Dossiê preenchido. Na ficha, aba **Plataforma**, o botão **Enviar link de pagamento** manda o Payment Link do Stripe por e-mail.
+O arquivo **não é guardado**: o Worker recebe, manda para a API da Anthropic e descarta (nunca vai para banco, KV, log ou e-mail).
+
+Rotas (todas só para admin: o Worker confere o login do Supabase e a tabela `admins`): `POST /api/crm/onboarding/ler`,
+`GET /api/crm/onboarding/status` e `POST /api/crm/link-pagamento`. Limites: 10 MB por arquivo, até 5 arquivos (20 MB no total),
+só PDF, JPG ou PNG (o Worker confere os primeiros bytes, não só a extensão), 10 leituras a cada 10 minutos e 30 envios de link a cada 10 minutos.
+
+**1. Repor os créditos da API da Anthropic** (estão zerados desde 18/10; sem isso a leitura falha com a mensagem "créditos acabaram")
+1. Entre em **console.anthropic.com** → **Plans & Billing**.
+2. **Add credits** (ou ligue a recarga automática) e confirme o pagamento. Pode levar alguns minutos para valer.
+
+**2. Criar a chave da API**
+1. No mesmo console: **API Keys** → **Create Key** (nome: `crm-por-dentro`). Copie: só aparece uma vez.
+
+**3. Configurar no Cloudflare**
+1. **dash.cloudflare.com** → **Workers & Pages** → `por-dentro-cms-oauth` → **Settings** → **Variables and Secrets** → **Add**.
+2. `ANTHROPIC_API_KEY`, tipo **Secret**, valor = a chave do passo 2.
+3. `ANTHROPIC_MODEL`, tipo **Text**, valor = o nome do modelo (veja a lista em docs.anthropic.com → Models; um modelo que leia PDF e imagem). **Não há valor padrão no código:** sem esta variável a tela Onboarding avisa e a leitura não roda.
+4. Opcionais, para a ficha mostrar o custo estimado de cada leitura (sem elas o custo fica em branco): `ANTHROPIC_USD_POR_MTOK_ENTRADA` e `ANTHROPIC_USD_POR_MTOK_SAIDA` (Text), o preço do modelo em dólares por milhão de tokens, da tabela de preços da Anthropic. Ex.: `3` e `15`.
+5. Opcional: `STRIPE_PAYMENT_LINK_HOSTS` (Text), se os seus Payment Links usam domínio próprio (ex.: `pagar.seusite.com`). Por padrão só vale `buy.stripe.com`.
+6. **Deploy** (e cole o `worker.js` novo, seção 9). Já existem de antes `BREVO_API_KEY` e `BREVO_SENDER_EMAIL` (seção 16): o link de pagamento usa o mesmo Brevo.
+
+**4. Banco (SQL Editor do Supabase, nesta ordem, depois do `crm-dossie.sql` e do `crm-estudio-emails-3.sql`)**
+1. `admin/crm/db/crm-onboarding.sql`: cria a pessoa pelo e-mail e guarda a origem de cada campo.
+2. `admin/crm/db/crm-link-pagamento-email.sql`: cria o modelo **Link de pagamento** no Estúdio (versão 1, No ar, tipo serviço). O texto pode ser mudado no Estúdio de e-mails como qualquer modelo.
+
+**5. Os links do Stripe**: preencha `admin/crm/links-pagamento.json` (um item por plano e moeda: `chave`, `rotulo`, `moeda`, `url`) e apague o item de exemplo. O Worker acrescenta ao link `?prefilled_email=<e-mail>&client_reference_id=<id da ficha>` (o webhook, numa próxima etapa, usa o id para achar a ficha).
+
+**Como o Worker trata o conteúdo**: documento e anotações são dado não confiável; o modelo é instruído a só extrair, a resposta tem que passar na validação campo a campo (uma tentativa a mais se não passar; depois erro claro e nada é salvo), e só entram as chaves do Dossiê. Não existe campo para número de passaporte, de documento ou foto. O que a Ingryd já digitou na ficha **prevalece** sobre o que a IA leu; o mesmo e-mail nunca cria duas fichas.
+
+**Teste com uma pessoa de ensaio**: veja o roteiro no fim de `admin/crm/ONBOARDING.md` (seção 15).
+Testes automáticos: `node cms-oauth-worker/testes/crm-onboarding.test.mjs` e, em `admin/crm/db/testes`, `npm run test:onboarding` e `npm run test:onboarding-ui`.
+Se algo falhar: Workers → Logs, procure `crm/onboarding` ou `crm/link-pagamento` (o log traz o status da API, nunca o conteúdo do documento).
+
+## 25. Webhook do Stripe: pagamento → assinatura → conta → e-mail de acesso, e o bloqueio por data
+
+Quando a pessoa paga o Payment Link (com o teste grátis de 30 dias), o Stripe avisa o Worker. O Worker grava a assinatura na ficha,
+cria a conta no Supabase (sem senha) e manda o e-mail **acesso confirmado** com um link que entra direto no app; lá a pessoa cria a
+senha. O app só abre para quem tem teste ou plano em dia (e, se cancelou ou o pagamento falhou, até o fim do período já pago).
+Admin sempre entra; **todas as outras contas, inclusive as de testadoras antigas, passam a precisar de assinatura**.
+
+**1. Banco (SQL Editor do Supabase, nesta ordem, depois dos de Onboarding da seção 24)**
+1. `admin/crm/db/crm-assinaturas.sql` (tabelas, `crm_stripe_aplicar`, `meu_acesso`).
+2. `admin/crm/db/crm-acesso-email.sql` (o modelo **Acesso confirmado** do Estúdio, versão 1, No ar).
+
+**2. Segredos no Cloudflare** (Settings → Variables and Secrets). Já existem de antes: `STRIPE_SECRET_KEY`, `SUPABASE_SERVICE_ROLE_KEY`,
+`BREVO_API_KEY`, `BREVO_SENDER_EMAIL`. Confira que a `STRIPE_SECRET_KEY` é da conta que vende os planos. Falta o do passo 3.
+
+**3. Criar o endpoint no Stripe**
+1. Stripe → **Desenvolvedores** → **Webhooks** → **Adicionar endpoint**. (Use o modo **teste** primeiro; depois repita no modo real: cada modo tem o seu endpoint e o seu segredo.)
+2. URL: `https://por-dentro-cms-oauth.ingrydigitalmanagement.workers.dev/api/stripe/webhook`
+3. Eventos (só estes quatro): `checkout.session.completed`, `customer.subscription.updated`, `customer.subscription.deleted`, `invoice.payment_failed`.
+4. Salve e copie o **Segredo de assinatura** (`whsec_...`).
+5. No Cloudflare: `STRIPE_WEBHOOK_SECRET` (Secret) = esse valor → **Deploy**. Sem ele o Worker responde 500 e o Stripe tenta de novo depois.
+   Atenção: a `STRIPE_SECRET_KEY` também tem que ser do mesmo modo (teste ou real) do endpoint.
+
+**4. No Stripe, nos Payment Links**: teste grátis de 30 dias (cartão pedido na hora) e, em **Após o pagamento**, redirecionar para
+`https://plataforma.imigrantepordentro.com/`.
+
+**5. No app** (repositório POR-DENTRO-APP, branch `claude/vigilant-clarke-8lrzo4`): publicar. Sem isso o bloqueio não existe (a regra só
+vale onde o app chama `meu_acesso()`). Antes de publicar, confira que **a sua conta de admin** está na tabela `admins`: ela é a única que entra sem assinatura.
+
+**Teste ponta a ponta (modo teste do Stripe, com um e-mail seu de ensaio)**
+1. Onboarding de uma pessoa de ensaio → **Enviar link de pagamento** (aba Plataforma).
+2. Abra o link do e-mail, pague com o cartão `4242 4242 4242 4242`.
+3. Em poucos segundos: a ficha mostra "Assinatura: em teste grátis · teste até dd/mm" e, na linha do tempo, "Pagamento confirmado"; chega o e-mail **acesso confirmado**.
+4. Clique no botão do e-mail: entra no app e cria a senha. Depois o painel abre normalmente.
+5. Para ver o bloqueio: no Stripe, cancele a assinatura de ensaio e adiante o fim do período (ou, no SQL Editor, `update assinaturas set status = 'canceled', periodo_fim = now() - interval '1 day' where contato_id = '<id da ficha>'`): o painel leva a `/plano/`.
+
+**Como o Worker se protege**: só aceita pedido com a assinatura do Stripe (HMAC-SHA256 do corpo, até 5 minutos de diferença); cada evento
+do Stripe é aplicado uma vez (`stripe_eventos`), então o reenvio do Stripe não duplica nada; um evento mais velho que o gravado não
+desfaz o novo; o link de entrada (uso único) nunca vai para o log nem para o histórico de e-mails. Se algo falhar depois de gravar, o
+Worker responde 500 e o Stripe repete, e a nova tentativa só refaz o que faltou (o e-mail sai uma vez só por assinatura).
+Se o e-mail não chegar: Workers → Logs, procure `crm/stripe`; no Stripe, Webhooks → o endpoint → o evento → **Reenviar**.
+
+**O que ainda não existe**: botão do cliente para trocar de plano ou cancelar sozinha (hoje ela escreve para você e você cancela no Stripe),
+escolha de plano dentro do app e o chat/limites dos níveis.
+
+Testes: `node cms-oauth-worker/testes/stripe-webhook.test.mjs`; no banco, `cd admin/crm/db/testes && npm run test:assinaturas`; no app, `node db/testes/acesso-app.test.mjs`.
