@@ -808,3 +808,12 @@ O chat com a pessoa só existe dentro do app; sem um gancho ela não volta. Toda
 - É e-mail de serviço (sem rodapé de descadastro nem exigência de "novidades"), porque responde a uma conversa dela com você.
 - Se o e-mail falhar, a mensagem já foi para o chat; o painel avisa "o e-mail de aviso não saiu".
 - Precisa só **publicar o Worker de novo** (`wrangler deploy`) para a rota existir.
+
+## 28. Aba Checklist na ficha da pessoa
+
+Na ficha (`/admin/crm/` → pessoa) há uma aba **Checklist**, ao lado de Conversa, Plataforma e Ficha, com um selo "N atrasados" quando há atraso. Ela usa os mesmos dados do dossiê (`checklist_items` e os cliques em `plataforma_cliques`) e **se atualiza sozinha** quando ela marca ou desmarca algo no app (o mesmo Realtime que já atualiza o chat). **Não precisa de SQL novo**: basta `db/crm-checklist.sql`, que já existia.
+
+- **Ações sugeridas** (regras no `crm.js`, `chkSugestoes`): *Atrasado* (por item, em ordem do mais antigo); *Vence logo* (até 7 dias); *Concluiu agora* (nas últimas 72 h, com o próximo passo); *Parada* (7 dias sem mexer, com itens pendentes). Atrasado em 14+ dias, ou 3+ atrasados, também sugere propor um 1:1.
+- Cada sugestão tem **Mensagem no chat** (texto pronto; ao enviar, ela recebe o aviso por e-mail da seção 27), **Nota no app dela** (insight manual), **E-mail** e, quando cabe, **Propor 1:1**. Nada sai sozinho: o texto vem preenchido para você revisar.
+- Item atrasado tem o botão **Cobrar** e mostra "você cobrou há N dias" (achado pelo nome do item nas suas mensagens do chat). Se você cobrou há menos de 3 dias, a sugestão vira "Aguardando resposta" e desce na lista, para não cobrar em dobro.
+- Os limites (7 dias, 72 h, 3 dias) são as constantes `CHK_*` no `crm.js`.
