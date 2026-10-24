@@ -616,3 +616,12 @@ select.st-in{height:36px; padding:0 8px}
   .onb-acoes .btn{flex:1 1 100%; justify-content:center; text-align:center}
   .onb-drop{padding:18px 10px}
 }
+
+/* Categorias dos modelos: grupos recolhíveis na lista e no estúdio */
+.st-cat{display:flex; flex-direction:column; gap:8px}
+.st-cat > summary{cursor:pointer; list-style:none; padding:4px; border-radius:6px}
+.st-cat > summary::-webkit-details-marker{display:none}
+.st-cat > summary::after{content:" ▾"}
+.st-cat:not([open]) > summary::after{content:" ▸"}
+.st-cat > summary:hover{background:var(--surface-2)}
+.st-cat > summary:focus-visible{outline:2px solid var(--moss); outline-offset:1px}

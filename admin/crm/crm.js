@@ -68,6 +68,21 @@ function tplInfo(k) {
   var m = modeloDe(k) || {};
   return { label: m.nome || k, lever: (TIPO_EMAIL[m.tipo] || [''])[0], when: m.como_sai || '' };
 }
+// Categorias dos modelos (só para organizar a lista e o seletor; não vão para o banco). A primeira regra que bater vale.
+var CATEGORIAS = [
+  { k: 'acesso', nome: 'Acesso e boas-vindas', ok: function (m) { return /^(boas_vindas|acesso_)/.test(m.chave) || m.objetivo_chave === 'boas_vindas'; } },
+  { k: 'compra', nome: 'Compra e pagamento', ok: function (m) { return m.tipo === 'compra' || /^link_pagamento/.test(m.chave); } },
+  { k: 'reimpacto', nome: 'Reimpacto', ok: function (m) { return /^(naoabriu|naoclicou|cliquenaoapp|parouapp)$/.test(m.chave); } },
+  { k: 'guias', nome: 'Guias e materiais', ok: function (m) { return /^(cf_)?guia_/.test(m.chave) || m.objetivo_chave === 'freebie' || m.objetivo_chave === 'conversa'; } },
+  { k: 'outros', nome: 'Outros', ok: function () { return true; } }
+];
+function categoriaDe(m) { return CATEGORIAS.filter(function (c) { return c.ok(m); })[0]; }
+// Agrupa mantendo a ordem em que os modelos chegam; categorias vazias não aparecem.
+function porCategoria(lista) {
+  return CATEGORIAS.map(function (c) { return { k: c.k, nome: c.nome, itens: lista.filter(function (m) { return categoriaDe(m) === c; }) }; })
+    .filter(function (g) { return g.itens.length; });
+}
+var CAT_FECHADA = {};   // categorias que você recolheu na lista (vale até recarregar a página)
 function pn(c) { return displayName(c).trim().split(/\s+/)[0]; }
 var CAL_LINK = 'https://cal.com/ingryd-silva-jf1cnx/1-1?overlayCalendar=true';
 function lk() { return APP_LINK || '[link do acesso]'; }
@@ -1094,6 +1109,7 @@ function interacoesHtml(int) {
 }
 document.addEventListener('toggle', function (e) {
   var d = e.target; if (d && d.matches && d.matches('details.intdia')) state.pdias[d.dataset.dia] = d.open;
+  if (d && d.matches && d.matches('details.st-cat')) CAT_FECHADA[d.dataset.cat] = !d.open;
 }, true);
 function platAbasHtml() {
   var nova = chatNaoLidas(state.chat);
@@ -1732,7 +1748,7 @@ function renderLista(lista) {
   var card = function (m) {
     var v = M ? versaoAtual(m.chave) : null, obra = M ? versaoEmObra(m.chave) : null;
     var dot = !v ? 'dr' : obra ? (obra.etapa === 'revisao' ? 'rev' : 'dr') : v.etapa === 'no_ar' ? 'ok' : 'dr';
-    var linha = !M ? 'Texto do código' : etapaTxt(v) + (obra && obra !== v ? ' · ' + etapaTxt(obra).toLowerCase() : '') +
+    var linha = !M ? 'Texto do código' : (m.automatico ? 'Sai sozinho · ' : '') + etapaTxt(v) + (obra && obra !== v ? ' · ' + etapaTxt(obra).toLowerCase() : '') +
       (m.criado_no_estudio && m.envio_gatilho ? ' · envio ' + (m.envio_ligado ? 'ligado' : 'desligado') : '');
     return '<div class="st-card"><button class="st-item" data-tpl-pick="' + esc(m.chave) + '" aria-pressed="' + (!ST.criar && ST.k === m.chave) + '" type="button"><span class="sdot ' + dot + '"></span><span><b>' + esc(m.nome) + '</b>' +
       '<span>' + esc(linha) + '</span></span></button>' +
@@ -1743,8 +1759,11 @@ function renderLista(lista) {
     return '<div class="st-excl-i"><span><b>' + esc(m.nome) + '</b><span class="sub">excluído em ' + esc(fmtDay(m.excluido_em)) + '</span></span>' +
       '<button class="btn" type="button" data-strestaurar="' + esc(m.chave) + '">Restaurar</button></div>';
   }).join('') + '</details>' : '';
-  var grupo = function (titulo, itens) { return itens.length ? '<p class="tplgrp">' + esc(titulo) + ' · ' + itens.length + '</p>' + itens.map(card).join('') : ''; };
-  $('mod-list').innerHTML = (temEstudio3() ? '<button class="st-new" type="button" id="st-novo-modelo" aria-pressed="' + !!ST.criar + '">+ Modelo novo</button>' : '') + grupo('Você envia', lista.filter(function (m) { return !m.automatico; })) + grupo('Saem sozinhos', lista.filter(function (m) { return m.automatico; })) + lixo +
+  var grupo = function (g) {
+    var aberta = !CAT_FECHADA[g.k] || g.itens.some(function (m) { return !ST.criar && m.chave === ST.k; });
+    return '<details class="st-cat" data-cat="' + g.k + '"' + (aberta ? ' open' : '') + '><summary class="tplgrp">' + esc(g.nome) + ' · ' + g.itens.length + '</summary>' + g.itens.map(card).join('') + '</details>';
+  };
+  $('mod-list').innerHTML = (temEstudio3() ? '<button class="st-new" type="button" id="st-novo-modelo" aria-pressed="' + !!ST.criar + '">+ Modelo novo</button>' : '') + porCategoria(lista).map(grupo).join('') + lixo +
     '<div class="st-legend"><span><i class="sdot ok"></i>No ar</span><span><i class="sdot rev"></i>Em revisão</span><span><i class="sdot dr"></i>Rascunho</span></div>';
 }
 
@@ -2380,6 +2399,12 @@ function exportModelos() {
 // O pop-up mostra o e-mail como ela vai ver (aba "Como ela vai ver") e deixa editar o texto (aba "Editar texto").
 // Se você mexer no texto, o e-mail sai no formato simples e a prévia passa a mostrar esse formato: o que você vê é o que sai.
 var CMP = null;   // { c, k, e, editado, aba }
+// O seletor de modelo do "Escrever e-mail", em grupos (optgroup) pelas mesmas categorias da lista.
+function opcoesPorCategoria(chaves, atual) {
+  var opt = function (m) { return '<option value="' + m + '"' + (m === atual ? ' selected' : '') + '>' + esc(tplInfo(m).label) + '</option>'; };
+  var itens = chaves.map(function (k) { var m = modeloDe(k) || { chave: k, tipo: EXIGEM_NOVIDADES[k] ? 'novidades' : 'servico' }; return m; });
+  return porCategoria(itens).map(function (g) { return '<optgroup label="' + esc(g.nome) + '">' + g.itens.map(function (m) { return opt(m.chave); }).join('') + '</optgroup>'; }).join('');
+}
 function openCompose(cid, key) {
   var c = byC(cid); if (!c) return;
   activeCid = cid;
@@ -2388,7 +2413,7 @@ function openCompose(cid, key) {
   var bloqueado = exigeNovidades(k) && !c.aceita_novidades;
   var opcoesTpl = TPL_ORDER.filter(function (m) { return !excluido(m) || m === k; }).concat(novosManuais().map(function (m) { return m.chave; }));
   modalOpen(modalTop(c) +
-    '<div class="ctx" style="margin-top:12px"><div class="sel"><select id="compose-tpl" aria-label="Modelo">' + opcoesTpl.map(function (m) { return '<option value="' + m + '"' + (m === k ? ' selected' : '') + '>' + esc(tplInfo(m).label) + '</option>'; }).join('') + '</select></div><span class="lever" style="display:inline-block;font-size:10.5px;font-weight:700;text-transform:uppercase;color:var(--brown);background:var(--brown-soft);padding:2px 8px;border-radius:999px">' + esc(tplInfo(k).lever) + '</span></div>' +
+    '<div class="ctx" style="margin-top:12px"><div class="sel"><select id="compose-tpl" aria-label="Modelo">' + opcoesPorCategoria(opcoesTpl, k) + '</select></div><span class="lever" style="display:inline-block;font-size:10.5px;font-weight:700;text-transform:uppercase;color:var(--brown);background:var(--brown-soft);padding:2px 8px;border-radius:999px">' + esc(tplInfo(k).lever) + '</span></div>' +
     '<p class="sub" style="margin:8px 0 0">' + esc(tplInfo(k).when) + '</p>' +
     (bloqueado ? '<p class="sub" style="color:var(--red);margin:8px 0 0">Essa pessoa não aceitou novidades por e-mail — este modelo não pode ser enviado a ela.</p>' : '') +
     '<div class="reply" style="margin-top:14px"><label for="compose-subj">Assunto</label><input id="compose-subj" maxlength="200" style="height:38px;border:1px solid var(--line-2);border-radius:var(--r);padding:0 10px;background:var(--surface-2)" value="' + esc(CMP.e.subject) + '"></div>' +
