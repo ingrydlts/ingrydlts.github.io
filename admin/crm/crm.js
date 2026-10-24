@@ -1034,6 +1034,20 @@ async function marcaChatLido(cid) {
   var r = await supabase.from('chat_mensagens').update({ lida_em: new Date().toISOString() }).eq('contato_id', cid).eq('de', 'pessoa').is('lida_em', null);
   if (!r.error && state.chat && state.chat.cid === cid) state.chat.msgs.forEach(function (m) { if (m.de === 'pessoa' && !m.lida_em) m.lida_em = new Date().toISOString(); });
 }
+// Avisa a pessoa por e-mail que você escreveu no chat (o chat só existe dentro do app, então sem isso ela não volta).
+// O Worker limita a um aviso a cada 30 min por pessoa. Se falhar, a mensagem já foi: só avisa que o e-mail não saiu.
+async function avisarChatPorEmail(cid, mensagemId) {
+  try {
+    var sess = await supabase.auth.getSession();
+    if (!sess.data.session) return;
+    var res = await fetch(WORKER_BASE + '/api/crm/chat-aviso', { method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + sess.data.session.access_token },
+      body: JSON.stringify({ contato_id: cid, mensagem_id: mensagemId }) });
+    var j = await res.json().catch(function () { return {}; });
+    if (!res.ok) return toast('Mensagem enviada, mas o e-mail de aviso não saiu: ' + (j.error || res.status), 6000);
+    if (j.enviado) toast('Aviso enviado por e-mail para ela', 3000);
+  } catch (e) { toast('Mensagem enviada, mas o e-mail de aviso não saiu.', 6000); }
+}
 async function enviarChat(cid, t) {
   var txt = $('chat-txt').value.trim();
   if (!txt) return;
@@ -1042,6 +1056,7 @@ async function enviarChat(cid, t) {
   if (t) t.disabled = false;
   if (r.error) return fail('enviar a mensagem', r.error);
   $('chat-txt').value = ''; state.chatRasc = '';
+  avisarChatPorEmail(cid, r.data);
   await atualizaAoVivo(cid, true);
 }
 // ---------- Aba Plataforma: o que ela faz dentro do app, a sua iAssistente e o chat com ela ----------
@@ -2928,6 +2943,7 @@ document.addEventListener('click', async function (e) {
     var po = await supabase.rpc('crm_chat_enviar', { p_contato: activeCid, p_proposta: { titulo: pt, texto: px, acao_sim: $('prop-sim').value.trim() || null,
       link: pl || null, link_rotulo: pl ? ($('prop-rotulo').value.trim() || null) : null, prazo: pd ? new Date(pd + 'T23:59:59').toISOString() : null } });
     if (po.error) { t.disabled = false; return fail('enviar a proposta', po.error); }
+    avisarChatPorEmail(activeCid, po.data);
     closeCompose(); if (state.view === 'pessoa') { await atualizaAoVivo(activeCid, true); }
     return toast('Proposta enviada no chat dela');
   }

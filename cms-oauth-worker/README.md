@@ -798,3 +798,13 @@ já com o e-mail dela preenchido e o id da ficha (o webhook, seção 25, casa o 
 
 **Teste**: Onboarding de uma pessoa de ensaio → Enviar link de pagamento → "Deixar a pessoa escolher" → abra o e-mail, clique em **Escolher o meu plano** → a página abre com o nome dela → escolha um plano com um link de teste do Stripe (modo teste) e pague com `4242 4242 4242 4242`.
 Testes automáticos: `cd admin/crm/db/testes && node planos.test.mjs`.
+
+## 27. Aviso por e-mail quando você escreve no chat
+
+O chat com a pessoa só existe dentro do app; sem um gancho ela não volta. Toda mensagem ou proposta sua no chat (aba Plataforma → Chat, ou "Proposta") agora dispara `POST /api/crm/chat-aviso` (só admin), que manda a ela um e-mail de serviço: "a Ingryd te respondeu no Por Dentro", com o começo da mensagem e o link da plataforma.
+
+- **Sem configuração nova**: usa o Brevo, o remetente e o `CRM_REPLY_TO` que já existem. **Não precisa de SQL**; o envio fica registrado em `emails_enviados` com `modelo = 'chat_aviso'` (aparece no histórico da ficha).
+- **Um aviso por pessoa a cada 30 minutos** (`CRM_CHAT_AVISO_MIN`): várias mensagens seguidas geram um e-mail só, que leva ao mesmo chat.
+- É e-mail de serviço (sem rodapé de descadastro nem exigência de "novidades"), porque responde a uma conversa dela com você.
+- Se o e-mail falhar, a mensagem já foi para o chat; o painel avisa "o e-mail de aviso não saiu".
+- Precisa só **publicar o Worker de novo** (`wrangler deploy`) para a rota existir.
