@@ -1078,7 +1078,7 @@ function propostaEstado(x, agora) {
 // A aba Plataforma tem três sub-abas: iAssistente, Chat e Interações. A coluna da direita (pagamento, checklist e resumo)
 // fica fixa e é a mesma nas três. Interações junta cada clique dela no app (checklist, dossiê, telas, botões) com as vezes
 // em que o dossiê foi salvo, separados por dia (um dropdown por dia, o mais recente aberto).
-var PLAT_ABAS = [['assistente', 'iAssistente'], ['chat', 'Chat'], ['interacoes', 'Interações']];
+var PLAT_ABAS = [['assistente', 'iAssistente'], ['chat', 'Chat'], ['checklist', 'Checklist'], ['interacoes', 'Interações']];
 var INT_TIPOS = { checklist: ['Checklist', 'u-baixa'], dossie: ['Dossiê', 'u-media'], tela: ['Tela', 'tp-artigo'], botao: ['Botão', 'out'], link: ['Link', 'out'] };
 var TELAS_DOSSIE = /^\/(perfil|landing|onboarding)\//;   // as telas em que o app faz as perguntas do dossiê
 async function buscaInteracoes(cid) {
@@ -1131,10 +1131,17 @@ function platAbasHtml() {
   var nova = chatNaoLidas(state.chat);
   return '<div class="ptabs" role="tablist" aria-label="Plataforma" style="margin:0 0 14px">' + PLAT_ABAS.map(function (t) {
     return '<button class="ptab" role="tab" type="button" data-pstab="' + t[0] + '" aria-selected="' + (state.pstab === t[0]) + '">' + t[1] +
-      (t[0] === 'chat' && nova ? ' <span class="count">' + nova + '</span>' : '') + '</button>';
+      (t[0] === 'chat' && nova ? ' <span class="count">' + nova + '</span>' : '') + (t[0] === 'checklist' ? chkSeloAtraso() : '') + '</button>';
   }).join('') + '</div>';
 }
+// O selo "N atrasados" da subaba Checklist (vazio sem conta, sem checklist ou sem atraso).
+function chkSeloAtraso() {
+  var chk = state.dos && state.dos.chk; if (!chk || chk.err || chk.semConta) return '';
+  var n = chkCalc(chk, Date.now()).atrasados.length;
+  return n ? ' <span class="count">' + n + ' atrasado' + (n > 1 ? 's' : '') + '</span>' : '';
+}
 function platConteudoHtml(c, h4) {
+  if (state.pstab === 'checklist') return '<div id="chk-aba">' + checklistPanel(c) + '</div>';
   if (state.pstab === 'chat') return '<div id="chat-box">' + chatPanelHtml(c, state.chat, h4) + '</div>';
   if (state.pstab === 'interacoes') return '<div id="int-box">' + interacoesHtml(state.int) + '</div>';
   return '<div id="ins-box">' + insightsHtml(state.ins, Date.now()) + '</div>';
@@ -1445,35 +1452,31 @@ function checklistPanel(c) {
   if (chk.semConta) return '<div class="panel" style="padding:16px;margin-top:18px"><h3 style="font-size:15px;margin-bottom:8px">Checklist</h3><p class="sub" style="margin:0">Ela ainda não entrou no app, então ainda não tem checklist. Quando entrar, ele aparece aqui e acompanha o que ela marcar.</p></div>';
   var cc = chkCalc(chk, agora), pct = cc.itens.length ? Math.round(cc.feitos * 100 / cc.itens.length) : 0;
   state.chkSug = chkSugestoes(chk, agora);
-  var sug = state.chkSug.map(function (x, n) {
-    return '<div class="feeditem"><span class="pill chk-rot ' + CHK_NIVEL[x.nivel] + '">' + esc(x.rotulo) + '</span><div class="fbody"><p><b>' + esc(x.titulo) + '</b></p><p class="sub" style="margin:2px 0 8px">' + esc(x.porque) + '</p>' +
-      '<div class="actions" style="margin:0"><button class="btn primary" type="button" data-chkvia="chat" data-chki="' + n + '">Mensagem no chat</button>' +
-      '<button class="btn" type="button" data-chkvia="nota" data-chki="' + n + '">Nota no app dela</button>' +
-      '<button class="btn" type="button" data-chkvia="email" data-chki="' + n + '">E-mail</button>' +
-      (x.prop ? '<button class="btn" type="button" data-chkvia="prop" data-chki="' + n + '">Propor 1:1</button>' : '') + '</div></div></div>';
-  }).join('') || '<p class="sub" style="margin:0">Nada a fazer agora: sem atrasos, sem prazo chegando e ela mexeu no checklist recentemente.</p>';
-  var cliques = (chk.cliques || []).filter(function (x) { return /^(Marcou como concluído|Desmarcou): /.test(x.rotulo || ''); });
-  var feed = cliques.slice(0, 15).map(function (x) {
+  // Visão enxuta: o que pede ação agora (no máximo 3), o que falta fazer em ordem de prazo, e o resto recolhido.
+  var sug = state.chkSug.slice(0, 3).map(function (x, n) {
+    return '<div class="feeditem chk-sug"><span class="pill chk-rot ' + CHK_NIVEL[x.nivel] + '">' + esc(x.rotulo) + '</span><div class="fbody"><p title="' + esc(x.porque) + '">' + esc(x.titulo) + '</p></div>' +
+      '<div class="chk-acoes"><button class="btn primary" type="button" data-chkvia="chat" data-chki="' + n + '">Escrever no chat</button>' +
+      '<details class="chk-mais"><summary class="btn" aria-label="Outras ações">⋯</summary><div class="chk-menu">' +
+      '<button type="button" data-chkvia="nota" data-chki="' + n + '">Nota no app dela</button><button type="button" data-chkvia="email" data-chki="' + n + '">E-mail</button>' +
+      (x.prop ? '<button type="button" data-chkvia="prop" data-chki="' + n + '">Propor 1:1</button>' : '') + '</div></details></div></div>';
+  }).join('') || '<p class="sub" style="margin:0">Nada a fazer agora: sem atrasos nem prazo chegando.</p>';
+  var pend = cc.itens.filter(function (i) { return i.status !== 'concluido'; }).sort(function (a, b) { return (a.due_date || '9999') < (b.due_date || '9999') ? -1 : 1; });
+  var feitos = cc.itens.filter(function (i) { return i.status === 'concluido'; });
+  var linha = function (i) {
+    var feito = i.status === 'concluido', atras = cc.atrasados.indexOf(i) >= 0, d = atras ? chkDias(cc.hoje, i.due_date) : 0;
+    return '<div class="chk-item"><span class="chk-dot ' + (feito ? 'ok' : atras ? 'atr' : '') + '" aria-hidden="true"></span><span class="chk-txt">' + esc(i.label) + '</span><span class="chk-qd' + (atras ? ' atr' : '') + '">' +
+      (feito ? 'concluído' : atras ? chkPlural(d, 'dia', 'dias') + ' de atraso' : i.due_date ? 'até ' + esc(fmtDay(i.due_date)) : 'sem prazo') + '</span></div>';
+  };
+  var feed = (chk.cliques || []).filter(function (x) { return /^(Marcou como concluído|Desmarcou): /.test(x.rotulo || ''); }).slice(0, 10).map(function (x) {
     var t = chkClique(x);
-    return '<div class="feeditem"><span class="pill ' + t[1] + '">' + esc(t[0]) + '</span><div class="fbody"><p>' + esc(t[2]) + '</p><time>' + esc(fmtDia(x.criado_em) + ' ' + fmtHora(x.criado_em)) + '</time></div></div>';
-  }).join('') || '<div class="empty">Ela ainda não marcou nem desmarcou nada.</div>';
-  var lista = cc.cats.map(function (k) {
-    var its = cc.porCat[k], f = its.filter(function (i) { return i.status === 'concluido'; }).length, temAtraso = its.some(function (i) { return cc.atrasados.indexOf(i) >= 0; });
-    return '<details class="dcat"' + (temAtraso ? ' open' : '') + '><summary>' + esc(k) + ' <span class="sub">' + f + ' de ' + its.length + (temAtraso ? ' · com atraso' : '') + '</span></summary>' + its.map(function (i) {
-      var feito = i.status === 'concluido', atras = cc.atrasados.indexOf(i) >= 0, d = atras ? chkDias(cc.hoje, i.due_date) : 0, cob = !feito ? chkCobradoHa(i, agora) : null;
-      return '<div class="feeditem"><span class="pill ' + (feito ? 'u-baixa' : atras ? 'u-alta' : '') + '">' + (feito ? 'Concluído' : atras ? 'Atrasado' : 'Pendente') + '</span><div class="fbody"><p>' + esc(i.label) + '</p><time>' +
-        (i.due_date ? 'prazo ' + esc(fmtDay(i.due_date)) : 'sem prazo') + (atras ? ' · ' + chkPlural(d, 'dia', 'dias') + ' de atraso' : '') +
-        (feito && i.updated_at ? ' · concluído ' + esc(fmtDia(i.updated_at) + ' ' + fmtHora(i.updated_at)) : '') +
-        (cob !== null ? ' · você cobrou há ' + chkPlural(cob, 'dia', 'dias') : '') + '</time></div>' +
-        (atras ? '<button class="btn" type="button" data-chkvia="item" data-chki="' + cc.itens.indexOf(i) + '" style="flex:none">Cobrar</button>' : '') + '</div>';
-    }).join('') + '</details>';
+    return '<div class="chk-item"><span class="chk-dot ' + (t[0] === 'Marcou' ? 'ok' : '') + '" aria-hidden="true"></span><span class="chk-txt">' + esc(t[0] + ': ' + t[2]) + '</span><span class="chk-qd">' + esc(fmtDia(x.criado_em) + ' ' + fmtHora(x.criado_em)) + '</span></div>';
   }).join('');
-  return '<div class="pessoa-grid" style="margin-top:18px"><div style="min-width:0;display:flex;flex-direction:column;gap:16px">' +
-    '<div class="panel" style="padding:16px"><h3 style="font-size:15px;margin-bottom:4px">Ações sugeridas</h3><p class="sub" style="margin:0 0 10px">Muda sozinha quando ela marca ou desmarca algo. Você revisa o texto antes de enviar.</p>' + sug + '</div>' +
-    '<div class="panel" style="padding:16px"><h3 style="font-size:15px;margin-bottom:8px">Itens do checklist dela</h3>' + lista + '</div></div>' +
-    '<div style="display:flex;flex-direction:column;gap:16px"><div class="panel" style="padding:16px"><h4 style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);margin:0 0 8px">Andamento</h4>' +
-    chkResumoKv(cc, chk.cliques || []) + '<div class="dprog" role="progressbar" aria-valuenow="' + pct + '" aria-valuemin="0" aria-valuemax="100"><span style="width:' + pct + '%"></span></div></div>' +
-    '<div class="panel" style="padding:16px"><h4 style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);margin:0 0 8px">O que ela marcou, ao vivo</h4><div class="feed dfeed">' + feed + '</div></div></div></div>';
+  return '<div class="panel" style="padding:16px"><div class="chk-topo"><h3 style="font-size:15px;margin:0">Checklist dela</h3><span class="sub">' + cc.feitos + ' de ' + cc.itens.length + ' · ' + pct + '%</span></div>' +
+    '<div class="dprog" role="progressbar" aria-valuenow="' + pct + '" aria-valuemin="0" aria-valuemax="100"><span style="width:' + pct + '%"></span></div>' +
+    '<h4 class="chk-h">Precisa de ação</h4>' + sug +
+    '<h4 class="chk-h">O que falta</h4>' + (pend.map(linha).join('') || '<p class="sub" style="margin:0">Tudo concluído.</p>') +
+    (feitos.length ? '<details class="chk-rec"><summary>' + chkPlural(feitos.length, 'concluído', 'concluídos') + '</summary>' + feitos.map(linha).join('') + '</details>' : '') +
+    (feed ? '<details class="chk-rec"><summary>O que ela marcou, ao vivo</summary>' + feed + '</details>' : '') + '</div>';
 }
 // Leva o texto da sugestão (ou do item) até onde você envia, já preenchido para revisar.
 async function chkAgir(via, i) {
@@ -1577,10 +1580,10 @@ async function renderPessoa() {
   var resps = R.filter(function (x) { return x.contato_id === c.id; });
   var h4 = 'font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-3); margin:0 0 8px';
   if (!state.ptab) state.ptab = mails.length || resps.length ? 'conversa' : 'ficha';
-  var tabs = '<div class="ptabs" role="tablist" aria-label="Ficha da pessoa">' + [['conversa', 'Conversa'], ['plataforma', 'Plataforma'], ['checklist', 'Checklist'], ['ficha', 'Ficha']].map(function (t) {
+  var tabs = '<div class="ptabs" role="tablist" aria-label="Ficha da pessoa">' + [['conversa', 'Conversa'], ['plataforma', 'Plataforma'], ['ficha', 'Ficha']].map(function (t) {
     return '<button class="ptab" role="tab" type="button" data-ptab="' + t[0] + '" aria-selected="' + (state.ptab === t[0]) + '">' + t[1] +
       (t[0] === 'conversa' && resps.some(function (x) { return x.status === 'nova'; }) ? ' <span class="count">nova</span>' : '') +
-      (t[0] === 'checklist' && state.dos.chk && !state.dos.chk.err && !state.dos.chk.semConta && chkCalc(state.dos.chk, Date.now()).atrasados.length ? ' <span class="count">' + chkCalc(state.dos.chk, Date.now()).atrasados.length + ' atrasado' + (chkCalc(state.dos.chk, Date.now()).atrasados.length > 1 ? 's' : '') + '</span>' : '') + '</button>';
+      '</button>';
   }).join('') + '</div>';
   $('pessoa-page').innerHTML =
     '<button class="link" data-back type="button">← Voltar</button>' +
@@ -1594,7 +1597,7 @@ async function renderPessoa() {
     '<div class="sel"><select id="stage-pick" aria-label="Mudar estágio">' + STAGES.map(function (s) { return '<option value="' + s.k + '"' + (s.k === c.estagio ? ' selected' : '') + '>Estágio: ' + s.l + '</option>'; }).join('') + '</select></div></div>' +
     onbResumoHtml(c) +
     '<div id="dossie-box">' + dossieHtml(c, state.dos.d, state.dos.err, state.dos.rasc, state.dosAberto, state.dos.chk) + '</div>' +
-    tabs + (state.ptab === 'conversa' ? conversaPanel(c, mails, resps, h4) : state.ptab === 'plataforma' ? plataformaPanel(c, h4) : state.ptab === 'checklist' ? '<div id="chk-aba">' + checklistPanel(c) + '</div>' :
+    tabs + (state.ptab === 'conversa' ? conversaPanel(c, mails, resps, h4) : state.ptab === 'plataforma' ? plataformaPanel(c, h4) :
     '<div class="pessoa-grid" style="margin-top:18px">' +
     '<div class="panel" style="padding:16px"><h3 style="font-size:15px; margin-bottom:8px">Tudo que ela fez</h3>' +
     '<p class="sub" style="margin:0 0 10px">Checklist, pergunta única, artigos e o resto do app — mais o que você mandou pra ela. Mais recente primeiro.</p>' +
