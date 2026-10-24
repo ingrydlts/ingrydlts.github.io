@@ -1403,7 +1403,7 @@ function chkSugestoes(chk, agora) {
   var quando = function (i) { return fmtDay(i.due_date); };
   cc.atrasados.slice().sort(function (a, b) { return a.due_date < b.due_date ? -1 : 1; }).slice(0, 4).forEach(function (i) {
     var d = chkDias(cc.hoje, i.due_date), cob = chkCobradoHa(i, agora), esperando = cob !== null && cob < CHK_COBRADO_DIAS;
-    out.push({ nivel: esperando ? 'baixa' : 'alta', rotulo: esperando ? 'Aguardando resposta' : 'Atrasado',
+    out.push({ nivel: esperando ? 'baixa' : 'alta', rotulo: esperando ? 'Aguardando' : 'Atrasado',
       titulo: '"' + i.label + '" está atrasado há ' + chkPlural(d, 'dia', 'dias'),
       porque: 'O prazo era ' + quando(i) + '.' + (cob !== null ? ' Você escreveu sobre isso há ' + chkPlural(cob, 'dia', 'dias') + '.' : ' Você ainda não cobrou.'),
       chat: oi + 'O prazo de "' + i.label + '" era ' + quando(i) + ' e ainda não vi esse passo concluído no seu checklist. Aconteceu alguma coisa? Me conta onde travou que eu te ajudo a destravar.',
@@ -1446,7 +1446,7 @@ function checklistPanel(c) {
   var cc = chkCalc(chk, agora), pct = cc.itens.length ? Math.round(cc.feitos * 100 / cc.itens.length) : 0;
   state.chkSug = chkSugestoes(chk, agora);
   var sug = state.chkSug.map(function (x, n) {
-    return '<div class="feeditem"><span class="pill ' + CHK_NIVEL[x.nivel] + '">' + esc(x.rotulo) + '</span><div class="fbody"><p><b>' + esc(x.titulo) + '</b></p><p class="sub" style="margin:2px 0 8px">' + esc(x.porque) + '</p>' +
+    return '<div class="feeditem"><span class="pill chk-rot ' + CHK_NIVEL[x.nivel] + '">' + esc(x.rotulo) + '</span><div class="fbody"><p><b>' + esc(x.titulo) + '</b></p><p class="sub" style="margin:2px 0 8px">' + esc(x.porque) + '</p>' +
       '<div class="actions" style="margin:0"><button class="btn primary" type="button" data-chkvia="chat" data-chki="' + n + '">Mensagem no chat</button>' +
       '<button class="btn" type="button" data-chkvia="nota" data-chki="' + n + '">Nota no app dela</button>' +
       '<button class="btn" type="button" data-chkvia="email" data-chki="' + n + '">E-mail</button>' +

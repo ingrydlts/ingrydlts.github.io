@@ -815,5 +815,5 @@ Na ficha (`/admin/crm/` → pessoa) há uma aba **Checklist**, ao lado de Conver
 
 - **Ações sugeridas** (regras no `crm.js`, `chkSugestoes`): *Atrasado* (por item, em ordem do mais antigo); *Vence logo* (até 7 dias); *Concluiu agora* (nas últimas 72 h, com o próximo passo); *Parada* (7 dias sem mexer, com itens pendentes). Atrasado em 14+ dias, ou 3+ atrasados, também sugere propor um 1:1.
 - Cada sugestão tem **Mensagem no chat** (texto pronto; ao enviar, ela recebe o aviso por e-mail da seção 27), **Nota no app dela** (insight manual), **E-mail** e, quando cabe, **Propor 1:1**. Nada sai sozinho: o texto vem preenchido para você revisar.
-- Item atrasado tem o botão **Cobrar** e mostra "você cobrou há N dias" (achado pelo nome do item nas suas mensagens do chat). Se você cobrou há menos de 3 dias, a sugestão vira "Aguardando resposta" e desce na lista, para não cobrar em dobro.
+- Item atrasado tem o botão **Cobrar** e mostra "você cobrou há N dias" (achado pelo nome do item nas suas mensagens do chat). Se você cobrou há menos de 3 dias, a sugestão vira "Aguardando" e desce na lista, para não cobrar em dobro.
 - Os limites (7 dias, 72 h, 3 dias) são as constantes `CHK_*` no `crm.js`.

@@ -625,3 +625,8 @@ select.st-in{height:36px; padding:0 8px}
 .st-cat:not([open]) > summary::after{content:" ▸"}
 .st-cat > summary:hover{background:var(--surface-2)}
 .st-cat > summary:focus-visible{outline:2px solid var(--moss); outline-offset:1px}
+
+/* Aba Checklist: o rótulo da sugestão tem largura fixa (os textos alinham) e o selo da aba não quebra linha */
+.pill.chk-rot{flex:0 0 118px; text-align:center; justify-content:center}
+.ptab .count{white-space:nowrap}
+@media (max-width:640px){ .pill.chk-rot{flex-basis:auto} }
