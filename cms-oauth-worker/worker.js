@@ -2791,6 +2791,68 @@ async function handlePlanosContexto(request, env) {
   return json({ ok: true, contato_id: c.id, email: c.email, nome: crmPrimeiroNome(c.nome) || null });
 }
 
+// POST /api/crm/chat-aviso (só admin): depois que uma mensagem ou proposta sua entra no chat do app, avisa a pessoa por e-mail
+// para ela voltar à plataforma (o chat só existe lá dentro). É um e-mail de serviço: sem consentimento de novidades e sem
+// rodapé de descadastro. Para não encher a caixa de quem recebe várias mensagens seguidas, só sai um aviso por pessoa a cada
+// CRM_CHAT_AVISO_MIN minutos; o e-mail já enviado leva ao mesmo chat, onde ela vê tudo.
+const CRM_CHAT_AVISO_MIN = 30;
+async function handleCrmChatAviso(request, env) {
+  const admin = await crmRequireAdmin(request);
+  if (!admin) return json({ error: 'Sem permissão. Entre de novo no CRM.' }, 401);
+  if (!env.BREVO_API_KEY || !env.BREVO_SENDER_EMAIL) {
+    return json({ error: 'Brevo ainda não configurado no Worker (BREVO_API_KEY / BREVO_SENDER_EMAIL).' }, 500);
+  }
+  const body = await crmLerJson(request);
+  if (!body) return json({ error: 'Corpo inválido.' }, 400);
+  const contatoId = String(body.contato_id || '');
+  const mensagemId = Number(body.mensagem_id);
+  if (!CRM_UUID_RE.test(contatoId)) return json({ error: 'Contato inválido.' }, 400);
+  if (!Number.isInteger(mensagemId) || mensagemId <= 0) return json({ error: 'Mensagem inválida.' }, 400);
+
+  const auth = { apikey: CRM_SUPABASE_ANON_KEY, Authorization: `Bearer ${admin.token}` };
+  const cRes = await fetch(`${CRM_SUPABASE_URL}/rest/v1/crm_contatos?select=id,email,nome&id=eq.${contatoId}`, { headers: auth });
+  const contato = cRes.ok ? (await cRes.json())[0] : null;
+  if (!contato || !contato.email) return json({ error: 'Contato não encontrado.' }, 404);
+  const mRes = await fetch(`${CRM_SUPABASE_URL}/rest/v1/chat_mensagens?select=id,de,tipo,texto&id=eq.${mensagemId}&contato_id=eq.${contatoId}`, { headers: auth });
+  const msg = mRes.ok ? (await mRes.json())[0] : null;
+  if (!msg || msg.de !== 'ingryd') return json({ error: 'Mensagem não encontrada.' }, 404);
+
+  const desde = new Date(Date.now() - CRM_CHAT_AVISO_MIN * 60000).toISOString();
+  const rRes = await fetch(`${CRM_SUPABASE_URL}/rest/v1/emails_enviados?select=id&contato_id=eq.${contatoId}&modelo=eq.chat_aviso&criado_em=gte.${encodeURIComponent(desde)}&limit=1`, { headers: auth });
+  if (rRes.ok && (await rRes.json()).length) return json({ ok: true, enviado: false, motivo: 'recente' });
+
+  const nome = crmPrimeiroNome(contato.nome);
+  const trecho = String(msg.texto || '').replace(/\s+/g, ' ').trim().slice(0, 140);
+  const destaque = msg.tipo === 'proposta' ? `Te mandei uma proposta: "${trecho}".` : `"${trecho}${String(msg.texto || '').length > 140 ? '…' : ''}"`;
+  const assunto = nome ? `${nome}, a Ingryd te respondeu no Por Dentro` : 'A Ingryd te respondeu no Por Dentro';
+  const texto = `${nome ? `Oi ${nome}!` : 'Oi!'}\n\nAcabei de te escrever no chat da plataforma do Por Dentro:\n\n${destaque}\n\nPara ler tudo e me responder, é só abrir:\n${CRM_APP_LINK}\n\nSe pedir para entrar, use este mesmo e-mail.\n\nIngryd · Por Dentro`;
+  const brevoBody = {
+    sender: { email: env.BREVO_SENDER_EMAIL, name: env.BREVO_SENDER_NAME || 'Ingryd · Por Dentro' },
+    to: [contato.nome ? { email: contato.email, name: contato.nome } : { email: contato.email }],
+    replyTo: { email: crmReplyTo(env) },
+    subject: assunto, htmlContent: crmTextToHtml(texto), textContent: texto,
+    tags: ['crm', 'chat_aviso'],
+  };
+  const bRes = await fetch('https://api.brevo.com/v3/smtp/email', {
+    method: 'POST',
+    headers: { 'api-key': env.BREVO_API_KEY, 'Content-Type': 'application/json', Accept: 'application/json' },
+    body: JSON.stringify(brevoBody),
+  });
+  const bText = await bRes.text();
+  if (!bRes.ok) {
+    console.error('crm/chat-aviso: Brevo respondeu ' + bRes.status + ' — ' + bText);
+    return json({ error: 'O Brevo recusou o aviso (' + bRes.status + ').' }, 502);
+  }
+  let messageId = null;
+  try { messageId = JSON.parse(bText).messageId || null; } catch (e) { /* segue sem id */ }
+  const ins = await fetch(`${CRM_SUPABASE_URL}/rest/v1/emails_enviados`, {
+    method: 'POST', headers: { ...auth, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+    body: JSON.stringify({ contato_id: contatoId, modelo: 'chat_aviso', assunto, corpo: texto, status: 'agendado', provedor_id: messageId, enviado_em: new Date().toISOString() }),
+  });
+  if (!ins.ok) console.error('crm/chat-aviso: aviso enviado mas não registrado — ' + ins.status + ' ' + (await ins.text()));
+  return json({ ok: true, enviado: true, registrado: ins.ok });
+}
+
 async function handleCrmLinkPagamento(request, env) {
   const admin = await crmRequireAdmin(request);
   if (!admin) return json({ error: 'Sem permissão. Entre de novo no CRM.' }, 401);
@@ -3188,6 +3250,9 @@ export default {
       }
       if (url.pathname === '/api/stripe/webhook' && request.method === 'POST') {
         return await handleStripeWebhook(request, env);
+      }
+      if (url.pathname === '/api/crm/chat-aviso' && request.method === 'POST') {
+        return await handleCrmChatAviso(request, env);
       }
       if (url.pathname === '/api/crm/link-pagamento' && request.method === 'POST') {
         return await handleCrmLinkPagamento(request, env);

@@ -798,3 +798,22 @@ já com o e-mail dela preenchido e o id da ficha (o webhook, seção 25, casa o 
 
 **Teste**: Onboarding de uma pessoa de ensaio → Enviar link de pagamento → "Deixar a pessoa escolher" → abra o e-mail, clique em **Escolher o meu plano** → a página abre com o nome dela → escolha um plano com um link de teste do Stripe (modo teste) e pague com `4242 4242 4242 4242`.
 Testes automáticos: `cd admin/crm/db/testes && node planos.test.mjs`.
+
+## 27. Aviso por e-mail quando você escreve no chat
+
+O chat com a pessoa só existe dentro do app; sem um gancho ela não volta. Toda mensagem ou proposta sua no chat (aba Plataforma → Chat, ou "Proposta") agora dispara `POST /api/crm/chat-aviso` (só admin), que manda a ela um e-mail de serviço: "a Ingryd te respondeu no Por Dentro", com o começo da mensagem e o link da plataforma.
+
+- **Sem configuração nova**: usa o Brevo, o remetente e o `CRM_REPLY_TO` que já existem. **Não precisa de SQL**; o envio fica registrado em `emails_enviados` com `modelo = 'chat_aviso'` (aparece no histórico da ficha).
+- **Um aviso por pessoa a cada 30 minutos** (`CRM_CHAT_AVISO_MIN`): várias mensagens seguidas geram um e-mail só, que leva ao mesmo chat.
+- É e-mail de serviço (sem rodapé de descadastro nem exigência de "novidades"), porque responde a uma conversa dela com você.
+- Se o e-mail falhar, a mensagem já foi para o chat; o painel avisa "o e-mail de aviso não saiu".
+- Precisa só **publicar o Worker de novo** (`wrangler deploy`) para a rota existir.
+
+## 28. Subaba Checklist (dentro de Plataforma)
+
+Na ficha (`/admin/crm/` → pessoa → **Plataforma**) há a subaba **Checklist**, ao lado de iAssistente, Chat e Interações, com um selo "N atrasados" quando há atraso. Ela usa os mesmos dados do dossiê (`checklist_items` e os cliques em `plataforma_cliques`) e **se atualiza sozinha** quando ela marca ou desmarca algo no app (o mesmo Realtime que já atualiza o chat). **Não precisa de SQL novo**: basta `db/crm-checklist.sql`, que já existia.
+
+- **Ações sugeridas** (regras no `crm.js`, `chkSugestoes`): *Atrasado* (por item, em ordem do mais antigo); *Vence logo* (até 7 dias); *Concluiu agora* (nas últimas 72 h, com o próximo passo); *Parada* (7 dias sem mexer, com itens pendentes). Atrasado em 14+ dias, ou 3+ atrasados, também sugere propor um 1:1.
+- Cada sugestão tem **Mensagem no chat** (texto pronto; ao enviar, ela recebe o aviso por e-mail da seção 27), **Nota no app dela** (insight manual), **E-mail** e, quando cabe, **Propor 1:1**. Nada sai sozinho: o texto vem preenchido para você revisar.
+- Item atrasado tem o botão **Cobrar** e mostra "você cobrou há N dias" (achado pelo nome do item nas suas mensagens do chat). Se você cobrou há menos de 3 dias, a sugestão vira "Aguardando" e desce na lista, para não cobrar em dobro.
+- Os limites (7 dias, 72 h, 3 dias) são as constantes `CHK_*` no `crm.js`.

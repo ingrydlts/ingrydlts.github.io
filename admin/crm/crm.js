@@ -68,6 +68,21 @@ function tplInfo(k) {
   var m = modeloDe(k) || {};
   return { label: m.nome || k, lever: (TIPO_EMAIL[m.tipo] || [''])[0], when: m.como_sai || '' };
 }
+// Categorias dos modelos (só para organizar a lista e o seletor; não vão para o banco). A primeira regra que bater vale.
+var CATEGORIAS = [
+  { k: 'acesso', nome: 'Acesso e boas-vindas', ok: function (m) { return /^(boas_vindas|acesso_)/.test(m.chave) || m.objetivo_chave === 'boas_vindas'; } },
+  { k: 'compra', nome: 'Compra e pagamento', ok: function (m) { return m.tipo === 'compra' || /^link_pagamento/.test(m.chave); } },
+  { k: 'reimpacto', nome: 'Reimpacto', ok: function (m) { return /^(naoabriu|naoclicou|cliquenaoapp|parouapp)$/.test(m.chave); } },
+  { k: 'guias', nome: 'Guias e materiais', ok: function (m) { return /^(cf_)?guia_/.test(m.chave) || m.objetivo_chave === 'freebie' || m.objetivo_chave === 'conversa'; } },
+  { k: 'outros', nome: 'Outros', ok: function () { return true; } }
+];
+function categoriaDe(m) { return CATEGORIAS.filter(function (c) { return c.ok(m); })[0]; }
+// Agrupa mantendo a ordem em que os modelos chegam; categorias vazias não aparecem.
+function porCategoria(lista) {
+  return CATEGORIAS.map(function (c) { return { k: c.k, nome: c.nome, itens: lista.filter(function (m) { return categoriaDe(m) === c; }) }; })
+    .filter(function (g) { return g.itens.length; });
+}
+var CAT_FECHADA = {};   // categorias que você recolheu na lista (vale até recarregar a página)
 function pn(c) { return displayName(c).trim().split(/\s+/)[0]; }
 var CAL_LINK = 'https://cal.com/ingryd-silva-jf1cnx/1-1?overlayCalendar=true';
 function lk() { return APP_LINK || '[link do acesso]'; }
@@ -927,6 +942,7 @@ async function atualizaAoVivo(cid, forca) {
   state.ins = rk[1]; state.chat = rk[2]; if (rk[3] && !rk[3].err) state.int = rk[3]; if (state.dos && state.dos.cid === cid) state.dos.chk = rk[0];
   var painel = $('ins-box'); if (painel) painel.innerHTML = insightsHtml(state.ins, Date.now());
   var cb = $('chk-box'); if (cb) cb.innerHTML = checklistHtml(state.dos && state.dos.chk, Date.now());
+  var ca = $('chk-aba'); if (ca) ca.innerHTML = checklistPanel(c);
   var cl = $('chk-lateral'); if (cl) cl.innerHTML = checklistLateralHtml(state.dos && state.dos.chk, Date.now(), 'font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-3); margin:0 0 8px');
   pintaChat();   // só o fio: o que você está digitando na caixa fica
   var ib = $('int-box'); if (ib) ib.innerHTML = interacoesHtml(state.int);
@@ -1019,6 +1035,20 @@ async function marcaChatLido(cid) {
   var r = await supabase.from('chat_mensagens').update({ lida_em: new Date().toISOString() }).eq('contato_id', cid).eq('de', 'pessoa').is('lida_em', null);
   if (!r.error && state.chat && state.chat.cid === cid) state.chat.msgs.forEach(function (m) { if (m.de === 'pessoa' && !m.lida_em) m.lida_em = new Date().toISOString(); });
 }
+// Avisa a pessoa por e-mail que você escreveu no chat (o chat só existe dentro do app, então sem isso ela não volta).
+// O Worker limita a um aviso a cada 30 min por pessoa. Se falhar, a mensagem já foi: só avisa que o e-mail não saiu.
+async function avisarChatPorEmail(cid, mensagemId) {
+  try {
+    var sess = await supabase.auth.getSession();
+    if (!sess.data.session) return;
+    var res = await fetch(WORKER_BASE + '/api/crm/chat-aviso', { method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + sess.data.session.access_token },
+      body: JSON.stringify({ contato_id: cid, mensagem_id: mensagemId }) });
+    var j = await res.json().catch(function () { return {}; });
+    if (!res.ok) return toast('Mensagem enviada, mas o e-mail de aviso não saiu: ' + (j.error || res.status), 6000);
+    if (j.enviado) toast('Aviso enviado por e-mail para ela', 3000);
+  } catch (e) { toast('Mensagem enviada, mas o e-mail de aviso não saiu.', 6000); }
+}
 async function enviarChat(cid, t) {
   var txt = $('chat-txt').value.trim();
   if (!txt) return;
@@ -1027,6 +1057,7 @@ async function enviarChat(cid, t) {
   if (t) t.disabled = false;
   if (r.error) return fail('enviar a mensagem', r.error);
   $('chat-txt').value = ''; state.chatRasc = '';
+  avisarChatPorEmail(cid, r.data);
   await atualizaAoVivo(cid, true);
 }
 // ---------- Aba Plataforma: o que ela faz dentro do app, a sua iAssistente e o chat com ela ----------
@@ -1047,7 +1078,7 @@ function propostaEstado(x, agora) {
 // A aba Plataforma tem três sub-abas: iAssistente, Chat e Interações. A coluna da direita (pagamento, checklist e resumo)
 // fica fixa e é a mesma nas três. Interações junta cada clique dela no app (checklist, dossiê, telas, botões) com as vezes
 // em que o dossiê foi salvo, separados por dia (um dropdown por dia, o mais recente aberto).
-var PLAT_ABAS = [['assistente', 'iAssistente'], ['chat', 'Chat'], ['interacoes', 'Interações']];
+var PLAT_ABAS = [['assistente', 'iAssistente'], ['chat', 'Chat'], ['checklist', 'Checklist'], ['interacoes', 'Interações']];
 var INT_TIPOS = { checklist: ['Checklist', 'u-baixa'], dossie: ['Dossiê', 'u-media'], tela: ['Tela', 'tp-artigo'], botao: ['Botão', 'out'], link: ['Link', 'out'] };
 var TELAS_DOSSIE = /^\/(perfil|landing|onboarding)\//;   // as telas em que o app faz as perguntas do dossiê
 async function buscaInteracoes(cid) {
@@ -1094,15 +1125,23 @@ function interacoesHtml(int) {
 }
 document.addEventListener('toggle', function (e) {
   var d = e.target; if (d && d.matches && d.matches('details.intdia')) state.pdias[d.dataset.dia] = d.open;
+  if (d && d.matches && d.matches('details.st-cat')) CAT_FECHADA[d.dataset.cat] = !d.open;
 }, true);
 function platAbasHtml() {
   var nova = chatNaoLidas(state.chat);
   return '<div class="ptabs" role="tablist" aria-label="Plataforma" style="margin:0 0 14px">' + PLAT_ABAS.map(function (t) {
     return '<button class="ptab" role="tab" type="button" data-pstab="' + t[0] + '" aria-selected="' + (state.pstab === t[0]) + '">' + t[1] +
-      (t[0] === 'chat' && nova ? ' <span class="count">' + nova + '</span>' : '') + '</button>';
+      (t[0] === 'chat' && nova ? ' <span class="count">' + nova + '</span>' : '') + (t[0] === 'checklist' ? chkSeloAtraso() : '') + '</button>';
   }).join('') + '</div>';
 }
+// O selo "N atrasados" da subaba Checklist (vazio sem conta, sem checklist ou sem atraso).
+function chkSeloAtraso() {
+  var chk = state.dos && state.dos.chk; if (!chk || chk.err || chk.semConta) return '';
+  var n = chkCalc(chk, Date.now()).atrasados.length;
+  return n ? ' <span class="count">' + n + ' atrasado' + (n > 1 ? 's' : '') + '</span>' : '';
+}
 function platConteudoHtml(c, h4) {
+  if (state.pstab === 'checklist') return '<div id="chk-aba">' + checklistPanel(c) + '</div>';
   if (state.pstab === 'chat') return '<div id="chat-box">' + chatPanelHtml(c, state.chat, h4) + '</div>';
   if (state.pstab === 'interacoes') return '<div id="int-box">' + interacoesHtml(state.int) + '</div>';
   return '<div id="ins-box">' + insightsHtml(state.ins, Date.now()) + '</div>';
@@ -1351,6 +1390,117 @@ function checklistHtml(chk, agora) {
   }
   return '<section class="dbloco">' + cab + resumo + lista + '<h5 class="dsub">Cada clique dela no checklist</h5><div class="feed dfeed">' + feed + '</div></section>';
 }
+// ---------- Aba Checklist: o que ela vê, ao vivo, e o que fazer com isso ----------
+// Mesma fonte do dossiê (checklist_items + cliques), mas em tela própria para acompanhar enquanto ela mexe: cada item com o prazo,
+// o atraso e se você já cobrou, e as AÇÕES SUGERIDAS (atrasado, vencendo, concluiu agora, parada). Cada sugestão traz o texto
+// pronto para o chat (que também avisa por e-mail), uma nota para o app dela ou uma proposta de 1:1; você revisa antes de enviar.
+var CHK_VENCE_EM = 7, CHK_PARADA_DIAS = 7, CHK_COBRADO_DIAS = 3, CHK_RECENTE_H = 72;
+function chkDias(a, b) { return Math.round((Date.parse(a + 'T12:00:00Z') - Date.parse(b + 'T12:00:00Z')) / 864e5); }
+function chkPlural(n, um, varios) { return n + ' ' + (n === 1 ? um : varios); }
+// Há quantos dias você escreveu no chat citando este item (null = nunca).
+function chkCobradoHa(item, agora) {
+  var msgs = (state.chat && !state.chat.err && state.chat.msgs) || [], k = chkNome(item.label).slice(0, 30), ult = null;
+  msgs.forEach(function (m) { if (m.de === 'ingryd' && chkNome(m.texto).indexOf(k) >= 0 && (!ult || m.criado_em > ult)) ult = m.criado_em; });
+  return ult ? Math.floor((agora - Date.parse(ult)) / 864e5) : null;
+}
+function chkSugestoes(chk, agora) {
+  if (!chk || chk.err || chk.semConta) return [];
+  var cc = chkCalc(chk, agora), c = byC(state.sel) || {}, nome = (c.nome || '').split(/\s+/)[0], oi = nome ? 'Oi, ' + nome + '! ' : 'Oi! ';
+  var out = [], pend = cc.itens.filter(function (i) { return i.status !== 'concluido'; });
+  var quando = function (i) { return fmtDay(i.due_date); };
+  cc.atrasados.slice().sort(function (a, b) { return a.due_date < b.due_date ? -1 : 1; }).slice(0, 4).forEach(function (i) {
+    var d = chkDias(cc.hoje, i.due_date), cob = chkCobradoHa(i, agora), esperando = cob !== null && cob < CHK_COBRADO_DIAS;
+    out.push({ nivel: esperando ? 'baixa' : 'alta', rotulo: esperando ? 'Aguardando' : 'Atrasado',
+      titulo: '"' + i.label + '" está atrasado há ' + chkPlural(d, 'dia', 'dias'),
+      porque: 'O prazo era ' + quando(i) + '.' + (cob !== null ? ' Você escreveu sobre isso há ' + chkPlural(cob, 'dia', 'dias') + '.' : ' Você ainda não cobrou.'),
+      chat: oi + 'O prazo de "' + i.label + '" era ' + quando(i) + ' e ainda não vi esse passo concluído no seu checklist. Aconteceu alguma coisa? Me conta onde travou que eu te ajudo a destravar.',
+      nota: 'O prazo de "' + i.label + '" já passou. Se estiver travado, me chama no chat: dá para resolver por partes.',
+      prop: d >= 14 || cc.atrasados.length >= 3 });
+  });
+  cc.itens.filter(function (i) { return i.status !== 'concluido' && i.due_date && i.due_date >= cc.hoje && chkDias(i.due_date, cc.hoje) <= CHK_VENCE_EM; }).slice(0, 3).forEach(function (i) {
+    var d = chkDias(i.due_date, cc.hoje);
+    out.push({ nivel: 'media', rotulo: 'Vence logo', titulo: '"' + i.label + '" vence ' + (d === 0 ? 'hoje' : 'em ' + chkPlural(d, 'dia', 'dias')),
+      porque: 'Prazo ' + quando(i) + '. Um lembrete agora evita virar atraso.',
+      chat: oi + 'Lembrete: "' + i.label + '" tem prazo ' + (d === 0 ? 'hoje' : 'em ' + quando(i)) + '. Precisa de ajuda para fechar isso a tempo?',
+      nota: '"' + i.label + '" vence ' + (d === 0 ? 'hoje' : 'em ' + chkPlural(d, 'dia', 'dias')) + '. Vale resolver isso primeiro.', prop: false });
+  });
+  var recentes = cc.itens.filter(function (i) { return i.status === 'concluido' && i.updated_at && agora - Date.parse(i.updated_at) < CHK_RECENTE_H * 36e5; })
+    .sort(function (a, b) { return a.updated_at < b.updated_at ? 1 : -1; });
+  if (recentes.length) {
+    var r = recentes[0], prox = pend.filter(function (i) { return i.due_date; }).sort(function (a, b) { return a.due_date < b.due_date ? -1 : 1; })[0] || pend[0];
+    out.push({ nivel: 'positiva', rotulo: 'Concluiu agora', titulo: 'Ela concluiu "' + r.label + '"' + (recentes.length > 1 ? ' e mais ' + (recentes.length - 1) : ''),
+      porque: 'Boa hora para reconhecer e já apontar o próximo passo' + (prox ? ': "' + prox.label + '".' : '.'),
+      chat: oi + 'Vi que você concluiu "' + r.label + '". Parabéns!' + (prox ? ' O próximo passo é "' + prox.label + '"' + (prox.due_date ? ' (prazo ' + quando(prox) + ')' : '') + '. Quer ajuda com ele?' : ' Está tudo em dia por aqui.'),
+      nota: 'Você concluiu "' + r.label + '". ' + (prox ? 'Agora o próximo passo é "' + prox.label + '".' : 'Seu checklist está em dia.'), prop: false });
+  }
+  var ult = Math.max.apply(null, [0].concat((chk.cliques || []).slice(0, 1).map(function (x) { return Date.parse(x.criado_em); }),
+    cc.itens.map(function (i) { return i.updated_at ? Date.parse(i.updated_at) : 0; })));
+  if (pend.length && ult && agora - ult > CHK_PARADA_DIAS * 864e5) {
+    var dp = Math.floor((agora - ult) / 864e5);
+    out.push({ nivel: 'media', rotulo: 'Parada', titulo: 'Sem mexer no checklist há ' + chkPlural(dp, 'dia', 'dias'),
+      porque: 'Ainda há ' + chkPlural(pend.length, 'item pendente', 'itens pendentes') + '. Um toque pessoal costuma trazer de volta.',
+      chat: chatTextoRapido('como_vai', c), nota: 'Faz um tempo que você não passa pelo checklist. Vale abrir e ver qual é o próximo passo.', prop: dp >= 14 });
+  }
+  var ordem = { alta: 0, media: 1, positiva: 2, baixa: 3 };
+  return out.sort(function (a, b) { return ordem[a.nivel] - ordem[b.nivel]; });
+}
+var CHK_NIVEL = { alta: 'u-alta', media: 'u-media', positiva: 'u-baixa', baixa: '' };
+function checklistPanel(c) {
+  var chk = state.dos && state.dos.chk, agora = Date.now();
+  if (!chk) return '<div class="panel" style="padding:16px;margin-top:18px"><p class="sub" style="margin:0">Carregando…</p></div>';
+  if (chk.err) return '<div class="panel" style="padding:16px;margin-top:18px"><p class="sub" style="margin:0">Falta rodar <b>db/crm-checklist.sql</b> no SQL Editor do Supabase.</p></div>';
+  if (chk.semConta) return '<div class="panel" style="padding:16px;margin-top:18px"><h3 style="font-size:15px;margin-bottom:8px">Checklist</h3><p class="sub" style="margin:0">Ela ainda não entrou no app, então ainda não tem checklist. Quando entrar, ele aparece aqui e acompanha o que ela marcar.</p></div>';
+  var cc = chkCalc(chk, agora), pct = cc.itens.length ? Math.round(cc.feitos * 100 / cc.itens.length) : 0;
+  state.chkSug = chkSugestoes(chk, agora);
+  // Visão enxuta: o que pede ação agora (no máximo 3), o que falta fazer em ordem de prazo, e o resto recolhido.
+  var sug = state.chkSug.slice(0, 3).map(function (x, n) {
+    return '<div class="feeditem chk-sug"><span class="pill chk-rot ' + CHK_NIVEL[x.nivel] + '">' + esc(x.rotulo) + '</span><div class="fbody"><p title="' + esc(x.porque) + '">' + esc(x.titulo) + '</p></div>' +
+      '<div class="chk-acoes"><button class="btn primary" type="button" data-chkvia="chat" data-chki="' + n + '">Escrever no chat</button>' +
+      '<details class="chk-mais"><summary class="btn" aria-label="Outras ações">⋯</summary><div class="chk-menu">' +
+      '<button type="button" data-chkvia="nota" data-chki="' + n + '">Nota no app dela</button><button type="button" data-chkvia="email" data-chki="' + n + '">E-mail</button>' +
+      (x.prop ? '<button type="button" data-chkvia="prop" data-chki="' + n + '">Propor 1:1</button>' : '') + '</div></details></div></div>';
+  }).join('') || '<p class="sub" style="margin:0">Nada a fazer agora: sem atrasos nem prazo chegando.</p>';
+  var pend = cc.itens.filter(function (i) { return i.status !== 'concluido'; }).sort(function (a, b) { return (a.due_date || '9999') < (b.due_date || '9999') ? -1 : 1; });
+  var feitos = cc.itens.filter(function (i) { return i.status === 'concluido'; });
+  var linha = function (i) {
+    var feito = i.status === 'concluido', atras = cc.atrasados.indexOf(i) >= 0, d = atras ? chkDias(cc.hoje, i.due_date) : 0;
+    return '<div class="chk-item"><span class="chk-dot ' + (feito ? 'ok' : atras ? 'atr' : '') + '" aria-hidden="true"></span><span class="chk-txt">' + esc(i.label) + '</span><span class="chk-qd' + (atras ? ' atr' : '') + '">' +
+      (feito ? 'concluído' : atras ? chkPlural(d, 'dia', 'dias') + ' de atraso' : i.due_date ? 'até ' + esc(fmtDay(i.due_date)) : 'sem prazo') + '</span></div>';
+  };
+  var feed = (chk.cliques || []).filter(function (x) { return /^(Marcou como concluído|Desmarcou): /.test(x.rotulo || ''); }).slice(0, 10).map(function (x) {
+    var t = chkClique(x);
+    return '<div class="chk-item"><span class="chk-dot ' + (t[0] === 'Marcou' ? 'ok' : '') + '" aria-hidden="true"></span><span class="chk-txt">' + esc(t[0] + ': ' + t[2]) + '</span><span class="chk-qd">' + esc(fmtDia(x.criado_em) + ' ' + fmtHora(x.criado_em)) + '</span></div>';
+  }).join('');
+  return '<div class="panel" style="padding:16px"><div class="chk-topo"><h3 style="font-size:15px;margin:0">Checklist dela</h3><span class="sub">' + cc.feitos + ' de ' + cc.itens.length + ' · ' + pct + '%</span></div>' +
+    '<div class="dprog" role="progressbar" aria-valuenow="' + pct + '" aria-valuemin="0" aria-valuemax="100"><span style="width:' + pct + '%"></span></div>' +
+    '<h4 class="chk-h">Precisa de ação</h4>' + sug +
+    '<h4 class="chk-h">O que falta</h4>' + (pend.map(linha).join('') || '<p class="sub" style="margin:0">Tudo concluído.</p>') +
+    (feitos.length ? '<details class="chk-rec"><summary>' + chkPlural(feitos.length, 'concluído', 'concluídos') + '</summary>' + feitos.map(linha).join('') + '</details>' : '') +
+    (feed ? '<details class="chk-rec"><summary>O que ela marcou, ao vivo</summary>' + feed + '</details>' : '') + '</div>';
+}
+// Leva o texto da sugestão (ou do item) até onde você envia, já preenchido para revisar.
+async function chkAgir(via, i) {
+  var c = byC(state.sel); if (!c) return;
+  var s = via === 'item' ? null : (state.chkSug || [])[i], it = via === 'item' ? state.dos.chk.itens[i] : null;
+  if (via === 'item') {
+    var d = chkDias(chkCalc(state.dos.chk, Date.now()).hoje, it.due_date), nome = (c.nome || '').split(/\s+/)[0];
+    s = { chat: (nome ? 'Oi, ' + nome + '! ' : 'Oi! ') + 'O prazo de "' + it.label + '" era ' + fmtDay(it.due_date) + ' (' + chkPlural(d, 'dia', 'dias') + ' atrás) e ainda não vi esse passo concluído. Aconteceu alguma coisa? Me conta onde travou que eu te ajudo.' };
+    via = 'chat';
+  }
+  if (!s) return;
+  if (via === 'prop') return openProposta(c.id, 'um_a_um');
+  if (via === 'email') return openCompose(c.id);
+  if (via === 'chat') {
+    state.ptab = 'plataforma'; state.pstab = 'chat'; state.chatRasc = s.chat; await renderPessoa();
+    var x = $('chat-txt'); if (x) { x.value = s.chat; x.focus(); x.scrollIntoView({ block: 'center' }); }
+    return toast('Texto no chat. Revise e envie: ela também recebe um aviso por e-mail.', 4000);
+  }
+  if (via === 'nota') {
+    state.ptab = 'plataforma'; state.pstab = 'assistente'; await renderPessoa();
+    var n = $('ins-texto'); if (n) { n.value = s.nota; n.focus(); n.scrollIntoView({ block: 'center' }); }
+    return toast('Nota pronta. Revise e publique: ela vê no dashboard.', 4000);
+  }
+}
 function dossieHtml(c, d, err, rasc, aberto, chk) {
   if (err) return '<div class="panel dossie"><div class="dhead"><h3>Dossiê</h3></div><p class="sub" style="margin:0">Falta rodar <b>db/crm-dossie.sql</b> no SQL Editor do Supabase.</p></div>';
   var pr = dosProgresso(c, d, rasc), pct = pr.tot ? Math.round(pr.n * 100 / pr.tot) : 0, sujo = rasc && Object.keys(rasc).length;
@@ -1432,7 +1582,8 @@ async function renderPessoa() {
   if (!state.ptab) state.ptab = mails.length || resps.length ? 'conversa' : 'ficha';
   var tabs = '<div class="ptabs" role="tablist" aria-label="Ficha da pessoa">' + [['conversa', 'Conversa'], ['plataforma', 'Plataforma'], ['ficha', 'Ficha']].map(function (t) {
     return '<button class="ptab" role="tab" type="button" data-ptab="' + t[0] + '" aria-selected="' + (state.ptab === t[0]) + '">' + t[1] +
-      (t[0] === 'conversa' && resps.some(function (x) { return x.status === 'nova'; }) ? ' <span class="count">nova</span>' : '') + '</button>';
+      (t[0] === 'conversa' && resps.some(function (x) { return x.status === 'nova'; }) ? ' <span class="count">nova</span>' : '') +
+      '</button>';
   }).join('') + '</div>';
   $('pessoa-page').innerHTML =
     '<button class="link" data-back type="button">← Voltar</button>' +
@@ -1732,7 +1883,7 @@ function renderLista(lista) {
   var card = function (m) {
     var v = M ? versaoAtual(m.chave) : null, obra = M ? versaoEmObra(m.chave) : null;
     var dot = !v ? 'dr' : obra ? (obra.etapa === 'revisao' ? 'rev' : 'dr') : v.etapa === 'no_ar' ? 'ok' : 'dr';
-    var linha = !M ? 'Texto do código' : etapaTxt(v) + (obra && obra !== v ? ' · ' + etapaTxt(obra).toLowerCase() : '') +
+    var linha = !M ? 'Texto do código' : (m.automatico ? 'Sai sozinho · ' : '') + etapaTxt(v) + (obra && obra !== v ? ' · ' + etapaTxt(obra).toLowerCase() : '') +
       (m.criado_no_estudio && m.envio_gatilho ? ' · envio ' + (m.envio_ligado ? 'ligado' : 'desligado') : '');
     return '<div class="st-card"><button class="st-item" data-tpl-pick="' + esc(m.chave) + '" aria-pressed="' + (!ST.criar && ST.k === m.chave) + '" type="button"><span class="sdot ' + dot + '"></span><span><b>' + esc(m.nome) + '</b>' +
       '<span>' + esc(linha) + '</span></span></button>' +
@@ -1743,8 +1894,11 @@ function renderLista(lista) {
     return '<div class="st-excl-i"><span><b>' + esc(m.nome) + '</b><span class="sub">excluído em ' + esc(fmtDay(m.excluido_em)) + '</span></span>' +
       '<button class="btn" type="button" data-strestaurar="' + esc(m.chave) + '">Restaurar</button></div>';
   }).join('') + '</details>' : '';
-  var grupo = function (titulo, itens) { return itens.length ? '<p class="tplgrp">' + esc(titulo) + ' · ' + itens.length + '</p>' + itens.map(card).join('') : ''; };
-  $('mod-list').innerHTML = (temEstudio3() ? '<button class="st-new" type="button" id="st-novo-modelo" aria-pressed="' + !!ST.criar + '">+ Modelo novo</button>' : '') + grupo('Você envia', lista.filter(function (m) { return !m.automatico; })) + grupo('Saem sozinhos', lista.filter(function (m) { return m.automatico; })) + lixo +
+  var grupo = function (g) {
+    var aberta = !CAT_FECHADA[g.k] || g.itens.some(function (m) { return !ST.criar && m.chave === ST.k; });
+    return '<details class="st-cat" data-cat="' + g.k + '"' + (aberta ? ' open' : '') + '><summary class="tplgrp">' + esc(g.nome) + ' · ' + g.itens.length + '</summary>' + g.itens.map(card).join('') + '</details>';
+  };
+  $('mod-list').innerHTML = (temEstudio3() ? '<button class="st-new" type="button" id="st-novo-modelo" aria-pressed="' + !!ST.criar + '">+ Modelo novo</button>' : '') + porCategoria(lista).map(grupo).join('') + lixo +
     '<div class="st-legend"><span><i class="sdot ok"></i>No ar</span><span><i class="sdot rev"></i>Em revisão</span><span><i class="sdot dr"></i>Rascunho</span></div>';
 }
 
@@ -2380,6 +2534,12 @@ function exportModelos() {
 // O pop-up mostra o e-mail como ela vai ver (aba "Como ela vai ver") e deixa editar o texto (aba "Editar texto").
 // Se você mexer no texto, o e-mail sai no formato simples e a prévia passa a mostrar esse formato: o que você vê é o que sai.
 var CMP = null;   // { c, k, e, editado, aba }
+// O seletor de modelo do "Escrever e-mail", em grupos (optgroup) pelas mesmas categorias da lista.
+function opcoesPorCategoria(chaves, atual) {
+  var opt = function (m) { return '<option value="' + m + '"' + (m === atual ? ' selected' : '') + '>' + esc(tplInfo(m).label) + '</option>'; };
+  var itens = chaves.map(function (k) { var m = modeloDe(k) || { chave: k, tipo: EXIGEM_NOVIDADES[k] ? 'novidades' : 'servico' }; return m; });
+  return porCategoria(itens).map(function (g) { return '<optgroup label="' + esc(g.nome) + '">' + g.itens.map(function (m) { return opt(m.chave); }).join('') + '</optgroup>'; }).join('');
+}
 function openCompose(cid, key) {
   var c = byC(cid); if (!c) return;
   activeCid = cid;
@@ -2388,7 +2548,7 @@ function openCompose(cid, key) {
   var bloqueado = exigeNovidades(k) && !c.aceita_novidades;
   var opcoesTpl = TPL_ORDER.filter(function (m) { return !excluido(m) || m === k; }).concat(novosManuais().map(function (m) { return m.chave; }));
   modalOpen(modalTop(c) +
-    '<div class="ctx" style="margin-top:12px"><div class="sel"><select id="compose-tpl" aria-label="Modelo">' + opcoesTpl.map(function (m) { return '<option value="' + m + '"' + (m === k ? ' selected' : '') + '>' + esc(tplInfo(m).label) + '</option>'; }).join('') + '</select></div><span class="lever" style="display:inline-block;font-size:10.5px;font-weight:700;text-transform:uppercase;color:var(--brown);background:var(--brown-soft);padding:2px 8px;border-radius:999px">' + esc(tplInfo(k).lever) + '</span></div>' +
+    '<div class="ctx" style="margin-top:12px"><div class="sel"><select id="compose-tpl" aria-label="Modelo">' + opcoesPorCategoria(opcoesTpl, k) + '</select></div><span class="lever" style="display:inline-block;font-size:10.5px;font-weight:700;text-transform:uppercase;color:var(--brown);background:var(--brown-soft);padding:2px 8px;border-radius:999px">' + esc(tplInfo(k).lever) + '</span></div>' +
     '<p class="sub" style="margin:8px 0 0">' + esc(tplInfo(k).when) + '</p>' +
     (bloqueado ? '<p class="sub" style="color:var(--red);margin:8px 0 0">Essa pessoa não aceitou novidades por e-mail — este modelo não pode ser enviado a ela.</p>' : '') +
     '<div class="reply" style="margin-top:14px"><label for="compose-subj">Assunto</label><input id="compose-subj" maxlength="200" style="height:38px;border:1px solid var(--line-2);border-radius:var(--r);padding:0 10px;background:var(--surface-2)" value="' + esc(CMP.e.subject) + '"></div>' +
@@ -2830,6 +2990,7 @@ document.addEventListener('click', async function (e) {
   if (t.dataset.pagar) return abrirLinkPagamento(t.dataset.pagar);
   if (t.id === 'pg-enviar') return enviarLinkPagamento(t);
   if (t.dataset.chatenviar) return enviarChat(t.dataset.chatenviar, t);
+  if (t.dataset.chkvia) return chkAgir(t.dataset.chkvia, Number(t.dataset.chki));
   if (t.dataset.chatquick) {
     var cq = byC(state.sel);
     if (t.dataset.chatquick === 'um_a_um') return openProposta(cq.id, 'um_a_um');
@@ -2903,6 +3064,7 @@ document.addEventListener('click', async function (e) {
     var po = await supabase.rpc('crm_chat_enviar', { p_contato: activeCid, p_proposta: { titulo: pt, texto: px, acao_sim: $('prop-sim').value.trim() || null,
       link: pl || null, link_rotulo: pl ? ($('prop-rotulo').value.trim() || null) : null, prazo: pd ? new Date(pd + 'T23:59:59').toISOString() : null } });
     if (po.error) { t.disabled = false; return fail('enviar a proposta', po.error); }
+    avisarChatPorEmail(activeCid, po.data);
     closeCompose(); if (state.view === 'pessoa') { await atualizaAoVivo(activeCid, true); }
     return toast('Proposta enviada no chat dela');
   }
