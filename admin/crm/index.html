@@ -46,6 +46,7 @@
     <button class="nav" data-view="onboarding" type="button">Onboarding</button>
     <button class="nav" data-view="funil" type="button">Funil</button>
     <button class="nav" data-view="radar" type="button">Radar <span class="count hot num" id="c-radar" hidden>0</span></button>
+    <button class="nav" data-view="sites" type="button">Sites úteis</button>
     <button class="nav" data-view="perguntas" type="button">Caixa de entrada <span class="count hot num" id="c-perguntas">0</span></button>
     <button class="nav" data-view="reimpacto" type="button">Reimpactar <span class="count hot num" id="c-reimpacto">0</span></button>
     <button class="nav" data-view="modelos" type="button">Modelos de e-mail</button>
@@ -150,6 +151,16 @@
       <div class="views" id="radar-personas" role="group" aria-label="Persona" style="margin-top:14px"></div>
       <p class="sub" id="radar-sub" style="margin:10px 0 0"></p>
       <div class="radar-grid" id="radar-grid" style="margin-top:14px"></div>
+    </section>
+
+    <section data-panel="sites" hidden>
+      <div class="head">
+        <div><h2>Sites úteis</h2><p>A árvore de links de cada persona: por etapa. Aparece no carrossel "Sites que você vai precisar" do dashboard de quem é dessa persona.</p></div>
+        <button class="btn primary" type="button" data-sitesnovo="geral">Novo link</button>
+      </div>
+      <div class="views" id="sites-personas" role="group" aria-label="Persona" style="margin-top:14px"></div>
+      <p class="sub" id="sites-sub" style="margin:10px 0 0"></p>
+      <div class="sites-grid" id="sites-grid" style="margin-top:14px"></div>
     </section>
 
     <section data-panel="perguntas" hidden>

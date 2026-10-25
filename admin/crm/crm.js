@@ -226,7 +226,9 @@ async function loadAll() {
     supabase.from('eventos').select('contato_id,dados').eq('tipo', 'compra').limit(5000),
     // O Radar (db/crm-radar.sql): os itens do PESTEL por persona e o que já foi enviado. Sem a migração, a tela avisa.
     supabase.from('radar_itens').select('*').is('arquivado_em', null).order('criado_em', { ascending: false }).limit(500),
-    supabase.from('radar_envios').select('item_id,contato_id,visto_em').limit(20000)
+    supabase.from('radar_envios').select('item_id,contato_id,visto_em').limit(20000),
+    // Os sites úteis por persona e etapa (db/crm-sites.sql). Sem a migração, a tela avisa.
+    supabase.from('sites_uteis').select('*').is('arquivado_em', null).order('ordem', { ascending: true }).order('id', { ascending: true }).limit(500)
   ]);
   if (r[0].error) return fail('carregar os contatos', r[0].error);
   COMPRAS = {};
@@ -247,6 +249,7 @@ async function loadAll() {
   SUBS = {};
   (r[2].data || []).forEach(function (o) { SUBS[o.persona + '|' + o.chave] = o.rotulo; });
   RD = r[8] && !r[8].error ? (r[8].data || []) : null;
+  SU = r[10] && !r[10].error ? (r[10].data || []) : null;
   RE = {};
   ((r[9] && !r[9].error && r[9].data) || []).forEach(function (e) {
     var x = RE[e.item_id] = RE[e.item_id] || { enviados: 0, vistos: 0, contatos: {} };
@@ -1800,6 +1803,74 @@ async function radarEnviar(btn) {
   toast(r.data === 0 ? 'Ninguém novo para receber' : 'Enviado a ' + r.data + (r.data === 1 ? ' pessoa' : ' pessoas') + ' — o aviso já está no sininho');
 }
 
+// ---------- Sites úteis: a árvore de links por persona (db/crm-sites.sql) ----------
+// Persona → etapa → link. O dashboard da pessoa mostra, em carrossel, os links da persona dela na etapa 'geral' e na etapa
+// em que ela está. As etapas são fixas aqui (e em assets/js/sites.js do app, que sabe reconhecer cada uma): só 'geral' vale
+// para todas; as outras dependem de o app conseguir dizer em que etapa a pessoa está. "Excluir" arquiva (arquivado_em).
+var SITES_ARVORE = {
+  au_pair_estudante: [['geral', 'Todas da persona'], ['saindo_do_au_pair', 'Saindo do regime de au pair'], ['renovando_au_pair', 'Renovando como au pair']],
+  campus_france: [['geral', 'Todas da persona'], ['candidatura', 'Candidatura'], ['chegada', 'Chegada']],
+  alternancia_emprego: [['geral', 'Todas da persona']],
+  conjuge: [['geral', 'Todas da persona']],
+  pvt: [['geral', 'Todas da persona']]
+};
+var SU = null;   // null = SQL ainda não rodado
+function sitesDaPersona(persona) { return (SU || []).filter(function (s) { return s.persona === persona; }); }
+function renderSites() {
+  var grid = $('sites-grid'); if (!grid) return;
+  if (SU === null) {
+    $('sites-personas').innerHTML = ''; $('sites-sub').textContent = '';
+    grid.innerHTML = '<div class="empty">Os sites úteis ainda não estão ligados: rode <b>admin/crm/db/crm-sites.sql</b> no SQL Editor do Supabase e recarregue.</div>';
+    return;
+  }
+  if (!state.spersona) state.spersona = 'au_pair_estudante';
+  var p = state.spersona, itens = sitesDaPersona(p), ramos = SITES_ARVORE[p] || [['geral', 'Todas da persona']];
+  $('sites-personas').innerHTML = '<span class="lbl">Persona</span>' + PERSONAS_RADAR.map(function (k) {
+    return '<button class="chip" data-sitespersona="' + k + '" aria-pressed="' + (k === p) + '" type="button">' + esc(PERSONAS[k]) + '</button>';
+  }).join('');
+  $('sites-sub').textContent = itens.length + (itens.length === 1 ? ' link' : ' links') + ' para ' + PERSONAS[p] + ' · ' + noApp(p).length + ' pessoas dessa persona na plataforma';
+  grid.innerHTML = ramos.map(function (r) {
+    var doRamo = itens.filter(function (s) { return s.ramo === r[0]; });
+    return '<div class="sites-ramo"><h3>' + esc(r[1]) + '<span class="n num">' + doRamo.length + '</span></h3>' +
+      (doRamo.map(function (s) {
+        var u = radarLinkSeguro(s.url);
+        return '<div class="sites-link"><b>' + (u ? '<a href="' + esc(u) + '" target="_blank" rel="noopener">' + esc(s.titulo) + '</a>' : esc(s.titulo)) + '</b>' +
+          (s.descricao ? '<p>' + esc(s.descricao) + '</p>' : '') + '<div class="meta">' + esc(s.url) + '</div>' +
+          '<div class="acts"><button class="link" type="button" data-sitesexcluir="' + s.id + '">Excluir</button></div></div>';
+      }).join('') || '<div class="radar-vazio">Nenhum link nesta etapa.</div>') +
+      '<button class="link" type="button" data-sitesnovo="' + esc(r[0]) + '">+ Adicionar link</button></div>';
+  }).join('');
+}
+function sitesForm(ramo) {
+  if (SU === null) return toast('Rode o crm-sites.sql no Supabase primeiro');
+  var p = state.spersona || 'au_pair_estudante', ramos = SITES_ARVORE[p] || [['geral', 'Todas da persona']];
+  modalOpen('<h3>Novo link para ' + esc(PERSONAS[p]) + '</h3><p class="sub" style="margin-top:6px">Aparece no carrossel "Sites que você vai precisar" de quem é dessa persona' + (ramos.length > 1 ? ' e está na etapa escolhida' : '') + '.</p>' +
+    '<div class="reply" style="margin-top:10px">' +
+    '<label for="su-ramo">Etapa</label><select id="su-ramo" style="' + RADAR_INP + '">' + ramos.map(function (r) { return '<option value="' + r[0] + '"' + (r[0] === ramo ? ' selected' : '') + '>' + esc(r[1]) + '</option>'; }).join('') + '</select>' +
+    '<label for="su-titulo">Nome do site</label><input id="su-titulo" maxlength="80" placeholder="Ex.: ANEF" style="' + RADAR_INP + '">' +
+    '<label for="su-descricao">Para que serve (uma frase, opcional)</label><textarea id="su-descricao" maxlength="200" style="min-height:60px"></textarea>' +
+    '<label for="su-url">Link (https)</label><input id="su-url" type="url" maxlength="500" placeholder="https://..." style="' + RADAR_INP + '"></div>' +
+    '<div class="actions"><button class="btn" type="button" id="modal-cancel">Cancelar</button><button class="btn primary" type="button" id="sites-salvar">Salvar link</button></div>');
+}
+async function sitesSalvar(btn) {
+  var v = function (id) { return $(id).value.trim(); };
+  var titulo = v('su-titulo'), url = v('su-url'), p = state.spersona;
+  if (!titulo || !url) return toast('Preencha o nome e o link');
+  if (!/^https:\/\//i.test(url)) return toast('O link precisa começar com https://');
+  var ramo = v('su-ramo'), ordem = sitesDaPersona(p).filter(function (s) { return s.ramo === ramo; }).reduce(function (m, s) { return Math.max(m, s.ordem || 0); }, 0) + 10;
+  btn.disabled = true;
+  var r = await supabase.from('sites_uteis').insert({ persona: p, ramo: ramo, titulo: titulo, descricao: v('su-descricao') || null, url: url, ordem: ordem });
+  if (r.error) { btn.disabled = false; return fail('salvar o link', r.error); }
+  closeCompose(); await reload(); if (state.view === 'sites') renderSites(); toast('Link adicionado');
+}
+async function sitesExcluir(id) {
+  var s = (SU || []).filter(function (x) { return x.id === id; })[0]; if (!s) return;
+  if (!window.confirm('Excluir "' + s.titulo + '"? Ele some do carrossel de quem é dessa persona.')) return;
+  var r = await supabase.from('sites_uteis').update({ arquivado_em: new Date().toISOString() }).eq('id', id);
+  if (r.error) return fail('excluir o link', r.error);
+  await reload(); renderSites(); toast('Link excluído');
+}
+
 // ---------- Modelos de e-mail: o estúdio (Estúdio de e-mails, entregas 1 e 2) ----------
 // Três colunas, no padrão do estúdio de produtos do admin: os modelos · o editor em seções · a prévia com uma pessoa
 // de verdade. O texto é feito de blocos (estudio.js monta o assunto, o texto puro e o HTML) e fica na versão do modelo
@@ -2622,6 +2693,7 @@ function show(view) {
   if (view === 'onboarding') carregarOnboarding();
   if (view === 'funil') renderBoard();
   if (view === 'radar') renderRadar();
+  if (view === 'sites') renderSites();
   if (view === 'perguntas') renderQuestions();
   if (view === 'reimpacto') renderReimpacto();
   if (view === 'modelos') renderModelos();
@@ -3006,6 +3078,10 @@ document.addEventListener('click', async function (e) {
   if (t.dataset.radararquivar) return radarArquivar(Number(t.dataset.radararquivar));
   if (t.dataset.radarmodo) { RS.modo = t.dataset.radarmodo; return radarEnviarForm(RS.item, true); }
   if (t.id === 'radar-enviar-go') return radarEnviar(t);
+  if (t.dataset.sitespersona) { state.spersona = t.dataset.sitespersona; return renderSites(); }
+  if (t.dataset.sitesnovo) return sitesForm(t.dataset.sitesnovo);
+  if (t.id === 'sites-salvar') return sitesSalvar(t);
+  if (t.dataset.sitesexcluir) return sitesExcluir(Number(t.dataset.sitesexcluir));
   if (t.dataset.insnova) return publicarInsight(t.dataset.insnova, t);
   if (t.dataset.insretirar) return retirarInsight(t.dataset.insretirar);
   if (t.dataset.openproposta) return openProposta(t.dataset.openproposta, t.dataset.preset);
