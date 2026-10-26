@@ -91,5 +91,15 @@ assunto, com `mostrarSe` nos sinais). Individual = depende de um dado só dela (
 Ao criar o conteúdo, clique em **Virou conteúdo** no tema: as linhas fecham e a contagem recomeça. Até lá, o assunto fica
 como item com nota.
 
+**Organizar a call**: a transcrição vem de reconhecimento de voz, sem saber quem fala e com palavras trocadas. A leitura (1) descobre
+quem fala pelo conteúdo e só aceita como fato da pessoa o que ELA disse (regras ditas por você vão para "o que você explicou" e
+para "a conferir"), (2) corrige os erros de voz mais comuns (viste = visa, alper = au pair, Udapver = DAP verte...) e (3) devolve
+**O que rolou na call**: a conversa em até 8 blocos por assunto, para você se localizar rápido.
+
+**Perguntas para confirmar com ela**: tudo o que ficou incerto ou faltou (fato de confiança baixa ou média, dado que a call não
+fechou) vira uma pergunta curta, na sua voz. Marque as que quer e clique em **Levar para o chat**: elas viram o rascunho da aba
+Plataforma → Chat, numeradas; você revisa e envia (ela recebe o e-mail de aviso, como em toda mensagem sua). Regra, prazo e
+valor a conferir em fonte oficial **não** viram pergunta para ela: ficam em "A conferir na fonte, com você".
+
 Os sinais também se marcam à mão, sem IA, na caixa de seleção do painel. Novo sinal = uma linha em `sinais_vocabulario`
 (revisão semanal; só entra se já houver, ou puder haver, conteúdo para ele).

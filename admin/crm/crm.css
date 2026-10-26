@@ -669,3 +669,5 @@ select.st-in{height:36px; padding:0 8px}
 .pcconferir{margin:0; padding-left:20px; font-size:13.5px; line-height:1.55}
 .pccur{margin-top:14px; border-top:1px solid var(--line); padding-top:4px}
 .pccurlinha{display:flex; align-items:center; gap:10px; flex-wrap:wrap; justify-content:space-between; padding:6px 0; font-size:13.5px}
+.pcmapa{margin:0; padding-left:20px; font-size:13.5px; line-height:1.5}
+.pcmapa li{margin-bottom:6px}

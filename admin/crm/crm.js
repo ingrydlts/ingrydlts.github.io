@@ -1582,7 +1582,7 @@ async function salvarDossie(cid, t) {
 // Regra dos 3: um tema com 3 pessoas ou mais na fila está pronto para virar padrão (material, assunto ou notícia do Radar).
 // Os sinais também podem ser marcados à mão, sem IA. A transcrição não é guardada pelo Worker; só a proposta.
 var PC_FATORES = { politico: 'Político', economico: 'Econômico', social: 'Social', tecnologico: 'Tecnológico', ambiental: 'Ambiental', legal: 'Legal' };
-function pcInicial(cid) { return { cid: cid, estado: 'vazio', erro: '', prop: null, vocab: [], vocabErro: false, cont: [], carregando: false, carregou: false, sel: { campos: {}, sinais: {}, fila: {} }, camadas: {}, manual: null }; }
+function pcInicial(cid) { return { cid: cid, estado: 'vazio', erro: '', prop: null, vocab: [], vocabErro: false, cont: [], carregando: false, carregou: false, sel: { campos: {}, sinais: {}, fila: {}, perg: {} }, camadas: {}, manual: null }; }
 function pcEstado(cid) { if (!state.pc || state.pc.cid !== cid) state.pc = pcInicial(cid); return state.pc; }
 function pcRotuloSinal(pc, chave) { var v = (pc.vocab || []).filter(function (x) { return x.chave === chave; })[0]; return v ? v.rotulo : chave; }
 function pcSinaisDela(d) { return d && Array.isArray(d.sinais) ? d.sinais.slice() : []; }
@@ -1618,6 +1618,11 @@ function poscallPropostaHtml(c, pc, d) {
   h += '<p class="sub" style="margin:10px 0">Proposta da IA' + (pc.prop.reutilizada ? ' (a mesma call já tinha sido lida; sem custo novo)' : '') +
     '. Marque o que vale e aplique. <b>Nada entrou na ficha ainda.</b></p>';
 
+  if ((p.mapa_da_call || []).length) {
+    h += '<h5>O que rolou na call</h5><ol class="pcmapa">' + p.mapa_da_call.map(function (b) {
+      return '<li><b>' + esc(b.titulo) + '</b>' + (b.tema && b.tema !== 'outro' ? ' <span class="dchip">' + esc(pcRotuloSinal(pc, b.tema)) + '</span>' : '') + '<br><small class="sub">' + esc(b.resumo) + '</small></li>';
+    }).join('') + '</ol>';
+  }
   var ks = Object.keys(p.campos || {});
   h += '<h5>1 · Fatos (vão para o Dossiê)</h5>';
   h += ks.length ? ks.map(function (k) {
@@ -1652,7 +1657,16 @@ function poscallPropostaHtml(c, pc, d) {
     return '<label class="pclinha"><input type="checkbox" data-pcfila="' + q.id + '"' + (marcado ? ' checked' : '') + '> <span><b>' + esc(q.rot) + ':</b> ' + esc(q.x.texto) + ' <span class="dchip">' + esc(q.x.tema === 'outro' ? 'outro tema' : pcRotuloSinal(pc, q.x.tema)) + '</span></span></label>';
   }).join('') : '<p class="sub">Nada para a fila.</p>';
 
-  if ((p.a_conferir || []).length) h += '<h5>5 · A conferir antes de enviar qualquer coisa</h5><ul class="pcconferir">' + p.a_conferir.map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') + '</ul>';
+  if ((p.a_conferir || []).length) h += '<h5>5 · A conferir na fonte, com você (antes de enviar qualquer coisa)</h5><ul class="pcconferir">' + p.a_conferir.map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') + '</ul>';
+
+  var pe = p.perguntas_para_ela || [];
+  h += '<h5>6 · Perguntas para confirmar com ela</h5>';
+  h += pe.length ? '<p class="sub" style="margin:0 0 6px">O que ficou incerto ou faltou. Marque as que quer fazer: elas vão para o rascunho do chat, e você revisa antes de enviar.</p>' + pe.map(function (q, i) {
+    var marcado = pc.sel.perg['q' + i] === undefined ? true : pc.sel.perg['q' + i], f = q.campo ? dosCampo(q.campo) : null;
+    return '<label class="pclinha"><input type="checkbox" data-pcperg="q' + i + '"' + (marcado ? ' checked' : '') + '> <span>' + esc(q.texto) +
+      (q.motivo ? '<br><small class="sub">Por quê: ' + esc(q.motivo) + (f ? ' · preenche “' + esc(f.l) + '”' : '') + '</small>' : '') + '</span></label>';
+  }).join('') + '<div class="actions" style="margin-top:8px"><button class="btn" type="button" data-pcchat="' + esc(c.id) + '">Levar para o chat</button></div>'
+    : '<p class="sub">A call fechou tudo o que importava: nada a confirmar com ela.</p>';
 
   h += '<div class="actions" style="margin-top:12px"><button class="btn primary" type="button" data-pcaplicar="' + esc(c.id) + '">Aplicar o que marquei</button>' +
     '<button class="btn" type="button" data-pcdescartar="' + esc(c.id) + '">Descartar a proposta</button></div>' +
@@ -1697,7 +1711,7 @@ async function pcLer(cid, t) {
       body: JSON.stringify({ contato_id: cid, transcricao: transcricao, notas: String(dosValor(c, state.dos.d, state.dos.rasc || {}, 'ligacao_resumo') || '').trim() }) });
     var j = await res.json().catch(function () { return {}; });
     if (!res.ok || !j.ok) throw new Error(j.error || 'A leitura falhou (' + res.status + ').');
-    pc.prop = j; pc.vocab = j.vocabulario && j.vocabulario.length ? j.vocabulario : pc.vocab; pc.estado = 'proposta'; pc.sel = { campos: {}, sinais: {}, fila: {} }; pc.camadas = {};
+    pc.prop = j; pc.vocab = j.vocabulario && j.vocabulario.length ? j.vocabulario : pc.vocab; pc.estado = 'proposta'; pc.sel = { campos: {}, sinais: {}, fila: {}, perg: {} }; pc.camadas = {};
   } catch (e) { pc.estado = 'vazio'; pc.erro = e && e.message ? e.message : 'A leitura falhou.'; }
   pintaPoscall(cid);
 }
@@ -1730,6 +1744,23 @@ async function pcAplicar(cid, t) {
   state.pc = pcInicial(cid); state.pc.vocab = pc.vocab;
   await reload(); if (state.view === 'pessoa') renderPessoa();
   toast('Pós-call aplicado: ' + Object.keys(a.campos).length + (Object.keys(a.campos).length === 1 ? ' campo' : ' campos') + ' e ' + a.fila.length + (a.fila.length === 1 ? ' linha na fila' : ' linhas na fila'));
+}
+// Leva as perguntas marcadas para o rascunho do chat dela (aba Plataforma → Chat). Nada é enviado: você revisa e envia, e ela recebe
+// o e-mail de aviso como em toda mensagem sua. O chat aceita até 1000 letras.
+function pcChat(cid) {
+  var pc = pcEstado(cid), c = byC(cid), pe = (pc.prop && pc.prop.proposta.perguntas_para_ela) || [], nome = String((c && c.nome) || '').trim().split(/\s+/)[0];
+  var cab = (nome ? 'Oi, ' + nome + '! ' : 'Oi! ') + 'Para eu acertar o seu caminho, me conta:\n\n', rod = '\n\nPode responder aqui mesmo, com calma.', corpo = '', n = 0, cortadas = 0;
+  pe.forEach(function (q, i) {
+    if (!(pc.sel.perg['q' + i] === undefined ? true : pc.sel.perg['q' + i])) return;
+    var linha = (n + 1) + '. ' + q.texto + '\n';
+    if ((cab + corpo + linha).length + rod.length > 1000) { cortadas++; return; }
+    corpo += linha; n++;
+  });
+  if (!n) return toast(cortadas ? 'As perguntas passam do limite do chat (1000 letras). Marque menos.' : 'Marque pelo menos uma pergunta.');
+  state.chatRasc = (cab + corpo).replace(/\n$/, '') + rod;
+  state.ptab = 'plataforma'; state.pstab = 'chat';
+  renderPessoa();
+  toast('Rascunho no chat: revise e envie.' + (cortadas ? ' ' + cortadas + (cortadas === 1 ? ' pergunta não coube.' : ' perguntas não couberam.') : ''), 4200);
 }
 async function pcDescartar(cid, t) {
   var pc = pcEstado(cid);
@@ -3248,6 +3279,7 @@ document.addEventListener('click', async function (e) {
   if (t.dataset.pcler) return pcLer(t.dataset.pcler, t);
   if (t.dataset.pcaplicar) return pcAplicar(t.dataset.pcaplicar, t);
   if (t.dataset.pcdescartar) return pcDescartar(t.dataset.pcdescartar, t);
+  if (t.dataset.pcchat) return pcChat(t.dataset.pcchat);
   if (t.dataset.pcsalvarsinais) return pcSalvarSinais(t.dataset.pcsalvarsinais, t);
   if (t.dataset.pcresolver) return pcResolver(state.sel, t.dataset.pcresolver, t);
   if (t.id === 'onb-enviar') return onbEnviar();
@@ -3444,7 +3476,7 @@ document.addEventListener('input', function (e) {
 });
 document.addEventListener('change', function (e) {
   var dsx = e.target.dataset || {}, cidPc = state.sel;
-  if (state.pc && state.pc.cid === cidPc && (dsx.pcsinal !== undefined || dsx.pccampo !== undefined || dsx.pcsinalprop !== undefined || dsx.pcfila !== undefined || dsx.pccamada !== undefined)) {
+  if (state.pc && state.pc.cid === cidPc && (dsx.pcsinal !== undefined || dsx.pccampo !== undefined || dsx.pcsinalprop !== undefined || dsx.pcfila !== undefined || dsx.pccamada !== undefined || dsx.pcperg !== undefined)) {
     var pcx = state.pc;
     if (dsx.pcsinal !== undefined) {
       var cur = (pcx.manual || pcSinaisDela(state.dos && state.dos.d)).filter(function (k) { return k !== dsx.pcsinal; });
@@ -3455,6 +3487,7 @@ document.addEventListener('change', function (e) {
     if (dsx.pccampo !== undefined) pcx.sel.campos[dsx.pccampo] = !!e.target.checked;
     if (dsx.pcsinalprop !== undefined) pcx.sel.sinais[dsx.pcsinalprop] = !!e.target.checked;
     if (dsx.pcfila !== undefined) pcx.sel.fila[dsx.pcfila] = !!e.target.checked;
+    if (dsx.pcperg !== undefined) pcx.sel.perg[dsx.pcperg] = !!e.target.checked;
     if (dsx.pccamada !== undefined) pcx.camadas[dsx.pccamada] = e.target.value;
     return;
   }

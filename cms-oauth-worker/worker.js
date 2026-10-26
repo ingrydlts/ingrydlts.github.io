@@ -2723,8 +2723,12 @@ function crmPosSchemaIA(vocab) {
     campos[k] = { type: 'object', description: c.d, additionalProperties: false, required: ['valor', 'confianca', 'trecho'],
       properties: { valor, confianca: { type: 'string', enum: CRM_ONB_CONFIANCAS }, trecho: { type: 'string', description: 'a frase curta (até 160 letras) que mostra isso, sem nome nem telefone' } } };
   }
-  return { type: 'object', additionalProperties: false, required: ['campos', 'sinais', 'perguntas_dela', 'respostas_dadas', 'itens_candidatos', 'a_conferir'],
+  return { type: 'object', additionalProperties: false, required: ['mapa_da_call', 'campos', 'sinais', 'perguntas_dela', 'respostas_dadas', 'itens_candidatos', 'perguntas_para_ela', 'a_conferir'],
     properties: {
+      mapa_da_call: { type: 'array', maxItems: 8, description: 'A call organizada por assunto, na ordem em que apareceu: o que rolou em cada bloco.',
+        items: { type: 'object', additionalProperties: false, required: ['titulo', 'resumo', 'tema'], properties: { titulo: texto(80), resumo: texto(240), tema: { type: 'string', enum: temas } } } },
+      perguntas_para_ela: { type: 'array', maxItems: 6, description: 'Perguntas que a Ingryd pode fazer a ela para confirmar o que ficou incerto ou faltou.',
+        items: { type: 'object', additionalProperties: false, required: ['texto', 'motivo'], properties: { texto: texto(300), motivo: texto(160), campo: { type: 'string', enum: Object.keys(CRM_POS_CAMPOS) } } } },
       campos: { type: 'object', additionalProperties: false, properties: campos, description: 'Só os campos que a call diz com clareza. Sem fonte: deixe de fora.' },
       sinais: { type: 'array', maxItems: 12, items: { type: 'object', additionalProperties: false, required: ['chave', 'motivo'],
         properties: { chave: { type: 'string', enum: vocab.map((v) => v.chave) }, motivo: texto(200) } } },
@@ -2752,6 +2756,10 @@ function crmPosSistema(vocab) {
     '6. "a_conferir": as afirmações de regra, prazo, valor ou lei ditas na call que precisam de fonte oficial antes de irem para a pessoa.',
     '7. Nunca escreva nome, telefone, e-mail, @usuário, número de documento ou endereço em nenhum texto. Fale em "ela". Textos em português, curtos.',
     '8. Datas AAAA-MM-DD. Use exatamente os valores permitidos de cada lista.',
+    '9. A transcrição vem de reconhecimento de voz automático: sem identificação de quem fala, com palavras trocadas e frases cortadas. Descubra quem fala pelo conteúdo: quem pergunta e conta a própria vida é a PESSOA; quem explica regras e a plataforma é a INGRYD. Fatos sobre a pessoa só valem se ELA os disse (o que a Ingryd conta da própria vida, como curso e anos na França, não é fato da pessoa). Regras ditas pela Ingryd vão para "respostas_dadas" e "a_conferir", nunca para "campos".',
+    '10. Erros comuns do reconhecimento de voz, para você corrigir ao ler: "viste/visto/vissus/visite" = visa/visto; "alper/au-pair/haut-parleur/opair/papar/pé" = au pair; "OFI/Ofi" = OFII; "Udapver/DAP verde" = DAP verte; "BTS" = Brevet de Technicien Supérieur; "L1" = 1º ano de licence; "CAP" = certificat d\'aptitude professionnelle; "sponsor" = garante. Se um trecho continuar ambíguo, deixe o campo de fora ou use confiança baixa.',
+    '11. "mapa_da_call": organize o que rolou em até 8 blocos por assunto, na ordem da conversa, cada um com título curto, resumo de uma ou duas frases e o tema. Serve para a Ingryd se localizar rápido; não repita aqui as regras como fato.',
+    '12. "perguntas_para_ela": para TUDO o que ficou incerto, faltou ou precisa ser confirmado com a pessoa (campo de confiança baixa ou média, dado que a call não fechou, algo que ela disse e contradiz o resto), escreva UMA pergunta curta e amigável, na voz da Ingryd, em português, que a pessoa consiga responder sozinha. "motivo" diz por que perguntar; "campo" é a chave do Dossiê que a resposta preencheria, quando houver. Não pergunte o que a call já respondeu com clareza. Regra, prazo e valor a conferir em fonte oficial NÃO viram pergunta para ela: vão para "a_conferir".',
     '',
     'VOCABULÁRIO DE SINAIS (chave: o que significa)',
     ...vocab.map((v) => '- ' + v.chave + ': ' + v.rotulo + (v.descricao ? ' — ' + v.descricao : ''))
@@ -2763,7 +2771,7 @@ function crmPosValidar(entrada, vocab) {
   const chaves = vocab.map((v) => v.chave);
   const temas = chaves.concat(['outro']);
   if (!entrada || typeof entrada !== 'object' || Array.isArray(entrada)) return { ok: false, erro: 'a resposta não é um objeto' };
-  const esperadas = ['campos', 'sinais', 'perguntas_dela', 'respostas_dadas', 'itens_candidatos', 'a_conferir'];
+  const esperadas = ['mapa_da_call', 'campos', 'sinais', 'perguntas_dela', 'respostas_dadas', 'itens_candidatos', 'perguntas_para_ela', 'a_conferir'];
   const extra = Object.keys(entrada).filter((k) => !esperadas.includes(k));
   if (extra.length) return { ok: false, erro: 'chave inesperada na resposta: ' + extra[0].slice(0, 40) };
   const lista = (nome, max) => {
@@ -2772,7 +2780,7 @@ function crmPosValidar(entrada, vocab) {
   };
   const obj = (x) => x && typeof x === 'object' && !Array.isArray(x);
   const txt = (v, max, quebra) => (typeof v === 'string' ? crmOnbLimpaTexto(v, max, quebra) : '');
-  const saida = { campos: {}, sinais: [], perguntas_dela: [], respostas_dadas: [], itens_candidatos: [], a_conferir: [] };
+  const saida = { mapa_da_call: [], campos: {}, sinais: [], perguntas_dela: [], respostas_dadas: [], itens_candidatos: [], perguntas_para_ela: [], a_conferir: [] };
 
   const campos = entrada.campos === undefined ? {} : entrada.campos;
   if (!obj(campos)) return { ok: false, erro: 'falta o objeto "campos"' };
@@ -2831,6 +2839,29 @@ function crmPosValidar(entrada, vocab) {
     // Todo item sai marcado "a conferir": a IA ouviu uma conversa, não leu a fonte. Quem tira a marca é a Ingryd, ao anexar a fonte.
     saida.itens_candidatos.push({ fator: x.fator, titulo, texto, impacto: txt(x.impacto, 400, true), acao: txt(x.acao, 300, true), camada: x.camada,
       motivo_camada: txt(x.motivo_camada, 200, false), tema: x.tema, a_conferir: true });
+  }
+
+  const mapa = lista('mapa_da_call', 8);
+  if (!mapa) return { ok: false, erro: '"mapa_da_call" deve ser uma lista de até 8' };
+  for (const x of mapa) {
+    if (!obj(x)) return { ok: false, erro: 'mapa_da_call: item inválido' };
+    if (typeof x.tema !== 'string' || !temas.includes(x.tema)) return { ok: false, erro: 'mapa_da_call: tema fora do vocabulário' };
+    const titulo = txt(x.titulo, 80, false), resumo = txt(x.resumo, 240, false);
+    if (titulo && resumo) saida.mapa_da_call.push({ titulo, resumo, tema: x.tema });
+  }
+
+  const paraEla = lista('perguntas_para_ela', 6);
+  if (!paraEla) return { ok: false, erro: '"perguntas_para_ela" deve ser uma lista de até 6' };
+  for (const x of paraEla) {
+    if (!obj(x)) return { ok: false, erro: 'perguntas_para_ela: item inválido' };
+    const t = txt(x.texto, 300, false);
+    if (!t) continue;
+    const item = { texto: t, motivo: txt(x.motivo, 160, false) };
+    if (x.campo !== undefined && x.campo !== null && x.campo !== '') {
+      if (typeof x.campo !== 'string' || !Object.prototype.hasOwnProperty.call(CRM_POS_CAMPOS, x.campo)) return { ok: false, erro: 'perguntas_para_ela: campo que não existe no Dossiê' };
+      item.campo = x.campo;
+    }
+    saida.perguntas_para_ela.push(item);
   }
 
   const conferir = lista('a_conferir', 10);

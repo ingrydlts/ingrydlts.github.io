@@ -61,6 +61,8 @@ const doInsert = () => chamadas.filter((c) => /\/rest\/v1\/pos_call_propostas$/.
 
 const iaOk = (input, uso = { input_tokens: 2000, output_tokens: 400 }) => ({ body: { content: [{ type: 'tool_use', name: 'registrar_pos_call', id: 't1', input }], usage: uso } });
 const PROP_OK = {
+  mapa_da_call: [{ titulo: 'Por que a França', resumo: 'Ela explica por que quer estudar cinema aqui.', tema: 'outro' }, { titulo: 'Como entrar na L1', resumo: 'Calendário e DAP verte.', tema: 'dap_verte' }],
+  perguntas_para_ela: [{ texto: 'Você tem o diploma do ensino médio em PDF ou em papel?', motivo: 'A call não fechou isso.', campo: 'ensino_medio_ano' }, { texto: 'Qual é o fim do seu contrato de au pair?', motivo: 'Só se falou em "8 meses".' }],
   campos: { ensino_medio_ano: { valor: 2018, confianca: 'alta', trecho: 'terminei em 2018' }, formacao_alvo: { valor: 'l1_universidade', confianca: 'media', trecho: 'quero fazer cinema' },
     plano_b: { valor: true, confianca: 'alta', trecho: 'e se eu não entrar?' }, cidade: { valor: null, confianca: 'alta', trecho: '' } },
   sinais: [{ chave: 'sem_graduacao', motivo: 'Só tem o ensino médio.' }, { chave: 'dap_verte', motivo: 'Já mora na França.' }],
@@ -84,6 +86,11 @@ check('as chaves novas do Dossiê estão nos campos da IA', ['formacao_alvo', 'g
 check('o que não é resposta dela não tem campo (telefone, resumo, colunas, transcrição)', ['telefone', 'ligacao_resumo', 'ligacao_transcricao', 'nome', 'persona', 'aceita_notificacao_externa'].every((k) => !CRM_POS_CAMPOS[k]));
 const sis = crmPosSistema(VOCAB);
 check('o prompt lista o vocabulário e manda tratar a call como dado', /dap_verte: DAP verte — Mora na França/.test(sis) && /DADOS NÃO CONFIÁVEIS/.test(sis));
+check('o prompt manda descobrir quem fala e só aceitar fato sobre a pessoa dito por ela', /sem identificação de quem fala/.test(sis) && /Fatos sobre a pessoa só valem se ELA os disse/.test(sis));
+check('o prompt traz o glossário de erros de voz (Udapver = DAP verte, alper = au pair)', /Udapver/.test(sis) && /alper/.test(sis) && /DAP verte/.test(sis));
+check('o prompt manda transformar o que ficou incerto em pergunta para ela, e regra em a_conferir', /UMA pergunta curta e amigável/.test(sis) && /NÃO viram pergunta para ela/.test(sis));
+check('o schema exige mapa_da_call e perguntas_para_ela', schema.required.includes('mapa_da_call') && schema.required.includes('perguntas_para_ela') && schema.properties.perguntas_para_ela.maxItems === 6 && schema.properties.mapa_da_call.maxItems === 8);
+check('o campo da pergunta só pode ser uma chave do Dossiê', schema.properties.perguntas_para_ela.items.properties.campo.enum.includes('plano_b') && !schema.properties.perguntas_para_ela.items.properties.campo.enum.includes('nome'));
 check('o prompt proíbe nome, telefone e e-mail nos textos', /Nunca escreva nome, telefone, e-mail/.test(sis));
 
 console.log('\n== Validação ==');
@@ -108,7 +115,14 @@ check('resposta dada sem precisa_fonte booleano', !crmPosValidar({ ...PROP_OK, r
 check('lista que não é lista', !crmPosValidar({ ...PROP_OK, sinais: 'dap_verte' }, VOCAB).ok);
 v = crmPosValidar({ ...PROP_OK, perguntas_dela: [{ texto: 'Pergunta\u0000 com\tcontrole', tema: 'outro' }], a_conferir: ['  ', 'Prazo de dezembro'] }, VOCAB);
 check('texto é limpo de caracteres de controle e vazio some', v.ok && v.proposta.perguntas_dela[0].texto === 'Pergunta com controle' && v.proposta.a_conferir.join() === 'Prazo de dezembro');
-v = crmPosValidar({ campos: {}, sinais: [], perguntas_dela: [], respostas_dadas: [], itens_candidatos: [], a_conferir: [] }, VOCAB);
+v = crmPosValidar({ mapa_da_call: [], perguntas_para_ela: [], campos: {}, sinais: [], perguntas_dela: [], respostas_dadas: [], itens_candidatos: [], a_conferir: [] }, VOCAB);
+v = crmPosValidar(PROP_OK, VOCAB);
+check('mapa da call e perguntas para ela passam e guardam o campo quando há', v.ok && v.proposta.mapa_da_call.length === 2 && v.proposta.perguntas_para_ela.length === 2 && v.proposta.perguntas_para_ela[0].campo === 'ensino_medio_ano' && !('campo' in v.proposta.perguntas_para_ela[1]));
+check('mapa com tema fora do vocabulário, mais de 8 blocos ou item inválido derruba tudo', !crmPosValidar({ ...PROP_OK, mapa_da_call: [{ titulo: 'x', resumo: 'y', tema: 'inventado' }] }, VOCAB).ok && !crmPosValidar({ ...PROP_OK, mapa_da_call: Array(9).fill(PROP_OK.mapa_da_call[0]) }, VOCAB).ok && !crmPosValidar({ ...PROP_OK, mapa_da_call: ['texto'] }, VOCAB).ok);
+check('bloco do mapa sem título ou resumo é descartado, não derruba', crmPosValidar({ ...PROP_OK, mapa_da_call: [{ titulo: ' ', resumo: 'y', tema: 'outro' }, PROP_OK.mapa_da_call[0]] }, VOCAB).proposta.mapa_da_call.length === 1);
+check('pergunta para ela: campo que não existe no Dossiê, mais de 6 ou item inválido derruba tudo', !crmPosValidar({ ...PROP_OK, perguntas_para_ela: [{ texto: 'x', motivo: 'y', campo: 'numero_passaporte' }] }, VOCAB).ok && !crmPosValidar({ ...PROP_OK, perguntas_para_ela: Array(7).fill(PROP_OK.perguntas_para_ela[0]) }, VOCAB).ok && !crmPosValidar({ ...PROP_OK, perguntas_para_ela: [1] }, VOCAB).ok);
+check('proposta antiga (sem mapa nem perguntas para ela) continua válida e vira listas vazias', (() => { const o = { ...PROP_OK }; delete o.mapa_da_call; delete o.perguntas_para_ela; const r = crmPosValidar(o, VOCAB); return r.ok && r.proposta.mapa_da_call.length === 0 && r.proposta.perguntas_para_ela.length === 0; })());
+v = crmPosValidar({ mapa_da_call: [], perguntas_para_ela: [], campos: {}, sinais: [], perguntas_dela: [], respostas_dadas: [], itens_candidatos: [], a_conferir: [] }, VOCAB);
 check('uma call sem nada aproveitável é uma proposta válida e vazia', v.ok && Object.keys(v.proposta.campos).length === 0);
 
 console.log('\n== A rota: acesso e entradas ==');

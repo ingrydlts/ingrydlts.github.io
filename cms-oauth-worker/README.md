@@ -831,5 +831,6 @@ daqui: quem aplica é a Ingryd, na tela do CRM (Dossiê aberto → Pós-call), p
   candidatos, sempre marcados "a conferir". Resposta fora do formato: uma nova tentativa; se falhar de novo, nada é gravado.
 - **Cache por hash** (contato + transcrição + notas): a mesma entrada devolve a proposta pendente, sem nova chamada à IA.
 - **Limite**: 10 leituras a cada 10 minutos por admin.
+- **Transcrição de voz**: o prompt manda descobrir quem fala (só vale como fato da pessoa o que ELA disse), corrige erros comuns do reconhecimento de voz e devolve `mapa_da_call` (até 8 blocos por assunto) e `perguntas_para_ela` (até 6, uma por incerteza, com o campo do Dossiê que a resposta preencheria). Proposta antiga, sem esses dois campos, continua válida.
 - O texto da call é tratado como dado, nunca como instrução; o prompt proíbe nome, telefone, e-mail e documentos nos textos.
 Testes: `node cms-oauth-worker/testes/crm-pos-call.test.mjs` (Worker) e, em `admin/crm/db/testes`, `npm run test:poscall` (SQL, com `APP_DB_DIR`) e `npm run test:poscall-ui`.
