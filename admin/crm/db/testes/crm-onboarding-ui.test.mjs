@@ -64,7 +64,9 @@ console.log('== O menu e a tela ==');
 const html = readFileSync(path.resolve(HERE, '../../index.html'), 'utf8');
 check('o menu lateral tem o item "Onboarding"', /<button class="nav" data-view="onboarding" type="button">Onboarding<\/button>/.test(html));
 check('a tela existe e começa escondida', /<section data-panel="onboarding" hidden>[\s\S]*id="onb-page"/.test(html));
-check('o CSS e o JS têm versão nova (cache)', /crm\.css\?v=2026-10-23/.test(html) && /crm\.js\?v=2026-10-23/.test(html));
+// Versão (cache): os dois com ?v=AAAA-MM-DD.N, a mesma nos dois. Quem muda crm.js ou crm.css avança a versão.
+const vCss = (/crm\.css\?v=(\d{4}-\d{2}-\d{2}\.\d+)/.exec(html) || [])[1], vJs = (/crm\.js\?v=(\d{4}-\d{2}-\d{2}\.\d+)/.exec(html) || [])[1];
+check('o CSS e o JS têm versão (cache), a mesma nos dois', !!vCss && vCss === vJs);
 
 console.log('\n== Estado vazio ==');
 fakeFetch([[/onboarding\/status/, { body: { ia_configurada: true, aviso: null } }]]);

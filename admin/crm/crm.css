@@ -649,3 +649,11 @@ select.st-in{height:36px; padding:0 8px}
 .chk-dot.ok{background:var(--moss); border-color:var(--moss)} .chk-dot.atr{background:var(--red); border-color:var(--red)}
 .chk-rec{margin-top:12px} .chk-rec summary{cursor:pointer; font-size:12.5px; color:var(--ink-2); padding:4px 0}
 @media (max-width:640px){ .chk-sug{flex-wrap:wrap} .chk-acoes{width:100%} .chk-acoes .btn.primary{flex:1} .chk-qd{display:none} }
+
+/* Processos sugeridos na ficha (crm.js, processosSugeridosHtml) */
+.procs{display:flex; flex-direction:column; gap:10px}
+.procs-card{background:var(--surface-2); border:1px solid var(--line); border-radius:12px; padding:12px 14px; font-size:13.5px}
+.procs-card.procs-novo{background:var(--beige-soft); border-color:var(--beige); color:var(--ink)}
+.procs-tit{font-size:14px}
+.procs-sinais{margin:4px 0 0; padding-left:18px; display:flex; flex-direction:column; gap:3px; font-size:13px}
+.panel[hidden]{display:none}
