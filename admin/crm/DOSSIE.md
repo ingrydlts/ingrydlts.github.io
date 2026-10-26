@@ -103,3 +103,23 @@ valor a conferir em fonte oficial **não** viram pergunta para ela: ficam em "A 
 
 Os sinais também se marcam à mão, sem IA, na caixa de seleção do painel. Novo sinal = uma linha em `sinais_vocabulario`
 (revisão semanal; só entra se já houver, ou puder haver, conteúdo para ele).
+
+## Roteiro de perguntas: sempre dar um motivo para a pessoa voltar ao app
+
+No dossiê, logo abaixo do "Falta perguntar", o **Roteiro de perguntas** escolhe UMA pergunta por vez e escreve o rascunho para o chat
+(**Levar para o chat**: você revisa e envia; ela recebe o e-mail de aviso). Regras:
+
+1. **Uma por vez, e sem empilhar.** Se a última mensagem do chat é sua e tem menos de 3 dias, o roteiro manda esperar (dá para levar mesmo
+   assim, com confirmação). Ela respondeu? A próxima pode ir na hora: pergunta, resposta e próxima criam o hábito.
+2. **Toda pergunta traz o que a resposta destrava no app** (o gancho): "o Painel do Certificado já está esperando na sua Home", "o passo da
+   Ameli no seu Checklist muda conforme a resposta". É esse recado que dá motivo para ela abrir o app.
+3. **Ordem por impacto**: prazo e documento (vencimento, ano de au pair, fim do contrato) > o que reorganiza o checklist (certificado, sécu,
+   caminho de estudo, ANEF) > o que ajusta Radar e materiais (nível de francês, idade, maior preocupação) > conforto (cidade).
+4. **Não repete**: se o texto da pergunta já está no histórico do chat, ela vai para o fim da fila, com "perguntada há N dias" (ou "perguntada e
+   respondida").
+5. **Sem conta no app não há chat**: o roteiro avisa e o rascunho vai para o e-mail.
+6. **Processo sugerido pelo assistente** (ex.: CAF) é a pergunta de maior ganho: aparece antes de tudo, com "Usar recado sugerido" (preenche o
+   cartão, você revisa e aprova).
+
+Telefone, aceite de lembretes e as colunas do funil (estudos, preocupação) não entram. Para mudar a ordem ou o texto: o catálogo `PERGUNTAS`
+(prioridade `p`, pergunta `q`, gancho `g`) em `crm.js`. Campo sem entrada no catálogo entra com prioridade baixa e pergunta genérica.

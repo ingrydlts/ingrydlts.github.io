@@ -2969,6 +2969,115 @@ function onbFalta(c, d, rasc) {
   });
   return out;
 }
+// ---------- Roteiro de perguntas: a próxima pergunta que traz a pessoa de volta ao app ----------
+// Cada campo que falta no Dossiê é uma pergunta possível. Em vez de uma lista solta, o roteiro escolhe UMA por vez, na ordem em que
+// mais ajuda a pessoa, e escreve o rascunho pronto para o chat (você revisa e envia; ela recebe o e-mail de aviso). Regras:
+//   1. Uma pergunta por vez, e nunca por cima de outra sem resposta: depois de uma pergunta nossa, espera até PERG_ESPERA_DIAS dias.
+//   2. Toda pergunta traz o que a resposta DESTRAVA no app (o gancho). É esse recado que dá motivo para ela voltar.
+//   3. Ordem por impacto: prazo e documento > o que reorganiza o checklist > o que ajusta o Radar e os materiais > conforto.
+//   4. Não repete: quem já foi perguntada (o texto da pergunta está no histórico do chat) vai para o fim da fila e mostra há quantos dias.
+//   5. Sem conta no app não há chat: o roteiro avisa e o rascunho serve para o e-mail.
+// Telefone e aceite de lembretes não se perguntam por chat (são da ligação). Chave sem entrada aqui entra com prioridade baixa.
+// p: prioridade (0 a 100) · q: a pergunta, em tom de conversa · g: o que a resposta destrava no app.
+var PERG_ESPERA_DIAS = 3;
+var PERG_NAO = ['telefone', 'aceita_notificacao_externa'];
+var PERGUNTAS = {
+  documento_vencimento: { p: 96, q: 'qual é a data de vencimento do seu visto ou título de séjour?', g: 'Com a data, eu ligo os alertas de vencimento no sininho do seu app.' },
+  ano_au_pair: { p: 95, q: 'você está no primeiro ou no segundo ano de au pair?', g: 'Isso decide quais passos aparecem no seu Checklist.' },
+  intencao_au_pair: { p: 92, q: 'depois do au pair, você pretende renovar ou migrar para estudante?', g: 'Com a resposta, o seu Checklist passa a mostrar só o caminho que vale para você.' },
+  contrato_fim: { p: 90, q: 'em que mês e ano termina o seu contrato de au pair?', g: 'Os prazos do seu Checklist são contados a partir dessa data.' },
+  certificado_frances: { p: 88, q: 'você já tem algum certificado de francês (DELF, DALF, TCF ou TEF)?', g: 'Se ainda não tem, o Painel do Certificado já está esperando na sua Home, em "Guias, materiais e conteúdos".' },
+  numero_secu: { p: 86, q: 'você já recebeu o seu número de sécu (sécurité sociale)?', g: 'O passo da Ameli no seu Checklist muda conforme a resposta.' },
+  trilha_estudo: { p: 85, q: 'qual caminho de estudo você quer seguir: FLE, Licence, Master em alternância ou ainda não sabe?', g: 'Escolhido o caminho, o seu Checklist se reorganiza em volta dele.' },
+  conta_anef: { p: 84, q: 'você já criou a sua conta na ANEF?', g: 'É lá que o seu pedido de mudança de status acontece; o passo está no seu Checklist.' },
+  data_chegada: { p: 82, q: 'em que dia você chegou na França?', g: 'Os prazos do seu Checklist começam a contar daí.' },
+  certificado_frances_qual: { p: 80, q: 'qual certificado de francês você tem?', g: 'Com isso eu vejo se ele vale para o seu caminho e te aviso no app.' },
+  comprova_recursos: { p: 78, q: 'você consegue comprovar cerca de 877,50 € por mês (conta ou garante)?', g: 'Isso muda os passos de recursos e de sponsor no seu Checklist.' },
+  tem_certificado_matricula: { p: 76, q: 'você já tem o certificado de matrícula da instituição?', g: 'Com isso eu priorizo o que falta para o seu pedido de mudança de status.' },
+  moradia_resolvida: { p: 75, q: 'a sua moradia já está resolvida (contrato ou comprovante no seu nome)?', g: 'Com isso eu vejo se ajudas como a CAF entram no seu caminho e aviso no seu Radar.' },
+  tem_sponsor: { p: 72, q: 'você já conversou com alguém que possa ser o seu sponsor ou garante?', g: 'O passo do sponsor no seu Checklist traz o passo a passo.' },
+  securite_resolvida: { p: 70, q: 'você já fez o cadastro na sécurité sociale (Ameli)?', g: 'Se ainda não, esse passo sobe para o topo do seu Checklist.' },
+  conta_resolvida: { p: 68, q: 'você já abriu a sua conta bancária francesa?', g: 'Se ainda não, o passo da conta bancária fica no topo do seu Checklist com o passo a passo.' },
+  comprovante_endereco: { p: 66, q: 'você já tem um comprovante de endereço no seu nome?', g: 'Vários passos do Checklist pedem esse documento: com a resposta, eu reordeno o que vem primeiro.' },
+  cfNivel: { p: 74, q: 'a sua candidatura é para qual nível (L1, L2 ou L3, Licence Pro, Master, escola)?', g: 'O prazo e os passos do seu Checklist dependem do nível.' },
+  cfTeste: { p: 73, q: 'sobre o teste de francês: você já tem resultado, está inscrita ou ainda não fez nada?', g: 'Com isso eu ajusto o ritmo sugerido da sua candidatura no app.' },
+  nivel_frances: { p: 60, q: 'como você descreveria o seu francês hoje: A1 ou A2, B1, B2 ou C1 ou mais?', g: 'Com isso eu ajusto os materiais da sua Home ao seu nível.' },
+  faixa_idade: { p: 55, q: 'qual é a sua faixa de idade: menos de 26, de 26 a 29 ou 30 ou mais?', g: 'A idade muda custo e contrato em alguns caminhos: assim eu mostro só o que vale para você.' },
+  maior_preocupacao: { p: 50, q: 'o que mais te preocupa agora: prazo, dinheiro, papelada, moradia ou francês?', g: 'Eu uso isso para escolher o que aparece primeiro no seu Radar.' },
+  profissao_regulamentada: { p: 35, q: 'você exerce (ou pretende exercer) uma profissão regulamentada, como enfermagem, odontologia ou medicina?', g: 'Se for o caso, o seu app mostra o que vale para o reconhecimento da sua profissão.' },
+  cidade: { p: 30, q: 'em que cidade você mora?', g: 'Algumas regras e prazos mudam por prefeitura: assim eu te aviso só do que é da sua.' }
+};
+function pergDef(f) {
+  return PERGUNTAS[f.k] || { p: 40, q: 'me conta: ' + f.l.charAt(0).toLowerCase() + f.l.slice(1).replace(/\?$/, '') + '?', g: '' };
+}
+function pergMensagem(c, def) {
+  var nome = String((c && c.nome) || '').trim().split(/\s+/)[0];
+  return (nome ? 'Oi, ' + nome + '! ' : 'Oi! ') + 'Uma pergunta rápida para eu acertar o seu caminho: ' + def.q + '\n\n' +
+    (def.g ? def.g + '\n\n' : '') + 'Pode me responder por aqui mesmo, com calma.';
+}
+// O roteiro desta pessoa: o que falta, na ordem; o que já foi perguntado (e há quantos dias); e se é hora de esperar.
+function pergFila(c, d, rasc, agora) {
+  var chat = state.chat && !state.chat.err ? state.chat : null, msgs = chat ? (chat.msgs || []).slice().sort(function (a, b) { return Number(a.id) - Number(b.id); }) : [];
+  var itens = [], DIA = 86400000, ult = msgs[msgs.length - 1] || null;
+  dosVisiveis(c, d, rasc).forEach(function (b) {
+    if (b.livre) return;
+    b.campos.forEach(function (f) {
+      if (f.col || PERG_NAO.indexOf(f.k) >= 0 || dosValor(c, d, rasc, f.k) !== '') return;   // as colunas de contatos (estudos, preocupação do funil...) vêm do funil e do CRM, não de pergunta no chat
+      var def = pergDef(f), q = def.q.toLowerCase(), feita = null;
+      msgs.forEach(function (m, i) { if (m.de === 'ingryd' && m.tipo !== 'proposta' && String(m.texto || '').toLowerCase().indexOf(q) >= 0) feita = { em: m.criado_em, respondida: msgs.slice(i + 1).some(function (x) { return x.de === 'pessoa'; }) }; });
+      itens.push({ k: f.k, l: f.l, def: def, ordem: itens.length, feita: feita ? { dias: Math.floor((agora - new Date(feita.em).getTime()) / DIA), respondida: feita.respondida } : null });
+    });
+  });
+  itens.sort(function (a, b) { var fa = a.feita ? 1 : 0, fb = b.feita ? 1 : 0; return fa - fb || b.def.p - a.def.p || a.ordem - b.ordem; });
+  var espera = null;
+  if (ult && ult.de === 'ingryd' && ult.tipo !== 'proposta' && agora - new Date(ult.criado_em).getTime() < PERG_ESPERA_DIAS * DIA) espera = { ate: new Date(new Date(ult.criado_em).getTime() + PERG_ESPERA_DIAS * DIA).toISOString() };
+  return { itens: itens, proxima: itens.filter(function (i) { return !i.feita; })[0] || null, espera: espera, semConta: !!(state.dos && state.dos.chk && state.dos.chk.semConta), semChat: !chat };
+}
+var PERG_RECADO_PROCESSO = { caf: 'Vi que você já tem moradia: a CAF pode devolver parte do aluguel. Vale abrir esse processo no seu checklist?' };
+function pergProcessosHtml() {
+  var det = (state.procs || []).filter(function (p) { return p.status === 'detectada'; });
+  if (!det.length) return '';
+  return '<div class="pergs-proc"><b>Antes de tudo:</b> o assistente já detectou ' + (det.length === 1 ? 'um possível processo' : det.length + ' possíveis processos') + ' (cartão acima). ' + det.map(function (p) {
+    return esc(procLabel(p.processo)) + ' <button class="btn" type="button" data-pergproc="' + p.id + '">Usar recado sugerido</button>';
+  }).join(' ') + '</div>';
+}
+function pergRoteiroHtml(c, d, rasc) {
+  var f = pergFila(c, d, rasc, Date.now());
+  if (!f.itens.length) return pergProcessosHtml();
+  var h = '<div class="pergs"><div class="pergs-cab"><b>Roteiro de perguntas</b> <span class="sub">uma por vez; cada uma diz o que ela destrava no app, para ela ter motivo para voltar</span></div>' + pergProcessosHtml();
+  if (f.semConta) h += '<p class="pergs-aviso">Ela ainda não entrou no app: o chat só existe lá dentro. Use o rascunho abaixo no e-mail.</p>';
+  else if (f.semChat) h += '<p class="pergs-aviso">Não consegui ler o chat dela agora, então não sei o que já foi perguntado.</p>';
+  else if (f.espera) h += '<p class="pergs-aviso">Você escreveu por último e ela ainda não respondeu. Espere até ' + esc(fmtDay(f.espera.ate)) + ' antes da próxima pergunta, para não empilhar.</p>';
+  if (f.proxima) {
+    var msg = pergMensagem(c, f.proxima.def);
+    h += '<div class="pergs-prox"><div><b>Próxima: ' + esc(f.proxima.l) + '</b></div>' + (f.proxima.def.g ? '<p class="sub" style="margin:4px 0">O que destrava no app: ' + esc(f.proxima.def.g) + '</p>' : '') +
+      '<blockquote class="pergs-msg">' + esc(msg).replace(/\n/g, '<br>') + '</blockquote>' +
+      '<div class="actions">' + (f.semConta ? '<button class="btn primary" type="button" data-emailfor="' + esc(c.id) + '">Escrever e-mail</button>' : '<button class="btn primary" type="button" data-pergchat="' + esc(f.proxima.k) + '" data-cid="' + esc(c.id) + '">Levar para o chat</button>') + '</div></div>';
+  } else h += '<p class="sub">Todas as perguntas que faltam já foram feitas. Agora é esperar as respostas.</p>';
+  h += '<details class="pergs-fila"><summary class="sub">A fila inteira (' + f.itens.length + ')</summary><ol>' + f.itens.map(function (i) {
+    return '<li' + (i.feita ? ' class="feita"' : '') + '>' + esc(i.l) + (i.feita ? ' <span class="dchip">' + (i.feita.respondida ? 'perguntada e respondida' : 'perguntada há ' + i.feita.dias + (i.feita.dias === 1 ? ' dia' : ' dias')) + '</span>' : '') + '</li>';
+  }).join('') + '</ol></details></div>';
+  return h;
+}
+// Leva a pergunta para o rascunho do chat (aba Plataforma → Chat). Nada é enviado: você revisa e envia.
+function pergChat(cid, k) {
+  var c = byC(cid), d = (state.dos && state.dos.d) || {}, rasc = (state.dos && state.dos.rasc) || {}, f = pergFila(c, d, rasc, Date.now());
+  var item = f.itens.filter(function (i) { return i.k === k; })[0];
+  if (!item) return toast('Essa pergunta já foi respondida.');
+  if (f.espera && typeof window.confirm === 'function' && !window.confirm('Você ainda espera a resposta da última mensagem. Levar esta pergunta mesmo assim?')) return;
+  state.chatRasc = pergMensagem(c, item.def);
+  state.ptab = 'plataforma'; state.pstab = 'chat';
+  renderPessoa();
+  toast('Rascunho no chat: revise e envie.', 3600);
+}
+function pergUsarRecado(id) {
+  var p = (state.procs || []).filter(function (x) { return String(x.id) === String(id); })[0], ta = $('proc-msg-' + id);
+  if (!p || !ta) return;
+  ta.value = PERG_RECADO_PROCESSO[p.processo] || ('Vi pelos seus passos que o processo ' + procLabel(p.processo) + ' pode valer para você. Quer que eu abra no seu checklist?');
+  if (ta.focus) ta.focus();
+  toast('Recado colocado no cartão: revise e aprove.', 3600);
+}
+
 // A etiqueta de origem de um campo: só vale enquanto o valor ainda é o que a IA escreveu (se você mexeu, some).
 function onbOrigemDe(k, atual) {
   var o = state.dos && state.dos.origem && state.dos.origem[k];
@@ -3115,9 +3224,9 @@ function onbResumoHtml(c) {
 function onbFaltaHtml(c, d, rasc) {
   if (!state.dos || !state.dos.onbEm) return '';
   var f = onbFalta(c, d, rasc), mostra = f.slice(0, 12);
-  if (!f.length) return '<div class="onb-falta"><b>Falta perguntar</b><span class="sub">Nada: o Dossiê está completo para a situação dela.</span></div>';
+  if (!f.length) return '<div class="onb-falta"><b>Falta perguntar</b><span class="sub">Nada: o Dossiê está completo para a situação dela.</span></div>' + pergProcessosHtml();
   return '<div class="onb-falta"><b>Falta perguntar</b>' + mostra.map(function (l) { return '<span class="dchip falta">' + esc(l) + '</span>'; }).join('') +
-    (f.length > mostra.length ? '<span class="sub">e mais ' + (f.length - mostra.length) + '</span>' : '') + '</div>';
+    (f.length > mostra.length ? '<span class="sub">e mais ' + (f.length - mostra.length) + '</span>' : '') + '</div>' + pergRoteiroHtml(c, d, rasc);
 }
 
 // ---------- Link de pagamento (aba Plataforma): o seletor vem de planos/planos.json ----------
@@ -3280,6 +3389,8 @@ document.addEventListener('click', async function (e) {
   if (t.dataset.pcaplicar) return pcAplicar(t.dataset.pcaplicar, t);
   if (t.dataset.pcdescartar) return pcDescartar(t.dataset.pcdescartar, t);
   if (t.dataset.pcchat) return pcChat(t.dataset.pcchat);
+  if (t.dataset.pergchat) return pergChat(t.dataset.cid, t.dataset.pergchat);
+  if (t.dataset.pergproc) return pergUsarRecado(t.dataset.pergproc);
   if (t.dataset.pcsalvarsinais) return pcSalvarSinais(t.dataset.pcsalvarsinais, t);
   if (t.dataset.pcresolver) return pcResolver(state.sel, t.dataset.pcresolver, t);
   if (t.id === 'onb-enviar') return onbEnviar();
