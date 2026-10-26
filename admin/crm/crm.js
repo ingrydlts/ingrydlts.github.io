@@ -1023,7 +1023,7 @@ function chatPanelHtml(c, chat, h4) {
   var btn = function (k, rot) { return '<button class="chip" type="button" data-chatquick="' + k + '">' + esc(rot) + '</button>'; };
   var nova = chatNaoLidas(chat);
   return '<div class="panel" style="padding:16px"><h4 style="' + h4 + '">Chat com ela' + (nova ? ' <span class="count">' + nova + (nova === 1 ? ' nova' : ' novas') + '</span>' : '') + '</h4>' +
-    '<p class="sub" style="margin:0 0 10px">O que você escreve aparece no chat do app dela, no avatar que flutua. Substitui os sinais.</p>' +
+    '<p class="sub" style="margin:0 0 10px">O que você escreve aparece na Central de perguntas do app dela, no avatar que flutua, e ela recebe um e-mail a cada mensagem sua. O combinado com ela: perguntas completas, resposta em até 3 dias úteis, e uma ligação quando o assunto for grande demais para texto.</p>' +
     '<div class="cfio chatfio" id="chat-fio" aria-live="polite">' + chatFioHtml(chat, Date.now()) + '</div>' +
     '<div class="tpls" style="margin:10px 0 8px">' + btn('um_a_um', 'Propor 1:1 de 20 min') + btn('como_vai', 'Perguntar como está') + btn('documentos', 'Pedir documentos') + btn('prazo', 'Lembrar do prazo') + btn('proposta', 'Nova proposta') + '</div>' +
     '<textarea class="notebox" id="chat-txt" maxlength="1000" placeholder="Escreva para ela. Aparece no chat do app." aria-label="Mensagem para ela" style="min-height:76px"></textarea>' +
@@ -1049,7 +1049,7 @@ async function marcaChatLido(cid) {
   if (!r.error && state.chat && state.chat.cid === cid) state.chat.msgs.forEach(function (m) { if (m.de === 'pessoa' && !m.lida_em) m.lida_em = new Date().toISOString(); });
 }
 // Avisa a pessoa por e-mail que você escreveu no chat (o chat só existe dentro do app, então sem isso ela não volta).
-// O Worker limita a um aviso a cada 30 min por pessoa. Se falhar, a mensagem já foi: só avisa que o e-mail não saiu.
+// Sai um e-mail por mensagem sua (o chat é a Central de perguntas: resposta em até 3 dias úteis). Se falhar, a mensagem já foi: só avisa que o e-mail não saiu.
 async function avisarChatPorEmail(cid, mensagemId) {
   try {
     var sess = await supabase.auth.getSession();

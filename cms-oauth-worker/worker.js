@@ -2793,9 +2793,8 @@ async function handlePlanosContexto(request, env) {
 
 // POST /api/crm/chat-aviso (só admin): depois que uma mensagem ou proposta sua entra no chat do app, avisa a pessoa por e-mail
 // para ela voltar à plataforma (o chat só existe lá dentro). É um e-mail de serviço: sem consentimento de novidades e sem
-// rodapé de descadastro. Para não encher a caixa de quem recebe várias mensagens seguidas, só sai um aviso por pessoa a cada
-// CRM_CHAT_AVISO_MIN minutos; o e-mail já enviado leva ao mesmo chat, onde ela vê tudo.
-const CRM_CHAT_AVISO_MIN = 30;
+// rodapé de descadastro. O chat é uma Central de perguntas (respondida em até 3 dias úteis), então cada resposta sua
+// gera o seu e-mail: não há limite de um aviso por intervalo (antes era 1 a cada 30 min). Quem manda vê o aviso no CRM.
 async function handleCrmChatAviso(request, env) {
   const admin = await crmRequireAdmin(request);
   if (!admin) return json({ error: 'Sem permissão. Entre de novo no CRM.' }, 401);
@@ -2817,15 +2816,11 @@ async function handleCrmChatAviso(request, env) {
   const msg = mRes.ok ? (await mRes.json())[0] : null;
   if (!msg || msg.de !== 'ingryd') return json({ error: 'Mensagem não encontrada.' }, 404);
 
-  const desde = new Date(Date.now() - CRM_CHAT_AVISO_MIN * 60000).toISOString();
-  const rRes = await fetch(`${CRM_SUPABASE_URL}/rest/v1/emails_enviados?select=id&contato_id=eq.${contatoId}&modelo=eq.chat_aviso&criado_em=gte.${encodeURIComponent(desde)}&limit=1`, { headers: auth });
-  if (rRes.ok && (await rRes.json()).length) return json({ ok: true, enviado: false, motivo: 'recente' });
-
   const nome = crmPrimeiroNome(contato.nome);
   const trecho = String(msg.texto || '').replace(/\s+/g, ' ').trim().slice(0, 140);
   const destaque = msg.tipo === 'proposta' ? `Te mandei uma proposta: "${trecho}".` : `"${trecho}${String(msg.texto || '').length > 140 ? '…' : ''}"`;
   const assunto = nome ? `${nome}, a Ingryd te respondeu no Por Dentro` : 'A Ingryd te respondeu no Por Dentro';
-  const texto = `${nome ? `Oi ${nome}!` : 'Oi!'}\n\nAcabei de te escrever no chat da plataforma do Por Dentro:\n\n${destaque}\n\nPara ler tudo e me responder, é só abrir:\n${CRM_APP_LINK}\n\nSe pedir para entrar, use este mesmo e-mail.\n\nIngryd · Por Dentro`;
+  const texto = `${nome ? `Oi ${nome}!` : 'Oi!'}\n\nAcabei de te responder na Central de perguntas da plataforma do Por Dentro:\n\n${destaque}\n\nPara ler tudo, é só abrir:\n${CRM_APP_LINK}\n\nSe quiser continuar, mande uma nova pergunta completa (o seu caso, o que você já fez e onde travou): eu respondo em até 3 dias úteis. Se o assunto for grande demais para texto, eu te proponho uma ligação.\n\nSe pedir para entrar, use este mesmo e-mail.\n\nIngryd · Por Dentro`;
   const brevoBody = {
     sender: { email: env.BREVO_SENDER_EMAIL, name: env.BREVO_SENDER_NAME || 'Ingryd · Por Dentro' },
     to: [contato.nome ? { email: contato.email, name: contato.nome } : { email: contato.email }],

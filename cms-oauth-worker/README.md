@@ -804,7 +804,7 @@ Testes automáticos: `cd admin/crm/db/testes && node planos.test.mjs`.
 O chat com a pessoa só existe dentro do app; sem um gancho ela não volta. Toda mensagem ou proposta sua no chat (aba Plataforma → Chat, ou "Proposta") agora dispara `POST /api/crm/chat-aviso` (só admin), que manda a ela um e-mail de serviço: "a Ingryd te respondeu no Por Dentro", com o começo da mensagem e o link da plataforma.
 
 - **Sem configuração nova**: usa o Brevo, o remetente e o `CRM_REPLY_TO` que já existem. **Não precisa de SQL**; o envio fica registrado em `emails_enviados` com `modelo = 'chat_aviso'` (aparece no histórico da ficha).
-- **Um aviso por pessoa a cada 30 minutos** (`CRM_CHAT_AVISO_MIN`): várias mensagens seguidas geram um e-mail só, que leva ao mesmo chat.
+- **Um e-mail a cada interação sua**: o chat virou a Central de perguntas do app (a pessoa pergunta, você responde em até 3 dias úteis), então cada resposta ou proposta gera o seu aviso. Antes saía um por pessoa a cada 30 minutos (`CRM_CHAT_AVISO_MIN`, removido); se o ritmo de respostas encher a caixa dela, é aqui que se volta a limitar. O e-mail explica como continuar: pergunta completa, resposta em até 3 dias úteis, ligação se o assunto for grande.
 - É e-mail de serviço (sem rodapé de descadastro nem exigência de "novidades"), porque responde a uma conversa dela com você.
 - Se o e-mail falhar, a mensagem já foi para o chat; o painel avisa "o e-mail de aviso não saiu".
 - Precisa só **publicar o Worker de novo** (`wrangler deploy`) para a rota existir.
