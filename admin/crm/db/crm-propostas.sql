@@ -53,6 +53,7 @@ as $$
    order by p.criado_em desc limit 20;
 $$;
 revoke all on function public.minhas_propostas() from public;
+revoke all on function public.minhas_propostas() from anon;
 grant execute on function public.minhas_propostas() to authenticated;
 
 -- A pessoa abriu o cartão: enviada → vista (só avança, nunca volta nem sobrescreve uma resposta).
@@ -65,6 +66,7 @@ as $$
    where p.id = p_id and c.id = p.contato_id and c.user_id = auth.uid() and p.status = 'enviada';
 $$;
 revoke all on function public.marcar_proposta_vista(bigint) from public;
+revoke all on function public.marcar_proposta_vista(bigint) from anon;
 grant execute on function public.marcar_proposta_vista(bigint) to authenticated;
 
 -- A resposta: 'aceitar' | 'recusar' | 'depois'. Só vale enquanto a proposta está aberta e no prazo.
@@ -105,6 +107,7 @@ begin
 end;
 $$;
 revoke all on function public.responder_proposta(bigint, text) from public;
+revoke all on function public.responder_proposta(bigint, text) from anon;
 grant execute on function public.responder_proposta(bigint, text) to authenticated;
 
 -- ---------- Linha do tempo ----------

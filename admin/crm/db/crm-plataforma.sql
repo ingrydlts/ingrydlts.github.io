@@ -65,4 +65,5 @@ begin
 end;
 $$;
 revoke all on function public.registrar_cliques(jsonb) from public;
+revoke all on function public.registrar_cliques(jsonb) from anon;
 grant execute on function public.registrar_cliques(jsonb) to authenticated;

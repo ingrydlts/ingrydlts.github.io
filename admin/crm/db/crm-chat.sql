@@ -108,6 +108,7 @@ as $$
    order by m.id desc limit 100;
 $$;
 revoke all on function public.meu_chat() from public;
+revoke all on function public.meu_chat() from anon;
 grant execute on function public.meu_chat() to authenticated;
 
 -- A pessoa escreve (ou usa um botão de pedido rápido). No máximo 20 mensagens a cada 10 minutos.
@@ -151,6 +152,7 @@ begin
 end;
 $$;
 revoke all on function public.chat_enviar(text, text) from public;
+revoke all on function public.chat_enviar(text, text) from anon;
 grant execute on function public.chat_enviar(text, text) to authenticated;
 
 -- Ela abriu o chat: tudo o que você mandou vira lido.
@@ -163,6 +165,7 @@ as $$
    where c.id = m.contato_id and c.user_id = auth.uid() and m.de = 'ingryd' and m.lida_em is null;
 $$;
 revoke all on function public.chat_marcar_lidas() from public;
+revoke all on function public.chat_marcar_lidas() from anon;
 grant execute on function public.chat_marcar_lidas() to authenticated;
 
 -- ---------- Realtime (opcional) ----------
