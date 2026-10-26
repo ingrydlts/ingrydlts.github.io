@@ -139,6 +139,8 @@ function splitTpl(c, k) { var t = TPLS[k].make(c); return { subject: t[0].replac
 
 function lerDosAberto() { try { return localStorage.getItem('crm_dossie_aberto') === '1'; } catch (e) { return false; } }
 var C = [], Q = [], L = [], R = [], RM = {}, SUBS = {}, M = null, MV = [];
+// Processos sugeridos esperando a sua decisão (db/crm-processos-sugeridos.sql). Sem a migração, fica vazio.
+var PSUG = [];
 var state = { dosAberto: lerDosAberto(), dos: null, ptab: null, pstab: 'assistente', pdias: {}, int: null, chatRasc: '', rascunho: {}, view: 'hoje', persona: '', sub: '', urg: '', stage: '', orig: '', camp: '', q: '', sel: null, qs: 'nova', qsel: null, inbox: 'perguntas', rs: 'nova', rsel: null, preset: 'todos', seg: '', prevView: 'contatos' };
 var activeCid = null;
 var me = null;
@@ -226,12 +228,14 @@ async function loadAll() {
     supabase.from('eventos').select('contato_id,dados').eq('tipo', 'compra').limit(5000),
     // O Radar (db/crm-radar.sql): os itens do PESTEL por persona e o que já foi enviado. Sem a migração, a tela avisa.
     supabase.from('radar_itens').select('*').is('arquivado_em', null).order('criado_em', { ascending: false }).limit(500),
-    supabase.from('radar_envios').select('item_id,contato_id,visto_em').limit(20000)
+    supabase.from('radar_envios').select('item_id,contato_id,visto_em').limit(20000),
+    supabase.from('processos_sugeridos').select('id,contato_id,processo,atualizada_em').eq('status', 'detectada').order('atualizada_em', { ascending: false }).limit(200)
   ]);
   if (r[0].error) return fail('carregar os contatos', r[0].error);
   COMPRAS = {};
   ((r[7] && !r[7].error && r[7].data) || []).forEach(function (e) { var p = (e.dados || {}).produto; if (p) (COMPRAS[e.contato_id] = COMPRAS[e.contato_id] || {})[p] = 1; });
   C = r[0].data || [];
+  PSUG = r[10] && !r[10].error ? (r[10].data || []) : [];
   Q = r[1].error ? [] : (r[1].data || []);
   L = r[3] && !r[3].error ? (r[3].data || []) : [];
   R = r[4] && !r[4].error ? (r[4].data || []) : [];
@@ -355,6 +359,15 @@ function renderToday() {
     return '<button class="row" data-open="' + esc(c.id) + '" type="button"><div class="' + avClass(c) + '">' + esc(ini(c)) + '</div><div class="who"><b>' + esc(short(c)) +
       ' <span class="persona" style="display:inline;font-size:11.5px">· ' + esc(personaLabel(c)) + '</span></b><span>' + esc(c.motivo) + '</span></div>' + urgPill(c.urgencia) + '</button>';
   }).join('') || '<div class="empty">Ninguém pedindo atenção agora.</div>';
+
+  // Processos sugeridos esperando você: um por linha, abre a ficha (onde estão os sinais e os botões).
+  var procs = PSUG.filter(function (p) { return byC(p.contato_id); });
+  $('today-procs-box').hidden = !procs.length;
+  $('today-procs').innerHTML = procs.slice(0, 8).map(function (p) {
+    var c = byC(p.contato_id);
+    return '<button class="row" data-open="' + esc(c.id) + '" type="button"><div class="' + avClass(c) + '">' + esc(ini(c)) + '</div><div class="who"><b>' + esc(short(c)) +
+      '</b><span>Possível novo processo: ' + esc(procLabel(p.processo)) + '</span></div><span class="pill u-media">revisar</span></button>';
+  }).join('');
 
   var nq = Q.filter(function (x) { return x.status === 'nova'; }).sort(function (a, b) { return a.criado_em < b.criado_em ? -1 : 1; });
   var nr = R.filter(function (x) { return x.status === 'nova'; });
@@ -1559,7 +1572,8 @@ async function renderPessoa() {
     state.ptab === 'plataforma' ? supabase.from('plataforma_cliques').select('sessao,tela,alvo,rotulo,criado_em').eq('contato_id', c.id).order('criado_em', { ascending: false }).limit(300) : null,
     supabase.from('contatos').select('dossie,user_id').eq('id', c.id).maybeSingle(),
     supabase.from('contatos').select('dossie_origem,onboarding_em').eq('id', c.id).maybeSingle(),
-    supabase.from('assinaturas').select('status,plano,moeda,teste_fim,periodo_fim,cancela_no_fim').eq('contato_id', c.id).maybeSingle()   // db/crm-assinaturas.sql
+    supabase.from('assinaturas').select('status,plano,moeda,teste_fim,periodo_fim,cancela_no_fim').eq('contato_id', c.id).maybeSingle(),   // db/crm-assinaturas.sql
+    supabase.from('processos_sugeridos').select('id,processo,sinais,status,mensagem,detectada_em,atualizada_em,decidida_em,respondida_em').eq('contato_id', c.id).order('atualizada_em', { ascending: false })   // db/crm-processos-sugeridos.sql
   ]);
   if (state.sel !== c.id || state.view !== 'pessoa') return;   // trocou de tela enquanto carregava
   var eventos = r[0].data || [], cons = r[1].data || [], mails = r[2].data || [];
@@ -1572,6 +1586,7 @@ async function renderPessoa() {
   var ob = (r[5] && !r[5].error && r[5].data) || {};   // sem crm-onboarding.sql a ficha segue igual, sem etiquetas
   state.dos = { cid: c.id, d: (r[4].data && r[4].data.dossie) || {}, err: r[4].error, rasc: rascAnt || {}, chk: rk[0], origem: ob.dossie_origem || {}, onbEm: ob.onboarding_em || null };
   state.assin = r[6] && !r[6].error && r[6].data ? r[6].data : null;
+  state.procs = r[7] && !r[7].error ? (r[7].data || []) : [];
   var lp = eventos.filter(function (e) { return e.tipo === 'link_pagamento_enviado'; })[0];
   state.pagto = lp ? { quando: lp.criado_em, rotulo: (lp.dados && lp.dados.rotulo) || (lp.dados && lp.dados.plano) || '' } : null;
   state.mails = mails;
@@ -1595,6 +1610,7 @@ async function renderPessoa() {
     '<button class="btn primary" type="button" data-emailfor="' + esc(c.id) + '">Escrever e-mail</button>' +
     '<button class="btn" type="button" data-open1a1="' + esc(c.id) + '">Marcar 1:1</button>' +
     '<div class="sel"><select id="stage-pick" aria-label="Mudar estágio">' + STAGES.map(function (s) { return '<option value="' + s.k + '"' + (s.k === c.estagio ? ' selected' : '') + '>Estágio: ' + s.l + '</option>'; }).join('') + '</select></div></div>' +
+    processosSugeridosHtml(state.procs) +
     onbResumoHtml(c) +
     '<div id="dossie-box">' + dossieHtml(c, state.dos.d, state.dos.err, state.dos.rasc, state.dosAberto, state.dos.chk) + '</div>' +
     tabs + (state.ptab === 'conversa' ? conversaPanel(c, mails, resps, h4) : state.ptab === 'plataforma' ? plataformaPanel(c, h4) :
@@ -1626,6 +1642,54 @@ async function renderPessoa() {
   if (ct) { var th = $('conv-thread'); if (th) th.scrollTop = th.scrollHeight; }
   ligarAoVivo(c, uid);
   if (state.ptab === 'plataforma' && state.pstab === 'chat') { var fio0 = $('chat-fio'); if (fio0) fio0.scrollTop = fio0.scrollHeight; marcaChatLido(c.id).then(function () { var a0 = $('plat-abas'); if (a0) a0.innerHTML = platAbasHtml(); }); }
+}
+
+// ---------- Processos sugeridos (db/crm-processos-sugeridos.sql) ----------
+// O app percebe sinais de que a pessoa pode precisar de um processo novo (ex.: moradia resolvida → CAF) e grava a
+// sugestão com os sinais em palavras. Aqui você lê os sinais e decide: aprovar (com um recado opcional, que vai junto
+// da pergunta do assistente no chat dela) ou descartar. Aceito por ela, o processo vira uma aba no checklist.
+var PROC_LABEL = { caf: 'CAF', ameli: 'Ameli', banco: 'Banco', moradia: 'Moradia', orcamento: 'Orçamento', trabalho: 'Trabalho',
+  profissao: 'Profissão regulamentada', cir: 'Integração (CIR)', estudos: 'Universidade', visa: 'Visa', visa_aupair: 'Visa au pair' };
+function procLabel(k) { return PROC_LABEL[k] || k; }
+function processosSugeridosHtml(lista) {
+  var vivos = (lista || []).filter(function (p) { return p.status !== 'descartada'; });
+  if (!vivos.length) return '';
+  return '<div class="procs" style="margin-top:16px">' + vivos.map(function (p) {
+    var nome = esc(procLabel(p.processo));
+    var sinais = '<ul class="procs-sinais">' + (p.sinais || []).map(function (x) { return '<li>' + esc(x.texto) + '</li>'; }).join('') + '</ul>';
+    if (p.status === 'detectada') {
+      return '<section class="procs-card procs-novo" aria-label="Possível novo processo: ' + nome + '">' +
+        '<div class="procs-tit">🔔 Possível novo processo: <b>' + nome + '</b> <span class="sub">· desde ' + esc(fmtDate(p.detectada_em)) + '</span></div>' +
+        '<p class="sub" style="margin:4px 0 6px">Os sinais que ela deu na plataforma:</p>' + sinais +
+        '<label class="sub" for="proc-msg-' + p.id + '" style="display:block;margin:10px 0 4px">Seu recado, junto da pergunta do assistente (opcional)</label>' +
+        '<textarea id="proc-msg-' + p.id + '" class="notebox" maxlength="500" style="min-height:64px" placeholder="Ex.: Vi que você já tem moradia: a CAF pode devolver parte do aluguel."></textarea>' +
+        '<div class="btns" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">' +
+        '<button class="btn primary" type="button" data-proc-aprovar="' + p.id + '">Aprovar e perguntar a ela</button>' +
+        '<button class="btn" type="button" data-proc-descartar="' + p.id + '">Descartar</button></div>' +
+        '<p class="sub" style="margin:8px 0 0">Aprovado, o assistente pergunta no chat dela se quer abrir o processo. Se ela aceitar, a aba ' + nome + ' aparece no checklist no próximo login.</p>' +
+        '</section>';
+    }
+    var estado = p.status === 'aprovada' ? 'Perguntado a ela em ' + fmtDate(p.decidida_em) + '. Esperando a resposta.'
+      : p.status === 'aceita' ? 'Ela aceitou em ' + fmtDate(p.respondida_em) + ': a aba ' + procLabel(p.processo) + ' está no checklist dela.'
+      : 'Ela respondeu "agora não" em ' + fmtDate(p.respondida_em) + '.';
+    return '<section class="procs-card" aria-label="Processo ' + nome + '"><div class="procs-tit">' + (p.status === 'aceita' ? '✓ ' : '') + 'Processo <b>' + nome + '</b>: <span class="sub">' + esc(estado) + '</span></div>' +
+      (p.mensagem ? '<p class="sub" style="margin:4px 0 0">Seu recado: "' + esc(p.mensagem) + '"</p>' : '') +
+      '<details style="margin-top:6px"><summary class="sub">Os sinais</summary>' + sinais + '</details>' +
+      (p.status === 'recusada' ? '<div style="margin-top:8px"><button class="btn" type="button" data-proc-aprovar="' + p.id + '" data-proc-denovo="1">Perguntar de novo</button></div>' : '') +
+      '</section>';
+  }).join('') + '</div>';
+}
+async function decidirProcesso(t, decisao) {
+  var id = Number(decisao === 'aprovar' ? t.dataset.procAprovar : t.dataset.procDescartar);
+  var txt = $('proc-msg-' + id);
+  if (decisao === 'descartar' && !window.confirm('Descartar esta sugestão? Ela não volta sozinha, mesmo que a pessoa dê novos sinais.')) return;
+  t.disabled = true;
+  var r = await supabase.rpc('crm_decidir_processo', { p_id: id, p_decisao: decisao, p_mensagem: txt && txt.value.trim() ? txt.value.trim() : null });
+  if (r.error) { t.disabled = false; return fail(decisao === 'aprovar' ? 'aprovar o processo' : 'descartar o processo', r.error); }
+  toast(decisao === 'aprovar' ? 'Aprovado: o assistente vai perguntar a ela.' : 'Sugestão descartada.');
+  PSUG = PSUG.filter(function (p) { return p.id !== id; });
+  renderToday();
+  if (state.view === 'pessoa') renderPessoa();
 }
 
 // ---------- Modais ----------
@@ -3010,6 +3074,8 @@ document.addEventListener('click', async function (e) {
   if (t.dataset.insretirar) return retirarInsight(t.dataset.insretirar);
   if (t.dataset.openproposta) return openProposta(t.dataset.openproposta, t.dataset.preset);
   if (t.dataset.open1a1) return open1a1(t.dataset.open1a1);
+  if (t.dataset.procAprovar) return decidirProcesso(t, 'aprovar');
+  if (t.dataset.procDescartar) return decidirProcesso(t, 'descartar');
   if (t.id === 'modal-cancel') return closeCompose();
   if (t.dataset.emailfor) return openCompose(t.dataset.emailfor, t.dataset.tplk);
   if (t.dataset.cmpaba) return cmpAba(t.dataset.cmpaba);
