@@ -267,6 +267,7 @@ as $$
    order by s.criado_em desc limit 20;
 $$;
 revoke all on function public.meus_sinais() from public;
+revoke all on function public.meus_sinais() from anon;
 grant execute on function public.meus_sinais() to authenticated;
 
 create or replace function public.marcar_sinal_lido(p_id bigint) returns void
@@ -278,6 +279,7 @@ as $$
    where s.id = p_id and c.id = s.contato_id and c.user_id = auth.uid();
 $$;
 revoke all on function public.marcar_sinal_lido(bigint) from public;
+revoke all on function public.marcar_sinal_lido(bigint) from anon;
 grant execute on function public.marcar_sinal_lido(bigint) to authenticated;
 
 -- ---------- Gatilhos: a linha do tempo se mantém sozinha ----------

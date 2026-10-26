@@ -131,6 +131,7 @@ begin
 end;
 $$;
 revoke all on function public.registrar_insights(jsonb) from public;
+revoke all on function public.registrar_insights(jsonb) from anon;
 grant execute on function public.registrar_insights(jsonb) to authenticated;
 
 -- As notas que você escreveu para ESTA pessoa e ainda valem.
@@ -144,6 +145,7 @@ as $$
    order by m.criado_em desc limit 10;
 $$;
 revoke all on function public.meus_insights_manuais() from public;
+revoke all on function public.meus_insights_manuais() from anon;
 grant execute on function public.meus_insights_manuais() to authenticated;
 
 -- ---------- Realtime (opcional) ----------
