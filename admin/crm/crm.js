@@ -141,7 +141,7 @@ function lerDosAberto() { try { return localStorage.getItem('crm_dossie_aberto')
 var C = [], Q = [], L = [], R = [], RM = {}, SUBS = {}, M = null, MV = [];
 // Processos sugeridos esperando a sua decisão (db/crm-processos-sugeridos.sql). Sem a migração, fica vazio.
 var PSUG = [];
-var state = { dosAberto: lerDosAberto(), dos: null, ptab: null, pstab: 'assistente', pdias: {}, int: null, chatRasc: '', rascunho: {}, view: 'hoje', persona: '', sub: '', urg: '', stage: '', orig: '', camp: '', q: '', sel: null, qs: 'nova', qsel: null, inbox: 'perguntas', rs: 'nova', rsel: null, preset: 'todos', seg: '', prevView: 'contatos' };
+var state = { dosAberto: lerDosAberto(), dos: null, pc: null, ptab: null, pstab: 'assistente', pdias: {}, int: null, chatRasc: '', rascunho: {}, view: 'hoje', persona: '', sub: '', urg: '', stage: '', orig: '', camp: '', q: '', sel: null, qs: 'nova', qsel: null, inbox: 'perguntas', rs: 'nova', rsel: null, preset: 'todos', seg: '', prevView: 'contatos' };
 var activeCid = null;
 var me = null;
 
@@ -1023,7 +1023,7 @@ function chatPanelHtml(c, chat, h4) {
   var btn = function (k, rot) { return '<button class="chip" type="button" data-chatquick="' + k + '">' + esc(rot) + '</button>'; };
   var nova = chatNaoLidas(chat);
   return '<div class="panel" style="padding:16px"><h4 style="' + h4 + '">Chat com ela' + (nova ? ' <span class="count">' + nova + (nova === 1 ? ' nova' : ' novas') + '</span>' : '') + '</h4>' +
-    '<p class="sub" style="margin:0 0 10px">O que você escreve aparece no chat do app dela, no avatar que flutua. Substitui os sinais.</p>' +
+    '<p class="sub" style="margin:0 0 10px">O que você escreve aparece na Central de perguntas do app dela, no avatar que flutua, e ela recebe um e-mail a cada mensagem sua. O combinado com ela: perguntas completas, resposta em até 3 dias úteis, e uma ligação quando o assunto for grande demais para texto.</p>' +
     '<div class="cfio chatfio" id="chat-fio" aria-live="polite">' + chatFioHtml(chat, Date.now()) + '</div>' +
     '<div class="tpls" style="margin:10px 0 8px">' + btn('um_a_um', 'Propor 1:1 de 20 min') + btn('como_vai', 'Perguntar como está') + btn('documentos', 'Pedir documentos') + btn('prazo', 'Lembrar do prazo') + btn('proposta', 'Nova proposta') + '</div>' +
     '<textarea class="notebox" id="chat-txt" maxlength="1000" placeholder="Escreva para ela. Aparece no chat do app." aria-label="Mensagem para ela" style="min-height:76px"></textarea>' +
@@ -1049,7 +1049,7 @@ async function marcaChatLido(cid) {
   if (!r.error && state.chat && state.chat.cid === cid) state.chat.msgs.forEach(function (m) { if (m.de === 'pessoa' && !m.lida_em) m.lida_em = new Date().toISOString(); });
 }
 // Avisa a pessoa por e-mail que você escreveu no chat (o chat só existe dentro do app, então sem isso ela não volta).
-// O Worker limita a um aviso a cada 30 min por pessoa. Se falhar, a mensagem já foi: só avisa que o e-mail não saiu.
+// Sai um e-mail por mensagem sua (o chat é a Central de perguntas: resposta em até 3 dias úteis). Se falhar, a mensagem já foi: só avisa que o e-mail não saiu.
 async function avisarChatPorEmail(cid, mensagemId) {
   try {
     var sess = await supabase.auth.getSession();
@@ -1261,6 +1261,16 @@ var DOS = [
     { k: 'cfPrazoCursoTem', l: 'Alguma formação fecha antes da plataforma', t: 'op', o: [['sim', 'Sim'], ['nao', 'Não']] },
     { k: 'cfPrazoCurso', l: 'Prazo da formação que fecha primeiro', t: 'dt', q: function (g) { return g('cfPrazoCursoTem') === 'sim'; } }
   ] },
+  { t: 'Sinais da call', livre: 1, campos: [
+    { k: 'formacao_alvo', l: 'Formação que quer', t: 'op', o: [['l1_universidade', '1º ano de licence (universidade)'], ['bts', 'BTS'], ['escola_arte', 'Escola de arte'], ['administracao', 'Administração'], ['nao_sei', 'Ainda não sabe']] },
+    { k: 'grupo_area', l: 'Grande área', t: 'op', o: [['artes_audiovisual', 'Artes e audiovisual'], ['negocios', 'Negócios'], ['saude', 'Saúde'], ['outra', 'Outra']] },
+    { k: 'area_interesse', l: 'Área em poucas palavras', t: 'tx', ajuda: 'Só aparece para você (ex.: cinema).' },
+    { k: 'ensino_medio_ano', l: 'Ano em que terminou o ensino médio', t: 'tx', ajuda: 'Quatro dígitos (ex.: 2018). Diploma antigo pede tradução juramentada e conferência.' },
+    { k: 'tem_graduacao', l: 'Tem graduação concluída', t: 'sn' },
+    { k: 'frances_gargalo', l: 'Onde o francês trava', t: 'op', o: [['oral', 'Fala'], ['escrita', 'Escrita'], ['ambos', 'Fala e escrita'], ['nenhum', 'Em nenhum']] },
+    { k: 'tem_aula_frances', l: 'Faz aula de francês agora', t: 'sn' },
+    { k: 'plano_b', l: 'Quer um plano B', t: 'sn' }
+  ] },
   { t: 'A ligação', livre: 1, campos: [
     { k: 'ligacao_data', l: 'Data da ligação', t: 'dt' },
     { k: 'ligacao_resumo', l: 'Resumo', t: 'lg', ajuda: 'O que ficou combinado, em poucas linhas.' },
@@ -1268,7 +1278,7 @@ var DOS = [
     { k: 'ligacao_transcricao', l: 'Gravação transcrita', t: 'lg', alto: 1, ajuda: 'Cole aqui o texto da ligação gravada.' }
   ] }
 ];
-var DOS_NUM = { cfEtapa: 1 }, DOS_MES = { contrato_fim: 1 };
+var DOS_NUM = { cfEtapa: 1, ensino_medio_ano: 1 }, DOS_MES = { contrato_fim: 1 };
 // O valor de um campo como texto de formulário: o que você já digitou e ainda não salvou, ou o que está salvo.
 function dosValor(c, d, rasc, k) {
   var f = dosCampo(k), v;
@@ -1305,6 +1315,10 @@ function dosCampoHtml(f, c, d, rasc) {
     (og ? '<small class="orig ' + og.conf + '">' + esc(og.origem) + ' · ' + esc(ONB_CONF[og.conf]) + '</small>' : '') + '</div>';
 }
 var DOS_CHIPS = ['persona', 'data_chegada', 'cidade', 'nivel_frances', 'cfNivel', 'ano_au_pair', 'trilha_estudo', 'telefone'];
+function dosChipSinais(d) {
+  var n = d && Array.isArray(d.sinais) ? d.sinais.length : 0;
+  return n ? '<span class="dchip"><b>Sinais</b> ' + n + '</span>' : '';
+}
 function dosChipChat(chat) {
   var n = chatNaoLidas(chat);
   return n ? '<span class="dchip insnovo"><b>Chat</b> ' + n + (n === 1 ? ' mensagem dela sem ler' : ' mensagens dela sem ler') + '</span>' : '';
@@ -1522,12 +1536,12 @@ function dossieHtml(c, d, err, rasc, aberto, chk) {
     corpo = '<div class="dcorpo">' + dosVisiveis(c, d, rasc).map(function (b) {
       return '<section class="dbloco"><h4>' + esc(b.t) + '</h4><div class="dgrid">' + b.campos.map(function (f) { return dosCampoHtml(f, c, d, rasc); }).join('') + '</div></section>';
     }).join('') + '<div class="actions" style="margin-top:6px"><button class="btn primary" type="button" data-dossalvar="' + esc(c.id) + '">Salvar dossiê</button>' +
-      (sujo ? '<span class="sub" style="align-self:center">Há alterações ainda não salvas.</span>' : '') + '</div>' + '<div id="chk-box">' + checklistHtml(chk, Date.now()) + '</div></div>';
+      (sujo ? '<span class="sub" style="align-self:center">Há alterações ainda não salvas.</span>' : '') + '</div>' + '<div id="poscall-box">' + poscallHtml(c) + '</div><div id="chk-box">' + checklistHtml(chk, Date.now()) + '</div></div>';
   }
   return '<div class="panel dossie"><div class="dhead"><h3>Dossiê</h3><span class="sub">' + pr.n + ' de ' + pr.tot + ' respondidas' + (pr.falta ? ' · faltam ' + pr.falta : ' · completo') + '</span>' +
     '<button class="btn" type="button" data-dostoggle="1" aria-expanded="' + !!aberto + '" style="margin-left:auto">' + (aberto ? 'Fechar dossiê' : 'Abrir dossiê completo') + '</button></div>' +
     '<div class="dprog" role="progressbar" aria-valuenow="' + pct + '" aria-valuemin="0" aria-valuemax="100"><span style="width:' + pct + '%"></span></div>' +
-    '<div class="dchips">' + dosChipChk(chk) + dosChipIns(state.ins) + dosChipChat(state.chat) + (dosChips(c, d, rasc) || '<span class="sub">Nada preenchido ainda. Abra o dossiê para preencher durante a ligação.</span>') + '</div>' + onbFaltaHtml(c, d, rasc) + corpo + '</div>';
+    '<div class="dchips">' + dosChipChk(chk) + dosChipSinais(d) + dosChipIns(state.ins) + dosChipChat(state.chat) + (dosChips(c, d, rasc) || '<span class="sub">Nada preenchido ainda. Abra o dossiê para preencher durante a ligação.</span>') + '</div>' + onbFaltaHtml(c, d, rasc) + corpo + '</div>';
 }
 function pintaDossie(c) {
   var box = $('dossie-box'); if (!box || !state.dos || state.dos.cid !== c.id) return;
@@ -1559,6 +1573,222 @@ async function salvarDossie(cid, t) {
   state.dos.rasc = {};
   await reload(); if (state.view === 'pessoa') renderPessoa();
   toast('Dossiê salvo');
+}
+
+// ---------- Pós-call: a call fluida vira Dossiê + sinais + fila de curadoria (db/crm-pos-call.sql; Worker: POST /api/crm/pos-call/ler) ----------
+// A IA lê a gravação transcrita e só PROPÕE. Nada entra na ficha até você marcar o que vale e aplicar. Os baldes são fixos:
+//   fatos → chaves do Dossiê · leitura → sinais (vocabulário fechado) · perguntas e respostas → fila de curadoria por tema ·
+//   itens candidatos → padrão (vale para qualquer pessoa da mesma situação) ou individual (depende de um dado só dela).
+// Regra dos 3: um tema com 3 pessoas ou mais na fila está pronto para virar padrão (material, assunto ou notícia do Radar).
+// Os sinais também podem ser marcados à mão, sem IA. A transcrição não é guardada pelo Worker; só a proposta.
+var PC_FATORES = { politico: 'Político', economico: 'Econômico', social: 'Social', tecnologico: 'Tecnológico', ambiental: 'Ambiental', legal: 'Legal' };
+function pcInicial(cid) { return { cid: cid, estado: 'vazio', erro: '', prop: null, vocab: [], vocabErro: false, cont: [], carregando: false, carregou: false, sel: { campos: {}, sinais: {}, fila: {}, perg: {} }, camadas: {}, manual: null }; }
+function pcEstado(cid) { if (!state.pc || state.pc.cid !== cid) state.pc = pcInicial(cid); return state.pc; }
+function pcRotuloSinal(pc, chave) { var v = (pc.vocab || []).filter(function (x) { return x.chave === chave; })[0]; return v ? v.rotulo : chave; }
+function pcSinaisDela(d) { return d && Array.isArray(d.sinais) ? d.sinais.slice() : []; }
+function pcTextoCampo(f, v) { if (v === true || v === 'true') return 'Sim'; if (v === false || v === 'false') return 'Não'; var o = f && f.o ? f.o.filter(function (x) { return x[0] === String(v); })[0] : null; return o ? o[1] : String(v); }
+
+function poscallHtml(c) {
+  var pc = pcEstado(c.id), d = (state.dos && state.dos.d) || {}, h = '';
+  if (!pc.carregou && !pc.carregando) pcCarregarDados(c.id);
+  h += '<section class="dbloco poscall"><h4>Pós-call</h4>';
+  if (pc.vocabErro) return h + '<p class="sub" style="margin:0">Falta rodar <b>db/crm-pos-call.sql</b> no SQL Editor do Supabase.</p></section>';
+
+  // Sinais desta pessoa: caixa de seleção (funciona sem IA).
+  var atuais = pc.manual || pcSinaisDela(d);
+  h += '<div class="pcsinais"><p class="sub" style="margin:0 0 6px">Sinais desta pessoa (o app lê como <code>sinal_…</code> e mostra só o que vale para ela).</p>' +
+    (pc.vocab.length ? pc.vocab.map(function (v) {
+      return '<label class="pccheck"><input type="checkbox" data-pcsinal="' + esc(v.chave) + '"' + (atuais.indexOf(v.chave) >= 0 ? ' checked' : '') + '> <span>' + esc(v.rotulo) + '</span></label>';
+    }).join('') : '<span class="sub">Carregando…</span>') +
+    '<div class="actions" style="margin-top:8px"><button class="btn" type="button" data-pcsalvarsinais="' + esc(c.id) + '"' + (pc.manual ? '' : ' disabled') + '>Salvar sinais</button></div></div>';
+
+  if (pc.estado === 'lendo') return h + '<p class="sub" role="status">Lendo a call… (leva alguns segundos)</p></section>';
+  if (pc.estado === 'proposta' && pc.prop) return h + poscallPropostaHtml(c, pc, d) + poscallCuradoriaHtml(pc) + '</section>';
+
+  var tem = dosValor(c, d, (state.dos && state.dos.rasc) || {}, 'ligacao_transcricao');
+  h += '<div class="pcler"><p class="sub" style="margin:0 0 8px">Cole a gravação transcrita em <b>A ligação</b> e peça a leitura. A IA só propõe: você marca o que vale e aplica. ' +
+    (tem ? '' : '<b>Ainda não há transcrição colada.</b>') + '</p>' +
+    (pc.erro ? '<p class="err" role="alert">' + esc(pc.erro) + '</p>' : '') +
+    '<div class="actions"><button class="btn primary" type="button" data-pcler="' + esc(c.id) + '">Ler a call com IA</button></div></div>';
+  return h + poscallCuradoriaHtml(pc) + '</section>';
+}
+
+function poscallPropostaHtml(c, pc, d) {
+  var p = pc.prop.proposta, h = '<div class="pcprop">';
+  h += '<p class="sub" style="margin:10px 0">Proposta da IA' + (pc.prop.reutilizada ? ' (a mesma call já tinha sido lida; sem custo novo)' : '') +
+    '. Marque o que vale e aplique. <b>Nada entrou na ficha ainda.</b></p>';
+
+  if ((p.mapa_da_call || []).length) {
+    h += '<h5>O que rolou na call</h5><ol class="pcmapa">' + p.mapa_da_call.map(function (b) {
+      return '<li><b>' + esc(b.titulo) + '</b>' + (b.tema && b.tema !== 'outro' ? ' <span class="dchip">' + esc(pcRotuloSinal(pc, b.tema)) + '</span>' : '') + '<br><small class="sub">' + esc(b.resumo) + '</small></li>';
+    }).join('') + '</ol>';
+  }
+  var ks = Object.keys(p.campos || {});
+  h += '<h5>1 · Fatos (vão para o Dossiê)</h5>';
+  h += ks.length ? ks.map(function (k) {
+    var f = dosCampo(k), x = p.campos[k], atual = dosValor(c, d, {}, k), propTxt = pcTextoCampo(f, x.valor), igual = atual !== '' && String(atual) === String(x.valor);
+    var marcado = pc.sel.campos[k] === undefined ? (!igual && atual === '' && x.confianca !== 'baixa') : pc.sel.campos[k];
+    return '<label class="pclinha"><input type="checkbox" data-pccampo="' + esc(k) + '"' + (marcado ? ' checked' : '') + (igual ? ' disabled' : '') + '> <span><b>' + esc(f ? f.l : k) + ':</b> ' + esc(propTxt) +
+      (atual !== '' && !igual ? ' <i class="sub">(hoje: ' + esc(pcTextoCampo(f, atual)) + ' — o que você digitou só muda se você marcar)</i>' : '') + (igual ? ' <i class="sub">(já está assim)</i>' : '') +
+      ' <span class="dchip ' + (x.confianca === 'baixa' ? 'falta' : '') + '">' + esc(ONB_CONF[x.confianca] || x.confianca) + '</span>' +
+      (x.trecho ? '<br><small class="sub">“' + esc(x.trecho) + '”</small>' : '') + '</span></label>';
+  }).join('') : '<p class="sub">Nenhum fato novo com fonte clara.</p>';
+
+  h += '<h5>2 · Sinais (leitura da situação)</h5>';
+  h += (p.sinais || []).length ? p.sinais.map(function (s) {
+    var ja = pcSinaisDela(d).indexOf(s.chave) >= 0, marcado = pc.sel.sinais[s.chave] === undefined ? true : pc.sel.sinais[s.chave];
+    return '<label class="pclinha"><input type="checkbox" data-pcsinalprop="' + esc(s.chave) + '"' + (marcado || ja ? ' checked' : '') + (ja ? ' disabled' : '') + '> <span><b>' + esc(pcRotuloSinal(pc, s.chave)) + '</b>' +
+      (ja ? ' <i class="sub">(já marcado)</i>' : '') + (s.motivo ? '<br><small class="sub">' + esc(s.motivo) + '</small>' : '') + '</span></label>';
+  }).join('') : '<p class="sub">Nenhum sinal sustentado pela call.</p>';
+
+  h += '<h5>3 · Padrão ou individual? (notícias que a call sugere)</h5>' +
+    '<p class="sub" style="margin:0 0 6px">Padrão = você diria o mesmo a qualquer pessoa na mesma situação (vira notícia do Radar ou material). Individual = depende de um dado só dela (vai com uma nota sua). Todo item sai <b>a conferir</b>: ache a fonte antes de enviar.</p>';
+  h += (p.itens_candidatos || []).length ? p.itens_candidatos.map(function (it, i) {
+    var cam = pc.camadas['i' + i] || it.camada, marcado = pc.sel.fila['i' + i] === undefined ? true : pc.sel.fila['i' + i];
+    return '<div class="pcitem"><label class="pclinha"><input type="checkbox" data-pcfila="i' + i + '"' + (marcado ? ' checked' : '') + '> <span><b>#' + esc(PC_FATORES[it.fator] || it.fator) + ' · ' + esc(it.titulo) + '</b> <span class="dchip falta">a conferir</span><br>' +
+      esc(it.texto) + (it.impacto ? '<br><small class="sub">Para ela: ' + esc(it.impacto) + '</small>' : '') + '<br><small class="sub">IA: ' + esc(it.camada === 'padrao' ? 'padrão' : 'individual') + ' — ' + esc(it.motivo_camada) + '</small></span></label>' +
+      '<div class="sel"><select data-pccamada="i' + i + '" aria-label="Camada do item ' + (i + 1) + '"><option value="padrao"' + (cam === 'padrao' ? ' selected' : '') + '>Padrão</option><option value="individual"' + (cam === 'individual' ? ' selected' : '') + '>Individual</option></select></div></div>';
+  }).join('') : '<p class="sub">A call não sugeriu notícia.</p>';
+
+  h += '<h5>4 · Perguntas dela e o que você explicou (vão para a fila de curadoria)</h5>';
+  var qs = (p.perguntas_dela || []).map(function (x, i) { return { id: 'p' + i, rot: 'Ela perguntou', x: x }; }).concat((p.respostas_dadas || []).map(function (x, i) { return { id: 'r' + i, rot: 'Você explicou' + (x.precisa_fonte ? ' (precisa de fonte)' : ''), x: x }; }));
+  h += qs.length ? qs.map(function (q) {
+    var marcado = pc.sel.fila[q.id] === undefined ? true : pc.sel.fila[q.id];
+    return '<label class="pclinha"><input type="checkbox" data-pcfila="' + q.id + '"' + (marcado ? ' checked' : '') + '> <span><b>' + esc(q.rot) + ':</b> ' + esc(q.x.texto) + ' <span class="dchip">' + esc(q.x.tema === 'outro' ? 'outro tema' : pcRotuloSinal(pc, q.x.tema)) + '</span></span></label>';
+  }).join('') : '<p class="sub">Nada para a fila.</p>';
+
+  if ((p.a_conferir || []).length) h += '<h5>5 · A conferir na fonte, com você (antes de enviar qualquer coisa)</h5><ul class="pcconferir">' + p.a_conferir.map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') + '</ul>';
+
+  var pe = p.perguntas_para_ela || [];
+  h += '<h5>6 · Perguntas para confirmar com ela</h5>';
+  h += pe.length ? '<p class="sub" style="margin:0 0 6px">O que ficou incerto ou faltou. Marque as que quer fazer: elas vão para o rascunho do chat, e você revisa antes de enviar.</p>' + pe.map(function (q, i) {
+    var marcado = pc.sel.perg['q' + i] === undefined ? true : pc.sel.perg['q' + i], f = q.campo ? dosCampo(q.campo) : null;
+    return '<label class="pclinha"><input type="checkbox" data-pcperg="q' + i + '"' + (marcado ? ' checked' : '') + '> <span>' + esc(q.texto) +
+      (q.motivo ? '<br><small class="sub">Por quê: ' + esc(q.motivo) + (f ? ' · preenche “' + esc(f.l) + '”' : '') + '</small>' : '') + '</span></label>';
+  }).join('') + '<div class="actions" style="margin-top:8px"><button class="btn" type="button" data-pcchat="' + esc(c.id) + '">Levar para o chat</button></div>'
+    : '<p class="sub">A call fechou tudo o que importava: nada a confirmar com ela.</p>';
+
+  h += '<div class="actions" style="margin-top:12px"><button class="btn primary" type="button" data-pcaplicar="' + esc(c.id) + '">Aplicar o que marquei</button>' +
+    '<button class="btn" type="button" data-pcdescartar="' + esc(c.id) + '">Descartar a proposta</button></div>' +
+    (pc.erro ? '<p class="err" role="alert">' + esc(pc.erro) + '</p>' : '') + '</div>';
+  return h;
+}
+
+function poscallCuradoriaHtml(pc) {
+  var cont = pc.cont || [];
+  if (!cont.length) return '<div class="pccur"><h5>Fila de curadoria</h5><p class="sub" style="margin:0">Vazia. Quando o mesmo tema aparecer em 3 pessoas, ele fica pronto para virar padrão.</p></div>';
+  return '<div class="pccur"><h5>Fila de curadoria (3 pessoas = pronto para virar padrão)</h5>' + cont.map(function (t) {
+    var rot = t.tema === 'outro' ? 'Outros temas' : pcRotuloSinal(pc, t.tema);
+    return '<div class="pccurlinha"><span><b>' + esc(rot) + '</b> · ' + t.n_pessoas + (Number(t.n_pessoas) === 1 ? ' pessoa' : ' pessoas') + ' · ' + t.n_itens + (Number(t.n_itens) === 1 ? ' linha' : ' linhas') + '</span>' +
+      (t.pronto && t.tema !== 'outro' ? '<span class="dchip insnovo">pronto para virar padrão</span>' : '') +
+      '<button class="btn" type="button" data-pcresolver="' + esc(t.tema) + '">Virou conteúdo</button></div>';
+  }).join('') + '</div>';
+}
+
+function pintaPoscall(cid) {
+  var box = $('poscall-box'), c = byC(cid);
+  if (box && c && state.pc && state.pc.cid === cid) box.innerHTML = poscallHtml(c);
+}
+async function pcCarregarDados(cid) {
+  var pc = pcEstado(cid); pc.carregando = true;
+  var r = await Promise.all([
+    supabase.from('sinais_vocabulario').select('chave,rotulo,descricao').eq('ativo', true).order('chave'),
+    supabase.rpc('crm_curadoria_contagem')
+  ]);
+  pc.carregando = false; pc.carregou = true;
+  if (r[0].error) pc.vocabErro = true; else pc.vocab = r[0].data || [];
+  pc.cont = r[1].error ? [] : (r[1].data || []);
+  pintaPoscall(cid);
+}
+async function pcLer(cid, t) {
+  var pc = pcEstado(cid), c = byC(cid), transcricao = String(dosValor(c, state.dos.d, state.dos.rasc || {}, 'ligacao_transcricao') || '').trim();
+  if (transcricao.length < 200) { pc.erro = 'Cole a gravação transcrita em "A ligação" (pelo menos algumas frases) e salve ou deixe o texto na caixa.'; return pintaPoscall(cid); }
+  pc.estado = 'lendo'; pc.erro = ''; pintaPoscall(cid);
+  try {
+    var sess = await supabase.auth.getSession();
+    if (!sess.data.session) throw new Error('Entre de novo no CRM.');
+    var res = await fetch(WORKER_BASE + '/api/crm/pos-call/ler', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + sess.data.session.access_token },
+      body: JSON.stringify({ contato_id: cid, transcricao: transcricao, notas: String(dosValor(c, state.dos.d, state.dos.rasc || {}, 'ligacao_resumo') || '').trim() }) });
+    var j = await res.json().catch(function () { return {}; });
+    if (!res.ok || !j.ok) throw new Error(j.error || 'A leitura falhou (' + res.status + ').');
+    pc.prop = j; pc.vocab = j.vocabulario && j.vocabulario.length ? j.vocabulario : pc.vocab; pc.estado = 'proposta'; pc.sel = { campos: {}, sinais: {}, fila: {}, perg: {} }; pc.camadas = {};
+  } catch (e) { pc.estado = 'vazio'; pc.erro = e && e.message ? e.message : 'A leitura falhou.'; }
+  pintaPoscall(cid);
+}
+// Monta o que vai ao banco a partir do que está marcado na tela.
+function pcMontarAplicacao(c, pc, d) {
+  var p = pc.prop.proposta, campos = {}, fila = [], sinais = pcSinaisDela(d);
+  Object.keys(p.campos || {}).forEach(function (k) {
+    var x = p.campos[k], atual = dosValor(c, d, {}, k), igual = atual !== '' && String(atual) === String(x.valor);
+    var marcado = pc.sel.campos[k] === undefined ? (!igual && atual === '' && x.confianca !== 'baixa') : pc.sel.campos[k];
+    if (marcado && !igual) campos[k] = x.valor;
+  });
+  (p.sinais || []).forEach(function (s) { if ((pc.sel.sinais[s.chave] === undefined ? true : pc.sel.sinais[s.chave]) && sinais.indexOf(s.chave) < 0) sinais.push(s.chave); });
+  if (sinais.length !== pcSinaisDela(d).length) campos.sinais = sinais;
+  (p.itens_candidatos || []).forEach(function (it, i) {
+    if (pc.sel.fila['i' + i] === undefined ? true : pc.sel.fila['i' + i]) {
+      fila.push({ tipo: 'item', texto: (it.titulo + ': ' + it.texto).slice(0, 600), tema: it.tema, camada: pc.camadas['i' + i] || it.camada,
+        payload: { fator: it.fator, titulo: it.titulo, texto: it.texto, impacto: it.impacto || '', acao: it.acao || '', motivo_camada: it.motivo_camada, a_conferir: true } });
+    }
+  });
+  (p.perguntas_dela || []).forEach(function (x, i) { if (pc.sel.fila['p' + i] === undefined ? true : pc.sel.fila['p' + i]) fila.push({ tipo: 'pergunta', texto: x.texto, tema: x.tema }); });
+  (p.respostas_dadas || []).forEach(function (x, i) { if (pc.sel.fila['r' + i] === undefined ? true : pc.sel.fila['r' + i]) fila.push({ tipo: 'resposta', texto: x.texto, tema: x.tema }); });
+  return { campos: campos, fila: fila };
+}
+async function pcAplicar(cid, t) {
+  var pc = pcEstado(cid), c = byC(cid), a = pcMontarAplicacao(c, pc, state.dos.d);
+  if (t) t.disabled = true;
+  var r = await supabase.rpc('crm_pos_call_aplicar', { p_proposta: pc.prop.id, p_campos: a.campos, p_fila: a.fila });
+  if (t) t.disabled = false;
+  if (r.error) { pc.erro = 'Não consegui aplicar: ' + (r.error.message || 'tente de novo'); return pintaPoscall(cid); }
+  state.pc = pcInicial(cid); state.pc.vocab = pc.vocab;
+  await reload(); if (state.view === 'pessoa') renderPessoa();
+  toast('Pós-call aplicado: ' + Object.keys(a.campos).length + (Object.keys(a.campos).length === 1 ? ' campo' : ' campos') + ' e ' + a.fila.length + (a.fila.length === 1 ? ' linha na fila' : ' linhas na fila'));
+}
+// Leva as perguntas marcadas para o rascunho do chat dela (aba Plataforma → Chat). Nada é enviado: você revisa e envia, e ela recebe
+// o e-mail de aviso como em toda mensagem sua. O chat aceita até 1000 letras.
+function pcChat(cid) {
+  var pc = pcEstado(cid), c = byC(cid), pe = (pc.prop && pc.prop.proposta.perguntas_para_ela) || [], nome = String((c && c.nome) || '').trim().split(/\s+/)[0];
+  var cab = (nome ? 'Oi, ' + nome + '! ' : 'Oi! ') + 'Para eu acertar o seu caminho, me conta:\n\n', rod = '\n\nPode responder aqui mesmo, com calma.', corpo = '', n = 0, cortadas = 0;
+  pe.forEach(function (q, i) {
+    if (!(pc.sel.perg['q' + i] === undefined ? true : pc.sel.perg['q' + i])) return;
+    var linha = (n + 1) + '. ' + q.texto + '\n';
+    if ((cab + corpo + linha).length + rod.length > 1000) { cortadas++; return; }
+    corpo += linha; n++;
+  });
+  if (!n) return toast(cortadas ? 'As perguntas passam do limite do chat (1000 letras). Marque menos.' : 'Marque pelo menos uma pergunta.');
+  state.chatRasc = (cab + corpo).replace(/\n$/, '') + rod;
+  state.ptab = 'plataforma'; state.pstab = 'chat';
+  renderPessoa();
+  toast('Rascunho no chat: revise e envie.' + (cortadas ? ' ' + cortadas + (cortadas === 1 ? ' pergunta não coube.' : ' perguntas não couberam.') : ''), 4200);
+}
+async function pcDescartar(cid, t) {
+  var pc = pcEstado(cid);
+  if (t) t.disabled = true;
+  var r = await supabase.rpc('crm_pos_call_descartar', { p_proposta: pc.prop.id });
+  if (t) t.disabled = false;
+  if (r.error) return fail('descartar a proposta', r.error);
+  var vocab = pc.vocab; state.pc = pcInicial(cid); state.pc.vocab = vocab; state.pc.carregou = true;
+  pcCarregarDados(cid); toast('Proposta descartada');
+}
+async function pcSalvarSinais(cid, t) {
+  var pc = pcEstado(cid);
+  if (!pc.manual) return;
+  if (t) t.disabled = true;
+  var r = await supabase.rpc('crm_salvar_dossie', { p_contato: cid, p_dados: { sinais: pc.manual } });
+  if (t) t.disabled = false;
+  if (r.error) return fail('salvar os sinais', r.error);
+  pc.manual = null;
+  await reload(); if (state.view === 'pessoa') renderPessoa();
+  toast('Sinais salvos');
+}
+async function pcResolver(cid, tema, t) {
+  if (t) t.disabled = true;
+  var r = await supabase.rpc('crm_curadoria_resolver', { p_tema: tema, p_status: 'virou_conteudo' });
+  if (t) t.disabled = false;
+  if (r.error) return fail('fechar o tema', r.error);
+  pcCarregarDados(cid);
+  toast('Tema fechado: a contagem recomeça do zero');
 }
 
 async function renderPessoa() {
@@ -3046,6 +3276,12 @@ document.addEventListener('click', async function (e) {
     return pintaDossie(byC(state.sel));
   }
   if (t.dataset.dossalvar) return salvarDossie(t.dataset.dossalvar, t);
+  if (t.dataset.pcler) return pcLer(t.dataset.pcler, t);
+  if (t.dataset.pcaplicar) return pcAplicar(t.dataset.pcaplicar, t);
+  if (t.dataset.pcdescartar) return pcDescartar(t.dataset.pcdescartar, t);
+  if (t.dataset.pcchat) return pcChat(t.dataset.pcchat);
+  if (t.dataset.pcsalvarsinais) return pcSalvarSinais(t.dataset.pcsalvarsinais, t);
+  if (t.dataset.pcresolver) return pcResolver(state.sel, t.dataset.pcresolver, t);
   if (t.id === 'onb-enviar') return onbEnviar();
   if (t.id === 'onb-abrir') return openPessoa(ONB.contato, 'ficha');
   if (t.id === 'onb-outra') { ONB = onbInicial(); return carregarOnboarding(); }
@@ -3239,6 +3475,22 @@ document.addEventListener('input', function (e) {
   }
 });
 document.addEventListener('change', function (e) {
+  var dsx = e.target.dataset || {}, cidPc = state.sel;
+  if (state.pc && state.pc.cid === cidPc && (dsx.pcsinal !== undefined || dsx.pccampo !== undefined || dsx.pcsinalprop !== undefined || dsx.pcfila !== undefined || dsx.pccamada !== undefined || dsx.pcperg !== undefined)) {
+    var pcx = state.pc;
+    if (dsx.pcsinal !== undefined) {
+      var cur = (pcx.manual || pcSinaisDela(state.dos && state.dos.d)).filter(function (k) { return k !== dsx.pcsinal; });
+      if (e.target.checked) cur.push(dsx.pcsinal);
+      pcx.manual = cur;
+      var bt = document.querySelector('[data-pcsalvarsinais]'); if (bt) bt.disabled = false;
+    }
+    if (dsx.pccampo !== undefined) pcx.sel.campos[dsx.pccampo] = !!e.target.checked;
+    if (dsx.pcsinalprop !== undefined) pcx.sel.sinais[dsx.pcsinalprop] = !!e.target.checked;
+    if (dsx.pcfila !== undefined) pcx.sel.fila[dsx.pcfila] = !!e.target.checked;
+    if (dsx.pcperg !== undefined) pcx.sel.perg[dsx.pcperg] = !!e.target.checked;
+    if (dsx.pccamada !== undefined) pcx.camadas[dsx.pccamada] = e.target.value;
+    return;
+  }
   if (!e.target.dataset || !e.target.dataset.radarsel || !RS) return;
   if (e.target.checked) RS.sel[e.target.dataset.radarsel] = true; else delete RS.sel[e.target.dataset.radarsel];
   var go = $('radar-enviar-go'); if (go) go.textContent = radarRotuloEnviar();

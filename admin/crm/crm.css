@@ -657,3 +657,17 @@ select.st-in{height:36px; padding:0 8px}
 .procs-tit{font-size:14px}
 .procs-sinais{margin:4px 0 0; padding-left:18px; display:flex; flex-direction:column; gap:3px; font-size:13px}
 .panel[hidden]{display:none}
+
+/* Pós-call (crm.js: poscallHtml) */
+.poscall h5{font-size:12px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-3); margin:16px 0 6px}
+.pccheck{display:inline-flex; align-items:center; gap:6px; margin:0 14px 6px 0; font-size:13.5px; cursor:pointer}
+.pclinha{display:flex; gap:8px; align-items:flex-start; padding:6px 0; border-top:1px solid var(--line); font-size:13.5px; line-height:1.5; cursor:pointer}
+.pclinha input{margin-top:4px; flex:none}
+.pcitem{border-top:1px solid var(--line); padding-bottom:8px}
+.pcitem .pclinha{border-top:0}
+.pcitem .sel{margin-left:26px}
+.pcconferir{margin:0; padding-left:20px; font-size:13.5px; line-height:1.55}
+.pccur{margin-top:14px; border-top:1px solid var(--line); padding-top:4px}
+.pccurlinha{display:flex; align-items:center; gap:10px; flex-wrap:wrap; justify-content:space-between; padding:6px 0; font-size:13.5px}
+.pcmapa{margin:0; padding-left:20px; font-size:13.5px; line-height:1.5}
+.pcmapa li{margin-bottom:6px}

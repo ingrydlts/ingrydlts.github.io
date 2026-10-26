@@ -804,7 +804,7 @@ Testes automáticos: `cd admin/crm/db/testes && node planos.test.mjs`.
 O chat com a pessoa só existe dentro do app; sem um gancho ela não volta. Toda mensagem ou proposta sua no chat (aba Plataforma → Chat, ou "Proposta") agora dispara `POST /api/crm/chat-aviso` (só admin), que manda a ela um e-mail de serviço: "a Ingryd te respondeu no Por Dentro", com o começo da mensagem e o link da plataforma.
 
 - **Sem configuração nova**: usa o Brevo, o remetente e o `CRM_REPLY_TO` que já existem. **Não precisa de SQL**; o envio fica registrado em `emails_enviados` com `modelo = 'chat_aviso'` (aparece no histórico da ficha).
-- **Um aviso por pessoa a cada 30 minutos** (`CRM_CHAT_AVISO_MIN`): várias mensagens seguidas geram um e-mail só, que leva ao mesmo chat.
+- **Um e-mail a cada interação sua**: o chat virou a Central de perguntas do app (a pessoa pergunta, você responde em até 3 dias úteis), então cada resposta ou proposta gera o seu aviso. Antes saía um por pessoa a cada 30 minutos (`CRM_CHAT_AVISO_MIN`, removido); se o ritmo de respostas encher a caixa dela, é aqui que se volta a limitar. O e-mail explica como continuar: pergunta completa, resposta em até 3 dias úteis, ligação se o assunto for grande.
 - É e-mail de serviço (sem rodapé de descadastro nem exigência de "novidades"), porque responde a uma conversa dela com você.
 - Se o e-mail falhar, a mensagem já foi para o chat; o painel avisa "o e-mail de aviso não saiu".
 - Precisa só **publicar o Worker de novo** (`wrangler deploy`) para a rota existir.
@@ -817,3 +817,20 @@ Na ficha (`/admin/crm/` → pessoa → **Plataforma**) há a subaba **Checklist*
 - Cada sugestão tem **Mensagem no chat** (texto pronto; ao enviar, ela recebe o aviso por e-mail da seção 27), **Nota no app dela** (insight manual), **E-mail** e, quando cabe, **Propor 1:1**. Nada sai sozinho: o texto vem preenchido para você revisar.
 - Item atrasado tem o botão **Cobrar** e mostra "você cobrou há N dias" (achado pelo nome do item nas suas mensagens do chat). Se você cobrou há menos de 3 dias, a sugestão vira "Aguardando" e desce na lista, para não cobrar em dobro.
 - Os limites (7 dias, 72 h, 3 dias) são as constantes `CHK_*` no `crm.js`.
+
+## 29. Pós-call: a transcrição da call vira uma proposta (Dossiê, sinais, fila de curadoria)
+
+`POST /api/crm/pos-call/ler` (só admin): recebe `{ contato_id, transcricao, notas? }`, manda para a API da Anthropic e devolve uma
+**proposta** validada, gravada em `pos_call_propostas` como `pendente` (`admin/crm/db/crm-pos-call.sql`). Nada vai para a ficha
+daqui: quem aplica é a Ingryd, na tela do CRM (Dossiê aberto → Pós-call), por `crm_pos_call_aplicar`.
+
+- **Sem configuração nova**: usa `ANTHROPIC_API_KEY`, `ANTHROPIC_MODEL` e os preços opcionais do Onboarding (seção 24). Precisa rodar `crm-pos-call.sql`
+  (depois de `crm-dossie.sql`) e **publicar o Worker de novo** (`wrangler deploy`).
+- **A transcrição não é guardada** (vive na memória do pedido). Fica só o resultado, com trechos de até 160 letras como prova de cada fato.
+- **Schema fechado**: fatos só nas chaves do Dossiê; sinais e temas só do vocabulário (`sinais_vocabulario`, lido a cada pedido); no máximo 3 itens
+  candidatos, sempre marcados "a conferir". Resposta fora do formato: uma nova tentativa; se falhar de novo, nada é gravado.
+- **Cache por hash** (contato + transcrição + notas): a mesma entrada devolve a proposta pendente, sem nova chamada à IA.
+- **Limite**: 10 leituras a cada 10 minutos por admin.
+- **Transcrição de voz**: o prompt manda descobrir quem fala (só vale como fato da pessoa o que ELA disse), corrige erros comuns do reconhecimento de voz e devolve `mapa_da_call` (até 8 blocos por assunto) e `perguntas_para_ela` (até 6, uma por incerteza, com o campo do Dossiê que a resposta preencheria). Proposta antiga, sem esses dois campos, continua válida.
+- O texto da call é tratado como dado, nunca como instrução; o prompt proíbe nome, telefone, e-mail e documentos nos textos.
+Testes: `node cms-oauth-worker/testes/crm-pos-call.test.mjs` (Worker) e, em `admin/crm/db/testes`, `npm run test:poscall` (SQL, com `APP_DB_DIR`) e `npm run test:poscall-ui`.
