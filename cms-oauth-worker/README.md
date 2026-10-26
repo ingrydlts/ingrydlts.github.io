@@ -817,3 +817,19 @@ Na ficha (`/admin/crm/` → pessoa → **Plataforma**) há a subaba **Checklist*
 - Cada sugestão tem **Mensagem no chat** (texto pronto; ao enviar, ela recebe o aviso por e-mail da seção 27), **Nota no app dela** (insight manual), **E-mail** e, quando cabe, **Propor 1:1**. Nada sai sozinho: o texto vem preenchido para você revisar.
 - Item atrasado tem o botão **Cobrar** e mostra "você cobrou há N dias" (achado pelo nome do item nas suas mensagens do chat). Se você cobrou há menos de 3 dias, a sugestão vira "Aguardando" e desce na lista, para não cobrar em dobro.
 - Os limites (7 dias, 72 h, 3 dias) são as constantes `CHK_*` no `crm.js`.
+
+## 29. Pós-call: a transcrição da call vira uma proposta (Dossiê, sinais, fila de curadoria)
+
+`POST /api/crm/pos-call/ler` (só admin): recebe `{ contato_id, transcricao, notas? }`, manda para a API da Anthropic e devolve uma
+**proposta** validada, gravada em `pos_call_propostas` como `pendente` (`admin/crm/db/crm-pos-call.sql`). Nada vai para a ficha
+daqui: quem aplica é a Ingryd, na tela do CRM (Dossiê aberto → Pós-call), por `crm_pos_call_aplicar`.
+
+- **Sem configuração nova**: usa `ANTHROPIC_API_KEY`, `ANTHROPIC_MODEL` e os preços opcionais do Onboarding (seção 24). Precisa rodar `crm-pos-call.sql`
+  (depois de `crm-dossie.sql`) e **publicar o Worker de novo** (`wrangler deploy`).
+- **A transcrição não é guardada** (vive na memória do pedido). Fica só o resultado, com trechos de até 160 letras como prova de cada fato.
+- **Schema fechado**: fatos só nas chaves do Dossiê; sinais e temas só do vocabulário (`sinais_vocabulario`, lido a cada pedido); no máximo 3 itens
+  candidatos, sempre marcados "a conferir". Resposta fora do formato: uma nova tentativa; se falhar de novo, nada é gravado.
+- **Cache por hash** (contato + transcrição + notas): a mesma entrada devolve a proposta pendente, sem nova chamada à IA.
+- **Limite**: 10 leituras a cada 10 minutos por admin.
+- O texto da call é tratado como dado, nunca como instrução; o prompt proíbe nome, telefone, e-mail e documentos nos textos.
+Testes: `node cms-oauth-worker/testes/crm-pos-call.test.mjs` (Worker) e, em `admin/crm/db/testes`, `npm run test:poscall` (SQL, com `APP_DB_DIR`) e `npm run test:poscall-ui`.

@@ -85,7 +85,7 @@ await pagina('ficha', {});
 const tot0 = mod.dosProgresso(mod.state.dos && { id: 'c1', persona: 'au_pair_estudante' }, {}, {}).tot;
 digita('ano_au_pair', 'segundo');
 check('segundo ano passa a perguntar o fim do contrato', /data-dk="contrato_fim"/.test(el('dossie-box').innerHTML));
-check('o que você digitou fica no rascunho, não no banco', mod.state.dos.rasc.ano_au_pair === 'segundo' && writes.length === 0 && rpcs.length === 0);
+check('o que você digitou fica no rascunho, não no banco', mod.state.dos.rasc.ano_au_pair === 'segundo' && writes.length === 0 && rpcs.filter((r) => r.n !== 'crm_curadoria_contagem').length === 0);
 check('o total de perguntas acompanha a situação', mod.dosProgresso({ id: 'c1', persona: 'au_pair_estudante' }, {}, { ano_au_pair: 'segundo' }).tot > tot0 - 1);
 await pagina('plataforma', {});
 check('trocar de aba não perde o que digitou', mod.state.dos.rasc.ano_au_pair === 'segundo');

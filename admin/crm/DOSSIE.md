@@ -64,3 +64,32 @@ sim"). Botões rápidos: Propor 1:1 de 20 min (abre a proposta pronta), Pergunta
 prazo (preenchem a caixa, você revisa antes de enviar) e Nova proposta. No app dela, o seu avatar flutua e abre o mesmo
 chat; ela pode escrever ou tocar em "Quero um 1:1 de 20 min", "Tenho uma dúvida" ou "Ajuda com um documento", e isso
 chega aqui como etiqueta. Mensagens dela sem ler aparecem no título do chat e como chip no topo do dossiê.
+
+## Pós-call: a call fluida vira Dossiê, sinais e fila de curadoria (db/crm-pos-call.sql)
+
+A call sai do roteiro; o que sai dela cai sempre nos mesmos quatro baldes. No Dossiê aberto, o painel **Pós-call** (acima do
+checklist) trabalha em cima da **Gravação transcrita** do bloco "A ligação":
+
+| Balde | O que é | Onde mora |
+|---|---|---|
+| Fatos | "ela tem, ela é, ela quer" | chaves do Dossiê (as novas estão no bloco **Sinais da call**, que não entra na barra de progresso) |
+| Leitura | a sua interpretação da situação | `sinais` no Dossiê: chaves do vocabulário fechado `sinais_vocabulario` (o app lê como `sinal_<chave>`) |
+| Perguntas e respostas | o que ela quis saber e o que você explicou | `curadoria_fila`, por tema (uma chave do vocabulário, ou `outro`) |
+| Itens candidatos (até 3) | notícias que a call sugere para o Radar | `curadoria_fila` (tipo `item`), sempre **a conferir**, com a camada que VOCÊ escolhe |
+
+Chaves novas: `formacao_alvo`, `grupo_area`, `area_interesse`, `ensino_medio_ano`, `tem_graduacao`, `frances_gargalo`,
+`tem_aula_frances`, `plano_b`.
+
+**Ler a call com IA** (Worker, `POST /api/crm/pos-call/ler`) só propõe. Você marca o que vale e aplica; nada entra na ficha
+antes. Fato novo de confiança baixa vem desmarcado, e o que você já digitou só muda se você marcar. A mesma transcrição
+não gasta uma leitura nova (hash). A transcrição não é guardada: só a proposta (com trechos de até 160 letras como prova).
+
+**Padrão ou individual?** Padrão = você diria o mesmo a qualquer pessoa na mesma situação (notícia do Radar, material ou
+assunto, com `mostrarSe` nos sinais). Individual = depende de um dado só dela (item do Radar com uma nota sua).
+
+**Regra dos 3**: um tema com 3 pessoas diferentes na fila (perguntas e respostas abertas) fica "pronto para virar padrão".
+Ao criar o conteúdo, clique em **Virou conteúdo** no tema: as linhas fecham e a contagem recomeça. Até lá, o assunto fica
+como item com nota.
+
+Os sinais também se marcam à mão, sem IA, na caixa de seleção do painel. Novo sinal = uma linha em `sinais_vocabulario`
+(revisão semanal; só entra se já houver, ou puder haver, conteúdo para ele).
