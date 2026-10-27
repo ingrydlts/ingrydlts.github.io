@@ -141,7 +141,7 @@ function lerDosAberto() { try { return localStorage.getItem('crm_dossie_aberto')
 var C = [], Q = [], L = [], R = [], RM = {}, SUBS = {}, M = null, MV = [];
 // Processos sugeridos esperando a sua decisão (db/crm-processos-sugeridos.sql). Sem a migração, fica vazio.
 var PSUG = [];
-var state = { dosAberto: lerDosAberto(), dos: null, pc: null, ag: null, chatCtl: null, chatEditado: false, chatSugPula: 0, chatAutoTexto: '', ptab: null, pstab: 'assistente', pdias: {}, int: null, chatRasc: '', rascunho: {}, view: 'hoje', persona: '', sub: '', urg: '', stage: '', orig: '', camp: '', q: '', sel: null, qs: 'nova', qsel: null, inbox: 'perguntas', rs: 'nova', rsel: null, preset: 'todos', seg: '', prevView: 'contatos' };
+var state = { dosAberto: lerDosAberto(), dos: null, pc: null, ag: null, resp: null, chatCtl: null, chatEditado: false, chatSugPula: 0, chatAutoTexto: '', ptab: null, pstab: 'assistente', pdias: {}, int: null, chatRasc: '', rascunho: {}, view: 'hoje', persona: '', sub: '', urg: '', stage: '', orig: '', camp: '', q: '', sel: null, qs: 'nova', qsel: null, inbox: 'perguntas', rs: 'nova', rsel: null, preset: 'todos', seg: '', prevView: 'contatos' };
 var activeCid = null;
 var me = null;
 
@@ -958,6 +958,7 @@ async function atualizaAoVivo(cid, forca) {
   var ca = $('chk-aba'); if (ca) ca.innerHTML = checklistPanel(c);
   var cl = $('chk-lateral'); if (cl) cl.innerHTML = checklistLateralHtml(state.dos && state.dos.chk, Date.now(), 'font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-3); margin:0 0 8px');
   pintaChat();   // só o fio: o que você está digitando na caixa fica
+  respVerificar(c);
   var ib = $('int-box'); if (ib) ib.innerHTML = interacoesHtml(state.int);
   var rl = $('resumo-lateral'); if (rl) rl.innerHTML = resumoPlatHtml(H4_PLAT);
   var ae = document.activeElement;   // não redesenha o dossiê enquanto você digita nele
@@ -1028,7 +1029,7 @@ function chatPanelHtml(c, chat, h4) {
   return '<div class="panel" style="padding:16px"><h4 style="' + h4 + '">Chat com ela' + (nova ? ' <span class="count">' + nova + (nova === 1 ? ' nova' : ' novas') + '</span>' : '') + '</h4>' +
     '<p class="sub" style="margin:0 0 10px">Ela recebe um e-mail a cada mensagem sua. Combinado com ela: perguntas completas, resposta em até 3 dias úteis.</p>' +
     '<div class="cfio chatfio" id="chat-fio" aria-live="polite">' + chatFioHtml(chat, Date.now()) + '</div>' +
-    '<div id="chat-sug" style="margin-top:10px">' + chatSugestaoHtml(c, sug) + '</div>' +
+    '<div id="chat-resp" style="margin-top:10px">' + respHtml(c) + '</div>' + '<div id="chat-sug" style="margin-top:6px">' + chatSugestaoHtml(c, sug) + '</div>' +
     '<textarea class="notebox" id="chat-txt" maxlength="1000" placeholder="Escreva para ela. Aparece no chat do app." aria-label="Mensagem para ela" style="min-height:96px;margin-top:8px">' + esc(pref) + '</textarea>' +
     '<div id="chat-ctl">' + chatControlesHtml(c, sug) + '</div>' +
     '<div id="chat-agendadas">' + chatAgendadasHtml(c) + '</div>' +
@@ -1778,6 +1779,7 @@ async function pcResolver(cid, tema, t) {
 }
 
 async function renderPessoa() {
+  state.resp = null;   // a faixa "anotei no Dossiê" vale só para esta abertura da ficha (o registro fica em dossie_origem)
   state.ag = null;   // as mensagens agendadas dela são lidas de novo a cada vez que a ficha abre (o Worker pode ter enviado alguma)
   var c = byC(state.sel);
   if (!c) { $('pessoa-page').innerHTML = '<div class="empty">Pessoa não encontrada.</div>'; return; }
@@ -1807,6 +1809,7 @@ async function renderPessoa() {
   var lp = eventos.filter(function (e) { return e.tipo === 'link_pagamento_enviado'; })[0];
   state.pagto = lp ? { quando: lp.criado_em, rotulo: (lp.dados && lp.dados.rotulo) || (lp.dados && lp.dados.plano) || '' } : null;
   state.mails = mails;
+  respVerificar(c);   // cada resposta dela no chat vira dado no Dossiê
   var last = function (f) { var x = cons.filter(function (k) { return k.finalidade === f; })[0]; return x ? x.aceito : false; };
   var perg = Q.filter(function (x) { return x.contato_id === c.id; });
   var resps = R.filter(function (x) { return x.contato_id === c.id; });
@@ -3052,10 +3055,20 @@ function pergFila(c, d, rasc, agora) {
   itens.sort(function (a, b) { var fa = a.feita || a.agendada ? 1 : 0, fb = b.feita || b.agendada ? 1 : 0; return fa - fb || b.def.p - a.def.p || a.ordem - b.ordem; });
   return { itens: itens, livres: itens.filter(function (i) { return !i.feita && !i.agendada; }), msgs: msgs, semChat: !chat, semConta: !!(state.dos && state.dos.chk && state.dos.chk.semConta) };
 }
+// O que foi anotado a partir da última resposta dela (para o agradecimento mostrar que virou dado): "certificado de francês: ainda não".
+function respAnotadas(c) {
+  var chat = state.chat && !state.chat.err ? state.chat : null, org = (state.dos && state.dos.origem) || {}, d = (state.dos && state.dos.d) || {}; if (!chat) return '';
+  var msgs = chat.msgs.slice().sort(function (a, b) { return Number(a.id) - Number(b.id); }), ult = 0;
+  for (var i = msgs.length - 1; i >= 0 && msgs[i].de === 'pessoa'; i--) if (!ult) ult = Number(msgs[i].id);
+  if (!ult) return '';
+  return Object.keys(org).filter(function (k) { return org[k] && org[k].origem === 'chat' && !org[k].ignorada && Number(org[k].msg) === ult && dosValor(c, d, {}, k) !== ''; }).slice(0, 2).map(function (k) {
+    var f = dosCampo(k); return f ? f.l.charAt(0).toLowerCase() + f.l.slice(1).replace(/\?$/, '') + ': ' + pcTextoCampo(f, dosValor(c, d, {}, k)).toLowerCase() : '';
+  }).filter(Boolean).join('; ');
+}
 // Texto de uma pergunta do roteiro já agradecendo a resposta anterior: a recompensa e a próxima pergunta numa mensagem só.
 function pergAgradecimento(c, prox) {
   var nome = String((c && c.nome) || '').trim().split(/\s+/)[0];
-  var cab = (nome ? 'Obrigada, ' + nome + '! ' : 'Obrigada! ') + 'Com a sua resposta eu ajustei o seu caminho: dá uma olhada na sua Home e no seu Radar, que já mudaram.';
+  var anot = respAnotadas(c), cab = (nome ? 'Obrigada, ' + nome + '! ' : 'Obrigada! ') + (anot ? 'Anotei no seu perfil: ' + anot + '. ' : '') + 'Com a sua resposta eu ajustei o seu caminho: dá uma olhada na sua Home e no seu Radar, que já mudaram.';
   if (!prox) return cab + ' Se surgir qualquer dúvida, é só escrever aqui.';
   return cab + '\n\nE já aproveito para a próxima pergunta: ' + prox.def.q + (prox.def.g ? '\n\n' + prox.def.g : '') + '\n\nPode me responder por aqui mesmo, com calma.';
 }
@@ -3070,6 +3083,194 @@ function pergDoPosCall(c, f, pendentes) {
     return i.def.q && !hist.some(function (m) { return String(m.texto || '').toLowerCase().indexOf(low) >= 0; }) && !pendentes.some(function (a) { return String(a.texto || '').toLowerCase().indexOf(low) >= 0; });
   });
 }
+// ---------- Cada resposta dela vira dado: o chat alimenta o Dossiê, e o Dossiê alimenta as regras do app ----------
+// Quando ela responde a uma pergunta do roteiro, o CRM lê a resposta com um leitor fechado (sem IA: sim/não, opções, datas, números, cidade) e:
+//   confiança alta   grava no Dossiê na hora e marca a origem ("Resposta dela no chat") em contatos.dossie_origem. O app copia o Dossiê para o perfil,
+//                    então mostrarSe/ocultarSe, checklist, materiais e Radar mudam sozinhos; as perguntas condicionais (q) do Dossiê passam a valer na fila.
+//   confiança média  aparece como "Entendi X como Y: registrar?" (um clique) e nada é gravado antes.
+//   não entendida    fica de fora; o campo segue vazio e a pergunta continua na fila.
+// Só preenche campo VAZIO (nunca sobrescreve o que você digitou) e só uma vez por resposta (o marcador msg em dossie_origem evita regravar, mesmo se você apagar o valor).
+var RESP_YN = { certificado_frances: ['tenho', 'nao'], comprovante_endereco: ['sim', 'nao'], cfPrazoCursoTem: ['sim', 'nao'], conta_anef: ['sim', 'nao'] };
+var RESP_PAD = {
+  ano_au_pair: [['primeiro', /\b(primeiro|1o|1 ano)\b/], ['segundo', /\b(segundo|2o|2 ano)\b/]],
+  intencao_au_pair: [['renovar', /renov/], ['migrar_estudante', /(estudante|migrar|estudar|status|faculdade|universidade)/]],
+  numero_secu: [['nao_pedi', /(nao pedi|nem pedi|nao fiz o pedido)/], ['aguardando', /(aguard|esper|pedi|solicitei|em andamento|nao recebi|nao chegou)/], ['recebi', /(recebi|ja tenho|chegou)/]],
+  certificado_frances_qual: [['delf', /\bdelf\b/], ['dalf', /\bdalf\b/], ['tcf', /\btcf\b/], ['tef', /\btef\b/]],
+  nivel_frances: [['a1_a2', /\b(a1|a2|iniciante|basico)\b/], ['b1', /\bb1\b/], ['b2', /\bb2\b/], ['c1_mais', /(\bc1\b|\bc2\b|fluente|avancad)/], ['nao_sei', /nao sei/]],
+  trilha_estudo: [['fle', /\bfle\b/], ['licence', /(licence|licenciatura|graduacao|\bl1\b|\bl2\b|\bl3\b)/], ['master_alternancia', /(master|mestrado|alternancia)/], ['indefinido', /(nao sei|indecis|nao decidi|sem ideia)/]],
+  maior_preocupacao: [['prazo', /(prazo|tempo)/], ['dinheiro', /(dinheiro|custo|caro|financ|grana|recurso)/], ['papelada', /(papel|document|burocra)/], ['moradia', /(moradia|casa|apartamento|aluguel)/], ['frances', /(frances|idioma|lingua)/]],
+  profissao_regulamentada: [['enfermagem', /(enfermag|enfermeir)/], ['odontologia_medicina', /(odont|dentist|medic)/], ['outra', /(advog|arquitet|farmac|psicolog|fisioter|veterin|outra)/], ['nao', /^(nao|n)\b|nenhuma/]],
+  cfNivel: [['lpro', /(licence pro|\blp\b)/], ['l1', /(\bl1\b|1o ano de licence|primeiro ano)/], ['l2l3', /(\bl2\b|\bl3\b)/], ['master', /(master|mestrado)/], ['escola', /(escola|engenharia|comercio)/], ['arq', /(arquitetura|\bensa\b)/]],
+  cfTeste: [['inscrito', /(inscrit|marcad|agendad)/], ['nada', /(nao fiz|nem fiz|nao tenho|nada|ainda nao)/], ['tenho', /(tenho|ja fiz|resultado|aprovad)/]]
+};
+var RESP_MESES = { janeiro: 1, jan: 1, fevereiro: 2, fev: 2, marco: 3, mar: 3, abril: 4, abr: 4, maio: 5, mai: 5, junho: 6, jun: 6, julho: 7, jul: 7, agosto: 8, ago: 8, setembro: 9, set: 9, outubro: 10, out: 10, novembro: 11, nov: 11, dezembro: 12, dez: 12 };
+function respNorm(s) { return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[ºª°]/g, 'o').replace(/\s+/g, ' ').trim(); }
+function respSimNao(t) {
+  var n = respNorm(t).replace(/[!?.,;:]+/g, ' ').replace(/\s+/g, ' ').trim();
+  if (!n || /\b(mas|porem|so que|depende|talvez)\b/.test(n)) return null;
+  if (/^(nao sei|nao entendi)/.test(n)) return 'nao_sei';
+  if (/^(sim|s|ja|claro|tenho|consigo|positivo|isso|uhum|aham|com certeza|ok)\b/.test(n)) return true;
+  if (/^(nao|n|ainda nao|nem|nunca|negativo|nada)\b/.test(n)) return false;
+  return null;
+}
+function respOpcoes(k, f, n) {
+  var yn = RESP_YN[k];
+  if (yn) { var r = respSimNao(n); if (r === true) return yn[0]; if (r === false) return yn[1]; if (r === 'nao_sei' && (f.o || []).some(function (o) { return o[0] === 'nao_sei'; })) return 'nao_sei'; return null; }
+  if (k === 'faixa_idade') {
+    var ns = (n.match(/\b\d{2}\b/g) || []).map(Number).filter(function (x) { return x >= 16 && x <= 80; });
+    if (!ns.length) return /menos de 26/.test(n) ? 'menos_26' : null;
+    var bs = ns.map(function (x) { return x < 26 ? 'menos_26' : x < 30 ? '26_29' : '30_mais'; });
+    return bs.every(function (b) { return b === bs[0]; }) ? bs[0] : null;
+  }
+  var pad = RESP_PAD[k], achou = [];
+  if (pad) pad.forEach(function (p) { if (p[1].test(n)) achou.push(p[0]); });
+  else (f.o || []).forEach(function (o) { var l = respNorm(o[1]); if (l.length >= 3 && n.indexOf(l) >= 0) achou.push(o[0]); });
+  if (k === 'numero_secu' && achou.length > 1) achou = [achou[0]];   // "ainda não recebi" bate em aguardando e recebi: vale o primeiro, que é o mais cauteloso
+  if (k === 'cfTeste' && achou.length > 1) achou = [achou[0]];
+  return achou.length === 1 ? achou[0] : null;
+}
+function respData(n, k, agora) {
+  var a = new Date(agora), hoje = new Date(a.getFullYear(), a.getMonth(), a.getDate()), d, m, y, inf = false, x;
+  if ((x = n.match(/\b(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{2}|\d{4})\b/))) { d = +x[1]; m = +x[2]; y = +x[3]; }
+  else if ((x = n.match(/\b(\d{1,2})(?: de)? (janeiro|fevereiro|marco|abril|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro|jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez)\b(?:(?: de)? (\d{4}|\d{2}))?\b/))) { d = +x[1]; m = RESP_MESES[x[2]]; y = x[3] ? +x[3] : null; }
+  else if ((x = n.match(/\b(\d{1,2})[\/.\-](\d{1,2})\b/))) { d = +x[1]; m = +x[2]; y = null; }
+  else return null;
+  if (y !== null && y < 100) y += 2000;
+  if (y === null) {   // sem ano: vencimento é o próximo, chegada é a última
+    inf = true; y = hoje.getFullYear();
+    var t = new Date(y, m - 1, d);
+    if (k === 'documento_vencimento' || k === 'data_prova_frances_master' || k === 'cfPrazoCurso') { if (t < hoje) y++; }
+    else if (k === 'data_chegada') { if (t > hoje) y--; }
+    else return null;
+  }
+  var dt = new Date(y, m - 1, d);
+  if (m < 1 || m > 12 || d < 1 || dt.getMonth() !== m - 1 || y < 2000 || y > 2100) return null;
+  return { valor: y + '-' + pergPad(m) + '-' + pergPad(d), conf: inf ? 'media' : 'alta' };
+}
+function respMes(n, agora) {
+  var a = new Date(agora), m, y, inf = false, x;
+  if ((x = n.match(/\b(\d{1,2})[\/.\-](\d{4}|\d{2})\b/))) { m = +x[1]; y = +x[2]; }
+  else if ((x = n.match(/\b(\d{4})-(\d{2})\b/))) { y = +x[1]; m = +x[2]; }
+  else if ((x = n.match(/\b(janeiro|fevereiro|marco|abril|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro|jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez)\b(?:(?: de)? |[\/.\-])?(\d{4}|\d{2})?\b/))) { m = RESP_MESES[x[1]]; y = x[2] ? +x[2] : null; }
+  else return null;
+  if (y !== null && y < 100) y += 2000;
+  if (y === null) { inf = true; y = a.getFullYear(); if (m < a.getMonth() + 1) y++; }
+  if (m < 1 || m > 12 || y < 2000 || y > 2100) return null;
+  return { valor: y + '-' + pergPad(m) + '-01', conf: inf ? 'media' : 'alta' };
+}
+// O leitor: devolve { valor, rotulo, conf } (valor no formato que crm_salvar_dossie espera) ou null quando não dá para ter certeza.
+function respInterpreta(f, texto, agora) {
+  var n = respNorm(texto), k = f.k, v = null;
+  if (!n || n.length > 280) return null;
+  if (f.t === 'sn') { var sn = respSimNao(n); if (sn === true || sn === false) return { valor: sn, rotulo: sn ? 'Sim' : 'Não', conf: n.length <= 80 ? 'alta' : 'media' }; return null; }
+  if (f.t === 'op') { v = respOpcoes(k, f, n); if (v === null) return null; var o = (f.o || []).filter(function (x) { return x[0] === v; })[0]; return o ? { valor: v, rotulo: o[1], conf: n.length <= 80 ? 'alta' : 'media' } : null; }
+  if (f.t === 'dt') { var dd = respData(n, k, agora); return dd ? { valor: dd.valor, rotulo: fmtDay(dd.valor), conf: dd.conf } : null; }
+  if (f.t === 'mes') { var mm = respMes(n, agora); return mm ? { valor: mm.valor, rotulo: pcTextoMes(mm.valor), conf: mm.conf } : null; }
+  if (DOS_NUM[k]) { var an = n.match(/\b(19|20)\d{2}\b/); return an ? { valor: parseInt(an[0], 10), rotulo: an[0], conf: 'alta' } : null; }
+  if (f.t === 'tx') {
+    var c = String(texto).replace(/[!?.]+$/g, '').replace(/^(oi|ola)[,! ]+/i, '').replace(/^(eu )?(moro|estou|to|vivo|sou)( de| em| na| no| aqui em)? /i, '').replace(/^(em|na|no|de) /i, '').trim();
+    var ws = c.split(/\s+/);
+    if (k !== 'cidade' || !c || ws.length > 3 || !/^[\p{L}][\p{L}' \-]*$/u.test(c) || /^(nao|ainda|sim)\b/.test(respNorm(c))) return null;
+    c = c.replace(/(^|[\s-])(\p{L})/gu, function (_, a, b) { return a + b.toUpperCase(); });
+    return { valor: c, rotulo: c, conf: ws.length <= 2 ? 'alta' : 'media' };
+  }
+  return null;
+}
+function pcTextoMes(v) { var p = String(v).split('-'); return ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'][+p[1] - 1] + '/' + p[0]; }
+// De que campo era cada pergunta que você mandou: o catálogo, as do Pós-call e as agendadas (que guardam o campo).
+function respPerguntas(c) {
+  var out = [];
+  Object.keys(PERGUNTAS).forEach(function (k) { if (PERG_NAO.indexOf(k) < 0) out.push({ q: PERGUNTAS[k].q.toLowerCase(), campo: k }); });
+  var pc = state.pc && state.pc.cid === c.id && state.pc.prop && state.pc.prop.proposta ? state.pc.prop.proposta.perguntas_para_ela || [] : [];
+  pc.forEach(function (q) { var t = String(q.texto || '').trim(); if (q.campo && t) out.push({ q: t.charAt(0).toLowerCase() + t.slice(1).toLowerCase(), campo: q.campo }); });
+  return out;
+}
+// Os pares pergunta → resposta do histórico: { campo, f, texto, msgId } com a resposta mais recente de cada campo.
+function respPares(c) {
+  var chat = state.chat && !state.chat.err && state.chat.cid === c.id ? state.chat : null; if (!chat) return [];
+  var msgs = (chat.msgs || []).slice().sort(function (a, b) { return Number(a.id) - Number(b.id); }), qs = respPerguntas(c), ag = state.ag && state.ag.cid === c.id && !state.ag.erro ? state.ag.itens || [] : [], por = {};
+  msgs.forEach(function (m, i) {
+    if (m.de !== 'ingryd' || m.tipo === 'proposta') return;
+    var low = String(m.texto || '').toLowerCase(), campo = null, pos = -1;
+    qs.forEach(function (x) { var p = low.lastIndexOf(x.q); if (p >= 0 && p > pos) { pos = p; campo = x.campo; } });
+    if (!campo) { var a = ag.filter(function (x) { return x.campo && String(x.texto || '').trim() === String(m.texto || '').trim(); })[0]; if (a) campo = a.campo; }
+    if (!campo) return;
+    var resp = [], ult = 0;
+    for (var j = i + 1; j < msgs.length && msgs[j].de === 'pessoa'; j++) { resp.push(String(msgs[j].texto || '')); ult = Number(msgs[j].id); }
+    if (resp.length) por[campo] = { campo: campo, f: dosCampo(campo), texto: resp.join(' . '), msgId: ult };
+  });
+  return Object.keys(por).map(function (k) { return por[k]; }).filter(function (x) { return x.f; });
+}
+// O que fazer com cada resposta: gravar (alta), perguntar (média) ou deixar (não entendida / já tratada / campo já preenchido).
+function respPlano(c, agora) {
+  var d = (state.dos && state.dos.d) || {}, org = (state.dos && state.dos.origem) || {}, out = { gravar: [], duvida: [], leitura: [] };
+  respPares(c).forEach(function (p) {
+    var feito = org[p.campo] && org[p.campo].origem === 'chat' && Number(org[p.campo].msg) >= p.msgId;
+    if (feito || dosValor(c, d, {}, p.campo) !== '' || (state.resp && state.resp.ignorar && state.resp.ignorar[p.campo + ':' + p.msgId])) return;
+    var r = respInterpreta(p.f, p.texto, agora);
+    if (!r) return out.leitura.push(p);
+    p.r = r; (r.conf === 'alta' ? out.gravar : out.duvida).push(p);
+  });
+  return out;
+}
+// Grava as respostas (as de confiança alta, ou a lista dada). Uma chamada ao banco para o Dossiê e uma para as origens.
+async function respGravar(c, itens) {
+  var dados = {}, cols = {}, org = Object.assign({}, (state.dos && state.dos.origem) || {});
+  itens.forEach(function (p) { if (p.f.col) cols[p.campo] = p.r.valor; else dados[p.campo] = p.r.valor; org[p.campo] = { valor: p.r.valor, origem: 'chat', confianca: p.r.conf, msg: p.msgId }; });
+  if (Object.keys(cols).length) { var u = await supabase.from('contatos').update(cols).eq('id', c.id); if (u.error) return u.error; }
+  if (Object.keys(dados).length) { var r = await supabase.rpc('crm_salvar_dossie', { p_contato: c.id, p_dados: dados }); if (r.error) return r.error; }
+  var o = await supabase.from('contatos').update({ dossie_origem: org }).eq('id', c.id);
+  if (o.error) return o.error;
+  state.dos.d = Object.assign({}, state.dos.d, dados); state.dos.origem = org; Object.assign(c, cols);
+  state.resp.feitas = (state.resp.feitas || []).concat(itens.map(function (p) { return { campo: p.campo, l: p.f.l, rotulo: p.r.rotulo, texto: p.texto, msgId: p.msgId, antes: null }; }));
+  return null;
+}
+// Roda sempre que a ficha ou o chat mudam. Sem efeito se não há nada novo, e nunca duas vezes ao mesmo tempo.
+async function respVerificar(c) {
+  if (!c || !state.dos || state.dos.cid !== c.id || state.dos.err || !state.chat || state.chat.cid !== c.id) return;
+  if (!state.resp || state.resp.cid !== c.id) state.resp = { cid: c.id, feitas: [], ignorar: {}, busy: false };
+  if (state.resp.busy) return;
+  var plano = respPlano(c, Date.now()), sig = function (x) { return JSON.stringify([(x || []).map(function (p) { return p.campo + p.msgId; })]); }, antes = sig(state.resp.duvidas) + sig(state.resp.leitura);
+  state.resp.duvidas = plano.duvida; state.resp.leitura = plano.leitura;
+  var mudou = !!plano.gravar.length || antes !== sig(plano.duvida) + sig(plano.leitura);
+  if (plano.gravar.length) {
+    state.resp.busy = true;
+    try { var e = await respGravar(c, plano.gravar); if (e) { plano.gravar.forEach(function (p) { state.resp.ignorar[p.campo + ':' + p.msgId] = true; }); toast('Não consegui anotar a resposta dela no Dossiê: ' + (e.message || e)); } else { pintaDossie(c); } }
+    finally { state.resp.busy = false; }
+    state.resp.duvidas = respPlano(c, Date.now()).duvida;
+  }
+  if (mudou && state.sel === c.id && state.view === 'pessoa') { var b = $('chat-resp'); if (b) b.innerHTML = respHtml(c); if (state.pstab === 'chat') repintaChatCaixa(c); }
+}
+function respHtml(c) {
+  var rs = state.resp && state.resp.cid === c.id ? state.resp : null; if (!rs) return '';
+  var h = '';
+  (rs.feitas || []).forEach(function (x) { h += '<div class="chat-sug resp ok" role="status"><span>✓ Anotei no Dossiê: <b>' + esc(x.l) + '</b> → ' + esc(x.rotulo) + ' <span class="sub">(resposta: “' + esc(x.texto.slice(0, 60)) + '”)</span></span> <button class="link" type="button" data-respdesfazer="' + esc(x.campo) + '">Desfazer</button></div>'; });
+  (rs.duvidas || []).forEach(function (p) { h += '<div class="chat-sug resp" role="status"><span>? Ela respondeu “' + esc(p.texto.slice(0, 80)) + '”. Entendi como <b>' + esc(p.r.rotulo) + '</b> em ' + esc(p.f.l) + '. Registrar no Dossiê?</span> <button class="link" type="button" data-respok="' + esc(p.campo) + '">Registrar</button> <button class="link" type="button" data-respnao="' + esc(p.campo) + '">Ignorar</button></div>'; });
+  (rs.leitura || []).slice(0, 2).forEach(function (p) { h += '<div class="chat-sug resp" role="status"><span>? Não consegui ler a resposta sobre <b>' + esc(p.f.l) + '</b>: “' + esc(p.texto.slice(0, 80)) + '”. Preencha no Dossiê.</span></div>'; });
+  return h;
+}
+async function respAcao(cid, campo, acao) {
+  var c = byC(cid), rs = state.resp; if (!c || !rs || rs.cid !== cid) return;
+  if (acao === 'desfazer') {
+    var f = dosCampo(campo), x = (rs.feitas || []).filter(function (y) { return y.campo === campo; })[0]; if (!f || !x) return;
+    var e = f.col ? (await supabase.from('contatos').update(Object.fromEntries([[campo, null]])).eq('id', cid)).error : (await supabase.rpc('crm_salvar_dossie', { p_contato: cid, p_dados: Object.fromEntries([[campo, null]]) })).error;
+    if (e) return fail('desfazer o registro', e);
+    if (f.col) c[campo] = null; else delete state.dos.d[campo];   // a origem fica (com o msg): a mesma resposta não volta a ser gravada
+    rs.feitas = rs.feitas.filter(function (y) { return y.campo !== campo; });
+    toast('Registro desfeito. Essa resposta não será gravada de novo.'); pintaDossie(c);
+  } else {
+    var p = (rs.duvidas || []).filter(function (y) { return y.campo === campo; })[0]; if (!p) return;
+    if (acao === 'ok') { var e2 = await respGravar(c, [p]); if (e2) return fail('registrar a resposta', e2); toast('Registrado no Dossiê'); pintaDossie(c); }
+    else {
+      rs.ignorar[p.campo + ':' + p.msgId] = true;
+      var org = Object.assign({}, state.dos.origem || {}); org[p.campo] = { valor: null, origem: 'chat', confianca: 'baixa', msg: p.msgId, ignorada: true };
+      var oi = await supabase.from('contatos').update({ dossie_origem: org }).eq('id', cid); if (!oi.error) state.dos.origem = org;   // lembra que você ignorou: a mesma resposta não volta a perguntar
+    }
+  }
+  var pl = respPlano(c, Date.now()); rs.duvidas = pl.duvida; rs.leitura = pl.leitura;
+  var b = $('chat-resp'); if (b) b.innerHTML = respHtml(c); if (state.pstab === 'chat') repintaChatCaixa(c);
+}
+
 // A decisão. Devolve { tipo, motivo, texto, quando, ate, cand, pick } — tipo: parar | agradecer | esperar | perguntar | semconta | nenhuma.
 function chatSugestao(c, agora) {
   var d = (state.dos && state.dos.d) || {}, rasc = (state.dos && state.dos.rasc) || {}, f = pergFila(c, d, rasc, agora);
@@ -3137,7 +3338,7 @@ async function pergCarregarAgendadas(cid) {
   if (state.ag !== ag) return;
   ag.carregando = false; ag.carregou = true;
   if (r.error) ag.erro = r.error; else ag.itens = r.data || [];
-  var c = byC(cid); if (c && state.sel === cid && state.pstab === 'chat') repintaChatCaixa(c);
+  var c = byC(cid); if (c && state.sel === cid) respVerificar(c); if (c && state.sel === cid && state.pstab === 'chat') repintaChatCaixa(c);
 }
 // Repinta só a sugestão, os controles e as agendadas (a conversa e o que você está digitando ficam como estão).
 function repintaChatCaixa(c) {
@@ -3197,7 +3398,7 @@ function onbOrigemDe(k, atual) {
   var guardado = o.valor === null || o.valor === undefined ? '' : String(o.valor);
   if (DOS_MES[k] && /^\d{4}-\d{2}/.test(guardado)) guardado = guardado.slice(0, 7);
   if (guardado === '' || guardado !== String(atual)) return null;
-  return { origem: o.origem === 'anotacao' ? 'Lido das suas anotações' : 'Lido do documento', conf: ['alta', 'media', 'baixa'].indexOf(o.confianca) >= 0 ? o.confianca : 'baixa' };
+  return { origem: o.origem === 'anotacao' ? 'Lido das suas anotações' : o.origem === 'chat' ? 'Resposta dela no chat' : 'Lido do documento', conf: ['alta', 'media', 'baixa'].indexOf(o.confianca) >= 0 ? o.confianca : 'baixa' };
 }
 var ONB_CONF = { alta: 'confiança alta', media: 'confiança média', baixa: 'confiança baixa: confira' };
 
@@ -3504,6 +3705,7 @@ document.addEventListener('click', async function (e) {
   if (t.dataset.irchat) { state.ptab = 'plataforma'; state.pstab = 'chat'; return renderPessoa(); }
   if (t.dataset.chatgo) return chatAgendar(t.dataset.chatgo, t);
   if (t.dataset.pergcancelar) return pergCancelar(state.sel, t.dataset.pergcancelar, t);
+  if (t.dataset.respdesfazer || t.dataset.respok || t.dataset.respnao) { respAcao(state.sel, t.dataset.respdesfazer || t.dataset.respok || t.dataset.respnao, t.dataset.respdesfazer ? 'desfazer' : t.dataset.respok ? 'ok' : 'nao'); return; }
   if (t.dataset.sugpular) { state.chatSugPula = (state.chatSugPula || 0) + 1; state.chatEditado = false; state.chatRasc = ''; var cs = byC(state.sel), tx0 = $('chat-txt'); if (tx0) tx0.value = ''; if (cs) repintaChatCaixa(cs); return; }
   if (t.dataset.pcsalvarsinais) return pcSalvarSinais(t.dataset.pcsalvarsinais, t);
   if (t.dataset.pcresolver) return pcResolver(state.sel, t.dataset.pcresolver, t);

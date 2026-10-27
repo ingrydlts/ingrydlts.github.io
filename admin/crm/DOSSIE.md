@@ -126,6 +126,22 @@ pelo assistente (ex.: CAF) aparece no cartão próprio, com o recado já preench
 O botão muda conforme a escolha (Enviar / Agendar). Dá para editar o texto antes; **Outra pergunta** troca a sugestão sem sair da tela.
 Agendar vale de 10 minutos a 119 dias à frente. As mensagens agendadas aparecem em "Agendadas para ela" (com **Cancelar**); o restante (respostas rápidas, e-mail) fica em *Mais opções*.
 
+### Cada resposta vira dado
+
+Quando ela responde a uma pergunta do roteiro, o CRM **lê a resposta** (leitor fechado, sem IA: sim/não, opções, número de idade, datas, mês e ano, cidade) e a leva ao Dossiê. O Dossiê já alimenta o app
+(perfil, `mostrarSe`/`ocultarSe`, Checklist, materiais e Radar) e as perguntas condicionais do próprio Dossiê, então a resposta preenche regras e predefinições sem passo manual.
+
+| Leitura | O que o CRM faz |
+|---|---|
+| **Confiança alta** (resposta curta e inequívoca: "Ainda não tenho!", "Segundo ano", "Tenho 27") | Grava na hora no Dossiê e marca a origem **"Resposta dela no chat"** (`contatos.dossie_origem`, com a mensagem). Aparece a faixa ✓ *Anotei no Dossiê: … → …* com **Desfazer**. |
+| **Confiança média** (data sem ano, resposta longa) | Mostra *"Entendi como X em Y. Registrar?"* com **Registrar** / **Ignorar**. Nada é gravado antes do clique. |
+| **Não entendida** ("depois te falo", duas opções juntas) | Não grava; avisa que não consegui ler e a pergunta continua na fila. |
+
+Regras: só preenche campo **vazio** (nunca sobrescreve o que você digitou); cada resposta é tratada **uma vez** (o marcador `msg` evita regravar mesmo que você apague o valor; **Desfazer** e **Ignorar** também ficam lembrados);
+a resposta vale só para a **última** pergunta da mensagem. O agradecimento sugerido passa a dizer o que foi anotado ("Anotei no seu perfil: tem certificado de francês: ainda não"), que é a recompensa visível.
+Roda quando você abre a ficha e enquanto ela está aberta (ao vivo); respostas que chegam com a ficha fechada são lidas na próxima vez que você abrir.
+Nenhum SQL novo: usa `crm_salvar_dossie` e a coluna `dossie_origem`, que já existem. Testes: `npm run test:resposta-dado` (em `admin/crm/db/testes`).
+
 ### Reimpacto: fazer a pessoa sempre voltar
 
 O ciclo é **pergunta → resposta → recompensa visível no app → próxima pergunta**. Sem a recompensa, a pessoa responde uma vez e some. O chat inteligente aplica sozinho:

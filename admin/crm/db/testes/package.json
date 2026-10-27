@@ -39,7 +39,8 @@
     "test:poscall-ui": "node crm-pos-call-ui.test.mjs",
     "test:chat-inteligente": "node crm-chat-inteligente-ui.test.mjs",
     "test:agendadas": "node crm-mensagens-agendadas.test.mjs",
-    "test:conferir": "node conferir-banco.test.mjs"
+    "test:conferir": "node conferir-banco.test.mjs",
+    "test:resposta-dado": "node crm-resposta-dado.test.mjs"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.8"
