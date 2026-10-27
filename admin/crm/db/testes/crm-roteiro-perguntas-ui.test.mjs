@@ -21,7 +21,7 @@ let respostas = {};
 function qb(table) {
   const b = new Proxy({}, { get(_, k) {
     if (k === 'maybeSingle') return async () => respostas[table + ':one'] || { data: null, error: null };
-    if (k === 'update') return () => ({ eq: async () => ({ error: null }) });
+    if (k === 'update') return () => qb('__update');
     if (k === 'insert') return async () => ({ error: null });
     if (k === 'then') return (ok, ko) => Promise.resolve(respostas[table] || { data: [], error: null }).then(ok, ko);
     return () => b;
@@ -29,11 +29,12 @@ function qb(table) {
   return b;
 }
 const rpcs = [];
-const supabase = { from: qb, auth: { getSession: async () => ({ data: { session: null } }) }, rpc: async (n, a) => { rpcs.push({ n, a }); return { data: null, error: null }; } };
+let rpcResp = {};
+const supabase = { from: qb, auth: { getSession: async () => ({ data: { session: null } }) }, rpc: async (n, a) => { rpcs.push({ n, a }); return rpcResp[n] !== undefined ? (typeof rpcResp[n] === 'function' ? rpcResp[n](a) : rpcResp[n]) : { data: null, error: null }; } };
 const store = {};
 const win = { addEventListener() {} };
 const mod = new Function('supabase', 'ES', 'document', 'window', 'location', 'localStorage',
-  src + '\n;return { state, setC: function (v) { C = v; }, renderPessoa, pergFila, pergMensagem, PERGUNTAS, PERG_ESPERA_DIAS };')(
+  src + '\n;return { state, setC: function (v) { C = v; }, renderPessoa, pergFila, pergMensagem, pergDatasSequencia, pergAgradecimento, PERGUNTAS, PERG_ESPERA_DIAS };')(
   supabase, {}, document, win, { href: '' }, { getItem: (k) => store[k] ?? null, setItem: (k, v) => { store[k] = v; } });
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 const XSS = '<img src=x onerror=alert(1)>';
@@ -50,6 +51,7 @@ async function pagina(dossie, msgs, extra = {}) {
   const lista = (msgs || []).map((m, i) => Object.assign({}, m, { id: i + 1 }));
   respostas.chat_mensagens = { data: lista.slice().reverse(), error: null };
   respostas.propostas = { data: [], error: null };
+  respostas.mensagens_agendadas = extra.agendadas ? { data: extra.agendadas, error: null } : { data: [], error: null };
   respostas.checklist_items = extra.semConta ? { data: [], error: null } : { data: [{ step_key: 'a', label: 'Passo', status: 'pendente', category: 'X', due_date: null }], error: null };
   mod.state.sel = 'c1'; mod.state.view = 'pessoa'; mod.state.ptab = 'ficha';
   await mod.renderPessoa(); await wait(15);
@@ -137,6 +139,125 @@ el('proc-msg-5').value = '';
 await click({ pergproc: '5' });
 check('o recado sugerido vai para o cartão da CAF (você revisa e aprova)', el('proc-msg-5').value === 'Vi que você já tem moradia: a CAF pode devolver parte do aluguel. Vale abrir esse processo no seu checklist?');
 check('nada foi aprovado sozinho', !rpcs.some((r) => r.n === 'crm_decidir_processo'));
+
+console.log('\n== Agendar a data de cada mensagem ==');
+const fmtLocal = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}T${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+const emHoras = (h) => fmtLocal(new Date(Date.now() + h * 3600e3));
+const digitaTexto = (k, v) => handlers.input.forEach((h) => h({ target: { id: 'perg-texto', value: v, dataset: { cid: 'c1', pergk: k }, matches: () => false } }));
+html = await pagina(Object.assign({}, TODOS));
+check('o rascunho vira uma caixa que você pode editar, e há o seletor de data e hora com o botão de agendar', /<textarea id="perg-texto"[^>]*data-pergk="certificado_frances"/.test(html) && html.includes('id="perg-quando" type="datetime-local"') && html.includes('data-pergagendar="certificado_frances"'));
+check('o padrão é amanhã às 10h', /id="perg-quando" type="datetime-local" value="\d{4}-\d{2}-\d{2}T10:00"/.test(html));
+check('explica a hora de saída (rodada de hora em hora, às :05) e que dá para cancelar', html.includes('às :05') && html.includes('cancelar antes'));
+rpcs.length = 0; el('perg-quando').value = emHoras(30);
+digitaTexto('certificado_frances', 'Oi, Ana! Texto que eu mesma ajustei.');
+await click({ pergagendar: 'certificado_frances', cid: 'c1' });
+let ag = rpcs.find((r) => r.n === 'crm_agendar_mensagem');
+check('agendar chama crm_agendar_mensagem com o TEXTO EDITADO, a data em ISO, a origem e o campo', ag && ag.a.p_contato === 'c1' && ag.a.p_texto === 'Oi, Ana! Texto que eu mesma ajustei.' && ag.a.p_origem === 'roteiro' && ag.a.p_campo === 'certificado_frances' && !isNaN(new Date(ag.a.p_enviar_em).getTime()) && new Date(ag.a.p_enviar_em).getTime() > Date.now() + 29 * 3600e3);
+check('NÃO manda nada para o chat agora (a mensagem só sai na hora marcada, pelo Worker)', !rpcs.some((r) => /chat/.test(r.n)));
+rpcs.length = 0; el('perg-quando').value = emHoras(0.05);
+await click({ pergagendar: 'certificado_frances', cid: 'c1' });
+check('menos de 10 minutos à frente: recusa sem chamar o banco', !rpcs.some((r) => r.n === 'crm_agendar_mensagem'));
+el('perg-quando').value = emHoras(24 * 125);
+await click({ pergagendar: 'certificado_frances', cid: 'c1' });
+check('além de 119 dias: recusa', !rpcs.some((r) => r.n === 'crm_agendar_mensagem'));
+el('perg-quando').value = '';
+await click({ pergagendar: 'certificado_frances', cid: 'c1' });
+check('sem data: recusa', !rpcs.some((r) => r.n === 'crm_agendar_mensagem'));
+el('perg-quando').value = emHoras(30); digitaTexto('certificado_frances', 'x'.repeat(1001));
+await click({ pergagendar: 'certificado_frances', cid: 'c1' });
+check('mais de 1000 letras: recusa (o limite do chat)', !rpcs.some((r) => r.n === 'crm_agendar_mensagem'));
+mod.state.pergEdit = null;
+rpcResp.crm_agendar_mensagem = { data: null, error: { message: 'data_invalida' } };
+await click({ pergagendar: 'certificado_frances', cid: 'c1' });
+check('se o banco recusar, mostra o erro (não some em silêncio)', el('toast').textContent.includes('agendar a mensagem'));
+delete rpcResp.crm_agendar_mensagem;
+
+const AGENDADA = { id: 41, texto: 'Oi, Ana! ' + Q, enviar_em: new Date(Date.now() + 30 * 3600e3).toISOString(), status: 'pendente', campo: 'certificado_frances', erro: null, enviada_em: null };
+html = await pagina(Object.assign({}, TODOS), [], { agendadas: [AGENDADA] }); await wait(20);
+html = el('dossie-box').innerHTML;
+check('mensagem já agendada: aparece em "Agendadas para ela", com a data e o botão cancelar', html.includes('Agendadas para ela') && html.includes('agendada ·') && html.includes('data-pergcancelar="41"'));
+f = mod.pergFila(Object.assign({}, base), TODOS, {}, Date.now());
+check('a pergunta agendada sai de "próxima" (não agenda duas vezes) e vai para o fim, marcada', f.itens.find((i) => i.k === 'certificado_frances').agendada.id === 41 && f.proxima.k !== 'certificado_frances' && /agendada para/.test(html));
+rpcs.length = 0; rpcResp.crm_cancelar_mensagem_agendada = { data: true, error: null };
+await click({ pergcancelar: '41', cid: 'c1' });
+check('cancelar chama crm_cancelar_mensagem_agendada', rpcs.some((r) => r.n === 'crm_cancelar_mensagem_agendada' && r.a.p_id === 41));
+rpcResp.crm_cancelar_mensagem_agendada = { data: false, error: null };
+await click({ pergcancelar: '41', cid: 'c1' });
+check('se já tinha saído, avisa em vez de dizer que cancelou', el('toast').textContent.includes('já tinha saído'));
+delete rpcResp.crm_cancelar_mensagem_agendada;
+html = await pagina(Object.assign({}, TODOS), [], { agendadas: [Object.assign({}, AGENDADA, { status: 'erro', erro: 'chat 500' }), Object.assign({}, AGENDADA, { id: 42, status: 'enviada', enviada_em: new Date().toISOString() })] }); await wait(20);
+html = el('dossie-box').innerHTML;
+check('o que não saiu mostra o motivo; o enviado não tem botão de cancelar', html.includes('não saiu') && html.includes('chat 500') && html.includes('enviada ·') && !html.includes('data-pergcancelar'));
+respostas.mensagens_agendadas = { data: null, error: { message: 'relation "mensagens_agendadas" does not exist' } };
+mod.state.ag = null; await mod.renderPessoa(); await wait(20);
+html = el('dossie-box').innerHTML;
+check('SQL não rodado: avisa o nome do arquivo e desliga o agendamento, sem derrubar o resto', html.includes('db/crm-mensagens-agendadas.sql') && /data-pergagendar[^>]*disabled/.test(html) && html.includes('data-pergchat='));
+respostas.mensagens_agendadas = { data: [], error: null }; mod.state.ag = null;
+
+console.log('\n== Sequência de reimpacto ==');
+const seg = mod.pergDatasSequencia(new Date(2026, 10, 3, 15, 0).getTime(), 3);   // terça, 3/11/2026
+check('datas: amanhã às 10h e depois de 3 em 3 dias, sempre em dia útil', seg.map((d) => d.getDate() + '/' + (d.getMonth() + 1) + ' ' + d.getHours() + 'h').join() === '4/11 10h,9/11 10h,12/11 10h' && seg.every((d) => d.getDay() !== 0 && d.getDay() !== 6));
+check('sexta de tarde: o "amanhã" (sábado) passa para segunda', mod.pergDatasSequencia(new Date(2026, 10, 6, 15, 0).getTime(), 1)[0].getDay() === 1);
+check('uma data que cairia no fim de semana passa para segunda e a seguinte conta a partir dela', (() => { const d = mod.pergDatasSequencia(new Date(2026, 10, 4, 15, 0).getTime(), 3); return d.map((x) => x.getDay()).every((w) => w >= 1 && w <= 5) && d[1].getTime() - d[0].getTime() >= 3 * 86400000; })());
+html = await pagina(Object.assign({}, TODOS, { certificado_frances: undefined, cidade: undefined, faixa_idade: undefined }));
+f = mod.pergFila(Object.assign({}, base), Object.assign({}, TODOS, { cidade: undefined }), {}, Date.now());
+check('a sequência propõe as próximas 3 perguntas pela ordem do roteiro', f.sequencia.length === 3 && f.sequencia.map((i) => i.k).join() === f.itens.filter((i) => !i.feita && !i.agendada).slice(0, 3).map((i) => i.k).join());
+html = await pagina(Object.assign({}, TODOS));
+check('o bloco "Sequência de reimpacto" mostra cada pergunta com data, hora e mensagem editáveis', html.includes('Sequência de reimpacto') && (html.match(/type="datetime-local" data-seqk=/g) || []).length >= 2 && (html.match(/data-seqon=/g) || []).length >= 2 && html.includes('data-seqagendar="c1"'));
+const linhasK = [...html.matchAll(/data-seqon="([^"]+)"/g)].map((m) => m[1]);
+check('explica o ritmo (a cada 3 dias, 10h) e a trava de 3 sem resposta', html.includes('a cada 3 dias') && html.includes('3 mensagens sem responder'));
+rpcs.length = 0;
+linhasK.forEach((k, i) => { el('seq-quando-' + k).value = emHoras(24 * (i + 1)); el('seq-texto-' + k).value = 'Mensagem ' + k; handlers.input.forEach((h) => { h({ target: { id: 'seq-quando-' + k, value: emHoras(24 * (i + 1)), dataset: { seqk: k }, matches: () => false } }); h({ target: { id: 'seq-texto-' + k, value: 'Mensagem ' + k, dataset: { seqk: k }, matches: () => false } }); }); });
+handlers.change.forEach((h) => h({ target: { id: '', dataset: { seqon: linhasK[1] }, checked: false, matches: () => false } }));
+await click({ seqagendar: 'c1' });
+const agds = rpcs.filter((r) => r.n === 'crm_agendar_mensagem');
+check('agenda só as marcadas, cada uma com a SUA data, o SEU texto e o campo', agds.length === linhasK.length - 1 && agds.every((x) => x.a.p_campo !== linhasK[1]) && agds[0].a.p_texto === 'Mensagem ' + linhasK[0] && agds[0].a.p_campo === linhasK[0]);
+check('as datas agendadas são as que você escolheu, em ordem', agds.every((x, i, a) => i === 0 || new Date(x.a.p_enviar_em) > new Date(a[i - 1].a.p_enviar_em)));
+check('nada vai para o chat agora', !rpcs.some((r) => /chat/.test(r.n)));
+rpcs.length = 0; mod.state.seq = null;
+await pagina(Object.assign({}, TODOS));
+handlers.change.forEach((h) => linhasK.forEach((k) => h({ target: { id: '', dataset: { seqon: k }, checked: false, matches: () => false } })));
+await click({ seqagendar: 'c1' });
+check('nenhuma marcada: avisa e não chama o banco', !rpcs.some((r) => r.n === 'crm_agendar_mensagem'));
+mod.state.seq = null; await pagina(Object.assign({}, TODOS));
+let n2 = 0; rpcResp.crm_agendar_mensagem = () => (++n2 === 2 ? { data: null, error: { message: 'data_invalida' } } : { data: 1, error: null });
+rpcs.length = 0; await click({ seqagendar: 'c1' });
+check('se uma falhar no meio, para ali e diz quantas foram agendadas (sem repetir nem esconder)', rpcs.filter((r) => r.n === 'crm_agendar_mensagem').length === 2 && /1 de \d foram agendadas/.test(el('toast').textContent));
+delete rpcResp.crm_agendar_mensagem; mod.state.seq = null;
+
+console.log('\n== Trava: ela não responde ==');
+html = await pagina(Object.assign({}, TODOS), [M('ingryd', 'Pergunta 1', 12), M('ingryd', 'Pergunta 2', 9), M('ingryd', 'Pergunta 3', 6)]);
+f = mod.pergFila(Object.assign({}, base), TODOS, {}, Date.now());
+check('3 mensagens suas seguidas sem resposta: parar', f.semResposta === 3 && f.parar === true);
+check('o aviso manda parar, propor 1:1 ou e-mail, e oferece o botão de 1:1', html.includes('3 mensagens seguidas e ela não respondeu') && html.includes('Proponha um 1:1') && html.includes('data-open1a1="c1"'));
+f = (await pagina(Object.assign({}, TODOS), [M('ingryd', 'a', 12), M('ingryd', 'b', 9), M('pessoa', 'oi', 8), M('ingryd', 'c', 6)]), mod.pergFila(Object.assign({}, base), TODOS, {}, Date.now()));
+check('se ela respondeu no meio, a contagem recomeça (só 1 sem resposta)', f.semResposta === 1 && f.parar === false);
+f = (await pagina(Object.assign({}, TODOS), [M('ingryd', 'a', 12), M('ingryd', 'b', 9), M('ingryd', 'Um 1:1?', 6, { tipo: 'proposta' })]), mod.pergFila(Object.assign({}, base), TODOS, {}, Date.now()));
+check('proposta de 1:1 não conta como pergunta sem resposta', f.semResposta === 2 && f.parar === false);
+await pagina(Object.assign({}, TODOS), [M('ingryd', 'Pergunta 1', 12), M('ingryd', 'Pergunta 2', 9), M('ingryd', 'Pergunta 3', 6)]);
+mod.state.chatRasc = 'antes'; win.confirm = () => false;
+await click({ pergchat: 'certificado_frances', cid: 'c1' });
+check('levar para o chat com a trava ativa pergunta antes; dizendo não, nada muda', mod.state.chatRasc === 'antes');
+rpcs.length = 0; el('perg-quando').value = emHoras(30);
+await click({ pergagendar: 'certificado_frances', cid: 'c1' });
+check('agendar com a trava ativa também pergunta (e não agenda se você disser não)', !rpcs.some((r) => r.n === 'crm_agendar_mensagem'));
+await click({ seqagendar: 'c1' });
+check('a sequência também pergunta antes', !rpcs.some((r) => r.n === 'crm_agendar_mensagem'));
+win.confirm = () => true; el('perg-quando').value = emHoras(30);
+await click({ pergagendar: 'certificado_frances', cid: 'c1' });
+check('confirmando, agenda', rpcs.some((r) => r.n === 'crm_agendar_mensagem'));
+delete win.confirm;
+
+console.log('\n== Agradecer quando ela responde ==');
+html = await pagina(Object.assign({}, TODOS), [M('ingryd', 'Oi! ' + Q, 2), M('pessoa', 'Ainda não tenho!', 1)]);
+check('ela respondeu a uma pergunta do roteiro há pouco: sugere agradecer e mostrar o que mudou', html.includes('Ela respondeu.') && html.includes('Obrigada, Ana! Com a sua resposta eu ajustei o seu caminho') && html.includes('data-pergagradecer="c1"'));
+mod.state.chatRasc = '';
+await click({ pergagradecer: 'c1' });
+check('o agradecimento vai para o rascunho do chat, sem enviar', mod.state.chatRasc === mod.pergAgradecimento({ nome: 'Ana Silva' }) && mod.state.pstab === 'chat' && !rpcs.some((r) => /chat/.test(r.n)));
+html = await pagina(Object.assign({}, TODOS), [M('ingryd', 'Bom dia! Como você está?', 2), M('pessoa', 'Tudo bem!', 1)]);
+check('resposta a uma conversa que não era pergunta do roteiro: não sugere agradecer', !html.includes('Ela respondeu.'));
+html = await pagina(Object.assign({}, TODOS), [M('ingryd', 'Oi! ' + Q, 9), M('pessoa', 'Ainda não tenho!', 8)]);
+check('resposta antiga (mais de 3 dias): não sugere agradecer', !html.includes('Ela respondeu.'));
 
 console.log(`\n${passed} passaram, ${failed} falharam.`);
 process.exit(failed ? 1 : 0);

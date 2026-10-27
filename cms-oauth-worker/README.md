@@ -834,3 +834,19 @@ daqui: quem aplica é a Ingryd, na tela do CRM (Dossiê aberto → Pós-call), p
 - **Transcrição de voz**: o prompt manda descobrir quem fala (só vale como fato da pessoa o que ELA disse), corrige erros comuns do reconhecimento de voz e devolve `mapa_da_call` (até 8 blocos por assunto) e `perguntas_para_ela` (até 6, uma por incerteza, com o campo do Dossiê que a resposta preencheria). Proposta antiga, sem esses dois campos, continua válida.
 - O texto da call é tratado como dado, nunca como instrução; o prompt proíbe nome, telefone, e-mail e documentos nos textos.
 Testes: `node cms-oauth-worker/testes/crm-pos-call.test.mjs` (Worker) e, em `admin/crm/db/testes`, `npm run test:poscall` (SQL, com `APP_DB_DIR`) e `npm run test:poscall-ui`.
+
+## 30. Mensagens agendadas: a data em que cada pergunta sai do CRM para o chat dela
+
+No Roteiro de perguntas (ficha → dossiê) cada mensagem pode ser **agendada** para um dia e hora (`admin/crm/db/crm-mensagens-agendadas.sql`). Ela fica em `mensagens_agendadas`
+como `pendente` e o Worker a envia:
+
+- **Quando**: no Cron Trigger de hora em hora (`5 * * * *`, o mesmo das sequências do estúdio, seção 23), que agora também chama `crmAgendadasRodada()`. Por isso a
+  hora tem precisão de uma hora: sai na primeira rodada depois da hora escolhida. **Sem esse cron configurado no painel, nada sai.** Também há
+  `POST /api/crm/agendadas-rodar` (cabeçalho `X-Crm-Hook`, o mesmo segredo `CRM_HOOK_SECRET` da conversa e das sequências) para rodar na mão ou de fora.
+- **O que faz**: lê até 20 pendentes vencidas, reivindica cada uma (pendente → enviada, só se ainda estava pendente: duas rodadas ao mesmo tempo nunca mandam duas vezes),
+  cria a mensagem no chat como da Ingryd (`chat_mensagens`, chave de serviço) e manda o e-mail de aviso (o mesmo de `/api/crm/chat-aviso`, agora numa função compartilhada).
+- **Falhas**: se criar a mensagem no chat falhar, volta a `pendente` e tenta na hora seguinte (3 tentativas; depois `erro`, com o motivo, visível no CRM). Se só o e-mail falhar, a mensagem
+  já está no chat e não repete. Sem Brevo, a mensagem entra no chat e o aviso é pulado.
+- **Cancelar**: botão na ficha (`crm_cancelar_mensagem_agendada`); se já saiu, o CRM avisa.
+- **Precisa**: rodar o SQL e **publicar o Worker de novo**. Sem o SQL, a rodada só registra um aviso no log.
+Testes: `node cms-oauth-worker/testes/crm-agendadas.test.mjs` (Worker) e, em `admin/crm/db/testes`, `npm run test:agendadas` (SQL, com `APP_DB_DIR`) e `npm run test:roteiro` (tela).

@@ -123,3 +123,27 @@ No dossiê, logo abaixo do "Falta perguntar", o **Roteiro de perguntas** escolhe
 
 Telefone, aceite de lembretes e as colunas do funil (estudos, preocupação) não entram. Para mudar a ordem ou o texto: o catálogo `PERGUNTAS`
 (prioridade `p`, pergunta `q`, gancho `g`) em `crm.js`. Campo sem entrada no catálogo entra com prioridade baixa e pergunta genérica.
+
+### Agendar a data de cada mensagem (db/crm-mensagens-agendadas.sql)
+
+A caixa da pergunta é editável. Em vez de "Levar para o chat agora", você pode **escolher o dia e a hora** em que ela sai do CRM e entra no chat dela
+(**Agendar envio**). A mensagem fica como `pendente` em "Agendadas para ela" (com **Cancelar**) e sai sozinha: o Worker roda de hora em hora (às :05)
+e, na rodada seguinte à hora escolhida, cria a mensagem no chat como sua e manda o e-mail de aviso. Entre 10 minutos e 119 dias à frente. Pergunta que já
+tem mensagem agendada sai de "Próxima" e não é agendada duas vezes sem confirmação.
+
+### Estratégia de reimpacto: fazer a pessoa sempre voltar
+
+O ciclo é **pergunta → resposta → recompensa visível no app → próxima pergunta**. A recompensa é o que mantém o hábito: sem ela, a pessoa responde uma vez e some.
+
+| Momento | O que fazer | Onde no CRM |
+|---|---|---|
+| Logo depois da call | Aplicar o Pós-call e escolher as 3 perguntas de maior impacto | Pós-call → Roteiro de perguntas |
+| Amanhã, 10h | 1ª pergunta, com o gancho do que ela destrava no app | **Sequência de reimpacto** (já vem com a data) |
+| Ela respondeu | Agradecer no mesmo dia e dizer o que mudou ("olhe sua Home e o Radar") | **Ela respondeu → Levar para o chat** |
+| A cada 3 dias úteis, 10h | Próxima pergunta da fila, uma por vez | Sequência (datas editáveis, cada mensagem editável) |
+| Radar com novidade para ela | Item com nota: avisa no sininho e por e-mail | aba Radar |
+| 3 mensagens suas sem resposta | **Parar.** O chat só existe dentro do app; proponha um 1:1 ou escreva por e-mail | aviso automático + Marcar 1:1 |
+
+Regras: no máximo uma mensagem por dia; nunca uma pergunta nova por cima de outra sem resposta (o roteiro manda esperar 3 dias); dia útil às 10h
+(a sequência pula fim de semana); se ela respondeu, a seguinte pode ir logo. Quem não responde a 3 seguidas sai da sequência e vai para uma conversa humana.
+A sequência não cancela sozinha o que sobrou quando ela responde: ajuste ou cancele as seguintes em "Agendadas para ela".

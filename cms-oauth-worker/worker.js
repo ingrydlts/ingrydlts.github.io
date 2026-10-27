@@ -3095,6 +3095,41 @@ async function handlePlanosContexto(request, env) {
 // para ela voltar à plataforma (o chat só existe lá dentro). É um e-mail de serviço: sem consentimento de novidades e sem
 // rodapé de descadastro. O chat é uma Central de perguntas (respondida em até 3 dias úteis), então cada resposta sua
 // gera o seu e-mail: não há limite de um aviso por intervalo (antes era 1 a cada 30 min). Quem manda vê o aviso no CRM.
+// Monta e manda o e-mail de aviso de uma mensagem sua no chat, e registra em emails_enviados. Usado pela rota (token da admin) e pelas
+// mensagens agendadas (chave de serviço): `auth` são os cabeçalhos de cada caso. Devolve { enviado, registrado } ou { erroBrevo: status }.
+async function crmChatAvisoEnviar(env, auth, contatoId, contato, msg) {
+  const nome = crmPrimeiroNome(contato.nome);
+  const trecho = String(msg.texto || '').replace(/\s+/g, ' ').trim().slice(0, 140);
+  const destaque = msg.tipo === 'proposta' ? `Te mandei uma proposta: "${trecho}".` : `"${trecho}${String(msg.texto || '').length > 140 ? '…' : ''}"`;
+  const assunto = nome ? `${nome}, a Ingryd te respondeu no Por Dentro` : 'A Ingryd te respondeu no Por Dentro';
+  const texto = `${nome ? `Oi ${nome}!` : 'Oi!'}\n\nAcabei de te responder na Central de perguntas da plataforma do Por Dentro:\n\n${destaque}\n\nPara ler tudo, é só abrir:\n${CRM_APP_LINK}\n\nSe quiser continuar, mande uma nova pergunta completa (o seu caso, o que você já fez e onde travou): eu respondo em até 3 dias úteis. Se o assunto for grande demais para texto, eu te proponho uma ligação.\n\nSe pedir para entrar, use este mesmo e-mail.\n\nIngryd · Por Dentro`;
+  const brevoBody = {
+    sender: { email: env.BREVO_SENDER_EMAIL, name: env.BREVO_SENDER_NAME || 'Ingryd · Por Dentro' },
+    to: [contato.nome ? { email: contato.email, name: contato.nome } : { email: contato.email }],
+    replyTo: { email: crmReplyTo(env) },
+    subject: assunto, htmlContent: crmTextToHtml(texto), textContent: texto,
+    tags: ['crm', 'chat_aviso'],
+  };
+  const bRes = await fetch('https://api.brevo.com/v3/smtp/email', {
+    method: 'POST',
+    headers: { 'api-key': env.BREVO_API_KEY, 'Content-Type': 'application/json', Accept: 'application/json' },
+    body: JSON.stringify(brevoBody),
+  });
+  const bText = await bRes.text();
+  if (!bRes.ok) {
+    console.error('crm/chat-aviso: Brevo respondeu ' + bRes.status + ' — ' + bText);
+    return { erroBrevo: bRes.status };
+  }
+  let messageId = null;
+  try { messageId = JSON.parse(bText).messageId || null; } catch (e) { /* segue sem id */ }
+  const ins = await fetch(`${CRM_SUPABASE_URL}/rest/v1/emails_enviados`, {
+    method: 'POST', headers: { ...auth, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+    body: JSON.stringify({ contato_id: contatoId, modelo: 'chat_aviso', assunto, corpo: texto, status: 'agendado', provedor_id: messageId, enviado_em: new Date().toISOString() }),
+  });
+  if (!ins.ok) console.error('crm/chat-aviso: aviso enviado mas não registrado — ' + ins.status + ' ' + (await ins.text()));
+  return { enviado: true, registrado: ins.ok };
+}
+
 async function handleCrmChatAviso(request, env) {
   const admin = await crmRequireAdmin(request);
   if (!admin) return json({ error: 'Sem permissão. Entre de novo no CRM.' }, 401);
@@ -3116,36 +3151,58 @@ async function handleCrmChatAviso(request, env) {
   const msg = mRes.ok ? (await mRes.json())[0] : null;
   if (!msg || msg.de !== 'ingryd') return json({ error: 'Mensagem não encontrada.' }, 404);
 
-  const nome = crmPrimeiroNome(contato.nome);
-  const trecho = String(msg.texto || '').replace(/\s+/g, ' ').trim().slice(0, 140);
-  const destaque = msg.tipo === 'proposta' ? `Te mandei uma proposta: "${trecho}".` : `"${trecho}${String(msg.texto || '').length > 140 ? '…' : ''}"`;
-  const assunto = nome ? `${nome}, a Ingryd te respondeu no Por Dentro` : 'A Ingryd te respondeu no Por Dentro';
-  const texto = `${nome ? `Oi ${nome}!` : 'Oi!'}\n\nAcabei de te responder na Central de perguntas da plataforma do Por Dentro:\n\n${destaque}\n\nPara ler tudo, é só abrir:\n${CRM_APP_LINK}\n\nSe quiser continuar, mande uma nova pergunta completa (o seu caso, o que você já fez e onde travou): eu respondo em até 3 dias úteis. Se o assunto for grande demais para texto, eu te proponho uma ligação.\n\nSe pedir para entrar, use este mesmo e-mail.\n\nIngryd · Por Dentro`;
-  const brevoBody = {
-    sender: { email: env.BREVO_SENDER_EMAIL, name: env.BREVO_SENDER_NAME || 'Ingryd · Por Dentro' },
-    to: [contato.nome ? { email: contato.email, name: contato.nome } : { email: contato.email }],
-    replyTo: { email: crmReplyTo(env) },
-    subject: assunto, htmlContent: crmTextToHtml(texto), textContent: texto,
-    tags: ['crm', 'chat_aviso'],
-  };
-  const bRes = await fetch('https://api.brevo.com/v3/smtp/email', {
-    method: 'POST',
-    headers: { 'api-key': env.BREVO_API_KEY, 'Content-Type': 'application/json', Accept: 'application/json' },
-    body: JSON.stringify(brevoBody),
-  });
-  const bText = await bRes.text();
-  if (!bRes.ok) {
-    console.error('crm/chat-aviso: Brevo respondeu ' + bRes.status + ' — ' + bText);
-    return json({ error: 'O Brevo recusou o aviso (' + bRes.status + ').' }, 502);
+  const r = await crmChatAvisoEnviar(env, auth, contatoId, contato, msg);
+  if (r.erroBrevo) return json({ error: 'O Brevo recusou o aviso (' + r.erroBrevo + ').' }, 502);
+  return json({ ok: true, enviado: true, registrado: r.registrado });
+}
+
+// ---------- Mensagens agendadas (admin/crm/db/crm-mensagens-agendadas.sql) ----------
+// A cada hora (Cron "5 * * * *", o mesmo das sequências) e por POST /api/crm/agendadas-rodar (X-Crm-Hook): pega as mensagens pendentes cuja
+// hora já passou, cria cada uma no chat como mensagem da Ingryd e manda o e-mail de aviso. A hora tem precisão de uma hora.
+// Cada mensagem é "reivindicada" antes de sair (pendente → enviada, só se ainda estava pendente), então duas rodadas ao mesmo tempo
+// nunca mandam duas vezes. Se criar a mensagem no chat falhar, volta a pendente e tenta de novo na hora seguinte (até 3 tentativas;
+// depois fica `erro`, com o motivo, e o CRM mostra). Se só o e-mail falhar, a mensagem já está no chat: não repete.
+// Sem o SQL rodado a rodada só registra um aviso no log e sai.
+const CRM_AGENDADAS_POR_RODADA = 20;
+const CRM_AGENDADAS_TENTATIVAS = 3;
+async function crmAgendadasRodada(env, agoraMs) {
+  if (!env.SUPABASE_SERVICE_ROLE_KEY) { console.error('crm/agendadas: falta SUPABASE_SERVICE_ROLE_KEY no Worker'); return { erro: 'config' }; }
+  const h = crmServiceHeaders(env);
+  const agora = new Date(agoraMs || Date.now()).toISOString();
+  const lista = await fetch(`${CRM_SUPABASE_URL}/rest/v1/mensagens_agendadas?select=id,contato_id,texto,tentativas&status=eq.pendente&enviar_em=lte.${encodeURIComponent(agora)}&order=enviar_em.asc&limit=${CRM_AGENDADAS_POR_RODADA}`, { headers: h });
+  if (!lista.ok) { console.error('crm/agendadas: não consegui ler a fila (' + lista.status + '). O SQL crm-mensagens-agendadas.sql foi rodado?'); return { erro: 'fila_' + lista.status }; }
+  const devidas = await lista.json();
+  const r = { devidas: devidas.length, enviadas: 0, emails: 0, falhas: 0, puladas: 0 };
+  for (const m of devidas) {
+    const claim = await fetch(`${CRM_SUPABASE_URL}/rest/v1/mensagens_agendadas?id=eq.${m.id}&status=eq.pendente`, {
+      method: 'PATCH', headers: { ...h, Prefer: 'return=representation' }, body: JSON.stringify({ status: 'enviada', enviada_em: agora }) });
+    const claimado = claim.ok ? await claim.json() : [];
+    if (!Array.isArray(claimado) || !claimado.length) { r.puladas++; continue; }   // outra rodada pegou, ou foi cancelada agora
+    const desfazer = async (motivo) => {
+      const tent = (Number(m.tentativas) || 0) + 1;
+      await fetch(`${CRM_SUPABASE_URL}/rest/v1/mensagens_agendadas?id=eq.${m.id}`, { method: 'PATCH', headers: h,
+        body: JSON.stringify({ status: tent >= CRM_AGENDADAS_TENTATIVAS ? 'erro' : 'pendente', tentativas: tent, erro: String(motivo).slice(0, 300), enviada_em: null }) });
+      r.falhas++;
+    };
+    const ins = await fetch(`${CRM_SUPABASE_URL}/rest/v1/chat_mensagens`, { method: 'POST', headers: { ...h, Prefer: 'return=representation' },
+      body: JSON.stringify({ contato_id: m.contato_id, de: 'ingryd', tipo: 'texto', texto: m.texto }) });
+    if (!ins.ok) { console.error('crm/agendadas: não consegui criar a mensagem no chat — ' + ins.status); await desfazer('chat ' + ins.status); continue; }
+    const msg = (await ins.json())[0];
+    await fetch(`${CRM_SUPABASE_URL}/rest/v1/mensagens_agendadas?id=eq.${m.id}`, { method: 'PATCH', headers: h, body: JSON.stringify({ mensagem_id: msg && msg.id }) });
+    r.enviadas++;
+    if (!env.BREVO_API_KEY || !env.BREVO_SENDER_EMAIL) continue;   // sem Brevo, a mensagem fica no chat e o aviso não sai
+    try {
+      const cRes = await fetch(`${CRM_SUPABASE_URL}/rest/v1/contatos?select=id,email,nome&id=eq.${m.contato_id}`, { headers: h });
+      const contato = cRes.ok ? (await cRes.json())[0] : null;
+      if (contato && contato.email) { const e = await crmChatAvisoEnviar(env, h, m.contato_id, contato, { texto: m.texto, tipo: 'texto' }); if (e.enviado) r.emails++; }
+    } catch (e) { console.error('crm/agendadas: o aviso por e-mail não saiu — ' + (e && e.name)); }
   }
-  let messageId = null;
-  try { messageId = JSON.parse(bText).messageId || null; } catch (e) { /* segue sem id */ }
-  const ins = await fetch(`${CRM_SUPABASE_URL}/rest/v1/emails_enviados`, {
-    method: 'POST', headers: { ...auth, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
-    body: JSON.stringify({ contato_id: contatoId, modelo: 'chat_aviso', assunto, corpo: texto, status: 'agendado', provedor_id: messageId, enviado_em: new Date().toISOString() }),
-  });
-  if (!ins.ok) console.error('crm/chat-aviso: aviso enviado mas não registrado — ' + ins.status + ' ' + (await ins.text()));
-  return json({ ok: true, enviado: true, registrado: ins.ok });
+  return r;
+}
+async function handleCrmAgendadasRodar(request, env) {
+  if (!crmSegredoIgual(request.headers.get('X-Crm-Hook') || '', env.CRM_HOOK_SECRET || '')) return new Response('Unauthorized', { status: 401 });
+  const r = await crmAgendadasRodada(env);
+  return json(r, r.erro ? 500 : 200);
 }
 
 async function handleCrmLinkPagamento(request, env) {
@@ -3537,6 +3594,9 @@ export default {
       if (url.pathname === '/api/crm/onboarding/ler' && request.method === 'POST') {
         return await handleCrmOnboardingLer(request, env);
       }
+      if (url.pathname === '/api/crm/agendadas-rodar' && request.method === 'POST') {
+        return await handleCrmAgendadasRodar(request, env);
+      }
       if (url.pathname === '/api/crm/pos-call/ler' && request.method === 'POST') {
         return await handleCrmPosCallLer(request, env);
       }
@@ -3569,11 +3629,12 @@ export default {
   },
 
   // Cron Trigger "0 13 * * *" (10h de Brasília): manda o e-mail 2 do guia (a conversa). Seção 18 do README.
-  // Cron Trigger "5 * * * *" (de hora em hora): as sequências do estúdio (entrega 3). Seção 23 do README.
+  // Cron Trigger "5 * * * *" (de hora em hora): as sequências do estúdio (entrega 3, seção 23 do README) e as mensagens agendadas (seção 30).
   // Qualquer outro horário (ou nenhum) continua sendo o e-mail 2, como antes.
   async scheduled(event, env, ctx) {
     if (event && event.cron === CRM_CRON_SEQUENCIAS) {
       ctx.waitUntil(crmSequenciasRodada(env).catch((e) => console.error('crm/sequencias: ' + e)));
+      ctx.waitUntil(crmAgendadasRodada(env).catch((e) => console.error('crm/agendadas: ' + e)));   // as mensagens agendadas saem na mesma rodada de hora em hora
       return;
     }
     ctx.waitUntil(crmConversaDiaria(env).catch((e) => console.error('crm/conversa: ' + e)));
