@@ -117,7 +117,7 @@ check('sinais da IA vêm marcados, com o rótulo do vocabulário e o motivo', /d
 check('resposta que precisa de fonte vem avisada', caixa().includes('Você explicou (precisa de fonte)'));
 check('a lista a conferir aparece, como coisa para você conferir na fonte', caixa().includes('Janela até meados de dezembro.') && caixa().includes('A conferir na fonte, com você'));
 check('o mapa da call organiza o que rolou, no topo, antes dos fatos', caixa().includes('O que rolou na call') && caixa().includes('Por que a França') && caixa().indexOf('O que rolou na call') < caixa().indexOf('1 · Fatos') && /Como entrar na L1[\s\S]*Mora na França, vaga em L1 \(DAP verte\)/.test(caixa()));
-check('perguntas para confirmar com ela: todas marcadas, com o motivo e o campo que preenchem', caixa().includes('6 · Perguntas para confirmar com ela') && (caixa().match(/data-pcperg="q\d" checked/g) || []).length === 3 && caixa().includes('A call não fechou isso.') && caixa().includes('preenche “Ano em que terminou o ensino médio”') && caixa().includes('data-pcchat="c1"'));
+check('perguntas para confirmar com ela: só leitura, com o motivo e o campo, e avisa que já estão prontas na caixa do Chat (nada para marcar nem botão extra)', caixa().includes('6 · Perguntas para confirmar com ela') && caixa().includes('Já estão prontas na caixa do <b>Chat</b>') && caixa().includes('A call não fechou isso.') && caixa().includes('preenche “Ano em que terminou o ensino médio”') && !caixa().includes('data-pcperg') && !caixa().includes('data-pcchat'));
 check('nenhuma chamada de gravação foi feita só por ler (nada entra sem aplicar)', !rpcs.some((r) => /aplicar|salvar_dossie/.test(r.n) && r.a.p_proposta === 41));
 
 console.log('\n== Texto do banco e da IA passa por esc() ==');
@@ -125,20 +125,6 @@ workerResp = { status: 200, body: { ok: true, id: 42, proposta: { ...PROP, pergu
 mod.state.pc = null; await pagina({ ligacao_transcricao: TRANSCRICAO }); await click({ pcler: 'c1' });
 check('HTML na proposta não vira HTML', !caixa().includes(XSS) && caixa().includes('&lt;img src=x onerror=alert(1)&gt;'));
 
-console.log('\n== Perguntas para ela → rascunho do chat ==');
-mod.state.chatRasc = ''; rpcs.length = 0;
-muda({ pcperg: 'q1' }, { checked: false });
-await click({ pcchat: 'c1' });
-check('leva só as marcadas, numeradas, para o rascunho do chat, na voz da Ingryd e com o nome', /^Oi, Ana! Para eu acertar o seu caminho, me conta:\n\n1\. Você tem o diploma[^\n]*\n2\. Você já tem aula de francês marcada\?\n\nPode responder aqui mesmo, com calma\.$/.test(mod.state.chatRasc) && !mod.state.chatRasc.includes('contrato'));
-check('abre a aba Plataforma → Chat para você revisar', mod.state.ptab === 'plataforma' && mod.state.pstab === 'chat');
-check('NÃO envia nada sozinho (nenhuma mensagem no chat)', !rpcs.some((r) => /chat/.test(r.n)) && pedidos.every((x) => !/chat/.test(x.url)));
-muda({ pcperg: 'q0' }, { checked: false }); muda({ pcperg: 'q2' }, { checked: false });
-mod.state.chatRasc = 'nada'; await mod.renderPessoa(); await wait(10); await click({ pcchat: 'c1' });
-check('sem nenhuma marcada, avisa e não mexe no rascunho', mod.state.chatRasc === 'nada');
-const longas = Array.from({ length: 6 }, (_, i) => ({ texto: ('Pergunta longa número ' + i + ' ').padEnd(290, 'x'), motivo: 'm' }));
-workerResp = { status: 200, body: { ok: true, id: 43, proposta: { ...PROP, perguntas_para_ela: longas }, vocabulario: VOCAB } };
-mod.state.pc = null; await pagina({ ligacao_transcricao: TRANSCRICAO }); await click({ pcler: 'c1' }); await click({ pcchat: 'c1' });
-check('rascunho que passaria de 1000 letras é cortado nas perguntas que cabem (o chat aceita 1000)', mod.state.chatRasc.length <= 1000 && /3\. /.test(mod.state.chatRasc) && !/5\. /.test(mod.state.chatRasc));
 workerResp = { status: 200, body: { ok: true, id: 44, proposta: { ...PROP, perguntas_para_ela: [{ texto: XSS, motivo: XSS }] }, vocabulario: VOCAB } };
 mod.state.pc = null; await pagina({ ligacao_transcricao: TRANSCRICAO }); await click({ pcler: 'c1' });
 check('pergunta e motivo vindos da IA passam por esc()', !caixa().includes(XSS) && caixa().includes('&lt;img src=x onerror=alert(1)&gt;'));

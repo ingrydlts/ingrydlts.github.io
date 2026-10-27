@@ -141,7 +141,7 @@ function lerDosAberto() { try { return localStorage.getItem('crm_dossie_aberto')
 var C = [], Q = [], L = [], R = [], RM = {}, SUBS = {}, M = null, MV = [];
 // Processos sugeridos esperando a sua decisão (db/crm-processos-sugeridos.sql). Sem a migração, fica vazio.
 var PSUG = [];
-var state = { dosAberto: lerDosAberto(), dos: null, pc: null, ag: null, seq: null, pergEdit: null, pergQuando: null, ptab: null, pstab: 'assistente', pdias: {}, int: null, chatRasc: '', rascunho: {}, view: 'hoje', persona: '', sub: '', urg: '', stage: '', orig: '', camp: '', q: '', sel: null, qs: 'nova', qsel: null, inbox: 'perguntas', rs: 'nova', rsel: null, preset: 'todos', seg: '', prevView: 'contatos' };
+var state = { dosAberto: lerDosAberto(), dos: null, pc: null, ag: null, chatCtl: null, chatEditado: false, chatSugPula: 0, chatAutoTexto: '', ptab: null, pstab: 'assistente', pdias: {}, int: null, chatRasc: '', rascunho: {}, view: 'hoje', persona: '', sub: '', urg: '', stage: '', orig: '', camp: '', q: '', sel: null, qs: 'nova', qsel: null, inbox: 'perguntas', rs: 'nova', rsel: null, preset: 'todos', seg: '', prevView: 'contatos' };
 var activeCid = null;
 var me = null;
 
@@ -1022,12 +1022,17 @@ function chatFioHtml(chat, agora) {
 function chatPanelHtml(c, chat, h4) {
   var btn = function (k, rot) { return '<button class="chip" type="button" data-chatquick="' + k + '">' + esc(rot) + '</button>'; };
   var nova = chatNaoLidas(chat);
+  if (!state.ag || state.ag.cid !== c.id) pergCarregarAgendadas(c.id);
+  var sug = chatSugestao(c, Date.now()), pref = state.chatRasc || (!state.chatEditado ? sug.texto : '') || '';
+  state.chatAutoTexto = !state.chatRasc && !state.chatEditado ? sug.texto : '';   // o que o cérebro escreveu (para trocar se a sugestão mudar enquanto você não mexeu)
   return '<div class="panel" style="padding:16px"><h4 style="' + h4 + '">Chat com ela' + (nova ? ' <span class="count">' + nova + (nova === 1 ? ' nova' : ' novas') + '</span>' : '') + '</h4>' +
-    '<p class="sub" style="margin:0 0 10px">O que você escreve aparece na Central de perguntas do app dela, no avatar que flutua, e ela recebe um e-mail a cada mensagem sua. O combinado com ela: perguntas completas, resposta em até 3 dias úteis, e uma ligação quando o assunto for grande demais para texto.</p>' +
+    '<p class="sub" style="margin:0 0 10px">Ela recebe um e-mail a cada mensagem sua. Combinado com ela: perguntas completas, resposta em até 3 dias úteis.</p>' +
     '<div class="cfio chatfio" id="chat-fio" aria-live="polite">' + chatFioHtml(chat, Date.now()) + '</div>' +
-    '<div class="tpls" style="margin:10px 0 8px">' + btn('um_a_um', 'Propor 1:1 de 20 min') + btn('como_vai', 'Perguntar como está') + btn('documentos', 'Pedir documentos') + btn('prazo', 'Lembrar do prazo') + btn('proposta', 'Nova proposta') + '</div>' +
-    '<textarea class="notebox" id="chat-txt" maxlength="1000" placeholder="Escreva para ela. Aparece no chat do app." aria-label="Mensagem para ela" style="min-height:76px"></textarea>' +
-    '<div class="actions" style="margin-top:8px"><button class="btn primary" type="button" data-chatenviar="' + esc(c.id) + '">Enviar</button></div></div>';
+    '<div id="chat-sug" style="margin-top:10px">' + chatSugestaoHtml(c, sug) + '</div>' +
+    '<textarea class="notebox" id="chat-txt" maxlength="1000" placeholder="Escreva para ela. Aparece no chat do app." aria-label="Mensagem para ela" style="min-height:96px;margin-top:8px">' + esc(pref) + '</textarea>' +
+    '<div id="chat-ctl">' + chatControlesHtml(c, sug) + '</div>' +
+    '<div id="chat-agendadas">' + chatAgendadasHtml(c) + '</div>' +
+    '<details class="chat-mais"><summary class="sub">Mais opções</summary><div class="tpls" style="margin:8px 0 0">' + btn('um_a_um', 'Propor 1:1 de 20 min') + btn('como_vai', 'Perguntar como está') + btn('documentos', 'Pedir documentos') + btn('prazo', 'Lembrar do prazo') + btn('proposta', 'Nova proposta') + '</div></details></div>';
 }
 function chatTextoRapido(k, c) {
   var nome = (c.nome || '').split(/\s+/)[0], oi = nome ? 'Oi, ' + nome + '! ' : 'Oi! ';
@@ -1069,7 +1074,7 @@ async function enviarChat(cid, t) {
   var r = await supabase.rpc('crm_chat_enviar', { p_contato: cid, p_texto: txt });
   if (t) t.disabled = false;
   if (r.error) return fail('enviar a mensagem', r.error);
-  $('chat-txt').value = ''; state.chatRasc = '';
+  $('chat-txt').value = ''; state.chatRasc = ''; state.chatEditado = false; state.chatSugPula = 0; state.chatCtl = null;
   avisarChatPorEmail(cid, r.data);
   await atualizaAoVivo(cid, true);
 }
@@ -1186,7 +1191,7 @@ function pintaPlat(c) {
 }
 function trocaPlatAba(ab) {
   var c = byC(state.sel); if (!c || state.pstab === ab) return;
-  var tx = $('chat-txt'); if (tx) state.chatRasc = tx.value;   // o que você digitou no chat sobrevive à troca
+  var tx = $('chat-txt'); if (tx && state.chatEditado) state.chatRasc = tx.value;   // o que VOCÊ digitou no chat sobrevive à troca (a sugestão do cérebro não: ela se recalcula)
   state.pstab = ab; pintaPlat(c);
 }
 function plataformaPanel(c, h4) {
@@ -1582,7 +1587,7 @@ async function salvarDossie(cid, t) {
 // Regra dos 3: um tema com 3 pessoas ou mais na fila está pronto para virar padrão (material, assunto ou notícia do Radar).
 // Os sinais também podem ser marcados à mão, sem IA. A transcrição não é guardada pelo Worker; só a proposta.
 var PC_FATORES = { politico: 'Político', economico: 'Econômico', social: 'Social', tecnologico: 'Tecnológico', ambiental: 'Ambiental', legal: 'Legal' };
-function pcInicial(cid) { return { cid: cid, estado: 'vazio', erro: '', prop: null, vocab: [], vocabErro: false, cont: [], carregando: false, carregou: false, sel: { campos: {}, sinais: {}, fila: {}, perg: {} }, camadas: {}, manual: null }; }
+function pcInicial(cid) { return { cid: cid, estado: 'vazio', erro: '', prop: null, vocab: [], vocabErro: false, cont: [], carregando: false, carregou: false, sel: { campos: {}, sinais: {}, fila: {} }, camadas: {}, manual: null }; }
 function pcEstado(cid) { if (!state.pc || state.pc.cid !== cid) state.pc = pcInicial(cid); return state.pc; }
 function pcRotuloSinal(pc, chave) { var v = (pc.vocab || []).filter(function (x) { return x.chave === chave; })[0]; return v ? v.rotulo : chave; }
 function pcSinaisDela(d) { return d && Array.isArray(d.sinais) ? d.sinais.slice() : []; }
@@ -1661,12 +1666,10 @@ function poscallPropostaHtml(c, pc, d) {
 
   var pe = p.perguntas_para_ela || [];
   h += '<h5>6 · Perguntas para confirmar com ela</h5>';
-  h += pe.length ? '<p class="sub" style="margin:0 0 6px">O que ficou incerto ou faltou. Marque as que quer fazer: elas vão para o rascunho do chat, e você revisa antes de enviar.</p>' + pe.map(function (q, i) {
-    var marcado = pc.sel.perg['q' + i] === undefined ? true : pc.sel.perg['q' + i], f = q.campo ? dosCampo(q.campo) : null;
-    return '<label class="pclinha"><input type="checkbox" data-pcperg="q' + i + '"' + (marcado ? ' checked' : '') + '> <span>' + esc(q.texto) +
-      (q.motivo ? '<br><small class="sub">Por quê: ' + esc(q.motivo) + (f ? ' · preenche “' + esc(f.l) + '”' : '') + '</small>' : '') + '</span></label>';
-  }).join('') + '<div class="actions" style="margin-top:8px"><button class="btn" type="button" data-pcchat="' + esc(c.id) + '">Levar para o chat</button></div>'
-    : '<p class="sub">A call fechou tudo o que importava: nada a confirmar com ela.</p>';
+  h += pe.length ? '<p class="sub" style="margin:0 0 6px">Já estão prontas na caixa do <b>Chat</b> (Plataforma → Chat): lá você envia agora ou agenda o dia. Nada para marcar aqui.</p><ul class="pcconferir">' + pe.map(function (q) {
+    var f = q.campo ? dosCampo(q.campo) : null;
+    return '<li>' + esc(q.texto) + (q.motivo ? ' <small class="sub">(' + esc(q.motivo) + (f ? ' · preenche “' + esc(f.l) + '”' : '') + ')</small>' : '') + '</li>';
+  }).join('') + '</ul>' : '<p class="sub">A call fechou tudo o que importava: nada a confirmar com ela.</p>';
 
   h += '<div class="actions" style="margin-top:12px"><button class="btn primary" type="button" data-pcaplicar="' + esc(c.id) + '">Aplicar o que marquei</button>' +
     '<button class="btn" type="button" data-pcdescartar="' + esc(c.id) + '">Descartar a proposta</button></div>' +
@@ -1711,7 +1714,7 @@ async function pcLer(cid, t) {
       body: JSON.stringify({ contato_id: cid, transcricao: transcricao, notas: String(dosValor(c, state.dos.d, state.dos.rasc || {}, 'ligacao_resumo') || '').trim() }) });
     var j = await res.json().catch(function () { return {}; });
     if (!res.ok || !j.ok) throw new Error(j.error || 'A leitura falhou (' + res.status + ').');
-    pc.prop = j; pc.vocab = j.vocabulario && j.vocabulario.length ? j.vocabulario : pc.vocab; pc.estado = 'proposta'; pc.sel = { campos: {}, sinais: {}, fila: {}, perg: {} }; pc.camadas = {};
+    pc.prop = j; pc.vocab = j.vocabulario && j.vocabulario.length ? j.vocabulario : pc.vocab; pc.estado = 'proposta'; pc.sel = { campos: {}, sinais: {}, fila: {} }; pc.camadas = {};
   } catch (e) { pc.estado = 'vazio'; pc.erro = e && e.message ? e.message : 'A leitura falhou.'; }
   pintaPoscall(cid);
 }
@@ -1744,23 +1747,6 @@ async function pcAplicar(cid, t) {
   state.pc = pcInicial(cid); state.pc.vocab = pc.vocab;
   await reload(); if (state.view === 'pessoa') renderPessoa();
   toast('Pós-call aplicado: ' + Object.keys(a.campos).length + (Object.keys(a.campos).length === 1 ? ' campo' : ' campos') + ' e ' + a.fila.length + (a.fila.length === 1 ? ' linha na fila' : ' linhas na fila'));
-}
-// Leva as perguntas marcadas para o rascunho do chat dela (aba Plataforma → Chat). Nada é enviado: você revisa e envia, e ela recebe
-// o e-mail de aviso como em toda mensagem sua. O chat aceita até 1000 letras.
-function pcChat(cid) {
-  var pc = pcEstado(cid), c = byC(cid), pe = (pc.prop && pc.prop.proposta.perguntas_para_ela) || [], nome = String((c && c.nome) || '').trim().split(/\s+/)[0];
-  var cab = (nome ? 'Oi, ' + nome + '! ' : 'Oi! ') + 'Para eu acertar o seu caminho, me conta:\n\n', rod = '\n\nPode responder aqui mesmo, com calma.', corpo = '', n = 0, cortadas = 0;
-  pe.forEach(function (q, i) {
-    if (!(pc.sel.perg['q' + i] === undefined ? true : pc.sel.perg['q' + i])) return;
-    var linha = (n + 1) + '. ' + q.texto + '\n';
-    if ((cab + corpo + linha).length + rod.length > 1000) { cortadas++; return; }
-    corpo += linha; n++;
-  });
-  if (!n) return toast(cortadas ? 'As perguntas passam do limite do chat (1000 letras). Marque menos.' : 'Marque pelo menos uma pergunta.');
-  state.chatRasc = (cab + corpo).replace(/\n$/, '') + rod;
-  state.ptab = 'plataforma'; state.pstab = 'chat';
-  renderPessoa();
-  toast('Rascunho no chat: revise e envie.' + (cortadas ? ' ' + cortadas + (cortadas === 1 ? ' pergunta não coube.' : ' perguntas não couberam.') : ''), 4200);
 }
 async function pcDescartar(cid, t) {
   var pc = pcEstado(cid);
@@ -1882,6 +1868,8 @@ async function renderPessoa() {
 var PROC_LABEL = { caf: 'CAF', ameli: 'Ameli', banco: 'Banco', moradia: 'Moradia', orcamento: 'Orçamento', trabalho: 'Trabalho',
   profissao: 'Profissão regulamentada', cir: 'Integração (CIR)', estudos: 'Universidade', visa: 'Visa', visa_aupair: 'Visa au pair' };
 function procLabel(k) { return PROC_LABEL[k] || k; }
+// O recado já vem escrito no cartão do processo sugerido (você edita e aprova em um clique).
+var PROC_RECADO = { caf: 'Vi que você já tem moradia: a CAF pode devolver parte do aluguel. Vale abrir esse processo no seu checklist?' };
 function processosSugeridosHtml(lista) {
   var vivos = (lista || []).filter(function (p) { return p.status !== 'descartada'; });
   if (!vivos.length) return '';
@@ -1893,7 +1881,7 @@ function processosSugeridosHtml(lista) {
         '<div class="procs-tit">🔔 Possível novo processo: <b>' + nome + '</b> <span class="sub">· desde ' + esc(fmtDate(p.detectada_em)) + '</span></div>' +
         '<p class="sub" style="margin:4px 0 6px">Os sinais que ela deu na plataforma:</p>' + sinais +
         '<label class="sub" for="proc-msg-' + p.id + '" style="display:block;margin:10px 0 4px">Seu recado, junto da pergunta do assistente (opcional)</label>' +
-        '<textarea id="proc-msg-' + p.id + '" class="notebox" maxlength="500" style="min-height:64px" placeholder="Ex.: Vi que você já tem moradia: a CAF pode devolver parte do aluguel."></textarea>' +
+        '<textarea id="proc-msg-' + p.id + '" class="notebox" maxlength="500" style="min-height:64px" placeholder="Seu recado (opcional)">' + esc(PROC_RECADO[p.processo] || '') + '</textarea>' +
         '<div class="btns" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">' +
         '<button class="btn primary" type="button" data-proc-aprovar="' + p.id + '">Aprovar e perguntar a ela</button>' +
         '<button class="btn" type="button" data-proc-descartar="' + p.id + '">Descartar</button></div>' +
@@ -2970,15 +2958,14 @@ function onbFalta(c, d, rasc) {
   });
   return out;
 }
-// ---------- Roteiro de perguntas: a próxima pergunta que traz a pessoa de volta ao app ----------
-// Cada campo que falta no Dossiê é uma pergunta possível. Em vez de uma lista solta, o roteiro escolhe UMA por vez, na ordem em que
-// mais ajuda a pessoa, e escreve o rascunho pronto para o chat (você revisa e envia; ela recebe o e-mail de aviso). Regras:
-//   1. Uma pergunta por vez, e nunca por cima de outra sem resposta: depois de uma pergunta nossa, espera até PERG_ESPERA_DIAS dias.
-//   2. Toda pergunta traz o que a resposta DESTRAVA no app (o gancho). É esse recado que dá motivo para ela voltar.
-//   3. Ordem por impacto: prazo e documento > o que reorganiza o checklist > o que ajusta o Radar e os materiais > conforto.
-//   4. Não repete: quem já foi perguntada (o texto da pergunta está no histórico do chat) vai para o fim da fila e mostra há quantos dias.
-//   5. Sem conta no app não há chat: o roteiro avisa e o rascunho serve para o e-mail.
-// Telefone e aceite de lembretes não se perguntam por chat (são da ligação). Chave sem entrada aqui entra com prioridade baixa.
+// ---------- Cérebro do chat: UMA sugestão por vez, já escrita na caixa, para a pessoa sempre ter motivo de voltar ao app ----------
+// Tudo mora no chat da ficha (Plataforma → Chat): você abre, a mensagem já está pronta, e escolhe QUANDO ela sai (agora ou numa data). Nada de painéis.
+// O cérebro (chatSugestao) olha o histórico do chat, o Dossiê e as perguntas que o Pós-call propôs, e decide uma das situações:
+//   parar      3 mensagens suas seguidas sem resposta: o chat só existe dentro do app, então pare e proponha um 1:1.
+//   agradecer  ela respondeu uma pergunta há pouco: agradece, mostra que o app mudou (a recompensa) e JÁ faz a próxima pergunta, na mesma mensagem.
+//   esperar    você escreveu por último: sugere a próxima pergunta, mas agendada para depois do prazo de resposta (PERG_ESPERA_DIAS).
+//   perguntar  a próxima pergunta, por impacto, com o gancho do que a resposta destrava no app.
+// Regras: uma pergunta por vez; sem repetir o que já foi perguntado ou agendado; sem conta no app não há chat. Telefone e aceite de lembretes não se perguntam por chat.
 // p: prioridade (0 a 100) · q: a pergunta, em tom de conversa · g: o que a resposta destrava no app.
 var PERG_ESPERA_DIAS = 3;
 var PERG_RITMO_DIAS = 3;     // intervalo entre as perguntas de uma sequência de reimpacto
@@ -3019,39 +3006,9 @@ function pergMensagem(c, def) {
   return (nome ? 'Oi, ' + nome + '! ' : 'Oi! ') + 'Uma pergunta rápida para eu acertar o seu caminho: ' + def.q + '\n\n' +
     (def.g ? def.g + '\n\n' : '') + 'Pode me responder por aqui mesmo, com calma.';
 }
-// O roteiro desta pessoa: o que falta, na ordem; o que já foi perguntado (e há quantos dias); e se é hora de esperar.
-function pergFila(c, d, rasc, agora) {
-  var chat = state.chat && !state.chat.err ? state.chat : null, msgs = chat ? (chat.msgs || []).slice().sort(function (a, b) { return Number(a.id) - Number(b.id); }) : [];
-  var itens = [], DIA = 86400000, ult = msgs[msgs.length - 1] || null;
-  var agendadas = {};   // chave do Dossiê → a mensagem pendente que já está agendada para ela
-  if (state.ag && state.ag.cid === c.id && !state.ag.erro) (state.ag.itens || []).forEach(function (a) { if (a.status === 'pendente' && a.campo) agendadas[a.campo] = a; });
-  dosVisiveis(c, d, rasc).forEach(function (b) {
-    if (b.livre) return;
-    b.campos.forEach(function (f) {
-      if (f.col || PERG_NAO.indexOf(f.k) >= 0 || dosValor(c, d, rasc, f.k) !== '') return;   // as colunas de contatos (estudos, preocupação do funil...) vêm do funil e do CRM, não de pergunta no chat
-      var def = pergDef(f), q = def.q.toLowerCase(), feita = null;
-      msgs.forEach(function (m, i) { if (m.de === 'ingryd' && m.tipo !== 'proposta' && String(m.texto || '').toLowerCase().indexOf(q) >= 0) feita = { em: m.criado_em, respondida: msgs.slice(i + 1).some(function (x) { return x.de === 'pessoa'; }) }; });
-      itens.push({ k: f.k, l: f.l, def: def, ordem: itens.length, agendada: agendadas[f.k] || null, feita: feita ? { dias: Math.floor((agora - new Date(feita.em).getTime()) / DIA), respondida: feita.respondida } : null });
-    });
-  });
-  itens.sort(function (a, b) { var fa = a.feita || a.agendada ? 1 : 0, fb = b.feita || b.agendada ? 1 : 0; return fa - fb || b.def.p - a.def.p || a.ordem - b.ordem; });
-  var espera = null;
-  if (ult && ult.de === 'ingryd' && ult.tipo !== 'proposta' && agora - new Date(ult.criado_em).getTime() < PERG_ESPERA_DIAS * DIA) espera = { ate: new Date(new Date(ult.criado_em).getTime() + PERG_ESPERA_DIAS * DIA).toISOString() };
-  // Quantas mensagens suas seguidas estão sem resposta (propostas de 1:1 não contam como pergunta).
-  var semResposta = 0;
-  for (var j = msgs.length - 1; j >= 0 && msgs[j].de === 'ingryd'; j--) if (msgs[j].tipo !== 'proposta') semResposta++;
-  // Ela respondeu a uma pergunta do roteiro há pouco: é hora de agradecer e mostrar o que mudou no app.
-  var agradecer = null;
-  if (ult && ult.de === 'pessoa' && agora - new Date(ult.criado_em).getTime() < PERG_ESPERA_DIAS * DIA) {
-    var antes = null;
-    for (var m = msgs.length - 2; m >= 0; m--) if (msgs[m].de === 'ingryd' && msgs[m].tipo !== 'proposta') { antes = msgs[m]; break; }
-    if (antes && Object.keys(PERGUNTAS).some(function (k) { return String(antes.texto || '').toLowerCase().indexOf(PERGUNTAS[k].q.toLowerCase()) >= 0; })) agradecer = true;
-  }
-  var livres = itens.filter(function (i) { return !i.feita && !i.agendada; });
-  return { itens: itens, proxima: livres[0] || null, espera: espera, semResposta: semResposta, parar: semResposta >= PERG_PARAR_APOS, agradecer: agradecer, sequencia: livres.slice(0, PERG_SEQ_N),
-    semConta: !!(state.dos && state.dos.chk && state.dos.chk.semConta), semChat: !chat };
-}
-// Datas padrão da sequência: amanhã às 10h e depois a cada PERG_RITMO_DIAS dias, sempre em dia útil (sábado e domingo passam para segunda).
+function pergPad(n) { return (n < 10 ? '0' : '') + n; }
+function pergLocalIso(d) { return d.getFullYear() + '-' + pergPad(d.getMonth() + 1) + '-' + pergPad(d.getDate()) + 'T' + pergPad(d.getHours()) + ':' + pergPad(d.getMinutes()); }
+// Datas padrão: amanhã às 10h e depois a cada PERG_RITMO_DIAS dias, sempre em dia útil (sábado e domingo passam para segunda).
 function pergDatasSequencia(agora, n) {
   var out = [], d = new Date(agora); d.setDate(d.getDate() + 1); d.setHours(10, 0, 0, 0);
   for (var i = 0; i < n; i++) {
@@ -3062,71 +3019,117 @@ function pergDatasSequencia(agora, n) {
   }
   return out;
 }
-function pergAgradecimento(c) {
-  var nome = String((c && c.nome) || '').trim().split(/\s+/)[0];
-  return (nome ? 'Obrigada, ' + nome + '! ' : 'Obrigada! ') + 'Com a sua resposta eu ajustei o seu caminho: dá uma olhada na sua Home e no seu Radar, que já mudaram. Se surgir qualquer dúvida, é só escrever aqui.';
-}
-// As linhas da sequência na tela: o que você já mexeu (data, texto, marcação) ou o padrão.
-function pergSeqLinhas(c, f) {
-  var datas = pergDatasSequencia(Date.now(), f.sequencia.length), salvo = state.seq && state.seq.cid === c.id ? state.seq.linhas : {};
-  return f.sequencia.map(function (i, n) {
-    var s0 = salvo[i.k] || {};
-    return { k: i.k, l: i.l, on: s0.on === undefined ? true : s0.on, quando: s0.quando || pergLocalIso(datas[n]), texto: s0.texto === undefined ? pergMensagem(c, i.def) : s0.texto };
-  });
-}
-var PERG_RECADO_PROCESSO = { caf: 'Vi que você já tem moradia: a CAF pode devolver parte do aluguel. Vale abrir esse processo no seu checklist?' };
-function pergProcessosHtml() {
-  var det = (state.procs || []).filter(function (p) { return p.status === 'detectada'; });
-  if (!det.length) return '';
-  return '<div class="pergs-proc"><b>Antes de tudo:</b> o assistente já detectou ' + (det.length === 1 ? 'um possível processo' : det.length + ' possíveis processos') + ' (cartão acima). ' + det.map(function (p) {
-    return esc(procLabel(p.processo)) + ' <button class="btn" type="button" data-pergproc="' + p.id + '">Usar recado sugerido</button>';
-  }).join(' ') + '</div>';
-}
-function pergRoteiroHtml(c, d, rasc) {
-  if ((!state.ag || state.ag.cid !== c.id)) pergCarregarAgendadas(c.id);
-  var f = pergFila(c, d, rasc, Date.now());
-  if (!f.itens.length) return pergProcessosHtml();
-  var h = '<div class="pergs"><div class="pergs-cab"><b>Roteiro de perguntas</b> <span class="sub">uma por vez; cada uma diz o que ela destrava no app, para ela ter motivo para voltar</span></div>' + pergProcessosHtml();
-  if (f.semConta) h += '<p class="pergs-aviso">Ela ainda não entrou no app: o chat só existe lá dentro. Use o rascunho abaixo no e-mail.</p>';
-  else if (f.semChat) h += '<p class="pergs-aviso">Não consegui ler o chat dela agora, então não sei o que já foi perguntado.</p>';
-  else if (f.parar) h += '<p class="pergs-aviso">Você escreveu ' + f.semResposta + ' mensagens seguidas e ela não respondeu. Pare de perguntar por aqui: o chat só existe dentro do app e ela pode não estar abrindo. Proponha um 1:1 ou escreva por e-mail. <button class="btn" type="button" data-open1a1="' + esc(c.id) + '">Marcar 1:1</button></p>';
-  else if (f.espera) h += '<p class="pergs-aviso">Você escreveu por último e ela ainda não respondeu. Espere até ' + esc(fmtDay(f.espera.ate)) + ' antes da próxima pergunta, para não empilhar.</p>';
-  if (f.agradecer && !f.semConta) h += '<div class="pergs-agr"><b>Ela respondeu.</b> Agradeça e mostre o que mudou no app: é a recompensa que faz ela querer responder de novo.<blockquote class="pergs-msg">' + esc(pergAgradecimento(c)) + '</blockquote>' +
-    '<div class="actions"><button class="btn" type="button" data-pergagradecer="' + esc(c.id) + '">Levar para o chat</button></div></div>';
-  if (f.proxima) {
-    var msg = state.pergEdit && state.pergEdit.cid === c.id && state.pergEdit.k === f.proxima.k ? state.pergEdit.texto : pergMensagem(c, f.proxima.def), ag = state.ag && state.ag.cid === c.id ? state.ag : null;
-    h += '<div class="pergs-prox"><div><b>Próxima: ' + esc(f.proxima.l) + '</b></div>' + (f.proxima.def.g ? '<p class="sub" style="margin:4px 0">O que destrava no app: ' + esc(f.proxima.def.g) + '</p>' : '') +
-      '<label class="sub" for="perg-texto" style="display:block;margin:6px 0 4px">A mensagem (ajuste o que quiser antes de enviar ou agendar)</label>' +
-      '<textarea id="perg-texto" class="notebox" maxlength="1000" data-pergk="' + esc(f.proxima.k) + '" data-cid="' + esc(c.id) + '" style="min-height:130px">' + esc(msg) + '</textarea>' +
-      '<div class="actions">' + (f.semConta ? '<button class="btn primary" type="button" data-emailfor="' + esc(c.id) + '">Escrever e-mail</button>' : '<button class="btn primary" type="button" data-pergchat="' + esc(f.proxima.k) + '" data-cid="' + esc(c.id) + '">Levar para o chat agora</button>') + '</div>';
-    if (!f.semConta) {
-      h += '<div class="pergs-quando"><label for="perg-quando"><b>Ou agende</b> o dia e a hora em que ela sai do CRM para o chat dela</label>' +
-        '<div class="actions"><input id="perg-quando" type="datetime-local" value="' + esc(pergQuandoPadrao(c.id)) + '" min="' + esc(pergQuandoMin()) + '"' + (ag && ag.erro ? ' disabled' : '') + '>' +
-        '<button class="btn" type="button" data-pergagendar="' + esc(f.proxima.k) + '" data-cid="' + esc(c.id) + '"' + (ag && ag.erro ? ' disabled' : '') + '>Agendar envio</button></div>' +
-        '<p class="sub" style="margin:4px 0 0">' + (ag && ag.erro ? 'Falta rodar <b>db/crm-mensagens-agendadas.sql</b> no SQL Editor do Supabase.' : 'Sai na rodada de hora em hora (às :05) e ela recebe o e-mail de aviso na mesma hora. Dá para cancelar antes.') + '</p></div>';
-    }
-    h += '</div>';
-  } else h += '<p class="sub">Todas as perguntas que faltam já foram feitas ou agendadas. Agora é esperar as respostas.</p>';
-  h += pergSequenciaHtml(c, f);
-  h += pergAgendadasHtml(c);
-  h += '<details class="pergs-fila"><summary class="sub">A fila inteira (' + f.itens.length + ')</summary><ol>' + f.itens.map(function (i) {
-    return '<li' + (i.feita || i.agendada ? ' class="feita"' : '') + '>' + esc(i.l) + (i.agendada ? ' <span class="dchip insnovo">agendada para ' + esc(fmtDia(i.agendada.enviar_em) + ' ' + fmtHora(i.agendada.enviar_em)) + '</span>' : '') + (i.feita ? ' <span class="dchip">' + (i.feita.respondida ? 'perguntada e respondida' : 'perguntada há ' + i.feita.dias + (i.feita.dias === 1 ? ' dia' : ' dias')) + '</span>' : '') + '</li>';
-  }).join('') + '</ol></details></div>';
-  return h;
-}
-// Data e hora do agendamento: o padrão é amanhã às 10h (hora do seu computador); o mínimo é daqui a 10 minutos.
-function pergPad(n) { return (n < 10 ? '0' : '') + n; }
-function pergLocalIso(d) { return d.getFullYear() + '-' + pergPad(d.getMonth() + 1) + '-' + pergPad(d.getDate()) + 'T' + pergPad(d.getHours()) + ':' + pergPad(d.getMinutes()); }
-function pergQuandoMin() { return pergLocalIso(new Date(Date.now() + 10 * 60000)); }
-function pergQuandoPadrao(cid) {
-  if (state.pergQuando && state.pergQuando.cid === cid && state.pergQuando.valor) return state.pergQuando.valor;
-  var d = new Date(Date.now() + 86400000); d.setHours(10, 0, 0, 0);
-  return pergLocalIso(d);
-}
 // A hora real do envio: o Worker roda às :05 de cada hora, então a mensagem sai na primeira rodada depois da hora escolhida.
 function pergHoraDeSaida(quando) {
   var d = new Date(quando.getTime()); if (d.getMinutes() > 5) d.setHours(d.getHours() + 1);
   return pergPad(d.getHours()) + ':05';
+}
+// O que o histórico diz: quantas mensagens suas estão sem resposta, e se ela respondeu há pouco a uma pergunta do roteiro.
+function pergHistorico(msgs, agora, textosDeRoteiro) {
+  var DIA = 86400000, ult = msgs[msgs.length - 1] || null, semResposta = 0, agradecer = null, espera = null;
+  for (var j = msgs.length - 1; j >= 0 && msgs[j].de === 'ingryd'; j--) if (msgs[j].tipo !== 'proposta') semResposta++;
+  if (ult && ult.de === 'ingryd' && ult.tipo !== 'proposta' && agora - new Date(ult.criado_em).getTime() < PERG_ESPERA_DIAS * DIA) espera = { ate: new Date(new Date(ult.criado_em).getTime() + PERG_ESPERA_DIAS * DIA) };
+  if (ult && ult.de === 'pessoa' && agora - new Date(ult.criado_em).getTime() < PERG_ESPERA_DIAS * DIA) {
+    var antes = null;
+    for (var m = msgs.length - 2; m >= 0; m--) if (msgs[m].de === 'ingryd' && msgs[m].tipo !== 'proposta') { antes = msgs[m]; break; }
+    if (antes && textosDeRoteiro.some(function (q) { return String(antes.texto || '').toLowerCase().indexOf(q) >= 0; })) agradecer = { dias: Math.floor((agora - new Date(ult.criado_em).getTime()) / DIA) };
+  }
+  return { semResposta: semResposta, parar: semResposta >= PERG_PARAR_APOS, espera: espera, agradecer: agradecer };
+}
+// As perguntas que faltam no Dossiê, por impacto, sem as já feitas nem as já agendadas.
+function pergFila(c, d, rasc, agora) {
+  var chat = state.chat && !state.chat.err ? state.chat : null, msgs = chat ? (chat.msgs || []).slice().sort(function (a, b) { return Number(a.id) - Number(b.id); }) : [];
+  var DIA = 86400000, itens = [], pendentes = (state.ag && state.ag.cid === c.id && !state.ag.erro ? state.ag.itens || [] : []).filter(function (a) { return a.status === 'pendente'; });
+  dosVisiveis(c, d, rasc).forEach(function (b) {
+    if (b.livre) return;
+    b.campos.forEach(function (f) {
+      if (f.col || PERG_NAO.indexOf(f.k) >= 0 || dosValor(c, d, rasc, f.k) !== '') return;   // as colunas de contatos (estudos, preocupação do funil...) vêm do funil e do CRM
+      var def = pergDef(f), q = def.q.toLowerCase(), feita = null, agendada = pendentes.filter(function (a) { return a.campo === f.k || String(a.texto || '').toLowerCase().indexOf(q) >= 0; })[0] || null;
+      msgs.forEach(function (m, i) { if (m.de === 'ingryd' && m.tipo !== 'proposta' && String(m.texto || '').toLowerCase().indexOf(q) >= 0) feita = { em: m.criado_em, respondida: msgs.slice(i + 1).some(function (x) { return x.de === 'pessoa'; }) }; });
+      itens.push({ k: f.k, l: f.l, def: def, ordem: itens.length, agendada: agendada, feita: feita ? { dias: Math.floor((agora - new Date(feita.em).getTime()) / DIA), respondida: feita.respondida } : null });
+    });
+  });
+  itens.sort(function (a, b) { var fa = a.feita || a.agendada ? 1 : 0, fb = b.feita || b.agendada ? 1 : 0; return fa - fb || b.def.p - a.def.p || a.ordem - b.ordem; });
+  return { itens: itens, livres: itens.filter(function (i) { return !i.feita && !i.agendada; }), msgs: msgs, semChat: !chat, semConta: !!(state.dos && state.dos.chk && state.dos.chk.semConta) };
+}
+// Texto de uma pergunta do roteiro já agradecendo a resposta anterior: a recompensa e a próxima pergunta numa mensagem só.
+function pergAgradecimento(c, prox) {
+  var nome = String((c && c.nome) || '').trim().split(/\s+/)[0];
+  var cab = (nome ? 'Obrigada, ' + nome + '! ' : 'Obrigada! ') + 'Com a sua resposta eu ajustei o seu caminho: dá uma olhada na sua Home e no seu Radar, que já mudaram.';
+  if (!prox) return cab + ' Se surgir qualquer dúvida, é só escrever aqui.';
+  return cab + '\n\nE já aproveito para a próxima pergunta: ' + prox.def.q + (prox.def.g ? '\n\n' + prox.def.g : '') + '\n\nPode me responder por aqui mesmo, com calma.';
+}
+// As perguntas que o Pós-call propôs (perguntas_para_ela) entram na frente do catálogo, sem passo manual.
+function pergDoPosCall(c, f, pendentes) {
+  var pc = state.pc && state.pc.cid === c.id && state.pc.prop && state.pc.prop.proposta ? state.pc.prop.proposta.perguntas_para_ela || [] : [], hist = f.msgs.filter(function (m) { return m.de === 'ingryd'; });
+  return pc.map(function (q, i) {
+    var t = String(q.texto || '').trim(), q1 = t.charAt(0).toLowerCase() + t.slice(1);
+    return { k: 'pc' + i, campo: q.campo || null, l: t.length > 46 ? t.slice(0, 46) + '…' : t, def: { p: 99, q: q1, g: q.motivo ? '' : '' } };
+  }).filter(function (i) {
+    var low = i.def.q.toLowerCase();
+    return i.def.q && !hist.some(function (m) { return String(m.texto || '').toLowerCase().indexOf(low) >= 0; }) && !pendentes.some(function (a) { return String(a.texto || '').toLowerCase().indexOf(low) >= 0; });
+  });
+}
+// A decisão. Devolve { tipo, motivo, texto, quando, ate, cand, pick } — tipo: parar | agradecer | esperar | perguntar | semconta | nenhuma.
+function chatSugestao(c, agora) {
+  var d = (state.dos && state.dos.d) || {}, rasc = (state.dos && state.dos.rasc) || {}, f = pergFila(c, d, rasc, agora);
+  var pendentes = (state.ag && state.ag.cid === c.id && !state.ag.erro ? state.ag.itens || [] : []).filter(function (a) { return a.status === 'pendente'; });
+  var h = pergHistorico(f.msgs, agora, Object.keys(PERGUNTAS).map(function (k) { return PERGUNTAS[k].q.toLowerCase(); }));
+  var cand = pergDoPosCall(c, f, pendentes).concat(f.livres), pula = state.chatSugPula || 0, pick = cand.length ? cand[pula % cand.length] : null;
+  var base = { cand: cand, pick: pick, semResposta: h.semResposta, texto: '', quando: 'agora', ate: null };
+  if (f.semConta) return Object.assign(base, { tipo: 'semconta', motivo: 'Ela ainda não entrou no app: o chat só existe lá dentro. Escreva por e-mail.' });
+  if (h.parar) return Object.assign(base, { tipo: 'parar', motivo: 'Você escreveu ' + h.semResposta + ' mensagens seguidas e ela não respondeu. Pare de perguntar por aqui: proponha um 1:1 ou escreva por e-mail.' });
+  if (h.agradecer) return Object.assign(base, { tipo: 'agradecer', motivo: 'Ela respondeu' + (h.agradecer.dias ? ' há ' + h.agradecer.dias + (h.agradecer.dias === 1 ? ' dia' : ' dias') : ' agora') + ': agradeça, mostre o que mudou no app' + (pick ? ' e já faça a próxima pergunta.' : '.'), texto: pergAgradecimento(c, pick) });
+  if (!pick) return Object.assign(base, { tipo: 'nenhuma', motivo: '' });
+  var texto = pergMensagem(c, pick.def);
+  // Quando esperar: o prazo de resposta da última mensagem E o ritmo da sequência já agendada (a próxima cai PERG_RITMO_DIAS dias úteis depois da última agendada).
+  var depois = null, ultima = pendentes.reduce(function (m, a) { var t = new Date(a.enviar_em).getTime(); return t > m ? t : m; }, 0);
+  if (h.espera) depois = h.espera.ate.getTime();
+  if (ultima && (!depois || ultima + PERG_RITMO_DIAS * 86400000 > depois)) depois = ultima + PERG_RITMO_DIAS * 86400000;
+  if (depois) {
+    var ate = new Date(depois); ate.setHours(10, 0, 0, 0); if (ate.getTime() < depois) ate.setDate(ate.getDate() + 1);
+    while (ate.getDay() === 0 || ate.getDay() === 6) ate.setDate(ate.getDate() + 1);
+    return Object.assign(base, { tipo: 'esperar', quando: 'ate', ate: ate, texto: texto, motivo: (ultima && (!h.espera || ultima + PERG_RITMO_DIAS * 86400000 > h.espera.ate.getTime())
+      ? 'Já há ' + pendentes.length + (pendentes.length === 1 ? ' mensagem agendada' : ' mensagens agendadas') + '. Próxima pergunta pronta: ' + pick.l + ', sugerida para ' + fmtDia(ate.toISOString()) + ' (a cada ' + PERG_RITMO_DIAS + ' dias úteis).'
+      : 'Você escreveu por último e ela ainda não respondeu. Próxima pergunta pronta: ' + pick.l + '. Sugiro agendar para depois do prazo.') });
+  }
+  return Object.assign(base, { tipo: 'perguntar', texto: texto, motivo: 'Próxima pergunta: ' + pick.l + (pick.def.g ? ' — ' + pick.def.g : '') });
+}
+
+// ---------- A caixa do chat: sugestão + quando enviar + agendadas ----------
+function chatControlesHtml(c, sug) {
+  var ctl = state.chatCtl && state.chatCtl.cid === c.id ? state.chatCtl : null, quando = ctl ? ctl.quando : sug.quando, ag = state.ag && state.ag.cid === c.id ? state.ag : null;
+  if (sug.tipo === 'semconta') return '<div class="actions" style="margin-top:8px"><button class="btn primary" type="button" data-chatenviar="' + esc(c.id) + '">Enviar</button></div>';
+  var d = pergDatasSequencia(Date.now(), 2);
+  var ops = [['agora', 'Enviar agora'], ['amanha', 'Amanhã (' + fmtDia(d[0].toISOString()) + ') às 10h'], ['d3', 'Em 3 dias úteis (' + fmtDia(d[1].toISOString()) + ') às 10h']];
+  if (sug.ate) ops.splice(1, 0, ['ate', 'Depois da espera (' + fmtDia(sug.ate.toISOString()) + ') às 10h']);
+  if (sug.cand.length >= 2) ops.push(['seq', 'As próximas ' + Math.min(PERG_SEQ_N, sug.cand.length) + ' perguntas, a cada ' + PERG_RITMO_DIAS + ' dias úteis']);
+  ops.push(['custom', 'Escolher dia e hora…']);
+  if (!ops.some(function (o) { return o[0] === quando; })) quando = 'agora';
+  var custom = ctl && ctl.custom ? ctl.custom : pergLocalIso(d[0]), erroSql = ag && ag.erro;
+  var rotulo = quando === 'agora' ? 'Enviar' : quando === 'seq' ? 'Agendar ' + Math.min(PERG_SEQ_N, sug.cand.length) + ' mensagens' : 'Agendar';
+  return '<div class="actions chat-ctl" style="margin-top:8px"><select id="chat-quando" aria-label="Quando enviar">' + ops.map(function (o) { return '<option value="' + o[0] + '"' + (o[0] === quando ? ' selected' : '') + (erroSql && o[0] !== 'agora' ? ' disabled' : '') + '>' + esc(o[1]) + '</option>'; }).join('') + '</select>' +
+    (quando === 'custom' ? '<input id="chat-quando-custom" type="datetime-local" value="' + esc(custom) + '" min="' + esc(pergLocalIso(new Date(Date.now() + 10 * 60000))) + '">' : '') +
+    '<button class="btn primary" type="button" ' + (quando === 'agora' ? 'data-chatenviar="' : 'data-chatgo="') + esc(c.id) + '">' + esc(rotulo) + '</button></div>' +
+    (quando === 'agora' ? '' : '<p class="sub" style="margin:4px 0 0">Sai sozinha na hora escolhida (rodada de hora em hora, às :05) e ela recebe o e-mail de aviso. Dá para cancelar antes.</p>') +
+    (erroSql ? '<p class="sub" style="margin:4px 0 0">Para agendar, falta rodar <b>db/crm-mensagens-agendadas.sql</b> no SQL Editor do Supabase.</p>' : '');
+}
+function chatSugestaoHtml(c, sug) {
+  if (sug.tipo === 'nenhuma') return '';
+  var ico = sug.tipo === 'parar' || sug.tipo === 'semconta' ? '⚠' : '💡';
+  return '<div class="chat-sug ' + esc(sug.tipo) + '" role="status"><span>' + ico + ' ' + esc(sug.motivo) + '</span>' +
+    (sug.tipo === 'parar' ? ' <button class="btn" type="button" data-chatquick="um_a_um">Propor 1:1</button>' : '') +
+    (sug.cand.length > 1 && sug.texto ? ' <button class="link" type="button" data-sugpular="1">Outra pergunta</button>' : '') + '</div>';
+}
+function chatAgendadasHtml(c) {
+  var ag = state.ag && state.ag.cid === c.id ? state.ag : null;
+  var vivas = ag && !ag.erro ? ag.itens.filter(function (a) { return a.status === 'pendente' || a.status === 'erro'; }) : [];
+  if (!vivas.length) return '';
+  return '<details class="chat-ag"><summary class="sub">Agendadas para ela (' + vivas.length + ')</summary><ul>' + vivas.slice(0, 8).map(function (a) {
+    return '<li><span class="dchip' + (a.status === 'erro' ? ' falta' : ' insnovo') + '">' + (a.status === 'erro' ? 'não saiu' : 'agendada') + ' · ' + esc(fmtDia(a.enviar_em) + ' ' + fmtHora(a.enviar_em)) + '</span> ' +
+      esc(String(a.texto || '').replace(/\s+/g, ' ').slice(0, 90)) + (String(a.texto || '').length > 90 ? '…' : '') + (a.status === 'erro' && a.erro ? ' <small class="sub">(' + esc(a.erro) + ')</small>' : '') +
+      (a.status === 'pendente' ? ' <button class="btn" type="button" data-pergcancelar="' + esc(a.id) + '">Cancelar</button>' : '') + '</li>';
+  }).join('') + '</ul></details>';
 }
 async function pergCarregarAgendadas(cid) {
   var ag = state.ag = { cid: cid, itens: [], carregou: false, carregando: true, erro: null };
@@ -3134,44 +3137,48 @@ async function pergCarregarAgendadas(cid) {
   if (state.ag !== ag) return;
   ag.carregando = false; ag.carregou = true;
   if (r.error) ag.erro = r.error; else ag.itens = r.data || [];
-  var c = byC(cid); if (c && state.dos && state.dos.cid === cid) pintaDossie(c);
+  var c = byC(cid); if (c && state.sel === cid && state.pstab === 'chat') repintaChatCaixa(c);
 }
-function pergAgendadasHtml(c) {
-  var ag = state.ag && state.ag.cid === c.id ? state.ag : null;
-  if (!ag || ag.erro || !ag.itens.length) return '';
-  var ROT = { pendente: 'agendada', enviada: 'enviada', cancelada: 'cancelada', erro: 'não saiu' };
-  return '<div class="pergs-ag"><b>Agendadas para ela</b><ul>' + ag.itens.slice(0, 6).map(function (a) {
-    var quando = fmtDia(a.status === 'enviada' && a.enviada_em ? a.enviada_em : a.enviar_em) + ' ' + fmtHora(a.status === 'enviada' && a.enviada_em ? a.enviada_em : a.enviar_em);
-    return '<li class="' + esc(a.status) + '"><span class="dchip' + (a.status === 'pendente' ? ' insnovo' : a.status === 'erro' ? ' falta' : '') + '">' + esc(ROT[a.status] || a.status) + ' · ' + esc(quando) + '</span> ' +
-      esc(String(a.texto || '').replace(/\s+/g, ' ').slice(0, 110)) + (String(a.texto || '').length > 110 ? '…' : '') +
-      (a.status === 'erro' && a.erro ? ' <small class="sub">(' + esc(a.erro) + ')</small>' : '') +
-      (a.status === 'pendente' ? ' <button class="btn" type="button" data-pergcancelar="' + esc(a.id) + '" data-cid="' + esc(c.id) + '">Cancelar</button>' : '') + '</li>';
-  }).join('') + '</ul></div>';
+// Repinta só a sugestão, os controles e as agendadas (a conversa e o que você está digitando ficam como estão).
+function repintaChatCaixa(c) {
+  var sug = chatSugestao(c, Date.now()), a = $('chat-sug'), b = $('chat-ctl'), g = $('chat-agendadas'), tx = $('chat-txt');
+  if (a) a.innerHTML = chatSugestaoHtml(c, sug);
+  if (b) b.innerHTML = chatControlesHtml(c, sug);
+  if (g) g.innerHTML = chatAgendadasHtml(c);
+  if (tx && !state.chatEditado && !state.chatRasc && (!String(tx.value || '').trim() || tx.value === state.chatAutoTexto)) { tx.value = sug.texto || ''; state.chatAutoTexto = sug.texto || ''; }
 }
-function pergTextoAtual(cid, k, padrao) {
-  var el = $('perg-texto');
-  if (el && el.dataset && el.dataset.pergk === k && String(el.value || '').trim()) return String(el.value).trim();
-  return state.pergEdit && state.pergEdit.cid === cid && state.pergEdit.k === k ? state.pergEdit.texto.trim() : padrao;
-}
-async function pergAgendar(cid, k, t) {
-  var c = byC(cid), d = (state.dos && state.dos.d) || {}, rasc = (state.dos && state.dos.rasc) || {}, f = pergFila(c, d, rasc, Date.now());
-  var item = f.itens.filter(function (i) { return i.k === k; })[0];
-  if (!item) return toast('Essa pergunta já foi respondida.');
-  var texto = pergTextoAtual(cid, k, pergMensagem(c, item.def)), campo = $('perg-quando'), quando = campo && campo.value ? new Date(campo.value) : null;
-  if (!texto) return toast('Escreva a mensagem antes de agendar.');
-  if (texto.length > 1000) return toast('A mensagem passa de 1000 letras (o limite do chat).');
-  if (!quando || isNaN(quando.getTime())) return toast('Escolha o dia e a hora.');
-  if (quando.getTime() < Date.now() + 10 * 60000) return toast('Escolha uma hora daqui a pelo menos 10 minutos. Para agora, use "Levar para o chat agora".');
-  if (quando.getTime() > Date.now() + 119 * 86400000) return toast('O limite é de 119 dias à frente.');
-  if (f.parar && typeof window.confirm === 'function' && !window.confirm('Ela não respondeu às últimas ' + f.semResposta + ' mensagens. Agendar mesmo assim?')) return;
-  if (item.agendada && typeof window.confirm === 'function' && !window.confirm('Já existe uma mensagem agendada para essa pergunta. Agendar outra mesmo assim?')) return;
+// Executa o botão principal: enviar agora (enviarChat) ou agendar uma (ou as próximas 3).
+async function chatAgendar(cid, t) {
+  var c = byC(cid), sug = chatSugestao(c, Date.now()), ctl = state.chatCtl && state.chatCtl.cid === cid ? state.chatCtl : { quando: sug.quando }, txt = ($('chat-txt').value || '').trim(), agora = Date.now();
+  if (!txt) return toast('Escreva a mensagem antes de agendar.');
+  var quando = ctl.quando, itens = [];
+  if (quando === 'custom') { var q = new Date(ctl.custom || ($('chat-quando-custom') && $('chat-quando-custom').value)); if (isNaN(q.getTime())) return toast('Escolha o dia e a hora.'); itens.push({ texto: txt, quando: q, campo: null }); }
+  else if (quando === 'amanha' || quando === 'd3') itens.push({ texto: txt, quando: pergDatasSequencia(agora, 2)[quando === 'amanha' ? 0 : 1], campo: null });
+  else if (quando === 'ate' && sug.ate) itens.push({ texto: txt, quando: sug.ate, campo: null });
+  else if (quando === 'seq') {
+    var datas = pergDatasSequencia(agora, Math.min(PERG_SEQ_N, sug.cand.length));
+    sug.cand.slice(0, datas.length).forEach(function (cd, i) { itens.push({ texto: i === 0 ? txt : pergMensagem(c, cd.def), quando: datas[i], campo: i === 0 ? null : (/^pc/.test(cd.k) ? cd.campo : cd.k) }); });
+  } else return;
+  if (sug.pick && itens[0] && quando !== 'seq') itens[0].campo = /^pc/.test(sug.pick.k) ? sug.pick.campo : sug.pick.k;
+  if (sug.pick && quando === 'seq') itens[0].campo = /^pc/.test(sug.pick.k) ? sug.pick.campo : sug.pick.k;
+  for (var i = 0; i < itens.length; i++) {
+    if (itens[i].texto.length > 1000) return toast('A mensagem passa de 1000 letras (o limite do chat).');
+    if (itens[i].quando.getTime() < agora + 10 * 60000) return toast('Escolha uma hora daqui a pelo menos 10 minutos. Para agora, use "Enviar agora".');
+    if (itens[i].quando.getTime() > agora + 119 * 86400000) return toast('O limite é de 119 dias à frente.');
+  }
+  if (sug.tipo === 'parar' && typeof window.confirm === 'function' && !window.confirm('Ela não respondeu às últimas ' + sug.semResposta + ' mensagens. Agendar mesmo assim?')) return;
   if (t) t.disabled = true;
-  var r = await supabase.rpc('crm_agendar_mensagem', { p_contato: cid, p_texto: texto, p_enviar_em: quando.toISOString(), p_origem: 'roteiro', p_campo: k });
+  var feitas = 0, erro = null;
+  for (var j = 0; j < itens.length && !erro; j++) {
+    var r = await supabase.rpc('crm_agendar_mensagem', { p_contato: cid, p_texto: itens[j].texto, p_enviar_em: itens[j].quando.toISOString(), p_origem: 'roteiro', p_campo: itens[j].campo || null });
+    if (r.error) erro = r.error; else feitas++;
+  }
   if (t) t.disabled = false;
-  if (r.error) return fail('agendar a mensagem', r.error);
-  state.pergEdit = null; state.pergQuando = null;
-  toast('Agendada para ' + fmtDia(quando.toISOString()) + ' ' + fmtHora(quando.toISOString()) + '. Sai por volta das ' + pergHoraDeSaida(quando) + '.', 5200);
+  state.chatCtl = null; state.chatRasc = ''; state.chatEditado = false; state.chatSugPula = 0;
+  var tx = $('chat-txt'); if (tx) tx.value = '';
   await pergCarregarAgendadas(cid);
+  if (erro) return fail('agendar a mensagem ' + (feitas + 1) + ' (' + feitas + ' de ' + itens.length + ' foram agendadas)', erro);
+  toast(feitas === 1 ? 'Agendada para ' + fmtDia(itens[0].quando.toISOString()) + ' ' + fmtHora(itens[0].quando.toISOString()) + ' (sai por volta das ' + pergHoraDeSaida(itens[0].quando) + ').' : feitas + ' mensagens agendadas, de ' + fmtDia(itens[0].quando.toISOString()) + ' a ' + fmtDia(itens[feitas - 1].quando.toISOString()) + '.', 5200);
 }
 async function pergCancelar(cid, id, t) {
   if (t) t.disabled = true;
@@ -3180,72 +3187,7 @@ async function pergCancelar(cid, id, t) {
   if (r.error) return fail('cancelar a mensagem', r.error);
   toast(r.data === false ? 'Essa mensagem já tinha saído ou sido cancelada.' : 'Agendamento cancelado.');
   await pergCarregarAgendadas(cid);
-}
-function pergSequenciaHtml(c, f) {
-  var ag = state.ag && state.ag.cid === c.id ? state.ag : null;
-  if (f.semConta || f.sequencia.length < 2 || (ag && ag.erro)) return '';
-  var linhas = pergSeqLinhas(c, f);
-  return '<details class="pergs-seq"><summary><b>Sequência de reimpacto</b> <span class="sub">agende as próximas ' + linhas.length + ' perguntas de uma vez</span></summary>' +
-    '<p class="sub" style="margin:6px 0">Uma pergunta a cada ' + PERG_RITMO_DIAS + ' dias, em dia útil às 10h. Cada uma sai sozinha na data e ela recebe o e-mail de aviso; se ela responder, ajuste ou cancele as seguintes. ' +
-    'Se ela ficar ' + PERG_PARAR_APOS + ' mensagens sem responder, o roteiro manda parar e propor um 1:1.</p>' +
-    linhas.map(function (l) {
-      return '<div class="pergs-seqlinha"><label><input type="checkbox" data-seqon="' + esc(l.k) + '"' + (l.on ? ' checked' : '') + '> <b>' + esc(l.l) + '</b></label>' +
-        '<input id="seq-quando-' + esc(l.k) + '" type="datetime-local" data-seqk="' + esc(l.k) + '" value="' + esc(l.quando) + '" min="' + esc(pergQuandoMin()) + '" aria-label="Quando sai: ' + esc(l.l) + '">' +
-        '<textarea id="seq-texto-' + esc(l.k) + '" class="notebox" maxlength="1000" data-seqk="' + esc(l.k) + '" style="min-height:96px" aria-label="Mensagem: ' + esc(l.l) + '">' + esc(l.texto) + '</textarea></div>';
-    }).join('') +
-    '<div class="actions"><button class="btn primary" type="button" data-seqagendar="' + esc(c.id) + '">Agendar a sequência</button></div></details>';
-}
-async function pergAgendarSequencia(cid, t) {
-  var c = byC(cid), d = (state.dos && state.dos.d) || {}, rasc = (state.dos && state.dos.rasc) || {}, f = pergFila(c, d, rasc, Date.now()), agora = Date.now();
-  var linhas = pergSeqLinhas(c, f).filter(function (l) { return l.on; });
-  if (!linhas.length) return toast('Marque pelo menos uma pergunta.');
-  for (var i = 0; i < linhas.length; i++) {
-    var l = linhas[i], q = new Date(l.quando);
-    if (!String(l.texto || '').trim()) return toast('Escreva a mensagem de "' + l.l + '".');
-    if (String(l.texto).trim().length > 1000) return toast('A mensagem de "' + l.l + '" passa de 1000 letras.');
-    if (isNaN(q.getTime())) return toast('Escolha o dia e a hora de "' + l.l + '".');
-    if (q.getTime() < agora + 10 * 60000) return toast('"' + l.l + '": escolha uma hora daqui a pelo menos 10 minutos.');
-    if (q.getTime() > agora + 119 * 86400000) return toast('"' + l.l + '": o limite é de 119 dias à frente.');
-  }
-  if (f.parar && typeof window.confirm === 'function' && !window.confirm('Ela não respondeu às últimas ' + f.semResposta + ' mensagens. Agendar a sequência mesmo assim?')) return;
-  if (t) t.disabled = true;
-  var feitas = 0, erro = null;
-  for (var j = 0; j < linhas.length && !erro; j++) {
-    var r = await supabase.rpc('crm_agendar_mensagem', { p_contato: cid, p_texto: String(linhas[j].texto).trim(), p_enviar_em: new Date(linhas[j].quando).toISOString(), p_origem: 'roteiro', p_campo: linhas[j].k });
-    if (r.error) erro = r.error; else feitas++;
-  }
-  if (t) t.disabled = false;
-  state.seq = null;
-  await pergCarregarAgendadas(cid);
-  if (erro) return fail('agendar a pergunta ' + (feitas + 1) + ' (' + feitas + ' de ' + linhas.length + ' foram agendadas)', erro);
-  toast(feitas + (feitas === 1 ? ' pergunta agendada' : ' perguntas agendadas') + ', de ' + fmtDia(new Date(linhas[0].quando).toISOString()) + ' a ' + fmtDia(new Date(linhas[linhas.length - 1].quando).toISOString()) + '. Dá para cancelar cada uma antes da hora.', 5200);
-}
-function pergAgradecer(cid) {
-  var c = byC(cid);
-  state.chatRasc = pergAgradecimento(c);
-  state.ptab = 'plataforma'; state.pstab = 'chat';
-  renderPessoa();
-  toast('Rascunho no chat: revise e envie.', 3600);
-}
-// Leva a pergunta para o rascunho do chat (aba Plataforma → Chat). Nada é enviado: você revisa e envia.
-function pergChat(cid, k) {
-  var c = byC(cid), d = (state.dos && state.dos.d) || {}, rasc = (state.dos && state.dos.rasc) || {}, f = pergFila(c, d, rasc, Date.now());
-  var item = f.itens.filter(function (i) { return i.k === k; })[0];
-  if (!item) return toast('Essa pergunta já foi respondida.');
-  if (f.parar && typeof window.confirm === 'function' && !window.confirm('Ela não respondeu às últimas ' + f.semResposta + ' mensagens. Levar esta pergunta mesmo assim?')) return;
-  if (!f.parar && f.espera && typeof window.confirm === 'function' && !window.confirm('Você ainda espera a resposta da última mensagem. Levar esta pergunta mesmo assim?')) return;
-  state.chatRasc = pergTextoAtual(cid, k, pergMensagem(c, item.def));
-  state.pergEdit = null;
-  state.ptab = 'plataforma'; state.pstab = 'chat';
-  renderPessoa();
-  toast('Rascunho no chat: revise e envie.', 3600);
-}
-function pergUsarRecado(id) {
-  var p = (state.procs || []).filter(function (x) { return String(x.id) === String(id); })[0], ta = $('proc-msg-' + id);
-  if (!p || !ta) return;
-  ta.value = PERG_RECADO_PROCESSO[p.processo] || ('Vi pelos seus passos que o processo ' + procLabel(p.processo) + ' pode valer para você. Quer que eu abra no seu checklist?');
-  if (ta.focus) ta.focus();
-  toast('Recado colocado no cartão: revise e aprove.', 3600);
+  state.chatSugPula = 0; var c = byC(cid); if (c) repintaChatCaixa(c);
 }
 
 // A etiqueta de origem de um campo: só vale enquanto o valor ainda é o que a IA escreveu (se você mexeu, some).
@@ -3394,9 +3336,10 @@ function onbResumoHtml(c) {
 function onbFaltaHtml(c, d, rasc) {
   if (!state.dos || !state.dos.onbEm) return '';
   var f = onbFalta(c, d, rasc), mostra = f.slice(0, 12);
-  if (!f.length) return '<div class="onb-falta"><b>Falta perguntar</b><span class="sub">Nada: o Dossiê está completo para a situação dela.</span></div>' + pergProcessosHtml();
+  if (!f.length) return '<div class="onb-falta"><b>Falta perguntar</b><span class="sub">Nada: o Dossiê está completo para a situação dela.</span></div>';
   return '<div class="onb-falta"><b>Falta perguntar</b>' + mostra.map(function (l) { return '<span class="dchip falta">' + esc(l) + '</span>'; }).join('') +
-    (f.length > mostra.length ? '<span class="sub">e mais ' + (f.length - mostra.length) + '</span>' : '') + '</div>' + pergRoteiroHtml(c, d, rasc);
+    (f.length > mostra.length ? '<span class="sub">e mais ' + (f.length - mostra.length) + '</span>' : '') +
+    '<button class="link" type="button" data-irchat="' + esc(c.id) + '">A próxima pergunta já está pronta no Chat →</button></div>';
 }
 
 // ---------- Link de pagamento (aba Plataforma): o seletor vem de planos/planos.json ----------
@@ -3558,13 +3501,10 @@ document.addEventListener('click', async function (e) {
   if (t.dataset.pcler) return pcLer(t.dataset.pcler, t);
   if (t.dataset.pcaplicar) return pcAplicar(t.dataset.pcaplicar, t);
   if (t.dataset.pcdescartar) return pcDescartar(t.dataset.pcdescartar, t);
-  if (t.dataset.pcchat) return pcChat(t.dataset.pcchat);
-  if (t.dataset.pergchat) return pergChat(t.dataset.cid, t.dataset.pergchat);
-  if (t.dataset.pergproc) return pergUsarRecado(t.dataset.pergproc);
-  if (t.dataset.pergagendar) return pergAgendar(t.dataset.cid, t.dataset.pergagendar, t);
-  if (t.dataset.pergcancelar) return pergCancelar(t.dataset.cid, t.dataset.pergcancelar, t);
-  if (t.dataset.seqagendar) return pergAgendarSequencia(t.dataset.seqagendar, t);
-  if (t.dataset.pergagradecer) return pergAgradecer(t.dataset.pergagradecer);
+  if (t.dataset.irchat) { state.ptab = 'plataforma'; state.pstab = 'chat'; return renderPessoa(); }
+  if (t.dataset.chatgo) return chatAgendar(t.dataset.chatgo, t);
+  if (t.dataset.pergcancelar) return pergCancelar(state.sel, t.dataset.pergcancelar, t);
+  if (t.dataset.sugpular) { state.chatSugPula = (state.chatSugPula || 0) + 1; state.chatEditado = false; state.chatRasc = ''; var cs = byC(state.sel), tx0 = $('chat-txt'); if (tx0) tx0.value = ''; if (cs) repintaChatCaixa(cs); return; }
   if (t.dataset.pcsalvarsinais) return pcSalvarSinais(t.dataset.pcsalvarsinais, t);
   if (t.dataset.pcresolver) return pcResolver(state.sel, t.dataset.pcresolver, t);
   if (t.id === 'onb-enviar') return onbEnviar();
@@ -3761,12 +3701,12 @@ document.addEventListener('input', function (e) {
 });
 document.addEventListener('change', function (e) {
   var dsx = e.target.dataset || {}, cidPc = state.sel;
-  if (dsx.seqon !== undefined) {
-    if (!state.seq || state.seq.cid !== cidPc) state.seq = { cid: cidPc, linhas: {} };
-    (state.seq.linhas[dsx.seqon] = state.seq.linhas[dsx.seqon] || {}).on = !!e.target.checked;
+  if (e.target.id === 'chat-quando') {
+    state.chatCtl = { cid: cidPc, quando: e.target.value, custom: state.chatCtl && state.chatCtl.cid === cidPc ? state.chatCtl.custom : '' };
+    var cq = byC(cidPc); if (cq) repintaChatCaixa(cq);
     return;
   }
-  if (state.pc && state.pc.cid === cidPc && (dsx.pcsinal !== undefined || dsx.pccampo !== undefined || dsx.pcsinalprop !== undefined || dsx.pcfila !== undefined || dsx.pccamada !== undefined || dsx.pcperg !== undefined)) {
+  if (state.pc && state.pc.cid === cidPc && (dsx.pcsinal !== undefined || dsx.pccampo !== undefined || dsx.pcsinalprop !== undefined || dsx.pcfila !== undefined || dsx.pccamada !== undefined)) {
     var pcx = state.pc;
     if (dsx.pcsinal !== undefined) {
       var cur = (pcx.manual || pcSinaisDela(state.dos && state.dos.d)).filter(function (k) { return k !== dsx.pcsinal; });
@@ -3777,7 +3717,6 @@ document.addEventListener('change', function (e) {
     if (dsx.pccampo !== undefined) pcx.sel.campos[dsx.pccampo] = !!e.target.checked;
     if (dsx.pcsinalprop !== undefined) pcx.sel.sinais[dsx.pcsinalprop] = !!e.target.checked;
     if (dsx.pcfila !== undefined) pcx.sel.fila[dsx.pcfila] = !!e.target.checked;
-    if (dsx.pcperg !== undefined) pcx.sel.perg[dsx.pcperg] = !!e.target.checked;
     if (dsx.pccamada !== undefined) pcx.camadas[dsx.pccamada] = e.target.value;
     return;
   }
@@ -3806,13 +3745,8 @@ document.addEventListener('input', function (e) {
   if (e.target.id === 'conv-txt') { state.rascunho[e.target.dataset.cid] = e.target.value; $('conv-err').hidden = true; }
 });
 document.addEventListener('input', function (e) {
-  if (e.target.id === 'perg-texto' && e.target.dataset) state.pergEdit = { cid: e.target.dataset.cid, k: e.target.dataset.pergk, texto: e.target.value };
-  if (e.target.id === 'perg-quando') state.pergQuando = { cid: state.sel, valor: e.target.value };
-  if (e.target.dataset && e.target.dataset.seqk && /^seq-(quando|texto)-/.test(e.target.id || '')) {
-    if (!state.seq || state.seq.cid !== state.sel) state.seq = { cid: state.sel, linhas: {} };
-    var ln = state.seq.linhas[e.target.dataset.seqk] = state.seq.linhas[e.target.dataset.seqk] || {};
-    if (/^seq-quando-/.test(e.target.id)) ln.quando = e.target.value; else ln.texto = e.target.value;
-  }
+  if (e.target.id === 'chat-txt') state.chatEditado = true;   // o que você digita deixa de ser trocado pela sugestão
+  if (e.target.id === 'chat-quando-custom') state.chatCtl = { cid: state.sel, quando: 'custom', custom: e.target.value };
   if (e.target.id === 'onb-email') { ONB.email = e.target.value; onbMostraErro(''); }
   if (e.target.id === 'onb-notas') ONB.notas = e.target.value;
 });

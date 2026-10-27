@@ -104,46 +104,40 @@ valor a conferir em fonte oficial **não** viram pergunta para ela: ficam em "A 
 Os sinais também se marcam à mão, sem IA, na caixa de seleção do painel. Novo sinal = uma linha em `sinais_vocabulario`
 (revisão semanal; só entra se já houver, ou puder haver, conteúdo para ele).
 
-## Roteiro de perguntas: sempre dar um motivo para a pessoa voltar ao app
+## Chat inteligente: uma sugestão, uma mensagem pronta, um controle
 
-No dossiê, logo abaixo do "Falta perguntar", o **Roteiro de perguntas** escolhe UMA pergunta por vez e escreve o rascunho para o chat
-(**Levar para o chat**: você revisa e envia; ela recebe o e-mail de aviso). Regras:
+Tudo acontece na aba **Plataforma → Chat** da pessoa. Você não procura pergunta, não leva rascunho de um painel para outro: ao abrir o chat, o CRM
+já decidiu o próximo passo e deixou a **mensagem escrita** na caixa. Em cima da caixa, uma linha explica o porquê (💡). Embaixo, **um seletor de quando**
+e **um botão**.
 
-1. **Uma por vez, e sem empilhar.** Se a última mensagem do chat é sua e tem menos de 3 dias, o roteiro manda esperar (dá para levar mesmo
-   assim, com confirmação). Ela respondeu? A próxima pode ir na hora: pergunta, resposta e próxima criam o hábito.
-2. **Toda pergunta traz o que a resposta destrava no app** (o gancho): "o Painel do Certificado já está esperando na sua Home", "o passo da
-   Ameli no seu Checklist muda conforme a resposta". É esse recado que dá motivo para ela abrir o app.
-3. **Ordem por impacto**: prazo e documento (vencimento, ano de au pair, fim do contrato) > o que reorganiza o checklist (certificado, sécu,
-   caminho de estudo, ANEF) > o que ajusta Radar e materiais (nível de francês, idade, maior preocupação) > conforto (cidade).
-4. **Não repete**: se o texto da pergunta já está no histórico do chat, ela vai para o fim da fila, com "perguntada há N dias" (ou "perguntada e
-   respondida").
-5. **Sem conta no app não há chat**: o roteiro avisa e o rascunho vai para o e-mail.
-6. **Processo sugerido pelo assistente** (ex.: CAF) é a pergunta de maior ganho: aparece antes de tudo, com "Usar recado sugerido" (preenche o
-   cartão, você revisa e aprova).
-
-Telefone, aceite de lembretes e as colunas do funil (estudos, preocupação) não entram. Para mudar a ordem ou o texto: o catálogo `PERGUNTAS`
-(prioridade `p`, pergunta `q`, gancho `g`) em `crm.js`. Campo sem entrada no catálogo entra com prioridade baixa e pergunta genérica.
-
-### Agendar a data de cada mensagem (db/crm-mensagens-agendadas.sql)
-
-A caixa da pergunta é editável. Em vez de "Levar para o chat agora", você pode **escolher o dia e a hora** em que ela sai do CRM e entra no chat dela
-(**Agendar envio**). A mensagem fica como `pendente` em "Agendadas para ela" (com **Cancelar**) e sai sozinha: o Worker roda de hora em hora (às :05)
-e, na rodada seguinte à hora escolhida, cria a mensagem no chat como sua e manda o e-mail de aviso. Entre 10 minutos e 119 dias à frente. Pergunta que já
-tem mensagem agendada sai de "Próxima" e não é agendada duas vezes sem confirmação.
-
-### Estratégia de reimpacto: fazer a pessoa sempre voltar
-
-O ciclo é **pergunta → resposta → recompensa visível no app → próxima pergunta**. A recompensa é o que mantém o hábito: sem ela, a pessoa responde uma vez e some.
-
-| Momento | O que fazer | Onde no CRM |
+| O CRM vê | Sugere | Mensagem pronta |
 |---|---|---|
-| Logo depois da call | Aplicar o Pós-call e escolher as 3 perguntas de maior impacto | Pós-call → Roteiro de perguntas |
-| Amanhã, 10h | 1ª pergunta, com o gancho do que ela destrava no app | **Sequência de reimpacto** (já vem com a data) |
-| Ela respondeu | Agradecer no mesmo dia e dizer o que mudou ("olhe sua Home e o Radar") | **Ela respondeu → Levar para o chat** |
-| A cada 3 dias úteis, 10h | Próxima pergunta da fila, uma por vez | Sequência (datas editáveis, cada mensagem editável) |
-| Radar com novidade para ela | Item com nota: avisa no sininho e por e-mail | aba Radar |
-| 3 mensagens suas sem resposta | **Parar.** O chat só existe dentro do app; proponha um 1:1 ou escreva por e-mail | aviso automático + Marcar 1:1 |
+| Ela respondeu a última pergunta | **Agradecer** | Agradecimento + o que mudou no app (gancho/recompensa) + a próxima pergunta, tudo numa só mensagem |
+| Sua última mensagem é recente (< 3 dias) e sem resposta | **Esperar** | A próxima pergunta, com o envio já marcado para depois do prazo (e depois das que já estão agendadas) |
+| 3 mensagens suas seguidas sem resposta | **Parar** | Nada para enviar: aviso ⚠ e botão **Propor 1:1** (o chat só existe dentro do app) |
+| Há pergunta na fila e nada pendente | **Perguntar** | A pergunta de maior impacto, com o gancho do que ela destrava no app |
+| Ela não tem conta no app | **Sem conta** | Aviso: a mensagem vai por e-mail |
 
-Regras: no máximo uma mensagem por dia; nunca uma pergunta nova por cima de outra sem resposta (o roteiro manda esperar 3 dias); dia útil às 10h
-(a sequência pula fim de semana); se ela respondeu, a seguinte pode ir logo. Quem não responde a 3 seguidas sai da sequência e vai para uma conversa humana.
-A sequência não cancela sozinha o que sobrou quando ela responde: ajuste ou cancele as seguintes em "Agendadas para ela".
+A fila vem das perguntas do **Pós-call** (`perguntas_para_ela`, primeiro) e depois do catálogo `PERGUNTAS` em `crm.js` (prioridade `p`, pergunta `q`, gancho `g`),
+sem repetir o que já está no histórico do chat nem o que já está agendado. Telefone, aceite de lembretes e as colunas do funil não entram. Um **processo sugerido**
+pelo assistente (ex.: CAF) aparece no cartão próprio, com o recado já preenchido (editável, opcional).
+
+**O seletor de quando** (padrão: o que o CRM sugeriu): *Enviar agora*, *Amanhã 10h*, *Em 3 dias úteis*, *As próximas 3 (3 em 3 dias úteis, 10h)* e *Escolher dia e hora*.
+O botão muda conforme a escolha (Enviar / Agendar). Dá para editar o texto antes; **Outra pergunta** troca a sugestão sem sair da tela.
+Agendar vale de 10 minutos a 119 dias à frente. As mensagens agendadas aparecem em "Agendadas para ela" (com **Cancelar**); o restante (respostas rápidas, e-mail) fica em *Mais opções*.
+
+### Reimpacto: fazer a pessoa sempre voltar
+
+O ciclo é **pergunta → resposta → recompensa visível no app → próxima pergunta**. Sem a recompensa, a pessoa responde uma vez e some. O chat inteligente aplica sozinho:
+
+- **Uma por vez**: nunca pergunta nova por cima de outra sem resposta; dia útil, 10h (pula fim de semana).
+- **Ela respondeu**: a sugestão vira *agradecer + mostrar o que mudou + próxima pergunta* numa mensagem só.
+- **3 sem resposta**: para e propõe uma conversa humana.
+- **Radar com novidade para ela** (item com nota) avisa no sininho e por e-mail, fora do chat.
+
+Limites conhecidos: a sequência não cancela sozinha as mensagens agendadas quando ela responde (cancele em "Agendadas para ela"); a hora tem precisão de uma hora.
+
+### Agendar (db/crm-mensagens-agendadas.sql)
+
+A mensagem agendada fica como `pendente` e sai sozinha: o Worker roda de hora em hora (às :05) e, na rodada seguinte à hora escolhida, cria a mensagem no chat como sua e
+manda o e-mail de aviso (como em toda mensagem sua).

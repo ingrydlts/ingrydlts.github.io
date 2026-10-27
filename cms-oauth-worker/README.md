@@ -837,7 +837,7 @@ Testes: `node cms-oauth-worker/testes/crm-pos-call.test.mjs` (Worker) e, em `adm
 
 ## 30. Mensagens agendadas: a data em que cada pergunta sai do CRM para o chat dela
 
-No Roteiro de perguntas (ficha → dossiê) cada mensagem pode ser **agendada** para um dia e hora (`admin/crm/db/crm-mensagens-agendadas.sql`). Ela fica em `mensagens_agendadas`
+No chat da pessoa (ficha → Plataforma → Chat; sugestão única com mensagem pronta e um seletor de quando) cada mensagem pode ser **agendada** para um dia e hora (`admin/crm/db/crm-mensagens-agendadas.sql`). Ela fica em `mensagens_agendadas`
 como `pendente` e o Worker a envia:
 
 - **Quando**: no Cron Trigger de hora em hora (`5 * * * *`, o mesmo das sequências do estúdio, seção 23), que agora também chama `crmAgendadasRodada()`. Por isso a
@@ -849,4 +849,4 @@ como `pendente` e o Worker a envia:
   já está no chat e não repete. Sem Brevo, a mensagem entra no chat e o aviso é pulado.
 - **Cancelar**: botão na ficha (`crm_cancelar_mensagem_agendada`); se já saiu, o CRM avisa.
 - **Precisa**: rodar o SQL e **publicar o Worker de novo**. Sem o SQL, a rodada só registra um aviso no log.
-Testes: `node cms-oauth-worker/testes/crm-agendadas.test.mjs` (Worker) e, em `admin/crm/db/testes`, `npm run test:agendadas` (SQL, com `APP_DB_DIR`) e `npm run test:roteiro` (tela).
+Testes: `node cms-oauth-worker/testes/crm-agendadas.test.mjs` (Worker) e, em `admin/crm/db/testes`, `npm run test:agendadas` (SQL, com `APP_DB_DIR`) e `npm run test:chat-inteligente` (tela).

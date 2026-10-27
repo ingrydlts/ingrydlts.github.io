@@ -3633,8 +3633,8 @@ export default {
   // Qualquer outro horário (ou nenhum) continua sendo o e-mail 2, como antes.
   async scheduled(event, env, ctx) {
     if (event && event.cron === CRM_CRON_SEQUENCIAS) {
-      ctx.waitUntil(crmSequenciasRodada(env).catch((e) => console.error('crm/sequencias: ' + e)));
       ctx.waitUntil(crmAgendadasRodada(env).catch((e) => console.error('crm/agendadas: ' + e)));   // as mensagens agendadas saem na mesma rodada de hora em hora
+      ctx.waitUntil(crmSequenciasRodada(env).catch((e) => console.error('crm/sequencias: ' + e)));
       return;
     }
     ctx.waitUntil(crmConversaDiaria(env).catch((e) => console.error('crm/conversa: ' + e)));
