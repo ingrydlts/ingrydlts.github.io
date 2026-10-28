@@ -124,6 +124,15 @@ de e-mail mostra o e-mail como ela vai ver (desenho da versão do estúdio ou o 
 Na mesma data: os 8 manuais saem com o template do Por Dentro (montado dos blocos), "ver o e-mail" abre o template e
 `emails_enviados.formato` registra como saiu (`db/crm-emails-formato.sql`). README do Worker, seção 22b.
 
+## Caso de onboarding, ações com botão, recados e pesquisas (proposta, 28/10)
+
+**Só desenho: nada implementado.** Antes de qualquer código, um artefato de aprovação com dados fictícios. Documento completo, com
+**por quê, como e proposta** de cada modificação (M1 a M13) e a ordem de entrega: `PLANO-CASO-E-ACOES.md`. Resumo: Bilan fiel à conversa
+(quem disse, quando, com que certeza); lista "Notificações para mim" com botões (`gerar_rascunho`, `pesquisar`, `confirmar`,
+`lembrar_ela`...); recado da Ingryd que abre num pop-up dentro da tarefa no app; pesquisas com fonte oficial que viram banco de
+respostas; marcos com data e folga; faixa do caso na ficha; fila com motivos novos; gatilhos para a pessoa voltar. SQL novo previsto:
+`acoes_caso`, `recados_ingryd`, `pesquisas`, `respostas_base`, `marcos`, `casos`, `entregas`, `jornada_estado`.
+
 ## Etapas
 
 1. **Fase 1 — captura** (feita, repo POR-DENTRO-APP): `contatos`, `eventos`, `consentimentos`, `capturar_lead()`, `admins`.
