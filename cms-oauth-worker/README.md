@@ -733,7 +733,7 @@ Se algo falhar: Workers → Logs, procure `crm/onboarding` ou `crm/link-pagament
 
 ## 25. Webhook do Stripe: pagamento → assinatura → conta → e-mail de acesso, e o bloqueio por data
 
-Quando a pessoa paga o Payment Link (no lançamento, sem teste grátis: a cobrança começa na assinatura), o Stripe avisa o Worker. O Worker grava a assinatura na ficha,
+Quando a pessoa paga o Payment Link (no lançamento, com teste grátis de 7 dias), o Stripe avisa o Worker. O Worker grava a assinatura na ficha,
 cria a conta no Supabase (sem senha) e manda o e-mail **acesso confirmado** com um link que entra direto no app; lá a pessoa cria a
 senha. O app só abre para quem tem teste ou plano em dia (e, se cancelou ou o pagamento falhou, até o fim do período já pago).
 Admin sempre entra; **todas as outras contas, inclusive as de testadoras antigas, passam a precisar de assinatura**.
@@ -753,7 +753,7 @@ Admin sempre entra; **todas as outras contas, inclusive as de testadoras antigas
 5. No Cloudflare: `STRIPE_WEBHOOK_SECRET` (Secret) = esse valor → **Deploy**. Sem ele o Worker responde 500 e o Stripe tenta de novo depois.
    Atenção: a `STRIPE_SECRET_KEY` também tem que ser do mesmo modo (teste ou real) do endpoint.
 
-**4. No Stripe, nos Payment Links**: **sem teste grátis**, **"Permitir códigos promocionais" ligado** (os cupons de lançamento são códigos promocionais), a caixa de aceite dos termos com o texto do pedido de início imediato (CGV, art. 9) e, em **Após o pagamento**, redirecionar para
+**4. No Stripe, nos Payment Links**: **teste grátis de 7 dias (cartão pedido na hora)**, **"Permitir códigos promocionais" ligado** (os cupons de lançamento são códigos promocionais), a caixa de aceite dos termos com o texto do pedido de início imediato (CGV, art. 9) e, em **Após o pagamento**, redirecionar para
 `https://plataforma.imigrantepordentro.com/`.
 
 **5. No app** (repositório POR-DENTRO-APP, branch `claude/vigilant-clarke-8lrzo4`): publicar. Sem isso o bloqueio não existe (a regra só
@@ -762,7 +762,7 @@ vale onde o app chama `meu_acesso()`). Antes de publicar, confira que **a sua co
 **Teste ponta a ponta (modo teste do Stripe, com um e-mail seu de ensaio)**
 1. Onboarding de uma pessoa de ensaio → **Enviar link de pagamento** (aba Plataforma).
 2. Abra o link do e-mail, pague com o cartão `4242 4242 4242 4242`.
-3. Em poucos segundos: a ficha mostra "Assinatura: ativa · renova em dd/mm" e, na linha do tempo, "Pagamento confirmado"; chega o e-mail **acesso confirmado**.
+3. Em poucos segundos: a ficha mostra "Assinatura: em teste grátis · teste até dd/mm" e, na linha do tempo, "Pagamento confirmado"; chega o e-mail **acesso confirmado**.
 4. Clique no botão do e-mail: entra no app e cria a senha. Depois o painel abre normalmente.
 5. Para ver o bloqueio: no Stripe, cancele a assinatura de ensaio e adiante o fim do período (ou, no SQL Editor, `update assinaturas set status = 'canceled', periodo_fim = now() - interval '1 day' where contato_id = '<id da ficha>'`): o painel leva a `/plano/`.
 
