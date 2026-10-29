@@ -262,10 +262,10 @@ check('a linha do tempo conhece os eventos do Stripe', mod.eventText({ tipo: 'pa
 console.log('\n== O arquivo planos/planos.json ==');
 const jsonLinks = JSON.parse(readFileSync(path.resolve(HERE, '../../../../planos/planos.json'), 'utf8'));
 const itensArq = mod.pagtoItens(jsonLinks);
-check('o arquivo versionado tem a estrutura certa e só links https://buy.stripe.com/ (nada de chave secreta)', itensArq.length >= 1 && itensArq.length === jsonLinks.itens.filter((i) => i.url).length && itensArq.every((i) => /·/.test(i.rotulo)) && itensArq.every((i) => /^https:\/\/buy\.stripe\.com\//.test(i.url)) && !/sk_(live|test)_|whsec_/.test(JSON.stringify(jsonLinks)));
+check('o arquivo versionado tem a estrutura certa e só links https://buy.stripe.com/ (nada de chave secreta)', itensArq.length === jsonLinks.itens.filter((i) => i.url).length && itensArq.every((i) => /·/.test(i.rotulo)) && itensArq.every((i) => /^https:\/\/buy\.stripe\.com\//.test(i.url)) && !/sk_(live|test)_|whsec_/.test(JSON.stringify(jsonLinks)));
 check('as chaves dos planos não se repetem', new Set(itensArq.map((i) => i.chave)).size === itensArq.length);
 check('cada item tem chave, nível, periodicidade, moeda, valor e url', jsonLinks.itens.every((i) => ['chave', 'nivel', 'periodicidade', 'moeda', 'url'].every((k) => typeof i[k] === 'string') && typeof i.valor === 'number'));
-check('o seletor do CRM só oferece plano que já tem link (os preços sem link ficam de fora)', itensArq.every((i) => /^https:\/\/buy\.stripe\.com\//.test(i.url)) && jsonLinks.itens.some((i) => !i.url));
+check('o seletor do CRM só oferece plano que já tem link (os preços sem link ficam de fora)', itensArq.every((i) => /^https:\/\/buy\.stripe\.com\//.test(i.url)) && itensArq.length === jsonLinks.itens.filter((i) => i.url).length);
 check('aceita lista pura ou { itens }', mod.pagtoItens([{ chave: 'a', rotulo: 'A', moeda: 'EUR', url: 'https://buy.stripe.com/x' }]).length === 1);
 check('item fora do formato é ignorado, os outros ficam', mod.pagtoItens({ itens: [{ chave: 'Ruim Demais', rotulo: 'x', moeda: 'BRL', url: 'https://buy.stripe.com/x' }, { chave: 'b', rotulo: 'B', moeda: 'real', url: 'https://buy.stripe.com/x' },
   { chave: 'c', rotulo: 'C', moeda: 'BRL', url: 'http://buy.stripe.com/x' }, { chave: 'd', rotulo: 'D', moeda: 'BRL', url: 'https://buy.stripe.com/d' }, null, 'texto'] }).map((i) => i.chave).join() === 'd');

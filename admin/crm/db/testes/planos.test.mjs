@@ -63,16 +63,12 @@ check('só https, sem usuário e senha, e URL inválida vira nulo', P.urlCompra(
 
 console.log('\n== O arquivo e a página ==');
 const real = P.lerPlanos(JSON.parse(readFileSync(path.join(RAIZ, 'planos/planos.json'), 'utf8')));
-check('o planos.json versionado é a página completa: 3 níveis × 3 periodicidades × 2 moedas = 18 preços', real.niveis.map((x) => x.chave).join() === 'basico,intermediario,completo' && real.itens.length === 18);
-check('e pelo menos um já tem link de compra', real.itens.filter((i) => i.url).length >= 1 && real.itens.every((i) => !i.url || /^https:\/\/buy\.stripe\.com\//.test(i.url)));
-check('cada nível mostra benefícios e a frase de quem é', real.niveis.every((x) => x.beneficios.length >= 4 && x.para.length > 10) && real.niveis.filter((x) => x.destaque).length === 1);
+check('o planos.json versionado é o lançamento: um plano, 70 € por mês, só mensal em euros', real.niveis.map((x) => x.chave).join() === 'plataforma' && real.itens.length === 1 && real.itens[0].moeda === 'EUR' && real.itens[0].periodicidade === 'mensal' && real.itens[0].valor === 70);
+check('link de compra, quando houver, é um Payment Link do Stripe', real.itens.every((i) => !i.url || /^https:\/\/buy\.stripe\.com\//.test(i.url)));
+check('o plano mostra benefícios e a frase de quem é', real.niveis.every((x) => x.beneficios.length >= 4 && x.para.length > 10) && real.niveis.filter((x) => x.destaque).length <= 1);
 const bruto = JSON.parse(readFileSync(path.join(RAIZ, 'planos/planos.json'), 'utf8'));
 check('e nenhuma chave secreta', !/sk_(live|test)_|whsec_|rk_(live|test)_/.test(JSON.stringify(bruto)));
-check('os preços seguem o quadro do plano (BRL mensal: 69, 149, 299; semestral 5%; anual 10%)', bruto.itens.every((i) => {
-  const base = { basico: [69, 12], intermediario: [149, 26], completo: [299, 52] }[i.nivel]; if (!base) return false;
-  const m = i.moeda === 'BRL' ? base[0] : base[1], k = { mensal: 1, semestral: 6 * 0.95, anual: 12 * 0.9 }[i.periodicidade];
-  return Math.abs(i.valor - m * k) <= Math.max(1.5, m * k * 0.01);
-}));
+check('o preço segue o doc de pricing (70 € por mês)', bruto.itens.every((i) => i.valor === 70 && i.moeda === 'EUR' && i.periodicidade === 'mensal'));
 const pg = readFileSync(path.join(RAIZ, 'planos/index.html'), 'utf8');
 check('a página não é indexada e não vaza o link no Referer', /noindex/.test(pg) && /name="referrer" content="no-referrer"/.test(pg));
 check('o token sai da barra de endereço antes de qualquer outro script', pg.indexOf("history.replaceState(null, '', location.pathname)") > 0 && pg.indexOf('replaceState') < pg.indexOf('/assets/js/main.js'));
@@ -81,6 +77,7 @@ check('tem os estados: carregando, planos, vencido, inválido, erro e vazio', ['
 check('o token vai por POST, não por URL (não fica em log de acesso)', /method: 'POST'.*body: JSON\.stringify\(\{ t: t \}\)/.test(pg) && !/planos\/contexto\?/.test(pg));
 check('a página usa o arquivo do site e a lógica testada aqui', pg.includes("fetch('/planos/planos.json'") && pg.includes("from '/planos/planos.js'"));
 check('os controles são botões de rádio acessíveis e os botões de compra têm nome acessível', /role="radiogroup"/.test(pg) && pg.includes("setAttribute('role', 'radio')") && pg.includes("setAttribute('aria-label'"));
+check('a página leva às CGV e avisa do código de lançamento antes do pagamento', pg.includes("'/cgv/'") && /código de lançamento/.test(pg));
 check('a página não faz nenhuma chamada a Stripe nem guarda nada no navegador', !/stripe\.com\/v1|localStorage|sessionStorage|document\.cookie/.test(pg));
 
 console.log(`\n${passed} passaram, ${failed} falharam`);
