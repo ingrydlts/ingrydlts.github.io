@@ -1,7 +1,7 @@
 # Roda os testes do CRM (admin/crm/db/testes) e do Worker (cms-oauth-worker/testes) em todo PR e em todo push para main.
 # Os testes do CRM rodam junto com os SQL do app (mesmo Supabase), então o repositório do app é baixado ao lado, branch staging.
-# Se o repositório do app for privado, crie um token com leitura dele (fine-grained, "Contents: read" só no POR-DENTRO-APP) e
-# guarde em Settings → Secrets and variables → Actions → APP_REPO_TOKEN.
+# O repositório do app é privado: a Action precisa de um token com leitura dele (fine-grained, "Contents: read" só no
+# POR-DENTRO-APP), guardado em Settings → Secrets and variables → Actions → APP_REPO_TOKEN.
 name: testes
 
 on:
@@ -18,12 +18,20 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+      - name: Conferir o token de leitura do app
+        env:
+          TOKEN: ${{ secrets.APP_REPO_TOKEN }}
+        run: |
+          if [ -z "$TOKEN" ]; then
+            echo "::error::Falta o segredo APP_REPO_TOKEN. O repositório do app é privado: crie um token fine-grained com 'Contents: read' só no POR-DENTRO-APP e guarde em Settings → Secrets and variables → Actions → APP_REPO_TOKEN."
+            exit 1
+          fi
       - uses: actions/checkout@v4
         with:
           repository: ingrydlts/POR-DENTRO-APP
           ref: staging
           path: _app
-          token: ${{ secrets.APP_REPO_TOKEN || github.token }}
+          token: ${{ secrets.APP_REPO_TOKEN }}
       - uses: actions/setup-node@v4
         with:
           node-version: 20
