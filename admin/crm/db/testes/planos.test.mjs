@@ -80,6 +80,8 @@ check('o token vai por POST, não por URL (não fica em log de acesso)', /method
 check('a página usa o arquivo do site e a lógica testada aqui', pg.includes("fetch('/planos/planos.json'") && pg.includes("from '/planos/planos.js'"));
 check('os controles são botões de rádio acessíveis e os botões de compra têm nome acessível', /role="radiogroup"/.test(pg) && pg.includes("setAttribute('role', 'radio')") && pg.includes("setAttribute('aria-label'"));
 check('a página leva às CGV e avisa do código de lançamento antes do pagamento', pg.includes("'/cgv/'") && /código de lançamento/.test(pg));
+const cgv = readFileSync(path.join(RAIZ, 'cgv/index.html'), 'utf8'), ml = readFileSync(path.join(RAIZ, 'mentions-legales/index.html'), 'utf8');
+check('as CGV (art. 15) e as mentions légales nomeiam o médiateur de consumo, com endereço e site, sem campo em branco', /MCP Médiation/.test(cgv) && /MCP Médiation/.test(ml) && /mcpmediation\.org/.test(cgv) && !/\[nom du médiateur/.test(cgv));
 check('a página não faz nenhuma chamada a Stripe nem guarda nada no navegador', !/stripe\.com\/v1|localStorage|sessionStorage|document\.cookie/.test(pg));
 
 console.log(`\n${passed} passaram, ${failed} falharam`);
