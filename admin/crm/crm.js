@@ -139,9 +139,11 @@ function splitTpl(c, k) { var t = TPLS[k].make(c); return { subject: t[0].replac
 
 function lerDosAberto() { try { return localStorage.getItem('crm_dossie_aberto') === '1'; } catch (e) { return false; } }
 var C = [], Q = [], L = [], R = [], RM = {}, SUBS = {}, M = null, MV = [];
+// Avisos de problema que a cliente manda pelo botão do app (db/problemas-app.sql, no repositório do app). Sem o SQL, a aba avisa.
+var P = [], PERR = '';
 // Processos sugeridos esperando a sua decisão (db/crm-processos-sugeridos.sql). Sem a migração, fica vazio.
 var PSUG = [];
-var state = { dosAberto: lerDosAberto(), dos: null, pc: null, ptab: null, pstab: 'assistente', pdias: {}, int: null, chatRasc: '', rascunho: {}, view: 'hoje', persona: '', sub: '', urg: '', stage: '', orig: '', camp: '', q: '', sel: null, qs: 'nova', qsel: null, inbox: 'perguntas', rs: 'nova', rsel: null, preset: 'todos', seg: '', prevView: 'contatos' };
+var state = { dosAberto: lerDosAberto(), dos: null, pc: null, ptab: null, pstab: 'assistente', pdias: {}, int: null, chatRasc: '', rascunho: {}, view: 'hoje', persona: '', sub: '', urg: '', stage: '', orig: '', camp: '', q: '', sel: null, qs: 'nova', qsel: null, inbox: 'perguntas', rs: 'nova', rsel: null, ps: 'novo', psel: null, preset: 'todos', seg: '', prevView: 'contatos' };
 var activeCid = null;
 var me = null;
 
@@ -229,13 +231,17 @@ async function loadAll() {
     // O Radar (db/crm-radar.sql): os itens do PESTEL por persona e o que já foi enviado. Sem a migração, a tela avisa.
     supabase.from('radar_itens').select('*').is('arquivado_em', null).order('criado_em', { ascending: false }).limit(500),
     supabase.from('radar_envios').select('item_id,contato_id,visto_em').limit(20000),
-    supabase.from('processos_sugeridos').select('id,contato_id,processo,atualizada_em').eq('status', 'detectada').order('atualizada_em', { ascending: false }).limit(200)
+    supabase.from('processos_sugeridos').select('id,contato_id,processo,atualizada_em').eq('status', 'detectada').order('atualizada_em', { ascending: false }).limit(200),
+    // Avisos de problema do app (db/problemas-app.sql do app). Sem o SQL, a tabela não existe: a aba Problemas avisa.
+    supabase.from('problemas_app').select('*').order('criado_em', { ascending: false }).limit(1000)
   ]);
   if (r[0].error) return fail('carregar os contatos', r[0].error);
   COMPRAS = {};
   ((r[7] && !r[7].error && r[7].data) || []).forEach(function (e) { var p = (e.dados || {}).produto; if (p) (COMPRAS[e.contato_id] = COMPRAS[e.contato_id] || {})[p] = 1; });
   C = r[0].data || [];
   PSUG = r[10] && !r[10].error ? (r[10].data || []) : [];
+  P = r[11] && !r[11].error ? (r[11].data || []) : [];
+  PERR = r[11] && r[11].error ? 'Falta rodar db/problemas-app.sql (repositório do app) neste banco, ou a leitura foi recusada.' : '';
   Q = r[1].error ? [] : (r[1].data || []);
   L = r[3] && !r[3].error ? (r[3].data || []) : [];
   R = r[4] && !r[4].error ? (r[4].data || []) : [];
@@ -400,7 +406,8 @@ function renderToday() {
   $('hello-sub').textContent = new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' }) +
     ' · ' + (att.length + nq.length + nr.length) + ' coisas pedem você hoje';
 
-  $('c-perguntas').textContent = nq.length + nr.length; $('c-perguntas').hidden = nq.length + nr.length === 0;
+  var np = P.filter(function (x) { return x.status === 'novo'; }).length;
+  $('c-perguntas').textContent = nq.length + nr.length + np; $('c-perguntas').hidden = nq.length + nr.length + np === 0;
   $('c-contatos').textContent = C.length;
 
   var um = C.filter(function (c) { return c.estagio === 'um_a_um'; });
@@ -490,7 +497,10 @@ function renderQuestions() {
   $('c-ib-perguntas').textContent = nq; $('c-ib-perguntas').hidden = !nq;
   $('c-ib-emails').textContent = nr; $('c-ib-emails').hidden = !nr;
   document.querySelectorAll('.itab').forEach(function (t) { t.setAttribute('aria-selected', String(t.dataset.inbox === state.inbox)); });
+  var npb = P.filter(function (x) { return x.status === 'novo'; }).length;
+  $('c-ib-problemas').textContent = npb; $('c-ib-problemas').hidden = !npb;
   if (state.inbox === 'emails') return renderRespostas();
+  if (state.inbox === 'problemas') return renderProblemas();
   $('qtabs').innerHTML = [['nova', 'Novas'], ['respondida', 'Respondidas']].map(function (k) {
     return '<button class="qtab" role="tab" data-qs="' + k[0] + '" aria-selected="' + (state.qs === k[0]) + '" type="button">' + k[1] + ' <span class="num">' + Q.filter(function (x) { return x.status === k[0]; }).length + '</span></button>';
   }).join('');
@@ -516,6 +526,41 @@ function renderQuestions() {
         '<p class="sub" id="reply-err" style="margin:0;color:var(--red)" hidden>Escreva a resposta antes de salvar.</p>' +
         '<div class="reply-foot"><small>O envio por e-mail entra na fase 3 — por ora copie a resposta e mande pelo seu e-mail.</small><button class="btn primary" type="button" id="send-reply">Marcar como respondida</button></div></div>'
       : '<div class="sec" style="margin:0"><h4>Sua resposta · ' + esc(fmtDate(x.respondida_em)) + '</h4><div class="sent" style="white-space:pre-wrap">' + esc(x.resposta) + '</div></div>');
+}
+
+// Problemas: o que a cliente avisou pelo botão "Algo não está funcionando?" do app. O texto e o contexto técnico vêm do banco e
+// passam por esc() onde a linha é montada. Só você lê esta tabela (RLS pelo admin).
+var PROB_CAT = { nao_funciona: 'Algo não funciona', informacao_errada: 'Informação errada', nao_encontro: 'Não encontra o que procura', outro: 'Outro' };
+var PS_TABS = [['novo', 'Novos'], ['resolvido', 'Resolvidos']];
+function byUser(uid) { for (var i = 0; i < C.length; i++) if (C[i].user_id && C[i].user_id === uid) return C[i]; }
+function renderProblemas() {
+  $('qtabs').innerHTML = PS_TABS.map(function (k) {
+    return '<button class="qtab" role="tab" data-ps="' + k[0] + '" aria-selected="' + (state.ps === k[0]) + '" type="button">' + k[1] + ' <span class="num">' + P.filter(function (x) { return x.status === k[0]; }).length + '</span></button>';
+  }).join('');
+  if (PERR) { $('qitems').innerHTML = '<div class="empty">' + esc(PERR) + '</div>'; $('qdetail').innerHTML = '<div class="empty">Quando o SQL estiver rodado, os avisos das clientes aparecem aqui.</div>'; return; }
+  var list = P.filter(function (x) { return x.status === state.ps; }).sort(function (a, b) { return state.ps === 'novo' ? (a.criado_em < b.criado_em ? -1 : 1) : (a.criado_em < b.criado_em ? 1 : -1); });
+  if (!list.some(function (x) { return x.id === state.psel; })) state.psel = list.length ? list[0].id : null;
+  $('qitems').innerHTML = list.map(function (x) {
+    var c = byUser(x.user_id), h = hrsSince(x.criado_em);
+    return '<button class="qitem" data-p="' + x.id + '" aria-current="' + (x.id === state.psel) + '" type="button"><div class="l1"><b>' + esc(c ? short(c) : 'Conta sem ficha') + '</b>' +
+      (x.status === 'novo' ? '<span class="sla num ' + (h >= 24 ? 'late' : 'ok') + '">' + (h >= 24 ? 'sem olhar · ' : '') + hrs(h) + '</span>' : '<span class="sla ok">resolvido</span>') +
+      '</div><p>' + esc(x.texto) + '</p><span class="persona">' + esc(PROB_CAT[x.categoria] || x.categoria) + (x.tela ? ' · ' + esc(x.tela) : '') + '</span></button>';
+  }).join('') || '<div class="empty">' + (state.ps === 'novo' ? 'Nenhum aviso novo. Tudo olhado.' : 'Nada resolvido ainda.') + '</div>';
+  var x = P.filter(function (y) { return y.id === state.psel; })[0];
+  if (!x) { $('qdetail').innerHTML = '<div class="empty">' + (P.length ? 'Escolha um aviso na lista.' : 'Quando uma cliente avisar um problema pelo app, ele aparece aqui.') + '</div>'; return; }
+  var c = byUser(x.user_id), k = x.contexto || {}, erros = Array.isArray(k.erros) ? k.erros : [];
+  $('qdetail').innerHTML =
+    '<div style="display:flex;gap:12px;align-items:center">' + (c ? '<div class="' + avClass(c) + '">' + esc(ini(c)) + '</div>' : '<div class="av b">?</div>') +
+    '<div style="min-width:0"><b style="font-weight:600">' + esc(c ? displayName(c) : 'Conta sem ficha no CRM') + '</b><div class="mail">' + (c ? esc(c.email) + ' · ' : '') + 'aviso nº ' + esc(x.id) + ' · há ' + hrs(hrsSince(x.criado_em)) + '</div></div>' +
+    (c ? '<button class="link" style="margin-left:auto" data-open="' + esc(c.id) + '" type="button">Abrir ficha →</button>' : '') + '</div>' +
+    '<div class="ctx"><span class="pill">' + esc(PROB_CAT[x.categoria] || x.categoria) + '</span>' + (x.tela ? '<span class="pill">Tela: ' + esc(x.tela) + '</span>' : '') + (k.ambiente ? '<span class="pill">' + esc(k.ambiente) + '</span>' : '') + '</div>' +
+    '<blockquote style="white-space:pre-wrap">' + esc(x.texto) + '</blockquote>' +
+    '<div class="sec" style="margin:0"><h4>Contexto técnico</h4><dl class="kv">' +
+      '<dt>Navegador</dt><dd>' + esc(k.navegador || '—') + '</dd><dt>Tela</dt><dd>' + esc(k.tela || '—') + '</dd><dt>Online</dt><dd>' + (k.online === true ? 'sim' : k.online === false ? 'não' : '—') + '</dd>' +
+      '<dt>Erros da página</dt><dd>' + (erros.length ? erros.map(function (e) { return esc((e && e.msg) || '') + (e && e.arquivo ? ' <span class="sub">(' + esc(e.arquivo) + (e.linha ? ':' + esc(e.linha) : '') + ')</span>' : ''); }).join('<br>') : 'nenhum') + '</dd></dl></div>' +
+    '<div class="reply"><div class="reply-foot"><small>' + (c ? 'Responda pelo chat, na ficha dela. ' : '') + 'Marque como resolvido quando terminar: o aviso sai da fila.</small><div class="btns">' +
+    (x.status === 'novo' ? '<button class="btn primary" type="button" data-pstatus="resolvido">Marcar como resolvido</button>' : '<button class="btn" type="button" data-pstatus="novo">Voltar para novos</button>') +
+    '</div></div></div>';
 }
 
 function renderRespostas() {
@@ -3249,6 +3294,16 @@ document.addEventListener('click', async function (e) {
   if (t.dataset.openq) { var qq = Q.filter(function (y) { return String(y.id) === t.dataset.openq; })[0]; if (!qq) return; state.inbox = 'perguntas'; state.qs = qq.status; state.qsel = qq.id; return show('perguntas'); }
   if (t.dataset.openr) { var rr = R.filter(function (y) { return String(y.id) === t.dataset.openr; })[0]; if (!rr) return; state.inbox = 'emails'; state.rs = rr.status; state.rsel = rr.id; return show('perguntas'); }
   if (t.dataset.inbox) { state.inbox = t.dataset.inbox; return renderQuestions(); }
+  if (t.dataset.ps) { state.ps = t.dataset.ps; state.psel = null; return renderQuestions(); }
+  if (t.dataset.p) { state.psel = Number(t.dataset.p); return renderQuestions(); }
+  if (t.dataset.pstatus) {
+    var pnovo = t.dataset.pstatus, pid = state.psel;
+    t.disabled = true;
+    var pu = await supabase.from('problemas_app').update({ status: pnovo, resolvido_em: pnovo === 'resolvido' ? new Date().toISOString() : null }).eq('id', pid);
+    if (pu.error) { t.disabled = false; return fail('mudar o aviso', pu.error); }
+    await reload(); renderQuestions();
+    return toast(pnovo === 'resolvido' ? 'Aviso marcado como resolvido' : 'Aviso de volta em Novos');
+  }
   if (t.dataset.qs) { state.qs = t.dataset.qs; state.qsel = null; return renderQuestions(); }
   if (t.dataset.q) { state.qsel = Number(t.dataset.q); return renderQuestions(); }
   if (t.dataset.rs) { state.rs = t.dataset.rs; state.rsel = null; return renderQuestions(); }
