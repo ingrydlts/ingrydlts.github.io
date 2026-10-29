@@ -834,3 +834,24 @@ daqui: quem aplica é a Ingryd, na tela do CRM (Dossiê aberto → Pós-call), p
 - **Transcrição de voz**: o prompt manda descobrir quem fala (só vale como fato da pessoa o que ELA disse), corrige erros comuns do reconhecimento de voz e devolve `mapa_da_call` (até 8 blocos por assunto) e `perguntas_para_ela` (até 6, uma por incerteza, com o campo do Dossiê que a resposta preencheria). Proposta antiga, sem esses dois campos, continua válida.
 - O texto da call é tratado como dado, nunca como instrução; o prompt proíbe nome, telefone, e-mail e documentos nos textos.
 Testes: `node cms-oauth-worker/testes/crm-pos-call.test.mjs` (Worker) e, em `admin/crm/db/testes`, `npm run test:poscall` (SQL, com `APP_DB_DIR`) e `npm run test:poscall-ui`.
+
+## 26. "Resiliar plano": a cliente resilia pelo app
+
+A lei francesa pede que quem assinou on-line consiga resiliar on-line, direto (Code de la consommation, L215-1-1; décret 2023-417,
+art. D215-1 a D215-3): botão visível, resumo antes de confirmar e confirmação por e-mail com a data do fim. As CGV (`cgv/`, art. 8) dizem o mesmo.
+
+- `GET /api/assinatura/minha`: o que a pessoa logada tem (plano, status, até quando, se já pediu para resiliar). Nunca devolve id do Stripe.
+- `POST /api/assinatura/resiliar` `{ motivo? }`: no Stripe, `cancel_at_period_end=true` (vale até o fim do teste ou do mês já pago,
+  sem cobrança nova; nunca cancela na hora), marca `cancela_no_fim` na ficha, grava o evento `resiliacao_pedida` com o motivo e manda a
+  confirmação por e-mail (modelo `resiliacao_confirmada` no histórico). O webhook `customer.subscription.updated` confirma depois.
+
+As duas rotas exigem o token da sessão do Supabase da própria pessoa (o app manda no `Authorization`). O Worker confere o token e só
+mexe na assinatura da ficha ligada a essa conta. Não precisa de segredo novo: usa `STRIPE_SECRET_KEY`, `SUPABASE_SERVICE_ROLE_KEY` e o Brevo.
+O Worker usa o banco de produção: no app de staging a tela "Seu plano" roda em simulação (avisada na tela).
+
+**No Stripe** (Configurações → Billing → Assinaturas e e-mails): ligue o **lembrete 7 dias antes do fim do teste grátis**. As CGV (art. 6)
+prometem esse e-mail.
+
+**Teste ponta a ponta (modo teste do Stripe)**: com a assinatura de ensaio da seção 25, abra o app → Perfil → Seu plano → **Resiliar plano** →
+**Confirmar a resiliação**. Esperado: a tela diz até quando vale; no Stripe a assinatura mostra "Cancela em …"; na ficha, "resiliado" e o
+evento na linha do tempo; chega o e-mail de confirmação. Testes: `node cms-oauth-worker/testes/assinatura-resiliar.test.mjs`.
