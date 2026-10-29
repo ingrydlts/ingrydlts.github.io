@@ -7,6 +7,7 @@ export const SUPABASE_CONFIG = {
   anonKey: 'sb_publishable_nYVeQ3hGiMCGA0IzYqYeyQ_H9VcEXni'
 };
 
-import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+// Versão exata, nunca @2 (a mesma do app): uma versão nova não pode derrubar o login do CRM sem ninguém testar.
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/+esm';
 
 export const supabase = createClient(SUPABASE_CONFIG.url, SUPABASE_CONFIG.anonKey);

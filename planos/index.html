@@ -36,6 +36,7 @@
 .pl-seg button:focus-visible{outline:2px solid #577328;outline-offset:2px}
 .pl-seg small{font-weight:600;color:#577328;margin-left:4px}
 .pl-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:18px;align-items:stretch}
+.pl-grid.um{grid-template-columns:minmax(0,440px);justify-content:center}
 .pl-card{position:relative;display:flex;flex-direction:column;background:#fff;border:1px solid var(--borda-suave);border-radius:12px;padding:26px 22px;box-shadow:var(--shadow-card)}
 .pl-card.destaque{border:2px solid #577328}
 .pl-sel{position:absolute;top:-13px;left:22px;background:#577328;color:#fff;font-size:12.5px;font-weight:700;padding:4px 12px;border-radius:999px}
@@ -204,6 +205,7 @@ function desenhar() {
   }, function (p) { ESC.periodo = p; desenhar(); });
   $('ctl-periodo').hidden = o.periodos.length < 2;
   var grid = $('pl-grid'); grid.textContent = '';
+  grid.className = 'pl-grid' + (D.niveis.length === 1 ? ' um' : '');
   cartoes(D, ESC.moeda, ESC.periodo).forEach(function (c) {
     var card = document.createElement('section'); card.className = 'pl-card' + (c.nivel.destaque ? ' destaque' : '');
     if (c.nivel.destaque) { var tag = document.createElement('span'); tag.className = 'pl-sel'; tag.textContent = 'Mais escolhido'; card.appendChild(tag); }
@@ -226,11 +228,16 @@ function mostrar() {
   D = lerPlanos(D);
   ESC = D.niveis.length ? escolhaInicial(D) : null;
   if (!ESC) return estado('vazio');
-  $('pl-titulo').textContent = CTX.nome ? CTX.nome + ', escolha o plano que combina com você' : 'Escolha o plano que combina com você';
+  var frase = D.niveis.length === 1 ? 'este é o seu plano' : 'escolha o plano que combina com você';
+  $('pl-titulo').textContent = CTX.nome ? CTX.nome + ', ' + frase : frase.charAt(0).toUpperCase() + frase.slice(1);
   $('pl-sub').textContent = D.teste_dias
     ? 'Você começa com ' + D.teste_dias + ' dias de acesso grátis. O cartão é pedido agora, mas a cobrança só começa no dia ' + (D.teste_dias + 1) + '. Se cancelar antes, não paga nada.'
     : 'Compare os planos, escolha a moeda e a periodicidade, e conclua o pagamento no ambiente seguro do Stripe.';
-  $('pl-nota').textContent = 'O pagamento é feito no ambiente seguro do Stripe, com o seu e-mail já preenchido. ';
+  // Antes de pagar: o código de lançamento (cupom do Stripe), as CGV e como resiliar (Code de la consommation: informação pré-contratual).
+  $('pl-nota').textContent = 'Tem um código de lançamento? Digite no pagamento, no campo do código promocional. O pagamento é feito no ambiente seguro do Stripe, com o seu e-mail já preenchido. Você resilia quando quiser, em dois cliques, pelo seu perfil. ';
+  var cgv = document.createElement('a'); cgv.href = '/cgv/'; cgv.target = '_blank'; cgv.rel = 'noopener'; cgv.textContent = 'Condições gerais (CGV)';
+  $('pl-nota').appendChild(cgv);
+  $('pl-nota').appendChild(document.createTextNode(' · '));
   var a = document.createElement('a'); a.href = 'mailto:respostas@imigrantepordentro.com'; a.textContent = 'Ficou com dúvida? Escreva para a Ingryd.';
   $('pl-nota').appendChild(a);
   desenhar(); estado('planos');

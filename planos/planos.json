@@ -1,193 +1,29 @@
 {
-  "leia_me": "Fonte única dos planos: a página /planos/ (a que a pessoa recebe) e o botão 'Enviar link de pagamento' do CRM leem este arquivo. 'niveis' é o texto de cada nível (nome, para quem, o que inclui, destaque). 'itens' é uma linha por nível + periodicidade + moeda, com o valor que aparece na página (o mesmo que você cadastrou no Stripe) e a url do Payment Link (https://buy.stripe.com/...). Enquanto a url estiver vazia (\"\"), a página mostra o preço e o botão 'Em breve': quando criar o link no Stripe, cole a URL aqui, entre as aspas, e salve. Para tirar uma combinação da página, apague a linha. Os valores dos níveis Intermediário e Completo são os PROPOSTOS no plano: confira antes de criar os links. O e-mail e o id da ficha são acrescentados na hora (?prefilled_email=...&client_reference_id=...). Não ponha aqui chave secreta do Stripe: Payment Link é público.",
+  "leia_me": "Fonte única dos planos: a página /planos/ (a que a pessoa recebe) e o botão 'Enviar link de pagamento' do CRM leem este arquivo. Lançamento (decidido em 29/10/2026, doc 'Estratégia pricing plataforma'): um plano só, 70 € por mês, só mensal em euros. Os cupons de lançamento (15, 25, 35 e 45 € por 6 mensalidades) são códigos promocionais do Stripe, digitados no pagamento: não entram aqui. 'niveis' é o texto do plano (nome, para quem, o que inclui). 'itens' é uma linha por nível + periodicidade + moeda, com o valor que aparece na página (o mesmo cadastrado no Stripe) e a url do Payment Link (https://buy.stripe.com/...). Enquanto a url estiver vazia (\"\"), a página mostra o preço e o botão 'Em breve': quando criar o link no Stripe, cole a URL aqui, entre as aspas, e salve. O e-mail e o id da ficha são acrescentados na hora (?prefilled_email=...&client_reference_id=...). Não ponha aqui chave secreta do Stripe: Payment Link é público.",
   "teste_dias": 30,
   "niveis": [
     {
-      "chave": "basico",
-      "nome": "Básico",
-      "para": "Quer se organizar sozinha, com prazos certos.",
+      "chave": "plataforma",
+      "nome": "Plataforma Por Dentro",
+      "para": "Para se organizar com prazos certos e ter a Ingryd por perto nas dúvidas rápidas.",
       "destaque": false,
       "beneficios": [
-        "Checklist da sua situação, em ordem, com prazos reais",
-        "Leitura de timing e viabilidade: cabe no prazo?",
-        "Minha IAssistente: notas sobre o seu caso",
-        "Avisos de dados que não batem e lembretes de prazo",
-        "Artigos escolhidos para a sua situação",
-        "Chamada de onboarding de 40 minutos com a Ingryd",
-        "4 dúvidas por mês direto com a Ingryd"
-      ]
-    },
-    {
-      "chave": "intermediario",
-      "nome": "Intermediário",
-      "para": "Quer segurança de ter alguém para tirar dúvidas e decidir os pontos críticos.",
-      "destaque": true,
-      "beneficios": [
-        "Tudo do Básico",
-        "1 conversa de 30 minutos por mês, com assunto combinado antes",
-        "8 dúvidas por mês, com resposta em até 48 h úteis",
-        "Radar do seu caso: o que mudou e o que isso muda para você",
-        "Resumo do seu caso feito antes de cada conversa"
-      ]
-    },
-    {
-      "chave": "completo",
-      "nome": "Completo",
-      "para": "Tem um caso complexo ou pouco tempo e quer acompanhamento de perto.",
-      "destaque": false,
-      "beneficios": [
-        "Tudo do Intermediário",
-        "2 conversas de 30 minutos por mês",
-        "Dúvidas sem limite razoável, com resposta em até 24 h úteis",
-        "Conferência de até 2 documentos por mês",
-        "A Ingryd te procura quando um prazo do seu caso se aproxima",
-        "Prioridade máxima na agenda"
+        "Checklist da sua situação, em ordem, com prazos reais e lembretes",
+        "Leitura de timing: cabe no prazo?",
+        "Onboarding com a Ingryd: chamada de 1 h e 1 h de preparação, com o bilan já dentro da plataforma",
+        "Chat com a Ingryd: 3 dúvidas rápidas por mês, com resposta em até 2 dias úteis",
+        "15% de desconto nos serviços avulsos e 20% nos pacotes",
+        "Resilie quando quiser, em dois cliques, pelo seu perfil"
       ]
     }
   ],
   "itens": [
     {
-      "chave": "basico_mensal_brl",
-      "nivel": "basico",
-      "periodicidade": "mensal",
-      "moeda": "BRL",
-      "valor": 69,
-      "url": "https://buy.stripe.com/8x28wPgwRe3736ReStaR207"
-    },
-    {
-      "chave": "basico_semestral_brl",
-      "nivel": "basico",
-      "periodicidade": "semestral",
-      "moeda": "BRL",
-      "valor": 393,
-      "url": ""
-    },
-    {
-      "chave": "basico_anual_brl",
-      "nivel": "basico",
-      "periodicidade": "anual",
-      "moeda": "BRL",
-      "valor": 745,
-      "url": ""
-    },
-    {
-      "chave": "basico_mensal_eur",
-      "nivel": "basico",
+      "chave": "plataforma_mensal_eur",
+      "nivel": "plataforma",
       "periodicidade": "mensal",
       "moeda": "EUR",
-      "valor": 12,
-      "url": ""
-    },
-    {
-      "chave": "basico_semestral_eur",
-      "nivel": "basico",
-      "periodicidade": "semestral",
-      "moeda": "EUR",
-      "valor": 68,
-      "url": ""
-    },
-    {
-      "chave": "basico_anual_eur",
-      "nivel": "basico",
-      "periodicidade": "anual",
-      "moeda": "EUR",
-      "valor": 129,
-      "url": ""
-    },
-    {
-      "chave": "intermediario_mensal_brl",
-      "nivel": "intermediario",
-      "periodicidade": "mensal",
-      "moeda": "BRL",
-      "valor": 149,
-      "url": ""
-    },
-    {
-      "chave": "intermediario_semestral_brl",
-      "nivel": "intermediario",
-      "periodicidade": "semestral",
-      "moeda": "BRL",
-      "valor": 849,
-      "url": ""
-    },
-    {
-      "chave": "intermediario_anual_brl",
-      "nivel": "intermediario",
-      "periodicidade": "anual",
-      "moeda": "BRL",
-      "valor": 1609,
-      "url": ""
-    },
-    {
-      "chave": "intermediario_mensal_eur",
-      "nivel": "intermediario",
-      "periodicidade": "mensal",
-      "moeda": "EUR",
-      "valor": 26,
-      "url": ""
-    },
-    {
-      "chave": "intermediario_semestral_eur",
-      "nivel": "intermediario",
-      "periodicidade": "semestral",
-      "moeda": "EUR",
-      "valor": 148,
-      "url": ""
-    },
-    {
-      "chave": "intermediario_anual_eur",
-      "nivel": "intermediario",
-      "periodicidade": "anual",
-      "moeda": "EUR",
-      "valor": 280,
-      "url": ""
-    },
-    {
-      "chave": "completo_mensal_brl",
-      "nivel": "completo",
-      "periodicidade": "mensal",
-      "moeda": "BRL",
-      "valor": 299,
-      "url": ""
-    },
-    {
-      "chave": "completo_semestral_brl",
-      "nivel": "completo",
-      "periodicidade": "semestral",
-      "moeda": "BRL",
-      "valor": 1704,
-      "url": ""
-    },
-    {
-      "chave": "completo_anual_brl",
-      "nivel": "completo",
-      "periodicidade": "anual",
-      "moeda": "BRL",
-      "valor": 3229,
-      "url": ""
-    },
-    {
-      "chave": "completo_mensal_eur",
-      "nivel": "completo",
-      "periodicidade": "mensal",
-      "moeda": "EUR",
-      "valor": 52,
-      "url": ""
-    },
-    {
-      "chave": "completo_semestral_eur",
-      "nivel": "completo",
-      "periodicidade": "semestral",
-      "moeda": "EUR",
-      "valor": 296,
-      "url": ""
-    },
-    {
-      "chave": "completo_anual_eur",
-      "nivel": "completo",
-      "periodicidade": "anual",
-      "moeda": "EUR",
-      "valor": 561,
+      "valor": 70,
       "url": ""
     }
   ]

@@ -1183,3 +1183,9 @@ p { margin: 0 0 1em; color: var(--grafite); }
 .mx-remind-check a { color: inherit; text-decoration: underline; }
 .mx-remind .ask-msg.is-err { color: #9B2C2C; }
 .mx-remind .ask-done { color: var(--grafite); font-size: 14.5px; }
+
+/* CGV: aviso de rascunho, formulário de rétractation e resumo em português */
+.cgv-alerte { background: #FBF1DE; border-left: 4px solid #B8933F; border-radius: 8px; padding: 12px 14px; font-size: 14px; }
+.cgv-formulaire { border: 1px dashed rgba(43,43,43,.3); border-radius: 8px; padding: 14px 16px; font-size: 14px; }
+.cgv-pt { margin-top: 2.4em; padding-top: 1.2em; border-top: 1px solid rgba(43,43,43,.14); }
+.cgv-pt li { margin-bottom: 8px; }

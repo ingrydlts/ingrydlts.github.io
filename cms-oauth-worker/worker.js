@@ -3424,6 +3424,133 @@ async function handleStripeWebhook(request, env) {
   }
 }
 
+// ---- A assinatura vista pela própria cliente, e o botão "Resiliar plano" do perfil do app ----
+//
+// A lei francesa obriga a resiliação em poucos cliques para contrato assinado on-line (Code de la consommation, L215-1-1;
+// décret n° 2023-417, art. D215-1 a D215-3): uma função visível e direta no próprio serviço, uma tela de resumo antes de
+// confirmar e, depois, uma confirmação em suporte durável (o e-mail) com a data em que o contrato termina e o que muda.
+// As CGV (cgv/) dizem o mesmo.
+//
+//   GET  /api/assinatura/minha     o que a pessoa logada tem: plano, status, até quando, se já pediu para resiliar
+//   POST /api/assinatura/resiliar  { motivo? } → cancela no fim do período já pago (ou no fim do teste grátis), sem cobrança nova
+//
+// Quem chama é o app, com o token da sessão do Supabase da própria pessoa. O Worker confere o token no Supabase e só mexe na
+// assinatura da ficha ligada a essa conta: não há id de assinatura vindo do navegador. O Stripe confirma depois pelo webhook
+// (customer.subscription.updated), que grava de novo o mesmo cancela_no_fim.
+const ASSIN_RESILIAVEL = ['trialing', 'active', 'past_due'];
+
+async function assinaturaDaPessoa(request, env) {
+  if (!env.SUPABASE_SERVICE_ROLE_KEY) return { erro: json({ error: 'config' }, 500) };
+  const token = (request.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '').trim();
+  if (!token) return { erro: json({ error: 'Entre de novo na sua conta.' }, 401) };
+  const uRes = await fetch(`${CRM_SUPABASE_URL}/auth/v1/user`, { headers: { apikey: CRM_SUPABASE_ANON_KEY, Authorization: `Bearer ${token}` } });
+  const user = uRes.ok ? await uRes.json().catch(() => null) : null;
+  if (!user || !CRM_UUID_RE.test(String(user.id || ''))) return { erro: json({ error: 'Entre de novo na sua conta.' }, 401) };
+  const sb = crmServiceHeaders(env);
+  const cRes = await fetch(`${CRM_SUPABASE_URL}/rest/v1/contatos?select=id,email,nome&user_id=eq.${user.id}`, { headers: sb });
+  const contato = cRes.ok ? (await cRes.json())[0] || null : null;
+  if (!contato) return { user, contato: null, assinatura: null };
+  const aRes = await fetch(`${CRM_SUPABASE_URL}/rest/v1/assinaturas?select=stripe_subscription_id,status,plano,moeda,teste_fim,periodo_fim,cancela_no_fim&contato_id=eq.${contato.id}`, { headers: sb });
+  const assinatura = aRes.ok ? (await aRes.json())[0] || null : null;
+  return { user, contato, assinatura };
+}
+
+// O que o app pode mostrar. Nunca devolve o id da assinatura nem do cliente no Stripe.
+function assinaturaPublica(a) {
+  if (!a) return { tem: false };
+  const fim = a.status === 'trialing' ? (a.teste_fim || a.periodo_fim) : a.periodo_fim;
+  return {
+    tem: true, status: a.status, plano: a.plano || null, em_teste: a.status === 'trialing',
+    fim: fim || null, cancela_no_fim: !!a.cancela_no_fim,
+    pode_resiliar: ASSIN_RESILIAVEL.includes(a.status) && !a.cancela_no_fim && !!a.stripe_subscription_id
+  };
+}
+
+async function handleAssinaturaMinha(request, env) {
+  const r = await assinaturaDaPessoa(request, env);
+  if (r.erro) return r.erro;
+  return json({ ok: true, ...assinaturaPublica(r.assinatura) });
+}
+
+function resiliacaoEmail(contato, pub, agora) {
+  const nome = crmPrimeiroNome(contato.nome);
+  const fim = crmDiaBr(String(pub.fim || '').slice(0, 10));
+  const quando = agora.toLocaleString('pt-BR', { timeZone: 'Europe/Paris', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  const assunto = 'Confirmação: o seu plano Por Dentro foi resiliado';
+  const cobranca = pub.em_teste
+    ? 'Você estava no teste grátis: nada foi cobrado e nada vai ser cobrado.'
+    : 'Não haverá nenhuma cobrança nova. O período que você já pagou continua valendo até o fim.';
+  const texto = `${nome ? `Oi ${nome},` : 'Oi,'}\n\n` +
+    `Recebemos o seu pedido de resiliação em ${quando} (horário de Paris).\n\n` +
+    `Plano: ${pub.plano || 'Plataforma Por Dentro'}\n` +
+    (fim ? `O contrato termina em: ${fim}. Até essa data você continua entrando no painel normalmente.\n` : '') +
+    `${cobranca}\n\n` +
+    `Depois dessa data, o painel pede um plano para abrir de novo. Nada é apagado: se voltar, você continua de onde parou. ` +
+    `Se preferir que os seus dados sejam apagados, é só responder este e-mail pedindo.\n\n` +
+    `Foi engano? Responda este e-mail antes de ${fim || 'o fim do período'} que eu desfaço a resiliação.\n\n` +
+    `Ingryd · Por Dentro\n\n` +
+    `---\nConfirmation de résiliation (art. L215-1-1 du Code de la consommation) : demande reçue le ${quando} ; ` +
+    `le contrat prend fin le ${fim || 'à la fin de la période en cours'}, sans nouveau prélèvement.`;
+  return { assunto, texto };
+}
+
+async function handleAssinaturaResiliar(request, env) {
+  if (!env.STRIPE_SECRET_KEY) return json({ error: 'config' }, 500);
+  const r = await assinaturaDaPessoa(request, env);
+  if (r.erro) return r.erro;
+  const body = (await crmLerJson(request)) || {};
+  const motivo = String(body.motivo || '').replace(/\s+/g, ' ').trim().slice(0, 500);
+  const pub = assinaturaPublica(r.assinatura);
+  if (!pub.tem) return json({ error: 'sem_assinatura' }, 404);
+  if (pub.cancela_no_fim) return json({ ok: true, ja_resiliada: true, ...pub });
+  if (!pub.pode_resiliar) return json({ error: 'nao_resiliavel', ...pub }, 409);
+
+  const form = new URLSearchParams({ cancel_at_period_end: 'true', 'metadata[resiliado_pelo_app]': new Date().toISOString() });
+  if (motivo) form.set('cancellation_details[comment]', motivo);
+  const sRes = await fetch('https://api.stripe.com/v1/subscriptions/' + encodeURIComponent(r.assinatura.stripe_subscription_id), {
+    method: 'POST', headers: { Authorization: `Bearer ${env.STRIPE_SECRET_KEY}`, 'Content-Type': 'application/x-www-form-urlencoded' }, body: form.toString() });
+  const sub = sRes.ok ? await sRes.json().catch(() => null) : null;
+  if (!sub || sub.cancel_at_period_end !== true) {
+    console.error('assinatura/resiliar: o Stripe respondeu ' + sRes.status);
+    return json({ error: 'stripe' }, 502);
+  }
+  const j = stripeAssinaturaJson(sub, null);
+  const depois = assinaturaPublica({ ...r.assinatura, status: j.status, teste_fim: j.teste_fim || r.assinatura.teste_fim,
+    periodo_fim: j.periodo_fim || r.assinatura.periodo_fim, cancela_no_fim: true });
+
+  // Daqui em diante a resiliação já valeu no Stripe: uma falha abaixo só fica no log, não desfaz nada.
+  const sb = crmServiceHeaders(env);
+  const marca = await fetch(`${CRM_SUPABASE_URL}/rest/v1/assinaturas?contato_id=eq.${r.contato.id}`, { method: 'PATCH', headers: { ...sb, Prefer: 'return=minimal' },
+    body: JSON.stringify({ cancela_no_fim: true, atualizado_em: new Date().toISOString() }) });
+  if (!marca.ok) console.error('assinatura/resiliar: não marquei cancela_no_fim — ' + marca.status);
+  const ev = await fetch(`${CRM_SUPABASE_URL}/rest/v1/eventos`, { method: 'POST', headers: { ...sb, Prefer: 'return=minimal' },
+    body: JSON.stringify({ contato_id: r.contato.id, tipo: 'resiliacao_pedida', dados: { fim: depois.fim, em_teste: depois.em_teste, motivo: motivo || null, origem: 'app' } }) });
+  if (!ev.ok) console.error('assinatura/resiliar: não registrei o evento — ' + ev.status);
+
+  let emailEnviado = false;
+  if (env.BREVO_API_KEY && env.BREVO_SENDER_EMAIL && r.contato.email) {
+    const mail = resiliacaoEmail(r.contato, depois, new Date());
+    const bRes = await fetch('https://api.brevo.com/v3/smtp/email', {
+      method: 'POST', headers: { 'api-key': env.BREVO_API_KEY, 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({
+        sender: { email: env.BREVO_SENDER_EMAIL, name: env.BREVO_SENDER_NAME || 'Ingryd · Por Dentro' },
+        to: [r.contato.nome ? { email: r.contato.email, name: r.contato.nome } : { email: r.contato.email }],
+        replyTo: { email: crmReplyTo(env) }, subject: mail.assunto, htmlContent: crmTextToHtml(mail.texto), textContent: mail.texto,
+        tags: ['crm', 'resiliacao_confirmada'] }) });
+    const t = await bRes.text();
+    emailEnviado = bRes.ok;
+    if (!bRes.ok) console.error('assinatura/resiliar: o Brevo recusou a confirmação — ' + bRes.status);
+    else {
+      let messageId = null; try { messageId = JSON.parse(t).messageId || null; } catch (e) { /* segue */ }
+      const ins = await fetch(`${CRM_SUPABASE_URL}/rest/v1/emails_enviados`, { method: 'POST', headers: { ...sb, Prefer: 'return=minimal' },
+        body: JSON.stringify({ contato_id: r.contato.id, modelo: 'resiliacao_confirmada', assunto: mail.assunto, corpo: mail.texto, status: 'agendado',
+          provedor_id: messageId, enviado_em: new Date().toISOString() }) });
+      if (!ins.ok) console.error('assinatura/resiliar: confirmação enviada mas não registrada — ' + ins.status);
+    }
+  }
+  return json({ ok: true, ...depois, email_enviado: emailEnviado });
+}
+
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
@@ -3545,6 +3672,12 @@ export default {
       }
       if (url.pathname === '/api/planos/contexto' && request.method === 'POST') {
         return await handlePlanosContexto(request, env);
+      }
+      if (url.pathname === '/api/assinatura/minha' && request.method === 'GET') {
+        return await handleAssinaturaMinha(request, env);
+      }
+      if (url.pathname === '/api/assinatura/resiliar' && request.method === 'POST') {
+        return await handleAssinaturaResiliar(request, env);
       }
       if (url.pathname === '/api/stripe/webhook' && request.method === 'POST') {
         return await handleStripeWebhook(request, env);
