@@ -1,0 +1,42 @@
+# Roda os testes do CRM (admin/crm/db/testes) e do Worker (cms-oauth-worker/testes) em todo PR e em todo push para main.
+# Os testes do CRM rodam junto com os SQL do app (mesmo Supabase), então o repositório do app é baixado ao lado, branch staging.
+# Se o repositório do app for privado, crie um token com leitura dele (fine-grained, "Contents: read" só no POR-DENTRO-APP) e
+# guarde em Settings → Secrets and variables → Actions → APP_REPO_TOKEN.
+name: testes
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  testes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: ingrydlts/POR-DENTRO-APP
+          ref: staging
+          path: _app
+          token: ${{ secrets.APP_REPO_TOKEN || github.token }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: admin/crm/db/testes/package-lock.json
+      - run: npm ci
+        working-directory: admin/crm/db/testes
+      - name: Todos os testes
+        env:
+          APP_DB_DIR: ${{ github.workspace }}/_app/db
+        run: |
+          falhou=0
+          for t in admin/crm/db/testes/*.test.mjs cms-oauth-worker/testes/*.test.mjs; do
+            if node "$t" > /tmp/saida.txt 2>&1; then echo "ok     $t  $(tail -1 /tmp/saida.txt)"; else echo "FALHOU $t"; cat /tmp/saida.txt; falhou=1; fi
+          done
+          exit $falhou
