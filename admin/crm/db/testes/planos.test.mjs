@@ -64,6 +64,8 @@ check('só https, sem usuário e senha, e URL inválida vira nulo', P.urlCompra(
 console.log('\n== O arquivo e a página ==');
 const real = P.lerPlanos(JSON.parse(readFileSync(path.join(RAIZ, 'planos/planos.json'), 'utf8')));
 check('o planos.json versionado é o lançamento: um plano, 70 € por mês, só mensal em euros', real.niveis.map((x) => x.chave).join() === 'plataforma' && real.itens.length === 1 && real.itens[0].moeda === 'EUR' && real.itens[0].periodicidade === 'mensal' && real.itens[0].valor === 70);
+check('o lançamento tem 7 dias de teste grátis (o mesmo do Payment Link)', real.teste_dias === 7);
+check('o plano único tem o Payment Link do Stripe de 70 €', real.itens.length === 1 && /^https:\/\/buy\.stripe\.com\/[A-Za-z0-9]+$/.test(real.itens[0].url));
 check('link de compra, quando houver, é um Payment Link do Stripe', real.itens.every((i) => !i.url || /^https:\/\/buy\.stripe\.com\//.test(i.url)));
 check('o plano mostra benefícios e a frase de quem é', real.niveis.every((x) => x.beneficios.length >= 4 && x.para.length > 10) && real.niveis.filter((x) => x.destaque).length <= 1);
 const bruto = JSON.parse(readFileSync(path.join(RAIZ, 'planos/planos.json'), 'utf8'));
