@@ -219,7 +219,7 @@ function desenhar() {
     card.appendChild(ul);
     var url = c.comLink && CTX ? urlCompra(c.item.url, CTX) : null;
     var a = document.createElement(url ? 'a' : 'span'); a.className = 'pl-btn' + (url ? '' : ' off');
-    if (url) { a.href = url; a.rel = 'noopener'; a.textContent = D.teste_dias ? 'Começar ' + D.teste_dias + ' dias grátis' : 'Escolher este plano'; a.setAttribute('aria-label', a.textContent + ': plano ' + c.nivel.nome); }
+    if (url) { a.href = url; a.rel = 'noopener'; a.textContent = D.teste_dias ? 'Começar ' + D.teste_dias + ' dias grátis' : 'Assinar agora'; a.setAttribute('aria-label', a.textContent + ': plano ' + c.nivel.nome); }
     else a.textContent = c.comLink ? 'Indisponível' : 'Em breve';
     card.appendChild(a); grid.appendChild(card);
   });
@@ -232,7 +232,7 @@ function mostrar() {
   $('pl-titulo').textContent = CTX.nome ? CTX.nome + ', ' + frase : frase.charAt(0).toUpperCase() + frase.slice(1);
   $('pl-sub').textContent = D.teste_dias
     ? 'Você começa com ' + D.teste_dias + ' dias de acesso grátis. O cartão é pedido agora, mas a cobrança só começa no dia ' + (D.teste_dias + 1) + '. Se cancelar antes, não paga nada.'
-    : 'Compare os planos, escolha a moeda e a periodicidade, e conclua o pagamento no ambiente seguro do Stripe.';
+    : 'A assinatura é mensal: o primeiro pagamento é na hora e ela renova sozinha todo mês. Você resilia quando quiser, em dois cliques, pelo seu perfil.';
   // Antes de pagar: o código de lançamento (cupom do Stripe), as CGV e como resiliar (Code de la consommation: informação pré-contratual).
   $('pl-nota').textContent = 'Tem um código de lançamento? Digite no pagamento, no campo do código promocional. O pagamento é feito no ambiente seguro do Stripe, com o seu e-mail já preenchido. Você resilia quando quiser, em dois cliques, pelo seu perfil. ';
   var cgv = document.createElement('a'); cgv.href = '/cgv/'; cgv.target = '_blank'; cgv.rel = 'noopener'; cgv.textContent = 'Condições gerais (CGV)';
