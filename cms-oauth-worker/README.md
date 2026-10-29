@@ -781,16 +781,15 @@ Testes: `node cms-oauth-worker/testes/stripe-webhook.test.mjs`; no banco, `cd ad
 ## 26. A página de planos (`/planos/`): a pessoa escolhe nível, periodicidade e moeda
 
 O botão **Enviar link de pagamento** (aba Plataforma) manda, por padrão, o e-mail "Link de pagamento" com um link para
-`https://imigrantepordentro.com/planos/?t=...`. Nessa página a pessoa vê os níveis (Básico, Intermediário, Completo), alterna entre **moeda**
-(R$ ou €) e **periodicidade** (mensal, semestral, anual, com o desconto calculado) e clica em **Começar 30 dias grátis**, que abre o Payment Link do Stripe
+`https://imigrantepordentro.com/planos/?t=...`. Nessa página a pessoa vê o plano (no lançamento, um só: Plataforma Por Dentro, 70 €/mês) e clica em **Começar 30 dias grátis**, que abre o Payment Link do Stripe
 já com o e-mail dela preenchido e o id da ficha (o webhook, seção 25, casa o pagamento com a ficha por esse id). A outra opção do botão, **Só este plano**, manda direto um Payment Link.
 
 **Tudo sai de um arquivo: `planos/planos.json`.** Quem edita o texto e os preços é você, direto no GitHub (lápis → editar → Commit), sem código:
 - `niveis`: `chave`, `nome`, `para` (a frase de quem é), `destaque` (true marca "Mais escolhido") e `beneficios` (a lista).
 - `itens`: um Payment Link por combinação: `chave` (única), `nivel`, `periodicidade` (`mensal`, `semestral` ou `anual`), `moeda` (`BRL` ou `EUR`), `valor` (o preço que você cadastrou no Stripe, só o número) e `url`.
 - `teste_dias`: 30 (o texto "30 dias grátis, a cobrança só começa no dia 31"). Ponha 0 se o Payment Link **não** tiver teste grátis.
-- **A página já mostra os 3 níveis, as 3 periodicidades e as 2 moedas (18 preços)**, com os valores do quadro de preços. Enquanto a `url` de uma linha estiver vazia (`""`), a página mostra o preço e o botão **Em breve**. Quando criar o Payment Link no Stripe, cole a URL entre as aspas daquela linha e salve: o botão vira "Começar 30 dias grátis" sozinho. Hoje só o **Básico mensal em R$** tem link. Para tirar uma combinação da página, apague a linha. O seletor "Só este plano" do CRM mostra só as linhas que já têm link.
-- Os preços e os textos do Intermediário e do Completo seguem o quadro do `ONBOARDING.md` (seção 14), que ainda tem itens **a construir** e preços **propostos**. Como a página já é pública para quem receber o link, revise esses textos e valores antes de mandar o link a alguém.
+- **No lançamento a página tem um plano só: 70 € por mês, só mensal em euros** (decisão de 29/10/2026, doc "Estratégia pricing plataforma"). Os cupons de lançamento (15, 25, 35 e 45 € por 6 mensalidades) são **códigos promocionais do Stripe**, digitados no pagamento: não entram no arquivo. Enquanto a `url` estiver vazia (`""`), a página mostra o preço e o botão **Em breve**. Quando criar o Payment Link de 70 € no Stripe, cole a URL entre as aspas e salve: o botão vira "Começar 30 dias grátis" sozinho. Para voltar a ter mais níveis, moedas ou periodicidades, acrescente linhas em `niveis` e `itens`: a página mostra os seletores sozinha quando há mais de uma opção.
+- A página avisa do código de lançamento, de como resiliar e liga às CGV antes do pagamento (informação pré-contratual).
 
 **O que o Worker precisa**: `CRM_LINK_SECRET` (a mesma da seção 18; assina o link da página, que vale 30 dias) e a rota pública `POST /api/planos/contexto`, que devolve só o primeiro nome, o e-mail e o id da ficha de quem tem o link. Sem `CRM_LINK_SECRET` o botão avisa e nada é enviado.
 
@@ -835,10 +834,12 @@ daqui: quem aplica é a Ingryd, na tela do CRM (Dossiê aberto → Pós-call), p
 - O texto da call é tratado como dado, nunca como instrução; o prompt proíbe nome, telefone, e-mail e documentos nos textos.
 Testes: `node cms-oauth-worker/testes/crm-pos-call.test.mjs` (Worker) e, em `admin/crm/db/testes`, `npm run test:poscall` (SQL, com `APP_DB_DIR`) e `npm run test:poscall-ui`.
 
-## 26. "Resiliar plano": a cliente resilia pelo app
+## 30. "Resiliar plano": a cliente resilia pelo app
 
 A lei francesa pede que quem assinou on-line consiga resiliar on-line, direto (Code de la consommation, L215-1-1; décret 2023-417,
 art. D215-1 a D215-3): botão visível, resumo antes de confirmar e confirmação por e-mail com a data do fim. As CGV (`cgv/`, art. 8) dizem o mesmo.
+
+**Publicar o Worker**: estas rotas só existem depois de `wrangler deploy` (ou colar o `worker.js` no painel). Sem isso, o botão do app mostra o caminho por e-mail.
 
 - `GET /api/assinatura/minha`: o que a pessoa logada tem (plano, status, até quando, se já pediu para resiliar). Nunca devolve id do Stripe.
 - `POST /api/assinatura/resiliar` `{ motivo? }`: no Stripe, `cancel_at_period_end=true` (vale até o fim do teste ou do mês já pago,
