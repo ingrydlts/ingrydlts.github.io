@@ -315,10 +315,11 @@ check('com consentimento marcado e sem repetição: nenhum aviso', j.avisos.leng
 check('nada foi enviado a ninguém: nenhuma chamada ao Brevo nem à Anthropic', chamadas.every((c) => !/brevo|anthropic/.test(c.url)));
 check('nada inesperado foi chamado', inesperadas.length === 0);
 
+const jAntes = j;
 instalar({ corpo: comLinha(4, 'pesquisar, depois gerar_rascunho (conferir a fonte)') });
-res = await ler(); j = await res.json();
+const resSeq = await ler();
 const pSeq = insercoes()[0].body.proposta.notion.pendencias[0];
-check('sequência de botões válidos ("pesquisar, depois gerar_rascunho") é aceita, cada um conferido na lista', res.status === 200 && pSeq.botao === 'pesquisar' && pSeq.botoes.join() === 'pesquisar,gerar_rascunho' && pSeq.botao_obs === 'conferir a fonte');
+check('sequência de botões válidos ("pesquisar, depois gerar_rascunho") é aceita, cada um conferido na lista', resSeq.status === 200 && pSeq.botao === 'pesquisar' && pSeq.botoes.join() === 'pesquisar,gerar_rascunho' && pSeq.botao_obs === 'conferir a fonte');
 
 console.log('\n== Bloco de resumo da reunião (meeting-notes), simulado ==');
 check('"unsupported" e "meeting_notes" não mudam o resultado: ignorados, só contados por tipo', j.blocos_ignorados.unsupported === 1 && j.blocos_ignorados.meeting_notes === 1);
