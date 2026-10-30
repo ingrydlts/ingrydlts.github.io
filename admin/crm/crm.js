@@ -1660,7 +1660,7 @@ function poscallHtml(c) {
 
 function poscallPropostaHtml(c, pc, d) {
   var p = pc.prop.proposta, h = '<div class="pcprop">', ehN = p.origem === 'notion' && !!p.notion;
-  h += ehN ? '<p class="sub" style="margin:10px 0">Proposta da página do Notion (a IA não leu nada: é a página padronizada). Marque o que vale e aplique. <b>Nada entrou na ficha ainda.</b></p>' : '<p class="sub" style="margin:10px 0">Proposta da IA' + (pc.prop.reutilizada ? ' (a mesma call já tinha sido lida; sem custo novo)' : '') +
+  h += ehN ? '<p class="sub" style="margin:10px 0">Leitura da página do Notion (a IA não leu nada: é a página padronizada). <b>A ficha já foi preenchida na leitura.</b> Aqui ficam os fatos que a ficha já tinha de outro jeito (marque só se quiser trocar) e, mais abaixo, pendências, lembretes e rascunho.</p>' : '<p class="sub" style="margin:10px 0">Proposta da IA' + (pc.prop.reutilizada ? ' (a mesma call já tinha sido lida; sem custo novo)' : '') +
     '. Marque o que vale e aplique. <b>Nada entrou na ficha ainda.</b></p>';
 
   if ((p.mapa_da_call || []).length) {
@@ -3191,18 +3191,22 @@ var ONT_ESTADO = { aberta: 'aberta', aguardando_ela: 'aguardando ela', concluida
 function ontN(n, um, varios) { return n + ' ' + (n === 1 ? um : varios); }
 function ontPrazo(pz) { if (!pz || !pz.texto) return 'sem prazo'; return pz.data && !pz.a_confirmar ? fmtDay(pz.data) : pz.texto; }   // "(a confirmar)" aparece como o texto que veio
 function ontResumoHtml(r) {
-  var np = r.na_proposta || {}, df = r.de_fora || {}, nomes = (np.campos || []).map(function (k) { var f = dosCampo(k); return f ? f.l : k; });
+  var np = r.na_proposta || {}, df = r.de_fora || {}, ap = r.aplicado || { preenchidos: [], ja_preenchidos: [] };
+  var rot = function (k) { if (k === 'nome') return 'Nome'; if (k === 'persona') return 'Situação (qual checklist)'; var f = dosCampo(k); return f ? f.l : k; };
   var h = '<div class="onb-ok" role="status"><b>' + (r.criado ? 'Ficha criada' : 'Ficha encontrada') + (r.pessoa ? ': ' + esc(r.pessoa) : '') + '</b>' + (r.email ? ' · ' + esc(r.email) : '') + '<br>' +
-    (r.reutilizada ? 'Esta página já tinha sido lida e a proposta continua pendente. ' : '') + 'Nada foi aplicado na ficha e nada foi enviado: tudo ficou como <b>proposta pendente</b>, para você aplicar.</div>';
-  h += '<h4 class="ont-h">Entrou na proposta (pendente)</h4><ul class="ont-lista">' +
-    '<li>' + (nomes.length ? '<b>' + ontN(nomes.length, 'fato do Dossiê', 'fatos do Dossiê') + ':</b> ' + esc(nomes.join(', ')) : 'Nenhum fato novo para o Dossiê') + '</li>' +
+    (r.reutilizada ? 'Esta página já tinha sido lida antes. ' : '') + 'Preenchi a ficha com o que a página trouxe; o que você já tinha digitado ficou como estava. Nada foi enviado a ninguém.</div>';
+  h += '<h4 class="ont-h">Preenchido na ficha</h4><ul class="ont-lista">' +
+    '<li>' + (ap.preenchidos.length ? '<b>' + ontN(ap.preenchidos.length, 'campo', 'campos') + ':</b> ' + esc(ap.preenchidos.map(rot).join(', ')) : 'Nenhum campo novo: tudo o que a página tem já estava na ficha.') + '</li>' +
+    (ap.ja_preenchidos.length ? '<li>Já estavam preenchidos e ficaram como estavam: ' + esc(ap.ja_preenchidos.map(rot).join(', ')) + '.</li>' : '') + '</ul>';
+  h += '<h4 class="ont-h">Ficou como proposta, só para consulta</h4><ul class="ont-lista">' +
     '<li>' + (np.pendencias ? '<b>' + ontN(np.pendencias, 'pendência da Plataforma', 'pendências da Plataforma') + '</b> (' + np.abertas + ' abertas, ' + np.aguardando_ela + ' aguardando ela, ' + np.concluidas + ' concluídas)' : 'Nenhuma pendência da Plataforma') + '</li>' +
     '<li>' + (np.lembretes ? '<b>' + ontN(np.lembretes, 'lembrete para você', 'lembretes para você') + '</b> (' + esc((np.canais_lembrete || []).join(' e ')) + ')' : 'Nenhum lembrete (convite de acesso ou Instagram)') + '</li>' +
     '<li>' + (np.rascunho_email || np.linhas_email ? '<b>Rascunho de e-mail</b>' + (np.rascunho_email ? ' pronto' : ' ainda vazio') + ' · ' + ontN(np.linhas_email || 0, 'linha de pendência por e-mail', 'linhas de pendência por e-mail') : 'Nada por e-mail') + '</li>' +
     '<li>' + (np.faltam ? '<b>' + ontN(np.faltam, 'tarefa', 'tarefas') + '</b> em “Faltam para o CRM”' : 'Nada em “Faltam para o CRM”') + '</li></ul>';
   h += '<h4 class="ont-h">Ficou de fora</h4><ul class="ont-lista">' +
     ((df.so_eu || df.fora_do_crm) ? '<li>' + (df.so_eu || 0) + ' linha(s) “Só eu” e ' + (df.fora_do_crm || 0) + ' “Fora do CRM”: não viram nada na ficha.</li>' : '<li>Nenhuma linha “Só eu” ou “Fora do CRM”.</li>') +
-    ((r.persona || r.fase) ? '<li>' + (r.persona ? 'Persona no Notion: <b>' + esc(r.persona) + '</b>. ' : '') + (r.fase ? 'Fase: <b>' + esc(r.fase) + '</b>. ' : '') + 'A proposta não muda persona nem fase: ajuste na ficha, se concordar.</li>' : '') + '</ul>';
+    (r.fase ? '<li>Fase no Notion: <b>' + esc(r.fase) + '</b> (texto livre: foi para o resumo, não para o campo Fase da ficha).</li>' : '') +
+    (r.persona && ap.preenchidos.indexOf('persona') < 0 ? '<li>Persona no Notion: <b>' + esc(r.persona) + '</b>' + (ap.ja_preenchidos.indexOf('persona') >= 0 ? ' (a ficha já tinha uma situação: não troquei).' : ' (não existe no CRM: escolha na ficha).') + '</li>' : '') + '</ul>';
   if ((r.avisos || []).length) h += '<div class="onb-aviso" role="status"><b>' + ontN(r.avisos.length, 'aviso', 'avisos') + ':</b><ul class="ont-lista">' + r.avisos.map(function (a) { return '<li>' + esc(a) + '</li>'; }).join('') + '</ul></div>';
   return h;
 }
@@ -3214,10 +3218,10 @@ function ontPinta() {
     return;
   }
   h += '<label class="rot" for="ont-url">Link do Notion</label><input id="ont-url" type="url" autocomplete="off" inputmode="url" maxlength="500" placeholder="https://www.notion.so/…"' + (lendo ? ' disabled' : '') + '>' +
-    '<small class="dica">Cole o link da página da ligação que a skill /bilan-notion deixou padronizada (Status “Bilan pronto”). O CRM só lê: não escreve no Notion e não envia nada a ninguém. O que vier fica como proposta pendente na ficha.</small>';
+    '<small class="dica">Cole o link da página da ligação que a skill /bilan-notion deixou padronizada (Status “Bilan pronto”). O CRM só lê: não escreve no Notion e não envia nada a ninguém. A ficha é preenchida com o que a página trouxe (o que você já digitou não é trocado).</small>';
   if (off) h += '<div class="onb-aviso" role="status" style="margin-top:10px">' + esc(ONB.ia.notion_aviso || 'A leitura do Notion ainda não está ligada.') + ' As fichas e o Dossiê continuam funcionando.</div>';
   if (lendo) h += '<div role="status" aria-live="polite" aria-busy="true" style="margin-top:12px"><div class="onb-sk" aria-hidden="true"><i></i><i></i><i></i><i></i></div><p class="sub" style="margin:10px 0 0">Lendo a página do Notion… costuma levar alguns segundos.</p></div>';
-  else if (ONT.fase === 'erro') h += '<div class="onb-erro" role="alert" style="margin-top:10px">' + esc(ONT.erro) + '</div><p class="sub" style="margin:8px 0 0">O link continua aqui. Nada foi aplicado na ficha.</p>';
+  else if (ONT.fase === 'erro') h += '<div class="onb-erro" role="alert" style="margin-top:10px">' + esc(ONT.erro) + '</div><p class="sub" style="margin:8px 0 0">O link continua aqui. Nada foi alterado na ficha.</p>';
   else h += '<p class="sub" id="ont-vazio" style="margin:10px 0 0">Nenhuma ligação lida ainda. Cole o link acima.</p>';
   h += '<div class="onb-acoes" style="margin-top:12px"><button class="btn primary" type="button" id="ont-ler"' + (lendo || off ? ' disabled' : '') + '>' + (lendo ? 'Lendo…' : ONT.fase === 'erro' ? 'Tentar de novo' : 'Ler do Notion') + '</button></div></div>';
   box.innerHTML = h;
