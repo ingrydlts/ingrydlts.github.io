@@ -421,6 +421,41 @@ console.log('\n== Bilan d\'action: Resumo e Dúvidas tiradas (para o e-mail do b
   check('página sem essas seções: resumo vazio e nenhuma dúvida (e a leitura segue valendo)', n0.resumo === '' && Array.isArray(n0.duvidas) && n0.duvidas.length === 0);
 }
 
+console.log('\n== Rascunho de e-mail com as seções do bilan (1, 2 e 3) ==');
+{
+  const li = (t) => bloco('bulleted_list_item', { rich_text: rt(t) });
+  const rascBase = (fn) => { const c = corpoOk({ rascunho: false }); c.topo.push(h3('Rascunho de e-mail'), ...fn(c)); return c; };
+  // forma 1: título em parágrafo, itens soltos em seguida
+  instalar({ corpo: rascBase(() => [para('Nota: sem fonte, só "estamos conferindo".'), para('1. Dúvidas que tiramos na conversa'), li('Curso de 20 h por semana'), li('Atestação com Qualiopi'),
+    para('2. Seus próximos passos'), li('Ligar para a escola'), para('3. O que eu respondo ou confirmo pra você'), li('Pagamento do semestre depois da inscrição?'), li('Prova financeira cobre tudo?'),
+    para('4. Seu código para entrar na plataforma'), para('O código entra no CRM.')]) });
+  res = await ler(); j = await res.json();
+  let nb2 = insercoes()[0].body.proposta.notion;
+  check('forma 1 (título solto + itens): as 3 listas saem do rascunho', res.status === 200 && nb2.bilan.duvidas.join('|') === 'Curso de 20 h por semana|Atestação com Qualiopi' && nb2.bilan.proximos.join('|') === 'Ligar para a escola' && nb2.bilan.respostas.length === 2);
+  check('a nota antes da primeira seção e o texto da seção 4 não entram em nenhuma lista', !JSON.stringify(nb2.bilan).includes('estamos conferindo') && !JSON.stringify(nb2.bilan).includes('O código entra'));
+  check('o rascunho em texto corrido continua guardado (com a nota)', /1\. Dúvidas que tiramos na conversa/.test(nb2.email.rascunho) && /Nota: sem fonte/.test(nb2.email.rascunho));
+  // forma 2: o Notion vira "1." em item numerado, com os itens aninhados dentro dele
+  const t1 = bloco('numbered_list_item', { rich_text: rt('Dúvidas que tiramos na conversa') }, { has_children: true });
+  const t2 = bloco('numbered_list_item', { rich_text: rt('Seus próximos passos') }, { has_children: true });
+  const t3 = bloco('numbered_list_item', { rich_text: rt('O que eu respondo ou confirmo para você') }, { has_children: true });
+  instalar({ corpo: (() => { const c = rascBase(() => [t1, t2, t3]); c.filhos[t1.id] = [[li('Dúvida A'), li('Dúvida B')]]; c.filhos[t2.id] = [[li('Passo A')]]; c.filhos[t3.id] = [[li('Resposta A')]]; return c; })() });
+  res = await ler(); nb2 = insercoes()[0].body.proposta.notion;
+  check('forma 2 (itens numerados com os itens aninhados, "para você"): também lê as 3 listas', res.status === 200 && nb2.bilan.duvidas.join() === 'Dúvida A,Dúvida B' && nb2.bilan.proximos.join() === 'Passo A' && nb2.bilan.respostas.join() === 'Resposta A');
+  // forma 3: títulos como heading_3
+  instalar({ corpo: (() => { const c = corpoOk({ rascunho: false }); c.topo.push(h3('Rascunho de e-mail'), h3('1. Dúvidas que tiramos na conversa'), li('X1'), h3('2. Seus próximos passos'), li('X2'), h3('3. O que eu respondo ou confirmo pra você'), li('X3')); return c; })() });
+  await ler(); nb2 = insercoes()[0].body.proposta.notion;
+  check('forma 3 (títulos em heading_3): lê as 3 listas', nb2.bilan.duvidas[0] === 'X1' && nb2.bilan.proximos[0] === 'X2' && nb2.bilan.respostas[0] === 'X3');
+  instalar({ corpo: rascBase(() => [para('Dúvidas que tiramos na conversa:'), li('Sem número, com dois-pontos')]) });
+  await ler(); check('o título vale sem o número e com dois-pontos', insercoes()[0].body.proposta.notion.bilan.duvidas[0] === 'Sem número, com dois-pontos');
+  instalar({ corpo: rascBase(() => [para('1. Dúvidas que tiramos na conversa'), ...Array.from({ length: 15 }, (_, i) => li('d' + i)), li('y'.repeat(900))]) });
+  await ler(); nb2 = insercoes()[0].body.proposta.notion;
+  check('limites: até 12 itens por seção e 400 letras por item', nb2.bilan.duvidas.length === 12 && nb2.bilan.duvidas.every((x) => x.length <= 400));
+  instalar(); await ler();
+  check('página sem as seções no rascunho: listas vazias (o CRM usa o resto da página)', ['duvidas', 'proximos', 'respostas'].every((k) => insercoes()[0].body.proposta.notion.bilan[k].length === 0));
+  instalar({ corpo: rascBase(() => [para('3. O que eu respondo ou confirmo pra você'), li('<img src=x onerror=alert(1)>')]) });
+  await ler(); check('texto da página é só texto', insercoes()[0].body.proposta.notion.bilan.respostas[0] === '<img src=x onerror=alert(1)>');
+}
+
 console.log('\n== Banco: ficha já existe, repetição e SQL pendente ==');
 instalar({ rpcFicha: { status: 200, body: { contato_id: CID, criado: false, preenchidos: [], ja_preenchidos: ['nome'] } } });
 res = await ler(); j = await res.json();

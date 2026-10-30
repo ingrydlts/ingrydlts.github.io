@@ -3164,10 +3164,18 @@ function crmNotionLerPropriedades(page) {
     prazo_chave: crmNotionPrazo(prazoBruto), consentimento, enviado_ao_crm: enviado, id_no_crm: idCrm } };
 }
 
+// As seções do rascunho de e-mail: "1. Dúvidas que tiramos na conversa", "2. Seus próximos passos", "3. O que eu respondo ou confirmo pra você" e
+// "4. Seu código…" (o código é digitado no CRM, então essa só marca o fim). Com ou sem o número na frente.
+const CRM_NOTION_RASC_SECOES = { 'dúvidas que tiramos na conversa': 'duvidas', 'seus próximos passos': 'proximos', 'o que eu respondo ou confirmo pra você': 'respostas', 'o que eu respondo ou confirmo para você': 'respostas', 'seu código para entrar na plataforma': 'codigo' };
+function crmNotionRascSecao(texto) {
+  const t = crmNotionNorm(texto).replace(/^[1-4]\s*[.·):-]\s*/, '').replace(/[:.]$/, '').toLowerCase();
+  return Object.prototype.hasOwnProperty.call(CRM_NOTION_RASC_SECOES, t) ? CRM_NOTION_RASC_SECOES[t] : null;
+}
+
 // O corpo da página: a seção "## Pendência × Canal" com a tabela, "### Faltam para o CRM" e "### Rascunho de e-mail". Só blocos comuns:
 // o bloco de resumo da reunião do Notion (meeting-notes) não é lido nem necessário; ele entra apenas na contagem de blocos ignorados.
 async function crmNotionLerCorpo(env, paginaUuid) {
-  const corpo = { resumo: '', duvidas: null, secaoAchada: false, tabela: null, largura: 0, faltam: null, rascunho: null, rascunhoCortado: false, ignorados: {} };
+  const corpo = { bilan: { duvidas: [], proximos: [], respostas: [] }, resumo: '', duvidas: null, secaoAchada: false, tabela: null, largura: 0, faltam: null, rascunho: null, rascunhoCortado: false, ignorados: {} };
   const filhos = async (id) => {
     const lista = [];
     let cursor = null;
@@ -3185,7 +3193,7 @@ async function crmNotionLerCorpo(env, paginaUuid) {
   const topo = await filhos(paginaUuid);
   if (!topo.ok) return topo;
   const fila = topo.lista.slice();
-  let secao = null, vistos = 0;
+  let secao = null, vistos = 0, sub = null;   // sub: a seção do rascunho em que estamos (dúvidas, próximos passos, respostas)
   for (let i = 0; i < fila.length; i++) {
     if (++vistos > CRM_NOTION_MAX_BLOCOS) return crmNotionRecusa('pagina_grande', 'A página tem blocos demais para ler (limite ' + CRM_NOTION_MAX_BLOCOS + '). Confira se é a página certa da ligação.');
     const b = fila[i];
@@ -3195,9 +3203,10 @@ async function crmNotionLerCorpo(env, paginaUuid) {
       const h = b[tipo] || {}, titulo = crmNotionNorm(crmNotionRt(h.rich_text, 200));
       if (tipo === 'heading_2' && titulo === CRM_NOTION_TITULO_SECAO) { corpo.secaoAchada = true; secao = 'tabela'; }
       else if (tipo === 'heading_2' && titulo.replace(/[’‘]/g, "'") === "Bilan d'action") secao = 'bilan';
+      else if (tipo === 'heading_3' && crmNotionRascSecao(titulo)) { secao = 'rascunho'; if (corpo.rascunho === null) corpo.rascunho = ''; sub = crmNotionRascSecao(titulo); }
       else if (tipo === 'heading_3' && titulo === 'Dúvidas tiradas') { secao = 'duvidas'; if (!corpo.duvidas) corpo.duvidas = []; }
       else if (tipo === 'heading_3' && titulo === 'Faltam para o CRM') { secao = 'faltam'; if (!corpo.faltam) corpo.faltam = []; }
-      else if (tipo === 'heading_3' && titulo === 'Rascunho de e-mail') { secao = 'rascunho'; if (corpo.rascunho === null) corpo.rascunho = ''; }
+      else if (tipo === 'heading_3' && titulo === 'Rascunho de e-mail') { secao = 'rascunho'; sub = null; if (corpo.rascunho === null) corpo.rascunho = ''; }
       else secao = null;
       if (b.has_children === true && h.is_toggleable === true && typeof b.id === 'string') {   // título que abre e fecha: o conteúdo vem logo depois dele
         const f = await filhos(b.id);
@@ -3228,8 +3237,19 @@ async function crmNotionLerCorpo(env, paginaUuid) {
       if (t && corpo.faltam.length < 50) corpo.faltam.push({ texto: t, feito: !!(b.to_do && b.to_do.checked === true) });
       continue;
     }
-    if (secao === 'rascunho' && ['paragraph', 'bulleted_list_item', 'numbered_list_item', 'quote'].includes(tipo)) {
+    if (secao === 'rascunho' && ['paragraph', 'bulleted_list_item', 'numbered_list_item', 'quote', 'to_do'].includes(tipo)) {
       const t = crmNotionRt(b[tipo] && b[tipo].rich_text, 2000, true);
+      const titulo = crmNotionRascSecao(t);
+      const guarda = (txt) => { const l = corpo.bilan[sub]; const x = crmOnbLimpaTexto(txt, 400, false); if (l && x && l.length < 12) l.push(x); };
+      if (titulo) {   // título de seção (solto ou como item numerado, com os itens dentro dele)
+        sub = titulo;
+        if (b.has_children === true && typeof b.id === 'string') {
+          const f = await filhos(b.id);
+          if (!f.ok) return f;
+          for (const x of f.lista) if (x && ['bulleted_list_item', 'numbered_list_item', 'to_do', 'paragraph'].includes(x.type)) guarda(crmNotionRt(x[x.type] && x[x.type].rich_text, 400));
+        }
+      } else if (sub && tipo !== 'quote') guarda(t);
+      if (tipo === 'to_do') continue;
       const linha = tipo === 'bulleted_list_item' || tipo === 'numbered_list_item' ? '- ' + t : t;
       if (corpo.rascunho.length + linha.length + 1 > 6000) corpo.rascunhoCortado = true;
       else corpo.rascunho += (corpo.rascunho ? '\n' : '') + linha;
@@ -3325,7 +3345,7 @@ function crmNotionMontar(p, c, meta) {
   return { ok: true, proposta: {
     origem: 'notion',
     notion: {
-      pagina: meta.pagina, editada_em: meta.editada_em, resumo: c.resumo || '', duvidas: c.duvidas || [], pessoa: p.pessoa, persona: p.persona || null, fase: p.fase || null, objetivo: p.objetivo, dores: p.dores,
+      pagina: meta.pagina, editada_em: meta.editada_em, resumo: c.resumo || '', duvidas: c.duvidas || [], bilan: c.bilan, pessoa: p.pessoa, persona: p.persona || null, fase: p.fase || null, objetivo: p.objetivo, dores: p.dores,
       documentos_pendentes: p.documentos_pendentes, prazo_chave: p.prazo_chave, consentimento: p.consentimento, enviado_ao_crm: p.enviado_ao_crm === true, id_no_crm: p.id_no_crm,
       pendencias: t.pendencias, lembretes: t.lembretes, email: { linhas: t.email_linhas, rascunho: c.rascunho || '' }, faltam: c.faltam || [], fora: t.fora,
       avisos, blocos_ignorados: c.ignorados
@@ -3396,7 +3416,7 @@ async function handleCrmOnboardingNotion(request, env) {
   if (!CRM_UUID_RE.test(contatoId)) return json({ error: 'Li a página, mas não consegui criar a ficha. Tente de novo.', codigo: 'ficha_nao_criada' }, 500);
 
   // 2. A proposta pendente. A mesma página, sem edição nova, devolve a que já espera decisão (sem gravar outra).
-  const hash = await crmPosHash(contatoId, 'notion:' + alvo.id + ':' + editada, 'v2');
+  const hash = await crmPosHash(contatoId, 'notion:' + alvo.id + ':' + editada, 'v3');
   const semTabela = { error: 'Falta rodar admin/crm/db/crm-pos-call.sql no SQL Editor do Supabase.', codigo: 'sql_pendente' };
   const pendente = await fetch(`${CRM_SUPABASE_URL}/rest/v1/pos_call_propostas?select=id,proposta&contato_id=eq.${contatoId}&hash_entrada=eq.${hash}&status=eq.pendente&limit=1`, { headers: auth });
   if (pendente.status === 404) return json(semTabela, 500);
@@ -3432,7 +3452,7 @@ async function handleCrmOnboardingNotion(request, env) {
 }
 
 // ---------- CRM: e-mail "Bilan da nossa conversa" (a partir do Bilan d'action lido do Notion) ----------
-// POST /api/crm/onboarding/bilan-email { contato_id, secoes: { duvidas, proximos, respostas }, codigo, enviar, confirmo, forcar } (só admin).
+// POST /api/crm/onboarding/bilan-email { contato_id, secoes: { duvidas, proximos, respostas }, codigo, anexos, enviar, confirmo, forcar } (só admin).
 //   Sem "enviar": devolve só a PRÉVIA (assunto, texto e html) e não manda nada. Com enviar:true e confirmo:true (a Ingryd marcou que a pessoa
 //   aceitou receber), manda pelo Brevo e registra em emails_enviados (modelo 'bilan_conversa'). Um por pessoa a cada 3 dias (forcar:true passa).
 // O título e as 4 seções são FIXOS no código: só o conteúdo muda de pessoa para pessoa (e a Ingryd edita na tela antes de enviar).
@@ -3451,26 +3471,95 @@ function crmBilanLista(v, nome) {
   }
   return { ok: true, itens };
 }
-function crmBilanMontar(nome, s, codigo) {
-  const secoes = [['Dúvidas que tiramos na conversa', s.duvidas], ['Seus próximos passos', s.proximos], ['O que eu respondo ou confirmo para você', s.respostas]];
+// Anexos: só PDF, JPG e PNG (conferidos pelos primeiros bytes, não pela extensão), até 5 arquivos e 3 MB no total (o Brevo aceita 4 MB por e-mail).
+// O arquivo vive só na memória do pedido: vai para o Brevo e não é guardado em lugar nenhum. Na prévia basta o nome e o tamanho.
+const CRM_BILAN_ANEXOS_MAX = 5;
+const CRM_BILAN_ANEXOS_BYTES = 3 * 1024 * 1024;
+const CRM_BILAN_EXT = { 'application/pdf': ['pdf'], 'image/jpeg': ['jpg', 'jpeg'], 'image/png': ['png'] };
+function crmBilanTamanho(n) { return n >= 1048576 ? (n / 1048576).toFixed(1).replace('.', ',') + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB'; }
+function crmBilanAnexos(lista, comConteudo) {
+  if (lista === undefined || lista === null) return { ok: true, itens: [] };
+  if (!Array.isArray(lista) || lista.length > CRM_BILAN_ANEXOS_MAX) return { ok: false, erro: 'No máximo ' + CRM_BILAN_ANEXOS_MAX + ' anexos por e-mail.' };
+  const itens = [];
+  let total = 0;
+  for (let i = 0; i < lista.length; i++) {
+    const a = lista[i], rot = 'O anexo ' + (i + 1);
+    if (!a || typeof a !== 'object' || Array.isArray(a)) return { ok: false, erro: rot + ' veio num formato inválido.' };
+    // O nome entra no e-mail e no cabeçalho do anexo: sem caminho, sem controle, sem caracteres que quebram.
+    const nome = String(a.name === undefined || a.name === null ? '' : a.name).split(/[\\/]/).pop().replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/[<>:"|?*]/g, '').replace(/\s+/g, ' ').trim().slice(0, 80);
+    const m = /\.([A-Za-z0-9]{1,5})$/.exec(nome);
+    if (!nome || !m) return { ok: false, erro: rot + ' precisa de um nome com extensão (.pdf, .jpg ou .png).' };
+    const ext = m[1].toLowerCase();
+    if (!Object.values(CRM_BILAN_EXT).some((e) => e.includes(ext))) return { ok: false, erro: rot + ' (' + crmOnbLimpaTexto(nome, 40, false) + ') não é PDF, JPG ou PNG.' };
+    let bytes = 0, b64 = null;
+    if (comConteudo) {
+      b64 = typeof a.b64 === 'string' ? a.b64.replace(/\s+/g, '') : '';
+      if (!b64 || b64.length > 4.2 * 1024 * 1024 || !/^[A-Za-z0-9+/]+={0,2}$/.test(b64) || b64.length % 4 === 1) return { ok: false, erro: rot + ' (' + crmOnbLimpaTexto(nome, 40, false) + ') veio vazio ou corrompido.' };
+      let u8;
+      try { const bin = atob(b64); u8 = new Uint8Array(bin.length); for (let k = 0; k < bin.length; k++) u8[k] = bin.charCodeAt(k); } catch (e) { return { ok: false, erro: rot + ' veio corrompido.' }; }
+      const real = crmOnbTipoReal(u8);
+      if (!real || !CRM_BILAN_EXT[real].includes(ext)) return { ok: false, erro: rot + ' (' + crmOnbLimpaTexto(nome, 40, false) + ') não parece ser um ' + ext.toUpperCase() + ' de verdade.' };
+      bytes = u8.length;
+    } else {
+      bytes = Number.isFinite(Number(a.size)) && Number(a.size) > 0 ? Math.min(Number(a.size), 1e9) : 0;
+    }
+    total += bytes;
+    if (bytes > CRM_BILAN_ANEXOS_BYTES || total > CRM_BILAN_ANEXOS_BYTES) return { ok: false, erro: 'Os anexos passam de ' + crmBilanTamanho(CRM_BILAN_ANEXOS_BYTES) + ' no total. Tire algum ou mande um arquivo menor.' };
+    itens.push({ name: nome, bytes, b64 });
+  }
+  return { ok: true, itens };
+}
+function crmBilanMontar(nome, s, codigo, anexos) {
+  anexos = anexos || [];
+  const secoes = [['Dúvidas que tiramos na conversa', s.duvidas], ['Seus próximos passos', s.proximos], ['O que eu respondo ou confirmo pra você', s.respostas]];
   const vazio = 'Nada por aqui desta vez.';
   const abertura = 'Foi muito bom conversar com você. Aqui está o bilan do que vimos juntas, sempre neste mesmo formato:';
   const fechoCodigo = 'Quando a plataforma for lançada, use o código ' + codigo + ' para confirmar a sua vaga na lista de espera. O desconto vale por 6 meses, e você ainda tem 7 dias grátis para testar.';
   const fecho = 'Se quiser tirar qualquer dúvida, é só responder este e-mail.';
+  const rodape = 'Você recebeu este e-mail porque conversou com a Ingryd no Por Dentro. Pra não receber mais e-mails, é só responder este com a palavra "sair".';
   const ola = nome ? 'Olá, ' + nome + '!' : 'Olá!';
+  const quem = 'Ingryd · Por Dentro';
   const assunto = (nome ? nome + ', o' : 'O') + ' bilan da nossa conversa · Por Dentro';
+  const anexoTxt = anexos.length ? 'Em anexo: ' + anexos.map((a) => a.name + ' (' + crmBilanTamanho(a.bytes) + ')').join(', ') : '';
   const texto = [ola, '', CRM_BILAN_TITULO.toUpperCase(), '', abertura, '']
     .concat(...secoes.map(([t, l], i) => [(i + 1) + '. ' + t, ...(l.length ? l.map((x) => '- ' + x) : [vazio]), '']))
-    .concat(['4. Seu código para entrar na plataforma', fechoCodigo, '', fecho, '', 'Ingryd · Por Dentro']).join('\n');
+    .concat(['4. Seu código para entrar na plataforma', fechoCodigo, ''], anexoTxt ? [anexoTxt, ''] : [], [fecho, '', quem, '', '—', rodape]).join('\n');
+  // Identidade do Por Dentro: a mesma dos outros e-mails do CRM (marca em serifa, cartão claro, verde moss, bege Paris, foto da Ingryd).
   const e = crmEscapeHtml;
-  const st = 'font-family:Arial,Helvetica,sans-serif;color:#2B2B2B';
-  const html = '<!DOCTYPE html><html><head><meta charset="utf-8"></head><body style="margin:0;padding:20px;background:#fff"><div style="' + st + ';font-size:15px;line-height:1.6;max-width:560px">' +
-    '<p style="margin:0 0 14px">' + e(ola) + '</p><h1 style="font-size:22px;line-height:1.3;margin:0 0 12px">' + e(CRM_BILAN_TITULO) + '</h1><p style="margin:0 0 18px">' + e(abertura) + '</p>' +
-    secoes.map(([t, l], i) => '<h2 style="font-size:16px;margin:20px 0 6px">' + (i + 1) + '. ' + e(t) + '</h2>' +
-      (l.length ? '<ul style="margin:0;padding-left:20px">' + l.map((x) => '<li style="margin-bottom:4px">' + e(x) + '</li>').join('') + '</ul>' : '<p style="margin:0">' + vazio + '</p>')).join('') +
-    '<h2 style="font-size:16px;margin:20px 0 6px">4. Seu código para entrar na plataforma</h2><p style="margin:0 0 6px">Quando a plataforma for lançada, use o código</p>' +
-    '<p style="margin:0 0 6px;font-size:20px;font-weight:bold;letter-spacing:1px">' + e(codigo) + '</p><p style="margin:0">para confirmar a sua vaga na lista de espera. O desconto vale por <b>6 meses</b>, e você ainda tem <b>7 dias grátis</b> para testar.</p>' +
-    '<p style="margin:22px 0 0">' + e(fecho) + '</p><p style="margin:14px 0 0">Ingryd · Por Dentro</p></div></body></html>';
+  const sans = "font-family:'Inter', Arial, Helvetica, sans-serif;";
+  const serif = "font-family:'Fraunces', Georgia, 'Times New Roman', serif;";
+  const h2 = (i, t) => `<h2 style="margin:26px 0 8px; ${serif} font-size:18px; line-height:1.3; font-weight:700; color:#2B2B2B;"><span style="color:#577328;">${i}</span> · ${e(t)}</h2>`;
+  const lista = (l) => (l.length
+    ? `<ul style="margin:0; padding-left:20px; ${sans} font-size:15px; line-height:1.6; color:#2B2B2B;">${l.map((x) => `<li style="margin-bottom:6px;">${e(x)}</li>`).join('')}</ul>`
+    : `<p style="margin:0; ${sans} font-size:14px; line-height:1.55; color:#6E6862;">${vazio}</p>`);
+  const html = `<!DOCTYPE html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="color-scheme" content="light"><title>${e(assunto)}</title></head>
+<body style="margin:0; padding:0; background:#F4F1EC;">
+<div style="display:none; max-height:0; overflow:hidden; mso-hide:all;">${e(abertura)}&#8199;&#847;&#8199;&#847;&#8199;&#847;&#8199;&#847;</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#F4F1EC;"><tr><td align="center" style="padding:32px 16px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;">
+<tr><td style="padding:0 4px 20px; ${serif} font-size:22px; font-weight:700; color:#2B2B2B;">Por <span style="color:#604034;">Dentro</span></td></tr>
+<tr><td style="background:#FBFAF7; border:1px solid #E2DED7; border-radius:8px; padding:32px 28px;">
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 22px;"><tr>
+<td style="width:68px; vertical-align:middle;"><img src="${CRM_FOTO_URL}" width="68" height="68" alt="Foto da Ingryd" style="display:block; width:68px; height:68px; border-radius:50%; border:2px solid #DEB975; object-fit:cover;"></td>
+<td style="padding-left:14px; vertical-align:middle;"><div style="${serif} font-size:18px; font-weight:700; line-height:1.2; color:#2B2B2B;">${e(ola)}</div>
+<div style="${sans} font-size:13px; line-height:1.45; color:#6E6862; margin-top:2px;">${e(quem)}</div></td></tr></table>
+<h1 style="margin:0 0 10px; ${serif} font-size:24px; line-height:1.25; font-weight:700; color:#2B2B2B;">${e(CRM_BILAN_TITULO)}</h1>
+<p style="margin:0 0 4px; ${sans} font-size:15px; line-height:1.6; color:#2B2B2B;">${e(abertura)}</p>
+${secoes.map(([t, l], i) => h2(i + 1, t) + lista(l)).join('')}
+${h2(4, 'Seu código para entrar na plataforma')}
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 4px;"><tr><td style="background:#F4F1EC; border:1px solid #DEB975; border-radius:8px; padding:16px 18px;">
+<div style="${sans} font-size:12px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:#6E6862;">Código da lista de espera</div>
+<div style="${serif} font-size:26px; font-weight:700; color:#577328; line-height:1.3; margin:4px 0; letter-spacing:1px;">${e(codigo)}</div>
+<div style="${sans} font-size:14px; line-height:1.55; color:#2B2B2B;">Quando a plataforma for lançada, use este código para confirmar a sua vaga na lista de espera. O desconto vale por <b>6 meses</b>, e você ainda tem <b>7 dias grátis</b> para testar.</div>
+</td></tr></table>
+${anexoTxt ? `<p style="margin:22px 0 0; background:#F4F1EC; border-radius:8px; padding:12px 14px; ${sans} font-size:14px; line-height:1.55; color:#6E6862;"><b style="color:#2B2B2B;">Em anexo:</b> ${anexos.map((a) => e(a.name) + ' (' + e(crmBilanTamanho(a.bytes)) + ')').join(', ')}</p>` : ''}
+<p style="margin:22px 0 18px; ${sans} font-size:14px; line-height:1.55; color:#6E6862;">${e(fecho)}</p>
+<p style="margin:0; ${serif} font-size:16px; font-style:italic; color:#2B2B2B;">${e(quem)}</p>
+</td></tr>
+<tr><td style="padding:20px 4px 0; ${sans} font-size:12px; line-height:1.55; color:#6E6862;">${e(rodape)}</td></tr>
+</table></td></tr></table>
+</body></html>`;
   return { assunto, texto, html };
 }
 async function handleCrmBilanEmail(request, env) {
@@ -3482,11 +3571,14 @@ async function handleCrmBilanEmail(request, env) {
   if (!CRM_UUID_RE.test(contatoId)) return json({ error: 'Contato inválido.' }, 400);
   const s0 = body.secoes && typeof body.secoes === 'object' && !Array.isArray(body.secoes) ? body.secoes : {};
   const s = {};
-  for (const [k, nome] of [['duvidas', 'Dúvidas que tiramos na conversa'], ['proximos', 'Seus próximos passos'], ['respostas', 'O que eu respondo ou confirmo para você']]) {
+  for (const [k, nome] of [['duvidas', 'Dúvidas que tiramos na conversa'], ['proximos', 'Seus próximos passos'], ['respostas', 'O que eu respondo ou confirmo pra você']]) {
     const r = crmBilanLista(s0[k], nome);
     if (!r.ok) return json({ error: r.erro, codigo: 'secao_invalida' }, 400);
     s[k] = r.itens;
   }
+  const enviando = body.enviar === true;
+  const ax = crmBilanAnexos(body.anexos, enviando);
+  if (!ax.ok) return json({ error: ax.erro, codigo: 'anexo_invalido' }, 400);
   const codigo = String(body.codigo || '').trim();
   if (!CRM_BILAN_CODIGO_RE.test(codigo)) return json({ error: 'Digite o código de redução (3 a 40 letras, números, hífen ou sublinhado, sem espaço).', codigo: 'codigo_invalido' }, 400);
 
@@ -3494,8 +3586,8 @@ async function handleCrmBilanEmail(request, env) {
   const cRes = await fetch(`${CRM_SUPABASE_URL}/rest/v1/crm_contatos?select=id,email,nome&id=eq.${contatoId}`, { headers: auth });
   const contato = cRes.ok ? (await cRes.json())[0] : null;
   if (!contato || !contato.email) return json({ error: 'Contato não encontrado.' }, 404);
-  const mail = crmBilanMontar(crmPrimeiroNome(contato.nome), s, codigo);
-  if (body.enviar !== true) return json({ ok: true, enviado: false, para: contato.email, assunto: mail.assunto, texto: mail.texto, html: mail.html });
+  const mail = crmBilanMontar(crmPrimeiroNome(contato.nome), s, codigo, ax.itens);
+  if (!enviando) return json({ ok: true, enviado: false, para: contato.email, assunto: mail.assunto, texto: mail.texto, html: mail.html, anexos: ax.itens.length });
 
   // A partir daqui sai e-mail de verdade: só com o "pode enviar" da Ingryd.
   if (body.confirmo !== true) return json({ error: 'Marque que a pessoa aceitou receber este e-mail antes de enviar.', codigo: 'sem_confirmacao' }, 400);
@@ -3515,6 +3607,7 @@ async function handleCrmBilanEmail(request, env) {
     headers: { 'List-Unsubscribe': `<mailto:${env.BREVO_SENDER_EMAIL}?subject=sair>` },
     tags: ['crm', 'bilan_conversa'],
   };
+  if (ax.itens.length) brevoBody.attachment = ax.itens.map((x) => ({ name: x.name, content: x.b64 }));
   const bRes = await fetch('https://api.brevo.com/v3/smtp/email', {
     method: 'POST', headers: { 'api-key': env.BREVO_API_KEY, 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify(brevoBody),
   });
@@ -3530,7 +3623,7 @@ async function handleCrmBilanEmail(request, env) {
     body: JSON.stringify({ contato_id: contatoId, modelo: 'bilan_conversa', assunto: mail.assunto, corpo: mail.texto, status: 'agendado', provedor_id: messageId, enviado_em: new Date().toISOString() }),
   });
   if (!ins.ok) console.error('crm/bilan-email: enviado mas não registrado — ' + ins.status);
-  return json({ ok: true, enviado: true, registrado: ins.ok, para: contato.email, assunto: mail.assunto });
+  return json({ ok: true, enviado: true, registrado: ins.ok, para: contato.email, assunto: mail.assunto, anexos: ax.itens.length });
 }
 
 async function handleCrmOnboardingStatus(request, env) {

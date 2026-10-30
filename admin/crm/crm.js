@@ -1201,7 +1201,7 @@ function chkSeloAtraso() {
 function platConteudoHtml(c, h4) {
   if (state.pstab === 'checklist') return '<div id="chk-aba">' + checklistPanel(c) + '</div>';
   if (state.pstab === 'chat') return '<div id="chat-box">' + chatPanelHtml(c, state.chat, h4) + '</div>';
-  if (state.pstab === 'interacoes') return '<div id="int-box">' + bilanBlocoHtml(c) + interacoesHtml(state.int) + '</div>';
+  if (state.pstab === 'interacoes') return '<div id="int-box">' + bilanResumoHtml(c) + interacoesHtml(state.int) + '</div>';
   return '<div id="ins-box">' + insightsHtml(state.ins, Date.now()) + '</div>';
 }
 function resumoPlatHtml(h4) {
@@ -1237,12 +1237,12 @@ function trocaPlatAba(ab) {
 function plataformaPanel(c, h4) {
   var int = state.int;
   if (int && int.err) {
-    return '<div style="margin-top:18px">' + pagamentoHtml(c, h4) + '</div><div class="panel" style="padding:16px;margin-top:18px"><h3 style="font-size:15px;margin-bottom:8px">Plataforma ainda não ligada</h3>' +
+    return '<div style="margin-top:18px">' + pagamentoHtml(c, h4) + '</div><div style="margin-top:18px">' + bilanBlocoHtml(c, h4) + '</div><div class="panel" style="padding:16px;margin-top:18px"><h3 style="font-size:15px;margin-bottom:8px">Plataforma ainda não ligada</h3>' +
       '<p class="sub" style="margin:0">Falta rodar <b>db/crm-plataforma.sql</b> no SQL Editor do Supabase (depois dele, os cliques novos começam a aparecer aqui).</p></div>';
   }
   return '<div class="pessoa-grid" style="margin-top:18px">' +
     '<div style="min-width:0"><div id="plat-abas">' + platAbasHtml() + '</div><div id="plat-conteudo">' + platConteudoHtml(c, h4) + '</div></div>' +
-    '<div class="plat-fixa">' + pagamentoHtml(c, h4) +
+    '<div class="plat-fixa">' + pagamentoHtml(c, h4) + bilanBlocoHtml(c, h4) +
     '<div id="chk-lateral">' + checklistLateralHtml(state.dos && state.dos.chk, Date.now(), h4) + '</div>' +
     '<div id="resumo-lateral">' + resumoPlatHtml(h4) + '</div></div></div>';
 }
@@ -3280,19 +3280,26 @@ function bilanIniciais(n) {
   var ela = [], ing = [], todas = [].concat(n.pendencias || [], n.lembretes || [], (n.email && n.email.linhas) || []);
   todas.forEach(function (x) { if (x.estado !== 'concluida' && x.dono === 'Ela') ela.push(x.titulo + prazo(x.prazo)); });
   [].concat(n.pendencias || [], (n.email && n.email.linhas) || []).forEach(function (x) { if (x.estado !== 'concluida' && x.dono === 'Ingryd') ing.push(x.titulo); });
+  // O rascunho escrito no Notion ("### Rascunho de e-mail" com as seções 1, 2 e 3) vale mais que o derivado da tabela; seção que o rascunho não tem cai no fallback.
+  var rb = n.bilan || {}, doRasc = function (k) { return rb[k] && rb[k].length ? rb[k].slice() : null; };
   var tem = n.duvidas && n.duvidas.length;
-  return { duvidas: tem ? n.duvidas.slice() : (n.resumo ? [n.resumo] : []), proximos: ela, respostas: ing, usouResumo: !tem && !!n.resumo };
+  var duv = doRasc('duvidas') || (tem ? n.duvidas.slice() : (n.resumo ? [n.resumo] : []));
+  return { duvidas: duv, proximos: doRasc('proximos') || ela, respostas: doRasc('respostas') || ing, usouResumo: !doRasc('duvidas') && !tem && !!n.resumo,
+    doRascunho: ['duvidas', 'proximos', 'respostas'].filter(function (k) { return !!doRasc(k); }).length };
 }
-function bilanBlocoHtml(c) {
-  var b = state.bilan && state.bilan.cid === c.id ? state.bilan : null, h = '';
-  if (state.ontResumo && state.ontResumo.contato_id === c.id) {
-    h += '<div class="panel onb-notion onb-resumo" id="ont-resumo-ficha" style="margin:0 0 14px"><h3 class="ont-t">Leitura do Notion</h3>' + ontResumoHtml(state.ontResumo) +
-      '<div class="actions" style="margin-top:8px"><button class="btn" type="button" data-ontresfechar="1">Entendi</button></div></div>';
-  }
+// O resumo da leitura do Notion logo depois do Onboarding: fica na subaba Interações (onde a ficha abre).
+function bilanResumoHtml(c) {
+  if (!(state.ontResumo && state.ontResumo.contato_id === c.id)) return '';
+  return '<div class="panel onb-notion onb-resumo" id="ont-resumo-ficha" style="margin:0 0 14px"><h3 class="ont-t">Leitura do Notion</h3>' + ontResumoHtml(state.ontResumo) +
+    '<div class="actions" style="margin-top:8px"><button class="btn" type="button" data-ontresfechar="1">Entendi</button></div></div>';
+}
+// O botão do e-mail do bilan: coluna da direita da aba Plataforma, logo abaixo do Pagamento (fora da subaba Interações).
+function bilanBlocoHtml(c, h4) {
+  var b = state.bilan && state.bilan.cid === c.id ? state.bilan : null;
   var ultimo = (state.mails || []).filter(function (m) { return m.modelo === 'bilan_conversa'; })[0];
-  return h + '<div class="panel bilan-box" style="padding:16px;margin:0 0 14px"><h3 style="font-size:15px;margin:0 0 4px">E-mail com o bilan da conversa</h3>' +
-    '<p class="sub" style="margin:0 0 10px">Sempre o mesmo título e as mesmas seções: dúvidas tiradas, próximos passos, o que você responde ou confirma e o código de redução para a lista de espera. O conteúdo vem do Bilan d’action da página do Notion e você revisa antes de enviar.</p>' +
+  return '<div class="panel bilan-box" id="bilan-box" style="padding:16px"><h4 style="' + h4 + '">Bilan da conversa</h4>' +
     '<button class="btn primary" type="button" data-bilanabrir="' + esc(c.id) + '"' + (b ? '' : ' disabled') + '>Enviar e-mail com bilan da conversa</button>' +
+    '<p class="sub" style="margin:8px 0 0">Sempre o mesmo título e as mesmas seções: dúvidas tiradas, próximos passos, o que você responde ou confirma e o código de redução da lista de espera. O conteúdo vem do Notion e você revisa e anexa arquivos antes de enviar.</p>' +
     (b ? '' : '<p class="sub" style="margin:8px 0 0">Ainda não há uma ligação lida do Notion para esta pessoa. Cole o link em Onboarding → Link do Notion.</p>') +
     (ultimo ? '<p class="sub" style="margin:8px 0 0">Último bilan enviado em ' + esc(fmtDay(String(ultimo.enviado_em || ultimo.criado_em || '').slice(0, 10))) + '.</p>' : '') + '</div>';
 }
@@ -3300,7 +3307,44 @@ var BL = null;
 function bilanLinhas(id) { return String(($(id) && $(id).value) || '').split('\n').map(function (x) { return x.trim(); }).filter(Boolean); }
 function bilanCorpo(extra) {
   return JSON.stringify(Object.assign({ contato_id: BL.cid, secoes: { duvidas: bilanLinhas('bl-duvidas'), proximos: bilanLinhas('bl-proximos'), respostas: bilanLinhas('bl-respostas') },
-    codigo: String(($('bl-codigo') && $('bl-codigo').value) || '').trim() }, extra || {}));
+    codigo: String(($('bl-codigo') && $('bl-codigo').value) || '').trim(),
+    anexos: (BL.anexos || []).map(function (f) { return { name: f.name, size: f.size }; }) }, extra || {}));   // na prévia vão só nome e tamanho
+}
+// Anexos: PDF, JPG ou PNG, até 5 e 3 MB no total (a mesma regra do Worker, que confere tudo de novo, inclusive os bytes). O arquivo fica só na memória.
+var BL_MAX_N = 5, BL_MAX_TOTAL = 3 * 1048576;
+function bilanJuntar(atuais, novos) {
+  var ok = atuais.slice(), recusas = [], total = ok.reduce(function (s, f) { return s + f.size; }, 0);
+  novos.forEach(function (f) {
+    var nome = String(f.name || 'arquivo').slice(0, 60);
+    if (ok.some(function (o) { return o.name === f.name && o.size === f.size && o.lastModified === f.lastModified; })) return;
+    if (!onbTipoDe(f)) return recusas.push(nome + ': só PDF, JPG ou PNG.');
+    if (!f.size) return recusas.push(nome + ': o arquivo está vazio.');
+    if (ok.length >= BL_MAX_N) return recusas.push(nome + ': no máximo ' + BL_MAX_N + ' anexos.');
+    if (total + f.size > BL_MAX_TOTAL) return recusas.push(nome + ': os anexos passariam de 3 MB no total.');
+    ok.push(f); total += f.size;
+  });
+  return { arquivos: ok, recusas: recusas };
+}
+function bilanPintaAnexos() {
+  var ul = $('bl-anexos-lista'); if (!ul) return;
+  ul.innerHTML = (BL.anexos || []).map(function (f, i) {
+    return '<li><span class="nome">' + esc(f.name || 'arquivo') + '</span><span class="tam num">' + esc(onbMb(f.size)) + '</span><button class="btn" type="button" data-blrem="' + i + '" aria-label="Tirar ' + esc(f.name || 'arquivo') + '">Tirar</button></li>';
+  }).join('');
+}
+function bilanAdicionar(lista) {
+  if (!BL) return;
+  var r = bilanJuntar(BL.anexos || [], Array.prototype.slice.call(lista || []));
+  BL.anexos = r.arquivos; bilanPintaAnexos();
+  bilanPrevia().then(function () { if (r.recusas.length) bilanErro(r.recusas.join(' ')); });
+}
+async function bilanAnexosB64() {
+  var out = [];
+  for (var i = 0; i < (BL.anexos || []).length; i++) {
+    var f = BL.anexos[i], u8 = new Uint8Array(await f.arrayBuffer()), bin = '';
+    for (var k = 0; k < u8.length; k += 0x8000) bin += String.fromCharCode.apply(null, u8.subarray(k, k + 0x8000));
+    out.push({ name: f.name, b64: btoa(bin) });
+  }
+  return out;
 }
 function bilanErro(msg, forcar) {
   var er = $('bl-err'); if (!er) return;
@@ -3309,14 +3353,17 @@ function bilanErro(msg, forcar) {
 }
 function bilanAbrir(cid) {
   var c = byC(cid), b = state.bilan; if (!c || !b || b.cid !== cid) return;
-  var ini = bilanIniciais(b.proposta.notion); BL = { cid: cid, ini: ini };
+  var ini = bilanIniciais(b.proposta.notion); BL = { cid: cid, ini: ini, anexos: [] };
   modalOpen(modalTop(c) + '<h4 style="margin:14px 0 6px;font-size:14px">E-mail com o bilan da conversa</h4>' +
-    '<p class="sub" style="margin:0 0 10px">Vai para <b id="bl-para"></b>. Título e seções são sempre os mesmos; você edita o conteúdo. Um item por linha.' + (ini.usouResumo ? ' A página não tem “Dúvidas tiradas”: usei o Resumo do Bilan d’action. Ajuste.' : '') + '</p>' +
+    '<p class="sub" style="margin:0 0 10px">Vai para <b id="bl-para"></b>. Título e seções são sempre os mesmos; você edita o conteúdo. Um item por linha.' + (ini.doRascunho ? ' Preenchido a partir do “Rascunho de e-mail” da página do Notion' + (ini.doRascunho < 3 ? ' (o que o rascunho não tem veio do resto da página)' : '') + '.' : '') + (ini.usouResumo ? ' A página não tem “Dúvidas tiradas”: usei o Resumo do Bilan d’action. Ajuste.' : '') + '</p>' +
     '<label class="sub" for="bl-duvidas" style="display:block;margin:0 0 4px">1 · Dúvidas que tiramos na conversa</label><textarea id="bl-duvidas" class="bl-ta" rows="4"></textarea>' +
     '<label class="sub" for="bl-proximos" style="display:block;margin:10px 0 4px">2 · Seus próximos passos</label><textarea id="bl-proximos" class="bl-ta" rows="4"></textarea>' +
-    '<label class="sub" for="bl-respostas" style="display:block;margin:10px 0 4px">3 · O que eu respondo ou confirmo para você</label><textarea id="bl-respostas" class="bl-ta" rows="4"></textarea>' +
+    '<label class="sub" for="bl-respostas" style="display:block;margin:10px 0 4px">3 · O que eu respondo ou confirmo pra você</label><textarea id="bl-respostas" class="bl-ta" rows="4"></textarea>' +
     '<label class="sub" for="bl-codigo" style="display:block;margin:10px 0 4px">4 · Código de redução (lista de espera)</label><input id="bl-codigo" class="bl-in" type="text" autocomplete="off" maxlength="40" placeholder="ex.: LISTA-ESPERA">' +
     '<small class="sub" style="display:block;margin-top:4px">O texto fixo diz que o desconto vale por 6 meses e que ela ganha 7 dias grátis.</small>' +
+    '<label class="sub" style="display:block;margin:10px 0 4px">Anexos (opcional)</label>' +
+    '<label class="onb-drop bl-drop" for="bl-anexos"><span><b>Toque para escolher</b> os arquivos</span><span class="sub">PDF, JPG ou PNG · até 5 arquivos · 3 MB no total</span>' +
+    '<input id="bl-anexos" type="file" multiple accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"></label><ul class="onb-arqs" id="bl-anexos-lista"></ul>' +
     '<div id="bl-previa" class="bl-previa"></div>' +
     '<label class="pccheck" style="margin:12px 0 0"><input type="checkbox" id="bl-confirmo"> <span>Esta pessoa aceitou receber este e-mail (lista de espera).</span></label>' +
     '<p class="onb-erro" id="bl-err" role="alert" hidden style="margin:10px 0 0"></p>' +
@@ -3351,8 +3398,8 @@ async function bilanEnviar(forcar) {
   if (!($('bl-confirmo') && $('bl-confirmo').checked)) return bilanErro('Marque que a pessoa aceitou receber este e-mail.');
   var bt = $('bl-enviar'); if (bt) { bt.disabled = true; bt.textContent = 'Enviando…'; }
   try {
-    var d = await bilanChamar(bilanCorpo({ enviar: true, confirmo: true, forcar: !!forcar }));
-    closeCompose(); toast('Bilan enviado para ' + d.para + (d.registrado === false ? ' (mas não consegui registrar na ficha)' : ''), 5000);
+    var d = await bilanChamar(bilanCorpo({ enviar: true, confirmo: true, forcar: !!forcar, anexos: await bilanAnexosB64() }));
+    closeCompose(); toast('Bilan enviado para ' + d.para + (d.anexos ? ' com ' + d.anexos + (d.anexos === 1 ? ' anexo' : ' anexos') : '') + (d.registrado === false ? ' (mas não consegui registrar na ficha)' : ''), 5000);
     var cid = BL.cid; BL = null;
     if (state.view === 'pessoa' && state.sel === cid) await renderPessoa();
   } catch (e) {
@@ -3549,6 +3596,7 @@ document.addEventListener('click', async function (e) {
   if (t.id === 'bl-previa-btn') return bilanPrevia();
   if (t.id === 'bl-enviar') return bilanEnviar(false);
   if (t.id === 'bl-forcar') return bilanEnviar(true);
+  if (t.dataset.blrem !== undefined) { BL.anexos.splice(Number(t.dataset.blrem), 1); bilanPintaAnexos(); return bilanPrevia(); }
   if (t.dataset.chatenviar) return enviarChat(t.dataset.chatenviar, t);
   if (t.dataset.chkvia) return chkAgir(t.dataset.chkvia, Number(t.dataset.chki));
   if (t.dataset.chatquick) {
@@ -3781,6 +3829,7 @@ document.addEventListener('input', function (e) {
   if (e.target.id === 'ont-url') ONT.url = e.target.value;
 });
 document.addEventListener('change', function (e) {
+  if (e.target.id === 'bl-anexos') { bilanAdicionar(e.target.files); e.target.value = ''; return; }
   if (e.target.id !== 'onb-file') return;
   onbAdicionar(e.target.files); e.target.value = '';
 });
