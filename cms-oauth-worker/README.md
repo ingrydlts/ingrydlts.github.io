@@ -856,3 +856,40 @@ prometem esse e-mail.
 **Teste ponta a ponta (modo teste do Stripe)**: com a assinatura de ensaio da seção 25, abra o app → Perfil → Seu plano → **Resiliar plano** →
 **Confirmar a resiliação**. Esperado: a tela diz até quando vale; no Stripe a assinatura mostra "Cancela em …"; na ficha, "resiliado" e o
 evento na linha do tempo; chega o e-mail de confirmação. Testes: `node cms-oauth-worker/testes/assinatura-resiliar.test.mjs`.
+
+## 31. Onboarding pelo Notion: o link da ligação vira uma proposta pendente (`/admin/crm/` → Onboarding → "Link do Notion")
+
+A Ingryd grava a ligação no Notion e a skill `/bilan-notion` (repositório do app) deixa a página **padronizada**. No CRM, em **Onboarding**,
+ela cola o link no campo **Link do Notion** e clica **Ler do Notion**. O Worker lê só esse padrão, acha ou cria a ficha pelo e-mail e guarda o
+resto como **proposta pendente** (bloco **Pós-call** da ficha). Nada vai para o Dossiê até ela aplicar. **Nada é enviado a ninguém e nada é escrito no Notion.**
+
+Rota (só admin, `crmRequireAdmin`; 10 leituras a cada 10 minutos por admin): `POST /api/crm/onboarding/notion/ler` com `{ "url": "…" }`.
+`GET /api/crm/onboarding/status` passou a dizer também `notion_configurado`. **Sem SQL novo**: usa `crm_onboarding_aplicar` (só com o nome),
+`pos_call_propostas` e `crm_pos_call_aplicar`/`descartar`, que já existem (rodar `crm-onboarding.sql` e `crm-pos-call.sql`, se ainda não rodou). **Publicar o Worker de novo** (`wrangler deploy`).
+
+**Criar o secret `NOTION_TOKEN` (a Ingryd faz; o código nunca guarda o token)**
+1. **notion.so/profile/integrations** → **Nova integração** (tipo interno), nome `crm-por-dentro`, no seu espaço de trabalho. Em **Capacidades**, deixe **só "Ler conteúdo"** (sem inserir nem atualizar). Copie o **segredo da integração** (começa com `ntn_` ou `secret_`).
+2. Abra a base **"Onboarding — Ligações"** → **···** → **Conexões** → adicione `crm-por-dentro`. Sem isso o Notion responde "não achei a página".
+3. **dash.cloudflare.com** → **Workers & Pages** → `por-dentro-cms-oauth` → **Settings** → **Variables and Secrets** → **Add** → `NOTION_TOKEN`, tipo **Secret**, valor = o segredo. **Deploy**.
+Sem o secret, a tela avisa e a rota responde 503 com a mensagem clara; o resto do CRM segue igual.
+
+**O contrato da página** (fixo, é o que a skill produz)
+- **Propriedades da linha** (base "Onboarding — Ligações"): Pessoa (título), E-mail, WhatsApp, Status, Persona, Fase, Objetivo na França, Dores e preocupações (múltipla: Prazo, Dinheiro, Documentos, Idioma, Moradia, Visto, Emprego, Família), Próximos passos, Documentos pendentes, Prazo-chave (data), Consentimento de gravação, Enviado ao CRM, ID no CRM. Status: Agendada, Gravada, Transcrita, **Bilan pronto**, No CRM, Cancelada. Persona: au_pair_estudante, campus_france, alternancia_emprego, conjuge, pvt, outra.
+- **Corpo**: título de nível 2 exato `## Pendência × Canal`, com uma tabela de colunas exatas e nesta ordem: `# | Pendência | Dono | Canal | Botão sugerido | Prazo | Estado | Origem · certeza`. Dono: Ela | Ingryd. Canal: Plataforma | E-mail | Convite de acesso | Instagram | Só eu | Fora do CRM. Botão: anexar_documento, gerar_rascunho, pesquisar, confirmar, lembrar_ela, marcar_marco, copiar_mensagem, enviar_convite, n/a (pode ter texto entre parênteses). Estado: aberta | aguardando_ela | concluida. Depois: `### Faltam para o CRM` (tarefas) e `### Rascunho de e-mail` (texto). O bloco "meeting-notes" do Notion **não é lido nem necessário**.
+
+**Recusa, com a mensagem do que falta (nada é gravado):** Status diferente de "Bilan pronto" (ou fora da lista); E-mail vazio ou inválido; seção ou tabela ausente; colunas fora do contrato; Dono/Canal/Botão/Estado/Persona/dor fora das listas; propriedade com tipo diferente do combinado; mais de 100 linhas ou 600 blocos.
+**Aviso (não bloqueia):** consentimento desmarcado (ou propriedade ausente); já marcada "Enviado ao CRM"; persona "outra"; WhatsApp que não parece telefone; página sem nome; falta de uma das duas seções finais.
+
+**O que cada linha vira**
+| Canal | Destino |
+|---|---|
+| Plataforma | pendência (lista na ficha, com dono, prazo, estado, botão sugerido e origem) |
+| E-mail | alimenta **um** rascunho de e-mail (o texto da seção "Rascunho de e-mail"; botão **Copiar**, nada é enviado) |
+| Convite de acesso, Instagram | lembrete para ela |
+| Só eu, Fora do CRM | **não viram nada**: só entram na contagem do resumo |
+
+Prazo com "(a confirmar)" fica **como texto**, nunca vira data certa. Na ficha só entram, como fatos marcáveis do Dossiê: telefone (WhatsApp), maior preocupação (se houver **uma** dor com par), resumo da ligação (objetivo, dores, prazo-chave) e próximos passos (com os documentos pendentes). Persona e fase só aparecem como sugestão.
+
+**Segurança:** só `notion.so`, `notion.com`, `notion.site` (https, sem usuário nem porta); do link sai só o id de 32 hex e o Worker fala **apenas com `api.notion.com`**, só com GET, com `redirect: manual`. O conteúdo da página é dado não confiável: cada campo é conferido contra listas fechadas, o texto é limpo e cortado, nada é executado, a página não é guardada (só o resultado validado) e os logs trazem só status e tipo do erro. A mesma página sem edição nova devolve a proposta que já espera decisão; uma página editada gera uma proposta nova e descarta as antigas do Notion ainda pendentes.
+
+**Como testar:** crie uma linha de ensaio na base, com e-mail seu, Status "Bilan pronto" e a tabela; cole o link. Testes automáticos: `node cms-oauth-worker/testes/crm-onboarding-notion.test.mjs` e, em `admin/crm/db/testes`, `npm run test:onboarding-notion-ui`. Se algo falhar: Workers → Logs, procure `crm/notion`.
