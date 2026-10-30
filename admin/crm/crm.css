@@ -456,9 +456,31 @@ select.st-in{height:36px; padding:0 8px}
 /* Ficha: painel E-mails (o que saiu e o próximo, como ela vai ver) */
 .mailpanel .k, .seq .k, .nextmail .k{font-size:11px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-3); margin:0 0 4px}
 .nextmail{background:var(--surface); border-radius:var(--r); padding:12px}
-.mailthumb{display:block; position:relative; width:100%; height:200px; overflow:hidden; padding:0; border:1px solid var(--line); border-radius:8px; background:#F4F1EC; cursor:pointer}
-.mailthumb .thumbframe{position:absolute; top:0; left:0; width:200%; height:400px; border:0; transform:scale(.5); transform-origin:0 0; pointer-events:none; background:#fff}
-.mailthumb:hover, .mailthumb:focus-visible{border-color:var(--moss)}
+/* O próximo e-mail: um conselho com o porquê, não uma prévia. O selo diz em texto se é hora de mandar (cor nunca é a única pista). */
+.nextmail .selo{display:inline-block; margin-left:6px; padding:1px 8px; border-radius:999px; font-size:10.5px; letter-spacing:.02em; text-transform:none; border:1px solid var(--line-2); color:var(--ink-2); background:var(--bg)}
+.nextmail .selo-agora{border-color:var(--moss); color:var(--moss); font-weight:700}
+.nextmail .selo-esperar{color:var(--ink); font-weight:700}
+.ins-t{margin:2px 0 6px; font-size:14px; font-weight:700; line-height:1.35}
+.ins-ang{margin:0 0 8px; font-size:13px; line-height:1.55; color:var(--ink-2)}
+.ins-sinais{font-size:12.5px; color:var(--ink-2)}
+.ins-sinais summary{cursor:pointer; color:var(--ink-3)}
+.ins-sinais ul{margin:6px 0 0; padding-left:18px}
+.ins-sinais li{margin:0 0 3px}
+/* Jornada no funil */
+.mais-det{margin-top:12px; padding-top:10px; border-top:1px solid var(--line)}
+.mais-det > summary, .mais > summary{cursor:pointer; font-size:12.5px; color:var(--ink-2)}
+.mais{background:var(--surface); border:1px solid var(--line); border-radius:var(--r); padding:12px 16px}
+.mais-col{display:flex; flex-direction:column; gap:16px; margin-top:12px}
+.jn-k{margin:14px 0 4px; font-size:11px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-3)}
+.jn-list{margin:6px 0 0; padding:0; list-style:none; font-size:13px}
+.jn-list li{padding:6px 0; border-top:1px solid var(--line)}
+.jn-list li:first-child{border-top:0}
+.jn-list time{display:inline-block; min-width:42px; color:var(--ink-3); font-variant-numeric:tabular-nums}
+.jn-steps{margin:6px 0 0; padding:0; list-style:none; font-size:13px}
+.jn-steps li{padding:2px 0}
+.jn-steps li.ok{font-weight:600}
+.jn-steps li.no{color:var(--ink-3)}
+.jn-steps li span{display:inline-block; width:16px}
 .seq{margin-top:12px; padding-top:12px; border-top:1px solid var(--line)}
 .seq p{margin:0 0 6px; font-size:12.5px; line-height:1.5}
 .kv dd.falta{color:var(--ink-3); font-weight:400; font-style:italic}
