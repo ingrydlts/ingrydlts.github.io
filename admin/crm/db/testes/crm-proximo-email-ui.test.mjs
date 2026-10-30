@@ -48,6 +48,13 @@ check('os sinais dizem que não recebeu nenhum e-mail', p.sinais.some((s) => /ne
 p = prox(base({ respostas: { objetivo: 'cf-escolhendo-curso' } }));
 check('cita a etapa que ela escolheu', /escolhendo o curso/i.test(p.angulo));
 
+console.log('\n== Ela tocou numa cidade (caso Natália) ==');
+const nat = base({ nome: 'Natália', origem: 'guia-etudes-en-france-2027', origens: ['guia-etudes-en-france-2027'], respostas: { cfNivel: 'master', cfCidade: 'paris', objetivo: 'cf-juntando-documentos' } });
+const toque = { id: 9, status: 'nova', canal: 'toque', texto: 'Cidade: Paris', recebido_em: dias(0) };
+p = prox(nat, [mail({ modelo: 'cf_guia_1', enviado_em: dias(2), criado_em: dias(2) }), mail({ id: 2, modelo: 'cf_guia_conversa', status: 'clicado', clicado_em: dias(1), enviado_em: dias(1), criado_em: dias(1) })], [toque]);
+check('tocou em Paris: o título cita a cidade e manda continuar a conversa', p.conversa === true && p.k === null && /Paris/.test(p.titulo));
+check('o ângulo pede UMA pergunta, cita o prazo do Master e adia o checklist', /UMA pergunta/.test(p.angulo) && /Campus France \(Master\) em 17\/01\/2027/.test(p.angulo) && /checklist só depois/.test(p.angulo));
+
 console.log('\n== Espere / não mande ==');
 p = prox(base(), [mail({ enviado_em: dias(1), criado_em: dias(1) })]);
 check('e-mail de ontem: espera, e diz até quando', p.quando === 'esperar' && /^\d\d\/\d\d$/.test(p.espera) && /Espere/.test(p.titulo));
@@ -113,6 +120,9 @@ check('capturas a mais que os eventos: avisa que faltam entradas', /2 entradas m
 html = mod.jornadaHtml(base({ origens: [XSS], utm_campaign: XSS }), [], [], J([{ tipo: 'email_capturado', dados: { origem: XSS, utm_campaign: XSS, utm_content: XSS }, criado_em: dias(1) }]), 'x');
 check('texto de terceiros (origem, UTM) passa por esc()', !html.includes(XSS) && html.includes('&lt;img src=x onerror=alert(1)&gt;'));
 
+html = mod.emailsPanel(nat, [mail({ modelo: 'cf_guia_conversa', enviado_em: dias(1), criado_em: dias(1) })], 'x', [toque], J());
+check('o histórico (sequência, enviados, compra) fica recolhido e o insight vem primeiro', html.indexOf('nextmail insight') < html.indexOf('mais-det') && html.includes('data-openconv="c1"') && html.includes('Responda agora') && !html.includes('Não envie agora'));
+
 console.log('\n== A ficha inteira ==');
 mod.setC([cj]);
 respostas = { eventos: { data: evs, error: null }, 'contatos:one': { data: { dossie: {}, user_id: 'u1' }, error: null }, emails_enviados: { data: [], error: null } };
@@ -123,6 +133,7 @@ check('a aba Ficha traz o próximo e-mail e a jornada, e não mais "De onde veio
 jornadaErro = true;
 await mod.renderPessoa();
 html = el('pessoa-page').innerHTML;
+check('a ficha esconde o resto (perguntas, consentimento, Instagram, notas) em "Mais"', /<details class="mais">[\s\S]*Consentimento[\s\S]*Suas anotações[\s\S]*<\/details>/.test(html) && html.indexOf('nextmail insight') < html.indexOf('class="mais"'));
 check('se a busca da jornada falhar, a ficha abre mesmo assim', html.includes('Jornada no funil') && html.includes('nextmail insight'));
 jornadaErro = false;
 

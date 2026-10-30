@@ -777,7 +777,15 @@ function proximoEmail(c, mails, resps, jor) {
   var out = function (o) { return Object.assign({ k: null, quando: 'nao', sinais: sinais, conversa: false }, o); };
   var m1 = mails.filter(function (m) { return m.modelo === 'cf_guia_1'; })[0], m2 = mails.filter(function (m) { return m.modelo === 'cf_guia_conversa'; })[0];
 
-  if (resps.some(function (x) { return x.status === 'nova'; }))
+  var nova = resps.filter(function (x) { return x.status === 'nova'; });
+  var toque = nova.filter(function (x) { return x.canal === 'toque'; })[0];
+  if (toque) {
+    var cidade = String(toque.texto || '').replace(/^Cidade: /, '') || 'uma cidade';
+    return out({ titulo: 'Ela tocou em “' + cidade + '”: continue a conversa a partir daí', conversa: true,
+      angulo: 'Escolher a cidade no e-mail 2 foi o gesto mais claro de interesse que ela fez. Responda na aba Conversa (sai na mesma conversa do Gmail dela) com UMA pergunta concreta sobre ' + cidade +
+        (prazoDias != null && prazoDias >= 0 ? ' e o prazo dela (' + prazoDe + ', ' + prazoFrase + ')' : '') + (ativa ? '' : '. Ela ainda não abriu o app: ofereça o checklist só depois que ela responder, não antes') + '.' });
+  }
+  if (nova.length)
     return out({ titulo: 'Responda a mensagem dela antes de mandar qualquer coisa', conversa: true,
       angulo: 'Ela escreveu e ainda não teve resposta. Um e-mail novo por cima parece que você não leu. Responder é o melhor e-mail que existe para manter o engajamento.' });
   if (ult && ult.status === 'nao_entregue')
@@ -842,13 +850,17 @@ function jornadaHtml(c, mails, resps, jor, h4) {
     [resps.length > 0, 'Respondeu a você (' + resps.length + ')', 'Ainda não respondeu'],
     [c.estagio === 'um_a_um' || !!c.um_a_um_quando, 'Marcou 1:1', 'Ainda sem 1:1']
   ];
-  return '<div class="panel" style="padding:16px"><h4 style="' + h4 + '">Jornada no funil</h4>' + kvHtml(rows.concat(origemKv(c))) +
-    '<div class="k jn-k">Cada vez que ela entrou (' + vezes(nCapturas(c)) + ')</div>' +
+  var ok = degraus.filter(function (d) { return d[0]; }), ult = ok[ok.length - 1];
+  var resumo = rows.slice(0, 1).concat([['Entradas', vezes(nCapturas(c)) + (dias != null ? ' · na base há ' + haDias(dias) : '')],
+    ['Chegou até', ult[1].replace(/ · \d\d\/\d\d$/, '') + ' (' + ok.length + ' de ' + degraus.length + ' passos)']])
+    .concat(origemKv(c).filter(function (x) { return /^(Por onde passou|Campanha|Post)/.test(x[0]); }));
+  return '<div class="panel" style="padding:16px"><h4 style="' + h4 + '">Jornada no funil</h4>' + kvHtml(resumo) +
+    '<details class="mais-det"><summary>Cada entrada e todos os passos</summary><div class="k jn-k">Cada vez que ela entrou (' + vezes(nCapturas(c)) + ')</div>' +
     (linhas ? '<ol class="jn-list">' + linhas + '</ol>' : '<p class="sub" style="margin:0">Sem registro de captura na linha do tempo.</p>') +
     (faltam > 0 && es.length ? '<p class="sub" style="margin:6px 0 0">' + faltam + (faltam === 1 ? ' entrada mais antiga' : ' entradas mais antigas') + ' sem detalhe na linha do tempo.</p>' : '') +
     '<div class="k jn-k">Até onde ela chegou</div><ul class="jn-steps">' + degraus.map(function (d) {
       return '<li class="' + (d[0] ? 'ok' : 'no') + '"><span aria-hidden="true">' + (d[0] ? '✓' : '·') + '</span> ' + esc(d[0] ? d[1] : (d[2] || d[1])) + '</li>';
-    }).join('') + '</ul></div>';
+    }).join('') + '</ul></details></div>';
 }
 function emailsPanel(c, mails, h4, resps, jor) {
   var em = function (m) { return m.enviado_em || m.criado_em; };
@@ -858,7 +870,7 @@ function emailsPanel(c, mails, h4, resps, jor) {
     : '<p style="margin:0 0 12px;font-size:13px"><b>Nenhum e-mail saiu pelo CRM para ela.</b> <span class="sub">E-mails mandados direto do seu Gmail não entram aqui.</span></p>';
   var p = proximoEmail(c, mails, resps || [], jor || montaJornada([]));
   var bloq = p.k && exigeNovidades(p.k) && !c.aceita_novidades;
-  var selo = p.quando === 'agora' ? 'Pode enviar agora' : p.quando === 'esperar' ? 'Espere até ' + p.espera : 'Não envie agora';
+  var selo = p.conversa ? 'Responda agora' : p.quando === 'agora' ? 'Pode enviar agora' : p.quando === 'esperar' ? 'Espere até ' + p.espera : 'Não envie agora';
   var acao = p.conversa ? '<button class="btn primary" type="button" style="margin-top:10px" data-openconv="' + esc(c.id) + '">Abrir a conversa →</button>'
     : !p.k ? ''
     : bloq ? '<p class="sub" style="margin:8px 0 0;color:var(--red)">Não aceitou novidades por e-mail: o modelo “' + esc(tplInfo(p.k).label) + '” não pode ser enviado.</p>'
@@ -873,8 +885,9 @@ function emailsPanel(c, mails, h4, resps, jor) {
       (m.aberto_em ? ' · abriu ' + esc(fmtQuando(m.aberto_em)) : '') + (m.clicado_em ? ' · clicou ' + esc(fmtQuando(m.clicado_em)) : '') + '</div>' +
       mailView(m) + '</div>';
   }).join('');
-  return '<div class="panel mailpanel" style="padding:16px"><h4 style="' + h4 + '">E-mails</h4>' + head + prox + seqGuiaCF(c, mails) +
-    (hist ? '<div class="k" style="margin-top:14px">Já enviados (' + mails.length + ')</div>' + hist : '') + compraHtml(c) + '</div>';
+  return '<div class="panel mailpanel" style="padding:16px"><h4 style="' + h4 + '">E-mails</h4>' + prox + '<div style="margin-top:12px">' + head + '</div>' +
+    '<details class="mais-det"><summary>Sequência, e-mails enviados (' + mails.length + ') e compra</summary>' + seqGuiaCF(c, mails) +
+    (hist ? '<div class="k" style="margin-top:14px">Já enviados (' + mails.length + ')</div>' + hist : '') + compraHtml(c) + '</details></div>';
 }
 // "Registrar compra": grava o evento 'compra' (crm_registrar_compra, db/crm-estudio-emails-3.sql). É o que liga as sequências
 // de compra do estúdio. Enquanto a compra pelo site não chega sozinha ao CRM, você registra aqui.
@@ -2041,10 +2054,11 @@ async function renderPessoa() {
       return '<div class="feeditem"><span class="pill ' + m[1] + '">' + esc(m[0]) + '</span><div class="fbody"><p>' + esc(tx[1]) + '</p><time>' + esc(fmtDate(e.criado_em)) + '</time></div></div>';
     }).join('') || '<div class="empty">Nada registrado ainda.</div>') + '</div></div>' +
     '<div style="display:flex; flex-direction:column; gap:16px">' +
-    '<div id="chk-lateral">' + checklistLateralHtml(state.dos && state.dos.chk, Date.now(), h4) + '</div>' +
     emailsPanel(c, mails, h4, resps, jor) +
     jornadaHtml(c, mails, resps, jor, h4) +
     '<div class="panel" style="padding:16px"><h4 style="' + h4 + '">Quem é ela</h4>' + kvHtml(respostasKv(c)) + '</div>' +
+    '<div id="chk-lateral">' + checklistLateralHtml(state.dos && state.dos.chk, Date.now(), h4) + '</div>' +
+    '<details class="mais"><summary>Mais: perguntas, respostas, consentimento, Instagram e anotações' + (resps.some(function (x) { return x.status === "nova"; }) ? ' · tem resposta nova' : '') + '</summary><div class="mais-col">' +
     (perg.length ? '<div class="panel" style="padding:16px"><h4 style="' + h4 + '">Perguntas únicas</h4>' + perg.map(function (x) { return '<p style="margin:0 0 6px;font-size:13px">"' + esc(x.texto) + '" <button class="link" data-openq="' + x.id + '" type="button">' + (x.status === 'nova' ? 'Responder' : 'Ver resposta') + ' →</button></p>'; }).join('') + '</div>' : '') +
     (resps.length ? '<div class="panel" style="padding:16px"><h4 style="' + h4 + '">Respostas</h4>' + resps.map(function (x) { return '<p style="margin:0 0 6px;font-size:13px"><span title="' + esc(canalDe(x)[1]) + '">' + canalDe(x)[0] + '</span> "' + esc(x.texto.length > 160 ? x.texto.slice(0, 160) + '…' : x.texto) + '" <span class="sub">' + esc(canalDe(x)[1]) + ' · ' + esc(fmtDate(x.recebido_em)) + '</span> <button class="link" data-openr="' + x.id + '" type="button">' + (x.status === 'nova' ? 'Abrir na caixa' : 'Ver') + ' →</button></p>'; }).join('') + '</div>' : '') +
     '<div class="panel" style="padding:16px"><h4 style="' + h4 + '">Consentimento</h4><div class="consent"><span class="pill ' + (last('servico') ? 'u-baixa' : '') + '">Política de privacidade ' + (last('servico') ? '✓' : '—') + '</span><span class="pill ' + (last('novidades_email') ? 'u-baixa' : '') + '">Novidades por e-mail ' + (last('novidades_email') ? '✓' : '—') + '</span></div>' + argumentosHtml(cons) + '</div>' +
@@ -2056,6 +2070,7 @@ async function renderPessoa() {
       '<input id="ig-id" data-ig="ig_id" data-cid="' + esc(c.id) + '" maxlength="60" autocomplete="off" placeholder="Vem do link da automação. Pode colar à mão." value="' + esc(c.ig_id || '') + '" style="width:100%;height:38px;border:1px solid var(--line-2);border-radius:8px;padding:0 10px;font:inherit">' +
       '<p class="sub" style="margin:8px 0 0">Quando a pessoa volta a deixar o e-mail, o que estiver vazio aqui é completado. O que você escreve não é apagado.</p></div>' +
     '<div class="panel" style="padding:16px"><h4 style="' + h4 + '">Suas anotações</h4><textarea class="notebox" id="nota" data-nota="' + esc(c.id) + '" placeholder="Só você vê. Ex.: prefere falar por e-mail, tem sponsor na família.">' + esc(c.nota || '') + '</textarea></div>' +
+    '</div></details>' +
     '</div></div>');
   var ct = $('conv-txt');
   if (ct) { var th = $('conv-thread'); if (th) th.scrollTop = th.scrollHeight; }
