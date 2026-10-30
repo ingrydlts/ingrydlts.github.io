@@ -910,6 +910,10 @@ Rota (só admin): `POST /api/crm/onboarding/bilan-email`. Sem `enviar`, devolve 
 | O que eu respondo ou confirmo | linhas com Dono **Ingryd** nos canais Plataforma e E-mail, não concluídas (as de "Só eu", "Fora do CRM", convite e Instagram não entram) | sim |
 | Código | você digita (3 a 40 letras, números, `-` ou `_`) | não |
 
+**Identidade visual:** o HTML usa o mesmo layout dos outros e-mails do CRM (marca "Por Dentro" em serifa com o marrom da identidade, cartão claro sobre o off-white, foto da Ingryd com moldura bege, números das seções em verde moss, código em quadro bege, assinatura em itálico e rodapé com a opção de sair). A foto vem de `images/uploads/foto-de-perfil.jpg`, do site.
+
+**Anexos (opcional):** o modal aceita até 5 arquivos **PDF, JPG ou PNG**, **3 MB no total** (o Brevo aceita 4 MB por e-mail). O Worker confere os primeiros bytes (um `.pdf` que na verdade é outra coisa é recusado), limpa o nome do arquivo e manda tudo ao Brevo como anexo. **O arquivo não é guardado**: vive só na memória do pedido; na ficha fica registrado o texto do e-mail com a linha "Em anexo: nomes e tamanhos". A prévia mostra os nomes, não manda o conteúdo. Outros formatos (Word, planilha) não entram por segurança; se precisar, avise.
+
 **Para a skill `/bilan-notion`** (repositório do app): dentro de `## Bilan d'action`, gerar `### Dúvidas tiradas` com uma lista (`-`) de até 12 itens curtos, na voz da Ingryd, de cada dúvida que foi esclarecida na ligação (uma frase cada, sem nome, telefone, e-mail nem documento). Enquanto isso, o `Resumo:` serve de ponto de partida e você ajusta no modal.
 
 **Como testar:** leia uma página de ensaio pelo Onboarding → a ficha abre em Interações → clique no botão → confira a prévia → digite o código, marque a caixa e envie para um e-mail seu. Testes: `node cms-oauth-worker/testes/crm-bilan-email.test.mjs` e, em `admin/crm/db/testes`, `npm run test:onboarding-notion-ui`. Se algo falhar: Workers → Logs, procure `crm/bilan-email` (o log traz só o status do Brevo, nunca o texto).

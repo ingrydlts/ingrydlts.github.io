@@ -3300,7 +3300,44 @@ var BL = null;
 function bilanLinhas(id) { return String(($(id) && $(id).value) || '').split('\n').map(function (x) { return x.trim(); }).filter(Boolean); }
 function bilanCorpo(extra) {
   return JSON.stringify(Object.assign({ contato_id: BL.cid, secoes: { duvidas: bilanLinhas('bl-duvidas'), proximos: bilanLinhas('bl-proximos'), respostas: bilanLinhas('bl-respostas') },
-    codigo: String(($('bl-codigo') && $('bl-codigo').value) || '').trim() }, extra || {}));
+    codigo: String(($('bl-codigo') && $('bl-codigo').value) || '').trim(),
+    anexos: (BL.anexos || []).map(function (f) { return { name: f.name, size: f.size }; }) }, extra || {}));   // na prévia vão só nome e tamanho
+}
+// Anexos: PDF, JPG ou PNG, até 5 e 3 MB no total (a mesma regra do Worker, que confere tudo de novo, inclusive os bytes). O arquivo fica só na memória.
+var BL_MAX_N = 5, BL_MAX_TOTAL = 3 * 1048576;
+function bilanJuntar(atuais, novos) {
+  var ok = atuais.slice(), recusas = [], total = ok.reduce(function (s, f) { return s + f.size; }, 0);
+  novos.forEach(function (f) {
+    var nome = String(f.name || 'arquivo').slice(0, 60);
+    if (ok.some(function (o) { return o.name === f.name && o.size === f.size && o.lastModified === f.lastModified; })) return;
+    if (!onbTipoDe(f)) return recusas.push(nome + ': só PDF, JPG ou PNG.');
+    if (!f.size) return recusas.push(nome + ': o arquivo está vazio.');
+    if (ok.length >= BL_MAX_N) return recusas.push(nome + ': no máximo ' + BL_MAX_N + ' anexos.');
+    if (total + f.size > BL_MAX_TOTAL) return recusas.push(nome + ': os anexos passariam de 3 MB no total.');
+    ok.push(f); total += f.size;
+  });
+  return { arquivos: ok, recusas: recusas };
+}
+function bilanPintaAnexos() {
+  var ul = $('bl-anexos-lista'); if (!ul) return;
+  ul.innerHTML = (BL.anexos || []).map(function (f, i) {
+    return '<li><span class="nome">' + esc(f.name || 'arquivo') + '</span><span class="tam num">' + esc(onbMb(f.size)) + '</span><button class="btn" type="button" data-blrem="' + i + '" aria-label="Tirar ' + esc(f.name || 'arquivo') + '">Tirar</button></li>';
+  }).join('');
+}
+function bilanAdicionar(lista) {
+  if (!BL) return;
+  var r = bilanJuntar(BL.anexos || [], Array.prototype.slice.call(lista || []));
+  BL.anexos = r.arquivos; bilanPintaAnexos();
+  bilanPrevia().then(function () { if (r.recusas.length) bilanErro(r.recusas.join(' ')); });
+}
+async function bilanAnexosB64() {
+  var out = [];
+  for (var i = 0; i < (BL.anexos || []).length; i++) {
+    var f = BL.anexos[i], u8 = new Uint8Array(await f.arrayBuffer()), bin = '';
+    for (var k = 0; k < u8.length; k += 0x8000) bin += String.fromCharCode.apply(null, u8.subarray(k, k + 0x8000));
+    out.push({ name: f.name, b64: btoa(bin) });
+  }
+  return out;
 }
 function bilanErro(msg, forcar) {
   var er = $('bl-err'); if (!er) return;
@@ -3309,7 +3346,7 @@ function bilanErro(msg, forcar) {
 }
 function bilanAbrir(cid) {
   var c = byC(cid), b = state.bilan; if (!c || !b || b.cid !== cid) return;
-  var ini = bilanIniciais(b.proposta.notion); BL = { cid: cid, ini: ini };
+  var ini = bilanIniciais(b.proposta.notion); BL = { cid: cid, ini: ini, anexos: [] };
   modalOpen(modalTop(c) + '<h4 style="margin:14px 0 6px;font-size:14px">E-mail com o bilan da conversa</h4>' +
     '<p class="sub" style="margin:0 0 10px">Vai para <b id="bl-para"></b>. Título e seções são sempre os mesmos; você edita o conteúdo. Um item por linha.' + (ini.usouResumo ? ' A página não tem “Dúvidas tiradas”: usei o Resumo do Bilan d’action. Ajuste.' : '') + '</p>' +
     '<label class="sub" for="bl-duvidas" style="display:block;margin:0 0 4px">1 · Dúvidas que tiramos na conversa</label><textarea id="bl-duvidas" class="bl-ta" rows="4"></textarea>' +
@@ -3317,6 +3354,9 @@ function bilanAbrir(cid) {
     '<label class="sub" for="bl-respostas" style="display:block;margin:10px 0 4px">3 · O que eu respondo ou confirmo para você</label><textarea id="bl-respostas" class="bl-ta" rows="4"></textarea>' +
     '<label class="sub" for="bl-codigo" style="display:block;margin:10px 0 4px">4 · Código de redução (lista de espera)</label><input id="bl-codigo" class="bl-in" type="text" autocomplete="off" maxlength="40" placeholder="ex.: LISTA-ESPERA">' +
     '<small class="sub" style="display:block;margin-top:4px">O texto fixo diz que o desconto vale por 6 meses e que ela ganha 7 dias grátis.</small>' +
+    '<label class="sub" style="display:block;margin:10px 0 4px">Anexos (opcional)</label>' +
+    '<label class="onb-drop bl-drop" for="bl-anexos"><span><b>Toque para escolher</b> os arquivos</span><span class="sub">PDF, JPG ou PNG · até 5 arquivos · 3 MB no total</span>' +
+    '<input id="bl-anexos" type="file" multiple accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"></label><ul class="onb-arqs" id="bl-anexos-lista"></ul>' +
     '<div id="bl-previa" class="bl-previa"></div>' +
     '<label class="pccheck" style="margin:12px 0 0"><input type="checkbox" id="bl-confirmo"> <span>Esta pessoa aceitou receber este e-mail (lista de espera).</span></label>' +
     '<p class="onb-erro" id="bl-err" role="alert" hidden style="margin:10px 0 0"></p>' +
@@ -3351,8 +3391,8 @@ async function bilanEnviar(forcar) {
   if (!($('bl-confirmo') && $('bl-confirmo').checked)) return bilanErro('Marque que a pessoa aceitou receber este e-mail.');
   var bt = $('bl-enviar'); if (bt) { bt.disabled = true; bt.textContent = 'Enviando…'; }
   try {
-    var d = await bilanChamar(bilanCorpo({ enviar: true, confirmo: true, forcar: !!forcar }));
-    closeCompose(); toast('Bilan enviado para ' + d.para + (d.registrado === false ? ' (mas não consegui registrar na ficha)' : ''), 5000);
+    var d = await bilanChamar(bilanCorpo({ enviar: true, confirmo: true, forcar: !!forcar, anexos: await bilanAnexosB64() }));
+    closeCompose(); toast('Bilan enviado para ' + d.para + (d.anexos ? ' com ' + d.anexos + (d.anexos === 1 ? ' anexo' : ' anexos') : '') + (d.registrado === false ? ' (mas não consegui registrar na ficha)' : ''), 5000);
     var cid = BL.cid; BL = null;
     if (state.view === 'pessoa' && state.sel === cid) await renderPessoa();
   } catch (e) {
@@ -3549,6 +3589,7 @@ document.addEventListener('click', async function (e) {
   if (t.id === 'bl-previa-btn') return bilanPrevia();
   if (t.id === 'bl-enviar') return bilanEnviar(false);
   if (t.id === 'bl-forcar') return bilanEnviar(true);
+  if (t.dataset.blrem !== undefined) { BL.anexos.splice(Number(t.dataset.blrem), 1); bilanPintaAnexos(); return bilanPrevia(); }
   if (t.dataset.chatenviar) return enviarChat(t.dataset.chatenviar, t);
   if (t.dataset.chkvia) return chkAgir(t.dataset.chkvia, Number(t.dataset.chki));
   if (t.dataset.chatquick) {
@@ -3781,6 +3822,7 @@ document.addEventListener('input', function (e) {
   if (e.target.id === 'ont-url') ONT.url = e.target.value;
 });
 document.addEventListener('change', function (e) {
+  if (e.target.id === 'bl-anexos') { bilanAdicionar(e.target.files); e.target.value = ''; return; }
   if (e.target.id !== 'onb-file') return;
   onbAdicionar(e.target.files); e.target.value = '';
 });
