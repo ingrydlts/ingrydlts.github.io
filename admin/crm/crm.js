@@ -3251,7 +3251,7 @@ async function ontCopiar() {
 // A parte do Notion dentro do Pós-call da ficha: pendências, lembretes, rascunho de e-mail e "faltam". Só mostra; nenhum botão envia nada.
 function ontLinhaHtml(x, canal) {
   return '<li class="ont-pend' + (x.estado === 'concluida' ? ' feita' : '') + '"><b>' + esc(x.titulo) + '</b>' + (canal ? ' <span class="dchip">' + esc(x.canal) + '</span>' : '') + '<br><small class="sub">' +
-    esc('Dono: ' + (x.dono === 'Ela' ? 'ela' : 'Ingryd') + ' · Prazo: ' + ontPrazo(x.prazo) + ' · Estado: ' + (ONT_ESTADO[x.estado] || x.estado) + (x.botao && x.botao !== 'n/a' ? ' · Botão sugerido: ' + x.botao + (x.botao_obs ? ' (' + x.botao_obs + ')' : '') : '') + (x.origem_certeza ? ' · ' + x.origem_certeza : '')) + '</small></li>';
+    esc('Dono: ' + (x.dono === 'Ela' ? 'ela' : 'Ingryd') + ' · Prazo: ' + ontPrazo(x.prazo) + ' · Estado: ' + (ONT_ESTADO[x.estado] || x.estado) + (x.botao && x.botao !== 'n/a' ? ' · Botão sugerido: ' + (x.botoes && x.botoes.length > 1 ? x.botoes.join(' → ') : x.botao) + (x.botao_obs ? ' (' + x.botao_obs + ')' : '') : '') + (x.origem_certeza ? ' · ' + x.origem_certeza : '')) + '</small></li>';
 }
 function poscallNotionHtml(n) {
   var h = '<h5>2 · Pendências da Plataforma</h5>' + (n.pendencias.length ? '<ul class="ont-pends">' + n.pendencias.map(function (x) { return ontLinhaHtml(x, false); }).join('') + '</ul>' : '<p class="sub">Nenhuma pendência com canal Plataforma.</p>') +
