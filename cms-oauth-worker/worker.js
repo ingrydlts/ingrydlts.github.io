@@ -3251,10 +3251,12 @@ function crmNotionTabela(linhas, largura) {
     if (!pend) return crmNotionRecusa('valor_fora_do_padrao', onde + ': a Pendência está vazia.');
     if (!CRM_NOTION_DONOS.includes(dono)) return fora(onde, 'Dono', dono, CRM_NOTION_DONOS);
     if (!CRM_NOTION_CANAIS.includes(canal)) return fora(onde, 'Canal', canal, CRM_NOTION_CANAIS);
-    const mb = /^(\S+?)(?:\s*\((.*)\))?$/.exec(botaoBruto);
-    if (!mb || !CRM_NOTION_BOTOES.includes(mb[1])) return fora(onde, 'Botão sugerido', botaoBruto, CRM_NOTION_BOTOES);
+    // Um botão, ou uma sequência deles ("pesquisar, depois gerar_rascunho"): cada um tem que estar na lista. Texto entre parênteses no fim é observação.
+    const mb = /^(.*?)(?:\s*\((.*)\))?$/.exec(botaoBruto);
+    const botoes = mb ? mb[1].split(/\s*(?:,|;|→|\bdepois\b)\s*/i).map((x) => x.trim()).filter(Boolean) : [];
+    if (!botoes.length || botoes.length > 4 || botoes.some((x) => !CRM_NOTION_BOTOES.includes(x))) return fora(onde, 'Botão sugerido', botaoBruto, CRM_NOTION_BOTOES);
     if (!CRM_NOTION_ESTADOS.includes(estado)) return fora(onde, 'Estado', estado, CRM_NOTION_ESTADOS);
-    itens.push({ n: /^\d{1,3}$/.test(num) ? Number(num) : i + 1, titulo: pend.slice(0, 300), dono, canal, botao: mb[1], botao_obs: crmOnbLimpaTexto(mb[2] || '', 200, false),
+    itens.push({ n: /^\d{1,3}$/.test(num) ? Number(num) : i + 1, titulo: pend.slice(0, 300), dono, canal, botao: botoes[0], botoes, botao_obs: crmOnbLimpaTexto(mb[2] || '', 200, false),
       prazo: crmNotionPrazo(prazoBruto), estado, origem_certeza: origem.slice(0, 200) });
   }
   // Plataforma vira pendência; E-mail alimenta UM rascunho; Convite de acesso e Instagram são lembretes; "Só eu" e "Fora do CRM" só contam.

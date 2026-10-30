@@ -169,7 +169,7 @@ const PROP = {
     documentos_pendentes: 'Passaporte', prazo_chave: { texto: '2026-12-01', data: '2026-12-01', a_confirmar: false }, consentimento: false, enviado_ao_crm: false, id_no_crm: '',
     pendencias: [
       { n: 1, titulo: 'Anexar o passaporte ' + XSS, dono: 'Ela', canal: 'Plataforma', botao: 'anexar_documento', botao_obs: 'passaporte e visto', prazo: { texto: '15/12/2026 (a confirmar)', data: null, a_confirmar: true }, estado: 'aberta', origem_certeza: 'Documento · alta' },
-      { n: 2, titulo: 'Marcar o prazo do Campus France', dono: 'Ela', canal: 'Plataforma', botao: 'marcar_marco', botao_obs: '', prazo: { texto: '2026-11-30', data: '2026-11-30', a_confirmar: false }, estado: 'aguardando_ela', origem_certeza: 'Fala · média' },
+      { n: 2, titulo: 'Marcar o prazo do Campus France', dono: 'Ela', canal: 'Plataforma', botao: 'pesquisar', botoes: ['pesquisar', 'gerar_rascunho'], botao_obs: '', prazo: { texto: '2026-11-30', data: '2026-11-30', a_confirmar: false }, estado: 'aguardando_ela', origem_certeza: 'Fala · média' },
       { n: 6, titulo: 'Reservar o horário no consulado', dono: 'Ela', canal: 'Plataforma', botao: 'lembrar_ela', botao_obs: '', prazo: { texto: '2026-12-05 (a confirmar)', data: '2026-12-05', a_confirmar: true }, estado: 'aberta', origem_certeza: '' },
       { n: 3, titulo: 'Conferir a carta de aceite', dono: 'Ingryd', canal: 'Plataforma', botao: 'n/a', botao_obs: '', prazo: { texto: '', data: null, a_confirmar: false }, estado: 'concluida', origem_certeza: '' }],
     lembretes: [{ n: 5, titulo: 'Mandar o convite de acesso', dono: 'Ingryd', canal: 'Convite de acesso', botao: 'enviar_convite', botao_obs: '', prazo: { texto: '', data: null, a_confirmar: false }, estado: 'aberta', origem_certeza: 'Combinado' }],
@@ -192,7 +192,7 @@ h = await ficha();
 check('a proposta pendente do Notion reaparece na ficha, sem ler de novo', /Proposta da página do Notion/.test(h) && /Nada entrou na ficha ainda/.test(h));
 check('1 · fatos do Dossiê, com caixa para marcar e a confiança', /1 · Fatos/.test(h) && /data-pccampo="telefone" checked/.test(h) && /data-pccampo="maior_preocupacao" checked/.test(h) && /confiança alta/.test(h));
 check('2 · pendências com dono, prazo, estado e botão sugerido', /2 · Pendências da Plataforma/.test(h) && /Dono: ela · Prazo: 15\/12\/2026 \(a confirmar\) · Estado: aberta · Botão sugerido: anexar_documento \(passaporte e visto\) · Documento · alta/.test(h));
-check('prazo "(a confirmar)" aparece como o TEXTO que veio, e prazo certo como data', /Prazo: 15\/12\/2026 \(a confirmar\)/.test(h) && /Prazo: 30\/11\/2026 · Estado: aguardando ela/.test(h) && /Prazo: sem prazo · Estado: concluída/.test(h));
+check('prazo "(a confirmar)" aparece como o TEXTO que veio, e prazo certo como data', /Prazo: 15\/12\/2026 \(a confirmar\)/.test(h) && /Prazo: 30\/11\/2026 · Estado: aguardando ela · Botão sugerido: pesquisar → gerar_rascunho/.test(h) && /Prazo: sem prazo · Estado: concluída/.test(h));
 check('mesmo que venha uma data junto, "(a confirmar)" continua aparecendo como texto, nunca como data certa', /Prazo: 2026-12-05 \(a confirmar\)/.test(h) && !/05\/12\/2026/.test(h));
 check('pendência concluída fica riscada', /ont-pend feita/.test(h) && (h.match(/class="ont-pend feita"/g) || []).length === 1);
 check('avisa que nenhum botão envia nada sozinho', /nenhum botão envia nada sozinho/.test(h) && /pode enviar/.test(h));
