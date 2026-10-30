@@ -38,6 +38,7 @@
     "test:processos-ui": "node crm-processos-ui.test.mjs",
     "test:poscall": "node crm-pos-call.test.mjs",
     "test:poscall-ui": "node crm-pos-call-ui.test.mjs",
+    "test:proximo-email-ui": "node crm-proximo-email-ui.test.mjs",
     "test:conferir": "node conferir-banco.test.mjs"
   },
   "dependencies": {

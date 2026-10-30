@@ -735,20 +735,138 @@ function seqGuiaCF(c, mails) {
   return '<div class="seq"><div class="k">Sequência do guia Campus France</div>' +
     '<p><b>E-mail 1 · checklist</b> ' + e1 + '</p><p><b>E-mail 2 · a conversa</b> ' + e2 + '</p></div>';
 }
-function emailsPanel(c, mails, h4) {
+// ---------- O próximo e-mail: os sinais da ficha dizem qual mandar, quando e com que ângulo ----------
+// Regras fixas sobre o que a ficha já sabe (não é IA): a primeira que bate vale. Nunca inventa prazo: só usa os que existem.
+function diasDesde(iso) { return iso ? Math.floor((Date.now() - new Date(iso).getTime()) / 864e5) : null; }
+function vezes(n) { return n + (n === 1 ? ' vez' : ' vezes'); }
+function haDias(d) { return d === 0 ? 'menos de 1 dia' : d + (d === 1 ? ' dia' : ' dias'); }
+// Os eventos que contam a jornada (db/crm-enriquecimento.sql grava um por captura, com a origem e as UTMs).
+function montaJornada(evs) {
+  var j = { entradas: [], quizzes: [], ativouEm: null, appVezes: 0, artigos: 0 };
+  (evs || []).slice().sort(function (a, b) { return a.criado_em < b.criado_em ? -1 : a.criado_em > b.criado_em ? 1 : 0; }).forEach(function (e) {
+    var d = e.dados || {};
+    if (e.tipo === 'email_capturado' || e.tipo === 'email_recapturado') j.entradas.push({ em: e.criado_em, origem: d.origem || '', camp: d.utm_campaign || '', post: d.utm_content || '', fonte: d.utm_source || '' });
+    else if (e.tipo === 'quiz_respondido') j.quizzes.push({ em: e.criado_em, persona: d.persona || '', objetivo: d.objetivo || '' });
+    else if (e.tipo === 'acesso_ativado') j.ativouEm = j.ativouEm || e.criado_em;
+    else if (e.tipo === 'app_aberto') { j.appVezes++; j.ativouEm = j.ativouEm || e.criado_em; }
+    else if (e.tipo === 'artigo_lido') j.artigos++;
+  });
+  return j;
+}
+function tipoFunil(o) {
+  return /^guia-/.test(o) ? 'guia gratuito' : o === 'bot' ? 'funil de classificação' : (o === 'blog' || o === 'artigo' || /^artigo-/.test(o) || /^\/artigos\//.test(o)) ? 'artigo do blog'
+    : o === 'instagram' ? 'link do Instagram' : (o === 'direto' || o === 'login_direto') ? 'acesso direto' : '';
+}
+// Devolve { k, quando: 'agora'|'esperar'|'nao', titulo, angulo, sinais, conversa }. k = o modelo a revisar (null = nenhum e-mail agora).
+function proximoEmail(c, mails, resps, jor) {
+  var r = c.respostas || {}, ult = mails[0], diasUlt = ult ? diasDesde(ult.enviado_em || ult.criado_em) : null;
+  var abriu = mails.filter(function (m) { return m.aberto_em || m.status === 'aberto' || m.status === 'clicado'; }).length;
+  var clicou = mails.filter(function (m) { return m.clicado_em || m.status === 'clicado'; }).length;
+  var n = nCapturas(c), origem = origLabel(ultimaOrigem(c) || ''), etapa = r.objetivo ? etapaDe(r.objetivo) : '';
+  var ativa = !!jor.ativouEm || ['ativado', 'em_uso', 'um_a_um', 'concluido'].indexOf(c.estagio) >= 0;
+  var prazoDias = null, prazoDe = '';
+  if (CF_PRAZO[r.cfNivel]) { prazoDias = diasAte(CF_PRAZO[r.cfNivel]); prazoDe = 'Campus France (' + (CF_NIVEL[r.cfNivel] || r.cfNivel) + ') em ' + fmtDay(CF_PRAZO[r.cfNivel]); }
+  else if (c.dias_para_prazo != null) { prazoDias = Number(c.dias_para_prazo); prazoDe = 'VLS-TS em ' + fmtDay(c.prazo_limite); }
+  var prazoFrase = prazoDias == null ? '' : prazoDias > 1 ? 'faltam ' + prazoDias + ' dias' : prazoDias === 1 ? 'falta 1 dia' : prazoDias === 0 ? 'vence hoje' : 'venceu há ' + (-prazoDias) + ' dias';
+  var sinais = [n === 1 ? 'Deixou o e-mail 1 vez' + (origem ? ', pelo ' + origem : '') : 'Deixou o e-mail ' + n + ' vezes' + (origem ? '; a última pelo ' + origem : '')];
+  if (etapa) sinais.push('Etapa que ela escolheu: ' + etapa);
+  sinais.push(mails.length ? 'Recebeu ' + mails.length + (mails.length === 1 ? ' e-mail' : ' e-mails') + ' do CRM · abriu ' + abriu + ' · clicou ' + clicou + ' · o último há ' + haDias(diasUlt) : 'Ainda não recebeu nenhum e-mail pelo CRM');
+  sinais.push(ativa ? 'Já abriu o link de acesso ou o app' : 'Ainda não abriu o app');
+  if (prazoDias != null && prazoDias >= -90) sinais.push('Prazo: ' + prazoDe + ' (' + prazoFrase + ')');
+  var k0 = defaultTpl(c), kReal = c.segmento || guiaTpl(ultimaOrigem(c)) || null;
+  var out = function (o) { return Object.assign({ k: null, quando: 'nao', sinais: sinais, conversa: false }, o); };
+  var m1 = mails.filter(function (m) { return m.modelo === 'cf_guia_1'; })[0], m2 = mails.filter(function (m) { return m.modelo === 'cf_guia_conversa'; })[0];
+
+  if (resps.some(function (x) { return x.status === 'nova'; }))
+    return out({ titulo: 'Responda a mensagem dela antes de mandar qualquer coisa', conversa: true,
+      angulo: 'Ela escreveu e ainda não teve resposta. Um e-mail novo por cima parece que você não leu. Responder é o melhor e-mail que existe para manter o engajamento.' });
+  if (ult && ult.status === 'nao_entregue')
+    return out({ titulo: 'Corrija o endereço antes de mandar outro',
+      angulo: 'O último e-mail não foi entregue. Confira se o endereço tem erro de digitação (gmial, hotmial) ou chame pelo Instagram. Mandar de novo para o mesmo endereço só queima a reputação do remetente.' });
+  if (c.um_a_um_quando)
+    return out({ titulo: 'Nada de campanha: ela tem 1:1 marcado',
+      angulo: 'Com a conversa marcada (' + fmtWhen(c.um_a_um_quando) + '), o único e-mail útil é um lembrete curto perto do dia, com o que ela deve levar. Fora isso, é ruído.' });
+  if (origensDe(c).indexOf(CF_GUIA_ORIGEM) >= 0 && m1 && !m2 && c.aceita_novidades && diasDesde(m1.enviado_em || m1.criado_em) <= 7)
+    return out({ titulo: 'Deixe o e-mail 2 do guia sair sozinho',
+      angulo: 'A sequência do Campus France já tem o e-mail 2 (a conversa) programado para o próximo envio diário, às 10h de Brasília. Mandar outro na frente atropela ele.' });
+  if (!mails.length)
+    return out({ k: k0, quando: 'agora', titulo: 'Primeiro contato: entregue o que ela veio buscar',
+      angulo: 'Abra com o que ela pediu' + (origem ? ' (“' + origem + '”)' : '') + (etapa ? ', mostre que sabe em que etapa ela está (' + etapa.toLowerCase() + ')' : '') + ' e termine com uma pergunta fácil de responder. Uma resposta dela vale mais do que mil cliques.' });
+  if (voltouDepoisDoEmail(c)) {
+    // Sem guia próprio para a última origem, o padrão seria as boas-vindas de novo: ela já recebeu, então fica sem modelo.
+    var kVolta = k0 === 'boas_vindas' && mails.some(function (m) { return m.modelo === 'boas_vindas'; }) ? null : k0;
+    return out({ k: kVolta, quando: kVolta ? 'agora' : 'nao', titulo: 'Ela voltou a pedir material: este é o melhor momento',
+      angulo: 'Voltar a deixar o e-mail depois do seu último envio é o sinal mais forte de interesse que a ficha tem. Reconheça isso (“vi que você pegou o ' + (origem || 'guia') + '”), não repita o e-mail anterior e convide para a conversa.' + (kVolta ? '' : ' Escreva um e-mail novo com “Escrever e-mail” no topo da ficha: o modelo de boas-vindas ela já recebeu.') });
+  }
+  if (diasUlt < 3) {
+    var volta = fmtDate(new Date(new Date(ult.enviado_em || ult.criado_em).getTime() + 3 * 864e5).toISOString());
+    return out({ k: kReal, quando: 'esperar', espera: volta, titulo: 'Espere: o último e-mail é muito recente',
+      angulo: 'Saiu há ' + haDias(diasUlt) + '. Silêncio até o terceiro dia é normal; insistir antes cansa. Volte em ' + volta + ', ou antes se ela abrir, clicar ou responder.' });
+  }
+  var sg = SEGMENTS.filter(function (s) { return s.k === c.segmento; })[0];
+  if (sg)
+    return out({ k: c.segmento, quando: 'agora', titulo: 'Reimpacto: ' + sg.t.toLowerCase(),
+      angulo: sg.why + (prazoDias != null && prazoDias >= 0 && prazoDias <= 60 ? ' Use o prazo real dela (' + prazoDe + ') como gancho.' : '') });
+  if (prazoDias != null && prazoDias >= -90 && prazoDias <= 30)
+    return out({ k: kReal, quando: kReal ? 'agora' : 'nao', titulo: 'O prazo dela é o gancho: fale dele',
+      angulo: 'Ela tem ' + prazoDe + ' (' + prazoFrase + '). Ponha a data real no assunto ou na primeira linha e diga o próximo passo concreto. Nunca um prazo inventado.' });
+  if (ativa)
+    return out({ titulo: 'Ela está ativa: não precisa de e-mail agora',
+      angulo: 'Ela já usa o que você entregou' + (jor.appVezes ? ' (abriu o app ' + vezes(jor.appVezes) + ')' : '') + '. O próximo passo natural é uma conversa pessoal, não mais conteúdo. Se quiser escrever mesmo assim, use “Escrever e-mail” no topo da ficha.' });
+  return out({ titulo: 'Sem gatilho claro: espere um sinal',
+    angulo: 'Nada na ficha pede um e-mail agora. Espere ela abrir o e-mail, voltar a deixar o e-mail ou escrever. Se quiser escrever mesmo assim, use “Escrever e-mail” no topo da ficha.' });
+}
+// ---------- Jornada no funil: por onde ela entrou, quantas vezes e até onde chegou ----------
+function jornadaHtml(c, mails, resps, jor, h4) {
+  var es = jor.entradas, origens = origensDe(c), primeira = origens[0] || c.origem || '';
+  var rows = [];
+  if (primeira) rows.push(['Funil de entrada', origLabel(primeira) + (tipoFunil(primeira) ? ' (' + tipoFunil(primeira) + ')' : '')]);
+  var dias = diasDesde(es.length ? es[0].em : c.criado_em);
+  if (dias != null) rows.push(['Na base há', haDias(dias)]);
+  var linhas = es.map(function (x, i) {
+    var q = jor.quizzes.filter(function (z) { return z.em === x.em; })[0];
+    var det = [q && q.persona ? PERSONAS[q.persona] || q.persona : '', q && q.objetivo ? etapaDe(q.objetivo) : '', x.camp ? 'campanha ' + x.camp : '', x.post ? 'post ' + x.post : '', x.fonte ? 'fonte ' + x.fonte : ''].filter(Boolean);
+    return '<li><time>' + esc(fmtDate(x.em)) + '</time> <b>' + (i === 0 ? '1ª vez' : (i + 1) + 'ª vez') + '</b> · ' + esc(origLabel(x.origem) || '—') +
+      (det.length ? '<div class="sub">' + esc(det.join(' · ')) + '</div>' : '') + '</li>';
+  }).join('');
+  var faltam = nCapturas(c) - es.length;
+  var antes = function (f) { var x = mails.map(f).filter(Boolean).sort()[0]; return x ? ' · ' + fmtDate(x) : ''; };
+  var usa = ['em_uso', 'um_a_um', 'concluido'].indexOf(c.estagio) >= 0;
+  var degraus = [
+    [true, 'Deixou o e-mail' + (es.length ? ' · ' + fmtDate(es[0].em) : ''), ''],
+    [mails.length > 0, mails.length ? 'Recebeu e-mail do CRM' + antes(function (m) { return m.enviado_em || m.criado_em; }) : 'Ainda não recebeu e-mail do CRM', ''],
+    [mails.some(function (m) { return m.aberto_em || m.status === 'aberto' || m.status === 'clicado'; }), 'Abriu o e-mail' + antes(function (m) { return m.aberto_em; }), 'Ainda não abriu nenhum e-mail'],
+    [mails.some(function (m) { return m.clicado_em || m.status === 'clicado'; }), 'Clicou no link' + antes(function (m) { return m.clicado_em; }), 'Ainda não clicou em nenhum link'],
+    [!!jor.ativouEm || ['ativado', 'em_uso', 'um_a_um', 'concluido'].indexOf(c.estagio) >= 0, 'Abriu o app' + (jor.ativouEm ? ' · ' + fmtDate(jor.ativouEm) : ''), 'Ainda não abriu o app'],
+    [usa, 'Está marcando itens no checklist', 'Ainda não marcou itens no checklist'],
+    [resps.length > 0, 'Respondeu a você (' + resps.length + ')', 'Ainda não respondeu'],
+    [c.estagio === 'um_a_um' || !!c.um_a_um_quando, 'Marcou 1:1', 'Ainda sem 1:1']
+  ];
+  return '<div class="panel" style="padding:16px"><h4 style="' + h4 + '">Jornada no funil</h4>' + kvHtml(rows.concat(origemKv(c))) +
+    '<div class="k jn-k">Cada vez que ela entrou (' + vezes(nCapturas(c)) + ')</div>' +
+    (linhas ? '<ol class="jn-list">' + linhas + '</ol>' : '<p class="sub" style="margin:0">Sem registro de captura na linha do tempo.</p>') +
+    (faltam > 0 && es.length ? '<p class="sub" style="margin:6px 0 0">' + faltam + (faltam === 1 ? ' entrada mais antiga' : ' entradas mais antigas') + ' sem detalhe na linha do tempo.</p>' : '') +
+    '<div class="k jn-k">Até onde ela chegou</div><ul class="jn-steps">' + degraus.map(function (d) {
+      return '<li class="' + (d[0] ? 'ok' : 'no') + '"><span aria-hidden="true">' + (d[0] ? '✓' : '·') + '</span> ' + esc(d[0] ? d[1] : (d[2] || d[1])) + '</li>';
+    }).join('') + '</ul></div>';
+}
+function emailsPanel(c, mails, h4, resps, jor) {
   var em = function (m) { return m.enviado_em || m.criado_em; };
   mails = mails.slice().sort(function (a, b) { return em(a) < em(b) ? 1 : em(a) > em(b) ? -1 : 0; });   // mais recente primeiro
-  var k = defaultTpl(c), t = TPLS[k], e = emailPronto(c, k);
-  var bloq = EXIGEM_NOVIDADES[k] && !c.aceita_novidades;
   var ultimo = mails[0];
   var head = ultimo ? '<p style="margin:0 0 12px;font-size:13px">Último: <b>' + esc(modeloNome(ultimo.modelo)) + '</b> · ' + esc(fmtQuando(ultimo.enviado_em || ultimo.criado_em)) + ' ' + mailPill(ultimo) + '</p>'
     : '<p style="margin:0 0 12px;font-size:13px"><b>Nenhum e-mail saiu pelo CRM para ela.</b> <span class="sub">E-mails mandados direto do seu Gmail não entram aqui.</span></p>';
-  var prox = '<div class="nextmail"><div class="k">' + (voltouDepoisDoEmail(c) ? 'Voltou depois do seu último e-mail · próximo sugerido' : 'Próximo sugerido') + '</div>' +
-    '<p style="margin:2px 0 2px;font-size:13.5px"><b>' + esc(t.label) + '</b></p><p class="sub" style="margin:0 0 8px">' + esc(t.when) + '</p>' +
-    '<p class="sub" style="margin:0 0 6px">Assunto: <b style="color:var(--ink)">' + esc(e.subject) + '</b></p>' +
-    '<button class="mailthumb" type="button" data-emailfor="' + esc(c.id) + '" data-tplk="' + esc(k) + '" aria-label="Abrir o e-mail sugerido">' + previaFrame(previaDoc(k, e), 'thumbframe') + '</button>' +
-    (bloq ? '<p class="sub" style="margin:8px 0 0;color:var(--red)">Não aceitou novidades por e-mail: este modelo não pode ser enviado.</p>'
-      : '<button class="btn primary" type="button" style="margin-top:10px" data-emailfor="' + esc(c.id) + '" data-tplk="' + esc(k) + '">Revisar e enviar →</button>') + '</div>';
+  var p = proximoEmail(c, mails, resps || [], jor || montaJornada([]));
+  var bloq = p.k && exigeNovidades(p.k) && !c.aceita_novidades;
+  var selo = p.quando === 'agora' ? 'Pode enviar agora' : p.quando === 'esperar' ? 'Espere até ' + p.espera : 'Não envie agora';
+  var acao = p.conversa ? '<button class="btn primary" type="button" style="margin-top:10px" data-openconv="' + esc(c.id) + '">Abrir a conversa →</button>'
+    : !p.k ? ''
+    : bloq ? '<p class="sub" style="margin:8px 0 0;color:var(--red)">Não aceitou novidades por e-mail: o modelo “' + esc(tplInfo(p.k).label) + '” não pode ser enviado.</p>'
+    : '<p class="sub" style="margin:8px 0 0">Modelo sugerido: <b style="color:var(--ink)">' + esc(tplInfo(p.k).label) + '</b><br>Assunto: ' + esc(emailPronto(c, p.k).subject) + '</p>' +
+      '<button class="btn' + (p.quando === 'agora' ? ' primary' : '') + '" type="button" style="margin-top:10px" data-emailfor="' + esc(c.id) + '" data-tplk="' + esc(p.k) + '">' + (p.quando === 'agora' ? 'Revisar e enviar →' : 'Ver o e-mail mesmo assim') + '</button>';
+  var prox = '<div class="nextmail insight"><div class="k">Próximo e-mail <span class="selo selo-' + p.quando + '">' + esc(selo) + '</span></div>' +
+    '<p class="ins-t">' + esc(p.titulo) + '</p><p class="ins-ang">' + esc(p.angulo) + '</p>' +
+    '<details class="ins-sinais"><summary>O que a ficha mostra</summary><ul>' + p.sinais.map(function (s) { return '<li>' + esc(s) + '</li>'; }).join('') + '</ul></details>' + acao + '</div>';
   var hist = mails.map(function (m) {
     return '<div class="mailrow"><button class="mh" data-mailtoggle="' + m.id + '" type="button"><b>' + esc(m.assunto || modeloNome(m.modelo)) + '</b>' + mailPill(m) +
       '<time>' + esc(fmtQuando(m.enviado_em || m.criado_em)) + '</time></button><div class="sub" style="font-size:11.5px;margin-top:2px">' + esc(modeloNome(m.modelo)) +
@@ -1847,6 +1965,16 @@ async function pcResolver(cid, tema, t) {
   toast('Tema fechado: a contagem recomeça do zero');
 }
 
+// Só o que conta a jornada (capturas, quiz, acesso, app, artigos), do mais antigo ao mais novo. A lista de eventos da ficha
+// tem só os 200 mais recentes: quem usa muito o checklist empurraria a 1ª entrada para fora. Falhou = jornada vazia, a ficha segue.
+async function buscaJornada(cid) {
+  try {
+    var r = await supabase.from('eventos').select('tipo,dados,criado_em').eq('contato_id', cid)
+      .or('tipo.eq.email_capturado,tipo.eq.email_recapturado,tipo.eq.quiz_respondido,tipo.eq.acesso_ativado,tipo.eq.app_aberto,tipo.eq.artigo_lido')
+      .order('criado_em', { ascending: true }).limit(1000);
+    return r.error ? [] : (r.data || []);
+  } catch (e) { return []; }
+}
 async function renderPessoa() {
   var c = byC(state.sel);
   if (!c) { $('pessoa-page').innerHTML = '<div class="empty">Pessoa não encontrada.</div>'; return; }
@@ -1860,7 +1988,8 @@ async function renderPessoa() {
     supabase.from('contatos').select('dossie_origem,onboarding_em').eq('id', c.id).maybeSingle(),
     supabase.from('assinaturas').select('status,plano,moeda,teste_fim,periodo_fim,cancela_no_fim').eq('contato_id', c.id).maybeSingle(),   // db/crm-assinaturas.sql
     supabase.from('processos_sugeridos').select('id,processo,sinais,status,mensagem,detectada_em,atualizada_em,decidida_em,respondida_em').eq('contato_id', c.id).order('atualizada_em', { ascending: false }),   // db/crm-processos-sugeridos.sql
-    supabase.from('pos_call_propostas').select('id,proposta,status,criado_em').eq('contato_id', c.id).eq('proposta->>origem', 'notion').order('criado_em', { ascending: false }).limit(5)   // a leitura do Notion: base do e-mail do bilan
+    supabase.from('pos_call_propostas').select('id,proposta,status,criado_em').eq('contato_id', c.id).eq('proposta->>origem', 'notion').order('criado_em', { ascending: false }).limit(5),   // a leitura do Notion: base do e-mail do bilan
+    buscaJornada(c.id)
   ]);
   if (state.sel !== c.id || state.view !== 'pessoa') return;   // trocou de tela enquanto carregava
   var eventos = r[0].data || [], cons = r[1].data || [], mails = r[2].data || [];
@@ -1883,6 +2012,7 @@ async function renderPessoa() {
   var perg = Q.filter(function (x) { return x.contato_id === c.id; });
   var resps = R.filter(function (x) { return x.contato_id === c.id; });
   var h4 = 'font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-3); margin:0 0 8px';
+  var jor = montaJornada(r[9]);
   if (!state.ptab) state.ptab = mails.length || resps.length ? 'conversa' : 'ficha';
   var tabs = '<div class="ptabs" role="tablist" aria-label="Ficha da pessoa">' + [['conversa', 'Conversa'], ['plataforma', 'Plataforma'], ['ficha', 'Ficha']].map(function (t) {
     return '<button class="ptab" role="tab" type="button" data-ptab="' + t[0] + '" aria-selected="' + (state.ptab === t[0]) + '">' + t[1] +
@@ -1912,9 +2042,9 @@ async function renderPessoa() {
     }).join('') || '<div class="empty">Nada registrado ainda.</div>') + '</div></div>' +
     '<div style="display:flex; flex-direction:column; gap:16px">' +
     '<div id="chk-lateral">' + checklistLateralHtml(state.dos && state.dos.chk, Date.now(), h4) + '</div>' +
-    emailsPanel(c, mails, h4) +
+    emailsPanel(c, mails, h4, resps, jor) +
+    jornadaHtml(c, mails, resps, jor, h4) +
     '<div class="panel" style="padding:16px"><h4 style="' + h4 + '">Quem é ela</h4>' + kvHtml(respostasKv(c)) + '</div>' +
-    '<div class="panel" style="padding:16px"><h4 style="' + h4 + '">De onde veio</h4>' + kvHtml(origemKv(c)) + '</div>' +
     (perg.length ? '<div class="panel" style="padding:16px"><h4 style="' + h4 + '">Perguntas únicas</h4>' + perg.map(function (x) { return '<p style="margin:0 0 6px;font-size:13px">"' + esc(x.texto) + '" <button class="link" data-openq="' + x.id + '" type="button">' + (x.status === 'nova' ? 'Responder' : 'Ver resposta') + ' →</button></p>'; }).join('') + '</div>' : '') +
     (resps.length ? '<div class="panel" style="padding:16px"><h4 style="' + h4 + '">Respostas</h4>' + resps.map(function (x) { return '<p style="margin:0 0 6px;font-size:13px"><span title="' + esc(canalDe(x)[1]) + '">' + canalDe(x)[0] + '</span> "' + esc(x.texto.length > 160 ? x.texto.slice(0, 160) + '…' : x.texto) + '" <span class="sub">' + esc(canalDe(x)[1]) + ' · ' + esc(fmtDate(x.recebido_em)) + '</span> <button class="link" data-openr="' + x.id + '" type="button">' + (x.status === 'nova' ? 'Abrir na caixa' : 'Ver') + ' →</button></p>'; }).join('') + '</div>' : '') +
     '<div class="panel" style="padding:16px"><h4 style="' + h4 + '">Consentimento</h4><div class="consent"><span class="pill ' + (last('servico') ? 'u-baixa' : '') + '">Política de privacidade ' + (last('servico') ? '✓' : '—') + '</span><span class="pill ' + (last('novidades_email') ? 'u-baixa' : '') + '">Novidades por e-mail ' + (last('novidades_email') ? '✓' : '—') + '</span></div>' + argumentosHtml(cons) + '</div>' +
