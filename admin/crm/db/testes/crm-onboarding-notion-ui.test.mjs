@@ -63,6 +63,7 @@ const lidos = () => pedidos.filter((p) => /notion\/ler$/.test(p.url));
 
 const RESUMO = { ok: true, contato_id: CID, criado: true, reutilizada: false, proposta_id: 50, email: 'ana.exemplo@example.org', pessoa: 'Ana Exemplo', persona: 'campus_france', fase: 'planejando',
   avisos: ['O consentimento de gravação NÃO está marcado na página. Confirme com a pessoa antes de seguir (isto não bloqueia a leitura).'],
+  aplicado: { preenchidos: ['nome', 'persona', 'telefone', 'ligacao_resumo'], ja_preenchidos: ['maior_preocupacao'] },
   na_proposta: { campos: ['telefone', 'maior_preocupacao', 'ligacao_resumo', 'proximos_passos'], pendencias: 3, abertas: 1, aguardando_ela: 1, concluidas: 1, lembretes: 2, canais_lembrete: ['Convite de acesso', 'Instagram'], linhas_email: 1, rascunho_email: true, faltam: 2 },
   de_fora: { so_eu: 1, fora_do_crm: 2 }, blocos_ignorados: { unsupported: 1 } };
 
@@ -122,7 +123,7 @@ await pendente; await wait(15);
 console.log('\n== Estado ERRO (com "tentar de novo") ==');
 h = box();
 check('mostra a mensagem do Worker dizendo o que falta, num alerta', /role="alert"/.test(h) && /Só leio quando estiver “Bilan pronto”/.test(h));
-check('botão "Tentar de novo", e avisa que o link continua e nada foi aplicado', />Tentar de novo</.test(h) && /O link continua aqui\. Nada foi aplicado na ficha/.test(h) && !/onb-sk/.test(h));
+check('botão "Tentar de novo", e avisa que o link continua e nada foi alterado', />Tentar de novo</.test(h) && /O link continua aqui\. Nada foi alterado na ficha/.test(h) && !/onb-sk/.test(h));
 check('o link continua no campo', el('ont-url').value === URL_OK);
 leitura = async () => ({ status: 422, body: { error: 'Mensagem com HTML: ' + XSS, codigo: 'x' } });
 await click({}, 'ont-ler');
@@ -140,11 +141,12 @@ leitura = async () => ({ status: 200, body: { ...RESUMO, pessoa: 'Ana ' + XSS, a
 await click({}, 'ont-ler'); await wait(20);
 h = box();
 check('diz que a ficha foi criada e para quem', /Ficha criada: Ana/.test(h) && /ana\.exemplo@example\.org/.test(h));
-check('diz que NADA foi aplicado nem enviado: tudo ficou como proposta pendente', /Nada foi aplicado na ficha e nada foi enviado/.test(h) && /proposta pendente/.test(h));
-check('o que entrou: fatos do Dossiê (com o nome dos campos)', /Entrou na proposta \(pendente\)/.test(h) && /4 fatos do Dossiê/.test(h) && /Telefone/.test(h));
+check('diz que a ficha foi preenchida, que o que ela digitou não foi trocado e que nada foi enviado', /Preenchi a ficha com o que a página trouxe/.test(h) && /o que você já tinha digitado ficou como estava/.test(h) && /Nada foi enviado a ninguém/.test(h));
+check('o que foi preenchido na ficha, com o nome dos campos, e o que já estava preenchido', /Preenchido na ficha/.test(h) && /4 campos:<\/b> Nome, Situação \(qual checklist\), Telefone/.test(h) && /Já estavam preenchidos e ficaram como estavam: O que mais preocupa agora/.test(h));
+check('o resto fica como proposta, só para consulta', /Ficou como proposta, só para consulta/.test(h));
 check('o que entrou: pendências com a contagem por estado', /3 pendências da Plataforma/.test(h) && /1 abertas, 1 aguardando ela, 1 concluídas/.test(h));
 check('o que entrou: lembretes, e-mail e tarefas', /2 lembretes para você/.test(h) && /Convite de acesso e Instagram/.test(h) && /Rascunho de e-mail<\/b> pronto/.test(h) && /1 linha de pendência por e-mail/.test(h) && /2 tarefas<\/b> em “Faltam para o CRM”/.test(h));
-check('o que ficou de fora: "Só eu" e "Fora do CRM" contados, sem virar nada; persona só como sugestão', /Ficou de fora/.test(h) && /1 linha\(s\) “Só eu” e 2 “Fora do CRM”: não viram nada na ficha/.test(h) && /Persona no Notion: <b>campus_france<\/b>/.test(h) && /não muda persona nem fase/.test(h));
+check('o que ficou de fora: "Só eu" e "Fora do CRM" contados, sem virar nada; a fase em texto livre foi para o resumo', /Ficou de fora/.test(h) && /1 linha\(s\) “Só eu” e 2 “Fora do CRM”: não viram nada na ficha/.test(h) && /Fase no Notion: <b>planejando<\/b>/.test(h) && /não para o campo Fase/.test(h) && !/Persona no Notion/.test(h));
 check('o aviso do consentimento aparece (e não bloqueia)', /onb-aviso/.test(h) && /consentimento de gravação NÃO está marcado/.test(h) && /2 avisos/.test(h));
 check('texto de terceiros (nome e avisos) entra escapado', !/<img src=x/.test(h) && (h.match(/&lt;img src=x onerror=alert\(1\)&gt;/g) || []).length === 2);
 check('botões: "Abrir a ficha e aplicar" e "Ler outra ligação"; o campo some', /id="ont-abrir"/.test(h) && /id="ont-outra"/.test(h) && !/id="ont-url"/.test(h));
@@ -165,7 +167,7 @@ leitura = async () => ({ status: 200, body: { ...RESUMO, reutilizada: true, cria
 digita(URL_OK);
 handlers.keydown.forEach((hd) => hd({ key: 'Enter', target: { id: 'ont-url', matches: () => false }, preventDefault() {} }));
 await wait(30);
-check('Enter no campo lê (como o botão) e avisa que a proposta já estava pendente', /Ficha encontrada/.test(box()) && /já tinha sido lida e a proposta continua pendente/.test(box()));
+check('Enter no campo lê (como o botão) e avisa que a página já tinha sido lida', /Ficha encontrada/.test(box()) && /Esta página já tinha sido lida antes/.test(box()));
 
 // ================= A ficha: o bloco do Notion dentro do Pós-call =================
 const PROP = {
@@ -194,7 +196,7 @@ async function ficha(dossie) {
 console.log('\n== Ficha: proposta PENDENTE do Notion no Pós-call ==');
 respostas.pos_call_propostas = { data: [{ id: 50, proposta: PROP, status: 'pendente', criado_em: '2026-10-30T10:00:00Z' }], error: null };
 h = await ficha();
-check('a proposta pendente do Notion reaparece na ficha, sem ler de novo', /Proposta da página do Notion/.test(h) && /Nada entrou na ficha ainda/.test(h));
+check('a proposta pendente do Notion reaparece na ficha, sem ler de novo', /Leitura da página do Notion/.test(h) && /A ficha já foi preenchida na leitura/.test(h));
 check('1 · fatos do Dossiê, com caixa para marcar e a confiança', /1 · Fatos/.test(h) && /data-pccampo="telefone" checked/.test(h) && /data-pccampo="maior_preocupacao" checked/.test(h) && /confiança alta/.test(h));
 check('2 · pendências com dono, prazo, estado e botão sugerido', /2 · Pendências da Plataforma/.test(h) && /Dono: ela · Prazo: 15\/12\/2026 \(a confirmar\) · Estado: aberta · Botão sugerido: anexar_documento \(passaporte e visto\) · Documento · alta/.test(h));
 check('prazo "(a confirmar)" aparece como o TEXTO que veio, e prazo certo como data', /Prazo: 15\/12\/2026 \(a confirmar\)/.test(h) && /Prazo: 30\/11\/2026 · Estado: aguardando ela · Botão sugerido: pesquisar → gerar_rascunho/.test(h) && /Prazo: sem prazo · Estado: concluída/.test(h));
@@ -236,17 +238,17 @@ console.log('\n== Ficha: leitura do Notion já aplicada (só consulta) ==');
 respostas.pos_call_propostas = { data: [{ id: 50, proposta: PROP, status: 'aplicada', criado_em: '2026-10-30T10:00:00Z' }], error: null };
 h = await ficha();
 check('mostra as pendências, lembretes e o rascunho como consulta', /Última ligação lida do Notion \(já aplicada em 30\/10\/2026\)/.test(h) && /2 · Pendências da Plataforma/.test(h) && /Oi, Ana!/.test(h));
-check('não oferece "Aplicar" de novo', !/data-pcaplicar="/.test(h.split('pcnotion-lido')[1] || '') && !/Proposta da página do Notion/.test(h));
+check('não oferece "Aplicar" de novo', !/data-pcaplicar="/.test(h.split('pcnotion-lido')[1] || '') && !/Leitura da página do Notion/.test(h));
 console.log('\n== Ficha: o que não é do Notion não muda ==');
 respostas.pos_call_propostas = { data: [{ id: 51, proposta: { campos: {}, sinais: [] }, status: 'pendente', criado_em: '2026-10-30T10:00:00Z' }], error: null };
 h = await ficha();
-check('proposta pendente que não é do Notion não reaparece sozinha (segue o fluxo da transcrição)', !/Proposta da página do Notion/.test(h) && /Ler a call com IA/.test(h));
+check('proposta pendente que não é do Notion não reaparece sozinha (segue o fluxo da transcrição)', !/Leitura da página do Notion/.test(h) && /Ler a call com IA/.test(h));
 respostas.pos_call_propostas = { data: [], error: null };
 h = await ficha();
 check('sem nenhuma leitura do Notion: o Pós-call é o de sempre', /Ler a call com IA/.test(h) && !/Notion/.test(h));
 respostas.pos_call_propostas = { data: null, error: { message: 'relation does not exist' } };
 h = await ficha();
-check('sem a tabela (SQL do Pós-call não rodou): o Pós-call segue sem quebrar', /Pós-call/.test(h) && !/Proposta da página do Notion/.test(h));
+check('sem a tabela (SQL do Pós-call não rodou): o Pós-call segue sem quebrar', /Pós-call/.test(h) && !/Leitura da página do Notion/.test(h));
 
 
 // ================= E-mail com o bilan da conversa (Plataforma → Interações) =================

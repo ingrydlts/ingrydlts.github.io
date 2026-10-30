@@ -860,8 +860,8 @@ evento na linha do tempo; chega o e-mail de confirmação. Testes: `node cms-oau
 ## 31. Onboarding pelo Notion: o link da ligação vira uma proposta pendente (`/admin/crm/` → Onboarding → "Link do Notion")
 
 A Ingryd grava a ligação no Notion e a skill `/bilan-notion` (repositório do app) deixa a página **padronizada**. No CRM, em **Onboarding**,
-ela cola o link no campo **Link do Notion** e clica **Ler do Notion**. O Worker lê só esse padrão, acha ou cria a ficha pelo e-mail e guarda o
-resto como **proposta pendente** (bloco **Pós-call** da ficha). Nada vai para o Dossiê até ela aplicar. **Nada é enviado a ninguém e nada é escrito no Notion.**
+ela cola o link no campo **Link do Notion** e clica **Ler do Notion**. O Worker lê só esse padrão, acha ou cria a ficha pelo e-mail e **preenche a ficha**
+com o que a página trouxe (nome, situação/persona, telefone, resumo e próximos passos do Dossiê, data da ligação). **O que você já digitou na ficha não é trocado.** O que não tem campo no Dossiê (pendências, lembretes, rascunho de e-mail, tarefas) fica como proposta no bloco **Pós-call**, só para consulta. **Nada é enviado a ninguém e nada é escrito no Notion.**
 
 Rota (só admin, `crmRequireAdmin`; 10 leituras a cada 10 minutos por admin): `POST /api/crm/onboarding/notion/ler` com `{ "url": "…" }`.
 `GET /api/crm/onboarding/status` passou a dizer também `notion_configurado`. **Sem SQL novo**: usa `crm_onboarding_aplicar` (só com o nome),
@@ -888,7 +888,7 @@ Sem o secret, a tela avisa e a rota responde 503 com a mensagem clara; o resto d
 | Convite de acesso, Instagram | lembrete para ela |
 | Só eu, Fora do CRM | **não viram nada**: só entram na contagem do resumo |
 
-Prazo com "(a confirmar)" fica **como texto**, nunca vira data certa. Na ficha só entram, como fatos marcáveis do Dossiê: telefone (WhatsApp), maior preocupação (se houver **uma** dor com par), resumo da ligação (objetivo, dores, prazo-chave) e próximos passos (com os documentos pendentes). Persona e fase só aparecem como sugestão.
+Prazo com "(a confirmar)" fica **como texto**, nunca vira data certa. Vão para a ficha: nome, **persona** (se for uma das do CRM; "outra" não vai), telefone (WhatsApp), maior preocupação (se houver **uma** dor com par), data da ligação (propriedade opcional "Data da ligação"), resumo da ligação (propriedade opcional "Resumo da ligação", objetivo, fase em texto livre, dores e prazo-chave) e próximos passos (com os documentos pendentes). A coluna Fase da ficha (planejando, adaptando, urgente) não é mexida: a fase do Notion é texto livre e entra no resumo. Campo que a ficha já tinha preenchido fica como estava e aparece em "Já estavam preenchidos" no resumo.
 
 **Segurança:** só `notion.so`, `notion.com`, `notion.site` (https, sem usuário nem porta); do link sai só o id de 32 hex e o Worker fala **apenas com `api.notion.com`**, só com GET, com `redirect: manual`. O conteúdo da página é dado não confiável: cada campo é conferido contra listas fechadas, o texto é limpo e cortado, nada é executado, a página não é guardada (só o resultado validado) e os logs trazem só status e tipo do erro. A mesma página sem edição nova devolve a proposta que já espera decisão; uma página editada gera uma proposta nova e descarta as antigas do Notion ainda pendentes.
 

@@ -290,7 +290,10 @@ check('200 com o id da ficha, criada, e o id da proposta', res.status === 200 &&
 check('a resposta tem e-mail (minúsculo) e nome', j.email === 'ana.exemplo@example.org' && j.pessoa === 'Ana Exemplo');
 const rf = chamadas.filter((c) => /rpc\/crm_onboarding_aplicar$/.test(c.url));
 check('a ficha é criada pelo e-mail, com o token da admin', rf.length === 1 && rf[0].body.p_email === 'ana.exemplo@example.org' && rf[0].headers.Authorization === 'Bearer ' + TOKEN);
-check('na ficha entra só o nome: tudo o mais fica pendente', JSON.stringify(Object.keys(rf[0].body.p_campos)) === '["nome"]' && rf[0].body.p_campos.nome.valor === 'Ana Exemplo' && rf[0].body.p_custo === null);
+check('a ficha é PREENCHIDA com o que a página trouxe: nome, persona e os fatos do Dossiê', Object.keys(rf[0].body.p_campos).sort().join() === 'ligacao_resumo,maior_preocupacao,nome,persona,proximos_passos,telefone' && rf[0].body.p_campos.nome.valor === 'Ana Exemplo' && rf[0].body.p_campos.persona.valor === 'campus_france' && rf[0].body.p_campos.telefone.valor === '+33 6 12 34 56 78' && rf[0].body.p_custo === null);
+check('cada campo vai com a origem (anotação) e confiança alta, para a ficha mostrar de onde veio', Object.values(rf[0].body.p_campos).every((x) => x.origem === 'anotacao' && x.confianca === 'alta'));
+check('a fase em texto livre não vai para a coluna Fase (só entra no resumo); pendências e lembretes não vão para a ficha', !('fase' in rf[0].body.p_campos) && !JSON.stringify(rf[0].body.p_campos).includes('Anexar o passaporte') && /Fase: planejando\./.test(rf[0].body.p_campos.ligacao_resumo.valor));
+check('a resposta diz o que foi preenchido e o que já estava preenchido', Array.isArray(j.aplicado.preenchidos) && Array.isArray(j.aplicado.ja_preenchidos));
 check('o Dossiê NÃO é tocado: nenhuma chamada a crm_salvar_dossie nem a crm_pos_call_aplicar', chamadas.every((c) => !/crm_salvar_dossie|crm_pos_call_aplicar/.test(c.url)));
 const ins = insercoes();
 check('a proposta é gravada uma vez, como pendente por padrão do banco, ligada à ficha', ins.length === 1 && ins[0].body.contato_id === CID && ins[0].body.modelo === 'notion' && ins[0].body.custo_usd === null && ins[0].body.status === undefined && /^[0-9a-f]{64}$/.test(ins[0].body.hash_entrada));
@@ -343,7 +346,7 @@ check('já enviada ao CRM, persona "outra" e telefone ruim: avisos, sem bloquear
 instalar({ page: paginaOk({ Pessoa: P.title('') }) });
 res = await ler(); j = await res.json();
 const rfNome = chamadas.find((c) => /rpc\/crm_onboarding_aplicar$/.test(c.url));
-check('sem nome: avisa, e a ficha é criada só pelo e-mail', res.status === 200 && j.avisos.some((a) => /nome da pessoa/.test(a)) && Object.keys(rfNome.body.p_campos).length === 0);
+check('sem nome: avisa, e o nome não vai (o resto vai)', res.status === 200 && j.avisos.some((a) => /nome da pessoa/.test(a)) && !('nome' in rfNome.body.p_campos) && 'persona' in rfNome.body.p_campos);
 instalar({ page: paginaOk({ 'Dores e preocupações': P.multi(['Prazo', 'Dinheiro', 'Visto']), 'Prazo-chave': P.rich('depois do Natal (a confirmar)') }) });
 res = await ler();
 const p2 = insercoes()[0].body.proposta;
@@ -355,6 +358,25 @@ for (const [dor, chave] of [['Dinheiro', 'dinheiro'], ['Documentos', 'papelada']
   instalar({ page: paginaOk({ 'Dores e preocupações': P.multi([dor]) }) }); await ler();
   check('a dor “' + dor + '” vira maior_preocupacao = ' + chave, insercoes()[0].body.proposta.campos.maior_preocupacao.valor === chave);
 }
+
+console.log('\n== Ficha preenchida: persona, data e resumo da ligação ==');
+instalar({ page: paginaOk({ Persona: P.select('outra') }) }); await ler();
+check('persona "outra" não vai para a ficha (não existe no CRM)', !('persona' in chamadas.find((c) => /rpc\/crm_onboarding_aplicar$/.test(c.url)).body.p_campos));
+instalar({ page: paginaOk({ Persona: P.select(null) }) }); await ler();
+check('sem persona na página: a ficha não recebe persona', !('persona' in chamadas.find((c) => /rpc\/crm_onboarding_aplicar$/.test(c.url)).body.p_campos));
+instalar({ page: paginaOk({ 'Data da ligação': P.date('2026-10-29'), 'Resumo da ligação': P.rich('PVT perto do fim; quer estudar francês.') }) }); await ler();
+let pc3 = chamadas.find((c) => /rpc\/crm_onboarding_aplicar$/.test(c.url)).body.p_campos;
+check('Data da ligação vira ligacao_data e o Resumo da ligação abre o resumo do Dossiê', pc3.ligacao_data.valor === '2026-10-29' && pc3.ligacao_resumo.valor.startsWith('PVT perto do fim; quer estudar francês.'));
+instalar({ page: paginaOk({ 'Data da ligação': P.date('2026-02-31') }) }); await ler();
+check('data inexistente é ignorada', !('ligacao_data' in chamadas.find((c) => /rpc\/crm_onboarding_aplicar$/.test(c.url)).body.p_campos));
+instalar({ page: paginaOk({ 'Data da ligação': P.check(true) }) }); res = await ler();
+check('propriedade "Data da ligação" com tipo estranho não derruba a leitura', res.status === 200);
+instalar({ rpcFicha: { status: 200, body: { contato_id: CID, criado: false, preenchidos: ['persona', 'telefone'], ja_preenchidos: ['nome', 'ligacao_resumo'] } } });
+res = await ler(); j = await res.json();
+check('o que a Ingryd já tinha digitado volta em "ja_preenchidos" (decidido no banco) e aparece na resposta', j.aplicado.preenchidos.join() === 'persona,telefone' && j.aplicado.ja_preenchidos.join() === 'nome,ligacao_resumo');
+instalar({ pendente: [{ id: 42, proposta: insercoes()[0] ? insercoes()[0].body.proposta : { notion: { pendencias: [], lembretes: [], email: { linhas: [], rascunho: '' }, faltam: [], fora: { so_eu: 0, fora_do_crm: 0 }, avisos: [] }, campos: {} } }] });
+res = await ler(); j = await res.json();
+check('mesma página já lida: a ficha é preenchida de novo (só campo vazio) e a proposta pendente é reaproveitada', res.status === 200 && j.reutilizada === true && !!j.aplicado && chamadas.some((c) => /rpc\/crm_onboarding_aplicar$/.test(c.url)));
 
 console.log('\n== O conteúdo da página é dado não confiável ==');
 const XSS = '<img src=x onerror=alert(1)>';

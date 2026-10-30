@@ -2981,9 +2981,10 @@ async function handleCrmPosCallLer(request, env) {
 
 // ---------- CRM: Onboarding pelo Notion (a página da ligação, padronizada pela skill /bilan-notion → proposta PENDENTE) ----------
 // POST /api/crm/onboarding/notion/ler { url }   (só admin) lê a página pela API do Notion (SÓ LEITURA: o Worker não escreve no Notion),
-//   confere o contrato fixo (README.md, seção 31), acha ou cria a ficha pelo e-mail (crm_onboarding_aplicar, só com o nome) e guarda o
-//   resultado como PROPOSTA pendente em pos_call_propostas (origem 'notion'). Nada vai para o Dossiê até a Ingryd aplicar, na ficha
-//   (bloco Pós-call), e nada é enviado a ninguém. Não há SQL novo: usa o que o Onboarding e o Pós-call já criaram.
+//   confere o contrato fixo (README.md, seção 31), acha ou cria a ficha pelo e-mail e a PREENCHE com o que a página trouxe
+//   (crm_onboarding_aplicar: nome, persona e os fatos do Dossiê; o que a Ingryd já digitou prevalece). O que não tem campo no Dossiê
+//   (pendências, lembretes, rascunho de e-mail) fica como proposta em pos_call_propostas (origem 'notion'), só para consulta.
+//   Nada é enviado a ninguém. Não há SQL novo: usa o que o Onboarding e o Pós-call já criaram.
 // O conteúdo da página é DADO NÃO CONFIÁVEL: cada propriedade e cada célula da tabela é conferida contra listas fechadas, o texto é
 //   limpo e cortado, nada é executado, e a página não é guardada (só o resultado validado). Os logs trazem só o status e o tipo do erro.
 //   Variável: NOTION_TOKEN (Secret). Sem ele a rota responde com erro claro, como a ANTHROPIC_API_KEY faz.
@@ -3149,6 +3150,9 @@ function crmNotionLerPropriedades(page) {
   const proximos = texto('Próximos passos', 1500, true);
   const docs = texto('Documentos pendentes', 600, true);
   const idCrm = texto('ID no CRM', 80);
+  const resumoLig = texto('Resumo da ligação', 600, true);
+  const dl = pega('Data da ligação');
+  const dataLig = typeof dl === 'string' && /^\d{4}-\d{2}-\d{2}/.test(dl) && crmOnbDataValida(dl.slice(0, 10)) ? dl.slice(0, 10) : '';
   const prazoBruto = texto('Prazo-chave', 80);
   const consentimento = marca('Consentimento de gravação');
   const enviado = marca('Enviado ao CRM');
@@ -3161,7 +3165,7 @@ function crmNotionLerPropriedades(page) {
   if (desconhecida !== undefined) return crmNotionRecusa('fora_do_padrao', 'A dor ' + crmNotionAspas(desconhecida) + ' não é uma das combinadas (' + Object.keys(CRM_NOTION_DORES).join(', ') + ').');
 
   return { ok: true, p: { email, pessoa, whatsapp, persona, fase, objetivo, dores: Array.from(new Set(dores)), proximos_passos: proximos, documentos_pendentes: docs,
-    prazo_chave: crmNotionPrazo(prazoBruto), consentimento, enviado_ao_crm: enviado, id_no_crm: idCrm } };
+    prazo_chave: crmNotionPrazo(prazoBruto), consentimento, enviado_ao_crm: enviado, id_no_crm: idCrm, resumo_ligacao: resumoLig, data_ligacao: dataLig } };
 }
 
 // As seções do rascunho de e-mail: "1. Dúvidas que tiramos na conversa", "2. Seus próximos passos", "3. O que eu respondo ou confirmo pra você" e
@@ -3331,14 +3335,17 @@ function crmNotionMontar(p, c, meta) {
   const mapeadas = p.dores.map((d) => CRM_NOTION_DORES[d]);
   if (p.dores.length === 1 && mapeadas[0]) entra('maior_preocupacao', mapeadas[0]);
   const resumo = [];
+  if (p.resumo_ligacao) resumo.push(p.resumo_ligacao);
   if (p.objetivo) resumo.push('Objetivo na França: ' + p.objetivo + (/[.!?]$/.test(p.objetivo) ? '' : '.'));
+  if (p.fase) resumo.push('Fase: ' + p.fase + (/[.!?]$/.test(p.fase) ? '' : '.'));
   if (p.dores.length) resumo.push('Dores e preocupações: ' + p.dores.join(', ') + '.');
   if (p.prazo_chave.texto) resumo.push('Prazo-chave: ' + p.prazo_chave.texto + '.');
   entra('ligacao_resumo', resumo.join('\n'));
+  entra('ligacao_data', p.data_ligacao);
   entra('proximos_passos', [p.proximos_passos, p.documentos_pendentes ? 'Documentos pendentes: ' + p.documentos_pendentes : ''].filter(Boolean).join('\n'));
   const v = crmOnbValidar({ campos: cand }, { temAnotacoes: true });
   if (!v.ok) return crmNotionRecusa('valor_fora_do_padrao', 'Um valor da página não passou na conferência: ' + v.erro + '.');
-  const rotulo = { telefone: 'WhatsApp', maior_preocupacao: 'Dores e preocupações', ligacao_resumo: 'Objetivo na França, Dores e Prazo-chave', proximos_passos: 'Próximos passos e Documentos pendentes' };
+  const rotulo = { telefone: 'WhatsApp', maior_preocupacao: 'Dores e preocupações', ligacao_resumo: 'Resumo, Objetivo, Fase, Dores e Prazo-chave', ligacao_data: 'Data da ligação', proximos_passos: 'Próximos passos e Documentos pendentes' };
   const campos = {};
   for (const [k, x] of Object.entries(v.campos)) campos[k] = { valor: x.valor, confianca: 'alta', trecho: 'Notion · ' + rotulo[k] };
 
@@ -3395,11 +3402,18 @@ async function handleCrmOnboardingNotion(request, env) {
   const m = crmNotionMontar(props.p, cp.corpo, { pagina: alvo.id, editada_em: editada });
   if (!m.ok) { console.error('crm/notion: página recusada — ' + m.codigo); return falha(m); }
 
-  // 1. A ficha: acha pelo e-mail ou cria. Só o nome entra (se a ficha ainda não tem); o resto fica na proposta, pendente.
+  // 1. A ficha: acha pelo e-mail ou cria e PREENCHE o que a página trouxe (nome, persona e os fatos do Dossiê). O que a Ingryd já digitou prevalece:
+  //    crm_onboarding_aplicar só preenche campo vazio e diz quais ficaram como estavam. Pendências, lembretes, rascunho e "faltam" não têm campo
+  //    no Dossiê: ficam na proposta, só para consulta.
+  const doNotion = (valor) => ({ valor, origem: 'anotacao', confianca: 'alta' });
+  const paraFicha = {};
+  if (props.p.pessoa) paraFicha.nome = doNotion(props.p.pessoa);
+  if (props.p.persona && CRM_ONB_PERSONAS.includes(props.p.persona)) paraFicha.persona = doNotion(props.p.persona);
+  for (const [k, x] of Object.entries(m.proposta.campos)) paraFicha[k] = doNotion(x.valor);
   const auth = { apikey: CRM_SUPABASE_ANON_KEY, Authorization: `Bearer ${admin.token}` };
   const rf = await fetch(`${CRM_SUPABASE_URL}/rest/v1/rpc/crm_onboarding_aplicar`, {
     method: 'POST', headers: { ...auth, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ p_email: props.p.email, p_campos: props.p.pessoa ? { nome: { valor: props.p.pessoa, origem: 'anotacao', confianca: 'alta' } } : {}, p_custo: null })
+    body: JSON.stringify({ p_email: props.p.email, p_campos: paraFicha, p_custo: null })
   });
   let ficha = null;
   try { ficha = await rf.json(); } catch (e) { /* segue */ }
@@ -3421,7 +3435,7 @@ async function handleCrmOnboardingNotion(request, env) {
   const pendente = await fetch(`${CRM_SUPABASE_URL}/rest/v1/pos_call_propostas?select=id,proposta&contato_id=eq.${contatoId}&hash_entrada=eq.${hash}&status=eq.pendente&limit=1`, { headers: auth });
   if (pendente.status === 404) return json(semTabela, 500);
   const antiga = pendente.ok ? (await pendente.json())[0] : null;
-  const resposta = (id, proposta, reutilizada) => json({ ok: true, contato_id: contatoId, criado: !!ficha.criado, reutilizada, proposta_id: id, email: props.p.email, ...crmNotionResumo(proposta) });
+  const resposta = (id, proposta, reutilizada) => json({ ok: true, contato_id: contatoId, criado: !!ficha.criado, reutilizada, proposta_id: id, email: props.p.email, aplicado: { preenchidos: Array.isArray(ficha.preenchidos) ? ficha.preenchidos : [], ja_preenchidos: Array.isArray(ficha.ja_preenchidos) ? ficha.ja_preenchidos : [] }, ...crmNotionResumo(proposta) });
   if (antiga && antiga.proposta && antiga.proposta.notion) return resposta(antiga.id, antiga.proposta, true);
 
   const ins = await fetch(`${CRM_SUPABASE_URL}/rest/v1/pos_call_propostas`, {
