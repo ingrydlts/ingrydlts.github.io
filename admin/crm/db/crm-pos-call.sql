@@ -84,9 +84,9 @@ begin
     if jsonb_typeof(v) = 'null' then
       continue;   -- null apaga a resposta
     elsif k = 'formacao_alvo' then
-      if jsonb_typeof(v) <> 'string' or (v #>> '{}') <> all (array['l1_universidade', 'bts', 'escola_arte', 'administracao', 'nao_sei']) then raise exception 'valor_invalido: %', k; end if;
+      if jsonb_typeof(v) <> 'string' or (v #>> '{}') <> all (array['l1_universidade', 'bts', 'escola_arte', 'administracao', 'du', 'nao_sei']) then raise exception 'valor_invalido: %', k; end if;
     elsif k = 'grupo_area' then
-      if jsonb_typeof(v) <> 'string' or (v #>> '{}') <> all (array['artes_audiovisual', 'negocios', 'saude', 'outra']) then raise exception 'valor_invalido: %', k; end if;
+      if jsonb_typeof(v) <> 'string' or (v #>> '{}') <> all (array['artes_audiovisual', 'negocios', 'saude', 'frances_b2', 'outra']) then raise exception 'valor_invalido: %', k; end if;
     elsif k = 'frances_gargalo' then
       if jsonb_typeof(v) <> 'string' or (v #>> '{}') <> all (array['oral', 'escrita', 'ambos', 'nenhum']) then raise exception 'valor_invalido: %', k; end if;
     elsif k = 'ensino_medio_ano' then

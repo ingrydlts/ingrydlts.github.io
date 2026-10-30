@@ -1307,8 +1307,8 @@ var DOS = [
     { k: 'cfPrazoCurso', l: 'Prazo da formação que fecha primeiro', t: 'dt', q: function (g) { return g('cfPrazoCursoTem') === 'sim'; } }
   ] },
   { t: 'Sinais da call', livre: 1, campos: [
-    { k: 'formacao_alvo', l: 'Formação que quer', t: 'op', o: [['l1_universidade', '1º ano de licence (universidade)'], ['bts', 'BTS'], ['escola_arte', 'Escola de arte'], ['administracao', 'Administração'], ['nao_sei', 'Ainda não sabe']] },
-    { k: 'grupo_area', l: 'Grande área', t: 'op', o: [['artes_audiovisual', 'Artes e audiovisual'], ['negocios', 'Negócios'], ['saude', 'Saúde'], ['outra', 'Outra']] },
+    { k: 'formacao_alvo', l: 'Formação que quer', t: 'op', o: [['l1_universidade', '1º ano de licence (universidade)'], ['bts', 'BTS'], ['escola_arte', 'Escola de arte'], ['administracao', 'Administração'], ['du', 'DU (diplôme d\'université)'], ['nao_sei', 'Ainda não sabe']] },
+    { k: 'grupo_area', l: 'Grande área', t: 'op', o: [['artes_audiovisual', 'Artes e audiovisual'], ['negocios', 'Negócios'], ['saude', 'Saúde'], ['frances_b2', 'Francês (chegar ao B2)'], ['outra', 'Outra']] },
     { k: 'area_interesse', l: 'Área em poucas palavras', t: 'tx', ajuda: 'Só aparece para você (ex.: cinema).' },
     { k: 'ensino_medio_ano', l: 'Ano em que terminou o ensino médio', t: 'tx', ajuda: 'Quatro dígitos (ex.: 2018). Diploma antigo pede tradução juramentada e conferência.' },
     { k: 'tem_graduacao', l: 'Tem graduação concluída', t: 'sn' },

@@ -104,6 +104,7 @@ check('chave inesperada na resposta', !crmPosValidar({ ...PROP_OK, extra: 1 }, V
 check('campo que não existe no Dossiê', !crmPosValidar({ campos: { numero_passaporte: { valor: 'X1', confianca: 'alta', trecho: '' } } }, VOCAB).ok);
 check('campo de coluna ou de transcrição é recusado', !crmPosValidar({ campos: { nome: { valor: 'Ana', confianca: 'alta', trecho: '' } } }, VOCAB).ok && !crmPosValidar({ campos: { ligacao_transcricao: { valor: 'x', confianca: 'alta', trecho: '' } } }, VOCAB).ok);
 check('valor fora da lista', !crmPosValidar({ campos: { formacao_alvo: { valor: 'medicina', confianca: 'alta', trecho: '' } } }, VOCAB).ok);
+check('DU e francês B2 são valores válidos (formação e grande área)', crmPosValidar({ campos: { formacao_alvo: { valor: 'du', confianca: 'alta', trecho: '' }, grupo_area: { valor: 'frances_b2', confianca: 'alta', trecho: '' } } }, VOCAB).ok);
 check('ano fora da faixa e ano como texto', !crmPosValidar({ campos: { ensino_medio_ano: { valor: 1950, confianca: 'alta', trecho: '' } } }, VOCAB).ok && !crmPosValidar({ campos: { ensino_medio_ano: { valor: '2018', confianca: 'alta', trecho: '' } } }, VOCAB).ok);
 check('confiança inválida', !crmPosValidar({ campos: { plano_b: { valor: true, confianca: 'certeza', trecho: '' } } }, VOCAB).ok);
 check('sinal fora do vocabulário derruba tudo', !crmPosValidar({ ...PROP_OK, sinais: [{ chave: 'inventado', motivo: 'x' }] }, VOCAB).ok);

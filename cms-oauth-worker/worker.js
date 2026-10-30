@@ -2697,8 +2697,8 @@ const CRM_POS_FORA = ['nome', 'persona', 'fase', 'nivel_estudos', 'preocupacao',
 const CRM_POS_CAMPOS = (() => {
   const c = {};
   for (const [k, v] of Object.entries(CRM_ONB_CAMPOS)) if (!CRM_POS_FORA.includes(k)) c[k] = v;
-  c.formacao_alvo = { t: 'op', o: ['l1_universidade', 'bts', 'escola_arte', 'administracao', 'nao_sei'], d: 'formação que ela quer: L1 em universidade, BTS, escola de arte, administração ou ainda não sabe' };
-  c.grupo_area = { t: 'op', o: ['artes_audiovisual', 'negocios', 'saude', 'outra'], d: 'grande área do curso que ela quer' };
+  c.formacao_alvo = { t: 'op', o: ['l1_universidade', 'bts', 'escola_arte', 'administracao', 'du', 'nao_sei'], d: 'formação que ela quer: L1 em universidade, BTS, escola de arte, administração, DU (diplôme d\'université) ou ainda não sabe' };
+  c.grupo_area = { t: 'op', o: ['artes_audiovisual', 'negocios', 'saude', 'frances_b2', 'outra'], d: 'grande área do curso que ela quer (frances_b2 = só quer chegar ao nível B2 de francês)' };
   c.area_interesse = { t: 'tx', max: 60, d: 'a área do curso em poucas palavras (ex.: cinema)' };
   c.ensino_medio_ano = { t: 'ano', d: 'ano em que terminou o ensino médio, AAAA' };
   c.tem_graduacao = { t: 'sn', d: 'tem graduação concluída' };
