@@ -25,6 +25,7 @@
     "test:assinaturas": "node crm-assinaturas.test.mjs",
     "test:planos": "node planos.test.mjs",
     "test:onboarding-ui": "node crm-onboarding-ui.test.mjs",
+    "test:onboarding-notion-ui": "node crm-onboarding-notion-ui.test.mjs",
     "test:dossie-ui": "node crm-dossie-ui.test.mjs",
     "test:checklist": "node crm-checklist.test.mjs",
     "test:insights": "node crm-insights.test.mjs",

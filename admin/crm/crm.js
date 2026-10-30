@@ -1655,12 +1655,12 @@ function poscallHtml(c) {
     (tem ? '' : '<b>Ainda não há transcrição colada.</b>') + '</p>' +
     (pc.erro ? '<p class="err" role="alert">' + esc(pc.erro) + '</p>' : '') +
     '<div class="actions"><button class="btn primary" type="button" data-pcler="' + esc(c.id) + '">Ler a call com IA</button></div></div>';
-  return h + poscallCuradoriaHtml(pc) + '</section>';
+  return h + (pc.notionAplicada ? '<div class="pcnotion-lido"><h5>Última ligação lida do Notion (já aplicada em ' + esc(fmtDay(String(pc.notionAplicada.quando || '').slice(0, 10))) + ')</h5>' + poscallNotionHtml(pc.notionAplicada.proposta.notion) + '</div>' : '') + poscallCuradoriaHtml(pc) + '</section>';
 }
 
 function poscallPropostaHtml(c, pc, d) {
-  var p = pc.prop.proposta, h = '<div class="pcprop">';
-  h += '<p class="sub" style="margin:10px 0">Proposta da IA' + (pc.prop.reutilizada ? ' (a mesma call já tinha sido lida; sem custo novo)' : '') +
+  var p = pc.prop.proposta, h = '<div class="pcprop">', ehN = p.origem === 'notion' && !!p.notion;
+  h += ehN ? '<p class="sub" style="margin:10px 0">Proposta da página do Notion (a IA não leu nada: é a página padronizada). Marque o que vale e aplique. <b>Nada entrou na ficha ainda.</b></p>' : '<p class="sub" style="margin:10px 0">Proposta da IA' + (pc.prop.reutilizada ? ' (a mesma call já tinha sido lida; sem custo novo)' : '') +
     '. Marque o que vale e aplique. <b>Nada entrou na ficha ainda.</b></p>';
 
   if ((p.mapa_da_call || []).length) {
@@ -1678,6 +1678,8 @@ function poscallPropostaHtml(c, pc, d) {
       ' <span class="dchip ' + (x.confianca === 'baixa' ? 'falta' : '') + '">' + esc(ONB_CONF[x.confianca] || x.confianca) + '</span>' +
       (x.trecho ? '<br><small class="sub">“' + esc(x.trecho) + '”</small>' : '') + '</span></label>';
   }).join('') : '<p class="sub">Nenhum fato novo com fonte clara.</p>';
+
+  if (ehN) return h + poscallNotionHtml(p.notion) + poscallAplicarHtml(c, pc);
 
   h += '<h5>2 · Sinais (leitura da situação)</h5>';
   h += (p.sinais || []).length ? p.sinais.map(function (s) {
@@ -1713,10 +1715,12 @@ function poscallPropostaHtml(c, pc, d) {
   }).join('') + '<div class="actions" style="margin-top:8px"><button class="btn" type="button" data-pcchat="' + esc(c.id) + '">Levar para o chat</button></div>'
     : '<p class="sub">A call fechou tudo o que importava: nada a confirmar com ela.</p>';
 
-  h += '<div class="actions" style="margin-top:12px"><button class="btn primary" type="button" data-pcaplicar="' + esc(c.id) + '">Aplicar o que marquei</button>' +
+  return h + poscallAplicarHtml(c, pc);
+}
+function poscallAplicarHtml(c, pc) {
+  return '<div class="actions" style="margin-top:12px"><button class="btn primary" type="button" data-pcaplicar="' + esc(c.id) + '">Aplicar o que marquei</button>' +
     '<button class="btn" type="button" data-pcdescartar="' + esc(c.id) + '">Descartar a proposta</button></div>' +
     (pc.erro ? '<p class="err" role="alert">' + esc(pc.erro) + '</p>' : '') + '</div>';
-  return h;
 }
 
 function poscallCuradoriaHtml(pc) {
@@ -1738,11 +1742,18 @@ async function pcCarregarDados(cid) {
   var pc = pcEstado(cid); pc.carregando = true;
   var r = await Promise.all([
     supabase.from('sinais_vocabulario').select('chave,rotulo,descricao').eq('ativo', true).order('chave'),
-    supabase.rpc('crm_curadoria_contagem')
+    supabase.rpc('crm_curadoria_contagem'),
+    supabase.from('pos_call_propostas').select('id,proposta,status,criado_em').eq('contato_id', cid).eq('proposta->>origem', 'notion').in('status', ['pendente', 'aplicada']).order('criado_em', { ascending: false }).limit(1)
   ]);
   pc.carregando = false; pc.carregou = true;
   if (r[0].error) pc.vocabErro = true; else pc.vocab = r[0].data || [];
   pc.cont = r[1].error ? [] : (r[1].data || []);
+  // A leitura do Notion mais recente: pendente volta a ser a proposta da tela; já aplicada fica só como consulta (pendências, lembretes, rascunho).
+  var nt = r[2] && !r[2].error && r[2].data && r[2].data[0];
+  if (nt && nt.proposta && nt.proposta.origem === 'notion' && nt.proposta.notion) {
+    if (nt.status === 'pendente') { if (pc.estado !== 'proposta') { pc.prop = { id: nt.id, proposta: nt.proposta, reutilizada: false }; pc.estado = 'proposta'; pc.sel = { campos: {}, sinais: {}, fila: {}, perg: {} }; pc.camadas = {}; } }
+    else pc.notionAplicada = { id: nt.id, proposta: nt.proposta, quando: nt.criado_em };
+  }
   pintaPoscall(cid);
 }
 async function pcLer(cid, t) {
@@ -3041,6 +3052,8 @@ function renderOnboarding() {
   }
   box.innerHTML = '<div class="onb">' +
     '<div class="onb-aviso" id="onb-aviso" role="status" hidden></div>' +
+    '<div id="ont-box"></div>' +
+    '<h3 class="ont-t ont-ou">Ou, a partir de documentos</h3>' +
     '<div class="panel">' +
       '<label class="rot" for="onb-email">E-mail da pessoa (obrigatório)</label>' +
       '<input id="onb-email" type="email" autocomplete="off" inputmode="email" maxlength="254" placeholder="pessoa@exemplo.com" required>' +
@@ -3076,6 +3089,7 @@ function renderOnboarding() {
     }
   }
   onbPintaAviso();
+  ontPinta();
 }
 function onbPintaAviso() {
   var av = $('onb-aviso'), bt = $('onb-enviar'); if (!av) return;
@@ -3115,7 +3129,7 @@ async function carregarOnboarding() {
     var data = await res.json().catch(function () { return {}; });
     ONB.ia = res.ok ? data : { erro: 'Não consegui saber se a leitura por IA está ligada (Worker respondeu ' + res.status + '). Pode ser que o Worker ainda não tenha sido atualizado (README, seção 24).' };
   } catch (e) { ONB.ia = { erro: 'Não consegui falar com o Worker para saber se a leitura por IA está ligada.' }; }
-  if (state.view === 'onboarding') onbPintaAviso();
+  if (state.view === 'onboarding') { onbPintaAviso(); ontPinta(); }
 }
 async function onbEnviar() {
   var email = String(ONB.email || '').trim();
@@ -3163,6 +3177,94 @@ function onbFaltaHtml(c, d, rasc) {
   if (!f.length) return '<div class="onb-falta"><b>Falta perguntar</b><span class="sub">Nada: o Dossiê está completo para a situação dela.</span></div>';
   return '<div class="onb-falta"><b>Falta perguntar</b>' + mostra.map(function (l) { return '<span class="dchip falta">' + esc(l) + '</span>'; }).join('') +
     (f.length > mostra.length ? '<span class="sub">e mais ' + (f.length - mostra.length) + '</span>' : '') + '</div>';
+}
+
+// ---------- Onboarding pelo Notion: o link da ligação vira uma proposta PENDENTE (Worker: POST /api/crm/onboarding/notion/ler) ----------
+// O CRM só LÊ o Notion (não escreve) e não envia nada a ninguém: a ficha é criada ou achada pelo e-mail e o que a página trouxe fica como
+// proposta pendente no bloco Pós-call da ficha, para a Ingryd aplicar. Todo texto que vem do Worker entra na tela por esc() ou textContent.
+function ontInicial() { return { fase: 'vazio', url: '', erro: '', res: null }; }
+var ONT = ontInicial();
+var ONT_ESTADO = { aberta: 'aberta', aguardando_ela: 'aguardando ela', concluida: 'concluída' };
+function ontN(n, um, varios) { return n + ' ' + (n === 1 ? um : varios); }
+function ontPrazo(pz) { if (!pz || !pz.texto) return 'sem prazo'; return pz.data && !pz.a_confirmar ? fmtDay(pz.data) : pz.texto; }   // "(a confirmar)" aparece como o texto que veio
+function ontResumoHtml(r) {
+  var np = r.na_proposta || {}, df = r.de_fora || {}, nomes = (np.campos || []).map(function (k) { var f = dosCampo(k); return f ? f.l : k; });
+  var h = '<div class="onb-ok" role="status"><b>' + (r.criado ? 'Ficha criada' : 'Ficha encontrada') + (r.pessoa ? ': ' + esc(r.pessoa) : '') + '</b>' + (r.email ? ' · ' + esc(r.email) : '') + '<br>' +
+    (r.reutilizada ? 'Esta página já tinha sido lida e a proposta continua pendente. ' : '') + 'Nada foi aplicado na ficha e nada foi enviado: tudo ficou como <b>proposta pendente</b>, para você aplicar.</div>';
+  h += '<h4 class="ont-h">Entrou na proposta (pendente)</h4><ul class="ont-lista">' +
+    '<li>' + (nomes.length ? '<b>' + ontN(nomes.length, 'fato do Dossiê', 'fatos do Dossiê') + ':</b> ' + esc(nomes.join(', ')) : 'Nenhum fato novo para o Dossiê') + '</li>' +
+    '<li>' + (np.pendencias ? '<b>' + ontN(np.pendencias, 'pendência da Plataforma', 'pendências da Plataforma') + '</b> (' + np.abertas + ' abertas, ' + np.aguardando_ela + ' aguardando ela, ' + np.concluidas + ' concluídas)' : 'Nenhuma pendência da Plataforma') + '</li>' +
+    '<li>' + (np.lembretes ? '<b>' + ontN(np.lembretes, 'lembrete para você', 'lembretes para você') + '</b> (' + esc((np.canais_lembrete || []).join(' e ')) + ')' : 'Nenhum lembrete (convite de acesso ou Instagram)') + '</li>' +
+    '<li>' + (np.rascunho_email || np.linhas_email ? '<b>Rascunho de e-mail</b>' + (np.rascunho_email ? ' pronto' : ' ainda vazio') + ' · ' + ontN(np.linhas_email || 0, 'linha de pendência por e-mail', 'linhas de pendência por e-mail') : 'Nada por e-mail') + '</li>' +
+    '<li>' + (np.faltam ? '<b>' + ontN(np.faltam, 'tarefa', 'tarefas') + '</b> em “Faltam para o CRM”' : 'Nada em “Faltam para o CRM”') + '</li></ul>';
+  h += '<h4 class="ont-h">Ficou de fora</h4><ul class="ont-lista">' +
+    ((df.so_eu || df.fora_do_crm) ? '<li>' + (df.so_eu || 0) + ' linha(s) “Só eu” e ' + (df.fora_do_crm || 0) + ' “Fora do CRM”: não viram nada na ficha.</li>' : '<li>Nenhuma linha “Só eu” ou “Fora do CRM”.</li>') +
+    ((r.persona || r.fase) ? '<li>' + (r.persona ? 'Persona no Notion: <b>' + esc(r.persona) + '</b>. ' : '') + (r.fase ? 'Fase: <b>' + esc(r.fase) + '</b>. ' : '') + 'A proposta não muda persona nem fase: ajuste na ficha, se concordar.</li>' : '') + '</ul>';
+  if ((r.avisos || []).length) h += '<div class="onb-aviso" role="status"><b>' + ontN(r.avisos.length, 'aviso', 'avisos') + ':</b><ul class="ont-lista">' + r.avisos.map(function (a) { return '<li>' + esc(a) + '</li>'; }).join('') + '</ul></div>';
+  return h;
+}
+function ontPinta() {
+  var box = $('ont-box'); if (!box) return;
+  var off = !!(ONB.ia && ONB.ia.notion_configurado === false), lendo = ONT.fase === 'lendo', h = '<div class="panel onb-notion"><h3 class="ont-t">Da ligação no Notion</h3>';
+  if (ONT.fase === 'ok' && ONT.res) {
+    box.innerHTML = h + ontResumoHtml(ONT.res) + '<div class="onb-acoes" style="margin-top:12px"><button class="btn primary" type="button" id="ont-abrir">Abrir a ficha e aplicar</button><button class="btn" type="button" id="ont-outra">Ler outra ligação</button></div></div>';
+    return;
+  }
+  h += '<label class="rot" for="ont-url">Link do Notion</label><input id="ont-url" type="url" autocomplete="off" inputmode="url" maxlength="500" placeholder="https://www.notion.so/…"' + (lendo ? ' disabled' : '') + '>' +
+    '<small class="dica">Cole o link da página da ligação que a skill /bilan-notion deixou padronizada (Status “Bilan pronto”). O CRM só lê: não escreve no Notion e não envia nada a ninguém. O que vier fica como proposta pendente na ficha.</small>';
+  if (off) h += '<div class="onb-aviso" role="status" style="margin-top:10px">' + esc(ONB.ia.notion_aviso || 'A leitura do Notion ainda não está ligada.') + ' As fichas e o Dossiê continuam funcionando.</div>';
+  if (lendo) h += '<div role="status" aria-live="polite" aria-busy="true" style="margin-top:12px"><div class="onb-sk" aria-hidden="true"><i></i><i></i><i></i><i></i></div><p class="sub" style="margin:10px 0 0">Lendo a página do Notion… costuma levar alguns segundos.</p></div>';
+  else if (ONT.fase === 'erro') h += '<div class="onb-erro" role="alert" style="margin-top:10px">' + esc(ONT.erro) + '</div><p class="sub" style="margin:8px 0 0">O link continua aqui. Nada foi aplicado na ficha.</p>';
+  else h += '<p class="sub" id="ont-vazio" style="margin:10px 0 0">Nenhuma ligação lida ainda. Cole o link acima.</p>';
+  h += '<div class="onb-acoes" style="margin-top:12px"><button class="btn primary" type="button" id="ont-ler"' + (lendo || off ? ' disabled' : '') + '>' + (lendo ? 'Lendo…' : ONT.fase === 'erro' ? 'Tentar de novo' : 'Ler do Notion') + '</button></div></div>';
+  box.innerHTML = h;
+  var inp = $('ont-url'); if (inp) inp.value = ONT.url;
+}
+async function ontLer() {
+  var url = String(ONT.url || '').trim();
+  var falha = function (msg) { ONT.fase = 'erro'; ONT.erro = msg; ontPinta(); };
+  if (!url) return falha('Cole o link da página do Notion.');
+  if (!/^https:\/\//i.test(url)) return falha('O link precisa começar com https:// e ser de notion.so, notion.com ou notion.site.');
+  var sess = await supabase.auth.getSession();
+  if (!sess.data.session) return falha('Sessão expirada. Recarregue a página e entre de novo.');
+  ONT.fase = 'lendo'; ONT.erro = ''; ontPinta();
+  var ctl = new AbortController(), cedo = setTimeout(function () { ctl.abort(); }, 60000), data;
+  try {
+    var res = await fetch(WORKER_BASE + '/api/crm/onboarding/notion/ler', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + sess.data.session.access_token }, body: JSON.stringify({ url: url }), signal: ctl.signal });
+    data = await res.json().catch(function () { return {}; });
+    if (!res.ok || !data.ok) throw new Error(data.error || ('Erro ' + res.status));
+  } catch (e) {
+    ONT.fase = 'erro';
+    ONT.erro = e && e.name === 'AbortError' ? 'A leitura demorou mais de 1 minuto e foi cancelada. Tente de novo.' : e instanceof TypeError ? 'Não consegui falar com o Worker. Confira a internet e tente de novo.' : (e.message || 'Algo deu errado.');
+    if (state.view === 'onboarding') ontPinta();
+    return;
+  } finally { clearTimeout(cedo); }
+  ONT.fase = 'ok'; ONT.res = data;
+  if (state.view === 'onboarding') ontPinta();
+  await reload();   // a ficha nova entra na lista, para o botão "Abrir a ficha" achá-la
+}
+async function ontCopiar() {
+  var pc = state.pc, n = pc && ((pc.prop && pc.prop.proposta && pc.prop.proposta.notion) || (pc.notionAplicada && pc.notionAplicada.proposta.notion)), txt = n && n.email ? n.email.rascunho : '';
+  if (!txt) return toast('Não há rascunho para copiar.');
+  try { await navigator.clipboard.writeText(txt); toast('Rascunho copiado. Nada foi enviado.'); } catch (e) { toast('Não consegui copiar. Selecione o texto e copie à mão.', 4200); }
+}
+// A parte do Notion dentro do Pós-call da ficha: pendências, lembretes, rascunho de e-mail e "faltam". Só mostra; nenhum botão envia nada.
+function ontLinhaHtml(x, canal) {
+  return '<li class="ont-pend' + (x.estado === 'concluida' ? ' feita' : '') + '"><b>' + esc(x.titulo) + '</b>' + (canal ? ' <span class="dchip">' + esc(x.canal) + '</span>' : '') + '<br><small class="sub">' +
+    esc('Dono: ' + (x.dono === 'Ela' ? 'ela' : 'Ingryd') + ' · Prazo: ' + ontPrazo(x.prazo) + ' · Estado: ' + (ONT_ESTADO[x.estado] || x.estado) + (x.botao && x.botao !== 'n/a' ? ' · Botão sugerido: ' + x.botao + (x.botao_obs ? ' (' + x.botao_obs + ')' : '') : '') + (x.origem_certeza ? ' · ' + x.origem_certeza : '')) + '</small></li>';
+}
+function poscallNotionHtml(n) {
+  var h = '<h5>2 · Pendências da Plataforma</h5>' + (n.pendencias.length ? '<ul class="ont-pends">' + n.pendencias.map(function (x) { return ontLinhaHtml(x, false); }).join('') + '</ul>' : '<p class="sub">Nenhuma pendência com canal Plataforma.</p>') +
+    '<p class="sub" style="margin:6px 0 0">O “botão sugerido” é só uma indicação: nenhum botão envia nada sozinho. Tudo só sai com o seu “pode enviar”.</p>';
+  h += '<h5>3 · Lembretes para você</h5>' + (n.lembretes.length ? '<ul class="ont-pends">' + n.lembretes.map(function (x) { return ontLinhaHtml(x, true); }).join('') + '</ul>' : '<p class="sub">Nenhum lembrete de convite de acesso ou Instagram.</p>');
+  h += '<h5>4 · E-mail (um rascunho só)</h5>';
+  h += n.email.linhas.length ? '<ul class="ont-pends">' + n.email.linhas.map(function (x) { return ontLinhaHtml(x, false); }).join('') + '</ul>' : '<p class="sub">Nenhuma pendência pelo canal e-mail.</p>';
+  h += n.email.rascunho ? '<pre class="ont-rascunho">' + esc(n.email.rascunho) + '</pre><div class="actions"><button class="btn" type="button" data-ontcopiar="1">Copiar o rascunho</button></div>' : '<p class="sub">Sem rascunho de e-mail na página.</p>';
+  h += '<h5>5 · Faltam para o CRM</h5>' + (n.faltam.length ? '<ul class="ont-lista">' + n.faltam.map(function (x) { return '<li>' + (x.feito ? '☑ ' : '☐ ') + esc(x.texto) + '</li>'; }).join('') + '</ul>' : '<p class="sub">Nada listado.</p>');
+  h += '<p class="sub" style="margin:10px 0 0">Ficaram de fora (“Só eu” e “Fora do CRM”): ' + (n.fora.so_eu || 0) + ' e ' + (n.fora.fora_do_crm || 0) + '. ' +
+    (n.persona || n.fase ? 'No Notion: ' + (n.persona ? 'persona ' + esc(n.persona) : '') + (n.persona && n.fase ? ', ' : '') + (n.fase ? 'fase ' + esc(n.fase) : '') + ' (a proposta não muda persona nem fase).' : '') + '</p>';
+  if ((n.avisos || []).length) h += '<div class="onb-aviso" role="status" style="margin-top:8px"><ul class="ont-lista">' + n.avisos.map(function (a) { return '<li>' + esc(a) + '</li>'; }).join('') + '</ul></div>';
+  return h;
 }
 
 // ---------- Link de pagamento (aba Plataforma): o seletor vem de planos/planos.json ----------
@@ -3340,6 +3442,10 @@ document.addEventListener('click', async function (e) {
   if (t.id === 'onb-enviar') return onbEnviar();
   if (t.id === 'onb-abrir') return openPessoa(ONB.contato, 'ficha');
   if (t.id === 'onb-outra') { ONB = onbInicial(); return carregarOnboarding(); }
+  if (t.id === 'ont-ler') return ontLer();
+  if (t.id === 'ont-abrir') return openPessoa(ONT.res.contato_id, 'ficha');
+  if (t.id === 'ont-outra') { ONT = ontInicial(); return ontPinta(); }
+  if (t.dataset.ontcopiar) return ontCopiar();
   if (t.dataset.onbrem !== undefined) { ONB.arquivos.splice(Number(t.dataset.onbrem), 1); return onbPintaArquivos(); }
   if (t.dataset.onbfechar) { state.onbResumo = null; var rb = $('onb-resumo'); if (rb) rb.hidden = true; return; }
   if (t.dataset.pagar) return abrirLinkPagamento(t.dataset.pagar);
@@ -3573,6 +3679,7 @@ document.addEventListener('input', function (e) {
 document.addEventListener('input', function (e) {
   if (e.target.id === 'onb-email') { ONB.email = e.target.value; onbMostraErro(''); }
   if (e.target.id === 'onb-notas') ONB.notas = e.target.value;
+  if (e.target.id === 'ont-url') ONT.url = e.target.value;
 });
 document.addEventListener('change', function (e) {
   if (e.target.id !== 'onb-file') return;
@@ -3588,6 +3695,7 @@ document.addEventListener('drop', function (e) {
   onbAdicionar(e.dataTransfer && e.dataTransfer.files);
 });
 document.addEventListener('keydown', function (e) {
+  if (e.key === 'Enter' && e.target.id === 'ont-url') { e.preventDefault(); return ontLer(); }
   if (e.key === 'Enter' && e.target.matches('tr[data-id]')) openPessoa(e.target.dataset.id);
   if (e.key === 'Escape' && !$('compose-modal').hidden) closeCompose();
 });

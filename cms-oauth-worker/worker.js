@@ -2979,11 +2979,451 @@ async function handleCrmPosCallLer(request, env) {
   return json({ ok: true, reutilizada: false, id: linha.id, proposta: v.proposta, custo_usd: custo, vocabulario: vocab });
 }
 
+// ---------- CRM: Onboarding pelo Notion (a página da ligação, padronizada pela skill /bilan-notion → proposta PENDENTE) ----------
+// POST /api/crm/onboarding/notion/ler { url }   (só admin) lê a página pela API do Notion (SÓ LEITURA: o Worker não escreve no Notion),
+//   confere o contrato fixo (README.md, seção 31), acha ou cria a ficha pelo e-mail (crm_onboarding_aplicar, só com o nome) e guarda o
+//   resultado como PROPOSTA pendente em pos_call_propostas (origem 'notion'). Nada vai para o Dossiê até a Ingryd aplicar, na ficha
+//   (bloco Pós-call), e nada é enviado a ninguém. Não há SQL novo: usa o que o Onboarding e o Pós-call já criaram.
+// O conteúdo da página é DADO NÃO CONFIÁVEL: cada propriedade e cada célula da tabela é conferida contra listas fechadas, o texto é
+//   limpo e cortado, nada é executado, e a página não é guardada (só o resultado validado). Os logs trazem só o status e o tipo do erro.
+//   Variável: NOTION_TOKEN (Secret). Sem ele a rota responde com erro claro, como a ANTHROPIC_API_KEY faz.
+const CRM_NOTION_VERSAO = '2022-06-28';
+const CRM_NOTION_HOSTS = ['notion.so', 'notion.com', 'notion.site'];
+const CRM_NOTION_MAX_LEITURAS = 10;               // por admin, na mesma janela das outras leituras
+const CRM_NOTION_MAX_BLOCOS = 600;
+const CRM_NOTION_MAX_LINHAS = 100;
+const CRM_NOTION_TITULO_SECAO = 'Pendência × Canal';
+const CRM_NOTION_COLUNAS = ['#', 'Pendência', 'Dono', 'Canal', 'Botão sugerido', 'Prazo', 'Estado', 'Origem · certeza'];
+const CRM_NOTION_STATUS = ['Agendada', 'Gravada', 'Transcrita', 'Bilan pronto', 'No CRM', 'Cancelada'];
+const CRM_NOTION_PERSONAS = CRM_ONB_PERSONAS.concat(['outra']);
+// Dores e preocupações → o "maior_preocupacao" do Dossiê (as que não têm par ficam só no resumo).
+const CRM_NOTION_DORES = { Prazo: 'prazo', Dinheiro: 'dinheiro', Documentos: 'papelada', Idioma: 'frances', Moradia: 'moradia', Visto: null, Emprego: null, Família: null };
+const CRM_NOTION_DONOS = ['Ela', 'Ingryd'];
+const CRM_NOTION_CANAIS = ['Plataforma', 'E-mail', 'Convite de acesso', 'Instagram', 'Só eu', 'Fora do CRM'];
+const CRM_NOTION_BOTOES = ['anexar_documento', 'gerar_rascunho', 'pesquisar', 'confirmar', 'lembrar_ela', 'marcar_marco', 'copiar_mensagem', 'enviar_convite', 'n/a'];
+const CRM_NOTION_ESTADOS = ['aberta', 'aguardando_ela', 'concluida'];
+
+function crmNotionRecusa(codigo, erro) { return { ok: false, status: 422, codigo, erro }; }
+function crmNotionNorm(s) { return String(s === undefined || s === null ? '' : s).normalize('NFC').replace(/\s+/g, ' ').trim(); }
+function crmNotionAspas(s) { return '"' + crmOnbLimpaTexto(s, 40, false) + '"'; }
+
+function crmNotionConfig(env) {
+  if (!env.NOTION_TOKEN) return { ok: false, erro: 'A leitura do Notion ainda não está ligada: falta o secret NOTION_TOKEN no Worker (README, seção 31). A ficha manual continua funcionando.' };
+  return { ok: true };
+}
+
+// O link vira só um id de 32 hex. O Worker NUNCA busca o link: fala apenas com api.notion.com, com esse id, sem seguir redirecionamento.
+// Aceita https de notion.so / notion.com / notion.site (e subdomínios), sem usuário, senha nem porta. Em link de base com a página aberta
+// (…?v=…&p=<id>) vale o "p"; senão, o final do caminho (…/Titulo-da-pagina-<id>).
+function crmNotionId(bruto) {
+  const texto = String(bruto === undefined || bruto === null ? '' : bruto).trim();
+  if (!texto) return { ok: false, erro: 'Cole o link da página do Notion.' };
+  if (texto.length > 500) return { ok: false, erro: 'O link é grande demais. Copie o link da página pelo botão “Compartilhar” do Notion.' };
+  let u;
+  try { u = new URL(texto); } catch (e) { return { ok: false, erro: 'Isso não parece um link. Cole o endereço da página, que começa com https://.' }; }
+  const host = u.hostname.toLowerCase();
+  if (u.protocol !== 'https:' || u.username || u.password || u.port || !CRM_NOTION_HOSTS.some((d) => host === d || host.endsWith('.' + d))) {
+    return { ok: false, erro: 'O link precisa ser https e de notion.so, notion.com ou notion.site.' };
+  }
+  const hexDe = (s) => {
+    let t = String(s || '');
+    try { t = decodeURIComponent(t); } catch (e) { /* segue com o texto cru */ }
+    const comTracos = /^([0-9a-f]{8})-([0-9a-f]{4})-([0-9a-f]{4})-([0-9a-f]{4})-([0-9a-f]{12})$/i.exec(t);
+    if (comTracos) return comTracos.slice(1).join('').toLowerCase();
+    const m = /(?:^|-)([0-9a-f]{32})$/i.exec(t);
+    return m ? m[1].toLowerCase() : null;
+  };
+  const partes = u.pathname.split('/').filter(Boolean);
+  const id = hexDe(u.searchParams.get('p')) || hexDe(partes[partes.length - 1]);
+  if (!id) return { ok: false, erro: 'Não achei o código da página no link (32 letras e números no fim do endereço). Abra a ligação no Notion e copie o link dela.' };
+  return { ok: true, id, uuid: id.replace(/^(.{8})(.{4})(.{4})(.{4})(.{12})$/, '$1-$2-$3-$4-$5') };
+}
+
+// Um GET na API do Notion. Devolve { ok:true, corpo } ou { ok:false, status, codigo, erro }. Nada do conteúdo vai para o log.
+async function crmNotionGet(env, caminho) {
+  const ctl = new AbortController(), cedo = setTimeout(() => ctl.abort(), 20000);
+  let res;
+  try {
+    res = await fetch('https://api.notion.com/v1/' + caminho, {
+      method: 'GET', redirect: 'manual', signal: ctl.signal,
+      headers: { Authorization: 'Bearer ' + env.NOTION_TOKEN, 'Notion-Version': CRM_NOTION_VERSAO }
+    });
+  } catch (e) {
+    console.error('crm/notion: não consegui falar com a API do Notion — ' + (e && e.name));
+    return { ok: false, status: 502, codigo: 'notion_fora_do_ar', erro: 'Não consegui falar com o Notion agora. Tente de novo em instantes.' };
+  } finally { clearTimeout(cedo); }
+  if (res.status >= 300 && res.status < 400) {
+    console.error('crm/notion: a API do Notion respondeu com redirecionamento ' + res.status);
+    return { ok: false, status: 502, codigo: 'notion_redirecionou', erro: 'O Notion respondeu com um redirecionamento, que o Worker não segue. Tente de novo.' };
+  }
+  let corpo = null;
+  try { corpo = await res.json(); } catch (e) { /* segue sem corpo */ }
+  if (!res.ok) {
+    const cod = String((corpo && corpo.code) || '').replace(/[^a-z_]/g, '').slice(0, 40);
+    console.error('crm/notion: a API do Notion respondeu ' + res.status + ' ' + cod);
+    if (res.status === 401) return { ok: false, status: 502, codigo: 'notion_token', erro: 'O Notion recusou o token (NOTION_TOKEN). Confira o secret no Worker.' };
+    if (res.status === 403) return { ok: false, status: 502, codigo: 'notion_sem_acesso', erro: 'A integração do Notion não tem permissão para ler essa página. Compartilhe a base “Onboarding — Ligações” com ela (README, seção 31).' };
+    if (res.status === 404) return { ok: false, status: 404, codigo: 'notion_nao_achou', erro: 'O Notion não achou essa página. Confira o link e se a base “Onboarding — Ligações” está compartilhada com a integração do CRM (README, seção 31).' };
+    if (res.status === 400 && cod === 'validation_error') return { ok: false, status: 400, codigo: 'link_nao_e_pagina', erro: 'O link não aponta para uma página (pode ser a base inteira). Abra a ligação e copie o link dela.' };
+    if (res.status === 429 || res.status >= 500) return { ok: false, status: 502, codigo: 'notion_ocupado', erro: 'O Notion está ocupado agora. Tente de novo em instantes.' };
+    return { ok: false, status: 502, codigo: 'notion_recusou', erro: 'O Notion recusou o pedido (' + res.status + '). Tente de novo.' };
+  }
+  return { ok: true, corpo };
+}
+
+function crmNotionRt(rt, max, quebra) {
+  if (!Array.isArray(rt)) return '';
+  return crmOnbLimpaTexto(rt.map((x) => (x && typeof x.plain_text === 'string' ? x.plain_text : '')).join(''), max || 2000, !!quebra);
+}
+
+// O valor de uma propriedade pelo tipo. undefined = tipo que o contrato não usa.
+function crmNotionPropValor(p, quebra) {
+  if (!p || typeof p !== 'object') return undefined;
+  switch (p.type) {
+    case 'title': case 'rich_text': return crmNotionRt(p[p.type], 2000, quebra);
+    case 'email': case 'phone_number': case 'url': return typeof p[p.type] === 'string' ? crmOnbLimpaTexto(p[p.type], 300, false) : '';
+    case 'select': case 'status': return p[p.type] && typeof p[p.type].name === 'string' ? crmOnbLimpaTexto(p[p.type].name, 100, false) : '';
+    case 'multi_select': return Array.isArray(p.multi_select) ? p.multi_select.map((o) => (o && typeof o.name === 'string' ? crmOnbLimpaTexto(o.name, 100, false) : '')).filter(Boolean) : [];
+    case 'date': return p.date && typeof p.date.start === 'string' ? p.date.start.slice(0, 40) : '';
+    case 'checkbox': return p.checkbox === true;
+    default: return undefined;
+  }
+}
+
+// Prazo: texto que vem do Notion. "(a confirmar)" fica como TEXTO, nunca vira data certa. Só entra como data se o texto É uma data.
+function crmNotionPrazo(bruto) {
+  let texto = crmOnbLimpaTexto(bruto === undefined || bruto === null ? '' : bruto, 80, false);
+  if (/^\d{4}-\d{2}-\d{2}T/.test(texto)) texto = texto.slice(0, 10);
+  if (/^[-–—]+$/.test(texto)) texto = '';
+  const aConfirmar = /a\s+confirmar/i.test(texto);
+  let data = null;
+  if (!aConfirmar) {
+    let iso = null;
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(texto), br = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(texto);
+    if (m) iso = texto;
+    else if (br) iso = br[3] + '-' + br[2].padStart(2, '0') + '-' + br[1].padStart(2, '0');
+    if (iso && crmOnbDataValida(iso)) data = iso;
+  }
+  return { texto, data, a_confirmar: aConfirmar };
+}
+
+// As propriedades da linha da base. Recusa (com a mensagem do que falta) o que o contrato proíbe; o resto vira texto limpo.
+function crmNotionLerPropriedades(page) {
+  if (!page || typeof page !== 'object' || page.object !== 'page') return crmNotionRecusa('nao_e_pagina', 'O link não aponta para uma página do Notion.');
+  if (page.archived === true || page.in_trash === true) return crmNotionRecusa('pagina_na_lixeira', 'Essa página está na lixeira do Notion. Restaure-a e tente de novo.');
+  const mapa = new Map();
+  const props = page.properties && typeof page.properties === 'object' ? page.properties : {};
+  for (const [nome, p] of Object.entries(props)) mapa.set(crmNotionNorm(nome), p);
+  const pega = (nome, quebra) => (mapa.has(nome) ? crmNotionPropValor(mapa.get(nome), quebra) : undefined);
+
+  const status = pega('Status');
+  if (typeof status !== 'string') return crmNotionRecusa('fora_do_padrao', 'A linha da ligação não tem a propriedade “Status” (tipo Status ou Seleção). Confira se é uma linha da base “Onboarding — Ligações”.');
+  if (!status) return crmNotionRecusa('status_nao_pronto', 'O Status da ligação está vazio. Só leio quando estiver “Bilan pronto”.');
+  if (!CRM_NOTION_STATUS.includes(status)) return crmNotionRecusa('fora_do_padrao', 'O Status ' + crmNotionAspas(status) + ' não é um dos combinados (' + CRM_NOTION_STATUS.join(', ') + ').');
+  if (status !== 'Bilan pronto') return crmNotionRecusa('status_nao_pronto', 'O Status desta ligação é “' + status + '”. Só leio quando estiver “Bilan pronto”: rode a skill /bilan-notion nela, confira, e tente de novo.');
+
+  const emailBruto = pega('E-mail');
+  if (typeof emailBruto !== 'string') return crmNotionRecusa('email_invalido', 'A linha da ligação não tem a propriedade “E-mail”.');
+  const email = emailBruto.trim().toLowerCase();
+  if (!email) return crmNotionRecusa('email_invalido', 'O E-mail da ligação está vazio. É por ele que a ficha é criada ou encontrada.');
+  if (email.length > 254 || !CRM_ONB_EMAIL_RE.test(email) || /[\s,;<>"]/.test(email)) return crmNotionRecusa('email_invalido', 'O E-mail ' + crmNotionAspas(email) + ' não parece válido. Corrija na página do Notion e tente de novo.');
+
+  const tipoErrado = [];
+  const texto = (nome, max, quebra) => {
+    const v = pega(nome, quebra);
+    if (v === undefined) return '';
+    if (typeof v !== 'string') { tipoErrado.push(nome); return ''; }
+    return crmOnbLimpaTexto(v, max, !!quebra);
+  };
+  const marca = (nome) => {
+    const v = pega(nome);
+    if (v === undefined) return null;
+    if (typeof v !== 'boolean') { tipoErrado.push(nome); return null; }
+    return v;
+  };
+  const pessoa = texto('Pessoa', 100);
+  const whatsapp = texto('WhatsApp', 40);
+  const persona = texto('Persona', 40);
+  const fase = texto('Fase', 60);
+  const objetivo = texto('Objetivo na França', 600);
+  const proximos = texto('Próximos passos', 1500, true);
+  const docs = texto('Documentos pendentes', 600, true);
+  const idCrm = texto('ID no CRM', 80);
+  const prazoBruto = texto('Prazo-chave', 80);
+  const consentimento = marca('Consentimento de gravação');
+  const enviado = marca('Enviado ao CRM');
+  let dores = pega('Dores e preocupações');
+  if (dores === undefined) dores = [];
+  else if (!Array.isArray(dores)) { tipoErrado.push('Dores e preocupações'); dores = []; }
+  if (tipoErrado.length) return crmNotionRecusa('fora_do_padrao', 'A propriedade “' + tipoErrado[0] + '” tem um tipo diferente do combinado na base. Confira as colunas da base “Onboarding — Ligações”.');
+  if (persona && !CRM_NOTION_PERSONAS.includes(persona)) return crmNotionRecusa('fora_do_padrao', 'A Persona ' + crmNotionAspas(persona) + ' não é uma das combinadas (' + CRM_NOTION_PERSONAS.join(', ') + ').');
+  const desconhecida = dores.find((d) => !Object.prototype.hasOwnProperty.call(CRM_NOTION_DORES, d));
+  if (desconhecida !== undefined) return crmNotionRecusa('fora_do_padrao', 'A dor ' + crmNotionAspas(desconhecida) + ' não é uma das combinadas (' + Object.keys(CRM_NOTION_DORES).join(', ') + ').');
+
+  return { ok: true, p: { email, pessoa, whatsapp, persona, fase, objetivo, dores: Array.from(new Set(dores)), proximos_passos: proximos, documentos_pendentes: docs,
+    prazo_chave: crmNotionPrazo(prazoBruto), consentimento, enviado_ao_crm: enviado, id_no_crm: idCrm } };
+}
+
+// O corpo da página: a seção "## Pendência × Canal" com a tabela, "### Faltam para o CRM" e "### Rascunho de e-mail". Só blocos comuns:
+// o bloco de resumo da reunião do Notion (meeting-notes) não é lido nem necessário; ele entra apenas na contagem de blocos ignorados.
+async function crmNotionLerCorpo(env, paginaUuid) {
+  const corpo = { secaoAchada: false, tabela: null, largura: 0, faltam: null, rascunho: null, rascunhoCortado: false, ignorados: {} };
+  const filhos = async (id) => {
+    const lista = [];
+    let cursor = null;
+    for (let pag = 0; pag < 10; pag++) {
+      const r = await crmNotionGet(env, 'blocks/' + id + '/children?page_size=100' + (cursor ? '&start_cursor=' + encodeURIComponent(cursor) : ''));
+      if (!r.ok) return r;
+      const res = r.corpo && Array.isArray(r.corpo.results) ? r.corpo.results : null;
+      if (!res) return { ok: false, status: 502, codigo: 'notion_resposta', erro: 'O Notion respondeu num formato inesperado.' };
+      lista.push(...res);
+      if (r.corpo.has_more !== true || typeof r.corpo.next_cursor !== 'string' || r.corpo.next_cursor.length > 200) break;
+      cursor = r.corpo.next_cursor;
+    }
+    return { ok: true, lista };
+  };
+  const topo = await filhos(paginaUuid);
+  if (!topo.ok) return topo;
+  const fila = topo.lista.slice();
+  let secao = null, vistos = 0;
+  for (let i = 0; i < fila.length; i++) {
+    if (++vistos > CRM_NOTION_MAX_BLOCOS) return crmNotionRecusa('pagina_grande', 'A página tem blocos demais para ler (limite ' + CRM_NOTION_MAX_BLOCOS + '). Confira se é a página certa da ligação.');
+    const b = fila[i];
+    if (!b || typeof b !== 'object') continue;
+    const tipo = String(b.type || '');
+    if (/^heading_[123]$/.test(tipo)) {
+      const h = b[tipo] || {}, titulo = crmNotionNorm(crmNotionRt(h.rich_text, 200));
+      if (tipo === 'heading_2' && titulo === CRM_NOTION_TITULO_SECAO) { corpo.secaoAchada = true; secao = 'tabela'; }
+      else if (tipo === 'heading_3' && titulo === 'Faltam para o CRM') { secao = 'faltam'; if (!corpo.faltam) corpo.faltam = []; }
+      else if (tipo === 'heading_3' && titulo === 'Rascunho de e-mail') { secao = 'rascunho'; if (corpo.rascunho === null) corpo.rascunho = ''; }
+      else secao = null;
+      if (b.has_children === true && h.is_toggleable === true && typeof b.id === 'string') {   // título que abre e fecha: o conteúdo vem logo depois dele
+        const f = await filhos(b.id);
+        if (!f.ok) return f;
+        fila.splice(i + 1, 0, ...f.lista);
+      }
+      continue;
+    }
+    if (secao === 'tabela' && tipo === 'table' && !corpo.tabela && typeof b.id === 'string') {
+      corpo.largura = Number(b.table && b.table.table_width) || 0;
+      const f = await filhos(b.id);
+      if (!f.ok) return f;
+      corpo.tabela = f.lista.filter((x) => x && x.type === 'table_row').slice(0, CRM_NOTION_MAX_LINHAS + 2)
+        .map((x) => (Array.isArray(x.table_row && x.table_row.cells) ? x.table_row.cells.map((c) => crmNotionRt(c, 400)) : []));
+      continue;
+    }
+    if (secao === 'faltam' && tipo === 'to_do') {
+      const t = crmNotionRt(b.to_do && b.to_do.rich_text, 300);
+      if (t && corpo.faltam.length < 50) corpo.faltam.push({ texto: t, feito: !!(b.to_do && b.to_do.checked === true) });
+      continue;
+    }
+    if (secao === 'rascunho' && ['paragraph', 'bulleted_list_item', 'numbered_list_item', 'quote'].includes(tipo)) {
+      const t = crmNotionRt(b[tipo] && b[tipo].rich_text, 2000, true);
+      const linha = tipo === 'bulleted_list_item' || tipo === 'numbered_list_item' ? '- ' + t : t;
+      if (corpo.rascunho.length + linha.length + 1 > 6000) corpo.rascunhoCortado = true;
+      else corpo.rascunho += (corpo.rascunho ? '\n' : '') + linha;
+      continue;
+    }
+    // Resto (resumo da reunião, "unsupported", texto solto…): só a contagem por tipo, nunca o conteúdo.
+    const nomeTipo = /^[a-z0-9_]{1,40}$/.test(tipo) ? tipo : 'outro';
+    if (Object.keys(corpo.ignorados).length < 20 || corpo.ignorados[nomeTipo]) corpo.ignorados[nomeTipo] = (corpo.ignorados[nomeTipo] || 0) + 1;
+  }
+  corpo.rascunho = corpo.rascunho === null ? null : corpo.rascunho.replace(/\n{3,}/g, '\n\n').trim();
+  return { ok: true, corpo };
+}
+
+// A tabela "Pendência × Canal": cabeçalho exato e valores de listas fechadas. Qualquer coisa fora do contrato recusa a leitura inteira.
+function crmNotionTabela(linhas, largura) {
+  const colunas = CRM_NOTION_COLUNAS.join(' | ');
+  if (!linhas || !linhas.length) return crmNotionRecusa('tabela_ausente', 'A tabela de “Pendência × Canal” está vazia (nem o cabeçalho).');
+  const cab = linhas[0].map(crmNotionNorm);
+  if (largura !== CRM_NOTION_COLUNAS.length || cab.length !== CRM_NOTION_COLUNAS.length || CRM_NOTION_COLUNAS.some((c, i) => cab[i] !== crmNotionNorm(c))) {
+    return crmNotionRecusa('colunas_fora_do_padrao', 'A tabela de “Pendência × Canal” não tem as colunas combinadas, nesta ordem: ' + colunas + '. Encontrei: ' + cab.map((c) => c.slice(0, 30)).join(' | ').slice(0, 300) + '.');
+  }
+  const dados = linhas.slice(1).filter((l) => l.some((c) => c));
+  if (dados.length > CRM_NOTION_MAX_LINHAS) return crmNotionRecusa('tabela_grande', 'A tabela tem mais de ' + CRM_NOTION_MAX_LINHAS + ' linhas.');
+  const fora = (onde, campo, valor, lista) => crmNotionRecusa('valor_fora_do_padrao', onde + ': ' + campo + ' ' + crmNotionAspas(valor) + ' fora do combinado (' + lista.join(', ') + ').');
+  const itens = [];
+  for (let i = 0; i < dados.length; i++) {
+    const l = dados[i], onde = 'Linha ' + (i + 1) + ' da tabela';
+    if (l.length !== CRM_NOTION_COLUNAS.length) return crmNotionRecusa('colunas_fora_do_padrao', onde + ': tem ' + l.length + ' células, esperava ' + CRM_NOTION_COLUNAS.length + '.');
+    const [num, pend, dono, canal, botaoBruto, prazoBruto, estado, origem] = l;
+    if (!pend) return crmNotionRecusa('valor_fora_do_padrao', onde + ': a Pendência está vazia.');
+    if (!CRM_NOTION_DONOS.includes(dono)) return fora(onde, 'Dono', dono, CRM_NOTION_DONOS);
+    if (!CRM_NOTION_CANAIS.includes(canal)) return fora(onde, 'Canal', canal, CRM_NOTION_CANAIS);
+    const mb = /^(\S+?)(?:\s*\((.*)\))?$/.exec(botaoBruto);
+    if (!mb || !CRM_NOTION_BOTOES.includes(mb[1])) return fora(onde, 'Botão sugerido', botaoBruto, CRM_NOTION_BOTOES);
+    if (!CRM_NOTION_ESTADOS.includes(estado)) return fora(onde, 'Estado', estado, CRM_NOTION_ESTADOS);
+    itens.push({ n: /^\d{1,3}$/.test(num) ? Number(num) : i + 1, titulo: pend.slice(0, 300), dono, canal, botao: mb[1], botao_obs: crmOnbLimpaTexto(mb[2] || '', 200, false),
+      prazo: crmNotionPrazo(prazoBruto), estado, origem_certeza: origem.slice(0, 200) });
+  }
+  // Plataforma vira pendência; E-mail alimenta UM rascunho; Convite de acesso e Instagram são lembretes; "Só eu" e "Fora do CRM" só contam.
+  const r = { pendencias: [], lembretes: [], email_linhas: [], fora: { so_eu: 0, fora_do_crm: 0 } };
+  for (const it of itens) {
+    if (it.canal === 'Plataforma') r.pendencias.push(it);
+    else if (it.canal === 'E-mail') r.email_linhas.push(it);
+    else if (it.canal === 'Convite de acesso' || it.canal === 'Instagram') r.lembretes.push(it);
+    else if (it.canal === 'Só eu') r.fora.so_eu++;
+    else r.fora.fora_do_crm++;
+  }
+  return { ok: true, ...r };
+}
+
+// Junta propriedades + corpo na PROPOSTA (o formato do Pós-call, com o bloco "notion" a mais). Nada aqui toca o banco.
+function crmNotionMontar(p, c, meta) {
+  if (!c.secaoAchada) return crmNotionRecusa('secao_ausente', 'Não achei a seção “## Pendência × Canal” (título de nível 2, escrito exatamente assim) no corpo da página.');
+  if (!c.tabela) return crmNotionRecusa('tabela_ausente', 'A seção “Pendência × Canal” não tem uma tabela.');
+  const t = crmNotionTabela(c.tabela, c.largura);
+  if (!t.ok) return t;
+
+  const avisos = [];
+  if (c.rascunhoCortado) avisos.push('O rascunho de e-mail passava de 6.000 letras e foi cortado.');
+  if (c.faltam === null) avisos.push('A página não tem a seção “### Faltam para o CRM”.');
+  if (c.rascunho === null) avisos.push('A página não tem a seção “### Rascunho de e-mail”.');
+  else if (!c.rascunho && t.email_linhas.length) avisos.push('Há linhas com canal E-mail, mas o rascunho de e-mail está vazio.');
+  if (p.consentimento === null) avisos.push('A página não tem a propriedade “Consentimento de gravação”: não consegui conferir se a pessoa consentiu com a gravação.');
+  else if (p.consentimento === false) avisos.push('O consentimento de gravação NÃO está marcado na página. Confirme com a pessoa antes de seguir (isto não bloqueia a leitura).');
+  if (p.enviado_ao_crm === true) avisos.push('A página já está marcada como “Enviado ao CRM”' + (p.id_no_crm ? ' (ID ' + p.id_no_crm + ')' : '') + '. Confira se não é uma leitura repetida.');
+  if (!p.pessoa) avisos.push('A página não tem o nome da pessoa (título da linha): a ficha ficará sem nome.');
+  if (p.persona === 'outra') avisos.push('A Persona é “outra”: não há persona equivalente no CRM; escolha na ficha.');
+
+  // Os fatos que cabem no Dossiê, passando pela MESMA conferência do Onboarding. Persona e fase moram em colunas da ficha, que a proposta
+  // não muda: ficam só como sugestão no bloco do Notion.
+  const cand = {};
+  const entra = (k, valor) => { if (valor !== '' && valor !== null && valor !== undefined) cand[k] = { valor, origem: 'anotacao', confianca: 'alta' }; };
+  if (p.whatsapp) {
+    if (/^\+?[\d][\d\s().\-]{5,24}$/.test(p.whatsapp)) entra('telefone', p.whatsapp);
+    else avisos.push('O WhatsApp da página não parece um telefone e ficou de fora.');
+  }
+  const mapeadas = p.dores.map((d) => CRM_NOTION_DORES[d]);
+  if (p.dores.length === 1 && mapeadas[0]) entra('maior_preocupacao', mapeadas[0]);
+  const resumo = [];
+  if (p.objetivo) resumo.push('Objetivo na França: ' + p.objetivo + (/[.!?]$/.test(p.objetivo) ? '' : '.'));
+  if (p.dores.length) resumo.push('Dores e preocupações: ' + p.dores.join(', ') + '.');
+  if (p.prazo_chave.texto) resumo.push('Prazo-chave: ' + p.prazo_chave.texto + '.');
+  entra('ligacao_resumo', resumo.join('\n'));
+  entra('proximos_passos', [p.proximos_passos, p.documentos_pendentes ? 'Documentos pendentes: ' + p.documentos_pendentes : ''].filter(Boolean).join('\n'));
+  const v = crmOnbValidar({ campos: cand }, { temAnotacoes: true });
+  if (!v.ok) return crmNotionRecusa('valor_fora_do_padrao', 'Um valor da página não passou na conferência: ' + v.erro + '.');
+  const rotulo = { telefone: 'WhatsApp', maior_preocupacao: 'Dores e preocupações', ligacao_resumo: 'Objetivo na França, Dores e Prazo-chave', proximos_passos: 'Próximos passos e Documentos pendentes' };
+  const campos = {};
+  for (const [k, x] of Object.entries(v.campos)) campos[k] = { valor: x.valor, confianca: 'alta', trecho: 'Notion · ' + rotulo[k] };
+
+  return { ok: true, proposta: {
+    origem: 'notion',
+    notion: {
+      pagina: meta.pagina, editada_em: meta.editada_em, pessoa: p.pessoa, persona: p.persona || null, fase: p.fase || null, objetivo: p.objetivo, dores: p.dores,
+      documentos_pendentes: p.documentos_pendentes, prazo_chave: p.prazo_chave, consentimento: p.consentimento, enviado_ao_crm: p.enviado_ao_crm === true, id_no_crm: p.id_no_crm,
+      pendencias: t.pendencias, lembretes: t.lembretes, email: { linhas: t.email_linhas, rascunho: c.rascunho || '' }, faltam: c.faltam || [], fora: t.fora,
+      avisos, blocos_ignorados: c.ignorados
+    },
+    mapa_da_call: [], campos, sinais: [], perguntas_dela: [], respostas_dadas: [], itens_candidatos: [], perguntas_para_ela: [], a_conferir: []
+  } };
+}
+
+// O que a tela mostra: o que ficou na proposta (pendente) e o que ficou de fora.
+function crmNotionResumo(proposta) {
+  const n = proposta.notion;
+  const conta = (l, estado) => l.filter((x) => x.estado === estado).length;
+  return {
+    pessoa: n.pessoa, persona: n.persona, fase: n.fase, avisos: n.avisos,
+    na_proposta: {
+      campos: Object.keys(proposta.campos),
+      pendencias: n.pendencias.length, abertas: conta(n.pendencias, 'aberta'), aguardando_ela: conta(n.pendencias, 'aguardando_ela'), concluidas: conta(n.pendencias, 'concluida'),
+      lembretes: n.lembretes.length, canais_lembrete: Array.from(new Set(n.lembretes.map((x) => x.canal))),
+      linhas_email: n.email.linhas.length, rascunho_email: !!n.email.rascunho, faltam: n.faltam.length
+    },
+    de_fora: { so_eu: n.fora.so_eu, fora_do_crm: n.fora.fora_do_crm },
+    blocos_ignorados: n.blocos_ignorados
+  };
+}
+
+async function handleCrmOnboardingNotion(request, env) {
+  const admin = await crmRequireAdmin(request);
+  if (!admin) return json({ error: 'Sem permissão. Entre de novo no CRM.' }, 401);
+  const cfg = crmNotionConfig(env);
+  if (!cfg.ok) return json({ error: cfg.erro, codigo: 'notion_nao_configurada' }, 503);
+  const body = await crmLerJson(request);
+  if (!body) return json({ error: 'Corpo inválido.' }, 400);
+  const alvo = crmNotionId(body.url);
+  if (!alvo.ok) return json({ error: alvo.erro, codigo: 'link_invalido' }, 400);
+  if (!(await crmLimite(env, 'notion', admin.user.id, CRM_NOTION_MAX_LEITURAS))) {
+    return json({ error: 'Muitas leituras seguidas. Espere alguns minutos e tente de novo.', codigo: 'limite' }, 429);
+  }
+  const falha = (r) => json({ error: r.erro, codigo: r.codigo }, r.status);
+
+  const pg = await crmNotionGet(env, 'pages/' + alvo.uuid);
+  if (!pg.ok) return falha(pg);
+  const props = crmNotionLerPropriedades(pg.corpo);
+  if (!props.ok) { console.error('crm/notion: página recusada — ' + props.codigo); return falha(props); }
+  const cp = await crmNotionLerCorpo(env, alvo.uuid);
+  if (!cp.ok) { if (cp.codigo === 'pagina_grande') console.error('crm/notion: página recusada — ' + cp.codigo); return falha(cp); }
+  const editada = typeof pg.corpo.last_edited_time === 'string' && /^\d{4}-\d{2}-\d{2}T[\d:.]+Z$/.test(pg.corpo.last_edited_time) ? pg.corpo.last_edited_time : '';
+  const m = crmNotionMontar(props.p, cp.corpo, { pagina: alvo.id, editada_em: editada });
+  if (!m.ok) { console.error('crm/notion: página recusada — ' + m.codigo); return falha(m); }
+
+  // 1. A ficha: acha pelo e-mail ou cria. Só o nome entra (se a ficha ainda não tem); o resto fica na proposta, pendente.
+  const auth = { apikey: CRM_SUPABASE_ANON_KEY, Authorization: `Bearer ${admin.token}` };
+  const rf = await fetch(`${CRM_SUPABASE_URL}/rest/v1/rpc/crm_onboarding_aplicar`, {
+    method: 'POST', headers: { ...auth, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ p_email: props.p.email, p_campos: props.p.pessoa ? { nome: { valor: props.p.pessoa, origem: 'anotacao', confianca: 'alta' } } : {}, p_custo: null })
+  });
+  let ficha = null;
+  try { ficha = await rf.json(); } catch (e) { /* segue */ }
+  if (!rf.ok) {
+    const msg = String((ficha && (ficha.message || ficha.hint)) || '');
+    console.error('crm/notion: crm_onboarding_aplicar respondeu ' + rf.status + ' ' + (ficha && ficha.code));
+    if (/sem_permissao/.test(msg)) return json({ error: 'Sem permissão. Entre de novo no CRM.' }, 403);
+    if (/Could not find the function|PGRST202/.test(msg + ((ficha && ficha.code) || ''))) {
+      return json({ error: 'Falta rodar admin/crm/db/crm-onboarding.sql no SQL Editor do Supabase.', codigo: 'sql_pendente' }, 500);
+    }
+    return json({ error: 'Li a página, mas não consegui criar a ficha. Tente de novo.', codigo: 'ficha_nao_criada' }, 500);
+  }
+  const contatoId = String((ficha && ficha.contato_id) || '');
+  if (!CRM_UUID_RE.test(contatoId)) return json({ error: 'Li a página, mas não consegui criar a ficha. Tente de novo.', codigo: 'ficha_nao_criada' }, 500);
+
+  // 2. A proposta pendente. A mesma página, sem edição nova, devolve a que já espera decisão (sem gravar outra).
+  const hash = await crmPosHash(contatoId, 'notion:' + alvo.id + ':' + editada, 'v1');
+  const semTabela = { error: 'Falta rodar admin/crm/db/crm-pos-call.sql no SQL Editor do Supabase.', codigo: 'sql_pendente' };
+  const pendente = await fetch(`${CRM_SUPABASE_URL}/rest/v1/pos_call_propostas?select=id,proposta&contato_id=eq.${contatoId}&hash_entrada=eq.${hash}&status=eq.pendente&limit=1`, { headers: auth });
+  if (pendente.status === 404) return json(semTabela, 500);
+  const antiga = pendente.ok ? (await pendente.json())[0] : null;
+  const resposta = (id, proposta, reutilizada) => json({ ok: true, contato_id: contatoId, criado: !!ficha.criado, reutilizada, proposta_id: id, email: props.p.email, ...crmNotionResumo(proposta) });
+  if (antiga && antiga.proposta && antiga.proposta.notion) return resposta(antiga.id, antiga.proposta, true);
+
+  const ins = await fetch(`${CRM_SUPABASE_URL}/rest/v1/pos_call_propostas`, {
+    method: 'POST', headers: { ...auth, 'Content-Type': 'application/json', Prefer: 'return=representation' },
+    body: JSON.stringify({ contato_id: contatoId, hash_entrada: hash, proposta: m.proposta, modelo: 'notion', custo_usd: null })
+  });
+  if (ins.status === 409) {   // duas leituras ao mesmo tempo: fica a que entrou primeiro
+    const r2 = await fetch(`${CRM_SUPABASE_URL}/rest/v1/pos_call_propostas?select=id,proposta&contato_id=eq.${contatoId}&hash_entrada=eq.${hash}&status=eq.pendente&limit=1`, { headers: auth });
+    const outra = r2.ok ? (await r2.json())[0] : null;
+    if (outra && outra.proposta && outra.proposta.notion) return resposta(outra.id, outra.proposta, true);
+  }
+  if (ins.status === 404) return json(semTabela, 500);
+  if (!ins.ok) {
+    console.error('crm/notion: não consegui gravar a proposta — ' + ins.status);
+    return json({ error: 'Li a página e a ficha existe, mas não consegui guardar a proposta. Tente de novo.', codigo: 'proposta_nao_salva' }, 500);
+  }
+  const nova = (await ins.json())[0];
+
+  // 3. Propostas do Notion mais antigas e ainda pendentes desta pessoa saem de cena (a página mudou: vale a leitura nova).
+  try {
+    const ant = await fetch(`${CRM_SUPABASE_URL}/rest/v1/pos_call_propostas?select=id&contato_id=eq.${contatoId}&status=eq.pendente&proposta-%3E%3Eorigem=eq.notion&id=neq.${nova.id}&limit=10`, { headers: auth });
+    const ids = ant.ok ? (await ant.json()).map((x) => x.id).filter((x) => Number.isInteger(x)) : [];
+    for (const id of ids) {
+      await fetch(`${CRM_SUPABASE_URL}/rest/v1/rpc/crm_pos_call_descartar`, { method: 'POST', headers: { ...auth, 'Content-Type': 'application/json' }, body: JSON.stringify({ p_proposta: id }) });
+    }
+  } catch (e) { console.error('crm/notion: não consegui limpar propostas antigas — ' + (e && e.name)); }
+  return resposta(nova.id, m.proposta, false);
+}
+
 async function handleCrmOnboardingStatus(request, env) {
   const admin = await crmRequireAdmin(request);
   if (!admin) return json({ error: 'Sem permissão. Entre de novo no CRM.' }, 401);
   const cfg = crmOnbConfig(env);
-  return json({ ia_configurada: cfg.ok, aviso: cfg.ok ? null : cfg.erro, limites: { arquivos: CRM_ONB_MAX_ARQUIVOS, mb_por_arquivo: CRM_ONB_MAX_ARQUIVO / 1048576, tipos: ['PDF', 'JPG', 'PNG'] } });
+  const nt = crmNotionConfig(env);
+  return json({ ia_configurada: cfg.ok, aviso: cfg.ok ? null : cfg.erro, notion_configurado: nt.ok, notion_aviso: nt.ok ? null : nt.erro, limites: { arquivos: CRM_ONB_MAX_ARQUIVOS, mb_por_arquivo: CRM_ONB_MAX_ARQUIVO / 1048576, tipos: ['PDF', 'JPG', 'PNG'] } });
 }
 
 async function handleCrmOnboardingLer(request, env) {
@@ -3663,6 +4103,9 @@ export default {
       }
       if (url.pathname === '/api/crm/onboarding/ler' && request.method === 'POST') {
         return await handleCrmOnboardingLer(request, env);
+      }
+      if (url.pathname === '/api/crm/onboarding/notion/ler' && request.method === 'POST') {
+        return await handleCrmOnboardingNotion(request, env);
       }
       if (url.pathname === '/api/crm/pos-call/ler' && request.method === 'POST') {
         return await handleCrmPosCallLer(request, env);
