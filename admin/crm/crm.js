@@ -801,10 +801,10 @@ function proximoEmail(c, mails, resps, jor) {
     return out({ k: k0, quando: 'agora', titulo: 'Primeiro contato: entregue o que ela veio buscar',
       angulo: 'Abra com o que ela pediu' + (origem ? ' (“' + origem + '”)' : '') + (etapa ? ', mostre que sabe em que etapa ela está (' + etapa.toLowerCase() + ')' : '') + ' e termine com uma pergunta fácil de responder. Uma resposta dela vale mais do que mil cliques.' });
   if (voltouDepoisDoEmail(c)) {
-    // Sem guia próprio para a última origem, o padrão seria as boas-vindas de novo: ela já recebeu, então fica sem modelo.
-    var kVolta = k0 === 'boas_vindas' && mails.some(function (m) { return m.modelo === 'boas_vindas'; }) ? null : k0;
+    // Sem guia próprio para a última origem, o padrão seria as boas-vindas: ela já recebeu e-mail nosso (qualquer um), então fica sem modelo.
+    var kVolta = k0 === 'boas_vindas' ? null : k0;
     return out({ k: kVolta, quando: kVolta ? 'agora' : 'nao', titulo: 'Ela voltou a pedir material: este é o melhor momento',
-      angulo: 'Voltar a deixar o e-mail depois do seu último envio é o sinal mais forte de interesse que a ficha tem. Reconheça isso (“vi que você pegou o ' + (origem || 'guia') + '”), não repita o e-mail anterior e convide para a conversa.' + (kVolta ? '' : ' Escreva um e-mail novo com “Escrever e-mail” no topo da ficha: o modelo de boas-vindas ela já recebeu.') });
+      angulo: 'Voltar a deixar o e-mail depois do seu último envio é o sinal mais forte de interesse que a ficha tem. Reconheça isso (“vi que você pegou o ' + (origem || 'guia') + '”), não repita o e-mail anterior e convide para a conversa.' + (kVolta ? '' : ' Escreva um e-mail novo com “Escrever e-mail” no topo da ficha: as boas-vindas não fazem sentido para quem já recebeu e-mail seu.') });
   }
   if (diasUlt < 3) {
     var volta = fmtDate(new Date(new Date(ult.enviado_em || ult.criado_em).getTime() + 3 * 864e5).toISOString());
