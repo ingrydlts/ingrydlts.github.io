@@ -181,7 +181,7 @@ chamadas = [];
 fakeFetch([[/onboarding\/ler$/, { body: { ok: true, contato_id: 'n1', criado: true, preenchidos: ['nome', 'data_chegada'], ja_preenchidos: ['cidade'], custo_estimado_usd: 0.0123 } }]]);
 await click({}, 'onb-enviar');
 await new Promise((r) => setTimeout(r, 30));
-check('sucesso leva direto à ficha criada', mod.state.view === 'pessoa' && mod.state.sel === 'n1' && mod.state.ptab === 'ficha');
+check('sucesso leva direto à ficha criada, em Plataforma → Interações', mod.state.view === 'pessoa' && mod.state.sel === 'n1' && mod.state.ptab === 'plataforma' && mod.state.pstab === 'interacoes');
 check('a tela solta os arquivos da memória', mod.getONB().arquivos.length === 0 && mod.getONB().email === '' && mod.getONB().fase === 'form');
 check('guarda o resumo para a ficha', mod.state.onbResumo.cid === 'n1' && mod.state.onbResumo.preenchidos.join() === 'nome,data_chegada' && mod.state.onbResumo.ja.join() === 'cidade');
 check('o toast avisa que a ficha foi criada', /Ficha criada/.test(el('toast').textContent));

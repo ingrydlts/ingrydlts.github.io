@@ -66,6 +66,7 @@ async function main() {
     tem_graduacao: false, tem_aula_frances: false, plano_b: true, area_interesse: 'cinema' }))).ok);
   const d1 = await dossie(ids.ana);
   check('ficaram gravadas com o tipo certo', d1.formacao_alvo === 'l1_universidade' && d1.ensino_medio_ano === 2018 && d1.plano_b === true && d1.tem_graduacao === false);
+  check('DU e francês B2 entram (formação e grande área)', (await attempt(() => salvar(ids.ana, { formacao_alvo: 'du', grupo_area: 'frances_b2' }))).ok);
   check('valor fora da lista é recusado', !(await attempt(() => salvar(ids.ana, { formacao_alvo: 'medicina' }))).ok && !(await attempt(() => salvar(ids.ana, { grupo_area: 'x' }))).ok && !(await attempt(() => salvar(ids.ana, { frances_gargalo: 'x' }))).ok);
   check('ano inválido é recusado (texto, futuro distante, antigo)', !(await attempt(() => salvar(ids.ana, { ensino_medio_ano: '2018' }))).ok && !(await attempt(() => salvar(ids.ana, { ensino_medio_ano: 2150 }))).ok && !(await attempt(() => salvar(ids.ana, { ensino_medio_ano: 1950 }))).ok);
   check('booleano como texto é recusado', !(await attempt(() => salvar(ids.ana, { plano_b: 'sim' }))).ok);

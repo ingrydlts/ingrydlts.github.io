@@ -49,11 +49,13 @@ respostas.crm_contatos = { data: [Object.assign({}, base)], error: null };
 mod.setC([Object.assign({}, base)]);
 
 let status = { ia_configurada: true, aviso: null, notion_configurado: true, notion_aviso: null };
+let bilan = async () => ({ body: {} });
 let leitura = null;   // função(opt) → { status, body } (ou uma promessa)
 const pedidos = [];
 globalThis.fetch = async (url, opt = {}) => {
   pedidos.push({ url: String(url), opt });
   if (/onboarding\/status$/.test(url)) return new Response(JSON.stringify(status), { status: 200 });
+  if (/onboarding\/bilan-email$/.test(url)) { const r = await bilan(JSON.parse(opt.body)); return new Response(JSON.stringify(r.body), { status: r.status || 200 }); }
   if (/onboarding\/notion\/ler$/.test(url)) { const r = await leitura(opt); return new Response(JSON.stringify(r.body), { status: r.status || 200 }); }
   return new Response('{}', { status: 404 });
 };
@@ -147,12 +149,15 @@ check('o aviso do consentimento aparece (e não bloqueia)', /onb-aviso/.test(h) 
 check('texto de terceiros (nome e avisos) entra escapado', !/<img src=x/.test(h) && (h.match(/&lt;img src=x onerror=alert\(1\)&gt;/g) || []).length === 2);
 check('botões: "Abrir a ficha e aplicar" e "Ler outra ligação"; o campo some', /id="ont-abrir"/.test(h) && /id="ont-outra"/.test(h) && !/id="ont-url"/.test(h));
 check('a leitura não aplicou nada no banco pelo navegador (nenhum rpc)', rpcs.length === 0);
+check('a ficha criada pelo Onboarding abre sozinha em Plataforma → Interações, com o resumo guardado', mod.state.view === 'pessoa' && mod.state.sel === CID && mod.state.ptab === 'plataforma' && mod.state.pstab === 'interacoes' && !!mod.state.ontResumo && mod.state.ontResumo.contato_id === CID);
 
 console.log('\n== Abrir a ficha e ler outra ligação ==');
 mod.state.dosAberto = true;
 respostas['contatos:one'] = { data: { dossie: {}, user_id: null }, error: null };
+mod.state.pstab = 'assistente'; mod.state.ptab = 'ficha'; mod.state.view = 'onboarding';
+mod.setONT({ fase: 'ok', url: URL_OK, erro: '', res: RESUMO });
 await click({}, 'ont-abrir');
-check('"Abrir a ficha e aplicar" abre a ficha da pessoa', mod.state.sel === CID && mod.state.view === 'pessoa');
+check('"Abrir a ficha e aplicar" abre a ficha em Plataforma → Interações', mod.state.sel === CID && mod.state.view === 'pessoa' && mod.state.ptab === 'plataforma' && mod.state.pstab === 'interacoes');
 mod.state.view = 'onboarding';
 await click({}, 'ont-outra');
 check('"Ler outra ligação" volta ao estado vazio, com o campo limpo', /Nenhuma ligação lida ainda/.test(box()) && mod.getONT().url === '' && el('ont-url').value === '');
@@ -169,7 +174,7 @@ const PROP = {
     documentos_pendentes: 'Passaporte', prazo_chave: { texto: '2026-12-01', data: '2026-12-01', a_confirmar: false }, consentimento: false, enviado_ao_crm: false, id_no_crm: '',
     pendencias: [
       { n: 1, titulo: 'Anexar o passaporte ' + XSS, dono: 'Ela', canal: 'Plataforma', botao: 'anexar_documento', botao_obs: 'passaporte e visto', prazo: { texto: '15/12/2026 (a confirmar)', data: null, a_confirmar: true }, estado: 'aberta', origem_certeza: 'Documento · alta' },
-      { n: 2, titulo: 'Marcar o prazo do Campus France', dono: 'Ela', canal: 'Plataforma', botao: 'marcar_marco', botao_obs: '', prazo: { texto: '2026-11-30', data: '2026-11-30', a_confirmar: false }, estado: 'aguardando_ela', origem_certeza: 'Fala · média' },
+      { n: 2, titulo: 'Marcar o prazo do Campus France', dono: 'Ela', canal: 'Plataforma', botao: 'pesquisar', botoes: ['pesquisar', 'gerar_rascunho'], botao_obs: '', prazo: { texto: '2026-11-30', data: '2026-11-30', a_confirmar: false }, estado: 'aguardando_ela', origem_certeza: 'Fala · média' },
       { n: 6, titulo: 'Reservar o horário no consulado', dono: 'Ela', canal: 'Plataforma', botao: 'lembrar_ela', botao_obs: '', prazo: { texto: '2026-12-05 (a confirmar)', data: '2026-12-05', a_confirmar: true }, estado: 'aberta', origem_certeza: '' },
       { n: 3, titulo: 'Conferir a carta de aceite', dono: 'Ingryd', canal: 'Plataforma', botao: 'n/a', botao_obs: '', prazo: { texto: '', data: null, a_confirmar: false }, estado: 'concluida', origem_certeza: '' }],
     lembretes: [{ n: 5, titulo: 'Mandar o convite de acesso', dono: 'Ingryd', canal: 'Convite de acesso', botao: 'enviar_convite', botao_obs: '', prazo: { texto: '', data: null, a_confirmar: false }, estado: 'aberta', origem_certeza: 'Combinado' }],
@@ -192,7 +197,7 @@ h = await ficha();
 check('a proposta pendente do Notion reaparece na ficha, sem ler de novo', /Proposta da página do Notion/.test(h) && /Nada entrou na ficha ainda/.test(h));
 check('1 · fatos do Dossiê, com caixa para marcar e a confiança', /1 · Fatos/.test(h) && /data-pccampo="telefone" checked/.test(h) && /data-pccampo="maior_preocupacao" checked/.test(h) && /confiança alta/.test(h));
 check('2 · pendências com dono, prazo, estado e botão sugerido', /2 · Pendências da Plataforma/.test(h) && /Dono: ela · Prazo: 15\/12\/2026 \(a confirmar\) · Estado: aberta · Botão sugerido: anexar_documento \(passaporte e visto\) · Documento · alta/.test(h));
-check('prazo "(a confirmar)" aparece como o TEXTO que veio, e prazo certo como data', /Prazo: 15\/12\/2026 \(a confirmar\)/.test(h) && /Prazo: 30\/11\/2026 · Estado: aguardando ela/.test(h) && /Prazo: sem prazo · Estado: concluída/.test(h));
+check('prazo "(a confirmar)" aparece como o TEXTO que veio, e prazo certo como data', /Prazo: 15\/12\/2026 \(a confirmar\)/.test(h) && /Prazo: 30\/11\/2026 · Estado: aguardando ela · Botão sugerido: pesquisar → gerar_rascunho/.test(h) && /Prazo: sem prazo · Estado: concluída/.test(h));
 check('mesmo que venha uma data junto, "(a confirmar)" continua aparecendo como texto, nunca como data certa', /Prazo: 2026-12-05 \(a confirmar\)/.test(h) && !/05\/12\/2026/.test(h));
 check('pendência concluída fica riscada', /ont-pend feita/.test(h) && (h.match(/class="ont-pend feita"/g) || []).length === 1);
 check('avisa que nenhum botão envia nada sozinho', /nenhum botão envia nada sozinho/.test(h) && /pode enviar/.test(h));
@@ -242,6 +247,86 @@ check('sem nenhuma leitura do Notion: o Pós-call é o de sempre', /Ler a call c
 respostas.pos_call_propostas = { data: null, error: { message: 'relation does not exist' } };
 h = await ficha();
 check('sem a tabela (SQL do Pós-call não rodou): o Pós-call segue sem quebrar', /Pós-call/.test(h) && !/Proposta da página do Notion/.test(h));
+
+
+// ================= E-mail com o bilan da conversa (Plataforma → Interações) =================
+const PROPB = JSON.parse(JSON.stringify(PROP));
+PROPB.notion.resumo = 'PVT perto do fim, quer estudar francês e depois a universidade.';
+PROPB.notion.email.linhas.push({ n: 9, titulo: 'Responder: o pagamento do semestre pode vir depois da inscrição?', dono: 'Ingryd', canal: 'E-mail', botao: 'pesquisar', botoes: ['pesquisar', 'gerar_rascunho'], botao_obs: '', prazo: { texto: 'antes de 30/11', data: null, a_confirmar: false }, estado: 'aberta', origem_certeza: '' });
+PROPB.notion.pendencias.push({ n: 7, titulo: 'Enviar o PDF das escolas de FLE', dono: 'Ingryd', canal: 'Plataforma', botao: 'anexar_documento', botoes: ['anexar_documento'], botao_obs: '', prazo: { texto: 'n/a', data: null, a_confirmar: false }, estado: 'aberta', origem_certeza: '' });
+async function fichaInt(propostas) {
+  respostas.pos_call_propostas = { data: propostas, error: null };
+  respostas['contatos:one'] = { data: { dossie: {}, user_id: null }, error: null };
+  mod.state.pc = null; mod.state.sel = CID; mod.state.view = 'pessoa'; mod.state.ptab = 'plataforma'; mod.state.pstab = 'interacoes'; mod.state.ontResumo = null;
+  await mod.renderPessoa(); await wait(20);
+  return el('pessoa-page').innerHTML;
+}
+console.log('\n== Interações: o botão do bilan ==');
+h = await fichaInt([{ id: 50, proposta: PROPB, status: 'pendente', criado_em: '2026-10-30T10:00:00Z' }]);
+check('a subaba Interações tem o botão "Enviar e-mail com bilan da conversa", ligado', /E-mail com o bilan da conversa/.test(h) && /data-bilanabrir="[^"]+"(?! disabled)>Enviar e-mail com bilan da conversa</.test(h));
+check('explica as seções fixas e que o conteúdo vem do Bilan d’action', /dúvidas tiradas, próximos passos, o que você responde ou confirma e o código de redução/.test(h) && /Bilan d’action/.test(h));
+check('a lista de interações continua abaixo do botão', /Interações na plataforma/.test(h) && h.indexOf('bilan-box') < h.indexOf('Interações na plataforma'));
+h = await fichaInt([{ id: 50, proposta: PROPB, status: 'aplicada', criado_em: '2026-10-30T10:00:00Z' }]);
+check('leitura já aplicada também serve de base', /data-bilanabrir="[^"]+"(?! disabled)>/.test(h));
+h = await fichaInt([{ id: 51, proposta: PROPB, status: 'descartada', criado_em: '2026-10-30T11:00:00Z' }, { id: 50, proposta: PROPB, status: 'aplicada', criado_em: '2026-10-30T10:00:00Z' }]);
+check('proposta descartada é pulada: vale a mais recente que não foi descartada', /data-bilanabrir="[^"]+"(?! disabled)>/.test(h));
+h = await fichaInt([]);
+check('sem leitura do Notion: o botão fica desligado e diz o que fazer', /data-bilanabrir="[^"]+" disabled>/.test(h) && /Cole o link em Onboarding → Link do Notion/.test(h));
+h = await fichaInt([{ id: 51, proposta: PROPB, status: 'descartada', criado_em: '2026-10-30T11:00:00Z' }]);
+check('só proposta descartada: botão desligado', /data-bilanabrir="[^"]+" disabled>/.test(h));
+respostas.pos_call_propostas = { data: [{ id: 50, proposta: PROPB, status: 'pendente', criado_em: '2026-10-30T10:00:00Z' }], error: null };
+mod.state.ontResumo = null; mod.state.sel = CID; mod.state.ptab = 'plataforma'; mod.state.pstab = 'interacoes';
+await mod.renderPessoa(); await wait(20); mod.state.ontResumo = Object.assign({}, RESUMO, { pessoa: 'Ana ' + XSS }); mod.state.view = 'pessoa';
+await mod.renderPessoa(); await wait(20);
+h = el('pessoa-page').innerHTML;
+check('logo depois da leitura, o resumo do Notion aparece no topo da subaba (escapado)', /Leitura do Notion/.test(h) && /Ficha criada: Ana/.test(h) && !/<img src=x/.test(h) && /data-ontresfechar="1"/.test(h));
+await click({ ontresfechar: '1' });
+check('"Entendi" tira o resumo da tela', mod.state.ontResumo === null);
+
+console.log('\n== Modal do e-mail do bilan ==');
+await fichaInt([{ id: 50, proposta: PROPB, status: 'pendente', criado_em: '2026-10-30T10:00:00Z' }]);
+const prevs = []; bilan = async (b) => { prevs.push(b); return { body: { ok: true, enviado: false, assunto: 'Ana, o bilan da nossa conversa · Por Dentro', html: '<p>prévia</p>', texto: 't', para: 'ana.exemplo@example.org' } }; };
+await click({ bilanabrir: CID });
+let m = el('compose-modal').innerHTML;
+check('abre o modal com as 4 seções, na ordem e com os títulos fixos', ['1 · Dúvidas que tiramos na conversa', '2 · Seus próximos passos', '3 · O que eu respondo ou confirmo para você', '4 · Código de redução (lista de espera)'].map((t) => m.indexOf(t)).every((x, i, a) => x >= 0 && (i === 0 || x > a[i - 1])));
+check('o texto fixo diz que o desconto vale 6 meses e que ela ganha 7 dias grátis', /6 meses/.test(m) && /7 dias grátis/.test(m));
+check('as dúvidas vêm do Resumo quando a página não tem "Dúvidas tiradas" (e avisa)', el('bl-duvidas').value === PROPB.notion.resumo && /não tem “Dúvidas tiradas”/.test(m));
+check('próximos passos = só o que é dela e ainda não foi feito, com o prazo (e "a confirmar" preservado)', el('bl-proximos').value.split('\n').length === 4 && /^Anexar o passaporte/.test(el('bl-proximos').value) && /\(prazo: 15\/12\/2026 \(a confirmar\)\)/.test(el('bl-proximos').value) && /Pedir a tradução juramentada \(prazo: 10\/12\/2026\)/.test(el('bl-proximos').value) && !/Conferir a carta de aceite/.test(el('bl-proximos').value));
+check('o que eu respondo ou confirmo = o que é da Ingryd (e-mail e plataforma), sem o que já está concluído e sem lembretes internos', el('bl-respostas').value === 'Enviar o PDF das escolas de FLE\nResponder: o pagamento do semestre pode vir depois da inscrição?');
+check('HTML da página entra como valor do campo, nunca como marcação do modal', !/<img src=x/.test(m) && /<img src=x onerror=alert\(1\)>/.test(el('bl-proximos').value));
+check('o modal mostra para quem vai e o campo de código vazio', /id="bl-para"/.test(m) && el('bl-para').textContent === 'ana.exemplo@example.org' && el('bl-codigo').value === '');
+check('a prévia é pedida ao abrir, sem enviar, e usa um código provisório enquanto está vazio', prevs.length === 1 && prevs[0].enviar === undefined && prevs[0].codigo === 'SEU-CODIGO' && prevs[0].contato_id === CID && prevs[0].secoes.duvidas.length === 1 && prevs[0].secoes.proximos.length === 4 && prevs[0].secoes.respostas.length === 2);
+check('a prévia aparece num iframe isolado (sandbox), com o assunto e o aviso de código não digitado', /<iframe class="cmpframe" sandbox="allow-popups"/.test(el('bl-previa').innerHTML) && /o código ainda não foi digitado/.test(el('bl-previa').innerHTML) && el('bl-assunto').textContent === 'Ana, o bilan da nossa conversa · Por Dentro');
+check('o pedido do bilan leva o token da admin', pedidos.filter((p) => /bilan-email$/.test(p.url)).every((p) => p.opt.headers.Authorization === 'Bearer tok'));
+
+console.log('\n== Enviar: só com código e com o "pode enviar" ==');
+const enviados = () => prevs.filter((b) => b.enviar === true);
+el('bl-codigo').value = '';
+await click({}, 'bl-enviar');
+check('sem código: erro claro e nada enviado', /Digite o código de redução/.test(el('bl-err').textContent) && el('bl-err').hidden === false && enviados().length === 0);
+el('bl-codigo').value = 'LISTA-ESPERA25';
+await click({}, 'bl-enviar');
+check('sem marcar que a pessoa aceitou: erro claro e nada enviado', /aceitou receber/.test(el('bl-err').textContent) && enviados().length === 0);
+el('bl-confirmo').checked = true;
+el('bl-proximos').value = 'Ligar para a escola (editado)\n\n  \nConferir a tradução';
+bilan = async (b) => { prevs.push(b); return { status: 409, body: { error: 'O bilan já foi enviado para esta pessoa há menos de 3 dias.', codigo: 'enviado_recentemente' } }; };
+await click({}, 'bl-enviar');
+check('o envio leva o que você editou (linhas vazias saem), o código, enviar e confirmo', enviados().length === 1 && enviados()[0].codigo === 'LISTA-ESPERA25' && enviados()[0].confirmo === true && enviados()[0].forcar === false && enviados()[0].secoes.proximos.join('|') === 'Ligar para a escola (editado)|Conferir a tradução');
+check('enviado há menos de 3 dias: mostra o aviso e oferece "Enviar mesmo assim"', /menos de 3 dias/.test(el('bl-err').textContent) && el('bl-forcar').hidden === false && el('bl-enviar').disabled === false);
+bilan = async (b) => { prevs.push(b); return { body: { ok: true, enviado: true, registrado: true, para: 'ana.exemplo@example.org', assunto: 'x' } }; };
+await click({}, 'bl-forcar');
+check('"Enviar mesmo assim" manda forcar = true', enviados().length === 2 && enviados()[1].forcar === true);
+check('depois de enviar: fecha o modal, avisa para quem foi e nada mais sai', el('compose-modal').hidden === true && /Bilan enviado para ana\.exemplo@example\.org/.test(el('toast').textContent));
+check('só o Worker foi chamado para enviar: nenhum outro endereço de envio', pedidos.every((p) => !/brevo\.com|link-pagamento|chat-aviso|responder|\/enviar$/.test(p.url)));
+await fichaInt([{ id: 50, proposta: PROPB, status: 'pendente', criado_em: '2026-10-30T10:00:00Z' }]);
+bilan = async () => ({ status: 400, body: { error: 'Digite o código de redução (3 a 40 letras…).', codigo: 'codigo_invalido' } });
+await click({ bilanabrir: CID });
+el('bl-codigo').value = 'x y'; el('bl-confirmo').checked = true;
+await click({}, 'bl-enviar');
+check('erro do Worker aparece no modal, o botão volta ao normal e o modal continua aberto', /código de redução/.test(el('bl-err').textContent) && el('bl-enviar').disabled === false && el('bl-enviar').textContent === 'Enviar e-mail' && el('compose-modal').hidden === false && el('bl-forcar').hidden === true);
+bilan = async () => { throw new TypeError('Failed to fetch'); };
+await click({}, 'bl-previa-btn');
+check('sem rede ao pedir a prévia: mensagem clara', /Não consegui falar com o Worker/.test(el('bl-err').textContent));
 
 console.log('\n' + passed + ' passaram, ' + failed + ' falharam');
 process.exit(failed ? 1 : 0);

@@ -624,6 +624,9 @@ select.st-in{height:36px; padding:0 8px}
 .ont-pend{padding:8px 0; border-top:1px solid var(--line); font-size:13.5px; line-height:1.5; overflow-wrap:anywhere}
 .ont-pend.feita > b{text-decoration:line-through; color:var(--ink-3)}
 .ont-rascunho{white-space:pre-wrap; overflow-wrap:anywhere; background:var(--sunk); border-radius:var(--r); padding:10px 12px; font:inherit; font-size:13px; line-height:1.5; margin:6px 0}
+.bl-ta,.bl-in{width:100%; border:1px solid var(--line-2); border-radius:var(--r); background:var(--surface); color:inherit; padding:8px 10px; font:inherit; line-height:1.45}
+.bl-ta{resize:vertical}
+.bl-previa .cmpframe{width:100%; height:340px; border:1px solid var(--line); border-radius:var(--r); background:#fff}
 .pcnotion-lido{margin-top:14px; border-top:1px solid var(--line); padding-top:4px}
 @media (max-width: 520px){
   .onb-acoes .btn{flex:1 1 100%; justify-content:center; text-align:center}
