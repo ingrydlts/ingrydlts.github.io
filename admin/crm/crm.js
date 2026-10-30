@@ -666,9 +666,9 @@ function eventText(e) {
   return m[t] || ['sistema', t];
 }
 // tab: 'conversa' ou 'ficha'; sem tab, a ficha abre na Conversa se já houver alguma mensagem.
-async function openPessoa(id, tab) {
+async function openPessoa(id, tab, sub) {
   if (state.view !== 'pessoa') state.prevView = state.view;
-  state.sel = id; state.ptab = tab || null; state.pstab = 'assistente'; state.pdias = {}; state.chatRasc = '';
+  state.sel = id; state.ptab = tab || null; state.pstab = sub || 'assistente'; state.pdias = {}; state.chatRasc = '';
   show('pessoa');
 }
 // ---------- E-mails da pessoa: o que já saiu e o próximo, como ela vai ver ----------
@@ -1201,7 +1201,7 @@ function chkSeloAtraso() {
 function platConteudoHtml(c, h4) {
   if (state.pstab === 'checklist') return '<div id="chk-aba">' + checklistPanel(c) + '</div>';
   if (state.pstab === 'chat') return '<div id="chat-box">' + chatPanelHtml(c, state.chat, h4) + '</div>';
-  if (state.pstab === 'interacoes') return '<div id="int-box">' + interacoesHtml(state.int) + '</div>';
+  if (state.pstab === 'interacoes') return '<div id="int-box">' + bilanBlocoHtml(c) + interacoesHtml(state.int) + '</div>';
   return '<div id="ins-box">' + insightsHtml(state.ins, Date.now()) + '</div>';
 }
 function resumoPlatHtml(h4) {
@@ -1743,13 +1743,13 @@ async function pcCarregarDados(cid) {
   var r = await Promise.all([
     supabase.from('sinais_vocabulario').select('chave,rotulo,descricao').eq('ativo', true).order('chave'),
     supabase.rpc('crm_curadoria_contagem'),
-    supabase.from('pos_call_propostas').select('id,proposta,status,criado_em').eq('contato_id', cid).eq('proposta->>origem', 'notion').in('status', ['pendente', 'aplicada']).order('criado_em', { ascending: false }).limit(1)
+    supabase.from('pos_call_propostas').select('id,proposta,status,criado_em').eq('contato_id', cid).eq('proposta->>origem', 'notion').order('criado_em', { ascending: false }).limit(5)
   ]);
   pc.carregando = false; pc.carregou = true;
   if (r[0].error) pc.vocabErro = true; else pc.vocab = r[0].data || [];
   pc.cont = r[1].error ? [] : (r[1].data || []);
   // A leitura do Notion mais recente: pendente volta a ser a proposta da tela; já aplicada fica só como consulta (pendências, lembretes, rascunho).
-  var nt = r[2] && !r[2].error && r[2].data && r[2].data[0];
+  var nt = r[2] && !r[2].error && (r[2].data || []).filter(function (x) { return x.status !== 'descartada'; })[0];
   if (nt && nt.proposta && nt.proposta.origem === 'notion' && nt.proposta.notion) {
     if (nt.status === 'pendente') { if (pc.estado !== 'proposta') { pc.prop = { id: nt.id, proposta: nt.proposta, reutilizada: false }; pc.estado = 'proposta'; pc.sel = { campos: {}, sinais: {}, fila: {}, perg: {} }; pc.camadas = {}; } }
     else pc.notionAplicada = { id: nt.id, proposta: nt.proposta, quando: nt.criado_em };
@@ -1859,7 +1859,8 @@ async function renderPessoa() {
     supabase.from('contatos').select('dossie,user_id').eq('id', c.id).maybeSingle(),
     supabase.from('contatos').select('dossie_origem,onboarding_em').eq('id', c.id).maybeSingle(),
     supabase.from('assinaturas').select('status,plano,moeda,teste_fim,periodo_fim,cancela_no_fim').eq('contato_id', c.id).maybeSingle(),   // db/crm-assinaturas.sql
-    supabase.from('processos_sugeridos').select('id,processo,sinais,status,mensagem,detectada_em,atualizada_em,decidida_em,respondida_em').eq('contato_id', c.id).order('atualizada_em', { ascending: false })   // db/crm-processos-sugeridos.sql
+    supabase.from('processos_sugeridos').select('id,processo,sinais,status,mensagem,detectada_em,atualizada_em,decidida_em,respondida_em').eq('contato_id', c.id).order('atualizada_em', { ascending: false }),   // db/crm-processos-sugeridos.sql
+    supabase.from('pos_call_propostas').select('id,proposta,status,criado_em').eq('contato_id', c.id).eq('proposta->>origem', 'notion').order('criado_em', { ascending: false }).limit(5)   // a leitura do Notion: base do e-mail do bilan
   ]);
   if (state.sel !== c.id || state.view !== 'pessoa') return;   // trocou de tela enquanto carregava
   var eventos = r[0].data || [], cons = r[1].data || [], mails = r[2].data || [];
@@ -1876,6 +1877,8 @@ async function renderPessoa() {
   var lp = eventos.filter(function (e) { return e.tipo === 'link_pagamento_enviado'; })[0];
   state.pagto = lp ? { quando: lp.criado_em, rotulo: (lp.dados && lp.dados.rotulo) || (lp.dados && lp.dados.plano) || '' } : null;
   state.mails = mails;
+  var nb = r[8] && !r[8].error && (r[8].data || []).filter(function (x) { return x.status !== 'descartada'; })[0];   // a mais recente que não foi descartada
+  state.bilan = nb && nb.proposta && nb.proposta.origem === 'notion' && nb.proposta.notion ? { cid: c.id, id: nb.id, status: nb.status, proposta: nb.proposta, quando: nb.criado_em } : null;
   var last = function (f) { var x = cons.filter(function (k) { return k.finalidade === f; })[0]; return x ? x.aceito : false; };
   var perg = Q.filter(function (x) { return x.contato_id === c.id; });
   var resps = R.filter(function (x) { return x.contato_id === c.id; });
@@ -3158,7 +3161,7 @@ async function onbEnviar() {
   state.onbResumo = { cid: data.contato_id, criado: !!data.criado, preenchidos: data.preenchidos || [], ja: data.ja_preenchidos || [], custo: data.custo_estimado_usd };
   ONB = onbInicial();
   await reload();
-  if (byC(data.contato_id)) { openPessoa(data.contato_id, 'ficha'); return toast(state.onbResumo.criado ? 'Ficha criada. Confira o que a IA leu.' : 'Ficha atualizada. Confira o que a IA leu.', 5000); }
+  if (byC(data.contato_id)) { openPessoa(data.contato_id, 'plataforma', 'interacoes'); return toast(state.onbResumo.criado ? 'Ficha criada. Confira o que a IA leu.' : 'Ficha atualizada. Confira o que a IA leu.', 5000); }
   ONB.fase = 'ok'; ONB.erro = ''; ONB.contato = data.contato_id; if (state.view === 'onboarding') renderOnboarding();
 }
 // O aviso no topo da ficha logo depois do Onboarding: o que entrou e o que já estava preenchido e ficou como estava.
@@ -3241,7 +3244,9 @@ async function ontLer() {
   } finally { clearTimeout(cedo); }
   ONT.fase = 'ok'; ONT.res = data;
   if (state.view === 'onboarding') ontPinta();
-  await reload();   // a ficha nova entra na lista, para o botão "Abrir a ficha" achá-la
+  await reload();   // a ficha nova entra na lista
+  // A ficha criada pelo Onboarding abre em Plataforma → Interações, com o resumo da leitura no topo e o botão do e-mail do bilan.
+  if (byC(data.contato_id) && state.view === 'onboarding') { state.ontResumo = data; openPessoa(data.contato_id, 'plataforma', 'interacoes'); toast(data.criado ? 'Ficha criada. Confira o resumo e envie o bilan.' : 'Ficha encontrada. Confira o resumo e envie o bilan.', 5000); }
 }
 async function ontCopiar() {
   var pc = state.pc, n = pc && ((pc.prop && pc.prop.proposta && pc.prop.proposta.notion) || (pc.notionAplicada && pc.notionAplicada.proposta.notion)), txt = n && n.email ? n.email.rascunho : '';
@@ -3265,6 +3270,95 @@ function poscallNotionHtml(n) {
     (n.persona || n.fase ? 'No Notion: ' + (n.persona ? 'persona ' + esc(n.persona) : '') + (n.persona && n.fase ? ', ' : '') + (n.fase ? 'fase ' + esc(n.fase) : '') + ' (a proposta não muda persona nem fase).' : '') + '</p>';
   if ((n.avisos || []).length) h += '<div class="onb-aviso" role="status" style="margin-top:8px"><ul class="ont-lista">' + n.avisos.map(function (a) { return '<li>' + esc(a) + '</li>'; }).join('') + '</ul></div>';
   return h;
+}
+
+// ---------- E-mail com o bilan da conversa (subaba Interações): o Bilan d'action lido do Notion vira um e-mail de formato fixo ----------
+// Título e 4 seções são fixos (Worker: POST /api/crm/onboarding/bilan-email); o conteúdo vem da página e você edita antes. Nada sai sem o seu clique
+// e sem a marca de que a pessoa aceitou receber.
+function bilanIniciais(n) {
+  var prazo = function (pz) { return pz && pz.texto && pz.texto !== 'n/a' ? ' (prazo: ' + (pz.data && !pz.a_confirmar ? fmtDay(pz.data) : pz.texto) + ')' : ''; };
+  var ela = [], ing = [], todas = [].concat(n.pendencias || [], n.lembretes || [], (n.email && n.email.linhas) || []);
+  todas.forEach(function (x) { if (x.estado !== 'concluida' && x.dono === 'Ela') ela.push(x.titulo + prazo(x.prazo)); });
+  [].concat(n.pendencias || [], (n.email && n.email.linhas) || []).forEach(function (x) { if (x.estado !== 'concluida' && x.dono === 'Ingryd') ing.push(x.titulo); });
+  var tem = n.duvidas && n.duvidas.length;
+  return { duvidas: tem ? n.duvidas.slice() : (n.resumo ? [n.resumo] : []), proximos: ela, respostas: ing, usouResumo: !tem && !!n.resumo };
+}
+function bilanBlocoHtml(c) {
+  var b = state.bilan && state.bilan.cid === c.id ? state.bilan : null, h = '';
+  if (state.ontResumo && state.ontResumo.contato_id === c.id) {
+    h += '<div class="panel onb-notion onb-resumo" id="ont-resumo-ficha" style="margin:0 0 14px"><h3 class="ont-t">Leitura do Notion</h3>' + ontResumoHtml(state.ontResumo) +
+      '<div class="actions" style="margin-top:8px"><button class="btn" type="button" data-ontresfechar="1">Entendi</button></div></div>';
+  }
+  var ultimo = (state.mails || []).filter(function (m) { return m.modelo === 'bilan_conversa'; })[0];
+  return h + '<div class="panel bilan-box" style="padding:16px;margin:0 0 14px"><h3 style="font-size:15px;margin:0 0 4px">E-mail com o bilan da conversa</h3>' +
+    '<p class="sub" style="margin:0 0 10px">Sempre o mesmo título e as mesmas seções: dúvidas tiradas, próximos passos, o que você responde ou confirma e o código de redução para a lista de espera. O conteúdo vem do Bilan d’action da página do Notion e você revisa antes de enviar.</p>' +
+    '<button class="btn primary" type="button" data-bilanabrir="' + esc(c.id) + '"' + (b ? '' : ' disabled') + '>Enviar e-mail com bilan da conversa</button>' +
+    (b ? '' : '<p class="sub" style="margin:8px 0 0">Ainda não há uma ligação lida do Notion para esta pessoa. Cole o link em Onboarding → Link do Notion.</p>') +
+    (ultimo ? '<p class="sub" style="margin:8px 0 0">Último bilan enviado em ' + esc(fmtDay(String(ultimo.enviado_em || ultimo.criado_em || '').slice(0, 10))) + '.</p>' : '') + '</div>';
+}
+var BL = null;
+function bilanLinhas(id) { return String(($(id) && $(id).value) || '').split('\n').map(function (x) { return x.trim(); }).filter(Boolean); }
+function bilanCorpo(extra) {
+  return JSON.stringify(Object.assign({ contato_id: BL.cid, secoes: { duvidas: bilanLinhas('bl-duvidas'), proximos: bilanLinhas('bl-proximos'), respostas: bilanLinhas('bl-respostas') },
+    codigo: String(($('bl-codigo') && $('bl-codigo').value) || '').trim() }, extra || {}));
+}
+function bilanErro(msg, forcar) {
+  var er = $('bl-err'); if (!er) return;
+  er.textContent = msg || ''; er.hidden = !msg;
+  var f = $('bl-forcar'); if (f) f.hidden = !forcar;
+}
+function bilanAbrir(cid) {
+  var c = byC(cid), b = state.bilan; if (!c || !b || b.cid !== cid) return;
+  var ini = bilanIniciais(b.proposta.notion); BL = { cid: cid, ini: ini };
+  modalOpen(modalTop(c) + '<h4 style="margin:14px 0 6px;font-size:14px">E-mail com o bilan da conversa</h4>' +
+    '<p class="sub" style="margin:0 0 10px">Vai para <b id="bl-para"></b>. Título e seções são sempre os mesmos; você edita o conteúdo. Um item por linha.' + (ini.usouResumo ? ' A página não tem “Dúvidas tiradas”: usei o Resumo do Bilan d’action. Ajuste.' : '') + '</p>' +
+    '<label class="sub" for="bl-duvidas" style="display:block;margin:0 0 4px">1 · Dúvidas que tiramos na conversa</label><textarea id="bl-duvidas" class="bl-ta" rows="4"></textarea>' +
+    '<label class="sub" for="bl-proximos" style="display:block;margin:10px 0 4px">2 · Seus próximos passos</label><textarea id="bl-proximos" class="bl-ta" rows="4"></textarea>' +
+    '<label class="sub" for="bl-respostas" style="display:block;margin:10px 0 4px">3 · O que eu respondo ou confirmo para você</label><textarea id="bl-respostas" class="bl-ta" rows="4"></textarea>' +
+    '<label class="sub" for="bl-codigo" style="display:block;margin:10px 0 4px">4 · Código de redução (lista de espera)</label><input id="bl-codigo" class="bl-in" type="text" autocomplete="off" maxlength="40" placeholder="ex.: LISTA-ESPERA">' +
+    '<small class="sub" style="display:block;margin-top:4px">O texto fixo diz que o desconto vale por 6 meses e que ela ganha 7 dias grátis.</small>' +
+    '<div id="bl-previa" class="bl-previa"></div>' +
+    '<label class="pccheck" style="margin:12px 0 0"><input type="checkbox" id="bl-confirmo"> <span>Esta pessoa aceitou receber este e-mail (lista de espera).</span></label>' +
+    '<p class="onb-erro" id="bl-err" role="alert" hidden style="margin:10px 0 0"></p>' +
+    '<div class="actions"><button class="btn" type="button" id="modal-cancel">Cancelar</button><button class="btn" type="button" id="bl-previa-btn">Atualizar prévia</button><button class="btn" type="button" id="bl-forcar" hidden>Enviar mesmo assim</button><button class="btn primary" type="button" id="bl-enviar">Enviar e-mail</button></div>', true);
+  $('bl-para').textContent = c.email;
+  $('bl-duvidas').value = ini.duvidas.join('\n'); $('bl-proximos').value = ini.proximos.join('\n'); $('bl-respostas').value = ini.respostas.join('\n');
+  bilanPrevia();
+}
+async function bilanChamar(corpo) {
+  var sess = await supabase.auth.getSession();
+  if (!sess.data.session) throw new Error('Sessão expirada. Recarregue a página e entre de novo.');
+  var res = await fetch(WORKER_BASE + '/api/crm/onboarding/bilan-email', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + sess.data.session.access_token }, body: corpo });
+  var data = await res.json().catch(function () { return {}; });
+  if (!res.ok) { var e = new Error(data.error || ('Erro ' + res.status)); e.codigo = data.codigo; throw e; }
+  return data;
+}
+async function bilanPrevia() {
+  if (!BL) return;
+  var box = $('bl-previa'); if (box) box.innerHTML = '<p class="sub" role="status" style="margin:12px 0 0">Montando a prévia…</p>';
+  bilanErro('');
+  var cod = String(($('bl-codigo') && $('bl-codigo').value) || '').trim();
+  try {
+    var d = await bilanChamar(JSON.stringify(Object.assign(JSON.parse(bilanCorpo()), cod ? {} : { codigo: 'SEU-CODIGO' })));
+    if (box) box.innerHTML = '<p class="sub" style="margin:12px 0 4px">Prévia do e-mail' + (cod ? '' : ' (o código ainda não foi digitado)') + ' · assunto: <b id="bl-assunto"></b></p>' + previaFrame(d.html, 'cmpframe');
+    var as = $('bl-assunto'); if (as) as.textContent = d.assunto;
+  } catch (e) { if (box) box.innerHTML = ''; bilanErro(e instanceof TypeError ? 'Não consegui falar com o Worker. Confira a internet e tente de novo.' : e.message); }
+}
+async function bilanEnviar(forcar) {
+  if (!BL) return;
+  var cod = String(($('bl-codigo') && $('bl-codigo').value) || '').trim();
+  if (!cod) return bilanErro('Digite o código de redução antes de enviar.');
+  if (!($('bl-confirmo') && $('bl-confirmo').checked)) return bilanErro('Marque que a pessoa aceitou receber este e-mail.');
+  var bt = $('bl-enviar'); if (bt) { bt.disabled = true; bt.textContent = 'Enviando…'; }
+  try {
+    var d = await bilanChamar(bilanCorpo({ enviar: true, confirmo: true, forcar: !!forcar }));
+    closeCompose(); toast('Bilan enviado para ' + d.para + (d.registrado === false ? ' (mas não consegui registrar na ficha)' : ''), 5000);
+    var cid = BL.cid; BL = null;
+    if (state.view === 'pessoa' && state.sel === cid) await renderPessoa();
+  } catch (e) {
+    if (bt) { bt.disabled = false; bt.textContent = 'Enviar e-mail'; }
+    bilanErro(e instanceof TypeError ? 'Não consegui falar com o Worker. Confira a internet e tente de novo.' : e.message, e.codigo === 'enviado_recentemente');
+  }
 }
 
 // ---------- Link de pagamento (aba Plataforma): o seletor vem de planos/planos.json ----------
@@ -3443,13 +3537,18 @@ document.addEventListener('click', async function (e) {
   if (t.id === 'onb-abrir') return openPessoa(ONB.contato, 'ficha');
   if (t.id === 'onb-outra') { ONB = onbInicial(); return carregarOnboarding(); }
   if (t.id === 'ont-ler') return ontLer();
-  if (t.id === 'ont-abrir') return openPessoa(ONT.res.contato_id, 'ficha');
+  if (t.id === 'ont-abrir') { state.ontResumo = ONT.res; return openPessoa(ONT.res.contato_id, 'plataforma', 'interacoes'); }
+  if (t.dataset.ontresfechar) { state.ontResumo = null; return pintaPlat(byC(state.sel)); }
   if (t.id === 'ont-outra') { ONT = ontInicial(); return ontPinta(); }
   if (t.dataset.ontcopiar) return ontCopiar();
   if (t.dataset.onbrem !== undefined) { ONB.arquivos.splice(Number(t.dataset.onbrem), 1); return onbPintaArquivos(); }
   if (t.dataset.onbfechar) { state.onbResumo = null; var rb = $('onb-resumo'); if (rb) rb.hidden = true; return; }
   if (t.dataset.pagar) return abrirLinkPagamento(t.dataset.pagar);
   if (t.id === 'pg-enviar') return enviarLinkPagamento(t);
+  if (t.dataset.bilanabrir) return bilanAbrir(t.dataset.bilanabrir);
+  if (t.id === 'bl-previa-btn') return bilanPrevia();
+  if (t.id === 'bl-enviar') return bilanEnviar(false);
+  if (t.id === 'bl-forcar') return bilanEnviar(true);
   if (t.dataset.chatenviar) return enviarChat(t.dataset.chatenviar, t);
   if (t.dataset.chkvia) return chkAgir(t.dataset.chkvia, Number(t.dataset.chki));
   if (t.dataset.chatquick) {
