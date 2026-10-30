@@ -83,6 +83,11 @@ check('sem gatilho nenhum: espera um sinal', p.k === null && /Sem gatilho/.test(
 p = prox(base({ capturas: 2, origem: 'bot', origens: ['bot'], ultima_origem: 'bot', ultima_captura_em: dias(0), email_enviado_em: dias(10) }), [mail({ enviado_em: dias(10), criado_em: dias(10) })]);
 check('voltou, mas já recebeu as boas-vindas: não sugere reenviá-las', p.k === null && /Escrever e-mail/.test(p.angulo));
 
+p = prox(base({ nome: 'Aissa', persona: null, capturas: 2, ultima_captura_em: dias(0), email_enviado_em: dias(10) }), [mail({ modelo: 'bilan_conversa', enviado_em: dias(10), criado_em: dias(10) })]);
+check('voltou, só recebeu o e-mail do bilan: nunca sugere boas-vindas', p.k === null);
+p = prox(base({ nome: 'Aissa', persona: null }), [mail({ modelo: 'bilan_conversa', status: 'entregue', enviado_em: new Date(Date.now() - 36e5).toISOString(), criado_em: new Date(Date.now() - 36e5).toISOString() })]);
+check('e-mail do bilan saiu há 1h: espera e não oferece boas-vindas', p.quando === 'esperar' && p.k === null);
+
 console.log('\n== O bloco na tela ==');
 let html = mod.emailsPanel(base(), [], 'x', [], J());
 check('sem prévia em miniatura (o que não servia)', !html.includes('mailthumb') && !html.includes('thumbframe') && !html.includes('<iframe'));
