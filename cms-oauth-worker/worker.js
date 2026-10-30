@@ -3164,10 +3164,18 @@ function crmNotionLerPropriedades(page) {
     prazo_chave: crmNotionPrazo(prazoBruto), consentimento, enviado_ao_crm: enviado, id_no_crm: idCrm } };
 }
 
+// As seções do rascunho de e-mail: "1. Dúvidas que tiramos na conversa", "2. Seus próximos passos", "3. O que eu respondo ou confirmo pra você" e
+// "4. Seu código…" (o código é digitado no CRM, então essa só marca o fim). Com ou sem o número na frente.
+const CRM_NOTION_RASC_SECOES = { 'dúvidas que tiramos na conversa': 'duvidas', 'seus próximos passos': 'proximos', 'o que eu respondo ou confirmo pra você': 'respostas', 'o que eu respondo ou confirmo para você': 'respostas', 'seu código para entrar na plataforma': 'codigo' };
+function crmNotionRascSecao(texto) {
+  const t = crmNotionNorm(texto).replace(/^[1-4]\s*[.·):-]\s*/, '').replace(/[:.]$/, '').toLowerCase();
+  return Object.prototype.hasOwnProperty.call(CRM_NOTION_RASC_SECOES, t) ? CRM_NOTION_RASC_SECOES[t] : null;
+}
+
 // O corpo da página: a seção "## Pendência × Canal" com a tabela, "### Faltam para o CRM" e "### Rascunho de e-mail". Só blocos comuns:
 // o bloco de resumo da reunião do Notion (meeting-notes) não é lido nem necessário; ele entra apenas na contagem de blocos ignorados.
 async function crmNotionLerCorpo(env, paginaUuid) {
-  const corpo = { resumo: '', duvidas: null, secaoAchada: false, tabela: null, largura: 0, faltam: null, rascunho: null, rascunhoCortado: false, ignorados: {} };
+  const corpo = { bilan: { duvidas: [], proximos: [], respostas: [] }, resumo: '', duvidas: null, secaoAchada: false, tabela: null, largura: 0, faltam: null, rascunho: null, rascunhoCortado: false, ignorados: {} };
   const filhos = async (id) => {
     const lista = [];
     let cursor = null;
@@ -3185,7 +3193,7 @@ async function crmNotionLerCorpo(env, paginaUuid) {
   const topo = await filhos(paginaUuid);
   if (!topo.ok) return topo;
   const fila = topo.lista.slice();
-  let secao = null, vistos = 0;
+  let secao = null, vistos = 0, sub = null;   // sub: a seção do rascunho em que estamos (dúvidas, próximos passos, respostas)
   for (let i = 0; i < fila.length; i++) {
     if (++vistos > CRM_NOTION_MAX_BLOCOS) return crmNotionRecusa('pagina_grande', 'A página tem blocos demais para ler (limite ' + CRM_NOTION_MAX_BLOCOS + '). Confira se é a página certa da ligação.');
     const b = fila[i];
@@ -3195,9 +3203,10 @@ async function crmNotionLerCorpo(env, paginaUuid) {
       const h = b[tipo] || {}, titulo = crmNotionNorm(crmNotionRt(h.rich_text, 200));
       if (tipo === 'heading_2' && titulo === CRM_NOTION_TITULO_SECAO) { corpo.secaoAchada = true; secao = 'tabela'; }
       else if (tipo === 'heading_2' && titulo.replace(/[’‘]/g, "'") === "Bilan d'action") secao = 'bilan';
+      else if (tipo === 'heading_3' && crmNotionRascSecao(titulo)) { secao = 'rascunho'; if (corpo.rascunho === null) corpo.rascunho = ''; sub = crmNotionRascSecao(titulo); }
       else if (tipo === 'heading_3' && titulo === 'Dúvidas tiradas') { secao = 'duvidas'; if (!corpo.duvidas) corpo.duvidas = []; }
       else if (tipo === 'heading_3' && titulo === 'Faltam para o CRM') { secao = 'faltam'; if (!corpo.faltam) corpo.faltam = []; }
-      else if (tipo === 'heading_3' && titulo === 'Rascunho de e-mail') { secao = 'rascunho'; if (corpo.rascunho === null) corpo.rascunho = ''; }
+      else if (tipo === 'heading_3' && titulo === 'Rascunho de e-mail') { secao = 'rascunho'; sub = null; if (corpo.rascunho === null) corpo.rascunho = ''; }
       else secao = null;
       if (b.has_children === true && h.is_toggleable === true && typeof b.id === 'string') {   // título que abre e fecha: o conteúdo vem logo depois dele
         const f = await filhos(b.id);
@@ -3228,8 +3237,19 @@ async function crmNotionLerCorpo(env, paginaUuid) {
       if (t && corpo.faltam.length < 50) corpo.faltam.push({ texto: t, feito: !!(b.to_do && b.to_do.checked === true) });
       continue;
     }
-    if (secao === 'rascunho' && ['paragraph', 'bulleted_list_item', 'numbered_list_item', 'quote'].includes(tipo)) {
+    if (secao === 'rascunho' && ['paragraph', 'bulleted_list_item', 'numbered_list_item', 'quote', 'to_do'].includes(tipo)) {
       const t = crmNotionRt(b[tipo] && b[tipo].rich_text, 2000, true);
+      const titulo = crmNotionRascSecao(t);
+      const guarda = (txt) => { const l = corpo.bilan[sub]; const x = crmOnbLimpaTexto(txt, 400, false); if (l && x && l.length < 12) l.push(x); };
+      if (titulo) {   // título de seção (solto ou como item numerado, com os itens dentro dele)
+        sub = titulo;
+        if (b.has_children === true && typeof b.id === 'string') {
+          const f = await filhos(b.id);
+          if (!f.ok) return f;
+          for (const x of f.lista) if (x && ['bulleted_list_item', 'numbered_list_item', 'to_do', 'paragraph'].includes(x.type)) guarda(crmNotionRt(x[x.type] && x[x.type].rich_text, 400));
+        }
+      } else if (sub && tipo !== 'quote') guarda(t);
+      if (tipo === 'to_do') continue;
       const linha = tipo === 'bulleted_list_item' || tipo === 'numbered_list_item' ? '- ' + t : t;
       if (corpo.rascunho.length + linha.length + 1 > 6000) corpo.rascunhoCortado = true;
       else corpo.rascunho += (corpo.rascunho ? '\n' : '') + linha;
@@ -3325,7 +3345,7 @@ function crmNotionMontar(p, c, meta) {
   return { ok: true, proposta: {
     origem: 'notion',
     notion: {
-      pagina: meta.pagina, editada_em: meta.editada_em, resumo: c.resumo || '', duvidas: c.duvidas || [], pessoa: p.pessoa, persona: p.persona || null, fase: p.fase || null, objetivo: p.objetivo, dores: p.dores,
+      pagina: meta.pagina, editada_em: meta.editada_em, resumo: c.resumo || '', duvidas: c.duvidas || [], bilan: c.bilan, pessoa: p.pessoa, persona: p.persona || null, fase: p.fase || null, objetivo: p.objetivo, dores: p.dores,
       documentos_pendentes: p.documentos_pendentes, prazo_chave: p.prazo_chave, consentimento: p.consentimento, enviado_ao_crm: p.enviado_ao_crm === true, id_no_crm: p.id_no_crm,
       pendencias: t.pendencias, lembretes: t.lembretes, email: { linhas: t.email_linhas, rascunho: c.rascunho || '' }, faltam: c.faltam || [], fora: t.fora,
       avisos, blocos_ignorados: c.ignorados
@@ -3396,7 +3416,7 @@ async function handleCrmOnboardingNotion(request, env) {
   if (!CRM_UUID_RE.test(contatoId)) return json({ error: 'Li a página, mas não consegui criar a ficha. Tente de novo.', codigo: 'ficha_nao_criada' }, 500);
 
   // 2. A proposta pendente. A mesma página, sem edição nova, devolve a que já espera decisão (sem gravar outra).
-  const hash = await crmPosHash(contatoId, 'notion:' + alvo.id + ':' + editada, 'v2');
+  const hash = await crmPosHash(contatoId, 'notion:' + alvo.id + ':' + editada, 'v3');
   const semTabela = { error: 'Falta rodar admin/crm/db/crm-pos-call.sql no SQL Editor do Supabase.', codigo: 'sql_pendente' };
   const pendente = await fetch(`${CRM_SUPABASE_URL}/rest/v1/pos_call_propostas?select=id,proposta&contato_id=eq.${contatoId}&hash_entrada=eq.${hash}&status=eq.pendente&limit=1`, { headers: auth });
   if (pendente.status === 404) return json(semTabela, 500);
@@ -3491,7 +3511,7 @@ function crmBilanAnexos(lista, comConteudo) {
 }
 function crmBilanMontar(nome, s, codigo, anexos) {
   anexos = anexos || [];
-  const secoes = [['Dúvidas que tiramos na conversa', s.duvidas], ['Seus próximos passos', s.proximos], ['O que eu respondo ou confirmo para você', s.respostas]];
+  const secoes = [['Dúvidas que tiramos na conversa', s.duvidas], ['Seus próximos passos', s.proximos], ['O que eu respondo ou confirmo pra você', s.respostas]];
   const vazio = 'Nada por aqui desta vez.';
   const abertura = 'Foi muito bom conversar com você. Aqui está o bilan do que vimos juntas, sempre neste mesmo formato:';
   const fechoCodigo = 'Quando a plataforma for lançada, use o código ' + codigo + ' para confirmar a sua vaga na lista de espera. O desconto vale por 6 meses, e você ainda tem 7 dias grátis para testar.';
@@ -3551,7 +3571,7 @@ async function handleCrmBilanEmail(request, env) {
   if (!CRM_UUID_RE.test(contatoId)) return json({ error: 'Contato inválido.' }, 400);
   const s0 = body.secoes && typeof body.secoes === 'object' && !Array.isArray(body.secoes) ? body.secoes : {};
   const s = {};
-  for (const [k, nome] of [['duvidas', 'Dúvidas que tiramos na conversa'], ['proximos', 'Seus próximos passos'], ['respostas', 'O que eu respondo ou confirmo para você']]) {
+  for (const [k, nome] of [['duvidas', 'Dúvidas que tiramos na conversa'], ['proximos', 'Seus próximos passos'], ['respostas', 'O que eu respondo ou confirmo pra você']]) {
     const r = crmBilanLista(s0[k], nome);
     if (!r.ok) return json({ error: r.erro, codigo: 'secao_invalida' }, 400);
     s[k] = r.itens;

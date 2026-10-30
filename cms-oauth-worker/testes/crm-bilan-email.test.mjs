@@ -62,7 +62,7 @@ res = await post(base); let j = await res.json();
 check('prévia: 200, enviado=false e NENHUMA chamada ao Brevo nem gravação', res.status === 200 && j.ok && j.enviado === false && brevoCalls().length === 0 && !chamadas.some((c) => c.method === 'POST' && /emails_enviados/.test(c.url)));
 check('assunto com o primeiro nome', j.assunto === 'Ana, o bilan da nossa conversa · Por Dentro');
 const T = j.texto;
-check('mesmo título e as 4 seções, sempre, nesta ordem', /BILAN DA NOSSA CONVERSA/.test(T) && ['1. Dúvidas que tiramos na conversa', '2. Seus próximos passos', '3. O que eu respondo ou confirmo para você', '4. Seu código para entrar na plataforma'].map((t) => T.indexOf(t)).every((x, i, a) => x >= 0 && (i === 0 || x > a[i - 1])));
+check('mesmo título e as 4 seções, sempre, nesta ordem', /BILAN DA NOSSA CONVERSA/.test(T) && ['1. Dúvidas que tiramos na conversa', '2. Seus próximos passos', '3. O que eu respondo ou confirmo pra você', '4. Seu código para entrar na plataforma'].map((t) => T.indexOf(t)).every((x, i, a) => x >= 0 && (i === 0 || x > a[i - 1])));
 check('o conteúdo de cada pessoa entra em cada seção', /Curso de 20 h/.test(T) && /Ligar para a escola de francês \(prazo: no dia seguinte\)/.test(T) && /prova financeira cobre toda a duração/.test(T));
 check('o código, os 6 meses e os 7 dias grátis aparecem, ligados à lista de espera', /código LISTA-ESPERA25 para confirmar a sua vaga na lista de espera/.test(T) && /desconto vale por 6 meses/.test(T) && /7 dias grátis/.test(T));
 check('o HTML tem o título, as seções e o código em destaque', /<h1[^>]*>Bilan da nossa conversa<\/h1>/.test(j.html) && (j.html.match(/<h2/g) || []).length === 4 && />LISTA-ESPERA25</.test(j.html) && /<b>6 meses<\/b>/.test(j.html));

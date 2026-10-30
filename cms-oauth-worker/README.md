@@ -896,16 +896,16 @@ Prazo com "(a confirmar)" fica **como texto**, nunca vira data certa. Na ficha s
 
 ## 32. E-mail "Bilan da nossa conversa" (CRM → ficha → Plataforma → Interações)
 
-Quando a ficha é criada pelo Onboarding, ela **abre em Plataforma → Interações** (resumo da leitura no topo) e a subaba tem o botão **Enviar e-mail com bilan da conversa**. O botão abre um modal com os quatro blocos do e-mail, já preenchidos com o que o Worker leu da página do Notion; você edita, vê a prévia e só então envia.
+Quando a ficha é criada pelo Onboarding, ela **abre em Plataforma → Interações** (resumo da leitura no topo) e, na coluna da direita da aba Plataforma, **logo abaixo de Pagamento**, fica o botão **Enviar e-mail com bilan da conversa**. O botão abre um modal com os quatro blocos do e-mail, já preenchidos com o que o Worker leu da página do Notion; você edita, vê a prévia e só então envia.
 
 Rota (só admin): `POST /api/crm/onboarding/bilan-email`. Sem `enviar`, devolve só a **prévia** e não manda nada. Com `enviar: true` **e** `confirmo: true` (a caixa "esta pessoa aceitou receber este e-mail"), manda pelo Brevo (as mesmas variáveis da seção 16), registra em `emails_enviados` (modelo `bilan_conversa`, aparece na Conversa da ficha) e vale **um por pessoa a cada 3 dias** (o botão "Enviar mesmo assim" passa a trava). **Sem SQL novo.**
 
-**Formato fixo** (no código do Worker; só o conteúdo muda): título "Bilan da nossa conversa" e as quatro seções, sempre nesta ordem: 1 · Dúvidas que tiramos na conversa · 2 · Seus próximos passos · 3 · O que eu respondo ou confirmo para você · 4 · Seu código para entrar na plataforma (o código que você digita; o texto fixo diz que o desconto vale por 6 meses e que a pessoa ganha 7 dias grátis para testar, ao confirmar a vaga na lista de espera). Seção sem itens mostra "Nada por aqui desta vez.".
+**Formato fixo** (no código do Worker; só o conteúdo muda): título "Bilan da nossa conversa" e as quatro seções, sempre nesta ordem: 1 · Dúvidas que tiramos na conversa · 2 · Seus próximos passos · 3 · O que eu respondo ou confirmo pra você · 4 · Seu código para entrar na plataforma (o código que você digita; o texto fixo diz que o desconto vale por 6 meses e que a pessoa ganha 7 dias grátis para testar, ao confirmar a vaga na lista de espera). Seção sem itens mostra "Nada por aqui desta vez.".
 
 **De onde vem cada bloco** (ao ler a página, o Worker passou a guardar também o `Resumo:` e as `Dúvidas tiradas` do "## Bilan d'action"):
 | Bloco | Origem na página | Pré-preenchimento |
 |---|---|---|
-| Dúvidas tiradas | `### Dúvidas tiradas` dentro de `## Bilan d'action` (lista) | se a página não tiver essa seção, entra o `Resumo:` e o modal avisa |
+| Dúvidas tiradas | a seção **1** do `### Rascunho de e-mail` (ver abaixo); senão `### Dúvidas tiradas` do `## Bilan d'action` | se a página não tiver nenhuma das duas, entra o `Resumo:` e o modal avisa |
 | Próximos passos | linhas da tabela "Pendência × Canal" com Dono **Ela**, ainda não concluídas (qualquer canal), com o prazo (e "(a confirmar)" preservado) | sim |
 | O que eu respondo ou confirmo | linhas com Dono **Ingryd** nos canais Plataforma e E-mail, não concluídas (as de "Só eu", "Fora do CRM", convite e Instagram não entram) | sim |
 | Código | você digita (3 a 40 letras, números, `-` ou `_`) | não |
@@ -914,6 +914,19 @@ Rota (só admin): `POST /api/crm/onboarding/bilan-email`. Sem `enviar`, devolve 
 
 **Anexos (opcional):** o modal aceita até 5 arquivos **PDF, JPG ou PNG**, **3 MB no total** (o Brevo aceita 4 MB por e-mail). O Worker confere os primeiros bytes (um `.pdf` que na verdade é outra coisa é recusado), limpa o nome do arquivo e manda tudo ao Brevo como anexo. **O arquivo não é guardado**: vive só na memória do pedido; na ficha fica registrado o texto do e-mail com a linha "Em anexo: nomes e tamanhos". A prévia mostra os nomes, não manda o conteúdo. Outros formatos (Word, planilha) não entram por segurança; se precisar, avise.
 
-**Para a skill `/bilan-notion`** (repositório do app): dentro de `## Bilan d'action`, gerar `### Dúvidas tiradas` com uma lista (`-`) de até 12 itens curtos, na voz da Ingryd, de cada dúvida que foi esclarecida na ligação (uma frase cada, sem nome, telefone, e-mail nem documento). Enquanto isso, o `Resumo:` serve de ponto de partida e você ajusta no modal.
+**O rascunho no Notion (o ponto de partida do e-mail).** Em `### Rascunho de e-mail`, escreva as seções numeradas, cada uma com os itens em lista embaixo (o Notion aninha sozinho):
+```
+1. Dúvidas que tiramos na conversa
+   - …
+2. Seus próximos passos
+   - …
+3. O que eu respondo ou confirmo pra você
+   - …
+4. Seu código para entrar na plataforma
+   - (o código de redução entra no CRM, na hora de enviar)
+```
+O Worker lê as seções 1, 2 e 3 (até 12 itens de 400 letras cada), com ou sem o número e com "pra" ou "para você". Seção que o rascunho não tiver cai no que vem da tabela (próximos passos = linhas de "Ela"; respostas = linhas de "Ingryd"). Texto solto antes da seção 1 (notas suas) fica de fora do e-mail. O código **não** vem do Notion: você digita no modal.
+
+**Para a skill `/bilan-notion`** (repositório do app): dentro de `## Bilan d'action`, gerar o `### Rascunho de e-mail` com as seções 1, 2 e 3 acima (a 4 é só um aviso), cada uma com uma lista (`-`) de até 12 itens curtos; a seção 1 traz as dúvidas esclarecidas, na voz da Ingryd, de cada dúvida que foi esclarecida na ligação (uma frase cada, sem nome, telefone, e-mail nem documento). Enquanto isso, o `Resumo:` serve de ponto de partida e você ajusta no modal.
 
 **Como testar:** leia uma página de ensaio pelo Onboarding → a ficha abre em Interações → clique no botão → confira a prévia → digite o código, marque a caixa e envie para um e-mail seu. Testes: `node cms-oauth-worker/testes/crm-bilan-email.test.mjs` e, em `admin/crm/db/testes`, `npm run test:onboarding-notion-ui`. Se algo falhar: Workers → Logs, procure `crm/bilan-email` (o log traz só o status do Brevo, nunca o texto).

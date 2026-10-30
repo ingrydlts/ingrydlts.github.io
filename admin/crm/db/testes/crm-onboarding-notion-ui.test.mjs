@@ -263,9 +263,11 @@ async function fichaInt(propostas) {
 }
 console.log('\n== Interações: o botão do bilan ==');
 h = await fichaInt([{ id: 50, proposta: PROPB, status: 'pendente', criado_em: '2026-10-30T10:00:00Z' }]);
-check('a subaba Interações tem o botão "Enviar e-mail com bilan da conversa", ligado', /E-mail com o bilan da conversa/.test(h) && /data-bilanabrir="[^"]+"(?! disabled)>Enviar e-mail com bilan da conversa</.test(h));
-check('explica as seções fixas e que o conteúdo vem do Bilan d’action', /dúvidas tiradas, próximos passos, o que você responde ou confirma e o código de redução/.test(h) && /Bilan d’action/.test(h));
-check('a lista de interações continua abaixo do botão', /Interações na plataforma/.test(h) && h.indexOf('bilan-box') < h.indexOf('Interações na plataforma'));
+check('o botão "Enviar e-mail com bilan da conversa" está ligado, na coluna da direita', /Bilan da conversa/.test(h) && /data-bilanabrir="[^"]+"(?! disabled)>Enviar e-mail com bilan da conversa</.test(h));
+check('o botão fica logo abaixo do Pagamento e antes do Checklist (fora da subaba Interações)', h.indexOf('id="pag-box"') >= 0 && h.indexOf('id="pag-box"') < h.indexOf('id="bilan-box"') && h.indexOf('id="bilan-box"') < h.indexOf('id="chk-lateral"') && h.indexOf('id="bilan-box"') > h.indexOf('id="int-box"'));
+check('dentro da subaba Interações não há mais botão do bilan', !/data-bilanabrir/.test((/<div id="int-box">[\s\S]*?<div class="plat-fixa">/.exec(h) || [''])[0]));
+check('explica as seções fixas, que o conteúdo vem do Notion e que dá para anexar arquivos', /dúvidas tiradas, próximos passos, o que você responde ou confirma e o código de redução/.test(h) && /vem do Notion/.test(h) && /anexa arquivos/.test(h));
+check('a lista de interações continua na subaba', /Interações na plataforma/.test(h));
 h = await fichaInt([{ id: 50, proposta: PROPB, status: 'aplicada', criado_em: '2026-10-30T10:00:00Z' }]);
 check('leitura já aplicada também serve de base', /data-bilanabrir="[^"]+"(?! disabled)>/.test(h));
 h = await fichaInt([{ id: 51, proposta: PROPB, status: 'descartada', criado_em: '2026-10-30T11:00:00Z' }, { id: 50, proposta: PROPB, status: 'aplicada', criado_em: '2026-10-30T10:00:00Z' }]);
@@ -288,7 +290,7 @@ await fichaInt([{ id: 50, proposta: PROPB, status: 'pendente', criado_em: '2026-
 const prevs = []; bilan = async (b) => { prevs.push(b); return { body: { ok: true, enviado: false, assunto: 'Ana, o bilan da nossa conversa · Por Dentro', html: '<p>prévia</p>', texto: 't', para: 'ana.exemplo@example.org' } }; };
 await click({ bilanabrir: CID });
 let m = el('compose-modal').innerHTML;
-check('abre o modal com as 4 seções, na ordem e com os títulos fixos', ['1 · Dúvidas que tiramos na conversa', '2 · Seus próximos passos', '3 · O que eu respondo ou confirmo para você', '4 · Código de redução (lista de espera)'].map((t) => m.indexOf(t)).every((x, i, a) => x >= 0 && (i === 0 || x > a[i - 1])));
+check('abre o modal com as 4 seções, na ordem e com os títulos fixos', ['1 · Dúvidas que tiramos na conversa', '2 · Seus próximos passos', '3 · O que eu respondo ou confirmo pra você', '4 · Código de redução (lista de espera)'].map((t) => m.indexOf(t)).every((x, i, a) => x >= 0 && (i === 0 || x > a[i - 1])));
 check('o texto fixo diz que o desconto vale 6 meses e que ela ganha 7 dias grátis', /6 meses/.test(m) && /7 dias grátis/.test(m));
 check('as dúvidas vêm do Resumo quando a página não tem "Dúvidas tiradas" (e avisa)', el('bl-duvidas').value === PROPB.notion.resumo && /não tem “Dúvidas tiradas”/.test(m));
 check('próximos passos = só o que é dela e ainda não foi feito, com o prazo (e "a confirmar" preservado)', el('bl-proximos').value.split('\n').length === 4 && /^Anexar o passaporte/.test(el('bl-proximos').value) && /\(prazo: 15\/12\/2026 \(a confirmar\)\)/.test(el('bl-proximos').value) && /Pedir a tradução juramentada \(prazo: 10\/12\/2026\)/.test(el('bl-proximos').value) && !/Conferir a carta de aceite/.test(el('bl-proximos').value));
@@ -366,6 +368,17 @@ check('um modal novo começa com a lista de anexos vazia', /<ul class="onb-arqs"
 prevs.length = 0; el('bl-codigo').value = 'LISTA-ESPERA25'; el('bl-confirmo').checked = true;
 await click({}, 'bl-enviar');
 check('sem anexo, o envio leva a lista vazia', prevs.filter((b) => b.enviar === true)[0].anexos.length === 0);
+
+console.log('\n== O rascunho do Notion preenche o modal ==');
+const PROPR = JSON.parse(JSON.stringify(PROPB));
+PROPR.notion.bilan = { duvidas: ['Do rascunho: curso de 20 h'], proximos: ['Do rascunho: ligar para a escola'], respostas: [] };
+await fichaInt([{ id: 50, proposta: PROPR, status: 'pendente', criado_em: '2026-10-30T10:00:00Z' }]);
+bilan = async () => ({ body: { ok: true, enviado: false, assunto: 'x', html: '<p>p</p>', anexos: 0 } });
+await click({ bilanabrir: CID });
+m = el('compose-modal').innerHTML;
+check('dúvidas e próximos passos vêm do rascunho do Notion', el('bl-duvidas').value === 'Do rascunho: curso de 20 h' && el('bl-proximos').value === 'Do rascunho: ligar para a escola');
+check('a seção que o rascunho não tem (3) cai no que vem da tabela', /Responder: o pagamento do semestre/.test(el('bl-respostas').value));
+check('o modal avisa de onde veio e que uma seção veio do resto da página; e não usa o Resumo', /Preenchido a partir do “Rascunho de e-mail”/.test(m) && /o que o rascunho não tem veio do resto da página/.test(m) && !/usei o Resumo/.test(m));
 
 console.log('\n' + passed + ' passaram, ' + failed + ' falharam');
 process.exit(failed ? 1 : 0);
