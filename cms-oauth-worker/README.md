@@ -781,14 +781,14 @@ Testes: `node cms-oauth-worker/testes/stripe-webhook.test.mjs`; no banco, `cd ad
 ## 26. A página de planos (`/planos/`): a pessoa escolhe nível, periodicidade e moeda
 
 O botão **Enviar link de pagamento** (aba Plataforma) manda, por padrão, o e-mail "Link de pagamento" com um link para
-`https://imigrantepordentro.com/planos/?t=...`. Nessa página a pessoa vê o plano (no lançamento, um só: Plataforma Por Dentro, 70 €/mês) e clica em **Começar 30 dias grátis**, que abre o Payment Link do Stripe
+`https://imigrantepordentro.com/planos/?t=...`. Nessa página a pessoa vê o plano (no lançamento, um só: Plataforma Por Dentro, 70 €/mês) e clica em **Começar 7 dias grátis**, que abre o Payment Link do Stripe
 já com o e-mail dela preenchido e o id da ficha (o webhook, seção 25, casa o pagamento com a ficha por esse id). A outra opção do botão, **Só este plano**, manda direto um Payment Link.
 
 **Tudo sai de um arquivo: `planos/planos.json`.** Quem edita o texto e os preços é você, direto no GitHub (lápis → editar → Commit), sem código:
 - `niveis`: `chave`, `nome`, `para` (a frase de quem é), `destaque` (true marca "Mais escolhido") e `beneficios` (a lista).
 - `itens`: um Payment Link por combinação: `chave` (única), `nivel`, `periodicidade` (`mensal`, `semestral` ou `anual`), `moeda` (`BRL` ou `EUR`), `valor` (o preço que você cadastrou no Stripe, só o número) e `url`.
-- `teste_dias`: 30 (o texto "30 dias grátis, a cobrança só começa no dia 31"). Ponha 0 se o Payment Link **não** tiver teste grátis.
-- **No lançamento a página tem um plano só: 70 € por mês, só mensal em euros** (decisão de 29/10/2026, doc "Estratégia pricing plataforma"). Os cupons de lançamento (15, 25, 35 e 45 € por 6 mensalidades) são **códigos promocionais do Stripe**, digitados no pagamento: não entram no arquivo. Enquanto a `url` estiver vazia (`""`), a página mostra o preço e o botão **Em breve**. Quando criar o Payment Link de 70 € no Stripe, cole a URL entre as aspas e salve: o botão vira "Começar 30 dias grátis" sozinho. Para voltar a ter mais níveis, moedas ou periodicidades, acrescente linhas em `niveis` e `itens`: a página mostra os seletores sozinha quando há mais de uma opção.
+- `teste_dias`: 7 (o texto "7 dias grátis, a cobrança só começa no 8º dia"; tem de ser o mesmo prazo do Payment Link e das CGV, art. 6). Ponha 0 se o Payment Link **não** tiver teste grátis.
+- **No lançamento a página tem um plano só: 70 € por mês, só mensal em euros** (decisão de 29/10/2026, doc "Estratégia pricing plataforma"). Os cupons de lançamento (15, 25, 35 e 45 € por 6 mensalidades) são **códigos promocionais do Stripe**, digitados no pagamento: não entram no arquivo. Enquanto a `url` estiver vazia (`""`), a página mostra o preço e o botão **Em breve**. Quando criar o Payment Link de 70 € no Stripe, cole a URL entre as aspas e salve: o botão vira "Começar 7 dias grátis" sozinho. Para voltar a ter mais níveis, moedas ou periodicidades, acrescente linhas em `niveis` e `itens`: a página mostra os seletores sozinha quando há mais de uma opção.
 - A página avisa do código de lançamento, de como resiliar e liga às CGV antes do pagamento (informação pré-contratual).
 
 **O que o Worker precisa**: `CRM_LINK_SECRET` (a mesma da seção 18; assina o link da página, que vale 30 dias) e a rota pública `POST /api/planos/contexto`, que devolve só o primeiro nome, o e-mail e o id da ficha de quem tem o link. Sem `CRM_LINK_SECRET` o botão avisa e nada é enviado.
@@ -850,8 +850,9 @@ As duas rotas exigem o token da sessão do Supabase da própria pessoa (o app ma
 mexe na assinatura da ficha ligada a essa conta. Não precisa de segredo novo: usa `STRIPE_SECRET_KEY`, `SUPABASE_SERVICE_ROLE_KEY` e o Brevo.
 O Worker usa o banco de produção: no app de staging a tela "Seu plano" roda em simulação (avisada na tela).
 
-**No Stripe** (Configurações → Billing → Assinaturas e e-mails): ligue o **lembrete 7 dias antes do fim do teste grátis**. As CGV (art. 6)
-prometem esse e-mail.
+**No Stripe** (Configurações → Billing → Assinaturas e e-mails): **desligue** o lembrete de fim do teste do Stripe (ele é fixo em 3 dias antes, e com teste de 7 dias
+cairia no 4º dia). O combinado é o lembrete **1 dia antes do fim do teste**, mandado pelo Worker. **Esse envio por data ainda não existe** (pendente). Enquanto
+não existir, o teste grátis não deve ir para o ar com a promessa da CGV, art. 6 ("e-mail de rappel avant la fin de l'essai") sem nenhum lembrete.
 
 **Teste ponta a ponta (modo teste do Stripe)**: com a assinatura de ensaio da seção 25, abra o app → Perfil → Seu plano → **Resiliar plano** →
 **Confirmar a resiliação**. Esperado: a tela diz até quando vale; no Stripe a assinatura mostra "Cancela em …"; na ficha, "resiliado" e o
