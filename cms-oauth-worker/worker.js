@@ -1973,6 +1973,9 @@ async function handleCrmModeloTeste(request, env) {
 // consentimento antes de cada envio. Um modelo de sequência sai uma vez só por pessoa (índice emails_um_por_sequencia_idx).
 // Os 10 modelos de antes do estúdio nunca saem por aqui. Ver README.md, seção 23.
 const CRM_CRON_SEQUENCIAS = '5 * * * *';
+// Para o Envio em minutos (ex.: o recap do guia do tecnólogo, 30 min depois do cadastro) o Cron Trigger "*/5 * * * *" roda a mesma
+// rodada a cada 5 minutos. Os dois podem existir juntos: um modelo sai uma vez só por pessoa (índice emails_um_por_sequencia_idx).
+const CRM_CRONS_SEQUENCIAS = [CRM_CRON_SEQUENCIAS, '*/5 * * * *'];
 const CRM_MODELOS_ANTIGOS = CRM_MODELOS.concat(['cf_guia_conversa']);   // os 10 de antes do estúdio
 const CRM_APP_LINK = 'https://plataforma.imigrantepordentro.com/';      // igual a APP_LINK em admin/crm/crm.js
 const CRM_CAL_LINK = 'https://cal.com/ingryd-silva-jf1cnx/1-1?overlayCalendar=true';   // igual a CAL_LINK em admin/crm/crm.js
@@ -4371,9 +4374,10 @@ export default {
 
   // Cron Trigger "0 13 * * *" (10h de Brasília): manda o e-mail 2 do guia (a conversa). Seção 18 do README.
   // Cron Trigger "5 * * * *" (de hora em hora): as sequências do estúdio (entrega 3). Seção 23 do README.
+  // Cron Trigger "*/5 * * * *" (de 5 em 5 minutos): a mesma rodada das sequências, para o Envio em minutos.
   // Qualquer outro horário (ou nenhum) continua sendo o e-mail 2, como antes.
   async scheduled(event, env, ctx) {
-    if (event && event.cron === CRM_CRON_SEQUENCIAS) {
+    if (event && CRM_CRONS_SEQUENCIAS.includes(event.cron)) {
       ctx.waitUntil(crmSequenciasRodada(env).catch((e) => console.error('crm/sequencias: ' + e)));
       return;
     }

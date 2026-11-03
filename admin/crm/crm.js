@@ -2732,20 +2732,23 @@ function envioHtml(m) {
   var gats = [['email', GATILHO.email], ['material', GATILHO.material]]; if (pq.produto) gats.push(['compra', GATILHO.compra]);
   var qual = m.envio_gatilho === 'email' ? opcoes((M || []).filter(function (x) { return x.chave !== m.chave; }).map(function (x) { return [x.chave, x.nome]; }), m.envio_depois_de, 'Escolha o e-mail')
     : m.envio_gatilho === 'material' ? opcoes(materiaisConhecidos(), m.envio_depois_de, 'Escolha o material') : opcoes([[pq.produto, pq.produto_nome || produtoNome(pq.produto)]], m.envio_depois_de);
-  var completo = m.envio_gatilho && m.envio_depois_de && m.envio_dias != null && m.envio_hora != null;
-  var resumo = completo ? 'Sai sozinho ' + (m.envio_dias === 0 ? 'no mesmo dia' : m.envio_dias + (m.envio_dias === 1 ? ' dia' : ' dias') + ' depois') + ' ' +
+  var minutos = m.envio_minutos != null ? m.envio_minutos : null;
+  var completo = m.envio_gatilho && m.envio_depois_de && (minutos != null || (m.envio_dias != null && m.envio_hora != null));
+  var quando = minutos != null ? minutos + (minutos === 1 ? ' minuto' : ' minutos') + ' depois' : (m.envio_dias === 0 ? 'no mesmo dia' : m.envio_dias + (m.envio_dias === 1 ? ' dia' : ' dias') + ' depois');
+  var resumo = completo ? 'Sai sozinho ' + quando + ' ' +
     (m.envio_gatilho === 'email' ? 'do e-mail "' + modeloNome(m.envio_depois_de) + '"' : m.envio_gatilho === 'material' ? 'de pegar ' + origLabel(m.envio_depois_de) : 'da compra do ' + (pq.produto_nome || produtoNome(m.envio_depois_de))) +
-    ', por volta das ' + m.envio_hora + 'h05 de Brasília, uma vez por pessoa, para: ' + paraResumo(m) + '.' : 'Complete o Envio para poder ligar.';
+    (minutos != null ? ', na primeira rodada do Worker depois disso' : ', por volta das ' + m.envio_hora + 'h05 de Brasília') + ', uma vez por pessoa, para: ' + paraResumo(m) + '.' : 'Complete o Envio para poder ligar.';
   h += '<div class="st-envio"><label class="st-fld"><span>Depois de quê</span><select class="st-in" data-envio="gatilho">' + opcoes(gats, m.envio_gatilho) + '</select></label>' +
     '<label class="st-fld"><span>Qual</span><select class="st-in" data-envio="depois_de">' + qual + '</select></label>' +
     '<label class="st-fld"><span>Quantos dias depois</span><input class="st-in" type="number" min="0" max="120" data-envio="dias" value="' + esc(m.envio_dias == null ? '' : m.envio_dias) + '"></label>' +
-    '<label class="st-fld"><span>Em que horário</span><select class="st-in" data-envio="hora">' + opcoes(HORAS, m.envio_hora == null ? '' : String(m.envio_hora), 'Escolha') + '</select></label></div>' +
+    '<label class="st-fld"><span>Em que horário</span><select class="st-in" data-envio="hora">' + opcoes(HORAS, m.envio_hora == null ? '' : String(m.envio_hora), 'Escolha') + '</select></label>' +
+    '<label class="st-fld"><span>Ou quantos minutos depois (vale no lugar de dias e horário)</span><input class="st-in" type="number" min="1" max="1440" data-envio="minutos" placeholder="vazio = dias e horário" value="' + esc(minutos == null ? '' : minutos) + '"></label></div>' +
     '<p class="st-msg tip">' + esc(resumo) + '</p>' +
     '<div class="st-ligado ' + (m.envio_ligado ? 'on' : '') + '"><span><b>' + (m.envio_ligado ? 'Envio ligado' : 'Envio desligado') + '</b>' +
     (m.envio_ligado ? ' desde ' + esc(fmtWhen(m.envio_ligado_em)) + '. Quem já tinha passado do horário antes disso não recebe.' : noAr ? ' Ao ligar, vale para quem passar do horário daqui para a frente.' : ' Publique uma versão (No ar) para poder ligar.') + '</span>' +
     '<button class="btn' + (m.envio_ligado ? '' : ' primary') + '" type="button" id="st-envio-ligar"' + (!m.envio_ligado && (!completo || !noAr) ? ' disabled' : '') + '>' + (m.envio_ligado ? 'Desligar' : 'Ligar o envio') + '</button></div>' +
     (m.tipo === 'novidades' ? '<p class="st-msg tip">Novidades: o banco e o Worker conferem o aceite mais recente a cada envio. Quem pedir para sair para de receber na rodada seguinte.</p>' : '') +
-    '<p class="st-msg tip">O Worker roda as sequências de hora em hora (Cron Trigger "5 * * * *", README do Worker, seção 23). Mudar o Envio ou o Para quem com ele ligado recomeça a contagem a partir de agora.</p>';
+    '<p class="st-msg tip">O Worker roda as sequências de hora em hora (Cron Trigger "5 * * * *") e, para o Envio em minutos, a cada 5 minutos ("*/5 * * * *"); README do Worker, seção 23. Mudar o Envio ou o Para quem com ele ligado recomeça a contagem a partir de agora.</p>';
   return h;
 }
 async function salvarModelo(patch, msg) {
@@ -2766,7 +2769,8 @@ function mudarEnvio(campo, valor) {
   else if (campo === 'depois_de') p = { envio_depois_de: valor || null };
   else if (campo === 'dias') { var n = parseInt(valor, 10); if (!(n >= 0 && n <= 120)) return toast('Dias: de 0 a 120'); p = { envio_dias: n }; }
   else if (campo === 'hora') p = { envio_hora: valor === '' ? null : Number(valor) };
-  if (m.envio_ligado && (p.envio_depois_de === null || p.envio_hora === null)) p.envio_ligado = false;
+  else if (campo === 'minutos') { if (String(valor).trim() === '') p = { envio_minutos: null }; else { var mn = parseInt(valor, 10); if (!(mn >= 1 && mn <= 1440)) return toast('Minutos: de 1 a 1440'); p = { envio_minutos: mn }; } }
+  if (m.envio_ligado && (p.envio_depois_de === null || (p.envio_minutos === null && m.envio_dias == null) || (p.envio_hora === null && m.envio_minutos == null))) p.envio_ligado = false;
   return salvarModelo(p, 'Envio salvo');
 }
 async function ligarEnvio() {
