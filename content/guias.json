@@ -35,6 +35,16 @@
       "leituraMin": 4,
       "atualizadoEm": "2026-10-12",
       "publicado": true
+    },
+    {
+      "slug": "tecnologo-nivel-na-franca",
+      "url": "/guias/tecnologo-nivel-na-franca/",
+      "categoria": "Campus France",
+      "titulo": "Tecnólogo do Brasil: em que nível você entra na França?",
+      "resumo": "L3 ou M1, o que cada porta pede e o modelo de e-mail em francês para perguntar à escola, sem pagar taxa antes da hora.",
+      "leituraMin": 4,
+      "atualizadoEm": "2026-11-03",
+      "publicado": false
     }
   ]
 }
