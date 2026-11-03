@@ -29,7 +29,7 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const GERADO = "<!-- gerado por scripts/gerar-artigos.mjs a partir de content/posts.json: não edite à mão -->";
 const RESERVADOS = new Set(["post", "categoria"]); // pastas que já existem em /artigos/
 // Páginas fixas do site que também entram no sitemap.
-const PAGINAS_FIXAS = ["/", "/artigos/", "/guias/", "/guias/vls-ts-validacao-travou/", "/sobre/", "/produtos-digitais/", "/produtos-de-estudo/", "/produtos-de-compras/", "/assistente-de-vistos/"];
+const PAGINAS_FIXAS = ["/", "/artigos/", "/guias/", "/guias/vls-ts-validacao-travou/", "/guias/tecnologo-nivel-na-franca/", "/sobre/", "/produtos-digitais/", "/produtos-de-estudo/", "/produtos-de-compras/", "/assistente-de-vistos/"];
 
 const ler = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf8");
 const existe = (rel) => fs.existsSync(path.join(ROOT, rel));
