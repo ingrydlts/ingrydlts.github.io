@@ -219,9 +219,9 @@
 
       <div class="ok-banner" id="ok-banner" hidden>
         <strong>✓ Liberado.</strong>
-        <span>O checklist e o modelo estão logo abaixo. Guarde esta página para voltar quando precisar.</span>
+        <span>O checklist e o modelo estão logo abaixo e também no Notion, para você guardar. Salve esta página para voltar quando precisar.</span>
         <div class="acoes no-print">
-          <a class="btn-guia" id="notion-link" href="#" target="_blank" rel="noopener" hidden>Abrir no Notion →</a>
+          <a class="btn-guia" id="notion-link" href="#" target="_blank" rel="noopener" hidden>Abrir o checklist no Notion →</a>
         </div>
       </div>
 
@@ -339,6 +339,9 @@ Cordialement,
 import { supabase } from '/assets/js/supabase-client.js';
 
 var GUIA = "tecnologo-nivel-na-franca";
+// Página pública do Notion com o checklist e o modelo. Se um dia o link passar para a tabela guias_links (como nos outros
+// guias), a função devolve notion_url e este valor só serve de reserva.
+var NOTION_URL = "https://topordentroviagens.notion.site/Modelo-de-e-mail-para-a-escola-tecn-logo-do-Brasil-e-n-vel-de-entrada-em-franc-s-40dd602254ce81ddb077edd3a306f3e1";
 var LS_KEY = "pd_guia_" + GUIA;
 var CONSENTIMENTO_VERSAO = "guia-v1";
 var TEXTO_SERVICO = "Li e aceito a Política de Privacidade.";
@@ -354,12 +357,10 @@ function lerSalvo() { try { var v = JSON.parse(lsGet(LS_KEY) || "null"); return 
 byId("notion-link").addEventListener("click", function () { track("guia_abrir_notion", { guia: GUIA }); });
 
 function liberar(salvo, scroll) {
-  if (salvo.url) {
-    var nl = byId("notion-link");
-    nl.href = salvo.url;
-    if (salvo.texto) nl.textContent = salvo.texto + " →";
-    nl.hidden = false;
-  }
+  var nl = byId("notion-link");
+  nl.href = salvo.url || NOTION_URL;
+  if (salvo.texto) nl.textContent = salvo.texto + " →";
+  nl.hidden = false;
   byId("gate").hidden = true;
   byId("ok-banner").hidden = false;
   byId("locked").hidden = false;
