@@ -40,7 +40,9 @@
     "test:poscall-ui": "node crm-pos-call-ui.test.mjs",
     "test:proximo-email-ui": "node crm-proximo-email-ui.test.mjs",
     "test:conferir": "node conferir-banco.test.mjs",
-    "test:minutos": "node crm-sequencia-minutos.test.mjs"
+    "test:minutos": "node crm-sequencia-minutos.test.mjs",
+    "test:tecnologo": "node crm-modelos-tecnologo.test.mjs",
+    "test:funis": "node crm-funis.test.mjs"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.8"

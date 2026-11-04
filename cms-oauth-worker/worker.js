@@ -1602,6 +1602,7 @@ function cfGuia1Vars(contato, notionUrl) {
 const CF_ETAPA_NOME = {
   'cf-nao-comecei': 'ainda não começou', 'cf-escolhendo-curso': 'escolhendo o curso', 'cf-juntando-documentos': 'juntando documentos, traduções e o teste',
   'cf-dossie-enviado': 'já enviou o dossiê', 'cf-entrevista-resposta': 'esperando a entrevista ou a resposta',
+  'tec-nao-sei': 'ainda não sabe em que nível entraria', 'tec-juntando': 'juntando histórico, diploma e carga horária', 'tec-escrevi': 'já escreveu para escolas e está esperando', 'tec-resposta': 'já tem resposta de uma escola',
 };
 
 // Variáveis do e-mail 2. Os botões levam o link assinado da pessoa e vêm prontos do código.
@@ -1994,13 +1995,14 @@ function crmDiaBr(ymd) { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(ymd ||
 // Os dados de um modelo novo (os mesmos que o estúdio mostra em "Contexto da pessoa": ES.VARS_NOVOS em estudio.js).
 // p = uma linha de crm_sequencia_pendentes (ou o mesmo formato).
 // As etapas do guia viram um sim/não cada (etapa_nao_comecei, etapa_pesquisando…), como ES.ETAPAS_GUIA em estudio.js.
-const CRM_ETAPAS_GUIA = Object.keys(CF_PASSO).concat(['alt-pesquisando', 'alt-escolhendo-escola', 'alt-recusa-idade', 'alt-buscando-empresa', 'alt-montando-contrato']);
+const CRM_ETAPAS_GUIA = Object.keys(CF_PASSO).concat(['alt-pesquisando', 'alt-escolhendo-escola', 'alt-recusa-idade', 'alt-buscando-empresa', 'alt-montando-contrato',
+  'tec-nao-sei', 'tec-juntando', 'tec-escrevi', 'tec-resposta']);
 function crmVarsNovos(env, p) {
   const d = p.dados || {}, resp = d.respostas || {};
   const nivel = CF_NIVEIS[resp.cfNivel];
   const cidade = CF_CIDADES.find(([k]) => k === resp.cfCidade);
   const etapas = {};
-  for (const k of CRM_ETAPAS_GUIA) etapas['etapa_' + k.replace(/^(cf|alt)-/, '').replace(/-/g, '_')] = resp.objetivo === k;
+  for (const k of CRM_ETAPAS_GUIA) etapas['etapa_' + k.replace(/^(cf|alt|tec)-/, '').replace(/-/g, '_')] = resp.objetivo === k;
   return {
     ...etapas,
     nome: crmPrimeiroNome(p.nome), email: p.email,

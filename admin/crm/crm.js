@@ -2,7 +2,8 @@
 // Nada de service_role aqui. O banco é db/crm-fase2.sql; o desenho é o artefato "CRM Por Dentro".
 // Tudo que vem do banco é texto de terceiros (nome, e-mail, pergunta): passa sempre por esc().
 import { supabase } from '/assets/js/supabase-client.js';
-import * as ES from './estudio.js?v=2026-10-23.3';   // os blocos do estúdio de e-mails (entregas 2 e 3)
+import { funilDe, etapaRotulo, proximoDoFunil } from './funis.js?v=2026-11-04.1';   // o registro de funis: de qual guia veio e quais e-mails ela recebe
+import * as ES from './estudio.js?v=2026-11-04.1';   // os blocos do estúdio de e-mails (entregas 2 e 3)
 
 var PERSONAS = {
   au_pair_estudante: 'Au pair → estudante', campus_france: 'Campus France', alternancia_emprego: 'Alternância / emprego',
@@ -129,10 +130,15 @@ function nCapturas(c) { return Math.max(1, c.capturas || 0); }
 function voltou(c) { return nCapturas(c) >= 2; }
 // Voltou a deixar o e-mail depois do último e-mail que você mandou (ou nunca recebeu e-mail).
 function voltouDepoisDoEmail(c) { return voltou(c) && !!c.ultima_captura_em && (!c.email_enviado_em || c.ultima_captura_em > c.email_enviado_em); }
-function guiaTpl(o) { return o === 'guia-vls-ts' ? 'guia_chamada' : o === 'guia-email-alt30' ? 'guia_alternancia' : null; }
+// O modelo que você envia à mão para quem veio de um guia (vem do registro de funis).
+function guiaTpl(o) { var f = funilDe(o); return f && f.manual ? f.manual : null; }
+// Guia com e-mails automáticos (ex.: tecnólogo): quem acabou de chegar recebe o e-mail do guia, nunca as boas-vindas com o link da plataforma.
+function funilAuto(c) { var f = funilDe(ultimaOrigem(c)); return f && f.auto ? f : null; }
 function defaultTpl(c) {
   var g = guiaTpl(ultimaOrigem(c));
   if (g && (!c.segmento || voltouDepoisDoEmail(c))) return g;
+  var fa = funilAuto(c);
+  if (!c.segmento && fa && fa.recap && modeloDe(fa.recap.modelo)) return fa.recap.modelo;
   return c.segmento || 'boas_vindas';
 }
 function splitTpl(c, k) { var t = TPLS[k].make(c); return { subject: t[0].replace(/^Assunto: /, ''), body: t[1] }; }
@@ -797,6 +803,12 @@ function proximoEmail(c, mails, resps, jor) {
   if (origensDe(c).indexOf(CF_GUIA_ORIGEM) >= 0 && m1 && !m2 && c.aceita_novidades && diasDesde(m1.enviado_em || m1.criado_em) <= 7)
     return out({ titulo: 'Deixe o e-mail 2 do guia sair sozinho',
       angulo: 'A sequência do Campus France já tem o e-mail 2 (a conversa) programado para o próximo envio diário, às 10h de Brasília. Mandar outro na frente atropela ele.' });
+  var fa = funilAuto(c);
+  if (fa && !c.segmento) {
+    var estado = {}; (M || []).forEach(function (x) { estado[x.chave] = { envio_ligado: !!x.envio_ligado, no_ar: versoesDe(x.chave).some(function (v) { return v.etapa === 'no_ar'; }), nome: x.nome }; });
+    var pf = proximoDoFunil(fa, r.objetivo || '', mails.map(function (m) { return m.modelo; }), estado);
+    if (pf) return out(pf);
+  }
   if (!mails.length)
     return out({ k: k0, quando: 'agora', titulo: 'Primeiro contato: entregue o que ela veio buscar',
       angulo: 'Abra com o que ela pediu' + (origem ? ' (“' + origem + '”)' : '') + (etapa ? ', mostre que sabe em que etapa ela está (' + etapa.toLowerCase() + ')' : '') + ' e termine com uma pergunta fácil de responder. Uma resposta dela vale mais do que mil cliques.' });
@@ -903,12 +915,12 @@ function compraHtml(c) {
 // objetivo = a etapa que ela escolheu no guia; o prefixo diz de qual guia (cf- Campus France, alt- alternância 30+).
 var ALT_ETAPA = { 'alt-pesquisando': 'Pesquisando se pode fazer alternância depois dos 29', 'alt-escolhendo-escola': 'Escolhendo escola e curso',
   'alt-recusa-idade': 'Ouviu "só até 29" de uma escola', 'alt-buscando-empresa': 'Tem escola, falta a empresa', 'alt-montando-contrato': 'Tem empresa, montando o contrato' };
-function etapaDe(v) { return CF_ETAPA[v] || ALT_ETAPA[v] || v; }
+function etapaDe(v) { return CF_ETAPA[v] || ALT_ETAPA[v] || etapaRotulo(v) || v; }
 function respostasKv(c) {
   var r = c.respostas || {}, rows = [], cf = /^cf-/.test(r.objetivo || '') || r.cfNivel || origensDe(c).indexOf(CF_GUIA_ORIGEM) >= 0;
   var add = function (l, v, falta) { if (v != null && v !== '') rows.push([l, String(v)]); else if (falta) rows.push([l, falta, 1]); };
   add('Persona', personaLabel(c) + (subLabel(c) ? ' · ' + subLabel(c) : ''));
-  if (r.objetivo) add(/^alt-/.test(r.objetivo) ? 'Etapa na alternância' : /^cf-/.test(r.objetivo) ? 'Etapa no Campus France' : 'Etapa', etapaDe(r.objetivo));
+  if (r.objetivo) add(/^alt-/.test(r.objetivo) ? 'Etapa na alternância' : /^cf-/.test(r.objetivo) ? 'Etapa no Campus France' : /^tec-/.test(r.objetivo) ? 'Etapa do tecnólogo' : 'Etapa', etapaDe(r.objetivo));
   if (cf) add('Nível da candidatura', CF_NIVEL[r.cfNivel] || r.cfNivel, 'não respondeu (pergunta nova, de 14/10)');
   if (r.cfNivel && CF_PRAZO[r.cfNivel]) { var d = diasAte(CF_PRAZO[r.cfNivel]); add('Prazo Campus France', fmtDay(CF_PRAZO[r.cfNivel]) + (d >= 0 ? ' (faltam ' + d + ' dias)' : ' (venceu)')); }
   if (cf) add('Cidade', CF_CIDADE[r.cfCidade] || r.cfCidade, 'ainda não disse (toca no e-mail 2)');

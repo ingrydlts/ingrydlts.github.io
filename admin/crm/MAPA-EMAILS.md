@@ -197,3 +197,11 @@ flowchart TD
 3. **Qualificação** calculada no banco, usada pelo motor de insights. Proposta de regra: qualificado = respondeu um e-mail, **ou** clicou em 2 ou mais e-mails, **ou** voltou a pedir material, **ou** marcou 1:1. Só qualificado recebe convite da plataforma ou do 1:1.
 4. **Persona do lead do tecnólogo**: não gravar `campus_france` no cadastro do guia; a persona entra quando a pessoa pede a plataforma.
 5. **E-mails 2 e 3 do tecnólogo** por etapa (`tec-*`), depois do recap.
+
+## Implementado: registro de funis e e-mail por etapa (guia do tecnólogo)
+
+- `admin/crm/funis.js` é o registro: para cada origem de guia (`guia-tecnologo`, `guia-etudes-en-france-2027`, `guia-vls-ts`, `guia-email-alt30`) diz as etapas, o modelo manual e, nos guias automáticos, o e-mail do guia + a trilha por etapa. A ficha (`crm.js`) lê dele: quem chega por um guia automático **nunca** recebe a sugestão de boas-vindas com o link da plataforma; a ficha mostra "o e-mail do guia sai sozinho em 30 min" (ou avisa que o Envio está desligado).
+- Tecnólogo: 4 etapas (`tec-nao-sei`, `tec-juntando`, `tec-escrevi`, `tec-resposta`). O 1º e-mail (`tec_recap_30min`, 30 min depois) já fala da etapa marcada; 3 dias depois sai o e-mail só daquela etapa (`tec_d3_*`, só para quem aceitou novidades).
+- Ativar, nesta ordem: `crm-sequencia-minutos.sql` → `crm-modelo-tecnologo-recap.sql` → `crm-modelos-tecnologo-etapas.sql` → `crm-modelos-prontos.sql` (catálogo de variáveis) no Supabase de teste e depois no de produção; colar o `worker.js`; cron `*/5 * * * *`; no Estúdio, revisar, publicar e ligar o Envio dos 5 modelos.
+- Testes: `npm run test:funis`, `test:tecnologo`, `test:minutos` (em `admin/crm/db/testes`, com `APP_DB_DIR` apontando para `db/` do app).
+- Próxima fase: registrar Campus France, alternância 30+ e VLS-TS com recap + trilha por etapa (mesmo desenho), e a regra de qualificação antes de convidar para a plataforma.

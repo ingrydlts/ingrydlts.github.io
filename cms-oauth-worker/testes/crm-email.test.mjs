@@ -788,8 +788,8 @@ console.log('\n== Estúdio de e-mails 3: sequências de hora em hora ==');
   check('rodar na hora: com o segredo, manda', res.status === 200 && (await res.json()).enviados === 2);
 
   console.log('\n== Filtro por etapa do guia: a etapa chega aos modelos novos ==');
-  check('o estúdio e o Worker têm as mesmas 10 etapas', E.ETAPAS_GUIA.length === 10 &&
-    E.ETAPAS_GUIA.every(([k]) => E.VARS_NOVOS.includes('etapa_' + k.replace(/^(cf|alt)-/, '').replace(/-/g, '_'))));
+  check('o estúdio e o Worker têm as mesmas 14 etapas', E.ETAPAS_GUIA.length === 14 &&
+    E.ETAPAS_GUIA.every(([k]) => E.VARS_NOVOS.includes('etapa_' + k.replace(/^(cf|alt|tec)-/, '').replace(/-/g, '_'))));
   const dT = E.esqueleto('aquecimento');
   dT.assunto = 'Uma astúcia da sua etapa';
   dT.itens = [{ tipo: 'texto', texto: 'Oi {nome}!' }, { tipo: 'etapa', se: '#etapa_juntando_documentos', texto: 'Trecho de quem junta documentos.' },

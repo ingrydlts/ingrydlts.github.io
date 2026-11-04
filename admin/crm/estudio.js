@@ -40,8 +40,10 @@ var ETAPAS_CF = { nao_comecei: 'ainda não começou', escolhendo_curso: 'está e
   dossie_enviado: 'já enviou o dossiê', entrevista_resposta: 'está esperando a entrevista ou a resposta' };
 var ETAPAS_ALT = { pesquisando: 'ainda está pesquisando', escolhendo_escola: 'está escolhendo escola', recusa_idade: 'ouviu "só até 29"',
   buscando_empresa: 'está buscando empresa', montando_contrato: 'está montando o contrato' };
+var ETAPAS_TEC = { nao_sei: 'ainda não sabe em que nível entraria', juntando: 'está juntando histórico, diploma e carga horária', escrevi: 'já escreveu para escolas e está esperando', resposta: 'já tem resposta de uma escola' };
 Object.keys(ETAPAS_CF).forEach(function (k) { CAT['etapa_' + k] = { t: 'sim', o: 'etapa do guia: ' + ETAPAS_CF[k], etapa: true }; });
 Object.keys(ETAPAS_ALT).forEach(function (k) { CAT['etapa_' + k] = { t: 'sim', o: 'etapa do guia: ' + ETAPAS_ALT[k], etapa: true }; });
+Object.keys(ETAPAS_TEC).forEach(function (k) { CAT['etapa_' + k] = { t: 'sim', o: 'etapa do guia: ' + ETAPAS_TEC[k], etapa: true }; });
 
 // Os dados que cada modelo tem na hora do envio (o Worker ou o painel preenche exatamente estes).
 var PAINEL = ['nome', 'persona', 'link_acesso', 'link_agenda', 'au_pair', 'motivo', 'prazo_vencido', 'prazo_a_vencer', 'prazo_limite', 'dias_para_prazo'];
@@ -60,10 +62,11 @@ export var VARS_DE = {
 // O Worker preenche exatamente estes (crmVarsNovos em worker.js).
 // As etapas do guia viram um sim/não cada (etapa_…), para o bloco "Só para uma etapa".
 export var VARS_NOVOS = ['nome', 'email', 'persona', 'nivel', 'prazo_nivel', 'etapa', 'cidade', 'prazo_limite', 'dias_para_prazo',
-  'prazo_vencido', 'prazo_a_vencer', 'link_acesso', 'link_agenda'].concat(Object.keys(ETAPAS_CF).concat(Object.keys(ETAPAS_ALT)).map(function (k) { return 'etapa_' + k; }));
+  'prazo_vencido', 'prazo_a_vencer', 'link_acesso', 'link_agenda'].concat(Object.keys(ETAPAS_CF).concat(Object.keys(ETAPAS_ALT)).concat(Object.keys(ETAPAS_TEC)).map(function (k) { return 'etapa_' + k; }));
 // A regra "Etapa do guia" do Para quem: o valor é o que fica em contatos.respostas.objetivo (crm_sequencia_pendentes compara igual).
 export var ETAPAS_GUIA = Object.keys(ETAPAS_CF).map(function (k) { return ['cf-' + k.replace(/_/g, '-'), 'Campus France: ' + ETAPAS_CF[k]]; })
-  .concat(Object.keys(ETAPAS_ALT).map(function (k) { return ['alt-' + k.replace(/_/g, '-'), 'Alternância 30+: ' + ETAPAS_ALT[k]]; }));
+  .concat(Object.keys(ETAPAS_ALT).map(function (k) { return ['alt-' + k.replace(/_/g, '-'), 'Alternância 30+: ' + ETAPAS_ALT[k]]; }))
+  .concat(Object.keys(ETAPAS_TEC).map(function (k) { return ['tec-' + k.replace(/_/g, '-'), 'Tecnólogo: ' + ETAPAS_TEC[k]]; }));
 var VARS_PRODUTO = ['produto', 'link_produto'];
 export function varsDoModelo(chave, m) {
   if (VARS_DE[chave]) return VARS_DE[chave];
@@ -314,7 +317,8 @@ var CF_NIVEIS = { l1: ['1º ano de Licence', '14/12/2026'], arq: ['Arquitetura',
 var CF_CIDADES = [['paris', 'Paris'], ['lyon', 'Lyon'], ['toulouse', 'Toulouse'], ['montpellier', 'Montpellier'], ['bordeaux', 'Bordeaux'], ['lille', 'Lille'], ['outra', 'Outra cidade'], ['nao-sei', 'Ainda não sei']];
 var CF_CIDADE = {}; CF_CIDADES.forEach(function (c) { CF_CIDADE[c[0]] = c[1]; });
 export var ETAPA_NOME = { 'cf-nao-comecei': 'ainda não começou', 'cf-escolhendo-curso': 'escolhendo o curso', 'cf-juntando-documentos': 'juntando documentos, traduções e o teste',
-  'cf-dossie-enviado': 'já enviou o dossiê', 'cf-entrevista-resposta': 'esperando a entrevista ou a resposta' };
+  'cf-dossie-enviado': 'já enviou o dossiê', 'cf-entrevista-resposta': 'esperando a entrevista ou a resposta',
+  'tec-nao-sei': 'ainda não sabe em que nível entraria', 'tec-juntando': 'juntando histórico, diploma e carga horária', 'tec-escrevi': 'já escreveu para escolas e está esperando', 'tec-resposta': 'já tem resposta de uma escola' };
 function primeiroNome(nome) { return (String(nome || '').replace(/[\r\n\t]+/g, ' ').trim().split(/\s+/)[0] || '').slice(0, 40); }
 // Os botões de cidade da prévia: o link de verdade só existe no envio (é assinado para cada pessoa).
 function botoesPrevia() {
@@ -339,7 +343,7 @@ export function dadosDe(chave, c, h, m) {
       link_acesso: h.appLink, link_agenda: h.calLink };
     // O link do produto é privado: só o Worker tem (no envio e no teste). Na prévia e na ficha fica entre colchetes.
     if (pq.produto) { n.produto = pq.produto_nome || ''; n.link_produto = '[link do produto]'; }
-    ETAPAS_GUIA.forEach(function (e) { n['etapa_' + e[0].replace(/^(cf|alt)-/, '').replace(/-/g, '_')] = resp.objetivo === e[0]; });
+    ETAPAS_GUIA.forEach(function (e) { n['etapa_' + e[0].replace(/^(cf|alt|tec)-/, '').replace(/-/g, '_')] = resp.objetivo === e[0]; });
     return n;
   }
   if (chave === 'cf_guia_1' || chave === 'cf_guia_conversa') {
