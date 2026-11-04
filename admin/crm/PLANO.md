@@ -124,6 +124,15 @@ de e-mail mostra o e-mail como ela vai ver (desenho da versão do estúdio ou o 
 Na mesma data: os 8 manuais saem com o template do Por Dentro (montado dos blocos), "ver o e-mail" abre o template e
 `emails_enviados.formato` registra como saiu (`db/crm-emails-formato.sql`). README do Worker, seção 22b.
 
+## Envio em minutos: recap do guia do tecnólogo (03/11)
+
+`db/crm-sequencia-minutos.sql` (rodar **depois** de `crm-filtro-etapa.sql`; idempotente): `modelos_email.envio_minutos` (1 a 1440). Com ele, o
+modelo de sequência sai N minutos depois da data-base de cada pessoa, e não em "dia + horário"; sem ele, tudo igual a antes. O primeiro uso é
+`db/crm-modelo-tecnologo-recap.sql` (gerado por `db/modelo-tecnologo-recap.mjs`): o e-mail `tec_recap_30min`, tipo serviço, 30 minutos depois de
+pegar o guia `guia-tecnologo`, com o link do checklist no Notion; fica em rascunho e com o Envio desligado. O estúdio ganhou o campo "Ou quantos
+minutos depois" e o Worker o Cron Trigger `*/5 * * * *`. Passo a passo: `cms-oauth-worker/README.md`, seção 26. Testes: `db/testes` →
+`APP_DB_DIR=<POR DENTRO APP>/db npm run test:minutos`.
+
 ## Etapas
 
 1. **Fase 1 — captura** (feita, repo POR-DENTRO-APP): `contatos`, `eventos`, `consentimentos`, `capturar_lead()`, `admins`.

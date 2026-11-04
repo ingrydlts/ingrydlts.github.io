@@ -930,3 +930,21 @@ O Worker lê as seções 1, 2 e 3 (até 12 itens de 400 letras cada), com ou sem
 **Para a skill `/bilan-notion`** (repositório do app): dentro de `## Bilan d'action`, gerar o `### Rascunho de e-mail` com as seções 1, 2 e 3 acima (a 4 é só um aviso), cada uma com uma lista (`-`) de até 12 itens curtos; a seção 1 traz as dúvidas esclarecidas, na voz da Ingryd, de cada dúvida que foi esclarecida na ligação (uma frase cada, sem nome, telefone, e-mail nem documento). Enquanto isso, o `Resumo:` serve de ponto de partida e você ajusta no modal.
 
 **Como testar:** leia uma página de ensaio pelo Onboarding → a ficha abre em Interações → clique no botão → confira a prévia → digite o código, marque a caixa e envie para um e-mail seu. Testes: `node cms-oauth-worker/testes/crm-bilan-email.test.mjs` e, em `admin/crm/db/testes`, `npm run test:onboarding-notion-ui`. Se algo falhar: Workers → Logs, procure `crm/bilan-email` (o log traz só o status do Brevo, nunca o texto).
+
+## 26. Envio em minutos: o recap do guia do tecnólogo (30 min depois do cadastro)
+
+Uma sequência do estúdio pode sair **N minutos depois** (1 a 1440) da data-base de cada pessoa, em vez de "dia + horário". O primeiro uso é o
+`tec_recap_30min` (tipo serviço): 30 minutos depois de pegar o guia `guia-tecnologo`, ele manda de novo o link do checklist no Notion.
+Código: `admin/crm/db/crm-sequencia-minutos.sql` (coluna `envio_minutos`, regra do Envio e `crm_sequencia_pendentes`),
+`admin/crm/db/crm-modelo-tecnologo-recap.sql` (gerado por `modelo-tecnologo-recap.mjs`: o modelo e a versão 1 em rascunho, Envio desligado),
+o campo "Ou quantos minutos depois" na parte Envio do estúdio e o Cron Trigger `*/5 * * * *` deste Worker.
+
+**Ordem, primeiro no Supabase de TESTE, depois no de produção** (regra de isolamento: o SQL nunca vai direto para as clientes):
+1. Antes: `cd admin/crm/db/testes && npm install && APP_DB_DIR=<POR DENTRO APP>/db npm run test:minutos` e, no app, `cd db/testes && npm test` (sentinela verde).
+2. SQL Editor: rode `crm-sequencia-minutos.sql` e depois `crm-modelo-tecnologo-recap.sql`.
+3. Rode `db/auditoria-isolamento.sql` e `db/conferir-banco.sql` do app. Os dois vazios = pronto.
+4. Cloudflare: cole o `worker.js` novo e acrescente o Cron Trigger `*/5 * * * *` (o `5 * * * *` e o `0 13 * * *` continuam). Com só o de hora em hora, o recap sai na próxima rodada em vez de aos 30 minutos.
+5. `/admin/crm/` → Estúdio de e-mails → "Tecnólogo · recap do checklist (30 min)": confira a prévia, mande o teste para você, publique (No ar) e ligue o Envio. Quem se cadastrar antes de ligar não recebe.
+6. Teste de ponta a ponta com um e-mail seu na página `/guias/tecnologo-nivel-na-franca/`: o e-mail chega entre 30 e 35 minutos depois.
+
+Como desfazer: ver o fim de `crm-sequencia-minutos.sql` e o de `crm-modelo-tecnologo-recap.sql`. Desligar o Envio no estúdio para a sequência na hora.
