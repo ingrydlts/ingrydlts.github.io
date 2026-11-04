@@ -10,93 +10,242 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,600;9..144,700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/assets/css/style.css">
 <link rel="canonical" href="https://imigrantepordentro.com/guias/tecnologo-nivel-na-franca/">
-<style>:root { --nav-active: #577328; }</style>
 <link rel="icon" href="/favicon.png" type="image/png">
 <link rel="icon" href="/favicon-32x32.png" sizes="32x32" type="image/png">
 <link rel="icon" href="/favicon-16x16.png" sizes="16x16" type="image/png">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<meta name="theme-color" content="#1F120C">
 <style>
-.guia-wrap{max-width:680px;margin:0 auto;padding:40px 0 80px}
-.guia-wrap h1{margin:8px 0 16px}
-.guia-lede{font-size:17px;color:var(--texto-secundario);margin-bottom:10px}
-.guia-meta{font-size:13px;color:var(--texto-secundario);margin-bottom:22px}
-.guia-aviso{background:var(--off-white-soft);border:1px solid var(--borda-suave);border-left:4px solid #604034;border-radius:var(--radius-sm);padding:14px 16px;font-size:14px;color:var(--texto-secundario);margin:0 0 8px}
-.guia-sec{padding-top:40px;margin-top:40px;border-top:1px solid var(--borda-suave);scroll-margin-top:88px}
-.guia-sec h2{font-size:26px;margin:0 0 14px}
-.guia-sec h3{font-size:19px;margin:0 0 10px}
-.guia-sec p,.guia-sec li{font-size:16px;line-height:1.65}
-.guia-sec ul{padding-left:20px}
-.guia-sec a{color:#604034;text-decoration:underline}
-.guia-check{list-style:none;padding:0!important}
-.guia-check li{display:flex;gap:10px;align-items:flex-start;margin:0 0 10px;cursor:pointer}
-.guia-check input{margin-top:5px;width:18px;height:18px;accent-color:var(--verde-moss);flex-shrink:0}
-.guia-check input:checked+span{color:var(--texto-secundario);text-decoration:line-through}
-.calc{background:var(--off-white-soft);border:1px solid var(--borda-suave);border-radius:var(--radius-sm);padding:20px;margin-top:16px}
-.calc label{display:block;font-size:13.5px;font-weight:600;color:var(--texto-secundario);margin-bottom:8px}
-.calc input[type=date]{font:inherit;padding:11px 12px;border:1px solid var(--borda-suave);border-radius:var(--radius-sm);background:#fff;width:100%;max-width:240px}
-.calc-out{margin-top:16px;display:none;gap:10px;flex-direction:column}
-.calc-out.on{display:flex}
-.calc-out div{background:#fff;border:1px solid var(--borda-suave);border-radius:var(--radius-sm);padding:12px 14px;font-size:15px}
-.calc-out b{display:block;font-size:12px;letter-spacing:.04em;text-transform:uppercase;color:var(--texto-secundario);margin-bottom:2px}
-.calc-out .alerta{border-color:var(--merlot);color:var(--merlot)}
-.calc-note{font-size:12.5px;color:var(--texto-secundario);margin-top:12px}
-.gate{background:#fff;border:1px solid var(--borda-suave);box-shadow:var(--shadow-card);border-radius:var(--radius-sm);padding:26px;margin-top:40px}
-.gate h2{font-size:24px;margin:0 0 8px}
-.gate p{font-size:15px;color:var(--texto-secundario)}
-.gate .lista{font-size:14.5px;color:var(--grafite);padding-left:18px;margin:12px 0 18px}
-.g-row{display:grid;grid-template-columns:1fr 1.4fr;gap:12px}
-.g-field small{font-weight:400}
-.gate-inc{list-style:none;padding:0;margin:0 0 14px;display:grid;gap:6px;font-size:14px;color:var(--grafite)}
-.gate-inc li::before{content:"✓ ";color:var(--verde-moss);font-weight:700}
-.gate .calc{margin:0 0 16px;padding:14px 16px}
-.gate .calc-out{margin-top:12px;grid-template-columns:1fr 1fr;gap:8px}
-.gate .calc-out.on{display:grid}
-.gate .calc-out div{padding:8px 12px;font-size:14px}
-.gate .calc-out #calc-restam{grid-column:1/-1}
-.gate .calc-note{margin-top:8px}
-.g-field{display:flex;flex-direction:column;gap:8px;margin-bottom:14px}
-.g-field label{font-size:13.5px;font-weight:600;color:var(--texto-secundario)}
-.g-field input{font:inherit;padding:13px 14px;border:1px solid var(--borda-suave);border-radius:var(--radius-sm);background:#fff}
-.g-field select{font:inherit;padding:13px 14px;border:1px solid var(--borda-suave);border-radius:var(--radius-sm);background:#fff}
-.g-field input:focus,.g-field select:focus{border-color:var(--verde-moss);outline:none}
+:root{--nav-active:#DEB975;--lp-bg:#1F120C;--lp-bg2:#2A1A12;--lp-terra:#604034;--lp-ouro:#DEB975;--lp-creme:#F4F1EC;--lp-mut:rgba(244,241,236,.74);--lp-ease:cubic-bezier(.2,.8,.2,1)}
+html{scroll-behavior:smooth}
+body.lp-body{background:var(--lp-bg);color:var(--lp-creme);font-family:'Inter',system-ui,sans-serif;overflow-x:hidden}
+.lp-body .site-header{background:rgba(31,18,12,.86);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid rgba(244,241,236,.1)}
+.lp-body .site-logo,.lp-body .site-nav a{color:var(--lp-creme)}
+.lp-body .site-nav a[aria-current="page"]{color:var(--lp-ouro)}
+.lp-body .nav-toggle span{background:var(--lp-creme)}
+.lp-body .mobile-nav{background:var(--lp-bg)}
+.lp-body .mobile-nav a{color:var(--lp-creme)}
+.lp-body .site-footer{margin-top:0}
+#lp-progress{position:fixed;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#DEB975,#f3dca6);transform:scaleX(0);transform-origin:left;z-index:70}
+main.lp{overflow-x:clip;position:relative}
+.lp-body h1,.lp-body h2,.lp-body h3{color:var(--lp-creme)}
+.lp-body h2 em,.lp-body h1 em{color:var(--lp-ouro)}
+.lp-wrap{max-width:1040px;margin:0 auto;padding:0 24px}
+.lp-k{display:inline-block;font-size:13px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--lp-ouro);margin-bottom:18px}
+.lp-h2{font-family:'Fraunces',Georgia,serif;font-weight:700;font-size:clamp(32px,5.2vw,60px);line-height:1.05;letter-spacing:-.01em;margin:0 0 22px}
+.lp-h2 em,.lp-h1 em{font-style:italic;color:var(--lp-ouro)}
+.lp-p{font-size:clamp(17px,2vw,20px);line-height:1.65;color:var(--lp-mut);max-width:62ch}
+.lp-src{font-size:13.5px;color:rgba(244,241,236,.55);margin-top:18px}
+.lp-src a{color:var(--lp-ouro);text-decoration:underline}
+.lp-sec{padding:clamp(72px,10vw,132px) 0}
+
+/* botões */
+.lp-btn{position:relative;display:inline-flex;align-items:center;gap:14px;padding:12px 14px 12px 30px;border:0;border-radius:999px;background:var(--lp-ouro);color:#2A1A12!important;font:700 17px/1 'Inter',sans-serif;text-decoration:none!important;cursor:pointer;box-shadow:0 14px 38px rgba(222,185,117,.28);transition:transform .35s var(--lp-ease),box-shadow .35s var(--lp-ease),filter .2s}
+.lp-btn:hover{transform:translateY(-4px) scale(1.02);box-shadow:0 20px 48px rgba(222,185,117,.38);filter:brightness(1.05)}
+.lp-btn:active{transform:translateY(-1px) scale(.99)}
+.lp-btn[disabled]{opacity:.65;cursor:wait;transform:none}
+.lp-btn .arr{display:grid;place-items:center;width:46px;height:46px;border-radius:50%;background:#2A1A12;color:var(--lp-ouro);font-size:20px;transition:transform .35s var(--lp-ease)}
+.lp-btn:hover .arr{transform:rotate(90deg)}
+.lp-btn.pulse::after{content:"";position:absolute;inset:0;border-radius:inherit;border:2px solid var(--lp-ouro);animation:lpRing 2.2s ease-out infinite;pointer-events:none}
+.lp-btn.ghost{background:transparent;color:var(--lp-creme)!important;box-shadow:none;border:1.5px solid rgba(244,241,236,.35);padding:16px 26px}
+.lp-btn.ghost:hover{background:rgba(244,241,236,.08)}
+.lp-btn.full{width:100%;justify-content:space-between}
+@keyframes lpRing{0%{transform:scale(1);opacity:.7}100%{transform:scale(1.22,1.5);opacity:0}}
+
+/* hero */
+.lp-hero{position:relative;overflow:hidden;min-height:calc(100svh - 72px);display:flex;align-items:center;padding:72px 0 120px;background:radial-gradient(1100px 620px at 85% -10%,#7a5140 0%,transparent 62%),radial-gradient(900px 520px at -10% 110%,#4a2c20 0%,transparent 60%),var(--lp-bg2)}
+.lp-ghost{position:absolute;right:-3%;top:4%;font:700 clamp(200px,36vw,540px)/.8 'Fraunces',serif;color:rgba(222,185,117,.05);pointer-events:none;white-space:nowrap;will-change:transform}
+.lp-orb{position:absolute;border-radius:50%;filter:blur(60px);opacity:.5;pointer-events:none;animation:lpFloat 14s ease-in-out infinite}
+.lp-orb.a{width:340px;height:340px;background:#8a5a43;left:-80px;top:20%}
+.lp-orb.b{width:260px;height:260px;background:#DEB975;opacity:.18;right:8%;bottom:6%;animation-delay:-6s}
+@keyframes lpFloat{0%,100%{transform:translate(0,0)}50%{transform:translate(30px,-40px)}}
+.lp-hero .lp-wrap{position:relative;z-index:2}
+.lp-pill{display:inline-flex;align-items:center;gap:10px;padding:9px 18px;border-radius:999px;border:1px solid rgba(222,185,117,.4);background:rgba(222,185,117,.1);font-size:13px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--lp-ouro);margin-bottom:28px}
+.lp-pill i{width:8px;height:8px;border-radius:50%;background:var(--lp-ouro);animation:lpBlink 1.8s infinite}
+@keyframes lpBlink{50%{opacity:.25}}
+.lp-h1{font-family:'Fraunces',Georgia,serif;font-weight:700;font-size:clamp(40px,7.4vw,92px);line-height:1;letter-spacing:-.02em;margin:0 0 28px;max-width:15ch}
+.lp-w{display:inline-block;opacity:0;transform:translateY(.7em) rotate(2deg);animation:lpW .9s var(--lp-ease) forwards;animation-delay:calc(var(--i)*80ms + 150ms)}
+@keyframes lpW{to{opacity:1;transform:none}}
+.lp-hero .lp-p{margin-bottom:38px;opacity:0;animation:lpFade 1s .9s forwards}
+.lp-hero .lp-cta{display:flex;flex-wrap:wrap;gap:16px;align-items:center;opacity:0;animation:lpFade 1s 1.15s forwards}
+@keyframes lpFade{to{opacity:1}}
+.lp-scroll{position:absolute;left:50%;bottom:28px;transform:translateX(-50%);z-index:2;font-size:12px;letter-spacing:.2em;text-transform:uppercase;color:rgba(244,241,236,.55);display:flex;flex-direction:column;align-items:center;gap:10px}
+.lp-scroll b{width:1.5px;height:42px;background:linear-gradient(var(--lp-ouro),transparent);animation:lpDrop 2s infinite}
+@keyframes lpDrop{0%{transform:scaleY(0);transform-origin:top}50%{transform:scaleY(1);transform-origin:top}51%{transform-origin:bottom}100%{transform:scaleY(0);transform-origin:bottom}}
+
+/* faixa que corre */
+.lp-marq{position:relative;z-index:3;background:var(--lp-ouro);color:#2A1A12;transform:rotate(-1.8deg);margin:-34px -3% 0;padding:18px 0;overflow:hidden;white-space:nowrap;box-shadow:0 18px 50px rgba(0,0,0,.4)}
+.lp-marq .t{display:inline-flex;gap:46px;font:700 clamp(20px,3vw,30px)/1 'Fraunces',serif;animation:lpMarq 30s linear infinite}
+.lp-marq span::after{content:"•";margin-left:46px;opacity:.5}
+@keyframes lpMarq{to{transform:translateX(-50%)}}
+
+/* revelar na rolagem */
+.lp-js .rv{opacity:0;transform:translateY(36px);transition:opacity .9s var(--lp-ease),transform .9s var(--lp-ease);transition-delay:var(--d,0ms)}
+.lp-js .rv.in{opacity:1;transform:none}
+.lp-js .rv.l{transform:translateX(-48px)}.lp-js .rv.l.in{transform:none}
+
+/* degraus */
+.lp-steps{display:flex;flex-direction:column-reverse;gap:12px;margin-top:44px}
+.lp-step{margin-left:calc(var(--i)*clamp(10px,5.4vw,70px));display:flex;align-items:baseline;gap:18px;padding:18px 30px;border-radius:999px;background:linear-gradient(90deg,rgba(244,241,236,.12),rgba(244,241,236,.04));border:1px solid rgba(244,241,236,.14);font-size:clamp(17px,2.4vw,23px);color:var(--lp-creme);transition:transform .4s var(--lp-ease)}
+.lp-step:hover{transform:translateX(10px)}
+.lp-step b{font:700 clamp(22px,3vw,34px)/1 'Fraunces',serif;min-width:clamp(86px,12vw,118px)}
+.lp-step.foco{background:linear-gradient(90deg,#DEB975,#f0d79c);color:#2A1A12;border-color:transparent;box-shadow:0 14px 40px rgba(222,185,117,.3)}
+
+/* portas */
+.lp-doors{display:grid;grid-template-columns:1fr 1fr;gap:22px;margin-top:44px}
+.lp-door{position:relative;overflow:hidden;border-radius:40px;padding:clamp(28px,4vw,48px);background:linear-gradient(160deg,rgba(244,241,236,.1),rgba(244,241,236,.03));border:1px solid rgba(222,185,117,.32);transition:transform .25s ease-out,box-shadow .4s;will-change:transform}
+.lp-door:hover{box-shadow:0 30px 70px rgba(0,0,0,.4)}
+.lp-door::before{content:"";position:absolute;width:260px;height:260px;border-radius:50%;right:-90px;top:-90px;background:radial-gradient(circle,rgba(222,185,117,.35),transparent 70%)}
+.lp-door small{display:block;font-size:13px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--lp-ouro);margin-bottom:10px}
+.lp-door .n{font:700 clamp(76px,13vw,150px)/.9 'Fraunces',serif;color:var(--lp-ouro);letter-spacing:-.03em}
+.lp-door .u{font:700 clamp(24px,3vw,34px)/1.1 'Fraunces',serif;margin:6px 0 14px}
+.lp-door p{color:var(--lp-mut);font-size:17px;line-height:1.55;margin:0;position:relative}
+
+/* botão do meio */
+.lp-mid{position:relative;overflow:hidden;margin:0 auto;max-width:1040px;border-radius:56px;padding:clamp(44px,8vw,96px) clamp(24px,5vw,64px);text-align:center;background:linear-gradient(135deg,#7a5140 0%,#4a2c20 55%,#2f1b13 100%);border:1px solid rgba(222,185,117,.3);box-shadow:0 40px 100px rgba(0,0,0,.5)}
+.lp-mid::before,.lp-mid::after{content:"";position:absolute;border-radius:50%;border:1.5px solid rgba(222,185,117,.3)}
+.lp-mid::before{width:420px;height:420px;left:-140px;top:-160px}
+.lp-mid::after{width:300px;height:300px;right:-90px;bottom:-130px}
+.lp-mid>*{position:relative;z-index:1}
+.lp-mid .lp-h2{max-width:20ch;margin:0 auto 16px}
+.lp-mid .lp-p{margin:0 auto 34px}
+
+/* casos */
+.lp-cases{display:grid;gap:18px;margin-top:44px}
+.lp-case{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:clamp(12px,3vw,40px);padding:clamp(22px,3.5vw,38px) clamp(24px,4vw,52px);border-radius:999px;background:rgba(244,241,236,.06);border:1px solid rgba(244,241,236,.14)}
+.lp-case .de{font:700 clamp(22px,3.4vw,40px)/1.05 'Fraunces',serif}
+.lp-case .de small{display:block;font:500 14px/1.3 'Inter',sans-serif;letter-spacing:.1em;text-transform:uppercase;color:rgba(244,241,236,.55);margin-bottom:6px}
+.lp-case .ar{width:clamp(48px,8vw,110px);height:2px;background:var(--lp-ouro);position:relative;transform-origin:left;transform:scaleX(0);transition:transform 1s .3s var(--lp-ease)}
+.lp-case .ar::after{content:"";position:absolute;right:-1px;top:-6px;width:12px;height:12px;border-top:2px solid var(--lp-ouro);border-right:2px solid var(--lp-ouro);transform:rotate(45deg)}
+.in .ar{transform:scaleX(1)}
+.lp-case .para{font:700 clamp(54px,9vw,110px)/.9 'Fraunces',serif;color:var(--lp-ouro);text-align:right;letter-spacing:-.03em}
+.lp-sticker{display:inline-block;margin-top:34px;padding:12px 26px;border-radius:999px;border:2px dashed var(--lp-ouro);color:var(--lp-ouro);font-weight:800;letter-spacing:.14em;text-transform:uppercase;font-size:14px;transform:rotate(-3deg);animation:lpWob 4s ease-in-out infinite}
+@keyframes lpWob{50%{transform:rotate(2deg) scale(1.04)}}
+
+/* contrato */
+.lp-scrub{font:700 clamp(30px,5.6vw,66px)/1.12 'Fraunces',serif;letter-spacing:-.015em;margin:0 0 54px}
+.lp-scrub span{opacity:.18;transition:opacity .25s}
+.lp-scrub span.on{opacity:1}
+.lp-scrub span.hl.on{color:var(--lp-ouro)}
+.lp-track{position:relative;height:22px;border-radius:99px;background:rgba(244,241,236,.12);overflow:hidden}
+.lp-track i{position:absolute;left:0;top:0;bottom:0;width:0;background:linear-gradient(90deg,#8a5a43,#DEB975);border-radius:99px;transition:width 1.8s .2s var(--lp-ease)}
+.in .lp-track i{width:100%}
+.lp-tl{display:flex;justify-content:space-between;gap:14px;margin-top:16px;font-weight:700;font-size:clamp(15px,2vw,19px)}
+.lp-tl span:last-child{color:var(--lp-ouro)}
+.lp-chip{display:inline-flex;align-items:center;gap:10px;margin-top:30px;padding:14px 24px;border-radius:999px;background:rgba(244,241,236,.08);border:1px solid rgba(244,241,236,.18);font-size:16px;line-height:1.4}
+.lp-chip b{color:var(--lp-ouro)}
+
+/* formulário */
+.lp-gate{padding:clamp(72px,10vw,132px) 24px}
+.lp-card{position:relative;max-width:760px;margin:0 auto;border-radius:48px;padding:clamp(28px,5vw,60px);background:linear-gradient(160deg,#3d2419,#2A1A12);border:1px solid rgba(222,185,117,.38);box-shadow:0 40px 110px rgba(0,0,0,.55);overflow:hidden}
+.lp-card::before{content:"";position:absolute;width:340px;height:340px;border-radius:50%;right:-120px;top:-140px;background:radial-gradient(circle,rgba(222,185,117,.28),transparent 70%);pointer-events:none}
+.lp-card>*{position:relative}
+.lp-card h2{font:700 clamp(28px,4.4vw,44px)/1.08 'Fraunces',serif;margin:0 0 10px}
+.lp-card .lead{color:var(--lp-mut);font-size:17px;line-height:1.55;margin:0 0 26px}
+.lp-inc{list-style:none;padding:0;margin:0 0 30px;display:flex;flex-wrap:wrap;gap:10px}
+.lp-inc li{padding:9px 16px;border-radius:999px;background:rgba(222,185,117,.12);border:1px solid rgba(222,185,117,.3);font-size:14px;color:var(--lp-creme)}
+.lp-inc li::before{content:"✓";color:var(--lp-ouro);font-weight:800;margin-right:8px}
+.lp-stepper{display:flex;align-items:center;gap:10px;margin-bottom:28px}
+.lp-dot{width:34px;height:34px;flex:none;border-radius:50%;display:grid;place-items:center;font-weight:700;font-size:14px;background:rgba(244,241,236,.1);color:var(--lp-mut);border:1.5px solid rgba(244,241,236,.2);transition:all .4s var(--lp-ease)}
+.lp-dot.on{background:var(--lp-ouro);color:#2A1A12;border-color:var(--lp-ouro);transform:scale(1.12)}
+.lp-dot.ok{background:rgba(222,185,117,.2);color:var(--lp-ouro);border-color:var(--lp-ouro)}
+.lp-line{flex:1;height:3px;border-radius:3px;background:rgba(244,241,236,.14);overflow:hidden}
+.lp-line i{display:block;height:100%;width:0;background:var(--lp-ouro);transition:width .6s var(--lp-ease)}
+.lp-pane{display:none}
+.lp-pane.on{display:block;animation:lpPane .55s var(--lp-ease)}
+@keyframes lpPane{from{opacity:0;transform:translateX(34px)}to{opacity:1;transform:none}}
+.lp-q{font:700 clamp(22px,3vw,28px)/1.15 'Fraunces',serif;margin:0 0 20px;color:var(--lp-creme)}
+.lp-fld{position:relative;margin-bottom:16px}
+.lp-fld input{width:100%;padding:28px 22px 10px;border-radius:22px;border:1.5px solid rgba(244,241,236,.24);background:rgba(244,241,236,.07);color:var(--lp-creme);font:500 18px 'Inter',sans-serif;outline:none;transition:border-color .25s,box-shadow .25s,background .25s}
+.lp-fld input:hover{background:rgba(244,241,236,.1)}
+.lp-fld input:focus{border-color:var(--lp-ouro);box-shadow:0 0 0 5px rgba(222,185,117,.18);background:rgba(244,241,236,.1)}
+.lp-fld label{position:absolute;left:23px;top:20px;font-size:17px;color:rgba(244,241,236,.6);pointer-events:none;transition:all .25s var(--lp-ease)}
+.lp-fld input:focus+label,.lp-fld input:not(:placeholder-shown)+label{top:9px;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--lp-ouro)}
+.lp-opts{display:grid;gap:12px}
+.lp-opt{position:relative;display:flex;align-items:center;gap:16px;padding:18px 22px;border-radius:26px;border:1.5px solid rgba(244,241,236,.22);background:rgba(244,241,236,.05);cursor:pointer;font-size:17px;line-height:1.35;transition:transform .3s var(--lp-ease),border-color .25s,background .25s}
+.lp-opt:hover{transform:translateX(8px);border-color:rgba(222,185,117,.7)}
+.lp-opt input{position:absolute;opacity:0;pointer-events:none}
+.lp-opt .no{flex:none;width:40px;height:40px;border-radius:50%;display:grid;place-items:center;font:700 17px 'Fraunces',serif;background:rgba(244,241,236,.1);transition:all .3s var(--lp-ease)}
+.lp-opt:has(input:checked){background:rgba(222,185,117,.16);border-color:var(--lp-ouro);box-shadow:0 12px 34px rgba(222,185,117,.18);transform:translateX(8px)}
+.lp-opt:has(input:checked) .no{background:var(--lp-ouro);color:#2A1A12;transform:rotate(360deg) scale(1.1)}
+.lp-opt:has(input:focus-visible){outline:3px solid var(--lp-ouro);outline-offset:3px}
+.lp-sw{display:flex;align-items:flex-start;gap:16px;margin:0 0 14px;cursor:pointer;font-size:15.5px;line-height:1.45;color:var(--lp-mut)}
+.lp-sw a{color:var(--lp-ouro);text-decoration:underline}
+.lp-sw input{position:absolute;opacity:0;pointer-events:none}
+.lp-sw .tg{flex:none;position:relative;width:52px;height:30px;border-radius:99px;background:rgba(244,241,236,.18);transition:background .3s;margin-top:1px}
+.lp-sw .tg::after{content:"";position:absolute;left:4px;top:4px;width:22px;height:22px;border-radius:50%;background:var(--lp-creme);transition:transform .35s var(--lp-ease)}
+.lp-sw input:checked+.tg{background:var(--lp-ouro)}
+.lp-sw input:checked+.tg::after{transform:translateX(22px);background:#2A1A12}
+.lp-sw input:focus-visible+.tg{outline:3px solid var(--lp-ouro);outline-offset:3px}
+.lp-nav{display:flex;gap:14px;align-items:center;justify-content:space-between;margin-top:26px}
+.lp-back{background:none;border:0;color:var(--lp-mut);font:600 15px 'Inter',sans-serif;cursor:pointer;padding:12px 6px}
+.lp-back:hover{color:var(--lp-ouro)}
+.lp-err{min-height:22px;margin:14px 0 0;font-size:15px;color:#ffb4a3}
+.lp-shake{animation:lpShake .45s}
+@keyframes lpShake{20%,60%{transform:translateX(-9px)}40%,80%{transform:translateX(9px)}}
+.lp-trust{list-style:none;padding:0;margin:26px 0 0;display:flex;flex-wrap:wrap;gap:8px 22px;font-size:14px;color:rgba(244,241,236,.6)}
+.lp-mini{font-size:13px;color:rgba(244,241,236,.5);margin:14px 0 0}
+.lp-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 .hp-field{position:absolute;left:-9999px;top:-9999px;width:1px;height:1px;overflow:hidden}
-.btn-guia{display:inline-flex;align-items:center;justify-content:center;gap:8px;font-weight:600;font-size:15.5px;padding:15px 26px;border-radius:var(--radius-sm);border:none;cursor:pointer;background:var(--verde-moss);color:#fff!important;text-decoration:none!important;box-shadow:var(--shadow-card);transition:transform .15s ease,filter .15s ease}
-.btn-guia:hover{filter:brightness(1.08);transform:translateY(-1px)}
-.btn-guia[disabled]{opacity:.6;cursor:wait}
-.btn-ghost{background:#fff;color:var(--grafite)!important;border:1px solid var(--borda-suave);box-shadow:none}
-.modelo{background:var(--off-white-soft);border:1px solid var(--borda-suave);border-radius:var(--radius-sm);padding:16px;font-size:15px;line-height:1.6;white-space:pre-wrap;margin:0 0 12px}
-.aviso-priv{background:var(--off-white-soft);border-left:4px solid var(--merlot);padding:12px 14px;font-size:14px;border-radius:var(--radius-sm);margin:14px 0}
-.cta-final{background:var(--grafite);color:var(--off-white);border-radius:var(--radius-sm);padding:28px;margin-top:48px}
-.cta-final h2{color:var(--off-white);font-size:26px;margin:0 0 10px}
-.cta-final p{color:#D9D4CC;font-size:16px}
-.acoes{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px}
-[hidden]{display:none!important}
-.gate{margin-top:24px;padding:22px}
-.gate-lead{font-size:17px;color:var(--grafite)!important;margin:0 0 16px;line-height:1.5}
-.btn-full{width:100%}
-.trust-row{list-style:none;padding:0;margin:16px 0 0;display:flex;flex-wrap:wrap;gap:6px 16px;font-size:13.5px;color:var(--texto-secundario)}
-.mini-aviso{font-size:12.5px!important;margin:10px 0 0;color:var(--texto-secundario)}
-.ok-banner{background:#EEF3E4;border:1px solid #C9D6A8;border-radius:var(--radius-sm);padding:16px 18px;margin-top:24px;display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px}
-.ok-banner .acoes{margin:0;flex-basis:100%}
-.guia-wrap h1{font-size:clamp(27px,7.2vw,42px);line-height:1.1}
-@media(max-width:560px){.g-row{grid-template-columns:1fr}.gate{padding:18px;margin-top:18px}.gate-lead{font-size:15.5px;margin-bottom:12px}.gate-checkbox{margin:12px 0}.guia-wrap{padding-top:24px}}
-@media print{.site-header,.mobile-nav,.site-footer,.gate,.acoes,.cta-final,.calc input,.no-print{display:none!important}.guia-wrap{max-width:none;padding:0}.guia-sec{page-break-inside:avoid}}
-.escada{list-style:none;padding:0!important;margin:0 0 14px;display:flex;flex-direction:column-reverse;gap:8px}
-.escada li{display:flex;align-items:baseline;gap:14px;padding:12px 16px;border-radius:var(--radius-sm);background:var(--off-white-soft);border:1px solid var(--borda-suave);margin-left:calc(var(--i) * 18px)}
-.escada li.foco{background:#EEF3E4;border-color:#C9D6A8}
-.escada b{font-family:'Fraunces',serif;font-size:19px;min-width:64px}
-.portas{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:0 0 14px}
-.portas div{background:var(--off-white-soft);border:1px solid var(--borda-suave);border-radius:var(--radius-sm);padding:16px}
-.portas strong{display:block;font-family:'Fraunces',serif;font-size:26px;line-height:1.1;margin:4px 0 6px;color:#604034}
-.portas small{font-size:12px;letter-spacing:.05em;text-transform:uppercase;color:var(--texto-secundario);font-weight:700}
-.ancora{display:inline-block;margin-top:6px}
-.verde{border-left-color:#577328}
-@media(max-width:560px){.portas{grid-template-columns:1fr}}
-.btn-copiar{margin-top:4px}
+.lp-spin{width:22px;height:22px;border-radius:50%;border:3px solid rgba(222,185,117,.3);border-top-color:#DEB975;animation:lpSp .8s linear infinite}
+@keyframes lpSp{to{transform:rotate(360deg)}}
+
+/* liberado */
+.lp-ok{max-width:760px;margin:0 auto;border-radius:48px;padding:clamp(28px,5vw,54px);text-align:center;background:linear-gradient(160deg,#3a4a1e,#26301a);border:1px solid rgba(201,214,168,.4);position:relative;overflow:hidden}
+.lp-ok .ck{width:84px;height:84px;margin:0 auto 18px}
+.lp-ok .ck circle{fill:none;stroke:#C9D6A8;stroke-width:4;stroke-dasharray:252;stroke-dashoffset:252;animation:lpDraw .9s .1s forwards}
+.lp-ok .ck path{fill:none;stroke:#C9D6A8;stroke-width:5;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:60;stroke-dashoffset:60;animation:lpDraw .6s .8s forwards}
+@keyframes lpDraw{to{stroke-dashoffset:0}}
+.lp-ok h2{font:700 clamp(26px,4vw,38px)/1.1 'Fraunces',serif;margin:0 0 10px}
+.lp-ok p{color:#dfe8cc;margin:0 0 22px;font-size:17px}
+.lp-conf{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.lp-conf i{position:absolute;top:40%;left:50%;width:9px;height:14px;border-radius:2px;background:var(--c);opacity:0;animation:lpConf 1.5s var(--lp-ease) forwards;animation-delay:var(--dl)}
+@keyframes lpConf{0%{opacity:1;transform:translate(0,0) rotate(0)}100%{opacity:0;transform:translate(var(--x),var(--y)) rotate(var(--r))}}
+.lp-lock .lp-sec{padding:clamp(48px,7vw,88px) 0}
+.lp-check{list-style:none;padding:0;margin:26px 0 0;display:grid;gap:12px}
+.lp-check li label{display:flex;align-items:flex-start;gap:16px;padding:18px 22px;border-radius:26px;background:rgba(244,241,236,.06);border:1px solid rgba(244,241,236,.14);cursor:pointer;font-size:17.5px;line-height:1.45;transition:background .3s,transform .3s var(--lp-ease)}
+.lp-check li label:hover{transform:translateX(6px);background:rgba(244,241,236,.1)}
+.lp-check input{position:absolute;opacity:0}
+.lp-check .bx{flex:none;width:28px;height:28px;border-radius:9px;border:2px solid rgba(244,241,236,.4);display:grid;place-items:center;margin-top:1px;transition:all .3s var(--lp-ease)}
+.lp-check .bx::after{content:"";width:10px;height:6px;border-left:3px solid #2A1A12;border-bottom:3px solid #2A1A12;transform:rotate(-45deg) scale(0);transition:transform .3s var(--lp-ease);margin-top:-2px}
+.lp-check input:checked+.bx{background:var(--lp-ouro);border-color:var(--lp-ouro)}
+.lp-check input:checked+.bx::after{transform:rotate(-45deg) scale(1)}
+.lp-check input:checked~span{color:rgba(244,241,236,.5);text-decoration:line-through}
+.lp-prog{margin-top:20px;height:8px;border-radius:99px;background:rgba(244,241,236,.12);overflow:hidden}
+.lp-prog i{display:block;height:100%;width:0;background:var(--lp-ouro);transition:width .5s var(--lp-ease)}
+.lp-prog-t{font-size:14px;color:var(--lp-mut);margin-top:8px}
+.lp-mail{position:relative;margin-top:26px;border-radius:32px;padding:clamp(22px,3.4vw,38px);background:#150b07;border:1px solid rgba(244,241,236,.14);font:15.5px/1.7 ui-monospace,SFMono-Regular,Menlo,monospace;white-space:pre-wrap;color:#eadfce}
+.lp-list{margin:18px 0 0;padding:0;list-style:none;display:grid;gap:12px}
+.lp-list li{padding:16px 22px;border-radius:24px;background:rgba(244,241,236,.06);border:1px solid rgba(244,241,236,.12);font-size:17px;line-height:1.5;color:var(--lp-mut)}
+.lp-list li strong{color:var(--lp-creme)}
+.lp-list a{color:var(--lp-ouro);text-decoration:underline}
+.lp-end{max-width:1040px;margin:0 auto;border-radius:48px;padding:clamp(34px,6vw,64px);background:linear-gradient(135deg,#7a5140,#4a2c20);border:1px solid rgba(222,185,117,.3)}
+.lp-end h2{font:700 clamp(26px,4vw,40px)/1.1 'Fraunces',serif;margin:0 0 12px}
+.lp-end p{color:var(--lp-mut);margin:0 0 24px;font-size:17px;line-height:1.6;max-width:56ch}
+
+@media(max-width:760px){
+  .lp-doors{grid-template-columns:1fr}
+  .lp-case{grid-template-columns:1fr;border-radius:36px;text-align:left}
+  .lp-case .ar{width:70px}
+  .lp-case .para{text-align:left}
+  .lp-step{padding:14px 20px}
+  .lp-btn{padding:10px 10px 10px 24px;font-size:16px}
+  .lp-btn .arr{width:42px;height:42px}
+  .lp-card,.lp-ok,.lp-mid,.lp-end{border-radius:34px}
+  .lp-scroll{display:none}
+}
+@media(prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  *,*::before,*::after{animation:none!important;transition:none!important}
+  .lp-w,.lp-hero .lp-p,.lp-hero .lp-cta{opacity:1;transform:none}
+  .lp-js .rv{opacity:1;transform:none}
+  .lp-case .ar{transform:none}.lp-track i{width:100%}.lp-scrub span{opacity:1}
+}
+@media print{.site-header,.mobile-nav,.site-footer,#lp-progress,.lp-mid,.lp-gate,.lp-marq,.lp-scroll,.no-print{display:none!important}body.lp-body{background:#fff;color:#000}}
 </style>
 </head>
-<body>
-
+<body class="lp-body">
+<script>document.body.classList.add("lp-js")</script>
 <header class="site-header">
   <a href="/" class="site-logo" data-logo-link><img src="/images/logo-por-dentro.png" alt="Por Dentro" class="site-logo-img">Por Dentro</a>
   <nav class="site-nav" aria-label="Navegação principal" data-header-nav>
@@ -120,127 +269,163 @@
   <a href="/sobre/" data-nav-key="sobre">Sobre</a>
 </nav>
 
-<main>
-  <div class="container">
-    <article class="guia-wrap">
+<div id="lp-progress" aria-hidden="true"></div>
+<main class="lp">
 
-      <span class="eyebrow" style="color:#577328;">Guia gratuito · Tecnólogo e nível de entrada</span>
-      <h1>Tenho tecnólogo no Brasil: em que nível eu entro na França?</h1>
-      <p class="guia-lede">Não existe tabela oficial, e quem decide é a escola. Aqui estão os degraus que a França usa, o que cada porta pede e o checklist para descobrir o seu nível sem pagar taxa antes da hora.</p>
-      <p class="guia-aviso">Conteúdo de orientação, sem caráter de aconselhamento jurídico. Confirme com a escola, o Campus France e a préfecture, por escrito, antes de pagar taxa ou assinar contrato.</p>
-      <p><a class="btn-guia ancora" href="#gate">Quero o checklist e o modelo de e-mail →</a></p>
+<section class="lp-hero" id="topo">
+  <div class="lp-ghost" aria-hidden="true" data-par>L3·M1</div>
+  <div class="lp-orb a" aria-hidden="true"></div><div class="lp-orb b" aria-hidden="true"></div>
+  <div class="lp-wrap">
+    <span class="lp-pill"><i></i>Guia gratuito · Tecnólogo e nível de entrada</span>
+    <h1 class="lp-h1"><span class="lp-w" style="--i:0">Tenho</span> <span class="lp-w" style="--i:1">tecnólogo</span> <span class="lp-w" style="--i:2">no</span> <span class="lp-w" style="--i:3">Brasil:</span> <span class="lp-w" style="--i:4">em</span> <span class="lp-w" style="--i:5">que</span> <span class="lp-w" style="--i:6"><em>nível</em></span> <span class="lp-w" style="--i:7">eu</span> <span class="lp-w" style="--i:8">entro</span> <span class="lp-w" style="--i:9">na</span> <span class="lp-w" style="--i:10"><em>França?</em></span></h1>
+    <p class="lp-p">Não existe tabela oficial, e quem decide é a escola. Aqui estão os degraus que a França usa, o que cada porta pede e o checklist para descobrir o seu nível sem pagar taxa antes da hora.</p>
+    <div class="lp-cta">
+      <a class="lp-btn pulse" id="lp-cta-topo" href="#gate">Quero o checklist <span class="arr" aria-hidden="true">→</span></a>
+      <a class="lp-btn ghost" href="#degraus">Entender o caminho</a>
+    </div>
+    <p class="lp-src" style="margin-top:30px;max-width:56ch">Conteúdo de orientação, sem caráter de aconselhamento jurídico. Confirme com a escola, o Campus France e a préfecture, por escrito, antes de pagar taxa ou assinar contrato.</p>
+  </div>
+  <div class="lp-scroll" aria-hidden="true">role<b></b></div>
+</section>
 
-      <section class="guia-sec" id="degraus">
-        <h2>1. Como a França conta os anos</h2>
-        <p>Depois do bac, cada ano de estudo tem um nome. A licence vai do L1 ao L3 e o master tem dois anos, M1 e M2.</p>
-        <ul class="escada" aria-label="Degraus Bac+1 a Bac+5">
-          <li style="--i:0"><b>Bac+1</b><span>L1, 1º ano da licence</span></li>
-          <li style="--i:1"><b>Bac+2</b><span>L2</span></li>
-          <li style="--i:2" class="foco"><b>Bac+3</b><span>L3, fecha a licence</span></li>
-          <li style="--i:3" class="foco"><b>Bac+4</b><span>M1, 1º ano do master</span></li>
-          <li style="--i:4"><b>Bac+5</b><span>M2, fecha o master</span></li>
-        </ul>
-        <p class="calc-note">Fonte: níveis de entrada L1 a M2 do guia do candidato do Campus France Brasil. Bac+N é o total de anos de estudo depois do bac.</p>
-      </section>
+<div class="lp-marq" aria-hidden="true"><div class="t"><span>Não existe tabela oficial</span><span>Quem decide é a escola</span><span>Tecnólogo de 2 anos → L3</span><span>Tecnólogo de 3 anos → M1</span><span>Não é regra</span><span>Escreva às escolas antes de pagar taxa</span><span>Não existe tabela oficial</span><span>Quem decide é a escola</span><span>Tecnólogo de 2 anos → L3</span><span>Tecnólogo de 3 anos → M1</span><span>Não é regra</span><span>Escreva às escolas antes de pagar taxa</span></div></div>
 
-      <section class="guia-sec" id="portas">
-        <h2>2. O que cada porta pede</h2>
-        <div class="portas">
-          <div><small>Para entrar no L3</small><strong>2 anos</strong><span>completos de ensino superior, com histórico escolar.</span></div>
-          <div><small>Para entrar no M1</small><strong>180 ECTS</strong><span>ou licence de 3 anos. Cada escola fixa seus critérios.</span></div>
-        </div>
-        <p class="calc-note">Fontes: guia do candidato do Campus France Brasil (L2 e L3) e Université Paris-Saclay (M1). ECTS são os créditos europeus.</p>
-      </section>
+<section class="lp-sec" id="degraus">
+  <div class="lp-wrap">
+    <span class="lp-k rv">1 · Como a França conta os anos</span>
+    <h2 class="lp-h2 rv" style="--d:80ms">Depois do bac, cada ano de estudo tem um <em>nome</em>.</h2>
+    <p class="lp-p rv" style="--d:140ms">A licence vai do L1 ao L3 e o master tem dois anos, M1 e M2. Os dois degraus que importam aqui estão em destaque.</p>
+    <div class="lp-steps" role="list" aria-label="Degraus Bac+1 a Bac+5">
+<div class="lp-step rv l" style="--i:0;--d:0ms"><b>Bac+1</b><span>L1, 1º ano da licence</span></div>
+<div class="lp-step rv l" style="--i:1;--d:90ms"><b>Bac+2</b><span>L2, 2º ano</span></div>
+<div class="lp-step rv l foco" style="--i:2;--d:180ms"><b>Bac+3</b><span>L3, fecha a licence</span></div>
+<div class="lp-step rv l foco" style="--i:3;--d:270ms"><b>Bac+4</b><span>M1, 1º ano do master</span></div>
+<div class="lp-step rv l" style="--i:4;--d:360ms"><b>Bac+5</b><span>M2, fecha o master</span></div>
+    </div>
+    <p class="lp-src rv">Fonte: níveis de entrada L1 a M2 do guia do candidato do Campus France Brasil. Bac+N é o total de anos de estudo depois do bac.</p>
+  </div>
+</section>
 
-      <section class="guia-sec" id="casos">
-        <h2>3. Onde costuma cair o tecnólogo</h2>
-        <p>Não existe regra oficial que diga em que nível um tecnólogo entra. Pelos casos que eu acompanhei, <strong>tecnólogo de 2 anos costuma ser aceito no L3</strong> e <strong>tecnólogo de 3 anos costuma ser aceito no M1</strong>.</p>
-        <p><strong>Isso não é regra.</strong> Cada escola decide, então entre em contato com as universidades e guarde a resposta por escrito. Bacharelado completo passa pela mesma régua do M1 (licence de 3 anos ou 180 ECTS).</p>
-      </section>
+<section class="lp-sec" id="portas" style="padding-top:0">
+  <div class="lp-wrap">
+    <span class="lp-k rv">2 · O que cada porta pede</span>
+    <h2 class="lp-h2 rv" style="--d:80ms">Duas portas, duas <em>réguas</em>.</h2>
+    <div class="lp-doors">
+      <div class="lp-door rv" style="--d:0ms"><small>Para entrar no L3</small><div class="n" data-count="2">2</div><div class="u">anos completos</div><p>de ensino superior, com histórico escolar.</p></div>
+      <div class="lp-door rv" style="--d:140ms"><small>Para entrar no M1</small><div class="n" data-count="180">180</div><div class="u">ECTS</div><p>ou licence de 3 anos. Cada escola fixa seus critérios.</p></div>
+    </div>
+    <p class="lp-src rv">Fontes: guia do candidato do Campus France Brasil (L2 e L3) e Université Paris-Saclay (M1). ECTS são os créditos europeus.</p>
+  </div>
+</section>
 
-      <section class="guia-sec" id="contrato">
-        <h2>4. O nível decide a vaga. O tempo na França decide o contrato.</h2>
-        <p>Ser aceita no L3 não quer dizer que você já pode assinar contrato de alternância. Pela leitura mais segura da ficha F2713 do Service-Public, é preciso estar há <strong>mais de 1 ano na França</strong> para assinar contrato de apprentissage ou de professionnalisation.</p>
-        <p>No apprentissage, a exceção é a inscrição direta em <strong>Master</strong> ou em diploma da lista das grandes écoles (CGE). Confirme com a escola e a préfecture, por escrito.</p>
-        <p class="calc-note">Fonte: <a href="https://www.service-public.gouv.fr/particuliers/vosdroits/F2713" target="_blank" rel="noopener">Service-Public, ficha F2713</a>.</p>
-      </section>
+<section class="lp-sec" style="padding-top:0">
+  <div class="lp-mid rv" id="lp-mid">
+    <span class="lp-k">Pronta para descobrir o seu nível?</span>
+    <h2 class="lp-h2">Pegue o checklist dos 5 passos e o e-mail em francês.</h2>
+    <p class="lp-p">É grátis, leva menos de um minuto e já mostra por onde começar, sem pagar taxa antes da hora.</p>
+    <a class="lp-btn pulse" id="lp-cta-meio" href="#gate">Ir para o checklist <span class="arr" aria-hidden="true">↓</span></a>
+  </div>
+</section>
 
-      <section class="gate" id="gate" aria-label="Liberar o checklist e o modelo de e-mail">
-        <h2>Receba o checklist dos 5 passos e o modelo de e-mail em francês</h2>
-        <p class="gate-lead">Libere o <strong>checklist para descobrir o seu nível sem gastar</strong> e o <strong>modelo de e-mail em francês</strong> para perguntar a 3 ou 4 escolas.</p>
-        <ul class="gate-inc" aria-label="O que está incluído">
-          <li>Checklist dos 5 passos, com caixas para marcar</li>
-          <li>E-mail pronto em francês, com 4 perguntas para a escola</li>
-          <li>Onde confirmar cada ponto na fonte oficial</li>
-        </ul>
-        <form id="gate-form" novalidate>
-          <div class="g-row">
-            <div class="g-field">
-              <label for="g-nome">Seu nome</label>
-              <input id="g-nome" type="text" autocomplete="given-name" maxlength="100" required>
-            </div>
-            <div class="g-field">
-              <label for="g-email">Seu e-mail</label>
-              <input id="g-email" type="email" autocomplete="email" placeholder="seu@email.com" required>
-            </div>
-          </div>
-          <div class="g-field">
-            <label for="g-etapa">Em que etapa você está?</label>
-            <select id="g-etapa" required>
-              <option value="">Escolha a que mais se parece com você</option>
-              <option value="tec-nao-sei">Ainda não sei em que nível eu entraria</option>
-              <option value="tec-juntando">Estou juntando histórico, diploma e carga horária</option>
-              <option value="tec-escrevi">Já escrevi para escolas e estou esperando</option>
-              <option value="tec-resposta">Já tenho resposta de uma escola</option>
-            </select>
-          </div>
-          <div class="hp-field" aria-hidden="true">
-            <label for="hp-website">Deixe este campo em branco</label>
-            <input type="text" id="hp-website" name="website" tabindex="-1" autocomplete="off">
-          </div>
-          <label class="gate-checkbox">
-            <input type="checkbox" id="consent-servico" required>
-            <span>Li e aceito a <a href="/confidentialite/" target="_blank" rel="noopener">Política de Privacidade</a>. *</span>
-          </label>
-          <label class="gate-checkbox">
-            <input type="checkbox" id="consent-novidades">
-            <span>Quero receber e-mails do Por Dentro, inclusive sobre a plataforma para quem mora na França. Cancelo quando quiser.</span>
-          </label>
-          <p class="gate-message" id="gate-erro"></p>
-          <button class="btn-guia btn-full" id="gate-btn" type="submit">Liberar o checklist e o modelo →</button>
-        </form>
-        <ul class="trust-row">
-          <li>✓ 100% gratuito</li>
-          <li>✓ Fontes oficiais linkadas</li>
-          <li>✓ Feito por quem vive isso na França</li>
-        </ul>
-        <p class="mini-aviso">Conteúdo de orientação, sem caráter de aconselhamento jurídico.</p>
-      </section>
+<section class="lp-sec" id="casos">
+  <div class="lp-wrap">
+    <span class="lp-k rv">3 · Onde costuma cair o tecnólogo</span>
+    <h2 class="lp-h2 rv" style="--d:80ms">Não existe regra oficial. Existe um <em>padrão</em>.</h2>
+    <p class="lp-p rv" style="--d:140ms">Pelos casos que eu acompanhei, é isto que costuma acontecer:</p>
+    <div class="lp-cases">
+      <div class="lp-case rv"><div class="de"><small>Tecnólogo de</small>2 anos</div><div class="ar"></div><div class="para">L3</div></div>
+      <div class="lp-case rv" style="--d:140ms"><div class="de"><small>Tecnólogo de</small>3 anos</div><div class="ar"></div><div class="para">M1</div></div>
+    </div>
+    <span class="lp-sticker rv">Não é regra</span>
+    <p class="lp-p rv" style="margin-top:22px"><strong style="color:var(--lp-creme)">Cada escola decide.</strong> Entre em contato com as universidades e guarde a resposta por escrito. Bacharelado completo passa pela mesma régua do M1 (licence de 3 anos ou 180 ECTS).</p>
+  </div>
+</section>
 
-      <div class="ok-banner" id="ok-banner" hidden>
-        <strong>✓ Liberado.</strong>
-        <span>O checklist e o modelo estão logo abaixo e também no Notion, para você guardar. Salve esta página para voltar quando precisar.</span>
-        <div class="acoes no-print">
-          <a class="btn-guia" id="notion-link" href="#" target="_blank" rel="noopener" hidden>Abrir o checklist no Notion →</a>
-        </div>
+<section class="lp-sec" id="contrato" style="padding-top:0">
+  <div class="lp-wrap">
+    <span class="lp-k rv">4 · O contrato de alternância</span>
+    <p class="lp-scrub" data-scrub><span>O</span> <span>nível</span> <span>decide</span> <span>a</span> <span class="hl">vaga.</span> <span>O</span> <span>tempo</span> <span>na</span> <span>França</span> <span>decide</span> <span>o</span> <span class="hl">contrato.</span></p>
+    <p class="lp-p rv">Ser aceita no L3 não quer dizer que você já pode assinar contrato de alternância. Pela leitura mais segura da ficha F2713 do Service-Public, é preciso estar há <strong style="color:var(--lp-ouro)">mais de 1 ano na França</strong> para assinar contrato de apprentissage ou de professionnalisation.</p>
+    <div class="rv" style="margin-top:34px">
+      <div class="lp-track"><i></i></div>
+      <div class="lp-tl"><span>Chegada na França</span><span>Mais de 1 ano</span><span>Contrato</span></div>
+    </div>
+    <div class="rv"><span class="lp-chip"><span><b>A exceção, no apprentissage:</b> inscrição direta em Master ou em diploma da lista das grandes écoles (CGE).</span></span></div>
+    <p class="lp-src rv">Fonte: <a href="https://www.service-public.gouv.fr/particuliers/vosdroits/F2713" target="_blank" rel="noopener">Service-Public, ficha F2713</a>. Confirme com a escola e a préfecture, por escrito.</p>
+  </div>
+</section>
+
+<section class="lp-gate" id="gate" aria-label="Liberar o checklist e o modelo de e-mail">
+  <div class="lp-card rv" id="lp-card">
+    <h2>Receba o checklist dos 5 passos e o modelo de e-mail em francês</h2>
+    <p class="lead">Libere o checklist para descobrir o seu nível sem gastar e o modelo de e-mail para perguntar a 3 ou 4 escolas.</p>
+    <ul class="lp-inc" aria-label="O que está incluído"><li>Checklist dos 5 passos, com caixas para marcar</li><li>E-mail pronto em francês</li><li>Onde confirmar na fonte oficial</li></ul>
+    <div class="lp-stepper" aria-hidden="true"><span class="lp-dot on">1</span><span class="lp-line"><i></i></span><span class="lp-dot">2</span><span class="lp-line"><i></i></span><span class="lp-dot">3</span></div>
+    <form id="gate-form" novalidate>
+      <div class="lp-pane on" data-step="1">
+        <p class="lp-q">Como posso te chamar?</p>
+        <div class="lp-fld"><input id="g-nome" type="text" autocomplete="given-name" maxlength="100" placeholder=" " required><label for="g-nome">Seu nome</label></div>
+        <div class="lp-fld"><input id="g-email" type="email" autocomplete="email" placeholder=" " required><label for="g-email">Seu e-mail</label></div>
+        <div class="lp-nav"><span></span><button class="lp-btn" type="button" data-next>Continuar <span class="arr" aria-hidden="true">→</span></button></div>
       </div>
+      <div class="lp-pane" data-step="2">
+        <p class="lp-q">Em que etapa você está?</p>
+        <div class="lp-opts" role="radiogroup" aria-label="Etapa">
+          <label class="lp-opt"><input type="radio" name="etapa" value="tec-nao-sei"><span class="no">1</span><span>Ainda não sei em que nível eu entraria</span></label>
+          <label class="lp-opt"><input type="radio" name="etapa" value="tec-juntando"><span class="no">2</span><span>Estou juntando histórico, diploma e carga horária</span></label>
+          <label class="lp-opt"><input type="radio" name="etapa" value="tec-escrevi"><span class="no">3</span><span>Já escrevi para escolas e estou esperando</span></label>
+          <label class="lp-opt"><input type="radio" name="etapa" value="tec-resposta"><span class="no">4</span><span>Já tenho resposta de uma escola</span></label>
+        </div>
+        <select id="g-etapa" class="lp-sr" tabindex="-1" aria-hidden="true"><option value=""></option><option value="tec-nao-sei"></option><option value="tec-juntando"></option><option value="tec-escrevi"></option><option value="tec-resposta"></option></select>
+        <div class="lp-nav"><button class="lp-back" type="button" data-back>← Voltar</button><button class="lp-btn" type="button" data-next>Continuar <span class="arr" aria-hidden="true">→</span></button></div>
+      </div>
+      <div class="lp-pane" data-step="3">
+        <p class="lp-q">Quase lá. Só falta o seu ok.</p>
+        <label class="lp-sw"><input type="checkbox" id="consent-servico" required><span class="tg" aria-hidden="true"></span><span>Li e aceito a <a href="/confidentialite/" target="_blank" rel="noopener">Política de Privacidade</a>. *</span></label>
+        <label class="lp-sw"><input type="checkbox" id="consent-novidades"><span class="tg" aria-hidden="true"></span><span>Quero receber e-mails do Por Dentro, inclusive sobre a plataforma para quem mora na França. Cancelo quando quiser.</span></label>
+        <div class="hp-field" aria-hidden="true"><label for="hp-website">Deixe este campo em branco</label><input type="text" id="hp-website" name="website" tabindex="-1" autocomplete="off"></div>
+        <div class="lp-nav"><button class="lp-back" type="button" data-back>← Voltar</button><button class="lp-btn" id="gate-btn" type="submit">Liberar o checklist <span class="arr" aria-hidden="true">→</span></button></div>
+      </div>
+      <p class="lp-err" id="gate-erro" role="alert" aria-live="assertive"></p>
+    </form>
+    <ul class="lp-trust"><li>✓ 100% gratuito</li><li>✓ Fontes oficiais linkadas</li><li>✓ Feito por quem vive isso na França</li></ul>
+    <p class="lp-mini">Conteúdo de orientação, sem caráter de aconselhamento jurídico.</p>
+  </div>
+</section>
 
-      <div id="locked" hidden>
-        <section class="guia-sec" id="checklist">
-          <h2>O checklist dos 5 passos</h2>
-          <ul class="guia-check">
-            <li><label><input type="checkbox"> <span><strong>Junte</strong> histórico, diploma e a carga horária total do curso, com as ementas.</span></label></li>
-            <li><label><input type="checkbox"> <span><strong>Compare</strong> a carga horária com a de cada ano da licence (L1 a L3). A IA da sua preferência ajuda a montar a tabela.</span></label></li>
-            <li><label><input type="checkbox"> <span><strong>Escreva</strong> a 3 ou 4 cursos com o modelo abaixo, ou crie sua conta no Études en France e peça a orientação online.</span></label></li>
-            <li><label><input type="checkbox"> <span><strong>Só depois</strong> pague a taxa do Campus France (R$ 600 no guia do candidato) e as traduções juramentadas.</span></label></li>
-            <li><label><input type="checkbox"> <span><strong>Alternância?</strong> Procure a empresa cedo e confirme com a escola, por escrito, quando o contrato pode ser assinado.</span></label></li>
-          </ul>
-        </section>
+<section class="lp-gate" id="ok-wrap" style="padding-top:0" hidden>
+  <div class="lp-ok" id="ok-banner" hidden>
+    <div class="lp-conf" id="lp-conf" aria-hidden="true"></div>
+    <svg class="ck" viewBox="0 0 84 84" aria-hidden="true"><circle cx="42" cy="42" r="40"/><path d="M25 43l12 12 22-26"/></svg>
+    <h2>Liberado.</h2>
+    <p>O checklist e o modelo estão logo abaixo e também no Notion, para você guardar. Salve esta página para voltar quando precisar.</p>
+    <a class="lp-btn" id="notion-link" href="#" target="_blank" rel="noopener" hidden>Abrir o checklist no Notion <span class="arr" aria-hidden="true">→</span></a>
+  </div>
+</section>
 
-        <section class="guia-sec" id="modelo-email">
-          <h2>O modelo de e-mail (em francês)</h2>
-          <p>Troque o que está entre colchetes e envie <strong>por e-mail</strong>, porque a resposta por escrito é o que vale depois.</p>
-          <div class="modelo" id="modelo-texto">Objet : Demande d'information : admission avec un diplôme brésilien (tecnólogo)
+<div class="lp-lock" id="locked" hidden>
+  <section class="lp-sec" id="checklist">
+    <div class="lp-wrap">
+      <span class="lp-k rv">Seu checklist</span>
+      <h2 class="lp-h2 rv" style="--d:80ms">Os 5 passos, na ordem.</h2>
+      <ul class="lp-check" id="lp-check">
+        <li class="rv"><label><input type="checkbox"><span class="bx"></span><span><strong>Junte</strong> histórico, diploma e a carga horária total do curso, com as ementas.</span></label></li>
+        <li class="rv" style="--d:70ms"><label><input type="checkbox"><span class="bx"></span><span><strong>Compare</strong> a carga horária com a de cada ano da licence (L1 a L3). A IA da sua preferência ajuda a montar a tabela.</span></label></li>
+        <li class="rv" style="--d:140ms"><label><input type="checkbox"><span class="bx"></span><span><strong>Escreva</strong> a 3 ou 4 cursos com o modelo abaixo, ou crie sua conta no Études en France e peça a orientação online.</span></label></li>
+        <li class="rv" style="--d:210ms"><label><input type="checkbox"><span class="bx"></span><span><strong>Só depois</strong> pague a taxa do Campus France (R$ 600 no guia do candidato) e as traduções juramentadas.</span></label></li>
+        <li class="rv" style="--d:280ms"><label><input type="checkbox"><span class="bx"></span><span><strong>Alternância?</strong> Procure a empresa cedo e confirme com a escola, por escrito, quando o contrato pode ser assinado.</span></label></li>
+      </ul>
+      <div class="lp-prog" aria-hidden="true"><i id="lp-prog-bar"></i></div>
+      <p class="lp-prog-t" id="lp-prog-t">0 de 5 passos feitos</p>
+    </div>
+  </section>
+
+  <section class="lp-sec" id="modelo-email" style="padding-top:0">
+    <div class="lp-wrap">
+      <span class="lp-k rv">O e-mail</span>
+      <h2 class="lp-h2 rv" style="--d:80ms">O modelo, em <em>francês</em>.</h2>
+      <p class="lp-p rv">Troque o que está entre colchetes e envie <strong style="color:var(--lp-creme)">por e-mail</strong>, porque a resposta por escrito é o que vale depois.</p>
+      <div class="lp-mail rv" id="modelo-texto">Objet : Demande d'information : admission avec un diplôme brésilien (tecnólogo)
 
 Bonjour,
 
@@ -259,37 +444,41 @@ Pourriez-vous me répondre par écrit, afin que je puisse conserver votre répon
 Cordialement,
 [Prénom Nom]
 [Ville, Brésil] · [adresse e-mail] · [téléphone]</div>
-          <div class="acoes no-print"><button class="btn-guia btn-copiar" id="btn-copiar" type="button">Copiar o e-mail</button></div>
-          <h3 style="margin-top:28px">Por que esse e-mail funciona</h3>
-          <ul>
-            <li><strong>Pergunta o nível, não pede o nível.</strong> Quem decide é a escola; você só dá os dados de que ela precisa (duração, horas, ementas).</li>
-            <li><strong>Quatro perguntas fechadas.</strong> Fica fácil responder e comparar a resposta de uma escola com a de outra.</li>
-            <li><strong>Resposta por escrito.</strong> É o que você leva para o Campus France, para a empresa e para a préfecture.</li>
-            <li><strong>Sem taxa no meio.</strong> A taxa só entra depois da resposta.</li>
-          </ul>
-        </section>
+      <div class="no-print rv" style="margin-top:22px"><button class="lp-btn" id="btn-copiar" type="button">Copiar o e-mail <span class="arr" aria-hidden="true">⧉</span></button></div>
+      <h3 class="lp-q rv" style="margin-top:48px">Por que esse e-mail funciona</h3>
+      <ul class="lp-list">
+        <li class="rv"><strong>Pergunta o nível, não pede o nível.</strong> Quem decide é a escola; você só dá os dados de que ela precisa (duração, horas, ementas).</li>
+        <li class="rv" style="--d:70ms"><strong>Quatro perguntas fechadas.</strong> Fica fácil responder e comparar a resposta de uma escola com a de outra.</li>
+        <li class="rv" style="--d:140ms"><strong>Resposta por escrito.</strong> É o que você leva para o Campus France, para a empresa e para a préfecture.</li>
+        <li class="rv" style="--d:210ms"><strong>Sem taxa no meio.</strong> A taxa só entra depois da resposta.</li>
+      </ul>
+    </div>
+  </section>
 
-        <section class="guia-sec" id="onde-confirmar">
-          <h2>Onde confirmar</h2>
-          <ul>
-            <li><a href="https://www.bresil.campusfrance.org/" target="_blank" rel="noopener">Campus France Brasil: guia do candidato</a></li>
-            <li><a href="https://www.service-public.gouv.fr/particuliers/vosdroits/F2713" target="_blank" rel="noopener">Service-Public F2713: estudante estrangeiro que trabalha</a></li>
-          </ul>
-          <p class="calc-note">Escola e Campus France decidem o seu nível. Este guia não garante aceite, nível nem contrato.</p>
-        </section>
+  <section class="lp-sec" id="onde-confirmar" style="padding-top:0">
+    <div class="lp-wrap">
+      <span class="lp-k rv">Fontes</span>
+      <h2 class="lp-h2 rv" style="--d:80ms">Onde confirmar.</h2>
+      <ul class="lp-list">
+        <li class="rv"><a href="https://www.bresil.campusfrance.org/" target="_blank" rel="noopener">Campus France Brasil: guia do candidato</a></li>
+        <li class="rv" style="--d:70ms"><a href="https://www.service-public.gouv.fr/particuliers/vosdroits/F2713" target="_blank" rel="noopener">Service-Public F2713: estudante estrangeiro que trabalha</a></li>
+      </ul>
+      <p class="lp-src rv">Escola e Campus France decidem o seu nível. Este guia não garante aceite, nível nem contrato.</p>
+    </div>
+  </section>
 
-        <aside class="cta-final no-print" id="cta">
-          <span class="eyebrow" style="color:#C9D6A8;">Quer uma segunda opinião?</span>
-          <h2>Converse comigo sobre o seu caso</h2>
-          <p>Cada caso tem detalhes que um modelo não cobre: duração do curso, carga horária, a escola e a empresa. Se quiser, a gente conversa sobre a sua situação.</p>
-          <div class="acoes">
-            <a class="btn-guia" id="cta-link" href="#" target="_blank" rel="noopener" hidden>Agendar uma conversa →</a>
-          </div>
-        </aside>
-      </div>
-    </article>
-  </div>
+  <section class="lp-sec no-print" style="padding-top:0">
+    <div class="lp-end rv" id="cta">
+      <span class="lp-k">Quer uma segunda opinião?</span>
+      <h2>Converse comigo sobre o seu caso</h2>
+      <p>Cada caso tem detalhes que um modelo não cobre: duração do curso, carga horária, a escola e a empresa. Se quiser, a gente conversa sobre a sua situação.</p>
+      <a class="lp-btn" id="cta-link" href="#" target="_blank" rel="noopener" hidden>Agendar uma conversa <span class="arr" aria-hidden="true">→</span></a>
+    </div>
+  </section>
+</div>
+
 </main>
+
 
 <footer class="site-footer">
   <div class="container">
@@ -347,42 +536,112 @@ var CONSENTIMENTO_VERSAO = "guia-v1";
 var TEXTO_SERVICO = "Li e aceito a Política de Privacidade.";
 var TEXTO_NOVIDADES = "Quero receber e-mails do Por Dentro, inclusive sobre a plataforma para quem mora na França. Cancelo quando quiser.";
 var byId = function (i) { return document.getElementById(i); };
+var $$ = function (s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); };
+var reduce = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
 function track(t, p) { if (window.PDEvents) window.PDEvents.send(t, null, p || {}); }
 function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
 function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
 
-// O que foi liberado fica no navegador: { ok: true, url?, texto? }. O link do Notion é opcional (só existe se a
-// linha do guia estiver em guias_links); o checklist e o modelo aparecem na própria página.
+/* ---------- movimento na rolagem ---------- */
+var ghost = document.querySelector("[data-par]");
+var scrubs = $$("[data-scrub]").map(function (el) { return { el: el, ws: $$("span", el) }; });
+var bar = byId("lp-progress"), tick = false;
+function frame() {
+  tick = false;
+  var d = document.documentElement, max = (d.scrollHeight - d.clientHeight) || 1;
+  bar.style.transform = "scaleX(" + Math.max(0, Math.min(1, d.scrollTop / max)) + ")";
+  if (ghost && !reduce) ghost.style.transform = "translateY(" + (d.scrollTop * 0.2) + "px)";
+  var vh = window.innerHeight;
+  scrubs.forEach(function (s) {
+    var r = s.el.getBoundingClientRect(), a = vh * 0.92, b = vh * 0.38;
+    var p = Math.max(0, Math.min(1, (a - r.top) / (a - b)));
+    var n = reduce ? s.ws.length : Math.ceil(p * s.ws.length);
+    s.ws.forEach(function (w, i) { w.classList.toggle("on", i < n); });
+  });
+}
+function onScroll() { if (!tick) { tick = true; requestAnimationFrame(frame); } }
+window.addEventListener("scroll", onScroll, { passive: true });
+window.addEventListener("resize", onScroll);
+frame();
+
+function contar(el) {
+  var alvo = parseFloat(el.getAttribute("data-count")), ini = performance.now(), dur = 1500;
+  if (reduce) { el.textContent = alvo; return; }
+  (function passo(t) {
+    var p = Math.min(1, (t - ini) / dur), e = 1 - Math.pow(1 - p, 4);
+    el.textContent = Math.round(alvo * e);
+    if (p < 1) requestAnimationFrame(passo);
+  })(ini);
+}
+if ("IntersectionObserver" in window) {
+  var io = new IntersectionObserver(function (es) {
+    es.forEach(function (e) {
+      if (!e.isIntersecting) return;
+      e.target.classList.add("in");
+      var c = e.target.querySelector("[data-count]"); if (c) contar(c);
+      io.unobserve(e.target);
+    });
+  }, { threshold: 0.18, rootMargin: "0px 0px -6% 0px" });
+  $$(".rv").forEach(function (el) { io.observe(el); });
+} else {
+  $$(".rv").forEach(function (el) { el.classList.add("in"); });
+}
+// leve inclinação nos cartões (só com mouse)
+if (!reduce && window.matchMedia && matchMedia("(hover:hover)").matches) {
+  $$(".lp-door").forEach(function (c) {
+    c.addEventListener("pointermove", function (ev) {
+      var r = c.getBoundingClientRect(), x = (ev.clientX - r.left) / r.width - 0.5, y = (ev.clientY - r.top) / r.height - 0.5;
+      c.style.transform = "perspective(900px) rotateY(" + (x * 9) + "deg) rotateX(" + (-y * 9) + "deg) translateY(-4px)";
+    });
+    c.addEventListener("pointerleave", function () { c.style.transform = ""; });
+  });
+}
+byId("lp-cta-topo").addEventListener("click", function () { track("guia_cta_clique", { guia: GUIA, onde: "topo" }); });
+byId("lp-cta-meio").addEventListener("click", function () { track("guia_cta_clique", { guia: GUIA, onde: "meio" }); });
+
+/* ---------- liberar o conteúdo ---------- */
 function lerSalvo() { try { var v = JSON.parse(lsGet(LS_KEY) || "null"); return v && v.ok ? v : null; } catch (e) { return null; } }
 byId("notion-link").addEventListener("click", function () { track("guia_abrir_notion", { guia: GUIA }); });
 
+function confete() {
+  if (reduce) return;
+  var box = byId("lp-conf"), cores = ["#DEB975", "#C9D6A8", "#F4F1EC", "#8AACD2"];
+  for (var i = 0; i < 34; i++) {
+    var s = document.createElement("i"), ang = Math.random() * Math.PI * 2, dist = 120 + Math.random() * 220;
+    s.style.setProperty("--c", cores[i % cores.length]);
+    s.style.setProperty("--x", Math.cos(ang) * dist + "px");
+    s.style.setProperty("--y", Math.sin(ang) * dist + 80 + "px");
+    s.style.setProperty("--r", (Math.random() * 720 - 360) + "deg");
+    s.style.setProperty("--dl", (Math.random() * 0.25) + "s");
+    box.appendChild(s);
+  }
+}
 function liberar(salvo, scroll) {
   var nl = byId("notion-link");
   nl.href = salvo.url || NOTION_URL;
   if (salvo.texto) nl.textContent = salvo.texto + " →";
   nl.hidden = false;
   byId("gate").hidden = true;
+  byId("ok-wrap").hidden = false;
   byId("ok-banner").hidden = false;
   byId("locked").hidden = false;
+  if (scroll) { confete(); byId("ok-wrap").scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "center" }); }
   var cta = byId("cta-link");
   fetch("/content/guias.json").then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
     if (d && d.calendlyUrl) {
       cta.href = d.calendlyUrl + (d.calendlyUrl.indexOf("?") === -1 ? "?" : "&") + "utm_source=guia&utm_campaign=" + GUIA;
       cta.hidden = false;
       cta.addEventListener("click", function () { track("guia_cta_agendar", { guia: GUIA }); });
-    } else {
-      byId("cta").hidden = true;
-    }
+    } else { byId("cta").hidden = true; }
   }).catch(function () { byId("cta").hidden = true; });
-  if (scroll) byId("ok-banner").scrollIntoView({ behavior: "smooth", block: "center" });
+  onScroll();
 }
 var salvo = lerSalvo();
 if (salvo) liberar(salvo, false);
 
 byId("btn-copiar").addEventListener("click", function () {
-  var texto = byId("modelo-texto").innerText;
-  var btn = byId("btn-copiar");
-  function feito() { btn.textContent = "Copiado ✓"; setTimeout(function () { btn.textContent = "Copiar o e-mail"; }, 2000); }
+  var texto = byId("modelo-texto").innerText, btn = byId("btn-copiar"), rot = "Copiar o e-mail <span class=\"arr\" aria-hidden=\"true\">⧉</span>";
+  function feito() { btn.innerHTML = "Copiado ✓ <span class=\"arr\" aria-hidden=\"true\">✓</span>"; setTimeout(function () { btn.innerHTML = rot; }, 2000); }
   track("guia_copiar_modelo", { guia: GUIA });
   if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(texto).then(feito, function () {}); }
   else {
@@ -390,41 +649,61 @@ byId("btn-copiar").addEventListener("click", function () {
     try { document.execCommand("copy"); feito(); } catch (e) {} document.body.removeChild(ta);
   }
 });
+var caixas = $$("#lp-check input");
+caixas.forEach(function (c) {
+  c.addEventListener("change", function () {
+    var n = caixas.filter(function (x) { return x.checked; }).length;
+    byId("lp-prog-bar").style.width = (n / caixas.length * 100) + "%";
+    byId("lp-prog-t").textContent = n === caixas.length ? "Os 5 passos feitos. Agora é esperar a resposta das escolas." : n + " de " + caixas.length + " passos feitos";
+  });
+});
+
+/* ---------- formulário em passos ---------- */
+var panes = $$(".lp-pane"), dots = $$(".lp-dot"), linhas = $$(".lp-line"), card = byId("lp-card"), passo = 1;
+function erro(m) { var e = byId("gate-erro"); e.textContent = m; if (m) { card.classList.remove("lp-shake"); void card.offsetWidth; card.classList.add("lp-shake"); } }
+function ir(n) {
+  passo = n; erro("");
+  panes.forEach(function (p) { p.classList.toggle("on", +p.getAttribute("data-step") === n); });
+  dots.forEach(function (d, i) { d.classList.toggle("on", i + 1 === n); d.classList.toggle("ok", i + 1 < n); d.textContent = i + 1 < n ? "✓" : String(i + 1); });
+  linhas.forEach(function (l, i) { l.firstElementChild.style.width = (i + 1 < n) ? "100%" : "0"; });
+  var f = panes[n - 1].querySelector("input:not([type=hidden])");
+  if (f && n === 1) { try { f.focus({ preventScroll: true }); } catch (e) {} }
+}
+function validar(n) {
+  if (n === 1) {
+    if (!byId("g-nome").value.trim()) { erro("Conta seu nome pra eu saber com quem estou falando."); byId("g-nome").focus(); return false; }
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(byId("g-email").value.trim())) { erro("Confere o e-mail e tenta de novo."); byId("g-email").focus(); return false; }
+  }
+  if (n === 2 && !byId("g-etapa").value) { erro("Escolhe em que etapa você está. É isso que me ajuda a te orientar melhor."); return false; }
+  return true;
+}
+function centrar() { card.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "center" }); }
+$$("[data-next]").forEach(function (b) { b.addEventListener("click", function () { if (validar(passo)) { ir(passo + 1); centrar(); track("guia_form_passo", { guia: GUIA, passo: passo }); } }); });
+$$("[data-back]").forEach(function (b) { b.addEventListener("click", function () { ir(passo - 1); centrar(); }); });
+$$("input[name=etapa]").forEach(function (r) { r.addEventListener("change", function () { byId("g-etapa").value = r.value; erro(""); }); });
+byId("gate-form").addEventListener("keydown", function (ev) {
+  if (ev.key === "Enter" && ev.target.tagName === "INPUT" && ev.target.type !== "checkbox" && passo < 3) { ev.preventDefault(); var nx = panes[passo - 1].querySelector("[data-next]"); if (nx) nx.click(); }
+});
 
 var shownAt = Date.now();
-function erro(m) { var e = byId("gate-erro"); e.textContent = m; e.classList.toggle("is-visible", !!m); }
-
 byId("gate-form").addEventListener("submit", async function (ev) {
   ev.preventDefault();
+  if (passo < 3) { var nx = panes[passo - 1].querySelector("[data-next]"); if (nx) nx.click(); return; }
   erro("");
-  var email = byId("g-email").value.trim();
-  var nome = byId("g-nome").value.trim();
-  var etapa = byId("g-etapa").value;
+  var email = byId("g-email").value.trim(), nome = byId("g-nome").value.trim(), etapa = byId("g-etapa").value;
   if (byId("hp-website").value || (Date.now() - shownAt) < 2500) { return; }
-  if (!nome) { erro("Conta seu nome pra eu saber com quem estou falando."); return; }
-  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { erro("Confere o e-mail e tenta de novo."); return; }
-  if (!etapa) { erro("Escolhe em que etapa você está. É isso que me ajuda a te orientar melhor."); return; }
+  if (!nome || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { ir(1); validar(1); return; }
+  if (!etapa) { ir(2); validar(2); return; }
   if (!byId("consent-servico").checked) { erro("Preciso que você aceite a Política de Privacidade pra continuar."); return; }
-  var btn = byId("gate-btn");
-  btn.disabled = true; btn.textContent = "Liberando...";
+  var btn = byId("gate-btn"), rot = btn.innerHTML;
+  btn.disabled = true; btn.innerHTML = 'Liberando <span class="lp-spin" aria-hidden="true"></span>';
   var params = new URLSearchParams(window.location.search);
   var payload = {
-    guia: GUIA,
-    email: email,
-    nome: nome,
-    persona: "campus_france",
-    nivel_estudos: "superior_completo",
-    origem: "guia-tecnologo",
-    respostas: { objetivo: etapa },
-    aceita_servico: true,
-    aceita_novidades: byId("consent-novidades").checked,
-    consentimento_versao: CONSENTIMENTO_VERSAO,
-    texto_servico: TEXTO_SERVICO,
-    texto_novidades: TEXTO_NOVIDADES
+    guia: GUIA, email: email, nome: nome, persona: "campus_france", nivel_estudos: "superior_completo", origem: "guia-tecnologo",
+    respostas: { objetivo: etapa }, aceita_servico: true, aceita_novidades: byId("consent-novidades").checked,
+    consentimento_versao: CONSENTIMENTO_VERSAO, texto_servico: TEXTO_SERVICO, texto_novidades: TEXTO_NOVIDADES
   };
-  ["utm_source", "utm_medium", "utm_campaign", "utm_content"].forEach(function (k) {
-    var v = params.get(k); if (v) payload[k] = v.slice(0, 100);
-  });
+  ["utm_source", "utm_medium", "utm_campaign", "utm_content"].forEach(function (k) { var v = params.get(k); if (v) payload[k] = v.slice(0, 100); });
   var igId = params.get("ig"); if (igId) payload.ig = igId.slice(0, 60);
   try {
     var r = await supabase.rpc("capturar_lead_guia", { payload: payload });
@@ -436,10 +715,9 @@ byId("gate-form").addEventListener("submit", async function (ev) {
   } catch (e) {
     console.error("capturar_lead_guia:", e);
     erro("Não consegui confirmar agora. Confere o e-mail e tenta de novo.");
-    btn.disabled = false; btn.textContent = "Liberar o checklist e o modelo →";
+    btn.disabled = false; btn.innerHTML = rot;
   }
 });
-
 </script>
 </body>
 </html>
