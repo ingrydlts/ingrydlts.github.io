@@ -21,6 +21,9 @@ const oi = (resto, alt) => ({ tipo: 'texto', texto: 'Oi {nome}! ' + resto, alt: 
 const responda = (pergunta, ajuda) => ({ tipo: 'pergunta', texto: pergunta, ajuda: ajuda || 'É só responder este e-mail. Eu leio cada resposta.' });
 const NAO_E_REGRA = 'Pelos casos que eu acompanhei, tecnólogo de 2 anos costuma ser aceito no L3 e de 3 anos no M1. Isso **não é regra**: cada escola decide.';
 
+// Quem tem tecnólogo e se candidata do Brasil também passa pelo Campus France: o e-mail de cada etapa diz isso, antes da pergunta final.
+const CAMPUS = { tipo: 'texto', texto: 'E lembre: se você vai se candidatar do Brasil, o seu dossiê também passa pelo **Campus France**. Por isso a resposta da escola, **por escrito**, vale ouro: ela entra no dossiê e sustenta o nível que você pede. Confirme os prazos e as taxas no site do Campus France Brasil.' };
+
 // A frase do recap para cada etapa (o que ela marcou, e o próximo passo do checklist).
 export const ETAPAS = {
   'tec-nao-sei': { chave: 'tec_d3_nao_sei', nome: 'Tecnólogo · D+3 · ainda não sei o nível', var: 'etapa_nao_sei',
@@ -58,6 +61,8 @@ export const ETAPAS = {
 };
 
 // O recap v2: igual à v1, com o parágrafo da etapa logo depois da abertura (só um aparece para cada pessoa).
+for (const e of Object.values(ETAPAS)) { const i = e.d3.itens.findIndex((b) => b.tipo === 'pergunta'); e.d3.itens.splice(i, 0, CAMPUS); }
+
 export function recapV2() {
   const d = JSON.parse(JSON.stringify(RECAP_V1));
   const i = d.itens.findIndex((b) => b.tipo === 'botao');
