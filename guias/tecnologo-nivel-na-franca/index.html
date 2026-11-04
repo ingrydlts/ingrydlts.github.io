@@ -73,11 +73,6 @@ main.lp{overflow-x:clip;position:relative}
 .lp-scroll b{width:1.5px;height:42px;background:linear-gradient(var(--lp-ouro),transparent);animation:lpDrop 2s infinite}
 @keyframes lpDrop{0%{transform:scaleY(0);transform-origin:top}50%{transform:scaleY(1);transform-origin:top}51%{transform-origin:bottom}100%{transform:scaleY(0);transform-origin:bottom}}
 
-/* faixa que corre */
-.lp-marq{position:relative;z-index:3;background:var(--lp-ouro);color:#2A1A12;transform:rotate(-1.8deg);margin:-34px -3% 0;padding:18px 0;overflow:hidden;white-space:nowrap;box-shadow:0 18px 50px rgba(0,0,0,.4)}
-.lp-marq .t{display:inline-flex;gap:46px;font:700 clamp(20px,3vw,30px)/1 'Fraunces',serif;animation:lpMarq 30s linear infinite}
-.lp-marq span::after{content:"•";margin-left:46px;opacity:.5}
-@keyframes lpMarq{to{transform:translateX(-50%)}}
 
 /* revelar na rolagem */
 .lp-js .rv{opacity:0;transform:translateY(36px);transition:opacity .9s var(--lp-ease),transform .9s var(--lp-ease);transition-delay:var(--d,0ms)}
@@ -241,7 +236,7 @@ main.lp{overflow-x:clip;position:relative}
   .lp-js .rv{opacity:1;transform:none}
   .lp-case .ar{transform:none}.lp-track i{width:100%}.lp-scrub span{opacity:1}
 }
-@media print{.site-header,.mobile-nav,.site-footer,#lp-progress,.lp-mid,.lp-gate,.lp-marq,.lp-scroll,.no-print{display:none!important}body.lp-body{background:#fff;color:#000}}
+@media print{.site-header,.mobile-nav,.site-footer,#lp-progress,.lp-mid,.lp-gate,.lp-scroll,.no-print{display:none!important}body.lp-body{background:#fff;color:#000}}
 </style>
 </head>
 <body class="lp-body">
@@ -288,7 +283,6 @@ main.lp{overflow-x:clip;position:relative}
   <div class="lp-scroll" aria-hidden="true">role<b></b></div>
 </section>
 
-<div class="lp-marq" aria-hidden="true"><div class="t"><span>Não existe tabela oficial</span><span>Quem decide é a escola</span><span>Tecnólogo de 2 anos → L3</span><span>Tecnólogo de 3 anos → M1</span><span>Não é regra</span><span>Escreva às escolas antes de pagar taxa</span><span>Não existe tabela oficial</span><span>Quem decide é a escola</span><span>Tecnólogo de 2 anos → L3</span><span>Tecnólogo de 3 anos → M1</span><span>Não é regra</span><span>Escreva às escolas antes de pagar taxa</span></div></div>
 
 <section class="lp-sec" id="degraus">
   <div class="lp-wrap">
