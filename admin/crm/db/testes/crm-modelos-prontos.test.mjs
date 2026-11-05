@@ -98,9 +98,12 @@ async function main() {
   const v1 = (await q("select corpo_texto from modelos_email_versoes where chave = 'cf_guia_1' and versao = 1"))[0].corpo_texto;
   const v2cf = novasDeAntes.find((v) => v.chave === 'cf_guia_1').corpo_texto;
   const dados = { nome: 'Bia', email: 'bia@example.com', link_checklist: 'https://example.com/x', nivel: 'Master', prazo_nivel: '17/01/2027', etapa: '', cidade: '',
-    etapa_nao_comecei: false, etapa_escolhendo_curso: false, etapa_juntando_documentos: true, etapa_dossie_enviado: false, etapa_entrevista_resposta: false };
+    etapa_nao_comecei: false, etapa_escolhendo_curso: false, etapa_juntando_documentos: true, etapa_dossie_enviado: false, etapa_entrevista_resposta: false,
+    porta_au_pair: false, porta_pvt: false, porta_brasil: false, porta_conjuge: false };
   const all = Object.assign({ assunto: 'x', pre: 'x' }, dados);
   check('cf_guia_1 v2 tem o mesmo texto da v1, com os dados de uma pessoa fictícia', ES.preencher(v1, all, false) === ES.preencher(v2cf, all, false));
+  const comPorta = Object.assign({}, all, { porta_au_pair: true });
+  check('cf_guia_1: o bloco do ponto de partida só aparece para quem marcou', ES.preencher(v2cf, comPorta, false).includes('Para quem é au pair') && !ES.preencher(v2cf, all, false).includes('Para quem é au pair'));
 
   console.log('\n== Os modelos novos ==');
   const novos = await q('select * from modelos_email where criado_no_estudio order by chave');

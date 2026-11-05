@@ -143,6 +143,17 @@
               <input id="g-email" type="email" autocomplete="email" placeholder="seu@email.com" required>
             </div>
           </div>
+          <div class="g-field">
+            <label for="g-porta">Qual é o seu ponto de partida?</label>
+            <select id="g-porta" required>
+              <option value="">Escolha a que mais se parece com você</option>
+              <option value="au_pair">Sou au pair, na França</option>
+              <option value="pvt">Estou na França por PVT</option>
+              <option value="brasil">Estou no Brasil e quero ir para a França</option>
+              <option value="conjuge">Estou na França por casamento ou parceria</option>
+              <option value="outra">Outra situação</option>
+            </select>
+          </div>
           <div class="hp-field" aria-hidden="true">
             <label for="hp-website">Deixe este campo em branco</label>
             <input type="text" id="hp-website" name="website" tabindex="-1" autocomplete="off">
@@ -313,14 +324,19 @@ var salvo = lerLink();
 if (salvo) liberar(salvo, false);
 
 var shownAt = Date.now();
+// Ponto de partida: as mesmas chaves que o checklist-preview já grava (naFranca e visto).
+var PORTAS = { au_pair: { naFranca: "sim", visto: "au_pair" }, pvt: { naFranca: "sim", visto: "pvt" },
+  brasil: { naFranca: "nao", visto: "estudante" }, conjuge: { naFranca: "sim", visto: "conjuge" }, outra: { visto: "outro" } };
 function erro(m) { var e = byId("gate-erro"); e.textContent = m; e.classList.toggle("is-visible", !!m); }
 
 byId("gate-form").addEventListener("submit", async function (ev) {
   ev.preventDefault();
   erro("");
   var email = byId("g-email").value.trim();
+  var porta = byId("g-porta").value;
   if (byId("hp-website").value || (Date.now() - shownAt) < 2500) { return; }
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { erro("Confere o e-mail e tenta de novo."); return; }
+  if (!porta) { erro("Escolhe o seu ponto de partida. É isso que me ajuda a te orientar melhor."); return; }
   if (!byId("consent-servico").checked) { erro("Preciso que você aceite a Política de Privacidade pra continuar."); return; }
   var btn = byId("gate-btn");
   btn.disabled = true; btn.textContent = "Liberando...";
@@ -331,7 +347,7 @@ byId("gate-form").addEventListener("submit", async function (ev) {
     nome: byId("g-nome").value.trim() || null,
     data_entrada: byId("calc-entrada").value || null,
     origem: "guia-vls-ts",
-    respostas: { visto: "estudante", objetivo: "validar-vls-ts" },
+    respostas: Object.assign({ objetivo: "validar-vls-ts" }, PORTAS[porta]),
     aceita_servico: true,
     aceita_novidades: byId("consent-novidades").checked,
     consentimento_versao: CONSENTIMENTO_VERSAO,
@@ -348,7 +364,7 @@ byId("gate-form").addEventListener("submit", async function (ev) {
     var link = r.data && r.data.notion_url ? { url: r.data.notion_url, texto: r.data.notion_texto || null } : null;
     if (!link) throw new Error("sem_link");
     lsSet(LS_KEY, JSON.stringify(link));
-    track("guia_lead_capturado", { guia: GUIA, utm_campaign: params.get("utm_campaign") || null });
+    track("guia_lead_capturado", { guia: GUIA, porta: porta, utm_campaign: params.get("utm_campaign") || null });
     liberar(link, true);
   } catch (e) {
     console.error("capturar_lead_guia:", e);

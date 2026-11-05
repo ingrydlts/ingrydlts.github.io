@@ -42,14 +42,23 @@ var ETAPAS_ALT = { pesquisando: 'ainda está pesquisando', escolhendo_escola: 'e
   buscando_empresa: 'está buscando empresa', montando_contrato: 'está montando o contrato' };
 Object.keys(ETAPAS_CF).forEach(function (k) { CAT['etapa_' + k] = { t: 'sim', o: 'etapa do guia: ' + ETAPAS_CF[k], etapa: true }; });
 Object.keys(ETAPAS_ALT).forEach(function (k) { CAT['etapa_' + k] = { t: 'sim', o: 'etapa do guia: ' + ETAPAS_ALT[k], etapa: true }; });
+// Guia do tecnólogo: o valor em contatos.respostas.objetivo é tec-nao-sei, tec-juntando…; a variável sai como etapa_tec_nao_sei…
+var ETAPAS_TEC = { tec_nao_sei: 'ainda não sabe em que nível entraria', tec_juntando: 'está juntando histórico, diploma e carga horária',
+  tec_escrevi: 'já escreveu para escolas e está esperando', tec_resposta: 'já tem resposta de uma escola' };
+Object.keys(ETAPAS_TEC).forEach(function (k) { CAT['etapa_' + k] = { t: 'sim', o: 'etapa do guia: ' + ETAPAS_TEC[k], etapa: true }; });
+// O ponto de partida que ela marcou no guia (o Worker calcula de respostas.naFranca e respostas.visto: crmPortas em worker.js).
+var PORTAS = { porta_au_pair: 'ela é au pair e já mora na França', porta_pvt: 'ela está na França por PVT',
+  porta_brasil: 'ela está no Brasil e quer ir para a França', porta_conjuge: 'ela vive na França por casamento ou parceria' };
+Object.keys(PORTAS).forEach(function (k) { CAT[k] = { t: 'sim', o: PORTAS[k] }; });
 
 // Os dados que cada modelo tem na hora do envio (o Worker ou o painel preenche exatamente estes).
 var PAINEL = ['nome', 'persona', 'link_acesso', 'link_agenda', 'au_pair', 'motivo', 'prazo_vencido', 'prazo_a_vencer', 'prazo_limite', 'dias_para_prazo'];
 var ALT = Object.keys(ETAPAS_ALT).map(function (k) { return 'etapa_' + k; });
+var PORTAS_VARS = Object.keys(PORTAS);
 export var VARS_DE = {
   boas_vindas: PAINEL.concat(ALT), naoabriu: PAINEL.concat(ALT), naoclicou: PAINEL.concat(ALT), cliquenaoapp: PAINEL.concat(ALT),
-  parouapp: PAINEL.concat(ALT), guia_chamada: PAINEL.concat(ALT), guia_plataforma: PAINEL.concat(ALT), guia_alternancia: PAINEL.concat(ALT),
-  cf_guia_1: ['nome', 'email', 'link_checklist', 'nivel', 'prazo_nivel', 'etapa', 'cidade'].concat(Object.keys(ETAPAS_CF).map(function (k) { return 'etapa_' + k; })),
+  parouapp: PAINEL.concat(ALT), guia_chamada: PAINEL.concat(ALT, PORTAS_VARS), guia_plataforma: PAINEL.concat(ALT, PORTAS_VARS), guia_alternancia: PAINEL.concat(ALT, PORTAS_VARS),
+  cf_guia_1: ['nome', 'email', 'link_checklist', 'nivel', 'prazo_nivel', 'etapa', 'cidade'].concat(Object.keys(ETAPAS_CF).map(function (k) { return 'etapa_' + k; }), PORTAS_VARS),
   cf_guia_conversa: ['nome', 'email', 'botoes_cidade'],
   // O e-mail do botão "Enviar link de pagamento" da aba Plataforma (db/crm-link-pagamento-email.sql). O link vem do Worker, por plano e moeda.
   link_pagamento: ['nome', 'email', 'link_pagamento'],
@@ -60,10 +69,11 @@ export var VARS_DE = {
 // O Worker preenche exatamente estes (crmVarsNovos em worker.js).
 // As etapas do guia viram um sim/não cada (etapa_…), para o bloco "Só para uma etapa".
 export var VARS_NOVOS = ['nome', 'email', 'persona', 'nivel', 'prazo_nivel', 'etapa', 'cidade', 'prazo_limite', 'dias_para_prazo',
-  'prazo_vencido', 'prazo_a_vencer', 'link_acesso', 'link_agenda'].concat(Object.keys(ETAPAS_CF).concat(Object.keys(ETAPAS_ALT)).map(function (k) { return 'etapa_' + k; }));
+  'prazo_vencido', 'prazo_a_vencer', 'link_acesso', 'link_agenda'].concat(Object.keys(ETAPAS_CF).concat(Object.keys(ETAPAS_ALT), Object.keys(ETAPAS_TEC)).map(function (k) { return 'etapa_' + k; }), Object.keys(PORTAS));
 // A regra "Etapa do guia" do Para quem: o valor é o que fica em contatos.respostas.objetivo (crm_sequencia_pendentes compara igual).
 export var ETAPAS_GUIA = Object.keys(ETAPAS_CF).map(function (k) { return ['cf-' + k.replace(/_/g, '-'), 'Campus France: ' + ETAPAS_CF[k]]; })
-  .concat(Object.keys(ETAPAS_ALT).map(function (k) { return ['alt-' + k.replace(/_/g, '-'), 'Alternância 30+: ' + ETAPAS_ALT[k]]; }));
+  .concat(Object.keys(ETAPAS_ALT).map(function (k) { return ['alt-' + k.replace(/_/g, '-'), 'Alternância 30+: ' + ETAPAS_ALT[k]]; }))
+  .concat(Object.keys(ETAPAS_TEC).map(function (k) { return [k.replace(/_/g, '-'), 'Tecnólogo: ' + ETAPAS_TEC[k]]; }));
 var VARS_PRODUTO = ['produto', 'link_produto'];
 export function varsDoModelo(chave, m) {
   if (VARS_DE[chave]) return VARS_DE[chave];
@@ -389,14 +399,26 @@ export var INICIAIS = {
     { tipo: 'texto', texto: 'Oi {nome}! Vi que você pegou o guia sobre o VLS-TS que travou na ANEF.' },
     { tipo: 'texto', se: '#prazo_vencido', texto: 'Pelas suas contas, o prazo de 3 meses venceu em {prazo_limite} — então vale agir logo.' },
     { tipo: 'texto', se: '#prazo_a_vencer', texto: 'Pelas suas contas, o prazo de 3 meses vence em {prazo_limite} ({dias_para_prazo} dias).' },
+    { tipo: 'etapa', se: '#porta_au_pair', rotulo: 'Para quem é au pair e já mora na França:', titulo: 'Como au pair, a taxa costuma ser menor.', texto: 'Para o visto de au pair, a taxa do OFII costuma ser cerca de 100 €, contra cerca de 150 € para estudante. Confirme o valor da sua categoria antes de pagar o timbre fiscal.' },
+    { tipo: 'etapa', se: '#porta_pvt', rotulo: 'Para quem está na França por PVT:', titulo: 'O visto do PVT também precisa ser validado em até 3 meses.', texto: 'É o mesmo prazo e o mesmo caminho do OFII. Confirme o valor da taxa da sua categoria antes de pagar o timbre fiscal.' },
+    { tipo: 'etapa', se: '#porta_brasil', rotulo: 'Para quem está no Brasil:', titulo: 'Guarde isto para os seus primeiros 3 meses na França.', texto: 'Depois da chegada, o prazo para validar o VLS-TS é de 3 meses. Pague o timbre fiscal assim que chegar e agende sem esperar a convocação: a fila costuma estourar o prazo, principalmente em setembro e outubro.' },
+    { tipo: 'etapa', se: '#porta_conjuge', rotulo: 'Para quem vive na França por casamento ou parceria:', titulo: 'O seu visto também é um VLS-TS e passa pela mesma validação.', texto: 'Quem vive na França por casamento ou parceria tem um visto de vie privée et familiale, que também precisa ser validado em até 3 meses. Confirme a taxa e as etapas da sua categoria.' },
     { tipo: 'texto', texto: 'Se ninguém te respondeu ainda ou você ficou em dúvida em algum passo, posso olhar o seu caso numa conversa rápida.' },
     agenda('Escolher um horário', 'guia-chamada'), ASS] },
   guia_plataforma: { assunto: '{nome}, quer testar a plataforma do Por Dentro?', itens: [
     { tipo: 'texto', texto: 'Oi {nome}! Estou abrindo algumas vagas de teste da plataforma do Por Dentro: checklist com prazos reais, pra você acompanhar cada etapa do seu processo na França num lugar só.' },
+    { tipo: 'etapa', se: '#porta_au_pair', rotulo: 'Para quem é au pair e já mora na França:', titulo: 'Como au pair, a taxa costuma ser menor.', texto: 'Para o visto de au pair, a taxa do OFII costuma ser cerca de 100 €, contra cerca de 150 € para estudante. Confirme o valor da sua categoria antes de pagar o timbre fiscal.' },
+    { tipo: 'etapa', se: '#porta_pvt', rotulo: 'Para quem está na França por PVT:', titulo: 'O visto do PVT também precisa ser validado em até 3 meses.', texto: 'É o mesmo prazo e o mesmo caminho do OFII. Confirme o valor da taxa da sua categoria antes de pagar o timbre fiscal.' },
+    { tipo: 'etapa', se: '#porta_brasil', rotulo: 'Para quem está no Brasil:', titulo: 'Guarde isto para os seus primeiros 3 meses na França.', texto: 'Depois da chegada, o prazo para validar o VLS-TS é de 3 meses. Pague o timbre fiscal assim que chegar e agende sem esperar a convocação: a fila costuma estourar o prazo, principalmente em setembro e outubro.' },
+    { tipo: 'etapa', se: '#porta_conjuge', rotulo: 'Para quem vive na França por casamento ou parceria:', titulo: 'O seu visto também é um VLS-TS e passa pela mesma validação.', texto: 'Quem vive na França por casamento ou parceria tem um visto de vie privée et familiale, que também precisa ser validado em até 3 meses. Confirme a taxa e as etapas da sua categoria.' },
     { tipo: 'botao', rotulo: 'Quero testar', link: 'link_acesso' },
     { tipo: 'texto', texto: 'É sem senha, um clique e você entra. Em troca, só peço o seu feedback.' }, ASS] },
   guia_alternancia: { assunto: '{nome}, o e-mail para a escola e o próximo passo', itens: [
     { tipo: 'texto', texto: 'Oi {nome}! Vi que você pegou o modelo de e-mail em francês para pedir alternância depois dos 30.' },
+    { tipo: 'etapa', se: '#porta_au_pair', rotulo: 'Para quem é au pair e já mora na França:', titulo: 'Au pair não vira alternância direto.', texto: 'O caminho aceito é: au pair, depois estudante, depois alternância. Quem tenta pular direto costuma ser recusado pela préfecture, porque a autorização de trabalho do au pair vale só para o trabalho de au pair.' },
+    { tipo: 'etapa', se: '#porta_pvt', rotulo: 'Para quem está na França por PVT:', titulo: 'Vindo do PVT, a alternância depende do nível.', texto: 'Quem chega do Brasil só faz alternância em Master ou escola. Nos outros níveis, em geral só depois de mais de 1 ano na França.' },
+    { tipo: 'etapa', se: '#porta_brasil', rotulo: 'Para quem está no Brasil:', titulo: 'Vindo do Brasil, a alternância depende do nível.', texto: 'Só em Master ou escola. Nos outros níveis, em geral só depois de mais de 1 ano na França. A candidatura é pelo Études en France.' },
+    { tipo: 'etapa', se: '#porta_conjuge', rotulo: 'Para quem vive na França por casamento ou parceria:', titulo: 'Você já pode trabalhar sem pedir autorização extra.', texto: 'O seu visto de vie privée et familiale dá direito automático a trabalhar, então o contrato de alternância fica mais simples: você não depende de autorização de trabalho.' },
     { tipo: 'etapa', se: '#etapa_pesquisando', texto: 'Você disse que ainda está entendendo se pode fazer alternância passando dos 29. O primeiro passo é descobrir qual das exceções do limite de idade (ou qual contrato) é a sua. Dá pra fazer isso em poucos minutos olhando o seu histórico.' },
     { tipo: 'etapa', se: '#etapa_escolhendo_escola', texto: 'Você disse que está escolhendo escola e curso. Antes de se candidatar, vale saber qual contrato a escola consegue montar com o seu histórico, pra não perder tempo com quem vai dizer "só até 29".' },
     { tipo: 'etapa', se: '#etapa_recusa_idade', texto: 'Você disse que já ouviu "só até 29" de uma escola. Esse "não" muitas vezes é medo de ficar com a vaga e sem empresa, não é a lei. O e-mail do guia serve justamente pra pedir a resposta por escrito, com a base legal.' },
@@ -415,6 +437,10 @@ export var INICIAIS = {
       { tipo: 'botao', rotulo: 'Abrir o checklist no Notion', link: 'link_checklist' },
       { tipo: 'destaque', se: '#nivel', rotulo: 'O prazo do seu nível · {nivel}', valor: '{prazo_nivel}', nota: 'Se algum curso que você escolher tiver prazo próprio, vale o menor.' },
       { tipo: 'destaque', se: '^nivel', rotulo: 'Prazos para submeter o dossiê · ciclo 2027-2028', valor: '**14/12/2026** · 1º ano de Licence e Arquitetura\n**17/01/2027** · 2º e 3º ano de Licence, Licence Pro, Master e escolas', nota: 'Se algum curso tiver prazo próprio, vale o menor.' },
+      { tipo: 'etapa', se: '#porta_au_pair', rotulo: 'Para quem é au pair e já mora na França:', titulo: 'Para você, o caminho é pelo portal do curso, não pelo Études en France.', texto: 'O Études en France é a porta de quem está no Brasil. Quem já mora na França se candidata pelo portal do curso e pede o changement de statut para estudante. Voltar ao Brasil só para usar o Études en France é possível, mas costuma ser mais lento e mais caro. Confirme o prazo no portal de cada curso.' },
+      { tipo: 'etapa', se: '#porta_pvt', rotulo: 'Para quem está na França por PVT:', titulo: 'O caminho previsto é pelo Brasil, e a volta entra no calendário.', texto: 'Com o PVT, o visto de estudante é pedido do Brasil, depois da volta: candidatura no Études en France e visto no consulado. Conte a viagem de volta no seu calendário, junto com o prazo do seu nível.' },
+      { tipo: 'etapa', se: '#porta_brasil', rotulo: 'Para quem está no Brasil:', titulo: 'O Études en France é o seu caminho, e o prazo abaixo já vale para você.', texto: 'Você se candidata pela plataforma e, com a admissão, pede o visto de estudante no consulado. Os passos abaixo seguem essa ordem.' },
+      { tipo: 'etapa', se: '#porta_conjuge', rotulo: 'Para quem vive na França por casamento ou parceria:', titulo: 'Você não precisa de visto de estudante para estudar.', texto: 'Quem vive na França por casamento ou parceria se candidata pelos portais do curso, sem o Études en France. Confirme o prazo no portal de cada curso.' },
       { tipo: 'etapa', se: '#etapa_nao_comecei', rotulo: 'Para quem está na etapa que ainda não começou:', titulo: 'Comece pelo passo 1: o projeto de estudos.', texto: 'Escreva em 3 ou 4 linhas o que você estudou até aqui e o que quer estudar na França. Os outros onze passos se apoiam nele, inclusive as motivações e a entrevista.' },
       { tipo: 'etapa', se: '#etapa_escolhendo_curso', rotulo: 'Para quem está na etapa que está escolhendo o curso:', titulo: 'Anote o prazo de cada curso que você escolher.', texto: 'Alguns cursos fecham antes do calendário geral, e vale sempre o menor prazo. Para procurar: o catálogo de formações do site do Campus France Brasil, onisep.fr e letudiant.fr.' },
       { tipo: 'etapa', se: '#etapa_juntando_documentos', rotulo: 'Para quem está na etapa que está juntando documentos, traduções e o teste:', titulo: 'Comece pelo que depende de outras pessoas.', texto: 'Peça os históricos e faça a apostila antes da tradução juramentada. E garanta a inscrição no teste de francês: o resultado precisa chegar ao Campus France até 05/03/2027.' },

@@ -12,6 +12,10 @@ const CONSENTIMENTO_VERSAO = "guia-v1";
 const TEXTO_SERVICO = "Li e aceito a Política de Privacidade.";
 const TEXTO_NOVIDADES = "Quero receber e-mails do Por Dentro, inclusive sobre a plataforma para quem mora na França. Cancelo quando quiser.";
 
+// Ponto de partida: as mesmas chaves que o checklist-preview já grava (naFranca e visto).
+const PORTAS = { au_pair: { naFranca: "sim", visto: "au_pair" }, pvt: { naFranca: "sim", visto: "pvt" },
+  brasil: { naFranca: "nao", visto: "estudante" }, conjuge: { naFranca: "sim", visto: "conjuge" }, outra: { visto: "outro" } };
+
 const MODELO = `Objet : Candidature en alternance : question sur la limite d'âge
 
 Bonjour,
@@ -65,6 +69,17 @@ function formHTML() {
           <label for="ga-email">Seu e-mail</label>
           <input id="ga-email" type="email" autocomplete="email" placeholder="seu@email.com" required>
         </div>
+      </div>
+      <div class="ga-field">
+        <label for="ga-porta">Qual é o seu ponto de partida?</label>
+        <select id="ga-porta" required>
+          <option value="">Escolha a que mais se parece com você</option>
+          <option value="au_pair">Sou au pair, na França</option>
+          <option value="pvt">Estou na França por PVT</option>
+          <option value="brasil">Estou no Brasil e quero ir para a França</option>
+          <option value="conjuge">Estou na França por casamento ou parceria</option>
+          <option value="outra">Outra situação</option>
+        </select>
       </div>
       <div class="ga-field">
         <label for="ga-etapa">Em que ponto da alternância você está?</label>
@@ -154,9 +169,11 @@ export function mount(rootId) {
     const email = $("ga-email").value.trim();
     const nome = $("ga-nome").value.trim();
     const etapa = $("ga-etapa").value;
+    const porta = $("ga-porta").value;
     if ($("ga-website").value || (Date.now() - shownAt) < 2500) return;
     if (!nome) { erro("Conta seu nome pra eu saber com quem estou falando."); return; }
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { erro("Confere o e-mail e tenta de novo."); return; }
+    if (!porta) { erro("Escolhe o seu ponto de partida. É isso que me ajuda a te orientar melhor."); return; }
     if (!etapa) { erro("Escolhe em que ponto você está. É isso que me ajuda a te orientar melhor."); return; }
     if (!$("ga-servico").checked) { erro("Preciso que você aceite a Política de Privacidade pra continuar."); return; }
     const btn = $("ga-btn");
@@ -167,7 +184,7 @@ export function mount(rootId) {
       nome,
       persona: "alternancia_emprego",
       origem: "guia-email-alt30",
-      respostas: { objetivo: etapa },
+      respostas: { objetivo: etapa, ...PORTAS[porta] },
       aceita_servico: true,
       aceita_novidades: $("ga-novidades").checked,
       consentimento_versao: CONSENTIMENTO_VERSAO,

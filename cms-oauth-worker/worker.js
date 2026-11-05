@@ -1593,6 +1593,7 @@ function cfGuia1Vars(contato, notionUrl) {
     nivel: nivel ? nivel[0] : '', prazo_nivel: nivel ? nivel[1] : '',
   };
   for (const k of Object.keys(CF_PASSO)) v['etapa_' + k.replace(/^cf-/, '').replace(/-/g, '_')] = resp.objetivo === k;
+  Object.assign(v, crmPortas(resp));
   // Estúdio de e-mails 2: a etapa por extenso e a cidade (tocada no e-mail 2), para textos novos com plano B.
   v.etapa = CF_ETAPA_NOME[resp.objetivo] || '';
   const cidade = CF_CIDADES.find(([k]) => k === resp.cfCidade);
@@ -1994,7 +1995,20 @@ function crmDiaBr(ymd) { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(ymd ||
 // Os dados de um modelo novo (os mesmos que o estúdio mostra em "Contexto da pessoa": ES.VARS_NOVOS em estudio.js).
 // p = uma linha de crm_sequencia_pendentes (ou o mesmo formato).
 // As etapas do guia viram um sim/não cada (etapa_nao_comecei, etapa_pesquisando…), como ES.ETAPAS_GUIA em estudio.js.
-const CRM_ETAPAS_GUIA = Object.keys(CF_PASSO).concat(['alt-pesquisando', 'alt-escolhendo-escola', 'alt-recusa-idade', 'alt-buscando-empresa', 'alt-montando-contrato']);
+const CRM_ETAPAS_GUIA = Object.keys(CF_PASSO).concat(['alt-pesquisando', 'alt-escolhendo-escola', 'alt-recusa-idade', 'alt-buscando-empresa', 'alt-montando-contrato',
+  'tec-nao-sei', 'tec-juntando', 'tec-escrevi', 'tec-resposta']);
+// O ponto de partida que ela marcou no guia (respostas.naFranca e respostas.visto, as mesmas chaves do checklist-preview) vira um sim/não cada,
+// como as etapas: porta_au_pair, porta_pvt, porta_brasil, porta_conjuge (ES.CAT em estudio.js). porta_brasil exige naFranca = nao, porque o guia
+// do VLS-TS gravava visto = estudante para todo mundo (contatos antigos não recebem o bloco errado).
+function crmPortas(resp) {
+  const r = resp || {};
+  return {
+    porta_au_pair: r.visto === 'au_pair' && r.naFranca !== 'nao',
+    porta_pvt: r.visto === 'pvt',
+    porta_brasil: r.naFranca === 'nao' && r.visto === 'estudante',
+    porta_conjuge: r.visto === 'conjuge',
+  };
+}
 function crmVarsNovos(env, p) {
   const d = p.dados || {}, resp = d.respostas || {};
   const nivel = CF_NIVEIS[resp.cfNivel];
@@ -2003,6 +2017,7 @@ function crmVarsNovos(env, p) {
   for (const k of CRM_ETAPAS_GUIA) etapas['etapa_' + k.replace(/^(cf|alt)-/, '').replace(/-/g, '_')] = resp.objetivo === k;
   return {
     ...etapas,
+    ...crmPortas(resp),
     nome: crmPrimeiroNome(p.nome), email: p.email,
     persona: (CRM_PERSONAS[d.persona || 'sem'] || d.persona || '').toLowerCase(),
     nivel: nivel ? nivel[0] : '', prazo_nivel: nivel ? nivel[1] : '',
