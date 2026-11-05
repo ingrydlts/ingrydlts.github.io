@@ -1,0 +1,110 @@
+{
+  "_readme": "Estado das fontes monitoradas pelo boletim semanal de atualizações legais do Por Dentro. Cada entrada tem lastKnownSummary (base de comparação) e lastChecked (data ISO da última verificação). accessMethod indica se o conteúdo veio de leitura direta da página ou de busca indexada (fallback usado quando o fetch direto foi bloqueado pelo proxy de rede do ambiente de execução).",
+  "sources": {
+    "campusfrance-como-solicitar": {
+      "url": "https://www.bresil.campusfrance.org/como-solicitar-seu-visto-de-estudante",
+      "vistoTipos": ["Visto Estudante"],
+      "lastChecked": "2026-08-25",
+      "accessMethod": "websearch_fallback",
+      "lastKnownSummary": "A página descreve o processo pré-consular obrigatório da Campus France antes da solicitação do visto de estudante em um dos quatro consulados franceses no Brasil (São Paulo, Recife, Rio de Janeiro ou Brasília). Recomenda-se iniciar o procedimento com pelo menos 3 meses de antecedência da viagem; o visto só pode ser solicitado até 2 meses antes do início dos estudos. A versão indexada encontrada menciona recursos financeiros mínimos de 615 euros/mês — valor desatualizado em relação ao Décret n° 2026-526, que elevou o piso legal para 877,50 euros/mês a partir de 1º de agosto de 2026 (ver fonte legifrance-decreto-recursos). Recomenda-se guardar documentação de estudos, moradia e extratos bancários para eventual renovação."
+    },
+    "campusfrance-quem-precisa": {
+      "url": "https://www.bresil.campusfrance.org/quem-precisa-visto-estudante",
+      "vistoTipos": ["Visto Estudante"],
+      "lastChecked": "2026-08-25",
+      "accessMethod": "websearch_fallback",
+      "lastKnownSummary": "O visto de estudante destina-se a brasileiros que farão cursos na França com duração superior a 90 dias; cursos mais curtos não dão direito a esse visto. Existem várias categorias de visto de residência, cuja escolha depende do tipo de projeto de estudo, instituição e duração do curso. Algumas categorias exigem o procedimento pré-consular Campus France (estudante, concurso/exame, estudante-estagiário), outras não (menor escolarizado desacompanhado, visitante, científico, au pair). A página enfatiza que não é possível alterar a categoria de visto depois de escolhida. Não há valores financeiros específicos nesta página."
+    },
+    "france-visas-bresil": {
+      "url": "https://france-visas.gouv.fr/en/bresil",
+      "vistoTipos": ["Visto Estudante", "Vacances-Travail (PVT)"],
+      "lastChecked": "2026-08-25",
+      "accessMethod": "websearch_fallback",
+      "lastKnownSummary": "Vistos para brasileiros são emitidos pela Embaixada da França em Brasília e pelos Consulados-Gerais em São Paulo, Rio de Janeiro e Recife, exigindo comprovação de residência no Brasil. Confirma que o Brasil tem acordo bilateral de Vacances-Travail (PVT/Vitem VI): visto de longa duração, validade máxima de 1 ano, não prorrogável, permite atividade remunerada secundária sem autorização prévia de trabalho, desde que o objetivo principal seja turismo/descoberta cultural. Para estudantes, cita documentos como carta de aceitação da instituição e seguro-viagem cobrindo despesas médicas, maternidade, hospitalização e repatriação. Não retornou valores exatos de recursos financeiros, taxas ou cota do PVT — detalhes aparecem em fontes secundárias."
+    },
+    "legifrance-decreto-recursos": {
+      "url": "https://www.legifrance.gouv.fr/jorf/id/JORFTEXT000054300340",
+      "vistoTipos": ["Visto Estudante"],
+      "lastChecked": "2026-08-25",
+      "accessMethod": "websearch_fallback",
+      "lastKnownSummary": "Décret n° 2026-526, de 22 de junho de 2026, atualiza e indexa o nível de recursos financeiros que um estrangeiro de país terceiro deve comprovar para admissão de estadia por motivo de estudos. Novo valor mínimo: 877,50 EUR/mês (47% do SMIC mensal bruto), em vigor desde 1º de agosto de 2026, substituindo o valor anterior de 615 EUR/mês. O decreto estabelece indexação automática a cada revalorização do SMIC — futuros reajustes do SMIC devem ser tratados como gatilho de possível nova atualização deste valor. Dado complementar (fonte secundária, a confirmar em fonte oficial): desde 1º de maio de 2026 a taxa do visto de longa duração ('droit de visa de long séjour') subiu de 200€ para 300€ (tarifa reduzida de 50€ para 100€); taxa de validação do VLS-TS estudante é de 50€ via ANEF."
+    },
+    "alternance-professionnelle": {
+      "url": "https://www.alternance-professionnelle.fr/apprentissage-etudiants-etrangers/",
+      "vistoTipos": ["Visto Estudante"],
+      "lastChecked": "2026-08-25",
+      "accessMethod": "websearch_fallback",
+      "lastKnownSummary": "Desde 2009, estrangeiros não europeus podem assinar contrato de aprendizagem (apprentissage) ou profissionalização com empresa francesa. Candidatos não-UE/EEE devem solicitar Autorização Provisória de Trabalho (APT); procedimento usual: assinar contrato, anexar ao pedido de visto de estudante, e após chegada o empregador solicita a APT. Desde 31/03/2021, candidatos a mestrado (ou grande école) em alternância não precisam mais comprovar 1 ano prévio de estudos na França. No regime de alternância a autorização de trabalho é automática e ultrapassa o limite anual normalmente imposto a estudantes estrangeiros (~964h/ano fora da alternância). Estudantes argelinos têm regime bilateral próprio (não aplicável a brasileiros)."
+    },
+    "demarchesetrangers-conjuge-ue": {
+      "url": "https://demarchesetrangers.fr/titre-de-sejour/conjoint-membre-famille-citoyen-ue",
+      "vistoTipos": ["Cônjuge de cidadão(ã) da UE (não francês)"],
+      "lastChecked": "2026-08-25",
+      "accessMethod": "websearch_fallback",
+      "lastKnownSummary": "Trata do título de residência de membro de família de cidadão da UE/EEE/Suíça (não francês): cônjuges, dependentes e ascendentes/descendentes a cargo. É gratuito (contrasta com a taxa de 225€ de outros títulos 'vie privée et familiale'), validade de 5 anos renovável, direito imediato ao trabalho e livre circulação Schengen, sem exigência de exame cívico nem nível A2 de francês. Pedido feito exclusivamente pela plataforma ANEF. Importante: cônjuge de cidadão francês (não de outra nacionalidade europeia) não deve usar esta categoria — deve pedir 'vie privée et familiale'."
+    },
+    "info-droits-etrangers-europeus": {
+      "url": "https://www.info-droits-etrangers.org/sejourner-en-france/les-statuts-particuliers/les-ressortissants-europeens-et-les-membres-de-leur-famille/",
+      "vistoTipos": ["Cônjuge de cidadão(ã) da UE (não francês)"],
+      "lastChecked": "2026-08-25",
+      "accessMethod": "websearch_fallback",
+      "lastKnownSummary": "Trata do estatuto de cidadãos europeus e seus familiares na França, incluindo familiares nacionais de países terceiros (caso de brasileiros casados com europeus). Cidadãos europeus 'inativos' precisam comprovar recursos suficientes e seguro-saúde para não se tornarem encargo da assistência social. Após 5 anos de residência legal ininterrupta, adquire-se direito de residência permanente. Site trata separadamente do estatuto pós-Brexit de britânicos. Não foi possível confirmar taxas ou lista documental detalhada nesta checagem."
+    },
+    "dicaparis-pvt": {
+      "url": "https://dicaparis.com/dicas/visto-ferias-trabalho-da-franca/",
+      "vistoTipos": ["Vacances-Travail (PVT)"],
+      "lastChecked": "2026-08-25",
+      "accessMethod": "websearch_fallback",
+      "lastKnownSummary": "PVT França é exclusivo para brasileiros de 18 a 30 anos (solicitável até a véspera de completar 31), estadia de até 1 ano combinando turismo, intercâmbio e trabalho remunerado. Taxa consular é gratuita, mas exige seguro-saúde internacional Schengen válido por todo o período. Documentos: passaporte com validade mín. 1 ano e 3 meses, 2 fotos, comprovante de residência, RG, carta de motivação, currículo, comprovação de recursos financeiros de pelo menos 2.500 euros, seguro-saúde, atestado médico e antecedentes criminais. Processo: conta online, formulário de visto longa duração opção 'Vacances-Travail', depois entrevista presencial no consulado."
+    },
+    "lexoraeurope-pvt": {
+      "url": "https://lexoraeurope.com/franca/motivos-pessoais/visto-vacances-travail-franca-brasil",
+      "vistoTipos": ["Vacances-Travail (PVT)"],
+      "lastChecked": "2026-08-25",
+      "accessMethod": "websearch_fallback",
+      "lastKnownSummary": "Confirma faixa etária 18-30 anos (até véspera dos 31), estadia de até 1 ano com trabalho legal complementar. Exige recursos financeiros mínimos de 2.500 euros. Visto gratuito para brasileiros, mas com cota mensal/anual limitada por circunscrição consular — quando atingida, pedidos entram em lista de espera. Em janeiro de 2025 a Embaixada da França anunciou que o programa 'excedeu a cota alocada para o setor consular de Brasília' em 2024. Documentos coincidem com dicaparis: passaporte, fotos, comprovante de residência, RG, carta de motivação, currículo, recursos de 2.500€, seguro-saúde, atestado médico, antecedentes criminais."
+    },
+    "diplomatie-pvt-cota-2026": {
+      "url": "https://br.diplomatie.gouv.fr/pt-br/nordeste-campanha-de-visto-de-ferias-trabalho-2026",
+      "vistoTipos": ["Vacances-Travail (PVT)"],
+      "lastChecked": "2026-08-25",
+      "accessMethod": "websearch_fallback",
+      "lastKnownSummary": "Página oficial do Consulado-Geral da França em Recife (circunscrição Nordeste) sobre a 'Campanha de Visto de Férias-Trabalho 2026': próxima campanha prevista para abrir em 1º de janeiro de 2026, com vagas limitadas — consulado recomenda contato prévio para candidatos de 18-30 anos. Cota anual citada por fontes cruzadas (não totalmente confirmada) de ~500 vagas para brasileiros, distribuídas entre os 4 postos consulares (Brasília, São Paulo, Rio de Janeiro, Recife). A cota de 2025 se esgotou antes do fim do ano em pelo menos São Paulo e Recife — primeira vez que isso ocorreu. Não há data específica de abertura para São Paulo/Rio/Brasília além do '1º de janeiro' mencionado para Recife."
+    },
+    "demarchesetrangers-vpf": {
+      "url": "https://demarchesetrangers.fr/titre-de-sejour/carte-sejour-vie-privee-familiale",
+      "vistoTipos": ["Cônjuge de francês(a)", "Pai/mãe de filho(a) francês(a)", "Residência de longa data"],
+      "lastChecked": "2026-08-25",
+      "accessMethod": "websearch_fallback",
+      "lastKnownSummary": "Página guarda-chuva sobre a carte de séjour 'vie privée et familiale' (VPF), cobrindo cônjuge de francês, pai/mãe de filho francês, laços fortes/saúde grave, e caminho para carta de residente de longa duração. Taxa: 225€ (25€ droit de timbre + 200€ taxa), validade inicial 1 ano renovável, direito ao trabalho sem autorização separada. Progressão possível para carta plurianual e depois carta de residente (10 anos) ou de longa duração-UE, sujeitas desde 01/01/2026 ao exame cívico obrigatório.\n\nCônjuge de francês: exige casamento civil válido e comunhão de vida efetiva com o cônjuge francês; referência de 6 meses de vida em comum na França quando o casamento ocorreu em território francês (pode variar se casamento no exterior). Dá direito automático ao trabalho.\n\nPai/mãe de filho francês: aplicável a pai/mãe estrangeiro de filho menor com nacionalidade francesa residente na França, exigindo comprovação de participação efetiva (financeira e/ou convívio) na manutenção/educação da criança. Não exige residir com o outro genitor nem que este seja francês.\n\nResidência de longa data: trajetória para carte de résident de longue durée-UE, exigindo em geral 5 anos de residência ininterrupta sob título(s) elegível(is), recursos financeiros próprios (referência ~SMIC bruto mensal, ~1.823,03€), seguro-saúde e integração republicana (exame cívico desde 01/01/2026). Isenção da condição de recursos para beneficiários de AAH/Asi."
+    },
+    "formation-civique": {
+      "url": "https://www.formation-civique.interieur.gouv.fr",
+      "vistoTipos": ["Cônjuge de francês(a)", "Residência de longa data"],
+      "lastChecked": "2026-08-25",
+      "accessMethod": "websearch_fallback",
+      "lastKnownSummary": "Site oficial do Ministério do Interior francês para preparação do exame cívico, com ~222 fichas temáticas sobre princípios republicanos, instituições e sociedade francesa. Desde 1º de janeiro de 2026, aprovação no exame cívico é obrigatória para: primeira solicitação de carte de séjour pluriannuelle (inclui cônjuge de francês sob VPF), primeira solicitação de carte de résident (10 anos), e naturalização. Não exigido na renovação, nem para refugiados/proteção internacional, nem para nacionais de países com acordos bilaterais específicos. Formato: 40 questões de múltipla escolha em francês, 45 minutos, em centro credenciado (CCI), nota mínima 32/40 (80%); custo citado por terceiros ~70€; validade do atestado 4 anos. Reprovação não impede nova tentativa, mas ausência do atestado pode levar a recusa de emissão do título."
+    },
+    "campusfrance-passeport-talent-chercheur": {
+      "url": "https://www.campusfrance.org/en/the-researcher-talent-passport-long-stay-visa",
+      "vistoTipos": ["Passeport Talent (pesquisa/doutorado)"],
+      "lastChecked": "2026-08-25",
+      "accessMethod": "websearch_fallback",
+      "lastKnownSummary": "Visto 'Passeport Talent – Chercheur' para doutorandos, pesquisadores e professores-pesquisadores, mediante 'convention d'accueil' emitida pela instituição francesa (especifica natureza/duração do trabalho, remuneração, alojamento, cobertura médica). VLS-TS com validade igual à convenção, máximo 4 anos, renovável. Taxa consular do visto: 99€. Para estadias <12 meses: validação na OFII em até 3 meses após chegada, taxa de 200€ (selo fiscal eletrônico). Para estadias ≥12 meses: sem passagem pela OFII, mas até 2 meses após chegada deve comparecer à prefeitura para o cartão plurianual, pagando 225€ (200€ taxa + 25€ selo). Livre circulação Schengen nos primeiros 3 meses."
+    },
+    "service-public-assalariado": {
+      "url": "https://www.service-public.fr/particuliers/vosdroits/F35602?idFicheParent=F2728",
+      "vistoTipos": ["Assalariado"],
+      "lastChecked": "2026-08-25",
+      "accessMethod": "websearch_fallback",
+      "lastKnownSummary": "Fonte recém-mapeada nesta primeira execução (antes sem fonte oficial no monitoramento). Para trabalhar como assalariado, o estrangeiro (fora UE/EEE/Suíça) precisa de autorização de trabalho (visto, cartão de residência que já vale como autorização, ou documento à parte). Solicitação é responsabilidade do EMPREGADOR, feita via plataforma ANEF; em geral o empregador deve antes comprovar ausência de candidatos disponíveis no mercado local (vaga publicada em France Travail ou APEC). Administração avalia setor de emprego, salário oferecido e compatibilidade do cargo com a qualificação do candidato. Prazo regulamentar de resposta: 2 meses após processo completo; na prática 2-8 semanas, processo total (incl. visto) de 3-6 meses. Empregador paga 'taxe OFII' na primeira emissão do título: calculada sobre salário bruto mensal, alíquota 55% para contratos ≥12 meses, teto de 2.506,67€ por contratação em 2026 (isento se o trabalhador já tem título que autoriza atividade profissional)."
+    },
+    "service-public-busca-emprego-negocio": {
+      "url": "https://www.service-public.fr/particuliers/vosdroits/F17319",
+      "vistoTipos": ["Busca de emprego / negócio"],
+      "lastChecked": "2026-08-25",
+      "accessMethod": "websearch_fallback",
+      "lastKnownSummary": "Fonte recém-mapeada nesta primeira execução (antes sem fonte oficial no monitoramento). O cartão de residência temporário (ou VLS-TS) 'recherche d'emploi ou création d'entreprise' permite ficar na França e trabalhar sem restrições por até 1 ano para procurar emprego ou criar negócio ligado à área de estudo/pesquisa do titular. Voltado a diplomados por estabelecimento francês (mestrado ou equivalente) e a titulares de 'Passeport Talent — Chercheur' ao fim da permanência de pesquisa. Permite trabalho assalariado sem que o empregador precise de autorização, desde que o salário bruto mensal ultrapasse um limiar (~2.800,53€ segundo levantamento, tipicamente indexado a 1,5x o SMIC — a confirmar por ano). Custa 225€ em selos fiscais, validade de 12 meses, NÃO renovável — ao fim deve ter contrato de trabalho ou empresa formalizada para mudar de status."
+    }
+  }
+}
