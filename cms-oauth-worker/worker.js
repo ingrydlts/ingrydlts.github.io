@@ -1996,7 +1996,8 @@ function crmDiaBr(ymd) { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(ymd ||
 // p = uma linha de crm_sequencia_pendentes (ou o mesmo formato).
 // As etapas do guia viram um sim/não cada (etapa_nao_comecei, etapa_pesquisando…), como ES.ETAPAS_GUIA em estudio.js.
 const CRM_ETAPAS_GUIA = Object.keys(CF_PASSO).concat(['alt-pesquisando', 'alt-escolhendo-escola', 'alt-recusa-idade', 'alt-buscando-empresa', 'alt-montando-contrato',
-  'tec-nao-sei', 'tec-juntando', 'tec-escrevi', 'tec-resposta']);
+  'tec-nao-sei', 'tec-juntando', 'tec-escrevi', 'tec-resposta',
+  'cert-delf', 'cert-dalf', 'cert-tcf-francais', 'cert-tcf-canada', 'cert-exame-civico', 'cert-toeic', 'cert-cae', 'cert-cpe', 'cert-outro', 'cert-indeciso']);
 // O ponto de partida que ela marcou no guia (respostas.naFranca e respostas.visto, as mesmas chaves do checklist-preview) vira um sim/não cada,
 // como as etapas: porta_au_pair, porta_pvt, porta_brasil, porta_conjuge (ES.CAT em estudio.js). porta_brasil exige naFranca = nao, porque o guia
 // do VLS-TS gravava visto = estudante para todo mundo (contatos antigos não recebem o bloco errado).

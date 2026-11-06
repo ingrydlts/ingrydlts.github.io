@@ -238,7 +238,7 @@
   <section class="pc-sec">
     <div class="vt-section-t"><h2>Perguntas frequentes</h2></div>
     <div class="pc-faq">
-      <details><summary>Preciso pagar para ter o painel?</summary><p>Não. O valor do template é 10 €, mas aqui ele sai por 0 €. Você informa nome, e-mail e o certificado que está preparando, e o link para duplicar no seu Notion aparece na hora.</p></details>
+      <details><summary>Preciso pagar para ter o painel?</summary><p>Não. O valor do template é 10 €, mas aqui ele sai por 0 €. Você informa nome, e-mail, o certificado que está preparando e o seu ponto de partida, e o link para duplicar no seu Notion aparece na hora.</p></details>
       <details><summary>Por que vocês perguntam qual certificado eu estou preparando?</summary><p>Para saber quais provas pedem mais conteúdo e o que incluir na biblioteca. Se ainda não decidiu, escolha "Ainda não sei qual fazer".</p></details>
       <details><summary>Preciso saber usar o Notion?</summary><p>Não. O template vem com um projeto de exemplo que explica cada área, e cada campo tem uma dica de preenchimento ao passar o mouse.</p></details>
       <details><summary>Dá para usar no celular?</summary><p>Dá, pelo app do Notion. A tela inicial mostra a lista do dia.</p></details>
@@ -382,6 +382,8 @@
       '<input type="email" id="g-email-' + i + '" name="email" placeholder="Seu melhor e-mail" autocomplete="email" required>' +
       '<label class="sr" for="g-cert-' + i + '">Qual certificado você está preparando?</label>' +
       '<select id="g-cert-' + i + '" name="certificado" required>' + opts + "</select>" +
+      '<label class="sr" for="g-porta-' + i + '">Qual é o seu ponto de partida?</label>' +
+      '<select id="g-porta-' + i + '" name="porta" required><option value="">Qual é o seu ponto de partida?</option><option value="au_pair">Sou au pair, na França</option><option value="pvt">Estou na França por PVT</option><option value="brasil">Estou no Brasil e quero ir para a França</option><option value="conjuge">Estou na França por casamento ou parceria</option><option value="outra">Outra situação</option></select>' +
       '<div class="pc-hp" aria-hidden="true"><label for="hp-' + i + '">Deixe este campo em branco</label><input type="text" id="hp-' + i + '" name="website" tabindex="-1" autocomplete="off"></div>' +
       '<label class="pc-chk"><input type="checkbox" name="aceite" required><span>Li e aceito a <a href="/confidentialite/" target="_blank" rel="noopener">Política de Privacidade</a>. *</span></label>' +
       '<label class="pc-chk"><input type="checkbox" name="novidades"><span>Quero receber e-mails do Por Dentro, inclusive sobre a plataforma para quem mora na França. Cancelo quando quiser.</span></label>' +
@@ -454,6 +456,9 @@
 import { supabase } from '/assets/js/supabase-client.js';
 
 var GUIA = "painel-do-certificado";
+// Ponto de partida: as mesmas chaves que o checklist-preview já grava (naFranca e visto).
+var PORTAS = { au_pair: { naFranca: "sim", visto: "au_pair" }, pvt: { naFranca: "sim", visto: "pvt" },
+  brasil: { naFranca: "nao", visto: "estudante" }, conjuge: { naFranca: "sim", visto: "conjuge" }, outra: { visto: "outro" } };
 var LS_KEY = "pd_guia_" + GUIA;
 var CONSENTIMENTO_VERSAO = "guia-v1";
 var TEXTO_SERVICO = "Li e aceito a Política de Privacidade.";
@@ -484,11 +489,12 @@ document.querySelectorAll(".pc-form").forEach(function (form) {
     ev.preventDefault();
     erro("");
     var f = form.elements;
-    var nome = f.nome.value.trim(), email = f.email.value.trim(), cert = f.certificado.value;
+    var nome = f.nome.value.trim(), email = f.email.value.trim(), cert = f.certificado.value, porta = f.porta.value;
     if (f.website.value || (Date.now() - shownAt) < 2500) { return; }
     if (nome.length < 2) { erro("Conta seu nome pra eu saber com quem estou falando."); f.nome.focus(); return; }
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { erro("Confere o e-mail e tenta de novo."); f.email.focus(); return; }
     if (!cert) { erro("Escolhe o certificado que você está preparando. É isso que me ajuda a melhorar a biblioteca."); f.certificado.focus(); return; }
+    if (!porta) { erro("Escolhe o seu ponto de partida. É isso que me ajuda a te orientar melhor."); f.porta.focus(); return; }
     if (!f.aceite.checked) { erro("Preciso que você aceite a Política de Privacidade pra continuar."); return; }
     var btn = form.querySelector("button[type=submit]");
     btn.disabled = true; var rotulo = btn.innerHTML; btn.textContent = "Liberando...";
@@ -496,7 +502,7 @@ document.querySelectorAll(".pc-form").forEach(function (form) {
     var payload = {
       guia: GUIA, email: email, nome: nome,
       origem: "guia-painel-do-certificado",
-      respostas: { objetivo: cert },
+      respostas: Object.assign({ objetivo: cert }, PORTAS[porta]),
       aceita_servico: true, aceita_novidades: f.novidades.checked,
       consentimento_versao: CONSENTIMENTO_VERSAO, texto_servico: TEXTO_SERVICO, texto_novidades: TEXTO_NOVIDADES
     };
@@ -508,7 +514,7 @@ document.querySelectorAll(".pc-form").forEach(function (form) {
       var link = r.data && r.data.notion_url ? { url: r.data.notion_url, texto: r.data.notion_texto || null } : null;
       if (!link) throw new Error("sem_link");
       lsSet(LS_KEY, JSON.stringify(link));
-      track("guia_lead_capturado", { guia: GUIA, certificado: cert, utm_campaign: params.get("utm_campaign") || null });
+      track("guia_lead_capturado", { guia: GUIA, certificado: cert, porta: porta, utm_campaign: params.get("utm_campaign") || null });
       liberar(link);
     } catch (e) {
       console.error("capturar_lead_guia:", e);

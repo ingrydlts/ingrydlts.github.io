@@ -46,6 +46,9 @@ Object.keys(ETAPAS_ALT).forEach(function (k) { CAT['etapa_' + k] = { t: 'sim', o
 var ETAPAS_TEC = { tec_nao_sei: 'ainda não sabe em que nível entraria', tec_juntando: 'está juntando histórico, diploma e carga horária',
   tec_escrevi: 'já escreveu para escolas e está esperando', tec_resposta: 'já tem resposta de uma escola' };
 Object.keys(ETAPAS_TEC).forEach(function (k) { CAT['etapa_' + k] = { t: 'sim', o: 'etapa do guia: ' + ETAPAS_TEC[k], etapa: true }; });
+// Painel do Certificado: o valor em contatos.respostas.objetivo é cert-delf, cert-dalf…; a variável sai como etapa_cert_delf…
+var ETAPAS_CERT = { cert_delf: "prepara o DELF", cert_dalf: "prepara o DALF", cert_tcf_francais: "prepara o TCF Français", cert_tcf_canada: "prepara o TCF Canada", cert_exame_civico: "prepara o Exame Cívico francês", cert_toeic: "prepara o TOEIC", cert_cae: "prepara o CAE", cert_cpe: "prepara o CPE", cert_outro: "prepara outro certificado", cert_indeciso: "ainda não sabe qual certificado fazer" };
+Object.keys(ETAPAS_CERT).forEach(function (k) { CAT['etapa_' + k] = { t: 'sim', o: 'certificado do painel: ' + ETAPAS_CERT[k], etapa: true }; });
 // O ponto de partida que ela marcou no guia (o Worker calcula de respostas.naFranca e respostas.visto: crmPortas em worker.js).
 var PORTAS = { porta_au_pair: 'ela é au pair e já mora na França', porta_pvt: 'ela está na França por PVT',
   porta_brasil: 'ela está no Brasil e quer ir para a França', porta_conjuge: 'ela vive na França por casamento ou parceria' };
@@ -69,11 +72,12 @@ export var VARS_DE = {
 // O Worker preenche exatamente estes (crmVarsNovos em worker.js).
 // As etapas do guia viram um sim/não cada (etapa_…), para o bloco "Só para uma etapa".
 export var VARS_NOVOS = ['nome', 'email', 'persona', 'nivel', 'prazo_nivel', 'etapa', 'cidade', 'prazo_limite', 'dias_para_prazo',
-  'prazo_vencido', 'prazo_a_vencer', 'link_acesso', 'link_agenda'].concat(Object.keys(ETAPAS_CF).concat(Object.keys(ETAPAS_ALT), Object.keys(ETAPAS_TEC)).map(function (k) { return 'etapa_' + k; }), Object.keys(PORTAS));
+  'prazo_vencido', 'prazo_a_vencer', 'link_acesso', 'link_agenda'].concat(Object.keys(ETAPAS_CF).concat(Object.keys(ETAPAS_ALT), Object.keys(ETAPAS_TEC), Object.keys(ETAPAS_CERT)).map(function (k) { return 'etapa_' + k; }), Object.keys(PORTAS));
 // A regra "Etapa do guia" do Para quem: o valor é o que fica em contatos.respostas.objetivo (crm_sequencia_pendentes compara igual).
 export var ETAPAS_GUIA = Object.keys(ETAPAS_CF).map(function (k) { return ['cf-' + k.replace(/_/g, '-'), 'Campus France: ' + ETAPAS_CF[k]]; })
   .concat(Object.keys(ETAPAS_ALT).map(function (k) { return ['alt-' + k.replace(/_/g, '-'), 'Alternância 30+: ' + ETAPAS_ALT[k]]; }))
-  .concat(Object.keys(ETAPAS_TEC).map(function (k) { return [k.replace(/_/g, '-'), 'Tecnólogo: ' + ETAPAS_TEC[k]]; }));
+  .concat(Object.keys(ETAPAS_TEC).map(function (k) { return [k.replace(/_/g, '-'), 'Tecnólogo: ' + ETAPAS_TEC[k]]; }))
+  .concat(Object.keys(ETAPAS_CERT).map(function (k) { return [k.replace(/_/g, '-'), 'Painel do Certificado: ' + ETAPAS_CERT[k]]; }));
 var VARS_PRODUTO = ['produto', 'link_produto'];
 export function varsDoModelo(chave, m) {
   if (VARS_DE[chave]) return VARS_DE[chave];
