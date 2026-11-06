@@ -1765,6 +1765,16 @@ function cfBotoesCidade(token) {
   return { texto: CF_CIDADES.map(([k, rot]) => rot + ': ' + link(k)).join('\n'), html };
 }
 
+// Pergunta de nível do e-mail do tecnólogo (L3, Licence pro ou M1). A chave r do link vai para contatos.respostas.tecNivel.
+const TEC_NIVEIS = [['nivel-l3', 'L3', 'l3'], ['nivel-licence-pro', 'Licence pro', 'licence-pro'], ['nivel-m1', 'M1', 'm1']];
+function tecBotoesNivel(token) {
+  const link = (k) => CRM_CONVERSA_URL + '?r=' + k + '&t=' + encodeURIComponent(token);
+  const e = crmEscapeHtml;
+  const sans = "font-family:'Inter', Arial, Helvetica, sans-serif;";
+  const html = TEC_NIVEIS.map(([k, rot]) => `<a href="${e(link(k))}" style="display:inline-block; margin:0 6px 8px 0; ${sans} font-size:14px; font-weight:600; text-decoration:none; padding:9px 16px; border-radius:999px; border:1.5px solid #577328; background:#E4EAD6; color:#3F5519;">${e(rot)}</a>`).join('');
+  return { texto: TEC_NIVEIS.map(([k, rot]) => rot + ': ' + link(k)).join('\n'), html };
+}
+
 // Monta o e-mail 2 (texto aprovado no artefato em 15/10). token = o link assinado da pessoa.
 // É a reserva: o texto que vale é o do modelo No ar em modelos_email_versoes (cfGuiaConversaVars).
 function cfGuiaConversa(contato, token) {
@@ -2019,6 +2029,10 @@ function crmVarsNovos(env, p) {
   return {
     ...etapas,
     ...crmPortas(resp),
+    // Onde a pessoa vai fazer o processo (pergunta 2 do guia do tecnólogo) e o nível que ela tocou no e-mail.
+    destino_fr: resp.destino === 'fr', destino_br: resp.destino === 'br', destino_nao_sei: resp.destino === 'nao_sei',
+    nivel_l3: resp.tecNivel === 'l3', nivel_licence_pro: resp.tecNivel === 'licence-pro', nivel_m1: resp.tecNivel === 'm1',
+    botoes_nivel_tec: p._token ? tecBotoesNivel(p._token) : '',
     nome: crmPrimeiroNome(p.nome), email: p.email,
     persona: (CRM_PERSONAS[d.persona || 'sem'] || d.persona || '').toLowerCase(),
     nivel: nivel ? nivel[0] : '', prazo_nivel: nivel ? nivel[1] : '',
@@ -2076,6 +2090,8 @@ async function crmSequenciasRodada(env) {
       const tpl = versoes[k];
       if (!tpl) { r.falhas++; continue; }
       let mail;
+      // O link assinado só é feito quando o modelo tem os botões de nível (cada pessoa tem o seu).
+      if (/botoes_nivel_tec/.test(String(tpl.corpo_texto) + String(tpl.corpo_html || ''))) p._token = await crmLinkAssinar(env, p.contato_id);
       try { mail = crmMontarNovo(tpl, crmVarsNovos(env, p)); }
       catch (e) { console.error('crm/sequencias: ' + chave + ' v' + p.versao + ' com erro (' + e.message + '), não mandei'); r.falhas++; continue; }
       const contato = { id: p.contato_id, email: p.email, nome: p.nome };
@@ -2138,6 +2154,29 @@ async function handleConversaToque(request, env) {
     ok: true, nome: crmPrimeiroNome(out.nome) || null, cidade: out.cidade,
     checklist: notion ? notion + (notion.includes('?') ? '&' : '?') + utm : null,
   });
+}
+
+// POST /api/conversa/nivel { t, r } → grava o nível tocado no e-mail do tecnólogo em contatos.respostas.tecNivel.
+// Sem função nova no banco: lê e regrava o jsonb com a chave de serviço, depois de conferir o link assinado.
+async function handleConversaNivel(request, env) {
+  const body = await crmLerJson(request);
+  if (!body) return json({ error: 'invalido' }, 400);
+  const link = await crmLinkConferir(env, String(body.t || ''));
+  if (link.erro) return crmLinkErro(link);
+  const nivel = TEC_NIVEIS.find((n) => n[0] === String(body.r || ''));
+  if (!nivel) return json({ error: 'nivel' }, 400);
+  if (!env.SUPABASE_SERVICE_ROLE_KEY) return json({ error: 'config' }, 500);
+  const h = crmServiceHeaders(env);
+  const lido = await fetch(`${CRM_SUPABASE_URL}/rest/v1/contatos?select=nome,respostas&id=eq.${link.contato_id}`, { headers: h });
+  if (!lido.ok) return json({ error: 'erro' }, 500);
+  const c = (await lido.json())[0];
+  if (!c) return json({ error: 'invalido' }, 404);
+  const respostas = Object.assign({}, c.respostas || {}, { tecNivel: nivel[2] });
+  const grav = await fetch(`${CRM_SUPABASE_URL}/rest/v1/contatos?id=eq.${link.contato_id}`, {
+    method: 'PATCH', headers: Object.assign({}, h, { Prefer: 'return=minimal' }), body: JSON.stringify({ respostas }),
+  });
+  if (!grav.ok) { console.error('conversa/nivel: ' + grav.status + ' ' + (await grav.text())); return json({ error: 'erro' }, 500); }
+  return json({ ok: true, nome: crmPrimeiroNome(c.nome) || null, rotulo: nivel[1] });
 }
 
 // POST /api/conversa/texto { t, texto } → entra na Caixa de entrada como resposta pela página.
@@ -4377,6 +4416,9 @@ export default {
       }
       if (url.pathname === '/api/conversa/toque' && request.method === 'POST') {
         return await handleConversaToque(request, env);
+      }
+      if (url.pathname === '/api/conversa/nivel' && request.method === 'POST') {
+        return await handleConversaNivel(request, env);
       }
       if (url.pathname === '/api/conversa/texto' && request.method === 'POST') {
         return await handleConversaTexto(request, env);

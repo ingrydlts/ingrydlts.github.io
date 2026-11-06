@@ -26,6 +26,12 @@ export const D = {
     { tipo: 'botao', rotulo: 'Abrir o checklist e o modelo de e-mail', url: NOTION },
     { tipo: 'destaque', rotulo: 'Dentro do link', valor: 'Os 5 passos para descobrir o seu nível\nO e-mail em francês para perguntar à escola',
       nota: 'O primeiro passo é escrever a 3 ou 4 cursos e guardar a resposta por escrito. Só depois pague taxa ou tradução.' },
+    { tipo: 'etapa', se: '#destino_fr', rotulo: 'Para quem vai fazer o processo da França:', titulo: 'Você já tem certificado de francês? Como está preparando?',
+      texto: 'Quem faz o processo daqui costuma esbarrar primeiro no francês: o nível que a escola pede entra no seu pedido. Se você ainda está preparando o DELF, o DALF ou o TCF, eu tenho um painel gratuito, em Notion, com o prazo, os materiais e as revisões da prova num lugar só: https://imigrantepordentro.com/produtos-digitais/painel-do-certificado/' },
+    { tipo: 'etapa', se: '#destino_br', rotulo: 'Para quem vai fazer o processo do Brasil:', titulo: 'No L3, a alternância não vale para quem chega agora. O trabalho de estudante, sim.',
+      texto: 'Pela ficha F2713 do Service-Public, para assinar contrato de apprentissage ou de professionnalisation é preciso estar há mais de 1 ano na França; a exceção, no apprentissage, é a inscrição direta em Master ou em diploma da lista das grandes écoles. Já as 964 horas de trabalho por ano de quem tem título de estudante você usa desde o começo (confirme no seu título e na préfecture). Uma pergunta para eu te orientar melhor: você vai se candidatar neste ciclo (prazo de 17 de janeiro de 2027 no Études en France) ou no do ano que vem? É só responder este e-mail.' },
+    { tipo: 'etapa', se: '#destino_nao_sei', rotulo: 'Para quem ainda não sabe onde vai fazer o processo:', titulo: 'São duas rotas, e a diferença está no contrato de alternância.',
+      texto: 'Pelo Brasil, a candidatura é no Études en France e o contrato de alternância só vem depois de 1 ano na França. Daqui, o caminho é pelo seu status atual, e o francês pesa mais. Responda este e-mail com a sua situação que eu te digo qual rota combina com ela.' },
     { tipo: 'etapa', se: '#porta_au_pair', rotulo: 'Para quem é au pair e já mora na França:', titulo: 'Pergunte o nível às escolas já, de onde você está.', texto: 'O pedido para virar estudante (changement de statut) vem depois, com a matrícula em mãos e antes de o seu título de au pair vencer.' },
     { tipo: 'etapa', se: '#porta_pvt', rotulo: 'Para quem está na França por PVT:', titulo: 'O caminho previsto é pelo Brasil.', texto: 'Candidatura no Études en France e visto de estudante pedido depois da volta. Vale começar a perguntar às escolas já.' },
     { tipo: 'etapa', se: '#porta_brasil', rotulo: 'Para quem está no Brasil:', titulo: 'O seu prazo é 17 de janeiro de 2027.', texto: 'Para L3, Licence pro e Master, o prazo do ciclo 2027-2028 no Études en France é o mesmo: 17/01/2027.' },
@@ -35,6 +41,10 @@ export const D = {
     { tipo: 'etapa', se: '#etapa_tec_escrevi', rotulo: 'Para quem já escreveu para escolas e está esperando:', titulo: 'Peça sempre a resposta por escrito.', texto: 'Enquanto espera, adiante os documentos que não dependem das escolas. Se a resposta demorar, repita no lembrete a frase do modelo: "Pourriez-vous me répondre par écrit, afin que je puisse conserver votre réponse pour mes démarches ?"' },
     { tipo: 'etapa', se: '#etapa_tec_resposta', rotulo: 'Para quem já tem resposta de uma escola:', titulo: 'Um mesmo dossiê pode ter formações de níveis diferentes.', texto: 'Vale o menor prazo, e L2, L3, Licence Pro e Master fecham no mesmo dia (17/01/2027), então o seu prazo já é certo mesmo antes de todos os cursos responderem. Confira na resposta: o nível aceito e os critérios, se precisa do atestado ENIC-NARIC, se as traduções juramentadas são exigidas já no dossiê, e se há alternância e quando um contrato pode ser assinado.' },
     { tipo: 'texto', texto: 'Um lembrete importante: não existe tabela oficial de equivalência, e quem decide o seu nível é a escola. Pelos casos que eu acompanhei, tecnólogo de 2 anos costuma ser aceito no L3 e de 3 anos no M1, mas isso **não é regra**: entre em contato com as universidades.' },
+    { tipo: 'pergunta', texto: 'Em que nível você quer entrar?', ajuda: 'Toque numa opção. Leva dois segundos e muda o que eu te mando a seguir.' },
+    { tipo: 'toques', var: 'botoes_nivel_tec' },
+    { tipo: 'texto', texto: 'O passo a passo do seu caso também fica no app, com o checklist do seu perfil:' },
+    { tipo: 'botao', rotulo: 'Abrir o app', link: 'link_acesso' },
     DUVIDA, ASS
   ]
 };

@@ -184,6 +184,7 @@
 
   function titulo(nome, r) {
     var oi = 'Obrigada' + (nome ? ', ' + nome : '') + '! ';
+    if (/^nivel-/.test(r)) return oi + 'Quer me contar qual escola ou curso você está de olho?';
     if (r === 'outra') return oi + 'Qual cidade, e qual curso, você está de olho?';
     if (r === 'nao-sei') return oi + 'Quer me contar o que você está pensando em estudar?';
     return oi + 'Quer me contar qual curso você está de olho?';
@@ -192,7 +193,7 @@
   function tocar() {
     if (!p.t || !p.r) { $('erro-txt').textContent = 'Este link está incompleto. Volte ao e-mail e toque de novo, ou responda o e-mail: chega direto para mim.'; $('b-tentar').hidden = true; return estado('erro'); }
     estado('carregando');
-    post('toque', { t: p.t, r: p.r }).then(function (j) {
+    post(/^nivel-/.test(p.r) ? 'nivel' : 'toque', { t: p.t, r: p.r }).then(function (j) {
       if (j.status === 410 || j.error === 'vencido') return estado('vencido');
       if (!j.ok) {
         if (j.status === 400 || j.status === 404) {
@@ -201,7 +202,7 @@
         }
         return estado('erro');
       }
-      $('ok-cidade').textContent = j.cidade;
+      $('ok-cidade').textContent = j.rotulo || j.cidade;
       $('ok-titulo').textContent = titulo(j.nome, p.r);
       if (j.checklist) { $('ok-check-a').href = j.checklist; $('ok-check').hidden = false; }
       estado('ok');

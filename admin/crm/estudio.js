@@ -53,6 +53,12 @@ Object.keys(ETAPAS_CERT).forEach(function (k) { CAT['etapa_' + k] = { t: 'sim', 
 var PORTAS = { porta_au_pair: 'ela é au pair e já mora na França', porta_pvt: 'ela está na França por PVT',
   porta_brasil: 'ela está no Brasil e quer ir para a França', porta_conjuge: 'ela vive na França por casamento ou parceria' };
 Object.keys(PORTAS).forEach(function (k) { CAT[k] = { t: 'sim', o: PORTAS[k] }; });
+// Guia do tecnólogo: onde ela vai fazer o processo (pergunta 2 do gate) e o nível que ela tocou no e-mail (L3, Licence pro, M1).
+var DESTINOS = { destino_fr: 'ela vai fazer o processo da França', destino_br: 'ela vai fazer o processo do Brasil', destino_nao_sei: 'ela ainda não sabe onde vai fazer o processo' };
+Object.keys(DESTINOS).forEach(function (k) { CAT[k] = { t: 'sim', o: DESTINOS[k] }; });
+var NIVEIS_TEC = { nivel_l3: 'ela quer entrar no L3', nivel_licence_pro: 'ela quer entrar na Licence pro', nivel_m1: 'ela quer entrar no M1' };
+Object.keys(NIVEIS_TEC).forEach(function (k) { CAT[k] = { t: 'sim', o: NIVEIS_TEC[k] }; });
+CAT.botoes_nivel_tec = { t: 'pronto', o: 'os 3 botões de nível (L3, Licence pro, M1), com o link assinado dela (vêm do Worker)', privado: true };
 
 // Os dados que cada modelo tem na hora do envio (o Worker ou o painel preenche exatamente estes).
 var PAINEL = ['nome', 'persona', 'link_acesso', 'link_agenda', 'au_pair', 'motivo', 'prazo_vencido', 'prazo_a_vencer', 'prazo_limite', 'dias_para_prazo'];
@@ -72,7 +78,7 @@ export var VARS_DE = {
 // O Worker preenche exatamente estes (crmVarsNovos em worker.js).
 // As etapas do guia viram um sim/não cada (etapa_…), para o bloco "Só para uma etapa".
 export var VARS_NOVOS = ['nome', 'email', 'persona', 'nivel', 'prazo_nivel', 'etapa', 'cidade', 'prazo_limite', 'dias_para_prazo',
-  'prazo_vencido', 'prazo_a_vencer', 'link_acesso', 'link_agenda'].concat(Object.keys(ETAPAS_CF).concat(Object.keys(ETAPAS_ALT), Object.keys(ETAPAS_TEC), Object.keys(ETAPAS_CERT)).map(function (k) { return 'etapa_' + k; }), Object.keys(PORTAS));
+  'prazo_vencido', 'prazo_a_vencer', 'link_acesso', 'link_agenda'].concat(Object.keys(ETAPAS_CF).concat(Object.keys(ETAPAS_ALT), Object.keys(ETAPAS_TEC), Object.keys(ETAPAS_CERT)).map(function (k) { return 'etapa_' + k; }), Object.keys(PORTAS), Object.keys(DESTINOS), Object.keys(NIVEIS_TEC), ['botoes_nivel_tec']);
 // A regra "Etapa do guia" do Para quem: o valor é o que fica em contatos.respostas.objetivo (crm_sequencia_pendentes compara igual).
 export var ETAPAS_GUIA = Object.keys(ETAPAS_CF).map(function (k) { return ['cf-' + k.replace(/_/g, '-'), 'Campus France: ' + ETAPAS_CF[k]]; })
   .concat(Object.keys(ETAPAS_ALT).map(function (k) { return ['alt-' + k.replace(/_/g, '-'), 'Alternância 30+: ' + ETAPAS_ALT[k]]; }))
@@ -331,6 +337,13 @@ export var ETAPA_NOME = { 'cf-nao-comecei': 'ainda não começou', 'cf-escolhend
   'cf-dossie-enviado': 'já enviou o dossiê', 'cf-entrevista-resposta': 'esperando a entrevista ou a resposta' };
 function primeiroNome(nome) { return (String(nome || '').replace(/[\r\n\t]+/g, ' ').trim().split(/\s+/)[0] || '').slice(0, 40); }
 // Os botões de cidade da prévia: o link de verdade só existe no envio (é assinado para cada pessoa).
+function botoesNivelPrevia() {
+  var sans = "font-family:'Inter', Arial, Helvetica, sans-serif;", N = [['nivel-l3', 'L3'], ['nivel-licence-pro', 'Licence pro'], ['nivel-m1', 'M1']];
+  return { texto: N.map(function (c) { return c[1] + ': https://imigrantepordentro.com/conversa/?r=' + c[0] + '&t=…'; }).join('\n'),
+    html: N.map(function (c) {
+      return '<a href="#" style="display:inline-block; margin:0 6px 8px 0; ' + sans + ' font-size:14px; font-weight:600; text-decoration:none; padding:9px 16px; border-radius:999px; border:1.5px solid #577328; background:#E4EAD6; color:#3F5519;">' + escH(c[1]) + '</a>';
+    }).join('') };
+}
 function botoesPrevia() {
   var sans = "font-family:'Inter', Arial, Helvetica, sans-serif;";
   return { texto: CF_CIDADES.map(function (c) { return c[1] + ': https://imigrantepordentro.com/conversa/?r=' + c[0] + '&t=…'; }).join('\n'),
@@ -354,6 +367,12 @@ export function dadosDe(chave, c, h, m) {
     // O link do produto é privado: só o Worker tem (no envio e no teste). Na prévia e na ficha fica entre colchetes.
     if (pq.produto) { n.produto = pq.produto_nome || ''; n.link_produto = '[link do produto]'; }
     ETAPAS_GUIA.forEach(function (e) { n['etapa_' + e[0].replace(/^(cf|alt)-/, '').replace(/-/g, '_')] = resp.objetivo === e[0]; });
+    // O mesmo cálculo do Worker (crmPortas e as variáveis de destino e nível).
+    n.porta_au_pair = resp.visto === 'au_pair' && resp.naFranca !== 'nao'; n.porta_pvt = resp.visto === 'pvt';
+    n.porta_brasil = resp.naFranca === 'nao' && resp.visto === 'estudante'; n.porta_conjuge = resp.visto === 'conjuge';
+    n.destino_fr = resp.destino === 'fr'; n.destino_br = resp.destino === 'br'; n.destino_nao_sei = resp.destino === 'nao_sei';
+    n.nivel_l3 = resp.tecNivel === 'l3'; n.nivel_licence_pro = resp.tecNivel === 'licence-pro'; n.nivel_m1 = resp.tecNivel === 'm1';
+    n.botoes_nivel_tec = botoesNivelPrevia();
     return n;
   }
   if (chave === 'cf_guia_1' || chave === 'cf_guia_conversa') {
