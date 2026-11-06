@@ -325,6 +325,10 @@ if (salvo) liberar(salvo, false);
 
 var shownAt = Date.now();
 // Ponto de partida: as mesmas chaves que o checklist-preview já grava (naFranca e visto).
+// Persona do app = status atual (porta) x onde a pessoa vai fazer o processo (destino). Nesta página o destino já é conhecido: quem tem VLS-TS está na França (quem ainda não chegou segue o Brasil).
+// (No guia do tecnólogo, onde o destino fica em aberto, a pergunta é feita no gate.) A regra completa está no vault, nota "04 Persona por inbound".
+var PERSONAS = { au_pair: "au_pair_estudante", pvt: "pvt", brasil: "campus_france", conjuge: "conjuge" };
+function personaDe(porta) { return PERSONAS[porta] || undefined; } // outra situação: sem checklist
 var PORTAS = { au_pair: { naFranca: "sim", visto: "au_pair" }, pvt: { naFranca: "sim", visto: "pvt" },
   brasil: { naFranca: "nao", visto: "estudante" }, conjuge: { naFranca: "sim", visto: "conjuge" }, outra: { visto: "outro" } };
 function erro(m) { var e = byId("gate-erro"); e.textContent = m; e.classList.toggle("is-visible", !!m); }
@@ -347,7 +351,8 @@ byId("gate-form").addEventListener("submit", async function (ev) {
     nome: byId("g-nome").value.trim() || null,
     data_entrada: byId("calc-entrada").value || null,
     origem: "guia-vls-ts",
-    respostas: Object.assign({ objetivo: "validar-vls-ts" }, PORTAS[porta]),
+    persona: personaDe(porta),
+    respostas: Object.assign({ objetivo: "validar-vls-ts", destino: porta === "brasil" ? "br" : "fr" }, PORTAS[porta]),
     aceita_servico: true,
     aceita_novidades: byId("consent-novidades").checked,
     consentimento_versao: CONSENTIMENTO_VERSAO,

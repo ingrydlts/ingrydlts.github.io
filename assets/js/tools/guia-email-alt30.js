@@ -13,6 +13,9 @@ const TEXTO_SERVICO = "Li e aceito a Política de Privacidade.";
 const TEXTO_NOVIDADES = "Quero receber e-mails do Por Dentro, inclusive sobre a plataforma para quem mora na França. Cancelo quando quiser.";
 
 // Ponto de partida: as mesmas chaves que o checklist-preview já grava (naFranca e visto).
+// Persona do app = status atual (porta) x onde a pessoa vai fazer o processo (destino). Nesta página o destino já é conhecido: a alternância é feita na França (quem ainda está no Brasil segue o Campus France).
+// (No guia do tecnólogo, onde o destino fica em aberto, a pergunta é feita no gate.) A regra completa está no vault, nota "04 Persona por inbound".
+const PERSONAS = { au_pair: "au_pair_estudante", pvt: "pvt", brasil: "campus_france", conjuge: "conjuge", outra: "alternancia_emprego" };
 const PORTAS = { au_pair: { naFranca: "sim", visto: "au_pair" }, pvt: { naFranca: "sim", visto: "pvt" },
   brasil: { naFranca: "nao", visto: "estudante" }, conjuge: { naFranca: "sim", visto: "conjuge" }, outra: { visto: "outro" } };
 
@@ -182,9 +185,9 @@ export function mount(rootId) {
     const payload = {
       email,
       nome,
-      persona: "alternancia_emprego",
+      persona: PERSONAS[porta],
       origem: "guia-email-alt30",
-      respostas: { objetivo: etapa, ...PORTAS[porta] },
+      respostas: { objetivo: etapa, destino: porta === "brasil" ? "br" : "fr", ...PORTAS[porta] },
       aceita_servico: true,
       aceita_novidades: $("ga-novidades").checked,
       consentimento_versao: CONSENTIMENTO_VERSAO,

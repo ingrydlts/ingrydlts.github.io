@@ -457,6 +457,8 @@ import { supabase } from '/assets/js/supabase-client.js';
 
 var GUIA = "painel-do-certificado";
 // Ponto de partida: as mesmas chaves que o checklist-preview já grava (naFranca e visto).
+// Persona do app pelo status atual (o painel serve a quem precisa renovar visto ou estudar na França; "outra situação" entra como alternância e emprego).
+var PERSONAS = { au_pair: "au_pair_estudante", pvt: "pvt", brasil: "campus_france", conjuge: "conjuge", outra: "alternancia_emprego" };
 var PORTAS = { au_pair: { naFranca: "sim", visto: "au_pair" }, pvt: { naFranca: "sim", visto: "pvt" },
   brasil: { naFranca: "nao", visto: "estudante" }, conjuge: { naFranca: "sim", visto: "conjuge" }, outra: { visto: "outro" } };
 var LS_KEY = "pd_guia_" + GUIA;
@@ -502,6 +504,7 @@ document.querySelectorAll(".pc-form").forEach(function (form) {
     var payload = {
       guia: GUIA, email: email, nome: nome,
       origem: "guia-painel-do-certificado",
+      persona: PERSONAS[porta],
       respostas: Object.assign({ objetivo: cert }, PORTAS[porta]),
       aceita_servico: true, aceita_novidades: f.novidades.checked,
       consentimento_versao: CONSENTIMENTO_VERSAO, texto_servico: TEXTO_SERVICO, texto_novidades: TEXTO_NOVIDADES

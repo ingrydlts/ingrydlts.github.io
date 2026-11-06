@@ -289,6 +289,8 @@ if (salvo) liberar(salvo, false);
 
 var shownAt = Date.now();
 // Ponto de partida: as mesmas chaves que o checklist-preview já grava (naFranca e visto).
+// Persona do app = status atual (porta) x onde a pessoa vai fazer o processo (destino). Nesta página o destino já é conhecido: a alternância é feita na França (quem ainda está no Brasil segue o Campus France).
+var PERSONAS = { au_pair: "au_pair_estudante", pvt: "pvt", brasil: "campus_france", conjuge: "conjuge", outra: "alternancia_emprego" };
 var PORTAS = { au_pair: { naFranca: "sim", visto: "au_pair" }, pvt: { naFranca: "sim", visto: "pvt" },
   brasil: { naFranca: "nao", visto: "estudante" }, conjuge: { naFranca: "sim", visto: "conjuge" }, outra: { visto: "outro" } };
 function erro(m) { var e = byId("gate-erro"); e.textContent = m; e.classList.toggle("is-visible", !!m); }
@@ -313,9 +315,9 @@ byId("gate-form").addEventListener("submit", async function (ev) {
     guia: GUIA,
     email: email,
     nome: nome,
-    persona: "alternancia_emprego",
+    persona: PERSONAS[porta],
     origem: "guia-email-alt30",
-    respostas: Object.assign({ objetivo: etapa }, PORTAS[porta]),
+    respostas: Object.assign({ objetivo: etapa, destino: porta === "brasil" ? "br" : "fr" }, PORTAS[porta]),
     aceita_servico: true,
     aceita_novidades: byId("consent-novidades").checked,
     consentimento_versao: CONSENTIMENTO_VERSAO,
