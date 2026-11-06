@@ -10,6 +10,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import * as ES from '../../estudio.js';
 import { gerar, CHAVE } from '../modelo-tecnologo-recap.mjs';
+import { gerar as gerarNivel, CHAVE as CHAVE_NIVEL } from '../modelo-tecnologo-nivel.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const APP_DB = process.env.APP_DB_DIR || path.resolve(HERE, '../../../../../../por-dentro-app/db');
@@ -102,6 +103,20 @@ async function main() {
   })());
   check('rodapé de serviço: sem "responda sair" (é o que ela pediu)', !/responda sair/i.test(vs[0].corpo_texto));
   check('nenhum outro modelo mudou', JSON.stringify(modelosAntes) === JSON.stringify((await q('select * from modelos_email order by chave')).filter((m) => m.chave !== CHAVE).map(semMin)));
+
+  console.log('\n== crm-modelo-tecnologo-nivel.sql ==');
+  const sqlNivel = gerarNivel();
+  const n1 = await attempt(() => db.exec(sqlNivel));
+  check('roda depois do recap, sem erro', n1.ok); if (!n1.ok) console.log(n1.error.message);
+  const n2 = await attempt(() => db.exec(sqlNivel));
+  check('roda a 2ª vez sem erro e não duplica', n2.ok && (await q('select count(*)::int n from modelos_email_versoes where chave = $1', [CHAVE_NIVEL]))[0].n === 1);
+  const [mn] = await q('select * from modelos_email where chave = $1', [CHAVE_NIVEL]);
+  check('modelo novo do estúdio, tipo novidades, Envio DESLIGADO', mn.criado_no_estudio && mn.tipo === 'novidades' && mn.envio_ligado === false);
+  check('Envio: 3 dias depois do recap, às 10h', mn.envio_gatilho === 'email' && mn.envio_depois_de === CHAVE && mn.envio_dias === 3 && mn.envio_hora === 10);
+  const [vn] = await q('select * from modelos_email_versoes where chave = $1', [CHAVE_NIVEL]);
+  check('versão 1 em rascunho, com os 3 níveis no texto', vn.etapa === 'rascunho' && vn.versao === 1 && /nivel_l3/.test(vn.corpo_texto) && /nivel_licence_pro/.test(vn.corpo_texto) && /nivel_m1/.test(vn.corpo_texto));
+  await db.query('delete from modelos_email_versoes where chave = $1', [CHAVE_NIVEL]);
+  await db.query('delete from modelos_email where chave = $1', [CHAVE_NIVEL]);
 
   console.log('\n== Quem recebe e quando ==');
   // T = o cadastro da Ana. O Envio é ligado 1h antes (o que você fará no estúdio, mais cedo que os cadastros do teste).
