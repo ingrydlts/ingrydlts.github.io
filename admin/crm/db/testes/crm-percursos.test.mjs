@@ -64,6 +64,20 @@ async function main() {
   const [admin] = await q("insert into auth.users (email, email_confirmed_at) values ('admin@example.com', now()) returning id");
   await db.query('insert into admins (user_id) values ($1)', [admin.id]);
   const [cliente] = await q("insert into auth.users (email, email_confirmed_at) values ('cliente@example.com', now()) returning id");
+  const novaCliente = async (email, persona) => {
+    const [u] = await q("insert into auth.users (email, email_confirmed_at) values ($1, now()) returning id", [email]);
+    await db.query('insert into profiles (id, persona) values ($1, $2) on conflict (id) do update set persona = excluded.persona', [u.id, persona]);
+    return u.id;
+  };
+  const aupair = await novaCliente('aupair@example.com', 'au_pair_estudante');
+  const pvt = await novaCliente('pvt@example.com', 'pvt');
+  const alt = await novaCliente('alt@example.com', 'alternancia_emprego');
+  const semPersona = await novaCliente('sem@example.com', null);
+  const meu = (id) => attempt(() => asUser(id, () => db.query('select meu_percurso() as r')));
+
+  console.log('\n== meu_percurso sem nenhuma versão publicada ==');
+  const sv = await meu(aupair);
+  check('sem versão ativa devolve sem_versao (não quebra)', sv.ok && sv.value.rows[0].r.status === 'sem_versao');
 
   const publica = (chave, c) => attempt(() => asAnon(() => db.query('select publicar_percurso($1, $2::jsonb) as r', [chave, JSON.stringify(c)])));
 
@@ -128,6 +142,44 @@ async function main() {
   const at = await attempt(() => asUser(admin.id, () => db.query("select percurso_ativar('2026-11-05.1') as r")));
   ativas = await q('select versao from percurso_versoes where ativa');
   check('admin volta para a versão antiga e fica uma só ativa', at.ok && ativas.length === 1 && ativas[0].versao === '2026-11-05.1');
+
+  console.log('\n== meu_percurso: só o pedaço da própria persona ==');
+  const no = (camada, id, extra = {}) => ({ camada, id, nome: id, fonte: 'repo', ...extra });
+  const rico = conteudo('2026-12-01.1', '7'.repeat(64), {
+    nos: {
+      ensino_medio: no('partida', 'ensino_medio'),
+      au_pair: no('visto', 'au_pair', { persona: 'au_pair_estudante' }),
+      pvt: no('visto', 'pvt', { persona: 'pvt' }),
+      dap: no('ingresso', 'dap'), contato: no('ingresso', 'contato'),
+      l1: no('nivel', 'l1'), fle: no('nivel', 'fle'),
+      universite: no('inst', 'universite'), cfa: no('inst', 'cfa', { fonte: 'geral' }),
+    },
+    percursos: [
+      { partida: 'ensino_medio', visto: 'au_pair', ingresso: 'dap', nivel: 'l1', inst: 'universite', modalidade: 'presencial', faixas: ['18-26'] },
+      { partida: 'ensino_medio', visto: 'au_pair', ingresso: 'contato', nivel: 'fle', inst: 'cfa', modalidade: 'presencial', faixas: ['18-26'] },
+      { partida: 'ensino_medio', visto: 'pvt', ingresso: 'contato', nivel: 'fle', inst: 'cfa', modalidade: 'presencial', faixas: ['18-26'] },
+    ],
+    regra_alternancia: 'regra de teste',
+  });
+  check('publica o conteúdo de teste com duas personas', (await publica(CHAVE, rico)).ok);
+
+  const ra = (await meu(aupair)).value.rows[0].r;
+  check('au pair: status ok, versão e visto certos', ra.status === 'ok' && ra.versao === '2026-12-01.1' && ra.visto === 'au_pair');
+  check('au pair: só as 2 combinações do visto dela', ra.percursos.length === 2 && ra.percursos.every((p) => p.visto === 'au_pair'));
+  check('au pair: só os nós que essas combinações citam', JSON.stringify(Object.keys(ra.nos).sort()) === JSON.stringify(['au_pair', 'cfa', 'contato', 'dap', 'ensino_medio', 'fle', 'l1', 'universite']));
+  check('au pair: nada da persona pvt vaza (nó, persona nem combinação)', !('pvt' in ra.nos) && !JSON.stringify(ra).includes('"pvt"'));
+  check('o campo fonte vem junto, para avisar "a confirmar"', ra.nos.cfa.fonte === 'geral' && ra.nos.dap.fonte === 'repo');
+  check('faixas, camadas e regra de alternância vêm inteiras', ra.faixas.length === 1 && ra.camadas.length === 1 && ra.regra_alternancia === 'regra de teste');
+  const rp = (await meu(pvt)).value.rows[0].r;
+  check('pvt: 1 combinação e nenhum nó do au pair', rp.status === 'ok' && rp.percursos.length === 1 && !('au_pair' in rp.nos) && !('dap' in rp.nos) && !('l1' in rp.nos) && !JSON.stringify(rp).includes('"au_pair"'));
+  const rn = (await meu(alt)).value.rows[0].r;
+  check('persona sem nó de visto (alternancia_emprego) devolve sem_percurso, sem dado de outra persona', rn.status === 'sem_percurso' && !rn.nos && !rn.percursos);
+  const rs = (await meu(semPersona)).value.rows[0].r;
+  check('perfil sem persona devolve sem_persona', rs.status === 'sem_persona');
+  check('quem não tem perfil não recebe nada além de sem_persona', (await attempt(() => asUser(admin.id, () => db.query('select meu_percurso() as r')))).value.rows[0].r.status === 'sem_persona');
+  check('anon não chama meu_percurso', !(await attempt(() => asAnon(() => db.query('select meu_percurso()')))).ok);
+  check('authenticated sem sessão (sem sub) é recusado', erro(await attempt(() => asUser('', () => db.query('select meu_percurso()'))), /sem_sessao/));
+  check('a persona não vem de parâmetro: a função não aceita argumento', !(await attempt(() => asUser(aupair, () => db.query("select meu_percurso('pvt')")))).ok);
 
   console.log('\n== Chave revogada ==');
   await db.query("update cerebro_chaves set revogada_em = now() where rotulo = 'percurso'");

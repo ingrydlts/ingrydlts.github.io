@@ -14,6 +14,8 @@
 --     ativa a versão nova numa transação só.
 --   * percurso_ativar(versao): só admin logada. Troca a versão ativa (voltar atrás é ativar uma antiga).
 --   * crm_percurso_chave_ok(chave): confere a chave do rótulo 'percurso'. Não é chamável por ninguém de fora.
+--   * meu_percurso(): para a cliente logada (plataforma). Devolve só o pedaço da versão ativa que pertence à persona
+--     do próprio perfil: o nó de visto dela, as combinações desse visto e os nós que elas citam.
 --
 -- O `hash` que o hub manda é um IDENTIFICADOR da versão (calculado em Python, scripts/lib/percursos.py). O banco não o
 -- recalcula: quem garante a autenticidade é a chave. Se a chave vazar, revogue (abaixo) e crie outra.
@@ -27,8 +29,9 @@
 --   Revogar (a publicação para de responder na hora):
 --        update cerebro_chaves set revogada_em = now() where rotulo = 'percurso' and revogada_em is null;
 --
--- Quem LÊ o conteúdo hoje: só o admin (CRM). Como a plataforma lê é decisão em aberto (contrato §7): não abrir leitura
--- para a cliente logada sem decidir, porque uma política de leitura entregaria o arquivo inteiro (1025 combinações).
+-- Quem LÊ o conteúdo: o admin (CRM) lê a tabela. A PLATAFORMA lê por meu_percurso() (decisão da Ingryd, 2026-11-06), que
+-- devolve só o pedaço da persona da própria pessoa; a cliente logada nunca lê a tabela (uma política de leitura
+-- entregaria o arquivo inteiro, as 1025 combinações).
 -- ============================================================================
 
 -- ---------- Tabela ----------
@@ -160,3 +163,62 @@ end;
 $$;
 revoke all on function public.percurso_ativar(text) from public, anon;
 grant execute on function public.percurso_ativar(text) to authenticated;
+
+-- ---------- Plataforma: o pedaço da própria persona ----------
+-- A persona vem do perfil de quem chama (auth.uid()), nunca de um parâmetro: ninguém pede a fatia de outra pessoa.
+-- Devolve: status ('ok' | 'sem_persona' | 'sem_percurso' | 'sem_versao'), a versão usada e, no 'ok', os nós (com `fonte`,
+-- para a plataforma avisar "a confirmar" nos de fonte 'geral'), as combinações do visto, as faixas e a regra de alternância.
+-- 'sem_percurso' = a persona não tem nó de visto ainda (hoje: alternancia_emprego; contrato §7, item 3).
+
+create or replace function public.meu_percurso() returns jsonb
+language plpgsql security definer stable
+set search_path = public, pg_temp
+as $$
+declare
+  v_persona text;
+  v_ver percurso_versoes%rowtype;
+  v_visto text;
+begin
+  if auth.uid() is null then
+    raise exception 'sem_sessao';
+  end if;
+  select persona into v_persona from profiles where id = auth.uid();
+  if v_persona is null then
+    return jsonb_build_object('status', 'sem_persona');
+  end if;
+  select * into v_ver from percurso_versoes where ativa;
+  if not found then
+    return jsonb_build_object('status', 'sem_versao', 'persona', v_persona);
+  end if;
+
+  select n.key into v_visto
+    from jsonb_each(v_ver.conteudo->'nos') n
+   where n.value->>'camada' = 'visto' and n.value->>'persona' = v_persona
+   limit 1;
+  if v_visto is null then
+    return jsonb_build_object('status', 'sem_percurso', 'persona', v_persona, 'versao', v_ver.versao);
+  end if;
+
+  return (
+    with perc as (
+      select p from jsonb_array_elements(v_ver.conteudo->'percursos') p where p->>'visto' = v_visto
+    ),
+    ids as (
+      select distinct x from perc, lateral (values (p->>'partida'), (p->>'visto'), (p->>'ingresso'), (p->>'nivel'), (p->>'inst')) v(x)
+    )
+    select jsonb_build_object(
+      'status', 'ok',
+      'persona', v_persona,
+      'versao', v_ver.versao,
+      'schema_version', v_ver.schema_version,
+      'visto', v_visto,
+      'camadas', v_ver.conteudo->'camadas',
+      'nos', coalesce((select jsonb_object_agg(k.key, k.value) from jsonb_each(v_ver.conteudo->'nos') k where k.key in (select x from ids)), '{}'::jsonb),
+      'percursos', coalesce((select jsonb_agg(p) from perc), '[]'::jsonb),
+      'faixas', v_ver.conteudo->'faixas',
+      'regra_alternancia', v_ver.conteudo->'regra_alternancia')
+  );
+end;
+$$;
+revoke all on function public.meu_percurso() from public, anon;
+grant execute on function public.meu_percurso() to authenticated;
