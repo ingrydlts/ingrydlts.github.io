@@ -375,14 +375,13 @@ main.lp{overflow-x:clip;position:relative}
         <div class="lp-nav"><button class="lp-back" type="button" data-back>← Voltar</button><button class="lp-btn" type="button" data-next>Continuar <span class="arr" aria-hidden="true">→</span></button></div>
       </div>
       <div class="lp-pane" data-step="3">
-        <p class="lp-q">Em que etapa você está?</p>
-        <div class="lp-opts" role="radiogroup" aria-label="Etapa">
-          <label class="lp-opt"><input type="radio" name="etapa" value="tec-nao-sei"><span class="no">1</span><span>Ainda não sei em que nível eu entraria</span></label>
-          <label class="lp-opt"><input type="radio" name="etapa" value="tec-juntando"><span class="no">2</span><span>Estou juntando histórico, diploma e carga horária</span></label>
-          <label class="lp-opt"><input type="radio" name="etapa" value="tec-escrevi"><span class="no">3</span><span>Já escrevi para escolas e estou esperando</span></label>
-          <label class="lp-opt"><input type="radio" name="etapa" value="tec-resposta"><span class="no">4</span><span>Já tenho resposta de uma escola</span></label>
+        <p class="lp-q">Onde você pretende fazer o processo para estudar?</p>
+        <div class="lp-opts" role="radiogroup" aria-label="Onde fazer o processo">
+          <label class="lp-opt"><input type="radio" name="destino" value="fr"><span class="no">1</span><span>Na França, mudando o meu status daqui</span></label>
+          <label class="lp-opt"><input type="radio" name="destino" value="br"><span class="no">2</span><span>Voltando ao Brasil e me candidatando pelo Campus France</span></label>
+          <label class="lp-opt"><input type="radio" name="destino" value="nao_sei"><span class="no">3</span><span>Ainda não sei</span></label>
         </div>
-        <select id="g-etapa" class="lp-sr" tabindex="-1" aria-hidden="true"><option value=""></option><option value="tec-nao-sei"></option><option value="tec-juntando"></option><option value="tec-escrevi"></option><option value="tec-resposta"></option></select>
+        <select id="g-destino" class="lp-sr" tabindex="-1" aria-hidden="true"><option value=""></option><option value="fr"></option><option value="br"></option><option value="nao_sei"></option></select>
         <div class="lp-nav"><button class="lp-back" type="button" data-back>← Voltar</button><button class="lp-btn" type="button" data-next>Continuar <span class="arr" aria-hidden="true">→</span></button></div>
       </div>
       <div class="lp-pane" data-step="4">
@@ -673,6 +672,17 @@ caixas.forEach(function (c) {
 // Ponto de partida: as mesmas chaves que o checklist-preview já grava (naFranca e visto).
 var PORTAS = { au_pair: { naFranca: "sim", visto: "au_pair" }, pvt: { naFranca: "sim", visto: "pvt" },
   brasil: { naFranca: "nao", visto: "estudante" }, conjuge: { naFranca: "sim", visto: "conjuge" }, outra: { visto: "outro" } };
+// Persona do app = status atual (porta) x onde a pessoa vai fazer o processo (destino). O nível (tecnólogo) não muda a persona: vai em nivel_estudos.
+// Quem está no Brasil ou vive na França por casamento não tem bifurcação: o destino já se sabe e a pergunta é pulada.
+var DESTINO_FIXO = { brasil: "br", conjuge: "fr" };
+function personaDe(porta, destino) {
+  if (porta === "brasil") return "campus_france";
+  if (porta === "conjuge") return "conjuge";
+  if (destino === "br") return "campus_france";
+  if (porta === "au_pair") return "au_pair_estudante";
+  if (porta === "pvt") return "pvt"; // PVT na França ou sem saber: o checklist do PVT tem os itens "De PVT a estudante"
+  return null; // outra situação sem Brasil: sem checklist, segue só com o e-mail
+}
 var panes = $$(".lp-pane"), dots = $$(".lp-dot"), linhas = $$(".lp-line"), card = byId("lp-card"), passo = 1;
 function erro(m) { var e = byId("gate-erro"); e.textContent = m; if (m) { card.classList.remove("lp-shake"); void card.offsetWidth; card.classList.add("lp-shake"); } }
 function ir(n) {
@@ -689,14 +699,14 @@ function validar(n) {
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(byId("g-email").value.trim())) { erro("Confere o e-mail e tenta de novo."); byId("g-email").focus(); return false; }
   }
   if (n === 2 && !byId("g-porta").value) { erro("Escolhe o seu ponto de partida. É isso que me ajuda a te orientar melhor."); return false; }
-  if (n === 3 && !byId("g-etapa").value) { erro("Escolhe em que etapa você está. É isso que me ajuda a te orientar melhor."); return false; }
+  if (n === 3 && !byId("g-destino").value) { erro("Escolhe onde você pretende fazer o processo. É isso que me ajuda a te orientar melhor."); return false; }
   return true;
 }
 function centrar() { card.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "center" }); }
-$$("[data-next]").forEach(function (b) { b.addEventListener("click", function () { if (validar(passo)) { ir(passo + 1); centrar(); track("guia_form_passo", { guia: GUIA, passo: passo }); } }); });
-$$("[data-back]").forEach(function (b) { b.addEventListener("click", function () { ir(passo - 1); centrar(); }); });
+$$("[data-next]").forEach(function (b) { b.addEventListener("click", function () { if (validar(passo)) { var fixo = passo === 2 ? DESTINO_FIXO[byId("g-porta").value] : null; if (passo === 2) byId("g-destino").value = fixo || ""; ir(passo + (fixo ? 2 : 1)); centrar(); track("guia_form_passo", { guia: GUIA, passo: passo }); } }); });
+$$("[data-back]").forEach(function (b) { b.addEventListener("click", function () { ir(passo === 4 && DESTINO_FIXO[byId("g-porta").value] ? 2 : passo - 1); centrar(); }); });
 $$("input[name=porta]").forEach(function (r) { r.addEventListener("change", function () { byId("g-porta").value = r.value; erro(""); }); });
-$$("input[name=etapa]").forEach(function (r) { r.addEventListener("change", function () { byId("g-etapa").value = r.value; erro(""); }); });
+$$("input[name=destino]").forEach(function (r) { r.addEventListener("change", function () { byId("g-destino").value = r.value; erro(""); }); });
 byId("gate-form").addEventListener("keydown", function (ev) {
   if (ev.key === "Enter" && ev.target.tagName === "INPUT" && ev.target.type !== "checkbox" && passo < panes.length) { ev.preventDefault(); var nx = panes[passo - 1].querySelector("[data-next]"); if (nx) nx.click(); }
 });
@@ -706,20 +716,22 @@ byId("gate-form").addEventListener("submit", async function (ev) {
   ev.preventDefault();
   if (passo < panes.length) { var nx = panes[passo - 1].querySelector("[data-next]"); if (nx) nx.click(); return; }
   erro("");
-  var email = byId("g-email").value.trim(), nome = byId("g-nome").value.trim(), etapa = byId("g-etapa").value, porta = byId("g-porta").value;
+  var email = byId("g-email").value.trim(), nome = byId("g-nome").value.trim(), destino = byId("g-destino").value, porta = byId("g-porta").value;
   if (byId("hp-website").value || (Date.now() - shownAt) < 2500) { return; }
   if (!nome || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { ir(1); validar(1); return; }
   if (!porta) { ir(2); validar(2); return; }
-  if (!etapa) { ir(3); validar(3); return; }
+  if (!destino) { ir(3); validar(3); return; }
   if (!byId("consent-servico").checked) { erro("Preciso que você aceite a Política de Privacidade pra continuar."); return; }
   var btn = byId("gate-btn"), rot = btn.innerHTML;
   btn.disabled = true; btn.innerHTML = 'Liberando <span class="lp-spin" aria-hidden="true"></span>';
   var params = new URLSearchParams(window.location.search);
+  var persona = personaDe(porta, destino);
   var payload = {
-    guia: GUIA, email: email, nome: nome, persona: "campus_france", nivel_estudos: "superior_completo", origem: "guia-tecnologo",
-    respostas: Object.assign({ objetivo: etapa }, PORTAS[porta]), aceita_servico: true, aceita_novidades: byId("consent-novidades").checked,
+    guia: GUIA, email: email, nome: nome, nivel_estudos: "superior_tecnologo", origem: "guia-tecnologo",
+    respostas: Object.assign({ destino: destino }, PORTAS[porta]), aceita_servico: true, aceita_novidades: byId("consent-novidades").checked,
     consentimento_versao: CONSENTIMENTO_VERSAO, texto_servico: TEXTO_SERVICO, texto_novidades: TEXTO_NOVIDADES
   };
+  if (persona) payload.persona = persona;
   ["utm_source", "utm_medium", "utm_campaign", "utm_content"].forEach(function (k) { var v = params.get(k); if (v) payload[k] = v.slice(0, 100); });
   var igId = params.get("ig"); if (igId) payload.ig = igId.slice(0, 60);
   try {
@@ -727,7 +739,7 @@ byId("gate-form").addEventListener("submit", async function (ev) {
     if (r.error) throw r.error;
     var guardado = { ok: true, url: r.data && r.data.notion_url ? r.data.notion_url : null, texto: r.data && r.data.notion_texto ? r.data.notion_texto : null };
     lsSet(LS_KEY, JSON.stringify(guardado));
-    track("guia_lead_capturado", { guia: GUIA, etapa: etapa, porta: porta, utm_campaign: params.get("utm_campaign") || null });
+    track("guia_lead_capturado", { guia: GUIA, destino: destino, persona: persona, porta: porta, utm_campaign: params.get("utm_campaign") || null });
     liberar(guardado, true);
   } catch (e) {
     console.error("capturar_lead_guia:", e);
