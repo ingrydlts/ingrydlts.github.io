@@ -277,6 +277,30 @@ main.lp{overflow-x:clip;position:relative}
   .lp-door,.lp-card,.lp-ok,.lp-mid,.lp-end{border-radius:44px}
 }
 @media(prefers-reduced-motion:reduce){.lp-deco{animation:none}}
+
+/* ===== fundo uniforme e ícones de vidro arrastáveis ===== */
+.lp-hero,.lp-sec,.lp-gate{background:transparent}
+.lp-pw{position:relative;margin-top:34px}
+.lp-play{position:relative;height:320px;user-select:none;-webkit-user-select:none}
+.lp-play-hint{margin:10px 0 0;text-align:center;font-size:13.5px;color:rgba(43,43,43,.62)}
+.lp-chip-i{position:absolute;left:0;top:0;display:inline-flex;align-items:center;gap:10px;padding:8px 20px 8px 8px;border-radius:999px;font:600 16px/1 'Inter',sans-serif;color:var(--lp-head);cursor:grab;touch-action:none;rotate:var(--r,0deg);will-change:transform;opacity:0;animation:lpChipIn .7s var(--lp-ease) forwards;animation-delay:calc(var(--i)*90ms + 600ms);background:var(--vidro);border:var(--vidro-borda);box-shadow:var(--vidro-sombra);-webkit-backdrop-filter:blur(20px) saturate(1.5);backdrop-filter:blur(20px) saturate(1.5);transition:box-shadow .25s}
+@keyframes lpChipIn{from{opacity:0;translate:0 -26px}to{opacity:1;translate:0 0}}
+.lp-chip-i:hover{box-shadow:0 18px 40px rgba(6,59,53,.16),inset 0 1px 0 rgba(255,255,255,.95)}
+.lp-chip-i.arrastando{cursor:grabbing;z-index:5;box-shadow:0 26px 56px rgba(6,59,53,.24),inset 0 1px 0 rgba(255,255,255,.95)}
+.lp-chip-i:focus-visible{outline:3px solid var(--lp-moss);outline-offset:3px}
+.lp-chip-i .ic{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;background:var(--lp-moss);color:#F4F1EC;flex:none}
+.lp-chip-i svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.lp-step.lp-flash{animation:lpFlash 1.5s var(--lp-ease)}
+@keyframes lpFlash{0%,100%{box-shadow:var(--vidro-sombra)}30%{box-shadow:0 0 0 6px rgba(87,115,40,.35),var(--vidro-sombra)}}
+@media(min-width:960px){
+  .lp-hero .lp-h1,.lp-hero .lp-p,.lp-hero .lp-src{max-width:60%}
+  .lp-hero .lp-cta{max-width:60%}
+  .lp-hero .lp-h1{font-size:clamp(40px,5.6vw,76px)}
+  .lp-pw{position:absolute;right:0;top:0;bottom:0;width:34%;margin:0;display:flex;flex-direction:column}
+  .lp-play{flex:1;height:auto;min-height:420px}
+  .lp-play-hint{margin-top:6px}
+}
+@media(prefers-reduced-motion:reduce){.lp-chip-i{animation:none;opacity:1}.lp-step.lp-flash{animation:none}}
 </style>
 </head>
 <body class="lp-body">
@@ -309,7 +333,6 @@ main.lp{overflow-x:clip;position:relative}
 <div id="lp-progress" aria-hidden="true"></div>
 <section class="lp-hero" id="topo">
   <div class="lp-ghost" aria-hidden="true" data-par>7</div>
-  <i class="lp-deco v p1" aria-hidden="true"></i><i class="lp-deco b p3" aria-hidden="true"></i><i class="lp-deco m p4" aria-hidden="true"></i>
   <div class="lp-wrap">
     <span class="lp-pill"><i></i>Guia gratuito · Chegada da au pair</span>
     <h1 class="lp-h1"><span class="lp-w" style="--i:0">Cheguei</span> <span class="lp-w" style="--i:1">como</span> <span class="lp-w" style="--i:2">au</span> <span class="lp-w" style="--i:3">pair.</span> <span class="lp-w" style="--i:4">Por</span> <span class="lp-w" style="--i:5">onde</span> <span class="lp-w" style="--i:6">eu</span> <span class="lp-w" style="--i:7">me</span> <span class="lp-w" style="--i:8"><em>estabilizo?</em></span></h1>
@@ -318,32 +341,43 @@ main.lp{overflow-x:clip;position:relative}
       <a class="lp-btn pulse" id="lp-cta-topo" href="#gate">Quero o checklist <span class="arr" aria-hidden="true">→</span></a>
       <a class="lp-btn ghost" href="#ordem">Entender a ordem</a>
     </div>
+    
+    <div class="lp-pw">
+      <div class="lp-play" id="lp-play" role="group" aria-label="Os 7 passos: arraste ou toque para ver a ordem">
+      <button type="button" class="lp-chip-i" style="--i:0;--r:-5deg" data-passo="1" aria-label="Passo 1: Visto. Arraste ou toque para ver na ordem"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2"/><circle cx="12" cy="10" r="3"/><path d="M8.5 16h7"/></svg></span><span>Visto</span></button>
+      <button type="button" class="lp-chip-i" style="--i:1;--r:4deg" data-passo="2" aria-label="Passo 2: Casa. Arraste ou toque para ver na ordem"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg></span><span>Casa</span></button>
+      <button type="button" class="lp-chip-i" style="--i:2;--r:-3deg" data-passo="3" aria-label="Passo 3: Conta. Arraste ou toque para ver na ordem"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M3 10h18M7 15h4"/></svg></span><span>Conta</span></button>
+      <button type="button" class="lp-chip-i" style="--i:3;--r:6deg" data-passo="4" aria-label="Passo 4: Sécu. Arraste ou toque para ver na ordem"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l8 3v6c0 4.5-3.2 7.8-8 9-4.8-1.2-8-4.5-8-9V6z"/><path d="M9 12l2 2 4-4"/></svg></span><span>Sécu</span></button>
+      <button type="button" class="lp-chip-i" style="--i:4;--r:-6deg" data-passo="5" aria-label="Passo 5: Francês. Arraste ou toque para ver na ordem"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v10H9l-5 4z"/><path d="M8 9h8M8 12h5"/></svg></span><span>Francês</span></button>
+      <button type="button" class="lp-chip-i" style="--i:5;--r:3deg" data-passo="6" aria-label="Passo 6: Saúde. Arraste ou toque para ver na ordem"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg></span><span>Saúde</span></button>
+      <button type="button" class="lp-chip-i" style="--i:6;--r:-4deg" data-passo="7" aria-label="Passo 7: Prazos. Arraste ou toque para ver na ordem"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/></svg></span><span>Prazos</span></button>
+      </div>
+      <p class="lp-play-hint" aria-hidden="true">Arraste os passos. Toque em um para ver a ordem.</p>
+    </div>
     <p class="lp-src" style="margin-top:30px;max-width:56ch">Conteúdo de orientação, sem caráter de aconselhamento jurídico. Confirme na fonte oficial antes de contar com um prazo ou um documento.</p>
   </div>
   <div class="lp-scroll" aria-hidden="true">role<b></b></div>
 </section>
 
 <section class="lp-sec" id="ordem">
-  <i class="lp-deco b" style="width:380px;height:130px;left:16%;top:52%" aria-hidden="true"></i><i class="lp-deco m" style="width:300px;height:104px;right:12%;top:30%" aria-hidden="true"></i><i class="lp-deco v" style="width:340px;height:116px;left:30%;top:78%" aria-hidden="true"></i>
   <div class="lp-wrap">
     <span class="lp-k rv">1 · A ordem dos passos</span>
     <h2 class="lp-h2 rv" style="--d:80ms">Um passo destrava o <em>próximo</em>.</h2>
     <p class="lp-p rv" style="--d:140ms">Os sete passos sobem como degraus. O primeiro, em destaque, é o único com prazo curto.</p>
     <div class="lp-steps" role="list" aria-label="Os 7 passos de chegada">
-<div class="lp-step rv l foco" style="--i:0;--d:0ms"><b>1</b><span>Validar o visto (tem prazo)</span></div>
-<div class="lp-step rv l" style="--i:1;--d:90ms"><b>2</b><span>Casa e contrato</span></div>
-<div class="lp-step rv l" style="--i:2;--d:180ms"><b>3</b><span>Conta bancária</span></div>
-<div class="lp-step rv l" style="--i:3;--d:270ms"><b>4</b><span>Número de sécu</span></div>
-<div class="lp-step rv l" style="--i:4;--d:360ms"><b>5</b><span>Professor de francês</span></div>
-<div class="lp-step rv l" style="--i:5;--d:450ms"><b>6</b><span>Saúde complementar</span></div>
-<div class="lp-step rv l" style="--i:6;--d:540ms"><b>7</b><span>Os prazos</span></div>
+<div id="passo-1" class="lp-step rv l foco" style="--i:0;--d:0ms"><b>1</b><span>Validar o visto (tem prazo)</span></div>
+<div id="passo-2" class="lp-step rv l" style="--i:1;--d:90ms"><b>2</b><span>Casa e contrato</span></div>
+<div id="passo-3" class="lp-step rv l" style="--i:2;--d:180ms"><b>3</b><span>Conta bancária</span></div>
+<div id="passo-4" class="lp-step rv l" style="--i:3;--d:270ms"><b>4</b><span>Número de sécu</span></div>
+<div id="passo-5" class="lp-step rv l" style="--i:4;--d:360ms"><b>5</b><span>Professor de francês</span></div>
+<div id="passo-6" class="lp-step rv l" style="--i:5;--d:450ms"><b>6</b><span>Saúde complementar</span></div>
+<div id="passo-7" class="lp-step rv l" style="--i:6;--d:540ms"><b>7</b><span>Os prazos</span></div>
     </div>
     <p class="lp-src rv">Fontes: Ministério do Interior e France-Visas (validação do visto), Service-Public e Urssaf (declaração da au pair). A ordem dos passos 2 a 4 vem de relatos e deve ser confirmada com o banco e a CPAM.</p>
   </div>
 </section>
 
 <section class="lp-sec" id="prazos" style="padding-top:0">
-  <i class="lp-deco v p2" style="top:30%;right:26%" aria-hidden="true"></i><i class="lp-deco b p4" style="top:42%;left:14%;bottom:auto" aria-hidden="true"></i>
   <div class="lp-wrap">
     <span class="lp-k rv">2 · O que tem prazo</span>
     <h2 class="lp-h2 rv" style="--d:80ms">Dois prazos, duas <em>pessoas</em>.</h2>
@@ -356,7 +390,6 @@ main.lp{overflow-x:clip;position:relative}
 </section>
 
 <section class="lp-sec" style="padding-top:0">
-  <i class="lp-deco b p1" aria-hidden="true"></i><i class="lp-deco m p2" aria-hidden="true"></i>
   <div class="lp-mid rv" id="lp-mid">
     <span class="lp-k">Quer começar pelo passo certo?</span>
     <h2 class="lp-h2">Pegue o checklist dos 7 passos.</h2>
@@ -366,7 +399,6 @@ main.lp{overflow-x:clip;position:relative}
 </section>
 
 <section class="lp-sec" id="dois-jeitos">
-  <i class="lp-deco v p1" style="top:38%;left:8%" aria-hidden="true"></i><i class="lp-deco b p2" style="top:50%;right:10%" aria-hidden="true"></i>
   <div class="lp-wrap">
     <span class="lp-k rv">3 · Dois jeitos de deixar para depois</span>
     <h2 class="lp-h2 rv" style="--d:80ms">Os papéis esperam nos dois <em>momentos</em>.</h2>
@@ -381,7 +413,6 @@ main.lp{overflow-x:clip;position:relative}
 </section>
 
 <section class="lp-sec" id="secu" style="padding-top:0">
-  <i class="lp-deco v p2" aria-hidden="true"></i>
   <div class="lp-wrap">
     <span class="lp-k rv">4 · O número de sécu</span>
     <p class="lp-scrub" data-scrub><span>No</span> <span>número</span> <span>de</span> <span>sécu,</span> <span>quem</span> <span>começa</span> <span>é</span> <span>a</span> <span class="hl">família.</span> <span>A</span> <span>sua</span> <span>parte</span> <span>é</span> <span>ter</span> <span class="hl">tudo</span> <span class="hl">pronto.</span></p>
@@ -396,7 +427,6 @@ main.lp{overflow-x:clip;position:relative}
 </section>
 
 <section class="lp-gate" id="gate" aria-label="Liberar o checklist de chegada">
-  <i class="lp-deco v p1" aria-hidden="true"></i><i class="lp-deco b p2" aria-hidden="true"></i><i class="lp-deco m p3" aria-hidden="true"></i>
   <div class="lp-card rv" id="lp-card">
     <h2>Receba o checklist dos 7 passos de chegada</h2>
     <p class="lead">Libere o checklist para ver, em cada passo, o que ter em mãos e onde confirmar na fonte oficial.</p>
@@ -492,6 +522,76 @@ main.lp{overflow-x:clip;position:relative}
 <script src="/assets/js/analytics.js"></script>
 <script type="module" src="/assets/js/header.js"></script>
 
+<script>
+/* ícones arrastáveis do topo: arraste, solte (com um empurrãozinho) ou toque para ir ao passo */
+(function () {
+  var play = document.getElementById("lp-play"); if (!play) return;
+  var reduce = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var chips = Array.prototype.slice.call(play.querySelectorAll(".lp-chip-i"));
+  var PX = [[.02,.00],[.58,.06],[.10,.22],[.62,.34],[.00,.46],[.50,.58],[.18,.78]];
+  var W = 0, H = 0, st = [];
+  function medir() { W = play.clientWidth; H = play.clientHeight; }
+  function pos(o) { o.el.style.transform = "translate(" + o.x.toFixed(1) + "px," + o.y.toFixed(1) + "px)"; }
+  function dentro(o) { o.x = Math.max(0, Math.min(W - o.w, o.x)); o.y = Math.max(0, Math.min(H - o.h, o.y)); }
+  function montar() {
+    medir();
+    chips.forEach(function (c, i) {
+      var o = st[i] || (st[i] = { el: c, vx: 0, vy: 0 });
+      o.w = c.offsetWidth; o.h = c.offsetHeight;
+      if (!o.pos) { o.x = PX[i][0] * (W - o.w); o.y = PX[i][1] * (H - o.h); o.pos = true; } else { dentro(o); }
+      pos(o);
+    });
+  }
+  montar();
+  window.addEventListener("resize", montar);
+  function ir(n) {
+    var alvo = document.getElementById("passo-" + n); if (!alvo) return;
+    alvo.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "center" });
+    alvo.classList.remove("lp-flash"); void alvo.offsetWidth; alvo.classList.add("lp-flash");
+    setTimeout(function () { alvo.classList.remove("lp-flash"); }, 1600);
+  }
+  var raf = 0, rodando = false;
+  function passo() {
+    var vivo = false;
+    st.forEach(function (o) {
+      if (o.drag || (Math.abs(o.vx) < .04 && Math.abs(o.vy) < .04)) return;
+      o.x += o.vx; o.y += o.vy; o.vx *= .93; o.vy *= .93;
+      if (o.x < 0) { o.x = 0; o.vx = -o.vx * .6; } if (o.x > W - o.w) { o.x = W - o.w; o.vx = -o.vx * .6; }
+      if (o.y < 0) { o.y = 0; o.vy = -o.vy * .6; } if (o.y > H - o.h) { o.y = H - o.h; o.vy = -o.vy * .6; }
+      pos(o); vivo = true;
+    });
+    if (vivo) raf = requestAnimationFrame(passo); else rodando = false;
+  }
+  function soltar() { if (!rodando && !reduce) { rodando = true; raf = requestAnimationFrame(passo); } }
+  chips.forEach(function (c, i) {
+    var o = st[i];
+    c.addEventListener("pointerdown", function (e) {
+      if (e.button != null && e.button > 0) return;
+      medir(); o.drag = true; o.moveu = false; o.t0 = Date.now(); o.hist = [];
+      var r = play.getBoundingClientRect();
+      o.ox = e.clientX - r.left - o.x; o.oy = e.clientY - r.top - o.y; o.sx = e.clientX; o.sy = e.clientY; o.vx = o.vy = 0;
+      c.classList.add("arrastando"); try { c.setPointerCapture(e.pointerId); } catch (x) {}
+      e.preventDefault();
+    });
+    c.addEventListener("pointermove", function (e) {
+      if (!o.drag) return;
+      if (Math.abs(e.clientX - o.sx) + Math.abs(e.clientY - o.sy) > 6) o.moveu = true;
+      var r = play.getBoundingClientRect();
+      o.x = e.clientX - r.left - o.ox; o.y = e.clientY - r.top - o.oy; dentro(o); pos(o);
+      o.hist.push([Date.now(), o.x, o.y]); if (o.hist.length > 6) o.hist.shift();
+    });
+    function fim(e) {
+      if (!o.drag) return; o.drag = false; c.classList.remove("arrastando");
+      try { c.releasePointerCapture(e.pointerId); } catch (x) {}
+      if (!o.moveu && Date.now() - o.t0 < 400) { ir(i + 1); return; }
+      var h = o.hist, n = h.length;
+      if (n > 1 && !reduce) { var dt = Math.max(16, h[n - 1][0] - h[0][0]); o.vx = (h[n - 1][1] - h[0][1]) / dt * 16; o.vy = (h[n - 1][2] - h[0][2]) / dt * 16; soltar(); }
+    }
+    c.addEventListener("pointerup", fim); c.addEventListener("pointercancel", fim);
+    c.addEventListener("click", function (e) { if (e.detail === 0) ir(i + 1); }); /* teclado: Enter ou espaço */
+  });
+})();
+</script>
 <script type="module">
 import { supabase } from '/assets/js/supabase-client.js';
 
