@@ -43,6 +43,7 @@
     "test:conferir": "node conferir-banco.test.mjs",
     "test:minutos": "node crm-sequencia-minutos.test.mjs",
     "test:chegada": "node crm-modelos-chegada-au-pair.test.mjs",
+    "test:taxonomia": "node crm-taxonomia-modelos.test.mjs",
     "test:taxonomia-ui": "node crm-taxonomia-ui.test.mjs"
   },
   "dependencies": {
