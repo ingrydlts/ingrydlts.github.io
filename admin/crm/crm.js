@@ -2363,12 +2363,73 @@ function renderModelos() {
   var lista = listaModelos();
   if (!ST.k || !lista.some(function (m) { return m.chave === ST.k; })) { if (lista.length) abrirModelo(lista[0].chave); }
   else if (ST.v != null && !versaoAberta() && M) abrirModelo(ST.k);
+  renderFiltros();
   renderLista(lista);
   if (ST.criar && temEstudio3()) renderCriar(); else { ST.criar = null; renderEditor(lista); }
   renderPrevia();
 }
 
+// Barra de filtros dos modelos. Só em memória: nada vai ao banco nem ao localStorage.
+var FILTRO_TIPOS = [['email', 'E-mail'], ['novidades', 'Novidades'], ['servico', 'Serviço'], ['compra', 'Compra']];
+var FILTRO_SITUACOES = [['noAr', 'No ar'], ['rascunho', 'Rascunho'], ['revisao', 'Em revisão'], ['envioLigado', 'Envio ligado'], ['envioDesligado', 'Envio desligado'], ['semTeste', 'Sem teste']];
+function contaModelosTxt(lista) {
+  var total = TX.aplicaFiltros(lista, TX.filtroVazio(), versoesDe).length;
+  return TX.aplicaFiltros(lista, ST.f, versoesDe).length + ' de ' + total + ' modelos';
+}
+function visaoAtiva() {
+  var atual = JSON.stringify(ST.f), ativa = null;
+  TX.VISOES.forEach(function (v) { if (JSON.stringify(Object.assign(TX.filtroVazio(), v.filtros)) === atual) ativa = v.k; });
+  return ativa;
+}
+function renderFiltros() {
+  var f = ST.f;
+  var chip = function (filtro, valor, rotulo) {
+    var on = f[filtro].indexOf(valor) >= 0;
+    return '<button class="chip" type="button" data-filtro="' + esc(filtro) + '" data-valor="' + esc(valor) + '" aria-pressed="' + on + '">' + esc(rotulo) + '</button>';
+  };
+  var linha = function (titulo, chips) { return '<div class="st-filtro-linha"><span class="st-filtro-t">' + esc(titulo) + '</span>' + chips + '</div>'; };
+  var paginas = TX.PAGINAS.map(function (p) { return chip('paginas', p.k, p.k + ' · ' + p.nome); }).join('') + chip('paginas', 'sem', 'Sem página');
+  var etapas = '';
+  TX.PAGINAS.forEach(function (p) { if (f.paginas.indexOf(p.k) >= 0) etapas += p.etapas.map(function (e) { return chip('etapas', e[0], e[1]); }).join(''); });
+  var ativa = visaoAtiva();
+  var visoes = TX.VISOES.map(function (v) { return '<button class="chip" type="button" data-visao="' + esc(v.k) + '" aria-pressed="' + (ativa === v.k) + '">' + esc(v.nome) + '</button>'; }).join('');
+  $('mod-filtros').innerHTML =
+    '<div class="st-filtro-topo"><input type="search" id="filtro-q" class="st-filtro-q" placeholder="Buscar modelo" aria-label="Buscar modelo" value="' + esc(f.q) + '">' +
+    '<span class="sub" id="mod-conta" role="status">' + esc(contaModelosTxt(listaModelos())) + '</span>' +
+    '<button class="btn" type="button" id="filtro-limpar" data-limpar="1">Limpar filtros</button></div>' +
+    linha('Visões', visoes) + linha('Página', paginas) + (etapas ? linha('Etapa', etapas) : '') +
+    linha('Família', TX.FAMILIAS.map(function (x) { return chip('familias', x[0], x[1]); }).join('')) +
+    linha('Persona', TX.PERSONAS.map(function (x) { return chip('personas', x[0], x[1]); }).join('') +
+      '<button class="chip" type="button" id="filtro-solo" aria-pressed="' + !!f.soEspecificos + '">só específicos</button>') +
+    linha('Tipo', FILTRO_TIPOS.map(function (x) { return chip('tipos', x[0], x[1]); }).join('')) +
+    linha('Situação', FILTRO_SITUACOES.map(function (x) { return chip('situacoes', x[0], x[1]); }).join(''));
+}
+function aoClicarFiltro(e) {
+  var t = e.target && e.target.closest && e.target.closest('[data-filtro], [data-visao], [data-limpar], #filtro-solo, #filtro-limpar');
+  if (!t) return;
+  var d = t.dataset || {};
+  if (t.id === 'filtro-limpar' || d.limpar) ST.f = TX.filtroVazio();
+  else if (t.id === 'filtro-solo') ST.f.soEspecificos = !ST.f.soEspecificos;
+  else if (d.visao) {
+    var v = TX.VISOES.filter(function (x) { return x.k === d.visao; })[0];
+    if (!v) return;
+    ST.f = visaoAtiva() === v.k ? TX.filtroVazio() : Object.assign(TX.filtroVazio(), JSON.parse(JSON.stringify(v.filtros)));
+  } else if (d.filtro && Array.isArray(ST.f[d.filtro])) {
+    var arr = ST.f[d.filtro], i = arr.indexOf(d.valor);
+    if (i >= 0) arr.splice(i, 1); else arr.push(d.valor);
+    if (d.filtro === 'paginas') ST.f = TX.limpaEtapasOrfas(ST.f);
+  } else return;
+  renderFiltros(); renderLista(listaModelos());
+}
+function aoDigitarFiltro(e) {
+  if (!e.target || e.target.id !== 'filtro-q') return;
+  ST.f.q = e.target.value;
+  renderLista(listaModelos());   // só a lista e o contador: redesenhar a barra tiraria o foco do campo
+}
+
 function renderLista(lista) {
+  var conta = contaModelosTxt(lista), total = TX.aplicaFiltros(lista, TX.filtroVazio(), versoesDe).length;
+  if ($('mod-conta')) $('mod-conta').textContent = conta;
   lista = TX.aplicaFiltros(lista, ST.f, versoesDe);
   var card = function (m) {
     var v = M ? versaoAtual(m.chave) : null, obra = M ? versaoEmObra(m.chave) : null;
@@ -2392,7 +2453,7 @@ function renderLista(lista) {
       : g.itens.map(card).join('');
     return '<details class="st-cat" data-cat="' + esc(g.id) + '"' + (aberta ? ' open' : '') + '><summary class="tplgrp">' + esc(g.titulo) + ' · ' + g.itens.length + selo + '</summary>' + corpo + '</details>';
   };
-  $('mod-list').innerHTML = (temEstudio3() ? '<button class="st-new" type="button" id="st-novo-modelo" aria-pressed="' + !!ST.criar + '">+ Modelo novo</button>' : '') + TX.agrupa(lista).map(grupo).join('') + lixo +
+  $('mod-list').innerHTML = (temEstudio3() ? '<button class="st-new" type="button" id="st-novo-modelo" aria-pressed="' + !!ST.criar + '">+ Modelo novo</button>' : '') + (lista.length || !total ? TX.agrupa(lista).map(grupo).join('') : '<div class="st-vazio"><p class="sub">Nenhum modelo com esses filtros</p><button class="btn" type="button" data-limpar="1">Limpar filtros</button></div>') + lixo +
     '<div class="st-legend"><span><i class="sdot ok"></i>No ar</span><span><i class="sdot rev"></i>Em revisão</span><span><i class="sdot dr"></i>Rascunho</span></div>';
 }
 
@@ -3996,5 +4057,9 @@ document.addEventListener('keydown', function (e) {
   if (e.key === 'Enter' && e.target.matches('tr[data-id]')) openPessoa(e.target.dataset.id);
   if (e.key === 'Escape' && !$('compose-modal').hidden) closeCompose();
 });
+
+// Filtros dos modelos: registrados depois dos demais para não mudar a ordem dos handlers de clique e de input.
+document.addEventListener('click', aoClicarFiltro);
+document.addEventListener('input', aoDigitarFiltro);
 
 boot().catch(function (err) { console.error(err); showGate('Erro ao abrir o CRM. Recarregue a página.'); });

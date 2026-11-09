@@ -192,11 +192,12 @@ function el(id) {
   if (!els.has(id)) els.set(id, { id, innerHTML: '', value: '', hidden: false, style: {}, dataset: {}, textContent: '', addEventListener() {}, setAttribute() {}, focus() {}, matches: () => false });
   return els.get(id);
 }
-const doc = { getElementById: el, addEventListener() {}, querySelectorAll: () => [], querySelector: () => null, activeElement: null };
+const handlers = {};
+const doc = { getElementById: el, addEventListener(t, fn) { (handlers[t] = handlers[t] || []).push(fn); }, querySelectorAll: () => [], querySelector: () => null, activeElement: null };
 const sb = { from: () => ({}), auth: { getSession: async () => ({ data: { session: null } }) }, rpc: async () => ({ data: null, error: null }),
   channel: () => ({ on() { return this; }, subscribe() { return this; } }), removeChannel() {} };
 const H = new Function('supabase', 'ES', 'TX', 'document', 'window', 'location', 'localStorage', 'setInterval', 'clearInterval',
-  csrc + '\n;return { setM: function (v) { M = v; }, setMV: function (v) { MV = v; }, renderLista, listaModelos, opcoesPorCategoria, ST };')(
+  csrc + '\n;return { setM: function (v) { M = v; }, setMV: function (v) { MV = v; }, renderLista, renderFiltros, listaModelos, opcoesPorCategoria, ST, aoClicarFiltro: typeof aoClicarFiltro === "function" ? aoClicarFiltro : null, aoDigitarFiltro: typeof aoDigitarFiltro === "function" ? aoDigitarFiltro : null };')(
   sb, {}, TX, doc, { addEventListener() {} }, { href: '' }, { getItem: () => null, setItem() {} }, () => 1, () => {});
 console.log('== crm.js: lista agrupada ==');
 const mods = fixture32();
@@ -219,6 +220,46 @@ H.ST.f.paginas = ['I03'];
 H.renderLista(mods);
 const h2 = el('mod-list').innerHTML;
 check('filtro: só itens da I03', h2.indexOf('data-tpl-pick="aq_a_d3"') >= 0 && h2.indexOf('data-tpl-pick="naoabriu"') < 0 && h2.indexOf('data-tpl-pick="zz1"') < 0);
+
+// ---------- Barra de filtros ----------
+console.log('== crm.js: barra de filtros ==');
+H.ST.f = TX.filtroVazio();
+let escritasBarra = 0, htmlBarra = '';
+Object.defineProperty(el('mod-filtros'), 'innerHTML', { get() { return htmlBarra; }, set(v) { escritasBarra++; htmlBarra = v; } });
+check('filtros: handlers registrados no document', H.aoClicarFiltro && H.aoDigitarFiltro && handlers.click.indexOf(H.aoClicarFiltro) >= 0 && handlers.input.indexOf(H.aoDigitarFiltro) >= 0);
+const clique = (attrs, id) => H.aoClicarFiltro({ target: { id: id || '', dataset: attrs || {}, closest() { return this; } } });
+const redesenha = () => { H.renderFiltros(); H.renderLista(mods); };
+redesenha();
+check('filtros: contador inicial', el('mod-conta').textContent === '32 de 32 modelos' && htmlBarra.indexOf('32 de 32 modelos') >= 0);
+check('filtros: nenhum chip marcado', htmlBarra.indexOf('aria-pressed="true"') < 0);
+check('filtros: chip Sem página e só específicos', htmlBarra.indexOf('data-valor="sem"') >= 0 && htmlBarra.indexOf('id="filtro-solo"') >= 0 && htmlBarra.indexOf('id="filtro-q"') >= 0 && htmlBarra.indexOf('id="filtro-limpar"') >= 0);
+check('filtros: sem etapas antes de marcar página', htmlBarra.indexOf('data-filtro="etapas"') < 0);
+H.ST.f = TX.filtroVazio();
+clique({ filtro: 'paginas', valor: 'I03' });
+check('filtros: página I03 => 14 de 32', el('mod-conta').textContent === '14 de 32 modelos');
+check('filtros: chip I03 marcado e etapas aparecem', /data-valor="I03" aria-pressed="true"/.test(htmlBarra) && htmlBarra.indexOf('data-filtro="etapas"') >= 0);
+const etapaI03 = TX.PAGINAS[2].etapas[0][0];
+clique({ filtro: 'etapas', valor: etapaI03 });
+check('filtros: etapa marcada', H.ST.f.etapas.join() === etapaI03);
+clique({ filtro: 'paginas', valor: 'I03' });
+check('filtros: desmarcar página limpa etapas órfãs', H.ST.f.etapas.length === 0 && H.ST.f.paginas.length === 0 && el('mod-conta').textContent === '32 de 32 modelos');
+clique({ visao: 'rascunhos' });
+check('filtros: visão rascunhos', H.ST.f.situacoes.join() === 'rascunho,revisao' && /data-visao="rascunhos" aria-pressed="true"/.test(htmlBarra));
+clique({ visao: 'rascunhos' });
+check('filtros: visão de novo desmarca', H.ST.f.situacoes.length === 0 && htmlBarra.indexOf('aria-pressed="true"') < 0);
+clique({ filtro: 'personas', valor: 'pvt' }); clique({}, 'filtro-solo');
+check('filtros: solo alterna', H.ST.f.soEspecificos === true && /id="filtro-solo" aria-pressed="true"/.test(htmlBarra));
+clique({}, 'filtro-limpar');
+check('filtros: limpar zera', JSON.stringify(H.ST.f) === JSON.stringify(TX.filtroVazio()));
+clique({ filtro: 'paginas', valor: 'I02' }); clique({ filtro: 'familias', valor: 'campanha' });
+check('filtros: sem resultado mostra mensagem', el('mod-list').innerHTML.indexOf('Nenhum modelo com esses filtros') >= 0 && el('mod-list').innerHTML.indexOf('data-limpar') >= 0 && el('mod-conta').textContent === '0 de 32 modelos');
+clique({ limpar: '1' });
+check('filtros: Limpar da lista volta a 32 de 32', el('mod-conta').textContent === '32 de 32 modelos' && el('mod-list').innerHTML.indexOf('Nenhum modelo') < 0);
+const antes = escritasBarra;
+H.aoDigitarFiltro({ target: { id: 'filtro-q', value: 'aq_a' } });
+check('filtros: busca não reescreve a barra', escritasBarra === antes);
+check('filtros: busca filtra a lista e o contador', H.ST.f.q === 'aq_a' && el('mod-conta').textContent === '4 de 32 modelos' && el('mod-list').innerHTML.indexOf('data-tpl-pick="aq_a_d3"') >= 0);
+check('filtros: busca é escapada', (() => { H.ST.f.q = '"><b>'; H.renderFiltros(); return htmlBarra.indexOf('"><b>') < 0 && htmlBarra.indexOf('&quot;&gt;&lt;b&gt;') >= 0; })());
 
 console.log(passed + ' passaram, ' + failed + ' falharam');
 process.exit(failed ? 1 : 0);
