@@ -393,54 +393,11 @@ main.lp{overflow-x:clip;position:relative}
     <div class="lp-conf" id="lp-conf" aria-hidden="true"></div>
     <svg class="ck" viewBox="0 0 84 84" aria-hidden="true"><circle cx="42" cy="42" r="40"/><path d="M25 43l12 12 22-26"/></svg>
     <h2>Liberado.</h2>
-    <p>O checklist está logo abaixo e também no Notion, para você guardar. Salve esta página para voltar quando precisar.</p>
-    <a class="lp-btn" id="notion-link" href="#" target="_blank" rel="noopener" hidden>Abrir o checklist no Notion <span class="arr" aria-hidden="true">→</span></a>
+    <p id="ok-msg">O seu checklist está no Notion. Estou te levando para lá. Se não abrir sozinho, use o botão.</p>
+    <a class="lp-btn" id="notion-link" href="#" target="_blank" rel="noopener" hidden>Abrir o checklist <span class="arr" aria-hidden="true">→</span></a>
   </div>
 </section>
 
-<div class="lp-lock" id="locked" hidden>
-  <section class="lp-sec" id="checklist">
-    <div class="lp-wrap">
-      <span class="lp-k rv">Seu checklist</span>
-      <h2 class="lp-h2 rv" style="--d:80ms">Os 7 passos, na ordem.</h2>
-      <ul class="lp-check" id="lp-check">
-        <li class="rv"><label><input type="checkbox"><span class="bx"></span><span><strong>Valide o visto</strong> online no portal da ANEF, em até 3 meses da chegada. Tenha em mãos os dados do visto, a data de entrada, o endereço na França e um meio de pagamento para a taxa. O OFII pode te convocar para um encontro.</span></label></li>
-        <li class="rv" style="--d:70ms"><label><input type="checkbox"><span class="bx"></span><span><strong>Peça à família</strong> o contrato de au pair assinado e uma atestação de hospedagem, com o comprovante de endereço dela. Se mudar de casa, declare o endereço novo. Confirme com o banco e a CPAM se pedem a atestação.</span></label></li>
-        <li class="rv" style="--d:140ms"><label><input type="checkbox"><span class="bx"></span><span><strong>Abra a conta</strong> francesa com passaporte, visto validado, contrato e atestação (confirme a lista no seu banco). Guarde o RIB: você usa no sécu.</span></label></li>
-        <li class="rv" style="--d:210ms"><label><input type="checkbox"><span class="bx"></span><span><strong>Combine o sécu com a família:</strong> ela declara você à Urssaf (formulário Cerfa 11469, em até 8 dias) e pede o número se você ainda não tem. Tenha pronto passaporte, visto validado, certidão de nascimento, RIB e comprovante de endereço, e confirme com a CPAM se ela pede apostila e tradução.</span></label></li>
-        <li class="rv" style="--d:280ms"><label><input type="checkbox"><span class="bx"></span><span><strong>Procure um professor de francês</strong> com foco em oral. Guarde o recibo e o atestado do curso: eles pesam na hora de mudar de status.</span></label></li>
-        <li class="rv" style="--d:350ms"><label><input type="checkbox"><span class="bx"></span><span><strong>Pergunte à família</strong> sobre seguro ou mutuelle e confirme o que cobre e quem paga. As fontes se contradizem e não há texto oficial lido.</span></label></li>
-        <li class="rv" style="--d:420ms"><label><input type="checkbox"><span class="bx"></span><span><strong>Anote os prazos:</strong> o fim do seu título e o prazo para pedir a mudança de status. Regra de ouro: feche um processo antes de abrir o seguinte.</span></label></li>
-      </ul>
-      <div class="lp-prog" aria-hidden="true"><i id="lp-prog-bar"></i></div>
-      <p class="lp-prog-t" id="lp-prog-t">0 de 7 passos feitos</p>
-    </div>
-  </section>
-
-  <section class="lp-sec" id="onde-confirmar" style="padding-top:0">
-    <div class="lp-wrap">
-      <span class="lp-k rv">Fontes</span>
-      <h2 class="lp-h2 rv" style="--d:80ms">Onde confirmar.</h2>
-      <ul class="lp-list">
-        <li class="rv"><a href="https://www.immigration.interieur.gouv.fr/fr/Immigration/Les-visas/Les-visas-de-long-sejour/L-Etat-se-modernise-a-partir-du-18-fevrier-validez-votre-visa-long-sejour-valant-titre-de-sejour-VLS-TS-directement-en-ligne" target="_blank" rel="noopener">Ministério do Interior: validação do VLS-TS em linha</a></li>
-        <li class="rv" style="--d:70ms"><a href="https://france-visas.gouv.fr/en/votre-arrivee-en-france" target="_blank" rel="noopener">France-Visas: sua chegada na França</a></li>
-        <li class="rv" style="--d:140ms"><a href="https://www.service-public.gouv.fr/particuliers/vosdroits/F473" target="_blank" rel="noopener">Service-Public F473: au pair</a></li>
-        <li class="rv" style="--d:210ms"><a href="https://www.urssaf.fr/accueil/particulier/particulier-employeur/embaucher-un-salarie/emploi-pair-stagiaire-aidant-fam.html" target="_blank" rel="noopener">Urssaf: emprego au pair</a></li>
-        <li class="rv" style="--d:280ms"><a href="https://www.formulaires.service-public.gouv.fr/gf/cerfa_11469.do" target="_blank" rel="noopener">Formulário Cerfa 11469 (declaração da família)</a></li>
-      </ul>
-      <p class="lp-src rv">Este checklist orienta, não garante prazo, documento nem resultado. Onde está escrito "confirme", ainda não há texto oficial lido.</p>
-    </div>
-  </section>
-
-  <section class="lp-sec no-print" style="padding-top:0">
-    <div class="lp-end rv" id="cta">
-      <span class="lp-k">Quer uma segunda opinião?</span>
-      <h2>Converse comigo sobre o seu caso</h2>
-      <p>Cada caso tem detalhes que um checklist não cobre: o tipo de visto, o contrato e a família. Se quiser, a gente conversa sobre a sua situação.</p>
-      <a class="lp-btn" id="cta-link" href="#" target="_blank" rel="noopener" hidden>Agendar uma conversa <span class="arr" aria-hidden="true">→</span></a>
-    </div>
-  </section>
-</div>
 </main>
 
 
@@ -579,37 +536,25 @@ function confete() {
     box.appendChild(s);
   }
 }
+function irParaNotion(url) {
+  if (reduce) { window.location.href = url; return; }
+  setTimeout(function () { window.location.href = url; }, 1800);
+}
 function liberar(salvo, scroll) {
+  var url = salvo.url || NOTION_URL;
   var nl = byId("notion-link");
-  nl.href = salvo.url || NOTION_URL;
+  nl.href = url;
   if (salvo.texto) nl.textContent = salvo.texto + " →";
   nl.hidden = false;
   byId("gate").hidden = true;
   byId("ok-wrap").hidden = false;
   byId("ok-banner").hidden = false;
-  byId("locked").hidden = false;
-  if (scroll) { confete(); byId("ok-wrap").scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "center" }); }
-  var cta = byId("cta-link");
-  fetch("/content/guias.json").then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
-    if (d && d.calendlyUrl) {
-      cta.href = d.calendlyUrl + (d.calendlyUrl.indexOf("?") === -1 ? "?" : "&") + "utm_source=guia&utm_campaign=" + GUIA;
-      cta.hidden = false;
-      cta.addEventListener("click", function () { track("guia_cta_agendar", { guia: GUIA }); });
-    } else { byId("cta").hidden = true; }
-  }).catch(function () { byId("cta").hidden = true; });
+  if (scroll) { confete(); byId("ok-wrap").scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "center" }); irParaNotion(url); }
+  else { byId("ok-msg").textContent = "Você já pegou o checklist. Ele está no Notion."; }
   onScroll();
 }
 var salvo = lerSalvo();
 if (salvo) liberar(salvo, false);
-
-var caixas = $$("#lp-check input");
-caixas.forEach(function (c) {
-  c.addEventListener("change", function () {
-    var n = caixas.filter(function (x) { return x.checked; }).length;
-    byId("lp-prog-bar").style.width = (n / caixas.length * 100) + "%";
-    byId("lp-prog-t").textContent = n === caixas.length ? "Os 7 passos feitos. Agora é manter os prazos à vista." : n + " de " + caixas.length + " passos feitos";
-  });
-});
 
 /* ---------- formulário em passos ---------- */
 var panes = $$(".lp-pane"), dots = $$(".lp-dot"), linhas = $$(".lp-line"), card = byId("lp-card"), passo = 1;
