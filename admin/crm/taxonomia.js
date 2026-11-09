@@ -242,3 +242,80 @@ export function agrupa(lista) {
   if (sem.length) grupos.push(grupo('sem', 'Sem classificação', 'atenção', [], sem));
   return grupos;
 }
+
+// ---------- Filtros, situação e visões ----------
+export function filtroVazio() {
+  return { q: '', paginas: [], etapas: [], familias: [], personas: [], soEspecificos: false, tipos: [], situacoes: [], semClasse: false };
+}
+
+function lista(v) { return Array.isArray(v) ? v : []; }
+function semAcento(s) {
+  return String(s == null ? '' : s).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+}
+
+// Situação do modelo. `versoes`: as de modelos_email_versoes desse modelo, da mais nova para a mais velha.
+export function situacaoDe(m, versoes) {
+  var vs = lista(versoes).filter(function (v) { return v && typeof v === 'object'; });
+  var tem = function (etapa) { return vs.some(function (v) { return v.etapa === etapa; }); };
+  var maisNova = null;
+  for (var i = 0; i < vs.length; i++) {
+    if (vs[i].etapa === 'rascunho' || vs[i].etapa === 'revisao') { maisNova = vs[i]; break; }
+  }
+  var gatilho = !!(m && m.envio_gatilho);
+  var ligado = !!(m && m.envio_ligado);
+  return {
+    noAr: tem('no_ar'),
+    rascunho: tem('rascunho'),
+    revisao: tem('revisao'),
+    envioLigado: gatilho && ligado,
+    envioDesligado: gatilho && !ligado,
+    semTeste: !!maisNova && maisNova.testado_em == null
+  };
+}
+
+// Dentro de cada filtro é "ou"; entre filtros é "e". Excluído nunca passa.
+export function aplicaFiltros(modelos, f, versoesDe) {
+  var fl = Object.assign(filtroVazio(), f && typeof f === 'object' ? f : {});
+  var busca = semAcento(String(fl.q || '').trim());
+  var paginas = lista(fl.paginas), etapas = lista(fl.etapas), familias = lista(fl.familias);
+  var personas = lista(fl.personas), tipos = lista(fl.tipos), situacoes = lista(fl.situacoes);
+  return lista(modelos).filter(function (m) {
+    if (!m || typeof m !== 'object' || m.excluido_em) return false;
+    var c = classifica(m);
+    if (busca && (semAcento(m.nome) + ' ' + semAcento(m.objetivo)).indexOf(busca) < 0) return false;
+    if (paginas.length && paginas.indexOf(c.pagina == null ? 'sem' : c.pagina) < 0) return false;
+    if (etapas.length && etapas.indexOf(c.etapa) < 0) return false;
+    if (familias.length && familias.indexOf(c.familia) < 0) return false;
+    if (personas.length) {
+      var ok = personas.indexOf(c.persona) >= 0 || (c.persona == null && !fl.soEspecificos);
+      if (!ok) return false;
+    }
+    if (tipos.length && tipos.indexOf(m.tipo) < 0) return false;
+    if (fl.semClasse && (c.familia != null || c.pagina != null)) return false;
+    if (situacoes.length) {
+      var vs = typeof versoesDe === 'function' ? versoesDe(m.chave) : [];
+      var s = situacaoDe(m, vs);
+      if (!situacoes.some(function (k) { return s[k] === true; })) return false;
+    }
+    return true;
+  });
+}
+
+// Tira as etapas que não pertencem a nenhuma página marcada (todas, se nenhuma página está marcada).
+export function limpaEtapasOrfas(f) {
+  var out = Object.assign(filtroVazio(), f && typeof f === 'object' ? f : {});
+  var validas = [];
+  lista(out.paginas).forEach(function (k) {
+    var p = achaPagina(k);
+    if (p) p.etapas.forEach(function (e) { validas.push(e[0]); });
+  });
+  out.etapas = lista(out.etapas).filter(function (e) { return validas.indexOf(e) >= 0; });
+  return out;
+}
+
+export var VISOES = [
+  { k: 'rascunhos', nome: 'Rascunhos para revisar', filtros: { situacoes: ['rascunho', 'revisao'] } },
+  { k: 'teste', nome: 'Esperando o meu teste', filtros: { situacoes: ['semTeste'] } },
+  { k: 'ligado', nome: 'Envio ligado', filtros: { situacoes: ['envioLigado'] } },
+  { k: 'semclasse', nome: 'Sem classificação', filtros: { semClasse: true } }
+];

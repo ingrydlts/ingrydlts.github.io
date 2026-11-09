@@ -1,7 +1,7 @@
 // Testa o catálogo e a classificação dos modelos de e-mail (admin/crm/taxonomia.js). Módulo puro, sem DOM.
 //
 // Uso: cd admin/crm/db/testes && node crm-taxonomia-ui.test.mjs
-import { FAMILIAS, PAGINAS, PERSONAS, classifica, temColunas, rotuloFamilia, rotuloPagina, rotuloEtapa, familiaDoObjetivo, agrupa } from '../../taxonomia.js';
+import { FAMILIAS, PAGINAS, PERSONAS, classifica, temColunas, rotuloFamilia, rotuloPagina, rotuloEtapa, familiaDoObjetivo, agrupa, filtroVazio, situacaoDe, aplicaFiltros, limpaEtapasOrfas, VISOES } from '../../taxonomia.js';
 
 let passed = 0, failed = 0;
 function check(label, cond) { if (cond) passed++; else { failed++; console.log('  FALHOU:', label); } }
@@ -110,6 +110,74 @@ const s = agrupa([
 check('serie: subgrupos por persona', s[0].id === 'serie' && s[0].subgrupos.map((g) => g.titulo).join() === 'Au pair,PVT');
 check('ordena por ordem e nome', s[0].subgrupos[1].itens.map((m) => m.chave).join() === 's3,s1');
 check('malformado não lança', (() => { try { agrupa([null, {}, { chave: 1 }]); return true; } catch (er) { return false; } })());
+
+// ---------- Filtros, situação e visões ----------
+const F = (o) => Object.assign(filtroVazio(), o || {});
+const sv = () => [];
+const chv = (l) => l.map((m) => m.chave).join();
+const M = (chave, o) => Object.assign({ chave: chave, nome: 'Modelo ' + chave, objetivo: null, excluido_em: null,
+  familia: 'entrega', pagina: null, etapa: null, persona: null, tipo: 'email' }, o || {});
+
+check('filtroVazio chaves', Object.keys(filtroVazio()).sort().join() === 'etapas,familias,paginas,personas,q,semClasse,situacoes,soEspecificos,tipos');
+check('filtroVazio valores', (() => { const f = filtroVazio(); return f.q === '' && f.soEspecificos === false && f.semClasse === false && f.paginas.length === 0; })());
+
+const pers = [M('p1', { persona: 'au_pair' }), M('p2', { persona: null }), M('p3', { persona: 'pvt' })];
+check('persona mantém X e null', chv(aplicaFiltros(pers, F({ personas: ['au_pair'] }), sv)) === 'p1,p2');
+check('soEspecificos tira null', chv(aplicaFiltros(pers, F({ personas: ['au_pair'], soEspecificos: true }), sv)) === 'p1');
+
+const pg = [M('t1', { pagina: 'I02', etapa: 'tec-nao-sei' }), M('t2', { pagina: 'I02', etapa: 'tec-juntando' }), M('t3', { pagina: 'I01' }), M('t4', { pagina: null })];
+check('página + etapa', chv(aplicaFiltros(pg, F({ paginas: ['I02'], etapas: ['tec-nao-sei'] }), sv)) === 't1');
+check('página I02 sem etapa', chv(aplicaFiltros(pg, F({ paginas: ['I02'] }), sv)) === 't1,t2');
+check('página sem', chv(aplicaFiltros(pg, F({ paginas: ['sem'] }), sv)) === 't4');
+check('página sem + I01 (ou)', chv(aplicaFiltros(pg, F({ paginas: ['sem', 'I01'] }), sv)) === 't3,t4');
+check('órfãs: sem página limpa tudo', limpaEtapasOrfas({ paginas: [], etapas: ['tec-nao-sei'] }).etapas.length === 0);
+check('órfãs: com página mantém', limpaEtapasOrfas({ paginas: ['I02'], etapas: ['tec-nao-sei'] }).etapas.join() === 'tec-nao-sei');
+check('órfãs: outra página remove', limpaEtapasOrfas({ paginas: ['I01'], etapas: ['tec-nao-sei', 'alt-pesquisando'] }).etapas.join() === 'alt-pesquisando');
+check('órfãs: preserva outros campos', limpaEtapasOrfas(F({ q: 'x', etapas: ['a'] })).q === 'x');
+check('órfãs: não lança', (() => { try { limpaEtapasOrfas(null); limpaEtapasOrfas({}); return true; } catch (er) { return false; } })());
+
+const tf = [M('n1', { tipo: 'novidades', familia: 'aquecimento' }), M('n2', { tipo: 'novidades', familia: 'entrega' }), M('n3', { tipo: 'email', familia: 'aquecimento' })];
+check('tipos e famílias combinam com e', chv(aplicaFiltros(tf, F({ tipos: ['novidades'], familias: ['aquecimento'] }), sv)) === 'n1');
+check('família: ou dentro do filtro', chv(aplicaFiltros(tf, F({ familias: ['aquecimento', 'entrega'] }), sv)) === 'n1,n2,n3');
+
+const vs = (rs) => rs;
+const sit = situacaoDe(M('s'), vs([{ etapa: 'rascunho', testado_em: null }, { etapa: 'no_ar' }]));
+check('situação: rascunho + noAr + semTeste', sit.rascunho === true && sit.noAr === true && sit.semTeste === true && sit.revisao === false);
+const sit2 = situacaoDe(M('s'), [{ etapa: 'rascunho', testado_em: '2026-11-01' }, { etapa: 'no_ar' }]);
+check('situação: testado => semTeste false', sit2.semTeste === false && sit2.rascunho === true);
+check('situação: semTeste só olha a mais nova em rascunho/revisão', situacaoDe(M('s'), [{ etapa: 'no_ar', testado_em: null }]).semTeste === false);
+check('situação: revisão', situacaoDe(M('s'), [{ etapa: 'revisao', testado_em: null }]).revisao === true);
+const env = situacaoDe(M('s', { envio_gatilho: 'g', envio_ligado: true }), []);
+check('envio ligado', env.envioLigado === true && env.envioDesligado === false);
+const env2 = situacaoDe(M('s', { envio_gatilho: 'g', envio_ligado: false }), []);
+check('envio desligado', env2.envioLigado === false && env2.envioDesligado === true);
+const env3 = situacaoDe(M('s'), []);
+check('sem gatilho: nenhum envio', env3.envioLigado === false && env3.envioDesligado === false);
+check('situação robusta', (() => { try { const r = situacaoDe(null, null); return r.noAr === false && r.semTeste === false; } catch (er) { return false; } })());
+
+const bs = [M('aq_b_d3', { nome: 'Aquecimento · trilha B · dossiê enviado' }), M('x', { nome: 'Outro', objetivo: 'Explica o DOSSIÊ' }), M('y', { nome: 'Nada' })];
+check('q acha por nome', chv(aplicaFiltros(bs, F({ q: 'trilha b' }), sv)) === 'aq_b_d3');
+check('q sem acento e caixa (nome+objetivo)', chv(aplicaFiltros(bs, F({ q: 'dossie' }), sv)) === 'aq_b_d3,x');
+check('q com acento acha sem acento', chv(aplicaFiltros([M('z', { nome: 'dossie' })], F({ q: 'DOSSIÊ' }), sv)) === 'z');
+
+const ex = [M('e1', { excluido_em: '2026-01-01' }), M('e2')];
+check('excluído nunca passa', chv(aplicaFiltros(ex, filtroVazio(), sv)) === 'e2');
+check('lista inválida', aplicaFiltros(null, filtroVazio(), sv).length === 0);
+check('aplicaFiltros robusto', (() => { try { aplicaFiltros([null, {}, { chave: 1 }], null, null); return true; } catch (er) { return false; } })());
+
+// Visões
+const visao = (k) => VISOES.find((v) => v.k === k);
+check('4 visões', VISOES.map((v) => v.k).join() === 'rascunhos,teste,ligado,semclasse');
+check('nomes das visões', visao('rascunhos').nome === 'Rascunhos para revisar' && visao('teste').nome === 'Esperando o meu teste' && visao('ligado').nome === 'Envio ligado' && visao('semclasse').nome === 'Sem classificação');
+const vm = [M('v_rasc'), M('v_rev'), M('v_teste'), M('v_lig', { envio_gatilho: 'g', envio_ligado: true }), M('v_sem', { familia: null, pagina: null }), M('v_ar')];
+const vers = { v_rasc: [{ etapa: 'rascunho', testado_em: 'x' }], v_rev: [{ etapa: 'revisao', testado_em: 'x' }], v_teste: [{ etapa: 'rascunho', testado_em: null }], v_ar: [{ etapa: 'no_ar' }] };
+const vd = (c) => vers[c] || [];
+const aplicaV = (k) => chv(aplicaFiltros(vm, F(visao(k).filtros), vd));
+check('visão rascunhos', aplicaV('rascunhos') === 'v_rasc,v_rev,v_teste');
+check('visão teste', aplicaV('teste') === 'v_teste');
+check('visão ligado', aplicaV('ligado') === 'v_lig');
+check('visão semclasse', aplicaV('semclasse') === 'v_sem');
+check('semClasse: reserva sem classificação', chv(aplicaFiltros([{ chave: 'zz1', nome: 'Z' }, { chave: 'boas_vindas', nome: 'B' }], F({ semClasse: true }), sv)) === 'zz1');
 
 console.log(passed + ' passaram, ' + failed + ' falharam');
 process.exit(failed ? 1 : 0);
