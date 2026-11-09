@@ -24,6 +24,18 @@
 --      and not exists (select 1 from public.modelos_email_versoes v where v.chave = m.chave)
 --      and not exists (select 1 from public.emails_enviados e where e.modelo = m.chave);
 
+-- Confere o pré-requisito antes de criar qualquer coisa (evita o erro técnico "column envio_minutos does not exist").
+do $$
+begin
+  if not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'modelos_email' and column_name = 'envio_minutos') then
+    raise exception 'Falta rodar antes o crm-sequencia-minutos.sql (e, antes dele, o crm-filtro-etapa.sql) neste banco. Depois rode este arquivo de novo.';
+  end if;
+  if to_regclass('public.modelos_email_versoes') is null then
+    raise exception 'Falta rodar antes o crm-estudio-emails-3.sql neste banco. Depois rode este arquivo de novo.';
+  end if;
+end
+$$;
+
 insert into public.modelos_email (chave, nome, objetivo, tipo, como_sai, quem_recebe, variaveis, ordem, criado_no_estudio, objetivo_chave,
   para_quem, envio_gatilho, envio_depois_de, envio_dias, envio_hora, envio_minutos, envio_ligado)
 values ('aupair_chegada_1', 'Au pair · checklist de chegada (e-mail 1)', 'Entrega de freebie: O que ela pediu num guia: o prazo dela e um próximo passo.', 'servico',

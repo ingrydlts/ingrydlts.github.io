@@ -113,6 +113,18 @@ export function gerar() {
 --      and not exists (select 1 from public.modelos_email_versoes v where v.chave = m.chave)
 --      and not exists (select 1 from public.emails_enviados e where e.modelo = m.chave);
 
+-- Confere o pré-requisito antes de criar qualquer coisa (evita o erro técnico "column envio_minutos does not exist").
+do $$
+begin
+  if not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'modelos_email' and column_name = 'envio_minutos') then
+    raise exception 'Falta rodar antes o crm-sequencia-minutos.sql (e, antes dele, o crm-filtro-etapa.sql) neste banco. Depois rode este arquivo de novo.';
+  end if;
+  if to_regclass('public.modelos_email_versoes') is null then
+    raise exception 'Falta rodar antes o crm-estudio-emails-3.sql neste banco. Depois rode este arquivo de novo.';
+  end if;
+end
+$$;
+
 ${modelo({ chave: CHAVE_1, nome: 'Au pair · checklist de chegada (e-mail 1)', objetivo: 'freebie', D: D1, quem: 'pegou o checklist de chegada da au pair', gatilho: 'material', depois: ORIGEM, dias: null, hora: null, minutos: 5, ordem: 550, nota: 'e-mail 1 do guia de chegada da au pair' })}
 ${modelo({ chave: CHAVE_2, nome: 'Au pair · checklist beta (e-mail 2)', objetivo: 'conversa', D: D2, quem: 'pegou o checklist de chegada da au pair e aceitou novidades', gatilho: 'email', depois: CHAVE_1, dias: 2, hora: 10, minutos: null, ordem: 551, nota: 'e-mail 2 do guia de chegada da au pair' })}`;
 }
