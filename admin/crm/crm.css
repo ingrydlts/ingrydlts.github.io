@@ -664,6 +664,9 @@ select.st-in{height:36px; padding:0 8px}
 .st-cat:not([open]) > summary::after{content:" ▸"}
 .st-cat > summary:hover{background:var(--surface-2)}
 .st-cat > summary:focus-visible{outline:2px solid var(--moss); outline-offset:1px}
+.st-cat > summary .pill{background:var(--amber-soft); color:var(--amber); margin-left:6px; vertical-align:middle}
+.st-sub{display:flex; flex-direction:column; gap:8px; margin-top:4px}
+.st-sub > .tplgrp{padding-left:4px}
 
 /* Aba Checklist: o rótulo da sugestão tem largura fixa (os textos alinham) e o selo da aba não quebra linha */
 .pill.chk-rot{flex:0 0 118px; text-align:center; justify-content:center}

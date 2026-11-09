@@ -179,5 +179,46 @@ check('visão ligado', aplicaV('ligado') === 'v_lig');
 check('visão semclasse', aplicaV('semclasse') === 'v_sem');
 check('semClasse: reserva sem classificação', chv(aplicaFiltros([{ chave: 'zz1', nome: 'Z' }, { chave: 'boas_vindas', nome: 'B' }], F({ semClasse: true }), sv)) === 'zz1');
 
+
+// ---------- crm.js: lista agrupada (harness) ----------
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import * as TX from '../../taxonomia.js';
+const HERE = path.dirname(fileURLToPath(import.meta.url));
+const csrc = readFileSync(path.resolve(HERE, '../../crm.js'), 'utf8').replace(/^import .*$/gm, '').replace(/^boot\(\)\.catch.*$/m, '');
+const els = new Map();
+function el(id) {
+  if (!els.has(id)) els.set(id, { id, innerHTML: '', value: '', hidden: false, style: {}, dataset: {}, textContent: '', addEventListener() {}, setAttribute() {}, focus() {}, matches: () => false });
+  return els.get(id);
+}
+const doc = { getElementById: el, addEventListener() {}, querySelectorAll: () => [], querySelector: () => null, activeElement: null };
+const sb = { from: () => ({}), auth: { getSession: async () => ({ data: { session: null } }) }, rpc: async () => ({ data: null, error: null }),
+  channel: () => ({ on() { return this; }, subscribe() { return this; } }), removeChannel() {} };
+const H = new Function('supabase', 'ES', 'TX', 'document', 'window', 'location', 'localStorage', 'setInterval', 'clearInterval',
+  csrc + '\n;return { setM: function (v) { M = v; }, setMV: function (v) { MV = v; }, renderLista, listaModelos, opcoesPorCategoria, ST };')(
+  sb, {}, TX, doc, { addEventListener() {} }, { href: '' }, { getItem: () => null, setItem() {} }, () => 1, () => {});
+console.log('== crm.js: lista agrupada ==');
+const mods = fixture32();
+mods.push({ chave: 'excl1', nome: 'Excluido um', ordem: 99, tipo: 'email', excluido_em: '2026-01-01' });
+H.setM(mods); H.setMV([]);
+H.renderLista(mods);
+const html = el('mod-list').innerHTML;
+check('lista: sem grupo Outros', html.indexOf('Outros') < 0);
+check('lista: Sem classificação para zz1', html.indexOf('Sem classificação') >= 0);
+check('lista: data-cat="I03"', html.indexOf('data-cat="I03"') >= 0);
+const i03 = html.slice(html.indexOf('data-cat="I03"'));
+check('lista: I03 com · 14 no título', /<summary[^>]*>[^<]*· 14/.test(i03.slice(0, 400)));
+check('lista: excluído sem botão de escolha', html.indexOf('data-tpl-pick="excl1"') < 0);
+check('lista: modelo ativo tem botão', html.indexOf('data-tpl-pick="cf_guia_1"') >= 0);
+check('listaModelos: sem excluídos', H.listaModelos().every((m) => !m.excluido_em) && H.listaModelos().length === 32);
+const op = H.opcoesPorCategoria(['cf_guia_1', 'naoabriu'], 'cf_guia_1');
+check('opcoes: dois optgroup', (op.match(/<optgroup/g) || []).length === 2);
+check('opcoes: selected em cf_guia_1', /<option value="cf_guia_1" selected>/.test(op) && op.indexOf('selected') === op.lastIndexOf('selected'));
+H.ST.f.paginas = ['I03'];
+H.renderLista(mods);
+const h2 = el('mod-list').innerHTML;
+check('filtro: só itens da I03', h2.indexOf('data-tpl-pick="aq_a_d3"') >= 0 && h2.indexOf('data-tpl-pick="naoabriu"') < 0 && h2.indexOf('data-tpl-pick="zz1"') < 0);
+
 console.log(passed + ' passaram, ' + failed + ' falharam');
 process.exit(failed ? 1 : 0);

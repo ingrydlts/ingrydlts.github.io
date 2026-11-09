@@ -2,6 +2,7 @@
 // Nada de service_role aqui. O banco é db/crm-fase2.sql; o desenho é o artefato "CRM Por Dentro".
 // Tudo que vem do banco é texto de terceiros (nome, e-mail, pergunta): passa sempre por esc().
 import { supabase } from '/assets/js/supabase-client.js';
+import * as TX from './taxonomia.js?v=2026-11-09.1';   // páginas, famílias e agrupamento dos modelos
 import * as ES from './estudio.js?v=2026-10-23.3';   // os blocos do estúdio de e-mails (entregas 2 e 3)
 
 var PERSONAS = {
@@ -68,21 +69,7 @@ function tplInfo(k) {
   var m = modeloDe(k) || {};
   return { label: m.nome || k, lever: (TIPO_EMAIL[m.tipo] || [''])[0], when: m.como_sai || '' };
 }
-// Categorias dos modelos (só para organizar a lista e o seletor; não vão para o banco). A primeira regra que bater vale.
-var CATEGORIAS = [
-  { k: 'acesso', nome: 'Acesso e boas-vindas', ok: function (m) { return /^(boas_vindas|acesso_)/.test(m.chave) || m.objetivo_chave === 'boas_vindas'; } },
-  { k: 'compra', nome: 'Compra e pagamento', ok: function (m) { return m.tipo === 'compra' || /^link_pagamento/.test(m.chave); } },
-  { k: 'reimpacto', nome: 'Reimpacto', ok: function (m) { return /^(naoabriu|naoclicou|cliquenaoapp|parouapp)$/.test(m.chave); } },
-  { k: 'guias', nome: 'Guias e materiais', ok: function (m) { return /^(cf_)?guia_/.test(m.chave) || m.objetivo_chave === 'freebie' || m.objetivo_chave === 'conversa'; } },
-  { k: 'outros', nome: 'Outros', ok: function () { return true; } }
-];
-function categoriaDe(m) { return CATEGORIAS.filter(function (c) { return c.ok(m); })[0]; }
-// Agrupa mantendo a ordem em que os modelos chegam; categorias vazias não aparecem.
-function porCategoria(lista) {
-  return CATEGORIAS.map(function (c) { return { k: c.k, nome: c.nome, itens: lista.filter(function (m) { return categoriaDe(m) === c; }) }; })
-    .filter(function (g) { return g.itens.length; });
-}
-var CAT_FECHADA = {};   // categorias que você recolheu na lista (vale até recarregar a página)
+var CAT_FECHADA = {};   // grupos que você recolheu na lista, pelo id do grupo (vale até recarregar a página)
 function pn(c) { return displayName(c).trim().split(/\s+/)[0]; }
 var CAL_LINK = 'https://cal.com/ingryd-silva-jf1cnx/1-1?overlayCalendar=true';
 function lk() { return APP_LINK || '[link do acesso]'; }
@@ -2306,7 +2293,7 @@ async function radarEnviar(btn) {
 // Sem a migração da entrega 1, a tela mostra os 8 do código; sem a da entrega 2, mostra tudo sem editar.
 var TIPO_EMAIL = { servico: ['Serviço', 'u-baixa'], novidades: ['Novidades', 'u-media'], compra: ['Compra', 'tp-pergunta'] };
 var ETAPA_EMAIL = { rascunho: ['Rascunho', ''], revisao: ['Revisão', 'u-media'], no_ar: ['No ar', 'u-baixa'], arquivado: ['Arquivado', 'out'] };
-var ST = { k: null, v: null, blk: null, sec: 'texto', who: null, q: '', dev: 'pc', marcar: true, modo: 'editar', tab: 'editar', d: null, dKey: null, montado: null, vistos: {}, foco: null, salvo: '', timer: null };
+var ST = { k: null, v: null, blk: null, sec: 'texto', who: null, q: '', dev: 'pc', marcar: true, modo: 'editar', tab: 'editar', d: null, dKey: null, montado: null, vistos: {}, foco: null, salvo: '', timer: null, f: TX.filtroVazio() };
 var SECOES = [['obj', 'Objetivo e envio'], ['para', 'Para quem'], ['ctx', 'Contexto da pessoa'], ['texto', 'Texto'], ['pronto', 'Pronto para usar?'], ['versoes', 'Versões']];
 function versoesDe(k) { return MV.filter(function (v) { return v.chave === k; }); }   // da mais nova para a mais velha
 function versaoAtual(k) { var vs = versoesDe(k); return vs.filter(function (v) { return v.etapa === 'no_ar'; })[0] || vs[0] || null; }
@@ -2361,6 +2348,10 @@ function textoDaPrevia() {
   return v;
 }
 
+// Os modelos da lista: os da tabela sem os excluídos, ou os 8 do código quando a tabela ainda não existe.
+function listaModelos() {
+  return M ? M.filter(function (m) { return !m.excluido_em; }) : TPL_ORDER.map(function (k) { return { chave: k, nome: TPLS[k].label, objetivo: TPLS[k].when, automatico: false, tipo: EXIGEM_NOVIDADES[k] ? 'novidades' : 'servico' }; });
+}
 function renderModelos() {
   var aviso = $('mod-aviso');
   var msg = !M ? 'A tabela de modelos ainda não está no banco (rode db/crm-modelos-email.sql). Mostrando os 8 modelos do painel, com o texto do código, sem editar.'
@@ -2369,7 +2360,7 @@ function renderModelos() {
   $('mod-export').disabled = !M;
   $('studio').dataset.tab = ST.tab;
   document.querySelectorAll('[data-sttab]').forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.sttab === ST.tab)); });
-  var lista = M ? M.filter(function (m) { return !m.excluido_em; }) : TPL_ORDER.map(function (k) { return { chave: k, nome: TPLS[k].label, objetivo: TPLS[k].when, automatico: false, tipo: EXIGEM_NOVIDADES[k] ? 'novidades' : 'servico' }; });
+  var lista = listaModelos();
   if (!ST.k || !lista.some(function (m) { return m.chave === ST.k; })) { if (lista.length) abrirModelo(lista[0].chave); }
   else if (ST.v != null && !versaoAberta() && M) abrirModelo(ST.k);
   renderLista(lista);
@@ -2378,6 +2369,7 @@ function renderModelos() {
 }
 
 function renderLista(lista) {
+  lista = TX.aplicaFiltros(lista, ST.f, versoesDe);
   var card = function (m) {
     var v = M ? versaoAtual(m.chave) : null, obra = M ? versaoEmObra(m.chave) : null;
     var dot = !v ? 'dr' : obra ? (obra.etapa === 'revisao' ? 'rev' : 'dr') : v.etapa === 'no_ar' ? 'ok' : 'dr';
@@ -2393,10 +2385,14 @@ function renderLista(lista) {
       '<button class="btn" type="button" data-strestaurar="' + esc(m.chave) + '">Restaurar</button></div>';
   }).join('') + '</details>' : '';
   var grupo = function (g) {
-    var aberta = !CAT_FECHADA[g.k] || g.itens.some(function (m) { return !ST.criar && m.chave === ST.k; });
-    return '<details class="st-cat" data-cat="' + g.k + '"' + (aberta ? ' open' : '') + '><summary class="tplgrp">' + esc(g.nome) + ' · ' + g.itens.length + '</summary>' + g.itens.map(card).join('') + '</details>';
+    var aberta = !CAT_FECHADA[g.id] || g.itens.some(function (m) { return !ST.criar && m.chave === ST.k; });
+    var selo = g.selo ? ' <span class="pill">' + esc(g.selo) + '</span>' : '';
+    var corpo = g.subgrupos && g.subgrupos.length
+      ? g.subgrupos.map(function (sg) { return '<div class="st-sub"><div class="tplgrp">' + esc(sg.titulo) + ' · ' + sg.itens.length + '</div>' + sg.itens.map(card).join('') + '</div>'; }).join('')
+      : g.itens.map(card).join('');
+    return '<details class="st-cat" data-cat="' + esc(g.id) + '"' + (aberta ? ' open' : '') + '><summary class="tplgrp">' + esc(g.titulo) + ' · ' + g.itens.length + selo + '</summary>' + corpo + '</details>';
   };
-  $('mod-list').innerHTML = (temEstudio3() ? '<button class="st-new" type="button" id="st-novo-modelo" aria-pressed="' + !!ST.criar + '">+ Modelo novo</button>' : '') + porCategoria(lista).map(grupo).join('') + lixo +
+  $('mod-list').innerHTML = (temEstudio3() ? '<button class="st-new" type="button" id="st-novo-modelo" aria-pressed="' + !!ST.criar + '">+ Modelo novo</button>' : '') + TX.agrupa(lista).map(grupo).join('') + lixo +
     '<div class="st-legend"><span><i class="sdot ok"></i>No ar</span><span><i class="sdot rev"></i>Em revisão</span><span><i class="sdot dr"></i>Rascunho</span></div>';
 }
 
@@ -3036,11 +3032,11 @@ function exportModelos() {
 // O pop-up mostra o e-mail como ela vai ver (aba "Como ela vai ver") e deixa editar o texto (aba "Editar texto").
 // Se você mexer no texto, o e-mail sai no formato simples e a prévia passa a mostrar esse formato: o que você vê é o que sai.
 var CMP = null;   // { c, k, e, editado, aba }
-// O seletor de modelo do "Escrever e-mail", em grupos (optgroup) pelas mesmas categorias da lista.
+// O seletor de modelo do "Escrever e-mail", em grupos (optgroup) pelos mesmos grupos da lista.
 function opcoesPorCategoria(chaves, atual) {
   var opt = function (m) { return '<option value="' + m + '"' + (m === atual ? ' selected' : '') + '>' + esc(tplInfo(m).label) + '</option>'; };
   var itens = chaves.map(function (k) { var m = modeloDe(k) || { chave: k, tipo: EXIGEM_NOVIDADES[k] ? 'novidades' : 'servico' }; return m; });
-  return porCategoria(itens).map(function (g) { return '<optgroup label="' + esc(g.nome) + '">' + g.itens.map(function (m) { return opt(m.chave); }).join('') + '</optgroup>'; }).join('');
+  return TX.agrupa(itens).map(function (g) { return '<optgroup label="' + esc(g.titulo) + '">' + g.itens.map(function (m) { return opt(m.chave); }).join('') + '</optgroup>'; }).join('');
 }
 function openCompose(cid, key) {
   var c = byC(cid); if (!c) return;
