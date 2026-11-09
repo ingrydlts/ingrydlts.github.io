@@ -2377,12 +2377,19 @@ function contaModelosTxt(lista) {
   return TX.aplicaFiltros(lista, ST.f, versoesDe).length + ' de ' + total + ' modelos';
 }
 function visaoAtiva() {
-  var atual = JSON.stringify(ST.f), ativa = null;
-  TX.VISOES.forEach(function (v) { if (JSON.stringify(Object.assign(TX.filtroVazio(), v.filtros)) === atual) ativa = v.k; });
+  var norm = function (f) {   // ignora a ordem dos arrays, sem mexer no original
+    var o = {};
+    Object.keys(f).forEach(function (k) { o[k] = Array.isArray(f[k]) ? f[k].slice().sort() : f[k]; });
+    return JSON.stringify(o, Object.keys(o).sort());
+  };
+  var atual = norm(ST.f), ativa = null;
+  TX.VISOES.forEach(function (v) { if (norm(Object.assign(TX.filtroVazio(), v.filtros)) === atual) ativa = v.k; });
   return ativa;
 }
+function sincronizaAbaFiltros() { $('mod-filtros').dataset.tab = ST.tab; }   // no celular a barra só aparece na aba Modelos
 function renderFiltros() {
   var f = ST.f;
+  sincronizaAbaFiltros();
   var chip = function (filtro, valor, rotulo) {
     var on = f[filtro].indexOf(valor) >= 0;
     return '<button class="chip" type="button" data-filtro="' + esc(filtro) + '" data-valor="' + esc(valor) + '" aria-pressed="' + on + '">' + esc(rotulo) + '</button>';
@@ -2407,19 +2414,23 @@ function renderFiltros() {
 function aoClicarFiltro(e) {
   var t = e.target && e.target.closest && e.target.closest('[data-filtro], [data-visao], [data-limpar], #filtro-solo, #filtro-limpar');
   if (!t) return;
-  var d = t.dataset || {};
-  if (t.id === 'filtro-limpar' || d.limpar) ST.f = TX.filtroVazio();
-  else if (t.id === 'filtro-solo') ST.f.soEspecificos = !ST.f.soEspecificos;
+  var d = t.dataset || {}, foco = null;
+  if (t.id === 'filtro-limpar' || d.limpar) { ST.f = TX.filtroVazio(); foco = '#filtro-q'; }
+  else if (t.id === 'filtro-solo') { ST.f.soEspecificos = !ST.f.soEspecificos; foco = '#filtro-solo'; }
   else if (d.visao) {
     var v = TX.VISOES.filter(function (x) { return x.k === d.visao; })[0];
     if (!v) return;
+    foco = '[data-visao="' + v.k + '"]';
     ST.f = visaoAtiva() === v.k ? TX.filtroVazio() : Object.assign(TX.filtroVazio(), JSON.parse(JSON.stringify(v.filtros)));
   } else if (d.filtro && Array.isArray(ST.f[d.filtro])) {
     var arr = ST.f[d.filtro], i = arr.indexOf(d.valor);
+    foco = '[data-filtro="' + d.filtro + '"][data-valor="' + d.valor + '"]';
     if (i >= 0) arr.splice(i, 1); else arr.push(d.valor);
     if (d.filtro === 'paginas') ST.f = TX.limpaEtapasOrfas(ST.f);
   } else return;
   renderFiltros(); renderLista(listaModelos());
+  var alvo = foco && document.querySelector(foco);   // a barra foi redesenhada: devolve o foco ao controle equivalente
+  if (alvo && alvo.focus) alvo.focus();
 }
 function aoDigitarFiltro(e) {
   if (!e.target || e.target.id !== 'filtro-q') return;

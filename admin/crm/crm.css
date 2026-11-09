@@ -453,6 +453,7 @@ select.st-in{height:36px; padding:0 8px}
 @media (max-width: 1180px){ .studio{grid-template-columns:200px minmax(0,1fr) minmax(0,1fr)} }
 @media (max-width: 1000px){
   .st-mtabs{display:block}
+  .st-filtros:not([data-tab="lista"]){display:none}
   .studio{display:block}
   .studio > *{display:none; border-right:0; max-height:none}
   .studio[data-tab="lista"] .st-list, .studio[data-tab="editar"] .st-edit, .studio[data-tab="previa"] .st-prev{display:flex}

@@ -193,11 +193,12 @@ function el(id) {
   return els.get(id);
 }
 const handlers = {};
-const doc = { getElementById: el, addEventListener(t, fn) { (handlers[t] = handlers[t] || []).push(fn); }, querySelectorAll: () => [], querySelector: () => null, activeElement: null };
+let focoSpy = null;
+const doc = { getElementById: el, addEventListener(t, fn) { (handlers[t] = handlers[t] || []).push(fn); }, querySelectorAll: () => [], querySelector: (sel) => (focoSpy ? focoSpy(sel) : null), activeElement: null };
 const sb = { from: () => ({}), auth: { getSession: async () => ({ data: { session: null } }) }, rpc: async () => ({ data: null, error: null }),
   channel: () => ({ on() { return this; }, subscribe() { return this; } }), removeChannel() {} };
 const H = new Function('supabase', 'ES', 'TX', 'document', 'window', 'location', 'localStorage', 'setInterval', 'clearInterval',
-  csrc + '\n;return { setM: function (v) { M = v; }, setMV: function (v) { MV = v; }, renderLista, renderFiltros, listaModelos, opcoesPorCategoria, ST, aoClicarFiltro: typeof aoClicarFiltro === "function" ? aoClicarFiltro : null, aoDigitarFiltro: typeof aoDigitarFiltro === "function" ? aoDigitarFiltro : null };')(
+  csrc + '\n;return { setM: function (v) { M = v; }, setMV: function (v) { MV = v; }, renderLista, renderFiltros, renderModelos, listaModelos, opcoesPorCategoria, ST, aoClicarFiltro: typeof aoClicarFiltro === "function" ? aoClicarFiltro : null, aoDigitarFiltro: typeof aoDigitarFiltro === "function" ? aoDigitarFiltro : null };')(
   sb, {}, TX, doc, { addEventListener() {} }, { href: '' }, { getItem: () => null, setItem() {} }, () => 1, () => {});
 console.log('== crm.js: lista agrupada ==');
 const mods = fixture32();
@@ -260,6 +261,34 @@ H.aoDigitarFiltro({ target: { id: 'filtro-q', value: 'aq_a' } });
 check('filtros: busca não reescreve a barra', escritasBarra === antes);
 check('filtros: busca filtra a lista e o contador', H.ST.f.q === 'aq_a' && el('mod-conta').textContent === '4 de 32 modelos' && el('mod-list').innerHTML.indexOf('data-tpl-pick="aq_a_d3"') >= 0);
 check('filtros: busca é escapada', (() => { H.ST.f.q = '"><b>'; H.renderFiltros(); return htmlBarra.indexOf('"><b>') < 0 && htmlBarra.indexOf('&quot;&gt;&lt;b&gt;') >= 0; })());
+
+// Foco, abas, visões (rodada de correção)
+const focados = [];
+focoSpy = (sel) => ({ focus() { focados.push(sel); } });
+H.ST.f = TX.filtroVazio(); redesenha();
+clique({ filtro: 'familias', valor: 'acesso' });
+check('foco: chip volta a ser focado', focados.pop() === '[data-filtro="familias"][data-valor="acesso"]');
+clique({ visao: 'teste' });
+check('foco: visão focada', focados.pop() === '[data-visao="teste"]');
+clique({}, 'filtro-solo');
+check('foco: só específicos focado', focados.pop() === '#filtro-solo');
+clique({}, 'filtro-limpar');
+check('foco: limpar vai para a busca', focados.pop() === '#filtro-q');
+focoSpy = null;
+H.ST.f = TX.filtroVazio(); H.ST.f.personas = ['pvt']; H.ST.f.familias = ['acesso'];
+clique({ visao: 'rascunhos' });
+check('visão a partir de estado sujo: só os filtros dela', JSON.stringify(H.ST.f) === JSON.stringify(Object.assign(TX.filtroVazio(), { situacoes: ['rascunho', 'revisao'] })));
+clique({ filtro: 'familias', valor: 'acesso' });
+check('realce da visão some ao marcar outro chip', !/data-visao="rascunhos" aria-pressed="true"/.test(htmlBarra));
+clique({}, 'filtro-limpar'); clique({ filtro: 'situacoes', valor: 'revisao' }); clique({ filtro: 'situacoes', valor: 'rascunho' });
+check('visão acesa mesmo com ordem diferente', /data-visao="rascunhos" aria-pressed="true"/.test(htmlBarra) && H.ST.f.situacoes.join() === 'revisao,rascunho');
+clique({}, 'filtro-limpar');
+H.ST.tab = 'editar'; H.renderFiltros();
+check('aba: data-tab editar', el('mod-filtros').dataset.tab === 'editar');
+H.ST.tab = 'lista'; H.renderFiltros();
+check('aba: renderModelos chama renderFiltros', /function renderModelos\(\)[\s\S]*?renderFiltros\(\);[\s\S]*?renderPrevia\(\);\n\}/.test(csrc));
+check('aba: data-tab lista', el('mod-filtros').dataset.tab === 'lista');
+check('css: barra some no celular fora da aba Modelos', /@media \(max-width: 1000px\)\{[^@]*\.st-filtros:not\(\[data-tab="lista"\]\)\{display:none\}/.test(readFileSync(path.resolve(HERE, '../../crm.css'), 'utf8')));
 
 console.log(passed + ' passaram, ' + failed + ' falharam');
 process.exit(failed ? 1 : 0);
