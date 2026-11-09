@@ -2,6 +2,7 @@
 // crm.js de verdade em Node com um navegador e um Supabase de mentira. NÃO testa nada em navegador real (visual).
 //
 // Uso: cd admin/crm/db/testes && node crm-radar-ui.test.mjs
+import * as TXMOD from '../../taxonomia.js';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -30,9 +31,9 @@ function qb(table) {
 }
 const supabase = { from: qb, auth: { getSession: async () => ({ data: { session: null } }) }, rpc: async (n, a) => { rpcs.push({ n, a }); return rpcRetorno; }, channel: () => ({ on() { return this; }, subscribe() { return this; } }), removeChannel() {} };
 const store = {};
-const mod = new Function('supabase', 'ES', 'document', 'window', 'location', 'localStorage', 'setInterval', 'clearInterval',
+const mod = new Function('supabase', 'ES', 'TX', 'document', 'window', 'location', 'localStorage', 'setInterval', 'clearInterval',
   src + '\n;return { state, setC: function (v) { C = v; }, loadAll, renderToday, renderRadarHoje, renderRadar, eventText, getRD: function () { return RD; }, getRE: function () { return RE; } };')(
-  supabase, {}, document, { addEventListener() {}, confirm: () => true, scrollTo() {} }, { href: '' }, { getItem: (k) => store[k] ?? null, setItem: (k, v) => { store[k] = v; } }, () => 1, () => {});
+  supabase, {}, TXMOD, document, { addEventListener() {}, confirm: () => true, scrollTo() {} }, { href: '' }, { getItem: (k) => store[k] ?? null, setItem: (k, v) => { store[k] = v; } }, () => 1, () => {});
 
 const pessoa = (id, nome, persona, extra = {}) => Object.assign({ id, email: id + '@example.com', nome, persona, user_id: 'u-' + id, estagio: 'em_uso', urgencia: 'baixa' }, extra);
 const XSS = '<img src=x onerror=alert(1)>';

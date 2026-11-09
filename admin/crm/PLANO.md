@@ -15,7 +15,7 @@ Backend: o **mesmo Supabase** do app (projeto `hslhpktfgxwfvljvsxkj`). Painel: e
 | Caixa de entrada (Perguntas únicas + Respostas: e-mail, toque no e-mail 2, página /conversa/) → "Abrir conversa" leva à aba Conversa da ficha | `perguntas_unicas`, `respostas_email` (`db/crm-fase0-email-guia.sql`) | perguntas: painel e formulário dos artigos prontos. Respostas por e-mail: chegam por `respostas@imigrantepordentro.com` (Email Routing → Worker `email()`), README do Worker seção 17 |
 | Lembretes de prazo (Hoje) | `lembretes_prazo` (`db/crm-fase2c-lembretes.sql`) | pronto: a calculadora `[[PRAZO]]` dos artigos chama `pedir_lembrete_prazo`; o card mostra quem avisar nos próximos 7 dias |
 | Reimpactar (segmentos) | coluna `segmento` de `crm_contatos` (regras na view) | pronto (envio via Worker → Brevo; ver README do Worker, seção 16) |
-| Modelos de e-mail (estúdio: blocos, prévia com uma pessoa, teste, revisão, publicar, versões, Exportar, modelo novo pelo objetivo, sequências) | `modelos_email`, `modelos_email_versoes` (`db/crm-modelos-email.sql` + `db/crm-estudio-emails-2.sql` + `db/crm-estudio-emails-3.sql`); blocos e objetivos em `estudio.js`; sem a migração, `TPLS` em `crm.js` | pronto; os 8 manuais abrem com o texto No ar da tabela (`TPLS` é reserva); sequências pelo Cron `5 * * * *` |
+| Modelos de e-mail (estúdio: blocos, prévia com uma pessoa, teste, revisão, publicar, versões, Exportar, modelo novo pelo objetivo, sequências) | `modelos_email`, `modelos_email_versoes` (`db/crm-modelos-email.sql` + `db/crm-estudio-emails-2.sql` + `db/crm-estudio-emails-3.sql`; agrupamento por família/página/etapa/persona: `db/crm-taxonomia-modelos.sql` + `taxonomia.js`); blocos e objetivos em `estudio.js`; sem a migração, `TPLS` em `crm.js` | pronto; os 8 manuais abrem com o texto No ar da tabela (`TPLS` é reserva); sequências pelo Cron `5 * * * *` |
 | Onboarding (documento → IA → ficha com Dossiê; botão Enviar link de pagamento na aba Plataforma) | Worker `/api/crm/onboarding/ler`, `/api/crm/link-pagamento`; `db/crm-onboarding.sql`, `db/crm-link-pagamento-email.sql`; `planos/planos.json` | pronto no código; falta rodar o SQL, configurar `ANTHROPIC_API_KEY`/`ANTHROPIC_MODEL`, repor créditos e preencher os links (README do Worker, seção 24) |
 | Assinaturas e acesso (webhook do Stripe → assinatura na ficha → conta → e-mail de acesso; bloqueio do app por data) | Worker `/api/stripe/webhook`; `db/crm-assinaturas.sql` (`meu_acesso`), `db/crm-acesso-email.sql`; app: `assets/js/acesso.js`, `/plano/` | pronto no código (branch `claude/vigilant-clarke-8lrzo4` nos dois repositórios); falta rodar o SQL, criar o endpoint e o `STRIPE_WEBHOOK_SECRET` e publicar o app (README do Worker, seção 25) |
 
@@ -132,6 +132,31 @@ modelo de sequência sai N minutos depois da data-base de cada pessoa, e não em
 pegar o guia `guia-tecnologo`, com o link do checklist no Notion; fica em rascunho e com o Envio desligado. O estúdio ganhou o campo "Ou quantos
 minutos depois" e o Worker o Cron Trigger `*/5 * * * *`. Passo a passo: `cms-oauth-worker/README.md`, seção 26. Testes: `db/testes` →
 `APP_DB_DIR=<POR DENTRO APP>/db npm run test:minutos`.
+
+## Taxonomia dos modelos (09/11)
+
+`db/crm-taxonomia-modelos.sql` (rodar **depois** de `crm-sequencia-minutos.sql`, `crm-modelo-tecnologo-recap.sql`, `crm-modelos-chegada-au-pair.sql`,
+`crm-link-pagamento-email.sql` e `crm-acesso-email.sql`, que criam modelos que ele classifica; idempotente): quatro colunas novas em `modelos_email`,
+todas opcionais: `familia` (entrega, personalizado, aquecimento, serie, compra, acesso, reimpacto ou campanha), `pagina` (I01 a I04, as páginas do
+site), `etapa` (o código da etapa marcada no guia, ex. `tec-nao-sei`; só existe junto de uma página) e `persona` (au_pair, pvt, estudante ou
+conjuge). O SQL preenche os modelos que já existem pela mesma tabela que o painel usa no modo de reserva, e só o que está vazio. A tela de
+modelos agrupa por família/página, ganha a barra de filtros e os campos de classificação no editor. O que não casa com nada cai em "Sem
+classificação" (com o selo de atenção), nunca em "Outros".
+
+Ao rodar o SQL de novo: vazio (null) não se distingue de "nunca classificado", então um modelo que ela deixou "sem família" de propósito volta a
+receber a família se a chave casar com a tabela de reserva, os prefixos ou o tipo compra. E modelos criados por migrações rodadas depois do
+arquivo ficam sem classificação até ele rodar de novo.
+
+Desfazer: `alter table public.modelos_email drop column if exists familia, drop column if exists pagina, drop column if exists etapa,
+drop column if exists persona;`. **Cuidado: isso apaga a classificação que ela fez à mão** depois que o SQL rodou.
+
+`admin/crm/taxonomia.js` **espelha o vault** (`emails-por-pagina.json` e `ETAPAS_GUIA` em `estudio.js`): quando o Obsidian mudar uma página, uma
+família ou uma etapa, atualize o arquivo **no mesmo dia**, senão a tela agrupa pelo desenho velho. O painel funciona antes e depois do SQL: sem as
+colunas ele entra em modo de reserva (agrupa pela tabela do `taxonomia.js`, e os campos de classificação ficam desabilitados com um aviso).
+
+Como rodar: primeiro no Supabase de **teste**, depois no de **produção**. Depois de rodar, nos dois, ela roda no SQL Editor
+`db/auditoria-isolamento.sql` e `db/conferir-banco.sql` (os dois do repositório do app); os dois precisam voltar **vazios**. Testes: `db/testes` →
+`APP_DB_DIR=<POR DENTRO APP>/db npm run test:taxonomia` (SQL) e `npm run test:taxonomia-ui` (agrupamento, filtros e modo de reserva).
 
 ## Etapas
 

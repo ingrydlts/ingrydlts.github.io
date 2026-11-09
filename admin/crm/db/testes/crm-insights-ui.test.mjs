@@ -2,6 +2,7 @@
 // em Node com um navegador e um Supabase de mentira. NÃO testa nada em navegador real (visual, Realtime de verdade).
 //
 // Uso: cd admin/crm/db/testes && node crm-insights-ui.test.mjs
+import * as TXMOD from '../../taxonomia.js';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -32,9 +33,9 @@ const supabase = { from: qb, auth: { getSession: async () => ({ data: { session:
   channel: (nome) => { const ch = { nome, ons: [], on(t, o, cb) { ch.ons.push({ o, cb }); return ch; }, subscribe(cb) { ch.status = cb; return ch; } }; canais.push(ch); return ch; },
   removeChannel: (ch) => { removidos.push(ch.nome); } };
 const store = {};
-const mod = new Function('supabase', 'ES', 'document', 'window', 'location', 'localStorage', 'setInterval', 'clearInterval',
+const mod = new Function('supabase', 'ES', 'TX', 'document', 'window', 'location', 'localStorage', 'setInterval', 'clearInterval',
   src + '\n;return { state, setC: function (v) { C = v; }, renderPessoa, eventText, pararAoVivo };')(
-  supabase, {}, document, { addEventListener() {} }, { href: '' }, { getItem: (k) => store[k] ?? null, setItem: (k, v) => { store[k] = v; } },
+  supabase, {}, TXMOD, document, { addEventListener() {} }, { href: '' }, { getItem: (k) => store[k] ?? null, setItem: (k, v) => { store[k] = v; } },
   (f, ms) => { intervalos.push(ms); return intervalos.length; }, () => {});
 
 const base = { id: 'c1', email: 'ana@example.com', nome: 'Ana', estagio: 'em_uso', urgencia: 'baixa', persona: 'au_pair_estudante' };

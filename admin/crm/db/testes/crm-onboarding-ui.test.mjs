@@ -2,6 +2,7 @@
 // um Supabase/Worker de mentira. NÃO testa nada em navegador real (layout em 380 px, arrastar de verdade, foco): isso é conferir à mão.
 //
 // Uso: cd admin/crm/db/testes && node crm-onboarding-ui.test.mjs
+import * as TXMOD from '../../taxonomia.js';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -38,10 +39,10 @@ function qb(table) {
 }
 const supabase = { from: qb, auth: { getSession: async () => ({ data: { session: { access_token: 'tok', user: { id: 'u' } } } }) }, rpc: async () => ({ data: null, error: null }) };
 const store = {};
-const mod = new Function('supabase', 'ES', 'document', 'window', 'location', 'localStorage',
+const mod = new Function('supabase', 'ES', 'TX', 'document', 'window', 'location', 'localStorage',
   src + `\n;return { state, setC: function (v) { C = v; }, getC: function () { return C; }, renderPessoa, eventText, onbJuntar, onbFalta, pagtoItens, renderOnboarding, carregarOnboarding, onbEnviar,
   getONB: function () { return ONB; }, setPagto: function (v) { PAGTO = v; }, setONB: function (v) { ONB = v; }, abrirLinkPagamento, enviarLinkPagamento, onbOrigemDe, dosVisiveis, setActive: function (v) { activeCid = v; } };`)(
-  supabase, {}, document, { addEventListener() {}, scrollTo() {} }, { href: '' }, { getItem: (k) => store[k] ?? null, setItem: (k, v) => { store[k] = v; } });
+  supabase, {}, TXMOD, document, { addEventListener() {}, scrollTo() {} }, { href: '' }, { getItem: (k) => store[k] ?? null, setItem: (k, v) => { store[k] = v; } });
 
 // ---- fetch falso (o crm.js chama o Worker e o planos/planos.json) ----
 let chamadas = [];

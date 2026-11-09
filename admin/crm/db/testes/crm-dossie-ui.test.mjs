@@ -2,6 +2,7 @@
 // um Supabase de mentira. NÃO testa nada em navegador real (layout, clique de verdade, foco).
 //
 // Uso: cd admin/crm/db/testes && node crm-dossie-ui.test.mjs
+import * as TXMOD from '../../taxonomia.js';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -31,9 +32,9 @@ function qb(table) {
 const supabase = { from: qb, auth: { getSession: async () => ({ data: { session: null } }) },
   rpc: async (n, a) => { rpcs.push({ n, a }); return { data: null, error: null }; } };
 const store = {};
-const mod = new Function('supabase', 'ES', 'document', 'window', 'location', 'localStorage',
+const mod = new Function('supabase', 'ES', 'TX', 'document', 'window', 'location', 'localStorage',
   src + '\n;return { state, setC: function (v) { C = v; }, renderPessoa, eventText, dosProgresso, dosVisiveis };')(
-  supabase, {}, document, { addEventListener() {} }, { href: '' }, { getItem: (k) => store[k] ?? null, setItem: (k, v) => { store[k] = v; } });
+  supabase, {}, TXMOD, document, { addEventListener() {} }, { href: '' }, { getItem: (k) => store[k] ?? null, setItem: (k, v) => { store[k] = v; } });
 
 const base = { id: 'c1', email: 'ana@example.com', nome: 'Ana', estagio: 'em_uso', urgencia: 'baixa', persona: 'au_pair_estudante', fase: 'adaptando' };
 const XSS = '<img src=x onerror=alert(1)>';

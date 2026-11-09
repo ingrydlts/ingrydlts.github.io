@@ -2,6 +2,7 @@
 // Nada de service_role aqui. O banco é db/crm-fase2.sql; o desenho é o artefato "CRM Por Dentro".
 // Tudo que vem do banco é texto de terceiros (nome, e-mail, pergunta): passa sempre por esc().
 import { supabase } from '/assets/js/supabase-client.js';
+import * as TX from './taxonomia.js?v=2026-11-09.2';   // páginas, famílias e agrupamento dos modelos
 import * as ES from './estudio.js?v=2026-10-23.3';   // os blocos do estúdio de e-mails (entregas 2 e 3)
 
 var PERSONAS = {
@@ -68,21 +69,7 @@ function tplInfo(k) {
   var m = modeloDe(k) || {};
   return { label: m.nome || k, lever: (TIPO_EMAIL[m.tipo] || [''])[0], when: m.como_sai || '' };
 }
-// Categorias dos modelos (só para organizar a lista e o seletor; não vão para o banco). A primeira regra que bater vale.
-var CATEGORIAS = [
-  { k: 'acesso', nome: 'Acesso e boas-vindas', ok: function (m) { return /^(boas_vindas|acesso_)/.test(m.chave) || m.objetivo_chave === 'boas_vindas'; } },
-  { k: 'compra', nome: 'Compra e pagamento', ok: function (m) { return m.tipo === 'compra' || /^link_pagamento/.test(m.chave); } },
-  { k: 'reimpacto', nome: 'Reimpacto', ok: function (m) { return /^(naoabriu|naoclicou|cliquenaoapp|parouapp)$/.test(m.chave); } },
-  { k: 'guias', nome: 'Guias e materiais', ok: function (m) { return /^(cf_)?guia_/.test(m.chave) || m.objetivo_chave === 'freebie' || m.objetivo_chave === 'conversa'; } },
-  { k: 'outros', nome: 'Outros', ok: function () { return true; } }
-];
-function categoriaDe(m) { return CATEGORIAS.filter(function (c) { return c.ok(m); })[0]; }
-// Agrupa mantendo a ordem em que os modelos chegam; categorias vazias não aparecem.
-function porCategoria(lista) {
-  return CATEGORIAS.map(function (c) { return { k: c.k, nome: c.nome, itens: lista.filter(function (m) { return categoriaDe(m) === c; }) }; })
-    .filter(function (g) { return g.itens.length; });
-}
-var CAT_FECHADA = {};   // categorias que você recolheu na lista (vale até recarregar a página)
+var CAT_FECHADA = {};   // grupos que você recolheu na lista, pelo id do grupo (vale até recarregar a página)
 function pn(c) { return displayName(c).trim().split(/\s+/)[0]; }
 var CAL_LINK = 'https://cal.com/ingryd-silva-jf1cnx/1-1?overlayCalendar=true';
 function lk() { return APP_LINK || '[link do acesso]'; }
@@ -2306,7 +2293,7 @@ async function radarEnviar(btn) {
 // Sem a migração da entrega 1, a tela mostra os 8 do código; sem a da entrega 2, mostra tudo sem editar.
 var TIPO_EMAIL = { servico: ['Serviço', 'u-baixa'], novidades: ['Novidades', 'u-media'], compra: ['Compra', 'tp-pergunta'] };
 var ETAPA_EMAIL = { rascunho: ['Rascunho', ''], revisao: ['Revisão', 'u-media'], no_ar: ['No ar', 'u-baixa'], arquivado: ['Arquivado', 'out'] };
-var ST = { k: null, v: null, blk: null, sec: 'texto', who: null, q: '', dev: 'pc', marcar: true, modo: 'editar', tab: 'editar', d: null, dKey: null, montado: null, vistos: {}, foco: null, salvo: '', timer: null };
+var ST = { k: null, v: null, blk: null, sec: 'texto', who: null, q: '', dev: 'pc', marcar: true, modo: 'editar', tab: 'editar', d: null, dKey: null, montado: null, vistos: {}, foco: null, salvo: '', timer: null, f: TX.filtroVazio() };
 var SECOES = [['obj', 'Objetivo e envio'], ['para', 'Para quem'], ['ctx', 'Contexto da pessoa'], ['texto', 'Texto'], ['pronto', 'Pronto para usar?'], ['versoes', 'Versões']];
 function versoesDe(k) { return MV.filter(function (v) { return v.chave === k; }); }   // da mais nova para a mais velha
 function versaoAtual(k) { var vs = versoesDe(k); return vs.filter(function (v) { return v.etapa === 'no_ar'; })[0] || vs[0] || null; }
@@ -2361,6 +2348,10 @@ function textoDaPrevia() {
   return v;
 }
 
+// Os modelos da lista: os da tabela sem os excluídos, ou os 8 do código quando a tabela ainda não existe.
+function listaModelos() {
+  return M ? M.filter(function (m) { return !m.excluido_em; }) : TPL_ORDER.map(function (k) { return { chave: k, nome: TPLS[k].label, objetivo: TPLS[k].when, automatico: false, tipo: EXIGEM_NOVIDADES[k] ? 'novidades' : 'servico' }; });
+}
 function renderModelos() {
   var aviso = $('mod-aviso');
   var msg = !M ? 'A tabela de modelos ainda não está no banco (rode db/crm-modelos-email.sql). Mostrando os 8 modelos do painel, com o texto do código, sem editar.'
@@ -2369,15 +2360,88 @@ function renderModelos() {
   $('mod-export').disabled = !M;
   $('studio').dataset.tab = ST.tab;
   document.querySelectorAll('[data-sttab]').forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.sttab === ST.tab)); });
-  var lista = M ? M.filter(function (m) { return !m.excluido_em; }) : TPL_ORDER.map(function (k) { return { chave: k, nome: TPLS[k].label, objetivo: TPLS[k].when, automatico: false, tipo: EXIGEM_NOVIDADES[k] ? 'novidades' : 'servico' }; });
+  var lista = listaModelos();
   if (!ST.k || !lista.some(function (m) { return m.chave === ST.k; })) { if (lista.length) abrirModelo(lista[0].chave); }
   else if (ST.v != null && !versaoAberta() && M) abrirModelo(ST.k);
+  renderFiltros();
   renderLista(lista);
   if (ST.criar && temEstudio3()) renderCriar(); else { ST.criar = null; renderEditor(lista); }
   renderPrevia();
 }
 
+// Barra de filtros dos modelos. Só em memória: nada vai ao banco nem ao localStorage.
+var FILTRO_TIPOS = [['email', 'E-mail'], ['novidades', 'Novidades'], ['servico', 'Serviço'], ['compra', 'Compra']];
+var FILTRO_SITUACOES = [['noAr', 'No ar'], ['rascunho', 'Rascunho'], ['revisao', 'Em revisão'], ['envioLigado', 'Envio ligado'], ['envioDesligado', 'Envio desligado'], ['semTeste', 'Sem teste']];
+function contaModelosTxt(lista) {
+  var total = TX.aplicaFiltros(lista, TX.filtroVazio(), versoesDe).length;
+  return TX.aplicaFiltros(lista, ST.f, versoesDe).length + ' de ' + total + ' modelos';
+}
+function visaoAtiva() {
+  var norm = function (f) {   // ignora a ordem dos arrays, sem mexer no original
+    var o = {};
+    Object.keys(f).forEach(function (k) { o[k] = Array.isArray(f[k]) ? f[k].slice().sort() : f[k]; });
+    return JSON.stringify(o, Object.keys(o).sort());
+  };
+  var atual = norm(ST.f), ativa = null;
+  TX.VISOES.forEach(function (v) { if (norm(Object.assign(TX.filtroVazio(), v.filtros)) === atual) ativa = v.k; });
+  return ativa;
+}
+function sincronizaAbaFiltros() { $('mod-filtros').dataset.tab = ST.tab; }   // no celular a barra só aparece na aba Modelos
+function renderFiltros() {
+  var f = ST.f;
+  sincronizaAbaFiltros();
+  var chip = function (filtro, valor, rotulo) {
+    var on = f[filtro].indexOf(valor) >= 0;
+    return '<button class="chip" type="button" data-filtro="' + esc(filtro) + '" data-valor="' + esc(valor) + '" aria-pressed="' + on + '">' + esc(rotulo) + '</button>';
+  };
+  var linha = function (titulo, chips) { return '<div class="st-filtro-linha"><span class="st-filtro-t">' + esc(titulo) + '</span>' + chips + '</div>'; };
+  var paginas = TX.PAGINAS.map(function (p) { return chip('paginas', p.k, p.k + ' · ' + p.nome); }).join('') + chip('paginas', 'sem', 'Sem página');
+  var etapas = '';
+  TX.PAGINAS.forEach(function (p) { if (f.paginas.indexOf(p.k) >= 0) etapas += p.etapas.map(function (e) { return chip('etapas', e[0], e[1]); }).join(''); });
+  var ativa = visaoAtiva();
+  var visoes = TX.VISOES.map(function (v) { return '<button class="chip" type="button" data-visao="' + esc(v.k) + '" aria-pressed="' + (ativa === v.k) + '">' + esc(v.nome) + '</button>'; }).join('');
+  $('mod-filtros').innerHTML =
+    '<div class="st-filtro-topo"><input type="search" id="filtro-q" class="st-filtro-q" placeholder="Buscar modelo" aria-label="Buscar modelo" value="' + esc(f.q) + '">' +
+    '<span class="sub" id="mod-conta" role="status">' + esc(contaModelosTxt(listaModelos())) + '</span>' +
+    '<button class="btn" type="button" id="filtro-limpar" data-limpar="1">Limpar filtros</button></div>' +
+    linha('Visões', visoes) + linha('Página', paginas) + (etapas ? linha('Etapa', etapas) : '') +
+    linha('Família', TX.FAMILIAS.map(function (x) { return chip('familias', x[0], x[1]); }).join('')) +
+    linha('Persona', TX.PERSONAS.map(function (x) { return chip('personas', x[0], x[1]); }).join('') +
+      '<button class="chip" type="button" id="filtro-solo" aria-pressed="' + !!f.soEspecificos + '">só específicos</button>') +
+    linha('Tipo', FILTRO_TIPOS.map(function (x) { return chip('tipos', x[0], x[1]); }).join('')) +
+    linha('Situação', FILTRO_SITUACOES.map(function (x) { return chip('situacoes', x[0], x[1]); }).join(''));
+}
+function aoClicarFiltro(e) {
+  var t = e.target && e.target.closest && e.target.closest('[data-filtro], [data-visao], [data-limpar], #filtro-solo, #filtro-limpar');
+  if (!t) return;
+  var d = t.dataset || {}, foco = null;
+  if (t.id === 'filtro-limpar' || d.limpar) { ST.f = TX.filtroVazio(); foco = '#filtro-q'; }
+  else if (t.id === 'filtro-solo') { ST.f.soEspecificos = !ST.f.soEspecificos; foco = '#filtro-solo'; }
+  else if (d.visao) {
+    var v = TX.VISOES.filter(function (x) { return x.k === d.visao; })[0];
+    if (!v) return;
+    foco = '[data-visao="' + v.k + '"]';
+    ST.f = visaoAtiva() === v.k ? TX.filtroVazio() : Object.assign(TX.filtroVazio(), JSON.parse(JSON.stringify(v.filtros)));
+  } else if (d.filtro && Array.isArray(ST.f[d.filtro])) {
+    var arr = ST.f[d.filtro], i = arr.indexOf(d.valor);
+    foco = '[data-filtro="' + d.filtro + '"][data-valor="' + d.valor + '"]';
+    if (i >= 0) arr.splice(i, 1); else arr.push(d.valor);
+    if (d.filtro === 'paginas') ST.f = TX.limpaEtapasOrfas(ST.f);
+  } else return;
+  renderFiltros(); renderLista(listaModelos());
+  var alvo = foco && document.querySelector(foco);   // a barra foi redesenhada: devolve o foco ao controle equivalente
+  if (alvo && alvo.focus) alvo.focus();
+}
+function aoDigitarFiltro(e) {
+  if (!e.target || e.target.id !== 'filtro-q') return;
+  ST.f.q = e.target.value;
+  renderLista(listaModelos());   // só a lista e o contador: redesenhar a barra tiraria o foco do campo
+}
+
 function renderLista(lista) {
+  var conta = contaModelosTxt(lista), total = TX.aplicaFiltros(lista, TX.filtroVazio(), versoesDe).length;
+  if ($('mod-conta')) $('mod-conta').textContent = conta;
+  lista = TX.aplicaFiltros(lista, ST.f, versoesDe);
   var card = function (m) {
     var v = M ? versaoAtual(m.chave) : null, obra = M ? versaoEmObra(m.chave) : null;
     var dot = !v ? 'dr' : obra ? (obra.etapa === 'revisao' ? 'rev' : 'dr') : v.etapa === 'no_ar' ? 'ok' : 'dr';
@@ -2393,10 +2457,14 @@ function renderLista(lista) {
       '<button class="btn" type="button" data-strestaurar="' + esc(m.chave) + '">Restaurar</button></div>';
   }).join('') + '</details>' : '';
   var grupo = function (g) {
-    var aberta = !CAT_FECHADA[g.k] || g.itens.some(function (m) { return !ST.criar && m.chave === ST.k; });
-    return '<details class="st-cat" data-cat="' + g.k + '"' + (aberta ? ' open' : '') + '><summary class="tplgrp">' + esc(g.nome) + ' · ' + g.itens.length + '</summary>' + g.itens.map(card).join('') + '</details>';
+    var aberta = !CAT_FECHADA[g.id] || g.itens.some(function (m) { return !ST.criar && m.chave === ST.k; });
+    var selo = g.selo ? ' <span class="pill">' + esc(g.selo) + '</span>' : '';
+    var corpo = g.subgrupos && g.subgrupos.length
+      ? g.subgrupos.map(function (sg) { return '<div class="st-sub"><div class="tplgrp">' + esc(sg.titulo) + ' · ' + sg.itens.length + '</div>' + sg.itens.map(card).join('') + '</div>'; }).join('')
+      : g.itens.map(card).join('');
+    return '<details class="st-cat" data-cat="' + esc(g.id) + '"' + (aberta ? ' open' : '') + '><summary class="tplgrp">' + esc(g.titulo) + ' · ' + g.itens.length + selo + '</summary>' + corpo + '</details>';
   };
-  $('mod-list').innerHTML = (temEstudio3() ? '<button class="st-new" type="button" id="st-novo-modelo" aria-pressed="' + !!ST.criar + '">+ Modelo novo</button>' : '') + porCategoria(lista).map(grupo).join('') + lixo +
+  $('mod-list').innerHTML = (temEstudio3() ? '<button class="st-new" type="button" id="st-novo-modelo" aria-pressed="' + !!ST.criar + '">+ Modelo novo</button>' : '') + (lista.length || !total ? TX.agrupa(lista).map(grupo).join('') : '<div class="st-vazio"><p class="sub">Nenhum modelo com esses filtros</p><button class="btn" type="button" data-limpar="1">Limpar filtros</button></div>') + lixo +
     '<div class="st-legend"><span><i class="sdot ok"></i>No ar</span><span><i class="sdot rev"></i>Em revisão</span><span><i class="sdot dr"></i>Rascunho</span></div>';
 }
 
@@ -2534,6 +2602,7 @@ function renderEditor(lista) {
     '<dl class="tplmeta"><dt>Tipo</dt><dd>' + pillDe(TIPO_EMAIL, m.tipo) + ' <span class="sub">' + esc(ES.TIPO_RODAPE[m.tipo] || '') + '</span></dd>' +
     '<dt>Como sai</dt><dd>' + esc(m.como_sai) + '</dd></dl>' +
     '<p class="st-msg tip">Quem recebe e quando continuam no código: o Worker confere o aceite de novidades a cada envio, mesmo que alguém mude o texto aqui.</p>';
+  s1 = classeHtml(m) + s1;
   // 2. Para quem
   var s2 = novoM ? paraQuemHtml(m.para_quem, 'data-pq', objM || { produto: !!(m.para_quem || {}).produto }, true) +
     '<p class="st-msg tip">' + esc(m.tipo === 'novidades' ? 'E só quem aceitou novidades (o tipo garante).' : 'Serviço e compra saem para quem cumprir as regras, sem pedir novidades.') + '</p>'
@@ -2673,7 +2742,10 @@ function renderCriar() {
   } else if (cr.passo === 2) {
     pode = !!cr.nome.trim() && (!o.produto || !!cr.para.produto);
     corpo = '<label class="st-fld"><span>Nome do modelo (só você vê)</span><input class="st-in" id="novo-nome" maxlength="120" value="' + esc(cr.nome) + '"></label>' +
-      '<p class="st-msg tip">' + esc(ES.TIPO_RODAPE[o.tipo]) + '</p>' + paraQuemHtml(cr.para, 'data-novopara', o, false);
+      '<p class="st-msg tip">' + esc(ES.TIPO_RODAPE[o.tipo]) + '</p>' + paraQuemHtml(cr.para, 'data-novopara', o, false) +
+      '<fieldset class="st-classe" style="border:0;padding:0;margin:0"><legend class="sub">Onde este e-mail mora</legend>' +
+      (temColunasReais() ? '' : '<p class="st-msg warn">Para classificar, rode db/crm-taxonomia-modelos.sql no Supabase.</p>') +
+      classeSelects(cr.classe, 'data-novoclasse', !temColunasReais()) + '</fieldset>';
   } else if (cr.passo === 3) {
     var fake = { chave: '_novo', criado_no_estudio: true, tipo: o.tipo, para_quem: cr.para };
     corpo = '<p class="st-msg tip">O que o e-mail pode usar dela. O plano B de cada dado (o que aparece se faltar) você ajusta depois, em Contexto da pessoa.</p>' +
@@ -2709,6 +2781,7 @@ async function criarModelo(btn) {
   var linha = { chave: chave, nome: nome, objetivo: o.nome + ': ' + o.d, tipo: o.tipo, quem_recebe: paraResumo(fake), criado_no_estudio: true, objetivo_chave: o.k,
     para_quem: para, ordem: 500, como_sai: o.sai === 'sequencia' ? 'Sozinho, pela parte Envio (sequência).' : 'Você envia, pela ficha.',
     variaveis: ES.varsDoModelo(chave, fake).map(function (x) { var c = ES.CAT[x] || {}; return { nome: x, o_que_e: c.o || x, se_faltar: c.t === 'link' ? 'não sai' : c.plano == null ? 'o bloco some' : c.plano || 'fica vazio' }; }) };
+  if (temColunasReais()) { var cc = cr.classe || {}; linha.familia = cc.familia || null; linha.pagina = cc.pagina || null; linha.etapa = cc.etapa || null; linha.persona = cc.persona || null; }
   if (o.sai === 'sequencia') {
     linha.envio_gatilho = o.gatilho; linha.envio_dias = o.dias; linha.envio_hora = o.hora;
     linha.envio_depois_de = o.gatilho === 'compra' ? para.produto : o.gatilho === 'material' ? ((para.materiais || [])[0] || null) : (modeloDe(o.depois_de) ? o.depois_de : null);
@@ -2750,6 +2823,38 @@ function envioHtml(m) {
     (m.tipo === 'novidades' ? '<p class="st-msg tip">Novidades: o banco e o Worker conferem o aceite mais recente a cada envio. Quem pedir para sair para de receber na rodada seguinte.</p>' : '') +
     '<p class="st-msg tip">O Worker roda as sequências de hora em hora (Cron Trigger "5 * * * *") e, para o Envio em minutos, a cada 5 minutos ("*/5 * * * *"); README do Worker, seção 23. Mudar o Envio ou o Para quem com ele ligado recomeça a contagem a partir de agora.</p>';
   return h;
+}
+// Onde o e-mail mora: família, página, etapa e persona. Serve para todo modelo, criado no estúdio ou não.
+// Colunas de classificação existem de fato: tabela vazia não prova nada (temColunas([]) é true).
+function temColunasReais() { return !!(M && M.length && TX.temColunas(M)); }
+// Etapa que o banco guarda mas o catálogo da página não tem: aparece selecionada, com o próprio código como rótulo.
+function etapasComAtual(pg, atual) {
+  var l = pg ? pg.etapas.slice() : [];
+  if (pg && atual && !l.some(function (e) { return e[0] === atual; })) l.push([atual, atual]);
+  return l;
+}
+function classeSelects(c, attr, off) {
+  var pg = TX.PAGINAS.filter(function (p) { return p.k === c.pagina; })[0], dis = off ? ' disabled' : '';
+  var h = '<label class="st-fld"><span>Família</span><select class="st-in" ' + attr + '="familia"' + dis + '>' + opcoes(TX.FAMILIAS, c.familia, 'Sem família') + '</select></label>' +
+    '<label class="st-fld"><span>Página</span><select class="st-in" ' + attr + '="pagina"' + dis + '>' + opcoes(TX.PAGINAS.map(function (p) { return [p.k, p.k + ' · ' + p.nome]; }), c.pagina, 'Sem página') + '</select></label>' +
+    '<label class="st-fld"><span>Etapa</span><select class="st-in" ' + attr + '="etapa"' + (off || !pg ? ' disabled' : '') + '>' + opcoes(etapasComAtual(pg, c.etapa), c.etapa, 'Sem etapa') + '</select></label>' +
+    '<label class="st-fld"><span>Persona</span><select class="st-in" ' + attr + '="persona"' + dis + '>' + opcoes(TX.PERSONAS, c.persona, 'Sem persona') + '</select></label>';
+  return h;
+}
+function classeHtml(m) {
+  var off = !temColunasReais(), c = TX.classifica(m);
+  return '<fieldset class="st-classe" style="border:0;padding:0;margin:0"><legend class="sub">Onde este e-mail mora</legend>' +
+    (!off && !c.familia && !c.pagina ? '<p class="st-msg warn">Escolha onde este e-mail mora</p>' : '') +
+    (off ? '<p class="st-msg warn">Para classificar, rode db/crm-taxonomia-modelos.sql no Supabase.</p>' : '') +
+    classeSelects(c, 'data-classe', off) + '</fieldset>';
+}
+async function mudarClasse(campo, valor) {
+  var m = modeloAtual(); if (!m || !temColunasReais()) return;
+  var c = TX.classifica(m), v = valor || null;
+  var p = { familia: c.familia, pagina: c.pagina, etapa: c.etapa, persona: c.persona };
+  p[campo] = v;
+  if (campo === 'pagina') p.etapa = null;
+  return salvarModelo(p, 'Classificação salva');
 }
 async function salvarModelo(patch, msg) {
   var m = modeloAtual(); if (!m) return;
@@ -3036,11 +3141,12 @@ function exportModelos() {
 // O pop-up mostra o e-mail como ela vai ver (aba "Como ela vai ver") e deixa editar o texto (aba "Editar texto").
 // Se você mexer no texto, o e-mail sai no formato simples e a prévia passa a mostrar esse formato: o que você vê é o que sai.
 var CMP = null;   // { c, k, e, editado, aba }
-// O seletor de modelo do "Escrever e-mail", em grupos (optgroup) pelas mesmas categorias da lista.
+// O seletor de modelo do "Escrever e-mail", em grupos (optgroup) pelos mesmos grupos da lista.
 function opcoesPorCategoria(chaves, atual) {
   var opt = function (m) { return '<option value="' + m + '"' + (m === atual ? ' selected' : '') + '>' + esc(tplInfo(m).label) + '</option>'; };
-  var itens = chaves.map(function (k) { var m = modeloDe(k) || { chave: k, tipo: EXIGEM_NOVIDADES[k] ? 'novidades' : 'servico' }; return m; });
-  return porCategoria(itens).map(function (g) { return '<optgroup label="' + esc(g.nome) + '">' + g.itens.map(function (m) { return opt(m.chave); }).join('') + '</optgroup>'; }).join('');
+  // Cópias sem excluido_em: o modelo atual do compose pode estar excluído e deve continuar na lista (agrupa esconde excluídos).
+  var itens = chaves.map(function (k) { var m = modeloDe(k) || { chave: k, tipo: EXIGEM_NOVIDADES[k] ? 'novidades' : 'servico' }; return Object.assign({}, m, { excluido_em: null }); });
+  return TX.agrupa(itens).map(function (g) { return '<optgroup label="' + esc(g.titulo) + '">' + g.itens.map(function (m) { return opt(m.chave); }).join('') + '</optgroup>'; }).join('');
 }
 function openCompose(cid, key) {
   var c = byC(cid); if (!c) return;
@@ -3840,9 +3946,9 @@ document.addEventListener('click', async function (e) {
     return toast('1:1 confirmado');
   }
   if (t.id === 'mod-export') return exportModelos();
-  if (t.id === 'st-novo-modelo') { await salvar(); ST.criar = { passo: 1, obj: null, nome: '', para: paraVazio() }; ST.tab = 'editar'; return renderModelos(); }
+  if (t.id === 'st-novo-modelo') { await salvar(); ST.criar = { passo: 1, obj: null, nome: '', para: paraVazio(), classe: { familia: null, pagina: null, etapa: null, persona: null } }; ST.tab = 'editar'; return renderModelos(); }
   if (t.id === 'novo-cancelar') { ST.criar = null; return renderModelos(); }
-  if (t.dataset.novoobj) { var ob = ES.objetivo(t.dataset.novoobj); ST.criar.obj = ob.k; if (!ST.criar.nome || ES.OBJETIVOS.some(function (x) { return x.nome === ST.criar.nome; })) ST.criar.nome = ob.nome; ST.criar.passo = 2; return renderModelos(); }
+  if (t.dataset.novoobj) { var ob = ES.objetivo(t.dataset.novoobj); ST.criar.obj = ob.k; ST.criar.classe.familia = TX.familiaDoObjetivo(ob.k); if (!ST.criar.nome || ES.OBJETIVOS.some(function (x) { return x.nome === ST.criar.nome; })) ST.criar.nome = ob.nome; ST.criar.passo = 2; return renderModelos(); }
   if (t.dataset.novopasso) { ST.criar.passo = Number(t.dataset.novopasso); return renderModelos(); }
   if (t.id === 'novo-criar') return criarModelo(t);
   if (t.id === 'st-envio-ligar') return ligarEnvio();
@@ -3865,6 +3971,12 @@ document.addEventListener('change', async function (e) {
     mudarPara(np, e.target.dataset.pq, e.target.value, e.target.checked);
     ['personas', 'materiais', 'etapas', 'segmentos', 'estagios'].forEach(function (g) { if (np[g] && !np[g].length) delete np[g]; });
     return salvarModelo({ para_quem: np, quem_recebe: paraResumo({ tipo: mq.tipo, para_quem: np }) }, 'Para quem salvo');
+  }
+  if (e.target.dataset && e.target.dataset.classe) return mudarClasse(e.target.dataset.classe, e.target.value);
+  if (e.target.dataset && e.target.dataset.novoclasse && ST.criar) {
+    var cl = ST.criar.classe, campo = e.target.dataset.novoclasse; cl[campo] = e.target.value || null;
+    if (campo === 'pagina') cl.etapa = null;
+    return renderCriar();
   }
   if (e.target.dataset && e.target.dataset.envio) return mudarEnvio(e.target.dataset.envio, e.target.value);
   if (e.target.id === 'st-marcar') { ST.marcar = e.target.checked; return renderPrevia(); }
@@ -4000,5 +4112,9 @@ document.addEventListener('keydown', function (e) {
   if (e.key === 'Enter' && e.target.matches('tr[data-id]')) openPessoa(e.target.dataset.id);
   if (e.key === 'Escape' && !$('compose-modal').hidden) closeCompose();
 });
+
+// Filtros dos modelos: registrados depois dos demais para não mudar a ordem dos handlers de clique e de input.
+document.addEventListener('click', aoClicarFiltro);
+document.addEventListener('input', aoDigitarFiltro);
 
 boot().catch(function (err) { console.error(err); showGate('Erro ao abrir o CRM. Recarregue a página.'); });
