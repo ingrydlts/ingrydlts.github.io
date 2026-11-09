@@ -236,6 +236,47 @@ main.lp{overflow-x:clip;position:relative}
   .lp-case .ar{transform:none}.lp-track i{width:100%}.lp-scrub span{opacity:1}
 }
 @media print{.site-header,.mobile-nav,.site-footer,#lp-progress,.lp-mid,.lp-gate,.lp-scroll,.no-print{display:none!important}body.lp-body{background:#fff;color:#000}}
+
+/* ===== vidro: pílulas translúcidas (sem manchas borradas) ===== */
+:root{--vidro:linear-gradient(135deg,rgba(255,255,255,.58),rgba(255,255,255,.2));--vidro-borda:1px solid rgba(255,255,255,.85);--vidro-sombra:0 14px 36px rgba(6,59,53,.10),inset 0 1px 0 rgba(255,255,255,.95),inset 0 -1px 0 rgba(87,115,40,.16)}
+.lp-orb{display:none}
+.lp-hero{background:var(--lp-bg)}
+.lp-door::before,.lp-card::before,.lp-mid::before,.lp-mid::after{display:none}
+.lp-hero,.lp-sec,.lp-gate{position:relative}
+.lp-hero .lp-wrap,.lp-sec>.lp-wrap,.lp-sec>.lp-mid,.lp-sec>.lp-end,.lp-gate>.lp-card,.lp-gate>.lp-ok{position:relative;z-index:1}
+/* cápsulas de cor atrás do vidro */
+.lp-deco{position:absolute;display:block;border-radius:999px;pointer-events:none;z-index:0;transform:rotate(var(--rot,-22deg));animation:lpFloat 16s ease-in-out infinite}
+.lp-deco.v{background:linear-gradient(135deg,#C9D6A8,#E4EAD6)}
+.lp-deco.b{background:linear-gradient(135deg,#DEB975,#F3E7CD)}
+.lp-deco.m{background:linear-gradient(135deg,#577328,#8FA85A)}
+.lp-deco.p1{width:440px;height:150px;left:-130px;top:10%}
+.lp-deco.p2{width:340px;height:118px;right:-90px;top:52%;animation-delay:-5s}
+.lp-deco.p3{width:250px;height:92px;right:14%;top:5%;animation-delay:-9s}
+.lp-deco.p4{width:310px;height:108px;left:4%;bottom:3%;animation-delay:-3s}
+@keyframes lpFloat{0%,100%{transform:translate(0,0) rotate(var(--rot,-22deg))}50%{transform:translate(26px,-30px) rotate(var(--rot,-22deg))}}
+/* vidro fosco */
+.lp-step,.lp-door,.lp-case,.lp-chip,.lp-opt,.lp-inc li,.lp-pill,.lp-list li,.lp-btn.ghost,.lp-card,.lp-ok{background:var(--vidro);border:var(--vidro-borda);box-shadow:var(--vidro-sombra);-webkit-backdrop-filter:blur(20px) saturate(1.5);backdrop-filter:blur(20px) saturate(1.5)}
+.lp-step.foco{background:linear-gradient(135deg,rgba(201,214,168,.92),rgba(228,234,214,.62));border:1px solid rgba(255,255,255,.85);box-shadow:var(--vidro-sombra)}
+.lp-mid,.lp-end{background:linear-gradient(135deg,rgba(228,234,214,.82),rgba(201,214,168,.5));border:var(--vidro-borda);box-shadow:var(--vidro-sombra);-webkit-backdrop-filter:blur(20px) saturate(1.5);backdrop-filter:blur(20px) saturate(1.5)}
+.lp-ok{background:linear-gradient(135deg,rgba(228,234,214,.85),rgba(201,214,168,.55))}
+.lp-door{border-radius:64px}
+.lp-card,.lp-ok,.lp-mid,.lp-end{border-radius:64px}
+.lp-opt:has(input:checked){background:linear-gradient(135deg,rgba(201,214,168,.9),rgba(228,234,214,.6));border:1px solid rgba(87,115,40,.5)}
+.lp-opt{border-radius:999px}
+.lp-pill{box-shadow:var(--vidro-sombra)}
+.lp-fld input{border-radius:999px;border:1px solid rgba(87,115,40,.28);background:rgba(255,255,255,.85);box-shadow:inset 0 1px 0 rgba(255,255,255,.95)}
+.lp-list li{border-radius:999px}
+@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
+  .lp-step,.lp-door,.lp-case,.lp-chip,.lp-opt,.lp-inc li,.lp-pill,.lp-list li,.lp-btn.ghost,.lp-card,.lp-ok,.lp-mid,.lp-end{background:rgba(255,255,255,.88)}
+}
+@media(max-width:760px){
+  .lp-deco.p1{width:260px;height:92px;left:-90px}
+  .lp-deco.p2{width:220px;height:80px;right:-70px}
+  .lp-deco.p3{width:170px;height:64px;right:6%}
+  .lp-deco.p4{width:200px;height:72px}
+  .lp-door,.lp-card,.lp-ok,.lp-mid,.lp-end{border-radius:44px}
+}
+@media(prefers-reduced-motion:reduce){.lp-deco{animation:none}}
 </style>
 </head>
 <body class="lp-body">
@@ -268,7 +309,7 @@ main.lp{overflow-x:clip;position:relative}
 <div id="lp-progress" aria-hidden="true"></div>
 <section class="lp-hero" id="topo">
   <div class="lp-ghost" aria-hidden="true" data-par>7</div>
-  <div class="lp-orb a" aria-hidden="true"></div><div class="lp-orb b" aria-hidden="true"></div>
+  <i class="lp-deco v p1" aria-hidden="true"></i><i class="lp-deco b p3" aria-hidden="true"></i><i class="lp-deco m p4" aria-hidden="true"></i>
   <div class="lp-wrap">
     <span class="lp-pill"><i></i>Guia gratuito · Chegada da au pair</span>
     <h1 class="lp-h1"><span class="lp-w" style="--i:0">Cheguei</span> <span class="lp-w" style="--i:1">como</span> <span class="lp-w" style="--i:2">au</span> <span class="lp-w" style="--i:3">pair.</span> <span class="lp-w" style="--i:4">Por</span> <span class="lp-w" style="--i:5">onde</span> <span class="lp-w" style="--i:6">eu</span> <span class="lp-w" style="--i:7">me</span> <span class="lp-w" style="--i:8"><em>estabilizo?</em></span></h1>
@@ -283,6 +324,7 @@ main.lp{overflow-x:clip;position:relative}
 </section>
 
 <section class="lp-sec" id="ordem">
+  <i class="lp-deco b" style="width:380px;height:130px;left:16%;top:52%" aria-hidden="true"></i><i class="lp-deco m" style="width:300px;height:104px;right:12%;top:30%" aria-hidden="true"></i><i class="lp-deco v" style="width:340px;height:116px;left:30%;top:78%" aria-hidden="true"></i>
   <div class="lp-wrap">
     <span class="lp-k rv">1 · A ordem dos passos</span>
     <h2 class="lp-h2 rv" style="--d:80ms">Um passo destrava o <em>próximo</em>.</h2>
@@ -301,6 +343,7 @@ main.lp{overflow-x:clip;position:relative}
 </section>
 
 <section class="lp-sec" id="prazos" style="padding-top:0">
+  <i class="lp-deco v p2" style="top:30%;right:26%" aria-hidden="true"></i><i class="lp-deco b p4" style="top:42%;left:14%;bottom:auto" aria-hidden="true"></i>
   <div class="lp-wrap">
     <span class="lp-k rv">2 · O que tem prazo</span>
     <h2 class="lp-h2 rv" style="--d:80ms">Dois prazos, duas <em>pessoas</em>.</h2>
@@ -313,6 +356,7 @@ main.lp{overflow-x:clip;position:relative}
 </section>
 
 <section class="lp-sec" style="padding-top:0">
+  <i class="lp-deco b p1" aria-hidden="true"></i><i class="lp-deco m p2" aria-hidden="true"></i>
   <div class="lp-mid rv" id="lp-mid">
     <span class="lp-k">Quer começar pelo passo certo?</span>
     <h2 class="lp-h2">Pegue o checklist dos 7 passos.</h2>
@@ -322,6 +366,7 @@ main.lp{overflow-x:clip;position:relative}
 </section>
 
 <section class="lp-sec" id="dois-jeitos">
+  <i class="lp-deco v p1" style="top:38%;left:8%" aria-hidden="true"></i><i class="lp-deco b p2" style="top:50%;right:10%" aria-hidden="true"></i>
   <div class="lp-wrap">
     <span class="lp-k rv">3 · Dois jeitos de deixar para depois</span>
     <h2 class="lp-h2 rv" style="--d:80ms">Os papéis esperam nos dois <em>momentos</em>.</h2>
@@ -336,6 +381,7 @@ main.lp{overflow-x:clip;position:relative}
 </section>
 
 <section class="lp-sec" id="secu" style="padding-top:0">
+  <i class="lp-deco v p2" aria-hidden="true"></i>
   <div class="lp-wrap">
     <span class="lp-k rv">4 · O número de sécu</span>
     <p class="lp-scrub" data-scrub><span>No</span> <span>número</span> <span>de</span> <span>sécu,</span> <span>quem</span> <span>começa</span> <span>é</span> <span>a</span> <span class="hl">família.</span> <span>A</span> <span>sua</span> <span>parte</span> <span>é</span> <span>ter</span> <span class="hl">tudo</span> <span class="hl">pronto.</span></p>
@@ -350,6 +396,7 @@ main.lp{overflow-x:clip;position:relative}
 </section>
 
 <section class="lp-gate" id="gate" aria-label="Liberar o checklist de chegada">
+  <i class="lp-deco v p1" aria-hidden="true"></i><i class="lp-deco b p2" aria-hidden="true"></i><i class="lp-deco m p3" aria-hidden="true"></i>
   <div class="lp-card rv" id="lp-card">
     <h2>Receba o checklist dos 7 passos de chegada</h2>
     <p class="lead">Libere o checklist para ver, em cada passo, o que ter em mãos e onde confirmar na fonte oficial.</p>
