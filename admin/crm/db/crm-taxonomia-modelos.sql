@@ -1,6 +1,9 @@
 -- Por Dentro — CRM: classificação dos modelos de e-mail (família, página, etapa e persona)
--- Rode no SQL Editor do Supabase, DEPOIS de crm-sequencia-minutos.sql (e de crm-acesso-email.sql, crm-link-pagamento-email.sql
--- e crm-modelos-chegada-au-pair.sql, que criam modelos que este arquivo classifica). Idempotente (pode rodar de novo).
+-- Rode no SQL Editor do Supabase, DEPOIS de crm-sequencia-minutos.sql e crm-modelo-tecnologo-recap.sql (e de
+-- crm-modelos-chegada-au-pair.sql, crm-link-pagamento-email.sql e crm-acesso-email.sql). Esses arquivos criam modelos que este
+-- classifica: rodado antes deles, tec_recap_30min e os outros ficam sem classificação. Idempotente (pode rodar de novo).
+-- Modelos criados por uma migração posterior ficam sem classificação até este arquivo rodar de novo (o painel os classifica
+-- pelo modo de reserva só enquanto as colunas não existem; depois que existem, vale o que está no banco).
 -- Só acrescenta: quatro colunas, as regras delas e o preenchimento dos modelos que já existem. Nada é apagado nem reescrito.
 --
 -- O que muda:
@@ -21,6 +24,7 @@
 --   alter table public.modelos_email drop column if exists familia, drop column if exists pagina,
 --     drop column if exists etapa, drop column if exists persona;
 --   (as regras caem junto com as colunas)
+--   ATENÇÃO: apagar as colunas apaga também toda classificação que ela fez à mão depois que este arquivo rodou.
 
 alter table public.modelos_email add column if not exists familia text;
 alter table public.modelos_email add column if not exists pagina text;
@@ -48,6 +52,7 @@ begin
 end $$;
 
 -- Preenchimento: chaves exatas (a tabela da seção 4 da spec; o mesmo que RESERVA_CHAVE em taxonomia.js).
+-- "Já classificado" é decidido pela família: se ela já tem família, nada é refeito (persona vazia quer dizer "serve a todas").
 update public.modelos_email m set
   familia = coalesce(m.familia, x.familia),
   pagina = coalesce(m.pagina, x.pagina),
@@ -71,7 +76,7 @@ from (values
   ('hub_estudos_lancamento', 'campanha', null, null),
   ('lembrete_prazo_vlsts', 'campanha', null, null)
 ) as x(chave, familia, pagina, persona)
-where m.chave = x.chave;
+where m.chave = x.chave and m.familia is null;
 
 -- Preenchimento: por prefixo (RESERVA_PREFIXO em taxonomia.js). Só onde a família ainda está vazia.
 update public.modelos_email set familia = 'acesso' where familia is null and chave like 'acesso\_%';

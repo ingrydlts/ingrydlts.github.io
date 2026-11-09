@@ -21,9 +21,6 @@ async function asService(fn) {
   await db.exec('set role service_role;');
   try { return await fn(); } finally { await db.exec('reset role;'); }
 }
-const pendentes = (agora) => asService(() => q('select * from public.crm_sequencia_pendentes(100, $1)', [agora]));
-const quem = (rows, chave) => rows.filter((r) => r.chave === chave).map((r) => r.nome).sort().join(',');
-const min = (t, n) => new Date(t.getTime() + n * 60000).toISOString();
 
 async function main() {
   console.log('== Setup ==');
@@ -98,10 +95,16 @@ async function main() {
 
   console.log('\n== Não sobrescreve o que já está preenchido ==');
   await db.query("update modelos_email set familia = 'campanha', pagina = 'I04' where chave = 'boas_vindas'");
+  await db.query("update modelos_email set familia = 'campanha', pagina = 'I01' where chave = 'cf_guia_1'");
+  await db.query("update modelos_email set persona = null where chave = 'aupair_chegada_1'");
   const r3 = await attempt(() => db.exec(sql));
   check('roda de novo sem erro', r3.ok);
   const [bv] = await q("select familia, pagina from modelos_email where chave = 'boas_vindas'");
   check('boas_vindas continua campanha/I04', bv.familia === 'campanha' && bv.pagina === 'I04');
+  const [cf] = await q("select familia, pagina from modelos_email where chave = 'cf_guia_1'");
+  check('cf_guia_1 continua campanha/I01 (não volta para entrega/I03)', cf.familia === 'campanha' && cf.pagina === 'I01');
+  const [ap] = await q("select familia, persona from modelos_email where chave = 'aupair_chegada_1'");
+  check('aupair_chegada_1: persona vazia de propósito não é refeita', ap.familia === 'entrega' && ap.persona === null);
 
   console.log('\n== O gatilho ==');
   const g = await attempt(() => db.query("update modelos_email set familia = 'acesso' where chave = 'boas_vindas'"));
