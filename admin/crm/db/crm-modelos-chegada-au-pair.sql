@@ -11,11 +11,8 @@
 -- Para ir ao ar: no Estúdio de e-mails, abra cada modelo, confira a prévia, mande o teste, publique (No ar) e ligue o Envio.
 --
 -- ANTES de publicar o e-mail 1:
---   1. O botão "Abrir o checklist" aponta para a página do Notion ainda PRIVADA (rascunho). Abra-a, Share > Publish to web e troque
---      o endereço do botão pelo notion.site público.
---   2. Registre o mesmo endereço público para a página do guia (ela mostra o link depois do cadastro): no Supabase, Table Editor,
---      guias_links, nova linha: slug = checklist-chegada-au-pair, notion_url = o endereço público, notion_texto = Abrir o checklist no Notion.
---      (Ou rode: insert into public.guias_links (slug, notion_url, notion_texto) values ('checklist-chegada-au-pair', '<endereço público>', 'Abrir o checklist no Notion') on conflict (slug) do nothing;)
+--   1. O botão "Abrir o checklist" já aponta para o checklist publicado no Notion (notion.site). Confira que a página abre sem login.
+--   2. Rode também crm-guia-chegada-au-pair-link.sql: ele registra o mesmo endereço para a página do guia (ela mostra o link depois do cadastro).
 --   3. O e-mail de 5 minutos precisa do Cron Trigger "*/5 * * * *" (cms-oauth-worker/README.md, seção 23); com cron de hora em hora sai na próxima rodada.
 --   4. O e-mail 2 usa link_acesso (o app): confira para onde ele abre o cadastro.
 --
@@ -26,6 +23,18 @@
 --   delete from public.modelos_email m where m.chave in ('aupair_chegada_1', 'aupair_chegada_2') and m.criado_no_estudio and not m.envio_ligado
 --      and not exists (select 1 from public.modelos_email_versoes v where v.chave = m.chave)
 --      and not exists (select 1 from public.emails_enviados e where e.modelo = m.chave);
+
+-- Confere o pré-requisito antes de criar qualquer coisa (evita o erro técnico "column envio_minutos does not exist").
+do $$
+begin
+  if not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'modelos_email' and column_name = 'envio_minutos') then
+    raise exception 'Falta rodar antes o crm-sequencia-minutos.sql (e, antes dele, o crm-filtro-etapa.sql) neste banco. Depois rode este arquivo de novo.';
+  end if;
+  if to_regclass('public.modelos_email_versoes') is null then
+    raise exception 'Falta rodar antes o crm-estudio-emails-3.sql neste banco. Depois rode este arquivo de novo.';
+  end if;
+end
+$$;
 
 insert into public.modelos_email (chave, nome, objetivo, tipo, como_sai, quem_recebe, variaveis, ordem, criado_no_estudio, objetivo_chave,
   para_quem, envio_gatilho, envio_depois_de, envio_dias, envio_hora, envio_minutos, envio_ligado)
@@ -42,7 +51,7 @@ select 'aupair_chegada_1', 1, 'rascunho',
 
 {#nome}Oi {nome}! Aqui está o checklist de chegada da au pair: sete passos, na ordem em que um destrava o outro. Não precisa fazer tudo hoje.{/nome}{^nome}Oi! Aqui está o checklist de chegada da au pair: sete passos, na ordem em que um destrava o outro. Não precisa fazer tudo hoje.{/nome}
 
-Abrir o checklist: https://app.notion.com/p/412d602254ce812cb2cbd1f135b623c4
+Abrir o checklist: https://topordentroviagens.notion.site/Checklist-de-chegada-da-au-pair-o-que-fazer-e-em-que-ordem-412d602254ce812cb2cbd1f135b623c4
 
 O passo com prazo
 Valide o visto online, em até 3 meses da chegada
@@ -67,7 +76,7 @@ Você recebeu este e-mail porque pediu o checklist de chegada da au pair no Por 
 <tr><td style="background:#FBFAF7; border:1px solid #E2DED7; border-radius:8px; padding:32px 28px;">
 <h1 style="margin:0 0 14px; font-family:'Fraunces', Georgia, 'Times New Roman', serif; font-size:24px; line-height:1.25; font-weight:700; color:#2B2B2B;">O seu checklist de chegada, na ordem</h1>
 <p style="margin:0 0 16px; font-family:'Inter', Arial, Helvetica, sans-serif; font-size:15px; line-height:1.6; color:#2B2B2B;">{#nome}Oi {nome}! Aqui está o checklist de chegada da au pair: sete passos, na ordem em que um destrava o outro. Não precisa fazer tudo hoje.{/nome}{^nome}Oi! Aqui está o checklist de chegada da au pair: sete passos, na ordem em que um destrava o outro. Não precisa fazer tudo hoje.{/nome}</p>
-<p style="margin:0 0 24px;"><a href="https://app.notion.com/p/412d602254ce812cb2cbd1f135b623c4" style="display:inline-block; background:#577328; color:#FBFAF7; font-family:'Inter', Arial, Helvetica, sans-serif; font-size:15px; font-weight:600; text-decoration:none; padding:13px 22px; border-radius:4px;">Abrir o checklist</a></p>
+<p style="margin:0 0 24px;"><a href="https://topordentroviagens.notion.site/Checklist-de-chegada-da-au-pair-o-que-fazer-e-em-que-ordem-412d602254ce812cb2cbd1f135b623c4" style="display:inline-block; background:#577328; color:#FBFAF7; font-family:'Inter', Arial, Helvetica, sans-serif; font-size:15px; font-weight:600; text-decoration:none; padding:13px 22px; border-radius:4px;">Abrir o checklist</a></p>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 24px;"><tr><td style="background:#F4F1EC; border:1px solid #DEB975; border-radius:8px; padding:16px 18px;"><div style="font-family:'Inter', Arial, Helvetica, sans-serif; font-size:12px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:#6E6862;">O passo com prazo</div><div style="font-family:'Inter', Arial, Helvetica, sans-serif; font-size:14px; line-height:1.6; color:#2B2B2B; margin:6px 0;">Valide o visto online, em até 3 meses da chegada</div><div style="font-family:'Inter', Arial, Helvetica, sans-serif; font-size:13px; line-height:1.5; color:#6E6862;">Fonte: Ministério do Interior (validação do VLS-TS em linha) e France-Visas.</div></td></tr></table>
 <p style="margin:0 0 16px; font-family:'Inter', Arial, Helvetica, sans-serif; font-size:15px; line-height:1.6; color:#2B2B2B;">Os outros seis (casa e contrato, conta bancária, número de sécu, professor de francês, saúde complementar e prazos) vão no seu ritmo. Um detalhe que muita gente descobre tarde: no número de sécu, quem começa a demarche é a família.</p>
 <h1 style="margin:0 0 10px; font-family:'Fraunces', Georgia, 'Times New Roman', serif; font-size:24px; line-height:1.25; font-weight:700; color:#2B2B2B;">Qual passo está mais pesado para você agora?</h1>
@@ -77,7 +86,7 @@ Você recebeu este e-mail porque pediu o checklist de chegada da au pair no Por 
 <tr><td style="padding:20px 4px 0; font-family:'Inter', Arial, Helvetica, sans-serif; font-size:12px; line-height:1.55; color:#6E6862;">Você recebeu este e-mail porque pediu o checklist de chegada da au pair no Por Dentro com {email}.</td></tr>
 </table></td></tr></table>
 </body></html>$aupair_chegada_1_h$,
-  $aupair_chegada_1_b${"assunto":"{nome}, seu checklist de chegada de au pair, na ordem","assunto_alt":"Seu checklist de chegada de au pair, na ordem","pre":"Sete passos, um destrava o outro. Comece pelo que tem prazo.","rodape":"pediu o checklist de chegada da au pair no Por Dentro com {email}","itens":[{"tipo":"titulo","texto":"O seu checklist de chegada, na ordem"},{"tipo":"texto","texto":"Oi {nome}! Aqui está o checklist de chegada da au pair: sete passos, na ordem em que um destrava o outro. Não precisa fazer tudo hoje.","alt":"Oi! Aqui está o checklist de chegada da au pair: sete passos, na ordem em que um destrava o outro. Não precisa fazer tudo hoje."},{"tipo":"botao","rotulo":"Abrir o checklist","url":"https://app.notion.com/p/412d602254ce812cb2cbd1f135b623c4"},{"tipo":"destaque","rotulo":"O passo com prazo","valor":"Valide o visto online, em até 3 meses da chegada","nota":"Fonte: Ministério do Interior (validação do VLS-TS em linha) e France-Visas."},{"tipo":"texto","texto":"Os outros seis (casa e contrato, conta bancária, número de sécu, professor de francês, saúde complementar e prazos) vão no seu ritmo. Um detalhe que muita gente descobre tarde: no número de sécu, quem começa a demarche é a família.","alt":"Os outros seis (casa e contrato, conta bancária, número de sécu, professor de francês, saúde complementar e prazos) vão no seu ritmo. Um detalhe que muita gente descobre tarde: no número de sécu, quem começa a demarche é a família."},{"tipo":"pergunta","texto":"Qual passo está mais pesado para você agora?","ajuda":"É só responder este e-mail. Eu leio cada resposta."},{"tipo":"assinatura","texto":"Ingryd · Por Dentro"}],"v":1,"planos":{}}$aupair_chegada_1_b$::jsonb,
+  $aupair_chegada_1_b${"assunto":"{nome}, seu checklist de chegada de au pair, na ordem","assunto_alt":"Seu checklist de chegada de au pair, na ordem","pre":"Sete passos, um destrava o outro. Comece pelo que tem prazo.","rodape":"pediu o checklist de chegada da au pair no Por Dentro com {email}","itens":[{"tipo":"titulo","texto":"O seu checklist de chegada, na ordem"},{"tipo":"texto","texto":"Oi {nome}! Aqui está o checklist de chegada da au pair: sete passos, na ordem em que um destrava o outro. Não precisa fazer tudo hoje.","alt":"Oi! Aqui está o checklist de chegada da au pair: sete passos, na ordem em que um destrava o outro. Não precisa fazer tudo hoje."},{"tipo":"botao","rotulo":"Abrir o checklist","url":"https://topordentroviagens.notion.site/Checklist-de-chegada-da-au-pair-o-que-fazer-e-em-que-ordem-412d602254ce812cb2cbd1f135b623c4"},{"tipo":"destaque","rotulo":"O passo com prazo","valor":"Valide o visto online, em até 3 meses da chegada","nota":"Fonte: Ministério do Interior (validação do VLS-TS em linha) e France-Visas."},{"tipo":"texto","texto":"Os outros seis (casa e contrato, conta bancária, número de sécu, professor de francês, saúde complementar e prazos) vão no seu ritmo. Um detalhe que muita gente descobre tarde: no número de sécu, quem começa a demarche é a família.","alt":"Os outros seis (casa e contrato, conta bancária, número de sécu, professor de francês, saúde complementar e prazos) vão no seu ritmo. Um detalhe que muita gente descobre tarde: no número de sécu, quem começa a demarche é a família."},{"tipo":"pergunta","texto":"Qual passo está mais pesado para você agora?","ajuda":"É só responder este e-mail. Eu leio cada resposta."},{"tipo":"assinatura","texto":"Ingryd · Por Dentro"}],"v":1,"planos":{}}$aupair_chegada_1_b$::jsonb,
   'e-mail 1 do guia de chegada da au pair 08/11/2026: escrita para revisão'
 where exists (select 1 from public.modelos_email where chave = 'aupair_chegada_1' and criado_no_estudio and objetivo_chave = 'freebie')
   and not exists (select 1 from public.modelos_email_versoes where chave = 'aupair_chegada_1');

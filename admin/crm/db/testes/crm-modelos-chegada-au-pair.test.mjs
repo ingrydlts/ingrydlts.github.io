@@ -57,7 +57,7 @@ async function main() {
   const [v1, v2] = vs;
   const tudo1 = v1.assunto + v1.preheader + v1.corpo_texto + v1.corpo_html;
   check('e-mail 1 NÃO fala do app beta (pedido dela)', !/beta|login|senha|link_acesso|acesso grátis/i.test(tudo1));
-  check('e-mail 1 leva o botão para o checklist e a pergunta do passo mais pesado', v1.corpo_html.includes('app.notion.com') && /passo está mais pesado/.test(v1.corpo_texto));
+  check('e-mail 1 leva o botão para o checklist e a pergunta do passo mais pesado', v1.corpo_html.includes('topordentroviagens.notion.site') && !v1.corpo_html.includes('app.notion.com') && /passo está mais pesado/.test(v1.corpo_texto));
   check('e-mail 2 oferece o beta gratuito e o botão usa link_acesso', /beta/i.test(v2.corpo_texto) && /gratuito/.test(v2.corpo_texto) && JSON.stringify(v2.blocos).includes('link_acesso'));
   check('sem travessão nos blocos que ela escreve (o rodapé do estúdio tem o seu separador)', !/[—–]/.test(vs.map((v) => v.assunto + JSON.stringify(v.blocos)).join('')));
   check('sem marcador de conferência no texto', !/\[[^\]]+\]/.test((v1.corpo_texto + v2.corpo_texto).replace(/\{[^}]*\}/g, '')));

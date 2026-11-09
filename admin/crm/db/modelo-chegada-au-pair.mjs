@@ -13,8 +13,8 @@ export const SLUG = 'checklist-chegada-au-pair';
 export const ORIGEM = 'guia-' + SLUG; // a origem que a página grava no cadastro (identificacaoCrm do Estúdio)
 export const CHAVE_1 = 'aupair_chegada_1';
 export const CHAVE_2 = 'aupair_chegada_2';
-// Rascunho privado no Notion. Antes de publicar o e-mail 1: Share > Publish to web e troque pelo endereço público (notion.site).
-export const NOTION = 'https://app.notion.com/p/412d602254ce812cb2cbd1f135b623c4';
+// O checklist publicado na web (Notion). Registre o mesmo endereço em guias_links (crm-guia-chegada-au-pair-link.sql).
+export const NOTION = 'https://topordentroviagens.notion.site/Checklist-de-chegada-da-au-pair-o-que-fazer-e-em-que-ordem-412d602254ce812cb2cbd1f135b623c4';
 const ASS = { tipo: 'assinatura', texto: 'Ingryd · Por Dentro' };
 const FONTE = 'Fonte: Ministério do Interior (validação do VLS-TS em linha) e France-Visas.';
 
@@ -100,11 +100,8 @@ export function gerar() {
 -- Para ir ao ar: no Estúdio de e-mails, abra cada modelo, confira a prévia, mande o teste, publique (No ar) e ligue o Envio.
 --
 -- ANTES de publicar o e-mail 1:
---   1. O botão "Abrir o checklist" aponta para a página do Notion ainda PRIVADA (rascunho). Abra-a, Share > Publish to web e troque
---      o endereço do botão pelo notion.site público.
---   2. Registre o mesmo endereço público para a página do guia (ela mostra o link depois do cadastro): no Supabase, Table Editor,
---      guias_links, nova linha: slug = ${SLUG}, notion_url = o endereço público, notion_texto = Abrir o checklist no Notion.
---      (Ou rode: insert into public.guias_links (slug, notion_url, notion_texto) values ('${SLUG}', '<endereço público>', 'Abrir o checklist no Notion') on conflict (slug) do nothing;)
+--   1. O botão "Abrir o checklist" já aponta para o checklist publicado no Notion (notion.site). Confira que a página abre sem login.
+--   2. Rode também crm-guia-chegada-au-pair-link.sql: ele registra o mesmo endereço para a página do guia (ela mostra o link depois do cadastro).
 --   3. O e-mail de 5 minutos precisa do Cron Trigger "*/5 * * * *" (cms-oauth-worker/README.md, seção 23); com cron de hora em hora sai na próxima rodada.
 --   4. O e-mail 2 usa link_acesso (o app): confira para onde ele abre o cadastro.
 --
@@ -115,6 +112,18 @@ export function gerar() {
 --   delete from public.modelos_email m where m.chave in ('${CHAVE_1}', '${CHAVE_2}') and m.criado_no_estudio and not m.envio_ligado
 --      and not exists (select 1 from public.modelos_email_versoes v where v.chave = m.chave)
 --      and not exists (select 1 from public.emails_enviados e where e.modelo = m.chave);
+
+-- Confere o pré-requisito antes de criar qualquer coisa (evita o erro técnico "column envio_minutos does not exist").
+do $$
+begin
+  if not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'modelos_email' and column_name = 'envio_minutos') then
+    raise exception 'Falta rodar antes o crm-sequencia-minutos.sql (e, antes dele, o crm-filtro-etapa.sql) neste banco. Depois rode este arquivo de novo.';
+  end if;
+  if to_regclass('public.modelos_email_versoes') is null then
+    raise exception 'Falta rodar antes o crm-estudio-emails-3.sql neste banco. Depois rode este arquivo de novo.';
+  end if;
+end
+$$;
 
 ${modelo({ chave: CHAVE_1, nome: 'Au pair · checklist de chegada (e-mail 1)', objetivo: 'freebie', D: D1, quem: 'pegou o checklist de chegada da au pair', gatilho: 'material', depois: ORIGEM, dias: null, hora: null, minutos: 5, ordem: 550, nota: 'e-mail 1 do guia de chegada da au pair' })}
 ${modelo({ chave: CHAVE_2, nome: 'Au pair · checklist beta (e-mail 2)', objetivo: 'conversa', D: D2, quem: 'pegou o checklist de chegada da au pair e aceitou novidades', gatilho: 'email', depois: CHAVE_1, dias: 2, hora: 10, minutos: null, ordem: 551, nota: 'e-mail 2 do guia de chegada da au pair' })}`;
