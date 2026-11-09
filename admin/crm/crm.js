@@ -2602,6 +2602,7 @@ function renderEditor(lista) {
     '<dl class="tplmeta"><dt>Tipo</dt><dd>' + pillDe(TIPO_EMAIL, m.tipo) + ' <span class="sub">' + esc(ES.TIPO_RODAPE[m.tipo] || '') + '</span></dd>' +
     '<dt>Como sai</dt><dd>' + esc(m.como_sai) + '</dd></dl>' +
     '<p class="st-msg tip">Quem recebe e quando continuam no código: o Worker confere o aceite de novidades a cada envio, mesmo que alguém mude o texto aqui.</p>';
+  s1 = classeHtml(m) + s1;
   // 2. Para quem
   var s2 = novoM ? paraQuemHtml(m.para_quem, 'data-pq', objM || { produto: !!(m.para_quem || {}).produto }, true) +
     '<p class="st-msg tip">' + esc(m.tipo === 'novidades' ? 'E só quem aceitou novidades (o tipo garante).' : 'Serviço e compra saem para quem cumprir as regras, sem pedir novidades.') + '</p>'
@@ -2741,7 +2742,10 @@ function renderCriar() {
   } else if (cr.passo === 2) {
     pode = !!cr.nome.trim() && (!o.produto || !!cr.para.produto);
     corpo = '<label class="st-fld"><span>Nome do modelo (só você vê)</span><input class="st-in" id="novo-nome" maxlength="120" value="' + esc(cr.nome) + '"></label>' +
-      '<p class="st-msg tip">' + esc(ES.TIPO_RODAPE[o.tipo]) + '</p>' + paraQuemHtml(cr.para, 'data-novopara', o, false);
+      '<p class="st-msg tip">' + esc(ES.TIPO_RODAPE[o.tipo]) + '</p>' + paraQuemHtml(cr.para, 'data-novopara', o, false) +
+      '<fieldset class="st-classe" style="border:0;padding:0;margin:0"><legend class="sub">Onde este e-mail mora</legend>' +
+      (TX.temColunas(M) ? '' : '<p class="st-msg warn">Para classificar, rode db/crm-taxonomia-modelos.sql no Supabase.</p>') +
+      classeSelects(cr.classe, 'data-novoclasse', !TX.temColunas(M)) + '</fieldset>';
   } else if (cr.passo === 3) {
     var fake = { chave: '_novo', criado_no_estudio: true, tipo: o.tipo, para_quem: cr.para };
     corpo = '<p class="st-msg tip">O que o e-mail pode usar dela. O plano B de cada dado (o que aparece se faltar) você ajusta depois, em Contexto da pessoa.</p>' +
@@ -2777,6 +2781,7 @@ async function criarModelo(btn) {
   var linha = { chave: chave, nome: nome, objetivo: o.nome + ': ' + o.d, tipo: o.tipo, quem_recebe: paraResumo(fake), criado_no_estudio: true, objetivo_chave: o.k,
     para_quem: para, ordem: 500, como_sai: o.sai === 'sequencia' ? 'Sozinho, pela parte Envio (sequência).' : 'Você envia, pela ficha.',
     variaveis: ES.varsDoModelo(chave, fake).map(function (x) { var c = ES.CAT[x] || {}; return { nome: x, o_que_e: c.o || x, se_faltar: c.t === 'link' ? 'não sai' : c.plano == null ? 'o bloco some' : c.plano || 'fica vazio' }; }) };
+  if (TX.temColunas(M)) { var cc = cr.classe || {}; linha.familia = cc.familia || null; linha.pagina = cc.pagina || null; linha.etapa = cc.etapa || null; linha.persona = cc.persona || null; }
   if (o.sai === 'sequencia') {
     linha.envio_gatilho = o.gatilho; linha.envio_dias = o.dias; linha.envio_hora = o.hora;
     linha.envio_depois_de = o.gatilho === 'compra' ? para.produto : o.gatilho === 'material' ? ((para.materiais || [])[0] || null) : (modeloDe(o.depois_de) ? o.depois_de : null);
@@ -2818,6 +2823,30 @@ function envioHtml(m) {
     (m.tipo === 'novidades' ? '<p class="st-msg tip">Novidades: o banco e o Worker conferem o aceite mais recente a cada envio. Quem pedir para sair para de receber na rodada seguinte.</p>' : '') +
     '<p class="st-msg tip">O Worker roda as sequências de hora em hora (Cron Trigger "5 * * * *") e, para o Envio em minutos, a cada 5 minutos ("*/5 * * * *"); README do Worker, seção 23. Mudar o Envio ou o Para quem com ele ligado recomeça a contagem a partir de agora.</p>';
   return h;
+}
+// Onde o e-mail mora: família, página, etapa e persona. Serve para todo modelo, criado no estúdio ou não.
+function classeSelects(c, attr, off) {
+  var pg = TX.PAGINAS.filter(function (p) { return p.k === c.pagina; })[0], dis = off ? ' disabled' : '';
+  var h = '<label class="st-fld"><span>Família</span><select class="st-in" ' + attr + '="familia"' + dis + '>' + opcoes(TX.FAMILIAS, c.familia, 'Sem família') + '</select></label>' +
+    '<label class="st-fld"><span>Página</span><select class="st-in" ' + attr + '="pagina"' + dis + '>' + opcoes(TX.PAGINAS.map(function (p) { return [p.k, p.k + ' · ' + p.nome]; }), c.pagina, 'Sem página') + '</select></label>' +
+    '<label class="st-fld"><span>Etapa</span><select class="st-in" ' + attr + '="etapa"' + (off || !pg ? ' disabled' : '') + '>' + opcoes(pg ? pg.etapas : [], c.etapa, 'Sem etapa') + '</select></label>' +
+    '<label class="st-fld"><span>Persona</span><select class="st-in" ' + attr + '="persona"' + dis + '>' + opcoes(TX.PERSONAS, c.persona, 'Sem persona') + '</select></label>';
+  return h;
+}
+function classeHtml(m) {
+  var off = !TX.temColunas(M), c = TX.classifica(m);
+  return '<fieldset class="st-classe" style="border:0;padding:0;margin:0"><legend class="sub">Onde este e-mail mora</legend>' +
+    (!off && !c.familia && !c.pagina ? '<p class="st-msg warn">Escolha onde este e-mail mora</p>' : '') +
+    (off ? '<p class="st-msg warn">Para classificar, rode db/crm-taxonomia-modelos.sql no Supabase.</p>' : '') +
+    classeSelects(c, 'data-classe', off) + '</fieldset>';
+}
+async function mudarClasse(campo, valor) {
+  var m = modeloAtual(); if (!m || !TX.temColunas(M)) return;
+  var c = TX.classifica(m), v = valor || null;
+  var p = { familia: c.familia, pagina: c.pagina, etapa: c.etapa, persona: c.persona };
+  p[campo] = v;
+  if (campo === 'pagina') p.etapa = null;
+  return salvarModelo(p, 'Classificação salva');
 }
 async function salvarModelo(patch, msg) {
   var m = modeloAtual(); if (!m) return;
@@ -3908,9 +3937,9 @@ document.addEventListener('click', async function (e) {
     return toast('1:1 confirmado');
   }
   if (t.id === 'mod-export') return exportModelos();
-  if (t.id === 'st-novo-modelo') { await salvar(); ST.criar = { passo: 1, obj: null, nome: '', para: paraVazio() }; ST.tab = 'editar'; return renderModelos(); }
+  if (t.id === 'st-novo-modelo') { await salvar(); ST.criar = { passo: 1, obj: null, nome: '', para: paraVazio(), classe: { familia: null, pagina: null, etapa: null, persona: null } }; ST.tab = 'editar'; return renderModelos(); }
   if (t.id === 'novo-cancelar') { ST.criar = null; return renderModelos(); }
-  if (t.dataset.novoobj) { var ob = ES.objetivo(t.dataset.novoobj); ST.criar.obj = ob.k; if (!ST.criar.nome || ES.OBJETIVOS.some(function (x) { return x.nome === ST.criar.nome; })) ST.criar.nome = ob.nome; ST.criar.passo = 2; return renderModelos(); }
+  if (t.dataset.novoobj) { var ob = ES.objetivo(t.dataset.novoobj); ST.criar.obj = ob.k; ST.criar.classe.familia = TX.familiaDoObjetivo(ob.k); if (!ST.criar.nome || ES.OBJETIVOS.some(function (x) { return x.nome === ST.criar.nome; })) ST.criar.nome = ob.nome; ST.criar.passo = 2; return renderModelos(); }
   if (t.dataset.novopasso) { ST.criar.passo = Number(t.dataset.novopasso); return renderModelos(); }
   if (t.id === 'novo-criar') return criarModelo(t);
   if (t.id === 'st-envio-ligar') return ligarEnvio();
@@ -3933,6 +3962,12 @@ document.addEventListener('change', async function (e) {
     mudarPara(np, e.target.dataset.pq, e.target.value, e.target.checked);
     ['personas', 'materiais', 'etapas', 'segmentos', 'estagios'].forEach(function (g) { if (np[g] && !np[g].length) delete np[g]; });
     return salvarModelo({ para_quem: np, quem_recebe: paraResumo({ tipo: mq.tipo, para_quem: np }) }, 'Para quem salvo');
+  }
+  if (e.target.dataset && e.target.dataset.classe) return mudarClasse(e.target.dataset.classe, e.target.value);
+  if (e.target.dataset && e.target.dataset.novoclasse && ST.criar) {
+    var cl = ST.criar.classe, campo = e.target.dataset.novoclasse; cl[campo] = e.target.value || null;
+    if (campo === 'pagina') cl.etapa = null;
+    return renderCriar();
   }
   if (e.target.dataset && e.target.dataset.envio) return mudarEnvio(e.target.dataset.envio, e.target.value);
   if (e.target.id === 'st-marcar') { ST.marcar = e.target.checked; return renderPrevia(); }

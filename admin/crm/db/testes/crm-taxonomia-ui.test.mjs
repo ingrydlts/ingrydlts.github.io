@@ -195,11 +195,17 @@ function el(id) {
 const handlers = {};
 let focoSpy = null;
 const doc = { getElementById: el, addEventListener(t, fn) { (handlers[t] = handlers[t] || []).push(fn); }, querySelectorAll: () => [], querySelector: (sel) => (focoSpy ? focoSpy(sel) : null), activeElement: null };
-const sb = { from: () => ({}), auth: { getSession: async () => ({ data: { session: null } }) }, rpc: async () => ({ data: null, error: null }),
+const chamadas = [];
+function fromFake(tab) {
+  const q = { insert(v) { chamadas.push({ tab, op: 'insert', v }); return Promise.resolve({ error: null, data: [v] }); }, update(v) { chamadas.push({ tab, op: 'update', v }); return q; }, eq() { return q; }, select() { return Promise.resolve({ error: null, data: [] }); }, then(f) { return Promise.resolve({ error: null, data: [] }).then(f); } };
+  return q;
+}
+const ESF = {};
+const sb = { from: fromFake, auth: { getSession: async () => ({ data: { session: null } }) }, rpc: async () => ({ data: null, error: null }),
   channel: () => ({ on() { return this; }, subscribe() { return this; } }), removeChannel() {} };
 const H = new Function('supabase', 'ES', 'TX', 'document', 'window', 'location', 'localStorage', 'setInterval', 'clearInterval',
-  csrc + '\n;return { setM: function (v) { M = v; }, setMV: function (v) { MV = v; }, renderLista, renderFiltros, renderModelos, listaModelos, opcoesPorCategoria, ST, aoClicarFiltro: typeof aoClicarFiltro === "function" ? aoClicarFiltro : null, aoDigitarFiltro: typeof aoDigitarFiltro === "function" ? aoDigitarFiltro : null };')(
-  sb, {}, TX, doc, { addEventListener() {} }, { href: '' }, { getItem: () => null, setItem() {} }, () => 1, () => {});
+  csrc + '\n;return { setM: function (v) { M = v; }, setMV: function (v) { MV = v; }, renderLista, renderFiltros, classeHtml, mudarClasse, criarModelo, renderEditor, renderModelos, listaModelos, opcoesPorCategoria, ST, aoClicarFiltro: typeof aoClicarFiltro === "function" ? aoClicarFiltro : null, aoDigitarFiltro: typeof aoDigitarFiltro === "function" ? aoDigitarFiltro : null };')(
+  sb, ESF, TX, doc, { addEventListener() {} }, { href: '' }, { getItem: () => null, setItem() {} }, () => 1, () => {});
 console.log('== crm.js: lista agrupada ==');
 const mods = fixture32();
 mods.push({ chave: 'excl1', nome: 'Excluido um', ordem: 99, tipo: 'email', excluido_em: '2026-01-01' });
@@ -289,6 +295,55 @@ H.ST.tab = 'lista'; H.renderFiltros();
 check('aba: renderModelos chama renderFiltros', /function renderModelos\(\)[\s\S]*?renderFiltros\(\);[\s\S]*?renderPrevia\(\);\n\}/.test(csrc));
 check('aba: data-tab lista', el('mod-filtros').dataset.tab === 'lista');
 check('css: barra some no celular fora da aba Modelos', /@media \(max-width: 1000px\)\{[^@]*\.st-filtros:not\(\[data-tab="lista"\]\)\{display:none\}/.test(readFileSync(path.resolve(HERE, '../../crm.css'), 'utf8')));
+
+// ---------- Classificar um modelo ----------
+console.log('== crm.js: classificar ==');
+const com = fixture32().map((m) => Object.assign({ familia: null, pagina: null, etapa: null, persona: null, criado_no_estudio: false }, m));
+const mI02 = Object.assign({}, com[0], { chave: 'cl1', familia: 'entrega', pagina: 'I02', etapa: 'tec-nao-sei' });
+H.setM(com.concat([mI02]));
+const ch = H.classeHtml(mI02);
+check('classe: 4 selects', ['familia', 'pagina', 'etapa', 'persona'].every((c) => ch.indexOf('data-classe="' + c + '"') >= 0));
+check('classe: etapas de I02 e nenhuma de I01', ch.indexOf('value="tec-nao-sei"') >= 0 && PAGINAS[1].etapas.every((e) => ch.indexOf('value="' + e[0] + '"') >= 0) && PAGINAS[0].etapas.every((e) => ch.indexOf('value="' + e[0] + '"') < 0));
+check('classe: com colunas e com página, nada disabled', ch.indexOf('disabled') < 0);
+const semPg = H.classeHtml(Object.assign({}, com[0], { chave: 'cl2', familia: 'acesso' }));
+check('classe: etapa disabled sem página', /data-classe="etapa" disabled/.test(semPg));
+check('classe: com família não pede onde mora', semPg.indexOf('Escolha onde este e-mail mora') < 0);
+check('classe: sem família nem página pede', H.classeHtml(Object.assign({}, com[0], { chave: 'cl3' })).indexOf('Escolha onde este e-mail mora') >= 0);
+H.setM(fixture32());
+const off = H.classeHtml(fixture32()[0]);
+check('classe: sem colunas, tudo disabled e aviso', (off.match(/<select/g) || []).length === 4 && (off.match(/<select[^>]* disabled/g) || []).length === 4 && off.indexOf('rode db/crm-taxonomia-modelos.sql') >= 0);
+
+H.setM(com.concat([mI02])); H.ST.k = 'cl1';
+chamadas.length = 0;
+try { await H.mudarClasse('pagina', 'I04'); } catch (er) { console.log('  erro', er.message); }
+const up = chamadas.find((c) => c.op === 'update' && c.tab === 'modelos_email');
+check('mudarClasse: update com pagina I04 e etapa null', up && up.v.pagina === 'I04' && up.v.etapa === null && up.v.familia === 'entrega');
+chamadas.length = 0;
+try { await H.mudarClasse('persona', ''); } catch (er) {}
+const up2 = chamadas.find((c) => c.op === 'update');
+check('mudarClasse: vazio vira null', up2 && up2.v.persona === null);
+
+// Criação
+H.setM(com);
+Object.assign(ESF, {
+  OBJETIVOS: [{ k: 'freebie', nome: 'Entrega', d: 'd', tipo: 'servico', sai: 'manual' }],
+  objetivo: (k) => (k === 'freebie' ? ESF.OBJETIVOS[0] : null), CAT: {}, TIPO_RODAPE: {},
+  varsDoModelo: () => [], esqueleto: () => ({ itens: [] }), montar: () => ({ assunto: 'a', preheader: 'p', corpo_texto: 't', corpo_html: 'h' }) });
+H.ST.criar = { passo: 1, obj: null, nome: '', para: { }, classe: { familia: null, pagina: null, etapa: null, persona: null } };
+H.ST.tab = 'editar';
+for (const h of handlers.click) { try { await h((() => { const alvo = { dataset: { novoobj: 'freebie' }, id: '', matches: () => false }; alvo.closest = () => alvo; return { target: alvo, preventDefault() {} }; })()); } catch (er) { console.log('  clk', er.message); } }
+check('criar: objetivo freebie pré-preenche familia entrega', H.ST.criar && H.ST.criar.classe.familia === 'entrega');
+async function criaCom(colunas) {
+  H.setM(colunas ? com : fixture32().map((m) => Object.assign({ criado_no_estudio: false }, m)));
+  H.ST.criar = { passo: 4, obj: 'freebie', nome: 'Teste x', para: {}, classe: { familia: 'entrega', pagina: 'I01', etapa: null, persona: null } };
+  chamadas.length = 0;
+  try { await H.criarModelo({ disabled: false, textContent: '' }); } catch (er) {}
+  return chamadas.find((c) => c.op === 'insert' && c.tab === 'modelos_email');
+}
+const ins1 = await criaCom(true);
+check('criarModelo: com colunas insere familia e pagina', ins1 && ins1.v.familia === 'entrega' && ins1.v.pagina === 'I01' && ins1.v.etapa === null);
+const ins2 = await criaCom(false);
+check('criarModelo: sem colunas não envia as chaves', ins2 && !('familia' in ins2.v) && !('pagina' in ins2.v) && !('etapa' in ins2.v) && !('persona' in ins2.v));
 
 console.log(passed + ' passaram, ' + failed + ' falharam');
 process.exit(failed ? 1 : 0);
