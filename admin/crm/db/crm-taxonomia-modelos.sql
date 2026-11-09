@@ -16,6 +16,9 @@
 --      ainda não rodou (modo de reserva de admin/crm/taxonomia.js, seção 4 da spec). Só preenche o que está vazio: o que ela
 --      já classificou à mão não é sobrescrito, e rodar de novo não muda nada.
 --
+-- Atenção ao rodar de novo: vazio (null) não se distingue de "nunca classificado". Um modelo que ela deixou "sem família" de
+-- propósito volta a receber a família se a chave dele casar com a tabela de reserva, os prefixos ou o tipo compra.
+--
 -- Segurança: nenhuma tabela nem função nova; as regras de acesso (RLS) de modelos_email não mudam. O gatilho
 -- modelos_email_envio_confere continua igual: classificar um modelo de antes do estúdio não é "Envio", então não é recusado.
 -- Nenhum dado de pessoa aqui.

@@ -143,6 +143,10 @@ conjuge). O SQL preenche os modelos que já existem pela mesma tabela que o pain
 modelos agrupa por família/página, ganha a barra de filtros e os campos de classificação no editor. O que não casa com nada cai em "Sem
 classificação" (com o selo de atenção), nunca em "Outros".
 
+Ao rodar o SQL de novo: vazio (null) não se distingue de "nunca classificado", então um modelo que ela deixou "sem família" de propósito volta a
+receber a família se a chave casar com a tabela de reserva, os prefixos ou o tipo compra. E modelos criados por migrações rodadas depois do
+arquivo ficam sem classificação até ele rodar de novo.
+
 Desfazer: `alter table public.modelos_email drop column if exists familia, drop column if exists pagina, drop column if exists etapa,
 drop column if exists persona;`. **Cuidado: isso apaga a classificação que ela fez à mão** depois que o SQL rodou.
 

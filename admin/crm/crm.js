@@ -2744,8 +2744,8 @@ function renderCriar() {
     corpo = '<label class="st-fld"><span>Nome do modelo (só você vê)</span><input class="st-in" id="novo-nome" maxlength="120" value="' + esc(cr.nome) + '"></label>' +
       '<p class="st-msg tip">' + esc(ES.TIPO_RODAPE[o.tipo]) + '</p>' + paraQuemHtml(cr.para, 'data-novopara', o, false) +
       '<fieldset class="st-classe" style="border:0;padding:0;margin:0"><legend class="sub">Onde este e-mail mora</legend>' +
-      (TX.temColunas(M) ? '' : '<p class="st-msg warn">Para classificar, rode db/crm-taxonomia-modelos.sql no Supabase.</p>') +
-      classeSelects(cr.classe, 'data-novoclasse', !TX.temColunas(M)) + '</fieldset>';
+      (temColunasReais() ? '' : '<p class="st-msg warn">Para classificar, rode db/crm-taxonomia-modelos.sql no Supabase.</p>') +
+      classeSelects(cr.classe, 'data-novoclasse', !temColunasReais()) + '</fieldset>';
   } else if (cr.passo === 3) {
     var fake = { chave: '_novo', criado_no_estudio: true, tipo: o.tipo, para_quem: cr.para };
     corpo = '<p class="st-msg tip">O que o e-mail pode usar dela. O plano B de cada dado (o que aparece se faltar) você ajusta depois, em Contexto da pessoa.</p>' +
@@ -2781,7 +2781,7 @@ async function criarModelo(btn) {
   var linha = { chave: chave, nome: nome, objetivo: o.nome + ': ' + o.d, tipo: o.tipo, quem_recebe: paraResumo(fake), criado_no_estudio: true, objetivo_chave: o.k,
     para_quem: para, ordem: 500, como_sai: o.sai === 'sequencia' ? 'Sozinho, pela parte Envio (sequência).' : 'Você envia, pela ficha.',
     variaveis: ES.varsDoModelo(chave, fake).map(function (x) { var c = ES.CAT[x] || {}; return { nome: x, o_que_e: c.o || x, se_faltar: c.t === 'link' ? 'não sai' : c.plano == null ? 'o bloco some' : c.plano || 'fica vazio' }; }) };
-  if (TX.temColunas(M)) { var cc = cr.classe || {}; linha.familia = cc.familia || null; linha.pagina = cc.pagina || null; linha.etapa = cc.etapa || null; linha.persona = cc.persona || null; }
+  if (temColunasReais()) { var cc = cr.classe || {}; linha.familia = cc.familia || null; linha.pagina = cc.pagina || null; linha.etapa = cc.etapa || null; linha.persona = cc.persona || null; }
   if (o.sai === 'sequencia') {
     linha.envio_gatilho = o.gatilho; linha.envio_dias = o.dias; linha.envio_hora = o.hora;
     linha.envio_depois_de = o.gatilho === 'compra' ? para.produto : o.gatilho === 'material' ? ((para.materiais || [])[0] || null) : (modeloDe(o.depois_de) ? o.depois_de : null);
@@ -2825,23 +2825,31 @@ function envioHtml(m) {
   return h;
 }
 // Onde o e-mail mora: família, página, etapa e persona. Serve para todo modelo, criado no estúdio ou não.
+// Colunas de classificação existem de fato: tabela vazia não prova nada (temColunas([]) é true).
+function temColunasReais() { return !!(M && M.length && TX.temColunas(M)); }
+// Etapa que o banco guarda mas o catálogo da página não tem: aparece selecionada, com o próprio código como rótulo.
+function etapasComAtual(pg, atual) {
+  var l = pg ? pg.etapas.slice() : [];
+  if (pg && atual && !l.some(function (e) { return e[0] === atual; })) l.push([atual, atual]);
+  return l;
+}
 function classeSelects(c, attr, off) {
   var pg = TX.PAGINAS.filter(function (p) { return p.k === c.pagina; })[0], dis = off ? ' disabled' : '';
   var h = '<label class="st-fld"><span>Família</span><select class="st-in" ' + attr + '="familia"' + dis + '>' + opcoes(TX.FAMILIAS, c.familia, 'Sem família') + '</select></label>' +
     '<label class="st-fld"><span>Página</span><select class="st-in" ' + attr + '="pagina"' + dis + '>' + opcoes(TX.PAGINAS.map(function (p) { return [p.k, p.k + ' · ' + p.nome]; }), c.pagina, 'Sem página') + '</select></label>' +
-    '<label class="st-fld"><span>Etapa</span><select class="st-in" ' + attr + '="etapa"' + (off || !pg ? ' disabled' : '') + '>' + opcoes(pg ? pg.etapas : [], c.etapa, 'Sem etapa') + '</select></label>' +
+    '<label class="st-fld"><span>Etapa</span><select class="st-in" ' + attr + '="etapa"' + (off || !pg ? ' disabled' : '') + '>' + opcoes(etapasComAtual(pg, c.etapa), c.etapa, 'Sem etapa') + '</select></label>' +
     '<label class="st-fld"><span>Persona</span><select class="st-in" ' + attr + '="persona"' + dis + '>' + opcoes(TX.PERSONAS, c.persona, 'Sem persona') + '</select></label>';
   return h;
 }
 function classeHtml(m) {
-  var off = !TX.temColunas(M), c = TX.classifica(m);
+  var off = !temColunasReais(), c = TX.classifica(m);
   return '<fieldset class="st-classe" style="border:0;padding:0;margin:0"><legend class="sub">Onde este e-mail mora</legend>' +
     (!off && !c.familia && !c.pagina ? '<p class="st-msg warn">Escolha onde este e-mail mora</p>' : '') +
     (off ? '<p class="st-msg warn">Para classificar, rode db/crm-taxonomia-modelos.sql no Supabase.</p>' : '') +
     classeSelects(c, 'data-classe', off) + '</fieldset>';
 }
 async function mudarClasse(campo, valor) {
-  var m = modeloAtual(); if (!m || !TX.temColunas(M)) return;
+  var m = modeloAtual(); if (!m || !temColunasReais()) return;
   var c = TX.classifica(m), v = valor || null;
   var p = { familia: c.familia, pagina: c.pagina, etapa: c.etapa, persona: c.persona };
   p[campo] = v;
@@ -3136,7 +3144,8 @@ var CMP = null;   // { c, k, e, editado, aba }
 // O seletor de modelo do "Escrever e-mail", em grupos (optgroup) pelos mesmos grupos da lista.
 function opcoesPorCategoria(chaves, atual) {
   var opt = function (m) { return '<option value="' + m + '"' + (m === atual ? ' selected' : '') + '>' + esc(tplInfo(m).label) + '</option>'; };
-  var itens = chaves.map(function (k) { var m = modeloDe(k) || { chave: k, tipo: EXIGEM_NOVIDADES[k] ? 'novidades' : 'servico' }; return m; });
+  // Cópias sem excluido_em: o modelo atual do compose pode estar excluído e deve continuar na lista (agrupa esconde excluídos).
+  var itens = chaves.map(function (k) { var m = modeloDe(k) || { chave: k, tipo: EXIGEM_NOVIDADES[k] ? 'novidades' : 'servico' }; return Object.assign({}, m, { excluido_em: null }); });
   return TX.agrupa(itens).map(function (g) { return '<optgroup label="' + esc(g.titulo) + '">' + g.itens.map(function (m) { return opt(m.chave); }).join('') + '</optgroup>'; }).join('');
 }
 function openCompose(cid, key) {

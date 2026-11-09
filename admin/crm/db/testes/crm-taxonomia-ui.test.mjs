@@ -223,6 +223,8 @@ check('listaModelos: sem excluídos', H.listaModelos().every((m) => !m.excluido_
 const op = H.opcoesPorCategoria(['cf_guia_1', 'naoabriu'], 'cf_guia_1');
 check('opcoes: dois optgroup', (op.match(/<optgroup/g) || []).length === 2);
 check('opcoes: selected em cf_guia_1', /<option value="cf_guia_1" selected>/.test(op) && op.indexOf('selected') === op.lastIndexOf('selected'));
+const opEx = H.opcoesPorCategoria(['excl1', 'cf_guia_1'], 'excl1');
+check('opcoes: excluído atual continua na lista e selecionado', /<option value="excl1" selected>/.test(opEx) && /<option value="cf_guia_1">/.test(opEx) && (opEx.match(/<option /g) || []).length === 2);
 H.ST.f.paginas = ['I03'];
 H.renderLista(mods);
 const h2 = el('mod-list').innerHTML;
@@ -301,6 +303,8 @@ console.log('== crm.js: classificar ==');
 const com = fixture32().map((m) => Object.assign({ familia: null, pagina: null, etapa: null, persona: null, criado_no_estudio: false }, m));
 const mI02 = Object.assign({}, com[0], { chave: 'cl1', familia: 'entrega', pagina: 'I02', etapa: 'tec-nao-sei' });
 H.setM(com.concat([mI02]));
+const chNova = H.classeHtml(Object.assign({}, mI02, { chave: 'cl9', etapa: 'etapa-nova' }));
+check('classe: etapa fora do catálogo aparece selecionada', /<option value="etapa-nova" selected>etapa-nova<\/option>/.test(chNova));
 const ch = H.classeHtml(mI02);
 check('classe: 4 selects', ['familia', 'pagina', 'etapa', 'persona'].every((c) => ch.indexOf('data-classe="' + c + '"') >= 0));
 check('classe: etapas de I02 e nenhuma de I01', ch.indexOf('value="tec-nao-sei"') >= 0 && PAGINAS[1].etapas.every((e) => ch.indexOf('value="' + e[0] + '"') >= 0) && PAGINAS[0].etapas.every((e) => ch.indexOf('value="' + e[0] + '"') < 0));
@@ -344,6 +348,8 @@ const ins1 = await criaCom(true);
 check('criarModelo: com colunas insere familia e pagina', ins1 && ins1.v.familia === 'entrega' && ins1.v.pagina === 'I01' && ins1.v.etapa === null);
 const ins2 = await criaCom(false);
 check('criarModelo: sem colunas não envia as chaves', ins2 && !('familia' in ins2.v) && !('pagina' in ins2.v) && !('etapa' in ins2.v) && !('persona' in ins2.v));
+const ins3 = await (async () => { H.setM([]); H.ST.criar = { passo: 4, obj: 'freebie', nome: 'Teste x', para: {}, classe: { familia: 'entrega', pagina: 'I01', etapa: null, persona: null } }; chamadas.length = 0; try { await H.criarModelo({ disabled: false, textContent: '' }); } catch (er) {} return chamadas.find((c) => c.op === 'insert' && c.tab === 'modelos_email'); })();
+check('criarModelo: tabela vazia não envia familia', ins3 && !('familia' in ins3.v));
 
 console.log(passed + ' passaram, ' + failed + ' falharam');
 process.exit(failed ? 1 : 0);
