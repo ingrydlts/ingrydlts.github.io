@@ -148,3 +148,97 @@ export function temColunas(lista) {
   if (!lista || !lista.length) return true;
   return Object.prototype.hasOwnProperty.call(lista[0], 'familia');
 }
+
+// ---------- Agrupamento da lista ----------
+function texto(v, padrao) { return typeof v === 'string' && v ? v : padrao; }
+
+function ordenaItens(itens) {
+  return itens.slice().sort(function (a, b) {
+    var oa = typeof a.ordem === 'number' ? a.ordem : Infinity;
+    var ob = typeof b.ordem === 'number' ? b.ordem : Infinity;
+    if (oa !== ob) return oa < ob ? -1 : 1;
+    return String(a.nome || a.chave || '').localeCompare(String(b.nome || b.chave || ''), 'pt-BR');
+  });
+}
+
+// Monta subgrupos a partir de [id, titulo, itens]; os vazios não aparecem.
+function montaSubgrupos(defs) {
+  var out = [];
+  defs.forEach(function (d) {
+    if (d[2].length) out.push({ id: d[0], titulo: d[1], itens: ordenaItens(d[2]) });
+  });
+  return out;
+}
+
+function grupo(id, titulo, selo, subgrupos, itens) {
+  var todos = subgrupos.length
+    ? subgrupos.reduce(function (acc, sg) { return acc.concat(sg.itens); }, [])
+    : ordenaItens(itens);
+  return { id: id, titulo: titulo, selo: selo, itens: todos, subgrupos: subgrupos };
+}
+
+// Agrupa os modelos para a tela: por página (com subgrupos por etapa), depois por família, depois "Sem classificação".
+export function agrupa(lista) {
+  var vivos = [];
+  (Array.isArray(lista) ? lista : []).forEach(function (m) {
+    if (m && typeof m === 'object' && !m.excluido_em) vivos.push({ m: m, c: classifica(m) });
+  });
+  var grupos = [];
+  var usados = [];
+
+  // 1. Páginas: as do catálogo, depois as desconhecidas.
+  var codigos = PAGINAS.map(function (p) { return p.k; });
+  vivos.forEach(function (v) { if (v.c.pagina && codigos.indexOf(v.c.pagina) < 0) codigos.push(v.c.pagina); });
+  codigos.forEach(function (k) {
+    var doGrupo = vivos.filter(function (v) { return v.c.pagina === k; });
+    if (!doGrupo.length) return;
+    doGrupo.forEach(function (v) { usados.push(v); });
+    var pag = achaPagina(k);
+    var etapasCat = pag ? pag.etapas.map(function (e) { return e[0]; }) : [];
+    var defs = etapasCat.map(function (e) {
+      return [e, texto(rotuloEtapa(k, e), e), doGrupo.filter(function (v) { return v.c.etapa === e; }).map(function (v) { return v.m; })];
+    });
+    var novas = [];
+    doGrupo.forEach(function (v) {
+      var e = v.c.etapa;
+      if (e && etapasCat.indexOf(e) < 0 && novas.indexOf(e) < 0) novas.push(e);
+    });
+    novas.forEach(function (e) {
+      defs.push([e, String(e), doGrupo.filter(function (v) { return v.c.etapa === e; }).map(function (v) { return v.m; })]);
+    });
+    // Sem etapa: um subgrupo por família (o título é o rótulo da família).
+    var semEtapa = doGrupo.filter(function (v) { return !v.c.etapa; });
+    var famsVistas = [];
+    FAMILIAS.forEach(function (f) { famsVistas.push(f[0]); });
+    famsVistas.push(null);
+    semEtapa.forEach(function (v) { if (famsVistas.indexOf(v.c.familia) < 0) famsVistas.push(v.c.familia); });
+    famsVistas.forEach(function (f) {
+      var itens = semEtapa.filter(function (v) { return v.c.familia === f; }).map(function (v) { return v.m; });
+      defs.push(['fam:' + f, texto(rotuloFamilia(f), 'Sem classificação'), itens]);
+    });
+    grupos.push(grupo(k, texto(rotuloPagina(k), String(k)), null, montaSubgrupos(defs), []));
+  });
+
+  // 2. Famílias sem página.
+  var restantes = vivos.filter(function (v) { return usados.indexOf(v) < 0; });
+  FAMILIAS.forEach(function (f) {
+    var doGrupo = restantes.filter(function (v) { return v.c.familia === f[0]; });
+    if (!doGrupo.length) return;
+    doGrupo.forEach(function (v) { usados.push(v); });
+    var subs = [];
+    if (f[0] === 'serie') {
+      var defs = PERSONAS.map(function (p) {
+        return [p[0], p[1], doGrupo.filter(function (v) { return v.c.persona === p[0]; }).map(function (v) { return v.m; })];
+      });
+      var conhecidas = PERSONAS.map(function (p) { return p[0]; });
+      defs.push(['sem-persona', 'Sem persona', doGrupo.filter(function (v) { return conhecidas.indexOf(v.c.persona) < 0; }).map(function (v) { return v.m; })]);
+      subs = montaSubgrupos(defs);
+    }
+    grupos.push(grupo(f[0], texto(rotuloFamilia(f[0]), f[0]), null, subs, doGrupo.map(function (v) { return v.m; })));
+  });
+
+  // 3. O que sobrou (sem família conhecida e sem página).
+  var sem = vivos.filter(function (v) { return usados.indexOf(v) < 0; }).map(function (v) { return v.m; });
+  if (sem.length) grupos.push(grupo('sem', 'Sem classificação', 'atenção', [], sem));
+  return grupos;
+}

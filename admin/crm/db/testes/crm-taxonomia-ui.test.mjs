@@ -1,7 +1,7 @@
 // Testa o catálogo e a classificação dos modelos de e-mail (admin/crm/taxonomia.js). Módulo puro, sem DOM.
 //
 // Uso: cd admin/crm/db/testes && node crm-taxonomia-ui.test.mjs
-import { FAMILIAS, PAGINAS, PERSONAS, classifica, temColunas, rotuloFamilia, rotuloPagina, rotuloEtapa, familiaDoObjetivo } from '../../taxonomia.js';
+import { FAMILIAS, PAGINAS, PERSONAS, classifica, temColunas, rotuloFamilia, rotuloPagina, rotuloEtapa, familiaDoObjetivo, agrupa } from '../../taxonomia.js';
 
 let passed = 0, failed = 0;
 function check(label, cond) { if (cond) passed++; else { failed++; console.log('  FALHOU:', label); } }
@@ -63,6 +63,53 @@ check('familiaDoObjetivo lancamento', familiaDoObjetivo('lancamento') === 'campa
 check('temColunas sem', temColunas([{ chave: 'a' }]) === false);
 check('temColunas com', temColunas([{ familia: null }]) === true);
 check('temColunas vazia', temColunas([]) === true);
+
+// ---------- Agrupamento ----------
+export function fixture32() {
+  const compra = ['hub_estudos_compra', 'hub_estudos_d3', 'link_pagamento'];
+  const chaves = [];
+  ['a', 'b', 'c'].forEach((l) => ['d3', 'd6', 'd10', 'd15'].forEach((d) => chaves.push('aq_' + l + '_' + d)));
+  chaves.push('cf_guia_1', 'cf_guia_conversa', 'guia_alternancia', 'guia_chamada', 'guia_plataforma', 'tec_recap_30min',
+    'aupair_chegada_1', 'aupair_chegada_2', 'boas_vindas', 'acesso_confirmado', 'link_pagamento', 'hub_estudos_compra',
+    'hub_estudos_d3', 'hub_estudos_lancamento', 'lembrete_prazo_vlsts', 'naoabriu', 'naoclicou', 'cliquenaoapp', 'parouapp', 'zz1');
+  return chaves.map((c, i) => ({ chave: c, nome: 'Modelo ' + c, ordem: i, tipo: compra.indexOf(c) >= 0 ? 'compra' : 'email', excluido_em: null }));
+}
+const gs = agrupa(fixture32());
+const gr = (id) => gs.find((g) => g.id === id);
+const chavesDe = (g) => (g ? g.itens.map((m) => m.chave) : []);
+check('fixture32 tem 32', fixture32().length === 32);
+check('nenhum grupo Outros', gs.every((g) => g.titulo !== 'Outros'));
+check('zz1 em sem, único', gr('sem') && chavesDe(gr('sem')).join() === 'zz1' && gr('sem').selo === 'atenção' && gr('sem').titulo === 'Sem classificação');
+check('aq_* em I03', chavesDe(gr('I03')).indexOf('aq_a_d3') >= 0 && chavesDe(gr('I03')).indexOf('aq_c_d15') >= 0);
+check('cf_guia_* em I03', chavesDe(gr('I03')).indexOf('cf_guia_1') >= 0 && chavesDe(gr('I03')).indexOf('cf_guia_conversa') >= 0);
+check('guia_alternancia em I01', chavesDe(gr('I01')).indexOf('guia_alternancia') >= 0);
+check('título da página', gr('I03').titulo === 'I03 · Études en France 2027-2028');
+check('aupair_chegada_1 em entrega', chavesDe(gr('entrega')).indexOf('aupair_chegada_1') >= 0);
+check('itens do grupo = soma dos subgrupos', gs.every((g) => !g.subgrupos.length || g.subgrupos.reduce((n, sg) => n + sg.itens.length, 0) === g.itens.length));
+check('ordem: páginas, famílias, sem', gs.map((g) => g.id).join() === 'I01,I02,I03,I04,entrega,compra,acesso,reimpacto,campanha,sem');
+
+const e = agrupa([
+  { chave: 'a', nome: 'A', ordem: 1, familia: 'entrega', pagina: 'I02', etapa: 'tec-nao-sei', persona: null },
+  { chave: 'b', nome: 'B', ordem: 2, familia: 'entrega', pagina: 'I02', etapa: 'etapa-nova', persona: null },
+  { chave: 'c', nome: 'C', ordem: 3, familia: 'entrega', pagina: 'I02', etapa: null, persona: null },
+  { chave: 'd', nome: 'D', ordem: 4, familia: null, pagina: 'I02', etapa: null, persona: null }
+]);
+check('etapas: 1 grupo I02', e.length === 1 && e[0].id === 'I02');
+check('etapa conhecida antes da nova', e[0].subgrupos[0].titulo === 'Não sei o nível' && e[0].subgrupos[1].titulo === 'etapa-nova');
+check('sem etapa por último, com título da família', e[0].subgrupos[2].titulo === 'Entrega do material');
+check('página sem família: subgrupo Sem classificação', e[0].subgrupos[3].titulo === 'Sem classificação');
+
+const x = agrupa([{ chave: 'q', nome: 'Q', excluido_em: '2026-01-01', familia: 'acesso', pagina: null, etapa: null, persona: null }]);
+check('excluído some', x.length === 0);
+check('lista vazia', agrupa([]).length === 0 && agrupa(null).length === 0);
+const s = agrupa([
+  { chave: 's1', nome: 'B', ordem: 2, familia: 'serie', pagina: null, etapa: null, persona: 'pvt' },
+  { chave: 's2', nome: 'A', ordem: 2, familia: 'serie', pagina: null, etapa: null, persona: 'au_pair' },
+  { chave: 's3', nome: 'Z', ordem: 1, familia: 'serie', pagina: null, etapa: null, persona: 'pvt' }
+]);
+check('serie: subgrupos por persona', s[0].id === 'serie' && s[0].subgrupos.map((g) => g.titulo).join() === 'Au pair,PVT');
+check('ordena por ordem e nome', s[0].subgrupos[1].itens.map((m) => m.chave).join() === 's3,s1');
+check('malformado não lança', (() => { try { agrupa([null, {}, { chave: 1 }]); return true; } catch (er) { return false; } })());
 
 console.log(passed + ' passaram, ' + failed + ' falharam');
 process.exit(failed ? 1 : 0);
