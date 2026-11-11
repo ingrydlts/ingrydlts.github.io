@@ -81,9 +81,15 @@ Um **contador ao vivo** diz "Hoje isto alcança N pessoas", calculado no navegad
 **Quando sai:** "Manual, pela ficha" ou "Sozinho" com gatilho (depois do cadastro no guia, depois de outro e-mail, depois de
 compra), tempo (minutos, dias e hora de Brasília) e o interruptor Envio. Texto de resumo: "Sai 5 minutos depois do cadastro".
 
-**Quem recebe** e **Quando sai** ficam numa tela curta. O protótipo compara três soluções (A frase clicável, B painel com lista,
-C resumo com janela); a escolha da Ingryd define qual vira a tela final. Nas três a tela **não cresce** ao escolher uma
-página: as perguntas aparecem em pop-up, painel de altura fixa ou janela, nunca empilhadas.
+**Decisão da Ingryd (2026-11-11): tela A, "frase clicável".** Quem recebe e Quando sai viram duas frases cujos trechos são
+botões: "Vai para quem entrou por [página] e respondeu [resposta] + só quem aceitou novidades. Sai [5 minutos depois de pegar
+o guia]." Cada trecho abre um **pop-up ancorado nele** (no celular, uma folha na base) com as opções e as contagens; nada abre
+embaixo, então a tela **não cresce**. O pop-up cabe sempre na tela (abre para cima ou encolhe quando falta espaço). Trechos
+vazios aparecem tracejados ("qualquer resposta"). Abaixo da frase vêm o bloco "Este e-mail resolve" (abaixo) e o contador
+de pessoas. As alternativas B (painel com lista) e C (resumo com janela) foram descartadas.
+
+O filtro "Enviar só para quem já tem uma destas dores confirmada" fica dentro de **Avançado** (recolhido), e o título de
+Avançado avisa "· filtro de dor ativo" quando ligado.
 
 ### 4.2 Texto: a prévia é o editor
 
@@ -101,6 +107,19 @@ O e-mail ocupa a tela como ele chega, e é editável.
 - **Blocos que não são texto corrido** (Botão, Destaque, Pergunta, Foto): clicar abre um **popover** ancorado ao bloco com
   poucos campos (rótulo, link do sistema, estilo). Na tela o bloco continua parecendo o e-mail.
 - **Reordenar:** alça de arrastar à esquerda do bloco (ponteiro) e Alt+↑/Alt+↓ (teclado).
+- **Excluir:** cada bloco tem um **×** próprio, no canto direito (aparece ao passar o mouse, ao focar ou selecionar; sempre
+  visível em tela de toque; no celular fica acima do bloco). Excluir é imediato e mostra um aviso "Bloco «Texto» excluído.
+  **Desfazer**" por 7 segundos, que devolve o bloco à mesma posição. A barra do bloco não repete "Excluir".
+- **Paleta de blocos** (botão "+" e menu "/"): **Intro**, Título, Texto, Botão, Destaque, Pergunta, Assinatura. **Intro** é o
+  bloco que já existe no sistema como "Apresentação com foto" (tipo `apresentacao`): a foto da Ingryd, "Oi, eu sou a Ingryd" e
+  uma linha sobre ela. Só o rótulo muda na tela. Título e texto editam-se no popover; a foto é sempre a do site. O texto
+  padrão passa a ser "Moro na França desde 2023 e criei o Por Dentro para quem está fazendo esse caminho agora."
+- **Destaque** deixa de ser o cartão creme com barra dourada e passa a ser uma **faixa sólida de alto contraste**, sem barra
+  lateral e com cantos quase retos: rótulo pequeno em caixa alta e espaçado, valor grande em negrito, nota pequena sob um
+  filete. Quatro cores, escolhidas no popover (campo "Cor"): **Escuro** (grafite #2B2B2B, rótulo em ouro; padrão), **Verde da
+  marca** (#577328), **Terra** (#604034) e **Claro com contorno** (borda grafite de 2 px). Contraste verificado: valor ≥ 5,2:1 e
+  rótulo ≥ 5,0:1 em todas as cores (escuro: 13,6:1 e 7,6:1). Valor com até 40 caracteres e sem quebra sai em 23 px; mais longo,
+  em 18 px.
 - **Assunto e prévia:** ficam no alto, desenhados como uma linha da caixa de entrada, e editam-se ali mesmo. A frase de
   reserva ("se faltar um dado") abre num popover da engrenagem ao lado.
 - **Ver como:** seletor "Ver como [pessoa de exemplo ▾]" com um interruptor "Mostrar como chega". Ligado, as etiquetas viram
@@ -126,7 +145,11 @@ muda com o estado: "Mandar para revisão" no rascunho, "Publicar" na revisão. "
 ## 5. Contratos que não mudam
 
 - O formato de blocos guardado em `modelos_email_versoes.blocos` (`itens` com `tipo`, `texto`, `rotulo`, `link`, `se`,
-  `estilo`, etc.) e `ES.montar` em `estudio.js` **ficam como estão**: o HTML que sai nos envios não muda.
+  `estilo`, etc.) e `ES.montar` em `estudio.js` **ficam como estão**, com **uma exceção deliberada**: o HTML do bloco
+  `destaque` muda (faixa sólida, em tabela com `bgcolor` e cores em linha, seguro para clientes de e-mail) e ganha o campo
+  `estilo` (`escuro` padrão, `verde`, `terra`, `claro`). O texto puro do destaque não muda. Os e-mails já publicados que têm
+  destaque passam a sair com o novo visual na próxima versão publicada, e o teste de snapshot de `ES.montar` é regenerado só
+  para esse bloco. O texto padrão do bloco `apresentacao` (`novoBloco`) passa a "desde 2023".
 - Marcações `{nome}`, `{#x}…{/x}`, `{^x}…{/x}` continuam sendo o texto guardado; as etiquetas são só a forma de mostrar.
   Conversão pura nos dois sentidos, com teste.
 - Nenhum SQL é necessário para o editor. O único SQL das três partes está no spec B.
