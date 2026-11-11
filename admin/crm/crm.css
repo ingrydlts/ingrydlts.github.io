@@ -328,7 +328,7 @@ a.btn{text-decoration:none; color:inherit; display:inline-flex; align-items:cent
 
 /* Estúdio de e-mails (entrega 2): três colunas como o estúdio de produtos do admin —
    modelos · editor em seções · prévia com uma pessoa de verdade. Abaixo de 1000px vira abas. */
-.studio{display:grid; grid-template-columns:260px minmax(0,1fr) minmax(0,1.1fr); margin-top:14px; background:var(--surface); border:1px solid var(--line); border-radius:14px; overflow:hidden; min-height:640px}
+.studio{display:grid; grid-template-columns:240px minmax(0,1.25fr) minmax(0,.95fr); margin-top:14px; background:var(--surface); border:1px solid var(--line); border-radius:14px; overflow:hidden; min-height:640px}
 .st-list{border-right:1px solid var(--line); padding:12px 10px; display:flex; flex-direction:column; gap:8px; min-width:0}
 .st-list .tplgrp{margin:6px 4px 0}
 .st-item{display:flex; gap:8px; align-items:flex-start; width:100%; text-align:left; background:var(--surface-2); border:1.5px solid var(--line); border-radius:10px; padding:8px 10px}
@@ -409,44 +409,12 @@ select.st-in{height:36px; padding:0 8px}
 .st-env b{font-weight:600}
 .st-mail{width:100%; max-width:600px; height:max(720px, calc(100vh - 260px)); border:1px solid var(--line); border-radius:8px; background:#F4F1EC; transition:max-width .2s}
 .st-frame.cel .st-env, .st-frame.cel .st-mail{max-width:375px}
-/* "Editar no e-mail": o e-mail como chega (sempre claro, como o e-mail de verdade), com cada texto editável no lugar */
-.ed-wrap{width:100%; max-width:600px; display:flex; flex-direction:column; gap:10px; transition:max-width .2s}
-.st-frame.cel .ed-wrap{max-width:375px}
-.ed-env{display:grid; gap:2px; padding:0 4px}
-.ed-l{font-size:11px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-3); margin-top:4px}
-.ed-mail{background:#F4F1EC; border:1px solid var(--line); border-radius:8px; padding:24px 16px; color:#2B2B2B; font-family:'Inter', Arial, Helvetica, sans-serif}
-.ed-marca{font-family:'Fraunces', Georgia, serif; font-size:22px; font-weight:700; padding:0 4px 16px} .ed-marca span{color:#604034}
-.ed-carta{background:#FBFAF7; border:1px solid #E2DED7; border-radius:8px; padding:28px 24px; display:flex; flex-direction:column; gap:16px}
-.ed-rod{font-size:12px; line-height:1.55; color:#6E6862; padding:16px 4px 0}
-.ed-blk{display:flex; flex-direction:column; gap:6px}
-.ed-cond{font-size:11px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:#7A5D1E; background:#F3E7CD; border-radius:4px; padding:2px 6px; align-self:flex-start}
-.ed-t{border-radius:4px; padding:2px 4px; margin:-2px -4px; white-space:pre-wrap; overflow-wrap:anywhere; outline:none; cursor:text; min-height:1.4em}
-.ed-t:hover{background:rgba(222,185,117,.22)} .ed-t:focus{background:#FFFFFF; box-shadow:0 0 0 2px #577328}
-.ed-t:empty::before{content:attr(data-ph); color:#9A938B}
-.ed-env .ed-t{color:var(--ink)} .ed-env .ed-t:focus{background:var(--surface-2)}
-.ed-assunto{font-weight:600; font-size:14px} .ed-pre{font-size:13px; color:var(--ink-2) !important}
-.ed-texto{font-size:15px; line-height:1.6}
-.ed-discreto{font-size:14px; line-height:1.55; color:#6E6862}
-.ed-caixa{background:#F4F1EC; border-radius:8px; padding:12px 14px; margin:0; font-size:14px; line-height:1.55; color:#6E6862}
-.ed-titulo{font-family:'Fraunces', Georgia, serif; font-size:24px; line-height:1.25; font-weight:700}
-.ed-forte{font-weight:700; font-size:15px}
-.ed-botao{align-self:flex-start; background:#577328; color:#FBFAF7; font-weight:600; font-size:15px; padding:13px 22px; border-radius:4px}
-.ed-botao .ed-t:hover{background:rgba(0,0,0,.15)} .ed-botao .ed-t:focus{background:#3F5519; box-shadow:0 0 0 2px #FBFAF7}
-.ed-nota{font-size:11px; color:#9A938B}
-.ed-dest{background:#F4F1EC; border:1px solid #DEB975; border-radius:8px; padding:16px 18px; display:flex; flex-direction:column; gap:6px}
-.ed-rot{font-size:12px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:#6E6862}
-.ed-val{font-size:14px; line-height:1.6}
-.ed-apr{display:flex; gap:14px; align-items:center} .ed-apr img{border-radius:50%; border:2px solid #DEB975; object-fit:cover; flex:none} .ed-apr > div{display:flex; flex-direction:column; gap:2px; min-width:0}
 .st-filtros{display:flex; flex-direction:column; gap:8px; margin-top:12px; min-width:0}
 .st-filtro-topo{display:flex; flex-wrap:wrap; align-items:center; gap:8px}
 .st-filtro-q{flex:1 1 180px; min-width:0; border:1px solid var(--line-2); background:var(--surface-2); color:var(--ink); border-radius:999px; padding:6px 14px; font-size:13px}
 .st-filtro-linha{display:flex; flex-wrap:wrap; align-items:center; gap:6px}
 .st-filtro-t{font-size:11.5px; font-weight:700; color:var(--ink-2); min-width:58px}
 .st-vazio{display:flex; flex-direction:column; gap:8px; align-items:flex-start; padding:8px 4px}
-.ed-nome{font-family:'Fraunces', Georgia, serif; font-size:18px; font-weight:700}
-.ed-toques{font-size:13px; color:#6E6862; border:1.5px dashed #CFC9C0; border-radius:999px; padding:9px 16px}
-.ed-ass{font-family:'Fraunces', Georgia, serif; font-size:16px; font-style:italic}
-.ed-alt{display:flex; flex-direction:column; gap:2px; border-left:2px solid #E2DED7; padding-left:8px} .ed-alt small{font-size:11px; color:#9A938B}
 .st-mtabs{display:none; margin-top:12px}
 .st-mtabs button{border:1px solid var(--line-2); background:none; border-radius:999px; padding:6px 14px; font-weight:600; font-size:13px; color:var(--ink-2); margin-right:4px}
 .st-mtabs button[aria-pressed="true"]{background:var(--ink); color:var(--bg); border-color:var(--ink)}
@@ -720,3 +688,117 @@ select.st-in{height:36px; padding:0 8px}
 .pccurlinha{display:flex; align-items:center; gap:10px; flex-wrap:wrap; justify-content:space-between; padding:6px 0; font-size:13.5px}
 .pcmapa{margin:0; padding-left:20px; font-size:13.5px; line-height:1.5}
 .pcmapa li{margin-bottom:6px}
+
+/* O e-mail editável do estúdio (editor-email.js): os passos, o próprio e-mail na tela, o "+" entre os blocos, o × de cada bloco, os menus.
+   O e-mail em si é sempre claro (como o e-mail de verdade), em qualquer tema; o resto da tela segue o tema. */
+.ee-passos{display:flex; gap:6px; flex-wrap:wrap}
+.ee-passo{display:flex; align-items:center; gap:7px; background:var(--surface-2); border:1px solid var(--line-2); border-radius:999px; padding:4px 11px 4px 5px; font-weight:600; font-size:12.5px; color:var(--ink-2)}
+.ee-passo .n{width:22px; height:22px; border-radius:50%; background:var(--sunk); display:grid; place-content:center; font-size:12px}
+.ee-passo[aria-selected="true"]{border-color:var(--ink); color:var(--ink)}
+.ee-passo[aria-selected="true"] .n{background:var(--ink); color:var(--bg)}
+.ee-aviso{background:var(--red); color:#fff; border-radius:999px; min-width:18px; height:18px; font-size:11px; display:inline-grid; place-content:center; padding:0 5px}
+.ee-sec{background:var(--surface-2); border:1px solid var(--line); border-radius:12px; padding:12px 14px; display:flex; flex-direction:column; gap:10px; font-size:13px}
+.ee-sec h4{margin:0; font-family:var(--display); font-size:15px}
+.ee-ctx{background:var(--surface-2); border:1px solid var(--line); border-radius:12px}
+.ee-ctx > summary{cursor:pointer; padding:10px 14px; font-weight:600; font-size:13px}
+.ee-ctx-in{padding:0 14px 14px; display:flex; flex-direction:column; gap:10px; font-size:13px}
+.ee{display:flex; flex-direction:column; gap:10px; min-width:0}
+.ee-topo{display:flex; flex-wrap:wrap; gap:8px 12px; align-items:center; justify-content:space-between; font-size:12.5px; color:var(--ink-2)}
+.ee-topo kbd{font-family:ui-monospace, Menlo, monospace; font-size:11.5px; background:var(--sunk); border-radius:4px; padding:0 5px}
+.ee-hist{display:flex; gap:6px} .ee-hist .btn{padding:3px 10px; font-size:12px}
+.ee-linha{background:var(--surface-2); border:1px solid var(--line); border-radius:10px; padding:10px 14px; display:flex; flex-direction:column; gap:2px}
+.ee-l{font-size:11px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-3); margin-top:4px}
+.ee-l .sub{text-transform:none; letter-spacing:0; font-weight:400}
+.ee-f{outline:none; border-radius:4px; padding:2px 4px; margin:-2px -4px; white-space:pre-wrap; overflow-wrap:anywhere; min-height:1.4em}
+.ee-f[contenteditable="true"]{cursor:text}
+.ee-f[contenteditable="true"]:hover{background:rgba(222,185,117,.22)}
+.ee-f:focus{background:#FFFFFF; box-shadow:0 0 0 2px var(--focus)}
+.ee-linha .ee-f:focus, .ee-rodape .ee-f:focus{background:var(--surface-2)}
+.ee-f:empty::before{content:attr(data-ph); color:#9A938B}
+.ee-assunto{font-weight:600; font-size:14px} .ee-pre{font-size:13px; color:var(--ink-2)}
+.ee-reserva{margin-top:4px; font-size:12.5px} .ee-reserva > summary{cursor:pointer; color:var(--ink-2); font-weight:600}
+.ee-papel{background:var(--sunk); border-radius:12px; padding:14px 10px}
+.ee-mail{background:#FBFAF7; border:1px solid #E2DED7; border-radius:8px; padding:26px 30px 18px; color:#2B2B2B; font-family:'Inter', Arial, Helvetica, sans-serif; font-size:15px; max-width:600px; margin:0 auto}
+.ee-marca{font-family:'Fraunces', Georgia, serif; font-size:22px; font-weight:700; padding-bottom:12px} .ee-marca span{color:#604034}
+.ee-vazio{color:#6E6862; text-align:center; padding:16px 0; margin:0}
+.ee-texto{font-size:15px; line-height:1.6; margin:2px 0}
+.ee-disc{font-size:14px; line-height:1.55; color:#6E6862}
+.ee-caixa{background:#F4F1EC; border-radius:8px; padding:12px 14px; font-size:14px; line-height:1.55; color:#6E6862}
+.ee-titulo{font-family:'Fraunces', Georgia, serif; font-size:24px; line-height:1.25; font-weight:700; margin:2px 0}
+.ee-forte{font-weight:700; font-size:15px}
+.ee-ass{font-family:'Fraunces', Georgia, serif; font-size:16px; font-style:italic; color:#604034}
+.ee-botao{display:inline-block; background:#577328; color:#FBFAF7; font-weight:600; font-size:15px; padding:13px 22px; border-radius:4px; cursor:pointer}
+.ee-nota{display:block; font-size:11px; color:#9A938B; margin-top:4px}
+.ee-toques{font-size:13px; color:#6E6862; border:1.5px dashed #CFC9C0; border-radius:999px; padding:9px 16px}
+.ee-cond{display:inline-block; font-size:11px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:#7A5D1E; background:#F3E7CD; border-radius:4px; padding:2px 6px; margin-bottom:4px}
+.ee-alt{display:flex; flex-direction:column; gap:2px; border-left:2px solid #E2DED7; padding-left:8px; margin-top:6px} .ee-alt small{font-size:11px; color:#9A938B}
+/* O destaque: faixa sólida de alto contraste (as mesmas cores do e-mail que sai; estudio.js ESTILOS_DESTAQUE). */
+.ee-dest{background:#2B2B2B; color:#FBFAF7; border-radius:2px; padding:18px 22px; cursor:pointer}
+.ee-dest .r{font-size:12px; letter-spacing:.16em; text-transform:uppercase; font-weight:800; color:#DEB975}
+.ee-dest .v{font-size:23px; font-weight:800; line-height:1.25; margin-top:8px; white-space:pre-wrap}
+.ee-dest .v.l{font-size:18px; line-height:1.4}
+.ee-dest .n{font-size:13px; line-height:1.5; color:#D9D2C6; margin-top:12px; padding-top:10px; border-top:1px solid #4A4743}
+.ee-dest.t-verde{background:#577328} .ee-dest.t-verde .r{color:#FBFAF7} .ee-dest.t-verde .n{color:#EDE8E0; border-top-color:#7B9250}
+.ee-dest.t-terra{background:#604034} .ee-dest.t-terra .n{color:#E2DED7; border-top-color:#7F5E52}
+.ee-dest.t-claro{background:#FBFAF7; color:#2B2B2B; border:2px solid #2B2B2B} .ee-dest.t-claro .r{color:#577328} .ee-dest.t-claro .n{color:#6E6862; border-top-color:#D9D2C6}
+.ee-intro{display:flex; gap:16px; align-items:center; cursor:pointer}
+.ee-intro img{width:84px; height:84px; border-radius:50%; border:3px solid #DEB975; object-fit:cover; flex:none}
+.ee-intro .it{font-family:'Fraunces', Georgia, serif; font-size:21px; line-height:1.2; font-weight:700}
+.ee-intro .ix{font-size:15px; line-height:1.5; color:#6E6862; margin-top:4px}
+/* As etiquetas dos dados da pessoa dentro do texto: {nome} aparece como "nome"; os marcadores de condição ficam cinzas. */
+.ed-chip{display:inline-block; background:#F3E7CD; border:1px solid #DEB975; border-radius:999px; padding:0 9px; font-size:13px; font-weight:700; margin:0 1px; user-select:none; color:#2B2B2B; line-height:1.5}
+.ed-chip.ctl{background:#ECE7DF; border-color:#CFC9C0; color:#6E6862; font-weight:600; font-size:12px}
+/* Cada bloco: o × de excluir, a alça de mover, a barra de ferramentas e as opções */
+.ee-bk{position:relative; padding:4px 6px; margin:0 -6px; border-radius:8px}
+.ee-bk:hover{background:rgba(43,43,43,.04)}
+.ee-bk:focus-within, .ee-bk.sel{background:rgba(43,43,43,.05); box-shadow:0 0 0 2px #2B2B2B}
+.ee-bk.ee-over{outline:2px dashed var(--moss); outline-offset:2px}
+.ee-x{position:absolute; right:-26px; top:6px; width:24px; height:24px; border-radius:50%; border:0; background:#2B2B2B; color:#FBFAF7; font-size:15px; line-height:1; padding:0; display:none; place-content:center; z-index:7}
+.ee-x:hover{background:#8A2F44}
+.ee-grip{position:absolute; left:-26px; top:6px; display:none; flex-direction:column; gap:2px; z-index:6}
+.ee-grip .gb{width:22px; height:22px; border:0; border-radius:6px; background:#E2DED7; color:#2B2B2B; font-size:12px; line-height:1; padding:0; display:grid; place-content:center}
+.ee-grip .gb:disabled{opacity:.35}
+.ee-grip .drag{cursor:grab}
+.ee-bk:hover > .ee-x, .ee-bk:focus-within > .ee-x, .ee-bk.sel > .ee-x{display:grid}
+.ee-bk:hover > .ee-grip, .ee-bk:focus-within > .ee-grip, .ee-bk.sel > .ee-grip{display:flex}
+@media (hover:none){ .ee-bk > .ee-x{display:grid; opacity:.9} }
+.ee-bar{position:absolute; left:0; top:-44px; z-index:8; display:none; gap:2px; align-items:center; background:#2B2B2B; color:#F4F1EC; border-radius:10px; padding:4px; box-shadow:0 6px 20px rgba(0,0,0,.25); flex-wrap:wrap; max-width:100%}
+.ee-bk:focus-within > .ee-bar, .ee-bk.sel > .ee-bar{display:flex}
+.ee-bar button{background:none; border:0; color:#F4F1EC; border-radius:7px; padding:5px 9px; font-weight:700; font-size:13px}
+.ee-bar button:hover{background:#4A4743}
+.ee-bar button[aria-pressed="true"]{background:#F4F1EC; color:#2B2B2B}
+.ee-bar .sp{width:1px; height:18px; background:#5C5750; margin:0 3px}
+.ee-ins{height:12px; position:relative; margin:0 -6px; display:flex; align-items:center; justify-content:center}
+.ee-ins::before{content:""; position:absolute; left:0; right:0; top:50%; border-top:1.5px dashed transparent}
+.ee-ins:hover::before, .ee-ins:focus-within::before, .ee-ins.open::before{border-top-color:#C9BFAE}
+.ee-plus{opacity:0; width:24px; height:24px; border-radius:50%; border:1.5px solid #8A8174; background:#FBFAF7; color:#2B2B2B; font-weight:700; line-height:1; padding:0; display:grid; place-content:center; position:relative; z-index:3; transition:opacity .12s}
+.ee-ins:hover .ee-plus, .ee-ins:focus-within .ee-plus, .ee-ins.open .ee-plus{opacity:1}
+@media (hover:none){ .ee-plus{opacity:.7} }
+.ee-pal{display:flex; gap:6px; flex-wrap:wrap; justify-content:center; background:#FBFAF7; border:1px solid #CFC6B6; border-radius:12px; padding:8px; box-shadow:0 8px 24px rgba(0,0,0,.14); margin:4px auto; position:relative; z-index:4}
+.ee-pal button{border:1px solid #D9D2C6; background:#F4F1EC; color:#2B2B2B; border-radius:9px; padding:7px 12px; font-weight:700; font-size:13px}
+.ee-pal button:hover{border-color:#2B2B2B}
+.ee-pop{margin:8px 0 4px; background:var(--surface); color:var(--ink); border:1px solid var(--line-2); border-radius:12px; padding:12px; display:flex; flex-direction:column; gap:8px; box-shadow:0 8px 24px rgba(0,0,0,.14); font-size:13px}
+.ee-pop-f{display:flex; justify-content:flex-end}
+.ee-rodape{background:var(--surface-2); border:1px solid var(--line); border-radius:10px; padding:10px 14px; font-size:12.5px; color:var(--ink-2)}
+.ee-rodape p{margin:2px 0 6px; line-height:1.5}
+.ee-menu{position:fixed; z-index:60; min-width:230px; max-width:calc(100vw - 24px); background:var(--surface-2); border:1px solid var(--line-2); border-radius:12px; padding:6px; box-shadow:0 12px 32px rgba(0,0,0,.25)}
+.ee-menu .h{font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--ink-3); font-weight:700; padding:4px 8px}
+.ee-menu button{display:block; width:100%; text-align:left; background:none; border:0; border-radius:8px; padding:7px 10px; font-weight:700; font-size:13px; color:var(--ink)}
+.ee-menu button small{display:block; font-weight:400; color:var(--ink-2); font-size:12px}
+.ee-menu button[aria-selected="true"], .ee-menu button:hover{background:var(--sunk)}
+.ee-toast{position:fixed; left:16px; bottom:16px; z-index:70; background:#2B2B2B; color:#FBFAF7; border:1px solid #5C5750; border-radius:10px; padding:10px 14px; display:flex; gap:14px; align-items:center; box-shadow:0 10px 30px rgba(0,0,0,.3); font-weight:600; font-size:13px; max-width:calc(100vw - 32px)}
+.ee-toast[hidden]{display:none}
+.ee-toast button{background:none; border:0; color:#DEB975; font-weight:800; text-decoration:underline; text-underline-offset:3px; padding:0}
+@media (max-width: 1000px){
+  .ee-mail{padding:22px 16px 14px}
+  .ee-grip{left:auto; right:34px; top:-28px; flex-direction:row; background:#E2DED7; border-radius:7px; padding:2px}
+  .ee-x{right:4px; top:-28px}
+  .ee-bk:focus-within > .ee-bar, .ee-bk.sel > .ee-bar{position:fixed; left:8px; right:8px; top:auto; bottom:8px; border-radius:12px; justify-content:center}
+  .ee-bk{margin-top:30px}
+}
+@media (prefers-reduced-motion: reduce){ .ee-plus{transition:none} }
+
+.ee-frase{margin:0;font-size:16px;line-height:1.5}
+.ee-conta{margin:0;font-size:13px}
+details.ee-sec>summary{cursor:pointer;font-weight:600;font-size:14px}
+details.ee-sec[open]>summary{margin-bottom:8px}

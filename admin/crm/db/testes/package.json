@@ -4,6 +4,9 @@
   "type": "module",
   "scripts": {
     "test": "node crm-fase2.test.mjs",
+    "test:editor-blocos": "node crm-editor-blocos.test.mjs",
+    "test:editor-quem": "node crm-editor-quem.test.mjs",
+    "test:estudio-blocos": "node crm-estudio-blocos.test.mjs",
     "test:prazo": "node crm-prazo-vlsts.test.mjs",
     "test:cerebro": "node crm-fase3-cerebro.test.mjs",
     "test:agregados": "node crm-fase3c-agregados.test.mjs",

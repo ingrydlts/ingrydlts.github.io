@@ -73,7 +73,7 @@ async function main() {
     naoabriu: ['reimpacto', null, null], naoclicou: ['reimpacto', null, null], cliquenaoapp: ['reimpacto', null, null], parouapp: ['reimpacto', null, null],
     cf_guia_1: ['entrega', 'I03', null], cf_guia_conversa: ['entrega', 'I03', null], guia_alternancia: ['entrega', 'I01', null],
     guia_chamada: ['entrega', 'I04', null], guia_plataforma: ['entrega', 'I04', null], tec_recap_30min: ['entrega', 'I02', null],
-    aupair_chegada_1: ['entrega', null, 'au_pair'], aupair_chegada_2: ['entrega', null, 'au_pair'],
+    aupair_chegada_1: ['entrega', 'I05', 'au_pair'], aupair_chegada_2: ['entrega', 'I05', 'au_pair'],
     hub_estudos_lancamento: ['campanha', null, null], lembrete_prazo_vlsts: ['campanha', null, null]
   };
   const porChave = Object.fromEntries(depois.map((m) => [m.chave, m]));
@@ -105,6 +105,30 @@ async function main() {
   check('cf_guia_1 continua campanha/I01 (não volta para entrega/I03)', cf.familia === 'campanha' && cf.pagina === 'I01');
   const [ap] = await q("select familia, persona from modelos_email where chave = 'aupair_chegada_1'");
   check('aupair_chegada_1: persona vazia de propósito não é refeita', ap.familia === 'entrega' && ap.persona === null);
+
+  console.log('\n== crm-pagina-i05.sql: um banco que já tinha a taxonomia só com I01 a I04 ==');
+  const sqlI05 = readFileSync(path.resolve(HERE, '../crm-pagina-i05.sql'), 'utf8');
+  await db.query("update modelos_email set pagina = null where chave in ('aupair_chegada_1', 'aupair_chegada_2')");
+  await db.exec('alter table modelos_email drop constraint modelos_email_pagina_check');
+  await db.exec("alter table modelos_email add constraint modelos_email_pagina_check check (pagina is null or pagina in ('I01', 'I02', 'I03', 'I04'))");
+  const setI5 = (chave) => attempt(() => db.query("update modelos_email set pagina = 'I05' where chave = $1", [chave]));
+  check('antes: a I05 é recusada (a regra antiga)', !(await setI5('guia_chamada')).ok);
+  await db.query("update modelos_email set pagina = 'I02' where chave = 'aupair_chegada_2'");   // classificado à mão: não pode ser sobrescrito
+  const m1 = await attempt(() => db.exec(sqlI05));
+  check('roda a 1ª vez sem erro', m1.ok); if (!m1.ok) console.log(m1.error.message);
+  const m2 = await attempt(() => db.exec(sqlI05));
+  check('roda a 2ª vez sem erro', m2.ok); if (!m2.ok) console.log(m2.error.message);
+  check('depois: a I05 é aceita', (await setI5('guia_chamada')).ok);
+  await db.query("update modelos_email set pagina = 'I04' where chave = 'guia_chamada'");
+  check('página I06 continua recusada', !(await attempt(() => db.query("update modelos_email set pagina = 'I06' where chave = 'guia_chamada'"))).ok);
+  const [a1] = await q("select pagina from modelos_email where chave = 'aupair_chegada_1'");
+  const [a2] = await q("select pagina from modelos_email where chave = 'aupair_chegada_2'");
+  check('aupair_chegada_1 (vazio) foi para a I05', a1.pagina === 'I05');
+  check('aupair_chegada_2 (classificado à mão como I02) não foi sobrescrito', a2.pagina === 'I02');
+  const outras = await q("select count(*)::int n from modelos_email where pagina = 'I05' and chave not in ('aupair_chegada_1')");
+  check('nenhum outro modelo foi para a I05', outras[0].n === 0);
+  check('etapa de uma página I05 aceita um código do guia', (await attempt(() => db.query("update modelos_email set pagina = 'I05', etapa = 'ap-medo-prazo' where chave = 'guia_chamada'"))).ok);
+  await db.query("update modelos_email set pagina = 'I04', etapa = null where chave = 'guia_chamada'");
 
   console.log('\n== O gatilho ==');
   const g = await attempt(() => db.query("update modelos_email set familia = 'acesso' where chave = 'boas_vindas'"));

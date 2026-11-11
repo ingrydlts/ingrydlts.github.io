@@ -34,9 +34,9 @@ function qb(table) {
 const supabase = { from: qb, auth: { getSession: async () => ({ data: { session: { access_token: 'tok', user: { id: 'u' } } } }) },
   rpc: async (n, a) => { rpcs.push({ n, a }); return { data: null, error: null }; } };
 const store = {};
-const mod = new Function('supabase', 'ES', 'TX', 'document', 'window', 'location', 'localStorage',
+const mod = new Function('supabase', 'ES', 'TX', 'EE', 'EQ', 'document', 'window', 'location', 'localStorage',
   src + '\n;return { state, setC: function (v) { C = v; }, renderPessoa, renderOnboarding, carregarOnboarding, getONT: function () { return ONT; }, setONT: function (v) { ONT = v; }, setONB: function (v) { ONB = v; } };')(
-  supabase, {}, TXMOD, document, { addEventListener() {}, scrollTo() {} }, { href: '' }, { getItem: (k) => store[k] ?? null, setItem: (k, v) => { store[k] = v; } });
+  supabase, {}, TXMOD, { iniciar() {}, depois() {}, campoMudou() {} }, {}, document, { addEventListener() {}, scrollTo() {} }, { href: '' }, { getItem: (k) => store[k] ?? null, setItem: (k, v) => { store[k] = v; } });
 
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 const click = async (ds, id = '') => { const b = { id, dataset: ds, disabled: false, matches: () => false }; await handlers.click[0]({ target: { id: '', closest: () => b } }); await wait(15); return b; };

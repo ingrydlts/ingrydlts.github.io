@@ -9,7 +9,8 @@
 -- O que muda:
 --   1. modelos_email.familia, .pagina, .etapa e .persona (todas podem ficar vazias).
 --        familia: entrega, personalizado, aquecimento, serie, compra, acesso, reimpacto ou campanha
---        pagina:  I01 a I04 (as páginas do site: Alternância 30+, Tecnólogo, Études en France, VLS-TS)
+--        pagina:  I01 a I05 (as páginas do site: Alternância 30+, Tecnólogo, Études en France, VLS-TS, Au pair). A I05 entrou
+--                 depois: um banco onde este arquivo já rodou ganha a I05 rodando também crm-pagina-i05.sql.
 --        etapa:   o código da etapa marcada no guia (ex.: tec-nao-sei); só existe junto de uma página
 --        persona: au_pair, pvt, estudante ou conjuge
 --   2. Preenchimento: cada modelo de hoje recebe família, página e persona pela mesma tabela que o painel usa quando este SQL
@@ -42,7 +43,7 @@ begin
   end if;
   if not exists (select 1 from pg_constraint where conname = 'modelos_email_pagina_check') then
     alter table public.modelos_email add constraint modelos_email_pagina_check check (pagina is null
-      or pagina in ('I01', 'I02', 'I03', 'I04'));
+      or pagina in ('I01', 'I02', 'I03', 'I04', 'I05'));
   end if;
   if not exists (select 1 from pg_constraint where conname = 'modelos_email_persona_check') then
     alter table public.modelos_email add constraint modelos_email_persona_check check (persona is null
@@ -74,8 +75,8 @@ from (values
   ('guia_chamada', 'entrega', 'I04', null),
   ('guia_plataforma', 'entrega', 'I04', null),
   ('tec_recap_30min', 'entrega', 'I02', null),
-  ('aupair_chegada_1', 'entrega', null, 'au_pair'),
-  ('aupair_chegada_2', 'entrega', null, 'au_pair'),
+  ('aupair_chegada_1', 'entrega', 'I05', 'au_pair'),
+  ('aupair_chegada_2', 'entrega', 'I05', 'au_pair'),
   ('hub_estudos_lancamento', 'campanha', null, null),
   ('lembrete_prazo_vlsts', 'campanha', null, null)
 ) as x(chave, familia, pagina, persona)

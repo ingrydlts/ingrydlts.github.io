@@ -40,6 +40,10 @@ var ETAPAS_CF = { nao_comecei: 'ainda não começou', escolhendo_curso: 'está e
   dossie_enviado: 'já enviou o dossiê', entrevista_resposta: 'está esperando a entrevista ou a resposta' };
 var ETAPAS_ALT = { pesquisando: 'ainda está pesquisando', escolhendo_escola: 'está escolhendo escola', recusa_idade: 'ouviu "só até 29"',
   buscando_empresa: 'está buscando empresa', montando_contrato: 'está montando o contrato' };
+// As respostas da pergunta "O que mais pesa pra você agora?" do guia do Au pair (respostas.objetivo: ap-…). Só servem à regra
+// "Etapa do guia" do Para quem: não viram dado de e-mail, porque o Worker não as preenche (crmVarsNovos).
+var ETAPAS_AP = { tudo_bem: 'está tudo bem e ainda não olhou os papéis', nao_sei_comecar: 'tem muito papel e não sabe por onde começar',
+  medo_prazo: 'tem medo de perder algum prazo', travado: 'tem um passo travado (validação, conta ou sécu)', pesado: 'está pesado e deixou os papéis de lado' };
 Object.keys(ETAPAS_CF).forEach(function (k) { CAT['etapa_' + k] = { t: 'sim', o: 'etapa do guia: ' + ETAPAS_CF[k], etapa: true }; });
 Object.keys(ETAPAS_ALT).forEach(function (k) { CAT['etapa_' + k] = { t: 'sim', o: 'etapa do guia: ' + ETAPAS_ALT[k], etapa: true }; });
 
@@ -63,7 +67,8 @@ export var VARS_NOVOS = ['nome', 'email', 'persona', 'nivel', 'prazo_nivel', 'et
   'prazo_vencido', 'prazo_a_vencer', 'link_acesso', 'link_agenda'].concat(Object.keys(ETAPAS_CF).concat(Object.keys(ETAPAS_ALT)).map(function (k) { return 'etapa_' + k; }));
 // A regra "Etapa do guia" do Para quem: o valor é o que fica em contatos.respostas.objetivo (crm_sequencia_pendentes compara igual).
 export var ETAPAS_GUIA = Object.keys(ETAPAS_CF).map(function (k) { return ['cf-' + k.replace(/_/g, '-'), 'Campus France: ' + ETAPAS_CF[k]]; })
-  .concat(Object.keys(ETAPAS_ALT).map(function (k) { return ['alt-' + k.replace(/_/g, '-'), 'Alternância 30+: ' + ETAPAS_ALT[k]]; }));
+  .concat(Object.keys(ETAPAS_ALT).map(function (k) { return ['alt-' + k.replace(/_/g, '-'), 'Alternância 30+: ' + ETAPAS_ALT[k]]; }))
+  .concat(Object.keys(ETAPAS_AP).map(function (k) { return ['ap-' + k.replace(/_/g, '-'), 'Au pair: ' + ETAPAS_AP[k]]; }));
 var VARS_PRODUTO = ['produto', 'link_produto'];
 export function varsDoModelo(chave, m) {
   if (VARS_DE[chave]) return VARS_DE[chave];
@@ -76,7 +81,7 @@ export var TIPOS = {
   texto: { nome: 'Texto', d: 'Um parágrafo. **assim** fica em negrito.' },
   titulo: { nome: 'Título', d: 'A frase grande do topo.' },
   botao: { nome: 'Botão', d: 'Um botão para um link que vem do banco.' },
-  destaque: { nome: 'Destaque', d: 'Uma caixa com rótulo, valor e nota (ex.: o prazo dela).' },
+  destaque: { nome: 'Destaque', d: 'Uma faixa de cor com rótulo, valor e nota (ex.: o prazo dela).' },
   apresentacao: { nome: 'Apresentação com foto', d: 'A sua foto, o seu nome e uma linha sobre você.' },
   pergunta: { nome: 'Pergunta', d: 'A pergunta grande e uma linha de ajuda.' },
   toques: { nome: 'Respostas de um toque', d: 'Os botões que ela toca para responder (vêm prontos do Worker).' },
@@ -84,6 +89,17 @@ export var TIPOS = {
   assinatura: { nome: 'Assinatura', d: 'Ingryd · Por Dentro.' }
 };
 export var FOTO_URL = 'https://imigrantepordentro.com/images/uploads/foto-de-perfil.jpg';
+// Cores do bloco destaque (campo "estilo"): uma faixa sólida de alto contraste. fg = o valor; rot = o rótulo; nota = a nota;
+// filete = a linha acima da nota; borda = só no estilo claro. Contraste do valor e do rótulo sobre o fundo: no mínimo 5:1.
+export var ESTILOS_DESTAQUE = {
+  escuro: { nome: 'Escuro (grafite)', bg: '#2B2B2B', fg: '#FBFAF7', rot: '#DEB975', nota: '#D9D2C6', filete: '#4A4743', borda: '' },
+  verde: { nome: 'Verde da marca', bg: '#577328', fg: '#FBFAF7', rot: '#FBFAF7', nota: '#EDE8E0', filete: '#7B9250', borda: '' },
+  terra: { nome: 'Terra', bg: '#604034', fg: '#FBFAF7', rot: '#DEB975', nota: '#E2DED7', filete: '#7F5E52', borda: '' },
+  claro: { nome: 'Claro com contorno', bg: '#FBFAF7', fg: '#2B2B2B', rot: '#577328', nota: '#6E6862', filete: '#D9D2C6', borda: 'border:2px solid #2B2B2B; ' }
+};
+// O bloco Intro (tipo "apresentacao"): a foto dela, o nome e uma linha sobre ela.
+export var INTRO_TITULO = 'Oi, eu sou a Ingryd';
+export var INTRO_TEXTO = 'Moro na França desde 2023 e criei o Por Dentro para quem está fazendo esse caminho agora.';
 export var TIPO_RODAPE = {
   novidades: 'Novidades: só sai para quem aceitou receber novidades, com "responda sair" no rodapé.',
   servico: 'Serviço: é o que ela pediu. Sai para todo mundo, sem rodapé de descadastro.',
@@ -95,7 +111,7 @@ function novoBloco(tipo) {
   if (tipo === 'titulo') return { tipo: 'titulo', texto: '' };
   if (tipo === 'botao') return { tipo: 'botao', rotulo: '', link: '' };
   if (tipo === 'destaque') return { tipo: 'destaque', rotulo: '', valor: '', nota: '' };
-  if (tipo === 'apresentacao') return { tipo: 'apresentacao', titulo: 'Oi, eu sou a Ingryd', texto: 'Moro na França e criei o Por Dentro para quem está fazendo esse caminho agora.' };
+  if (tipo === 'apresentacao') return { tipo: 'apresentacao', titulo: INTRO_TITULO, texto: INTRO_TEXTO };
   if (tipo === 'pergunta') return { tipo: 'pergunta', texto: '', ajuda: '' };
   if (tipo === 'toques') return { tipo: 'toques', var: 'botoes_cidade' };
   if (tipo === 'etapa') return { tipo: 'etapa', se: '', rotulo: '', titulo: '', texto: '' };
@@ -174,11 +190,14 @@ function bloco(b, d) {
       var curto = String(b.valor || '').indexOf('\n') < 0 && String(b.valor || '').length <= 40;
       t = curto ? a.s + ': ' + y.s : a.s + '\n' + y.s;
       if (b.nota) t += '\n' + n1.s;
-      h = '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 24px;"><tr><td style="background:#F4F1EC; border:1px solid #DEB975; border-radius:8px; padding:16px 18px;">' +
-        '<div style="' + SANS + ' font-size:12px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:#6E6862;">' + x.s + '</div>' +
-        (curto ? '<div style="' + SERIF + ' font-size:26px; font-weight:700; color:#577328; line-height:1.3; margin:4px 0;">' + z.s + '</div>'
-          : '<div style="' + SANS + ' font-size:14px; line-height:1.6; color:#2B2B2B; margin:6px 0;">' + z.s + '</div>') +
-        (b.nota ? '<div style="' + SANS + ' font-size:13px; line-height:1.5; color:#6E6862;">' + n2.s + '</div>' : '') + '</td></tr></table>';
+      // Faixa sólida (fundo no atributo bgcolor e no style, para os clientes de e-mail que ignoram um dos dois). O link escrito dentro
+      // do valor ou da nota sai na cor do texto do estilo: o verde some sobre o fundo escuro.
+      var es = ESTILOS_DESTAQUE[b.estilo] || ESTILOS_DESTAQUE.escuro;
+      var linkCor = function (s) { return es.bg === '#FBFAF7' ? s : s.replace(/color:#577328;/g, 'color:' + es.fg + ';'); };
+      h = '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 24px;"><tr><td bgcolor="' + es.bg + '" style="background:' + es.bg + '; ' + es.borda + 'border-radius:2px; padding:18px 22px;">' +
+        '<div style="' + SANS + ' font-size:12px; font-weight:800; letter-spacing:.16em; text-transform:uppercase; color:' + es.rot + ';">' + x.s + '</div>' +
+        '<div style="' + SANS + ' font-size:' + (curto ? '23px' : '18px') + '; font-weight:800; line-height:' + (curto ? '1.25' : '1.4') + '; color:' + es.fg + '; margin:8px 0 0;">' + linkCor(z.s) + '</div>' +
+        (b.nota ? '<div style="border-top:1px solid ' + es.filete + '; margin-top:12px; padding-top:10px; ' + SANS + ' font-size:13px; line-height:1.5; color:' + es.nota + ';">' + linkCor(n2.s) + '</div>' : '') + '</td></tr></table>';
       return { txt: t, html: h, ess: juntaEss(a.ess, y.ess, n1.ess) };
     case 'apresentacao':
       a = campo(b.titulo, '', d, false); x = campo(b.titulo, '', d, true);
