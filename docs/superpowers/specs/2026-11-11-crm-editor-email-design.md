@@ -51,9 +51,28 @@ Monta-se como uma frase com seletores, e o resumo em palavras aparece no topo do
    - I05 Au pair: "O que mais pesa pra você agora?" (`ap-tudo-bem`, `ap-nao-sei-comecar`, `ap-medo-prazo`, `ap-travado`, `ap-pesado`).
    As opções vêm do catálogo, não de código solto. Equivale à regra existente "Etapa do guia" (`respostas.objetivo`, valor igual); a
    pergunta de nível passa a ser uma segunda regra sobre `respostas.cfNivel`.
-3. **Tem a dor** (spec B): lista de dores do catálogo, opcional.
-4. **Aceitou novidades**: automático para o tipo "novidades"; só mostra o aviso.
-5. **Avançado** (fechado): persona, produto comprado, segmento, estágio.
+3. **Aceitou novidades**: automático para o tipo "novidades"; só mostra o aviso.
+4. **Avançado** (fechado): persona, produto comprado, segmento, estágio.
+
+**Este e-mail resolve (dor atendida): deduzida, não escolhida.** Decisão da Ingryd em 2026-11-11: mostrar o catálogo inteiro de
+dores não escala. A dor do e-mail vem **do contexto dos botões que ela clica** e aparece já preenchida:
+
+- Para cada página marcada em "Entrou por": se há respostas marcadas **da pergunta de etapa** dessa página, valem só as dores
+  associadas a elas (`dores.respostas_guia`); se não há, valem as dores prováveis da página (a união das dores associadas a
+  qualquer resposta dela). Respostas da pergunta de nível (`nivel-*`) filtram pessoas, mas não indicam dor.
+- Sem página marcada, não há sugestão: aparece "Escolha uma página de entrada e eu sugiro as dores prováveis".
+- O resultado aparece como **chips** (dor, quantas pessoas do contexto a têm, de onde veio: "por «resposta»" ou "em N respostas
+  da página"), com selo **Automático**. O mesmo contexto é recalculado a cada mudança, com um realce curto nos chips que mudaram
+  e um anúncio ("Dores atualizadas: …") para leitor de tela.
+- **Ajustar** abre uma lista com as dores sugeridas já marcadas e, recolhido, "Outras dores (N)" com busca. Mexer em qualquer
+  chip ou caixa passa o selo para **Ajustado por você** e congela a lista; "Voltar ao automático" desfaz.
+- Respostas sem dor associada geram o aviso "A resposta «…» não tem dor associada" com atalho para o catálogo.
+- No máximo 5 chips à vista; o resto vira "+ N dores".
+- **Filtro opcional**: "Enviar só para quem já tem uma destas dores confirmada" (desligado por padrão). Desligado, a dor só
+  etiqueta o e-mail; ligado, também restringe os destinatários à dor confirmada na ficha.
+
+O mesmo princípio vale em qualquer lugar do CRM que peça uma dor (Contatos, ficha, Estúdio): **contexto antes de catálogo**.
+Primeiro as dores relevantes ao que está na tela, já marcadas; o resto fica recolhido e com busca.
 
 Um **contador ao vivo** diz "Hoje isto alcança N pessoas", calculado no navegador com as mesmas regras que o banco aplica
 (o código de conferência `fora` já existe em `crm.js` perto da linha 2970). O número é uma estimativa; a regra que manda
@@ -62,7 +81,9 @@ Um **contador ao vivo** diz "Hoje isto alcança N pessoas", calculado no navegad
 **Quando sai:** "Manual, pela ficha" ou "Sozinho" com gatilho (depois do cadastro no guia, depois de outro e-mail, depois de
 compra), tempo (minutos, dias e hora de Brasília) e o interruptor Envio. Texto de resumo: "Sai 5 minutos depois do cadastro".
 
-**Qual dor este e-mail resolve:** seletor único, só informativo (etiqueta e filtro no Estúdio).
+**Quem recebe** e **Quando sai** ficam numa tela curta. O protótipo compara três soluções (A frase clicável, B painel com lista,
+C resumo com janela); a escolha da Ingryd define qual vira a tela final. Nas três a tela **não cresce** ao escolher uma
+página: as perguntas aparecem em pop-up, painel de altura fixa ou janela, nunca empilhadas.
 
 ### 4.2 Texto: a prévia é o editor
 

@@ -65,8 +65,15 @@ create table if not exists public.contatos_dor (            -- append-only: a li
 create index if not exists contatos_dor_contato_idx on public.contatos_dor (contato_id, marcada_em desc);
 
 alter table public.modelos_email
-  add column if not exists dor_codigo text references public.dores(codigo) on delete set null;
+  add column if not exists dores_codigos text[] not null default '{}',   -- dores que o e-mail atende (do contexto, ver abaixo)
+  add column if not exists dores_ajustadas boolean not null default false; -- false = recalcula sozinho; true = a Ingryd mexeu
+alter table public.modelos_email
+  add column if not exists dores_so_confirmada boolean not null default false; -- filtro opcional: só quem já tem a dor confirmada
 ```
+
+`dores_codigos` é lista simples (sem chave estrangeira por elemento); o Estúdio ignora códigos que não existem mais em `dores`.
+Quando `dores_ajustadas = false`, o editor recalcula a lista a cada mudança de página ou resposta marcada, a partir de
+`dores.respostas_guia` (ver o spec do editor, passo "Quem recebe e quando").
 
 Por que uma tabela própria em vez de coluna em `contatos`: a classificação é interna e **não pode chegar à própria pessoa**
 (`contatos` tem política do dono); e a visão `crm_contatos` é reescrita por várias migrações, o que torna frágil acrescentar
@@ -108,8 +115,11 @@ Todos os desenhos estão no protótipo; os textos exatos saem dele.
   botões "Confirmar esta dor", "Escolher outra", "Sem dor por enquanto"); *confirmada* (dor, fonte, próximo passo sugerido).
   Abaixo, o que a pessoa escreveu e a resposta marcada no guia.
 - **Contatos e Hoje:** coluna e filtro "Dor".
-- **Estúdio de e-mails:** o modelo ganha "Qual dor este e-mail resolve" (passo "Quem recebe e quando" do editor) e a lista
-  mostra a dor como etiqueta. A visão por dor da matriz da jornada é decisão do spec A.
+- **Estúdio de e-mails:** a dor atendida pelo e-mail é **deduzida do contexto** (página de entrada e respostas marcadas) e
+  aparece pré-preenchida, com selo "Automático"; a Ingryd só ajusta (spec do editor, passo "Quem recebe e quando"). A lista de
+  modelos mostra a dor como etiqueta. A visão por dor da matriz da jornada é decisão do spec A.
+- **Princípio "contexto antes de catálogo":** nenhum seletor de dor mostra o catálogo inteiro de saída. Mostra primeiro as dores
+  relevantes ao que está na tela, já marcadas, e deixa as demais recolhidas, com busca. Vale para o editor, Contatos, ficha e Estúdio.
 - **Catálogo de dores (nova tela no CRM):** tabela editável com rótulo, frase de e-mail, palavras, respostas do guia e
   oferta; campo "Teste a regra" que mostra o resultado ao vivo para um texto colado.
 - **Sinal de cor nunca sozinho:** toda etiqueta de dor tem texto. 380 px: cartão em coluna única, botões de largura total.
