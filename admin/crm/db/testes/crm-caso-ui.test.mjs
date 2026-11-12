@@ -56,8 +56,9 @@ const ACO = [{ id: 10, n: 1, titulo: 'Ligar para a escola', dono: 'ela', canal: 
 const ITENS = [{ id: 20, tipo: 'bilan', titulo: 'Bilan da nossa conversa', resumo: null, dados: { secoes: [{}, {}] }, estado: 'proposto', ordem: 1, link: null, versao: 1 },
   { id: 21, tipo: 'marco', titulo: 'Prazo-chave', resumo: null, dados: { data: '2026-11-30', a_confirmar: false }, estado: 'revisado', ordem: 5, link: null, versao: 1 },
   { id: 22, tipo: 'documento', titulo: 'Passaporte', resumo: null, dados: { direcao: 'reune' }, estado: 'publicado', ordem: 20, link: null, versao: 1 }];
-const AVS = [{ id: 30, tipo: 'pergunta', titulo: 'Quando termina o seu PVT?', texto: null, resposta_tipo: 'data', grava_em: 'respostas.fim_pvt', modo: 'apos_primeiro_acesso', dias_apos: 0, liberar_em: null, estado: 'rascunho', resposta: null },
-  { id: 31, tipo: 'proposta', titulo: 'Seu bilan', texto: null, resposta_tipo: null, grava_em: null, modo: 'apos_primeiro_acesso', dias_apos: 1, liberar_em: '2026-11-20T08:00:00Z', estado: 'agendado', resposta: null }];
+const AVS = [{ id: 30, tipo: 'pergunta', titulo: 'Quando termina o seu PVT?', texto: null, resposta_tipo: 'data', grava_em: 'respostas.fim_pvt', modo: 'apos_primeiro_acesso', dias_apos: 0, ordem: 1, pausa_dias: 0, liberar_em: null, liberado_em: null, estado: 'rascunho', resposta: null },
+  { id: 31, tipo: 'proposta', titulo: 'Seu bilan', texto: null, resposta_tipo: null, grava_em: null, modo: 'apos_primeiro_acesso', dias_apos: 1, ordem: 2, pausa_dias: 2, liberar_em: new Date(Date.now() + 2 * 864e5).toISOString(), liberado_em: null, estado: 'agendado', resposta: null },
+  { id: 32, tipo: 'inteligencia', titulo: 'Percebi algo', texto: null, resposta_tipo: null, grava_em: null, modo: 'apos_primeiro_acesso', dias_apos: 3, ordem: 3, pausa_dias: 3, liberar_em: new Date(Date.now() + 5 * 864e5).toISOString(), liberado_em: null, estado: 'agendado', resposta: null }];
 async function pagina() { mod.state.sel = 'c1'; mod.state.view = 'pessoa'; mod.state.ptab = 'plataforma'; mod.state.pstab = 'caso'; mod.state.caso = null; await mod.renderPessoa(); await wait(20); return el('pessoa-page').innerHTML; }
 const click = async (ds) => { const b = { id: '', dataset: ds, disabled: false, matches: () => false }; await handlers.click[0]({ target: { id: '', closest: () => b } }); return b; };
 const html = () => (els.get('caso-box') || {}).innerHTML || '';
@@ -73,7 +74,7 @@ check('ação dela pela plataforma pode ser publicada; a de e-mail é "Só equip
 check('prazo em texto e prazo em data aparecem', h.includes('dia seguinte à ligação') && h.includes('30/11/2026'));
 check('ação concluída por ela mostra quem concluiu e permite reabrir', h.includes('concluída por ela') && h.includes('data-caso="aco-reabrir" data-id="12"'));
 check('item proposto → revisar; revisado → publicar; publicado → retirar', h.includes('data-caso="item-rev" data-id="20"') && h.includes('data-caso="item-pub" data-id="21"') && h.includes('data-caso="item-ret" data-id="22"'));
-check('aviso em rascunho pede aprovação com data; agendado mostra quando e deixa mudar', h.includes('Aprovar e agendar') && h.includes('Mudar a data') && h.includes('libera em'));
+check('aviso em rascunho pede aprovação com data; agendado mostra quando e deixa mudar', h.includes('Aprovar e agendar') && h.includes('Mudar a pausa') && h.includes('sai em 2 dias'));
 fixture({ ach: ACH, aco: ACO, itens: ITENS, avs: AVS, consent: false }); await pagina();
 check('sem consentimento de serviço: a aba avisa que publicar e agendar ficam bloqueados', /só depois do consentimento de serviço/.test(html()));
 fixture({}); await pagina();
@@ -139,6 +140,29 @@ rpcErro = { message: 'sem_consentimento' }; rpcs.length = 0;
 await click({ caso: 'item-pub', id: '21' });
 check('erro do banco vira mensagem em português', /consentimento de serviço/.test(els.get('toast').textContent));
 rpcErro = null;
+
+
+console.log('\n== A próxima mensagem e o ritmo ==');
+fixture({ avs: AVS.slice(1) }); await pagina();
+h = html();
+check('a próxima mensagem aparece em destaque no topo da aba, com quando sai e quantas vêm depois', /Próxima mensagem para Ana/.test(h) && /Seu bilan/.test(h.split('Avisos da IAssistente')[0]) && /sai em 2 dias/.test(h) && /vem mais 1/.test(h) && /as pausas se mantêm/.test(h));
+check('só a próxima tem "Enviar agora"; atrasar vale para todas; adiantar só com pausa maior que zero', (h.match(/data-caso="enviar-agora"/g) || []).length === 2 && h.includes('data-caso="enviar-agora" data-id="31"') && !h.includes('data-caso="enviar-agora" data-id="32"') && h.includes('data-caso="atrasar-3" data-id="32"') && h.includes('data-caso="adiantar-1" data-id="32"'));
+check('a lista mostra a pausa de cada uma', /pausa de 2 dias depois do anterior/.test(h) || /pausa de 2 dias depois do 1º acesso/.test(h));
+rpcs.length = 0;
+await click({ caso: 'enviar-agora', id: '31', c: 'c1' });
+check('Enviar agora chama crm_aviso_enviar_agora', rpcs[0].n === 'crm_aviso_enviar_agora' && rpcs[0].a.p_id === 31);
+await click({ caso: 'atrasar-3', id: '32', c: 'c1' });
+check('Atrasar 3 dias manda +3', rpcs[1].n === 'crm_aviso_deslocar' && rpcs[1].a.p_dias === 3 && rpcs[1].a.p_id === 32);
+await click({ caso: 'adiantar-1', id: '32', c: 'c1' });
+check('Adiantar 1 dia manda −1', rpcs[2].a.p_dias === -1);
+rpcErro = { message: 'nao_e_a_proxima' };
+await click({ caso: 'enviar-agora', id: '32', c: 'c1' });
+check('erro do banco vira mensagem em português', /próxima da fila/.test(els.get('toast').textContent));
+rpcErro = null;
+await click({ caso: 'ag-abrir', id: '31' });
+check('o formulário de pausa fala em "pausa depois do aviso anterior"', /Pausa depois do aviso anterior/.test(html()));
+fixture({ avs: [AVS[1]].map((x) => Object.assign({}, x, { liberado_em: '2026-11-01T09:00:00Z', estado: 'liberado' })) }); await pagina();
+check('o que já saiu não tem botões de ritmo nem aparece como "próxima mensagem"', !/Próxima mensagem para/.test(html()) && !html().includes('data-caso="atrasar-1"'));
 
 console.log('\n' + passed + ' passaram, ' + failed + ' falharam');
 process.exit(failed ? 1 : 0);

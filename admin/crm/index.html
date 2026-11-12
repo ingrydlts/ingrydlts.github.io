@@ -10,7 +10,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600&display=swap">
-<link rel="stylesheet" href="crm.css?v=2026-11-12.1">
+<link rel="stylesheet" href="crm.css?v=2026-11-12.2">
 <style>
   .gate{max-width:420px;margin:12vh auto 0;text-align:center}
   .gate h1{font-size:28px;margin-bottom:6px}
@@ -67,6 +67,11 @@
           <div id="attention"></div>
         </div>
         <div style="display:flex; flex-direction:column; gap:16px">
+          <div class="panel" id="today-fila-box" hidden style="border-color:var(--moss)">
+            <div class="panel-h"><h3>Próximas mensagens da IAssistente</h3></div>
+            <p class="sub" style="margin:0 16px 8px">A próxima de cada pessoa. Envie antes ou atrase: o que vem depois acompanha e as pausas se mantêm.</p>
+            <div id="today-fila"></div>
+          </div>
           <div class="panel">
             <div class="panel-h"><h3>Radar por persona</h3><button class="link" data-go="radar" type="button">Abrir Radar →</button></div>
             <div id="today-radar"></div>
@@ -218,6 +223,6 @@
 <div id="compose-backdrop" hidden style="position:fixed; inset:0; background:rgba(20,18,14,.4); z-index:9"></div>
 <div class="toast" id="toast" hidden></div>
 
-<script type="module" src="crm.js?v=2026-11-12.1"></script>
+<script type="module" src="crm.js?v=2026-11-12.2"></script>
 </body>
 </html>

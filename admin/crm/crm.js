@@ -130,6 +130,7 @@ var C = [], Q = [], L = [], R = [], RM = {}, SUBS = {}, M = null, MV = [];
 var P = [], PERR = '';
 // Processos sugeridos esperando a sua decisão (db/crm-processos-sugeridos.sql). Sem a migração, fica vazio.
 var PSUG = [];
+var FILA = [];   // avisos agendados que ainda não saíram, de todas as pessoas (para o bloco da Hoje)
 var state = { dosAberto: lerDosAberto(), dos: null, pc: null, ptab: null, pstab: 'assistente', pdias: {}, int: null, chatRasc: '', rascunho: {}, view: 'hoje', persona: '', sub: '', urg: '', stage: '', orig: '', camp: '', q: '', sel: null, qs: 'nova', qsel: null, inbox: 'perguntas', rs: 'nova', rsel: null, ps: 'novo', psel: null, preset: 'todos', seg: '', prevView: 'contatos' };
 var activeCid = null;
 var me = null;
@@ -220,13 +221,16 @@ async function loadAll() {
     supabase.from('radar_envios').select('item_id,contato_id,visto_em').limit(20000),
     supabase.from('processos_sugeridos').select('id,contato_id,processo,atualizada_em').eq('status', 'detectada').order('atualizada_em', { ascending: false }).limit(200),
     // Avisos de problema do app (db/problemas-app.sql do app). Sem o SQL, a tabela não existe: a aba Problemas avisa.
-    supabase.from('problemas_app').select('*').order('criado_em', { ascending: false }).limit(1000)
+    supabase.from('problemas_app').select('*').order('criado_em', { ascending: false }).limit(1000),
+    // A fila de avisos da IAssistente que ainda não saíram (db/crm-caso-fluxo.sql). Sem o SQL, o bloco da Hoje fica escondido.
+    supabase.from('caso_avisos').select('id,contato_id,titulo,tipo,ordem,pausa_dias,liberar_em,modo').eq('estado', 'agendado').is('liberado_em', null).order('ordem', { ascending: true }).limit(500)
   ]);
   if (r[0].error) return fail('carregar os contatos', r[0].error);
   COMPRAS = {};
   ((r[7] && !r[7].error && r[7].data) || []).forEach(function (e) { var p = (e.dados || {}).produto; if (p) (COMPRAS[e.contato_id] = COMPRAS[e.contato_id] || {})[p] = 1; });
   C = r[0].data || [];
   PSUG = r[10] && !r[10].error ? (r[10].data || []) : [];
+  FILA = r[12] && !r[12].error ? (r[12].data || []) : [];
   P = r[11] && !r[11].error ? (r[11].data || []) : [];
   PERR = r[11] && r[11].error ? 'Falta rodar db/problemas-app.sql (repositório do app) neste banco, ou a leitura foi recusada.' : '';
   Q = r[1].error ? [] : (r[1].data || []);
@@ -404,6 +408,7 @@ function renderToday() {
   renderLembretes();
   renderGuias();
   renderRadarHoje();
+  renderFilaHoje();
 }
 
 // Visão macro: por guia/origem, quantas pessoas passaram, quantas voltaram e quantas aceitam novidades.
@@ -1319,7 +1324,7 @@ async function buscaCaso(cid) {
     supabase.from('caso_achados').select('id,chave,tipo,texto,origem,certeza,estado,conferido_em').eq('contato_id', cid).order('id', { ascending: true }).limit(80),
     supabase.from('caso_acoes').select('id,n,titulo,dono,canal,botao,prazo,prazo_texto,prazo_a_confirmar,estado,certeza,publicada_em,concluida_em,concluida_por').eq('contato_id', cid).order('n', { ascending: true }).limit(150),
     supabase.from('board_itens').select('id,tipo,titulo,resumo,dados,estado,ordem,link,versao').eq('contato_id', cid).order('ordem', { ascending: true }).limit(80),
-    supabase.from('caso_avisos').select('id,tipo,titulo,texto,resposta_tipo,grava_em,modo,dias_apos,liberar_em,estado,resposta,adiado_ate').eq('contato_id', cid).order('id', { ascending: true }).limit(40),
+    supabase.from('caso_avisos').select('id,tipo,titulo,texto,resposta_tipo,grava_em,modo,dias_apos,ordem,pausa_dias,liberar_em,liberado_em,estado,resposta,adiado_ate').eq('contato_id', cid).order('ordem', { ascending: true }).limit(40),
     supabase.from('consentimentos').select('aceito,criado_em').eq('contato_id', cid).eq('finalidade', 'servico').order('criado_em', { ascending: false }).limit(1)
   ]);
   var err = r[0].error || r[1].error || r[2].error || r[3].error || null;
@@ -1383,10 +1388,35 @@ function casoItensHtml(k) {
     return casoLinha(est, esc(it.titulo) + ' <span class="sub">· ' + esc(CASO_TIPO_ITEM[it.tipo] || it.tipo) + (casoItemResumo(it) ? ', ' + esc(casoItemResumo(it)) : '') + '</span>', btns);
   }).join('');
 }
+// A fila: o que ainda não saiu, na ordem. A primeira é "a próxima mensagem".
+function filaDe(avs) { return avs.filter(function (a) { return a.estado === 'agendado' && !a.liberado_em; }).sort(function (a, b) { return (a.ordem - b.ordem) || (a.id - b.id); }); }
+function diasAteIso(iso) { var h = new Date(); h.setHours(0, 0, 0, 0); var d = new Date(iso); d.setHours(0, 0, 0, 0); return Math.round((d - h) / 864e5); }
+function casoSaiEm(a) {
+  if (!a.liberar_em) return 'sai quando ela entrar no app';
+  var d = diasAteIso(a.liberar_em);
+  return 'sai ' + (d <= 0 ? 'na próxima rodada (de hora em hora)' : d === 1 ? 'amanhã' : 'em ' + d + ' dias') + ' · ' + fmtDay(new Date(a.liberar_em).toISOString());
+}
 function casoQuando(a) {
-  if (a.estado === 'rascunho') return 'sem data (' + (a.modo === 'data' ? 'data fixa' : a.dias_apos + (a.dias_apos === 1 ? ' dia' : ' dias') + ' após o 1º acesso') + ')';
-  if (a.liberar_em) return 'libera em ' + fmtQuando(a.liberar_em);
-  return a.modo === 'apos_primeiro_acesso' ? a.dias_apos + (a.dias_apos === 1 ? ' dia' : ' dias') + ' após o 1º acesso (ela ainda não entrou)' : '';
+  if (a.estado === 'rascunho') return 'sem data (pausa de ' + a.pausa_dias + (a.pausa_dias === 1 ? ' dia' : ' dias') + ')';
+  if (a.estado === 'agendado' && !a.liberado_em) return casoSaiEm(a) + ' · pausa de ' + a.pausa_dias + (a.pausa_dias === 1 ? ' dia' : ' dias') + (a.ordem > 1 ? ' depois do anterior' : ' depois do 1º acesso');
+  return a.liberado_em ? 'saiu em ' + fmtDay(new Date(a.liberado_em).toISOString()) : '';
+}
+// Botões de ritmo: valem para qualquer aviso agendado que ainda não saiu. Enviar agora só para a próxima da fila.
+function casoRitmoBtns(a, proxima, pre) {
+  var b = '';
+  if (proxima) b += casoBtn(pre + 'enviar-agora', a.id, 'Enviar agora', ' data-c="' + esc(String(a.contato_id || '')) + '"');
+  b += casoBtn(pre + 'atrasar-1', a.id, 'Atrasar 1 dia', ' data-c="' + esc(String(a.contato_id || '')) + '"') + casoBtn(pre + 'atrasar-3', a.id, 'Atrasar 3 dias', ' data-c="' + esc(String(a.contato_id || '')) + '"');
+  if (a.pausa_dias > 0) b += casoBtn(pre + 'adiantar-1', a.id, 'Adiantar 1 dia', ' data-c="' + esc(String(a.contato_id || '')) + '"');
+  return b;
+}
+function casoProximaHtml(c, k) {
+  var f = filaDe(k.avs), a = f[0];
+  if (!a) return '';
+  a = Object.assign({ contato_id: c.id }, a);
+  return '<div class="panel" style="padding:16px;margin-top:14px;border-color:var(--moss)"><h4 style="margin:0 0 4px">Próxima mensagem para ' + esc(pn(c)) + '</h4>' +
+    '<p style="margin:0 0 4px"><b>' + esc(CASO_TIPO_AVISO[a.tipo] || a.tipo) + ':</b> ' + esc(a.titulo) + '</p><p class="sub" style="margin:0 0 10px">' + esc(casoSaiEm(a)) +
+    (f.length > 1 ? ' · depois dela ' + (f.length - 1 === 1 ? 'vem mais 1' : 'vêm mais ' + (f.length - 1)) + ', cada uma com a sua pausa' : '') + '. Se você adiantar ou atrasar, o que vem depois acompanha e as pausas se mantêm.</p>' +
+    '<div class="ab">' + casoRitmoBtns(a, true, '') + '</div></div>';
 }
 function casoAvisosHtml(k) {
   if (!k.avs.length) return '<div class="empty" style="padding:14px">Nenhum aviso.</div>';
@@ -1396,12 +1426,13 @@ function casoAvisosHtml(k) {
     var editavel = a.estado === 'rascunho' || a.estado === 'agendado';
     if (k.agenda === a.id) {
       var form = '<div class="feeditem"><div class="fbody"><p style="margin:0 0 6px"><b>Quando ela recebe: ' + esc(a.titulo) + '</b></p>' +
-        '<label class="sub">Dias após o primeiro acesso <select id="caso-ag-dias">' + [0, 1, 2, 3, 5, 7, 14].map(function (n) { return '<option value="' + n + '"' + (n === a.dias_apos ? ' selected' : '') + '>' + n + '</option>'; }).join('') + '</select></label> ' +
-        casoBtn('ag-dias', a.id, 'Agendar assim') + '<br><label class="sub" style="display:inline-block;margin-top:6px">ou numa data fixa (9h de Paris) <input type="date" id="caso-ag-data"></label> ' + casoBtn('ag-data', a.id, 'Agendar nesta data') +
+        '<label class="sub">Pausa depois ' + (a.ordem > 1 ? 'do aviso anterior' : 'do primeiro acesso dela') + ' (dias) <select id="caso-ag-dias">' + [0, 1, 2, 3, 5, 7, 14].map(function (n) { return '<option value="' + n + '"' + (n === a.pausa_dias ? ' selected' : '') + '>' + n + '</option>'; }).join('') + '</select></label> ' +
+        casoBtn('ag-dias', a.id, 'Agendar com esta pausa') + '<br><label class="sub" style="display:inline-block;margin-top:6px">ou numa data fixa (9h de Paris) <input type="date" id="caso-ag-data"></label> ' + casoBtn('ag-data', a.id, 'Agendar nesta data') +
         ' ' + casoBtn('cancelar', a.id, 'Fechar') + '</div></div>';
       return casoLinha(est, meio, '') + form;
     }
-    var btns = editavel ? casoBtn('ag-abrir', a.id, a.estado === 'rascunho' ? 'Aprovar e agendar' : 'Mudar a data') : '';
+    var btns = editavel ? casoBtn('ag-abrir', a.id, a.estado === 'rascunho' ? 'Aprovar e agendar' : 'Mudar a pausa') : '';
+    if (a.estado === 'agendado' && !a.liberado_em) btns += casoRitmoBtns(Object.assign({ contato_id: k.cid }, a), filaDe(k.avs)[0] === a, '');
     if (a.estado === 'rascunho' || a.estado === 'agendado') btns += casoBtn('av-cancel', a.id, 'Cancelar');
     return casoLinha(est, meio, btns);
   }).join('');
@@ -1414,7 +1445,7 @@ function casoPanelHtml(c, k) {
     (k.consent ? '.' : ', e <b>só depois do consentimento de serviço</b>, que ainda não está registrado: publicar e agendar ficam bloqueados.') + ' O que você já decidiu não é refeito se a página for lida de novo.</p></div>';
   if (vazio) return cab + '<div class="panel empty" style="margin-top:14px">Ainda sem caso. Cole o link da página no menu Onboarding e use “Ler do Notion”.</div>';
   var pend = casoPendentes(k);
-  return cab + (pend ? '<p class="sub" style="margin:10px 2px 0"><b>' + pend + '</b> ' + (pend === 1 ? 'coisa espera' : 'coisas esperam') + ' a sua revisão.</p>' : '') +
+  return cab + casoProximaHtml(c, k) + (pend ? '<p class="sub" style="margin:10px 2px 0"><b>' + pend + '</b> ' + (pend === 1 ? 'coisa espera' : 'coisas esperam') + ' a sua revisão.</p>' : '') +
     casoSecao('O que entendi', k.ach.length + ' achados', casoAchadosHtml(k)) +
     casoSecao('Ações', k.aco.length + ' linhas', casoAcoesHtml(k)) +
     casoSecao('Board dela', 'o que aparece no Espaço e nos Guias', casoItensHtml(k)) +
@@ -1430,12 +1461,41 @@ async function casoRecarrega() { var cid = state.sel, ed = state.caso && state.c
 function casoFalha(o, e) { var m = String((e && (e.message || e.hint)) || ''); for (var k in CASO_ERROS) if (m.indexOf(k) >= 0) return toast(CASO_ERROS[k], 4200); fail(o, e); }
 var CASO_TABELA = { ach: 'caso_achados', aco: 'caso_acoes', item: 'board_itens' };
 // Um clique de botão da aba. O banco confere (consentimento, revisão antes de publicar); aqui só se mostra o motivo.
+// Enviar agora, atrasar ou adiantar um aviso da fila. Vale na Hoje e na aba Caso. O banco recalcula as datas de tudo que vem depois.
+var FILA_MSG = { aprove_antes: 'Aprove o aviso antes.', aviso_ja_saiu: 'Esse aviso já saiu.', nao_e_a_proxima: 'Só a próxima da fila pode sair agora.', sem_consentimento: CASO_ERROS.sem_consentimento };
+async function filaAcao(acao, id, t, cid) {
+  if (t) t.disabled = true;
+  var m = /^(atrasar|adiantar)-(\d+)$/.exec(acao), r;
+  if (acao === 'enviar-agora') r = await supabase.rpc('crm_aviso_enviar_agora', { p_id: id });
+  else if (m) r = await supabase.rpc('crm_aviso_deslocar', { p_id: id, p_dias: (m[1] === 'atrasar' ? 1 : -1) * Number(m[2]) });
+  else return;
+  if (r.error) { if (t) t.disabled = false; var msg = String(r.error.message || ''); for (var k in FILA_MSG) if (msg.indexOf(k) >= 0) return toast(FILA_MSG[k], 4200); return fail('mexer na fila', r.error); }
+  var f = await supabase.from('caso_avisos').select('id,contato_id,titulo,tipo,ordem,pausa_dias,liberar_em,modo').eq('estado', 'agendado').is('liberado_em', null).order('ordem', { ascending: true }).limit(500);
+  if (!f.error) FILA = f.data || [];
+  if (state.view === 'hoje') renderFilaHoje();
+  if (cid && state.sel === cid && state.caso) await casoRecarrega();
+  toast(acao === 'enviar-agora' ? 'Enviada. O resto da fila andou junto.' : acao.indexOf('atrasar') === 0 ? 'Atrasado. O que vem depois acompanha.' : 'Adiantado. O que vem depois acompanha.', 3200);
+}
+// O bloco da Hoje: a próxima mensagem de cada pessoa, a que sai mais cedo primeiro.
+function renderFilaHoje() {
+  var box = $('today-fila-box'); if (!box) return;
+  var proximas = {}; FILA.forEach(function (a) { if (!proximas[a.contato_id]) proximas[a.contato_id] = a; });
+  var lista = Object.keys(proximas).map(function (cid) { return proximas[cid]; }).filter(function (a) { return byC(a.contato_id); })
+    .sort(function (a, b) { return (a.liberar_em ? new Date(a.liberar_em).getTime() : Infinity) - (b.liberar_em ? new Date(b.liberar_em).getTime() : Infinity); }).slice(0, 8);
+  box.hidden = !lista.length;
+  $('today-fila').innerHTML = lista.map(function (a) {
+    var c = byC(a.contato_id);
+    return '<div class="row" style="flex-wrap:wrap;align-items:flex-start"><button class="link" data-caso-ficha="' + esc(c.id) + '" type="button" style="text-align:left;flex:1 1 220px">' +
+      '<b>' + esc(short(c)) + '</b><br><span class="sub">' + esc(a.titulo) + ' · ' + esc(casoSaiEm(a)) + '</span></button><div class="ab" style="flex:0 0 auto">' + casoRitmoBtns(a, true, 'h-') + '</div></div>';
+  }).join('');
+}
 async function casoAcao(acao, id, t) {
   var k = state.caso; if (!k) return;
   var agora = new Date().toISOString(), nid = Number(id), r = null;
   if (acao === 'cancelar') { k.ed = null; k.agenda = null; return pintaCaso(); }
   if (acao.indexOf('ed-') === 0) { k.ed = { t: acao.slice(3), id: nid }; k.agenda = null; pintaCaso(); var f = $('caso-ed-texto') || $('caso-ed-titulo'); if (f && f.focus) f.focus(); return; }
   if (acao === 'ag-abrir') { k.agenda = nid; k.ed = null; return pintaCaso(); }
+  if (/^(enviar-agora|atrasar-\d+|adiantar-\d+)$/.test(acao)) return filaAcao(acao, nid, t, state.sel);
   if (t) t.disabled = true;
   if (acao === 'ach-ok') r = await supabase.from('caso_achados').update({ estado: 'ok', conferido_em: agora }).eq('id', nid);
   else if (acao === 'ach-voltar') r = await supabase.from('caso_achados').update({ estado: 'conferir', conferido_em: null }).eq('id', nid);
@@ -3948,7 +4008,11 @@ document.addEventListener('click', async function (e) {
   if (t.dataset.openconv) return openPessoa(t.dataset.openconv, 'conversa');
   if (t.dataset.ptab) { state.ptab = t.dataset.ptab; return renderPessoa(); }
   if (t.dataset.pstab) return trocaPlatAba(t.dataset.pstab);
-  if (t.dataset.caso) return casoAcao(t.dataset.caso, t.dataset.id, t);
+  if (t.dataset.caso) {
+    if (t.dataset.caso.indexOf('h-') === 0) return filaAcao(t.dataset.caso.slice(2), Number(t.dataset.id), t, t.dataset.c);
+    return casoAcao(t.dataset.caso, t.dataset.id, t);
+  }
+  if (t.dataset.casoFicha) return openPessoa(t.dataset.casoFicha, 'plataforma', 'caso');
   if (t.id === 'conv-send') return sendResposta(t);
   if (t.dataset.avisado) {
     t.disabled = true;
