@@ -3,6 +3,7 @@
 //
 // Uso: const { mod, el, click, writes, rpcs, respostas } = await carregarCrm({ store: { crm_ficha_v2: '1' } });
 import * as TXMOD from '../../taxonomia.js';
+import * as JR from '../../jornada.js';
 import * as FX from '../../ficha.js';
 import * as FH from '../../ficha-html.js';
 import { readFileSync } from 'node:fs';
@@ -41,9 +42,9 @@ export async function carregarCrm(opts = {}) {
   const localStorage = opts.storageBloqueado ? { getItem() { throw new Error('bloqueado'); }, setItem() { throw new Error('cheio'); } }
     : { getItem: (k) => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = v; } };
   const fetch = async (u) => { try { const t = await readFile(path.resolve(HERE, '../../' + String(u).split('?')[0]), 'utf8'); return { ok: true, json: async () => JSON.parse(t) }; } catch (e) { return { ok: false }; } };
-  const mod = new Function('supabase', 'ES', 'TX', 'EE', 'EQ', 'FX', 'FH', 'fetch', 'document', 'window', 'location', 'localStorage', 'setInterval', 'clearInterval',
+  const mod = new Function('supabase', 'ES', 'TX', 'EE', 'EQ', 'JR', 'FX', 'FH', 'fetch', 'document', 'window', 'location', 'localStorage', 'setInterval', 'clearInterval',
     SRC + '\n;return { state, setC: function (v) { C = v; }, setR: function (v) { R = v; }, setPSUG: function (v) { PSUG = v; }, renderPessoa, fichaClick: (typeof fichaClick === "function" ? fichaClick : null), byC, pararAoVivo, trocaPlatAba, pintaDossie, atualizaAoVivo };')(
-    supabase, {}, TXMOD, { iniciar() {}, depois() {}, campoMudou() {} }, {}, FX, FH, fetch, document, { addEventListener() {} }, { href: '', search: opts.search || '' }, localStorage, () => 1, () => {});
+    supabase, {}, TXMOD, { iniciar() {}, depois() {}, campoMudou() {} }, {}, JR, FX, FH, fetch, document, { addEventListener() {} }, { href: '', search: opts.search || '' }, localStorage, () => 1, () => {});
   const click = async (ds) => { const b = { id: '', dataset: ds, disabled: false, matches: () => false }; await handlers.click[0]({ target: { id: '', closest: () => b } }); return b; };
   return { mod, el, click, writes, rpcs, respostas, store, handlers };
 }

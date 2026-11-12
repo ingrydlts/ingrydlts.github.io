@@ -10,7 +10,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600&display=swap">
-<link rel="stylesheet" href="crm.css?v=2026-11-12.10">
+<link rel="stylesheet" href="crm.css?v=2026-11-12.11">
 <style>
   .gate{max-width:420px;margin:12vh auto 0;text-align:center}
   .gate h1{font-size:28px;margin-bottom:6px}
@@ -202,6 +202,12 @@
         <button class="btn" type="button" id="mod-export">Exportar modelos (texto e HTML)</button>
       </div>
       <p class="sub" id="mod-aviso" style="margin:10px 0 0" hidden></p>
+      <div class="jr-vistas" role="tablist" aria-label="Como ver os modelos">
+        <button type="button" role="tab" data-vista="jornada" aria-selected="true">Jornada <span>por percurso e etapa do funil</span></button>
+        <button type="button" role="tab" data-vista="estudio" aria-selected="false">Editar e-mails <span>lista, texto e prévia</span></button>
+      </div>
+      <div id="mod-jornada" class="jr"></div>
+      <div id="mod-estudio" hidden>
       <div class="st-mtabs" role="tablist" aria-label="Partes do estúdio">
         <button type="button" data-sttab="lista">Modelos</button><button type="button" data-sttab="editar">Editar</button><button type="button" data-sttab="previa">Prévia</button>
       </div>
@@ -210,6 +216,7 @@
         <nav class="st-list" id="mod-list" aria-label="Modelos"></nav>
         <div class="st-edit" id="st-edit"></div>
         <div class="st-prev" id="st-prev"></div>
+      </div>
       </div>
     </section>
 
@@ -223,6 +230,6 @@
 <div id="compose-backdrop" hidden style="position:fixed; inset:0; background:rgba(20,18,14,.4); z-index:9"></div>
 <div class="toast" id="toast" hidden></div>
 
-<script type="module" src="crm.js?v=2026-11-12.10"></script>
+<script type="module" src="crm.js?v=2026-11-12.11"></script>
 </body>
 </html>
