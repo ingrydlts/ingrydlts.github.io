@@ -141,3 +141,14 @@ export function htmlSessoes(ord, mapa, h) {
     ((ord && ord[area]) || []).filter((id) => mapa && mapa[id]).map((id) => htmlSessao(Object.assign({ id, area }, mapa[id]), h)).join('') + '</div>';
   return '<div class="fx-sessoes">' + grupo('app', 'Acompanhar o app dela', 'O que ela vê e faz no app.') + grupo('ela', 'Conhecer e registrar', 'Só a equipe vê.') + '</div>';
 }
+
+// ---------- Aba Ficha: fluxo de 3 passos (Task 13) ----------
+// passo: 1 = Captação por e-mail, 2 = Onboarding (descrição da reunião), 3 = Plataforma (spec §7.1).
+const PASSOS_FLUXO = [['Captação por e-mail', 'Entregar o que ela pediu e convidar para o 1:1.'], ['Onboarding: descrição da reunião', 'Registrar a conversa e conferir o bilan.'], ['Plataforma', 'Acompanhar o projeto dela no app.']];
+export function htmlFluxo(passo, h) {
+  const e = h.esc, p = Math.min(3, Math.max(1, Number(passo) || 1));
+  return '<ol class="fx-fluxo" aria-label="Fluxo da pessoa">' + PASSOS_FLUXO.map((x, i) => {
+    const n = i + 1;
+    return '<li class="fx-passo-fluxo ' + (n < p ? 'done' : n === p ? 'cur' : 'next') + '" data-passo="' + n + '"' + (n === p ? ' aria-current="step"' : '') + '><span class="fx-segn">' + n + '</span><span><b>' + e(x[0]) + '</b><span class="sub fx-fluxo-frase">' + e(x[1]) + '</span></span></li>';
+  }).join('') + '</ol>';
+}

@@ -120,5 +120,16 @@ console.log('== Task 12: sessões em pílulas ==');
   check('htmlSessao solta tem o corpo e a classe ativa', um.includes('<i>C</i>') && um.includes('ativa'));
 }
 
+console.log('== Task 13: fluxo de 3 passos ==');
+{
+  for (const n of [1, 2, 3]) {
+    const f = FH.htmlFluxo(n, h);
+    check('fluxo passo ' + n + ': 3 passos e só o atual com aria-current', count(f, /data-passo="[1-3]"/g) === 3 && count(f, /aria-current="step"/g) === 1 && new RegExp('data-passo="' + n + '"[^>]*aria-current="step"').test(f));
+  }
+  const f1 = FH.htmlFluxo(1, h);
+  check('fluxo: nomes do spec §7.1', f1.includes('Captação por e-mail') && f1.includes('Onboarding: descrição da reunião') && f1.includes('Plataforma'));
+  check('fluxo: passo fora da faixa é limitado', FH.htmlFluxo(9, h).includes('data-passo="3"') && /data-passo="3"[^>]*aria-current="step"/.test(FH.htmlFluxo(9, h)) && /data-passo="1"[^>]*aria-current="step"/.test(FH.htmlFluxo(0, h)));
+}
+
 console.log('\n' + passed + ' passaram, ' + failed + ' falharam');
 if (failed) process.exit(1);

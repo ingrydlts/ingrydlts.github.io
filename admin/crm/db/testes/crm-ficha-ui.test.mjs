@@ -186,5 +186,37 @@ console.log('== Task 12: sessões em pílulas ==');
   hb.mod.pararAoVivo();
 }
 
+console.log('== Task 13: abas Ficha e Conversa ==');
+{
+  const mailX = { id: 9, modelo: 'x', status: 'enviado', criado_em: new Date().toISOString(), enviado_em: new Date().toISOString(), assunto: 'Oi' };
+  const comEtapa = async (etapa) => {
+    const user = etapa === 7 ? 'u1' : null;
+    const resp = base({ 'contatos:one': { data: { dossie: {}, user_id: user }, error: null }, emails_enviados: { data: etapa === 2 ? [mailX] : [], error: null } });
+    const h = await carregarCrm({ respostas: resp, store: { crm_ficha_v2: '1' } });
+    await abre(h, pessoa({ user_id: user, estagio: etapa === 4 ? 'um_a_um' : 'lead' })); return h;
+  };
+  let h = await comEtapa(2);
+  await h.click({ fx: 'tab', v: 'ficha' });
+  let pg = h.el('pessoa-page').innerHTML;
+  check('Ficha, etapa 2: passo 1 destacado', /data-passo="1"[^>]*aria-current="step"/.test(pg) && (pg.match(/aria-current="step"/g) || []).length === 2);   // 1 do fluxo + 1 do funil
+  check('Ficha: painéis existentes de jornada e e-mails', pg.includes('class="pessoa-grid"') && pg.includes('Tudo que ela fez') && /Jornada|jornada/.test(pg) && pg.includes('Quem é ela'));
+  check('Ficha: perguntas, consentimento, Instagram e anotações seguem na ficha', pg.includes('Consentimento') && pg.includes('id="ig-handle"') && pg.includes('id="nota"'));
+  check('Ficha não traz o Checklist nem as sessões', !pg.includes('data-sessao='));
+  h.mod.pararAoVivo();
+  h = await comEtapa(4); await h.click({ fx: 'tab', v: 'ficha' });
+  check('Ficha, etapa 4: passo 2 destacado', /data-passo="2"[^>]*aria-current="step"/.test(h.el('pessoa-page').innerHTML));
+  h.mod.pararAoVivo();
+  h = await comEtapa(7); await h.click({ fx: 'tab', v: 'ficha' });
+  check('Ficha, etapa 7: passo 3 destacado', /data-passo="3"[^>]*aria-current="step"/.test(h.el('pessoa-page').innerHTML));
+  await h.click({ fx: 'tab', v: 'conversa' });
+  pg = h.el('pessoa-page').innerHTML;
+  check('Conversa reaproveita o painel de e-mail', pg.includes('id="conv-send"') && pg.includes('id="conv-txt"') && !pg.includes('data-sessao='));
+  // sem o checklist carregado: skeleton, não erro
+  h.mod.state.dos.chk = null; await h.click({ fx: 'tab', v: 'plataforma' });
+  pg = h.el('pessoa-page').innerHTML;
+  check('sem chk carregado, o Checklist mostra skeleton e o header não diz "sem conta"', pg.includes('class="skel"') && !pg.includes('db/crm-checklist.sql') && !pg.includes('Ela ainda não entrou no app'));
+  h.mod.pararAoVivo();
+}
+
 console.log('\n' + passed + ' passaram, ' + failed + ' falharam');
 if (failed) process.exit(1);
