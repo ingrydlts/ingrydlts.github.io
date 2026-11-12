@@ -30,9 +30,9 @@ function qb(table) {
 const supabase = { from: qb, auth: { getSession: async () => ({ data: { session: null } }) }, rpc: async () => ({ data: null, error: null }),
   channel: () => ({ on() { return this; }, subscribe() { return this; } }), removeChannel() {} };
 const store = {};
-const mod = new Function('supabase', 'ES', 'TX', 'EE', 'EQ', 'document', 'window', 'location', 'localStorage', 'setInterval', 'clearInterval',
+const mod = new Function('supabase', 'ES', 'TX', 'EE', 'EQ', 'JR', 'document', 'window', 'location', 'localStorage', 'setInterval', 'clearInterval',
   src + '\n;return { state, setC: function (v) { C = v; }, setP: function (v, e) { P = v; PERR = e ? e : String(); }, renderQuestions, loadAll, getP: function () { return P; }, getPERR: function () { return PERR; } };')(
-  supabase, {}, TXMOD, { iniciar() {}, depois() {}, campoMudou() {} }, {}, document, { addEventListener() {} }, { href: '' }, { getItem: (k) => store[k] ?? null, setItem: (k, v) => { store[k] = v; } }, () => 1, () => {});
+  supabase, {}, TXMOD, { iniciar() {}, depois() {}, campoMudou() {} }, {}, {}, document, { addEventListener() {} }, { href: '' }, { getItem: (k) => store[k] ?? null, setItem: (k, v) => { store[k] = v; } }, () => 1, () => {});
 
 const XSS = '<img src=x onerror=alert(1)>';
 const ago = (h) => new Date(Date.now() - h * 36e5).toISOString();
