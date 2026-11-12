@@ -4131,6 +4131,19 @@ async function crmEnviarAcessoConfirmado(env, contato, assinatura) {
   if (!marca.ok) console.error('crm/stripe: e-mail de acesso enviado mas não marquei — ' + marca.status);
 }
 
+async function crmStripe1a1(env, obj) {
+  const m = /^1a1_(20|40)$/.exec(String((obj.metadata && obj.metadata.por_dentro) || ''));
+  if (!m || obj.payment_status !== 'paid') return json({ ok: true, ignorado: true });   // outra compra avulsa, ou ainda não paga
+  const contato = await crmContatoDoPagamento(env, obj);
+  if (!contato) throw new Error('não achei nem criei a ficha deste pagamento');
+  const res = await fetch(`${CRM_SUPABASE_URL}/rest/v1/rpc/crm_1a1_pago`, { method: 'POST', headers: crmServiceHeaders(env),
+    body: JSON.stringify({ p_contato: contato.id, p_minutos: Number(m[1]), p_sessao: String(obj.id || '') }) });
+  if (res.status === 404) { console.error('crm/stripe: falta rodar admin/crm/db/crm-1a1.sql'); return json({ error: 'Falta rodar crm-1a1.sql.' }, 500); }
+  if (!res.ok) throw new Error('crm_1a1_pago respondeu ' + res.status);
+  const r = await res.json().catch(() => ({}));
+  return json({ ok: true, um_a_um: true, duplicado: !!(r && r.duplicado) });
+}
+
 async function handleStripeWebhook(request, env) {
   if (!env.STRIPE_WEBHOOK_SECRET || !env.STRIPE_SECRET_KEY || !env.SUPABASE_SERVICE_ROLE_KEY) {
     console.error('crm/stripe: faltam STRIPE_WEBHOOK_SECRET, STRIPE_SECRET_KEY ou SUPABASE_SERVICE_ROLE_KEY no Worker');
@@ -4148,6 +4161,8 @@ async function handleStripeWebhook(request, env) {
   try {
     let contato = null, assinatura, subId;
     if (ev.type === 'checkout.session.completed') {
+      // O 1:1 pago (Payment Link avulso com o metadado por_dentro = 1a1_20 ou 1a1_40): libera o áudio e agenda o aviso do dia seguinte.
+      if (obj.mode === 'payment') return await crmStripe1a1(env, obj);
       if (obj.mode !== 'subscription' || !obj.subscription) return json({ ok: true, ignorado: true });   // compras avulsas (produtos digitais) não são aqui
       const sub = await stripeBuscarAssinatura(env, obj.subscription);
       if (!sub) throw new Error('não li a assinatura no Stripe');
@@ -4187,6 +4202,47 @@ async function handleStripeWebhook(request, env) {
     console.error('crm/stripe: ' + ev.type + ' ' + ev.id + ' — ' + (e && e.message));
     return json({ error: 'Não consegui processar. O Stripe vai tentar de novo.' }, 500);
   }
+}
+
+// ---- O áudio do 1:1 pago: o app grava, o Worker transcreve, o áudio não é guardado ----
+//   POST /api/audio/transcrever   corpo = o áudio (audio/webm, audio/mp4, audio/ogg…), com o token da sessão da própria pessoa.
+//   Só quem tem o áudio liberado (meu_1a1().audio, depois de pagar o 1:1). Devolve { ok, texto }; a pessoa confere o texto e envia
+//   como uma mensagem normal do chat. Nada do áudio nem do texto vai para o log ou para o banco por aqui.
+//   Precisa do binding `AI` (Workers AI) no wrangler.toml; sem ele a rota responde "não configurada" e o app só some com o microfone.
+const AUDIO_MAX_BYTES = 3 * 1024 * 1024;     // ~3 min de voz em opus
+const AUDIO_MAX_POR_JANELA = 20;
+const AUDIO_MODELO = '@cf/openai/whisper-large-v3-turbo';
+const AUDIO_DICA = 'Conversa em português do Brasil sobre vida na França: visto, préfecture, titre de séjour, Campus France, Alliance Française, OFII, CAF, Ameli.';
+function audioBase64(buf) {
+  const bytes = new Uint8Array(buf); let bin = '';
+  for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+  return btoa(bin);
+}
+async function handleAudioTranscrever(request, env) {
+  const token = (request.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '').trim();
+  if (!token) return json({ error: 'Entre de novo na sua conta.' }, 401);
+  const uRes = await fetch(`${CRM_SUPABASE_URL}/auth/v1/user`, { headers: { apikey: CRM_SUPABASE_ANON_KEY, Authorization: `Bearer ${token}` } });
+  const user = uRes.ok ? await uRes.json().catch(() => null) : null;
+  if (!user || !CRM_UUID_RE.test(String(user.id || ''))) return json({ error: 'Entre de novo na sua conta.' }, 401);
+  // O banco diz se o áudio está liberado para esta pessoa (pagou o 1:1 nos últimos 30 dias).
+  const eRes = await fetch(`${CRM_SUPABASE_URL}/rest/v1/rpc/meu_1a1`, { method: 'POST', headers: { apikey: CRM_SUPABASE_ANON_KEY, Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: '{}' });
+  const dir = eRes.ok ? await eRes.json().catch(() => null) : null;
+  if (!dir || dir.audio !== true) return json({ error: 'O áudio é liberado depois que você paga o 1:1.', codigo: 'audio_nao_liberado' }, 403);
+  if (!env.AI) return json({ error: 'A transcrição ainda não está ligada. Escreva por texto.', codigo: 'transcricao_nao_configurada' }, 503);
+  const tipo = String(request.headers.get('Content-Type') || '').toLowerCase();
+  if (!/^(audio|video)\//.test(tipo)) return json({ error: 'Envie o áudio como audio/webm, audio/mp4 ou audio/ogg.', codigo: 'formato' }, 415);
+  const tam = Number(request.headers.get('Content-Length') || 0);
+  if (tam > AUDIO_MAX_BYTES) return json({ error: 'Áudio longo demais. Grave até 3 minutos.', codigo: 'audio_grande' }, 413);
+  if (!(await crmLimite(env, 'audio', user.id, AUDIO_MAX_POR_JANELA))) return json({ error: 'Muitos áudios seguidos. Espere alguns minutos.', codigo: 'limite' }, 429);
+  const buf = await request.arrayBuffer();
+  if (!buf.byteLength) return json({ error: 'Áudio vazio.', codigo: 'audio_vazio' }, 400);
+  if (buf.byteLength > AUDIO_MAX_BYTES) return json({ error: 'Áudio longo demais. Grave até 3 minutos.', codigo: 'audio_grande' }, 413);
+  let saida;
+  try { saida = await env.AI.run(AUDIO_MODELO, { audio: audioBase64(buf), language: 'pt', task: 'transcribe', initial_prompt: AUDIO_DICA }); }
+  catch (e) { console.error('audio: a transcrição falhou — ' + (e && e.name)); return json({ error: 'Não consegui transcrever agora. Tente de novo ou escreva por texto.', codigo: 'transcricao_falhou' }, 502); }
+  const texto = String((saida && saida.text) || '').replace(/\s+/g, ' ').trim().slice(0, 1000);   // o chat aceita até 1000 letras
+  if (!texto) return json({ error: 'Não entendi o áudio. Tente gravar de novo, mais perto do microfone.', codigo: 'sem_fala' }, 422);
+  return json({ ok: true, texto, cortado: String((saida && saida.text) || '').trim().length > 1000 });
 }
 
 // ---- A assinatura vista pela própria cliente, e o botão "Resiliar plano" do perfil do app ----
@@ -4443,6 +4499,9 @@ export default {
       }
       if (url.pathname === '/api/planos/contexto' && request.method === 'POST') {
         return await handlePlanosContexto(request, env);
+      }
+      if (url.pathname === '/api/audio/transcrever' && request.method === 'POST') {
+        return await handleAudioTranscrever(request, env);
       }
       if (url.pathname === '/api/assinatura/minha' && request.method === 'GET') {
         return await handleAssinaturaMinha(request, env);
