@@ -1377,12 +1377,30 @@ function casoItemResumo(it) {
   if (it.tipo === 'documento') return d.direcao === 'recebe' ? 'ela recebe de você' : 'ela reúne';
   return it.resumo || '';
 }
+// O editor de um item do board. O que a pessoa vê (nome, data, escola) você corrige aqui: quando ela sinalizar "algo está errado", é este o lugar.
+function casoCampo(rot, html) { return '<label style="display:block;margin-top:8px"><span class="sub" style="display:block;margin-bottom:2px">' + esc(rot) + '</span>' + html + '</label>'; }
+function casoItemCampos(it) {
+  var d = it.dados || {};
+  var tit = function (rot) { return casoCampo(rot, '<input id="caso-ed-titulo" class="t" maxlength="120" style="width:100%" value="' + esc(it.titulo) + '">'); };
+  if (it.tipo === 'marco') {
+    return tit('O que é este prazo? (ela lê este texto)') +
+      casoCampo('Data', '<input id="caso-ed-data" type="date" style="min-height:40px" value="' + esc(d.data || '') + '">') +
+      '<label style="display:flex;gap:8px;align-items:center;margin-top:8px"><input id="caso-ed-conf" type="checkbox"' + (d.a_confirmar ? ' checked' : '') + '> <span>A confirmar (ela vê "a confirmar" ao lado da data)</span></label>' +
+      casoCampo('Explicação (opcional)', '<textarea id="caso-ed-nota" maxlength="200" rows="2" style="width:100%">' + esc(d.nota || '') + '</textarea>');
+  }
+  if (it.tipo === 'escola') {
+    return tit('Nome da escola ou do curso') +
+      casoCampo('Cidade', '<input id="caso-ed-cidade" class="t" maxlength="80" style="width:100%" value="' + esc(d.cidade || '') + '">') +
+      casoCampo('Curso', '<input id="caso-ed-curso" class="t" maxlength="120" style="width:100%" value="' + esc(d.curso || '') + '">') +
+      casoCampo('Custo estimado (€)', '<input id="caso-ed-custo" type="number" min="0" max="100000" step="50" style="min-height:40px" value="' + esc(d.custo_eur == null ? '' : d.custo_eur) + '">') +
+      casoCampo('Site (https://…)', '<input id="caso-ed-link" class="t" maxlength="500" style="width:100%" value="' + esc(it.link || '') + '">');
+  }
+  return tit('Título') + casoCampo('Link (opcional)', '<input id="caso-ed-link" class="t" maxlength="500" placeholder="https://…" style="width:100%" value="' + esc(it.link || '') + '">');
+}
 function casoItensHtml(k) {
   if (!k.itens.length) return '<div class="empty" style="padding:14px">Nenhum item. Escolas e modelos de e-mail são acrescentados pela equipe.</div>';
   return k.itens.map(function (it) {
-    if (k.ed && k.ed.t === 'item' && k.ed.id === it.id) {
-      return casoEditor('item', it.id, '<input id="caso-ed-titulo" class="t" maxlength="120" style="width:100%" value="' + esc(it.titulo) + '"><input id="caso-ed-link" class="t" maxlength="500" placeholder="https://… (opcional)" style="width:100%;margin-top:6px" value="' + esc(it.link || '') + '">');
-    }
+    if (k.ed && k.ed.t === 'item' && k.ed.id === it.id) return casoEditor('item', it.id, casoItemCampos(it));
     var est = it.estado === 'publicado' ? casoPil('Publicado', 'u-baixa') : it.estado === 'revisado' ? casoPil('Revisado', 'u-media') : casoPil('Proposto');
     var btns = (it.estado === 'proposto' ? casoBtn('item-rev', it.id, 'Marcar como revisado') : it.estado === 'revisado' ? casoBtn('item-pub', it.id, 'Publicar para ela') : casoBtn('item-ret', it.id, 'Retirar')) + casoBtn('ed-item', it.id, 'Editar');
     var generico = it.tipo === 'marco' && /^prazo-chave$/i.test(it.titulo) ? ' <span class="pill u-media">Diga a que se refere: ela vê só este título</span>' : '';
@@ -1511,10 +1529,29 @@ async function casoAcao(acao, id, t) {
   else if (acao === 'item-pub') r = await supabase.rpc('crm_board_publicar', { p_id: nid });
   else if (acao === 'item-ret') r = await supabase.rpc('crm_board_retirar', { p_id: nid });
   else if (acao === 'salvar-item') {
-    var tt = $('caso-ed-titulo') ? $('caso-ed-titulo').value.trim() : '', ln = $('caso-ed-link') ? $('caso-ed-link').value.trim() : '';
-    if (!tt) { if (t) t.disabled = false; return toast('O título não pode ficar vazio'); }
-    if (ln && !/^https:\/\//.test(ln)) { if (t) t.disabled = false; return toast('O link precisa começar com https://'); }
-    r = await supabase.from('board_itens').update({ titulo: tt.slice(0, 120), link: ln || null }).eq('id', nid); k.ed = null;
+    var itm = k.itens.filter(function (x) { return x.id === nid; })[0];
+    var val = function (id) { return $(id) ? $(id).value.trim() : ''; };
+    var tt = val('caso-ed-titulo'), ln = val('caso-ed-link');
+    var falha = function (m) { if (t) t.disabled = false; return toast(m); };
+    if (!itm) return falha('O item não existe mais. Atualize a aba.');
+    if (!tt) return falha('O título não pode ficar vazio');
+    if (ln && !/^https:\/\//.test(ln)) return falha('O link precisa começar com https://');
+    var dados = Object.assign({}, itm.dados || {});
+    if (itm.tipo === 'marco') {
+      var dt = val('caso-ed-data');
+      if (dt && !/^\d{4}-\d{2}-\d{2}$/.test(dt)) return falha('Escolha uma data válida');
+      if (dt) dados.data = dt; else delete dados.data;
+      dados.a_confirmar = !!($('caso-ed-conf') && $('caso-ed-conf').checked);
+      var nota = val('caso-ed-nota'); if (nota) dados.nota = nota.slice(0, 200); else delete dados.nota;
+    } else if (itm.tipo === 'escola') {
+      ['cidade', 'curso'].forEach(function (c) { var v = val('caso-ed-' + c); if (v) dados[c] = v.slice(0, 120); else delete dados[c]; });
+      var cu = val('caso-ed-custo'); if (cu !== '' && (isNaN(Number(cu)) || Number(cu) < 0 || Number(cu) > 100000)) return falha('O custo precisa ser um número entre 0 e 100000');
+      if (cu !== '') dados.custo_eur = Number(cu); else delete dados.custo_eur;
+    }
+    var mud = { titulo: tt.slice(0, 120), dados: dados, link: ln || null };
+    if (itm.estado === 'proposto') mud.estado = 'revisado';   // você mexeu: é seu. Ler o Notion de novo não desfaz.
+    r = await supabase.from('board_itens').update(mud).eq('id', nid); k.ed = null;
+    if (!r.error) { await casoRecarrega(); toast(itm.estado === 'publicado' ? 'Salvo. Ela já vê a correção.' : 'Salvo.'); return; }
   }
   else if (acao === 'ag-dias') { var dd = $('caso-ag-dias'); r = await supabase.rpc('crm_aviso_agendar', { p_id: nid, p_quando: null, p_dias_apos: Number(dd ? dd.value : 1) }); k.agenda = null; }
   else if (acao === 'ag-data') {

@@ -169,5 +169,33 @@ check('prazo-chave genérico avisa que ela só vê o título; título específic
 fixture({ itens: [Object.assign({}, ITENS[1], { titulo: 'Fim da inscrição na Alliance Française' })] }); await pagina();
 check('título específico não recebe o aviso', !/Diga a que se refere/.test(html()));
 
+
+console.log('\n== Corrigir o que ela vê: prazo e escola ==');
+const MARCO = { id: 21, tipo: 'marco', titulo: 'Prazo-chave', resumo: null, dados: { data: '2026-11-30', a_confirmar: false, nota: 'antiga' }, estado: 'publicado', ordem: 5, link: null, versao: 1 };
+const ESC = { id: 23, tipo: 'escola', titulo: 'Alliance Française de Marseille', resumo: null, dados: { cidade: 'Marseille', curso: 'FLE intensivo', custo_eur: 7100 }, estado: 'proposto', ordem: 7, link: 'https://exemplo.org/af', versao: 1 };
+fixture({ itens: [MARCO, ESC] }); await pagina();
+await click({ caso: 'ed-item', id: '21' });
+h = html();
+check('editar um prazo: o que é, a data, "a confirmar" e a explicação', /id="caso-ed-titulo"/.test(h) && /id="caso-ed-data"[^>]*value="2026-11-30"/.test(h) && /id="caso-ed-conf"/.test(h) && /id="caso-ed-nota"/.test(h) && /O que é este prazo/.test(h));
+el('caso-ed-titulo').value = 'Fim das inscrições no DU Aix-en-Provence'; el('caso-ed-data').value = '2026-12-05'; el('caso-ed-conf').checked = true; el('caso-ed-nota').value = '';
+writes.length = 0; await click({ caso: 'salvar-item', id: '21' });
+const w1 = ultimo();
+check('salvar o prazo grava o nome, a data nova e "a confirmar", e tira a explicação vazia', w1.table === 'board_itens' && w1.row.titulo === 'Fim das inscrições no DU Aix-en-Provence' && w1.row.dados.data === '2026-12-05' && w1.row.dados.a_confirmar === true && !('nota' in w1.row.dados));
+check('item já publicado continua publicado (a correção chega a ela na hora) e o aviso diz isso', !('estado' in w1.row) && /Ela já vê a correção/.test(els.get('toast').textContent));
+el('caso-ed-data').value = ''; await click({ caso: 'ed-item', id: '21' }); el('caso-ed-titulo').value = 'Prazo'; el('caso-ed-data').value = '05/12/2026'; writes.length = 0;
+await click({ caso: 'salvar-item', id: '21' });
+check('data fora do formato é recusada, sem gravar', writes.length === 0);
+await click({ caso: 'ed-item', id: '23' });
+h = html();
+check('editar uma escola: nome, cidade, curso, custo e site', /id="caso-ed-cidade"[^>]*value="Marseille"/.test(h) && /id="caso-ed-curso"/.test(h) && /id="caso-ed-custo"[^>]*value="7100"/.test(h) && /id="caso-ed-link"[^>]*value="https:\/\/exemplo.org\/af"/.test(h) && /Nome da escola ou do curso/.test(h));
+el('caso-ed-titulo').value = 'DU Aix-en-Provence'; el('caso-ed-cidade').value = 'Aix-en-Provence'; el('caso-ed-curso').value = 'Diplôme d’Université de français'; el('caso-ed-custo').value = '4200'; el('caso-ed-link').value = 'https://exemplo.org/du';
+writes.length = 0; await click({ caso: 'salvar-item', id: '23' });
+const w2 = ultimo();
+check('salvar a escola troca o nome e os dados e guarda o que não mexeu', w2.row.titulo === 'DU Aix-en-Provence' && w2.row.dados.cidade === 'Aix-en-Provence' && w2.row.dados.curso === 'Diplôme d’Université de français' && w2.row.dados.custo_eur === 4200 && w2.row.link === 'https://exemplo.org/du');
+check('item que era só proposta vira revisado ao ser editado: ler o Notion de novo não desfaz a correção', w2.row.estado === 'revisado');
+await click({ caso: 'ed-item', id: '23' }); el('caso-ed-custo').value = '-5'; el('caso-ed-titulo').value = 'x'; writes.length = 0;
+await click({ caso: 'salvar-item', id: '23' });
+check('custo negativo ou fora do limite é recusado', writes.length === 0 && /entre 0 e 100000/.test(els.get('toast').textContent));
+
 console.log('\n' + passed + ' passaram, ' + failed + ' falharam');
 process.exit(failed ? 1 : 0);
