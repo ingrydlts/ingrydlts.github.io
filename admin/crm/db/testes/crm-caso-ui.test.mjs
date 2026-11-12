@@ -164,5 +164,10 @@ check('o formulário de pausa fala em "pausa depois do aviso anterior"', /Pausa 
 fixture({ avs: [AVS[1]].map((x) => Object.assign({}, x, { liberado_em: '2026-11-01T09:00:00Z', estado: 'liberado' })) }); await pagina();
 check('o que já saiu não tem botões de ritmo nem aparece como "próxima mensagem"', !/Próxima mensagem para/.test(html()) && !html().includes('data-caso="atrasar-1"'));
 
+fixture({ itens: [ITENS[1]] }); await pagina();
+check('prazo-chave genérico avisa que ela só vê o título; título específico não avisa', /Diga a que se refere/.test(html()));
+fixture({ itens: [Object.assign({}, ITENS[1], { titulo: 'Fim da inscrição na Alliance Française' })] }); await pagina();
+check('título específico não recebe o aviso', !/Diga a que se refere/.test(html()));
+
 console.log('\n' + passed + ' passaram, ' + failed + ' falharam');
 process.exit(failed ? 1 : 0);
