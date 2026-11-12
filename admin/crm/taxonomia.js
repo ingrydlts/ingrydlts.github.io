@@ -47,6 +47,13 @@ export var PAGINAS = [
     ['vls-30-60', 'De 30 a 60 dias'],
     ['vls-menos-30', 'Menos de 30 dias'],
     ['vls-passou', 'Passaram os 3 meses']
+  ] },
+  { k: 'I05', nome: 'Au pair · checklist de chegada', rota: '/guias/checklist-chegada-au-pair/', etapas: [
+    ['ap-tudo-bem', 'Tudo bem, ainda não olhei os papéis'],
+    ['ap-nao-sei-comecar', 'Muito papel, sem saber por onde começar'],
+    ['ap-medo-prazo', 'Medo de perder um prazo'],
+    ['ap-travado', 'Um passo travado'],
+    ['ap-pesado', 'Pesado, deixei os papéis de lado']
   ] }
 ];
 
@@ -106,8 +113,8 @@ var RESERVA_CHAVE = {
   guia_chamada: ['entrega', 'I04', null],
   guia_plataforma: ['entrega', 'I04', null],
   tec_recap_30min: ['entrega', 'I02', null],
-  aupair_chegada_1: ['entrega', null, 'au_pair'],
-  aupair_chegada_2: ['entrega', null, 'au_pair'],
+  aupair_chegada_1: ['entrega', 'I05', 'au_pair'],
+  aupair_chegada_2: ['entrega', 'I05', 'au_pair'],
   hub_estudos_lancamento: ['campanha', null, null],
   lembrete_prazo_vlsts: ['campanha', null, null]
 };

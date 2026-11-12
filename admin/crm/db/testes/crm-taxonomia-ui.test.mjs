@@ -8,7 +8,7 @@ function check(label, cond) { if (cond) passed++; else { failed++; console.log('
 
 // ---------- Catálogo ----------
 check('8 famílias na ordem', FAMILIAS.map((f) => f[0]).join() === 'entrega,personalizado,aquecimento,serie,compra,acesso,reimpacto,campanha');
-check('4 páginas', PAGINAS.map((p) => p.k).join() === 'I01,I02,I03,I04');
+check('5 páginas (a I05 é a do Au pair)', PAGINAS.map((p) => p.k).join() === 'I01,I02,I03,I04,I05');
 check('4 personas', PERSONAS.map((p) => p[0]).join() === 'au_pair,pvt,estudante,conjuge');
 check('I03 tem 5 etapas', PAGINAS[2].etapas.length === 5);
 
@@ -38,7 +38,7 @@ res('hub_estudos_d3', 'compra', null, null, { tipo: 'compra' });
 res('guia_alternancia', 'entrega', 'I01');
 ['guia_chamada', 'guia_plataforma'].forEach((k) => res(k, 'entrega', 'I04'));
 res('tec_recap_30min', 'entrega', 'I02');
-['aupair_chegada_1', 'aupair_chegada_2'].forEach((k) => res(k, 'entrega', null, 'au_pair'));
+['aupair_chegada_1', 'aupair_chegada_2'].forEach((k) => res(k, 'entrega', 'I05', 'au_pair'));
 ['hub_estudos_lancamento', 'lembrete_prazo_vlsts'].forEach((k) => res(k, 'campanha'));
 
 let desconhecida;
@@ -84,9 +84,10 @@ check('aq_* em I03', chavesDe(gr('I03')).indexOf('aq_a_d3') >= 0 && chavesDe(gr(
 check('cf_guia_* em I03', chavesDe(gr('I03')).indexOf('cf_guia_1') >= 0 && chavesDe(gr('I03')).indexOf('cf_guia_conversa') >= 0);
 check('guia_alternancia em I01', chavesDe(gr('I01')).indexOf('guia_alternancia') >= 0);
 check('título da página', gr('I03').titulo === 'I03 · Études en France 2027-2028');
-check('aupair_chegada_1 em entrega', chavesDe(gr('entrega')).indexOf('aupair_chegada_1') >= 0);
+check('aupair_chegada_1 em I05', chavesDe(gr('I05')).indexOf('aupair_chegada_1') >= 0 && chavesDe(gr('I05')).indexOf('aupair_chegada_2') >= 0);
 check('itens do grupo = soma dos subgrupos', gs.every((g) => !g.subgrupos.length || g.subgrupos.reduce((n, sg) => n + sg.itens.length, 0) === g.itens.length));
-check('ordem: páginas, famílias, sem', gs.map((g) => g.id).join() === 'I01,I02,I03,I04,entrega,compra,acesso,reimpacto,campanha,sem');
+// Com o Au pair na I05, nenhum modelo do fixture sobra solto na família "entrega": o grupo some.
+check('ordem: páginas, famílias, sem', gs.map((g) => g.id).join() === 'I01,I02,I03,I04,I05,compra,acesso,reimpacto,campanha,sem');
 
 const e = agrupa([
   { chave: 'a', nome: 'A', ordem: 1, familia: 'entrega', pagina: 'I02', etapa: 'tec-nao-sei', persona: null },
@@ -203,9 +204,9 @@ function fromFake(tab) {
 const ESF = {};
 const sb = { from: fromFake, auth: { getSession: async () => ({ data: { session: null } }) }, rpc: async () => ({ data: null, error: null }),
   channel: () => ({ on() { return this; }, subscribe() { return this; } }), removeChannel() {} };
-const H = new Function('supabase', 'ES', 'TX', 'document', 'window', 'location', 'localStorage', 'setInterval', 'clearInterval',
+const H = new Function('supabase', 'ES', 'TX', 'EE', 'EQ', 'document', 'window', 'location', 'localStorage', 'setInterval', 'clearInterval',
   csrc + '\n;return { setM: function (v) { M = v; }, setMV: function (v) { MV = v; }, renderLista, renderFiltros, classeHtml, mudarClasse, criarModelo, renderEditor, renderModelos, listaModelos, opcoesPorCategoria, ST, aoClicarFiltro: typeof aoClicarFiltro === "function" ? aoClicarFiltro : null, aoDigitarFiltro: typeof aoDigitarFiltro === "function" ? aoDigitarFiltro : null };')(
-  sb, ESF, TX, doc, { addEventListener() {} }, { href: '' }, { getItem: () => null, setItem() {} }, () => 1, () => {});
+  sb, ESF, TX, { iniciar() {}, depois() {}, campoMudou() {} }, {}, doc, { addEventListener() {} }, { href: '' }, { getItem: () => null, setItem() {} }, () => 1, () => {});
 console.log('== crm.js: lista agrupada ==');
 const mods = fixture32();
 mods.push({ chave: 'excl1', nome: 'Excluido um', ordem: 99, tipo: 'email', excluido_em: '2026-01-01' });

@@ -2,8 +2,10 @@
 // Nada de service_role aqui. O banco é db/crm-fase2.sql; o desenho é o artefato "CRM Por Dentro".
 // Tudo que vem do banco é texto de terceiros (nome, e-mail, pergunta): passa sempre por esc().
 import { supabase } from '/assets/js/supabase-client.js';
-import * as TX from './taxonomia.js?v=2026-11-09.2';   // páginas, famílias e agrupamento dos modelos
-import * as ES from './estudio.js?v=2026-10-23.3';   // os blocos do estúdio de e-mails (entregas 2 e 3)
+import * as TX from './taxonomia.js?v=2026-11-12.9';   // páginas, famílias e agrupamento dos modelos
+import * as ES from './estudio.js?v=2026-11-12.9';   // os blocos do estúdio de e-mails (entregas 2 e 3)
+import * as EE from './editor-email.js?v=2026-11-12.9';
+import * as EQ from './editor-quem.js?v=2026-11-12.9';   // o e-mail editável do passo Texto
 
 var PERSONAS = {
   au_pair_estudante: 'Au pair → estudante', campus_france: 'Campus France', alternancia_emprego: 'Alternância / emprego',
@@ -2665,8 +2667,7 @@ async function radarEnviar(btn) {
 // Sem a migração da entrega 1, a tela mostra os 8 do código; sem a da entrega 2, mostra tudo sem editar.
 var TIPO_EMAIL = { servico: ['Serviço', 'u-baixa'], novidades: ['Novidades', 'u-media'], compra: ['Compra', 'tp-pergunta'] };
 var ETAPA_EMAIL = { rascunho: ['Rascunho', ''], revisao: ['Revisão', 'u-media'], no_ar: ['No ar', 'u-baixa'], arquivado: ['Arquivado', 'out'] };
-var ST = { k: null, v: null, blk: null, sec: 'texto', who: null, q: '', dev: 'pc', marcar: true, modo: 'editar', tab: 'editar', d: null, dKey: null, montado: null, vistos: {}, foco: null, salvo: '', timer: null, f: TX.filtroVazio() };
-var SECOES = [['obj', 'Objetivo e envio'], ['para', 'Para quem'], ['ctx', 'Contexto da pessoa'], ['texto', 'Texto'], ['pronto', 'Pronto para usar?'], ['versoes', 'Versões']];
+var ST = { k: null, v: null, passo: 'texto', who: null, q: '', dev: 'pc', marcar: true, tab: 'editar', d: null, dKey: null, montado: null, vistos: {}, foco: null, salvo: '', timer: null, f: TX.filtroVazio() };
 function versoesDe(k) { return MV.filter(function (v) { return v.chave === k; }); }   // da mais nova para a mais velha
 function versaoAtual(k) { var vs = versoesDe(k); return vs.filter(function (v) { return v.etapa === 'no_ar'; })[0] || vs[0] || null; }
 function versaoEmObra(k) { return versoesDe(k).filter(function (v) { return v.etapa === 'rascunho' || v.etapa === 'revisao'; })[0] || null; }
@@ -2855,11 +2856,6 @@ async function excluirModelo(k, voltar) {
   toast(voltar ? '"' + m.nome + '" restaurado' + (m.envio_gatilho ? ' (com o Envio desligado)' : '') : '"' + m.nome + '" excluído', 3200);
   renderModelos();
 }
-function secao(id, titulo, dica, corpo) {
-  var on = ST.sec === id;
-  return '<div class="st-sec' + (on ? ' is-open' : '') + '"><button type="button" class="st-sec-h" data-stsec="' + id + '" aria-expanded="' + on + '"><b>' + esc(titulo) + '</b><span>' + esc(dica) + '</span><i aria-hidden="true">▾</i></button>' +
-    (on ? '<div class="st-sec-in">' + corpo + '</div>' : '') + '</div>';
-}
 function campoTxt(f, valor, rot, opts) {
   opts = opts || {};
   var dis = opts.ro ? ' disabled' : '';
@@ -2873,18 +2869,26 @@ function opcoes(lista, atual, primeira) {
 }
 function varsDoTipo(k, t) { return varsDe(k).filter(function (x) { return ES.CAT[x] && ES.CAT[x].t === t; }); }
 
-function blocoEditor(b, i, n, k, ro) {
+// ---------- O editor: três passos ----------
+// 1. Quem recebe e quando · 2. Texto (o próprio e-mail, editável: editor-email.js) · 3. Conferir e publicar.
+var PASSOS = [['quem', 'Quem recebe e quando'], ['texto', 'Texto'], ['conferir', 'Conferir e publicar']];
+
+// As opções de um bloco (o painel que abre sobre o bloco). semTexto: o texto do bloco se edita no próprio e-mail, então aqui só
+// ficam as opções (estilo, texto se faltar um dado, "mostrar só se…"). Os campos são os de sempre (data-f = caminho no rascunho).
+function camposDoBloco(b, i, semTexto) {
+  var k = ST.k, ro = !podeEditar(versaoAberta());
   var f = function (campo) { return 'itens.' + i + '.' + campo; };
   var dis = ro ? ' disabled' : '';
   var corpo = '';
   var alt = function () { return campoTxt(f('alt'), b.alt, 'Se faltar um dado deste bloco, escrever', { ro: ro, ph: 'vazio: cada dado usa o plano B dele' }); };
+  var txt = function (campo, rot, opts) { return semTexto ? '' : campoTxt(f(campo), b[campo], rot, opts); };
   if (b.tipo === 'texto') {
-    corpo = campoTxt(f('texto'), b.texto, 'Texto', { area: true, rows: 3, ro: ro, max: 3000 }) +
+    corpo = txt('texto', 'Texto', { area: true, rows: 3, ro: ro, max: 3000 }) +
       '<label class="st-fld"><span>Estilo</span><select class="st-in" data-f="' + f('estilo') + '"' + dis + '>' + opcoes([['', 'Normal'], ['caixa', 'Em caixa (ex.: "Ficou com dúvida?")'], ['discreto', 'Discreto, em cinza']], b.estilo) + '</select></label>' + alt();
   } else if (b.tipo === 'titulo') {
-    corpo = campoTxt(f('texto'), b.texto, 'Título', { ro: ro }) + alt();
+    corpo = txt('texto', 'Título', { ro: ro }) + alt();
   } else if (b.tipo === 'pergunta') {
-    corpo = campoTxt(f('texto'), b.texto, 'Pergunta', { ro: ro }) + alt() + campoTxt(f('ajuda'), b.ajuda, 'Linha de ajuda (opcional)', { ro: ro });
+    corpo = txt('texto', 'Pergunta', { ro: ro }) + alt() + txt('ajuda', 'Linha de ajuda (opcional)', { ro: ro });
   } else if (b.tipo === 'botao') {
     var links = varsDoTipo(k, 'link').map(function (x) { return [x, '{' + x + '} · ' + ES.CAT[x].o]; });
     var comUrl = !!String(b.url || '').trim();
@@ -2896,7 +2900,9 @@ function blocoEditor(b, i, n, k, ro) {
           (b.link ? campoTxt(f('complemento'), b.complemento, 'Final do link, para medir cliques (opcional)', { ro: ro, ph: '&utm_source=email&utm_campaign=…', max: 200 }) : ''));
   } else if (b.tipo === 'destaque') {
     corpo = campoTxt(f('rotulo'), b.rotulo, 'Rótulo (em cima, pequeno)', { ro: ro }) + campoTxt(f('valor'), b.valor, 'Valor (curto fica grande; várias linhas ficam em lista)', { area: true, rows: 2, ro: ro }) +
-      campoTxt(f('nota'), b.nota, 'Nota (embaixo, opcional)', { ro: ro });
+      campoTxt(f('nota'), b.nota, 'Nota (embaixo, opcional)', { ro: ro }) +
+      '<label class="st-fld"><span>Cor</span><select class="st-in" data-f="' + f('estilo') + '"' + dis + '>' +
+      opcoes(Object.keys(ES.ESTILOS_DESTAQUE).map(function (x) { return [x, ES.ESTILOS_DESTAQUE[x].nome]; }), b.estilo || 'escuro') + '</select></label>';
   } else if (b.tipo === 'apresentacao') {
     corpo = '<div class="st-foto"><img src="' + esc(ES.FOTO_URL) + '" alt="" width="40" height="40"><small>A foto é sempre a sua, do site.</small></div>' +
       campoTxt(f('titulo'), b.titulo, 'Nome', { ro: ro }) + campoTxt(f('texto'), b.texto, 'Uma linha sobre você', { ro: ro });
@@ -2909,10 +2915,10 @@ function blocoEditor(b, i, n, k, ro) {
     var etapas = varsDe(k).filter(function (x) { return ES.CAT[x] && ES.CAT[x].etapa; });
     corpo = '<label class="st-fld"><span>Só para quem está na etapa</span><select class="st-in" data-f="' + f('se') + '"' + dis + '>' +
       opcoes(etapas.map(function (x) { return ['#' + x, ES.CAT[x].o.replace(/^etapa do guia: /, '')]; }), b.se, etapas.length ? 'Escolha a etapa' : 'Este modelo não tem etapa') + '</select></label>' +
-      campoTxt(f('rotulo'), b.rotulo, 'Linha pequena de cima (opcional)', { ro: ro }) + campoTxt(f('titulo'), b.titulo, 'Frase em negrito (opcional)', { ro: ro }) +
-      campoTxt(f('texto'), b.texto, 'Texto', { area: true, rows: 3, ro: ro, max: 3000 });
+      (semTexto ? '' : campoTxt(f('rotulo'), b.rotulo, 'Linha pequena de cima (opcional)', { ro: ro }) + campoTxt(f('titulo'), b.titulo, 'Frase em negrito (opcional)', { ro: ro }) +
+        campoTxt(f('texto'), b.texto, 'Texto', { area: true, rows: 3, ro: ro, max: 3000 }));
   } else {
-    corpo = campoTxt(f('texto'), b.texto, 'Assinatura', { ro: ro });
+    corpo = semTexto ? '' : campoTxt(f('texto'), b.texto, 'Assinatura', { ro: ro });
   }
   // "Mostrar só se…": vale para todo bloco, menos o de etapa (que já é condição).
   if (b.tipo !== 'etapa') {
@@ -2921,19 +2927,73 @@ function blocoEditor(b, i, n, k, ro) {
     cond.forEach(function (x) { ops.push(['#' + x, 'Só se tiver {' + x + '}']); ops.push(['^' + x, 'Só se NÃO tiver {' + x + '}']); });
     corpo += '<label class="st-fld"><span>Mostrar</span><select class="st-in" data-f="' + f('se') + '"' + dis + '>' + opcoes(ops, b.se, 'Sempre') + '</select></label>';
   }
-  var cTxt = b.se ? ' · ' + (b.se[0] === '#' ? 'só se tiver ' : 'só se não tiver ') + b.se.slice(1) : '';
-  var resumo = String(b.texto || b.rotulo || b.titulo || '').replace(/\s+/g, ' ').slice(0, 60);
-  var aberto = ST.blk === i;
-  return '<div class="st-blk' + (aberto ? ' is-open' : '') + '"><div class="st-blk-h"><button type="button" class="st-blk-t" data-blkopen="' + i + '" aria-expanded="' + aberto + '"><b>' + esc((ES.TIPOS[b.tipo] || {}).nome || b.tipo) + '</b>' +
-    '<span>' + esc(resumo + cTxt) + '</span></button>' +
-    (ro ? '' : '<button type="button" class="st-ic" data-bmove="' + i + ':-1" aria-label="Subir"' + (i === 0 ? ' disabled' : '') + '>↑</button><button type="button" class="st-ic" data-bmove="' + i + ':1" aria-label="Descer"' + (i === n - 1 ? ' disabled' : '') + '>↓</button>' +
-      '<button type="button" class="st-ic" data-bdel="' + i + '" aria-label="Tirar o bloco">✕</button>') + '</div>' +
-    (aberto ? '<div class="st-blk-in">' + corpo + '</div>' : '') + '</div>';
+  return corpo;
 }
 
-function chipsDados(k) {
-  return '<div class="st-chips"><span class="sub">Inserir dado:</span>' + varsDe(k).filter(function (x) { return ES.CAT[x] && ES.CAT[x].t !== 'sim' && ES.CAT[x].t !== 'pronto' && !/^link_/.test(x); })
-    .map(function (x) { return '<button type="button" class="chip" data-insvar="' + esc(x) + '">{' + esc(x) + '}</button>'; }).join('') + '</div>';
+// Dados da pessoa e plano B: cada dado, o que é e o que acontece se faltar. O plano B vale para o modelo todo.
+function contextoHtml(k, d, ro) {
+  return varsDe(k).map(function (x) {
+    var c = ES.CAT[x] || { t: 'texto', o: x }, p = d && d.planos && Object.prototype.hasOwnProperty.call(d.planos, x) ? d.planos[x] : c.plano;
+    var se;
+    if (c.t === 'texto') {
+      se = '<div class="st-plano"><select class="st-in" data-plano="' + esc(x) + '"' + (ro ? ' disabled' : '') + '>' + opcoes([['troca', 'Se faltar, escrever:'], ['some', 'Se faltar, o bloco some']], p == null ? 'some' : 'troca') + '</select>' +
+        (p == null ? '' : '<input class="st-in" data-f="planos.' + esc(x) + '" value="' + esc(p) + '" placeholder="(fica vazio)"' + (ro ? ' disabled' : '') + '>') + '</div>';
+    } else if (c.t === 'link') se = '<small>' + (c.privado ? 'Link privado, vem do banco. ' : '') + 'Sem ele, o envio é recusado.</small>';
+    else if (c.t === 'fixo') se = '<small>Sempre existe.</small>';
+    else if (c.t === 'sim') se = '<small>Sim ou não: use em "Mostrar só se…" ou no bloco "Só para uma etapa".</small>';
+    else se = '<small>Vem pronto do Worker.</small>';
+    return '<div class="st-var"><code>{' + esc(x) + '}</code><span>' + esc(c.o) + '</span>' + se + '</div>';
+  }).join('') + '<p class="st-msg tip">O plano B vale para o modelo todo. Um bloco pode ter o próprio texto "se faltar um dado".</p>';
+}
+
+function passoTexto(m, v, d, ro) {
+  if (!d) {
+    return v ? '<p class="st-msg tip">Texto guardado desta versão (ainda sem blocos):</p><p class="previewsubj" style="font-size:15px">' + marcarVars(v.assunto) + '</p>' +
+      (v.preheader ? '<p class="sub" style="margin:0">Prévia: ' + marcarVars(v.preheader) + '</p>' : '') + '<div class="mailbody">' + marcarVars(v.corpo_texto) + '</div>' : '<div class="empty">Sem versão.</div>';
+  }
+  return EE.html() + '<details class="ee-ctx"><summary>Dados da pessoa e plano B <span class="sub">' + varsDe(m.chave).length + ' dados</span></summary><div class="ee-ctx-in">' + contextoHtml(m.chave, d, ro) + '</div></details>';
+}
+
+function passoConferir(m, v, d, confs, travas, testado, vistos, vs) {
+  var novoM = !!m.criado_no_estudio;
+  var s5 = d ? '<ul class="st-ready">' + confs.map(function (x) { return '<li class="' + (x.ok ? 'y' : x.trava ? 'n' : 'w') + '">' + esc(x.txt) + '</li>'; }).join('') +
+    '<li class="' + (vistos >= 2 ? 'y' : 'w') + '">Prévia vista com ' + vistos + (vistos === 1 ? ' pessoa' : ' pessoas') + (vistos >= 2 ? '' : ' (veja com pelo menos duas)') + '</li>' +
+    '<li class="' + (testado ? 'y' : 'n') + '">' + (testado ? 'Teste enviado em ' + esc(fmtWhen(v.testado_em)) : 'Teste para você ainda não enviado (precisa para publicar)') + '</li></ul>' +
+    (novoM && m.envio_gatilho ? '<p class="st-msg tip">Sequência: ao publicar, ' + (m.envio_ligado ? 'o próximo envio já sai com este texto.' : 'ligue o Envio (em Quem recebe e quando) para começar a sair.') + '</p>'
+    : m.automatico ? '<p class="st-msg tip">Saem sozinhos: ao publicar, o próximo envio já sai com este texto. A versão de agora fica guardada.</p>' : '<p class="st-msg tip">Ao publicar, o "Escrever este e-mail" da ficha passa a abrir com este texto (os manuais saem em texto simples, como hoje).</p>')
+    : '<p class="st-msg tip">Crie uma versão nova para montar em blocos e conferir.</p>';
+  var s6 = '<ul class="st-vers">' + vs.map(function (x) {
+    var quando = x.etapa === 'no_ar' ? 'no ar desde ' + fmtDay(x.publicado_em) : x.publicado_em ? 'saiu em ' + fmtDay(x.publicado_em) : 'criada em ' + fmtDay(x.criado_em);
+    return '<li' + (x.versao === ST.v ? ' aria-current="true"' : '') + '><button type="button" class="st-verbtn" data-stver="' + x.versao + '"><b>v' + x.versao + '</b> ' + pillDe(ETAPA_EMAIL, x.etapa) +
+      '<span class="sub">' + esc(quando) + (x.nota ? ' · ' + esc(x.nota) : '') + '</span></button>' +
+      (x.etapa === 'arquivado' && temBlocos() ? '<button type="button" class="btn" data-stvoltar="' + x.versao + '">Voltar para esta</button>' : '') + '</li>';
+  }).join('') + '</ul>';
+  return '<section class="ee-sec"><h4>Pronto para usar?</h4>' + s5 + '</section><section class="ee-sec"><h4>Versões</h4>' + s6 + '</section>';
+}
+
+// Passo 1 — "Quem recebe e quando": uma frase com o essencial e o contador de quem entra hoje; os detalhes abrem só quando pedidos.
+function passoQuem(m, ro) {
+  var k = m.chave, novoM = !!m.criado_no_estudio, objM = novoM ? ES.objetivo(m.objetivo_chave) : null;
+  var est = EQ.estimar(C, m, origensDe), fr = EQ.fraseQuem(m, { material: origLabel, etapa: etapaGuiaLabel });
+  var MOT = { persona: 'de outra persona', material: 'de outro material', etapa: 'de outra resposta', estagio: 'de outro estágio', novidades: 'sem aceitar novidades' };
+  var fora = Object.keys(est.porMotivo).map(function (x) { return est.porMotivo[x] + ' ' + MOT[x]; }).join(', ');
+  var sai = novoM ? (m.envio_gatilho ? 'sai sozinho' : 'você envia pela ficha') : esc(String(m.como_sai || 'conforme o código').replace(/\.$/, '').replace(/^./, function (x) { return x.toLowerCase(); }));
+  var frase = '<p class="ee-frase">Entrou por <b>' + esc(fr.materiais) + '</b> e respondeu <b>' + esc(fr.etapas) + '</b>' + (fr.novidades ? ', e <b>aceitou novidades</b>' : '') + '. Aqui, ' + sai + '.</p>' +
+    '<p class="ee-conta" role="status"><b>' + est.n + '</b> de ' + est.total + ' pessoas da base recebem hoje' + (fora && est.n !== est.total ? '<span class="sub"> · ficam de fora: ' + esc(fora) + '</span>' : '') + '. <span class="sub">É uma estimativa pelas regras; o Worker confere de novo a cada envio.</span></p>';
+  if (!novoM) {
+    return '<section class="ee-sec"><h4>Quem recebe e quando</h4>' + frase +
+      '<dl class="tplmeta"><dt>Quem recebe</dt><dd>' + esc(m.quem_recebe || 'Todos') + '</dd><dt>Como sai</dt><dd>' + esc(m.como_sai) + '</dd>' +
+      (m.automatico ? '' : '<dt>Sugerido</dt><dd>' + esc((TPLS[k] && TPLS[k].when) || '—') + '</dd>') + '</dl>' +
+      '<p class="st-msg tip">Neste modelo antigo, quem recebe e quando continuam no código: o Worker confere o aceite de novidades a cada envio, mesmo que alguém mude o texto aqui.</p></section>' +
+      '<details class="ee-sec ee-av"><summary>Avançado</summary>' + classeHtml(m) + '<label class="st-fld"><span>Objetivo</span><textarea class="st-in" id="st-objetivo" rows="2" maxlength="300">' + esc(m.objetivo) + '</textarea></label></details>';
+  }
+  return '<section class="ee-sec"><h4>Quem recebe e quando</h4>' + frase + '</section>' +
+    '<details class="ee-sec"><summary>Mudar quem recebe</summary>' + paraQuemHtml(m.para_quem, 'data-pq', objM || { produto: !!(m.para_quem || {}).produto }, true) +
+    '<p class="st-msg tip">' + esc(m.tipo === 'novidades' ? 'E só quem aceitou novidades (o tipo garante).' : 'Serviço e compra saem para quem cumprir as regras, sem pedir novidades.') + '</p></details>' +
+    '<details class="ee-sec"><summary>Mudar quando sai</summary>' + envioHtml(m) + '</details>' +
+    '<details class="ee-sec ee-av"><summary>Avançado</summary>' + classeHtml(m) +
+    '<label class="st-fld"><span>Objetivo</span><textarea class="st-in" id="st-objetivo" rows="2" maxlength="300">' + esc(m.objetivo) + '</textarea></label>' +
+    '<dl class="tplmeta"><dt>Do catálogo</dt><dd>' + esc(objM ? objM.nome : '—') + '</dd><dt>Tipo</dt><dd>' + pillDe(TIPO_EMAIL, m.tipo) + ' <span class="sub">' + esc(ES.TIPO_RODAPE[m.tipo] || '') + '</span></dd></dl></details>';
 }
 
 function renderEditor(lista) {
@@ -2966,73 +3026,26 @@ function renderEditor(lista) {
       (v.blocos ? '' : 'Ainda está em texto corrido (como era no código). ') + 'Para mudar, crie uma versão nova: a de agora continua saindo até você publicar a nova.</p>' : '') +
     (v && !ro && v.etapa === 'revisao' ? '<p class="st-msg tip">Em revisão. ' + (testado ? 'Teste enviado em ' + esc(fmtWhen(v.testado_em)) + '.' : 'Falta enviar o teste para você.') + ' Mudar o texto pede um teste novo.</p>' : '');
 
-  // 1. Objetivo e envio
-  var novoM = !!m.criado_no_estudio, objM = novoM ? ES.objetivo(m.objetivo_chave) : null;
-  var s1 = novoM ? '<label class="st-fld"><span>Objetivo</span><textarea class="st-in" id="st-objetivo" rows="2" maxlength="300">' + esc(m.objetivo) + '</textarea></label>' +
-    '<dl class="tplmeta"><dt>Do catálogo</dt><dd>' + esc(objM ? objM.nome : '—') + '</dd><dt>Tipo</dt><dd>' + pillDe(TIPO_EMAIL, m.tipo) + ' <span class="sub">' + esc(ES.TIPO_RODAPE[m.tipo] || '') + '</span></dd></dl>' +
-    envioHtml(m) : '<label class="st-fld"><span>Objetivo</span><textarea class="st-in" id="st-objetivo" rows="2" maxlength="300">' + esc(m.objetivo) + '</textarea></label>' +
-    '<dl class="tplmeta"><dt>Tipo</dt><dd>' + pillDe(TIPO_EMAIL, m.tipo) + ' <span class="sub">' + esc(ES.TIPO_RODAPE[m.tipo] || '') + '</span></dd>' +
-    '<dt>Como sai</dt><dd>' + esc(m.como_sai) + '</dd></dl>' +
-    '<p class="st-msg tip">Quem recebe e quando continuam no código: o Worker confere o aceite de novidades a cada envio, mesmo que alguém mude o texto aqui.</p>';
-  s1 = classeHtml(m) + s1;
-  // 2. Para quem
-  var s2 = novoM ? paraQuemHtml(m.para_quem, 'data-pq', objM || { produto: !!(m.para_quem || {}).produto }, true) +
-    '<p class="st-msg tip">' + esc(m.tipo === 'novidades' ? 'E só quem aceitou novidades (o tipo garante).' : 'Serviço e compra saem para quem cumprir as regras, sem pedir novidades.') + '</p>'
-    : '<dl class="tplmeta"><dt>Quem recebe</dt><dd>' + esc(m.quem_recebe || 'Todos') + '</dd>' +
-    (k.indexOf('cf_') === 0 ? '<dt>Material</dt><dd>Guia Études en France 2027-2028</dd>' : k.indexOf('guia_') === 0 ? '<dt>Material</dt><dd>' + esc(k === 'guia_alternancia' ? 'Guia alternância 30+' : 'Guia VLS-TS') + '</dd>' : '') +
-    (m.automatico ? '' : '<dt>Sugerido</dt><dd>' + esc((TPLS[k] && TPLS[k].when) || '—') + '</dd>') + '</dl>';
-  // 3. Contexto da pessoa: cada dado, o que é e o que acontece se faltar (o plano B)
-  var s3 = varsDe(k).map(function (x) {
-    var c = ES.CAT[x] || { t: 'texto', o: x }, p = d && d.planos && Object.prototype.hasOwnProperty.call(d.planos, x) ? d.planos[x] : c.plano;
-    var se;
-    if (c.t === 'texto') {
-      se = '<div class="st-plano"><select class="st-in" data-plano="' + esc(x) + '"' + (ro ? ' disabled' : '') + '>' + opcoes([['troca', 'Se faltar, escrever:'], ['some', 'Se faltar, o bloco some']], p == null ? 'some' : 'troca') + '</select>' +
-        (p == null ? '' : '<input class="st-in" data-f="planos.' + esc(x) + '" value="' + esc(p) + '" placeholder="(fica vazio)"' + (ro ? ' disabled' : '') + '>') + '</div>';
-    } else if (c.t === 'link') se = '<small>' + (c.privado ? 'Link privado, vem do banco. ' : '') + 'Sem ele, o envio é recusado.</small>';
-    else if (c.t === 'fixo') se = '<small>Sempre existe.</small>';
-    else if (c.t === 'sim') se = '<small>Sim ou não: use em "Mostrar só se…" ou no bloco "Só para uma etapa".</small>';
-    else se = '<small>Vem pronto do Worker.</small>';
-    return '<div class="st-var"><code>{' + esc(x) + '}</code><span>' + esc(c.o) + '</span>' + se + '</div>';
-  }).join('') + '<p class="st-msg tip">O plano B vale para o modelo todo. Um bloco pode ter o próprio texto "se faltar um dado".</p>';
-  // 4. Texto
-  var s4;
-  if (!d) {
-    s4 = v ? '<p class="st-msg tip">Texto guardado desta versão (ainda sem blocos):</p><p class="previewsubj" style="font-size:15px">' + marcarVars(v.assunto) + '</p>' +
-      (v.preheader ? '<p class="sub" style="margin:0">Prévia: ' + marcarVars(v.preheader) + '</p>' : '') + '<div class="mailbody">' + marcarVars(v.corpo_texto) + '</div>' : '<div class="empty">Sem versão.</div>';
-  } else {
-    s4 = campoTxt('assunto', d.assunto, 'Assunto', { ro: ro, max: 300 }) + campoTxt('assunto_alt', d.assunto_alt, 'Assunto se faltar um dado (opcional)', { ro: ro, max: 300 }) +
-      campoTxt('pre', d.pre, 'Prévia (a linha cinza depois do assunto, opcional)', { ro: ro, max: 300 }) +
-      (ro ? '' : chipsDados(k)) +
-      '<div class="st-blks">' + (d.itens || []).map(function (b, i) { return blocoEditor(b, i, d.itens.length, k, ro); }).join('') + '</div>' +
-      (ro ? '' : '<div class="st-add"><select class="st-in" id="st-novo-bloco" aria-label="Tipo do bloco novo">' + opcoes(Object.keys(ES.TIPOS).map(function (t) { return [t, ES.TIPOS[t].nome + ' · ' + ES.TIPOS[t].d]; }), '', '+ Acrescentar um bloco') + '</select></div>') +
-      '<div class="st-rodape"><b>Rodapé (automático pelo tipo)</b>' + campoTxt('rodape', d.rodape, 'Por que ela recebe (opcional)', { ro: ro, ph: 'ex.: pediu o checklist Études en France com {email}', max: 300 }) +
-      '<small>' + esc(ES.rodapeDe(d, m.tipo) || 'Sem rodapé (serviço sem motivo escrito).') + '</small></div>';
-  }
-  // 5. Pronto para usar?
-  var s5 = d ? '<ul class="st-ready">' + confs.map(function (x) { return '<li class="' + (x.ok ? 'y' : x.trava ? 'n' : 'w') + '">' + esc(x.txt) + '</li>'; }).join('') +
-    '<li class="' + (vistos >= 2 ? 'y' : 'w') + '">Prévia vista com ' + vistos + (vistos === 1 ? ' pessoa' : ' pessoas') + (vistos >= 2 ? '' : ' (veja com pelo menos duas)') + '</li>' +
-    '<li class="' + (testado ? 'y' : 'n') + '">' + (testado ? 'Teste enviado em ' + esc(fmtWhen(v.testado_em)) : 'Teste para você ainda não enviado (precisa para publicar)') + '</li></ul>' +
-    (novoM && m.envio_gatilho ? '<p class="st-msg tip">Sequência: ao publicar, ' + (m.envio_ligado ? 'o próximo envio já sai com este texto.' : 'ligue o Envio (em Objetivo e envio) para começar a sair.') + '</p>'
-    : m.automatico ? '<p class="st-msg tip">Saem sozinhos: ao publicar, o próximo envio já sai com este texto. A versão de agora fica guardada.</p>' : '<p class="st-msg tip">Ao publicar, o "Escrever este e-mail" da ficha passa a abrir com este texto (os manuais saem em texto simples, como hoje).</p>')
-    : '<p class="st-msg tip">Crie uma versão nova para montar em blocos e conferir.</p>';
-  // 6. Versões
-  var s6 = '<ul class="st-vers">' + vs.map(function (x) {
-    var quando = x.etapa === 'no_ar' ? 'no ar desde ' + fmtDay(x.publicado_em) : x.publicado_em ? 'saiu em ' + fmtDay(x.publicado_em) : 'criada em ' + fmtDay(x.criado_em);
-    return '<li' + (x.versao === ST.v ? ' aria-current="true"' : '') + '><button type="button" class="st-verbtn" data-stver="' + x.versao + '"><b>v' + x.versao + '</b> ' + pillDe(ETAPA_EMAIL, x.etapa) +
-      '<span class="sub">' + esc(quando) + (x.nota ? ' · ' + esc(x.nota) : '') + '</span></button>' +
-      (x.etapa === 'arquivado' && temBlocos() ? '<button type="button" class="btn" data-stvoltar="' + x.versao + '">Voltar para esta</button>' : '') + '</li>';
-  }).join('') + '</ul>';
-
-  var dica3 = varsDe(k).length + ' dados', dica4 = d ? (d.itens || []).length + ' blocos' : 'texto corrido';
-  var dica5 = d ? (travas ? travas + ' para resolver' : testado ? 'tudo certo' : 'falta o teste') : '—';
-  box.innerHTML = topo +
-    secao('obj', 'Objetivo e envio', novoM && m.envio_gatilho ? (m.envio_ligado ? 'sequência · ligada' : 'sequência · desligada') : m.automatico ? 'sai sozinho' : 'você envia', s1) +
-    secao('para', 'Para quem', novoM ? paraResumo(m) : m.quem_recebe || 'Todos', s2) +
-    secao('ctx', 'Contexto da pessoa', dica3, s3) +
-    secao('texto', 'Texto', dica4, s4) +
-    secao('pronto', 'Pronto para usar?', dica5, s5) +
-    secao('versoes', 'Versões', vs.length + (vs.length === 1 ? ' versão' : ' versões'), s6);
+  var passos = '<div class="ee-passos" role="tablist" aria-label="Passos do e-mail">' + PASSOS.map(function (p, n) {
+    var aviso = p[0] === 'conferir' && d && travas ? '<span class="ee-aviso" title="' + travas + ' para resolver">' + travas + '</span>' : '';
+    return '<button type="button" role="tab" class="ee-passo" data-eepasso="' + p[0] + '" aria-selected="' + (ST.passo === p[0]) + '"><span class="n">' + (n + 1) + '</span>' + esc(p[1]) + aviso + '</button>';
+  }).join('') + '</div>';
+  var corpo = ST.passo === 'quem' ? passoQuem(m, ro) : ST.passo === 'conferir' ? passoConferir(m, v, d, confs, travas, testado, vistos, vs) : passoTexto(m, v, d, ro);
+  box.innerHTML = topo + passos + corpo;
+  EE.depois();
 }
+// O e-mail editável pede ao estúdio o rascunho, o catálogo de dados e o salvamento (tudo isto já existe aqui).
+EE.iniciar({
+  ES: ES,
+  rascunho: function () { return ST.d; },
+  somenteLeitura: function () { return !podeEditar(versaoAberta()); },
+  setCampo: function (caminho, valor) { setCampo(caminho, valor); },
+  mudou: function () { aoEditar({ canvas: true }); },
+  camposDoBloco: camposDoBloco,
+  dados: function () { return varsDe(ST.k).filter(function (x) { return ES.CAT[x] && ES.CAT[x].t !== 'sim' && ES.CAT[x].t !== 'pronto' && !/^link_/.test(x); }).map(function (x) { return [x, ES.CAT[x].o]; }); },
+  disponiveis: function () { var vs = varsDe(ST.k); return { etapa: vs.some(function (x) { return ES.CAT[x] && ES.CAT[x].etapa; }), toques: vs.some(function (x) { return ES.CAT[x] && ES.CAT[x].t === 'pronto'; }) }; },
+  rodapeTexto: function () { var m = modeloAtual(); return ST.d && m ? ES.rodapeDe(ST.d, m.tipo) : ''; }
+});
 
 // ---------- Modelo novo pelo objetivo e a parte Envio (entrega 3) ----------
 // "+ Modelo novo" abre os 4 passos da proposta: objetivo (o catálogo em estudio.js: tipo, como sai e esqueleto), para quem,
@@ -3074,7 +3087,7 @@ function paraQuemHtml(para, attr, obj, produtoFixo) {
   return prod +
     grupo('Persona', 'personas', Object.keys(PERSONAS).filter(function (k) { return k !== 'sem'; }).map(function (k) { return [k, PERSONAS[k]]; }), 'Nenhuma marcada = todas.') +
     grupo('Material de origem', 'materiais', materiaisConhecidos(), 'Só quem pegou um destes guias. Nenhum = qualquer origem.') +
-    grupo('Etapa do guia', 'etapas', ES.ETAPAS_GUIA, 'Só quem marcou uma destas etapas no guia. Nenhuma = qualquer etapa (quem não marcou etapa também recebe).') +
+    grupo('Etapa do guia', 'etapas', ES.ETAPAS_FILTRO, 'Só quem marcou uma destas etapas no guia. Nenhuma = qualquer etapa (quem não marcou etapa também recebe).') +
     grupo('Estágio', 'estagios', STAGES.map(function (x) { return [x.k, x.l]; }), 'Nenhum = qualquer estágio.') +
     grupo('Segmento do reimpacto', 'segmentos', SEGMENTS.map(function (x) { return [x.k, x.t]; }), 'Nenhum = sem regra de segmento.');
 }
@@ -3089,7 +3102,7 @@ function paraResumo(m) {
   if (m.tipo === 'novidades') r.push('aceitou novidades');
   return r.length ? r.join(' · ') : 'Todos';
 }
-function etapaGuiaLabel(k) { var e = ES.ETAPAS_GUIA.filter(function (x) { return x[0] === k; })[0]; return e ? e[1].replace(/^[^:]+: /, '') : k; }
+function etapaGuiaLabel(k) { var e = ES.ETAPAS_FILTRO.filter(function (x) { return x[0] === k; })[0]; return e ? e[1].replace(/^[^:]+: /, '') : k; }
 function mudarPara(para, g, valor, ligado) {
   if (g === 'produto') { para.produto = valor || undefined; para.produto_nome = valor ? produtoNome(valor) : undefined; if (!valor) { delete para.produto; delete para.produto_nome; } return; }
   var l = para[g] = (para[g] || []).slice(), i = l.indexOf(valor);
@@ -3164,7 +3177,7 @@ async function criarModelo(btn) {
   var r2 = await supabase.from('modelos_email_versoes').insert({ chave: chave, versao: 1, etapa: 'rascunho', assunto: mt.assunto, preheader: mt.preheader, corpo_texto: mt.corpo_texto,
     corpo_html: mt.corpo_html, blocos: d, nota: 'criada pelo objetivo ' + o.nome });
   if (r2.error) return fail('criar a versão 1', r2.error);
-  ST.criar = null; ST.k = chave; ST.sec = 'texto'; ST.blk = null;
+  ST.criar = null; ST.k = chave; ST.passo = 'texto';
   await recarregarModelos(1);
   toast('Modelo criado em rascunho. Escreva os [trechos], confira na prévia e mande o teste.', 5000);
 }
@@ -3276,37 +3289,6 @@ function pessoasDaPrevia() {
   var l = C.filter(function (c) { return !q || (displayName(c) + ' ' + c.email).toLowerCase().indexOf(q) >= 0; });
   return l.slice(0, 200);
 }
-// "Editar no e-mail": o e-mail desenhado como chega, com cada texto editável no lugar (data-ef = o mesmo caminho de data-f).
-// Mostra o texto como está guardado, com os {dados} à vista; "Ver como chega" mostra com os dados de uma pessoa.
-function edCampo(path, valor, cls, rot, ph) {
-  return '<div class="ed-t ' + (cls || '') + '" contenteditable="true" role="textbox" aria-multiline="true" spellcheck="true" data-ef="' + esc(path) + '" aria-label="' + esc(rot) + '" data-ph="' + esc(ph || rot) + '">' + esc(valor || '') + '</div>';
-}
-function edAlt(i, b) {
-  return b.alt != null && b.alt !== '' ? '<div class="ed-alt"><small>Se faltar um dado deste bloco:</small>' + edCampo('itens.' + i + '.alt', b.alt, 'ed-discreto', 'Texto se faltar um dado') + '</div>' : '';
-}
-function edNoEmail(d, m) {
-  var blocos = (d.itens || []).map(function (b, i) {
-    var p = function (c) { return 'itens.' + i + '.' + c; }, h;
-    if (b.tipo === 'texto') h = edCampo(p('texto'), b.texto, b.estilo === 'caixa' ? 'ed-caixa' : b.estilo === 'discreto' ? 'ed-discreto' : 'ed-texto', 'Texto') + edAlt(i, b);
-    else if (b.tipo === 'titulo') h = edCampo(p('texto'), b.texto, 'ed-titulo', 'Título') + edAlt(i, b);
-    else if (b.tipo === 'pergunta') h = edCampo(p('texto'), b.texto, 'ed-titulo', 'Pergunta') + edAlt(i, b) + edCampo(p('ajuda'), b.ajuda, 'ed-discreto', 'Linha de ajuda', 'Linha de ajuda (opcional)');
-    else if (b.tipo === 'botao') h = '<div class="ed-botao">' + edCampo(p('rotulo'), b.rotulo, '', 'Texto do botão') + '</div><small class="ed-nota">leva para {' + esc(b.link || 'escolha o link no bloco') + '}</small>';
-    else if (b.tipo === 'destaque') h = '<div class="ed-dest">' + edCampo(p('rotulo'), b.rotulo, 'ed-rot', 'Rótulo') + edCampo(p('valor'), b.valor, 'ed-val', 'Valor') + edCampo(p('nota'), b.nota, 'ed-discreto', 'Nota', 'Nota (opcional)') + '</div>';
-    else if (b.tipo === 'apresentacao') h = '<div class="ed-apr"><img src="' + esc(ES.FOTO_URL) + '" alt="" width="56" height="56"><div>' + edCampo(p('titulo'), b.titulo, 'ed-nome', 'Nome') + edCampo(p('texto'), b.texto, 'ed-discreto', 'Uma linha sobre você') + '</div></div>';
-    else if (b.tipo === 'toques') h = '<div class="ed-toques">Os botões de um toque ({' + esc(b.var || 'botoes_cidade') + '}) entram aqui, prontos do Worker.</div>';
-    else if (b.tipo === 'etapa') h = edCampo(p('rotulo'), b.rotulo, 'ed-discreto', 'Linha pequena de cima', 'Linha pequena de cima (opcional)') + edCampo(p('titulo'), b.titulo, 'ed-forte', 'Frase em negrito', 'Frase em negrito (opcional)') + edCampo(p('texto'), b.texto, 'ed-texto', 'Texto');
-    else h = edCampo(p('texto'), b.texto, 'ed-ass', 'Assinatura');
-    var cond = b.se ? (b.tipo === 'etapa' ? 'só para a etapa: ' + ((ES.CAT[b.se.slice(1)] || {}).o || b.se.slice(1)).replace(/^etapa do guia: /, '') : (b.se[0] === '#' ? 'só se tiver {' : 'só se não tiver {') + b.se.slice(1) + '}') : '';
-    return '<div class="ed-blk" data-edblk="' + i + '">' + (cond ? '<small class="ed-cond">' + esc(cond) + '</small>' : '') + h + '</div>';
-  }).join('');
-  var rod = ES.rodapeDe(d, m.tipo);
-  return '<div class="ed-env">' +
-    '<label class="ed-l">Assunto</label>' + edCampo('assunto', d.assunto, 'ed-assunto', 'Assunto') +
-    '<label class="ed-l">Assunto se faltar um dado</label>' + edCampo('assunto_alt', d.assunto_alt, 'ed-pre', 'Assunto se faltar um dado', 'Assunto se faltar um dado (opcional)') +
-    '<label class="ed-l">Prévia</label>' + edCampo('pre', d.pre, 'ed-pre', 'Prévia', 'A linha cinza depois do assunto (opcional)') + '</div>' +
-    '<div class="ed-mail"><div class="ed-marca">Por <span>Dentro</span></div><div class="ed-carta">' + blocos + '</div>' +
-    (rod ? '<div class="ed-rod">' + esc(rod) + '</div>' : '') + '</div>';
-}
 function renderPrevia() {
   var box = $('st-prev');
   var m = M ? modeloAtual() : null, k = ST.k;
@@ -3364,17 +3346,7 @@ function renderPrevia() {
   if (usados.indexOf('botoes_cidade') >= 0) dicas.push('Os botões de cidade levam o link assinado dela, que só existe no envio. No teste, eles levam um link de teste.');
   if (r) { ST.vistos[ST.dKey] = ST.vistos[ST.dKey] || {}; ST.vistos[ST.dKey][c.id] = 1; }
   var html = r ? (r.html || textoParaHtml(r.texto)) : '';
-  var editavel = !!(ST.d && podeEditar(versaoAberta())), modo = editavel ? ST.modo : 'ver';
-  var modos = editavel ? '<div class="seg" role="group" aria-label="Modo da prévia"><button type="button" data-stmodo="editar" aria-pressed="' + (modo === 'editar') + '">Editar no e-mail</button>' +
-    '<button type="button" data-stmodo="ver" aria-pressed="' + (modo === 'ver') + '">Ver como chega</button></div>' : '';
-  if (modo === 'editar') {
-    box.innerHTML = barra + modos +
-      (erro ? '<div class="st-alert no">O texto tem um erro: ' + esc(erro) + '.</div>' : '') +
-      '<p class="st-msg tip">Clique em qualquer texto para mudar. Os {dados} ficam como estão; **assim** sai em negrito. Para ver com os dados de ' + esc(displayName(c)) + ', use "Ver como chega". Guarda sozinho.</p>' +
-      '<div class="st-frame' + (ST.dev === 'cel' ? ' cel' : '') + '"><div class="ed-wrap">' + edNoEmail(ST.d, m) + '</div></div>';
-    return;
-  }
-  box.innerHTML = barra + modos +
+  box.innerHTML = barra +
     (erro ? '<div class="st-alert no">O texto tem um erro: ' + esc(erro) + '. Nada sai com ele: os automáticos usariam o texto de reserva.</div>' : '') +
     (avisos.length ? '<div class="st-alert">' + avisos.map(esc).join('<br>') + '</div>' : (r ? '<div class="st-alert ok"><b>Pronto para ' + esc(displayName(c)) + '.</b> Todos os dados que o texto usa existem.</div>' : '')) +
     (dicas.length ? '<p class="st-msg tip">' + dicas.map(esc).join(' ') + '</p>' : '') +
@@ -3406,21 +3378,17 @@ async function salvar() {
   Object.assign(v, linha, { blocos: JSON.parse(JSON.stringify(ST.d)), testado_em: null, testado_por: null });
   marcarSalvo('Guardado'); return true;
 }
-// Depois de mudar um campo: guarda e atualiza a prévia e a lista de conferências, sem redesenhar o editor (o cursor fica).
-// noEmail: a mudança veio do "Editar no e-mail"; a prévia não é redesenhada (o cursor fica lá) e o campo do bloco acompanha.
-function aoEditar(noEmail) {
+// Depois de mudar um campo: guarda e atualiza a prévia, sem redesenhar o editor (o cursor fica).
+// opcoes.canvas: a mudança veio do e-mail editável; a prévia da coluna ao lado se atualiza com uma pequena espera (um recarregamento
+// por tecla piscaria), e o rodapé automático do e-mail acompanha o que foi escrito.
+function agendarPrevia() { clearTimeout(ST.tPrev); ST.tPrev = setTimeout(renderPrevia, 350); }
+function aoEditar(opcoes) {
   agendarSalvar();
   var v = versaoAberta(); if (v) { v.testado_em = null; }
   var pub = $('st-publicar'); if (pub) pub.disabled = true;   // mudou o texto: precisa de um teste novo
-  if (noEmail) {
-    var f = document.querySelector('#st-edit [data-f="' + noEmail.path + '"]'); if (f) f.value = noEmail.valor;
-    var res = document.querySelector('#st-edit [data-blkopen="' + noEmail.path.split('.')[1] + '"] span');
-    if (res && /^itens\./.test(noEmail.path) && ST.d.itens[+noEmail.path.split('.')[1]]) { var b = ST.d.itens[+noEmail.path.split('.')[1]]; res.textContent = String(b.texto || b.rotulo || b.titulo || '').replace(/\s+/g, ' ').slice(0, 60); }
-  } else renderPrevia();
-  if (ST.sec === 'pronto' || ST.sec === 'texto') {
-    var el = document.querySelector('.st-sec.is-open .st-rodape small');
-    if (el && ST.d) el.textContent = ES.rodapeDe(ST.d, modeloAtual().tipo) || 'Sem rodapé (serviço sem motivo escrito).';
-  }
+  if (opcoes && opcoes.canvas) agendarPrevia(); else renderPrevia();
+  var rod = document.querySelector('#ee .ee-rodtxt');
+  if (rod && ST.d) { var mo = modeloAtual(); rod.textContent = (mo && ES.rodapeDe(ST.d, mo.tipo)) || 'Sem rodapé (serviço sem motivo escrito).'; }
 }
 async function recarregarModelos(manterVersao) {
   var r = await Promise.all([
@@ -3443,7 +3411,7 @@ async function novaVersao() {
     ST.d = ES.iniciais(k); await salvarForcado();
     toast('Versão ' + nova + ' criada. Montei os blocos a partir do texto de hoje: confira na prévia.', 4200);
   } else toast('Versão ' + nova + ' criada (rascunho)');
-  ST.sec = 'texto'; renderModelos();
+  ST.passo = 'texto'; renderModelos();
 }
 async function salvarForcado() { var v = versaoAberta(); if (v) v.blocos = v.blocos || {}; await salvar(); }
 async function enviarTeste(btn) {
@@ -3477,7 +3445,7 @@ async function mandarRevisao() {
   var v = versaoAberta();
   var r = await supabase.from('modelos_email_versoes').update({ etapa: 'revisao' }).eq('chave', v.chave).eq('versao', v.versao);
   if (r.error) return fail('mandar para revisão', r.error);
-  toast('Versão ' + v.versao + ' em revisão'); ST.sec = 'pronto';
+  toast('Versão ' + v.versao + ' em revisão'); ST.passo = 'conferir';
   await recarregarModelos(v.versao);
 }
 async function publicar(versao, voltando) {
@@ -4260,32 +4228,11 @@ document.addEventListener('click', async function (e) {
   if (t.dataset.emailfor) return openCompose(t.dataset.emailfor, t.dataset.tplk);
   if (t.dataset.cmpaba) return cmpAba(t.dataset.cmpaba);
   if (t.id === 'cmp-restaurar') { CMP.editado = null; $('compose-txt').value = CMP.e.body; return cmpFormato(); }
-  if (t.dataset.tplPick) { ST.criar = null; await salvar(); abrirModelo(t.dataset.tplPick); ST.blk = null; ST.tab = 'editar'; return renderModelos(); }
-  if (t.dataset.stsec) { ST.sec = ST.sec === t.dataset.stsec ? '' : t.dataset.stsec; return renderEditor(); }
-  if (t.dataset.blkopen !== undefined) { ST.blk = ST.blk === Number(t.dataset.blkopen) ? null : Number(t.dataset.blkopen); return renderEditor(); }
-  if (t.dataset.bmove) {
-    var mv = t.dataset.bmove.split(':'), bi = Number(mv[0]), bj = bi + Number(mv[1]), its = ST.d.itens;
-    if (bj < 0 || bj >= its.length) return;
-    var tmp = its[bi]; its[bi] = its[bj]; its[bj] = tmp; if (ST.blk === bi) ST.blk = bj; else if (ST.blk === bj) ST.blk = bi;
-    aoEditar(); return renderEditor();
-  }
-  if (t.dataset.bdel !== undefined) {
-    var bd = Number(t.dataset.bdel), nomeB = (ES.TIPOS[ST.d.itens[bd].tipo] || {}).nome || 'bloco';
-    if (!window.confirm('Tirar o bloco "' + nomeB + '"?')) return;
-    ST.d.itens.splice(bd, 1); ST.blk = null; aoEditar(); return renderEditor();
-  }
-  if (t.dataset.insvar) {
-    var alvo = ST.foco && document.body.contains(ST.foco) ? ST.foco : null;
-    if (!alvo) return toast('Clique antes no campo onde o dado entra');
-    if (alvo.dataset.ef) { alvo.focus(); return document.execCommand('insertText', false, '{' + t.dataset.insvar + '}'); }   // o input do e-mail guarda
-    var ini0 = alvo.selectionStart == null ? alvo.value.length : alvo.selectionStart, fim0 = alvo.selectionEnd == null ? ini0 : alvo.selectionEnd, ins = '{' + t.dataset.insvar + '}';
-    alvo.value = alvo.value.slice(0, ini0) + ins + alvo.value.slice(fim0); alvo.focus(); alvo.selectionStart = alvo.selectionEnd = ini0 + ins.length;
-    setCampo(alvo.dataset.f, alvo.value); return aoEditar();
-  }
+  if (t.dataset.tplPick) { ST.criar = null; await salvar(); abrirModelo(t.dataset.tplPick); ST.tab = 'editar'; return renderModelos(); }
+  if (t.dataset.eepasso) { await salvar(); ST.passo = t.dataset.eepasso; return renderEditor(); }
   if (t.dataset.stdev) { ST.dev = t.dataset.stdev; return renderPrevia(); }
-  if (t.dataset.stmodo) { ST.modo = t.dataset.stmodo; return renderPrevia(); }
   if (t.dataset.sttab) { ST.tab = t.dataset.sttab; return renderModelos(); }
-  if (t.dataset.stver) { await salvar(); abrirModelo(ST.k, Number(t.dataset.stver)); ST.blk = null; return renderModelos(); }
+  if (t.dataset.stver) { await salvar(); abrirModelo(ST.k, Number(t.dataset.stver)); return renderModelos(); }
   if (t.dataset.stvoltar) return publicar(Number(t.dataset.stvoltar), true);
   if (t.id === 'st-teste') return enviarTeste(t);
   if (t.id === 'st-revisao') return mandarRevisao();
@@ -4357,11 +4304,6 @@ document.addEventListener('change', async function (e) {
   }
   if (e.target.dataset && e.target.dataset.envio) return mudarEnvio(e.target.dataset.envio, e.target.value);
   if (e.target.id === 'st-marcar') { ST.marcar = e.target.checked; return renderPrevia(); }
-  if (e.target.id === 'st-novo-bloco') {
-    if (!e.target.value || !ST.d) return;
-    ST.d.itens = ST.d.itens || []; ST.d.itens.push(ES.novoBloco(e.target.value)); ST.blk = ST.d.itens.length - 1;
-    aoEditar(); return renderEditor();
-  }
   if (e.target.dataset && e.target.dataset.plano) {
     var pk = e.target.dataset.plano; ST.d.planos = ST.d.planos || {};
     ST.d.planos[pk] = e.target.value === 'some' ? null : ((ES.CAT[pk] && ES.CAT[pk].plano) || '');
@@ -4412,12 +4354,7 @@ document.addEventListener('focusout', async function (e) {
 document.addEventListener('input', function (e) {
   if (CMP && e.target.id === 'compose-txt') { CMP.editado = e.target.value === CMP.e.body ? null : e.target.value; return cmpFormato(); }
   if (CMP && e.target.id === 'compose-subj') { $('cmp-env-subj').textContent = e.target.value; return; }
-  if (e.target.matches && e.target.matches('input[data-f], textarea[data-f]') && ST.d) { setCampo(e.target.dataset.f, e.target.value); return aoEditar(); }
-  if (e.target.dataset && e.target.dataset.ef && ST.d && podeEditar(versaoAberta())) {
-    var val = e.target.innerText.replace(/ /g, ' ').replace(/\n$/, '');
-    if (!val.trim()) { val = ''; if (e.target.innerHTML !== '') e.target.innerHTML = ''; }   // vazio de verdade, para o texto de exemplo voltar
-    setCampo(e.target.dataset.ef, val); return aoEditar({ path: e.target.dataset.ef, valor: val });
-  }
+  if (e.target.matches && e.target.matches('input[data-f], textarea[data-f]') && ST.d) { setCampo(e.target.dataset.f, e.target.value); EE.campoMudou(e.target.dataset.f); return aoEditar(); }
   if (e.target.id === 'novo-nome' && ST.criar) { ST.criar.nome = e.target.value; return criarPode(); }
   if (e.target.id === 'st-q') {
     ST.q = e.target.value; var pos = e.target.selectionStart; renderPrevia();
@@ -4444,13 +4381,6 @@ document.addEventListener('change', function (e) {
   if (!e.target.dataset || !e.target.dataset.radarsel || !RS) return;
   if (e.target.checked) RS.sel[e.target.dataset.radarsel] = true; else delete RS.sel[e.target.dataset.radarsel];
   var go = $('radar-enviar-go'); if (go) go.textContent = radarRotuloEnviar();
-});
-document.addEventListener('focusin', function (e) { if (e.target.dataset && (e.target.dataset.ef || (e.target.dataset.f && e.target.matches('input, textarea')))) ST.foco = e.target; });
-// No "Editar no e-mail", colar entra como texto puro (sem a formatação de onde veio).
-document.addEventListener('paste', function (e) {
-  if (!(e.target.closest && e.target.closest('[data-ef]'))) return;
-  e.preventDefault();
-  document.execCommand('insertText', false, (e.clipboardData || window.clipboardData).getData('text/plain'));
 });
 document.addEventListener('input', function (e) {
   if (e.target.dataset && e.target.dataset.dk && state.dos && state.dos.cid === e.target.dataset.cid) {
