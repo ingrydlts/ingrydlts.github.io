@@ -2402,7 +2402,9 @@ function fxFilaItens(c) {
   R.forEach(function (x) { if (x.status === 'nova') novas[x.contato_id] = (novas[x.contato_id] || 0) + 1; });
   PSUG.forEach(function (p) { (procs[p.contato_id] = procs[p.contato_id] || []).push(p.processo); });
   var mk = function (x) {
-    var n = novas[x.id] || 0;
+    var n = novas[x.id] || 0, aberta = x.id === c.id && state.fx.cid === c.id;
+    // A pessoa aberta mostra a mesma ação do 1º cartão do carrossel (spec §15); as outras, a ação rápida que dá para saber sem abrir a ficha.
+    if (aberta) return { c: x, novas: n, proxima: state.fx.tarefas && state.fx.tarefas.length ? state.fx.tarefas[0].t : 'Nenhuma ação pendente', sub: personaLabel(x) + ' · ' + (x.user_id ? 'plataforma' : 'captação') };
     return { c: x, novas: n, proxima: FX.acaoRapida({ nome: displayName(x) }, { respostasNovas: n, processosDetectados: procs[x.id] || [] }, procLabel),
       sub: personaLabel(x) + ' · ' + (x.user_id ? 'plataforma' : 'captação') };
   };
