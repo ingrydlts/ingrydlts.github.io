@@ -2412,8 +2412,28 @@ function fxHeaderHtml(c, d) {
     etapa: FX.etapaFunil(c, { mails: d.mails || [], propostas: props, temBilan: !!(state.bilan && state.bilan.cid === c.id) }),
     estagios: STAGES, chk: k, chkMsg: chk && chk.err ? 'O checklist dela não carregou (falta rodar db/crm-checklist.sql).' : '', ultima: cl ? fmtDia(cl.criado_em) + ' às ' + fmtHora(cl.criado_em) : '' }, H_FX);
 }
-// O corpo da aba (preenchido nas tarefas 11 a 13).
-function fxCorpo(c, d, tab) { return ''; }
+// Catálogo de démarches (cópia do app, processos.json): carregado uma vez; sem ele, tudo cai na démarche padrão.
+var FX_PROC = null;
+async function fxCarregaProcessos() {
+  try { var r = await fetch('processos.json?v=2026-11-12.10'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
+}
+// A sessão Checklist: pílulas por démarche, os 4 mais urgentes, pasta do Drive privada e "Ver mais desta sessão".
+function fxChecklistCorpo(c) {
+  var chk = state.dos && state.dos.cid === c.id ? state.dos.chk : null, f = state.fx;
+  if (!chk) return '<div class="skel" aria-busy="true" style="height:64px"></div>';
+  var pre = processosSugeridosHtml(state.procs);
+  if (chk.err || chk.semConta) return pre + FH.htmlChecklistSessao({ semConta: !!chk.semConta && !chk.err, erro: !!chk.err }, H_FX);
+  var agora = Date.now(), cc = chkCalc(chk, agora), itens = chk.itens || [];
+  var dem = FX.demarchesDe(FX_PROC, personaKey(c), itens), ativa = f.dem !== 'todas' && dem.some(function (x) { return x.k === f.dem; }) ? f.dem : 'todas';
+  return pre + FH.htmlChecklistSessao({ semConta: false, erro: false, demarches: dem, ativa: ativa, totalFeitos: cc.feitos, total: itens.length, itens: FX.filtrarPorDemarche(FX_PROC, itens, ativa),
+    hoje: cc.hoje, todos: f.ckTodos, mais: f.ckMais, extraMais: f.ckMais ? checklistLateralHtml(chk, agora, H4_PLAT) + checklistHtml(chk, agora) : '' }, H_FX);
+}
+function fxPintaChk(c) { var b = $('fx-chk-corpo'); if (b) b.innerHTML = fxChecklistCorpo(c); }
+// O corpo da aba (as sessões em pílulas chegam na tarefa 12; Ficha e Conversa na 13).
+function fxCorpo(c, d, tab) {
+  if (tab === 'plataforma') return '<div class="panel fx-sessao" data-sessao="checklist" style="padding:16px;margin-top:14px"><h3 class="fx-h3">Checklist</h3><div id="fx-chk-corpo">' + fxChecklistCorpo(c) + '</div></div>';
+  return '';
+}
 function renderFichaV2(c, d) {
   fxPrefs();
   var f = state.fx, cv = fxContato(c, d.uid);
@@ -2458,6 +2478,7 @@ function fxLive(c) {
   var cv = fxContato(c, d.uid);
   f.tarefas = fxTarefas(cv, d);
   var hb = $('fx-head-box'); if (hb) hb.innerHTML = fxHeaderHtml(cv, d);
+  fxPintaChk(cv);
   if (f.ag.pop === null) { var ab = $('fx-acoes-box'); if (ab) ab.innerHTML = FH.htmlCarrossel(f.tarefas, H_FX, f.ag.i); }
 }
 function irPara(dest) {
@@ -2511,6 +2532,8 @@ function fichaClick(el) {
       var t = (f.tarefas || []).filter(function (x) { return x.id === ds.id; })[0] || (f.tarefas || []).filter(function (x) { return x.k === ds.k; })[0] || (f.ag.pop !== null ? f.tarefas[f.ag.pop] : null);
       fxFechaPop(false); if (t) irPara(t.dest); return true;
     }
+    case 'dem': { f.dem = ds.v || 'todas'; var cd = byC(state.sel); if (cd) fxPintaChk(fxContato(cd, f.dados && f.dados.uid)); return true; }
+    case 'ckTodos': case 'ckMais': { if (ds.fx === 'ckTodos') f.ckTodos = !f.ckTodos; else f.ckMais = !f.ckMais; var cm = byC(state.sel); if (cm) fxPintaChk(fxContato(cm, f.dados && f.dados.uid)); return true; }
     case 'agPrev': fxCarGo(-1); return true;
     case 'agNext': fxCarGo(1); return true;
   }
@@ -2539,6 +2562,7 @@ async function renderPessoa() {
   var c = byC(state.sel);
   if (!c) { $('pessoa-page').innerHTML = '<div class="empty">Pessoa não encontrada.</div>'; return; }
   $('pessoa-page').innerHTML = '<div class="loading">Carregando a ficha…</div>';
+  if (fichaV2Ativa() && FX_PROC === null) FX_PROC = await fxCarregaProcessos();
   var r = await Promise.all([
     supabase.from('eventos').select('tipo,dados,criado_em').eq('contato_id', c.id).order('criado_em', { ascending: false }).limit(200),
     supabase.from('consentimentos').select('finalidade,aceito,texto,origem,criado_em').eq('contato_id', c.id).order('criado_em', { ascending: false }),

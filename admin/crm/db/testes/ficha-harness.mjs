@@ -6,6 +6,7 @@ import * as TXMOD from '../../taxonomia.js';
 import * as FX from '../../ficha.js';
 import * as FH from '../../ficha-html.js';
 import { readFileSync } from 'node:fs';
+import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -38,9 +39,10 @@ export async function carregarCrm(opts = {}) {
     channel: (nome) => { const ch = { nome, ons: [], on(t, o, cb) { ch.ons.push({ o, cb }); return ch; }, subscribe(cb) { ch.status = cb; return ch; } }; canais.push(ch); return ch; }, removeChannel() {} };
   const store = Object.assign({}, opts.store || {});
   const localStorage = { getItem: (k) => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = v; } };
-  const mod = new Function('supabase', 'ES', 'TX', 'EE', 'EQ', 'FX', 'FH', 'document', 'window', 'location', 'localStorage', 'setInterval', 'clearInterval',
+  const fetch = async (u) => { try { const t = await readFile(path.resolve(HERE, '../../' + String(u).split('?')[0]), 'utf8'); return { ok: true, json: async () => JSON.parse(t) }; } catch (e) { return { ok: false }; } };
+  const mod = new Function('supabase', 'ES', 'TX', 'EE', 'EQ', 'FX', 'FH', 'fetch', 'document', 'window', 'location', 'localStorage', 'setInterval', 'clearInterval',
     SRC + '\n;return { state, setC: function (v) { C = v; }, setR: function (v) { R = v; }, setPSUG: function (v) { PSUG = v; }, renderPessoa, fichaClick: (typeof fichaClick === "function" ? fichaClick : null), byC, pararAoVivo, trocaPlatAba };')(
-    supabase, {}, TXMOD, { iniciar() {}, depois() {}, campoMudou() {} }, {}, FX, FH, document, { addEventListener() {} }, { href: '', search: opts.search || '' }, localStorage, () => 1, () => {});
+    supabase, {}, TXMOD, { iniciar() {}, depois() {}, campoMudou() {} }, {}, FX, FH, fetch, document, { addEventListener() {} }, { href: '', search: opts.search || '' }, localStorage, () => 1, () => {});
   const click = async (ds) => { const b = { id: '', dataset: ds, disabled: false, matches: () => false }; await handlers.click[0]({ target: { id: '', closest: () => b } }); return b; };
   return { mod, el, click, writes, rpcs, respostas, store, handlers };
 }

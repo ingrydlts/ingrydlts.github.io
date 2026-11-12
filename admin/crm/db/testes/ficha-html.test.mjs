@@ -72,5 +72,33 @@ console.log('== Task 9: carrossel e pop-up ==');
   check('pop-up: título com HTML escapado', FH.htmlPopup([T(1, { t: XSS })], 0, h).includes('&lt;img') && !FH.htmlPopup([T(1, { t: XSS })], 0, h).includes('<img'));
 }
 
+console.log('== Task 11: sessão Checklist ==');
+{
+  const it = (k, status, due, extra = {}) => Object.assign({ step_key: k, category: 'Documentação', label: 'Passo ' + k, status, due_date: due, sort_order: 0 }, extra);
+  const seis = ['a', 'b', 'c', 'd', 'e', 'f'].map((k, i) => it(k, 'pendente', '2026-12-0' + (i + 1)));
+  const dem3 = [{ k: 'visa', nome: 'Visa', feitos: 1, total: 4 }, { k: 'ameli', nome: 'Ameli', feitos: 0, total: 1 }, { k: 'caf', nome: 'CAF', feitos: 0, total: 1 }];
+  const d = (o = {}) => Object.assign({ semConta: false, erro: false, demarches: dem3, ativa: 'todas', totalFeitos: 1, total: 6, itens: seis, hoje: '2026-11-12', todos: false, mais: false, extraMais: '<p id="extra">EXTRA</p>' }, o);
+  const sc = FH.htmlChecklistSessao(d({ semConta: true, demarches: [], itens: [] }), h);
+  check('sem conta: aviso e nenhuma pílula (Review Focus 1)', sc.includes('Ela ainda não entrou no app') && !sc.includes('data-fx="dem"'));
+  const er = FH.htmlChecklistSessao(d({ erro: true }), h);
+  check('erro: aviso do SQL e nenhuma pílula (Review Focus 2)', er.includes('db/crm-checklist.sql') && !er.includes('data-fx="dem"'));
+  const ok = FH.htmlChecklistSessao(d(), h);
+  check('Todas + 3 démarches, com contagem', count(ok, /data-fx="dem"/g) === 4 && ok.includes('1/4') && ok.includes('0/1'));
+  check('aria-pressed só na ativa', count(ok, /aria-pressed="true"/g) === 1 && /data-v="todas"[^>]*aria-pressed="true"/.test(ok));
+  check('4 linhas de passo e botão "Ver todos"', count(ok, /class="fx-passo (feito|arq|pend)"/g) === 4 && ok.includes('Ver todos os 6 passos (2 escondidos)'));
+  check('os 4 são os mais urgentes por data', ok.includes('Passo a') && ok.includes('Passo d') && !ok.includes('Passo e') && !ok.includes('Passo f'));
+  const tod = FH.htmlChecklistSessao(d({ todos: true }), h);
+  check('todos: 6 linhas e "Mostrar só os 4"', count(tod, /class="fx-passo (feito|arq|pend)"/g) === 6 && tod.includes('Mostrar só os 4 mais urgentes'));
+  const tres = FH.htmlChecklistSessao(d({ itens: seis.slice(0, 3), total: 3 }), h);
+  check('com 3 passos não há botão de ver todos', !tres.includes('Ver todos') && !tres.includes('Mostrar só os 4') && count(tres, /class="fx-passo (feito|arq|pend)"/g) === 3);
+  check('1 escondido no singular', FH.htmlChecklistSessao(d({ itens: seis.slice(0, 5) }), h).includes('(1 escondido)'));
+  check('pasta do Drive: só texto de privacidade', ok.includes('privada') && ok.includes('não vê o link') && !ok.includes('<input') && !ok.includes('href') && !/drive/i.test(ok.replace(/pasta do Drive/gi, '')));
+  check('Ver mais: fechado não traz o extra; aberto traz', ok.includes('Ver mais desta sessão') && !ok.includes('EXTRA') && FH.htmlChecklistSessao(d({ mais: true }), h).includes('EXTRA') && FH.htmlChecklistSessao(d({ mais: true }), h).includes('Ver menos desta sessão'));
+  check('a equipe não dá check', !ok.includes('data-fx="marcar"') && !/type="checkbox"/.test(ok));
+  check('vazio com conta', FH.htmlChecklistSessao(d({ itens: [], demarches: [], total: 0, totalFeitos: 0 }), h).includes('ainda está vazio'));
+  check('rótulo com HTML escapado', FH.htmlChecklistSessao(d({ itens: [it('x', 'pendente', null, { label: XSS })] }), h).includes('&lt;img'));
+  check('feito e arquivado têm texto próprio', (() => { const t = FH.htmlChecklistSessao(d({ itens: [it('f', 'concluido', null), it('g', 'arquivado', null)] }), h); return t.includes('feito') && t.includes('Arquivado'); })());
+}
+
 console.log('\n' + passed + ' passaram, ' + failed + ' falharam');
 if (failed) process.exit(1);

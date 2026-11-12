@@ -95,5 +95,39 @@ console.log('== Task 10: ligação aos dados, abas, ações, deep link ==');
   h.mod.pararAoVivo();
 }
 
+console.log('== Task 11: sessão Checklist (ligação) ==');
+{
+  const itens = [{ step_key: 'k1', category: 'Documentação', label: 'Pedir o documento X', status: 'pendente', due_date: '2099-12-01', sort_order: 1, updated_at: null },
+    { step_key: 'k2', category: 'Sécurité sociale', label: 'Abrir o Ameli', status: 'pendente', due_date: null, sort_order: 2, updated_at: null },
+    { step_key: 'k3', category: 'Documentação', label: 'Passo já feito', status: 'concluido', due_date: null, sort_order: 3, updated_at: null }];
+  const h = await carregarCrm({ respostas: base({ 'contatos:one': { data: { dossie: {}, user_id: 'u1' }, error: null }, checklist_items: { data: itens, error: null } }), store: { crm_ficha_v2: '1' } });
+  await abre(h, pessoa({ user_id: 'u1' }));
+  let corpo = h.el('pessoa-page').innerHTML;
+  check('aba Plataforma mostra as pílulas das duas démarches', corpo.includes('data-fx="dem" data-v="visa"') && corpo.includes('data-fx="dem" data-v="ameli"') && corpo.includes('data-v="todas"'));
+  check('contagem de feitos por démarche', /data-v="visa"[^>]*>.*?1\/2/.test(corpo));
+  await h.click({ fx: 'dem', v: 'ameli' });
+  check('dem muda a démarche e a sessão lista só os passos dela', h.mod.state.fx.dem === 'ameli' && h.el('fx-chk-corpo').innerHTML.includes('Abrir o Ameli') && !h.el('fx-chk-corpo').innerHTML.includes('Pedir o documento X'));
+  await h.click({ fx: 'dem', v: 'todas' });
+  check('Todas volta a listar tudo', h.el('fx-chk-corpo').innerHTML.includes('Pedir o documento X') && h.el('fx-chk-corpo').innerHTML.includes('Abrir o Ameli'));
+  await h.click({ fx: 'ckTodos' });
+  check('ckTodos alterna', h.mod.state.fx.ckTodos === true);
+  await h.click({ fx: 'ckTodos' });
+  check('ckTodos alterna de volta', h.mod.state.fx.ckTodos === false);
+  check('Ver mais fechado: sem o resumo do dossiê', !h.el('fx-chk-corpo').innerHTML.includes('Checklist e cliques'));
+  await h.click({ fx: 'ckMais' });
+  check('ckMais abre o resto da sessão', h.mod.state.fx.ckMais === true && h.el('fx-chk-corpo').innerHTML.includes('Checklist e cliques'));
+  check('a pasta do Drive é só texto de privacidade', corpo.includes('é privada') && !/docs\.google|drive\.google/.test(corpo));
+  h.mod.pararAoVivo();
+  // pessoa sem conta e tabela ausente (Review Focus 1 e 2)
+  const sc = await carregarCrm({ respostas: base(), store: { crm_ficha_v2: '1' } });
+  await abre(sc, pessoa({ user_id: null })); sc.mod.state.fx.tab = 'plataforma'; await sc.mod.renderPessoa();
+  check('sem conta: "ainda não entrou no app", sem pílulas e sem erro', sc.el('pessoa-page').innerHTML.includes('Ela ainda não entrou no app') && !sc.el('pessoa-page').innerHTML.includes('data-fx="dem"'));
+  sc.mod.pararAoVivo();
+  const er = await carregarCrm({ respostas: base({ 'contatos:one': { data: { dossie: {}, user_id: 'u1' }, error: null }, checklist_items: { data: null, error: { message: 'relation "checklist_items" does not exist' } } }), store: { crm_ficha_v2: '1' } });
+  await abre(er, pessoa({ user_id: 'u1' }));
+  check('tabela ausente: aviso do db/crm-checklist.sql e nada quebra', er.el('pessoa-page').innerHTML.includes('db/crm-checklist.sql') && !er.el('pessoa-page').innerHTML.includes('data-fx="dem"'));
+  er.mod.pararAoVivo();
+}
+
 console.log('\n' + passed + ' passaram, ' + failed + ' falharam');
 if (failed) process.exit(1);

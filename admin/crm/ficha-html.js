@@ -1,5 +1,5 @@
 // Ficha-universo, fase 1: HTML puro das peças novas. Todas recebem h = { esc, fmtDay } e escapam todo texto vindo do banco.
-import { ETAPAS_FUNIL } from './ficha.js?v=2026-11-12.10';   // o ?v= acompanha o de crm.js (cache do navegador)
+import { ETAPAS_FUNIL, maisUrgentes } from './ficha.js?v=2026-11-12.10';   // o ?v= acompanha o de crm.js (cache do navegador)
 
 
 const URG = { alta: 'Alta', media: 'Média', baixa: 'Baixa' };
@@ -91,4 +91,32 @@ export function htmlPopup(tarefas, i, h) {
     '<button type="button" class="btn" data-fx="agFechar">Fechar</button>' +
     '<span class="fx-pop-nav"><button type="button" class="fx-seta" data-fx="agNav" data-d="-1" aria-label="Ação anterior"' + (k <= 0 ? ' disabled' : '') + '>‹</button>' +
     '<button type="button" class="fx-seta" data-fx="agNav" data-d="1" aria-label="Próxima ação"' + (k >= n - 1 ? ' disabled' : '') + '>›</button></span></div></div>';
+}
+
+// ---------- Sessão Checklist: démarches, os 4 mais urgentes, Drive privado, Ver mais (Task 11) ----------
+// d = { semConta, erro, demarches: [{k,nome,feitos,total}], ativa, totalFeitos, total, itens: ChkItem[], hoje, todos, mais, extraMais }.
+// A equipe não dá check no checklist dela e o CRM nunca lê nem mostra o link da pasta do Drive (spec §5.4, §8.2).
+function rotuloPasso(i, hoje, e, fmtDay) {
+  if (i.status === 'concluido') return '<span class="fx-p-d ok">feito</span>';
+  if (i.status === 'arquivado') return '<span class="fx-p-d">Arquivado por ela</span>';
+  if (!i.due_date) return '<span class="fx-p-d">sem data</span>';
+  return '<span class="fx-p-d' + (String(i.due_date).slice(0, 10) < hoje ? ' atraso' : '') + '">' + (String(i.due_date).slice(0, 10) < hoje ? 'atrasado · ' : 'vence ') + e(fmtDay(i.due_date)) + '</span>';
+}
+export function htmlChecklistSessao(d, h) {
+  const e = h.esc;
+  if (d.semConta) return '<p class="sub" style="margin:0">Ela ainda não entrou no app, então ainda não tem checklist.</p>';
+  if (d.erro) return '<p class="sub" style="margin:0">Falta rodar <b>db/crm-checklist.sql</b> no SQL Editor do Supabase.</p>';
+  const itens = d.itens || [], hoje = d.hoje || '';
+  const pilulas = '<div class="fx-dems" role="group" aria-label="Démarches">' +
+    [{ k: 'todas', nome: 'Todas', feitos: d.totalFeitos, total: d.total }].concat(d.demarches || []).map((x) =>
+      '<button type="button" class="fx-dem" data-fx="dem" data-v="' + e(x.k) + '" aria-pressed="' + (x.k === d.ativa) + '"><span class="fx-dem-nome">' + e(x.nome) + '</span> <span class="fx-dem-n">' + e(x.feitos) + '/' + e(x.total) + '</span></button>').join('') + '</div>';
+  const drive = '<div class="fx-pasta"><h4 class="fx-h4">Pasta do Drive dela</h4><p class="sub" style="margin:0">A pasta é privada: o CRM não vê o link e não guarda nada dela. Se a equipe precisar de um documento, ela autoriza por e-mail.</p></div>';
+  const lista = d.todos ? maisUrgentes(itens, itens.length, hoje) : maisUrgentes(itens, 4, hoje);
+  const esc4 = itens.length - 4;
+  const passos = '<div class="fx-passos"><h4 class="fx-h4">Passos do checklist</h4>' + (itens.length
+    ? '<ul class="fx-passos-lista">' + lista.map((i) => '<li class="fx-passo ' + (i.status === 'concluido' ? 'feito' : i.status === 'arquivado' ? 'arq' : 'pend') + '"><span class="fx-p-t">' + e(i.label) + '</span>' + rotuloPasso(i, hoje, e, h.fmtDay) + '</li>').join('') + '</ul>' +
+      (itens.length > 4 ? '<button type="button" class="link" data-fx="ckTodos" aria-expanded="' + !!d.todos + '">' + (d.todos ? 'Mostrar só os 4 mais urgentes' : 'Ver todos os ' + itens.length + ' passos (' + esc4 + (esc4 === 1 ? ' escondido)' : ' escondidos)')) + '</button>' : '')
+    : '<p class="sub" style="margin:0">O checklist dela ainda está vazio.</p>') + '</div>';
+  return pilulas + drive + passos +
+    '<div class="fx-mais"><button type="button" class="btn" data-fx="ckMais" aria-expanded="' + !!d.mais + '">' + (d.mais ? 'Ver menos desta sessão' : 'Ver mais desta sessão') + '</button>' + (d.mais ? '<div class="fx-mais-corpo">' + (d.extraMais || '') + '</div>' : '') + '</div>';
 }
