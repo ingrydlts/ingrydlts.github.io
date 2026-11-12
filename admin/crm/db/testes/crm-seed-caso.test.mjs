@@ -34,7 +34,7 @@ await db.exec(`
   alter default privileges in schema public grant execute on functions to anon, authenticated;
 `);
 for (const f of ['schema.sql', 'crm-fase1.sql', 'crm-fase1b-minha-ficha.sql', 'caminhos-opcoes.sql', 'crm-fase1c-vinculo.sql', 'crm-fase1d-conta-confirmada.sql']) await db.exec(readFileSync(path.join(APP_DB, f), 'utf8'));
-for (const f of ['crm-fase2.sql', 'crm-propostas.sql', 'crm-chat.sql', 'crm-caso.sql', 'crm-caso-criterios.sql', 'crm-escolas-dela.sql']) await db.exec(readFileSync(path.resolve(HERE, '..', f), 'utf8'));
+for (const f of ['crm-fase2.sql', 'crm-propostas.sql', 'crm-chat.sql', 'crm-caso.sql', 'crm-caso-importar.sql', 'crm-caso-criterios.sql', 'crm-caso-documentos.sql', 'crm-escolas-dela.sql']) await db.exec(readFileSync(path.resolve(HERE, '..', f), 'utf8'));
 await db.exec(`create table assinaturas (contato_id uuid primary key references contatos(id) on delete cascade, status text not null, plano text, moeda text,
   teste_fim timestamptz, periodo_fim timestamptz, cancela_no_fim boolean not null default false, atualizado_em timestamptz not null default now())`);
 
@@ -59,6 +59,7 @@ for (const k of ORDEM_CENARIOS) {
   const c = await espaco(teste), board = c.board || [], caso = CASOS[k], persona = CENARIOS[k].persona;
   const lista = criteriosDaPersona(persona).map((x) => x[0]);
   check(`${k}: o prazo e as escolas do time foram publicados`, board.filter((b) => b.tipo === 'marco').length === (caso.marcos || []).length && board.filter((b) => b.tipo === 'escola').length === (caso.escolas || []).length);
+  check(`${k}: os documentos (com selos) e o passo de documentos chegaram`, board.filter((b) => b.tipo === 'documento').length === (caso.documentos || []).length && (c.acoes || []).filter((x) => x.botao === 'conferir_documentos' && /^docs:/.test(x.passo_chave)).length === (caso.acoes || []).filter((x) => x.botao === 'conferir_documentos').length && board.filter((b) => b.tipo === 'documento').every((b) => Array.isArray(b.dados.selos)));
   const chaves = new Set(board.filter((b) => b.tipo === 'escola').flatMap((b) => Object.keys((b.dados_dela || {}).criterios || {})));
   const dela = await escolasDela(teste);
   dela.forEach((e) => Object.keys(e.criterios || {}).forEach((x) => chaves.add(x)));

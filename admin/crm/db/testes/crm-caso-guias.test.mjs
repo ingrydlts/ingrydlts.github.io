@@ -60,6 +60,17 @@ async function main() {
   const meu = (await asUser(ana.id, () => um('select meu_caso() r'))).r;
   check('a pessoa vê os dois bilans publicados, cada um com a sua data e as palavras-chave, e o documento com o "o que é"; a mensagem ainda não publicada não aparece', meu.board.filter((b) => b.tipo === 'bilan').length === 2 && meu.board.find((b) => b.titulo === 'Segunda conversa').dados.palavras.join() === 'Prazo,DU' && meu.board.find((b) => b.tipo === 'documento').resumo === 'Escolas de francês por região' && !meu.board.some((b) => b.tipo === 'modelo'));
   check('o banco recusa bilan com data inválida mesmo pela tabela', !(await attempt(() => ins('bilan', 'x', null, { data: 'ontem' }))).ok);
+  // crm-caso-documentos.sql: selos nos documentos e o botão "conferir_documentos"
+  const sqlDoc = readFileSync(path.resolve(HERE, '../crm-caso-documentos.sql'), 'utf8');
+  check('crm-caso-documentos.sql roda duas vezes sem erro', (await attempt(() => db.exec(sqlDoc))).ok && (await attempt(() => db.exec(sqlDoc))).ok);
+  check('documento aceita selos válidos (até 4)', await ok('documento', { direcao: 'reune', selos: ['traducao', 'haia', 'equivaler', 'original'] }));
+  check('selos inválidos são recusados: valor fora da lista, mais de 4, não é lista, em outro tipo', !(await ok('documento', { selos: ['xyz'] })) && !(await ok('documento', { selos: ['traducao', 'haia', 'equivaler', 'original', 'traducao'] })) && !(await ok('documento', { selos: 'traducao' })) && !(await ok('documento', { selos: [1] })) && !(await ok('escola', { selos: ['haia'] })));
+  check('a pessoa não edita selos (dados_dela do documento só aceita "reunido")', !(await um("select caso_board_chaves_ok('documento', '{\"selos\":[\"haia\"]}'::jsonb, true) r")).r);
+  check('o que o guias já validava continua (bilan com data inválida)', !(await ok('bilan', { data: '12/11/2026' })) && await ok('bilan', { data: '2026-11-12', palavras: ['a'] }));
+  const dsel = await ins('documento', 'Certidão de nascimento', null, { direcao: 'reune', selos: ['traducao', 'haia'] });
+  check('o documento com selos é gravado pela tabela', !!dsel.id);
+  const acaoOk = await attempt(() => db.query("insert into caso_acoes (contato_id, titulo, dono, canal, botao, passo_chave) values ($1, 'Tradução juramentada de documentos', 'ela', 'plataforma', 'conferir_documentos', 'docs:traducao')", [c]));
+  check('caso_acoes aceita o botão conferir_documentos e continua recusando botão inventado', acaoOk.ok && !(await attempt(() => db.query("insert into caso_acoes (contato_id, titulo, dono, canal, botao, passo_chave) values ($1, 'x', 'ela', 'plataforma', 'inventado', 'x')", [c]))).ok);
   console.log(`\n${passed} passaram, ${failed} falharam`);
   process.exit(failed ? 1 : 0);
 }

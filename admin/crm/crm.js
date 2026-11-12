@@ -1404,7 +1404,14 @@ function casoItemCampos(it) {
       casoCampo('Site (https://…)', '<input id="caso-ed-link" class="t" maxlength="500" style="width:100%" value="' + esc(it.link || '') + '">');
   }
   if (it.tipo === 'documento') {
-    return tit('Nome do documento') + casoResumoCampo(it.resumo) + casoCampo('Arquivo (link https://…; vazio = "chega em breve")', '<input id="caso-ed-link" class="t" maxlength="500" style="width:100%" value="' + esc(it.link || '') + '">');
+    // Os selos (o que o documento exige) aparecem no Checklist dela como palavras-chave; só para o que ela reúne.
+    var selosAtuais = (d && d.selos) || [], selosHtml = '';
+    if (d.direcao !== 'recebe') {
+      selosHtml = casoCampo('Selos (o que este documento exige)', CASO_SELOS.map(function (s) {
+        return '<label style="margin-right:12px"><input type="checkbox" class="caso-ed-selo" value="' + s[0] + '"' + (selosAtuais.indexOf(s[0]) >= 0 ? ' checked' : '') + '> ' + esc(s[1]) + '</label>';
+      }).join(''));
+    }
+    return tit('Nome do documento') + casoResumoCampo(it.resumo) + selosHtml + casoCampo('Arquivo (link https://…; vazio = "chega em breve")', '<input id="caso-ed-link" class="t" maxlength="500" style="width:100%" value="' + esc(it.link || '') + '">');
   }
   if (it.tipo === 'modelo') {
     return tit('Nome da mensagem') + casoResumoCampo(it.resumo) +
@@ -1501,6 +1508,7 @@ function casoAvisosHtml(k) {
 }
 // As escolas que a própria pessoa acrescentou no Espaço (nome, link e o que ela já sabe). Só leitura: você vê o que ela anda olhando.
 // As perguntas Sim/Não que ela já respondeu sobre uma escola (a lista muda por persona; aqui só a contagem e o que foi respondido).
+var CASO_SELOS = [['traducao', 'tradução juramentada'], ['haia', 'apostila de Haia'], ['equivaler', 'equivalência (não vale para Campus France)'], ['original', 'original']];
 function casoCriteriosResumo(c) {
   var sim = [], nao = [], k;
   for (k in (c || {})) { if (c[k] === 'sim') sim.push(k); else if (c[k] === 'nao') nao.push(k); }
@@ -1634,7 +1642,11 @@ async function casoAcao(acao, id, t) {
       var cu = val('caso-ed-custo'); if (cu !== '' && (isNaN(Number(cu)) || Number(cu) < 0 || Number(cu) > 100000)) return falha('O custo precisa ser um número entre 0 e 100000');
       if (cu !== '') dados.custo_eur = Number(cu); else delete dados.custo_eur;
     }
-    if (itm.tipo === 'documento') dados.rotulo = tt.slice(0, 120);
+    if (itm.tipo === 'documento') dados.rotulo = tt.slice(0, 120)
+    if (itm.tipo === 'documento' && dados.direcao !== 'recebe') {
+      var selosMarcados = Array.prototype.map.call(document.querySelectorAll('.caso-ed-selo'), function (x) { return x.checked ? x.value : null; }).filter(Boolean);
+      if (selosMarcados.length) dados.selos = selosMarcados; else delete dados.selos;
+    }
     if (itm.tipo === 'modelo') {
       ['assunto', 'corpo', 'traducao'].forEach(function (c) { var v = val('caso-ed-' + c); if (v) dados[c] = v; else delete dados[c]; });
       if (!dados.corpo) return falha('Escreva o texto da mensagem');

@@ -3004,7 +3004,7 @@ const CRM_NOTION_PERSONAS = CRM_ONB_PERSONAS.concat(['outra']);
 const CRM_NOTION_DORES = { Prazo: 'prazo', Dinheiro: 'dinheiro', Documentos: 'papelada', Idioma: 'frances', Moradia: 'moradia', Visto: null, Emprego: null, Família: null };
 const CRM_NOTION_DONOS = ['Ela', 'Ingryd'];
 const CRM_NOTION_CANAIS = ['Plataforma', 'E-mail', 'Convite de acesso', 'Instagram', 'Só eu', 'Fora do CRM'];
-const CRM_NOTION_BOTOES = ['anexar_documento', 'gerar_rascunho', 'pesquisar', 'confirmar', 'lembrar_ela', 'marcar_marco', 'copiar_mensagem', 'enviar_convite', 'n/a'];
+const CRM_NOTION_BOTOES = ['anexar_documento', 'gerar_rascunho', 'pesquisar', 'confirmar', 'lembrar_ela', 'marcar_marco', 'copiar_mensagem', 'enviar_convite', 'conferir_documentos', 'n/a'];
 const CRM_NOTION_ESTADOS = ['aberta', 'aguardando_ela', 'concluida'];
 
 function crmNotionRecusa(codigo, erro) { return { ok: false, status: 422, codigo, erro }; }
@@ -3385,7 +3385,7 @@ function crmNotionResumo(proposta) {
 // Tudo que sai daqui entra no CRM como RASCUNHO (crm_caso_importar): nada chega à pessoa sem a Ingryd revisar e publicar.
 // As chaves de origem tornam a leitura repetível: ler a mesma página de novo atualiza rascunhos e nunca duplica.
 const CRM_CASO_CANAIS = { 'Plataforma': 'plataforma', 'E-mail': 'email', 'Convite de acesso': 'convite', 'Instagram': 'instagram', 'Só eu': 'so_eu' };
-const CRM_CASO_BOTOES = ['gerar_rascunho', 'marcar_marco', 'copiar_mensagem', 'anexar_documento', 'pesquisar', 'confirmar'];
+const CRM_CASO_BOTOES = ['gerar_rascunho', 'marcar_marco', 'copiar_mensagem', 'anexar_documento', 'pesquisar', 'confirmar', 'conferir_documentos'];
 async function crmCasoHash(texto) {
   const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(String(texto).toLowerCase().replace(/\s+/g, ' ').trim()));
   return [...new Uint8Array(buf)].slice(0, 6).map((b) => b.toString(16).padStart(2, '0')).join('');
@@ -3425,6 +3425,11 @@ async function crmNotionCaso(p, c, itens, meta) {
     if (!a.prazo && it.prazo && it.prazo.texto) { a.prazo_texto = it.prazo.texto.slice(0, 80); a.prazo_a_confirmar = true; }
     else if (it.prazo && it.prazo.a_confirmar) a.prazo_a_confirmar = true;
     if (dono === 'ela' && canal === 'plataforma') a.passo_chave = 'pend_' + n;
+    // "Conferir documentos": o passo vira uma lista dos documentos com o selo certo (tradução juramentada ou apostila de Haia).
+    if (a.botao === 'conferir_documentos') {
+      const selo = /tradu[cç]/i.test(a.titulo) ? 'traducao' : /haia|apostil/i.test(a.titulo) ? 'haia' : null;
+      if (selo) a.passo_chave = 'docs:' + selo; else a.botao = null;
+    }
     acoes.push(a);
   }
 
