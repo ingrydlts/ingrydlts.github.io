@@ -1381,6 +1381,11 @@ function casoItemResumo(it) {
 }
 // O editor de um item do board. O que a pessoa vê (nome, data, escola) você corrige aqui: quando ela sinalizar "algo está errado", é este o lugar.
 function casoCampo(rot, html) { return '<label style="display:block;margin-top:8px"><span class="sub" style="display:block;margin-bottom:2px">' + esc(rot) + '</span>' + html + '</label>'; }
+// "PVT, visto de estudante, DU Aix" → ['PVT', 'visto de estudante', 'DU Aix']. Mais de 6 ou palavra de mais de 30 letras: recusa (null).
+function casoPalavras(txt) {
+  var l = String(txt || '').split(',').map(function (x) { return x.trim(); }).filter(Boolean);
+  return l.length > 6 || l.some(function (x) { return x.length > 30; }) ? null : l;
+}
 function casoItemCampos(it) {
   var d = it.dados || {};
   var tit = function (rot) { return casoCampo(rot, '<input id="caso-ed-titulo" class="t" maxlength="120" style="width:100%" value="' + esc(it.titulo) + '">'); };
@@ -1397,14 +1402,49 @@ function casoItemCampos(it) {
       casoCampo('Custo estimado (€)', '<input id="caso-ed-custo" type="number" min="0" max="100000" step="50" style="min-height:40px" value="' + esc(d.custo_eur == null ? '' : d.custo_eur) + '">') +
       casoCampo('Site (https://…)', '<input id="caso-ed-link" class="t" maxlength="500" style="width:100%" value="' + esc(it.link || '') + '">');
   }
+  if (it.tipo === 'documento') {
+    return tit('Nome do documento') + casoResumoCampo(it.resumo) + casoCampo('Arquivo (link https://…; vazio = "chega em breve")', '<input id="caso-ed-link" class="t" maxlength="500" style="width:100%" value="' + esc(it.link || '') + '">');
+  }
+  if (it.tipo === 'modelo') {
+    return tit('Nome da mensagem') + casoResumoCampo(it.resumo) +
+      casoCampo('Assunto (e-mail)', '<input id="caso-ed-assunto" class="t" maxlength="150" style="width:100%" value="' + esc(d.assunto || '') + '">') +
+      casoCampo('Texto', '<textarea id="caso-ed-corpo" maxlength="3000" rows="6" style="width:100%">' + esc(d.corpo || '') + '</textarea>') +
+      casoCampo('Tradução (opcional)', '<textarea id="caso-ed-traducao" maxlength="3000" rows="3" style="width:100%">' + esc(d.traducao || '') + '</textarea>');
+  }
+  if (it.tipo === 'bilan') {
+    return tit('Nome da conversa (ela lê este título)') +
+      casoCampo('Dia da conversa', '<input id="caso-ed-data" type="date" style="min-height:40px" value="' + esc(d.data || '') + '">') +
+      casoCampo('Palavras-chave (até 6, separadas por vírgula: é o que faz ela lembrar do assunto)', '<input id="caso-ed-palavras" class="t" maxlength="200" style="width:100%" value="' + esc((d.palavras || []).join(', ')) + '">') +
+      casoResumoCampo(it.resumo, 'Resumo de uma linha (opcional)');
+  }
   return tit('Título') + casoCampo('Link (opcional)', '<input id="caso-ed-link" class="t" maxlength="500" placeholder="https://…" style="width:100%" value="' + esc(it.link || '') + '">');
+}
+function casoResumoCampo(valor, rot) { return casoCampo(rot || 'O que é (uma linha, ela lê antes de abrir)', '<input id="caso-ed-resumo" class="t" maxlength="240" style="width:100%" value="' + esc(valor || '') + '">'); }
+// Formulário de um item novo (documento, mensagem pronta ou bilan). Entra como "proposto": você revisa e publica como os outros.
+function casoNovoHtml(tipo) {
+  var d = new Date().toISOString().slice(0, 10);
+  var campos = tipo === 'documento'
+    ? casoCampo('Nome do documento', '<input id="caso-novo-titulo" class="t" maxlength="120" style="width:100%" placeholder="ex.: PDF das escolas de FLE">') + casoResumoCampoNovo() + casoCampo('Arquivo (link https://…; vazio = "chega em breve")', '<input id="caso-novo-link" class="t" maxlength="500" style="width:100%">')
+    : tipo === 'modelo'
+    ? casoCampo('Nome da mensagem', '<input id="caso-novo-titulo" class="t" maxlength="120" style="width:100%" placeholder="ex.: E-mail para as escolas">') + casoResumoCampoNovo() +
+      casoCampo('Assunto (e-mail)', '<input id="caso-novo-assunto" class="t" maxlength="150" style="width:100%">') + casoCampo('Texto', '<textarea id="caso-novo-corpo" maxlength="3000" rows="6" style="width:100%"></textarea>') + casoCampo('Tradução (opcional)', '<textarea id="caso-novo-traducao" maxlength="3000" rows="3" style="width:100%"></textarea>')
+    : casoCampo('Nome da conversa', '<input id="caso-novo-titulo" class="t" maxlength="120" style="width:100%" placeholder="ex.: Conversa de ' + d.split('-').reverse().join('/') + '">') +
+      casoCampo('Dia da conversa', '<input id="caso-novo-data" type="date" style="min-height:40px" value="' + d + '">') +
+      casoCampo('Palavras-chave (até 6, separadas por vírgula)', '<input id="caso-novo-palavras" class="t" maxlength="200" style="width:100%" placeholder="ex.: PVT, visto de estudante, DU Aix">') +
+      casoCampo('O que combinamos (uma frase por linha)', '<textarea id="caso-novo-texto" maxlength="2000" rows="5" style="width:100%"></textarea>');
+  return '<div class="feeditem"><div class="fbody" style="width:100%"><b>Novo: ' + esc(tipo === 'documento' ? 'documento que a equipe manda' : tipo === 'modelo' ? 'mensagem pronta' : 'bilan de uma conversa') + '</b>' + campos +
+    '<div style="display:flex;gap:6px;margin-top:8px">' + casoBtn('salvar-novo', tipo, 'Criar') + casoBtn('cancelar', 0, 'Cancelar') + '</div></div></div>';
+}
+function casoResumoCampoNovo() { return casoCampo('O que é (uma linha, ela lê antes de abrir)', '<input id="caso-novo-resumo" class="t" maxlength="240" style="width:100%">'); }
+function casoBarraNovo(k) {
+  return '<div class="ab" style="margin:0 0 8px">' + casoBtn('novo', 'documento', '+ Documento') + casoBtn('novo', 'modelo', '+ Mensagem pronta') + casoBtn('novo', 'bilan', '+ Bilan') + '</div>' + (k.novo ? casoNovoHtml(k.novo) : '');
 }
 function casoItensHtml(k) {
   if (!k.itens.length) return '<div class="empty" style="padding:14px">Nenhum item. Escolas e modelos de e-mail são acrescentados pela equipe.</div>';
   return k.itens.map(function (it) {
     if (k.ed && k.ed.t === 'item' && k.ed.id === it.id) return casoEditor('item', it.id, casoItemCampos(it));
     var est = it.estado === 'publicado' ? casoPil('Publicado', 'u-baixa') : it.estado === 'revisado' ? casoPil('Revisado', 'u-media') : casoPil('Proposto');
-    var btns = (it.estado === 'proposto' ? casoBtn('item-rev', it.id, 'Marcar como revisado') : it.estado === 'revisado' ? casoBtn('item-pub', it.id, 'Publicar para ela') : casoBtn('item-ret', it.id, 'Retirar')) + casoBtn('ed-item', it.id, 'Editar');
+    var btns = (it.estado === 'proposto' ? casoBtn('item-rev', it.id, 'Marcar como revisado') : it.estado === 'revisado' ? casoBtn('item-pub', it.id, 'Publicar para ela') : casoBtn('item-ret', it.id, 'Retirar')) + casoBtn('ed-item', it.id, 'Editar') + (it.estado !== 'publicado' ? (k.confirmaDel === it.id ? casoBtn('item-del', it.id, 'Confirmar remoção') : casoBtn('item-del-pede', it.id, 'Remover')) : '');
     var generico = it.tipo === 'marco' && /^prazo-chave$/i.test(it.titulo) ? ' <span class="pill u-media">Diga a que se refere: ela vê só este título</span>' : '';
     return casoLinha(est, esc(it.titulo) + generico + ' <span class="sub">· ' + esc(CASO_TIPO_ITEM[it.tipo] || it.tipo) + (casoItemResumo(it) ? ', ' + esc(casoItemResumo(it)) : '') + '</span>', btns);
   }).join('');
@@ -1464,12 +1504,12 @@ function casoPanelHtml(c, k) {
   var vazio = !k.ach.length && !k.aco.length && !k.itens.length && !k.avs.length;
   var cab = '<div class="panel" style="padding:16px"><h3 style="font-size:15px;margin:0 0 4px">O caso de ' + esc(pn(c)) + '</h3><p class="sub" style="margin:0">Tudo veio da leitura da página do Notion como <b>rascunho</b>. Ela só vê o que você revisar e publicar' +
     (k.consent ? '.' : ', e <b>só depois do consentimento de serviço</b>, que ainda não está registrado: publicar e agendar ficam bloqueados.') + ' O que você já decidiu não é refeito se a página for lida de novo.</p></div>';
-  if (vazio) return cab + '<div class="panel empty" style="margin-top:14px">Ainda sem caso. Cole o link da página no menu Onboarding e use “Ler do Notion”.</div>';
+  if (vazio) return cab + '<div class="panel empty" style="margin-top:14px">Ainda sem caso. Cole o link da página no menu Onboarding e use “Ler do Notion”, ou acrescente à mão o que ela vai ver:</div>' + casoSecao('Board dela', 'o que aparece no Espaço e nos Guias', casoBarraNovo(k));
   var pend = casoPendentes(k);
   return cab + casoProximaHtml(c, k) + (pend ? '<p class="sub" style="margin:10px 2px 0"><b>' + pend + '</b> ' + (pend === 1 ? 'coisa espera' : 'coisas esperam') + ' a sua revisão.</p>' : '') +
     casoSecao('O que entendi', k.ach.length + ' achados', casoAchadosHtml(k)) +
     casoSecao('Ações', k.aco.length + ' linhas', casoAcoesHtml(k)) +
-    casoSecao('Board dela', 'o que aparece no Espaço e nos Guias', casoItensHtml(k)) +
+    casoSecao('Board dela', 'o que aparece no Espaço e nos Guias', casoBarraNovo(k) + casoItensHtml(k)) +
     casoSecao('Avisos da IAssistente', 'você decide a data de cada um', casoAvisosHtml(k));
 }
 function pintaCaso() { var b = $('caso-box'); if (b) b.innerHTML = casoPanelHtml(byC(state.sel) || {}, state.caso); var ab = $('plat-abas'); if (ab) ab.innerHTML = platAbasHtml(); }
@@ -1513,9 +1553,11 @@ function renderFilaHoje() {
 async function casoAcao(acao, id, t) {
   var k = state.caso; if (!k) return;
   var agora = new Date().toISOString(), nid = Number(id), r = null;
-  if (acao === 'cancelar') { k.ed = null; k.agenda = null; return pintaCaso(); }
+  if (acao === 'cancelar') { k.ed = null; k.agenda = null; k.novo = null; k.confirmaDel = null; return pintaCaso(); }
   if (acao.indexOf('ed-') === 0) { k.ed = { t: acao.slice(3), id: nid }; k.agenda = null; pintaCaso(); var f = $('caso-ed-texto') || $('caso-ed-titulo'); if (f && f.focus) f.focus(); return; }
   if (acao === 'ag-abrir') { k.agenda = nid; k.ed = null; return pintaCaso(); }
+  if (acao === 'novo') { k.novo = id; k.ed = null; pintaCaso(); var fn = $('caso-novo-titulo'); if (fn && fn.focus) fn.focus(); return; }
+  if (acao === 'item-del-pede') { k.confirmaDel = nid; return pintaCaso(); }
   if (/^(enviar-agora|atrasar-\d+|adiantar-\d+)$/.test(acao)) return filaAcao(acao, nid, t, state.sel);
   if (t) t.disabled = true;
   if (acao === 'ach-ok') r = await supabase.from('caso_achados').update({ estado: 'ok', conferido_em: agora }).eq('id', nid);
@@ -1530,6 +1572,30 @@ async function casoAcao(acao, id, t) {
   else if (acao === 'item-rev') r = await supabase.from('board_itens').update({ estado: 'revisado' }).eq('id', nid);
   else if (acao === 'item-pub') r = await supabase.rpc('crm_board_publicar', { p_id: nid });
   else if (acao === 'item-ret') r = await supabase.rpc('crm_board_retirar', { p_id: nid });
+  else if (acao === 'item-del') { r = await supabase.from('board_itens').delete().eq('id', nid); k.confirmaDel = null; }
+  else if (acao === 'salvar-novo') {
+    var vn = function (id) { return $(id) ? $(id).value.trim() : ''; };
+    var fl = function (m) { if (t) t.disabled = false; return toast(m); };
+    var tnovo = id, tn = vn('caso-novo-titulo'), dn = {}, linha = { contato_id: state.sel, tipo: tnovo, titulo: tn.slice(0, 120), estado: 'proposto' };
+    if (!tn) return fl('Dê um nome');
+    if (tnovo === 'documento') {
+      var lk = vn('caso-novo-link'); if (lk && !/^https:\/\//.test(lk)) return fl('O link precisa começar com https://');
+      dn = { direcao: 'recebe', rotulo: tn.slice(0, 120) }; linha.link = lk || null; linha.resumo = vn('caso-novo-resumo').slice(0, 240) || null; linha.ordem = 20;
+    } else if (tnovo === 'modelo') {
+      var cp = vn('caso-novo-corpo'); if (!cp) return fl('Escreva o texto da mensagem');
+      dn = { corpo: cp.slice(0, 3000) }; if (vn('caso-novo-assunto')) dn.assunto = vn('caso-novo-assunto').slice(0, 150); if (vn('caso-novo-traducao')) dn.traducao = vn('caso-novo-traducao').slice(0, 3000);
+      linha.resumo = vn('caso-novo-resumo').slice(0, 240) || null; linha.ordem = 30;
+    } else {
+      var di = vn('caso-novo-data'); if (di && !/^\d{4}-\d{2}-\d{2}$/.test(di)) return fl('Escolha um dia válido');
+      var pal = casoPalavras(vn('caso-novo-palavras')); if (pal === null) return fl('Use até 6 palavras-chave, de até 30 letras cada');
+      dn = { secoes: [] }; if (di) dn.data = di; if (pal.length) dn.palavras = pal;
+      var linhas = vn('caso-novo-texto').split('\n').map(function (x) { return x.trim(); }).filter(Boolean).slice(0, 12);
+      if (linhas.length) dn.secoes.push({ titulo: 'O que combinamos', itens: linhas.map(function (x) { return { texto: x.slice(0, 220), estado: 'confirmado' }; }) });
+      linha.ordem = 1;
+    }
+    linha.dados = dn;
+    r = await supabase.from('board_itens').insert(linha); k.novo = null;
+  }
   else if (acao === 'salvar-item') {
     var itm = k.itens.filter(function (x) { return x.id === nid; })[0];
     var val = function (id) { return $(id) ? $(id).value.trim() : ''; };
@@ -1550,7 +1616,19 @@ async function casoAcao(acao, id, t) {
       var cu = val('caso-ed-custo'); if (cu !== '' && (isNaN(Number(cu)) || Number(cu) < 0 || Number(cu) > 100000)) return falha('O custo precisa ser um número entre 0 e 100000');
       if (cu !== '') dados.custo_eur = Number(cu); else delete dados.custo_eur;
     }
+    if (itm.tipo === 'documento') dados.rotulo = tt.slice(0, 120);
+    if (itm.tipo === 'modelo') {
+      ['assunto', 'corpo', 'traducao'].forEach(function (c) { var v = val('caso-ed-' + c); if (v) dados[c] = v; else delete dados[c]; });
+      if (!dados.corpo) return falha('Escreva o texto da mensagem');
+    }
+    if (itm.tipo === 'bilan') {
+      var dib = val('caso-ed-data'); if (dib && !/^\d{4}-\d{2}-\d{2}$/.test(dib)) return falha('Escolha um dia válido');
+      if (dib) dados.data = dib; else delete dados.data;
+      var palb = casoPalavras(val('caso-ed-palavras')); if (palb === null) return falha('Use até 6 palavras-chave, de até 30 letras cada');
+      if (palb.length) dados.palavras = palb; else delete dados.palavras;
+    }
     var mud = { titulo: tt.slice(0, 120), dados: dados, link: ln || null };
+    if ($('caso-ed-resumo')) mud.resumo = val('caso-ed-resumo').slice(0, 240) || null;
     if (itm.estado === 'proposto') mud.estado = 'revisado';   // você mexeu: é seu. Ler o Notion de novo não desfaz.
     r = await supabase.from('board_itens').update(mud).eq('id', nid); k.ed = null;
     if (!r.error) { await casoRecarrega(); toast(itm.estado === 'publicado' ? 'Salvo. Ela já vê a correção.' : 'Salvo.'); return; }

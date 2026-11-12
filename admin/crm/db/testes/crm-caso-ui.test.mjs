@@ -25,6 +25,7 @@ function qb(table) {
   const b = { select: () => b, eq: () => b, or: () => b, is: () => b, order: () => b, limit: () => b,
     maybeSingle: async () => respostas[table + ':one'] || { data: null, error: null },
     insert: async (row) => { writes.push({ op: 'insert', table, row }); return { error: null }; },
+    delete: () => { const f = { op: 'delete', table, filtros: [] }; const ch = { eq(c, v) { f.filtros.push(c + '=' + v); return ch; }, then(ok, ko) { writes.push(f); return Promise.resolve({ error: null }).then(ok, ko); } }; return ch; },
     update: (row) => { const f = { op: 'update', table, row, filtros: [] }; const ch = { eq(c, v) { f.filtros.push(c + '=' + v); return ch; }, is(c, v) { f.filtros.push(c + ' is ' + v); return ch; },
       then(ok, ko) { writes.push(f); return Promise.resolve({ error: null }).then(ok, ko); } }; return ch; },
     then: (ok, ko) => Promise.resolve(JSON.parse(JSON.stringify(respostas[table] || { data: [], error: null }))).then(ok, ko) };   // cópia nova a cada busca, como o banco
@@ -196,6 +197,66 @@ check('item que era só proposta vira revisado ao ser editado: ler o Notion de n
 await click({ caso: 'ed-item', id: '23' }); el('caso-ed-custo').value = '-5'; el('caso-ed-titulo').value = 'x'; writes.length = 0;
 await click({ caso: 'salvar-item', id: '23' });
 check('custo negativo ou fora do limite é recusado', writes.length === 0 && /entre 0 e 100000/.test(els.get('toast').textContent));
+
+
+console.log('\n== Guias dela: documentos, bilans e mensagens prontas ==');
+{
+  fixture({ itens: [] }); await pagina();
+  check('a barra de adicionar aparece no Board: + Documento, + Mensagem pronta, + Bilan', /data-caso="novo" data-id="documento"/.test(html()) && /data-caso="novo" data-id="modelo"/.test(html()) && /data-caso="novo" data-id="bilan"/.test(html()));
+  await click({ caso: 'novo', id: 'documento' });
+  check('+ Documento abre o formulário (nome, o que é, link)', /id="caso-novo-titulo"/.test(html()) && /id="caso-novo-resumo"/.test(html()) && /id="caso-novo-link"/.test(html()));
+  el('caso-novo-titulo').value = 'PDF das escolas de FLE'; el('caso-novo-resumo').value = 'Escolas de francês por região'; el('caso-novo-link').value = 'http://inseguro.example';
+  writes.length = 0; await click({ caso: 'salvar-novo', id: 'documento' });
+  check('link que não é https é recusado', writes.length === 0);
+  el('caso-novo-link').value = 'https://exemplo.org/pdf'; await click({ caso: 'salvar-novo', id: 'documento' });
+  const wd = writes.at(-1);
+  check('criar o documento insere um item "proposto" com direção "recebe", o "o que é" e o link', wd.op === 'insert' && wd.table === 'board_itens' && wd.row.tipo === 'documento' && wd.row.estado === 'proposto' && wd.row.contato_id === 'c1' && wd.row.dados.direcao === 'recebe' && wd.row.resumo === 'Escolas de francês por região' && wd.row.link === 'https://exemplo.org/pdf');
+  await click({ caso: 'novo', id: 'documento' }); el('caso-novo-titulo').value = ''; writes.length = 0; await click({ caso: 'salvar-novo', id: 'documento' });
+  check('sem nome não cria', writes.length === 0);
+  await click({ caso: 'cancelar', id: '0' });
+  await click({ caso: 'novo', id: 'bilan' });
+  el('caso-novo-titulo').value = 'Conversa de 12/11/2026'; el('caso-novo-data').value = '2026-11-12'; el('caso-novo-palavras').value = 'Prazo, DU Aix, dinheiro, a, b, c, d';
+  writes.length = 0; await click({ caso: 'salvar-novo', id: 'bilan' });
+  check('mais de 6 palavras-chave é recusado', writes.length === 0 && /até 6 palavras-chave/.test(els.get('toast').textContent));
+  el('caso-novo-palavras').value = 'Prazo, DU Aix, dinheiro'; el('caso-novo-texto').value = 'Ligar para a escola\n\nConferir a atestação';
+  await click({ caso: 'salvar-novo', id: 'bilan' });
+  const wb = writes.at(-1);
+  check('criar o bilan guarda a data, as palavras-chave e o que combinaram (uma frase por linha, sem linhas vazias)', wb.row.tipo === 'bilan' && wb.row.dados.data === '2026-11-12' && wb.row.dados.palavras.join() === 'Prazo,DU Aix,dinheiro' && wb.row.dados.secoes[0].itens.map((x) => x.texto).join('|') === 'Ligar para a escola|Conferir a atestação');
+  await click({ caso: 'novo', id: 'modelo' }); el('caso-novo-titulo').value = 'E-mail para as escolas'; el('caso-novo-resumo').value = 'Para pedir informações de inscrição'; el('caso-novo-assunto').value = 'Inscription'; el('caso-novo-corpo').value = ''; el('caso-novo-traducao').value = 'Olá…';
+  writes.length = 0; await click({ caso: 'salvar-novo', id: 'modelo' });
+  check('mensagem sem texto não cria', writes.length === 0);
+  el('caso-novo-corpo').value = 'Bonjour,\nje voudrais…'; await click({ caso: 'salvar-novo', id: 'modelo' });
+  const wm = writes.at(-1);
+  check('criar a mensagem guarda assunto, texto, tradução e o "o que é"', wm.row.tipo === 'modelo' && wm.row.dados.assunto === 'Inscription' && wm.row.dados.corpo === 'Bonjour,\nje voudrais…' && wm.row.dados.traducao === 'Olá…' && wm.row.resumo === 'Para pedir informações de inscrição');
+
+  const BIL = { id: 40, tipo: 'bilan', titulo: 'Conversa de 29/10/2026', resumo: null, dados: { data: '2026-10-29', palavras: ['PVT'], secoes: [] }, estado: 'proposto', ordem: 1, link: null, versao: 1 };
+  const DOCU = { id: 41, tipo: 'documento', titulo: 'PDF das escolas', resumo: 'Escolas', dados: { direcao: 'recebe', rotulo: 'PDF das escolas' }, estado: 'revisado', ordem: 20, link: null, versao: 1 };
+  const MODE = { id: 42, tipo: 'modelo', titulo: 'E-mail', resumo: null, dados: { corpo: 'Bonjour', assunto: 'X' }, estado: 'publicado', ordem: 30, link: null, versao: 1 };
+  fixture({ itens: [BIL, DOCU, MODE] }); await pagina();
+  await click({ caso: 'ed-item', id: '40' });
+  check('editar um bilan: nome, dia, palavras-chave e o resumo de uma linha', /id="caso-ed-data"[^>]*value="2026-10-29"/.test(html()) && /id="caso-ed-palavras"[^>]*value="PVT"/.test(html()) && /id="caso-ed-resumo"/.test(html()));
+  el('caso-ed-titulo').value = 'Primeira conversa'; el('caso-ed-data').value = '2026-10-29'; el('caso-ed-palavras').value = 'PVT, visto de estudante, Alliance'; el('caso-ed-resumo').value = 'Do PVT ao visto de estudante';
+  writes.length = 0; await click({ caso: 'salvar-item', id: '40' });
+  const e1 = writes.at(-1);
+  check('salvar o bilan grava título, palavras, resumo e vira "revisado"', e1.row.titulo === 'Primeira conversa' && e1.row.dados.palavras.join() === 'PVT,visto de estudante,Alliance' && e1.row.resumo === 'Do PVT ao visto de estudante' && e1.row.estado === 'revisado' && JSON.stringify(e1.row.dados.secoes) === '[]');
+  await click({ caso: 'ed-item', id: '41' });
+  check('editar um documento: nome, "o que é" e arquivo', /id="caso-ed-resumo"[^>]*value="Escolas"/.test(html()) && /Arquivo \(link https/.test(html()));
+  el('caso-ed-titulo').value = 'PDF das escolas'; el('caso-ed-resumo').value = 'Escolas'; el('caso-ed-link').value = 'https://exemplo.org/pdf'; writes.length = 0; await click({ caso: 'salvar-item', id: '41' });
+  check('salvar o documento grava o link e o rótulo', writes.at(-1).row.link === 'https://exemplo.org/pdf' && writes.at(-1).row.dados.rotulo === 'PDF das escolas');
+  await click({ caso: 'ed-item', id: '42' });
+  check('editar uma mensagem: nome, "o que é", assunto, texto e tradução', /id="caso-ed-assunto"/.test(html()) && /id="caso-ed-corpo"/.test(html()) && /id="caso-ed-traducao"/.test(html()));
+  el('caso-ed-titulo').value = 'E-mail'; el('caso-ed-corpo').value = ''; writes.length = 0; await click({ caso: 'salvar-item', id: '42' });
+  check('mensagem sem texto não salva', writes.length === 0);
+  el('caso-ed-corpo').value = 'Bonjour, madame.'; el('caso-ed-resumo').value = 'Para a Alliance'; await click({ caso: 'salvar-item', id: '42' });
+  check('mensagem publicada continua publicada e a correção chega a ela', writes.at(-1).row.dados.corpo === 'Bonjour, madame.' && writes.at(-1).row.resumo === 'Para a Alliance' && !('estado' in writes.at(-1).row));
+  // Remover: dois toques; publicado não se remove
+  fixture({ itens: [BIL, MODE] }); await pagina();
+  check('item publicado não tem "Remover" (retire antes); os outros têm', !/data-caso="item-del-pede" data-id="42"/.test(html()) && /data-caso="item-del-pede" data-id="40"/.test(html()));
+  writes.length = 0; await click({ caso: 'item-del-pede', id: '40' });
+  check('o primeiro toque só pede confirmação (não apaga)', /Confirmar remoção/.test(html()) && writes.length === 0);
+  await click({ caso: 'item-del', id: '40' });
+  check('o segundo toque remove o item', writes.at(-1).op === 'delete' && writes.at(-1).table === 'board_itens');
+}
 
 console.log('\n' + passed + ' passaram, ' + failed + ' falharam');
 process.exit(failed ? 1 : 0);

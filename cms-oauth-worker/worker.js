@@ -3441,7 +3441,13 @@ async function crmNotionCaso(p, c, itens, meta) {
   let temBilan = false;
   if (secoes.length) {
     const dados = { secoes };
-    if (JSON.stringify(dados).length <= 7500) { board.push({ origem_chave: 'notion:bilan', tipo: 'bilan', titulo: 'Bilan da nossa conversa', ordem: 1, dados }); temBilan = true; }
+    // Um bilan por conversa (a chave leva o começo do id da página do Notion): com a data da ligação e palavras-chave para a pessoa
+    // se lembrar do assunto à primeira vista (as dores marcadas na página; a Ingryd ajusta no CRM).
+    const dia = /^\d{4}-\d{2}-\d{2}/.test(String(p.data_ligacao || '')) ? String(p.data_ligacao).slice(0, 10) : null;
+    if (dia) dados.data = dia;
+    const palavras = (p.dores || []).map((x) => limpa(x, 30)).filter(Boolean).slice(0, 5);
+    if (palavras.length) dados.palavras = palavras;
+    if (JSON.stringify(dados).length <= 7500) { board.push({ origem_chave: 'notion:bilan:' + String(meta.pagina || '').slice(0, 8), tipo: 'bilan', titulo: dia ? 'Conversa de ' + dia.split('-').reverse().join('/') : 'Bilan da nossa conversa', ordem: 1, dados }); temBilan = true; }
   }
   if (p.prazo_chave && (p.prazo_chave.data || p.prazo_chave.texto)) {
     board.push({ origem_chave: 'notion:prazo_chave', tipo: 'marco', titulo: 'Prazo-chave', ordem: 5, dados: p.prazo_chave.data ? { data: p.prazo_chave.data, a_confirmar: false } : { a_confirmar: true, nota: limpa(p.prazo_chave.texto, 200) } });

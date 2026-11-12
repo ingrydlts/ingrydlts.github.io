@@ -541,10 +541,13 @@ check('ler de novo manda exatamente a mesma carga (chaves estáveis)', JSON.stri
 // Mapeamento puro: bilan, achados e avisos por persona/dor.
 const props = { pessoa: 'Ana', persona: 'pvt', dores: ['Idioma'], documentos_pendentes: 'Certificado (cópia, original); Passaporte', prazo_chave: { texto: 'a confirmar', data: null, a_confirmar: true } };
 const corpoMap = { resumo: 'Resumo da conversa.', duvidas: null, bilan: { duvidas: ['O curso de 15 h não serve.', 'Inscrição até 30/11 (vou confirmar com a escola).'], proximos: ['Ligar para a escola'], respostas: ['Te respondo sobre o pagamento.', 'Te envio o PDF'] } };
-const cm = await crmNotionCaso(props, corpoMap, [], { pagina: PID, editada_em: '' });
+const cm = await crmNotionCaso({ ...props, data_ligacao: '2026-10-29' }, corpoMap, [], { pagina: PID, editada_em: '' });
+const bil0 = cm.itens.find((i) => /^notion:bilan:/.test(i.origem_chave));
+check('o bilan é um por conversa: chave com o começo do id da página, data da ligação e palavras-chave (as dores)', bil0.origem_chave === 'notion:bilan:' + PID.slice(0, 8) && bil0.dados.data === '2026-10-29' && bil0.dados.palavras.join() === 'Idioma' && bil0.titulo === 'Conversa de 29/10/2026');
+check('páginas diferentes geram bilans diferentes (não se sobrescrevem)', (await crmNotionCaso(props, corpoMap, [], { pagina: 'ffffffff' + PID.slice(8), editada_em: '' })).itens.find((i) => /^notion:bilan:/.test(i.origem_chave)).origem_chave !== bil0.origem_chave);
 check('achados: resumo + dúvidas tiradas; o que "vou confirmar" vira dúvida a confirmar', cm.achados[0].chave === 'resumo' && cm.achados.find((a) => /15 h/.test(a.texto)).tipo === 'fato' && cm.achados.find((a) => /30\/11/.test(a.texto)).certeza === 'a_confirmar' && cm.achados.every((a) => a.chave === 'resumo' || /^nb_[0-9a-f]{12}$/.test(a.chave)));
 check('"Te envio…" não vira achado; "Te respondo…" vira dúvida', !cm.achados.some((a) => /PDF/.test(a.texto)) && cm.achados.some((a) => a.tipo === 'duvida' && /pagamento/.test(a.texto)));
-check('bilan vira UM item com seções e aviso de proposta', cm.itens.find((i) => i.origem_chave === 'notion:bilan').dados.secoes.length === 3 && cm.avisos.some((a) => a.origem_chave === 'notion:aviso:bilan'));
+check('bilan vira UM item com seções e aviso de proposta', cm.itens.find((i) => /^notion:bilan:/.test(i.origem_chave)).dados.secoes.length === 3 && cm.avisos.some((a) => a.origem_chave === 'notion:aviso:bilan'));
 check('persona pvt e dor Idioma geram as duas perguntas, com onde gravar na lista fechada', cm.avisos.find((a) => a.origem_chave === 'notion:aviso:fim_pvt').grava_em === 'respostas.fim_pvt' && cm.avisos.find((a) => a.origem_chave === 'notion:aviso:nivel_frances').opcoes.length === 4);
 check('documentos separados por ; e vírgula fora de parênteses; marco "a confirmar" sem data', cm.itens.filter((i) => i.dados.direcao === 'reune').length === 2 && cm.itens.find((i) => i.origem_chave === 'notion:prazo_chave').dados.a_confirmar === true);
 const sem = await crmNotionCaso({ ...props, persona: 'conjuge', dores: [] }, { ...corpoMap, bilan: { duvidas: [], proximos: [], respostas: [] }, resumo: '' }, [], { pagina: PID, editada_em: '' });
