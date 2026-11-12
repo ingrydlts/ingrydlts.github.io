@@ -42,5 +42,58 @@ console.log('== Task 1: chave de ligação ==');
   h.mod.pararAoVivo();
 }
 
+console.log('== Task 10: ligação aos dados, abas, ações, deep link ==');
+{
+  const ago = (min) => new Date(Date.now() + min * 60e3).toISOString();
+  const msg = (id) => ({ id, de: 'pessoa', tipo: 'texto', texto: 'Oi ' + id, acao: null, proposta_id: null, criado_em: ago(-10 - id), lida_em: null });
+  const resp = { id: 1, contato_id: 'c1', status: 'nova', canal: 'email', texto: 'Quero saber mais', recebido_em: ago(-30) };
+  const montar = async (user) => {
+    const h = await carregarCrm({ respostas: base({ 'contatos:one': { data: { dossie: {}, user_id: user }, error: null }, chat_mensagens: { data: [msg(2), msg(1)], error: null } }), store: { crm_ficha_v2: '1' } });
+    h.mod.setR([resp]); return h;
+  };
+  let h = await montar(null);
+  let html = await abre(h, pessoa({ user_id: null }));
+  check('renderiza fila, header, abas e carrossel', html.includes('class="fx-fila"') && html.includes('class="fx-head"') && html.includes('class="fx-abas"') && html.includes('class="fx-car"'));
+  check('sem conta: abre na aba Ficha', /data-v="ficha"[^>]*aria-selected="true"/.test(html) && !/data-v="plataforma"[^>]*aria-selected="true"/.test(html));
+  check('1º cartão é "Responder Ana"', /data-fx="agAbrir" data-i="0"[^>]*aria-label="Ação 1 de \d: Responder Ana\./.test(html));
+  const fila1 = (html.match(/class="fx-fprox">([^<]*)</) || [])[1];
+  check('o 1º item da fila mostra o mesmo texto do 1º cartão', fila1 === 'Responder Ana');
+  check('mensagens do app viram uma ação (chat)', html.includes('Ler as mensagens dela no app'));
+  check('tem o contêiner do pop-up', html.includes('id="fx-pop"'));
+  h.mod.pararAoVivo();
+
+  await h.click({ fx: 'agAbrir', i: '1' });
+  check('agAbrir abre o pop-up no índice', h.mod.state.fx.ag.pop === 1 && h.el('fx-pop').innerHTML.includes('role="dialog"'));
+  await h.click({ fx: 'agNav', d: '-1' });
+  check('agNav volta uma ação e repinta o pop-up', h.mod.state.fx.ag.pop === 0 && h.el('fx-pop').innerHTML.includes('Ação 1 de'));
+  await h.click({ fx: 'agFechar' });
+  check('agFechar zera o pop-up', h.mod.state.fx.ag.pop === null && h.el('fx-pop').innerHTML === '');
+  const n = h.mod.state.fx.tarefas.length;
+  await h.click({ fx: 'agAbrir', i: String(n - 1) }); await h.click({ fx: 'agNav', d: '1' });
+  check('na última ação, agNav não passa do fim', h.mod.state.fx.ag.pop === n - 1);
+  await h.click({ fx: 'agFechar' });
+  await h.click({ fx: 'agAbrir', i: '0' }); await h.click({ fx: 'agNav', d: '1' });
+  check('agNav de 0 leva a 1', h.mod.state.fx.ag.pop === 1);
+  await h.click({ fx: 'agAbrir', i: '99' });
+  check('agAbrir com índice inválido não muda o pop-up', h.mod.state.fx.ag.pop === 1);
+  await h.click({ fx: 'agIr', k: 'chat', id: 'chat' });
+  check('agIr leva à Plataforma, abre a sessão e fecha o pop-up', h.mod.state.fx.tab === 'plataforma' && h.mod.state.fx.abertas.chat === true && h.mod.state.fx.ag.pop === null);
+  await h.click({ fx: 'tab', v: 'conversa' });
+  check('tab muda a aba', h.mod.state.fx.tab === 'conversa' && h.el('pessoa-page').innerHTML.includes('id="ficha-v2"'));
+  await h.click({ fx: 'agAbrir', i: '0' });
+  for (const fn of h.handlers.keydown) await fn({ key: 'Escape', preventDefault() {}, target: {} });
+  check('Esc fecha o pop-up', h.mod.state.fx.ag.pop === null && h.el('fx-pop').innerHTML === '');
+  await h.click({ fx: 'tourFechar' });
+  check('fechar o guia grava a preferência', h.store.crm_ficha_tour === '0' && h.mod.state.fx.tour === false);
+  check('fichaClick sem data-fx devolve false', h.mod.fichaClick({ dataset: {} }) === false && h.mod.fichaClick(null) === false);
+  h.mod.pararAoVivo();
+
+  h = await montar('u1');
+  html = await abre(h, pessoa({ user_id: 'u1' }));
+  check('com conta: abre na aba Plataforma', /data-v="plataforma"[^>]*aria-selected="true"/.test(html));
+  check('com conta: header sem o aviso de "sem conta"', !html.includes('Sem conta</span>') && html.includes('No app'));
+  h.mod.pararAoVivo();
+}
+
 console.log('\n' + passed + ' passaram, ' + failed + ' falharam');
 if (failed) process.exit(1);

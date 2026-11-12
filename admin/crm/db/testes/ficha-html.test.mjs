@@ -32,6 +32,7 @@ console.log('== Task 8: fila, header, abas, guia ==');
   check('header: botões existentes (e-mail, 1:1, estágio)', hd.includes('data-emailfor="c1"') && hd.includes('data-open1a1="c1"') && hd.includes('id="stage-pick"'));
   const sem = FH.htmlHeader(Object.assign({}, base, { chk: null, temConta: false }), h);
   check('header sem conta: aviso e sem barra', sem.includes('Ela ainda não entrou no app') && !sem.includes('role="progressbar"'));
+  check('header: erro do checklist usa a mensagem própria', FH.htmlHeader(Object.assign({}, base, { chk: null, chkMsg: 'Falta rodar db/crm-checklist.sql' }), h).includes('db/crm-checklist.sql'));
   check('header: etapa 7 não tem "próxima"', !FH.htmlHeader(Object.assign({}, base, { etapa: 7 }), h).includes('Próxima:'));
 
   const ab = FH.htmlAbas('plataforma', true, h);

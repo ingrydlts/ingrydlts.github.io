@@ -33,7 +33,7 @@ export function htmlHeader(d, h) {
   const avanco = k
     ? '<h4 class="fx-h4">Avanço do projeto dela</h4><div class="dprog" role="progressbar" aria-label="Checklist feito por ela" aria-valuenow="' + e(k.pct) + '" aria-valuemin="0" aria-valuemax="100"><span style="width:' + e(k.pct) + '%"></span></div>' +
       '<p class="sub fx-av-txt">' + e(k.pct) + '% · feitos por ela ' + e(k.feitos) + ' · abertos ' + e(k.abertos) + ' · vencem em até 3 dias ' + e(k.vencem3) + ' · adicionados por ela ' + e(k.adicionados) + '</p>'
-    : '<h4 class="fx-h4">Avanço do projeto dela</h4><p class="sub fx-av-txt">Ela ainda não entrou no app, então ainda não tem checklist.</p>';
+    : '<h4 class="fx-h4">Avanço do projeto dela</h4><p class="sub fx-av-txt">' + e(d.chkMsg || 'Ela ainda não entrou no app, então ainda não tem checklist.') + '</p>';
   return '<header class="fx-head">' +
     '<div class="fx-h-pessoa"><h2 class="fx-nome">' + e(c.nome || c.email || 'Sem nome') + '</h2><p class="sub" style="margin:2px 0 0">' + e(c.email || '') + '</p>' +
     '<div class="ctx" style="margin-top:8px"><span class="pill u-' + e(c.urgencia) + '"><span class="dot"></span>' + e(d.urgLabel || '') + '</span><span class="pill">' + e(d.estagioLabel || '') + '</span><span class="pill">' + e(d.personaLabel || '') + '</span>' +

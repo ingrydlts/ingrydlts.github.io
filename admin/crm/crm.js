@@ -665,7 +665,7 @@ function eventText(e) {
 // tab: 'conversa' ou 'ficha'; sem tab, a ficha abre na Conversa se já houver alguma mensagem.
 async function openPessoa(id, tab, sub) {
   if (state.view !== 'pessoa') state.prevView = state.view;
-  state.sel = id; state.ptab = tab || null; state.pstab = sub || 'assistente'; state.pdias = {}; state.chatRasc = ''; state.caso = null;
+  state.sel = id; state.ptab = tab || null; state.pstab = sub || 'assistente'; state.pdias = {}; state.chatRasc = ''; state.caso = null; fxReset();
   show('pessoa');
 }
 // ---------- E-mails da pessoa: o que já saiu e o próximo, como ela vai ver ----------
@@ -1116,7 +1116,7 @@ async function atualizaAoVivo(cid, forca) {
   if (state.view !== 'pessoa' || state.sel !== cid || !state.ins || state.ins.cid !== cid) return pararAoVivo();
   var c = byC(cid); if (!c) return;
   var antes = state.ins, chatAntes = state.chat;
-  var rk = await Promise.all([buscaChecklist(cid, VIVO.uid), buscaInsights(cid), buscaChat(cid), state.ptab === 'plataforma' ? buscaInteracoes(cid) : null]);
+  var rk = await Promise.all([buscaChecklist(cid, VIVO.uid), buscaInsights(cid), buscaChat(cid), (state.ptab === 'plataforma' || fichaV2Ativa()) ? buscaInteracoes(cid) : null]);
   if (state.view !== 'pessoa' || state.sel !== cid) return;
   var sigChat = function (ch) { return JSON.stringify(ch ? [ch.msgs.length, ch.msgs.length ? ch.msgs[ch.msgs.length - 1].id : 0, Object.keys(ch.props).map(function (k) { return ch.props[k].status + ch.props[k].adiada_ate; })] : null); };
   var mudouIns = JSON.stringify([rk[1].vivos && rk[1].vivos.atualizado_em, rk[1].hist.length, rk[1].manuais.length]) !== JSON.stringify([antes.vivos && antes.vivos.atualizado_em, antes.hist.length, antes.manuais.length]);
@@ -1131,6 +1131,7 @@ async function atualizaAoVivo(cid, forca) {
   var ca = $('chk-aba'); if (ca) ca.innerHTML = checklistPanel(c);
   var cl = $('chk-lateral'); if (cl) cl.innerHTML = checklistLateralHtml(state.dos && state.dos.chk, Date.now(), 'font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-3); margin:0 0 8px');
   pintaChat();   // só o fio: o que você está digitando na caixa fica
+  if (fichaV2Ativa()) fxLive(c);
   var ib = $('int-box'); if (ib) ib.innerHTML = interacoesHtml(state.int);
   var rl = $('resumo-lateral'); if (rl) rl.innerHTML = resumoPlatHtml(H4_PLAT);
   var ae = document.activeElement;   // não redesenha o dossiê enquanto você digita nele
@@ -2358,13 +2359,182 @@ function fichaV2Ativa() {
   try { if (/[?&]ficha=2(&|$)/.test(String(location.search || ''))) return true; } catch (e) { /* sem location */ }
   try { return localStorage.getItem('crm_ficha_v2') === '1'; } catch (e) { return false; }
 }
-function renderFichaV2(c, dados) {
-  return '<div id="ficha-v2"></div>';
+var H_FX = { esc: esc, fmtDay: fmtDay };
+var FX_ABAS = ['conversa', 'plataforma', 'ficha'];
+// Zera o que é "desta pessoa" ao abrir outra ficha. A ordem das sessões e o guia são preferências do navegador e ficam.
+function fxReset() {
+  var f = state.fx; f.tab = null; f.ag = { i: 0, pop: null }; f.dem = 'todas'; f.ckTodos = false; f.ckMais = false; f.abertas = {}; f.flash = null; f.tarefas = []; f.dados = null;
+}
+function fxPrefs() {
+  var f = state.fx;
+  if (f.prefsLidas) return;
+  var p = FX.lerPrefs(localStorage); f.tour = p.tour; f.ord = p.ord; f.prefsLidas = true;
+}
+function fxContato(c, uid) { return Object.assign({}, c, { user_id: uid || c.user_id || null }); }
+// A fila de hoje: quem tem resposta nova, processo para decidir ou urgência alta (e a pessoa aberta), mais novidades primeiro.
+function fxFilaItens(c) {
+  var novas = {}, procs = {};
+  R.forEach(function (x) { if (x.status === 'nova') novas[x.contato_id] = (novas[x.contato_id] || 0) + 1; });
+  PSUG.forEach(function (p) { (procs[p.contato_id] = procs[p.contato_id] || []).push(p.processo); });
+  var mk = function (x) {
+    var n = novas[x.id] || 0;
+    return { c: x, novas: n, proxima: FX.acaoRapida({ nome: displayName(x) }, { respostasNovas: n, processosDetectados: procs[x.id] || [] }, procLabel),
+      sub: personaLabel(x) + ' · ' + (x.user_id ? 'plataforma' : 'captação') };
+  };
+  var itens = FX.ordenarFila(C.filter(function (x) { return novas[x.id] || procs[x.id] || x.urgencia === 'alta' || x.id === c.id; }).map(mk)).slice(0, 8);
+  if (!itens.some(function (o) { return o.c.id === c.id; })) itens.push(mk(c));
+  return itens;
+}
+// As ações da equipe para esta pessoa, com os dados que o CRM já lê hoje (spec §4.3).
+function fxTarefas(c, d) {
+  var resps = d.resps || [], bilanEnviado = (d.mails || []).some(function (m) { return m.modelo === 'bilan_conversa'; });
+  var dosFalta = state.dos && state.dos.cid === c.id ? dosProgresso(c, state.dos.d, state.dos.rasc).falta : 0;
+  return FX.tarefasDe({
+    nome: displayName(c), respostasNovas: resps.filter(function (x) { return x.status === 'nova'; }).length, chatNaoLidas: chatNaoLidas(state.chat),
+    processosDetectados: (state.procs || []).filter(function (p) { return p.status === 'detectada'; }).map(function (p) { return p.processo; }),
+    bilanPendente: !!(state.bilan && state.bilan.cid === c.id && !bilanEnviado), dossieFalta: dosFalta,
+    proximoEmail: proximoEmail(c, d.mails || [], resps, d.jor)
+  }, procLabel);
+}
+function fxHeaderHtml(c, d) {
+  var chk = state.dos && state.dos.cid === c.id ? state.dos.chk : null, k = null;
+  if (chk && !chk.err && !chk.semConta) {
+    var cc = chkCalc(chk, Date.now()), ativos = cc.itens.filter(function (i) { return i.status !== 'arquivado'; }), lim = new Date(Date.now() + 3 * 864e5).toISOString().slice(0, 10);
+    var feitos = ativos.filter(function (i) { return i.status === 'concluido'; }).length;
+    k = { pct: ativos.length ? Math.round(feitos * 100 / ativos.length) : 0, feitos: feitos, abertos: ativos.length - feitos,
+      vencem3: ativos.filter(function (i) { return i.status !== 'concluido' && i.due_date && i.due_date >= cc.hoje && i.due_date <= lim; }).length,
+      adicionados: cc.itens.filter(function (i) { return String(i.category || '').indexOf('meu:') === 0; }).length };
+  }
+  var cl = chk && chk.cliques && chk.cliques[0];
+  var props = state.chat && state.chat.props ? Object.keys(state.chat.props).map(function (x) { return state.chat.props[x]; }) : [];
+  return FH.htmlHeader({ c: c, urgLabel: URG[c.urgencia] || c.urgencia, estagioLabel: stageLabel(c.estagio), personaLabel: personaLabel(c) + (subLabel(c) ? ' · ' + subLabel(c) : ''),
+    cidade: (c.respostas && c.respostas.cidade) || '', temConta: !!c.user_id, motivo: c.motivo || '',
+    etapa: FX.etapaFunil(c, { mails: d.mails || [], propostas: props, temBilan: !!(state.bilan && state.bilan.cid === c.id) }),
+    estagios: STAGES, chk: k, chkMsg: chk && chk.err ? 'O checklist dela não carregou (falta rodar db/crm-checklist.sql).' : '', ultima: cl ? fmtDia(cl.criado_em) + ' às ' + fmtHora(cl.criado_em) : '' }, H_FX);
+}
+// O corpo da aba (preenchido nas tarefas 11 a 13).
+function fxCorpo(c, d, tab) { return ''; }
+function renderFichaV2(c, d) {
+  fxPrefs();
+  var f = state.fx, cv = fxContato(c, d.uid);
+  f.tab = f.tab || (FX_ABAS.indexOf(state.ptab) >= 0 ? state.ptab : null) || FX.abaPadrao(cv);
+  var tarefas = fxTarefas(cv, d);
+  f.tarefas = tarefas; f.dados = d; f.cid = c.id; f.ag.pop = null; f.ag.i = Math.min(f.ag.i || 0, Math.max(0, tarefas.length - 1));
+  return '<div id="ficha-v2" class="fx" data-cid="' + esc(c.id) + '">' +
+    '<button class="link" data-back type="button">← Voltar</button>' +
+    '<div id="fx-tour">' + FH.htmlTour(f.tour, H_FX) + '</div>' +
+    '<div id="fx-fila-box">' + FH.htmlFila(fxFilaItens(cv), c.id, H_FX) + '</div>' +
+    '<div id="fx-head-box">' + fxHeaderHtml(cv, d) + '</div>' +
+    '<div id="fx-acoes-box">' + FH.htmlCarrossel(tarefas, H_FX, f.ag.i) + '</div>' +
+    FH.htmlAbas(f.tab, !!cv.user_id, H_FX) +
+    '<div id="fx-corpo">' + fxCorpo(cv, d, f.tab) + '</div>' +
+    '<div id="fx-pop"></div></div>';
+}
+// Repinta a ficha inteira com os dados já carregados (troca de aba, deep link). O que ela digitou no chat sobrevive.
+function fxRepinta() {
+  var c = byC(state.sel), d = state.fx.dados; if (!c || !d) return;
+  var tx = $('chat-txt'); if (tx) state.chatRasc = tx.value;
+  $('pessoa-page').innerHTML = renderFichaV2(c, d);
+  fxPos(c);
+}
+// Depois de pintar: rola o chat para o fim (e marca como lido, como a ficha antiga fazia) e destaca a sessão do deep link.
+function fxPos(c) {
+  var f = state.fx;
+  if (f.tab === 'plataforma' && fxSessaoAberta('chat')) {
+    var fio = $('chat-fio'); if (fio) fio.scrollTop = fio.scrollHeight;
+    var tx = $('chat-txt'); if (tx && state.chatRasc) tx.value = state.chatRasc;
+    marcaChatLido(c.id);
+  }
+  if (f.flash) {
+    var alvo = document.querySelector('[data-sessao="' + f.flash + '"]');
+    if (alvo) { if (alvo.scrollIntoView) alvo.scrollIntoView({ block: 'start' }); if (alvo.classList) { alvo.classList.add('fx-flash'); setTimeout(function () { alvo.classList.remove('fx-flash'); }, 2200); } }
+    f.flash = null;
+  }
+}
+function fxSessaoAberta(id) { var v = state.fx.abertas[id]; return v === undefined ? id === 'checklist' : !!v; }
+// Atualização ao vivo: só as peças de cima e o corpo do Checklist; o que ela digita (chat, dossiê) não é tocado.
+function fxLive(c) {
+  var f = state.fx, d = f.dados; if (!d || f.cid !== c.id) return;
+  var cv = fxContato(c, d.uid);
+  f.tarefas = fxTarefas(cv, d);
+  var hb = $('fx-head-box'); if (hb) hb.innerHTML = fxHeaderHtml(cv, d);
+  if (f.ag.pop === null) { var ab = $('fx-acoes-box'); if (ab) ab.innerHTML = FH.htmlCarrossel(f.tarefas, H_FX, f.ag.i); }
+}
+function irPara(dest) {
+  var f = state.fx; if (!dest) return;
+  f.tab = dest.tab;
+  if (dest.sessao) { f.abertas[dest.sessao] = true; f.flash = dest.sessao; }
+  fxRepinta();
+}
+function fxFocaPop() { var dlg = document.querySelector('#fx-pop .fx-pop'); if (dlg && dlg.focus) dlg.focus(); }
+function fxFechaPop(devolveFoco) {
+  var f = state.fx, i = f.ag.pop; f.ag.pop = null;
+  var box = $('fx-pop'); if (box) box.innerHTML = '';
+  if (devolveFoco && i !== null) { var card = document.querySelector('.fx-card[data-i="' + i + '"]'); if (card && card.focus) card.focus(); }
+}
+function fxPintaPop() { var box = $('fx-pop'); if (box) box.innerHTML = FH.htmlPopup(state.fx.tarefas, state.fx.ag.pop, H_FX); fxFocaPop(); }
+// Contador e setas do carrossel, sem repintar (a rolagem do carrossel é preservada).
+function fxCarMostra(i, car) {
+  var f = state.fx, n = f.tarefas.length; f.ag.i = i;
+  var ct = document.querySelector('.fx-cont'), pv = document.querySelector('[data-fx="agPrev"]'), nx = document.querySelector('[data-fx="agNext"]');
+  if (ct) ct.textContent = (i + 1) + ' de ' + n;
+  if (pv) pv.disabled = i <= 0;
+  if (nx) nx.disabled = car ? car.scrollLeft + car.clientWidth >= car.scrollWidth - 4 : i >= n - 1;
+}
+function fxCarGo(delta) {
+  var f = state.fx, n = f.tarefas.length; if (!n) return;
+  var i = Math.min(Math.max(0, f.ag.i + delta), n - 1), car = document.querySelector('.fx-car'), card = car && car.children && car.children[i];
+  fxCarMostra(i, null);
+  if (car && card && car.scrollTo) {
+    var reduz = false; try { reduz = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { reduz = false; }
+    car.scrollTo({ left: card.offsetLeft, behavior: reduz ? 'auto' : 'smooth' });
+  }
+}
+function fxCarScroll(car) {
+  var cards = car.children || [], i = 0;
+  for (var k = 0; k < cards.length; k++) if (cards[k].offsetLeft <= car.scrollLeft + 8) i = k;
+  fxCarMostra(i, car);
 }
 function fichaClick(el) {
   if (!el || !el.dataset || !el.dataset.fx) return false;
-  return false;
+  var f = state.fx, ds = el.dataset, n = f.tarefas ? f.tarefas.length : 0;
+  switch (ds.fx) {
+    case 'pessoa': fxReset(); openPessoa(ds.id); return true;
+    case 'tab': if (FX_ABAS.indexOf(ds.v) >= 0) { f.tab = ds.v; fxRepinta(); } return true;
+    case 'tourAbrir': case 'tourFechar':
+      f.tour = ds.fx === 'tourAbrir'; FX.gravarPrefs(localStorage, { tour: f.tour });
+      var tb = $('fx-tour'); if (tb) tb.innerHTML = FH.htmlTour(f.tour, H_FX); return true;
+    case 'agAbrir': { var i = Number(ds.i); if (!(i >= 0 && i < n)) return true; f.ag.pop = i; fxPintaPop(); return true; }
+    case 'agFechar': fxFechaPop(true); return true;
+    case 'agNav': { if (f.ag.pop === null) return true; f.ag.pop = Math.min(Math.max(0, f.ag.pop + Number(ds.d || 0)), n - 1); fxPintaPop(); return true; }
+    case 'agIr': {
+      var t = (f.tarefas || []).filter(function (x) { return x.id === ds.id; })[0] || (f.tarefas || []).filter(function (x) { return x.k === ds.k; })[0] || (f.ag.pop !== null ? f.tarefas[f.ag.pop] : null);
+      fxFechaPop(false); if (t) irPara(t.dest); return true;
+    }
+    case 'agPrev': fxCarGo(-1); return true;
+    case 'agNext': fxCarGo(1); return true;
+  }
+  return true;
 }
+// Teclado do pop-up: Esc fecha e devolve o foco ao cartão; Tab fica preso; setas ‹ › passam de uma ação à outra.
+function fxTecla(e) {
+  var f = state.fx; if (!f || !f.ag || f.ag.pop === null) return;
+  if (e.key === 'Escape') { if (e.preventDefault) e.preventDefault(); return fxFechaPop(true); }
+  if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+    var ae = document.activeElement; if (ae && /^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName)) return;
+    if (e.preventDefault) e.preventDefault(); f.ag.pop = Math.min(Math.max(0, f.ag.pop + (e.key === 'ArrowLeft' ? -1 : 1)), f.tarefas.length - 1); return fxPintaPop();
+  }
+  if (e.key === 'Tab') {
+    var dlg = document.querySelector('#fx-pop .fx-pop'); if (!dlg || !dlg.querySelectorAll) return;
+    var fs = dlg.querySelectorAll('button:not([disabled])'); if (!fs.length) return;
+    var ult = fs[fs.length - 1], pri = fs[0], at = document.activeElement;
+    if (e.shiftKey && (at === pri || at === dlg)) { if (e.preventDefault) e.preventDefault(); ult.focus(); }
+    else if (!e.shiftKey && at === ult) { if (e.preventDefault) e.preventDefault(); pri.focus(); }
+    else if (!dlg.contains(at)) { if (e.preventDefault) e.preventDefault(); pri.focus(); }
+  }
+}
+document.addEventListener('keydown', fxTecla);
+document.addEventListener('scroll', function (e) { var t = e.target; if (t && t.classList && t.classList.contains('fx-car')) fxCarScroll(t); }, true);
 async function renderPessoa() {
   var c = byC(state.sel);
   if (!c) { $('pessoa-page').innerHTML = '<div class="empty">Pessoa não encontrada.</div>'; return; }
@@ -2373,7 +2543,7 @@ async function renderPessoa() {
     supabase.from('eventos').select('tipo,dados,criado_em').eq('contato_id', c.id).order('criado_em', { ascending: false }).limit(200),
     supabase.from('consentimentos').select('finalidade,aceito,texto,origem,criado_em').eq('contato_id', c.id).order('criado_em', { ascending: false }),
     supabase.from('emails_enviados').select('*').eq('contato_id', c.id).order('criado_em', { ascending: false }),
-    state.ptab === 'plataforma' ? supabase.from('plataforma_cliques').select('sessao,tela,alvo,rotulo,criado_em').eq('contato_id', c.id).order('criado_em', { ascending: false }).limit(300) : null,
+    (state.ptab === 'plataforma' || fichaV2Ativa()) ? supabase.from('plataforma_cliques').select('sessao,tela,alvo,rotulo,criado_em').eq('contato_id', c.id).order('criado_em', { ascending: false }).limit(300) : null,
     supabase.from('contatos').select('dossie,user_id').eq('id', c.id).maybeSingle(),
     supabase.from('contatos').select('dossie_origem,onboarding_em').eq('id', c.id).maybeSingle(),
     supabase.from('assinaturas').select('status,plano,moeda,teste_fim,periodo_fim,cancela_no_fim').eq('contato_id', c.id).maybeSingle(),   // db/crm-assinaturas.sql
@@ -2403,7 +2573,7 @@ async function renderPessoa() {
   var resps = R.filter(function (x) { return x.contato_id === c.id; });
   var h4 = 'font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-3); margin:0 0 8px';
   var jor = montaJornada(r[9]);
-  if (!state.ptab) state.ptab = mails.length || resps.length ? 'conversa' : 'ficha';
+  if (!state.ptab && !fichaV2Ativa()) state.ptab = mails.length || resps.length ? 'conversa' : 'ficha';   // a ficha v2 abre pela conversão (FX.abaPadrao)
   var tabs = '<div class="ptabs" role="tablist" aria-label="Ficha da pessoa">' + [['conversa', 'Conversa'], ['plataforma', 'Plataforma'], ['ficha', 'Ficha']].map(function (t) {
     return '<button class="ptab" role="tab" type="button" data-ptab="' + t[0] + '" aria-selected="' + (state.ptab === t[0]) + '">' + t[1] +
       (t[0] === 'conversa' && resps.some(function (x) { return x.status === 'nova'; }) ? ' <span class="count">nova</span>' : '') +
@@ -2453,6 +2623,7 @@ async function renderPessoa() {
   var ct = $('conv-txt');
   if (ct) { var th = $('conv-thread'); if (th) th.scrollTop = th.scrollHeight; }
   ligarAoVivo(c, uid);
+  if (fichaV2Ativa()) return fxPos(c);
   if (state.ptab === 'plataforma' && state.pstab === 'chat') { var fio0 = $('chat-fio'); if (fio0) fio0.scrollTop = fio0.scrollHeight; marcaChatLido(c.id).then(function () { var a0 = $('plat-abas'); if (a0) a0.innerHTML = platAbasHtml(); }); }
 }
 
@@ -4127,6 +4298,7 @@ async function enviarLinkPagamento(btn) {
 document.addEventListener('click', async function (e) {
   if (e.target.id === 'compose-backdrop') return closeCompose();
   var t = e.target.closest('button, tr[data-id]'); if (!t) return;
+  var fxr = fichaClick(t); if (fxr !== false) return fxr;   // ficha v2 (data-fx); false = não é com ela
   if (t.matches('.nav')) return show(t.dataset.view);
   if (t.dataset.go) { if (t.dataset.viewPreset) applyPreset(t.dataset.viewPreset); return show(t.dataset.go); }
   if (t.dataset.preset) return applyPreset(t.dataset.preset);
