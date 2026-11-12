@@ -16,3 +16,7 @@ id = "20fde19dced446d789215941dda6d813"
 binding = "EVENTS_DB"
 database_name = "por-dentro-events"
 database_id = "78650fec-7eb1-4f0c-92a8-ca8f8c1ee89b"
+
+# Workers AI: transcrição do áudio do 1:1 pago (rota /api/audio/transcrever). O áudio não é guardado.
+[ai]
+binding = "AI"

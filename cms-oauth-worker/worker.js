@@ -3004,7 +3004,7 @@ const CRM_NOTION_PERSONAS = CRM_ONB_PERSONAS.concat(['outra']);
 const CRM_NOTION_DORES = { Prazo: 'prazo', Dinheiro: 'dinheiro', Documentos: 'papelada', Idioma: 'frances', Moradia: 'moradia', Visto: null, Emprego: null, Família: null };
 const CRM_NOTION_DONOS = ['Ela', 'Ingryd'];
 const CRM_NOTION_CANAIS = ['Plataforma', 'E-mail', 'Convite de acesso', 'Instagram', 'Só eu', 'Fora do CRM'];
-const CRM_NOTION_BOTOES = ['anexar_documento', 'gerar_rascunho', 'pesquisar', 'confirmar', 'lembrar_ela', 'marcar_marco', 'copiar_mensagem', 'enviar_convite', 'n/a'];
+const CRM_NOTION_BOTOES = ['anexar_documento', 'gerar_rascunho', 'pesquisar', 'confirmar', 'lembrar_ela', 'marcar_marco', 'copiar_mensagem', 'enviar_convite', 'conferir_documentos', 'n/a'];
 const CRM_NOTION_ESTADOS = ['aberta', 'aguardando_ela', 'concluida'];
 
 function crmNotionRecusa(codigo, erro) { return { ok: false, status: 422, codigo, erro }; }
@@ -3306,7 +3306,7 @@ function crmNotionTabela(linhas, largura) {
     else if (it.canal === 'Só eu') r.fora.so_eu++;
     else r.fora.fora_do_crm++;
   }
-  return { ok: true, ...r };
+  return { ok: true, ...r, itens };
 }
 
 // Junta propriedades + corpo na PROPOSTA (o formato do Pós-call, com o bloco "notion" a mais). Nada aqui toca o banco.
@@ -3352,7 +3352,7 @@ function crmNotionMontar(p, c, meta) {
   const campos = {};
   for (const [k, x] of Object.entries(v.campos)) campos[k] = { valor: x.valor, confianca: 'alta', trecho: 'Notion · ' + rotulo[k] };
 
-  return { ok: true, proposta: {
+  return { ok: true, itens: t.itens, proposta: {
     origem: 'notion',
     notion: {
       pagina: meta.pagina, editada_em: meta.editada_em, resumo: c.resumo || '', duvidas: c.duvidas || [], bilan: c.bilan, pessoa: p.pessoa, persona: p.persona || null, fase: p.fase || null, objetivo: p.objetivo, dores: p.dores,
@@ -3379,6 +3379,113 @@ function crmNotionResumo(proposta) {
     de_fora: { so_eu: n.fora.so_eu, fora_do_crm: n.fora.fora_do_crm },
     blocos_ignorados: n.blocos_ignorados
   };
+}
+
+// ---------- O caso da pessoa (rascunhos): achados, ações, itens do board e avisos ----------
+// Tudo que sai daqui entra no CRM como RASCUNHO (crm_caso_importar): nada chega à pessoa sem a Ingryd revisar e publicar.
+// As chaves de origem tornam a leitura repetível: ler a mesma página de novo atualiza rascunhos e nunca duplica.
+const CRM_CASO_CANAIS = { 'Plataforma': 'plataforma', 'E-mail': 'email', 'Convite de acesso': 'convite', 'Instagram': 'instagram', 'Só eu': 'so_eu' };
+const CRM_CASO_BOTOES = ['gerar_rascunho', 'marcar_marco', 'copiar_mensagem', 'anexar_documento', 'pesquisar', 'confirmar', 'conferir_documentos'];
+async function crmCasoHash(texto) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(String(texto).toLowerCase().replace(/\s+/g, ' ').trim()));
+  return [...new Uint8Array(buf)].slice(0, 6).map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+// Divide "a; b, c (d, e)" em itens, sem partir vírgula dentro de parênteses.
+function crmCasoLista(texto) {
+  const out = []; let atual = '', nivel = 0;
+  for (const ch of String(texto || '')) {
+    if (ch === '(') nivel++; else if (ch === ')') nivel = Math.max(0, nivel - 1);
+    if ((ch === ';' || ch === '\n' || (ch === ',' && nivel === 0))) { if (atual.trim()) out.push(atual.trim()); atual = ''; } else atual += ch;
+  }
+  if (atual.trim()) out.push(atual.trim());
+  return out;
+}
+async function crmNotionCaso(p, c, itens, meta) {
+  const limpa = (t, n) => crmOnbLimpaTexto(t, n, false);
+  const achados = [];
+  const vistos = new Set();
+  const add = async (tipo, texto, certeza) => {
+    const t = limpa(texto, 400); if (!t || achados.length >= 40) return;
+    const chave = 'nb_' + await crmCasoHash(t); if (vistos.has(chave)) return; vistos.add(chave);
+    achados.push({ chave, tipo, texto: t, origem: 'conversa', certeza });
+  };
+  if (c.resumo) { vistos.add('resumo'); achados.push({ chave: 'resumo', tipo: 'fato', texto: limpa(c.resumo, 400), origem: 'conversa', certeza: 'inferido' }); }
+  const aConfirmar = /(vou|vamos|iremos)\s+(confirmar|conferir|verificar|checar)|a confirmar|em conferência|te respondo/i;
+  for (const d of (c.bilan.duvidas.length ? c.bilan.duvidas : (c.duvidas || []))) await add(aConfirmar.test(d) ? 'duvida' : 'fato', d, aConfirmar.test(d) ? 'a_confirmar' : 'literal');
+  for (const r of c.bilan.respostas) if (!/^\s*(te\s+)?envio\b/i.test(r)) await add('duvida', r, 'a_confirmar');
+
+  const acoes = []; const ns = new Set();
+  for (const it of itens) {
+    if (it.canal === 'Fora do CRM') continue;
+    let n = it.n; while (ns.has(n) && n < 999) n++; if (ns.has(n) || acoes.length >= 100) continue; ns.add(n);
+    const dono = it.dono === 'Ela' ? 'ela' : 'ingryd', canal = CRM_CASO_CANAIS[it.canal];
+    if (!canal) continue;
+    const a = { n, titulo: limpa(it.titulo, 300), dono, canal, botao: CRM_CASO_BOTOES.includes(it.botao) ? it.botao : null, estado: it.estado,
+      prazo: it.prazo && it.prazo.data ? it.prazo.data : null, certeza: /literal/i.test(it.origem_certeza) ? 'literal' : 'inferido' };
+    if (!a.prazo && it.prazo && it.prazo.texto) { a.prazo_texto = it.prazo.texto.slice(0, 80); a.prazo_a_confirmar = true; }
+    else if (it.prazo && it.prazo.a_confirmar) a.prazo_a_confirmar = true;
+    if (dono === 'ela' && canal === 'plataforma') a.passo_chave = 'pend_' + n;
+    // "Conferir documentos": o passo vira uma lista dos documentos com o selo certo (tradução juramentada ou apostila de Haia).
+    if (a.botao === 'conferir_documentos') {
+      const selo = /tradu[cç]/i.test(a.titulo) ? 'traducao' : /haia|apostil/i.test(a.titulo) ? 'haia' : null;
+      if (selo) a.passo_chave = 'docs:' + selo; else a.botao = null;
+    }
+    acoes.push(a);
+  }
+
+  const board = [];
+  const doc = async (prefixo, texto, ordem, direcao) => {
+    const t = limpa(texto.replace(/^(enviar|anexar|mandar)\s+(o|a|os|as|um|uma)?\s*/i, ''), 120); if (!t || board.length >= 50) return;
+    board.push({ origem_chave: prefixo + (prefixo.endsWith(':') ? await crmCasoHash(t) : ''), tipo: 'documento', titulo: t.charAt(0).toUpperCase() + t.slice(1), ordem, dados: { rotulo: t, direcao } });
+  };
+  const secoes = [];
+  const sec = (titulo, lista, estadoFn) => { if (lista.length) secoes.push({ titulo, itens: lista.slice(0, 10).map((x) => ({ texto: limpa(x, 220), estado: estadoFn(x) })) }); };
+  sec('Dúvidas que tiramos na conversa', c.bilan.duvidas, (x) => aConfirmar.test(x) ? 'em_conferencia' : 'confirmado');
+  sec('Seus próximos passos', c.bilan.proximos, () => 'confirmado');
+  sec('O que eu respondo ou confirmo pra você', c.bilan.respostas, () => 'em_conferencia');
+  let temBilan = false;
+  if (secoes.length) {
+    const dados = { secoes };
+    // Um bilan por conversa (a chave leva o começo do id da página do Notion): com a data da ligação e palavras-chave para a pessoa
+    // se lembrar do assunto à primeira vista (as dores marcadas na página; a Ingryd ajusta no CRM).
+    const dia = /^\d{4}-\d{2}-\d{2}/.test(String(p.data_ligacao || '')) ? String(p.data_ligacao).slice(0, 10) : null;
+    if (dia) dados.data = dia;
+    const palavras = (p.dores || []).map((x) => limpa(x, 30)).filter(Boolean).slice(0, 5);
+    if (palavras.length) dados.palavras = palavras;
+    if (JSON.stringify(dados).length <= 7500) { board.push({ origem_chave: 'notion:bilan:' + String(meta.pagina || '').slice(0, 8), tipo: 'bilan', titulo: dia ? 'Conversa de ' + dia.split('-').reverse().join('/') : 'Bilan da nossa conversa', ordem: 1, dados }); temBilan = true; }
+  }
+  if (p.prazo_chave && (p.prazo_chave.data || p.prazo_chave.texto)) {
+    board.push({ origem_chave: 'notion:prazo_chave', tipo: 'marco', titulo: 'Prazo-chave', ordem: 5, dados: p.prazo_chave.data ? { data: p.prazo_chave.data, a_confirmar: false } : { a_confirmar: true, nota: limpa(p.prazo_chave.texto, 200) } });
+  }
+  for (const it of itens) if (it.dono === 'Ingryd' && it.canal === 'Plataforma' && it.botao === 'anexar_documento') await doc('notion:envio:' + it.n, it.titulo, 10 + Math.min(it.n, 9), 'recebe');
+  let o = 20;
+  for (const d of crmCasoLista(p.documentos_pendentes).slice(0, 12)) await doc('notion:doc:', d, o++, 'reune');
+
+  const avisos = [];
+  if (temBilan) avisos.push({ origem_chave: 'notion:aviso:bilan', tipo: 'proposta', titulo: 'O bilan da nossa conversa está aqui', texto: 'Guardei a cópia do e-mail no seu Espaço.', destino: { tela: 'guias' }, dias_apos: 0 });
+  if (p.persona === 'pvt') avisos.push({ origem_chave: 'notion:aviso:fim_pvt', tipo: 'pergunta', titulo: 'Quando termina o seu PVT?', texto: 'Com essa data eu calculo o que cabe antes de você viajar.', resposta_tipo: 'data', grava_em: 'respostas.fim_pvt', dias_apos: 0 });
+  if ((p.dores || []).includes('Idioma')) avisos.push({ origem_chave: 'notion:aviso:nivel_frances', tipo: 'pergunta', titulo: 'Qual é o seu nível de francês hoje?', resposta_tipo: 'opcoes', opcoes: ['Iniciante (A1/A2)', 'Intermediário (B1)', 'Avançado (B2 ou mais)', 'Não sei'], grava_em: 'respostas.nivel_frances', dias_apos: 1 });
+
+  return { versao: 1, fonte: { pagina: meta.pagina, editada_em: meta.editada_em }, achados, acoes, itens: board, avisos };
+}
+
+// Entrega o caso ao banco como rascunhos. Nunca derruba a leitura: se falhar, a resposta diz por quê e a ficha e a proposta seguem.
+async function crmCasoImportar(auth, contatoId, caso) {
+  try {
+    const r = await fetch(`${CRM_SUPABASE_URL}/rest/v1/rpc/crm_caso_importar`, {
+      method: 'POST', headers: { ...auth, 'Content-Type': 'application/json' }, body: JSON.stringify({ p_contato: contatoId, p_payload: caso })
+    });
+    let corpo = null; try { corpo = await r.json(); } catch (e) { /* segue */ }
+    if (r.ok && corpo && typeof corpo === 'object') return { ok: true, achados: corpo.achados, acoes: corpo.acoes, itens: corpo.itens, avisos: corpo.avisos };
+    const msg = String((corpo && (corpo.message || corpo.hint)) || '') + String((corpo && corpo.code) || '');
+    console.error('crm/notion: crm_caso_importar respondeu ' + r.status + ' ' + (corpo && corpo.code));
+    if (r.status === 404 || /Could not find the function|PGRST202/.test(msg)) return { ok: false, codigo: 'sql_pendente', erro: 'Falta rodar admin/crm/db/crm-caso.sql e crm-caso-importar.sql no SQL Editor do Supabase. A ficha e a proposta foram lidas normalmente.' };
+    if (/sem_permissao/.test(msg)) return { ok: false, codigo: 'sem_permissao', erro: 'Sem permissão para guardar o caso.' };
+    return { ok: false, codigo: 'caso_nao_importado', erro: 'Li a página, mas não consegui guardar o caso como rascunho. Leia de novo.' };
+  } catch (e) {
+    console.error('crm/notion: crm_caso_importar falhou — ' + (e && e.name));
+    return { ok: false, codigo: 'caso_nao_importado', erro: 'Li a página, mas não consegui guardar o caso como rascunho. Leia de novo.' };
+  }
 }
 
 async function handleCrmOnboardingNotion(request, env) {
@@ -3432,13 +3539,17 @@ async function handleCrmOnboardingNotion(request, env) {
   const contatoId = String((ficha && ficha.contato_id) || '');
   if (!CRM_UUID_RE.test(contatoId)) return json({ error: 'Li a página, mas não consegui criar a ficha. Tente de novo.', codigo: 'ficha_nao_criada' }, 500);
 
+  // 1b. O caso (achados, ações, itens do board, avisos) como RASCUNHOS. Opcional: {"caso": false} pula. Nunca derruba a leitura.
+  const casoRes = body.caso === false ? { ok: true, pulado: true }
+    : await crmCasoImportar(auth, contatoId, await crmNotionCaso(props.p, cp.corpo, m.itens, { pagina: alvo.id, editada_em: editada }));
+
   // 2. A proposta pendente. A mesma página, sem edição nova, devolve a que já espera decisão (sem gravar outra).
   const hash = await crmPosHash(contatoId, 'notion:' + alvo.id + ':' + editada, 'v3');
   const semTabela = { error: 'Falta rodar admin/crm/db/crm-pos-call.sql no SQL Editor do Supabase.', codigo: 'sql_pendente' };
   const pendente = await fetch(`${CRM_SUPABASE_URL}/rest/v1/pos_call_propostas?select=id,proposta&contato_id=eq.${contatoId}&hash_entrada=eq.${hash}&status=eq.pendente&limit=1`, { headers: auth });
   if (pendente.status === 404) return json(semTabela, 500);
   const antiga = pendente.ok ? (await pendente.json())[0] : null;
-  const resposta = (id, proposta, reutilizada) => json({ ok: true, contato_id: contatoId, criado: !!ficha.criado, reutilizada, proposta_id: id, email: props.p.email, aplicado: { preenchidos: Array.isArray(ficha.preenchidos) ? ficha.preenchidos : [], ja_preenchidos: Array.isArray(ficha.ja_preenchidos) ? ficha.ja_preenchidos : [] }, ...crmNotionResumo(proposta) });
+  const resposta = (id, proposta, reutilizada) => json({ ok: true, contato_id: contatoId, criado: !!ficha.criado, reutilizada, proposta_id: id, caso: casoRes, email: props.p.email, aplicado: { preenchidos: Array.isArray(ficha.preenchidos) ? ficha.preenchidos : [], ja_preenchidos: Array.isArray(ficha.ja_preenchidos) ? ficha.ja_preenchidos : [] }, ...crmNotionResumo(proposta) });
   if (antiga && antiga.proposta && antiga.proposta.notion) return resposta(antiga.id, antiga.proposta, true);
 
   const ins = await fetch(`${CRM_SUPABASE_URL}/rest/v1/pos_call_propostas`, {
@@ -4031,6 +4142,19 @@ async function crmEnviarAcessoConfirmado(env, contato, assinatura) {
   if (!marca.ok) console.error('crm/stripe: e-mail de acesso enviado mas não marquei — ' + marca.status);
 }
 
+async function crmStripe1a1(env, obj) {
+  const m = /^1a1_(20|40)$/.exec(String((obj.metadata && obj.metadata.por_dentro) || ''));
+  if (!m || obj.payment_status !== 'paid') return json({ ok: true, ignorado: true });   // outra compra avulsa, ou ainda não paga
+  const contato = await crmContatoDoPagamento(env, obj);
+  if (!contato) throw new Error('não achei nem criei a ficha deste pagamento');
+  const res = await fetch(`${CRM_SUPABASE_URL}/rest/v1/rpc/crm_1a1_pago`, { method: 'POST', headers: crmServiceHeaders(env),
+    body: JSON.stringify({ p_contato: contato.id, p_minutos: Number(m[1]), p_sessao: String(obj.id || '') }) });
+  if (res.status === 404) { console.error('crm/stripe: falta rodar admin/crm/db/crm-1a1.sql'); return json({ error: 'Falta rodar crm-1a1.sql.' }, 500); }
+  if (!res.ok) throw new Error('crm_1a1_pago respondeu ' + res.status);
+  const r = await res.json().catch(() => ({}));
+  return json({ ok: true, um_a_um: true, duplicado: !!(r && r.duplicado) });
+}
+
 async function handleStripeWebhook(request, env) {
   if (!env.STRIPE_WEBHOOK_SECRET || !env.STRIPE_SECRET_KEY || !env.SUPABASE_SERVICE_ROLE_KEY) {
     console.error('crm/stripe: faltam STRIPE_WEBHOOK_SECRET, STRIPE_SECRET_KEY ou SUPABASE_SERVICE_ROLE_KEY no Worker');
@@ -4048,6 +4172,8 @@ async function handleStripeWebhook(request, env) {
   try {
     let contato = null, assinatura, subId;
     if (ev.type === 'checkout.session.completed') {
+      // O 1:1 pago (Payment Link avulso com o metadado por_dentro = 1a1_20 ou 1a1_40): libera o áudio e agenda o aviso do dia seguinte.
+      if (obj.mode === 'payment') return await crmStripe1a1(env, obj);
       if (obj.mode !== 'subscription' || !obj.subscription) return json({ ok: true, ignorado: true });   // compras avulsas (produtos digitais) não são aqui
       const sub = await stripeBuscarAssinatura(env, obj.subscription);
       if (!sub) throw new Error('não li a assinatura no Stripe');
@@ -4087,6 +4213,47 @@ async function handleStripeWebhook(request, env) {
     console.error('crm/stripe: ' + ev.type + ' ' + ev.id + ' — ' + (e && e.message));
     return json({ error: 'Não consegui processar. O Stripe vai tentar de novo.' }, 500);
   }
+}
+
+// ---- O áudio do 1:1 pago: o app grava, o Worker transcreve, o áudio não é guardado ----
+//   POST /api/audio/transcrever   corpo = o áudio (audio/webm, audio/mp4, audio/ogg…), com o token da sessão da própria pessoa.
+//   Só quem tem o áudio liberado (meu_1a1().audio, depois de pagar o 1:1). Devolve { ok, texto }; a pessoa confere o texto e envia
+//   como uma mensagem normal do chat. Nada do áudio nem do texto vai para o log ou para o banco por aqui.
+//   Precisa do binding `AI` (Workers AI) no wrangler.toml; sem ele a rota responde "não configurada" e o app só some com o microfone.
+const AUDIO_MAX_BYTES = 3 * 1024 * 1024;     // ~3 min de voz em opus
+const AUDIO_MAX_POR_JANELA = 20;
+const AUDIO_MODELO = '@cf/openai/whisper-large-v3-turbo';
+const AUDIO_DICA = 'Conversa em português do Brasil sobre vida na França: visto, préfecture, titre de séjour, Campus France, Alliance Française, OFII, CAF, Ameli.';
+function audioBase64(buf) {
+  const bytes = new Uint8Array(buf); let bin = '';
+  for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+  return btoa(bin);
+}
+async function handleAudioTranscrever(request, env) {
+  const token = (request.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '').trim();
+  if (!token) return json({ error: 'Entre de novo na sua conta.' }, 401);
+  const uRes = await fetch(`${CRM_SUPABASE_URL}/auth/v1/user`, { headers: { apikey: CRM_SUPABASE_ANON_KEY, Authorization: `Bearer ${token}` } });
+  const user = uRes.ok ? await uRes.json().catch(() => null) : null;
+  if (!user || !CRM_UUID_RE.test(String(user.id || ''))) return json({ error: 'Entre de novo na sua conta.' }, 401);
+  // O banco diz se o áudio está liberado para esta pessoa (pagou o 1:1 nos últimos 30 dias).
+  const eRes = await fetch(`${CRM_SUPABASE_URL}/rest/v1/rpc/meu_1a1`, { method: 'POST', headers: { apikey: CRM_SUPABASE_ANON_KEY, Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: '{}' });
+  const dir = eRes.ok ? await eRes.json().catch(() => null) : null;
+  if (!dir || dir.audio !== true) return json({ error: 'O áudio é liberado depois que você paga o 1:1.', codigo: 'audio_nao_liberado' }, 403);
+  if (!env.AI) return json({ error: 'A transcrição ainda não está ligada. Escreva por texto.', codigo: 'transcricao_nao_configurada' }, 503);
+  const tipo = String(request.headers.get('Content-Type') || '').toLowerCase();
+  if (!/^(audio|video)\//.test(tipo)) return json({ error: 'Envie o áudio como audio/webm, audio/mp4 ou audio/ogg.', codigo: 'formato' }, 415);
+  const tam = Number(request.headers.get('Content-Length') || 0);
+  if (tam > AUDIO_MAX_BYTES) return json({ error: 'Áudio longo demais. Grave até 3 minutos.', codigo: 'audio_grande' }, 413);
+  if (!(await crmLimite(env, 'audio', user.id, AUDIO_MAX_POR_JANELA))) return json({ error: 'Muitos áudios seguidos. Espere alguns minutos.', codigo: 'limite' }, 429);
+  const buf = await request.arrayBuffer();
+  if (!buf.byteLength) return json({ error: 'Áudio vazio.', codigo: 'audio_vazio' }, 400);
+  if (buf.byteLength > AUDIO_MAX_BYTES) return json({ error: 'Áudio longo demais. Grave até 3 minutos.', codigo: 'audio_grande' }, 413);
+  let saida;
+  try { saida = await env.AI.run(AUDIO_MODELO, { audio: audioBase64(buf), language: 'pt', task: 'transcribe', initial_prompt: AUDIO_DICA }); }
+  catch (e) { console.error('audio: a transcrição falhou — ' + (e && e.name)); return json({ error: 'Não consegui transcrever agora. Tente de novo ou escreva por texto.', codigo: 'transcricao_falhou' }, 502); }
+  const texto = String((saida && saida.text) || '').replace(/\s+/g, ' ').trim().slice(0, 1000);   // o chat aceita até 1000 letras
+  if (!texto) return json({ error: 'Não entendi o áudio. Tente gravar de novo, mais perto do microfone.', codigo: 'sem_fala' }, 422);
+  return json({ ok: true, texto, cortado: String((saida && saida.text) || '').trim().length > 1000 });
 }
 
 // ---- A assinatura vista pela própria cliente, e o botão "Resiliar plano" do perfil do app ----
@@ -4343,6 +4510,9 @@ export default {
       }
       if (url.pathname === '/api/planos/contexto' && request.method === 'POST') {
         return await handlePlanosContexto(request, env);
+      }
+      if (url.pathname === '/api/audio/transcrever' && request.method === 'POST') {
+        return await handleAudioTranscrever(request, env);
       }
       if (url.pathname === '/api/assinatura/minha' && request.method === 'GET') {
         return await handleAssinaturaMinha(request, env);

@@ -158,6 +158,39 @@ Como rodar: primeiro no Supabase de **teste**, depois no de **produção**. Depo
 `db/auditoria-isolamento.sql` e `db/conferir-banco.sql` (os dois do repositório do app); os dois precisam voltar **vazios**. Testes: `db/testes` →
 `APP_DB_DIR=<POR DENTRO APP>/db npm run test:taxonomia` (SQL) e `npm run test:taxonomia-ui` (agrupamento, filtros e modo de reserva).
 
+## O caso da pessoa: compreensão, board e notificações do assistente (12/11)
+
+`db/crm-caso.sql` (rodar **depois** de `crm-fase2.sql`, `crm-propostas.sql` e `crm-chat.sql`; idempotente, só acrescenta): quatro tabelas, todas só de
+admin pela RLS. A pessoa não tem política nenhuma; ela entra só por funções que decidem por `meu_contato_id()`.
+
+| Tabela | O que guarda |
+|---|---|
+| `caso_achados` | A compreensão da conversa: fato, dedução ou dúvida, com origem, certeza e estado (conferir, ok, descartado). Interna: ela nunca lê. |
+| `caso_acoes` | A tabela Pendência × Canal do Notion. As dela, pela plataforma e publicadas, viram passos no Checklist. "Fora do CRM" não existe aqui. |
+| `board_itens` | O que ela vê: escola, modelo, documento, marco e a cópia do bilan. `dados` é da equipe e `dados_dela` é o que ela preenche, cada um só com as chaves do tipo. |
+| `caso_avisos` | As notificações do assistente (pergunta, proposta, inteligência, oferta), com a data que você decide: fixa, ou "N dias depois do primeiro acesso" (às 9h de Paris). |
+
+O que o banco impõe sozinho, sem depender do painel: nada é publicado nem agendado sem consentimento `servico` da pessoa e sem passar pela revisão
+(proposto → revisado → publicado); a resposta a uma pergunta só grava numa lista fechada de chaves de `contatos.respostas` e só como data ou uma das
+opções; a pessoa lê tudo por `meu_caso()` (só o publicado e o liberado) e escreve por `responder_aviso()`, `salvar_dados_dela()`, `marcar_acao()`,
+`marcar_aviso_lido()`, `adiar_aviso()` e `dispensar_aviso()`. Você publica e retira com `crm_board_publicar()` e `crm_board_retirar()` e agenda com
+`crm_aviso_agendar()`. Tudo o que você faz (conferir, publicar, aprovar) fica na linha do tempo **sem** zerar o "parada há N dias"; o que a pessoa faz zera.
+
+O app chama `caso_primeiro_acesso()` uma vez por sessão. Para o sininho acender no dia certo, agende `select public.crm_avisos_materializar();` uma vez por
+dia, logo depois das 9h de Paris (Database → Cron). Sem isso o aviso continua visível no app; só o sininho não acende.
+
+**Ainda por decidir** (marcado "conferir" no desenho): o fuso da liberação (hoje fixo em Paris), se o projeto usa Storage privado para os arquivos (hoje
+o item tem um link https), qual consentimento libera as mensagens (hoje `servico`) e se o Checklist mistura os passos dela na tela ou grava em
+`checklist_items` (a proposta é misturar). A rota do Worker que lê o Notion e grava os achados como rascunho, a aba "Caso" na ficha e a tela Espaço no app
+ainda **não** foram escritas.
+
+Como rodar: primeiro no Supabase de **teste**, depois no de **produção**. Depois de rodar, nos dois, ela roda no SQL Editor `db/auditoria-isolamento.sql` e
+`db/conferir-banco.sql` (os dois do repositório do app); os dois precisam voltar **vazios**. O `conferir-banco.sql` já lista as tabelas e funções novas.
+Testes: `db/testes` → `APP_DB_DIR=<POR DENTRO APP>/db npm run test:caso` (192 verificações) e `npm run test:conferir`.
+
+Desfazer: `drop table if exists public.caso_avisos, public.board_itens, public.caso_acoes, public.caso_achados cascade;` e rodar `crm-propostas.sql` de
+novo (devolve a lista de `crm_evento_recente()`). **Cuidado: isso apaga tudo o que foi guardado do caso.**
+
 ## Etapas
 
 1. **Fase 1 — captura** (feita, repo POR-DENTRO-APP): `contatos`, `eventos`, `consentimentos`, `capturar_lead()`, `admins`.
@@ -185,3 +218,13 @@ Como rodar: primeiro no Supabase de **teste**, depois no de **produção**. Depo
 - **Subpersona** = `contatos.caminho` (a escolha do pop-up de cada persona).
 - **"Parada há N dias"** conta só o que a *pessoa* faz; e-mail, sinal ou mudança de estágio seus não zeram o contador.
 - Visão "Au pair sem certificado" usa `apCertificado = 'nao'` (o desenho dizia "sem matrícula", campo que o funil não coleta).
+
+**Aba Caso (12/11):** na ficha, Plataforma → **Caso**. Mostra os achados (conferir, descartar, editar), as ações (publicar para ela as que são dela na plataforma, concluir pela equipe), o board (proposto → revisado → publicado, com link https opcional) e os avisos da IAssistente (aprovar e escolher dias após o primeiro acesso ou uma data fixa, 9h de Paris). Só leem e escrevem as tabelas do caso e chamam `crm_board_publicar`, `crm_board_retirar` e `crm_aviso_agendar`; consentimento e revisão são impostos pelo banco, a tela só mostra o motivo. Teste: `npm run test:caso-ui`. Ainda não há: criar item ou aviso do zero, nem escolas e modelos sugeridos sozinhos.
+
+**O fluxo dos avisos e a entrega (12/11, `db/crm-caso-fluxo.sql`, rode depois de crm-caso.sql e crm-caso-importar.sql):** os avisos de cada pessoa formam uma **fila** com uma **pausa** em dias depois do aviso anterior (o primeiro conta do primeiro acesso dela). Ninguém digita data: ela nasce do anterior, às 9h de Paris. **Enviar agora** a próxima mensagem faz o resto da fila andar o mesmo tanto, e **atrasar/adiantar** um aviso muda a pausa dele e tudo depois acompanha, sempre mantendo as pausas combinadas. Data fixa vira âncora. A próxima mensagem de cada pessoa aparece na **Hoje** (bloco "Próximas mensagens da IAssistente") e no topo da aba **Caso**, com os botões. A entrega é a `crm_avisos_materializar()` chamada de hora em hora pela **pg_cron** (ligue em Database → Extensions e rode o arquivo de novo; sem ela o arquivo só avisa, e o aviso continua aparecendo no Espaço quando ela abrir o app, mas o sininho não acende sozinho). Teste: `npm run test:caso-fluxo`.
+
+**O 1:1 pago (12/11, `db/crm-1a1.sql`, rode depois de crm-caso-fluxo.sql):** a pessoa escolhe 20 ou 40 min no chat e vai ao checkout (Payment Link do Stripe, com o metadado `por_dentro` = `1a1_20` ou `1a1_40`). Quando o Stripe avisa do pagamento, o Worker chama `crm_1a1_pago`: libera o áudio no chat por 30 dias e agenda o aviso "Antecipe o assunto do seu 1:1" para o dia seguinte, 9h de Paris. O áudio é transcrito no Worker (Workers AI, README do Worker, seção 32), nunca guardado, e a pessoa confere o texto antes de enviar. Teste: `npm run test:1a1`.
+
+**Guias dela (12/11, `db/crm-caso-guias.sql`, rode depois de crm-caso-importar.sql):** a aba Guias do app tem três grupos que abrem e fecham: **Bilans das nossas conversas** (um por conversa, com a data e até 6 palavras-chave no resumo, para ela se lembrar do assunto antes de abrir), **Documentos que a equipe te manda** (cada um com o "o que é" e o botão Abrir, ou "chega em breve") e **Mensagens prontas** (cada uma com o nome e o "o que é"). Na aba Caso do CRM, **+ Documento**, **+ Mensagem pronta** e **+ Bilan** criam o item (entra como "proposto": você revisa e publica); Editar ajusta nome, "o que é", link, data e palavras; Remover (em dois toques) apaga o que ainda não foi publicado. A leitura do Notion cria um bilan por conversa (a chave leva o começo do id da página), com a data da ligação e as dores como palavras-chave. Teste: `npm run test:caso-guias`.
+
+**Escolas que a pessoa acrescenta (12/11, `db/crm-escolas-dela.sql`, rode depois de crm-caso.sql):** no Espaço, o bloco "Escolas para você contatar" abre e fecha e tem um **+** sempre à vista: ela informa o nome, o link (https) e o que já sabe da escola (até 20 escolas). Entram em `escolas_dela` (só admin lê a tabela; a pessoa usa `minhas_escolas`, `adicionar_escola` e `remover_escola`). Você vê na aba Caso, em "Escolas que ela acrescentou" (só leitura). Teste: `npm run test:escolas-dela`.
