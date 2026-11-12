@@ -63,3 +63,32 @@ export function htmlTour(aberto, h) {
     '<li><b>Sessões</b>: cada uma abre e fecha. Arraste, ou use as setas, para pôr na ordem que preferir.</li></ol>' +
     '<button class="btn" type="button" data-fx="tourFechar">Entendi</button></section>';
 }
+
+// ---------- Minhas próximas ações: carrossel e pop-up (Task 9) ----------
+// tarefas: Tarefa[] de FX.tarefasDe; i = índice do primeiro cartão visível (0 por padrão).
+export function htmlCarrossel(tarefas, h, i) {
+  const e = h.esc, ts = tarefas || [], n = ts.length, ini = Math.min(Math.max(0, i || 0), Math.max(0, n - 1));
+  if (!n) return '<section class="fx-acoes" id="fx-acoes" aria-label="Minhas próximas ações"><div class="fx-acoes-cab"><h3 class="fx-h3">Minhas próximas ações</h3></div><p class="sub" style="margin:0">Nenhuma ação pendente. Quando ela responder ou o app perceber algo, aparece aqui.</p></section>';
+  return '<section class="fx-acoes" id="fx-acoes" aria-label="Minhas próximas ações"><div class="fx-acoes-cab"><h3 class="fx-h3">Minhas próximas ações</h3>' +
+    '<div class="fx-acoes-nav"><span class="fx-cont" aria-live="polite">' + (ini + 1) + ' de ' + n + '</span>' +
+    '<button type="button" class="fx-seta" data-fx="agPrev" aria-label="Ações anteriores"' + (ini <= 0 ? ' disabled' : '') + '>‹</button>' +
+    '<button type="button" class="fx-seta" data-fx="agNext" aria-label="Próximas ações"' + (ini >= n - 1 ? ' disabled' : '') + '>›</button></div></div>' +
+    '<div class="fx-car" role="region" aria-roledescription="carrossel" aria-label="Minhas próximas ações" tabindex="0">' + ts.map((t, k) =>
+      '<button type="button" class="fx-card' + (k === 0 ? ' first' : '') + '" data-fx="agAbrir" data-i="' + k + '" aria-label="Ação ' + (k + 1) + ' de ' + n + ': ' + e(t.t) + '. Abrir detalhes">' +
+      '<span class="fx-n">' + (k + 1) + '</span><span class="fx-t">' + e(t.t) + '</span><span class="fx-tag fx-tag-' + e(String(t.tag || '').toLowerCase()) + '">' + e(t.tag) + '</span></button>').join('') + '</div></section>';
+}
+
+export function htmlPopup(tarefas, i, h) {
+  const e = h.esc, ts = tarefas || [], n = ts.length;
+  if (!n) return '';
+  const k = Math.min(Math.max(0, i || 0), n - 1), t = ts[k];
+  return '<button type="button" class="fx-pop-bg" data-fx="agFechar" aria-label="Fechar" tabindex="-1"></button>' +
+    '<div class="fx-pop" role="dialog" aria-modal="true" aria-labelledby="fx-pop-t" tabindex="-1">' +
+    '<p class="fx-pop-tipo"><span class="fx-tag fx-tag-' + e(String(t.tag || '').toLowerCase()) + '">' + e(t.tag) + '</span> Ação ' + (k + 1) + ' de ' + n + '</p>' +
+    '<h3 class="fx-pop-t" id="fx-pop-t">' + e(t.t) + '</h3>' +
+    '<p class="fx-pop-why"><b>Por que agora:</b> ' + e(t.why) + '</p>' +
+    '<div class="actions fx-pop-acoes"><button type="button" class="btn primary" data-fx="agIr" data-k="' + e(t.k) + '" data-id="' + e(t.id) + '">' + e(t.cta) + ' →</button>' +
+    '<button type="button" class="btn" data-fx="agFechar">Fechar</button>' +
+    '<span class="fx-pop-nav"><button type="button" class="fx-seta" data-fx="agNav" data-d="-1" aria-label="Ação anterior"' + (k <= 0 ? ' disabled' : '') + '>‹</button>' +
+    '<button type="button" class="fx-seta" data-fx="agNav" data-d="1" aria-label="Próxima ação"' + (k >= n - 1 ? ' disabled' : '') + '>›</button></span></div></div>';
+}

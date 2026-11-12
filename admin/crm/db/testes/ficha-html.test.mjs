@@ -43,5 +43,33 @@ console.log('== Task 8: fila, header, abas, guia ==');
   check('guia: 4 itens e fechar', count(tr, /<li/g) === 4 && tr.includes('data-fx="tourFechar"') && FH.htmlTour(false, h) === '');
 }
 
+console.log('== Task 9: carrossel e pop-up ==');
+{
+  const T = (i, o = {}) => Object.assign({ id: 't' + i, k: 'resposta', t: 'Ação ' + i, why: 'Porque ' + i, tag: 'Dela', cta: 'Abrir a conversa', dest: { tab: 'conversa' } }, o);
+  const seis = [1, 2, 3, 4, 5, 6].map((i) => T(i, i === 2 ? { tag: 'Reunião' } : i === 3 ? { tag: 'Funil' } : {}));
+  const v = FH.htmlCarrossel([], h);
+  check('0 ações: mensagem amigável, sem setas nem contador', v.includes('Nenhuma ação pendente') && !v.includes('data-fx="agPrev"') && !v.includes('data-fx="agNext"') && !/\d de \d/.test(v));
+  const um = FH.htmlCarrossel([T(1)], h);
+  check('1 ação: "1 de 1" e as duas setas desabilitadas', um.includes('1 de 1') && /data-fx="agPrev"[^>]*disabled/.test(um) && /data-fx="agNext"[^>]*disabled/.test(um));
+  const c6 = FH.htmlCarrossel(seis, h);
+  check('6 ações: "1 de 6" e 6 cartões', c6.includes('1 de 6') && count(c6, /data-fx="agAbrir"/g) === 6 && c6.includes('data-i="0"') && c6.includes('data-i="5"'));
+  check('6 ações: região de carrossel', c6.includes('role="region"') && c6.includes('aria-roledescription="carrossel"'));
+  check('6 ações: só o 1º cartão é first', count(c6, /fx-card first/g) === 1);
+  check('6 ações: seta anterior desabilitada, seguinte habilitada', /data-fx="agPrev"[^>]*disabled/.test(c6) && !/data-fx="agNext"[^>]*disabled/.test(c6));
+  check('cartão: aria-label e selos', c6.includes('aria-label="Ação 1 de 6: Ação 1. Abrir detalhes"') && c6.includes('Dela') && c6.includes('Reunião') && c6.includes('Funil'));
+  check('seta seguinte desabilita no fim (i = N-1)', /data-fx="agNext"[^>]*disabled/.test(FH.htmlCarrossel(seis, h, 5)) && FH.htmlCarrossel(seis, h, 5).includes('6 de 6'));
+  const xs = FH.htmlCarrossel([T(1, { t: '<b>negrito</b>' })], h);
+  check('título com HTML sai escapado', xs.includes('&lt;b&gt;') && !xs.includes('<b>negrito'));
+
+  const p0 = FH.htmlPopup(seis, 0, h);
+  check('pop-up: dialog modal com título e por quê', p0.includes('role="dialog"') && p0.includes('aria-modal="true"') && p0.includes('Ação 1') && p0.includes('Porque 1'));
+  check('pop-up: botão de ir com cta e seta', /data-fx="agIr"[^>]*>Abrir a conversa →/.test(p0));
+  check('pop-up: "Ação 1 de 6" e fechar', p0.includes('Ação 1 de 6') && p0.includes('data-fx="agFechar"'));
+  check('pop-up: primeira com anterior desabilitada', /data-fx="agNav" data-d="-1"[^>]*disabled/.test(p0) && !/data-fx="agNav" data-d="1"[^>]*disabled/.test(p0));
+  check('pop-up: última com seguinte desabilitada', /data-fx="agNav" data-d="1"[^>]*disabled/.test(FH.htmlPopup(seis, 5, h)));
+  check('pop-up: índice grande usa a última; vazio devolve ""', FH.htmlPopup(seis, 99, h).includes('Ação 6 de 6') && FH.htmlPopup([], 0, h) === '');
+  check('pop-up: título com HTML escapado', FH.htmlPopup([T(1, { t: XSS })], 0, h).includes('&lt;img') && !FH.htmlPopup([T(1, { t: XSS })], 0, h).includes('<img'));
+}
+
 console.log('\n' + passed + ' passaram, ' + failed + ' falharam');
 if (failed) process.exit(1);
