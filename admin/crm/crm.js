@@ -1411,7 +1411,13 @@ function casoItemCampos(it) {
         return '<label style="margin-right:12px"><input type="checkbox" class="caso-ed-selo" value="' + s[0] + '"' + (selosAtuais.indexOf(s[0]) >= 0 ? ' checked' : '') + '> ' + esc(s[1]) + '</label>';
       }).join(''));
     }
-    return tit('Nome do documento') + casoResumoCampo(it.resumo) + selosHtml + casoCampo('Arquivo (link https://…; vazio = "chega em breve")', '<input id="caso-ed-link" class="t" maxlength="500" style="width:100%" value="' + esc(it.link || '') + '">');
+    var chkAtuais = (d && d.checklists) || [], chkHtml = '';
+    if (d.direcao !== 'recebe') {
+      chkHtml = casoCampo('Em quais checklists aparece (vazio = só no principal; o mesmo documento vale em todos)', CASO_CHECKLISTS.map(function (c) {
+        return '<label style="margin-right:12px;white-space:nowrap"><input type="checkbox" class="caso-ed-chk" value="' + c[0] + '"' + (chkAtuais.indexOf(c[0]) >= 0 ? ' checked' : '') + '> ' + esc(c[1]) + '</label>';
+      }).join(''));
+    }
+    return tit('Nome do documento') + casoResumoCampo(it.resumo) + selosHtml + chkHtml + casoCampo('Arquivo (link https://…; vazio = "chega em breve")', '<input id="caso-ed-link" class="t" maxlength="500" style="width:100%" value="' + esc(it.link || '') + '">');
   }
   if (it.tipo === 'modelo') {
     return tit('Nome da mensagem') + casoResumoCampo(it.resumo) +
@@ -1508,6 +1514,8 @@ function casoAvisosHtml(k) {
 }
 // As escolas que a própria pessoa acrescentou no Espaço (nome, link e o que ela já sabe). Só leitura: você vê o que ela anda olhando.
 // As perguntas Sim/Não que ela já respondeu sobre uma escola (a lista muda por persona; aqui só a contagem e o que foi respondido).
+// Os checklists (démarches) do app: as chaves são as de content/checklist-templates.json (processos.ordem).
+var CASO_CHECKLISTS = [['visa_aupair', 'Visa au pair'], ['visa', 'Visa (PVT, étudiante, cônjuge)'], ['visa_estudante', 'Visa étudiante (do PVT)'], ['estudos', 'Estudos / Campus France'], ['trabalho', 'Contrato de alternância'], ['profissao', 'Profissão regulamentada'], ['cir', 'CIR'], ['ameli', 'Seguro saúde (Ameli)'], ['caf', 'CAF'], ['banco', 'Banco'], ['moradia', 'Moradia'], ['orcamento', 'Orçamento']];
 var CASO_SELOS = [['traducao', 'tradução juramentada'], ['haia', 'apostila de Haia'], ['equivaler', 'equivalência (não vale para Campus France)'], ['original', 'original']];
 function casoCriteriosResumo(c) {
   var sim = [], nao = [], k;
@@ -1646,6 +1654,8 @@ async function casoAcao(acao, id, t) {
     if (itm.tipo === 'documento' && dados.direcao !== 'recebe') {
       var selosMarcados = Array.prototype.map.call(document.querySelectorAll('.caso-ed-selo'), function (x) { return x.checked ? x.value : null; }).filter(Boolean);
       if (selosMarcados.length) dados.selos = selosMarcados; else delete dados.selos;
+      var chkMarcados = Array.prototype.map.call(document.querySelectorAll('.caso-ed-chk'), function (x) { return x.checked ? x.value : null; }).filter(Boolean);
+      if (chkMarcados.length) dados.checklists = chkMarcados; else delete dados.checklists;
     }
     if (itm.tipo === 'modelo') {
       ['assunto', 'corpo', 'traducao'].forEach(function (c) { var v = val('caso-ed-' + c); if (v) dados[c] = v; else delete dados[c]; });

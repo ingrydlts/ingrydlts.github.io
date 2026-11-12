@@ -1,7 +1,8 @@
 -- SELOS DOS DOCUMENTOS E PASSO "CONFERIR DOCUMENTOS": a equipe marca em cada documento o que ele exige (tradução juramentada, apostila de Haia,
 -- equivalência do diploma, original), e um passo do checklist pode virar uma lista desses documentos com X/Y.
 -- Rode DEPOIS de crm-caso.sql e crm-caso-guias.sql. Pode rodar de novo sem estragar nada.
---   1. documento.dados aceita "selos": lista de até 4 itens de { traducao, haia, equivaler, original }.
+--   1. documento.dados aceita "selos": lista de até 4 itens de { traducao, haia, equivaler, original }, e "checklists": até 8 chaves de démarche
+--      (visa, visa_estudante, estudos, ameli, banco…) em que o documento aparece; o mesmo registro vale em todos.
 --   2. caso_acoes.botao aceita 'conferir_documentos' (com passo_chave "docs:<selo>", ex.: docs:traducao).
 -- ATENÇÃO: este arquivo repete o corpo atual de caso_board_chaves_ok (com as chaves de bilan de crm-caso-guias.sql). Se esse corpo mudar
 -- num SQL futuro, mude aqui também.
@@ -21,7 +22,7 @@ as $$
                else
                  (case p_tipo when 'escola' then array['cidade', 'curso', 'link', 'custo_eur', 'meses_sugeridos']
                               when 'modelo' then array['idioma', 'assunto', 'corpo', 'traducao']
-                              when 'documento' then array['rotulo', 'direcao', 'selos']
+                              when 'documento' then array['rotulo', 'direcao', 'selos', 'checklists']
                               when 'marco' then array['data', 'a_confirmar', 'nota']
                               when 'bilan' then array['secoes', 'data', 'palavras']
                               else array[]::text[] end)
@@ -32,6 +33,11 @@ as $$
            jsonb_typeof(p_dados->'palavras') = 'array' and jsonb_array_length(p_dados->'palavras') <= 6
            and not exists (select 1 from jsonb_array_elements(p_dados->'palavras') e
                             where jsonb_typeof(e) <> 'string' or length(btrim(e #>> '{}')) not between 1 and 30)))
+     -- documento: em quais checklists (démarches) ele aparece (vazio = só no principal). Chaves como "visa", "visa_estudante", "estudos".
+     and (not (p_dados ? 'checklists') or (p_tipo = 'documento' and not p_dela and jsonb_typeof(p_dados->'checklists') = 'array'
+          and jsonb_array_length(p_dados->'checklists') <= 8
+          and not exists (select 1 from jsonb_array_elements(p_dados->'checklists') e
+                           where jsonb_typeof(e) <> 'string' or (e #>> '{}') !~ '^[a-z_]{1,30}$')))
      -- documento: selos
      and (not (p_dados ? 'selos') or (p_tipo = 'documento' and not p_dela and jsonb_typeof(p_dados->'selos') = 'array'
           and jsonb_array_length(p_dados->'selos') <= 4
