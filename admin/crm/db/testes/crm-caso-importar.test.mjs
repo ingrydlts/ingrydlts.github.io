@@ -154,6 +154,7 @@ async function main() {
     (await um("select estado from caso_avisos where contato_id=$1 and origem_chave='notion:aviso:fim_pvt'", [cAna])).estado === 'agendado');
   check('reler não publica nem aprova nada: só o que você mesmo mudou', (await q("select estado from board_itens where contato_id=$1 and estado='publicado'", [cAna])).length === 1 && (await q("select estado from caso_avisos where contato_id=$1 and estado='agendado'", [cAna])).length === 1);
   const mc2 = await meu(ana.id);
+  check('meu_caso() devolve o botão sugerido de cada ação dela (o app decide a ação: data, roteiro ou só feito)', mc2.acoes.length === 1 && mc2.acoes[0].botao === 'gerar_rascunho');
   check('o que a pessoa vê é só o que você publicou (a ação publicada, com o prazo em texto, e o marco)', mc2.board.length === 1 && mc2.acoes.length === 1 && mc2.acoes[0].prazo_texto === 'dia seguinte à ligação' && mc2.acoes[0].passo_chave === 'pend_1');
 
   console.log('\n== Tudo ou nada ==');

@@ -1366,7 +1366,9 @@ function casoAcoesHtml(k) {
     var vis = a.dono === 'ela' && a.canal === 'plataforma';   // só estas aparecem para ela no Checklist
     var btns = (fim ? casoBtn('aco-reabrir', a.id, 'Reabrir') : casoBtn('aco-fim', a.id, 'Concluir')) +
       (vis ? (a.publicada_em ? casoBtn('aco-retirar', a.id, 'Retirar') : casoBtn('aco-pub', a.id, 'Publicar para ela')) : '') + casoBtn('ed-aco', a.id, 'Editar');
-    var meta = [a.dono === 'ela' ? 'Ela' : 'Ingryd', CASO_CANAL[a.canal] || a.canal, casoPrazo(a)].filter(Boolean).join(' · ');
+    var dentro = a.dono === 'ela' && /mesma\s+liga[cç][aã]o/i.test(a.prazo_texto || '');   // o app não põe na fila: já está nas perguntas da ligação
+    var pede = a.dono === 'ela' && a.canal === 'plataforma' ? (a.botao === 'marcar_marco' ? 'ela informa uma data' : a.botao === 'gerar_rascunho' && /ligar|liga[cç]/i.test(a.titulo) ? 'ela vê as perguntas da ligação' : 'ela só marca “Feito”') : '';
+    var meta = [a.dono === 'ela' ? 'Ela' : 'Ingryd', CASO_CANAL[a.canal] || a.canal, casoPrazo(a), dentro ? 'dentro da ligação (não vai para a fila)' : pede].filter(Boolean).join(' · ');
     return casoLinha((vis ? pub : casoPil('Só equipe')), (fim ? '<s>' + esc(a.titulo) + '</s>' : esc(a.titulo)) + ' <span class="sub">· ' + esc(meta) + (fim ? ' · concluída' + (a.concluida_por === 'ela' ? ' por ela' : ' pela equipe') : '') + '</span>', btns);
   }).join('');
 }

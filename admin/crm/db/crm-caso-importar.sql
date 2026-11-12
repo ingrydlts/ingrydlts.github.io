@@ -10,7 +10,7 @@
 --        achados  nascem "conferir";  ações nascem sem publicar;  itens do board nascem "proposto";  avisos nascem "rascunho".
 --      Reler a página só atualiza o que ainda é rascunho. O que a Ingryd já conferiu, publicou, concluiu ou aprovou NUNCA é
 --      mudado: a função só conta como "pulado" quando a página mudou e o CRM ficou como estava.
---   4. meu_caso() passa a devolver prazo_texto nas ações dela (substitui a função de crm-caso.sql).
+--   4. meu_caso() passa a devolver prazo_texto e botao (o que o passo pede dela) nas ações dela (substitui a função de crm-caso.sql).
 --   5. crm_evento_recente() ganha o evento 'caso_importado' na lista do que é feito por você (não zera o "parada há N dias").
 --      ATENÇÃO: se rodar crm-propostas.sql ou crm-caso.sql de novo depois deste, rode este de novo.
 
@@ -193,7 +193,7 @@ begin
         from board_itens b where b.contato_id = v_c and b.estado = 'publicado'), '[]'::jsonb),
     'acoes', coalesce((
       select jsonb_agg(jsonb_build_object('id', a.id, 'n', a.n, 'titulo', a.titulo, 'passo_chave', a.passo_chave, 'prazo', a.prazo,
-               'prazo_texto', a.prazo_texto, 'prazo_a_confirmar', a.prazo_a_confirmar, 'estado', a.estado) order by a.n nulls last, a.id)
+               'prazo_texto', a.prazo_texto, 'prazo_a_confirmar', a.prazo_a_confirmar, 'estado', a.estado, 'botao', a.botao) order by a.n nulls last, a.id)
         from caso_acoes a where a.contato_id = v_c and a.dono = 'ela' and a.canal = 'plataforma' and a.publicada_em is not null), '[]'::jsonb),
     'avisos', coalesce((
       select jsonb_agg(jsonb_build_object('id', a.id, 'tipo', a.tipo, 'titulo', a.titulo, 'texto', a.texto, 'resposta_tipo', a.resposta_tipo,
