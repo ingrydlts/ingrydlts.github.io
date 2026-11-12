@@ -6,6 +6,8 @@ import * as TX from './taxonomia.js?v=2026-11-12.9';   // páginas, famílias e 
 import * as ES from './estudio.js?v=2026-11-12.9';   // os blocos do estúdio de e-mails (entregas 2 e 3)
 import * as EE from './editor-email.js?v=2026-11-12.9';
 import * as EQ from './editor-quem.js?v=2026-11-12.9';   // o e-mail editável do passo Texto
+import * as FX from './ficha.js?v=2026-11-12.10';   // ficha v2: lógica pura (fila, démarches, funil, ações)
+import * as FH from './ficha-html.js?v=2026-11-12.10';   // ficha v2: HTML puro
 
 var PERSONAS = {
   au_pair_estudante: 'Au pair → estudante', campus_france: 'Campus France', alternancia_emprego: 'Alternância / emprego',
@@ -133,7 +135,8 @@ var P = [], PERR = '';
 // Processos sugeridos esperando a sua decisão (db/crm-processos-sugeridos.sql). Sem a migração, fica vazio.
 var PSUG = [];
 var FILA = [];   // avisos agendados que ainda não saíram, de todas as pessoas (para o bloco da Hoje)
-var state = { dosAberto: lerDosAberto(), dos: null, pc: null, ptab: null, pstab: 'assistente', pdias: {}, int: null, chatRasc: '', rascunho: {}, view: 'hoje', persona: '', sub: '', urg: '', stage: '', orig: '', camp: '', q: '', sel: null, qs: 'nova', qsel: null, inbox: 'perguntas', rs: 'nova', rsel: null, ps: 'novo', psel: null, preset: 'todos', seg: '', prevView: 'contatos' };
+var state = { dosAberto: lerDosAberto(), dos: null, pc: null, ptab: null, pstab: 'assistente', pdias: {}, int: null, chatRasc: '', rascunho: {}, view: 'hoje', persona: '', sub: '', urg: '', stage: '', orig: '', camp: '', q: '', sel: null, qs: 'nova', qsel: null, inbox: 'perguntas', rs: 'nova', rsel: null, ps: 'novo', psel: null, preset: 'todos', seg: '', prevView: 'contatos',
+  fx: { tab: null, ord: null, abertas: {}, ag: { i: 0, pop: null }, dem: 'todas', ckTodos: false, ckMais: false, tour: true } };
 var activeCid = null;
 var me = null;
 
@@ -2349,6 +2352,19 @@ async function buscaJornada(cid) {
     return r.error ? [] : (r.data || []);
   } catch (e) { return []; }
 }
+// Ficha v2 (ficha-universo, fase 1): atrás de uma chave até a Ingryd aprovar. ?ficha=2 na URL ou localStorage.crm_ficha_v2 = '1'.
+// FX e FH só são tocados dentro de funções chamadas com a chave ligada (os testes antigos não os injetam).
+function fichaV2Ativa() {
+  try { if (/[?&]ficha=2(&|$)/.test(String(location.search || ''))) return true; } catch (e) { /* sem location */ }
+  try { return localStorage.getItem('crm_ficha_v2') === '1'; } catch (e) { return false; }
+}
+function renderFichaV2(c, dados) {
+  return '<div id="ficha-v2"></div>';
+}
+function fichaClick(el) {
+  if (!el || !el.dataset || !el.dataset.fx) return false;
+  return false;
+}
 async function renderPessoa() {
   var c = byC(state.sel);
   if (!c) { $('pessoa-page').innerHTML = '<div class="empty">Pessoa não encontrada.</div>'; return; }
@@ -2393,7 +2409,8 @@ async function renderPessoa() {
       (t[0] === 'conversa' && resps.some(function (x) { return x.status === 'nova'; }) ? ' <span class="count">nova</span>' : '') +
       '</button>';
   }).join('') + '</div>';
-  $('pessoa-page').innerHTML =
+  if (fichaV2Ativa()) $('pessoa-page').innerHTML = renderFichaV2(c, { eventos: eventos, cons: cons, mails: mails, resps: resps, perg: perg, jor: jor, uid: uid, h4: h4, last: last });
+  else $('pessoa-page').innerHTML =
     '<button class="link" data-back type="button">← Voltar</button>' +
     '<div class="pessoa-head" style="margin-top:12px"><div class="' + avClass(c) + '" style="width:52px;height:52px;font-size:16px">' + esc(ini(c)) + '</div>' +
     '<div style="min-width:0;flex:1"><h2 style="font-size:24px">' + esc(displayName(c)) + '</h2><p class="sub" style="margin:2px 0 0">' + esc(c.email) + '</p>' +
