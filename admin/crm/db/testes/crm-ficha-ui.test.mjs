@@ -129,5 +129,62 @@ console.log('== Task 11: sessão Checklist (ligação) ==');
   er.mod.pararAoVivo();
 }
 
+console.log('== Task 12: sessões em pílulas ==');
+{
+  const mk = async (store) => {
+    const h = await carregarCrm({ respostas: base({ 'contatos:one': { data: { dossie: {}, user_id: 'u1' }, error: null } }), store: Object.assign({ crm_ficha_v2: '1' }, store) });
+    await abre(h, pessoa({ user_id: 'u1' })); return h;
+  };
+  let h = await mk({});
+  let pg = h.el('pessoa-page').innerHTML;
+  check('Plataforma tem os dois grupos e as 6 sessões', pg.includes('Acompanhar o app dela') && pg.includes('Conhecer e registrar') && ['chat', 'inicio', 'checklist', 'bilan', 'dossie', 'hist'].every((id) => pg.includes('data-sessao="' + id + '"')));
+  check('só o Checklist abre por padrão; dossiê fechado não está na página', pg.includes('id="fx-chk-corpo"') && !pg.includes('id="dossie-box"') && !pg.includes('id="int-box"') && !pg.includes('id="chat-box"'));
+  check('ordem padrão: chat, início, checklist', pg.indexOf('data-sessao="chat"') < pg.indexOf('data-sessao="inicio"') && pg.indexOf('data-sessao="inicio"') < pg.indexOf('data-sessao="checklist"'));
+  // sessão fechada: o repaint ao vivo do dossiê não lança
+  let ok = true; try { h.mod.pintaDossie(h.mod.byC('c1')); } catch (e) { ok = false; }
+  check('com a sessão fechada, pintaDossie não lança', ok);
+  await h.click({ fx: 'sessao', id: 'dossie' });
+  check('sessao abre o dossiê dentro da pílula', h.mod.state.fx.abertas.dossie === true && h.el('fx-corpo').innerHTML.includes('id="dossie-box"'));
+  await h.mod.renderPessoa(); pg = h.el('pessoa-page').innerHTML;
+  check('depois de repintar tudo, o dossiê segue aberto', pg.includes('id="dossie-box"'));
+  await h.click({ fx: 'sessao', id: 'dossie' });
+  check('sessao de novo fecha', h.mod.state.fx.abertas.dossie === false && !h.el('fx-corpo').innerHTML.includes('id="dossie-box"'));
+  await h.click({ fx: 'sessao', id: 'hist' }); await h.click({ fx: 'sessao', id: 'bilan' }); await h.click({ fx: 'sessao', id: 'chat' }); await h.click({ fx: 'sessao', id: 'inicio' });
+  const tudo = h.el('fx-corpo').innerHTML;
+  check('todas as sessões abrem com os painéis existentes', tudo.includes('id="int-box"') && tudo.includes('id="bilan-box"') && tudo.includes('id="chat-box"') && tudo.includes('id="ins-box"'));
+  await h.click({ fx: 'mover', id: 'chat', d: '1' });
+  check('mover troca a ordem e grava crm_ficha_ord_v1', h.mod.state.fx.ord.app.join() === 'inicio,chat,checklist' && JSON.parse(h.store.crm_ficha_ord_v1).app.join() === 'inicio,chat,checklist');
+  await h.click({ fx: 'mover', id: 'inicio', d: '-1' });
+  check('mover para cima na ponta não muda', h.mod.state.fx.ord.app.join() === 'inicio,chat,checklist');
+  // arrastar
+  const ev = (g, s) => ({ target: { closest: (sel) => (sel === '.fx-grab' ? g : sel === '.fx-sess' ? s : null) }, dataTransfer: { setData() {} }, preventDefault() {} });
+  const chamar = async (tipo, e) => { for (const fn of h.handlers[tipo] || []) await fn(e); };
+  await chamar('dragstart', ev({ dataset: { area: 'app', id: 'inicio' } }, null));
+  await chamar('drop', ev(null, { dataset: { area: 'app', sessao: 'checklist' } }));
+  check('arrastar para baixo cai depois do alvo', h.mod.state.fx.ord.app.join() === 'chat,checklist,inicio');
+  await chamar('dragstart', ev({ dataset: { area: 'app', id: 'inicio' } }, null));
+  await chamar('drop', ev(null, { dataset: { area: 'app', sessao: 'chat' } }));
+  check('arrastar para cima cai antes do alvo', h.mod.state.fx.ord.app.join() === 'inicio,chat,checklist');
+  await chamar('dragstart', ev({ dataset: { area: 'app', id: 'chat' } }, null));
+  await chamar('drop', ev(null, { dataset: { area: 'ela', sessao: 'bilan' } }));
+  check('arrastar para outro grupo é ignorado', h.mod.state.fx.ord.app.join() === 'inicio,chat,checklist' && h.mod.state.fx.ord.ela.join() === 'bilan,dossie,hist' && h.mod.state.fx.drag === null);
+  h.mod.pararAoVivo();
+  // preferência salva volta ao abrir de novo; preferência inválida volta ao padrão
+  h = await mk({ crm_ficha_ord_v1: JSON.stringify({ app: ['checklist', 'chat'], ela: ['hist'] }) });
+  pg = h.el('pessoa-page').innerHTML;
+  check('a ordem salva é aplicada e completada com o que faltava', pg.indexOf('data-sessao="checklist"') < pg.indexOf('data-sessao="chat"') && pg.indexOf('data-sessao="chat"') < pg.indexOf('data-sessao="inicio"') && pg.indexOf('data-sessao="hist"') < pg.indexOf('data-sessao="bilan"'));
+  h.mod.pararAoVivo();
+  h = await mk({ crm_ficha_ord_v1: '{lixo' });
+  pg = h.el('pessoa-page').innerHTML;
+  check('ordem inválida volta ao padrão', pg.indexOf('data-sessao="chat"') < pg.indexOf('data-sessao="inicio"'));
+  h.mod.pararAoVivo();
+  // localStorage indisponível (Review Focus 5): a ficha abre, mover e fechar o guia funcionam na tela sem lançar
+  const hb = await carregarCrm({ respostas: base({ 'contatos:one': { data: { dossie: {}, user_id: 'u1' }, error: null } }), search: '?ficha=2', storageBloqueado: true });
+  let lancou = false;
+  try { await abre(hb, pessoa({ user_id: 'u1' })); await hb.click({ fx: 'mover', id: 'chat', d: '1' }); await hb.click({ fx: 'tourFechar' }); } catch (e) { lancou = true; }
+  check('com localStorage bloqueado nada lança e a ordem muda na tela', !lancou && hb.mod.state.fx.ord.app.join() === 'inicio,chat,checklist' && hb.el('pessoa-page').innerHTML.includes('id="ficha-v2"'));
+  hb.mod.pararAoVivo();
+}
+
 console.log('\n' + passed + ' passaram, ' + failed + ' falharam');
 if (failed) process.exit(1);

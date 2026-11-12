@@ -100,5 +100,25 @@ console.log('== Task 11: sessão Checklist ==');
   check('feito e arquivado têm texto próprio', (() => { const t = FH.htmlChecklistSessao(d({ itens: [it('f', 'concluido', null), it('g', 'arquivado', null)] }), h); return t.includes('feito') && t.includes('Arquivado'); })());
 }
 
+console.log('== Task 12: sessões em pílulas ==');
+{
+  const mapa = { chat: { titulo: 'Conversa com ela', sub: 'As mensagens no app', corpo: '<p>CORPO-CHAT</p>', aberto: true }, inicio: { titulo: XSS, sub: 'x', corpo: '<p>CORPO-INICIO</p>', aberto: false },
+    checklist: { titulo: 'Checklist', sub: 'y', corpo: '<p>CORPO-CHK</p>', aberto: false }, bilan: { titulo: 'Bilan', sub: 'z', corpo: '<p>CORPO-BILAN</p>', aberto: true },
+    dossie: { titulo: 'Dossiê', sub: 'z', corpo: '', aberto: false }, hist: { titulo: 'Histórico', sub: 'z', corpo: '', aberto: false } };
+  const ord = { app: ['inicio', 'chat', 'checklist'], ela: ['bilan', 'dossie', 'hist'] };
+  const ss = FH.htmlSessoes(ord, mapa, h);
+  check('dois grupos com título', ss.includes('Acompanhar o app dela') && ss.includes('Conhecer e registrar'));
+  check('pílulas na ordem recebida', ss.indexOf('data-sessao="inicio"') < ss.indexOf('data-sessao="chat"') && ss.indexOf('data-sessao="chat"') < ss.indexOf('data-sessao="checklist"') && ss.indexOf('data-sessao="checklist"') < ss.indexOf('data-sessao="bilan"'));
+  check('aria-expanded conforme aberto', /data-fx="sessao" data-id="chat"[^>]*aria-expanded="true"/.test(ss) && /data-fx="sessao" data-id="inicio"[^>]*aria-expanded="false"/.test(ss));
+  check('corpo só das abertas', ss.includes('CORPO-CHAT') && ss.includes('CORPO-BILAN') && !ss.includes('CORPO-INICIO') && !ss.includes('CORPO-CHK'));
+  check('alça de arrastar com rótulo', ss.includes('aria-label="Arrastar Conversa com ela"') && count(ss, /draggable="true"/g) === 6);
+  check('dois botões de mover por pílula (Subir/Descer)', count(ss, /data-fx="mover"/g) === 12 && ss.includes('aria-label="Subir Conversa com ela"') && ss.includes('aria-label="Descer Conversa com ela"'));
+  check('título com HTML escapado', ss.includes('&lt;img') && !ss.includes('<img'));
+  check('a pílula sabe o grupo', /data-sessao="chat" data-area="app"/.test(ss) && /data-sessao="bilan" data-area="ela"/.test(ss));
+  check('id desconhecido na ordem é ignorado', !FH.htmlSessoes({ app: ['zzz', 'chat'], ela: [] }, mapa, h).includes('zzz'));
+  const um = FH.htmlSessao({ id: 'chat', titulo: 'T', sub: 's', corpo: '<i>C</i>', aberto: true, area: 'app', ativa: true }, h);
+  check('htmlSessao solta tem o corpo e a classe ativa', um.includes('<i>C</i>') && um.includes('ativa'));
+}
+
 console.log('\n' + passed + ' passaram, ' + failed + ' falharam');
 if (failed) process.exit(1);

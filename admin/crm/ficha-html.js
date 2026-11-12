@@ -120,3 +120,24 @@ export function htmlChecklistSessao(d, h) {
   return pilulas + drive + passos +
     '<div class="fx-mais"><button type="button" class="btn" data-fx="ckMais" aria-expanded="' + !!d.mais + '">' + (d.mais ? 'Ver menos desta sessão' : 'Ver mais desta sessão') + '</button>' + (d.mais ? '<div class="fx-mais-corpo">' + (d.extraMais || '') + '</div>' : '') + '</div>';
 }
+
+// ---------- Sessões em pílulas (Task 12) ----------
+// s = { id, titulo, sub, corpo, aberto, area: 'app'|'ela', ativa }. O corpo só vem pintado quando a sessão está aberta.
+export function htmlSessao(s, h) {
+  const e = h.esc;
+  return '<section class="fx-sess' + (s.aberto ? ' aberta' : '') + (s.ativa ? ' ativa' : '') + '" data-sessao="' + e(s.id) + '" data-area="' + e(s.area) + '">' +
+    '<div class="fx-sess-cab">' +
+    '<span class="fx-grab" draggable="true" role="img" aria-label="Arrastar ' + e(s.titulo) + '" data-id="' + e(s.id) + '" data-area="' + e(s.area) + '">⋮⋮</span>' +
+    '<button type="button" class="fx-sess-t" data-fx="sessao" data-id="' + e(s.id) + '" aria-expanded="' + !!s.aberto + '" aria-controls="fx-s-' + e(s.id) + '">' +
+    '<span class="fx-sess-nome">' + e(s.titulo) + '</span><span class="fx-sess-sub">' + e(s.sub || '') + '</span></button>' +
+    '<span class="fx-mover"><button type="button" class="fx-seta" data-fx="mover" data-id="' + e(s.id) + '" data-d="-1" aria-label="Subir ' + e(s.titulo) + '">↑</button>' +
+    '<button type="button" class="fx-seta" data-fx="mover" data-id="' + e(s.id) + '" data-d="1" aria-label="Descer ' + e(s.titulo) + '">↓</button></span></div>' +
+    (s.aberto ? '<div class="fx-sess-corpo" id="fx-s-' + e(s.id) + '">' + (s.corpo || '') + '</div>' : '') + '</section>';
+}
+// ord = { app: [ids], ela: [ids] }; mapa = { id: { titulo, sub, corpo, aberto } }. Dois grupos, como no spec §5.2.
+export function htmlSessoes(ord, mapa, h) {
+  const grupo = (area, titulo, dica) => '<div class="fx-grupo fx-grupo-' + area + '" role="group" aria-labelledby="fx-g-' + area + '"><h3 class="fx-h3" id="fx-g-' + area + '">' + h.esc(titulo) + '</h3>' +
+    '<p class="sub fx-grupo-dica">' + h.esc(dica) + '</p>' +
+    ((ord && ord[area]) || []).filter((id) => mapa && mapa[id]).map((id) => htmlSessao(Object.assign({ id, area }, mapa[id]), h)).join('') + '</div>';
+  return '<div class="fx-sessoes">' + grupo('app', 'Acompanhar o app dela', 'O que ela vê e faz no app.') + grupo('ela', 'Conhecer e registrar', 'Só a equipe vê.') + '</div>';
+}

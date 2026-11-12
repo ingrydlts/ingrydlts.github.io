@@ -2429,10 +2429,37 @@ function fxChecklistCorpo(c) {
     hoje: cc.hoje, todos: f.ckTodos, mais: f.ckMais, extraMais: f.ckMais ? checklistLateralHtml(chk, agora, H4_PLAT) + checklistHtml(chk, agora) : '' }, H_FX);
 }
 function fxPintaChk(c) { var b = $('fx-chk-corpo'); if (b) b.innerHTML = fxChecklistCorpo(c); }
-// O corpo da aba (as sessões em pílulas chegam na tarefa 12; Ficha e Conversa na 13).
+// As sessões da aba Plataforma, em pílulas e em dois grupos. O corpo só é montado nas abertas: os ids antigos (dossie-box,
+// ins-box, int-box, chat-fio) existem enquanto a sessão está aberta, e as atualizações ao vivo ignoram o que não está na tela.
+function fxOrdem() {
+  var f = state.fx;
+  return f.ord || { app: FX.SESSOES_PADRAO.app.slice(), ela: FX.SESSOES_PADRAO.ela.slice() };
+}
+function fxSessoes(c) {
+  var mk = function (titulo, sub, id, corpo) { var a = fxSessaoAberta(id); return { titulo: titulo, sub: sub, aberto: a, corpo: a ? corpo() : '' }; };
+  var mapa = {
+    chat: mk('Conversa com ela', 'As mensagens da equipe, do assistente e dela, dentro do app.', 'chat', function () { return '<div id="chat-box">' + chatPanelHtml(c, state.chat, H4_PLAT) + '</div>'; }),
+    inicio: mk('Início (iAssistente)', 'O que o assistente mostra a ela no início do app e os seus avisos.', 'inicio', function () { return '<div id="ins-box">' + insightsHtml(state.ins, Date.now()) + '</div>'; }),
+    checklist: mk('Checklist', 'Os passos dela por démarche, do mais urgente ao mais distante.', 'checklist', function () { return '<div id="fx-chk-corpo">' + fxChecklistCorpo(c) + '</div>'; }),
+    bilan: mk('Bilan', 'O que a conversa mostrou e o e-mail do bilan.', 'bilan', function () { return bilanResumoHtml(c) + bilanBlocoHtml(c, H4_PLAT); }),
+    dossie: mk('Dossiê', 'As perguntas da plataforma, preenchidas por você na ligação.', 'dossie', function () { return '<div id="dossie-box">' + dossieHtml(c, state.dos.d, state.dos.err, state.dos.rasc, state.dosAberto, state.dos.chk) + '</div>'; }),
+    hist: mk('Histórico', 'Tudo que ela fez no app, dia a dia.', 'hist', function () { return '<div id="int-box">' + interacoesHtml(state.int) + '</div>'; })
+  };
+  return FH.htmlSessoes(fxOrdem(), mapa, H_FX);
+}
 function fxCorpo(c, d, tab) {
-  if (tab === 'plataforma') return '<div class="panel fx-sessao" data-sessao="checklist" style="padding:16px;margin-top:14px"><h3 class="fx-h3">Checklist</h3><div id="fx-chk-corpo">' + fxChecklistCorpo(c) + '</div></div>';
-  return '';
+  if (tab === 'plataforma') {
+    if (state.int && state.int.err) return '<div class="panel" style="padding:16px;margin-top:14px"><h3 style="font-size:15px;margin-bottom:8px">Plataforma ainda não ligada</h3><p class="sub" style="margin:0">Falta rodar <b>db/crm-plataforma.sql</b> no SQL Editor do Supabase (depois dele, os cliques novos começam a aparecer aqui).</p></div>';
+    return '<div class="fx-plat">' + pagamentoHtml(c, H4_PLAT) + fxSessoes(c) + '</div>';
+  }
+  return '';   // Ficha e Conversa chegam na tarefa 13
+}
+// Repinta só o corpo da aba (abrir/fechar/mover sessão): o resto da tela e a rolagem ficam.
+function fxPintaCorpo() {
+  var c = byC(state.sel), f = state.fx, d = f.dados, box = $('fx-corpo'); if (!c || !d || !box) return;
+  var tx = $('chat-txt'); if (tx) state.chatRasc = tx.value;
+  box.innerHTML = fxCorpo(fxContato(c, d.uid), d, f.tab);
+  fxPos(c);
 }
 function renderFichaV2(c, d) {
   fxPrefs();
@@ -2532,6 +2559,13 @@ function fichaClick(el) {
       var t = (f.tarefas || []).filter(function (x) { return x.id === ds.id; })[0] || (f.tarefas || []).filter(function (x) { return x.k === ds.k; })[0] || (f.ag.pop !== null ? f.tarefas[f.ag.pop] : null);
       fxFechaPop(false); if (t) irPara(t.dest); return true;
     }
+    case 'sessao': { f.abertas[ds.id] = !fxSessaoAberta(ds.id); fxPintaCorpo(); var tb2 = document.querySelector('[data-fx="sessao"][data-id="' + ds.id + '"]'); if (tb2 && tb2.focus) tb2.focus(); return true; }
+    case 'mover': {
+      var ord = fxOrdem(), area = ord.app.indexOf(ds.id) >= 0 ? 'app' : ord.ela.indexOf(ds.id) >= 0 ? 'ela' : null; if (!area) return true;
+      var nova = { app: ord.app.slice(), ela: ord.ela.slice() }; nova[area] = FX.moverSessao(nova[area], ds.id, Number(ds.d) < 0 ? -1 : 1);
+      f.ord = nova; FX.gravarPrefs(localStorage, { ord: nova }); fxPintaCorpo();
+      var mb = document.querySelector('[data-fx="mover"][data-id="' + ds.id + '"][data-d="' + ds.d + '"]'); if (mb && mb.focus) mb.focus(); return true;
+    }
     case 'dem': { f.dem = ds.v || 'todas'; var cd = byC(state.sel); if (cd) fxPintaChk(fxContato(cd, f.dados && f.dados.uid)); return true; }
     case 'ckTodos': case 'ckMais': { if (ds.fx === 'ckTodos') f.ckTodos = !f.ckTodos; else f.ckMais = !f.ckMais; var cm = byC(state.sel); if (cm) fxPintaChk(fxContato(cm, f.dados && f.dados.uid)); return true; }
     case 'agPrev': fxCarGo(-1); return true;
@@ -2557,6 +2591,30 @@ function fxTecla(e) {
   }
 }
 document.addEventListener('keydown', fxTecla);
+// Arrastar sessão: só dentro do próprio grupo; quem não puder arrastar usa as setas ↑ ↓ (mesma função, FX.reordenarSessao).
+document.addEventListener('dragstart', function (e) {
+  var g = e.target && e.target.closest && e.target.closest('.fx-grab'); if (!g) return;
+  state.fx.drag = { area: g.dataset.area, id: g.dataset.id };
+  try { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', g.dataset.id); } catch (x) { /* sem dataTransfer */ }
+});
+document.addEventListener('dragover', function (e) {
+  var dr = state.fx && state.fx.drag; if (!dr) return;
+  var s = e.target && e.target.closest && e.target.closest('.fx-sess');
+  if (s && s.dataset.area === dr.area) e.preventDefault();
+});
+document.addEventListener('drop', function (e) {
+  var dr = state.fx && state.fx.drag; if (!dr) return;
+  state.fx.drag = null;
+  var s = e.target && e.target.closest && e.target.closest('.fx-sess');
+  if (!s || s.dataset.area !== dr.area) return;   // outro grupo: ignora
+  e.preventDefault();
+  var ord = fxOrdem(), lista = ord[dr.area], de = lista.indexOf(dr.id), para = lista.indexOf(s.dataset.sessao);
+  if (de < 0 || para < 0 || de === para) return;
+  var antes = de < para ? (lista[para + 1] === undefined ? null : lista[para + 1]) : s.dataset.sessao;   // arrastou para baixo: cai depois do alvo
+  var nova = { app: ord.app.slice(), ela: ord.ela.slice() }; nova[dr.area] = FX.reordenarSessao(lista, dr.id, antes);
+  state.fx.ord = nova; FX.gravarPrefs(localStorage, { ord: nova }); fxPintaCorpo();
+});
+document.addEventListener('dragend', function () { if (state.fx) state.fx.drag = null; });
 document.addEventListener('scroll', function (e) { var t = e.target; if (t && t.classList && t.classList.contains('fx-car')) fxCarScroll(t); }, true);
 async function renderPessoa() {
   var c = byC(state.sel);
