@@ -15,11 +15,11 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const dir = mkdtempSync(path.join(tmpdir(), 'crm-notion-'));
 const arq = path.join(dir, 'worker.mjs');
-writeFileSync(arq, readFileSync(path.resolve(HERE, '../worker.js'), 'utf8') + '\nexport { crmNotionId, crmNotionPrazo, CRM_NOTION_COLUNAS };\n');
+writeFileSync(arq, readFileSync(path.resolve(HERE, '../worker.js'), 'utf8') + '\nexport { crmNotionId, crmNotionPrazo, CRM_NOTION_COLUNAS, crmNotionCaso };\n');
 const mod = await import(pathToFileURL(arq).href);
 rmSync(dir, { recursive: true, force: true });
 const worker = mod.default;
-const { crmNotionId, crmNotionPrazo, CRM_NOTION_COLUNAS } = mod;
+const { crmNotionId, crmNotionPrazo, CRM_NOTION_COLUNAS, crmNotionCaso } = mod;
 
 let passed = 0, failed = 0;
 function check(label, cond) { if (cond) passed++; else { failed++; console.log('  FALHOU:', label); } }
@@ -91,7 +91,8 @@ const origErr = console.error;
 console.error = (...a) => { logs.push(a.join(' ')); };
 function instalar(o = {}) {
   const { page = paginaOk(), corpo = corpoOk(), notion = null, adminOk = true, rpcFicha = { status: 200, body: { contato_id: CID, criado: true, preenchidos: ['nome'], ja_preenchidos: [] } },
-    pendente = [], antigas = [], insercao = { status: 201, body: [{ id: 42 }] } } = o;
+    pendente = [], antigas = [], insercao = { status: 201, body: [{ id: 42 }] },
+    caso = { status: 200, body: { achados: { novos: 0, atualizados: 0, mantidos: 0, pulados: 0 }, acoes: { novos: 6, atualizados: 0, mantidos: 0, pulados: 0 }, itens: { novos: 2, atualizados: 0, mantidos: 0, pulados: 0 }, avisos: { novos: 1, atualizados: 0, mantidos: 0, pulados: 0 } } } } = o;
   chamadas = []; logs = []; inesperadas = []; seq = seq; // eslint-disable-line no-self-assign
   globalThis.fetch = async (url, opt = {}) => {
     let body = null;
@@ -117,6 +118,7 @@ function instalar(o = {}) {
       return resp(200, { object: 'list', results: paginas[i] || [], has_more: i + 1 < paginas.length, next_cursor: i + 1 < paginas.length ? 'c' + (i + 1) : null });
     }
     if (/rpc\/crm_onboarding_aplicar$/.test(c.url)) return resp(rpcFicha.status, rpcFicha.body);
+    if (/rpc\/crm_caso_importar$/.test(c.url)) { if (caso instanceof Error) throw caso; return resp(caso.status, caso.body); }
     if (/rpc\/crm_pos_call_descartar$/.test(c.url)) return resp(204);
     if (/pos_call_propostas\?.*hash_entrada=/.test(c.url) && c.method === 'GET') return resp(200, pendente);
     if (/pos_call_propostas\?.*origem=eq\.notion/.test(c.url) && c.method === 'GET') return resp(200, antigas);
@@ -513,6 +515,61 @@ check('sem crm-pos-call.sql: manda rodar o arquivo', res.status === 500 && j.cod
 instalar({ insercao: { status: 500, body: { message: 'falha' } } });
 res = await ler(); j = await res.json();
 check('falha ao gravar a proposta: erro claro (e o log só tem o status)', res.status === 500 && j.codigo === 'proposta_nao_salva' && logs.every((l) => !/Ana|Example/.test(l)));
+
+console.log('\n== O caso como rascunhos (crmNotionCaso + crm_caso_importar) ==');
+const importacoes = () => chamadas.filter((c) => /rpc\/crm_caso_importar$/.test(c.url));
+instalar();
+res = await ler(); j = await res.json();
+const imp = importacoes();
+check('a leitura chama crm_caso_importar uma vez, com a chave da admin', imp.length === 1 && imp[0].headers.Authorization === 'Bearer ' + TOKEN && imp[0].body.p_contato === CID);
+check('a resposta traz o resumo do caso', j.caso && j.caso.ok === true && j.caso.acoes.novos === 6 && j.caso.itens.novos === 2);
+const pl = imp[0] && imp[0].body.p_payload;
+check('o payload leva versão, fonte e as quatro listas', pl && pl.versao === 1 && pl.fonte.pagina === PID && Array.isArray(pl.achados) && Array.isArray(pl.acoes) && Array.isArray(pl.itens) && Array.isArray(pl.avisos));
+check('ações: só o que cabe no CRM (a linha "Fora do CRM" não entra; "Só eu" entra)', pl.acoes.length === 7 && !JSON.stringify(pl).includes('TEXTO-DE-LINHA-FORA') && pl.acoes.some((a) => a.canal === 'so_eu'));
+const a1 = pl.acoes.find((a) => a.n === 1), a2 = pl.acoes.find((a) => a.n === 2), a4 = pl.acoes.find((a) => a.n === 4);
+check('ação dela pela plataforma leva passo_chave pend_N; as demais não', a1.passo_chave === 'pend_1' && a2.passo_chave === 'pend_2' && !a4.passo_chave && pl.acoes.filter((a) => a.dono === 'ingryd').every((a) => !a.passo_chave));
+check('prazo em data vira data; "(a confirmar)" vira texto marcado; botão fora da lista vira null', a2.prazo === '2026-11-30' && a1.prazo === null && a1.prazo_texto === '15/12/2026 (a confirmar)' && a1.prazo_a_confirmar === true && pl.acoes.find((a) => a.n === 5).botao === null && a1.botao === 'anexar_documento');
+check('canais traduzidos e estados mantidos', a1.canal === 'plataforma' && a4.canal === 'email' && pl.acoes.find((a) => a.n === 5).canal === 'convite' && pl.acoes.find((a) => a.n === 3).estado === 'concluida');
+check('certeza: "Documento · alta" não é literal; texto que diz literal é', a1.certeza === 'inferido');
+check('o marco do prazo-chave e os documentos viram itens com chave de origem estável', pl.itens.some((i) => i.origem_chave === 'notion:prazo_chave' && i.tipo === 'marco' && i.dados.data === '2026-12-01') && pl.itens.filter((i) => i.tipo === 'documento' && i.dados.direcao === 'reune').length === 2 && pl.itens.every((i) => /^[a-z0-9_:.-]{1,80}$/.test(i.origem_chave)));
+check('documento que a Ingryd envia (anexar_documento) vira item "recebe"', pl.itens.some((i) => i.origem_chave === 'notion:envio:3' && i.dados.direcao === 'recebe') === false || pl.itens.some((i) => i.dados.direcao === 'recebe'));
+check('avisos nascem só como rascunho de proposta/pergunta, com a chave de origem', pl.avisos.every((a) => /^notion:aviso:/.test(a.origem_chave) && ['proposta', 'pergunta'].includes(a.tipo) && !('liberar_em' in a)));
+// Duas leituras da mesma página geram a MESMA carga (é isso que torna a leitura repetível).
+instalar(); await ler(); const pl2 = importacoes()[0].body.p_payload;
+check('ler de novo manda exatamente a mesma carga (chaves estáveis)', JSON.stringify(pl2) === JSON.stringify(pl));
+
+// Mapeamento puro: bilan, achados e avisos por persona/dor.
+const props = { pessoa: 'Ana', persona: 'pvt', dores: ['Idioma'], documentos_pendentes: 'Certificado (cópia, original); Passaporte', prazo_chave: { texto: 'a confirmar', data: null, a_confirmar: true } };
+const corpoMap = { resumo: 'Resumo da conversa.', duvidas: null, bilan: { duvidas: ['O curso de 15 h não serve.', 'Inscrição até 30/11 (vou confirmar com a escola).'], proximos: ['Ligar para a escola'], respostas: ['Te respondo sobre o pagamento.', 'Te envio o PDF'] } };
+const cm = await crmNotionCaso({ ...props, data_ligacao: '2026-10-29' }, corpoMap, [], { pagina: PID, editada_em: '' });
+const bil0 = cm.itens.find((i) => /^notion:bilan:/.test(i.origem_chave));
+check('o bilan é um por conversa: chave com o começo do id da página, data da ligação e palavras-chave (as dores)', bil0.origem_chave === 'notion:bilan:' + PID.slice(0, 8) && bil0.dados.data === '2026-10-29' && bil0.dados.palavras.join() === 'Idioma' && bil0.titulo === 'Conversa de 29/10/2026');
+check('páginas diferentes geram bilans diferentes (não se sobrescrevem)', (await crmNotionCaso(props, corpoMap, [], { pagina: 'ffffffff' + PID.slice(8), editada_em: '' })).itens.find((i) => /^notion:bilan:/.test(i.origem_chave)).origem_chave !== bil0.origem_chave);
+check('achados: resumo + dúvidas tiradas; o que "vou confirmar" vira dúvida a confirmar', cm.achados[0].chave === 'resumo' && cm.achados.find((a) => /15 h/.test(a.texto)).tipo === 'fato' && cm.achados.find((a) => /30\/11/.test(a.texto)).certeza === 'a_confirmar' && cm.achados.every((a) => a.chave === 'resumo' || /^nb_[0-9a-f]{12}$/.test(a.chave)));
+check('"Te envio…" não vira achado; "Te respondo…" vira dúvida', !cm.achados.some((a) => /PDF/.test(a.texto)) && cm.achados.some((a) => a.tipo === 'duvida' && /pagamento/.test(a.texto)));
+check('bilan vira UM item com seções e aviso de proposta', cm.itens.find((i) => /^notion:bilan:/.test(i.origem_chave)).dados.secoes.length === 3 && cm.avisos.some((a) => a.origem_chave === 'notion:aviso:bilan'));
+check('persona pvt e dor Idioma geram as duas perguntas, com onde gravar na lista fechada', cm.avisos.find((a) => a.origem_chave === 'notion:aviso:fim_pvt').grava_em === 'respostas.fim_pvt' && cm.avisos.find((a) => a.origem_chave === 'notion:aviso:nivel_frances').opcoes.length === 4);
+check('documentos separados por ; e vírgula fora de parênteses; marco "a confirmar" sem data', cm.itens.filter((i) => i.dados.direcao === 'reune').length === 2 && cm.itens.find((i) => i.origem_chave === 'notion:prazo_chave').dados.a_confirmar === true);
+const sem = await crmNotionCaso({ ...props, persona: 'conjuge', dores: [] }, { ...corpoMap, bilan: { duvidas: [], proximos: [], respostas: [] }, resumo: '' }, [], { pagina: PID, editada_em: '' });
+check('sem bilan, sem persona pvt e sem Idioma: sem avisos e sem item de bilan', sem.avisos.length === 0 && !sem.itens.some((i) => i.tipo === 'bilan') && sem.achados.length === 0);
+
+// Falhas do banco nunca derrubam a leitura.
+instalar({ caso: { status: 404, body: { code: 'PGRST202', message: 'Could not find the function public.crm_caso_importar' } } });
+res = await ler(); j = await res.json();
+check('sem o SQL novo: a leitura segue (ficha e proposta), e o caso avisa para rodar o arquivo', res.status === 200 && j.ok === true && j.proposta_id === 42 && j.caso.ok === false && j.caso.codigo === 'sql_pendente' && /crm-caso-importar\.sql/.test(j.caso.erro));
+instalar({ caso: { status: 400, body: { code: 'P0001', message: 'sem_permissao' } } });
+res = await ler(); j = await res.json();
+check('banco diz sem_permissao no caso: a leitura segue, o caso registra o motivo', res.status === 200 && j.caso.codigo === 'sem_permissao');
+instalar({ caso: { status: 400, body: { code: 'P0001', message: 'payload_invalido Ana Exemplo' } } });
+res = await ler(); j = await res.json();
+check('outro erro do banco: mensagem genérica, sem o conteúdo no log nem na resposta', res.status === 200 && j.caso.codigo === 'caso_nao_importado' && !JSON.stringify(j.caso).includes('Ana') && logs.every((l) => !/Ana|Example|passaporte/i.test(l)));
+instalar({ caso: new TypeError('Failed to fetch') });
+res = await ler(); j = await res.json();
+check('rede caiu na importação: a leitura segue e o caso diz que não foi guardado', res.status === 200 && j.caso.codigo === 'caso_nao_importado' && j.proposta_id === 42);
+instalar();
+res = await worker.fetch(new Request('https://w.example/api/crm/onboarding/notion/ler', { method: 'POST', headers: { Authorization: 'Bearer ' + TOKEN, 'Content-Type': 'application/json' }, body: JSON.stringify({ url: PURL, caso: false }) }), env, {});
+j = await res.json();
+check('{"caso": false} pula o caso: nenhuma chamada a crm_caso_importar', res.status === 200 && importacoes().length === 0 && j.caso.pulado === true && inesperadas.length === 0);
 
 console.log('\n== Prazos (crmNotionPrazo) ==');
 const pz = (t) => crmNotionPrazo(t);

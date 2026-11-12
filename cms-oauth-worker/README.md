@@ -894,6 +894,10 @@ Prazo com "(a confirmar)" fica **como texto**, nunca vira data certa. Vão para 
 
 **Como testar:** crie uma linha de ensaio na base, com e-mail seu, Status "Bilan pronto" e a tabela; cole o link. Testes automáticos: `node cms-oauth-worker/testes/crm-onboarding-notion.test.mjs` e, em `admin/crm/db/testes`, `npm run test:onboarding-notion-ui`. Se algo falhar: Workers → Logs, procure `crm/notion`.
 
+### 31.1 O caso como rascunhos (`caso` na resposta)
+
+Depois de achar/criar a ficha, a rota chama `rpc/crm_caso_importar` (com a chave da própria admin) com `{versao, fonte, achados, acoes, itens, avisos}` montado por `crmNotionCaso`. Tudo entra como **rascunho**: achados em `conferir`, ações sem publicar, itens do board `proposto`, avisos `rascunho`. Chaves de origem estáveis (`nb_<hash>`, `n`, `notion:bilan`, `notion:prazo_chave`, `notion:doc:<hash>`, `notion:envio:<n>`, `notion:aviso:*`) tornam a leitura repetível: reler atualiza rascunhos e conta `mantidos`/`pulados`, sem duplicar nem desfazer decisões. A resposta ganha `caso: {ok, achados, acoes, itens, avisos}` (cada um com `novos/atualizados/mantidos/pulados`) ou `caso: {ok:false, codigo, erro}` (`sql_pendente`, `sem_permissao`, `caso_nao_importado`); uma falha aqui **nunca** derruba a leitura. Mande `{"url": "...", "caso": false}` para pular. Nenhum texto da página vai para o log.
+
 ## 32. E-mail "Bilan da nossa conversa" (CRM → ficha → Plataforma → Interações)
 
 Quando a ficha é criada pelo Onboarding, ela **abre em Plataforma → Interações** (resumo da leitura no topo) e, na coluna da direita da aba Plataforma, **logo abaixo de Pagamento**, fica o botão **Enviar e-mail com bilan da conversa**. O botão abre um modal com os quatro blocos do e-mail, já preenchidos com o que o Worker leu da página do Notion; você edita, vê a prévia e só então envia.
@@ -948,3 +952,20 @@ o campo "Ou quantos minutos depois" na parte Envio do estúdio e o Cron Trigger 
 6. Teste de ponta a ponta com um e-mail seu na página `/guias/tecnologo-nivel-na-franca/`: o e-mail chega entre 30 e 35 minutos depois.
 
 Como desfazer: ver o fim de `crm-sequencia-minutos.sql` e o de `crm-modelo-tecnologo-recap.sql`. Desligar o Envio no estúdio para a sequência na hora.
+
+## 32. O 1:1 pago: pagamento avulso, áudio liberado e transcrição (`/api/audio/transcrever`)
+
+**Pagamento.** O webhook do Stripe (`POST /api/stripe/webhook`) passou a reconhecer a compra avulsa do 1:1: um **Payment Link** com o
+metadado `por_dentro` = `1a1_20` ou `1a1_40` (Stripe → Payment Link → Metadata). `checkout.session.completed` com `mode: payment`,
+`payment_status: paid` e esse metadado chama `crm_1a1_pago` (SQL `admin/crm/db/crm-1a1.sql`): registra o pagamento (a sessão do Stripe impede
+contar duas vezes), libera o **áudio** no chat por 30 dias e agenda um aviso para o **dia seguinte, às 9h de Paris**: "Antecipe o assunto do seu 1:1"
+(botão que abre o chat). Sem consentimento de serviço o aviso fica em rascunho na aba Caso. A pessoa é achada pelo e-mail do pagamento
+(o app manda `prefilled_email` no link). Peça ao Stripe que, depois do pagamento, leve a pessoa para `https://plataforma.imigrantepordentro.com/dashboard/#chat`.
+
+**Transcrição.** `POST /api/audio/transcrever` (token da sessão da própria pessoa, corpo = o áudio, `audio/webm`, `audio/mp4` ou `audio/ogg`, até 3 MB
+≈ 3 min). Só quem tem o áudio liberado (`meu_1a1().audio`). Usa o **Workers AI** (`@cf/openai/whisper-large-v3-turbo`, em português, com uma dica de
+vocabulário: préfecture, titre de séjour, Campus France…): é preciso o binding `AI` (já em `wrangler.toml`; o plano gratuito da Cloudflare tem uma
+cota diária). Devolve `{ ok, texto, cortado }`; o texto vai até 1000 letras (o limite do chat). **O áudio não é guardado e nem o áudio nem o texto vão para
+o log**: o app mostra o texto na caixa, a pessoa confere e envia como mensagem normal. Limite de 20 áudios por janela por pessoa. Respostas:
+`audio_nao_liberado` (403), `transcricao_nao_configurada` (503), `audio_grande` (413), `formato` (415), `sem_fala` (422), `transcricao_falhou` (502), `limite` (429).
+Teste: `node cms-oauth-worker/testes/audio-1a1.test.mjs`.
