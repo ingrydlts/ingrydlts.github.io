@@ -655,7 +655,7 @@ function eventText(e) {
 // tab: 'conversa' ou 'ficha'; sem tab, a ficha abre na Conversa se já houver alguma mensagem.
 async function openPessoa(id, tab, sub) {
   if (state.view !== 'pessoa') state.prevView = state.view;
-  state.sel = id; state.ptab = tab || null; state.pstab = sub || 'assistente'; state.pdias = {}; state.chatRasc = '';
+  state.sel = id; state.ptab = tab || null; state.pstab = sub || 'assistente'; state.pdias = {}; state.chatRasc = ''; state.caso = null;
   show('pessoa');
 }
 // ---------- E-mails da pessoa: o que já saiu e o próximo, como ela vai ver ----------
@@ -1254,7 +1254,7 @@ function propostaEstado(x, agora) {
 // A aba Plataforma tem três sub-abas: iAssistente, Chat e Interações. A coluna da direita (pagamento, checklist e resumo)
 // fica fixa e é a mesma nas três. Interações junta cada clique dela no app (checklist, dossiê, telas, botões) com as vezes
 // em que o dossiê foi salvo, separados por dia (um dropdown por dia, o mais recente aberto).
-var PLAT_ABAS = [['assistente', 'iAssistente'], ['chat', 'Chat'], ['checklist', 'Checklist'], ['interacoes', 'Interações']];
+var PLAT_ABAS = [['assistente', 'iAssistente'], ['chat', 'Chat'], ['checklist', 'Checklist'], ['caso', 'Caso'], ['interacoes', 'Interações']];
 var INT_TIPOS = { checklist: ['Checklist', 'u-baixa'], dossie: ['Dossiê', 'u-media'], tela: ['Tela', 'tp-artigo'], botao: ['Botão', 'out'], link: ['Link', 'out'] };
 var TELAS_DOSSIE = /^\/(perfil|landing|onboarding)\//;   // as telas em que o app faz as perguntas do dossiê
 async function buscaInteracoes(cid) {
@@ -1303,11 +1303,174 @@ document.addEventListener('toggle', function (e) {
   var d = e.target; if (d && d.matches && d.matches('details.intdia')) state.pdias[d.dataset.dia] = d.open;
   if (d && d.matches && d.matches('details.st-cat')) CAT_FECHADA[d.dataset.cat] = !d.open;
 }, true);
+// ---------- Aba Caso: o que o CRM entendeu da conversa e o que vai para ela (db/crm-caso.sql, crm-caso-importar.sql) ----------
+// Tudo nasce como rascunho (a leitura do Notion). Nada chega à pessoa sem você revisar e publicar; ela só vê o que está publicado
+// ou agendado, e só se houver consentimento de serviço. As regras ficam no banco (gatilhos): aqui só se mostra e se aperta o botão.
+var CASO_ERROS = { sem_consentimento: 'Falta o consentimento de serviço dela (aba Ficha). Sem ele nada é publicado nem agendado.', revise_antes_de_publicar: 'Revise o item antes de publicar.',
+  sem_permissao: 'Sem permissão. Entre de novo no CRM.', aviso_encerrado: 'Esse aviso já foi encerrado.', item_nao_encontrado: 'O item não existe mais. Atualize a aba.' };
+var CASO_TIPO_ACH = { fato: 'Fato', deducao: 'Dedução', duvida: 'Dúvida' };
+var CASO_CERTEZA = { literal: 'literal', inferido: 'inferido', a_confirmar: 'a confirmar', nao_bate: 'não bate' };
+var CASO_CANAL = { plataforma: 'Plataforma', email: 'E-mail', convite: 'Convite', instagram: 'Instagram', so_eu: 'Só eu' };
+var CASO_TIPO_ITEM = { bilan: 'Bilan', marco: 'Prazo', documento: 'Documento', escola: 'Escola', modelo: 'Modelo de e-mail' };
+var CASO_TIPO_AVISO = { pergunta: 'Pergunta', proposta: 'Proposta', inteligencia: 'Inteligência', oferta: 'Oferta' };
+var CASO_ESTADO_AVISO = { rascunho: 'Rascunho', agendado: 'Agendado', liberado: 'Liberado', lido: 'Lido', respondido: 'Respondido', dispensado: 'Dispensado', cancelado: 'Cancelado' };
+async function buscaCaso(cid) {
+  var r = await Promise.all([
+    supabase.from('caso_achados').select('id,chave,tipo,texto,origem,certeza,estado,conferido_em').eq('contato_id', cid).order('id', { ascending: true }).limit(80),
+    supabase.from('caso_acoes').select('id,n,titulo,dono,canal,botao,prazo,prazo_texto,prazo_a_confirmar,estado,certeza,publicada_em,concluida_em,concluida_por').eq('contato_id', cid).order('n', { ascending: true }).limit(150),
+    supabase.from('board_itens').select('id,tipo,titulo,resumo,dados,estado,ordem,link,versao').eq('contato_id', cid).order('ordem', { ascending: true }).limit(80),
+    supabase.from('caso_avisos').select('id,tipo,titulo,texto,resposta_tipo,grava_em,modo,dias_apos,liberar_em,estado,resposta,adiado_ate').eq('contato_id', cid).order('id', { ascending: true }).limit(40),
+    supabase.from('consentimentos').select('aceito,criado_em').eq('contato_id', cid).eq('finalidade', 'servico').order('criado_em', { ascending: false }).limit(1)
+  ]);
+  var err = r[0].error || r[1].error || r[2].error || r[3].error || null;
+  return { cid: cid, err: err, ach: r[0].data || [], aco: r[1].data || [], itens: r[2].data || [], avs: r[3].data || [], consent: !!(r[4].data && r[4].data[0] && r[4].data[0].aceito === true), ed: null, agenda: null };
+}
+function casoPendentes(k) {
+  if (!k || k.err) return 0;
+  return k.ach.filter(function (x) { return x.estado === 'conferir'; }).length + k.itens.filter(function (x) { return x.estado === 'proposto'; }).length + k.avs.filter(function (x) { return x.estado === 'rascunho'; }).length;
+}
+function casoPil(txt, cls) { return '<span class="pill' + (cls ? ' ' + cls : '') + '">' + esc(txt) + '</span>'; }
+function casoBtn(acao, id, rot, extra) { return '<button type="button" class="btn" data-caso="' + acao + '" data-id="' + esc(String(id)) + '"' + (extra || '') + ' style="padding:5px 10px;font-size:12px">' + esc(rot) + '</button>'; }
+function casoSecao(titulo, sub, corpo) { return '<section class="dbloco" style="margin-top:14px"><h4>' + esc(titulo) + (sub ? ' <span class="sub" style="font-weight:400">' + esc(sub) + '</span>' : '') + '</h4>' + corpo + '</section>'; }
+function casoLinha(esq, meio, btns) {
+  return '<div class="feeditem" style="align-items:flex-start"><div style="flex:none;min-width:84px">' + esq + '</div><div class="fbody" style="min-width:0"><p style="margin:0">' + meio + '</p></div><div style="flex:none;display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">' + btns + '</div></div>';
+}
+function casoEditor(tipo, id, campos) {
+  return '<div class="feeditem"><div class="fbody" style="width:100%">' + campos + '<div style="display:flex;gap:6px;margin-top:6px">' + casoBtn('salvar-' + tipo, id, 'Salvar') + casoBtn('cancelar', id, 'Cancelar') + '</div></div></div>';
+}
+function casoAchadosHtml(k) {
+  if (!k.ach.length) return '<div class="empty" style="padding:14px">Nenhum achado. Leia a página do Notion no Onboarding.</div>';
+  return k.ach.map(function (x) {
+    if (k.ed && k.ed.t === 'ach' && k.ed.id === x.id) return casoEditor('ach', x.id, '<textarea id="caso-ed-texto" maxlength="400" rows="3" style="width:100%">' + esc(x.texto) + '</textarea>');
+    var est = x.estado === 'ok' ? casoPil('Conferido', 'u-baixa') : x.estado === 'descartado' ? casoPil('Descartado') : casoPil('Conferir', 'u-media');
+    var btns = (x.estado === 'conferir' ? casoBtn('ach-ok', x.id, 'Conferido') : casoBtn('ach-voltar', x.id, 'Voltar a conferir')) +
+      (x.estado !== 'descartado' ? casoBtn('ach-desc', x.id, 'Descartar') : '') + casoBtn('ed-ach', x.id, 'Editar');
+    return casoLinha(est, esc(x.texto) + ' <span class="sub">· ' + esc(CASO_TIPO_ACH[x.tipo] || x.tipo) + ', ' + esc(CASO_CERTEZA[x.certeza] || x.certeza) + '</span>', btns);
+  }).join('');
+}
+function casoPrazo(a) {
+  if (a.prazo) return fmtDay(a.prazo) + (a.prazo_a_confirmar ? ' (a confirmar)' : '');
+  return a.prazo_texto || (a.prazo_a_confirmar ? 'a confirmar' : '');
+}
+function casoAcoesHtml(k) {
+  if (!k.aco.length) return '<div class="empty" style="padding:14px">Nenhuma ação.</div>';
+  return k.aco.map(function (a) {
+    if (k.ed && k.ed.t === 'aco' && k.ed.id === a.id) return casoEditor('aco', a.id, '<input id="caso-ed-titulo" class="t" maxlength="160" style="width:100%" value="' + esc(a.titulo) + '">');
+    var fim = a.estado === 'concluida';
+    var pub = a.publicada_em ? casoPil('Publicada', 'u-baixa') : casoPil('Rascunho', 'u-media');
+    var vis = a.dono === 'ela' && a.canal === 'plataforma';   // só estas aparecem para ela no Checklist
+    var btns = (fim ? casoBtn('aco-reabrir', a.id, 'Reabrir') : casoBtn('aco-fim', a.id, 'Concluir')) +
+      (vis ? (a.publicada_em ? casoBtn('aco-retirar', a.id, 'Retirar') : casoBtn('aco-pub', a.id, 'Publicar para ela')) : '') + casoBtn('ed-aco', a.id, 'Editar');
+    var meta = [a.dono === 'ela' ? 'Ela' : 'Ingryd', CASO_CANAL[a.canal] || a.canal, casoPrazo(a)].filter(Boolean).join(' · ');
+    return casoLinha((vis ? pub : casoPil('Só equipe')), (fim ? '<s>' + esc(a.titulo) + '</s>' : esc(a.titulo)) + ' <span class="sub">· ' + esc(meta) + (fim ? ' · concluída' + (a.concluida_por === 'ela' ? ' por ela' : ' pela equipe') : '') + '</span>', btns);
+  }).join('');
+}
+function casoItemResumo(it) {
+  var d = it.dados || {};
+  if (it.tipo === 'marco') return d.data ? fmtDay(d.data) + (d.a_confirmar ? ' (a confirmar)' : '') : (d.nota || 'a confirmar');
+  if (it.tipo === 'bilan') return ((d.secoes || []).length) + ' seções';
+  if (it.tipo === 'documento') return d.direcao === 'recebe' ? 'ela recebe de você' : 'ela reúne';
+  return it.resumo || '';
+}
+function casoItensHtml(k) {
+  if (!k.itens.length) return '<div class="empty" style="padding:14px">Nenhum item. Escolas e modelos de e-mail são acrescentados pela equipe.</div>';
+  return k.itens.map(function (it) {
+    if (k.ed && k.ed.t === 'item' && k.ed.id === it.id) {
+      return casoEditor('item', it.id, '<input id="caso-ed-titulo" class="t" maxlength="120" style="width:100%" value="' + esc(it.titulo) + '"><input id="caso-ed-link" class="t" maxlength="500" placeholder="https://… (opcional)" style="width:100%;margin-top:6px" value="' + esc(it.link || '') + '">');
+    }
+    var est = it.estado === 'publicado' ? casoPil('Publicado', 'u-baixa') : it.estado === 'revisado' ? casoPil('Revisado', 'u-media') : casoPil('Proposto');
+    var btns = (it.estado === 'proposto' ? casoBtn('item-rev', it.id, 'Marcar como revisado') : it.estado === 'revisado' ? casoBtn('item-pub', it.id, 'Publicar para ela') : casoBtn('item-ret', it.id, 'Retirar')) + casoBtn('ed-item', it.id, 'Editar');
+    return casoLinha(est, esc(it.titulo) + ' <span class="sub">· ' + esc(CASO_TIPO_ITEM[it.tipo] || it.tipo) + (casoItemResumo(it) ? ', ' + esc(casoItemResumo(it)) : '') + '</span>', btns);
+  }).join('');
+}
+function casoQuando(a) {
+  if (a.estado === 'rascunho') return 'sem data (' + (a.modo === 'data' ? 'data fixa' : a.dias_apos + (a.dias_apos === 1 ? ' dia' : ' dias') + ' após o 1º acesso') + ')';
+  if (a.liberar_em) return 'libera em ' + fmtQuando(a.liberar_em);
+  return a.modo === 'apos_primeiro_acesso' ? a.dias_apos + (a.dias_apos === 1 ? ' dia' : ' dias') + ' após o 1º acesso (ela ainda não entrou)' : '';
+}
+function casoAvisosHtml(k) {
+  if (!k.avs.length) return '<div class="empty" style="padding:14px">Nenhum aviso.</div>';
+  return k.avs.map(function (a) {
+    var est = casoPil(CASO_ESTADO_AVISO[a.estado] || a.estado, a.estado === 'rascunho' ? 'u-media' : a.estado === 'respondido' ? 'u-baixa' : '');
+    var meio = '<b>' + esc(CASO_TIPO_AVISO[a.tipo] || a.tipo) + ':</b> ' + esc(a.titulo) + ' <span class="sub">· ' + esc(casoQuando(a)) + (a.estado === 'respondido' && a.resposta ? ' · resposta: ' + esc(typeof a.resposta === 'object' ? String(a.resposta.valor !== undefined ? a.resposta.valor : JSON.stringify(a.resposta)) : String(a.resposta)) : '') + '</span>';
+    var editavel = a.estado === 'rascunho' || a.estado === 'agendado';
+    if (k.agenda === a.id) {
+      var form = '<div class="feeditem"><div class="fbody"><p style="margin:0 0 6px"><b>Quando ela recebe: ' + esc(a.titulo) + '</b></p>' +
+        '<label class="sub">Dias após o primeiro acesso <select id="caso-ag-dias">' + [0, 1, 2, 3, 5, 7, 14].map(function (n) { return '<option value="' + n + '"' + (n === a.dias_apos ? ' selected' : '') + '>' + n + '</option>'; }).join('') + '</select></label> ' +
+        casoBtn('ag-dias', a.id, 'Agendar assim') + '<br><label class="sub" style="display:inline-block;margin-top:6px">ou numa data fixa (9h de Paris) <input type="date" id="caso-ag-data"></label> ' + casoBtn('ag-data', a.id, 'Agendar nesta data') +
+        ' ' + casoBtn('cancelar', a.id, 'Fechar') + '</div></div>';
+      return casoLinha(est, meio, '') + form;
+    }
+    var btns = editavel ? casoBtn('ag-abrir', a.id, a.estado === 'rascunho' ? 'Aprovar e agendar' : 'Mudar a data') : '';
+    if (a.estado === 'rascunho' || a.estado === 'agendado') btns += casoBtn('av-cancel', a.id, 'Cancelar');
+    return casoLinha(est, meio, btns);
+  }).join('');
+}
+function casoPanelHtml(c, k) {
+  if (!k || k.cid !== c.id) return '<div class="panel" style="padding:16px"><p class="sub" style="margin:0">Carregando o caso…</p></div>';
+  if (k.err) return '<div class="panel" style="padding:16px"><h3 style="font-size:15px;margin-bottom:8px">Caso ainda não ligado</h3><p class="sub" style="margin:0">Falta rodar <b>db/crm-caso.sql</b> e <b>db/crm-caso-importar.sql</b> no SQL Editor do Supabase. Depois, ler a página do Notion no Onboarding preenche esta aba.</p></div>';
+  var vazio = !k.ach.length && !k.aco.length && !k.itens.length && !k.avs.length;
+  var cab = '<div class="panel" style="padding:16px"><h3 style="font-size:15px;margin:0 0 4px">O caso de ' + esc(pn(c)) + '</h3><p class="sub" style="margin:0">Tudo veio da leitura da página do Notion como <b>rascunho</b>. Ela só vê o que você revisar e publicar' +
+    (k.consent ? '.' : ', e <b>só depois do consentimento de serviço</b>, que ainda não está registrado: publicar e agendar ficam bloqueados.') + ' O que você já decidiu não é refeito se a página for lida de novo.</p></div>';
+  if (vazio) return cab + '<div class="panel empty" style="margin-top:14px">Ainda sem caso. Cole o link da página no menu Onboarding e use “Ler do Notion”.</div>';
+  var pend = casoPendentes(k);
+  return cab + (pend ? '<p class="sub" style="margin:10px 2px 0"><b>' + pend + '</b> ' + (pend === 1 ? 'coisa espera' : 'coisas esperam') + ' a sua revisão.</p>' : '') +
+    casoSecao('O que entendi', k.ach.length + ' achados', casoAchadosHtml(k)) +
+    casoSecao('Ações', k.aco.length + ' linhas', casoAcoesHtml(k)) +
+    casoSecao('Board dela', 'o que aparece no Espaço e nos Guias', casoItensHtml(k)) +
+    casoSecao('Avisos da IAssistente', 'você decide a data de cada um', casoAvisosHtml(k));
+}
+function pintaCaso() { var b = $('caso-box'); if (b) b.innerHTML = casoPanelHtml(byC(state.sel) || {}, state.caso); var ab = $('plat-abas'); if (ab) ab.innerHTML = platAbasHtml(); }
+async function carregaCaso(cid) {
+  if (state.casoCarregando === cid) return;
+  state.casoCarregando = cid;
+  try { var k = await buscaCaso(cid); if (state.sel === cid) { state.caso = k; pintaCaso(); } } finally { state.casoCarregando = null; }
+}
+async function casoRecarrega() { var cid = state.sel, ed = state.caso && state.caso.ed, ag = state.caso && state.caso.agenda; var k = await buscaCaso(cid); if (state.sel !== cid) return; k.ed = ed; k.agenda = ag; state.caso = k; pintaCaso(); }
+function casoFalha(o, e) { var m = String((e && (e.message || e.hint)) || ''); for (var k in CASO_ERROS) if (m.indexOf(k) >= 0) return toast(CASO_ERROS[k], 4200); fail(o, e); }
+var CASO_TABELA = { ach: 'caso_achados', aco: 'caso_acoes', item: 'board_itens' };
+// Um clique de botão da aba. O banco confere (consentimento, revisão antes de publicar); aqui só se mostra o motivo.
+async function casoAcao(acao, id, t) {
+  var k = state.caso; if (!k) return;
+  var agora = new Date().toISOString(), nid = Number(id), r = null;
+  if (acao === 'cancelar') { k.ed = null; k.agenda = null; return pintaCaso(); }
+  if (acao.indexOf('ed-') === 0) { k.ed = { t: acao.slice(3), id: nid }; k.agenda = null; pintaCaso(); var f = $('caso-ed-texto') || $('caso-ed-titulo'); if (f && f.focus) f.focus(); return; }
+  if (acao === 'ag-abrir') { k.agenda = nid; k.ed = null; return pintaCaso(); }
+  if (t) t.disabled = true;
+  if (acao === 'ach-ok') r = await supabase.from('caso_achados').update({ estado: 'ok', conferido_em: agora }).eq('id', nid);
+  else if (acao === 'ach-voltar') r = await supabase.from('caso_achados').update({ estado: 'conferir', conferido_em: null }).eq('id', nid);
+  else if (acao === 'ach-desc') r = await supabase.from('caso_achados').update({ estado: 'descartado' }).eq('id', nid);
+  else if (acao === 'salvar-ach') { var tx = $('caso-ed-texto') ? $('caso-ed-texto').value.trim() : ''; if (!tx) { if (t) t.disabled = false; return toast('O texto não pode ficar vazio'); } r = await supabase.from('caso_achados').update({ texto: tx.slice(0, 400), origem: 'ingryd' }).eq('id', nid); k.ed = null; }
+  else if (acao === 'aco-fim') r = await supabase.from('caso_acoes').update({ estado: 'concluida', concluida_em: agora, concluida_por: 'equipe' }).eq('id', nid);
+  else if (acao === 'aco-reabrir') r = await supabase.from('caso_acoes').update({ estado: 'aberta', concluida_em: null, concluida_por: null }).eq('id', nid);
+  else if (acao === 'aco-pub') r = await supabase.from('caso_acoes').update({ publicada_em: agora }).eq('id', nid);
+  else if (acao === 'aco-retirar') r = await supabase.from('caso_acoes').update({ publicada_em: null }).eq('id', nid);
+  else if (acao === 'salvar-aco') { var ti = $('caso-ed-titulo') ? $('caso-ed-titulo').value.trim() : ''; if (!ti) { if (t) t.disabled = false; return toast('O título não pode ficar vazio'); } r = await supabase.from('caso_acoes').update({ titulo: ti.slice(0, 160) }).eq('id', nid); k.ed = null; }
+  else if (acao === 'item-rev') r = await supabase.from('board_itens').update({ estado: 'revisado' }).eq('id', nid);
+  else if (acao === 'item-pub') r = await supabase.rpc('crm_board_publicar', { p_id: nid });
+  else if (acao === 'item-ret') r = await supabase.rpc('crm_board_retirar', { p_id: nid });
+  else if (acao === 'salvar-item') {
+    var tt = $('caso-ed-titulo') ? $('caso-ed-titulo').value.trim() : '', ln = $('caso-ed-link') ? $('caso-ed-link').value.trim() : '';
+    if (!tt) { if (t) t.disabled = false; return toast('O título não pode ficar vazio'); }
+    if (ln && !/^https:\/\//.test(ln)) { if (t) t.disabled = false; return toast('O link precisa começar com https://'); }
+    r = await supabase.from('board_itens').update({ titulo: tt.slice(0, 120), link: ln || null }).eq('id', nid); k.ed = null;
+  }
+  else if (acao === 'ag-dias') { var dd = $('caso-ag-dias'); r = await supabase.rpc('crm_aviso_agendar', { p_id: nid, p_quando: null, p_dias_apos: Number(dd ? dd.value : 1) }); k.agenda = null; }
+  else if (acao === 'ag-data') {
+    var dv = $('caso-ag-data') ? $('caso-ag-data').value : ''; if (!/^\d{4}-\d{2}-\d{2}$/.test(dv)) { if (t) t.disabled = false; return toast('Escolha a data'); }
+    r = await supabase.rpc('crm_aviso_agendar', { p_id: nid, p_quando: dv + 'T09:00:00+01:00', p_dias_apos: null }); k.agenda = null;
+  }
+  else if (acao === 'av-cancel') r = await supabase.from('caso_avisos').update({ estado: 'cancelado' }).eq('id', nid);
+  else { if (t) t.disabled = false; return; }
+  if (r && r.error) { if (t) t.disabled = false; return casoFalha('salvar', r.error); }
+  await casoRecarrega();
+  toast(acao === 'item-pub' || acao === 'aco-pub' ? 'Publicado: ela já pode ver' : acao === 'ag-dias' || acao === 'ag-data' ? 'Aviso agendado' : 'Salvo');
+}
 function platAbasHtml() {
   var nova = chatNaoLidas(state.chat);
   return '<div class="ptabs" role="tablist" aria-label="Plataforma" style="margin:0 0 14px">' + PLAT_ABAS.map(function (t) {
     return '<button class="ptab" role="tab" type="button" data-pstab="' + t[0] + '" aria-selected="' + (state.pstab === t[0]) + '">' + t[1] +
-      (t[0] === 'chat' && nova ? ' <span class="count">' + nova + '</span>' : '') + (t[0] === 'checklist' ? chkSeloAtraso() : '') + '</button>';
+      (t[0] === 'chat' && nova ? ' <span class="count">' + nova + '</span>' : '') + (t[0] === 'checklist' ? chkSeloAtraso() : '') + (t[0] === 'caso' && casoPendentes(state.caso) ? ' <span class="count">' + casoPendentes(state.caso) + '</span>' : '') + '</button>';
   }).join('') + '</div>';
 }
 // O selo "N atrasados" da subaba Checklist (vazio sem conta, sem checklist ou sem atraso).
@@ -1319,6 +1482,7 @@ function chkSeloAtraso() {
 function platConteudoHtml(c, h4) {
   if (state.pstab === 'checklist') return '<div id="chk-aba">' + checklistPanel(c) + '</div>';
   if (state.pstab === 'chat') return '<div id="chat-box">' + chatPanelHtml(c, state.chat, h4) + '</div>';
+  if (state.pstab === 'caso') { if (!state.caso || state.caso.cid !== c.id) setTimeout(function () { carregaCaso(c.id); }, 0); return '<div id="caso-box">' + casoPanelHtml(c, state.caso) + '</div>'; }
   if (state.pstab === 'interacoes') return '<div id="int-box">' + bilanResumoHtml(c) + interacoesHtml(state.int) + '</div>';
   return '<div id="ins-box">' + insightsHtml(state.ins, Date.now()) + '</div>';
 }
@@ -3784,6 +3948,7 @@ document.addEventListener('click', async function (e) {
   if (t.dataset.openconv) return openPessoa(t.dataset.openconv, 'conversa');
   if (t.dataset.ptab) { state.ptab = t.dataset.ptab; return renderPessoa(); }
   if (t.dataset.pstab) return trocaPlatAba(t.dataset.pstab);
+  if (t.dataset.caso) return casoAcao(t.dataset.caso, t.dataset.id, t);
   if (t.id === 'conv-send') return sendResposta(t);
   if (t.dataset.avisado) {
     t.disabled = true;

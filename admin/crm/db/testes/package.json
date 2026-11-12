@@ -34,6 +34,7 @@
     "test:chat": "node crm-chat.test.mjs",
     "test:caso-importar": "node crm-caso-importar.test.mjs",
     "test:caso": "node crm-caso.test.mjs",
+    "test:caso-ui": "node crm-caso-ui.test.mjs",
     "test:chat-ui": "node crm-chat-ui.test.mjs",
     "test:radar": "node crm-radar.test.mjs",
     "test:radar-ui": "node crm-radar-ui.test.mjs",

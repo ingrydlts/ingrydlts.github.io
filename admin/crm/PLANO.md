@@ -218,3 +218,5 @@ novo (devolve a lista de `crm_evento_recente()`). **Cuidado: isso apaga tudo o q
 - **Subpersona** = `contatos.caminho` (a escolha do pop-up de cada persona).
 - **"Parada há N dias"** conta só o que a *pessoa* faz; e-mail, sinal ou mudança de estágio seus não zeram o contador.
 - Visão "Au pair sem certificado" usa `apCertificado = 'nao'` (o desenho dizia "sem matrícula", campo que o funil não coleta).
+
+**Aba Caso (12/11):** na ficha, Plataforma → **Caso**. Mostra os achados (conferir, descartar, editar), as ações (publicar para ela as que são dela na plataforma, concluir pela equipe), o board (proposto → revisado → publicado, com link https opcional) e os avisos da IAssistente (aprovar e escolher dias após o primeiro acesso ou uma data fixa, 9h de Paris). Só leem e escrevem as tabelas do caso e chamam `crm_board_publicar`, `crm_board_retirar` e `crm_aviso_agendar`; consentimento e revisão são impostos pelo banco, a tela só mostra o motivo. Teste: `npm run test:caso-ui`. Ainda não há: criar item ou aviso do zero, nem escolas e modelos sugeridos sozinhos.
