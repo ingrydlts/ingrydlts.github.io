@@ -105,3 +105,18 @@ export function tarefasDe(ctx, rotuloProcesso) {
     why: pe.angulo || 'É a hora de dar o próximo passo no funil.', dest: { tab: 'conversa' } });
   return out;
 }
+
+// ---------- Fila de hoje (spec §3.1) ----------
+// Texto curto da próxima ação da pessoa, o mesmo da primeira ação do quadro (critério de aceite do spec §15).
+export function acaoRapida(c, ctx, rotuloProcesso) {
+  const x = ctx || {}, rot = rotuloProcesso || ((k) => k);
+  if (x.respostasNovas > 0) return comNome('Responder', c && c.nome);
+  if ((x.processosDetectados || []).length) return 'Decidir o processo ' + rot(x.processosDetectados[0]);
+  return 'Abrir a ficha';
+}
+const RANK_URG = { alta: 0, media: 1, baixa: 2 };
+// Mais respostas/mensagens não vistas primeiro; empate por urgência (Alta, Média, Baixa); depois a ordem de entrada. Devolve uma cópia.
+export function ordenarFila(itens) {
+  const rk = (u) => (u in RANK_URG ? RANK_URG[u] : 9);
+  return (itens || []).map((o, i) => ({ o, i })).sort((a, b) => (b.o.novas || 0) - (a.o.novas || 0) || rk(a.o.c && a.o.c.urgencia) - rk(b.o.c && b.o.c.urgencia) || a.i - b.i).map((z) => z.o);
+}

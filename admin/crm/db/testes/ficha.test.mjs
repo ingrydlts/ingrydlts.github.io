@@ -77,6 +77,19 @@ console.log('== Task 5: tarefas ==');
   check('nome vazio não quebra', FX.tarefasDe(ctx({ nome: '', respostasNovas: 1 }), rot)[0].t === 'Responder');
 }
 
+console.log('== Task 6: fila ==');
+{
+  const A = { c: { id: 'A', urgencia: 'alta' }, novas: 0 }, B = { c: { id: 'B', urgencia: 'baixa' }, novas: 2 }, C = { c: { id: 'C', urgencia: 'alta' }, novas: 2 }, D = { c: { id: 'D', urgencia: 'media' }, novas: 0 };
+  const ent = [A, B, C, D], f = FX.ordenarFila(ent);
+  check('mais novas, empate por urgência', f.map((x) => x.c.id).join() === 'C,B,A,D');
+  check('não altera a entrada', ent.map((x) => x.c.id).join() === 'A,B,C,D');
+  check('urgência ausente vai por último', FX.ordenarFila([{ c: { id: 'X' }, novas: 0 }, D]).map((x) => x.c.id).join() === 'D,X');
+  const rot = (k) => ({ caf: 'CAF' }[k] || k);
+  check('ação rápida: responder com o primeiro nome', FX.acaoRapida({ nome: 'Ana Souza' }, { respostasNovas: 1, processosDetectados: [] }, rot) === 'Responder Ana');
+  check('ação rápida: processo', /CAF/.test(FX.acaoRapida({ nome: 'Ana' }, { respostasNovas: 0, processosDetectados: ['caf'] }, rot)));
+  check('ação rápida: nada', FX.acaoRapida({ nome: 'Ana' }, { respostasNovas: 0, processosDetectados: [] }, rot) === 'Abrir a ficha');
+}
+
 
 console.log('\n' + passed + ' passaram, ' + failed + ' falharam');
 if (failed) process.exit(1);
