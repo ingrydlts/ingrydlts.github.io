@@ -48,6 +48,9 @@ async function main() {
   const sql = readFileSync(path.resolve(HERE, '../crm-caso.sql'), 'utf8');
   const r1 = await attempt(() => db.exec(sql)); check('roda a 1ª vez sem erro', r1.ok); if (!r1.ok) { console.log(r1.error.message); process.exit(1); }
   const r2 = await attempt(() => db.exec(sql)); check('roda a 2ª vez sem erro (idempotente)', r2.ok);
+  // O patch das perguntas por persona (a chave deixa de ser uma lista fixa): roda por cima, duas vezes.
+  const sqlCrit = readFileSync(path.resolve(HERE, '../crm-caso-criterios.sql'), 'utf8');
+  check('crm-caso-criterios.sql roda duas vezes sem erro', (await attempt(() => db.exec(sqlCrit))).ok && (await attempt(() => db.exec(sqlCrit))).ok);
 
   const TABELAS = ['caso_achados', 'caso_acoes', 'board_itens', 'caso_avisos'];
   const DA_PESSOA = ['meu_caso', 'caso_primeiro_acesso', 'meus_avisos', 'marcar_aviso_lido', 'responder_aviso', 'adiar_aviso', 'dispensar_aviso', 'salvar_dados_dela', 'marcar_acao'];
@@ -176,8 +179,10 @@ async function main() {
   check('critérios se mesclam (mandar um não apaga os outros)', dd.dados_dela.criterios.carga === 'sim' && dd.dados_dela.criterios.visto === 'nao' && dd.dados_dela.meses === 4 && dd.dados_dela.custo_eur === 3600);
   check('o que é da equipe (dados) não muda', dd.dados.cidade === 'Marseille' && dd.dados.custo_eur === 3600 && !('criterios' in dd.dados));
   await dela(ana.id, eAna, { criterios: { visto: null } });
+  await dela(ana.id, eAna, { criterios: { horario: 'sim', etudes: 'nao' } });
+  check('chave de outra persona (au pair, Campus France) é aceita e se mescla com as outras', (await um('select dados_dela from board_itens where id=$1', [eAna])).dados_dela.criterios.horario === 'sim' && (await um('select dados_dela from board_itens where id=$1', [eAna])).dados_dela.criterios.etudes === 'nao');
   check('voltar para "ainda não sei" é guardar vazio', (await um('select dados_dela from board_itens where id=$1', [eAna])).dados_dela.criterios.visto === null);
-  for (const [rot, patch] of [['chave que não é dela', { curso: 'x' }], ['critério inventado', { criterios: { cor: 'sim' } }], ['valor do critério fora de sim/não', { criterios: { carga: 'talvez' } }],
+  for (const [rot, patch] of [['chave que não é dela', { curso: 'x' }], ['critério com chave de formato inseguro', { criterios: { 'Cor X': 'sim' } }], ['critério com chave de SQL', { criterios: { 'a; drop table x': 'sim' } }], ['mais de 12 critérios', { criterios: Object.fromEntries(Array.from({ length: 13 }, (_, i) => ['k' + i, 'sim'])) }], ['critérios que não é objeto', { criterios: ['sim'] }], ['valor do critério fora de sim/não', { criterios: { carga: 'talvez' } }],
     ['meses absurdos', { meses: 99 }], ['meses quebrados', { meses: 4.5 }], ['custo negativo', { custo_eur: -1 }], ['custo em texto', { custo_eur: '3600' }], ['reunido em item de escola', { reunido: true }], ['não é objeto', 'x']])
     check(`recusa: ${rot}`, !(await attempt(() => dela(ana.id, eAna, patch))).ok);
   check('item de outra pessoa é recusado', await falha(() => dela(bia.id, eAna, { meses: 4 }), 'item_nao_encontrado'));

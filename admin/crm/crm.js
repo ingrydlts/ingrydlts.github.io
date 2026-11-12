@@ -1326,7 +1326,7 @@ async function buscaCaso(cid) {
     supabase.from('board_itens').select('id,tipo,titulo,resumo,dados,estado,ordem,link,versao').eq('contato_id', cid).order('ordem', { ascending: true }).limit(80),
     supabase.from('caso_avisos').select('id,tipo,titulo,texto,resposta_tipo,grava_em,modo,dias_apos,ordem,pausa_dias,liberar_em,liberado_em,estado,resposta,adiado_ate').eq('contato_id', cid).order('ordem', { ascending: true }).limit(40),
     supabase.from('consentimentos').select('aceito,criado_em').eq('contato_id', cid).eq('finalidade', 'servico').order('criado_em', { ascending: false }).limit(1),
-    supabase.from('escolas_dela').select('id,nome,link,nota,criado_em').eq('contato_id', cid).order('criado_em', { ascending: true }).limit(40)   // db/crm-escolas-dela.sql; sem ele, a seção some
+    supabase.from('escolas_dela').select('id,nome,link,nota,criterios,criado_em').eq('contato_id', cid).order('criado_em', { ascending: true }).limit(40)   // db/crm-escolas-dela.sql; sem ele, a seção some
   ]);
   var err = r[0].error || r[1].error || r[2].error || r[3].error || null;
   return { cid: cid, err: err, ach: r[0].data || [], aco: r[1].data || [], itens: r[2].data || [], avs: r[3].data || [], consent: !!(r[4].data && r[4].data[0] && r[4].data[0].aceito === true), escolasDela: r[5] && !r[5].error ? (r[5].data || []) : [], ed: null, agenda: null };
@@ -1500,12 +1500,19 @@ function casoAvisosHtml(k) {
   }).join('');
 }
 // As escolas que a própria pessoa acrescentou no Espaço (nome, link e o que ela já sabe). Só leitura: você vê o que ela anda olhando.
+// As perguntas Sim/Não que ela já respondeu sobre uma escola (a lista muda por persona; aqui só a contagem e o que foi respondido).
+function casoCriteriosResumo(c) {
+  var sim = [], nao = [], k;
+  for (k in (c || {})) { if (c[k] === 'sim') sim.push(k); else if (c[k] === 'nao') nao.push(k); }
+  if (!sim.length && !nao.length) return '';
+  return '<br><span class="sub">Respondeu ' + sim.length + ' sim' + (nao.length ? ' · ' + nao.length + ' não' : '') + ' (' + esc(sim.concat(nao).join(', ')) + ')</span>';
+}
 function casoEscolasDelaHtml(k) {
   var l = k.escolasDela || [];
   if (!l.length) return '';
   return casoSecao('Escolas que ela acrescentou', l.length + (l.length === 1 ? ' escola' : ' escolas'), l.map(function (e) {
     var link = /^https:\/\//.test(e.link || '') ? ' <a href="' + esc(e.link) + '" target="_blank" rel="noopener noreferrer">site</a>' : '';
-    return '<div class="feeditem"><div class="fbody"><p><b>' + esc(e.nome) + '</b>' + link + (e.nota ? '<br><span class="sub">' + esc(e.nota) + '</span>' : '') + '</p><time>' + esc(fmtDay(String(e.criado_em || '').slice(0, 10))) + '</time></div></div>';
+    return '<div class="feeditem"><div class="fbody"><p><b>' + esc(e.nome) + '</b>' + link + (e.nota ? '<br><span class="sub">' + esc(e.nota) + '</span>' : '') + casoCriteriosResumo(e.criterios) + '</p><time>' + esc(fmtDay(String(e.criado_em || '').slice(0, 10))) + '</time></div></div>';
   }).join(''));
 }
 function casoPanelHtml(c, k) {

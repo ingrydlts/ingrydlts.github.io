@@ -44,7 +44,7 @@ async function main() {
     await db.query("insert into contatos (email, user_id, estagio) values ($1, $2, 'em_uso') on conflict (email) do update set user_id = excluded.user_id", [email, u.id]); return u; };
   const ana = await nova('ana@example.com'), bia = await nova('bia@example.com');
   const cAna = (await um("select id from contatos where email='ana@example.com'")).id;
-  const add = (u, ...a) => asUser(u.id, () => um('select adicionar_escola($1, $2, $3) id', [a[0] ?? null, a[1] ?? null, a[2] ?? null]));
+  const add = (u, ...a) => asUser(u.id, () => um('select adicionar_escola($1, $2, $3, $4::jsonb) id', [a[0] ?? null, a[1] ?? null, a[2] ?? null, JSON.stringify(a[3] ?? {})]));
 
   console.log('== Acrescentar e ler ==');
   const id1 = (await add(ana, 'Alliance Française de Lyon', 'https://exemplo.org/af', 'Curso intensivo, 20 h por semana.')).id;
@@ -55,6 +55,19 @@ async function main() {
   check('só o nome basta: espaços são aparados e link e nota vazios viram nulos', m2[1].nome === 'Université de Lyon' && m2[1].link === null && m2[1].nota === null);
   check('acrescentar vira evento na linha do tempo da ficha', (await um("select count(*)::int n from eventos where contato_id=$1 and tipo='escola_adicionada'", [cAna])).n === 2);
   check('cada pessoa vê só as suas (a Bia não vê as da Ana)', (await asUser(bia.id, () => q('select * from minhas_escolas()'))).length === 0);
+
+  console.log('\n== Perguntas Sim/Não (a lista muda por persona) ==');
+  const comCrit = (await add(ana, 'DU Aix', 'https://exemplo.org/du', null, { carga: 'sim', dur: 'nao', visto_ok: 'sim' })).id;
+  check('ela acrescenta a escola já com as respostas Sim/Não da persona dela', (await asUser(ana.id, () => q('select criterios from minhas_escolas() where id=$1', [comCrit])))[0].criterios.carga === 'sim');
+  const marca = (u, ...a) => asUser(u.id, () => db.query('select marcar_criterio_escola($1, $2, $3)', a));
+  await marca(ana, comCrit, 'prazo', 'sim');
+  await marca(ana, comCrit, 'carga', null);
+  const cr = (await asUser(ana.id, () => q('select criterios from minhas_escolas() where id=$1', [comCrit])))[0].criterios;
+  check('marcar uma pergunta soma; desmarcar (nulo) tira a chave; as outras ficam', cr.prazo === 'sim' && !('carga' in cr) && cr.dur === 'nao' && cr.visto_ok === 'sim');
+  check('chave de formato inseguro, valor que não é sim/não e escola de outra pessoa são recusados', await falha(() => marca(ana, comCrit, 'Carga', 'sim'), 'valor_invalido') && await falha(() => marca(ana, comCrit, 'x; drop', 'sim'), 'valor_invalido') && await falha(() => marca(ana, comCrit, 'prazo', 'talvez'), 'valor_invalido') && await falha(() => marca(bia, comCrit, 'prazo', 'sim'), 'escola_nao_encontrada'));
+  check('critérios inválidos ao acrescentar são recusados (chave, valor, não-objeto, mais de 12)', await falha(() => add(ana, 'X', null, null, { 'A-b': 'sim' }), 'criterios_invalidos') && await falha(() => add(ana, 'X', null, null, { a: 'talvez' }), 'criterios_invalidos') && await falha(() => add(ana, 'X', null, null, ['sim']), 'criterios_invalidos') && await falha(() => add(ana, 'X', null, null, Object.fromEntries(Array.from({ length: 13 }, (_, i) => ['k' + i, 'sim']))), 'criterios_invalidos'));
+  check('anônimo não marca critério', !(await attempt(() => asAnon(() => db.query("select marcar_criterio_escola(1, 'a', 'sim')")))).ok);
+  await asUser(ana.id, () => db.query('select remover_escola($1)', [comCrit]));
 
   console.log('\n== Regras ==');
   check('nome vazio ou longo demais é recusado', await falha(() => add(ana, '   '), 'nome_invalido') && await falha(() => add(ana, 'x'.repeat(121)), 'nome_invalido') && await falha(() => add(ana, null), 'nome_invalido'));
