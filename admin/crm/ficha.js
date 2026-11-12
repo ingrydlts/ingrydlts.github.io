@@ -120,3 +120,45 @@ export function ordenarFila(itens) {
   const rk = (u) => (u in RANK_URG ? RANK_URG[u] : 9);
   return (itens || []).map((o, i) => ({ o, i })).sort((a, b) => (b.o.novas || 0) - (a.o.novas || 0) || rk(a.o.c && a.o.c.urgencia) - rk(b.o.c && b.o.c.urgencia) || a.i - b.i).map((z) => z.o);
 }
+
+// ---------- Ordem das sessões e preferências do navegador (spec §5.2) ----------
+export const SESSOES_PADRAO = { app: ['chat', 'inicio', 'checklist'], ela: ['bilan', 'dossie', 'hist'] };
+export function moverSessao(ordem, id, delta) {
+  const o = (ordem || []).slice(), i = o.indexOf(id), j = i + delta;
+  if (i < 0 || j < 0 || j >= o.length) return o;
+  o.splice(i, 1); o.splice(j, 0, id); return o;
+}
+// Solta `id` antes de `antesDe` (null = no fim). Só mexe dentro da própria lista.
+export function reordenarSessao(ordem, id, antesDe) {
+  const o = (ordem || []).slice(), i = o.indexOf(id);
+  if (i < 0 || id === antesDe) return o;
+  o.splice(i, 1);
+  const j = antesDe == null ? -1 : o.indexOf(antesDe);
+  if (j < 0) o.push(id); else o.splice(j, 0, id);
+  return o;
+}
+// Ordem salva → ordem válida: descarta ids desconhecidos e repetidos, acrescenta os novos no fim.
+export function normalizarOrdem(salva, padrao) {
+  const base = padrao || [], vistos = {}, out = [];
+  (Array.isArray(salva) ? salva : []).forEach((id) => { if (base.indexOf(id) >= 0 && !vistos[id]) { vistos[id] = 1; out.push(id); } });
+  base.forEach((id) => { if (!vistos[id]) out.push(id); });
+  return out;
+}
+const CHAVE_ORD = 'crm_ficha_ord_v1', CHAVE_TOUR = 'crm_ficha_tour';
+// localStorage pode estar bloqueado ou cheio: nunca lança.
+export function lerPrefs(storage) {
+  const out = { ord: null, tour: true };
+  try {
+    const t = storage.getItem(CHAVE_TOUR); if (t === '0') out.tour = false;
+  } catch (e) { /* segue com o padrão */ }
+  try {
+    const raw = storage.getItem(CHAVE_ORD), v = raw ? JSON.parse(raw) : null;
+    if (v && typeof v === 'object' && !Array.isArray(v)) out.ord = { app: normalizarOrdem(v.app, SESSOES_PADRAO.app), ela: normalizarOrdem(v.ela, SESSOES_PADRAO.ela) };
+  } catch (e) { out.ord = null; }
+  return out;
+}
+export function gravarPrefs(storage, prefs) {
+  const p = prefs || {};
+  try { if (p.ord) storage.setItem(CHAVE_ORD, JSON.stringify({ app: p.ord.app, ela: p.ord.ela })); } catch (e) { /* ignora */ }
+  try { if (typeof p.tour === 'boolean') storage.setItem(CHAVE_TOUR, p.tour ? '1' : '0'); } catch (e) { /* ignora */ }
+}

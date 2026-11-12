@@ -90,6 +90,30 @@ console.log('== Task 6: fila ==');
   check('ação rápida: nada', FX.acaoRapida({ nome: 'Ana' }, { respostasNovas: 0, processosDetectados: [] }, rot) === 'Abrir a ficha');
 }
 
+console.log('== Task 7: sessões e preferências ==');
+{
+  check('mover nas pontas não muda', FX.moverSessao(['a', 'b', 'c'], 'a', -1).join() === 'a,b,c' && FX.moverSessao(['a', 'b', 'c'], 'c', 1).join() === 'a,b,c');
+  check('mover no meio', FX.moverSessao(['a', 'b', 'c'], 'b', 1).join() === 'a,c,b');
+  check('mover id desconhecido não muda', FX.moverSessao(['a', 'b'], 'z', 1).join() === 'a,b');
+  check('reordenar antes de', FX.reordenarSessao(['a', 'b', 'c'], 'c', 'a').join() === 'c,a,b');
+  check('reordenar para o fim', FX.reordenarSessao(['a', 'b', 'c'], 'a', null).join() === 'b,c,a');
+  check('reordenar sobre si mesmo não muda', FX.reordenarSessao(['a', 'b', 'c'], 'b', 'b').join() === 'a,b,c');
+  check('normalizar descarta e acrescenta', FX.normalizarOrdem(['x', 'b'], ['a', 'b', 'c']).join() === 'b,a,c');
+  check('normalizar lixo', FX.normalizarOrdem('lixo', ['a']).join() === 'a' && FX.normalizarOrdem(null, ['a', 'b']).join() === 'a,b');
+  check('normalizar repetidos', FX.normalizarOrdem(['b', 'b', 'a'], ['a', 'b']).join() === 'b,a');
+  check('padrão das sessões da fase 1', FX.SESSOES_PADRAO.app.join() === 'chat,inicio,checklist' && FX.SESSOES_PADRAO.ela.join() === 'bilan,dossie,hist');
+  // Review Focus 5: localStorage indisponível
+  const bloqueado = { getItem() { throw new Error('bloqueado'); }, setItem() { throw new Error('cheio'); } };
+  let ok = true, p; try { p = FX.lerPrefs(bloqueado); FX.gravarPrefs(bloqueado, { tour: false }); } catch (e) { ok = false; }
+  check('storage bloqueado não lança', ok && p.ord === null && p.tour === true);
+  const mem = {}, st = { getItem: (k) => (k in mem ? mem[k] : null), setItem: (k, v) => { mem[k] = v; } };
+  FX.gravarPrefs(st, { ord: { app: ['inicio', 'chat'], ela: ['hist'] }, tour: false });
+  const lido = FX.lerPrefs(st);
+  check('grava e lê', lido.tour === false && lido.ord.app.join() === 'inicio,chat,checklist' && lido.ord.ela.join() === 'hist,bilan,dossie');
+  check('chaves do spec', 'crm_ficha_ord_v1' in mem && 'crm_ficha_tour' in mem);
+  mem.crm_ficha_ord_v1 = '{lixo'; check('JSON inválido volta ao padrão', FX.lerPrefs(st).ord === null);
+  mem.crm_ficha_ord_v1 = '"texto"'; check('formato errado volta ao padrão', FX.lerPrefs(st).ord === null);
+}
 
 console.log('\n' + passed + ' passaram, ' + failed + ' falharam');
 if (failed) process.exit(1);
