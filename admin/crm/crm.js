@@ -7,6 +7,8 @@ import * as ES from './estudio.js?v=2026-11-12.10';   // os blocos do estúdio d
 import * as EE from './editor-email.js?v=2026-11-12.10';
 import * as EQ from './editor-quem.js?v=2026-11-12.10';
 import * as JR from './jornada.js?v=2026-11-12.10';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
+import * as FX from './ficha.js?v=2026-11-12.11';   // ficha v2: lógica pura (fila, démarches, funil, ações)
+import * as FH from './ficha-html.js?v=2026-11-12.11';   // ficha v2: HTML puro
 
 var PERSONAS = {
   au_pair_estudante: 'Au pair → estudante', campus_france: 'Campus France', alternancia_emprego: 'Alternância / emprego',
@@ -134,7 +136,8 @@ var P = [], PERR = '';
 // Processos sugeridos esperando a sua decisão (db/crm-processos-sugeridos.sql). Sem a migração, fica vazio.
 var PSUG = [];
 var FILA = [];   // avisos agendados que ainda não saíram, de todas as pessoas (para o bloco da Hoje)
-var state = { dosAberto: lerDosAberto(), dos: null, pc: null, ptab: null, pstab: 'assistente', pdias: {}, int: null, chatRasc: '', rascunho: {}, view: 'hoje', persona: '', sub: '', urg: '', stage: '', orig: '', camp: '', q: '', sel: null, qs: 'nova', qsel: null, inbox: 'perguntas', rs: 'nova', rsel: null, ps: 'novo', psel: null, preset: 'todos', seg: '', prevView: 'contatos' };
+var state = { dosAberto: lerDosAberto(), dos: null, pc: null, ptab: null, pstab: 'assistente', pdias: {}, int: null, chatRasc: '', rascunho: {}, view: 'hoje', persona: '', sub: '', urg: '', stage: '', orig: '', camp: '', q: '', sel: null, qs: 'nova', qsel: null, inbox: 'perguntas', rs: 'nova', rsel: null, ps: 'novo', psel: null, preset: 'todos', seg: '', prevView: 'contatos',
+  fx: { tab: null, ord: null, abertas: {}, ag: { i: 0, pop: null }, dem: 'todas', ckTodos: false, ckMais: false, tour: true } };
 var activeCid = null;
 var me = null;
 
@@ -663,7 +666,7 @@ function eventText(e) {
 // tab: 'conversa' ou 'ficha'; sem tab, a ficha abre na Conversa se já houver alguma mensagem.
 async function openPessoa(id, tab, sub) {
   if (state.view !== 'pessoa') state.prevView = state.view;
-  state.sel = id; state.ptab = tab || null; state.pstab = sub || 'assistente'; state.pdias = {}; state.chatRasc = ''; state.caso = null;
+  state.sel = id; state.ptab = tab || null; state.pstab = sub || 'assistente'; state.pdias = {}; state.chatRasc = ''; state.caso = null; fxReset();
   show('pessoa');
 }
 // ---------- E-mails da pessoa: o que já saiu e o próximo, como ela vai ver ----------
@@ -1114,7 +1117,7 @@ async function atualizaAoVivo(cid, forca) {
   if (state.view !== 'pessoa' || state.sel !== cid || !state.ins || state.ins.cid !== cid) return pararAoVivo();
   var c = byC(cid); if (!c) return;
   var antes = state.ins, chatAntes = state.chat;
-  var rk = await Promise.all([buscaChecklist(cid, VIVO.uid), buscaInsights(cid), buscaChat(cid), state.ptab === 'plataforma' ? buscaInteracoes(cid) : null]);
+  var rk = await Promise.all([buscaChecklist(cid, VIVO.uid), buscaInsights(cid), buscaChat(cid), (state.ptab === 'plataforma' || fichaV2Ativa()) ? buscaInteracoes(cid) : null]);
   if (state.view !== 'pessoa' || state.sel !== cid) return;
   var sigChat = function (ch) { return JSON.stringify(ch ? [ch.msgs.length, ch.msgs.length ? ch.msgs[ch.msgs.length - 1].id : 0, Object.keys(ch.props).map(function (k) { return ch.props[k].status + ch.props[k].adiada_ate; })] : null); };
   var mudouIns = JSON.stringify([rk[1].vivos && rk[1].vivos.atualizado_em, rk[1].hist.length, rk[1].manuais.length]) !== JSON.stringify([antes.vivos && antes.vivos.atualizado_em, antes.hist.length, antes.manuais.length]);
@@ -1129,6 +1132,7 @@ async function atualizaAoVivo(cid, forca) {
   var ca = $('chk-aba'); if (ca) ca.innerHTML = checklistPanel(c);
   var cl = $('chk-lateral'); if (cl) cl.innerHTML = checklistLateralHtml(state.dos && state.dos.chk, Date.now(), 'font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-3); margin:0 0 8px');
   pintaChat();   // só o fio: o que você está digitando na caixa fica
+  if (fichaV2Ativa()) fxLive(c);
   var ib = $('int-box'); if (ib) ib.innerHTML = interacoesHtml(state.int);
   var rl = $('resumo-lateral'); if (rl) rl.innerHTML = resumoPlatHtml(H4_PLAT);
   var ae = document.activeElement;   // não redesenha o dossiê enquanto você digita nele
@@ -2350,15 +2354,314 @@ async function buscaJornada(cid) {
     return r.error ? [] : (r.data || []);
   } catch (e) { return []; }
 }
+// Peças da aba Ficha, usadas pela ficha antiga e pela v2 (uma fonte só).
+function fichaFeedHtml(eventos) {
+  return '<div class="panel" style="padding:16px"><h3 style="font-size:15px; margin-bottom:8px">Tudo que ela fez</h3>' +
+    '<p class="sub" style="margin:0 0 10px">Checklist, pergunta única, artigos e o resto do app — mais o que você mandou pra ela. Mais recente primeiro.</p>' +
+    '<div class="feed">' + (eventos.map(function (e) {
+      var tx = eventText(e), m = TYPE_META[tx[0]];
+      return '<div class="feeditem"><span class="pill ' + m[1] + '">' + esc(m[0]) + '</span><div class="fbody"><p>' + esc(tx[1]) + '</p><time>' + esc(fmtDate(e.criado_em)) + '</time></div></div>';
+    }).join('') || '<div class="empty">Nada registrado ainda.</div>') + '</div></div>';
+}
+function fichaMaisHtml(c, d) {
+  var perg = d.perg, resps = d.resps, cons = d.cons, last = d.last, h4 = d.h4;
+  return '<details class="mais"><summary>Mais: perguntas, respostas, consentimento, Instagram e anotações' + (resps.some(function (x) { return x.status === "nova"; }) ? ' · tem resposta nova' : '') + '</summary><div class="mais-col">' +
+    (perg.length ? '<div class="panel" style="padding:16px"><h4 style="' + h4 + '">Perguntas únicas</h4>' + perg.map(function (x) { return '<p style="margin:0 0 6px;font-size:13px">"' + esc(x.texto) + '" <button class="link" data-openq="' + x.id + '" type="button">' + (x.status === 'nova' ? 'Responder' : 'Ver resposta') + ' →</button></p>'; }).join('') + '</div>' : '') +
+    (resps.length ? '<div class="panel" style="padding:16px"><h4 style="' + h4 + '">Respostas</h4>' + resps.map(function (x) { return '<p style="margin:0 0 6px;font-size:13px"><span title="' + esc(canalDe(x)[1]) + '">' + canalDe(x)[0] + '</span> "' + esc(x.texto.length > 160 ? x.texto.slice(0, 160) + '…' : x.texto) + '" <span class="sub">' + esc(canalDe(x)[1]) + ' · ' + esc(fmtDate(x.recebido_em)) + '</span> <button class="link" data-openr="' + x.id + '" type="button">' + (x.status === 'nova' ? 'Abrir na caixa' : 'Ver') + ' →</button></p>'; }).join('') + '</div>' : '') +
+    '<div class="panel" style="padding:16px"><h4 style="' + h4 + '">Consentimento</h4><div class="consent"><span class="pill ' + (last('servico') ? 'u-baixa' : '') + '">Política de privacidade ' + (last('servico') ? '✓' : '—') + '</span><span class="pill ' + (last('novidades_email') ? 'u-baixa' : '') + '">Novidades por e-mail ' + (last('novidades_email') ? '✓' : '—') + '</span></div>' + argumentosHtml(cons) + '</div>' +
+    '<div class="panel" style="padding:16px"><h4 style="' + h4 + '">Instagram</h4>' +
+      '<label class="sub" for="ig-handle" style="display:block;margin:0 0 4px">@ do Instagram</label>' +
+      '<input id="ig-handle" data-ig="instagram" data-cid="' + esc(c.id) + '" maxlength="40" autocomplete="off" placeholder="Ainda sem @. Se descobrir, cole aqui (sem o @ ou com)." value="' + esc(c.instagram || '') + '" style="width:100%;height:38px;border:1px solid var(--line-2);border-radius:8px;padding:0 10px;font:inherit">' +
+      (c.instagram ? '<p class="sub" style="margin:6px 0 0"><a href="https://instagram.com/' + esc(c.instagram) + '" target="_blank" rel="noopener">Abrir o perfil no Instagram</a></p>' : '') +
+      '<label class="sub" for="ig-id" style="display:block;margin:12px 0 4px">ID do contato na automação</label>' +
+      '<input id="ig-id" data-ig="ig_id" data-cid="' + esc(c.id) + '" maxlength="60" autocomplete="off" placeholder="Vem do link da automação. Pode colar à mão." value="' + esc(c.ig_id || '') + '" style="width:100%;height:38px;border:1px solid var(--line-2);border-radius:8px;padding:0 10px;font:inherit">' +
+      '<p class="sub" style="margin:8px 0 0">Quando a pessoa volta a deixar o e-mail, o que estiver vazio aqui é completado. O que você escreve não é apagado.</p></div>' +
+    '<div class="panel" style="padding:16px"><h4 style="' + h4 + '">Suas anotações</h4><textarea class="notebox" id="nota" data-nota="' + esc(c.id) + '" placeholder="Só você vê. Ex.: prefere falar por e-mail, tem sponsor na família.">' + esc(c.nota || '') + '</textarea></div>' +
+    '</div></details>';
+}
+// Ficha v2 (ficha-universo, fase 1): atrás de uma chave até a Ingryd aprovar. ?ficha=2 na URL ou localStorage.crm_ficha_v2 = '1'.
+// FX e FH só são tocados dentro de funções chamadas com a chave ligada (os testes antigos não os injetam).
+function fichaV2Ativa() {
+  try { if (/[?&]ficha=2(&|$)/.test(String(location.search || ''))) return true; } catch (e) { /* sem location */ }
+  try { return localStorage.getItem('crm_ficha_v2') === '1'; } catch (e) { return false; }
+}
+var H_FX = { esc: esc, fmtDay: fmtDay };
+var FX_ABAS = ['conversa', 'plataforma', 'ficha'];
+// Zera o que é "desta pessoa" ao abrir outra ficha. A ordem das sessões e o guia são preferências do navegador e ficam.
+function fxReset() {
+  var f = state.fx; f.tab = null; f.ag = { i: 0, pop: null }; f.dem = 'todas'; f.ckTodos = false; f.ckMais = false; f.abertas = {}; f.flash = null; f.tarefas = []; f.dados = null;
+}
+function fxPrefs() {
+  var f = state.fx;
+  if (f.prefsLidas) return;
+  var p = FX.lerPrefs(localStorage); f.tour = p.tour; f.ord = p.ord; f.prefsLidas = true;
+}
+function fxContato(c, uid) { return Object.assign({}, c, { user_id: uid || c.user_id || null }); }
+// A fila de hoje: quem tem resposta nova, processo para decidir ou urgência alta (e a pessoa aberta), mais novidades primeiro.
+function fxFilaItens(c) {
+  var novas = {}, procs = {};
+  R.forEach(function (x) { if (x.status === 'nova') novas[x.contato_id] = (novas[x.contato_id] || 0) + 1; });
+  PSUG.forEach(function (p) { (procs[p.contato_id] = procs[p.contato_id] || []).push(p.processo); });
+  var mk = function (x) {
+    var n = novas[x.id] || 0, aberta = x.id === c.id && state.fx.cid === c.id;
+    // A pessoa aberta mostra a mesma ação do 1º cartão do carrossel (spec §15); as outras, a ação rápida que dá para saber sem abrir a ficha.
+    if (aberta) return { c: x, novas: n, proxima: state.fx.tarefas && state.fx.tarefas.length ? state.fx.tarefas[0].t : 'Nenhuma ação pendente', sub: personaLabel(x) + ' · ' + (x.user_id ? 'plataforma' : 'captação') };
+    return { c: x, novas: n, proxima: FX.acaoRapida({ nome: displayName(x) }, { respostasNovas: n, processosDetectados: procs[x.id] || [] }, procLabel),
+      sub: personaLabel(x) + ' · ' + (x.user_id ? 'plataforma' : 'captação') };
+  };
+  var itens = FX.ordenarFila(C.filter(function (x) { return novas[x.id] || procs[x.id] || x.urgencia === 'alta' || x.id === c.id; }).map(mk)).slice(0, 8);
+  if (!itens.some(function (o) { return o.c.id === c.id; })) itens.push(mk(c));
+  return itens;
+}
+// As ações da equipe para esta pessoa, com os dados que o CRM já lê hoje (spec §4.3).
+function fxTarefas(c, d) {
+  var resps = d.resps || [], bilanEnviado = (d.mails || []).some(function (m) { return m.modelo === 'bilan_conversa'; });
+  var dosFalta = state.dos && state.dos.cid === c.id ? dosProgresso(c, state.dos.d, state.dos.rasc).falta : 0;
+  return FX.tarefasDe({
+    nome: displayName(c), respostasNovas: resps.filter(function (x) { return x.status === 'nova'; }).length, chatNaoLidas: chatNaoLidas(state.chat),
+    processosDetectados: (state.procs || []).filter(function (p) { return p.status === 'detectada'; }).map(function (p) { return p.processo; }),
+    bilanPendente: !!(state.bilan && state.bilan.cid === c.id && !bilanEnviado), dossieFalta: dosFalta,
+    proximoEmail: proximoEmail(c, d.mails || [], resps, d.jor)
+  }, procLabel);
+}
+function fxHeaderHtml(c, d) {
+  var chk = state.dos && state.dos.cid === c.id ? state.dos.chk : null, k = null;
+  if (chk && !chk.err && !chk.semConta) {
+    var cc = chkCalc(chk, Date.now()), ativos = cc.itens.filter(function (i) { return i.status !== 'arquivado'; }), lim = new Date(Date.now() + 3 * 864e5).toISOString().slice(0, 10);
+    var feitos = ativos.filter(function (i) { return i.status === 'concluido'; }).length;
+    k = { pct: ativos.length ? Math.round(feitos * 100 / ativos.length) : 0, feitos: feitos, abertos: ativos.length - feitos,
+      vencem3: ativos.filter(function (i) { return i.status !== 'concluido' && i.due_date && i.due_date >= cc.hoje && i.due_date <= lim; }).length,
+      adicionados: cc.itens.filter(function (i) { return String(i.category || '').indexOf('meu:') === 0; }).length };
+  }
+  var cl = chk && chk.cliques && chk.cliques[0];
+  var props = state.chat && state.chat.props ? Object.keys(state.chat.props).map(function (x) { return state.chat.props[x]; }) : [];
+  return FH.htmlHeader({ c: c, urgLabel: URG[c.urgencia] || c.urgencia, estagioLabel: stageLabel(c.estagio), personaLabel: personaLabel(c) + (subLabel(c) ? ' · ' + subLabel(c) : ''),
+    cidade: (c.respostas && c.respostas.cidade) || '', temConta: !!c.user_id, motivo: c.motivo || '',
+    etapa: FX.etapaFunil(c, { mails: d.mails || [], propostas: props, temBilan: !!(state.bilan && state.bilan.cid === c.id) }),
+    estagios: STAGES, chk: k, chkMsg: !chk ? 'Carregando o checklist dela…' : chk.err ? 'O checklist dela não carregou (falta rodar db/crm-checklist.sql).' : '', ultima: cl ? fmtDia(cl.criado_em) + ' às ' + fmtHora(cl.criado_em) : '' }, H_FX);
+}
+// Catálogo de démarches (cópia do app, processos.json): carregado uma vez; sem ele, tudo cai na démarche padrão.
+var FX_PROC = null;
+async function fxCarregaProcessos() {
+  try { var r = await fetch('processos.json?v=2026-11-12.11'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
+}
+// A sessão Checklist: pílulas por démarche, os 4 mais urgentes, pasta do Drive privada e "Ver mais desta sessão".
+function fxChecklistCorpo(c) {
+  var chk = state.dos && state.dos.cid === c.id ? state.dos.chk : null, f = state.fx;
+  if (!chk) return '<div class="skel" aria-busy="true" style="height:64px"></div>';
+  var pre = processosSugeridosHtml(state.procs);
+  if (chk.err || chk.semConta) return pre + FH.htmlChecklistSessao({ semConta: !!chk.semConta && !chk.err, erro: !!chk.err }, H_FX);
+  var agora = Date.now(), cc = chkCalc(chk, agora), itens = chk.itens || [];
+  var dem = FX.demarchesDe(FX_PROC, personaKey(c), itens), ativa = f.dem !== 'todas' && dem.some(function (x) { return x.k === f.dem; }) ? f.dem : 'todas';
+  var ult = chk.cliques && chk.cliques[0], horas = ult ? (agora - new Date(ult.criado_em).getTime()) / 36e5 : 0;   // dado velho: mais de 48 h sem atividade dela
+  return pre + FH.htmlChecklistSessao({ semConta: false, erro: false, velhoDias: horas > 48 ? Math.floor(horas / 24) : 0, demarches: dem, ativa: ativa, totalFeitos: cc.feitos, total: itens.length, itens: FX.filtrarPorDemarche(FX_PROC, itens, ativa),
+    hoje: cc.hoje, todos: f.ckTodos, mais: f.ckMais, extraMais: f.ckMais ? checklistLateralHtml(chk, agora, H4_PLAT) + checklistHtml(chk, agora) : '' }, H_FX);
+}
+function fxPintaChk(c) { var b = $('fx-chk-corpo'); if (b) b.innerHTML = fxChecklistCorpo(c); }
+// As sessões da aba Plataforma, em pílulas e em dois grupos. O corpo só é montado nas abertas: os ids antigos (dossie-box,
+// ins-box, int-box, chat-fio) existem enquanto a sessão está aberta, e as atualizações ao vivo ignoram o que não está na tela.
+function fxOrdem() {
+  var f = state.fx;
+  return f.ord || { app: FX.SESSOES_PADRAO.app.slice(), ela: FX.SESSOES_PADRAO.ela.slice() };
+}
+function fxSessoes(c) {
+  var mk = function (titulo, sub, id, corpo) { var a = fxSessaoAberta(id); return { titulo: titulo, sub: sub, aberto: a, corpo: a ? corpo() : '' }; };
+  var mapa = {
+    chat: mk('Conversa com ela', 'As mensagens da equipe, do assistente e dela, dentro do app.', 'chat', function () { return '<div id="chat-box">' + chatPanelHtml(c, state.chat, H4_PLAT) + '</div>'; }),
+    inicio: mk('Início (iAssistente)', 'O que o assistente mostra a ela no início do app e os seus avisos.', 'inicio', function () { return '<div id="ins-box">' + insightsHtml(state.ins, Date.now()) + '</div>'; }),
+    checklist: mk('Checklist', 'Os passos dela por démarche, do mais urgente ao mais distante.', 'checklist', function () { return '<div id="fx-chk-corpo">' + fxChecklistCorpo(c) + '</div>'; }),
+    bilan: mk('Bilan', 'O que a conversa mostrou e o e-mail do bilan.', 'bilan', function () { return bilanResumoHtml(c) + bilanBlocoHtml(c, H4_PLAT); }),
+    dossie: mk('Dossiê', 'As perguntas da plataforma, preenchidas por você na ligação.', 'dossie', function () { return '<div id="dossie-box">' + dossieHtml(c, state.dos.d, state.dos.err, state.dos.rasc, state.dosAberto, state.dos.chk) + '</div>'; }),
+    hist: mk('Histórico', 'Tudo que ela fez no app, dia a dia.', 'hist', function () { return '<div id="int-box">' + interacoesHtml(state.int) + '</div>'; })
+  };
+  return FH.htmlSessoes(fxOrdem(), mapa, H_FX);
+}
+function fxCorpo(c, d, tab) {
+  if (tab === 'plataforma') {
+    if (state.int && state.int.err) return '<div class="panel" style="padding:16px;margin-top:14px"><h3 style="font-size:15px;margin-bottom:8px">Plataforma ainda não ligada</h3><p class="sub" style="margin:0">Falta rodar <b>db/crm-plataforma.sql</b> no SQL Editor do Supabase (depois dele, os cliques novos começam a aparecer aqui).</p></div>';
+    return '<div class="fx-plat">' + pagamentoHtml(c, H4_PLAT) + fxSessoes(c) + '</div>';
+  }
+  if (tab === 'conversa') return conversaPanel(c, d.mails || [], d.resps || [], d.h4 || H4_PLAT);
+  // Ficha (captação): o fluxo de 3 passos e os painéis que já existiam (feed, e-mails, jornada, quem é ela, mais).
+  var etapa = FX.etapaFunil(c, { mails: d.mails || [], propostas: [], temBilan: !!(state.bilan && state.bilan.cid === c.id) }), h4 = d.h4 || H4_PLAT;
+  return FH.htmlFluxo(etapa <= 3 ? 1 : etapa <= 5 ? 2 : 3, H_FX) + onbResumoHtml(c) +
+    '<div class="pessoa-grid" style="margin-top:18px">' + fichaFeedHtml(d.eventos || []) +
+    '<div style="display:flex; flex-direction:column; gap:16px">' + emailsPanel(c, d.mails || [], h4, d.resps || [], d.jor) + jornadaHtml(c, d.mails || [], d.resps || [], d.jor, h4) +
+    '<div class="panel" style="padding:16px"><h4 style="' + h4 + '">Quem é ela</h4>' + kvHtml(respostasKv(c)) + '</div>' +
+    fichaMaisHtml(c, { perg: d.perg || [], resps: d.resps || [], cons: d.cons || [], last: d.last, h4: h4 }) + '</div></div>';
+}
+// Repinta só o corpo da aba (abrir/fechar/mover sessão): o resto da tela e a rolagem ficam.
+function fxPintaCorpo() {
+  var c = byC(state.sel), f = state.fx, d = f.dados, box = $('fx-corpo'); if (!c || !d || !box) return;
+  var tx = $('chat-txt'); if (tx) state.chatRasc = tx.value;
+  box.innerHTML = fxCorpo(fxContato(c, d.uid), d, f.tab);
+  fxPos(c);
+}
+function renderFichaV2(c, d) {
+  fxPrefs();
+  var f = state.fx, cv = fxContato(c, d.uid);
+  f.tab = f.tab || (FX_ABAS.indexOf(state.ptab) >= 0 ? state.ptab : null) || FX.abaPadrao(cv);
+  var tarefas = fxTarefas(cv, d);
+  f.tarefas = tarefas; f.dados = d; f.cid = c.id; f.ag.pop = null; f.ag.i = Math.min(f.ag.i || 0, Math.max(0, tarefas.length - 1));
+  return '<div id="ficha-v2" class="fx" data-cid="' + esc(c.id) + '">' +
+    '<button class="link" data-back type="button">← Voltar</button>' +
+    '<div id="fx-tour">' + FH.htmlTour(f.tour, H_FX) + '</div>' +
+    '<div id="fx-fila-box">' + FH.htmlFila(fxFilaItens(cv), c.id, H_FX) + '</div>' +
+    '<div id="fx-head-box">' + fxHeaderHtml(cv, d) + '</div>' +
+    '<div id="fx-acoes-box">' + FH.htmlCarrossel(tarefas, H_FX, f.ag.i) + '</div>' +
+    FH.htmlAbas(f.tab, !!cv.user_id, H_FX) +
+    '<div id="fx-corpo">' + fxCorpo(cv, d, f.tab) + '</div>' +
+    '<div id="fx-pop"></div></div>';
+}
+// Repinta a ficha inteira com os dados já carregados (troca de aba, deep link). O que ela digitou no chat sobrevive.
+function fxRepinta() {
+  var c = byC(state.sel), d = state.fx.dados; if (!c || !d) return;
+  var tx = $('chat-txt'); if (tx) state.chatRasc = tx.value;
+  $('pessoa-page').innerHTML = renderFichaV2(c, d);
+  fxPos(c);
+}
+// Depois de pintar: rola o chat para o fim (e marca como lido, como a ficha antiga fazia) e destaca a sessão do deep link.
+function fxPos(c) {
+  var f = state.fx;
+  if (f.tab === 'plataforma' && fxSessaoAberta('chat')) {
+    var fio = $('chat-fio'); if (fio) fio.scrollTop = fio.scrollHeight;
+    var tx = $('chat-txt'); if (tx && state.chatRasc) tx.value = state.chatRasc;
+    marcaChatLido(c.id);
+  }
+  if (f.flash) {
+    var alvo = document.querySelector('[data-sessao="' + f.flash + '"]');
+    if (alvo) { if (alvo.scrollIntoView) alvo.scrollIntoView({ block: 'start' }); if (alvo.classList) { alvo.classList.add('fx-flash'); setTimeout(function () { alvo.classList.remove('fx-flash'); }, 2200); } }
+    f.flash = null;
+  }
+}
+function fxSessaoAberta(id) { var v = state.fx.abertas[id]; return v === undefined ? id === 'checklist' : !!v; }
+// Atualização ao vivo: só as peças de cima e o corpo do Checklist; o que ela digita (chat, dossiê) não é tocado.
+function fxLive(c) {
+  var f = state.fx, d = f.dados; if (!d || f.cid !== c.id) return;
+  var cv = fxContato(c, d.uid);
+  f.tarefas = fxTarefas(cv, d);
+  var hb = $('fx-head-box'); if (hb) hb.innerHTML = fxHeaderHtml(cv, d);
+  fxPintaChk(cv);
+  if (f.ag.pop === null) { var ab = $('fx-acoes-box'); if (ab) ab.innerHTML = FH.htmlCarrossel(f.tarefas, H_FX, f.ag.i); }
+}
+function irPara(dest) {
+  var f = state.fx; if (!dest) return;
+  f.tab = dest.tab;
+  if (dest.sessao) { f.abertas[dest.sessao] = true; f.flash = dest.sessao; }
+  fxRepinta();
+}
+function fxFocaPop() { var dlg = document.querySelector('#fx-pop .fx-pop'); if (dlg && dlg.focus) dlg.focus(); }
+function fxFechaPop(devolveFoco) {
+  var f = state.fx, i = f.ag.pop; f.ag.pop = null;
+  var box = $('fx-pop'); if (box) box.innerHTML = '';
+  if (devolveFoco && i !== null) { var card = document.querySelector('.fx-card[data-i="' + i + '"]'); if (card && card.focus) card.focus(); }
+}
+function fxPintaPop() { var box = $('fx-pop'); if (box) box.innerHTML = FH.htmlPopup(state.fx.tarefas, state.fx.ag.pop, H_FX); fxFocaPop(); }
+// Contador e setas do carrossel, sem repintar (a rolagem do carrossel é preservada).
+function fxCarMostra(i, car) {
+  var f = state.fx, n = f.tarefas.length; f.ag.i = i;
+  var ct = document.querySelector('.fx-cont'), pv = document.querySelector('[data-fx="agPrev"]'), nx = document.querySelector('[data-fx="agNext"]');
+  if (ct) ct.textContent = (i + 1) + ' de ' + n;
+  if (pv) pv.disabled = i <= 0;
+  if (nx) nx.disabled = car ? car.scrollLeft + car.clientWidth >= car.scrollWidth - 4 : i >= n - 1;
+}
+function fxCarGo(delta) {
+  var f = state.fx, n = f.tarefas.length; if (!n) return;
+  var i = Math.min(Math.max(0, f.ag.i + delta), n - 1), car = document.querySelector('.fx-car'), card = car && car.children && car.children[i];
+  fxCarMostra(i, null);
+  if (car && card && car.scrollTo) {
+    var reduz = false; try { reduz = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { reduz = false; }
+    car.scrollTo({ left: card.offsetLeft, behavior: reduz ? 'auto' : 'smooth' });
+  }
+}
+function fxCarScroll(car) {
+  var cards = car.children || [], i = 0;
+  for (var k = 0; k < cards.length; k++) if (cards[k].offsetLeft <= car.scrollLeft + 8) i = k;
+  fxCarMostra(i, car);
+}
+function fichaClick(el) {
+  if (!el || !el.dataset || !el.dataset.fx) return false;
+  var f = state.fx, ds = el.dataset, n = f.tarefas ? f.tarefas.length : 0;
+  switch (ds.fx) {
+    case 'pessoa': fxReset(); openPessoa(ds.id); return true;
+    case 'tab': if (FX_ABAS.indexOf(ds.v) >= 0) { f.tab = ds.v; fxRepinta(); } return true;
+    case 'tourAbrir': case 'tourFechar':
+      f.tour = ds.fx === 'tourAbrir'; FX.gravarPrefs(localStorage, { tour: f.tour });
+      var tb = $('fx-tour'); if (tb) tb.innerHTML = FH.htmlTour(f.tour, H_FX); return true;
+    case 'agAbrir': { var i = Number(ds.i); if (!(i >= 0 && i < n)) return true; f.ag.pop = i; fxPintaPop(); return true; }
+    case 'agFechar': fxFechaPop(true); return true;
+    case 'agNav': { if (f.ag.pop === null) return true; f.ag.pop = Math.min(Math.max(0, f.ag.pop + Number(ds.d || 0)), n - 1); fxPintaPop(); return true; }
+    case 'agIr': {
+      var t = (f.tarefas || []).filter(function (x) { return x.id === ds.id; })[0] || (f.tarefas || []).filter(function (x) { return x.k === ds.k; })[0] || (f.ag.pop !== null ? f.tarefas[f.ag.pop] : null);
+      fxFechaPop(false); if (t) irPara(t.dest); return true;
+    }
+    case 'sessao': { f.abertas[ds.id] = !fxSessaoAberta(ds.id); fxPintaCorpo(); var tb2 = document.querySelector('[data-fx="sessao"][data-id="' + ds.id + '"]'); if (tb2 && tb2.focus) tb2.focus(); return true; }
+    case 'mover': {
+      var ord = fxOrdem(), area = ord.app.indexOf(ds.id) >= 0 ? 'app' : ord.ela.indexOf(ds.id) >= 0 ? 'ela' : null; if (!area) return true;
+      var nova = { app: ord.app.slice(), ela: ord.ela.slice() }; nova[area] = FX.moverSessao(nova[area], ds.id, Number(ds.d) < 0 ? -1 : 1);
+      f.ord = nova; FX.gravarPrefs(localStorage, { ord: nova }); fxPintaCorpo();
+      var mb = document.querySelector('[data-fx="mover"][data-id="' + ds.id + '"][data-d="' + ds.d + '"]'); if (mb && mb.focus) mb.focus(); return true;
+    }
+    case 'dem': { f.dem = ds.v || 'todas'; var cd = byC(state.sel); if (cd) fxPintaChk(fxContato(cd, f.dados && f.dados.uid)); return true; }
+    case 'ckTodos': case 'ckMais': { if (ds.fx === 'ckTodos') f.ckTodos = !f.ckTodos; else f.ckMais = !f.ckMais; var cm = byC(state.sel); if (cm) fxPintaChk(fxContato(cm, f.dados && f.dados.uid)); return true; }
+    case 'agPrev': fxCarGo(-1); return true;
+    case 'agNext': fxCarGo(1); return true;
+  }
+  return true;
+}
+// Teclado do pop-up: Esc fecha e devolve o foco ao cartão; Tab fica preso; setas ‹ › passam de uma ação à outra.
+function fxTecla(e) {
+  var f = state.fx; if (!f || !f.ag || f.ag.pop === null) return;
+  if (e.key === 'Escape') { if (e.preventDefault) e.preventDefault(); return fxFechaPop(true); }
+  if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+    var ae = document.activeElement; if (ae && /^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName)) return;
+    if (e.preventDefault) e.preventDefault(); f.ag.pop = Math.min(Math.max(0, f.ag.pop + (e.key === 'ArrowLeft' ? -1 : 1)), f.tarefas.length - 1); return fxPintaPop();
+  }
+  if (e.key === 'Tab') {
+    var dlg = document.querySelector('#fx-pop .fx-pop'); if (!dlg || !dlg.querySelectorAll) return;
+    var fs = dlg.querySelectorAll('button:not([disabled])'); if (!fs.length) return;
+    var ult = fs[fs.length - 1], pri = fs[0], at = document.activeElement;
+    if (e.shiftKey && (at === pri || at === dlg)) { if (e.preventDefault) e.preventDefault(); ult.focus(); }
+    else if (!e.shiftKey && at === ult) { if (e.preventDefault) e.preventDefault(); pri.focus(); }
+    else if (!dlg.contains(at)) { if (e.preventDefault) e.preventDefault(); pri.focus(); }
+  }
+}
+document.addEventListener('keydown', fxTecla);
+// Arrastar sessão: só dentro do próprio grupo; quem não puder arrastar usa as setas ↑ ↓ (mesma função, FX.reordenarSessao).
+document.addEventListener('dragstart', function (e) {
+  var g = e.target && e.target.closest && e.target.closest('.fx-grab'); if (!g) return;
+  state.fx.drag = { area: g.dataset.area, id: g.dataset.id };
+  try { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', g.dataset.id); } catch (x) { /* sem dataTransfer */ }
+});
+document.addEventListener('dragover', function (e) {
+  var dr = state.fx && state.fx.drag; if (!dr) return;
+  var s = e.target && e.target.closest && e.target.closest('.fx-sess');
+  if (s && s.dataset.area === dr.area) e.preventDefault();
+});
+document.addEventListener('drop', function (e) {
+  var dr = state.fx && state.fx.drag; if (!dr) return;
+  state.fx.drag = null;
+  var s = e.target && e.target.closest && e.target.closest('.fx-sess');
+  if (!s || s.dataset.area !== dr.area) return;   // outro grupo: ignora
+  e.preventDefault();
+  var ord = fxOrdem(), lista = ord[dr.area], de = lista.indexOf(dr.id), para = lista.indexOf(s.dataset.sessao);
+  if (de < 0 || para < 0 || de === para) return;
+  var antes = de < para ? (lista[para + 1] === undefined ? null : lista[para + 1]) : s.dataset.sessao;   // arrastou para baixo: cai depois do alvo
+  var nova = { app: ord.app.slice(), ela: ord.ela.slice() }; nova[dr.area] = FX.reordenarSessao(lista, dr.id, antes);
+  state.fx.ord = nova; FX.gravarPrefs(localStorage, { ord: nova }); fxPintaCorpo();
+});
+document.addEventListener('dragend', function () { if (state.fx) state.fx.drag = null; });
+document.addEventListener('scroll', function (e) { var t = e.target; if (t && t.classList && t.classList.contains('fx-car')) fxCarScroll(t); }, true);
 async function renderPessoa() {
   var c = byC(state.sel);
   if (!c) { $('pessoa-page').innerHTML = '<div class="empty">Pessoa não encontrada.</div>'; return; }
   $('pessoa-page').innerHTML = '<div class="loading">Carregando a ficha…</div>';
+  if (fichaV2Ativa() && FX_PROC === null) FX_PROC = await fxCarregaProcessos();
   var r = await Promise.all([
     supabase.from('eventos').select('tipo,dados,criado_em').eq('contato_id', c.id).order('criado_em', { ascending: false }).limit(200),
     supabase.from('consentimentos').select('finalidade,aceito,texto,origem,criado_em').eq('contato_id', c.id).order('criado_em', { ascending: false }),
     supabase.from('emails_enviados').select('*').eq('contato_id', c.id).order('criado_em', { ascending: false }),
-    state.ptab === 'plataforma' ? supabase.from('plataforma_cliques').select('sessao,tela,alvo,rotulo,criado_em').eq('contato_id', c.id).order('criado_em', { ascending: false }).limit(300) : null,
+    (state.ptab === 'plataforma' || fichaV2Ativa()) ? supabase.from('plataforma_cliques').select('sessao,tela,alvo,rotulo,criado_em').eq('contato_id', c.id).order('criado_em', { ascending: false }).limit(300) : null,
     supabase.from('contatos').select('dossie,user_id').eq('id', c.id).maybeSingle(),
     supabase.from('contatos').select('dossie_origem,onboarding_em').eq('id', c.id).maybeSingle(),
     supabase.from('assinaturas').select('status,plano,moeda,teste_fim,periodo_fim,cancela_no_fim').eq('contato_id', c.id).maybeSingle(),   // db/crm-assinaturas.sql
@@ -2388,13 +2691,14 @@ async function renderPessoa() {
   var resps = R.filter(function (x) { return x.contato_id === c.id; });
   var h4 = 'font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-3); margin:0 0 8px';
   var jor = montaJornada(r[9]);
-  if (!state.ptab) state.ptab = mails.length || resps.length ? 'conversa' : 'ficha';
+  if (!state.ptab && !fichaV2Ativa()) state.ptab = mails.length || resps.length ? 'conversa' : 'ficha';   // a ficha v2 abre pela conversão (FX.abaPadrao)
   var tabs = '<div class="ptabs" role="tablist" aria-label="Ficha da pessoa">' + [['conversa', 'Conversa'], ['plataforma', 'Plataforma'], ['ficha', 'Ficha']].map(function (t) {
     return '<button class="ptab" role="tab" type="button" data-ptab="' + t[0] + '" aria-selected="' + (state.ptab === t[0]) + '">' + t[1] +
       (t[0] === 'conversa' && resps.some(function (x) { return x.status === 'nova'; }) ? ' <span class="count">nova</span>' : '') +
       '</button>';
   }).join('') + '</div>';
-  $('pessoa-page').innerHTML =
+  if (fichaV2Ativa()) $('pessoa-page').innerHTML = renderFichaV2(c, { eventos: eventos, cons: cons, mails: mails, resps: resps, perg: perg, jor: jor, uid: uid, h4: h4, last: last });
+  else $('pessoa-page').innerHTML =
     '<button class="link" data-back type="button">← Voltar</button>' +
     '<div class="pessoa-head" style="margin-top:12px"><div class="' + avClass(c) + '" style="width:52px;height:52px;font-size:16px">' + esc(ini(c)) + '</div>' +
     '<div style="min-width:0;flex:1"><h2 style="font-size:24px">' + esc(displayName(c)) + '</h2><p class="sub" style="margin:2px 0 0">' + esc(c.email) + '</p>' +
@@ -2409,34 +2713,18 @@ async function renderPessoa() {
     '<div id="dossie-box">' + dossieHtml(c, state.dos.d, state.dos.err, state.dos.rasc, state.dosAberto, state.dos.chk) + '</div>' +
     tabs + (state.ptab === 'conversa' ? conversaPanel(c, mails, resps, h4) : state.ptab === 'plataforma' ? plataformaPanel(c, h4) :
     '<div class="pessoa-grid" style="margin-top:18px">' +
-    '<div class="panel" style="padding:16px"><h3 style="font-size:15px; margin-bottom:8px">Tudo que ela fez</h3>' +
-    '<p class="sub" style="margin:0 0 10px">Checklist, pergunta única, artigos e o resto do app — mais o que você mandou pra ela. Mais recente primeiro.</p>' +
-    '<div class="feed">' + (eventos.map(function (e) {
-      var tx = eventText(e), m = TYPE_META[tx[0]];
-      return '<div class="feeditem"><span class="pill ' + m[1] + '">' + esc(m[0]) + '</span><div class="fbody"><p>' + esc(tx[1]) + '</p><time>' + esc(fmtDate(e.criado_em)) + '</time></div></div>';
-    }).join('') || '<div class="empty">Nada registrado ainda.</div>') + '</div></div>' +
+    fichaFeedHtml(eventos) +
     '<div style="display:flex; flex-direction:column; gap:16px">' +
     emailsPanel(c, mails, h4, resps, jor) +
     jornadaHtml(c, mails, resps, jor, h4) +
     '<div class="panel" style="padding:16px"><h4 style="' + h4 + '">Quem é ela</h4>' + kvHtml(respostasKv(c)) + '</div>' +
     '<div id="chk-lateral">' + checklistLateralHtml(state.dos && state.dos.chk, Date.now(), h4) + '</div>' +
-    '<details class="mais"><summary>Mais: perguntas, respostas, consentimento, Instagram e anotações' + (resps.some(function (x) { return x.status === "nova"; }) ? ' · tem resposta nova' : '') + '</summary><div class="mais-col">' +
-    (perg.length ? '<div class="panel" style="padding:16px"><h4 style="' + h4 + '">Perguntas únicas</h4>' + perg.map(function (x) { return '<p style="margin:0 0 6px;font-size:13px">"' + esc(x.texto) + '" <button class="link" data-openq="' + x.id + '" type="button">' + (x.status === 'nova' ? 'Responder' : 'Ver resposta') + ' →</button></p>'; }).join('') + '</div>' : '') +
-    (resps.length ? '<div class="panel" style="padding:16px"><h4 style="' + h4 + '">Respostas</h4>' + resps.map(function (x) { return '<p style="margin:0 0 6px;font-size:13px"><span title="' + esc(canalDe(x)[1]) + '">' + canalDe(x)[0] + '</span> "' + esc(x.texto.length > 160 ? x.texto.slice(0, 160) + '…' : x.texto) + '" <span class="sub">' + esc(canalDe(x)[1]) + ' · ' + esc(fmtDate(x.recebido_em)) + '</span> <button class="link" data-openr="' + x.id + '" type="button">' + (x.status === 'nova' ? 'Abrir na caixa' : 'Ver') + ' →</button></p>'; }).join('') + '</div>' : '') +
-    '<div class="panel" style="padding:16px"><h4 style="' + h4 + '">Consentimento</h4><div class="consent"><span class="pill ' + (last('servico') ? 'u-baixa' : '') + '">Política de privacidade ' + (last('servico') ? '✓' : '—') + '</span><span class="pill ' + (last('novidades_email') ? 'u-baixa' : '') + '">Novidades por e-mail ' + (last('novidades_email') ? '✓' : '—') + '</span></div>' + argumentosHtml(cons) + '</div>' +
-    '<div class="panel" style="padding:16px"><h4 style="' + h4 + '">Instagram</h4>' +
-      '<label class="sub" for="ig-handle" style="display:block;margin:0 0 4px">@ do Instagram</label>' +
-      '<input id="ig-handle" data-ig="instagram" data-cid="' + esc(c.id) + '" maxlength="40" autocomplete="off" placeholder="Ainda sem @. Se descobrir, cole aqui (sem o @ ou com)." value="' + esc(c.instagram || '') + '" style="width:100%;height:38px;border:1px solid var(--line-2);border-radius:8px;padding:0 10px;font:inherit">' +
-      (c.instagram ? '<p class="sub" style="margin:6px 0 0"><a href="https://instagram.com/' + esc(c.instagram) + '" target="_blank" rel="noopener">Abrir o perfil no Instagram</a></p>' : '') +
-      '<label class="sub" for="ig-id" style="display:block;margin:12px 0 4px">ID do contato na automação</label>' +
-      '<input id="ig-id" data-ig="ig_id" data-cid="' + esc(c.id) + '" maxlength="60" autocomplete="off" placeholder="Vem do link da automação. Pode colar à mão." value="' + esc(c.ig_id || '') + '" style="width:100%;height:38px;border:1px solid var(--line-2);border-radius:8px;padding:0 10px;font:inherit">' +
-      '<p class="sub" style="margin:8px 0 0">Quando a pessoa volta a deixar o e-mail, o que estiver vazio aqui é completado. O que você escreve não é apagado.</p></div>' +
-    '<div class="panel" style="padding:16px"><h4 style="' + h4 + '">Suas anotações</h4><textarea class="notebox" id="nota" data-nota="' + esc(c.id) + '" placeholder="Só você vê. Ex.: prefere falar por e-mail, tem sponsor na família.">' + esc(c.nota || '') + '</textarea></div>' +
-    '</div></details>' +
+    fichaMaisHtml(c, { perg: perg, resps: resps, cons: cons, last: last, h4: h4 }) +
     '</div></div>');
   var ct = $('conv-txt');
   if (ct) { var th = $('conv-thread'); if (th) th.scrollTop = th.scrollHeight; }
   ligarAoVivo(c, uid);
+  if (fichaV2Ativa()) return fxPos(c);
   if (state.ptab === 'plataforma' && state.pstab === 'chat') { var fio0 = $('chat-fio'); if (fio0) fio0.scrollTop = fio0.scrollHeight; marcaChatLido(c.id).then(function () { var a0 = $('plat-abas'); if (a0) a0.innerHTML = platAbasHtml(); }); }
 }
 
@@ -4170,6 +4458,7 @@ async function enviarLinkPagamento(btn) {
 document.addEventListener('click', async function (e) {
   if (e.target.id === 'compose-backdrop') return closeCompose();
   var t = e.target.closest('button, tr[data-id]'); if (!t) return;
+  var fxr = fichaClick(t); if (fxr !== false) return fxr;   // ficha v2 (data-fx); false = não é com ela
   if (t.matches('.nav')) return show(t.dataset.view);
   if (t.dataset.go) { if (t.dataset.viewPreset) applyPreset(t.dataset.viewPreset); return show(t.dataset.go); }
   if (t.dataset.preset) return applyPreset(t.dataset.preset);

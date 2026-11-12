@@ -191,6 +191,34 @@ Testes: `db/testes` → `APP_DB_DIR=<POR DENTRO APP>/db npm run test:caso` (192 
 Desfazer: `drop table if exists public.caso_avisos, public.board_itens, public.caso_acoes, public.caso_achados cascade;` e rodar `crm-propostas.sql` de
 novo (devolve a lista de `crm_evento_recente()`). **Cuidado: isso apaga tudo o que foi guardado do caso.**
 
+## Ficha-universo, fase 1 (12/11)
+
+Reorganiza a ficha da pessoa com os dados que o CRM **já lê**: fila de hoje, header com funil de 7 etapas, abas Conversa / Plataforma / Ficha, sessões em pílulas, "Minhas próximas ações" em carrossel com pop-up e Checklist por démarche (só os 4 passos mais urgentes). **Não escreve SQL nem cria tabela. Sem dependência nova, sem build.** Spec e plano: repositório do hub, `docs/superpowers/specs/2026-11-12-ficha-universo-design.md` e `docs/superpowers/plans/2026-11-12-ficha-universo-fase-1.md`.
+
+**Chave de ligação (a ficha antiga segue intacta e é o padrão):** `?ficha=2` na URL, ou `localStorage.setItem('crm_ficha_v2', '1')` no console. Sem a chave nada muda. Ligar por padrão é a Tarefa 15 do plano e só acontece depois da sua aprovação.
+
+**Arquivos novos:** `ficha.js` (lógica pura: urgência, démarches, funil, ações, fila, ordem das sessões), `ficha-html.js` (HTML puro, tudo escapado), `processos.json` (cópia do bloco `processos` de `content/checklist-templates.json` do app; `db/testes/ficha-sync.test.mjs` compara com o app quando `APP_DIR` está definido), e em `db/testes`: `ficha.test.mjs`, `ficha-html.test.mjs`, `ficha-harness.mjs`, `crm-ficha-ui.test.mjs`, `ficha-sync.test.mjs`. `crm.js` só liga os dados e os eventos (`fichaV2Ativa`, `renderFichaV2`, `fichaClick`, `fxLive`); o CSS está na seção `/* Ficha v2 */` de `crm.css`.
+
+**Desvios do spec assumidos nesta fase (a Ingryd confirma):**
+1. A **prévia do app dela** (spec §5.1) fica para a fase 2 (só faz sentido com o board e o Material da equipe). A aba Plataforma tem as sessões, sem a coluna da prévia.
+2. **"Meus passos" como démarche** (spec §5.4): o app de verdade põe o passo criado por ela na démarche onde ela o criou (categoria `meu:<chave>`). O CRM segue o app; o spec §5.4 deve ser corrigido.
+3. **Funil clicável** (spec §3.1): na fase 1 a barra é derivada dos dados (só leitura). A mudança manual de etapa continua no seletor de estágio.
+4. **Camada "para depois"** da urgência (spec §5.4): o CRM não conhece os guias do app; passos sem data entram juntos, depois dos datados.
+5. **Sessões da fase 1:** Conversa com ela, Início (iAssistente), Checklist, Bilan, Dossiê, Histórico. Espaço, Guias, Perfil, Só eu, O que ela trouxe e Panorama chegam nas fases 2 a 5.
+
+**Divergências do plano encontradas no código real (registradas, sem ampliar escopo):**
+- Números de linha do plano estavam velhos (`renderPessoa` está perto da linha 2350, não 1978; `index.html` tem o `crm.js` na linha 226, não 221). Trabalhei pelos nomes das funções.
+- O `?v=` novo é `2026-11-12.10` (o plano dizia `.1`, mas o atual já era `.9`; `.1` ordena antes e confundiria).
+- `fichaFeedHtml` e `fichaMaisHtml` foram **extraídas** da ficha antiga (mesmo HTML, uma fonte só) para a aba Ficha da v2 reaproveitar; os testes antigos seguem verdes.
+- Para não perder função que já existia: o **Pagamento** abre a aba Plataforma, os **processos sugeridos** (aprovar/descartar) ficam no topo da sessão Checklist (é para onde "Decidir o processo X" aponta) e o resumo do onboarding fica na aba Ficha.
+- Ordem das pílulas de démarche: usa `ordem` do catálogo do app quando existe; chaves fora dela vão depois, em ordem alfabética.
+- A fila mostra até 8 pessoas (resposta nova, processo para decidir ou urgência alta, mais a aberta). Só conta respostas por e-mail e processos; as mensagens não lidas do app só entram no carrossel da pessoa aberta (o CRM não carrega o chat de todas).
+- O guia "Como ler esta tela" tem os 4 passos Fila, Minhas próximas ações, Abas e Sessões (o spec diz Esquerda/Direita, que dependem da prévia da fase 2).
+- Dado velho (>48 h): banner na sessão Checklist, medido pelo último clique dela no checklist. Os outros blocos mostram skeleton, vazio e erro.
+- `ficha.js` e `ficha-html.js` guardam o `?v=` do import por conta própria; ao subir a versão, trocar nos três lugares (`index.html`, imports de `crm.js`, import de `ficha-html.js`).
+
+**Ainda fora da ficha v2 (só na antiga, por enquanto):** as sub-abas Caso, Espaço e Guias da Plataforma e o 1:1 pago; os botões "Já fiz", "Adicionar" e "Concluídas" do quadro de ações (precisam de onde gravar: fase 3); "Pedir acesso por e-mail" na pasta do Drive (modelo de mensagem, fase 3).
+
 ## Etapas
 
 1. **Fase 1 — captura** (feita, repo POR-DENTRO-APP): `contatos`, `eventos`, `consentimentos`, `capturar_lead()`, `admins`.

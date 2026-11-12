@@ -1,0 +1,253 @@
+{
+  "_comentario": "Um processo = um procedimento que a pessoa reconhece (Visa étudiante, Ameli, CAF, banco...). O checklist tem uma aba por processo e um cabeçalho que muda com a aba; a Home puxa o passo mais urgente de cada um (assets/js/processos.js). O processo de um item vem de porItem (exceção pela step_key) ou de porCategoria; sem os dois, cai em 'visa'. Só aparece aba de processo que tem item: quem tem um processo só não vê abas. definicoes.label é o nome curto da aba; abas[persona] troca esse nome para a persona; titulos[persona] é o título do cabeçalho ({trilha} = caminho de estudo escolhido: o curto em abas, o completo em titulos; trilhasCurtas guarda os curtos). notas liga cada nota da IAssistente (id) a um processo: nota sem processo (inclusive os recados que a Ingryd escreve pelo CRM) aparece em todas as abas.",
+  "ordem": [
+    "visa_aupair",
+    "visa",
+    "visa_estudante",
+    "estudos",
+    "trabalho",
+    "profissao",
+    "cir",
+    "ameli",
+    "caf",
+    "banco",
+    "moradia",
+    "orcamento"
+  ],
+  "definicoes": {
+    "visa_aupair": {
+      "label": "Visa au pair",
+      "icone": "🧳",
+      "descricao": "O status de au pair que você tem hoje, até a troca para estudante."
+    },
+    "visa": {
+      "label": "Visa",
+      "icone": "🛂",
+      "descricao": "O que mantém você em situação regular na França."
+    },
+    "visa_estudante": {
+      "label": "Visa étudiante",
+      "icone": "🛬",
+      "descricao": "O visto de estudante que você pede do Brasil, depois do PVT."
+    },
+    "estudos": {
+      "label": "Universidade",
+      "icone": "🎓",
+      "descricao": "Entrar na formação e cumprir o que ela pede."
+    },
+    "trabalho": {
+      "label": "Trabalho",
+      "icone": "💼",
+      "descricao": "Encontrar a empresa e fechar o contrato."
+    },
+    "profissao": {
+      "label": "Profissão regulamentada",
+      "icone": "🩺",
+      "descricao": "A autorização para exercer a sua profissão, que corre ao lado do visto."
+    },
+    "cir": {
+      "label": "Integração (CIR)",
+      "icone": "🤝",
+      "descricao": "O contrato de integração com o OFII e o que ele pede."
+    },
+    "ameli": {
+      "label": "Ameli",
+      "icone": "🏥",
+      "descricao": "A sua sécurité sociale: cadastro, regime e Carte Vitale."
+    },
+    "caf": {
+      "label": "CAF",
+      "icone": "🏡",
+      "descricao": "Auxílio-moradia (APL) e o que a CAF pede."
+    },
+    "banco": {
+      "label": "Banco",
+      "icone": "🏦",
+      "descricao": "Conta francesa, RIB e o que o banco pede."
+    },
+    "moradia": {
+      "label": "Moradia",
+      "icone": "🔑",
+      "descricao": "Onde morar e os comprovantes que vêm com isso."
+    },
+    "orcamento": {
+      "label": "Orçamento",
+      "icone": "💶",
+      "descricao": "Bolsas, ajudas e quanto dá para ganhar trabalhando."
+    }
+  },
+  "porCategoria": {
+    "Documentação": "visa",
+    "Documentação civil": "visa",
+    "Aceite e visto": "visa",
+    "Antes de viajar": "visa",
+    "Plano de saída": "visa",
+    "Visto de estudante": "visa_estudante",
+    "Escola e matrícula": "estudos",
+    "Instalação": "visa",
+    "Integração (CIR)": "cir",
+    "Licence": "estudos",
+    "Master em alternância": "estudos",
+    "Preparar": "estudos",
+    "Documentos": "estudos",
+    "Candidatar": "estudos",
+    "Decidir": "estudos",
+    "Busca de emprego": "trabalho",
+    "Profissão regulamentada": "profissao",
+    "Sécurité sociale": "ameli",
+    "Trabalho e ajudas": "caf",
+    "Conta bancária": "banco",
+    "Moradia": "moradia",
+    "Sustento financeiro": "orcamento",
+    "De PVT a estudante": "estudos"
+  },
+  "porItem": {
+    "ofii_validacao_au_pair": "visa_aupair",
+    "ofii_validacao": "visa",
+    "ofii_validacao_alternancia": "visa",
+    "certificado_matricula": "visa",
+    "limite_trabalho": "visa",
+    "moradia_temporaria": "moradia",
+    "cf_aceite_moradia_chegada": "moradia",
+    "confirmar_fle_conta_como_formacao": "estudos",
+    "avaliar_master_alternancia": "estudos"
+  },
+  "trilhasCurtas": {
+    "licence": "Licence",
+    "master_alternancia": "Master em alternância",
+    "fle": "Curso de FLE",
+    "du": "DU"
+  },
+  "abas": {
+    "au_pair_estudante": {
+      "visa": "Visa étudiante",
+      "estudos": "{trilha}"
+    },
+    "campus_france": {
+      "visa": "Visa étudiante",
+      "estudos": "Campus France"
+    },
+    "alternancia_emprego": {
+      "trabalho": "Contrato de alternância"
+    },
+    "conjuge": {
+      "visa": "Visa de cônjuge"
+    },
+    "pvt": {
+      "visa": "Visa PVT",
+      "estudos": "{trilha}",
+      "ameli": "Seguro saúde"
+    }
+  },
+  "titulos": {
+    "au_pair_estudante": {
+      "visa_aupair": "Visa au pair: o status de hoje",
+      "visa": "Visa étudiante: de au pair a estudante",
+      "estudos": "Estudos: {trilha}"
+    },
+    "campus_france": {
+      "visa": "Visa étudiante",
+      "estudos": "Candidatura Campus France"
+    },
+    "alternancia_emprego": {
+      "trabalho": "Contrato de alternância"
+    },
+    "conjuge": {
+      "visa": "Visa de cônjuge"
+    },
+    "pvt": {
+      "visa": "Visa Vacances-Travail (PVT)",
+      "visa_estudante": "Visa étudiante: do PVT ao estudante",
+      "estudos": "Estudos: {trilha}",
+      "ameli": "Seguro saúde"
+    }
+  },
+  "avulsos": {
+    "_comentario": "Processos que a pessoa pode ganhar sem que venham da persona: o app percebe os sinais (regras abaixo, em palavras), grava a sugestão para a Ingryd (rpc sinalizar_processo), a Ingryd aprova no CRM, o assistente pergunta no chat e, se a pessoa aceitar, a aba aparece no próximo login com os `itens` (step_keys que já existem em outra persona: nenhum texto oficial novo). Cada sinal: `se` com a forma das condições do percurso ({campo: valor}, todos batem; enxerga perfil, respostas e `concluido_<step_key>`), `personas`/`excetoPersonas` opcionais, e o `texto` que a Ingryd lê na ficha. Só sugere processo que a pessoa ainda não tem como aba. Processo novo aqui precisa de um passo genérico, que sirva a qualquer persona.",
+    "caf": {
+      "itens": [
+        "caf_pedir_alternancia"
+      ],
+      "pergunta": "Quer abrir um checklist de CAF? É o auxílio-moradia (APL), que devolve parte do aluguel.",
+      "sinais": [
+        {
+          "codigo": "moradia_resolvida",
+          "se": {
+            "moradia_resolvida": true
+          },
+          "excetoPersonas": [
+            "au_pair_estudante"
+          ],
+          "texto": "Respondeu que a moradia na França já está resolvida."
+        },
+        {
+          "codigo": "moradia_resolvida_saindo",
+          "se": {
+            "moradia_resolvida": true,
+            "saindo_do_au_pair": true
+          },
+          "personas": [
+            "au_pair_estudante"
+          ],
+          "texto": "Está saindo do regime de au pair e respondeu que a moradia já está resolvida."
+        },
+        {
+          "codigo": "comprovante_endereco",
+          "se": {
+            "comprovante_endereco": "sim"
+          },
+          "excetoPersonas": [
+            "au_pair_estudante"
+          ],
+          "texto": "Respondeu que já tem comprovante de endereço no nome dela."
+        },
+        {
+          "codigo": "comprovante_endereco_saindo",
+          "se": {
+            "comprovante_endereco": "sim",
+            "saindo_do_au_pair": true
+          },
+          "personas": [
+            "au_pair_estudante"
+          ],
+          "texto": "Está saindo do regime de au pair e já tem comprovante de endereço no nome dela."
+        },
+        {
+          "codigo": "moradia_saida_familia",
+          "se": {
+            "concluido_moradia_saida_familia": true
+          },
+          "texto": "Marcou como feito \"Buscar moradia própria, saindo da casa da família anfitriã\"."
+        },
+        {
+          "codigo": "moradia_buscar",
+          "se": {
+            "concluido_moradia_buscar": true
+          },
+          "texto": "Marcou como feito \"Fechar moradia (CROUS ou aluguel privado)\"."
+        },
+        {
+          "codigo": "comprovante_nome_proprio",
+          "se": {
+            "concluido_comprovante_nome_proprio": true
+          },
+          "texto": "Marcou como feito \"Comprovante de endereço em seu nome\"."
+        }
+      ]
+    }
+  },
+  "notas": {
+    "sem_matricula": "visa",
+    "sem_recursos_sem_sponsor": "visa",
+    "sponsor_documentos": "visa",
+    "trilha_indefinida": "estudos",
+    "master_paralelo": "estudos",
+    "master_prova": "estudos",
+    "sem_certificado_frances": "estudos",
+    "cf_teste_inscrito": "estudos",
+    "cf_teste_nada": "estudos",
+    "cf_menor_prazo": "estudos",
+    "cf_fila": "estudos",
+    "cf_provisorio": "estudos"
+  }
+}
