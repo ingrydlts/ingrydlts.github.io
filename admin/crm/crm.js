@@ -1325,10 +1325,11 @@ async function buscaCaso(cid) {
     supabase.from('caso_acoes').select('id,n,titulo,dono,canal,botao,prazo,prazo_texto,prazo_a_confirmar,estado,certeza,publicada_em,concluida_em,concluida_por').eq('contato_id', cid).order('n', { ascending: true }).limit(150),
     supabase.from('board_itens').select('id,tipo,titulo,resumo,dados,estado,ordem,link,versao').eq('contato_id', cid).order('ordem', { ascending: true }).limit(80),
     supabase.from('caso_avisos').select('id,tipo,titulo,texto,resposta_tipo,grava_em,modo,dias_apos,ordem,pausa_dias,liberar_em,liberado_em,estado,resposta,adiado_ate').eq('contato_id', cid).order('ordem', { ascending: true }).limit(40),
-    supabase.from('consentimentos').select('aceito,criado_em').eq('contato_id', cid).eq('finalidade', 'servico').order('criado_em', { ascending: false }).limit(1)
+    supabase.from('consentimentos').select('aceito,criado_em').eq('contato_id', cid).eq('finalidade', 'servico').order('criado_em', { ascending: false }).limit(1),
+    supabase.from('escolas_dela').select('id,nome,link,nota,criado_em').eq('contato_id', cid).order('criado_em', { ascending: true }).limit(40)   // db/crm-escolas-dela.sql; sem ele, a seção some
   ]);
   var err = r[0].error || r[1].error || r[2].error || r[3].error || null;
-  return { cid: cid, err: err, ach: r[0].data || [], aco: r[1].data || [], itens: r[2].data || [], avs: r[3].data || [], consent: !!(r[4].data && r[4].data[0] && r[4].data[0].aceito === true), ed: null, agenda: null };
+  return { cid: cid, err: err, ach: r[0].data || [], aco: r[1].data || [], itens: r[2].data || [], avs: r[3].data || [], consent: !!(r[4].data && r[4].data[0] && r[4].data[0].aceito === true), escolasDela: r[5] && !r[5].error ? (r[5].data || []) : [], ed: null, agenda: null };
 }
 function casoPendentes(k) {
   if (!k || k.err) return 0;
@@ -1498,6 +1499,15 @@ function casoAvisosHtml(k) {
     return casoLinha(est, meio, btns);
   }).join('');
 }
+// As escolas que a própria pessoa acrescentou no Espaço (nome, link e o que ela já sabe). Só leitura: você vê o que ela anda olhando.
+function casoEscolasDelaHtml(k) {
+  var l = k.escolasDela || [];
+  if (!l.length) return '';
+  return casoSecao('Escolas que ela acrescentou', l.length + (l.length === 1 ? ' escola' : ' escolas'), l.map(function (e) {
+    var link = /^https:\/\//.test(e.link || '') ? ' <a href="' + esc(e.link) + '" target="_blank" rel="noopener noreferrer">site</a>' : '';
+    return '<div class="feeditem"><div class="fbody"><p><b>' + esc(e.nome) + '</b>' + link + (e.nota ? '<br><span class="sub">' + esc(e.nota) + '</span>' : '') + '</p><time>' + esc(fmtDay(String(e.criado_em || '').slice(0, 10))) + '</time></div></div>';
+  }).join(''));
+}
 function casoPanelHtml(c, k) {
   if (!k || k.cid !== c.id) return '<div class="panel" style="padding:16px"><p class="sub" style="margin:0">Carregando o caso…</p></div>';
   if (k.err) return '<div class="panel" style="padding:16px"><h3 style="font-size:15px;margin-bottom:8px">Caso ainda não ligado</h3><p class="sub" style="margin:0">Falta rodar <b>db/crm-caso.sql</b> e <b>db/crm-caso-importar.sql</b> no SQL Editor do Supabase. Depois, ler a página do Notion no Onboarding preenche esta aba.</p></div>';
@@ -1510,6 +1520,7 @@ function casoPanelHtml(c, k) {
     casoSecao('O que entendi', k.ach.length + ' achados', casoAchadosHtml(k)) +
     casoSecao('Ações', k.aco.length + ' linhas', casoAcoesHtml(k)) +
     casoSecao('Board dela', 'o que aparece no Espaço e nos Guias', casoBarraNovo(k) + casoItensHtml(k)) +
+    casoEscolasDelaHtml(k) +
     casoSecao('Avisos da IAssistente', 'você decide a data de cada um', casoAvisosHtml(k));
 }
 function pintaCaso() { var b = $('caso-box'); if (b) b.innerHTML = casoPanelHtml(byC(state.sel) || {}, state.caso); var ab = $('plat-abas'); if (ab) ab.innerHTML = platAbasHtml(); }

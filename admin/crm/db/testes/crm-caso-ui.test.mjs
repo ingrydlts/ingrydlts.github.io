@@ -46,7 +46,7 @@ const XSS = '<img src=x onerror=alert(1)>';
 function fixture(o = {}) {
   respostas = { 'contatos:one': { data: { dossie: {}, user_id: 'u1' }, error: null }, chat_mensagens: { data: [], error: null }, propostas: { data: [], error: null },
     checklist_items: { data: [], error: null }, plataforma_cliques: { data: [], error: null }, insights_historico: { data: [], error: null }, insights_manuais: { data: [], error: null },
-    caso_achados: { data: o.ach || [], error: o.err || null }, caso_acoes: { data: o.aco || [], error: null }, board_itens: { data: o.itens || [], error: null }, caso_avisos: { data: o.avs || [], error: null },
+    caso_achados: { data: o.ach || [], error: o.err || null }, caso_acoes: { data: o.aco || [], error: null }, board_itens: { data: o.itens || [], error: null }, caso_avisos: { data: o.avs || [], error: null }, escolas_dela: { data: o.escolasDela || [], error: o.escolasErr || null },
     consentimentos: { data: o.consent === false ? [] : [{ aceito: true, criado_em: '2026-11-01T10:00:00Z' }], error: null } };
 }
 const ACH = [{ id: 1, chave: 'resumo', tipo: 'fato', texto: 'PVT perto do fim. ' + XSS, origem: 'conversa', certeza: 'inferido', estado: 'conferir' },
@@ -257,6 +257,16 @@ console.log('\n== Guias dela: documentos, bilans e mensagens prontas ==');
   await click({ caso: 'item-del', id: '40' });
   check('o segundo toque remove o item', writes.at(-1).op === 'delete' && writes.at(-1).table === 'board_itens');
 }
+
+
+console.log('\n== Escolas que ela acrescentou ==');
+fixture({ itens: [ITENS[0]], escolasDela: [{ id: 1, nome: 'Alliance Française de Lyon', link: 'https://exemplo.org/af', nota: 'Curso intensivo, 20 h.', criado_em: '2026-11-10T10:00:00Z' }, { id: 2, nome: '<img src=x onerror=alert(1)>', link: 'javascript:alert(1)', nota: null, criado_em: '2026-11-11T10:00:00Z' }] }); await pagina();
+check('a ficha mostra as escolas que ela acrescentou: nome, o que ela sabe, data e o site (só https)', /Escolas que ela acrescentou/.test(html()) && /Alliance Française de Lyon/.test(html()) && /Curso intensivo, 20 h\./.test(html()) && /href="https:\/\/exemplo.org\/af"/.test(html()) && /10\/11\/2026/.test(html()));
+check('texto e link perigosos da pessoa não viram HTML nem link', !html().includes('<img src=x') && !/javascript:/.test(html()));
+fixture({ itens: [ITENS[0]] }); await pagina();
+check('sem escolas dela, a seção não aparece', !/Escolas que ela acrescentou/.test(html()));
+fixture({ itens: [ITENS[0]], escolasErr: { message: 'relation "escolas_dela" does not exist' } }); await pagina();
+check('sem o SQL das escolas, a aba segue normal e a seção some', /Board dela/.test(html()) && !/Escolas que ela acrescentou/.test(html()));
 
 console.log('\n' + passed + ' passaram, ' + failed + ' falharam');
 process.exit(failed ? 1 : 0);
