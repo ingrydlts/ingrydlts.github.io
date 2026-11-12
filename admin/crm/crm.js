@@ -2450,7 +2450,8 @@ function fxChecklistCorpo(c) {
   if (chk.err || chk.semConta) return pre + FH.htmlChecklistSessao({ semConta: !!chk.semConta && !chk.err, erro: !!chk.err }, H_FX);
   var agora = Date.now(), cc = chkCalc(chk, agora), itens = chk.itens || [];
   var dem = FX.demarchesDe(FX_PROC, personaKey(c), itens), ativa = f.dem !== 'todas' && dem.some(function (x) { return x.k === f.dem; }) ? f.dem : 'todas';
-  return pre + FH.htmlChecklistSessao({ semConta: false, erro: false, demarches: dem, ativa: ativa, totalFeitos: cc.feitos, total: itens.length, itens: FX.filtrarPorDemarche(FX_PROC, itens, ativa),
+  var ult = chk.cliques && chk.cliques[0], horas = ult ? (agora - new Date(ult.criado_em).getTime()) / 36e5 : 0;   // dado velho: mais de 48 h sem atividade dela
+  return pre + FH.htmlChecklistSessao({ semConta: false, erro: false, velhoDias: horas > 48 ? Math.floor(horas / 24) : 0, demarches: dem, ativa: ativa, totalFeitos: cc.feitos, total: itens.length, itens: FX.filtrarPorDemarche(FX_PROC, itens, ativa),
     hoje: cc.hoje, todos: f.ckTodos, mais: f.ckMais, extraMais: f.ckMais ? checklistLateralHtml(chk, agora, H4_PLAT) + checklistHtml(chk, agora) : '' }, H_FX);
 }
 function fxPintaChk(c) { var b = $('fx-chk-corpo'); if (b) b.innerHTML = fxChecklistCorpo(c); }

@@ -94,7 +94,8 @@ export function htmlPopup(tarefas, i, h) {
 }
 
 // ---------- Sessão Checklist: démarches, os 4 mais urgentes, Drive privado, Ver mais (Task 11) ----------
-// d = { semConta, erro, demarches: [{k,nome,feitos,total}], ativa, totalFeitos, total, itens: ChkItem[], hoje, todos, mais, extraMais }.
+// d = { semConta, erro, demarches: [{k,nome,feitos,total}], ativa, totalFeitos, total, itens: ChkItem[], hoje, todos, mais, extraMais, velhoDias? }.
+// velhoDias > 0 = dado velho (spec §11: banner depois de 48 h sem atividade).
 // A equipe não dá check no checklist dela e o CRM nunca lê nem mostra o link da pasta do Drive (spec §5.4, §8.2).
 function rotuloPasso(i, hoje, e, fmtDay) {
   if (i.status === 'concluido') return '<span class="fx-p-d ok">feito</span>';
@@ -107,6 +108,7 @@ export function htmlChecklistSessao(d, h) {
   if (d.semConta) return '<p class="sub" style="margin:0">Ela ainda não entrou no app, então ainda não tem checklist.</p>';
   if (d.erro) return '<p class="sub" style="margin:0">Falta rodar <b>db/crm-checklist.sql</b> no SQL Editor do Supabase.</p>';
   const itens = d.itens || [], hoje = d.hoje || '';
+  const velho = d.velhoDias > 0 ? '<p class="fx-velho" role="status">Sem atividade dela no checklist há ' + e(d.velhoDias) + ' dias. O que aparece aqui pode estar desatualizado.</p>' : '';
   const pilulas = '<div class="fx-dems" role="group" aria-label="Démarches">' +
     [{ k: 'todas', nome: 'Todas', feitos: d.totalFeitos, total: d.total }].concat(d.demarches || []).map((x) =>
       '<button type="button" class="fx-dem" data-fx="dem" data-v="' + e(x.k) + '" aria-pressed="' + (x.k === d.ativa) + '"><span class="fx-dem-nome">' + e(x.nome) + '</span> <span class="fx-dem-n">' + e(x.feitos) + '/' + e(x.total) + '</span></button>').join('') + '</div>';
@@ -117,7 +119,7 @@ export function htmlChecklistSessao(d, h) {
     ? '<ul class="fx-passos-lista">' + lista.map((i) => '<li class="fx-passo ' + (i.status === 'concluido' ? 'feito' : i.status === 'arquivado' ? 'arq' : 'pend') + '"><span class="fx-p-t">' + e(i.label) + '</span>' + rotuloPasso(i, hoje, e, h.fmtDay) + '</li>').join('') + '</ul>' +
       (itens.length > 4 ? '<button type="button" class="link" data-fx="ckTodos" aria-expanded="' + !!d.todos + '">' + (d.todos ? 'Mostrar só os 4 mais urgentes' : 'Ver todos os ' + itens.length + ' passos (' + esc4 + (esc4 === 1 ? ' escondido)' : ' escondidos)')) + '</button>' : '')
     : '<p class="sub" style="margin:0">O checklist dela ainda está vazio.</p>') + '</div>';
-  return pilulas + drive + passos +
+  return velho + pilulas + drive + passos +
     '<div class="fx-mais"><button type="button" class="btn" data-fx="ckMais" aria-expanded="' + !!d.mais + '">' + (d.mais ? 'Ver menos desta sessão' : 'Ver mais desta sessão') + '</button>' + (d.mais ? '<div class="fx-mais-corpo">' + (d.extraMais || '') + '</div>' : '') + '</div>';
 }
 

@@ -116,6 +116,7 @@ console.log('== Task 11: sessão Checklist (ligação) ==');
   check('Ver mais fechado: sem o resumo do dossiê', !h.el('fx-chk-corpo').innerHTML.includes('Checklist e cliques'));
   await h.click({ fx: 'ckMais' });
   check('ckMais abre o resto da sessão', h.mod.state.fx.ckMais === true && h.el('fx-chk-corpo').innerHTML.includes('Checklist e cliques'));
+  check('atividade recente (ou nenhuma) não mostra o banner de dado velho', !corpo.includes('fx-velho'));
   check('a pasta do Drive é só texto de privacidade', corpo.includes('é privada') && !/docs\.google|drive\.google/.test(corpo));
   h.mod.pararAoVivo();
   // pessoa sem conta e tabela ausente (Review Focus 1 e 2)
@@ -215,6 +216,17 @@ console.log('== Task 13: abas Ficha e Conversa ==');
   h.mod.state.dos.chk = null; await h.click({ fx: 'tab', v: 'plataforma' });
   pg = h.el('pessoa-page').innerHTML;
   check('sem chk carregado, o Checklist mostra skeleton e o header não diz "sem conta"', pg.includes('class="skel"') && !pg.includes('db/crm-checklist.sql') && !pg.includes('Ela ainda não entrou no app'));
+  h.mod.pararAoVivo();
+}
+
+console.log('== Task 14: dado velho ==');
+{
+  const antigo = new Date(Date.now() - 5 * 86400e3).toISOString();
+  const h = await carregarCrm({ respostas: base({ 'contatos:one': { data: { dossie: {}, user_id: 'u1' }, error: null },
+    checklist_items: { data: [{ step_key: 'k1', category: 'Documentação', label: 'Passo', status: 'pendente', due_date: null, sort_order: 1 }], error: null },
+    plataforma_cliques: { data: [{ tela: '/dashboard/#checklist', alvo: 'botao', rotulo: 'Marcou como concluído: Passo', criado_em: antigo }], error: null } }), store: { crm_ficha_v2: '1' } });
+  await abre(h, pessoa({ user_id: 'u1' }));
+  check('mais de 48 h sem atividade: banner "há 5 dias"', h.el('pessoa-page').innerHTML.includes('Sem atividade dela no checklist há 5 dias'));
   h.mod.pararAoVivo();
 }
 

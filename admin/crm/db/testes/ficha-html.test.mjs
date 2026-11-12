@@ -95,6 +95,7 @@ console.log('== Task 11: sessão Checklist ==');
   check('pasta do Drive: só texto de privacidade', ok.includes('privada') && ok.includes('não vê o link') && !ok.includes('<input') && !ok.includes('href') && !/drive/i.test(ok.replace(/pasta do Drive/gi, '')));
   check('Ver mais: fechado não traz o extra; aberto traz', ok.includes('Ver mais desta sessão') && !ok.includes('EXTRA') && FH.htmlChecklistSessao(d({ mais: true }), h).includes('EXTRA') && FH.htmlChecklistSessao(d({ mais: true }), h).includes('Ver menos desta sessão'));
   check('a equipe não dá check', !ok.includes('data-fx="marcar"') && !/type="checkbox"/.test(ok));
+  check('dado velho: banner só quando há dias sem atividade', FH.htmlChecklistSessao(d({ velhoDias: 5 }), h).includes('há 5 dias') && !ok.includes('fx-velho') && !FH.htmlChecklistSessao(d({ velhoDias: 0 }), h).includes('fx-velho'));
   check('vazio com conta', FH.htmlChecklistSessao(d({ itens: [], demarches: [], total: 0, totalFeitos: 0 }), h).includes('ainda está vazio'));
   check('rótulo com HTML escapado', FH.htmlChecklistSessao(d({ itens: [it('x', 'pendente', null, { label: XSS })] }), h).includes('&lt;img'));
   check('feito e arquivado têm texto próprio', (() => { const t = FH.htmlChecklistSessao(d({ itens: [it('f', 'concluido', null), it('g', 'arquivado', null)] }), h); return t.includes('feito') && t.includes('Arquivado'); })());

@@ -802,3 +802,156 @@ select.st-in{height:36px; padding:0 8px}
 .ee-conta{margin:0;font-size:13px}
 details.ee-sec>summary{cursor:pointer;font-weight:600;font-size:14px}
 details.ee-sec[open]>summary{margin-bottom:8px}
+
+/* ============================================================
+   Ficha v2 (ficha-universo, fase 1). Só aparece com ?ficha=2 ou localStorage.crm_ficha_v2 = '1'.
+   Usa só os tokens acima (claro e escuro). Texto pequeno usa --ink-2 (mínimo 4,5:1), nunca --ink-3.
+   ============================================================ */
+.fx{display:flex; flex-direction:column; gap:16px; min-width:0}
+.fx > *{min-width:0}
+.fx-h3{font-size:15px; margin:0 0 8px}
+.fx-h4{font-family:var(--body); font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-2); margin:0 0 8px}
+.fx .sub{color:var(--ink-2)}
+.fx button:focus-visible,.fx .fx-car:focus-visible{outline:2px solid var(--focus); outline-offset:2px}
+.skel{background:linear-gradient(90deg,var(--sunk),var(--surface),var(--sunk)); background-size:200% 100%; animation:fx-skel 1.4s ease-in-out infinite; border-radius:8px}
+@keyframes fx-skel{0%{background-position:200% 0}100%{background-position:-200% 0}}
+
+/* Guia "Como ler esta tela" */
+.fx-tour{background:var(--beige-soft); color:var(--beige-ink); border:1px solid var(--line); border-radius:12px; padding:14px 16px}
+.fx-tour .fx-h3{color:var(--beige-ink)}
+.fx-tour-lista{margin:0 0 12px; padding-left:20px; display:grid; gap:4px}
+
+/* Fila de hoje: uma linha de cartões que rola por dentro (a página nunca rola de lado) */
+.fx-fila{min-width:0}
+.fx-fila-lista{display:flex; gap:8px; overflow-x:auto; padding:2px 2px 6px; scrollbar-width:thin}
+.fx-fcard{flex:0 0 210px; text-align:left; display:flex; flex-direction:column; gap:4px; padding:10px 12px; border:1px solid var(--line); border-radius:10px; background:var(--surface-2)}
+.fx-fcard:hover{border-color:var(--ink-2)}
+.fx-fcard.sel{border-color:var(--moss); box-shadow:0 0 0 1px var(--moss)}
+.fx-fnome{font-weight:600; overflow-wrap:anywhere}
+.fx-fmeta{display:flex; flex-wrap:wrap; gap:6px; align-items:center}
+.fx-novas{font-size:11.5px; font-weight:700; padding:1px 8px; border-radius:999px; background:var(--red-soft); color:var(--red)}
+.fx-fprox{font-size:12.5px; color:var(--ink)}
+.fx-fsub{font-size:11.5px; color:var(--ink-2)}
+
+/* Header: pessoa, funil de 7 etapas, avanço do projeto */
+.fx-head{display:grid; grid-template-columns:minmax(0,1.2fr) minmax(0,1.5fr) minmax(0,1fr); gap:20px; padding:16px; background:var(--surface-2); border:1px solid var(--line); border-radius:12px}
+.fx-nome{font-size:22px; overflow-wrap:anywhere}
+.fx-funil{list-style:none; margin:0; padding:0; display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:4px}
+.fx-seg{display:flex; flex-direction:column; gap:4px; align-items:flex-start; padding:6px 6px 4px; border-top:4px solid var(--line-2); font-size:11px; line-height:1.25; color:var(--ink-2); min-width:0}
+.fx-seg.done{border-top-color:var(--moss); color:var(--ink)}
+.fx-seg.cur{border-top-color:var(--moss); background:var(--moss-soft); color:var(--moss-ink); font-weight:700; border-radius:0 0 6px 6px}
+.fx-segn{display:inline-grid; place-items:center; min-width:20px; height:20px; border-radius:999px; background:var(--sunk); color:var(--ink); font-size:11px; font-weight:700}
+.fx-seg.cur .fx-segn,.fx-passo-fluxo.cur .fx-segn{background:var(--moss); color:#fff}
+:root[data-theme="dark"] .fx-seg.cur .fx-segn,:root[data-theme="dark"] .fx-passo-fluxo.cur .fx-segn{color:#15170F}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .fx-seg.cur .fx-segn,:root:not([data-theme="light"]) .fx-passo-fluxo.cur .fx-segn{color:#15170F} }
+.fx-segt{overflow-wrap:anywhere; hyphens:auto}
+.fx-funil-txt,.fx-av-txt{margin:6px 0 0}
+
+/* Abas */
+.fx-abas{display:flex; align-items:flex-end; justify-content:space-between; gap:8px 12px; flex-wrap:wrap; border-bottom:1px solid var(--line)}
+.fx-abas .ptabs{margin-top:0; border-bottom:0; flex-wrap:wrap}
+.fx-selo{font-size:10.5px; font-weight:700; padding:1px 7px; border-radius:999px; background:var(--sunk); color:var(--ink-2)}
+.fx-tour-btn{padding-bottom:8px}
+
+/* Minhas próximas ações: carrossel */
+.fx-acoes{min-width:0}
+.fx-acoes-cab{display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:8px}
+.fx-acoes-cab .fx-h3{margin:0}
+.fx-acoes-nav{display:flex; align-items:center; gap:6px}
+.fx-cont{font-size:12.5px; color:var(--ink-2); font-variant-numeric:tabular-nums; margin-right:4px}
+.fx-seta{width:32px; height:32px; border-radius:999px; border:1px solid var(--line-2); background:var(--surface-2); font-size:18px; line-height:1; display:inline-grid; place-items:center; padding:0}
+.fx-seta:hover:not([disabled]){border-color:var(--ink-2)}
+.fx-seta[disabled]{opacity:.45; cursor:not-allowed}
+.fx-car{position:relative; display:flex; gap:12px; overflow-x:auto; scroll-snap-type:x mandatory; scrollbar-width:none; -ms-overflow-style:none; padding:2px; overscroll-behavior-x:contain}
+.fx-car::-webkit-scrollbar{display:none}
+.fx-card{flex:0 0 calc((100% - 24px)/3); scroll-snap-align:start; text-align:left; display:flex; flex-direction:column; gap:8px; justify-content:space-between; min-height:92px; padding:12px; border:1px solid var(--line); border-radius:12px; background:var(--surface-2)}
+.fx-card:hover{border-color:var(--ink-2)}
+.fx-card.first{border-color:var(--moss); box-shadow:0 0 0 1px var(--moss)}
+.fx-n{font-size:11.5px; font-weight:700; color:var(--ink-2)}
+.fx-t{font-weight:600; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; overflow-wrap:anywhere}
+.fx-tag{align-self:flex-start; font-size:11px; font-weight:700; padding:1px 8px; border-radius:999px; background:var(--sunk); color:var(--ink-2)}
+.fx-tag-dela{background:var(--brown-soft); color:var(--brown)}
+.fx-tag-reunião{background:var(--moss-soft); color:var(--moss-ink)}
+.fx-tag-funil{background:var(--amber-soft); color:var(--amber)}
+@media (max-width:900px){ .fx-card{flex-basis:calc((100% - 12px)/2)} }
+@media (max-width:560px){ .fx-card{flex-basis:86%} }
+
+/* Pop-up de contexto */
+.fx-pop-bg{position:fixed; inset:0; z-index:40; background:rgba(20,18,14,.5); border:0; padding:0; cursor:default}
+.fx-pop{position:fixed; z-index:41; left:50%; top:50%; transform:translate(-50%,-50%); width:min(520px, calc(100vw - 32px)); max-height:calc(100dvh - 32px); overflow:auto; background:var(--surface-2); color:var(--ink); border:1px solid var(--line-2); border-radius:14px; padding:20px; box-shadow:0 12px 40px rgba(0,0,0,.3)}
+.fx-pop:focus{outline:none}
+.fx-pop-tipo{display:flex; align-items:center; gap:8px; margin:0 0 8px; font-size:12.5px; color:var(--ink-2)}
+.fx-pop-t{font-size:20px; margin:0 0 10px; overflow-wrap:anywhere}
+.fx-pop-why{margin:0 0 14px; color:var(--ink)}
+.fx-pop-acoes{display:flex; flex-wrap:wrap; align-items:center; gap:8px}
+.fx-pop-nav{margin-left:auto; display:inline-flex; gap:6px}
+
+/* Sessões em pílulas */
+.fx-plat{display:flex; flex-direction:column; gap:18px; min-width:0}
+.fx-sessoes{display:flex; flex-direction:column; gap:20px; min-width:0}
+.fx-grupo{display:flex; flex-direction:column; gap:8px; min-width:0}
+.fx-grupo .fx-h3{margin:0; display:flex; align-items:center; gap:8px}
+.fx-grupo .fx-h3::before{content:""; width:9px; height:9px; border-radius:50%; background:var(--moss)}
+.fx-grupo-ela .fx-h3::before{background:var(--brown)}
+.fx-grupo-dica{margin:0 0 2px}
+.fx-sess{min-width:0}
+.fx-sess-cab{display:flex; align-items:center; gap:8px; padding:6px 10px 6px 8px; background:var(--surface-2); border:1px solid var(--line); border-radius:999px; min-width:0}
+.fx-sess.aberta .fx-sess-cab{border-radius:16px 16px 0 0; background:var(--moss-soft); border-color:var(--moss)}
+.fx-grupo-ela .fx-sess.aberta .fx-sess-cab{background:var(--brown-soft); border-color:var(--brown)}
+.fx-grab{flex:0 0 auto; cursor:grab; user-select:none; padding:4px 6px; color:var(--ink-2); font-size:14px; letter-spacing:-2px; border-radius:6px}
+.fx-grab:active{cursor:grabbing}
+.fx-sess-t{flex:1 1 auto; min-width:0; display:flex; flex-wrap:wrap; align-items:baseline; gap:2px 10px; text-align:left; background:none; border:0; padding:4px 2px}
+.fx-sess-nome{font-weight:600}
+.fx-sess-sub{font-size:12.5px; color:var(--ink-2)}
+.fx-sess.aberta .fx-sess-sub{color:var(--ink)}
+.fx-mover{flex:0 0 auto; display:inline-flex; gap:4px}
+.fx-sess-corpo{border:1px solid var(--moss); border-top:0; border-radius:0 0 16px 16px; padding:14px 16px; background:var(--surface-2); min-width:0; overflow-wrap:anywhere}
+.fx-grupo-ela .fx-sess-corpo{border-color:var(--brown)}
+.fx-flash{animation:fx-flash 2.2s ease-out}
+@keyframes fx-flash{0%{box-shadow:0 0 0 4px var(--beige)}100%{box-shadow:0 0 0 4px transparent}}
+
+/* Sessão Checklist */
+.fx-dems{display:flex; flex-wrap:wrap; gap:6px; margin-bottom:14px}
+.fx-dem{display:inline-flex; gap:6px; align-items:baseline; padding:5px 12px; border-radius:999px; border:1px solid var(--line-2); background:var(--surface-2); font-size:13px; font-weight:600}
+.fx-dem[aria-pressed="true"]{background:var(--moss); border-color:var(--moss); color:#fff}
+:root[data-theme="dark"] .fx-dem[aria-pressed="true"]{color:#15170F}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .fx-dem[aria-pressed="true"]{color:#15170F} }
+.fx-dem-n{font-size:11.5px; font-weight:500; font-variant-numeric:tabular-nums; opacity:.9}
+.fx-pasta{background:var(--sunk); border-radius:10px; padding:12px 14px; margin-bottom:14px}
+.fx-pasta .fx-h4{margin-bottom:4px}
+.fx-passos-lista{list-style:none; margin:0 0 8px; padding:0; display:grid; gap:6px}
+.fx-passo{display:flex; justify-content:space-between; align-items:baseline; gap:12px; padding:8px 12px; border:1px solid var(--line); border-radius:10px; background:var(--surface)}
+.fx-passo.feito .fx-p-t{text-decoration:line-through; color:var(--ink-2)}
+.fx-passo.arq{opacity:.8}
+.fx-p-t{min-width:0; overflow-wrap:anywhere}
+.fx-p-d{flex:0 0 auto; font-size:12px; color:var(--ink-2); white-space:nowrap}
+.fx-p-d.atraso{color:var(--red); font-weight:600}
+.fx-p-d.ok{color:var(--moss-ink)}
+.fx-velho{background:var(--amber-soft); color:var(--amber); border-radius:10px; padding:8px 12px; margin:0 0 12px; font-size:13px}
+.fx-mais{margin-top:14px; display:flex; flex-direction:column; gap:12px; align-items:flex-start}
+.fx-mais-corpo{display:flex; flex-direction:column; gap:14px; width:100%; min-width:0}
+
+/* Aba Ficha: fluxo de 3 passos */
+.fx-fluxo{list-style:none; margin:0; padding:0; display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px}
+.fx-passo-fluxo{display:flex; gap:10px; align-items:flex-start; padding:10px 12px; border:1px solid var(--line); border-radius:10px; background:var(--surface-2); color:var(--ink-2)}
+.fx-passo-fluxo.cur{border-color:var(--moss); background:var(--moss-soft); color:var(--moss-ink)}
+.fx-passo-fluxo.done{color:var(--ink)}
+.fx-fluxo-frase{display:block; margin-top:2px; font-size:12.5px}
+
+/* Telas estreitas: sem rolagem de lado em 380 px */
+@media (max-width:760px){
+  .fx-head{grid-template-columns:minmax(0,1fr); gap:14px}
+  .fx-segt{position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap}   /* a etapa atual segue escrita em "Etapa atual:" */
+  .fx-seg{position:relative; align-items:center; padding:6px 0 4px}
+  .fx-fluxo{grid-template-columns:minmax(0,1fr)}
+  .fx-fcard{flex-basis:78%}
+  .fx .pessoa-grid{grid-template-columns:minmax(0,1fr)}
+  .fx-sess-cab{flex-wrap:wrap; border-radius:18px}
+  .fx-passo{flex-direction:column; gap:2px}
+}
+@media (prefers-reduced-motion: reduce){
+  .fx *,.fx-pop,.fx-pop-bg{transition:none !important}
+  .skel,.fx-flash{animation:none}
+  .fx-flash{outline:2px solid var(--beige)}
+  .fx-car{scroll-behavior:auto}
+}
