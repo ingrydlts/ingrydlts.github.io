@@ -60,3 +60,26 @@ export function filtrarPorDemarche(mapa, itens, k) {
   if (!k || k === 'todas') return (itens || []).slice();
   return (itens || []).filter((i) => processoDoItem(mapa, i.step_key, i.category) === k);
 }
+
+// ---------- Funil de conversão e aba padrão (spec §3.1) ----------
+export const ETAPAS_FUNIL = ['Entrou no funil', 'Recebeu o guia', '1:1 oferecido', '1:1 marcado', '1:1 feito', 'Plataforma oferecida', 'Na plataforma'];
+// A maior etapa atingida (1 a 7). Cada etapa tem a sua condição, sem exigir as anteriores: o dado real tem buracos.
+// Contato = linha de `contatos` (user_id, estagio); ctx = { mails, propostas: [{ titulo }], temBilan }.
+export function etapaFunil(c, ctx) {
+  const x = ctx || {}, mails = x.mails || [], props = x.propostas || [], cc = c || {};
+  const feito1a1 = cc.estagio === 'um_a_um' || cc.estagio === 'concluido';
+  const conds = [
+    true,
+    mails.length > 0,
+    mails.some((m) => m.modelo === 'guia_chamada') || props.some((p) => /1:1/.test(String((p && p.titulo) || ''))),
+    cc.estagio === 'um_a_um',
+    feito1a1 && !!x.temBilan,
+    mails.some((m) => m.modelo === 'boas_vindas'),
+    !!cc.user_id
+  ];
+  let n = 1;
+  conds.forEach((ok, i) => { if (ok) n = i + 1; });
+  return n;
+}
+// Quem já converteu (tem conta no app) abre em Plataforma; quem está na captação, em Ficha.
+export function abaPadrao(c) { return c && c.user_id ? 'plataforma' : 'ficha'; }

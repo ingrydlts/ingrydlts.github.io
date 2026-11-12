@@ -42,5 +42,23 @@ console.log('== Task 3: démarches ==');
   check('usa a ordem do catálogo quando existe', FX.demarchesDe(m2, 'pvt', itens).map((x) => x.k).join() === 'ameli,visa');
 }
 
+console.log('== Task 4: funil ==');
+{
+  const c0 = { user_id: null, estagio: 'lead' }, vazio = { mails: [], propostas: [], temBilan: false };
+  const ctx = (o) => Object.assign({}, vazio, o);
+  check('sem e-mails = 1', FX.etapaFunil(c0, vazio) === 1);
+  check('com 1 e-mail = 2', FX.etapaFunil(c0, ctx({ mails: [{ modelo: 'x' }] })) === 2);
+  check('guia_chamada = 3', FX.etapaFunil(c0, ctx({ mails: [{ modelo: 'guia_chamada' }] })) === 3);
+  check('proposta de 1:1 = 3', FX.etapaFunil(c0, ctx({ propostas: [{ titulo: 'Um 1:1 de 20 minutos?' }] })) === 3);
+  check('um_a_um = 4', FX.etapaFunil({ user_id: null, estagio: 'um_a_um' }, vazio) === 4);
+  check('um_a_um com bilan = 5', FX.etapaFunil({ user_id: null, estagio: 'um_a_um' }, ctx({ temBilan: true })) === 5);
+  check('boas_vindas sem conta = 6', FX.etapaFunil(c0, ctx({ mails: [{ modelo: 'boas_vindas' }] })) === 6);
+  check('com conta = 7', FX.etapaFunil({ user_id: 'u1', estagio: 'em_uso' }, vazio) === 7);
+  check('bilan sozinho não pula etapa de quem não fez 1:1', FX.etapaFunil(c0, ctx({ temBilan: true })) === 1);
+  check('ctx ausente não quebra', FX.etapaFunil(c0, undefined) === 1 && FX.etapaFunil(c0, {}) === 1);
+  check('7 etapas na ordem do spec', FX.ETAPAS_FUNIL.length === 7 && FX.ETAPAS_FUNIL[0] === 'Entrou no funil' && FX.ETAPAS_FUNIL[1] === 'Recebeu o guia' && FX.ETAPAS_FUNIL[2] === '1:1 oferecido' && FX.ETAPAS_FUNIL[3] === '1:1 marcado' && FX.ETAPAS_FUNIL[4] === '1:1 feito' && FX.ETAPAS_FUNIL[5] === 'Plataforma oferecida' && FX.ETAPAS_FUNIL[6] === 'Na plataforma');
+  check('aba padrão: converteu = plataforma, captação = ficha', FX.abaPadrao({ user_id: 'u1', estagio: 'inativo' }) === 'plataforma' && FX.abaPadrao({ user_id: null }) === 'ficha');
+}
+
 console.log('\n' + passed + ' passaram, ' + failed + ' falharam');
 if (failed) process.exit(1);
