@@ -70,8 +70,8 @@ check('Intro: título e texto no e-mail', h.includes('Oi, eu sou a Ingryd') && h
 check('Intro: o nome na lista de tipos continua Apresentação com foto', ES.TIPOS.apresentacao && ES.TIPOS.apresentacao.nome === 'Apresentação com foto');
 
 // ---------- Etapas do guia do Au pair ----------
-const ap = ES.ETAPAS_GUIA.filter((x) => x[0].startsWith('ap-'));
-check('5 etapas do Au pair em ETAPAS_GUIA', ap.map((x) => x[0]).join() === 'ap-tudo-bem,ap-nao-sei-comecar,ap-medo-prazo,ap-travado,ap-pesado');
+const ap = ES.ETAPAS_FILTRO.filter((x) => x[0].startsWith('ap-'));
+check('5 etapas do Au pair em ETAPAS_FILTRO', ap.map((x) => x[0]).join() === 'ap-tudo-bem,ap-nao-sei-comecar,ap-medo-prazo,ap-travado,ap-pesado');
 check('rótulos do Au pair começam com "Au pair: "', ap.every((x) => x[1].startsWith('Au pair: ')));
 check('as etapas do Campus France e da Alternância continuam', ES.ETAPAS_GUIA.filter((x) => x[0].startsWith('cf-')).length === 5 && ES.ETAPAS_GUIA.filter((x) => x[0].startsWith('alt-')).length === 5);
 check('as etapas do Au pair não viram dados de e-mail (o Worker não os preenche)', !('etapa_ap_medo_prazo' in ES.CAT) && !ES.VARS_NOVOS.some((x) => x.indexOf('etapa_ap') === 0));

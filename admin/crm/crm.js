@@ -3087,7 +3087,7 @@ function paraQuemHtml(para, attr, obj, produtoFixo) {
   return prod +
     grupo('Persona', 'personas', Object.keys(PERSONAS).filter(function (k) { return k !== 'sem'; }).map(function (k) { return [k, PERSONAS[k]]; }), 'Nenhuma marcada = todas.') +
     grupo('Material de origem', 'materiais', materiaisConhecidos(), 'Só quem pegou um destes guias. Nenhum = qualquer origem.') +
-    grupo('Etapa do guia', 'etapas', ES.ETAPAS_GUIA, 'Só quem marcou uma destas etapas no guia. Nenhuma = qualquer etapa (quem não marcou etapa também recebe).') +
+    grupo('Etapa do guia', 'etapas', ES.ETAPAS_FILTRO, 'Só quem marcou uma destas etapas no guia. Nenhuma = qualquer etapa (quem não marcou etapa também recebe).') +
     grupo('Estágio', 'estagios', STAGES.map(function (x) { return [x.k, x.l]; }), 'Nenhum = qualquer estágio.') +
     grupo('Segmento do reimpacto', 'segmentos', SEGMENTS.map(function (x) { return [x.k, x.t]; }), 'Nenhum = sem regra de segmento.');
 }
@@ -3102,7 +3102,7 @@ function paraResumo(m) {
   if (m.tipo === 'novidades') r.push('aceitou novidades');
   return r.length ? r.join(' · ') : 'Todos';
 }
-function etapaGuiaLabel(k) { var e = ES.ETAPAS_GUIA.filter(function (x) { return x[0] === k; })[0]; return e ? e[1].replace(/^[^:]+: /, '') : k; }
+function etapaGuiaLabel(k) { var e = ES.ETAPAS_FILTRO.filter(function (x) { return x[0] === k; })[0]; return e ? e[1].replace(/^[^:]+: /, '') : k; }
 function mudarPara(para, g, valor, ligado) {
   if (g === 'produto') { para.produto = valor || undefined; para.produto_nome = valor ? produtoNome(valor) : undefined; if (!valor) { delete para.produto; delete para.produto_nome; } return; }
   var l = para[g] = (para[g] || []).slice(), i = l.indexOf(valor);

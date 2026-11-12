@@ -67,8 +67,9 @@ export var VARS_NOVOS = ['nome', 'email', 'persona', 'nivel', 'prazo_nivel', 'et
   'prazo_vencido', 'prazo_a_vencer', 'link_acesso', 'link_agenda'].concat(Object.keys(ETAPAS_CF).concat(Object.keys(ETAPAS_ALT)).map(function (k) { return 'etapa_' + k; }));
 // A regra "Etapa do guia" do Para quem: o valor é o que fica em contatos.respostas.objetivo (crm_sequencia_pendentes compara igual).
 export var ETAPAS_GUIA = Object.keys(ETAPAS_CF).map(function (k) { return ['cf-' + k.replace(/_/g, '-'), 'Campus France: ' + ETAPAS_CF[k]]; })
-  .concat(Object.keys(ETAPAS_ALT).map(function (k) { return ['alt-' + k.replace(/_/g, '-'), 'Alternância 30+: ' + ETAPAS_ALT[k]]; }))
-  .concat(Object.keys(ETAPAS_AP).map(function (k) { return ['ap-' + k.replace(/_/g, '-'), 'Au pair: ' + ETAPAS_AP[k]]; }));
+  .concat(Object.keys(ETAPAS_ALT).map(function (k) { return ['alt-' + k.replace(/_/g, '-'), 'Alternância 30+: ' + ETAPAS_ALT[k]]; }));
+// As etapas do guia do Au pair só servem ao filtro do Para quem (o Worker não as vira em sim/não no texto), por isso ficam fora de ETAPAS_GUIA.
+export var ETAPAS_FILTRO = ETAPAS_GUIA.concat(Object.keys(ETAPAS_AP).map(function (k) { return ['ap-' + k.replace(/_/g, '-'), 'Au pair: ' + ETAPAS_AP[k]]; }));
 var VARS_PRODUTO = ['produto', 'link_produto'];
 export function varsDoModelo(chave, m) {
   if (VARS_DE[chave]) return VARS_DE[chave];
