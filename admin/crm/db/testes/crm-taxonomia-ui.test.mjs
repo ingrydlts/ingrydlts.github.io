@@ -204,9 +204,9 @@ function fromFake(tab) {
 const ESF = {};
 const sb = { from: fromFake, auth: { getSession: async () => ({ data: { session: null } }) }, rpc: async () => ({ data: null, error: null }),
   channel: () => ({ on() { return this; }, subscribe() { return this; } }), removeChannel() {} };
-const H = new Function('supabase', 'ES', 'TX', 'EE', 'EQ', 'document', 'window', 'location', 'localStorage', 'setInterval', 'clearInterval',
+const H = new Function('supabase', 'ES', 'TX', 'EE', 'EQ', 'JR', 'document', 'window', 'location', 'localStorage', 'setInterval', 'clearInterval',
   csrc + '\n;return { setM: function (v) { M = v; }, setMV: function (v) { MV = v; }, renderLista, renderFiltros, classeHtml, mudarClasse, criarModelo, renderEditor, renderModelos, listaModelos, opcoesPorCategoria, ST, aoClicarFiltro: typeof aoClicarFiltro === "function" ? aoClicarFiltro : null, aoDigitarFiltro: typeof aoDigitarFiltro === "function" ? aoDigitarFiltro : null };')(
-  sb, ESF, TX, { iniciar() {}, depois() {}, campoMudou() {} }, {}, doc, { addEventListener() {} }, { href: '' }, { getItem: () => null, setItem() {} }, () => 1, () => {});
+  sb, ESF, TX, { iniciar() {}, depois() {}, campoMudou() {} }, {}, {}, doc, { addEventListener() {} }, { href: '' }, { getItem: () => null, setItem() {} }, () => 1, () => {});
 console.log('== crm.js: lista agrupada ==');
 const mods = fixture32();
 mods.push({ chave: 'excl1', nome: 'Excluido um', ordem: 99, tipo: 'email', excluido_em: '2026-01-01' });
@@ -254,7 +254,7 @@ check('filtros: etapa marcada', H.ST.f.etapas.join() === etapaI03);
 clique({ filtro: 'paginas', valor: 'I03' });
 check('filtros: desmarcar página limpa etapas órfãs', H.ST.f.etapas.length === 0 && H.ST.f.paginas.length === 0 && el('mod-conta').textContent === '32 de 32 modelos');
 clique({ visao: 'rascunhos' });
-check('filtros: visão rascunhos', H.ST.f.situacoes.join() === 'rascunho,revisao' && /data-visao="rascunhos" aria-pressed="true"/.test(htmlBarra));
+check('filtros: visão rascunhos', H.ST.f.situacoes.join() === 'rascunho,revisao' && !/data-visao="rascunhos"/.test(htmlBarra));   // a visão duplicava a Situação: só "Sem classificação" sobrou como chip
 clique({ visao: 'rascunhos' });
 check('filtros: visão de novo desmarca', H.ST.f.situacoes.length === 0 && htmlBarra.indexOf('aria-pressed="true"') < 0);
 clique({ filtro: 'personas', valor: 'pvt' }); clique({}, 'filtro-solo');
@@ -288,9 +288,9 @@ H.ST.f = TX.filtroVazio(); H.ST.f.personas = ['pvt']; H.ST.f.familias = ['acesso
 clique({ visao: 'rascunhos' });
 check('visão a partir de estado sujo: só os filtros dela', JSON.stringify(H.ST.f) === JSON.stringify(Object.assign(TX.filtroVazio(), { situacoes: ['rascunho', 'revisao'] })));
 clique({ filtro: 'familias', valor: 'acesso' });
-check('realce da visão some ao marcar outro chip', !/data-visao="rascunhos" aria-pressed="true"/.test(htmlBarra));
+check('não há mais chip de visão repetido (rascunhos)', !/data-visao="rascunhos"/.test(htmlBarra) && /data-visao="semclasse"/.test(htmlBarra));
 clique({}, 'filtro-limpar'); clique({ filtro: 'situacoes', valor: 'revisao' }); clique({ filtro: 'situacoes', valor: 'rascunho' });
-check('visão acesa mesmo com ordem diferente', /data-visao="rascunhos" aria-pressed="true"/.test(htmlBarra) && H.ST.f.situacoes.join() === 'revisao,rascunho');
+check('filtro de situação guardado mesmo com ordem diferente', H.ST.f.situacoes.join() === 'revisao,rascunho');
 clique({}, 'filtro-limpar');
 H.ST.tab = 'editar'; H.renderFiltros();
 check('aba: data-tab editar', el('mod-filtros').dataset.tab === 'editar');

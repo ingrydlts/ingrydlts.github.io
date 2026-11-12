@@ -39,10 +39,10 @@ function qb(table) {
 }
 const supabase = { from: qb, auth: { getSession: async () => ({ data: { session: { access_token: 'tok', user: { id: 'u' } } } }) }, rpc: async () => ({ data: null, error: null }) };
 const store = {};
-const mod = new Function('supabase', 'ES', 'TX', 'EE', 'EQ', 'document', 'window', 'location', 'localStorage',
+const mod = new Function('supabase', 'ES', 'TX', 'EE', 'EQ', 'JR', 'document', 'window', 'location', 'localStorage',
   src + `\n;return { state, setC: function (v) { C = v; }, getC: function () { return C; }, renderPessoa, eventText, onbJuntar, onbFalta, pagtoItens, renderOnboarding, carregarOnboarding, onbEnviar,
   getONB: function () { return ONB; }, setPagto: function (v) { PAGTO = v; }, setONB: function (v) { ONB = v; }, abrirLinkPagamento, enviarLinkPagamento, onbOrigemDe, dosVisiveis, setActive: function (v) { activeCid = v; } };`)(
-  supabase, {}, TXMOD, { iniciar() {}, depois() {}, campoMudou() {} }, {}, document, { addEventListener() {}, scrollTo() {} }, { href: '' }, { getItem: (k) => store[k] ?? null, setItem: (k, v) => { store[k] = v; } });
+  supabase, {}, TXMOD, { iniciar() {}, depois() {}, campoMudou() {} }, {}, {}, document, { addEventListener() {}, scrollTo() {} }, { href: '' }, { getItem: (k) => store[k] ?? null, setItem: (k, v) => { store[k] = v; } });
 
 // ---- fetch falso (o crm.js chama o Worker e o planos/planos.json) ----
 let chamadas = [];

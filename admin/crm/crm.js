@@ -2,10 +2,11 @@
 // Nada de service_role aqui. O banco é db/crm-fase2.sql; o desenho é o artefato "CRM Por Dentro".
 // Tudo que vem do banco é texto de terceiros (nome, e-mail, pergunta): passa sempre por esc().
 import { supabase } from '/assets/js/supabase-client.js';
-import * as TX from './taxonomia.js?v=2026-11-12.9';   // páginas, famílias e agrupamento dos modelos
-import * as ES from './estudio.js?v=2026-11-12.9';   // os blocos do estúdio de e-mails (entregas 2 e 3)
-import * as EE from './editor-email.js?v=2026-11-12.9';
-import * as EQ from './editor-quem.js?v=2026-11-12.9';   // o e-mail editável do passo Texto
+import * as TX from './taxonomia.js?v=2026-11-12.10';   // páginas, famílias e agrupamento dos modelos
+import * as ES from './estudio.js?v=2026-11-12.10';   // os blocos do estúdio de e-mails (entregas 2 e 3)
+import * as EE from './editor-email.js?v=2026-11-12.10';
+import * as EQ from './editor-quem.js?v=2026-11-12.10';
+import * as JR from './jornada.js?v=2026-11-12.10';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
 
 var PERSONAS = {
   au_pair_estudante: 'Au pair → estudante', campus_france: 'Campus France', alternancia_emprego: 'Alternância / emprego',
@@ -2667,7 +2668,7 @@ async function radarEnviar(btn) {
 // Sem a migração da entrega 1, a tela mostra os 8 do código; sem a da entrega 2, mostra tudo sem editar.
 var TIPO_EMAIL = { servico: ['Serviço', 'u-baixa'], novidades: ['Novidades', 'u-media'], compra: ['Compra', 'tp-pergunta'] };
 var ETAPA_EMAIL = { rascunho: ['Rascunho', ''], revisao: ['Revisão', 'u-media'], no_ar: ['No ar', 'u-baixa'], arquivado: ['Arquivado', 'out'] };
-var ST = { k: null, v: null, passo: 'texto', who: null, q: '', dev: 'pc', marcar: true, tab: 'editar', d: null, dKey: null, montado: null, vistos: {}, foco: null, salvo: '', timer: null, f: TX.filtroVazio() };
+var ST = { vista: 'jornada', k: null, v: null, passo: 'texto', who: null, q: '', dev: 'pc', marcar: true, tab: 'editar', d: null, dKey: null, montado: null, vistos: {}, foco: null, salvo: '', timer: null, f: TX.filtroVazio() };
 function versoesDe(k) { return MV.filter(function (v) { return v.chave === k; }); }   // da mais nova para a mais velha
 function versaoAtual(k) { var vs = versoesDe(k); return vs.filter(function (v) { return v.etapa === 'no_ar'; })[0] || vs[0] || null; }
 function versaoEmObra(k) { return versoesDe(k).filter(function (v) { return v.etapa === 'rascunho' || v.etapa === 'revisao'; })[0] || null; }
@@ -2732,6 +2733,10 @@ function renderModelos() {
   aviso.hidden = !msg; aviso.textContent = msg;
   $('mod-export').disabled = !M;
   $('studio').dataset.tab = ST.tab;
+  var naJornada = ST.vista === 'jornada';
+  $('mod-jornada').hidden = !naJornada; $('mod-estudio').hidden = naJornada;
+  document.querySelectorAll('[data-vista]').forEach(function (b) { b.setAttribute('aria-selected', String(b.dataset.vista === ST.vista)); });
+  if (naJornada) return renderJornada();
   document.querySelectorAll('[data-sttab]').forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.sttab === ST.tab)); });
   var lista = listaModelos();
   if (!ST.k || !lista.some(function (m) { return m.chave === ST.k; })) { if (lista.length) abrirModelo(lista[0].chave); }
@@ -2740,6 +2745,61 @@ function renderModelos() {
   renderLista(lista);
   if (ST.criar && temEstudio3()) renderCriar(); else { ST.criar = null; renderEditor(lista); }
   renderPrevia();
+}
+
+
+// ---------- Jornada: uma linha por página, uma coluna por etapa do funil ----------
+function situacaoDoModelo(m) {
+  var v = M ? versaoAtual(m.chave) : null, obra = M ? versaoEmObra(m.chave) : null;
+  if (!v) return ['Sem versão', 'rasc'];
+  if (obra && obra.etapa === 'revisao') return ['Em revisão', 'rev'];
+  if (obra && v.etapa !== 'no_ar') return ['Rascunho', 'rasc'];
+  if (v.etapa === 'no_ar') return [m.criado_no_estudio && m.envio_gatilho && !m.envio_ligado ? 'No ar · envio desligado' : 'No ar', 'noar'];
+  return [(ETAPA_EMAIL[v.etapa] || [v.etapa])[0], 'rasc'];
+}
+function jrCard(m) {
+  var s = situacaoDoModelo(m);
+  return '<button type="button" class="jr-mc" data-jr-abrir="' + esc(m.chave) + '"><span class="t">' + esc(m.nome) + '</span><span class="jr-pill ' + s[1] + '">' + esc(s[0]) + '</span></button>';
+}
+function jrCelula(l, e) {
+  var it = l.celulas[e.k];
+  if (it.length) return it.map(jrCard).join('');
+  var qb = !!l.quebrada[e.k], criavel = temEstudio3() && l.k !== 'TR';
+  var rot = '<b>Falta' + (qb ? ' · cadeia quebrada' : '') + '</b>' + (criavel ? '<span>+ criar aqui</span>' : '');
+  return criavel ? '<button type="button" class="jr-vazio' + (qb ? ' gap' : '') + '" data-jr-criar="' + esc(l.k + '|' + e.k) + '">' + rot + '</button>'
+    : '<div class="jr-vazio sem">' + rot + '</div>';
+}
+function jrCobertura(l) {
+  return '<div class="jr-cov"><span class="pips" aria-hidden="true">' + JR.ETAPAS.map(function (e) { return '<span class="pip' + (l.celulas[e.k].length ? ' on' : '') + '"></span>'; }).join('') + '</span>' + l.cobertas + ' de ' + JR.ETAPAS.length + ' etapas com e-mail</div>';
+}
+function renderJornada() {
+  var J = JR.montaJornada(listaModelos(), TX), box = $('mod-jornada');
+  var stats = '<div class="jr-stats" role="status"><span><b>' + J.stats.total + '</b>percursos</span><span><b>' + J.stats.semEmail + '</b>etapas sem e-mail</span><span><b>' + J.stats.quebradas + '</b>cadeias quebradas</span></div>';
+  var guia = '<p class="jr-guia">Cada linha é um percurso (uma landing page de entrada). Cada coluna é uma etapa do funil. <b>Clique num e-mail</b> para editar; <b>clique em “Falta”</b> para criar o que ainda não existe.</p>';
+  var cab = '<div class="jr-h">Percurso</div><div class="jr-h">Entrada<small>landing page</small></div>' + JR.ETAPAS.map(function (e) { return '<div class="jr-h">' + esc(e.nome) + '<small>' + esc(e.sub) + '</small></div>'; }).join('');
+  var linhas = J.linhas.map(function (l) {
+    var entrada = l.rota ? '<a href="' + esc(l.rota) + '" target="_blank" rel="noopener" class="jr-lp">' + esc(l.rota.replace(/^\/guias\/|\/$/g, '')) + '</a><span class="sub">abre no site</span>' : '<span class="sub">e-mails de todos os percursos</span>';
+    return '<div class="jr-r"><span class="jr-id">' + esc(l.k) + '</span><h3>' + esc(l.nome) + '</h3>' + jrCobertura(l) + '</div><div class="jr-c ctx">' + entrada + '</div>' +
+      JR.ETAPAS.map(function (e) { return '<div class="jr-c">' + jrCelula(l, e) + '</div>'; }).join('');
+  }).join('');
+  var celular = J.linhas.map(function (l, i) {
+    return '<details class="jr-tl"' + (i === 0 ? ' open' : '') + '><summary><span class="jr-id">' + esc(l.k) + '</span><h3>' + esc(l.nome) + '</h3>' + jrCobertura(l) + '</summary><ol>' +
+      JR.ETAPAS.map(function (e) { return '<li class="' + (l.celulas[e.k].length ? 'has' : l.quebrada[e.k] ? 'gap' : '') + '"><div class="e">' + esc(e.nome) + '</div>' + jrCelula(l, e) + '</li>'; }).join('') + '</ol></details>';
+  }).join('');
+  var bandeja = function (titulo, itens, dica) {
+    return itens.length ? '<details class="jr-band"><summary>' + esc(titulo) + ' <span class="jr-pill grp">' + itens.length + '</span></summary><p class="sub">' + esc(dica) + '</p><div class="jr-band-l">' + itens.map(jrCard).join('') + '</div></details>' : '';
+  };
+  box.innerHTML = guia + stats + '<div class="jr-scroll"><div class="jr-mx" role="table" aria-label="Percursos por etapa do funil">' + cab + linhas + '</div></div><div class="jr-cel">' + celular + '</div>' +
+    '<div class="jr-bandejas">' + bandeja('Aquecimento', J.bandejas.aquecimento, 'Sequências por trilha. Não têm coluna na jornada.') + bandeja('Campanhas avulsas', J.bandejas.campanhas, 'Não pertencem a um percurso.') +
+    bandeja('Sem etapa definida', J.bandejas.semEtapa, 'Classifique em “Avançado” do editor para eles entrarem na matriz.') + '</div>';
+}
+// Falta um e-mail numa etapa: abre o "Modelo novo" já no objetivo e na página certos.
+function criarNaJornada(valor) {
+  var p = valor.split('|'), pg = p[0], et = JR.ETAPAS.filter(function (e) { return e.k === p[1]; })[0], o = et && ES.objetivo(et.objetivo), pag = TX.PAGINAS.filter(function (x) { return x.k === pg; })[0];
+  if (!o || !pag) return;
+  ST.criar = { passo: 2, obj: o.k, nome: pag.nome + ' · ' + et.nome, para: paraVazio(), classe: { familia: TX.familiaDoObjetivo(o.k), pagina: pg, etapa: null, persona: null } };
+  ST.vista = 'estudio'; ST.tab = 'editar';
+  renderModelos();
 }
 
 // Barra de filtros dos modelos. Só em memória: nada vai ao banco nem ao localStorage.
@@ -2772,17 +2832,17 @@ function renderFiltros() {
   var etapas = '';
   TX.PAGINAS.forEach(function (p) { if (f.paginas.indexOf(p.k) >= 0) etapas += p.etapas.map(function (e) { return chip('etapas', e[0], e[1]); }).join(''); });
   var ativa = visaoAtiva();
-  var visoes = TX.VISOES.map(function (v) { return '<button class="chip" type="button" data-visao="' + esc(v.k) + '" aria-pressed="' + (ativa === v.k) + '">' + esc(v.nome) + '</button>'; }).join('');
+  var visoes = TX.VISOES.filter(function (v) { return v.k === 'semclasse'; }).map(function (v) { return '<button class="chip" type="button" data-visao="' + esc(v.k) + '" aria-pressed="' + (ativa === v.k) + '">' + esc(v.nome) + '</button>'; }).join('');
   $('mod-filtros').innerHTML =
     '<div class="st-filtro-topo"><input type="search" id="filtro-q" class="st-filtro-q" placeholder="Buscar modelo" aria-label="Buscar modelo" value="' + esc(f.q) + '">' +
     '<span class="sub" id="mod-conta" role="status">' + esc(contaModelosTxt(listaModelos())) + '</span>' +
     '<button class="btn" type="button" id="filtro-limpar" data-limpar="1">Limpar filtros</button></div>' +
-    linha('Visões', visoes) + linha('Página', paginas) + (etapas ? linha('Etapa', etapas) : '') +
+    linha('Página', paginas) + (etapas ? linha('Etapa', etapas) : '') +
     linha('Família', TX.FAMILIAS.map(function (x) { return chip('familias', x[0], x[1]); }).join('')) +
     linha('Persona', TX.PERSONAS.map(function (x) { return chip('personas', x[0], x[1]); }).join('') +
       '<button class="chip" type="button" id="filtro-solo" aria-pressed="' + !!f.soEspecificos + '">só específicos</button>') +
     linha('Tipo', FILTRO_TIPOS.map(function (x) { return chip('tipos', x[0], x[1]); }).join('')) +
-    linha('Situação', FILTRO_SITUACOES.map(function (x) { return chip('situacoes', x[0], x[1]); }).join(''));
+    linha('Situação', FILTRO_SITUACOES.map(function (x) { return chip('situacoes', x[0], x[1]); }).join('') + visoes);
 }
 function aoClicarFiltro(e) {
   var t = e.target && e.target.closest && e.target.closest('[data-filtro], [data-visao], [data-limpar], #filtro-solo, #filtro-limpar');
@@ -4270,6 +4330,9 @@ document.addEventListener('click', async function (e) {
     return toast('1:1 confirmado');
   }
   if (t.id === 'mod-export') return exportModelos();
+  if (t.dataset.vista) { await salvar(); ST.vista = t.dataset.vista; return renderModelos(); }
+  if (t.dataset.jrAbrir) { await salvar(); ST.criar = null; abrirModelo(t.dataset.jrAbrir); ST.vista = 'estudio'; ST.tab = 'editar'; ST.passo = 'texto'; return renderModelos(); }
+  if (t.dataset.jrCriar) return criarNaJornada(t.dataset.jrCriar);
   if (t.id === 'st-novo-modelo') { await salvar(); ST.criar = { passo: 1, obj: null, nome: '', para: paraVazio(), classe: { familia: null, pagina: null, etapa: null, persona: null } }; ST.tab = 'editar'; return renderModelos(); }
   if (t.id === 'novo-cancelar') { ST.criar = null; return renderModelos(); }
   if (t.dataset.novoobj) { var ob = ES.objetivo(t.dataset.novoobj); ST.criar.obj = ob.k; ST.criar.classe.familia = TX.familiaDoObjetivo(ob.k); if (!ST.criar.nome || ES.OBJETIVOS.some(function (x) { return x.nome === ST.criar.nome; })) ST.criar.nome = ob.nome; ST.criar.passo = 2; return renderModelos(); }
