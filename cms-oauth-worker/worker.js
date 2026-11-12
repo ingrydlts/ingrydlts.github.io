@@ -3306,7 +3306,7 @@ function crmNotionTabela(linhas, largura) {
     else if (it.canal === 'Só eu') r.fora.so_eu++;
     else r.fora.fora_do_crm++;
   }
-  return { ok: true, ...r };
+  return { ok: true, ...r, itens };
 }
 
 // Junta propriedades + corpo na PROPOSTA (o formato do Pós-call, com o bloco "notion" a mais). Nada aqui toca o banco.
@@ -3352,7 +3352,7 @@ function crmNotionMontar(p, c, meta) {
   const campos = {};
   for (const [k, x] of Object.entries(v.campos)) campos[k] = { valor: x.valor, confianca: 'alta', trecho: 'Notion · ' + rotulo[k] };
 
-  return { ok: true, proposta: {
+  return { ok: true, itens: t.itens, proposta: {
     origem: 'notion',
     notion: {
       pagina: meta.pagina, editada_em: meta.editada_em, resumo: c.resumo || '', duvidas: c.duvidas || [], bilan: c.bilan, pessoa: p.pessoa, persona: p.persona || null, fase: p.fase || null, objetivo: p.objetivo, dores: p.dores,
@@ -3379,6 +3379,102 @@ function crmNotionResumo(proposta) {
     de_fora: { so_eu: n.fora.so_eu, fora_do_crm: n.fora.fora_do_crm },
     blocos_ignorados: n.blocos_ignorados
   };
+}
+
+// ---------- O caso da pessoa (rascunhos): achados, ações, itens do board e avisos ----------
+// Tudo que sai daqui entra no CRM como RASCUNHO (crm_caso_importar): nada chega à pessoa sem a Ingryd revisar e publicar.
+// As chaves de origem tornam a leitura repetível: ler a mesma página de novo atualiza rascunhos e nunca duplica.
+const CRM_CASO_CANAIS = { 'Plataforma': 'plataforma', 'E-mail': 'email', 'Convite de acesso': 'convite', 'Instagram': 'instagram', 'Só eu': 'so_eu' };
+const CRM_CASO_BOTOES = ['gerar_rascunho', 'marcar_marco', 'copiar_mensagem', 'anexar_documento', 'pesquisar', 'confirmar'];
+async function crmCasoHash(texto) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(String(texto).toLowerCase().replace(/\s+/g, ' ').trim()));
+  return [...new Uint8Array(buf)].slice(0, 6).map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+// Divide "a; b, c (d, e)" em itens, sem partir vírgula dentro de parênteses.
+function crmCasoLista(texto) {
+  const out = []; let atual = '', nivel = 0;
+  for (const ch of String(texto || '')) {
+    if (ch === '(') nivel++; else if (ch === ')') nivel = Math.max(0, nivel - 1);
+    if ((ch === ';' || ch === '\n' || (ch === ',' && nivel === 0))) { if (atual.trim()) out.push(atual.trim()); atual = ''; } else atual += ch;
+  }
+  if (atual.trim()) out.push(atual.trim());
+  return out;
+}
+async function crmNotionCaso(p, c, itens, meta) {
+  const limpa = (t, n) => crmOnbLimpaTexto(t, n, false);
+  const achados = [];
+  const vistos = new Set();
+  const add = async (tipo, texto, certeza) => {
+    const t = limpa(texto, 400); if (!t || achados.length >= 40) return;
+    const chave = 'nb_' + await crmCasoHash(t); if (vistos.has(chave)) return; vistos.add(chave);
+    achados.push({ chave, tipo, texto: t, origem: 'conversa', certeza });
+  };
+  if (c.resumo) { vistos.add('resumo'); achados.push({ chave: 'resumo', tipo: 'fato', texto: limpa(c.resumo, 400), origem: 'conversa', certeza: 'inferido' }); }
+  const aConfirmar = /(vou|vamos|iremos)\s+(confirmar|conferir|verificar|checar)|a confirmar|em conferência|te respondo/i;
+  for (const d of (c.bilan.duvidas.length ? c.bilan.duvidas : (c.duvidas || []))) await add(aConfirmar.test(d) ? 'duvida' : 'fato', d, aConfirmar.test(d) ? 'a_confirmar' : 'literal');
+  for (const r of c.bilan.respostas) if (!/^\s*(te\s+)?envio\b/i.test(r)) await add('duvida', r, 'a_confirmar');
+
+  const acoes = []; const ns = new Set();
+  for (const it of itens) {
+    if (it.canal === 'Fora do CRM') continue;
+    let n = it.n; while (ns.has(n) && n < 999) n++; if (ns.has(n) || acoes.length >= 100) continue; ns.add(n);
+    const dono = it.dono === 'Ela' ? 'ela' : 'ingryd', canal = CRM_CASO_CANAIS[it.canal];
+    if (!canal) continue;
+    const a = { n, titulo: limpa(it.titulo, 300), dono, canal, botao: CRM_CASO_BOTOES.includes(it.botao) ? it.botao : null, estado: it.estado,
+      prazo: it.prazo && it.prazo.data ? it.prazo.data : null, certeza: /literal/i.test(it.origem_certeza) ? 'literal' : 'inferido' };
+    if (!a.prazo && it.prazo && it.prazo.texto) { a.prazo_texto = it.prazo.texto.slice(0, 80); a.prazo_a_confirmar = true; }
+    else if (it.prazo && it.prazo.a_confirmar) a.prazo_a_confirmar = true;
+    if (dono === 'ela' && canal === 'plataforma') a.passo_chave = 'pend_' + n;
+    acoes.push(a);
+  }
+
+  const board = [];
+  const doc = async (prefixo, texto, ordem, direcao) => {
+    const t = limpa(texto.replace(/^(enviar|anexar|mandar)\s+(o|a|os|as|um|uma)?\s*/i, ''), 120); if (!t || board.length >= 50) return;
+    board.push({ origem_chave: prefixo + (prefixo.endsWith(':') ? await crmCasoHash(t) : ''), tipo: 'documento', titulo: t.charAt(0).toUpperCase() + t.slice(1), ordem, dados: { rotulo: t, direcao } });
+  };
+  const secoes = [];
+  const sec = (titulo, lista, estadoFn) => { if (lista.length) secoes.push({ titulo, itens: lista.slice(0, 10).map((x) => ({ texto: limpa(x, 220), estado: estadoFn(x) })) }); };
+  sec('Dúvidas que tiramos na conversa', c.bilan.duvidas, (x) => aConfirmar.test(x) ? 'em_conferencia' : 'confirmado');
+  sec('Seus próximos passos', c.bilan.proximos, () => 'confirmado');
+  sec('O que eu respondo ou confirmo pra você', c.bilan.respostas, () => 'em_conferencia');
+  let temBilan = false;
+  if (secoes.length) {
+    const dados = { secoes };
+    if (JSON.stringify(dados).length <= 7500) { board.push({ origem_chave: 'notion:bilan', tipo: 'bilan', titulo: 'Bilan da nossa conversa', ordem: 1, dados }); temBilan = true; }
+  }
+  if (p.prazo_chave && (p.prazo_chave.data || p.prazo_chave.texto)) {
+    board.push({ origem_chave: 'notion:prazo_chave', tipo: 'marco', titulo: 'Prazo-chave', ordem: 5, dados: p.prazo_chave.data ? { data: p.prazo_chave.data, a_confirmar: false } : { a_confirmar: true, nota: limpa(p.prazo_chave.texto, 200) } });
+  }
+  for (const it of itens) if (it.dono === 'Ingryd' && it.canal === 'Plataforma' && it.botao === 'anexar_documento') await doc('notion:envio:' + it.n, it.titulo, 10 + Math.min(it.n, 9), 'recebe');
+  let o = 20;
+  for (const d of crmCasoLista(p.documentos_pendentes).slice(0, 12)) await doc('notion:doc:', d, o++, 'reune');
+
+  const avisos = [];
+  if (temBilan) avisos.push({ origem_chave: 'notion:aviso:bilan', tipo: 'proposta', titulo: 'O bilan da nossa conversa está aqui', texto: 'Guardei a cópia do e-mail no seu Espaço.', destino: { tela: 'guias' }, dias_apos: 0 });
+  if (p.persona === 'pvt') avisos.push({ origem_chave: 'notion:aviso:fim_pvt', tipo: 'pergunta', titulo: 'Quando termina o seu PVT?', texto: 'Com essa data eu calculo o que cabe antes de você viajar.', resposta_tipo: 'data', grava_em: 'respostas.fim_pvt', dias_apos: 0 });
+  if ((p.dores || []).includes('Idioma')) avisos.push({ origem_chave: 'notion:aviso:nivel_frances', tipo: 'pergunta', titulo: 'Qual é o seu nível de francês hoje?', resposta_tipo: 'opcoes', opcoes: ['Iniciante (A1/A2)', 'Intermediário (B1)', 'Avançado (B2 ou mais)', 'Não sei'], grava_em: 'respostas.nivel_frances', dias_apos: 1 });
+
+  return { versao: 1, fonte: { pagina: meta.pagina, editada_em: meta.editada_em }, achados, acoes, itens: board, avisos };
+}
+
+// Entrega o caso ao banco como rascunhos. Nunca derruba a leitura: se falhar, a resposta diz por quê e a ficha e a proposta seguem.
+async function crmCasoImportar(auth, contatoId, caso) {
+  try {
+    const r = await fetch(`${CRM_SUPABASE_URL}/rest/v1/rpc/crm_caso_importar`, {
+      method: 'POST', headers: { ...auth, 'Content-Type': 'application/json' }, body: JSON.stringify({ p_contato: contatoId, p_payload: caso })
+    });
+    let corpo = null; try { corpo = await r.json(); } catch (e) { /* segue */ }
+    if (r.ok && corpo && typeof corpo === 'object') return { ok: true, achados: corpo.achados, acoes: corpo.acoes, itens: corpo.itens, avisos: corpo.avisos };
+    const msg = String((corpo && (corpo.message || corpo.hint)) || '') + String((corpo && corpo.code) || '');
+    console.error('crm/notion: crm_caso_importar respondeu ' + r.status + ' ' + (corpo && corpo.code));
+    if (r.status === 404 || /Could not find the function|PGRST202/.test(msg)) return { ok: false, codigo: 'sql_pendente', erro: 'Falta rodar admin/crm/db/crm-caso.sql e crm-caso-importar.sql no SQL Editor do Supabase. A ficha e a proposta foram lidas normalmente.' };
+    if (/sem_permissao/.test(msg)) return { ok: false, codigo: 'sem_permissao', erro: 'Sem permissão para guardar o caso.' };
+    return { ok: false, codigo: 'caso_nao_importado', erro: 'Li a página, mas não consegui guardar o caso como rascunho. Leia de novo.' };
+  } catch (e) {
+    console.error('crm/notion: crm_caso_importar falhou — ' + (e && e.name));
+    return { ok: false, codigo: 'caso_nao_importado', erro: 'Li a página, mas não consegui guardar o caso como rascunho. Leia de novo.' };
+  }
 }
 
 async function handleCrmOnboardingNotion(request, env) {
@@ -3432,13 +3528,17 @@ async function handleCrmOnboardingNotion(request, env) {
   const contatoId = String((ficha && ficha.contato_id) || '');
   if (!CRM_UUID_RE.test(contatoId)) return json({ error: 'Li a página, mas não consegui criar a ficha. Tente de novo.', codigo: 'ficha_nao_criada' }, 500);
 
+  // 1b. O caso (achados, ações, itens do board, avisos) como RASCUNHOS. Opcional: {"caso": false} pula. Nunca derruba a leitura.
+  const casoRes = body.caso === false ? { ok: true, pulado: true }
+    : await crmCasoImportar(auth, contatoId, await crmNotionCaso(props.p, cp.corpo, m.itens, { pagina: alvo.id, editada_em: editada }));
+
   // 2. A proposta pendente. A mesma página, sem edição nova, devolve a que já espera decisão (sem gravar outra).
   const hash = await crmPosHash(contatoId, 'notion:' + alvo.id + ':' + editada, 'v3');
   const semTabela = { error: 'Falta rodar admin/crm/db/crm-pos-call.sql no SQL Editor do Supabase.', codigo: 'sql_pendente' };
   const pendente = await fetch(`${CRM_SUPABASE_URL}/rest/v1/pos_call_propostas?select=id,proposta&contato_id=eq.${contatoId}&hash_entrada=eq.${hash}&status=eq.pendente&limit=1`, { headers: auth });
   if (pendente.status === 404) return json(semTabela, 500);
   const antiga = pendente.ok ? (await pendente.json())[0] : null;
-  const resposta = (id, proposta, reutilizada) => json({ ok: true, contato_id: contatoId, criado: !!ficha.criado, reutilizada, proposta_id: id, email: props.p.email, aplicado: { preenchidos: Array.isArray(ficha.preenchidos) ? ficha.preenchidos : [], ja_preenchidos: Array.isArray(ficha.ja_preenchidos) ? ficha.ja_preenchidos : [] }, ...crmNotionResumo(proposta) });
+  const resposta = (id, proposta, reutilizada) => json({ ok: true, contato_id: contatoId, criado: !!ficha.criado, reutilizada, proposta_id: id, caso: casoRes, email: props.p.email, aplicado: { preenchidos: Array.isArray(ficha.preenchidos) ? ficha.preenchidos : [], ja_preenchidos: Array.isArray(ficha.ja_preenchidos) ? ficha.ja_preenchidos : [] }, ...crmNotionResumo(proposta) });
   if (antiga && antiga.proposta && antiga.proposta.notion) return resposta(antiga.id, antiga.proposta, true);
 
   const ins = await fetch(`${CRM_SUPABASE_URL}/rest/v1/pos_call_propostas`, {

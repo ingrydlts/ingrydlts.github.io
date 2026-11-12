@@ -894,6 +894,10 @@ Prazo com "(a confirmar)" fica **como texto**, nunca vira data certa. Vão para 
 
 **Como testar:** crie uma linha de ensaio na base, com e-mail seu, Status "Bilan pronto" e a tabela; cole o link. Testes automáticos: `node cms-oauth-worker/testes/crm-onboarding-notion.test.mjs` e, em `admin/crm/db/testes`, `npm run test:onboarding-notion-ui`. Se algo falhar: Workers → Logs, procure `crm/notion`.
 
+### 31.1 O caso como rascunhos (`caso` na resposta)
+
+Depois de achar/criar a ficha, a rota chama `rpc/crm_caso_importar` (com a chave da própria admin) com `{versao, fonte, achados, acoes, itens, avisos}` montado por `crmNotionCaso`. Tudo entra como **rascunho**: achados em `conferir`, ações sem publicar, itens do board `proposto`, avisos `rascunho`. Chaves de origem estáveis (`nb_<hash>`, `n`, `notion:bilan`, `notion:prazo_chave`, `notion:doc:<hash>`, `notion:envio:<n>`, `notion:aviso:*`) tornam a leitura repetível: reler atualiza rascunhos e conta `mantidos`/`pulados`, sem duplicar nem desfazer decisões. A resposta ganha `caso: {ok, achados, acoes, itens, avisos}` (cada um com `novos/atualizados/mantidos/pulados`) ou `caso: {ok:false, codigo, erro}` (`sql_pendente`, `sem_permissao`, `caso_nao_importado`); uma falha aqui **nunca** derruba a leitura. Mande `{"url": "...", "caso": false}` para pular. Nenhum texto da página vai para o log.
+
 ## 32. E-mail "Bilan da nossa conversa" (CRM → ficha → Plataforma → Interações)
 
 Quando a ficha é criada pelo Onboarding, ela **abre em Plataforma → Interações** (resumo da leitura no topo) e, na coluna da direita da aba Plataforma, **logo abaixo de Pagamento**, fica o botão **Enviar e-mail com bilan da conversa**. O botão abre um modal com os quatro blocos do e-mail, já preenchidos com o que o Worker leu da página do Notion; você edita, vê a prévia e só então envia.
