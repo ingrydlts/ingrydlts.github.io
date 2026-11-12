@@ -83,3 +83,25 @@ export function etapaFunil(c, ctx) {
 }
 // Quem já converteu (tem conta no app) abre em Plataforma; quem está na captação, em Ficha.
 export function abaPadrao(c) { return c && c.user_id ? 'plataforma' : 'ficha'; }
+
+// ---------- Minhas próximas ações: só tarefas da equipe (spec §4) ----------
+// Tarefa = { id, k, t, why, tag: 'Dela'|'Reunião'|'Funil', cta, dest: { tab, sessao? } }. O que a pessoa adiciona não entra.
+const primeiroNome = (n) => String(n || '').trim().split(/\s+/)[0] || '';
+const comNome = (verbo, nome) => (primeiroNome(nome) ? verbo + ' ' + primeiroNome(nome) : verbo);
+export function tarefasDe(ctx, rotuloProcesso) {
+  const x = ctx || {}, rot = rotuloProcesso || ((k) => k), out = [];
+  if (x.respostasNovas > 0) out.push({ id: 'resposta', k: 'resposta', t: comNome('Responder', x.nome), tag: 'Dela', cta: 'Abrir a conversa',
+    why: x.respostasNovas === 1 ? 'Ela respondeu um e-mail e ainda não foi vista.' : 'Ela mandou ' + x.respostasNovas + ' respostas por e-mail que ainda não foram vistas.', dest: { tab: 'conversa' } });
+  if (x.chatNaoLidas > 0) out.push({ id: 'chat', k: 'chat', t: 'Ler as mensagens dela no app', tag: 'Dela', cta: 'Abrir o chat',
+    why: x.chatNaoLidas === 1 ? 'Há 1 mensagem dela no chat do app sem ler.' : 'Há ' + x.chatNaoLidas + ' mensagens dela no chat do app sem ler.', dest: { tab: 'plataforma', sessao: 'chat' } });
+  (x.processosDetectados || []).forEach((k) => out.push({ id: 'processo:' + k, k: 'processo', t: 'Decidir o processo ' + rot(k), tag: 'Dela', cta: 'Ver o processo',
+    why: 'O app percebeu sinais de que ela pode precisar de ' + rot(k) + '. Aprove ou descarte a sugestão.', dest: { tab: 'plataforma', sessao: 'checklist' } }));
+  if (x.bilanPendente) out.push({ id: 'bilan', k: 'bilan', t: 'Enviar o bilan da conversa', tag: 'Reunião', cta: 'Abrir o bilan',
+    why: 'A leitura da reunião está pronta e o e-mail do bilan ainda não saiu.', dest: { tab: 'plataforma', sessao: 'bilan' } });
+  if (x.dossieFalta > 0) out.push({ id: 'dossie', k: 'dossie', t: 'Completar o dossiê (' + x.dossieFalta + (x.dossieFalta === 1 ? ' pergunta' : ' perguntas') + ')', tag: 'Reunião', cta: 'Abrir o dossiê',
+    why: 'Faltam respostas do dossiê dela. Pergunte na próxima conversa ou peça que ela complete no app.', dest: { tab: 'plataforma', sessao: 'dossie' } });
+  const pe = x.proximoEmail;
+  if (pe && pe.quando === 'agora') out.push({ id: 'funil', k: 'funil', t: pe.titulo || 'Próximo passo do funil', tag: 'Funil', cta: 'Escrever a mensagem',
+    why: pe.angulo || 'É a hora de dar o próximo passo no funil.', dest: { tab: 'conversa' } });
+  return out;
+}

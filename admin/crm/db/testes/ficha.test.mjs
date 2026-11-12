@@ -60,5 +60,23 @@ console.log('== Task 4: funil ==');
   check('aba padrão: converteu = plataforma, captação = ficha', FX.abaPadrao({ user_id: 'u1', estagio: 'inativo' }) === 'plataforma' && FX.abaPadrao({ user_id: null }) === 'ficha');
 }
 
+console.log('== Task 5: tarefas ==');
+{
+  const rot = (k) => ({ caf: 'CAF' }[k] || k);
+  const ctx = (o) => Object.assign({ nome: 'Ana Souza', respostasNovas: 0, chatNaoLidas: 0, processosDetectados: [], bilanPendente: false, dossieFalta: 0, proximoEmail: null }, o);
+  const cheio = ctx({ respostasNovas: 2, chatNaoLidas: 1, processosDetectados: ['caf'], bilanPendente: true, dossieFalta: 3, proximoEmail: { titulo: 'Reimpacto: parou no app', angulo: 'x', quando: 'agora' } });
+  const ts = FX.tarefasDe(cheio, rot);
+  check('ordem do spec §4.3', ts.map((x) => x.k).join() === 'resposta,chat,processo,bilan,dossie,funil');
+  check('resposta: título, selo e destino', ts[0].t === 'Responder Ana' && ts[0].tag === 'Dela' && ts[0].dest.tab === 'conversa');
+  check('chat, bilan e dossiê levam à Plataforma', ts[1].dest.tab === 'plataforma' && ts[1].dest.sessao === 'chat' && ts[3].dest.sessao === 'bilan' && ts[4].dest.sessao === 'dossie');
+  check('processo usa o rótulo', /CAF/.test(ts[2].t) && ts[2].id === 'processo:caf');
+  check('funil é o último e tem selo Funil', ts[5].tag === 'Funil' && ts[5].id === 'funil');
+  check('todas têm id único, texto "por que" e cta', new Set(ts.map((x) => x.id)).size === ts.length && ts.every((x) => x.why && x.cta));
+  check('tudo zerado = vazio', FX.tarefasDe(ctx({ proximoEmail: { titulo: 't', angulo: 'a', quando: 'nao' } }), rot).length === 0 && FX.tarefasDe(ctx(), rot).length === 0);
+  check('funil só quando quando === "agora"', FX.tarefasDe(ctx({ proximoEmail: { titulo: 't', angulo: 'a', quando: 'espera' } }), rot).length === 0);
+  check('nome vazio não quebra', FX.tarefasDe(ctx({ nome: '', respostasNovas: 1 }), rot)[0].t === 'Responder');
+}
+
+
 console.log('\n' + passed + ' passaram, ' + failed + ' falharam');
 if (failed) process.exit(1);
