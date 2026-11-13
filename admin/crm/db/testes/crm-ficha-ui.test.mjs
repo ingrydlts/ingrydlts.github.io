@@ -53,16 +53,15 @@ console.log('== Task 10: ligação aos dados, abas, ações, deep link ==');
   };
   let h = await montar(null);
   let html = await abre(h, pessoa({ user_id: null }));
-  check('renderiza fila, header, abas e carrossel', html.includes('class="fx-fila"') && html.includes('class="fx-head"') && html.includes('class="fx-abas"') && html.includes('class="fx-car"'));
+  check('renderiza fila, header, abas e carrossel', html.includes('class="fx-fila mf"') && html.includes('class="fx-head"') && html.includes('class="fx-abas"') && html.includes('class="fx-car"'));
   check('sem conta: abre na aba Ficha', /data-v="ficha"[^>]*aria-selected="true"/.test(html) && !/data-v="plataforma"[^>]*aria-selected="true"/.test(html));
   check('1º cartão é "Responder Ana"', /data-fx="agAbrir" data-i="0"[^>]*aria-label="Ação 1 de \d: Responder Ana\./.test(html));
-  const fila1 = (html.match(/class="fx-fprox">([^<]*)</) || [])[1];
-  check('o 1º item da fila mostra o mesmo texto do 1º cartão', fila1 === 'Responder Ana');
+  check('a fila é uma linha de chips: a pessoa aberta está destacada e o texto da ação não repete na fila', html.includes('mf-i atual') && !/class="mf[^"]*"[^>]*>[^<]*Responder Ana/.test(html.split('class="fx-head"')[0].split('class="fx-fila mf"')[1] || ''));
   {
     // só mensagem do app, sem resposta por e-mail: a fila da pessoa aberta continua igual ao 1º cartão
     const h2 = await carregarCrm({ respostas: base({ chat_mensagens: { data: [msg(2), msg(1)], error: null } }), store: { crm_ficha_v2: '1' } });
     const html2 = await abre(h2, pessoa({ user_id: null }));
-    check('só chat: 1º cartão "Ler as mensagens dela no app" e a fila mostra o mesmo', /data-i="0"[^>]*aria-label="Ação 1 de \d: Ler as mensagens dela no app\./.test(html2) && (html2.match(/class="fx-fprox">([^<]*)</) || [])[1] === 'Ler as mensagens dela no app');
+    check('só chat: 1º cartão "Ler as mensagens dela no app"', /data-i="0"[^>]*aria-label="Ação 1 de \d: Ler as mensagens dela no app\./.test(html2));
     h2.mod.pararAoVivo();
   }
   check('mensagens do app viram uma ação (chat)', html.includes('Ler as mensagens dela no app'));

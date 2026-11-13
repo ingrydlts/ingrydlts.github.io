@@ -9,16 +9,13 @@ const ABAS = [['conversa', 'Conversa'], ['plataforma', 'Plataforma'], ['ficha', 
 // itens: [{ c, novas, proxima, sub? }]; selId: id da pessoa aberta.
 export function htmlFila(itens, selId, h) {
   const e = h.esc, lista = itens || [];
-  if (!lista.length) return '<section class="fx-fila" aria-label="Fila de hoje"><h3 class="fx-h3">Fila de hoje</h3><p class="sub" style="margin:0">Ninguém na fila hoje.</p></section>';
-  return '<section class="fx-fila" aria-label="Fila de hoje"><h3 class="fx-h3">Fila de hoje</h3><div class="fx-fila-lista">' + lista.map((o) => {
-    const c = o.c || {}, aberta = String(c.id) === String(selId);
-    return '<button type="button" class="fx-fcard' + (aberta ? ' atual' : '') + '" data-fx="pessoa" data-id="' + e(c.id) + '" aria-pressed="' + aberta + '">' +
-      '<span class="fx-fnome">' + e(c.nome || c.email || 'Sem nome') + '</span>' +
-      '<span class="fx-fmeta"><span class="pill u-' + e(c.urgencia) + '"><span class="dot"></span>' + e(URG[c.urgencia] || c.urgencia || '—') + '</span>' +
-      (o.novas > 0 ? '<span class="fx-novas">' + o.novas + (o.novas === 1 ? ' nova' : ' novas') + '</span>' : '') + '</span>' +
-      '<span class="fx-fprox">' + e(o.proxima || '') + '</span>' +
-      (o.sub ? '<span class="fx-fsub">' + e(o.sub) + '</span>' : '') + '</button>';
-  }).join('') + '</div></section>';
+  if (!lista.length) return '<section class="fx-fila mf" aria-label="Fila de hoje"><span class="mf-t">Fila de hoje</span><span class="sub">Ninguém na fila hoje.</span></section>';
+  return '<section class="fx-fila mf" aria-label="Fila de hoje"><span class="mf-t">Fila de hoje</span>' + lista.map((o) => {
+    const c = o.c || {}, aberta = String(c.id) === String(selId), urg = ['alta', 'media', 'baixa'].includes(c.urgencia) ? c.urgencia : 'baixa';
+    return '<button type="button" class="mf-i' + (aberta ? ' atual' : '') + '" data-fx="pessoa" data-id="' + e(c.id) + '" aria-pressed="' + aberta + '" title="' + e(URG[urg]) + '">' +
+      '<span class="mf-d ' + urg + '" aria-hidden="true"></span><span class="mf-nome">' + e(c.nome || c.email || 'Sem nome') + '</span>' +
+      (o.novas > 0 ? '<span class="mf-n">' + o.novas + (o.novas === 1 ? ' nova' : ' novas') + '</span>' : '') + '</button>';
+  }).join('') + '</section>';
 }
 
 // d = { c, urgLabel, estagioLabel, personaLabel, cidade, temConta, motivo, etapa (1..7), estagios: [{k,l}], chk: { pct, feitos, abertos, vencem3, adicionados } | null, ultima }
