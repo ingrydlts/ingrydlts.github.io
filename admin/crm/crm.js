@@ -2,11 +2,11 @@
 // Nada de service_role aqui. O banco é db/crm-fase2.sql; o desenho é o artefato "CRM Por Dentro".
 // Tudo que vem do banco é texto de terceiros (nome, e-mail, pergunta): passa sempre por esc().
 import { supabase } from '/assets/js/supabase-client.js';
-import * as TX from './taxonomia.js?v=2026-11-12.10';   // páginas, famílias e agrupamento dos modelos
-import * as ES from './estudio.js?v=2026-11-12.10';   // os blocos do estúdio de e-mails (entregas 2 e 3)
-import * as EE from './editor-email.js?v=2026-11-12.10';
-import * as EQ from './editor-quem.js?v=2026-11-12.10';
-import * as JR from './jornada.js?v=2026-11-12.10';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
+import * as TX from './taxonomia.js?v=2026-11-13.1';   // páginas, famílias e agrupamento dos modelos
+import * as ES from './estudio.js?v=2026-11-13.1';   // os blocos do estúdio de e-mails (entregas 2 e 3)
+import * as EE from './editor-email.js?v=2026-11-13.1';
+import * as EQ from './editor-quem.js?v=2026-11-13.1';
+import * as JR from './jornada.js?v=2026-11-13.1';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
 import * as FX from './ficha.js?v=2026-11-12.11';   // ficha v2: lógica pura (fila, démarches, funil, ações)
 import * as FH from './ficha-html.js?v=2026-11-12.11';   // ficha v2: HTML puro
 
@@ -2956,7 +2956,7 @@ async function radarEnviar(btn) {
 // Sem a migração da entrega 1, a tela mostra os 8 do código; sem a da entrega 2, mostra tudo sem editar.
 var TIPO_EMAIL = { servico: ['Serviço', 'u-baixa'], novidades: ['Novidades', 'u-media'], compra: ['Compra', 'tp-pergunta'] };
 var ETAPA_EMAIL = { rascunho: ['Rascunho', ''], revisao: ['Revisão', 'u-media'], no_ar: ['No ar', 'u-baixa'], arquivado: ['Arquivado', 'out'] };
-var ST = { vista: 'jornada', k: null, v: null, passo: 'texto', who: null, q: '', dev: 'pc', marcar: true, tab: 'editar', d: null, dKey: null, montado: null, vistos: {}, foco: null, salvo: '', timer: null, f: TX.filtroVazio() };
+var ST = { vista: 'jornada', qpop: '', previa: false, k: null, v: null, passo: 'texto', who: null, q: '', dev: 'pc', marcar: true, tab: 'editar', d: null, dKey: null, montado: null, vistos: {}, foco: null, salvo: '', timer: null, f: TX.filtroVazio() };
 function versoesDe(k) { return MV.filter(function (v) { return v.chave === k; }); }   // da mais nova para a mais velha
 function versaoAtual(k) { var vs = versoesDe(k); return vs.filter(function (v) { return v.etapa === 'no_ar'; })[0] || vs[0] || null; }
 function versaoEmObra(k) { return versoesDe(k).filter(function (v) { return v.etapa === 'rascunho' || v.etapa === 'revisao'; })[0] || null; }
@@ -3021,6 +3021,7 @@ function renderModelos() {
   aviso.hidden = !msg; aviso.textContent = msg;
   $('mod-export').disabled = !M;
   $('studio').dataset.tab = ST.tab;
+  $('studio').dataset.previa = ST.previa ? '1' : '0';
   var naJornada = ST.vista === 'jornada';
   $('mod-jornada').hidden = !naJornada; $('mod-estudio').hidden = naJornada;
   document.querySelectorAll('[data-vista]').forEach(function (b) { b.setAttribute('aria-selected', String(b.dataset.vista === ST.vista)); });
@@ -3325,23 +3326,26 @@ function passoQuem(m, ro) {
   var est = EQ.estimar(C, m, origensDe), fr = EQ.fraseQuem(m, { material: origLabel, etapa: etapaGuiaLabel });
   var MOT = { persona: 'de outra persona', material: 'de outro material', etapa: 'de outra resposta', estagio: 'de outro estágio', novidades: 'sem aceitar novidades' };
   var fora = Object.keys(est.porMotivo).map(function (x) { return est.porMotivo[x] + ' ' + MOT[x]; }).join(', ');
-  var sai = novoM ? (m.envio_gatilho ? 'sai sozinho' : 'você envia pela ficha') : esc(String(m.como_sai || 'conforme o código').replace(/\.$/, '').replace(/^./, function (x) { return x.toLowerCase(); }));
-  var frase = '<p class="ee-frase">Entrou por <b>' + esc(fr.materiais) + '</b> e respondeu <b>' + esc(fr.etapas) + '</b>' + (fr.novidades ? ', e <b>aceitou novidades</b>' : '') + '. Aqui, ' + sai + '.</p>' +
-    '<p class="ee-conta" role="status"><b>' + est.n + '</b> de ' + est.total + ' pessoas da base recebem hoje' + (fora && est.n !== est.total ? '<span class="sub"> · ficam de fora: ' + esc(fora) + '</span>' : '') + '. <span class="sub">É uma estimativa pelas regras; o Worker confere de novo a cada envio.</span></p>';
+  var contador = '<div class="ee-conta" role="status"><span class="n">' + est.n + '</span><span><b>pessoas</b> recebem este e-mail hoje<span class="sub">de ' + est.total + ' na base' + (fora && est.n !== est.total ? ' · de fora: ' + esc(fora) : '') + '. É uma estimativa pelas regras; o Worker confere de novo a cada envio.</span></span></div>';
+  var avancado = '<details class="ee-av"><summary>Avançado</summary>' + classeHtml(m) + '<label class="st-fld"><span>Objetivo</span><textarea class="st-in" id="st-objetivo" rows="2" maxlength="300">' + esc(m.objetivo) + '</textarea></label>' +
+    (novoM ? '<dl class="tplmeta"><dt>Do catálogo</dt><dd>' + esc(objM ? objM.nome : '—') + '</dd><dt>Tipo</dt><dd>' + pillDe(TIPO_EMAIL, m.tipo) + ' <span class="sub">' + esc(ES.TIPO_RODAPE[m.tipo] || '') + '</span></dd></dl>' : '') + '</details>';
   if (!novoM) {
-    return '<section class="ee-sec"><h4>Quem recebe e quando</h4>' + frase +
-      '<dl class="tplmeta"><dt>Quem recebe</dt><dd>' + esc(m.quem_recebe || 'Todos') + '</dd><dt>Como sai</dt><dd>' + esc(m.como_sai) + '</dd>' +
-      (m.automatico ? '' : '<dt>Sugerido</dt><dd>' + esc((TPLS[k] && TPLS[k].when) || '—') + '</dd>') + '</dl>' +
-      '<p class="st-msg tip">Neste modelo antigo, quem recebe e quando continuam no código: o Worker confere o aceite de novidades a cada envio, mesmo que alguém mude o texto aqui.</p></section>' +
-      '<details class="ee-sec ee-av"><summary>Avançado</summary>' + classeHtml(m) + '<label class="st-fld"><span>Objetivo</span><textarea class="st-in" id="st-objetivo" rows="2" maxlength="300">' + esc(m.objetivo) + '</textarea></label></details>';
+    var sai0 = esc(String(m.como_sai || 'conforme o código').replace(/\.$/, '').replace(/^./, function (x) { return x.toLowerCase(); }));
+    return '<section class="ee-quem"><p class="ee-frase">Vai para quem entrou por <span class="ee-ch fixo">' + esc(fr.materiais) + '</span> e respondeu <span class="ee-ch fixo">' + esc(fr.etapas) + '</span>' + (fr.novidades ? ' <span class="ee-ch fixo">só quem aceitou novidades</span>' : '') + '. Sai <span class="ee-ch fixo">' + sai0 + '</span>.</p>' + contador +
+      '<p class="st-msg tip">Neste modelo antigo, quem recebe e quando continuam no código: o Worker confere o aceite de novidades a cada envio, mesmo que alguém mude o texto aqui.</p></section>' + avancado;
   }
-  return '<section class="ee-sec"><h4>Quem recebe e quando</h4>' + frase + '</section>' +
-    '<details class="ee-sec"><summary>Mudar quem recebe</summary>' + paraQuemHtml(m.para_quem, 'data-pq', objM || { produto: !!(m.para_quem || {}).produto }, true) +
-    '<p class="st-msg tip">' + esc(m.tipo === 'novidades' ? 'E só quem aceitou novidades (o tipo garante).' : 'Serviço e compra saem para quem cumprir as regras, sem pedir novidades.') + '</p></details>' +
-    '<details class="ee-sec"><summary>Mudar quando sai</summary>' + envioHtml(m) + '</details>' +
-    '<details class="ee-sec ee-av"><summary>Avançado</summary>' + classeHtml(m) +
-    '<label class="st-fld"><span>Objetivo</span><textarea class="st-in" id="st-objetivo" rows="2" maxlength="300">' + esc(m.objetivo) + '</textarea></label>' +
-    '<dl class="tplmeta"><dt>Do catálogo</dt><dd>' + esc(objM ? objM.nome : '—') + '</dd><dt>Tipo</dt><dd>' + pillDe(TIPO_EMAIL, m.tipo) + ' <span class="sub">' + esc(ES.TIPO_RODAPE[m.tipo] || '') + '</span></dd></dl></details>';
+  var chip = function (id, rot, vazio) { return '<button type="button" class="ee-ch' + (vazio ? ' vazio' : '') + '" data-qpop="' + id + '" aria-expanded="' + (ST.qpop === id) + '">' + esc(rot) + ' <span aria-hidden="true">▾</span></button>'; };
+  var seq = !!m.envio_gatilho, minutos = m.envio_minutos, quando = !seq ? 'só quando você envia' : minutos != null ? minutos + (minutos === 1 ? ' minuto' : ' minutos') + ' depois' : m.envio_dias != null ? (m.envio_dias === 0 ? 'no mesmo dia' : m.envio_dias + (m.envio_dias === 1 ? ' dia' : ' dias') + ' depois') : 'defina o envio';
+  var base = m.envio_gatilho === 'material' ? ' de pegar ' + origLabel(m.envio_depois_de) : m.envio_gatilho === 'email' ? ' do e-mail "' + modeloNome(m.envio_depois_de) + '"' : m.envio_gatilho === 'compra' ? ' da compra' : '';
+  var pop = '';
+  if (ST.qpop === 'mat') pop = '<fieldset class="st-pq"><legend>Entrou por (material)</legend><div class="st-pq-op">' + materiaisConhecidos().map(function (o) { return '<label class="st-check"><input type="checkbox" data-pq="materiais" value="' + esc(o[0]) + '"' + ((((m.para_quem || {}).materiais || []).indexOf(o[0]) >= 0) ? ' checked' : '') + '> ' + '> ' + esc(o[1]) + '</label>'; }).join('') + '</div><small>Nenhum marcado = qualquer material.</small></fieldset>';
+  else if (ST.qpop === 'etapa') pop = '<fieldset class="st-pq"><legend>Respondeu (etapa do guia)</legend><div class="st-pq-op">' + ES.ETAPAS_FILTRO.map(function (o) { return '<label class="st-check"><input type="checkbox" data-pq="etapas" value="' + esc(o[0]) + '"' + (((m.para_quem || {}).etapas || []).indexOf(o[0]) >= 0 ? ' checked' : '') + '> ' + esc(o[1]) + '</label>'; }).join('') + '</div><small>Nenhuma marcada = qualquer resposta (quem não marcou etapa também recebe).</small></fieldset>';
+  else if (ST.qpop === 'sai') pop = envioHtml(m);
+  var popHtml = pop ? '<div class="ee-pop2" role="dialog" aria-label="Mudar">' + pop + '<button type="button" class="btn" data-qpop="">Pronto</button></div>' : '';
+  var mats = ((m.para_quem || {}).materiais || []).length, ets = ((m.para_quem || {}).etapas || []).length;
+  return '<section class="ee-quem"><p class="ee-frase">Vai para quem entrou por ' + chip('mat', fr.materiais, !mats) + ' e respondeu ' + chip('etapa', fr.etapas, !ets) +
+    (m.tipo === 'novidades' ? ' <span class="ee-ch fixo">só quem aceitou novidades</span>' : '') + '. Sai ' + chip('sai', quando + base, !seq) + '.</p>' + popHtml + contador +
+    '<p class="sub ee-dica">Toque nos campos coloridos para mudar.</p></section>' + avancado;
 }
 
 function renderEditor(lista) {
@@ -3368,7 +3372,10 @@ function renderEditor(lista) {
       : '<button class="btn primary" type="button" id="st-nova">Editar em versão nova</button>';
     acoes = '<button class="btn" type="button" id="st-teste">Enviar teste para mim</button>' + acoes;
   }
-  var topo = '<div class="st-head"><div class="st-head-t"><h3 class="st-title">' + esc(m.nome) + '</h3><div class="st-pills">' + pillDe(TIPO_EMAIL, m.tipo) + (v ? pillDe(ETAPA_EMAIL, v.etapa) + '<span class="sub">versão ' + v.versao + '</span>' : '') +
+  var cl = TX.classifica(m), pagM = TX.PAGINAS.filter(function (p) { return p.k === cl.pagina; })[0], etJ = JR.ETAPAS.filter(function (e) { return e.k === JR.etapaDaJornada(Object.assign({}, m, { familia: cl.familia })); })[0];
+  var migalha = '<div class="ee-crumb"><button type="button" class="ee-volta" data-vista="jornada">← Jornada</button><span>' + esc(pagM ? pagM.k + ' · ' + pagM.nome : 'Todos os percursos') + (etJ ? ' › ' + esc(etJ.nome) : '') + '</span></div>';
+  acoes = acoes + '<button class="btn" type="button" id="st-previa-tg" aria-pressed="' + !!ST.previa + '">' + (ST.previa ? 'Esconder prévia' : 'Ver como chega') + '</button>';
+  var topo = migalha + '<div class="st-head"><div class="st-head-t"><h3 class="st-title">' + esc(m.nome) + '</h3><div class="st-pills">' + pillDe(TIPO_EMAIL, m.tipo) + (v ? pillDe(ETAPA_EMAIL, v.etapa) + '<span class="sub">v' + v.versao + '</span>' : '') +
     '<span class="sub" id="st-salvo">' + esc(ST.salvo) + '</span></div></div><div class="st-acts">' + acoes + '</div></div>' +
     (v && ro && temBlocos() ? '<p class="st-msg tip">' + (v.etapa === 'no_ar' ? 'Esta é a versão No ar: é ela que sai. ' : v.etapa === 'arquivado' ? 'Esta versão já saiu e fica guardada como está. ' : '') +
       (v.blocos ? '' : 'Ainda está em texto corrido (como era no código). ') + 'Para mudar, crie uma versão nova: a de agora continua saindo até você publicar a nova.</p>' : '') +
@@ -4619,6 +4626,8 @@ document.addEventListener('click', async function (e) {
     return toast('1:1 confirmado');
   }
   if (t.id === 'mod-export') return exportModelos();
+  if (t.dataset.qpop !== undefined) { ST.qpop = ST.qpop === t.dataset.qpop ? '' : t.dataset.qpop; return renderEditor(); }
+  if (t.id === 'st-previa-tg') { ST.previa = !ST.previa; return renderModelos(); }
   if (t.dataset.vista) { await salvar(); ST.vista = t.dataset.vista; return renderModelos(); }
   if (t.dataset.jrAbrir) { await salvar(); ST.criar = null; abrirModelo(t.dataset.jrAbrir); ST.vista = 'estudio'; ST.tab = 'editar'; ST.passo = 'texto'; return renderModelos(); }
   if (t.dataset.jrCriar) return criarNaJornada(t.dataset.jrCriar);

@@ -16,7 +16,7 @@
 //   disponiveis(): { etapa, toques },     blocos de guia que este modelo pode ter
 //   rodapeTexto(): string                 o rodapé automático (pelo tipo), só para mostrar
 // }
-import * as EB from './editor-blocos.js?v=2026-11-12.10';
+import * as EB from './editor-blocos.js?v=2026-11-13.1';
 
 var DEP = null;
 var S = { sel: -1, pal: -2, menu: null, foco: null, hist: EB.criarHistorico(60), campo: null, ultimo: null, arrasto: null, toastT: null };
@@ -90,8 +90,9 @@ function linhaMais(i) {
 function tela() {
   var d = DEP.rascunho(), ro = DEP.somenteLeitura(), its = itens();
   var linha = '<div class="ee-linha"><div class="ee-l">Assunto</div>' + campo('assunto', d.assunto, 'ee-assunto', 'Assunto', 'Escreva o assunto', false, ro) +
-    '<div class="ee-l">Prévia <span class="sub">(a linha cinza depois do assunto)</span></div>' + campo('pre', d.pre, 'ee-pre', 'Prévia', 'A linha cinza depois do assunto (opcional)', false, ro) +
-    '<details class="ee-reserva"' + (d.assunto_alt ? ' open' : '') + '><summary>Se faltar um dado da pessoa</summary><div class="ee-l">Assunto de reserva</div>' + campo('assunto_alt', d.assunto_alt, 'ee-pre', 'Assunto se faltar um dado', 'Assunto se faltar um dado (opcional)', false, ro) + '</details></div>';
+    '<details class="ee-reserva"' + (d.pre || d.assunto_alt ? ' open' : '') + '><summary>Prévia e assunto de reserva</summary><div class="ee-l">Prévia <span class="sub">(a linha cinza depois do assunto)</span></div>' +
+    campo('pre', d.pre, 'ee-pre', 'Prévia', 'A linha cinza depois do assunto (opcional)', false, ro) + '<div class="ee-l">Assunto de reserva <span class="sub">(se faltar um dado da pessoa)</span></div>' +
+    campo('assunto_alt', d.assunto_alt, 'ee-pre', 'Assunto se faltar um dado', 'Assunto se faltar um dado (opcional)', false, ro) + '</details></div>';
   var corpo = '';
   if (!its.length) corpo = '<p class="ee-vazio">E-mail vazio. Comece por um bloco.</p>' + (ro ? '' : linhaMais(0));
   else for (var i = 0; i < its.length; i++) corpo += (ro ? '' : linhaMais(i)) + blocoHtml(its[i], i, its.length, ro);
@@ -103,8 +104,8 @@ function tela() {
 }
 function barraTopo() {
   if (DEP.somenteLeitura()) return '';
-  return '<div class="ee-topo"><span class="sub">Escreva direto no e-mail. Digite <kbd>/</kbd> numa linha vazia para escolher um bloco e <kbd>@</kbd> para um dado da pessoa.</span>' +
-    '<span class="ee-hist"><button type="button" class="btn" data-eedesfaz="1"' + (S.hist.podeDesfazer() ? '' : ' disabled') + '>Desfazer bloco</button><button type="button" class="btn" data-eerefaz="1"' + (S.hist.podeRefazer() ? '' : ' disabled') + '>Refazer</button></span></div>';
+  return '<div class="ee-topo"><span class="sub">Digite <kbd>/</kbd> para blocos e <kbd>@</kbd> para dados da pessoa</span>' +
+    '<span class="ee-hist"><button type="button" class="btn" data-eedesfaz="1" title="Desfazer bloco" aria-label="Desfazer bloco"' + (S.hist.podeDesfazer() ? '' : ' disabled') + '>↶</button><button type="button" class="btn" data-eerefaz="1" title="Refazer" aria-label="Refazer"' + (S.hist.podeRefazer() ? '' : ' disabled') + '>↷</button></span></div>';
 }
 export function html() { return '<div id="ee" class="ee">' + barraTopo() + '<div id="ee-canvas">' + tela() + '</div></div>'; }
 function redesenha() {
