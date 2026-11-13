@@ -1145,7 +1145,7 @@ function ligarAoVivo(c, uid) {
   var poll = function () { if (!VIVO.timer && VIVO.cid === cid) VIVO.timer = setInterval(function () { atualizaAoVivo(cid); }, 20000); };
   try {
     var ch = supabase.channel('ficha-' + cid);
-    [['insights_vivos', 'contato_id=eq.' + cid], ['insights_historico', 'contato_id=eq.' + cid], ['plataforma_cliques', 'contato_id=eq.' + cid], ['chat_mensagens', 'contato_id=eq.' + cid], ['propostas', 'contato_id=eq.' + cid]]
+    [['insights_vivos', 'contato_id=eq.' + cid], ['insights_historico', 'contato_id=eq.' + cid], ['plataforma_cliques', 'contato_id=eq.' + cid], ['chat_mensagens', 'contato_id=eq.' + cid], ['propostas', 'contato_id=eq.' + cid], ['contatos', 'id=eq.' + cid]]
       .concat(uid ? [['checklist_items', 'user_id=eq.' + uid]] : [])
       .forEach(function (t) { ch = ch.on('postgres_changes', { event: '*', schema: 'public', table: t[0], filter: t[1] }, avisa); });
     VIVO.ch = ch.subscribe(function (status) { if (status !== 'SUBSCRIBED') poll(); });
@@ -1155,15 +1155,19 @@ async function atualizaAoVivo(cid, forca) {
   if (state.view !== 'pessoa' || state.sel !== cid || !state.ins || state.ins.cid !== cid) return pararAoVivo();
   var c = byC(cid); if (!c) return;
   var antes = state.ins, chatAntes = state.chat;
-  var rk = await Promise.all([buscaChecklist(cid, VIVO.uid), buscaInsights(cid), buscaChat(cid), (state.ptab === 'plataforma' || fichaV2Ativa()) ? buscaInteracoes(cid) : null]);
+  var rk = await Promise.all([buscaChecklist(cid, VIVO.uid), buscaInsights(cid), buscaChat(cid), (state.ptab === 'plataforma' || fichaV2Ativa()) ? buscaInteracoes(cid) : null,
+    supabase.from('contatos').select('dossie,respostas').eq('id', cid).maybeSingle()]);   // o dossiê se preenche conforme ela responde (funil e app)
   if (state.view !== 'pessoa' || state.sel !== cid) return;
+  var rc = rk[4] && !rk[4].error && rk[4].data ? rk[4].data : null;
+  var mudouDos = !!rc && state.dos && state.dos.cid === cid && JSON.stringify([rc.dossie || {}, rc.respostas || {}]) !== JSON.stringify([state.dos.d || {}, c.respostas || {}]);
   var sigChat = function (ch) { return JSON.stringify(ch ? [ch.msgs.length, ch.msgs.length ? ch.msgs[ch.msgs.length - 1].id : 0, Object.keys(ch.props).map(function (k) { return ch.props[k].status + ch.props[k].adiada_ate; })] : null); };
   var mudouIns = JSON.stringify([rk[1].vivos && rk[1].vivos.atualizado_em, rk[1].hist.length, rk[1].manuais.length]) !== JSON.stringify([antes.vivos && antes.vivos.atualizado_em, antes.hist.length, antes.manuais.length]);
   var mudouChk = JSON.stringify([rk[0].itens, rk[0].cliques.length]) !== JSON.stringify([state.dos && state.dos.chk && state.dos.chk.itens, state.dos && state.dos.chk && state.dos.chk.cliques.length]);
   var mudouChat = sigChat(rk[2]) !== sigChat(chatAntes);
   var sigInt = function (i) { return i && !i.err ? JSON.stringify([i.cliques.length, i.cliques[0] && i.cliques[0].criado_em, i.evs.length, i.evs[0] && i.evs[0].criado_em]) : ''; };
   var mudouInt = !!rk[3] && !rk[3].err && sigInt(rk[3]) !== sigInt(state.int);
-  if (!mudouIns && !mudouChk && !mudouChat && !mudouInt && !forca) return;
+  if (!mudouIns && !mudouChk && !mudouChat && !mudouInt && !mudouDos && !forca) return;
+  if (mudouDos) { state.dos.d = rc.dossie || {}; c.respostas = rc.respostas || {}; if (!(state.dos.rasc && Object.keys(state.dos.rasc).length)) toast('O dossiê dela foi atualizado'); }
   state.ins = rk[1]; state.chat = rk[2]; if (rk[3] && !rk[3].err) state.int = rk[3]; if (state.dos && state.dos.cid === cid) state.dos.chk = rk[0];
   var painel = $('ins-box'); if (painel) painel.innerHTML = insightsHtml(state.ins, Date.now());
   var cb = $('chk-box'); if (cb) cb.innerHTML = checklistHtml(state.dos && state.dos.chk, Date.now());
@@ -1859,11 +1863,35 @@ var DOS = [
   ] }
 ];
 var DOS_NUM = { cfEtapa: 1, ensino_medio_ano: 1 }, DOS_MES = { contrato_fim: 1 };
+// O funil público (freebie, checklist-preview, bot) grava o que ela respondeu em contatos.respostas, com outros nomes. Cada
+// resposta cai na pergunta equivalente do dossiê, no formato do formulário. Só vale enquanto o dossiê não tem resposta própria:
+// o que você digita ou a IA lê do documento sempre ganha. Pergunta nova do funil = uma linha aqui.
+var FN_SN = function (v) { return v === 'sim' ? 'true' : v === 'nao' ? 'false' : null; };
+var DOS_FUNIL = {
+  ano_au_pair: ['apAno'], intencao_au_pair: ['apPretende', function (v) { return v === 'migrar' ? 'migrar_estudante' : v; }],
+  contrato_fim: ['apDataFinal'], tem_certificado_matricula: ['apCertificado', FN_SN], comprova_recursos: ['apRecursos', FN_SN], tem_sponsor: ['apSponsor', FN_SN],
+  cfNivel: ['cfNivel'], cfTeste: ['cfTeste'], cidade: ['cfCidade', function (v) { return CF_CIDADE[v] || v; }]
+};
+function dosDoFunil(c, k) {
+  var m = DOS_FUNIL[k], r = c && c.respostas; if (!m || !r || typeof r !== 'object') return null;
+  var v = r[m[0]]; if (v === null || v === undefined || v === '') return null;
+  v = m[1] ? m[1](v) : v; if (v === null || v === undefined || v === '') return null;
+  var f = dosCampo(k); if (f && f.o && !f.o.some(function (o) { return o[0] === String(v); })) return null;   // valor que o formulário não conhece: ignora
+  return String(v);
+}
+// A resposta que está na tela veio do funil (e não do dossiê nem do que você digitou)?
+function dosVeioDoFunil(c, d, rasc, k) {
+  var f = dosCampo(k); if (!f || f.col || (rasc && Object.prototype.hasOwnProperty.call(rasc, k))) return false;
+  var s = (d || {})[k]; return (s === null || s === undefined || s === '') && dosDoFunil(c, k) !== null;
+}
 // O valor de um campo como texto de formulário: o que você já digitou e ainda não salvou, ou o que está salvo.
 function dosValor(c, d, rasc, k) {
   var f = dosCampo(k), v;
   if (rasc && Object.prototype.hasOwnProperty.call(rasc, k)) v = rasc[k];
-  else v = f && f.col ? c[k] : (d || {})[k];
+  else {
+    v = f && f.col ? c[k] : (d || {})[k];
+    if (v === null || v === undefined || v === '') v = dosDoFunil(c, k);   // ainda sem resposta no dossiê: vale o que ela respondeu no funil
+  }
   if (v === null || v === undefined) return '';
   if (DOS_MES[k] && /^\d{4}-\d{2}/.test(v)) return String(v).slice(0, 7);
   return String(v);
@@ -1890,9 +1918,10 @@ function dosCampoHtml(f, c, d, rasc) {
   } else {
     ctl = '<input' + a + ' type="' + (f.t === 'dt' ? 'date' : f.t === 'mes' ? 'month' : 'text') + '" value="' + esc(v) + '" maxlength="300">';
   }
-  var og = onbOrigemDe(f.k, v);
+  var og = onbOrigemDe(f.k, v), fn = dosVeioDoFunil(c, d, rasc, f.k);
   return '<div class="dfield' + (f.t === 'lg' ? ' wide' : '') + (v === '' ? ' vazio' : '') + '"><label for="' + id + '">' + esc(f.l) + '</label>' + ctl + (f.ajuda ? '<small>' + esc(f.ajuda) + '</small>' : '') +
-    (og ? '<small class="orig ' + og.conf + '">' + esc(og.origem) + ' · ' + esc(ONB_CONF[og.conf]) + '</small>' : '') + '</div>';
+    (og ? '<small class="orig ' + og.conf + '">' + esc(og.origem) + ' · ' + esc(ONB_CONF[og.conf]) + '</small>' : '') +
+    (fn ? '<small class="orig alta">Veio do funil, ela mesma respondeu · salve para guardar no dossiê</small>' : '') + '</div>';
 }
 var DOS_CHIPS = ['persona', 'data_chegada', 'cidade', 'nivel_frances', 'cfNivel', 'ano_au_pair', 'trilha_estudo', 'telefone'];
 function dosChipSinais(d) {
@@ -2108,7 +2137,7 @@ async function chkAgir(via, i) {
     return toast('Nota pronta. Revise e publique: ela vê no dashboard.', 4000);
   }
 }
-function dossieHtml(c, d, err, rasc, aberto, chk) {
+function dossieHtml(c, d, err, rasc, aberto, chk, fixo) {
   if (err) return '<div class="panel dossie"><div class="dhead"><h3>Dossiê</h3></div><p class="sub" style="margin:0">Falta rodar <b>db/crm-dossie.sql</b> no SQL Editor do Supabase.</p></div>';
   var pr = dosProgresso(c, d, rasc), pct = pr.tot ? Math.round(pr.n * 100 / pr.tot) : 0, sujo = rasc && Object.keys(rasc).length;
   var corpo = '';
@@ -2119,13 +2148,14 @@ function dossieHtml(c, d, err, rasc, aberto, chk) {
       (sujo ? '<span class="sub" style="align-self:center">Há alterações ainda não salvas.</span>' : '') + '</div>' + '<div id="poscall-box">' + poscallHtml(c) + '</div><div id="chk-box">' + checklistHtml(chk, Date.now()) + '</div></div>';
   }
   return '<div class="panel dossie"><div class="dhead"><h3>Dossiê</h3><span class="sub">' + pr.n + ' de ' + pr.tot + ' respondidas' + (pr.falta ? ' · faltam ' + pr.falta : ' · completo') + '</span>' +
-    '<button class="btn" type="button" data-dostoggle="1" aria-expanded="' + !!aberto + '" style="margin-left:auto">' + (aberto ? 'Fechar dossiê' : 'Abrir dossiê completo') + '</button></div>' +
+    (fixo ? '' : '<button class="btn" type="button" data-dostoggle="1" aria-expanded="' + !!aberto + '" style="margin-left:auto">' + (aberto ? 'Fechar dossiê' : 'Abrir dossiê completo') + '</button>') + '</div>' +
     '<div class="dprog" role="progressbar" aria-valuenow="' + pct + '" aria-valuemin="0" aria-valuemax="100"><span style="width:' + pct + '%"></span></div>' +
-    '<div class="dchips">' + dosChipChk(chk) + dosChipSinais(d) + dosChipIns(state.ins) + dosChipChat(state.chat) + (dosChips(c, d, rasc) || '<span class="sub">Nada preenchido ainda. Abra o dossiê para preencher durante a ligação.</span>') + '</div>' + onbFaltaHtml(c, d, rasc) + corpo + '</div>';
+    '<div class="dchips">' + dosChipChk(chk) + dosChipSinais(d) + dosChipIns(state.ins) + dosChipChat(state.chat) + (dosChips(c, d, rasc) || '<span class="sub">' + (fixo ? 'Nada preenchido ainda. Preencha durante a ligação; o que ela responder no funil e no app entra aqui sozinho.' : 'Nada preenchido ainda. Abra o dossiê para preencher durante a ligação.') + '</span>') + '</div>' + onbFaltaHtml(c, d, rasc) + corpo + '</div>';
 }
 function pintaDossie(c) {
   var box = $('dossie-box'); if (!box || !state.dos || state.dos.cid !== c.id) return;
-  box.innerHTML = dossieHtml(c, state.dos.d, state.dos.err, state.dos.rasc, state.dosAberto, state.dos.chk);
+  var fixo = !!(fichaV2Ativa() && state.fx && state.fx.tab === 'dossie');   // na aba Dossiê ele fica sempre aberto
+  box.innerHTML = dossieHtml(c, state.dos.d, state.dos.err, state.dos.rasc, fixo || state.dosAberto, state.dos.chk, fixo);
 }
 // Salva o que mudou: colunas de contatos direto (como o estágio) e o resto por crm_salvar_dossie.
 async function salvarDossie(cid, t) {
@@ -2424,7 +2454,7 @@ function fichaV2Ativa() {
   try { return localStorage.getItem('crm_ficha_v2') === '1'; } catch (e) { return false; }
 }
 var H_FX = { esc: esc, fmtDay: fmtDay };
-var FX_ABAS = ['conversa', 'plataforma', 'ficha'];
+var FX_ABAS = ['conversa', 'plataforma', 'ficha', 'dossie'];
 // Zera o que é "desta pessoa" ao abrir outra ficha. A ordem das sessões e o guia são preferências do navegador e ficam.
 function fxReset() {
   var f = state.fx; f.tab = null; f.ag = { i: 0, pop: null }; f.dem = 'todas'; f.ckTodos = false; f.ckMais = false; f.abertas = {}; f.flash = null; f.tarefas = []; f.dados = null;
@@ -2514,7 +2544,6 @@ function fxSessoes(c) {
     inicio: mk('Início (iAssistente)', 'O que o assistente mostra a ela no início do app e os seus avisos.', 'inicio', function () { return '<div id="ins-box">' + insightsHtml(state.ins, Date.now()) + '</div>'; }),
     checklist: mk('Checklist', 'Os passos dela por démarche, do mais urgente ao mais distante.', 'checklist', function () { return '<div id="fx-chk-corpo">' + fxChecklistCorpo(c) + '</div>'; }),
     bilan: mk('Bilan', 'O que a conversa mostrou e o e-mail do bilan.', 'bilan', function () { return bilanResumoHtml(c) + bilanBlocoHtml(c, H4_PLAT); }),
-    dossie: mk('Dossiê', 'As perguntas da plataforma, preenchidas por você na ligação.', 'dossie', function () { return '<div id="dossie-box">' + dossieHtml(c, state.dos.d, state.dos.err, state.dos.rasc, state.dosAberto, state.dos.chk) + '</div>'; }),
     hist: mk('Histórico', 'Tudo que ela fez no app, dia a dia.', 'hist', function () { return '<div id="int-box">' + interacoesHtml(state.int) + '</div>'; })
   };
   return FH.htmlSessoes(fxOrdem(), mapa, H_FX);
@@ -2525,6 +2554,8 @@ function fxCorpo(c, d, tab) {
     return '<div class="fx-plat">' + pagamentoHtml(c, H4_PLAT) + fxSessoes(c) + '</div>';
   }
   if (tab === 'conversa') return conversaPanel(c, d.mails || [], d.resps || [], d.h4 || H4_PLAT);
+  // Dossiê: aba própria, sempre aberta. Preenche sozinho com o que ela responde no funil e no app (ver DOS_FUNIL).
+  if (tab === 'dossie') return '<div id="dossie-box">' + dossieHtml(c, state.dos.d, state.dos.err, state.dos.rasc, true, state.dos.chk, true) + '</div>';
   // Ficha (captação): o fluxo de 3 passos e os painéis que já existiam (feed, e-mails, jornada, quem é ela, mais).
   var etapa = FX.etapaFunil(c, { mails: d.mails || [], propostas: [], temBilan: !!(state.bilan && state.bilan.cid === c.id) }), h4 = d.h4 || H4_PLAT;
   // Três colunas, cada uma com um papel: à esquerda quem ela é e onde está no funil; no meio o que ela fez; à direita o que fazer (e-mail).

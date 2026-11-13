@@ -3,7 +3,7 @@ import { ETAPAS_FUNIL, maisUrgentes } from './ficha.js?v=2026-11-13.8';   // o ?
 
 
 const URG = { alta: 'Alta', media: 'Média', baixa: 'Baixa' };
-const ABAS = [['conversa', 'Conversa'], ['plataforma', 'Plataforma'], ['ficha', 'Ficha']];
+const ABAS = [['conversa', 'Conversa'], ['plataforma', 'Plataforma'], ['ficha', 'Ficha'], ['dossie', 'Dossiê']];
 
 // ---------- Fila de hoje, header, abas e guia (Task 8) ----------
 // itens: [{ c, novas, proxima, sub? }]; selId: id da pessoa aberta.
@@ -70,7 +70,7 @@ export function htmlTour(aberto, h) {
   return '<section class="fx-tour" aria-label="Como ler esta tela"><h3 class="fx-h3">Como ler esta tela</h3><ol class="fx-tour-lista">' +
     '<li><b>Fila de hoje</b>: quem precisa de você primeiro. Um clique abre a ficha.</li>' +
     '<li><b>Minhas próximas ações</b>: o que a equipe precisa fazer. Clique num cartão para ver o contexto e ir direto ao lugar certo.</li>' +
-    '<li><b>Abas</b>: Conversa (e-mails), Plataforma (o app dela) e Ficha (captação e onboarding).</li>' +
+    '<li><b>Abas</b>: Conversa (e-mails), Plataforma (o app dela), Ficha (captação e onboarding) e Dossiê (as perguntas da plataforma, que se preenchem conforme ela responde).</li>' +
     '<li><b>Sessões</b>: cada uma abre e fecha. Arraste, ou use as setas, para pôr na ordem que preferir.</li></ol>' +
     '<button class="btn" type="button" data-fx="tourFechar">Entendi</button></section>';
 }

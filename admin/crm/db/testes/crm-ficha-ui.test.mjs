@@ -144,18 +144,20 @@ console.log('== Task 12: sessões em pílulas ==');
   };
   let h = await mk({});
   let pg = h.el('pessoa-page').innerHTML;
-  check('Plataforma tem os dois grupos e as 6 sessões', pg.includes('Acompanhar o app dela') && pg.includes('Conhecer e registrar') && ['chat', 'inicio', 'checklist', 'bilan', 'dossie', 'hist'].every((id) => pg.includes('data-sessao="' + id + '"')));
+  check('Plataforma tem os dois grupos e as 5 sessões (o Dossiê virou aba)', pg.includes('Acompanhar o app dela') && pg.includes('Conhecer e registrar') && ['chat', 'inicio', 'checklist', 'bilan', 'hist'].every((id) => pg.includes('data-sessao="' + id + '"')) && !pg.includes('data-sessao="dossie"'));
   check('só o Checklist abre por padrão; dossiê fechado não está na página', pg.includes('id="fx-chk-corpo"') && !pg.includes('id="dossie-box"') && !pg.includes('id="int-box"') && !pg.includes('id="chat-box"'));
   check('ordem padrão: chat, início, checklist', pg.indexOf('data-sessao="chat"') < pg.indexOf('data-sessao="inicio"') && pg.indexOf('data-sessao="inicio"') < pg.indexOf('data-sessao="checklist"'));
   // sessão fechada: o repaint ao vivo do dossiê não lança
   let ok = true; try { h.mod.pintaDossie(h.mod.byC('c1')); } catch (e) { ok = false; }
-  check('com a sessão fechada, pintaDossie não lança', ok);
-  await h.click({ fx: 'sessao', id: 'dossie' });
-  check('sessao abre o dossiê dentro da pílula', h.mod.state.fx.abertas.dossie === true && h.el('fx-corpo').innerHTML.includes('id="dossie-box"'));
+  check('fora da aba Dossiê, pintaDossie não lança', ok);
+  check('a barra de abas tem Dossiê ao lado de Ficha', pg.indexOf('data-v="ficha"') > 0 && pg.indexOf('data-v="ficha"') < pg.indexOf('data-v="dossie"'));
+  await h.click({ fx: 'tab', v: 'dossie' });
+  const dz = h.el('pessoa-page').innerHTML;
+  check('a aba Dossiê abre o dossiê sempre aberto, sem botão de fechar', dz.includes('id="dossie-box"') && dz.includes('data-dossalvar') && !dz.includes('data-dostoggle'));
   await h.mod.renderPessoa(); pg = h.el('pessoa-page').innerHTML;
-  check('depois de repintar tudo, o dossiê segue aberto', pg.includes('id="dossie-box"'));
-  await h.click({ fx: 'sessao', id: 'dossie' });
-  check('sessao de novo fecha', h.mod.state.fx.abertas.dossie === false && !h.el('fx-corpo').innerHTML.includes('id="dossie-box"'));
+  check('depois de repintar tudo, a aba Dossiê segue aberta', h.mod.state.fx.tab === 'dossie' && pg.includes('id="dossie-box"'));
+  await h.click({ fx: 'tab', v: 'plataforma' });
+  check('de volta à Plataforma, o dossiê não aparece lá', !h.el('pessoa-page').innerHTML.includes('id="dossie-box"'));
   await h.click({ fx: 'sessao', id: 'hist' }); await h.click({ fx: 'sessao', id: 'bilan' }); await h.click({ fx: 'sessao', id: 'chat' }); await h.click({ fx: 'sessao', id: 'inicio' });
   const tudo = h.el('fx-corpo').innerHTML;
   check('todas as sessões abrem com os painéis existentes', tudo.includes('id="int-box"') && tudo.includes('id="bilan-box"') && tudo.includes('id="chat-box"') && tudo.includes('id="ins-box"'));
@@ -174,7 +176,7 @@ console.log('== Task 12: sessões em pílulas ==');
   check('arrastar para cima cai antes do alvo', h.mod.state.fx.ord.app.join() === 'inicio,chat,checklist');
   await chamar('dragstart', ev({ dataset: { area: 'app', id: 'chat' } }, null));
   await chamar('drop', ev(null, { dataset: { area: 'ela', sessao: 'bilan' } }));
-  check('arrastar para outro grupo é ignorado', h.mod.state.fx.ord.app.join() === 'inicio,chat,checklist' && h.mod.state.fx.ord.ela.join() === 'bilan,dossie,hist' && h.mod.state.fx.drag === null);
+  check('arrastar para outro grupo é ignorado', h.mod.state.fx.ord.app.join() === 'inicio,chat,checklist' && h.mod.state.fx.ord.ela.join() === 'bilan,hist' && h.mod.state.fx.drag === null);
   h.mod.pararAoVivo();
   // preferência salva volta ao abrir de novo; preferência inválida volta ao padrão
   h = await mk({ crm_ficha_ord_v1: JSON.stringify({ app: ['checklist', 'chat'], ela: ['hist'] }) });
@@ -233,6 +235,35 @@ console.log('== Task 14: dado velho ==');
     plataforma_cliques: { data: [{ tela: '/dashboard/#checklist', alvo: 'botao', rotulo: 'Marcou como concluído: Passo', criado_em: antigo }], error: null } }), store: { crm_ficha_v2: '1' } });
   await abre(h, pessoa({ user_id: 'u1' }));
   check('mais de 48 h sem atividade: banner "há 5 dias"', h.el('pessoa-page').innerHTML.includes('Sem atividade dela no checklist há 5 dias'));
+  h.mod.pararAoVivo();
+}
+
+console.log('== Aba Dossiê: se preenche com o que ela responde no funil ==');
+{
+  const resp = { apAno: 'primeiro', apPretende: 'migrar', apRecursos: 'nao', apSponsor: 'sim', apCertificado: 'nao', cfNivel: 'l1', cfCidade: 'lyon', cfTeste: 'inventado' };
+  const h = await carregarCrm({ respostas: base({ 'contatos:one': { data: { dossie: { cfNivel: 'master' }, user_id: null }, error: null } }), store: { crm_ficha_v2: '1' } });
+  const c = pessoa({ respostas: resp });
+  await abre(h, c);
+  await h.click({ fx: 'tab', v: 'dossie' });
+  const pg = h.el('pessoa-page').innerHTML;
+  const sel = (k, v) => new RegExp('data-dk="' + k + '"[^>]*>(?:(?!</select>).)*<option value="' + v + '" selected', 's').test(pg);
+  check('ano de au pair, intenção (migrar → migrar_estudante) e sim/não vêm do funil', sel('ano_au_pair', 'primeiro') && sel('intencao_au_pair', 'migrar_estudante') && sel('comprova_recursos', 'false') && sel('tem_sponsor', 'true') && sel('tem_certificado_matricula', 'false'));
+  check('a cidade do funil entra como texto legível', pg.includes('data-dk="cidade"') && pg.includes('value="Lyon"'));
+  check('o que já está no dossiê ganha do funil (cfNivel: master, não l1)', h.mod.dosValor(c, { cfNivel: 'master' }, {}, 'cfNivel') === 'master' && h.mod.dosValor(c, {}, {}, 'cfNivel') === 'l1');
+  check('valor que o formulário não conhece é ignorado (cfTeste "inventado")', !sel('cfTeste', 'inventado') && h.mod.dosDoFunil(c, 'cfTeste') === null);
+  check('campo vindo do funil traz a etiqueta e o dossiê conta como respondido', pg.includes('Veio do funil') && h.mod.dosProgresso(c, {}, {}).n >= 6);
+  check('o que você apagou no formulário não volta do funil', h.mod.dosValor(c, {}, { ano_au_pair: '' }, 'ano_au_pair') === '');
+  h.mod.pararAoVivo();
+}
+console.log('== Aba Dossiê: atualização ao vivo ==');
+{
+  const h = await carregarCrm({ respostas: base({ 'contatos:one': { data: { dossie: {}, user_id: 'u1' }, error: null } }), store: { crm_ficha_v2: '1' } });
+  await abre(h, pessoa({ user_id: 'u1', respostas: {} }));
+  await h.click({ fx: 'tab', v: 'dossie' });
+  check('antes: ano de au pair sem resposta', !/data-dk="ano_au_pair"[^>]*>(?:(?!<\/select>).)*selected/s.test(h.el('pessoa-page').innerHTML));
+  h.respostas['contatos:one'] = { data: { dossie: {}, respostas: { apAno: 'segundo' }, user_id: 'u1' }, error: null };
+  await h.mod.atualizaAoVivo('c1');
+  check('ela responde no funil: o state do dossiê e a pessoa recebem a resposta sem recarregar a página', h.mod.byC('c1').respostas.apAno === 'segundo' && h.mod.dosValor(h.mod.byC('c1'), h.mod.state.dos.d, {}, 'ano_au_pair') === 'segundo');
   h.mod.pararAoVivo();
 }
 
