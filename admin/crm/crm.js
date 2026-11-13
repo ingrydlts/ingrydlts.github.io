@@ -7,8 +7,8 @@ import * as ES from './estudio.js?v=2026-11-12.10';   // os blocos do estúdio d
 import * as EE from './editor-email.js?v=2026-11-12.10';
 import * as EQ from './editor-quem.js?v=2026-11-12.10';
 import * as JR from './jornada.js?v=2026-11-12.10';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
-import * as FX from './ficha.js?v=2026-11-12.11';   // ficha v2: lógica pura (fila, démarches, funil, ações)
-import * as FH from './ficha-html.js?v=2026-11-12.11';   // ficha v2: HTML puro
+import * as FX from './ficha.js?v=2026-11-12.12';   // ficha v2: lógica pura (fila, démarches, funil, ações)
+import * as FH from './ficha-html.js?v=2026-11-12.12';   // ficha v2: HTML puro
 
 var PERSONAS = {
   au_pair_estudante: 'Au pair → estudante', campus_france: 'Campus France', alternancia_emprego: 'Alternância / emprego',
@@ -667,6 +667,7 @@ function eventText(e) {
 async function openPessoa(id, tab, sub) {
   if (state.view !== 'pessoa') state.prevView = state.view;
   state.sel = id; state.ptab = tab || null; state.pstab = sub || 'assistente'; state.pdias = {}; state.chatRasc = ''; state.caso = null; fxReset();
+  if (sub === 'caso') state.fx.abertas.caso = true;   // ficha v2: o atalho do Caso abre a sessão provisória
   show('pessoa');
 }
 // ---------- E-mails da pessoa: o que já saiu e o próximo, como ela vai ver ----------
@@ -2379,11 +2380,15 @@ function fichaMaisHtml(c, d) {
     '<div class="panel" style="padding:16px"><h4 style="' + h4 + '">Suas anotações</h4><textarea class="notebox" id="nota" data-nota="' + esc(c.id) + '" placeholder="Só você vê. Ex.: prefere falar por e-mail, tem sponsor na família.">' + esc(c.nota || '') + '</textarea></div>' +
     '</div></details>';
 }
-// Ficha v2 (ficha-universo, fase 1): atrás de uma chave até a Ingryd aprovar. ?ficha=2 na URL ou localStorage.crm_ficha_v2 = '1'.
-// FX e FH só são tocados dentro de funções chamadas com a chave ligada (os testes antigos não os injetam).
+// Ficha v2 (ficha-universo, fase 1): ligada por padrão. Saída de emergência: ?ficha=1 na URL (ou localStorage.crm_ficha_v2 = '0').
+// ?ficha=2 e localStorage '1' seguem valendo. FX e FH só são tocados dentro de funções chamadas com a ficha v2 ligada (os testes da ficha antiga a desligam).
 function fichaV2Ativa() {
-  try { if (/[?&]ficha=2(&|$)/.test(String(location.search || ''))) return true; } catch (e) { /* sem location */ }
-  try { return localStorage.getItem('crm_ficha_v2') === '1'; } catch (e) { return false; }
+  try {
+    var q = String(location.search || '');
+    if (/[?&]ficha=1(&|$)/.test(q)) return false;
+    if (/[?&]ficha=2(&|$)/.test(q)) return true;
+  } catch (e) { /* sem location */ }
+  try { return localStorage.getItem('crm_ficha_v2') !== '0'; } catch (e) { return true; }
 }
 var H_FX = { esc: esc, fmtDay: fmtDay };
 var FX_ABAS = ['conversa', 'plataforma', 'ficha'];
@@ -2443,7 +2448,7 @@ function fxHeaderHtml(c, d) {
 // Catálogo de démarches (cópia do app, processos.json): carregado uma vez; sem ele, tudo cai na démarche padrão.
 var FX_PROC = null;
 async function fxCarregaProcessos() {
-  try { var r = await fetch('processos.json?v=2026-11-12.11'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
+  try { var r = await fetch('processos.json?v=2026-11-12.12'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
 }
 // A sessão Checklist: pílulas por démarche, os 4 mais urgentes, pasta do Drive privada e "Ver mais desta sessão".
 function fxChecklistCorpo(c) {
@@ -2472,7 +2477,12 @@ function fxSessoes(c) {
     checklist: mk('Checklist', 'Os passos dela por démarche, do mais urgente ao mais distante.', 'checklist', function () { return '<div id="fx-chk-corpo">' + fxChecklistCorpo(c) + '</div>'; }),
     bilan: mk('Bilan', 'O que a conversa mostrou e o e-mail do bilan.', 'bilan', function () { return bilanResumoHtml(c) + bilanBlocoHtml(c, H4_PLAT); }),
     dossie: mk('Dossiê', 'As perguntas da plataforma, preenchidas por você na ligação.', 'dossie', function () { return '<div id="dossie-box">' + dossieHtml(c, state.dos.d, state.dos.err, state.dos.rasc, state.dosAberto, state.dos.chk) + '</div>'; }),
-    hist: mk('Histórico', 'Tudo que ela fez no app, dia a dia.', 'hist', function () { return '<div id="int-box">' + interacoesHtml(state.int) + '</div>'; })
+    hist: mk('Histórico', 'Tudo que ela fez no app, dia a dia.', 'hist', function () { return '<div id="int-box">' + interacoesHtml(state.int) + '</div>'; }),
+    // Provisória (até a fase 2): o painel do Caso da ficha antiga, com o board que ela vê no Espaço e nos Guias.
+    caso: mk('Caso, Espaço e Guias', 'O que a equipe entendeu do caso e o board que ela vê no app (sessão provisória).' + (casoPendentes(state.caso) ? ' ' + casoPendentes(state.caso) + ' a revisar.' : ''), 'caso', function () {
+      if (!state.caso || state.caso.cid !== c.id) setTimeout(function () { carregaCaso(c.id); }, 0);
+      return '<div id="caso-box">' + casoPanelHtml(c, state.caso) + '</div>';
+    })
   };
   return FH.htmlSessoes(fxOrdem(), mapa, H_FX);
 }

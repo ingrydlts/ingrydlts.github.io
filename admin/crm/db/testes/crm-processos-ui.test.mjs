@@ -31,7 +31,7 @@ function qb(table) {
   return b;
 }
 const supabase = { from: qb, auth: { getSession: async () => ({ data: { session: null } }) }, rpc: async (n, a) => { rpcs.push({ n, a }); return rpcRetorno; }, channel: () => ({ on() { return this; }, subscribe() { return this; } }), removeChannel() {} };
-const store = {};
+const store = { crm_ficha_v2: '0' };   // estes testes afirmam a ficha antiga (saída de emergência); a v2 tem o crm-ficha-ui
 const mod = new Function('supabase', 'ES', 'TX', 'EE', 'EQ', 'JR', 'document', 'window', 'location', 'localStorage', 'setInterval', 'clearInterval',
   src + '\n;return { state, setC: function (v) { C = v; }, loadAll, renderToday, processosSugeridosHtml, getPSUG: function () { return PSUG; } };')(
   supabase, {}, TXMOD, { iniciar() {}, depois() {}, campoMudou() {} }, {}, {}, document, { addEventListener() {}, confirm: () => true, scrollTo() {} }, { href: '' }, { getItem: (k) => store[k] ?? null, setItem: (k, v) => { store[k] = v; } }, () => 1, () => {});

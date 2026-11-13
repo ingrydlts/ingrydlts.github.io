@@ -14,31 +14,47 @@ function base(extra = {}) {
 }
 async function abre(h, c) { h.mod.setC([c]); h.mod.state.sel = c.id; h.mod.state.view = 'pessoa'; h.mod.state.ptab = null; h.mod.state.pstab = 'assistente'; await h.mod.renderPessoa(); return h.el('pessoa-page').innerHTML; }
 
-console.log('== Task 1: chave de ligação ==');
+console.log('== Task 1/15: ligada por padrão, com saída de emergência ==');
 {
   const h = await carregarCrm({ respostas: base() });
   const html = await abre(h, pessoa());
-  check('desligada: mantém o dossiê antigo', html.includes('id="dossie-box"'));
-  check('desligada: não tem a ficha v2', !html.includes('id="ficha-v2"'));
+  check('sem chave nenhuma: a ficha v2 é o padrão', html.includes('id="ficha-v2"') && !html.includes('id="dossie-box"'));
+  h.mod.pararAoVivo();
+}
+{
+  const h = await carregarCrm({ respostas: base(), search: '?ficha=1' });
+  const html = await abre(h, pessoa());
+  check('?ficha=1 (saída de emergência): volta a ficha antiga', html.includes('id="dossie-box"') && !html.includes('id="ficha-v2"'));
+  h.mod.pararAoVivo();
+}
+{
+  const h = await carregarCrm({ respostas: base(), search: '?ficha=1', store: { crm_ficha_v2: '1' } });
+  const html = await abre(h, pessoa());
+  check('?ficha=1 vale mais que o localStorage', !html.includes('id="ficha-v2"'));
+  h.mod.pararAoVivo();
+}
+{
+  const h = await carregarCrm({ respostas: base(), store: { crm_ficha_v2: '0' } });
+  const html = await abre(h, pessoa());
+  check('localStorage crm_ficha_v2 = 0 desliga (usado pelos testes da ficha antiga)', html.includes('id="dossie-box"') && !html.includes('id="ficha-v2"'));
   h.mod.pararAoVivo();
 }
 {
   const h = await carregarCrm({ respostas: base(), store: { crm_ficha_v2: '1' } });
   const html = await abre(h, pessoa());
-  check('ligada pelo localStorage: tem a ficha v2', html.includes('id="ficha-v2"'));
-  check('ligada: o dossiê antigo não fica fora de sessão', !html.includes('id="dossie-box"'));
+  check('localStorage = 1 segue ligando', html.includes('id="ficha-v2"') && !html.includes('id="dossie-box"'));
   h.mod.pararAoVivo();
 }
 {
   const h = await carregarCrm({ respostas: base(), search: '?ficha=2' });
   const html = await abre(h, pessoa());
-  check('ligada por ?ficha=2: tem a ficha v2', html.includes('id="ficha-v2"') && !html.includes('id="dossie-box"'));
+  check('?ficha=2 segue ligando', html.includes('id="ficha-v2"') && !html.includes('id="dossie-box"'));
   h.mod.pararAoVivo();
 }
 {
-  const h = await carregarCrm({ respostas: base(), store: { crm_ficha_v2: '0' }, search: '?x=ficha=2' });
+  const h = await carregarCrm({ respostas: base(), search: '?x=ficha=1' });
   const html = await abre(h, pessoa());
-  check('valor diferente de 1 e busca sem ficha=2 mantém a antiga', !html.includes('id="ficha-v2"'));
+  check('?x=ficha=1 não é a chave: continua a v2', html.includes('id="ficha-v2"'));
   h.mod.pararAoVivo();
 }
 
@@ -175,7 +191,7 @@ console.log('== Task 12: sessões em pílulas ==');
   check('arrastar para cima cai antes do alvo', h.mod.state.fx.ord.app.join() === 'inicio,chat,checklist');
   await chamar('dragstart', ev({ dataset: { area: 'app', id: 'chat' } }, null));
   await chamar('drop', ev(null, { dataset: { area: 'ela', sessao: 'bilan' } }));
-  check('arrastar para outro grupo é ignorado', h.mod.state.fx.ord.app.join() === 'inicio,chat,checklist' && h.mod.state.fx.ord.ela.join() === 'bilan,dossie,hist' && h.mod.state.fx.drag === null);
+  check('arrastar para outro grupo é ignorado', h.mod.state.fx.ord.app.join() === 'inicio,chat,checklist' && h.mod.state.fx.ord.ela.join() === 'bilan,dossie,hist,caso' && h.mod.state.fx.drag === null);
   h.mod.pararAoVivo();
   // preferência salva volta ao abrir de novo; preferência inválida volta ao padrão
   h = await mk({ crm_ficha_ord_v1: JSON.stringify({ app: ['checklist', 'chat'], ela: ['hist'] }) });
@@ -234,6 +250,21 @@ console.log('== Task 14: dado velho ==');
     plataforma_cliques: { data: [{ tela: '/dashboard/#checklist', alvo: 'botao', rotulo: 'Marcou como concluído: Passo', criado_em: antigo }], error: null } }), store: { crm_ficha_v2: '1' } });
   await abre(h, pessoa({ user_id: 'u1' }));
   check('mais de 48 h sem atividade: banner "há 5 dias"', h.el('pessoa-page').innerHTML.includes('Sem atividade dela no checklist há 5 dias'));
+  h.mod.pararAoVivo();
+}
+
+console.log('== Task 15: sessão provisória Caso, Espaço e Guias ==');
+{
+  const h = await carregarCrm({ respostas: base({ 'contatos:one': { data: { dossie: {}, user_id: 'u1' }, error: null } }) });
+  const html = await abre(h, pessoa());
+  h.mod.state.ptab = 'plataforma';
+  await h.mod.renderPessoa();
+  const pl = h.el('pessoa-page').innerHTML;
+  check('Plataforma tem a sessão Caso, Espaço e Guias (fechada)', pl.includes('data-sessao="caso"') && pl.includes('Caso, Espaço e Guias') && !pl.includes('id="caso-box"'));
+  check('a sessão fica no grupo da equipe', /fx-grupo-ela[\s\S]*data-sessao="caso"/.test(pl));
+  await h.click({ fx: 'sessao', id: 'caso' });
+  const aberta = h.el('pessoa-page').innerHTML + h.el('fx-corpo').innerHTML;
+  check('abrir a sessão mostra o painel do Caso', aberta.includes('id="caso-box"'));
   h.mod.pararAoVivo();
 }
 

@@ -122,7 +122,7 @@ export function ordenarFila(itens) {
 }
 
 // ---------- Ordem das sessões e preferências do navegador (spec §5.2) ----------
-export const SESSOES_PADRAO = { app: ['chat', 'inicio', 'checklist'], ela: ['bilan', 'dossie', 'hist'] };
+export const SESSOES_PADRAO = { app: ['chat', 'inicio', 'checklist'], ela: ['bilan', 'dossie', 'hist', 'caso'] };
 export function moverSessao(ordem, id, delta) {
   const o = (ordem || []).slice(), i = o.indexOf(id), j = i + delta;
   if (i < 0 || j < 0 || j >= o.length) return o;
