@@ -7,8 +7,8 @@ import * as ES from './estudio.js?v=2026-11-12.10';   // os blocos do estúdio d
 import * as EE from './editor-email.js?v=2026-11-12.10';
 import * as EQ from './editor-quem.js?v=2026-11-12.10';
 import * as JR from './jornada.js?v=2026-11-12.10';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
-import * as FX from './ficha.js?v=2026-11-13.4';   // ficha v2: lógica pura (fila, démarches, funil, ações)
-import * as FH from './ficha-html.js?v=2026-11-13.4';   // ficha v2: HTML puro
+import * as FX from './ficha.js?v=2026-11-13.5';   // ficha v2: lógica pura (fila, démarches, funil, ações)
+import * as FH from './ficha-html.js?v=2026-11-13.5';   // ficha v2: HTML puro
 
 var PERSONAS = {
   au_pair_estudante: 'Au pair → estudante', campus_france: 'Campus France', alternancia_emprego: 'Alternância / emprego',
@@ -2481,7 +2481,7 @@ function fxHeaderHtml(c, d) {
 // Catálogo de démarches (cópia do app, processos.json): carregado uma vez; sem ele, tudo cai na démarche padrão.
 var FX_PROC = null;
 async function fxCarregaProcessos() {
-  try { var r = await fetch('processos.json?v=2026-11-13.4'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
+  try { var r = await fetch('processos.json?v=2026-11-13.5'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
 }
 // A sessão Checklist: pílulas por démarche, os 4 mais urgentes, pasta do Drive privada e "Ver mais desta sessão".
 function fxChecklistCorpo(c) {
@@ -2523,7 +2523,9 @@ function fxCorpo(c, d, tab) {
   // Ficha (captação): o fluxo de 3 passos e os painéis que já existiam (feed, e-mails, jornada, quem é ela, mais).
   var etapa = FX.etapaFunil(c, { mails: d.mails || [], propostas: [], temBilan: !!(state.bilan && state.bilan.cid === c.id) }), h4 = d.h4 || H4_PLAT;
   // Três colunas, cada uma com um papel: à esquerda quem ela é e onde está no funil; no meio o que ela fez; à direita o que fazer (e-mail).
-  var quem = '<div class="panel" style="padding:16px"><h4 style="' + h4 + '">Quem é ela</h4>' + kvHtml(respostasKv(c, d.jor)) + '</div>';
+  // Quem é ela abre e fecha: fechado mostra só o essencial (persona e etapa) numa linha; aberto, todas as respostas.
+  var qrows = respostasKv(c, d.jor), qresumo = qrows.slice(0, 2).filter(function (x) { return !x[2]; }).map(function (x) { return x[1]; }).join(' · ');
+  var quem = '<details class="panel fx-quem"><summary><span class="fx-quem-t">Quem é ela</span>' + (qresumo ? '<span class="fx-quem-r">' + esc(qresumo) + '</span>' : '') + '</summary>' + kvHtml(qrows) + '</details>';
   return FH.htmlFluxo(etapa <= 3 ? 1 : etapa <= 5 ? 2 : 3, H_FX) + onbResumoHtml(c) +
     '<div class="fx-ficha3">' +
     '<aside class="fx-rail fx-ctx" aria-label="Quem é ela e jornada">' + quem + jornadaHtml(c, d.mails || [], d.resps || [], d.jor, h4, FH.htmlFunil({ etapa: etapa, semCaixa: true }, H_FX)) + '</aside>' +
