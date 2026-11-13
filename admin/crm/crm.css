@@ -1115,7 +1115,7 @@ body.st-arrastando iframe{pointer-events:none}
 /* Menu lateral: em janelas mais estreitas encurta até mostrar só os ícones (nome no balão ao passar o mouse). */
 .nav-i{flex:none}
 .nav{position:relative}
-@media (min-width: 821px) and (max-width: 1280px){
+@media (min-width: 821px) and (max-width: 1500px){
   .app{grid-template-columns:56px minmax(0,1fr); gap:16px}
   .side{align-items:center}
   .side > .link{font-size:0; padding:0 0 6px!important}
