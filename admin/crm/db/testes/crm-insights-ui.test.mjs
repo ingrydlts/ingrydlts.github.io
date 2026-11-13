@@ -124,7 +124,7 @@ await pagina('plataforma');
 const ch = canais[canais.length - 1];
 check('abre um canal para a pessoa', ch && ch.nome === 'ficha-c1');
 const alvo = ch.ons.map((x) => x.o.table + ':' + x.o.filter).sort();
-check('escuta insights, cliques, chat, propostas e o checklist dela, filtrados nela', JSON.stringify(alvo) === JSON.stringify(['chat_mensagens:contato_id=eq.c1', 'checklist_items:user_id=eq.u1', 'insights_historico:contato_id=eq.c1', 'insights_vivos:contato_id=eq.c1', 'plataforma_cliques:contato_id=eq.c1', 'propostas:contato_id=eq.c1']));
+check('escuta insights, cliques, chat, propostas, o checklist e a linha dela em contatos, filtrados nela', JSON.stringify(alvo) === JSON.stringify(['chat_mensagens:contato_id=eq.c1', 'checklist_items:user_id=eq.u1', 'contatos:id=eq.c1', 'insights_historico:contato_id=eq.c1', 'insights_vivos:contato_id=eq.c1', 'plataforma_cliques:contato_id=eq.c1', 'propostas:contato_id=eq.c1']));
 const n0 = canais.length;
 await mod.renderPessoa();
 check('redesenhar a ficha não abre outro canal', canais.length === n0);
