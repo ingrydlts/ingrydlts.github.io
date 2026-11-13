@@ -7,8 +7,8 @@ import * as ES from './estudio.js?v=2026-11-12.10';   // os blocos do estúdio d
 import * as EE from './editor-email.js?v=2026-11-12.10';
 import * as EQ from './editor-quem.js?v=2026-11-12.10';
 import * as JR from './jornada.js?v=2026-11-12.10';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
-import * as FX from './ficha.js?v=2026-11-13.2';   // ficha v2: lógica pura (fila, démarches, funil, ações)
-import * as FH from './ficha-html.js?v=2026-11-13.2';   // ficha v2: HTML puro
+import * as FX from './ficha.js?v=2026-11-13.3';   // ficha v2: lógica pura (fila, démarches, funil, ações)
+import * as FH from './ficha-html.js?v=2026-11-13.3';   // ficha v2: HTML puro
 
 var PERSONAS = {
   au_pair_estudante: 'Au pair → estudante', campus_france: 'Campus France', alternancia_emprego: 'Alternância / emprego',
@@ -871,10 +871,19 @@ function jornadaHtml(c, mails, resps, jor, h4, funil) {
     [c.estagio === 'um_a_um' || !!c.um_a_um_quando, 'Marcou 1:1', 'Ainda sem 1:1']
   ];
   var ok = degraus.filter(function (d) { return d[0]; }), ult = ok[ok.length - 1];
-  var resumo = rows.slice(0, 1).concat([['Entradas', vezes(nCapturas(c)) + (dias != null ? ' · na base há ' + haDias(dias) : '')],
+  // Mais de um funil: uma linha curta por funil (nome, 1ª data, quantas vezes) em vez de uma frase corrida.
+  var grupos = [], gi = {};
+  es.forEach(function (x) { var o = x.origem || '—'; if (gi[o] == null) { gi[o] = grupos.length; grupos.push({ o: o, n: 0, em: x.em }); } grupos[gi[o]].n++; grupos[gi[o]].ult = x.em; });
+  if (!grupos.length) origens.forEach(function (o) { grupos.push({ o: o, n: 0, em: null }); });
+  var multi = grupos.length > 1, ultimaO = ultimaOrigem(c);
+  var funisHtml = !multi ? '' : '<div class="fx-funis"><div class="k">Entrou por ' + grupos.length + ' funis</div><ul>' + grupos.map(function (g) {
+    return '<li><span class="fx-funis-nome">' + esc(origLabel(g.o)) + '</span><span class="fx-funis-meta">' + (g.em ? esc(fmtDate(g.em)) : '') + (g.n > 1 ? ' · ' + g.n + '×' : '') +
+      (g.o === ultimaO ? ' <b class="fx-funis-ult">mais recente</b>' : '') + '</span></li>';
+  }).join('') + '</ul></div>';
+  var resumo = (multi ? [] : rows.slice(0, 1)).concat([['Entradas', vezes(nCapturas(c)) + (dias != null ? ' · na base há ' + haDias(dias) : '')],
     ['Chegou até', ult[1].replace(/ · \d\d\/\d\d$/, '') + ' (' + ok.length + ' de ' + degraus.length + ' passos)']])
-    .concat(origemKv(c).filter(function (x) { return /^(Por onde passou|Campanha|Post)/.test(x[0]); }));
-  return '<div class="panel" style="padding:16px"><h4 style="' + h4 + '">Jornada no funil</h4>' + (funil || '') + kvHtml(resumo) +
+    .concat(origemKv(c).filter(function (x) { return multi ? /^(Campanha|Post)/.test(x[0]) : /^(Por onde passou|Campanha|Post)/.test(x[0]); }));
+  return '<div class="panel" style="padding:16px"><h4 style="' + h4 + '">Jornada no funil</h4>' + (funil || '') + funisHtml + kvHtml(resumo) +
     '<details class="mais-det"><summary>Cada entrada e todos os passos</summary><div class="k jn-k">Cada vez que ela entrou (' + vezes(nCapturas(c)) + ')</div>' +
     (linhas ? '<ol class="jn-list">' + linhas + '</ol>' : '<p class="sub" style="margin:0">Sem registro de captura na linha do tempo.</p>') +
     (faltam > 0 && es.length ? '<p class="sub" style="margin:6px 0 0">' + faltam + (faltam === 1 ? ' entrada mais antiga' : ' entradas mais antigas') + ' sem detalhe na linha do tempo.</p>' : '') +
@@ -2465,7 +2474,7 @@ function fxHeaderHtml(c, d) {
 // Catálogo de démarches (cópia do app, processos.json): carregado uma vez; sem ele, tudo cai na démarche padrão.
 var FX_PROC = null;
 async function fxCarregaProcessos() {
-  try { var r = await fetch('processos.json?v=2026-11-13.2'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
+  try { var r = await fetch('processos.json?v=2026-11-13.3'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
 }
 // A sessão Checklist: pílulas por démarche, os 4 mais urgentes, pasta do Drive privada e "Ver mais desta sessão".
 function fxChecklistCorpo(c) {

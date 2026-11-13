@@ -121,11 +121,14 @@ const evs = [
 const jor = J(evs);
 check('a jornada ordena as entradas e conta app e artigos', jor.entradas.length === 2 && jor.entradas[0].origem === 'bot' && jor.ativouEm === '2026-10-11T10:00:00Z' && jor.artigos === 1);
 const cj = base({ capturas: 2, origens: ['bot', 'guia-vls-ts'], ultima_origem: 'guia-vls-ts', ultima_captura_em: '2026-10-20T10:00:00Z', estagio: 'em_uso', criado_em: '2026-10-10T10:00:00Z' });
+let html1;
 html = mod.jornadaHtml(cj, [mail({ aberto_em: dias(3), status: 'aberto' })], [], jor, 'x');
-check('diz o funil de entrada e o tipo', html.includes('Funil de entrada') && html.includes('Assistente de vistos (funil de classificação)'));
+check('com 2 funis: uma linha por funil, com o mais recente marcado', html.includes('Entrou por 2 funis') && html.includes('Assistente de vistos') && html.includes('Guia VLS-TS') && html.includes('mais recente'));
+html1 = mod.jornadaHtml(base({ origem: 'guia-vls-ts', origens: ['guia-vls-ts'] }), [], [], J(), 'x');
+check('com 1 funil: segue a linha Funil de entrada com o tipo', html1.includes('Funil de entrada') && html1.includes('guia gratuito') && !html1.includes('Entrou por'));
 check('lista cada entrada com número, origem, campanha e post', html.includes('1ª vez') && html.includes('2ª vez') && html.includes('campanha camp-x') && html.includes('post post-1') && html.includes('fonte instagram'));
 check('a entrada mostra a persona e a etapa do quiz da mesma hora', html.includes('Campus France') && html.includes('Escolhendo o curso'));
-check('diz quantas vezes ela entrou e o caminho', html.includes('2 vezes') && html.includes('Assistente de vistos → Guia VLS-TS'));
+check('diz quantas vezes ela entrou e o caminho', html.includes('2 vezes'));
 check('degraus: tem ✓ onde chegou e texto "Ainda não" onde não', html.includes('Abriu o e-mail') && html.includes('Ainda não clicou em nenhum link') && html.includes('Ainda não respondeu') && html.includes('Ainda sem 1:1'));
 html = mod.jornadaHtml(base(), [], [], J(), 'x');
 check('sem nada na linha do tempo: diz isso em vez de quebrar', html.includes('Sem registro de captura') && html.includes('Ainda não recebeu e-mail do CRM'));
