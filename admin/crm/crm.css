@@ -1112,10 +1112,10 @@ body.st-arrastando{cursor:col-resize; user-select:none}
 body.st-arrastando iframe{pointer-events:none}
 @media (prefers-reduced-motion: reduce){ .st-grip::after{transition:none} }
 
-/* Menu lateral: em janelas mais estreitas encurta até mostrar só os ícones (nome no balão ao passar o mouse). */
+/* Menu lateral: sempre só os ícones no computador (nome no balão ao passar o mouse). */
 .nav-i{flex:none}
 .nav{position:relative}
-@media (min-width: 821px) and (max-width: 1500px){
+@media (min-width: 821px){
   .app{grid-template-columns:56px minmax(0,1fr); gap:16px}
   .side{align-items:center}
   .side > .link{font-size:0; padding:0 0 6px!important}
