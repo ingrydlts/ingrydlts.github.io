@@ -1,5 +1,5 @@
 // Ficha-universo, fase 1: HTML puro das peças novas. Todas recebem h = { esc, fmtDay } e escapam todo texto vindo do banco.
-import { ETAPAS_FUNIL, maisUrgentes } from './ficha.js?v=2026-11-13.1';   // o ?v= acompanha o de crm.js (cache do navegador)
+import { ETAPAS_FUNIL, maisUrgentes } from './ficha.js?v=2026-11-13.2';   // o ?v= acompanha o de crm.js (cache do navegador)
 
 
 const URG = { alta: 'Alta', media: 'Média', baixa: 'Baixa' };
@@ -41,7 +41,7 @@ export function htmlHeader(d, h) {
 }
 
 // O funil de conversão (7 etapas), em faixa larga: vive na aba Ficha, logo acima de Jornada, Quem é ela e E-mails.
-// d = { etapa (1..7) }
+// d = { etapa (1..7), semCaixa }: com semCaixa devolve só a lista (para entrar dentro do cartão da Jornada, na coluna lateral).
 export function htmlFunil(d, h) {
   const e = h.esc, etapa = Math.min(7, Math.max(1, d.etapa || 1));
   const funil = '<ol class="fx-funil" aria-label="Funil de conversão">' + ETAPAS_FUNIL.map((nome, i) => {
@@ -49,6 +49,7 @@ export function htmlFunil(d, h) {
     return '<li class="fx-seg ' + cls + '" data-etapa="' + n + '"' + (n === etapa ? ' aria-current="step"' : '') + '><span class="fx-segn">' + n + '</span><span class="fx-segt">' + e(nome) + '</span></li>';
   }).join('') + '</ol>' +
     '<p class="sub fx-funil-txt">Etapa atual: <b>' + e(ETAPAS_FUNIL[etapa - 1]) + '</b>' + (etapa < 7 ? ' · Próxima: ' + e(ETAPAS_FUNIL[etapa]) : '') + '</p>';
+  if (d.semCaixa) return '<div class="fx-funil-v" aria-label="Funil de conversão">' + funil + '</div>';
   return '<section class="panel fx-funilbox" aria-label="Funil de conversão"><h4 class="fx-h4">Funil de conversão</h4>' + funil + '</section>';
 }
 
