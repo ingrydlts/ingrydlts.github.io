@@ -931,11 +931,11 @@ details.ee-sec[open]>summary{margin-bottom:8px}
 .fx-mais-corpo{display:flex; flex-direction:column; gap:14px; width:100%; min-width:0}
 
 /* Aba Ficha: fluxo de 3 passos */
-.fx-fluxo{list-style:none; margin:0; padding:0; display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px}
-.fx-passo-fluxo{display:flex; gap:10px; align-items:flex-start; padding:10px 12px; border:1px solid var(--line); border-radius:10px; background:var(--surface-2); color:var(--ink-2)}
+.fx-fluxo{list-style:none; margin:0; padding:0; display:flex; flex-wrap:wrap; gap:6px}
+.fx-passo-fluxo{display:inline-flex; gap:6px; align-items:center; padding:3px 10px; border:1px solid var(--line); border-radius:999px; background:var(--surface-2); color:var(--ink-2); font-size:12px}
 .fx-passo-fluxo.cur{border-color:var(--moss); background:var(--moss-soft); color:var(--moss-ink)}
 .fx-passo-fluxo.done{color:var(--ink)}
-.fx-fluxo-frase{display:block; margin-top:2px; font-size:12.5px}
+.fx-fluxo-frase{display:none}   /* a frase explicativa saiu da tela: o funil da Jornada já diz onde ela está */
 
 /* Aba Ficha em três colunas: contexto (quem é ela, jornada) | o que ela fez (centro) | e-mail (ação) */
 .fx-ficha3{display:grid; grid-template-columns:280px minmax(0,1fr) 340px; grid-template-areas:"ctx centro mail"; gap:16px; align-items:start; margin-top:16px}
@@ -1003,7 +1003,6 @@ details.ee-sec[open]>summary{margin-bottom:8px}
 @media (max-width:760px){
   .fx-segt{position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap}   /* a etapa atual segue escrita em "Etapa atual:" */
   .fx-seg{position:relative; align-items:center; padding:6px 0 4px}
-  .fx-fluxo{grid-template-columns:minmax(0,1fr)}
   #fx-head-box{position:static}
   .hd-k{grid-template-columns:repeat(2,minmax(0,1fr))}
   .hd-sp{margin-left:0; width:100%}
