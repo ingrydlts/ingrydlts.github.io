@@ -4,6 +4,7 @@
   "type": "module",
   "scripts": {
     "test": "node crm-fase2.test.mjs",
+    "test:funil": "node funil.test.mjs",
     "test:editor-blocos": "node crm-editor-blocos.test.mjs",
     "test:editor-quem": "node crm-editor-quem.test.mjs",
     "test:jornada": "node crm-jornada.test.mjs",

@@ -2,13 +2,13 @@
 // Nada de service_role aqui. O banco é db/crm-fase2.sql; o desenho é o artefato "CRM Por Dentro".
 // Tudo que vem do banco é texto de terceiros (nome, e-mail, pergunta): passa sempre por esc().
 import { supabase } from '/assets/js/supabase-client.js';
-import * as TX from './taxonomia.js?v=2026-11-13.10';   // páginas, famílias e agrupamento dos modelos
-import * as ES from './estudio.js?v=2026-11-13.10';   // os blocos do estúdio de e-mails (entregas 2 e 3)
-import * as EE from './editor-email.js?v=2026-11-13.10';
-import * as EQ from './editor-quem.js?v=2026-11-13.10';
-import * as JR from './jornada.js?v=2026-11-13.10';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
-import * as FX from './ficha.js?v=2026-11-13.10';   // ficha v2: lógica pura (fila, démarches, funil, ações)
-import * as FH from './ficha-html.js?v=2026-11-13.10';   // ficha v2: HTML puro
+import * as TX from './taxonomia.js?v=2026-11-13.11';   // páginas, famílias e agrupamento dos modelos
+import * as ES from './estudio.js?v=2026-11-13.11';   // os blocos do estúdio de e-mails (entregas 2 e 3)
+import * as EE from './editor-email.js?v=2026-11-13.11';
+import * as EQ from './editor-quem.js?v=2026-11-13.11';
+import * as JR from './jornada.js?v=2026-11-13.11';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
+import * as FX from './ficha.js?v=2026-11-13.11';   // ficha v2: lógica pura (fila, démarches, funil, ações)
+import * as FH from './ficha-html.js?v=2026-11-13.11';   // ficha v2: HTML puro
 
 var PERSONAS = {
   au_pair_estudante: 'Au pair → estudante', campus_france: 'Campus France', alternancia_emprego: 'Alternância / emprego',
@@ -136,7 +136,7 @@ var P = [], PERR = '';
 // Processos sugeridos esperando a sua decisão (db/crm-processos-sugeridos.sql). Sem a migração, fica vazio.
 var PSUG = [];
 var FILA = [];   // avisos agendados que ainda não saíram, de todas as pessoas (para o bloco da Hoje)
-var state = { dosAberto: lerDosAberto(), dos: null, pc: null, ptab: null, pstab: 'assistente', pdias: {}, int: null, chatRasc: '', rascunho: {}, view: 'hoje', persona: '', sub: '', urg: '', stage: '', orig: '', camp: '', q: '', sel: null, qs: 'nova', qsel: null, inbox: 'perguntas', rs: 'nova', rsel: null, ps: 'novo', psel: null, preset: 'todos', seg: '', prevView: 'contatos',
+var state = { funilVisao: 'leads', funilPorque: null, dosAberto: lerDosAberto(), dos: null, pc: null, ptab: null, pstab: 'assistente', pdias: {}, int: null, chatRasc: '', rascunho: {}, view: 'hoje', persona: '', sub: '', urg: '', stage: '', orig: '', camp: '', q: '', sel: null, qs: 'nova', qsel: null, inbox: 'perguntas', rs: 'nova', rsel: null, ps: 'novo', psel: null, preset: 'todos', seg: '', prevView: 'contatos',
   fx: { tab: null, ord: null, abertas: {}, ag: { i: 0, pop: null }, dem: 'todas', ckTodos: false, ckMais: false, tour: true } };
 var activeCid = null;
 var me = null;
@@ -229,12 +229,16 @@ async function loadAll() {
     // Avisos de problema do app (db/problemas-app.sql do app). Sem o SQL, a tabela não existe: a aba Problemas avisa.
     supabase.from('problemas_app').select('*').order('criado_em', { ascending: false }).limit(1000),
     // A fila de avisos da IAssistente que ainda não saíram (db/crm-caso-fluxo.sql). Sem o SQL, o bloco da Hoje fica escondido.
-    supabase.from('caso_avisos').select('id,contato_id,titulo,tipo,ordem,pausa_dias,liberar_em,modo').eq('estado', 'agendado').is('liberado_em', null).order('ordem', { ascending: true }).limit(500)
+    supabase.from('caso_avisos').select('id,contato_id,titulo,tipo,ordem,pausa_dias,liberar_em,modo').eq('estado', 'agendado').is('liberado_em', null).order('ordem', { ascending: true }).limit(500),
+    // As assinaturas (db/crm-assinaturas.sql): separam quem já é cliente no Funil. Sem o SQL, todos ficam em Leads ou No app.
+    supabase.from('assinaturas').select('contato_id,status,periodo_fim,cancela_no_fim').limit(5000)
   ]);
   if (r[0].error) return fail('carregar os contatos', r[0].error);
   COMPRAS = {};
   ((r[7] && !r[7].error && r[7].data) || []).forEach(function (e) { var p = (e.dados || {}).produto; if (p) (COMPRAS[e.contato_id] = COMPRAS[e.contato_id] || {})[p] = 1; });
   C = r[0].data || [];
+  ASSIN = {};
+  ((r[13] && !r[13].error && r[13].data) || []).forEach(function (a) { ASSIN[a.contato_id] = a; });
   PSUG = r[10] && !r[10].error ? (r[10].data || []) : [];
   FILA = r[12] && !r[12].error ? (r[12].data || []) : [];
   P = r[11] && !r[11].error ? (r[11].data || []) : [];
@@ -477,15 +481,53 @@ function renderContacts() {
   }).join('') + ' <button class="link" data-clear="all" type="button">Limpar tudo</button>' : '';
 }
 
+// Funil por próxima ação (lógica pura em funil.js; design: docs/superpowers/specs/2026-11-13-funil-acao-design.md no hub).
+// Cada pessoa cai na coluna do que fazer com ela agora. Nenhum botão envia nada: todos abrem prévia, conversa ou ficha.
+var ASSIN = {};   // assinatura de cada pessoa (db/crm-assinaturas.sql); vazio se a tabela não existir
+var FUNIL_TEMP = { q: 'Quente', m: 'Morna', f: 'Fria' };
+function funilCtxDe() {
+  var escreveu = {};
+  R.forEach(function (x) { if (x.contato_id) escreveu[x.contato_id] = true; });
+  Q.forEach(function (x) { if (x.contato_id) escreveu[x.contato_id] = true; });
+  return function (c) { var cp = COMPRAS[c.id]; return { assinatura: ASSIN[c.id] || null, comprou: !!cp && Object.keys(cp).length > 0, escreveu: !!escreveu[c.id] }; };
+}
+function funilBotao(k) {
+  var b = k.botao, at = { conversa: 'data-openconv', email: 'data-emailfor', um_a_um: 'data-open1a1', ficha: 'data-open' }[b.acao];
+  if (b.desabilitado) return '<button class="btn" type="button" disabled>' + esc(b.rotulo) + '</button><span class="fn-aviso">' + esc(b.aviso) + '</span>';
+  return '<button class="btn' + (b.acao === 'ficha' ? '' : ' primary') + '" type="button" ' + at + '="' + esc(k.id) + '">' + esc(b.rotulo) + '</button>';
+}
+function funilCartao(k, c) {
+  var aberto = state.funilPorque === k.id, fl = FX.funil.rotuloFalta(k.falta);
+  var tags = (fl ? '<span class="fn-tag" title="' + esc(fl[1]) + '">' + esc(fl[0]) + '</span>' : '') +
+    (k.prazo !== null ? '<span class="fn-tag pz num">VLS-TS em ' + k.prazo + (k.prazo === 1 ? ' dia' : ' dias') + '</span>' : '');
+  var det = aberto ? '<div class="fn-mais">' + (k.linhas.length ? k.linhas.map(function (l) { return '<div><span>' + esc(l[0]) + '</span><b class="num">' + esc(l[1]) + '</b></div>'; }).join('') : '<div><span>Nenhum sinal ainda</span><b>0</b></div>') +
+    '<div><span>Total</span><b class="num">' + k.pontos + ' pontos</b></div>' + (fl ? '<div><span>' + esc(fl[0]) + '</span><b>' + esc(fl[1]) + '</b></div>' : '') + '</div>' : '';
+  return '<div class="fn-card"><div class="fn-r1"><div style="min-width:0"><button class="fn-nome" type="button" data-open="' + esc(k.id) + '">' + esc(short(c)) + '</button><span class="persona">' + esc(personaLabel(c)) + '</span></div>' +
+    '<span class="fn-temp t-' + k.temp + '">' + FUNIL_TEMP[k.temp] + '</span></div>' +
+    '<p class="fn-why">' + esc(k.motivo) + '</p>' + (tags ? '<div class="fn-tags">' + tags + '</div>' : '') +
+    '<div class="fn-acao">' + funilBotao(k) + '</div>' +
+    '<button class="fn-porque" type="button" data-fporque="' + esc(k.id) + '" aria-expanded="' + aberto + '">' + (aberto ? 'Ocultar o porquê' : 'Por que aqui?') + '</button>' + det + '</div>';
+}
 function renderBoard() {
-  var fp = $('funil-persona').value;
-  $('board').innerHTML = STAGES.map(function (s) {
-    var items = C.filter(function (c) { return c.estagio === s.k && (!fp || personaKey(c) === fp); });
-    return '<div class="col"><h3>' + s.l + ' <span class="num">' + items.length + '</span></h3><p class="desc">' + s.d + '</p>' +
-      items.map(function (c) {
-        var stale = c.dias >= 7 && s.k !== 'concluido' && s.k !== 'inativo';
-        return '<button class="kc" data-open="' + esc(c.id) + '" type="button"><b>' + esc(short(c)) + '</b><span class="persona">' + esc(personaLabel(c)) + '</span><div class="meta">' + urgPill(c.urgencia) + (stale ? '<span class="stale num">parada há ' + c.dias + ' dias</span>' : '') + '</div></button>';
-      }).join('') + '</div>';
+  var fp = $('funil-persona').value, F = FX.funil, ctxDe = funilCtxDe();
+  var lista = C.filter(function (c) { return !fp || personaKey(c) === fp; });
+  var visao = state.funilVisao || 'leads';
+  var nv = {}; lista.forEach(function (c) { var v = F.visaoDe(c, ctxDe(c)); nv[v] = (nv[v] || 0) + 1; });
+  $('funil-abas').innerHTML = F.VISOES.map(function (v) {
+    return '<button type="button" data-fv="' + v[0] + '" aria-pressed="' + (v[0] === visao) + '">' + v[1] + ' <span class="num">' + (nv[v[0]] || 0) + '</span></button>';
+  }).join('');
+  $('funil-painel').innerHTML = F.indicadoresDe(lista, ctxDe).map(function (k) {
+    return '<div class="fn-kpi' + (k.alerta ? ' warn' : '') + '"><span class="l">' + esc(k.rotulo) + '</span><strong class="num">' + esc(k.valor) + '</strong><span class="n num">' + esc(k.n) + '</span><span class="al">' + (k.alerta ? '⚠ ' : '') + esc(k.aviso) + '</span></div>';
+  }).join('');
+  var ps = F.passosDe(lista, ctxDe);
+  $('funil-passos').innerHTML = ps.passos.map(function (p, i) {
+    return '<div class="fn-passo' + (i === ps.perda ? ' perda' : '') + '"><span class="t">' + esc(p.rotulo) + '</span><strong class="num">' + p.n + '</strong><span class="p num">' + (i === 0 ? 'ponto de partida' : p.pct === null ? 'sem base' : p.pct + '% do passo anterior') + '</span></div>';
+  }).join('');
+  $('funil-passos-nota').textContent = ps.perda > 0 ? 'Maior perda depois do clique, onde a intenção já é alta: de "' + ps.passos[ps.perda - 1].rotulo + '" para "' + ps.passos[ps.perda].rotulo + '". Com ' + lista.length + ' contatos, leia como pista, não como taxa.' : '';
+  var porId = {}; lista.forEach(function (c) { porId[c.id] = c; });
+  $('board').innerHTML = F.quadroDe(lista, ctxDe, visao).map(function (col) {
+    return '<div class="col"><h3>' + esc(col.t) + ' <span class="num">' + col.cartoes.length + '</span></h3><p class="desc">' + esc(col.d) + '</p>' +
+      (col.cartoes.length ? col.cartoes.map(function (k) { return funilCartao(k, porId[k.id]); }).join('') : '<p class="fn-vazio">Ninguém aqui agora.</p>') + '</div>';
   }).join('');
 }
 
@@ -2516,7 +2558,7 @@ function fxHeaderHtml(c, d) {
 // Catálogo de démarches (cópia do app, processos.json): carregado uma vez; sem ele, tudo cai na démarche padrão.
 var FX_PROC = null;
 async function fxCarregaProcessos() {
-  try { var r = await fetch('processos.json?v=2026-11-13.10'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
+  try { var r = await fetch('processos.json?v=2026-11-13.11'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
 }
 // A sessão Checklist: pílulas por démarche, os 4 mais urgentes, pasta do Drive privada e "Ver mais desta sessão".
 function fxChecklistCorpo(c) {
@@ -4553,6 +4595,8 @@ document.addEventListener('click', async function (e) {
   if (e.target.id === 'compose-backdrop') return closeCompose();
   var t = e.target.closest('button, tr[data-id]'); if (!t) return;
   var fxr = fichaClick(t); if (fxr !== false) return fxr;   // ficha v2 (data-fx); false = não é com ela
+  if (t.dataset.fv) { state.funilVisao = t.dataset.fv; state.funilPorque = null; return renderBoard(); }
+  if (t.dataset.fporque) { state.funilPorque = state.funilPorque === t.dataset.fporque ? null : t.dataset.fporque; return renderBoard(); }
   if (t.matches('.nav')) return show(t.dataset.view);
   if (t.dataset.go) { if (t.dataset.viewPreset) applyPreset(t.dataset.viewPreset); return show(t.dataset.go); }
   if (t.dataset.preset) return applyPreset(t.dataset.preset);

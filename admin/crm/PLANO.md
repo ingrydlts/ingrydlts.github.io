@@ -9,7 +9,7 @@ Backend: o **mesmo Supabase** do app (projeto `hslhpktfgxwfvljvsxkj`). Painel: e
 |---|---|---|
 | Hoje (KPIs, "Precisa de você", 1:1) | view `crm_contatos`, `perguntas_unicas` | pronto |
 | Contatos (filtros, visões, CSV) | `crm_contatos`; rótulos de subpersona = `caminhos_opcoes` | pronto |
-| Funil (kanban por estágio) | `crm_contatos.estagio` | pronto |
+| Funil (quadro por próxima ação, em três visões: Leads, No app, Clientes) | colunas de `crm_contatos` + `assinaturas` + compras; lógica em `funil.js` | pronto no código; sem SQL novo |
 | Página da pessoa (feed, anotações, consentimento, mudar estágio) | `eventos`, `consentimentos`, `contatos.nota` | pronto |
 | Marcar 1:1 / Enviar sinal | `um_a_um`, `sinais` (o app lê com `meus_sinais()`) | pronto no painel; **falta o dashboard do app mostrar o sinal** |
 | Caixa de entrada (Perguntas únicas + Respostas: e-mail, toque no e-mail 2, página /conversa/) → "Abrir conversa" leva à aba Conversa da ficha | `perguntas_unicas`, `respostas_email` (`db/crm-fase0-email-guia.sql`) | perguntas: painel e formulário dos artigos prontos. Respostas por e-mail: chegam por `respostas@imigrantepordentro.com` (Email Routing → Worker `email()`), README do Worker seção 17 |
@@ -258,3 +258,15 @@ Reorganiza a ficha da pessoa com os dados que o CRM **já lê**: fila de hoje, h
 **Escolas que a pessoa acrescenta (12/11, `db/crm-escolas-dela.sql`, rode depois de crm-caso.sql):** no Espaço, o bloco "Escolas para você contatar" abre e fecha e tem um **+** sempre à vista: ela informa o nome, o link (https) e o que já sabe da escola (até 20 escolas). Entram em `escolas_dela` (só admin lê a tabela; a pessoa usa `minhas_escolas`, `adicionar_escola` e `remover_escola`). Você vê na aba Caso, em "Escolas que ela acrescentou" (só leitura). Teste: `npm run test:escolas-dela`.
 
 **Fila minimalista e cabeçalho fixo (13/11, `docs/superpowers/specs/2026-11-13-crm-cabecalho-fixo-design.md`):** a Fila de hoje virou uma linha de chips (nome, urgência, "N nova(s)"). O cabeçalho da pessoa é fixo no topo e mostra cartões conforme o tipo: **lead** (estágio, parada há, e-mails, entradas, respostas, próximo e-mail), **assinante** (plano, próxima cobrança, assinante desde + uso da plataforma e checklist) e **na plataforma sem assinar** (sinais de lead + uso). O uso (`ficha-uso.js`) vem dos 300 cliques mais recentes: sessões nos últimos 30 dias, cliques por sessão e duração **estimada** (do 1º ao último clique); médias só com 3+ sessões. Sem SQL e sem mudança no Worker. **Ficou para depois:** valor mensal, ticket e LTV (exigem gravar valores do Stripe), nota 0–100 de engajamento (especialistas recomendaram sinais com contagem), função no banco para uso e totais por turma de parceiros.
+
+## Funil por próxima ação (13/11)
+
+Troca o kanban por estágio (que só media uso do app) por um quadro de **próxima ação**, em três visões: **Leads** (sem conta), **No app** (conta, sem pagar) e **Clientes** (assinatura ativa ou compra registrada). **Não escreve SQL nem cria tabela. Sem dependência nova, sem build.** Design e plano: repositório do hub, `docs/superpowers/specs/2026-11-13-funil-acao-design.md` e `docs/superpowers/plans/2026-11-13-funil-acao.md`.
+
+**Arquivos:** `funil.js` (lógica pura: visão, coluna, temperatura, o que travou, botão, painel, passos; reexportado por `ficha.js` como `FX.funil`), `renderBoard()` em `crm.js` (só liga dados e eventos), seção `Funil por próxima ação` de `crm.css`, testes `db/testes/funil.test.mjs` e `crm-funil-ui.test.mjs`. `loadAll` passou a ler `assinaturas` (falha silenciosa se a tabela não existir).
+
+**Regras:** a coluna sai de `resposta_aberta_id`/`pergunta_aberta_id` (Responder agora), `um_a_um_quando` (1:1 marcado), `dias` > 30 (Paradas), temperatura, última data de e-mail (cadência de 3 dias) e `segmento`. Temperatura por pontos (clique +3, abertura +1, escreveu +3, voltou a pedir +2, conta +1, usando +1, prazo do VLS-TS em até 60 dias +2, parada há mais de 30 dias −3; quente ≥ 5, morna 2 a 4): os valores estão no topo de `funil.js` e são de partida. O clique pesa mais que a abertura porque a abertura é inflada pelo Apple Mail.
+
+**Botões** (nenhum envia sozinho): Responder (`data-openconv`), Escrever e-mail e Convidar para o 1:1 (`data-emailfor`, desabilitados sem aceite de novidades), Abrir ficha (`data-open`). "Por que aqui?" mostra a conta dos pontos.
+
+**Fase 2 (exige SQL, com teste de isolamento e Supabase de teste primeiro):** fluxo "Você quer continuar?" com saída da lista, botão Adiar, contagem de cliques por pessoa (hoje só se conhece o status do último e-mail).
