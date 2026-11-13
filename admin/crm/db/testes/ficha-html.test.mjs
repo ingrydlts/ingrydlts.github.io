@@ -24,16 +24,18 @@ console.log('== Task 8: fila, header, abas, guia ==');
   const base = { c: { id: 'c1', nome: XSS, email: 'ana@example.com', estagio: 'lead', urgencia: 'alta' }, urgLabel: 'Alta', estagioLabel: 'Lead', personaLabel: 'Au pair', cidade: 'Lyon', temConta: true, motivo: 'marcou urgência', etapa: 4,
     estagios: [{ k: 'lead', l: 'Lead' }, { k: 'em_uso', l: 'Em uso' }], chk: { pct: 40, feitos: 2, abertos: 3, vencem3: 1, adicionados: 1 }, ultima: 'hoje às 10:00' };
   const hd = FH.htmlHeader(base, h);
-  check('header: 7 segmentos do funil', count(hd, /data-etapa="[1-7]"/g) === 7);
-  check('header: aria-current só na etapa atual', count(hd, /aria-current="step"/g) === 1 && /data-etapa="4"[^>]*aria-current="step"|aria-current="step"[^>]*data-etapa="4"/.test(hd));
-  check('header: etapa atual em texto', hd.includes('Etapa atual:') && hd.includes(FX.ETAPAS_FUNIL[3]));
+  check('header: o funil não mora mais no header', !hd.includes('fx-funil') && !hd.includes('data-etapa'));
+  const fu = FH.htmlFunil({ etapa: 4 }, h);
+  check('funil: 7 segmentos', count(fu, /data-etapa="[1-7]"/g) === 7);
+  check('funil: aria-current só na etapa atual', count(fu, /aria-current="step"/g) === 1 && /data-etapa="4"[^>]*aria-current="step"|aria-current="step"[^>]*data-etapa="4"/.test(fu));
+  check('funil: etapa atual em texto', fu.includes('Etapa atual:') && fu.includes(FX.ETAPAS_FUNIL[3]));
   check('header: barra de progresso com o pct', /role="progressbar"[^>]*aria-valuenow="40"|aria-valuenow="40"[^>]*role="progressbar"/.test(hd));
   check('header: nome escapado', hd.includes('&lt;img') && !hd.includes('<img'));
   check('header: botões existentes (e-mail, 1:1, estágio)', hd.includes('data-emailfor="c1"') && hd.includes('data-open1a1="c1"') && hd.includes('id="stage-pick"'));
   const sem = FH.htmlHeader(Object.assign({}, base, { chk: null, temConta: false }), h);
   check('header sem conta: aviso e sem barra', sem.includes('Ela ainda não entrou no app') && !sem.includes('role="progressbar"'));
   check('header: erro do checklist usa a mensagem própria', FH.htmlHeader(Object.assign({}, base, { chk: null, chkMsg: 'Falta rodar db/crm-checklist.sql' }), h).includes('db/crm-checklist.sql'));
-  check('header: etapa 7 não tem "próxima"', !FH.htmlHeader(Object.assign({}, base, { etapa: 7 }), h).includes('Próxima:'));
+  check('header: etapa 7 não tem "próxima"', !FH.htmlFunil({ etapa: 7 }, h).includes('Próxima:'));
 
   const ab = FH.htmlAbas('plataforma', true, h);
   check('abas: três abas com data-fx', ['conversa', 'plataforma', 'ficha'].every((v) => ab.includes('data-fx="tab" data-v="' + v + '"')) && ab.includes('role="tablist"'));

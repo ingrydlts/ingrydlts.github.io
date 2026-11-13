@@ -209,7 +209,7 @@ console.log('== Task 13: abas Ficha e Conversa ==');
   await h.click({ fx: 'tab', v: 'ficha' });
   let pg = h.el('pessoa-page').innerHTML;
   check('Ficha, etapa 2: passo 1 destacado', /data-passo="1"[^>]*aria-current="step"/.test(pg) && (pg.match(/aria-current="step"/g) || []).length === 2);   // 1 do fluxo + 1 do funil
-  check('Ficha: painéis existentes de jornada e e-mails', pg.includes('class="pessoa-grid"') && pg.includes('Tudo que ela fez') && /Jornada|jornada/.test(pg) && pg.includes('Quem é ela'));
+  check('Ficha: painéis existentes de jornada e e-mails', pg.includes('class="fx-ficha3"') && pg.includes('Tudo que ela fez') && /Jornada|jornada/.test(pg) && pg.includes('Quem é ela'));
   check('Ficha: perguntas, consentimento, Instagram e anotações seguem na ficha', pg.includes('Consentimento') && pg.includes('id="ig-handle"') && pg.includes('id="nota"'));
   check('Ficha não traz o Checklist nem as sessões', !pg.includes('data-sessao='));
   h.mod.pararAoVivo();

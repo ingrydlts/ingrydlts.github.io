@@ -1,5 +1,5 @@
 // Ficha-universo, fase 1: HTML puro das peças novas. Todas recebem h = { esc, fmtDay } e escapam todo texto vindo do banco.
-import { ETAPAS_FUNIL, maisUrgentes } from './ficha.js?v=2026-11-13.1';   // o ?v= acompanha o de crm.js (cache do navegador)
+import { ETAPAS_FUNIL, maisUrgentes } from './ficha.js?v=2026-11-13.6';   // o ?v= acompanha o de crm.js (cache do navegador)
 
 
 const URG = { alta: 'Alta', media: 'Média', baixa: 'Baixa' };
@@ -23,12 +23,7 @@ export function htmlFila(itens, selId, h) {
 
 // d = { c, urgLabel, estagioLabel, personaLabel, cidade, temConta, motivo, etapa (1..7), estagios: [{k,l}], chk: { pct, feitos, abertos, vencem3, adicionados } | null, ultima }
 export function htmlHeader(d, h) {
-  const e = h.esc, c = d.c || {}, etapa = Math.min(7, Math.max(1, d.etapa || 1));
-  const funil = '<ol class="fx-funil" aria-label="Funil de conversão">' + ETAPAS_FUNIL.map((nome, i) => {
-    const n = i + 1, cls = n < etapa ? 'done' : n === etapa ? 'cur' : 'next';
-    return '<li class="fx-seg ' + cls + '" data-etapa="' + n + '"' + (n === etapa ? ' aria-current="step"' : '') + '><span class="fx-segn">' + n + '</span><span class="fx-segt">' + e(nome) + '</span></li>';
-  }).join('') + '</ol>' +
-    '<p class="sub fx-funil-txt">Etapa atual: <b>' + e(ETAPAS_FUNIL[etapa - 1]) + '</b>' + (etapa < 7 ? ' · Próxima: ' + e(ETAPAS_FUNIL[etapa]) : '') + '</p>';
+  const e = h.esc, c = d.c || {};
   const k = d.chk;
   const avanco = k
     ? '<h4 class="fx-h4">Avanço do projeto dela</h4><div class="dprog" role="progressbar" aria-label="Checklist feito por ela" aria-valuenow="' + e(k.pct) + '" aria-valuemin="0" aria-valuemax="100"><span style="width:' + e(k.pct) + '%"></span></div>' +
@@ -42,8 +37,20 @@ export function htmlHeader(d, h) {
     '<div class="actions" style="margin-top:12px"><button class="btn primary" type="button" data-emailfor="' + e(c.id) + '">Escrever mensagem</button>' +
     '<button class="btn" type="button" data-open1a1="' + e(c.id) + '">Marcar 1:1</button>' +
     '<div class="sel"><select id="stage-pick" aria-label="Mudar estágio">' + (d.estagios || []).map((s) => '<option value="' + e(s.k) + '"' + (s.k === c.estagio ? ' selected' : '') + '>Estágio: ' + e(s.l) + '</option>').join('') + '</select></div></div></div>' +
-    '<div class="fx-h-funil"><h4 class="fx-h4">Funil de conversão</h4>' + funil + '</div>' +
     '<div class="fx-h-avanco">' + avanco + (d.ultima ? '<p class="sub fx-av-txt">Última atividade: ' + e(d.ultima) + '</p>' : '') + '</div></header>';
+}
+
+// O funil de conversão (7 etapas), em faixa larga: vive na aba Ficha, logo acima de Jornada, Quem é ela e E-mails.
+// d = { etapa (1..7), semCaixa }: com semCaixa devolve só a lista (para entrar dentro do cartão da Jornada, na coluna lateral).
+export function htmlFunil(d, h) {
+  const e = h.esc, etapa = Math.min(7, Math.max(1, d.etapa || 1));
+  const funil = '<ol class="fx-funil" aria-label="Funil de conversão">' + ETAPAS_FUNIL.map((nome, i) => {
+    const n = i + 1, cls = n < etapa ? 'done' : n === etapa ? 'cur' : 'next';
+    return '<li class="fx-seg ' + cls + '" data-etapa="' + n + '"' + (n === etapa ? ' aria-current="step"' : '') + '><span class="fx-segn">' + n + '</span><span class="fx-segt">' + e(nome) + '</span></li>';
+  }).join('') + '</ol>' +
+    '<p class="sub fx-funil-txt">Etapa atual: <b>' + e(ETAPAS_FUNIL[etapa - 1]) + '</b>' + (etapa < 7 ? ' · Próxima: ' + e(ETAPAS_FUNIL[etapa]) : '') + '</p>';
+  if (d.semCaixa) return '<div class="fx-funil-v" aria-label="Funil de conversão">' + funil + '</div>';
+  return '<section class="panel fx-funilbox" aria-label="Funil de conversão"><h4 class="fx-h4">Funil de conversão</h4>' + funil + '</section>';
 }
 
 export function htmlAbas(tab, convertida, h) {
