@@ -1,6 +1,6 @@
 # CRM: fila minimalista e cabeçalho fixo com sinais por tipo de pessoa
 
-Data: 2026-11-13. Escopo: `admin/crm` (ficha v2). Sem SQL novo, sem mudança no Worker.
+Data: 2026-11-13. **Status: aprovado pela Ingryd em 2026-11-13.** Escopo: `admin/crm` (ficha v2). Sem SQL novo, sem mudança no Worker.
 
 ## Intenção e por quê
 A Ingryd precisa, sempre à vista, de: quem ela é, em que ponto está e se a ação de e-mail faz sentido. Hoje a **Fila de hoje** e o cabeçalho
