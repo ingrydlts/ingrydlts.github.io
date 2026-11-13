@@ -1,5 +1,5 @@
 // Ficha-universo, fase 1: HTML puro das peças novas. Todas recebem h = { esc, fmtDay } e escapam todo texto vindo do banco.
-import { ETAPAS_FUNIL, maisUrgentes } from './ficha.js?v=2026-11-13.7';   // o ?v= acompanha o de crm.js (cache do navegador)
+import { ETAPAS_FUNIL, maisUrgentes } from './ficha.js?v=2026-11-13.8';   // o ?v= acompanha o de crm.js (cache do navegador)
 
 
 const URG = { alta: 'Alta', media: 'Média', baixa: 'Baixa' };

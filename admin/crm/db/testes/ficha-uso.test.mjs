@@ -50,5 +50,15 @@ console.log('== Uso da plataforma ==');
   check('última atividade há 1 dia', v.diasDesdeUltima === 1);
 }
 
+console.log('== Revisão final: sessão que fica aberta por dias ==');
+{
+  const c = [{ sessao: 'a', criado_em: t(3) }, { sessao: 'a', criado_em: t(0.5) }, ...sessao('b', 2, 2, 60), ...sessao('c', 1.5, 2, 60)];
+  const v = calcularUso(c, AGORA);
+  check('mesmo id de sessão com mais de 30 min entre cliques vira sessões separadas', v.sessoes === 4);
+  check('duração nunca vira horas por causa de aba aberta por dias', v.duracaoSeg !== null && v.duracaoSeg < 600);
+  const junto = calcularUso(sessao('a', 1, 3, 600), AGORA);
+  check('cliques a até 30 min um do outro continuam sendo uma sessão só', junto.sessoes === 1);
+}
+
 console.log(`\n${failed ? failed + ' FALHARAM, ' : ''}${passed} passaram`);
 process.exit(failed ? 1 : 0);

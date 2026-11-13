@@ -3,7 +3,7 @@
 
 // ---------- Urgência dos passos do checklist (spec §5.4) ----------
 // ChkItem = { step_key, category, label, status, due_date, sort_order } (colunas de buscaChecklist em crm.js).
-export { calcularUso } from './ficha-uso.js?v=2026-11-13.7';
+export { calcularUso } from './ficha-uso.js?v=2026-11-13.8';
 const DIA = 86400e3;
 function diasEntre(hoje, data) {
   const a = Date.parse(hoje + 'T00:00:00Z'), b = Date.parse(String(data).slice(0, 10) + 'T00:00:00Z');
@@ -182,15 +182,21 @@ export function etiquetaPagamento(assin) {
 const plural = (n, um, varios) => n + ' ' + (n === 1 ? um : varios);
 const dm = (iso) => { const m = /^\d{4}-(\d\d)-(\d\d)/.exec(String(iso || '')); return m ? m[2] + '/' + m[1] : '—'; };
 const dma = (iso) => { const m = /^(\d{4})-(\d\d)-(\d\d)/.exec(String(iso || '')); return m ? m[3] + '/' + m[2] + '/' + m[1] : '—'; };
-function fmtDuracao(seg) { return seg < 60 ? Math.round(seg) + ' s' : Math.round(seg / 60) + ' min'; }
+function fmtDuracao(seg) {
+  if (seg < 60) return Math.round(seg) + ' s';
+  const min = Math.round(seg / 60);
+  return min < 60 ? min + ' min' : Math.floor(min / 60) + ' h' + (min % 60 ? ' ' + (min % 60) + ' min' : '');
+}
+const haDias = (n) => (n === 0 ? 'hoje' : 'há ' + plural(n, 'dia', 'dias'));
 const cartao = (rotulo, valor, sub, tom) => (tom ? { rotulo, valor, sub, tom } : { rotulo, valor, sub });
 
 function cartoesUso(d) {
   const u = d.uso || {}, k = d.chk;
-  const sessoes = u.sessoes > 0
-    ? cartao('Sessões', String(u.sessoes), u.diasDesdeUltima != null ? 'última há ' + plural(u.diasDesdeUltima, 'dia', 'dias') : '')
-    : cartao('Sessões', '—', u.diasDesdeUltima != null ? 'nenhuma nos últimos 30 dias · última há ' + plural(u.diasDesdeUltima, 'dia', 'dias') : 'ainda sem cliques');
-  const pouco = u.sessoes > 0 && !u.suficiente ? 'poucos dados (menos de 3 sessões)' : 'sem cliques para calcular';
+  let sessoes;
+  if (u.sessoes > 0) sessoes = cartao('Sessões', String(u.sessoes), u.diasDesdeUltima != null ? 'última ' + haDias(u.diasDesdeUltima) : '');
+  else if (u.semSessao > 0) sessoes = cartao('Sessões', '—', plural(u.semSessao, 'clique sem sessão registrada', 'cliques sem sessão registrada'));
+  else sessoes = cartao('Sessões', '—', u.diasDesdeUltima != null ? 'nenhuma nos últimos 30 dias · última ' + haDias(u.diasDesdeUltima) : 'ainda sem cliques');
+  const pouco = u.sessoes > 0 && !u.suficiente ? 'poucos dados (menos de 3 sessões)' : u.semSessao > 0 ? 'sessões não identificadas' : u.diasDesdeUltima != null ? 'nenhuma sessão nos últimos 30 dias' : 'sem cliques para calcular';
   const cliques = u.suficiente && u.cliquesPorSessao != null ? cartao('Cliques por sessão', String(u.cliquesPorSessao).replace('.', ','), 'média das sessões') : cartao('Cliques por sessão', '—', pouco);
   const dur = u.suficiente && u.duracaoSeg != null ? cartao('Duração (estimada)', fmtDuracao(u.duracaoSeg), 'do 1º ao último clique') : cartao('Duração (estimada)', '—', pouco);
   let chk;
@@ -210,11 +216,12 @@ export function cartoesDe(tipo, d) {
     const a = d.assin || {}, fimTeste = a.status === 'trialing';
     const dataCobr = fimTeste ? (a.teste_fim || a.periodo_fim) : a.periodo_fim;
     const rotCobr = fimTeste ? 'Fim do teste' : a.cancela_no_fim ? 'Acesso até' : 'Próxima cobrança';
-    const subCobr = fimTeste ? 'depois vira cobrança' : a.cancela_no_fim ? 'cancela no fim do período' : 'renovação automática';
+    const passou = !!dataCobr && Date.parse(dataCobr) < (d.agora || Date.now()) && !a.cancela_no_fim;
+    const subCobr = passou ? 'data já passou: confira no Stripe' : fimTeste ? (a.cancela_no_fim ? 'cancela no fim do teste' : 'depois vira cobrança') : a.cancela_no_fim ? 'cancela no fim do período' : 'renovação automática';
     const dias = a.criado_em ? Math.floor(((d.agora || Date.now()) - Date.parse(a.criado_em)) / 864e5) : null;
     const desde = dias == null || !Number.isFinite(dias) ? cartao('Assinante desde', '—', '') : cartao('Assinante desde', dias < 30 ? plural(Math.max(dias, 0), 'dia', 'dias') : plural(Math.floor(dias / 30), 'mês', 'meses'), 'desde ' + dma(a.criado_em));
     return { blocos: [
-      { titulo: 'Pagamento', cartoes: [cartao('Plano', a.plano || '—', etiquetaPagamento(a).texto, 'ok'), cartao(rotCobr, dm(dataCobr), subCobr), desde] },
+      { titulo: 'Pagamento', cartoes: [cartao('Plano', a.plano || '—', etiquetaPagamento(a).texto, 'ok'), cartao(rotCobr, dm(dataCobr), subCobr, passou ? 'alerta' : undefined), desde] },
       { titulo: 'Uso da plataforma · últimos 30 dias', cartoes: cartoesUso(d) }
     ], nota: 'Baseado nos 300 cliques mais recentes. Valor mensal, ticket e LTV ficam para uma segunda etapa.' };
   }

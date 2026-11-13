@@ -158,5 +158,24 @@ console.log('== Cabeçalho fixo: tipo e cartões ==');
   check('plataforma: sem cliques nenhum → sessões traço e "ainda sem cliques"', por(r, 'Sessões').valor === '—' && /sem cliques/.test(por(r, 'Sessões').sub) && cart(r).length === 6);
 }
 
+console.log('== Revisão final: cartões ==');
+{
+  const uso = (o) => Object.assign({ sessoes: 12, semSessao: 0, cliquesPorSessao: 18, duracaoSeg: 360, ultimaEm: '2026-11-13T10:00:00Z', diasDesdeUltima: 0, suficiente: true }, o || {});
+  const base = (o) => Object.assign({ c: { dias_sem_sinal: 1 }, estagioLabel: 'Em uso', assin: null, uso: uso(), chk: null, chkMsg: 'x', respostas: 0, respostasNovas: 0, agora: Date.parse('2026-11-13T12:00:00Z') }, o || {});
+  const cart = (r) => r.blocos.reduce((a, b) => a.concat(b.cartoes), []);
+  const por = (r, rot) => cart(r).filter((x) => x.rotulo === rot)[0];
+  check('duração acima de 60 min mostra horas', por(FX.cartoesDe('plataforma', base({ uso: uso({ duracaoSeg: 5400 }) })), 'Duração (estimada)').valor === '1 h 30 min');
+  check('"última há 0 dias" vira "última hoje"', por(FX.cartoesDe('plataforma', base()), 'Sessões').sub === 'última hoje');
+  let r = FX.cartoesDe('plataforma', base({ uso: uso({ sessoes: 0, semSessao: 4, suficiente: false, cliquesPorSessao: null, duracaoSeg: null }) }));
+  check('só cliques sem sessão: diz que houve uso e não afirma "sem cliques"', /sem sessão/.test(por(r, 'Sessões').sub) && !/nenhuma nos últimos/.test(por(r, 'Sessões').sub) && !/sem cliques para calcular/.test(por(r, 'Cliques por sessão').sub));
+  r = FX.cartoesDe('plataforma', base({ uso: uso({ sessoes: 0, semSessao: 0, suficiente: false, cliquesPorSessao: null, duracaoSeg: null, diasDesdeUltima: 40 }) }));
+  check('só cliques antigos: diz "nenhuma sessão nos últimos 30 dias", não "sem cliques"', /nenhuma/.test(por(r, 'Sessões').sub) && !/sem cliques para calcular/.test(por(r, 'Cliques por sessão').sub));
+  const ass = (o) => Object.assign({ status: 'active', plano: 'P', criado_em: '2026-08-02T10:00:00Z', periodo_fim: '2026-12-02T10:00:00Z', cancela_no_fim: false }, o || {});
+  r = FX.cartoesDe('assinante', base({ assin: ass({ status: 'trialing', teste_fim: '2026-11-20T00:00:00Z', cancela_no_fim: true }) }));
+  check('teste que vai cancelar não diz que "vira cobrança"', !/vira cobrança/.test(por(r, 'Fim do teste').sub) && /cancela/.test(por(r, 'Fim do teste').sub));
+  r = FX.cartoesDe('assinante', base({ assin: ass({ periodo_fim: '2026-11-02T10:00:00Z' }) }));
+  check('data de cobrança já passada: avisa para conferir no Stripe, em alerta', /confira/.test(por(r, 'Próxima cobrança').sub) && por(r, 'Próxima cobrança').tom === 'alerta');
+}
+
 console.log('\n' + passed + ' passaram, ' + failed + ' falharam');
 if (failed) process.exit(1);

@@ -7,8 +7,8 @@ import * as ES from './estudio.js?v=2026-11-12.10';   // os blocos do estúdio d
 import * as EE from './editor-email.js?v=2026-11-12.10';
 import * as EQ from './editor-quem.js?v=2026-11-12.10';
 import * as JR from './jornada.js?v=2026-11-12.10';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
-import * as FX from './ficha.js?v=2026-11-13.7';   // ficha v2: lógica pura (fila, démarches, funil, ações)
-import * as FH from './ficha-html.js?v=2026-11-13.7';   // ficha v2: HTML puro
+import * as FX from './ficha.js?v=2026-11-13.8';   // ficha v2: lógica pura (fila, démarches, funil, ações)
+import * as FH from './ficha-html.js?v=2026-11-13.8';   // ficha v2: HTML puro
 
 var PERSONAS = {
   au_pair_estudante: 'Au pair → estudante', campus_france: 'Campus France', alternancia_emprego: 'Alternância / emprego',
@@ -2486,7 +2486,7 @@ function fxHeaderHtml(c, d) {
 // Catálogo de démarches (cópia do app, processos.json): carregado uma vez; sem ele, tudo cai na démarche padrão.
 var FX_PROC = null;
 async function fxCarregaProcessos() {
-  try { var r = await fetch('processos.json?v=2026-11-13.7'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
+  try { var r = await fetch('processos.json?v=2026-11-13.8'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
 }
 // A sessão Checklist: pílulas por démarche, os 4 mais urgentes, pasta do Drive privada e "Ver mais desta sessão".
 function fxChecklistCorpo(c) {
@@ -2569,8 +2569,16 @@ function fxRepinta() {
   fxPos(c);
 }
 // Depois de pintar: rola o chat para o fim (e marca como lido, como a ficha antiga fazia) e destaca a sessão do deep link.
+// A altura do cabeçalho fixo vira --hd-h: as colunas fixas e o destino de "Ir para" começam logo abaixo dele (sem ficar escondidos).
+function fxMedeCabecalho() {
+  var hb = $('fx-head-box'), r = document.documentElement;
+  if (!hb || !r || !r.style || !r.style.setProperty) return;
+  var fixo = window.matchMedia ? !window.matchMedia('(max-width: 760px)').matches : true;
+  r.style.setProperty('--hd-h', fixo && hb.offsetHeight ? hb.offsetHeight + 'px' : '0px');
+}
 function fxPos(c) {
   var f = state.fx;
+  fxMedeCabecalho();
   if (f.tab === 'plataforma' && fxSessaoAberta('chat')) {
     var fio = $('chat-fio'); if (fio) fio.scrollTop = fio.scrollHeight;
     var tx = $('chat-txt'); if (tx && state.chatRasc) tx.value = state.chatRasc;
@@ -2588,7 +2596,7 @@ function fxLive(c) {
   var f = state.fx, d = f.dados; if (!d || f.cid !== c.id) return;
   var cv = fxContato(c, d.uid);
   f.tarefas = fxTarefas(cv, d);
-  var hb = $('fx-head-box'); if (hb) hb.innerHTML = fxHeaderHtml(cv, d);
+  var hb = $('fx-head-box'); if (hb) { hb.innerHTML = fxHeaderHtml(cv, d); fxMedeCabecalho(); }
   fxPintaChk(cv);
   if (f.ag.pop === null) { var ab = $('fx-acoes-box'); if (ab) ab.innerHTML = FH.htmlCarrossel(f.tarefas, H_FX, f.ag.i); }
 }

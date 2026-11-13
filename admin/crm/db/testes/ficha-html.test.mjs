@@ -137,5 +137,15 @@ console.log('== Cabeçalho fixo ==');
   check('cabeçalho: sem blocos não quebra', FH.htmlCabecalho({ c: { id: 'z', nome: 'Z' } }, h).includes('class="hd"'));
 }
 
+console.log('== Funil de conversão (lista vertical da Jornada) ==');
+{
+  const fu = FH.htmlFunil({ etapa: 4, semCaixa: true }, h);
+  check('funil: 7 segmentos', count(fu, /data-etapa="[1-7]"/g) === 7);
+  check('funil: aria-current só na etapa atual', count(fu, /aria-current="step"/g) === 1 && /data-etapa="4"[^>]*aria-current="step"|aria-current="step"[^>]*data-etapa="4"/.test(fu));
+  check('funil: etapas feitas, atual e próximas', count(fu, /fx-seg done/g) === 3 && count(fu, /fx-seg cur/g) === 1 && count(fu, /fx-seg next/g) === 3);
+  check('funil: etapa 7 não tem "Próxima:" e etapa fora da faixa é limitada', !FH.htmlFunil({ etapa: 7 }, h).includes('Próxima:') && FH.htmlFunil({ etapa: 99, semCaixa: true }, h).includes('data-etapa="7"') && /data-etapa="7"[^>]*aria-current="step"|aria-current="step"[^>]*data-etapa="7"/.test(FH.htmlFunil({ etapa: 99, semCaixa: true }, h)));
+  check('funil sem caixa não traz o título; com caixa traz', !fu.includes('<h4') && FH.htmlFunil({ etapa: 2 }, h).includes('Funil de conversão</h4>'));
+}
+
 console.log('\n' + passed + ' passaram, ' + failed + ' falharam');
 if (failed) process.exit(1);

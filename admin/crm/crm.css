@@ -243,7 +243,7 @@ td .nm span{font-size:12px; color:var(--ink-2)}
 .pessoa-head{display:flex; gap:14px; align-items:flex-start}
 .pessoa-grid{display:grid; grid-template-columns:minmax(0,1.4fr) minmax(0,1fr); gap:16px; align-items:start}
 .feed{display:flex; flex-direction:column}
-.plat-fixa{display:flex; flex-direction:column; gap:16px; min-width:0; position:sticky; top:12px; max-height:calc(100vh - 24px); overflow-y:auto}
+.plat-fixa{display:flex; flex-direction:column; gap:16px; min-width:0; position:sticky; top:calc(var(--hd-h, 0px) + 20px); max-height:calc(100vh - var(--hd-h, 0px) - 32px); overflow-y:auto}
 .intdia summary{display:flex; flex-wrap:wrap; gap:8px; align-items:center}
 .intdia summary .dchips{margin-left:auto}
 .feeditem{display:flex; gap:10px; align-items:baseline; padding:9px 0; border-top:1px solid var(--line)}
@@ -939,9 +939,9 @@ details.ee-sec[open]>summary{margin-bottom:8px}
 
 /* Aba Ficha em três colunas: contexto (quem é ela, jornada) | o que ela fez (centro) | e-mail (ação) */
 .fx-ficha3{display:grid; grid-template-columns:280px minmax(0,1fr) 340px; grid-template-areas:"ctx centro mail"; gap:16px; align-items:start; margin-top:16px}
-.fx-ctx{grid-area:ctx; position:sticky; top:12px; display:flex; flex-direction:column; gap:12px; min-width:0}
+.fx-ctx{grid-area:ctx; position:sticky; top:calc(var(--hd-h, 0px) + 20px); max-height:calc(100vh - var(--hd-h, 0px) - 32px); overflow-y:auto; display:flex; flex-direction:column; gap:12px; min-width:0}
 .fx-centro{grid-area:centro; display:flex; flex-direction:column; gap:12px; min-width:0}
-.fx-mail{grid-area:mail; position:sticky; top:12px; min-width:0}
+.fx-mail{grid-area:mail; position:sticky; top:calc(var(--hd-h, 0px) + 20px); max-height:calc(100vh - var(--hd-h, 0px) - 32px); overflow-y:auto; min-width:0}
 .fx-ctx .kv,.fx-mail .kv{grid-template-columns:minmax(0,1fr); gap:0}
 .fx-ctx .kv dt{font-size:11.5px; margin-top:8px}
 .fx-ctx .kv dd{overflow-wrap:anywhere}
@@ -977,11 +977,12 @@ details.ee-sec[open]>summary{margin-bottom:8px}
 .fx-funil-v .fx-funil-txt{display:none}
 @media (max-width:1180px){
   .fx-ficha3{grid-template-columns:minmax(0,1fr) minmax(0,1fr); grid-template-areas:"ctx mail" "centro centro"}
-  .fx-ctx,.fx-mail{position:static}
+  .fx-ctx,.fx-mail{position:static; max-height:none; overflow:visible}
 }
 
 /* Cabeçalho fixo da ficha: o contêiner é que gruda (um pai só tão alto quanto o header não deixaria o sticky funcionar) */
-#fx-head-box{position:sticky; top:8px; z-index:5; margin-top:8px}
+#fx-head-box{position:sticky; top:8px; z-index:6; margin-top:8px}
+.fx [data-sessao],#fx-acoes{scroll-margin-top:calc(var(--hd-h, 0px) + 20px)}
 .hd{background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:12px 14px; box-shadow:0 4px 14px rgba(0,0,0,.06)}
 .hd-l1{display:flex; align-items:center; gap:10px; flex-wrap:wrap}
 .hd-av{width:30px; height:30px; border-radius:50%; background:var(--moss-soft); display:grid; place-items:center; font-size:11px; font-weight:700; color:var(--moss-ink); flex:0 0 auto}
@@ -1004,6 +1005,7 @@ details.ee-sec[open]>summary{margin-bottom:8px}
   .fx-segt{position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap}   /* a etapa atual segue escrita em "Etapa atual:" */
   .fx-seg{position:relative; align-items:center; padding:6px 0 4px}
   #fx-head-box{position:static}
+  .fx [data-sessao],#fx-acoes{scroll-margin-top:12px}
   .hd-k{grid-template-columns:repeat(2,minmax(0,1fr))}
   .hd-sp{margin-left:0; width:100%}
   .fx .pessoa-grid{grid-template-columns:minmax(0,1fr)}
