@@ -3,6 +3,7 @@
 //
 // Uso: cd admin/crm/db/testes && node crm-proximo-email-ui.test.mjs
 import * as TXMOD from '../../taxonomia.js';
+import * as JRMOD from '../../jornada.js';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -30,8 +31,8 @@ const supabase = { from: qb, auth: { getSession: async () => ({ data: { session:
   channel: () => ({ on() { return this; }, subscribe() { return this; } }), removeChannel() {} };
 const store = {};
 const mod = new Function('supabase', 'ES', 'TX', 'EE', 'EQ', 'JR', 'document', 'window', 'location', 'localStorage', 'setInterval', 'clearInterval',
-  src + '\n;return { state, setC: function (v) { C = v; }, renderPessoa, proximoEmail, montaJornada, jornadaHtml, emailsPanel };')(
-  supabase, {}, TXMOD, { iniciar() {}, depois() {}, campoMudou() {} }, {}, {}, document, { addEventListener() {} }, { href: '' }, { getItem: (k) => store[k] ?? null, setItem: (k, v) => { store[k] = v; } }, () => 1, () => {});
+  src + '\n;return { state, setC: function (v) { C = v; }, renderPessoa, proximoEmail, montaJornada, jornadaHtml, emailsPanel, respostasKv };')(
+  supabase, {}, TXMOD, { iniciar() {}, depois() {}, campoMudou() {} }, {}, JRMOD, document, { addEventListener() {} }, { href: '' }, { getItem: (k) => store[k] ?? null, setItem: (k, v) => { store[k] = v; } }, () => 1, () => {});
 
 const dias = (n) => new Date(Date.now() - n * 864e5).toISOString();
 const base = (o = {}) => Object.assign({ id: 'c1', email: 'isa@example.com', nome: 'Isabelle', estagio: 'lead', urgencia: 'baixa', persona: 'au_pair_estudante', origem: 'bot',
@@ -43,9 +44,15 @@ const XSS = '<img src=x onerror=alert(1)>';
 
 console.log('== Quando ela nunca recebeu e-mail ==');
 let p = prox(base());
-check('primeiro contato: pode enviar agora, com o modelo de boas-vindas', p.quando === 'agora' && p.k === 'boas_vindas' && /Primeiro contato/.test(p.titulo));
-check('o ângulo cita o funil e pede uma pergunta fácil', /Assistente de vistos/.test(p.angulo) && /pergunta/.test(p.angulo));
+check('origem sem página: nunca sugere boas-vindas nem o app; manda convidar para o 1:1', p.k === null && p.quando === 'nao' && /1:1/.test(p.titulo) && /boas-vindas/i.test(p.angulo));
 check('os sinais dizem que não recebeu nenhum e-mail', p.sinais.some((s) => /nenhum e-mail pelo CRM/.test(s)));
+const ap = base({ origem: 'guia-checklist-chegada-au-pair', origens: ['guia-checklist-chegada-au-pair'], respostas: { objetivo: 'ap-nao-sei-comecar' } });
+p = prox(ap);
+check('página sem e-mail de Primeiro contato: avisa o buraco da Jornada e não sugere modelo', p.k === null && /Falta o e-mail de primeiro contato/.test(p.titulo) && /Jornada/.test(p.angulo) && !/Boas-vindas/.test(p.titulo));
+p = prox(base({ origem: 'guia-vls-ts', origens: ['guia-vls-ts'] }));
+check('página com e-mail de Primeiro contato: sugere o convite para o 1:1 dela', p.quando === 'agora' && p.k === 'guia_chamada' && /1:1/.test(p.titulo));
+p = prox(ap, [], [], J());
+check('1:1 pelo estágio (sem data): nada de campanha', prox(Object.assign({}, ap, { estagio: 'um_a_um' })).quando === 'nao' && /1:1 marcado/.test(prox(Object.assign({}, ap, { estagio: 'um_a_um' })).titulo));
 p = prox(base({ respostas: { objetivo: 'cf-escolhendo-curso' } }));
 check('cita a etapa que ela escolheu', /escolhendo o curso/i.test(p.angulo));
 
@@ -92,8 +99,9 @@ check('e-mail do bilan saiu há 1h: espera e não oferece boas-vindas', p.quando
 console.log('\n== O bloco na tela ==');
 let html = mod.emailsPanel(base(), [], 'x', [], J());
 check('sem prévia em miniatura (o que não servia)', !html.includes('mailthumb') && !html.includes('thumbframe') && !html.includes('<iframe'));
-check('mostra selo em texto, título e ângulo', html.includes('Pode enviar agora') && html.includes('Primeiro contato') && html.includes('ins-ang'));
-check('mantém o botão que abre o e-mail para revisar', /data-emailfor="c1"[^>]*data-tplk="boas_vindas"/.test(html) && html.includes('Revisar e enviar'));
+check('sem modelo para sugerir: selo "Não envie agora", sem botão de revisar e sem boas-vindas', html.includes('Não envie agora') && html.includes('ins-ang') && !html.includes('Revisar e enviar') && !html.includes('Boas-vindas'));
+html = mod.emailsPanel(base({ origem: 'guia-vls-ts', origens: ['guia-vls-ts'] }), [], 'x', [], J());
+check('com modelo: mostra selo em texto e o botão que abre o e-mail para revisar', html.includes('Pode enviar agora') && /data-emailfor="c1"[^>]*data-tplk="guia_chamada"/.test(html) && html.includes('Revisar e enviar'));
 check('os sinais ficam num bloco que abre e fecha', html.includes('O que a ficha mostra') && html.includes('<details'));
 html = mod.emailsPanel(base({ origem: 'guia-vls-ts', origens: ['guia-vls-ts'] }), [mail({ enviado_em: dias(1), criado_em: dias(1) })], 'x', [], J());
 check('esperar: selo diz até quando e o botão deixa de ser o principal', /Espere até \d\d\/\d\d/.test(html) && html.includes('Ver o e-mail mesmo assim') && !html.includes('btn primary" type="button" style="margin-top:10px" data-emailfor'));
@@ -113,11 +121,14 @@ const evs = [
 const jor = J(evs);
 check('a jornada ordena as entradas e conta app e artigos', jor.entradas.length === 2 && jor.entradas[0].origem === 'bot' && jor.ativouEm === '2026-10-11T10:00:00Z' && jor.artigos === 1);
 const cj = base({ capturas: 2, origens: ['bot', 'guia-vls-ts'], ultima_origem: 'guia-vls-ts', ultima_captura_em: '2026-10-20T10:00:00Z', estagio: 'em_uso', criado_em: '2026-10-10T10:00:00Z' });
+let html1;
 html = mod.jornadaHtml(cj, [mail({ aberto_em: dias(3), status: 'aberto' })], [], jor, 'x');
-check('diz o funil de entrada e o tipo', html.includes('Funil de entrada') && html.includes('Assistente de vistos (funil de classificação)'));
+check('com 2 funis: uma linha por funil, com o mais recente marcado', html.includes('Entrou por 2 funis') && html.includes('Assistente de vistos') && html.includes('Guia VLS-TS') && html.includes('mais recente'));
+html1 = mod.jornadaHtml(base({ origem: 'guia-vls-ts', origens: ['guia-vls-ts'] }), [], [], J(), 'x');
+check('com 1 funil: segue a linha Funil de entrada com o tipo', html1.includes('Funil de entrada') && html1.includes('guia gratuito') && !html1.includes('Entrou por'));
 check('lista cada entrada com número, origem, campanha e post', html.includes('1ª vez') && html.includes('2ª vez') && html.includes('campanha camp-x') && html.includes('post post-1') && html.includes('fonte instagram'));
 check('a entrada mostra a persona e a etapa do quiz da mesma hora', html.includes('Campus France') && html.includes('Escolhendo o curso'));
-check('diz quantas vezes ela entrou e o caminho', html.includes('2 vezes') && html.includes('Assistente de vistos → Guia VLS-TS'));
+check('diz quantas vezes ela entrou e o caminho', html.includes('2 vezes'));
 check('degraus: tem ✓ onde chegou e texto "Ainda não" onde não', html.includes('Abriu o e-mail') && html.includes('Ainda não clicou em nenhum link') && html.includes('Ainda não respondeu') && html.includes('Ainda sem 1:1'));
 html = mod.jornadaHtml(base(), [], [], J(), 'x');
 check('sem nada na linha do tempo: diz isso em vez de quebrar', html.includes('Sem registro de captura') && html.includes('Ainda não recebeu e-mail do CRM'));
@@ -142,6 +153,23 @@ html = el('pessoa-page').innerHTML;
 check('a ficha esconde o resto (perguntas, consentimento, Instagram, notas) em "Mais"', /<details class="mais">[\s\S]*Consentimento[\s\S]*Suas anotações[\s\S]*<\/details>/.test(html) && html.indexOf('nextmail insight') < html.indexOf('class="mais"'));
 check('se a busca da jornada falhar, a ficha abre mesmo assim', html.includes('Jornada no funil') && html.includes('nextmail insight'));
 jornadaErro = false;
+
+
+console.log('\n== Dois funis: mais recente primeiro e uma etapa por funil ==');
+{
+  const evs2 = [
+    { tipo: 'email_capturado', dados: { origem: 'guia-checklist-chegada-au-pair' }, criado_em: '2026-11-09T10:00:00Z' },
+    { tipo: 'quiz_respondido', dados: { persona: 'au_pair', objetivo: 'ap-nao-sei-comecar' }, criado_em: '2026-11-09T10:00:00Z' },
+    { tipo: 'email_recapturado', dados: { origem: 'guia-vls-ts' }, criado_em: '2026-11-12T10:00:00Z' },
+    { tipo: 'quiz_respondido', dados: { persona: 'au_pair', objetivo: 'ap-medo-prazo' }, criado_em: '2026-11-12T10:00:00Z' }
+  ];
+  const c2 = base({ capturas: 2, origens: ['guia-checklist-chegada-au-pair', 'guia-vls-ts'], ultima_origem: 'guia-vls-ts', respostas: { objetivo: 'ap-medo-prazo', pesoDoDia: 'alto' } });
+  const h2 = mod.jornadaHtml(c2, [], [], J(evs2), 'x');
+  check('o funil mais recente vem primeiro na lista', h2.indexOf('Guia VLS-TS') < h2.indexOf('Guia au pair: checklist de chegada') && h2.includes('mais recente'));
+  const kv = mod.respostasKv(c2, J(evs2));
+  check('uma linha de etapa por funil, do mais recente ao mais antigo', kv[1][0].startsWith('Etapa · Guia VLS-TS') && kv[2][0].startsWith('Etapa · Guia au pair') && /prazo/i.test(kv[1][1]) && /por onde/i.test(kv[2][1]));
+  check('pergunta nova do funil aparece com rótulo legível, não com a chave crua', kv.some((x) => x[0] === 'Peso do dia' && x[1] === 'alto'));
+}
 
 console.log('\n' + (failed ? failed + ' FALHARAM, ' : '') + passed + ' passaram');
 process.exit(failed ? 1 : 0);

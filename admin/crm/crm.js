@@ -7,8 +7,8 @@ import * as ES from './estudio.js?v=2026-11-12.10';   // os blocos do estúdio d
 import * as EE from './editor-email.js?v=2026-11-12.10';
 import * as EQ from './editor-quem.js?v=2026-11-12.10';
 import * as JR from './jornada.js?v=2026-11-12.10';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
-import * as FX from './ficha.js?v=2026-11-12.11';   // ficha v2: lógica pura (fila, démarches, funil, ações)
-import * as FH from './ficha-html.js?v=2026-11-12.11';   // ficha v2: HTML puro
+import * as FX from './ficha.js?v=2026-11-13.5';   // ficha v2: lógica pura (fila, démarches, funil, ações)
+import * as FH from './ficha-html.js?v=2026-11-13.5';   // ficha v2: HTML puro
 
 var PERSONAS = {
   au_pair_estudante: 'Au pair → estudante', campus_france: 'Campus France', alternancia_emprego: 'Alternância / emprego',
@@ -22,7 +22,7 @@ var STAGES = [
   { k: 'concluido', l: 'Concluído', d: 'terminou o percurso' }, { k: 'inativo', l: 'Inativo', d: 'sumiu há 30+ dias' }
 ];
 var ORIG = { instagram: 'Instagram', bot: 'Assistente de vistos', blog: 'Blog', direto: 'Direto', artigo: 'Artigo', login_direto: 'Login direto',
-  'guia-vls-ts': 'Guia VLS-TS', 'guia-email-alt30': 'Guia alternância 30+', 'guia-tecnologo': 'Guia tecnólogo', 'guia-etudes-en-france-2027': 'Guia Campus France',
+  'guia-vls-ts': 'Guia VLS-TS', 'guia-checklist-chegada-au-pair': 'Guia au pair: checklist de chegada', 'guia-email-alt30': 'Guia alternância 30+', 'guia-tecnologo': 'Guia tecnólogo', 'guia-etudes-en-france-2027': 'Guia Campus France',
   // Newsletter da bolsa Eiffel, no artigo de bolsas (o CRM guarda a origem como token; aqui volta a ser o endereço).
   'artigo-como-conseguir-bolsa-de-estudo': '/artigos/post/como-conseguir-bolsa-de-estudo/' };
 function origLabel(o) { return ORIG[o] || o; }
@@ -755,6 +755,19 @@ function tipoFunil(o) {
   return /^guia-/.test(o) ? 'guia gratuito' : o === 'bot' ? 'funil de classificação' : (o === 'blog' || o === 'artigo' || /^artigo-/.test(o) || /^\/artigos\//.test(o)) ? 'artigo do blog'
     : o === 'instagram' ? 'link do Instagram' : (o === 'direto' || o === 'login_direto') ? 'acesso direto' : '';
 }
+// A página (landing) de onde a pessoa veio, pela origem que o site grava. É a linha da matriz do Estúdio de e-mails (Jornada).
+var ORIGEM_PAGINA = { 'guia-email-alt30': 'I01', 'guia-tecnologo': 'I02', 'guia-etudes-en-france-2027': 'I03', 'guia-vls-ts': 'I04', 'guia-checklist-chegada-au-pair': 'I05' };
+// Os modelos de uma página numa etapa da jornada (lead, contato, reimp, plat), do jeito que o Estúdio os organiza.
+// Só entram os que têm versão No ar (sem a tabela de modelos, vale a lista do código).
+function modelosDaEtapa(pagina, etapa) {
+  if (!pagina || !JR.etapaDaJornada) return [];
+  return listaModelos().filter(function (m) {
+    var cl = TX.classifica(m);
+    if (cl.pagina !== pagina) return false;
+    if (JR.etapaDaJornada(Object.assign({}, m, { familia: cl.familia, pagina: cl.pagina })) !== etapa) return false;
+    return !M || versoesDe(m.chave).some(function (v) { return v.etapa === 'no_ar'; });
+  });
+}
 // Devolve { k, quando: 'agora'|'esperar'|'nao', titulo, angulo, sinais, conversa }. k = o modelo a revisar (null = nenhum e-mail agora).
 function proximoEmail(c, mails, resps, jor) {
   var r = c.respostas || {}, ult = mails[0], diasUlt = ult ? diasDesde(ult.enviado_em || ult.criado_em) : null;
@@ -789,15 +802,24 @@ function proximoEmail(c, mails, resps, jor) {
   if (ult && ult.status === 'nao_entregue')
     return out({ titulo: 'Corrija o endereço antes de mandar outro',
       angulo: 'O último e-mail não foi entregue. Confira se o endereço tem erro de digitação (gmial, hotmial) ou chame pelo Instagram. Mandar de novo para o mesmo endereço só queima a reputação do remetente.' });
-  if (c.um_a_um_quando)
+  if (c.um_a_um_quando || c.estagio === 'um_a_um')
     return out({ titulo: 'Nada de campanha: ela tem 1:1 marcado',
-      angulo: 'Com a conversa marcada (' + fmtWhen(c.um_a_um_quando) + '), o único e-mail útil é um lembrete curto perto do dia, com o que ela deve levar. Fora isso, é ruído.' });
+      angulo: 'Com a conversa marcada' + (c.um_a_um_quando ? ' (' + fmtWhen(c.um_a_um_quando) + ')' : '') + ', o único e-mail útil é um lembrete curto perto do dia, com o que ela deve levar. Fora isso, é ruído.' });
   if (origensDe(c).indexOf(CF_GUIA_ORIGEM) >= 0 && m1 && !m2 && c.aceita_novidades && diasDesde(m1.enviado_em || m1.criado_em) <= 7)
     return out({ titulo: 'Deixe o e-mail 2 do guia sair sozinho',
       angulo: 'A sequência do Campus France já tem o e-mail 2 (a conversa) programado para o próximo envio diário, às 10h de Brasília. Mandar outro na frente atropela ele.' });
-  if (!mails.length)
-    return out({ k: k0, quando: 'agora', titulo: 'Primeiro contato: entregue o que ela veio buscar',
-      angulo: 'Abra com o que ela pediu' + (origem ? ' (“' + origem + '”)' : '') + (etapa ? ', mostre que sabe em que etapa ela está (' + etapa.toLowerCase() + ')' : '') + ' e termine com uma pergunta fácil de responder. Uma resposta dela vale mais do que mil cliques.' });
+  if (!mails.length) {
+    // A captação convida para o 1:1; o app não é a primeira oferta. O primeiro contato é o e-mail da etapa "Primeiro contato"
+    // da página dela no Estúdio (Jornada). A entrega do material (etapa "Inbound lead") sai sozinha, não é este botão.
+    var pag = ORIGEM_PAGINA[ultimaOrigem(c)] || null, conv = modelosDaEtapa(pag, 'contato').filter(function (m) { return !m.automatico; });
+    var contexto = (origem ? 'Ela pediu “' + origem + '”' : 'Ela deixou o e-mail') + (etapa ? ' e disse que está em: ' + etapa.toLowerCase() : '') + '. ';
+    if (conv.length)
+      return out({ k: conv[0].chave, quando: 'agora', titulo: 'Primeiro contato: convide para o 1:1',
+        angulo: contexto + 'Convide para a conversa com uma pergunta fácil de responder; o objetivo é o 1:1, não o app. Uma resposta dela vale mais do que mil cliques.' });
+    return out({ titulo: pag ? 'Falta o e-mail de primeiro contato desta página' : 'Convide para o 1:1 com um e-mail escrito por você',
+      angulo: (etapa ? 'Etapa dela: ' + etapa.toLowerCase() + '. ' : '') + (pag ? 'Esta página ainda não tem o convite para o 1:1 no Estúdio (Jornada, etapa Primeiro contato). Crie e publique lá e ele aparece aqui. Até lá, convide pelo Instagram ou em “Escrever mensagem”. Sem boas-vindas com link do app.'
+        : 'Esta origem não tem página no Estúdio, então não há modelo para sugerir. Convide para o 1:1 em “Escrever mensagem”. Sem boas-vindas com link do app.') });
+  }
   if (voltouDepoisDoEmail(c)) {
     // Sem guia próprio para a última origem, o padrão seria as boas-vindas: ela já recebeu e-mail nosso (qualquer um), então fica sem modelo.
     var kVolta = k0 === 'boas_vindas' ? null : k0;
@@ -823,7 +845,7 @@ function proximoEmail(c, mails, resps, jor) {
     angulo: 'Nada na ficha pede um e-mail agora. Espere ela abrir o e-mail, voltar a deixar o e-mail ou escrever. Se quiser escrever mesmo assim, use “Escrever e-mail” no topo da ficha.' });
 }
 // ---------- Jornada no funil: por onde ela entrou, quantas vezes e até onde chegou ----------
-function jornadaHtml(c, mails, resps, jor, h4) {
+function jornadaHtml(c, mails, resps, jor, h4, funil) {
   var es = jor.entradas, origens = origensDe(c), primeira = origens[0] || c.origem || '';
   var rows = [];
   if (primeira) rows.push(['Funil de entrada', origLabel(primeira) + (tipoFunil(primeira) ? ' (' + tipoFunil(primeira) + ')' : '')]);
@@ -849,10 +871,20 @@ function jornadaHtml(c, mails, resps, jor, h4) {
     [c.estagio === 'um_a_um' || !!c.um_a_um_quando, 'Marcou 1:1', 'Ainda sem 1:1']
   ];
   var ok = degraus.filter(function (d) { return d[0]; }), ult = ok[ok.length - 1];
-  var resumo = rows.slice(0, 1).concat([['Entradas', vezes(nCapturas(c)) + (dias != null ? ' · na base há ' + haDias(dias) : '')],
+  // Mais de um funil: uma linha curta por funil (nome, 1ª data, quantas vezes) em vez de uma frase corrida.
+  var grupos = [], gi = {};
+  es.forEach(function (x) { var o = x.origem || '—'; if (gi[o] == null) { gi[o] = grupos.length; grupos.push({ o: o, n: 0, em: x.em }); } grupos[gi[o]].n++; grupos[gi[o]].ult = x.em; });
+  if (!grupos.length) origens.forEach(function (o) { grupos.push({ o: o, n: 0, em: null }); });
+  grupos.sort(function (a, b) { return (b.ult || b.em || '') < (a.ult || a.em || '') ? -1 : (b.ult || b.em || '') > (a.ult || a.em || '') ? 1 : 0; });   // o mais recente primeiro
+  var multi = grupos.length > 1, ultimaO = ultimaOrigem(c);
+  var funisHtml = !multi ? '' : '<div class="fx-funis"><div class="k">Entrou por ' + grupos.length + ' funis</div><ul>' + grupos.map(function (g) {
+    return '<li><span class="fx-funis-nome">' + esc(origLabel(g.o)) + '</span><span class="fx-funis-meta">' + (g.ult || g.em ? esc(fmtDate(g.ult || g.em)) : '') + (g.n > 1 ? ' · ' + g.n + '×' : '') +
+      (g.o === ultimaO ? ' <b class="fx-funis-ult">mais recente</b>' : '') + '</span></li>';
+  }).join('') + '</ul></div>';
+  var resumo = (multi ? [] : rows.slice(0, 1)).concat([['Entradas', vezes(nCapturas(c)) + (dias != null ? ' · na base há ' + haDias(dias) : '')],
     ['Chegou até', ult[1].replace(/ · \d\d\/\d\d$/, '') + ' (' + ok.length + ' de ' + degraus.length + ' passos)']])
-    .concat(origemKv(c).filter(function (x) { return /^(Por onde passou|Campanha|Post)/.test(x[0]); }));
-  return '<div class="panel" style="padding:16px"><h4 style="' + h4 + '">Jornada no funil</h4>' + kvHtml(resumo) +
+    .concat(origemKv(c).filter(function (x) { return multi ? /^(Campanha|Post)/.test(x[0]) : /^(Por onde passou|Campanha|Post)/.test(x[0]); }));
+  return '<div class="panel" style="padding:16px"><h4 style="' + h4 + '">Jornada no funil</h4>' + (funil || '') + funisHtml + kvHtml(resumo) +
     '<details class="mais-det"><summary>Cada entrada e todos os passos</summary><div class="k jn-k">Cada vez que ela entrou (' + vezes(nCapturas(c)) + ')</div>' +
     (linhas ? '<ol class="jn-list">' + linhas + '</ol>' : '<p class="sub" style="margin:0">Sem registro de captura na linha do tempo.</p>') +
     (faltam > 0 && es.length ? '<p class="sub" style="margin:6px 0 0">' + faltam + (faltam === 1 ? ' entrada mais antiga' : ' entradas mais antigas') + ' sem detalhe na linha do tempo.</p>' : '') +
@@ -901,12 +933,18 @@ function compraHtml(c) {
 // objetivo = a etapa que ela escolheu no guia; o prefixo diz de qual guia (cf- Campus France, alt- alternância 30+).
 var ALT_ETAPA = { 'alt-pesquisando': 'Pesquisando se pode fazer alternância depois dos 29', 'alt-escolhendo-escola': 'Escolhendo escola e curso',
   'alt-recusa-idade': 'Ouviu "só até 29" de uma escola', 'alt-buscando-empresa': 'Tem escola, falta a empresa', 'alt-montando-contrato': 'Tem empresa, montando o contrato' };
-function etapaDe(v) { return CF_ETAPA[v] || ALT_ETAPA[v] || v; }
-function respostasKv(c) {
+function etapaDe(v) { return CF_ETAPA[v] || ALT_ETAPA[v] || (/^ap-/.test(v) ? TX.rotuloEtapa('I05', v) : v); }
+// Chave crua do funil vira rótulo legível (camelCase, traço e sublinhado viram espaço; só a 1ª letra maiúscula).
+function rotuloChave(k) { var t = String(k).replace(/([a-z])([A-Z])/g, '$1 $2').replace(/[_-]+/g, ' ').trim().toLowerCase(); return t.charAt(0).toUpperCase() + t.slice(1); }
+function respostasKv(c, jor) {
   var r = c.respostas || {}, rows = [], cf = /^cf-/.test(r.objetivo || '') || r.cfNivel || origensDe(c).indexOf(CF_GUIA_ORIGEM) >= 0;
   var add = function (l, v, falta) { if (v != null && v !== '') rows.push([l, String(v)]); else if (falta) rows.push([l, falta, 1]); };
   add('Persona', personaLabel(c) + (subLabel(c) ? ' · ' + subLabel(c) : ''));
-  if (r.objetivo) add(/^alt-/.test(r.objetivo) ? 'Etapa na alternância' : /^cf-/.test(r.objetivo) ? 'Etapa no Campus France' : 'Etapa', etapaDe(r.objetivo));
+  // Entrou por mais de um funil: a etapa de cada um, do mais recente para o mais antigo (cada guia pergunta a sua).
+  var qs = jor && jor.quizzes ? jor.quizzes.filter(function (q) { return q.objetivo; }) : [];
+  var eMulti = qs.length > 1 && jor.entradas.length > 1;
+  if (eMulti) qs.slice().reverse().forEach(function (q) { var en = jor.entradas.filter(function (x) { return x.em === q.em; })[0]; add('Etapa · ' + (en && en.origem ? origLabel(en.origem) : fmtDate(q.em)), etapaDe(q.objetivo)); });
+  else if (r.objetivo) add(/^alt-/.test(r.objetivo) ? 'Etapa na alternância' : /^cf-/.test(r.objetivo) ? 'Etapa no Campus France' : 'Etapa', etapaDe(r.objetivo));
   if (cf) add('Nível da candidatura', CF_NIVEL[r.cfNivel] || r.cfNivel, 'não respondeu (pergunta nova, de 14/10)');
   if (r.cfNivel && CF_PRAZO[r.cfNivel]) { var d = diasAte(CF_PRAZO[r.cfNivel]); add('Prazo Campus France', fmtDay(CF_PRAZO[r.cfNivel]) + (d >= 0 ? ' (faltam ' + d + ' dias)' : ' (venceu)')); }
   if (cf) add('Cidade', CF_CIDADE[r.cfCidade] || r.cfCidade, 'ainda não disse (toca no e-mail 2)');
@@ -915,7 +953,7 @@ function respostasKv(c) {
   add('Fase', c.fase); add('Nível de estudos', c.nivel_estudos); add('Preocupação', c.preocupacao);
   Object.keys(r).forEach(function (k) {
     if (k === 'objetivo' || k === 'cfNivel' || k === 'cfCidade') return;
-    var l = RESP_LABEL[k]; add(l ? l[0] : k, l ? l[1](r[k]) : r[k]);
+    var l = RESP_LABEL[k]; add(l ? l[0] : rotuloChave(k), l ? l[1](r[k]) : (typeof r[k] === 'object' ? JSON.stringify(r[k]) : r[k]));
   });
   add('Novidades por e-mail', c.aceita_novidades ? 'Aceitou' : 'Não aceitou');
   return rows;
@@ -2443,7 +2481,7 @@ function fxHeaderHtml(c, d) {
 // Catálogo de démarches (cópia do app, processos.json): carregado uma vez; sem ele, tudo cai na démarche padrão.
 var FX_PROC = null;
 async function fxCarregaProcessos() {
-  try { var r = await fetch('processos.json?v=2026-11-12.11'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
+  try { var r = await fetch('processos.json?v=2026-11-13.5'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
 }
 // A sessão Checklist: pílulas por démarche, os 4 mais urgentes, pasta do Drive privada e "Ver mais desta sessão".
 function fxChecklistCorpo(c) {
@@ -2484,11 +2522,16 @@ function fxCorpo(c, d, tab) {
   if (tab === 'conversa') return conversaPanel(c, d.mails || [], d.resps || [], d.h4 || H4_PLAT);
   // Ficha (captação): o fluxo de 3 passos e os painéis que já existiam (feed, e-mails, jornada, quem é ela, mais).
   var etapa = FX.etapaFunil(c, { mails: d.mails || [], propostas: [], temBilan: !!(state.bilan && state.bilan.cid === c.id) }), h4 = d.h4 || H4_PLAT;
+  // Três colunas, cada uma com um papel: à esquerda quem ela é e onde está no funil; no meio o que ela fez; à direita o que fazer (e-mail).
+  // Quem é ela abre e fecha: fechado mostra só o essencial (persona e etapa) numa linha; aberto, todas as respostas.
+  var qrows = respostasKv(c, d.jor), qresumo = qrows.slice(0, 2).filter(function (x) { return !x[2]; }).map(function (x) { return x[1]; }).join(' · ');
+  var quem = '<details class="panel fx-quem"><summary><span class="fx-quem-t">Quem é ela</span>' + (qresumo ? '<span class="fx-quem-r">' + esc(qresumo) + '</span>' : '') + '</summary>' + kvHtml(qrows) + '</details>';
   return FH.htmlFluxo(etapa <= 3 ? 1 : etapa <= 5 ? 2 : 3, H_FX) + onbResumoHtml(c) +
-    '<div class="pessoa-grid" style="margin-top:18px">' + fichaFeedHtml(d.eventos || []) +
-    '<div style="display:flex; flex-direction:column; gap:16px">' + emailsPanel(c, d.mails || [], h4, d.resps || [], d.jor) + jornadaHtml(c, d.mails || [], d.resps || [], d.jor, h4) +
-    '<div class="panel" style="padding:16px"><h4 style="' + h4 + '">Quem é ela</h4>' + kvHtml(respostasKv(c)) + '</div>' +
-    fichaMaisHtml(c, { perg: d.perg || [], resps: d.resps || [], cons: d.cons || [], last: d.last, h4: h4 }) + '</div></div>';
+    '<div class="fx-ficha3">' +
+    '<aside class="fx-rail fx-ctx" aria-label="Quem é ela e jornada">' + quem + jornadaHtml(c, d.mails || [], d.resps || [], d.jor, h4, FH.htmlFunil({ etapa: etapa, semCaixa: true }, H_FX)) + '</aside>' +
+    '<section class="fx-centro" aria-label="Tudo que ela fez">' + fichaFeedHtml(d.eventos || []) +
+    fichaMaisHtml(c, { perg: d.perg || [], resps: d.resps || [], cons: d.cons || [], last: d.last, h4: h4 }) + '</section>' +
+    '<aside class="fx-rail fx-mail" aria-label="E-mails">' + emailsPanel(c, d.mails || [], h4, d.resps || [], d.jor) + '</aside></div>';
 }
 // Repinta só o corpo da aba (abrir/fechar/mover sessão): o resto da tela e a rolagem ficam.
 function fxPintaCorpo() {
