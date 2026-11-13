@@ -7,8 +7,8 @@ import * as ES from './estudio.js?v=2026-11-12.10';   // os blocos do estúdio d
 import * as EE from './editor-email.js?v=2026-11-12.10';
 import * as EQ from './editor-quem.js?v=2026-11-12.10';
 import * as JR from './jornada.js?v=2026-11-12.10';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
-import * as FX from './ficha.js?v=2026-11-13.6';   // ficha v2: lógica pura (fila, démarches, funil, ações)
-import * as FH from './ficha-html.js?v=2026-11-13.6';   // ficha v2: HTML puro
+import * as FX from './ficha.js?v=2026-11-13.8';   // ficha v2: lógica pura (fila, démarches, funil, ações)
+import * as FH from './ficha-html.js?v=2026-11-13.8';   // ficha v2: HTML puro
 
 var PERSONAS = {
   au_pair_estudante: 'Au pair → estudante', campus_france: 'Campus France', alternancia_emprego: 'Alternância / emprego',
@@ -2493,25 +2493,30 @@ function fxTarefas(c, d) {
   }, procLabel);
 }
 function fxHeaderHtml(c, d) {
-  var chk = state.dos && state.dos.cid === c.id ? state.dos.chk : null, k = null;
+  var chk = state.dos && state.dos.cid === c.id ? state.dos.chk : null, k = null, agora = Date.now();
   if (chk && !chk.err && !chk.semConta) {
-    var cc = chkCalc(chk, Date.now()), ativos = cc.itens.filter(function (i) { return i.status !== 'arquivado'; }), lim = new Date(Date.now() + 3 * 864e5).toISOString().slice(0, 10);
-    var feitos = ativos.filter(function (i) { return i.status === 'concluido'; }).length;
-    k = { pct: ativos.length ? Math.round(feitos * 100 / ativos.length) : 0, feitos: feitos, abertos: ativos.length - feitos,
-      vencem3: ativos.filter(function (i) { return i.status !== 'concluido' && i.due_date && i.due_date >= cc.hoje && i.due_date <= lim; }).length,
-      adicionados: cc.itens.filter(function (i) { return String(i.category || '').indexOf('meu:') === 0; }).length };
+    var cc = chkCalc(chk, agora), ativos = cc.itens.filter(function (i) { return i.status !== 'arquivado'; }), lim = new Date(agora + 3 * 864e5).toISOString().slice(0, 10);
+    k = { feitos: ativos.filter(function (i) { return i.status === 'concluido'; }).length, total: ativos.length, atrasados: cc.atrasados.length,
+      vencem3: ativos.filter(function (i) { return i.status !== 'concluido' && i.due_date && i.due_date >= cc.hoje && i.due_date <= lim; }).length };
   }
-  var cl = chk && chk.cliques && chk.cliques[0];
-  var props = state.chat && state.chat.props ? Object.keys(state.chat.props).map(function (x) { return state.chat.props[x]; }) : [];
-  return FH.htmlHeader({ c: c, urgLabel: URG[c.urgencia] || c.urgencia, estagioLabel: stageLabel(c.estagio), personaLabel: personaLabel(c) + (subLabel(c) ? ' · ' + subLabel(c) : ''),
-    cidade: (c.respostas && c.respostas.cidade) || '', temConta: !!c.user_id, motivo: c.motivo || '',
-    etapa: FX.etapaFunil(c, { mails: d.mails || [], propostas: props, temBilan: !!(state.bilan && state.bilan.cid === c.id) }),
-    estagios: STAGES, chk: k, chkMsg: !chk ? 'Carregando o checklist dela…' : chk.err ? 'O checklist dela não carregou (falta rodar db/crm-checklist.sql).' : '', ultima: cl ? fmtDia(cl.criado_em) + ' às ' + fmtHora(cl.criado_em) : '' }, H_FX);
+  var mails = d.mails || [], resps = d.resps || [], jor = d.jor || montaJornada([]), assin = state.assin || null, tipo = FX.tipoCabecalho(c, assin);
+  var cliques = state.int && state.int.cid === c.id && !state.int.err ? state.int.cliques || [] : [];
+  var primeira = jor.entradas.length ? jor.entradas[0].em : c.criado_em, dd = diasDesde(primeira);
+  var dados = { c: c, estagioLabel: stageLabel(c.estagio), assin: assin, uso: FX.calcularUso(cliques, agora), chk: k,
+    chkMsg: !chk ? 'carregando o checklist…' : chk.err ? 'não carregou (falta rodar db/crm-checklist.sql)' : 'ela ainda não entrou no app',
+    mailsTotal: mails.length, mailsAbertos: mails.filter(function (m) { return m.aberto_em || m.status === 'aberto' || m.status === 'clicado'; }).length,
+    mailsClicados: mails.filter(function (m) { return m.clicado_em || m.status === 'clicado'; }).length,
+    entradas: Math.max(jor.entradas.length ? origensDe(c).length : 0, origensDe(c).length, 1), diasNaBase: dd,
+    respostas: resps.length, respostasNovas: resps.filter(function (x) { return x.status === 'nova'; }).length,
+    proximo: proximoEmail(c, mails, resps, jor), agora: agora };
+  var cart = FX.cartoesDe(tipo, dados);
+  return FH.htmlCabecalho({ c: c, estagioLabel: stageLabel(c.estagio), personaLabel: personaLabel(c) + (subLabel(c) ? ' · ' + subLabel(c) : ''),
+    temConta: !!c.user_id, etiqueta: FX.etiquetaPagamento(assin), estagios: STAGES, blocos: cart.blocos, nota: cart.nota }, H_FX);
 }
 // Catálogo de démarches (cópia do app, processos.json): carregado uma vez; sem ele, tudo cai na démarche padrão.
 var FX_PROC = null;
 async function fxCarregaProcessos() {
-  try { var r = await fetch('processos.json?v=2026-11-13.6'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
+  try { var r = await fetch('processos.json?v=2026-11-13.8'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
 }
 // A sessão Checklist: pílulas por démarche, os 4 mais urgentes, pasta do Drive privada e "Ver mais desta sessão".
 function fxChecklistCorpo(c) {
@@ -2595,8 +2600,16 @@ function fxRepinta() {
   fxPos(c);
 }
 // Depois de pintar: rola o chat para o fim (e marca como lido, como a ficha antiga fazia) e destaca a sessão do deep link.
+// A altura do cabeçalho fixo vira --hd-h: as colunas fixas e o destino de "Ir para" começam logo abaixo dele (sem ficar escondidos).
+function fxMedeCabecalho() {
+  var hb = $('fx-head-box'), r = document.documentElement;
+  if (!hb || !r || !r.style || !r.style.setProperty) return;
+  var fixo = window.matchMedia ? !window.matchMedia('(max-width: 760px)').matches : true;
+  r.style.setProperty('--hd-h', fixo && hb.offsetHeight ? hb.offsetHeight + 'px' : '0px');
+}
 function fxPos(c) {
   var f = state.fx;
+  fxMedeCabecalho();
   if (f.tab === 'plataforma' && fxSessaoAberta('chat')) {
     var fio = $('chat-fio'); if (fio) fio.scrollTop = fio.scrollHeight;
     var tx = $('chat-txt'); if (tx && state.chatRasc) tx.value = state.chatRasc;
@@ -2614,7 +2627,7 @@ function fxLive(c) {
   var f = state.fx, d = f.dados; if (!d || f.cid !== c.id) return;
   var cv = fxContato(c, d.uid);
   f.tarefas = fxTarefas(cv, d);
-  var hb = $('fx-head-box'); if (hb) hb.innerHTML = fxHeaderHtml(cv, d);
+  var hb = $('fx-head-box'); if (hb) { hb.innerHTML = fxHeaderHtml(cv, d); fxMedeCabecalho(); }
   fxPintaChk(cv);
   if (f.ag.pop === null) { var ab = $('fx-acoes-box'); if (ab) ab.innerHTML = FH.htmlCarrossel(f.tarefas, H_FX, f.ag.i); }
 }
@@ -2738,7 +2751,7 @@ async function renderPessoa() {
     (state.ptab === 'plataforma' || fichaV2Ativa()) ? supabase.from('plataforma_cliques').select('sessao,tela,alvo,rotulo,criado_em').eq('contato_id', c.id).order('criado_em', { ascending: false }).limit(300) : null,
     supabase.from('contatos').select('dossie,user_id').eq('id', c.id).maybeSingle(),
     supabase.from('contatos').select('dossie_origem,onboarding_em').eq('id', c.id).maybeSingle(),
-    supabase.from('assinaturas').select('status,plano,moeda,teste_fim,periodo_fim,cancela_no_fim').eq('contato_id', c.id).maybeSingle(),   // db/crm-assinaturas.sql
+    supabase.from('assinaturas').select('status,plano,moeda,teste_fim,periodo_fim,cancela_no_fim,criado_em').eq('contato_id', c.id).maybeSingle(),   // db/crm-assinaturas.sql
     supabase.from('processos_sugeridos').select('id,processo,sinais,status,mensagem,detectada_em,atualizada_em,decidida_em,respondida_em').eq('contato_id', c.id).order('atualizada_em', { ascending: false }),   // db/crm-processos-sugeridos.sql
     supabase.from('pos_call_propostas').select('id,proposta,status,criado_em').eq('contato_id', c.id).eq('proposta->>origem', 'notion').order('criado_em', { ascending: false }).limit(5),   // a leitura do Notion: base do e-mail do bilan
     buscaJornada(c.id)
