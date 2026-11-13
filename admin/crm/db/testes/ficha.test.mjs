@@ -115,5 +115,48 @@ console.log('== Task 7: sessões e preferências ==');
   mem.crm_ficha_ord_v1 = '"texto"'; check('formato errado volta ao padrão', FX.lerPrefs(st).ord === null);
 }
 
+console.log('== Cabeçalho fixo: tipo e cartões ==');
+{
+  const ass = (status, extra) => Object.assign({ status, plano: 'Intermediário', criado_em: '2026-08-02T10:00:00Z', periodo_fim: '2026-11-02T10:00:00Z', cancela_no_fim: false }, extra || {});
+  check('active é assinante', FX.tipoCabecalho({ user_id: 'u' }, ass('active')) === 'assinante');
+  check('trialing é assinante', FX.tipoCabecalho({ user_id: 'u' }, ass('trialing')) === 'assinante');
+  check('canceled com conta cai em plataforma', FX.tipoCabecalho({ user_id: 'u' }, ass('canceled')) === 'plataforma');
+  check('past_due sem conta cai em lead', FX.tipoCabecalho({}, ass('past_due')) === 'lead');
+  check('sem assinatura e com conta é plataforma; sem nada é lead', FX.tipoCabecalho({ user_id: 'u' }, null) === 'plataforma' && FX.tipoCabecalho({}, null) === 'lead');
+  check('etiqueta: sem assinatura', FX.etiquetaPagamento(null).texto === 'Não assina' && FX.etiquetaPagamento(null).tom === 'neutro');
+  check('etiqueta: ativa, em teste e atraso', FX.etiquetaPagamento(ass('active')).texto === 'Assinatura ativa' && FX.etiquetaPagamento(ass('trialing')).texto === 'Em teste' && FX.etiquetaPagamento(ass('past_due')).tom === 'aviso');
+  check('etiqueta: cancelada nunca diz ativa', !/ativa/.test(FX.etiquetaPagamento(ass('canceled')).texto) && FX.etiquetaPagamento(ass('canceled')).tom === 'aviso');
+
+  const uso = (o) => Object.assign({ sessoes: 12, semSessao: 0, cliquesPorSessao: 18, duracaoSeg: 360, ultimaEm: '2026-11-12T10:00:00Z', diasDesdeUltima: 1, suficiente: true }, o || {});
+  const base = (o) => Object.assign({ c: { estagio: 'lead', dias_sem_sinal: 6, criado_em: '2026-10-17T10:00:00Z' }, estagioLabel: 'Lead', assin: null, uso: uso(), mailsTotal: 2, mailsAbertos: 1, mailsClicados: 0,
+    entradas: 2, diasNaBase: 12, respostas: 0, respostasNovas: 0, proximo: { titulo: 'Falta o e-mail de primeiro contato', quando: 'nao' },
+    chk: { feitos: 8, total: 14, vencem3: 2, atrasados: 0 }, chkMsg: '', agora: Date.parse('2026-11-13T12:00:00Z') }, o || {});
+  const cart = (r) => r.blocos.reduce((a, b) => a.concat(b.cartoes), []);
+  const por = (r, rot) => cart(r).filter((x) => x.rotulo === rot)[0];
+
+  let r = FX.cartoesDe('lead', base());
+  check('lead: seis cartões, sem bloco de pagamento e sem uso', cart(r).length === 6 && !por(r, 'Cliques por sessão') && !por(r, 'Plano') && r.nota === null);
+  check('lead: parada há 6 dias em alerta', por(r, 'Parada há').valor === '6 dias' && por(r, 'Parada há').tom === 'alerta');
+  r = FX.cartoesDe('lead', base({ c: { dias_sem_sinal: 2 } }));
+  check('lead: parada há 2 dias sem alerta', por(r, 'Parada há').valor === '2 dias' && !por(r, 'Parada há').tom);
+  r = FX.cartoesDe('lead', base({ c: { dias_sem_sinal: null }, mailsTotal: 0, mailsAbertos: 0 }));
+  check('lead: sem dado mostra traço e o motivo, nunca zero inventado', por(r, 'Parada há').valor === '—' && por(r, 'E-mails').valor === '—' && /nenhum/i.test(por(r, 'E-mails').sub));
+  check('lead: e-mails abriu 1 de 2; entradas no plural', por(FX.cartoesDe('lead', base()), 'E-mails').valor === '1 de 2' && por(FX.cartoesDe('lead', base()), 'Entradas').valor === '2 funis' && por(FX.cartoesDe('lead', base({ entradas: 1 })), 'Entradas').valor === '1 funil');
+  check('lead: respostas esperando você', /2 esperando/.test(por(FX.cartoesDe('lead', base({ respostas: 3, respostasNovas: 2 })), 'Respostas').sub));
+
+  r = FX.cartoesDe('assinante', base({ assin: ass('active') }));
+  check('assinante: dois blocos, Pagamento primeiro com 3 cartões, e a nota', r.blocos.length === 2 && r.blocos[0].titulo === 'Pagamento' && r.blocos[0].cartoes.length === 3 && /LTV/.test(r.nota));
+  check('assinante: plano, próxima cobrança e desde', por(r, 'Plano').valor === 'Intermediário' && por(r, 'Próxima cobrança').valor === '02/11' && por(r, 'Assinante desde').valor === '3 meses');
+  check('assinante: em teste mostra fim do teste; cancelando mostra acesso até', por(FX.cartoesDe('assinante', base({ assin: ass('trialing', { teste_fim: '2026-11-20T00:00:00Z' }) })), 'Fim do teste').valor === '20/11' && por(FX.cartoesDe('assinante', base({ assin: ass('active', { cancela_no_fim: true }) })), 'Acesso até').valor === '02/11');
+  check('assinante: uso com checklist e prazos em alerta', por(r, 'Sessões').valor === '12' && por(r, 'Cliques por sessão').valor === '18' && por(r, 'Duração (estimada)').valor === '6 min' && por(r, 'Checklist').valor === '8 de 14' && por(r, 'Checklist').tom === 'alerta');
+
+  r = FX.cartoesDe('plataforma', base({ uso: uso({ sessoes: 2, suficiente: false, cliquesPorSessao: null, duracaoSeg: null }) }));
+  check('plataforma: poucos dados mostra traço e diz por quê', por(r, 'Cliques por sessão').valor === '—' && /poucos dados/.test(por(r, 'Cliques por sessão').sub) && por(r, 'Duração (estimada)').valor === '—' && por(r, 'Sessões').valor === '2');
+  r = FX.cartoesDe('plataforma', base({ chk: null, chkMsg: 'Ela ainda não entrou no app' }));
+  check('plataforma: checklist ainda não carregou ou sem conta → traço e a mensagem', por(r, 'Checklist').valor === '—' && por(r, 'Checklist').sub === 'Ela ainda não entrou no app');
+  r = FX.cartoesDe('plataforma', base({ uso: uso({ sessoes: 0, ultimaEm: null, diasDesdeUltima: null, suficiente: false, cliquesPorSessao: null, duracaoSeg: null }) }));
+  check('plataforma: sem cliques nenhum → sessões traço e "ainda sem cliques"', por(r, 'Sessões').valor === '—' && /sem cliques/.test(por(r, 'Sessões').sub) && cart(r).length === 6);
+}
+
 console.log('\n' + passed + ' passaram, ' + failed + ' falharam');
 if (failed) process.exit(1);
