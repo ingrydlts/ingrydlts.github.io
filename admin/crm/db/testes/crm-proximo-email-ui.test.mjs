@@ -31,7 +31,7 @@ const supabase = { from: qb, auth: { getSession: async () => ({ data: { session:
   channel: () => ({ on() { return this; }, subscribe() { return this; } }), removeChannel() {} };
 const store = {};
 const mod = new Function('supabase', 'ES', 'TX', 'EE', 'EQ', 'JR', 'document', 'window', 'location', 'localStorage', 'setInterval', 'clearInterval',
-  src + '\n;return { state, setC: function (v) { C = v; }, renderPessoa, proximoEmail, montaJornada, jornadaHtml, emailsPanel };')(
+  src + '\n;return { state, setC: function (v) { C = v; }, renderPessoa, proximoEmail, montaJornada, jornadaHtml, emailsPanel, respostasKv };')(
   supabase, {}, TXMOD, { iniciar() {}, depois() {}, campoMudou() {} }, {}, JRMOD, document, { addEventListener() {} }, { href: '' }, { getItem: (k) => store[k] ?? null, setItem: (k, v) => { store[k] = v; } }, () => 1, () => {});
 
 const dias = (n) => new Date(Date.now() - n * 864e5).toISOString();
@@ -153,6 +153,23 @@ html = el('pessoa-page').innerHTML;
 check('a ficha esconde o resto (perguntas, consentimento, Instagram, notas) em "Mais"', /<details class="mais">[\s\S]*Consentimento[\s\S]*Suas anotações[\s\S]*<\/details>/.test(html) && html.indexOf('nextmail insight') < html.indexOf('class="mais"'));
 check('se a busca da jornada falhar, a ficha abre mesmo assim', html.includes('Jornada no funil') && html.includes('nextmail insight'));
 jornadaErro = false;
+
+
+console.log('\n== Dois funis: mais recente primeiro e uma etapa por funil ==');
+{
+  const evs2 = [
+    { tipo: 'email_capturado', dados: { origem: 'guia-checklist-chegada-au-pair' }, criado_em: '2026-11-09T10:00:00Z' },
+    { tipo: 'quiz_respondido', dados: { persona: 'au_pair', objetivo: 'ap-nao-sei-comecar' }, criado_em: '2026-11-09T10:00:00Z' },
+    { tipo: 'email_recapturado', dados: { origem: 'guia-vls-ts' }, criado_em: '2026-11-12T10:00:00Z' },
+    { tipo: 'quiz_respondido', dados: { persona: 'au_pair', objetivo: 'ap-medo-prazo' }, criado_em: '2026-11-12T10:00:00Z' }
+  ];
+  const c2 = base({ capturas: 2, origens: ['guia-checklist-chegada-au-pair', 'guia-vls-ts'], ultima_origem: 'guia-vls-ts', respostas: { objetivo: 'ap-medo-prazo', pesoDoDia: 'alto' } });
+  const h2 = mod.jornadaHtml(c2, [], [], J(evs2), 'x');
+  check('o funil mais recente vem primeiro na lista', h2.indexOf('Guia VLS-TS') < h2.indexOf('Guia au pair: checklist de chegada') && h2.includes('mais recente'));
+  const kv = mod.respostasKv(c2, J(evs2));
+  check('uma linha de etapa por funil, do mais recente ao mais antigo', kv[1][0].startsWith('Etapa · Guia VLS-TS') && kv[2][0].startsWith('Etapa · Guia au pair') && /prazo/i.test(kv[1][1]) && /por onde/i.test(kv[2][1]));
+  check('pergunta nova do funil aparece com rótulo legível, não com a chave crua', kv.some((x) => x[0] === 'Peso do dia' && x[1] === 'alto'));
+}
 
 console.log('\n' + (failed ? failed + ' FALHARAM, ' : '') + passed + ' passaram');
 process.exit(failed ? 1 : 0);

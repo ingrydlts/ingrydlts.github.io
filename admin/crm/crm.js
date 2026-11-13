@@ -7,8 +7,8 @@ import * as ES from './estudio.js?v=2026-11-12.10';   // os blocos do estúdio d
 import * as EE from './editor-email.js?v=2026-11-12.10';
 import * as EQ from './editor-quem.js?v=2026-11-12.10';
 import * as JR from './jornada.js?v=2026-11-12.10';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
-import * as FX from './ficha.js?v=2026-11-13.3';   // ficha v2: lógica pura (fila, démarches, funil, ações)
-import * as FH from './ficha-html.js?v=2026-11-13.3';   // ficha v2: HTML puro
+import * as FX from './ficha.js?v=2026-11-13.4';   // ficha v2: lógica pura (fila, démarches, funil, ações)
+import * as FH from './ficha-html.js?v=2026-11-13.4';   // ficha v2: HTML puro
 
 var PERSONAS = {
   au_pair_estudante: 'Au pair → estudante', campus_france: 'Campus France', alternancia_emprego: 'Alternância / emprego',
@@ -875,9 +875,10 @@ function jornadaHtml(c, mails, resps, jor, h4, funil) {
   var grupos = [], gi = {};
   es.forEach(function (x) { var o = x.origem || '—'; if (gi[o] == null) { gi[o] = grupos.length; grupos.push({ o: o, n: 0, em: x.em }); } grupos[gi[o]].n++; grupos[gi[o]].ult = x.em; });
   if (!grupos.length) origens.forEach(function (o) { grupos.push({ o: o, n: 0, em: null }); });
+  grupos.sort(function (a, b) { return (b.ult || b.em || '') < (a.ult || a.em || '') ? -1 : (b.ult || b.em || '') > (a.ult || a.em || '') ? 1 : 0; });   // o mais recente primeiro
   var multi = grupos.length > 1, ultimaO = ultimaOrigem(c);
   var funisHtml = !multi ? '' : '<div class="fx-funis"><div class="k">Entrou por ' + grupos.length + ' funis</div><ul>' + grupos.map(function (g) {
-    return '<li><span class="fx-funis-nome">' + esc(origLabel(g.o)) + '</span><span class="fx-funis-meta">' + (g.em ? esc(fmtDate(g.em)) : '') + (g.n > 1 ? ' · ' + g.n + '×' : '') +
+    return '<li><span class="fx-funis-nome">' + esc(origLabel(g.o)) + '</span><span class="fx-funis-meta">' + (g.ult || g.em ? esc(fmtDate(g.ult || g.em)) : '') + (g.n > 1 ? ' · ' + g.n + '×' : '') +
       (g.o === ultimaO ? ' <b class="fx-funis-ult">mais recente</b>' : '') + '</span></li>';
   }).join('') + '</ul></div>';
   var resumo = (multi ? [] : rows.slice(0, 1)).concat([['Entradas', vezes(nCapturas(c)) + (dias != null ? ' · na base há ' + haDias(dias) : '')],
@@ -933,11 +934,17 @@ function compraHtml(c) {
 var ALT_ETAPA = { 'alt-pesquisando': 'Pesquisando se pode fazer alternância depois dos 29', 'alt-escolhendo-escola': 'Escolhendo escola e curso',
   'alt-recusa-idade': 'Ouviu "só até 29" de uma escola', 'alt-buscando-empresa': 'Tem escola, falta a empresa', 'alt-montando-contrato': 'Tem empresa, montando o contrato' };
 function etapaDe(v) { return CF_ETAPA[v] || ALT_ETAPA[v] || (/^ap-/.test(v) ? TX.rotuloEtapa('I05', v) : v); }
-function respostasKv(c) {
+// Chave crua do funil vira rótulo legível (camelCase, traço e sublinhado viram espaço; só a 1ª letra maiúscula).
+function rotuloChave(k) { var t = String(k).replace(/([a-z])([A-Z])/g, '$1 $2').replace(/[_-]+/g, ' ').trim().toLowerCase(); return t.charAt(0).toUpperCase() + t.slice(1); }
+function respostasKv(c, jor) {
   var r = c.respostas || {}, rows = [], cf = /^cf-/.test(r.objetivo || '') || r.cfNivel || origensDe(c).indexOf(CF_GUIA_ORIGEM) >= 0;
   var add = function (l, v, falta) { if (v != null && v !== '') rows.push([l, String(v)]); else if (falta) rows.push([l, falta, 1]); };
   add('Persona', personaLabel(c) + (subLabel(c) ? ' · ' + subLabel(c) : ''));
-  if (r.objetivo) add(/^alt-/.test(r.objetivo) ? 'Etapa na alternância' : /^cf-/.test(r.objetivo) ? 'Etapa no Campus France' : 'Etapa', etapaDe(r.objetivo));
+  // Entrou por mais de um funil: a etapa de cada um, do mais recente para o mais antigo (cada guia pergunta a sua).
+  var qs = jor && jor.quizzes ? jor.quizzes.filter(function (q) { return q.objetivo; }) : [];
+  var eMulti = qs.length > 1 && jor.entradas.length > 1;
+  if (eMulti) qs.slice().reverse().forEach(function (q) { var en = jor.entradas.filter(function (x) { return x.em === q.em; })[0]; add('Etapa · ' + (en && en.origem ? origLabel(en.origem) : fmtDate(q.em)), etapaDe(q.objetivo)); });
+  else if (r.objetivo) add(/^alt-/.test(r.objetivo) ? 'Etapa na alternância' : /^cf-/.test(r.objetivo) ? 'Etapa no Campus France' : 'Etapa', etapaDe(r.objetivo));
   if (cf) add('Nível da candidatura', CF_NIVEL[r.cfNivel] || r.cfNivel, 'não respondeu (pergunta nova, de 14/10)');
   if (r.cfNivel && CF_PRAZO[r.cfNivel]) { var d = diasAte(CF_PRAZO[r.cfNivel]); add('Prazo Campus France', fmtDay(CF_PRAZO[r.cfNivel]) + (d >= 0 ? ' (faltam ' + d + ' dias)' : ' (venceu)')); }
   if (cf) add('Cidade', CF_CIDADE[r.cfCidade] || r.cfCidade, 'ainda não disse (toca no e-mail 2)');
@@ -946,7 +953,7 @@ function respostasKv(c) {
   add('Fase', c.fase); add('Nível de estudos', c.nivel_estudos); add('Preocupação', c.preocupacao);
   Object.keys(r).forEach(function (k) {
     if (k === 'objetivo' || k === 'cfNivel' || k === 'cfCidade') return;
-    var l = RESP_LABEL[k]; add(l ? l[0] : k, l ? l[1](r[k]) : r[k]);
+    var l = RESP_LABEL[k]; add(l ? l[0] : rotuloChave(k), l ? l[1](r[k]) : (typeof r[k] === 'object' ? JSON.stringify(r[k]) : r[k]));
   });
   add('Novidades por e-mail', c.aceita_novidades ? 'Aceitou' : 'Não aceitou');
   return rows;
@@ -2474,7 +2481,7 @@ function fxHeaderHtml(c, d) {
 // Catálogo de démarches (cópia do app, processos.json): carregado uma vez; sem ele, tudo cai na démarche padrão.
 var FX_PROC = null;
 async function fxCarregaProcessos() {
-  try { var r = await fetch('processos.json?v=2026-11-13.3'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
+  try { var r = await fetch('processos.json?v=2026-11-13.4'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
 }
 // A sessão Checklist: pílulas por démarche, os 4 mais urgentes, pasta do Drive privada e "Ver mais desta sessão".
 function fxChecklistCorpo(c) {
@@ -2516,7 +2523,7 @@ function fxCorpo(c, d, tab) {
   // Ficha (captação): o fluxo de 3 passos e os painéis que já existiam (feed, e-mails, jornada, quem é ela, mais).
   var etapa = FX.etapaFunil(c, { mails: d.mails || [], propostas: [], temBilan: !!(state.bilan && state.bilan.cid === c.id) }), h4 = d.h4 || H4_PLAT;
   // Três colunas, cada uma com um papel: à esquerda quem ela é e onde está no funil; no meio o que ela fez; à direita o que fazer (e-mail).
-  var quem = '<div class="panel" style="padding:16px"><h4 style="' + h4 + '">Quem é ela</h4>' + kvHtml(respostasKv(c)) + '</div>';
+  var quem = '<div class="panel" style="padding:16px"><h4 style="' + h4 + '">Quem é ela</h4>' + kvHtml(respostasKv(c, d.jor)) + '</div>';
   return FH.htmlFluxo(etapa <= 3 ? 1 : etapa <= 5 ? 2 : 3, H_FX) + onbResumoHtml(c) +
     '<div class="fx-ficha3">' +
     '<aside class="fx-rail fx-ctx" aria-label="Quem é ela e jornada">' + quem + jornadaHtml(c, d.mails || [], d.resps || [], d.jor, h4, FH.htmlFunil({ etapa: etapa, semCaixa: true }, H_FX)) + '</aside>' +
