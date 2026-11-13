@@ -37,6 +37,31 @@ export function htmlHeader(d, h) {
     '<div class="fx-h-avanco">' + avanco + (d.ultima ? '<p class="sub fx-av-txt">Última atividade: ' + e(d.ultima) + '</p>' : '') + '</div></header>';
 }
 
+// Cabeçalho fixo: pessoa, etiqueta de pagamento, ações e cartões por tipo de pessoa (os blocos vêm de FX.cartoesDe).
+// d = { c, estagioLabel, personaLabel, etiqueta: { texto, tom }, estagios: [{k,l}], blocos: [{ titulo|null, cartoes: [{rotulo, valor, sub, tom?}] }], nota|null }
+function iniciais(c) {
+  const partes = String((c && c.nome) || '').trim().split(/\s+/).filter(Boolean);
+  const base = partes.length ? partes.slice(0, 2).map((p) => p.charAt(0)).join('') : String((c && c.email) || '?').charAt(0);
+  return base.toUpperCase();
+}
+export function htmlCabecalho(d, h) {
+  const e = h.esc, c = d.c || {}, et = d.etiqueta || { texto: '', tom: 'neutro' };
+  const blocos = (d.blocos || []).map((b) =>
+    (b.titulo ? '<span class="tag">' + e(b.titulo) + '</span>' : '') +
+    '<div class="hd-k">' + (b.cartoes || []).map((k) =>
+      '<div class="k' + (k.tom === 'alerta' ? ' alerta' : k.tom === 'ok' ? ' ok' : '') + '"><b class="l">' + e(k.rotulo) + '</b><div class="v">' + e(k.valor) + '</div>' +
+      (k.sub ? '<div class="s">' + e(k.sub) + '</div>' : '') + '</div>').join('') + '</div>').join('');
+  return '<header class="hd" id="fx-hd">' +
+    '<div class="hd-l1"><span class="hd-av" aria-hidden="true">' + e(iniciais(c)) + '</span><h2 class="hd-n">' + e(c.nome || c.email || 'Sem nome') + '</h2>' +
+    (d.personaLabel ? '<span class="pill">' + e(d.personaLabel) + '</span>' : '') +
+    (d.estagioLabel ? '<span class="pill"><span class="dot"></span>' + e(d.estagioLabel) + '</span>' : '') +
+    (et.texto ? '<span class="pill pg-' + e(et.tom) + '">' + e(et.texto) + '</span>' : '') +
+    '<span class="hd-sp"><button class="btn primary" type="button" data-emailfor="' + e(c.id) + '">Escrever mensagem</button>' +
+    '<button class="btn" type="button" data-open1a1="' + e(c.id) + '">Marcar 1:1</button>' +
+    '<span class="sel"><select id="stage-pick" aria-label="Mudar estágio">' + (d.estagios || []).map((s) => '<option value="' + e(s.k) + '"' + (s.k === c.estagio ? ' selected' : '') + '>Estágio: ' + e(s.l) + '</option>').join('') + '</select></span></span></div>' +
+    blocos + (d.nota ? '<p class="est">' + e(d.nota) + '</p>' : '') + '</header>';
+}
+
 // O funil de conversão (7 etapas), em faixa larga: vive na aba Ficha, logo acima de Jornada, Quem é ela e E-mails.
 // d = { etapa (1..7), semCaixa }: com semCaixa devolve só a lista (para entrar dentro do cartão da Jornada, na coluna lateral).
 export function htmlFunil(d, h) {
