@@ -7,8 +7,8 @@ import * as ES from './estudio.js?v=2026-11-12.10';   // os blocos do estúdio d
 import * as EE from './editor-email.js?v=2026-11-12.10';
 import * as EQ from './editor-quem.js?v=2026-11-12.10';
 import * as JR from './jornada.js?v=2026-11-12.10';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
-import * as FX from './ficha.js?v=2026-11-12.11';   // ficha v2: lógica pura (fila, démarches, funil, ações)
-import * as FH from './ficha-html.js?v=2026-11-12.11';   // ficha v2: HTML puro
+import * as FX from './ficha.js?v=2026-11-13.1';   // ficha v2: lógica pura (fila, démarches, funil, ações)
+import * as FH from './ficha-html.js?v=2026-11-13.1';   // ficha v2: HTML puro
 
 var PERSONAS = {
   au_pair_estudante: 'Au pair → estudante', campus_france: 'Campus France', alternancia_emprego: 'Alternância / emprego',
@@ -755,6 +755,19 @@ function tipoFunil(o) {
   return /^guia-/.test(o) ? 'guia gratuito' : o === 'bot' ? 'funil de classificação' : (o === 'blog' || o === 'artigo' || /^artigo-/.test(o) || /^\/artigos\//.test(o)) ? 'artigo do blog'
     : o === 'instagram' ? 'link do Instagram' : (o === 'direto' || o === 'login_direto') ? 'acesso direto' : '';
 }
+// A página (landing) de onde a pessoa veio, pela origem que o site grava. É a linha da matriz do Estúdio de e-mails (Jornada).
+var ORIGEM_PAGINA = { 'guia-email-alt30': 'I01', 'guia-tecnologo': 'I02', 'guia-etudes-en-france-2027': 'I03', 'guia-vls-ts': 'I04', 'guia-checklist-chegada-au-pair': 'I05' };
+// Os modelos de uma página numa etapa da jornada (lead, contato, reimp, plat), do jeito que o Estúdio os organiza.
+// Só entram os que têm versão No ar (sem a tabela de modelos, vale a lista do código).
+function modelosDaEtapa(pagina, etapa) {
+  if (!pagina || !JR.etapaDaJornada) return [];
+  return listaModelos().filter(function (m) {
+    var cl = TX.classifica(m);
+    if (cl.pagina !== pagina) return false;
+    if (JR.etapaDaJornada(Object.assign({}, m, { familia: cl.familia, pagina: cl.pagina })) !== etapa) return false;
+    return !M || versoesDe(m.chave).some(function (v) { return v.etapa === 'no_ar'; });
+  });
+}
 // Devolve { k, quando: 'agora'|'esperar'|'nao', titulo, angulo, sinais, conversa }. k = o modelo a revisar (null = nenhum e-mail agora).
 function proximoEmail(c, mails, resps, jor) {
   var r = c.respostas || {}, ult = mails[0], diasUlt = ult ? diasDesde(ult.enviado_em || ult.criado_em) : null;
@@ -789,15 +802,24 @@ function proximoEmail(c, mails, resps, jor) {
   if (ult && ult.status === 'nao_entregue')
     return out({ titulo: 'Corrija o endereço antes de mandar outro',
       angulo: 'O último e-mail não foi entregue. Confira se o endereço tem erro de digitação (gmial, hotmial) ou chame pelo Instagram. Mandar de novo para o mesmo endereço só queima a reputação do remetente.' });
-  if (c.um_a_um_quando)
+  if (c.um_a_um_quando || c.estagio === 'um_a_um')
     return out({ titulo: 'Nada de campanha: ela tem 1:1 marcado',
-      angulo: 'Com a conversa marcada (' + fmtWhen(c.um_a_um_quando) + '), o único e-mail útil é um lembrete curto perto do dia, com o que ela deve levar. Fora isso, é ruído.' });
+      angulo: 'Com a conversa marcada' + (c.um_a_um_quando ? ' (' + fmtWhen(c.um_a_um_quando) + ')' : '') + ', o único e-mail útil é um lembrete curto perto do dia, com o que ela deve levar. Fora isso, é ruído.' });
   if (origensDe(c).indexOf(CF_GUIA_ORIGEM) >= 0 && m1 && !m2 && c.aceita_novidades && diasDesde(m1.enviado_em || m1.criado_em) <= 7)
     return out({ titulo: 'Deixe o e-mail 2 do guia sair sozinho',
       angulo: 'A sequência do Campus France já tem o e-mail 2 (a conversa) programado para o próximo envio diário, às 10h de Brasília. Mandar outro na frente atropela ele.' });
-  if (!mails.length)
-    return out({ k: k0, quando: 'agora', titulo: 'Primeiro contato: entregue o que ela veio buscar',
-      angulo: 'Abra com o que ela pediu' + (origem ? ' (“' + origem + '”)' : '') + (etapa ? ', mostre que sabe em que etapa ela está (' + etapa.toLowerCase() + ')' : '') + ' e termine com uma pergunta fácil de responder. Uma resposta dela vale mais do que mil cliques.' });
+  if (!mails.length) {
+    // A captação convida para o 1:1; o app não é a primeira oferta. O primeiro contato é o e-mail da etapa "Primeiro contato"
+    // da página dela no Estúdio (Jornada). A entrega do material (etapa "Inbound lead") sai sozinha, não é este botão.
+    var pag = ORIGEM_PAGINA[ultimaOrigem(c)] || null, conv = modelosDaEtapa(pag, 'contato').filter(function (m) { return !m.automatico; });
+    var contexto = (origem ? 'Ela pediu “' + origem + '”' : 'Ela deixou o e-mail') + (etapa ? ' e disse que está em: ' + etapa.toLowerCase() : '') + '. ';
+    if (conv.length)
+      return out({ k: conv[0].chave, quando: 'agora', titulo: 'Primeiro contato: convide para o 1:1',
+        angulo: contexto + 'Convide para a conversa com uma pergunta fácil de responder; o objetivo é o 1:1, não o app. Uma resposta dela vale mais do que mil cliques.' });
+    return out({ titulo: pag ? 'Falta o e-mail de primeiro contato desta página' : 'Convide para o 1:1 com um e-mail escrito por você',
+      angulo: contexto + (pag ? 'A página dela no Estúdio de e-mails (Jornada) ainda não tem e-mail na etapa Primeiro contato (o convite para o 1:1): crie e publique um lá, e ele passa a aparecer aqui.'
+        : 'Esta origem não tem página no Estúdio de e-mails, então não há modelo para sugerir.') + ' Enquanto isso, convide pelo Instagram ou com “Escrever mensagem” no topo da ficha. Não mande boas-vindas com link do app: o onboarding começa no 1:1.' });
+  }
   if (voltouDepoisDoEmail(c)) {
     // Sem guia próprio para a última origem, o padrão seria as boas-vindas: ela já recebeu e-mail nosso (qualquer um), então fica sem modelo.
     var kVolta = k0 === 'boas_vindas' ? null : k0;
@@ -2443,7 +2465,7 @@ function fxHeaderHtml(c, d) {
 // Catálogo de démarches (cópia do app, processos.json): carregado uma vez; sem ele, tudo cai na démarche padrão.
 var FX_PROC = null;
 async function fxCarregaProcessos() {
-  try { var r = await fetch('processos.json?v=2026-11-12.11'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
+  try { var r = await fetch('processos.json?v=2026-11-13.1'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
 }
 // A sessão Checklist: pílulas por démarche, os 4 mais urgentes, pasta do Drive privada e "Ver mais desta sessão".
 function fxChecklistCorpo(c) {
@@ -2484,10 +2506,14 @@ function fxCorpo(c, d, tab) {
   if (tab === 'conversa') return conversaPanel(c, d.mails || [], d.resps || [], d.h4 || H4_PLAT);
   // Ficha (captação): o fluxo de 3 passos e os painéis que já existiam (feed, e-mails, jornada, quem é ela, mais).
   var etapa = FX.etapaFunil(c, { mails: d.mails || [], propostas: [], temBilan: !!(state.bilan && state.bilan.cid === c.id) }), h4 = d.h4 || H4_PLAT;
-  return FH.htmlFluxo(etapa <= 3 ? 1 : etapa <= 5 ? 2 : 3, H_FX) + onbResumoHtml(c) +
+  // Primeiro o que explica o e-mail: o funil, a jornada dela e quem ela é, ao lado do próximo e-mail. Depois, o resto.
+  return FH.htmlFluxo(etapa <= 3 ? 1 : etapa <= 5 ? 2 : 3, H_FX) + onbResumoHtml(c) + FH.htmlFunil({ etapa: etapa }, H_FX) +
+    '<div class="fx-ctx">' +
+    '<div class="fx-ctx-col">' + jornadaHtml(c, d.mails || [], d.resps || [], d.jor, h4) +
+    '<div class="panel" style="padding:16px"><h4 style="' + h4 + '">Quem é ela</h4>' + kvHtml(respostasKv(c)) + '</div></div>' +
+    '<div class="fx-ctx-col">' + emailsPanel(c, d.mails || [], h4, d.resps || [], d.jor) + '</div></div>' +
     '<div class="pessoa-grid" style="margin-top:18px">' + fichaFeedHtml(d.eventos || []) +
-    '<div style="display:flex; flex-direction:column; gap:16px">' + emailsPanel(c, d.mails || [], h4, d.resps || [], d.jor) + jornadaHtml(c, d.mails || [], d.resps || [], d.jor, h4) +
-    '<div class="panel" style="padding:16px"><h4 style="' + h4 + '">Quem é ela</h4>' + kvHtml(respostasKv(c)) + '</div>' +
+    '<div style="display:flex; flex-direction:column; gap:16px">' +
     fichaMaisHtml(c, { perg: d.perg || [], resps: d.resps || [], cons: d.cons || [], last: d.last, h4: h4 }) + '</div></div>';
 }
 // Repinta só o corpo da aba (abrir/fechar/mover sessão): o resto da tela e a rolagem ficam.

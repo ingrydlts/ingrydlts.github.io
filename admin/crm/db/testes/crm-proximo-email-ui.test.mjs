@@ -3,6 +3,7 @@
 //
 // Uso: cd admin/crm/db/testes && node crm-proximo-email-ui.test.mjs
 import * as TXMOD from '../../taxonomia.js';
+import * as JRMOD from '../../jornada.js';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -31,7 +32,7 @@ const supabase = { from: qb, auth: { getSession: async () => ({ data: { session:
 const store = {};
 const mod = new Function('supabase', 'ES', 'TX', 'EE', 'EQ', 'JR', 'document', 'window', 'location', 'localStorage', 'setInterval', 'clearInterval',
   src + '\n;return { state, setC: function (v) { C = v; }, renderPessoa, proximoEmail, montaJornada, jornadaHtml, emailsPanel };')(
-  supabase, {}, TXMOD, { iniciar() {}, depois() {}, campoMudou() {} }, {}, {}, document, { addEventListener() {} }, { href: '' }, { getItem: (k) => store[k] ?? null, setItem: (k, v) => { store[k] = v; } }, () => 1, () => {});
+  supabase, {}, TXMOD, { iniciar() {}, depois() {}, campoMudou() {} }, {}, JRMOD, document, { addEventListener() {} }, { href: '' }, { getItem: (k) => store[k] ?? null, setItem: (k, v) => { store[k] = v; } }, () => 1, () => {});
 
 const dias = (n) => new Date(Date.now() - n * 864e5).toISOString();
 const base = (o = {}) => Object.assign({ id: 'c1', email: 'isa@example.com', nome: 'Isabelle', estagio: 'lead', urgencia: 'baixa', persona: 'au_pair_estudante', origem: 'bot',
@@ -43,9 +44,15 @@ const XSS = '<img src=x onerror=alert(1)>';
 
 console.log('== Quando ela nunca recebeu e-mail ==');
 let p = prox(base());
-check('primeiro contato: pode enviar agora, com o modelo de boas-vindas', p.quando === 'agora' && p.k === 'boas_vindas' && /Primeiro contato/.test(p.titulo));
-check('o ângulo cita o funil e pede uma pergunta fácil', /Assistente de vistos/.test(p.angulo) && /pergunta/.test(p.angulo));
+check('origem sem página: nunca sugere boas-vindas nem o app; manda convidar para o 1:1', p.k === null && p.quando === 'nao' && /1:1/.test(p.titulo) && /boas-vindas/i.test(p.angulo));
 check('os sinais dizem que não recebeu nenhum e-mail', p.sinais.some((s) => /nenhum e-mail pelo CRM/.test(s)));
+const ap = base({ origem: 'guia-checklist-chegada-au-pair', origens: ['guia-checklist-chegada-au-pair'], respostas: { objetivo: 'ap-nao-sei-comecar' } });
+p = prox(ap);
+check('página sem e-mail de Primeiro contato: avisa o buraco da Jornada e não sugere modelo', p.k === null && /Falta o e-mail de primeiro contato/.test(p.titulo) && /Jornada/.test(p.angulo) && !/Boas-vindas/.test(p.titulo));
+p = prox(base({ origem: 'guia-vls-ts', origens: ['guia-vls-ts'] }));
+check('página com e-mail de Primeiro contato: sugere o convite para o 1:1 dela', p.quando === 'agora' && p.k === 'guia_chamada' && /1:1/.test(p.titulo));
+p = prox(ap, [], [], J());
+check('1:1 pelo estágio (sem data): nada de campanha', prox(Object.assign({}, ap, { estagio: 'um_a_um' })).quando === 'nao' && /1:1 marcado/.test(prox(Object.assign({}, ap, { estagio: 'um_a_um' })).titulo));
 p = prox(base({ respostas: { objetivo: 'cf-escolhendo-curso' } }));
 check('cita a etapa que ela escolheu', /escolhendo o curso/i.test(p.angulo));
 
@@ -92,8 +99,9 @@ check('e-mail do bilan saiu há 1h: espera e não oferece boas-vindas', p.quando
 console.log('\n== O bloco na tela ==');
 let html = mod.emailsPanel(base(), [], 'x', [], J());
 check('sem prévia em miniatura (o que não servia)', !html.includes('mailthumb') && !html.includes('thumbframe') && !html.includes('<iframe'));
-check('mostra selo em texto, título e ângulo', html.includes('Pode enviar agora') && html.includes('Primeiro contato') && html.includes('ins-ang'));
-check('mantém o botão que abre o e-mail para revisar', /data-emailfor="c1"[^>]*data-tplk="boas_vindas"/.test(html) && html.includes('Revisar e enviar'));
+check('sem modelo para sugerir: selo "Não envie agora", sem botão de revisar e sem boas-vindas', html.includes('Não envie agora') && html.includes('ins-ang') && !html.includes('Revisar e enviar') && !html.includes('Boas-vindas'));
+html = mod.emailsPanel(base({ origem: 'guia-vls-ts', origens: ['guia-vls-ts'] }), [], 'x', [], J());
+check('com modelo: mostra selo em texto e o botão que abre o e-mail para revisar', html.includes('Pode enviar agora') && /data-emailfor="c1"[^>]*data-tplk="guia_chamada"/.test(html) && html.includes('Revisar e enviar'));
 check('os sinais ficam num bloco que abre e fecha', html.includes('O que a ficha mostra') && html.includes('<details'));
 html = mod.emailsPanel(base({ origem: 'guia-vls-ts', origens: ['guia-vls-ts'] }), [mail({ enviado_em: dias(1), criado_em: dias(1) })], 'x', [], J());
 check('esperar: selo diz até quando e o botão deixa de ser o principal', /Espere até \d\d\/\d\d/.test(html) && html.includes('Ver o e-mail mesmo assim') && !html.includes('btn primary" type="button" style="margin-top:10px" data-emailfor'));
