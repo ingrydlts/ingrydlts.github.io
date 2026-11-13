@@ -2,13 +2,13 @@
 // Nada de service_role aqui. O banco é db/crm-fase2.sql; o desenho é o artefato "CRM Por Dentro".
 // Tudo que vem do banco é texto de terceiros (nome, e-mail, pergunta): passa sempre por esc().
 import { supabase } from '/assets/js/supabase-client.js';
-import * as TX from './taxonomia.js?v=2026-11-13.1';   // páginas, famílias e agrupamento dos modelos
-import * as ES from './estudio.js?v=2026-11-13.1';   // os blocos do estúdio de e-mails (entregas 2 e 3)
-import * as EE from './editor-email.js?v=2026-11-13.1';
-import * as EQ from './editor-quem.js?v=2026-11-13.1';
-import * as JR from './jornada.js?v=2026-11-13.1';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
-import * as FX from './ficha.js?v=2026-11-12.11';   // ficha v2: lógica pura (fila, démarches, funil, ações)
-import * as FH from './ficha-html.js?v=2026-11-12.11';   // ficha v2: HTML puro
+import * as TX from './taxonomia.js?v=2026-11-13.9';   // páginas, famílias e agrupamento dos modelos
+import * as ES from './estudio.js?v=2026-11-13.9';   // os blocos do estúdio de e-mails (entregas 2 e 3)
+import * as EE from './editor-email.js?v=2026-11-13.9';
+import * as EQ from './editor-quem.js?v=2026-11-13.9';
+import * as JR from './jornada.js?v=2026-11-13.9';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
+import * as FX from './ficha.js?v=2026-11-13.9';   // ficha v2: lógica pura (fila, démarches, funil, ações)
+import * as FH from './ficha-html.js?v=2026-11-13.9';   // ficha v2: HTML puro
 
 var PERSONAS = {
   au_pair_estudante: 'Au pair → estudante', campus_france: 'Campus France', alternancia_emprego: 'Alternância / emprego',
@@ -22,7 +22,7 @@ var STAGES = [
   { k: 'concluido', l: 'Concluído', d: 'terminou o percurso' }, { k: 'inativo', l: 'Inativo', d: 'sumiu há 30+ dias' }
 ];
 var ORIG = { instagram: 'Instagram', bot: 'Assistente de vistos', blog: 'Blog', direto: 'Direto', artigo: 'Artigo', login_direto: 'Login direto',
-  'guia-vls-ts': 'Guia VLS-TS', 'guia-email-alt30': 'Guia alternância 30+', 'guia-tecnologo': 'Guia tecnólogo', 'guia-etudes-en-france-2027': 'Guia Campus France',
+  'guia-vls-ts': 'Guia VLS-TS', 'guia-checklist-chegada-au-pair': 'Guia au pair: checklist de chegada', 'guia-email-alt30': 'Guia alternância 30+', 'guia-tecnologo': 'Guia tecnólogo', 'guia-etudes-en-france-2027': 'Guia Campus France',
   // Newsletter da bolsa Eiffel, no artigo de bolsas (o CRM guarda a origem como token; aqui volta a ser o endereço).
   'artigo-como-conseguir-bolsa-de-estudo': '/artigos/post/como-conseguir-bolsa-de-estudo/' };
 function origLabel(o) { return ORIG[o] || o; }
@@ -755,6 +755,19 @@ function tipoFunil(o) {
   return /^guia-/.test(o) ? 'guia gratuito' : o === 'bot' ? 'funil de classificação' : (o === 'blog' || o === 'artigo' || /^artigo-/.test(o) || /^\/artigos\//.test(o)) ? 'artigo do blog'
     : o === 'instagram' ? 'link do Instagram' : (o === 'direto' || o === 'login_direto') ? 'acesso direto' : '';
 }
+// A página (landing) de onde a pessoa veio, pela origem que o site grava. É a linha da matriz do Estúdio de e-mails (Jornada).
+var ORIGEM_PAGINA = { 'guia-email-alt30': 'I01', 'guia-tecnologo': 'I02', 'guia-etudes-en-france-2027': 'I03', 'guia-vls-ts': 'I04', 'guia-checklist-chegada-au-pair': 'I05' };
+// Os modelos de uma página numa etapa da jornada (lead, contato, reimp, plat), do jeito que o Estúdio os organiza.
+// Só entram os que têm versão No ar (sem a tabela de modelos, vale a lista do código).
+function modelosDaEtapa(pagina, etapa) {
+  if (!pagina || !JR.etapaDaJornada) return [];
+  return listaModelos().filter(function (m) {
+    var cl = TX.classifica(m);
+    if (cl.pagina !== pagina) return false;
+    if (JR.etapaDaJornada(Object.assign({}, m, { familia: cl.familia, pagina: cl.pagina })) !== etapa) return false;
+    return !M || versoesDe(m.chave).some(function (v) { return v.etapa === 'no_ar'; });
+  });
+}
 // Devolve { k, quando: 'agora'|'esperar'|'nao', titulo, angulo, sinais, conversa }. k = o modelo a revisar (null = nenhum e-mail agora).
 function proximoEmail(c, mails, resps, jor) {
   var r = c.respostas || {}, ult = mails[0], diasUlt = ult ? diasDesde(ult.enviado_em || ult.criado_em) : null;
@@ -789,15 +802,24 @@ function proximoEmail(c, mails, resps, jor) {
   if (ult && ult.status === 'nao_entregue')
     return out({ titulo: 'Corrija o endereço antes de mandar outro',
       angulo: 'O último e-mail não foi entregue. Confira se o endereço tem erro de digitação (gmial, hotmial) ou chame pelo Instagram. Mandar de novo para o mesmo endereço só queima a reputação do remetente.' });
-  if (c.um_a_um_quando)
+  if (c.um_a_um_quando || c.estagio === 'um_a_um')
     return out({ titulo: 'Nada de campanha: ela tem 1:1 marcado',
-      angulo: 'Com a conversa marcada (' + fmtWhen(c.um_a_um_quando) + '), o único e-mail útil é um lembrete curto perto do dia, com o que ela deve levar. Fora isso, é ruído.' });
+      angulo: 'Com a conversa marcada' + (c.um_a_um_quando ? ' (' + fmtWhen(c.um_a_um_quando) + ')' : '') + ', o único e-mail útil é um lembrete curto perto do dia, com o que ela deve levar. Fora isso, é ruído.' });
   if (origensDe(c).indexOf(CF_GUIA_ORIGEM) >= 0 && m1 && !m2 && c.aceita_novidades && diasDesde(m1.enviado_em || m1.criado_em) <= 7)
     return out({ titulo: 'Deixe o e-mail 2 do guia sair sozinho',
       angulo: 'A sequência do Campus France já tem o e-mail 2 (a conversa) programado para o próximo envio diário, às 10h de Brasília. Mandar outro na frente atropela ele.' });
-  if (!mails.length)
-    return out({ k: k0, quando: 'agora', titulo: 'Primeiro contato: entregue o que ela veio buscar',
-      angulo: 'Abra com o que ela pediu' + (origem ? ' (“' + origem + '”)' : '') + (etapa ? ', mostre que sabe em que etapa ela está (' + etapa.toLowerCase() + ')' : '') + ' e termine com uma pergunta fácil de responder. Uma resposta dela vale mais do que mil cliques.' });
+  if (!mails.length) {
+    // A captação convida para o 1:1; o app não é a primeira oferta. O primeiro contato é o e-mail da etapa "Primeiro contato"
+    // da página dela no Estúdio (Jornada). A entrega do material (etapa "Inbound lead") sai sozinha, não é este botão.
+    var pag = ORIGEM_PAGINA[ultimaOrigem(c)] || null, conv = modelosDaEtapa(pag, 'contato').filter(function (m) { return !m.automatico; });
+    var contexto = (origem ? 'Ela pediu “' + origem + '”' : 'Ela deixou o e-mail') + (etapa ? ' e disse que está em: ' + etapa.toLowerCase() : '') + '. ';
+    if (conv.length)
+      return out({ k: conv[0].chave, quando: 'agora', titulo: 'Primeiro contato: convide para o 1:1',
+        angulo: contexto + 'Convide para a conversa com uma pergunta fácil de responder; o objetivo é o 1:1, não o app. Uma resposta dela vale mais do que mil cliques.' });
+    return out({ titulo: pag ? 'Falta o e-mail de primeiro contato desta página' : 'Convide para o 1:1 com um e-mail escrito por você',
+      angulo: (etapa ? 'Etapa dela: ' + etapa.toLowerCase() + '. ' : '') + (pag ? 'Esta página ainda não tem o convite para o 1:1 no Estúdio (Jornada, etapa Primeiro contato). Crie e publique lá e ele aparece aqui. Até lá, convide pelo Instagram ou em “Escrever mensagem”. Sem boas-vindas com link do app.'
+        : 'Esta origem não tem página no Estúdio, então não há modelo para sugerir. Convide para o 1:1 em “Escrever mensagem”. Sem boas-vindas com link do app.') });
+  }
   if (voltouDepoisDoEmail(c)) {
     // Sem guia próprio para a última origem, o padrão seria as boas-vindas: ela já recebeu e-mail nosso (qualquer um), então fica sem modelo.
     var kVolta = k0 === 'boas_vindas' ? null : k0;
@@ -823,7 +845,7 @@ function proximoEmail(c, mails, resps, jor) {
     angulo: 'Nada na ficha pede um e-mail agora. Espere ela abrir o e-mail, voltar a deixar o e-mail ou escrever. Se quiser escrever mesmo assim, use “Escrever e-mail” no topo da ficha.' });
 }
 // ---------- Jornada no funil: por onde ela entrou, quantas vezes e até onde chegou ----------
-function jornadaHtml(c, mails, resps, jor, h4) {
+function jornadaHtml(c, mails, resps, jor, h4, funil) {
   var es = jor.entradas, origens = origensDe(c), primeira = origens[0] || c.origem || '';
   var rows = [];
   if (primeira) rows.push(['Funil de entrada', origLabel(primeira) + (tipoFunil(primeira) ? ' (' + tipoFunil(primeira) + ')' : '')]);
@@ -849,10 +871,20 @@ function jornadaHtml(c, mails, resps, jor, h4) {
     [c.estagio === 'um_a_um' || !!c.um_a_um_quando, 'Marcou 1:1', 'Ainda sem 1:1']
   ];
   var ok = degraus.filter(function (d) { return d[0]; }), ult = ok[ok.length - 1];
-  var resumo = rows.slice(0, 1).concat([['Entradas', vezes(nCapturas(c)) + (dias != null ? ' · na base há ' + haDias(dias) : '')],
+  // Mais de um funil: uma linha curta por funil (nome, 1ª data, quantas vezes) em vez de uma frase corrida.
+  var grupos = [], gi = {};
+  es.forEach(function (x) { var o = x.origem || '—'; if (gi[o] == null) { gi[o] = grupos.length; grupos.push({ o: o, n: 0, em: x.em }); } grupos[gi[o]].n++; grupos[gi[o]].ult = x.em; });
+  if (!grupos.length) origens.forEach(function (o) { grupos.push({ o: o, n: 0, em: null }); });
+  grupos.sort(function (a, b) { return (b.ult || b.em || '') < (a.ult || a.em || '') ? -1 : (b.ult || b.em || '') > (a.ult || a.em || '') ? 1 : 0; });   // o mais recente primeiro
+  var multi = grupos.length > 1, ultimaO = ultimaOrigem(c);
+  var funisHtml = !multi ? '' : '<div class="fx-funis"><div class="k">Entrou por ' + grupos.length + ' funis</div><ul>' + grupos.map(function (g) {
+    return '<li><span class="fx-funis-nome">' + esc(origLabel(g.o)) + '</span><span class="fx-funis-meta">' + (g.ult || g.em ? esc(fmtDate(g.ult || g.em)) : '') + (g.n > 1 ? ' · ' + g.n + '×' : '') +
+      (g.o === ultimaO ? ' <b class="fx-funis-ult">mais recente</b>' : '') + '</span></li>';
+  }).join('') + '</ul></div>';
+  var resumo = (multi ? [] : rows.slice(0, 1)).concat([['Entradas', vezes(nCapturas(c)) + (dias != null ? ' · na base há ' + haDias(dias) : '')],
     ['Chegou até', ult[1].replace(/ · \d\d\/\d\d$/, '') + ' (' + ok.length + ' de ' + degraus.length + ' passos)']])
-    .concat(origemKv(c).filter(function (x) { return /^(Por onde passou|Campanha|Post)/.test(x[0]); }));
-  return '<div class="panel" style="padding:16px"><h4 style="' + h4 + '">Jornada no funil</h4>' + kvHtml(resumo) +
+    .concat(origemKv(c).filter(function (x) { return multi ? /^(Campanha|Post)/.test(x[0]) : /^(Por onde passou|Campanha|Post)/.test(x[0]); }));
+  return '<div class="panel" style="padding:16px"><h4 style="' + h4 + '">Jornada no funil</h4>' + (funil || '') + funisHtml + kvHtml(resumo) +
     '<details class="mais-det"><summary>Cada entrada e todos os passos</summary><div class="k jn-k">Cada vez que ela entrou (' + vezes(nCapturas(c)) + ')</div>' +
     (linhas ? '<ol class="jn-list">' + linhas + '</ol>' : '<p class="sub" style="margin:0">Sem registro de captura na linha do tempo.</p>') +
     (faltam > 0 && es.length ? '<p class="sub" style="margin:6px 0 0">' + faltam + (faltam === 1 ? ' entrada mais antiga' : ' entradas mais antigas') + ' sem detalhe na linha do tempo.</p>' : '') +
@@ -901,12 +933,18 @@ function compraHtml(c) {
 // objetivo = a etapa que ela escolheu no guia; o prefixo diz de qual guia (cf- Campus France, alt- alternância 30+).
 var ALT_ETAPA = { 'alt-pesquisando': 'Pesquisando se pode fazer alternância depois dos 29', 'alt-escolhendo-escola': 'Escolhendo escola e curso',
   'alt-recusa-idade': 'Ouviu "só até 29" de uma escola', 'alt-buscando-empresa': 'Tem escola, falta a empresa', 'alt-montando-contrato': 'Tem empresa, montando o contrato' };
-function etapaDe(v) { return CF_ETAPA[v] || ALT_ETAPA[v] || v; }
-function respostasKv(c) {
+function etapaDe(v) { return CF_ETAPA[v] || ALT_ETAPA[v] || (/^ap-/.test(v) ? TX.rotuloEtapa('I05', v) : v); }
+// Chave crua do funil vira rótulo legível (camelCase, traço e sublinhado viram espaço; só a 1ª letra maiúscula).
+function rotuloChave(k) { var t = String(k).replace(/([a-z])([A-Z])/g, '$1 $2').replace(/[_-]+/g, ' ').trim().toLowerCase(); return t.charAt(0).toUpperCase() + t.slice(1); }
+function respostasKv(c, jor) {
   var r = c.respostas || {}, rows = [], cf = /^cf-/.test(r.objetivo || '') || r.cfNivel || origensDe(c).indexOf(CF_GUIA_ORIGEM) >= 0;
   var add = function (l, v, falta) { if (v != null && v !== '') rows.push([l, String(v)]); else if (falta) rows.push([l, falta, 1]); };
   add('Persona', personaLabel(c) + (subLabel(c) ? ' · ' + subLabel(c) : ''));
-  if (r.objetivo) add(/^alt-/.test(r.objetivo) ? 'Etapa na alternância' : /^cf-/.test(r.objetivo) ? 'Etapa no Campus France' : 'Etapa', etapaDe(r.objetivo));
+  // Entrou por mais de um funil: a etapa de cada um, do mais recente para o mais antigo (cada guia pergunta a sua).
+  var qs = jor && jor.quizzes ? jor.quizzes.filter(function (q) { return q.objetivo; }) : [];
+  var eMulti = qs.length > 1 && jor.entradas.length > 1;
+  if (eMulti) qs.slice().reverse().forEach(function (q) { var en = jor.entradas.filter(function (x) { return x.em === q.em; })[0]; add('Etapa · ' + (en && en.origem ? origLabel(en.origem) : fmtDate(q.em)), etapaDe(q.objetivo)); });
+  else if (r.objetivo) add(/^alt-/.test(r.objetivo) ? 'Etapa na alternância' : /^cf-/.test(r.objetivo) ? 'Etapa no Campus France' : 'Etapa', etapaDe(r.objetivo));
   if (cf) add('Nível da candidatura', CF_NIVEL[r.cfNivel] || r.cfNivel, 'não respondeu (pergunta nova, de 14/10)');
   if (r.cfNivel && CF_PRAZO[r.cfNivel]) { var d = diasAte(CF_PRAZO[r.cfNivel]); add('Prazo Campus France', fmtDay(CF_PRAZO[r.cfNivel]) + (d >= 0 ? ' (faltam ' + d + ' dias)' : ' (venceu)')); }
   if (cf) add('Cidade', CF_CIDADE[r.cfCidade] || r.cfCidade, 'ainda não disse (toca no e-mail 2)');
@@ -915,7 +953,7 @@ function respostasKv(c) {
   add('Fase', c.fase); add('Nível de estudos', c.nivel_estudos); add('Preocupação', c.preocupacao);
   Object.keys(r).forEach(function (k) {
     if (k === 'objetivo' || k === 'cfNivel' || k === 'cfCidade') return;
-    var l = RESP_LABEL[k]; add(l ? l[0] : k, l ? l[1](r[k]) : r[k]);
+    var l = RESP_LABEL[k]; add(l ? l[0] : rotuloChave(k), l ? l[1](r[k]) : (typeof r[k] === 'object' ? JSON.stringify(r[k]) : r[k]));
   });
   add('Novidades por e-mail', c.aceita_novidades ? 'Aceitou' : 'Não aceitou');
   return rows;
@@ -1107,7 +1145,7 @@ function ligarAoVivo(c, uid) {
   var poll = function () { if (!VIVO.timer && VIVO.cid === cid) VIVO.timer = setInterval(function () { atualizaAoVivo(cid); }, 20000); };
   try {
     var ch = supabase.channel('ficha-' + cid);
-    [['insights_vivos', 'contato_id=eq.' + cid], ['insights_historico', 'contato_id=eq.' + cid], ['plataforma_cliques', 'contato_id=eq.' + cid], ['chat_mensagens', 'contato_id=eq.' + cid], ['propostas', 'contato_id=eq.' + cid]]
+    [['insights_vivos', 'contato_id=eq.' + cid], ['insights_historico', 'contato_id=eq.' + cid], ['plataforma_cliques', 'contato_id=eq.' + cid], ['chat_mensagens', 'contato_id=eq.' + cid], ['propostas', 'contato_id=eq.' + cid], ['contatos', 'id=eq.' + cid]]
       .concat(uid ? [['checklist_items', 'user_id=eq.' + uid]] : [])
       .forEach(function (t) { ch = ch.on('postgres_changes', { event: '*', schema: 'public', table: t[0], filter: t[1] }, avisa); });
     VIVO.ch = ch.subscribe(function (status) { if (status !== 'SUBSCRIBED') poll(); });
@@ -1117,15 +1155,19 @@ async function atualizaAoVivo(cid, forca) {
   if (state.view !== 'pessoa' || state.sel !== cid || !state.ins || state.ins.cid !== cid) return pararAoVivo();
   var c = byC(cid); if (!c) return;
   var antes = state.ins, chatAntes = state.chat;
-  var rk = await Promise.all([buscaChecklist(cid, VIVO.uid), buscaInsights(cid), buscaChat(cid), (state.ptab === 'plataforma' || fichaV2Ativa()) ? buscaInteracoes(cid) : null]);
+  var rk = await Promise.all([buscaChecklist(cid, VIVO.uid), buscaInsights(cid), buscaChat(cid), (state.ptab === 'plataforma' || fichaV2Ativa()) ? buscaInteracoes(cid) : null,
+    supabase.from('contatos').select('dossie,respostas').eq('id', cid).maybeSingle()]);   // o dossiê se preenche conforme ela responde (funil e app)
   if (state.view !== 'pessoa' || state.sel !== cid) return;
+  var rc = rk[4] && !rk[4].error && rk[4].data ? rk[4].data : null;
+  var mudouDos = !!rc && state.dos && state.dos.cid === cid && JSON.stringify([rc.dossie || {}, rc.respostas || {}]) !== JSON.stringify([state.dos.d || {}, c.respostas || {}]);
   var sigChat = function (ch) { return JSON.stringify(ch ? [ch.msgs.length, ch.msgs.length ? ch.msgs[ch.msgs.length - 1].id : 0, Object.keys(ch.props).map(function (k) { return ch.props[k].status + ch.props[k].adiada_ate; })] : null); };
   var mudouIns = JSON.stringify([rk[1].vivos && rk[1].vivos.atualizado_em, rk[1].hist.length, rk[1].manuais.length]) !== JSON.stringify([antes.vivos && antes.vivos.atualizado_em, antes.hist.length, antes.manuais.length]);
   var mudouChk = JSON.stringify([rk[0].itens, rk[0].cliques.length]) !== JSON.stringify([state.dos && state.dos.chk && state.dos.chk.itens, state.dos && state.dos.chk && state.dos.chk.cliques.length]);
   var mudouChat = sigChat(rk[2]) !== sigChat(chatAntes);
   var sigInt = function (i) { return i && !i.err ? JSON.stringify([i.cliques.length, i.cliques[0] && i.cliques[0].criado_em, i.evs.length, i.evs[0] && i.evs[0].criado_em]) : ''; };
   var mudouInt = !!rk[3] && !rk[3].err && sigInt(rk[3]) !== sigInt(state.int);
-  if (!mudouIns && !mudouChk && !mudouChat && !mudouInt && !forca) return;
+  if (!mudouIns && !mudouChk && !mudouChat && !mudouInt && !mudouDos && !forca) return;
+  if (mudouDos) { state.dos.d = rc.dossie || {}; c.respostas = rc.respostas || {}; if (!(state.dos.rasc && Object.keys(state.dos.rasc).length)) toast('O dossiê dela foi atualizado'); }
   state.ins = rk[1]; state.chat = rk[2]; if (rk[3] && !rk[3].err) state.int = rk[3]; if (state.dos && state.dos.cid === cid) state.dos.chk = rk[0];
   var painel = $('ins-box'); if (painel) painel.innerHTML = insightsHtml(state.ins, Date.now());
   var cb = $('chk-box'); if (cb) cb.innerHTML = checklistHtml(state.dos && state.dos.chk, Date.now());
@@ -1821,11 +1863,35 @@ var DOS = [
   ] }
 ];
 var DOS_NUM = { cfEtapa: 1, ensino_medio_ano: 1 }, DOS_MES = { contrato_fim: 1 };
+// O funil público (freebie, checklist-preview, bot) grava o que ela respondeu em contatos.respostas, com outros nomes. Cada
+// resposta cai na pergunta equivalente do dossiê, no formato do formulário. Só vale enquanto o dossiê não tem resposta própria:
+// o que você digita ou a IA lê do documento sempre ganha. Pergunta nova do funil = uma linha aqui.
+var FN_SN = function (v) { return v === 'sim' ? 'true' : v === 'nao' ? 'false' : null; };
+var DOS_FUNIL = {
+  ano_au_pair: ['apAno'], intencao_au_pair: ['apPretende', function (v) { return v === 'migrar' ? 'migrar_estudante' : v; }],
+  contrato_fim: ['apDataFinal'], tem_certificado_matricula: ['apCertificado', FN_SN], comprova_recursos: ['apRecursos', FN_SN], tem_sponsor: ['apSponsor', FN_SN],
+  cfNivel: ['cfNivel'], cfTeste: ['cfTeste'], cidade: ['cfCidade', function (v) { return CF_CIDADE[v] || v; }]
+};
+function dosDoFunil(c, k) {
+  var m = DOS_FUNIL[k], r = c && c.respostas; if (!m || !r || typeof r !== 'object') return null;
+  var v = r[m[0]]; if (v === null || v === undefined || v === '') return null;
+  v = m[1] ? m[1](v) : v; if (v === null || v === undefined || v === '') return null;
+  var f = dosCampo(k); if (f && f.o && !f.o.some(function (o) { return o[0] === String(v); })) return null;   // valor que o formulário não conhece: ignora
+  return String(v);
+}
+// A resposta que está na tela veio do funil (e não do dossiê nem do que você digitou)?
+function dosVeioDoFunil(c, d, rasc, k) {
+  var f = dosCampo(k); if (!f || f.col || (rasc && Object.prototype.hasOwnProperty.call(rasc, k))) return false;
+  var s = (d || {})[k]; return (s === null || s === undefined || s === '') && dosDoFunil(c, k) !== null;
+}
 // O valor de um campo como texto de formulário: o que você já digitou e ainda não salvou, ou o que está salvo.
 function dosValor(c, d, rasc, k) {
   var f = dosCampo(k), v;
   if (rasc && Object.prototype.hasOwnProperty.call(rasc, k)) v = rasc[k];
-  else v = f && f.col ? c[k] : (d || {})[k];
+  else {
+    v = f && f.col ? c[k] : (d || {})[k];
+    if (v === null || v === undefined || v === '') v = dosDoFunil(c, k);   // ainda sem resposta no dossiê: vale o que ela respondeu no funil
+  }
   if (v === null || v === undefined) return '';
   if (DOS_MES[k] && /^\d{4}-\d{2}/.test(v)) return String(v).slice(0, 7);
   return String(v);
@@ -1852,9 +1918,10 @@ function dosCampoHtml(f, c, d, rasc) {
   } else {
     ctl = '<input' + a + ' type="' + (f.t === 'dt' ? 'date' : f.t === 'mes' ? 'month' : 'text') + '" value="' + esc(v) + '" maxlength="300">';
   }
-  var og = onbOrigemDe(f.k, v);
+  var og = onbOrigemDe(f.k, v), fn = dosVeioDoFunil(c, d, rasc, f.k);
   return '<div class="dfield' + (f.t === 'lg' ? ' wide' : '') + (v === '' ? ' vazio' : '') + '"><label for="' + id + '">' + esc(f.l) + '</label>' + ctl + (f.ajuda ? '<small>' + esc(f.ajuda) + '</small>' : '') +
-    (og ? '<small class="orig ' + og.conf + '">' + esc(og.origem) + ' · ' + esc(ONB_CONF[og.conf]) + '</small>' : '') + '</div>';
+    (og ? '<small class="orig ' + og.conf + '">' + esc(og.origem) + ' · ' + esc(ONB_CONF[og.conf]) + '</small>' : '') +
+    (fn ? '<small class="orig alta">Veio do funil, ela mesma respondeu · salve para guardar no dossiê</small>' : '') + '</div>';
 }
 var DOS_CHIPS = ['persona', 'data_chegada', 'cidade', 'nivel_frances', 'cfNivel', 'ano_au_pair', 'trilha_estudo', 'telefone'];
 function dosChipSinais(d) {
@@ -2070,7 +2137,7 @@ async function chkAgir(via, i) {
     return toast('Nota pronta. Revise e publique: ela vê no dashboard.', 4000);
   }
 }
-function dossieHtml(c, d, err, rasc, aberto, chk) {
+function dossieHtml(c, d, err, rasc, aberto, chk, fixo) {
   if (err) return '<div class="panel dossie"><div class="dhead"><h3>Dossiê</h3></div><p class="sub" style="margin:0">Falta rodar <b>db/crm-dossie.sql</b> no SQL Editor do Supabase.</p></div>';
   var pr = dosProgresso(c, d, rasc), pct = pr.tot ? Math.round(pr.n * 100 / pr.tot) : 0, sujo = rasc && Object.keys(rasc).length;
   var corpo = '';
@@ -2081,13 +2148,14 @@ function dossieHtml(c, d, err, rasc, aberto, chk) {
       (sujo ? '<span class="sub" style="align-self:center">Há alterações ainda não salvas.</span>' : '') + '</div>' + '<div id="poscall-box">' + poscallHtml(c) + '</div><div id="chk-box">' + checklistHtml(chk, Date.now()) + '</div></div>';
   }
   return '<div class="panel dossie"><div class="dhead"><h3>Dossiê</h3><span class="sub">' + pr.n + ' de ' + pr.tot + ' respondidas' + (pr.falta ? ' · faltam ' + pr.falta : ' · completo') + '</span>' +
-    '<button class="btn" type="button" data-dostoggle="1" aria-expanded="' + !!aberto + '" style="margin-left:auto">' + (aberto ? 'Fechar dossiê' : 'Abrir dossiê completo') + '</button></div>' +
+    (fixo ? '' : '<button class="btn" type="button" data-dostoggle="1" aria-expanded="' + !!aberto + '" style="margin-left:auto">' + (aberto ? 'Fechar dossiê' : 'Abrir dossiê completo') + '</button>') + '</div>' +
     '<div class="dprog" role="progressbar" aria-valuenow="' + pct + '" aria-valuemin="0" aria-valuemax="100"><span style="width:' + pct + '%"></span></div>' +
-    '<div class="dchips">' + dosChipChk(chk) + dosChipSinais(d) + dosChipIns(state.ins) + dosChipChat(state.chat) + (dosChips(c, d, rasc) || '<span class="sub">Nada preenchido ainda. Abra o dossiê para preencher durante a ligação.</span>') + '</div>' + onbFaltaHtml(c, d, rasc) + corpo + '</div>';
+    '<div class="dchips">' + dosChipChk(chk) + dosChipSinais(d) + dosChipIns(state.ins) + dosChipChat(state.chat) + (dosChips(c, d, rasc) || '<span class="sub">' + (fixo ? 'Nada preenchido ainda. Preencha durante a ligação; o que ela responder no funil e no app entra aqui sozinho.' : 'Nada preenchido ainda. Abra o dossiê para preencher durante a ligação.') + '</span>') + '</div>' + onbFaltaHtml(c, d, rasc) + corpo + '</div>';
 }
 function pintaDossie(c) {
   var box = $('dossie-box'); if (!box || !state.dos || state.dos.cid !== c.id) return;
-  box.innerHTML = dossieHtml(c, state.dos.d, state.dos.err, state.dos.rasc, state.dosAberto, state.dos.chk);
+  var fixo = !!(fichaV2Ativa() && state.fx && state.fx.tab === 'dossie');   // na aba Dossiê ele fica sempre aberto
+  box.innerHTML = dossieHtml(c, state.dos.d, state.dos.err, state.dos.rasc, fixo || state.dosAberto, state.dos.chk, fixo);
 }
 // Salva o que mudou: colunas de contatos direto (como o estágio) e o resto por crm_salvar_dossie.
 async function salvarDossie(cid, t) {
@@ -2386,7 +2454,7 @@ function fichaV2Ativa() {
   try { return localStorage.getItem('crm_ficha_v2') === '1'; } catch (e) { return false; }
 }
 var H_FX = { esc: esc, fmtDay: fmtDay };
-var FX_ABAS = ['conversa', 'plataforma', 'ficha'];
+var FX_ABAS = ['conversa', 'plataforma', 'ficha', 'dossie'];
 // Zera o que é "desta pessoa" ao abrir outra ficha. A ordem das sessões e o guia são preferências do navegador e ficam.
 function fxReset() {
   var f = state.fx; f.tab = null; f.ag = { i: 0, pop: null }; f.dem = 'todas'; f.ckTodos = false; f.ckMais = false; f.abertas = {}; f.flash = null; f.tarefas = []; f.dados = null;
@@ -2425,25 +2493,30 @@ function fxTarefas(c, d) {
   }, procLabel);
 }
 function fxHeaderHtml(c, d) {
-  var chk = state.dos && state.dos.cid === c.id ? state.dos.chk : null, k = null;
+  var chk = state.dos && state.dos.cid === c.id ? state.dos.chk : null, k = null, agora = Date.now();
   if (chk && !chk.err && !chk.semConta) {
-    var cc = chkCalc(chk, Date.now()), ativos = cc.itens.filter(function (i) { return i.status !== 'arquivado'; }), lim = new Date(Date.now() + 3 * 864e5).toISOString().slice(0, 10);
-    var feitos = ativos.filter(function (i) { return i.status === 'concluido'; }).length;
-    k = { pct: ativos.length ? Math.round(feitos * 100 / ativos.length) : 0, feitos: feitos, abertos: ativos.length - feitos,
-      vencem3: ativos.filter(function (i) { return i.status !== 'concluido' && i.due_date && i.due_date >= cc.hoje && i.due_date <= lim; }).length,
-      adicionados: cc.itens.filter(function (i) { return String(i.category || '').indexOf('meu:') === 0; }).length };
+    var cc = chkCalc(chk, agora), ativos = cc.itens.filter(function (i) { return i.status !== 'arquivado'; }), lim = new Date(agora + 3 * 864e5).toISOString().slice(0, 10);
+    k = { feitos: ativos.filter(function (i) { return i.status === 'concluido'; }).length, total: ativos.length, atrasados: cc.atrasados.length,
+      vencem3: ativos.filter(function (i) { return i.status !== 'concluido' && i.due_date && i.due_date >= cc.hoje && i.due_date <= lim; }).length };
   }
-  var cl = chk && chk.cliques && chk.cliques[0];
-  var props = state.chat && state.chat.props ? Object.keys(state.chat.props).map(function (x) { return state.chat.props[x]; }) : [];
-  return FH.htmlHeader({ c: c, urgLabel: URG[c.urgencia] || c.urgencia, estagioLabel: stageLabel(c.estagio), personaLabel: personaLabel(c) + (subLabel(c) ? ' · ' + subLabel(c) : ''),
-    cidade: (c.respostas && c.respostas.cidade) || '', temConta: !!c.user_id, motivo: c.motivo || '',
-    etapa: FX.etapaFunil(c, { mails: d.mails || [], propostas: props, temBilan: !!(state.bilan && state.bilan.cid === c.id) }),
-    estagios: STAGES, chk: k, chkMsg: !chk ? 'Carregando o checklist dela…' : chk.err ? 'O checklist dela não carregou (falta rodar db/crm-checklist.sql).' : '', ultima: cl ? fmtDia(cl.criado_em) + ' às ' + fmtHora(cl.criado_em) : '' }, H_FX);
+  var mails = d.mails || [], resps = d.resps || [], jor = d.jor || montaJornada([]), assin = state.assin || null, tipo = FX.tipoCabecalho(c, assin);
+  var cliques = state.int && state.int.cid === c.id && !state.int.err ? state.int.cliques || [] : [];
+  var primeira = jor.entradas.length ? jor.entradas[0].em : c.criado_em, dd = diasDesde(primeira);
+  var dados = { c: c, estagioLabel: stageLabel(c.estagio), assin: assin, uso: FX.calcularUso(cliques, agora), chk: k,
+    chkMsg: !chk ? 'carregando o checklist…' : chk.err ? 'não carregou (falta rodar db/crm-checklist.sql)' : 'ela ainda não entrou no app',
+    mailsTotal: mails.length, mailsAbertos: mails.filter(function (m) { return m.aberto_em || m.status === 'aberto' || m.status === 'clicado'; }).length,
+    mailsClicados: mails.filter(function (m) { return m.clicado_em || m.status === 'clicado'; }).length,
+    entradas: Math.max(jor.entradas.length ? origensDe(c).length : 0, origensDe(c).length, 1), diasNaBase: dd,
+    respostas: resps.length, respostasNovas: resps.filter(function (x) { return x.status === 'nova'; }).length,
+    proximo: proximoEmail(c, mails, resps, jor), agora: agora };
+  var cart = FX.cartoesDe(tipo, dados);
+  return FH.htmlCabecalho({ c: c, estagioLabel: stageLabel(c.estagio), personaLabel: personaLabel(c) + (subLabel(c) ? ' · ' + subLabel(c) : ''),
+    temConta: !!c.user_id, etiqueta: FX.etiquetaPagamento(assin), estagios: STAGES, blocos: cart.blocos, nota: cart.nota }, H_FX);
 }
 // Catálogo de démarches (cópia do app, processos.json): carregado uma vez; sem ele, tudo cai na démarche padrão.
 var FX_PROC = null;
 async function fxCarregaProcessos() {
-  try { var r = await fetch('processos.json?v=2026-11-12.11'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
+  try { var r = await fetch('processos.json?v=2026-11-13.9'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
 }
 // A sessão Checklist: pílulas por démarche, os 4 mais urgentes, pasta do Drive privada e "Ver mais desta sessão".
 function fxChecklistCorpo(c) {
@@ -2471,7 +2544,6 @@ function fxSessoes(c) {
     inicio: mk('Início (iAssistente)', 'O que o assistente mostra a ela no início do app e os seus avisos.', 'inicio', function () { return '<div id="ins-box">' + insightsHtml(state.ins, Date.now()) + '</div>'; }),
     checklist: mk('Checklist', 'Os passos dela por démarche, do mais urgente ao mais distante.', 'checklist', function () { return '<div id="fx-chk-corpo">' + fxChecklistCorpo(c) + '</div>'; }),
     bilan: mk('Bilan', 'O que a conversa mostrou e o e-mail do bilan.', 'bilan', function () { return bilanResumoHtml(c) + bilanBlocoHtml(c, H4_PLAT); }),
-    dossie: mk('Dossiê', 'As perguntas da plataforma, preenchidas por você na ligação.', 'dossie', function () { return '<div id="dossie-box">' + dossieHtml(c, state.dos.d, state.dos.err, state.dos.rasc, state.dosAberto, state.dos.chk) + '</div>'; }),
     hist: mk('Histórico', 'Tudo que ela fez no app, dia a dia.', 'hist', function () { return '<div id="int-box">' + interacoesHtml(state.int) + '</div>'; })
   };
   return FH.htmlSessoes(fxOrdem(), mapa, H_FX);
@@ -2482,13 +2554,20 @@ function fxCorpo(c, d, tab) {
     return '<div class="fx-plat">' + pagamentoHtml(c, H4_PLAT) + fxSessoes(c) + '</div>';
   }
   if (tab === 'conversa') return conversaPanel(c, d.mails || [], d.resps || [], d.h4 || H4_PLAT);
+  // Dossiê: aba própria, sempre aberta. Preenche sozinho com o que ela responde no funil e no app (ver DOS_FUNIL).
+  if (tab === 'dossie') return '<div id="dossie-box">' + dossieHtml(c, state.dos.d, state.dos.err, state.dos.rasc, true, state.dos.chk, true) + '</div>';
   // Ficha (captação): o fluxo de 3 passos e os painéis que já existiam (feed, e-mails, jornada, quem é ela, mais).
   var etapa = FX.etapaFunil(c, { mails: d.mails || [], propostas: [], temBilan: !!(state.bilan && state.bilan.cid === c.id) }), h4 = d.h4 || H4_PLAT;
+  // Três colunas, cada uma com um papel: à esquerda quem ela é e onde está no funil; no meio o que ela fez; à direita o que fazer (e-mail).
+  // Quem é ela abre e fecha: fechado mostra só o essencial (persona e etapa) numa linha; aberto, todas as respostas.
+  var qrows = respostasKv(c, d.jor), qresumo = qrows.slice(0, 2).filter(function (x) { return !x[2]; }).map(function (x) { return x[1]; }).join(' · ');
+  var quem = '<details class="panel fx-quem"><summary><span class="fx-quem-t">Quem é ela</span>' + (qresumo ? '<span class="fx-quem-r">' + esc(qresumo) + '</span>' : '') + '</summary>' + kvHtml(qrows) + '</details>';
   return FH.htmlFluxo(etapa <= 3 ? 1 : etapa <= 5 ? 2 : 3, H_FX) + onbResumoHtml(c) +
-    '<div class="pessoa-grid" style="margin-top:18px">' + fichaFeedHtml(d.eventos || []) +
-    '<div style="display:flex; flex-direction:column; gap:16px">' + emailsPanel(c, d.mails || [], h4, d.resps || [], d.jor) + jornadaHtml(c, d.mails || [], d.resps || [], d.jor, h4) +
-    '<div class="panel" style="padding:16px"><h4 style="' + h4 + '">Quem é ela</h4>' + kvHtml(respostasKv(c)) + '</div>' +
-    fichaMaisHtml(c, { perg: d.perg || [], resps: d.resps || [], cons: d.cons || [], last: d.last, h4: h4 }) + '</div></div>';
+    '<div class="fx-ficha3">' +
+    '<aside class="fx-rail fx-ctx" aria-label="Quem é ela e jornada">' + quem + jornadaHtml(c, d.mails || [], d.resps || [], d.jor, h4, FH.htmlFunil({ etapa: etapa, semCaixa: true }, H_FX)) + '</aside>' +
+    '<section class="fx-centro" aria-label="Tudo que ela fez">' + fichaFeedHtml(d.eventos || []) +
+    fichaMaisHtml(c, { perg: d.perg || [], resps: d.resps || [], cons: d.cons || [], last: d.last, h4: h4 }) + '</section>' +
+    '<aside class="fx-rail fx-mail" aria-label="E-mails">' + emailsPanel(c, d.mails || [], h4, d.resps || [], d.jor) + '</aside></div>';
 }
 // Repinta só o corpo da aba (abrir/fechar/mover sessão): o resto da tela e a rolagem ficam.
 function fxPintaCorpo() {
@@ -2521,8 +2600,16 @@ function fxRepinta() {
   fxPos(c);
 }
 // Depois de pintar: rola o chat para o fim (e marca como lido, como a ficha antiga fazia) e destaca a sessão do deep link.
+// A altura do cabeçalho fixo vira --hd-h: as colunas fixas e o destino de "Ir para" começam logo abaixo dele (sem ficar escondidos).
+function fxMedeCabecalho() {
+  var hb = $('fx-head-box'), r = document.documentElement;
+  if (!hb || !r || !r.style || !r.style.setProperty) return;
+  var fixo = window.matchMedia ? !window.matchMedia('(max-width: 760px)').matches : true;
+  r.style.setProperty('--hd-h', fixo && hb.offsetHeight ? hb.offsetHeight + 'px' : '0px');
+}
 function fxPos(c) {
   var f = state.fx;
+  fxMedeCabecalho();
   if (f.tab === 'plataforma' && fxSessaoAberta('chat')) {
     var fio = $('chat-fio'); if (fio) fio.scrollTop = fio.scrollHeight;
     var tx = $('chat-txt'); if (tx && state.chatRasc) tx.value = state.chatRasc;
@@ -2540,7 +2627,7 @@ function fxLive(c) {
   var f = state.fx, d = f.dados; if (!d || f.cid !== c.id) return;
   var cv = fxContato(c, d.uid);
   f.tarefas = fxTarefas(cv, d);
-  var hb = $('fx-head-box'); if (hb) hb.innerHTML = fxHeaderHtml(cv, d);
+  var hb = $('fx-head-box'); if (hb) { hb.innerHTML = fxHeaderHtml(cv, d); fxMedeCabecalho(); }
   fxPintaChk(cv);
   if (f.ag.pop === null) { var ab = $('fx-acoes-box'); if (ab) ab.innerHTML = FH.htmlCarrossel(f.tarefas, H_FX, f.ag.i); }
 }
@@ -2664,7 +2751,7 @@ async function renderPessoa() {
     (state.ptab === 'plataforma' || fichaV2Ativa()) ? supabase.from('plataforma_cliques').select('sessao,tela,alvo,rotulo,criado_em').eq('contato_id', c.id).order('criado_em', { ascending: false }).limit(300) : null,
     supabase.from('contatos').select('dossie,user_id').eq('id', c.id).maybeSingle(),
     supabase.from('contatos').select('dossie_origem,onboarding_em').eq('id', c.id).maybeSingle(),
-    supabase.from('assinaturas').select('status,plano,moeda,teste_fim,periodo_fim,cancela_no_fim').eq('contato_id', c.id).maybeSingle(),   // db/crm-assinaturas.sql
+    supabase.from('assinaturas').select('status,plano,moeda,teste_fim,periodo_fim,cancela_no_fim,criado_em').eq('contato_id', c.id).maybeSingle(),   // db/crm-assinaturas.sql
     supabase.from('processos_sugeridos').select('id,processo,sinais,status,mensagem,detectada_em,atualizada_em,decidida_em,respondida_em').eq('contato_id', c.id).order('atualizada_em', { ascending: false }),   // db/crm-processos-sugeridos.sql
     supabase.from('pos_call_propostas').select('id,proposta,status,criado_em').eq('contato_id', c.id).eq('proposta->>origem', 'notion').order('criado_em', { ascending: false }).limit(5),   // a leitura do Notion: base do e-mail do bilan
     buscaJornada(c.id)

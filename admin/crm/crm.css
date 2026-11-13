@@ -243,7 +243,7 @@ td .nm span{font-size:12px; color:var(--ink-2)}
 .pessoa-head{display:flex; gap:14px; align-items:flex-start}
 .pessoa-grid{display:grid; grid-template-columns:minmax(0,1.4fr) minmax(0,1fr); gap:16px; align-items:start}
 .feed{display:flex; flex-direction:column}
-.plat-fixa{display:flex; flex-direction:column; gap:16px; min-width:0; position:sticky; top:12px; max-height:calc(100vh - 24px); overflow-y:auto}
+.plat-fixa{display:flex; flex-direction:column; gap:16px; min-width:0; position:sticky; top:calc(var(--hd-h, 0px) + 20px); max-height:calc(100vh - var(--hd-h, 0px) - 32px); overflow-y:auto}
 .intdia summary{display:flex; flex-wrap:wrap; gap:8px; align-items:center}
 .intdia summary .dchips{margin-left:auto}
 .feeditem{display:flex; gap:10px; align-items:baseline; padding:9px 0; border-top:1px solid var(--line)}
@@ -823,19 +823,18 @@ details.ee-sec[open]>summary{margin-bottom:8px}
 
 /* Fila de hoje: uma linha de cartões que rola por dentro (a página nunca rola de lado) */
 .fx-fila{min-width:0}
-.fx-fila-lista{display:flex; gap:8px; overflow-x:auto; padding:2px 2px 6px; scrollbar-width:thin}
-.fx-fcard{flex:0 0 210px; text-align:left; display:flex; flex-direction:column; gap:4px; padding:10px 12px; border:1px solid var(--line); border-radius:10px; background:var(--surface-2)}
-.fx-fcard:hover{border-color:var(--ink-2)}
-.fx-fcard.sel{border-color:var(--moss); box-shadow:0 0 0 1px var(--moss)}
-.fx-fnome{font-weight:600; overflow-wrap:anywhere}
-.fx-fmeta{display:flex; flex-wrap:wrap; gap:6px; align-items:center}
-.fx-novas{font-size:11.5px; font-weight:700; padding:1px 8px; border-radius:999px; background:var(--red-soft); color:var(--red)}
-.fx-fprox{font-size:12.5px; color:var(--ink)}
-.fx-fsub{font-size:11.5px; color:var(--ink-2)}
+/* Fila de hoje em uma linha de chips */
+.mf{display:flex; align-items:center; gap:8px; overflow-x:auto; padding:2px 2px 8px; scrollbar-width:thin}
+.mf-t{font-size:11px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-3); white-space:nowrap; margin-right:2px}
+.mf-i{display:inline-flex; align-items:center; gap:6px; height:30px; padding:0 12px; border:1px solid var(--line); border-radius:999px; background:var(--surface); color:var(--ink); font:inherit; font-size:13px; white-space:nowrap; cursor:pointer; flex:0 0 auto}
+.mf-i:hover{border-color:var(--ink-2)}
+.mf-i.atual{border-color:var(--moss); background:var(--moss-soft); font-weight:600}
+.mf-i:focus-visible{outline:2px solid var(--moss); outline-offset:2px}
+.mf-d{width:8px; height:8px; border-radius:50%; background:var(--moss); flex:0 0 auto}
+.mf-d.alta{background:var(--red)} .mf-d.media{background:#C58B1A}
+.mf-n{font-size:11px; font-weight:700; color:var(--red); background:var(--red-soft); border-radius:999px; padding:1px 7px}
 
 /* Header: pessoa, funil de 7 etapas, avanço do projeto */
-.fx-head{display:grid; grid-template-columns:minmax(0,1.2fr) minmax(0,1.5fr) minmax(0,1fr); gap:20px; padding:16px; background:var(--surface-2); border:1px solid var(--line); border-radius:12px}
-.fx-nome{font-size:22px; overflow-wrap:anywhere}
 .fx-funil{list-style:none; margin:0; padding:0; display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:4px}
 .fx-seg{display:flex; flex-direction:column; gap:4px; align-items:flex-start; padding:6px 6px 4px; border-top:4px solid var(--line-2); font-size:11px; line-height:1.25; color:var(--ink-2); min-width:0}
 .fx-seg.done{border-top-color:var(--moss); color:var(--ink)}
@@ -932,20 +931,86 @@ details.ee-sec[open]>summary{margin-bottom:8px}
 .fx-mais-corpo{display:flex; flex-direction:column; gap:14px; width:100%; min-width:0}
 
 /* Aba Ficha: fluxo de 3 passos */
-.fx-fluxo{list-style:none; margin:0; padding:0; display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px}
-.fx-passo-fluxo{display:flex; gap:10px; align-items:flex-start; padding:10px 12px; border:1px solid var(--line); border-radius:10px; background:var(--surface-2); color:var(--ink-2)}
+.fx-fluxo{list-style:none; margin:0; padding:0; display:flex; flex-wrap:wrap; gap:6px}
+.fx-passo-fluxo{display:inline-flex; gap:6px; align-items:center; padding:3px 10px; border:1px solid var(--line); border-radius:999px; background:var(--surface-2); color:var(--ink-2); font-size:12px}
 .fx-passo-fluxo.cur{border-color:var(--moss); background:var(--moss-soft); color:var(--moss-ink)}
 .fx-passo-fluxo.done{color:var(--ink)}
-.fx-fluxo-frase{display:block; margin-top:2px; font-size:12.5px}
+.fx-fluxo-frase{display:none}   /* a frase explicativa saiu da tela: o funil da Jornada já diz onde ela está */
+
+/* Aba Ficha em três colunas: contexto (quem é ela, jornada) | o que ela fez (centro) | e-mail (ação) */
+.fx-ficha3{display:grid; grid-template-columns:280px minmax(0,1fr) 340px; grid-template-areas:"ctx centro mail"; gap:16px; align-items:start; margin-top:16px}
+.fx-ctx{grid-area:ctx; position:sticky; top:calc(var(--hd-h, 0px) + 20px); max-height:calc(100vh - var(--hd-h, 0px) - 32px); overflow-y:auto; display:flex; flex-direction:column; gap:12px; min-width:0}
+.fx-centro{grid-area:centro; display:flex; flex-direction:column; gap:12px; min-width:0}
+.fx-mail{grid-area:mail; position:sticky; top:calc(var(--hd-h, 0px) + 20px); max-height:calc(100vh - var(--hd-h, 0px) - 32px); overflow-y:auto; min-width:0}
+.fx-ctx .kv,.fx-mail .kv{grid-template-columns:minmax(0,1fr); gap:0}
+.fx-ctx .kv dt{font-size:11.5px; margin-top:8px}
+.fx-ctx .kv dd{overflow-wrap:anywhere}
+/* Quem é ela em dropdown */
+.fx-quem{padding:0}
+.fx-quem > summary{list-style:none; cursor:pointer; padding:14px 16px; display:grid; grid-template-columns:1fr auto; gap:2px 8px; align-items:center}
+.fx-quem > summary::-webkit-details-marker{display:none}
+.fx-quem > summary::after{content:"▾"; grid-row:1; grid-column:2; color:var(--ink-3); transition:transform .15s}
+.fx-quem[open] > summary::after{transform:rotate(180deg)}
+.fx-quem-t{font-size:11px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-3)}
+.fx-quem-r{grid-column:1; font-size:13px; color:var(--ink); overflow-wrap:anywhere}
+.fx-quem[open] .fx-quem-r{display:none}
+.fx-quem > .kv{padding:0 16px 14px}
+.fx-quem > summary:focus-visible{outline:2px solid var(--moss); outline-offset:2px; border-radius:12px}
+/* Mais de um funil de entrada: uma linha curta por funil */
+.fx-funis{margin:0 0 10px; padding:8px 10px; background:var(--surface-2); border:1px solid var(--line); border-radius:10px}
+.fx-funis .k{font-size:11px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-3); margin-bottom:4px}
+.fx-funis ul{list-style:none; margin:0; padding:0}
+.fx-funis li{display:flex; justify-content:space-between; gap:8px; padding:4px 0; font-size:12.5px; border-top:1px solid var(--line)}
+.fx-funis li:first-child{border-top:0}
+.fx-funis-nome{font-weight:600; min-width:0; overflow-wrap:anywhere}
+.fx-funis-meta{color:var(--ink-2); white-space:nowrap; text-align:right}
+.fx-funis-ult{color:var(--moss-ink); font-weight:700}
+/* O funil como linha do tempo vertical, dentro da Jornada */
+.fx-funil-v .fx-funil{display:flex; flex-direction:column; gap:0; margin:2px 0 12px; position:relative}
+.fx-funil-v .fx-seg{flex-direction:row; align-items:center; gap:10px; padding:5px 8px; border-top:0; border-left:3px solid var(--line-2); border-radius:0 8px 8px 0; font-size:12.5px}
+.fx-funil-v .fx-seg.done{border-left-color:var(--moss)}
+.fx-funil-v .fx-seg.cur{border-left-color:var(--moss); background:var(--moss-soft); border-radius:0 8px 8px 0}
+.fx-funil-v .fx-seg.done .fx-segn{background:var(--moss-soft); color:var(--moss-ink)}
+.fx-funil-v .fx-seg.done .fx-segn{font-size:0}
+.fx-funil-v .fx-seg.done .fx-segn::before{content:"✓"; font-size:11px}
+.fx-funil-v .fx-seg.next{opacity:.8}
+.fx-funil-v .fx-funil-txt{display:none}
+@media (max-width:1180px){
+  .fx-ficha3{grid-template-columns:minmax(0,1fr) minmax(0,1fr); grid-template-areas:"ctx mail" "centro centro"}
+  .fx-ctx,.fx-mail{position:static; max-height:none; overflow:visible}
+}
+
+/* Cabeçalho fixo da ficha: o contêiner é que gruda (um pai só tão alto quanto o header não deixaria o sticky funcionar) */
+#fx-head-box{position:sticky; top:8px; z-index:6; margin-top:8px}
+.fx [data-sessao],#fx-acoes{scroll-margin-top:calc(var(--hd-h, 0px) + 20px)}
+.hd{background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:12px 14px; box-shadow:0 4px 14px rgba(0,0,0,.06)}
+.hd-l1{display:flex; align-items:center; gap:10px; flex-wrap:wrap}
+.hd-av{width:30px; height:30px; border-radius:50%; background:var(--moss-soft); display:grid; place-items:center; font-size:11px; font-weight:700; color:var(--moss-ink); flex:0 0 auto}
+.hd-n{margin:0; font-size:20px; overflow-wrap:anywhere}
+.hd-sp{margin-left:auto; display:flex; gap:8px; align-items:center; flex-wrap:wrap}
+.hd-k{display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:8px; margin-top:10px}
+.hd .tag{display:block; margin:10px 2px 0; font-size:10.5px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:var(--ink-3)}
+.hd .tag + .hd-k{margin-top:4px}
+.hd .k{background:var(--surface-2); border-radius:10px; padding:8px 11px; min-width:0}
+.hd .k .l{display:block; font-size:10.5px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-3)}
+.hd .k .v{font-family:var(--serif, Georgia, serif); font-size:19px; font-weight:600; line-height:1.2; margin-top:2px; overflow-wrap:anywhere}
+.hd .k .s{font-size:11.5px; color:var(--ink-2); margin-top:1px; overflow-wrap:anywhere}
+.hd .k.alerta{background:var(--red-soft)} .hd .k.alerta .v{color:var(--red)}
+.hd .k.ok{background:var(--moss-soft)}
+.hd .est{font-size:10.5px; color:var(--ink-3); margin:8px 2px 0}
+.hd .pg-aviso{background:var(--red-soft); color:var(--red)} .hd .pg-ok{background:var(--moss-soft); color:var(--moss-ink)}
 
 /* Telas estreitas: sem rolagem de lado em 380 px */
 @media (max-width:760px){
-  .fx-head{grid-template-columns:minmax(0,1fr); gap:14px}
   .fx-segt{position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap}   /* a etapa atual segue escrita em "Etapa atual:" */
   .fx-seg{position:relative; align-items:center; padding:6px 0 4px}
-  .fx-fluxo{grid-template-columns:minmax(0,1fr)}
-  .fx-fcard{flex-basis:78%}
+  #fx-head-box{position:static}
+  .fx [data-sessao],#fx-acoes{scroll-margin-top:12px}
+  .hd-k{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .hd-sp{margin-left:0; width:100%}
   .fx .pessoa-grid{grid-template-columns:minmax(0,1fr)}
+  .fx-ficha3{grid-template-columns:minmax(0,1fr); grid-template-areas:"ctx" "mail" "centro"}
+  .fx-funil-v .fx-segt{position:static; width:auto; height:auto; clip:auto; white-space:normal}
   .fx-sess-cab{flex-wrap:wrap; border-radius:18px}
   .fx-passo{flex-direction:column; gap:2px}
 }

@@ -53,16 +53,15 @@ console.log('== Task 10: ligação aos dados, abas, ações, deep link ==');
   };
   let h = await montar(null);
   let html = await abre(h, pessoa({ user_id: null }));
-  check('renderiza fila, header, abas e carrossel', html.includes('class="fx-fila"') && html.includes('class="fx-head"') && html.includes('class="fx-abas"') && html.includes('class="fx-car"'));
+  check('renderiza fila, header, abas e carrossel', html.includes('class="fx-fila mf"') && html.includes('class="hd"') && html.includes('class="fx-abas"') && html.includes('class="fx-car"'));
   check('sem conta: abre na aba Ficha', /data-v="ficha"[^>]*aria-selected="true"/.test(html) && !/data-v="plataforma"[^>]*aria-selected="true"/.test(html));
   check('1º cartão é "Responder Ana"', /data-fx="agAbrir" data-i="0"[^>]*aria-label="Ação 1 de \d: Responder Ana\./.test(html));
-  const fila1 = (html.match(/class="fx-fprox">([^<]*)</) || [])[1];
-  check('o 1º item da fila mostra o mesmo texto do 1º cartão', fila1 === 'Responder Ana');
+  check('a fila é uma linha de chips: a pessoa aberta está destacada e o texto da ação não repete na fila', html.includes('mf-i atual') && !/class="mf[^"]*"[^>]*>[^<]*Responder Ana/.test(html.split('class="hd"')[0].split('class="fx-fila mf"')[1] || ''));
   {
     // só mensagem do app, sem resposta por e-mail: a fila da pessoa aberta continua igual ao 1º cartão
     const h2 = await carregarCrm({ respostas: base({ chat_mensagens: { data: [msg(2), msg(1)], error: null } }), store: { crm_ficha_v2: '1' } });
     const html2 = await abre(h2, pessoa({ user_id: null }));
-    check('só chat: 1º cartão "Ler as mensagens dela no app" e a fila mostra o mesmo', /data-i="0"[^>]*aria-label="Ação 1 de \d: Ler as mensagens dela no app\./.test(html2) && (html2.match(/class="fx-fprox">([^<]*)</) || [])[1] === 'Ler as mensagens dela no app');
+    check('só chat: 1º cartão "Ler as mensagens dela no app"', /data-i="0"[^>]*aria-label="Ação 1 de \d: Ler as mensagens dela no app\./.test(html2));
     h2.mod.pararAoVivo();
   }
   check('mensagens do app viram uma ação (chat)', html.includes('Ler as mensagens dela no app'));
@@ -145,18 +144,20 @@ console.log('== Task 12: sessões em pílulas ==');
   };
   let h = await mk({});
   let pg = h.el('pessoa-page').innerHTML;
-  check('Plataforma tem os dois grupos e as 6 sessões', pg.includes('Acompanhar o app dela') && pg.includes('Conhecer e registrar') && ['chat', 'inicio', 'checklist', 'bilan', 'dossie', 'hist'].every((id) => pg.includes('data-sessao="' + id + '"')));
+  check('Plataforma tem os dois grupos e as 5 sessões (o Dossiê virou aba)', pg.includes('Acompanhar o app dela') && pg.includes('Conhecer e registrar') && ['chat', 'inicio', 'checklist', 'bilan', 'hist'].every((id) => pg.includes('data-sessao="' + id + '"')) && !pg.includes('data-sessao="dossie"'));
   check('só o Checklist abre por padrão; dossiê fechado não está na página', pg.includes('id="fx-chk-corpo"') && !pg.includes('id="dossie-box"') && !pg.includes('id="int-box"') && !pg.includes('id="chat-box"'));
   check('ordem padrão: chat, início, checklist', pg.indexOf('data-sessao="chat"') < pg.indexOf('data-sessao="inicio"') && pg.indexOf('data-sessao="inicio"') < pg.indexOf('data-sessao="checklist"'));
   // sessão fechada: o repaint ao vivo do dossiê não lança
   let ok = true; try { h.mod.pintaDossie(h.mod.byC('c1')); } catch (e) { ok = false; }
-  check('com a sessão fechada, pintaDossie não lança', ok);
-  await h.click({ fx: 'sessao', id: 'dossie' });
-  check('sessao abre o dossiê dentro da pílula', h.mod.state.fx.abertas.dossie === true && h.el('fx-corpo').innerHTML.includes('id="dossie-box"'));
+  check('fora da aba Dossiê, pintaDossie não lança', ok);
+  check('a barra de abas tem Dossiê ao lado de Ficha', pg.indexOf('data-v="ficha"') > 0 && pg.indexOf('data-v="ficha"') < pg.indexOf('data-v="dossie"'));
+  await h.click({ fx: 'tab', v: 'dossie' });
+  const dz = h.el('pessoa-page').innerHTML;
+  check('a aba Dossiê abre o dossiê sempre aberto, sem botão de fechar', dz.includes('id="dossie-box"') && dz.includes('data-dossalvar') && !dz.includes('data-dostoggle'));
   await h.mod.renderPessoa(); pg = h.el('pessoa-page').innerHTML;
-  check('depois de repintar tudo, o dossiê segue aberto', pg.includes('id="dossie-box"'));
-  await h.click({ fx: 'sessao', id: 'dossie' });
-  check('sessao de novo fecha', h.mod.state.fx.abertas.dossie === false && !h.el('fx-corpo').innerHTML.includes('id="dossie-box"'));
+  check('depois de repintar tudo, a aba Dossiê segue aberta', h.mod.state.fx.tab === 'dossie' && pg.includes('id="dossie-box"'));
+  await h.click({ fx: 'tab', v: 'plataforma' });
+  check('de volta à Plataforma, o dossiê não aparece lá', !h.el('pessoa-page').innerHTML.includes('id="dossie-box"'));
   await h.click({ fx: 'sessao', id: 'hist' }); await h.click({ fx: 'sessao', id: 'bilan' }); await h.click({ fx: 'sessao', id: 'chat' }); await h.click({ fx: 'sessao', id: 'inicio' });
   const tudo = h.el('fx-corpo').innerHTML;
   check('todas as sessões abrem com os painéis existentes', tudo.includes('id="int-box"') && tudo.includes('id="bilan-box"') && tudo.includes('id="chat-box"') && tudo.includes('id="ins-box"'));
@@ -175,7 +176,7 @@ console.log('== Task 12: sessões em pílulas ==');
   check('arrastar para cima cai antes do alvo', h.mod.state.fx.ord.app.join() === 'inicio,chat,checklist');
   await chamar('dragstart', ev({ dataset: { area: 'app', id: 'chat' } }, null));
   await chamar('drop', ev(null, { dataset: { area: 'ela', sessao: 'bilan' } }));
-  check('arrastar para outro grupo é ignorado', h.mod.state.fx.ord.app.join() === 'inicio,chat,checklist' && h.mod.state.fx.ord.ela.join() === 'bilan,dossie,hist' && h.mod.state.fx.drag === null);
+  check('arrastar para outro grupo é ignorado', h.mod.state.fx.ord.app.join() === 'inicio,chat,checklist' && h.mod.state.fx.ord.ela.join() === 'bilan,hist' && h.mod.state.fx.drag === null);
   h.mod.pararAoVivo();
   // preferência salva volta ao abrir de novo; preferência inválida volta ao padrão
   h = await mk({ crm_ficha_ord_v1: JSON.stringify({ app: ['checklist', 'chat'], ela: ['hist'] }) });
@@ -207,7 +208,7 @@ console.log('== Task 13: abas Ficha e Conversa ==');
   await h.click({ fx: 'tab', v: 'ficha' });
   let pg = h.el('pessoa-page').innerHTML;
   check('Ficha, etapa 2: passo 1 destacado', /data-passo="1"[^>]*aria-current="step"/.test(pg) && (pg.match(/aria-current="step"/g) || []).length === 2);   // 1 do fluxo + 1 do funil
-  check('Ficha: painéis existentes de jornada e e-mails', pg.includes('class="pessoa-grid"') && pg.includes('Tudo que ela fez') && /Jornada|jornada/.test(pg) && pg.includes('Quem é ela'));
+  check('Ficha: painéis existentes de jornada e e-mails', pg.includes('class="fx-ficha3"') && pg.includes('Tudo que ela fez') && /Jornada|jornada/.test(pg) && pg.includes('Quem é ela'));
   check('Ficha: perguntas, consentimento, Instagram e anotações seguem na ficha', pg.includes('Consentimento') && pg.includes('id="ig-handle"') && pg.includes('id="nota"'));
   check('Ficha não traz o Checklist nem as sessões', !pg.includes('data-sessao='));
   h.mod.pararAoVivo();
@@ -234,6 +235,64 @@ console.log('== Task 14: dado velho ==');
     plataforma_cliques: { data: [{ tela: '/dashboard/#checklist', alvo: 'botao', rotulo: 'Marcou como concluído: Passo', criado_em: antigo }], error: null } }), store: { crm_ficha_v2: '1' } });
   await abre(h, pessoa({ user_id: 'u1' }));
   check('mais de 48 h sem atividade: banner "há 5 dias"', h.el('pessoa-page').innerHTML.includes('Sem atividade dela no checklist há 5 dias'));
+  h.mod.pararAoVivo();
+}
+
+console.log('== Aba Dossiê: se preenche com o que ela responde no funil ==');
+{
+  const resp = { apAno: 'primeiro', apPretende: 'migrar', apRecursos: 'nao', apSponsor: 'sim', apCertificado: 'nao', cfNivel: 'l1', cfCidade: 'lyon', cfTeste: 'inventado' };
+  const h = await carregarCrm({ respostas: base({ 'contatos:one': { data: { dossie: { cfNivel: 'master' }, user_id: null }, error: null } }), store: { crm_ficha_v2: '1' } });
+  const c = pessoa({ respostas: resp });
+  await abre(h, c);
+  await h.click({ fx: 'tab', v: 'dossie' });
+  const pg = h.el('pessoa-page').innerHTML;
+  const sel = (k, v) => new RegExp('data-dk="' + k + '"[^>]*>(?:(?!</select>).)*<option value="' + v + '" selected', 's').test(pg);
+  check('ano de au pair, intenção (migrar → migrar_estudante) e sim/não vêm do funil', sel('ano_au_pair', 'primeiro') && sel('intencao_au_pair', 'migrar_estudante') && sel('comprova_recursos', 'false') && sel('tem_sponsor', 'true') && sel('tem_certificado_matricula', 'false'));
+  check('a cidade do funil entra como texto legível', pg.includes('data-dk="cidade"') && pg.includes('value="Lyon"'));
+  check('o que já está no dossiê ganha do funil (cfNivel: master, não l1)', h.mod.dosValor(c, { cfNivel: 'master' }, {}, 'cfNivel') === 'master' && h.mod.dosValor(c, {}, {}, 'cfNivel') === 'l1');
+  check('valor que o formulário não conhece é ignorado (cfTeste "inventado")', !sel('cfTeste', 'inventado') && h.mod.dosDoFunil(c, 'cfTeste') === null);
+  check('campo vindo do funil traz a etiqueta e o dossiê conta como respondido', pg.includes('Veio do funil') && h.mod.dosProgresso(c, {}, {}).n >= 6);
+  check('o que você apagou no formulário não volta do funil', h.mod.dosValor(c, {}, { ano_au_pair: '' }, 'ano_au_pair') === '');
+  h.mod.pararAoVivo();
+}
+console.log('== Aba Dossiê: atualização ao vivo ==');
+{
+  const h = await carregarCrm({ respostas: base({ 'contatos:one': { data: { dossie: {}, user_id: 'u1' }, error: null } }), store: { crm_ficha_v2: '1' } });
+  await abre(h, pessoa({ user_id: 'u1', respostas: {} }));
+  await h.click({ fx: 'tab', v: 'dossie' });
+  check('antes: ano de au pair sem resposta', !/data-dk="ano_au_pair"[^>]*>(?:(?!<\/select>).)*selected/s.test(h.el('pessoa-page').innerHTML));
+  h.respostas['contatos:one'] = { data: { dossie: {}, respostas: { apAno: 'segundo' }, user_id: 'u1' }, error: null };
+  await h.mod.atualizaAoVivo('c1');
+  check('ela responde no funil: o state do dossiê e a pessoa recebem a resposta sem recarregar a página', h.mod.byC('c1').respostas.apAno === 'segundo' && h.mod.dosValor(h.mod.byC('c1'), h.mod.state.dos.d, {}, 'ano_au_pair') === 'segundo');
+  h.mod.pararAoVivo();
+}
+
+console.log('== Cabeçalho fixo por tipo de pessoa ==');
+{
+  const agora = Date.now(), iso = (dias, seg = 0) => new Date(agora - dias * 864e5 + seg * 1000).toISOString();
+  const cliques = [].concat(...['a', 'b', 'c'].map((sid, i) => [0, 1, 2, 3].map((j) => ({ sessao: sid, tela: 'inicio', alvo: 'x', rotulo: 'x', criado_em: iso(i + 1.5, j * 30) }))));
+  const montar = async (user, assinatura) => carregarCrm({ store: { crm_ficha_v2: '1' }, respostas: base({ 'contatos:one': { data: { dossie: {}, user_id: user }, error: null }, plataforma_cliques: { data: cliques, error: null },
+    'assinaturas:one': { data: assinatura, error: null } }) });
+  let h = await montar(null, null);
+  let html = await abre(h, pessoa({ user_id: null, dias_sem_sinal: 6 }));
+  check('lead: tem Parada há e Próximo e-mail, e não tem uso nem pagamento', html.includes('Parada há') && html.includes('Próximo e-mail') && !html.includes('Cliques por sessão') && !html.includes('class="tag">Pagamento<') && html.includes('Não assina'));
+  h.mod.pararAoVivo();
+  h = await montar('u1', { status: 'active', plano: 'Intermediário', periodo_fim: new Date(agora + 5 * 864e5).toISOString(), cancela_no_fim: false, criado_em: iso(95) });
+  html = await abre(h, pessoa({ user_id: 'u1' }));
+  check('assinante: Pagamento, Plano, Assinatura ativa e o uso (sessões e cliques por sessão)', html.includes('class="tag">Pagamento<') && html.includes('Intermediário') && html.includes('Assinatura ativa') && html.includes('Sessões') && html.includes('Cliques por sessão') && html.includes('Duração (estimada)'));
+  check('assinante: 3 sessões de 4 cliques → 4 cliques por sessão; nota sobre LTV', html.includes('>4<') && html.includes('LTV'));
+  h.mod.pararAoVivo();
+  h = await montar('u2', null);
+  html = await abre(h, pessoa({ user_id: 'u2' }));
+  check('na plataforma sem assinar: Não assina, Sessões e sem bloco Pagamento', html.includes('Não assina') && html.includes('Sessões') && !html.includes('class="tag">Pagamento<'));
+  h.mod.pararAoVivo();
+  h = await montar('u3', { status: 'canceled', plano: 'Básico', periodo_fim: iso(1), cancela_no_fim: false, criado_em: iso(200) });
+  html = await abre(h, pessoa({ user_id: 'u3' }));
+  check('assinatura cancelada nunca aparece como ativa', !html.includes('Assinatura ativa') && html.includes('Cancelada'));
+  h.mod.pararAoVivo();
+  h = await montar(null, null);
+  html = await abre(h, pessoa({ user_id: null, nome: '<img src=x onerror=alert(1)>', dias_sem_sinal: null }));
+  check('nome com HTML sai escapado no cabeçalho e na fila; sem dias_sem_sinal mostra traço', !html.includes('<img src=x') && html.includes('&lt;img') && html.includes('sem atividade registrada'));
   h.mod.pararAoVivo();
 }
 

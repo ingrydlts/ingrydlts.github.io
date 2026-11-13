@@ -1,7 +1,12 @@
 # Dossiê da pessoa — o que a plataforma pergunta
 
-Vistoria de tudo que o app e o funil perguntam hoje. É a lista que o dossiê do CRM (topo da ficha) reproduz
-para você preencher na ligação. Chaves iguais às do app, para a etapa seguinte copiar o dossiê para o perfil dela.
+Vistoria de tudo que o app e o funil perguntam hoje. É a lista que o dossiê do CRM reproduz para você preencher na ligação.
+
+**Onde fica (2026-11-13):** na ficha v2 o Dossiê é uma **aba própria**, ao lado de Ficha (Conversa · Plataforma · Ficha · Dossiê), sempre
+aberto. Saiu da lista de sessões da Plataforma. Ele **se preenche sozinho**: o que ela responde no funil (`contatos.respostas`: árvore
+do au pair, `cfNivel`, `cfTeste`, cidade) entra na pergunta equivalente (tabela `DOS_FUNIL` em `crm.js`), com a etiqueta "Veio do funil";
+o que está no dossiê (você digitou ou a IA leu) sempre ganha do funil, e o que você apaga não volta. A ficha escuta a linha dela em
+`contatos` (Realtime, `db/crm-dossie-vivo.sql`) e repinta quando algo muda. Pergunta nova no funil = uma linha em `DOS_FUNIL`. Chaves iguais às do app, para a etapa seguinte copiar o dossiê para o perfil dela.
 
 Onde cada resposta mora: **contato** = coluna de `contatos` · **dossiê** = `contatos.dossie` (db/crm-dossie.sql) ·
 **funil** = `contatos.respostas` (só leitura, vem do quiz público).

@@ -15,25 +15,12 @@ console.log('== Task 8: fila, header, abas, guia ==');
   const itens = [{ c: { id: 'c1', nome: XSS, urgencia: 'alta' }, novas: 2, proxima: 'Responder Ana', sub: 'Au pair · captação' }, { c: { id: 'c2', nome: 'Bia Lima', urgencia: 'baixa' }, novas: 0, proxima: 'Abrir a ficha' }];
   const f = FH.htmlFila(itens, 'c1', h);
   check('fila: a aberta tem aria-pressed true, a outra false', count(f, /aria-pressed="true"/g) === 1 && count(f, /aria-pressed="false"/g) === 1);
-  check('fila: novas e próxima ação', f.includes('2 novas') && f.includes('Responder Ana') && !f.includes('1 nova<'));
+  check('fila: novas, e o texto da próxima ação não aparece mais', f.includes('2 novas') && !f.includes('Responder Ana') && !f.includes('Au pair · captação') && !f.includes('1 nova<'));
+  check('fila: chips em uma linha, bolinha com a classe da urgência', f.includes('class="mf-i') && f.includes('mf-d alta') && f.includes('mf-d baixa') && !f.includes('fx-fcard'));
   check('fila: HTML do nome sai escapado', f.includes('&lt;img') && !f.includes('<img'));
   check('fila: cartão abre a pessoa', f.includes('data-fx="pessoa"') && f.includes('data-id="c2"'));
   check('fila vazia tem mensagem', FH.htmlFila([], null, h).includes('Ninguém'));
   check('fila: 1 nova no singular', FH.htmlFila([{ c: { id: 'z', nome: 'Z', urgencia: 'media' }, novas: 1, proxima: 'x' }], null, h).includes('1 nova'));
-
-  const base = { c: { id: 'c1', nome: XSS, email: 'ana@example.com', estagio: 'lead', urgencia: 'alta' }, urgLabel: 'Alta', estagioLabel: 'Lead', personaLabel: 'Au pair', cidade: 'Lyon', temConta: true, motivo: 'marcou urgência', etapa: 4,
-    estagios: [{ k: 'lead', l: 'Lead' }, { k: 'em_uso', l: 'Em uso' }], chk: { pct: 40, feitos: 2, abertos: 3, vencem3: 1, adicionados: 1 }, ultima: 'hoje às 10:00' };
-  const hd = FH.htmlHeader(base, h);
-  check('header: 7 segmentos do funil', count(hd, /data-etapa="[1-7]"/g) === 7);
-  check('header: aria-current só na etapa atual', count(hd, /aria-current="step"/g) === 1 && /data-etapa="4"[^>]*aria-current="step"|aria-current="step"[^>]*data-etapa="4"/.test(hd));
-  check('header: etapa atual em texto', hd.includes('Etapa atual:') && hd.includes(FX.ETAPAS_FUNIL[3]));
-  check('header: barra de progresso com o pct', /role="progressbar"[^>]*aria-valuenow="40"|aria-valuenow="40"[^>]*role="progressbar"/.test(hd));
-  check('header: nome escapado', hd.includes('&lt;img') && !hd.includes('<img'));
-  check('header: botões existentes (e-mail, 1:1, estágio)', hd.includes('data-emailfor="c1"') && hd.includes('data-open1a1="c1"') && hd.includes('id="stage-pick"'));
-  const sem = FH.htmlHeader(Object.assign({}, base, { chk: null, temConta: false }), h);
-  check('header sem conta: aviso e sem barra', sem.includes('Ela ainda não entrou no app') && !sem.includes('role="progressbar"'));
-  check('header: erro do checklist usa a mensagem própria', FH.htmlHeader(Object.assign({}, base, { chk: null, chkMsg: 'Falta rodar db/crm-checklist.sql' }), h).includes('db/crm-checklist.sql'));
-  check('header: etapa 7 não tem "próxima"', !FH.htmlHeader(Object.assign({}, base, { etapa: 7 }), h).includes('Próxima:'));
 
   const ab = FH.htmlAbas('plataforma', true, h);
   check('abas: três abas com data-fx', ['conversa', 'plataforma', 'ficha'].every((v) => ab.includes('data-fx="tab" data-v="' + v + '"')) && ab.includes('role="tablist"'));
@@ -130,6 +117,34 @@ console.log('== Task 13: fluxo de 3 passos ==');
   const f1 = FH.htmlFluxo(1, h);
   check('fluxo: nomes do spec §7.1', f1.includes('Captação por e-mail') && f1.includes('Onboarding: descrição da reunião') && f1.includes('Plataforma'));
   check('fluxo: passo fora da faixa é limitado', FH.htmlFluxo(9, h).includes('data-passo="3"') && /data-passo="3"[^>]*aria-current="step"/.test(FH.htmlFluxo(9, h)) && /data-passo="1"[^>]*aria-current="step"/.test(FH.htmlFluxo(0, h)));
+}
+
+console.log('== Cabeçalho fixo ==');
+{
+  const cart = (rotulo, valor, sub, tom) => (tom ? { rotulo, valor, sub, tom } : { rotulo, valor, sub });
+  const d = { c: { id: 'c1', nome: XSS, email: 'ana@example.com', estagio: 'lead' }, estagioLabel: 'Lead', personaLabel: 'Au pair → estudante', etiqueta: { texto: 'Assinatura ativa', tom: 'ok' },
+    estagios: [{ k: 'lead', l: 'Lead' }, { k: 'em_uso', l: 'Em uso' }],
+    blocos: [{ titulo: 'Pagamento', cartoes: [cart('Plano', 'Intermediário', 'ativa', 'ok')] }, { titulo: null, cartoes: [cart('Parada há', '6 dias', '<b>x</b>', 'alerta'), cart('Respostas', '0', 'nenhuma')] }],
+    nota: 'Baseado nos 300 cliques mais recentes.' };
+  const hd = FH.htmlCabecalho(d, h);
+  check('cabeçalho: nome com HTML sai escapado', hd.includes('&lt;img') && !hd.includes('<img') && !hd.includes('<b>x</b>') && hd.includes('&lt;b&gt;x&lt;/b&gt;'));
+  check('cabeçalho: mantém os botões e o seletor de estágio', hd.includes('data-emailfor="c1"') && hd.includes('data-open1a1="c1"') && hd.includes('id="stage-pick"'));
+  check('cabeçalho: classes dos cartões (alerta e ok) e título do bloco', hd.includes('k alerta') && hd.includes('k ok') && hd.includes('>Pagamento<') && count(hd, /class="k( |")/g) === 3);
+  check('cabeçalho: nota aparece quando existe e some quando não existe', hd.includes('class="est"') && !FH.htmlCabecalho(Object.assign({}, d, { nota: null }), h).includes('class="est"'));
+  check('cabeçalho: etiqueta de pagamento e persona', hd.includes('Assinatura ativa') && hd.includes('Au pair → estudante'));
+  check('cabeçalho: iniciais (duas palavras, uma palavra, sem nome usa o e-mail) sem lançar', FH.htmlCabecalho({ c: { id: 'z', nome: 'Ana Souza' }, blocos: [] }, h).includes('>AS<') && FH.htmlCabecalho({ c: { id: 'z', nome: 'Clara' }, blocos: [] }, h).includes('>C<') && FH.htmlCabecalho({ c: { id: 'z', email: 'bruna@x.com' }, blocos: [] }, h).includes('>B<'));
+  check('cabeçalho: mostra No app ou Sem conta', FH.htmlCabecalho(Object.assign({}, d, { temConta: true }), h).includes('No app') && FH.htmlCabecalho(Object.assign({}, d, { temConta: false }), h).includes('Sem conta'));
+  check('cabeçalho: sem blocos não quebra', FH.htmlCabecalho({ c: { id: 'z', nome: 'Z' } }, h).includes('class="hd"'));
+}
+
+console.log('== Funil de conversão (lista vertical da Jornada) ==');
+{
+  const fu = FH.htmlFunil({ etapa: 4, semCaixa: true }, h);
+  check('funil: 7 segmentos', count(fu, /data-etapa="[1-7]"/g) === 7);
+  check('funil: aria-current só na etapa atual', count(fu, /aria-current="step"/g) === 1 && /data-etapa="4"[^>]*aria-current="step"|aria-current="step"[^>]*data-etapa="4"/.test(fu));
+  check('funil: etapas feitas, atual e próximas', count(fu, /fx-seg done/g) === 3 && count(fu, /fx-seg cur/g) === 1 && count(fu, /fx-seg next/g) === 3);
+  check('funil: etapa 7 não tem "Próxima:" e etapa fora da faixa é limitada', !FH.htmlFunil({ etapa: 7 }, h).includes('Próxima:') && FH.htmlFunil({ etapa: 99, semCaixa: true }, h).includes('data-etapa="7"') && /data-etapa="7"[^>]*aria-current="step"|aria-current="step"[^>]*data-etapa="7"/.test(FH.htmlFunil({ etapa: 99, semCaixa: true }, h)));
+  check('funil sem caixa não traz o título; com caixa traz', !fu.includes('<h4') && FH.htmlFunil({ etapa: 2 }, h).includes('Funil de conversão</h4>'));
 }
 
 console.log('\n' + passed + ' passaram, ' + failed + ' falharam');
