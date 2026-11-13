@@ -10,7 +10,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600&display=swap">
-<link rel="stylesheet" href="crm.css?v=2026-11-13.9">
+<link rel="stylesheet" href="crm.css?v=2026-11-13.10">
 <style>
   .gate{max-width:420px;margin:12vh auto 0;text-align:center}
   .gate h1{font-size:28px;margin-bottom:6px}
@@ -39,16 +39,16 @@
 
 <div class="app" id="app" hidden>
   <aside class="side" aria-label="Seções do CRM">
-    <a class="link" href="/admin/" style="padding:0 10px 6px">← Painel do site</a>
+    <a class="link" href="/admin/" title="Painel do site" style="padding:0 10px 6px">← Painel do site</a>
     <div class="brand"><h1>Por Dentro</h1><span>CRM</span></div>
-    <button class="nav" data-view="hoje" aria-current="page" type="button">Hoje</button>
-    <button class="nav" data-view="contatos" type="button">Contatos <span class="count num" id="c-contatos">0</span></button>
-    <button class="nav" data-view="onboarding" type="button">Onboarding</button>
-    <button class="nav" data-view="funil" type="button">Funil</button>
-    <button class="nav" data-view="radar" type="button">Radar <span class="count hot num" id="c-radar" hidden>0</span></button>
-    <button class="nav" data-view="perguntas" type="button">Caixa de entrada <span class="count hot num" id="c-perguntas">0</span></button>
-    <button class="nav" data-view="reimpacto" type="button">Reimpactar <span class="count hot num" id="c-reimpacto">0</span></button>
-    <button class="nav" data-view="modelos" type="button">Modelos de e-mail</button>
+    <button class="nav" data-view="hoje" aria-current="page" title="Hoje" type="button"><svg class="nav-i" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/></svg><span class="nav-t">Hoje</span></button>
+    <button class="nav" data-view="contatos" title="Contatos" type="button"><svg class="nav-i" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.5-3.5 3-5.5 6.5-5.5s6 2 6.5 5.5"/><path d="M16 4.7a3.5 3.5 0 0 1 0 6.6M18 14.8c2 .7 3.2 2.4 3.5 5.2"/></svg><span class="nav-t">Contatos</span> <span class="count num" id="c-contatos">0</span></button>
+    <button class="nav" data-view="onboarding" title="Onboarding" type="button"><svg class="nav-i" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4M5 5h12l-2.5 4L17 13H5"/></svg><span class="nav-t">Onboarding</span></button>
+    <button class="nav" data-view="funil" title="Funil" type="button"><svg class="nav-i" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 4h18l-7 8.5V19l-4 2v-8.5z"/></svg><span class="nav-t">Funil</span></button>
+    <button class="nav" data-view="radar" title="Radar" type="button"><svg class="nav-i" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.5"/><path d="M12 12l6-6"/></svg><span class="nav-t">Radar</span> <span class="count hot num" id="c-radar" hidden>0</span></button>
+    <button class="nav" data-view="perguntas" title="Caixa de entrada" type="button"><svg class="nav-i" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 13l3-8h12l3 8v6a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z"/><path d="M3 13h5l1.5 2.5h5L16 13h5"/></svg><span class="nav-t">Caixa de entrada</span> <span class="count hot num" id="c-perguntas">0</span></button>
+    <button class="nav" data-view="reimpacto" title="Reimpactar" type="button"><svg class="nav-i" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.6-5.9"/><path d="M20 4v5h-5"/></svg><span class="nav-t">Reimpactar</span> <span class="count hot num" id="c-reimpacto">0</span></button>
+    <button class="nav" data-view="modelos" title="Modelos de e-mail" type="button"><svg class="nav-i" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg><span class="nav-t">Modelos de e-mail</span></button>
     <div class="side-foot">Só você vê esta área (login de admin).<br>Dados do Supabase: contatos, eventos, consentimentos.<br><button class="signout" id="signout" type="button">Sair</button></div>
   </aside>
 
@@ -214,6 +214,7 @@
       <details class="st-fdet"><summary>Filtros e busca</summary><div class="st-filtros" id="mod-filtros"></div></details>
       <div class="studio" id="studio" data-tab="editar">
         <nav class="st-list" id="mod-list" aria-label="Modelos"></nav>
+        <div class="st-grip" id="st-grip" role="separator" aria-orientation="vertical" aria-label="Largura da lista de modelos (arraste, ou use as setas; duplo clique volta ao padrão)" tabindex="0"></div>
         <div class="st-edit" id="st-edit"></div>
         <div class="st-prev" id="st-prev"></div>
       </div>
@@ -230,6 +231,6 @@
 <div id="compose-backdrop" hidden style="position:fixed; inset:0; background:rgba(20,18,14,.4); z-index:9"></div>
 <div class="toast" id="toast" hidden></div>
 
-<script type="module" src="crm.js?v=2026-11-13.9"></script>
+<script type="module" src="crm.js?v=2026-11-13.10"></script>
 </body>
 </html>

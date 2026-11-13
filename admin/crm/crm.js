@@ -2,13 +2,13 @@
 // Nada de service_role aqui. O banco é db/crm-fase2.sql; o desenho é o artefato "CRM Por Dentro".
 // Tudo que vem do banco é texto de terceiros (nome, e-mail, pergunta): passa sempre por esc().
 import { supabase } from '/assets/js/supabase-client.js';
-import * as TX from './taxonomia.js?v=2026-11-13.9';   // páginas, famílias e agrupamento dos modelos
-import * as ES from './estudio.js?v=2026-11-13.9';   // os blocos do estúdio de e-mails (entregas 2 e 3)
-import * as EE from './editor-email.js?v=2026-11-13.9';
-import * as EQ from './editor-quem.js?v=2026-11-13.9';
-import * as JR from './jornada.js?v=2026-11-13.9';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
-import * as FX from './ficha.js?v=2026-11-13.9';   // ficha v2: lógica pura (fila, démarches, funil, ações)
-import * as FH from './ficha-html.js?v=2026-11-13.9';   // ficha v2: HTML puro
+import * as TX from './taxonomia.js?v=2026-11-13.10';   // páginas, famílias e agrupamento dos modelos
+import * as ES from './estudio.js?v=2026-11-13.10';   // os blocos do estúdio de e-mails (entregas 2 e 3)
+import * as EE from './editor-email.js?v=2026-11-13.10';
+import * as EQ from './editor-quem.js?v=2026-11-13.10';
+import * as JR from './jornada.js?v=2026-11-13.10';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
+import * as FX from './ficha.js?v=2026-11-13.10';   // ficha v2: lógica pura (fila, démarches, funil, ações)
+import * as FH from './ficha-html.js?v=2026-11-13.10';   // ficha v2: HTML puro
 
 var PERSONAS = {
   au_pair_estudante: 'Au pair → estudante', campus_france: 'Campus France', alternancia_emprego: 'Alternância / emprego',
@@ -2516,7 +2516,7 @@ function fxHeaderHtml(c, d) {
 // Catálogo de démarches (cópia do app, processos.json): carregado uma vez; sem ele, tudo cai na démarche padrão.
 var FX_PROC = null;
 async function fxCarregaProcessos() {
-  try { var r = await fetch('processos.json?v=2026-11-13.9'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
+  try { var r = await fetch('processos.json?v=2026-11-13.10'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
 }
 // A sessão Checklist: pílulas por démarche, os 4 mais urgentes, pasta do Drive privada e "Ver mais desta sessão".
 function fxChecklistCorpo(c) {
@@ -4873,3 +4873,42 @@ document.addEventListener('click', aoClicarFiltro);
 document.addEventListener('input', aoDigitarFiltro);
 
 boot().catch(function (err) { console.error(err); showGate('Erro ao abrir o CRM. Recarregue a página.'); });
+
+// ---------- Largura da lista de modelos (Editar e-mails) ----------
+// A faixa entre a lista e o editor se arrasta com o mouse (ou com as setas, quando em foco); duplo clique volta ao padrão.
+// A largura fica em --st-list-w no #studio e é lembrada neste navegador.
+(function () {
+  var grip = document.getElementById('st-grip'), studio = document.getElementById('studio');
+  if (!grip || !studio) return;
+  var PADRAO = 240, MIN = 150, CHAVE = 'crm.studio.listaLargura';
+  function limite(px) { var max = Math.max(MIN, Math.min(520, studio.clientWidth - 360)); return Math.round(Math.min(max, Math.max(MIN, px))); }
+  function aplicar(px, guardar) {
+    var w = limite(px);
+    studio.style.setProperty('--st-list-w', w + 'px');
+    grip.setAttribute('aria-valuenow', String(w)); grip.setAttribute('aria-valuemin', String(MIN));
+    if (guardar) { try { localStorage.setItem(CHAVE, String(w)); } catch (e) { /* sem armazenamento: vale só nesta sessão */ } }
+  }
+  var salvo = NaN; try { salvo = parseInt(localStorage.getItem(CHAVE), 10); } catch (e) { /* ignora */ }
+  if (salvo) studio.style.setProperty('--st-list-w', salvo + 'px');
+  grip.setAttribute('aria-valuenow', String(salvo || PADRAO));
+  grip.addEventListener('pointerdown', function (e) {
+    if (e.button !== 0) return;
+    e.preventDefault(); grip.setPointerCapture(e.pointerId);
+    grip.classList.add('arrastando'); document.body.classList.add('st-arrastando');
+    var x0 = studio.getBoundingClientRect().left;
+    function mover(ev) { aplicar(ev.clientX - x0, false); }
+    function soltar() {
+      grip.removeEventListener('pointermove', mover); grip.removeEventListener('pointerup', soltar); grip.removeEventListener('pointercancel', soltar);
+      grip.classList.remove('arrastando'); document.body.classList.remove('st-arrastando');
+      aplicar(parseInt(grip.getAttribute('aria-valuenow'), 10) || PADRAO, true);
+    }
+    grip.addEventListener('pointermove', mover); grip.addEventListener('pointerup', soltar); grip.addEventListener('pointercancel', soltar);
+  });
+  grip.addEventListener('dblclick', function () { aplicar(PADRAO, true); });
+  grip.addEventListener('keydown', function (e) {
+    var atual = parseInt(grip.getAttribute('aria-valuenow'), 10) || PADRAO;
+    if (e.key === 'ArrowLeft') { e.preventDefault(); aplicar(atual - 20, true); }
+    else if (e.key === 'ArrowRight') { e.preventDefault(); aplicar(atual + 20, true); }
+    else if (e.key === 'Home' || e.key === 'Enter') { e.preventDefault(); aplicar(PADRAO, true); }
+  });
+})();
