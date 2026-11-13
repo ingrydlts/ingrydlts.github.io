@@ -1,5 +1,5 @@
 // Ficha-universo, fase 1: HTML puro das peças novas. Todas recebem h = { esc, fmtDay } e escapam todo texto vindo do banco.
-import { ETAPAS_FUNIL, maisUrgentes } from './ficha.js?v=2026-11-13.5';   // o ?v= acompanha o de crm.js (cache do navegador)
+import { ETAPAS_FUNIL, maisUrgentes } from './ficha.js?v=2026-11-13.6';   // o ?v= acompanha o de crm.js (cache do navegador)
 
 
 const URG = { alta: 'Alta', media: 'Média', baixa: 'Baixa' };
@@ -18,27 +18,8 @@ export function htmlFila(itens, selId, h) {
   }).join('') + '</section>';
 }
 
-// d = { c, urgLabel, estagioLabel, personaLabel, cidade, temConta, motivo, etapa (1..7), estagios: [{k,l}], chk: { pct, feitos, abertos, vencem3, adicionados } | null, ultima }
-export function htmlHeader(d, h) {
-  const e = h.esc, c = d.c || {};
-  const k = d.chk;
-  const avanco = k
-    ? '<h4 class="fx-h4">Avanço do projeto dela</h4><div class="dprog" role="progressbar" aria-label="Checklist feito por ela" aria-valuenow="' + e(k.pct) + '" aria-valuemin="0" aria-valuemax="100"><span style="width:' + e(k.pct) + '%"></span></div>' +
-      '<p class="sub fx-av-txt">' + e(k.pct) + '% · feitos por ela ' + e(k.feitos) + ' · abertos ' + e(k.abertos) + ' · vencem em até 3 dias ' + e(k.vencem3) + ' · adicionados por ela ' + e(k.adicionados) + '</p>'
-    : '<h4 class="fx-h4">Avanço do projeto dela</h4><p class="sub fx-av-txt">' + e(d.chkMsg || 'Ela ainda não entrou no app, então ainda não tem checklist.') + '</p>';
-  return '<header class="fx-head">' +
-    '<div class="fx-h-pessoa"><h2 class="fx-nome">' + e(c.nome || c.email || 'Sem nome') + '</h2><p class="sub" style="margin:2px 0 0">' + e(c.email || '') + '</p>' +
-    '<div class="ctx" style="margin-top:8px"><span class="pill u-' + e(c.urgencia) + '"><span class="dot"></span>' + e(d.urgLabel || '') + '</span><span class="pill">' + e(d.estagioLabel || '') + '</span><span class="pill">' + e(d.personaLabel || '') + '</span>' +
-    (d.cidade ? '<span class="pill">' + e(d.cidade) + '</span>' : '') + '<span class="pill">' + (d.temConta ? 'No app' : 'Sem conta') + '</span></div>' +
-    (d.motivo ? '<p class="sub" style="margin:8px 0 0">Por que precisa de atenção: ' + e(d.motivo) + '</p>' : '') +
-    '<div class="actions" style="margin-top:12px"><button class="btn primary" type="button" data-emailfor="' + e(c.id) + '">Escrever mensagem</button>' +
-    '<button class="btn" type="button" data-open1a1="' + e(c.id) + '">Marcar 1:1</button>' +
-    '<div class="sel"><select id="stage-pick" aria-label="Mudar estágio">' + (d.estagios || []).map((s) => '<option value="' + e(s.k) + '"' + (s.k === c.estagio ? ' selected' : '') + '>Estágio: ' + e(s.l) + '</option>').join('') + '</select></div></div></div>' +
-    '<div class="fx-h-avanco">' + avanco + (d.ultima ? '<p class="sub fx-av-txt">Última atividade: ' + e(d.ultima) + '</p>' : '') + '</div></header>';
-}
-
 // Cabeçalho fixo: pessoa, etiqueta de pagamento, ações e cartões por tipo de pessoa (os blocos vêm de FX.cartoesDe).
-// d = { c, estagioLabel, personaLabel, etiqueta: { texto, tom }, estagios: [{k,l}], blocos: [{ titulo|null, cartoes: [{rotulo, valor, sub, tom?}] }], nota|null }
+// d = { c, estagioLabel, personaLabel, temConta, etiqueta: { texto, tom }, estagios: [{k,l}], blocos: [{ titulo|null, cartoes: [{rotulo, valor, sub, tom?}] }], nota|null }
 function iniciais(c) {
   const partes = String((c && c.nome) || '').trim().split(/\s+/).filter(Boolean);
   const base = partes.length ? partes.slice(0, 2).map((p) => p.charAt(0)).join('') : String((c && c.email) || '?').charAt(0);
@@ -56,6 +37,7 @@ export function htmlCabecalho(d, h) {
     (d.personaLabel ? '<span class="pill">' + e(d.personaLabel) + '</span>' : '') +
     (d.estagioLabel ? '<span class="pill"><span class="dot"></span>' + e(d.estagioLabel) + '</span>' : '') +
     (et.texto ? '<span class="pill pg-' + e(et.tom) + '">' + e(et.texto) + '</span>' : '') +
+    (d.temConta != null ? '<span class="pill">' + (d.temConta ? 'No app' : 'Sem conta') + '</span>' : '') +
     '<span class="hd-sp"><button class="btn primary" type="button" data-emailfor="' + e(c.id) + '">Escrever mensagem</button>' +
     '<button class="btn" type="button" data-open1a1="' + e(c.id) + '">Marcar 1:1</button>' +
     '<span class="sel"><select id="stage-pick" aria-label="Mudar estágio">' + (d.estagios || []).map((s) => '<option value="' + e(s.k) + '"' + (s.k === c.estagio ? ' selected' : '') + '>Estágio: ' + e(s.l) + '</option>').join('') + '</select></span></span></div>' +

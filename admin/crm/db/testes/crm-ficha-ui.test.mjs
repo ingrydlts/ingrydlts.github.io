@@ -53,10 +53,10 @@ console.log('== Task 10: ligação aos dados, abas, ações, deep link ==');
   };
   let h = await montar(null);
   let html = await abre(h, pessoa({ user_id: null }));
-  check('renderiza fila, header, abas e carrossel', html.includes('class="fx-fila mf"') && html.includes('class="fx-head"') && html.includes('class="fx-abas"') && html.includes('class="fx-car"'));
+  check('renderiza fila, header, abas e carrossel', html.includes('class="fx-fila mf"') && html.includes('class="hd"') && html.includes('class="fx-abas"') && html.includes('class="fx-car"'));
   check('sem conta: abre na aba Ficha', /data-v="ficha"[^>]*aria-selected="true"/.test(html) && !/data-v="plataforma"[^>]*aria-selected="true"/.test(html));
   check('1º cartão é "Responder Ana"', /data-fx="agAbrir" data-i="0"[^>]*aria-label="Ação 1 de \d: Responder Ana\./.test(html));
-  check('a fila é uma linha de chips: a pessoa aberta está destacada e o texto da ação não repete na fila', html.includes('mf-i atual') && !/class="mf[^"]*"[^>]*>[^<]*Responder Ana/.test(html.split('class="fx-head"')[0].split('class="fx-fila mf"')[1] || ''));
+  check('a fila é uma linha de chips: a pessoa aberta está destacada e o texto da ação não repete na fila', html.includes('mf-i atual') && !/class="mf[^"]*"[^>]*>[^<]*Responder Ana/.test(html.split('class="hd"')[0].split('class="fx-fila mf"')[1] || ''));
   {
     // só mensagem do app, sem resposta por e-mail: a fila da pessoa aberta continua igual ao 1º cartão
     const h2 = await carregarCrm({ respostas: base({ chat_mensagens: { data: [msg(2), msg(1)], error: null } }), store: { crm_ficha_v2: '1' } });
@@ -233,6 +233,35 @@ console.log('== Task 14: dado velho ==');
     plataforma_cliques: { data: [{ tela: '/dashboard/#checklist', alvo: 'botao', rotulo: 'Marcou como concluído: Passo', criado_em: antigo }], error: null } }), store: { crm_ficha_v2: '1' } });
   await abre(h, pessoa({ user_id: 'u1' }));
   check('mais de 48 h sem atividade: banner "há 5 dias"', h.el('pessoa-page').innerHTML.includes('Sem atividade dela no checklist há 5 dias'));
+  h.mod.pararAoVivo();
+}
+
+console.log('== Cabeçalho fixo por tipo de pessoa ==');
+{
+  const agora = Date.now(), iso = (dias, seg = 0) => new Date(agora - dias * 864e5 + seg * 1000).toISOString();
+  const cliques = [].concat(...['a', 'b', 'c'].map((sid, i) => [0, 1, 2, 3].map((j) => ({ sessao: sid, tela: 'inicio', alvo: 'x', rotulo: 'x', criado_em: iso(i + 1.5, j * 30) }))));
+  const montar = async (user, assinatura) => carregarCrm({ store: { crm_ficha_v2: '1' }, respostas: base({ 'contatos:one': { data: { dossie: {}, user_id: user }, error: null }, plataforma_cliques: { data: cliques, error: null },
+    'assinaturas:one': { data: assinatura, error: null } }) });
+  let h = await montar(null, null);
+  let html = await abre(h, pessoa({ user_id: null, dias_sem_sinal: 6 }));
+  check('lead: tem Parada há e Próximo e-mail, e não tem uso nem pagamento', html.includes('Parada há') && html.includes('Próximo e-mail') && !html.includes('Cliques por sessão') && !html.includes('class="tag">Pagamento<') && html.includes('Não assina'));
+  h.mod.pararAoVivo();
+  h = await montar('u1', { status: 'active', plano: 'Intermediário', periodo_fim: new Date(agora + 5 * 864e5).toISOString(), cancela_no_fim: false, criado_em: iso(95) });
+  html = await abre(h, pessoa({ user_id: 'u1' }));
+  check('assinante: Pagamento, Plano, Assinatura ativa e o uso (sessões e cliques por sessão)', html.includes('class="tag">Pagamento<') && html.includes('Intermediário') && html.includes('Assinatura ativa') && html.includes('Sessões') && html.includes('Cliques por sessão') && html.includes('Duração (estimada)'));
+  check('assinante: 3 sessões de 4 cliques → 4 cliques por sessão; nota sobre LTV', html.includes('>4<') && html.includes('LTV'));
+  h.mod.pararAoVivo();
+  h = await montar('u2', null);
+  html = await abre(h, pessoa({ user_id: 'u2' }));
+  check('na plataforma sem assinar: Não assina, Sessões e sem bloco Pagamento', html.includes('Não assina') && html.includes('Sessões') && !html.includes('class="tag">Pagamento<'));
+  h.mod.pararAoVivo();
+  h = await montar('u3', { status: 'canceled', plano: 'Básico', periodo_fim: iso(1), cancela_no_fim: false, criado_em: iso(200) });
+  html = await abre(h, pessoa({ user_id: 'u3' }));
+  check('assinatura cancelada nunca aparece como ativa', !html.includes('Assinatura ativa') && html.includes('Cancelada'));
+  h.mod.pararAoVivo();
+  h = await montar(null, null);
+  html = await abre(h, pessoa({ user_id: null, nome: '<img src=x onerror=alert(1)>', dias_sem_sinal: null }));
+  check('nome com HTML sai escapado no cabeçalho e na fila; sem dias_sem_sinal mostra traço', !html.includes('<img src=x') && html.includes('&lt;img') && html.includes('sem atividade registrada'));
   h.mod.pararAoVivo();
 }
 

@@ -835,8 +835,6 @@ details.ee-sec[open]>summary{margin-bottom:8px}
 .mf-n{font-size:11px; font-weight:700; color:var(--red); background:var(--red-soft); border-radius:999px; padding:1px 7px}
 
 /* Header: pessoa, funil de 7 etapas, avanço do projeto */
-.fx-head{display:grid; grid-template-columns:minmax(0,1.4fr) minmax(0,1fr); gap:20px; padding:16px; background:var(--surface-2); border:1px solid var(--line); border-radius:12px}
-.fx-nome{font-size:22px; overflow-wrap:anywhere}
 .fx-funil{list-style:none; margin:0; padding:0; display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:4px}
 .fx-seg{display:flex; flex-direction:column; gap:4px; align-items:flex-start; padding:6px 6px 4px; border-top:4px solid var(--line-2); font-size:11px; line-height:1.25; color:var(--ink-2); min-width:0}
 .fx-seg.done{border-top-color:var(--moss); color:var(--ink)}
@@ -973,7 +971,8 @@ details.ee-sec[open]>summary{margin-bottom:8px}
 .fx-funil-v .fx-seg.done{border-left-color:var(--moss)}
 .fx-funil-v .fx-seg.cur{border-left-color:var(--moss); background:var(--moss-soft); border-radius:0 8px 8px 0}
 .fx-funil-v .fx-seg.done .fx-segn{background:var(--moss-soft); color:var(--moss-ink)}
-.fx-funil-v .fx-seg.done .fx-segn::after{content:"✓"; margin-left:1px; font-size:10px}
+.fx-funil-v .fx-seg.done .fx-segn{font-size:0}
+.fx-funil-v .fx-seg.done .fx-segn::before{content:"✓"; font-size:11px}
 .fx-funil-v .fx-seg.next{opacity:.8}
 .fx-funil-v .fx-funil-txt{display:none}
 @media (max-width:1180px){
@@ -981,8 +980,9 @@ details.ee-sec[open]>summary{margin-bottom:8px}
   .fx-ctx,.fx-mail{position:static}
 }
 
-/* Cabeçalho fixo da ficha */
-.hd{position:sticky; top:8px; z-index:5; background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:12px 14px; box-shadow:0 4px 14px rgba(0,0,0,.06)}
+/* Cabeçalho fixo da ficha: o contêiner é que gruda (um pai só tão alto quanto o header não deixaria o sticky funcionar) */
+#fx-head-box{position:sticky; top:8px; z-index:5; margin-top:8px}
+.hd{background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:12px 14px; box-shadow:0 4px 14px rgba(0,0,0,.06)}
 .hd-l1{display:flex; align-items:center; gap:10px; flex-wrap:wrap}
 .hd-av{width:30px; height:30px; border-radius:50%; background:var(--moss-soft); display:grid; place-items:center; font-size:11px; font-weight:700; color:var(--moss-ink); flex:0 0 auto}
 .hd-n{margin:0; font-size:20px; overflow-wrap:anywhere}
@@ -1001,11 +1001,10 @@ details.ee-sec[open]>summary{margin-bottom:8px}
 
 /* Telas estreitas: sem rolagem de lado em 380 px */
 @media (max-width:760px){
-  .fx-head{grid-template-columns:minmax(0,1fr); gap:14px}
   .fx-segt{position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap}   /* a etapa atual segue escrita em "Etapa atual:" */
   .fx-seg{position:relative; align-items:center; padding:6px 0 4px}
   .fx-fluxo{grid-template-columns:minmax(0,1fr)}
-  .hd{position:static}
+  #fx-head-box{position:static}
   .hd-k{grid-template-columns:repeat(2,minmax(0,1fr))}
   .hd-sp{margin-left:0; width:100%}
   .fx .pessoa-grid{grid-template-columns:minmax(0,1fr)}

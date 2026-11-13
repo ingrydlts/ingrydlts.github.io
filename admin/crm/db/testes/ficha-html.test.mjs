@@ -22,22 +22,6 @@ console.log('== Task 8: fila, header, abas, guia ==');
   check('fila vazia tem mensagem', FH.htmlFila([], null, h).includes('Ninguém'));
   check('fila: 1 nova no singular', FH.htmlFila([{ c: { id: 'z', nome: 'Z', urgencia: 'media' }, novas: 1, proxima: 'x' }], null, h).includes('1 nova'));
 
-  const base = { c: { id: 'c1', nome: XSS, email: 'ana@example.com', estagio: 'lead', urgencia: 'alta' }, urgLabel: 'Alta', estagioLabel: 'Lead', personaLabel: 'Au pair', cidade: 'Lyon', temConta: true, motivo: 'marcou urgência', etapa: 4,
-    estagios: [{ k: 'lead', l: 'Lead' }, { k: 'em_uso', l: 'Em uso' }], chk: { pct: 40, feitos: 2, abertos: 3, vencem3: 1, adicionados: 1 }, ultima: 'hoje às 10:00' };
-  const hd = FH.htmlHeader(base, h);
-  check('header: o funil não mora mais no header', !hd.includes('fx-funil') && !hd.includes('data-etapa'));
-  const fu = FH.htmlFunil({ etapa: 4 }, h);
-  check('funil: 7 segmentos', count(fu, /data-etapa="[1-7]"/g) === 7);
-  check('funil: aria-current só na etapa atual', count(fu, /aria-current="step"/g) === 1 && /data-etapa="4"[^>]*aria-current="step"|aria-current="step"[^>]*data-etapa="4"/.test(fu));
-  check('funil: etapa atual em texto', fu.includes('Etapa atual:') && fu.includes(FX.ETAPAS_FUNIL[3]));
-  check('header: barra de progresso com o pct', /role="progressbar"[^>]*aria-valuenow="40"|aria-valuenow="40"[^>]*role="progressbar"/.test(hd));
-  check('header: nome escapado', hd.includes('&lt;img') && !hd.includes('<img'));
-  check('header: botões existentes (e-mail, 1:1, estágio)', hd.includes('data-emailfor="c1"') && hd.includes('data-open1a1="c1"') && hd.includes('id="stage-pick"'));
-  const sem = FH.htmlHeader(Object.assign({}, base, { chk: null, temConta: false }), h);
-  check('header sem conta: aviso e sem barra', sem.includes('Ela ainda não entrou no app') && !sem.includes('role="progressbar"'));
-  check('header: erro do checklist usa a mensagem própria', FH.htmlHeader(Object.assign({}, base, { chk: null, chkMsg: 'Falta rodar db/crm-checklist.sql' }), h).includes('db/crm-checklist.sql'));
-  check('header: etapa 7 não tem "próxima"', !FH.htmlFunil({ etapa: 7 }, h).includes('Próxima:'));
-
   const ab = FH.htmlAbas('plataforma', true, h);
   check('abas: três abas com data-fx', ['conversa', 'plataforma', 'ficha'].every((v) => ab.includes('data-fx="tab" data-v="' + v + '"')) && ab.includes('role="tablist"'));
   check('abas: só Plataforma selecionada', count(ab, /aria-selected="true"/g) === 1 && /data-v="plataforma"[^>]*aria-selected="true"/.test(ab));
@@ -149,6 +133,7 @@ console.log('== Cabeçalho fixo ==');
   check('cabeçalho: nota aparece quando existe e some quando não existe', hd.includes('class="est"') && !FH.htmlCabecalho(Object.assign({}, d, { nota: null }), h).includes('class="est"'));
   check('cabeçalho: etiqueta de pagamento e persona', hd.includes('Assinatura ativa') && hd.includes('Au pair → estudante'));
   check('cabeçalho: iniciais (duas palavras, uma palavra, sem nome usa o e-mail) sem lançar', FH.htmlCabecalho({ c: { id: 'z', nome: 'Ana Souza' }, blocos: [] }, h).includes('>AS<') && FH.htmlCabecalho({ c: { id: 'z', nome: 'Clara' }, blocos: [] }, h).includes('>C<') && FH.htmlCabecalho({ c: { id: 'z', email: 'bruna@x.com' }, blocos: [] }, h).includes('>B<'));
+  check('cabeçalho: mostra No app ou Sem conta', FH.htmlCabecalho(Object.assign({}, d, { temConta: true }), h).includes('No app') && FH.htmlCabecalho(Object.assign({}, d, { temConta: false }), h).includes('Sem conta'));
   check('cabeçalho: sem blocos não quebra', FH.htmlCabecalho({ c: { id: 'z', nome: 'Z' } }, h).includes('class="hd"'));
 }
 
