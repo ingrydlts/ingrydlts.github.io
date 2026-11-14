@@ -94,7 +94,7 @@ check('S2: seção e assunto são textos, e o assunto tem plano B', ES.CAT.secao
 check('S2: são 14 dados e todos entram nos modelos criados no estúdio', ES.VARS_S2.length === 14 && ES.VARS_S2.every((k) => ES.varsDoModelo('qualquer', { criado_no_estudio: true }).includes(k)));
 check('S2: os modelos antigos não ganham os dados novos', !ES.varsDoModelo('cf_guia_1').includes('porta_estudante'));
 h = monta([{ tipo: 'texto', se: '#porta_estudante', texto: 'Seção {secao}.' }], { assunto: '{assunto_persona}' });
-check('S2: o bloco "só se" da porta vira trecho condicional e o assunto leva o dado', /\{#porta_estudante\}/.test(h.corpo_texto) && h.assunto === '{assunto_persona}');
+check('S2: o bloco "só se" da porta vira trecho condicional e o assunto leva o dado', /\{#porta_estudante\}/.test(h.corpo_texto) && h.assunto.includes('{assunto_persona}') && h.assunto.includes('Seu mapa da saúde na França'));
 check('título pequeno em 17px e o normal em 24px', /font-size:17px/.test(monta([{ tipo: 'titulo', estilo: 'pequeno', texto: 'Oi' }]).corpo_html) && /font-size:24px/.test(monta([{ tipo: 'titulo', texto: 'Oi' }]).corpo_html));
 
 console.log(failed ? `\n${passed} passaram, ${failed} FALHARAM` : `\n${passed} passaram, 0 falharam`);
