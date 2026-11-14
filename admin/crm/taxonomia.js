@@ -23,39 +23,49 @@ export var FAMILIAS = [
 ];
 
 export var PAGINAS = [
-  { k: 'I01', nome: 'Alternância 30+', rota: '/guias/email-alternancia-30-mais/', material: 'guia-email-alt30', personas: ['alternancia_emprego'], etapas: [
+  { k: 'I01', nome: 'Alternância 30+', rota: '/guias/email-alternancia-30-mais/', material: 'guia-email-alt30', personas: ['alternancia_emprego'], portas: [], etapas: [
     ['alt-pesquisando', 'Pesquisando'],
     ['alt-escolhendo-escola', 'Escolhendo escola'],
     ['alt-recusa-idade', 'Ouviu "só até 29"'],
     ['alt-buscando-empresa', 'Buscando empresa'],
     ['alt-montando-contrato', 'Montando contrato']
   ] },
-  { k: 'I02', nome: 'Tecnólogo do Brasil', rota: '/guias/tecnologo-nivel-na-franca/', material: 'guia-tecnologo', personas: [], etapas: [
+  { k: 'I02', nome: 'Tecnólogo do Brasil', rota: '/guias/tecnologo-nivel-na-franca/', material: 'guia-tecnologo', personas: [], portas: [], etapas: [
     ['tec-nao-sei', 'Não sei o nível'],
     ['tec-juntando', 'Juntando documentos'],
     ['tec-escrevi', 'Esperando resposta'],
     ['tec-resposta', 'Tenho resposta']
   ] },
-  { k: 'I03', nome: 'Études en France 2027-2028', rota: '/guias/etudes-en-france-2027-2028/', material: 'guia-etudes-en-france-2027', personas: ['campus_france'], etapas: [
+  { k: 'I03', nome: 'Études en France 2027-2028', rota: '/guias/etudes-en-france-2027-2028/', material: 'guia-etudes-en-france-2027', personas: ['campus_france'], portas: [], etapas: [
     ['cf-nao-comecei', 'Ainda não começou'],
     ['cf-escolhendo-curso', 'Escolhendo o curso'],
     ['cf-juntando-documentos', 'Juntando documentos'],
     ['cf-dossie-enviado', 'Dossiê enviado'],
     ['cf-entrevista-resposta', 'Entrevista ou resposta']
   ] },
-  { k: 'I04', nome: 'VLS-TS travou na ANEF', rota: '/guias/vls-ts-validacao-travou/', material: 'guia-vls-ts', personas: [], etapas: [
+  { k: 'I04', nome: 'VLS-TS travou na ANEF', rota: '/guias/vls-ts-validacao-travou/', material: 'guia-vls-ts', personas: [], portas: [], etapas: [
     ['vls-ainda-nao', 'Ainda não cheguei'],
     ['vls-mais-60', 'Mais de 60 dias'],
     ['vls-30-60', 'De 30 a 60 dias'],
     ['vls-menos-30', 'Menos de 30 dias'],
     ['vls-passou', 'Passaram os 3 meses']
   ] },
-  { k: 'I05', nome: 'Au pair · checklist de chegada', rota: '/guias/checklist-chegada-au-pair/', material: 'guia-checklist-chegada-au-pair', personas: ['au_pair_estudante'], etapas: [
+  { k: 'I05', nome: 'Au pair · checklist de chegada', rota: '/guias/checklist-chegada-au-pair/', material: 'guia-checklist-chegada-au-pair', personas: ['au_pair_estudante'], portas: [], etapas: [
     ['ap-tudo-bem', 'Tudo bem, ainda não olhei os papéis'],
     ['ap-nao-sei-comecar', 'Muito papel, sem saber por onde começar'],
     ['ap-medo-prazo', 'Medo de perder um prazo'],
     ['ap-travado', 'Um passo travado'],
     ['ap-pesado', 'Pesado, deixei os papéis de lado']
+  ] },
+  // Saúde 1: as 4 portas são a "persona" da cascata (contatos.respostas.porta) e os 5 pontos são as etapas (respostas.objetivo).
+  // Espelha PORTAS e PONTOS do artefato "Templates de e-mail S2" e ETAPAS_FILTRO em estudio.js. A página pública ainda não existe.
+  { k: 'I06', nome: 'Saúde 1 · como o sistema funciona', rota: '/guias/saude-1/', material: 'guia-saude-1', personas: [],
+    portas: [['estudante', 'Estudante'], ['trabalho', 'Trabalho com contrato'], ['aupair', 'Au pair'], ['outro', 'Outro ou não sei']], etapas: [
+    ['sau-nao-cheguei', 'Ainda não cheguei'],
+    ['sau-sem-numero', 'Já cheguei, ainda sem número'],
+    ['sau-esperando', 'Pedi e estou esperando'],
+    ['sau-sem-vitale', 'Tenho o número e não a carte vitale'],
+    ['sau-completo', 'Já tenho a carte vitale']
   ] }
 ];
 

@@ -66,14 +66,47 @@ check('versão de cache nova em crm.js e index.html', /2026-11-14\.2/.test(fonte
 check('o editor pergunta ao banco e usa textoPrevistos', /crm_sequencia_previstos/.test(fonte) && /EQ\.textoPrevistos\(/.test(fonte));
 check('salvar o modelo apaga o Y guardado (ele muda com as regras)', /delete ST\.prev\[/.test(fonte));
 var srcPasso = fonte.slice(fonte.indexOf('function passoQuem('), fonte.indexOf('function renderEditor('));
-function quemHtml(para, prev) {
-  var fabrica = new Function('EQ', 'TX', 'ES', 'C', 'PERSONAS', 'ST', 'esc', 'origensDe', 'origLabel', 'etapaGuiaLabel', 'classeHtml', 'envioHtml', 'pillDe', 'TIPO_EMAIL', 'modeloNome', srcPasso + '; return passoQuem;');
-  var passo = fabrica(EQ, { PAGINAS: PAGINAS }, ES, [], {}, { qpop: '', prev: prev }, String, function (c) { return c.origens || []; }, function (o) { return o; }, function (k) { return k; },
-    function () { return ''; }, function () { return ''; }, function () { return ''; }, {}, function (k) { return k; });
+function quemHtml(para, prev, qpop) {
+  var fabrica = new Function('EQ', 'TX', 'ES', 'C', 'PERSONAS', 'ST', 'esc', 'origensDe', 'origLabel', 'etapaGuiaLabel', 'classeHtml', 'envioHtml', 'pillDe', 'TIPO_EMAIL', 'modeloNome', 'rotuloPorta', srcPasso + '; return passoQuem;');
+  var passo = fabrica(EQ, { PAGINAS: PAGINAS }, ES, [], {}, { qpop: qpop || '', prev: prev }, String, function (c) { return c.origens || []; }, function (o) { return o; }, function (k) { return k; },
+    function () { return ''; }, function () { return ''; }, function () { return ''; }, {}, function (k) { return k; },
+    function (k) { var r = k; PAGINAS.forEach(function (p) { (p.portas || []).forEach(function (o) { if (o[0] === k) r = o[1]; }); }); return r; });
   return passo({ chave: 'k', criado_no_estudio: true, tipo: 'novidades', envio_gatilho: 'material', para_quem: para }, false);
 }
+function quemHtmlPop(para, qpop) { return quemHtml(para, {}, qpop); }
 check('com Y = 3, a linha Hoje diz "3 envios previstos hoje"', /<b>Hoje:<\/b>[^]*3 envios previstos hoje/.test(quemHtml({}, { k: 3 })));
 check('com Y = 0, diz "0 envios previstos hoje"', /0 envios previstos hoje/.test(quemHtml({}, { k: 0 })));
 check('sem resposta (erro, carregando, não pedido): nada de "previstos"', !/previstos/.test(quemHtml({}, { k: false })) && !/previstos/.test(quemHtml({}, { k: 'carregando' })) && !/previstos/.test(quemHtml({}, {})) && !/previstos/.test(quemHtml({}, { k: null })));
 check('"elegíveis de" aparece sempre', /elegíveis de/.test(quemHtml({}, {})) && /elegíveis de/.test(quemHtml({}, { k: 3 })));
+
+// Task 5: a página I06 (saúde) e as portas na cascata.
+var i06 = pg('I06');
+check('I06 existe, com o material guia-saude-1', !!i06 && i06.material === 'guia-saude-1' && /Saúde/.test(i06.nome));
+check('I06: 4 portas', !!i06 && i06.portas.map(function (x) { return x[0]; }).join() === 'estudante,trabalho,aupair,outro');
+check('I06: 5 pontos, com o prefixo sau-', !!i06 && i06.etapas.map(function (x) { return x[0]; }).join() === 'sau-nao-cheguei,sau-sem-numero,sau-esperando,sau-sem-vitale,sau-completo');
+check('as outras páginas não têm portas', PAGINAS.filter(function (x) { return x.k !== 'I06'; }).every(function (x) { return Array.isArray(x.portas) && x.portas.length === 0; }));
+var codsFiltro = ES.ETAPAS_FILTRO.map(function (x) { return x[0]; });
+check('toda etapa de página com filtro existe em ETAPAS_FILTRO (menos I02 e I04, que o Worker ainda não grava)', PAGINAS.filter(function (x) { return x.k !== 'I02' && x.k !== 'I04'; }).every(function (x) { return x.etapas.every(function (e) { return codsFiltro.indexOf(e[0]) >= 0; }); }));
+check('os 5 pontos entram no filtro de etapa', i06.etapas.every(function (e) { return codsFiltro.indexOf(e[0]) >= 0; }));
+check('paginaAtual: guia-saude-1 = I06', paginaAtual({ materiais: ['guia-saude-1'] }, PAGINAS) === 'I06');
+var cp = { respostas: { porta: 'aupair' } }, cs = { respostas: {} };
+check('motivoFora: porta fora da regra', motivoFora(cp, { para_quem: { portas: ['trabalho'] } }, org) === 'porta');
+check('motivoFora: quem não marcou porta fica de fora quando há regra', motivoFora(cs, { para_quem: { portas: ['aupair'] } }, org) === 'porta');
+check('motivoFora: porta dentro da regra e sem regra', motivoFora(cp, { para_quem: { portas: ['aupair'] } }, org) === null && motivoFora(cs, { para_quem: {} }, org) === null);
+var lp = aplicarPagina({ materiais: ['guia-saude-1'], portas: ['aupair'], etapas: ['sau-completo'], personas: ['x'] }, 'I01', PAGINAS);
+check('aplicarPagina zera etapa, porta e persona, nessa ordem', lp.limpou.join() === 'etapa,porta,persona' && !lp.para.portas);
+var lq = aplicarPagina({ materiais: ['guia-saude-1'], portas: ['aupair'] }, 'I06', PAGINAS);
+check('mesma página I06: a porta fica', lq.para.portas.join() === 'aupair' && lq.limpou.length === 0);
+var rotP = { material: function (x) { return 'M' + x; }, etapa: String, persona: String, porta: function (x) { return 'Porta ' + x; } };
+check('fraseCascata I06: qualquer porta', fraseCascata({ para_quem: { materiais: ['guia-saude-1'] } }, PAGINAS, rotP).portas === 'qualquer porta');
+check('fraseCascata I06: porta marcada', fraseCascata({ para_quem: { materiais: ['guia-saude-1'], portas: ['aupair', 'outro'] } }, PAGINAS, rotP).portas === 'Porta aupair ou Porta outro');
+check('fraseCascata: página sem portas = null', fraseCascata({ para_quem: { materiais: ['guia-vls-ts'] } }, PAGINAS, rotP).portas === null);
+check('crm.js conhece o guia, a porta e o resumo', /'guia-saude-1':/.test(fonte) && /data-pq="portas"|'portas'/.test(fonte) && /porta ' \+/.test(fonte));
+var h06 = quemHtml({ materiais: ['guia-saude-1'] }, {}), h05 = quemHtml({ materiais: ['guia-checklist-chegada-au-pair'] }, {});
+check('I06: a linha Quem tem página, porta e etapa', /I06 · Saúde/.test(h06) && /qualquer porta/.test(h06) && /qualquer resposta/.test(h06));
+check('I05 não mostra porta', !/qualquer porta/.test(h05));
+var h06p = quemHtmlPop({ materiais: ['guia-saude-1'] }, 'porta');
+check('o campo de porta lista as 4 portas', (h06p.match(/data-pq="portas"/g) || []).length === 4 && /Trabalho com contrato/.test(h06p));
+var h06e = quemHtmlPop({ materiais: ['guia-saude-1'] }, 'etapa');
+check('o campo de etapa da I06 lista os 5 pontos', (h06e.match(/data-pq="etapas"/g) || []).length === 5);
 if (falhas) { console.log(falhas + ' falhas'); process.exit(1); }

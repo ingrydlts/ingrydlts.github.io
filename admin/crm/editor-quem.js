@@ -8,6 +8,9 @@ export function motivoFora(c, m, origensDe) {
   var p = (m && m.para_quem) || {};
   if (lista(p.personas).length && lista(p.personas).indexOf(c.persona) < 0) return 'persona';
   if (lista(p.materiais).length && !origensDe(c).some(function (o) { return p.materiais.indexOf(o) >= 0; })) return 'material';
+  // Porta da página de saúde (respostas.porta): com regra, quem não marcou porta também fica de fora, como a etapa.
+  var pt = c.respostas && c.respostas.porta;
+  if (lista(p.portas).length && !(pt && p.portas.indexOf(pt) >= 0)) return 'porta';
   var et = c.respostas && c.respostas.objetivo;
   // Como o banco (crm-filtro-etapa.sql): com regra de etapa, quem não marcou etapa também fica de fora.
   if (lista(p.etapas).length && !(et && p.etapas.indexOf(et) >= 0)) return 'etapa';
@@ -65,8 +68,9 @@ export function aplicarPagina(para, k, paginas) {
   var novo = JSON.parse(JSON.stringify(para || {})), limpou = [], pag = achaPag(paginas, k);
   if (pag && paginaAtual(para, paginas) === pag.k) return { para: novo, limpou: limpou };
   if (lista(novo.etapas).length) limpou.push('etapa');
+  if (lista(novo.portas).length) limpou.push('porta');
   if (lista(novo.personas).length) limpou.push('persona');
-  delete novo.etapas; delete novo.personas;
+  delete novo.etapas; delete novo.portas; delete novo.personas;
   if (pag) novo.materiais = [pag.material]; else delete novo.materiais;
   return { para: novo, limpou: limpou };
 }
@@ -77,6 +81,7 @@ export function fraseCascata(m, paginas, rot) {
   var por = function (l, f) { return l.map(function (x) { return f(x); }).join(' ou '); };
   return {
     pagina: pag ? pag.k + ' · ' + pag.nome : mats.length ? por(mats, rot.material) : 'qualquer página',
+    portas: pag && lista(pag.portas).length ? (lista(p.portas).length ? por(p.portas, rot.porta) : 'qualquer porta') : null,
     personas: pag && lista(pag.personas).length ? (lista(p.personas).length ? por(p.personas, rot.persona) : 'qualquer persona') : null,
     etapas: lista(p.etapas).length ? por(p.etapas, rot.etapa) : 'qualquer resposta',
     novidades: !!(m && m.tipo === 'novidades')

@@ -22,7 +22,7 @@ var STAGES = [
   { k: 'concluido', l: 'Concluído', d: 'terminou o percurso' }, { k: 'inativo', l: 'Inativo', d: 'sumiu há 30+ dias' }
 ];
 var ORIG = { instagram: 'Instagram', bot: 'Assistente de vistos', blog: 'Blog', direto: 'Direto', artigo: 'Artigo', login_direto: 'Login direto',
-  'guia-vls-ts': 'Guia VLS-TS', 'guia-checklist-chegada-au-pair': 'Guia au pair: checklist de chegada', 'guia-email-alt30': 'Guia alternância 30+', 'guia-tecnologo': 'Guia tecnólogo', 'guia-etudes-en-france-2027': 'Guia Campus France',
+  'guia-vls-ts': 'Guia VLS-TS', 'guia-checklist-chegada-au-pair': 'Guia au pair: checklist de chegada', 'guia-email-alt30': 'Guia alternância 30+', 'guia-tecnologo': 'Guia tecnólogo', 'guia-etudes-en-france-2027': 'Guia Campus France', 'guia-saude-1': 'Guia saúde: como o sistema funciona',
   // Newsletter da bolsa Eiffel, no artigo de bolsas (o CRM guarda a origem como token; aqui volta a ser o endereço).
   'artigo-como-conseguir-bolsa-de-estudo': '/artigos/post/como-conseguir-bolsa-de-estudo/' };
 function origLabel(o) { return ORIG[o] || o; }
@@ -3453,7 +3453,7 @@ function passoConferir(m, v, d, confs, travas, testado, vistos, vs) {
 function passoQuem(m, ro) {
   var k = m.chave, novoM = !!m.criado_no_estudio, objM = novoM ? ES.objetivo(m.objetivo_chave) : null;
   var est = EQ.estimar(C, m, origensDe), fr = EQ.fraseQuem(m, { material: origLabel, etapa: etapaGuiaLabel });
-  var MOT = { persona: 'de outra persona', material: 'de outra página', etapa: 'de outra resposta', estagio: 'de outro estágio', novidades: 'sem aceitar novidades' };
+  var MOT = { porta: 'de outra porta', persona: 'de outra persona', material: 'de outra página', etapa: 'de outra resposta', estagio: 'de outro estágio', novidades: 'sem aceitar novidades' };
   var fora = Object.keys(est.porMotivo).map(function (x) { return est.porMotivo[x] + ' ' + MOT[x]; }).join(', ');
   var contador = '<div class="ee-conta" role="status"><span class="n">' + est.n + '</span><span><b>pessoas</b> recebem este e-mail hoje<span class="sub">de ' + est.total + ' na base' + (fora && est.n !== est.total ? ' · de fora: ' + esc(fora) : '') + '. É uma estimativa pelas regras; o Worker confere de novo a cada envio.</span></span></div>';
   var avancado = '<details class="ee-av"><summary>Avançado</summary>' + classeHtml(m) + '<label class="st-fld"><span>Objetivo</span><textarea class="st-in" id="st-objetivo" rows="2" maxlength="300">' + esc(m.objetivo) + '</textarea></label>' +
@@ -3468,7 +3468,7 @@ function passoQuem(m, ro) {
   var base = m.envio_gatilho === 'material' ? ' de pegar ' + origLabel(m.envio_depois_de) : m.envio_gatilho === 'email' ? ' do e-mail "' + modeloNome(m.envio_depois_de) + '"' : m.envio_gatilho === 'compra' ? ' da compra' : '';
   var pop = '';
   var para = m.para_quem || {}, pagK = EQ.paginaAtual(para, TX.PAGINAS), pag = TX.PAGINAS.filter(function (p) { return p.k === pagK; })[0] || null;
-  var fr2 = EQ.fraseCascata(m, TX.PAGINAS, { material: origLabel, etapa: etapaGuiaLabel, persona: function (x) { return PERSONAS[x] || x; } });
+  var fr2 = EQ.fraseCascata(m, TX.PAGINAS, { material: origLabel, etapa: etapaGuiaLabel, persona: function (x) { return PERSONAS[x] || x; }, porta: rotuloPorta });
   var etOpc = pag ? EQ.etapasDaPagina(pag, ES.ETAPAS_FILTRO) : ES.ETAPAS_FILTRO;
   var grupoPq = function (legenda, g, itens, dica) {
     return '<fieldset class="st-pq"><legend>' + esc(legenda) + '</legend><div class="st-pq-op">' + itens.map(function (o) {
@@ -3478,12 +3478,14 @@ function passoQuem(m, ro) {
   if (ST.qpop === 'pag') pop = '<fieldset class="st-pq"><legend>Página de inbound</legend><div class="st-pq-op">' + [['', 'Qualquer página']].concat(TX.PAGINAS.map(function (p) { return [p.k, p.k + ' · ' + p.nome]; })).map(function (o) {
     return '<label class="st-check"><input type="radio" name="st-qpagina" data-qpagina value="' + esc(o[0]) + '"' + ((o[0] || null) === pagK ? ' checked' : '') + '> ' + esc(o[1]) + '</label>';
   }).join('') + '</div><small>Trocar de página volta persona e etapa para "qualquer".</small></fieldset>';
+  else if (ST.qpop === 'porta' && pag) pop = grupoPq('Porta (opcional)', 'portas', pag.portas, 'Nenhuma marcada = qualquer porta. Com porta marcada, só recebe quem a marcou no formulário.');
   else if (ST.qpop === 'persona' && pag) pop = grupoPq('Persona (opcional)', 'personas', pag.personas.map(function (k) { return [k, PERSONAS[k] || k]; }), 'Nenhuma marcada = qualquer persona desta página.');
   else if (ST.qpop === 'etapa' && etOpc.length) pop = grupoPq('Respondeu (etapa da página)', 'etapas', etOpc, 'Nenhuma marcada = qualquer resposta. Com etapa marcada, só recebe quem marcou uma delas no guia.');
   else if (ST.qpop === 'sai') pop = envioHtml(m);
   var popHtml = pop ? '<div class="ee-pop2" role="dialog" aria-label="Mudar">' + pop + '<button type="button" class="btn" data-qpop="">Pronto</button></div>' : '';
   var chipEtapa = pag && !etOpc.length ? '<span class="ee-ch fixo">qualquer resposta</span>' : chip('etapa', fr2.etapas, !(para.etapas || []).length);
   var quem = '<p class="ee-frase"><b>Quem:</b> ' + chip('pag', fr2.pagina, !(para.materiais || []).length) +
+    (fr2.portas !== null ? ' · ' + chip('porta', fr2.portas, !(para.portas || []).length) : '') +
     (fr2.personas !== null ? ' · ' + chip('persona', fr2.personas, !(para.personas || []).length) : '') + ' · ' + chipEtapa +
     (fr2.novidades ? ' · <span class="ee-ch fixo">aceitou novidades</span>' : '') + '</p>';
   var txtY = EQ.textoPrevistos(ST.prev[m.chave]);
@@ -3565,7 +3567,9 @@ EE.iniciar({
 var temEstudio3 = function () { return !!(M && M.length && Object.prototype.hasOwnProperty.call(M[0], 'criado_no_estudio')); };
 var HORAS = []; for (var hh = 0; hh < 24; hh++) HORAS.push([String(hh), 'às ' + hh + 'h (Brasília)']);
 var GATILHO = { email: 'Depois de um e-mail', material: 'Depois de pegar um material', compra: 'Depois da compra' };
-function paraVazio() { return { personas: [], materiais: [], etapas: [], segmentos: [], estagios: [] }; }
+function paraVazio() { return { personas: [], portas: [], materiais: [], etapas: [], segmentos: [], estagios: [] }; }
+// O nome de uma porta da página de saúde (respostas.porta). Sem página que a conheça, o próprio código.
+function rotuloPorta(k) { var r = k; TX.PAGINAS.forEach(function (p) { (p.portas || []).forEach(function (o) { if (o[0] === k) r = o[1]; }); }); return r; }
 // Os materiais (guias) que já trouxeram alguém: os rótulos conhecidos e as origens guia-* da base.
 function materiaisConhecidos() {
   var l = Object.keys(ORIG).filter(function (k) { return /^guia-/.test(k); });
@@ -3605,6 +3609,7 @@ function paraResumo(m) {
   var p = m.para_quem || {}, r = [];
   if (p.produto) r.push('comprou ' + (p.produto_nome || produtoNome(p.produto)));
   if ((p.personas || []).length) r.push(p.personas.map(function (k) { return PERSONAS[k] || k; }).join(' ou '));
+  if ((p.portas || []).length) r.push('porta ' + p.portas.map(rotuloPorta).join(' ou '));
   if ((p.materiais || []).length) r.push('pegou ' + p.materiais.map(origLabel).join(' ou '));
   if ((p.etapas || []).length) r.push('etapa ' + p.etapas.map(etapaGuiaLabel).join(' ou '));
   if ((p.estagios || []).length) r.push('estágio ' + p.estagios.map(stageLabel).join(' ou '));
@@ -4816,7 +4821,7 @@ document.addEventListener('change', async function (e) {
   if (e.target.dataset && e.target.dataset.pq) {
     var mq = modeloAtual(), np = JSON.parse(JSON.stringify(mq.para_quem || {}));
     mudarPara(np, e.target.dataset.pq, e.target.value, e.target.checked);
-    ['personas', 'materiais', 'etapas', 'segmentos', 'estagios'].forEach(function (g) { if (np[g] && !np[g].length) delete np[g]; });
+    ['personas', 'portas', 'materiais', 'etapas', 'segmentos', 'estagios'].forEach(function (g) { if (np[g] && !np[g].length) delete np[g]; });
     return salvarModelo({ para_quem: np, quem_recebe: paraResumo({ tipo: mq.tipo, para_quem: np }) }, 'Para quem salvo');
   }
   if (e.target.dataset && e.target.dataset.classe) return mudarClasse(e.target.dataset.classe, e.target.value);

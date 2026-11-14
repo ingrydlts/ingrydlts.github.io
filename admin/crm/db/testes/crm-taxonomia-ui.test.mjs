@@ -8,7 +8,7 @@ function check(label, cond) { if (cond) passed++; else { failed++; console.log('
 
 // ---------- Catálogo ----------
 check('8 famílias na ordem', FAMILIAS.map((f) => f[0]).join() === 'entrega,personalizado,aquecimento,serie,compra,acesso,reimpacto,campanha');
-check('5 páginas (a I05 é a do Au pair)', PAGINAS.map((p) => p.k).join() === 'I01,I02,I03,I04,I05');
+check('6 páginas (a I05 é a do Au pair, a I06 a de saúde)', PAGINAS.map((p) => p.k).join() === 'I01,I02,I03,I04,I05,I06');
 check('4 personas', PERSONAS.map((p) => p[0]).join() === 'au_pair,pvt,estudante,conjuge');
 check('I03 tem 5 etapas', PAGINAS[2].etapas.length === 5);
 

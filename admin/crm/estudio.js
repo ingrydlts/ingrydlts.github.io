@@ -69,7 +69,11 @@ export var VARS_NOVOS = ['nome', 'email', 'persona', 'nivel', 'prazo_nivel', 'et
 export var ETAPAS_GUIA = Object.keys(ETAPAS_CF).map(function (k) { return ['cf-' + k.replace(/_/g, '-'), 'Campus France: ' + ETAPAS_CF[k]]; })
   .concat(Object.keys(ETAPAS_ALT).map(function (k) { return ['alt-' + k.replace(/_/g, '-'), 'Alternância 30+: ' + ETAPAS_ALT[k]]; }));
 // As etapas do guia do Au pair só servem ao filtro do Para quem (o Worker não as vira em sim/não no texto), por isso ficam fora de ETAPAS_GUIA.
-export var ETAPAS_FILTRO = ETAPAS_GUIA.concat(Object.keys(ETAPAS_AP).map(function (k) { return ['ap-' + k.replace(/_/g, '-'), 'Au pair: ' + ETAPAS_AP[k]]; }));
+// Os 5 pontos da página de saúde (I06) são o valor de contatos.respostas.objetivo (sau-…). Espelham PAGINAS em taxonomia.js.
+var ETAPAS_SAUDE = [['sau-nao-cheguei', 'Ainda não cheguei'], ['sau-sem-numero', 'Já cheguei, ainda sem número'], ['sau-esperando', 'Pedi e estou esperando'],
+  ['sau-sem-vitale', 'Tenho o número e não a carte vitale'], ['sau-completo', 'Já tenho a carte vitale']];
+export var ETAPAS_FILTRO = ETAPAS_GUIA.concat(Object.keys(ETAPAS_AP).map(function (k) { return ['ap-' + k.replace(/_/g, '-'), 'Au pair: ' + ETAPAS_AP[k]]; }))
+  .concat(ETAPAS_SAUDE.map(function (e) { return [e[0], 'Saúde: ' + e[1]]; }));
 var VARS_PRODUTO = ['produto', 'link_produto'];
 export function varsDoModelo(chave, m) {
   if (VARS_DE[chave]) return VARS_DE[chave];
