@@ -25,6 +25,7 @@
     "test:revisao": "node crm-modelos-revisao.test.mjs",
     "test:reimpacto": "node crm-modelos-reimpacto.test.mjs",
     "test:etapa": "node crm-filtro-etapa.test.mjs",
+    "test:porta-ponto": "node crm-respostas-porta-ponto.test.mjs",
     "test:propostas": "node crm-propostas.test.mjs",
     "test:dossie": "node crm-dossie.test.mjs",
     "test:onboarding": "node crm-onboarding.test.mjs",
