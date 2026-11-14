@@ -1168,3 +1168,11 @@ body.st-arrastando iframe{pointer-events:none}
   .side-foot{margin-top:12px; padding:10px 0 0; font-size:0; text-align:center}
   .side-foot .signout{font-size:11.5px}
 }
+
+/* Texto: fileira de pílulas para viajar entre os e-mails do percurso, e a prévia (com chaves · com exemplo · com dados) ao lado */
+.ee-irmaos{display:flex; gap:6px; overflow-x:auto; padding:2px 0 6px; margin:2px 0 4px; scrollbar-width:thin}
+.ee-irmaos .ee-passo{flex:0 0 auto; max-width:300px; cursor:pointer}
+.ee-irmaos .ee-passo .t{overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.ee-passo[aria-current="true"]{border-color:var(--ink); color:var(--ink)}
+.ee-passo[aria-current="true"] .n{background:var(--ink); color:var(--bg)}
+.st-bar > .seg{flex:0 0 auto}

@@ -2,13 +2,13 @@
 // Nada de service_role aqui. O banco é db/crm-fase2.sql; o desenho é o artefato "CRM Por Dentro".
 // Tudo que vem do banco é texto de terceiros (nome, e-mail, pergunta): passa sempre por esc().
 import { supabase } from '/assets/js/supabase-client.js';
-import * as TX from './taxonomia.js?v=2026-11-13.11';   // páginas, famílias e agrupamento dos modelos
-import * as ES from './estudio.js?v=2026-11-13.11';   // os blocos do estúdio de e-mails (entregas 2 e 3)
-import * as EE from './editor-email.js?v=2026-11-13.11';
-import * as EQ from './editor-quem.js?v=2026-11-13.11';
-import * as JR from './jornada.js?v=2026-11-13.11';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
-import * as FX from './ficha.js?v=2026-11-13.11';   // ficha v2: lógica pura (fila, démarches, funil, ações)
-import * as FH from './ficha-html.js?v=2026-11-13.11';   // ficha v2: HTML puro
+import * as TX from './taxonomia.js?v=2026-11-14.1';   // páginas, famílias e agrupamento dos modelos
+import * as ES from './estudio.js?v=2026-11-14.1';   // os blocos do estúdio de e-mails (entregas 2 e 3)
+import * as EE from './editor-email.js?v=2026-11-14.1';
+import * as EQ from './editor-quem.js?v=2026-11-14.1';
+import * as JR from './jornada.js?v=2026-11-14.1';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
+import * as FX from './ficha.js?v=2026-11-14.1';   // ficha v2: lógica pura (fila, démarches, funil, ações)
+import * as FH from './ficha-html.js?v=2026-11-14.1';   // ficha v2: HTML puro
 
 var PERSONAS = {
   au_pair_estudante: 'Au pair → estudante', campus_france: 'Campus France', alternancia_emprego: 'Alternância / emprego',
@@ -2558,7 +2558,7 @@ function fxHeaderHtml(c, d) {
 // Catálogo de démarches (cópia do app, processos.json): carregado uma vez; sem ele, tudo cai na démarche padrão.
 var FX_PROC = null;
 async function fxCarregaProcessos() {
-  try { var r = await fetch('processos.json?v=2026-11-13.11'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
+  try { var r = await fetch('processos.json?v=2026-11-14.1'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
 }
 // A sessão Checklist: pílulas por démarche, os 4 mais urgentes, pasta do Drive privada e "Ver mais desta sessão".
 function fxChecklistCorpo(c) {
@@ -3085,7 +3085,7 @@ async function radarEnviar(btn) {
 // Sem a migração da entrega 1, a tela mostra os 8 do código; sem a da entrega 2, mostra tudo sem editar.
 var TIPO_EMAIL = { servico: ['Serviço', 'u-baixa'], novidades: ['Novidades', 'u-media'], compra: ['Compra', 'tp-pergunta'] };
 var ETAPA_EMAIL = { rascunho: ['Rascunho', ''], revisao: ['Revisão', 'u-media'], no_ar: ['No ar', 'u-baixa'], arquivado: ['Arquivado', 'out'] };
-var ST = { vista: 'jornada', qpop: '', previa: false, k: null, v: null, passo: 'texto', who: null, q: '', dev: 'pc', marcar: true, tab: 'editar', d: null, dKey: null, montado: null, vistos: {}, foco: null, salvo: '', timer: null, f: TX.filtroVazio() };
+var ST = { vista: 'jornada', qpop: '', previa: true, modo: 'exemplo', k: null, v: null, passo: 'texto', who: null, q: '', dev: 'pc', marcar: true, tab: 'editar', d: null, dKey: null, montado: null, vistos: {}, foco: null, salvo: '', timer: null, f: TX.filtroVazio() };
 function versoesDe(k) { return MV.filter(function (v) { return v.chave === k; }); }   // da mais nova para a mais velha
 function versaoAtual(k) { var vs = versoesDe(k); return vs.filter(function (v) { return v.etapa === 'no_ar'; })[0] || vs[0] || null; }
 function versaoEmObra(k) { return versoesDe(k).filter(function (v) { return v.etapa === 'rascunho' || v.etapa === 'revisao'; })[0] || null; }
@@ -3477,6 +3477,19 @@ function passoQuem(m, ro) {
     '<p class="sub ee-dica">Toque nos campos coloridos para mudar.</p></section>' + avancado;
 }
 
+// A fileira de pílulas para viajar entre os e-mails do mesmo percurso (mesma página), na ordem da jornada.
+function pilulasDosModelos(m) {
+  var pag = TX.classifica(m).pagina;
+  var ordem = function (x) { var i = JR.ETAPAS.map(function (e) { return e.k; }).indexOf(JR.etapaDaJornada(Object.assign({}, x, { familia: TX.classifica(x).familia }))); return i < 0 ? 99 : i; };
+  var irmaos = listaModelos().filter(function (x) { return pag ? TX.classifica(x).pagina === pag : x.chave === m.chave; });
+  if (irmaos.length < 2) return '';
+  irmaos = irmaos.map(function (x, i) { return { x: x, i: i }; }).sort(function (a, b) { return ordem(a.x) - ordem(b.x) || a.i - b.i; }).map(function (o) { return o.x; });
+  return '<nav class="ee-irmaos" aria-label="E-mails deste percurso">' + irmaos.map(function (x, n) {
+    var sel = x.chave === m.chave;
+    return '<button type="button" class="ee-passo" data-tpl-pick="' + esc(x.chave) + '" aria-current="' + (sel ? 'true' : 'false') + '" title="' + esc(x.nome) + '"><span class="n">' + (n + 1) + '</span><span class="t">' + esc(x.nome) + '</span></button>';
+  }).join('') + '</nav>';
+}
+
 function renderEditor(lista) {
   var box = $('st-edit');
   var m = (M ? modeloAtual() : null) || (lista || []).filter(function (x) { return x.chave === ST.k; })[0];
@@ -3515,7 +3528,7 @@ function renderEditor(lista) {
     return '<button type="button" role="tab" class="ee-passo" data-eepasso="' + p[0] + '" aria-selected="' + (ST.passo === p[0]) + '"><span class="n">' + (n + 1) + '</span>' + esc(p[1]) + aviso + '</button>';
   }).join('') + '</div>';
   var corpo = ST.passo === 'quem' ? passoQuem(m, ro) : ST.passo === 'conferir' ? passoConferir(m, v, d, confs, travas, testado, vistos, vs) : passoTexto(m, v, d, ro);
-  box.innerHTML = topo + passos + corpo;
+  box.innerHTML = (ST.passo === 'texto' ? pilulasDosModelos(m) : '') + topo + passos + corpo;
   EE.depois();
 }
 // O e-mail editável pede ao estúdio o rascunho, o catálogo de dados e o salvamento (tudo isto já existe aqui).
@@ -3768,6 +3781,24 @@ async function registrarCompra(btn) {
 }
 
 // ---------- A prévia ----------
+// A pessoa de exemplo da prévia: tudo preenchido, para o e-mail aparecer inteiro (nunca é uma pessoa de verdade).
+function pessoaExemplo(m) {
+  var pq = (m && m.para_quem) || {};
+  return { id: '_exemplo', nome: 'Ana', email: 'ana@exemplo.com', persona: (pq.personas || [])[0] || 'au_pair_estudante', personas: [], aceita_novidades: true,
+    respostas: { objetivo: (pq.etapas || [])[0] || 'cf-juntando-documentos', cfNivel: 'l2l3', cfCidade: 'paris' }, dias_para_prazo: 30, prazo_limite: new Date(Date.now() + 30 * 864e5).toISOString().slice(0, 10) };
+}
+// "Com chaves": o modelo cru, com cada {dado} e cada "só se…" marcados, em vez do valor de uma pessoa.
+function chavesEmHtml(html) {
+  var pilula = function (txt, cor) { return '<span style="display:inline-block;background:' + cor[0] + ';border:1px solid ' + cor[1] + ';color:' + cor[2] + ';border-radius:6px;padding:0 6px;font:600 12px/1.6 system-ui,sans-serif;white-space:nowrap">' + txt + '</span>'; };
+  return String(html || '').replace(/(<[^>]*>)|\{([#^\/]?)(\w+)\}/g, function (m, tag, op, k) {
+    if (tag) return tag;
+    if (op === '#') return pilula('só se ' + k, ['#F3E5C8', '#B9904A', '#6B4A10']);
+    if (op === '^') return pilula('se não ' + k, ['#F3E5C8', '#B9904A', '#6B4A10']);
+    if (op === '/') return pilula('fim', ['#EEE9DF', '#C9C2B2', '#5A5446']);
+    return pilula(k, ['#E3EAD3', '#577328', '#2F430C']);
+  });
+}
+function chavesDe(v) { return { assunto: v.assunto || '', pre: v.preheader || '', html: v.corpo_html ? chavesEmHtml(v.corpo_html) : null, texto: v.corpo_texto || '' }; }
 function pessoasDaPrevia() {
   var q = ST.q.trim().toLowerCase();
   var l = C.filter(function (c) { return !q || (displayName(c) + ' ' + c.email).toLowerCase().indexOf(q) >= 0; });
@@ -3777,13 +3808,15 @@ function renderPrevia() {
   var box = $('st-prev');
   var m = M ? modeloAtual() : null, k = ST.k;
   var lista = pessoasDaPrevia();
-  var c = C.filter(function (x) { return x.id === ST.who; })[0] || lista[0] || C[0];
-  if (c) ST.who = c.id;
-  var barra = '<div class="st-bar"><label class="st-fld" style="flex:1 1 220px"><span>Prévia para</span><input class="st-in" id="st-q" type="search" placeholder="Buscar pelo nome ou e-mail" value="' + esc(ST.q) + '">' +
+  var modo = ST.modo === 'dados' || ST.modo === 'chaves' ? ST.modo : 'exemplo';
+  var c = modo === 'dados' ? (C.filter(function (x) { return x.id === ST.who; })[0] || lista[0] || C[0]) : pessoaExemplo(m);
+  if (modo === 'dados' && c) ST.who = c.id;
+  var modos = '<div class="seg" role="group" aria-label="Como mostrar">' + [['chaves', 'com chaves'], ['exemplo', 'com exemplo'], ['dados', 'com dados']].map(function (o) { return '<button type="button" data-stmodo="' + o[0] + '" aria-pressed="' + (modo === o[0]) + '">' + o[1] + '</button>'; }).join('') + '</div>';
+  var barra = '<div class="st-bar">' + modos + (modo !== 'dados' ? '' : '<label class="st-fld" style="flex:1 1 220px"><span>Prévia para</span><input class="st-in" id="st-q" type="search" placeholder="Buscar pelo nome ou e-mail" value="' + esc(ST.q) + '">' +
     '<select class="st-in" id="st-who" aria-label="Pessoa da prévia">' + (lista.some(function (x) { return c && x.id === c.id; }) || !c ? '' : '<option value="' + esc(c.id) + '" selected>' + esc(displayName(c)) + '</option>') +
-    lista.map(function (x) { return '<option value="' + esc(x.id) + '"' + (c && x.id === c.id ? ' selected' : '') + '>' + esc(displayName(x)) + ' · ' + esc(personaLabel(x)) + '</option>'; }).join('') + '</select></label>' +
+    lista.map(function (x) { return '<option value="' + esc(x.id) + '"' + (c && x.id === c.id ? ' selected' : '') + '>' + esc(displayName(x)) + ' · ' + esc(personaLabel(x)) + '</option>'; }).join('') + '</select></label>') +
     '<div class="seg" role="group" aria-label="Aparelho"><button type="button" data-stdev="pc" aria-pressed="' + (ST.dev === 'pc') + '">Computador</button><button type="button" data-stdev="cel" aria-pressed="' + (ST.dev === 'cel') + '">Celular</button></div>' +
-    '<label class="st-check"><input type="checkbox" id="st-marcar"' + (ST.marcar ? ' checked' : '') + '> Destacar os dados dela</label></div>';
+    (modo === 'chaves' ? '' : '<label class="st-check"><input type="checkbox" id="st-marcar"' + (ST.marcar ? ' checked' : '') + '> Destacar os dados' + (modo === 'dados' ? ' dela' : '') + '</label>') + '</div>';
   if (!c) { box.innerHTML = barra + '<div class="empty">Sem contatos ainda para a prévia.</div>'; return; }
   if (ST.criar) {
     var oc = ST.criar.obj && ES.objetivo(ST.criar.obj);
@@ -3802,9 +3835,16 @@ function renderPrevia() {
   }
   var v = textoDaPrevia();
   if (!v) { box.innerHTML = barra + '<div class="empty">Este modelo ainda não tem versão.</div>'; return; }
+  if (modo === 'chaves') {
+    var ch = chavesDe(v);
+    box.innerHTML = barra + '<p class="st-msg tip">O modelo como está escrito: cada <b>{dado}</b> é trocado pelo valor da pessoa no envio, e "só se…" … "fim" é um trecho que só aparece para quem tem aquele dado.</p>' +
+      '<div class="st-frame' + (ST.dev === 'cel' ? ' cel' : '') + '"><div class="st-env"><span class="sub">Ingryd · Por Dentro</span><b>' + marcarVars(ch.assunto) + '</b>' + (ch.pre ? '<span class="sub">' + marcarVars(ch.pre) + '</span>' : '') + '</div>' +
+      (ch.html ? '<iframe class="st-mail" sandbox="" title="Prévia do e-mail com chaves" srcdoc="' + esc(ch.html) + '"></iframe>' : '<div class="mailbody">' + marcarVars(ch.texto) + '</div>') + '</div>';
+    return;
+  }
   var dados = dadosPara(k, c), avisos = [], erro = null, r = null;
   try { r = ES.montarComDados(v, dados, ST.marcar); } catch (e) { erro = e.message; }
-  if (m && m.criado_no_estudio) {
+  if (modo === 'dados' && m && m.criado_no_estudio) {
     var pqv = m.para_quem || {}, fora = [];
     if (pqv.produto && !comprou(c.id, pqv.produto)) fora.push('não tem a compra do ' + (pqv.produto_nome || produtoNome(pqv.produto)) + ' registrada (confira na ficha)');
     if ((pqv.personas || []).length && pqv.personas.indexOf(c.persona) < 0 && !(c.personas || []).some(function (x) { return pqv.personas.indexOf(x) >= 0; })) fora.push('é de outra persona');
@@ -3814,8 +3854,8 @@ function renderPrevia() {
     if ((pqv.segmentos || []).length && pqv.segmentos.indexOf(c.segmento) < 0) fora.push('está fora do segmento');
     if (fora.length) avisos.push(displayName(c) + ' ' + fora.join(', ') + ': pelas regras de Para quem, este e-mail não sai para essa pessoa.');
   }
-  if (m && m.tipo === 'novidades' && !c.aceita_novidades) avisos.push(displayName(c) + ' não aceitou novidades: este e-mail não sai para essa pessoa.');
-  if (k.indexOf('cf_') === 0 && origensDe(c).indexOf('guia-etudes-en-france-2027') < 0) avisos.push(displayName(c) + ' não pegou o guia Campus France: este e-mail não sai sozinho para ela.');
+  if (modo === 'dados' && m && m.tipo === 'novidades' && !c.aceita_novidades) avisos.push(displayName(c) + ' não aceitou novidades: este e-mail não sai para essa pessoa.');
+  if (modo === 'dados' && k.indexOf('cf_') === 0 && origensDe(c).indexOf('guia-etudes-en-france-2027') < 0) avisos.push(displayName(c) + ' não pegou o guia Campus France: este e-mail não sai sozinho para ela.');
   // Dados usados no texto que ela não tem, e o que acontece (o plano B).
   var usados = [], tudo = [v.assunto, v.preheader, v.corpo_texto].join('\n'), re = /\{[#^/]?(\w+)\}/g, mm;
   while ((mm = re.exec(tudo))) if (usados.indexOf(mm[1]) < 0) usados.push(mm[1]);
@@ -3828,11 +3868,11 @@ function renderPrevia() {
   var dicas = [];
   if (usados.indexOf('link_checklist') >= 0) dicas.push('O link do checklist é privado: na prévia o botão não abre. No envio (e no teste) ele vem do banco.');
   if (usados.indexOf('botoes_cidade') >= 0) dicas.push('Os botões de cidade levam o link assinado dela, que só existe no envio. No teste, eles levam um link de teste.');
-  if (r) { ST.vistos[ST.dKey] = ST.vistos[ST.dKey] || {}; ST.vistos[ST.dKey][c.id] = 1; }
+  if (r && modo === 'dados') { ST.vistos[ST.dKey] = ST.vistos[ST.dKey] || {}; ST.vistos[ST.dKey][c.id] = 1; }
   var html = r ? (r.html || textoParaHtml(r.texto)) : '';
   box.innerHTML = barra +
     (erro ? '<div class="st-alert no">O texto tem um erro: ' + esc(erro) + '. Nada sai com ele: os automáticos usariam o texto de reserva.</div>' : '') +
-    (avisos.length ? '<div class="st-alert">' + avisos.map(esc).join('<br>') + '</div>' : (r ? '<div class="st-alert ok"><b>Pronto para ' + esc(displayName(c)) + '.</b> Todos os dados que o texto usa existem.</div>' : '')) +
+    (avisos.length ? '<div class="st-alert">' + avisos.map(esc).join('<br>') + '</div>' : (r && modo === 'exemplo' ? '<p class="st-msg tip">Pessoa de exemplo (Ana), com todos os dados preenchidos. Para ver uma pessoa de verdade, escolha “com dados”.</p>' : r ? '<div class="st-alert ok"><b>Pronto para ' + esc(displayName(c)) + '.</b> Todos os dados que o texto usa existem.</div>' : '')) +
     (dicas.length ? '<p class="st-msg tip">' + dicas.map(esc).join(' ') + '</p>' : '') +
     (r ? '<div class="st-frame' + (ST.dev === 'cel' ? ' cel' : '') + '"><div class="st-env"><span class="sub">Ingryd · Por Dentro</span><b>' + esc(r.assunto) + '</b>' + (r.pre ? '<span class="sub">' + esc(r.pre) + '</span>' : '') + '</div>' +
       '<iframe class="st-mail" sandbox="" title="Prévia do e-mail" srcdoc="' + esc(html) + '"></iframe></div>' +
@@ -4718,6 +4758,7 @@ document.addEventListener('click', async function (e) {
   if (t.dataset.tplPick) { ST.criar = null; await salvar(); abrirModelo(t.dataset.tplPick); ST.tab = 'editar'; return renderModelos(); }
   if (t.dataset.eepasso) { await salvar(); ST.passo = t.dataset.eepasso; return renderEditor(); }
   if (t.dataset.stdev) { ST.dev = t.dataset.stdev; return renderPrevia(); }
+  if (t.dataset.stmodo) { ST.modo = t.dataset.stmodo; return renderPrevia(); }
   if (t.dataset.sttab) { ST.tab = t.dataset.sttab; return renderModelos(); }
   if (t.dataset.stver) { await salvar(); abrirModelo(ST.k, Number(t.dataset.stver)); return renderModelos(); }
   if (t.dataset.stvoltar) return publicar(Number(t.dataset.stvoltar), true);
