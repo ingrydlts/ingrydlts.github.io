@@ -3500,7 +3500,7 @@ function pedirPrevistos(chave) {
   ST.prev[chave] = 'carregando';
   supabase.rpc('crm_sequencia_previstos', { p_chave: chave }).then(function (r) {
     ST.prev[chave] = r.error || typeof r.data !== 'number' ? false : r.data;
-    if (ST.k === chave && ST.passo === 'quem') renderEditor();
+    if (ST.k === chave && ST.passo === 'quem' && $('st-edit')) renderEditor();
   }, function () { ST.prev[chave] = false; });
 }
 

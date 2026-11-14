@@ -65,6 +65,8 @@ check('versão de cache nova em crm.js e index.html', /2026-11-14\.2/.test(fonte
 // Task 4: a linha "Hoje" mostra o Y (envios previstos) quando o banco respondeu um número.
 check('o editor pergunta ao banco e usa textoPrevistos', /crm_sequencia_previstos/.test(fonte) && /EQ\.textoPrevistos\(/.test(fonte));
 check('salvar o modelo apaga o Y guardado (ele muda com as regras)', /delete ST\.prev\[/.test(fonte));
+var corpoPedir = fonte.slice(fonte.indexOf('function pedirPrevistos'), fonte.indexOf('function renderEditor('));
+check('a resposta do Y não redesenha se o editor saiu da tela', /\$\('st-edit'\)/.test(corpoPedir) && /renderEditor\(\)/.test(corpoPedir));
 var srcPasso = fonte.slice(fonte.indexOf('function passoQuem('), fonte.indexOf('function renderEditor('));
 function quemHtml(para, prev, qpop) {
   var fabrica = new Function('EQ', 'TX', 'ES', 'C', 'PERSONAS', 'ST', 'esc', 'origensDe', 'origLabel', 'etapaGuiaLabel', 'classeHtml', 'envioHtml', 'pillDe', 'TIPO_EMAIL', 'modeloNome', 'rotuloPorta', srcPasso + '; return passoQuem;');
