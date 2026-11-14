@@ -88,5 +88,14 @@ check('rotuloEtapa I05', rotuloEtapa('I05', 'ap-medo-prazo') !== 'ap-medo-prazo'
   check(k + ' mora na página I05, família entrega e persona au pair', c.pagina === 'I05' && c.familia === 'entrega' && c.persona === 'au_pair');
 });
 
+// ---------- Página da Saúde (S2): os dados novos e o título pequeno ----------
+check('S2: porta, ponto e astúcia são sim/não no catálogo', ['porta_estudante', 'porta_aupair', 'ponto_sem_numero', 'ponto_completo', 'astucia_a0007', 'astucia_a0009'].every((k) => ES.CAT[k] && ES.CAT[k].t === 'sim'));
+check('S2: seção e assunto são textos, e o assunto tem plano B', ES.CAT.secao.t === 'texto' && ES.CAT.assunto_persona.t === 'texto' && /mapa da saúde/.test(ES.CAT.assunto_persona.plano));
+check('S2: são 14 dados e todos entram nos modelos criados no estúdio', ES.VARS_S2.length === 14 && ES.VARS_S2.every((k) => ES.varsDoModelo('qualquer', { criado_no_estudio: true }).includes(k)));
+check('S2: os modelos antigos não ganham os dados novos', !ES.varsDoModelo('cf_guia_1').includes('porta_estudante'));
+h = monta([{ tipo: 'texto', se: '#porta_estudante', texto: 'Seção {secao}.' }], { assunto: '{assunto_persona}' });
+check('S2: o bloco "só se" da porta vira trecho condicional e o assunto leva o dado', /\{#porta_estudante\}/.test(h.corpo_texto) && h.assunto === '{assunto_persona}');
+check('título pequeno em 17px e o normal em 24px', /font-size:17px/.test(monta([{ tipo: 'titulo', estilo: 'pequeno', texto: 'Oi' }]).corpo_html) && /font-size:24px/.test(monta([{ tipo: 'titulo', texto: 'Oi' }]).corpo_html));
+
 console.log(failed ? `\n${passed} passaram, ${failed} FALHARAM` : `\n${passed} passaram, 0 falharam`);
 process.exit(failed ? 1 : 0);

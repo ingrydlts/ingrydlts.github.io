@@ -3364,7 +3364,8 @@ function camposDoBloco(b, i, semTexto) {
     corpo = txt('texto', 'Texto', { area: true, rows: 3, ro: ro, max: 3000 }) +
       '<label class="st-fld"><span>Estilo</span><select class="st-in" data-f="' + f('estilo') + '"' + dis + '>' + opcoes([['', 'Normal'], ['caixa', 'Em caixa (ex.: "Ficou com dúvida?")'], ['discreto', 'Discreto, em cinza']], b.estilo) + '</select></label>' + alt();
   } else if (b.tipo === 'titulo') {
-    corpo = txt('texto', 'Título', { ro: ro }) + alt();
+    corpo = txt('texto', 'Título', { ro: ro }) +
+      '<label class="st-fld"><span>Tamanho</span><select class="st-in" data-f="' + f('estilo') + '"' + dis + '>' + opcoes([['', 'Grande'], ['pequeno', 'Pequeno (cabe em uma linha)']], b.estilo) + '</select></label>' + alt();
   } else if (b.tipo === 'pergunta') {
     corpo = txt('texto', 'Pergunta', { ro: ro }) + alt() + txt('ajuda', 'Linha de ajuda (opcional)', { ro: ro });
   } else if (b.tipo === 'botao') {

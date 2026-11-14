@@ -47,6 +47,21 @@ var ETAPAS_AP = { tudo_bem: 'está tudo bem e ainda não olhou os papéis', nao_
 Object.keys(ETAPAS_CF).forEach(function (k) { CAT['etapa_' + k] = { t: 'sim', o: 'etapa do guia: ' + ETAPAS_CF[k], etapa: true }; });
 Object.keys(ETAPAS_ALT).forEach(function (k) { CAT['etapa_' + k] = { t: 'sim', o: 'etapa do guia: ' + ETAPAS_ALT[k], etapa: true }; });
 
+// Página da Saúde (S2): as duas respostas do formulário (porta e ponto da saúde) viram um sim/não cada, para o bloco "Só se…",
+// mais a astúcia que vale para ela, o nome da seção do mapa e o assunto certo. O Worker preenche exatamente estes (crmVarsS2 em worker.js).
+var PORTAS_S2 = { estudante: 'estudante', trabalho: 'trabalho com contrato', aupair: 'au pair', outro: 'outro ou não sei' };
+var PONTOS_S2 = { nao_cheguei: 'ainda não chegou', sem_numero: 'chegou e está sem número', esperando: 'pediu o número e está esperando',
+  sem_vitale: 'tem o número e não a carte vitale', completo: 'já tem a carte vitale' };
+var ASTUCIAS_S2 = { a0007: 'estudante: inscrição em previsão da chegada (ameli)', a0008: 'trabalho: Puma e atividade profissional (service-public F34308)',
+  a0009: 'au pair: declaração da família na Urssaf (service-public F473)' };
+Object.keys(PORTAS_S2).forEach(function (k) { CAT['porta_' + k] = { t: 'sim', o: 'a porta dela: ' + PORTAS_S2[k] }; });
+Object.keys(PONTOS_S2).forEach(function (k) { CAT['ponto_' + k] = { t: 'sim', o: 'o ponto da saúde dela: ' + PONTOS_S2[k] }; });
+Object.keys(ASTUCIAS_S2).forEach(function (k) { CAT['astucia_' + k] = { t: 'sim', o: 'tem astúcia conferida: ' + ASTUCIAS_S2[k] }; });
+CAT.secao = { t: 'texto', o: 'a seção do mapa da saúde que ela abre (Estudante, Trabalho ou Au pair)', plano: '' };
+CAT.assunto_persona = { t: 'texto', o: 'o assunto certo para a porta e o ponto dela', plano: 'Seu mapa da saúde na França' };
+export var VARS_S2 = Object.keys(PORTAS_S2).map(function (k) { return 'porta_' + k; }).concat(Object.keys(PONTOS_S2).map(function (k) { return 'ponto_' + k; }),
+  Object.keys(ASTUCIAS_S2).map(function (k) { return 'astucia_' + k; }), ['secao', 'assunto_persona']);
+
 // Os dados que cada modelo tem na hora do envio (o Worker ou o painel preenche exatamente estes).
 var PAINEL = ['nome', 'persona', 'link_acesso', 'link_agenda', 'au_pair', 'motivo', 'prazo_vencido', 'prazo_a_vencer', 'prazo_limite', 'dias_para_prazo'];
 var ALT = Object.keys(ETAPAS_ALT).map(function (k) { return 'etapa_' + k; });
@@ -64,7 +79,7 @@ export var VARS_DE = {
 // O Worker preenche exatamente estes (crmVarsNovos em worker.js).
 // As etapas do guia viram um sim/não cada (etapa_…), para o bloco "Só para uma etapa".
 export var VARS_NOVOS = ['nome', 'email', 'persona', 'nivel', 'prazo_nivel', 'etapa', 'cidade', 'prazo_limite', 'dias_para_prazo',
-  'prazo_vencido', 'prazo_a_vencer', 'link_acesso', 'link_agenda'].concat(Object.keys(ETAPAS_CF).concat(Object.keys(ETAPAS_ALT)).map(function (k) { return 'etapa_' + k; }));
+  'prazo_vencido', 'prazo_a_vencer', 'link_acesso', 'link_agenda'].concat(Object.keys(ETAPAS_CF).concat(Object.keys(ETAPAS_ALT)).map(function (k) { return 'etapa_' + k; }), VARS_S2);
 // A regra "Etapa do guia" do Para quem: o valor é o que fica em contatos.respostas.objetivo (crm_sequencia_pendentes compara igual).
 export var ETAPAS_GUIA = Object.keys(ETAPAS_CF).map(function (k) { return ['cf-' + k.replace(/_/g, '-'), 'Campus France: ' + ETAPAS_CF[k]]; })
   .concat(Object.keys(ETAPAS_ALT).map(function (k) { return ['alt-' + k.replace(/_/g, '-'), 'Alternância 30+: ' + ETAPAS_ALT[k]]; }));
@@ -173,7 +188,8 @@ function bloco(b, d) {
       return { txt: a.s, html: (b.linha ? '<div style="border-top:1px solid #E2DED7; margin:8px 0 16px;"></div>\n' : '') + h, ess: a.ess };
     case 'titulo':
       a = campo(b.texto, b.alt, d, false); x = campo(b.texto, b.alt, d, true);
-      return { txt: a.s, html: '<h1 style="margin:0 0 14px; ' + SERIF + ' font-size:24px; line-height:1.25; font-weight:700; color:#2B2B2B;">' + x.s + '</h1>', ess: a.ess };
+      // estilo "pequeno": 17px, para um título curto caber em uma linha (ex.: "O mapa da saúde está no botão abaixo.").
+      return { txt: a.s, html: '<h1 style="margin:0 0 14px; ' + SERIF + ' font-size:' + (b.estilo === 'pequeno' ? '17' : '24') + 'px; line-height:' + (b.estilo === 'pequeno' ? '1.3' : '1.25') + '; font-weight:700; color:#2B2B2B;">' + x.s + '</h1>', ess: a.ess };
     case 'pergunta':
       a = campo(b.texto, b.alt, d, false); x = campo(b.texto, b.alt, d, true);
       y = campo(b.ajuda, '', d, false); z = campo(b.ajuda, '', d, true);

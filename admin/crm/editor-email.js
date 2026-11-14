@@ -47,7 +47,7 @@ function introHtml(b, aberto, ro) {
 function textoDoBloco(b, i, ro) {
   var p = function (c) { return 'itens.' + i + '.' + c; }, h = '';
   if (b.tipo === 'texto') h = campo(p('texto'), b.texto, b.estilo === 'caixa' ? 'ee-caixa' : b.estilo === 'discreto' ? 'ee-disc' : 'ee-texto', 'Texto', 'Escreva aqui, ou digite / para escolher um bloco', true, ro);
-  else if (b.tipo === 'titulo') h = campo(p('texto'), b.texto, 'ee-titulo', 'Título', 'Escreva o título', false, ro);
+  else if (b.tipo === 'titulo') h = campo(p('texto'), b.texto, b.estilo === 'pequeno' ? 'ee-titulo ee-titulo-p' : 'ee-titulo', 'Título', 'Escreva o título', false, ro);
   else if (b.tipo === 'pergunta') h = campo(p('texto'), b.texto, 'ee-titulo', 'Pergunta', 'Escreva a pergunta', false, ro) + campo(p('ajuda'), b.ajuda, 'ee-disc', 'Linha de ajuda', 'Linha de ajuda (opcional)', false, ro);
   else if (b.tipo === 'assinatura') h = campo(p('texto'), b.texto, 'ee-ass', 'Assinatura', 'Assinatura', false, ro);
   else if (b.tipo === 'etapa') h = campo(p('rotulo'), b.rotulo, 'ee-disc', 'Linha pequena de cima', 'Linha pequena de cima (opcional)', false, ro) + campo(p('titulo'), b.titulo, 'ee-forte', 'Frase em negrito', 'Frase em negrito (opcional)', false, ro) + campo(p('texto'), b.texto, 'ee-texto', 'Texto', 'Escreva o texto', true, ro);

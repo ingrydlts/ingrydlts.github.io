@@ -1995,6 +1995,36 @@ function crmDiaBr(ymd) { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(ymd ||
 // p = uma linha de crm_sequencia_pendentes (ou o mesmo formato).
 // As etapas do guia viram um sim/não cada (etapa_nao_comecei, etapa_pesquisando…), como ES.ETAPAS_GUIA em estudio.js.
 const CRM_ETAPAS_GUIA = Object.keys(CF_PASSO).concat(['alt-pesquisando', 'alt-escolhendo-escola', 'alt-recusa-idade', 'alt-buscando-empresa', 'alt-montando-contrato']);
+// Página da Saúde (S2): porta e ponto da saúde (respostas.porta e respostas.ponto, códigos fixos) viram sim/não, a astúcia que
+// vale para ela, o nome da seção do mapa e o assunto. Os mesmos nomes de ES.VARS_S2 em admin/crm/estudio.js.
+// Sem resposta (lead antigo), tudo vem falso e o assunto cai no padrão. A astúcia sai sozinha depois da data de revisão.
+const S2_PORTAS = ['estudante', 'trabalho', 'aupair', 'outro'];
+const S2_PONTOS = ['nao_cheguei', 'sem_numero', 'esperando', 'sem_vitale', 'completo'];
+const S2_ASTUCIAS = {
+  a0007: { porta: 'estudante', pontos: ['nao_cheguei', 'sem_numero'], ate: '2027-02-14' },
+  a0008: { porta: 'trabalho', pontos: ['nao_cheguei', 'sem_numero'], ate: '2027-02-14' },
+  a0009: { porta: 'aupair', pontos: ['nao_cheguei', 'sem_numero', 'esperando'], ate: '2027-02-14' },
+};
+const S2_SECAO = { estudante: 'Estudante', trabalho: 'Trabalho', aupair: 'Au pair' };
+const S2_ASSUNTO_PADRAO = 'Seu mapa da saúde na França';
+const S2_ASSUNTO = {
+  estudante: { nao_cheguei: 'Seu número de sécu começa antes de você chegar', sem_numero: 'Seu cadastro de sécu como estudante, no site do ameli', esperando: 'Inscrição feita: o que vem depois do número provisório', sem_vitale: 'Número em mãos: o passo da carte vitale', completo: 'Carte vitale em mãos: o que vem depois' },
+  trabalho: { nao_cheguei: 'Seu mapa da saúde antes de chegar com contrato', sem_numero: 'Seu mapa da saúde e uma pergunta sobre o seu contrato', esperando: 'Pedido feito: a ordem do que vem depois', sem_vitale: 'Número em mãos: o passo da carte vitale', completo: 'Carte vitale em mãos: médecin traitant e reembolso' },
+  aupair: { nao_cheguei: 'Antes de chegar como au pair: quem declara você na Urssaf', sem_numero: 'Seu número de sécu começa na declaração da família', esperando: 'Pedido feito: uma pergunta sobre quem o enviou', sem_vitale: 'Número em mãos: o passo da carte vitale', completo: 'Carte vitale em mãos: e depois do contrato de au pair?' },
+  outro: { nao_cheguei: 'Seu mapa da saúde e uma pergunta para achar o seu caminho', sem_numero: 'Seu mapa da saúde e uma pergunta para achar o seu caminho', esperando: 'Pedido feito: qual é o seu visto?', sem_vitale: 'Número em mãos: e qual é o seu visto?', completo: 'Carte vitale feita: e qual é o seu visto?' },
+};
+function crmVarsS2(resp, hoje) {
+  const porta = S2_PORTAS.includes(resp && resp.porta) ? resp.porta : '';
+  const ponto = S2_PONTOS.includes(resp && resp.ponto) ? resp.ponto : '';
+  const dia = String(hoje instanceof Date ? hoje.toISOString() : (hoje || new Date().toISOString())).slice(0, 10);
+  const v = {};
+  for (const k of S2_PORTAS) v['porta_' + k] = porta === k;
+  for (const k of S2_PONTOS) v['ponto_' + k] = ponto === k;
+  for (const [k, a] of Object.entries(S2_ASTUCIAS)) v['astucia_' + k] = porta === a.porta && a.pontos.includes(ponto) && dia <= a.ate;
+  v.secao = S2_SECAO[porta] || '';
+  v.assunto_persona = (porta && ponto && S2_ASSUNTO[porta][ponto]) || S2_ASSUNTO_PADRAO;
+  return v;
+}
 function crmVarsNovos(env, p) {
   const d = p.dados || {}, resp = d.respostas || {};
   const nivel = CF_NIVEIS[resp.cfNivel];
@@ -2003,6 +2033,7 @@ function crmVarsNovos(env, p) {
   for (const k of CRM_ETAPAS_GUIA) etapas['etapa_' + k.replace(/^(cf|alt)-/, '').replace(/-/g, '_')] = resp.objetivo === k;
   return {
     ...etapas,
+    ...crmVarsS2(resp),
     nome: crmPrimeiroNome(p.nome), email: p.email,
     persona: (CRM_PERSONAS[d.persona || 'sem'] || d.persona || '').toLowerCase(),
     nivel: nivel ? nivel[0] : '', prazo_nivel: nivel ? nivel[1] : '',

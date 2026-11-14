@@ -23,11 +23,11 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 const dir = mkdtempSync(path.join(tmpdir(), 'crm-email-'));
 const arq = path.join(dir, 'worker.mjs');
 writeFileSync(arq, readFileSync(path.resolve(HERE, '../worker.js'), 'utf8') +
-  '\nexport { crmLerEmail, crmTirarCitacao, crmDecodePalavras, cfGuia1, crmBytesParaBinario, cfGuiaConversa, crmLinkAssinar, crmLinkConferir, CF_CIDADES, crmMontarResposta, crmAssuntoBase, crmIdMsg, crmPreencher, crmMontarModelo, cfGuia1Vars, cfGuiaConversaVars, cfBotoesCidade };\n');
+  '\nexport { crmVarsS2, crmVarsNovos, crmLerEmail, crmTirarCitacao, crmDecodePalavras, cfGuia1, crmBytesParaBinario, cfGuiaConversa, crmLinkAssinar, crmLinkConferir, CF_CIDADES, crmMontarResposta, crmAssuntoBase, crmIdMsg, crmPreencher, crmMontarModelo, cfGuia1Vars, cfGuiaConversaVars, cfBotoesCidade };\n');
 const mod = await import(pathToFileURL(arq).href);
 rmSync(dir, { recursive: true, force: true });
 const worker = mod.default;
-const { crmLerEmail, crmTirarCitacao, crmDecodePalavras, cfGuia1, crmBytesParaBinario, cfGuiaConversa, crmLinkAssinar, crmLinkConferir, CF_CIDADES, crmMontarResposta, crmAssuntoBase, crmIdMsg,
+const { crmVarsS2, crmVarsNovos, crmLerEmail, crmTirarCitacao, crmDecodePalavras, cfGuia1, crmBytesParaBinario, cfGuiaConversa, crmLinkAssinar, crmLinkConferir, CF_CIDADES, crmMontarResposta, crmAssuntoBase, crmIdMsg,
   crmPreencher, crmMontarModelo, cfGuia1Vars, cfGuiaConversaVars, cfBotoesCidade } = mod;
 
 let passed = 0, failed = 0;
@@ -831,6 +831,47 @@ console.log('\n== Estúdio de e-mails 3: sequências de hora em hora ==');
   chamadas = []; fakeFetch([...adminOk, modeloNovo(null), fichaNov, brevoOk]);
   res = await enviar({ contato_id: CID, modelo: 'nao_existe', assunto: 'oi', corpo: 'Oi Ana!' });
   check('modelo que não existe: 400', res.status === 400 && !chamadas.some((c) => /brevo/.test(c.url)));
+}
+
+console.log('== Página da Saúde (S2): porta e ponto no e-mail ==');
+{
+  const PORTAS = ['estudante', 'trabalho', 'aupair', 'outro'], PONTOS = ['nao_cheguei', 'sem_numero', 'esperando', 'sem_vitale', 'completo'];
+  const itens = [
+    { tipo: 'titulo', estilo: 'pequeno', texto: 'O mapa da saúde está no botão abaixo.' },
+    { tipo: 'texto', se: '#porta_estudante', texto: 'Comece pela seção {secao}.' },
+    { tipo: 'texto', se: '#porta_trabalho', texto: 'Seção do trabalho: {secao}.' },
+    { tipo: 'texto', se: '#astucia_a0007', texto: 'Astúcia do estudante.' },
+    { tipo: 'texto', se: '#astucia_a0008', texto: 'Astúcia do trabalho.' },
+    { tipo: 'texto', se: '#astucia_a0009', texto: 'Astúcia da au pair.' },
+    { tipo: 'etapa', se: '#ponto_esperando', rotulo: '', titulo: '', texto: 'Já pediu e está esperando.' },
+  ];
+  const modelo = E.montar({ assunto: '{assunto_persona}', itens }, 'servico');
+  let todas = true, umaPorta = true, paridade = true;
+  for (const porta of PORTAS) for (const ponto of PONTOS) {
+    const v = crmVarsS2({ porta, ponto }, '2026-11-14');
+    umaPorta = umaPorta && PORTAS.filter((k) => v['porta_' + k]).length === 1 && PONTOS.filter((k) => v['ponto_' + k]).length === 1;
+    try { const m = crmMontarModelo(modelo, { ...v, nome: 'Ana' }); todas = todas && !!m.assunto && m.assunto !== 'Seu mapa da saúde na França' && !/\{|\}/.test(m.texto); }
+    catch (e) { todas = false; console.log('  erro', porta, ponto, e.message); }
+  }
+  check('as 20 personas montam o e-mail sem erro, com assunto próprio e sem chaves soltas', todas);
+  check('cada persona tem exatamente uma porta e um ponto', umaPorta);
+  const v0 = crmVarsS2({ porta: 'estudante', ponto: 'sem_numero' }, '2026-11-14');
+  check('estudante sem número: astúcia A-0007 e seção Estudante', v0.astucia_a0007 && !v0.astucia_a0008 && !v0.astucia_a0009 && v0.secao === 'Estudante');
+  check('trabalho antes de chegar: astúcia A-0008', crmVarsS2({ porta: 'trabalho', ponto: 'nao_cheguei' }, '2026-11-14').astucia_a0008);
+  check('au pair esperando: astúcia A-0009; sem carte vitale: nenhuma', crmVarsS2({ porta: 'aupair', ponto: 'esperando' }, '2026-11-14').astucia_a0009 && !crmVarsS2({ porta: 'aupair', ponto: 'sem_vitale' }, '2026-11-14').astucia_a0009);
+  check('estudante que já pediu o número: sem astúcia', !crmVarsS2({ porta: 'estudante', ponto: 'esperando' }, '2026-11-14').astucia_a0007);
+  check('a astúcia sai sozinha depois da data de revisão', !crmVarsS2({ porta: 'estudante', ponto: 'sem_numero' }, '2027-02-15').astucia_a0007 && crmVarsS2({ porta: 'estudante', ponto: 'sem_numero' }, '2027-02-14').astucia_a0007);
+  const v1 = crmVarsS2({}, '2026-11-14');
+  check('lead sem resposta: tudo falso, sem seção e assunto padrão', Object.entries(v1).every(([k, x]) => k === 'secao' || k === 'assunto_persona' || x === false) && v1.secao === '' && v1.assunto_persona === 'Seu mapa da saúde na França');
+  check('valor fora da lista é ignorado', !crmVarsS2({ porta: 'qualquer', ponto: '<x>' }, '2026-11-14').porta_outro && crmVarsS2({ porta: 'qualquer', ponto: '<x>' }, '2026-11-14').assunto_persona === 'Seu mapa da saúde na França');
+  for (const k of E.VARS_S2) paridade = paridade && (k in v0);
+  check('o Worker preenche todos os dados da S2 que o editor oferece', paridade && Object.keys(v0).length === E.VARS_S2.length);
+  const todos = crmVarsNovos({}, { nome: 'Ana', email: 'ana@example.org', dados: { respostas: { porta: 'trabalho', ponto: 'sem_numero' } } });
+  check('crmVarsNovos entrega todos os dados do editor (VARS_NOVOS)', E.VARS_NOVOS.every((k) => k in todos));
+  const m = crmMontarModelo(modelo, { ...crmVarsS2({ porta: 'estudante', ponto: 'sem_numero' }, '2026-11-14'), nome: 'Ana' });
+  check('estudante vê só o texto dele', /Comece pela seção Estudante/.test(m.texto) && !/Seção do trabalho/.test(m.texto) && /Astúcia do estudante/.test(m.texto) && !/Astúcia do trabalho/.test(m.texto));
+  check('título pequeno sai em 17px no HTML e o grande em 24px', /font-size:17px/.test(modelo.corpo_html) && /font-size:24px/.test(E.montar({ assunto: 'a', itens: [{ tipo: 'titulo', texto: 'Oi' }] }, 'servico').corpo_html));
+  check('o bloco "só se" do ponto some para quem está em outro ponto', !/Já pediu e está esperando/.test(m.texto) && /Já pediu e está esperando/.test(crmMontarModelo(modelo, { ...crmVarsS2({ porta: 'outro', ponto: 'esperando' }, '2026-11-14'), nome: 'Ana' }).texto));
 }
 
 console.log(`\n${passed} passaram, ${failed} falharam`);

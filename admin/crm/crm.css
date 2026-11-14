@@ -765,6 +765,7 @@ select.st-in{height:36px; padding:0 8px}
 .ee-caixa{background:#F4F1EC; border-radius:8px; padding:12px 14px; font-size:14px; line-height:1.55; color:#6E6862}
 .ee-titulo{font-family:'Fraunces', Georgia, serif; font-size:24px; line-height:1.25; font-weight:700; margin:2px 0}
 .ee-forte{font-weight:700; font-size:15px}
+.ee-titulo.ee-titulo-p{font-size:17px; line-height:1.3}
 .ee-ass{font-family:'Fraunces', Georgia, serif; font-size:16px; font-style:italic; color:#604034}
 .ee-botao{display:inline-block; background:#577328; color:#FBFAF7; font-weight:600; font-size:15px; padding:13px 22px; border-radius:4px; cursor:pointer}
 .ee-nota{display:block; font-size:11px; color:#9A938B; margin-top:4px}
