@@ -33,7 +33,7 @@ Escopo: o CRM, o banco e o Worker. **Fora:** a página pública com o formulári
 5. O Worker passa a oferecer, sempre presentes (vazios para lead antigo): `porta_*` (4), `ponto_*` (5), `secao`,
    `assunto_persona` e `astucia_a0007`, `astucia_a0008`, `astucia_a0009`. Cada astúcia só é verdadeira para a persona dela e
    **antes de 14/02/2027** (data de revisão da aba Jornada); depois disso sai sozinha. Regras e assuntos copiados do artefato.
-7. O editor oferece esses dados no catálogo do estúdio (`ES.VARS_NOVOS`, `ES.CAT`).
+6. O editor oferece esses dados no catálogo do estúdio (`ES.VARS_NOVOS`, `ES.CAT`).
 
 ## Fora do escopo
 
