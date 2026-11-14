@@ -23,12 +23,12 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 const dir = mkdtempSync(path.join(tmpdir(), 'crm-email-'));
 const arq = path.join(dir, 'worker.mjs');
 writeFileSync(arq, readFileSync(path.resolve(HERE, '../worker.js'), 'utf8') +
-  '\nexport { crmLerEmail, crmTirarCitacao, crmDecodePalavras, cfGuia1, crmBytesParaBinario, cfGuiaConversa, crmLinkAssinar, crmLinkConferir, CF_CIDADES, crmMontarResposta, crmAssuntoBase, crmIdMsg, crmPreencher, crmMontarModelo, cfGuia1Vars, cfGuiaConversaVars, cfBotoesCidade };\n');
+  '\nexport { crmLerEmail, crmTirarCitacao, crmDecodePalavras, cfGuia1, crmBytesParaBinario, cfGuiaConversa, crmLinkAssinar, crmLinkConferir, CF_CIDADES, crmMontarResposta, crmAssuntoBase, crmIdMsg, crmPreencher, crmMontarModelo, cfGuia1Vars, cfGuiaConversaVars, cfBotoesCidade, crmVarsNovos, crmVarsSaude };\n');
 const mod = await import(pathToFileURL(arq).href);
 rmSync(dir, { recursive: true, force: true });
 const worker = mod.default;
 const { crmLerEmail, crmTirarCitacao, crmDecodePalavras, cfGuia1, crmBytesParaBinario, cfGuiaConversa, crmLinkAssinar, crmLinkConferir, CF_CIDADES, crmMontarResposta, crmAssuntoBase, crmIdMsg,
-  crmPreencher, crmMontarModelo, cfGuia1Vars, cfGuiaConversaVars, cfBotoesCidade } = mod;
+  crmPreencher, crmMontarModelo, cfGuia1Vars, cfGuiaConversaVars, cfBotoesCidade, crmVarsNovos, crmVarsSaude } = mod;
 
 let passed = 0, failed = 0;
 function check(label, cond) { if (cond) passed++; else { failed++; console.log('  FALHOU:', label); } }
@@ -786,6 +786,51 @@ console.log('\n== Estúdio de e-mails 3: sequências de hora em hora ==');
   fakeFetch(regras());
   res = await worker.fetch(new Request('https://w.example/api/crm/sequencia-rodar', { method: 'POST', headers: { 'X-Crm-Hook': SEGREDO } }), envS, {});
   check('rodar na hora: com o segredo, manda', res.status === 200 && (await res.json()).enviados === 2);
+
+  console.log('\n== Página de saúde (I06): porta, ponto, seção, assunto e astúcias ==');
+  const PORTAS6 = ['estudante', 'trabalho', 'aupair', 'outro'], PONTOS6 = ['nao_cheguei', 'sem_numero', 'esperando', 'sem_vitale', 'completo'];
+  const AGORA = new Date('2026-11-14T12:00:00-03:00'), DEPOIS = new Date('2027-02-14T12:00:00-03:00'), ANTES = new Date('2027-02-13T23:59:00-03:00');
+  const respSaude = (porta, ponto) => ({ porta, objetivo: 'sau-' + ponto.replace(/_/g, '-') });
+  const linhaP = (porta, ponto) => ({ nome: 'Ana Lima', email: 'ana@example.com', dados: { persona: 'campus_france', respostas: respSaude(porta, ponto) } });
+  const VARS6 = [...PORTAS6.map((x) => 'porta_' + x), ...PONTOS6.map((x) => 'ponto_' + x), 'secao', 'assunto_persona', 'astucia_a0007', 'astucia_a0008', 'astucia_a0009'];
+  let todasOk = true, ast = {};
+  for (const po of PORTAS6) for (const pt of PONTOS6) {
+    let v; try { v = crmVarsNovos({}, linhaP(po, pt), AGORA); } catch (e) { todasOk = false; continue; }
+    if (!VARS6.every((k) => k in v)) todasOk = false;
+    if (v['porta_' + po] !== true || v['ponto_' + pt] !== true) todasOk = false;
+    if (PORTAS6.filter((x) => v['porta_' + x]).length !== 1 || PONTOS6.filter((x) => v['ponto_' + x]).length !== 1) todasOk = false;
+    if (!v.assunto_persona || !v.secao) todasOk = false;
+    ast[po + '.' + pt] = ['a0007', 'a0008', 'a0009'].filter((a) => v['astucia_' + a]).join();
+  }
+  check('as 20 personas montam as variáveis sem erro, uma porta e um ponto verdadeiros, seção e assunto preenchidos', todasOk);
+  check('A-0007: só estudante antes de chegar ou sem número', ast['estudante.nao_cheguei'] === 'a0007' && ast['estudante.sem_numero'] === 'a0007' && ast['estudante.esperando'] === '' && ast['estudante.sem_vitale'] === '' && ast['estudante.completo'] === '');
+  check('A-0008: só trabalho antes de chegar ou sem número', ast['trabalho.nao_cheguei'] === 'a0008' && ast['trabalho.sem_numero'] === 'a0008' && ast['trabalho.esperando'] === '' && ast['trabalho.completo'] === '');
+  check('A-0009: au pair antes de chegar, sem número ou esperando', ast['aupair.nao_cheguei'] === 'a0009' && ast['aupair.sem_numero'] === 'a0009' && ast['aupair.esperando'] === 'a0009' && ast['aupair.sem_vitale'] === '' && ast['aupair.completo'] === '');
+  check('"outro" não tem astúcia em nenhum ponto', PONTOS6.every((pt) => ast['outro.' + pt] === ''));
+  const v1 = crmVarsNovos({}, linhaP('aupair', 'sem_numero'), AGORA);
+  check('seção e assunto do exemplo (au pair, sem número)', v1.secao === 'Au pair' && v1.assunto_persona === 'Seu número de sécu começa na declaração da família');
+  check('seção do "outro" é o tronco do mapa', crmVarsNovos({}, linhaP('outro', 'completo'), AGORA).secao === 'o tronco do mapa');
+  check('a astúcia ainda vale na véspera da revisão (13/02/2027)', crmVarsNovos({}, linhaP('estudante', 'nao_cheguei'), ANTES).astucia_a0007 === true);
+  check('a astúcia sai sozinha a partir de 14/02/2027', PORTAS6.every((po) => PONTOS6.every((pt) => { const v = crmVarsNovos({}, linhaP(po, pt), DEPOIS); return !v.astucia_a0007 && !v.astucia_a0008 && !v.astucia_a0009; })));
+  const antigo = crmVarsNovos({}, { nome: 'Bia', email: 'bia@example.com', dados: { respostas: {} } }, AGORA);
+  check('lead antigo: todas as variáveis existem, falsas ou vazias', VARS6.every((k) => k in antigo) && VARS6.every((k) => antigo[k] === false || antigo[k] === ''));
+  const semDados = crmVarsNovos({}, { nome: 'Cris', email: 'cris@example.com' }, AGORA);
+  check('lead sem dados nenhum: também não quebra', VARS6.every((k) => k in semDados));
+  const lixo = crmVarsNovos({}, { nome: 'Dani', email: 'd@example.com', dados: { respostas: { porta: 'AuPair', objetivo: 'sau-qualquer' } } }, AGORA);
+  check('porta e ponto desconhecidos: tudo falso ou vazio', VARS6.every((k) => lixo[k] === false || lixo[k] === ''));
+  check('só a porta (sem ponto): seção sim, assunto vazio, nenhuma astúcia', (() => { const v = crmVarsNovos({}, { nome: 'E', email: 'e@x.com', dados: { respostas: { porta: 'estudante' } } }, AGORA); return v.secao === 'Estudante' && v.assunto_persona === '' && !v.astucia_a0007; })());
+  check('o que o Worker já oferecia continua (etapa_* da Campus France)', crmVarsNovos({}, { nome: 'F', email: 'f@x.com', dados: { respostas: { objetivo: 'cf-dossie-enviado' } } }, AGORA).etapa_dossie_enviado === true);
+  // O estúdio mostra os mesmos dados na prévia: o mesmo cálculo no navegador (estudio.js) e no Worker.
+  let igual = true;
+  for (const po of [...PORTAS6, 'x', undefined]) for (const pt of [...PONTOS6, 'x', undefined]) for (const quando of [AGORA, ANTES, DEPOIS]) {
+    const r = po && pt ? respSaude(po, pt) : po ? { porta: po } : pt ? { objetivo: 'sau-' + pt } : {};
+    if (JSON.stringify(E.varsSaude(r, quando)) !== JSON.stringify(crmVarsSaude(r, quando))) igual = false;
+  }
+  check('estudio.js (prévia) e worker.js (envio) calculam exatamente o mesmo para a saúde', igual);
+  check('ES.VARS_NOVOS e ES.CAT têm as variáveis da saúde', VARS6.every((k) => E.VARS_NOVOS.includes(k) && E.CAT[k]) &&
+    PORTAS6.every((x) => E.CAT['porta_' + x].t === 'sim') && PONTOS6.every((x) => E.CAT['ponto_' + x].t === 'sim') &&
+    ['a0007', 'a0008', 'a0009'].every((a) => E.CAT['astucia_' + a].t === 'sim') && E.CAT.secao.t === 'texto' && E.CAT.assunto_persona.t === 'texto');
+  check('toda variável de saúde que o estúdio oferece, o Worker preenche', E.VARS_NOVOS.filter((k) => /^(porta_|ponto_|astucia_)/.test(k) || k === 'secao' || k === 'assunto_persona').every((k) => k in antigo));
 
   console.log('\n== Filtro por etapa do guia: a etapa chega aos modelos novos ==');
   check('o estúdio e o Worker têm as mesmas 10 etapas', E.ETAPAS_GUIA.length === 10 &&

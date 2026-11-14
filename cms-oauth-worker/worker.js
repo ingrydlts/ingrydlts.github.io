@@ -1995,7 +1995,43 @@ function crmDiaBr(ymd) { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(ymd ||
 // p = uma linha de crm_sequencia_pendentes (ou o mesmo formato).
 // As etapas do guia viram um sim/não cada (etapa_nao_comecei, etapa_pesquisando…), como ES.ETAPAS_GUIA em estudio.js.
 const CRM_ETAPAS_GUIA = Object.keys(CF_PASSO).concat(['alt-pesquisando', 'alt-escolhendo-escola', 'alt-recusa-idade', 'alt-buscando-empresa', 'alt-montando-contrato']);
-function crmVarsNovos(env, p) {
+// Página de saúde (I06): porta, ponto, seção, assunto e astúcias. O mesmo cálculo existe em admin/crm/estudio.js (varsSaude), que
+// mostra a prévia no estúdio: o teste (cms-oauth-worker/testes/crm-email.test.mjs) confere que dão igual.
+const SAUDE_PORTAS = ['estudante', 'trabalho', 'aupair', 'outro'];
+const SAUDE_PONTOS = ['nao_cheguei', 'sem_numero', 'esperando', 'sem_vitale', 'completo'];
+const SAUDE_SECAO = { estudante: 'Estudante', trabalho: 'Trabalho', aupair: 'Au pair', outro: 'o tronco do mapa' };
+// O assunto do e-mail 1, por porta e ponto (artefato "Templates de e-mail S2").
+const SAUDE_ASSUNTO = {
+  estudante: { nao_cheguei: 'Seu número de sécu começa antes de você chegar', sem_numero: 'Seu cadastro de sécu como estudante, no site do ameli',
+    esperando: 'Inscrição feita: o que vem depois do número provisório', sem_vitale: 'Número em mãos: o passo da carte vitale', completo: 'Carte vitale em mãos: o que vem depois' },
+  trabalho: { nao_cheguei: 'Seu mapa da saúde antes de chegar com contrato', sem_numero: 'Seu mapa da saúde e uma pergunta sobre o seu contrato',
+    esperando: 'Pedido feito: a ordem do que vem depois', sem_vitale: 'Número em mãos: o passo da carte vitale', completo: 'Carte vitale em mãos: médecin traitant e reembolso' },
+  aupair: { nao_cheguei: 'Antes de chegar como au pair: quem declara você na Urssaf', sem_numero: 'Seu número de sécu começa na declaração da família',
+    esperando: 'Pedido feito: uma pergunta sobre quem o enviou', sem_vitale: 'Número em mãos: o passo da carte vitale', completo: 'Carte vitale em mãos: e depois do contrato de au pair?' },
+  outro: { nao_cheguei: 'Seu mapa da saúde e uma pergunta para achar o seu caminho', sem_numero: 'Seu mapa da saúde e uma pergunta para achar o seu caminho',
+    esperando: 'Pedido feito: qual é o seu visto?', sem_vitale: 'Número em mãos: e qual é o seu visto?', completo: 'Carte vitale feita: e qual é o seu visto?' }
+};
+// As astúcias conferidas: [id, porta, pontos em que valem]. Só valem até a data de revisão (14/02/2027, 00h de Brasília);
+// depois disso saem sozinhas do e-mail. A-0002 e A-0010 ainda não foram conferidas e não entram.
+const SAUDE_ASTUCIAS = [['a0007', 'estudante', ['nao_cheguei', 'sem_numero']], ['a0008', 'trabalho', ['nao_cheguei', 'sem_numero']],
+  ['a0009', 'aupair', ['nao_cheguei', 'sem_numero', 'esperando']]];
+const SAUDE_REVISAO_MS = Date.UTC(2027, 1, 14, 3, 0, 0);
+function crmVarsSaude(resp, agora) {
+  resp = resp || {};
+  const porta = SAUDE_PORTAS.includes(resp.porta) ? resp.porta : '';
+  const m = /^sau-([a-z0-9-]+)$/.exec(String(resp.objetivo || ''));
+  let ponto = m ? m[1].replace(/-/g, '_') : '';
+  if (!SAUDE_PONTOS.includes(ponto)) ponto = '';
+  const v = {};
+  for (const x of SAUDE_PORTAS) v['porta_' + x] = porta === x;
+  for (const x of SAUDE_PONTOS) v['ponto_' + x] = ponto === x;
+  v.secao = porta ? SAUDE_SECAO[porta] : '';
+  v.assunto_persona = porta && ponto ? SAUDE_ASSUNTO[porta][ponto] : '';
+  const vigente = (agora || new Date()).getTime() < SAUDE_REVISAO_MS;
+  for (const [id, po, pontos] of SAUDE_ASTUCIAS) v['astucia_' + id] = vigente && porta === po && pontos.includes(ponto);
+  return v;
+}
+function crmVarsNovos(env, p, agora = new Date()) {
   const d = p.dados || {}, resp = d.respostas || {};
   const nivel = CF_NIVEIS[resp.cfNivel];
   const cidade = CF_CIDADES.find(([k]) => k === resp.cfCidade);
@@ -2003,6 +2039,7 @@ function crmVarsNovos(env, p) {
   for (const k of CRM_ETAPAS_GUIA) etapas['etapa_' + k.replace(/^(cf|alt)-/, '').replace(/-/g, '_')] = resp.objetivo === k;
   return {
     ...etapas,
+    ...crmVarsSaude(resp, agora),
     nome: crmPrimeiroNome(p.nome), email: p.email,
     persona: (CRM_PERSONAS[d.persona || 'sem'] || d.persona || '').toLowerCase(),
     nivel: nivel ? nivel[0] : '', prazo_nivel: nivel ? nivel[1] : '',

@@ -47,6 +47,53 @@ var ETAPAS_AP = { tudo_bem: 'está tudo bem e ainda não olhou os papéis', nao_
 Object.keys(ETAPAS_CF).forEach(function (k) { CAT['etapa_' + k] = { t: 'sim', o: 'etapa do guia: ' + ETAPAS_CF[k], etapa: true }; });
 Object.keys(ETAPAS_ALT).forEach(function (k) { CAT['etapa_' + k] = { t: 'sim', o: 'etapa do guia: ' + ETAPAS_ALT[k], etapa: true }; });
 
+// ---------- Página de saúde (I06): porta, ponto, seção, assunto e astúcias ----------
+// O mesmo cálculo existe no Worker (crmVarsSaude em cms-oauth-worker/worker.js): o teste do Worker confere que dão igual.
+var SAUDE_PORTAS = ['estudante', 'trabalho', 'aupair', 'outro'];
+var SAUDE_PONTOS = ['nao_cheguei', 'sem_numero', 'esperando', 'sem_vitale', 'completo'];
+var SAUDE_SECAO = { estudante: 'Estudante', trabalho: 'Trabalho', aupair: 'Au pair', outro: 'o tronco do mapa' };
+// O assunto do e-mail 1, por porta e ponto (artefato "Templates de e-mail S2").
+var SAUDE_ASSUNTO = {
+  estudante: { nao_cheguei: 'Seu número de sécu começa antes de você chegar', sem_numero: 'Seu cadastro de sécu como estudante, no site do ameli',
+    esperando: 'Inscrição feita: o que vem depois do número provisório', sem_vitale: 'Número em mãos: o passo da carte vitale', completo: 'Carte vitale em mãos: o que vem depois' },
+  trabalho: { nao_cheguei: 'Seu mapa da saúde antes de chegar com contrato', sem_numero: 'Seu mapa da saúde e uma pergunta sobre o seu contrato',
+    esperando: 'Pedido feito: a ordem do que vem depois', sem_vitale: 'Número em mãos: o passo da carte vitale', completo: 'Carte vitale em mãos: médecin traitant e reembolso' },
+  aupair: { nao_cheguei: 'Antes de chegar como au pair: quem declara você na Urssaf', sem_numero: 'Seu número de sécu começa na declaração da família',
+    esperando: 'Pedido feito: uma pergunta sobre quem o enviou', sem_vitale: 'Número em mãos: o passo da carte vitale', completo: 'Carte vitale em mãos: e depois do contrato de au pair?' },
+  outro: { nao_cheguei: 'Seu mapa da saúde e uma pergunta para achar o seu caminho', sem_numero: 'Seu mapa da saúde e uma pergunta para achar o seu caminho',
+    esperando: 'Pedido feito: qual é o seu visto?', sem_vitale: 'Número em mãos: e qual é o seu visto?', completo: 'Carte vitale feita: e qual é o seu visto?' }
+};
+// As astúcias conferidas: [id, porta, pontos em que valem]. Só valem até a data de revisão (14/02/2027, 00h de Brasília);
+// depois disso saem sozinhas do e-mail. A-0002 e A-0010 ainda não foram conferidas e não entram.
+var SAUDE_ASTUCIAS = [['a0007', 'estudante', ['nao_cheguei', 'sem_numero']], ['a0008', 'trabalho', ['nao_cheguei', 'sem_numero']],
+  ['a0009', 'aupair', ['nao_cheguei', 'sem_numero', 'esperando']]];
+var SAUDE_REVISAO_MS = Date.UTC(2027, 1, 14, 3, 0, 0);
+export var VARS_SAUDE = SAUDE_PORTAS.map(function (x) { return 'porta_' + x; }).concat(SAUDE_PONTOS.map(function (x) { return 'ponto_' + x; }),
+  ['secao', 'assunto_persona'], SAUDE_ASTUCIAS.map(function (a) { return 'astucia_' + a[0]; }));
+var ROTULO_PORTA = { estudante: 'estudante', trabalho: 'trabalha com contrato', aupair: 'é au pair', outro: 'escolheu "outro ou não sei"' };
+var ROTULO_PONTO = { nao_cheguei: 'ainda não chegou', sem_numero: 'chegou e está sem número', esperando: 'pediu o número e espera', sem_vitale: 'tem o número e não a carte vitale', completo: 'já tem a carte vitale' };
+SAUDE_PORTAS.forEach(function (x) { CAT['porta_' + x] = { t: 'sim', o: 'a porta da saúde: ' + ROTULO_PORTA[x] }; });
+SAUDE_PONTOS.forEach(function (x) { CAT['ponto_' + x] = { t: 'sim', o: 'o ponto da saúde: ' + ROTULO_PONTO[x] }; });
+CAT.secao = { t: 'texto', o: 'a seção do mapa da saúde que ela abre (por porta)', plano: null };
+CAT.assunto_persona = { t: 'texto', o: 'o assunto do e-mail 1 da saúde, por porta e ponto', plano: null };
+SAUDE_ASTUCIAS.forEach(function (a) { CAT['astucia_' + a[0]] = { t: 'sim', o: 'a astúcia ' + a[0].toUpperCase().replace('A', 'A-') + ' vale para ela (e ainda não passou da revisão)' }; });
+// resp = contatos.respostas (porta e objetivo sau-…); agora = quando o e-mail é montado. Sempre devolve todas as chaves.
+export function varsSaude(resp, agora) {
+  resp = resp || {};
+  var porta = SAUDE_PORTAS.indexOf(resp.porta) >= 0 ? resp.porta : '';
+  var m = /^sau-([a-z0-9-]+)$/.exec(String(resp.objetivo || ''));
+  var ponto = m ? m[1].replace(/-/g, '_') : '';
+  if (SAUDE_PONTOS.indexOf(ponto) < 0) ponto = '';
+  var v = {};
+  SAUDE_PORTAS.forEach(function (x) { v['porta_' + x] = porta === x; });
+  SAUDE_PONTOS.forEach(function (x) { v['ponto_' + x] = ponto === x; });
+  v.secao = porta ? SAUDE_SECAO[porta] : '';
+  v.assunto_persona = porta && ponto ? SAUDE_ASSUNTO[porta][ponto] : '';
+  var vigente = (agora || new Date()).getTime() < SAUDE_REVISAO_MS;
+  SAUDE_ASTUCIAS.forEach(function (a) { v['astucia_' + a[0]] = vigente && porta === a[1] && a[2].indexOf(ponto) >= 0; });
+  return v;
+}
+
 // Os dados que cada modelo tem na hora do envio (o Worker ou o painel preenche exatamente estes).
 var PAINEL = ['nome', 'persona', 'link_acesso', 'link_agenda', 'au_pair', 'motivo', 'prazo_vencido', 'prazo_a_vencer', 'prazo_limite', 'dias_para_prazo'];
 var ALT = Object.keys(ETAPAS_ALT).map(function (k) { return 'etapa_' + k; });
@@ -64,7 +111,7 @@ export var VARS_DE = {
 // O Worker preenche exatamente estes (crmVarsNovos em worker.js).
 // As etapas do guia viram um sim/não cada (etapa_…), para o bloco "Só para uma etapa".
 export var VARS_NOVOS = ['nome', 'email', 'persona', 'nivel', 'prazo_nivel', 'etapa', 'cidade', 'prazo_limite', 'dias_para_prazo',
-  'prazo_vencido', 'prazo_a_vencer', 'link_acesso', 'link_agenda'].concat(Object.keys(ETAPAS_CF).concat(Object.keys(ETAPAS_ALT)).map(function (k) { return 'etapa_' + k; }));
+  'prazo_vencido', 'prazo_a_vencer', 'link_acesso', 'link_agenda'].concat(Object.keys(ETAPAS_CF).concat(Object.keys(ETAPAS_ALT)).map(function (k) { return 'etapa_' + k; }), VARS_SAUDE);
 // A regra "Etapa do guia" do Para quem: o valor é o que fica em contatos.respostas.objetivo (crm_sequencia_pendentes compara igual).
 export var ETAPAS_GUIA = Object.keys(ETAPAS_CF).map(function (k) { return ['cf-' + k.replace(/_/g, '-'), 'Campus France: ' + ETAPAS_CF[k]]; })
   .concat(Object.keys(ETAPAS_ALT).map(function (k) { return ['alt-' + k.replace(/_/g, '-'), 'Alternância 30+: ' + ETAPAS_ALT[k]]; }));
@@ -364,6 +411,7 @@ export function dadosDe(chave, c, h, m) {
     // O link do produto é privado: só o Worker tem (no envio e no teste). Na prévia e na ficha fica entre colchetes.
     if (pq.produto) { n.produto = pq.produto_nome || ''; n.link_produto = '[link do produto]'; }
     ETAPAS_GUIA.forEach(function (e) { n['etapa_' + e[0].replace(/^(cf|alt)-/, '').replace(/-/g, '_')] = resp.objetivo === e[0]; });
+    Object.assign(n, varsSaude(resp, new Date()));
     return n;
   }
   if (chave === 'cf_guia_1' || chave === 'cf_guia_conversa') {
