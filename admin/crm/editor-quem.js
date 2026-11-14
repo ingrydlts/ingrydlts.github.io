@@ -34,3 +34,50 @@ export function fraseQuem(m, rotulos) {
     novidades: !!(m && m.tipo === 'novidades')
   };
 }
+
+// ---------- Cascata: a página de inbound decide o que as próximas escolhas mostram ----------
+
+function achaPag(paginas, k) { return lista(paginas).filter(function (p) { return p.k === k; })[0] || null; }
+
+// k da página cujo material é o ÚNICO valor de para.materiais; qualquer outro caso (zero, dois, token desconhecido) = null.
+export function paginaAtual(para, paginas) {
+  var mat = lista((para || {}).materiais), ps = lista(paginas);
+  if (mat.length !== 1) return null;
+  for (var i = 0; i < ps.length; i++) if (ps[i].material === mat[0]) return ps[i].k;
+  return null;
+}
+
+// As etapas da página que o filtro do Worker entende (existem em etapasFiltro), na ordem da página: [[codigo, rotulo]].
+export function etapasDaPagina(pagina, etapasFiltro) {
+  var out = [];
+  if (!pagina) return out;
+  lista(pagina.etapas).forEach(function (e) {
+    var f = lista(etapasFiltro).filter(function (x) { return x[0] === e[0]; })[0];
+    if (f) out.push([f[0], f[1]]);
+  });
+  return out;
+}
+
+// Escolher a página grava o material dela e zera etapa e persona (que pertenciam à página anterior). Não muda o original.
+// k vazio ou desconhecido = "qualquer página": tira material, etapa e persona. Devolve também o que voltou para "qualquer".
+export function aplicarPagina(para, k, paginas) {
+  var novo = JSON.parse(JSON.stringify(para || {})), limpou = [], pag = achaPag(paginas, k);
+  if (pag && paginaAtual(para, paginas) === pag.k) return { para: novo, limpou: limpou };
+  if (lista(novo.etapas).length) limpou.push('etapa');
+  if (lista(novo.personas).length) limpou.push('persona');
+  delete novo.etapas; delete novo.personas;
+  if (pag) novo.materiais = [pag.material]; else delete novo.materiais;
+  return { para: novo, limpou: limpou };
+}
+
+// Partes da frase do passo "Quem": personas = null quando a página não tem personas ligadas (a tela não mostra o campo).
+export function fraseCascata(m, paginas, rot) {
+  var p = (m && m.para_quem) || {}, pag = achaPag(paginas, paginaAtual(p, paginas)), mats = lista(p.materiais);
+  var por = function (l, f) { return l.map(function (x) { return f(x); }).join(' ou '); };
+  return {
+    pagina: pag ? pag.k + ' · ' + pag.nome : mats.length ? por(mats, rot.material) : 'qualquer página',
+    personas: pag && lista(pag.personas).length ? (lista(p.personas).length ? por(p.personas, rot.persona) : 'qualquer persona') : null,
+    etapas: lista(p.etapas).length ? por(p.etapas, rot.etapa) : 'qualquer resposta',
+    novidades: !!(m && m.tipo === 'novidades')
+  };
+}

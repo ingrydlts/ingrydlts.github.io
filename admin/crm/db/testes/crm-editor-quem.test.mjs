@@ -1,4 +1,4 @@
-import { estimar, motivoFora, fraseQuem } from '../../editor-quem.js';
+import { estimar, motivoFora, fraseQuem, paginaAtual, etapasDaPagina, aplicarPagina, fraseCascata } from '../../editor-quem.js';
 import { PAGINAS } from '../../taxonomia.js';
 var falhas = 0; function check(n, ok) { console.log((ok ? 'ok   ' : 'FALHA ') + n); if (!ok) falhas++; }
 var org = function (c) { return c.origens || []; };
@@ -21,4 +21,30 @@ check('I03 liga ao Campus France', pg('I03').material === 'guia-etudes-en-france
 check('I05 liga ao au pair', pg('I05').material === 'guia-checklist-chegada-au-pair' && pg('I05').personas.join() === 'au_pair_estudante');
 check('I02 e I04 sem persona', pg('I02').personas.length === 0 && pg('I04').personas.length === 0 && pg('I02').material === 'guia-tecnologo' && pg('I04').material === 'guia-vls-ts');
 check('todo material é único', new Set(PAGINAS.map(function (p) { return p.material; })).size === PAGINAS.length);
+// Task 2: funções puras da cascata página → persona → etapa.
+var P = PAGINAS, EF = [['alt-pesquisando', 'Alternância 30+: Pesquisando'], ['ap-travado', 'Au pair: Um passo travado']];
+check('paginaAtual: um material conhecido', paginaAtual({ materiais: ['guia-email-alt30'] }, P) === 'I01');
+check('paginaAtual: dois materiais = nenhuma', paginaAtual({ materiais: ['guia-email-alt30', 'guia-vls-ts'] }, P) === null);
+check('paginaAtual: token desconhecido = nenhuma', paginaAtual({ materiais: ['instagram'] }, P) === null);
+check('paginaAtual: sem regra = nenhuma', paginaAtual({}, P) === null);
+check('etapasDaPagina só as filtráveis', etapasDaPagina(P[0], EF).map(function (e) { return e[0]; }).join() === 'alt-pesquisando');
+check('etapasDaPagina I02 vazia', etapasDaPagina(P[1], EF).length === 0 && etapasDaPagina(null, EF).length === 0);
+var a = aplicarPagina({ materiais: ['guia-vls-ts'], etapas: ['ap-travado'], personas: ['campus_france'], estagios: ['lead'] }, 'I01', P);
+check('aplicarPagina grava material, zera etapa e persona', a.para.materiais.join() === 'guia-email-alt30' && !a.para.etapas && !a.para.personas && a.para.estagios.join() === 'lead' && a.limpou.join() === 'etapa,persona');
+var b = aplicarPagina({ materiais: ['guia-email-alt30'], etapas: ['alt-pesquisando'] }, 'I01', P);
+check('mesma página: nada é zerado', b.para.etapas.join() === 'alt-pesquisando' && b.limpou.length === 0);
+var orig0 = { materiais: ['guia-vls-ts'], etapas: ['x'] }; aplicarPagina(orig0, 'I03', P);
+check('não muda o original', orig0.materiais.join() === 'guia-vls-ts' && orig0.etapas.join() === 'x');
+var c0 = aplicarPagina({ materiais: ['guia-vls-ts'], etapas: ['x'] }, null, P);
+check('sem página limpa tudo', !c0.para.materiais && !c0.para.etapas && c0.limpou.join() === 'etapa');
+var rot = { material: function (x) { return 'M' + x; }, etapa: String, persona: function (x) { return 'P' + x; } };
+var f1 = fraseCascata({ tipo: 'novidades', para_quem: { materiais: ['guia-checklist-chegada-au-pair'] } }, P, rot);
+check('frase com página e persona disponível', f1.pagina === 'I05 · Au pair · checklist de chegada' && f1.personas === 'qualquer persona' && f1.etapas === 'qualquer resposta' && f1.novidades === true);
+var f2 = fraseCascata({ para_quem: { materiais: ['instagram', 'blog'] } }, P, rot);
+check('frase com materiais soltos', f2.pagina === 'Minstagram ou Mblog' && f2.personas === null);
+var f3 = fraseCascata({ para_quem: {} }, P, rot);
+check('frase vazia', f3.pagina === 'qualquer página' && f3.personas === null);
+var f4 = fraseCascata({ para_quem: { materiais: ['guia-etudes-en-france-2027'], personas: ['campus_france'] } }, P, rot);
+check('frase com persona marcada', f4.personas === 'Pcampus_france');
+check('estimar com a regra da página', estimar(C, { para_quem: aplicarPagina({}, 'I01', P).para }, org).n === 0);
 if (falhas) { console.log(falhas + ' falhas'); process.exit(1); }
