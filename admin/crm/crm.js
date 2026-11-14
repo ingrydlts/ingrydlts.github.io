@@ -2,13 +2,13 @@
 // Nada de service_role aqui. O banco é db/crm-fase2.sql; o desenho é o artefato "CRM Por Dentro".
 // Tudo que vem do banco é texto de terceiros (nome, e-mail, pergunta): passa sempre por esc().
 import { supabase } from '/assets/js/supabase-client.js';
-import * as TX from './taxonomia.js?v=2026-11-14.1';   // páginas, famílias e agrupamento dos modelos
-import * as ES from './estudio.js?v=2026-11-14.1';   // os blocos do estúdio de e-mails (entregas 2 e 3)
-import * as EE from './editor-email.js?v=2026-11-14.1';
-import * as EQ from './editor-quem.js?v=2026-11-14.1';
-import * as JR from './jornada.js?v=2026-11-14.1';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
-import * as FX from './ficha.js?v=2026-11-14.1';   // ficha v2: lógica pura (fila, démarches, funil, ações)
-import * as FH from './ficha-html.js?v=2026-11-14.1';   // ficha v2: HTML puro
+import * as TX from './taxonomia.js?v=2026-11-14.2';   // páginas, famílias e agrupamento dos modelos
+import * as ES from './estudio.js?v=2026-11-14.2';   // os blocos do estúdio de e-mails (entregas 2 e 3)
+import * as EE from './editor-email.js?v=2026-11-14.2';
+import * as EQ from './editor-quem.js?v=2026-11-14.2';
+import * as JR from './jornada.js?v=2026-11-14.2';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
+import * as FX from './ficha.js?v=2026-11-14.2';   // ficha v2: lógica pura (fila, démarches, funil, ações)
+import * as FH from './ficha-html.js?v=2026-11-14.2';   // ficha v2: HTML puro
 
 var PERSONAS = {
   au_pair_estudante: 'Au pair → estudante', campus_france: 'Campus France', alternancia_emprego: 'Alternância / emprego',
@@ -2558,7 +2558,7 @@ function fxHeaderHtml(c, d) {
 // Catálogo de démarches (cópia do app, processos.json): carregado uma vez; sem ele, tudo cai na démarche padrão.
 var FX_PROC = null;
 async function fxCarregaProcessos() {
-  try { var r = await fetch('processos.json?v=2026-11-14.1'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
+  try { var r = await fetch('processos.json?v=2026-11-14.2'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
 }
 // A sessão Checklist: pílulas por démarche, os 4 mais urgentes, pasta do Drive privada e "Ver mais desta sessão".
 function fxChecklistCorpo(c) {
@@ -3085,7 +3085,7 @@ async function radarEnviar(btn) {
 // Sem a migração da entrega 1, a tela mostra os 8 do código; sem a da entrega 2, mostra tudo sem editar.
 var TIPO_EMAIL = { servico: ['Serviço', 'u-baixa'], novidades: ['Novidades', 'u-media'], compra: ['Compra', 'tp-pergunta'] };
 var ETAPA_EMAIL = { rascunho: ['Rascunho', ''], revisao: ['Revisão', 'u-media'], no_ar: ['No ar', 'u-baixa'], arquivado: ['Arquivado', 'out'] };
-var ST = { vista: 'jornada', qpop: '', previa: false, k: null, v: null, passo: 'texto', who: null, q: '', dev: 'pc', marcar: true, tab: 'editar', d: null, dKey: null, montado: null, vistos: {}, foco: null, salvo: '', timer: null, f: TX.filtroVazio() };
+var ST = { vista: 'jornada', qpop: '', prev: {}, previa: false, k: null, v: null, passo: 'texto', who: null, q: '', dev: 'pc', marcar: true, tab: 'editar', d: null, dKey: null, montado: null, vistos: {}, foco: null, salvo: '', timer: null, f: TX.filtroVazio() };
 function versoesDe(k) { return MV.filter(function (v) { return v.chave === k; }); }   // da mais nova para a mais velha
 function versaoAtual(k) { var vs = versoesDe(k); return vs.filter(function (v) { return v.etapa === 'no_ar'; })[0] || vs[0] || null; }
 function versaoEmObra(k) { return versoesDe(k).filter(function (v) { return v.etapa === 'rascunho' || v.etapa === 'revisao'; })[0] || null; }
@@ -3486,10 +3486,20 @@ function passoQuem(m, ro) {
   var quem = '<p class="ee-frase"><b>Quem:</b> ' + chip('pag', fr2.pagina, !(para.materiais || []).length) +
     (fr2.personas !== null ? ' · ' + chip('persona', fr2.personas, !(para.personas || []).length) : '') + ' · ' + chipEtapa +
     (fr2.novidades ? ' · <span class="ee-ch fixo">aceitou novidades</span>' : '') + '</p>';
-  var contadorNovo = '<div class="ee-conta" role="status"><span class="n">' + est.n + '</span><span><b>Hoje:</b> elegíveis de ' + est.total +
-    '<span class="sub">' + (fora && est.n !== est.total ? 'De fora: ' + esc(fora) + '. ' : '') + 'É uma estimativa pelas regras; o Worker confere de novo a cada envio.</span></span></div>';
+  var txtY = EQ.textoPrevistos(ST.prev[m.chave]);
+  var contadorNovo = '<div class="ee-conta" role="status"><span class="n">' + est.n + '</span><span><b>Hoje:</b> elegíveis de ' + est.total + (txtY ? ' · <b>' + esc(txtY) + '</b>' : '') +
+    '<span class="sub">' + (fora && est.n !== est.total ? 'De fora: ' + esc(fora) + '. ' : '') + (txtY ? 'Previstos: quem já acionou o gatilho e ainda não recebeu. ' : '') + 'É uma estimativa pelas regras; o Worker confere de novo a cada envio.</span></span></div>';
   return '<section class="ee-quem">' + quem + '<p class="ee-frase"><b>Quando:</b> ' + chip('sai', quando + base, !seq) + '</p>' + popHtml + contadorNovo +
     '<p class="sub ee-dica">Toque nos campos coloridos para mudar. A página vem primeiro: ela decide a persona e as etapas que aparecem.</p></section>' + avancado;
+}
+
+// O Y da linha "Hoje" vem do banco (crm_sequencia_previstos, só a admin). Erro ou função ainda não criada: a linha segue sem o Y.
+function pedirPrevistos(chave) {
+  ST.prev[chave] = 'carregando';
+  supabase.rpc('crm_sequencia_previstos', { p_chave: chave }).then(function (r) {
+    ST.prev[chave] = r.error || typeof r.data !== 'number' ? false : r.data;
+    if (ST.k === chave && ST.passo === 'quem') renderEditor();
+  }, function () { ST.prev[chave] = false; });
 }
 
 function renderEditor(lista) {
@@ -3504,6 +3514,7 @@ function renderEditor(lista) {
   var travas = confs.filter(function (x) { return !x.ok && x.trava; }).length;
   var testado = v && v.testado_em;
   var vistos = Object.keys(ST.vistos[ST.dKey] || {}).length;
+  if (ST.passo === 'quem' && m.criado_no_estudio && m.envio_gatilho && ST.prev[m.chave] === undefined) pedirPrevistos(m.chave);
 
   // Topo: nome, tipo, etapa e as ações.
   var acoes = '';
@@ -3745,6 +3756,7 @@ async function salvarModelo(patch, msg) {
   var r = await supabase.from('modelos_email').update(patch).eq('chave', m.chave).select();
   if (r.error) { fail('salvar o modelo', r.error); return renderEditor(); }
   Object.assign(m, (r.data && r.data[0]) || patch);
+  delete ST.prev[m.chave];
   if (msg) toast(msg);
   renderEditor(); renderLista(M); renderPrevia();
 }

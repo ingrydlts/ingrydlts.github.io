@@ -1,6 +1,8 @@
 import { estimar, motivoFora, fraseQuem, paginaAtual, etapasDaPagina, aplicarPagina, fraseCascata, textoPrevistos } from '../../editor-quem.js';
 import { PAGINAS } from '../../taxonomia.js';
 import { readFileSync } from 'node:fs';
+import * as EQ from '../../editor-quem.js';
+import * as ES from '../../estudio.js';
 var falhas = 0; function check(n, ok) { console.log((ok ? 'ok   ' : 'FALHA ') + n); if (!ok) falhas++; }
 var org = function (c) { return c.origens || []; };
 var C = [
@@ -58,5 +60,20 @@ check('passoQuem usa a cascata', /EQ\.fraseCascata\(/.test(fonte) && /EQ\.etapas
 check('linhas Quem, Quando e Hoje', /<b>Quem:<\/b>/.test(fonte) && /<b>Quando:<\/b>/.test(fonte) && /<b>Hoje:<\/b>/.test(fonte));
 check('troca de página usa aplicarPagina', /data-qpagina/.test(fonte) && /EQ\.aplicarPagina\(/.test(fonte));
 check('o campo de material solto saiu do passo', !/data-qpop="mat"|chip\('mat'/.test(fonte));
-check('versão de cache nova em crm.js e index.html', !/2026-11-13\.11/.test(fonte) && !/2026-11-13\.11/.test(indexHtml));
+check('versão de cache nova em crm.js e index.html', /2026-11-14\.2/.test(fonte) && /2026-11-14\.2/.test(indexHtml) && !/2026-11-1[34]\.(11|1)\b/.test(fonte) && !/2026-11-1[34]\.(11|1)\b/.test(indexHtml));
+
+// Task 4: a linha "Hoje" mostra o Y (envios previstos) quando o banco respondeu um número.
+check('o editor pergunta ao banco e usa textoPrevistos', /crm_sequencia_previstos/.test(fonte) && /EQ\.textoPrevistos\(/.test(fonte));
+check('salvar o modelo apaga o Y guardado (ele muda com as regras)', /delete ST\.prev\[/.test(fonte));
+var srcPasso = fonte.slice(fonte.indexOf('function passoQuem('), fonte.indexOf('function renderEditor('));
+function quemHtml(para, prev) {
+  var fabrica = new Function('EQ', 'TX', 'ES', 'C', 'PERSONAS', 'ST', 'esc', 'origensDe', 'origLabel', 'etapaGuiaLabel', 'classeHtml', 'envioHtml', 'pillDe', 'TIPO_EMAIL', 'modeloNome', srcPasso + '; return passoQuem;');
+  var passo = fabrica(EQ, { PAGINAS: PAGINAS }, ES, [], {}, { qpop: '', prev: prev }, String, function (c) { return c.origens || []; }, function (o) { return o; }, function (k) { return k; },
+    function () { return ''; }, function () { return ''; }, function () { return ''; }, {}, function (k) { return k; });
+  return passo({ chave: 'k', criado_no_estudio: true, tipo: 'novidades', envio_gatilho: 'material', para_quem: para }, false);
+}
+check('com Y = 3, a linha Hoje diz "3 envios previstos hoje"', /<b>Hoje:<\/b>[^]*3 envios previstos hoje/.test(quemHtml({}, { k: 3 })));
+check('com Y = 0, diz "0 envios previstos hoje"', /0 envios previstos hoje/.test(quemHtml({}, { k: 0 })));
+check('sem resposta (erro, carregando, não pedido): nada de "previstos"', !/previstos/.test(quemHtml({}, { k: false })) && !/previstos/.test(quemHtml({}, { k: 'carregando' })) && !/previstos/.test(quemHtml({}, {})) && !/previstos/.test(quemHtml({}, { k: null })));
+check('"elegíveis de" aparece sempre', /elegíveis de/.test(quemHtml({}, {})) && /elegíveis de/.test(quemHtml({}, { k: 3 })));
 if (falhas) { console.log(falhas + ' falhas'); process.exit(1); }
