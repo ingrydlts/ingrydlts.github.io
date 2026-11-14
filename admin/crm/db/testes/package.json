@@ -62,7 +62,8 @@
     "test:ficha-html": "node ficha-html.test.mjs",
     "test:ficha-ui": "node crm-ficha-ui.test.mjs",
     "test:ficha-sync": "node ficha-sync.test.mjs",
-    "test:previsao": "node crm-sequencia-previsao.test.mjs"
+    "test:previsao": "node crm-sequencia-previsao.test.mjs",
+    "test:saude": "node crm-saude-i06.test.mjs"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.8"
