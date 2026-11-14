@@ -1,5 +1,6 @@
 import { estimar, motivoFora, fraseQuem, paginaAtual, etapasDaPagina, aplicarPagina, fraseCascata } from '../../editor-quem.js';
 import { PAGINAS } from '../../taxonomia.js';
+import { readFileSync } from 'node:fs';
 var falhas = 0; function check(n, ok) { console.log((ok ? 'ok   ' : 'FALHA ') + n); if (!ok) falhas++; }
 var org = function (c) { return c.origens || []; };
 var C = [
@@ -47,4 +48,12 @@ check('frase vazia', f3.pagina === 'qualquer página' && f3.personas === null);
 var f4 = fraseCascata({ para_quem: { materiais: ['guia-etudes-en-france-2027'], personas: ['campus_france'] } }, P, rot);
 check('frase com persona marcada', f4.personas === 'Pcampus_france');
 check('estimar com a regra da página', estimar(C, { para_quem: aplicarPagina({}, 'I01', P).para }, org).n === 0);
+// Task 3: a tela usa a cascata (a tela não roda em Node, então a ligação é conferida no fonte).
+var fonte = readFileSync(new URL('../../crm.js', import.meta.url), 'utf8');
+var indexHtml = readFileSync(new URL('../../index.html', import.meta.url), 'utf8');
+check('passoQuem usa a cascata', /EQ\.fraseCascata\(/.test(fonte) && /EQ\.etapasDaPagina\(/.test(fonte));
+check('linhas Quem, Quando e Hoje', /<b>Quem:<\/b>/.test(fonte) && /<b>Quando:<\/b>/.test(fonte) && /<b>Hoje:<\/b>/.test(fonte));
+check('troca de página usa aplicarPagina', /data-qpagina/.test(fonte) && /EQ\.aplicarPagina\(/.test(fonte));
+check('o campo de material solto saiu do passo', !/data-qpop="mat"|chip\('mat'/.test(fonte));
+check('versão de cache nova em crm.js e index.html', !/2026-11-13\.11/.test(fonte) && !/2026-11-13\.11/.test(indexHtml));
 if (falhas) { console.log(falhas + ' falhas'); process.exit(1); }

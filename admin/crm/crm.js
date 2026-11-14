@@ -2,13 +2,13 @@
 // Nada de service_role aqui. O banco é db/crm-fase2.sql; o desenho é o artefato "CRM Por Dentro".
 // Tudo que vem do banco é texto de terceiros (nome, e-mail, pergunta): passa sempre por esc().
 import { supabase } from '/assets/js/supabase-client.js';
-import * as TX from './taxonomia.js?v=2026-11-13.11';   // páginas, famílias e agrupamento dos modelos
-import * as ES from './estudio.js?v=2026-11-13.11';   // os blocos do estúdio de e-mails (entregas 2 e 3)
-import * as EE from './editor-email.js?v=2026-11-13.11';
-import * as EQ from './editor-quem.js?v=2026-11-13.11';
-import * as JR from './jornada.js?v=2026-11-13.11';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
-import * as FX from './ficha.js?v=2026-11-13.11';   // ficha v2: lógica pura (fila, démarches, funil, ações)
-import * as FH from './ficha-html.js?v=2026-11-13.11';   // ficha v2: HTML puro
+import * as TX from './taxonomia.js?v=2026-11-14.1';   // páginas, famílias e agrupamento dos modelos
+import * as ES from './estudio.js?v=2026-11-14.1';   // os blocos do estúdio de e-mails (entregas 2 e 3)
+import * as EE from './editor-email.js?v=2026-11-14.1';
+import * as EQ from './editor-quem.js?v=2026-11-14.1';
+import * as JR from './jornada.js?v=2026-11-14.1';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
+import * as FX from './ficha.js?v=2026-11-14.1';   // ficha v2: lógica pura (fila, démarches, funil, ações)
+import * as FH from './ficha-html.js?v=2026-11-14.1';   // ficha v2: HTML puro
 
 var PERSONAS = {
   au_pair_estudante: 'Au pair → estudante', campus_france: 'Campus France', alternancia_emprego: 'Alternância / emprego',
@@ -2558,7 +2558,7 @@ function fxHeaderHtml(c, d) {
 // Catálogo de démarches (cópia do app, processos.json): carregado uma vez; sem ele, tudo cai na démarche padrão.
 var FX_PROC = null;
 async function fxCarregaProcessos() {
-  try { var r = await fetch('processos.json?v=2026-11-13.11'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
+  try { var r = await fetch('processos.json?v=2026-11-14.1'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
 }
 // A sessão Checklist: pílulas por démarche, os 4 mais urgentes, pasta do Drive privada e "Ver mais desta sessão".
 function fxChecklistCorpo(c) {
@@ -3453,7 +3453,7 @@ function passoConferir(m, v, d, confs, travas, testado, vistos, vs) {
 function passoQuem(m, ro) {
   var k = m.chave, novoM = !!m.criado_no_estudio, objM = novoM ? ES.objetivo(m.objetivo_chave) : null;
   var est = EQ.estimar(C, m, origensDe), fr = EQ.fraseQuem(m, { material: origLabel, etapa: etapaGuiaLabel });
-  var MOT = { persona: 'de outra persona', material: 'de outro material', etapa: 'de outra resposta', estagio: 'de outro estágio', novidades: 'sem aceitar novidades' };
+  var MOT = { persona: 'de outra persona', material: 'de outra página', etapa: 'de outra resposta', estagio: 'de outro estágio', novidades: 'sem aceitar novidades' };
   var fora = Object.keys(est.porMotivo).map(function (x) { return est.porMotivo[x] + ' ' + MOT[x]; }).join(', ');
   var contador = '<div class="ee-conta" role="status"><span class="n">' + est.n + '</span><span><b>pessoas</b> recebem este e-mail hoje<span class="sub">de ' + est.total + ' na base' + (fora && est.n !== est.total ? ' · de fora: ' + esc(fora) : '') + '. É uma estimativa pelas regras; o Worker confere de novo a cada envio.</span></span></div>';
   var avancado = '<details class="ee-av"><summary>Avançado</summary>' + classeHtml(m) + '<label class="st-fld"><span>Objetivo</span><textarea class="st-in" id="st-objetivo" rows="2" maxlength="300">' + esc(m.objetivo) + '</textarea></label>' +
@@ -3467,14 +3467,29 @@ function passoQuem(m, ro) {
   var seq = !!m.envio_gatilho, minutos = m.envio_minutos, quando = !seq ? 'só quando você envia' : minutos != null ? minutos + (minutos === 1 ? ' minuto' : ' minutos') + ' depois' : m.envio_dias != null ? (m.envio_dias === 0 ? 'no mesmo dia' : m.envio_dias + (m.envio_dias === 1 ? ' dia' : ' dias') + ' depois') : 'defina o envio';
   var base = m.envio_gatilho === 'material' ? ' de pegar ' + origLabel(m.envio_depois_de) : m.envio_gatilho === 'email' ? ' do e-mail "' + modeloNome(m.envio_depois_de) + '"' : m.envio_gatilho === 'compra' ? ' da compra' : '';
   var pop = '';
-  if (ST.qpop === 'mat') pop = '<fieldset class="st-pq"><legend>Entrou por (material)</legend><div class="st-pq-op">' + materiaisConhecidos().map(function (o) { return '<label class="st-check"><input type="checkbox" data-pq="materiais" value="' + esc(o[0]) + '"' + ((((m.para_quem || {}).materiais || []).indexOf(o[0]) >= 0) ? ' checked' : '') + '> ' + '> ' + esc(o[1]) + '</label>'; }).join('') + '</div><small>Nenhum marcado = qualquer material.</small></fieldset>';
-  else if (ST.qpop === 'etapa') pop = '<fieldset class="st-pq"><legend>Respondeu (etapa do guia)</legend><div class="st-pq-op">' + ES.ETAPAS_FILTRO.map(function (o) { return '<label class="st-check"><input type="checkbox" data-pq="etapas" value="' + esc(o[0]) + '"' + (((m.para_quem || {}).etapas || []).indexOf(o[0]) >= 0 ? ' checked' : '') + '> ' + esc(o[1]) + '</label>'; }).join('') + '</div><small>Nenhuma marcada = qualquer resposta (quem não marcou etapa também recebe).</small></fieldset>';
+  var para = m.para_quem || {}, pagK = EQ.paginaAtual(para, TX.PAGINAS), pag = TX.PAGINAS.filter(function (p) { return p.k === pagK; })[0] || null;
+  var fr2 = EQ.fraseCascata(m, TX.PAGINAS, { material: origLabel, etapa: etapaGuiaLabel, persona: function (x) { return PERSONAS[x] || x; } });
+  var etOpc = pag ? EQ.etapasDaPagina(pag, ES.ETAPAS_FILTRO) : ES.ETAPAS_FILTRO;
+  var grupoPq = function (legenda, g, itens, dica) {
+    return '<fieldset class="st-pq"><legend>' + esc(legenda) + '</legend><div class="st-pq-op">' + itens.map(function (o) {
+      return '<label class="st-check"><input type="checkbox" data-pq="' + g + '" value="' + esc(o[0]) + '"' + ((para[g] || []).indexOf(o[0]) >= 0 ? ' checked' : '') + '> ' + esc(o[1]) + '</label>';
+    }).join('') + '</div><small>' + esc(dica) + '</small></fieldset>';
+  };
+  if (ST.qpop === 'pag') pop = '<fieldset class="st-pq"><legend>Página de inbound</legend><div class="st-pq-op">' + [['', 'Qualquer página']].concat(TX.PAGINAS.map(function (p) { return [p.k, p.k + ' · ' + p.nome]; })).map(function (o) {
+    return '<label class="st-check"><input type="radio" name="st-qpagina" data-qpagina value="' + esc(o[0]) + '"' + ((o[0] || null) === pagK ? ' checked' : '') + '> ' + esc(o[1]) + '</label>';
+  }).join('') + '</div><small>Trocar de página volta persona e etapa para "qualquer".</small></fieldset>';
+  else if (ST.qpop === 'persona' && pag) pop = grupoPq('Persona (opcional)', 'personas', pag.personas.map(function (k) { return [k, PERSONAS[k] || k]; }), 'Nenhuma marcada = qualquer persona desta página.');
+  else if (ST.qpop === 'etapa' && etOpc.length) pop = grupoPq('Respondeu (etapa da página)', 'etapas', etOpc, 'Nenhuma marcada = qualquer resposta (quem não marcou etapa também recebe).');
   else if (ST.qpop === 'sai') pop = envioHtml(m);
   var popHtml = pop ? '<div class="ee-pop2" role="dialog" aria-label="Mudar">' + pop + '<button type="button" class="btn" data-qpop="">Pronto</button></div>' : '';
-  var mats = ((m.para_quem || {}).materiais || []).length, ets = ((m.para_quem || {}).etapas || []).length;
-  return '<section class="ee-quem"><p class="ee-frase">Vai para quem entrou por ' + chip('mat', fr.materiais, !mats) + ' e respondeu ' + chip('etapa', fr.etapas, !ets) +
-    (m.tipo === 'novidades' ? ' <span class="ee-ch fixo">só quem aceitou novidades</span>' : '') + '. Sai ' + chip('sai', quando + base, !seq) + '.</p>' + popHtml + contador +
-    '<p class="sub ee-dica">Toque nos campos coloridos para mudar.</p></section>' + avancado;
+  var chipEtapa = pag && !etOpc.length ? '<span class="ee-ch fixo">qualquer resposta</span>' : chip('etapa', fr2.etapas, !(para.etapas || []).length);
+  var quem = '<p class="ee-frase"><b>Quem:</b> ' + chip('pag', fr2.pagina, !(para.materiais || []).length) +
+    (fr2.personas !== null ? ' · ' + chip('persona', fr2.personas, !(para.personas || []).length) : '') + ' · ' + chipEtapa +
+    (fr2.novidades ? ' · <span class="ee-ch fixo">aceitou novidades</span>' : '') + '</p>';
+  var contadorNovo = '<div class="ee-conta" role="status"><span class="n">' + est.n + '</span><span><b>Hoje:</b> elegíveis de ' + est.total +
+    '<span class="sub">' + (fora && est.n !== est.total ? 'De fora: ' + esc(fora) + '. ' : '') + 'É uma estimativa pelas regras; o Worker confere de novo a cada envio.</span></span></div>';
+  return '<section class="ee-quem">' + quem + '<p class="ee-frase"><b>Quando:</b> ' + chip('sai', quando + base, !seq) + '</p>' + popHtml + contadorNovo +
+    '<p class="sub ee-dica">Toque nos campos coloridos para mudar. A página vem primeiro: ela decide a persona e as etapas que aparecem.</p></section>' + avancado;
 }
 
 function renderEditor(lista) {
@@ -4782,6 +4797,10 @@ document.addEventListener('change', async function (e) {
   if (e.target.id === 'compose-tpl') return openCompose(activeCid, e.target.value);
   if (e.target.id === 'st-who') { ST.who = e.target.value; return renderPrevia(); }
   if (e.target.dataset && e.target.dataset.novopara && ST.criar) { mudarPara(ST.criar.para, e.target.dataset.novopara, e.target.value, e.target.checked); if (e.target.dataset.novopara === 'produto') renderCriar(); criarPode(); return renderPrevia(); }
+  if (e.target.dataset && e.target.dataset.qpagina !== undefined) {
+    var mq0 = modeloAtual(), r0 = EQ.aplicarPagina(mq0.para_quem || {}, e.target.value || null, TX.PAGINAS);
+    return salvarModelo({ para_quem: r0.para, quem_recebe: paraResumo({ tipo: mq0.tipo, para_quem: r0.para }) }, 'Para quem salvo' + (r0.limpou.length ? ' · ' + r0.limpou.join(' e ') + ' voltou para qualquer' : ''));
+  }
   if (e.target.dataset && e.target.dataset.pq) {
     var mq = modeloAtual(), np = JSON.parse(JSON.stringify(mq.para_quem || {}));
     mudarPara(np, e.target.dataset.pq, e.target.value, e.target.checked);
