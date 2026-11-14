@@ -9,7 +9,8 @@ export function motivoFora(c, m, origensDe) {
   if (lista(p.personas).length && lista(p.personas).indexOf(c.persona) < 0) return 'persona';
   if (lista(p.materiais).length && !origensDe(c).some(function (o) { return p.materiais.indexOf(o) >= 0; })) return 'material';
   var et = c.respostas && c.respostas.objetivo;
-  if (lista(p.etapas).length && et && p.etapas.indexOf(et) < 0) return 'etapa';
+  // Como o banco (crm-filtro-etapa.sql): com regra de etapa, quem não marcou etapa também fica de fora.
+  if (lista(p.etapas).length && !(et && p.etapas.indexOf(et) >= 0)) return 'etapa';
   if (lista(p.estagios).length && lista(p.estagios).indexOf(c.estagio) < 0) return 'estagio';
   if (m && m.tipo === 'novidades' && !c.aceita_novidades) return 'novidades';
   return null;
@@ -80,4 +81,10 @@ export function fraseCascata(m, paginas, rot) {
     etapas: lista(p.etapas).length ? por(p.etapas, rot.etapa) : 'qualquer resposta',
     novidades: !!(m && m.tipo === 'novidades')
   };
+}
+
+// O Y da linha "Hoje": vem do banco (crm_sequencia_previstos). Sem número (manual, erro, ainda carregando) = sem texto.
+export function textoPrevistos(y) {
+  if (typeof y !== 'number' || !isFinite(y)) return '';
+  return y + (y === 1 ? ' envio previsto hoje' : ' envios previstos hoje');
 }

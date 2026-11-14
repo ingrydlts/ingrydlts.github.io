@@ -1,4 +1,4 @@
-import { estimar, motivoFora, fraseQuem, paginaAtual, etapasDaPagina, aplicarPagina, fraseCascata } from '../../editor-quem.js';
+import { estimar, motivoFora, fraseQuem, paginaAtual, etapasDaPagina, aplicarPagina, fraseCascata, textoPrevistos } from '../../editor-quem.js';
 import { PAGINAS } from '../../taxonomia.js';
 import { readFileSync } from 'node:fs';
 var falhas = 0; function check(n, ok) { console.log((ok ? 'ok   ' : 'FALHA ') + n); if (!ok) falhas++; }
@@ -9,7 +9,10 @@ var C = [
   { persona: 'b', origens: ['g1'], respostas: { objetivo: 'ap-y' }, estagio: 'ativado', aceita_novidades: true }];
 check('sem regra: todos entram', estimar(C, { para_quem: {} }, org).n === 3);
 check('material g1: 2', estimar(C, { para_quem: { materiais: ['g1'] } }, org).n === 2);
-check('etapa ap-x: quem não respondeu entra (como o Worker)', estimar(C, { para_quem: { etapas: ['ap-x'] } }, org).n === 2);
+check('etapa ap-x: quem não marcou etapa fica de fora (como o banco, crm-filtro-etapa.sql)', estimar(C, { para_quem: { etapas: ['ap-x'] } }, org).n === 1);
+check('etapa: motivo para quem não marcou', motivoFora(C[1], { para_quem: { etapas: ['ap-x'] } }, org) === 'etapa');
+check('sem regra de etapa, quem não marcou entra', motivoFora(C[1], { para_quem: {} }, org) === null);
+check('textoPrevistos', textoPrevistos(7) === '7 envios previstos hoje' && textoPrevistos(1) === '1 envio previsto hoje' && textoPrevistos(0) === '0 envios previstos hoje' && textoPrevistos(null) === '' && textoPrevistos(undefined) === '' && textoPrevistos('x') === '');
 check('novidades exige aceite', estimar(C, { tipo: 'novidades', para_quem: {} }, org).n === 2);
 check('motivo persona', motivoFora(C[2], { para_quem: { personas: ['a'] } }, org) === 'persona');
 check('porMotivo conta', estimar(C, { para_quem: { personas: ['a'] } }, org).porMotivo.persona === 1);

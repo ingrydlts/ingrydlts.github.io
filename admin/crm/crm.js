@@ -3479,7 +3479,7 @@ function passoQuem(m, ro) {
     return '<label class="st-check"><input type="radio" name="st-qpagina" data-qpagina value="' + esc(o[0]) + '"' + ((o[0] || null) === pagK ? ' checked' : '') + '> ' + esc(o[1]) + '</label>';
   }).join('') + '</div><small>Trocar de página volta persona e etapa para "qualquer".</small></fieldset>';
   else if (ST.qpop === 'persona' && pag) pop = grupoPq('Persona (opcional)', 'personas', pag.personas.map(function (k) { return [k, PERSONAS[k] || k]; }), 'Nenhuma marcada = qualquer persona desta página.');
-  else if (ST.qpop === 'etapa' && etOpc.length) pop = grupoPq('Respondeu (etapa da página)', 'etapas', etOpc, 'Nenhuma marcada = qualquer resposta (quem não marcou etapa também recebe).');
+  else if (ST.qpop === 'etapa' && etOpc.length) pop = grupoPq('Respondeu (etapa da página)', 'etapas', etOpc, 'Nenhuma marcada = qualquer resposta. Com etapa marcada, só recebe quem marcou uma delas no guia.');
   else if (ST.qpop === 'sai') pop = envioHtml(m);
   var popHtml = pop ? '<div class="ee-pop2" role="dialog" aria-label="Mudar">' + pop + '<button type="button" class="btn" data-qpop="">Pronto</button></div>' : '';
   var chipEtapa = pag && !etOpc.length ? '<span class="ee-ch fixo">qualquer resposta</span>' : chip('etapa', fr2.etapas, !(para.etapas || []).length);
@@ -3586,7 +3586,7 @@ function paraQuemHtml(para, attr, obj, produtoFixo) {
   return prod +
     grupo('Persona', 'personas', Object.keys(PERSONAS).filter(function (k) { return k !== 'sem'; }).map(function (k) { return [k, PERSONAS[k]]; }), 'Nenhuma marcada = todas.') +
     grupo('Material de origem', 'materiais', materiaisConhecidos(), 'Só quem pegou um destes guias. Nenhum = qualquer origem.') +
-    grupo('Etapa do guia', 'etapas', ES.ETAPAS_FILTRO, 'Só quem marcou uma destas etapas no guia. Nenhuma = qualquer etapa (quem não marcou etapa também recebe).') +
+    grupo('Etapa do guia', 'etapas', ES.ETAPAS_FILTRO, 'Só quem marcou uma destas etapas no guia. Nenhuma = qualquer etapa. Com etapa marcada, só recebe quem marcou uma delas.') +
     grupo('Estágio', 'estagios', STAGES.map(function (x) { return [x.k, x.l]; }), 'Nenhum = qualquer estágio.') +
     grupo('Segmento do reimpacto', 'segmentos', SEGMENTS.map(function (x) { return [x.k, x.t]; }), 'Nenhum = sem regra de segmento.');
 }
