@@ -177,7 +177,7 @@ console.log('== Dossiê: cruzamentos e o que falta ==');
   check('o bloco das páginas de entrada não entra no "falta" (é livre)', !F.conversa.concat(F.app, F.doc).some((f) => /^etapa_i/.test(f.k)));
   const m1 = mod.dosMensagemTexto(C1, F.conversa, false), m2 = mod.dosMensagemTexto(C1, F.doc, true);
   check('a mensagem de perguntas: saudação, até 5 itens com ?, e pede para responder', /^Oi Xena!/.test(m1) && (m1.match(/^• /gm) || []).length <= 5 && /\?/.test(m1) && /responder por aqui/.test(m1));
-  check('a mensagem de documentos pede o envio, sem "?" nos itens', /pode me enviar/.test(m2) && !/^• .*\?$/m.test(m2));
+  check('a mensagem de documentos é um lembrete do Drive e do check no app (não pede envio), sem "?" nos itens', /Drive/.test(m2) && /link fechado/.test(m2) && !/pode me enviar/.test(m2) && !/^• .*\?$/m.test(m2));
   mod.state.dos = null;
   const vazio = mod.dosCruzamentos(C1, null), fv = mod.dosFaltaPorCanal(C1, null);
   check('sem o dossiê carregado, não quebra e não inventa', vazio.confere.length === 0 && fv.conversa.length === 0);

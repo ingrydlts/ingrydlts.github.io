@@ -2,13 +2,13 @@
 // Nada de service_role aqui. O banco é db/crm-fase2.sql; o desenho é o artefato "CRM Por Dentro".
 // Tudo que vem do banco é texto de terceiros (nome, e-mail, pergunta): passa sempre por esc().
 import { supabase } from '/assets/js/supabase-client.js';
-import * as TX from './taxonomia.js?v=2026-11-15.26';   // páginas, famílias e agrupamento dos modelos
-import * as ES from './estudio.js?v=2026-11-15.26';   // os blocos do estúdio de e-mails (entregas 2 e 3)
-import * as EE from './editor-email.js?v=2026-11-15.26';
-import * as EQ from './editor-quem.js?v=2026-11-15.26';
-import * as JR from './jornada.js?v=2026-11-15.26';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
-import * as FX from './ficha.js?v=2026-11-15.26';   // ficha v2: lógica pura (fila, démarches, funil, ações)
-import * as FH from './ficha-html.js?v=2026-11-15.26';   // ficha v2: HTML puro
+import * as TX from './taxonomia.js?v=2026-11-15.27';   // páginas, famílias e agrupamento dos modelos
+import * as ES from './estudio.js?v=2026-11-15.27';   // os blocos do estúdio de e-mails (entregas 2 e 3)
+import * as EE from './editor-email.js?v=2026-11-15.27';
+import * as EQ from './editor-quem.js?v=2026-11-15.27';
+import * as JR from './jornada.js?v=2026-11-15.27';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
+import * as FX from './ficha.js?v=2026-11-15.27';   // ficha v2: lógica pura (fila, démarches, funil, ações)
+import * as FH from './ficha-html.js?v=2026-11-15.27';   // ficha v2: HTML puro
 
 var PERSONAS = {
   au_pair_estudante: 'Au pair → estudante', campus_france: 'Campus France', alternancia_emprego: 'Alternância / emprego',
@@ -3071,7 +3071,7 @@ function fxHeaderHtml(c, d) {
 // Catálogo de démarches (cópia do app, processos.json): carregado uma vez; sem ele, tudo cai na démarche padrão.
 var FX_PROC = null;
 async function fxCarregaProcessos() {
-  try { var r = await fetch('processos.json?v=2026-11-15.26'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
+  try { var r = await fetch('processos.json?v=2026-11-15.27'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
 }
 // A sessão Checklist: pílulas por démarche, os 4 mais urgentes, pasta do Drive privada e "Ver mais desta sessão".
 function fxChecklistCorpo(c) {
@@ -3147,7 +3147,7 @@ function dosFaltaPorCanal(c, S) {
 }
 function dosMensagemTexto(c, campos, doc) {
   var qs = campos.slice(0, 5).map(function (f) { return '• ' + f.l + (doc ? '' : '?'); }).join('\n');
-  return doc ? 'Oi ' + pn(c) + '! Para seguir com o seu caso, pode me enviar (ou subir no app):\n' + qs + '\n\nQualquer dúvida é só falar.'
+  return doc ? 'Oi ' + pn(c) + '! Um lembrete para não se perder nas démarches. Guarde na pasta certa do seu Drive:\n' + qs + '\n\nDepois cole o link fechado da pasta no app e dê o check no passo. Qualquer dúvida é só falar.'
     : 'Oi ' + pn(c) + '! Para eu te ajudar melhor, me conta rapidinho:\n' + qs + '\n\nPode responder por aqui mesmo.';
 }
 function dosMontaMensagem(cid, tipo) {
@@ -3271,7 +3271,7 @@ function dosVisaoHtml(c, d) {
       falta = '<div class="dv-sec"><div class="k">Como completar o que falta' + (pos ? '' : ' (depois do 1:1)') + '</div><div class="dv-estr">' +
         (F.conversa.length ? '<div class="dv-e"><b>Perguntar por mensagem</b><span class="sub">' + F.conversa.length + ' respostas: ela responde no chat.</span>' + lista(F.conversa) + '<button type="button" class="btn" data-dosmsg="' + esc(c.id) + '" data-tipo="conversa">Montar a mensagem →</button></div>' : '') +
         (F.app.length ? '<div class="dv-e"><b>Ela completa no app</b><span class="sub">' + F.app.length + ' respostas: o checklist pergunta quando ela chega nesse passo.</span>' + lista(F.app) + '</div>' : '') +
-        (F.doc.length ? '<div class="dv-e"><b>Pedir o documento</b><span class="sub">' + F.doc.length + ' itens: ela envia ou sobe no app.</span>' + lista(F.doc) + '<button type="button" class="btn" data-dosmsg="' + esc(c.id) + '" data-tipo="doc">Pedir os documentos →</button></div>' : '') + '</div></div>';
+        (F.doc.length ? '<div class="dv-e"><b>Lembrar dos documentos</b><span class="sub">' + F.doc.length + ' itens: ela guarda no Drive dela e só cola o link fechado no app (nada sensível vai para o app).</span>' + lista(F.doc) + '<button type="button" class="btn" data-dosmsg="' + esc(c.id) + '" data-tipo="doc">Mandar o lembrete →</button></div>' : '') + '</div></div>';
     }
   } else if (S) falta = '<div class="dv-sec"><div class="k">O que falta</div><p class="sub" style="margin:0">Nada falta no dossiê.</p></div>';
   return '<section class="panel dv" id="dos-visao" style="padding:16px;margin-bottom:14px"><h3 style="font-size:17px;margin:0 0 2px">' + esc(titulo) + '</h3><p class="sub" style="margin:0 0 12px">' + esc(sub) + '</p>' +
