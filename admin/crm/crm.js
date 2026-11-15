@@ -2500,7 +2500,7 @@ var H_FX = { esc: esc, fmtDay: fmtDay };
 var FX_ABAS = ['conversa', 'plataforma', 'ficha', 'dossie'];
 // Zera o que é "desta pessoa" ao abrir outra ficha. A ordem das sessões e o guia são preferências do navegador e ficam.
 function fxReset() {
-  var f = state.fx; f.tab = null; f.ag = { i: 0, pop: null }; f.dem = 'todas'; f.ckTodos = false; f.ckMais = false; f.abertas = {}; f.flash = null; f.tarefas = []; f.dados = null;
+  var f = state.fx; f.tab = null; f.ag = { i: 0, pop: null }; f.dem = 'todas'; f.ckTodos = false; f.ckMais = false; f.abertas = {}; f.flash = null; f.tarefas = []; f.dados = null; f.appAba = 'inicio'; f.dia = 1; f.camadas = false;
 }
 function fxPrefs() {
   var f = state.fx;
@@ -2637,6 +2637,31 @@ function fxMaisCorpo(c) {
     casoSecao('Só dela', pn(c), kvHtml([['Respostas no Dossiê', pr ? pr.n + ' de ' + pr.tot : '—'], ['Achados da conversa', String(k.ach.length)], ['Ações', String(k.aco.length)],
       ['Itens do board publicados', pub + ' de ' + k.itens.length], ['Avisos', String(k.avs.length)], ['Escolas que ela acrescentou', String((k.escolasDela || []).length)]]));
 }
+// Prévia do app dela com dados reais (só leitura). O dia simula quando cada aviso agendado chega, somando as pausas em ordem.
+function fxPreviaDados(c) {
+  var f = state.fx, k = state.caso && state.caso.cid === c.id && !state.caso.err ? state.caso : null, chk = state.dos && state.dos.cid === c.id ? state.dos.chk : null;
+  var ok = chk && !chk.err && !chk.semConta, hoje = new Date().toISOString().slice(0, 10), dia = f.dia == null ? 1 : f.dia;
+  var itens = ok ? (chk.itens || []).filter(function (i) { return i.status !== 'arquivado'; }) : [], feitos = itens.filter(function (i) { return i.status === 'concluido'; });
+  var abertos = itens.filter(function (i) { return i.status !== 'concluido'; }).sort(function (a, b) { return (a.due_date || '9999') < (b.due_date || '9999') ? -1 : 1; });
+  var pub = function (tipos) { return k ? k.itens.filter(function (x) { return x.estado === 'publicado' && tipos.indexOf(x.tipo) >= 0; }) : []; };
+  var marcos = pub(['marco']).map(function (x) { return { titulo: x.titulo, resumo: x.resumo, data: x.dados && x.dados.data }; });
+  var m = marcos.filter(function (x) { return x.data; }).sort(function (a, b) { return a.data < b.data ? -1 : 1; })[0];
+  var acum = 0, avisos = [];
+  if (k) filaDe(k.avs).concat([]).forEach(function (a) { acum += a.pausa_dias || 0; if (acum <= dia) avisos.push({ tipo: CASO_TIPO_AVISO[a.tipo] || a.tipo, titulo: a.titulo, texto: a.texto }); });
+  if (k) k.avs.filter(function (a) { return a.liberado_em && (a.estado === 'liberado' || a.estado === 'lido'); }).forEach(function (a) { avisos.unshift({ tipo: CASO_TIPO_AVISO[a.tipo] || a.tipo, titulo: a.titulo, texto: a.texto }); });
+  var dd = state.dos && state.dos.cid === c.id ? state.dos : null, pr = dd ? dosProgresso(c, dd.d, dd.rasc) : { n: 0, tot: 0 };
+  return { nome: pn(c), semConta: !c.user_id, aba: f.appAba || 'inicio', dia: dia, camadas: !!f.camadas, pct: itens.length ? Math.round(feitos.length / itens.length * 100) : 0, feitos: feitos.length, total: itens.length,
+    naoLidas: chatNaoLidas(state.chat), marco: m ? { titulo: m.titulo, dias: diasAteIso(m.data), data: m.data } : null, prox: abertos[0] ? { label: abertos[0].label, due: abertos[0].due_date } : null, avisos: avisos,
+    passos: abertos.concat(feitos).map(function (i) { return { label: i.label, tag: i.category, feito: i.status === 'concluido', due: i.due_date, atrasado: !!(i.due_date && i.due_date < hoje && i.status !== 'concluido') }; }),
+    espaco: { marcos: marcos, escolas: pub(['escola']).map(function (x) { return { titulo: x.titulo, resumo: x.resumo }; }), dela: k ? (k.escolasDela || []).map(function (x) { return { nome: x.nome }; }) : [] },
+    guias: { bilan: pub(['bilan']).length > 0, docs: pub(['documento']).map(function (x) { return { titulo: x.titulo, resumo: x.resumo }; }), msgs: pub(['modelo']).map(function (x) { return { titulo: x.titulo }; }) },
+    perfil: { n: pr.n, tot: pr.tot, kv: [['Situação', personaLabel(c)], ['Cidade', (dd && dosValor(c, dd.d, dd.rasc, 'cidade')) || ''], ['Fase', (dd && dosValor(c, dd.d, dd.rasc, 'fase')) || '']] } };
+}
+function fxPreviaHtml(c) {
+  if (!state.caso || state.caso.cid !== c.id) setTimeout(function () { carregaCaso(c.id); }, 0);
+  return FH.htmlPreviaApp(fxPreviaDados(c), H_FX);
+}
+function fxPintaPrevia() { var c = byC(state.sel), b = $('fx-previa'); if (c && b) b.innerHTML = fxPreviaHtml(fxContato(c, state.fx.dados && state.fx.dados.uid)); }
 function fxSessoes(c) {
   var mk = function (titulo, sub, id, corpo) { var a = fxSessaoAberta(id); return { titulo: titulo, sub: sub, aberto: a, corpo: a ? corpo() : '' }; };
   var mapa = {
@@ -2657,7 +2682,7 @@ function fxSessoes(c) {
 function fxCorpo(c, d, tab) {
   if (tab === 'plataforma') {
     if (state.int && state.int.err) return '<div class="panel" style="padding:16px;margin-top:14px"><h3 style="font-size:15px;margin-bottom:8px">Plataforma ainda não ligada</h3><p class="sub" style="margin:0">Falta rodar <b>db/crm-plataforma.sql</b> no SQL Editor do Supabase (depois dele, os cliques novos começam a aparecer aqui).</p></div>';
-    return '<div class="fx-plat">' + pagamentoHtml(c, H4_PLAT) + fxSessoes(c) + '</div>';
+    return '<div class="fx-plat">' + pagamentoHtml(c, H4_PLAT) + '<div class="fx-plat-grade"><div class="fx-plat-esq">' + fxSessoes(c) + '</div><aside class="fx-previa" id="fx-previa" aria-label="O app dela (prévia)">' + fxPreviaHtml(c) + '</aside></div></div>';
   }
   if (tab === 'conversa') return conversaPanel(c, d.mails || [], d.resps || [], d.h4 || H4_PLAT);
   // Dossiê: aba própria, sempre aberta. Preenche sozinho com o que ela responde no funil e no app (ver DOS_FUNIL).
@@ -2795,6 +2820,9 @@ function fichaClick(el) {
       f.ord = nova; FX.gravarPrefs(localStorage, { ord: nova }); fxPintaCorpo();
       var mb = document.querySelector('[data-fx="mover"][data-id="' + ds.id + '"][data-d="' + ds.d + '"]'); if (mb && mb.focus) mb.focus(); return true;
     }
+    case 'appaba': f.appAba = ds.v; fxPintaPrevia(); return true;
+    case 'appdia': f.dia = Number(ds.v); fxPintaPrevia(); return true;
+    case 'camadas': f.camadas = !f.camadas; fxPintaPrevia(); return true;
     case 'dem': { f.dem = ds.v || 'todas'; var cd = byC(state.sel); if (cd) fxPintaChk(fxContato(cd, f.dados && f.dados.uid)); return true; }
     case 'ckTodos': case 'ckMais': { if (ds.fx === 'ckTodos') f.ckTodos = !f.ckTodos; else f.ckMais = !f.ckMais; var cm = byC(state.sel); if (cm) fxPintaChk(fxContato(cm, f.dados && f.dados.uid)); return true; }
     case 'agPrev': fxCarGo(-1); return true;

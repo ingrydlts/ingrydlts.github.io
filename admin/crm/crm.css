@@ -1166,3 +1166,42 @@ details.ee-sec[open]>summary{margin-bottom:8px}
 .st-excl-i{display:flex; gap:8px; align-items:center; justify-content:space-between; padding:6px 4px; border-top:1px solid var(--line); font-size:12.5px}
 .st-excl-i > span{min-width:0} .st-excl-i b{display:block; font-weight:600} .st-excl-i .btn{flex:none}
 .ee-irmaos .ee-et{max-width:420px}
+
+/* Ficha v2, fase 2: prévia do app dela (coluna da direita da aba Plataforma) */
+.fx-plat-grade{display:grid; grid-template-columns:minmax(0,1fr) 380px; gap:28px; align-items:start}
+.fx-plat-esq{min-width:0}
+.fx-previa{position:sticky; top:calc(var(--hd-h, 0px) + 12px); min-width:0}
+.fx-pv-cab{display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:8px; margin-bottom:10px; font-size:13px}
+.fx-pv-dias{display:inline-flex; gap:4px}
+.fx-pv-dias button{min-height:34px; padding:0 12px; border:1px solid var(--line-2); border-radius:999px; background:var(--surface-2); font-size:12.5px; font-weight:600; cursor:pointer}
+.fx-pv-dias button[aria-pressed="true"]{background:var(--ink); color:var(--surface); border-color:var(--ink)}
+.fx-pv-tel{display:flex; flex-direction:column; height:640px; border:8px solid #2B2B2B; border-radius:36px; overflow:hidden; background:#F4F1EC; color:#2B2B2B}
+.fx-pv-top{display:flex; justify-content:space-between; align-items:center; padding:14px 16px 6px}
+.fx-pv-marca{font:700 17px Fraunces,Georgia,serif}.fx-pv-marca i{font-style:normal; color:#604034}
+.fx-pv-sino{position:relative; font-size:16px}
+.fx-pv-sino i{position:absolute; top:-6px; right:-8px; min-width:16px; height:16px; padding:0 4px; border-radius:8px; background:#B8452F; color:#fff; font:700 10px/16px Inter,sans-serif; text-align:center; font-style:normal}
+.fx-pv-corpo{flex:1; min-height:0; overflow-y:auto; padding:6px 14px 14px}
+.fx-pv-prev{margin:2px 0 10px; padding:8px 11px; border-radius:8px; background:#FBF1DE; border-left:4px solid #B8933F; font-size:12px; line-height:1.45}
+.fx-pv-card{position:relative; margin-bottom:10px; padding:14px; background:#fff; border:1px solid rgba(43,43,43,.14); border-radius:8px; font-size:13px; line-height:1.45}
+.fx-pv-card h4{margin:4px 0 2px; font:700 16px/1.25 Fraunces,Georgia,serif; color:#2B2B2B}
+.fx-pv-card p{margin:0}
+.fx-pv-card .k{font-size:10.5px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:#6E6862}
+.fx-pv-hero{border-left:4px solid #577328}.fx-pv-hero.urg{border-left-color:#B2452E}
+.fx-pv-pct{position:absolute; top:12px; right:14px; font:700 18px Fraunces,Georgia,serif}
+.fx-pv-bar{height:7px; margin:8px 0; border-radius:4px; background:rgba(43,43,43,.1); overflow:hidden}.fx-pv-bar i{display:block; height:100%; background:#577328}
+.fx-pv-row{display:flex; justify-content:space-between; align-items:flex-start; gap:10px; padding:9px 0; border-top:1px solid rgba(43,43,43,.1)}
+.fx-pv-row small{display:block; font-size:10.5px; font-weight:700; color:#6E6862}
+.fx-pv-row em{font-style:normal; font-size:11px; font-weight:700; padding:2px 8px; border-radius:999px; background:rgba(222,185,117,.3); color:#8A6A22; white-space:nowrap}
+.fx-pv-row em.at{background:rgba(196,90,66,.16); color:#B2452E}
+.fx-pv-row .bx{flex:none; width:18px; height:18px; margin-right:-2px; border:1.5px solid #6E6862; border-radius:5px; font-size:12px; line-height:15px; text-align:center; color:#fff}
+.fx-pv-row.f .bx{background:#577328; border-color:#577328}
+.fx-pv-row.f{color:#6E6862; text-decoration:line-through}
+.fx-pv-row > span:first-of-type{flex:1}
+.fx-pv-vz{margin:0; color:#6E6862; font-size:12.5px}
+.fx-pv-nav{display:grid; grid-template-columns:repeat(5,1fr); padding:6px 6px 10px; background:#FBFAF7; border-top:1px solid rgba(43,43,43,.1)}
+.fx-pv-nav button{min-height:44px; border:0; border-radius:8px; background:none; color:#6E6862; font-size:11px; font-weight:600; cursor:pointer}
+.fx-pv-nav button[aria-current="page"]{color:#604034; background:rgba(96,64,52,.09)}
+.fx-pv-leg{margin:10px 0 6px; font-size:12.5px; color:var(--ink-3)}
+.fx-pv-tg{display:block; font-size:12.5px; color:var(--ink-2)}.fx-pv-tg .p{color:#577328; font-weight:700}.fx-pv-tg .d{color:#8B4A32; font-weight:700}
+.fx-pv-tel [data-l]{outline:1.5px dashed #8B4A32; outline-offset:2px}.fx-pv-tel [data-l="Persona"]{outline-color:#577328}
+@media (max-width:1100px){.fx-plat-grade{grid-template-columns:1fr}.fx-previa{position:static}}

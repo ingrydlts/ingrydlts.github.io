@@ -165,3 +165,54 @@ export function htmlFluxo(passo, h) {
     return '<li class="fx-passo-fluxo ' + (n < p ? 'done' : n === p ? 'cur' : 'next') + '" data-passo="' + n + '"' + (n === p ? ' aria-current="step"' : '') + '><span class="fx-segn">' + n + '</span><span><b>' + e(x[0]) + '</b><span class="sub fx-fluxo-frase">' + e(x[1]) + '</span></span></li>';
   }).join('') + '</ol>';
 }
+
+// ---------- Fase 2: prévia do app dela (coluna da direita da aba Plataforma) ----------
+// d = { nome, semConta, aba, dia, camadas, pct, feitos, total, naoLidas, marco: {titulo, dias, data}|null, prox: {label, due}|null,
+//       avisos: [{tipo, titulo, texto}], passos: [{label, tag, feito, due, atrasado}], espaco: {marcos: [{titulo, resumo}], escolas: [{titulo, resumo}], dela: [{nome}]},
+//       guias: {bilan, docs: [{titulo, resumo}], msgs: [{titulo}]}, perfil: {n, tot, kv: [[rotulo, valor]]} }
+// Tudo é dado real da pessoa, só leitura. Nada aqui grava.
+const ABAS_APP = [['inicio', 'Início'], ['checklist', 'Checklist'], ['espaco', 'Espaço'], ['guias', 'Guias'], ['perfil', 'Perfil']];
+const LEGENDA_ABA = {
+  inicio: 'Início junta o próximo passo, o prazo mais perto (prazo publicado) e os avisos que já chegaram à data.',
+  checklist: 'Checklist = passos da persona e o que ela adicionou. Só ela marca.',
+  espaco: 'Espaço = prazos e escolas que você publicou, mais as escolas que ela acrescentou.',
+  guias: 'Guias = bilan, documentos e mensagens prontas que você publicou só para ela.',
+  perfil: 'Perfil = respostas do Dossiê que já existem.'
+};
+export function htmlPreviaApp(d, h) {
+  const e = h.esc, L = (l, t) => (d.camadas ? ' data-l="' + l + '"' : '') + (t || '');
+  const aba = LEGENDA_ABA[d.aba] ? d.aba : 'inicio';
+  const vz = (t) => '<p class="fx-pv-vz">' + e(t) + '</p>';
+  let corpo = '';
+  if (aba === 'inicio') {
+    const frase = d.marco ? 'Faltam ' + d.marco.dias + ' dias: ' + d.marco.titulo + '.' : 'Nada vence nesta semana. O próximo passo está logo abaixo.';
+    corpo = '<section class="fx-pv-card fx-pv-hero' + (d.marco && d.marco.dias <= 21 ? ' urg' : '') + '"' + L('Dela') + '><span class="k">Hoje</span><h4>Olá, ' + e(d.nome) + '</h4><p>' + e(frase) + '</p><b class="fx-pv-pct">' + d.pct + '%</b></section>' +
+      (d.naoLidas ? '<section class="fx-pv-card"' + L('Dela') + '><span class="k">Recado da Ingryd</span><p>Ela tem ' + d.naoLidas + ' novidade' + (d.naoLidas > 1 ? 's' : '') + ' no assistente.</p></section>' : '') +
+      (d.prox ? '<section class="fx-pv-card"' + L('Persona') + '><span class="k">Próximo passo</span><h4>' + e(d.prox.label) + '</h4><p>' + (d.prox.due ? 'Prazo: ' + e(h.fmtDay(d.prox.due)) : 'Sem data ainda') + '</p></section>' : '') +
+      d.avisos.map((a) => '<article class="fx-pv-card"' + L('Dela') + '><span class="k">' + e(a.tipo) + '</span><h4>' + e(a.titulo) + '</h4><p>' + e(a.texto || '') + '</p></article>').join('');
+  } else if (aba === 'checklist') {
+    const linha = (x) => '<div class="fx-pv-row' + (x.feito ? ' f' : '') + '"><span class="bx" aria-hidden="true">' + (x.feito ? '✓' : '') + '</span><span><small>' + e(x.tag || '') + '</small>' + e(x.label) + '</span>' +
+      (x.due && !x.feito ? '<em class="' + (x.atrasado ? 'at' : '') + '">' + e(h.fmtDay(x.due)) + '</em>' : '') + '</div>';
+    corpo = '<section class="fx-pv-card"' + L('Persona') + '><span class="k">Seus passos</span><h4>' + d.feitos + ' de ' + d.total + ' feitos</h4><div class="fx-pv-bar"><i style="width:' + d.pct + '%"></i></div>' +
+      (d.passos.length ? d.passos.map(linha).join('') : vz(d.semConta ? 'Ela ainda não entrou no app: o checklist nasce no primeiro acesso.' : 'Nenhum passo ainda.')) + '</section>';
+  } else if (aba === 'espaco') {
+    const itens = d.espaco.marcos.map((m) => '<article class="fx-pv-card"' + L('Dela') + '><span class="k">Prazo</span><h4>' + e(m.titulo) + '</h4><p>' + e(m.resumo || '') + '</p></article>').join('') +
+      (d.espaco.escolas.length || d.espaco.dela.length ? '<section class="fx-pv-card"' + L('Dela') + '><span class="k">Escolas para você contatar</span>' + d.espaco.escolas.map((x) => '<div class="fx-pv-row"><span><b>' + e(x.titulo) + '</b><small>' + e(x.resumo || '') + '</small></span></div>').join('') +
+        d.espaco.dela.map((x) => '<div class="fx-pv-row"><span><b>' + e(x.nome) + '</b><small>adicionada por ela</small></span></div>').join('') + '</section>' : '');
+    corpo = itens || '<div class="fx-pv-card">' + vz('Ainda não tem nada seu aqui. Ela vê isto até você publicar algo.') + '</div>';
+  } else if (aba === 'guias') {
+    const g = d.guias, grp = (t, n, s) => '<div class="fx-pv-row"><span><b>' + t + '</b><small>' + (n ? e(s) : 'Em breve') + '</small></span><em>' + (n || '') + '</em></div>';
+    corpo = '<section class="fx-pv-card"' + L('Dela') + '><span class="k">Material da equipe</span>' + grp('Bilans das nossas conversas', g.bilan ? 1 : 0, 'a nossa conversa') +
+      grp('Documentos que a equipe te manda', g.docs.length, g.docs.map((x) => x.titulo).join(', ')) + grp('Mensagens prontas', g.msgs.length, g.msgs.map((x) => x.titulo).join(', ')) + '</section>';
+  } else {
+    corpo = '<section class="fx-pv-card"' + L('Dela') + '><h4>' + e(d.nome) + '</h4>' + d.perfil.kv.map((x) => '<div class="fx-pv-row"><span>' + e(x[0]) + '</span><em>' + e(x[1] || '—') + '</em></div>').join('') + '</section>' +
+      '<section class="fx-pv-card"><span class="k">Seu perfil</span><p>' + d.perfil.n + ' de ' + d.perfil.tot + ' respondidas.</p></section>';
+  }
+  return '<div class="fx-pv-cab"><b>Como ' + e(d.nome) + ' vê no app</b><span class="fx-pv-dias" role="group" aria-label="Dias depois do primeiro acesso">' +
+    [0, 1, 3, 7].map((n) => '<button type="button" data-fx="appdia" data-v="' + n + '" aria-pressed="' + (d.dia === n) + '">Dia ' + n + '</button>').join('') + '</span></div>' +
+    '<div class="fx-pv-tel"><div class="fx-pv-top"><span class="fx-pv-marca">Por <i>Dentro</i></span><span class="fx-pv-sino" aria-label="' + (d.naoLidas + d.avisos.length) + ' novidades">🔔' + (d.naoLidas + d.avisos.length ? '<i>' + (d.naoLidas + d.avisos.length) + '</i>' : '') + '</span></div>' +
+    '<div class="fx-pv-corpo">' + (d.semConta ? '<p class="fx-pv-prev"><b>Prévia.</b> ' + e(d.nome) + ' ainda não entrou no app. É o que ela vê ' + (d.dia === 0 ? 'no primeiro acesso' : 'no dia ' + d.dia + ' depois de entrar') + '.</p>' : '') + corpo + '</div>' +
+    '<nav class="fx-pv-nav" aria-label="Seções do app">' + ABAS_APP.map((a) => '<button type="button" data-fx="appaba" data-v="' + a[0] + '"' + (a[0] === aba ? ' aria-current="page"' : '') + '>' + a[1] + '</button>').join('') + '</nav></div>' +
+    '<p class="fx-pv-leg">' + e(LEGENDA_ABA[aba]) + '</p>' +
+    '<label class="fx-pv-tg"><input type="checkbox" data-fx="camadas"' + (d.camadas ? ' checked' : '') + '> Mostrar as camadas (<span class="p">Persona</span> igual para quem tem a mesma situação · <span class="d">Dela</span> só desta pessoa)</label>';
+}

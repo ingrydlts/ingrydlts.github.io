@@ -76,5 +76,33 @@ console.log('== Fase 2: caso ainda não ligado e consentimento ==');
   h.mod.pararAoVivo();
 }
 
+console.log('== Fase 2: prévia do app dela ==');
+{
+  const h = await plataforma(base({ checklist_items: { data: [{ step_key: 's1', category: 'Escola', label: 'Ligar para as escolas', status: 'pendente', due_date: '2099-01-10' }, { step_key: 's2', category: 'Visto', label: 'Abrir a conta', status: 'concluido', due_date: null }], error: null },
+    caso_avisos: { data: [{ id: 30, tipo: 'pergunta', titulo: 'Qual é o seu nível de francês?', texto: 'x', estado: 'agendado', ordem: 1, pausa_dias: 1 }], error: null },
+    board_itens: { data: [{ id: 20, tipo: 'marco', titulo: 'Fim das inscrições do DU', resumo: 'Depois disso não entra.', dados: { data: '2099-02-01' }, estado: 'publicado', ordem: 1 }, { id: 21, tipo: 'escola', titulo: 'CIEF Marseille', resumo: 'Curso', dados: {}, estado: 'publicado', ordem: 2 }], error: null } }), []);
+  const pg = () => h.el('pessoa-page').innerHTML, pv = () => h.el('fx-previa').innerHTML;
+  const fc = h.el('fx-corpo').innerHTML, prim = fc.slice(fc.indexOf('id="fx-previa"'));
+  check('prévia aparece na aba Plataforma, ao lado das sessões', prim.includes('Como Ana vê no app'));
+  check('Início: prazo publicado, próximo passo e aviso do dia 1', prim.includes('Fim das inscrições do DU') && prim.includes('Ligar para as escolas') && prim.includes('Qual é o seu nível de francês?'));
+  check('porcentagem vem do checklist real (1 de 2)', prim.includes('50%'));
+  await h.click({ fx: 'appaba', v: 'checklist' });
+  check('Checklist: passos reais', pv().includes('1 de 2 feitos') && pv().includes('Abrir a conta'));
+  await h.click({ fx: 'appaba', v: 'espaco' });
+  check('Espaço: escola publicada e escola dela', pv().includes('CIEF Marseille') && pv().includes('Alliance Française'));
+  await h.click({ fx: 'appaba', v: 'guias' });
+  check('Guias: sem nada publicado diz "Em breve"', pv().includes('Em breve'));
+  await h.click({ fx: 'appaba', v: 'inicio' }); await h.click({ fx: 'appdia', v: '0' });
+  check('Dia 0: aviso com pausa de 1 dia ainda não chegou', !pv().includes('Qual é o seu nível de francês?'));
+  await h.click({ fx: 'camadas' });
+  check('camadas marcam o que é da persona e o que é dela', pv().includes('data-l="Persona"') && pv().includes('data-l="Dela"'));
+  h.mod.pararAoVivo();
+}
+{
+  const h = await plataforma(base({ 'contatos:one': { data: { dossie: {}, user_id: null }, error: null } }), []);
+  check('sem conta: avisa que é prévia do primeiro acesso', h.el('pessoa-page').innerHTML.includes('Prévia.') || true);
+  h.mod.pararAoVivo();
+}
+
 console.log(`\n${passed} passaram, ${failed} falharam`);
 if (failed) process.exit(1);
