@@ -158,10 +158,14 @@ export function htmlSessao(s, h) {
     (s.aberto ? '<div class="fx-sess-corpo" id="fx-s-' + e(s.id) + '">' + (s.corpo || '') + '</div>' : '') + '</section>';
 }
 // ord = { app: [ids], ela: [ids] }; mapa = { id: { titulo, sub, corpo, aberto } }. Dois grupos, como no spec §5.2.
-export function htmlSessoes(ord, mapa, h) {
-  const grupo = (area, titulo, dica) => '<div class="fx-grupo fx-grupo-' + area + '" role="group" aria-labelledby="fx-g-' + area + '"><h3 class="fx-h3" id="fx-g-' + area + '">' + h.esc(titulo) + '</h3>' +
-    '<p class="sub fx-grupo-dica">' + h.esc(dica) + '</p>' +
-    ((ord && ord[area]) || []).filter((id) => mapa && mapa[id]).map((id) => htmlSessao(Object.assign({ id, area }, mapa[id]), h)).join('') + '</div>';
+export function htmlSessoes(ord, mapa, h, fechados) {
+  const fech = fechados || {};
+  const grupo = (area, titulo, dica) => {
+    const itens = ((ord && ord[area]) || []).filter((id) => mapa && mapa[id]);
+    return '<details class="fx-grupo fx-grupo-' + area + '" data-grupo="' + area + '"' + (fech[area] ? '' : ' open') + '><summary class="fx-grupo-sum"><h3 class="fx-h3" id="fx-g-' + area + '">' + h.esc(titulo) + '</h3>' +
+      '<span class="sub fx-grupo-dica">' + h.esc(dica) + '</span><span class="fx-grupo-n">' + itens.length + (itens.length === 1 ? ' sessão' : ' sessões') + '</span><span class="fx-grupo-chev" aria-hidden="true">▾</span></summary>' +
+      itens.map((id) => htmlSessao(Object.assign({ id, area }, mapa[id]), h)).join('') + '</details>';
+  };
   return '<div class="fx-sessoes">' + grupo('app', 'Acompanhar o app dela', 'O que ela vê e faz no app.') + grupo('ela', 'Conhecer e registrar', 'Só a equipe vê.') + '</div>';
 }
 

@@ -2,13 +2,13 @@
 // Nada de service_role aqui. O banco é db/crm-fase2.sql; o desenho é o artefato "CRM Por Dentro".
 // Tudo que vem do banco é texto de terceiros (nome, e-mail, pergunta): passa sempre por esc().
 import { supabase } from '/assets/js/supabase-client.js';
-import * as TX from './taxonomia.js?v=2026-11-15.18';   // páginas, famílias e agrupamento dos modelos
-import * as ES from './estudio.js?v=2026-11-15.18';   // os blocos do estúdio de e-mails (entregas 2 e 3)
-import * as EE from './editor-email.js?v=2026-11-15.18';
-import * as EQ from './editor-quem.js?v=2026-11-15.18';
-import * as JR from './jornada.js?v=2026-11-15.18';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
-import * as FX from './ficha.js?v=2026-11-15.18';   // ficha v2: lógica pura (fila, démarches, funil, ações)
-import * as FH from './ficha-html.js?v=2026-11-15.18';   // ficha v2: HTML puro
+import * as TX from './taxonomia.js?v=2026-11-15.19';   // páginas, famílias e agrupamento dos modelos
+import * as ES from './estudio.js?v=2026-11-15.19';   // os blocos do estúdio de e-mails (entregas 2 e 3)
+import * as EE from './editor-email.js?v=2026-11-15.19';
+import * as EQ from './editor-quem.js?v=2026-11-15.19';
+import * as JR from './jornada.js?v=2026-11-15.19';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
+import * as FX from './ficha.js?v=2026-11-15.19';   // ficha v2: lógica pura (fila, démarches, funil, ações)
+import * as FH from './ficha-html.js?v=2026-11-15.19';   // ficha v2: HTML puro
 
 var PERSONAS = {
   au_pair_estudante: 'Au pair → estudante', campus_france: 'Campus France', alternancia_emprego: 'Alternância / emprego',
@@ -232,12 +232,15 @@ async function loadAll() {
     // As assinaturas (db/crm-assinaturas.sql): separam quem já é cliente no Funil. Sem o SQL, todos ficam em Leads ou No app.
     supabase.from('assinaturas').select('contato_id,status,plano,moeda,teste_fim,periodo_fim,cancela_no_fim,criado_em').limit(5000),
     // Os 1:1 (db/crm-fase2.sql): alimentam o calendário e o indicador "1:1 marcados". Sem a tabela, ficam vazios.
-    supabase.from('um_a_um').select('id,contato_id,quando,status,criado_em').order('quando', { ascending: true }).limit(2000)
+    supabase.from('um_a_um').select('id,contato_id,quando,status,criado_em').order('quando', { ascending: true }).limit(2000),
+    // Os 1:1 pagos (db/crm-1a1.sql): quantos minutos e quando pagou. O valor em euros não é guardado: o Worker só repassa os minutos.
+    supabase.from('um_a_um_pagamentos').select('contato_id,minutos,pago_em').order('pago_em', { ascending: false }).limit(2000)
   ]);
   if (r[0].error) return fail('carregar os contatos', r[0].error);
   COMPRAS = {}; COMPRAS_EV = [];
   ((r[7] && !r[7].error && r[7].data) || []).forEach(function (e) { var p = (e.dados || {}).produto; if (p) { (COMPRAS[e.contato_id] = COMPRAS[e.contato_id] || {})[p] = 1; COMPRAS_EV.push({ produto: p, em: e.criado_em }); } });
   UM = r[14] && !r[14].error ? (r[14].data || []) : [];
+  PAG1A1 = r[15] && !r[15].error ? (r[15].data || []) : [];
   C = r[0].data || [];
   ASSIN = {};
   ((r[13] && !r[13].error && r[13].data) || []).forEach(function (a) { ASSIN[a.contato_id] = a; });
@@ -267,7 +270,7 @@ async function loadAll() {
   });
 }
 // Os produtos pagos da vitrine (content/produtos-digitais.json, público): nome e slug, para "Para quem" e "Registrar compra".
-var PRODUTOS = [], COMPRAS = {}, COMPRAS_EV = [], UM = [], PRECOS = [];
+var PRODUTOS = [], COMPRAS = {}, COMPRAS_EV = [], UM = [], PAG1A1 = [], PRECOS = [];
 function comprou(cid, prod) { return !!(COMPRAS[cid] && COMPRAS[cid][prod]); }
 async function carregarProdutos() {
   try {
@@ -453,23 +456,39 @@ function renderCalendario() {
   var porDia = {}; comData.forEach(function (x) { porDia[dia(x.quando)] = (porDia[dia(x.quando)] || 0) + 1; });
   var rotMes = mes.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }).replace(' de ', ' ');
   $('cal-mes').textContent = rotMes.charAt(0).toUpperCase() + rotMes.slice(1);
-  var primeiro = (mes.getDay() + 6) % 7, nDias = new Date(mes.getFullYear(), mes.getMonth() + 1, 0).getDate(), hoje = dia(agora.toISOString());
+  var primeiro = (mes.getDay() + 6) % 7, nDias = new Date(mes.getFullYear(), mes.getMonth() + 1, 0).getDate(), hoje = dia(agora.toISOString()), sel = state.calDia || '';
   var grade = ['S', 'T', 'Q', 'Q', 'S', 'S', 'D'].map(function (l) { return '<span class="cal-h" aria-hidden="true">' + l + '</span>'; }).join('');
   for (var i = 0; i < primeiro; i++) grade += '<span></span>';
   for (var d = 1; d <= nDias; d++) {
-    var k = mes.getFullYear() + '-' + (mes.getMonth() + 1) + '-' + d, n = porDia[k] || 0;
-    grade += '<span class="cal-d' + (k === hoje ? ' hoje' : '') + (n ? ' tem' : '') + '"' + (n ? ' title="' + n + (n === 1 ? ' conversa' : ' conversas') + '"' : '') + '>' + d + (n ? '<i class="cal-n">' + n + '</i>' : '') + '</span>';
+    var k = mes.getFullYear() + '-' + (mes.getMonth() + 1) + '-' + d, n = porDia[k] || 0, cls = 'cal-d' + (k === hoje ? ' hoje' : '') + (n ? ' tem' : '') + (k === sel ? ' sel' : '');
+    grade += n ? '<button type="button" class="' + cls + '" data-caldia="' + k + '" aria-pressed="' + (k === sel) + '" aria-label="' + d + ': ' + n + (n === 1 ? ' conversa' : ' conversas') + '">' + d + '<i class="cal-n">' + n + '</i></button>'
+      : '<span class="' + cls + '">' + d + '</span>';
   }
-  var prox = comData.filter(function (x) { return new Date(x.quando).getTime() >= agora.getTime() - 36e5; }).sort(function (a, b) { return a.quando < b.quando ? -1 : 1; });
+  // Minutos e pagamento de cada 1:1: o último pagamento da pessoa até a hora da conversa (ou o mais recente).
+  var pagDe = function (x) {
+    var ps = PAG1A1.filter(function (p) { return p.contato_id === x.contato_id; }); if (!ps.length) return null;
+    var antes = ps.filter(function (p) { return !x.quando || p.pago_em <= x.quando; });
+    return (antes.length ? antes : ps)[0];
+  };
   var linha = function (x, quando) {
     var c = byC(x.contato_id); if (!c) return '';
-    return '<button class="row" data-open="' + esc(c.id) + '" type="button"><div class="' + avClass(c) + '">' + esc(ini(c)) + '</div><div class="who"><b>' + esc(short(c)) + '</b><span>' + esc(personaLabel(c)) + (subLabel(c) ? ' · ' + esc(subLabel(c)) : '') + '</span></div><span class="sla num ok">' + esc(quando) + '</span></button>';
+    var p = pagDe(x), det = [personaLabel(c)];
+    det.push(p ? p.minutos + ' min · pago em ' + fmtDate(p.pago_em) : 'sem pagamento registrado');
+    return '<button class="row" data-open="' + esc(c.id) + '" type="button"><div class="' + avClass(c) + '">' + esc(ini(c)) + '</div><div class="who"><b>' + esc(short(c)) + '</b><span>' + esc(det.join(' · ')) + '</span></div><span class="sla num ok">' + esc(quando) + '</span></button>';
   };
-  var lista = prox.slice(0, 8).map(function (x) {
-    var d = new Date(x.quando); return linha(x, d.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit' }) + ' · ' + fmtHora(x.quando));
-  }).join('') + semData.map(function (x) { return linha(x, 'a combinar'); }).join('');
-  box.innerHTML = '<div class="cal-grade">' + grade + '</div>' + (lista ? '<div class="cal-lista">' + lista + '</div>' : '<div class="empty">Nenhum 1:1 marcado.</div>') +
-    (prox.length > 8 ? '<p class="sub" style="margin:6px 16px 10px">Mais ' + (prox.length - 8) + ' depois destes.</p>' : '');
+  var lista, cab = '';
+  if (sel) {
+    var doDia = comData.filter(function (x) { return dia(x.quando) === sel; }).sort(function (a, b) { return a.quando < b.quando ? -1 : 1; });
+    var dd = doDia.length ? new Date(doDia[0].quando) : null;
+    cab = '<div class="cal-cab"><b>' + esc(dd ? dd.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: '2-digit' }) : '') + '</b><span class="sub">' + doDia.length + (doDia.length === 1 ? ' conversa' : ' conversas') + '</span><button class="link" type="button" data-caldia="">Ver as próximas</button></div>';
+    lista = doDia.map(function (x) { return linha(x, fmtHora(x.quando)); }).join('');
+  } else {
+    var prox = comData.filter(function (x) { return new Date(x.quando).getTime() >= agora.getTime() - 36e5; }).sort(function (a, b) { return a.quando < b.quando ? -1 : 1; });
+    lista = prox.slice(0, 6).map(function (x) {
+      var d2 = new Date(x.quando); return linha(x, d2.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit' }) + ' · ' + fmtHora(x.quando));
+    }).join('') + semData.map(function (x) { return linha(x, 'a combinar'); }).join('') + (prox.length > 6 ? '<p class="sub" style="margin:6px 16px 10px">Mais ' + (prox.length - 6) + ' depois destes: toque num dia do calendário.</p>' : '');
+  }
+  box.innerHTML = '<div class="cal-grade">' + grade + '</div>' + cab + (lista ? '<div class="cal-lista">' + lista + '</div>' : '<div class="empty">Nenhum 1:1 marcado.</div>');
 }
 // ---------- Por onde começar: tudo o que espera por você, por tipo, na ordem que você escolhe ----------
 // Cada item vem com a data desde quando espera (desde) e, se tem, os dias até o prazo. Quem já está com o prazo vencido vai sempre
@@ -2927,7 +2946,7 @@ function fxHeaderHtml(c, d) {
 // Catálogo de démarches (cópia do app, processos.json): carregado uma vez; sem ele, tudo cai na démarche padrão.
 var FX_PROC = null;
 async function fxCarregaProcessos() {
-  try { var r = await fetch('processos.json?v=2026-11-15.18'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
+  try { var r = await fetch('processos.json?v=2026-11-15.19'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
 }
 // A sessão Checklist: pílulas por démarche, os 4 mais urgentes, pasta do Drive privada e "Ver mais desta sessão".
 function fxChecklistCorpo(c) {
@@ -2957,12 +2976,16 @@ function fxSessoes(c) {
     bilan: mk('Bilan', 'O que a conversa mostrou e o e-mail do bilan.', 'bilan', function () { return bilanResumoHtml(c) + bilanBlocoHtml(c, H4_PLAT); }),
     hist: mk('Histórico', 'Tudo que ela fez no app, dia a dia.', 'hist', function () { return '<div id="int-box">' + interacoesHtml(state.int) + '</div>'; })
   };
-  return FH.htmlSessoes(fxOrdem(), mapa, H_FX);
+  return FH.htmlSessoes(fxOrdem(), mapa, H_FX, gruposFechados());
 }
+// Quais grupos da aba Plataforma você deixou fechados (vale para todas as pessoas; localStorage pode estar bloqueado).
+function gruposFechados() { try { return JSON.parse(localStorage.getItem('crm_ficha_grupos_fechados') || '{}') || {}; } catch (e) { return {}; } }
+function gravaGrupoFechado(area, fechado) { var g = gruposFechados(); if (fechado) g[area] = 1; else delete g[area]; try { localStorage.setItem('crm_ficha_grupos_fechados', JSON.stringify(g)); } catch (e) { /* sem localStorage */ } }
+document.addEventListener('toggle', function (e) { var d = e.target; if (d && d.matches && d.matches('details.fx-grupo[data-grupo]')) gravaGrupoFechado(d.dataset.grupo, !d.open); }, true);
 function fxCorpo(c, d, tab) {
   if (tab === 'plataforma') {
     if (state.int && state.int.err) return '<div class="panel" style="padding:16px;margin-top:14px"><h3 style="font-size:15px;margin-bottom:8px">Plataforma ainda não ligada</h3><p class="sub" style="margin:0">Falta rodar <b>db/crm-plataforma.sql</b> no SQL Editor do Supabase (depois dele, os cliques novos começam a aparecer aqui).</p></div>';
-    return '<div class="fx-plat">' + pagamentoHtml(c, H4_PLAT) + fxSessoes(c) + '</div>';
+    return '<div class="fx-plat"><div class="fx-plat-main">' + fxSessoes(c) + '</div><aside class="fx-plat-lat" aria-label="Pagamento">' + pagamentoHtml(c, H4_PLAT) + '</aside></div>';
   }
   if (tab === 'conversa') return conversaPanel(c, d.mails || [], d.resps || [], d.h4 || H4_PLAT, d.jor);
   // Dossiê: aba própria, sempre aberta. Preenche sozinho com o que ela responde no funil e no app (ver DOS_FUNIL).
@@ -5019,6 +5042,7 @@ document.addEventListener('click', async function (e) {
   }
   if (t.matches('tr[data-id]')) return openPessoa(t.dataset.id);
   if (t.dataset.open) return openPessoa(t.dataset.open);
+  if (t.dataset.caldia !== undefined) { state.calDia = state.calDia === t.dataset.caldia ? '' : t.dataset.caldia; return renderCalendario(); }
   if (t.dataset.calmes) { state.calOff = (state.calOff || 0) + Number(t.dataset.calmes); return renderCalendario(); }
   if (t.dataset.pistaemail) { state.rascunho[t.dataset.pistaemail] = (state.rascPista || {})[t.dataset.pistaemail] || ''; return openPessoa(t.dataset.pistaemail, 'conversa'); }
   if (t.dataset.hojemais) { state.hMais = true; return renderFila(); }
