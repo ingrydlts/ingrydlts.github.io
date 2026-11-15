@@ -1348,3 +1348,24 @@ button.cal-d:hover{outline:1px solid var(--moss)}
 .hd-l{display:flex; gap:10px; justify-content:space-between; padding:3px 0; border-bottom:1px solid var(--line); font-size:13px}
 .hd-lista{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:6px; font-size:13px}
 .hd-dos{display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:8px 16px; font-size:13px}
+
+/* Dossiê: visão geral (janela-mãe) */
+.dv-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:12px}
+.dv-card{padding:12px 14px; border:1px solid var(--line); border-radius:var(--r); background:var(--surface)}
+.dv-card .k,.dv-sec .k{font-size:11px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-3); margin:0 0 6px}
+.dv-l{display:flex; justify-content:space-between; gap:10px; padding:3px 0; font-size:13px; border-bottom:1px solid var(--line)}
+.dv-l:last-child{border-bottom:0}
+.dv-l span{color:var(--ink-2); flex:0 0 auto}
+.dv-l b{text-align:right; min-width:0; overflow-wrap:anywhere}
+.dv-fonte{font-style:normal; font-weight:500; font-size:11px; color:var(--ink-3); margin-left:4px}
+.dv-sec{margin-top:14px; padding-top:12px; border-top:1px solid var(--line)}
+.dv-ul,.dv-ol{margin:0 0 6px; padding-left:18px; font-size:13px; display:flex; flex-direction:column; gap:3px}
+.dv-div li{color:var(--red)}
+.dv-estr{display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:12px}
+.dv-e{padding:10px 12px; border-radius:var(--r); background:var(--surface); border:1px solid var(--line); display:flex; flex-direction:column; gap:4px; align-items:flex-start}
+/* Plataforma: Insights */
+.ins-lista{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:6px}
+.ins-i{display:flex; align-items:center; gap:10px; flex-wrap:wrap; padding:8px 10px; border-radius:var(--r); background:var(--surface); border:1px solid var(--line)}
+.ins-alerta{border-color:var(--red)}
+.ins-p{font-size:10.5px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; padding:2px 8px; border-radius:999px; background:var(--sunk); color:var(--ink-2)}
+.ins-t{flex:1 1 220px; font-size:13px}

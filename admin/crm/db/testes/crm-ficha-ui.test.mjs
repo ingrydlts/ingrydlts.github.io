@@ -176,7 +176,7 @@ console.log('== Task 12: sessões em pílulas ==');
   check('arrastar para cima cai antes do alvo', h.mod.state.fx.ord.app.join() === 'inicio,chat,checklist');
   await chamar('dragstart', ev({ dataset: { area: 'app', id: 'chat' } }, null));
   await chamar('drop', ev(null, { dataset: { area: 'ela', sessao: 'bilan' } }));
-  check('arrastar para outro grupo é ignorado', h.mod.state.fx.ord.app.join() === 'inicio,chat,checklist' && h.mod.state.fx.ord.ela.join() === 'bilan,hist' && h.mod.state.fx.drag === null);
+  check('arrastar para outro grupo é ignorado', h.mod.state.fx.ord.app.join() === 'inicio,chat,checklist' && h.mod.state.fx.ord.ela.join() === 'bilan,insights,hist' && h.mod.state.fx.drag === null);
   h.mod.pararAoVivo();
   // preferência salva volta ao abrir de novo; preferência inválida volta ao padrão
   h = await mk({ crm_ficha_ord_v1: JSON.stringify({ app: ['checklist', 'chat'], ela: ['hist'] }) });

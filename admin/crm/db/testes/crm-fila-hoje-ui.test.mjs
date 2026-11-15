@@ -32,7 +32,7 @@ function qb(table) {
 const supabase = { from: qb, auth: { getSession: async () => ({ data: { session: null } }) }, rpc: async (n, a) => { rpcs.push({ n, a }); return rpcRetorno; }, channel: () => ({ on() { return this; }, subscribe() { return this; } }), removeChannel() {} };
 const store = {};
 const mod = new Function('supabase', 'ES', 'TX', 'EE', 'EQ', 'JR', 'document', 'window', 'location', 'localStorage', 'setInterval', 'clearInterval',
-  src + '\n;return { state, setC: function (v) { C = v; }, setQ: function (v) { Q = v; }, setR: function (v) { R = v; }, setP: function (v) { P = v; }, setPSUG: function (v) { PSUG = v; }, setFin: function (o) { PRODUTOS = o.produtos; COMPRAS_EV = o.compras; ASSIN = o.assin; PRECOS = o.precos; }, itensDeHoje, ordenaFila, catDoContato, renderFila, receitaEstimada, pistasDaJornada, rascunhoMultiFunil, funisDaPessoa, fxResumoCartoes, setUM: function (v) { UM = v; }, setPAG: function (v) { PAG1A1 = v; }, dosDoFunil, dosCampo, dosProgresso, dosVisiveis };')(
+  src + '\n;return { state, setC: function (v) { C = v; }, setQ: function (v) { Q = v; }, setR: function (v) { R = v; }, setP: function (v) { P = v; }, setPSUG: function (v) { PSUG = v; }, setFin: function (o) { PRODUTOS = o.produtos; COMPRAS_EV = o.compras; ASSIN = o.assin; PRECOS = o.precos; }, itensDeHoje, ordenaFila, catDoContato, renderFila, receitaEstimada, pistasDaJornada, rascunhoMultiFunil, funisDaPessoa, fxResumoCartoes, setUM: function (v) { UM = v; }, setPAG: function (v) { PAG1A1 = v; }, dosDoFunil, dosCampo, dosProgresso, dosVisiveis, dosCruzamentos, dosFaltaPorCanal, dosMensagemTexto, insightsDaPlataforma };')(
   supabase, {}, TXMOD, { iniciar() {}, depois() {}, campoMudou() {} }, {}, {}, document, { addEventListener() {}, confirm: () => true, scrollTo() {} }, { href: '' }, { getItem: (k) => store[k] ?? null, setItem: (k, v) => { store[k] = v; } }, () => 1, () => {});
 
 const dia = (n) => new Date(Date.now() + n * 864e5).toISOString();
@@ -158,6 +158,45 @@ console.log('== Dossiê: as respostas das páginas de entrada ==');
   check('resposta que o formulário não conhece é ignorada', mod.dosDoFunil(P, 'etapa_i03') === null);
   const antes = mod.dosProgresso(pessoa('e', 'Eva', { persona: 'campus_france' }), {}, {});
   check('o bloco novo não entra na conta do "faltam" (nem toda pessoa passou por todas as páginas)', mod.dosVisiveis(pessoa('e', 'Eva', { persona: 'campus_france' }), {}, {}).some((b) => b.t === 'Respostas das páginas de entrada' && b.livre) && antes.tot > 0 && antes.tot === mod.dosProgresso(pessoa('e', 'Eva', { persona: 'campus_france' }), { etapa_i02: 'tec-nao-sei' }, {}).tot);
+}
+
+console.log('== Dossiê: cruzamentos e o que falta ==');
+{
+  const C1 = pessoa('x', 'Xena', { persona: 'campus_france', user_id: null, respostas: { objetivo: 'tec-nao-sei', cfNivel: 'master' } });
+  mod.state.jorQuiz = { cid: 'x', quizzes: [{ em: dia(-9), objetivo: 'cf-escolhendo-curso' }, { em: dia(-2), objetivo: 'tec-nao-sei' }] };
+  mod.state.dos = { cid: 'x', d: { etapa_i02: 'tec-nao-sei', etapa_i03: 'cf-juntando-documentos', cidade: 'Lyon' }, rasc: {}, origem: { cidade: { origem: 'documento', valor: 'Lyon', confianca: 'alta' } }, onbEm: dia(-1) };
+  const X = mod.dosCruzamentos(C1, mod.state.dos);
+  check('confere: o que o funil disse e o dossiê tem igual (Tecnólogo)', X.confere.some((y) => /Tecnólogo/.test(y.l)));
+  check('diverge: Campus France, o funil disse "Escolhendo o curso" e o dossiê diz "Juntando documentos"', X.diverge.length === 1 && /Études en France/.test(X.diverge[0].l) && /Escolhendo o curso/.test(X.diverge[0].funil) && /Juntando documentos/.test(X.diverge[0].dossie));
+  check('só do funil: o nível da candidatura ainda não está no dossiê', X.soFunil.some((y) => /Nível da candidatura/.test(y.l)));
+  check('da chamada: a cidade lida do documento, com a confiança', X.daChamada.length === 1 && /Cidade/.test(X.daChamada[0].l) && X.daChamada[0].conf === 'alta' && /documento/i.test(X.daChamada[0].origem));
+  const F = mod.dosFaltaPorCanal(C1, mod.state.dos);
+  check('lead sem conta: o que falta vai para conversa (e documentos), nada vai para "ela completa no app"', F.conversa.length > 0 && F.app.length === 0 && F.doc.some((f) => f.k === 'numero_secu') && !F.conversa.some((f) => f.k === 'cidade'));
+  const F2 = mod.dosFaltaPorCanal(Object.assign({}, C1, { user_id: 'u-x' }), mod.state.dos);
+  check('com conta: moradia, conta bancária e sécu passam para "ela completa no app"', F2.app.some((f) => f.k === 'moradia_resolvida') && F2.app.some((f) => f.k === 'conta_resolvida') && !F2.conversa.some((f) => f.k === 'moradia_resolvida'));
+  check('o bloco das páginas de entrada não entra no "falta" (é livre)', !F.conversa.concat(F.app, F.doc).some((f) => /^etapa_i/.test(f.k)));
+  const m1 = mod.dosMensagemTexto(C1, F.conversa, false), m2 = mod.dosMensagemTexto(C1, F.doc, true);
+  check('a mensagem de perguntas: saudação, até 5 itens com ?, e pede para responder', /^Oi Xena!/.test(m1) && (m1.match(/^• /gm) || []).length <= 5 && /\?/.test(m1) && /responder por aqui/.test(m1));
+  check('a mensagem de documentos pede o envio, sem "?" nos itens', /pode me enviar/.test(m2) && !/^• .*\?$/m.test(m2));
+  mod.state.dos = null;
+  const vazio = mod.dosCruzamentos(C1, null), fv = mod.dosFaltaPorCanal(C1, null);
+  check('sem o dossiê carregado, não quebra e não inventa', vazio.confere.length === 0 && fv.conversa.length === 0);
+}
+
+console.log('== Plataforma: insights ==');
+{
+  const A = pessoa('a', 'Ana', { user_id: 'u-a', ultimo_evento_em: dia(-10) });
+  const itens = [{ status: 'concluido', label: 'Passaporte', due_date: '2026-01-01' }, { status: 'pendente', label: 'Moradia', due_date: '2020-01-01' }, { status: 'pendente', label: 'Banco', due_date: '2099-01-01' }];
+  const I = mod.insightsDaPlataforma(A, { agora: Date.now(), cliques: [{ sessao: 's1', tela: 'checklist', alvo: 'tela', criado_em: dia(-20) }, { sessao: 's2', tela: 'checklist', alvo: 'tela', criado_em: dia(-1) }], chk: { itens }, chatNaoLidas: 2, dosFalta: 5, umEm: dia(-5), notasVivas: 1 });
+  const txt = I.map((i) => i.t).join(' | ');
+  check('parada há 10 dias: atenção com ação no chat', I.some((i) => i.tom === 'alerta' && /Parada há 10 dias/.test(i.t) && i.acao === 'chat'));
+  check('depois do 1:1 abriu o app em 1 sessão: bom sinal (a sessão de antes do 1:1 não conta)', I.some((i) => i.tom === 'ok' && /Depois do 1:1 de \d{2}\/\d{2}, abriu o app em 1 sessão/.test(i.t)));
+  const I2 = mod.insightsDaPlataforma(A, { agora: Date.now(), cliques: [{ sessao: 's1', tela: 'checklist', alvo: 'tela', criado_em: dia(-20) }], chk: null, chatNaoLidas: 0, dosFalta: 0, umEm: dia(-5), notasVivas: 0 });
+  check('depois do 1:1 sem abrir o app: atenção com ação no chat', I2.some((i) => i.tom === 'alerta' && /ainda não abriu o app/.test(i.t) && i.acao === 'chat'));
+  check('checklist: 1 de 3 concluídos, 1 atrasado e o próximo prazo', /1 de 3 concluídos/.test(txt) && /1 item atrasado: Moradia/.test(txt) && /Próximo prazo/.test(txt));
+  check('2 mensagens sem ler, dossiê em aberto e nota da iAssistente', /2 mensagens dela no chat sem ler/.test(txt) && /dossiê ainda tem 5 respostas/.test(txt) && /1 nota da iAssistente/.test(txt));
+  const ok = mod.insightsDaPlataforma(pessoa('b', 'Bia', { user_id: 'u-b', ultimo_evento_em: dia(0) }), { agora: Date.now(), cliques: [], chk: null, chatNaoLidas: 0, dosFalta: 0, umEm: null, notasVivas: 0 });
+  check('ativa hoje e sem pendências: só bom sinal, sem ação', ok.length === 1 && ok[0].tom === 'ok' && !ok[0].acao);
 }
 
 console.log('\n' + (failed ? failed + ' FALHARAM, ' : '') + passed + ' passaram' + (failed ? '' : ', 0 falharam'));

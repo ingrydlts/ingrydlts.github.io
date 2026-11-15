@@ -2,13 +2,13 @@
 // Nada de service_role aqui. O banco é db/crm-fase2.sql; o desenho é o artefato "CRM Por Dentro".
 // Tudo que vem do banco é texto de terceiros (nome, e-mail, pergunta): passa sempre por esc().
 import { supabase } from '/assets/js/supabase-client.js';
-import * as TX from './taxonomia.js?v=2026-11-15.24';   // páginas, famílias e agrupamento dos modelos
-import * as ES from './estudio.js?v=2026-11-15.24';   // os blocos do estúdio de e-mails (entregas 2 e 3)
-import * as EE from './editor-email.js?v=2026-11-15.24';
-import * as EQ from './editor-quem.js?v=2026-11-15.24';
-import * as JR from './jornada.js?v=2026-11-15.24';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
-import * as FX from './ficha.js?v=2026-11-15.24';   // ficha v2: lógica pura (fila, démarches, funil, ações)
-import * as FH from './ficha-html.js?v=2026-11-15.24';   // ficha v2: HTML puro
+import * as TX from './taxonomia.js?v=2026-11-15.25';   // páginas, famílias e agrupamento dos modelos
+import * as ES from './estudio.js?v=2026-11-15.25';   // os blocos do estúdio de e-mails (entregas 2 e 3)
+import * as EE from './editor-email.js?v=2026-11-15.25';
+import * as EQ from './editor-quem.js?v=2026-11-15.25';
+import * as JR from './jornada.js?v=2026-11-15.25';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
+import * as FX from './ficha.js?v=2026-11-15.25';   // ficha v2: lógica pura (fila, démarches, funil, ações)
+import * as FH from './ficha-html.js?v=2026-11-15.25';   // ficha v2: HTML puro
 
 var PERSONAS = {
   au_pair_estudante: 'Au pair → estudante', campus_france: 'Campus France', alternancia_emprego: 'Alternância / emprego',
@@ -3067,7 +3067,7 @@ function fxHeaderHtml(c, d) {
 // Catálogo de démarches (cópia do app, processos.json): carregado uma vez; sem ele, tudo cai na démarche padrão.
 var FX_PROC = null;
 async function fxCarregaProcessos() {
-  try { var r = await fetch('processos.json?v=2026-11-15.24'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
+  try { var r = await fetch('processos.json?v=2026-11-15.25'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
 }
 // A sessão Checklist: pílulas por démarche, os 4 mais urgentes, pasta do Drive privada e "Ver mais desta sessão".
 function fxChecklistCorpo(c) {
@@ -3097,12 +3097,162 @@ function fxSessoes(c) {
     bilan: mk('Bilan', 'O que a conversa mostrou e o e-mail do bilan.', 'bilan', function () { return bilanResumoHtml(c) + bilanBlocoHtml(c, H4_PLAT); }),
     hist: mk('Histórico', 'Tudo que ela fez no app, dia a dia.', 'hist', function () { return '<div id="int-box">' + interacoesHtml(state.int) + '</div>'; })
   };
+  if (c.user_id) mapa.insights = mk('Insights', 'O que o uso do app diz sobre ela, depois do 1:1.', 'insights', function () { return insightsPlatHtml(c); });
   return FH.htmlSessoes(fxOrdem(), mapa, H_FX, gruposFechados());
 }
 // Quais grupos da aba Plataforma você deixou fechados (vale para todas as pessoas; localStorage pode estar bloqueado).
 function gruposFechados() { try { return JSON.parse(localStorage.getItem('crm_ficha_grupos_fechados') || '{}') || {}; } catch (e) { return {}; } }
 function gravaGrupoFechado(area, fechado) { var g = gruposFechados(); if (fechado) g[area] = 1; else delete g[area]; try { localStorage.setItem('crm_ficha_grupos_fechados', JSON.stringify(g)); } catch (e) { /* sem localStorage */ } }
 document.addEventListener('toggle', function (e) { var d = e.target; if (d && d.matches && d.matches('details.fx-grupo[data-grupo]')) gravaGrupoFechado(d.dataset.grupo, !d.open); }, true);
+// ---------- Dossiê: a visão geral (a janela-mãe da pessoa) ----------
+// Junta o que as bases já sabem dela (cadastro, quizzes das páginas de entrada, e-mails, perguntas, artigos, 1:1, app, o que a chamada trouxe),
+// mostra onde as fontes batem ou divergem e diz como completar o que falta. Tudo por regra: nada inventado.
+var DOS_CANAL_DOC = { numero_secu: 1, comprovante_endereco: 1, documento_vencimento: 1, certificado_frances_qual: 1 };
+var DOS_CANAL_APP = { moradia_resolvida: 1, conta_resolvida: 1, securite_resolvida: 1, conta_anef: 1, tem_certificado_matricula: 1, comprova_recursos: 1, tem_sponsor: 1 };
+function dosRotuloOpcao(f, v) {
+  var o = f && f.o ? f.o.filter(function (x) { return x[0] === String(v); })[0] : null;
+  return o ? o[1] : (v === 'true' ? 'Sim' : v === 'false' ? 'Não' : String(v));
+}
+// Onde as fontes batem: o que o funil disse x o que está no dossiê; o que veio só do funil; o que a chamada trouxe.
+function dosCruzamentos(c, S) {
+  var out = { confere: [], diverge: [], soFunil: [], daChamada: [] };
+  if (!S) return out;
+  dosVisiveis(c, S.d, S.rasc).forEach(function (b) {
+    b.campos.forEach(function (f) {
+      var fun = dosDoFunil(c, f.k), sv = (S.d || {})[f.k], salvo = sv === undefined || sv === null || sv === '' ? null : String(sv);
+      var org = salvo === null ? null : onbOrigemDe(f.k, salvo);
+      if (org) out.daChamada.push({ l: f.l, v: dosRotuloOpcao(f, salvo), conf: org.conf, origem: org.origem });
+      if (fun !== null && salvo !== null) (String(fun) === salvo ? out.confere : out.diverge).push({ l: f.l, funil: dosRotuloOpcao(f, fun), dossie: dosRotuloOpcao(f, salvo) });
+      else if (fun !== null && salvo === null) out.soFunil.push({ l: f.l, v: dosRotuloOpcao(f, fun) });
+    });
+  });
+  return out;
+}
+// O que falta, por jeito de completar: perguntar numa conversa, ela completar no app, ou pedir o documento.
+function dosFaltaPorCanal(c, S) {
+  var out = { conversa: [], app: [], doc: [] };
+  if (!S) return out;
+  dosVisiveis(c, S.d, S.rasc).forEach(function (b) {
+    if (b.livre) return;
+    b.campos.forEach(function (f) {
+      if (dosValor(c, S.d, S.rasc, f.k) !== '') return;
+      (DOS_CANAL_DOC[f.k] ? out.doc : DOS_CANAL_APP[f.k] && c.user_id ? out.app : out.conversa).push(f);
+    });
+  });
+  return out;
+}
+function dosMensagemTexto(c, campos, doc) {
+  var qs = campos.slice(0, 5).map(function (f) { return '• ' + f.l + (doc ? '' : '?'); }).join('\n');
+  return doc ? 'Oi ' + pn(c) + '! Para seguir com o seu caso, pode me enviar (ou subir no app):\n' + qs + '\n\nQualquer dúvida é só falar.'
+    : 'Oi ' + pn(c) + '! Para eu te ajudar melhor, me conta rapidinho:\n' + qs + '\n\nPode responder por aqui mesmo.';
+}
+function dosMontaMensagem(cid, tipo) {
+  var c = byC(cid), falta = c && dosFaltaPorCanal(c, state.dos && state.dos.cid === c.id ? state.dos : null); if (!c || !falta) return;
+  var campos = tipo === 'doc' ? falta.doc : falta.conversa, txt = dosMensagemTexto(c, campos, tipo === 'doc');
+  if (c.user_id) {   // já está na plataforma: a mensagem vai para o chat do app
+    state.chatRasc = txt; var f = state.fx; f.tab = 'plataforma'; f.hd = null; f.abertas.chat = true; fxRepinta();
+    setTimeout(function () { var tx = $('chat-txt'); if (tx) { tx.value = txt; tx.focus(); } }, 0);
+  } else { state.rascunho[cid] = txt; openPessoa(cid, 'conversa'); }
+}
+function dosFonteTag(c, S, k) {
+  var sv = S && S.d ? S.d[k] : null;
+  if (sv !== undefined && sv !== null && sv !== '') return onbOrigemDe(k, String(sv)) ? 'chamada' : 'dossiê';
+  return dosDoFunil(c, k) !== null ? 'funil' : '';
+}
+function dosVisaoHtml(c, d) {
+  var S = state.dos && state.dos.cid === c.id && state.dos.d ? state.dos : null, conta = !!c.user_id, pos = !!(S && S.onbEm);
+  var jor = d.jor || montaJornada([]), mails = d.mails || [], resps = d.resps || [], perg = d.perg || [], evs = d.eventos || [];
+  var titulo = !conta ? 'Preparação do 1:1' : pos ? 'Depois do 1:1' : 'Visão geral';
+  var sub = !conta ? 'Lead sem conta no app. O que já sabemos dela, o que bate entre as fontes e o que perguntar na conversa.'
+    : pos ? 'O que a chamada trouxe, como bate com o resto e como completar o que falta.' : 'Já está na plataforma. O que sabemos, o que bate e como completar o que falta.';
+  var dv = function (k) { return S ? dosValor(c, S.d, S.rasc, k) : ''; };
+  var linhaKv = function (l, v, tag) { return v === '' || v == null ? '' : '<div class="dv-l"><span>' + esc(l) + '</span><b>' + esc(v) + (tag ? ' <i class="dv-fonte">' + esc(tag) + '</i>' : '') + '</b></div>'; };
+  var op = function (k) { var v = dv(k); return v === '' ? '' : dosRotuloOpcao(dosCampo(k), v); };
+  var quem = linhaKv('Situação', personaLabel(c) + (subLabel(c) ? ' · ' + subLabel(c) : '')) + linhaKv('Fase', op('fase'), dosFonteTag(c, S, 'fase')) + linhaKv('Estudos no Brasil', op('nivel_estudos')) +
+    linhaKv('Faixa de idade', op('faixa_idade'), dosFonteTag(c, S, 'faixa_idade')) + linhaKv('Cidade', dv('cidade')) + linhaKv('Chegou na França', dv('data_chegada') ? fmtDay(dv('data_chegada')) : '') +
+    linhaKv('Francês', op('nivel_frances')) + linhaKv('Prazo', c.prazo_limite ? fmtDay(c.prazo_limite) + ' (' + prazoTxt(c) + ')' : CF_PRAZO[(c.respostas || {}).cfNivel] ? fmtDay(CF_PRAZO[c.respostas.cfNivel]) + ' (Campus France)' : '') +
+    linhaKv('Maior preocupação', op('preocupacao') || (c.preocupacao ? String(c.preocupacao) : ''));
+  var entradas = (jor.entradas || []).slice().reverse().slice(0, 4).map(function (x) {
+    var q = (jor.quizzes || []).filter(function (z) { return z.em === x.em; })[0];
+    return '<div class="dv-l"><span>' + esc(fmtDate(x.em)) + '</span><b>' + esc(origLabel(x.origem) || '—') + (q && q.objetivo ? ' <i class="dv-fonte">' + esc(etapaDe(q.objetivo)) + '</i>' : '') + '</b></div>';
+  }).join('');
+  var veio = entradas + linhaKv('Campanha', c.utm_campaign || '') + linhaKv('Instagram', c.instagram || '');
+  var abriu = mails.filter(function (m) { return m.aberto_em || m.status === 'aberto' || m.status === 'clicado'; }).length, clicou = mails.filter(function (m) { return m.clicado_em || m.status === 'clicado'; }).length;
+  var arts = evs.filter(function (e) { return e.tipo === 'artigo_lido'; }).slice(0, 3).map(function (e) { var x = e.dados || {}; return x.titulo || x.slug || ''; }).filter(Boolean);
+  var um = UM.filter(function (x) { return x.contato_id === c.id && x.status !== 'cancelado' && x.quando; }), pasdo = um.filter(function (x) { return x.status === 'feito' || new Date(x.quando).getTime() < Date.now() - 36e5; }).length, vindo = um.filter(function (x) { return x.status === 'agendado' && new Date(x.quando).getTime() >= Date.now() - 36e5; }).sort(function (a, b) { return a.quando < b.quando ? -1 : 1; })[0];
+  var fez = linhaKv('E-mails', mails.length ? mails.length + ' enviados · abriu ' + abriu + ' · clicou ' + clicou : 'nenhum enviado') + linhaKv('Respostas dela', resps.length ? String(resps.length) : '') +
+    linhaKv('Artigos lidos', arts.length ? arts.join(' · ') : jor.artigos ? String(jor.artigos) : '') +
+    perg.slice(0, 2).map(function (p) { return '<div class="dv-l"><span>Perguntou</span><b>' + esc(truncaTxt(p.texto, 90)) + (p.origem ? ' <i class="dv-fonte">' + artigoHtml(p.origem) + '</i>' : '') + '</b></div>'; }).join('') +
+    linhaKv('1:1', pasdo || vindo ? (pasdo ? 'já fez ' + pasdo : 'nenhum feito') + (vindo ? ' · próximo ' + new Date(vindo.quando).toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit' }) + ' ' + fmtHora(vindo.quando) : '') : 'nenhum') +
+    linhaKv('App', conta ? 'tem conta · ' + (c.ultimo_evento_em ? 'última atividade há ' + haDias(diasDesde(c.ultimo_evento_em)) : 'sem atividade') : 'ainda sem conta');
+  var card = function (t, corpo) { return '<div class="dv-card"><div class="k">' + esc(t) + '</div>' + (corpo || '<p class="sub" style="margin:0">Nada registrado ainda.</p>') + '</div>'; };
+
+  // Cruzamentos
+  var X = dosCruzamentos(c, S), cruz = '';
+  if (S && (X.confere.length || X.diverge.length || X.soFunil.length || X.daChamada.length)) {
+    cruz = '<div class="dv-sec"><div class="k">Cruzamentos entre as fontes</div><p class="sub" style="margin:0 0 6px">' + X.confere.length + ' confirmados por mais de uma fonte · ' + X.diverge.length + ' divergem · ' + X.soFunil.length + ' só vêm do funil' + (pos ? ' · ' + X.daChamada.length + ' lidos da chamada' : '') + '.</p>' +
+      (X.diverge.length ? '<ul class="dv-ul dv-div">' + X.diverge.map(function (x) { return '<li><b>' + esc(x.l) + ':</b> o funil disse “' + esc(x.funil) + '”, o dossiê diz “' + esc(x.dossie) + '”. Confirme no 1:1.</li>'; }).join('') + '</ul>' : '') +
+      (X.soFunil.length ? '<ul class="dv-ul">' + X.soFunil.slice(0, 6).map(function (x) { return '<li><b>' + esc(x.l) + ':</b> ' + esc(x.v) + ' <i class="dv-fonte">só do funil: confirme</i></li>'; }).join('') + '</ul>' : '') +
+      (pos && X.daChamada.length ? '<ul class="dv-ul">' + X.daChamada.slice(0, 8).map(function (x) { return '<li><b>' + esc(x.l) + ':</b> ' + esc(x.v) + ' <i class="dv-fonte">' + esc(x.origem) + ' · ' + esc(ONB_CONF[x.conf] || x.conf) + '</i></li>'; }).join('') + '</ul>' : '') + '</div>';
+  }
+  // O que falta e como completar
+  var F = dosFaltaPorCanal(c, S), total = F.conversa.length + F.app.length + F.doc.length, falta = '';
+  if (S && total) {
+    var lista = function (campos) { return '<ul class="dv-ul">' + campos.slice(0, 6).map(function (f) { return '<li>' + esc(f.l) + '</li>'; }).join('') + (campos.length > 6 ? '<li class="sub">e mais ' + (campos.length - 6) + '</li>' : '') + '</ul>'; };
+    if (!conta) {
+      var todos = F.conversa.concat(F.doc).concat(F.app);
+      falta = '<div class="dv-sec"><div class="k">Perguntas para o 1:1</div><p class="sub" style="margin:0 0 6px">' + todos.length + ' respostas faltam. O que você perguntar na conversa já entra no formulário abaixo.</p>' +
+        '<ol class="dv-ol">' + todos.slice(0, 10).map(function (f) { return '<li>' + esc(f.l) + '</li>'; }).join('') + '</ol>' + (todos.length > 10 ? '<p class="sub" style="margin:4px 0 0">E mais ' + (todos.length - 10) + ' no formulário.</p>' : '') + '</div>';
+    } else {
+      falta = '<div class="dv-sec"><div class="k">Como completar o que falta' + (pos ? '' : ' (depois do 1:1)') + '</div><div class="dv-estr">' +
+        (F.conversa.length ? '<div class="dv-e"><b>Perguntar por mensagem</b><span class="sub">' + F.conversa.length + ' respostas: ela responde no chat.</span>' + lista(F.conversa) + '<button type="button" class="btn" data-dosmsg="' + esc(c.id) + '" data-tipo="conversa">Montar a mensagem →</button></div>' : '') +
+        (F.app.length ? '<div class="dv-e"><b>Ela completa no app</b><span class="sub">' + F.app.length + ' respostas: o checklist pergunta quando ela chega nesse passo.</span>' + lista(F.app) + '</div>' : '') +
+        (F.doc.length ? '<div class="dv-e"><b>Pedir o documento</b><span class="sub">' + F.doc.length + ' itens: ela envia ou sobe no app.</span>' + lista(F.doc) + '<button type="button" class="btn" data-dosmsg="' + esc(c.id) + '" data-tipo="doc">Pedir os documentos →</button></div>' : '') + '</div></div>';
+    }
+  } else if (S) falta = '<div class="dv-sec"><div class="k">O que falta</div><p class="sub" style="margin:0">Nada falta no dossiê.</p></div>';
+  return '<section class="panel dv" id="dos-visao" style="padding:16px;margin-bottom:14px"><h3 style="font-size:17px;margin:0 0 2px">' + esc(titulo) + '</h3><p class="sub" style="margin:0 0 12px">' + esc(sub) + '</p>' +
+    '<div class="dv-grid">' + card('Quem ela é', quem) + card('De onde veio e o que respondeu', veio) + card('O que ela fez', fez) + '</div>' + cruz + falta + '</section>';
+}
+// ---------- Plataforma: a sessão "Insights" (depois do 1:1, com ela no app) ----------
+function insightsDaPlataforma(c, X) {
+  var out = [], agora = X.agora || Date.now(), cliques = X.cliques || [];
+  var ult = diasDesde(c.ultimo_evento_em);
+  if (ult != null && ult >= 7) out.push({ tom: 'alerta', t: 'Parada há ' + haDias(ult) + ' no app.', acao: 'chat', rot: 'Mandar um oi no chat' });
+  else if (ult != null) out.push({ tom: 'ok', t: ult === 0 ? 'Usou o app hoje.' : 'Última atividade há ' + haDias(ult) + '.' });
+  if (X.umEm) {
+    var sessoes = {}; cliques.forEach(function (x) { if (x.criado_em >= X.umEm) sessoes[x.sessao || x.criado_em.slice(0, 13)] = 1; });
+    var n = Object.keys(sessoes).length;
+    out.push(n ? { tom: 'ok', t: 'Depois do 1:1 de ' + fmtDate(X.umEm) + ', abriu o app em ' + n + (n === 1 ? ' sessão.' : ' sessões.') } : { tom: 'alerta', t: 'Depois do 1:1 de ' + fmtDate(X.umEm) + ', ainda não abriu o app.', acao: 'chat', rot: 'Lembrar do app no chat' });
+  }
+  if (X.chk && !X.chk.err && !X.chk.semConta && X.chk.itens) {
+    var cc = chkCalc(X.chk, agora), ativos = cc.itens.filter(function (i) { return i.status !== 'arquivado'; });
+    if (!ativos.length) out.push({ tom: 'alerta', t: 'O checklist dela ainda está vazio.' });
+    else {
+      out.push({ tom: 'ok', t: 'Checklist: ' + cc.feitos + ' de ' + ativos.length + ' concluídos.' });
+      if (cc.atrasados.length) out.push({ tom: 'alerta', t: cc.atrasados.length + (cc.atrasados.length === 1 ? ' item atrasado' : ' itens atrasados') + ': ' + cc.atrasados.slice(0, 2).map(function (i) { return i.label; }).join(', ') + '.', acao: 'chat', rot: 'Perguntar se precisa de ajuda' });
+      if (cc.prox) out.push({ tom: '', t: 'Próximo prazo: ' + fmtDay(cc.prox.due_date) + ' · ' + cc.prox.label + '.' });
+    }
+  }
+  if (X.chatNaoLidas > 0) out.push({ tom: 'alerta', t: X.chatNaoLidas + (X.chatNaoLidas === 1 ? ' mensagem dela no chat sem ler.' : ' mensagens dela no chat sem ler.'), acao: 'chat', rot: 'Abrir o chat' });
+  if (X.dosFalta > 0) out.push({ tom: '', t: 'O dossiê ainda tem ' + X.dosFalta + ' respostas em aberto.', acao: 'dossie', rot: 'Ver como completar' });
+  var porTela = {}; cliques.forEach(function (x) { if (x.alvo === 'tela') porTela[telaNome(x.tela)] = (porTela[telaNome(x.tela)] || 0) + 1; });
+  var top = Object.keys(porTela).sort(function (a, b) { return porTela[b] - porTela[a]; }).slice(0, 2);
+  if (top.length) out.push({ tom: '', t: 'Passa mais tempo em ' + top.join(' e ') + '.' });
+  if (X.notasVivas > 0) out.push({ tom: '', t: 'Há ' + X.notasVivas + (X.notasVivas === 1 ? ' nota' : ' notas') + ' da iAssistente no card dela agora.' });
+  return out;
+}
+function insightsPlatHtml(c) {
+  var int = state.int && state.int.cid === c.id ? state.int : null, S = state.dos && state.dos.cid === c.id ? state.dos : null;
+  var um = UM.filter(function (x) { return x.contato_id === c.id && x.quando && (x.status === 'feito' || new Date(x.quando).getTime() < Date.now() - 36e5); }).sort(function (a, b) { return a.quando < b.quando ? 1 : -1; })[0];
+  var lista = insightsDaPlataforma(c, { agora: Date.now(), cliques: int && !int.err ? int.cliques || [] : [], chk: S ? S.chk : null, chatNaoLidas: chatNaoLidas(state.chat),
+    dosFalta: S && S.d ? dosProgresso(c, S.d, S.rasc).falta : 0, umEm: um ? um.quando : null, notasVivas: state.ins && state.ins.vivos && state.ins.vivos.notas ? state.ins.vivos.notas.length : 0 });
+  var pedem = lista.filter(function (i) { return i.tom === 'alerta'; }).length;
+  return '<div class="ins-plat"><p class="sub" style="margin:0 0 8px"><b>' + lista.length + (lista.length === 1 ? ' insight' : ' insights') + '</b>' + (pedem ? ' · ' + pedem + (pedem === 1 ? ' pede ação' : ' pedem ação') : ' · nada pede ação agora') + '. Por regra, a partir do uso do app, do checklist e do chat (sem IA).</p>' +
+    (lista.length ? '<ul class="ins-lista">' + lista.map(function (i) {
+      return '<li class="ins-i ins-' + (i.tom || 'neutro') + '"><span class="ins-p ' + (i.tom === 'alerta' ? 'u-alta' : i.tom === 'ok' ? 'u-baixa' : '') + '">' + (i.tom === 'alerta' ? 'Atenção' : i.tom === 'ok' ? 'Bom sinal' : 'Nota') + '</span><span class="ins-t">' + esc(i.t) + '</span>' +
+        (i.acao ? '<button type="button" class="btn" data-insacao="' + esc(i.acao) + '">' + esc(i.rot) + '</button>' : '') + '</li>';
+    }).join('') + '</ul>' : '<p class="sub" style="margin:0">Ainda sem dados do app para ler.</p>') + '</div>';
+}
 function fxCorpo(c, d, tab) {
   if (tab === 'plataforma') {
     if (state.int && state.int.err) return '<div class="panel" style="padding:16px;margin-top:14px"><h3 style="font-size:15px;margin-bottom:8px">Plataforma ainda não ligada</h3><p class="sub" style="margin:0">Falta rodar <b>db/crm-plataforma.sql</b> no SQL Editor do Supabase (depois dele, os cliques novos começam a aparecer aqui).</p></div>';
@@ -3110,7 +3260,7 @@ function fxCorpo(c, d, tab) {
   }
   if (tab === 'conversa') return conversaPanel(c, d.mails || [], d.resps || [], d.h4 || H4_PLAT, d.jor);
   // Dossiê: aba própria, sempre aberta. Preenche sozinho com o que ela responde no funil e no app (ver DOS_FUNIL).
-  if (tab === 'dossie') return '<div id="dossie-box">' + dossieHtml(c, state.dos.d, state.dos.err, state.dos.rasc, true, state.dos.chk, true) + '</div>';
+  if (tab === 'dossie') return dosVisaoHtml(c, d) + '<div id="dossie-box">' + dossieHtml(c, state.dos.d, state.dos.err, state.dos.rasc, true, state.dos.chk, true) + '</div>';
   // Ficha (captação): o fluxo de 3 passos e os painéis que já existiam (feed, e-mails, jornada, quem é ela, mais).
   var etapa = FX.etapaFunil(c, { mails: d.mails || [], propostas: [], temBilan: !!(state.bilan && state.bilan.cid === c.id) }), h4 = d.h4 || H4_PLAT;
   // Três colunas, cada uma com um papel: à esquerda quem ela é e onde está no funil; no meio o que ela fez; à direita o que fazer (e-mail).
@@ -5168,6 +5318,12 @@ document.addEventListener('click', async function (e) {
   if (t.dataset.caldia !== undefined) { state.calDia = state.calDia === t.dataset.caldia ? '' : t.dataset.caldia; return renderCalendario(); }
   if (t.dataset.calmes) { state.calOff = (state.calOff || 0) + Number(t.dataset.calmes); return renderCalendario(); }
   if (t.dataset.pistaemail) { state.rascunho[t.dataset.pistaemail] = (state.rascPista || {})[t.dataset.pistaemail] || ''; return openPessoa(t.dataset.pistaemail, 'conversa'); }
+  if (t.dataset.dosmsg) return dosMontaMensagem(t.dataset.dosmsg, t.dataset.tipo);
+  if (t.dataset.insacao) {
+    var cc0 = byC(state.sel); if (!cc0) return;
+    if (t.dataset.insacao === 'dossie') { state.fx.tab = 'dossie'; return fxRepinta(); }
+    state.fx.abertas.chat = true; state.fx.flash = 'chat'; return fxPintaCorpo();
+  }
   if (t.dataset.hojemais) { state.hMais = true; return renderFila(); }
   if (t.dataset.hojeprob) { state.inbox = 'problemas'; return show('perguntas'); }
   if (t.dataset.openconv) return openPessoa(t.dataset.openconv, 'conversa');
