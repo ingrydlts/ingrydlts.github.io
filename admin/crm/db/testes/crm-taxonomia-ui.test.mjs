@@ -206,7 +206,7 @@ const ESF = {};
 const sb = { from: fromFake, auth: { getSession: async () => ({ data: { session: null } }) }, rpc: async () => ({ data: null, error: null }),
   channel: () => ({ on() { return this; }, subscribe() { return this; } }), removeChannel() {} };
 const H = new Function('supabase', 'ES', 'TX', 'EE', 'EQ', 'JR', 'document', 'window', 'location', 'localStorage', 'setInterval', 'clearInterval',
-  csrc + '\n;return { setM: function (v) { M = v; }, setMV: function (v) { MV = v; }, renderJornada, classeHtml, mudarClasse, criarModelo, renderEditor, renderModelos, listaModelos, opcoesPorCategoria, ST };')(
+  csrc + '\n;return { setM: function (v) { M = v; }, setMV: function (v) { MV = v; }, renderJornada, cabecalhoHtml, jornadaAtual, pgAtual, modelosDaPagina, classeHtml, mudarClasse, criarModelo, renderEditor, renderModelos, listaModelos, opcoesPorCategoria, ST };')(
   sb, ESF, TX, { iniciar() {}, depois() {}, campoMudou() {}, topo() { return ''; }, html() { return ''; } }, {}, JRM, doc, { addEventListener() {} }, { href: '' }, { getItem: () => null, setItem() {} }, () => 1, () => {});
 console.log('== crm.js: sem a lista e a barra de filtros; Jornada e header fixo ==');
 const mods = fixture32().map((m) => Object.assign({ criado_no_estudio: false, excluido_em: null }, m));
@@ -233,8 +233,34 @@ check('Jornada: excluídos com Restaurar', jr.indexOf('Excluídos') >= 0 && jr.i
 check('Jornada: modelo ativo abre pelo cartão', jr.indexOf('data-jr-abrir="cf_guia_1"') >= 0 && jr.indexOf('data-jr-abrir="excl1"') < 0);
 check('editor: "Excluir este modelo" mora em Avançado', /function passoQuem[\s\S]*?class="ee-excluir"[\s\S]*?data-stexcluir=[\s\S]*?Excluir este modelo/.test(csrc));
 check('excluir o modelo aberto volta para a Jornada', /async function excluirModelo[\s\S]*?ST\.vista = 'jornada'/.test(csrc));
-check('header fixo: renderEditor põe modelos, nome, passos e barra do Texto dentro de .ee-fixo', /class=\\?"ee-fixo\\?"[\s\S]*?pilulasDosModelos\(m\)[\s\S]*?passos[\s\S]*?EE\.topo\(\)/.test(csrc));
-check('css: .ee-fixo é sticky no alto do editor', /\.ee-fixo\{position:sticky; top:-14px;/.test(cssSrc));
+check('header fixo: o editor escreve o cabeçalho em #st-cab (página de entrada, e-mails por etapa, nome, passos e barra do Texto)', /cab\.innerHTML = '<div class="ee-fixo">' \+ cabecalhoHtml\([\s\S]*?topo \+ '<div class="ee-barra-passos">' \+ passos[\s\S]*?EE\.topo\(\)/.test(csrc));
+check('o cabeçalho mora logo abaixo das abas, antes do estúdio', htmlIdx.indexOf('id="st-cab"') > htmlIdx.indexOf('id="mod-estudio"') && htmlIdx.indexOf('id="st-cab"') < htmlIdx.indexOf('id="studio"'));
+check('css: #st-cab é sticky no alto, e os painéis descontam a altura dele', /\.st-cab\{position:sticky; top:0;/.test(cssSrc) && (cssSrc.match(/var\(--st-head-h, 0px\)/g) || []).length >= 2);
+
+// O cabeçalho parte da página de entrada: escolhe a página, vê os e-mails por etapa, e o que falta vira "+ criar"
+H.ST.vazio = false; H.ST.k = 'cf_guia_1';
+const Jx = H.jornadaAtual();
+check('cabeçalho: o modelo aberto define a página (cf_guia_1 mora na I03)', H.pgAtual(Jx) === 'I03');
+const cabI03 = H.cabecalhoHtml(Jx, 'I03');
+check('cabeçalho: uma pílula por página de entrada (I01 a I05) e "Todos os percursos"', ['I01', 'I02', 'I03', 'I04', 'I05', 'TR'].every((k) => cabI03.indexOf('data-stpg="' + k + '"') >= 0));
+check('cabeçalho: a página atual vem marcada', /data-stpg="I03" aria-current="true"/.test(cabI03) && /data-stpg="I01" aria-current="false"/.test(cabI03));
+check('cabeçalho: o e-mail aberto vem marcado e abre pelo mesmo clique da lista antiga (data-tpl-pick)', /data-tpl-pick="cf_guia_1" aria-current="true"/.test(cabI03));
+const faltasI03 = JRM.ETAPAS.filter((e) => Jx.linhas.find((l) => l.k === 'I03').celulas[e.k].length === 0);
+check('cabeçalho: etapa sem e-mail vira "+ criar" com o mesmo valor da Jornada', faltasI03.length > 0 && faltasI03.every((e) => cabI03.indexOf('data-jr-criar="I03|' + e.k + '"') >= 0));
+check('cabeçalho: etapa com e-mail não oferece criar', JRM.ETAPAS.filter((e) => !faltasI03.includes(e)).every((e) => cabI03.indexOf('data-jr-criar="I03|' + e.k + '"') < 0));
+// Uma página sem nenhum e-mail: tira os da I01 do fixture e confere o estado vazio
+H.setM(mods.filter((m) => classifica(m).pagina !== 'I01'));
+const Jv = H.jornadaAtual();
+check('sem os e-mails da I01, a página não tem e-mail', H.modelosDaPagina(Jv, 'I01').length === 0);
+const cabV = H.cabecalhoHtml(Jv, 'I01');
+check('cabeçalho: página sem nenhum e-mail mostra as 4 etapas para criar e nenhum e-mail para abrir', (cabV.match(/data-jr-criar="I01\|/g) || []).length === 4 && cabV.indexOf('data-tpl-pick') < 0);
+H.ST.vazio = true; H.ST.pg = 'I01'; H.ST.k = null;
+check('cabeçalho: página escolhida sem e-mail continua selecionada, sem e-mail aberto', H.pgAtual(Jv) === 'I01' && /data-stpg="I01" aria-current="true"/.test(H.cabecalhoHtml(Jv, H.pgAtual(Jv))) && !/class="ee-passo ee-et"[^>]*aria-current="true"/.test(H.cabecalhoHtml(Jv, 'I01')));
+H.ST.vazio = false; H.ST.pg = null; H.ST.k = 'cf_guia_1';
+H.setM(mods);
+check('cabeçalho: modelosDaPagina da I03 tem o cf_guia_1', H.modelosDaPagina(Jx, 'I03').some((m) => m.chave === 'cf_guia_1'));
+check('handler: clicar na página abre o primeiro e-mail dela ou mostra o estado vazio', /dataset\.stpg[\s\S]*?modelosDaPagina\(jornadaAtual\(\), t\.dataset\.stpg\)\[0\][\s\S]*?ST\.vazio = true/.test(csrc));
+
 check('css: o grid do estúdio tem só o editor e a prévia', /\.studio\{position:relative; display:grid; grid-template-columns:minmax\(0,1\.25fr\) minmax\(0,\.95fr\);/.test(cssSrc));
 
 // ---------- Classificar um modelo ----------

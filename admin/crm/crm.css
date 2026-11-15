@@ -367,7 +367,7 @@ a.btn{text-decoration:none; color:inherit; display:inline-flex; align-items:cent
 /* Estúdio de e-mails (entrega 2): três colunas como o estúdio de produtos do admin —
    modelos · editor em seções · prévia com uma pessoa de verdade. Abaixo de 1000px vira abas. */
 .studio{position:relative; display:grid; grid-template-columns:minmax(0,1.25fr) minmax(0,.95fr); margin-top:14px; background:var(--surface); border:1px solid var(--line); border-radius:14px; overflow:hidden; min-height:640px}
-.st-edit{padding:14px 16px 40px; display:flex; flex-direction:column; gap:10px; min-width:0; background:var(--bg); border-right:1px solid var(--line); overflow-y:auto; max-height:calc(100vh - 120px)}
+.st-edit{padding:14px 16px 40px; display:flex; flex-direction:column; gap:10px; min-width:0; background:var(--bg); border-right:1px solid var(--line); overflow-y:auto; max-height:calc(100vh - 120px - var(--st-head-h, 0px))}
 .st-head{display:flex; flex-wrap:wrap; gap:10px; align-items:flex-start; justify-content:space-between}
 .st-head-t{min-width:0; flex:1 1 220px}
 .st-title{font-size:20px}
@@ -422,7 +422,7 @@ select.st-in{height:36px; padding:0 8px}
 .st-vers li{display:flex; gap:8px; align-items:center; flex-wrap:wrap}
 .st-vers li[aria-current="true"] .st-verbtn{border-color:var(--moss)}
 .st-verbtn{flex:1; display:flex; gap:8px; align-items:center; flex-wrap:wrap; text-align:left; background:var(--surface); border:1px solid var(--line); border-radius:8px; padding:6px 10px}
-.st-prev{padding:14px 16px; display:flex; flex-direction:column; gap:10px; min-width:0; overflow-y:auto; max-height:calc(100vh - 120px)}
+.st-prev{padding:14px 16px; display:flex; flex-direction:column; gap:10px; min-width:0; overflow-y:auto; max-height:calc(100vh - 120px - var(--st-head-h, 0px))}
 .st-bar{display:flex; flex-wrap:wrap; gap:8px 12px; align-items:flex-end}
 .st-bar .st-fld{gap:4px} .st-bar .st-fld .st-in + .st-in{margin-top:4px}
 .seg{display:inline-flex; border:1px solid var(--line-2); border-radius:999px; padding:2px}
@@ -1137,8 +1137,23 @@ details.ee-sec[open]>summary{margin-bottom:8px}
 .ee-ast .ee-cond{display:block; margin-bottom:6px}
 
 /* Editar e-mails: o header (modelos, nome e ações, passos e barra do Texto) fica fixo acima do e-mail; a barra da prévia também */
-.ee-fixo{position:sticky; top:-14px; z-index:6; display:flex; flex-direction:column; gap:10px; background:var(--bg); margin:-14px -16px 0; padding:14px 16px 10px; border-bottom:1px solid var(--line)}
-.ee-fixo .ee-irmaos, .ee-fixo .ee-crumb, .ee-fixo .ee-passos{margin:0}
+/* O cabeçalho do editor fica logo abaixo das abas Jornada / Editar e-mails e acompanha a rolagem da página */
+.st-cab{position:sticky; top:0; z-index:8; background:var(--bg); margin-top:10px}
+.st-cab:empty{display:none}
+.ee-fixo{display:flex; flex-direction:column; gap:10px; padding:10px 0 12px; border-bottom:1px solid var(--line)}
+.ee-linha-pg{display:flex; align-items:center; gap:10px; min-width:0}
+.ee-linha-pg .ee-irmaos{flex:1 1 auto; min-width:0; margin:0; padding:2px 0 4px}
+.ee-rot{flex:none; font-size:11px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-3)}
+.ee-linha-pg .ee-volta{flex:none}
+.ee-et{align-items:center}
+.ee-et .t{display:flex; flex-direction:column; align-items:flex-start; line-height:1.25; text-align:left}
+.ee-et .t small{font-size:10.5px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:var(--ink-3)}
+.ee-et.falta{border-style:dashed; color:var(--ink-2)}
+.ee-et.falta:not(.sem):hover{border-color:var(--moss); color:var(--ink)}
+.ee-et.falta.sem{opacity:.55; cursor:default}
+.ee-sd{width:8px; height:8px; border-radius:50%; flex:none; background:var(--ink-3); display:inline-block}
+.ee-sd.ok{background:var(--moss)} .ee-sd.rev{background:var(--amber)} .ee-sd.dr{background:var(--ink-3)}
+.ee-fixo .ee-passos{margin:0}
 .ee-fixo .ee-topo{padding:0}
 .st-prev > .st-bar{position:sticky; top:-14px; z-index:3; background:var(--surface); margin-top:-14px; padding:14px 0 8px}
 
@@ -1150,3 +1165,4 @@ details.ee-sec[open]>summary{margin-bottom:8px}
 .ee-barra-passos .ee-topo > .sub{display:none}
 .st-excl-i{display:flex; gap:8px; align-items:center; justify-content:space-between; padding:6px 4px; border-top:1px solid var(--line); font-size:12.5px}
 .st-excl-i > span{min-width:0} .st-excl-i b{display:block; font-weight:600} .st-excl-i .btn{flex:none}
+.ee-irmaos .ee-et{max-width:420px}
