@@ -214,5 +214,6 @@ export function htmlPreviaApp(d, h) {
     '<div class="fx-pv-corpo">' + (d.semConta ? '<p class="fx-pv-prev"><b>Prévia.</b> ' + e(d.nome) + ' ainda não entrou no app. É o que ela vê ' + (d.dia === 0 ? 'no primeiro acesso' : 'no dia ' + d.dia + ' depois de entrar') + '.</p>' : '') + corpo + '</div>' +
     '<nav class="fx-pv-nav" aria-label="Seções do app">' + ABAS_APP.map((a) => '<button type="button" data-fx="appaba" data-v="' + a[0] + '"' + (a[0] === aba ? ' aria-current="page"' : '') + '>' + a[1] + '</button>').join('') + '</nav></div>' +
     '<p class="fx-pv-leg">' + e(LEGENDA_ABA[aba]) + '</p>' +
-    '<label class="fx-pv-tg"><input type="checkbox" data-fx="camadas"' + (d.camadas ? ' checked' : '') + '> Mostrar as camadas (<span class="p">Persona</span> igual para quem tem a mesma situação · <span class="d">Dela</span> só desta pessoa)</label>';
+    '<button type="button" class="fx-pv-tg" data-fx="camadas" aria-pressed="' + d.camadas + '"><span class="fx-pv-sw" aria-hidden="true"></span> Mostrar as camadas (<span class="p">Persona</span> igual para quem tem a mesma situação · <span class="d">Dela</span> só desta pessoa)</button>';
+//
 }
