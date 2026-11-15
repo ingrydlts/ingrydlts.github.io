@@ -32,7 +32,7 @@ function qb(table) {
 const supabase = { from: qb, auth: { getSession: async () => ({ data: { session: null } }) }, rpc: async (n, a) => { rpcs.push({ n, a }); return rpcRetorno; }, channel: () => ({ on() { return this; }, subscribe() { return this; } }), removeChannel() {} };
 const store = {};
 const mod = new Function('supabase', 'ES', 'TX', 'EE', 'EQ', 'JR', 'document', 'window', 'location', 'localStorage', 'setInterval', 'clearInterval',
-  src + '\n;return { state, setC: function (v) { C = v; }, setQ: function (v) { Q = v; }, setR: function (v) { R = v; }, setP: function (v) { P = v; }, setPSUG: function (v) { PSUG = v; }, setFin: function (o) { PRODUTOS = o.produtos; COMPRAS_EV = o.compras; ASSIN = o.assin; PRECOS = o.precos; }, itensDeHoje, ordenaFila, catDoContato, renderFila, receitaEstimada, pistasDaJornada, rascunhoMultiFunil, funisDaPessoa, fxResumoCartoes, setUM: function (v) { UM = v; }, setPAG: function (v) { PAG1A1 = v; } };')(
+  src + '\n;return { state, setC: function (v) { C = v; }, setQ: function (v) { Q = v; }, setR: function (v) { R = v; }, setP: function (v) { P = v; }, setPSUG: function (v) { PSUG = v; }, setFin: function (o) { PRODUTOS = o.produtos; COMPRAS_EV = o.compras; ASSIN = o.assin; PRECOS = o.precos; }, itensDeHoje, ordenaFila, catDoContato, renderFila, receitaEstimada, pistasDaJornada, rascunhoMultiFunil, funisDaPessoa, fxResumoCartoes, setUM: function (v) { UM = v; }, setPAG: function (v) { PAG1A1 = v; }, dosDoFunil, dosCampo, dosProgresso, dosVisiveis };')(
   supabase, {}, TXMOD, { iniciar() {}, depois() {}, campoMudou() {} }, {}, {}, document, { addEventListener() {}, confirm: () => true, scrollTo() {} }, { href: '' }, { getItem: (k) => store[k] ?? null, setItem: (k, v) => { store[k] = v; } }, () => 1, () => {});
 
 const dia = (n) => new Date(Date.now() + n * 864e5).toISOString();
@@ -140,6 +140,24 @@ console.log('== Cabeçalho da ficha: o cartão do 1:1 ==');
   check('sem conta: 4 cartões (1:1, Dossiê, Prazo e E-mails), sem o da Plataforma', todos.map((k) => k.rotulo).join() === '1:1,Dossiê,Prazo,E-mails');
   const comConta = mod.fxResumoCartoes(Object.assign({}, J, { user_id: 'u-j' }), { mails: [], resps: [] });
   check('com conta: 5 cartões, com a Plataforma em segundo', comConta.map((k) => k.rotulo).join() === '1:1,Plataforma,Dossiê,Prazo,E-mails');
+}
+
+console.log('== Dossiê: as respostas das páginas de entrada ==');
+{
+  const ks = ['etapa_i01', 'etapa_i02', 'etapa_i03', 'etapa_i04', 'etapa_i05'];
+  check('há um campo por página de entrada, sempre à mão', ks.every((k) => mod.dosCampo(k) && mod.dosCampo(k).t === 'op'));
+  check('as opções são as etapas do quiz de cada página (Tecnólogo tem "Não sei o nível")', mod.dosCampo('etapa_i02').o.some((o) => o[0] === 'tec-nao-sei' && /Não sei o nível/.test(o[1])) && mod.dosCampo('etapa_i03').o.some((o) => o[0] === 'cf-escolhendo-curso'));
+  const P = pessoa('d', 'Dani', { respostas: { objetivo: 'tec-nao-sei' } });
+  mod.state.jorQuiz = null;
+  check('sem eventos, a última resposta do cadastro preenche só a página dela', mod.dosDoFunil(P, 'etapa_i02') === 'tec-nao-sei' && mod.dosDoFunil(P, 'etapa_i03') === null && mod.dosDoFunil(P, 'etapa_i05') === null);
+  mod.state.jorQuiz = { cid: 'd', quizzes: [{ em: dia(-9), objetivo: 'cf-escolhendo-curso' }, { em: dia(-2), objetivo: 'tec-nao-sei' }] };
+  check('com os quizzes da jornada, cada página recebe a sua resposta (Campus France e Tecnólogo)', mod.dosDoFunil(P, 'etapa_i03') === 'cf-escolhendo-curso' && mod.dosDoFunil(P, 'etapa_i02') === 'tec-nao-sei');
+  mod.state.jorQuiz = { cid: 'outro', quizzes: [{ em: dia(-9), objetivo: 'cf-escolhendo-curso' }] };
+  check('quizzes de outra pessoa não vazam para esta', mod.dosDoFunil(P, 'etapa_i03') === null);
+  mod.state.jorQuiz = { cid: 'd', quizzes: [{ em: dia(-2), objetivo: 'etapa-que-nao-existe' }] };
+  check('resposta que o formulário não conhece é ignorada', mod.dosDoFunil(P, 'etapa_i03') === null);
+  const antes = mod.dosProgresso(pessoa('e', 'Eva', { persona: 'campus_france' }), {}, {});
+  check('o bloco novo não entra na conta do "faltam" (nem toda pessoa passou por todas as páginas)', mod.dosVisiveis(pessoa('e', 'Eva', { persona: 'campus_france' }), {}, {}).some((b) => b.t === 'Respostas das páginas de entrada' && b.livre) && antes.tot > 0 && antes.tot === mod.dosProgresso(pessoa('e', 'Eva', { persona: 'campus_france' }), { etapa_i02: 'tec-nao-sei' }, {}).tot);
 }
 
 console.log('\n' + (failed ? failed + ' FALHARAM, ' : '') + passed + ' passaram' + (failed ? '' : ', 0 falharam'));

@@ -2,13 +2,13 @@
 // Nada de service_role aqui. O banco é db/crm-fase2.sql; o desenho é o artefato "CRM Por Dentro".
 // Tudo que vem do banco é texto de terceiros (nome, e-mail, pergunta): passa sempre por esc().
 import { supabase } from '/assets/js/supabase-client.js';
-import * as TX from './taxonomia.js?v=2026-11-15.22';   // páginas, famílias e agrupamento dos modelos
-import * as ES from './estudio.js?v=2026-11-15.22';   // os blocos do estúdio de e-mails (entregas 2 e 3)
-import * as EE from './editor-email.js?v=2026-11-15.22';
-import * as EQ from './editor-quem.js?v=2026-11-15.22';
-import * as JR from './jornada.js?v=2026-11-15.22';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
-import * as FX from './ficha.js?v=2026-11-15.22';   // ficha v2: lógica pura (fila, démarches, funil, ações)
-import * as FH from './ficha-html.js?v=2026-11-15.22';   // ficha v2: HTML puro
+import * as TX from './taxonomia.js?v=2026-11-15.23';   // páginas, famílias e agrupamento dos modelos
+import * as ES from './estudio.js?v=2026-11-15.23';   // os blocos do estúdio de e-mails (entregas 2 e 3)
+import * as EE from './editor-email.js?v=2026-11-15.23';
+import * as EQ from './editor-quem.js?v=2026-11-15.23';
+import * as JR from './jornada.js?v=2026-11-15.23';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
+import * as FX from './ficha.js?v=2026-11-15.23';   // ficha v2: lógica pura (fila, démarches, funil, ações)
+import * as FH from './ficha-html.js?v=2026-11-15.23';   // ficha v2: HTML puro
 
 var PERSONAS = {
   au_pair_estudante: 'Au pair → estudante', campus_france: 'Campus France', alternancia_emprego: 'Alternância / emprego',
@@ -2276,6 +2276,11 @@ var DOS = [
     { k: 'cfPrazoCursoTem', l: 'Alguma formação fecha antes da plataforma', t: 'op', o: [['sim', 'Sim'], ['nao', 'Não']] },
     { k: 'cfPrazoCurso', l: 'Prazo da formação que fecha primeiro', t: 'dt', q: function (g) { return g('cfPrazoCursoTem') === 'sim'; } }
   ] },
+  // As perguntas das páginas de entrada (os quizzes dos guias): sempre à mão, para você somar o que ela respondeu em cada uma. Se o quiz
+  // já foi respondido, a etapa vem preenchida (ver dosDoFunil). Fica fora da conta do "faltam": nem toda pessoa passou por todas as páginas.
+  { t: 'Respostas das páginas de entrada', livre: 1, campos: (TX.PAGINAS || []).map(function (p) {
+    return { k: 'etapa_' + p.k.toLowerCase(), l: p.k + ' · ' + p.nome + ': em que etapa está', t: 'op', o: p.etapas, ajuda: 'A pergunta do quiz desta página. Se ela já respondeu, vem preenchida.' };
+  }) },
   { t: 'Sinais da call', livre: 1, campos: [
     { k: 'formacao_alvo', l: 'Formação que quer', t: 'op', o: [['l1_universidade', '1º ano de licence (universidade)'], ['bts', 'BTS'], ['escola_arte', 'Escola de arte'], ['administracao', 'Administração'], ['du', 'DU (diplôme d\'université)'], ['nao_sei', 'Ainda não sabe']] },
     { k: 'grupo_area', l: 'Grande área', t: 'op', o: [['artes_audiovisual', 'Artes e audiovisual'], ['negocios', 'Negócios'], ['saude', 'Saúde'], ['frances_b2', 'Francês (chegar ao B2)'], ['outra', 'Outra']] },
@@ -2303,7 +2308,17 @@ var DOS_FUNIL = {
   contrato_fim: ['apDataFinal'], tem_certificado_matricula: ['apCertificado', FN_SN], comprova_recursos: ['apRecursos', FN_SN], tem_sponsor: ['apSponsor', FN_SN],
   cfNivel: ['cfNivel'], cfTeste: ['cfTeste'], cidade: ['cfCidade', function (v) { return CF_CIDADE[v] || v; }]
 };
+// A etapa que ela marcou no quiz de uma página: o quiz mais recente daquela página (eventos da jornada) ou, na falta, a última resposta do cadastro.
+function etapaDaPaginaDoFunil(c, k) {
+  var f = dosCampo(k); if (!f || !f.o) return null;
+  var vale = function (v) { return typeof v === 'string' && f.o.some(function (o) { return o[0] === v; }); };
+  var qs = state.jorQuiz && state.jorQuiz.cid === c.id ? state.jorQuiz.quizzes : [];
+  for (var i = qs.length - 1; i >= 0; i--) if (vale(qs[i].objetivo)) return qs[i].objetivo;
+  var r = c && c.respostas;
+  return r && typeof r === 'object' && vale(r.objetivo) ? r.objetivo : null;
+}
 function dosDoFunil(c, k) {
+  if (/^etapa_i0[1-5]$/.test(k)) return etapaDaPaginaDoFunil(c, k);
   var m = DOS_FUNIL[k], r = c && c.respostas; if (!m || !r || typeof r !== 'object') return null;
   var v = r[m[0]]; if (v === null || v === undefined || v === '') return null;
   v = m[1] ? m[1](v) : v; if (v === null || v === undefined || v === '') return null;
@@ -2995,7 +3010,7 @@ function fxHeaderHtml(c, d) {
 // Catálogo de démarches (cópia do app, processos.json): carregado uma vez; sem ele, tudo cai na démarche padrão.
 var FX_PROC = null;
 async function fxCarregaProcessos() {
-  try { var r = await fetch('processos.json?v=2026-11-15.22'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
+  try { var r = await fetch('processos.json?v=2026-11-15.23'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
 }
 // A sessão Checklist: pílulas por démarche, os 4 mais urgentes, pasta do Drive privada e "Ver mais desta sessão".
 function fxChecklistCorpo(c) {
@@ -3276,6 +3291,7 @@ async function renderPessoa() {
   var resps = R.filter(function (x) { return x.contato_id === c.id; });
   var h4 = 'font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-3); margin:0 0 8px';
   var jor = montaJornada(r[9]);
+  state.jorQuiz = { cid: c.id, quizzes: jor.quizzes };   // o Dossiê usa os quizzes de cada página de entrada
   if (!state.ptab && !fichaV2Ativa()) state.ptab = mails.length || resps.length ? 'conversa' : 'ficha';   // a ficha v2 abre pela conversão (FX.abaPadrao)
   var tabs = '<div class="ptabs" role="tablist" aria-label="Ficha da pessoa">' + [['conversa', 'E-mail'], ['plataforma', 'Plataforma'], ['ficha', 'Ficha']].map(function (t) {
     return '<button class="ptab" role="tab" type="button" data-ptab="' + t[0] + '" aria-selected="' + (state.ptab === t[0]) + '">' + t[1] +
