@@ -4,7 +4,7 @@
 // ---------- Urgência dos passos do checklist (spec §5.4) ----------
 // ChkItem = { step_key, category, label, status, due_date, sort_order } (colunas de buscaChecklist em crm.js).
 export { calcularUso } from './ficha-uso.js?v=2026-11-13.8';
-export * as funil from './funil.js?v=2026-11-15.11';   // Funil por próxima ação (lógica pura); o crm.js usa FX.funil
+export * as funil from './funil.js?v=2026-11-15.12';   // Funil por próxima ação (lógica pura); o crm.js usa FX.funil
 const DIA = 86400e3;
 function diasEntre(hoje, data) {
   const a = Date.parse(hoje + 'T00:00:00Z'), b = Date.parse(String(data).slice(0, 10) + 'T00:00:00Z');
@@ -190,7 +190,7 @@ function fmtDuracao(seg) {
   return min < 60 ? min + ' min' : Math.floor(min / 60) + ' h' + (min % 60 ? ' ' + (min % 60) + ' min' : '');
 }
 const haDias = (n) => (n === 0 ? 'hoje' : 'há ' + plural(n, 'dia', 'dias'));
-const cartao = (rotulo, valor, sub, tom) => (tom ? { rotulo, valor, sub, tom } : { rotulo, valor, sub });
+const cartao = (rotulo, valor, sub, tom, detalhes) => { const o = tom ? { rotulo, valor, sub, tom } : { rotulo, valor, sub }; if (detalhes) o.detalhes = detalhes; return o; };
 
 function cartoesUso(d) {
   const u = d.uso || {}, k = d.chk;
@@ -239,4 +239,33 @@ export function cartoesDe(tipo, d) {
   const p = d.proximo || {}, quando = p.quando === 'agora' ? 'Pode enviar' : p.quando === 'esperar' ? 'Aguarde' : 'Nada agora';
   const prox = cartao('Próximo e-mail', quando, String(p.titulo || '').slice(0, 48));
   return { blocos: [{ titulo: null, cartoes: [estagio, parada, emails, entradas, cartaoRespostas(d), prox] }], nota: null };
+}
+
+// ---------- Cabeçalho minimalista (comentários da Ingryd no artefato, 15/11) ----------
+// Poucos cartões, poucas palavras. Lead: quando entrou, onde deixou o e-mail e se abriu. Estágio 1:1: a data do 1:1.
+// Plataforma: a última vez que entrou no app. O plano e tudo que vem com ele vira um dropdown dentro do cartão do plano.
+// Nada de cliques, sessões ou duração para quem ainda não está na plataforma. d = { c, assin, uso, chk, entradaEm, origemLabel, mailsTotal, mailsAbertos, um1a1, ultimoAcesso, agora }
+export function cartoesMinimos(tipo, d) {
+  const c = d.c || {}, agora = d.agora || Date.now();
+  const dias = (iso) => (iso ? Math.max(0, Math.floor((agora - Date.parse(iso)) / 864e5)) : null);
+  if (tipo === 'lead') {
+    const out = [cartao('Entrou', dm(d.entradaEm || c.criado_em), d.origemLabel || '')];
+    out.push(d.mailsTotal > 0 ? cartao('E-mail', d.mailsAbertos > 0 ? 'Abriu' : 'Não abriu', plural(d.mailsTotal, 'enviado', 'enviados')) : cartao('E-mail', '—', 'nenhum enviado'));
+    if (c.estagio === 'um_a_um') out.push(d.um1a1 ? cartao('1:1', dm(d.um1a1), d.um1a1Hora || '', 'ok') : cartao('1:1', 'a combinar', ''));
+    return { blocos: [{ titulo: null, cartoes: out }], nota: null };
+  }
+  const nd = dias(d.ultimoAcesso);
+  const acesso = cartao('Último acesso', nd == null ? '—' : haDias(nd), nd == null ? 'ainda sem cliques' : dma(d.ultimoAcesso));
+  if (tipo === 'assinante') {
+    const a = d.assin || {}, teste = a.status === 'trialing', fim = teste ? (a.teste_fim || a.periodo_fim) : a.periodo_fim, k = d.chk, u = d.uso || {};
+    const det = [['Situação', etiquetaPagamento(a).texto], [teste ? 'Fim do teste' : a.cancela_no_fim ? 'Acesso até' : 'Próxima cobrança', dm(fim)],
+      ['Assinante desde', a.criado_em ? dma(a.criado_em) : '—']];
+    if (u.sessoes > 0) det.push(['Sessões (30 dias)', String(u.sessoes)]);
+    if (u.suficiente && u.cliquesPorSessao != null) det.push(['Cliques por sessão', String(u.cliquesPorSessao).replace('.', ',')]);
+    if (u.suficiente && u.duracaoSeg != null) det.push(['Duração estimada', fmtDuracao(u.duracaoSeg)]);
+    if (k) det.push(['Checklist', k.feitos + ' de ' + k.total + (k.atrasados ? ' · ' + plural(k.atrasados, 'atrasado', 'atrasados') : '')]);
+    return { blocos: [{ titulo: null, cartoes: [cartao('Plano', a.plano || '—', etiquetaPagamento(a).texto, 'ok', det), acesso] }], nota: null };
+  }
+  const k = d.chk;
+  return { blocos: [{ titulo: null, cartoes: [acesso, k ? cartao('Checklist', k.feitos + ' de ' + k.total, k.atrasados > 0 ? plural(k.atrasados, 'atrasado', 'atrasados') : '', k.atrasados > 0 ? 'alerta' : undefined) : cartao('Checklist', '—', 'ainda não carregou')] }], nota: null };
 }

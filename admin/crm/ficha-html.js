@@ -27,20 +27,19 @@ function iniciais(c) {
 }
 export function htmlCabecalho(d, h) {
   const e = h.esc, c = d.c || {}, et = d.etiqueta || { texto: '', tom: 'neutro' };
-  const blocos = (d.blocos || []).map((b) =>
-    (b.titulo ? '<span class="tag">' + e(b.titulo) + '</span>' : '') +
-    '<div class="hd-k">' + (b.cartoes || []).map((k) =>
-      '<div class="k' + (k.tom === 'alerta' ? ' alerta' : k.tom === 'ok' ? ' ok' : '') + '"><b class="l">' + e(k.rotulo) + '</b><div class="v">' + e(k.valor) + '</div>' +
-      (k.sub ? '<div class="s">' + e(k.sub) + '</div>' : '') + '</div>').join('') + '</div>').join('');
+  const card = (k) => {
+    const cls = 'k' + (k.tom === 'alerta' ? ' alerta' : k.tom === 'ok' ? ' ok' : '');
+    const corpo = '<b class="l">' + e(k.rotulo) + '</b><div class="v">' + e(k.valor) + '</div>' + (k.sub ? '<div class="s">' + e(k.sub) + '</div>' : '');
+    if (!(k.detalhes && k.detalhes.length)) return '<div class="' + cls + '">' + corpo + '</div>';
+    return '<details class="' + cls + ' hd-dd"><summary>' + corpo + '</summary><dl class="hd-det">' + k.detalhes.map((x) => '<dt>' + e(x[0]) + '</dt><dd>' + e(x[1]) + '</dd>').join('') + '</dl></details>';
+  };
+  const blocos = (d.blocos || []).map((b) => (b.titulo ? '<span class="tag">' + e(b.titulo) + '</span>' : '') + '<div class="hd-k">' + (b.cartoes || []).map(card).join('') + '</div>').join('');
+  // Quem está na plataforma ou assina: um selo só (assinar e "no app" não divergem). Lead sem conta: nenhum selo de conta.
+  const conta = et.texto ? '<span class="pill pg-' + e(et.tom) + '">' + e(et.texto) + '</span>' : (d.temConta ? '<span class="pill">No app</span>' : '');
   return '<header class="hd" id="fx-hd">' +
     '<div class="hd-l1"><span class="hd-av" aria-hidden="true">' + e(iniciais(c)) + '</span><h2 class="hd-n">' + e(c.nome || c.email || 'Sem nome') + '</h2>' +
-    (d.personaLabel ? '<span class="pill">' + e(d.personaLabel) + '</span>' : '') +
     (d.estagioLabel ? '<span class="pill"><span class="dot"></span>' + e(d.estagioLabel) + '</span>' : '') +
-    (et.texto ? '<span class="pill pg-' + e(et.tom) + '">' + e(et.texto) + '</span>' : '') +
-    (d.temConta != null ? '<span class="pill">' + (d.temConta ? 'No app' : 'Sem conta') + '</span>' : '') +
-    '<span class="hd-sp"><button class="btn primary" type="button" data-emailfor="' + e(c.id) + '">Escrever mensagem</button>' +
-    '<button class="btn" type="button" data-open1a1="' + e(c.id) + '">Marcar 1:1</button>' +
-    '<span class="sel"><select id="stage-pick" aria-label="Mudar estágio">' + (d.estagios || []).map((s) => '<option value="' + e(s.k) + '"' + (s.k === c.estagio ? ' selected' : '') + '>Estágio: ' + e(s.l) + '</option>').join('') + '</select></span></span></div>' +
+    (d.personaLabel ? '<span class="pill">' + e(d.personaLabel) + '</span>' : '') + conta + '</div>' +
     blocos + (d.nota ? '<p class="est">' + e(d.nota) + '</p>' : '') + '</header>';
 }
 

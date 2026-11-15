@@ -128,12 +128,12 @@ console.log('== Cabeçalho fixo ==');
     nota: 'Baseado nos 300 cliques mais recentes.' };
   const hd = FH.htmlCabecalho(d, h);
   check('cabeçalho: nome com HTML sai escapado', hd.includes('&lt;img') && !hd.includes('<img') && !hd.includes('<b>x</b>') && hd.includes('&lt;b&gt;x&lt;/b&gt;'));
-  check('cabeçalho: mantém os botões e o seletor de estágio', hd.includes('data-emailfor="c1"') && hd.includes('data-open1a1="c1"') && hd.includes('id="stage-pick"'));
+  check('cabeçalho minimalista: sem botões nem seletor de estágio; pílula de estágio ao lado do nome', !hd.includes('data-emailfor') && !hd.includes('data-open1a1') && !hd.includes('stage-pick') && hd.indexOf('hd-n') < hd.indexOf('class="dot"'));
   check('cabeçalho: classes dos cartões (alerta e ok) e título do bloco', hd.includes('k alerta') && hd.includes('k ok') && hd.includes('>Pagamento<') && count(hd, /class="k( |")/g) === 3);
   check('cabeçalho: nota aparece quando existe e some quando não existe', hd.includes('class="est"') && !FH.htmlCabecalho(Object.assign({}, d, { nota: null }), h).includes('class="est"'));
   check('cabeçalho: etiqueta de pagamento e persona', hd.includes('Assinatura ativa') && hd.includes('Au pair → estudante'));
   check('cabeçalho: iniciais (duas palavras, uma palavra, sem nome usa o e-mail) sem lançar', FH.htmlCabecalho({ c: { id: 'z', nome: 'Ana Souza' }, blocos: [] }, h).includes('>AS<') && FH.htmlCabecalho({ c: { id: 'z', nome: 'Clara' }, blocos: [] }, h).includes('>C<') && FH.htmlCabecalho({ c: { id: 'z', email: 'bruna@x.com' }, blocos: [] }, h).includes('>B<'));
-  check('cabeçalho: mostra No app ou Sem conta', FH.htmlCabecalho(Object.assign({}, d, { temConta: true }), h).includes('No app') && FH.htmlCabecalho(Object.assign({}, d, { temConta: false }), h).includes('Sem conta'));
+  check('cabeçalho: um selo de conta só (assina OU no app; sem conta não mostra selo)', FH.htmlCabecalho(Object.assign({}, d, { temConta: true, etiqueta: null }), h).includes('No app') && !FH.htmlCabecalho(Object.assign({}, d, { temConta: true }), h).includes('No app') && !FH.htmlCabecalho(Object.assign({}, d, { temConta: false, etiqueta: null }), h).includes('Sem conta'));
   check('cabeçalho: sem blocos não quebra', FH.htmlCabecalho({ c: { id: 'z', nome: 'Z' } }, h).includes('class="hd"'));
 }
 

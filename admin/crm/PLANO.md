@@ -251,6 +251,15 @@ A Hoje voltou à versão mais desenvolvida, que existia só no artefato: **indic
 - Passa a carregar na abertura do painel: `um_a_um` (com `registro`, ver `db/crm-1a1-registro.sql`), `um_a_um_pagamentos`, compras com data (`eventos`), a data das assinaturas e os preços de `planos/planos.json` (para o revenue estimado).
 - Sem nenhuma dessas tabelas ou arquivos, o card correspondente fica vazio ou em zero, sem quebrar a página.
 
+### Cabeçalho minimalista e pílulas de démarche (15/11, comentários da Ingryd no artefato)
+
+- **Sem botões no cabeçalho** (Escrever mensagem, Marcar 1:1 e o seletor de estágio saíram). A **pílula de estágio fica ao lado do nome**.
+- **Um selo de conta só:** assinante mostra o estado da assinatura; quem tem conta sem assinar mostra só "No app" (não existe "não assina" e "no app" juntos); lead sem conta não mostra selo de conta.
+- **Cartões em poucas palavras** (`FX.cartoesMinimos`): lead = quando entrou, onde deixou o e-mail e se abriu; estágio 1:1 = a data do 1:1; plataforma = último acesso e checklist. **Nada de sessões, cliques ou duração para quem ainda não está na plataforma.**
+- **Plano vira dropdown:** o cartão "Plano" abre com situação, próxima cobrança, desde quando assina, sessões, cliques por sessão, duração e checklist.
+- **Pagamento enxuto:** uma linha que abre (envio do link e assinatura dentro).
+- **Pílulas de démarche** do Checklist: clicar numa pílula filtra a lista e o **telefone** mostra a aba Checklist só com aquela démarche.
+
 ## Etapas
 
 1. **Fase 1 — captura** (feita, repo POR-DENTRO-APP): `contatos`, `eventos`, `consentimentos`, `capturar_lead()`, `admins`.

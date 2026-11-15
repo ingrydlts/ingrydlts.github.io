@@ -1315,3 +1315,15 @@ details.ee-sec[open]>summary{margin-bottom:8px}
 .fila-resumo{margin:0; padding:2px 16px 8px; font-size:12px}
 .fila-mais{display:block; margin:8px 16px 12px}
 
+
+/* Cabeçalho minimalista e Pagamento enxuto (comentários da Ingryd) */
+.hd-dd{cursor:pointer}.hd-dd>summary{list-style:none}.hd-dd>summary::-webkit-details-marker{display:none}
+.hd-dd>summary::after{content:'▾'; float:right; color:var(--ink-3); font-size:11px}
+.hd-dd[open]{grid-column:span 2}
+.hd-det{display:grid; grid-template-columns:auto 1fr; gap:3px 12px; margin:8px 0 0; font-size:12.5px}
+.hd-det dt{color:var(--ink-3)}.hd-det dd{margin:0; font-weight:600}
+.fx-pag{border:1px solid var(--line); border-radius:var(--r); background:var(--surface-2)}
+.fx-pag>summary{display:flex; gap:10px; align-items:baseline; padding:8px 14px; cursor:pointer; list-style:none; font-size:13px}
+.fx-pag>summary::-webkit-details-marker{display:none}
+.fx-pag>summary::after{content:'▾'; margin-left:auto; color:var(--ink-3)}
+.fx-pag-corpo{padding:0 14px 12px}
