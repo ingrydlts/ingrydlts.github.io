@@ -1330,3 +1330,4 @@ button.cal-d:hover{outline:1px solid var(--moss)}
 .hd .k.ok .v{color:var(--moss-ink)}
 .fx-topo .aviso-fazer{margin-bottom:8px}
 .fx-topo .fx-card{min-height:64px; padding:10px}
+@media (min-width:901px){ .hd-k .k:first-child{grid-column:span 2} }   /* o 1:1 é o cartão mais importante: ocupa o dobro */

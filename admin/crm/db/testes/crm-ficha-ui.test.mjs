@@ -215,7 +215,7 @@ console.log('== Cabeçalho: 1:1, plataforma, dossiê e prazo à vista ==');
   const h = await carregarCrm({ store: { crm_ficha_v2: '1' }, respostas: base({ 'contatos:one': { data: { dossie: {}, user_id: 'u9' }, error: null } }) });
   let html = await abre(h, pessoa({ user_id: 'u9', ultimo_evento_em: iso(-1), prazo_limite: '2026-12-01', dias_para_prazo: 12, urgencia: 'alta' }));
   check('prazo à vista no cabeçalho, em alerta', html.includes('>Prazo<') && html.includes('VLS-TS') && /class="k alerta"/.test(html));
-  check('sem 1:1: o cartão diz que nenhum está marcado', html.includes('nenhum marcado'));
+  check('sem 1:1: o cartão diz que nunca fez e nada vem aí', html.includes('ainda não fez 1:1') && html.includes('>Nenhum<'));
   h.mod.pararAoVivo();
 }
 console.log('== Task 13: abas Ficha e Conversa ==');

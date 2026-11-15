@@ -2,13 +2,13 @@
 // Nada de service_role aqui. O banco é db/crm-fase2.sql; o desenho é o artefato "CRM Por Dentro".
 // Tudo que vem do banco é texto de terceiros (nome, e-mail, pergunta): passa sempre por esc().
 import { supabase } from '/assets/js/supabase-client.js';
-import * as TX from './taxonomia.js?v=2026-11-15.21';   // páginas, famílias e agrupamento dos modelos
-import * as ES from './estudio.js?v=2026-11-15.21';   // os blocos do estúdio de e-mails (entregas 2 e 3)
-import * as EE from './editor-email.js?v=2026-11-15.21';
-import * as EQ from './editor-quem.js?v=2026-11-15.21';
-import * as JR from './jornada.js?v=2026-11-15.21';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
-import * as FX from './ficha.js?v=2026-11-15.21';   // ficha v2: lógica pura (fila, démarches, funil, ações)
-import * as FH from './ficha-html.js?v=2026-11-15.21';   // ficha v2: HTML puro
+import * as TX from './taxonomia.js?v=2026-11-15.22';   // páginas, famílias e agrupamento dos modelos
+import * as ES from './estudio.js?v=2026-11-15.22';   // os blocos do estúdio de e-mails (entregas 2 e 3)
+import * as EE from './editor-email.js?v=2026-11-15.22';
+import * as EQ from './editor-quem.js?v=2026-11-15.22';
+import * as JR from './jornada.js?v=2026-11-15.22';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
+import * as FX from './ficha.js?v=2026-11-15.22';   // ficha v2: lógica pura (fila, démarches, funil, ações)
+import * as FH from './ficha-html.js?v=2026-11-15.22';   // ficha v2: HTML puro
 
 var PERSONAS = {
   au_pair_estudante: 'Au pair → estudante', campus_france: 'Campus France', alternancia_emprego: 'Alternância / emprego',
@@ -2929,16 +2929,19 @@ function fxTarefas(c, d) {
 function fxResumoCartoes(c, d) {
   var agora = Date.now(), cartao = function (r, v, sub, tom) { return { rotulo: r, valor: v, sub: sub || '', tom: tom }; };
   var mails = d.mails || [], resps = d.resps || [];
-  // 1:1
-  var ums = UM.filter(function (x) { return x.contato_id === c.id; }), pags = PAG1A1.filter(function (p) { return p.contato_id === c.id; });
-  var ag = ums.filter(function (x) { return x.status === 'agendado'; }).sort(function (a, b) { return !a.quando ? 1 : !b.quando ? -1 : a.quando < b.quando ? -1 : 1; });
-  var prox = ag.filter(function (x) { return !x.quando || new Date(x.quando).getTime() >= agora - 36e5; })[0], pago = pags[0];
-  var pagTxt = pago ? pago.minutos + ' min · pago em ' + fmtDate(pago.pago_em) : '';
+  // 1:1: o que já aconteceu, o que vem aí e a próxima data. Um 1:1 sem dia não conta como marcado (só vale com dia e pagamento).
+  var ums = UM.filter(function (x) { return x.contato_id === c.id && x.status !== 'cancelado'; }), pags = PAG1A1.filter(function (p) { return p.contato_id === c.id; });
+  var comDia = ums.filter(function (x) { return x.quando; }), passou = function (x) { return new Date(x.quando).getTime() < agora - 36e5; };
+  var feitos = comDia.filter(function (x) { return x.status === 'feito' || passou(x); }).length;
+  var vindo = comDia.filter(function (x) { return x.status === 'agendado' && !passou(x); }).sort(function (a, b) { return a.quando < b.quando ? -1 : 1; }), prox = vindo[0], pago = pags[0];
+  var pagTxt = pago ? pago.minutos + ' min · pago em ' + fmtDate(pago.pago_em) : 'sem pagamento registrado';
+  var histo = feitos ? 'já fez ' + feitos : 'nenhum feito ainda';
   var um;
-  if (prox && prox.quando) um = cartao('1:1', new Date(prox.quando).toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit' }) + ' · ' + fmtHora(prox.quando), pagTxt || 'sem pagamento registrado', pago ? 'ok' : undefined);
-  else if (prox) um = cartao('1:1', 'a combinar', pago ? pagTxt + ': falta marcar o dia' : 'marcado, sem dia e sem pagamento', 'alerta');
-  else if (pago) um = cartao('1:1', 'Pago, sem data', pagTxt + ': falta marcar o dia', 'alerta');
-  else um = cartao('1:1', '—', 'nenhum marcado');
+  if (prox) um = cartao('1:1', new Date(prox.quando).toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit' }) + ' · ' + fmtHora(prox.quando),
+    pagTxt + ' · ' + histo + (vindo.length > 1 ? ' · +' + (vindo.length - 1) + ' depois' : ''), pago ? 'ok' : undefined);
+  else if (pago && pags.length > feitos) um = cartao('1:1', 'Pago, falta marcar', pagTxt + ' · ' + histo, 'alerta');
+  else if (feitos) um = cartao('1:1', 'Já fez ' + feitos, 'nenhum vindo agora', undefined);
+  else um = cartao('1:1', 'Nenhum', ums.some(function (x) { return !x.quando; }) ? 'convite aberto, sem dia' : 'ainda não fez 1:1');
   // Plataforma
   var a = state.assin, conta = !!c.user_id, ult = diasDesde(c.ultimo_evento_em);
   var rotA = a ? (a.status === 'trialing' ? 'Em teste' : a.status === 'active' ? 'Assinante' : (ASSIN_ST[a.status] || a.status)) : '';
@@ -2992,7 +2995,7 @@ function fxHeaderHtml(c, d) {
 // Catálogo de démarches (cópia do app, processos.json): carregado uma vez; sem ele, tudo cai na démarche padrão.
 var FX_PROC = null;
 async function fxCarregaProcessos() {
-  try { var r = await fetch('processos.json?v=2026-11-15.21'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
+  try { var r = await fetch('processos.json?v=2026-11-15.22'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
 }
 // A sessão Checklist: pílulas por démarche, os 4 mais urgentes, pasta do Drive privada e "Ver mais desta sessão".
 function fxChecklistCorpo(c) {
