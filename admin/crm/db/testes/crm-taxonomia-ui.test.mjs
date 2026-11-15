@@ -186,6 +186,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import * as TX from '../../taxonomia.js';
+import * as JRM from '../../jornada.js';
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const csrc = readFileSync(path.resolve(HERE, '../../crm.js'), 'utf8').replace(/^import .*$/gm, '').replace(/^boot\(\)\.catch.*$/m, '');
 const els = new Map();
@@ -205,99 +206,36 @@ const ESF = {};
 const sb = { from: fromFake, auth: { getSession: async () => ({ data: { session: null } }) }, rpc: async () => ({ data: null, error: null }),
   channel: () => ({ on() { return this; }, subscribe() { return this; } }), removeChannel() {} };
 const H = new Function('supabase', 'ES', 'TX', 'EE', 'EQ', 'JR', 'document', 'window', 'location', 'localStorage', 'setInterval', 'clearInterval',
-  csrc + '\n;return { setM: function (v) { M = v; }, setMV: function (v) { MV = v; }, renderLista, renderFiltros, classeHtml, mudarClasse, criarModelo, renderEditor, renderModelos, listaModelos, opcoesPorCategoria, ST, aoClicarFiltro: typeof aoClicarFiltro === "function" ? aoClicarFiltro : null, aoDigitarFiltro: typeof aoDigitarFiltro === "function" ? aoDigitarFiltro : null };')(
-  sb, ESF, TX, { iniciar() {}, depois() {}, campoMudou() {} }, {}, {}, doc, { addEventListener() {} }, { href: '' }, { getItem: () => null, setItem() {} }, () => 1, () => {});
-console.log('== crm.js: lista agrupada ==');
-const mods = fixture32();
-mods.push({ chave: 'excl1', nome: 'Excluido um', ordem: 99, tipo: 'email', excluido_em: '2026-01-01' });
+  csrc + '\n;return { setM: function (v) { M = v; }, setMV: function (v) { MV = v; }, renderJornada, classeHtml, mudarClasse, criarModelo, renderEditor, renderModelos, listaModelos, opcoesPorCategoria, ST };')(
+  sb, ESF, TX, { iniciar() {}, depois() {}, campoMudou() {}, topo() { return ''; }, html() { return ''; } }, {}, JRM, doc, { addEventListener() {} }, { href: '' }, { getItem: () => null, setItem() {} }, () => 1, () => {});
+console.log('== crm.js: sem a lista e a barra de filtros; Jornada e header fixo ==');
+const mods = fixture32().map((m) => Object.assign({ criado_no_estudio: false, excluido_em: null }, m));
+mods.push({ chave: 'excl1', nome: 'Excluido um', ordem: 99, tipo: 'email', criado_no_estudio: false, excluido_em: '2026-01-01' });
 H.setM(mods); H.setMV([]);
-H.renderLista(mods);
-const html = el('mod-list').innerHTML;
-check('lista: sem grupo Outros', html.indexOf('Outros') < 0);
-check('lista: Sem classificação para zz1', html.indexOf('Sem classificação') >= 0);
-check('lista: data-cat="I03"', html.indexOf('data-cat="I03"') >= 0);
-const i03 = html.slice(html.indexOf('data-cat="I03"'));
-check('lista: I03 com · 14 no título', /<summary[^>]*>[^<]*· 14/.test(i03.slice(0, 400)));
-check('lista: excluído sem botão de escolha', html.indexOf('data-tpl-pick="excl1"') < 0);
-check('lista: modelo ativo tem botão', html.indexOf('data-tpl-pick="cf_guia_1"') >= 0);
 check('listaModelos: sem excluídos', H.listaModelos().every((m) => !m.excluido_em) && H.listaModelos().length === 32);
 const op = H.opcoesPorCategoria(['cf_guia_1', 'naoabriu'], 'cf_guia_1');
 check('opcoes: dois optgroup', (op.match(/<optgroup/g) || []).length === 2);
 check('opcoes: selected em cf_guia_1', /<option value="cf_guia_1" selected>/.test(op) && op.indexOf('selected') === op.lastIndexOf('selected'));
 const opEx = H.opcoesPorCategoria(['excl1', 'cf_guia_1'], 'excl1');
 check('opcoes: excluído atual continua na lista e selecionado', /<option value="excl1" selected>/.test(opEx) && /<option value="cf_guia_1">/.test(opEx) && (opEx.match(/<option /g) || []).length === 2);
-H.ST.f.paginas = ['I03'];
-H.renderLista(mods);
-const h2 = el('mod-list').innerHTML;
-check('filtro: só itens da I03', h2.indexOf('data-tpl-pick="aq_a_d3"') >= 0 && h2.indexOf('data-tpl-pick="naoabriu"') < 0 && h2.indexOf('data-tpl-pick="zz1"') < 0);
 
-// ---------- Barra de filtros ----------
-console.log('== crm.js: barra de filtros ==');
-H.ST.f = TX.filtroVazio();
-let escritasBarra = 0, htmlBarra = '';
-Object.defineProperty(el('mod-filtros'), 'innerHTML', { get() { return htmlBarra; }, set(v) { escritasBarra++; htmlBarra = v; } });
-check('filtros: handlers registrados no document', H.aoClicarFiltro && H.aoDigitarFiltro && handlers.click.indexOf(H.aoClicarFiltro) >= 0 && handlers.input.indexOf(H.aoDigitarFiltro) >= 0);
-const clique = (attrs, id) => H.aoClicarFiltro({ target: { id: id || '', dataset: attrs || {}, closest() { return this; } } });
-const redesenha = () => { H.renderFiltros(); H.renderLista(mods); };
-redesenha();
-check('filtros: contador inicial', el('mod-conta').textContent === '32 de 32 modelos' && htmlBarra.indexOf('32 de 32 modelos') >= 0);
-check('filtros: nenhum chip marcado', htmlBarra.indexOf('aria-pressed="true"') < 0);
-check('filtros: chip Sem página e só específicos', htmlBarra.indexOf('data-valor="sem"') >= 0 && htmlBarra.indexOf('id="filtro-solo"') >= 0 && htmlBarra.indexOf('id="filtro-q"') >= 0 && htmlBarra.indexOf('id="filtro-limpar"') >= 0);
-check('filtros: sem etapas antes de marcar página', htmlBarra.indexOf('data-filtro="etapas"') < 0);
-H.ST.f = TX.filtroVazio();
-clique({ filtro: 'paginas', valor: 'I03' });
-check('filtros: página I03 => 14 de 32', el('mod-conta').textContent === '14 de 32 modelos');
-check('filtros: chip I03 marcado e etapas aparecem', /data-valor="I03" aria-pressed="true"/.test(htmlBarra) && htmlBarra.indexOf('data-filtro="etapas"') >= 0);
-const etapaI03 = TX.PAGINAS[2].etapas[0][0];
-clique({ filtro: 'etapas', valor: etapaI03 });
-check('filtros: etapa marcada', H.ST.f.etapas.join() === etapaI03);
-clique({ filtro: 'paginas', valor: 'I03' });
-check('filtros: desmarcar página limpa etapas órfãs', H.ST.f.etapas.length === 0 && H.ST.f.paginas.length === 0 && el('mod-conta').textContent === '32 de 32 modelos');
-clique({ visao: 'rascunhos' });
-check('filtros: visão rascunhos', H.ST.f.situacoes.join() === 'rascunho,revisao' && !/data-visao="rascunhos"/.test(htmlBarra));   // a visão duplicava a Situação: só "Sem classificação" sobrou como chip
-clique({ visao: 'rascunhos' });
-check('filtros: visão de novo desmarca', H.ST.f.situacoes.length === 0 && htmlBarra.indexOf('aria-pressed="true"') < 0);
-clique({ filtro: 'personas', valor: 'pvt' }); clique({}, 'filtro-solo');
-check('filtros: solo alterna', H.ST.f.soEspecificos === true && /id="filtro-solo" aria-pressed="true"/.test(htmlBarra));
-clique({}, 'filtro-limpar');
-check('filtros: limpar zera', JSON.stringify(H.ST.f) === JSON.stringify(TX.filtroVazio()));
-clique({ filtro: 'paginas', valor: 'I02' }); clique({ filtro: 'familias', valor: 'campanha' });
-check('filtros: sem resultado mostra mensagem', el('mod-list').innerHTML.indexOf('Nenhum modelo com esses filtros') >= 0 && el('mod-list').innerHTML.indexOf('data-limpar') >= 0 && el('mod-conta').textContent === '0 de 32 modelos');
-clique({ limpar: '1' });
-check('filtros: Limpar da lista volta a 32 de 32', el('mod-conta').textContent === '32 de 32 modelos' && el('mod-list').innerHTML.indexOf('Nenhum modelo') < 0);
-const antes = escritasBarra;
-H.aoDigitarFiltro({ target: { id: 'filtro-q', value: 'aq_a' } });
-check('filtros: busca não reescreve a barra', escritasBarra === antes);
-check('filtros: busca filtra a lista e o contador', H.ST.f.q === 'aq_a' && el('mod-conta').textContent === '4 de 32 modelos' && el('mod-list').innerHTML.indexOf('data-tpl-pick="aq_a_d3"') >= 0);
-check('filtros: busca é escapada', (() => { H.ST.f.q = '"><b>'; H.renderFiltros(); return htmlBarra.indexOf('"><b>') < 0 && htmlBarra.indexOf('&quot;&gt;&lt;b&gt;') >= 0; })());
+const htmlIdx = readFileSync(path.resolve(HERE, '../../index.html'), 'utf8');
+const cssSrc = readFileSync(path.resolve(HERE, '../../crm.css'), 'utf8');
+check('a tela não tem mais a coluna da lista nem o "Filtros e busca" nem a faixa de largura', !/id="mod-list"|id="mod-filtros"|id="st-grip"|Filtros e busca/.test(htmlIdx));
+check('o código não tem mais a lista agrupada nem a barra de filtros', !/function renderLista|function renderFiltros|function aoClicarFiltro|function aoDigitarFiltro|CAT_FECHADA|st-grip/.test(csrc));
+check('no celular as abas são só Editar e Prévia', /data-sttab="editar"/.test(htmlIdx) && /data-sttab="previa"/.test(htmlIdx) && !/data-sttab="lista"/.test(htmlIdx));
 
-// Foco, abas, visões (rodada de correção)
-const focados = [];
-focoSpy = (sel) => ({ focus() { focados.push(sel); } });
-H.ST.f = TX.filtroVazio(); redesenha();
-clique({ filtro: 'familias', valor: 'acesso' });
-check('foco: chip volta a ser focado', focados.pop() === '[data-filtro="familias"][data-valor="acesso"]');
-clique({ visao: 'teste' });
-check('foco: visão focada', focados.pop() === '[data-visao="teste"]');
-clique({}, 'filtro-solo');
-check('foco: só específicos focado', focados.pop() === '#filtro-solo');
-clique({}, 'filtro-limpar');
-check('foco: limpar vai para a busca', focados.pop() === '#filtro-q');
-focoSpy = null;
-H.ST.f = TX.filtroVazio(); H.ST.f.personas = ['pvt']; H.ST.f.familias = ['acesso'];
-clique({ visao: 'rascunhos' });
-check('visão a partir de estado sujo: só os filtros dela', JSON.stringify(H.ST.f) === JSON.stringify(Object.assign(TX.filtroVazio(), { situacoes: ['rascunho', 'revisao'] })));
-clique({ filtro: 'familias', valor: 'acesso' });
-check('não há mais chip de visão repetido (rascunhos)', !/data-visao="rascunhos"/.test(htmlBarra) && /data-visao="semclasse"/.test(htmlBarra));
-clique({}, 'filtro-limpar'); clique({ filtro: 'situacoes', valor: 'revisao' }); clique({ filtro: 'situacoes', valor: 'rascunho' });
-check('filtro de situação guardado mesmo com ordem diferente', H.ST.f.situacoes.join() === 'revisao,rascunho');
-clique({}, 'filtro-limpar');
-H.ST.tab = 'editar'; H.renderFiltros();
-check('aba: data-tab editar', el('mod-filtros').dataset.tab === 'editar');
-H.ST.tab = 'lista'; H.renderFiltros();
-check('aba: renderModelos chama renderFiltros', /function renderModelos\(\)[\s\S]*?renderFiltros\(\);[\s\S]*?renderPrevia\(\);\n\}/.test(csrc));
-check('aba: data-tab lista', el('mod-filtros').dataset.tab === 'lista');
-check('css: barra some no celular fora da aba Modelos', /@media \(max-width: 1000px\)\{[^@]*\.st-filtros:not\(\[data-tab="lista"\]\)\{display:none\}/.test(readFileSync(path.resolve(HERE, '../../crm.css'), 'utf8')));
+// A Jornada ficou com o que a lista fazia: criar modelo novo e restaurar os excluídos
+H.renderJornada();
+const jr = el('mod-jornada').innerHTML;
+check('Jornada: botão + Modelo novo', jr.indexOf('id="st-novo-modelo"') >= 0);
+check('Jornada: excluídos com Restaurar', jr.indexOf('Excluídos') >= 0 && jr.indexOf('data-strestaurar="excl1"') >= 0);
+check('Jornada: modelo ativo abre pelo cartão', jr.indexOf('data-jr-abrir="cf_guia_1"') >= 0 && jr.indexOf('data-jr-abrir="excl1"') < 0);
+check('editor: "Excluir este modelo" mora em Avançado', /function passoQuem[\s\S]*?class="ee-excluir"[\s\S]*?data-stexcluir=[\s\S]*?Excluir este modelo/.test(csrc));
+check('excluir o modelo aberto volta para a Jornada', /async function excluirModelo[\s\S]*?ST\.vista = 'jornada'/.test(csrc));
+check('header fixo: renderEditor põe modelos, nome, passos e barra do Texto dentro de .ee-fixo', /class=\\?"ee-fixo\\?"[\s\S]*?pilulasDosModelos\(m\)[\s\S]*?passos[\s\S]*?EE\.topo\(\)/.test(csrc));
+check('css: .ee-fixo é sticky no alto do editor', /\.ee-fixo\{position:sticky; top:-14px;/.test(cssSrc));
+check('css: o grid do estúdio tem só o editor e a prévia', /\.studio\{position:relative; display:grid; grid-template-columns:minmax\(0,1\.25fr\) minmax\(0,\.95fr\);/.test(cssSrc));
 
 // ---------- Classificar um modelo ----------
 console.log('== crm.js: classificar ==');
