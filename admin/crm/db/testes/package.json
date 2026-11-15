@@ -61,6 +61,7 @@
     "test:ficha": "node ficha.test.mjs",
     "test:ficha-html": "node ficha-html.test.mjs",
     "test:ficha-ui": "node crm-ficha-ui.test.mjs",
+    "test:ficha-fase2": "node crm-ficha-fase2-ui.test.mjs",
     "test:ficha-sync": "node ficha-sync.test.mjs"
   },
   "dependencies": {

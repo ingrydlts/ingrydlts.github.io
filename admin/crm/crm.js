@@ -2,13 +2,13 @@
 // Nada de service_role aqui. O banco é db/crm-fase2.sql; o desenho é o artefato "CRM Por Dentro".
 // Tudo que vem do banco é texto de terceiros (nome, e-mail, pergunta): passa sempre por esc().
 import { supabase } from '/assets/js/supabase-client.js';
-import * as TX from './taxonomia.js?v=2026-11-15.8';   // páginas, famílias e agrupamento dos modelos
-import * as ES from './estudio.js?v=2026-11-15.8';   // os blocos do estúdio de e-mails (entregas 2 e 3)
-import * as EE from './editor-email.js?v=2026-11-15.8';
-import * as EQ from './editor-quem.js?v=2026-11-15.8';
-import * as JR from './jornada.js?v=2026-11-15.8';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
-import * as FX from './ficha.js?v=2026-11-15.8';   // ficha v2: lógica pura (fila, démarches, funil, ações)
-import * as FH from './ficha-html.js?v=2026-11-15.8';   // ficha v2: HTML puro
+import * as TX from './taxonomia.js?v=2026-11-15.9';   // páginas, famílias e agrupamento dos modelos
+import * as ES from './estudio.js?v=2026-11-15.9';   // os blocos do estúdio de e-mails (entregas 2 e 3)
+import * as EE from './editor-email.js?v=2026-11-15.9';
+import * as EQ from './editor-quem.js?v=2026-11-15.9';
+import * as JR from './jornada.js?v=2026-11-15.9';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
+import * as FX from './ficha.js?v=2026-11-15.9';   // ficha v2: lógica pura (fila, démarches, funil, ações)
+import * as FH from './ficha-html.js?v=2026-11-15.9';   // ficha v2: HTML puro
 
 var PERSONAS = {
   au_pair_estudante: 'Au pair → estudante', campus_france: 'Campus France', alternancia_emprego: 'Alternância / emprego',
@@ -1447,9 +1447,10 @@ function casoPrazo(a) {
   if (a.prazo) return fmtDay(a.prazo) + (a.prazo_a_confirmar ? ' (a confirmar)' : '');
   return a.prazo_texto || (a.prazo_a_confirmar ? 'a confirmar' : '');
 }
-function casoAcoesHtml(k) {
-  if (!k.aco.length) return '<div class="empty" style="padding:14px">Nenhuma ação.</div>';
-  return k.aco.map(function (a) {
+function casoAcoesHtml(k, dono) {
+  var lista = dono ? k.aco.filter(function (a) { return a.dono === dono; }) : k.aco;
+  if (!lista.length) return '<div class="empty" style="padding:14px">Nenhuma ação.</div>';
+  return lista.map(function (a) {
     if (k.ed && k.ed.t === 'aco' && k.ed.id === a.id) return casoEditor('aco', a.id, '<input id="caso-ed-titulo" class="t" maxlength="160" style="width:100%" value="' + esc(a.titulo) + '">');
     var fim = a.estado === 'concluida';
     var pub = a.publicada_em ? casoPil('Publicada', 'u-baixa') : casoPil('Rascunho', 'u-media');
@@ -1533,12 +1534,14 @@ function casoNovoHtml(tipo) {
     '<div style="display:flex;gap:6px;margin-top:8px">' + casoBtn('salvar-novo', tipo, 'Criar') + casoBtn('cancelar', 0, 'Cancelar') + '</div></div></div>';
 }
 function casoResumoCampoNovo() { return casoCampo('O que é (uma linha, ela lê antes de abrir)', '<input id="caso-novo-resumo" class="t" maxlength="240" style="width:100%">'); }
-function casoBarraNovo(k) {
-  return '<div class="ab" style="margin:0 0 8px">' + casoBtn('novo', 'documento', '+ Documento') + casoBtn('novo', 'modelo', '+ Mensagem pronta') + casoBtn('novo', 'bilan', '+ Bilan') + '</div>' + (k.novo ? casoNovoHtml(k.novo) : '');
+function casoBarraNovo(k, so) {
+  var b = { documento: casoBtn('novo', 'documento', '+ Documento'), modelo: casoBtn('novo', 'modelo', '+ Mensagem pronta'), bilan: casoBtn('novo', 'bilan', '+ Bilan') };
+  return '<div class="ab" style="margin:0 0 8px">' + (so || ['documento', 'modelo', 'bilan']).map(function (t) { return b[t]; }).join('') + '</div>' + (k.novo && (!so || so.indexOf(k.novo) >= 0) ? casoNovoHtml(k.novo) : '');
 }
-function casoItensHtml(k) {
-  if (!k.itens.length) return '<div class="empty" style="padding:14px">Nenhum item. Escolas e modelos de e-mail são acrescentados pela equipe.</div>';
-  return k.itens.map(function (it) {
+function casoItensHtml(k, tipos, vazio) {
+  var lista = tipos ? k.itens.filter(function (it) { return tipos.indexOf(it.tipo) >= 0; }) : k.itens;
+  if (!lista.length) return '<div class="empty" style="padding:14px">' + esc(vazio || 'Nenhum item. Escolas e modelos de e-mail são acrescentados pela equipe.') + '</div>';
+  return lista.map(function (it) {
     if (k.ed && k.ed.t === 'item' && k.ed.id === it.id) return casoEditor('item', it.id, casoItemCampos(it));
     var est = it.estado === 'publicado' ? casoPil('Publicado', 'u-baixa') : it.estado === 'revisado' ? casoPil('Revisado', 'u-media') : casoPil('Proposto');
     var btns = (it.estado === 'proposto' ? casoBtn('item-rev', it.id, 'Marcar como revisado') : it.estado === 'revisado' ? casoBtn('item-pub', it.id, 'Publicar para ela') : casoBtn('item-ret', it.id, 'Retirar')) + casoBtn('ed-item', it.id, 'Editar') + (it.estado !== 'publicado' ? (k.confirmaDel === it.id ? casoBtn('item-del', it.id, 'Confirmar remoção') : casoBtn('item-del-pede', it.id, 'Remover')) : '');
@@ -1627,7 +1630,7 @@ function casoPanelHtml(c, k) {
     casoEscolasDelaHtml(k) +
     casoSecao('Avisos da IAssistente', 'você decide a data de cada um', casoAvisosHtml(k));
 }
-function pintaCaso() { var b = $('caso-box'); if (b) b.innerHTML = casoPanelHtml(byC(state.sel) || {}, state.caso); var ab = $('plat-abas'); if (ab) ab.innerHTML = platAbasHtml(); }
+function pintaCaso() { var b = $('caso-box'); if (b) b.innerHTML = casoPanelHtml(byC(state.sel) || {}, state.caso); var ab = $('plat-abas'); if (ab) ab.innerHTML = platAbasHtml(); if (fichaV2Ativa() && state.fx && state.fx.tab === 'plataforma' && state.fx.dados) fxPintaCorpo(); }
 async function carregaCaso(cid) {
   if (state.casoCarregando === cid) return;
   state.casoCarregando = cid;
@@ -2556,7 +2559,7 @@ function fxHeaderHtml(c, d) {
 // Catálogo de démarches (cópia do app, processos.json): carregado uma vez; sem ele, tudo cai na démarche padrão.
 var FX_PROC = null;
 async function fxCarregaProcessos() {
-  try { var r = await fetch('processos.json?v=2026-11-15.8'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
+  try { var r = await fetch('processos.json?v=2026-11-15.9'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
 }
 // A sessão Checklist: pílulas por démarche, os 4 mais urgentes, pasta do Drive privada e "Ver mais desta sessão".
 function fxChecklistCorpo(c) {
@@ -2577,13 +2580,76 @@ function fxOrdem() {
   var f = state.fx;
   return f.ord || { app: FX.SESSOES_PADRAO.app.slice(), ela: FX.SESSOES_PADRAO.ela.slice() };
 }
+// Fase 2: as sessões abaixo usam o mesmo caso (achados, ações, board, avisos, escolas) da aba Caso antiga. Carrega uma vez por pessoa;
+// quando chega, pintaCaso() repinta o corpo. Sem db/crm-caso.sql, cada sessão avisa o que falta em vez de ficar em branco.
+function fxCasoGuarda(c) {
+  var k = state.caso;
+  if (!k || k.cid !== c.id) { setTimeout(function () { carregaCaso(c.id); }, 0); return { html: '<div class="skel" aria-busy="true" style="height:64px"></div>' }; }
+  if (k.err) return { html: '<p class="sub" style="margin:0">Caso ainda não ligado: falta rodar <b>db/crm-caso.sql</b> e <b>db/crm-caso-importar.sql</b> no SQL Editor do Supabase.</p>' };
+  return { k: k };
+}
+function fxSemConsent(k) { return k.consent ? '' : '<p class="pill u-media" style="margin:0 0 10px">Sem consentimento de serviço: publicar e agendar ficam bloqueados.</p>'; }
+function fxInicioCorpo(c) {
+  var g = fxCasoGuarda(c), base = '<div id="ins-box">' + insightsHtml(state.ins, Date.now()) + '</div>';
+  if (!g.k) return base + casoSecao('Avisos da IAssistente', 'você decide a data de cada um', g.html);
+  return base + fxSemConsent(g.k) + casoProximaHtml(c, g.k) + casoSecao('Avisos da IAssistente', 'perguntas, propostas e inteligência que chegam como notificação', casoAvisosHtml(g.k));
+}
+function fxEspacoCorpo(c) {
+  var g = fxCasoGuarda(c); if (!g.k) return g.html;
+  var pub = g.k.itens.filter(function (x) { return (x.tipo === 'marco' || x.tipo === 'escola') && x.estado === 'publicado'; }).length;
+  return '<p class="sub" style="margin:0 0 8px">O que você publica só para o caso dela: prazos e escolas. Nada aparece para ela até você publicar (' + pub + ' publicado' + (pub === 1 ? '' : 's') + ').</p>' + fxSemConsent(g.k) +
+    casoItensHtml(g.k, ['marco', 'escola'], 'Nada de prazo ou escola ainda. Leia a página do Notion no Onboarding para a IA propor.') + casoEscolasDelaHtml(g.k);
+}
+function fxGuiasCorpo(c) {
+  var g = fxCasoGuarda(c); if (!g.k) return g.html;
+  return '<p class="sub" style="margin:0 0 8px">O material da equipe que ela abre em Guias: bilan da conversa, documentos e mensagens prontas. Só entra o que você publicar.</p>' + fxSemConsent(g.k) +
+    casoBarraNovo(g.k) + casoItensHtml(g.k, ['bilan', 'documento', 'modelo'], 'Nada para ela em Guias ainda. Use os botões acima para criar.');
+}
+// Perfil: o que o Dossiê ainda não tem, para perguntar na call (o Dossiê é a aba ao lado).
+function fxPerfilCorpo(c) {
+  var d = state.dos && state.dos.cid === c.id ? state.dos : null;
+  if (!d) return '<div class="skel" aria-busy="true" style="height:64px"></div>';
+  var pr = dosProgresso(c, d.d, d.rasc), falta = [];
+  dosVisiveis(c, d.d, d.rasc).forEach(function (b) { if (b.livre) return; b.campos.forEach(function (f) { if (dosValor(c, d.d, d.rasc, f.k) === '') falta.push(f.l); }); });
+  return '<p class="sub" style="margin:0 0 8px"><b>' + pr.n + ' de ' + pr.tot + '</b> perguntas respondidas. Cada resposta ajuda a ajustar o que aparece para ela.</p>' +
+    (falta.length ? '<ul class="fx-falta" style="margin:0 0 10px;padding-left:18px">' + falta.slice(0, 6).map(function (l) { return '<li>' + esc(l) + '</li>'; }).join('') + '</ul>' + (falta.length > 6 ? '<p class="sub" style="margin:0 0 8px">E mais ' + (falta.length - 6) + ' no Dossiê.</p>' : '') : '<p class="sub" style="margin:0 0 8px">Tudo respondido.</p>') +
+    '<button type="button" class="btn" data-fx="tab" data-v="dossie">Abrir o Dossiê</button>';
+}
+// Só eu: o que é seu neste caso (nada aparece no app dela). As linhas dela, que você publica no Checklist, ficam em "Passos para ela".
+function fxEuCorpo(c) {
+  var g = fxCasoGuarda(c); if (!g.k) return g.html;
+  return '<p class="sub" style="margin:0 0 8px">Tarefas suas neste caso. Ela não vê nada daqui.</p>' + casoAcoesHtml(g.k, 'ingryd') +
+    casoSecao('Passos para ela', 'o que você propõe e publica no Checklist dela', fxSemConsent(g.k) + casoAcoesHtml(g.k, 'ela'));
+}
+// O que ela trouxe: só o que ela mesma acrescentou e é público. Sem pasta do Drive e sem dado pessoal.
+function fxTrouxeCorpo(c) {
+  var g = fxCasoGuarda(c); if (!g.k) return g.html;
+  var e = casoEscolasDelaHtml(g.k);
+  return '<p class="sub" style="margin:0 0 8px">Tudo o que ela adicionou de público ao app: escolas, com o que já respondeu. A pasta do Drive e dados pessoais ficam de fora.</p>' + (e || '<div class="empty" style="padding:14px">Ela ainda não trouxe nada de público.</div>');
+}
+// Mais detalhes: o que é da persona (igual para quem tem a mesma situação) e o que é só dela.
+function fxMaisCorpo(c) {
+  var g = fxCasoGuarda(c); if (!g.k) return g.html;
+  var k = g.k, chk = state.dos && state.dos.cid === c.id ? state.dos.chk : null, d = state.dos && state.dos.cid === c.id ? state.dos : null, pr = d ? dosProgresso(c, d.d, d.rasc) : null;
+  var pub = k.itens.filter(function (x) { return x.estado === 'publicado'; }).length;
+  return '<p class="sub" style="margin:0 0 8px">O app dela tem duas camadas: a da persona vem pronta; a dela você constrói conversando.</p>' +
+    casoSecao('Persona', personaLabel(c), kvHtml([['Passos no checklist', chk && !chk.err && !chk.semConta ? String(chk.itens.length) : '—'], ['Perguntas no Dossiê', pr ? String(pr.tot) : '—']])) +
+    casoSecao('Só dela', pn(c), kvHtml([['Respostas no Dossiê', pr ? pr.n + ' de ' + pr.tot : '—'], ['Achados da conversa', String(k.ach.length)], ['Ações', String(k.aco.length)],
+      ['Itens do board publicados', pub + ' de ' + k.itens.length], ['Avisos', String(k.avs.length)], ['Escolas que ela acrescentou', String((k.escolasDela || []).length)]]));
+}
 function fxSessoes(c) {
   var mk = function (titulo, sub, id, corpo) { var a = fxSessaoAberta(id); return { titulo: titulo, sub: sub, aberto: a, corpo: a ? corpo() : '' }; };
   var mapa = {
     chat: mk('Conversa com ela', 'As mensagens da equipe, do assistente e dela, dentro do app.', 'chat', function () { return '<div id="chat-box">' + chatPanelHtml(c, state.chat, H4_PLAT) + '</div>'; }),
-    inicio: mk('Início (iAssistente)', 'O que o assistente mostra a ela no início do app e os seus avisos.', 'inicio', function () { return '<div id="ins-box">' + insightsHtml(state.ins, Date.now()) + '</div>'; }),
+    inicio: mk('Início (iAssistente)', 'O que o assistente mostra a ela no início do app e os seus avisos.', 'inicio', function () { return fxInicioCorpo(c); }),
     checklist: mk('Checklist', 'Os passos dela por démarche, do mais urgente ao mais distante.', 'checklist', function () { return '<div id="fx-chk-corpo">' + fxChecklistCorpo(c) + '</div>'; }),
-    bilan: mk('Bilan', 'O que a conversa mostrou e o e-mail do bilan.', 'bilan', function () { return bilanResumoHtml(c) + bilanBlocoHtml(c, H4_PLAT); }),
+    espaco: mk('Espaço', 'Prazos e escolas que você publica só para ela.', 'espaco', function () { return fxEspacoCorpo(c); }),
+    guias: mk('Guias', 'Bilan, documentos e mensagens prontas da equipe.', 'guias', function () { return fxGuiasCorpo(c); }),
+    perfil: mk('Perfil', 'O que ela já respondeu e o que falta perguntar.', 'perfil', function () { return fxPerfilCorpo(c); }),
+    eu: mk('Só eu · minhas tarefas', 'Tarefas suas neste caso. Ela não vê nada daqui.', 'eu', function () { return fxEuCorpo(c); }),
+    bilan: mk('Bilan', 'O que a conversa mostrou, os achados para conferir e o e-mail do bilan.', 'bilan', function () { var g = fxCasoGuarda(c); return (g.k ? casoSecao('O que entendi', g.k.ach.length + ' achados', casoAchadosHtml(g.k)) : g.html) + bilanResumoHtml(c) + bilanBlocoHtml(c, H4_PLAT); }),
+    trouxe: mk('O que ela trouxe', 'Tudo o que ela adicionou de público ao app.', 'trouxe', function () { return fxTrouxeCorpo(c); }),
+    mais: mk('Mais detalhes do universo', 'O que é da persona e o que é só dela.', 'mais', function () { return fxMaisCorpo(c); }),
     hist: mk('Histórico', 'Tudo que ela fez no app, dia a dia.', 'hist', function () { return '<div id="int-box">' + interacoesHtml(state.int) + '</div>'; })
   };
   return FH.htmlSessoes(fxOrdem(), mapa, H_FX);

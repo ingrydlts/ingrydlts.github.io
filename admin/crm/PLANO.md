@@ -219,6 +219,23 @@ Reorganiza a ficha da pessoa com os dados que o CRM **já lê**: fila de hoje, h
 
 **Ainda fora da ficha v2 (só na antiga, por enquanto):** as sub-abas Caso, Espaço e Guias da Plataforma e o 1:1 pago; os botões "Já fiz", "Adicionar" e "Concluídas" do quadro de ações (precisam de onde gravar: fase 3); "Pedir acesso por e-mail" na pasta do Drive (modelo de mensagem, fase 3).
 
+## Ficha-universo, fase 2 (15/11): sessões do app dela ligadas ao caso
+
+Sem SQL novo: reaproveita as tabelas que a aba **Caso** (antiga) já lê (`caso_achados`, `caso_acoes`, `board_itens`, `caso_avisos`, `escolas_dela`) e os mesmos botões (`data-caso`, `casoAcao`), então publicar, revisar, agendar e editar funcionam como antes. Na aba Plataforma da ficha v2:
+
+- **Acompanhar o app dela:** Conversa, Início (agora com a próxima mensagem e os avisos da IAssistente), Checklist, **Espaço** (prazos e escolas do board + escolas que ela acrescentou), **Guias** (bilan, documentos e mensagens prontas, com os botões de criar) e **Perfil** (o que o Dossiê ainda não tem, com atalho para a aba).
+- **Conhecer e registrar:** **Só eu** (ações da Ingryd; as linhas dela, que você publica no Checklist, ficam em "Passos para ela"), Bilan (agora com os achados para conferir), **O que ela trouxe** (só o que é público), Histórico e **Mais detalhes** (persona × dela, com contagens).
+- Estados: skeleton enquanto o caso carrega; aviso do SQL que falta (`crm-caso.sql`); aviso de publicação bloqueada sem consentimento; vazio com o que fazer.
+- `pintaCaso()` agora repinta a ficha v2 quando ela está na aba Plataforma. A ordem das sessões salva no navegador continua valendo (as novas entram no fim).
+- Versão do cache: `2026-11-15.9`. Testes: `db/testes` → `npm run test:ficha-fase2` (15 verificações); `ficha.test.mjs` e `crm-ficha-ui.test.mjs` atualizados para a ordem nova.
+
+**Ainda não feito da proposta (precisa de dado novo ou de desenho próprio):**
+1. **Prévia do app dela** (coluna da direita, com Dia 0/1/3/7 e camadas Persona × Dela): é um segundo renderizador do app com dados reais.
+2. **Panorama dela** (temas, palavras, impulsos, sugestões): depende de o app gravar edições do checklist (título, observação, links, data, arquivado, passos criados por ela), que hoje `checklist_items` não expõe ao CRM. Vale um item no app antes.
+3. **Recado da Ingryd no topo do checklist** e **pasta do Drive / "Pedir acesso por e-mail"**: precisam de onde gravar (coluna ou tabela nova).
+4. **Minhas próximas ações** com "Já fiz", "Adicionar" e "Concluídas", **modelos de mensagem por etapa** na Conversa e **Respostas e novidades dela** no topo: fase 3 do plano.
+5. **Funil clicável** (mudança manual de etapa) e criar **Aviso/Item novo** direto da sessão (hoje só os botões de documento, mensagem e bilan).
+
 ## Etapas
 
 1. **Fase 1 — captura** (feita, repo POR-DENTRO-APP): `contatos`, `eventos`, `consentimentos`, `capturar_lead()`, `admins`.

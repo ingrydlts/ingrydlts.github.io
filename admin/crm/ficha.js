@@ -4,7 +4,7 @@
 // ---------- Urgência dos passos do checklist (spec §5.4) ----------
 // ChkItem = { step_key, category, label, status, due_date, sort_order } (colunas de buscaChecklist em crm.js).
 export { calcularUso } from './ficha-uso.js?v=2026-11-13.8';
-export * as funil from './funil.js?v=2026-11-15.8';   // Funil por próxima ação (lógica pura); o crm.js usa FX.funil
+export * as funil from './funil.js?v=2026-11-15.9';   // Funil por próxima ação (lógica pura); o crm.js usa FX.funil
 const DIA = 86400e3;
 function diasEntre(hoje, data) {
   const a = Date.parse(hoje + 'T00:00:00Z'), b = Date.parse(String(data).slice(0, 10) + 'T00:00:00Z');
@@ -124,7 +124,8 @@ export function ordenarFila(itens) {
 }
 
 // ---------- Ordem das sessões e preferências do navegador (spec §5.2) ----------
-export const SESSOES_PADRAO = { app: ['chat', 'inicio', 'checklist'], ela: ['bilan', 'hist'] };
+// Fase 2: o app dela ganha Espaço, Guias e Perfil; "Conhecer e registrar" ganha Só eu, O que ela trouxe e Mais detalhes.
+export const SESSOES_PADRAO = { app: ['chat', 'inicio', 'checklist', 'espaco', 'guias', 'perfil'], ela: ['eu', 'bilan', 'trouxe', 'hist', 'mais'] };
 export function moverSessao(ordem, id, delta) {
   const o = (ordem || []).slice(), i = o.indexOf(id), j = i + delta;
   if (i < 0 || j < 0 || j >= o.length) return o;
