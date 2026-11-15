@@ -2,13 +2,13 @@
 // Nada de service_role aqui. O banco é db/crm-fase2.sql; o desenho é o artefato "CRM Por Dentro".
 // Tudo que vem do banco é texto de terceiros (nome, e-mail, pergunta): passa sempre por esc().
 import { supabase } from '/assets/js/supabase-client.js';
-import * as TX from './taxonomia.js?v=2026-11-15.23';   // páginas, famílias e agrupamento dos modelos
-import * as ES from './estudio.js?v=2026-11-15.23';   // os blocos do estúdio de e-mails (entregas 2 e 3)
-import * as EE from './editor-email.js?v=2026-11-15.23';
-import * as EQ from './editor-quem.js?v=2026-11-15.23';
-import * as JR from './jornada.js?v=2026-11-15.23';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
-import * as FX from './ficha.js?v=2026-11-15.23';   // ficha v2: lógica pura (fila, démarches, funil, ações)
-import * as FH from './ficha-html.js?v=2026-11-15.23';   // ficha v2: HTML puro
+import * as TX from './taxonomia.js?v=2026-11-15.24';   // páginas, famílias e agrupamento dos modelos
+import * as ES from './estudio.js?v=2026-11-15.24';   // os blocos do estúdio de e-mails (entregas 2 e 3)
+import * as EE from './editor-email.js?v=2026-11-15.24';
+import * as EQ from './editor-quem.js?v=2026-11-15.24';
+import * as JR from './jornada.js?v=2026-11-15.24';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
+import * as FX from './ficha.js?v=2026-11-15.24';   // ficha v2: lógica pura (fila, démarches, funil, ações)
+import * as FH from './ficha-html.js?v=2026-11-15.24';   // ficha v2: HTML puro
 
 var PERSONAS = {
   au_pair_estudante: 'Au pair → estudante', campus_france: 'Campus France', alternancia_emprego: 'Alternância / emprego',
@@ -136,7 +136,7 @@ var P = [], PERR = '';
 var PSUG = [];
 var FILA = [];   // avisos agendados que ainda não saíram, de todas as pessoas (para o bloco da Hoje)
 var state = { funilVisao: 'leads', funilPorque: null, dosAberto: lerDosAberto(), dos: null, pc: null, ptab: null, pstab: 'assistente', pdias: {}, int: null, chatRasc: '', rascunho: {}, view: 'hoje', persona: '', sub: '', urg: '', stage: '', orig: '', camp: '', q: '', sel: null, qs: 'nova', qsel: null, inbox: 'perguntas', rs: 'nova', rsel: null, ps: 'novo', psel: null, preset: 'todos', seg: '', prevView: 'contatos',
-  fx: { tab: null, ord: null, abertas: {}, ag: { i: 0, pop: null }, dem: 'todas', ckTodos: false, ckMais: false, tour: true } };
+  fx: { tab: null, ord: null, hd: null, abertas: {}, ag: { i: 0, pop: null }, dem: 'todas', ckTodos: false, ckMais: false, tour: true } };
 var activeCid = null;
 var me = null;
 
@@ -2902,7 +2902,7 @@ var H_FX = { esc: esc, fmtDay: fmtDay };
 var FX_ABAS = ['conversa', 'plataforma', 'ficha', 'dossie'];
 // Zera o que é "desta pessoa" ao abrir outra ficha. A ordem das sessões e o guia são preferências do navegador e ficam.
 function fxReset() {
-  var f = state.fx; f.tab = null; f.ag = { i: 0, pop: null }; f.dem = 'todas'; f.ckTodos = false; f.ckMais = false; f.abertas = {}; f.flash = null; f.tarefas = []; f.dados = null;
+  var f = state.fx; f.tab = null; f.hd = null; f.ag = { i: 0, pop: null }; f.dem = 'todas'; f.ckTodos = false; f.ckMais = false; f.abertas = {}; f.flash = null; f.tarefas = []; f.dados = null;
 }
 function fxPrefs() {
   var f = state.fx;
@@ -2952,7 +2952,7 @@ function fxResumoCartoes(c, d) {
   var pagTxt = pago ? pago.minutos + ' min · pago em ' + fmtDate(pago.pago_em) : 'sem pagamento registrado';
   var histo = feitos ? 'já fez ' + feitos : 'nenhum feito ainda';
   var um;
-  if (prox) um = cartao('1:1', new Date(prox.quando).toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit' }) + ' · ' + fmtHora(prox.quando),
+  if (prox) um = cartao('1:1', new Date(prox.quando).toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit' }) + ' · ' + fmtHora(prox.quando) + (pago ? ' · ' + pago.minutos + ' min' : ''),
     pagTxt + ' · ' + histo + (vindo.length > 1 ? ' · +' + (vindo.length - 1) + ' depois' : ''), pago ? 'ok' : undefined);
   else if (pago && pags.length > feitos) um = cartao('1:1', 'Pago, falta marcar', pagTxt + ' · ' + histo, 'alerta');
   else if (feitos) um = cartao('1:1', 'Já fez ' + feitos, 'nenhum vindo agora', undefined);
@@ -2973,6 +2973,7 @@ function fxResumoCartoes(c, d) {
   // E-mails
   var abriu = mails.filter(function (m) { return m.aberto_em || m.status === 'aberto' || m.status === 'clicado'; }).length, clicou = mails.filter(function (m) { return m.clicado_em || m.status === 'clicado'; }).length, novas = resps.filter(function (x) { return x.status === 'nova'; }).length;
   var em = mails.length || resps.length ? cartao('E-mails', mails.length ? 'abriu ' + abriu + ' de ' + mails.length : '—', (mails.length ? 'clicou ' + clicou + ' · ' : '') + 'respostas ' + resps.length + (novas ? ' (' + novas + ' sem resposta sua)' : ''), novas ? 'alerta' : undefined) : cartao('E-mails', '—', 'nenhum e-mail ainda');
+  [um, plat, dosC, prazo, em].forEach(function (k, i) { if (k) k.id = ['um', 'plat', 'dos', 'prazo', 'email'][i]; });
   return [um, plat, dosC, prazo, em].filter(Boolean);
 }
 // A linha dos dados-chave do dossiê (só o que já foi respondido).
@@ -2985,6 +2986,62 @@ function fxFatosChave(c) {
   if (op('nivel_frances')) out.push('francês ' + op('nivel_frances'));
   if (v('moradia_resolvida') === 'true') out.push('moradia resolvida');
   return out.length ? 'Dossiê: ' + out.join(' · ') : 'Dossiê ainda sem os dados-chave (cidade, chegada, francês).';
+}
+// Os detalhes de cada cartão do cabeçalho, no mesmo lugar, quando você clica: nada de tudo à vista de uma vez.
+function fxHdDetalhe(c, d, id) {
+  if (!id) return '';
+  var agora = Date.now(), mails = d.mails || [], resps = d.resps || [];
+  var linha = function (l, v) { return '<div class="hd-l"><span>' + esc(l) + '</span><b>' + v + '</b></div>'; };
+  var btn = function (rot, attrs, primario) { return '<button type="button" class="btn' + (primario ? ' primary' : '') + '" ' + attrs + '>' + esc(rot) + '</button>'; };
+  var fecha = '<button type="button" class="hd-x" data-fx="hdTile" data-id="' + esc(id) + '" aria-label="Fechar os detalhes">Fechar ✕</button>';
+  var corpo = '', titulo = '';
+  if (id === 'um') {
+    titulo = '1:1 de ' + pn(c);
+    var ums = UM.filter(function (x) { return x.contato_id === c.id && x.status !== 'cancelado'; }).filter(function (x) { return x.quando; }).sort(function (a, b) { return a.quando < b.quando ? 1 : -1; });
+    var pags = PAG1A1.filter(function (p) { return p.contato_id === c.id; });
+    var pagDe = function (x) { var antes = pags.filter(function (p) { return p.pago_em <= x.quando; }); return (antes.length ? antes : pags)[0]; };
+    corpo = (ums.length ? '<ul class="hd-lista">' + ums.map(function (x) {
+      var feito = x.status === 'feito' || new Date(x.quando).getTime() < agora - 36e5, p = pagDe(x);
+      return '<li><span class="pill ' + (feito ? '' : 'u-baixa') + '">' + (feito ? 'Feito' : 'Vem aí') + '</span> <b>' + esc(new Date(x.quando).toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: '2-digit' })) + ' · ' + esc(fmtHora(x.quando)) + '</b>' +
+        ' <span class="sub">' + esc(p ? p.minutos + ' min · pago em ' + fmtDate(p.pago_em) : 'sem pagamento registrado') + '</span></li>';
+    }).join('') + '</ul>' : '<p class="sub" style="margin:0">Nenhum 1:1 com dia marcado.</p>') +
+      (pags.length ? '<p class="sub" style="margin:8px 0 0">' + pags.length + (pags.length === 1 ? ' pagamento de 1:1' : ' pagamentos de 1:1') + ': ' + esc(pags.map(function (p) { return p.minutos + ' min em ' + fmtDate(p.pago_em); }).join(' · ')) + '.</p>' : '') +
+      '<div class="cam-acoes" style="margin-top:10px">' + btn('Marcar 1:1', 'data-open1a1="' + esc(c.id) + '"', true) + '</div>';
+  } else if (id === 'plat') {
+    titulo = 'Plataforma';
+    var a = state.assin, ult = diasDesde(c.ultimo_evento_em);
+    corpo = linha('Conta no app', c.user_id ? 'Sim' : 'Não') + linha('Última atividade', ult == null ? '—' : ult === 0 ? 'hoje' : 'há ' + haDias(ult)) +
+      (a ? linha('Assinatura', esc(ASSIN_ST[a.status] || a.status) + (a.plano ? ' · ' + esc(a.plano) : '')) + linha(a.status === 'trialing' ? 'Fim do teste' : a.cancela_no_fim ? 'Acesso até' : 'Próxima cobrança', esc(fmtDay(String(a.status === 'trialing' ? a.teste_fim || a.periodo_fim : a.periodo_fim).slice(0, 10)))) : linha('Assinatura', 'Não assina')) +
+      '<div class="cam-acoes" style="margin-top:10px">' + btn('Abrir a aba Plataforma', 'data-fx="tab" data-v="plataforma"', true) + '</div>';
+  } else if (id === 'dos') {
+    titulo = 'Dossiê';
+    var ok = state.dos && state.dos.cid === c.id && state.dos.d;
+    if (!ok) corpo = '<p class="sub" style="margin:0">Carregando o dossiê…</p>';
+    else {
+      var blocos = dosVisiveis(c, state.dos.d, state.dos.rasc).filter(function (b) { return !b.livre; });
+      corpo = '<div class="hd-dos">' + blocos.map(function (b) {
+        var feitos = b.campos.filter(function (f) { return dosValor(c, state.dos.d, state.dos.rasc, f.k) !== ''; }).length, falta = b.campos.filter(function (f) { return dosValor(c, state.dos.d, state.dos.rasc, f.k) === ''; });
+        return '<div class="hd-dos-b"><b>' + esc(b.t) + '</b> <span class="sub">' + feitos + ' de ' + b.campos.length + '</span>' + (falta.length ? '<div class="sub">Falta: ' + esc(falta.slice(0, 4).map(function (f) { return f.l; }).join(', ')) + (falta.length > 4 ? ' e mais ' + (falta.length - 4) : '') + '</div>' : '') + '</div>';
+      }).join('') + '</div><div class="cam-acoes" style="margin-top:10px">' + btn('Abrir o Dossiê', 'data-fx="tab" data-v="dossie"', true) + '</div>';
+    }
+  } else if (id === 'prazo') {
+    titulo = 'Prazo';
+    var r = c.respostas || {};
+    corpo = (CF_PRAZO[r.cfNivel] ? linha('Campus France', esc(fmtDay(CF_PRAZO[r.cfNivel])) + ' · ' + esc(CF_NIVEL[r.cfNivel] || r.cfNivel)) : '') +
+      (c.prazo_limite ? linha('VLS-TS', esc(fmtDay(c.prazo_limite)) + ' · ' + esc(prazoTxt(c))) + (c.data_entrada ? linha('Entrada na França', esc(fmtDay(c.data_entrada))) : '') + '<p class="sub" style="margin:6px 0 0">O prazo é a data de entrada + 3 meses − 1 dia, a mesma conta da calculadora do guia.</p>' : '') ||
+      '<p class="sub" style="margin:0">Sem prazo registrado: falta a data de entrada na França (ou o nível do Campus France).</p>';
+  } else if (id === 'email') {
+    titulo = 'E-mails';
+    var ord = mails.slice().sort(function (a, b) { var x = a.enviado_em || a.criado_em, y = b.enviado_em || b.criado_em; return x < y ? 1 : -1; }).slice(0, 5);
+    corpo = (ord.length ? '<ul class="hd-lista">' + ord.map(function (m) { return '<li>' + mailPill(m) + ' <b>' + esc(m.assunto || modeloNome(m.modelo)) + '</b> <span class="sub">' + esc(fmtQuando(m.enviado_em || m.criado_em)) + (m.aberto_em ? ' · abriu ' + esc(fmtQuando(m.aberto_em)) : '') + (m.clicado_em ? ' · clicou ' + esc(fmtQuando(m.clicado_em)) : '') + '</span></li>'; }).join('') + '</ul>' : '<p class="sub" style="margin:0">Nenhum e-mail enviado pelo CRM ainda.</p>') +
+      (resps.length ? '<p class="sub" style="margin:8px 0 0">Ela respondeu ' + resps.length + (resps.length === 1 ? ' vez' : ' vezes') + (resps.some(function (x) { return x.status === 'nova'; }) ? ', e há resposta sem retorno seu' : '') + '.</p>' : '') +
+      '<div class="cam-acoes" style="margin-top:10px">' + btn('Abrir a aba E-mail', 'data-fx="tab" data-v="conversa"', true) + '</div>';
+  }
+  return '<div class="hd-det-cab"><b>' + esc(titulo) + '</b>' + fecha + '</div>' + corpo;
+}
+function fxPintaHeader() {
+  var c = byC(state.fx.cid), d = state.fx.dados, hb = $('fx-head-box'); if (!c || !d || !hb) return;
+  hb.innerHTML = fxHeaderHtml(fxContato(c, d.uid), d); fxMedeCabecalho();
 }
 function fxHeaderHtml(c, d) {
   var chk = state.dos && state.dos.cid === c.id ? state.dos.chk : null, k = null, agora = Date.now();
@@ -3003,14 +3060,14 @@ function fxHeaderHtml(c, d) {
     entradas: Math.max(jor.entradas.length ? origensDe(c).length : 0, origensDe(c).length, 1), diasNaBase: dd,
     respostas: resps.length, respostasNovas: resps.filter(function (x) { return x.status === 'nova'; }).length,
     proximo: proximoEmail(c, mails, resps, jor), agora: agora };
-  var cart = { blocos: [{ titulo: null, cartoes: fxResumoCartoes(c, d) }], nota: fxFatosChave(c) };
+  var cart = { blocos: [{ titulo: null, cartoes: fxResumoCartoes(c, d) }], nota: fxFatosChave(c), aberto: state.fx.hd || null, detalhe: fxHdDetalhe(c, d, state.fx.hd) };
   return FH.htmlCabecalho({ c: c, estagioLabel: stageLabel(c.estagio), personaLabel: personaLabel(c) + (subLabel(c) ? ' · ' + subLabel(c) : ''),
-    temConta: !!c.user_id, etiqueta: FX.etiquetaPagamento(assin), estagios: STAGES, blocos: cart.blocos, nota: cart.nota }, H_FX);
+    temConta: !!c.user_id, etiqueta: FX.etiquetaPagamento(assin), estagios: STAGES, blocos: cart.blocos, nota: cart.nota, aberto: cart.aberto, detalhe: cart.detalhe }, H_FX);
 }
 // Catálogo de démarches (cópia do app, processos.json): carregado uma vez; sem ele, tudo cai na démarche padrão.
 var FX_PROC = null;
 async function fxCarregaProcessos() {
-  try { var r = await fetch('processos.json?v=2026-11-15.23'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
+  try { var r = await fetch('processos.json?v=2026-11-15.24'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
 }
 // A sessão Checklist: pílulas por démarche, os 4 mais urgentes, pasta do Drive privada e "Ver mais desta sessão".
 function fxChecklistCorpo(c) {
@@ -3184,7 +3241,8 @@ function fichaClick(el) {
   var f = state.fx, ds = el.dataset, n = f.tarefas ? f.tarefas.length : 0;
   switch (ds.fx) {
     case 'pessoa': fxReset(); openPessoa(ds.id); return true;
-    case 'tab': if (FX_ABAS.indexOf(ds.v) >= 0) { f.tab = ds.v; fxRepinta(); } return true;
+    case 'tab': if (FX_ABAS.indexOf(ds.v) >= 0) { f.tab = ds.v; f.hd = null; fxRepinta(); } return true;
+    case 'hdTile': f.hd = f.hd === ds.id ? null : ds.id; fxPintaHeader(); return true;
     case 'tourAbrir': case 'tourFechar':
       f.tour = ds.fx === 'tourAbrir'; FX.gravarPrefs(localStorage, { tour: f.tour });
       var tb = $('fx-tour'); if (tb) tb.innerHTML = FH.htmlTour(f.tour, H_FX); return true;

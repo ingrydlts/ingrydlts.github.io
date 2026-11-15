@@ -216,6 +216,15 @@ console.log('== Cabeçalho: 1:1, plataforma, dossiê e prazo à vista ==');
   let html = await abre(h, pessoa({ user_id: 'u9', ultimo_evento_em: iso(-1), prazo_limite: '2026-12-01', dias_para_prazo: 12, urgencia: 'alta' }));
   check('prazo à vista no cabeçalho, em alerta', html.includes('>Prazo<') && html.includes('VLS-TS') && /class="k alerta"/.test(html));
   check('sem 1:1: o cartão diz que nunca fez e nada vem aí', html.includes('ainda não fez 1:1') && html.includes('>Nenhum<'));
+  check('os cartões do cabeçalho são botões que abrem os detalhes (começam fechados)', /data-fx="hdTile" data-id="um"[^>]*aria-expanded="false"/.test(html) && !html.includes('id="fx-hd-det"'));
+  await h.click({ fx: 'hdTile', id: 'um' });
+  let hd = h.el('fx-head-box').innerHTML;
+  check('clicar no cartão do 1:1 abre os detalhes no cabeçalho, com Marcar 1:1', hd.includes('id="fx-hd-det"') && /data-id="um"[^>]*aria-expanded="true"/.test(hd) && hd.includes('1:1 de ') && hd.includes('data-open1a1='));
+  await h.click({ fx: 'hdTile', id: 'email' });
+  hd = h.el('fx-head-box').innerHTML;
+  check('abrir outro cartão troca o detalhe (só um aberto por vez)', hd.includes('Abrir a aba E-mail') && (hd.match(/id="fx-hd-det"/g) || []).length === 1 && /data-id="um"[^>]*aria-expanded="false"/.test(hd));
+  await h.click({ fx: 'hdTile', id: 'email' });
+  check('clicar de novo fecha', !h.el('fx-head-box').innerHTML.includes('id="fx-hd-det"'));
   h.mod.pararAoVivo();
 }
 console.log('== Task 13: abas Ficha e Conversa ==');

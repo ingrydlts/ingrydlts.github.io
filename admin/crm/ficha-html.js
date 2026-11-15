@@ -39,9 +39,13 @@ export function htmlCabecalho(d, h) {
   const e = h.esc, c = d.c || {}, et = d.etiqueta || { texto: '', tom: 'neutro' };
   const blocos = (d.blocos || []).map((b) =>
     (b.titulo ? '<span class="tag">' + e(b.titulo) + '</span>' : '') +
-    '<div class="hd-k">' + (b.cartoes || []).map((k) =>
-      '<div class="k' + (k.tom === 'alerta' ? ' alerta' : k.tom === 'ok' ? ' ok' : '') + '"' + (k.sub ? ' title="' + e(k.sub) + '"' : '') + '><b class="l">' + e(k.rotulo) + '</b><div class="v">' + e(k.valor) + '</div>' +
-      (k.sub ? '<div class="s">' + e(k.sub) + '</div>' : '') + '</div>').join('') + '</div>').join('');
+    '<div class="hd-k">' + (b.cartoes || []).map((k) => {
+      const cls = 'k' + (k.tom === 'alerta' ? ' alerta' : k.tom === 'ok' ? ' ok' : '') + (k.id && d.aberto === k.id ? ' aberto' : ''), tt = k.sub ? ' title="' + e(k.sub) + '"' : '';
+      const miolo = '<b class="l">' + e(k.rotulo) + '</b><div class="v">' + e(k.valor) + '</div>' + (k.sub ? '<div class="s">' + e(k.sub) + '</div>' : '');
+      // Com id, o cartão é um botão: abre os detalhes logo abaixo (1:1, plataforma, dossiê, prazo, e-mails).
+      return k.id ? '<button type="button" class="' + cls + '" data-fx="hdTile" data-id="' + e(k.id) + '" aria-expanded="' + (d.aberto === k.id) + '"' + tt + '>' + miolo + '<span class="k-chev" aria-hidden="true">▾</span></button>'
+        : '<div class="' + cls + '"' + tt + '>' + miolo + '</div>';
+    }).join('') + '</div>').join('') + (d.detalhe ? '<div class="hd-det" id="fx-hd-det">' + d.detalhe + '</div>' : '');
   return '<header class="hd" id="fx-hd">' +
     '<div class="hd-l1"><span class="hd-av" aria-hidden="true">' + e(iniciais(c)) + '</span><h2 class="hd-n">' + e(c.nome || c.email || 'Sem nome') + '</h2>' +
     (d.personaLabel ? '<span class="pill">' + e(d.personaLabel) + '</span>' : '') +
