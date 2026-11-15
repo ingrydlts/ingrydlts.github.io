@@ -47,7 +47,7 @@ export function htmlCabecalho(d, h) {
     (d.personaLabel ? '<span class="pill">' + e(d.personaLabel) + '</span>' : '') +
     (d.estagioLabel ? '<span class="pill"><span class="dot"></span>' + e(d.estagioLabel) + '</span>' : '') +
     (et.texto ? '<span class="pill pg-' + e(et.tom) + '">' + e(et.texto) + '</span>' : '') +
-    (d.temConta != null ? '<span class="pill">' + (d.temConta ? 'No app' : 'Sem conta') + '</span>' : '') +
+    (d.temConta != null ? '<span class="pill">' + (d.temConta ? 'No app' : 'Lead') + '</span>' : '') +
     '<span class="hd-sp"><button class="btn primary" type="button" data-emailfor="' + e(c.id) + '">Escrever mensagem</button>' +
     '<button class="btn" type="button" data-open1a1="' + e(c.id) + '">Marcar 1:1</button>' +
     '<span class="sel"><select id="stage-pick" aria-label="Mudar estágio">' + (d.estagios || []).map((s) => '<option value="' + e(s.k) + '"' + (s.k === c.estagio ? ' selected' : '') + '>Estágio: ' + e(s.l) + '</option>').join('') + '</select></span></span></div>' +

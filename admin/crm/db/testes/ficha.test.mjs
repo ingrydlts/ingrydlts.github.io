@@ -125,7 +125,7 @@ console.log('== Cabeçalho fixo: tipo e cartões ==');
   check('canceled com conta cai em plataforma', FX.tipoCabecalho({ user_id: 'u' }, ass('canceled')) === 'plataforma');
   check('past_due sem conta cai em lead', FX.tipoCabecalho({}, ass('past_due')) === 'lead');
   check('sem assinatura e com conta é plataforma; sem nada é lead', FX.tipoCabecalho({ user_id: 'u' }, null) === 'plataforma' && FX.tipoCabecalho({}, null) === 'lead');
-  check('etiqueta: sem assinatura', FX.etiquetaPagamento(null).texto === 'Não assina' && FX.etiquetaPagamento(null).tom === 'neutro');
+  check('etiqueta: sem assinatura', FX.etiquetaPagamento(null).texto === 'Não assinante' && FX.etiquetaPagamento(null).tom === 'neutro');
   check('etiqueta: ativa, em teste e atraso', FX.etiquetaPagamento(ass('active')).texto === 'Assinatura ativa' && FX.etiquetaPagamento(ass('trialing')).texto === 'Em teste' && FX.etiquetaPagamento(ass('past_due')).tom === 'aviso');
   check('etiqueta: cancelada nunca diz ativa', !/ativa/.test(FX.etiquetaPagamento(ass('canceled')).texto) && FX.etiquetaPagamento(ass('canceled')).tom === 'aviso');
 

@@ -2,13 +2,13 @@
 // Nada de service_role aqui. O banco é db/crm-fase2.sql; o desenho é o artefato "CRM Por Dentro".
 // Tudo que vem do banco é texto de terceiros (nome, e-mail, pergunta): passa sempre por esc().
 import { supabase } from '/assets/js/supabase-client.js';
-import * as TX from './taxonomia.js?v=2026-11-15.20';   // páginas, famílias e agrupamento dos modelos
-import * as ES from './estudio.js?v=2026-11-15.20';   // os blocos do estúdio de e-mails (entregas 2 e 3)
-import * as EE from './editor-email.js?v=2026-11-15.20';
-import * as EQ from './editor-quem.js?v=2026-11-15.20';
-import * as JR from './jornada.js?v=2026-11-15.20';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
-import * as FX from './ficha.js?v=2026-11-15.20';   // ficha v2: lógica pura (fila, démarches, funil, ações)
-import * as FH from './ficha-html.js?v=2026-11-15.20';   // ficha v2: HTML puro
+import * as TX from './taxonomia.js?v=2026-11-15.21';   // páginas, famílias e agrupamento dos modelos
+import * as ES from './estudio.js?v=2026-11-15.21';   // os blocos do estúdio de e-mails (entregas 2 e 3)
+import * as EE from './editor-email.js?v=2026-11-15.21';
+import * as EQ from './editor-quem.js?v=2026-11-15.21';
+import * as JR from './jornada.js?v=2026-11-15.21';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
+import * as FX from './ficha.js?v=2026-11-15.21';   // ficha v2: lógica pura (fila, démarches, funil, ações)
+import * as FH from './ficha-html.js?v=2026-11-15.21';   // ficha v2: HTML puro
 
 var PERSONAS = {
   au_pair_estudante: 'Au pair → estudante', campus_france: 'Campus France', alternancia_emprego: 'Alternância / emprego',
@@ -2942,7 +2942,7 @@ function fxResumoCartoes(c, d) {
   // Plataforma
   var a = state.assin, conta = !!c.user_id, ult = diasDesde(c.ultimo_evento_em);
   var rotA = a ? (a.status === 'trialing' ? 'Em teste' : a.status === 'active' ? 'Assinante' : (ASSIN_ST[a.status] || a.status)) : '';
-  var plat = !conta ? cartao('Plataforma', 'Sem conta', 'ainda não criou o acesso')
+  var plat = !conta ? null   // sem conta: nada a mostrar aqui (a pílula do alto já diz "Lead" e "Não assinante")
     : cartao('Plataforma', rotA || 'No app', (a && a.status === 'trialing' ? 'teste até ' + fmtDay(String(a.teste_fim || a.periodo_fim || '').slice(0, 10)) + ' · ' : '') + (ult == null ? 'sem atividade' : ult === 0 ? 'ativa hoje' : 'última atividade há ' + haDias(ult)), 'ok');
   // Dossiê
   var dos = state.dos && state.dos.cid === c.id && state.dos.d ? dosProgresso(c, state.dos.d, state.dos.rasc) : null;
@@ -2955,7 +2955,7 @@ function fxResumoCartoes(c, d) {
   // E-mails
   var abriu = mails.filter(function (m) { return m.aberto_em || m.status === 'aberto' || m.status === 'clicado'; }).length, clicou = mails.filter(function (m) { return m.clicado_em || m.status === 'clicado'; }).length, novas = resps.filter(function (x) { return x.status === 'nova'; }).length;
   var em = mails.length || resps.length ? cartao('E-mails', mails.length ? 'abriu ' + abriu + ' de ' + mails.length : '—', (mails.length ? 'clicou ' + clicou + ' · ' : '') + 'respostas ' + resps.length + (novas ? ' (' + novas + ' sem resposta sua)' : ''), novas ? 'alerta' : undefined) : cartao('E-mails', '—', 'nenhum e-mail ainda');
-  return [um, plat, dosC, prazo, em];
+  return [um, plat, dosC, prazo, em].filter(Boolean);
 }
 // A linha dos dados-chave do dossiê (só o que já foi respondido).
 function fxFatosChave(c) {
@@ -2992,7 +2992,7 @@ function fxHeaderHtml(c, d) {
 // Catálogo de démarches (cópia do app, processos.json): carregado uma vez; sem ele, tudo cai na démarche padrão.
 var FX_PROC = null;
 async function fxCarregaProcessos() {
-  try { var r = await fetch('processos.json?v=2026-11-15.20'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
+  try { var r = await fetch('processos.json?v=2026-11-15.21'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
 }
 // A sessão Checklist: pílulas por démarche, os 4 mais urgentes, pasta do Drive privada e "Ver mais desta sessão".
 function fxChecklistCorpo(c) {

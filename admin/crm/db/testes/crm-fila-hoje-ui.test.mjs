@@ -131,7 +131,9 @@ console.log('== Cabeçalho da ficha: o cartão do 1:1 ==');
   mod.setUM([{ id: 2, contato_id: 'j', quando: null, status: 'agendado', criado_em: dia(-1) }]);
   check('marcado sem dia: "a combinar" em alerta', em(J).valor === 'a combinar' && em(J).tom === 'alerta');
   const todos = mod.fxResumoCartoes(J, { mails: [], resps: [] });
-  check('o cabeçalho tem 5 cartões: 1:1, Plataforma, Dossiê, Prazo e E-mails', todos.map((k) => k.rotulo).join() === '1:1,Plataforma,Dossiê,Prazo,E-mails');
+  check('sem conta: 4 cartões (1:1, Dossiê, Prazo e E-mails), sem o da Plataforma', todos.map((k) => k.rotulo).join() === '1:1,Dossiê,Prazo,E-mails');
+  const comConta = mod.fxResumoCartoes(Object.assign({}, J, { user_id: 'u-j' }), { mails: [], resps: [] });
+  check('com conta: 5 cartões, com a Plataforma em segundo', comConta.map((k) => k.rotulo).join() === '1:1,Plataforma,Dossiê,Prazo,E-mails');
 }
 
 console.log('\n' + (failed ? failed + ' FALHARAM, ' : '') + passed + ' passaram' + (failed ? '' : ', 0 falharam'));

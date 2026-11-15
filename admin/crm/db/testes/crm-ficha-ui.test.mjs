@@ -298,7 +298,7 @@ console.log('== Cabeçalho fixo por tipo de pessoa ==');
     'assinaturas:one': { data: assinatura, error: null } }) });
   let h = await montar(null, null);
   let html = await abre(h, pessoa({ user_id: null, dias_sem_sinal: 6 }));
-  check('lead: o cabeçalho traz 1:1, Plataforma (Sem conta), Dossiê, Prazo e E-mails, e não tem uso nem pagamento', ['>1:1<', '>Plataforma<', '>Dossiê<', '>Prazo<', '>E-mails<'].every((x) => html.includes(x)) && html.includes('Sem conta') && !html.includes('Cliques por sessão') && !html.includes('class="tag">Pagamento<') && html.includes('Não assina'));
+  check('lead (sem conta): pílulas Lead e Não assinante, cartões 1:1, Dossiê, Prazo e E-mails, sem cartão de Plataforma, uso nem pagamento', ['>1:1<', '>Dossiê<', '>Prazo<', '>E-mails<'].every((x) => html.includes(x)) && !html.includes('class="l">Plataforma<') && html.includes('>Lead<') && html.includes('Não assinante') && !html.includes('Cliques por sessão') && !html.includes('class="tag">Pagamento<'));
   h.mod.pararAoVivo();
   h = await montar('u1', { status: 'active', plano: 'Intermediário', periodo_fim: new Date(agora + 5 * 864e5).toISOString(), cancela_no_fim: false, criado_em: iso(95) });
   html = await abre(h, pessoa({ user_id: 'u1', ultimo_evento_em: iso(2) }));
@@ -315,7 +315,7 @@ console.log('== Cabeçalho fixo por tipo de pessoa ==');
   h.mod.pararAoVivo();
   h = await montar(null, null);
   html = await abre(h, pessoa({ user_id: null, nome: '<img src=x onerror=alert(1)>', dias_sem_sinal: null }));
-  check('nome com HTML sai escapado no cabeçalho e na fila; sem conta diz que ainda não criou o acesso', !html.includes('<img src=x') && html.includes('&lt;img') && html.includes('ainda não criou o acesso'));
+  check('nome com HTML sai escapado no cabeçalho e na fila', !html.includes('<img src=x') && html.includes('&lt;img'));
   h.mod.pararAoVivo();
 }
 

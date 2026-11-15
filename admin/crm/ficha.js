@@ -4,7 +4,7 @@
 // ---------- Urgência dos passos do checklist (spec §5.4) ----------
 // ChkItem = { step_key, category, label, status, due_date, sort_order } (colunas de buscaChecklist em crm.js).
 export { calcularUso } from './ficha-uso.js?v=2026-11-13.8';
-export * as funil from './funil.js?v=2026-11-15.20';   // Funil por próxima ação (lógica pura); o crm.js usa FX.funil
+export * as funil from './funil.js?v=2026-11-15.21';   // Funil por próxima ação (lógica pura); o crm.js usa FX.funil
 const DIA = 86400e3;
 function diasEntre(hoje, data) {
   const a = Date.parse(hoje + 'T00:00:00Z'), b = Date.parse(String(data).slice(0, 10) + 'T00:00:00Z');
@@ -176,7 +176,7 @@ const ETIQUETA_PAGTO = {
   canceled: ['Cancelada', 'aviso'], unpaid: ['Pagamento pendente', 'aviso'], incomplete: ['Pagamento pendente', 'aviso']
 };
 export function etiquetaPagamento(assin) {
-  if (!assin) return { texto: 'Não assina', tom: 'neutro' };
+  if (!assin) return { texto: 'Não assinante', tom: 'neutro' };
   const e = ETIQUETA_PAGTO[assin.status];
   return e ? { texto: e[0], tom: e[1] } : { texto: String(assin.status || 'Assinatura'), tom: 'neutro' };
 }
