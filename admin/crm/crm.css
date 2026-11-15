@@ -1412,3 +1412,5 @@ button.cal-d:hover{outline:1px solid var(--moss)}
 .lt-d { flex: 0 0 62px; color: var(--ink-3); font-size: 12px; }
 .lt-t { min-width: 0; overflow-wrap: anywhere; }
 .lt-compra { border-left: 3px solid var(--beige); margin-left: -2px; } .lt-um { border-left: 3px solid var(--moss); margin-left: -2px; } .lt-entrada { border-left: 3px solid var(--brown); margin-left: -2px; }
+
+.dv-ctx { margin: -2px 0 8px; font-size: 12px; }

@@ -2,13 +2,13 @@
 // Nada de service_role aqui. O banco é db/crm-fase2.sql; o desenho é o artefato "CRM Por Dentro".
 // Tudo que vem do banco é texto de terceiros (nome, e-mail, pergunta): passa sempre por esc().
 import { supabase } from '/assets/js/supabase-client.js';
-import * as TX from './taxonomia.js?v=2026-11-15.28';   // páginas, famílias e agrupamento dos modelos
-import * as ES from './estudio.js?v=2026-11-15.28';   // os blocos do estúdio de e-mails (entregas 2 e 3)
-import * as EE from './editor-email.js?v=2026-11-15.28';
-import * as EQ from './editor-quem.js?v=2026-11-15.28';
-import * as JR from './jornada.js?v=2026-11-15.28';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
-import * as FX from './ficha.js?v=2026-11-15.28';   // ficha v2: lógica pura (fila, démarches, funil, ações)
-import * as FH from './ficha-html.js?v=2026-11-15.28';   // ficha v2: HTML puro
+import * as TX from './taxonomia.js?v=2026-11-15.29';   // páginas, famílias e agrupamento dos modelos
+import * as ES from './estudio.js?v=2026-11-15.29';   // os blocos do estúdio de e-mails (entregas 2 e 3)
+import * as EE from './editor-email.js?v=2026-11-15.29';
+import * as EQ from './editor-quem.js?v=2026-11-15.29';
+import * as JR from './jornada.js?v=2026-11-15.29';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
+import * as FX from './ficha.js?v=2026-11-15.29';   // ficha v2: lógica pura (fila, démarches, funil, ações)
+import * as FH from './ficha-html.js?v=2026-11-15.29';   // ficha v2: HTML puro
 
 var PERSONAS = {
   au_pair_estudante: 'Au pair → estudante', campus_france: 'Campus France', alternancia_emprego: 'Alternância / emprego',
@@ -3071,7 +3071,7 @@ function fxHeaderHtml(c, d) {
 // Catálogo de démarches (cópia do app, processos.json): carregado uma vez; sem ele, tudo cai na démarche padrão.
 var FX_PROC = null;
 async function fxCarregaProcessos() {
-  try { var r = await fetch('processos.json?v=2026-11-15.28'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
+  try { var r = await fetch('processos.json?v=2026-11-15.29'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
 }
 // A sessão Checklist: pílulas por démarche, os 4 mais urgentes, pasta do Drive privada e "Ver mais desta sessão".
 function fxChecklistCorpo(c) {
@@ -3280,10 +3280,21 @@ function dosVisaoHtml(c, d) {
   var dv = function (k) { return S ? dosValor(c, S.d, S.rasc, k) : ''; };
   var linhaKv = function (l, v, tag) { return v === '' || v == null ? '' : '<div class="dv-l"><span>' + esc(l) + '</span><b>' + esc(v) + (tag ? ' <i class="dv-fonte">' + esc(tag) + '</i>' : '') + '</b></div>'; };
   var op = function (k) { var v = dv(k); return v === '' ? '' : dosRotuloOpcao(dosCampo(k), v); };
-  var quem = linhaKv('Situação', personaLabel(c) + (subLabel(c) ? ' · ' + subLabel(c) : '')) + linhaKv('Fase', op('fase'), dosFonteTag(c, S, 'fase')) + linhaKv('Diploma mais recente', op('nivel_estudos')) + linhaKv('Certificado', op('certificado_frances_qual') || op('certificado_frances')) +
+  var quem = linhaKv('Situação', personaLabel(c) + (subLabel(c) ? ' · ' + subLabel(c) : '')) + linhaKv('Fase', op('fase'), dosFonteTag(c, S, 'fase'))
     linhaKv('Faixa de idade', op('faixa_idade'), dosFonteTag(c, S, 'faixa_idade')) + linhaKv('Cidade', dv('cidade')) + linhaKv('Chegou na França', dv('data_chegada') ? fmtDay(dv('data_chegada')) : '') +
-    linhaKv('Francês', op('nivel_frances')) + linhaKv('Prazo', c.prazo_limite ? fmtDay(c.prazo_limite) + ' (' + prazoTxt(c) + ')' : CF_PRAZO[(c.respostas || {}).cfNivel] ? fmtDay(CF_PRAZO[c.respostas.cfNivel]) + ' (Campus France)' : '') +
+    linhaKv('Francês', op('nivel_frances')) +
     linhaKv('Maior preocupação', op('preocupacao') || (c.preocupacao ? String(c.preocupacao) : ''));
+  // Estudos, certificados e prazo: um cartão só, com cada linha dizendo o que é (sempre aparece, mesmo sem resposta).
+  var vazio = '<span class="sub">ainda não informado</span>';
+  var kvX = function (l, v, extra) { return '<div class="dv-l"><span>' + esc(l) + '</span><b>' + (v ? esc(v) : vazio) + '</b></div>' + (extra ? '<p class="sub dv-ctx">' + extra + '</p>' : ''); };
+  var fNiv = dosCampo('nivel_estudos'), vNiv = dv('nivel_estudos'), diploma = fNiv && fNiv.o.some(function (o) { return o[0] === vNiv; }) ? dosRotuloOpcao(fNiv, vNiv) : '';
+  var certFr = dv('certificado_frances') === 'tenho' ? (op('certificado_frances_qual') ? op('certificado_frances_qual') : 'tem, não disse qual') : dv('certificado_frances') === 'nao' ? 'ainda não tem' : '';
+  var certMat = dv('tem_certificado_matricula') === 'true' ? 'tem' : dv('tem_certificado_matricula') === 'false' ? 'ainda não tem' : '';
+  var cfData = CF_PRAZO[(c.respostas || {}).cfNivel];
+  var prazoTxtX = c.prazo_limite ? fmtDay(c.prazo_limite) + ' (' + prazoTxt(c) + ')' : cfData ? fmtDay(cfData) : '';
+  var prazoCtx = c.prazo_limite ? 'Validar o VLS-TS na ANEF: 3 meses depois da entrada na França' + (c.data_entrada ? ' (' + fmtDay(c.data_entrada) + ')' : '') + '.' : cfData ? 'Prazo do Campus France para o nível que ela marcou no funil.' : '';
+  var estudos = kvX('Diploma mais recente', diploma) + kvX('Certificado de francês', certFr) + (certMat ? kvX('Certificado de matrícula', certMat) : '') +
+    kvX(c.prazo_limite ? 'Prazo do VLS-TS' : cfData ? 'Prazo do Campus France' : 'Prazo', prazoTxtX, esc(prazoCtx));
   var entradas = (jor.entradas || []).slice().reverse().slice(0, 4).map(function (x) {
     var q = (jor.quizzes || []).filter(function (z) { return z.em === x.em; })[0];
     return '<div class="dv-l"><span>' + esc(fmtDate(x.em)) + '</span><b>' + esc(origLabel(x.origem) || '—') + (q && q.objetivo ? ' <i class="dv-fonte">' + esc(etapaDe(q.objetivo)) + '</i>' : '') + '</b></div>';
@@ -3323,7 +3334,7 @@ function dosVisaoHtml(c, d) {
     }
   } else if (S) falta = '<div class="dv-sec"><div class="k">O que falta</div><p class="sub" style="margin:0">Nada falta no dossiê.</p></div>';
   return '<section class="panel dv" id="dos-visao" style="padding:16px;margin-bottom:14px"><h3 style="font-size:17px;margin:0 0 2px">' + esc(titulo) + '</h3><p class="sub" style="margin:0 0 12px">' + esc(sub) + '</p>' +
-    '<div class="dv-grid">' + card('Quem ela é', quem) + card('De onde veio e o que respondeu', veio) + card('O que ela fez', fez) + '</div>' + r1Html(c, S) + ltHtml(c, d) + cruz + falta + '</section>';
+    '<div class="dv-grid">' + card('Quem ela é', quem) + card('Estudos, certificados e prazo', estudos) + card('De onde veio e o que respondeu', veio) + card('O que ela fez', fez) + '</div>' + r1Html(c, S) + ltHtml(c, d) + cruz + falta + '</section>';
 }
 // ---------- Plataforma: a sessão "Insights" (depois do 1:1, com ela no app) ----------
 function insightsDaPlataforma(c, X) {
