@@ -305,6 +305,7 @@ td .nm span{font-size:12px; color:var(--ink-2)}
   .side{position:static; flex-direction:row; flex-wrap:wrap; gap:6px}
   .brand{width:100%; padding:0 0 4px}
   .nav{width:auto; padding:7px 10px}
+  .nav-t{position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap}
   .side-foot{display:none}
   .kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
   .inbox{grid-template-columns:minmax(0,1fr)}
@@ -1101,10 +1102,10 @@ details.ee-sec[open]>summary{margin-bottom:8px}
 .ee-topo{padding:2px 0}
 
 
-/* Menu lateral: em janelas mais estreitas encurta até mostrar só os ícones (nome no balão ao passar o mouse). */
+/* Menu lateral: só os ícones, em qualquer largura (o nome aparece no balão ao passar o mouse e fica para leitor de tela). */
 .nav-i{flex:none}
 .nav{position:relative}
-@media (min-width: 821px) and (max-width: 1280px){
+@media (min-width: 821px){
   .app{grid-template-columns:56px minmax(0,1fr); gap:16px}
   .side{align-items:center}
   .side > .link{font-size:0; padding:0 0 6px!important}
@@ -1166,3 +1167,20 @@ details.ee-sec[open]>summary{margin-bottom:8px}
 .st-excl-i{display:flex; gap:8px; align-items:center; justify-content:space-between; padding:6px 4px; border-top:1px solid var(--line); font-size:12.5px}
 .st-excl-i > span{min-width:0} .st-excl-i b{display:block; font-weight:600} .st-excl-i .btn{flex:none}
 .ee-irmaos .ee-et{max-width:420px}
+
+/* Caminho de e-mail da pessoa (ficha) */
+.cam{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:6px}
+.cam-i{border:1px solid var(--line); border-radius:var(--r); padding:8px 10px; background:var(--surface)}
+.cam-t{display:flex; flex-wrap:wrap; gap:4px 8px; align-items:baseline}
+.cam-t .sub{font-size:11.5px}
+.cam-m{margin-top:2px; font-size:12.5px; display:flex; flex-wrap:wrap; gap:4px 8px; align-items:center}
+.cam-m time{color:var(--ink-3); font-size:11.5px}
+.cam-ok{border-color:var(--moss)}
+.cam-pend{border-style:dashed}
+.cam-falta{border-style:dashed; opacity:.8}
+.cam-atual{background:var(--moss-soft)}
+.cam-aqui{margin-left:auto; font-size:10.5px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; color:var(--moss-ink)}
+.cam-prep summary{cursor:pointer; font-weight:600}
+.cam-sit{margin:10px 0 0}
+.cam-disse{margin:0 0 6px; padding-left:18px; font-size:12.5px; color:var(--ink-2)}
+.cam-acoes{display:flex; flex-wrap:wrap; gap:8px}

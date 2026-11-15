@@ -2,13 +2,13 @@
 // Nada de service_role aqui. O banco é db/crm-fase2.sql; o desenho é o artefato "CRM Por Dentro".
 // Tudo que vem do banco é texto de terceiros (nome, e-mail, pergunta): passa sempre por esc().
 import { supabase } from '/assets/js/supabase-client.js';
-import * as TX from './taxonomia.js?v=2026-11-15.8';   // páginas, famílias e agrupamento dos modelos
-import * as ES from './estudio.js?v=2026-11-15.8';   // os blocos do estúdio de e-mails (entregas 2 e 3)
-import * as EE from './editor-email.js?v=2026-11-15.8';
-import * as EQ from './editor-quem.js?v=2026-11-15.8';
-import * as JR from './jornada.js?v=2026-11-15.8';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
-import * as FX from './ficha.js?v=2026-11-15.8';   // ficha v2: lógica pura (fila, démarches, funil, ações)
-import * as FH from './ficha-html.js?v=2026-11-15.8';   // ficha v2: HTML puro
+import * as TX from './taxonomia.js?v=2026-11-15.9';   // páginas, famílias e agrupamento dos modelos
+import * as ES from './estudio.js?v=2026-11-15.9';   // os blocos do estúdio de e-mails (entregas 2 e 3)
+import * as EE from './editor-email.js?v=2026-11-15.9';
+import * as EQ from './editor-quem.js?v=2026-11-15.9';
+import * as JR from './jornada.js?v=2026-11-15.9';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
+import * as FX from './ficha.js?v=2026-11-15.9';   // ficha v2: lógica pura (fila, démarches, funil, ações)
+import * as FH from './ficha-html.js?v=2026-11-15.9';   // ficha v2: HTML puro
 
 var PERSONAS = {
   au_pair_estudante: 'Au pair → estudante', campus_france: 'Campus France', alternancia_emprego: 'Alternância / emprego',
@@ -184,7 +184,7 @@ async function boot() {
     return;
   }
   $('gate').hidden = true; $('app').hidden = false;
-  await Promise.all([loadAll(), carregarProdutos()]);
+  await Promise.all([loadAll(), carregarProdutos(), carregarArtigos()]);
   initControls();
   show('hoje');
 }
@@ -275,6 +275,27 @@ async function carregarProdutos() {
   } catch (e) { PRODUTOS = []; }
 }
 function produtoNome(slug) { var p = PRODUTOS.filter(function (x) { return x.slug === slug; })[0]; return p ? p.nome : (slug || '—'); }
+// Os artigos do site (content/posts.json, público): a pergunta única guarda só o "token" do artigo (o slug sem acento, até 40 letras).
+// Aqui o token volta a ser o título e o endereço do artigo. Sem o arquivo, a tela mostra o próprio token.
+var ARTIGOS = {};
+function artigoToken(slug) { return String(slug || '').toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 40); }
+async function carregarArtigos() {
+  try {
+    var r = await fetch('/content/posts.json', { cache: 'no-store' });
+    var d = r.ok ? await r.json() : {};
+    ARTIGOS = {};
+    (d.items || []).forEach(function (p) { if (p.slug && p.title) ARTIGOS[artigoToken(p.slug)] = { titulo: p.title, url: '/artigos/post/' + p.slug + '/' }; });
+  } catch (e) { ARTIGOS = {}; }
+}
+function artigoDe(origem) {
+  if (!origem) return null;
+  var a = ARTIGOS[origem];
+  return a ? { titulo: a.titulo, url: a.url } : { titulo: origem, url: null };
+}
+function artigoHtml(origem) {
+  var a = artigoDe(origem); if (!a) return '';
+  return a.url ? '<a href="' + esc(a.url) + '" target="_blank" rel="noopener">' + esc(a.titulo) + '</a>' : esc(a.titulo);
+}
 async function reload() { await loadAll(); fillCampanhas(); renderToday(); renderReimpacto(); }
 
 // ---------- Filtros ----------
@@ -550,13 +571,15 @@ function renderQuestions() {
     var h = hrsSince(x.criado_em);
     return '<button class="qitem" data-q="' + x.id + '" aria-current="' + (x.id === state.qsel) + '" type="button"><div class="l1"><b>' + esc(short(c)) + '</b>' +
       (x.status === 'nova' ? '<span class="sla num ' + (h >= 72 ? 'late' : 'ok') + '">' + (h >= 72 ? 'atrasada · ' : '') + hrs(h) + '</span>' : '<span class="sla ok">respondida</span>') +
-      '</div><p>' + esc(x.texto) + '</p><span class="persona">' + esc(personaLabel(c)) + (subLabel(c) ? ' · ' + esc(subLabel(c)) : '') + '</span></button>';
+      '</div><p>' + esc(x.texto) + '</p>' + (x.origem ? '<span class="persona" style="display:block;font-weight:500;margin-bottom:2px">Artigo: ' + esc(artigoDe(x.origem).titulo) + '</span>' : '') +
+      '<span class="persona">' + esc(personaLabel(c)) + (subLabel(c) ? ' · ' + esc(subLabel(c)) : '') + '</span></button>';
   }).join('') || '<div class="empty">' + (state.qs === 'nova' ? 'Nenhuma pergunta nova. Tudo respondido.' : 'Nada respondido ainda.') + '</div>';
   var x = Q.filter(function (y) { return y.id === state.qsel; })[0];
   var c = x && byC(x.contato_id);
   if (!x || !c) { $('qdetail').innerHTML = '<div class="empty">Escolha uma pergunta na lista.</div>'; return; }
   $('qdetail').innerHTML =
-    '<div style="display:flex;gap:12px;align-items:center"><div class="' + avClass(c) + '">' + esc(ini(c)) + '</div><div style="min-width:0"><b style="font-weight:600">' + esc(displayName(c)) + '</b><div class="mail">' + esc(c.email) + ' · enviada há ' + hrs(hrsSince(x.criado_em)) + (x.origem ? ' · artigo: ' + esc(x.origem) : '') + '</div></div><button class="link" style="margin-left:auto" data-open="' + esc(c.id) + '" type="button">Abrir ficha →</button></div>' +
+    '<div style="display:flex;gap:12px;align-items:center"><div class="' + avClass(c) + '">' + esc(ini(c)) + '</div><div style="min-width:0"><b style="font-weight:600">' + esc(displayName(c)) + '</b><div class="mail">' + esc(c.email) + ' · enviada há ' + hrs(hrsSince(x.criado_em)) + '</div></div><button class="link" style="margin-left:auto" data-open="' + esc(c.id) + '" type="button">Abrir ficha →</button></div>' +
+    (x.origem ? '<p class="sub" style="margin:10px 0 4px">Pergunta feita no artigo: <b>' + artigoHtml(x.origem) + '</b></p>' : '') +
     '<blockquote>' + esc(x.texto) + '</blockquote>' +
     '<div class="ctx">' + urgPill(c.urgencia) + '<span class="pill">' + esc(personaLabel(c)) + (subLabel(c) ? ' · ' + esc(subLabel(c)) : '') + '</span><span class="pill">Estágio: ' + esc(stageLabel(c.estagio)) + '</span></div>' +
     (x.status === 'nova'
@@ -800,13 +823,13 @@ function tipoFunil(o) {
 var ORIGEM_PAGINA = { 'guia-email-alt30': 'I01', 'guia-tecnologo': 'I02', 'guia-etudes-en-france-2027': 'I03', 'guia-vls-ts': 'I04', 'guia-checklist-chegada-au-pair': 'I05' };
 // Os modelos de uma página numa etapa da jornada (lead, contato, reimp, plat), do jeito que o Estúdio os organiza.
 // Só entram os que têm versão No ar (sem a tabela de modelos, vale a lista do código).
-function modelosDaEtapa(pagina, etapa) {
+function modelosDaEtapa(pagina, etapa, incluiRascunho) {
   if (!pagina || !JR.etapaDaJornada) return [];
   return listaModelos().filter(function (m) {
     var cl = TX.classifica(m);
     if (cl.pagina !== pagina) return false;
     if (JR.etapaDaJornada(Object.assign({}, m, { familia: cl.familia, pagina: cl.pagina })) !== etapa) return false;
-    return !M || versoesDe(m.chave).some(function (v) { return v.etapa === 'no_ar'; });
+    return incluiRascunho || !M || versoesDe(m.chave).some(function (v) { return v.etapa === 'no_ar'; });
   });
 }
 // Devolve { k, quando: 'agora'|'esperar'|'nao', titulo, angulo, sinais, conversa }. k = o modelo a revisar (null = nenhum e-mail agora).
@@ -959,6 +982,107 @@ function emailsPanel(c, mails, h4, resps, jor) {
   return '<div class="panel mailpanel" style="padding:16px"><h4 style="' + h4 + '">E-mails</h4>' + prox + '<div style="margin-top:12px">' + head + '</div>' +
     '<details class="mais-det"><summary>Sequência, e-mails enviados (' + mails.length + ') e compra</summary>' + seqGuiaCF(c, mails) +
     (hist ? '<div class="k" style="margin-top:14px">Já enviados (' + mails.length + ')</div>' + hist : '') + compraHtml(c) + '</details></div>';
+}
+// ---------- Caminho de e-mail da pessoa e "Preparar e-mail" ----------
+// O mapa é o mesmo da tela Jornada (página de entrada × etapa): cada etapa mostra o e-mail do modelo que ela recebeu, o que ainda
+// não foi enviado e o que falta criar. O rascunho parte de onde ela está e do que ela respondeu (ou não respondeu). Nada sai sozinho:
+// o botão abre o e-mail no modal de envio (ou a conversa) já com o texto, para você revisar.
+function truncaTxt(t, n) { t = String(t || '').replace(/\s+/g, ' ').trim(); return t.length > n ? t.slice(0, n - 1) + '…' : t; }
+function situacaoEmail(mails, resps) {
+  var rs = (resps || []).slice().sort(function (a, b) { return a.recebido_em < b.recebido_em ? -1 : 1; });
+  if (rs.length) return { k: 'respondeu', rot: 'Ela respondeu o seu e-mail', resp: rs[rs.length - 1], nova: rs.some(function (x) { return x.status === 'nova'; }) };
+  if (!mails.length) return { k: 'sem_email', rot: 'Ainda não recebeu nenhum e-mail do CRM' };
+  var ult = mails[0], dias = diasDesde(ult.enviado_em || ult.criado_em);
+  if (ult.status === 'nao_entregue') return { k: 'nao_entregue', rot: 'O último e-mail não foi entregue', dias: dias };
+  if (ult.clicado_em || ult.status === 'clicado') return { k: 'clicou', rot: 'Clicou no link do último e-mail e não respondeu', dias: dias };
+  if (ult.aberto_em || ult.status === 'aberto') return { k: 'abriu', rot: 'Abriu o último e-mail e não respondeu', dias: dias };
+  return { k: 'nao_abriu', rot: 'Não abriu o último e-mail (enviado há ' + haDias(dias) + ')', dias: dias };
+}
+function passosDoCaminho(c, mails) {
+  var pag = ORIGEM_PAGINA[ultimaOrigem(c)] || null;
+  var passos = JR.ETAPAS.map(function (e) {
+    var ms = modelosDaEtapa(pag, e.k), chaves = ms.map(function (m) { return m.chave; });
+    var env = mails.filter(function (m) { return chaves.indexOf(m.modelo) >= 0; });
+    var rasc = ms.length ? [] : modelosDaEtapa(pag, e.k, true);   // existem no Estúdio mas ainda não estão No ar
+    return { k: e.k, nome: e.nome, sub: e.sub, modelos: ms, rascunhos: rasc, env: env };
+  });
+  var atual = null;
+  passos.forEach(function (x) { if (x.k !== 'reimp' && x.env.length) atual = x.k; });
+  return { pag: pag, passos: passos, atual: atual };
+}
+function rascunhoDoEmail(c, sit, mails, jor) {
+  var r = c.respostas || {}, nome = pn(c), origem = origLabel(ultimaOrigem(c) || ''), etapa = r.objetivo ? etapaDe(r.objetivo) : '';
+  var prazoDias = CF_PRAZO[r.cfNivel] ? diasAte(CF_PRAZO[r.cfNivel]) : c.dias_para_prazo != null ? Number(c.dias_para_prazo) : null;
+  var prazoDe = CF_PRAZO[r.cfNivel] ? 'o prazo do Campus France (' + fmtDay(CF_PRAZO[r.cfNivel]) + ')' : c.prazo_limite ? 'o prazo do VLS-TS (' + fmtDay(c.prazo_limite) + ')' : '';
+  var prazoFrase = prazoDias == null || prazoDias < -90 ? '' : prazoDias > 1 ? 'faltam ' + prazoDias + ' dias' : prazoDias === 1 ? 'falta 1 dia' : prazoDias === 0 ? 'vence hoje' : 'venceu há ' + (-prazoDias) + ' dias';
+  var gancho = '';
+  if (prazoDe && prazoFrase) gancho = ' Pelo que você me contou, ' + prazoDe + ' ' + (prazoDias > 0 ? 'chega em ' + prazoDias + (prazoDias === 1 ? ' dia' : ' dias') : prazoDias === 0 ? 'é hoje' : 'já passou (' + prazoFrase + ')') + '.';
+  var pergunta = prazoDe && prazoFrase ? 'Qual é o passo que mais está te travando agora?' : etapa ? 'O que mais te trava nessa etapa hoje?' : 'Qual é a dúvida que mais te trava hoje?';
+  var convite = c.estagio === 'um_a_um' || c.um_a_um_quando ? '' : '\n\nSe ficar mais fácil falar ao vivo, posso te encaixar numa conversa rápida (1:1).';
+  var L = ['Oi ' + nome + '!', ''];
+  if (sit.k === 'respondeu') L.push('Obrigada por me responder. Li com atenção: “' + truncaTxt(sit.resp.texto, 140) + '”.' + gancho, '', pergunta);
+  else if (sit.k === 'sem_email') L.push('Vi que você pediu ' + (origem ? 'o ' + origem : 'o nosso material') + (etapa ? ' e que está em: ' + etapa.toLowerCase() : '') + '.' + gancho, '', pergunta);
+  else if (sit.k === 'clicou' || sit.k === 'abriu') L.push('Passei para saber como está indo com ' + (origem ? 'o ' + origem : 'o material') + '.' + gancho, '', pergunta);
+  else if (sit.k === 'nao_abriu') L.push('Te mandei ' + (origem ? 'o ' + origem : 'o material') + ' há ' + haDias(sit.dias) + ' e queria ter certeza de que chegou na sua caixa (às vezes cai no spam ou em Promoções).' + gancho, '', pergunta);
+  else return '';
+  return L.join('\n') + convite + '\n\nIngryd · Por Dentro';
+}
+function caminhoEmailHtml(c, mails, resps, jor, h4) {
+  if (!JR || !JR.ETAPAS || !TX.rotuloPagina) return '';   // os testes antigos não injetam o módulo da jornada
+  mails = mails.slice().sort(function (a, b) { var x = a.enviado_em || a.criado_em, y = b.enviado_em || b.criado_em; return x < y ? 1 : x > y ? -1 : 0; });
+  var cam = passosDoCaminho(c, mails);
+  if (!cam.pag)
+    return '<div class="panel" style="padding:16px"><h4 style="' + h4 + '">Caminho de e-mail desta pessoa</h4><p class="sub" style="margin:0">Esta origem' + (ultimaOrigem(c) ? ' (' + esc(origLabel(ultimaOrigem(c))) + ')' : '') +
+      ' não tem página no Estúdio, então não há caminho de e-mail para mostrar. Veja a tela Jornada para criar um.</p></div>';
+  var sit = situacaoEmail(mails, resps), p = proximoEmail(c, mails, resps, jor || montaJornada([]));
+  var lista = cam.passos.map(function (x) {
+    var ult = x.env[0], estado = ult ? 'ok' : (x.modelos.length || x.rascunhos.length) ? 'pend' : 'falta';
+    var corpo = ult ? '<b>' + esc(modeloNome(ult.modelo)) + '</b> ' + mailPill(ult) + '<time>' + esc(fmtQuando(ult.enviado_em || ult.criado_em)) + '</time>'
+      : x.modelos.length ? 'Ainda não enviado: <b>' + esc(x.modelos[0].nome || modeloNome(x.modelos[0].chave)) + '</b>' + (x.modelos[0].automatico ? ' <span class="sub">(sai sozinho)</span>' : '')
+      : x.rascunhos.length ? 'Em rascunho no Estúdio: <b>' + esc(x.rascunhos[0].nome || modeloNome(x.rascunhos[0].chave)) + '</b> <span class="sub">(ainda não está No ar)</span>'
+      : '<span class="sub">Falta criar o modelo no Estúdio.</span>';
+    return '<li class="cam-i cam-' + estado + (cam.atual === x.k ? ' cam-atual' : '') + '"><div class="cam-t"><b>' + esc(x.nome) + '</b><span class="sub">' + esc(x.sub) + '</span>' +
+      (cam.atual === x.k ? '<span class="cam-aqui">ela está aqui</span>' : '') + '</div><div class="cam-m">' + corpo + '</div></li>';
+  }).join('');
+  // O modelo do caminho que combina com o momento dela: o da sugestão do "Próximo e-mail"; senão o 1º manual da etapa seguinte.
+  var k = p.k || null;
+  if (!k) {
+    var ordem = ['lead', 'contato', 'plat'], ia = cam.atual ? ordem.indexOf(cam.atual) : -1;
+    for (var i = Math.max(ia, 0); i < ordem.length && !k; i++) {
+      var x = cam.passos.filter(function (y) { return y.k === ordem[i]; })[0], m = x && x.modelos.filter(function (z) { return !z.automatico && !x.env.length; })[0];
+      if (m) k = m.chave;
+    }
+  }
+  var disse = [], r = c.respostas || {};
+  if (r.objetivo) disse.push('Etapa que ela escolheu: ' + etapaDe(r.objetivo));
+  if (r.cfNivel) disse.push('Nível: ' + (CF_NIVEL[r.cfNivel] || r.cfNivel));
+  (resps || []).slice(-2).forEach(function (x) { disse.push('Respondeu' + (x.canal === 'toque' ? ' com um toque' : x.canal === 'pagina' ? ' na página da conversa' : ' por e-mail') + ': “' + truncaTxt(x.texto, 120) + '”'); });
+  if (sit.k !== 'respondeu' && mails.length) disse.push('Não respondeu a nenhum e-mail enviado');
+  var rasc = rascunhoDoEmail(c, sit, mails, jor);
+  var bloq = k && exigeNovidades(k) && !c.aceita_novidades;
+  var prep = '<details class="mais-det cam-prep"><summary>Preparar e-mail</summary>' +
+    '<p class="cam-sit"><b>' + esc(sit.rot) + '</b></p>' +
+    (disse.length ? '<div class="k jn-k">O que ela já disse</div><ul class="cam-disse">' + disse.map(function (d) { return '<li>' + esc(d) + '</li>'; }).join('') + '</ul>' : '') +
+    '<div class="k jn-k">Proposta</div><p class="sub" style="margin:0 0 6px"><b style="color:var(--ink)">' + esc(p.titulo) + '</b> ' + esc(p.angulo) + '</p>' +
+    (rasc
+      ? '<label class="sr" for="prep-txt">Rascunho</label><textarea class="notebox" id="prep-txt" data-cid="' + esc(c.id) + '" style="min-height:190px">' + esc(rasc) + '</textarea>' +
+        '<p class="sub" style="margin:4px 0 8px">Sugestão. Edite antes de enviar: nada sai daqui sem você revisar.</p>' +
+        '<div class="cam-acoes">' + (sit.k === 'respondeu' || p.conversa
+          ? '<button class="btn primary" type="button" data-prep="' + esc(c.id) + '" data-prepmodo="conversa">Responder na conversa →</button>' : '') +
+        (k && !bloq ? '<button class="btn' + (sit.k === 'respondeu' || p.conversa ? '' : ' primary') + '" type="button" data-prep="' + esc(c.id) + '" data-prepmodo="email" data-tplk="' + esc(k) + '">Abrir no envio, modelo “' + esc(tplInfo(k).label) + '” →</button>' : '') + '</div>' +
+        (bloq ? '<p class="sub" style="margin:6px 0 0;color:var(--red)">Ela não aceitou novidades por e-mail: o modelo “' + esc(tplInfo(k).label) + '” não pode ser enviado.</p>' : '')
+      : '<p class="sub" style="margin:0">Sem rascunho nesta situação (confira o endereço antes de mandar outro).</p>') +
+    '</details>';
+  return '<div class="panel cam-panel" style="padding:16px"><h4 style="' + h4 + '">Caminho de e-mail desta pessoa</h4>' +
+    '<p class="sub" style="margin:0 0 10px">Página de entrada: <b style="color:var(--ink)">' + esc(TX.rotuloPagina(cam.pag)) + '</b></p><ol class="cam">' + lista + '</ol>' + prep + '</div>';
+}
+function prepararEmail(cid, modo, k) {
+  var ta = $('prep-txt'), txt = ta ? ta.value : '';
+  if (modo === 'conversa') { state.rascunho[cid] = txt; return openPessoa(cid, 'conversa'); }
+  openCompose(cid, k);
+  if (!txt || !CMP) return;
+  var ed = document.querySelector('[data-cmpaba="editar"]'); if (ed) ed.click();
+  var area = $('compose-txt'); if (area) { area.value = txt; area.dispatchEvent(new Event('input', { bubbles: true })); }
 }
 // "Registrar compra": grava o evento 'compra' (crm_registrar_compra, db/crm-estudio-emails-3.sql). É o que liga as sequências
 // de compra do estúdio. Enquanto a compra pelo site não chega sozinha ao CRM, você registra aqui.
@@ -2473,7 +2597,7 @@ function fichaFeedHtml(eventos) {
 }
 function fichaMaisHtml(c, d) {
   var perg = d.perg, resps = d.resps, cons = d.cons, last = d.last, h4 = d.h4;
-  return '<details class="mais"><summary>Mais: perguntas, respostas, consentimento, Instagram e anotações' + (resps.some(function (x) { return x.status === "nova"; }) ? ' · tem resposta nova' : '') + '</summary><div class="mais-col">' +
+  return '<details class="mais"><summary>Mais: perguntas, respostas, consentimento e Instagram' + (resps.some(function (x) { return x.status === "nova"; }) ? ' · tem resposta nova' : '') + '</summary><div class="mais-col">' +
     (perg.length ? '<div class="panel" style="padding:16px"><h4 style="' + h4 + '">Perguntas únicas</h4>' + perg.map(function (x) { return '<p style="margin:0 0 6px;font-size:13px">"' + esc(x.texto) + '" <button class="link" data-openq="' + x.id + '" type="button">' + (x.status === 'nova' ? 'Responder' : 'Ver resposta') + ' →</button></p>'; }).join('') + '</div>' : '') +
     (resps.length ? '<div class="panel" style="padding:16px"><h4 style="' + h4 + '">Respostas</h4>' + resps.map(function (x) { return '<p style="margin:0 0 6px;font-size:13px"><span title="' + esc(canalDe(x)[1]) + '">' + canalDe(x)[0] + '</span> "' + esc(x.texto.length > 160 ? x.texto.slice(0, 160) + '…' : x.texto) + '" <span class="sub">' + esc(canalDe(x)[1]) + ' · ' + esc(fmtDate(x.recebido_em)) + '</span> <button class="link" data-openr="' + x.id + '" type="button">' + (x.status === 'nova' ? 'Abrir na caixa' : 'Ver') + ' →</button></p>'; }).join('') + '</div>' : '') +
     '<div class="panel" style="padding:16px"><h4 style="' + h4 + '">Consentimento</h4><div class="consent"><span class="pill ' + (last('servico') ? 'u-baixa' : '') + '">Política de privacidade ' + (last('servico') ? '✓' : '—') + '</span><span class="pill ' + (last('novidades_email') ? 'u-baixa' : '') + '">Novidades por e-mail ' + (last('novidades_email') ? '✓' : '—') + '</span></div>' + argumentosHtml(cons) + '</div>' +
@@ -2484,7 +2608,6 @@ function fichaMaisHtml(c, d) {
       '<label class="sub" for="ig-id" style="display:block;margin:12px 0 4px">ID do contato na automação</label>' +
       '<input id="ig-id" data-ig="ig_id" data-cid="' + esc(c.id) + '" maxlength="60" autocomplete="off" placeholder="Vem do link da automação. Pode colar à mão." value="' + esc(c.ig_id || '') + '" style="width:100%;height:38px;border:1px solid var(--line-2);border-radius:8px;padding:0 10px;font:inherit">' +
       '<p class="sub" style="margin:8px 0 0">Quando a pessoa volta a deixar o e-mail, o que estiver vazio aqui é completado. O que você escreve não é apagado.</p></div>' +
-    '<div class="panel" style="padding:16px"><h4 style="' + h4 + '">Suas anotações</h4><textarea class="notebox" id="nota" data-nota="' + esc(c.id) + '" placeholder="Só você vê. Ex.: prefere falar por e-mail, tem sponsor na família.">' + esc(c.nota || '') + '</textarea></div>' +
     '</div></details>';
 }
 // Ficha v2 (ficha-universo, fase 1): atrás de uma chave até a Ingryd aprovar. ?ficha=2 na URL ou localStorage.crm_ficha_v2 = '1'.
@@ -2556,7 +2679,7 @@ function fxHeaderHtml(c, d) {
 // Catálogo de démarches (cópia do app, processos.json): carregado uma vez; sem ele, tudo cai na démarche padrão.
 var FX_PROC = null;
 async function fxCarregaProcessos() {
-  try { var r = await fetch('processos.json?v=2026-11-15.8'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
+  try { var r = await fetch('processos.json?v=2026-11-15.9'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
 }
 // A sessão Checklist: pílulas por démarche, os 4 mais urgentes, pasta do Drive privada e "Ver mais desta sessão".
 function fxChecklistCorpo(c) {
@@ -2607,7 +2730,7 @@ function fxCorpo(c, d, tab) {
     '<aside class="fx-rail fx-ctx" aria-label="Quem é ela e jornada">' + quem + jornadaHtml(c, d.mails || [], d.resps || [], d.jor, h4, FH.htmlFunil({ etapa: etapa, semCaixa: true }, H_FX)) + '</aside>' +
     '<section class="fx-centro" aria-label="Tudo que ela fez">' + fichaFeedHtml(d.eventos || []) +
     fichaMaisHtml(c, { perg: d.perg || [], resps: d.resps || [], cons: d.cons || [], last: d.last, h4: h4 }) + '</section>' +
-    '<aside class="fx-rail fx-mail" aria-label="E-mails">' + emailsPanel(c, d.mails || [], h4, d.resps || [], d.jor) + '</aside></div>';
+    '<aside class="fx-rail fx-mail" aria-label="E-mails">' + emailsPanel(c, d.mails || [], h4, d.resps || [], d.jor) + caminhoEmailHtml(c, d.mails || [], d.resps || [], d.jor, h4) + '</aside></div>';
 }
 // Repinta só o corpo da aba (abrir/fechar/mover sessão): o resto da tela e a rolagem ficam.
 function fxPintaCorpo() {
@@ -2843,6 +2966,7 @@ async function renderPessoa() {
     fichaFeedHtml(eventos) +
     '<div style="display:flex; flex-direction:column; gap:16px">' +
     emailsPanel(c, mails, h4, resps, jor) +
+    caminhoEmailHtml(c, mails, resps, jor, h4) +
     jornadaHtml(c, mails, resps, jor, h4) +
     '<div class="panel" style="padding:16px"><h4 style="' + h4 + '">Quem é ela</h4>' + kvHtml(respostasKv(c)) + '</div>' +
     '<div id="chk-lateral">' + checklistLateralHtml(state.dos && state.dos.chk, Date.now(), h4) + '</div>' +
@@ -4632,6 +4756,7 @@ document.addEventListener('click', async function (e) {
   if (t.matches('tr[data-id]')) return openPessoa(t.dataset.id);
   if (t.dataset.open) return openPessoa(t.dataset.open);
   if (t.dataset.openconv) return openPessoa(t.dataset.openconv, 'conversa');
+  if (t.dataset.prep) return prepararEmail(t.dataset.prep, t.dataset.prepmodo, t.dataset.tplk);
   if (t.dataset.ptab) { state.ptab = t.dataset.ptab; return renderPessoa(); }
   if (t.dataset.pstab) return trocaPlatAba(t.dataset.pstab);
   if (t.dataset.caso) {
