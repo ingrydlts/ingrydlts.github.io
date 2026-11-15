@@ -2,13 +2,13 @@
 // Nada de service_role aqui. O banco é db/crm-fase2.sql; o desenho é o artefato "CRM Por Dentro".
 // Tudo que vem do banco é texto de terceiros (nome, e-mail, pergunta): passa sempre por esc().
 import { supabase } from '/assets/js/supabase-client.js';
-import * as TX from './taxonomia.js?v=2026-11-15.29';   // páginas, famílias e agrupamento dos modelos
-import * as ES from './estudio.js?v=2026-11-15.29';   // os blocos do estúdio de e-mails (entregas 2 e 3)
-import * as EE from './editor-email.js?v=2026-11-15.29';
-import * as EQ from './editor-quem.js?v=2026-11-15.29';
-import * as JR from './jornada.js?v=2026-11-15.29';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
-import * as FX from './ficha.js?v=2026-11-15.29';   // ficha v2: lógica pura (fila, démarches, funil, ações)
-import * as FH from './ficha-html.js?v=2026-11-15.29';   // ficha v2: HTML puro
+import * as TX from './taxonomia.js?v=2026-11-15.30';   // páginas, famílias e agrupamento dos modelos
+import * as ES from './estudio.js?v=2026-11-15.30';   // os blocos do estúdio de e-mails (entregas 2 e 3)
+import * as EE from './editor-email.js?v=2026-11-15.30';
+import * as EQ from './editor-quem.js?v=2026-11-15.30';
+import * as JR from './jornada.js?v=2026-11-15.30';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
+import * as FX from './ficha.js?v=2026-11-15.30';   // ficha v2: lógica pura (fila, démarches, funil, ações)
+import * as FH from './ficha-html.js?v=2026-11-15.30';   // ficha v2: HTML puro
 
 var PERSONAS = {
   au_pair_estudante: 'Au pair → estudante', campus_france: 'Campus France', alternancia_emprego: 'Alternância / emprego',
@@ -3071,7 +3071,7 @@ function fxHeaderHtml(c, d) {
 // Catálogo de démarches (cópia do app, processos.json): carregado uma vez; sem ele, tudo cai na démarche padrão.
 var FX_PROC = null;
 async function fxCarregaProcessos() {
-  try { var r = await fetch('processos.json?v=2026-11-15.29'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
+  try { var r = await fetch('processos.json?v=2026-11-15.30'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
 }
 // A sessão Checklist: pílulas por démarche, os 4 mais urgentes, pasta do Drive privada e "Ver mais desta sessão".
 function fxChecklistCorpo(c) {
@@ -3271,6 +3271,23 @@ function ltHtml(c, d) {
   return '<div class="dv-sec" id="dos-linha"><div class="k">Tudo ligado a este e-mail</div><p class="sub" style="margin:0 0 6px"><b>' + esc(c.email || '') + '</b> · ' + esc(ltResumo(c, d, itens)) + '</p>' +
     '<div class="lt-cs">' + chips + '</div>' + lista + (f === 'compra' || f === 'tudo' ? '<p class="sub" style="margin:6px 0 0">O valor pago em euros não é guardado no banco: as compras aparecem só com produto e data.</p>' : '') + '</div>';
 }
+// ---------- Onboarding dentro do Dossiê (visão geral) ----------
+// A chamada de onboarding (documento ou link do Notion) alimenta o Dossiê. Aqui fica o resumo dela: o que a chamada trouxe, o bilan e o que falta perguntar.
+function obHtml(c, d, S) {
+  var B = state.bilan && state.bilan.cid === c.id ? state.bilan : null, quando = S && S.onbEm ? S.onbEm : B ? B.quando : null;
+  var enviado = (d.mails || []).filter(function (m) { return m.modelo === 'bilan_conversa'; })[0];
+  var X = S ? dosCruzamentos(c, S).daChamada : [], F = S ? onbFalta(c, S.d, S.rasc) : [];
+  var cardOb = function (t, corpo) { return '<div class="dv-card"><div class="k">' + esc(t) + '</div>' + corpo + '</div>'; };
+  var trouxe = X.length ? '<ul class="dv-ul">' + X.slice(0, 8).map(function (x) { return '<li><b>' + esc(x.l) + ':</b> ' + esc(x.v) + ' <i class="dv-fonte">' + esc(x.origem) + ' · ' + esc(ONB_CONF[x.conf] || x.conf) + '</i></li>'; }).join('') + '</ul>' + (X.length > 8 ? '<p class="sub" style="margin:4px 0 0">e mais ' + (X.length - 8) + ' no formulário abaixo.</p>' : '')
+    : '<p class="sub" style="margin:0">' + (quando ? 'A chamada não trouxe campos para o Dossiê.' : 'Nenhuma chamada lida ainda.') + '</p>';
+  var bilan = '<p class="sub" style="margin:0 0 8px">' + (B ? 'Leitura do Notion de ' + esc(fmtDay(String(B.quando || '').slice(0, 10))) + ' (' + esc(B.status === 'aplicada' ? 'aplicada' : B.status === 'descartada' ? 'descartada' : 'proposta pendente') + ').' : 'Sem leitura do Notion ainda.') + '</p>' +
+    (enviado ? '<p class="sub" style="margin:0 0 8px">Bilan enviado em ' + esc(fmtDay(String(enviado.enviado_em || enviado.criado_em || '').slice(0, 10))) + '.</p>' : '') +
+    '<button type="button" class="btn" data-bilanabrir="' + esc(c.id) + '"' + (B ? '' : ' disabled') + '>' + (enviado ? 'Reenviar o bilan' : 'Enviar o bilan da conversa') + '</button>';
+  var falta = F.length ? '<div class="onb-falta" style="margin:0">' + F.slice(0, 10).map(function (l) { return '<span class="dchip falta">' + esc(l) + '</span>'; }).join('') + (F.length > 10 ? '<span class="sub">e mais ' + (F.length - 10) + '</span>' : '') + '</div>' : '<p class="sub" style="margin:0">' + (S ? 'Nada: o Dossiê está completo para a situação dela.' : 'Carregando o Dossiê…') + '</p>';
+  return '<div class="dv-sec" id="dos-onb"><div class="k">Onboarding</div><p class="sub" style="margin:0 0 6px">' + (quando ? 'Chamada lida em ' + esc(fmtDate(quando)) + '.' : 'Ainda sem onboarding.') +
+    ' <button type="button" class="btn" data-go="onboarding">Abrir o Onboarding →</button></p><div class="dv-grid">' +
+    cardOb('O que a chamada trouxe', trouxe) + cardOb('Bilan da conversa', bilan) + cardOb('Falta perguntar', falta) + '</div></div>';
+}
 function dosVisaoHtml(c, d) {
   var S = state.dos && state.dos.cid === c.id && state.dos.d ? state.dos : null, conta = !!c.user_id, pos = !!(S && S.onbEm);
   var jor = d.jor || montaJornada([]), mails = d.mails || [], resps = d.resps || [], perg = d.perg || [], evs = d.eventos || [];
@@ -3334,7 +3351,7 @@ function dosVisaoHtml(c, d) {
     }
   } else if (S) falta = '<div class="dv-sec"><div class="k">O que falta</div><p class="sub" style="margin:0">Nada falta no dossiê.</p></div>';
   return '<section class="panel dv" id="dos-visao" style="padding:16px;margin-bottom:14px"><h3 style="font-size:17px;margin:0 0 2px">' + esc(titulo) + '</h3><p class="sub" style="margin:0 0 12px">' + esc(sub) + '</p>' +
-    '<div class="dv-grid">' + card('Quem ela é', quem) + card('Estudos, certificados e prazo', estudos) + card('De onde veio e o que respondeu', veio) + card('O que ela fez', fez) + '</div>' + r1Html(c, S) + ltHtml(c, d) + cruz + falta + '</section>';
+    '<div class="dv-grid">' + card('Quem ela é', quem) + card('Estudos, certificados e prazo', estudos) + card('De onde veio e o que respondeu', veio) + card('O que ela fez', fez) + '</div>' + obHtml(c, d, S) + r1Html(c, S) + ltHtml(c, d) + cruz + falta + '</section>';
 }
 // ---------- Plataforma: a sessão "Insights" (depois do 1:1, com ela no app) ----------
 function insightsDaPlataforma(c, X) {
