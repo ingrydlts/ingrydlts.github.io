@@ -32,7 +32,7 @@ function qb(table) {
 const supabase = { from: qb, auth: { getSession: async () => ({ data: { session: null } }) }, rpc: async (n, a) => { rpcs.push({ n, a }); return rpcRetorno; }, channel: () => ({ on() { return this; }, subscribe() { return this; } }), removeChannel() {} };
 const store = {};
 const mod = new Function('supabase', 'ES', 'TX', 'EE', 'EQ', 'JR', 'document', 'window', 'location', 'localStorage', 'setInterval', 'clearInterval',
-  src + '\n;return { state, setC: function (v) { C = v; }, setQ: function (v) { Q = v; }, setR: function (v) { R = v; }, setP: function (v) { P = v; }, setPSUG: function (v) { PSUG = v; }, setFin: function (o) { PRODUTOS = o.produtos; COMPRAS_EV = o.compras; ASSIN = o.assin; PRECOS = o.precos; }, itensDeHoje, ordenaFila, catDoContato, renderFila, receitaEstimada, pistasDaJornada, rascunhoMultiFunil, funisDaPessoa };')(
+  src + '\n;return { state, setC: function (v) { C = v; }, setQ: function (v) { Q = v; }, setR: function (v) { R = v; }, setP: function (v) { P = v; }, setPSUG: function (v) { PSUG = v; }, setFin: function (o) { PRODUTOS = o.produtos; COMPRAS_EV = o.compras; ASSIN = o.assin; PRECOS = o.precos; }, itensDeHoje, ordenaFila, catDoContato, renderFila, receitaEstimada, pistasDaJornada, rascunhoMultiFunil, funisDaPessoa, fxResumoCartoes, setUM: function (v) { UM = v; }, setPAG: function (v) { PAG1A1 = v; } };')(
   supabase, {}, TXMOD, { iniciar() {}, depois() {}, campoMudou() {} }, {}, {}, document, { addEventListener() {}, confirm: () => true, scrollTo() {} }, { href: '' }, { getItem: (k) => store[k] ?? null, setItem: (k, v) => { store[k] = v; } }, () => 1, () => {});
 
 const dia = (n) => new Date(Date.now() + n * 864e5).toISOString();
@@ -116,6 +116,23 @@ check('abriu, clicou e não respondeu: pede um convite concreto', pj.pistas.some
 const rasc = mod.rascunhoMultiFunil(Nat, mod.funisDaPessoa(Nat, J2), J2);
 check('o e-mail personalizado cita os dois guias, pergunta qual está mais perto e convida para o 1:1', /Oi Natália!/.test(rasc) && /Campus France/.test(rasc) && /Tecnólogo/i.test(rasc) && /Qual dos dois/.test(rasc) && /conversa 20 minutos/.test(rasc));
 check('com 1:1 já marcado, não convida de novo', !/conversa 20 minutos/.test(mod.rascunhoMultiFunil(Object.assign({}, Nat, { estagio: 'um_a_um' }), mod.funisDaPessoa(Nat, J2), J2)));
+
+console.log('== Cabeçalho da ficha: o cartão do 1:1 ==');
+{
+  const J = pessoa('j', 'Julia'), em = (c) => mod.fxResumoCartoes(c, { mails: [], resps: [] })[0];
+  mod.setUM([]); mod.setPAG([]);
+  check('sem 1:1: traço e "nenhum marcado"', em(J).valor === '—' && /nenhum marcado/.test(em(J).sub));
+  mod.setPAG([{ contato_id: 'j', minutos: 20, pago_em: dia(-5) }]);
+  check('pagou e não tem dia: "Pago, sem data", em alerta, com os minutos', em(J).valor === 'Pago, sem data' && em(J).tom === 'alerta' && /20 min · pago em/.test(em(J).sub) && /falta marcar o dia/.test(em(J).sub));
+  mod.setUM([{ id: 1, contato_id: 'j', quando: dia(2), status: 'agendado', criado_em: dia(-4) }]);
+  check('marcado e pago: dia e hora no valor, minutos e pagamento no apoio, tom ok', /\d{2}\/\d{2} · \d{2}:\d{2}/.test(em(J).valor) && /20 min · pago em/.test(em(J).sub) && em(J).tom === 'ok');
+  mod.setPAG([]);
+  check('marcado e sem pagamento: avisa que não há pagamento registrado', /sem pagamento registrado/.test(em(J).sub) && em(J).tom === undefined);
+  mod.setUM([{ id: 2, contato_id: 'j', quando: null, status: 'agendado', criado_em: dia(-1) }]);
+  check('marcado sem dia: "a combinar" em alerta', em(J).valor === 'a combinar' && em(J).tom === 'alerta');
+  const todos = mod.fxResumoCartoes(J, { mails: [], resps: [] });
+  check('o cabeçalho tem 5 cartões: 1:1, Plataforma, Dossiê, Prazo e E-mails', todos.map((k) => k.rotulo).join() === '1:1,Plataforma,Dossiê,Prazo,E-mails');
+}
 
 console.log('\n' + (failed ? failed + ' FALHARAM, ' : '') + passed + ' passaram' + (failed ? '' : ', 0 falharam'));
 process.exit(failed ? 1 : 0);

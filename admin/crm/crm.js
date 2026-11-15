@@ -2,13 +2,13 @@
 // Nada de service_role aqui. O banco é db/crm-fase2.sql; o desenho é o artefato "CRM Por Dentro".
 // Tudo que vem do banco é texto de terceiros (nome, e-mail, pergunta): passa sempre por esc().
 import { supabase } from '/assets/js/supabase-client.js';
-import * as TX from './taxonomia.js?v=2026-11-15.19';   // páginas, famílias e agrupamento dos modelos
-import * as ES from './estudio.js?v=2026-11-15.19';   // os blocos do estúdio de e-mails (entregas 2 e 3)
-import * as EE from './editor-email.js?v=2026-11-15.19';
-import * as EQ from './editor-quem.js?v=2026-11-15.19';
-import * as JR from './jornada.js?v=2026-11-15.19';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
-import * as FX from './ficha.js?v=2026-11-15.19';   // ficha v2: lógica pura (fila, démarches, funil, ações)
-import * as FH from './ficha-html.js?v=2026-11-15.19';   // ficha v2: HTML puro
+import * as TX from './taxonomia.js?v=2026-11-15.20';   // páginas, famílias e agrupamento dos modelos
+import * as ES from './estudio.js?v=2026-11-15.20';   // os blocos do estúdio de e-mails (entregas 2 e 3)
+import * as EE from './editor-email.js?v=2026-11-15.20';
+import * as EQ from './editor-quem.js?v=2026-11-15.20';
+import * as JR from './jornada.js?v=2026-11-15.20';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
+import * as FX from './ficha.js?v=2026-11-15.20';   // ficha v2: lógica pura (fila, démarches, funil, ações)
+import * as FH from './ficha-html.js?v=2026-11-15.20';   // ficha v2: HTML puro
 
 var PERSONAS = {
   au_pair_estudante: 'Au pair → estudante', campus_france: 'Campus France', alternancia_emprego: 'Alternância / emprego',
@@ -2915,12 +2915,58 @@ function fxFilaItens(c) {
 function fxTarefas(c, d) {
   var resps = d.resps || [], bilanEnviado = (d.mails || []).some(function (m) { return m.modelo === 'bilan_conversa'; });
   var dosFalta = state.dos && state.dos.cid === c.id ? dosProgresso(c, state.dos.d, state.dos.rasc).falta : 0;
+  // Só o que precisa de você: a sugestão de e-mail do funil já está no aviso do alto, e completar o dossiê só vale perto de um 1:1.
+  var temUm = c.estagio === 'um_a_um' || UM.some(function (x) { return x.contato_id === c.id && x.status === 'agendado'; }) || PAG1A1.some(function (p) { return p.contato_id === c.id; });
   return FX.tarefasDe({
     nome: displayName(c), respostasNovas: resps.filter(function (x) { return x.status === 'nova'; }).length, chatNaoLidas: chatNaoLidas(state.chat),
     processosDetectados: (state.procs || []).filter(function (p) { return p.status === 'detectada'; }).map(function (p) { return p.processo; }),
-    bilanPendente: !!(state.bilan && state.bilan.cid === c.id && !bilanEnviado), dossieFalta: dosFalta,
-    proximoEmail: proximoEmail(c, d.mails || [], resps, d.jor)
+    bilanPendente: !!(state.bilan && state.bilan.cid === c.id && !bilanEnviado), dossieFalta: temUm ? dosFalta : 0,
+    proximoEmail: null
   }, procLabel);
+}
+// ---------- O cabeçalho da ficha: o que importa da pessoa, na mesma ordem para todo mundo ----------
+// 1:1 (dia, hora, minutos e se pagou), plataforma (conta e uso), dossiê (quanto falta), prazo e e-mails.
+function fxResumoCartoes(c, d) {
+  var agora = Date.now(), cartao = function (r, v, sub, tom) { return { rotulo: r, valor: v, sub: sub || '', tom: tom }; };
+  var mails = d.mails || [], resps = d.resps || [];
+  // 1:1
+  var ums = UM.filter(function (x) { return x.contato_id === c.id; }), pags = PAG1A1.filter(function (p) { return p.contato_id === c.id; });
+  var ag = ums.filter(function (x) { return x.status === 'agendado'; }).sort(function (a, b) { return !a.quando ? 1 : !b.quando ? -1 : a.quando < b.quando ? -1 : 1; });
+  var prox = ag.filter(function (x) { return !x.quando || new Date(x.quando).getTime() >= agora - 36e5; })[0], pago = pags[0];
+  var pagTxt = pago ? pago.minutos + ' min · pago em ' + fmtDate(pago.pago_em) : '';
+  var um;
+  if (prox && prox.quando) um = cartao('1:1', new Date(prox.quando).toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit' }) + ' · ' + fmtHora(prox.quando), pagTxt || 'sem pagamento registrado', pago ? 'ok' : undefined);
+  else if (prox) um = cartao('1:1', 'a combinar', pago ? pagTxt + ': falta marcar o dia' : 'marcado, sem dia e sem pagamento', 'alerta');
+  else if (pago) um = cartao('1:1', 'Pago, sem data', pagTxt + ': falta marcar o dia', 'alerta');
+  else um = cartao('1:1', '—', 'nenhum marcado');
+  // Plataforma
+  var a = state.assin, conta = !!c.user_id, ult = diasDesde(c.ultimo_evento_em);
+  var rotA = a ? (a.status === 'trialing' ? 'Em teste' : a.status === 'active' ? 'Assinante' : (ASSIN_ST[a.status] || a.status)) : '';
+  var plat = !conta ? cartao('Plataforma', 'Sem conta', 'ainda não criou o acesso')
+    : cartao('Plataforma', rotA || 'No app', (a && a.status === 'trialing' ? 'teste até ' + fmtDay(String(a.teste_fim || a.periodo_fim || '').slice(0, 10)) + ' · ' : '') + (ult == null ? 'sem atividade' : ult === 0 ? 'ativa hoje' : 'última atividade há ' + haDias(ult)), 'ok');
+  // Dossiê
+  var dos = state.dos && state.dos.cid === c.id && state.dos.d ? dosProgresso(c, state.dos.d, state.dos.rasc) : null;
+  var dosC = dos ? cartao('Dossiê', dos.n + ' de ' + dos.tot, dos.falta ? 'faltam ' + dos.falta + ' respostas' : 'completo', dos.falta === 0 ? 'ok' : undefined) : cartao('Dossiê', '—', 'carregando…');
+  // Prazo
+  var r = c.respostas || {}, prazo;
+  if (CF_PRAZO[r.cfNivel]) { var dc = diasAte(CF_PRAZO[r.cfNivel]); prazo = cartao('Prazo', fmtDay(CF_PRAZO[r.cfNivel]), 'Campus France · ' + (dc > 1 ? 'faltam ' + dc + ' dias' : dc === 1 ? 'falta 1 dia' : dc === 0 ? 'vence hoje' : 'venceu há ' + (-dc) + ' dias'), dc <= 30 && dc >= -90 ? 'alerta' : undefined); }
+  else if (c.prazo_limite) prazo = cartao('Prazo', fmtDay(c.prazo_limite), 'VLS-TS · ' + prazoTxt(c), c.dias_para_prazo != null && c.dias_para_prazo <= 30 && c.dias_para_prazo >= -90 ? 'alerta' : undefined);
+  else prazo = cartao('Prazo', '—', 'sem prazo registrado');
+  // E-mails
+  var abriu = mails.filter(function (m) { return m.aberto_em || m.status === 'aberto' || m.status === 'clicado'; }).length, clicou = mails.filter(function (m) { return m.clicado_em || m.status === 'clicado'; }).length, novas = resps.filter(function (x) { return x.status === 'nova'; }).length;
+  var em = mails.length || resps.length ? cartao('E-mails', mails.length ? 'abriu ' + abriu + ' de ' + mails.length : '—', (mails.length ? 'clicou ' + clicou + ' · ' : '') + 'respostas ' + resps.length + (novas ? ' (' + novas + ' sem resposta sua)' : ''), novas ? 'alerta' : undefined) : cartao('E-mails', '—', 'nenhum e-mail ainda');
+  return [um, plat, dosC, prazo, em];
+}
+// A linha dos dados-chave do dossiê (só o que já foi respondido).
+function fxFatosChave(c) {
+  if (!(state.dos && state.dos.cid === c.id && state.dos.d)) return null;
+  var v = function (k) { return dosValor(c, state.dos.d, state.dos.rasc, k); }, out = [];
+  var op = function (k) { var f = dosCampo(k), x = v(k); if (x === '') return ''; var o = f && f.o ? f.o.filter(function (y) { return y[0] === x; })[0] : null; return o ? o[1] : x; };
+  if (v('cidade')) out.push('mora em ' + v('cidade'));
+  if (v('data_chegada')) out.push('chegou em ' + fmtDay(v('data_chegada')));
+  if (op('nivel_frances')) out.push('francês ' + op('nivel_frances'));
+  if (v('moradia_resolvida') === 'true') out.push('moradia resolvida');
+  return out.length ? 'Dossiê: ' + out.join(' · ') : 'Dossiê ainda sem os dados-chave (cidade, chegada, francês).';
 }
 function fxHeaderHtml(c, d) {
   var chk = state.dos && state.dos.cid === c.id ? state.dos.chk : null, k = null, agora = Date.now();
@@ -2939,14 +2985,14 @@ function fxHeaderHtml(c, d) {
     entradas: Math.max(jor.entradas.length ? origensDe(c).length : 0, origensDe(c).length, 1), diasNaBase: dd,
     respostas: resps.length, respostasNovas: resps.filter(function (x) { return x.status === 'nova'; }).length,
     proximo: proximoEmail(c, mails, resps, jor), agora: agora };
-  var cart = FX.cartoesDe(tipo, dados);
+  var cart = { blocos: [{ titulo: null, cartoes: fxResumoCartoes(c, d) }], nota: fxFatosChave(c) };
   return FH.htmlCabecalho({ c: c, estagioLabel: stageLabel(c.estagio), personaLabel: personaLabel(c) + (subLabel(c) ? ' · ' + subLabel(c) : ''),
     temConta: !!c.user_id, etiqueta: FX.etiquetaPagamento(assin), estagios: STAGES, blocos: cart.blocos, nota: cart.nota }, H_FX);
 }
 // Catálogo de démarches (cópia do app, processos.json): carregado uma vez; sem ele, tudo cai na démarche padrão.
 var FX_PROC = null;
 async function fxCarregaProcessos() {
-  try { var r = await fetch('processos.json?v=2026-11-15.19'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
+  try { var r = await fetch('processos.json?v=2026-11-15.20'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
 }
 // A sessão Checklist: pílulas por démarche, os 4 mais urgentes, pasta do Drive privada e "Ver mais desta sessão".
 function fxChecklistCorpo(c) {
@@ -3021,7 +3067,7 @@ function avisoDaPessoaHtml(c, mails, resps, jor) {
   var seg = c.estagio === 'um_a_um' || c.um_a_um_quando ? '' : '<button class="btn" type="button" data-open1a1="' + esc(c.id) + '">Marcar 1:1</button>';
   return '<section class="aviso aviso-' + esc(c.urgencia || 'baixa') + '" aria-label="O que pede atenção nesta pessoa"><div class="aviso-t"><span class="k">Precisa de você</span>' + urgPill(c.urgencia) + '</div>' +
     '<p class="aviso-motivo">' + esc(c.motivo) + '</p>' +
-    '<p class="aviso-fazer"><b>O que fazer:</b> ' + esc(p.titulo) + '. <span class="sub">' + esc(p.angulo) + '</span></p>' +
+    '<p class="aviso-fazer" title="' + esc(p.angulo) + '"><b>O que fazer:</b> ' + esc(p.titulo) + '</p>' +
     '<div class="cam-acoes">' + primario + seg + '</div></section>';
 }
 function renderFichaV2(c, d) {

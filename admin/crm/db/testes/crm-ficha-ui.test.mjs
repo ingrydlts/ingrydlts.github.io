@@ -208,6 +208,16 @@ console.log('== Aviso no alto da ficha: o motivo e o que fazer ==');
   check('pessoa concluída não mostra aviso', !pg.includes('aviso aviso-'));
 }
 
+
+console.log('== Cabeçalho: 1:1, plataforma, dossiê e prazo à vista ==');
+{
+  const agora = Date.now(), iso = (dias) => new Date(agora + dias * 864e5).toISOString();
+  const h = await carregarCrm({ store: { crm_ficha_v2: '1' }, respostas: base({ 'contatos:one': { data: { dossie: {}, user_id: 'u9' }, error: null } }) });
+  let html = await abre(h, pessoa({ user_id: 'u9', ultimo_evento_em: iso(-1), prazo_limite: '2026-12-01', dias_para_prazo: 12, urgencia: 'alta' }));
+  check('prazo à vista no cabeçalho, em alerta', html.includes('>Prazo<') && html.includes('VLS-TS') && /class="k alerta"/.test(html));
+  check('sem 1:1: o cartão diz que nenhum está marcado', html.includes('nenhum marcado'));
+  h.mod.pararAoVivo();
+}
 console.log('== Task 13: abas Ficha e Conversa ==');
 {
   const mailX = { id: 9, modelo: 'x', status: 'enviado', criado_em: new Date().toISOString(), enviado_em: new Date().toISOString(), assunto: 'Oi' };
@@ -288,16 +298,16 @@ console.log('== Cabeçalho fixo por tipo de pessoa ==');
     'assinaturas:one': { data: assinatura, error: null } }) });
   let h = await montar(null, null);
   let html = await abre(h, pessoa({ user_id: null, dias_sem_sinal: 6 }));
-  check('lead: tem Parada há e Próximo e-mail, e não tem uso nem pagamento', html.includes('Parada há') && html.includes('Próximo e-mail') && !html.includes('Cliques por sessão') && !html.includes('class="tag">Pagamento<') && html.includes('Não assina'));
+  check('lead: o cabeçalho traz 1:1, Plataforma (Sem conta), Dossiê, Prazo e E-mails, e não tem uso nem pagamento', ['>1:1<', '>Plataforma<', '>Dossiê<', '>Prazo<', '>E-mails<'].every((x) => html.includes(x)) && html.includes('Sem conta') && !html.includes('Cliques por sessão') && !html.includes('class="tag">Pagamento<') && html.includes('Não assina'));
   h.mod.pararAoVivo();
   h = await montar('u1', { status: 'active', plano: 'Intermediário', periodo_fim: new Date(agora + 5 * 864e5).toISOString(), cancela_no_fim: false, criado_em: iso(95) });
-  html = await abre(h, pessoa({ user_id: 'u1' }));
-  check('assinante: Pagamento, Plano, Assinatura ativa e o uso (sessões e cliques por sessão)', html.includes('class="tag">Pagamento<') && html.includes('Intermediário') && html.includes('Assinatura ativa') && html.includes('Sessões') && html.includes('Cliques por sessão') && html.includes('Duração (estimada)'));
-  check('assinante: 3 sessões de 4 cliques → 4 cliques por sessão; nota sobre LTV', html.includes('>4<') && html.includes('LTV'));
+  html = await abre(h, pessoa({ user_id: 'u1', ultimo_evento_em: iso(2) }));
+  check('assinante: a Plataforma diz Assinante, a etiqueta diz Assinatura ativa e mostra a última atividade', html.includes('>Plataforma<') && html.includes('Assinante') && html.includes('Assinatura ativa') && /última atividade há|ativa hoje/.test(html));
+  check('assinante: o cabeçalho não traz mais a nota sobre LTV nem os cartões de uso', !html.includes('LTV') && !html.includes('Duração (estimada)'));
   h.mod.pararAoVivo();
   h = await montar('u2', null);
   html = await abre(h, pessoa({ user_id: 'u2' }));
-  check('na plataforma sem assinar: Não assina, Sessões e sem bloco Pagamento', html.includes('Não assina') && html.includes('Sessões') && !html.includes('class="tag">Pagamento<'));
+  check('na plataforma sem assinar: Não assina, Plataforma No app e sem bloco Pagamento', html.includes('Não assina') && html.includes('No app') && !html.includes('class="tag">Pagamento<'));
   h.mod.pararAoVivo();
   h = await montar('u3', { status: 'canceled', plano: 'Básico', periodo_fim: iso(1), cancela_no_fim: false, criado_em: iso(200) });
   html = await abre(h, pessoa({ user_id: 'u3' }));
@@ -305,7 +315,7 @@ console.log('== Cabeçalho fixo por tipo de pessoa ==');
   h.mod.pararAoVivo();
   h = await montar(null, null);
   html = await abre(h, pessoa({ user_id: null, nome: '<img src=x onerror=alert(1)>', dias_sem_sinal: null }));
-  check('nome com HTML sai escapado no cabeçalho e na fila; sem dias_sem_sinal mostra traço', !html.includes('<img src=x') && html.includes('&lt;img') && html.includes('sem atividade registrada'));
+  check('nome com HTML sai escapado no cabeçalho e na fila; sem conta diz que ainda não criou o acesso', !html.includes('<img src=x') && html.includes('&lt;img') && html.includes('ainda não criou o acesso'));
   h.mod.pararAoVivo();
 }
 
