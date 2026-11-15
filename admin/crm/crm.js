@@ -2,13 +2,13 @@
 // Nada de service_role aqui. O banco é db/crm-fase2.sql; o desenho é o artefato "CRM Por Dentro".
 // Tudo que vem do banco é texto de terceiros (nome, e-mail, pergunta): passa sempre por esc().
 import { supabase } from '/assets/js/supabase-client.js';
-import * as TX from './taxonomia.js?v=2026-11-15.35';   // páginas, famílias e agrupamento dos modelos
-import * as ES from './estudio.js?v=2026-11-15.35';   // os blocos do estúdio de e-mails (entregas 2 e 3)
-import * as EE from './editor-email.js?v=2026-11-15.35';
-import * as EQ from './editor-quem.js?v=2026-11-15.35';
-import * as JR from './jornada.js?v=2026-11-15.35';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
-import * as FX from './ficha.js?v=2026-11-15.35';   // ficha v2: lógica pura (fila, démarches, funil, ações)
-import * as FH from './ficha-html.js?v=2026-11-15.35';   // ficha v2: HTML puro
+import * as TX from './taxonomia.js?v=2026-11-15.36';   // páginas, famílias e agrupamento dos modelos
+import * as ES from './estudio.js?v=2026-11-15.36';   // os blocos do estúdio de e-mails (entregas 2 e 3)
+import * as EE from './editor-email.js?v=2026-11-15.36';
+import * as EQ from './editor-quem.js?v=2026-11-15.36';
+import * as JR from './jornada.js?v=2026-11-15.36';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
+import * as FX from './ficha.js?v=2026-11-15.36';   // ficha v2: lógica pura (fila, démarches, funil, ações)
+import * as FH from './ficha-html.js?v=2026-11-15.36';   // ficha v2: HTML puro
 
 var PERSONAS = {
   au_pair_estudante: 'Au pair → estudante', campus_france: 'Campus France', alternancia_emprego: 'Alternância / emprego',
@@ -3071,7 +3071,7 @@ function fxHeaderHtml(c, d) {
 // Catálogo de démarches (cópia do app, processos.json): carregado uma vez; sem ele, tudo cai na démarche padrão.
 var FX_PROC = null;
 async function fxCarregaProcessos() {
-  try { var r = await fetch('processos.json?v=2026-11-15.35'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
+  try { var r = await fetch('processos.json?v=2026-11-15.36'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
 }
 // A sessão Checklist: pílulas por démarche, os 4 mais urgentes, pasta do Drive privada e "Ver mais desta sessão".
 function fxChecklistCorpo(c) {
@@ -3286,7 +3286,7 @@ function dosPerguntarHtml(c, S) {
     var lista = function (campos) { return '<ul class="dv-ul">' + campos.slice(0, 6).map(function (f) { return '<li>' + esc(f.l) + '</li>'; }).join('') + (campos.length > 6 ? '<li class="sub">e mais ' + (campos.length - 6) + '</li>' : '') + '</ul>'; };
     if (!conta) {
       var todos = F.conversa.concat(F.doc).concat(F.app);
-      falta = '<div class="dv-sec"><div class="k">Perguntas para o 1:1</div><p class="sub" style="margin:0 0 6px">' + todos.length + ' respostas faltam. O que você perguntar na conversa já entra no formulário abaixo.</p>' +
+      falta = '<div class="dv-sec"><div class="k">Perguntas para o 1:1</div><p class="sub" style="margin:0 0 6px">' + 'O que você perguntar na conversa já entra no formulário abaixo.</p>' +
         '<ol class="dv-ol">' + todos.slice(0, 10).map(function (f) { return '<li>' + esc(f.l) + '</li>'; }).join('') + '</ol>' + (todos.length > 10 ? '<p class="sub" style="margin:4px 0 0">E mais ' + (todos.length - 10) + ' no formulário.</p>' : '') + '</div>';
     } else {
       falta = '<div class="dv-sec"><div class="k">Como completar o que falta' + (pos ? '' : ' (depois do 1:1)') + '</div><div class="dv-estr">' +
