@@ -56,7 +56,7 @@ console.log('== Task 10: ligação aos dados, abas, ações, deep link ==');
   check('renderiza fila, header, abas e carrossel', html.includes('class="fx-fila mf"') && html.includes('class="hd"') && html.includes('class="fx-abas"') && html.includes('class="fx-car"'));
   check('sem conta: abre na aba Ficha', /data-v="ficha"[^>]*aria-selected="true"/.test(html) && !/data-v="plataforma"[^>]*aria-selected="true"/.test(html));
   check('1º cartão é "Responder Ana"', /data-fx="agAbrir" data-i="0"[^>]*aria-label="Ação 1 de \d: Responder Ana\./.test(html));
-  check('a fila é uma linha de chips: a pessoa aberta está destacada e o texto da ação não repete na fila', html.includes('mf-i atual') && !/class="mf[^"]*"[^>]*>[^<]*Responder Ana/.test(html.split('class="hd"')[0].split('class="fx-fila mf"')[1] || ''));
+  check('a fila é um dropdown: resumo, a pessoa aberta destacada e, em cada caso, a ação e o motivo', html.includes('class="mf-dd"') && html.includes('mf-i atual') && html.includes('class="mf-menu"') && /class="mf-conta"/.test(html));
   {
     // só mensagem do app, sem resposta por e-mail: a fila da pessoa aberta continua igual ao 1º cartão
     const h2 = await carregarCrm({ respostas: base({ chat_mensagens: { data: [msg(2), msg(1)], error: null } }), store: { crm_ficha_v2: '1' } });

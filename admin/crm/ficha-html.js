@@ -10,12 +10,22 @@ const ABAS = [['conversa', 'E-mail'], ['plataforma', 'Plataforma'], ['ficha', 'F
 export function htmlFila(itens, selId, h) {
   const e = h.esc, lista = itens || [];
   if (!lista.length) return '<section class="fx-fila mf" aria-label="Fila de hoje"><span class="mf-t">Fila de hoje</span><span class="sub">Ninguém na fila hoje.</span></section>';
-  return '<section class="fx-fila mf" aria-label="Fila de hoje"><span class="mf-t">Fila de hoje</span>' + lista.map((o) => {
-    const c = o.c || {}, aberta = String(c.id) === String(selId), urg = ['alta', 'media', 'baixa'].includes(c.urgencia) ? c.urgencia : 'baixa';
+  const urgDe = (c) => ['alta', 'media', 'baixa'].includes(c.urgencia) ? c.urgencia : 'baixa';
+  const idx = Math.max(0, lista.findIndex((o) => String((o.c || {}).id) === String(selId)));
+  const atual = lista[idx].c || {}, altas = lista.filter((o) => urgDe(o.c || {}) === 'alta').length, novas = lista.reduce((n, o) => n + (o.novas || 0), 0);
+  const vai = (o, rot, sinal) => o ? '<button type="button" class="mf-seta" data-fx="pessoa" data-id="' + e((o.c || {}).id) + '" aria-label="' + rot + ': ' + e((o.c || {}).nome || '') + '">' + sinal + '</button>' : '<span class="mf-seta off" aria-hidden="true">' + sinal + '</span>';
+  const resumo = lista.length + (lista.length === 1 ? ' pessoa' : ' pessoas') + (altas ? ' · ' + altas + (altas === 1 ? ' urgente' : ' urgentes') : '') + (novas ? ' · ' + novas + (novas === 1 ? ' resposta nova' : ' respostas novas') : '');
+  const linhas = lista.map((o) => {
+    const c = o.c || {}, aberta = String(c.id) === String(selId), urg = urgDe(c);
     return '<button type="button" class="mf-i' + (aberta ? ' atual' : '') + '" data-fx="pessoa" data-id="' + e(c.id) + '" aria-pressed="' + aberta + '" title="' + e(URG[urg]) + '">' +
-      '<span class="mf-d ' + urg + '" aria-hidden="true"></span><span class="mf-nome">' + e(c.nome || c.email || 'Sem nome') + '</span>' +
-      (o.novas > 0 ? '<span class="mf-n">' + o.novas + (o.novas === 1 ? ' nova' : ' novas') + '</span>' : '') + '</button>';
-  }).join('') + '</section>';
+      '<span class="mf-d ' + urg + '" aria-hidden="true"></span><span class="mf-corpo"><span class="mf-l1"><span class="mf-nome">' + e(c.nome || c.email || 'Sem nome') + '</span>' +
+      (o.novas > 0 ? '<span class="mf-n">' + o.novas + (o.novas === 1 ? ' nova' : ' novas') + '</span>' : '') + '<span class="mf-urg ' + urg + '">' + e(URG[urg]) + '</span></span>' +
+      (c.motivo ? '<span class="mf-acao">' + e(c.motivo) + '</span>' : '') + (o.proxima && o.proxima !== 'Abrir a ficha' ? '<span class="mf-motivo">Ação: ' + e(o.proxima) + '</span>' : '') +
+      (o.sub ? '<span class="mf-sub">' + e(o.sub) + '</span>' : '') + '</span></button>';
+  }).join('');
+  return '<section class="fx-fila mf" aria-label="Fila de hoje"><details class="mf-dd"><summary class="mf-sum"><span class="mf-t">Fila de hoje</span>' +
+    '<span class="mf-conta">' + e(resumo) + '</span><span class="mf-atual"><span class="mf-d ' + urgDe(atual) + '" aria-hidden="true"></span>' + e(atual.nome || atual.email || 'Sem nome') + '</span><span class="mf-chev" aria-hidden="true">▾</span></summary>' +
+    '<div class="mf-menu">' + linhas + '</div></details>' + vai(lista[idx - 1], 'Pessoa anterior da fila', '‹') + vai(lista[idx + 1], 'Próxima pessoa da fila', '›') + '</section>';
 }
 
 // Cabeçalho fixo: pessoa, etiqueta de pagamento, ações e cartões por tipo de pessoa (os blocos vêm de FX.cartoesDe).
