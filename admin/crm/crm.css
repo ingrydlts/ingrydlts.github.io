@@ -1148,3 +1148,5 @@ details.ee-sec[open]>summary{margin-bottom:8px}
 .ee-barra-passos{display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:6px 14px}
 .ee-barra-passos .ee-topo{flex:1 1 auto; justify-content:flex-end; gap:8px 12px}
 .ee-barra-passos .ee-topo > .sub{display:none}
+.st-excl-i{display:flex; gap:8px; align-items:center; justify-content:space-between; padding:6px 4px; border-top:1px solid var(--line); font-size:12.5px}
+.st-excl-i > span{min-width:0} .st-excl-i b{display:block; font-weight:600} .st-excl-i .btn{flex:none}
