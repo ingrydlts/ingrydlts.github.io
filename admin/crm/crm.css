@@ -1188,3 +1188,16 @@ details.ee-sec[open]>summary{margin-bottom:8px}
 /* Páginas de entrada num dropdown */
 .ee-pg-sel{appearance:none; -webkit-appearance:none; background:var(--surface-2) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%239A938B' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 12px center; border:1px solid var(--ink); color:var(--ink); border-radius:999px; padding:6px 34px 6px 14px; font:inherit; font-size:13px; font-weight:600; max-width:100%; cursor:pointer}
 .ee-pg-sel:hover{background-color:var(--surface)}
+
+/* Troca de e-mails (ficha): fila, linha do tempo e escrita */
+.cam-fila{background:var(--surface); border-radius:var(--r); padding:12px}
+.cam-fila .k{font-size:11px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-3); margin:0 0 4px}
+.cam-tempo{display:flex; flex-direction:column; gap:8px}
+.cam-tempo .mailrow{border:1px solid var(--line); border-radius:var(--r); padding:8px 10px; background:var(--surface)}
+.cam-t-resp{border-color:var(--beige); background:var(--beige-soft)}
+.cam-dir{display:inline-grid; place-items:center; width:18px; height:18px; border-radius:50%; background:var(--sunk); font-size:11px; font-weight:700; margin-right:6px; flex:none}
+.cam-resp{white-space:pre-wrap; font-size:13px; margin-top:4px}
+.cam-mapa summary{cursor:pointer; font-weight:600}
+.cam-tempo .mailrow .mh{flex-wrap:wrap; row-gap:2px}
+.cam-tempo .mailrow .mh b{flex:1 1 calc(100% - 44px); white-space:normal}
+.cam-tempo .mailrow .mh time{margin-left:26px}

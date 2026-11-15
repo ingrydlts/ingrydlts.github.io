@@ -209,7 +209,7 @@ console.log('== Task 13: abas Ficha e Conversa ==');
   let pg = h.el('pessoa-page').innerHTML;
   check('Ficha, etapa 2: passo 1 destacado', /data-passo="1"[^>]*aria-current="step"/.test(pg) && (pg.match(/aria-current="step"/g) || []).length === 2);   // 1 do fluxo + 1 do funil
   check('Ficha: painéis existentes de jornada e e-mails', pg.includes('class="fx-ficha3"') && pg.includes('Tudo que ela fez') && /Jornada|jornada/.test(pg) && pg.includes('Quem é ela'));
-  check('Ficha: perguntas, consentimento e Instagram seguem na ficha; no lugar das anotações entra o Caminho de e-mail', pg.includes('Consentimento') && pg.includes('id="ig-handle"') && !pg.includes('id="nota"') && pg.includes('Caminho de e-mail desta pessoa'));
+  check('Ficha: perguntas, consentimento e Instagram seguem na ficha; no lugar das anotações entra o Caminho de e-mail', pg.includes('Consentimento') && pg.includes('id="ig-handle"') && !pg.includes('id="nota"') && pg.includes('Troca de e-mails com ela'));
   check('Ficha não traz o Checklist nem as sessões', !pg.includes('data-sessao='));
   h.mod.pararAoVivo();
   h = await comEtapa(4); await h.click({ fx: 'tab', v: 'ficha' });

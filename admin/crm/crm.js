@@ -2,13 +2,13 @@
 // Nada de service_role aqui. O banco é db/crm-fase2.sql; o desenho é o artefato "CRM Por Dentro".
 // Tudo que vem do banco é texto de terceiros (nome, e-mail, pergunta): passa sempre por esc().
 import { supabase } from '/assets/js/supabase-client.js';
-import * as TX from './taxonomia.js?v=2026-11-15.10';   // páginas, famílias e agrupamento dos modelos
-import * as ES from './estudio.js?v=2026-11-15.10';   // os blocos do estúdio de e-mails (entregas 2 e 3)
-import * as EE from './editor-email.js?v=2026-11-15.10';
-import * as EQ from './editor-quem.js?v=2026-11-15.10';
-import * as JR from './jornada.js?v=2026-11-15.10';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
-import * as FX from './ficha.js?v=2026-11-15.10';   // ficha v2: lógica pura (fila, démarches, funil, ações)
-import * as FH from './ficha-html.js?v=2026-11-15.10';   // ficha v2: HTML puro
+import * as TX from './taxonomia.js?v=2026-11-15.11';   // páginas, famílias e agrupamento dos modelos
+import * as ES from './estudio.js?v=2026-11-15.11';   // os blocos do estúdio de e-mails (entregas 2 e 3)
+import * as EE from './editor-email.js?v=2026-11-15.11';
+import * as EQ from './editor-quem.js?v=2026-11-15.11';
+import * as JR from './jornada.js?v=2026-11-15.11';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
+import * as FX from './ficha.js?v=2026-11-15.11';   // ficha v2: lógica pura (fila, démarches, funil, ações)
+import * as FH from './ficha-html.js?v=2026-11-15.11';   // ficha v2: HTML puro
 
 var PERSONAS = {
   au_pair_estudante: 'Au pair → estudante', campus_france: 'Campus France', alternancia_emprego: 'Alternância / emprego',
@@ -1031,26 +1031,66 @@ function rascunhoDoEmail(c, sit, mails, jor) {
   else return '';
   return L.join('\n') + convite + '\n\nIngryd · Por Dentro';
 }
+// O que está na fila para ela: os e-mails automáticos (sequência ligada no Estúdio) cujo "depois de" ela já recebeu e que ainda não saíram.
+// A data é a do e-mail de base mais os dias (ou minutos) do modelo. É uma previsão: a regra de "Para quem" e o aceite de novidades
+// valem na hora do envio.
+function filaDaPessoa(c, mails) {
+  if (!M) return [];
+  var enviados = {}; mails.forEach(function (m) { var t = m.enviado_em || m.criado_em; if (!enviados[m.modelo] || t > enviados[m.modelo]) enviados[m.modelo] = t; });
+  var out = [];
+  listaModelos().forEach(function (m) {
+    if (!m.envio_ligado || m.envio_gatilho !== 'email' || !enviados[m.envio_depois_de] || enviados[m.chave]) return;
+    var base = new Date(enviados[m.envio_depois_de]), quando;
+    if (m.envio_minutos != null) quando = new Date(base.getTime() + m.envio_minutos * 6e4);
+    else { quando = new Date(base.getTime() + (m.envio_dias || 0) * 864e5); if (m.envio_hora != null) quando.setHours(m.envio_hora, 0, 0, 0); }
+    out.push({ k: m.chave, nome: m.nome || modeloNome(m.chave), quando: quando, bloqueado: exigeNovidades(m.chave) && !c.aceita_novidades });
+  });
+  return out.sort(function (x, y) { return x.quando - y.quando; });
+}
+function itemEmailEnviado(m) {
+  var ev = [mailPill(m)];
+  var det = [m.aberto_em ? 'abriu ' + fmtQuando(m.aberto_em) : '', m.clicado_em ? 'clicou no link ' + fmtQuando(m.clicado_em) : ''].filter(Boolean);
+  return '<div class="mailrow cam-t-env"><button class="mh" data-mailtoggle="' + m.id + '" type="button"><span class="cam-dir" title="Você enviou">↑</span><b>' + esc(m.assunto || modeloNome(m.modelo)) + '</b>' + ev.join('') +
+    '<time>' + esc(fmtQuando(m.enviado_em || m.criado_em)) + '</time></button><div class="sub" style="font-size:11.5px;margin-top:2px">' + esc(modeloNome(m.modelo)) +
+    (det.length ? ' · ' + esc(det.join(' · ')) : '') + ' · <span>clique para ver o e-mail</span></div>' + mailView(m) + '</div>';
+}
+function itemResposta(x) {
+  return '<div class="mailrow cam-t-resp"><div class="mh" style="cursor:default"><span class="cam-dir" title="Ela respondeu">↓</span><b>Ela respondeu' + (x.canal === 'toque' ? ' com um toque' : x.canal === 'pagina' ? ' na página da conversa' : '') + '</b>' +
+    (x.status === 'nova' ? '<span class="pill u-alta">sem resposta sua</span>' : '') + '<time>' + esc(fmtQuando(x.recebido_em)) + '</time></div>' +
+    '<div class="cam-resp">' + esc(x.texto) + '</div></div>';
+}
 function caminhoEmailHtml(c, mails, resps, jor, h4) {
   if (!JR || !JR.ETAPAS || !TX.rotuloPagina) return '';   // os testes antigos não injetam o módulo da jornada
   mails = mails.slice().sort(function (a, b) { var x = a.enviado_em || a.criado_em, y = b.enviado_em || b.criado_em; return x < y ? 1 : x > y ? -1 : 0; });
-  var cam = passosDoCaminho(c, mails);
-  if (!cam.pag)
-    return '<div class="panel" style="padding:16px"><h4 style="' + h4 + '">Caminho de e-mail desta pessoa</h4><p class="sub" style="margin:0">Esta origem' + (ultimaOrigem(c) ? ' (' + esc(origLabel(ultimaOrigem(c))) + ')' : '') +
-      ' não tem página no Estúdio, então não há caminho de e-mail para mostrar. Veja a tela Jornada para criar um.</p></div>';
-  var sit = situacaoEmail(mails, resps), p = proximoEmail(c, mails, resps, jor || montaJornada([]));
-  var lista = cam.passos.map(function (x) {
-    var ult = x.env[0], estado = ult ? 'ok' : (x.modelos.length || x.rascunhos.length) ? 'pend' : 'falta';
-    var corpo = ult ? '<b>' + esc(modeloNome(ult.modelo)) + '</b> ' + mailPill(ult) + '<time>' + esc(fmtQuando(ult.enviado_em || ult.criado_em)) + '</time>'
-      : x.modelos.length ? 'Ainda não enviado: <b>' + esc(x.modelos[0].nome || modeloNome(x.modelos[0].chave)) + '</b>' + (x.modelos[0].automatico ? ' <span class="sub">(sai sozinho)</span>' : '')
-      : x.rascunhos.length ? 'Em rascunho no Estúdio: <b>' + esc(x.rascunhos[0].nome || modeloNome(x.rascunhos[0].chave)) + '</b> <span class="sub">(ainda não está No ar)</span>'
-      : '<span class="sub">Falta criar o modelo no Estúdio.</span>';
-    return '<li class="cam-i cam-' + estado + (cam.atual === x.k ? ' cam-atual' : '') + '"><div class="cam-t"><b>' + esc(x.nome) + '</b><span class="sub">' + esc(x.sub) + '</span>' +
-      (cam.atual === x.k ? '<span class="cam-aqui">ela está aqui</span>' : '') + '</div><div class="cam-m">' + corpo + '</div></li>';
-  }).join('');
-  // O modelo do caminho que combina com o momento dela: o da sugestão do "Próximo e-mail"; senão o 1º manual da etapa seguinte.
+  resps = resps || [];
+  var cam = passosDoCaminho(c, mails), sit = situacaoEmail(mails, resps), p = proximoEmail(c, mails, resps, jor || montaJornada([]));
+
+  // 1) Próximo na fila
+  var fila = filaDaPessoa(c, mails), prox;
+  if (fila.length) {
+    var f = fila[0], pronto = emailPronto(c, f.k);
+    prox = '<div class="cam-fila"><div class="k">Próximo na fila' + (fila.length > 1 ? ' <span class="sub" style="text-transform:none;letter-spacing:0">(depois dele, mais ' + (fila.length - 1) + ')</span>' : '') + '</div>' +
+      '<p class="ins-t" style="margin:0 0 2px">' + esc(f.nome) + '</p><p class="sub" style="margin:0">Previsto para <b style="color:var(--ink)">' + esc(fmtQuando(f.quando.toISOString())) + '</b> · assunto: ' + esc(pronto.subject) + '</p>' +
+      (f.bloqueado ? '<p class="sub" style="margin:4px 0 0;color:var(--red)">Ela não aceitou novidades por e-mail: este não vai sair.</p>' : '') +
+      '<button class="btn" type="button" style="margin-top:8px" data-emailfor="' + esc(c.id) + '" data-tplk="' + esc(f.k) + '">Ver o e-mail →</button></div>';
+  } else {
+    prox = '<div class="cam-fila"><div class="k">Próximo na fila</div><p class="ins-t" style="margin:0 0 2px">Nada programado para ela</p><p class="sub" style="margin:0">' + esc(p.titulo) + '. ' + esc(p.angulo) + '</p>' +
+      (p.k && !(exigeNovidades(p.k) && !c.aceita_novidades) ? '<button class="btn" type="button" style="margin-top:8px" data-emailfor="' + esc(c.id) + '" data-tplk="' + esc(p.k) + '">Ver o e-mail sugerido: ' + esc(tplInfo(p.k).label) + ' →</button>' : '') + '</div>';
+  }
+
+  // 2) Tudo que trocamos: os e-mails enviados e as respostas dela, do mais novo ao mais antigo. Clicar abre o e-mail.
+  var itens = mails.map(function (m) { return { t: m.enviado_em || m.criado_em, h: itemEmailEnviado(m) }; })
+    .concat(resps.map(function (x) { return { t: x.recebido_em, h: itemResposta(x) }; }))
+    .sort(function (x, y) { return x.t < y.t ? 1 : x.t > y.t ? -1 : 0; });
+  var abriu = mails.filter(function (m) { return m.aberto_em || m.status === 'aberto' || m.status === 'clicado'; }).length, clicou = mails.filter(function (m) { return m.clicado_em || m.status === 'clicado'; }).length;
+  var tempo = '<div class="k" style="margin-top:14px">Tudo que trocamos</div>' +
+    (itens.length ? '<p class="sub" style="margin:0 0 6px">' + mails.length + (mails.length === 1 ? ' e-mail enviado' : ' e-mails enviados') + ' · abriu ' + abriu + ' · clicou ' + clicou + ' · respondeu ' + resps.length + '</p>' +
+      '<div class="cam-tempo">' + itens.map(function (i) { return i.h; }).join('') + '</div>'
+      : '<p class="sub" style="margin:0">Nenhum e-mail enviado por aqui ainda. E-mails mandados direto do seu Gmail não entram.</p>');
+
+  // 3) Escrever para ela: um rascunho a partir de onde ela está e do que respondeu, ou do zero
   var k = p.k || null;
-  if (!k) {
+  if (!k && cam.pag) {
     var ordem = ['lead', 'contato', 'plat'], ia = cam.atual ? ordem.indexOf(cam.atual) : -1;
     for (var i = Math.max(ia, 0); i < ordem.length && !k; i++) {
       var x = cam.passos.filter(function (y) { return y.k === ordem[i]; })[0], m = x && x.modelos.filter(function (z) { return !z.automatico && !x.env.length; })[0];
@@ -1060,25 +1100,40 @@ function caminhoEmailHtml(c, mails, resps, jor, h4) {
   var disse = [], r = c.respostas || {};
   if (r.objetivo) disse.push('Etapa que ela escolheu: ' + etapaDe(r.objetivo));
   if (r.cfNivel) disse.push('Nível: ' + (CF_NIVEL[r.cfNivel] || r.cfNivel));
-  (resps || []).slice(-2).forEach(function (x) { disse.push('Respondeu' + (x.canal === 'toque' ? ' com um toque' : x.canal === 'pagina' ? ' na página da conversa' : ' por e-mail') + ': “' + truncaTxt(x.texto, 120) + '”'); });
+  resps.slice(-2).forEach(function (x) { disse.push('Respondeu' + (x.canal === 'toque' ? ' com um toque' : x.canal === 'pagina' ? ' na página da conversa' : ' por e-mail') + ': “' + truncaTxt(x.texto, 120) + '”'); });
   if (sit.k !== 'respondeu' && mails.length) disse.push('Não respondeu a nenhum e-mail enviado');
   var rasc = rascunhoDoEmail(c, sit, mails, jor);
   var bloq = k && exigeNovidades(k) && !c.aceita_novidades;
-  var prep = '<details class="mais-det cam-prep"><summary>Preparar e-mail</summary>' +
+  var responder = sit.k === 'respondeu' || p.conversa;
+  var prep = '<details class="mais-det cam-prep"' + (responder ? ' open' : '') + '><summary>Escrever um e-mail para ela</summary>' +
     '<p class="cam-sit"><b>' + esc(sit.rot) + '</b></p>' +
     (disse.length ? '<div class="k jn-k">O que ela já disse</div><ul class="cam-disse">' + disse.map(function (d) { return '<li>' + esc(d) + '</li>'; }).join('') + '</ul>' : '') +
     '<div class="k jn-k">Proposta</div><p class="sub" style="margin:0 0 6px"><b style="color:var(--ink)">' + esc(p.titulo) + '</b> ' + esc(p.angulo) + '</p>' +
     (rasc
       ? '<label class="sr" for="prep-txt">Rascunho</label><textarea class="notebox" id="prep-txt" data-cid="' + esc(c.id) + '" style="min-height:190px">' + esc(rasc) + '</textarea>' +
-        '<p class="sub" style="margin:4px 0 8px">Sugestão. Edite antes de enviar: nada sai daqui sem você revisar.</p>' +
-        '<div class="cam-acoes">' + (sit.k === 'respondeu' || p.conversa
-          ? '<button class="btn primary" type="button" data-prep="' + esc(c.id) + '" data-prepmodo="conversa">Responder na conversa →</button>' : '') +
-        (k && !bloq ? '<button class="btn' + (sit.k === 'respondeu' || p.conversa ? '' : ' primary') + '" type="button" data-prep="' + esc(c.id) + '" data-prepmodo="email" data-tplk="' + esc(k) + '">Abrir no envio, modelo “' + esc(tplInfo(k).label) + '” →</button>' : '') + '</div>' +
-        (bloq ? '<p class="sub" style="margin:6px 0 0;color:var(--red)">Ela não aceitou novidades por e-mail: o modelo “' + esc(tplInfo(k).label) + '” não pode ser enviado.</p>' : '')
-      : '<p class="sub" style="margin:0">Sem rascunho nesta situação (confira o endereço antes de mandar outro).</p>') +
+        '<p class="sub" style="margin:4px 0 8px">Sugestão. Edite à vontade: nada sai daqui sem você revisar.</p>'
+      : '<p class="sub" style="margin:0 0 8px">Sem rascunho nesta situação (confira o endereço antes de mandar outro).</p>') +
+    '<div class="cam-acoes">' + (rasc && responder ? '<button class="btn primary" type="button" data-prep="' + esc(c.id) + '" data-prepmodo="conversa">Responder na conversa →</button>' : '') +
+      (rasc && k && !bloq ? '<button class="btn' + (responder ? '' : ' primary') + '" type="button" data-prep="' + esc(c.id) + '" data-prepmodo="email" data-tplk="' + esc(k) + '">Abrir no envio, modelo “' + esc(tplInfo(k).label) + '” →</button>' : '') +
+      '<button class="btn" type="button" data-emailfor="' + esc(c.id) + '">Escrever do zero</button></div>' +
+    (bloq ? '<p class="sub" style="margin:6px 0 0;color:var(--red)">Ela não aceitou novidades por e-mail: o modelo “' + esc(tplInfo(k).label) + '” não pode ser enviado.</p>' : '') +
     '</details>';
-  return '<div class="panel cam-panel" style="padding:16px"><h4 style="' + h4 + '">Caminho de e-mail desta pessoa</h4>' +
-    '<p class="sub" style="margin:0 0 10px">Página de entrada: <b style="color:var(--ink)">' + esc(TX.rotuloPagina(cam.pag)) + '</b></p><ol class="cam">' + lista + '</ol>' + prep + '</div>';
+
+  // 4) O mapa do caminho, recolhido
+  var mapa;
+  if (!cam.pag) mapa = '<p class="sub" style="margin:0">Esta origem' + (ultimaOrigem(c) ? ' (' + esc(origLabel(ultimaOrigem(c))) + ')' : '') + ' não tem página no Estúdio, então não há caminho de e-mail para mostrar. Veja a tela Jornada para criar um.</p>';
+  else mapa = '<p class="sub" style="margin:0 0 10px">Página de entrada: <b style="color:var(--ink)">' + esc(TX.rotuloPagina(cam.pag)) + '</b></p><ol class="cam">' + cam.passos.map(function (x) {
+    var ult = x.env[0], estado = ult ? 'ok' : (x.modelos.length || x.rascunhos.length) ? 'pend' : 'falta';
+    var corpo = ult ? '<b>' + esc(modeloNome(ult.modelo)) + '</b> ' + mailPill(ult) + '<time>' + esc(fmtQuando(ult.enviado_em || ult.criado_em)) + '</time>'
+      : x.modelos.length ? 'Ainda não enviado: <b>' + esc(x.modelos[0].nome || modeloNome(x.modelos[0].chave)) + '</b>' + (x.modelos[0].automatico ? ' <span class="sub">(sai sozinho)</span>' : '')
+      : x.rascunhos.length ? 'Em rascunho no Estúdio: <b>' + esc(x.rascunhos[0].nome || modeloNome(x.rascunhos[0].chave)) + '</b> <span class="sub">(ainda não está No ar)</span>'
+      : '<span class="sub">Falta criar o modelo no Estúdio.</span>';
+    return '<li class="cam-i cam-' + estado + (cam.atual === x.k ? ' cam-atual' : '') + '"><div class="cam-t"><b>' + esc(x.nome) + '</b><span class="sub">' + esc(x.sub) + '</span>' +
+      (cam.atual === x.k ? '<span class="cam-aqui">ela está aqui</span>' : '') + '</div><div class="cam-m">' + corpo + '</div></li>';
+  }).join('') + '</ol>';
+  var det = '<details class="mais-det cam-mapa"><summary>Caminho de e-mail desta pessoa</summary><div style="margin-top:8px">' + mapa + '</div></details>';
+
+  return '<div class="panel cam-panel" style="padding:16px"><h4 style="' + h4 + '">Troca de e-mails com ela</h4>' + prox + tempo + prep + det + '</div>';
 }
 function prepararEmail(cid, modo, k) {
   var ta = $('prep-txt'), txt = ta ? ta.value : '';
@@ -2683,7 +2738,7 @@ function fxHeaderHtml(c, d) {
 // Catálogo de démarches (cópia do app, processos.json): carregado uma vez; sem ele, tudo cai na démarche padrão.
 var FX_PROC = null;
 async function fxCarregaProcessos() {
-  try { var r = await fetch('processos.json?v=2026-11-15.10'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
+  try { var r = await fetch('processos.json?v=2026-11-15.11'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
 }
 // A sessão Checklist: pílulas por démarche, os 4 mais urgentes, pasta do Drive privada e "Ver mais desta sessão".
 function fxChecklistCorpo(c) {
