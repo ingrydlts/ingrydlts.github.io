@@ -2,13 +2,13 @@
 // Nada de service_role aqui. O banco é db/crm-fase2.sql; o desenho é o artefato "CRM Por Dentro".
 // Tudo que vem do banco é texto de terceiros (nome, e-mail, pergunta): passa sempre por esc().
 import { supabase } from '/assets/js/supabase-client.js';
-import * as TX from './taxonomia.js?v=2026-11-15.11';   // páginas, famílias e agrupamento dos modelos
-import * as ES from './estudio.js?v=2026-11-15.11';   // os blocos do estúdio de e-mails (entregas 2 e 3)
-import * as EE from './editor-email.js?v=2026-11-15.11';
-import * as EQ from './editor-quem.js?v=2026-11-15.11';
-import * as JR from './jornada.js?v=2026-11-15.11';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
-import * as FX from './ficha.js?v=2026-11-15.11';   // ficha v2: lógica pura (fila, démarches, funil, ações)
-import * as FH from './ficha-html.js?v=2026-11-15.11';   // ficha v2: HTML puro
+import * as TX from './taxonomia.js?v=2026-11-15.12';   // páginas, famílias e agrupamento dos modelos
+import * as ES from './estudio.js?v=2026-11-15.12';   // os blocos do estúdio de e-mails (entregas 2 e 3)
+import * as EE from './editor-email.js?v=2026-11-15.12';
+import * as EQ from './editor-quem.js?v=2026-11-15.12';
+import * as JR from './jornada.js?v=2026-11-15.12';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
+import * as FX from './ficha.js?v=2026-11-15.12';   // ficha v2: lógica pura (fila, démarches, funil, ações)
+import * as FH from './ficha-html.js?v=2026-11-15.12';   // ficha v2: HTML puro
 
 var PERSONAS = {
   au_pair_estudante: 'Au pair → estudante', campus_france: 'Campus France', alternancia_emprego: 'Alternância / emprego',
@@ -184,7 +184,7 @@ async function boot() {
     return;
   }
   $('gate').hidden = true; $('app').hidden = false;
-  await Promise.all([loadAll(), carregarProdutos(), carregarArtigos()]);
+  await Promise.all([loadAll(), carregarProdutos(), carregarArtigos(), carregarPrecos()]);
   initControls();
   show('hoje');
 }
@@ -220,7 +220,7 @@ async function loadAll() {
     supabase.from('modelos_email').select('*').order('ordem', { ascending: true }),
     supabase.from('modelos_email_versoes').select('*').order('versao', { ascending: false }),
     // As compras registradas (evento 'compra', db/crm-estudio-emails-3.sql): a prévia diz se a pessoa cumpre o "Para quem".
-    supabase.from('eventos').select('contato_id,dados').eq('tipo', 'compra').limit(5000),
+    supabase.from('eventos').select('contato_id,dados,criado_em').eq('tipo', 'compra').limit(5000),
     // O Radar (db/crm-radar.sql): os itens do PESTEL por persona e o que já foi enviado. Sem a migração, a tela avisa.
     supabase.from('radar_itens').select('*').is('arquivado_em', null).order('criado_em', { ascending: false }).limit(500),
     supabase.from('radar_envios').select('item_id,contato_id,visto_em').limit(20000),
@@ -230,11 +230,14 @@ async function loadAll() {
     // A fila de avisos da IAssistente que ainda não saíram (db/crm-caso-fluxo.sql). Sem o SQL, o bloco da Hoje fica escondido.
     supabase.from('caso_avisos').select('id,contato_id,titulo,tipo,ordem,pausa_dias,liberar_em,modo').eq('estado', 'agendado').is('liberado_em', null).order('ordem', { ascending: true }).limit(500),
     // As assinaturas (db/crm-assinaturas.sql): separam quem já é cliente no Funil. Sem o SQL, todos ficam em Leads ou No app.
-    supabase.from('assinaturas').select('contato_id,status,periodo_fim,cancela_no_fim').limit(5000)
+    supabase.from('assinaturas').select('contato_id,status,plano,moeda,teste_fim,periodo_fim,cancela_no_fim,criado_em').limit(5000),
+    // Os 1:1 (db/crm-fase2.sql): alimentam o calendário e o indicador "1:1 marcados". Sem a tabela, ficam vazios.
+    supabase.from('um_a_um').select('id,contato_id,quando,status,criado_em').order('quando', { ascending: true }).limit(2000)
   ]);
   if (r[0].error) return fail('carregar os contatos', r[0].error);
-  COMPRAS = {};
-  ((r[7] && !r[7].error && r[7].data) || []).forEach(function (e) { var p = (e.dados || {}).produto; if (p) (COMPRAS[e.contato_id] = COMPRAS[e.contato_id] || {})[p] = 1; });
+  COMPRAS = {}; COMPRAS_EV = [];
+  ((r[7] && !r[7].error && r[7].data) || []).forEach(function (e) { var p = (e.dados || {}).produto; if (p) { (COMPRAS[e.contato_id] = COMPRAS[e.contato_id] || {})[p] = 1; COMPRAS_EV.push({ produto: p, em: e.criado_em }); } });
+  UM = r[14] && !r[14].error ? (r[14].data || []) : [];
   C = r[0].data || [];
   ASSIN = {};
   ((r[13] && !r[13].error && r[13].data) || []).forEach(function (a) { ASSIN[a.contato_id] = a; });
@@ -264,15 +267,23 @@ async function loadAll() {
   });
 }
 // Os produtos pagos da vitrine (content/produtos-digitais.json, público): nome e slug, para "Para quem" e "Registrar compra".
-var PRODUTOS = [], COMPRAS = {};
+var PRODUTOS = [], COMPRAS = {}, COMPRAS_EV = [], UM = [], PRECOS = [];
 function comprou(cid, prod) { return !!(COMPRAS[cid] && COMPRAS[cid][prod]); }
 async function carregarProdutos() {
   try {
     var r = await fetch('/content/produtos-digitais.json', { cache: 'no-store' });
     var d = r.ok ? await r.json() : {};
     PRODUTOS = (d.items || []).filter(function (p) { return p.slug && p.title && p.active !== false && !/-teste$/.test(p.slug); })
-      .map(function (p) { return { slug: p.slug, nome: p.title }; });
+      .map(function (p) { return { slug: p.slug, nome: p.title, preco: Number(p.price) > 0 ? Number(p.price) : null }; });
   } catch (e) { PRODUTOS = []; }
+}
+// Os preços de tabela das assinaturas (planos/planos.json, o mesmo da página /planos/). Sem o arquivo, a receita das assinaturas fica em zero.
+async function carregarPrecos() {
+  try {
+    var r = await fetch('/planos/planos.json', { cache: 'no-store' });
+    var d = r.ok ? await r.json() : {};
+    PRECOS = (d.itens || []).filter(function (x) { return x && x.chave && Number(x.valor) > 0; }).map(function (x) { return { chave: x.chave, valor: Number(x.valor), moeda: x.moeda || 'EUR', mensal: !x.periodicidade || /mensal/i.test(x.periodicidade) }; });
+  } catch (e) { PRECOS = []; }
 }
 function produtoNome(slug) { var p = PRODUTOS.filter(function (x) { return x.slug === slug; })[0]; return p ? p.nome : (slug || '—'); }
 // Os artigos do site (content/posts.json, público): a pergunta única guarda só o "token" do artigo (o slug sem acento, até 40 letras).
@@ -382,6 +393,84 @@ function applyPreset(p) {
 }
 
 // ---------- Telas ----------
+// ---------- Indicadores da Hoje: um período só (7, 14, 30 dias, 3 e 6 meses) vale para os quatro ----------
+var KPER_ROT = { 7: '7 dias', 14: '14 dias', 30: '30 dias', 90: '3 meses', 180: '6 meses' };
+function eur(v) { return '€ ' + (Math.round(v * 100) / 100).toLocaleString('pt-BR', { minimumFractionDigits: v % 1 ? 2 : 0, maximumFractionDigits: 2 }); }
+// Receita estimada entre ini e fim. O CRM não guarda pagamentos (o Stripe é quem manda), então é conta de tabela:
+// compras de produto registradas (preço da vitrine) + as mensalidades das assinaturas ativas (1ª cobrança no fim do teste, ou na criação, e uma por mês).
+// Cupom, reembolso e pagamento que falhou não entram.
+function receitaEstimada(ini, fim) {
+  var total = 0, nCompras = 0, nMens = 0, agora = Date.now();
+  COMPRAS_EV.forEach(function (e) {
+    var t = new Date(e.em), p = PRODUTOS.filter(function (x) { return x.slug === e.produto; })[0];
+    if (t >= ini && t < fim && p && p.preco) { total += p.preco; nCompras++; }
+  });
+  Object.keys(ASSIN).forEach(function (k) {
+    var a = ASSIN[k]; if (a.status !== 'active') return;
+    var pl = PRECOS.filter(function (x) { return x.chave === a.plano; })[0] || (PRECOS.length === 1 ? PRECOS[0] : null);
+    if (!pl || !pl.mensal) return;
+    var base = new Date(a.teste_fim || a.criado_em); if (isNaN(base)) return;
+    var limite = Math.min(agora, a.periodo_fim ? new Date(a.periodo_fim).getTime() + 864e5 : agora);
+    for (var i = 0; i < 120; i++) {
+      var d = new Date(base.getTime()); d.setMonth(d.getMonth() + i);
+      if (d.getTime() > limite) break;
+      if (d >= ini && d < fim) { total += pl.valor; nMens++; }
+    }
+  });
+  return { total: total, compras: nCompras, mensalidades: nMens };
+}
+function renderKpis() {
+  var sel = $('k-per'); if (!sel) return;
+  var dias = Number(state.kper || 7), agora = Date.now(), ini = new Date(agora - dias * 864e5), ant = new Date(agora - 2 * dias * 864e5), rot = KPER_ROT[dias] || dias + ' dias';
+  sel.value = String(dias);
+  var delta = function (n, m) { return (n - m >= 0 ? '+' : '') + (n - m) + ' vs. os ' + rot + ' antes'; };
+  var noPer = function (iso, a, b) { var t = new Date(iso); return t >= a && t < b; };
+  // Novos leads
+  var l1 = C.filter(function (c) { return noPer(c.criado_em, ini, new Date(agora + 1)); }).length, l0 = C.filter(function (c) { return noPer(c.criado_em, ant, ini); }).length;
+  $('k-leads').textContent = l1; $('k-leads-sub').textContent = delta(l1, l0); $('k-leads-sub').className = l1 >= l0 ? 'up' : '';
+  // 1:1 marcados (a data em que você marcou, não a da conversa)
+  var vivos = UM.filter(function (x) { return x.status !== 'cancelado'; });
+  var u1 = vivos.filter(function (x) { return noPer(x.criado_em, ini, new Date(agora + 1)); }).length, u0 = vivos.filter(function (x) { return noPer(x.criado_em, ant, ini); }).length;
+  $('k-um').textContent = u1; $('k-um-sub').textContent = delta(u1, u0); $('k-um-sub').className = u1 >= u0 ? 'up' : '';
+  // Pessoas na plataforma: com conta e com atividade no período
+  var comConta = C.filter(function (c) { return c.user_id && c.estagio !== 'inativo'; });
+  var ativas = comConta.filter(function (c) { return noPer(c.ultimo_evento_em || c.criado_em, ini, new Date(agora + 1)); }).length;
+  $('k-plat').textContent = ativas; $('k-plat-sub').textContent = 'com atividade, de ' + comConta.length + ' com conta';
+  // Revenue estimado
+  var rv = receitaEstimada(ini, new Date(agora + 1)), rv0 = receitaEstimada(ant, ini);
+  $('k-rev').textContent = eur(rv.total);
+  $('k-rev-sub').textContent = (rv.compras || rv.mensalidades ? rv.compras + (rv.compras === 1 ? ' compra' : ' compras') + ' + ' + rv.mensalidades + (rv.mensalidades === 1 ? ' mensalidade' : ' mensalidades') : 'nada registrado no período') + ' · antes: ' + eur(rv0.total);
+  $('k-rev-sub').title = 'Estimativa com o valor de tabela (sem cupom). O CRM não guarda os pagamentos: o valor real está no Stripe.';
+  $('k-rev-sub').className = rv.total >= rv0.total ? 'up' : '';
+}
+// ---------- Calendário de 1:1: o mês (com os dias que têm conversa) e a lista do que vem pela frente ----------
+function renderCalendario() {
+  var box = $('today-cal'); if (!box) return;
+  var agora = new Date(), off = state.calOff || 0, mes = new Date(agora.getFullYear(), agora.getMonth() + off, 1);
+  var ag = UM.filter(function (x) { return x.status === 'agendado'; });
+  var comData = ag.filter(function (x) { return x.quando; }), semData = ag.filter(function (x) { return !x.quando; });
+  var dia = function (iso) { var d = new Date(iso); return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate(); };
+  var porDia = {}; comData.forEach(function (x) { porDia[dia(x.quando)] = (porDia[dia(x.quando)] || 0) + 1; });
+  var rotMes = mes.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }).replace(' de ', ' ');
+  $('cal-mes').textContent = rotMes.charAt(0).toUpperCase() + rotMes.slice(1);
+  var primeiro = (mes.getDay() + 6) % 7, nDias = new Date(mes.getFullYear(), mes.getMonth() + 1, 0).getDate(), hoje = dia(agora.toISOString());
+  var grade = ['S', 'T', 'Q', 'Q', 'S', 'S', 'D'].map(function (l) { return '<span class="cal-h" aria-hidden="true">' + l + '</span>'; }).join('');
+  for (var i = 0; i < primeiro; i++) grade += '<span></span>';
+  for (var d = 1; d <= nDias; d++) {
+    var k = mes.getFullYear() + '-' + (mes.getMonth() + 1) + '-' + d, n = porDia[k] || 0;
+    grade += '<span class="cal-d' + (k === hoje ? ' hoje' : '') + (n ? ' tem' : '') + '"' + (n ? ' title="' + n + (n === 1 ? ' conversa' : ' conversas') + '"' : '') + '>' + d + (n ? '<i class="cal-n">' + n + '</i>' : '') + '</span>';
+  }
+  var prox = comData.filter(function (x) { return new Date(x.quando).getTime() >= agora.getTime() - 36e5; }).sort(function (a, b) { return a.quando < b.quando ? -1 : 1; });
+  var linha = function (x, quando) {
+    var c = byC(x.contato_id); if (!c) return '';
+    return '<button class="row" data-open="' + esc(c.id) + '" type="button"><div class="' + avClass(c) + '">' + esc(ini(c)) + '</div><div class="who"><b>' + esc(short(c)) + '</b><span>' + esc(personaLabel(c)) + (subLabel(c) ? ' · ' + esc(subLabel(c)) : '') + '</span></div><span class="sla num ok">' + esc(quando) + '</span></button>';
+  };
+  var lista = prox.slice(0, 8).map(function (x) {
+    var d = new Date(x.quando); return linha(x, d.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit' }) + ' · ' + fmtHora(x.quando));
+  }).join('') + semData.map(function (x) { return linha(x, 'a combinar'); }).join('');
+  box.innerHTML = '<div class="cal-grade">' + grade + '</div>' + (lista ? '<div class="cal-lista">' + lista + '</div>' : '<div class="empty">Nenhum 1:1 marcado.</div>') +
+    (prox.length > 8 ? '<p class="sub" style="margin:6px 16px 10px">Mais ' + (prox.length - 8) + ' depois destes.</p>' : '');
+}
 function renderToday() {
   var d = new Date();
   $('hello').textContent = (d.getHours() < 12 ? 'Bom dia' : d.getHours() < 18 ? 'Boa tarde' : 'Boa noite') + ', Ingryd';
@@ -415,20 +504,7 @@ function renderToday() {
       '<div class="who"><b>' + who + '</b><span>' + (it.k === 'r' ? canalDe(x)[0] + ' ' : '') + esc(x.texto) + '</span></div><span class="sla num ' + (h >= 72 ? 'late' : 'ok') + '">' + hrs(h) + '</span></button>';
   }).join('') || '<div class="empty">Tudo respondido.</div>';
 
-  var week = Date.now() - 7 * 864e5, prev = Date.now() - 14 * 864e5;
-  var leads7 = C.filter(function (c) { return new Date(c.criado_em) >= week; }).length;
-  var leadsPrev = C.filter(function (c) { var t = new Date(c.criado_em); return t >= prev && t < week; }).length;
-  var recentes = C.filter(function (c) { return new Date(c.criado_em) >= week; });
-  var abriram = recentes.filter(function (c) { return c.estagio !== 'lead'; }).length;
-  $('k-leads').textContent = leads7;
-  $('k-leads-sub').textContent = (leads7 - leadsPrev >= 0 ? '+' : '') + (leads7 - leadsPrev) + ' vs. semana passada';
-  $('k-leads-sub').className = leads7 >= leadsPrev ? 'up' : '';
-  $('k-app').textContent = recentes.length ? Math.round(100 * abriram / recentes.length) + '%' : '—';
-  $('k-app-sub').textContent = abriram + ' de ' + recentes.length;
-  $('k-perg').textContent = nq.length + nr.length;
-  var atrasadas = caixa.filter(function (it) { return hrsSince(it.em) >= 72; }).length;
-  $('k-perg-sub').textContent = atrasadas ? atrasadas + ' passou de 72h' : 'nenhuma passou de 72h';
-  $('k-urg').textContent = C.filter(function (c) { return c.urgencia === 'alta' && c.estagio !== 'concluido' && c.estagio !== 'inativo'; }).length;
+  renderKpis();
   $('hello-sub').textContent = new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' }) +
     ' · ' + (att.length + nq.length + nr.length) + ' coisas pedem você hoje';
 
@@ -436,10 +512,7 @@ function renderToday() {
   $('c-perguntas').textContent = nq.length + nr.length + np; $('c-perguntas').hidden = nq.length + nr.length + np === 0;
   $('c-contatos').textContent = C.length;
 
-  var um = C.filter(function (c) { return c.estagio === 'um_a_um'; });
-  $('today-1a1').innerHTML = um.map(function (c) {
-    return '<button class="row" data-open="' + esc(c.id) + '" type="button"><div class="' + avClass(c) + '">' + esc(ini(c)) + '</div><div class="who"><b>' + esc(short(c)) + '</b><span>' + esc(personaLabel(c)) + (subLabel(c) ? ' · ' + esc(subLabel(c)) : '') + '</span></div><span class="when">' + esc(fmtWhen(c.um_a_um_quando)) + '</span></button>';
-  }).join('') || '<div class="empty">Nenhum 1:1 marcado.</div>';
+  renderCalendario();
   renderLembretes();
   renderGuias();
   renderRadarHoje();
@@ -2738,7 +2811,7 @@ function fxHeaderHtml(c, d) {
 // Catálogo de démarches (cópia do app, processos.json): carregado uma vez; sem ele, tudo cai na démarche padrão.
 var FX_PROC = null;
 async function fxCarregaProcessos() {
-  try { var r = await fetch('processos.json?v=2026-11-15.11'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
+  try { var r = await fetch('processos.json?v=2026-11-15.12'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
 }
 // A sessão Checklist: pílulas por démarche, os 4 mais urgentes, pasta do Drive privada e "Ver mais desta sessão".
 function fxChecklistCorpo(c) {
@@ -4815,6 +4888,7 @@ document.addEventListener('click', async function (e) {
   }
   if (t.matches('tr[data-id]')) return openPessoa(t.dataset.id);
   if (t.dataset.open) return openPessoa(t.dataset.open);
+  if (t.dataset.calmes) { state.calOff = (state.calOff || 0) + Number(t.dataset.calmes); return renderCalendario(); }
   if (t.dataset.openconv) return openPessoa(t.dataset.openconv, 'conversa');
   if (t.dataset.prep) return prepararEmail(t.dataset.prep, t.dataset.prepmodo, t.dataset.tplk);
   if (t.dataset.ptab) { state.ptab = t.dataset.ptab; return renderPessoa(); }
@@ -4996,6 +5070,7 @@ async function abrirPaginaEntrada(pg) {
 }
 document.addEventListener('change', async function (e) {
   if (e.target.id === 'st-pg-sel') return abrirPaginaEntrada(e.target.value);
+  if (e.target.id === 'k-per') { state.kper = Number(e.target.value); return renderKpis(); }
   if (e.target.id === 'compose-tpl') return openCompose(activeCid, e.target.value);
   if (e.target.id === 'st-who') { ST.who = e.target.value; return renderPrevia(); }
   if (e.target.dataset && e.target.dataset.novopara && ST.criar) { mudarPara(ST.criar.para, e.target.dataset.novopara, e.target.value, e.target.checked); if (e.target.dataset.novopara === 'produto' || e.target.dataset.novopara === 'materiais') renderCriar(); criarPode(); return renderPrevia(); }
