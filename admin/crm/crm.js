@@ -3085,7 +3085,7 @@ async function radarEnviar(btn) {
 // Sem a migração da entrega 1, a tela mostra os 8 do código; sem a da entrega 2, mostra tudo sem editar.
 var TIPO_EMAIL = { servico: ['Serviço', 'u-baixa'], novidades: ['Novidades', 'u-media'], compra: ['Compra', 'tp-pergunta'] };
 var ETAPA_EMAIL = { rascunho: ['Rascunho', ''], revisao: ['Revisão', 'u-media'], no_ar: ['No ar', 'u-baixa'], arquivado: ['Arquivado', 'out'] };
-var ST = { vista: 'jornada', qpop: '', previa: true, modo: 'exemplo', k: null, v: null, passo: 'texto', who: null, q: '', dev: 'pc', marcar: true, tab: 'editar', d: null, dKey: null, montado: null, vistos: {}, foco: null, salvo: '', timer: null, f: TX.filtroVazio() };
+var ST = { vista: 'jornada', qpop: '', previa: null, modo: 'exemplo', k: null, v: null, passo: 'texto', who: null, q: '', dev: 'pc', marcar: true, tab: 'editar', d: null, dKey: null, montado: null, vistos: {}, foco: null, salvo: '', timer: null, f: TX.filtroVazio() };
 function versoesDe(k) { return MV.filter(function (v) { return v.chave === k; }); }   // da mais nova para a mais velha
 function versaoAtual(k) { var vs = versoesDe(k); return vs.filter(function (v) { return v.etapa === 'no_ar'; })[0] || vs[0] || null; }
 function versaoEmObra(k) { return versoesDe(k).filter(function (v) { return v.etapa === 'rascunho' || v.etapa === 'revisao'; })[0] || null; }
@@ -3143,6 +3143,8 @@ function textoDaPrevia() {
 function listaModelos() {
   return M ? M.filter(function (m) { return !m.excluido_em; }) : TPL_ORDER.map(function (k) { return { chave: k, nome: TPLS[k].label, objetivo: TPLS[k].when, automatico: false, tipo: EXIGEM_NOVIDADES[k] ? 'novidades' : 'servico' }; });
 }
+// A prévia abre sozinha só no passo Texto de um modelo que já existe; quem apertar o botão decide (e a escolha vale em todo lugar).
+function previaAberta() { return ST.previa == null ? (!ST.criar && ST.passo === 'texto') : !!ST.previa; }
 function renderModelos() {
   var aviso = $('mod-aviso');
   var msg = !M ? 'A tabela de modelos ainda não está no banco (rode db/crm-modelos-email.sql). Mostrando os 8 modelos do painel, com o texto do código, sem editar.'
@@ -3150,7 +3152,7 @@ function renderModelos() {
   aviso.hidden = !msg; aviso.textContent = msg;
   $('mod-export').disabled = !M;
   $('studio').dataset.tab = ST.tab;
-  $('studio').dataset.previa = ST.previa ? '1' : '0';
+  $('studio').dataset.previa = previaAberta() ? '1' : '0';
   var naJornada = ST.vista === 'jornada';
   $('mod-jornada').hidden = !naJornada; $('mod-estudio').hidden = naJornada;
   document.querySelectorAll('[data-vista]').forEach(function (b) { b.setAttribute('aria-selected', String(b.dataset.vista === ST.vista)); });
@@ -3516,7 +3518,7 @@ function renderEditor(lista) {
   }
   var cl = TX.classifica(m), pagM = TX.PAGINAS.filter(function (p) { return p.k === cl.pagina; })[0], etJ = JR.ETAPAS.filter(function (e) { return e.k === JR.etapaDaJornada(Object.assign({}, m, { familia: cl.familia })); })[0];
   var migalha = '<div class="ee-crumb"><button type="button" class="ee-volta" data-vista="jornada">← Jornada</button><span>' + esc(pagM ? pagM.k + ' · ' + pagM.nome : 'Todos os percursos') + (etJ ? ' › ' + esc(etJ.nome) : '') + '</span></div>';
-  acoes = acoes + '<button class="btn" type="button" id="st-previa-tg" aria-pressed="' + !!ST.previa + '">' + (ST.previa ? 'Esconder prévia' : 'Ver como chega') + '</button>';
+  acoes = acoes + '<button class="btn" type="button" id="st-previa-tg" aria-pressed="' + previaAberta() + '">' + (previaAberta() ? 'Esconder prévia' : 'Ver como chega') + '</button>';
   var topo = migalha + '<div class="st-head"><div class="st-head-t"><h3 class="st-title">' + esc(m.nome) + '</h3><div class="st-pills">' + pillDe(TIPO_EMAIL, m.tipo) + (v ? pillDe(ETAPA_EMAIL, v.etapa) + '<span class="sub">v' + v.versao + '</span>' : '') +
     '<span class="sub" id="st-salvo">' + esc(ST.salvo) + '</span></div></div><div class="st-acts">' + acoes + '</div></div>' +
     (v && ro && temBlocos() ? '<p class="st-msg tip">' + (v.etapa === 'no_ar' ? 'Esta é a versão No ar: é ela que sai. ' : v.etapa === 'arquivado' ? 'Esta versão já saiu e fica guardada como está. ' : '') +
@@ -3808,10 +3810,10 @@ function renderPrevia() {
   var box = $('st-prev');
   var m = M ? modeloAtual() : null, k = ST.k;
   var lista = pessoasDaPrevia();
-  var modo = ST.modo === 'dados' || ST.modo === 'chaves' ? ST.modo : 'exemplo';
+  var modo = ST.modo === 'dados' || (ST.modo === 'chaves' && !ST.criar) ? ST.modo : 'exemplo';
   var c = modo === 'dados' ? (C.filter(function (x) { return x.id === ST.who; })[0] || lista[0] || C[0]) : pessoaExemplo(m);
   if (modo === 'dados' && c) ST.who = c.id;
-  var modos = '<div class="seg" role="group" aria-label="Como mostrar">' + [['chaves', 'com chaves'], ['exemplo', 'com exemplo'], ['dados', 'com dados']].map(function (o) { return '<button type="button" data-stmodo="' + o[0] + '" aria-pressed="' + (modo === o[0]) + '">' + o[1] + '</button>'; }).join('') + '</div>';
+  var modos = '<div class="seg" role="group" aria-label="Como mostrar">' + [['chaves', 'com chaves'], ['exemplo', 'com exemplo'], ['dados', 'com dados']].filter(function (o) { return !(ST.criar && o[0] === 'chaves'); }).map(function (o) { return '<button type="button" data-stmodo="' + o[0] + '" aria-pressed="' + (modo === o[0]) + '">' + o[1] + '</button>'; }).join('') + '</div>';
   var barra = '<div class="st-bar">' + modos + (modo !== 'dados' ? '' : '<label class="st-fld" style="flex:1 1 220px"><span>Prévia para</span><input class="st-in" id="st-q" type="search" placeholder="Buscar pelo nome ou e-mail" value="' + esc(ST.q) + '">' +
     '<select class="st-in" id="st-who" aria-label="Pessoa da prévia">' + (lista.some(function (x) { return c && x.id === c.id; }) || !c ? '' : '<option value="' + esc(c.id) + '" selected>' + esc(displayName(c)) + '</option>') +
     lista.map(function (x) { return '<option value="' + esc(x.id) + '"' + (c && x.id === c.id ? ' selected' : '') + '>' + esc(displayName(x)) + ' · ' + esc(personaLabel(x)) + '</option>'; }).join('') + '</select></label>') +
@@ -4756,7 +4758,7 @@ document.addEventListener('click', async function (e) {
   if (t.dataset.cmpaba) return cmpAba(t.dataset.cmpaba);
   if (t.id === 'cmp-restaurar') { CMP.editado = null; $('compose-txt').value = CMP.e.body; return cmpFormato(); }
   if (t.dataset.tplPick) { ST.criar = null; await salvar(); abrirModelo(t.dataset.tplPick); ST.tab = 'editar'; return renderModelos(); }
-  if (t.dataset.eepasso) { await salvar(); ST.passo = t.dataset.eepasso; return renderEditor(); }
+  if (t.dataset.eepasso) { await salvar(); ST.passo = t.dataset.eepasso; $('studio').dataset.previa = previaAberta() ? '1' : '0'; renderEditor(); return renderPrevia(); }
   if (t.dataset.stdev) { ST.dev = t.dataset.stdev; return renderPrevia(); }
   if (t.dataset.stmodo) { ST.modo = t.dataset.stmodo; return renderPrevia(); }
   if (t.dataset.sttab) { ST.tab = t.dataset.sttab; return renderModelos(); }
@@ -4799,7 +4801,7 @@ document.addEventListener('click', async function (e) {
   }
   if (t.id === 'mod-export') return exportModelos();
   if (t.dataset.qpop !== undefined) { ST.qpop = ST.qpop === t.dataset.qpop ? '' : t.dataset.qpop; return renderEditor(); }
-  if (t.id === 'st-previa-tg') { ST.previa = !ST.previa; return renderModelos(); }
+  if (t.id === 'st-previa-tg') { ST.previa = !previaAberta(); return renderModelos(); }
   if (t.dataset.vista) { await salvar(); ST.vista = t.dataset.vista; return renderModelos(); }
   if (t.dataset.jrAbrir) { await salvar(); ST.criar = null; abrirModelo(t.dataset.jrAbrir); ST.vista = 'estudio'; ST.tab = 'editar'; ST.passo = 'texto'; return renderModelos(); }
   if (t.dataset.jrCriar) return criarNaJornada(t.dataset.jrCriar);
