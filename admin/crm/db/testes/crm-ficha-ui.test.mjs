@@ -195,6 +195,19 @@ console.log('== Task 12: sessões em pílulas ==');
   hb.mod.pararAoVivo();
 }
 
+console.log('== Aviso no alto da ficha: o motivo e o que fazer ==');
+{
+  const resp = base({ 'contatos:one': { data: { dossie: {}, user_id: null }, error: null }, emails_enviados: { data: [], error: null } });
+  const h = await carregarCrm({ respostas: resp, store: { crm_ficha_v2: '1' } });
+  let pg = await abre(h, pessoa({ motivo: 'prazo do VLS-TS vence em 6 dias (21/11/2026)', urgencia: 'alta', estagio: 'lead' }));
+  check('com motivo: o aviso aparece logo abaixo do cabeçalho, antes das ações', pg.includes('id="fx-aviso-box"') && pg.includes('aviso aviso-alta') && pg.includes('prazo do VLS-TS vence em 6 dias') && pg.indexOf('fx-head-box') < pg.indexOf('aviso aviso-alta') && pg.indexOf('aviso aviso-alta') < pg.indexOf('fx-acoes-box'));
+  check('o aviso diz o que fazer e traz o botão da ação e o Marcar 1:1', pg.includes('O que fazer:') && /class="btn primary"[^>]*data-(openconv|emailfor)=/.test(pg.slice(pg.indexOf('aviso aviso-alta'))) && pg.slice(pg.indexOf('aviso aviso-alta')).includes('data-open1a1='));
+  pg = await abre(h, pessoa({ motivo: null, urgencia: 'baixa' }));
+  check('sem motivo, não há aviso', !pg.includes('aviso aviso-'));
+  pg = await abre(h, pessoa({ motivo: 'parada há 9 dias', urgencia: 'media', estagio: 'concluido' }));
+  check('pessoa concluída não mostra aviso', !pg.includes('aviso aviso-'));
+}
+
 console.log('== Task 13: abas Ficha e Conversa ==');
 {
   const mailX = { id: 9, modelo: 'x', status: 'enviado', criado_em: new Date().toISOString(), enviado_em: new Date().toISOString(), assunto: 'Oi' };

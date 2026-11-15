@@ -2,13 +2,13 @@
 // Nada de service_role aqui. O banco é db/crm-fase2.sql; o desenho é o artefato "CRM Por Dentro".
 // Tudo que vem do banco é texto de terceiros (nome, e-mail, pergunta): passa sempre por esc().
 import { supabase } from '/assets/js/supabase-client.js';
-import * as TX from './taxonomia.js?v=2026-11-15.13';   // páginas, famílias e agrupamento dos modelos
-import * as ES from './estudio.js?v=2026-11-15.13';   // os blocos do estúdio de e-mails (entregas 2 e 3)
-import * as EE from './editor-email.js?v=2026-11-15.13';
-import * as EQ from './editor-quem.js?v=2026-11-15.13';
-import * as JR from './jornada.js?v=2026-11-15.13';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
-import * as FX from './ficha.js?v=2026-11-15.13';   // ficha v2: lógica pura (fila, démarches, funil, ações)
-import * as FH from './ficha-html.js?v=2026-11-15.13';   // ficha v2: HTML puro
+import * as TX from './taxonomia.js?v=2026-11-15.14';   // páginas, famílias e agrupamento dos modelos
+import * as ES from './estudio.js?v=2026-11-15.14';   // os blocos do estúdio de e-mails (entregas 2 e 3)
+import * as EE from './editor-email.js?v=2026-11-15.14';
+import * as EQ from './editor-quem.js?v=2026-11-15.14';
+import * as JR from './jornada.js?v=2026-11-15.14';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
+import * as FX from './ficha.js?v=2026-11-15.14';   // ficha v2: lógica pura (fila, démarches, funil, ações)
+import * as FH from './ficha-html.js?v=2026-11-15.14';   // ficha v2: HTML puro
 
 var PERSONAS = {
   au_pair_estudante: 'Au pair → estudante', campus_france: 'Campus France', alternancia_emprego: 'Alternância / emprego',
@@ -2795,7 +2795,7 @@ function fxHeaderHtml(c, d) {
 // Catálogo de démarches (cópia do app, processos.json): carregado uma vez; sem ele, tudo cai na démarche padrão.
 var FX_PROC = null;
 async function fxCarregaProcessos() {
-  try { var r = await fetch('processos.json?v=2026-11-15.13'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
+  try { var r = await fetch('processos.json?v=2026-11-15.14'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
 }
 // A sessão Checklist: pílulas por démarche, os 4 mais urgentes, pasta do Drive privada e "Ver mais desta sessão".
 function fxChecklistCorpo(c) {
@@ -2855,6 +2855,20 @@ function fxPintaCorpo() {
   box.innerHTML = fxCorpo(fxContato(c, d.uid), d, f.tab);
   fxPos(c);
 }
+// O aviso no alto da ficha: o mesmo motivo que pôs a pessoa na lista "Precisa de você" da Hoje, o que fazer (a regra do "Próximo e-mail")
+// e o botão da ação. Assim não precisa vasculhar a ficha para entender o problema.
+function avisoDaPessoaHtml(c, mails, resps, jor) {
+  if (!c.motivo || c.estagio === 'concluido' || c.estagio === 'inativo') return '';
+  var p = proximoEmail(c, mails || [], resps || [], jor || montaJornada([])), bloq = p.k && exigeNovidades(p.k) && !c.aceita_novidades;
+  var primario = p.conversa ? '<button class="btn primary" type="button" data-openconv="' + esc(c.id) + '">Responder agora →</button>'
+    : p.k && !bloq && p.quando === 'agora' ? '<button class="btn primary" type="button" data-emailfor="' + esc(c.id) + '" data-tplk="' + esc(p.k) + '">Revisar e enviar: ' + esc(tplInfo(p.k).label) + ' →</button>'
+    : '<button class="btn primary" type="button" data-openconv="' + esc(c.id) + '">Abrir a aba E-mail →</button>';
+  var seg = c.estagio === 'um_a_um' || c.um_a_um_quando ? '' : '<button class="btn" type="button" data-open1a1="' + esc(c.id) + '">Marcar 1:1</button>';
+  return '<section class="aviso aviso-' + esc(c.urgencia || 'baixa') + '" aria-label="O que pede atenção nesta pessoa"><div class="aviso-t"><span class="k">Precisa de você</span>' + urgPill(c.urgencia) + '</div>' +
+    '<p class="aviso-motivo">' + esc(c.motivo) + '</p>' +
+    '<p class="aviso-fazer"><b>O que fazer:</b> ' + esc(p.titulo) + '. <span class="sub">' + esc(p.angulo) + '</span></p>' +
+    '<div class="cam-acoes">' + primario + seg + '</div></section>';
+}
 function renderFichaV2(c, d) {
   fxPrefs();
   var f = state.fx, cv = fxContato(c, d.uid);
@@ -2866,6 +2880,7 @@ function renderFichaV2(c, d) {
     '<div id="fx-tour">' + FH.htmlTour(f.tour, H_FX) + '</div>' +
     '<div id="fx-fila-box">' + FH.htmlFila(fxFilaItens(cv), c.id, H_FX) + '</div>' +
     '<div id="fx-head-box">' + fxHeaderHtml(cv, d) + '</div>' +
+    '<div id="fx-aviso-box">' + avisoDaPessoaHtml(c, d.mails, d.resps, d.jor) + '</div>' +
     '<div id="fx-acoes-box">' + FH.htmlCarrossel(tarefas, H_FX, f.ag.i) + '</div>' +
     FH.htmlAbas(f.tab, !!cv.user_id, H_FX) +
     '<div id="fx-corpo">' + fxCorpo(cv, d, f.tab) + '</div>' +
