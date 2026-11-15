@@ -88,5 +88,21 @@ check('rotuloEtapa I05', rotuloEtapa('I05', 'ap-medo-prazo') !== 'ap-medo-prazo'
   check(k + ' mora na página I05, família entrega e persona au pair', c.pagina === 'I05' && c.familia === 'entrega' && c.persona === 'au_pair');
 });
 
+// ---------- Astúcia da Equipe: cartão claro com a dica e a fonte ----------
+const ast = (b) => Object.assign({ tipo: 'astucia', rotulo: ES.ASTUCIA_ROTULO, texto: 'A família declara na Urssaf em até 8 dias.', fonte: 'service-public F473 (06/06/2025)', codigo: 'A-0009', conferida_em: '14/11/2026' }, b);
+let ma = monta([ast({})]);
+check('astúcia: o novo bloco existe e começa com a frase de cima', ES.novoBloco('astucia').tipo === 'astucia' && ES.novoBloco('astucia').rotulo === ES.ASTUCIA_ROTULO);
+check('astúcia: texto puro com a frase, a dica e a fonte', ma.corpo_texto === ES.ASTUCIA_ROTULO + '\nA família declara na Urssaf em até 8 dias.\nFonte: service-public F473 (06/06/2025)');
+check('astúcia: cartão claro, frase em verde e fonte em cinza', ma.corpo_html.includes('bgcolor="#F4F1EC"') && ma.corpo_html.includes('color:#577328') && ma.corpo_html.includes('Fonte: service-public F473 (06/06/2025)'));
+check('astúcia: o código e a data de conferência não saem no e-mail', !/A-0009|14\/11\/2026/.test(ma.corpo_html + ma.corpo_texto));
+check('astúcia sem fonte não mostra a linha "Fonte:"', !/Fonte:/.test(monta([ast({ fonte: '' })]).corpo_html));
+const mc = { chave: '_n', criado_no_estudio: true, tipo: 'servico' };
+const dA = (b) => ({ assunto: 'a', itens: [ast(b)] });
+const confA = (b) => ES.conferir(dA(b), mc, ES.montar(dA(b), 'servico'), false).filter((x) => /stúcia/.test(x.txt))[0];
+check('conferir: astúcia com fonte passa', confA({}) && confA({}).ok);
+check('conferir: astúcia sem fonte trava a publicação', confA({ fonte: '' }) && !confA({ fonte: '' }).ok && confA({ fonte: '' }).trava);
+check('conferir: sem astúcia no e-mail, a conferência não aparece', !ES.conferir({ assunto: 'a', itens: [{ tipo: 'texto', texto: 'oi' }] }, mc, null, false).some((x) => /stúcia/.test(x.txt)));
+check('esqueleto do freebie traz o destaque e a astúcia', (() => { const t = ES.esqueleto('freebie').itens.map((i) => i.tipo); return t.indexOf('destaque') >= 0 && t.indexOf('astucia') > t.indexOf('destaque'); })());
+
 console.log(failed ? `\n${passed} passaram, ${failed} FALHARAM` : `\n${passed} passaram, 0 falharam`);
 process.exit(failed ? 1 : 0);

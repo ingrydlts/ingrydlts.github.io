@@ -83,6 +83,7 @@ export var TIPOS = {
   titulo: { nome: 'Título', d: 'A frase grande do topo.' },
   botao: { nome: 'Botão', d: 'Um botão para um link que vem do banco.' },
   destaque: { nome: 'Destaque', d: 'Uma faixa de cor com rótulo, valor e nota (ex.: o prazo dela).' },
+  astucia: { nome: 'Astúcia da Equipe', d: 'Uma dica conferida da Equipe Por Dentro, com a fonte e a data em que foi conferida.' },
   apresentacao: { nome: 'Apresentação com foto', d: 'A sua foto, o seu nome e uma linha sobre você.' },
   pergunta: { nome: 'Pergunta', d: 'A pergunta grande e uma linha de ajuda.' },
   toques: { nome: 'Respostas de um toque', d: 'Os botões que ela toca para responder (vêm prontos do Worker).' },
@@ -98,6 +99,8 @@ export var ESTILOS_DESTAQUE = {
   terra: { nome: 'Terra', bg: '#604034', fg: '#FBFAF7', rot: '#DEB975', nota: '#E2DED7', filete: '#7F5E52', borda: '' },
   claro: { nome: 'Claro com contorno', bg: '#FBFAF7', fg: '#2B2B2B', rot: '#577328', nota: '#6E6862', filete: '#D9D2C6', borda: 'border:2px solid #2B2B2B; ' }
 };
+// O bloco Astúcia: uma dica conferida, num cartão claro, com a fonte embaixo. codigo (ex.: A-0009) e conferida_em só ajudam a Ingryd a achar a dica: não saem no e-mail.
+export var ASTUCIA_ROTULO = 'Astúcia da Equipe Por Dentro, pra você:';
 // O bloco Intro (tipo "apresentacao"): a foto dela, o nome e uma linha sobre ela.
 export var INTRO_TITULO = 'Oi, eu sou a Ingryd';
 export var INTRO_TEXTO = 'Moro na França desde 2023 e criei o Por Dentro para quem está fazendo esse caminho agora.';
@@ -112,6 +115,7 @@ function novoBloco(tipo) {
   if (tipo === 'titulo') return { tipo: 'titulo', texto: '' };
   if (tipo === 'botao') return { tipo: 'botao', rotulo: '', link: '' };
   if (tipo === 'destaque') return { tipo: 'destaque', rotulo: '', valor: '', nota: '' };
+  if (tipo === 'astucia') return { tipo: 'astucia', rotulo: ASTUCIA_ROTULO, texto: '', fonte: '', codigo: '', conferida_em: '' };
   if (tipo === 'apresentacao') return { tipo: 'apresentacao', titulo: INTRO_TITULO, texto: INTRO_TEXTO };
   if (tipo === 'pergunta') return { tipo: 'pergunta', texto: '', ajuda: '' };
   if (tipo === 'toques') return { tipo: 'toques', var: 'botoes_cidade' };
@@ -200,6 +204,16 @@ function bloco(b, d) {
         '<div style="' + SANS + ' font-size:' + (curto ? '23px' : '18px') + '; font-weight:800; line-height:' + (curto ? '1.25' : '1.4') + '; color:' + es.fg + '; margin:8px 0 0;">' + linkCor(z.s) + '</div>' +
         (b.nota ? '<div style="border-top:1px solid ' + es.filete + '; margin-top:12px; padding-top:10px; ' + SANS + ' font-size:13px; line-height:1.5; color:' + es.nota + ';">' + linkCor(n2.s) + '</div>' : '') + '</td></tr></table>';
       return { txt: t, html: h, ess: juntaEss(a.ess, y.ess, n1.ess) };
+    case 'astucia':
+      a = campo(b.rotulo || ASTUCIA_ROTULO, '', d, false); x = campo(b.rotulo || ASTUCIA_ROTULO, '', d, true);
+      y = campo(b.texto, b.alt, d, false); z = campo(b.texto, b.alt, d, true);
+      var f1 = campo(b.fonte, '', d, false), f2 = campo(b.fonte, '', d, true);
+      t = a.s + '\n' + y.s + (b.fonte ? '\nFonte: ' + f1.s : '');
+      h = '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 24px;"><tr><td bgcolor="#F4F1EC" style="background:#F4F1EC; border-radius:8px; padding:16px 20px;">' +
+        '<div style="' + SANS + ' font-size:14px; font-weight:700; line-height:1.4; color:#577328; margin:0 0 6px;">' + x.s + '</div>' +
+        '<div style="' + SANS + ' font-size:15px; line-height:1.6; color:#2B2B2B;">' + z.s + '</div>' +
+        (b.fonte ? '<div style="' + SANS + ' font-size:12px; line-height:1.5; color:#6E6862; margin:8px 0 0;">Fonte: ' + f2.s + '</div>' : '') + '</td></tr></table>';
+      return { txt: t, html: h, ess: juntaEss(a.ess, y.ess, f1.ess) };
     case 'apresentacao':
       a = campo(b.titulo, '', d, false); x = campo(b.titulo, '', d, true);
       y = campo(b.texto, '', d, false); z = campo(b.texto, '', d, true);
@@ -322,6 +336,8 @@ export function conferir(d, m, montado, automatico) {
   } catch (e) { erro = e.message; }
   r.push({ ok: !erro, txt: erro ? 'O texto tem um erro: ' + erro : 'O texto monta sem erro', trava: true });
   if (montado && montado.ess_assunto && montado.ess_assunto.length) r.push({ ok: false, txt: 'O assunto fica vazio sem ' + montado.ess_assunto.map(function (k) { return '{' + k + '}'; }).join(', ') + ': dê um plano B ou um assunto se faltar dado', trava: false });
+  var astSemFonte = (d.itens || []).filter(function (b) { return b.tipo === 'astucia' && !String(b.fonte || '').trim(); }).length;
+  if ((d.itens || []).some(function (b) { return b.tipo === 'astucia'; })) r.push({ ok: !astSemFonte, txt: astSemFonte ? (astSemFonte === 1 ? 'Uma astúcia sem fonte: ' : astSemFonte + ' astúcias sem fonte: ') + 'a Equipe só publica dica conferida' : 'Astúcias com fonte', trava: true });
   var assin = (d.itens || []).some(function (b) { return b.tipo === 'assinatura'; });
   r.push({ ok: assin, txt: assin ? 'Assinatura no fim' : 'Sem assinatura', trava: false });
   return r;
@@ -470,7 +486,8 @@ export var OBJETIVOS = [
     esqueleto: { assunto: '{nome}, o seu próximo passo', assunto_alt: 'O seu próximo passo', itens: [
       { tipo: 'titulo', texto: '{nome}, ' + ESCREVA('a frase do topo'), alt: ESCREVA('a frase do topo, sem o nome') },
       { tipo: 'texto', texto: ESCREVA('para que serve o material e como usar') },
-      { tipo: 'destaque', rotulo: 'O seu próximo passo', valor: ESCREVA('o passo, curto') }, DUVIDA, ASS] } },
+      { tipo: 'destaque', rotulo: 'O seu próximo passo', valor: ESCREVA('o passo, curto') },
+      { tipo: 'astucia', rotulo: ASTUCIA_ROTULO, texto: ESCREVA('a astúcia, em uma ou duas frases'), fonte: ESCREVA('a fonte oficial e a data em que você conferiu') }, DUVIDA, ASS] } },
   { k: 'boas_vindas', nome: 'Boas-vindas e acesso', d: 'O link de acesso ao app, sem senha.', tipo: 'servico', sai: 'manual', quem: 'Todos',
     esqueleto: { assunto: '{nome}, seu link de acesso chegou', itens: [
       { tipo: 'texto', texto: 'Oi {nome}! ' + ESCREVA('o que ela encontra no checklist de {persona}') },

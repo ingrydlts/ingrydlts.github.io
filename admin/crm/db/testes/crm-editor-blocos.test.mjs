@@ -98,9 +98,10 @@ check('resumo de bloco vazio', EB.resumoBloco({ tipo: 'texto', texto: '' }) === 
 
 // ---------- Paleta e menus ----------
 const nomes = EB.PALETA.map((p) => p.nome);
-check('paleta: Intro primeiro, depois Título, Texto, Botão, Destaque, Pergunta, Assinatura', nomes.join() === 'Intro,Título,Texto,Botão,Destaque,Pergunta,Assinatura');
+check('paleta: Intro primeiro, depois Título, Texto, Botão, Destaque, Astúcia da Equipe, Pergunta, Assinatura', nomes.join() === 'Intro,Título,Texto,Botão,Destaque,Astúcia da Equipe,Pergunta,Assinatura');
 check('Intro é o tipo apresentacao', EB.PALETA[0].tipo === 'apresentacao');
-check('filtrar vazio devolve tudo', EB.filtrarPaleta('').length === 7);
+check('filtrar vazio devolve tudo', EB.filtrarPaleta('').length === 8);
+check('filtrar "astu" acha Astúcia da Equipe', EB.filtrarPaleta('astu').map((p) => p.nome).join() === 'Astúcia da Equipe');
 check('filtrar "bot" acha Botão', EB.filtrarPaleta('bot').map((p) => p.nome).join() === 'Botão');
 check('filtrar ignora acento e caixa', EB.filtrarPaleta('TITU').map((p) => p.nome).join() === 'Título' && EB.filtrarPaleta('botao').length === 1);
 check('filtrar "apres" acha a Intro pelo tipo', EB.filtrarPaleta('apres').map((p) => p.nome).join() === 'Intro');
