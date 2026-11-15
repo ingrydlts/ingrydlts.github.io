@@ -32,7 +32,7 @@ function qb(table) {
 const supabase = { from: qb, auth: { getSession: async () => ({ data: { session: null } }) }, rpc: async (n, a) => { rpcs.push({ n, a }); return rpcRetorno; }, channel: () => ({ on() { return this; }, subscribe() { return this; } }), removeChannel() {} };
 const store = {};
 const mod = new Function('supabase', 'ES', 'TX', 'EE', 'EQ', 'JR', 'document', 'window', 'location', 'localStorage', 'setInterval', 'clearInterval',
-  src + '\n;return { state, setC: function (v) { C = v; }, setQ: function (v) { Q = v; }, setR: function (v) { R = v; }, setP: function (v) { P = v; }, setPSUG: function (v) { PSUG = v; }, setFin: function (o) { PRODUTOS = o.produtos; COMPRAS_EV = o.compras; ASSIN = o.assin; PRECOS = o.precos; }, itensDeHoje, ordenaFila, catDoContato, renderFila, receitaEstimada, pistasDaJornada, rascunhoMultiFunil, funisDaPessoa, fxResumoCartoes, setUM: function (v) { UM = v; }, setPAG: function (v) { PAG1A1 = v; }, dosDoFunil, dosCampo, dosProgresso, dosVisiveis, dosCruzamentos, dosFaltaPorCanal, dosMensagemTexto, insightsDaPlataforma, r1Codigo, r1Rotulo, r1Roteiro, r1Html, r1PainelHtml, ltItens, ltResumo, ltHtml, dosVisaoHtml, obHtml, dosLigacaoHtml, dosMdTexto, dosCampoHtml };')(
+  src + '\n;return { state, setC: function (v) { C = v; }, setQ: function (v) { Q = v; }, setR: function (v) { R = v; }, setP: function (v) { P = v; }, setPSUG: function (v) { PSUG = v; }, setFin: function (o) { PRODUTOS = o.produtos; COMPRAS_EV = o.compras; ASSIN = o.assin; PRECOS = o.precos; }, itensDeHoje, ordenaFila, catDoContato, renderFila, receitaEstimada, pistasDaJornada, rascunhoMultiFunil, funisDaPessoa, fxResumoCartoes, setUM: function (v) { UM = v; }, setPAG: function (v) { PAG1A1 = v; }, dosDoFunil, dosCampo, dosProgresso, dosVisiveis, dosCruzamentos, dosFaltaPorCanal, dosMensagemTexto, insightsDaPlataforma, r1Codigo, r1Rotulo, r1Roteiro, r1Html, r1PainelHtml, ltItens, ltResumo, ltHtml, dosVisaoHtml, dosLigacaoHtml, dosMdTexto, dosCampoHtml };')(
   supabase, {}, TXMOD, { iniciar() {}, depois() {}, campoMudou() {} }, {}, {}, document, { addEventListener() {}, confirm: () => true, scrollTo() {} }, { href: '' }, { getItem: (k) => store[k] ?? null, setItem: (k, v) => { store[k] = v; } }, () => 1, () => {});
 
 const dia = (n) => new Date(Date.now() + n * 864e5).toISOString();
@@ -255,19 +255,6 @@ console.log('== Estudos, certificados e prazo ==');
   check('cartão próprio com diploma, certificado e prazo', /Estudos, certificados e prazo/.test(h) && /Diploma mais recente/.test(h) && /Certificado de francês/.test(h));
   check('sem resposta: "ainda não informado" em vez de sumir ou mostrar código cru', (h.match(/ainda não informado/g) || []).length >= 2 && !/<b>a1<\/b>/.test(h));
   check('o prazo diz o que é e como se calcula', /Prazo do VLS-TS/.test(h) && /21\/11\/2026 \(faltam 6 d\)/.test(h) && /Validar o VLS-TS na ANEF: 3 meses depois da entrada na França \(22\/08\/2026\)/.test(h));
-}
-
-console.log('== Onboarding no Dossiê ==');
-{
-  const P = pessoa('ob', 'Ola', { email: 'ola@example.com' });
-  mod.setC([P]);
-  let h = mod.obHtml(P, { mails: [] }, null);
-  check('sem chamada: diz que não há onboarding e deixa o bilan desligado', /Ainda sem onboarding/.test(h) && /Nenhuma chamada lida ainda/.test(h) && /data-bilanabrir="ob" disabled/.test(h) && /data-go="onboarding"/.test(h));
-  mod.state.bilan = { cid: 'ob', id: 1, status: 'pendente', proposta: {}, quando: '2026-11-10T10:00:00Z' };
-  h = mod.obHtml(P, { mails: [{ modelo: 'bilan_conversa', enviado_em: '2026-11-12T10:00:00Z' }] }, { onbEm: '2026-11-10T10:00:00Z', d: {}, rasc: {}, origem: {} });
-  check('com chamada e Notion: data, leitura pendente, bilan enviado e botão ligado', /Chamada lida em 10\/11/.test(h) && /proposta pendente/.test(h) && /Bilan enviado em 12\/11\/2026/.test(h) && /Reenviar o bilan/.test(h) && !/data-bilanabrir="ob" disabled/.test(h));
-  check('mostra o que falta perguntar', /Falta perguntar/.test(h) && /dchip falta/.test(h));
-  mod.state.bilan = null;
 }
 
 console.log('== A ligação no topo do Dossiê ==');
