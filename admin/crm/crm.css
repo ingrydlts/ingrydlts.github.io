@@ -1294,3 +1294,24 @@ details.ee-sec[open]>summary{margin-bottom:8px}
 .pc-dica { margin: 0 0 10px; }
 
 .pc-notion-in { flex: 1 1 260px; min-width: 0; font: inherit; font-size: 13px; padding: 7px 10px; border: 1px solid var(--line-2); border-radius: 8px; background: var(--surface-2); color: var(--ink); }
+
+/* Hoje: período dos indicadores e calendário de 1:1 */
+.kpi-bar{display:flex; align-items:center; gap:8px; margin-top:14px; font-size:12.5px; color:var(--ink-2)}
+.kpi-sel{appearance:none; -webkit-appearance:none; background:var(--surface-2) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%239A938B' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 10px center; border:1px solid var(--line-2); color:var(--ink); border-radius:999px; padding:5px 30px 5px 12px; font:inherit; font-weight:600; cursor:pointer}
+.cal-nav{display:inline-flex; align-items:center; gap:8px}
+.cal-nav b{font-size:13px; min-width:112px; text-align:center}
+.cal-nav .link{font-size:18px; line-height:1; padding:0 4px}
+.cal-grade{display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:4px; padding:8px 16px 4px; text-align:center}
+.cal-h{font-size:10.5px; font-weight:700; color:var(--ink-3); letter-spacing:.06em}
+.cal-d{position:relative; font-size:12.5px; padding:5px 0; border-radius:8px; color:var(--ink-2)}
+.cal-d.hoje{border:1px solid var(--line-2); color:var(--ink); font-weight:700}
+.cal-d.tem{background:var(--moss-soft); color:var(--moss-ink); font-weight:700}
+.cal-n{position:absolute; top:-2px; right:2px; font-style:normal; font-size:9.5px; font-weight:700; color:var(--moss-ink)}
+.cal-lista{margin-top:6px; border-top:1px solid var(--line)}
+@media (max-width:820px){ .kpis{grid-template-columns:repeat(2,minmax(0,1fr))} }
+
+/* Hoje: fila de trabalho (por tipo e ordem) */
+.fila-ctl{display:flex; flex-wrap:wrap; gap:8px; padding:0 16px 4px}
+.fila-resumo{margin:0; padding:2px 16px 8px; font-size:12px}
+.fila-mais{display:block; margin:8px 16px 12px}
+

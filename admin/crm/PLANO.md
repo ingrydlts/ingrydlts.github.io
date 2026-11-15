@@ -244,6 +244,13 @@ A aba **Dossiê** da ficha v2 voltou à versão mais desenvolvida (a que estava 
 - Carrega também `um_a_um` e `um_a_um_pagamentos` na abertura do painel e os artigos do site (para mostrar o título do artigo de onde veio a pergunta).
 - Fora desta volta, de propósito: o resto do que existia só no artefato (indicadores da Hoje, caminho de e-mail, cabeçalho novo, sessão Insights).
 
+### Página inicial (Hoje) de volta (15/11)
+
+A Hoje voltou à versão mais desenvolvida, que existia só no artefato: **indicadores com período** (7, 14, 30 dias, 3 e 6 meses: novos leads, 1:1 marcados, pessoas na plataforma e revenue estimado), **Por onde começar** (fila de trabalho com filtro por tipo e ordem por antiguidade ou prazo), **Próximas mensagens da IAssistente** (enviar agora, atrasar, adiantar), **Calendário de 1:1** com navegação por mês e a lista do dia. Os blocos de Radar, Caixa, Guias e Lembretes continuam.
+
+- Passa a carregar na abertura do painel: `um_a_um` (com `registro`, ver `db/crm-1a1-registro.sql`), `um_a_um_pagamentos`, compras com data (`eventos`), a data das assinaturas e os preços de `planos/planos.json` (para o revenue estimado).
+- Sem nenhuma dessas tabelas ou arquivos, o card correspondente fica vazio ou em zero, sem quebrar a página.
+
 ## Etapas
 
 1. **Fase 1 — captura** (feita, repo POR-DENTRO-APP): `contatos`, `eventos`, `consentimentos`, `capturar_lead()`, `admins`.
