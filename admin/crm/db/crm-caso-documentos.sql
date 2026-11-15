@@ -4,7 +4,7 @@
 --   1. documento.dados aceita "selos": lista de até 4 itens de { traducao, haia, equivaler, original }.
 --   2. caso_acoes.botao aceita 'conferir_documentos' (com passo_chave "docs:<selo>", ex.: docs:traducao).
 -- ATENÇÃO: este arquivo repete o corpo atual de caso_board_chaves_ok (com as chaves de bilan de crm-caso-guias.sql). Se esse corpo mudar
--- num SQL futuro, mude aqui também.
+-- num SQL futuro, mude aqui também. (crm-caso-checklists.sql repete este corpo e acrescenta a chave "checklists"; rode-o depois deste.)
 
 create or replace function public.caso_board_chaves_ok(p_tipo text, p_dados jsonb, p_dela boolean) returns boolean
 language sql immutable

@@ -2,13 +2,13 @@
 // Nada de service_role aqui. O banco é db/crm-fase2.sql; o desenho é o artefato "CRM Por Dentro".
 // Tudo que vem do banco é texto de terceiros (nome, e-mail, pergunta): passa sempre por esc().
 import { supabase } from '/assets/js/supabase-client.js';
-import * as TX from './taxonomia.js?v=2026-11-15.4';   // páginas, famílias e agrupamento dos modelos
-import * as ES from './estudio.js?v=2026-11-15.4';   // os blocos do estúdio de e-mails (entregas 2 e 3)
-import * as EE from './editor-email.js?v=2026-11-15.4';
-import * as EQ from './editor-quem.js?v=2026-11-15.4';
-import * as JR from './jornada.js?v=2026-11-15.4';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
-import * as FX from './ficha.js?v=2026-11-15.4';   // ficha v2: lógica pura (fila, démarches, funil, ações)
-import * as FH from './ficha-html.js?v=2026-11-15.4';   // ficha v2: HTML puro
+import * as TX from './taxonomia.js?v=2026-11-15.8';   // páginas, famílias e agrupamento dos modelos
+import * as ES from './estudio.js?v=2026-11-15.8';   // os blocos do estúdio de e-mails (entregas 2 e 3)
+import * as EE from './editor-email.js?v=2026-11-15.8';
+import * as EQ from './editor-quem.js?v=2026-11-15.8';
+import * as JR from './jornada.js?v=2026-11-15.8';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
+import * as FX from './ficha.js?v=2026-11-15.8';   // ficha v2: lógica pura (fila, démarches, funil, ações)
+import * as FH from './ficha-html.js?v=2026-11-15.8';   // ficha v2: HTML puro
 
 var PERSONAS = {
   au_pair_estudante: 'Au pair → estudante', campus_france: 'Campus France', alternancia_emprego: 'Alternância / emprego',
@@ -74,7 +74,6 @@ function tplInfo(k) {
   var m = modeloDe(k) || {};
   return { label: m.nome || k, lever: (TIPO_EMAIL[m.tipo] || [''])[0], when: m.como_sai || '' };
 }
-var CAT_FECHADA = {};   // grupos que você recolheu na lista, pelo id do grupo (vale até recarregar a página)
 function pn(c) { return displayName(c).trim().split(/\s+/)[0]; }
 var CAL_LINK = 'https://cal.com/ingryd-silva-jf1cnx/1-1?overlayCalendar=true';
 function lk() { return APP_LINK || '[link do acesso]'; }
@@ -1397,7 +1396,6 @@ function interacoesHtml(int) {
 }
 document.addEventListener('toggle', function (e) {
   var d = e.target; if (d && d.matches && d.matches('details.intdia')) state.pdias[d.dataset.dia] = d.open;
-  if (d && d.matches && d.matches('details.st-cat')) CAT_FECHADA[d.dataset.cat] = !d.open;
 }, true);
 // ---------- Aba Caso: o que o CRM entendeu da conversa e o que vai para ela (db/crm-caso.sql, crm-caso-importar.sql) ----------
 // Tudo nasce como rascunho (a leitura do Notion). Nada chega à pessoa sem você revisar e publicar; ela só vê o que está publicado
@@ -2558,7 +2556,7 @@ function fxHeaderHtml(c, d) {
 // Catálogo de démarches (cópia do app, processos.json): carregado uma vez; sem ele, tudo cai na démarche padrão.
 var FX_PROC = null;
 async function fxCarregaProcessos() {
-  try { var r = await fetch('processos.json?v=2026-11-15.4'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
+  try { var r = await fetch('processos.json?v=2026-11-15.8'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
 }
 // A sessão Checklist: pílulas por démarche, os 4 mais urgentes, pasta do Drive privada e "Ver mais desta sessão".
 function fxChecklistCorpo(c) {
@@ -3085,7 +3083,7 @@ async function radarEnviar(btn) {
 // Sem a migração da entrega 1, a tela mostra os 8 do código; sem a da entrega 2, mostra tudo sem editar.
 var TIPO_EMAIL = { servico: ['Serviço', 'u-baixa'], novidades: ['Novidades', 'u-media'], compra: ['Compra', 'tp-pergunta'] };
 var ETAPA_EMAIL = { rascunho: ['Rascunho', ''], revisao: ['Revisão', 'u-media'], no_ar: ['No ar', 'u-baixa'], arquivado: ['Arquivado', 'out'] };
-var ST = { vista: 'jornada', qpop: '', previa: null, modo: 'exemplo', k: null, v: null, passo: 'texto', who: null, q: '', dev: 'pc', marcar: true, tab: 'editar', d: null, dKey: null, montado: null, vistos: {}, foco: null, salvo: '', timer: null, f: TX.filtroVazio() };
+var ST = { vista: 'jornada', qpop: '', previa: null, modo: 'exemplo', k: null, v: null, passo: 'texto', who: null, q: '', dev: 'pc', marcar: true, tab: 'editar', d: null, dKey: null, montado: null, vistos: {}, foco: null, salvo: '', timer: null, vazio: false, pg: null };
 function versoesDe(k) { return MV.filter(function (v) { return v.chave === k; }); }   // da mais nova para a mais velha
 function versaoAtual(k) { var vs = versoesDe(k); return vs.filter(function (v) { return v.etapa === 'no_ar'; })[0] || vs[0] || null; }
 function versaoEmObra(k) { return versoesDe(k).filter(function (v) { return v.etapa === 'rascunho' || v.etapa === 'revisao'; })[0] || null; }
@@ -3119,7 +3117,7 @@ function textoDoModelo(c, k) {
 
 // Abre o modelo k: a versão em obra (rascunho ou revisão), se houver; senão a No ar.
 function abrirModelo(k, versao) {
-  ST.k = k;
+  ST.k = k; ST.vazio = false;
   var v = versao ? MV.filter(function (x) { return x.chave === k && x.versao === versao; })[0] : (versaoEmObra(k) || versaoAtual(k));
   ST.v = v ? v.versao : null;
   ST.d = v && v.blocos ? JSON.parse(JSON.stringify(v.blocos)) : null;
@@ -3144,7 +3142,7 @@ function listaModelos() {
   return M ? M.filter(function (m) { return !m.excluido_em; }) : TPL_ORDER.map(function (k) { return { chave: k, nome: TPLS[k].label, objetivo: TPLS[k].when, automatico: false, tipo: EXIGEM_NOVIDADES[k] ? 'novidades' : 'servico' }; });
 }
 // A prévia abre sozinha só no passo Texto de um modelo que já existe; quem apertar o botão decide (e a escolha vale em todo lugar).
-function previaAberta() { return ST.previa == null ? (!ST.criar && ST.passo === 'texto') : !!ST.previa; }
+function previaAberta() { if (ST.vazio) return false; return ST.previa == null ? (!ST.criar && ST.passo === 'texto') : !!ST.previa; }
 function renderModelos() {
   var aviso = $('mod-aviso');
   var msg = !M ? 'A tabela de modelos ainda não está no banco (rode db/crm-modelos-email.sql). Mostrando os 8 modelos do painel, com o texto do código, sem editar.'
@@ -3159,12 +3157,12 @@ function renderModelos() {
   if (naJornada) return renderJornada();
   document.querySelectorAll('[data-sttab]').forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.sttab === ST.tab)); });
   var lista = listaModelos();
-  if (!ST.k || !lista.some(function (m) { return m.chave === ST.k; })) { if (lista.length) abrirModelo(lista[0].chave); }
+  if (ST.vazio) { /* página sem e-mail: nada a abrir */ }
+  else if (!ST.k || !lista.some(function (m) { return m.chave === ST.k; })) { if (lista.length) abrirModelo(lista[0].chave); }
   else if (ST.v != null && !versaoAberta() && M) abrirModelo(ST.k);
-  renderFiltros();
-  renderLista(lista);
-  if (ST.criar && temEstudio3()) renderCriar(); else { ST.criar = null; renderEditor(lista); }
+  if (ST.criar && temEstudio3()) { $('st-cab').innerHTML = ''; renderCriar(); } else { ST.criar = null; renderEditor(lista); }
   renderPrevia();
+  ajustaCab();
 }
 
 
@@ -3209,13 +3207,19 @@ function renderJornada() {
   var bandeja = function (titulo, itens, dica) {
     return itens.length ? '<details class="jr-band"><summary>' + esc(titulo) + ' <span class="jr-pill grp">' + itens.length + '</span></summary><p class="sub">' + esc(dica) + '</p><div class="jr-band-l">' + itens.map(jrCard).join('') + '</div></details>' : '';
   };
-  box.innerHTML = guia + stats + '<div class="jr-scroll"><div class="jr-mx" role="table" aria-label="Percursos por etapa do funil">' + cab + linhas + '</div></div><div class="jr-cel">' + celular + '</div>' +
+  var novo = temEstudio3() ? '<div class="jr-acoes"><button class="btn primary" type="button" id="st-novo-modelo">+ Modelo novo</button></div>' : '';
+  var exc = (M || []).filter(function (m) { return m.excluido_em; });
+  var excluidos = exc.length ? '<details class="jr-band"><summary>Excluídos <span class="jr-pill grp">' + exc.length + '</span></summary><p class="sub">Dá para restaurar: o e-mail volta com o Envio desligado.</p><div class="jr-band-l">' + exc.map(function (m) {
+    return '<div class="st-excl-i"><span><b>' + esc(m.nome) + '</b><span class="sub">excluído em ' + esc(fmtDay(m.excluido_em)) + '</span></span><button class="btn" type="button" data-strestaurar="' + esc(m.chave) + '">Restaurar</button></div>';
+  }).join('') + '</div></details>' : '';
+  box.innerHTML = guia + novo + stats + '<div class="jr-scroll"><div class="jr-mx" role="table" aria-label="Percursos por etapa do funil">' + cab + linhas + '</div></div><div class="jr-cel">' + celular + '</div>' +
     '<div class="jr-bandejas">' + bandeja('Aquecimento', J.bandejas.aquecimento, 'Sequências por trilha. Não têm coluna na jornada.') + bandeja('Campanhas avulsas', J.bandejas.campanhas, 'Não pertencem a um percurso.') +
-    bandeja('Sem etapa definida', J.bandejas.semEtapa, 'Classifique em “Avançado” do editor para eles entrarem na matriz.') + '</div>';
+    bandeja('Sem etapa definida', J.bandejas.semEtapa, 'Classifique em “Avançado” do editor para eles entrarem na matriz.') + excluidos + '</div>';
 }
 // Falta um e-mail numa etapa: cria o rascunho direto (página e etapa da célula, esqueleto do objetivo, nome automático) e abre no editor novo,
 // no passo Texto. "Quem recebe e quando" se ajusta no passo 1. Objetivo que pede produto ainda passa pelo assistente (precisa escolher o produto).
 async function criarNaJornada(valor) {
+  ST.vazio = false;
   var p = valor.split('|'), pg = p[0], et = JR.ETAPAS.filter(function (e) { return e.k === p[1]; })[0], o = et && ES.objetivo(et.objetivo), pag = TX.PAGINAS.filter(function (x) { return x.k === pg; })[0];
   if (!o || !pag || ST.criando) return;
   // O que a célula já diz: o material é o guia da página (quem pegou aquele guia) e, se o e-mail sai depois de outro e-mail, é o da etapa anterior da mesma página.
@@ -3237,116 +3241,17 @@ async function criarNaJornada(valor) {
   if (ST.criar) renderModelos();   // não gravou: cai no assistente, com o aviso de erro
 }
 
-// Barra de filtros dos modelos. Só em memória: nada vai ao banco nem ao localStorage.
-var FILTRO_TIPOS = [['email', 'E-mail'], ['novidades', 'Novidades'], ['servico', 'Serviço'], ['compra', 'Compra']];
-var FILTRO_SITUACOES = [['noAr', 'No ar'], ['rascunho', 'Rascunho'], ['revisao', 'Em revisão'], ['envioLigado', 'Envio ligado'], ['envioDesligado', 'Envio desligado'], ['semTeste', 'Sem teste']];
-function contaModelosTxt(lista) {
-  var total = TX.aplicaFiltros(lista, TX.filtroVazio(), versoesDe).length;
-  return TX.aplicaFiltros(lista, ST.f, versoesDe).length + ' de ' + total + ' modelos';
-}
-function visaoAtiva() {
-  var norm = function (f) {   // ignora a ordem dos arrays, sem mexer no original
-    var o = {};
-    Object.keys(f).forEach(function (k) { o[k] = Array.isArray(f[k]) ? f[k].slice().sort() : f[k]; });
-    return JSON.stringify(o, Object.keys(o).sort());
-  };
-  var atual = norm(ST.f), ativa = null;
-  TX.VISOES.forEach(function (v) { if (norm(Object.assign(TX.filtroVazio(), v.filtros)) === atual) ativa = v.k; });
-  return ativa;
-}
-function sincronizaAbaFiltros() { $('mod-filtros').dataset.tab = ST.tab; }   // no celular a barra só aparece na aba Modelos
-function renderFiltros() {
-  var f = ST.f;
-  sincronizaAbaFiltros();
-  var chip = function (filtro, valor, rotulo) {
-    var on = f[filtro].indexOf(valor) >= 0;
-    return '<button class="chip" type="button" data-filtro="' + esc(filtro) + '" data-valor="' + esc(valor) + '" aria-pressed="' + on + '">' + esc(rotulo) + '</button>';
-  };
-  var linha = function (titulo, chips) { return '<div class="st-filtro-linha"><span class="st-filtro-t">' + esc(titulo) + '</span>' + chips + '</div>'; };
-  var paginas = TX.PAGINAS.map(function (p) { return chip('paginas', p.k, p.k + ' · ' + p.nome); }).join('') + chip('paginas', 'sem', 'Sem página');
-  var etapas = '';
-  TX.PAGINAS.forEach(function (p) { if (f.paginas.indexOf(p.k) >= 0) etapas += p.etapas.map(function (e) { return chip('etapas', e[0], e[1]); }).join(''); });
-  var ativa = visaoAtiva();
-  var visoes = TX.VISOES.filter(function (v) { return v.k === 'semclasse'; }).map(function (v) { return '<button class="chip" type="button" data-visao="' + esc(v.k) + '" aria-pressed="' + (ativa === v.k) + '">' + esc(v.nome) + '</button>'; }).join('');
-  $('mod-filtros').innerHTML =
-    '<div class="st-filtro-topo"><input type="search" id="filtro-q" class="st-filtro-q" placeholder="Buscar modelo" aria-label="Buscar modelo" value="' + esc(f.q) + '">' +
-    '<span class="sub" id="mod-conta" role="status">' + esc(contaModelosTxt(listaModelos())) + '</span>' +
-    '<button class="btn" type="button" id="filtro-limpar" data-limpar="1">Limpar filtros</button></div>' +
-    linha('Página', paginas) + (etapas ? linha('Etapa', etapas) : '') +
-    linha('Família', TX.FAMILIAS.map(function (x) { return chip('familias', x[0], x[1]); }).join('')) +
-    linha('Persona', TX.PERSONAS.map(function (x) { return chip('personas', x[0], x[1]); }).join('') +
-      '<button class="chip" type="button" id="filtro-solo" aria-pressed="' + !!f.soEspecificos + '">só específicos</button>') +
-    linha('Tipo', FILTRO_TIPOS.map(function (x) { return chip('tipos', x[0], x[1]); }).join('')) +
-    linha('Situação', FILTRO_SITUACOES.map(function (x) { return chip('situacoes', x[0], x[1]); }).join('') + visoes);
-}
-function aoClicarFiltro(e) {
-  var t = e.target && e.target.closest && e.target.closest('[data-filtro], [data-visao], [data-limpar], #filtro-solo, #filtro-limpar');
-  if (!t) return;
-  var d = t.dataset || {}, foco = null;
-  if (t.id === 'filtro-limpar' || d.limpar) { ST.f = TX.filtroVazio(); foco = '#filtro-q'; }
-  else if (t.id === 'filtro-solo') { ST.f.soEspecificos = !ST.f.soEspecificos; foco = '#filtro-solo'; }
-  else if (d.visao) {
-    var v = TX.VISOES.filter(function (x) { return x.k === d.visao; })[0];
-    if (!v) return;
-    foco = '[data-visao="' + v.k + '"]';
-    ST.f = visaoAtiva() === v.k ? TX.filtroVazio() : Object.assign(TX.filtroVazio(), JSON.parse(JSON.stringify(v.filtros)));
-  } else if (d.filtro && Array.isArray(ST.f[d.filtro])) {
-    var arr = ST.f[d.filtro], i = arr.indexOf(d.valor);
-    foco = '[data-filtro="' + d.filtro + '"][data-valor="' + d.valor + '"]';
-    if (i >= 0) arr.splice(i, 1); else arr.push(d.valor);
-    if (d.filtro === 'paginas') ST.f = TX.limpaEtapasOrfas(ST.f);
-  } else return;
-  renderFiltros(); renderLista(listaModelos());
-  var alvo = foco && document.querySelector(foco);   // a barra foi redesenhada: devolve o foco ao controle equivalente
-  if (alvo && alvo.focus) alvo.focus();
-}
-function aoDigitarFiltro(e) {
-  if (!e.target || e.target.id !== 'filtro-q') return;
-  ST.f.q = e.target.value;
-  renderLista(listaModelos());   // só a lista e o contador: redesenhar a barra tiraria o foco do campo
-}
-
-function renderLista(lista) {
-  var conta = contaModelosTxt(lista), total = TX.aplicaFiltros(lista, TX.filtroVazio(), versoesDe).length;
-  if ($('mod-conta')) $('mod-conta').textContent = conta;
-  lista = TX.aplicaFiltros(lista, ST.f, versoesDe);
-  var card = function (m) {
-    var v = M ? versaoAtual(m.chave) : null, obra = M ? versaoEmObra(m.chave) : null;
-    var dot = !v ? 'dr' : obra ? (obra.etapa === 'revisao' ? 'rev' : 'dr') : v.etapa === 'no_ar' ? 'ok' : 'dr';
-    var linha = !M ? 'Texto do código' : (m.automatico ? 'Sai sozinho · ' : '') + etapaTxt(v) + (obra && obra !== v ? ' · ' + etapaTxt(obra).toLowerCase() : '') +
-      (m.criado_no_estudio && m.envio_gatilho ? ' · envio ' + (m.envio_ligado ? 'ligado' : 'desligado') : '');
-    return '<div class="st-card"><button class="st-item" data-tpl-pick="' + esc(m.chave) + '" aria-pressed="' + (!ST.criar && ST.k === m.chave) + '" type="button"><span class="sdot ' + dot + '"></span><span><b>' + esc(m.nome) + '</b>' +
-      '<span>' + esc(linha) + '</span></span></button>' +
-      (podeExcluir(m) ? '<button class="st-x" type="button" data-stexcluir="' + esc(m.chave) + '" aria-label="Excluir ' + esc(m.nome) + '" title="Excluir">×</button>' : '') + '</div>';
-  };
-  var exc = (M || []).filter(function (m) { return m.excluido_em; });
-  var lixo = exc.length ? '<details class="st-excl"><summary class="tplgrp">Excluídos · ' + exc.length + '</summary>' + exc.map(function (m) {
-    return '<div class="st-excl-i"><span><b>' + esc(m.nome) + '</b><span class="sub">excluído em ' + esc(fmtDay(m.excluido_em)) + '</span></span>' +
-      '<button class="btn" type="button" data-strestaurar="' + esc(m.chave) + '">Restaurar</button></div>';
-  }).join('') + '</details>' : '';
-  var grupo = function (g) {
-    var aberta = !CAT_FECHADA[g.id] || g.itens.some(function (m) { return !ST.criar && m.chave === ST.k; });
-    var selo = g.selo ? ' <span class="pill">' + esc(g.selo) + '</span>' : '';
-    var corpo = g.subgrupos && g.subgrupos.length
-      ? g.subgrupos.map(function (sg) { return '<div class="st-sub"><div class="tplgrp">' + esc(sg.titulo) + ' · ' + sg.itens.length + '</div>' + sg.itens.map(card).join('') + '</div>'; }).join('')
-      : g.itens.map(card).join('');
-    return '<details class="st-cat" data-cat="' + esc(g.id) + '"' + (aberta ? ' open' : '') + '><summary class="tplgrp">' + esc(g.titulo) + ' · ' + g.itens.length + selo + '</summary>' + corpo + '</details>';
-  };
-  $('mod-list').innerHTML = (temEstudio3() ? '<button class="st-new" type="button" id="st-novo-modelo" aria-pressed="' + !!ST.criar + '">+ Modelo novo</button>' : '') + (lista.length || !total ? TX.agrupa(lista).map(grupo).join('') : '<div class="st-vazio"><p class="sub">Nenhum modelo com esses filtros</p><button class="btn" type="button" data-limpar="1">Limpar filtros</button></div>') + lixo +
-    '<div class="st-legend"><span><i class="sdot ok"></i>No ar</span><span><i class="sdot rev"></i>Em revisão</span><span><i class="sdot dr"></i>Rascunho</span></div>';
-}
-
 // Os e-mails 1 e 2 do guia Campus France saem pelo código: excluir aqui não pararia o envio, então não têm o X.
 function podeExcluir(m) { return !!(M && M.length && Object.prototype.hasOwnProperty.call(M[0], 'excluido_em')) && !/^cf_guia_/.test(m.chave); }
 async function excluirModelo(k, voltar) {
   var m = modeloDe(k); if (!m) return;
-  if (!voltar && !window.confirm('Excluir "' + m.nome + '"? Ele sai da lista e do "Escrever e-mail"' + (m.envio_ligado ? ' e a sequência para de sair' : '') +
-    '. As versões ficam guardadas em "Excluídos", no fim da lista, onde dá para restaurar.')) return;
+  if (!voltar && !window.confirm('Excluir "' + m.nome + '"? Ele sai da Jornada e do "Escrever e-mail"' + (m.envio_ligado ? ' e a sequência para de sair' : '') +
+    '. As versões ficam guardadas em "Excluídos", no fim da Jornada, onde dá para restaurar.')) return;
   await salvar();
   var r = await supabase.from('modelos_email').update({ excluido_em: voltar ? null : new Date().toISOString() }).eq('chave', k).select();
   if (r.error) return fail(voltar ? 'restaurar o modelo' : 'excluir o modelo', r.error);
   Object.assign(m, (r.data && r.data[0]) || { excluido_em: voltar ? null : new Date().toISOString() });
-  if (!voltar && ST.k === k) ST.k = null;
+  if (!voltar && ST.k === k) { ST.k = null; ST.vista = 'jornada'; }
   if (voltar) { ST.k = k; abrirModelo(k); }
   toast(voltar ? '"' + m.nome + '" restaurado' + (m.envio_gatilho ? ' (com o Envio desligado)' : '') : '"' + m.nome + '" excluído', 3200);
   renderModelos();
@@ -3479,7 +3384,8 @@ function passoQuem(m, ro) {
   var fora = Object.keys(est.porMotivo).map(function (x) { return est.porMotivo[x] + ' ' + MOT[x]; }).join(', ');
   var contador = '<div class="ee-conta" role="status"><span class="n">' + est.n + '</span><span><b>pessoas</b> recebem este e-mail hoje<span class="sub">de ' + est.total + ' na base' + (fora && est.n !== est.total ? ' · de fora: ' + esc(fora) : '') + '. É uma estimativa pelas regras; o Worker confere de novo a cada envio.</span></span></div>';
   var avancado = '<details class="ee-av"><summary>Avançado</summary>' + classeHtml(m) + '<label class="st-fld"><span>Objetivo</span><textarea class="st-in" id="st-objetivo" rows="2" maxlength="300">' + esc(m.objetivo) + '</textarea></label>' +
-    (novoM ? '<dl class="tplmeta"><dt>Do catálogo</dt><dd>' + esc(objM ? objM.nome : '—') + '</dd><dt>Tipo</dt><dd>' + pillDe(TIPO_EMAIL, m.tipo) + ' <span class="sub">' + esc(ES.TIPO_RODAPE[m.tipo] || '') + '</span></dd></dl>' : '') + '</details>';
+    (novoM ? '<dl class="tplmeta"><dt>Do catálogo</dt><dd>' + esc(objM ? objM.nome : '—') + '</dd><dt>Tipo</dt><dd>' + pillDe(TIPO_EMAIL, m.tipo) + ' <span class="sub">' + esc(ES.TIPO_RODAPE[m.tipo] || '') + '</span></dd></dl>' : '') +
+    (podeExcluir(m) ? '<div class="ee-excluir"><button type="button" class="btn" data-stexcluir="' + esc(m.chave) + '">Excluir este modelo</button><small class="sub">Sai da Jornada e do "Escrever e-mail". As versões ficam guardadas em "Excluídos", na Jornada, e dá para restaurar.</small></div>' : '') + '</details>';
   if (!novoM) {
     var sai0 = esc(String(m.como_sai || 'conforme o código').replace(/\.$/, '').replace(/^./, function (x) { return x.toLowerCase(); }));
     return '<section class="ee-quem"><p class="ee-frase">Vai para quem entrou por <span class="ee-ch fixo">' + esc(fr.materiais) + '</span> e respondeu <span class="ee-ch fixo">' + esc(fr.etapas) + '</span>' + (fr.novidades ? ' <span class="ee-ch fixo">só quem aceitou novidades</span>' : '') + '. Sai <span class="ee-ch fixo">' + sai0 + '</span>.</p>' + contador +
@@ -3500,21 +3406,61 @@ function passoQuem(m, ro) {
     '<p class="sub ee-dica">Toque nos campos coloridos para mudar.</p></section>' + avancado;
 }
 
-// A fileira de pílulas para viajar entre os e-mails do mesmo percurso (mesma página), na ordem da jornada.
-function pilulasDosModelos(m) {
-  var pag = TX.classifica(m).pagina;
-  var ordem = function (x) { var i = JR.ETAPAS.map(function (e) { return e.k; }).indexOf(JR.etapaDaJornada(Object.assign({}, x, { familia: TX.classifica(x).familia }))); return i < 0 ? 99 : i; };
-  var irmaos = listaModelos().filter(function (x) { return pag ? TX.classifica(x).pagina === pag : x.chave === m.chave; });
-  if (irmaos.length < 2) return '';
-  irmaos = irmaos.map(function (x, i) { return { x: x, i: i }; }).sort(function (a, b) { return ordem(a.x) - ordem(b.x) || a.i - b.i; }).map(function (o) { return o.x; });
-  return '<nav class="ee-irmaos" aria-label="E-mails deste percurso">' + irmaos.map(function (x, n) {
-    var sel = x.chave === m.chave;
-    return '<button type="button" class="ee-passo" data-tpl-pick="' + esc(x.chave) + '" aria-current="' + (sel ? 'true' : 'false') + '" title="' + esc(x.nome) + '"><span class="n">' + (n + 1) + '</span><span class="t">' + esc(x.nome) + '</span></button>';
-  }).join('') + '</nav>';
+// O cabeçalho do editor parte da página de entrada (a landing): escolha a página e veja os e-mails dela por etapa do funil. A etapa
+// que ainda não tem e-mail vira "+ criar" (cria o rascunho já preenchido). Os dados vêm da mesma matriz da Jornada.
+var PONTO_ESTADO = { noar: 'ok', rev: 'rev', rasc: 'dr' };
+function jornadaAtual() { return JR.montaJornada(listaModelos(), TX); }
+function linhaDoModelo(J, k) {
+  var achou = null;
+  J.linhas.forEach(function (l) { JR.ETAPAS.forEach(function (e) { if (l.celulas[e.k].some(function (m) { return m.chave === k; })) achou = l.k; }); });
+  if (achou) return achou;
+  return ['aquecimento', 'campanhas', 'semEtapa'].some(function (g) { return J.bandejas[g].some(function (m) { return m.chave === k; }); }) ? 'OUT' : null;
+}
+function pgAtual(J) { return ST.vazio && ST.pg ? ST.pg : (linhaDoModelo(J, ST.k) || 'OUT'); }
+function modelosDaPagina(J, pg) {   // na ordem das etapas; "OUT" são os que não moram numa página (aquecimento, campanhas, sem etapa)
+  if (pg === 'OUT') return [].concat(J.bandejas.aquecimento, J.bandejas.campanhas, J.bandejas.semEtapa);
+  var l = J.linhas.filter(function (x) { return x.k === pg; })[0], r = [];
+  if (l) JR.ETAPAS.forEach(function (e) { l.celulas[e.k].forEach(function (m) { r.push(m); }); });
+  return r;
+}
+function cabecalhoHtml(J, pg) {
+  var temOutros = ['aquecimento', 'campanhas', 'semEtapa'].some(function (g) { return J.bandejas[g].length; });
+  var paginas = J.linhas.map(function (l) {
+    return '<button type="button" class="ee-passo" data-stpg="' + esc(l.k) + '" aria-current="' + (l.k === pg) + '" title="' + esc(l.nome) + ' · ' + l.cobertas + ' de ' + JR.ETAPAS.length + ' etapas com e-mail"><span class="n">' + esc(l.k) + '</span><span class="t">' + esc(l.nome) + '</span></button>';
+  }).join('') + (temOutros ? '<button type="button" class="ee-passo" data-stpg="OUT" aria-current="' + (pg === 'OUT') + '"><span class="n">…</span><span class="t">Outros e-mails</span></button>' : '');
+  var pill = function (m, rotulo) {
+    var sit = situacaoDoModelo(m), atual = !ST.vazio && ST.k === m.chave;
+    return '<button type="button" class="ee-passo ee-et" data-tpl-pick="' + esc(m.chave) + '" aria-current="' + atual + '" title="' + esc(m.nome + ' · ' + sit[0]) + '"><i class="ee-sd ' + (PONTO_ESTADO[sit[1]] || 'dr') + '" aria-hidden="true"></i><span class="t"><small>' + esc(rotulo) + '</small>' + esc(m.nome) + '</span></button>';
+  };
+  var etapas, linha = J.linhas.filter(function (l) { return l.k === pg; })[0];
+  if (pg === 'OUT' || !linha) {
+    var nomes = { aquecimento: 'Aquecimento', campanhas: 'Campanha', semEtapa: 'Sem etapa' };
+    etapas = ['aquecimento', 'campanhas', 'semEtapa'].map(function (g) { return J.bandejas[g].map(function (m) { return pill(m, nomes[g]); }).join(''); }).join('');
+  } else {
+    etapas = JR.ETAPAS.map(function (e) {
+      var cel = linha.celulas[e.k];
+      if (cel.length) return cel.map(function (m) { return pill(m, e.nome); }).join('');
+      if (linha.k === 'TR' || !temEstudio3()) return '<span class="ee-passo ee-et falta sem" title="Ainda não existe"><span class="t"><small>' + esc(e.nome) + '</small>falta</span></span>';
+      return '<button type="button" class="ee-passo ee-et falta" data-jr-criar="' + esc(linha.k + '|' + e.k) + '" title="Criar o e-mail desta etapa, já preenchido"><span class="t"><small>' + esc(e.nome) + '</small>+ criar</span></button>';
+    }).join('');
+  }
+  return '<div class="ee-linha-pg"><button type="button" class="ee-volta" data-vista="jornada">← Jornada</button><span class="ee-rot">Página de entrada</span><nav class="ee-irmaos" aria-label="Páginas de entrada">' + paginas + '</nav></div>' +
+    '<div class="ee-linha-pg"><span class="ee-rot">E-mails da página</span><nav class="ee-irmaos" aria-label="E-mails da página, por etapa">' + etapas + '</nav></div>';
+}
+// A altura do cabeçalho fixo vai para o CSS: os painéis de baixo se ajustam para caber na tela.
+function ajustaCab() {
+  var st = $('studio'), c = $('st-cab');
+  if (st && st.style && st.style.setProperty) st.style.setProperty('--st-head-h', ((c && c.offsetHeight) || 0) + 'px');
 }
 
 function renderEditor(lista) {
-  var box = $('st-edit');
+  var box = $('st-edit'), cab = $('st-cab');
+  if (ST.vazio && M) {   // escolheu uma página de entrada que ainda não tem e-mail
+    var Jv = jornadaAtual(); cab.innerHTML = '<div class="ee-fixo">' + cabecalhoHtml(Jv, pgAtual(Jv)) + '</div>';
+    box.innerHTML = '<div class="empty">Este percurso ainda não tem e-mail. Clique em <b>+ criar</b> numa etapa, acima, para começar pelo rascunho já preenchido.</div>';
+    ajustaCab(); return;
+  }
+  cab.innerHTML = '';
   var m = (M ? modeloAtual() : null) || (lista || []).filter(function (x) { return x.chave === ST.k; })[0];
   if (!m) { box.innerHTML = '<div class="empty">Nenhum modelo ainda.</div>'; return; }
   if (!M) { box.innerHTML = '<h3 class="st-title">' + esc(m.nome) + '</h3><p class="sub">' + esc(m.objetivo) + '</p><p class="st-msg tip">Sem a tabela de modelos, o texto vem do código e não dá para editar aqui.</p>'; return; }
@@ -3537,10 +3483,8 @@ function renderEditor(lista) {
       : '<button class="btn primary" type="button" id="st-nova">Editar em versão nova</button>';
     acoes = '<button class="btn" type="button" id="st-teste">Enviar teste para mim</button>' + acoes;
   }
-  var cl = TX.classifica(m), pagM = TX.PAGINAS.filter(function (p) { return p.k === cl.pagina; })[0], etJ = JR.ETAPAS.filter(function (e) { return e.k === JR.etapaDaJornada(Object.assign({}, m, { familia: cl.familia })); })[0];
-  var migalha = '<div class="ee-crumb"><button type="button" class="ee-volta" data-vista="jornada">← Jornada</button><span>' + esc(pagM ? pagM.k + ' · ' + pagM.nome : 'Todos os percursos') + (etJ ? ' › ' + esc(etJ.nome) : '') + '</span></div>';
   acoes = acoes + '<button class="btn" type="button" id="st-previa-tg" aria-pressed="' + previaAberta() + '">' + (previaAberta() ? 'Esconder prévia' : 'Ver como chega') + '</button>';
-  var topo = migalha + '<div class="st-head"><div class="st-head-t"><h3 class="st-title">' + esc(m.nome) + '</h3><div class="st-pills">' + pillDe(TIPO_EMAIL, m.tipo) + (v ? pillDe(ETAPA_EMAIL, v.etapa) + '<span class="sub">v' + v.versao + '</span>' : '') +
+  var topo = '<div class="st-head"><div class="st-head-t"><h3 class="st-title">' + esc(m.nome) + '</h3><div class="st-pills">' + pillDe(TIPO_EMAIL, m.tipo) + (v ? pillDe(ETAPA_EMAIL, v.etapa) + '<span class="sub">v' + v.versao + '</span>' : '') +
     '<span class="sub" id="st-salvo">' + esc(ST.salvo) + '</span></div></div><div class="st-acts">' + acoes + '</div></div>' +
     (v && ro && temBlocos() ? '<p class="st-msg tip">' + (v.etapa === 'no_ar' ? 'Esta é a versão No ar: é ela que sai. ' : v.etapa === 'arquivado' ? 'Esta versão já saiu e fica guardada como está. ' : '') +
       (v.blocos ? '' : 'Ainda está em texto corrido (como era no código). ') + 'Para mudar, crie uma versão nova: a de agora continua saindo até você publicar a nova.</p>' : '') +
@@ -3551,7 +3495,12 @@ function renderEditor(lista) {
     return '<button type="button" role="tab" class="ee-passo" data-eepasso="' + p[0] + '" aria-selected="' + (ST.passo === p[0]) + '"><span class="n">' + (n + 1) + '</span>' + esc(p[1]) + aviso + '</button>';
   }).join('') + '</div>';
   var corpo = ST.passo === 'quem' ? passoQuem(m, ro) : ST.passo === 'conferir' ? passoConferir(m, v, d, confs, travas, testado, vistos, vs) : passoTexto(m, v, d, ro);
-  box.innerHTML = (ST.passo === 'texto' ? pilulasDosModelos(m) : '') + topo + passos + corpo;
+  // O header fica fixo logo abaixo das abas Jornada / Editar e-mails (o e-mail rola por baixo): página de entrada, e-mails dela por etapa,
+  // nome e ações, passos e, no Texto, a barra de desfazer.
+  var Jc = jornadaAtual();
+  cab.innerHTML = '<div class="ee-fixo">' + cabecalhoHtml(Jc, pgAtual(Jc)) + topo + '<div class="ee-barra-passos">' + passos + (ST.passo === 'texto' && d ? EE.topo() : '') + '</div></div>';
+  box.innerHTML = corpo;
+  ajustaCab();
   EE.depois();
 }
 // O e-mail editável pede ao estúdio o rascunho, o catálogo de dados e o salvamento (tudo isto já existe aqui).
@@ -3777,7 +3726,7 @@ async function salvarModelo(patch, msg) {
   if (r.error) { fail('salvar o modelo', r.error); return renderEditor(); }
   Object.assign(m, (r.data && r.data[0]) || patch);
   if (msg) toast(msg);
-  renderEditor(); renderLista(M); renderPrevia();
+  renderEditor(); renderPrevia();
 }
 function mudarEnvio(campo, valor) {
   var m = modeloAtual(), pq = m.para_quem || {}, p = {};
@@ -3839,6 +3788,7 @@ function pessoasDaPrevia() {
 }
 function renderPrevia() {
   var box = $('st-prev');
+  if (ST.vazio) { box.innerHTML = ''; return; }
   var m = M ? modeloAtual() : null, k = ST.k;
   var lista = pessoasDaPrevia();
   var modo = ST.modo === 'dados' || (ST.modo === 'chaves' && !ST.criar) ? ST.modo : 'exemplo';
@@ -4789,6 +4739,12 @@ document.addEventListener('click', async function (e) {
   if (t.dataset.cmpaba) return cmpAba(t.dataset.cmpaba);
   if (t.id === 'cmp-restaurar') { CMP.editado = null; $('compose-txt').value = CMP.e.body; return cmpFormato(); }
   if (t.dataset.tplPick) { ST.criar = null; await salvar(); abrirModelo(t.dataset.tplPick); ST.tab = 'editar'; return renderModelos(); }
+  if (t.dataset.stpg) {   // escolheu uma página de entrada: abre o primeiro e-mail dela, ou mostra as etapas para criar
+    await salvar(); ST.criar = null; ST.vista = 'estudio'; ST.tab = 'editar';
+    var pri = modelosDaPagina(jornadaAtual(), t.dataset.stpg)[0];
+    if (pri) abrirModelo(pri.chave); else { ST.vazio = true; ST.pg = t.dataset.stpg; ST.k = null; ST.v = null; ST.d = null; ST.dKey = null; ST.montado = null; }
+    return renderModelos();
+  }
   if (t.dataset.eepasso) { await salvar(); ST.passo = t.dataset.eepasso; $('studio').dataset.previa = previaAberta() ? '1' : '0'; renderEditor(); return renderPrevia(); }
   if (t.dataset.stdev) { ST.dev = t.dataset.stdev; return renderPrevia(); }
   if (t.dataset.stmodo) { ST.modo = t.dataset.stmodo; return renderPrevia(); }
@@ -4836,8 +4792,8 @@ document.addEventListener('click', async function (e) {
   if (t.dataset.vista) { await salvar(); ST.vista = t.dataset.vista; return renderModelos(); }
   if (t.dataset.jrAbrir) { await salvar(); ST.criar = null; abrirModelo(t.dataset.jrAbrir); ST.vista = 'estudio'; ST.tab = 'editar'; ST.passo = 'texto'; return renderModelos(); }
   if (t.dataset.jrCriar) return criarNaJornada(t.dataset.jrCriar);
-  if (t.id === 'st-novo-modelo') { await salvar(); ST.criar = { passo: 1, obj: null, nome: '', para: paraVazio(), classe: { familia: null, pagina: null, etapa: null, persona: null } }; ST.tab = 'editar'; return renderModelos(); }
-  if (t.id === 'novo-cancelar') { ST.criar = null; return renderModelos(); }
+  if (t.id === 'st-novo-modelo') { await salvar(); ST.criar = { passo: 1, obj: null, nome: '', para: paraVazio(), classe: { familia: null, pagina: null, etapa: null, persona: null } }; ST.vista = 'estudio'; ST.tab = 'editar'; return renderModelos(); }
+  if (t.id === 'novo-cancelar') { ST.criar = null; ST.vista = 'jornada'; return renderModelos(); }
   if (t.dataset.novoobj) { var ob = ES.objetivo(t.dataset.novoobj); ST.criar.obj = ob.k; ST.criar.classe.familia = TX.familiaDoObjetivo(ob.k); if (!ST.criar.nome || ES.OBJETIVOS.some(function (x) { return x.nome === ST.criar.nome; })) ST.criar.nome = ob.nome; ST.criar.passo = 2; return renderModelos(); }
   if (t.dataset.novopasso) { ST.criar.passo = Number(t.dataset.novopasso); return renderModelos(); }
   if (t.id === 'novo-criar') return criarModelo(t);
@@ -4986,47 +4942,4 @@ document.addEventListener('keydown', function (e) {
   if (e.key === 'Escape' && !$('compose-modal').hidden) closeCompose();
 });
 
-// Filtros dos modelos: registrados depois dos demais para não mudar a ordem dos handlers de clique e de input.
-document.addEventListener('click', aoClicarFiltro);
-document.addEventListener('input', aoDigitarFiltro);
-
 boot().catch(function (err) { console.error(err); showGate('Erro ao abrir o CRM. Recarregue a página.'); });
-
-// ---------- Largura da lista de modelos (Editar e-mails) ----------
-// A faixa entre a lista e o editor se arrasta com o mouse (ou com as setas, quando em foco); duplo clique volta ao padrão.
-// A largura fica em --st-list-w no #studio e é lembrada neste navegador.
-(function () {
-  var grip = document.getElementById('st-grip'), studio = document.getElementById('studio');
-  if (!grip || !studio) return;
-  var PADRAO = 240, MIN = 150, CHAVE = 'crm.studio.listaLargura';
-  function limite(px) { var max = Math.max(MIN, Math.min(520, studio.clientWidth - 360)); return Math.round(Math.min(max, Math.max(MIN, px))); }
-  function aplicar(px, guardar) {
-    var w = limite(px);
-    studio.style.setProperty('--st-list-w', w + 'px');
-    grip.setAttribute('aria-valuenow', String(w)); grip.setAttribute('aria-valuemin', String(MIN));
-    if (guardar) { try { localStorage.setItem(CHAVE, String(w)); } catch (e) { /* sem armazenamento: vale só nesta sessão */ } }
-  }
-  var salvo = NaN; try { salvo = parseInt(localStorage.getItem(CHAVE), 10); } catch (e) { /* ignora */ }
-  if (salvo) studio.style.setProperty('--st-list-w', salvo + 'px');
-  grip.setAttribute('aria-valuenow', String(salvo || PADRAO));
-  grip.addEventListener('pointerdown', function (e) {
-    if (e.button !== 0) return;
-    e.preventDefault(); grip.setPointerCapture(e.pointerId);
-    grip.classList.add('arrastando'); document.body.classList.add('st-arrastando');
-    var x0 = studio.getBoundingClientRect().left;
-    function mover(ev) { aplicar(ev.clientX - x0, false); }
-    function soltar() {
-      grip.removeEventListener('pointermove', mover); grip.removeEventListener('pointerup', soltar); grip.removeEventListener('pointercancel', soltar);
-      grip.classList.remove('arrastando'); document.body.classList.remove('st-arrastando');
-      aplicar(parseInt(grip.getAttribute('aria-valuenow'), 10) || PADRAO, true);
-    }
-    grip.addEventListener('pointermove', mover); grip.addEventListener('pointerup', soltar); grip.addEventListener('pointercancel', soltar);
-  });
-  grip.addEventListener('dblclick', function () { aplicar(PADRAO, true); });
-  grip.addEventListener('keydown', function (e) {
-    var atual = parseInt(grip.getAttribute('aria-valuenow'), 10) || PADRAO;
-    if (e.key === 'ArrowLeft') { e.preventDefault(); aplicar(atual - 20, true); }
-    else if (e.key === 'ArrowRight') { e.preventDefault(); aplicar(atual + 20, true); }
-    else if (e.key === 'Home' || e.key === 'Enter') { e.preventDefault(); aplicar(PADRAO, true); }
-  });
-})();

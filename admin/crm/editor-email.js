@@ -16,7 +16,7 @@
 //   disponiveis(): { etapa, toques },     blocos de guia que este modelo pode ter
 //   rodapeTexto(): string                 o rodapé automático (pelo tipo), só para mostrar
 // }
-import * as EB from './editor-blocos.js?v=2026-11-15.4';
+import * as EB from './editor-blocos.js?v=2026-11-15.8';
 
 var DEP = null;
 var S = { sel: -1, pal: -2, menu: null, foco: null, hist: EB.criarHistorico(60), campo: null, ultimo: null, arrasto: null, toastT: null };
@@ -115,12 +115,14 @@ function barraTopo() {
   return '<div class="ee-topo"><span class="sub">Digite <kbd>/</kbd> para blocos e <kbd>@</kbd> para dados da pessoa</span>' +
     '<span class="ee-hist"><button type="button" class="btn" data-eedesfaz="1" title="Desfazer bloco" aria-label="Desfazer bloco"' + (S.hist.podeDesfazer() ? '' : ' disabled') + '>↶</button><button type="button" class="btn" data-eerefaz="1" title="Refazer" aria-label="Refazer"' + (S.hist.podeRefazer() ? '' : ' disabled') + '>↷</button></span></div>';
 }
-export function html() { return '<div id="ee" class="ee">' + barraTopo() + '<div id="ee-canvas">' + tela() + '</div></div>'; }
+// A barra de cima (dica, desfazer e refazer) é desenhada pelo estúdio dentro do header fixo do editor (topo()), acima do e-mail.
+export function topo() { return barraTopo(); }
+export function html() { return '<div id="ee" class="ee"><div id="ee-canvas">' + tela() + '</div></div>'; }
 function redesenha() {
   fechaMenu();
   var c = document.getElementById('ee-canvas'); if (!c) return;
   c.innerHTML = tela();
-  var t = document.querySelector('#ee .ee-topo'); if (t) t.outerHTML = barraTopo();
+  var t = document.querySelector('.ee-topo'); if (t) t.outerHTML = barraTopo();
   aplicaFoco();
 }
 // Um campo das opções de um bloco mudou (o painel usa os campos de formulário do estúdio): o bloco no e-mail acompanha na hora,
@@ -233,7 +235,7 @@ function noFim(el) {
 function campoDoFoco() { var a = document.activeElement; return a && a.matches && a.matches('#ee [data-ee]') ? a : (S.campo && document.body.contains(S.campo) ? S.campo : null); }
 
 // ---------- Eventos (um conjunto só, na página inteira) ----------
-function dentro(e) { return !!(e.target && e.target.closest && e.target.closest('#ee, #ee-menu, #ee-toast')); }
+function dentro(e) { return !!(e.target && e.target.closest && e.target.closest('#ee, .ee-topo, #ee-menu, #ee-toast')); }
 document.addEventListener('mousedown', function (e) { if (e.target.closest && e.target.closest('#ee .ee-bar button, #ee-menu button, #ee-toast button, #ee .ee-pal button')) e.preventDefault(); });
 document.addEventListener('click', function (e) {
   if (!DEP || !dentro(e)) { if (DEP && (S.pal !== -2 || S.menu)) { S.pal = -2; fechaMenu(); if (document.getElementById('ee-canvas')) redesenha(); } return; }
