@@ -32,7 +32,7 @@ function qb(table) {
 const supabase = { from: qb, auth: { getSession: async () => ({ data: { session: null } }) }, rpc: async (n, a) => { rpcs.push({ n, a }); return rpcRetorno; }, channel: () => ({ on() { return this; }, subscribe() { return this; } }), removeChannel() {} };
 const store = {};
 const mod = new Function('supabase', 'ES', 'TX', 'EE', 'EQ', 'JR', 'document', 'window', 'location', 'localStorage', 'setInterval', 'clearInterval',
-  src + '\n;return { state, setC: function (v) { C = v; }, setQ: function (v) { Q = v; }, setR: function (v) { R = v; }, setP: function (v) { P = v; }, setPSUG: function (v) { PSUG = v; }, setFin: function (o) { PRODUTOS = o.produtos; COMPRAS_EV = o.compras; ASSIN = o.assin; PRECOS = o.precos; }, itensDeHoje, ordenaFila, catDoContato, renderFila, receitaEstimada, pistasDaJornada, rascunhoMultiFunil, funisDaPessoa, fxResumoCartoes, setUM: function (v) { UM = v; }, setPAG: function (v) { PAG1A1 = v; }, dosDoFunil, dosCampo, dosProgresso, dosVisiveis, dosCruzamentos, dosFaltaPorCanal, dosMensagemTexto, insightsDaPlataforma };')(
+  src + '\n;return { state, setC: function (v) { C = v; }, setQ: function (v) { Q = v; }, setR: function (v) { R = v; }, setP: function (v) { P = v; }, setPSUG: function (v) { PSUG = v; }, setFin: function (o) { PRODUTOS = o.produtos; COMPRAS_EV = o.compras; ASSIN = o.assin; PRECOS = o.precos; }, itensDeHoje, ordenaFila, catDoContato, renderFila, receitaEstimada, pistasDaJornada, rascunhoMultiFunil, funisDaPessoa, fxResumoCartoes, setUM: function (v) { UM = v; }, setPAG: function (v) { PAG1A1 = v; }, dosDoFunil, dosCampo, dosProgresso, dosVisiveis, dosCruzamentos, dosFaltaPorCanal, dosMensagemTexto, insightsDaPlataforma, r1Codigo, r1Rotulo, r1Roteiro, r1Html, r1PainelHtml };')(
   supabase, {}, TXMOD, { iniciar() {}, depois() {}, campoMudou() {} }, {}, {}, document, { addEventListener() {}, confirm: () => true, scrollTo() {} }, { href: '' }, { getItem: (k) => store[k] ?? null, setItem: (k, v) => { store[k] = v; } }, () => 1, () => {});
 
 const dia = (n) => new Date(Date.now() + n * 864e5).toISOString();
@@ -197,6 +197,33 @@ console.log('== Plataforma: insights ==');
   check('2 mensagens sem ler, dossiê em aberto e nota da iAssistente', /2 mensagens dela no chat sem ler/.test(txt) && /dossiê ainda tem 5 respostas/.test(txt) && /1 nota da iAssistente/.test(txt));
   const ok = mod.insightsDaPlataforma(pessoa('b', 'Bia', { user_id: 'u-b', ultimo_evento_em: dia(0) }), { agora: Date.now(), cliques: [], chk: null, chatNaoLidas: 0, dosFalta: 0, umEm: null, notasVivas: 0 });
   check('ativa hoje e sem pendências: só bom sinal, sem ação', ok.length === 1 && ok[0].tom === 'ok' && !ok[0].acao);
+}
+
+console.log('== Registro dos 1:1 ==');
+{
+  const P5 = pessoa('p5', 'Lia', { origem: 'guia-checklist-chegada-au-pair', ultima_origem: 'guia-checklist-chegada-au-pair' });
+  mod.setC([P5]);
+  const feito = { id: 11, contato_id: 'p5', quando: dia(-10), status: 'feito', registro: null };
+  const marcado = { id: 'u2', contato_id: 'p5', quando: dia(3), status: 'agendado', registro: { origem: 'I03' } };
+  const cancel = { id: 'u3', contato_id: 'p5', quando: dia(-20), status: 'cancelado', registro: null };
+  mod.setUM([marcado, cancel, feito]);
+  check('código vem da página de origem (I05) e aparece como IL05', mod.r1Codigo(P5, feito) === 'I05' && mod.r1Rotulo('I05') === 'IL05');
+  check('o código guardado no registro vence a origem (I03 → IL03)', mod.r1Codigo(P5, marcado) === 'I03' && mod.r1Rotulo('I03') === 'IL03');
+  check('sem página conhecida: sem código nem IL', mod.r1Rotulo('') === '' && mod.r1Codigo(pessoa('x', 'X', { origem: 'instagram' }), feito) === '');
+  mod.state.fx.r1 = null;
+  let h = mod.r1Html(P5, null);
+  check('um toggle por 1:1, sem o cancelado, em ordem de data', (h.match(/data-r1="/g) || []).length === 2 && h.indexOf('data-r1="11"') < h.indexOf('data-r1="u2"'));
+  check('toggle mostra IL05 e IL03', />IL05</.test(h) && />IL03</.test(h) && !/>I05</.test(h));
+  check('fechado: sem os três blocos', !/r1-painel/.test(h));
+  mod.state.fx.r1 = '11'; h = mod.r1Html(P5, null);
+  check('aberto: três blocos lado a lado (perguntas, identificadas, conclusão)', /Perguntas do roteiro/.test(h) && /Identificadas/.test(h) && /Conclusão e encaminhamento/.test(h) && (h.match(/class="r1-b"/g) || []).length === 3);
+  check('aberto: pergunta se recebeu o link e o interesse em converter', /id="r1-int"/.test(h) && /Link do produto enviado/.test(h) && /data-r1save="11"/.test(h));
+  const salvo = { id: 'u4', contato_id: 'p5', quando: dia(-2), status: 'feito', registro: { origem: 'I05', perguntas: [{ k: 'cidade', l: 'Cidade' }, { k: 'nivel_frances', l: 'Francês' }], conclusao: 'Quer FLE.', encaminhamento: 'Mandar o link.', interesse: 'sim', link_enviado: true, link_enviado_em: dia(-2) } };
+  mod.setUM([salvo]); mod.state.fx.r1 = 'u4'; h = mod.r1Html(P5, null);
+  check('roteiro salvo vale (2 perguntas), identificadas 0 de 2 sem dossiê carregado', mod.r1Roteiro(P5, salvo, null).salvo === true && /<b>0<\/b> de 2/.test(h));
+  check('conclusão, interesse e link enviado voltam preenchidos', /Quer FLE\./.test(h) && /<option value="sim" selected>/.test(h) && /id="r1-link" checked/.test(h) && />registrado</.test(h));
+  mod.setUM([]); h = mod.r1Html(P5, null);
+  check('sem 1:1: mensagem de vazio', /Nenhum 1:1 marcado ou feito/.test(h) && !/data-r1=/.test(h));
 }
 
 console.log('\n' + (failed ? failed + ' FALHARAM, ' : '') + passed + ' passaram' + (failed ? '' : ', 0 falharam'));

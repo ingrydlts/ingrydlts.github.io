@@ -1369,3 +1369,19 @@ button.cal-d:hover{outline:1px solid var(--moss)}
 .ins-alerta{border-color:var(--red)}
 .ins-p{font-size:10.5px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; padding:2px 8px; border-radius:999px; background:var(--sunk); color:var(--ink-2)}
 .ins-t{flex:1 1 220px; font-size:13px}
+
+/* Registro dos 1:1 (Dossiê · visão geral) */
+.r1-lista { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 8px; }
+.r1-tg { display: inline-flex; align-items: center; gap: 8px; padding: 7px 12px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); font: inherit; font-size: 13px; cursor: pointer; }
+.r1-tg:hover { border-color: var(--moss); }
+.r1-tg { color: var(--ink); }
+.r1-tg.on { background: var(--moss-soft); color: var(--moss-ink); border-color: transparent; }
+.r1-tg.on .dv-fonte { color: var(--moss-ink); }
+.r1-cod { font-size: 12px; letter-spacing: .04em; }
+.r1-painel { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 4px; }
+.r1-b { color: var(--ink); border: 1px solid var(--line); border-radius: 12px; padding: 12px; background: var(--surface); min-width: 0; }
+.r1-n { margin: 0 0 6px; font-size: 13px; } .r1-n b { font-size: 26px; }
+.r1-ul li.ok { color: var(--moss); }
+.r1-f { display: block; font-size: 12px; margin: 0 0 8px; } .r1-f textarea, .r1-f select { display: block; width: 100%; margin-top: 3px; font: inherit; font-size: 13px; box-sizing: border-box; }
+.r1-c { display: flex; align-items: center; gap: 6px; font-size: 13px; margin: 0 0 10px; }
+@media (max-width: 760px) { .r1-painel { grid-template-columns: 1fr; } }

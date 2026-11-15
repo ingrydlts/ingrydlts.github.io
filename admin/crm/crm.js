@@ -2,13 +2,13 @@
 // Nada de service_role aqui. O banco é db/crm-fase2.sql; o desenho é o artefato "CRM Por Dentro".
 // Tudo que vem do banco é texto de terceiros (nome, e-mail, pergunta): passa sempre por esc().
 import { supabase } from '/assets/js/supabase-client.js';
-import * as TX from './taxonomia.js?v=2026-11-15.25';   // páginas, famílias e agrupamento dos modelos
-import * as ES from './estudio.js?v=2026-11-15.25';   // os blocos do estúdio de e-mails (entregas 2 e 3)
-import * as EE from './editor-email.js?v=2026-11-15.25';
-import * as EQ from './editor-quem.js?v=2026-11-15.25';
-import * as JR from './jornada.js?v=2026-11-15.25';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
-import * as FX from './ficha.js?v=2026-11-15.25';   // ficha v2: lógica pura (fila, démarches, funil, ações)
-import * as FH from './ficha-html.js?v=2026-11-15.25';   // ficha v2: HTML puro
+import * as TX from './taxonomia.js?v=2026-11-15.26';   // páginas, famílias e agrupamento dos modelos
+import * as ES from './estudio.js?v=2026-11-15.26';   // os blocos do estúdio de e-mails (entregas 2 e 3)
+import * as EE from './editor-email.js?v=2026-11-15.26';
+import * as EQ from './editor-quem.js?v=2026-11-15.26';
+import * as JR from './jornada.js?v=2026-11-15.26';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
+import * as FX from './ficha.js?v=2026-11-15.26';   // ficha v2: lógica pura (fila, démarches, funil, ações)
+import * as FH from './ficha-html.js?v=2026-11-15.26';   // ficha v2: HTML puro
 
 var PERSONAS = {
   au_pair_estudante: 'Au pair → estudante', campus_france: 'Campus France', alternancia_emprego: 'Alternância / emprego',
@@ -136,7 +136,7 @@ var P = [], PERR = '';
 var PSUG = [];
 var FILA = [];   // avisos agendados que ainda não saíram, de todas as pessoas (para o bloco da Hoje)
 var state = { funilVisao: 'leads', funilPorque: null, dosAberto: lerDosAberto(), dos: null, pc: null, ptab: null, pstab: 'assistente', pdias: {}, int: null, chatRasc: '', rascunho: {}, view: 'hoje', persona: '', sub: '', urg: '', stage: '', orig: '', camp: '', q: '', sel: null, qs: 'nova', qsel: null, inbox: 'perguntas', rs: 'nova', rsel: null, ps: 'novo', psel: null, preset: 'todos', seg: '', prevView: 'contatos',
-  fx: { tab: null, ord: null, hd: null, abertas: {}, ag: { i: 0, pop: null }, dem: 'todas', ckTodos: false, ckMais: false, tour: true } };
+  fx: { tab: null, ord: null, hd: null, abertas: {}, ag: { i: 0, pop: null }, dem: 'todas', ckTodos: false, ckMais: false, tour: true, r1: null } };
 var activeCid = null;
 var me = null;
 
@@ -232,7 +232,7 @@ async function loadAll() {
     // As assinaturas (db/crm-assinaturas.sql): separam quem já é cliente no Funil. Sem o SQL, todos ficam em Leads ou No app.
     supabase.from('assinaturas').select('contato_id,status,plano,moeda,teste_fim,periodo_fim,cancela_no_fim,criado_em').limit(5000),
     // Os 1:1 (db/crm-fase2.sql): alimentam o calendário e o indicador "1:1 marcados". Sem a tabela, ficam vazios.
-    supabase.from('um_a_um').select('id,contato_id,quando,status,criado_em').order('quando', { ascending: true }).limit(2000),
+    supabase.from('um_a_um').select('id,contato_id,quando,status,criado_em,registro').order('quando', { ascending: true }).limit(2000),
     // Os 1:1 pagos (db/crm-1a1.sql): quantos minutos e quando pagou. O valor em euros não é guardado: o Worker só repassa os minutos.
     supabase.from('um_a_um_pagamentos').select('contato_id,minutos,pago_em').order('pago_em', { ascending: false }).limit(2000)
   ]);
@@ -240,6 +240,10 @@ async function loadAll() {
   COMPRAS = {}; COMPRAS_EV = [];
   ((r[7] && !r[7].error && r[7].data) || []).forEach(function (e) { var p = (e.dados || {}).produto; if (p) { (COMPRAS[e.contato_id] = COMPRAS[e.contato_id] || {})[p] = 1; COMPRAS_EV.push({ produto: p, em: e.criado_em }); } });
   UM = r[14] && !r[14].error ? (r[14].data || []) : [];
+  if (r[14] && r[14].error && /registro/.test(String(r[14].error.message || ''))) {   // a coluna registro ainda não existe (db/crm-1a1-registro.sql não rodou): carrega sem ela
+    var u2 = await supabase.from('um_a_um').select('id,contato_id,quando,status,criado_em').order('quando', { ascending: true }).limit(2000);
+    UM = u2 && !u2.error ? (u2.data || []) : [];
+  }
   PAG1A1 = r[15] && !r[15].error ? (r[15].data || []) : [];
   C = r[0].data || [];
   ASSIN = {};
@@ -3067,7 +3071,7 @@ function fxHeaderHtml(c, d) {
 // Catálogo de démarches (cópia do app, processos.json): carregado uma vez; sem ele, tudo cai na démarche padrão.
 var FX_PROC = null;
 async function fxCarregaProcessos() {
-  try { var r = await fetch('processos.json?v=2026-11-15.25'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
+  try { var r = await fetch('processos.json?v=2026-11-15.26'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
 }
 // A sessão Checklist: pílulas por démarche, os 4 mais urgentes, pasta do Drive privada e "Ver mais desta sessão".
 function fxChecklistCorpo(c) {
@@ -3159,6 +3163,66 @@ function dosFonteTag(c, S, k) {
   if (sv !== undefined && sv !== null && sv !== '') return onbOrigemDe(k, String(sv)) ? 'chamada' : 'dossiê';
   return dosDoFunil(c, k) !== null ? 'funil' : '';
 }
+// ---------- Registro dos 1:1 (Dossiê · visão geral) ----------
+// Cada 1:1 é um toggle com o código da página de onde ela veio. IL05 = "inbound lead" da página I05: só o rótulo muda, o código guardado continua I05.
+var R1_INTERESSE = [['', 'Ainda não sei'], ['sim', 'Sim, quer o link'], ['talvez', 'Talvez, pensando'], ['nao', 'Não por agora']];
+function r1Codigo(c, u) {
+  var reg = u && u.registro && typeof u.registro === 'object' ? u.registro : {}, o = reg.origem || ORIGEM_PAGINA[ultimaOrigem(c)] || '';
+  return /^I0\d$/.test(o) ? o : '';
+}
+function r1Rotulo(cod) { return cod ? cod.replace(/^I/, 'IL') : ''; }
+// O roteiro que valia para este 1:1: o que ficou salvo no registro; sem registro, o que ainda falta perguntar por conversa.
+function r1Roteiro(c, u, S) {
+  var reg = u.registro && typeof u.registro === 'object' ? u.registro : null;
+  if (reg && Array.isArray(reg.perguntas) && reg.perguntas.length) return { salvo: true, qs: reg.perguntas.filter(function (q) { return q && q.k; }) };
+  var F = dosFaltaPorCanal(c, S);
+  return { salvo: false, qs: F.conversa.map(function (f) { return { k: f.k, l: f.l }; }) };
+}
+function r1Resposta(c, S, k) { return S ? dosValor(c, S.d, S.rasc, k) : ''; }
+function r1Html(c, S) {
+  var lista = UM.filter(function (x) { return x.contato_id === c.id && x.status !== 'cancelado'; }).sort(function (a, b) { return String(a.quando || '9').localeCompare(String(b.quando || '9')); });
+  var corpo;
+  if (!lista.length) corpo = '<p class="sub" style="margin:0">Nenhum 1:1 marcado ou feito ainda. Quando ela marcar, ele aparece aqui, com o roteiro e o que você registrar.</p>';
+  else corpo = '<div class="r1-lista">' + lista.map(function (u) {
+    var cod = r1Rotulo(r1Codigo(c, u)), aberto = state.fx.r1 === String(u.id), passou = u.status === 'feito' || (u.quando && new Date(u.quando).getTime() < Date.now() - 36e5);
+    var reg = u.registro && typeof u.registro === 'object' ? u.registro : {};
+    var estado = reg.conclusao || reg.encaminhamento ? 'registrado' : passou ? 'feito, sem registro' : 'marcado';
+    return '<button type="button" class="r1-tg' + (aberto ? ' on' : '') + '" data-r1="' + esc(u.id) + '" aria-expanded="' + (aberto ? 'true' : 'false') + '">' +
+      (cod ? '<b class="r1-cod">' + esc(cod) + '</b>' : '') + '<span>1:1 ' + (u.quando ? 'de ' + esc(fmtDate(u.quando)) + ' ' + esc(fmtHora(u.quando)) : 'sem data') + '</span><i class="dv-fonte">' + esc(estado) + '</i></button>';
+  }).join('') + '</div>' + r1PainelHtml(c, S, lista.filter(function (u) { return String(u.id) === state.fx.r1; })[0]);
+  return '<div class="dv-sec" id="dos-1a1"><div class="k">Registro dos 1:1</div>' + corpo + '</div>';
+}
+function r1PainelHtml(c, S, u) {
+  if (!u) return '';
+  var reg = u.registro && typeof u.registro === 'object' ? u.registro : {}, R = r1Roteiro(c, u, S), cod = r1Codigo(c, u);
+  var ident = R.qs.filter(function (q) { return r1Resposta(c, S, q.k) !== ''; });
+  var item = function (q) { var v = r1Resposta(c, S, q.k), f = dosCampo(q.k); return '<li' + (v !== '' ? ' class="ok"' : '') + '>' + (v !== '' ? '✓ ' : '') + esc(q.l) + (v !== '' ? ': <b>' + esc(f ? dosRotuloOpcao(f, v) : v) + '</b>' : '') + '</li>'; };
+  var b1 = '<div class="r1-b"><div class="k">Perguntas do roteiro</div>' + (R.qs.length ? '<ol class="dv-ol">' + R.qs.map(function (q) { return '<li>' + esc(q.l) + '</li>'; }).join('') + '</ol>' : '<p class="sub" style="margin:0">Nada a perguntar: o dossiê já está completo.</p>') +
+    (R.salvo ? '' : '<p class="sub" style="margin:6px 0 0">Ainda não fixado: é o que falta hoje. “Salvar registro” fixa esta lista como o roteiro deste 1:1.</p>') + '</div>';
+  var b2 = '<div class="r1-b"><div class="k">Identificadas</div><p class="r1-n"><b>' + ident.length + '</b> de ' + R.qs.length + '</p>' +
+    (R.qs.length ? '<ul class="dv-ul r1-ul">' + R.qs.map(item).join('') + '</ul>' : '') + '</div>';
+  var b3 = '<div class="r1-b"><div class="k">Conclusão e encaminhamento</div>' +
+    '<label class="r1-f">Conclusão<textarea id="r1-conc" rows="3" maxlength="1500" placeholder="Em uma ou duas frases: qual é o caso dela.">' + esc(reg.conclusao || '') + '</textarea></label>' +
+    '<label class="r1-f">Encaminhamento<textarea id="r1-enc" rows="2" maxlength="1500" placeholder="O próximo passo combinado.">' + esc(reg.encaminhamento || '') + '</textarea></label>' +
+    '<label class="r1-f">Interesse em converter<select id="r1-int">' + R1_INTERESSE.map(function (o) { return '<option value="' + o[0] + '"' + ((reg.interesse || '') === o[0] ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select></label>' +
+    '<label class="r1-c"><input type="checkbox" id="r1-link"' + (reg.link_enviado ? ' checked' : '') + '> Link do produto enviado' + (reg.link_enviado && reg.link_enviado_em ? ' em ' + esc(fmtDate(reg.link_enviado_em)) : '') + '</label>' +
+    '<button type="button" class="btn primary" data-r1save="' + esc(u.id) + '">Salvar registro</button></div>';
+  return '<div class="r1-painel" id="r1-p" data-origem="' + esc(cod) + '">' + b1 + b2 + b3 + '</div>';
+}
+async function r1Salvar(id) {
+  var u = UM.filter(function (x) { return String(x.id) === String(id); })[0], c = u && byC(u.contato_id); if (!u || !c) return;
+  var S = state.dos && state.dos.cid === c.id && state.dos.d ? state.dos : null, R = r1Roteiro(c, u, S), ant = u.registro && typeof u.registro === 'object' ? u.registro : {};
+  var interesse = $('r1-int') ? $('r1-int').value : '', link = !!($('r1-link') && $('r1-link').checked);
+  var reg = Object.assign({}, ant, {
+    origem: r1Codigo(c, u) || null, perguntas: R.qs,
+    identificadas: R.qs.filter(function (q) { return r1Resposta(c, S, q.k) !== ''; }).map(function (q) { return q.k; }),
+    conclusao: ($('r1-conc') ? $('r1-conc').value : '').trim().slice(0, 1500), encaminhamento: ($('r1-enc') ? $('r1-enc').value : '').trim().slice(0, 1500),
+    interesse: interesse || null, link_enviado: link, link_enviado_em: link ? (ant.link_enviado_em || new Date().toISOString()) : null, atualizado_em: new Date().toISOString()
+  });
+  var o = await supabase.from('um_a_um').update({ registro: reg }).eq('id', u.id);
+  if (o.error) return toast(/registro/.test(String(o.error.message || '')) ? 'Rode primeiro db/crm-1a1-registro.sql no Supabase.' : 'Não salvou: ' + o.error.message, 5000);
+  u.registro = reg; toast('Registro salvo.'); fxRepinta();
+}
 function dosVisaoHtml(c, d) {
   var S = state.dos && state.dos.cid === c.id && state.dos.d ? state.dos : null, conta = !!c.user_id, pos = !!(S && S.onbEm);
   var jor = d.jor || montaJornada([]), mails = d.mails || [], resps = d.resps || [], perg = d.perg || [], evs = d.eventos || [];
@@ -3211,7 +3275,7 @@ function dosVisaoHtml(c, d) {
     }
   } else if (S) falta = '<div class="dv-sec"><div class="k">O que falta</div><p class="sub" style="margin:0">Nada falta no dossiê.</p></div>';
   return '<section class="panel dv" id="dos-visao" style="padding:16px;margin-bottom:14px"><h3 style="font-size:17px;margin:0 0 2px">' + esc(titulo) + '</h3><p class="sub" style="margin:0 0 12px">' + esc(sub) + '</p>' +
-    '<div class="dv-grid">' + card('Quem ela é', quem) + card('De onde veio e o que respondeu', veio) + card('O que ela fez', fez) + '</div>' + cruz + falta + '</section>';
+    '<div class="dv-grid">' + card('Quem ela é', quem) + card('De onde veio e o que respondeu', veio) + card('O que ela fez', fez) + '</div>' + r1Html(c, S) + cruz + falta + '</section>';
 }
 // ---------- Plataforma: a sessão "Insights" (depois do 1:1, com ela no app) ----------
 function insightsDaPlataforma(c, X) {
@@ -5319,6 +5383,8 @@ document.addEventListener('click', async function (e) {
   if (t.dataset.calmes) { state.calOff = (state.calOff || 0) + Number(t.dataset.calmes); return renderCalendario(); }
   if (t.dataset.pistaemail) { state.rascunho[t.dataset.pistaemail] = (state.rascPista || {})[t.dataset.pistaemail] || ''; return openPessoa(t.dataset.pistaemail, 'conversa'); }
   if (t.dataset.dosmsg) return dosMontaMensagem(t.dataset.dosmsg, t.dataset.tipo);
+  if (t.dataset.r1) { state.fx.r1 = state.fx.r1 === t.dataset.r1 ? null : t.dataset.r1; return fxRepinta(); }
+  if (t.dataset.r1save) return r1Salvar(t.dataset.r1save);
   if (t.dataset.insacao) {
     var cc0 = byC(state.sel); if (!cc0) return;
     if (t.dataset.insacao === 'dossie') { state.fx.tab = 'dossie'; return fxRepinta(); }
