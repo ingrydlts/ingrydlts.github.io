@@ -30,7 +30,7 @@ export function htmlCabecalho(d, h) {
   const blocos = (d.blocos || []).map((b) =>
     (b.titulo ? '<span class="tag">' + e(b.titulo) + '</span>' : '') +
     '<div class="hd-k">' + (b.cartoes || []).map((k) =>
-      '<div class="k' + (k.tom === 'alerta' ? ' alerta' : k.tom === 'ok' ? ' ok' : '') + '"><b class="l">' + e(k.rotulo) + '</b><div class="v">' + e(k.valor) + '</div>' +
+      '<div class="k' + (k.tom === 'alerta' ? ' alerta' : k.tom === 'ok' ? ' ok' : '') + '"' + (k.sub ? ' title="' + e(k.sub) + '"' : '') + '><b class="l">' + e(k.rotulo) + '</b><div class="v">' + e(k.valor) + '</div>' +
       (k.sub ? '<div class="s">' + e(k.sub) + '</div>' : '') + '</div>').join('') + '</div>').join('');
   return '<header class="hd" id="fx-hd">' +
     '<div class="hd-l1"><span class="hd-av" aria-hidden="true">' + e(iniciais(c)) + '</span><h2 class="hd-n">' + e(c.nome || c.email || 'Sem nome') + '</h2>' +

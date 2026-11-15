@@ -1245,3 +1245,21 @@ details.ee-sec[open]>summary{margin-bottom:8px}
 .fila-ctl{display:flex; flex-wrap:wrap; gap:8px; padding:0 16px 4px}
 .fila-resumo{margin:0; padding:2px 16px 8px; font-size:12px}
 .fila-mais{display:block; margin:8px 16px 12px}
+
+/* Ficha enxuta: cabeçalho de uma linha de cartões e o aviso junto de "Minhas próximas ações" */
+.hd{padding:8px 12px}
+.hd-k{grid-template-columns:repeat(auto-fit,minmax(128px,1fr)); gap:6px; margin-top:6px}
+.hd .k{display:flex; align-items:baseline; justify-content:space-between; gap:6px; padding:4px 9px; border-radius:8px; flex-wrap:wrap}
+.hd .k .l{font-size:10px}
+.hd .k .v{font-size:15px; margin-top:0; text-align:right}
+.hd .k .s{display:none}
+.hd .est{display:none}
+.hd .tag{margin:6px 2px 0}
+.fx-topo{display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:12px; align-items:start; margin-top:10px}
+.fx-topo #fx-aviso-box:empty{display:none}
+.fx-topo:has(#fx-aviso-box:empty){grid-template-columns:minmax(0,1fr)}
+.fx-topo .aviso{margin-top:0; height:100%}
+.fx-topo .fx-card{flex-basis:calc((100% - 12px)/2); min-height:76px}
+.fx-topo:has(#fx-aviso-box:empty) .fx-card{flex-basis:calc((100% - 24px)/3)}
+@media (max-width:900px){ .fx-topo{grid-template-columns:minmax(0,1fr)} .fx-topo .fx-card{flex-basis:calc((100% - 12px)/2)} }
+@media (max-width:560px){ .fx-topo .fx-card{flex-basis:86%} }
