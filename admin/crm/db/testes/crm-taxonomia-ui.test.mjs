@@ -242,7 +242,7 @@ H.ST.vazio = false; H.ST.k = 'cf_guia_1';
 const Jx = H.jornadaAtual();
 check('cabeçalho: o modelo aberto define a página (cf_guia_1 mora na I03)', H.pgAtual(Jx) === 'I03');
 const cabI03 = H.cabecalhoHtml(Jx, 'I03');
-check('cabeçalho: uma pílula por página de entrada (I01 a I05) e "Todos os percursos"', ['I01', 'I02', 'I03', 'I04', 'I05', 'TR'].every((k) => cabI03.indexOf('data-stpg="' + k + '"') >= 0));
+check('cabeçalho: uma opção do dropdown por página de entrada (I01 a I05) e "Todos os percursos"', ['I01', 'I02', 'I03', 'I04', 'I05', 'TR'].every((k) => cabI03.indexOf('data-stpg="' + k + '"') >= 0));
 check('cabeçalho: a página atual vem marcada', /data-stpg="I03" aria-current="true"/.test(cabI03) && /data-stpg="I01" aria-current="false"/.test(cabI03));
 check('cabeçalho: o e-mail aberto vem marcado e abre pelo mesmo clique da lista antiga (data-tpl-pick)', /data-tpl-pick="cf_guia_1" aria-current="true"/.test(cabI03));
 const faltasI03 = JRM.ETAPAS.filter((e) => Jx.linhas.find((l) => l.k === 'I03').celulas[e.k].length === 0);
@@ -259,7 +259,7 @@ check('cabeçalho: página escolhida sem e-mail continua selecionada, sem e-mail
 H.ST.vazio = false; H.ST.pg = null; H.ST.k = 'cf_guia_1';
 H.setM(mods);
 check('cabeçalho: modelosDaPagina da I03 tem o cf_guia_1', H.modelosDaPagina(Jx, 'I03').some((m) => m.chave === 'cf_guia_1'));
-check('handler: clicar na página abre o primeiro e-mail dela ou mostra o estado vazio', /dataset\.stpg[\s\S]*?modelosDaPagina\(jornadaAtual\(\), t\.dataset\.stpg\)\[0\][\s\S]*?ST\.vazio = true/.test(csrc));
+check('handler: escolher a página no dropdown abre o primeiro e-mail dela ou mostra o estado vazio', /st-pg-sel[\s\S]*?abrirPaginaEntrada\(e\.target\.value\)/.test(csrc) && /function abrirPaginaEntrada\(pg\)[\s\S]*?modelosDaPagina\(jornadaAtual\(\), pg\)\[0\][\s\S]*?ST\.vazio = true/.test(csrc));
 
 check('css: o grid do estúdio tem só o editor e a prévia', /\.studio\{position:relative; display:grid; grid-template-columns:minmax\(0,1\.25fr\) minmax\(0,\.95fr\);/.test(cssSrc));
 

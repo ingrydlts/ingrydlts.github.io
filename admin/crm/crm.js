@@ -2,13 +2,13 @@
 // Nada de service_role aqui. O banco é db/crm-fase2.sql; o desenho é o artefato "CRM Por Dentro".
 // Tudo que vem do banco é texto de terceiros (nome, e-mail, pergunta): passa sempre por esc().
 import { supabase } from '/assets/js/supabase-client.js';
-import * as TX from './taxonomia.js?v=2026-11-15.9';   // páginas, famílias e agrupamento dos modelos
-import * as ES from './estudio.js?v=2026-11-15.9';   // os blocos do estúdio de e-mails (entregas 2 e 3)
-import * as EE from './editor-email.js?v=2026-11-15.9';
-import * as EQ from './editor-quem.js?v=2026-11-15.9';
-import * as JR from './jornada.js?v=2026-11-15.9';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
-import * as FX from './ficha.js?v=2026-11-15.9';   // ficha v2: lógica pura (fila, démarches, funil, ações)
-import * as FH from './ficha-html.js?v=2026-11-15.9';   // ficha v2: HTML puro
+import * as TX from './taxonomia.js?v=2026-11-15.10';   // páginas, famílias e agrupamento dos modelos
+import * as ES from './estudio.js?v=2026-11-15.10';   // os blocos do estúdio de e-mails (entregas 2 e 3)
+import * as EE from './editor-email.js?v=2026-11-15.10';
+import * as EQ from './editor-quem.js?v=2026-11-15.10';
+import * as JR from './jornada.js?v=2026-11-15.10';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
+import * as FX from './ficha.js?v=2026-11-15.10';   // ficha v2: lógica pura (fila, démarches, funil, ações)
+import * as FH from './ficha-html.js?v=2026-11-15.10';   // ficha v2: HTML puro
 
 var PERSONAS = {
   au_pair_estudante: 'Au pair → estudante', campus_france: 'Campus France', alternancia_emprego: 'Alternância / emprego',
@@ -292,6 +292,11 @@ function artigoDe(origem) {
   var a = ARTIGOS[origem];
   return a ? { titulo: a.titulo, url: a.url } : { titulo: origem, url: null };
 }
+// Só o link do artigo de onde veio a pergunta (o título fica na dica). Sem o artigo na lista, mostra o código dele.
+function artigoLink(origem) {
+  var a = artigoDe(origem); if (!a) return '';
+  return a.url ? '<a href="' + esc(a.url) + '" target="_blank" rel="noopener" title="' + esc(a.titulo) + '">Ver o artigo ↗</a>' : 'Artigo: ' + esc(a.titulo);
+}
 function artigoHtml(origem) {
   var a = artigoDe(origem); if (!a) return '';
   return a.url ? '<a href="' + esc(a.url) + '" target="_blank" rel="noopener">' + esc(a.titulo) + '</a>' : esc(a.titulo);
@@ -571,15 +576,14 @@ function renderQuestions() {
     var h = hrsSince(x.criado_em);
     return '<button class="qitem" data-q="' + x.id + '" aria-current="' + (x.id === state.qsel) + '" type="button"><div class="l1"><b>' + esc(short(c)) + '</b>' +
       (x.status === 'nova' ? '<span class="sla num ' + (h >= 72 ? 'late' : 'ok') + '">' + (h >= 72 ? 'atrasada · ' : '') + hrs(h) + '</span>' : '<span class="sla ok">respondida</span>') +
-      '</div><p>' + esc(x.texto) + '</p>' + (x.origem ? '<span class="persona" style="display:block;font-weight:500;margin-bottom:2px">Artigo: ' + esc(artigoDe(x.origem).titulo) + '</span>' : '') +
-      '<span class="persona">' + esc(personaLabel(c)) + (subLabel(c) ? ' · ' + esc(subLabel(c)) : '') + '</span></button>';
+      '</div><p>' + esc(x.texto) + '</p>' + '<span class="persona">' + esc(personaLabel(c)) + (subLabel(c) ? ' · ' + esc(subLabel(c)) : '') + '</span></button>';
   }).join('') || '<div class="empty">' + (state.qs === 'nova' ? 'Nenhuma pergunta nova. Tudo respondido.' : 'Nada respondido ainda.') + '</div>';
   var x = Q.filter(function (y) { return y.id === state.qsel; })[0];
   var c = x && byC(x.contato_id);
   if (!x || !c) { $('qdetail').innerHTML = '<div class="empty">Escolha uma pergunta na lista.</div>'; return; }
   $('qdetail').innerHTML =
     '<div style="display:flex;gap:12px;align-items:center"><div class="' + avClass(c) + '">' + esc(ini(c)) + '</div><div style="min-width:0"><b style="font-weight:600">' + esc(displayName(c)) + '</b><div class="mail">' + esc(c.email) + ' · enviada há ' + hrs(hrsSince(x.criado_em)) + '</div></div><button class="link" style="margin-left:auto" data-open="' + esc(c.id) + '" type="button">Abrir ficha →</button></div>' +
-    (x.origem ? '<p class="sub" style="margin:10px 0 4px">Pergunta feita no artigo: <b>' + artigoHtml(x.origem) + '</b></p>' : '') +
+    (x.origem ? '<p class="sub" style="margin:10px 0 4px">' + artigoLink(x.origem) + '</p>' : '') +
     '<blockquote>' + esc(x.texto) + '</blockquote>' +
     '<div class="ctx">' + urgPill(c.urgencia) + '<span class="pill">' + esc(personaLabel(c)) + (subLabel(c) ? ' · ' + esc(subLabel(c)) : '') + '</span><span class="pill">Estágio: ' + esc(stageLabel(c.estagio)) + '</span></div>' +
     (x.status === 'nova'
@@ -2679,7 +2683,7 @@ function fxHeaderHtml(c, d) {
 // Catálogo de démarches (cópia do app, processos.json): carregado uma vez; sem ele, tudo cai na démarche padrão.
 var FX_PROC = null;
 async function fxCarregaProcessos() {
-  try { var r = await fetch('processos.json?v=2026-11-15.9'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
+  try { var r = await fetch('processos.json?v=2026-11-15.10'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
 }
 // A sessão Checklist: pílulas por démarche, os 4 mais urgentes, pasta do Drive privada e "Ver mais desta sessão".
 function fxChecklistCorpo(c) {
@@ -3549,9 +3553,10 @@ function modelosDaPagina(J, pg) {   // na ordem das etapas; "OUT" são os que n�
 }
 function cabecalhoHtml(J, pg) {
   var temOutros = ['aquecimento', 'campanhas', 'semEtapa'].some(function (g) { return J.bandejas[g].length; });
-  var paginas = J.linhas.map(function (l) {
-    return '<button type="button" class="ee-passo" data-stpg="' + esc(l.k) + '" aria-current="' + (l.k === pg) + '" title="' + esc(l.nome) + ' · ' + l.cobertas + ' de ' + JR.ETAPAS.length + ' etapas com e-mail"><span class="n">' + esc(l.k) + '</span><span class="t">' + esc(l.nome) + '</span></button>';
-  }).join('') + (temOutros ? '<button type="button" class="ee-passo" data-stpg="OUT" aria-current="' + (pg === 'OUT') + '"><span class="n">…</span><span class="t">Outros e-mails</span></button>' : '');
+  // As páginas de entrada num dropdown (a escolha abre o primeiro e-mail da página, ou mostra as etapas para criar).
+  var paginas = '<select class="ee-pg-sel" id="st-pg-sel" aria-label="Página de entrada">' + J.linhas.map(function (l) {
+    return '<option value="' + esc(l.k) + '" data-stpg="' + esc(l.k) + '" aria-current="' + (l.k === pg) + '"' + (l.k === pg ? ' selected' : '') + ' title="' + esc(l.nome) + ' · ' + l.cobertas + ' de ' + JR.ETAPAS.length + ' etapas com e-mail">' + esc(l.k) + ' · ' + esc(l.nome) + '</option>';
+  }).join('') + (temOutros ? '<option value="OUT" data-stpg="OUT" aria-current="' + (pg === 'OUT') + '"' + (pg === 'OUT' ? ' selected' : '') + '>Outros e-mails</option>' : '') + '</select>';
   var pill = function (m, rotulo) {
     var sit = situacaoDoModelo(m), atual = !ST.vazio && ST.k === m.chave;
     return '<button type="button" class="ee-passo ee-et" data-tpl-pick="' + esc(m.chave) + '" aria-current="' + atual + '" title="' + esc(m.nome + ' · ' + sit[0]) + '"><i class="ee-sd ' + (PONTO_ESTADO[sit[1]] || 'dr') + '" aria-hidden="true"></i><span class="t"><small>' + esc(rotulo) + '</small>' + esc(m.nome) + '</span></button>';
@@ -4864,12 +4869,6 @@ document.addEventListener('click', async function (e) {
   if (t.dataset.cmpaba) return cmpAba(t.dataset.cmpaba);
   if (t.id === 'cmp-restaurar') { CMP.editado = null; $('compose-txt').value = CMP.e.body; return cmpFormato(); }
   if (t.dataset.tplPick) { ST.criar = null; await salvar(); abrirModelo(t.dataset.tplPick); ST.tab = 'editar'; return renderModelos(); }
-  if (t.dataset.stpg) {   // escolheu uma página de entrada: abre o primeiro e-mail dela, ou mostra as etapas para criar
-    await salvar(); ST.criar = null; ST.vista = 'estudio'; ST.tab = 'editar';
-    var pri = modelosDaPagina(jornadaAtual(), t.dataset.stpg)[0];
-    if (pri) abrirModelo(pri.chave); else { ST.vazio = true; ST.pg = t.dataset.stpg; ST.k = null; ST.v = null; ST.d = null; ST.dKey = null; ST.montado = null; }
-    return renderModelos();
-  }
   if (t.dataset.eepasso) { await salvar(); ST.passo = t.dataset.eepasso; $('studio').dataset.previa = previaAberta() ? '1' : '0'; renderEditor(); return renderPrevia(); }
   if (t.dataset.stdev) { ST.dev = t.dataset.stdev; return renderPrevia(); }
   if (t.dataset.stmodo) { ST.modo = t.dataset.stmodo; return renderPrevia(); }
@@ -4933,7 +4932,15 @@ document.addEventListener('click', async function (e) {
     return toast('Lista exportada');
   }
 });
+// Escolheu uma página de entrada no dropdown: abre o primeiro e-mail dela, ou mostra as etapas para criar.
+async function abrirPaginaEntrada(pg) {
+  await salvar(); ST.criar = null; ST.vista = 'estudio'; ST.tab = 'editar';
+  var pri = modelosDaPagina(jornadaAtual(), pg)[0];
+  if (pri) abrirModelo(pri.chave); else { ST.vazio = true; ST.pg = pg; ST.k = null; ST.v = null; ST.d = null; ST.dKey = null; ST.montado = null; }
+  return renderModelos();
+}
 document.addEventListener('change', async function (e) {
+  if (e.target.id === 'st-pg-sel') return abrirPaginaEntrada(e.target.value);
   if (e.target.id === 'compose-tpl') return openCompose(activeCid, e.target.value);
   if (e.target.id === 'st-who') { ST.who = e.target.value; return renderPrevia(); }
   if (e.target.dataset && e.target.dataset.novopara && ST.criar) { mudarPara(ST.criar.para, e.target.dataset.novopara, e.target.value, e.target.checked); if (e.target.dataset.novopara === 'produto' || e.target.dataset.novopara === 'materiais') renderCriar(); criarPode(); return renderPrevia(); }
