@@ -67,7 +67,15 @@ async function main() {
   check('selos inválidos são recusados: valor fora da lista, mais de 4, não é lista, em outro tipo', !(await ok('documento', { selos: ['xyz'] })) && !(await ok('documento', { selos: ['traducao', 'haia', 'equivaler', 'original', 'traducao'] })) && !(await ok('documento', { selos: 'traducao' })) && !(await ok('documento', { selos: [1] })) && !(await ok('escola', { selos: ['haia'] })));
   check('a pessoa não edita selos (dados_dela do documento só aceita "reunido")', !(await um("select caso_board_chaves_ok('documento', '{\"selos\":[\"haia\"]}'::jsonb, true) r")).r);
   check('o que o guias já validava continua (bilan com data inválida)', !(await ok('bilan', { data: '12/11/2026' })) && await ok('bilan', { data: '2026-11-12', palavras: ['a'] }));
-  const dsel = await ins('documento', 'Certidão de nascimento', null, { direcao: 'reune', selos: ['traducao', 'haia'] });
+  // crm-caso-checklists.sql: "checklists" nos documentos (os démarches onde o documento aparece); repete o corpo e acrescenta a chave
+  const sqlChk = readFileSync(path.resolve(HERE, '../crm-caso-checklists.sql'), 'utf8');
+  check('crm-caso-checklists.sql roda duas vezes sem erro', (await attempt(() => db.exec(sqlChk))).ok && (await attempt(() => db.exec(sqlChk))).ok);
+  check('documento aceita checklists válidos, com selos juntos e lista vazia', await ok('documento', { direcao: 'reune', selos: ['haia'], checklists: ['visa', 'visa_estudante'] }) && await ok('documento', { checklists: [] }));
+  check('checklists inválidos são recusados: não é lista, mais de 8, chave com maiúscula ou espaço, número, em outro tipo', !(await ok('documento', { checklists: 'visa' })) && !(await ok('documento', { checklists: ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i'] })) &&
+    !(await ok('documento', { checklists: ['Visa'] })) && !(await ok('documento', { checklists: ['visa estudante'] })) && !(await ok('documento', { checklists: [1] })) && !(await ok('escola', { checklists: ['visa'] })));
+  check('a pessoa não edita checklists (dados_dela do documento só aceita "reunido")', !(await um("select caso_board_chaves_ok('documento', '{\"checklists\":[\"visa\"]}'::jsonb, true) r")).r);
+  check('o que os SQLs anteriores validavam continua (selos e bilan)', !(await ok('documento', { selos: ['xyz'] })) && !(await ok('bilan', { data: 'ontem' })) && await ok('documento', { selos: ['traducao'] }));
+  const dsel = await ins('documento', 'Certidão de nascimento', null, { direcao: 'reune', selos: ['traducao', 'haia'], checklists: ['visa'] });
   check('o documento com selos é gravado pela tabela', !!dsel.id);
   const acaoOk = await attempt(() => db.query("insert into caso_acoes (contato_id, titulo, dono, canal, botao, passo_chave) values ($1, 'Tradução juramentada de documentos', 'ela', 'plataforma', 'conferir_documentos', 'docs:traducao')", [c]));
   check('caso_acoes aceita o botão conferir_documentos e continua recusando botão inventado', acaoOk.ok && !(await attempt(() => db.query("insert into caso_acoes (contato_id, titulo, dono, canal, botao, passo_chave) values ($1, 'x', 'ela', 'plataforma', 'inventado', 'x')", [c]))).ok);
