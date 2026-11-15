@@ -2,13 +2,13 @@
 // Nada de service_role aqui. O banco é db/crm-fase2.sql; o desenho é o artefato "CRM Por Dentro".
 // Tudo que vem do banco é texto de terceiros (nome, e-mail, pergunta): passa sempre por esc().
 import { supabase } from '/assets/js/supabase-client.js';
-import * as TX from './taxonomia.js?v=2026-11-15.37';   // páginas, famílias e agrupamento dos modelos
-import * as ES from './estudio.js?v=2026-11-15.37';   // os blocos do estúdio de e-mails (entregas 2 e 3)
-import * as EE from './editor-email.js?v=2026-11-15.37';
-import * as EQ from './editor-quem.js?v=2026-11-15.37';
-import * as JR from './jornada.js?v=2026-11-15.37';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
-import * as FX from './ficha.js?v=2026-11-15.37';   // ficha v2: lógica pura (fila, démarches, funil, ações)
-import * as FH from './ficha-html.js?v=2026-11-15.37';   // ficha v2: HTML puro
+import * as TX from './taxonomia.js?v=2026-11-15.38';   // páginas, famílias e agrupamento dos modelos
+import * as ES from './estudio.js?v=2026-11-15.38';   // os blocos do estúdio de e-mails (entregas 2 e 3)
+import * as EE from './editor-email.js?v=2026-11-15.38';
+import * as EQ from './editor-quem.js?v=2026-11-15.38';
+import * as JR from './jornada.js?v=2026-11-15.38';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
+import * as FX from './ficha.js?v=2026-11-15.38';   // ficha v2: lógica pura (fila, démarches, funil, ações)
+import * as FH from './ficha-html.js?v=2026-11-15.38';   // ficha v2: HTML puro
 
 var PERSONAS = {
   au_pair_estudante: 'Au pair → estudante', campus_france: 'Campus France', alternancia_emprego: 'Alternância / emprego',
@@ -2783,7 +2783,10 @@ function pcTopoHtml(c) {
   var pc = pcEstado(c.id);
   return '<div class="pc-linha"><input type="file" id="pc-arq" class="pc-arq-in" accept=".txt,.pdf,.jpg,.jpeg,.png,text/plain,application/pdf,image/jpeg,image/png" data-pcarq="' + esc(c.id) + '"><label class="btn pc-arq" for="pc-arq">Anexar a ligação transcrita</label>' +
     '<button class="btn primary" type="button" data-pcler="' + esc(c.id) + '"' + (pc.estado === 'lendo' ? ' disabled' : '') + '>' + (pc.estado === 'lendo' ? 'Lendo a call…' : 'Ler a call com IA') + '</button></div>' +
-    '<p class="sub pc-dica">' + (pc.arqNome ? '<b>' + esc(pc.arqNome) + '</b>. ' : 'Aceita .txt, PDF ou imagem. ') + 'A IA só propõe: nada entra na ficha sem você conferir. A leitura usa tokens pagos da Anthropic.</p>' +
+    '<div class="pc-linha pc-notion"><input type="url" id="pc-notion" class="pc-notion-in" placeholder="Ou cole o link da página do Notion da ligação" value="' + esc(pc.notionUrl || '') + '" aria-label="Link da página do Notion da ligação">' +
+    '<button class="btn" type="button" data-pcnotion="' + esc(c.id) + '"' + (pc.notionLendo ? ' disabled' : '') + '>' + (pc.notionLendo ? 'Lendo o Notion…' : 'Ler do Notion') + '</button></div>' +
+    (pc.notionMsg ? '<p class="sub" role="status" style="margin:0 0 6px">' + esc(pc.notionMsg) + '</p>' : '') +
+    '<p class="sub pc-dica">' + (pc.arqNome ? '<b>' + esc(pc.arqNome) + '</b>. ' : 'Aceita .txt, PDF ou imagem, ou o link do Notion. ') + 'A IA só propõe: nada entra na ficha sem você conferir. A leitura usa tokens pagos da Anthropic.</p>' +
     (pc.estado === 'lendo' ? '<p class="sub" role="status">Lendo a call… (leva alguns segundos)</p>' : '') + (pc.erro ? '<p class="err" role="alert">' + esc(pc.erro) + '</p>' : '');
 }
 // Os quadros que a leitura preenche além de Resumo e Próximos passos (que são os campos do Dossiê): pontos de atenção e o que confirmar.
@@ -2833,6 +2836,39 @@ function pcPreencher(cid, auto) {
   poe('ligacao_resumo', p.resumo || '');
   poe('proximos_passos', (p.proximos_passos || []).map(function (x) { return '- ' + x; }).join('\n'));
   if (!auto) toast(mudou ? 'Resumo e próximos passos preenchidos. Salve o dossiê para guardar.' : 'A leitura não trouxe resumo nem próximos passos.');
+}
+// Ler a página do Notion da ligação (a mesma leitura do menu Onboarding), sem sair da ficha. O Worker acha a ficha pelo e-mail da página:
+// se for outra pessoa, não mexo nesta ficha e aviso. O Notion só é lido, nada é escrito lá nem enviado a ninguém.
+async function pcLerNotion(cid) {
+  var pc = pcEstado(cid), inp = $('pc-notion'), url = String((inp && inp.value) || pc.notionUrl || '').trim();
+  pc.notionUrl = url; pc.erro = ''; pc.notionMsg = '';
+  if (!url) { pc.erro = 'Cole o link da página do Notion.'; return pintaPoscall(cid); }
+  if (!/^https:\/\//i.test(url)) { pc.erro = 'O link precisa começar com https:// e ser de notion.so, notion.com ou notion.site.'; return pintaPoscall(cid); }
+  var sess = await supabase.auth.getSession();
+  if (!sess.data.session) { pc.erro = 'Sessão expirada. Recarregue a página e entre de novo.'; return pintaPoscall(cid); }
+  pc.notionLendo = true; pintaPoscall(cid);
+  var ctl = new AbortController(), cedo = setTimeout(function () { ctl.abort(); }, 60000), data;
+  try {
+    var res = await fetch(WORKER_BASE + '/api/crm/onboarding/notion/ler', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + sess.data.session.access_token }, body: JSON.stringify({ url: url }), signal: ctl.signal });
+    data = await res.json().catch(function () { return {}; });
+    if (!res.ok || !data.ok) throw new Error(data.error || ('Erro ' + res.status));
+  } catch (e) {
+    pc.notionLendo = false;
+    pc.erro = e && e.name === 'AbortError' ? 'A leitura demorou mais de 1 minuto e foi cancelada. Tente de novo.' : e instanceof TypeError ? 'Não consegui falar com o Worker. Confira a internet e tente de novo.' : (e.message || 'Algo deu errado.');
+    return pintaPoscall(cid);
+  } finally { clearTimeout(cedo); }
+  pc.notionLendo = false;
+  await reload();
+  if (data.contato_id !== cid) {   // a página é de outra pessoa: a ficha dela foi criada ou atualizada, esta não mudou
+    pc.erro = 'Essa página é de outra pessoa' + (data.pessoa ? ' (' + data.pessoa + ')' : '') + '. A ficha dela foi ' + (data.criado ? 'criada' : 'atualizada') + '; esta ficha não mudou.';
+    if (byC(data.contato_id)) pc.erro += ' Abra a ficha dela pela lista.';
+    return pintaPoscall(cid);
+  }
+  var n = ((data.aplicado || {}).preenchidos || []).length;
+  state.ontResumo = data; state.pc = null;
+  pcEstado(cid).notionMsg = 'Notion lido: ' + (n ? n + (n === 1 ? ' campo preenchido' : ' campos preenchidos') + ' no Dossiê' : 'nenhum campo novo no Dossiê') + '. O que ficou como proposta aparece abaixo.';
+  toast('Notion lido.');
+  if (state.view === 'pessoa') renderPessoa();
 }
 async function pcLer(cid, t) {
   var pc = pcEstado(cid), c = byC(cid), transcricao = String(dosValor(c, state.dos.d, state.dos.rasc || {}, 'ligacao_transcricao') || '').trim();
@@ -3139,7 +3175,7 @@ function fxHeaderHtml(c, d) {
 // Catálogo de démarches (cópia do app, processos.json): carregado uma vez; sem ele, tudo cai na démarche padrão.
 var FX_PROC = null;
 async function fxCarregaProcessos() {
-  try { var r = await fetch('processos.json?v=2026-11-15.37'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
+  try { var r = await fetch('processos.json?v=2026-11-15.38'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
 }
 // A sessão Checklist: pílulas por démarche, os 4 mais urgentes, pasta do Drive privada e "Ver mais desta sessão".
 function fxChecklistCorpo(c) {
@@ -5587,6 +5623,7 @@ document.addEventListener('click', async function (e) {
   if (t.dataset.dossalvar) return salvarDossie(t.dataset.dossalvar, t);
   if (t.dataset.pcler) return pcLer(t.dataset.pcler, t);
   if (t.dataset.pcpreencher) return pcPreencher(t.dataset.pcpreencher, false);
+  if (t.dataset.pcnotion) return pcLerNotion(t.dataset.pcnotion);
   if (t.dataset.pcaplicar) return pcAplicar(t.dataset.pcaplicar, t);
   if (t.dataset.pcdescartar) return pcDescartar(t.dataset.pcdescartar, t);
   if (t.dataset.pcchat) return pcChat(t.dataset.pcchat);

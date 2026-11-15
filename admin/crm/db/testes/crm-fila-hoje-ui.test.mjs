@@ -32,7 +32,7 @@ function qb(table) {
 const supabase = { from: qb, auth: { getSession: async () => ({ data: { session: null } }) }, rpc: async (n, a) => { rpcs.push({ n, a }); return rpcRetorno; }, channel: () => ({ on() { return this; }, subscribe() { return this; } }), removeChannel() {} };
 const store = {};
 const mod = new Function('supabase', 'ES', 'TX', 'EE', 'EQ', 'JR', 'document', 'window', 'location', 'localStorage', 'setInterval', 'clearInterval',
-  src + '\n;return { state, setC: function (v) { C = v; }, setQ: function (v) { Q = v; }, setR: function (v) { R = v; }, setP: function (v) { P = v; }, setPSUG: function (v) { PSUG = v; }, setFin: function (o) { PRODUTOS = o.produtos; COMPRAS_EV = o.compras; ASSIN = o.assin; PRECOS = o.precos; }, itensDeHoje, ordenaFila, catDoContato, renderFila, receitaEstimada, pistasDaJornada, rascunhoMultiFunil, funisDaPessoa, fxResumoCartoes, setUM: function (v) { UM = v; }, setPAG: function (v) { PAG1A1 = v; }, dosDoFunil, dosCampo, dosProgresso, dosVisiveis, dosCruzamentos, dosFaltaPorCanal, dosMensagemTexto, insightsDaPlataforma, r1Codigo, r1Rotulo, r1Roteiro, r1Html, r1PainelHtml, dosVisaoHtml, dosLigacaoHtml, dosMdTexto, dosCampoHtml, pcTopoHtml, pcQuadrosHtml, pcPreencher, pcEstado };')(
+  src + '\n;return { state, setC: function (v) { C = v; }, setQ: function (v) { Q = v; }, setR: function (v) { R = v; }, setP: function (v) { P = v; }, setPSUG: function (v) { PSUG = v; }, setFin: function (o) { PRODUTOS = o.produtos; COMPRAS_EV = o.compras; ASSIN = o.assin; PRECOS = o.precos; }, itensDeHoje, ordenaFila, catDoContato, renderFila, receitaEstimada, pistasDaJornada, rascunhoMultiFunil, funisDaPessoa, fxResumoCartoes, setUM: function (v) { UM = v; }, setPAG: function (v) { PAG1A1 = v; }, dosDoFunil, dosCampo, dosProgresso, dosVisiveis, dosCruzamentos, dosFaltaPorCanal, dosMensagemTexto, insightsDaPlataforma, r1Codigo, r1Rotulo, r1Roteiro, r1Html, r1PainelHtml, dosVisaoHtml, dosLigacaoHtml, dosMdTexto, dosCampoHtml, pcTopoHtml, pcQuadrosHtml, pcPreencher, pcEstado, pcLerNotion };')(
   supabase, {}, TXMOD, { iniciar() {}, depois() {}, campoMudou() {} }, {}, {}, document, { addEventListener() {}, confirm: () => true, scrollTo() {} }, { href: '' }, { getItem: (k) => store[k] ?? null, setItem: (k, v) => { store[k] = v; } }, () => 1, () => {});
 
 const dia = (n) => new Date(Date.now() + n * 864e5).toISOString();
@@ -270,6 +270,7 @@ console.log('== Ler a call: arquivo no alto e quadros ==');
   const pc = mod.pcEstado('pq'); pc.estado = 'vazio'; pc.erro = ''; pc.prop = null; pc.sel = { campos: {}, sinais: {}, fila: {}, perg: {} };
   let t = mod.pcTopoHtml(P);
   check('o alto da sessão tem o anexo (.txt, PDF, imagem) e o botão de ler', /type="file"[^>]*accept="[^"]*\.txt[^"]*\.pdf[^"]*\.jpg[^"]*\.png/.test(t) && /data-pcarq="pq"/.test(t) && /data-pcler="pq"/.test(t) && /Aceita \.txt, PDF ou imagem/.test(t) && /tokens pagos/.test(t));
+  check('o alto também aceita o link do Notion, com botão próprio', /type="url" id="pc-notion"/.test(t) && /data-pcnotion="pq"/.test(t) && /link do Notion/.test(t));
   check('antes da leitura, os quadros avisam que aparecem depois', /Pontos de atenção/.test(mod.pcQuadrosHtml(P)) && /Infos para confirmar/.test(mod.pcQuadrosHtml(P)) && (mod.pcQuadrosHtml(P).match(/Aparece depois da leitura/g) || []).length === 2);
   pc.estado = 'proposta';
   pc.prop = { proposta: { resumo: 'Quer estudar cinema.', proximos_passos: ['Ingryd: mandar o guia', 'Ela: juntar o diploma'], pontos_de_atencao: ['Candidatura fecha em dezembro.'], a_conferir: ['Taxa da OFII.'], perguntas_para_ela: [{ texto: 'Tem o diploma em PDF?', motivo: 'Faltou.', campo: 'ensino_medio_ano' }], campos: {}, sinais: [] } };
@@ -284,6 +285,13 @@ console.log('== Ler a call: arquivo no alto e quadros ==');
   check('pelo botão, a leitura substitui', mod.state.dos.rasc.ligacao_resumo === 'Quer estudar cinema.');
   pc.prop.proposta.perguntas_para_ela = []; pc.prop.proposta.a_conferir = [];
   check('sem o que confirmar: diz isso', /nada a confirmar com ela/.test(mod.pcQuadrosHtml(P)));
+  await mod.pcLerNotion('pq');
+  check('Notion sem link: pede o link', /Cole o link da página do Notion/.test(mod.pcTopoHtml(P)));
+  el('pc-notion').value = 'http://notion.so/x'; await mod.pcLerNotion('pq');
+  check('Notion com link que não é https: recusa', /começar com https/.test(mod.pcTopoHtml(P)));
+  el('pc-notion').value = 'https://www.notion.so/pagina'; await mod.pcLerNotion('pq');
+  check('Notion sem sessão: avisa para entrar de novo, sem chamar o Worker', /Sessão expirada/.test(mod.pcTopoHtml(P)) && !mod.pcEstado('pq').notionLendo);
+  el('pc-notion').value = '';
   pc.estado = 'vazio'; pc.prop = null; mod.state.dos = null;
 }
 

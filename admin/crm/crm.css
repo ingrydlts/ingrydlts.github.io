@@ -1430,3 +1430,5 @@ button.cal-d:hover{outline:1px solid var(--moss)}
 .pc-arq:focus-within, .pc-arq-in:focus + .pc-arq { outline: 2px solid var(--focus); }
 #pc-quadros { margin: 12px 0; }
 .pc-dica { margin: 0 0 10px; }
+
+.pc-notion-in { flex: 1 1 260px; min-width: 0; font: inherit; font-size: 13px; padding: 7px 10px; border: 1px solid var(--line-2); border-radius: 8px; background: var(--surface-2); color: var(--ink); }
