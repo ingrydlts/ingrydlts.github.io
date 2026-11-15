@@ -272,6 +272,11 @@ console.log('== A ligação no topo do Dossiê ==');
   check('.md: título, o que informou, resumo e encaminhamentos como tarefas', /^# Bilan da conversa: Lara/.test(md) && /- Cidade onde mora hoje: Lyon/.test(md) && /Quer FLE\./.test(md) && /- \[ \] Mandar o guia/.test(md) && /- \[ \] Marcar a prefeitura/.test(md));
   const f = mod.dosVisaoHtml(P, d), b = mod.dosLigacaoHtml(P, d);
   check('o formulário de baixo não repete o poscall', (b.match(/id="poscall-box"/g) || []).length === 1);
+  check('A ligação é um dropdown grande com três dropdowns dentro (1, 2 e 3)', /<details class="lg-main" data-lg="main" open>/.test(h) && (h.match(/<details class="lg-passo"/g) || []).length === 3);
+  check('abre o grande e o passo 1; os passos 2 e 3 começam fechados', /data-lg="a" open/.test(h) && !/data-lg="b" open/.test(h) && !/data-lg="c" open/.test(h));
+  mod.state.fx.lg = { main: 1, b: 1 }; const h2 = mod.dosLigacaoHtml(P, d);
+  check('lembra o que você abriu', /data-lg="b" open/.test(h2) && !/data-lg="a" open/.test(h2)); mod.state.fx.lg = { main: 1, a: 1 };
+  check('a visão geral vem antes de A ligação na aba', mod.dosVisaoHtml(P, d).indexOf('id="dos-ligacao"') < 0);
   mod.state.dos = null;
 }
 

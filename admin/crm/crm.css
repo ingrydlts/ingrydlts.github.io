@@ -1422,3 +1422,16 @@ button.cal-d:hover{outline:1px solid var(--moss)}
 .lg-form { margin-top: 4px; }
 .lg-saidas { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
 #dos-ligacao #poscall-box { margin-top: 10px; }
+
+/* A ligação em dropdowns */
+.lg > details > summary { cursor: pointer; list-style: none; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.lg > details > summary::-webkit-details-marker, .lg-passo > summary::-webkit-details-marker { display: none; }
+.lg-main > summary { padding: 4px 0; } .lg-main > summary::after { content: '▾'; margin-left: auto; color: var(--ink-3); transition: transform .15s; }
+.lg-main:not([open]) > summary::after { transform: rotate(-90deg); }
+.lg-corpo { padding-top: 10px; }
+.lg-passo { border: 1px solid var(--line); border-radius: 12px; background: var(--surface); margin: 10px 0 0; }
+.lg-passo > summary { cursor: pointer; list-style: none; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 10px 12px; }
+.lg-passo > summary::after { content: '▾'; margin-left: auto; color: var(--ink-3); }
+.lg-passo:not([open]) > summary::after { transform: rotate(-90deg); }
+.lg-passo > .lg-corpo { padding: 0 12px 12px; }
+.lg-res { font-size: 12.5px; }
