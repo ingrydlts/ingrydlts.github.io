@@ -32,7 +32,7 @@ function qb(table) {
 const supabase = { from: qb, auth: { getSession: async () => ({ data: { session: null } }) }, rpc: async (n, a) => { rpcs.push({ n, a }); return rpcRetorno; }, channel: () => ({ on() { return this; }, subscribe() { return this; } }), removeChannel() {} };
 const store = {};
 const mod = new Function('supabase', 'ES', 'TX', 'EE', 'EQ', 'JR', 'document', 'window', 'location', 'localStorage', 'setInterval', 'clearInterval',
-  src + '\n;return { state, setC: function (v) { C = v; }, setQ: function (v) { Q = v; }, setR: function (v) { R = v; }, setP: function (v) { P = v; }, setPSUG: function (v) { PSUG = v; }, setFin: function (o) { PRODUTOS = o.produtos; COMPRAS_EV = o.compras; ASSIN = o.assin; PRECOS = o.precos; }, itensDeHoje, ordenaFila, catDoContato, renderFila, receitaEstimada, pistasDaJornada, rascunhoMultiFunil, funisDaPessoa, fxResumoCartoes, setUM: function (v) { UM = v; }, setPAG: function (v) { PAG1A1 = v; }, dosDoFunil, dosCampo, dosProgresso, dosVisiveis, dosCruzamentos, dosFaltaPorCanal, dosMensagemTexto, insightsDaPlataforma, r1Codigo, r1Rotulo, r1Roteiro, r1Html, r1PainelHtml };')(
+  src + '\n;return { state, setC: function (v) { C = v; }, setQ: function (v) { Q = v; }, setR: function (v) { R = v; }, setP: function (v) { P = v; }, setPSUG: function (v) { PSUG = v; }, setFin: function (o) { PRODUTOS = o.produtos; COMPRAS_EV = o.compras; ASSIN = o.assin; PRECOS = o.precos; }, itensDeHoje, ordenaFila, catDoContato, renderFila, receitaEstimada, pistasDaJornada, rascunhoMultiFunil, funisDaPessoa, fxResumoCartoes, setUM: function (v) { UM = v; }, setPAG: function (v) { PAG1A1 = v; }, dosDoFunil, dosCampo, dosProgresso, dosVisiveis, dosCruzamentos, dosFaltaPorCanal, dosMensagemTexto, insightsDaPlataforma, r1Codigo, r1Rotulo, r1Roteiro, r1Html, r1PainelHtml, ltItens, ltResumo, ltHtml };')(
   supabase, {}, TXMOD, { iniciar() {}, depois() {}, campoMudou() {} }, {}, {}, document, { addEventListener() {}, confirm: () => true, scrollTo() {} }, { href: '' }, { getItem: (k) => store[k] ?? null, setItem: (k, v) => { store[k] = v; } }, () => 1, () => {});
 
 const dia = (n) => new Date(Date.now() + n * 864e5).toISOString();
@@ -224,6 +224,27 @@ console.log('== Registro dos 1:1 ==');
   check('conclusão, interesse e link enviado voltam preenchidos', /Quer FLE\./.test(h) && /<option value="sim" selected>/.test(h) && /id="r1-link" checked/.test(h) && />registrado</.test(h));
   mod.setUM([]); h = mod.r1Html(P5, null);
   check('sem 1:1: mensagem de vazio', /Nenhum 1:1 marcado ou feito/.test(h) && !/data-r1=/.test(h));
+}
+
+console.log('== Tudo ligado ao e-mail ==');
+{
+  const P = pessoa('lt', 'Lia', { email: 'lia@example.com', user_id: 'u-lt', ultima_origem: 'guia-checklist-chegada-au-pair' });
+  mod.setC([P]);
+  mod.setUM([{ id: 21, contato_id: 'lt', quando: dia(-6), status: 'feito', registro: null }, { id: 22, contato_id: 'lt', quando: dia(4), status: 'agendado', registro: null }]);
+  mod.setPAG([{ contato_id: 'lt', minutos: 20, pago_em: dia(-8) }]);
+  const ev = (tipo, dados, d) => ({ tipo, dados, criado_em: dia(d) });
+  const d = { eventos: [ev('email_capturado', { origem: 'guia-checklist-chegada-au-pair' }, -30), ev('quiz_respondido', { objetivo: 'ap-nao-sei-comecar' }, -30), ev('app_aberto', {}, -20), ev('compra', { produto: 'template-x' }, -10), ev('um_a_um_agendado', { quando: dia(4) }, -9)], jor: { entradas: [{ em: dia(-30), origem: 'guia-checklist-chegada-au-pair' }], quizzes: [], ativouEm: dia(-20) } };
+  const it = mod.ltItens(P, d);
+  check('junta eventos, 1:1 e pagamento do 1:1 (o evento de 1:1 marcado não duplica)', it.length === 7 && it.filter((x) => x.cat === 'um').length === 2);
+  check('ordem: do mais novo ao mais antigo', it.every((x, i) => i === 0 || it[i - 1].em >= x.em));
+  check('a entrada mostra o IL05', it.some((x) => x.cat === 'entrada' && /^IL05 · /.test(x.tx)));
+  check('compras: produto e 1:1 pago, sem valor em euros', it.filter((x) => x.cat === 'compra').length === 2 && !it.some((x) => /€|euro/i.test(x.tx)));
+  check('resumo: entrou por IL05, conta, compras e 1:1 feitos', /Entrou por IL05/.test(mod.ltResumo(P, d, it)) && /tem conta no app/.test(mod.ltResumo(P, d, it)) && /2 compras/.test(mod.ltResumo(P, d, it)) && /1 1:1 feito/.test(mod.ltResumo(P, d, it)));
+  mod.state.fx.lf = 'tudo'; let h = mod.ltHtml(P, d);
+  check('mostra o e-mail, os filtros com contagem e a nota do euro', /lia@example\.com/.test(h) && /data-lf="compra"/.test(h) && /Compras <i>2<\/i>/.test(h) && /não é guardado/.test(h));
+  mod.state.fx.lf = 'um'; h = mod.ltHtml(P, d);
+  check('filtro 1:1 mostra só os 1:1', (h.match(/<li class="lt-/g) || []).length === 2 && !/lt-compra/.test(h));
+  mod.state.fx.lf = 'tudo';
 }
 
 console.log('\n' + (failed ? failed + ' FALHARAM, ' : '') + passed + ' passaram' + (failed ? '' : ', 0 falharam'));

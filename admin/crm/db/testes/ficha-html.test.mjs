@@ -105,6 +105,7 @@ console.log('== Task 12: sessões em pílulas ==');
   check('título com HTML escapado', ss.includes('&lt;img') && !ss.includes('<img'));
   check('a pílula sabe o grupo', /data-sessao="chat" data-area="app"/.test(ss) && /data-sessao="bilan" data-area="ela"/.test(ss));
   check('id desconhecido na ordem é ignorado', !FH.htmlSessoes({ app: ['zzz', 'chat'], ela: [] }, mapa, h).includes('zzz'));
+  check('barra "Ir para": um botão por sessão, destacando as abertas', (ss.match(/data-fx="ir"/g) || []).length === 6 && !/data-fx="ir" data-id="zzz"/.test(FH.htmlSessoes({ app: ['zzz', 'chat'], ela: [] }, mapa, h)));
   const um = FH.htmlSessao({ id: 'chat', titulo: 'T', sub: 's', corpo: '<i>C</i>', aberto: true, area: 'app', ativa: true }, h);
   check('htmlSessao solta tem o corpo e a classe ativa', um.includes('<i>C</i>') && um.includes('ativa'));
 }

@@ -2,13 +2,13 @@
 // Nada de service_role aqui. O banco é db/crm-fase2.sql; o desenho é o artefato "CRM Por Dentro".
 // Tudo que vem do banco é texto de terceiros (nome, e-mail, pergunta): passa sempre por esc().
 import { supabase } from '/assets/js/supabase-client.js';
-import * as TX from './taxonomia.js?v=2026-11-15.27';   // páginas, famílias e agrupamento dos modelos
-import * as ES from './estudio.js?v=2026-11-15.27';   // os blocos do estúdio de e-mails (entregas 2 e 3)
-import * as EE from './editor-email.js?v=2026-11-15.27';
-import * as EQ from './editor-quem.js?v=2026-11-15.27';
-import * as JR from './jornada.js?v=2026-11-15.27';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
-import * as FX from './ficha.js?v=2026-11-15.27';   // ficha v2: lógica pura (fila, démarches, funil, ações)
-import * as FH from './ficha-html.js?v=2026-11-15.27';   // ficha v2: HTML puro
+import * as TX from './taxonomia.js?v=2026-11-15.28';   // páginas, famílias e agrupamento dos modelos
+import * as ES from './estudio.js?v=2026-11-15.28';   // os blocos do estúdio de e-mails (entregas 2 e 3)
+import * as EE from './editor-email.js?v=2026-11-15.28';
+import * as EQ from './editor-quem.js?v=2026-11-15.28';
+import * as JR from './jornada.js?v=2026-11-15.28';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
+import * as FX from './ficha.js?v=2026-11-15.28';   // ficha v2: lógica pura (fila, démarches, funil, ações)
+import * as FH from './ficha-html.js?v=2026-11-15.28';   // ficha v2: HTML puro
 
 var PERSONAS = {
   au_pair_estudante: 'Au pair → estudante', campus_france: 'Campus France', alternancia_emprego: 'Alternância / emprego',
@@ -136,7 +136,7 @@ var P = [], PERR = '';
 var PSUG = [];
 var FILA = [];   // avisos agendados que ainda não saíram, de todas as pessoas (para o bloco da Hoje)
 var state = { funilVisao: 'leads', funilPorque: null, dosAberto: lerDosAberto(), dos: null, pc: null, ptab: null, pstab: 'assistente', pdias: {}, int: null, chatRasc: '', rascunho: {}, view: 'hoje', persona: '', sub: '', urg: '', stage: '', orig: '', camp: '', q: '', sel: null, qs: 'nova', qsel: null, inbox: 'perguntas', rs: 'nova', rsel: null, ps: 'novo', psel: null, preset: 'todos', seg: '', prevView: 'contatos',
-  fx: { tab: null, ord: null, hd: null, abertas: {}, ag: { i: 0, pop: null }, dem: 'todas', ckTodos: false, ckMais: false, tour: true, r1: null } };
+  fx: { tab: null, ord: null, hd: null, abertas: {}, ag: { i: 0, pop: null }, dem: 'todas', ckTodos: false, ckMais: false, tour: true, r1: null, lf: 'tudo', ln: 12 } };
 var activeCid = null;
 var me = null;
 
@@ -3071,7 +3071,7 @@ function fxHeaderHtml(c, d) {
 // Catálogo de démarches (cópia do app, processos.json): carregado uma vez; sem ele, tudo cai na démarche padrão.
 var FX_PROC = null;
 async function fxCarregaProcessos() {
-  try { var r = await fetch('processos.json?v=2026-11-15.27'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
+  try { var r = await fetch('processos.json?v=2026-11-15.28'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
 }
 // A sessão Checklist: pílulas por démarche, os 4 mais urgentes, pasta do Drive privada e "Ver mais desta sessão".
 function fxChecklistCorpo(c) {
@@ -3223,6 +3223,54 @@ async function r1Salvar(id) {
   if (o.error) return toast(/registro/.test(String(o.error.message || '')) ? 'Rode primeiro db/crm-1a1-registro.sql no Supabase.' : 'Não salvou: ' + o.error.message, 5000);
   u.registro = reg; toast('Registro salvo.'); fxRepinta();
 }
+// ---------- Tudo ligado ao e-mail (Dossiê · visão geral) ----------
+// Uma linha do tempo só, pelo e-mail da pessoa: páginas de entrada (IL0X), plataforma, compras, 1:1 e e-mails.
+// O valor pago em euros não é guardado no banco (só o produto e a data), por isso as compras aparecem sem valor.
+var LT_CATS = [['tudo', 'Tudo'], ['entrada', 'Páginas de entrada'], ['plataforma', 'Plataforma'], ['compra', 'Compras'], ['um', '1:1'], ['email', 'E-mails']];
+var LT_TIPO = {
+  email_capturado: 'entrada', email_recapturado: 'entrada', quiz_respondido: 'entrada', lembrete_pedido: 'entrada',
+  acesso_ativado: 'plataforma', senha_definida: 'plataforma', senha_adiada: 'plataforma', caminho_escolhido: 'plataforma', app_aberto: 'plataforma', checklist_marcado: 'plataforma',
+  artigo_lido: 'plataforma', pergunta_unica: 'plataforma', pergunta_respondida: 'plataforma', radar_visto: 'plataforma', chat_mensagem: 'plataforma', dossie_atualizado: 'plataforma', onboarding_documento_lido: 'plataforma',
+  compra: 'compra', pagamento_confirmado: 'compra', assinatura_atualizada: 'compra', assinatura_cancelada: 'compra', pagamento_falhou: 'compra', link_pagamento_enviado: 'compra',
+  um_a_um_agendado: 'um', email_enviado: 'email', email_respondido: 'email', proposta_enviada: 'email', proposta_vista: 'email', proposta_aceita: 'email', proposta_recusada: 'email', proposta_adiada: 'email'
+};
+function ltItens(c, d) {
+  var out = [];
+  (d.eventos || []).forEach(function (e) {
+    var x = e.dados || {}, tx = eventText(e)[1];
+    if ((e.tipo === 'email_capturado' || e.tipo === 'email_recapturado') && ORIGEM_PAGINA[x.origem]) tx = r1Rotulo(ORIGEM_PAGINA[x.origem]) + ' · ' + tx;
+    if (e.tipo === 'quiz_respondido' && x.objetivo) tx += ': ' + etapaDe(x.objetivo);
+    if (e.tipo === 'um_a_um_agendado') return;   // o 1:1 já entra pela tabela de 1:1 (abaixo), com o dia certo
+    out.push({ em: e.criado_em, cat: LT_TIPO[e.tipo] || 'outro', tx: tx });
+  });
+  UM.filter(function (u) { return u.contato_id === c.id && u.status !== 'cancelado'; }).forEach(function (u) {
+    var cod = r1Rotulo(r1Codigo(c, u)), passou = u.status === 'feito' || (u.quando && new Date(u.quando).getTime() < Date.now() - 36e5);
+    out.push({ em: u.quando || u.criado_em, cat: 'um', tx: (passou ? '1:1 feito' : '1:1 marcado') + (cod ? ' · ' + cod : '') + (u.quando ? ' · ' + fmtWhen(u.quando) : ' · sem dia') });
+  });
+  PAG1A1.filter(function (p) { return p.contato_id === c.id; }).forEach(function (p) { out.push({ em: p.pago_em, cat: 'compra', tx: 'Pagou um 1:1 de ' + p.minutos + ' min' }); });
+  return out.filter(function (x) { return x.em; }).sort(function (a, b) { return a.em < b.em ? 1 : a.em > b.em ? -1 : 0; });
+}
+function ltResumo(c, d, itens) {
+  var p = [], jor = d.jor || montaJornada([]), ent = (jor.entradas || [])[0], pg = ent && ORIGEM_PAGINA[ent.origem];
+  p.push(ent ? 'Entrou ' + (pg ? 'por ' + r1Rotulo(pg) : 'por ' + (origLabel(ent.origem) || 'uma página')) + ' em ' + fmtDate(ent.em) : 'Sem entrada registrada');
+  p.push(c.user_id ? 'tem conta no app' : 'ainda sem conta');
+  var a = state.assin || ASSIN[c.id]; if (a && a.status) p.push('assinatura ' + (ASSIN_ST[a.status] || a.status).toLowerCase());
+  var nc = itens.filter(function (x) { return x.cat === 'compra' && /^(Comprou|Pagou)/.test(x.tx); }).length; p.push(nc + (nc === 1 ? ' compra' : ' compras'));
+  var nu = itens.filter(function (x) { return x.cat === 'um' && /^1:1 feito/.test(x.tx); }).length; p.push(nu + (nu === 1 ? ' 1:1 feito' : ' 1:1 feitos'));
+  return p.join(' · ');
+}
+function ltHtml(c, d) {
+  var itens = ltItens(c, d), f = state.fx.lf || 'tudo', n = state.fx.ln || 12;
+  var vis = itens.filter(function (x) { return f === 'tudo' || x.cat === f; });
+  var chips = LT_CATS.map(function (k) {
+    var q = k[0] === 'tudo' ? itens.length : itens.filter(function (x) { return x.cat === k[0]; }).length;
+    return '<button type="button" class="lt-c' + (f === k[0] ? ' on' : '') + '" data-lf="' + k[0] + '" aria-pressed="' + (f === k[0]) + '">' + esc(k[1]) + ' <i>' + q + '</i></button>';
+  }).join('');
+  var lista = vis.length ? '<ol class="lt-l">' + vis.slice(0, n).map(function (x) { return '<li class="lt-' + x.cat + '"><span class="lt-d">' + esc(new Date(x.em).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' })) + '</span><span class="lt-t">' + esc(truncaTxt(x.tx, 140)) + '</span></li>'; }).join('') + '</ol>' + (vis.length > n ? '<button type="button" class="btn" data-lmais="1">Mostrar mais ' + Math.min(20, vis.length - n) + '</button>' : '')
+    : '<p class="sub" style="margin:0">Nada neste filtro ainda.</p>';
+  return '<div class="dv-sec" id="dos-linha"><div class="k">Tudo ligado a este e-mail</div><p class="sub" style="margin:0 0 6px"><b>' + esc(c.email || '') + '</b> · ' + esc(ltResumo(c, d, itens)) + '</p>' +
+    '<div class="lt-cs">' + chips + '</div>' + lista + (f === 'compra' || f === 'tudo' ? '<p class="sub" style="margin:6px 0 0">O valor pago em euros não é guardado no banco: as compras aparecem só com produto e data.</p>' : '') + '</div>';
+}
 function dosVisaoHtml(c, d) {
   var S = state.dos && state.dos.cid === c.id && state.dos.d ? state.dos : null, conta = !!c.user_id, pos = !!(S && S.onbEm);
   var jor = d.jor || montaJornada([]), mails = d.mails || [], resps = d.resps || [], perg = d.perg || [], evs = d.eventos || [];
@@ -3232,7 +3280,7 @@ function dosVisaoHtml(c, d) {
   var dv = function (k) { return S ? dosValor(c, S.d, S.rasc, k) : ''; };
   var linhaKv = function (l, v, tag) { return v === '' || v == null ? '' : '<div class="dv-l"><span>' + esc(l) + '</span><b>' + esc(v) + (tag ? ' <i class="dv-fonte">' + esc(tag) + '</i>' : '') + '</b></div>'; };
   var op = function (k) { var v = dv(k); return v === '' ? '' : dosRotuloOpcao(dosCampo(k), v); };
-  var quem = linhaKv('Situação', personaLabel(c) + (subLabel(c) ? ' · ' + subLabel(c) : '')) + linhaKv('Fase', op('fase'), dosFonteTag(c, S, 'fase')) + linhaKv('Estudos no Brasil', op('nivel_estudos')) +
+  var quem = linhaKv('Situação', personaLabel(c) + (subLabel(c) ? ' · ' + subLabel(c) : '')) + linhaKv('Fase', op('fase'), dosFonteTag(c, S, 'fase')) + linhaKv('Diploma mais recente', op('nivel_estudos')) + linhaKv('Certificado', op('certificado_frances_qual') || op('certificado_frances')) +
     linhaKv('Faixa de idade', op('faixa_idade'), dosFonteTag(c, S, 'faixa_idade')) + linhaKv('Cidade', dv('cidade')) + linhaKv('Chegou na França', dv('data_chegada') ? fmtDay(dv('data_chegada')) : '') +
     linhaKv('Francês', op('nivel_frances')) + linhaKv('Prazo', c.prazo_limite ? fmtDay(c.prazo_limite) + ' (' + prazoTxt(c) + ')' : CF_PRAZO[(c.respostas || {}).cfNivel] ? fmtDay(CF_PRAZO[c.respostas.cfNivel]) + ' (Campus France)' : '') +
     linhaKv('Maior preocupação', op('preocupacao') || (c.preocupacao ? String(c.preocupacao) : ''));
@@ -3275,7 +3323,7 @@ function dosVisaoHtml(c, d) {
     }
   } else if (S) falta = '<div class="dv-sec"><div class="k">O que falta</div><p class="sub" style="margin:0">Nada falta no dossiê.</p></div>';
   return '<section class="panel dv" id="dos-visao" style="padding:16px;margin-bottom:14px"><h3 style="font-size:17px;margin:0 0 2px">' + esc(titulo) + '</h3><p class="sub" style="margin:0 0 12px">' + esc(sub) + '</p>' +
-    '<div class="dv-grid">' + card('Quem ela é', quem) + card('De onde veio e o que respondeu', veio) + card('O que ela fez', fez) + '</div>' + r1Html(c, S) + cruz + falta + '</section>';
+    '<div class="dv-grid">' + card('Quem ela é', quem) + card('De onde veio e o que respondeu', veio) + card('O que ela fez', fez) + '</div>' + r1Html(c, S) + ltHtml(c, d) + cruz + falta + '</section>';
 }
 // ---------- Plataforma: a sessão "Insights" (depois do 1:1, com ela no app) ----------
 function insightsDaPlataforma(c, X) {
@@ -3468,6 +3516,7 @@ function fichaClick(el) {
       fxFechaPop(false); if (t) irPara(t.dest); return true;
     }
     case 'sessao': { f.abertas[ds.id] = !fxSessaoAberta(ds.id); fxPintaCorpo(); var tb2 = document.querySelector('[data-fx="sessao"][data-id="' + ds.id + '"]'); if (tb2 && tb2.focus) tb2.focus(); return true; }
+    case 'ir': { f.abertas[ds.id] = true; fxPintaCorpo(); var sc = document.querySelector('section.fx-sess[data-sessao="' + ds.id + '"]'); if (sc && sc.scrollIntoView) sc.scrollIntoView({ behavior: 'smooth', block: 'start' }); return true; }
     case 'mover': {
       var ord = fxOrdem(), area = ord.app.indexOf(ds.id) >= 0 ? 'app' : ord.ela.indexOf(ds.id) >= 0 ? 'ela' : null; if (!area) return true;
       var nova = { app: ord.app.slice(), ela: ord.ela.slice() }; nova[area] = FX.moverSessao(nova[area], ds.id, Number(ds.d) < 0 ? -1 : 1);
@@ -5383,6 +5432,8 @@ document.addEventListener('click', async function (e) {
   if (t.dataset.calmes) { state.calOff = (state.calOff || 0) + Number(t.dataset.calmes); return renderCalendario(); }
   if (t.dataset.pistaemail) { state.rascunho[t.dataset.pistaemail] = (state.rascPista || {})[t.dataset.pistaemail] || ''; return openPessoa(t.dataset.pistaemail, 'conversa'); }
   if (t.dataset.dosmsg) return dosMontaMensagem(t.dataset.dosmsg, t.dataset.tipo);
+  if (t.dataset.lf) { state.fx.lf = t.dataset.lf; state.fx.ln = 12; return fxRepinta(); }
+  if (t.dataset.lmais) { state.fx.ln = (state.fx.ln || 12) + 20; return fxRepinta(); }
   if (t.dataset.r1) { state.fx.r1 = state.fx.r1 === t.dataset.r1 ? null : t.dataset.r1; return fxRepinta(); }
   if (t.dataset.r1save) return r1Salvar(t.dataset.r1save);
   if (t.dataset.insacao) {

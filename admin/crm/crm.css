@@ -1385,3 +1385,30 @@ button.cal-d:hover{outline:1px solid var(--moss)}
 .r1-f { display: block; font-size: 12px; margin: 0 0 8px; } .r1-f textarea, .r1-f select { display: block; width: 100%; margin-top: 3px; font: inherit; font-size: 13px; box-sizing: border-box; }
 .r1-c { display: flex; align-items: center; gap: 6px; font-size: 13px; margin: 0 0 10px; }
 @media (max-width: 760px) { .r1-painel { grid-template-columns: 1fr; } }
+
+/* Sessões da ficha: cada uma é um cartão separado, com o "Ir para" no topo */
+.fx-sessoes { gap: 26px; }
+.fx-grupo { gap: 12px; }
+.fx-sess { border: 1px solid var(--line); border-radius: 16px; background: var(--surface); box-shadow: 0 1px 2px rgba(0,0,0,.08); padding: 6px; scroll-margin-top: calc(var(--hd-h, 0px) + 64px); }
+.fx-sess + .fx-sess { margin-top: 2px; }
+.fx-sess.aberta { border-color: var(--moss); box-shadow: 0 4px 14px rgba(0,0,0,.14); }
+.fx-grupo-ela .fx-sess.aberta { border-color: var(--brown); }
+.fx-sess .fx-sess-cab { border-color: transparent; background: transparent; }
+.fx-sess.aberta .fx-sess-cab { border-radius: 12px 12px 0 0; }
+.fx-sess-corpo { border: 0; border-top: 1px solid var(--line); border-radius: 0 0 12px 12px; background: transparent; margin-top: 2px; }
+.fx-ir { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); position: sticky; top: calc(var(--hd-h, 0px) + 4px); z-index: 5; }
+.fx-ir-t { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); margin-right: 4px; }
+.fx-ir-b { font: inherit; font-size: 12.5px; padding: 4px 11px; border-radius: 999px; border: 1px solid var(--line-2); background: var(--surface-2); color: var(--ink); cursor: pointer; }
+.fx-ir-b:hover { border-color: var(--moss); }
+.fx-ir-b.on { background: var(--moss-soft); color: var(--moss-ink); border-color: var(--moss); }
+
+/* Tudo ligado ao e-mail (linha do tempo do Dossiê) */
+.lt-cs { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 8px; }
+.lt-c { font: inherit; font-size: 12.5px; padding: 4px 11px; border-radius: 999px; border: 1px solid var(--line-2); background: var(--surface-2); color: var(--ink); cursor: pointer; }
+.lt-c i { font-style: normal; color: var(--ink-3); margin-left: 2px; }
+.lt-c.on { background: var(--moss-soft); color: var(--moss-ink); border-color: var(--moss); }
+.lt-l { list-style: none; margin: 0 0 8px; padding: 0; border-left: 2px solid var(--line); }
+.lt-l li { display: flex; gap: 10px; padding: 4px 0 4px 10px; font-size: 13px; }
+.lt-d { flex: 0 0 62px; color: var(--ink-3); font-size: 12px; }
+.lt-t { min-width: 0; overflow-wrap: anywhere; }
+.lt-compra { border-left: 3px solid var(--beige); margin-left: -2px; } .lt-um { border-left: 3px solid var(--moss); margin-left: -2px; } .lt-entrada { border-left: 3px solid var(--brown); margin-left: -2px; }
