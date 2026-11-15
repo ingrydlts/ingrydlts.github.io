@@ -16,7 +16,7 @@
 //   disponiveis(): { etapa, toques },     blocos de guia que este modelo pode ter
 //   rodapeTexto(): string                 o rodapé automático (pelo tipo), só para mostrar
 // }
-import * as EB from './editor-blocos.js?v=2026-11-15.12';
+import * as EB from './editor-blocos.js?v=2026-11-15.13';
 
 var DEP = null;
 var S = { sel: -1, pal: -2, menu: null, foco: null, hist: EB.criarHistorico(60), campo: null, ultimo: null, arrasto: null, toastT: null };

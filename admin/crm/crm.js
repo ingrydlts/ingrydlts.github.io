@@ -2,13 +2,13 @@
 // Nada de service_role aqui. O banco é db/crm-fase2.sql; o desenho é o artefato "CRM Por Dentro".
 // Tudo que vem do banco é texto de terceiros (nome, e-mail, pergunta): passa sempre por esc().
 import { supabase } from '/assets/js/supabase-client.js';
-import * as TX from './taxonomia.js?v=2026-11-15.12';   // páginas, famílias e agrupamento dos modelos
-import * as ES from './estudio.js?v=2026-11-15.12';   // os blocos do estúdio de e-mails (entregas 2 e 3)
-import * as EE from './editor-email.js?v=2026-11-15.12';
-import * as EQ from './editor-quem.js?v=2026-11-15.12';
-import * as JR from './jornada.js?v=2026-11-15.12';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
-import * as FX from './ficha.js?v=2026-11-15.12';   // ficha v2: lógica pura (fila, démarches, funil, ações)
-import * as FH from './ficha-html.js?v=2026-11-15.12';   // ficha v2: HTML puro
+import * as TX from './taxonomia.js?v=2026-11-15.13';   // páginas, famílias e agrupamento dos modelos
+import * as ES from './estudio.js?v=2026-11-15.13';   // os blocos do estúdio de e-mails (entregas 2 e 3)
+import * as EE from './editor-email.js?v=2026-11-15.13';
+import * as EQ from './editor-quem.js?v=2026-11-15.13';
+import * as JR from './jornada.js?v=2026-11-15.13';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
+import * as FX from './ficha.js?v=2026-11-15.13';   // ficha v2: lógica pura (fila, démarches, funil, ações)
+import * as FH from './ficha-html.js?v=2026-11-15.13';   // ficha v2: HTML puro
 
 var PERSONAS = {
   au_pair_estudante: 'Au pair → estudante', campus_france: 'Campus France', alternancia_emprego: 'Alternância / emprego',
@@ -727,7 +727,7 @@ function renderRespostas() {
     '<p class="sub" style="margin:12px 0 0"><span class="pill">' + esc(canalDe(x)[0] + ' ' + canalDe(x)[1]) + '</span> Respondeu a: ' + esc(aQue) + '</p>' +
     '<blockquote style="white-space:pre-wrap">' + esc(x.texto) + '</blockquote>' +
     (c ? '<div class="ctx">' + urgPill(c.urgencia) + '<span class="pill">' + esc(personaLabel(c)) + (subLabel(c) ? ' · ' + esc(subLabel(c)) : '') + '</span><span class="pill">Estágio: ' + esc(stageLabel(c.estagio)) + '</span></div>' : '') +
-    '<div class="reply"><div class="reply-foot"><small>' + (c ? 'Responda na aba Conversa da ficha: sai do e-mail do Por Dentro, na mesma conversa do Gmail ' + (viaEmail ? 'dela' : 'dela (o toque e a página não chegam no seu e-mail)') + ', e esta resposta é marcada como respondida sozinha.'
+    '<div class="reply"><div class="reply-foot"><small>' + (c ? 'Responda na aba E-mail da ficha: sai do e-mail do Por Dentro, na mesma conversa do Gmail ' + (viaEmail ? 'dela' : 'dela (o toque e a página não chegam no seu e-mail)') + ', e esta resposta é marcada como respondida sozinha.'
       : 'Sem ficha no CRM: responda pelo seu e-mail (a mensagem completa também chegou lá) e marque aqui.') + '</small><div class="btns">' +
     (x.status === 'nova'
       ? (c ? '<button class="btn primary" type="button" data-openconv="' + esc(c.id) + '">Abrir conversa</button>' : '<a class="btn" href="' + esc(mailto) + '">Responder pelo e-mail</a>') +
@@ -934,7 +934,7 @@ function proximoEmail(c, mails, resps, jor) {
   if (toque) {
     var cidade = String(toque.texto || '').replace(/^Cidade: /, '') || 'uma cidade';
     return out({ titulo: 'Ela tocou em “' + cidade + '”: continue a conversa a partir daí', conversa: true,
-      angulo: 'Escolher a cidade no e-mail 2 foi o gesto mais claro de interesse que ela fez. Responda na aba Conversa (sai na mesma conversa do Gmail dela) com UMA pergunta concreta sobre ' + cidade +
+      angulo: 'Escolher a cidade no e-mail 2 foi o gesto mais claro de interesse que ela fez. Responda na aba E-mail (sai na mesma conversa do Gmail dela) com UMA pergunta concreta sobre ' + cidade +
         (prazoDias != null && prazoDias >= 0 ? ' e o prazo dela (' + prazoDe + ', ' + prazoFrase + ')' : '') + (ativa ? '' : '. Ela ainda não abriu o app: ofereça o checklist só depois que ela responder, não antes') + '.' });
   }
   if (nova.length)
@@ -1042,7 +1042,7 @@ function emailsPanel(c, mails, h4, resps, jor) {
   var p = proximoEmail(c, mails, resps || [], jor || montaJornada([]));
   var bloq = p.k && exigeNovidades(p.k) && !c.aceita_novidades;
   var selo = p.conversa ? 'Responda agora' : p.quando === 'agora' ? 'Pode enviar agora' : p.quando === 'esperar' ? 'Espere até ' + p.espera : 'Não envie agora';
-  var acao = p.conversa ? '<button class="btn primary" type="button" style="margin-top:10px" data-openconv="' + esc(c.id) + '">Abrir a conversa →</button>'
+  var acao = p.conversa ? '<button class="btn primary" type="button" style="margin-top:10px" data-openconv="' + esc(c.id) + '">Abrir a aba E-mail →</button>'
     : !p.k ? ''
     : bloq ? '<p class="sub" style="margin:8px 0 0;color:var(--red)">Não aceitou novidades por e-mail: o modelo “' + esc(tplInfo(p.k).label) + '” não pode ser enviado.</p>'
     : '<p class="sub" style="margin:8px 0 0">Modelo sugerido: <b style="color:var(--ink)">' + esc(tplInfo(p.k).label) + '</b><br>Assunto: ' + esc(emailPronto(c, p.k).subject) + '</p>' +
@@ -1132,13 +1132,14 @@ function itemResposta(x) {
     (x.status === 'nova' ? '<span class="pill u-alta">sem resposta sua</span>' : '') + '<time>' + esc(fmtQuando(x.recebido_em)) + '</time></div>' +
     '<div class="cam-resp">' + esc(x.texto) + '</div></div>';
 }
-function caminhoEmailHtml(c, mails, resps, jor, h4) {
+// A coluna da aba E-mail: o próximo da fila, o que ela já disse (e o rascunho sugerido) e o mapa do caminho, recolhido.
+function emailLateralHtml(c, mails, resps, jor, h4) {
   if (!JR || !JR.ETAPAS || !TX.rotuloPagina) return '';   // os testes antigos não injetam o módulo da jornada
   mails = mails.slice().sort(function (a, b) { var x = a.enviado_em || a.criado_em, y = b.enviado_em || b.criado_em; return x < y ? 1 : x > y ? -1 : 0; });
   resps = resps || [];
   var cam = passosDoCaminho(c, mails), sit = situacaoEmail(mails, resps), p = proximoEmail(c, mails, resps, jor || montaJornada([]));
+  state.rascSug = state.rascSug || {}; state.rascSug[c.id] = rascunhoDoEmail(c, sit, mails, jor);
 
-  // 1) Próximo na fila
   var fila = filaDaPessoa(c, mails), prox;
   if (fila.length) {
     var f = fila[0], pronto = emailPronto(c, f.k);
@@ -1150,49 +1151,15 @@ function caminhoEmailHtml(c, mails, resps, jor, h4) {
     prox = '<div class="cam-fila"><div class="k">Próximo na fila</div><p class="ins-t" style="margin:0 0 2px">Nada programado para ela</p><p class="sub" style="margin:0">' + esc(p.titulo) + '. ' + esc(p.angulo) + '</p>' +
       (p.k && !(exigeNovidades(p.k) && !c.aceita_novidades) ? '<button class="btn" type="button" style="margin-top:8px" data-emailfor="' + esc(c.id) + '" data-tplk="' + esc(p.k) + '">Ver o e-mail sugerido: ' + esc(tplInfo(p.k).label) + ' →</button>' : '') + '</div>';
   }
-
-  // 2) Tudo que trocamos: os e-mails enviados e as respostas dela, do mais novo ao mais antigo. Clicar abre o e-mail.
-  var itens = mails.map(function (m) { return { t: m.enviado_em || m.criado_em, h: itemEmailEnviado(m) }; })
-    .concat(resps.map(function (x) { return { t: x.recebido_em, h: itemResposta(x) }; }))
-    .sort(function (x, y) { return x.t < y.t ? 1 : x.t > y.t ? -1 : 0; });
-  var abriu = mails.filter(function (m) { return m.aberto_em || m.status === 'aberto' || m.status === 'clicado'; }).length, clicou = mails.filter(function (m) { return m.clicado_em || m.status === 'clicado'; }).length;
-  var tempo = '<div class="k" style="margin-top:14px">Tudo que trocamos</div>' +
-    (itens.length ? '<p class="sub" style="margin:0 0 6px">' + mails.length + (mails.length === 1 ? ' e-mail enviado' : ' e-mails enviados') + ' · abriu ' + abriu + ' · clicou ' + clicou + ' · respondeu ' + resps.length + '</p>' +
-      '<div class="cam-tempo">' + itens.map(function (i) { return i.h; }).join('') + '</div>'
-      : '<p class="sub" style="margin:0">Nenhum e-mail enviado por aqui ainda. E-mails mandados direto do seu Gmail não entram.</p>');
-
-  // 3) Escrever para ela: um rascunho a partir de onde ela está e do que respondeu, ou do zero
-  var k = p.k || null;
-  if (!k && cam.pag) {
-    var ordem = ['lead', 'contato', 'plat'], ia = cam.atual ? ordem.indexOf(cam.atual) : -1;
-    for (var i = Math.max(ia, 0); i < ordem.length && !k; i++) {
-      var x = cam.passos.filter(function (y) { return y.k === ordem[i]; })[0], m = x && x.modelos.filter(function (z) { return !z.automatico && !x.env.length; })[0];
-      if (m) k = m.chave;
-    }
-  }
   var disse = [], r = c.respostas || {};
   if (r.objetivo) disse.push('Etapa que ela escolheu: ' + etapaDe(r.objetivo));
   if (r.cfNivel) disse.push('Nível: ' + (CF_NIVEL[r.cfNivel] || r.cfNivel));
   resps.slice(-2).forEach(function (x) { disse.push('Respondeu' + (x.canal === 'toque' ? ' com um toque' : x.canal === 'pagina' ? ' na página da conversa' : ' por e-mail') + ': “' + truncaTxt(x.texto, 120) + '”'); });
   if (sit.k !== 'respondeu' && mails.length) disse.push('Não respondeu a nenhum e-mail enviado');
-  var rasc = rascunhoDoEmail(c, sit, mails, jor);
-  var bloq = k && exigeNovidades(k) && !c.aceita_novidades;
-  var responder = sit.k === 'respondeu' || p.conversa;
-  var prep = '<details class="mais-det cam-prep"' + (responder ? ' open' : '') + '><summary>Escrever um e-mail para ela</summary>' +
-    '<p class="cam-sit"><b>' + esc(sit.rot) + '</b></p>' +
-    (disse.length ? '<div class="k jn-k">O que ela já disse</div><ul class="cam-disse">' + disse.map(function (d) { return '<li>' + esc(d) + '</li>'; }).join('') + '</ul>' : '') +
-    '<div class="k jn-k">Proposta</div><p class="sub" style="margin:0 0 6px"><b style="color:var(--ink)">' + esc(p.titulo) + '</b> ' + esc(p.angulo) + '</p>' +
-    (rasc
-      ? '<label class="sr" for="prep-txt">Rascunho</label><textarea class="notebox" id="prep-txt" data-cid="' + esc(c.id) + '" style="min-height:190px">' + esc(rasc) + '</textarea>' +
-        '<p class="sub" style="margin:4px 0 8px">Sugestão. Edite à vontade: nada sai daqui sem você revisar.</p>'
-      : '<p class="sub" style="margin:0 0 8px">Sem rascunho nesta situação (confira o endereço antes de mandar outro).</p>') +
-    '<div class="cam-acoes">' + (rasc && responder ? '<button class="btn primary" type="button" data-prep="' + esc(c.id) + '" data-prepmodo="conversa">Responder na conversa →</button>' : '') +
-      (rasc && k && !bloq ? '<button class="btn' + (responder ? '' : ' primary') + '" type="button" data-prep="' + esc(c.id) + '" data-prepmodo="email" data-tplk="' + esc(k) + '">Abrir no envio, modelo “' + esc(tplInfo(k).label) + '” →</button>' : '') +
-      '<button class="btn" type="button" data-emailfor="' + esc(c.id) + '">Escrever do zero</button></div>' +
-    (bloq ? '<p class="sub" style="margin:6px 0 0;color:var(--red)">Ela não aceitou novidades por e-mail: o modelo “' + esc(tplInfo(k).label) + '” não pode ser enviado.</p>' : '') +
-    '</details>';
+  var sitHtml = '<div class="cam-sitbox"><div class="k">Onde ela está</div><p class="cam-sit" style="margin:0 0 4px"><b>' + esc(sit.rot) + '</b></p>' +
+    (disse.length ? '<ul class="cam-disse">' + disse.map(function (d) { return '<li>' + esc(d) + '</li>'; }).join('') + '</ul>' : '') +
+    '<p class="sub" style="margin:0"><b style="color:var(--ink)">' + esc(p.titulo) + '</b> ' + esc(p.angulo) + '</p></div>';
 
-  // 4) O mapa do caminho, recolhido
   var mapa;
   if (!cam.pag) mapa = '<p class="sub" style="margin:0">Esta origem' + (ultimaOrigem(c) ? ' (' + esc(origLabel(ultimaOrigem(c))) + ')' : '') + ' não tem página no Estúdio, então não há caminho de e-mail para mostrar. Veja a tela Jornada para criar um.</p>';
   else mapa = '<p class="sub" style="margin:0 0 10px">Página de entrada: <b style="color:var(--ink)">' + esc(TX.rotuloPagina(cam.pag)) + '</b></p><ol class="cam">' + cam.passos.map(function (x) {
@@ -1204,17 +1171,30 @@ function caminhoEmailHtml(c, mails, resps, jor, h4) {
     return '<li class="cam-i cam-' + estado + (cam.atual === x.k ? ' cam-atual' : '') + '"><div class="cam-t"><b>' + esc(x.nome) + '</b><span class="sub">' + esc(x.sub) + '</span>' +
       (cam.atual === x.k ? '<span class="cam-aqui">ela está aqui</span>' : '') + '</div><div class="cam-m">' + corpo + '</div></li>';
   }).join('') + '</ol>';
-  var det = '<details class="mais-det cam-mapa"><summary>Caminho de e-mail desta pessoa</summary><div style="margin-top:8px">' + mapa + '</div></details>';
-
-  return '<div class="panel cam-panel" style="padding:16px"><h4 style="' + h4 + '">Troca de e-mails com ela</h4>' + prox + tempo + prep + det + '</div>';
+  return prox + sitHtml + '<details class="mais-det cam-mapa"><summary>Caminho de e-mail desta pessoa</summary><div style="margin-top:8px">' + mapa + '</div></details>';
 }
-function prepararEmail(cid, modo, k) {
-  var ta = $('prep-txt'), txt = ta ? ta.value : '';
-  if (modo === 'conversa') { state.rascunho[cid] = txt; return openPessoa(cid, 'conversa'); }
-  openCompose(cid, k);
-  if (!txt || !CMP) return;
-  var ed = document.querySelector('[data-cmpaba="editar"]'); if (ed) ed.click();
-  var area = $('compose-txt'); if (area) { area.value = txt; area.dispatchEvent(new Event('input', { bubbles: true })); }
+// O pop-up de modelos: os e-mails reais do Estúdio, agrupados como na Jornada. Escolher um abre o envio com o texto dela, para editar assunto e texto.
+function abrirModelosPicker(cid) {
+  var c = byC(cid); if (!c) return;
+  activeCid = cid; CMP = null;
+  // Os mesmos modelos que o envio sabe mandar (os 8 de sempre e os manuais criados no Estúdio). Automáticos e especiais (link de pagamento, acesso) ficam fora.
+  var permitidos = TPL_ORDER.filter(function (k) { return !excluido(k); }).concat(novosManuais().map(function (m) { return m.chave; }));
+  var gs = TX.agrupa(listaModelos().filter(function (m) { return permitidos.indexOf(m.chave) >= 0; }));
+  var linha = function (m) {
+    var sit = M ? situacaoDoModelo(m) : ['No ar', 'noar'], noAr = sit[1] === 'noar', bloq = exigeNovidades(m.chave) && !c.aceita_novidades;
+    var pode = noAr && !bloq, motivo = !noAr ? sit[0] + ': ainda não pode sair' : bloq ? 'Ela não aceitou novidades por e-mail' : '';
+    return '<button type="button" class="tplrow' + (pode ? '' : ' off') + '" data-tplsel="' + esc(m.chave) + '" data-q="' + esc((m.nome + ' ' + (m.objetivo || '')).toLowerCase()) + '"' + (pode ? '' : ' disabled') + '>' +
+      '<span class="tplrow-t"><b>' + esc(m.nome || modeloNome(m.chave)) + '</b><small>' + esc(m.objetivo || tplInfo(m.chave).when || '') + '</small></span>' +
+      '<span class="pill ' + (pode ? 'u-baixa' : 'out') + '">' + esc(pode ? 'No ar' : motivo) + '</span></button>';
+  };
+  var corpo = gs.map(function (g) {
+    return '<div class="tplgrp" data-grp><div class="k">' + esc(g.titulo) + '</div>' + g.itens.map(linha).join('') + '</div>';
+  }).join('') || '<div class="empty">Nenhum modelo cadastrado.</div>';
+  modalOpen(modalTop(c) + '<h3 style="margin:14px 0 4px">Escolher um modelo de e-mail</h3>' +
+    '<p class="sub" style="margin:0 0 8px">Os e-mails reais do Estúdio. Ao escolher, abre com os dados dela: você edita o assunto e o texto antes de enviar.</p>' +
+    '<label class="sr" for="tplpick-q">Buscar modelo</label><input id="tplpick-q" class="tplpick-q" type="search" placeholder="Buscar pelo nome ou objetivo" autocomplete="off">' +
+    '<div class="tplpick" id="tplpick">' + corpo + '</div>' +
+    '<div class="actions"><button class="btn" type="button" id="modal-cancel">Fechar</button></div>', true);
 }
 // "Registrar compra": grava o evento 'compra' (crm_registrar_compra, db/crm-estudio-emails-3.sql). É o que liga as sequências
 // de compra do estúdio. Enquanto a compra pelo site não chega sozinha ao CRM, você registra aqui.
@@ -1279,7 +1259,7 @@ function assuntoDoFio(mails, resps) {
   return ult ? 'Re: ' + (assuntoBase(ult.assunto) || 'Por Dentro') : null;
 }
 function diasAte(ymd) { return Math.round((Date.parse(ymd + 'T12:00:00') - Date.now()) / 864e5); }
-function conversaCtx(c, h4) {
+function conversaCtx(c, h4, lateral) {
   var r = c.respostas || {}, nivel = r.cfNivel, prazo = CF_PRAZO[nivel], top = '';
   if (prazo) {
     var d = diasAte(prazo);
@@ -1294,7 +1274,7 @@ function conversaCtx(c, h4) {
   var kv = [['Etapa', esc(r.objetivo ? etapaDe(r.objetivo) : '—')], ['Cidade', cidade], ['Veio de', veio],
     ['Novidades', c.aceita_novidades ? 'Aceitou' : 'Não aceitou'], ['Estágio', esc(stageLabel(c.estagio))]];
   return '<aside class="ctxcol">' + top + '<dl class="kv">' + kv.map(function (x) { return '<dt>' + x[0] + '</dt><dd>' + x[1] + '</dd>'; }).join('') + '</dl>' +
-    '<div><h4 style="' + h4 + '">Suas anotações</h4><textarea class="notebox" id="nota" data-nota="' + esc(c.id) + '" placeholder="Só você vê.">' + esc(c.nota || '') + '</textarea></div></aside>';
+    (lateral || '') + '</aside>';
 }
 function conversaMsg(it, c) {
   var x = it.x, quando = '<time>' + esc(fmtHora(it.em)) + '</time>';
@@ -1305,7 +1285,8 @@ function conversaMsg(it, c) {
     var corpo = resp ? '<div class="txt">' + esc(x.corpo || '') + '</div>'
       : '<b class="assunto">' + esc(x.assunto || '(sem assunto)') + '</b>' + (x.corpo ? '<button class="link" type="button" data-mailtoggle="' + x.id + '">ver o e-mail</button>' + mailView(x) : '');
     return '<div class="msg ' + (auto ? 'auto' : 'me') + '"><span class="who">' + esc(quem) + '</span>' + corpo +
-      '<div class="stat"><span class="pill st-' + esc(x.status) + '">' + esc(MAIL_ST[x.status] || x.status) + '</span>' + quando + '</div></div>';
+      '<div class="stat"><span class="pill st-' + esc(x.status) + '">' + esc(MAIL_ST[x.status] || x.status) + '</span>' +
+      (x.aberto_em ? '<span class="sub">abriu ' + esc(fmtQuando(x.aberto_em)) + '</span>' : '') + (x.clicado_em ? '<span class="sub">clicou no link ' + esc(fmtQuando(x.clicado_em)) + '</span>' : '') + quando + '</div></div>';
   }
   var nome = pn(c), nova = x.status === 'nova' ? '<span class="pill u-alta">nova</span>' : '';
   if (x.canal === 'toque') return '<div class="msg her"><span class="who">' + esc(nome) + ' · tocou no e-mail 2</span><span class="tapchip">' + esc(String(x.texto).replace(/^Cidade: /, '')) + '</span><div class="stat">' + nova + quando + '</div></div>';
@@ -1313,7 +1294,7 @@ function conversaMsg(it, c) {
   return '<div class="msg her"><span class="who">' + esc(nome) + ' · ' + via + '</span>' + (x.canal !== 'pagina' && x.assunto ? '<span class="sub">' + esc(x.assunto) + '</span>' : '') +
     '<div class="txt">' + esc(x.texto) + '</div><div class="stat">' + nova + quando + '</div></div>';
 }
-function conversaPanel(c, mails, resps, h4) {
+function conversaPanel(c, mails, resps, h4, jor) {
   var itens = mails.map(function (m) { return { k: 'm', x: m, em: m.enviado_em || m.criado_em }; })
     .concat(resps.map(function (r) { return { k: 'r', x: r, em: r.recebido_em }; }))
     .sort(function (a, b) { return a.em < b.em ? -1 : a.em > b.em ? 1 : 0; });
@@ -1322,9 +1303,12 @@ function conversaPanel(c, mails, resps, h4) {
     dia = d; return sep + conversaMsg(it, c);
   }).join('') || '<div class="empty">Nenhuma mensagem ainda. O que você escrever aqui sai por e-mail para ' + esc(c.email) + '.</div>';
   var assunto = assuntoDoFio(mails, resps), rasc = state.rascunho[c.id] || '';
-  return '<div class="conv">' + conversaCtx(c, h4) +
+  var lateral = emailLateralHtml(c, mails, resps, jor, h4), sug = state.rascSug && state.rascSug[c.id];
+  return '<div class="conv">' + conversaCtx(c, h4, lateral) +
     '<section class="thread" aria-label="Conversa com ' + esc(pn(c)) + '"><div class="msgs" id="conv-thread">' + fio + '</div>' +
     '<div class="compose">' +
+    '<div class="cam-acoes"><button class="btn primary" type="button" data-tplpick="' + esc(c.id) + '">Usar um modelo de e-mail…</button>' +
+      (sug ? '<button class="btn" type="button" data-usarrasc="' + esc(c.id) + '">Usar o rascunho sugerido</button>' : '') + '</div>' +
     (assunto ? '<p class="sub" style="margin:0">Vai como <b>' + esc(assunto) + '</b></p>'
       : '<label class="sub" for="conv-assunto">Assunto (ainda não há conversa por e-mail com ela)</label><input id="conv-assunto" maxlength="200" autocomplete="off">') +
     '<label class="sr" for="conv-txt">Sua resposta</label><textarea id="conv-txt" maxlength="10000" data-cid="' + esc(c.id) + '" placeholder="Responder a ' + esc(pn(c)) + '…">' + esc(rasc) + '</textarea>' +
@@ -2811,7 +2795,7 @@ function fxHeaderHtml(c, d) {
 // Catálogo de démarches (cópia do app, processos.json): carregado uma vez; sem ele, tudo cai na démarche padrão.
 var FX_PROC = null;
 async function fxCarregaProcessos() {
-  try { var r = await fetch('processos.json?v=2026-11-15.12'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
+  try { var r = await fetch('processos.json?v=2026-11-15.13'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
 }
 // A sessão Checklist: pílulas por démarche, os 4 mais urgentes, pasta do Drive privada e "Ver mais desta sessão".
 function fxChecklistCorpo(c) {
@@ -2848,7 +2832,7 @@ function fxCorpo(c, d, tab) {
     if (state.int && state.int.err) return '<div class="panel" style="padding:16px;margin-top:14px"><h3 style="font-size:15px;margin-bottom:8px">Plataforma ainda não ligada</h3><p class="sub" style="margin:0">Falta rodar <b>db/crm-plataforma.sql</b> no SQL Editor do Supabase (depois dele, os cliques novos começam a aparecer aqui).</p></div>';
     return '<div class="fx-plat">' + pagamentoHtml(c, H4_PLAT) + fxSessoes(c) + '</div>';
   }
-  if (tab === 'conversa') return conversaPanel(c, d.mails || [], d.resps || [], d.h4 || H4_PLAT);
+  if (tab === 'conversa') return conversaPanel(c, d.mails || [], d.resps || [], d.h4 || H4_PLAT, d.jor);
   // Dossiê: aba própria, sempre aberta. Preenche sozinho com o que ela responde no funil e no app (ver DOS_FUNIL).
   if (tab === 'dossie') return '<div id="dossie-box">' + dossieHtml(c, state.dos.d, state.dos.err, state.dos.rasc, true, state.dos.chk, true) + '</div>';
   // Ficha (captação): o fluxo de 3 passos e os painéis que já existiam (feed, e-mails, jornada, quem é ela, mais).
@@ -2862,7 +2846,7 @@ function fxCorpo(c, d, tab) {
     '<aside class="fx-rail fx-ctx" aria-label="Quem é ela e jornada">' + quem + jornadaHtml(c, d.mails || [], d.resps || [], d.jor, h4, FH.htmlFunil({ etapa: etapa, semCaixa: true }, H_FX)) + '</aside>' +
     '<section class="fx-centro" aria-label="Tudo que ela fez">' + fichaFeedHtml(d.eventos || []) +
     fichaMaisHtml(c, { perg: d.perg || [], resps: d.resps || [], cons: d.cons || [], last: d.last, h4: h4 }) + '</section>' +
-    '<aside class="fx-rail fx-mail" aria-label="E-mails">' + emailsPanel(c, d.mails || [], h4, d.resps || [], d.jor) + caminhoEmailHtml(c, d.mails || [], d.resps || [], d.jor, h4) + '</aside></div>';
+    '<aside class="fx-rail fx-mail" aria-label="E-mails">' + emailsPanel(c, d.mails || [], h4, d.resps || [], d.jor) + '</aside></div>';
 }
 // Repinta só o corpo da aba (abrir/fechar/mover sessão): o resto da tela e a rolagem ficam.
 function fxPintaCorpo() {
@@ -3074,7 +3058,7 @@ async function renderPessoa() {
   var h4 = 'font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-3); margin:0 0 8px';
   var jor = montaJornada(r[9]);
   if (!state.ptab && !fichaV2Ativa()) state.ptab = mails.length || resps.length ? 'conversa' : 'ficha';   // a ficha v2 abre pela conversão (FX.abaPadrao)
-  var tabs = '<div class="ptabs" role="tablist" aria-label="Ficha da pessoa">' + [['conversa', 'Conversa'], ['plataforma', 'Plataforma'], ['ficha', 'Ficha']].map(function (t) {
+  var tabs = '<div class="ptabs" role="tablist" aria-label="Ficha da pessoa">' + [['conversa', 'E-mail'], ['plataforma', 'Plataforma'], ['ficha', 'Ficha']].map(function (t) {
     return '<button class="ptab" role="tab" type="button" data-ptab="' + t[0] + '" aria-selected="' + (state.ptab === t[0]) + '">' + t[1] +
       (t[0] === 'conversa' && resps.some(function (x) { return x.status === 'nova'; }) ? ' <span class="count">nova</span>' : '') +
       '</button>';
@@ -3093,12 +3077,11 @@ async function renderPessoa() {
     processosSugeridosHtml(state.procs) +
     onbResumoHtml(c) +
     '<div id="dossie-box">' + dossieHtml(c, state.dos.d, state.dos.err, state.dos.rasc, state.dosAberto, state.dos.chk) + '</div>' +
-    tabs + (state.ptab === 'conversa' ? conversaPanel(c, mails, resps, h4) : state.ptab === 'plataforma' ? plataformaPanel(c, h4) :
+    tabs + (state.ptab === 'conversa' ? conversaPanel(c, mails, resps, h4, jor) : state.ptab === 'plataforma' ? plataformaPanel(c, h4) :
     '<div class="pessoa-grid" style="margin-top:18px">' +
     fichaFeedHtml(eventos) +
     '<div style="display:flex; flex-direction:column; gap:16px">' +
     emailsPanel(c, mails, h4, resps, jor) +
-    caminhoEmailHtml(c, mails, resps, jor, h4) +
     jornadaHtml(c, mails, resps, jor, h4) +
     '<div class="panel" style="padding:16px"><h4 style="' + h4 + '">Quem é ela</h4>' + kvHtml(respostasKv(c)) + '</div>' +
     '<div id="chk-lateral">' + checklistLateralHtml(state.dos && state.dos.chk, Date.now(), h4) + '</div>' +
@@ -4890,7 +4873,9 @@ document.addEventListener('click', async function (e) {
   if (t.dataset.open) return openPessoa(t.dataset.open);
   if (t.dataset.calmes) { state.calOff = (state.calOff || 0) + Number(t.dataset.calmes); return renderCalendario(); }
   if (t.dataset.openconv) return openPessoa(t.dataset.openconv, 'conversa');
-  if (t.dataset.prep) return prepararEmail(t.dataset.prep, t.dataset.prepmodo, t.dataset.tplk);
+  if (t.dataset.tplpick) return abrirModelosPicker(t.dataset.tplpick);
+  if (t.dataset.tplsel) return openCompose(activeCid, t.dataset.tplsel);
+  if (t.dataset.usarrasc) { var sg = (state.rascSug || {})[t.dataset.usarrasc], ct = $('conv-txt'); if (sg && ct) { ct.value = sg; state.rascunho[t.dataset.usarrasc] = sg; ct.focus(); } return; }
   if (t.dataset.ptab) { state.ptab = t.dataset.ptab; return renderPessoa(); }
   if (t.dataset.pstab) return trocaPlatAba(t.dataset.pstab);
   if (t.dataset.caso) {
@@ -5136,6 +5121,12 @@ document.addEventListener('focusout', async function (e) {
 });
 // Estúdio: campos de texto dos blocos (data-f = o caminho dentro de blocos) e a busca da pessoa da prévia.
 document.addEventListener('input', function (e) {
+  if (e.target.id === 'tplpick-q') {
+    var q = e.target.value.trim().toLowerCase();
+    document.querySelectorAll('#tplpick .tplrow').forEach(function (b) { b.hidden = !!q && b.dataset.q.indexOf(q) < 0; });
+    document.querySelectorAll('#tplpick [data-grp]').forEach(function (g) { g.hidden = !g.querySelector('.tplrow:not([hidden])'); });
+    return;
+  }
   if (CMP && e.target.id === 'compose-txt') { CMP.editado = e.target.value === CMP.e.body ? null : e.target.value; return cmpFormato(); }
   if (CMP && e.target.id === 'compose-subj') { $('cmp-env-subj').textContent = e.target.value; return; }
   if (e.target.matches && e.target.matches('input[data-f], textarea[data-f]') && ST.d) { setCampo(e.target.dataset.f, e.target.value); EE.campoMudou(e.target.dataset.f); return aoEditar(); }

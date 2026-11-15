@@ -151,7 +151,7 @@ jornadaErro = true;
 await mod.renderPessoa();
 html = el('pessoa-page').innerHTML;
 check('a ficha esconde o resto (perguntas, consentimento, Instagram) em "Mais"; a caixa de anotações saiu', /<details class="mais">[\s\S]*Consentimento[\s\S]*<\/details>/.test(html) && !html.includes('Suas anotações') && !html.includes('id="nota"') && html.indexOf('nextmail insight') < html.indexOf('class="mais"'));
-check('a ficha traz o Caminho de e-mail desta pessoa, com o Preparar e-mail recolhido', html.includes('Troca de e-mails com ela') && html.includes('Próximo na fila') && html.includes('Tudo que trocamos') && html.includes('cam-prep'));
+check('a troca de e-mails (fila, modelos) mora na aba E-mail, não na Ficha', !html.includes('Troca de e-mails com ela') && !html.includes('Tudo que trocamos'));
 check('se a busca da jornada falhar, a ficha abre mesmo assim', html.includes('Jornada no funil') && html.includes('nextmail insight'));
 jornadaErro = false;
 

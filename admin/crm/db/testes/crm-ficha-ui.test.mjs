@@ -209,7 +209,7 @@ console.log('== Task 13: abas Ficha e Conversa ==');
   let pg = h.el('pessoa-page').innerHTML;
   check('Ficha, etapa 2: passo 1 destacado', /data-passo="1"[^>]*aria-current="step"/.test(pg) && (pg.match(/aria-current="step"/g) || []).length === 2);   // 1 do fluxo + 1 do funil
   check('Ficha: painéis existentes de jornada e e-mails', pg.includes('class="fx-ficha3"') && pg.includes('Tudo que ela fez') && /Jornada|jornada/.test(pg) && pg.includes('Quem é ela'));
-  check('Ficha: perguntas, consentimento e Instagram seguem na ficha; no lugar das anotações entra o Caminho de e-mail', pg.includes('Consentimento') && pg.includes('id="ig-handle"') && !pg.includes('id="nota"') && pg.includes('Troca de e-mails com ela'));
+  check('Ficha: perguntas, consentimento e Instagram seguem na ficha; a caixa de anotações saiu e a troca de e-mails mora na aba E-mail', pg.includes('Consentimento') && pg.includes('id="ig-handle"') && !pg.includes('id="nota"') && !pg.includes('Troca de e-mails com ela'));
   check('Ficha não traz o Checklist nem as sessões', !pg.includes('data-sessao='));
   h.mod.pararAoVivo();
   h = await comEtapa(4); await h.click({ fx: 'tab', v: 'ficha' });
@@ -219,7 +219,7 @@ console.log('== Task 13: abas Ficha e Conversa ==');
   check('Ficha, etapa 7: passo 3 destacado', /data-passo="3"[^>]*aria-current="step"/.test(h.el('pessoa-page').innerHTML));
   await h.click({ fx: 'tab', v: 'conversa' });
   pg = h.el('pessoa-page').innerHTML;
-  check('Conversa reaproveita o painel de e-mail', pg.includes('id="conv-send"') && pg.includes('id="conv-txt"') && !pg.includes('data-sessao='));
+  check('A aba E-mail traz a conversa, a fila e o pop-up de modelos, sem anotações', pg.includes('id="conv-send"') && pg.includes('id="conv-txt"') && !pg.includes('data-sessao=') && pg.includes('Próximo na fila') && pg.includes('data-tplpick=') && pg.includes('Caminho de e-mail desta pessoa') && !pg.includes('id="nota"') && !/aria-selected="[a-z]+"[^>]*>Conversa/.test(pg));
   // sem o checklist carregado: skeleton, não erro
   h.mod.state.dos.chk = null; await h.click({ fx: 'tab', v: 'plataforma' });
   pg = h.el('pessoa-page').innerHTML;
