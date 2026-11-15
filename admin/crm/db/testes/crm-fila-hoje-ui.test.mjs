@@ -32,7 +32,7 @@ function qb(table) {
 const supabase = { from: qb, auth: { getSession: async () => ({ data: { session: null } }) }, rpc: async (n, a) => { rpcs.push({ n, a }); return rpcRetorno; }, channel: () => ({ on() { return this; }, subscribe() { return this; } }), removeChannel() {} };
 const store = {};
 const mod = new Function('supabase', 'ES', 'TX', 'EE', 'EQ', 'JR', 'document', 'window', 'location', 'localStorage', 'setInterval', 'clearInterval',
-  src + '\n;return { state, setC: function (v) { C = v; }, setQ: function (v) { Q = v; }, setR: function (v) { R = v; }, setP: function (v) { P = v; }, setPSUG: function (v) { PSUG = v; }, setFin: function (o) { PRODUTOS = o.produtos; COMPRAS_EV = o.compras; ASSIN = o.assin; PRECOS = o.precos; }, itensDeHoje, ordenaFila, catDoContato, renderFila, receitaEstimada, pistasDaJornada, rascunhoMultiFunil, funisDaPessoa, fxResumoCartoes, setUM: function (v) { UM = v; }, setPAG: function (v) { PAG1A1 = v; }, dosDoFunil, dosCampo, dosProgresso, dosVisiveis, dosCruzamentos, dosFaltaPorCanal, dosMensagemTexto, insightsDaPlataforma, r1Codigo, r1Rotulo, r1Roteiro, r1Html, r1PainelHtml, ltItens, ltResumo, ltHtml, dosVisaoHtml, obHtml };')(
+  src + '\n;return { state, setC: function (v) { C = v; }, setQ: function (v) { Q = v; }, setR: function (v) { R = v; }, setP: function (v) { P = v; }, setPSUG: function (v) { PSUG = v; }, setFin: function (o) { PRODUTOS = o.produtos; COMPRAS_EV = o.compras; ASSIN = o.assin; PRECOS = o.precos; }, itensDeHoje, ordenaFila, catDoContato, renderFila, receitaEstimada, pistasDaJornada, rascunhoMultiFunil, funisDaPessoa, fxResumoCartoes, setUM: function (v) { UM = v; }, setPAG: function (v) { PAG1A1 = v; }, dosDoFunil, dosCampo, dosProgresso, dosVisiveis, dosCruzamentos, dosFaltaPorCanal, dosMensagemTexto, insightsDaPlataforma, r1Codigo, r1Rotulo, r1Roteiro, r1Html, r1PainelHtml, ltItens, ltResumo, ltHtml, dosVisaoHtml, obHtml, dosLigacaoHtml, dosMdTexto, dosCampoHtml };')(
   supabase, {}, TXMOD, { iniciar() {}, depois() {}, campoMudou() {} }, {}, {}, document, { addEventListener() {}, confirm: () => true, scrollTo() {} }, { href: '' }, { getItem: (k) => store[k] ?? null, setItem: (k, v) => { store[k] = v; } }, () => 1, () => {});
 
 const dia = (n) => new Date(Date.now() + n * 864e5).toISOString();
@@ -268,6 +268,24 @@ console.log('== Onboarding no Dossiê ==');
   check('com chamada e Notion: data, leitura pendente, bilan enviado e botão ligado', /Chamada lida em 10\/11/.test(h) && /proposta pendente/.test(h) && /Bilan enviado em 12\/11\/2026/.test(h) && /Reenviar o bilan/.test(h) && !/data-bilanabrir="ob" disabled/.test(h));
   check('mostra o que falta perguntar', /Falta perguntar/.test(h) && /dchip falta/.test(h));
   mod.state.bilan = null;
+}
+
+console.log('== A ligação no topo do Dossiê ==');
+{
+  const P = pessoa('lg', 'Lara', { email: 'lara@example.com', persona: 'au_pair_estudante', ultima_origem: 'guia-checklist-chegada-au-pair', utm_campaign: 'checklist-chegada' });
+  mod.setC([P]); mod.state.bilan = null;
+  mod.state.dos = { cid: 'lg', d: { cidade: 'Lyon', ligacao_resumo: 'Quer FLE.', proximos_passos: 'Mandar o guia\n- Marcar a prefeitura' }, err: null, rasc: {}, chk: null, origem: {}, onbEm: null };
+  const d = { eventos: [], mails: [], perg: [], jor: { entradas: [{ em: dia(-5), origem: 'guia-checklist-chegada-au-pair' }], quizzes: [] } };
+  const h = mod.dosLigacaoHtml(P, d);
+  check('três momentos: antes, durante/depois e o que sai', /Antes da ligação/.test(h) && /Durante e depois/.test(h) && /O que sai da conversa/.test(h));
+  check('antes: como chegou (IL05 e campanha), o que já deu (cidade) e o que perguntar', /IL05/.test(h) && /checklist-chegada/.test(h) && /Cidade[^<]*: <b>Lyon/.test(h) && /O que perguntar · \d+/.test(h));
+  check('o registro da ligação e o botão de ler com a IA estão neste bloco', /id="poscall-box"/.test(h) && /data-dossalvar="lg"/.test(h));
+  check('bilan: rascunho de e-mail desligado sem Notion; .md disponível', /data-bilanabrir="lg" disabled/.test(h) && /data-dosmd="lg"/.test(h));
+  const md = mod.dosMdTexto(P, mod.state.dos);
+  check('.md: título, o que informou, resumo e encaminhamentos como tarefas', /^# Bilan da conversa: Lara/.test(md) && /- Cidade onde mora hoje: Lyon/.test(md) && /Quer FLE\./.test(md) && /- \[ \] Mandar o guia/.test(md) && /- \[ \] Marcar a prefeitura/.test(md));
+  const f = mod.dosVisaoHtml(P, d), b = mod.dosLigacaoHtml(P, d);
+  check('o formulário de baixo não repete o poscall', (b.match(/id="poscall-box"/g) || []).length === 1);
+  mod.state.dos = null;
 }
 
 console.log('\n' + (failed ? failed + ' FALHARAM, ' : '') + passed + ' passaram' + (failed ? '' : ', 0 falharam'));

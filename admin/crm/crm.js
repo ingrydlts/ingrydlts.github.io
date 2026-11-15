@@ -2,13 +2,13 @@
 // Nada de service_role aqui. O banco é db/crm-fase2.sql; o desenho é o artefato "CRM Por Dentro".
 // Tudo que vem do banco é texto de terceiros (nome, e-mail, pergunta): passa sempre por esc().
 import { supabase } from '/assets/js/supabase-client.js';
-import * as TX from './taxonomia.js?v=2026-11-15.30';   // páginas, famílias e agrupamento dos modelos
-import * as ES from './estudio.js?v=2026-11-15.30';   // os blocos do estúdio de e-mails (entregas 2 e 3)
-import * as EE from './editor-email.js?v=2026-11-15.30';
-import * as EQ from './editor-quem.js?v=2026-11-15.30';
-import * as JR from './jornada.js?v=2026-11-15.30';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
-import * as FX from './ficha.js?v=2026-11-15.30';   // ficha v2: lógica pura (fila, démarches, funil, ações)
-import * as FH from './ficha-html.js?v=2026-11-15.30';   // ficha v2: HTML puro
+import * as TX from './taxonomia.js?v=2026-11-15.31';   // páginas, famílias e agrupamento dos modelos
+import * as ES from './estudio.js?v=2026-11-15.31';   // os blocos do estúdio de e-mails (entregas 2 e 3)
+import * as EE from './editor-email.js?v=2026-11-15.31';
+import * as EQ from './editor-quem.js?v=2026-11-15.31';
+import * as JR from './jornada.js?v=2026-11-15.31';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
+import * as FX from './ficha.js?v=2026-11-15.31';   // ficha v2: lógica pura (fila, démarches, funil, ações)
+import * as FH from './ficha-html.js?v=2026-11-15.31';   // ficha v2: HTML puro
 
 var PERSONAS = {
   au_pair_estudante: 'Au pair → estudante', campus_france: 'Campus France', alternancia_emprego: 'Alternância / emprego',
@@ -2592,10 +2592,10 @@ function dossieHtml(c, d, err, rasc, aberto, chk, fixo) {
   var pr = dosProgresso(c, d, rasc), pct = pr.tot ? Math.round(pr.n * 100 / pr.tot) : 0, sujo = rasc && Object.keys(rasc).length;
   var corpo = '';
   if (aberto) {
-    corpo = '<div class="dcorpo">' + dosVisiveis(c, d, rasc).map(function (b) {
+    corpo = '<div class="dcorpo">' + dosVisiveis(c, d, rasc).filter(function (b) { return !(fixo && b.t === 'A ligação'); }).map(function (b) {
       return '<section class="dbloco"><h4>' + esc(b.t) + '</h4><div class="dgrid">' + b.campos.map(function (f) { return dosCampoHtml(f, c, d, rasc); }).join('') + '</div></section>';
     }).join('') + '<div class="actions" style="margin-top:6px"><button class="btn primary" type="button" data-dossalvar="' + esc(c.id) + '">Salvar dossiê</button>' +
-      (sujo ? '<span class="sub" style="align-self:center">Há alterações ainda não salvas.</span>' : '') + '</div>' + '<div id="poscall-box">' + poscallHtml(c) + '</div><div id="chk-box">' + checklistHtml(chk, Date.now()) + '</div></div>';
+      (sujo ? '<span class="sub" style="align-self:center">Há alterações ainda não salvas.</span>' : '') + '</div>' + (fixo ? '' : '<div id="poscall-box">' + poscallHtml(c) + '</div>') + '<div id="chk-box">' + checklistHtml(chk, Date.now()) + '</div></div>';
   }
   return '<div class="panel dossie"><div class="dhead"><h3>Dossiê</h3><span class="sub">' + pr.n + ' de ' + pr.tot + ' respondidas' + (pr.falta ? ' · faltam ' + pr.falta : ' · completo') + '</span>' +
     (fixo ? '' : '<button class="btn" type="button" data-dostoggle="1" aria-expanded="' + !!aberto + '" style="margin-left:auto">' + (aberto ? 'Fechar dossiê' : 'Abrir dossiê completo') + '</button>') + '</div>' +
@@ -3071,7 +3071,7 @@ function fxHeaderHtml(c, d) {
 // Catálogo de démarches (cópia do app, processos.json): carregado uma vez; sem ele, tudo cai na démarche padrão.
 var FX_PROC = null;
 async function fxCarregaProcessos() {
-  try { var r = await fetch('processos.json?v=2026-11-15.30'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
+  try { var r = await fetch('processos.json?v=2026-11-15.31'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
 }
 // A sessão Checklist: pílulas por démarche, os 4 mais urgentes, pasta do Drive privada e "Ver mais desta sessão".
 function fxChecklistCorpo(c) {
@@ -3288,6 +3288,63 @@ function obHtml(c, d, S) {
     ' <button type="button" class="btn" data-go="onboarding">Abrir o Onboarding →</button></p><div class="dv-grid">' +
     cardOb('O que a chamada trouxe', trouxe) + cardOb('Bilan da conversa', bilan) + cardOb('Falta perguntar', falta) + '</div></div>';
 }
+// ---------- A ligação, no topo do Dossiê: antes (contexto, o que ela já deu, o que perguntar), durante (registro) e depois (ler a call, bilan, e-mail, .md) ----------
+function dosMdTexto(c, S) {
+  var dv = function (k) { return S ? dosValor(c, S.d, S.rasc, k) : ''; }, B = state.bilan && state.bilan.cid === c.id ? state.bilan : null, L = [];
+  var quando = dv('ligacao_data');
+  L.push('# Bilan da conversa: ' + (c.nome || c.email || ''), '', (quando ? 'Data da ligação: ' + fmtDay(quando) + '\n' : '') + 'Situação: ' + personaLabel(c) + (subLabel(c) ? ' · ' + subLabel(c) : ''), '');
+  var feito = [];
+  if (S) dosVisiveis(c, S.d, S.rasc).forEach(function (b) { if (b.livre) return; b.campos.forEach(function (f) { var v = dv(f.k); if (v !== '') feito.push('- ' + f.l + ': ' + dosRotuloOpcao(f, v)); }); });
+  L.push('## O que ela informou', '', feito.length ? feito.join('\n') : '_Nada registrado._', '');
+  L.push('## Resumo da conversa', '', dv('ligacao_resumo') || '_Sem resumo._', '');
+  var passos = String(dv('proximos_passos') || '').split('\n').map(function (x) { return x.trim(); }).filter(Boolean);
+  L.push('## Encaminhamentos', '', passos.length ? passos.map(function (x) { return '- [ ] ' + x.replace(/^[-•*]\s*/, ''); }).join('\n') : '_Nenhum registrado._', '');
+  if (B) L.push('_Leitura do Notion de ' + fmtDay(String(B.quando || '').slice(0, 10)) + '._', '');
+  return L.join('\n');
+}
+function dosBaixaMd(cid) {
+  var c = byC(cid); if (!c) return;
+  var S = state.dos && state.dos.cid === c.id && state.dos.d ? state.dos : null, txt = dosMdTexto(c, S);
+  var nome = 'bilan-' + String(c.nome || 'pessoa').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') + '-' + new Date().toISOString().slice(0, 10) + '.md';
+  var a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([txt], { type: 'text/markdown;charset=utf-8' })); a.download = nome; document.body.appendChild(a); a.click(); a.remove();
+  toast('Arquivo ' + nome + ' baixado');
+}
+function dosLigacaoHtml(c, d) {
+  var S = state.dos && state.dos.cid === c.id && state.dos.d ? state.dos : null; if (!S) return '';
+  var jor = d.jor || montaJornada([]), evs = d.eventos || [], perg = d.perg || [];
+  var dv = function (k) { return dosValor(c, S.d, S.rasc, k); }, F = dosFaltaPorCanal(c, S);
+  var li = function (t) { return '<li>' + t + '</li>'; };
+  // 1) como ela chegou até você
+  var chegou = (jor.entradas || []).slice().reverse().slice(0, 3).map(function (x) {
+    var pg = ORIGEM_PAGINA[x.origem], q = (jor.quizzes || []).filter(function (z) { return z.em === x.em; })[0];
+    return li('<b>' + esc(fmtDate(x.em)) + '</b> · ' + esc((pg ? r1Rotulo(pg) + ' · ' : '') + (origLabel(x.origem) || '—')) + (q && q.objetivo ? ' · marcou: ' + esc(etapaDe(q.objetivo)) : ''));
+  }).join('') + (c.utm_campaign ? li('Campanha: ' + esc(c.utm_campaign)) : '') + (c.instagram ? li('Instagram: ' + esc(c.instagram)) : '') +
+    evs.filter(function (e) { return e.tipo === 'artigo_lido'; }).slice(0, 2).map(function (e) { var x = e.dados || {}; return li('Leu: ' + esc(x.titulo || x.slug || '')); }).join('') +
+    perg.slice(0, 2).map(function (p) { return li('Perguntou: “' + esc(truncaTxt(p.texto, 100)) + '”'); }).join('');
+  // 2) o que ela já me deu
+  var deu = [];
+  dosVisiveis(c, S.d, S.rasc).forEach(function (b) { if (b.livre) return; b.campos.forEach(function (f) { var v = dv(f.k); if (v !== '') deu.push(li(esc(f.l) + ': <b>' + esc(dosRotuloOpcao(f, v)) + '</b>' + (dosVeioDoFunil(c, S.d, S.rasc, f.k) ? ' <i class="dv-fonte">funil: confirme</i>' : ''))); }); });
+  // 3) o que vou perguntar
+  var perguntar = F.conversa.concat(F.doc.filter(function (f) { return !DOS_CANAL_DOC[f.k]; }));
+  var X = dosCruzamentos(c, S), conf = X.diverge.map(function (x) { return li('<b>Confirmar ' + esc(x.l) + ':</b> funil “' + esc(x.funil) + '”, dossiê “' + esc(x.dossie) + '”'); }).join('');
+  var campo = function (k) { var f = dosCampo(k); return f ? dosCampoHtml(f, c, S.d, S.rasc) : ''; };
+  var B = state.bilan && state.bilan.cid === c.id ? state.bilan : null, enviado = (d.mails || []).filter(function (m) { return m.modelo === 'bilan_conversa'; })[0];
+  var col = function (t, n, corpo) { return '<div class="dv-card"><div class="k">' + esc(t) + (n != null ? ' · ' + n : '') + '</div>' + corpo + '</div>'; };
+  return '<section class="panel dv lg" id="dos-ligacao" style="padding:16px;margin-bottom:14px"><h3 style="font-size:17px;margin:0 0 2px">A ligação</h3>' +
+    '<p class="sub" style="margin:0 0 12px">Antes: contexto e o que perguntar. Durante: registre. Depois: a IA lê a conversa e preenche o Dossiê, e sai o bilan.</p>' +
+    '<div class="lg-etapa"><span class="lg-n">1</span><b>Antes da ligação</b></div><div class="dv-grid">' +
+    col('Como ela chegou até você', null, chegou ? '<ul class="dv-ul">' + chegou + '</ul>' : '<p class="sub" style="margin:0">Sem entrada registrada.</p>') +
+    col('O que ela já te deu', deu.length, deu.length ? '<ul class="dv-ul lg-deu">' + deu.join('') + '</ul>' : '<p class="sub" style="margin:0">Nada ainda: tudo vem da ligação.</p>') +
+    col('O que perguntar', perguntar.length + X.diverge.length, (conf || perguntar.length) ? '<ol class="dv-ol">' + conf.replace(/<li>/g, '<li class="lg-conf">') + perguntar.slice(0, 12).map(function (f) { return li(esc(f.l)); }).join('') + '</ol>' + (perguntar.length > 12 ? '<p class="sub" style="margin:4px 0 0">e mais ' + (perguntar.length - 12) + ' no formulário abaixo.</p>' : '') : '<p class="sub" style="margin:0">Nada a perguntar: o Dossiê está completo.</p>') + '</div>' +
+    '<div class="lg-etapa"><span class="lg-n">2</span><b>Durante e depois: registrar e ler com a IA</b></div>' +
+    '<div class="dgrid lg-form">' + campo('ligacao_data') + campo('ligacao_resumo') + campo('proximos_passos') + campo('ligacao_transcricao') + '</div>' +
+    '<div class="actions" style="margin-top:6px"><button class="btn primary" type="button" data-dossalvar="' + esc(c.id) + '">Salvar dossiê</button></div>' +
+    '<div id="poscall-box">' + poscallHtml(c) + '</div>' +
+    '<div class="lg-etapa"><span class="lg-n">3</span><b>O que sai da conversa</b></div><div class="lg-saidas">' +
+    '<div class="dv-card"><div class="k">Bilan (você edita antes de enviar)</div><p class="sub" style="margin:0 0 8px">' + (B ? 'Leitura do Notion de ' + esc(fmtDay(String(B.quando || '').slice(0, 10))) + '.' : 'Sem leitura do Notion ainda.') + (enviado ? ' Enviado em ' + esc(fmtDay(String(enviado.enviado_em || enviado.criado_em || '').slice(0, 10))) + '.' : '') + '</p>' +
+    '<button type="button" class="btn" data-bilanabrir="' + esc(c.id) + '"' + (B ? '' : ' disabled') + '>' + (enviado ? 'Reenviar o bilan' : 'Rascunho do e-mail com o bilan') + '</button></div>' +
+    '<div class="dv-card"><div class="k">Arquivo para o seu sistema</div><p class="sub" style="margin:0 0 8px">Um .md com o que ela informou, o resumo e os encaminhamentos em lista de tarefas.</p><button type="button" class="btn" data-dosmd="' + esc(c.id) + '">Baixar o .md</button></div></div></section>';
+}
 function dosVisaoHtml(c, d) {
   var S = state.dos && state.dos.cid === c.id && state.dos.d ? state.dos : null, conta = !!c.user_id, pos = !!(S && S.onbEm);
   var jor = d.jor || montaJornada([]), mails = d.mails || [], resps = d.resps || [], perg = d.perg || [], evs = d.eventos || [];
@@ -3400,7 +3457,7 @@ function fxCorpo(c, d, tab) {
   }
   if (tab === 'conversa') return conversaPanel(c, d.mails || [], d.resps || [], d.h4 || H4_PLAT, d.jor);
   // Dossiê: aba própria, sempre aberta. Preenche sozinho com o que ela responde no funil e no app (ver DOS_FUNIL).
-  if (tab === 'dossie') return dosVisaoHtml(c, d) + '<div id="dossie-box">' + dossieHtml(c, state.dos.d, state.dos.err, state.dos.rasc, true, state.dos.chk, true) + '</div>';
+  if (tab === 'dossie') return dosLigacaoHtml(c, d) + dosVisaoHtml(c, d) + '<div id="dossie-box">' + dossieHtml(c, state.dos.d, state.dos.err, state.dos.rasc, true, state.dos.chk, true) + '</div>';
   // Ficha (captação): o fluxo de 3 passos e os painéis que já existiam (feed, e-mails, jornada, quem é ela, mais).
   var etapa = FX.etapaFunil(c, { mails: d.mails || [], propostas: [], temBilan: !!(state.bilan && state.bilan.cid === c.id) }), h4 = d.h4 || H4_PLAT;
   // Três colunas, cada uma com um papel: à esquerda quem ela é e onde está no funil; no meio o que ela fez; à direita o que fazer (e-mail).
@@ -5459,6 +5516,7 @@ document.addEventListener('click', async function (e) {
   if (t.dataset.caldia !== undefined) { state.calDia = state.calDia === t.dataset.caldia ? '' : t.dataset.caldia; return renderCalendario(); }
   if (t.dataset.calmes) { state.calOff = (state.calOff || 0) + Number(t.dataset.calmes); return renderCalendario(); }
   if (t.dataset.pistaemail) { state.rascunho[t.dataset.pistaemail] = (state.rascPista || {})[t.dataset.pistaemail] || ''; return openPessoa(t.dataset.pistaemail, 'conversa'); }
+  if (t.dataset.dosmd) return dosBaixaMd(t.dataset.dosmd);
   if (t.dataset.dosmsg) return dosMontaMensagem(t.dataset.dosmsg, t.dataset.tipo);
   if (t.dataset.lf) { state.fx.lf = t.dataset.lf; state.fx.ln = 12; return fxRepinta(); }
   if (t.dataset.lmais) { state.fx.ln = (state.fx.ln || 12) + 20; return fxRepinta(); }
