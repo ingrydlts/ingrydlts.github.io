@@ -2,13 +2,13 @@
 // Nada de service_role aqui. O banco é db/crm-fase2.sql; o desenho é o artefato "CRM Por Dentro".
 // Tudo que vem do banco é texto de terceiros (nome, e-mail, pergunta): passa sempre por esc().
 import { supabase } from '/assets/js/supabase-client.js';
-import * as TX from './taxonomia.js?v=2026-11-15.14';   // páginas, famílias e agrupamento dos modelos
-import * as ES from './estudio.js?v=2026-11-15.14';   // os blocos do estúdio de e-mails (entregas 2 e 3)
-import * as EE from './editor-email.js?v=2026-11-15.14';
-import * as EQ from './editor-quem.js?v=2026-11-15.14';
-import * as JR from './jornada.js?v=2026-11-15.14';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
-import * as FX from './ficha.js?v=2026-11-15.14';   // ficha v2: lógica pura (fila, démarches, funil, ações)
-import * as FH from './ficha-html.js?v=2026-11-15.14';   // ficha v2: HTML puro
+import * as TX from './taxonomia.js?v=2026-11-15.15';   // páginas, famílias e agrupamento dos modelos
+import * as ES from './estudio.js?v=2026-11-15.15';   // os blocos do estúdio de e-mails (entregas 2 e 3)
+import * as EE from './editor-email.js?v=2026-11-15.15';
+import * as EQ from './editor-quem.js?v=2026-11-15.15';
+import * as JR from './jornada.js?v=2026-11-15.15';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
+import * as FX from './ficha.js?v=2026-11-15.15';   // ficha v2: lógica pura (fila, démarches, funil, ações)
+import * as FH from './ficha-html.js?v=2026-11-15.15';   // ficha v2: HTML puro
 
 var PERSONAS = {
   au_pair_estudante: 'Au pair → estudante', campus_france: 'Campus France', alternancia_emprego: 'Alternância / emprego',
@@ -471,15 +471,83 @@ function renderCalendario() {
   box.innerHTML = '<div class="cal-grade">' + grade + '</div>' + (lista ? '<div class="cal-lista">' + lista + '</div>' : '<div class="empty">Nenhum 1:1 marcado.</div>') +
     (prox.length > 8 ? '<p class="sub" style="margin:6px 16px 10px">Mais ' + (prox.length - 8) + ' depois destes.</p>' : '');
 }
+// ---------- Por onde começar: tudo o que espera por você, por tipo, na ordem que você escolhe ----------
+// Cada item vem com a data desde quando espera (desde) e, se tem, os dias até o prazo. Quem já está com o prazo vencido vai sempre
+// para o fim da fila: o atraso não é seu. A ordem padrão é a dos mais antigos primeiro; a outra põe o prazo mais próximo na frente.
+var FILA_CATS = [
+  ['tudo', 'Tudo que precisa de mim'], ['responder', 'Responder: caixa de entrada'], ['prazo', 'Prazos chegando'], ['voltou', 'Voltaram a pedir material'],
+  ['urgencia', 'Marcaram urgência'], ['paradas', 'Paradas'], ['problemas', 'Problemas do app'], ['processos', 'Processos para revisar'], ['vencido', 'Prazo já vencido (por último)']
+];
+function catDoContato(c) {
+  var m = String(c.motivo || '');
+  if (/^(respondeu|escreveu)/.test(m)) return null;   // já entram pela caixa de entrada
+  if (/venceu há/.test(m)) return 'vencido';           // antes do "vence": "venceu" também começa com "vence"
+  if (/^prazo do VLS-TS vence/.test(m)) return 'prazo';
+  if (/^voltou a deixar/.test(m)) return 'voltou';
+  if (/^parada há/.test(m)) return 'paradas';
+  return 'urgencia';
+}
+function itensDeHoje() {
+  var out = [];
+  Q.filter(function (x) { return x.status === 'nova' && byC(x.contato_id); }).forEach(function (x) { out.push({ cat: 'responder', k: 'q', x: x, desde: x.criado_em }); });
+  R.filter(function (x) { return x.status === 'nova'; }).forEach(function (x) { out.push({ cat: 'responder', k: 'r', x: x, desde: x.recebido_em }); });
+  P.filter(function (x) { return x.status === 'novo'; }).forEach(function (x) { out.push({ cat: 'problemas', k: 'p', x: x, desde: x.criado_em }); });
+  PSUG.filter(function (p) { return byC(p.contato_id); }).forEach(function (p) { out.push({ cat: 'processos', k: 'proc', x: p, c: byC(p.contato_id), desde: p.atualizada_em }); });
+  C.filter(function (c) { return c.motivo && c.estagio !== 'concluido' && c.estagio !== 'inativo'; }).forEach(function (c) {
+    var cat = catDoContato(c); if (!cat) return;
+    out.push({ cat: cat, k: 'c', c: c, desde: (cat === 'voltou' && c.ultima_captura_em) || c.ultimo_evento_em || c.criado_em, dias: c.dias_para_prazo == null ? null : Number(c.dias_para_prazo) });
+  });
+  return out;
+}
+function ordenaFila(l, ord) {
+  var porData = function (a, b) { return a.desde < b.desde ? -1 : a.desde > b.desde ? 1 : 0; };
+  var cmp = function (a, b) {
+    var va = a.cat === 'vencido', vb = b.cat === 'vencido';
+    if (va !== vb) return va ? 1 : -1;                                   // vencidos sempre por último
+    if (va && vb) return (b.dias || 0) - (a.dias || 0);                  // entre eles, o que venceu há menos tempo primeiro
+    if (ord === 'prazo') {
+      var pa = a.dias != null && a.dias >= 0 ? a.dias : 99999, pb = b.dias != null && b.dias >= 0 ? b.dias : 99999;
+      if (pa !== pb) return pa - pb;
+    }
+    return porData(a, b);
+  };
+  return l.slice().sort(cmp);
+}
+function itemFilaHtml(it) {
+  var h = hrsSince(it.desde), idade = '<span class="sla num ' + (h >= 72 ? 'late' : 'ok') + '">' + hrs(h) + '</span>';
+  if (it.k === 'q' || it.k === 'r') {
+    var x = it.x, c = byC(x.contato_id);
+    var who = c ? esc(short(c)) : esc(x.de_email) + ' <span class="persona" style="display:inline;font-size:11.5px">· sem ficha</span>';
+    return '<button class="row" ' + (it.k === 'q' ? 'data-openq' : 'data-openr') + '="' + x.id + '" type="button">' + (c ? '<div class="' + avClass(c) + '">' + esc(ini(c)) + '</div>' : '<div class="av b">@</div>') +
+      '<div class="who"><b>' + who + '</b><span>' + (it.k === 'r' ? canalDe(x)[0] + ' ' : 'Pergunta: ') + esc(x.texto) + '</span></div>' + idade + '</button>';
+  }
+  if (it.k === 'p') return '<button class="row" data-hojeprob="1" type="button"><div class="av b">!</div><div class="who"><b>Problema no app</b><span>' + esc(PROB_CAT[it.x.categoria] || it.x.categoria) + ': ' + esc(it.x.texto) + '</span></div>' + idade + '</button>';
+  var c2 = it.c;
+  if (it.k === 'proc') return '<button class="row" data-open="' + esc(c2.id) + '" type="button"><div class="' + avClass(c2) + '">' + esc(ini(c2)) + '</div><div class="who"><b>' + esc(short(c2)) + '</b><span>Possível novo processo: ' + esc(procLabel(it.x.processo)) + '</span></div><span class="pill u-media">revisar</span></button>';
+  return '<button class="row" data-open="' + esc(c2.id) + '" type="button"><div class="' + avClass(c2) + '">' + esc(ini(c2)) + '</div><div class="who"><b>' + esc(short(c2)) +
+    ' <span class="persona" style="display:inline;font-size:11.5px">· ' + esc(personaLabel(c2)) + '</span></b><span>' + esc(c2.motivo) + '</span></div>' + urgPill(c2.urgencia) + '</button>';
+}
+function renderFila(todos) {
+  var box = $('attention'), sel = $('h-cat'); if (!box || !sel) return;
+  todos = todos || itensDeHoje();
+  var cat = state.hCat || 'tudo', ord = state.hOrd || 'antigos';
+  var n = function (k) { return k === 'tudo' ? todos.length : todos.filter(function (i) { return i.cat === k; }).length; };
+  if (document.activeElement !== sel) sel.innerHTML = FILA_CATS.filter(function (k) { return k[0] === 'tudo' || n(k[0]) > 0 || k[0] === cat; }).map(function (k) {
+    return '<option value="' + k[0] + '"' + (k[0] === cat ? ' selected' : '') + '>' + esc(k[1]) + ' (' + n(k[0]) + ')</option>';
+  }).join('');
+  $('h-ord').value = ord;
+  var lista = ordenaFila(cat === 'tudo' ? todos : todos.filter(function (i) { return i.cat === cat; }), ord);
+  var vel = lista.filter(function (i) { return i.desde; }).sort(function (a, b) { return a.desde < b.desde ? -1 : 1; })[0];
+  $('h-resumo').textContent = lista.length ? lista.length + (lista.length === 1 ? ' item' : ' itens') + (vel ? ' · o mais antigo espera há ' + hrs(hrsSince(vel.desde)) : '') : '';
+  var lim = state.hMais ? lista.length : 8;
+  box.innerHTML = lista.slice(0, lim).map(itemFilaHtml).join('') || '<div class="empty">Nada pedindo você agora.</div>';
+  if (lista.length > lim) box.innerHTML += '<button class="link fila-mais" type="button" data-hojemais="1">Ver mais ' + (lista.length - lim) + '</button>';
+}
 function renderToday() {
   var d = new Date();
   $('hello').textContent = (d.getHours() < 12 ? 'Bom dia' : d.getHours() < 18 ? 'Boa tarde' : 'Boa noite') + ', Ingryd';
-  var att = C.filter(function (c) { return c.motivo && c.estagio !== 'concluido' && c.estagio !== 'inativo'; })
-    .sort(function (a, b) { var o = { alta: 0, media: 1, baixa: 2 }; return o[a.urgencia] - o[b.urgencia] || prazoKey(a) - prazoKey(b) || b.dias - a.dias; }).slice(0, 6);
-  $('attention').innerHTML = att.map(function (c) {
-    return '<button class="row" data-open="' + esc(c.id) + '" type="button"><div class="' + avClass(c) + '">' + esc(ini(c)) + '</div><div class="who"><b>' + esc(short(c)) +
-      ' <span class="persona" style="display:inline;font-size:11.5px">· ' + esc(personaLabel(c)) + '</span></b><span>' + esc(c.motivo) + '</span></div>' + urgPill(c.urgencia) + '</button>';
-  }).join('') || '<div class="empty">Ninguém pedindo atenção agora.</div>';
+  var itensHoje = itensDeHoje();
+  renderFila(itensHoje);
 
   // Processos sugeridos esperando você: um por linha, abre a ficha (onde estão os sinais e os botões).
   var procs = PSUG.filter(function (p) { return byC(p.contato_id); });
@@ -506,7 +574,7 @@ function renderToday() {
 
   renderKpis();
   $('hello-sub').textContent = new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' }) +
-    ' · ' + (att.length + nq.length + nr.length) + ' coisas pedem você hoje';
+    ' · ' + itensHoje.length + (itensHoje.length === 1 ? ' coisa pede' : ' coisas pedem') + ' você hoje';
 
   var np = P.filter(function (x) { return x.status === 'novo'; }).length;
   $('c-perguntas').textContent = nq.length + nr.length + np; $('c-perguntas').hidden = nq.length + nr.length + np === 0;
@@ -2795,7 +2863,7 @@ function fxHeaderHtml(c, d) {
 // Catálogo de démarches (cópia do app, processos.json): carregado uma vez; sem ele, tudo cai na démarche padrão.
 var FX_PROC = null;
 async function fxCarregaProcessos() {
-  try { var r = await fetch('processos.json?v=2026-11-15.14'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
+  try { var r = await fetch('processos.json?v=2026-11-15.15'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
 }
 // A sessão Checklist: pílulas por démarche, os 4 mais urgentes, pasta do Drive privada e "Ver mais desta sessão".
 function fxChecklistCorpo(c) {
@@ -4887,6 +4955,8 @@ document.addEventListener('click', async function (e) {
   if (t.matches('tr[data-id]')) return openPessoa(t.dataset.id);
   if (t.dataset.open) return openPessoa(t.dataset.open);
   if (t.dataset.calmes) { state.calOff = (state.calOff || 0) + Number(t.dataset.calmes); return renderCalendario(); }
+  if (t.dataset.hojemais) { state.hMais = true; return renderFila(); }
+  if (t.dataset.hojeprob) { state.inbox = 'problemas'; return show('perguntas'); }
   if (t.dataset.openconv) return openPessoa(t.dataset.openconv, 'conversa');
   if (t.dataset.tplpick) return abrirModelosPicker(t.dataset.tplpick);
   if (t.dataset.tplsel) return openCompose(activeCid, t.dataset.tplsel);
@@ -5070,6 +5140,8 @@ async function abrirPaginaEntrada(pg) {
 }
 document.addEventListener('change', async function (e) {
   if (e.target.id === 'st-pg-sel') return abrirPaginaEntrada(e.target.value);
+  if (e.target.id === 'h-cat') { state.hCat = e.target.value; state.hMais = false; return renderFila(); }
+  if (e.target.id === 'h-ord') { state.hOrd = e.target.value; return renderFila(); }
   if (e.target.id === 'k-per') { state.kper = Number(e.target.value); return renderKpis(); }
   if (e.target.id === 'compose-tpl') return openCompose(activeCid, e.target.value);
   if (e.target.id === 'st-who') { ST.who = e.target.value; return renderPrevia(); }

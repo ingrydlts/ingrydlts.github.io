@@ -48,6 +48,7 @@
     "test:chat-ui": "node crm-chat-ui.test.mjs",
     "test:radar": "node crm-radar.test.mjs",
     "test:radar-ui": "node crm-radar-ui.test.mjs",
+    "test:fila-hoje-ui": "node crm-fila-hoje-ui.test.mjs",
     "test:processos": "node crm-processos-sugeridos.test.mjs",
     "test:processos-ui": "node crm-processos-ui.test.mjs",
     "test:poscall": "node crm-pos-call.test.mjs",
