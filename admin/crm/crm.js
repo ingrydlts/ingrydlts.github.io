@@ -2,13 +2,13 @@
 // Nada de service_role aqui. O banco é db/crm-fase2.sql; o desenho é o artefato "CRM Por Dentro".
 // Tudo que vem do banco é texto de terceiros (nome, e-mail, pergunta): passa sempre por esc().
 import { supabase } from '/assets/js/supabase-client.js';
-import * as TX from './taxonomia.js?v=2026-11-15.2';   // páginas, famílias e agrupamento dos modelos
-import * as ES from './estudio.js?v=2026-11-15.2';   // os blocos do estúdio de e-mails (entregas 2 e 3)
-import * as EE from './editor-email.js?v=2026-11-15.2';
-import * as EQ from './editor-quem.js?v=2026-11-15.2';
-import * as JR from './jornada.js?v=2026-11-15.2';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
-import * as FX from './ficha.js?v=2026-11-15.2';   // ficha v2: lógica pura (fila, démarches, funil, ações)
-import * as FH from './ficha-html.js?v=2026-11-15.2';   // ficha v2: HTML puro
+import * as TX from './taxonomia.js?v=2026-11-15.3';   // páginas, famílias e agrupamento dos modelos
+import * as ES from './estudio.js?v=2026-11-15.3';   // os blocos do estúdio de e-mails (entregas 2 e 3)
+import * as EE from './editor-email.js?v=2026-11-15.3';
+import * as EQ from './editor-quem.js?v=2026-11-15.3';
+import * as JR from './jornada.js?v=2026-11-15.3';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
+import * as FX from './ficha.js?v=2026-11-15.3';   // ficha v2: lógica pura (fila, démarches, funil, ações)
+import * as FH from './ficha-html.js?v=2026-11-15.3';   // ficha v2: HTML puro
 
 var PERSONAS = {
   au_pair_estudante: 'Au pair → estudante', campus_france: 'Campus France', alternancia_emprego: 'Alternância / emprego',
@@ -2558,7 +2558,7 @@ function fxHeaderHtml(c, d) {
 // Catálogo de démarches (cópia do app, processos.json): carregado uma vez; sem ele, tudo cai na démarche padrão.
 var FX_PROC = null;
 async function fxCarregaProcessos() {
-  try { var r = await fetch('processos.json?v=2026-11-15.2'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
+  try { var r = await fetch('processos.json?v=2026-11-15.3'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
 }
 // A sessão Checklist: pílulas por démarche, os 4 mais urgentes, pasta do Drive privada e "Ver mais desta sessão".
 function fxChecklistCorpo(c) {
@@ -3218,7 +3218,17 @@ function renderJornada() {
 async function criarNaJornada(valor) {
   var p = valor.split('|'), pg = p[0], et = JR.ETAPAS.filter(function (e) { return e.k === p[1]; })[0], o = et && ES.objetivo(et.objetivo), pag = TX.PAGINAS.filter(function (x) { return x.k === pg; })[0];
   if (!o || !pag || ST.criando) return;
-  ST.criar = { passo: 2, obj: o.k, nome: pag.nome + ' · ' + et.nome, para: paraVazio(), classe: { familia: TX.familiaDoObjetivo(o.k), pagina: pg, etapa: null, persona: null } };
+  // O que a célula já diz: o material é o guia da página (quem pegou aquele guia) e, se o e-mail sai depois de outro e-mail, é o da etapa anterior da mesma página.
+  var para = paraVazio(), mat = Object.keys(ORIGEM_PAGINA).filter(function (k) { return ORIGEM_PAGINA[k] === pg; })[0];
+  if (mat) para.materiais = [mat];
+  var anterior = null;
+  if (o.gatilho === 'email') {
+    var ordem = JR.ETAPAS.map(function (e) { return e.k; }), ate = ordem.indexOf(et.k);
+    var idx = function (m) { return ordem.indexOf(JR.etapaDaJornada(Object.assign({}, m, { familia: TX.classifica(m).familia }))); };
+    var antes = listaModelos().filter(function (m) { return TX.classifica(m).pagina === pg && idx(m) >= 0 && idx(m) < ate; }).sort(function (x, y) { return idx(y) - idx(x); });
+    anterior = antes[0] ? antes[0].chave : null;   // o mais perto, na etapa de antes
+  }
+  ST.criar = { passo: 2, obj: o.k, nome: pag.nome + ' · ' + et.nome, para: para, depois_de: anterior, classe: { familia: TX.familiaDoObjetivo(o.k), pagina: pg, etapa: null, persona: null } };
   ST.vista = 'estudio'; ST.tab = 'editar';
   if (o.produto) return renderModelos();
   ST.criando = true;
@@ -3472,6 +3482,7 @@ function passoQuem(m, ro) {
   }
   var chip = function (id, rot, vazio) { return '<button type="button" class="ee-ch' + (vazio ? ' vazio' : '') + '" data-qpop="' + id + '" aria-expanded="' + (ST.qpop === id) + '">' + esc(rot) + ' <span aria-hidden="true">▾</span></button>'; };
   var seq = !!m.envio_gatilho, minutos = m.envio_minutos, quando = !seq ? 'só quando você envia' : minutos != null ? minutos + (minutos === 1 ? ' minuto' : ' minutos') + ' depois' : m.envio_dias != null ? (m.envio_dias === 0 ? 'no mesmo dia' : m.envio_dias + (m.envio_dias === 1 ? ' dia' : ' dias') + ' depois') : 'defina o envio';
+  var semBase = seq && m.envio_gatilho !== 'compra' && !m.envio_depois_de;
   var base = m.envio_gatilho === 'material' ? ' de pegar ' + origLabel(m.envio_depois_de) : m.envio_gatilho === 'email' ? ' do e-mail "' + modeloNome(m.envio_depois_de) + '"' : m.envio_gatilho === 'compra' ? ' da compra' : '';
   var pop = '';
   if (ST.qpop === 'mat') pop = '<fieldset class="st-pq"><legend>Entrou por (material)</legend><div class="st-pq-op">' + materiaisConhecidos().map(function (o) { return '<label class="st-check"><input type="checkbox" data-pq="materiais" value="' + esc(o[0]) + '"' + ((((m.para_quem || {}).materiais || []).indexOf(o[0]) >= 0) ? ' checked' : '') + '> ' + '> ' + esc(o[1]) + '</label>'; }).join('') + '</div><small>Nenhum marcado = qualquer material.</small></fieldset>';
@@ -3480,7 +3491,7 @@ function passoQuem(m, ro) {
   var popHtml = pop ? '<div class="ee-pop2" role="dialog" aria-label="Mudar">' + pop + '<button type="button" class="btn" data-qpop="">Pronto</button></div>' : '';
   var mats = ((m.para_quem || {}).materiais || []).length, ets = ((m.para_quem || {}).etapas || []).length;
   return '<section class="ee-quem"><p class="ee-frase">Vai para quem entrou por ' + chip('mat', fr.materiais, !mats) + ' e respondeu ' + chip('etapa', fr.etapas, !ets) +
-    (m.tipo === 'novidades' ? ' <span class="ee-ch fixo">só quem aceitou novidades</span>' : '') + '. Sai ' + chip('sai', quando + base, !seq) + '.</p>' + popHtml + contador +
+    (m.tipo === 'novidades' ? ' <span class="ee-ch fixo">só quem aceitou novidades</span>' : '') + '. Sai ' + chip('sai', semBase ? 'escolha depois de quê' : quando + base, !seq || semBase) + '.</p>' + popHtml + contador +
     '<p class="sub ee-dica">Toque nos campos coloridos para mudar.</p></section>' + avancado;
 }
 
@@ -3680,9 +3691,10 @@ async function criarModelo(btn) {
     para_quem: para, ordem: 500, como_sai: o.sai === 'sequencia' ? 'Sozinho, pela parte Envio (sequência).' : 'Você envia, pela ficha.',
     variaveis: ES.varsDoModelo(chave, fake).map(function (x) { var c = ES.CAT[x] || {}; return { nome: x, o_que_e: c.o || x, se_faltar: c.t === 'link' ? 'não sai' : c.plano == null ? 'o bloco some' : c.plano || 'fica vazio' }; }) };
   if (temColunasReais()) { var cc = cr.classe || {}; linha.familia = cc.familia || null; linha.pagina = cc.pagina || null; linha.etapa = cc.etapa || null; linha.persona = cc.persona || null; }
+  var dep = cr.depois_de !== undefined ? cr.depois_de : o.depois_de;   // criado pela Jornada: o e-mail da etapa de antes (ou nenhum)
   if (o.sai === 'sequencia') {
     linha.envio_gatilho = o.gatilho; linha.envio_dias = o.dias; linha.envio_hora = o.hora;
-    linha.envio_depois_de = o.gatilho === 'compra' ? para.produto : o.gatilho === 'material' ? ((para.materiais || [])[0] || null) : (modeloDe(o.depois_de) ? o.depois_de : null);
+    linha.envio_depois_de = o.gatilho === 'compra' ? para.produto : o.gatilho === 'material' ? ((para.materiais || [])[0] || null) : (modeloDe(dep) ? dep : null);
   }
   var d = ES.esqueleto(o.k), mt = ES.montar(d, o.tipo);
   var r1 = await supabase.from('modelos_email').insert(linha);
