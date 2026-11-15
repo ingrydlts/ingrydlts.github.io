@@ -1422,3 +1422,11 @@ button.cal-d:hover{outline:1px solid var(--moss)}
 .lg-passo:not([open]) > summary::after { transform: rotate(-90deg); }
 .lg-passo > .lg-corpo { padding: 0 12px 12px; }
 .lg-res { font-size: 12.5px; }
+
+/* A ligação: anexar o arquivo e ler com a IA */
+.pc-linha { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 2px 0 4px; }
+.pc-arq { cursor: pointer; }
+.pc-arq-in { position: absolute; width: 1px; height: 1px; opacity: 0; overflow: hidden; }
+.pc-arq:focus-within, .pc-arq-in:focus + .pc-arq { outline: 2px solid var(--focus); }
+#pc-quadros { margin: 12px 0; }
+.pc-dica { margin: 0 0 10px; }

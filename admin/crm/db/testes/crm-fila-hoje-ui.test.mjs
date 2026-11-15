@@ -32,7 +32,7 @@ function qb(table) {
 const supabase = { from: qb, auth: { getSession: async () => ({ data: { session: null } }) }, rpc: async (n, a) => { rpcs.push({ n, a }); return rpcRetorno; }, channel: () => ({ on() { return this; }, subscribe() { return this; } }), removeChannel() {} };
 const store = {};
 const mod = new Function('supabase', 'ES', 'TX', 'EE', 'EQ', 'JR', 'document', 'window', 'location', 'localStorage', 'setInterval', 'clearInterval',
-  src + '\n;return { state, setC: function (v) { C = v; }, setQ: function (v) { Q = v; }, setR: function (v) { R = v; }, setP: function (v) { P = v; }, setPSUG: function (v) { PSUG = v; }, setFin: function (o) { PRODUTOS = o.produtos; COMPRAS_EV = o.compras; ASSIN = o.assin; PRECOS = o.precos; }, itensDeHoje, ordenaFila, catDoContato, renderFila, receitaEstimada, pistasDaJornada, rascunhoMultiFunil, funisDaPessoa, fxResumoCartoes, setUM: function (v) { UM = v; }, setPAG: function (v) { PAG1A1 = v; }, dosDoFunil, dosCampo, dosProgresso, dosVisiveis, dosCruzamentos, dosFaltaPorCanal, dosMensagemTexto, insightsDaPlataforma, r1Codigo, r1Rotulo, r1Roteiro, r1Html, r1PainelHtml, dosVisaoHtml, dosLigacaoHtml, dosMdTexto, dosCampoHtml };')(
+  src + '\n;return { state, setC: function (v) { C = v; }, setQ: function (v) { Q = v; }, setR: function (v) { R = v; }, setP: function (v) { P = v; }, setPSUG: function (v) { PSUG = v; }, setFin: function (o) { PRODUTOS = o.produtos; COMPRAS_EV = o.compras; ASSIN = o.assin; PRECOS = o.precos; }, itensDeHoje, ordenaFila, catDoContato, renderFila, receitaEstimada, pistasDaJornada, rascunhoMultiFunil, funisDaPessoa, fxResumoCartoes, setUM: function (v) { UM = v; }, setPAG: function (v) { PAG1A1 = v; }, dosDoFunil, dosCampo, dosProgresso, dosVisiveis, dosCruzamentos, dosFaltaPorCanal, dosMensagemTexto, insightsDaPlataforma, r1Codigo, r1Rotulo, r1Roteiro, r1Html, r1PainelHtml, dosVisaoHtml, dosLigacaoHtml, dosMdTexto, dosCampoHtml, pcTopoHtml, pcQuadrosHtml, pcPreencher, pcEstado };')(
   supabase, {}, TXMOD, { iniciar() {}, depois() {}, campoMudou() {} }, {}, {}, document, { addEventListener() {}, confirm: () => true, scrollTo() {} }, { href: '' }, { getItem: (k) => store[k] ?? null, setItem: (k, v) => { store[k] = v; } }, () => 1, () => {});
 
 const dia = (n) => new Date(Date.now() + n * 864e5).toISOString();
@@ -260,6 +260,31 @@ console.log('== A ligação no topo do Dossiê ==');
   check('lembra o que você abriu', /data-lg="b" open/.test(h2) && !/data-lg="a" open/.test(h2)); mod.state.fx.lg = { main: 1, a: 1 };
   check('a visão geral vem antes de A ligação na aba', mod.dosVisaoHtml(P, d).indexOf('id="dos-ligacao"') < 0);
   mod.state.dos = null;
+}
+
+console.log('== Ler a call: arquivo no alto e quadros ==');
+{
+  const P = pessoa('pq', 'Pia', { email: 'pia@example.com' });
+  mod.setC([P]);
+  mod.state.dos = { cid: 'pq', d: {}, err: null, rasc: {}, chk: null, origem: {}, onbEm: null };
+  const pc = mod.pcEstado('pq'); pc.estado = 'vazio'; pc.erro = ''; pc.prop = null; pc.sel = { campos: {}, sinais: {}, fila: {}, perg: {} };
+  let t = mod.pcTopoHtml(P);
+  check('o alto da sessão tem o anexo (.txt, PDF, imagem) e o botão de ler', /type="file"[^>]*accept="[^"]*\.txt[^"]*\.pdf[^"]*\.jpg[^"]*\.png/.test(t) && /data-pcarq="pq"/.test(t) && /data-pcler="pq"/.test(t) && /Aceita \.txt, PDF ou imagem/.test(t) && /tokens pagos/.test(t));
+  check('antes da leitura, os quadros avisam que aparecem depois', /Pontos de atenção/.test(mod.pcQuadrosHtml(P)) && /Infos para confirmar/.test(mod.pcQuadrosHtml(P)) && (mod.pcQuadrosHtml(P).match(/Aparece depois da leitura/g) || []).length === 2);
+  pc.estado = 'proposta';
+  pc.prop = { proposta: { resumo: 'Quer estudar cinema.', proximos_passos: ['Ingryd: mandar o guia', 'Ela: juntar o diploma'], pontos_de_atencao: ['Candidatura fecha em dezembro.'], a_conferir: ['Taxa da OFII.'], perguntas_para_ela: [{ texto: 'Tem o diploma em PDF?', motivo: 'Faltou.', campo: 'ensino_medio_ano' }], campos: {}, sinais: [] } };
+  const q = mod.pcQuadrosHtml(P);
+  check('depois da leitura: pontos de atenção, o que conferir na fonte e o que confirmar com ela (marcado, com o chat)', /Candidatura fecha em dezembro/.test(q) && /Conferir na fonte oficial/.test(q) && /Taxa da OFII/.test(q) && /Confirmar com ela/.test(q) && /data-pcperg="q0" checked/.test(q) && /data-pcchat="pq"/.test(q));
+  check('o botão de preencher resumo e próximos passos aparece', /data-pcpreencher="pq"/.test(q));
+  mod.pcPreencher('pq', true);
+  check('logo após ler, o resumo e os próximos passos vão para os campos do Dossiê', mod.state.dos.rasc.ligacao_resumo === 'Quer estudar cinema.' && mod.state.dos.rasc.proximos_passos === '- Ingryd: mandar o guia\n- Ela: juntar o diploma');
+  mod.state.dos.rasc.ligacao_resumo = 'Meu texto.'; mod.pcPreencher('pq', true);
+  check('sozinha, a leitura não apaga o que você já escreveu', mod.state.dos.rasc.ligacao_resumo === 'Meu texto.');
+  mod.pcPreencher('pq', false);
+  check('pelo botão, a leitura substitui', mod.state.dos.rasc.ligacao_resumo === 'Quer estudar cinema.');
+  pc.prop.proposta.perguntas_para_ela = []; pc.prop.proposta.a_conferir = [];
+  check('sem o que confirmar: diz isso', /nada a confirmar com ela/.test(mod.pcQuadrosHtml(P)));
+  pc.estado = 'vazio'; pc.prop = null; mod.state.dos = null;
 }
 
 console.log('\n' + (failed ? failed + ' FALHARAM, ' : '') + passed + ' passaram' + (failed ? '' : ', 0 falharam'));

@@ -2,13 +2,13 @@
 // Nada de service_role aqui. O banco é db/crm-fase2.sql; o desenho é o artefato "CRM Por Dentro".
 // Tudo que vem do banco é texto de terceiros (nome, e-mail, pergunta): passa sempre por esc().
 import { supabase } from '/assets/js/supabase-client.js';
-import * as TX from './taxonomia.js?v=2026-11-15.36';   // páginas, famílias e agrupamento dos modelos
-import * as ES from './estudio.js?v=2026-11-15.36';   // os blocos do estúdio de e-mails (entregas 2 e 3)
-import * as EE from './editor-email.js?v=2026-11-15.36';
-import * as EQ from './editor-quem.js?v=2026-11-15.36';
-import * as JR from './jornada.js?v=2026-11-15.36';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
-import * as FX from './ficha.js?v=2026-11-15.36';   // ficha v2: lógica pura (fila, démarches, funil, ações)
-import * as FH from './ficha-html.js?v=2026-11-15.36';   // ficha v2: HTML puro
+import * as TX from './taxonomia.js?v=2026-11-15.37';   // páginas, famílias e agrupamento dos modelos
+import * as ES from './estudio.js?v=2026-11-15.37';   // os blocos do estúdio de e-mails (entregas 2 e 3)
+import * as EE from './editor-email.js?v=2026-11-15.37';
+import * as EQ from './editor-quem.js?v=2026-11-15.37';
+import * as JR from './jornada.js?v=2026-11-15.37';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
+import * as FX from './ficha.js?v=2026-11-15.37';   // ficha v2: lógica pura (fila, démarches, funil, ações)
+import * as FH from './ficha-html.js?v=2026-11-15.37';   // ficha v2: HTML puro
 
 var PERSONAS = {
   au_pair_estudante: 'Au pair → estudante', campus_france: 'Campus France', alternancia_emprego: 'Alternância / emprego',
@@ -2648,7 +2648,7 @@ function pcRotuloSinal(pc, chave) { var v = (pc.vocab || []).filter(function (x)
 function pcSinaisDela(d) { return d && Array.isArray(d.sinais) ? d.sinais.slice() : []; }
 function pcTextoCampo(f, v) { if (v === true || v === 'true') return 'Sim'; if (v === false || v === 'false') return 'Não'; var o = f && f.o ? f.o.filter(function (x) { return x[0] === String(v); })[0] : null; return o ? o[1] : String(v); }
 
-function poscallHtml(c) {
+function poscallHtml(c, fixo) {
   var pc = pcEstado(c.id), d = (state.dos && state.dos.d) || {}, h = '';
   if (!pc.carregou && !pc.carregando) pcCarregarDados(c.id);
   h += '<section class="dbloco poscall"><h4>Pós-call</h4>';
@@ -2662,23 +2662,25 @@ function poscallHtml(c) {
     }).join('') : '<span class="sub">Carregando…</span>') +
     '<div class="actions" style="margin-top:8px"><button class="btn" type="button" data-pcsalvarsinais="' + esc(c.id) + '"' + (pc.manual ? '' : ' disabled') + '>Salvar sinais</button></div></div>';
 
-  if (pc.estado === 'lendo') return h + '<p class="sub" role="status">Lendo a call… (leva alguns segundos)</p></section>';
-  if (pc.estado === 'proposta' && pc.prop) return h + poscallPropostaHtml(c, pc, d) + poscallCuradoriaHtml(pc) + '</section>';
+  if (pc.estado === 'lendo') return h + (fixo ? '' : '<p class="sub" role="status">Lendo a call… (leva alguns segundos)</p>') + '</section>';
+  if (pc.estado === 'proposta' && pc.prop) return h + poscallPropostaHtml(c, pc, d, fixo) + poscallCuradoriaHtml(pc) + '</section>';
 
+  if (!fixo) {   // na aba Dossiê o botão de ler fica no alto da sessão (pcTopoHtml)
   var tem = dosValor(c, d, (state.dos && state.dos.rasc) || {}, 'ligacao_transcricao');
-  h += '<div class="pcler"><p class="sub" style="margin:0 0 8px">Cole a gravação transcrita em <b>A ligação</b> e peça a leitura. A IA só propõe: você marca o que vale e aplica. ' +
-    (tem ? '' : '<b>Ainda não há transcrição colada.</b>') + '</p>' +
-    (pc.erro ? '<p class="err" role="alert">' + esc(pc.erro) + '</p>' : '') +
-    '<div class="actions"><button class="btn primary" type="button" data-pcler="' + esc(c.id) + '">Ler a call com IA</button></div></div>';
+    h += '<div class="pcler"><p class="sub" style="margin:0 0 8px">Cole a gravação transcrita em <b>A ligação</b> e peça a leitura. A IA só propõe: você marca o que vale e aplica. ' +
+      (tem ? '' : '<b>Ainda não há transcrição colada.</b>') + '</p>' +
+      (pc.erro ? '<p class="err" role="alert">' + esc(pc.erro) + '</p>' : '') +
+      '<div class="actions"><button class="btn primary" type="button" data-pcler="' + esc(c.id) + '">Ler a call com IA</button></div></div>';
+  }
   return h + (pc.notionAplicada ? '<div class="pcnotion-lido"><h5>Última ligação lida do Notion (já aplicada em ' + esc(fmtDay(String(pc.notionAplicada.quando || '').slice(0, 10))) + ')</h5>' + poscallNotionHtml(pc.notionAplicada.proposta.notion) + '</div>' : '') + poscallCuradoriaHtml(pc) + '</section>';
 }
 
-function poscallPropostaHtml(c, pc, d) {
+function poscallPropostaHtml(c, pc, d, fixo) {
   var p = pc.prop.proposta, h = '<div class="pcprop">', ehN = p.origem === 'notion' && !!p.notion;
   h += ehN ? '<p class="sub" style="margin:10px 0">Leitura da página do Notion (a IA não leu nada: é a página padronizada). <b>A ficha já foi preenchida na leitura.</b> Aqui ficam os fatos que a ficha já tinha de outro jeito (marque só se quiser trocar) e, mais abaixo, pendências, lembretes e rascunho.</p>' : '<p class="sub" style="margin:10px 0">Proposta da IA' + (pc.prop.reutilizada ? ' (a mesma call já tinha sido lida; sem custo novo)' : '') +
     '. Marque o que vale e aplique. <b>Nada entrou na ficha ainda.</b></p>';
 
-  if ((p.mapa_da_call || []).length) {
+  if (!fixo && (p.mapa_da_call || []).length) {
     h += '<h5>O que rolou na call</h5><ol class="pcmapa">' + p.mapa_da_call.map(function (b) {
       return '<li><b>' + esc(b.titulo) + '</b>' + (b.tema && b.tema !== 'outro' ? ' <span class="dchip">' + esc(pcRotuloSinal(pc, b.tema)) + '</span>' : '') + '<br><small class="sub">' + esc(b.resumo) + '</small></li>';
     }).join('') + '</ol>';
@@ -2719,8 +2721,9 @@ function poscallPropostaHtml(c, pc, d) {
     return '<label class="pclinha"><input type="checkbox" data-pcfila="' + q.id + '"' + (marcado ? ' checked' : '') + '> <span><b>' + esc(q.rot) + ':</b> ' + esc(q.x.texto) + ' <span class="dchip">' + esc(q.x.tema === 'outro' ? 'outro tema' : pcRotuloSinal(pc, q.x.tema)) + '</span></span></label>';
   }).join('') : '<p class="sub">Nada para a fila.</p>';
 
-  if ((p.a_conferir || []).length) h += '<h5>5 · A conferir na fonte, com você (antes de enviar qualquer coisa)</h5><ul class="pcconferir">' + p.a_conferir.map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') + '</ul>';
+  if (!fixo && (p.a_conferir || []).length) h += '<h5>5 · A conferir na fonte, com você (antes de enviar qualquer coisa)</h5><ul class="pcconferir">' + p.a_conferir.map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') + '</ul>';
 
+  if (fixo) return h + poscallAplicarHtml(c, pc);   // o que confirmar com ela já está nos quadros do alto
   var pe = p.perguntas_para_ela || [];
   h += '<h5>6 · Perguntas para confirmar com ela</h5>';
   h += pe.length ? '<p class="sub" style="margin:0 0 6px">O que ficou incerto ou faltou. Marque as que quer fazer: elas vão para o rascunho do chat, e você revisa antes de enviar.</p>' + pe.map(function (q, i) {
@@ -2751,7 +2754,11 @@ function poscallCuradoriaHtml(pc) {
 
 function pintaPoscall(cid) {
   var box = $('poscall-box'), c = byC(cid);
-  if (box && c && state.pc && state.pc.cid === cid) box.innerHTML = poscallHtml(c);
+  if (!(c && state.pc && state.pc.cid === cid)) return;
+  var topo = $('pc-topo'), quad = $('pc-quadros');
+  if (topo) topo.innerHTML = pcTopoHtml(c);
+  if (quad) quad.innerHTML = pcQuadrosHtml(c);
+  if (box) box.innerHTML = poscallHtml(c, !!(topo && state.pc.fixo));
 }
 async function pcCarregarDados(cid) {
   var pc = pcEstado(cid); pc.carregando = true;
@@ -2771,18 +2778,79 @@ async function pcCarregarDados(cid) {
   }
   pintaPoscall(cid);
 }
+// O alto da sessão "A ligação": anexar o arquivo da ligação transcrita (.txt, PDF ou imagem) e pedir a leitura da IA.
+function pcTopoHtml(c) {
+  var pc = pcEstado(c.id);
+  return '<div class="pc-linha"><input type="file" id="pc-arq" class="pc-arq-in" accept=".txt,.pdf,.jpg,.jpeg,.png,text/plain,application/pdf,image/jpeg,image/png" data-pcarq="' + esc(c.id) + '"><label class="btn pc-arq" for="pc-arq">Anexar a ligação transcrita</label>' +
+    '<button class="btn primary" type="button" data-pcler="' + esc(c.id) + '"' + (pc.estado === 'lendo' ? ' disabled' : '') + '>' + (pc.estado === 'lendo' ? 'Lendo a call…' : 'Ler a call com IA') + '</button></div>' +
+    '<p class="sub pc-dica">' + (pc.arqNome ? '<b>' + esc(pc.arqNome) + '</b>. ' : 'Aceita .txt, PDF ou imagem. ') + 'A IA só propõe: nada entra na ficha sem você conferir. A leitura usa tokens pagos da Anthropic.</p>' +
+    (pc.estado === 'lendo' ? '<p class="sub" role="status">Lendo a call… (leva alguns segundos)</p>' : '') + (pc.erro ? '<p class="err" role="alert">' + esc(pc.erro) + '</p>' : '');
+}
+// Os quadros que a leitura preenche além de Resumo e Próximos passos (que são os campos do Dossiê): pontos de atenção e o que confirmar.
+function pcQuadrosHtml(c) {
+  var pc = pcEstado(c.id), p = pc.estado === 'proposta' && pc.prop && pc.prop.proposta && pc.prop.proposta.origem !== 'notion' ? pc.prop.proposta : null;
+  var card = function (t, corpo) { return '<div class="dv-card"><div class="k">' + esc(t) + '</div>' + corpo + '</div>'; };
+  var aten = p && (p.pontos_de_atencao || []).length ? '<ul class="dv-ul">' + p.pontos_de_atencao.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul>' : '<p class="sub" style="margin:0">' + (p ? 'A leitura não apontou nada.' : 'Aparece depois da leitura.') + '</p>';
+  var pe = p ? (p.perguntas_para_ela || []) : [], conf = p ? (p.a_conferir || []) : [];
+  var info = '';
+  if (conf.length) info += '<p class="sub" style="margin:0 0 4px"><b>Conferir na fonte oficial</b></p><ul class="dv-ul">' + conf.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul>';
+  if (pe.length) info += '<p class="sub" style="margin:8px 0 4px"><b>Confirmar com ela</b> (marque as que quer fazer; vão para o rascunho do chat)</p>' + pe.map(function (q, i) {
+    var marcado = pc.sel.perg['q' + i] === undefined ? true : pc.sel.perg['q' + i], f = q.campo ? dosCampo(q.campo) : null;
+    return '<label class="pclinha"><input type="checkbox" data-pcperg="q' + i + '"' + (marcado ? ' checked' : '') + '> <span>' + esc(q.texto) + (q.motivo ? '<br><small class="sub">Por quê: ' + esc(q.motivo) + (f ? ' · preenche “' + esc(f.l) + '”' : '') + '</small>' : '') + '</span></label>';
+  }).join('') + '<div class="actions" style="margin-top:8px"><button class="btn" type="button" data-pcchat="' + esc(c.id) + '">Levar para o chat</button></div>';
+  if (p && !pe.length) info += '<p class="sub" style="margin:' + (conf.length ? '8px' : '0') + ' 0 0">A call fechou o que importava com ela: nada a confirmar com ela.</p>';
+  if (!info) info = '<p class="sub" style="margin:0">Aparece depois da leitura.</p>';
+  var preencher = p && (p.resumo || (p.proximos_passos || []).length) ? '<div class="actions" style="margin:0 0 10px"><button class="btn" type="button" data-pcpreencher="' + esc(c.id) + '">Preencher Resumo e Próximos passos com a leitura</button></div>' : '';
+  return preencher + '<div class="dv-grid">' + card('Pontos de atenção', aten) + card('Infos para confirmar', info) + '</div>';
+}
+function pcEscolheArquivo(inp) {
+  var cid = inp.dataset.pcarq, pc = pcEstado(cid), f = inp.files && inp.files[0]; if (!f) return;
+  var nome = f.name || 'arquivo', ext = (/\.([a-z0-9]+)$/i.exec(nome) || [])[1] || '';
+  pc.arquivo = null; pc.erro = '';
+  if (/^(txt)$/i.test(ext) || f.type === 'text/plain') {
+    if (f.size > 400000) { pc.erro = 'O .txt é grande demais (limite de 400 KB). Corte a parte que não interessa.'; return pintaPoscall(cid); }
+    f.text().then(function (t) {
+      t = String(t || '').trim(); if (t.length > 120000) { pc.erro = 'A transcrição passou de 120 mil letras. Corte a parte que não interessa.'; return pintaPoscall(cid); }
+      if (state.dos && state.dos.cid === cid) { state.dos.rasc = state.dos.rasc || {}; state.dos.rasc.ligacao_transcricao = t; var el = $('dk-ligacao_transcricao'); if (el) { el.value = t; var fd = el.closest && el.closest('.dfield'); if (fd) fd.classList.remove('vazio'); } }
+      pc.arqNome = nome + ' (o texto foi para “Gravação transcrita”)'; pintaPoscall(cid);
+    });
+    return;
+  }
+  if (/^(pdf|jpe?g|png)$/i.test(ext) || /^(application\/pdf|image\/(jpeg|png))$/.test(f.type)) {
+    if (f.size > 10 * 1048576) { pc.erro = 'O arquivo passa de 10 MB.'; return pintaPoscall(cid); }
+    pc.arquivo = f; pc.arqNome = nome; return pintaPoscall(cid);
+  }
+  pc.erro = 'Use um arquivo .txt, PDF, JPG ou PNG.'; pintaPoscall(cid);
+}
+// Copia o resumo e os próximos passos da leitura para os campos do Dossiê. Sozinho (logo após ler) só preenche o que está vazio.
+function pcPreencher(cid, auto) {
+  var pc = pcEstado(cid), c = byC(cid), p = pc.prop && pc.prop.proposta; if (!c || !p || !state.dos || state.dos.cid !== cid) return;
+  var rasc = state.dos.rasc = state.dos.rasc || {}, mudou = 0;
+  var poe = function (k, v) {
+    if (!v || (auto && dosValor(c, state.dos.d, rasc, k) !== '')) return;
+    rasc[k] = v; mudou++; var el = $('dk-' + k); if (el) { el.value = v; var fd = el.closest && el.closest('.dfield'); if (fd) fd.classList.remove('vazio'); }
+  };
+  poe('ligacao_resumo', p.resumo || '');
+  poe('proximos_passos', (p.proximos_passos || []).map(function (x) { return '- ' + x; }).join('\n'));
+  if (!auto) toast(mudou ? 'Resumo e próximos passos preenchidos. Salve o dossiê para guardar.' : 'A leitura não trouxe resumo nem próximos passos.');
+}
 async function pcLer(cid, t) {
   var pc = pcEstado(cid), c = byC(cid), transcricao = String(dosValor(c, state.dos.d, state.dos.rasc || {}, 'ligacao_transcricao') || '').trim();
-  if (transcricao.length < 200) { pc.erro = 'Cole a gravação transcrita em "A ligação" (pelo menos algumas frases) e salve ou deixe o texto na caixa.'; return pintaPoscall(cid); }
+  if (!pc.arquivo && transcricao.length < 200) { pc.erro = 'Anexe a ligação transcrita (.txt, PDF ou imagem) ou cole o texto em "Gravação transcrita" (pelo menos algumas frases).'; return pintaPoscall(cid); }
   pc.estado = 'lendo'; pc.erro = ''; pintaPoscall(cid);
   try {
     var sess = await supabase.auth.getSession();
     if (!sess.data.session) throw new Error('Entre de novo no CRM.');
-    var res = await fetch(WORKER_BASE + '/api/crm/pos-call/ler', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + sess.data.session.access_token },
-      body: JSON.stringify({ contato_id: cid, transcricao: transcricao, notas: String(dosValor(c, state.dos.d, state.dos.rasc || {}, 'ligacao_resumo') || '').trim() }) });
+    var notasTx = String(dosValor(c, state.dos.d, state.dos.rasc || {}, 'ligacao_resumo') || '').trim(), pedido;
+    if (pc.arquivo) {   // PDF ou imagem: vai como formulário; o Worker confere o tipo de verdade pelos primeiros bytes
+      var fd = new FormData(); fd.append('contato_id', cid); fd.append('notas', notasTx); if (transcricao) fd.append('transcricao', transcricao); fd.append('arquivo', pc.arquivo, pc.arquivo.name);
+      pedido = { method: 'POST', headers: { Authorization: 'Bearer ' + sess.data.session.access_token }, body: fd };
+    } else pedido = { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + sess.data.session.access_token }, body: JSON.stringify({ contato_id: cid, transcricao: transcricao, notas: notasTx }) };
+    var res = await fetch(WORKER_BASE + '/api/crm/pos-call/ler', pedido);
     var j = await res.json().catch(function () { return {}; });
     if (!res.ok || !j.ok) throw new Error(j.error || 'A leitura falhou (' + res.status + ').');
     pc.prop = j; pc.vocab = j.vocabulario && j.vocabulario.length ? j.vocabulario : pc.vocab; pc.estado = 'proposta'; pc.sel = { campos: {}, sinais: {}, fila: {}, perg: {} }; pc.camadas = {};
+    pintaPoscall(cid); pcPreencher(cid, true);
   } catch (e) { pc.estado = 'vazio'; pc.erro = e && e.message ? e.message : 'A leitura falhou.'; }
   pintaPoscall(cid);
 }
@@ -3071,7 +3139,7 @@ function fxHeaderHtml(c, d) {
 // Catálogo de démarches (cópia do app, processos.json): carregado uma vez; sem ele, tudo cai na démarche padrão.
 var FX_PROC = null;
 async function fxCarregaProcessos() {
-  try { var r = await fetch('processos.json?v=2026-11-15.36'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
+  try { var r = await fetch('processos.json?v=2026-11-15.37'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
 }
 // A sessão Checklist: pílulas por démarche, os 4 mais urgentes, pasta do Drive privada e "Ver mais desta sessão".
 function fxChecklistCorpo(c) {
@@ -3255,9 +3323,12 @@ function dosLigacaoHtml(c, d) {
   var B = state.bilan && state.bilan.cid === c.id ? state.bilan : null, enviado = (d.mails || []).filter(function (m) { return m.modelo === 'bilan_conversa'; })[0];
   var col = function (t, n, corpo) { return '<div class="dv-card"><div class="k">' + esc(t) + (n != null ? ' · ' + n : '') + '</div>' + corpo + '</div>'; };
   var p1 = dosPerguntarHtml(c, S) || '<p class="sub" style="margin:0">Nada a perguntar.</p>';
-  var p2 = '<div class="dgrid lg-form">' + campo('ligacao_data') + campo('ligacao_resumo') + campo('proximos_passos') + campo('ligacao_transcricao') + '</div>' +
+  var p2 = '<div id="pc-topo">' + pcTopoHtml(c) + '</div>' +
+    '<div class="dgrid lg-form">' + campo('ligacao_resumo') + campo('proximos_passos') + '</div>' +
+    '<div id="pc-quadros">' + pcQuadrosHtml(c) + '</div>' +
+    '<div class="dgrid lg-form">' + campo('ligacao_data') + campo('ligacao_transcricao') + '</div>' +
     '<div class="actions" style="margin-top:6px"><button class="btn primary" type="button" data-dossalvar="' + esc(c.id) + '">Salvar dossiê</button></div>' +
-    '<div id="poscall-box">' + poscallHtml(c) + '</div>';
+    '<div id="poscall-box">' + poscallHtml(c, (pcEstado(c.id).fixo = true)) + '</div>';
   var p3 = '<div class="lg-saidas">' +
     '<div class="dv-card"><div class="k">Bilan (você edita antes de enviar)</div><p class="sub" style="margin:0 0 8px">' + (B ? 'Leitura do Notion de ' + esc(fmtDay(String(B.quando || '').slice(0, 10))) + '.' : 'Sem leitura do Notion ainda.') + (enviado ? ' Enviado em ' + esc(fmtDay(String(enviado.enviado_em || enviado.criado_em || '').slice(0, 10))) + '.' : '') + '</p>' +
     '<button type="button" class="btn" data-bilanabrir="' + esc(c.id) + '"' + (B ? '' : ' disabled') + '>' + (enviado ? 'Reenviar o bilan' : 'Rascunho do e-mail com o bilan') + '</button></div>' +
@@ -5515,6 +5586,7 @@ document.addEventListener('click', async function (e) {
   }
   if (t.dataset.dossalvar) return salvarDossie(t.dataset.dossalvar, t);
   if (t.dataset.pcler) return pcLer(t.dataset.pcler, t);
+  if (t.dataset.pcpreencher) return pcPreencher(t.dataset.pcpreencher, false);
   if (t.dataset.pcaplicar) return pcAplicar(t.dataset.pcaplicar, t);
   if (t.dataset.pcdescartar) return pcDescartar(t.dataset.pcdescartar, t);
   if (t.dataset.pcchat) return pcChat(t.dataset.pcchat);
@@ -5721,6 +5793,7 @@ document.addEventListener('input', function (e) {
   }
 });
 document.addEventListener('change', function (e) {
+  if (e.target.id === 'pc-arq') return pcEscolheArquivo(e.target);
   var dsx = e.target.dataset || {}, cidPc = state.sel;
   if (state.pc && state.pc.cid === cidPc && (dsx.pcsinal !== undefined || dsx.pccampo !== undefined || dsx.pcsinalprop !== undefined || dsx.pcfila !== undefined || dsx.pccamada !== undefined || dsx.pcperg !== undefined)) {
     var pcx = state.pc;
