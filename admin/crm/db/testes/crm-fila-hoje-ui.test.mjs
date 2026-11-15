@@ -32,7 +32,7 @@ function qb(table) {
 const supabase = { from: qb, auth: { getSession: async () => ({ data: { session: null } }) }, rpc: async (n, a) => { rpcs.push({ n, a }); return rpcRetorno; }, channel: () => ({ on() { return this; }, subscribe() { return this; } }), removeChannel() {} };
 const store = {};
 const mod = new Function('supabase', 'ES', 'TX', 'EE', 'EQ', 'JR', 'document', 'window', 'location', 'localStorage', 'setInterval', 'clearInterval',
-  src + '\n;return { state, setC: function (v) { C = v; }, setQ: function (v) { Q = v; }, setR: function (v) { R = v; }, setP: function (v) { P = v; }, setPSUG: function (v) { PSUG = v; }, setFin: function (o) { PRODUTOS = o.produtos; COMPRAS_EV = o.compras; ASSIN = o.assin; PRECOS = o.precos; }, itensDeHoje, ordenaFila, catDoContato, renderFila, receitaEstimada };')(
+  src + '\n;return { state, setC: function (v) { C = v; }, setQ: function (v) { Q = v; }, setR: function (v) { R = v; }, setP: function (v) { P = v; }, setPSUG: function (v) { PSUG = v; }, setFin: function (o) { PRODUTOS = o.produtos; COMPRAS_EV = o.compras; ASSIN = o.assin; PRECOS = o.precos; }, itensDeHoje, ordenaFila, catDoContato, renderFila, receitaEstimada, pistasDaJornada, rascunhoMultiFunil, funisDaPessoa };')(
   supabase, {}, TXMOD, { iniciar() {}, depois() {}, campoMudou() {} }, {}, {}, document, { addEventListener() {}, confirm: () => true, scrollTo() {} }, { href: '' }, { getItem: (k) => store[k] ?? null, setItem: (k, v) => { store[k] = v; } }, () => 1, () => {});
 
 const dia = (n) => new Date(Date.now() + n * 864e5).toISOString();
@@ -94,6 +94,28 @@ const r90 = mod.receitaEstimada(new Date(Date.now() - 90 * 864e5), new Date(Date
 check('90 dias: 2 compras e 2 mensalidades; teste grátis e assinatura cancelada não entram', r90.compras === 2 && r90.mensalidades === 2 && Math.abs(r90.total - (29.8 + 140)) < 0.001);
 const r0 = mod.receitaEstimada(new Date(Date.now() - 1 * 864e5), new Date(Date.now() + 1000));
 check('produto desconhecido não soma', r0.total === 0);
+
+console.log('== Jornada e pistas ==');
+const mkJ = (ent, quiz) => ({ entradas: ent, quizzes: quiz || [], ativouEm: null, appVezes: 0, artigos: 0 });
+const E1 = { em: dia(-9), origem: 'guia-etudes-en-france-2027' }, E2 = { em: dia(-2), origem: 'guia-tecnologo' };
+const Nat = pessoa('nat', 'Natália Reis', { capturas: 2, origens: ['guia-etudes-en-france-2027', 'guia-tecnologo'], user_id: null });
+const J2 = mkJ([E1, E2], [{ em: E1.em, persona: 'campus_france', objetivo: 'cf-escolhendo' }, { em: E2.em, persona: 'pvt', objetivo: 'tec-nao-sei' }]);
+let pj = mod.pistasDaJornada(Nat, J2, [], []);
+check('dois funis: reconhece que ela compara caminhos e lista os dois em ordem', pj.multi && pj.funis.join() === 'guia-etudes-en-france-2027,guia-tecnologo' && /2 materiais diferentes/.test(pj.pistas[0]));
+check('a pista do intervalo e a da mudança de persona aparecem', pj.pistas.some((x) => /7 dias depois da primeira/.test(x)) && pj.pistas.some((x) => /pessoas diferentes/.test(x)));
+check('sem e-mail do CRM e sem conta: as duas pistas finais', pj.pistas.some((x) => /primeiro contato é seu/.test(x)) && pj.pistas.some((x) => /Ainda não tem conta/.test(x)));
+const um = pessoa('um', 'Uma', { capturas: 1, origens: ['guia-vls-ts'] });
+pj = mod.pistasDaJornada(um, mkJ([{ em: dia(-3), origem: 'guia-vls-ts' }]), [], []);
+check('um funil só: não diz que compara caminhos', !pj.multi && !pj.pistas.some((x) => /materiais diferentes/.test(x)));
+pj = mod.pistasDaJornada(pessoa('rep', 'Rep', { capturas: 3, origens: ['guia-vls-ts'] }), mkJ([{ em: dia(-9), origem: 'guia-vls-ts' }, { em: dia(-1), origem: 'guia-vls-ts' }]), [], []);
+check('o mesmo material 3 vezes: pergunta o que faltou', /mesmo material 3 vezes/.test(pj.pistas[0]));
+pj = mod.pistasDaJornada(Nat, J2, [{ id: 1, status: 'entregue', enviado_em: dia(-1) }], []);
+check('e-mail recebido e não aberto', pj.pistas.some((x) => /não abriu nenhum/.test(x)));
+pj = mod.pistasDaJornada(Nat, J2, [{ id: 1, status: 'clicado', clicado_em: dia(-1), aberto_em: dia(-1) }], []);
+check('abriu, clicou e não respondeu: pede um convite concreto', pj.pistas.some((x) => /Abriu 1 e clicou em 1/.test(x) && /não respondeu/.test(x)));
+const rasc = mod.rascunhoMultiFunil(Nat, mod.funisDaPessoa(Nat, J2), J2);
+check('o e-mail personalizado cita os dois guias, pergunta qual está mais perto e convida para o 1:1', /Oi Natália!/.test(rasc) && /Campus France/.test(rasc) && /Tecnólogo/i.test(rasc) && /Qual dos dois/.test(rasc) && /conversa 20 minutos/.test(rasc));
+check('com 1:1 já marcado, não convida de novo', !/conversa 20 minutos/.test(mod.rascunhoMultiFunil(Object.assign({}, Nat, { estagio: 'um_a_um' }), mod.funisDaPessoa(Nat, J2), J2)));
 
 console.log('\n' + (failed ? failed + ' FALHARAM, ' : '') + passed + ' passaram' + (failed ? '' : ', 0 falharam'));
 process.exit(failed ? 1 : 0);

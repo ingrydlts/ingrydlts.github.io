@@ -2,13 +2,13 @@
 // Nada de service_role aqui. O banco é db/crm-fase2.sql; o desenho é o artefato "CRM Por Dentro".
 // Tudo que vem do banco é texto de terceiros (nome, e-mail, pergunta): passa sempre por esc().
 import { supabase } from '/assets/js/supabase-client.js';
-import * as TX from './taxonomia.js?v=2026-11-15.17';   // páginas, famílias e agrupamento dos modelos
-import * as ES from './estudio.js?v=2026-11-15.17';   // os blocos do estúdio de e-mails (entregas 2 e 3)
-import * as EE from './editor-email.js?v=2026-11-15.17';
-import * as EQ from './editor-quem.js?v=2026-11-15.17';
-import * as JR from './jornada.js?v=2026-11-15.17';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
-import * as FX from './ficha.js?v=2026-11-15.17';   // ficha v2: lógica pura (fila, démarches, funil, ações)
-import * as FH from './ficha-html.js?v=2026-11-15.17';   // ficha v2: HTML puro
+import * as TX from './taxonomia.js?v=2026-11-15.18';   // páginas, famílias e agrupamento dos modelos
+import * as ES from './estudio.js?v=2026-11-15.18';   // os blocos do estúdio de e-mails (entregas 2 e 3)
+import * as EE from './editor-email.js?v=2026-11-15.18';
+import * as EQ from './editor-quem.js?v=2026-11-15.18';
+import * as JR from './jornada.js?v=2026-11-15.18';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
+import * as FX from './ficha.js?v=2026-11-15.18';   // ficha v2: lógica pura (fila, démarches, funil, ações)
+import * as FH from './ficha-html.js?v=2026-11-15.18';   // ficha v2: HTML puro
 
 var PERSONAS = {
   au_pair_estudante: 'Au pair → estudante', campus_france: 'Campus France', alternancia_emprego: 'Alternância / emprego',
@@ -1164,6 +1164,8 @@ function rascunhoDoEmail(c, sit, mails, jor) {
   if (prazoDe && prazoFrase) gancho = ' Pelo que você me contou, ' + prazoDe + ' ' + (prazoDias > 0 ? 'chega em ' + prazoDias + (prazoDias === 1 ? ' dia' : ' dias') : prazoDias === 0 ? 'é hoje' : 'já passou (' + prazoFrase + ')') + '.';
   var pergunta = prazoDe && prazoFrase ? 'Qual é o passo que mais está te travando agora?' : etapa ? 'O que mais te trava nessa etapa hoje?' : 'Qual é a dúvida que mais te trava hoje?';
   var convite = c.estagio === 'um_a_um' || c.um_a_um_quando ? '' : '\n\nSe ficar mais fácil falar ao vivo, posso te encaixar numa conversa rápida (1:1).';
+  var funisP = funisDaPessoa(c, jor || { entradas: [] });
+  if (sit.k !== 'respondeu' && funisP.length >= 2) return rascunhoMultiFunil(c, funisP, jor || { entradas: [] });
   var L = ['Oi ' + nome + '!', ''];
   if (sit.k === 'respondeu') L.push('Obrigada por me responder. Li com atenção: “' + truncaTxt(sit.resp.texto, 140) + '”.' + gancho, '', pergunta);
   else if (sit.k === 'sem_email') L.push('Vi que você pediu ' + (origem ? 'o ' + origem : 'o nosso material') + (etapa ? ' e que está em: ' + etapa.toLowerCase() : '') + '.' + gancho, '', pergunta);
@@ -1199,6 +1201,68 @@ function itemResposta(x) {
   return '<div class="mailrow cam-t-resp"><div class="mh" style="cursor:default"><span class="cam-dir" title="Ela respondeu">↓</span><b>Ela respondeu' + (x.canal === 'toque' ? ' com um toque' : x.canal === 'pagina' ? ' na página da conversa' : '') + '</b>' +
     (x.status === 'nova' ? '<span class="pill u-alta">sem resposta sua</span>' : '') + '<time>' + esc(fmtQuando(x.recebido_em)) + '</time></div>' +
     '<div class="cam-resp">' + esc(x.texto) + '</div></div>';
+}
+// ---------- Jornada e pistas: por onde ela entrou, o que respondeu em cada entrada e o que isso sugere ----------
+var TEMA_FUNIL = { 'guia-etudes-en-france-2027': 'estudar na França (Campus France)', 'guia-tecnologo': 'o diploma de tecnólogo e o nível de francês', 'guia-email-alt30': 'a alternância depois dos 30',
+  'guia-vls-ts': 'a validação do VLS-TS', 'guia-checklist-chegada-au-pair': 'a chegada como au pair' };
+function funisDaPessoa(c, jor) {
+  var out = [], vistos = {};
+  (jor.entradas || []).forEach(function (x) { var o = x.origem || ''; if (o && !vistos[o]) { vistos[o] = 1; out.push(o); } });
+  if (!out.length) origensDe(c).forEach(function (o) { if (o && !vistos[o]) { vistos[o] = 1; out.push(o); } });
+  return out;
+}
+function nomeGuia(o) { return origLabel(o).replace(/^Guia (do |da |de )?/i, '').replace(/^Guia /i, ''); }
+// Pistas por regra (nada de IA, e nada inventado): só o que a ficha já sabe.
+function pistasDaJornada(c, jor, mails, resps) {
+  var es = (jor.entradas || []).slice(), funis = funisDaPessoa(c, jor), n = nCapturas(c), pistas = [];
+  var rotulos = funis.map(function (o) { return origLabel(o); });
+  if (funis.length >= 2) pistas.push('Pegou ' + funis.length + ' materiais diferentes: ' + rotulos.join(', depois ') + '. Está comparando caminhos, o que mostra interesse de verdade.');
+  else if (n >= 2) pistas.push('Pediu o mesmo material ' + n + ' vezes. Provavelmente não resolveu o que procurava ali: vale perguntar o que faltou.');
+  if (es.length >= 2) {
+    var d = Math.round((new Date(es[es.length - 1].em) - new Date(es[0].em)) / 864e5);
+    pistas.push(d <= 0 ? 'As entradas foram no mesmo dia: decidiu rápido de olhar mais de um caminho.' : 'A última entrada veio ' + haDias(d) + ' depois da primeira' + (d <= 7 ? ': o interesse é recente.' : '.'));
+  }
+  var qs = jor.quizzes || [], ps = {}, obs = {};
+  qs.forEach(function (q) { if (q.persona) ps[q.persona] = 1; if (q.objetivo) obs[q.objetivo] = 1; });
+  if (Object.keys(ps).length > 1) pistas.push('Respondeu o quiz como pessoas diferentes (' + qs.map(function (q) { return PERSONAS[q.persona] || q.persona; }).filter(function (v, i, a) { return v && a.indexOf(v) === i; }).join(' e ') + '): ainda está definindo o próprio caminho.');
+  else if (Object.keys(obs).length > 1) pistas.push('Mudou a resposta de etapa entre as entradas: vale a última (o Dossiê usa essa).');
+  var abriu = mails.filter(function (m) { return m.aberto_em || m.status === 'aberto' || m.status === 'clicado'; }).length, clicou = mails.filter(function (m) { return m.clicado_em || m.status === 'clicado'; }).length;
+  if (!mails.length) pistas.push('Ainda não recebeu nenhum e-mail do CRM: o primeiro contato é seu.');
+  else if (!abriu) pistas.push('Recebeu ' + mails.length + (mails.length === 1 ? ' e-mail' : ' e-mails') + ' e não abriu nenhum: tente outro assunto, ou o Instagram.');
+  else if (!(resps || []).length) pistas.push('Abriu ' + abriu + (clicou ? ' e clicou em ' + clicou : '') + ' e ainda não respondeu: falta um convite concreto, com uma pergunta fácil.');
+  if ((resps || []).length) pistas.push('Já escreveu para você ' + resps.length + (resps.length === 1 ? ' vez' : ' vezes') + ': é o sinal mais forte.');
+  pistas.push(c.user_id ? 'Já tem conta no app.' : 'Ainda não tem conta no app: a plataforma ainda é uma novidade para ela.');
+  return { funis: funis, pistas: pistas, multi: funis.length >= 2 };
+}
+// O e-mail de quem pegou mais de um material: reconhece os dois e pergunta qual está mais perto da realidade dela.
+function rascunhoMultiFunil(c, funis, jor) {
+  var a = nomeGuia(funis[0]), b = nomeGuia(funis[funis.length - 1]), nome = pn(c), ult = jor.entradas && jor.entradas.length ? jor.entradas[jor.entradas.length - 1].em : null;
+  var convite = c.estagio === 'um_a_um' || c.um_a_um_quando ? '' : '\n\nSe preferir, a gente conversa 20 minutos e eu te digo por onde eu começaria no seu caso.';
+  return 'Oi ' + nome + '!\n\nVi que você pegou o guia ' + a + ' e, depois, o guia ' + b + (ult ? ' (o último em ' + fmtDay(ult) + ')' : '') + '. Isso me diz que você está olhando mais de um caminho, e faz sentido: eu prefiro entender o seu caso do que mandar material genérico.\n\n' +
+    'Qual dos dois está mais perto da sua realidade hoje? E o que está te travando para dar o próximo passo?' + convite + '\n\nIngryd · Por Dentro';
+}
+function jornadaPistasHtml(c, mails, resps, jor, h4) {
+  var P = pistasDaJornada(c, jor, mails, resps || []), es = (jor.entradas || []).slice().reverse(), qs = jor.quizzes || [];
+  var linhas = es.slice(0, 5).map(function (x, i) {
+    var q = qs.filter(function (z) { return z.em === x.em; })[0], det = [q && q.persona ? PERSONAS[q.persona] || q.persona : '', q && q.objetivo ? etapaDe(q.objetivo) : '', x.camp ? 'campanha ' + x.camp : ''].filter(Boolean);
+    return '<li class="jp-i"><time>' + esc(fmtDate(x.em)) + '</time><div><b>' + esc(origLabel(x.origem) || '—') + '</b>' + (det.length ? '<div class="sub">' + esc(det.join(' · ')) + '</div>' : '') + '</div></li>';
+  }).join('');
+  var r = c.respostas || {}, mapeadas = {};
+  Object.keys(DOS_FUNIL).forEach(function (k) { mapeadas[DOS_FUNIL[k][0]] = 1; });
+  var noDossie = Object.keys(DOS_FUNIL).filter(function (k) { return dosDoFunil(c, k) !== null; }).length;
+  var sem = Object.keys(r).filter(function (k) { return !mapeadas[k] && r[k] !== '' && r[k] != null && typeof r[k] !== 'object'; });
+  var dossie = '<p class="sub jp-dos">' + (noDossie ? noDossie + (noDossie === 1 ? ' resposta do funil já está' : ' respostas do funil já estão') + ' no Dossiê. ' : 'Nenhuma resposta do funil caiu no Dossiê ainda. ') +
+    (sem.length ? 'Ainda sem campo no Dossiê: ' + esc(sem.map(function (k) { return k === 'objetivo' ? 'a etapa que ela escolheu no guia' : rotuloChave(k).toLowerCase(); }).join(', ')) + '. ' : '') + '<button class="link" type="button" data-fx="tab" data-v="dossie">Ver o Dossiê →</button></p>';
+  var abord = '';
+  if (P.multi) {
+    var rasc = rascunhoMultiFunil(c, P.funis, jor);
+    state.rascPista = state.rascPista || {}; state.rascPista[c.id] = rasc;
+    abord = '<div class="jp-abord"><div class="k">Abordagem sugerida</div><p style="margin:0 0 6px">Escreva um e-mail só dela: reconheça os dois materiais e pergunte qual está mais perto da realidade dela. Mostra que você olhou o caso dela, em vez de só mandar mais material.</p>' +
+      '<button class="btn primary" type="button" data-pistaemail="' + esc(c.id) + '">Escrever e-mail personalizado →</button></div>';
+  }
+  return '<div class="panel" style="padding:16px"><h4 style="' + h4 + '">Jornada e pistas</h4>' +
+    (linhas ? '<ol class="jp-lista">' + linhas + '</ol>' + (es.length > 5 ? '<p class="sub" style="margin:0 0 6px">Mais ' + (es.length - 5) + ' entradas antigas em "Cada entrada e todos os passos".</p>' : '') : '<p class="sub" style="margin:0">Sem entradas registradas na linha do tempo.</p>') +
+    '<div class="k jp-k">Pistas</div><ul class="jp-pistas">' + P.pistas.map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') + '</ul>' + abord + dossie + '</div>';
 }
 // A coluna da aba E-mail: o próximo da fila, o que ela já disse (e o rascunho sugerido) e o mapa do caminho, recolhido.
 function emailLateralHtml(c, mails, resps, jor, h4) {
@@ -1278,7 +1342,7 @@ function compraHtml(c) {
 // objetivo = a etapa que ela escolheu no guia; o prefixo diz de qual guia (cf- Campus France, alt- alternância 30+).
 var ALT_ETAPA = { 'alt-pesquisando': 'Pesquisando se pode fazer alternância depois dos 29', 'alt-escolhendo-escola': 'Escolhendo escola e curso',
   'alt-recusa-idade': 'Ouviu "só até 29" de uma escola', 'alt-buscando-empresa': 'Tem escola, falta a empresa', 'alt-montando-contrato': 'Tem empresa, montando o contrato' };
-function etapaDe(v) { return CF_ETAPA[v] || ALT_ETAPA[v] || (/^ap-/.test(v) ? TX.rotuloEtapa('I05', v) : v); }
+function etapaDe(v) { return CF_ETAPA[v] || ALT_ETAPA[v] || (/^ap-/.test(v) ? TX.rotuloEtapa('I05', v) : /^tec-/.test(v) ? TX.rotuloEtapa('I02', v) : v); }
 // Chave crua do funil vira rótulo legível (camelCase, traço e sublinhado viram espaço; só a 1ª letra maiúscula).
 function rotuloChave(k) { var t = String(k).replace(/([a-z])([A-Z])/g, '$1 $2').replace(/[_-]+/g, ' ').trim().toLowerCase(); return t.charAt(0).toUpperCase() + t.slice(1); }
 function respostasKv(c, jor) {
@@ -2863,7 +2927,7 @@ function fxHeaderHtml(c, d) {
 // Catálogo de démarches (cópia do app, processos.json): carregado uma vez; sem ele, tudo cai na démarche padrão.
 var FX_PROC = null;
 async function fxCarregaProcessos() {
-  try { var r = await fetch('processos.json?v=2026-11-15.17'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
+  try { var r = await fetch('processos.json?v=2026-11-15.18'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
 }
 // A sessão Checklist: pílulas por démarche, os 4 mais urgentes, pasta do Drive privada e "Ver mais desta sessão".
 function fxChecklistCorpo(c) {
@@ -2911,7 +2975,7 @@ function fxCorpo(c, d, tab) {
   var quem = '<details class="panel fx-quem"><summary><span class="fx-quem-t">Quem é ela</span>' + (qresumo ? '<span class="fx-quem-r">' + esc(qresumo) + '</span>' : '') + '</summary>' + kvHtml(qrows) + '</details>';
   return FH.htmlFluxo(etapa <= 3 ? 1 : etapa <= 5 ? 2 : 3, H_FX) + onbResumoHtml(c) +
     '<div class="fx-ficha3">' +
-    '<aside class="fx-rail fx-ctx" aria-label="Quem é ela e jornada">' + quem + jornadaHtml(c, d.mails || [], d.resps || [], d.jor, h4, FH.htmlFunil({ etapa: etapa, semCaixa: true }, H_FX)) + '</aside>' +
+    '<aside class="fx-rail fx-ctx" aria-label="Quem é ela e jornada">' + quem + jornadaPistasHtml(c, d.mails || [], d.resps || [], d.jor || montaJornada([]), h4) + jornadaHtml(c, d.mails || [], d.resps || [], d.jor, h4, FH.htmlFunil({ etapa: etapa, semCaixa: true }, H_FX)) + '</aside>' +
     '<section class="fx-centro" aria-label="Tudo que ela fez">' + fichaFeedHtml(d.eventos || []) +
     fichaMaisHtml(c, { perg: d.perg || [], resps: d.resps || [], cons: d.cons || [], last: d.last, h4: h4 }) + '</section>' +
     '<aside class="fx-rail fx-mail" aria-label="E-mails">' + emailsPanel(c, d.mails || [], h4, d.resps || [], d.jor) + '</aside></div>';
@@ -4956,6 +5020,7 @@ document.addEventListener('click', async function (e) {
   if (t.matches('tr[data-id]')) return openPessoa(t.dataset.id);
   if (t.dataset.open) return openPessoa(t.dataset.open);
   if (t.dataset.calmes) { state.calOff = (state.calOff || 0) + Number(t.dataset.calmes); return renderCalendario(); }
+  if (t.dataset.pistaemail) { state.rascunho[t.dataset.pistaemail] = (state.rascPista || {})[t.dataset.pistaemail] || ''; return openPessoa(t.dataset.pistaemail, 'conversa'); }
   if (t.dataset.hojemais) { state.hMais = true; return renderFila(); }
   if (t.dataset.hojeprob) { state.inbox = 'problemas'; return show('perguntas'); }
   if (t.dataset.openconv) return openPessoa(t.dataset.openconv, 'conversa');
