@@ -2,13 +2,13 @@
 // Nada de service_role aqui. O banco é db/crm-fase2.sql; o desenho é o artefato "CRM Por Dentro".
 // Tudo que vem do banco é texto de terceiros (nome, e-mail, pergunta): passa sempre por esc().
 import { supabase } from '/assets/js/supabase-client.js';
-import * as TX from './taxonomia.js?v=2026-11-15.34';   // páginas, famílias e agrupamento dos modelos
-import * as ES from './estudio.js?v=2026-11-15.34';   // os blocos do estúdio de e-mails (entregas 2 e 3)
-import * as EE from './editor-email.js?v=2026-11-15.34';
-import * as EQ from './editor-quem.js?v=2026-11-15.34';
-import * as JR from './jornada.js?v=2026-11-15.34';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
-import * as FX from './ficha.js?v=2026-11-15.34';   // ficha v2: lógica pura (fila, démarches, funil, ações)
-import * as FH from './ficha-html.js?v=2026-11-15.34';   // ficha v2: HTML puro
+import * as TX from './taxonomia.js?v=2026-11-15.35';   // páginas, famílias e agrupamento dos modelos
+import * as ES from './estudio.js?v=2026-11-15.35';   // os blocos do estúdio de e-mails (entregas 2 e 3)
+import * as EE from './editor-email.js?v=2026-11-15.35';
+import * as EQ from './editor-quem.js?v=2026-11-15.35';
+import * as JR from './jornada.js?v=2026-11-15.35';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
+import * as FX from './ficha.js?v=2026-11-15.35';   // ficha v2: lógica pura (fila, démarches, funil, ações)
+import * as FH from './ficha-html.js?v=2026-11-15.35';   // ficha v2: HTML puro
 
 var PERSONAS = {
   au_pair_estudante: 'Au pair → estudante', campus_france: 'Campus France', alternancia_emprego: 'Alternância / emprego',
@@ -3071,7 +3071,7 @@ function fxHeaderHtml(c, d) {
 // Catálogo de démarches (cópia do app, processos.json): carregado uma vez; sem ele, tudo cai na démarche padrão.
 var FX_PROC = null;
 async function fxCarregaProcessos() {
-  try { var r = await fetch('processos.json?v=2026-11-15.34'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
+  try { var r = await fetch('processos.json?v=2026-11-15.35'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
 }
 // A sessão Checklist: pílulas por démarche, os 4 mais urgentes, pasta do Drive privada e "Ver mais desta sessão".
 function fxChecklistCorpo(c) {
@@ -3250,29 +3250,11 @@ function lgDet(k, cls, sum, corpo) { return '<details class="' + cls + '" data-l
 document.addEventListener('toggle', function (e) { var d = e.target; if (d && d.matches && d.matches('details[data-lg]')) { var g = state.fx.lg || (state.fx.lg = { main: 1, a: 1 }); if (d.open) g[d.dataset.lg] = 1; else delete g[d.dataset.lg]; } }, true);
 function dosLigacaoHtml(c, d) {
   var S = state.dos && state.dos.cid === c.id && state.dos.d ? state.dos : null; if (!S) return '';
-  var jor = d.jor || montaJornada([]), evs = d.eventos || [], perg = d.perg || [];
-  var dv = function (k) { return dosValor(c, S.d, S.rasc, k); }, F = dosFaltaPorCanal(c, S);
-  var li = function (t) { return '<li>' + t + '</li>'; };
-  // 1) como ela chegou até você
-  var chegou = (jor.entradas || []).slice().reverse().slice(0, 3).map(function (x) {
-    var pg = ORIGEM_PAGINA[x.origem], q = (jor.quizzes || []).filter(function (z) { return z.em === x.em; })[0];
-    return li('<b>' + esc(fmtDate(x.em)) + '</b> · ' + esc((pg ? r1Rotulo(pg) + ' · ' : '') + (origLabel(x.origem) || '—')) + (q && q.objetivo ? ' · marcou: ' + esc(etapaDe(q.objetivo)) : ''));
-  }).join('') + (c.utm_campaign ? li('Campanha: ' + esc(c.utm_campaign)) : '') + (c.instagram ? li('Instagram: ' + esc(c.instagram)) : '') +
-    evs.filter(function (e) { return e.tipo === 'artigo_lido'; }).slice(0, 2).map(function (e) { var x = e.dados || {}; return li('Leu: ' + esc(x.titulo || x.slug || '')); }).join('') +
-    perg.slice(0, 2).map(function (p) { return li('Perguntou: “' + esc(truncaTxt(p.texto, 100)) + '”'); }).join('');
-  // 2) o que ela já me deu
-  var deu = [];
-  dosVisiveis(c, S.d, S.rasc).forEach(function (b) { if (b.livre) return; b.campos.forEach(function (f) { var v = dv(f.k); if (v !== '') deu.push(li(esc(f.l) + ': <b>' + esc(dosRotuloOpcao(f, v)) + '</b>' + (dosVeioDoFunil(c, S.d, S.rasc, f.k) ? ' <i class="dv-fonte">funil: confirme</i>' : ''))); }); });
-  // 3) o que vou perguntar
-  var perguntar = F.conversa.concat(F.doc.filter(function (f) { return !DOS_CANAL_DOC[f.k]; }));
-  var X = dosCruzamentos(c, S), conf = X.diverge.map(function (x) { return li('<b>Confirmar ' + esc(x.l) + ':</b> funil “' + esc(x.funil) + '”, dossiê “' + esc(x.dossie) + '”'); }).join('');
+  var dv = function (k) { return dosValor(c, S.d, S.rasc, k); }, F = dosFaltaPorCanal(c, S), X = dosCruzamentos(c, S), nFalta = F.conversa.length + F.app.length + F.doc.length;
   var campo = function (k) { var f = dosCampo(k); return f ? dosCampoHtml(f, c, S.d, S.rasc) : ''; };
   var B = state.bilan && state.bilan.cid === c.id ? state.bilan : null, enviado = (d.mails || []).filter(function (m) { return m.modelo === 'bilan_conversa'; })[0];
   var col = function (t, n, corpo) { return '<div class="dv-card"><div class="k">' + esc(t) + (n != null ? ' · ' + n : '') + '</div>' + corpo + '</div>'; };
-  var p1 = '<div class="dv-grid">' +
-    col('Como ela chegou até você', null, chegou ? '<ul class="dv-ul">' + chegou + '</ul>' : '<p class="sub" style="margin:0">Sem entrada registrada.</p>') +
-    col('O que ela já te deu', deu.length, deu.length ? '<ul class="dv-ul lg-deu">' + deu.join('') + '</ul>' : '<p class="sub" style="margin:0">Nada ainda: tudo vem da ligação.</p>') +
-    col('O que perguntar', perguntar.length + X.diverge.length, (conf || perguntar.length) ? '<ol class="dv-ol">' + conf.replace(/<li>/g, '<li class="lg-conf">') + perguntar.slice(0, 12).map(function (f) { return li(esc(f.l)); }).join('') + '</ol>' + (perguntar.length > 12 ? '<p class="sub" style="margin:4px 0 0">e mais ' + (perguntar.length - 12) + ' no formulário abaixo.</p>' : '') : '<p class="sub" style="margin:0">Nada a perguntar: o Dossiê está completo.</p>') + '</div>';
+  var p1 = dosPerguntarHtml(c, S) || '<p class="sub" style="margin:0">Nada a perguntar.</p>';
   var p2 = '<div class="dgrid lg-form">' + campo('ligacao_data') + campo('ligacao_resumo') + campo('proximos_passos') + campo('ligacao_transcricao') + '</div>' +
     '<div class="actions" style="margin-top:6px"><button class="btn primary" type="button" data-dossalvar="' + esc(c.id) + '">Salvar dossiê</button></div>' +
     '<div id="poscall-box">' + poscallHtml(c) + '</div>';
@@ -3281,58 +3263,22 @@ function dosLigacaoHtml(c, d) {
     '<button type="button" class="btn" data-bilanabrir="' + esc(c.id) + '"' + (B ? '' : ' disabled') + '>' + (enviado ? 'Reenviar o bilan' : 'Rascunho do e-mail com o bilan') + '</button></div>' +
     '<div class="dv-card"><div class="k">Arquivo para o seu sistema</div><p class="sub" style="margin:0 0 8px">Um .md com o que ela informou, o resumo e os encaminhamentos em lista de tarefas.</p><button type="button" class="btn" data-dosmd="' + esc(c.id) + '">Baixar o .md</button></div></div>';
   var passo = function (k, n, t, resumo, corpo) { return lgDet(k, 'lg-passo', '<span class="lg-n">' + n + '</span><b>' + t + '</b><span class="sub lg-res">' + esc(resumo) + '</span>', corpo); };
-  var miolo = passo('a', 1, 'Antes da ligação', deu.length + ' respostas já dadas · ' + (perguntar.length + X.diverge.length) + ' a perguntar', p1) +
+  var miolo = passo('a', 1, 'Antes da ligação', nFalta + (nFalta === 1 ? ' resposta falta' : ' respostas faltam') + (X.diverge.length ? ' · ' + X.diverge.length + ' a confirmar' : ''), p1) +
     passo('b', 2, 'Durante e depois: registrar e ler com a IA', dv('ligacao_transcricao') ? 'transcrição colada' : 'sem transcrição ainda', p2) +
     passo('c', 3, 'O que sai da conversa', enviado ? 'bilan enviado' : B ? 'bilan pronto para revisar' : 'bilan ainda não gerado', p3);
   return '<section class="panel dv lg" id="dos-ligacao" style="padding:16px;margin-bottom:14px">' +
     lgDet('main', 'lg-main', '<h3 style="font-size:17px;margin:0">A ligação</h3><span class="sub lg-res">Antes: contexto e o que perguntar. Durante: registre. Depois: a IA lê a conversa e preenche o Dossiê, e sai o bilan.</span>', miolo) + '</section>';
 }
-function dosVisaoHtml(c, d) {
-  var S = state.dos && state.dos.cid === c.id && state.dos.d ? state.dos : null, conta = !!c.user_id, pos = !!(S && S.onbEm);
-  var jor = d.jor || montaJornada([]), mails = d.mails || [], resps = d.resps || [], perg = d.perg || [], evs = d.eventos || [];
-  var titulo = !conta ? 'Preparação do 1:1' : pos ? 'Depois do 1:1' : 'Visão geral';
-  var sub = !conta ? 'Lead sem conta no app. O que já sabemos dela, o que bate entre as fontes e o que perguntar na conversa.'
-    : pos ? 'O que a chamada trouxe, como bate com o resto e como completar o que falta.' : 'Já está na plataforma. O que sabemos, o que bate e como completar o que falta.';
-  var dv = function (k) { return S ? dosValor(c, S.d, S.rasc, k) : ''; };
-  var linhaKv = function (l, v, tag) { return v === '' || v == null ? '' : '<div class="dv-l"><span>' + esc(l) + '</span><b>' + esc(v) + (tag ? ' <i class="dv-fonte">' + esc(tag) + '</i>' : '') + '</b></div>'; };
-  var op = function (k) { var v = dv(k); return v === '' ? '' : dosRotuloOpcao(dosCampo(k), v); };
-  var quem = linhaKv('Situação', personaLabel(c) + (subLabel(c) ? ' · ' + subLabel(c) : '')) + linhaKv('Fase', op('fase'), dosFonteTag(c, S, 'fase'))
-    linhaKv('Faixa de idade', op('faixa_idade'), dosFonteTag(c, S, 'faixa_idade')) + linhaKv('Cidade', dv('cidade')) + linhaKv('Chegou na França', dv('data_chegada') ? fmtDay(dv('data_chegada')) : '') +
-    linhaKv('Francês', op('nivel_frances')) +
-    linhaKv('Maior preocupação', op('preocupacao') || (c.preocupacao ? String(c.preocupacao) : ''));
-  // Estudos, certificados e prazo: um cartão só, com cada linha dizendo o que é (sempre aparece, mesmo sem resposta).
-  var vazio = '<span class="sub">ainda não informado</span>';
-  var kvX = function (l, v, extra) { return '<div class="dv-l"><span>' + esc(l) + '</span><b>' + (v ? esc(v) : vazio) + '</b></div>' + (extra ? '<p class="sub dv-ctx">' + extra + '</p>' : ''); };
-  var fNiv = dosCampo('nivel_estudos'), vNiv = dv('nivel_estudos'), diploma = fNiv && fNiv.o.some(function (o) { return o[0] === vNiv; }) ? dosRotuloOpcao(fNiv, vNiv) : '';
-  var certFr = dv('certificado_frances') === 'tenho' ? (op('certificado_frances_qual') ? op('certificado_frances_qual') : 'tem, não disse qual') : dv('certificado_frances') === 'nao' ? 'ainda não tem' : '';
-  var certMat = dv('tem_certificado_matricula') === 'true' ? 'tem' : dv('tem_certificado_matricula') === 'false' ? 'ainda não tem' : '';
-  var cfData = CF_PRAZO[(c.respostas || {}).cfNivel];
-  var prazoTxtX = c.prazo_limite ? fmtDay(c.prazo_limite) + ' (' + prazoTxt(c) + ')' : cfData ? fmtDay(cfData) : '';
-  var prazoCtx = c.prazo_limite ? 'Validar o VLS-TS na ANEF: 3 meses depois da entrada na França' + (c.data_entrada ? ' (' + fmtDay(c.data_entrada) + ')' : '') + '.' : cfData ? 'Prazo do Campus France para o nível que ela marcou no funil.' : '';
-  var estudos = kvX('Diploma mais recente', diploma) + kvX('Certificado de francês', certFr) + (certMat ? kvX('Certificado de matrícula', certMat) : '') +
-    kvX(c.prazo_limite ? 'Prazo do VLS-TS' : cfData ? 'Prazo do Campus France' : 'Prazo', prazoTxtX, esc(prazoCtx));
-  var entradas = (jor.entradas || []).slice().reverse().slice(0, 4).map(function (x) {
-    var q = (jor.quizzes || []).filter(function (z) { return z.em === x.em; })[0];
-    return '<div class="dv-l"><span>' + esc(fmtDate(x.em)) + '</span><b>' + esc(origLabel(x.origem) || '—') + (q && q.objetivo ? ' <i class="dv-fonte">' + esc(etapaDe(q.objetivo)) + '</i>' : '') + '</b></div>';
-  }).join('');
-  var veio = entradas + linhaKv('Campanha', c.utm_campaign || '') + linhaKv('Instagram', c.instagram || '');
-  var abriu = mails.filter(function (m) { return m.aberto_em || m.status === 'aberto' || m.status === 'clicado'; }).length, clicou = mails.filter(function (m) { return m.clicado_em || m.status === 'clicado'; }).length;
-  var arts = evs.filter(function (e) { return e.tipo === 'artigo_lido'; }).slice(0, 3).map(function (e) { var x = e.dados || {}; return x.titulo || x.slug || ''; }).filter(Boolean);
-  var um = UM.filter(function (x) { return x.contato_id === c.id && x.status !== 'cancelado' && x.quando; }), pasdo = um.filter(function (x) { return x.status === 'feito' || new Date(x.quando).getTime() < Date.now() - 36e5; }).length, vindo = um.filter(function (x) { return x.status === 'agendado' && new Date(x.quando).getTime() >= Date.now() - 36e5; }).sort(function (a, b) { return a.quando < b.quando ? -1 : 1; })[0];
-  var fez = linhaKv('E-mails', mails.length ? mails.length + ' enviados · abriu ' + abriu + ' · clicou ' + clicou : 'nenhum enviado') + linhaKv('Respostas dela', resps.length ? String(resps.length) : '') +
-    linhaKv('Artigos lidos', arts.length ? arts.join(' · ') : jor.artigos ? String(jor.artigos) : '') +
-    perg.slice(0, 2).map(function (p) { return '<div class="dv-l"><span>Perguntou</span><b>' + esc(truncaTxt(p.texto, 90)) + (p.origem ? ' <i class="dv-fonte">' + artigoHtml(p.origem) + '</i>' : '') + '</b></div>'; }).join('') +
-    linhaKv('1:1', pasdo || vindo ? (pasdo ? 'já fez ' + pasdo : 'nenhum feito') + (vindo ? ' · próximo ' + new Date(vindo.quando).toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit' }) + ' ' + fmtHora(vindo.quando) : '') : 'nenhum') +
-    linhaKv('App', conta ? 'tem conta · ' + (c.ultimo_evento_em ? 'última atividade há ' + haDias(diasDesde(c.ultimo_evento_em)) : 'sem atividade') : 'ainda sem conta');
-  var card = function (t, corpo) { return '<div class="dv-card"><div class="k">' + esc(t) + '</div>' + (corpo || '<p class="sub" style="margin:0">Nada registrado ainda.</p>') + '</div>'; };
-
+// O que conferir e o que perguntar: cada resposta que falta aparece só aqui, separada pelo canal (conversa, app, documento).
+function dosPerguntarHtml(c, S) {
+  var conta = !!c.user_id, pos = !!(S && S.onbEm);
   // Cruzamentos
   var X = dosCruzamentos(c, S), cruz = '';
   if (S && (X.confere.length || X.diverge.length || X.soFunil.length || X.daChamada.length)) {
     cruz = '<div class="dv-sec"><div class="k">Cruzamentos entre as fontes</div><p class="sub" style="margin:0 0 6px">' + X.confere.length + ' confirmados por mais de uma fonte · ' + X.diverge.length + ' divergem · ' + X.soFunil.length + ' só vêm do funil' + (pos ? ' · ' + X.daChamada.length + ' lidos da chamada' : '') + '.</p>' +
       (X.diverge.length ? '<ul class="dv-ul dv-div">' + X.diverge.map(function (x) { return '<li><b>' + esc(x.l) + ':</b> o funil disse “' + esc(x.funil) + '”, o dossiê diz “' + esc(x.dossie) + '”. Confirme no 1:1.</li>'; }).join('') + '</ul>' : '') +
-      (X.soFunil.length ? '<ul class="dv-ul">' + X.soFunil.slice(0, 6).map(function (x) { return '<li><b>' + esc(x.l) + ':</b> ' + esc(x.v) + ' <i class="dv-fonte">só do funil: confirme</i></li>'; }).join('') + '</ul>' : '') +
-      (pos && X.daChamada.length ? '<ul class="dv-ul">' + X.daChamada.slice(0, 8).map(function (x) { return '<li><b>' + esc(x.l) + ':</b> ' + esc(x.v) + ' <i class="dv-fonte">' + esc(x.origem) + ' · ' + esc(ONB_CONF[x.conf] || x.conf) + '</i></li>'; }).join('') + '</ul>' : '') + '</div>';
+      (X.soFunil.length ? '<p class="sub" style="margin:6px 0 0"><b>Só vieram do funil, confirme com ela:</b> ' + esc(X.soFunil.map(function (x) { return x.l; }).join(', ')) + '.</p>' : '') +
+      (pos && X.daChamada.length ? '<ul class="dv-ul">' + X.daChamada.slice(0, 8).map(function (x) { return '<li>' + esc(x.l) + ' <i class="dv-fonte">' + esc(x.origem) + ' · ' + esc(ONB_CONF[x.conf] || x.conf) + '</i></li>'; }).join('') + '</ul>' : '') + '</div>';
   }
   // O que falta e como completar
   var F = dosFaltaPorCanal(c, S), total = F.conversa.length + F.app.length + F.doc.length, falta = '';
@@ -3349,8 +3295,47 @@ function dosVisaoHtml(c, d) {
         (F.doc.length ? '<div class="dv-e"><b>Lembrar dos documentos</b><span class="sub">' + F.doc.length + ' itens: ela guarda no Drive dela e só cola o link fechado no app (nada sensível vai para o app).</span>' + lista(F.doc) + '<button type="button" class="btn" data-dosmsg="' + esc(c.id) + '" data-tipo="doc">Mandar o lembrete →</button></div>' : '') + '</div></div>';
     }
   } else if (S) falta = '<div class="dv-sec"><div class="k">O que falta</div><p class="sub" style="margin:0">Nada falta no dossiê.</p></div>';
+  return cruz + falta;
+}
+function dosVisaoHtml(c, d) {
+  var S = state.dos && state.dos.cid === c.id && state.dos.d ? state.dos : null, conta = !!c.user_id, pos = !!(S && S.onbEm);
+  var jor = d.jor || montaJornada([]), mails = d.mails || [], resps = d.resps || [], perg = d.perg || [], evs = d.eventos || [];
+  var titulo = !conta ? 'Preparação do 1:1' : pos ? 'Depois do 1:1' : 'Visão geral';
+  var sub = !conta ? 'Lead sem conta no app. O que já sabemos dela, o que bate entre as fontes e o que perguntar na conversa.'
+    : pos ? 'O que a chamada trouxe, como bate com o resto e como completar o que falta.' : 'Já está na plataforma. O que sabemos, o que bate e como completar o que falta.';
+  var dv = function (k) { return S ? dosValor(c, S.d, S.rasc, k) : ''; };
+  var linhaKv = function (l, v, tag) { return v === '' || v == null ? '' : '<div class="dv-l"><span>' + esc(l) + '</span><b>' + esc(v) + (tag ? ' <i class="dv-fonte">' + esc(tag) + '</i>' : '') + '</b></div>'; };
+  var op = function (k) { var v = dv(k); return v === '' ? '' : dosRotuloOpcao(dosCampo(k), v); };
+  var quem = linhaKv('Situação', personaLabel(c) + (subLabel(c) ? ' · ' + subLabel(c) : '')) + linhaKv('Fase', op('fase'), dosFonteTag(c, S, 'fase')) +
+    linhaKv('Faixa de idade', op('faixa_idade'), dosFonteTag(c, S, 'faixa_idade')) + linhaKv('Cidade', dv('cidade')) + linhaKv('Chegou na França', dv('data_chegada') ? fmtDay(dv('data_chegada')) : '') +
+    linhaKv('Francês', op('nivel_frances')) +
+    linhaKv('Maior preocupação', op('preocupacao') || (c.preocupacao ? String(c.preocupacao) : ''));
+  // Estudos, certificados e prazo: um cartão só, com cada linha dizendo o que é (sempre aparece, mesmo sem resposta).
+  var vazio = '<span class="sub">ainda não informado</span>';
+  var kvX = function (l, v, extra) { return '<div class="dv-l"><span>' + esc(l) + '</span><b>' + (v ? esc(v) : vazio) + '</b></div>' + (extra ? '<p class="sub dv-ctx">' + extra + '</p>' : ''); };
+  var fNiv = dosCampo('nivel_estudos'), vNiv = dv('nivel_estudos'), diploma = fNiv && fNiv.o.some(function (o) { return o[0] === vNiv; }) ? dosRotuloOpcao(fNiv, vNiv) : '';
+  var certFr = dv('certificado_frances') === 'tenho' ? (op('certificado_frances_qual') ? op('certificado_frances_qual') : 'tem, não disse qual') : dv('certificado_frances') === 'nao' ? 'ainda não tem' : '';
+  var certMat = dv('tem_certificado_matricula') === 'true' ? 'tem' : dv('tem_certificado_matricula') === 'false' ? 'ainda não tem' : '';
+  var cfData = CF_PRAZO[(c.respostas || {}).cfNivel];
+  var prazoTxtX = c.prazo_limite ? fmtDay(c.prazo_limite) + ' (' + prazoTxt(c) + ')' : cfData ? fmtDay(cfData) : '';
+  var prazoCtx = c.prazo_limite ? 'Validar o VLS-TS na ANEF: 3 meses depois da entrada na França' + (c.data_entrada ? ' (' + fmtDay(c.data_entrada) + ')' : '') + '.' : cfData ? 'Prazo do Campus France para o nível que ela marcou no funil.' : '';
+  var estudos = kvX('Diploma mais recente', diploma) + kvX('Certificado de francês', certFr) + (certMat ? kvX('Certificado de matrícula', certMat) : '') +
+    kvX(c.prazo_limite ? 'Prazo do VLS-TS' : cfData ? 'Prazo do Campus France' : 'Prazo', prazoTxtX, esc(prazoCtx));
+  var entradas = (jor.entradas || []).slice().reverse().slice(0, 4).map(function (x) {
+    var q = (jor.quizzes || []).filter(function (z) { return z.em === x.em; })[0];
+    return '<div class="dv-l"><span>' + esc(fmtDate(x.em)) + '</span><b>' + esc((ORIGEM_PAGINA[x.origem] ? r1Rotulo(ORIGEM_PAGINA[x.origem]) + ' · ' : '') + (origLabel(x.origem) || '—')) + (q && q.objetivo ? ' <i class="dv-fonte">' + esc(etapaDe(q.objetivo)) + '</i>' : '') + '</b></div>';
+  }).join('');
+  var veio = entradas + linhaKv('Campanha', c.utm_campaign || '') + linhaKv('Instagram', c.instagram || '');
+  var abriu = mails.filter(function (m) { return m.aberto_em || m.status === 'aberto' || m.status === 'clicado'; }).length, clicou = mails.filter(function (m) { return m.clicado_em || m.status === 'clicado'; }).length;
+  var arts = evs.filter(function (e) { return e.tipo === 'artigo_lido'; }).slice(0, 3).map(function (e) { var x = e.dados || {}; return x.titulo || x.slug || ''; }).filter(Boolean);
+  var fez = linhaKv('E-mails', mails.length ? mails.length + ' enviados · abriu ' + abriu + ' · clicou ' + clicou : 'nenhum enviado') + linhaKv('Respostas dela', resps.length ? String(resps.length) : '') +
+    linhaKv('Artigos lidos', arts.length ? arts.join(' · ') : jor.artigos ? String(jor.artigos) : '') +
+    perg.slice(0, 2).map(function (p) { return '<div class="dv-l"><span>Perguntou</span><b>' + esc(truncaTxt(p.texto, 90)) + (p.origem ? ' <i class="dv-fonte">' + artigoHtml(p.origem) + '</i>' : '') + '</b></div>'; }).join('') +
+    linhaKv('App', conta ? 'tem conta · ' + (c.ultimo_evento_em ? 'última atividade há ' + haDias(diasDesde(c.ultimo_evento_em)) : 'sem atividade') : 'ainda sem conta');
+  var card = function (t, corpo) { return '<div class="dv-card"><div class="k">' + esc(t) + '</div>' + (corpo || '<p class="sub" style="margin:0">Nada registrado ainda.</p>') + '</div>'; };
+
   return '<section class="panel dv" id="dos-visao" style="padding:16px;margin-bottom:14px"><h3 style="font-size:17px;margin:0 0 2px">' + esc(titulo) + '</h3><p class="sub" style="margin:0 0 12px">' + esc(sub) + '</p>' +
-    '<div class="dv-grid">' + card('Quem ela é', quem) + card('Estudos, certificados e prazo', estudos) + card('De onde veio e o que respondeu', veio) + card('O que ela fez', fez) + '</div>' + r1Html(c, S) + cruz + falta + '</section>';
+    '<div class="dv-grid">' + card('Quem ela é', quem) + card('Estudos, certificados e prazo', estudos) + card('De onde veio e o que respondeu', veio) + card('O que ela fez', fez) + '</div>' + r1Html(c, S) + '</section>';
 }
 // ---------- Plataforma: a sessão "Insights" (depois do 1:1, com ela no app) ----------
 function insightsDaPlataforma(c, X) {
