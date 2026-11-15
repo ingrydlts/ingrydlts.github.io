@@ -104,5 +104,16 @@ console.log('== Fase 2: prévia do app dela ==');
   h.mod.pararAoVivo();
 }
 
+console.log('== Dossiê completo: visão geral, registro dos 1:1 e A ligação ==');
+{
+  const h = await plataforma(base(), []);
+  h.mod.state.fx.tab = 'dossie'; await h.mod.renderPessoa(); await espera();
+  const t = h.el('pessoa-page').innerHTML + h.el('fx-corpo').innerHTML;
+  check('aba Dossiê tem a visão geral', t.includes('Visão geral') || t.includes('Preparação do 1:1') || t.includes('Depois do 1:1'));
+  check('tem o Registro dos 1:1 e a sessão A ligação', t.includes('Registro dos 1:1') && t.includes('A ligação'));
+  check('mantém os campos do dossiê', t.includes('id="dossie-box"') && t.includes('data-dossalvar'));
+  h.mod.pararAoVivo();
+}
+
 console.log(`\n${passed} passaram, ${failed} falharam`);
 if (failed) process.exit(1);

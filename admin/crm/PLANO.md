@@ -236,6 +236,14 @@ Sem SQL novo: reaproveita as tabelas que a aba **Caso** (antiga) já lê (`caso_
 4. **Minhas próximas ações** com "Já fiz", "Adicionar" e "Concluídas", **modelos de mensagem por etapa** na Conversa e **Respostas e novidades dela** no topo: fase 3 do plano.
 5. **Funil clicável** (mudança manual de etapa) e criar **Aviso/Item novo** direto da sessão (hoje só os botões de documento, mensagem e bilan).
 
+### Dossiê completo de volta (15/11)
+
+A aba **Dossiê** da ficha v2 voltou à versão mais desenvolvida (a que estava no artefato do CRM e não tinha chegado ao repositório): **Visão geral** (Quem ela é, Estudos/certificados/prazo, De onde veio, O que ela fez, com o que bate e o que diverge), **Registro dos 1:1** (um toggle por 1:1 com o código IL01 a IL05, roteiro, identificadas, conclusão, encaminhamento, interesse e link enviado) e **A ligação** (antes, durante e depois: anexar transcrição, ler do Notion, ler com IA, perguntas para confirmar, .md e mensagens prontas). Os campos do Dossiê continuam embaixo.
+
+- **SQL novo para rodar (primeiro no Supabase de teste, depois no de produção):** `db/crm-1a1-registro.sql` (uma coluna `registro jsonb` em `um_a_um`, que já tem RLS só de admin). Sem ele tudo carrega e só o "Salvar registro" avisa que falta rodar.
+- Carrega também `um_a_um` e `um_a_um_pagamentos` na abertura do painel e os artigos do site (para mostrar o título do artigo de onde veio a pergunta).
+- Fora desta volta, de propósito: o resto do que existia só no artefato (indicadores da Hoje, caminho de e-mail, cabeçalho novo, sessão Insights).
+
 ## Etapas
 
 1. **Fase 1 — captura** (feita, repo POR-DENTRO-APP): `contatos`, `eventos`, `consentimentos`, `capturar_lead()`, `admins`.

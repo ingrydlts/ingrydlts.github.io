@@ -2,13 +2,13 @@
 // Nada de service_role aqui. O banco é db/crm-fase2.sql; o desenho é o artefato "CRM Por Dentro".
 // Tudo que vem do banco é texto de terceiros (nome, e-mail, pergunta): passa sempre por esc().
 import { supabase } from '/assets/js/supabase-client.js';
-import * as TX from './taxonomia.js?v=2026-11-15.9';   // páginas, famílias e agrupamento dos modelos
-import * as ES from './estudio.js?v=2026-11-15.9';   // os blocos do estúdio de e-mails (entregas 2 e 3)
-import * as EE from './editor-email.js?v=2026-11-15.9';
-import * as EQ from './editor-quem.js?v=2026-11-15.9';
-import * as JR from './jornada.js?v=2026-11-15.9';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
-import * as FX from './ficha.js?v=2026-11-15.9';   // ficha v2: lógica pura (fila, démarches, funil, ações)
-import * as FH from './ficha-html.js?v=2026-11-15.9';   // ficha v2: HTML puro
+import * as TX from './taxonomia.js?v=2026-11-15.10';   // páginas, famílias e agrupamento dos modelos
+import * as ES from './estudio.js?v=2026-11-15.10';   // os blocos do estúdio de e-mails (entregas 2 e 3)
+import * as EE from './editor-email.js?v=2026-11-15.10';
+import * as EQ from './editor-quem.js?v=2026-11-15.10';
+import * as JR from './jornada.js?v=2026-11-15.10';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
+import * as FX from './ficha.js?v=2026-11-15.10';   // ficha v2: lógica pura (fila, démarches, funil, ações)
+import * as FH from './ficha-html.js?v=2026-11-15.10';   // ficha v2: HTML puro
 
 var PERSONAS = {
   au_pair_estudante: 'Au pair → estudante', campus_france: 'Campus France', alternancia_emprego: 'Alternância / emprego',
@@ -136,7 +136,7 @@ var P = [], PERR = '';
 var PSUG = [];
 var FILA = [];   // avisos agendados que ainda não saíram, de todas as pessoas (para o bloco da Hoje)
 var state = { funilVisao: 'leads', funilPorque: null, dosAberto: lerDosAberto(), dos: null, pc: null, ptab: null, pstab: 'assistente', pdias: {}, int: null, chatRasc: '', rascunho: {}, view: 'hoje', persona: '', sub: '', urg: '', stage: '', orig: '', camp: '', q: '', sel: null, qs: 'nova', qsel: null, inbox: 'perguntas', rs: 'nova', rsel: null, ps: 'novo', psel: null, preset: 'todos', seg: '', prevView: 'contatos',
-  fx: { tab: null, ord: null, abertas: {}, ag: { i: 0, pop: null }, dem: 'todas', ckTodos: false, ckMais: false, tour: true } };
+  fx: { tab: null, ord: null, abertas: {}, ag: { i: 0, pop: null }, dem: 'todas', ckTodos: false, ckMais: false, tour: true, r1: null, lg: { main: 1, a: 1 } } };
 var activeCid = null;
 var me = null;
 
@@ -184,7 +184,7 @@ async function boot() {
     return;
   }
   $('gate').hidden = true; $('app').hidden = false;
-  await Promise.all([loadAll(), carregarProdutos()]);
+  await Promise.all([loadAll(), carregarProdutos(), carregarArtigos()]);
   initControls();
   show('hoje');
 }
@@ -230,10 +230,19 @@ async function loadAll() {
     // A fila de avisos da IAssistente que ainda não saíram (db/crm-caso-fluxo.sql). Sem o SQL, o bloco da Hoje fica escondido.
     supabase.from('caso_avisos').select('id,contato_id,titulo,tipo,ordem,pausa_dias,liberar_em,modo').eq('estado', 'agendado').is('liberado_em', null).order('ordem', { ascending: true }).limit(500),
     // As assinaturas (db/crm-assinaturas.sql): separam quem já é cliente no Funil. Sem o SQL, todos ficam em Leads ou No app.
-    supabase.from('assinaturas').select('contato_id,status,periodo_fim,cancela_no_fim').limit(5000)
+    supabase.from('assinaturas').select('contato_id,status,periodo_fim,cancela_no_fim').limit(5000),
+    // Os 1:1 (db/crm-fase2.sql) e o registro de cada um (db/crm-1a1-registro.sql): alimentam o Registro dos 1:1 do Dossiê. Sem a tabela, ficam vazios.
+    supabase.from('um_a_um').select('id,contato_id,quando,status,criado_em,registro').order('quando', { ascending: true }).limit(2000),
+    supabase.from('um_a_um_pagamentos').select('contato_id,minutos,pago_em').order('pago_em', { ascending: false }).limit(2000)
   ]);
   if (r[0].error) return fail('carregar os contatos', r[0].error);
   COMPRAS = {};
+  UM = r[14] && !r[14].error ? (r[14].data || []) : [];
+  if (r[14] && r[14].error && /registro/.test(String(r[14].error.message || ''))) {   // a coluna registro ainda não existe (db/crm-1a1-registro.sql não rodou): carrega sem ela
+    var u2 = await supabase.from('um_a_um').select('id,contato_id,quando,status,criado_em').order('quando', { ascending: true }).limit(2000);
+    UM = u2 && !u2.error ? (u2.data || []) : [];
+  }
+  PAG1A1 = r[15] && !r[15].error ? (r[15].data || []) : [];
   ((r[7] && !r[7].error && r[7].data) || []).forEach(function (e) { var p = (e.dados || {}).produto; if (p) (COMPRAS[e.contato_id] = COMPRAS[e.contato_id] || {})[p] = 1; });
   C = r[0].data || [];
   ASSIN = {};
@@ -264,7 +273,7 @@ async function loadAll() {
   });
 }
 // Os produtos pagos da vitrine (content/produtos-digitais.json, público): nome e slug, para "Para quem" e "Registrar compra".
-var PRODUTOS = [], COMPRAS = {};
+var PRODUTOS = [], COMPRAS = {}, UM = [], PAG1A1 = [];
 function comprou(cid, prod) { return !!(COMPRAS[cid] && COMPRAS[cid][prod]); }
 async function carregarProdutos() {
   try {
@@ -275,6 +284,32 @@ async function carregarProdutos() {
   } catch (e) { PRODUTOS = []; }
 }
 function produtoNome(slug) { var p = PRODUTOS.filter(function (x) { return x.slug === slug; })[0]; return p ? p.nome : (slug || '—'); }
+// Os artigos do site (content/posts.json, público): a pergunta única guarda só o "token" do artigo (o slug sem acento, até 40 letras).
+// Aqui o token volta a ser o título e o endereço do artigo. Sem o arquivo, a tela mostra o próprio token.
+var ARTIGOS = {};
+function artigoToken(slug) { return String(slug || '').toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 40); }
+async function carregarArtigos() {
+  try {
+    var r = await fetch('/content/posts.json', { cache: 'no-store' });
+    var d = r.ok ? await r.json() : {};
+    ARTIGOS = {};
+    (d.items || []).forEach(function (p) { if (p.slug && p.title) ARTIGOS[artigoToken(p.slug)] = { titulo: p.title, url: '/artigos/post/' + p.slug + '/' }; });
+  } catch (e) { ARTIGOS = {}; }
+}
+function artigoDe(origem) {
+  if (!origem) return null;
+  var a = ARTIGOS[origem];
+  return a ? { titulo: a.titulo, url: a.url } : { titulo: origem, url: null };
+}
+// Só o link do artigo de onde veio a pergunta (o título fica na dica). Sem o artigo na lista, mostra o código dele.
+function artigoLink(origem) {
+  var a = artigoDe(origem); if (!a) return '';
+  return a.url ? '<a href="' + esc(a.url) + '" target="_blank" rel="noopener" title="' + esc(a.titulo) + '">Ver o artigo ↗</a>' : 'Artigo: ' + esc(a.titulo);
+}
+function artigoHtml(origem) {
+  var a = artigoDe(origem); if (!a) return '';
+  return a.url ? '<a href="' + esc(a.url) + '" target="_blank" rel="noopener">' + esc(a.titulo) + '</a>' : esc(a.titulo);
+}
 async function reload() { await loadAll(); fillCampanhas(); renderToday(); renderReimpacto(); }
 
 // ---------- Filtros ----------
@@ -1888,6 +1923,11 @@ var DOS = [
     { k: 'cfPrazoCursoTem', l: 'Alguma formação fecha antes da plataforma', t: 'op', o: [['sim', 'Sim'], ['nao', 'Não']] },
     { k: 'cfPrazoCurso', l: 'Prazo da formação que fecha primeiro', t: 'dt', q: function (g) { return g('cfPrazoCursoTem') === 'sim'; } }
   ] },
+  // As perguntas das páginas de entrada (os quizzes dos guias): sempre à mão, para você somar o que ela respondeu em cada uma. Se o quiz
+  // já foi respondido, a etapa vem preenchida (ver dosDoFunil). Fica fora da conta do "faltam": nem toda pessoa passou por todas as páginas.
+  { t: 'Respostas das páginas de entrada', livre: 1, campos: (TX.PAGINAS || []).map(function (p) {
+    return { k: 'etapa_' + p.k.toLowerCase(), l: p.k + ' · ' + p.nome + ': em que etapa está', t: 'op', o: p.etapas, ajuda: 'A pergunta do quiz desta página. Se ela já respondeu, vem preenchida.' };
+  }) },
   { t: 'Sinais da call', livre: 1, campos: [
     { k: 'formacao_alvo', l: 'Formação que quer', t: 'op', o: [['l1_universidade', '1º ano de licence (universidade)'], ['bts', 'BTS'], ['escola_arte', 'Escola de arte'], ['administracao', 'Administração'], ['du', 'DU (diplôme d\'université)'], ['nao_sei', 'Ainda não sabe']] },
     { k: 'grupo_area', l: 'Grande área', t: 'op', o: [['artes_audiovisual', 'Artes e audiovisual'], ['negocios', 'Negócios'], ['saude', 'Saúde'], ['frances_b2', 'Francês (chegar ao B2)'], ['outra', 'Outra']] },
@@ -1915,7 +1955,17 @@ var DOS_FUNIL = {
   contrato_fim: ['apDataFinal'], tem_certificado_matricula: ['apCertificado', FN_SN], comprova_recursos: ['apRecursos', FN_SN], tem_sponsor: ['apSponsor', FN_SN],
   cfNivel: ['cfNivel'], cfTeste: ['cfTeste'], cidade: ['cfCidade', function (v) { return CF_CIDADE[v] || v; }]
 };
+// A etapa que ela marcou no quiz de uma página: o quiz mais recente daquela página (eventos da jornada) ou, na falta, a última resposta do cadastro.
+function etapaDaPaginaDoFunil(c, k) {
+  var f = dosCampo(k); if (!f || !f.o) return null;
+  var vale = function (v) { return typeof v === 'string' && f.o.some(function (o) { return o[0] === v; }); };
+  var qs = state.jorQuiz && state.jorQuiz.cid === c.id ? state.jorQuiz.quizzes : [];
+  for (var i = qs.length - 1; i >= 0; i--) if (vale(qs[i].objetivo)) return qs[i].objetivo;
+  var r = c && c.respostas;
+  return r && typeof r === 'object' && vale(r.objetivo) ? r.objetivo : null;
+}
 function dosDoFunil(c, k) {
+  if (/^etapa_i0[1-5]$/.test(k)) return etapaDaPaginaDoFunil(c, k);
   var m = DOS_FUNIL[k], r = c && c.respostas; if (!m || !r || typeof r !== 'object') return null;
   var v = r[m[0]]; if (v === null || v === undefined || v === '') return null;
   v = m[1] ? m[1](v) : v; if (v === null || v === undefined || v === '') return null;
@@ -2185,10 +2235,10 @@ function dossieHtml(c, d, err, rasc, aberto, chk, fixo) {
   var pr = dosProgresso(c, d, rasc), pct = pr.tot ? Math.round(pr.n * 100 / pr.tot) : 0, sujo = rasc && Object.keys(rasc).length;
   var corpo = '';
   if (aberto) {
-    corpo = '<div class="dcorpo">' + dosVisiveis(c, d, rasc).map(function (b) {
+    corpo = '<div class="dcorpo">' + dosVisiveis(c, d, rasc).filter(function (b) { return !(fixo && b.t === 'A ligação'); }).map(function (b) {
       return '<section class="dbloco"><h4>' + esc(b.t) + '</h4><div class="dgrid">' + b.campos.map(function (f) { return dosCampoHtml(f, c, d, rasc); }).join('') + '</div></section>';
     }).join('') + '<div class="actions" style="margin-top:6px"><button class="btn primary" type="button" data-dossalvar="' + esc(c.id) + '">Salvar dossiê</button>' +
-      (sujo ? '<span class="sub" style="align-self:center">Há alterações ainda não salvas.</span>' : '') + '</div>' + '<div id="poscall-box">' + poscallHtml(c) + '</div><div id="chk-box">' + checklistHtml(chk, Date.now()) + '</div></div>';
+      (sujo ? '<span class="sub" style="align-self:center">Há alterações ainda não salvas.</span>' : '') + '</div>' + (fixo ? '' : '<div id="poscall-box">' + poscallHtml(c) + '</div>') + '<div id="chk-box">' + checklistHtml(chk, Date.now()) + '</div></div>';
   }
   return '<div class="panel dossie"><div class="dhead"><h3>Dossiê</h3><span class="sub">' + pr.n + ' de ' + pr.tot + ' respondidas' + (pr.falta ? ' · faltam ' + pr.falta : ' · completo') + '</span>' +
     (fixo ? '' : '<button class="btn" type="button" data-dostoggle="1" aria-expanded="' + !!aberto + '" style="margin-left:auto">' + (aberto ? 'Fechar dossiê' : 'Abrir dossiê completo') + '</button>') + '</div>' +
@@ -2241,7 +2291,7 @@ function pcRotuloSinal(pc, chave) { var v = (pc.vocab || []).filter(function (x)
 function pcSinaisDela(d) { return d && Array.isArray(d.sinais) ? d.sinais.slice() : []; }
 function pcTextoCampo(f, v) { if (v === true || v === 'true') return 'Sim'; if (v === false || v === 'false') return 'Não'; var o = f && f.o ? f.o.filter(function (x) { return x[0] === String(v); })[0] : null; return o ? o[1] : String(v); }
 
-function poscallHtml(c) {
+function poscallHtml(c, fixo) {
   var pc = pcEstado(c.id), d = (state.dos && state.dos.d) || {}, h = '';
   if (!pc.carregou && !pc.carregando) pcCarregarDados(c.id);
   h += '<section class="dbloco poscall"><h4>Pós-call</h4>';
@@ -2255,23 +2305,25 @@ function poscallHtml(c) {
     }).join('') : '<span class="sub">Carregando…</span>') +
     '<div class="actions" style="margin-top:8px"><button class="btn" type="button" data-pcsalvarsinais="' + esc(c.id) + '"' + (pc.manual ? '' : ' disabled') + '>Salvar sinais</button></div></div>';
 
-  if (pc.estado === 'lendo') return h + '<p class="sub" role="status">Lendo a call… (leva alguns segundos)</p></section>';
-  if (pc.estado === 'proposta' && pc.prop) return h + poscallPropostaHtml(c, pc, d) + poscallCuradoriaHtml(pc) + '</section>';
+  if (pc.estado === 'lendo') return h + (fixo ? '' : '<p class="sub" role="status">Lendo a call… (leva alguns segundos)</p>') + '</section>';
+  if (pc.estado === 'proposta' && pc.prop) return h + poscallPropostaHtml(c, pc, d, fixo) + poscallCuradoriaHtml(pc) + '</section>';
 
+  if (!fixo) {   // na aba Dossiê o botão de ler fica no alto da sessão (pcTopoHtml)
   var tem = dosValor(c, d, (state.dos && state.dos.rasc) || {}, 'ligacao_transcricao');
-  h += '<div class="pcler"><p class="sub" style="margin:0 0 8px">Cole a gravação transcrita em <b>A ligação</b> e peça a leitura. A IA só propõe: você marca o que vale e aplica. ' +
-    (tem ? '' : '<b>Ainda não há transcrição colada.</b>') + '</p>' +
-    (pc.erro ? '<p class="err" role="alert">' + esc(pc.erro) + '</p>' : '') +
-    '<div class="actions"><button class="btn primary" type="button" data-pcler="' + esc(c.id) + '">Ler a call com IA</button></div></div>';
+    h += '<div class="pcler"><p class="sub" style="margin:0 0 8px">Cole a gravação transcrita em <b>A ligação</b> e peça a leitura. A IA só propõe: você marca o que vale e aplica. ' +
+      (tem ? '' : '<b>Ainda não há transcrição colada.</b>') + '</p>' +
+      (pc.erro ? '<p class="err" role="alert">' + esc(pc.erro) + '</p>' : '') +
+      '<div class="actions"><button class="btn primary" type="button" data-pcler="' + esc(c.id) + '">Ler a call com IA</button></div></div>';
+  }
   return h + (pc.notionAplicada ? '<div class="pcnotion-lido"><h5>Última ligação lida do Notion (já aplicada em ' + esc(fmtDay(String(pc.notionAplicada.quando || '').slice(0, 10))) + ')</h5>' + poscallNotionHtml(pc.notionAplicada.proposta.notion) + '</div>' : '') + poscallCuradoriaHtml(pc) + '</section>';
 }
 
-function poscallPropostaHtml(c, pc, d) {
+function poscallPropostaHtml(c, pc, d, fixo) {
   var p = pc.prop.proposta, h = '<div class="pcprop">', ehN = p.origem === 'notion' && !!p.notion;
   h += ehN ? '<p class="sub" style="margin:10px 0">Leitura da página do Notion (a IA não leu nada: é a página padronizada). <b>A ficha já foi preenchida na leitura.</b> Aqui ficam os fatos que a ficha já tinha de outro jeito (marque só se quiser trocar) e, mais abaixo, pendências, lembretes e rascunho.</p>' : '<p class="sub" style="margin:10px 0">Proposta da IA' + (pc.prop.reutilizada ? ' (a mesma call já tinha sido lida; sem custo novo)' : '') +
     '. Marque o que vale e aplique. <b>Nada entrou na ficha ainda.</b></p>';
 
-  if ((p.mapa_da_call || []).length) {
+  if (!fixo && (p.mapa_da_call || []).length) {
     h += '<h5>O que rolou na call</h5><ol class="pcmapa">' + p.mapa_da_call.map(function (b) {
       return '<li><b>' + esc(b.titulo) + '</b>' + (b.tema && b.tema !== 'outro' ? ' <span class="dchip">' + esc(pcRotuloSinal(pc, b.tema)) + '</span>' : '') + '<br><small class="sub">' + esc(b.resumo) + '</small></li>';
     }).join('') + '</ol>';
@@ -2312,8 +2364,9 @@ function poscallPropostaHtml(c, pc, d) {
     return '<label class="pclinha"><input type="checkbox" data-pcfila="' + q.id + '"' + (marcado ? ' checked' : '') + '> <span><b>' + esc(q.rot) + ':</b> ' + esc(q.x.texto) + ' <span class="dchip">' + esc(q.x.tema === 'outro' ? 'outro tema' : pcRotuloSinal(pc, q.x.tema)) + '</span></span></label>';
   }).join('') : '<p class="sub">Nada para a fila.</p>';
 
-  if ((p.a_conferir || []).length) h += '<h5>5 · A conferir na fonte, com você (antes de enviar qualquer coisa)</h5><ul class="pcconferir">' + p.a_conferir.map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') + '</ul>';
+  if (!fixo && (p.a_conferir || []).length) h += '<h5>5 · A conferir na fonte, com você (antes de enviar qualquer coisa)</h5><ul class="pcconferir">' + p.a_conferir.map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') + '</ul>';
 
+  if (fixo) return h + poscallAplicarHtml(c, pc);   // o que confirmar com ela já está nos quadros do alto
   var pe = p.perguntas_para_ela || [];
   h += '<h5>6 · Perguntas para confirmar com ela</h5>';
   h += pe.length ? '<p class="sub" style="margin:0 0 6px">O que ficou incerto ou faltou. Marque as que quer fazer: elas vão para o rascunho do chat, e você revisa antes de enviar.</p>' + pe.map(function (q, i) {
@@ -2344,7 +2397,11 @@ function poscallCuradoriaHtml(pc) {
 
 function pintaPoscall(cid) {
   var box = $('poscall-box'), c = byC(cid);
-  if (box && c && state.pc && state.pc.cid === cid) box.innerHTML = poscallHtml(c);
+  if (!(c && state.pc && state.pc.cid === cid)) return;
+  var topo = $('pc-topo'), quad = $('pc-quadros');
+  if (topo) topo.innerHTML = pcTopoHtml(c);
+  if (quad) quad.innerHTML = pcQuadrosHtml(c);
+  if (box) box.innerHTML = poscallHtml(c, !!(topo && state.pc.fixo));
 }
 async function pcCarregarDados(cid) {
   var pc = pcEstado(cid); pc.carregando = true;
@@ -2364,18 +2421,115 @@ async function pcCarregarDados(cid) {
   }
   pintaPoscall(cid);
 }
+// O alto da sessão "A ligação": anexar o arquivo da ligação transcrita (.txt, PDF ou imagem) e pedir a leitura da IA.
+function pcTopoHtml(c) {
+  var pc = pcEstado(c.id);
+  return '<div class="pc-linha"><input type="file" id="pc-arq" class="pc-arq-in" accept=".txt,.pdf,.jpg,.jpeg,.png,text/plain,application/pdf,image/jpeg,image/png" data-pcarq="' + esc(c.id) + '"><label class="btn pc-arq" for="pc-arq">Anexar a ligação transcrita</label>' +
+    '<button class="btn primary" type="button" data-pcler="' + esc(c.id) + '"' + (pc.estado === 'lendo' ? ' disabled' : '') + '>' + (pc.estado === 'lendo' ? 'Lendo a call…' : 'Ler a call com IA') + '</button></div>' +
+    '<div class="pc-linha pc-notion"><input type="url" id="pc-notion" class="pc-notion-in" placeholder="Ou cole o link da página do Notion da ligação" value="' + esc(pc.notionUrl || '') + '" aria-label="Link da página do Notion da ligação">' +
+    '<button class="btn" type="button" data-pcnotion="' + esc(c.id) + '"' + (pc.notionLendo ? ' disabled' : '') + '>' + (pc.notionLendo ? 'Lendo o Notion…' : 'Ler do Notion') + '</button></div>' +
+    (pc.notionMsg ? '<p class="sub" role="status" style="margin:0 0 6px">' + esc(pc.notionMsg) + '</p>' : '') +
+    '<p class="sub pc-dica">' + (pc.arqNome ? '<b>' + esc(pc.arqNome) + '</b>. ' : 'Aceita .txt, PDF ou imagem, ou o link do Notion. ') + 'A IA só propõe: nada entra na ficha sem você conferir. A leitura usa tokens pagos da Anthropic.</p>' +
+    (pc.estado === 'lendo' ? '<p class="sub" role="status">Lendo a call… (leva alguns segundos)</p>' : '') + (pc.erro ? '<p class="err" role="alert">' + esc(pc.erro) + '</p>' : '');
+}
+// Os quadros que a leitura preenche além de Resumo e Próximos passos (que são os campos do Dossiê): pontos de atenção e o que confirmar.
+function pcQuadrosHtml(c) {
+  var pc = pcEstado(c.id), p = pc.estado === 'proposta' && pc.prop && pc.prop.proposta && pc.prop.proposta.origem !== 'notion' ? pc.prop.proposta : null;
+  var card = function (t, corpo) { return '<div class="dv-card"><div class="k">' + esc(t) + '</div>' + corpo + '</div>'; };
+  var aten = p && (p.pontos_de_atencao || []).length ? '<ul class="dv-ul">' + p.pontos_de_atencao.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul>' : '<p class="sub" style="margin:0">' + (p ? 'A leitura não apontou nada.' : 'Aparece depois da leitura.') + '</p>';
+  var pe = p ? (p.perguntas_para_ela || []) : [], conf = p ? (p.a_conferir || []) : [];
+  var info = '';
+  if (conf.length) info += '<p class="sub" style="margin:0 0 4px"><b>Conferir na fonte oficial</b></p><ul class="dv-ul">' + conf.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul>';
+  if (pe.length) info += '<p class="sub" style="margin:8px 0 4px"><b>Confirmar com ela</b> (marque as que quer fazer; vão para o rascunho do chat)</p>' + pe.map(function (q, i) {
+    var marcado = pc.sel.perg['q' + i] === undefined ? true : pc.sel.perg['q' + i], f = q.campo ? dosCampo(q.campo) : null;
+    return '<label class="pclinha"><input type="checkbox" data-pcperg="q' + i + '"' + (marcado ? ' checked' : '') + '> <span>' + esc(q.texto) + (q.motivo ? '<br><small class="sub">Por quê: ' + esc(q.motivo) + (f ? ' · preenche “' + esc(f.l) + '”' : '') + '</small>' : '') + '</span></label>';
+  }).join('') + '<div class="actions" style="margin-top:8px"><button class="btn" type="button" data-pcchat="' + esc(c.id) + '">Levar para o chat</button></div>';
+  if (p && !pe.length) info += '<p class="sub" style="margin:' + (conf.length ? '8px' : '0') + ' 0 0">A call fechou o que importava com ela: nada a confirmar com ela.</p>';
+  if (!info) info = '<p class="sub" style="margin:0">Aparece depois da leitura.</p>';
+  var preencher = p && (p.resumo || (p.proximos_passos || []).length) ? '<div class="actions" style="margin:0 0 10px"><button class="btn" type="button" data-pcpreencher="' + esc(c.id) + '">Preencher Resumo e Próximos passos com a leitura</button></div>' : '';
+  return preencher + '<div class="dv-grid">' + card('Pontos de atenção', aten) + card('Infos para confirmar', info) + '</div>';
+}
+function pcEscolheArquivo(inp) {
+  var cid = inp.dataset.pcarq, pc = pcEstado(cid), f = inp.files && inp.files[0]; if (!f) return;
+  var nome = f.name || 'arquivo', ext = (/\.([a-z0-9]+)$/i.exec(nome) || [])[1] || '';
+  pc.arquivo = null; pc.erro = '';
+  if (/^(txt)$/i.test(ext) || f.type === 'text/plain') {
+    if (f.size > 400000) { pc.erro = 'O .txt é grande demais (limite de 400 KB). Corte a parte que não interessa.'; return pintaPoscall(cid); }
+    f.text().then(function (t) {
+      t = String(t || '').trim(); if (t.length > 120000) { pc.erro = 'A transcrição passou de 120 mil letras. Corte a parte que não interessa.'; return pintaPoscall(cid); }
+      if (state.dos && state.dos.cid === cid) { state.dos.rasc = state.dos.rasc || {}; state.dos.rasc.ligacao_transcricao = t; var el = $('dk-ligacao_transcricao'); if (el) { el.value = t; var fd = el.closest && el.closest('.dfield'); if (fd) fd.classList.remove('vazio'); } }
+      pc.arqNome = nome + ' (o texto foi para “Gravação transcrita”)'; pintaPoscall(cid);
+    });
+    return;
+  }
+  if (/^(pdf|jpe?g|png)$/i.test(ext) || /^(application\/pdf|image\/(jpeg|png))$/.test(f.type)) {
+    if (f.size > 10 * 1048576) { pc.erro = 'O arquivo passa de 10 MB.'; return pintaPoscall(cid); }
+    pc.arquivo = f; pc.arqNome = nome; return pintaPoscall(cid);
+  }
+  pc.erro = 'Use um arquivo .txt, PDF, JPG ou PNG.'; pintaPoscall(cid);
+}
+// Copia o resumo e os próximos passos da leitura para os campos do Dossiê. Sozinho (logo após ler) só preenche o que está vazio.
+function pcPreencher(cid, auto) {
+  var pc = pcEstado(cid), c = byC(cid), p = pc.prop && pc.prop.proposta; if (!c || !p || !state.dos || state.dos.cid !== cid) return;
+  var rasc = state.dos.rasc = state.dos.rasc || {}, mudou = 0;
+  var poe = function (k, v) {
+    if (!v || (auto && dosValor(c, state.dos.d, rasc, k) !== '')) return;
+    rasc[k] = v; mudou++; var el = $('dk-' + k); if (el) { el.value = v; var fd = el.closest && el.closest('.dfield'); if (fd) fd.classList.remove('vazio'); }
+  };
+  poe('ligacao_resumo', p.resumo || '');
+  poe('proximos_passos', (p.proximos_passos || []).map(function (x) { return '- ' + x; }).join('\n'));
+  if (!auto) toast(mudou ? 'Resumo e próximos passos preenchidos. Salve o dossiê para guardar.' : 'A leitura não trouxe resumo nem próximos passos.');
+}
+// Ler a página do Notion da ligação (a mesma leitura do menu Onboarding), sem sair da ficha. O Worker acha a ficha pelo e-mail da página:
+// se for outra pessoa, não mexo nesta ficha e aviso. O Notion só é lido, nada é escrito lá nem enviado a ninguém.
+async function pcLerNotion(cid) {
+  var pc = pcEstado(cid), inp = $('pc-notion'), url = String((inp && inp.value) || pc.notionUrl || '').trim();
+  pc.notionUrl = url; pc.erro = ''; pc.notionMsg = '';
+  if (!url) { pc.erro = 'Cole o link da página do Notion.'; return pintaPoscall(cid); }
+  if (!/^https:\/\//i.test(url)) { pc.erro = 'O link precisa começar com https:// e ser de notion.so, notion.com ou notion.site.'; return pintaPoscall(cid); }
+  var sess = await supabase.auth.getSession();
+  if (!sess.data.session) { pc.erro = 'Sessão expirada. Recarregue a página e entre de novo.'; return pintaPoscall(cid); }
+  pc.notionLendo = true; pintaPoscall(cid);
+  var ctl = new AbortController(), cedo = setTimeout(function () { ctl.abort(); }, 60000), data;
+  try {
+    var res = await fetch(WORKER_BASE + '/api/crm/onboarding/notion/ler', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + sess.data.session.access_token }, body: JSON.stringify({ url: url }), signal: ctl.signal });
+    data = await res.json().catch(function () { return {}; });
+    if (!res.ok || !data.ok) throw new Error(data.error || ('Erro ' + res.status));
+  } catch (e) {
+    pc.notionLendo = false;
+    pc.erro = e && e.name === 'AbortError' ? 'A leitura demorou mais de 1 minuto e foi cancelada. Tente de novo.' : e instanceof TypeError ? 'Não consegui falar com o Worker. Confira a internet e tente de novo.' : (e.message || 'Algo deu errado.');
+    return pintaPoscall(cid);
+  } finally { clearTimeout(cedo); }
+  pc.notionLendo = false;
+  await reload();
+  if (data.contato_id !== cid) {   // a página é de outra pessoa: a ficha dela foi criada ou atualizada, esta não mudou
+    pc.erro = 'Essa página é de outra pessoa' + (data.pessoa ? ' (' + data.pessoa + ')' : '') + '. A ficha dela foi ' + (data.criado ? 'criada' : 'atualizada') + '; esta ficha não mudou.';
+    if (byC(data.contato_id)) pc.erro += ' Abra a ficha dela pela lista.';
+    return pintaPoscall(cid);
+  }
+  var n = ((data.aplicado || {}).preenchidos || []).length;
+  state.ontResumo = data; state.pc = null;
+  pcEstado(cid).notionMsg = 'Notion lido: ' + (n ? n + (n === 1 ? ' campo preenchido' : ' campos preenchidos') + ' no Dossiê' : 'nenhum campo novo no Dossiê') + '. O que ficou como proposta aparece abaixo.';
+  toast('Notion lido.');
+  if (state.view === 'pessoa') renderPessoa();
+}
 async function pcLer(cid, t) {
   var pc = pcEstado(cid), c = byC(cid), transcricao = String(dosValor(c, state.dos.d, state.dos.rasc || {}, 'ligacao_transcricao') || '').trim();
-  if (transcricao.length < 200) { pc.erro = 'Cole a gravação transcrita em "A ligação" (pelo menos algumas frases) e salve ou deixe o texto na caixa.'; return pintaPoscall(cid); }
+  if (!pc.arquivo && transcricao.length < 200) { pc.erro = 'Anexe a ligação transcrita (.txt, PDF ou imagem) ou cole o texto em "Gravação transcrita" (pelo menos algumas frases).'; return pintaPoscall(cid); }
   pc.estado = 'lendo'; pc.erro = ''; pintaPoscall(cid);
   try {
     var sess = await supabase.auth.getSession();
     if (!sess.data.session) throw new Error('Entre de novo no CRM.');
-    var res = await fetch(WORKER_BASE + '/api/crm/pos-call/ler', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + sess.data.session.access_token },
-      body: JSON.stringify({ contato_id: cid, transcricao: transcricao, notas: String(dosValor(c, state.dos.d, state.dos.rasc || {}, 'ligacao_resumo') || '').trim() }) });
+    var notasTx = String(dosValor(c, state.dos.d, state.dos.rasc || {}, 'ligacao_resumo') || '').trim(), pedido;
+    if (pc.arquivo) {   // PDF ou imagem: vai como formulário; o Worker confere o tipo de verdade pelos primeiros bytes
+      var fd = new FormData(); fd.append('contato_id', cid); fd.append('notas', notasTx); if (transcricao) fd.append('transcricao', transcricao); fd.append('arquivo', pc.arquivo, pc.arquivo.name);
+      pedido = { method: 'POST', headers: { Authorization: 'Bearer ' + sess.data.session.access_token }, body: fd };
+    } else pedido = { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + sess.data.session.access_token }, body: JSON.stringify({ contato_id: cid, transcricao: transcricao, notas: notasTx }) };
+    var res = await fetch(WORKER_BASE + '/api/crm/pos-call/ler', pedido);
     var j = await res.json().catch(function () { return {}; });
     if (!res.ok || !j.ok) throw new Error(j.error || 'A leitura falhou (' + res.status + ').');
     pc.prop = j; pc.vocab = j.vocabulario && j.vocabulario.length ? j.vocabulario : pc.vocab; pc.estado = 'proposta'; pc.sel = { campos: {}, sinais: {}, fila: {}, perg: {} }; pc.camadas = {};
+    pintaPoscall(cid); pcPreencher(cid, true);
   } catch (e) { pc.estado = 'vazio'; pc.erro = e && e.message ? e.message : 'A leitura falhou.'; }
   pintaPoscall(cid);
 }
@@ -2559,7 +2713,7 @@ function fxHeaderHtml(c, d) {
 // Catálogo de démarches (cópia do app, processos.json): carregado uma vez; sem ele, tudo cai na démarche padrão.
 var FX_PROC = null;
 async function fxCarregaProcessos() {
-  try { var r = await fetch('processos.json?v=2026-11-15.9'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
+  try { var r = await fetch('processos.json?v=2026-11-15.10'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
 }
 // A sessão Checklist: pílulas por démarche, os 4 mais urgentes, pasta do Drive privada e "Ver mais desta sessão".
 function fxChecklistCorpo(c) {
@@ -2662,6 +2816,241 @@ function fxPreviaHtml(c) {
   return FH.htmlPreviaApp(fxPreviaDados(c), H_FX);
 }
 function fxPintaPrevia() { var c = byC(state.sel), b = $('fx-previa'); if (c && b) b.innerHTML = fxPreviaHtml(fxContato(c, state.fx.dados && state.fx.dados.uid)); }
+function gruposFechados() { try { return JSON.parse(localStorage.getItem('crm_ficha_grupos_fechados') || '{}') || {}; } catch (e) { return {}; } }
+function gravaGrupoFechado(area, fechado) { var g = gruposFechados(); if (fechado) g[area] = 1; else delete g[area]; try { localStorage.setItem('crm_ficha_grupos_fechados', JSON.stringify(g)); } catch (e) { /* sem localStorage */ } }
+document.addEventListener('toggle', function (e) { var d = e.target; if (d && d.matches && d.matches('details.fx-grupo[data-grupo]')) gravaGrupoFechado(d.dataset.grupo, !d.open); }, true);
+// ---------- Dossiê: a visão geral (a janela-mãe da pessoa) ----------
+// Junta o que as bases já sabem dela (cadastro, quizzes das páginas de entrada, e-mails, perguntas, artigos, 1:1, app, o que a chamada trouxe),
+// mostra onde as fontes batem ou divergem e diz como completar o que falta. Tudo por regra: nada inventado.
+var DOS_CANAL_DOC = { numero_secu: 1, comprovante_endereco: 1, documento_vencimento: 1, certificado_frances_qual: 1 };
+var DOS_CANAL_APP = { moradia_resolvida: 1, conta_resolvida: 1, securite_resolvida: 1, conta_anef: 1, tem_certificado_matricula: 1, comprova_recursos: 1, tem_sponsor: 1 };
+function dosRotuloOpcao(f, v) {
+  var o = f && f.o ? f.o.filter(function (x) { return x[0] === String(v); })[0] : null;
+  return o ? o[1] : (v === 'true' ? 'Sim' : v === 'false' ? 'Não' : String(v));
+}
+// Onde as fontes batem: o que o funil disse x o que está no dossiê; o que veio só do funil; o que a chamada trouxe.
+function dosCruzamentos(c, S) {
+  var out = { confere: [], diverge: [], soFunil: [], daChamada: [] };
+  if (!S) return out;
+  dosVisiveis(c, S.d, S.rasc).forEach(function (b) {
+    b.campos.forEach(function (f) {
+      var fun = dosDoFunil(c, f.k), sv = (S.d || {})[f.k], salvo = sv === undefined || sv === null || sv === '' ? null : String(sv);
+      var org = salvo === null ? null : onbOrigemDe(f.k, salvo);
+      if (org) out.daChamada.push({ l: f.l, v: dosRotuloOpcao(f, salvo), conf: org.conf, origem: org.origem });
+      if (fun !== null && salvo !== null) (String(fun) === salvo ? out.confere : out.diverge).push({ l: f.l, funil: dosRotuloOpcao(f, fun), dossie: dosRotuloOpcao(f, salvo) });
+      else if (fun !== null && salvo === null) out.soFunil.push({ l: f.l, v: dosRotuloOpcao(f, fun) });
+    });
+  });
+  return out;
+}
+// O que falta, por jeito de completar: perguntar numa conversa, ela completar no app, ou pedir o documento.
+function dosFaltaPorCanal(c, S) {
+  var out = { conversa: [], app: [], doc: [] };
+  if (!S) return out;
+  dosVisiveis(c, S.d, S.rasc).forEach(function (b) {
+    if (b.livre) return;
+    b.campos.forEach(function (f) {
+      if (dosValor(c, S.d, S.rasc, f.k) !== '') return;
+      (DOS_CANAL_DOC[f.k] ? out.doc : DOS_CANAL_APP[f.k] && c.user_id ? out.app : out.conversa).push(f);
+    });
+  });
+  return out;
+}
+function dosMensagemTexto(c, campos, doc) {
+  var qs = campos.slice(0, 5).map(function (f) { return '• ' + f.l + (doc ? '' : '?'); }).join('\n');
+  return doc ? 'Oi ' + pn(c) + '! Um lembrete para não se perder nas démarches. Guarde na pasta certa do seu Drive:\n' + qs + '\n\nDepois cole o link fechado da pasta no app e dê o check no passo. Qualquer dúvida é só falar.'
+    : 'Oi ' + pn(c) + '! Para eu te ajudar melhor, me conta rapidinho:\n' + qs + '\n\nPode responder por aqui mesmo.';
+}
+function dosMontaMensagem(cid, tipo) {
+  var c = byC(cid), falta = c && dosFaltaPorCanal(c, state.dos && state.dos.cid === c.id ? state.dos : null); if (!c || !falta) return;
+  var campos = tipo === 'doc' ? falta.doc : falta.conversa, txt = dosMensagemTexto(c, campos, tipo === 'doc');
+  if (c.user_id) {   // já está na plataforma: a mensagem vai para o chat do app
+    state.chatRasc = txt; var f = state.fx; f.tab = 'plataforma'; f.hd = null; f.abertas.chat = true; fxRepinta();
+    setTimeout(function () { var tx = $('chat-txt'); if (tx) { tx.value = txt; tx.focus(); } }, 0);
+  } else { state.rascunho[cid] = txt; openPessoa(cid, 'conversa'); }
+}
+function dosFonteTag(c, S, k) {
+  var sv = S && S.d ? S.d[k] : null;
+  if (sv !== undefined && sv !== null && sv !== '') return onbOrigemDe(k, String(sv)) ? 'chamada' : 'dossiê';
+  return dosDoFunil(c, k) !== null ? 'funil' : '';
+}
+// ---------- Registro dos 1:1 (Dossiê · visão geral) ----------
+// Cada 1:1 é um toggle com o código da página de onde ela veio. IL05 = "inbound lead" da página I05: só o rótulo muda, o código guardado continua I05.
+var R1_INTERESSE = [['', 'Ainda não sei'], ['sim', 'Sim, quer o link'], ['talvez', 'Talvez, pensando'], ['nao', 'Não por agora']];
+function r1Codigo(c, u) {
+  var reg = u && u.registro && typeof u.registro === 'object' ? u.registro : {}, o = reg.origem || ORIGEM_PAGINA[ultimaOrigem(c)] || '';
+  return /^I0\d$/.test(o) ? o : '';
+}
+function r1Rotulo(cod) { return cod ? cod.replace(/^I/, 'IL') : ''; }
+// O roteiro que valia para este 1:1: o que ficou salvo no registro; sem registro, o que ainda falta perguntar por conversa.
+function r1Roteiro(c, u, S) {
+  var reg = u.registro && typeof u.registro === 'object' ? u.registro : null;
+  if (reg && Array.isArray(reg.perguntas) && reg.perguntas.length) return { salvo: true, qs: reg.perguntas.filter(function (q) { return q && q.k; }) };
+  var F = dosFaltaPorCanal(c, S);
+  return { salvo: false, qs: F.conversa.map(function (f) { return { k: f.k, l: f.l }; }) };
+}
+function r1Resposta(c, S, k) { return S ? dosValor(c, S.d, S.rasc, k) : ''; }
+function r1Html(c, S) {
+  var lista = UM.filter(function (x) { return x.contato_id === c.id && x.status !== 'cancelado'; }).sort(function (a, b) { return String(a.quando || '9').localeCompare(String(b.quando || '9')); });
+  var corpo;
+  if (!lista.length) corpo = '<p class="sub" style="margin:0">Nenhum 1:1 marcado ou feito ainda. Quando ela marcar, ele aparece aqui, com o roteiro e o que você registrar.</p>';
+  else corpo = '<div class="r1-lista">' + lista.map(function (u) {
+    var cod = r1Rotulo(r1Codigo(c, u)), aberto = state.fx.r1 === String(u.id), passou = u.status === 'feito' || (u.quando && new Date(u.quando).getTime() < Date.now() - 36e5);
+    var reg = u.registro && typeof u.registro === 'object' ? u.registro : {};
+    var estado = reg.conclusao || reg.encaminhamento ? 'registrado' : passou ? 'feito, sem registro' : 'marcado';
+    return '<button type="button" class="r1-tg' + (aberto ? ' on' : '') + '" data-r1="' + esc(u.id) + '" aria-expanded="' + (aberto ? 'true' : 'false') + '">' +
+      (cod ? '<b class="r1-cod">' + esc(cod) + '</b>' : '') + '<span>1:1 ' + (u.quando ? 'de ' + esc(fmtDate(u.quando)) + ' ' + esc(fmtHora(u.quando)) : 'sem data') + '</span><i class="dv-fonte">' + esc(estado) + '</i></button>';
+  }).join('') + '</div>' + r1PainelHtml(c, S, lista.filter(function (u) { return String(u.id) === state.fx.r1; })[0]);
+  return '<div class="dv-sec" id="dos-1a1"><div class="k">Registro dos 1:1</div>' + corpo + '</div>';
+}
+function r1PainelHtml(c, S, u) {
+  if (!u) return '';
+  var reg = u.registro && typeof u.registro === 'object' ? u.registro : {}, R = r1Roteiro(c, u, S), cod = r1Codigo(c, u);
+  var ident = R.qs.filter(function (q) { return r1Resposta(c, S, q.k) !== ''; });
+  var item = function (q) { var v = r1Resposta(c, S, q.k), f = dosCampo(q.k); return '<li' + (v !== '' ? ' class="ok"' : '') + '>' + (v !== '' ? '✓ ' : '') + esc(q.l) + (v !== '' ? ': <b>' + esc(f ? dosRotuloOpcao(f, v) : v) + '</b>' : '') + '</li>'; };
+  var b1 = '<div class="r1-b"><div class="k">Perguntas do roteiro</div>' + (R.qs.length ? '<ol class="dv-ol">' + R.qs.map(function (q) { return '<li>' + esc(q.l) + '</li>'; }).join('') + '</ol>' : '<p class="sub" style="margin:0">Nada a perguntar: o dossiê já está completo.</p>') +
+    (R.salvo ? '' : '<p class="sub" style="margin:6px 0 0">Ainda não fixado: é o que falta hoje. “Salvar registro” fixa esta lista como o roteiro deste 1:1.</p>') + '</div>';
+  var b2 = '<div class="r1-b"><div class="k">Identificadas</div><p class="r1-n"><b>' + ident.length + '</b> de ' + R.qs.length + '</p>' +
+    (R.qs.length ? '<ul class="dv-ul r1-ul">' + R.qs.map(item).join('') + '</ul>' : '') + '</div>';
+  var b3 = '<div class="r1-b"><div class="k">Conclusão e encaminhamento</div>' +
+    '<label class="r1-f">Conclusão<textarea id="r1-conc" rows="3" maxlength="1500" placeholder="Em uma ou duas frases: qual é o caso dela.">' + esc(reg.conclusao || '') + '</textarea></label>' +
+    '<label class="r1-f">Encaminhamento<textarea id="r1-enc" rows="2" maxlength="1500" placeholder="O próximo passo combinado.">' + esc(reg.encaminhamento || '') + '</textarea></label>' +
+    '<label class="r1-f">Interesse em converter<select id="r1-int">' + R1_INTERESSE.map(function (o) { return '<option value="' + o[0] + '"' + ((reg.interesse || '') === o[0] ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select></label>' +
+    '<label class="r1-c"><input type="checkbox" id="r1-link"' + (reg.link_enviado ? ' checked' : '') + '> Link do produto enviado' + (reg.link_enviado && reg.link_enviado_em ? ' em ' + esc(fmtDate(reg.link_enviado_em)) : '') + '</label>' +
+    '<button type="button" class="btn primary" data-r1save="' + esc(u.id) + '">Salvar registro</button></div>';
+  return '<div class="r1-painel" id="r1-p" data-origem="' + esc(cod) + '">' + b1 + b2 + b3 + '</div>';
+}
+async function r1Salvar(id) {
+  var u = UM.filter(function (x) { return String(x.id) === String(id); })[0], c = u && byC(u.contato_id); if (!u || !c) return;
+  var S = state.dos && state.dos.cid === c.id && state.dos.d ? state.dos : null, R = r1Roteiro(c, u, S), ant = u.registro && typeof u.registro === 'object' ? u.registro : {};
+  var interesse = $('r1-int') ? $('r1-int').value : '', link = !!($('r1-link') && $('r1-link').checked);
+  var reg = Object.assign({}, ant, {
+    origem: r1Codigo(c, u) || null, perguntas: R.qs,
+    identificadas: R.qs.filter(function (q) { return r1Resposta(c, S, q.k) !== ''; }).map(function (q) { return q.k; }),
+    conclusao: ($('r1-conc') ? $('r1-conc').value : '').trim().slice(0, 1500), encaminhamento: ($('r1-enc') ? $('r1-enc').value : '').trim().slice(0, 1500),
+    interesse: interesse || null, link_enviado: link, link_enviado_em: link ? (ant.link_enviado_em || new Date().toISOString()) : null, atualizado_em: new Date().toISOString()
+  });
+  var o = await supabase.from('um_a_um').update({ registro: reg }).eq('id', u.id);
+  if (o.error) return toast(/registro/.test(String(o.error.message || '')) ? 'Rode primeiro db/crm-1a1-registro.sql no Supabase.' : 'Não salvou: ' + o.error.message, 5000);
+  u.registro = reg; toast('Registro salvo.'); fxRepinta();
+}
+// ---------- A ligação, no topo do Dossiê: antes (contexto, o que ela já deu, o que perguntar), durante (registro) e depois (ler a call, bilan, e-mail, .md) ----------
+function dosMdTexto(c, S) {
+  var dv = function (k) { return S ? dosValor(c, S.d, S.rasc, k) : ''; }, B = state.bilan && state.bilan.cid === c.id ? state.bilan : null, L = [];
+  var quando = dv('ligacao_data');
+  L.push('# Bilan da conversa: ' + (c.nome || c.email || ''), '', (quando ? 'Data da ligação: ' + fmtDay(quando) + '\n' : '') + 'Situação: ' + personaLabel(c) + (subLabel(c) ? ' · ' + subLabel(c) : ''), '');
+  var feito = [];
+  if (S) dosVisiveis(c, S.d, S.rasc).forEach(function (b) { if (b.livre) return; b.campos.forEach(function (f) { var v = dv(f.k); if (v !== '') feito.push('- ' + f.l + ': ' + dosRotuloOpcao(f, v)); }); });
+  L.push('## O que ela informou', '', feito.length ? feito.join('\n') : '_Nada registrado._', '');
+  L.push('## Resumo da conversa', '', dv('ligacao_resumo') || '_Sem resumo._', '');
+  var passos = String(dv('proximos_passos') || '').split('\n').map(function (x) { return x.trim(); }).filter(Boolean);
+  L.push('## Encaminhamentos', '', passos.length ? passos.map(function (x) { return '- [ ] ' + x.replace(/^[-•*]\s*/, ''); }).join('\n') : '_Nenhum registrado._', '');
+  if (B) L.push('_Leitura do Notion de ' + fmtDay(String(B.quando || '').slice(0, 10)) + '._', '');
+  return L.join('\n');
+}
+function dosBaixaMd(cid) {
+  var c = byC(cid); if (!c) return;
+  var S = state.dos && state.dos.cid === c.id && state.dos.d ? state.dos : null, txt = dosMdTexto(c, S);
+  var nome = 'bilan-' + String(c.nome || 'pessoa').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') + '-' + new Date().toISOString().slice(0, 10) + '.md';
+  var a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([txt], { type: 'text/markdown;charset=utf-8' })); a.download = nome; document.body.appendChild(a); a.click(); a.remove();
+  toast('Arquivo ' + nome + ' baixado');
+}
+// Os dropdowns da sessão "A ligação" (o grande e os três passos): lembram o que você deixou aberto.
+function lgAberto(k) { var g = state.fx.lg || { main: 1, a: 1 }; return !!g[k]; }
+function lgDet(k, cls, sum, corpo) { return '<details class="' + cls + '" data-lg="' + k + '"' + (lgAberto(k) ? ' open' : '') + '><summary>' + sum + '</summary><div class="lg-corpo">' + corpo + '</div></details>'; }
+document.addEventListener('toggle', function (e) { var d = e.target; if (d && d.matches && d.matches('details[data-lg]')) { var g = state.fx.lg || (state.fx.lg = { main: 1, a: 1 }); if (d.open) g[d.dataset.lg] = 1; else delete g[d.dataset.lg]; } }, true);
+function dosLigacaoHtml(c, d) {
+  var S = state.dos && state.dos.cid === c.id && state.dos.d ? state.dos : null; if (!S) return '';
+  var dv = function (k) { return dosValor(c, S.d, S.rasc, k); }, F = dosFaltaPorCanal(c, S), X = dosCruzamentos(c, S), nFalta = F.conversa.length + F.app.length + F.doc.length;
+  var campo = function (k) { var f = dosCampo(k); return f ? dosCampoHtml(f, c, S.d, S.rasc) : ''; };
+  var B = state.bilan && state.bilan.cid === c.id ? state.bilan : null, enviado = (d.mails || []).filter(function (m) { return m.modelo === 'bilan_conversa'; })[0];
+  var col = function (t, n, corpo) { return '<div class="dv-card"><div class="k">' + esc(t) + (n != null ? ' · ' + n : '') + '</div>' + corpo + '</div>'; };
+  var p1 = dosPerguntarHtml(c, S) || '<p class="sub" style="margin:0">Nada a perguntar.</p>';
+  var p2 = '<div id="pc-topo">' + pcTopoHtml(c) + '</div>' +
+    '<div class="dgrid lg-form">' + campo('ligacao_resumo') + campo('proximos_passos') + '</div>' +
+    '<div id="pc-quadros">' + pcQuadrosHtml(c) + '</div>' +
+    '<div class="dgrid lg-form">' + campo('ligacao_data') + campo('ligacao_transcricao') + '</div>' +
+    '<div class="actions" style="margin-top:6px"><button class="btn primary" type="button" data-dossalvar="' + esc(c.id) + '">Salvar dossiê</button></div>' +
+    '<div id="poscall-box">' + poscallHtml(c, (pcEstado(c.id).fixo = true)) + '</div>';
+  var p3 = '<div class="lg-saidas">' +
+    '<div class="dv-card"><div class="k">Bilan (você edita antes de enviar)</div><p class="sub" style="margin:0 0 8px">' + (B ? 'Leitura do Notion de ' + esc(fmtDay(String(B.quando || '').slice(0, 10))) + '.' : 'Sem leitura do Notion ainda.') + (enviado ? ' Enviado em ' + esc(fmtDay(String(enviado.enviado_em || enviado.criado_em || '').slice(0, 10))) + '.' : '') + '</p>' +
+    '<button type="button" class="btn" data-bilanabrir="' + esc(c.id) + '"' + (B ? '' : ' disabled') + '>' + (enviado ? 'Reenviar o bilan' : 'Rascunho do e-mail com o bilan') + '</button></div>' +
+    '<div class="dv-card"><div class="k">Arquivo para o seu sistema</div><p class="sub" style="margin:0 0 8px">Um .md com o que ela informou, o resumo e os encaminhamentos em lista de tarefas.</p><button type="button" class="btn" data-dosmd="' + esc(c.id) + '">Baixar o .md</button></div></div>';
+  var passo = function (k, n, t, resumo, corpo) { return lgDet(k, 'lg-passo', '<span class="lg-n">' + n + '</span><b>' + t + '</b><span class="sub lg-res">' + esc(resumo) + '</span>', corpo); };
+  var miolo = passo('a', 1, 'Antes da ligação', nFalta + (nFalta === 1 ? ' resposta falta' : ' respostas faltam') + (X.diverge.length ? ' · ' + X.diverge.length + ' a confirmar' : ''), p1) +
+    passo('b', 2, 'Durante e depois: registrar e ler com a IA', dv('ligacao_transcricao') ? 'transcrição colada' : 'sem transcrição ainda', p2) +
+    passo('c', 3, 'O que sai da conversa', enviado ? 'bilan enviado' : B ? 'bilan pronto para revisar' : 'bilan ainda não gerado', p3);
+  return '<section class="panel dv lg" id="dos-ligacao" style="padding:16px;margin-bottom:14px">' +
+    lgDet('main', 'lg-main', '<h3 style="font-size:17px;margin:0">A ligação</h3><span class="sub lg-res">Antes: contexto e o que perguntar. Durante: registre. Depois: a IA lê a conversa e preenche o Dossiê, e sai o bilan.</span>', miolo) + '</section>';
+}
+// O que conferir e o que perguntar: cada resposta que falta aparece só aqui, separada pelo canal (conversa, app, documento).
+function dosPerguntarHtml(c, S) {
+  var conta = !!c.user_id, pos = !!(S && S.onbEm);
+  // Cruzamentos
+  var X = dosCruzamentos(c, S), cruz = '';
+  if (S && (X.confere.length || X.diverge.length || X.soFunil.length || X.daChamada.length)) {
+    cruz = '<div class="dv-sec"><div class="k">Cruzamentos entre as fontes</div><p class="sub" style="margin:0 0 6px">' + X.confere.length + ' confirmados por mais de uma fonte · ' + X.diverge.length + ' divergem · ' + X.soFunil.length + ' só vêm do funil' + (pos ? ' · ' + X.daChamada.length + ' lidos da chamada' : '') + '.</p>' +
+      (X.diverge.length ? '<ul class="dv-ul dv-div">' + X.diverge.map(function (x) { return '<li><b>' + esc(x.l) + ':</b> o funil disse “' + esc(x.funil) + '”, o dossiê diz “' + esc(x.dossie) + '”. Confirme no 1:1.</li>'; }).join('') + '</ul>' : '') +
+      (X.soFunil.length ? '<p class="sub" style="margin:6px 0 0"><b>Só vieram do funil, confirme com ela:</b> ' + esc(X.soFunil.map(function (x) { return x.l; }).join(', ')) + '.</p>' : '') +
+      (pos && X.daChamada.length ? '<ul class="dv-ul">' + X.daChamada.slice(0, 8).map(function (x) { return '<li>' + esc(x.l) + ' <i class="dv-fonte">' + esc(x.origem) + ' · ' + esc(ONB_CONF[x.conf] || x.conf) + '</i></li>'; }).join('') + '</ul>' : '') + '</div>';
+  }
+  // O que falta e como completar
+  var F = dosFaltaPorCanal(c, S), total = F.conversa.length + F.app.length + F.doc.length, falta = '';
+  if (S && total) {
+    var lista = function (campos) { return '<ul class="dv-ul">' + campos.slice(0, 6).map(function (f) { return '<li>' + esc(f.l) + '</li>'; }).join('') + (campos.length > 6 ? '<li class="sub">e mais ' + (campos.length - 6) + '</li>' : '') + '</ul>'; };
+    if (!conta) {
+      var todos = F.conversa.concat(F.doc).concat(F.app);
+      falta = '<div class="dv-sec"><div class="k">Perguntas para o 1:1</div><p class="sub" style="margin:0 0 6px">' + 'O que você perguntar na conversa já entra no formulário abaixo.</p>' +
+        '<ol class="dv-ol">' + todos.slice(0, 10).map(function (f) { return '<li>' + esc(f.l) + '</li>'; }).join('') + '</ol>' + (todos.length > 10 ? '<p class="sub" style="margin:4px 0 0">E mais ' + (todos.length - 10) + ' no formulário.</p>' : '') + '</div>';
+    } else {
+      falta = '<div class="dv-sec"><div class="k">Como completar o que falta' + (pos ? '' : ' (depois do 1:1)') + '</div><div class="dv-estr">' +
+        (F.conversa.length ? '<div class="dv-e"><b>Perguntar por mensagem</b><span class="sub">' + F.conversa.length + ' respostas: ela responde no chat.</span>' + lista(F.conversa) + '<button type="button" class="btn" data-dosmsg="' + esc(c.id) + '" data-tipo="conversa">Montar a mensagem →</button></div>' : '') +
+        (F.app.length ? '<div class="dv-e"><b>Ela completa no app</b><span class="sub">' + F.app.length + ' respostas: o checklist pergunta quando ela chega nesse passo.</span>' + lista(F.app) + '</div>' : '') +
+        (F.doc.length ? '<div class="dv-e"><b>Lembrar dos documentos</b><span class="sub">' + F.doc.length + ' itens: ela guarda no Drive dela e só cola o link fechado no app (nada sensível vai para o app).</span>' + lista(F.doc) + '<button type="button" class="btn" data-dosmsg="' + esc(c.id) + '" data-tipo="doc">Mandar o lembrete →</button></div>' : '') + '</div></div>';
+    }
+  } else if (S) falta = '<div class="dv-sec"><div class="k">O que falta</div><p class="sub" style="margin:0">Nada falta no dossiê.</p></div>';
+  return cruz + falta;
+}
+function dosVisaoHtml(c, d) {
+  var S = state.dos && state.dos.cid === c.id && state.dos.d ? state.dos : null, conta = !!c.user_id, pos = !!(S && S.onbEm);
+  var jor = d.jor || montaJornada([]), mails = d.mails || [], resps = d.resps || [], perg = d.perg || [], evs = d.eventos || [];
+  var titulo = !conta ? 'Preparação do 1:1' : pos ? 'Depois do 1:1' : 'Visão geral';
+  var sub = !conta ? 'Lead sem conta no app. O que já sabemos dela, o que bate entre as fontes e o que perguntar na conversa.'
+    : pos ? 'O que a chamada trouxe, como bate com o resto e como completar o que falta.' : 'Já está na plataforma. O que sabemos, o que bate e como completar o que falta.';
+  var dv = function (k) { return S ? dosValor(c, S.d, S.rasc, k) : ''; };
+  var linhaKv = function (l, v, tag) { return v === '' || v == null ? '' : '<div class="dv-l"><span>' + esc(l) + '</span><b>' + esc(v) + (tag ? ' <i class="dv-fonte">' + esc(tag) + '</i>' : '') + '</b></div>'; };
+  var op = function (k) { var v = dv(k); return v === '' ? '' : dosRotuloOpcao(dosCampo(k), v); };
+  var quem = linhaKv('Situação', personaLabel(c) + (subLabel(c) ? ' · ' + subLabel(c) : '')) + linhaKv('Fase', op('fase'), dosFonteTag(c, S, 'fase')) +
+    linhaKv('Faixa de idade', op('faixa_idade'), dosFonteTag(c, S, 'faixa_idade')) + linhaKv('Cidade', dv('cidade')) + linhaKv('Chegou na França', dv('data_chegada') ? fmtDay(dv('data_chegada')) : '') +
+    linhaKv('Francês', op('nivel_frances')) +
+    linhaKv('Maior preocupação', op('preocupacao') || (c.preocupacao ? String(c.preocupacao) : ''));
+  // Estudos, certificados e prazo: um cartão só, com cada linha dizendo o que é (sempre aparece, mesmo sem resposta).
+  var vazio = '<span class="sub">ainda não informado</span>';
+  var kvX = function (l, v, extra) { return '<div class="dv-l"><span>' + esc(l) + '</span><b>' + (v ? esc(v) : vazio) + '</b></div>' + (extra ? '<p class="sub dv-ctx">' + extra + '</p>' : ''); };
+  var fNiv = dosCampo('nivel_estudos'), vNiv = dv('nivel_estudos'), diploma = fNiv && fNiv.o.some(function (o) { return o[0] === vNiv; }) ? dosRotuloOpcao(fNiv, vNiv) : '';
+  var certFr = dv('certificado_frances') === 'tenho' ? (op('certificado_frances_qual') ? op('certificado_frances_qual') : 'tem, não disse qual') : dv('certificado_frances') === 'nao' ? 'ainda não tem' : '';
+  var certMat = dv('tem_certificado_matricula') === 'true' ? 'tem' : dv('tem_certificado_matricula') === 'false' ? 'ainda não tem' : '';
+  var cfData = CF_PRAZO[(c.respostas || {}).cfNivel];
+  var prazoTxtX = c.prazo_limite ? fmtDay(c.prazo_limite) + ' (' + prazoTxt(c) + ')' : cfData ? fmtDay(cfData) : '';
+  var prazoCtx = c.prazo_limite ? 'Validar o VLS-TS na ANEF: 3 meses depois da entrada na França' + (c.data_entrada ? ' (' + fmtDay(c.data_entrada) + ')' : '') + '.' : cfData ? 'Prazo do Campus France para o nível que ela marcou no funil.' : '';
+  var estudos = kvX('Diploma mais recente', diploma) + kvX('Certificado de francês', certFr) + (certMat ? kvX('Certificado de matrícula', certMat) : '') +
+    kvX(c.prazo_limite ? 'Prazo do VLS-TS' : cfData ? 'Prazo do Campus France' : 'Prazo', prazoTxtX, esc(prazoCtx));
+  var entradas = (jor.entradas || []).slice().reverse().slice(0, 4).map(function (x) {
+    var q = (jor.quizzes || []).filter(function (z) { return z.em === x.em; })[0];
+    return '<div class="dv-l"><span>' + esc(fmtDate(x.em)) + '</span><b>' + esc((ORIGEM_PAGINA[x.origem] ? r1Rotulo(ORIGEM_PAGINA[x.origem]) + ' · ' : '') + (origLabel(x.origem) || '—')) + (q && q.objetivo ? ' <i class="dv-fonte">' + esc(etapaDe(q.objetivo)) + '</i>' : '') + '</b></div>';
+  }).join('');
+  var veio = entradas + linhaKv('Campanha', c.utm_campaign || '') + linhaKv('Instagram', c.instagram || '');
+  var abriu = mails.filter(function (m) { return m.aberto_em || m.status === 'aberto' || m.status === 'clicado'; }).length, clicou = mails.filter(function (m) { return m.clicado_em || m.status === 'clicado'; }).length;
+  var arts = evs.filter(function (e) { return e.tipo === 'artigo_lido'; }).slice(0, 3).map(function (e) { var x = e.dados || {}; return x.titulo || x.slug || ''; }).filter(Boolean);
+  var fez = linhaKv('E-mails', mails.length ? mails.length + ' enviados · abriu ' + abriu + ' · clicou ' + clicou : 'nenhum enviado') + linhaKv('Respostas dela', resps.length ? String(resps.length) : '') +
+    linhaKv('Artigos lidos', arts.length ? arts.join(' · ') : jor.artigos ? String(jor.artigos) : '') +
+    perg.slice(0, 2).map(function (p) { return '<div class="dv-l"><span>Perguntou</span><b>' + esc(truncaTxt(p.texto, 90)) + (p.origem ? ' <i class="dv-fonte">' + artigoHtml(p.origem) + '</i>' : '') + '</b></div>'; }).join('') +
+    linhaKv('App', conta ? 'tem conta · ' + (c.ultimo_evento_em ? 'última atividade há ' + haDias(diasDesde(c.ultimo_evento_em)) : 'sem atividade') : 'ainda sem conta');
+  var card = function (t, corpo) { return '<div class="dv-card"><div class="k">' + esc(t) + '</div>' + (corpo || '<p class="sub" style="margin:0">Nada registrado ainda.</p>') + '</div>'; };
+
+  return '<section class="panel dv" id="dos-visao" style="padding:16px;margin-bottom:14px"><h3 style="font-size:17px;margin:0 0 2px">' + esc(titulo) + '</h3><p class="sub" style="margin:0 0 12px">' + esc(sub) + '</p>' +
+    '<div class="dv-grid">' + card('Quem ela é', quem) + card('Estudos, certificados e prazo', estudos) + card('De onde veio e o que respondeu', veio) + card('O que ela fez', fez) + '</div>' + r1Html(c, S) + '</section>';
+}
 function fxSessoes(c) {
   var mk = function (titulo, sub, id, corpo) { var a = fxSessaoAberta(id); return { titulo: titulo, sub: sub, aberto: a, corpo: a ? corpo() : '' }; };
   var mapa = {
@@ -2686,7 +3075,7 @@ function fxCorpo(c, d, tab) {
   }
   if (tab === 'conversa') return conversaPanel(c, d.mails || [], d.resps || [], d.h4 || H4_PLAT);
   // Dossiê: aba própria, sempre aberta. Preenche sozinho com o que ela responde no funil e no app (ver DOS_FUNIL).
-  if (tab === 'dossie') return '<div id="dossie-box">' + dossieHtml(c, state.dos.d, state.dos.err, state.dos.rasc, true, state.dos.chk, true) + '</div>';
+  if (tab === 'dossie') return dosVisaoHtml(c, d) + dosLigacaoHtml(c, d) + '<div id="dossie-box">' + dossieHtml(c, state.dos.d, state.dos.err, state.dos.rasc, true, state.dos.chk, true) + '</div>';
   // Ficha (captação): o fluxo de 3 passos e os painéis que já existiam (feed, e-mails, jornada, quem é ela, mais).
   var etapa = FX.etapaFunil(c, { mails: d.mails || [], propostas: [], temBilan: !!(state.bilan && state.bilan.cid === c.id) }), h4 = d.h4 || H4_PLAT;
   // Três colunas, cada uma com um papel: à esquerda quem ela é e onde está no funil; no meio o que ela fez; à direita o que fazer (e-mail).
@@ -2912,6 +3301,7 @@ async function renderPessoa() {
   var resps = R.filter(function (x) { return x.contato_id === c.id; });
   var h4 = 'font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-3); margin:0 0 8px';
   var jor = montaJornada(r[9]);
+  state.jorQuiz = { cid: c.id, quizzes: jor.quizzes };   // o Dossiê usa os quizzes de cada página de entrada
   if (!state.ptab && !fichaV2Ativa()) state.ptab = mails.length || resps.length ? 'conversa' : 'ficha';   // a ficha v2 abre pela conversão (FX.abaPadrao)
   var tabs = '<div class="ptabs" role="tablist" aria-label="Ficha da pessoa">' + [['conversa', 'Conversa'], ['plataforma', 'Plataforma'], ['ficha', 'Ficha']].map(function (t) {
     return '<button class="ptab" role="tab" type="button" data-ptab="' + t[0] + '" aria-selected="' + (state.ptab === t[0]) + '">' + t[1] +
@@ -4711,6 +5101,12 @@ async function enviarLinkPagamento(btn) {
 document.addEventListener('click', async function (e) {
   if (e.target.id === 'compose-backdrop') return closeCompose();
   var t = e.target.closest('button, tr[data-id]'); if (!t) return;
+  if (t.dataset.dosmd) return dosBaixaMd(t.dataset.dosmd);
+  if (t.dataset.dosmsg) return dosMontaMensagem(t.dataset.dosmsg, t.dataset.tipo);
+  if (t.dataset.r1) { state.fx.r1 = state.fx.r1 === t.dataset.r1 ? null : t.dataset.r1; return fxRepinta(); }
+  if (t.dataset.r1save) return r1Salvar(t.dataset.r1save);
+  if (t.dataset.pcpreencher) return pcPreencher(t.dataset.pcpreencher, false);
+  if (t.dataset.pcnotion) return pcLerNotion(t.dataset.pcnotion);
   var fxr = fichaClick(t); if (fxr !== false) return fxr;   // ficha v2 (data-fx); false = não é com ela
   if (t.dataset.fv) { state.funilVisao = t.dataset.fv; state.funilPorque = null; return renderBoard(); }
   if (t.dataset.fporque) { state.funilPorque = state.funilPorque === t.dataset.fporque ? null : t.dataset.fporque; return renderBoard(); }
@@ -4903,6 +5299,7 @@ document.addEventListener('click', async function (e) {
   }
 });
 document.addEventListener('change', async function (e) {
+  if (e.target.id === 'pc-arq') return pcEscolheArquivo(e.target);
   if (e.target.id === 'compose-tpl') return openCompose(activeCid, e.target.value);
   if (e.target.id === 'st-who') { ST.who = e.target.value; return renderPrevia(); }
   if (e.target.dataset && e.target.dataset.novopara && ST.criar) { mudarPara(ST.criar.para, e.target.dataset.novopara, e.target.value, e.target.checked); if (e.target.dataset.novopara === 'produto' || e.target.dataset.novopara === 'materiais') renderCriar(); criarPode(); return renderPrevia(); }
