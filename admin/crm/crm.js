@@ -2,13 +2,13 @@
 // Nada de service_role aqui. O banco é db/crm-fase2.sql; o desenho é o artefato "CRM Por Dentro".
 // Tudo que vem do banco é texto de terceiros (nome, e-mail, pergunta): passa sempre por esc().
 import { supabase } from '/assets/js/supabase-client.js';
-import * as TX from './taxonomia.js?v=2026-11-15.3';   // páginas, famílias e agrupamento dos modelos
-import * as ES from './estudio.js?v=2026-11-15.3';   // os blocos do estúdio de e-mails (entregas 2 e 3)
-import * as EE from './editor-email.js?v=2026-11-15.3';
-import * as EQ from './editor-quem.js?v=2026-11-15.3';
-import * as JR from './jornada.js?v=2026-11-15.3';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
-import * as FX from './ficha.js?v=2026-11-15.3';   // ficha v2: lógica pura (fila, démarches, funil, ações)
-import * as FH from './ficha-html.js?v=2026-11-15.3';   // ficha v2: HTML puro
+import * as TX from './taxonomia.js?v=2026-11-15.4';   // páginas, famílias e agrupamento dos modelos
+import * as ES from './estudio.js?v=2026-11-15.4';   // os blocos do estúdio de e-mails (entregas 2 e 3)
+import * as EE from './editor-email.js?v=2026-11-15.4';
+import * as EQ from './editor-quem.js?v=2026-11-15.4';
+import * as JR from './jornada.js?v=2026-11-15.4';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
+import * as FX from './ficha.js?v=2026-11-15.4';   // ficha v2: lógica pura (fila, démarches, funil, ações)
+import * as FH from './ficha-html.js?v=2026-11-15.4';   // ficha v2: HTML puro
 
 var PERSONAS = {
   au_pair_estudante: 'Au pair → estudante', campus_france: 'Campus France', alternancia_emprego: 'Alternância / emprego',
@@ -2558,7 +2558,7 @@ function fxHeaderHtml(c, d) {
 // Catálogo de démarches (cópia do app, processos.json): carregado uma vez; sem ele, tudo cai na démarche padrão.
 var FX_PROC = null;
 async function fxCarregaProcessos() {
-  try { var r = await fetch('processos.json?v=2026-11-15.3'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
+  try { var r = await fetch('processos.json?v=2026-11-15.4'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
 }
 // A sessão Checklist: pílulas por démarche, os 4 mais urgentes, pasta do Drive privada e "Ver mais desta sessão".
 function fxChecklistCorpo(c) {
@@ -3382,6 +3382,11 @@ function camposDoBloco(b, i, semTexto) {
       '<label class="st-fld"><span>Estilo</span><select class="st-in" data-f="' + f('estilo') + '"' + dis + '>' + opcoes([['', 'Normal'], ['caixa', 'Em caixa (ex.: "Ficou com dúvida?")'], ['discreto', 'Discreto, em cinza']], b.estilo) + '</select></label>' + alt();
   } else if (b.tipo === 'titulo') {
     corpo = txt('texto', 'Título', { ro: ro }) + alt();
+  } else if (b.tipo === 'astucia') {
+    corpo = txt('texto', 'A astúcia', { area: true, rows: 3, ro: ro, max: 600 }) + txt('fonte', 'Fonte (oficial) e data', { ro: ro, max: 200, ph: 'service-public.fr F473 (06/06/2025)' }) +
+      campoTxt(f('codigo'), b.codigo, 'Código da astúcia (só para você achar depois)', { ro: ro, max: 20, ph: 'A-0009' }) +
+      campoTxt(f('conferida_em'), b.conferida_em, 'Conferida em (só para você)', { ro: ro, max: 20, ph: '14/11/2026' }) +
+      campoTxt(f('rotulo'), b.rotulo, 'Frase de cima do cartão', { ro: ro, max: 120 }) + alt();
   } else if (b.tipo === 'pergunta') {
     corpo = txt('texto', 'Pergunta', { ro: ro }) + alt() + txt('ajuda', 'Linha de ajuda (opcional)', { ro: ro });
   } else if (b.tipo === 'botao') {

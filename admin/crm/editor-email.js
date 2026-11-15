@@ -16,7 +16,7 @@
 //   disponiveis(): { etapa, toques },     blocos de guia que este modelo pode ter
 //   rodapeTexto(): string                 o rodapé automático (pelo tipo), só para mostrar
 // }
-import * as EB from './editor-blocos.js?v=2026-11-15.3';
+import * as EB from './editor-blocos.js?v=2026-11-15.4';
 
 var DEP = null;
 var S = { sel: -1, pal: -2, menu: null, foco: null, hist: EB.criarHistorico(60), campo: null, ultimo: null, arrasto: null, toastT: null };
@@ -44,8 +44,16 @@ function destaqueHtml(b, aberto, ro) {
 function introHtml(b, aberto, ro) {
   return '<div class="ee-intro"' + (ro ? '' : ' role="button" tabindex="0" data-eeabre="' + aberto + '"') + '><img src="' + esc(DEP.ES.FOTO_URL) + '" alt="Foto da Ingryd" width="84" height="84"><div><div class="it">' + esc(b.titulo || '') + '</div><div class="ix">' + esc(b.texto || '') + '</div></div></div>';
 }
+function astuciaHtml(b, i, ro) {
+  var p = function (c) { return 'itens.' + i + '.' + c; };
+  var marca = [b.codigo ? 'Astúcia ' + b.codigo : '', b.conferida_em ? 'conferida em ' + b.conferida_em : ''].filter(Boolean).join(' · ');
+  return '<div class="ee-ast">' + (marca ? '<small class="ee-cond">' + esc(marca) + '</small>' : '') + '<div class="ar">' + esc(b.rotulo || DEP.ES.ASTUCIA_ROTULO) + '</div>' +
+    campo(p('texto'), b.texto, 'ee-texto', 'Texto da astúcia', 'Escreva a astúcia, curta e conferida', true, ro) +
+    '<div class="af"><span>Fonte:</span>' + campo(p('fonte'), b.fonte, 'ee-disc', 'Fonte da astúcia', 'a fonte oficial e a data', false, ro) + '</div></div>';
+}
 function textoDoBloco(b, i, ro) {
   var p = function (c) { return 'itens.' + i + '.' + c; }, h = '';
+  if (b.tipo === 'astucia') return astuciaHtml(b, i, ro);
   if (b.tipo === 'texto') h = campo(p('texto'), b.texto, b.estilo === 'caixa' ? 'ee-caixa' : b.estilo === 'discreto' ? 'ee-disc' : 'ee-texto', 'Texto', 'Escreva aqui, ou digite / para escolher um bloco', true, ro);
   else if (b.tipo === 'titulo') h = campo(p('texto'), b.texto, 'ee-titulo', 'Título', 'Escreva o título', false, ro);
   else if (b.tipo === 'pergunta') h = campo(p('texto'), b.texto, 'ee-titulo', 'Pergunta', 'Escreva a pergunta', false, ro) + campo(p('ajuda'), b.ajuda, 'ee-disc', 'Linha de ajuda', 'Linha de ajuda (opcional)', false, ro);
@@ -61,7 +69,7 @@ function conteudo(b, i, ro) {
   var alt = b.alt != null && b.alt !== '' ? '<div class="ee-alt"><small>Se faltar um dado deste bloco:</small>' + campo('itens.' + i + '.alt', b.alt, 'ee-disc', 'Texto se faltar um dado', 'Texto se faltar um dado', false, ro) + '</div>' : '';
   return textoDoBloco(b, i, ro) + alt;
 }
-var EDITA_NO_LUGAR = { texto: 1, titulo: 1, pergunta: 1, assinatura: 1, etapa: 1 };
+var EDITA_NO_LUGAR = { texto: 1, titulo: 1, pergunta: 1, assinatura: 1, etapa: 1, astucia: 1 };
 function barraDoBloco(b, i) {
   var txt = b.tipo === 'texto' || b.tipo === 'titulo', noLugar = !!EDITA_NO_LUGAR[b.tipo];
   var h = '<div class="ee-bar" role="toolbar" aria-label="Ferramentas do bloco">';
