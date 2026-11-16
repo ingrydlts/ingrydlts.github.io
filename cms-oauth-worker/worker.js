@@ -2769,6 +2769,45 @@ function crmPosSistema(vocab) {
   ].join('\n');
 }
 
+// Cada coisa num lugar só: a IA costuma devolver o mesmo passo como encaminhamento, como item de checklist e como documento.
+// Fica o checklist (e os documentos); o encaminhamento repetido é juntado e registrado em "duplicados". Só mexe em encaminhamentos
+// DA PESSOA: a tarefa da equipe nunca é juntada com passo dela. Pura e sem IA: a mesma entrada dá a mesma saída.
+const CRM_MONT_STOP = new Set('para com que dos das uma por mais como sobre antes depois pelo pela nas nos ela ele seu sua isso esse essa quando onde ainda tambem'.split(' '));
+function crmMontagemTokens(t) {
+  const s = new Set();
+  String(t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().split(/[^a-z0-9]+/).forEach((w) => { if (w.length >= 4 && !CRM_MONT_STOP.has(w)) s.add(w.replace(/(ar|er|ir|es|s)$/, '')); });
+  return s;
+}
+// "a" cabe em "b" (quase todas as palavras de a estão em b) ou os dois são muito parecidos.
+function crmMontagemParecidos(a, b) {
+  if (a.size < 2 || b.size < 2) return false;
+  let comum = 0; for (const w of a) if (b.has(w)) comum++;
+  const menor = Math.min(a.size, b.size), uniao = a.size + b.size - comum;
+  return comum / menor >= 0.75 || comum / uniao >= 0.6;
+}
+function crmMontagemDeduplica(m) {
+  const duplicados = [];
+  const itens = [];
+  for (const c of m.checklists) for (const i of c.itens) itens.push({ titulo: i.titulo, tk: crmMontagemTokens(i.titulo) });
+  const docs = m.documentos.map((d) => ({ rotulo: d.rotulo, tk: crmMontagemTokens(d.rotulo) }));
+  const mantidos = [];
+  for (const e of m.encaminhamentos) {
+    if (e.dono !== 'ela') { mantidos.push(e); continue; }
+    const tk = crmMontagemTokens(e.texto);
+    const noChk = itens.find((i) => crmMontagemParecidos(tk, i.tk));
+    // "Reunir diploma, passaporte e comprovante…": cita dois ou mais documentos que já estão em documentos
+    const citados = docs.filter((d) => d.tk.size && [...d.tk][0] && tk.has([...d.tk][0]));
+    const igual = mantidos.find((x) => x.dono === 'ela' && crmMontagemParecidos(tk, crmMontagemTokens(x.texto)));
+    if (noChk) duplicados.push({ texto: e.texto.slice(0, 160), motivo: 'ja_no_checklist', em: noChk.titulo.slice(0, 120) });
+    else if (citados.length >= 2) duplicados.push({ texto: e.texto.slice(0, 160), motivo: 'ja_em_documentos', em: citados.map((d) => d.rotulo).join(', ').slice(0, 120) });
+    else if (igual) duplicados.push({ texto: e.texto.slice(0, 160), motivo: 'repetido', em: igual.texto.slice(0, 120) });
+    else mantidos.push(e);
+  }
+  m.encaminhamentos = mantidos;
+  m.duplicados = duplicados.slice(0, 20);
+  return m;
+}
+
 // Confere a resposta da IA. Devolve { ok, proposta } ou { ok:false, erro }. Qualquer coisa fora do combinado invalida TUDO.
 function crmPosValidar(entrada, vocab) {
   const chaves = vocab.map((v) => v.chave);
@@ -3058,6 +3097,7 @@ function crmMontagemSistema(cat) {
     '3. Quando houver duas posições na mesma conversa (ex.: ligar × escrever), registre as duas posições, cada uma com o seu momento. Conte em vezes_dito quantas vezes cada uma apareceu: o que foi repetido pesa mais.',
     '4. encaminhamentos têm três camadas: persona (vale para todo mundo da situação dela), particular (só do percurso desta pessoa) e entrega_equipe (algo que a EQUIPE precisa mandar a ela: link, PDF). Cada um diz o dono (ela ou ingryd), de onde veio (momento e trecho) e a certeza.',
     '5. compromissos: liste TUDO o que a equipe prometeu mandar ou fazer (link, PDF, documento). Em cada encaminhamento ou documento que cumpre um compromisso, preencha "cobre" com o índice dele (começando em 0). Compromisso que ninguém cobre vira pendência para a equipe.',
+    '6b. Cada coisa aparece UMA vez, no lugar certo: o passo que a PESSOA faz vai em checklists (com démarche e subitens); encaminhamentos só para o que é da equipe (dono ingryd), para entrega_equipe, ou para um passo dela que não cabe em nenhuma lista. Nunca repita como encaminhamento o que já está num checklist ou em documentos; "reunir os documentos X, Y e Z" não é passo: os documentos ficam em documentos.',
     '6a. Todo item de checklist leva a démarche (o tipo de checklist a que o passo pertence), UMA destas: ' + Object.keys(CRM_MONT_DEMARCHES).map((k) => k + ' (' + CRM_MONT_DEMARCHES[k] + ')').join(', ') + '; e, quando a conversa justificar, até 6 subitens: os pontos concretos do passo (o que fazer ou reunir). Os subitens seguem a mesma regra do item: nada de exigência, prazo, valor ou lei que não foi dita.',
     '6. checklists: proponha só listas que o percurso desta pessoa pede. Item com fonte oficial leva a fonte (rótulo e link https) e o nível; sem fonte, deixe a fonte de fora: ele ficará "a conferir". É proibido inventar exigência administrativa, prazo, valor ou lei que não foi dito.',
     '7. documentos: o que a pessoa precisa reunir, com os selos que a conversa justificar (traducao, haia, equivaler, original) e os checklists onde aparece.',
@@ -3267,7 +3307,8 @@ function crmMontagemValidar(entrada, cat) {
       soChaves(h, ['texto', 'evidencia', 'confirmar', 'momento'], 'hipotese');
       m.panorama.hipoteses.push({ texto: txt(h.texto, 200, 'hipotese', true), evidencia: txt(h.evidencia, 160, 'hipotese.evidencia'), confirmar: txt(h.confirmar, 160, 'hipotese.confirmar'), momento: momentoDe(h.momento, 'hipotese') });
     }
-    m.omissoes = crmMontagemOmissoes(m);
+    m.omissoes = crmMontagemOmissoes(m);   // antes de juntar os repetidos: o compromisso coberto por um encaminhamento juntado continua coberto
+    crmMontagemDeduplica(m);
     return { ok: true, montagem: m };
   } catch (e) {
     if (e && e.montagem) return { ok: false, erro: e.message };

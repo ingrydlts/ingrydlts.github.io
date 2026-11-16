@@ -2,15 +2,15 @@
 // Nada de service_role aqui. O banco é db/crm-fase2.sql; o desenho é o artefato "CRM Por Dentro".
 // Tudo que vem do banco é texto de terceiros (nome, e-mail, pergunta): passa sempre por esc().
 import { supabase } from '/assets/js/supabase-client.js';
-import * as TX from './taxonomia.js?v=2026-11-16.5';   // páginas, famílias e agrupamento dos modelos
-import * as ES from './estudio.js?v=2026-11-16.5';   // os blocos do estúdio de e-mails (entregas 2 e 3)
-import * as EE from './editor-email.js?v=2026-11-16.5';
-import * as EQ from './editor-quem.js?v=2026-11-16.5';
-import * as JR from './jornada.js?v=2026-11-16.5';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
-import * as FX from './ficha.js?v=2026-11-16.5';   // ficha v2: lógica pura (fila, démarches, funil, ações)
-import * as FH from './ficha-html.js?v=2026-11-16.5';   // ficha v2: HTML puro
-import * as PN from './panorama.js?v=2026-11-16.5';
-import * as MT from './montagem.js?v=2026-11-16.5';   // Montagem do espaço a partir do transcript (lógica e HTML puros)   // Panorama dela e O que ela trouxe (lógica e HTML puros)
+import * as TX from './taxonomia.js?v=2026-11-16.6';   // páginas, famílias e agrupamento dos modelos
+import * as ES from './estudio.js?v=2026-11-16.6';   // os blocos do estúdio de e-mails (entregas 2 e 3)
+import * as EE from './editor-email.js?v=2026-11-16.6';
+import * as EQ from './editor-quem.js?v=2026-11-16.6';
+import * as JR from './jornada.js?v=2026-11-16.6';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
+import * as FX from './ficha.js?v=2026-11-16.6';   // ficha v2: lógica pura (fila, démarches, funil, ações)
+import * as FH from './ficha-html.js?v=2026-11-16.6';   // ficha v2: HTML puro
+import * as PN from './panorama.js?v=2026-11-16.6';
+import * as MT from './montagem.js?v=2026-11-16.6';   // Montagem do espaço a partir do transcript (lógica e HTML puros)   // Panorama dela e O que ela trouxe (lógica e HTML puros)
 
 var PERSONAS = {
   au_pair_estudante: 'Au pair → estudante', campus_france: 'Campus France', alternancia_emprego: 'Alternância / emprego',
@@ -2155,7 +2155,7 @@ function casoPanelHtml(c, k) {
     casoEscolasDelaHtml(k) +
     casoSecao('Avisos da Equipe Por Dentro', 'você decide a data de cada um', casoAvisosHtml(k));
 }
-function pintaCaso() { var b = $('caso-box'); if (b) b.innerHTML = casoPanelHtml(byC(state.sel) || {}, state.caso); var ab = $('plat-abas'); if (ab) ab.innerHTML = platAbasHtml(); if (fichaV2Ativa() && state.fx && state.fx.tab === 'plataforma' && state.fx.dados) fxPintaCorpo(); if (fichaV2Ativa() && state.fx && state.fx.dados) fxAtualizaAcoes(); }
+function pintaCaso() { var b = $('caso-box'); if (b) b.innerHTML = casoPanelHtml(byC(state.sel) || {}, state.caso); var ab = $('plat-abas'); if (ab) ab.innerHTML = platAbasHtml(); if (fichaV2Ativa() && state.fx && state.fx.tab === 'plataforma' && state.fx.dados) fxPintaCorpo(); if (fichaV2Ativa() && state.fx && state.fx.dados) { fxAtualizaAcoes(); fxPintaPrevia(); } }
 async function carregaCaso(cid) {
   if (state.casoCarregando === cid) return;
   state.casoCarregando = cid;
@@ -3113,8 +3113,9 @@ async function montLiberar(cid, t) {
 async function montConferido(cid, id) {
   var m = montEstado(cid), r = await supabase.rpc('crm_acao_conferida', { p_id: Number(id) });
   if (r.error) { m.erro = 'Não consegui marcar como conferido: ' + (r.error.message || 'tente de novo'); return pintaMont(cid); }
-  toast('Marcado como conferido. Libere de novo para ela ver.');
+  toast('Marcado como conferido. Agora você pode publicar para ela.');
   await montPub(cid);
+  if (state.sel === cid && state.caso) casoRecarrega();   // o Checklist e a prévia mostram o passo já conferido
 }
 async function montDescartar(cid, t) {
   var m = montEstado(cid); if (!m.prop) return;
@@ -3454,7 +3455,7 @@ function fxHeaderHtml(c, d) {
 // Catálogo de démarches (cópia do app, processos.json): carregado uma vez; sem ele, tudo cai na démarche padrão.
 var FX_PROC = null;
 async function fxCarregaProcessos() {
-  try { var r = await fetch('processos.json?v=2026-11-16.5'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
+  try { var r = await fetch('processos.json?v=2026-11-16.6'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
 }
 // A sessão Checklist: pílulas por démarche, os 4 mais urgentes, pasta do Drive privada e "Ver mais desta sessão".
 // Os passos que a montagem do espaço propôs para ela, com démarche, subitens e origem: o mesmo detalhe do Checklist. Existem antes de ela ter conta.
@@ -3462,7 +3463,7 @@ function fxPassosPropostos(c) {
   var k = state.caso && state.caso.cid === c.id && !state.caso.err ? state.caso : null;
   if (!state.caso || state.caso.cid !== c.id) setTimeout(function () { carregaCaso(c.id); }, 0);
   if (!k) return '';
-  var h = MT.passosPropostosHtml(k.aco, k.listas, { esc: esc, rotulo: function (d) { return FX.rotuloDemarche(FX_PROC, d, personaKey(c)); }, prazo: casoPrazo, pil: casoPil, btn: casoBtn, linha: casoLinha });
+  var h = MT.passosPropostosHtml(k.aco, k.listas, { esc: esc, rotulo: function (d) { return FX.rotuloDemarche(FX_PROC, d, personaKey(c)); }, prazo: casoPrazo, pil: casoPil, btn: casoBtn, conferi: function (id) { return '<button type="button" class="btn" data-montconferido="' + esc(String(id)) + '" style="padding:5px 10px;font-size:12px">Conferi a fonte</button>'; }, linha: casoLinha });
   return h ? casoSecao('Passos propostos para ela', 'da montagem do espaço · você revisa e publica', fxSemConsent(k) + h) : '';
 }
 function fxChecklistCorpo(c) {
@@ -3521,8 +3522,8 @@ function fxPerfilCorpo(c) {
 // Só eu: o que é seu neste caso (nada aparece no app dela). As linhas dela, que você publica no Checklist, ficam em "Passos para ela".
 function fxEuCorpo(c) {
   var g = fxCasoGuarda(c); if (!g.k) return g.html;
-  return '<p class="sub" style="margin:0 0 8px">Tarefas suas neste caso. Ela não vê nada daqui.</p>' + casoAcoesHtml(g.k, 'ingryd') +
-    casoSecao('Passos para ela', 'o que você propõe e publica no Checklist dela', fxSemConsent(g.k) + casoAcoesHtml(g.k, 'ela'));
+  // Só o que é para VOCÊ fazer. Os passos dela são revisados e publicados no Checklist (um lugar só); aqui nada se publica para ela.
+  return '<p class="sub" style="margin:0 0 8px">Tarefas suas neste caso. Ela não vê nada daqui. Os passos dela ficam no Checklist.</p>' + casoAcoesHtml(g.k, 'ingryd');
 }
 // ---------- Panorama dela e O que ela trouxe (porte da Ficha-universo, com dados reais) ----------
 // Lê o que ela acrescenta de público ao app: títulos que mudou, observações, datas, links, passos próprios e arquivados (checklist_items)
@@ -3664,13 +3665,21 @@ function fxPreviaDados(c) {
   var pub = function (tipos) { return k ? k.itens.filter(function (x) { return x.estado === 'publicado' && tipos.indexOf(x.tipo) >= 0; }) : []; };
   var marcos = pub(['marco']).map(function (x) { return { titulo: x.titulo, resumo: x.resumo, data: x.dados && x.dados.data }; });
   var m = marcos.filter(function (x) { return x.data; }).sort(function (a, b) { return a.data < b.data ? -1 : 1; })[0];
+  // Os passos que a montagem propôs: os publicados já contam como passos dela (é o que o app mostra); os rascunhos aparecem à parte, esmaecidos.
+  var det = function (a) { var n = (a.subitens || []).length; return [a.demarche ? FX.rotuloDemarche(FX_PROC, a.demarche, personaKey(c)) : '', n ? n + (n === 1 ? ' subitem' : ' subitens') : ''].filter(Boolean).join(' · '); };
+  var prop = k ? k.aco.filter(function (a) { return a.dono === 'ela' && a.canal === 'plataforma' && /^(enc|chk):/.test(a.origem_chave || ''); }) : [];
+  var pubP = prop.filter(function (a) { return a.publicada_em; }).map(function (a) { return { label: a.titulo, tag: det(a), feito: a.estado === 'concluida', due: a.prazo, atrasado: !!(a.prazo && a.prazo < hoje && a.estado !== 'concluida') }; });
+  var rascP = prop.filter(function (a) { return !a.publicada_em; }).map(function (a) { return { label: a.titulo, tag: det(a), conferir: !!a.a_conferir, due: a.prazo }; });
   var acum = 0, avisos = [];
   if (k) filaDe(k.avs).concat([]).forEach(function (a) { acum += a.pausa_dias || 0; if (acum <= dia) avisos.push({ tipo: CASO_TIPO_AVISO[a.tipo] || a.tipo, titulo: a.titulo, texto: a.texto }); });
   if (k) k.avs.filter(function (a) { return a.liberado_em && (a.estado === 'liberado' || a.estado === 'lido'); }).forEach(function (a) { avisos.unshift({ tipo: CASO_TIPO_AVISO[a.tipo] || a.tipo, titulo: a.titulo, texto: a.texto }); });
   var dd = state.dos && state.dos.cid === c.id ? state.dos : null, pr = dd ? dosProgresso(c, dd.d, dd.rasc) : { n: 0, tot: 0 };
-  return { nome: pn(c), semConta: !c.user_id, aba: f.appAba || 'inicio', dia: dia, camadas: !!f.camadas, pct: itens.length ? Math.round(feitos.length / itens.length * 100) : 0, feitos: feitos.length, total: itens.length,
-    naoLidas: chatNaoLidas(state.chat), marco: m ? { titulo: m.titulo, dias: diasAteIso(m.data), data: m.data } : null, prox: abertos[0] ? { label: abertos[0].label, due: abertos[0].due_date } : null, avisos: avisos,
-    passos: abertos.concat(feitos).map(function (i) { return { label: i.label, tag: i.category, feito: i.status === 'concluido', due: i.due_date, atrasado: !!(i.due_date && i.due_date < hoje && i.status !== 'concluido') }; }),
+  var feitosN = feitos.length + pubP.filter(function (x) { return x.feito; }).length, totalN = itens.length + pubP.length;
+  var passosL = abertos.map(function (i) { return { label: i.label, tag: i.category, feito: false, due: i.due_date, atrasado: !!(i.due_date && i.due_date < hoje) }; }).concat(pubP.filter(function (x) { return !x.feito; }));
+  var feitosL = feitos.map(function (i) { return { label: i.label, tag: i.category, feito: true, due: i.due_date, atrasado: false }; }).concat(pubP.filter(function (x) { return x.feito; }));
+  return { nome: pn(c), semConta: !c.user_id, aba: f.appAba || 'inicio', dia: dia, camadas: !!f.camadas, pct: totalN ? Math.round(feitosN / totalN * 100) : 0, feitos: feitosN, total: totalN, rascunhos: rascP,
+    naoLidas: chatNaoLidas(state.chat), marco: m ? { titulo: m.titulo, dias: diasAteIso(m.data), data: m.data } : null, prox: passosL[0] ? { label: passosL[0].label, due: passosL[0].due } : null, avisos: avisos,
+    passos: passosL.concat(feitosL),
     espaco: { marcos: marcos, escolas: pub(['escola']).map(function (x) { return { titulo: x.titulo, resumo: x.resumo }; }), dela: k ? (k.escolasDela || []).map(function (x) { return { nome: x.nome }; }) : [] },
     guias: { bilan: pub(['bilan']).length > 0, docs: pub(['documento']).map(function (x) { return { titulo: x.titulo, resumo: x.resumo }; }), msgs: pub(['modelo']).map(function (x) { return { titulo: x.titulo }; }) },
     perfil: { n: pr.n, tot: pr.tot, kv: [['Situação', personaLabel(c)], ['Cidade', (dd && dosValor(c, dd.d, dd.rasc, 'cidade')) || ''], ['Fase', (dd && dosValor(c, dd.d, dd.rasc, 'fase')) || '']] } };
