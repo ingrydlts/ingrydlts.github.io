@@ -2,15 +2,15 @@
 // Nada de service_role aqui. O banco é db/crm-fase2.sql; o desenho é o artefato "CRM Por Dentro".
 // Tudo que vem do banco é texto de terceiros (nome, e-mail, pergunta): passa sempre por esc().
 import { supabase } from '/assets/js/supabase-client.js';
-import * as TX from './taxonomia.js?v=2026-11-16.3';   // páginas, famílias e agrupamento dos modelos
-import * as ES from './estudio.js?v=2026-11-16.3';   // os blocos do estúdio de e-mails (entregas 2 e 3)
-import * as EE from './editor-email.js?v=2026-11-16.3';
-import * as EQ from './editor-quem.js?v=2026-11-16.3';
-import * as JR from './jornada.js?v=2026-11-16.3';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
-import * as FX from './ficha.js?v=2026-11-16.3';   // ficha v2: lógica pura (fila, démarches, funil, ações)
-import * as FH from './ficha-html.js?v=2026-11-16.3';   // ficha v2: HTML puro
-import * as PN from './panorama.js?v=2026-11-16.3';
-import * as MT from './montagem.js?v=2026-11-16.3';   // Montagem do espaço a partir do transcript (lógica e HTML puros)   // Panorama dela e O que ela trouxe (lógica e HTML puros)
+import * as TX from './taxonomia.js?v=2026-11-16.5';   // páginas, famílias e agrupamento dos modelos
+import * as ES from './estudio.js?v=2026-11-16.5';   // os blocos do estúdio de e-mails (entregas 2 e 3)
+import * as EE from './editor-email.js?v=2026-11-16.5';
+import * as EQ from './editor-quem.js?v=2026-11-16.5';
+import * as JR from './jornada.js?v=2026-11-16.5';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
+import * as FX from './ficha.js?v=2026-11-16.5';   // ficha v2: lógica pura (fila, démarches, funil, ações)
+import * as FH from './ficha-html.js?v=2026-11-16.5';   // ficha v2: HTML puro
+import * as PN from './panorama.js?v=2026-11-16.5';
+import * as MT from './montagem.js?v=2026-11-16.5';   // Montagem do espaço a partir do transcript (lógica e HTML puros)   // Panorama dela e O que ela trouxe (lógica e HTML puros)
 
 var PERSONAS = {
   au_pair_estudante: 'Au pair → estudante', campus_france: 'Campus France', alternancia_emprego: 'Alternância / emprego',
@@ -1928,17 +1928,22 @@ var CASO_CANAL = { plataforma: 'Plataforma', email: 'E-mail', convite: 'Convite'
 var CASO_TIPO_ITEM = { bilan: 'Bilan', marco: 'Prazo', documento: 'Documento', escola: 'Escola', modelo: 'Modelo de e-mail' };
 var CASO_TIPO_AVISO = { pergunta: 'Pergunta', proposta: 'Proposta', inteligencia: 'Inteligência', oferta: 'Oferta' };
 var CASO_ESTADO_AVISO = { rascunho: 'Rascunho', agendado: 'Agendado', liberado: 'Liberado', lido: 'Lido', respondido: 'Respondido', dispensado: 'Dispensado', cancelado: 'Cancelado' };
+var CASO_ACO_COLS = 'id,n,titulo,dono,canal,botao,prazo,prazo_texto,prazo_a_confirmar,estado,certeza,publicada_em,concluida_em,concluida_por';
+var CASO_ACO_COLS_MONT = 'lista_chave,camada,a_conferir,origem_chave,demarche,subitens';   // db/crm-caso-listas.sql e crm-montagem-aplicar.sql
 async function buscaCaso(cid) {
   var r = await Promise.all([
     supabase.from('caso_achados').select('id,chave,tipo,texto,origem,certeza,estado,conferido_em').eq('contato_id', cid).order('id', { ascending: true }).limit(80),
-    supabase.from('caso_acoes').select('id,n,titulo,dono,canal,botao,prazo,prazo_texto,prazo_a_confirmar,estado,certeza,publicada_em,concluida_em,concluida_por').eq('contato_id', cid).order('n', { ascending: true }).limit(150),
+    supabase.from('caso_acoes').select(CASO_ACO_COLS + ',' + CASO_ACO_COLS_MONT).eq('contato_id', cid).order('n', { ascending: true }).limit(150),
     supabase.from('board_itens').select('id,tipo,titulo,resumo,dados,estado,ordem,link,versao').eq('contato_id', cid).order('ordem', { ascending: true }).limit(80),
     supabase.from('caso_avisos').select('id,tipo,titulo,texto,resposta_tipo,grava_em,modo,dias_apos,ordem,pausa_dias,liberar_em,liberado_em,estado,resposta,adiado_ate').eq('contato_id', cid).order('ordem', { ascending: true }).limit(40),
     supabase.from('consentimentos').select('aceito,criado_em').eq('contato_id', cid).eq('finalidade', 'servico').order('criado_em', { ascending: false }).limit(1),
-    supabase.from('escolas_dela').select('id,nome,link,nota,criterios,criado_em').eq('contato_id', cid).order('criado_em', { ascending: true }).limit(40)   // db/crm-escolas-dela.sql; sem ele, a seção some
+    supabase.from('escolas_dela').select('id,nome,link,nota,criterios,criado_em').eq('contato_id', cid).order('criado_em', { ascending: true }).limit(40),   // db/crm-escolas-dela.sql; sem ele, a seção some
+    supabase.from('caso_listas').select('chave,titulo,estado,origem').eq('contato_id', cid).order('ordem', { ascending: true }).limit(20)   // db/crm-caso-listas.sql; sem ele, só some o nome da lista
   ]);
+  // Sem as colunas da montagem (SQL ainda não rodado), volta à busca antiga: o caso continua abrindo.
+  if (r[1].error) r[1] = await supabase.from('caso_acoes').select(CASO_ACO_COLS).eq('contato_id', cid).order('n', { ascending: true }).limit(150);
   var err = r[0].error || r[1].error || r[2].error || r[3].error || null;
-  return { cid: cid, err: err, ach: r[0].data || [], aco: r[1].data || [], itens: r[2].data || [], avs: r[3].data || [], consent: !!(r[4].data && r[4].data[0] && r[4].data[0].aceito === true), escolasDela: r[5] && !r[5].error ? (r[5].data || []) : [], ed: null, agenda: null };
+  return { cid: cid, err: err, ach: r[0].data || [], aco: r[1].data || [], itens: r[2].data || [], avs: r[3].data || [], consent: !!(r[4].data && r[4].data[0] && r[4].data[0].aceito === true), escolasDela: r[5] && !r[5].error ? (r[5].data || []) : [], listas: r[6] && !r[6].error ? (r[6].data || []) : [], ed: null, agenda: null };
 }
 function casoPendentes(k) {
   if (!k || k.err) return 0;
@@ -3449,13 +3454,21 @@ function fxHeaderHtml(c, d) {
 // Catálogo de démarches (cópia do app, processos.json): carregado uma vez; sem ele, tudo cai na démarche padrão.
 var FX_PROC = null;
 async function fxCarregaProcessos() {
-  try { var r = await fetch('processos.json?v=2026-11-16.3'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
+  try { var r = await fetch('processos.json?v=2026-11-16.5'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
 }
 // A sessão Checklist: pílulas por démarche, os 4 mais urgentes, pasta do Drive privada e "Ver mais desta sessão".
+// Os passos que a montagem do espaço propôs para ela, com démarche, subitens e origem: o mesmo detalhe do Checklist. Existem antes de ela ter conta.
+function fxPassosPropostos(c) {
+  var k = state.caso && state.caso.cid === c.id && !state.caso.err ? state.caso : null;
+  if (!state.caso || state.caso.cid !== c.id) setTimeout(function () { carregaCaso(c.id); }, 0);
+  if (!k) return '';
+  var h = MT.passosPropostosHtml(k.aco, k.listas, { esc: esc, rotulo: function (d) { return FX.rotuloDemarche(FX_PROC, d, personaKey(c)); }, prazo: casoPrazo, pil: casoPil, btn: casoBtn, linha: casoLinha });
+  return h ? casoSecao('Passos propostos para ela', 'da montagem do espaço · você revisa e publica', fxSemConsent(k) + h) : '';
+}
 function fxChecklistCorpo(c) {
   var chk = state.dos && state.dos.cid === c.id ? state.dos.chk : null, f = state.fx;
   if (!chk) return '<div class="skel" aria-busy="true" style="height:64px"></div>';
-  var pre = processosSugeridosHtml(state.procs);
+  var pre = fxPassosPropostos(c) + processosSugeridosHtml(state.procs);
   if (chk.err || chk.semConta) return pre + FH.htmlChecklistSessao({ semConta: !!chk.semConta && !chk.err, erro: !!chk.err }, H_FX);
   var agora = Date.now(), cc = chkCalc(chk, agora), itens = chk.itens || [];
   var dem = FX.demarchesDe(FX_PROC, personaKey(c), itens), ativa = f.dem !== 'todas' && dem.some(function (x) { return x.k === f.dem; }) ? f.dem : 'todas';

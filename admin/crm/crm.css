@@ -1690,6 +1690,7 @@ button.bar-r b{text-align:right; font-variant-numeric:tabular-nums}
 .montagem .mont-lista{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
 .montagem .mont-item{background:var(--surface-2);border:1px solid var(--line);border-radius:8px;padding:8px 10px;color:var(--ink)}
 .montagem .mont-item label{display:flex;gap:8px;align-items:flex-start;cursor:pointer}
+.mont-sub{margin:6px 0 2px;padding-left:18px;font-size:13px;color:var(--ink-2);list-style:disc}
 .montagem .mont-item select{margin:6px 0 0 24px;max-width:100%}
 .montagem .mont-skel{display:flex;flex-direction:column;gap:8px;margin-top:8px}
 .montagem .mont-skel i{display:block;height:34px;border-radius:8px;background:linear-gradient(90deg,var(--sunk),var(--surface-2),var(--sunk));background-size:200% 100%;animation:mont-brilho 1.2s linear infinite}

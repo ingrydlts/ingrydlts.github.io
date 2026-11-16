@@ -7,6 +7,9 @@ export var MOTIVOS = [['fato_errado', 'Fato extraído errado'], ['regra_inadequa
 export var GRUPOS = ['Gerais da persona', 'Particulares do percurso', 'Entregas da equipe', 'Prometido na chamada e ainda sem item', 'Checklists', 'Documentos para reunir', 'Perguntas da equipe', 'Contatos para acionar'];
 var GRUPO_CAMADA = { persona: 'Gerais da persona', particular: 'Particulares do percurso', entrega_equipe: 'Entregas da equipe' };
 var DIAS_TESTE = 7;
+// As démarches (tipos de checklist) do catálogo processos.json; um teste confere que as chaves são as mesmas.
+export var DEMARCHES = { visa_aupair: 'Visa au pair', visa: 'Visa', visa_estudante: 'Visa étudiante', estudos: 'Universidade', trabalho: 'Trabalho', profissao: 'Profissão regulamentada',
+  cir: 'Integração (CIR)', ameli: 'Ameli', caf: 'CAF', banco: 'Banco', moradia: 'Moradia', orcamento: 'Orçamento' };
 
 function lista(v) { return Array.isArray(v) ? v : []; }
 function dia(iso) { var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso || ''); return m ? m[3] + '/' + m[2] : ''; }
@@ -25,7 +28,12 @@ export function itensDaProposta(p) {
   lista(p.checklists).forEach(function (c) {
     saida.push({ k: 'lista:' + c.chave, grupo: 'Checklists', titulo: 'Lista: ' + String(c.titulo || ''), detalhe: lista(c.itens).length + (lista(c.itens).length === 1 ? ' item · ' : ' itens · ') + (c.origem === 'modelo' ? 'modelo da persona' : 'só deste percurso'), momento: '', trecho: '', certeza: 'inferido', aConferir: false });
     lista(c.itens).forEach(function (i) {
-      saida.push({ k: 'chk:' + c.chave + ':' + i.chave, grupo: 'Checklists', titulo: String(i.titulo || ''), detalhe: 'Em "' + String(c.titulo || '') + '" · ' + (i.fonte ? 'Fonte: ' + i.fonte.rotulo + (i.nivel ? ' (' + i.nivel + ')' : ' (sem nível)') + ' · ' + i.fonte.url : 'Sem fonte'), momento: '', trecho: '', certeza: 'inferido', aConferir: i.a_conferir !== false });
+      // O mesmo detalhe do Checklist dela: démarche · quantos subitens · da persona ou só deste percurso · prazo · fonte.
+      var subs = lista(i.subitens).map(String), dem = i.demarche && DEMARCHES[i.demarche] ? DEMARCHES[i.demarche] : '';
+      saida.push({ k: 'chk:' + c.chave + ':' + i.chave, grupo: 'Checklists', titulo: String(i.titulo || ''), demarche: dem, subitens: subs,
+        detalhe: [dem || 'Sem démarche', subs.length ? subs.length + (subs.length === 1 ? ' subitem' : ' subitens') : '', c.origem === 'modelo' ? 'da persona' : 'só deste percurso', i.prazo ? 'prazo ' + dia(i.prazo) : '', 'em "' + String(c.titulo || '') + '"',
+          i.fonte ? 'Fonte: ' + i.fonte.rotulo + (i.nivel ? ' (' + i.nivel + ')' : ' (sem nível)') + ' · ' + i.fonte.url : 'Sem fonte'].filter(Boolean).join(' · '),
+        momento: '', trecho: '', certeza: 'inferido', aConferir: i.a_conferir !== false });
     });
   });
   lista(p.documentos).forEach(function (d) {
@@ -73,8 +81,9 @@ export function decisoesDe(itens, sel, motivos) {
 
 function itemHtml(i, m, esc) {
   var marcado = m.sel[i.k] === undefined ? true : !!m.sel[i.k];
-  var h = '<li class="mont-item"><label><input type="checkbox" data-montmarca="' + esc(i.k) + '"' + (marcado ? ' checked' : '') + '> <span><b>' + esc(i.titulo) + '</b>' +
-    (i.aConferir ? ' <span class="pill u-media">a conferir</span>' : '') + '<br><small class="sub">' + esc(i.detalhe) + (i.aConferir ? ' · não vai para ela até você conferir a fonte' : '') + '</small>' +
+  var h = '<li class="mont-item"><label><input type="checkbox" data-montmarca="' + esc(i.k) + '"' + (marcado ? ' checked' : '') + '> <span>' + (i.demarche ? '<span class="pill">' + esc(i.demarche) + '</span> ' : '') + '<b>' + esc(i.titulo) + '</b>' +
+    (i.aConferir ? ' <span class="pill u-media">a conferir</span>' : '') + '<br><small class="sub">' + esc(i.demarche && i.detalhe.indexOf(i.demarche + ' · ') === 0 ? i.detalhe.slice(i.demarche.length + 3) : i.detalhe) + (i.aConferir ? ' · não vai para ela até você conferir a fonte' : '') + '</small>' +
+    (i.subitens && i.subitens.length ? '<ul class="mont-sub" aria-label="Subitens">' + i.subitens.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul>' : '') +
     (i.trecho || i.momento ? '<br><small class="sub">' + (i.momento ? 'Na conversa, ' + esc(i.momento) : 'Na conversa') + (i.trecho ? ': “' + esc(i.trecho) + '”' : '') + '</small>' : '') + '</span></label>';
   if (!marcado) {
     h += '<select data-montmotivo="' + esc(i.k) + '" aria-label="Por que não entra"><option value="">Por que não entra? (opcional)</option>' +
@@ -185,4 +194,25 @@ export function painelHtml(m, c, esc) {
   if (m.estado !== 'proposta' && m.estado !== 'aplicando') h += acessoHtml(m, c, esc);
   if (m.msg) h += '<p class="sub" role="status" style="margin:8px 0 0"><b>' + esc(m.msg) + '</b></p>';
   return h + '</section>';
+}
+
+// ---------- Os passos propostos, na sessão Checklist da Plataforma ----------
+// Cada passo que a montagem criou para ela, com o mesmo detalhe do Checklist: démarche, subitens, de onde vem (da persona ou só deste percurso),
+// prazo e lista. aco = linhas de caso_acoes; listas = linhas de caso_listas. h = { esc, rotulo(chaveDemarche), prazo(acao), pil(txt, cls), btn(acao, id, rot), linha(esq, meio, btns) }.
+export function passosPropostosHtml(aco, listas, h) {
+  var e = h.esc, tit = {};
+  lista(listas).forEach(function (l) { tit[l.chave] = l.titulo; });
+  var passos = lista(aco).filter(function (a) { return a.dono === 'ela' && a.canal === 'plataforma' && /^(enc|chk):/.test(a.origem_chave || ''); });
+  if (!passos.length) return '';
+  return passos.map(function (a) {
+    var subs = lista(a.subitens), fim = a.estado === 'concluida';
+    var est = fim ? h.pil('Concluído', 'u-baixa') : a.publicada_em ? h.pil('Publicado', 'u-baixa') : a.a_conferir ? h.pil('A conferir', 'u-media') : h.pil('Rascunho', 'u-media');
+    var meta = [a.demarche ? h.rotulo(a.demarche) : 'Sem démarche', subs.length ? subs.length + (subs.length === 1 ? ' subitem' : ' subitens') : '', a.camada === 'persona' ? 'da persona' : 'só deste percurso',
+      h.prazo(a), a.lista_chave && tit[a.lista_chave] ? 'lista "' + tit[a.lista_chave] + '"' : ''].filter(Boolean).join(' · ');
+    var corpo = (fim ? '<s>' + e(a.titulo) + '</s>' : '<b>' + e(a.titulo) + '</b>') + '<br><span class="sub">' + e(meta) + '</span>' +
+      (subs.length ? '<ul class="mont-sub" aria-label="Subitens">' + subs.map(function (x) { return '<li>' + e(String(x)) + '</li>'; }).join('') + '</ul>' : '') +
+      (a.a_conferir && !a.publicada_em ? '<br><small class="sub">Falta conferir a fonte: não vai para ela antes (use "Conferi a fonte" na Montagem do espaço).</small>' : '');
+    var btns = a.publicada_em ? h.btn('aco-retirar', a.id, 'Retirar') : (a.a_conferir || fim ? '' : h.btn('aco-pub', a.id, 'Publicar para ela'));
+    return h.linha(est, corpo, btns);
+  }).join('');
 }
