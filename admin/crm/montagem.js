@@ -195,3 +195,24 @@ export function painelHtml(m, c, esc) {
   if (m.msg) h += '<p class="sub" role="status" style="margin:8px 0 0"><b>' + esc(m.msg) + '</b></p>';
   return h + '</section>';
 }
+
+// ---------- Os passos propostos, na sessão Checklist da Plataforma ----------
+// Cada passo que a montagem criou para ela, com o mesmo detalhe do Checklist: démarche, subitens, de onde vem (da persona ou só deste percurso),
+// prazo e lista. aco = linhas de caso_acoes; listas = linhas de caso_listas. h = { esc, rotulo(chaveDemarche), prazo(acao), pil(txt, cls), btn(acao, id, rot), linha(esq, meio, btns) }.
+export function passosPropostosHtml(aco, listas, h) {
+  var e = h.esc, tit = {};
+  lista(listas).forEach(function (l) { tit[l.chave] = l.titulo; });
+  var passos = lista(aco).filter(function (a) { return a.dono === 'ela' && a.canal === 'plataforma' && /^(enc|chk):/.test(a.origem_chave || ''); });
+  if (!passos.length) return '';
+  return passos.map(function (a) {
+    var subs = lista(a.subitens), fim = a.estado === 'concluida';
+    var est = fim ? h.pil('Concluído', 'u-baixa') : a.publicada_em ? h.pil('Publicado', 'u-baixa') : a.a_conferir ? h.pil('A conferir', 'u-media') : h.pil('Rascunho', 'u-media');
+    var meta = [a.demarche ? h.rotulo(a.demarche) : 'Sem démarche', subs.length ? subs.length + (subs.length === 1 ? ' subitem' : ' subitens') : '', a.camada === 'persona' ? 'da persona' : 'só deste percurso',
+      h.prazo(a), a.lista_chave && tit[a.lista_chave] ? 'lista "' + tit[a.lista_chave] + '"' : ''].filter(Boolean).join(' · ');
+    var corpo = (fim ? '<s>' + e(a.titulo) + '</s>' : '<b>' + e(a.titulo) + '</b>') + '<br><span class="sub">' + e(meta) + '</span>' +
+      (subs.length ? '<ul class="mont-sub" aria-label="Subitens">' + subs.map(function (x) { return '<li>' + e(String(x)) + '</li>'; }).join('') + '</ul>' : '') +
+      (a.a_conferir && !a.publicada_em ? '<br><small class="sub">Falta conferir a fonte: não vai para ela antes (use "Conferi a fonte" na Montagem do espaço).</small>' : '');
+    var btns = a.publicada_em ? h.btn('aco-retirar', a.id, 'Retirar') : (a.a_conferir || fim ? '' : h.btn('aco-pub', a.id, 'Publicar para ela'));
+    return h.linha(est, corpo, btns);
+  }).join('');
+}

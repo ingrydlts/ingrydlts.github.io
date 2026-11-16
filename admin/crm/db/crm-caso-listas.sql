@@ -67,6 +67,9 @@ create trigger caso_listas_guarda before insert or update on public.caso_listas 
 -- ---------- 2. A ação pertence a uma lista e tem uma camada ----------
 alter table public.caso_acoes add column if not exists lista_chave text check (lista_chave is null or lista_chave ~ '^[a-z0-9_]{1,40}$');
 alter table public.caso_acoes add column if not exists camada text check (camada is null or camada in ('persona', 'particular', 'entrega_equipe'));
+-- Démarche (tipo de checklist: banco, caf, visa_estudante…) e subitens (os pontos do passo) de cada ação: o mesmo detalhe do Checklist da persona.
+alter table public.caso_acoes add column if not exists demarche text check (demarche is null or demarche ~ '^[a-z0-9_]{1,40}$');
+alter table public.caso_acoes add column if not exists subitens jsonb check (subitens is null or (jsonb_typeof(subitens) = 'array' and jsonb_array_length(subitens) <= 6));
 do $$
 begin
   if not exists (select 1 from pg_constraint where conname = 'caso_acoes_lista_fk') then
@@ -117,7 +120,7 @@ begin
     'acoes', coalesce((
       select jsonb_agg(jsonb_build_object('id', a.id, 'n', a.n, 'titulo', a.titulo, 'passo_chave', a.passo_chave, 'prazo', a.prazo,
                'prazo_texto', a.prazo_texto, 'prazo_a_confirmar', a.prazo_a_confirmar, 'estado', a.estado, 'botao', a.botao,
-               'lista_chave', a.lista_chave) order by a.n nulls last, a.id)
+               'lista_chave', a.lista_chave, 'demarche', a.demarche, 'subitens', a.subitens, 'camada', a.camada) order by a.n nulls last, a.id)
         from caso_acoes a where a.contato_id = v_c and a.dono = 'ela' and a.canal = 'plataforma' and a.publicada_em is not null
          and (a.lista_chave is null or exists (select 1 from caso_listas l where l.contato_id = a.contato_id and l.chave = a.lista_chave and l.estado = 'publicado'))), '[]'::jsonb),
     'avisos', coalesce((

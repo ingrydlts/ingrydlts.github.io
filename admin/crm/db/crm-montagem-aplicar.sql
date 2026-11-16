@@ -68,7 +68,7 @@ declare
   v_conf text[] := '{}';
   ac caso_acoes%rowtype; li caso_listas%rowtype; bi board_itens%rowtype; av caso_avisos%rowtype;
   v_dados jsonb; v_titulo text; v_ctx jsonb; v_chave text;
-  v_dono text; v_prazo date; v_pt text; v_cert text; v_conferir boolean; v_passo text; v_camada text; v_lista text;
+  v_dono text; v_prazo date; v_pt text; v_cert text; v_conferir boolean; v_passo text; v_camada text; v_lista text; v_dem text; v_subs jsonb;
 begin
   if not public.eh_admin() then raise exception 'sem_permissao'; end if;
   if p_decisoes is null or jsonb_typeof(p_decisoes) <> 'array' then raise exception 'decisoes_invalidas'; end if;
@@ -111,7 +111,7 @@ begin
 
     elsif it.kind in ('enc', 'chk') then
       if it.kind = 'enc' then
-        v_titulo := left(it.d->>'texto', 160); v_dono := it.d->>'dono'; v_camada := it.d->>'camada'; v_lista := null;
+        v_titulo := left(it.d->>'texto', 160); v_dono := it.d->>'dono'; v_camada := it.d->>'camada'; v_lista := null; v_dem := null; v_subs := null;
         v_prazo := nullif(it.d->>'prazo', '')::date; v_pt := nullif(it.d->>'prazo_texto', '');
         v_cert := case when it.d->>'certeza' = 'literal' then 'literal' else 'inferido' end;
         v_conferir := (it.d->>'certeza') = 'confirmar';
@@ -122,18 +122,20 @@ begin
         v_titulo := left(it.d->>'titulo', 160); v_dono := 'ela'; v_camada := case when it.ctx->>'origem' = 'modelo' then 'persona' else 'particular' end;
         v_prazo := nullif(it.d->>'prazo', '')::date; v_pt := null; v_cert := 'inferido';
         v_conferir := coalesce((it.d->>'a_conferir')::boolean, true);
+        v_dem := nullif(it.d->>'demarche', '');
+        v_subs := case when jsonb_typeof(it.d->'subitens') = 'array' and jsonb_array_length(it.d->'subitens') > 0 then it.d->'subitens' else null end;
         v_passo := left('mont_' || v_lista || '_' || (it.d->>'chave'), 60);
       end if;
       select * into ac from caso_acoes where contato_id = p_contato and origem_chave = it.k;
       if not found then
-        insert into caso_acoes (contato_id, origem_chave, titulo, dono, canal, passo_chave, prazo, prazo_texto, prazo_a_confirmar, certeza, camada, lista_chave, a_conferir)
-        values (p_contato, it.k, v_titulo, v_dono, case when v_dono = 'ela' then 'plataforma' else 'so_eu' end, v_passo, v_prazo, v_pt, (v_pt is not null and v_prazo is null), v_cert, v_camada, v_lista, v_conferir);
+        insert into caso_acoes (contato_id, origem_chave, titulo, dono, canal, passo_chave, prazo, prazo_texto, prazo_a_confirmar, certeza, camada, lista_chave, a_conferir, demarche, subitens)
+        values (p_contato, it.k, v_titulo, v_dono, case when v_dono = 'ela' then 'plataforma' else 'so_eu' end, v_passo, v_prazo, v_pt, (v_pt is not null and v_prazo is null), v_cert, v_camada, v_lista, v_conferir, v_dem, v_subs);
         v_criados := v_criados + 1;
       elsif ac.estado <> 'aberta' or ac.publicada_em is not null or ac.concluida_em is not null then v_conf := v_conf || it.k;
-      elsif (ac.titulo, ac.dono, ac.prazo, ac.prazo_texto, ac.certeza, ac.camada, ac.lista_chave, ac.a_conferir)
-            is distinct from (v_titulo, v_dono, v_prazo, v_pt, v_cert, v_camada, v_lista, v_conferir) then
+      elsif (ac.titulo, ac.dono, ac.prazo, ac.prazo_texto, ac.certeza, ac.camada, ac.lista_chave, ac.a_conferir, ac.demarche, ac.subitens)
+            is distinct from (v_titulo, v_dono, v_prazo, v_pt, v_cert, v_camada, v_lista, v_conferir, v_dem, v_subs) then
         update caso_acoes set titulo = v_titulo, dono = v_dono, canal = case when v_dono = 'ela' then 'plataforma' else 'so_eu' end, passo_chave = v_passo, prazo = v_prazo, prazo_texto = v_pt,
-               prazo_a_confirmar = (v_pt is not null and v_prazo is null), certeza = v_cert, camada = v_camada, lista_chave = v_lista, a_conferir = v_conferir where id = ac.id;
+               prazo_a_confirmar = (v_pt is not null and v_prazo is null), certeza = v_cert, camada = v_camada, lista_chave = v_lista, a_conferir = v_conferir, demarche = v_dem, subitens = v_subs where id = ac.id;
         v_atualizados := v_atualizados + 1;
       else v_mantidos := v_mantidos + 1; end if;
 

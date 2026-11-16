@@ -54,7 +54,7 @@ async function main() {
       { chave: 'mandar_guia', texto: 'Enviar o guia de escolas', camada: 'entrega_equipe', dono: 'ingryd', prazo: null, prazo_texto: '', origem: o, certeza: 'literal', cobre: [0] }],
     checklists: [{ chave: 'dossie_empresa', titulo: 'Dossiê para empresas', origem: 'particular', itens: [
       { chave: 'cv_fr', titulo: 'Montar o CV em francês', demarche: 'trabalho', subitens: ['Versão em francês', 'Revisar com a equipe'], prazo: null, fonte: null, nivel: null, a_conferir: true },
-      { chave: 'carta', titulo: 'Escrever a carta de motivação', prazo: null, fonte: { rotulo: 'Guia', url: 'https://exemplo.org/guia' }, nivel: 'institucional', a_conferir: false }] }],
+      { chave: 'carta', titulo: 'Escrever a carta de motivação', demarche: 'estudos', subitens: ['Escolher a escola'], prazo: null, fonte: { rotulo: 'Guia', url: 'https://exemplo.org/guia' }, nivel: 'institucional', a_conferir: false }] }],
     documentos: [{ chave: 'diploma', rotulo: 'Diploma do ensino médio', selos: ['traducao'], checklists: ['dossie_empresa'], direcao: 'ela_envia', cobre: [] }],
     perguntas_equipe: [{ chave: 'fim_pvt', texto: 'Quando termina o seu PVT?', resposta_tipo: 'data', grava_em: 'respostas.fim_pvt' }],
     blocos: [{ tipo: 'empresa', titulo: 'Empresas para contactar', itens: [{ chave: 'acme', nome: 'Acme SAS', link: 'https://acme.example/estagio', canal: 'e-mail', nota: 'Pedir atestado' }] }],
@@ -79,6 +79,7 @@ async function main() {
   check('encaminhamento da equipe e a omissão viram pendência só da equipe', a2.dono === 'ingryd' && a2.canal === 'so_eu' && a2.camada === 'entrega_equipe' && a3.dono === 'ingryd' && a3.camada === 'entrega_equipe');
   const lst = await um("select * from caso_listas where contato_id=$1 and chave='dossie_empresa'", [ana.c]);
   check('checklist vira lista proposta, com os itens ligados a ela e a camada "particular"', lst.estado === 'proposto' && lst.origem === 'particular' && (await q("select * from caso_acoes where contato_id=$1 and lista_chave='dossie_empresa' and camada='particular'", [ana.c])).length === 2);
+  check('o passo guarda a démarche e os subitens da proposta; encaminhamento comum fica sem eles', (await ac('chk:dossie_empresa:cv_fr')).demarche === 'trabalho' && JSON.stringify((await ac('chk:dossie_empresa:cv_fr')).subitens) === JSON.stringify(['Versão em francês', 'Revisar com a equipe']) && a1.demarche === null && a1.subitens === null);
   check('item sem fonte nasce a_conferir; com fonte, não', (await ac('chk:dossie_empresa:cv_fr')).a_conferir === true && (await ac('chk:dossie_empresa:carta')).a_conferir === false);
   const doc = await um("select * from board_itens where contato_id=$1 and origem_chave='doc:diploma'", [ana.c]);
   check('documento vira item do espaço (proposto) com selos e checklists', doc.tipo === 'documento' && doc.estado === 'proposto' && doc.dados.selos[0] === 'traducao' && doc.dados.checklists[0] === 'dossie_empresa' && doc.dados.direcao === 'reune' && doc.titulo === 'Diploma do ensino médio');
@@ -93,6 +94,9 @@ async function main() {
   console.log('\n== Idempotência e o que a equipe já decidiu ==');
   const r2 = await aplicar(ana, m1, aprovarTudo(p1));
   check('aplicar de novo não duplica nada', r2.criados === 0 && r2.mantidos === 9 && (await um('select count(*)::int n from caso_acoes where contato_id=$1', [ana.c])).n === 5);
+  const pS = JSON.parse(JSON.stringify(p1)); pS.checklists[0].itens[0].subitens = ['Só a versão em francês']; const mS = await montagem(ana, pS);
+  const rS = await aplicar(ana, mS, aprovarTudo(pS));
+  check('subitens que mudam na releitura atualizam o passo ainda em rascunho', rS.atualizados === 1 && JSON.stringify((await ac('chk:dossie_empresa:cv_fr')).subitens) === JSON.stringify(['Só a versão em francês']));
   const idCv = (await ac('chk:dossie_empresa:cv_fr')).id, idCarta = (await ac('chk:dossie_empresa:carta')).id;
   check('item a_conferir não pode ser publicado para ela; o que tem fonte pode', await falha(() => db.query('update caso_acoes set publicada_em = now() where id = $1', [idCv]), 'a_conferir') && (await attempt(() => db.query('update caso_acoes set publicada_em = now() where id = $1', [idCarta]))).ok);
   await db.query("update board_itens set estado = 'revisado' where id = $1", [doc.id]);                          // a equipe já revisou o documento
@@ -147,6 +151,8 @@ async function main() {
   await db.query("insert into consentimentos (contato_id, finalidade, aceito) values ($1, 'servico', true)", [bia.c]);
   const pL2 = PROP(); pL2.documentos[0].rotulo = 'Diploma (v2)'; const mL2 = await montagem(bia, pL2);
   check('liberar de novo, já com consentimento: publica de verdade o que está revisado da montagem', (await lib(bia, mL)).publicados_agora === true && (await um("select estado from board_itens where contato_id=$1 and origem_chave='doc:diploma'", [bia.c])).estado === 'publicado' && (await um("select estado from caso_listas where contato_id=$1 and chave='dossie_empresa'", [bia.c])).estado === 'publicado');
+  const mcB = await meu(bia), pasB = mcB.acoes.find((a) => a.passo_chave === 'mont_dossie_empresa_carta');
+  check('o app recebe a démarche, os subitens e a camada do passo publicado', pasB && pasB.demarche === 'estudos' && JSON.stringify(pasB.subitens) === JSON.stringify(['Escolher a escola']) && pasB.camada === 'particular');
   check('montagem descartada não pode ser aplicada', await (async () => { await asUser(admin.id, () => db.query('select crm_montagem_descartar($1)', [mL2.id])); return falha(() => aplicar(bia, mL2, aprovarTudo(pL2)), 'montagem_descartada'); })());
 
   console.log('\n== Acesso ==');
