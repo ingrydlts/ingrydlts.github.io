@@ -1374,3 +1374,9 @@ details.ee-sec[open]>summary{margin-bottom:8px}
   #fx-hd .hd-k .hd-dd[open]{grid-column:1/-1}
   #fx-hd .hd-k .hd-dd[open] .hd-pop{position:static; width:auto; margin:0 12px 12px; box-shadow:none; border:0; border-top:1px solid var(--line); border-radius:0; padding:10px 0 0}
 }
+
+/* Colunas sempre iguais (a largura de um cartão nunca depende do conteúdo escondido do vizinho): --n = quantos cartões */
+#fx-hd .hd-k{grid-template-columns:repeat(var(--n,4),minmax(0,1fr))}
+@media (max-width:980px){#fx-hd .hd-k{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media (max-width:640px){#fx-hd .hd-k{grid-template-columns:repeat(2,minmax(0,1fr))}}
+#fx-hd .hd-k .l,#fx-hd .hd-k .v{max-width:100%}
