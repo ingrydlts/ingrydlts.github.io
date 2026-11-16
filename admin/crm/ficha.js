@@ -170,7 +170,8 @@ export function gravarPrefs(storage, prefs) {
 // assinante = assinatura ativa ou em teste; plataforma = tem conta no app e não assina (ou a assinatura não está em dia); lead = o resto.
 export function tipoCabecalho(c, assin) {
   if (assin && (assin.status === 'active' || assin.status === 'trialing')) return 'assinante';
-  return c && c.user_id ? 'plataforma' : 'lead';
+  // O app só abre para quem paga: sem nenhuma assinatura registrada a pessoa é lead, mesmo com conta criada.
+  return assin ? 'plataforma' : 'lead';
 }
 const ETIQUETA_PAGTO = {
   active: ['Assinatura ativa', 'ok'], trialing: ['Em teste', 'ok'], past_due: ['Pagamento em atraso', 'aviso'],
