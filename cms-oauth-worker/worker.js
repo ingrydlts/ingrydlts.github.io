@@ -3234,6 +3234,8 @@ async function crmMontagemChamarIA(env, cat, transcricao, notas, recusa) {
     const msg = String((corpo && corpo.error && corpo.error.message) || '');
     console.error('crm/montagem: a API da Anthropic respondeu ' + res.status + ' ' + ((corpo && corpo.error && corpo.error.type) || ''));
     if (/credit balance|billing/i.test(msg)) return { ok: false, status: 502, codigo: 'creditos_ia', erro: 'Os créditos da API da Anthropic acabaram. Reponha em console.anthropic.com → Plans & Billing e tente de novo.' };
+    // 400 que não é de crédito: mostra o motivo real da Anthropic (a rota é só da admin; a mensagem descreve o pedido, não o conteúdo da conversa).
+    if (res.status === 400) return { ok: false, status: 502, codigo: 'ia_400', erro: 'A IA recusou o pedido (400): ' + crmOnbLimpaTexto(msg || 'sem detalhe', 240, false) };
     if (res.status === 401 || res.status === 403) return { ok: false, status: 502, codigo: 'chave_ia', erro: 'A API da Anthropic recusou a chave (ANTHROPIC_API_KEY). Confira o secret no Worker.' };
     if (res.status === 404 || /model: |model not found|does not exist|not a valid model/i.test(msg)) return { ok: false, status: 502, codigo: 'modelo_ia', erro: 'A API da Anthropic não aceitou o modelo (ANTHROPIC_MODEL). Confira o nome da variável no Worker.' };
     if (res.status === 413) return { ok: false, status: 413, codigo: 'texto_grande', erro: 'A transcrição passou do tamanho que a IA aceita. Corte a parte que não interessa.' };

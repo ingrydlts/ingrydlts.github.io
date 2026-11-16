@@ -156,5 +156,12 @@ r = await ler(corpoOk());
 check('IA não configurada: 503 com mensagem clara', r.status === 503);
 env.ANTHROPIC_MODEL = e0;
 
+chamadas = []; fakeFetch(base([/api\.anthropic\.com/, { status: 400, body: { type: 'error', error: { type: 'invalid_request_error', message: 'tools.0.input_schema: exemplo do motivo real' } } }]));
+r = await ler(corpoOk()); j = await r.json();
+check('IA recusa com 400: a mensagem real da Anthropic aparece (só para a admin), para dar para corrigir', r.status === 502 && j.codigo === 'ia_400' && /exemplo do motivo real/.test(j.error));
+chamadas = []; fakeFetch(base([/api\.anthropic\.com/, { status: 400, body: { type: 'error', error: { type: 'invalid_request_error', message: 'Your credit balance is too low to access the Anthropic API.' } } }]));
+r = await ler(corpoOk()); j = await r.json();
+check('400 por falta de créditos continua com a mensagem de créditos', j.codigo === 'creditos_ia');
+
 console.log(`\n${passed} passaram, ${failed} falharam`);
 process.exit(failed ? 1 : 0);
