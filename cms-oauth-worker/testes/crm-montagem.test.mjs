@@ -139,7 +139,7 @@ let j = await r.json();
 check('leitura certa: 200 com a proposta validada, o id e o custo', r.status === 200 && j.ok === true && j.id === 5 && j.proposta.checklists.length === 1 && j.custo_usd > 0);
 check('a IA é chamada uma vez, com a ferramenta registrar_montagem, e a transcrição vai dentro de uma tag de dado', doAnthropic().length === 1 && doAnthropic()[0].body.tools[0].name === 'registrar_montagem' && /<transcricao>/.test(doAnthropic()[0].body.messages[0].content));
 const ins = doInsert()[0];
-check('a IA é OBRIGADA a chamar a ferramenta (sem isso, 2 leituras pagas podem voltar sem proposta)', JSON.stringify(doAnthropic()[0].body.tool_choice) === JSON.stringify({ type: 'tool', name: 'registrar_montagem' }));
+check('tool_choice fica em "auto": há modelos que recusam "tool"/"any" (400). Se a IA não chamar a ferramenta, a segunda tentativa cobre', JSON.stringify(doAnthropic()[0].body.tool_choice) === JSON.stringify({ type: 'auto' }) && /só ela|chamando a ferramenta registrar_montagem/.test(doAnthropic()[0].body.messages[0].content));
 check('grava a proposta como pendente (o banco não recebe estado do Worker além do padrão), com hash e sem a transcrição', ins && !('estado' in ins.body) && /^[0-9a-f]{64}$/.test(ins.body.hash_entrada) && !JSON.stringify(ins.body).includes('Ignore as regras') && ins.body.contato_id === CID);
 
 chamadas = []; fakeFetch(base([/api\.anthropic\.com/, iaOk(OK())]).map((x) => (x[0].source.includes('montagens\\?select=') ? [x[0], { method: 'GET', body: [{ id: 9, proposta: OK(), custo_usd: 0.01, criado_em: '2026-11-16T10:00:00Z' }] }] : x)));
