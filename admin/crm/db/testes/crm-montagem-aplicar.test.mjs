@@ -53,7 +53,7 @@ async function main() {
       { chave: 'ligar_escola', texto: 'Ligar para a escola', camada: 'particular', dono: 'ela', prazo: '2026-11-30', prazo_texto: '', origem: o, certeza: 'literal', cobre: [] },
       { chave: 'mandar_guia', texto: 'Enviar o guia de escolas', camada: 'entrega_equipe', dono: 'ingryd', prazo: null, prazo_texto: '', origem: o, certeza: 'literal', cobre: [0] }],
     checklists: [{ chave: 'dossie_empresa', titulo: 'Dossiê para empresas', origem: 'particular', itens: [
-      { chave: 'cv_fr', titulo: 'Montar o CV em francês', prazo: null, fonte: null, nivel: null, a_conferir: true },
+      { chave: 'cv_fr', titulo: 'Montar o CV em francês', demarche: 'trabalho', subitens: ['Versão em francês', 'Revisar com a equipe'], prazo: null, fonte: null, nivel: null, a_conferir: true },
       { chave: 'carta', titulo: 'Escrever a carta de motivação', prazo: null, fonte: { rotulo: 'Guia', url: 'https://exemplo.org/guia' }, nivel: 'institucional', a_conferir: false }] }],
     documentos: [{ chave: 'diploma', rotulo: 'Diploma do ensino médio', selos: ['traducao'], checklists: ['dossie_empresa'], direcao: 'ela_envia', cobre: [] }],
     perguntas_equipe: [{ chave: 'fim_pvt', texto: 'Quando termina o seu PVT?', resposta_tipo: 'data', grava_em: 'respostas.fim_pvt' }],

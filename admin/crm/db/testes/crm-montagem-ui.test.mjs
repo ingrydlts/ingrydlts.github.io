@@ -19,7 +19,7 @@ const PROP = () => ({
     { chave: 'mandar_guia', texto: 'Enviar o guia de escolas', camada: 'entrega_equipe', dono: 'ingryd', prazo: null, prazo_texto: '', origem: { momento: '45:10', trecho: 'je t\'envoie' }, certeza: 'literal', cobre: [0] },
     { chave: 'abrir_conta', texto: 'Abrir a conta no banco', camada: 'persona', dono: 'ela', prazo: null, prazo_texto: '', origem: { momento: '', trecho: '' }, certeza: 'inferido', cobre: [] }],
   checklists: [{ chave: 'dossie_empresa', titulo: 'Dossiê para empresas', origem: 'particular', itens: [
-    { chave: 'cv_fr', titulo: 'Montar o CV em francês', prazo: null, fonte: null, nivel: null, a_conferir: true },
+    { chave: 'cv_fr', titulo: 'Montar o CV em francês', demarche: 'trabalho', subitens: ['Versão em francês', 'Revisar com a equipe'], prazo: '2026-12-05', fonte: null, nivel: null, a_conferir: true },
     { chave: 'carta', titulo: 'Escrever a carta de motivação', prazo: null, fonte: { rotulo: 'Guia', url: 'https://exemplo.org/guia' }, nivel: 'institucional', a_conferir: false }] }],
   documentos: [{ chave: 'diploma', rotulo: 'Diploma do ensino médio', selos: ['traducao'], checklists: ['dossie_empresa'], direcao: 'ela_envia', cobre: [] }],
   perguntas_equipe: [{ chave: 'fim_pvt', texto: 'Quando termina o seu PVT?', resposta_tipo: 'data', grava_em: 'respostas.fim_pvt' }],
@@ -40,6 +40,18 @@ check('o singular e o plural dos itens da lista ficam certos (2 itens, 1 item)',
 check('a fonte do item (rótulo, nível e o LINK) aparece na revisão: o link que a IA citou nunca fica escondido', /https:\/\/exemplo\.org\/guia/.test(itens.find((i) => i.k === 'chk:dossie_empresa:carta').detalhe) && /institucional/.test(itens.find((i) => i.k === 'chk:dossie_empresa:carta').detalhe));
 check('o link do contato também aparece (a pessoa recebe "Abrir o site": você precisa ver para onde ele vai)', /https:\/\/acme\.example/.test(itens.find((i) => i.k === 'bloco:empresa:acme').detalhe));
 check('proposta vazia ou estranha não quebra', MT.itensDaProposta({}).length === 0 && MT.itensDaProposta(null).length === 0);
+
+console.log('\n== Démarche e subitens no item do checklist ==');
+{
+  const it = MT.itensDaProposta(PROP()).find((i) => i.k === 'chk:dossie_empresa:cv_fr');
+  check('o item traz a démarche pelo rótulo do catálogo e os subitens', it.demarche === 'Trabalho' && it.subitens.length === 2);
+  check('o detalhe segue o do Checklist real: démarche, subitens, de onde vem, prazo', /^Trabalho · 2 subitens · só deste percurso · prazo 05\/12 · em "Dossiê para empresas"/.test(it.detalhe));
+  check('item sem démarche (proposta antiga) diz "Sem démarche" e não quebra', MT.itensDaProposta(PROP()).find((i) => i.k === 'chk:dossie_empresa:carta').detalhe.startsWith('Sem démarche · '));
+  check('lista de modelo da persona diz "da persona"', MT.itensDaProposta({ checklists: [{ chave: 'a', titulo: 'A', origem: 'modelo', itens: [{ chave: 'x', titulo: 'X', demarche: 'banco', subitens: ['Um'] }] }] }).find((i) => i.k === 'chk:a:x').detalhe.startsWith('Banco · 1 subitem · da persona'));
+  const h = MT.painelHtml({ cid: 'c1', estado: 'proposta', erro: '', prop: { id: 1, versao: 1, proposta: PROP() }, sel: {}, motivos: {}, res: null, pub: null, previa: null, pode: false, forcar: false, msg: '', temTranscricao: true, diff: null, lib: null }, pessoa(), esc);
+  check('a tela mostra a pílula da démarche e os subitens do passo', h.includes('<span class="pill">Trabalho</span>') && h.includes('Versão em francês') && h.includes('mont-sub'));
+  check('as démarches da tela são as do catálogo processos.json', JSON.stringify(Object.keys(MT.DEMARCHES).sort()) === JSON.stringify(Object.keys(JSON.parse(readFileSync(new URL('../../processos.json', import.meta.url), 'utf8')).definicoes).sort()));
+}
 
 console.log('\n== O que ficou da conversa ==');
 check('promessas que só um item cumpria e foi desmarcado são avisadas (a pendência não nasce sozinha)', JSON.stringify(MT.promessasAfetadas(PROP(), { 'enc:mandar_guia': false })) === JSON.stringify(['Enviar o guia']) && MT.promessasAfetadas(PROP(), {}).length === 0);

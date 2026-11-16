@@ -163,6 +163,20 @@ chamadas = []; fakeFetch(base([/api\.anthropic\.com/, { status: 400, body: { typ
 r = await ler(corpoOk()); j = await r.json();
 check('400 por falta de créditos continua com a mensagem de créditos', j.codigo === 'creditos_ia');
 
+console.log('\n== Démarche e subitens de cada item do checklist (mesmo detalhe do Checklist real) ==');
+const comDem = (mut) => { const o = OK(); o.checklists[0].itens[0].demarche = 'trabalho'; o.checklists[0].itens[0].subitens = ['Traduzir o diploma', 'Pedir a atestação à escola']; o.checklists[0].itens[1].demarche = 'estudos'; if (mut) mut(o.checklists[0].itens); return o; };
+const falhaD = (mut) => !crmMontagemValidar(comDem(mut), CAT).ok;
+const itemSchema = schema.properties.checklists.items.properties.itens.items;
+check('o schema pede a démarche de cada item, com a lista fechada do catálogo, e aceita subitens', itemSchema.required.includes('demarche') && itemSchema.properties.demarche.enum.length === 12 && itemSchema.properties.subitens.maxItems === 6);
+check('as démarches do Worker são exatamente as do catálogo processos.json (nenhuma a mais, nenhuma a menos)', JSON.stringify(itemSchema.properties.demarche.enum.slice().sort()) === JSON.stringify(Object.keys(JSON.parse(readFileSync(path.resolve(HERE, '../../admin/crm/processos.json'), 'utf8')).definicoes).sort()));
+check('o prompt manda dar a démarche e os subitens de cada item, sem inventar exigência', /démarche/i.test(sis) && /subitens/i.test(sis) && itemSchema.properties.demarche.enum.every((d) => sis.includes(d)));
+const vd = crmMontagemValidar(comDem(), CAT);
+check('item com démarche e subitens passa e chega inteiro', vd.ok && vd.montagem.checklists[0].itens[0].demarche === 'trabalho' && vd.montagem.checklists[0].itens[0].subitens.length === 2 && vd.montagem.checklists[0].itens[0].subitens[1] === 'Pedir a atestação à escola');
+check('item sem démarche (propostas antigas) passa com démarche nula e sem subitens', v.ok && v.montagem.checklists[0].itens[0].demarche === null && v.montagem.checklists[0].itens[0].subitens.length === 0);
+check('démarche fora do catálogo derruba tudo', falhaD((it) => { it[0].demarche = 'futebol'; }));
+check('mais de 6 subitens, subitem vazio ou com dado pessoal derrubam tudo', falhaD((it) => { it[0].subitens = Array.from({ length: 7 }, (_, i) => 'Passo ' + i); }) && falhaD((it) => { it[0].subitens = ['']; }) && falhaD((it) => { it[0].subitens = ['Escrever para ana@example.com']; }));
+check('subitens que não são lista derrubam tudo', falhaD((it) => { it[0].subitens = 'um só'; }));
+
 console.log('\n== Panorama da pessoa (o retrato de como ela está) ==');
 const PAN = () => ({ leitura: 'Ansiosa com prazo e dinheiro, mas decidida a estudar francês.',
   termometros: [{ chave: 'angustia', nivel: 3, porque: 'Voltou ao prazo do visto três vezes', momento: '12:30' }, { chave: 'duvida', nivel: 2, porque: 'Não sabe se liga ou escreve', momento: '20:05' }],

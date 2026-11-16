@@ -2998,6 +2998,9 @@ const CRM_MONT_CERTEZAS = ['literal', 'inferido', 'confirmar'];
 const CRM_MONT_CAMADAS = ['persona', 'particular', 'entrega_equipe'];
 const CRM_MONT_SELOS = ['traducao', 'haia', 'equivaler', 'original'];
 const CRM_MONT_NIVEIS = ['oficial', 'institucional', 'privado', 'forum'];
+// As démarches (tipos de checklist) do catálogo admin/crm/processos.json → rótulo. O teste confere que as chaves são as mesmas do catálogo.
+const CRM_MONT_DEMARCHES = { visa_aupair: 'Visa au pair', visa: 'Visa', visa_estudante: 'Visa étudiante', estudos: 'Universidade', trabalho: 'Trabalho', profissao: 'Profissão regulamentada',
+  cir: 'Integração (CIR)', ameli: 'Ameli', caf: 'CAF', banco: 'Banco', moradia: 'Moradia', orcamento: 'Orçamento' };
 // Panorama da pessoa (retrato de como ela está): vocabulários fechados. Os rótulos em português ficam em admin/crm/panorama.js.
 const CRM_PAN_TERMOMETROS = ['angustia', 'duvida', 'urgencia', 'confianca', 'autonomia'];
 const CRM_PAN_TEMAS = ['Escola', 'Dinheiro', 'Documentos', 'Visto', 'Idioma', 'Prazos', 'Moradia', 'Trabalho', 'Família', 'Saúde'];
@@ -3032,7 +3035,7 @@ function crmMontagemSchemaIA(cat) {
         prazo: { type: ['string', 'null'], description: 'AAAA-MM-DD, só se foi dito' }, prazo_texto: texto(80), origem, certeza, cobre }, ['chave', 'texto', 'camada', 'dono', 'origem', 'certeza']),
       checklists: { type: 'array', maxItems: 6, items: { type: 'object', additionalProperties: false, required: ['chave', 'titulo', 'origem', 'itens'], properties: {
         chave, titulo: texto(80), origem: { type: 'string', enum: ['modelo', 'particular'] },
-        itens: lista(20, { chave, titulo: texto(120), prazo: { type: ['string', 'null'] }, fonte, nivel: { type: ['string', 'null'], enum: CRM_MONT_NIVEIS.concat([null]) } }, ['chave', 'titulo']) } } },
+        itens: lista(20, { chave, titulo: texto(120), demarche: { type: 'string', enum: Object.keys(CRM_MONT_DEMARCHES), description: 'o tipo de démarche (checklist) a que este passo pertence' }, subitens: { type: 'array', maxItems: 6, items: texto(120), description: 'os pontos concretos do passo (o que fazer ou reunir), só se a conversa justificar' }, prazo: { type: ['string', 'null'] }, fonte, nivel: { type: ['string', 'null'], enum: CRM_MONT_NIVEIS.concat([null]) } }, ['chave', 'titulo', 'demarche']) } } },
       documentos: lista(20, { chave, rotulo: texto(120), selos: { type: 'array', maxItems: 4, items: { type: 'string', enum: CRM_MONT_SELOS } }, checklists: { type: 'array', maxItems: 8, items: chave },
         direcao: { type: 'string', enum: ['ela_envia', 'equipe_envia'] }, cobre }, ['chave', 'rotulo']),
       perguntas_equipe: lista(8, { chave, texto: texto(300), resposta_tipo: { type: 'string', enum: ['data', 'opcoes'] }, grava_em: { type: 'string', enum: cat.destinos.map((d) => d.chave) },
@@ -3055,6 +3058,7 @@ function crmMontagemSistema(cat) {
     '3. Quando houver duas posições na mesma conversa (ex.: ligar × escrever), registre as duas posições, cada uma com o seu momento. Conte em vezes_dito quantas vezes cada uma apareceu: o que foi repetido pesa mais.',
     '4. encaminhamentos têm três camadas: persona (vale para todo mundo da situação dela), particular (só do percurso desta pessoa) e entrega_equipe (algo que a EQUIPE precisa mandar a ela: link, PDF). Cada um diz o dono (ela ou ingryd), de onde veio (momento e trecho) e a certeza.',
     '5. compromissos: liste TUDO o que a equipe prometeu mandar ou fazer (link, PDF, documento). Em cada encaminhamento ou documento que cumpre um compromisso, preencha "cobre" com o índice dele (começando em 0). Compromisso que ninguém cobre vira pendência para a equipe.',
+    '6a. Todo item de checklist leva a démarche (o tipo de checklist a que o passo pertence), UMA destas: ' + Object.keys(CRM_MONT_DEMARCHES).map((k) => k + ' (' + CRM_MONT_DEMARCHES[k] + ')').join(', ') + '; e, quando a conversa justificar, até 6 subitens: os pontos concretos do passo (o que fazer ou reunir). Os subitens seguem a mesma regra do item: nada de exigência, prazo, valor ou lei que não foi dita.',
     '6. checklists: proponha só listas que o percurso desta pessoa pede. Item com fonte oficial leva a fonte (rótulo e link https) e o nível; sem fonte, deixe a fonte de fora: ele ficará "a conferir". É proibido inventar exigência administrativa, prazo, valor ou lei que não foi dito.',
     '7. documentos: o que a pessoa precisa reunir, com os selos que a conversa justificar (traducao, haia, equivaler, original) e os checklists onde aparece.',
     '8. perguntas_equipe: só perguntas cuja resposta falta e muda o plano, e só com os destinos permitidos.',
@@ -3150,7 +3154,9 @@ function crmMontagemValidar(entrada, cat) {
       const vIt = new Set(), itens = [];
       for (const it of lista(c.itens, 20, 'checklist.itens')) {
         if (!obj(it)) F('checklist.itens: item inválido');
-        soChaves(it, ['chave', 'titulo', 'prazo', 'fonte', 'nivel'], 'item');
+        soChaves(it, ['chave', 'titulo', 'demarche', 'subitens', 'prazo', 'fonte', 'nivel'], 'item');
+        if (it.demarche !== undefined && it.demarche !== null && !Object.prototype.hasOwnProperty.call(CRM_MONT_DEMARCHES, it.demarche)) F('item: démarche fora do catálogo');
+        const subitens = lista(it.subitens, 6, 'item.subitens').map((x) => txt(x, 120, 'subitem', true));
         let fonte = null;
         if (it.fonte !== undefined && it.fonte !== null) {
           if (!obj(it.fonte)) F('item.fonte inválida');
@@ -3160,7 +3166,7 @@ function crmMontagemValidar(entrada, cat) {
         }
         if (it.nivel !== undefined && it.nivel !== null && !CRM_MONT_NIVEIS.includes(it.nivel)) F('item: nível inválido');
         // Só fonte OFICIAL ou INSTITUCIONAL tira a marca "a conferir" (um link qualquer, de fórum ou citado na conversa, não basta): a IA ouviu uma conversa, não leu a fonte.
-        itens.push({ chave: chaveDe(it.chave, 'item', vIt), titulo: txt(it.titulo, 120, 'item', true), prazo: dataDe(it.prazo, 'item'), fonte, nivel: it.nivel || null, a_conferir: !(fonte && (it.nivel === 'oficial' || it.nivel === 'institucional')) });
+        itens.push({ chave: chaveDe(it.chave, 'item', vIt), titulo: txt(it.titulo, 120, 'item', true), demarche: it.demarche || null, subitens, prazo: dataDe(it.prazo, 'item'), fonte, nivel: it.nivel || null, a_conferir: !(fonte && (it.nivel === 'oficial' || it.nivel === 'institucional')) });
       }
       m.checklists.push({ chave: chaveDe(c.chave, 'checklist', vChk), titulo: txt(c.titulo, 80, 'checklist', true), origem: c.origem, itens });
     }
