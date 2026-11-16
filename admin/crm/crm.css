@@ -1327,3 +1327,4 @@ details.ee-sec[open]>summary{margin-bottom:8px}
 .fx-pag>summary::-webkit-details-marker{display:none}
 .fx-pag>summary::after{content:'▾'; margin-left:auto; color:var(--ink-3)}
 .fx-pag-corpo{padding:0 14px 12px}
+.fx-pv-tel .fx-pv-row .bx{flex:0 0 18px; width:18px; min-width:18px; max-width:18px; height:18px; padding:0; margin:2px 8px 0 0; display:inline-block; box-sizing:border-box}
