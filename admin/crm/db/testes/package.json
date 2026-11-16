@@ -65,7 +65,13 @@
     "test:1a1-registro": "node crm-1a1-registro.test.mjs",
     "test:1a1-vinculo": "node crm-1a1-vinculo.test.mjs",
     "test:panorama": "node panorama.test.mjs",
-    "test:retrabalho-ui": "node crm-retrabalho-ui.test.mjs"
+    "test:retrabalho-ui": "node crm-retrabalho-ui.test.mjs",
+    "test:catalogo": "node crm-caso-catalogo.test.mjs",
+    "test:listas": "node crm-caso-listas.test.mjs",
+    "test:montagem": "node crm-montagem.test.mjs",
+    "test:montagem-aplicar": "node crm-montagem-aplicar.test.mjs",
+    "test:entrar": "node crm-entrar.test.mjs",
+    "test:montagem-metricas": "node crm-montagem-metricas.test.mjs"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.8"
