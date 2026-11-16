@@ -1166,3 +1166,21 @@ details.ee-sec[open]>summary{margin-bottom:8px}
 .st-excl-i{display:flex; gap:8px; align-items:center; justify-content:space-between; padding:6px 4px; border-top:1px solid var(--line); font-size:12.5px}
 .st-excl-i > span{min-width:0} .st-excl-i b{display:block; font-weight:600} .st-excl-i .btn{flex:none}
 .ee-irmaos .ee-et{max-width:420px}
+
+/* Próximas mensagens da IAssistente (Hoje): o mesmo cartão da "Pergunta da equipe" do app — fundo bege-claro sem borda, raio 22,
+   etiqueta azul em caixa-alta, título em serifa, botões em pílula com contorno azul. */
+.fila-card{--azul:#5F87AE; background:var(--surface); border:0; border-radius:22px; padding:18px 20px}
+:root[data-theme="dark"] .fila-card{--azul:#8AACD2}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .fila-card{--azul:#8AACD2}}
+.fila-kicker{font-size:11px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--azul); margin-bottom:6px}
+.fila-titulo{font-size:16px; margin:0 0 4px}
+.fila-texto{margin:0 0 6px; font-size:13.5px; color:var(--ink-2); line-height:1.5}
+.fila-item{padding:12px 0 2px; border-top:1px solid var(--line); margin-top:10px}
+.fila-quem{display:block; width:100%; text-align:left; background:none; border:0; padding:0; color:inherit; font:inherit; cursor:pointer}
+.fila-quem b{display:block; font-family:var(--display); font-size:16px; font-weight:600; line-height:1.3}
+.fila-quem span{display:block; font-size:13.5px; color:var(--ink-2); margin-top:2px}
+.fila-quem:hover b{text-decoration:underline}
+.fila-acoes{display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin:10px 0 8px}
+.fila-card .fila-acoes .btn{background:transparent; border:0; border-radius:999px; box-shadow:inset 0 0 0 1.5px var(--azul); color:var(--ink); font-weight:600; padding:9px 16px !important; font-size:13px !important}
+.fila-card .fila-acoes .btn:hover{background:rgba(95,135,174,.12)}
+.fila-card .fila-acoes .btn[disabled]{opacity:.55}

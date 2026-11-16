@@ -1661,8 +1661,8 @@ function renderFilaHoje() {
   box.hidden = !lista.length;
   $('today-fila').innerHTML = lista.map(function (a) {
     var c = byC(a.contato_id);
-    return '<div class="row" style="flex-wrap:wrap;align-items:flex-start"><button class="link" data-caso-ficha="' + esc(c.id) + '" type="button" style="text-align:left;flex:1 1 220px">' +
-      '<b>' + esc(short(c)) + '</b><br><span class="sub">' + esc(a.titulo) + ' · ' + esc(casoSaiEm(a)) + '</span></button><div class="ab" style="flex:0 0 auto">' + casoRitmoBtns(a, true, 'h-') + '</div></div>';
+    return '<div class="fila-item"><button class="fila-quem" data-caso-ficha="' + esc(c.id) + '" type="button">' +
+      '<b>' + esc(short(c)) + '</b><span>' + esc(a.titulo) + ' · ' + esc(casoSaiEm(a)) + '</span></button><div class="fila-acoes">' + casoRitmoBtns(a, true, 'h-') + '</div></div>';
   }).join('');
 }
 async function casoAcao(acao, id, t) {

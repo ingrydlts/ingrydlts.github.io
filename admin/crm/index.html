@@ -67,11 +67,12 @@
           <div id="attention"></div>
         </div>
         <div style="display:flex; flex-direction:column; gap:16px">
-          <div class="panel" id="today-fila-box" hidden style="border-color:var(--moss)">
-            <div class="panel-h"><h3>Próximas mensagens da IAssistente</h3></div>
-            <p class="sub" style="margin:0 16px 8px">A próxima de cada pessoa. Envie antes ou atrase: o que vem depois acompanha e as pausas se mantêm.</p>
+          <section class="panel fila-card" id="today-fila-box" aria-label="Próximas mensagens da IAssistente" hidden>
+            <div class="fila-kicker">Fila de mensagens</div>
+            <h3 class="fila-titulo">Próximas mensagens da IAssistente</h3>
+            <p class="fila-texto">A próxima de cada pessoa. Envie antes ou atrase: o que vem depois acompanha e as pausas se mantêm.</p>
             <div id="today-fila"></div>
-          </div>
+          </section>
           <div class="panel">
             <div class="panel-h"><h3>Radar por persona</h3><button class="link" data-go="radar" type="button">Abrir Radar →</button></div>
             <div id="today-radar"></div>
