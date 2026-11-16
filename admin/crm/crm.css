@@ -1681,14 +1681,14 @@ button.bar-r b{text-align:right; font-variant-numeric:tabular-nums}
 .th-sort:hover{color:var(--ink)}
 
 /* Montagem do espaço (aba Dossiê → A ligação): lista de itens propostos, esqueleto de carregamento e prévia do e-mail. */
-.montagem .mont-grupo{margin:14px 0 4px;font-size:13px;letter-spacing:.02em;color:var(--texto-secundario,#6E6862)}
+.montagem .mont-grupo{margin:14px 0 4px;font-size:13px;letter-spacing:.02em;color:var(--ink-2)}
 .montagem .mont-lista{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
-.montagem .mont-item{background:#fff;border:1px solid #E2DED7;border-radius:8px;padding:8px 10px}
+.montagem .mont-item{background:var(--surface-2);border:1px solid var(--line);border-radius:8px;padding:8px 10px;color:var(--ink)}
 .montagem .mont-item label{display:flex;gap:8px;align-items:flex-start;cursor:pointer}
 .montagem .mont-item select{margin:6px 0 0 24px;max-width:100%}
 .montagem .mont-skel{display:flex;flex-direction:column;gap:8px;margin-top:8px}
-.montagem .mont-skel i{display:block;height:34px;border-radius:8px;background:linear-gradient(90deg,#ECE7DF,#F4F1EC,#ECE7DF);background-size:200% 100%;animation:mont-brilho 1.2s linear infinite}
+.montagem .mont-skel i{display:block;height:34px;border-radius:8px;background:linear-gradient(90deg,var(--sunk),var(--surface-2),var(--sunk));background-size:200% 100%;animation:mont-brilho 1.2s linear infinite}
 @keyframes mont-brilho{to{background-position:-200% 0}}
 @media (prefers-reduced-motion: reduce){.montagem .mont-skel i{animation:none}}
-.montagem .mont-previa{margin-top:8px;background:#F4F1EC;border-radius:8px;padding:10px 12px}
+.montagem .mont-previa{margin-top:8px;background:var(--sunk);border-radius:8px;padding:10px 12px;color:var(--ink)}
 .montagem .mont-texto{white-space:pre-wrap;word-break:break-word;font:inherit;font-size:13.5px;line-height:1.5;margin:6px 0 0}
