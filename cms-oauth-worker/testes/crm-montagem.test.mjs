@@ -139,7 +139,7 @@ let j = await r.json();
 check('leitura certa: 200 com a proposta validada, o id e o custo', r.status === 200 && j.ok === true && j.id === 5 && j.proposta.checklists.length === 1 && j.custo_usd > 0);
 check('a IA é chamada uma vez, com a ferramenta registrar_montagem, e a transcrição vai dentro de uma tag de dado', doAnthropic().length === 1 && doAnthropic()[0].body.tools[0].name === 'registrar_montagem' && /<transcricao>/.test(doAnthropic()[0].body.messages[0].content));
 const ins = doInsert()[0];
-check('a IA é OBRIGADA a chamar a ferramenta (sem isso, 2 leituras pagas podem voltar sem proposta)', JSON.stringify(doAnthropic()[0].body.tool_choice) === JSON.stringify({ type: 'tool', name: 'registrar_montagem' }));
+check('tool_choice fica em "auto": há modelos que recusam "tool"/"any" (400). Se a IA não chamar a ferramenta, a segunda tentativa cobre', JSON.stringify(doAnthropic()[0].body.tool_choice) === JSON.stringify({ type: 'auto' }) && /só ela|chamando a ferramenta registrar_montagem/.test(doAnthropic()[0].body.messages[0].content));
 check('grava a proposta como pendente (o banco não recebe estado do Worker além do padrão), com hash e sem a transcrição', ins && !('estado' in ins.body) && /^[0-9a-f]{64}$/.test(ins.body.hash_entrada) && !JSON.stringify(ins.body).includes('Ignore as regras') && ins.body.contato_id === CID);
 
 chamadas = []; fakeFetch(base([/api\.anthropic\.com/, iaOk(OK())]).map((x) => (x[0].source.includes('montagens\\?select=') ? [x[0], { method: 'GET', body: [{ id: 9, proposta: OK(), custo_usd: 0.01, criado_em: '2026-11-16T10:00:00Z' }] }] : x)));
@@ -155,6 +155,58 @@ const e0 = env.ANTHROPIC_MODEL; delete env.ANTHROPIC_MODEL;
 r = await ler(corpoOk());
 check('IA não configurada: 503 com mensagem clara', r.status === 503);
 env.ANTHROPIC_MODEL = e0;
+
+chamadas = []; fakeFetch(base([/api\.anthropic\.com/, { status: 400, body: { type: 'error', error: { type: 'invalid_request_error', message: 'tools.0.input_schema: exemplo do motivo real' } } }]));
+r = await ler(corpoOk()); j = await r.json();
+check('IA recusa com 400: a mensagem real da Anthropic aparece (só para a admin), para dar para corrigir', r.status === 502 && j.codigo === 'ia_400' && /exemplo do motivo real/.test(j.error));
+chamadas = []; fakeFetch(base([/api\.anthropic\.com/, { status: 400, body: { type: 'error', error: { type: 'invalid_request_error', message: 'Your credit balance is too low to access the Anthropic API.' } } }]));
+r = await ler(corpoOk()); j = await r.json();
+check('400 por falta de créditos continua com a mensagem de créditos', j.codigo === 'creditos_ia');
+
+console.log('\n== Panorama da pessoa (o retrato de como ela está) ==');
+const PAN = () => ({ leitura: 'Ansiosa com prazo e dinheiro, mas decidida a estudar francês.',
+  termometros: [{ chave: 'angustia', nivel: 3, porque: 'Voltou ao prazo do visto três vezes', momento: '12:30' }, { chave: 'duvida', nivel: 2, porque: 'Não sabe se liga ou escreve', momento: '20:05' }],
+  temas: [{ tema: 'Visto', peso: 3, nota: 'Prazo do PVT pesa mais que o resto', momento: '12:30' }, { tema: 'Dinheiro', peso: 2, nota: 'Quer parcelar a matrícula', momento: '33:10' }],
+  palavras: [{ palavra: 'parcelamento', vezes: 4 }, { palavra: 'prazo', vezes: 6 }],
+  acoes: [{ texto: 'Ligar para a escola esta semana', dono: 'ela', momento: '20:05' }, { texto: 'Mandar o guia de escolas', dono: 'ingryd', momento: '45:10' }],
+  maneiras: [{ chave: 'quer_passo_a_passo', momento: '08:00' }, { chave: 'adia_burocracia', momento: '15:20' }],
+  hipoteses: [{ texto: 'Provavelmente trava no telefone', evidencia: 'Evitou ligar duas vezes', confirmar: 'Ver se concluiu o passo Ligar', momento: '20:05' }] });
+const comPan = (mut) => { const o = OK(); o.panorama = PAN(); if (mut) mut(o.panorama); return o; };
+const falhaP = (mut) => !crmMontagemValidar(comPan(mut), CAT).ok;
+check('o schema pede o panorama, com vocabulário fechado de termômetros, temas e maneiras', schema.required.includes('panorama') && JSON.stringify(schema.properties.panorama.properties.termometros.items.properties.chave.enum) === JSON.stringify(['angustia', 'duvida', 'urgencia', 'confianca', 'autonomia']) && schema.properties.panorama.properties.temas.items.properties.tema.enum.includes('Visto') && schema.properties.panorama.properties.maneiras.items.properties.chave.enum.includes('prefere_ligar'));
+check('o prompt explica o panorama, manda não citar o que ela disse e consolidar as conversas', /panorama/i.test(sis) && /nunca cite|sem citar/i.test(sis) && /todas as conversas/i.test(sis));
+const vp = crmMontagemValidar(comPan(), CAT);
+check('panorama certo passa e chega inteiro', vp.ok && vp.montagem.panorama.termometros.length === 2 && vp.montagem.panorama.temas[0].tema === 'Visto' && vp.montagem.panorama.hipoteses[0].confirmar.length > 0 && vp.montagem.panorama.maneiras[1].chave === 'adia_burocracia');
+check('proposta sem panorama (antigas) passa com panorama vazio', v.ok && v.montagem.panorama && v.montagem.panorama.termometros.length === 0 && v.montagem.panorama.leitura === '');
+check('termômetro com chave fora da lista derruba tudo', falhaP((p) => { p.termometros[0].chave = 'raiva'; }));
+check('nível de termômetro fora de 0 a 4 derruba tudo', falhaP((p) => { p.termometros[0].nivel = 5; }) && falhaP((p) => { p.termometros[0].nivel = 1.5; }));
+check('termômetro repetido derruba tudo', falhaP((p) => { p.termometros[1].chave = 'angustia'; }));
+check('tema fora da lista, peso fora de 1 a 3 e maneira inventada derrubam tudo', falhaP((p) => { p.temas[0].tema = 'Futebol'; }) && falhaP((p) => { p.temas[0].peso = 4; }) && falhaP((p) => { p.maneiras[0].chave = 'mal_humorada'; }));
+check('dono da ação precisa ser ela ou ingryd', falhaP((p) => { p.acoes[0].dono = 'maria'; }));
+check('palavra com espaço ou com dado pessoal derruba tudo', falhaP((p) => { p.palavras[0].palavra = 'duas palavras'; }) && falhaP((p) => { p.palavras[0].palavra = 'ana@example.com'; }));
+check('dado pessoal em qualquer texto do panorama derruba tudo', falhaP((p) => { p.leitura = 'Escreve para ana@example.com'; }) && falhaP((p) => { p.hipoteses[0].evidencia = 'Ligou do 06 12 34 56 78'; }) && falhaP((p) => { p.temas[0].nota = 'Segue @ana_silva'; }));
+check('chave inesperada no panorama derruba tudo, também dentro dos itens', falhaP((p) => { p.humor = 'bom'; }) && falhaP((p) => { p.termometros[0].cor = 'vermelho'; }));
+check('mais de 5 hipóteses derruba tudo', falhaP((p) => { p.hipoteses = Array.from({ length: 6 }, () => PAN().hipoteses[0]); }));
+check('momento mal formado no panorama derruba tudo', falhaP((p) => { p.acoes[0].momento = 'meio da conversa'; }));
+
+chamadas = []; fakeFetch(base([/api\.anthropic\.com/, iaOk(comPan())]));
+r = await ler(corpoOk()); j = await r.json();
+check('a rota devolve o panorama junto da proposta, sem segunda chamada de IA', r.status === 200 && j.proposta.panorama.termometros.length === 2 && doAnthropic().length === 1);
+check('o corpo gravado leva o panorama', doInsert().length === 1 && doInsert()[0].body.proposta.panorama.leitura.length > 0);
+
+console.log('\n== Conversas anteriores entram como contexto (releitura conjunta) ==');
+const anteriorOk = [/\/montagens\?select=versao,proposta/, { method: 'GET', body: [{ versao: 1, estado: 'publicada', proposta: { panorama: PAN(), bilan: { resumo: 'NÃO DEVE IR: texto do bilan', afirmacoes: [{ texto: 'NÃO DEVE IR: afirmação', trecho: 'trecho' }] } } }] }];
+chamadas = []; fakeFetch([...adminOk, contatoOk, blocosOk, destinosOk, anteriorOk, semPendente, gravaOk, [/api\.anthropic\.com/, iaOk(comPan())]]);
+r = await ler(corpoOk());
+const msg = doAnthropic()[0] ? doAnthropic()[0].body.messages[0].content : '';
+check('a IA recebe o panorama anterior numa tag de dado, com a versão', r.status === 200 && /<panorama_anterior>/.test(msg) && /"versao":1/.test(msg) && /Provavelmente trava no telefone/.test(msg));
+check('só o panorama anterior vai, nunca o bilan, as afirmações nem os trechos', !/NÃO DEVE IR/.test(msg));
+chamadas = []; fakeFetch(base([/api\.anthropic\.com/, iaOk(comPan())]));
+r = await ler(corpoOk());
+check('sem conversa anterior não há tag de panorama anterior', !/<panorama_anterior>/.test(doAnthropic()[0].body.messages[0].content));
+chamadas = []; fakeFetch([...adminOk, contatoOk, blocosOk, destinosOk, [/\/montagens\?select=versao,proposta/, { status: 500, body: {} }], semPendente, gravaOk, [/api\.anthropic\.com/, iaOk(comPan())]]);
+r = await ler(corpoOk());
+check('se não der para ler as conversas anteriores, a leitura segue sem elas', r.status === 200 && doAnthropic().length === 1);
 
 console.log(`\n${passed} passaram, ${failed} falharam`);
 process.exit(failed ? 1 : 0);

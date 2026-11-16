@@ -80,5 +80,59 @@ console.log('== logColetado ==');
   check('tipos certos', l[0].tipo === 'Criou' && l[1].tipo === 'Adicionou escola' && l[2].tipo === 'Editou');
 }
 
+console.log('== Panorama vivo: a conversa entra no Panorama ==');
+{
+  const P1 = { leitura: 'Ansiosa com o prazo do visto, mas decidida.', termometros: [{ chave: 'angustia', nivel: 3, porque: 'Volta ao prazo do visto', momento: '12:30' }, { chave: 'duvida', nivel: 2, porque: 'Liga ou escreve?', momento: '20:05' }],
+    temas: [{ tema: 'Visto', peso: 3, nota: 'O prazo do PVT pesa', momento: '12:30' }, { tema: 'Moradia', peso: 1, nota: 'Ainda sem lugar', momento: '40:00' }],
+    palavras: [{ palavra: 'prazo', vezes: 6 }, { palavra: 'parcelamento', vezes: 2 }],
+    acoes: [{ texto: 'Ligar para a escola', dono: 'ela', momento: '20:05' }, { texto: 'Mandar o guia', dono: 'ingryd', momento: '45:10' }],
+    maneiras: [{ chave: 'quer_passo_a_passo', momento: '08:00' }],
+    hipoteses: [{ texto: 'Provavelmente trava no telefone', evidencia: 'Evitou ligar', confirmar: 'Ver se concluiu Ligar', momento: '20:05' }] };
+  const P2 = { ...P1, leitura: 'Mais calma; falta decidir a escola.', termometros: [{ chave: 'angustia', nivel: 1, porque: 'Resolveu o prazo', momento: '05:00' }, { chave: 'duvida', nivel: 2, porque: 'Liga ou escreve?', momento: '20:05' }] };
+  const c1 = { versao: 1, quando: '2026-11-10T10:00:00Z', p: P1 }, c2 = { versao: 2, quando: '2026-11-16T10:00:00Z', p: P2 };
+
+  const sem = panorama({ itens: [], escolas: [], coorte: null });
+  check('sem conversa nada muda: a.conv é nulo', sem.conv === null);
+
+  const a = panorama({ nome: 'Ana Teste', itens: [], escolas: [], coorte: null, conversas: [c1] });
+  check('com uma conversa e nenhum uso do app, já há leitura, temas e sinais', a.conv && a.conv.n === 1 && a.leitura === P1.leitura && a.temas.length === 2 && a.n > 0);
+  check('o tema da conversa tem peso e a origem com o momento', a.temas[0][0] === 'Visto' && a.ev.Visto[0].f === 'conversa 1 · 12:30' && a.ev.Visto[0].t === 'O prazo do PVT pesa');
+  check('termômetros saem com rótulo em português, nível por extenso e sem tendência (só 1 conversa)', a.conv.termo.length >= 2 && a.conv.termo[0].rotulo === 'Angústia' && a.conv.termo[0].nivelRot === 'alta' && a.conv.termo[0].tend === null);
+  check('palavras da conversa entram nas palavras do Panorama, com a contagem', a.chips.some((c) => c.w === 'prazo' && c.n === 6));
+  check('ações e maneiras ganham rótulo; a ação diz de quem é', a.conv.acoes.length === 2 && a.conv.acoes[1].dono === 'ingryd' && a.conv.maneiras[0].rotulo.length > 0 && a.conv.maneiras[0].chave === 'quer_passo_a_passo');
+  check('a hipótese ganha um id estável', a.conv.hip[0].id.indexOf('h-') === 0 && a.conv.hip[0].id === panorama({ itens: [], escolas: [], coorte: null, conversas: [c1] }).conv.hip[0].id);
+  check('angústia alta vira impulso de acolher; a promessa da equipe vira impulso de cumprir', a.imp.some((i) => /acolher/i.test(i.t)) && a.imp.length <= 3 && a.imp.every((i) => !/undefined|NaN/.test(i.msg + i.t + i.ev)));
+
+  const b = panorama({ nome: 'Ana Teste', itens: [], escolas: [], coorte: null, conversas: [c1, c2] });
+  check('com duas conversas, vale a última: leitura e termômetros', b.leitura === P2.leitura && b.conv.n === 2 && b.conv.termo[0].nivel === 1);
+  check('tendência contra a conversa anterior, em palavras e sem depender de cor', b.conv.termo[0].tend === 'caiu' && b.conv.termo[0].antes === 3 && b.conv.termo[1].tend === 'igual');
+  const sub = panorama({ itens: [], escolas: [], coorte: null, conversas: [c2, { versao: 3, quando: 'x', p: { ...P1, termometros: [{ chave: 'angustia', nivel: 4, porque: 'Piorou', momento: '01:00' }] } }] });
+  check('subiu quando o nível sobe', sub.conv.termo[0].tend === 'subiu');
+
+  const itens = [{ step_key: 'a', category: 'escola', label: 'Escolher escola', titulo_custom: 'Escolher escola com parcelamento', nota_custom: 'Ver parcelamento', quando_custom: '2026-11-20', updated_at: '2026-11-12T10:00:00Z' }];
+  const m = panorama({ nome: 'Ana Teste', itens, escolas: [], coorte: null, conversas: [c1] });
+  check('app e conversa se somam nos mesmos temas e palavras, cada um com a sua origem', m.ev.Prazos.some((x) => x.f === 'data escolhida') && m.ev.Visto.some((x) => /^conversa 1/.test(x.f)) && m.n > a.n);
+  check('a leitura junta a conversa com o uso do app', m.leitura.indexOf(P1.leitura) === 0 && /No app/.test(m.leitura));
+  check('uso do app aparece como termômetro calculado, só quando há conversa', m.conv.termo.some((t) => t.chave === 'app') && !a.conv.termo.some((t) => t.chave === 'app' && t.nivel > 0 && false));
+  const semApp = a.conv.termo.find((t) => t.chave === 'app');
+  check('sem nada no app, o uso do app é nível 0 com o porquê', semApp && semApp.nivel === 0 && /ainda/i.test(semApp.porque));
+
+  check('conversa sem panorama (proposta antiga) é ignorada', panorama({ itens: [], escolas: [], coorte: null, conversas: [{ versao: 1, quando: 'x', p: null }, { versao: 2, quando: 'x', p: {} }] }).conv === null);
+  check('panorama vazio de uma conversa que não rendeu nada não quebra', (() => { const x = panorama({ itens: [], escolas: [], coorte: null, conversas: [{ versao: 1, quando: 'x', p: { leitura: '', termometros: [], temas: [], palavras: [], acoes: [], maneiras: [], hipoteses: [] } }] }); return x.conv && x.conv.n === 1 && x.leitura.length > 0; })());
+
+  const L = logColetado({ itens: [], escolas: [], conversas: [c1, c2] });
+  check('"O que foi coletado" lista as conversas lidas, mais recente primeiro', L.length === 2 && L[0].tipo === 'Leu a conversa' && L[0].label === 'Conversa 2');
+
+  const ui2 = { sugs: {}, dd: {}, log: L };
+  const html = htmlPanorama(b, sugestoes(b), ui2, h);
+  check('o html tem "Como ela está" com nível por extenso e tendência em palavras', html.indexOf('Como ela está') >= 0 && html.indexOf('Angústia') >= 0 && /caiu/.test(html) && /alta|moderada|leve/.test(html));
+  check('o html tem as gavetas de maneiras, ações e hipóteses, com o momento para ouvir', html.indexOf('Maneiras') >= 0 && html.indexOf('Hipóteses abertas') >= 0 && html.indexOf('20:05') >= 0 && html.indexOf('Ver se concluiu Ligar') >= 0);
+  check('hipótese tem botões de confirmar e descartar', /data-fx="sugAcao"[^>]*data-v="confirmada"/.test(html) && /data-fx="sugAcao"[^>]*data-v="descartada"/.test(html));
+  check('hipótese descartada some e a confirmada mostra o estado', !htmlPanorama(b, [], { sugs: { [b.conv.hip[0].id]: 'descartada' }, dd: {} }, h).includes('Provavelmente trava') && /Confirmada/.test(htmlPanorama(b, [], { sugs: { [b.conv.hip[0].id]: 'confirmada' }, dd: {} }, h)));
+  check('o aviso de privacidade diz que da conversa entra só tema, resumo e momento', /nunca o que ela disse/.test(html));
+  check('o html da conversa escapa texto e não tem NaN/undefined', !/NaN|undefined/.test(html) && htmlPanorama(panorama({ itens: [], escolas: [], coorte: null, conversas: [{ versao: 1, quando: 'x', p: { ...P1, leitura: '<b>x</b>' } }] }), [], ui2, h).indexOf('<b>x</b>') < 0);
+  check('sem conversa, o html continua sem as gavetas novas', htmlPanorama(sem, [], ui, h).indexOf('Como ela está') < 0);
+}
+
 console.log(passed + ' ok, ' + failed + ' falhas');
 if (failed) process.exit(1);

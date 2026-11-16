@@ -164,5 +164,13 @@ check('erro do Worker na leitura: volta ao estado inicial com a mensagem e deixa
 await mod.montDescartar('c1', { disabled: false });
 check('descartar a proposta chama o banco (nada é apagado) e limpa a tela', rpcs.some((r) => r.n === 'crm_montagem_descartar') && mod.montEstado('c1').prop === null);
 
+console.log('\n== O tema escuro: nenhuma cor fixa na tela de montagem ==');
+import { readFileSync } from 'node:fs';
+import { fileURLToPath as _f } from 'node:url';
+import _p from 'node:path';
+const css = readFileSync(_p.resolve(_p.dirname(_f(import.meta.url)), '../../crm.css'), 'utf8');
+const regras = css.split('\n').filter((l) => /^\s*(\.montagem|@keyframes mont-)/.test(l) || /\.montagem/.test(l));
+check('as regras de .montagem usam as variáveis do tema (nada de #hex): uma cor fixa clara com texto claro apaga o texto no tema escuro', regras.length > 5 && regras.every((l) => !/#[0-9a-fA-F]{3,8}\b/.test(l)));
+
 console.log(`\n${passed} passaram, ${failed} falharam`);
 process.exit(failed ? 1 : 0);
