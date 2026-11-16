@@ -982,7 +982,7 @@ Do transcript do onboarding a um espaço pronto para a pessoa, sempre com a Ingr
 | `POST /api/crm/convite` `{ contato_id, enviar?, confirmo?, forcar? }` | O botão "Enviar convite de acesso". Sem `enviar`: só a prévia. Para enviar: `enviar` **e** `confirmo`. Recusa se ela já tem conta (use o aviso) e se não há nada revisado para ela ver (a menos que `forcar`). |
 | `POST /api/crm/espaco-atualizado` `{ contato_id, enviar?, confirmo? }` | Aviso por e-mail para quem **já tem conta** quando o espaço mudou. Mesma regra: prévia, depois `enviar` + `confirmo`. |
 | `POST /api/entrar/contexto` `{ t }` (público) | Com o link assinado do e-mail: primeiro nome, dias de teste e o texto exato do consentimento. Não devolve e-mail nem id. |
-| `POST /api/entrar/aceitar` `{ t, aceito, versao }` (público) | Grava o consentimento, abre o teste de **7 dias** (sem cartão, sem Stripe), cria a conta **sem senha** com o e-mail que já está na ficha e manda o e-mail com o link para criar a senha. Quem já tem conta não ganha novo teste. |
+| `POST /api/entrar/aceitar` `{ t, aceito, versao }` (público) | Grava o consentimento (texto exato) e devolve o endereço da escolha do plano (`/planos/`, link assinado para a ficha). O **cartão e os 7 dias grátis são do Stripe** (`planos/planos.json`, `teste_dias`): o webhook existente cria a conta sem senha com o e-mail da ficha, grava a assinatura e manda o link para criar a senha. Quem já tem conta e assinatura não passa por aqui de novo. |
 
 **Variáveis:** as de sempre (`ANTHROPIC_API_KEY`, `ANTHROPIC_MODEL`, `BREVO_*`, `SUPABASE_SERVICE_ROLE_KEY`) e `CRM_LINK_SECRET` (seção 18): o link do convite é assinado com ele e vale só para `/entrar/` por 14 dias.
 

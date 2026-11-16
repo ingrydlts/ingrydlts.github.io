@@ -3322,8 +3322,9 @@ async function handleCrmMontagemLer(request, env) {
 //   Sem "enviar": só a prévia. Para enviar: "enviar" E "confirmo" (o seu "pode enviar"). Nada sai sozinho.
 //   O convite só vai se houver espaço pronto (crm_montagem_publicavel) ou se você mandar "forcar": não se manda link para um espaço vazio.
 // POST /api/entrar/contexto         { t }                  (público, com o link assinado do e-mail) nome, dias de teste e o texto do consentimento.
-// POST /api/entrar/aceitar          { t, aceito, versao }  (público) grava o consentimento, abre o teste, cria a conta SEM senha com o e-mail que
-//   já está na ficha e manda o e-mail com o link para criar a senha. A pessoa não digita e-mail nem escolhe de qual ficha se trata.
+// POST /api/entrar/aceitar          { t, aceito, versao }  (público) grava o consentimento e devolve o endereço da escolha do plano (/planos/):
+//   o CARTÃO e os 7 dias grátis são do Stripe; o webhook cria a conta sem senha com o e-mail da ficha e manda o link para criar a senha.
+//   A pessoa não digita e-mail nem escolhe de qual ficha se trata.
 // O link do convite é assinado com CRM_LINK_SECRET e vale só para /entrar/ (um link da página de planos não abre aqui).
 // O link de entrada é uma credencial de uso único: não vai para o histórico de e-mails.
 const CRM_ENTRAR_URL = 'https://imigrantepordentro.com/entrar/';
@@ -3396,7 +3397,7 @@ async function crmAvisoDaFicha(request, env, tipo) {
     link = CRM_ENTRAR_URL + '?t=' + (await crmEntrarAssinar(env, contato.id));
     assunto = nome ? `${nome}, o seu espaço no Por Dentro está pronto` : 'O seu espaço no Por Dentro está pronto';
     texto = `${nome ? `Oi ${nome}!` : 'Oi!'}\n\nMontei o seu espaço na plataforma do Por Dentro com o que combinamos na nossa conversa: seus checklists, os documentos para reunir e as pessoas e lugares para você contactar.\n\n` +
-      `Para entrar, abra o link abaixo, aceite os termos e crie a sua senha. Você tem ${CRM_ENTRAR_DIAS} dias para testar a plataforma.\n\n${link}\n\nO link vale por ${CRM_ENTRAR_LINK_DIAS} dias e é só seu. Se qualquer coisa não funcionar, é só responder este e-mail.\n\nIngryd · Por Dentro`;
+      `Para entrar, abra o link abaixo e aceite os termos. Depois você escolhe o plano e cadastra o cartão: são ${CRM_ENTRAR_DIAS} dias grátis e a cobrança só começa depois desse período. Em seguida você recebe um e-mail para criar a sua senha.\n\n${link}\n\nO link vale por ${CRM_ENTRAR_LINK_DIAS} dias e é só seu. Se qualquer coisa não funcionar, é só responder este e-mail.\n\nIngryd · Por Dentro`;
   } else {
     if (!pub.conta_ja_existe) return json({ error: 'Ela ainda não tem conta. Para dar acesso, use o convite de acesso.', codigo: 'sem_conta' }, 409);
     if (!pub.tem_assinatura) return json({ error: 'Ela tem conta mas ainda não tem teste nem plano: o aviso a mandaria para o bloqueio. Use o convite de acesso, que abre o teste.', codigo: 'sem_assinatura' }, 409);
@@ -3454,28 +3455,14 @@ async function handleEntrarAceitar(request, env) {
   if (body.aceito !== true) return json({ error: 'Marque que você leu e aceita para continuar.', codigo: 'sem_aceite' }, 400);
   const contato = x.contato;
   if (contato.ja_tem_acesso) return json({ ok: true, ja_tem_conta: true });   // não renova teste, não cria conta, não manda e-mail
-  if (!env.BREVO_API_KEY || !env.BREVO_SENDER_EMAIL) return json({ error: 'config' }, 500);
+  if (String(env.CRM_LINK_SECRET || '').length < 32) return json({ error: 'config' }, 500);
   if (!(await crmLimite(env, 'entrar', contato.id, CRM_ENTRAR_MAX_ACEITES))) return json({ error: 'Muitas tentativas seguidas. Espere alguns minutos.', codigo: 'limite' }, 429);
 
-  // 1) o consentimento e o teste são gravados antes de qualquer conta existir
-  const reg = await crmRpc(env, 'crm_entrar_registrar', { p_contato: contato.id, p_dias: CRM_ENTRAR_DIAS, p_versao: CRM_ENTRAR_VERSAO, p_texto: CRM_ENTRAR_TEXTO });
-  if (!reg || !reg.status) return json({ error: 'Não consegui registrar o seu aceite agora. Tente de novo em instantes.', codigo: 'registro' }, 502);
-  // 2) a conta nasce sem senha, com o e-mail que já está na ficha
-  let link;
-  try { link = await crmLinkDeEntrada(env, contato.email); } catch (e) {
-    console.error('crm/entrar: ' + (e && e.message));
-    return json({ error: 'Não consegui criar o seu acesso agora. Tente de novo em instantes.', codigo: 'conta' }, 502);
-  }
-  // 3) o e-mail com o link para entrar e criar a senha
-  const nome = crmPrimeiroNome(contato.nome);
-  const fim = crmDiaBr(String(reg.fim_teste || '').slice(0, 10));
-  const assunto = nome ? `${nome}, o seu acesso ao Por Dentro está liberado` : 'O seu acesso ao Por Dentro está liberado';
-  const texto = `${nome ? `Oi ${nome}!` : 'Oi!'}\n\nO seu acesso ao Por Dentro está liberado. Para entrar e criar a sua senha, abra o link abaixo:\n\n${link}\n\n` +
-    (fim && reg.status === 'trialing' ? `Você pode testar a plataforma até ${fim}. Depois dessa data, é só escolher um plano para continuar; nada do que você preencher é apagado.\n\n` : '') +
-    `O link é de uso único. Se ele não abrir, responda este e-mail que eu mando outro.\n\nIngryd · Por Dentro`;
-  const r = await crmEnviarEmailSimples(env, contato, 'acesso_liberado', assunto, texto, link);
-  if (!r.ok) return json({ error: 'O seu aceite foi registrado, mas não consegui enviar o e-mail agora. Tente de novo em alguns minutos ou responda à Ingryd.', codigo: 'email' }, 502);
-  return json({ ok: true, fim_teste: reg.fim_teste || null });
+  // Só o consentimento (e o que você liberou na montagem). O CARTÃO e o teste de 7 dias grátis são do Stripe: a página leva à escolha do
+  // plano (/planos/), e o webhook existente cria a conta sem senha, grava a assinatura e manda o e-mail com o link para criar a senha.
+  const reg = await crmRpc(env, 'crm_entrar_consentir', { p_contato: contato.id, p_versao: CRM_ENTRAR_VERSAO, p_texto: CRM_ENTRAR_TEXTO });
+  if (!reg || reg.ok !== true) return json({ error: 'Não consegui registrar o seu aceite agora. Tente de novo em instantes.', codigo: 'registro' }, 502);
+  return json({ ok: true, proximo: CRM_PLANOS_URL + '?t=' + (await crmLinkAssinar(env, contato.id)) });
 }
 
 // ---------- CRM: Onboarding pelo Notion (a página da ligação, padronizada pela skill /bilan-notion → proposta PENDENTE) ----------

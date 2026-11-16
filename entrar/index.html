@@ -108,14 +108,15 @@ a.pl-btn{text-decoration:none}
           <label class="en-check" for="en-aceito"><input type="checkbox" id="en-aceito"><span id="en-texto"></span></label>
           <p class="en-links"><a href="/confidentialite/" target="_blank" rel="noopener">Política de privacidade</a> · <a href="/cgv/" target="_blank" rel="noopener">Condições gerais (CGV)</a></p>
           <p id="en-erro" class="en-erro" role="alert" hidden></p>
-          <button type="submit" class="pl-btn" id="en-botao" disabled>Aceitar e criar o meu acesso</button>
+          <button type="submit" class="pl-btn" id="en-botao" disabled>Aceitar e continuar</button>
         </form>
       </div>
 
       <div id="st-feito" class="pl-msg" hidden>
-        <h1>Quase lá!</h1>
+        <h1>Aceite registrado</h1>
         <p id="en-feito"></p>
-        <p>Se o e-mail não chegar em alguns minutos, olhe também a caixa de spam. Se ainda assim não aparecer, responda o convite: chega direto para mim.</p>
+        <a class="pl-btn" id="en-seguir" href="/planos/">Continuar para o pagamento</a>
+        <p style="margin-top:12px">Depois do pagamento você recebe um e-mail para criar a sua senha. Se algo não funcionar, responda o convite: chega direto para mim.</p>
       </div>
 
       <div id="st-ja" class="pl-msg" hidden>
@@ -208,7 +209,7 @@ function carregar() {
     CTX = c;
     if (c.ja_tem_conta) return estado('ja');
     $('en-titulo').textContent = c.nome ? c.nome + ', o seu espaço está pronto' : 'O seu espaço está pronto';
-    $('en-sub').textContent = 'Montei o seu espaço com o que combinamos na nossa conversa. Para entrar, leia e aceite abaixo: você ganha ' + c.dias + ' dias para testar a plataforma.';
+    $('en-sub').textContent = 'Montei o seu espaço com o que combinamos na nossa conversa. Para entrar, leia e aceite abaixo. Depois você escolhe o plano e cadastra o cartão: são ' + c.dias + ' dias grátis e a cobrança só começa depois desse período.';
     $('en-texto').textContent = c.texto;
     $('en-aceito').checked = false; $('en-botao').disabled = true; mostrarErro('');
     estado('aceite');
@@ -218,15 +219,19 @@ $('en-aceito').addEventListener('change', function () { $('en-botao').disabled =
 $('en-form').addEventListener('submit', function (ev) {
   ev.preventDefault();
   if (!CTX || !$('en-aceito').checked) return;
-  var botao = $('en-botao'); botao.disabled = true; botao.textContent = 'Criando o seu acesso…'; mostrarErro('');
+  var botao = $('en-botao'); botao.disabled = true; botao.textContent = 'Registrando o seu aceite…'; mostrarErro('');
   post('/api/entrar/aceitar', { t: t, aceito: true, versao: CTX.versao }).then(function (r) {
-    botao.textContent = 'Aceitar e criar o meu acesso';
+    botao.textContent = 'Aceitar e continuar';
     if (r.ok && r.ja_tem_conta) return estado('ja');
-    if (r.ok) { $('en-feito').textContent = 'Enviei um e-mail com o link para você criar a sua senha e entrar na plataforma.'; return estado('feito'); }
+    if (r.ok && /^https:\/\/imigrantepordentro\.com\/planos\/\?t=[A-Za-z0-9._-]+$/.test(r.proximo || '')) {
+      $('en-seguir').href = r.proximo; $('en-feito').textContent = 'Agora é só escolher o plano e cadastrar o cartão: ' + CTX.dias + ' dias grátis, e a cobrança só começa depois.';
+      estado('feito'); setTimeout(function () { location.assign(r.proximo); }, 1200); return;
+    }
+    if (r.ok) { botao.disabled = false; mostrarErro('Aceite registrado, mas não consegui abrir o pagamento. Tente de novo.'); return; }
     if (r.codigo === 'versao') { carregar(); return; }
     botao.disabled = !$('en-aceito').checked;
     mostrarErro(r.error || 'Não consegui criar o seu acesso agora. Tente de novo em instantes.');
-  }).catch(function () { botao.textContent = 'Aceitar e criar o meu acesso'; botao.disabled = !$('en-aceito').checked; mostrarErro('Sem conexão agora. Tente de novo em instantes.'); });
+  }).catch(function () { botao.textContent = 'Aceitar e continuar'; botao.disabled = !$('en-aceito').checked; mostrarErro('Sem conexão agora. Tente de novo em instantes.'); });
 });
 $('b-tentar').addEventListener('click', carregar);
 carregar();

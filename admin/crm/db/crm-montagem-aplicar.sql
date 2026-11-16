@@ -215,7 +215,7 @@ grant execute on function public.crm_montagem_diff(uuid, bigint) to authenticate
 -- ---------- Liberar para ela ----------
 -- A sua aprovação do rascunho. Itens do espaço e listas desta montagem passam de "proposto" a "revisado"; os passos dela (com fonte) ficam
 -- publicados. Se ela já deu o consentimento "servico", o que está revisado é publicado agora; se não, fica revisado e o aceite do convite
--- publica (crm_entrar_registrar). O que está a_conferir NÃO é liberado: só depois de "Conferi a fonte" (crm_acao_conferida).
+-- publica (crm_entrar_consentir). O que está a_conferir NÃO é liberado: só depois de "Conferi a fonte" (crm_acao_conferida).
 -- Só mexe em itens que vieram desta montagem (origem_chave) e que ainda estão como rascunho: o que você já tratou à mão não muda.
 create or replace function public.crm_montagem_liberar(p_contato uuid, p_montagem bigint) returns jsonb
 language plpgsql security definer

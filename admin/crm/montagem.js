@@ -154,9 +154,9 @@ function acessoHtml(m, c, esc) {
   var tipo = comAcesso ? 'espaco' : 'convite';
   var semEspaco = tipo === 'convite' && !p.ha_rascunho_aprovado;
   h += '<p class="sub" style="margin:0 0 6px">' + (p.itens_prontos || 0) + (p.itens_prontos === 1 ? ' item pronto' : ' itens prontos') + ' para ela ver · ' + (p.itens_a_conferir || 0) + ' a conferir (não vão para ela) · ' + (p.itens_proposta || 0) + ' ainda só proposta.</p>';
-  if (p.conta_ja_existe && !p.tem_assinatura) h += '<p class="sub" style="margin:0 0 6px">Ela tem conta, mas ainda não tem teste nem plano: o convite abre o teste de ' + DIAS_TESTE + ' dias (um aviso a mandaria para o bloqueio).</p>';
+  if (p.conta_ja_existe && !p.tem_assinatura) h += '<p class="sub" style="margin:0 0 6px">Ela tem conta, mas ainda não tem teste nem plano: o convite leva ao pagamento com ' + DIAS_TESTE + ' dias grátis (um aviso a mandaria para o bloqueio).</p>';
   if (tipo === 'espaco') h += '<p class="sub" style="margin:0 0 6px">Ela já tem conta. Se mudou algo no espaço, avise por e-mail (só sai com o seu "pode enviar").</p>';
-  else h += '<p class="sub" style="margin:0 0 6px">O convite leva um link: ela aceita os termos, cria a senha com o e-mail que já está na ficha e ganha ' + DIAS_TESTE + ' dias de teste. O que você já revisou aparece para ela quando aceitar.</p>';
+  else h += '<p class="sub" style="margin:0 0 6px">O convite leva um link: ela aceita os termos e segue para o pagamento (cartão, ' + DIAS_TESTE + ' dias grátis; a cobrança só começa depois). O e-mail com o link para criar a senha vem do Stripe, com o e-mail que já está na ficha. O que você liberou aparece para ela quando aceitar.</p>';
   if (semEspaco) h += '<p class="err" role="alert" style="margin:0 0 6px">Ainda não há nada revisado: o espaço dela estaria vazio.</p><label class="pccheck"><input type="checkbox" data-montforcar' + (m.forcar ? ' checked' : '') + '> <span>Enviar assim mesmo</span></label>';
   h += '<div class="actions" style="margin-top:6px"><button class="btn" type="button" data-montprevia="' + tipo + '">' + (tipo === 'espaco' ? 'Ver o aviso' : 'Ver o convite') + '</button> <button class="btn" type="button" data-montpub="' + esc(c.id) + '">Atualizar</button></div>';
   if (m.previa) {

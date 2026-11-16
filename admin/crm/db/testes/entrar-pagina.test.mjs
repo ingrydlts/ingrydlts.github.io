@@ -21,7 +21,7 @@ const browser = await chromium.launch();
 const CORS = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'Content-Type', 'Content-Type': 'application/json' };
 const TEXTO = 'Aceito usar a plataforma Por Dentro e receber mensagens de serviço sobre o meu caso (avisos, lembretes e respostas da equipe). Li a política de privacidade e posso retirar este consentimento quando quiser.';
 
-async function abrir({ ctx = { status: 200, body: { ok: true, nome: 'Ana', dias: 7, versao: 'entrar-teste', texto: TEXTO, ja_tem_conta: false } }, aceitar = { status: 200, body: { ok: true, fim_teste: '2026-11-23T12:00:00Z' } }, url = '/entrar/?t=abc.def', largura = 1000 } = {}) {
+async function abrir({ ctx = { status: 200, body: { ok: true, nome: 'Ana', dias: 7, versao: 'entrar-teste', texto: TEXTO, ja_tem_conta: false } }, aceitar = { status: 200, body: { ok: true, proximo: 'https://imigrantepordentro.com/planos/?t=abc.def' } }, url = '/entrar/?t=abc.def', largura = 1000 } = {}) {
   const pagina = await (await browser.newContext({ viewport: { width: largura, height: 900 } })).newPage();
   const enviados = [];
   await pagina.route('**/api/entrar/**', async (rota) => {
@@ -40,7 +40,7 @@ const visivel = async (pagina, id) => pagina.locator('#st-' + id).isVisible();
 console.log('== O aceite ==');
 let { pagina, enviados } = await abrir();
 await pagina.waitForSelector('#st-aceite:not([hidden])');
-check('mostra o nome, os 7 dias e o texto do consentimento exatamente como o Worker mandou', (await pagina.locator('#en-titulo').textContent()).includes('Ana') && (await pagina.locator('#en-sub').textContent()).includes('7 dias') && (await pagina.locator('#en-texto').textContent()) === TEXTO);
+check('mostra o nome, os 7 dias e o texto do consentimento exatamente como o Worker mandou', (await pagina.locator('#en-titulo').textContent()).includes('Ana') && (await pagina.locator('#en-sub').textContent()).includes('7 dias grátis') && (await pagina.locator('#en-sub').textContent()).includes('cartão') && (await pagina.locator('#en-texto').textContent()) === TEXTO);
 check('o botão só habilita depois de marcar que leu e aceita', await pagina.locator('#en-botao').isDisabled());
 check('o token sai da barra de endereço (não fica no histórico nem no Referer)', !pagina.url().includes('abc.def'));
 check('não há campo de e-mail nem de senha na página (a pessoa não digita nada)', (await pagina.locator('input[type=email], input[type=password], input[type=text]').count()) === 0);
@@ -49,7 +49,7 @@ check('marcado, o botão habilita', await pagina.locator('#en-botao').isEnabled(
 await pagina.click('#en-botao');
 await pagina.waitForSelector('#st-feito:not([hidden])');
 check('o aceite manda o token, aceito=true e a versão do texto que ela viu', enviados.length === 1 && enviados[0].t === 'abc.def' && enviados[0].aceito === true && enviados[0].versao === 'entrar-teste');
-check('depois do aceite avisa que o e-mail com o link da senha foi enviado', (await pagina.locator('#en-feito').textContent()).includes('e-mail'));
+check('depois do aceite mostra o caminho para o pagamento (cartão, 7 dias grátis) com o link assinado do Worker', (await pagina.locator('#en-feito').textContent()).includes('cartão') && (await pagina.locator('#en-seguir').getAttribute('href')) === 'https://imigrantepordentro.com/planos/?t=abc.def');
 await pagina.close();
 
 console.log('\n== Layout em 380 px ==');
