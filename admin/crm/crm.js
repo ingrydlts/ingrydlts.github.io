@@ -475,35 +475,45 @@ function renderCalendario() {
     var antes = ps.filter(function (p) { return !x.quando || p.pago_em <= x.quando; });
     return (antes.length ? antes : ps)[0];
   };
-  var linha = function (x, quando) {
+  // Uma conversa: a hora à esquerda, quem é, a persona e o que ela pagou (minutos).
+  var linha = function (x, hora) {
     var c = byC(x.contato_id); if (!c) return '';
     var p = pagDe(x), det = [personaLabel(c)];
-    det.push(p ? p.minutos + ' min · pago em ' + fmtDate(p.pago_em) : 'sem pagamento registrado');
-    return '<button class="row" data-open="' + esc(c.id) + '" type="button"><div class="' + avClass(c) + '">' + esc(ini(c)) + '</div><div class="who"><b>' + esc(short(c)) + '</b><span>' + esc(det.join(' · ')) + '</span></div><span class="sla num ok">' + esc(quando) + '</span></button>';
+    det.push(p ? 'pago em ' + fmtDate(p.pago_em) : 'sem pagamento registrado');
+    return '<button class="row cal-ag" data-open="' + esc(c.id) + '" type="button"><span class="cal-hora num">' + esc(hora) + '</span><div class="' + avClass(c) + '">' + esc(ini(c)) + '</div><div class="who"><b>' + esc(short(c)) + '</b><span>' + esc(det.join(' · ')) + '</span></div>' + (p ? '<span class="pill out num">' + p.minutos + ' min</span>' : '') + '</button>';
+  };
+  // As conversas agrupadas por dia: um cabeçalho por dia (Hoje, Amanhã ou o dia da semana) e as horas embaixo.
+  var rotDia = function (iso) {
+    var d0 = new Date(iso), a0 = new Date(agora.getFullYear(), agora.getMonth(), agora.getDate()), b0 = new Date(d0.getFullYear(), d0.getMonth(), d0.getDate()), dif = Math.round((b0 - a0) / 864e5);
+    var base = d0.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: '2-digit' }).replace('-feira', '');
+    return (dif === 0 ? 'Hoje · ' : dif === 1 ? 'Amanhã · ' : '') + base.charAt(0).toUpperCase() + base.slice(1);
+  };
+  var agrupa = function (xs) {
+    var out = '', i = 0;
+    while (i < xs.length) {
+      var k = dia(xs[i].quando), g = []; while (i < xs.length && dia(xs[i].quando) === k) g.push(xs[i++]);
+      out += '<section class="cal-dia"><header class="cal-dia-h"><b>' + esc(rotDia(g[0].quando)) + '</b><span class="sub">' + g.length + (g.length === 1 ? ' conversa' : ' conversas') + '</span></header>' + g.map(function (x) { return linha(x, fmtHora(x.quando)); }).join('') + '</section>';
+    }
+    return out;
   };
   var fil = state.calFil || '', lista, cab = '';
   var filBtn = function (v, rot) { return '<button type="button" class="chip" data-calfil="' + v + '" aria-pressed="' + (fil === v) + '">' + rot + '</button>'; };
   var filtros = '<div class="cal-fil" role="group" aria-label="Período da lista">' + filBtn('', 'Próximas') + filBtn('7', '7 dias') + filBtn('30', '30 dias') + filBtn('mes', 'Mês') + '</div>';
+  var porHora = function (a, b) { return a.quando < b.quando ? -1 : 1; };
   if (sel) {
-    var doDia = comData.filter(function (x) { return dia(x.quando) === sel; }).sort(function (a, b) { return a.quando < b.quando ? -1 : 1; });
-    var dd = doDia.length ? new Date(doDia[0].quando) : null;
-    cab = '<div class="cal-cab"><b>' + esc(dd ? dd.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: '2-digit' }) : '') + '</b><span class="sub">' + doDia.length + (doDia.length === 1 ? ' conversa' : ' conversas') + '</span><button class="link" type="button" data-caldia="">Ver as próximas</button></div>';
-    lista = doDia.map(function (x) { return linha(x, fmtHora(x.quando)); }).join('');
+    var doDia = comData.filter(function (x) { return dia(x.quando) === sel; }).sort(porHora);
+    cab = '<div class="cal-cab"><button class="link" type="button" data-caldia="">← Ver as próximas</button></div>';
+    lista = agrupa(doDia);
   } else if (fil) {
-    var t0 = agora.getTime() - 36e5, t1 = fil === 'mes' ? new Date(mes.getFullYear(), mes.getMonth() + 1, 1).getTime() : agora.getTime() + Number(fil) * 864e5;
-    if (fil === 'mes') t0 = mes.getTime();
-    var noPeriodo = comData.filter(function (x) { var t = new Date(x.quando).getTime(); return t >= t0 && t < t1; }).sort(function (a, b) { return a.quando < b.quando ? -1 : 1; });
+    var t0 = fil === 'mes' ? mes.getTime() : agora.getTime() - 36e5, t1 = fil === 'mes' ? new Date(mes.getFullYear(), mes.getMonth() + 1, 1).getTime() : agora.getTime() + Number(fil) * 864e5;
+    var noPeriodo = comData.filter(function (x) { var t = new Date(x.quando).getTime(); return t >= t0 && t < t1; }).sort(porHora);
     cab = '<div class="cal-cab"><span class="sub">' + noPeriodo.length + (noPeriodo.length === 1 ? ' conversa' : ' conversas') + (fil === 'mes' ? ' neste mês' : ' nos próximos ' + fil + ' dias') + '</span></div>';
-    lista = noPeriodo.map(function (x) {
-      var d3 = new Date(x.quando); return linha(x, d3.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit' }) + ' · ' + fmtHora(x.quando));
-    }).join('');
+    lista = agrupa(noPeriodo);
   } else {
-    var prox = comData.filter(function (x) { return new Date(x.quando).getTime() >= agora.getTime() - 36e5; }).sort(function (a, b) { return a.quando < b.quando ? -1 : 1; });
-    lista = prox.slice(0, 6).map(function (x) {
-      var d2 = new Date(x.quando); return linha(x, d2.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit' }) + ' · ' + fmtHora(x.quando));
-    }).join('') + semData.map(function (x) { return linha(x, 'a combinar'); }).join('') + (prox.length > 6 ? '<p class="sub" style="margin:6px 16px 10px">Mais ' + (prox.length - 6) + ' depois destes: toque num dia do calendário.</p>' : '');
+    var prox = comData.filter(function (x) { return new Date(x.quando).getTime() >= agora.getTime() - 36e5; }).sort(porHora);
+    lista = agrupa(prox.slice(0, 6)) + (semData.length ? '<section class="cal-dia"><header class="cal-dia-h"><b>A combinar</b><span class="sub">' + semData.length + ' sem data</span></header>' + semData.map(function (x) { return linha(x, '—'); }).join('') + '</section>' : '') + (prox.length > 6 ? '<p class="sub cal-mais">Mais ' + (prox.length - 6) + ' depois destas: escolha um dia no calendário ou um período acima.</p>' : '');
   }
-  box.innerHTML = filtros + '<div class="cal-grade">' + grade + '</div>' + cab + (lista ? '<div class="cal-lista">' + lista + '</div>' : '<div class="empty">' + (fil ? 'Nenhum 1:1 neste período.' : 'Nenhum 1:1 marcado.') + '</div>');
+  box.innerHTML = filtros + '<div class="cal-corpo"><div class="cal-grade">' + grade + '</div><div class="cal-direita">' + cab + (lista ? '<div class="cal-lista">' + lista + '</div>' : '<div class="empty">' + (fil ? 'Nenhum 1:1 neste período.' : 'Nenhum 1:1 marcado.') + '</div>') + '</div></div>';
 }
 // ---------- Por onde começar: tudo o que espera por você, por tipo, na ordem que você escolhe ----------
 // Cada item vem com a data desde quando espera (desde) e, se tem, os dias até o prazo. Quem já está com o prazo vencido vai sempre
