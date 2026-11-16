@@ -969,3 +969,25 @@ cota diária). Devolve `{ ok, texto, cortado }`; o texto vai até 1000 letras (o
 o log**: o app mostra o texto na caixa, a pessoa confere e envia como mensagem normal. Limite de 20 áudios por janela por pessoa. Respostas:
 `audio_nao_liberado` (403), `transcricao_nao_configurada` (503), `audio_grande` (413), `formato` (415), `sem_fala` (422), `transcricao_falhou` (502), `limite` (429).
 Teste: `node cms-oauth-worker/testes/audio-1a1.test.mjs`.
+
+## 33. Montagem do espaço e convite de acesso (`/admin/crm/` → ficha → Dossiê → "Montagem do espaço"; página `/entrar/`)
+
+Do transcript do onboarding a um espaço pronto para a pessoa, sempre com a Ingryd aprovando item a item. Nada chega à pessoa sozinho.
+
+**Rotas (todas só admin, exceto as duas de `/entrar/`):**
+
+| Rota | O que faz |
+|---|---|
+| `POST /api/crm/montagem/ler` `{ contato_id, transcricao, notas? }` | A IA lê a transcrição e devolve uma **proposta validada** (bilan com quem/momento/trecho/certeza, encaminhamentos por camada, checklists, documentos, perguntas da equipe, blocos de contatos, compromissos), gravada em `montagens` como `pendente`. Mesma entrada = mesma proposta (hash), sem nova chamada à IA. A transcrição **não é guardada**. |
+| `POST /api/crm/convite` `{ contato_id, enviar?, confirmo?, forcar? }` | O botão "Enviar convite de acesso". Sem `enviar`: só a prévia. Para enviar: `enviar` **e** `confirmo`. Recusa se ela já tem conta (use o aviso) e se não há nada revisado para ela ver (a menos que `forcar`). |
+| `POST /api/crm/espaco-atualizado` `{ contato_id, enviar?, confirmo? }` | Aviso por e-mail para quem **já tem conta** quando o espaço mudou. Mesma regra: prévia, depois `enviar` + `confirmo`. |
+| `POST /api/entrar/contexto` `{ t }` (público) | Com o link assinado do e-mail: primeiro nome, dias de teste e o texto exato do consentimento. Não devolve e-mail nem id. |
+| `POST /api/entrar/aceitar` `{ t, aceito, versao }` (público) | Grava o consentimento, abre o teste de **7 dias** (sem cartão, sem Stripe), cria a conta **sem senha** com o e-mail que já está na ficha e manda o e-mail com o link para criar a senha. Quem já tem conta não ganha novo teste. |
+
+**Variáveis:** as de sempre (`ANTHROPIC_API_KEY`, `ANTHROPIC_MODEL`, `BREVO_*`, `SUPABASE_SERVICE_ROLE_KEY`) e `CRM_LINK_SECRET` (seção 18): o link do convite é assinado com ele e vale só para `/entrar/` por 14 dias.
+
+**SQL, nesta ordem, no Supabase de teste e depois no de produção** (depois de `crm-caso*.sql`, `crm-assinaturas.sql`): `crm-caso-catalogo.sql` → `crm-caso-listas.sql` → `crm-montagem.sql` → `crm-montagem-aplicar.sql` → `crm-entrar.sql` → `crm-montagem-metricas.sql`. Depois de rodar, pedir que ela rode `db/auditoria-isolamento.sql` e `db/conferir-banco.sql` (os dois do app): vazios = pronto.
+**Atenção:** `crm-caso-catalogo.sql` e `crm-caso-listas.sql` redefinem `caso_board_chaves_ok` e `meu_caso()`. Se `crm-caso-guias.sql`, `-documentos.sql`, `-checklists.sql`, `crm-caso.sql` ou `crm-caso-importar.sql` forem rodados **depois**, voltam a versão antiga: rode os dois de novo.
+
+**Regras que o banco e o Worker impõem:** tipo de bloco e destino de resposta só os das tabelas `bloco_tipos` e `respostas_permitidas`; item sem fonte nasce `a_conferir` e não pode ser publicado; o que a equipe já revisou ou ela já concluiu nunca é alterado por uma leitura nova (vai para "conflitos"); no aceite, o que está `revisado` (itens do espaço e listas) é publicado, o que ainda é proposta não; e-mail do convite, do acesso e do aviso são texto em código (não são modelos do Estúdio) e o link de acesso não vai para o histórico de e-mails.
+**Teste:** `node cms-oauth-worker/testes/crm-montagem.test.mjs` e `crm-entrar.test.mjs`; no banco, `npm run test:catalogo | test:listas | test:montagem | test:montagem-aplicar | test:entrar | test:montagem-metricas` em `admin/crm/db/testes`; a página, `node admin/crm/db/testes/entrar-pagina.test.mjs` (Chromium).
