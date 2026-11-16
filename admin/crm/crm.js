@@ -152,6 +152,28 @@ function ini(c) { var p = displayName(c).trim().split(/\s+/); return ((p[0] || '
 function short(c) { var p = displayName(c).trim().split(/\s+/); return p[0] + (p[1] ? ' ' + p[1][0] + '.' : ''); }
 function avClass(c) { var p = personaKey(c); return p === 'sem' ? 'av b' : (p === 'conjuge' || p === 'pvt') ? 'av c' : 'av'; }
 function urgPill(u) { return '<span class="pill u-' + esc(u) + '"><span class="dot"></span>' + esc(URG[u] || u) + '</span>'; }
+// ---------- Potencial (0 a 100) ----------
+// A lista de Contatos só tem as colunas de crm_contatos (e-mail mais recente, capturas, dias sem sinal, urgência, conta, assinatura); a ficha soma a isso
+// os e-mails, as respostas, os cliques, o checklist e o link de pagamento. Os pesos são os de FX.potencial (rascunho a calibrar com a base real).
+function potEntrada(c, o) {
+  o = o || {};
+  var assin = o.assin !== undefined ? o.assin : (ASSIN[c.id] || null);
+  var dias = function (iso) { var t = Date.parse(iso || ''); return isFinite(t) ? Math.max(0, Math.floor((Date.now() - t) / 864e5)) : null; };
+  var ms = o.mails, st = c.email_status;
+  var m = ms ? { total: ms.length, abertos: ms.filter(function (x) { return x.aberto_em || x.status === 'aberto' || x.status === 'clicado'; }).length,
+    clicados: ms.filter(function (x) { return x.clicado_em || x.status === 'clicado'; }).length }
+    : { total: st ? 1 : 0, abertos: st === 'aberto' || st === 'clicado' ? 1 : 0, clicados: st === 'clicado' ? 1 : 0 };
+  var resp = o.respostas != null ? o.respostas : (c.resposta_aberta_id || c.pergunta_aberta_id ? 1 : 0);
+  return { tipo: FX.tipoCabecalho(c, assin), etapa: FX.etapaFunil(c, { mails: ms || [], propostas: [], temBilan: !!o.temBilan }), mails: m, respostas: resp,
+    respostasNovas: o.respostasNovas != null ? o.respostasNovas : resp, capturas: Number(c.capturas) || 0, materiais: origensDe(c).length,
+    diasSemSinal: c.dias != null && isFinite(Number(c.dias)) ? Number(c.dias) : null, urgencia: c.urgencia, linkPagamento: !!o.linkPagamento, assin: assin,
+    ultimoAcessoDias: o.ultimoAcessoDias !== undefined ? o.ultimoAcessoDias : dias(c.ultimo_evento_em || c.criado_em), sessoes30: o.sessoes30, chk: o.chk || null, nome: displayName(c) };
+}
+function potDe(c) { return FX.potencial(potEntrada(c)); }
+function potPill(p) {
+  var tip = p.motivos.map(function (z) { return z.t + ' (' + (z.p > 0 ? '+' : '−') + Math.abs(z.p) + ')'; }).join(' · ') || 'Sem sinais ainda';
+  return '<span class="pill pot-' + esc(p.faixa.toLowerCase().replace('é', 'e')) + '" title="' + esc(p.faixa + (p.poucosDados ? ' · poucos dados' : '') + ': ' + tip) + '"><b class="num">' + p.nota + '</b> ' + esc(p.faixa) + '</span>';
+}
 function stageLabel(k) { for (var i = 0; i < STAGES.length; i++) if (STAGES[i].k === k) return STAGES[i].l; return k; }
 function ago(d) { return d === 0 ? 'hoje' : d === 1 ? 'ontem' : d + ' dias'; }
 function hrsSince(iso) { return Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 36e5)); }
@@ -743,13 +765,16 @@ function renderLembretes() {
 }
 
 function renderContacts() {
-  var list = filtered();
+  var list = filtered().map(function (c) { return { c: c, p: potDe(c) }; });
+  if (state.potOrd) list.sort(function (a, b) { return state.potOrd === 'asc' ? a.p.nota - b.p.nota : b.p.nota - a.p.nota; });
+  var thp = $('th-pot'); if (thp) { thp.textContent = 'Potencial' + (state.potOrd === 'asc' ? ' ↑' : state.potOrd === 'desc' ? ' ↓' : ''); thp.setAttribute('aria-sort', state.potOrd === 'asc' ? 'ascending' : state.potOrd === 'desc' ? 'descending' : 'none'); }
   $('result-count').textContent = list.length;
-  $('tbody').innerHTML = list.map(function (c) {
+  $('tbody').innerHTML = list.map(function (it) {
+    var c = it.c;
     return '<tr data-id="' + esc(c.id) + '" aria-selected="' + (c.id === state.sel) + '" tabindex="0">' +
       '<td><div class="nm"><div class="' + avClass(c) + '">' + esc(ini(c)) + '</div><div><b>' + esc(displayName(c)) + (voltou(c) ? ' <span class="pill" title="Deixou o e-mail ' + nCapturas(c) + ' vezes">voltou ×' + nCapturas(c) + '</span>' : '') + '</b><span>' + esc(c.email) + '</span></div></div></td>' +
       '<td><span class="persona">' + esc(personaLabel(c)) + '</span><div class="sub">' + esc(subLabel(c)) + '</div>' + (origensDe(c).length > 1 ? '<div class="sub">' + esc(origensDe(c).map(origLabel).join(' · ')) + '</div>' : '') + '</td>' +
-      '<td>' + urgPill(c.urgencia) + '</td><td><span class="stage">' + esc(stageLabel(c.estagio)) + '</span></td>' +
+      '<td>' + potPill(it.p) + '</td><td>' + urgPill(c.urgencia) + '</td><td><span class="stage">' + esc(stageLabel(c.estagio)) + '</span></td>' +
       '<td>' + prazoCell(c) + '</td><td class="sub num">' + ago(c.dias) + '</td></tr>';
   }).join('');
   $('empty').hidden = list.length > 0;
@@ -3133,6 +3158,11 @@ function fxFilaItens(c) {
   return itens;
 }
 // As ações da equipe para esta pessoa, com os dados que o CRM já lê hoje (spec §4.3).
+function fxChkResumo(chk) {
+  if (!chk || chk.err || chk.semConta) return null;
+  var cc = chkCalc(chk, Date.now()), ativos = cc.itens.filter(function (i) { return i.status !== 'arquivado'; });
+  return { feitos: ativos.filter(function (i) { return i.status === 'concluido'; }).length, total: ativos.length, atrasados: cc.atrasados.length };
+}
 function fxTarefas(c, d) {
   var resps = d.resps || [], bilanEnviado = (d.mails || []).some(function (m) { return m.modelo === 'bilan_conversa'; });
   var dosFalta = state.dos && state.dos.cid === c.id ? dosProgresso(c, state.dos.d, state.dos.rasc).falta : 0;
@@ -3146,6 +3176,10 @@ function fxTarefas(c, d) {
     atrasados: chk && !chk.err && !chk.semConta ? chkCalc(chk, Date.now()).atrasados.length : 0,
     proximoEmail: proximoEmail(c, d.mails || [], resps, d.jor)
   };
+  var pe = potEntrada(c, { mails: d.mails || [], respostas: resps.length, respostasNovas: x.respostasNovas, temBilan: !!(state.bilan && state.bilan.cid === c.id),
+    linkPagamento: !!state.pagto, assin: state.assin || null, chk: fxChkResumo(chk) });
+  if (state.int && state.int.cid === c.id) { var uso = FX.calcularUso(state.int.err ? [] : state.int.cliques || [], Date.now()); pe.ultimoAcessoDias = uso.diasDesdeUltima; pe.sessoes30 = uso.sessoes; }
+  var pot = FX.potencial(pe); x.potNota = pot.nota; x.potAcao = FX.proximaAcao(pe, pot);
   state.fx.urg = FX.urgentes(x);   // o quadro de urgência do carrossel
   return FX.tarefasDe(x, procLabel);
 }
@@ -5884,6 +5918,7 @@ document.addEventListener('click', async function (e) {
   if (e.target.id === 'compose-backdrop') return closeCompose();
   document.querySelectorAll('details.mf-dd[open]').forEach(function (d) { if (!d.contains(e.target)) d.removeAttribute('open'); });   // a fila de hoje fecha ao clicar fora
   var t = e.target.closest('button, tr[data-id]'); if (!t) return;
+  if (t.dataset.potsort) { state.potOrd = !state.potOrd ? 'desc' : state.potOrd === 'desc' ? 'asc' : ''; return renderContacts(); }
   if (t.dataset.caldia !== undefined) { state.calDia = state.calDia === t.dataset.caldia ? '' : t.dataset.caldia; return renderCalendario(); }
   if (t.dataset.calfil !== undefined) { state.calFil = t.dataset.calfil; state.calDia = ''; return renderCalendario(); }
   if (t.dataset.hojeaba) return hojeIrAba(t.dataset.hojeaba);

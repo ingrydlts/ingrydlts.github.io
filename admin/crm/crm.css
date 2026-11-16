@@ -1672,3 +1672,10 @@ button.bar-r b{text-align:right; font-variant-numeric:tabular-nums}
 .ee-mini.add:hover, .ee-mini.add:focus-visible{border-color:var(--moss); color:var(--moss)}
 .ee-mini.del:hover, .ee-mini.del:focus-visible{border-color:var(--red); color:var(--red); background:var(--red-soft)}
 @media (hover:none){ .ee-et-ac{max-width:48px; opacity:1; margin-left:4px} }
+
+/* Potencial (0 a 100) na lista de Contatos e título ordenável */
+.pill.pot-alto{background:var(--moss-soft); color:var(--moss-ink)}
+.pill.pot-medio{background:var(--amber-soft); color:var(--amber)}
+.pill.pot-baixo{background:var(--sunk); color:var(--ink-2)}
+.th-sort{background:none; border:0; padding:0; font:inherit; color:inherit; cursor:pointer; text-transform:inherit; letter-spacing:inherit}
+.th-sort:hover{color:var(--ink)}
