@@ -1707,3 +1707,11 @@ button.bar-r b{text-align:right; font-variant-numeric:tabular-nums}
 .montagem .mont-gaveta>summary{cursor:pointer;min-height:36px;padding:8px 12px;display:flex;flex-wrap:wrap;gap:4px 10px;align-items:center;color:var(--ink)}
 .montagem .mont-gaveta>summary .sub{font-weight:400}
 .montagem .mont-gaveta>.mont-lista,.montagem .mont-gaveta>p{margin:0;padding:0 10px 10px}
+
+.dv-gav{margin-top:8px}
+.dv-gav>summary{min-height:32px}
+.dv-gav .pclinha{margin:2px 0}
+.dv-gav>summary{list-style:none}
+.dv-gav>summary::-webkit-details-marker{display:none}
+.dv-gav>summary::before{content:'▸'; display:inline-block; width:14px; color:var(--ink-3)}
+.dv-gav[open]>summary::before{content:'▾'}

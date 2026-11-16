@@ -2,15 +2,15 @@
 // Nada de service_role aqui. O banco é db/crm-fase2.sql; o desenho é o artefato "CRM Por Dentro".
 // Tudo que vem do banco é texto de terceiros (nome, e-mail, pergunta): passa sempre por esc().
 import { supabase } from '/assets/js/supabase-client.js';
-import * as TX from './taxonomia.js?v=2026-11-16.10';   // páginas, famílias e agrupamento dos modelos
-import * as ES from './estudio.js?v=2026-11-16.10';   // os blocos do estúdio de e-mails (entregas 2 e 3)
-import * as EE from './editor-email.js?v=2026-11-16.10';
-import * as EQ from './editor-quem.js?v=2026-11-16.10';
-import * as JR from './jornada.js?v=2026-11-16.10';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
-import * as FX from './ficha.js?v=2026-11-16.10';   // ficha v2: lógica pura (fila, démarches, funil, ações)
-import * as FH from './ficha-html.js?v=2026-11-16.10';   // ficha v2: HTML puro
-import * as PN from './panorama.js?v=2026-11-16.10';
-import * as MT from './montagem.js?v=2026-11-16.10';   // Montagem do espaço a partir do transcript (lógica e HTML puros)   // Panorama dela e O que ela trouxe (lógica e HTML puros)
+import * as TX from './taxonomia.js?v=2026-11-16.11';   // páginas, famílias e agrupamento dos modelos
+import * as ES from './estudio.js?v=2026-11-16.11';   // os blocos do estúdio de e-mails (entregas 2 e 3)
+import * as EE from './editor-email.js?v=2026-11-16.11';
+import * as EQ from './editor-quem.js?v=2026-11-16.11';
+import * as JR from './jornada.js?v=2026-11-16.11';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
+import * as FX from './ficha.js?v=2026-11-16.11';   // ficha v2: lógica pura (fila, démarches, funil, ações)
+import * as FH from './ficha-html.js?v=2026-11-16.11';   // ficha v2: HTML puro
+import * as PN from './panorama.js?v=2026-11-16.11';
+import * as MT from './montagem.js?v=2026-11-16.11';   // Montagem do espaço a partir do transcript (lógica e HTML puros)   // Panorama dela e O que ela trouxe (lógica e HTML puros)
 
 var PERSONAS = {
   au_pair_estudante: 'Au pair → estudante', campus_france: 'Campus France', alternancia_emprego: 'Alternância / emprego',
@@ -2954,22 +2954,30 @@ function pcTopoHtml(c) {
     '<p class="sub pc-dica">' + (pc.arqNome ? '<b>' + esc(pc.arqNome) + '</b>. ' : 'Aceita .txt, PDF ou imagem, ou o link do Notion. ') + 'A IA só propõe: nada entra na ficha sem você conferir. A leitura usa tokens pagos da Anthropic.</p>' +
     (pc.estado === 'lendo' ? '<p class="sub" role="status">Lendo a call… (leva alguns segundos)</p>' : '') + (pc.erro ? '<p class="err" role="alert">' + esc(pc.erro) + '</p>' : '');
 }
-// Os quadros que a leitura preenche além de Resumo e Próximos passos (que são os campos do Dossiê): pontos de atenção e o que confirmar.
+// O que a leitura da call deixa para você conferir, num quadro só e em gavetas (pontos de atenção, conferir na fonte oficial, confirmar com ela).
+// Resumo e Próximos passos são campos do Dossiê (o botão os preenche). Antes eram dois quadros lado a lado, comprido demais.
 function pcQuadrosHtml(c) {
   var pc = pcEstado(c.id), p = pc.estado === 'proposta' && pc.prop && pc.prop.proposta && pc.prop.proposta.origem !== 'notion' ? pc.prop.proposta : null;
-  var card = function (t, corpo) { return '<div class="dv-card"><div class="k">' + esc(t) + '</div>' + corpo + '</div>'; };
-  var aten = p && (p.pontos_de_atencao || []).length ? '<ul class="dv-ul">' + p.pontos_de_atencao.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul>' : '<p class="sub" style="margin:0">' + (p ? 'A leitura não apontou nada.' : 'Aparece depois da leitura.') + '</p>';
-  var pe = p ? (p.perguntas_para_ela || []) : [], conf = p ? (p.a_conferir || []) : [];
-  var info = '';
-  if (conf.length) info += '<p class="sub" style="margin:0 0 4px"><b>Conferir na fonte oficial</b></p><ul class="dv-ul">' + conf.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul>';
-  if (pe.length) info += '<p class="sub" style="margin:8px 0 4px"><b>Confirmar com ela</b> (marque as que quer fazer; vão para o rascunho do chat)</p>' + pe.map(function (q, i) {
-    var marcado = pc.sel.perg['q' + i] === undefined ? true : pc.sel.perg['q' + i], f = q.campo ? dosCampo(q.campo) : null;
-    return '<label class="pclinha"><input type="checkbox" data-pcperg="q' + i + '"' + (marcado ? ' checked' : '') + '> <span>' + esc(q.texto) + (q.motivo ? '<br><small class="sub">Por quê: ' + esc(q.motivo) + (f ? ' · preenche “' + esc(f.l) + '”' : '') + '</small>' : '') + '</span></label>';
-  }).join('') + '<div class="actions" style="margin-top:8px"><button class="btn" type="button" data-pcchat="' + esc(c.id) + '">Levar para o chat</button></div>';
-  if (p && !pe.length) info += '<p class="sub" style="margin:' + (conf.length ? '8px' : '0') + ' 0 0">A call fechou o que importava com ela: nada a confirmar com ela.</p>';
-  if (!info) info = '<p class="sub" style="margin:0">Aparece depois da leitura.</p>';
+  var dd = (state.fx && state.fx.dd) || {};
+  var aten = p ? (p.pontos_de_atencao || []) : [], pe = p ? (p.perguntas_para_ela || []) : [], conf = p ? (p.a_conferir || []) : [];
+  var gav = function (chave, tit, n, corpo, padrao) {
+    var o = dd['pc-' + chave]; if (o === undefined) o = padrao;
+    return '<details class="pn-d dv-gav" data-dd="pc-' + chave + '"' + (o ? ' open' : '') + '><summary><b>' + tit + '</b> <span class="sub">· ' + n + '</span></summary>' + corpo + '</details>';
+  };
+  var lista = function (l) { return '<ul class="dv-ul">' + l.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul>'; };
+  var h = '';
+  if (aten.length) h += gav('aten', 'Pontos de atenção', aten.length, lista(aten), true);
+  if (conf.length) h += gav('conf', 'Conferir na fonte oficial', conf.length, lista(conf), false);
+  if (pe.length) h += gav('perg', 'Confirmar com ela', pe.length + (pe.length === 1 ? ' pergunta' : ' perguntas'),
+    '<p class="sub" style="margin:0 0 4px">Marque as que quer fazer; vão para o rascunho do chat.</p>' + pe.map(function (q, i) {
+      var marcado = pc.sel.perg['q' + i] === undefined ? true : pc.sel.perg['q' + i], f = q.campo ? dosCampo(q.campo) : null;
+      return '<label class="pclinha"><input type="checkbox" data-pcperg="q' + i + '"' + (marcado ? ' checked' : '') + '> <span>' + esc(q.texto) + (q.motivo ? '<br><small class="sub">Por quê: ' + esc(q.motivo) + (f ? ' · preenche “' + esc(f.l) + '”' : '') + '</small>' : '') + '</span></label>';
+    }).join('') + '<div class="actions" style="margin-top:8px"><button class="btn" type="button" data-pcchat="' + esc(c.id) + '">Levar para o chat</button></div>', true);
+  if (p && !pe.length) h += '<p class="sub" style="margin:' + (h ? '10px' : '0') + ' 0 0">A call fechou o que importava com ela: nada a confirmar com ela.</p>';
+  var total = aten.length + conf.length + pe.length;
+  var corpo = p ? (h || '<p class="sub" style="margin:0">A leitura não deixou nada para conferir.</p>') : '<p class="sub" style="margin:0">Aparece depois da leitura.</p>';
   var preencher = p && (p.resumo || (p.proximos_passos || []).length) ? '<div class="actions" style="margin:0 0 10px"><button class="btn" type="button" data-pcpreencher="' + esc(c.id) + '">Preencher Resumo e Próximos passos com a leitura</button></div>' : '';
-  return preencher + '<div class="dv-grid">' + card('Pontos de atenção', aten) + card('Infos para confirmar', info) + '</div>';
+  return preencher + '<div class="dv-card"><div class="k">Infos para confirmar' + (total ? ' · ' + total + (total === 1 ? ' item' : ' itens') : '') + '</div>' + corpo + '</div>';
 }
 function pcEscolheArquivo(inp) {
   var cid = inp.dataset.pcarq, pc = pcEstado(cid), f = inp.files && inp.files[0]; if (!f) return;
@@ -3527,7 +3535,7 @@ function fxHeaderHtml(c, d) {
 // Catálogo de démarches (cópia do app, processos.json): carregado uma vez; sem ele, tudo cai na démarche padrão.
 var FX_PROC = null;
 async function fxCarregaProcessos() {
-  try { var r = await fetch('processos.json?v=2026-11-16.10'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
+  try { var r = await fetch('processos.json?v=2026-11-16.11'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
 }
 // A sessão Checklist: pílulas por démarche, os 4 mais urgentes, pasta do Drive privada e "Ver mais desta sessão".
 // Os passos que a montagem do espaço propôs para ela, com démarche, subitens e origem: o mesmo detalhe do Checklist. Existem antes de ela ter conta.
