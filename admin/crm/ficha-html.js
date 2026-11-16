@@ -1,5 +1,5 @@
 // Ficha-universo, fase 1: HTML puro das peças novas. Todas recebem h = { esc, fmtDay } e escapam todo texto vindo do banco.
-import { ETAPAS_FUNIL, maisUrgentes } from './ficha.js?v=2026-11-16.5';   // o ?v= acompanha o de crm.js (cache do navegador)
+import { ETAPAS_FUNIL, maisUrgentes } from './ficha.js?v=2026-11-16.6';   // o ?v= acompanha o de crm.js (cache do navegador)
 
 
 const URG = { alta: 'Alta', media: 'Média', baixa: 'Baixa' };
@@ -246,7 +246,10 @@ export function htmlPreviaApp(d, h) {
     const linha = (x) => '<div class="fx-pv-row' + (x.feito ? ' f' : '') + '"><span class="bx" aria-hidden="true">' + (x.feito ? '✓' : '') + '</span><span><small>' + e(x.tag || '') + '</small>' + e(x.label) + '</span>' +
       (x.due && !x.feito ? '<em class="' + (x.atrasado ? 'at' : '') + '">' + e(h.fmtDay(x.due)) + '</em>' : '') + '</div>';
     corpo = '<section class="fx-pv-card"' + L('Persona') + '><span class="k">Seus passos</span><h4>' + d.feitos + ' de ' + d.total + ' feitos</h4><div class="fx-pv-bar"><i style="width:' + d.pct + '%"></i></div>' +
-      (d.passos.length ? d.passos.map(linha).join('') : vz(d.semConta ? 'Ela ainda não entrou no app: o checklist nasce no primeiro acesso.' : 'Nenhum passo ainda.')) + '</section>';
+      (d.passos.length ? d.passos.map(linha).join('') : (d.rascunhos || []).length ? '' : vz(d.semConta ? 'Ela ainda não entrou no app: o checklist nasce no primeiro acesso.' : 'Nenhum passo ainda.')) +
+      ((d.rascunhos || []).length ? '<p class="fx-pv-rasc-t">Rascunho: só você vê, ainda não foi publicado</p>' + d.rascunhos.map((x) => '<div class="fx-pv-row rasc"><span class="bx" aria-hidden="true"></span><span><small>' + e([x.conferir ? 'A conferir' : 'Rascunho', x.tag].filter(Boolean).join(' · ')) + '</small>' + e(x.label) + '</span>' +
+        (x.due ? '<em>' + e(h.fmtDay(x.due)) + '</em>' : '') + '</div>').join('') : '') +
+      (d.semConta && (d.passos.length || (d.rascunhos || []).length) ? '<p class="fx-pv-vz">Prévia do que ela verá ao entrar.</p>' : '') + '</section>';
   } else if (aba === 'espaco') {
     const itens = d.espaco.marcos.map((m) => '<article class="fx-pv-card"' + L('Dela') + '><span class="k">Prazo</span><h4>' + e(m.titulo) + '</h4><p>' + e(m.resumo || '') + '</p></article>').join('') +
       (d.espaco.escolas.length || d.espaco.dela.length ? '<section class="fx-pv-card"' + L('Dela') + '><span class="k">Escolas para você contatar</span>' + d.espaco.escolas.map((x) => '<div class="fx-pv-row"><span><b>' + e(x.titulo) + '</b><small>' + e(x.resumo || '') + '</small></span></div>').join('') +

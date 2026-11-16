@@ -53,6 +53,15 @@ console.log('\n== Démarche e subitens no item do checklist ==');
   check('as démarches da tela são as do catálogo processos.json', JSON.stringify(Object.keys(MT.DEMARCHES).sort()) === JSON.stringify(Object.keys(JSON.parse(readFileSync(new URL('../../processos.json', import.meta.url), 'utf8')).definicoes).sort()));
 }
 
+console.log('\n== Itens repetidos que o Worker juntou ==');
+{
+  const prop = PROP(); prop.duplicados = [{ texto: 'Reunir diploma, passaporte e comprovante', motivo: 'ja_em_documentos', em: 'Diploma, Passaporte' }, { texto: 'Perguntar às escolas a carga', motivo: 'ja_no_checklist', em: 'Perguntar a carga' }];
+  const mk = (p) => MT.painelHtml({ cid: 'c1', estado: 'proposta', erro: '', prop: { id: 1, versao: 1, proposta: p }, sel: {}, motivos: {}, res: null, pub: null, previa: null, pode: false, forcar: false, msg: '', temTranscricao: true, diff: null, lib: null }, pessoa(), esc);
+  const h = mk(prop);
+  check('a tela avisa quantos repetidos foram juntados e quais', h.includes('Juntei 2 itens repetidos') && h.includes('já está em documentos') && h.includes('já está no checklist'));
+  check('sem repetidos, nenhum aviso', !mk(PROP()).includes('Juntei'));
+}
+
 console.log('\n== O que ficou da conversa ==');
 check('promessas que só um item cumpria e foi desmarcado são avisadas (a pendência não nasce sozinha)', JSON.stringify(MT.promessasAfetadas(PROP(), { 'enc:mandar_guia': false })) === JSON.stringify(['Enviar o guia']) && MT.promessasAfetadas(PROP(), {}).length === 0);
 

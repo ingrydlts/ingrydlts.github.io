@@ -122,10 +122,19 @@ function diffHtml(d, esc) {
   if (conf.length) h += '<p class="sub" style="margin:0 0 6px">Já tratados por você ou por ela (ficam como estão): ' + cod(conf) + '</p>';
   return h;
 }
+// O que a IA repetiu e o Worker juntou: cada coisa fica num lugar só (o passo da pessoa no checklist, os documentos em documentos).
+var MOTIVO_DUP = { ja_no_checklist: 'já está no checklist', ja_em_documentos: 'já está em documentos', repetido: 'repetido' };
+function duplicadosHtml(p, esc) {
+  var d = lista(p && p.duplicados);
+  if (!d.length) return '';
+  return '<details class="mont-dup" style="margin:0 0 8px"><summary class="sub">Juntei ' + d.length + (d.length === 1 ? ' item repetido' : ' itens repetidos') + ' (cada coisa fica num lugar só)</summary><ul class="mont-sub">' +
+    d.map(function (x) { return '<li>' + esc(String(x.texto || '')) + ' <span class="sub">· ' + esc(MOTIVO_DUP[x.motivo] || 'repetido') + (x.em ? ': ' + esc(String(x.em)) : '') + '</span></li>'; }).join('') + '</ul></details>';
+}
 function propostaHtml(m, c, esc) {
   var itens = itensDaProposta(m.prop && m.prop.proposta), marcados = decisoesDe(itens, m.sel, m.motivos).filter(function (d) { return d.decisao === 'aprovar'; }).length;
   var h = '<p class="sub" style="margin:0 0 8px">Leitura' + (m.prop && m.prop.versao ? ' (versão ' + esc(String(m.prop.versao)) + ')' : '') + '. Marque o que vale; o que você desmarcar fica de fora e o motivo ajuda a melhorar os modelos.</p>';
   h += conversaHtml(m.prop && m.prop.proposta, esc);
+  h += duplicadosHtml(m.prop && m.prop.proposta, esc);
   var afet = promessasAfetadas(m.prop && m.prop.proposta, m.sel);
   if (afet.length) h += '<p class="err" role="alert" style="margin:0 0 8px">Você desmarcou o que cumpre uma promessa da chamada: ' + afet.map(esc).join('; ') + '. Anote à mão, ou ela some do plano.</p>';
   h += diffHtml(m.diff, esc);
@@ -198,7 +207,7 @@ export function painelHtml(m, c, esc) {
 
 // ---------- Os passos propostos, na sessão Checklist da Plataforma ----------
 // Cada passo que a montagem criou para ela, com o mesmo detalhe do Checklist: démarche, subitens, de onde vem (da persona ou só deste percurso),
-// prazo e lista. aco = linhas de caso_acoes; listas = linhas de caso_listas. h = { esc, rotulo(chaveDemarche), prazo(acao), pil(txt, cls), btn(acao, id, rot), linha(esq, meio, btns) }.
+// prazo e lista. aco = linhas de caso_acoes; listas = linhas de caso_listas. h = { esc, rotulo(chaveDemarche), prazo(acao), pil(txt, cls), btn(acao, id, rot), conferi(id), linha(esq, meio, btns) }.
 export function passosPropostosHtml(aco, listas, h) {
   var e = h.esc, tit = {};
   lista(listas).forEach(function (l) { tit[l.chave] = l.titulo; });
@@ -211,8 +220,9 @@ export function passosPropostosHtml(aco, listas, h) {
       h.prazo(a), a.lista_chave && tit[a.lista_chave] ? 'lista "' + tit[a.lista_chave] + '"' : ''].filter(Boolean).join(' · ');
     var corpo = (fim ? '<s>' + e(a.titulo) + '</s>' : '<b>' + e(a.titulo) + '</b>') + '<br><span class="sub">' + e(meta) + '</span>' +
       (subs.length ? '<ul class="mont-sub" aria-label="Subitens">' + subs.map(function (x) { return '<li>' + e(String(x)) + '</li>'; }).join('') + '</ul>' : '') +
-      (a.a_conferir && !a.publicada_em ? '<br><small class="sub">Falta conferir a fonte: não vai para ela antes (use "Conferi a fonte" na Montagem do espaço).</small>' : '');
-    var btns = a.publicada_em ? h.btn('aco-retirar', a.id, 'Retirar') : (a.a_conferir || fim ? '' : h.btn('aco-pub', a.id, 'Publicar para ela'));
+      (a.a_conferir && !a.publicada_em ? '<br><small class="sub">Falta conferir a fonte: confira e clique em "Conferi a fonte" para poder publicar.</small>' : '');
+    // Uma ação por linha, sempre: conferir a fonte → publicar para ela → retirar. (Concluído não tem botão.)
+    var btns = fim ? '' : a.publicada_em ? h.btn('aco-retirar', a.id, 'Retirar') : a.a_conferir ? h.conferi(a.id) : h.btn('aco-pub', a.id, 'Publicar para ela');
     return h.linha(est, corpo, btns);
   }).join('');
 }

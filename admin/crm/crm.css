@@ -1698,3 +1698,7 @@ button.bar-r b{text-align:right; font-variant-numeric:tabular-nums}
 @media (prefers-reduced-motion: reduce){.montagem .mont-skel i{animation:none}}
 .montagem .mont-previa{margin-top:8px;background:var(--sunk);border-radius:8px;padding:10px 12px;color:var(--ink)}
 .montagem .mont-texto{white-space:pre-wrap;word-break:break-word;font:inherit;font-size:13.5px;line-height:1.5;margin:6px 0 0}
+
+.fx-pv-rasc-t{margin:10px 0 4px;font-size:11.5px;font-weight:700;letter-spacing:.02em;color:var(--ink-2)}
+.fx-pv-row.rasc{opacity:.65}
+.fx-pv-row.rasc .bx{border-style:dashed}

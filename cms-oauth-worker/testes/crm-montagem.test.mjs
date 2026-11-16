@@ -177,6 +177,27 @@ check('démarche fora do catálogo derruba tudo', falhaD((it) => { it[0].demarch
 check('mais de 6 subitens, subitem vazio ou com dado pessoal derrubam tudo', falhaD((it) => { it[0].subitens = Array.from({ length: 7 }, (_, i) => 'Passo ' + i); }) && falhaD((it) => { it[0].subitens = ['']; }) && falhaD((it) => { it[0].subitens = ['Escrever para ana@example.com']; }));
 check('subitens que não são lista derrubam tudo', falhaD((it) => { it[0].subitens = 'um só'; }));
 
+console.log('\n== Cada coisa num lugar só (sem repetidos entre encaminhamento, checklist e documentos) ==');
+const enc = (chave, texto, extra = {}) => ({ chave, texto, camada: 'particular', dono: 'ela', origem: { momento: '10:00', trecho: 't' }, certeza: 'literal', cobre: [], ...extra });
+const comRep = (mut) => { const o = OK(); o.encaminhamentos = [o.encaminhamentos[1]]; o.compromissos = [o.compromissos[0]]; o.encaminhamentos[0].cobre = [0]; o.checklists[0].itens = [{ chave: 'perg_carga', titulo: 'Perguntar se a carga é de pelo menos 20h por semana' }, { chave: 'cv_fr', titulo: 'Montar o CV em francês' }]; o.documentos = [{ chave: 'diploma', rotulo: 'Diploma do ensino médio', selos: [], checklists: [], direcao: 'ela_envia', cobre: [] }, { chave: 'passaporte', rotulo: 'Passaporte', selos: [], checklists: [], direcao: 'ela_envia', cobre: [] }, { chave: 'comprovante', rotulo: 'Comprovante de endereço', selos: [], checklists: [], direcao: 'ela_envia', cobre: [] }]; if (mut) mut(o); return o; };
+{
+  const dup = comRep((o) => { o.encaminhamentos.push(enc('perguntar_escolas', 'Perguntar às escolas: carga de pelo menos 20h por semana e atestação com selo Qualiopi'), enc('reunir_docs', 'Reunir diploma, passaporte e comprovante de endereço para a escola'), enc('ligar_alliance', 'Ligar para a Alliance Française de Marseille primeiro')); });
+  const r = crmMontagemValidar(dup, CAT);
+  const chaves = r.ok ? r.montagem.encaminhamentos.map((x) => x.chave) : [];
+  check('encaminhamento da pessoa que repete um item de checklist é juntado (fica o item do checklist)', r.ok && !chaves.includes('perguntar_escolas'));
+  check('encaminhamento "reunir os documentos X, Y, Z" é juntado: os documentos já estão em documentos', r.ok && !chaves.includes('reunir_docs'));
+  check('encaminhamento que não repete nada continua', r.ok && chaves.includes('ligar_alliance') && chaves.includes('mandar_guia'));
+  check('o que foi juntado fica registrado, com o motivo e onde o item ficou', r.ok && r.montagem.duplicados.length === 2 && r.montagem.duplicados.some((d) => d.motivo === 'ja_no_checklist' && /carga/.test(d.em)) && r.montagem.duplicados.some((d) => d.motivo === 'ja_em_documentos'));
+  check('o checklist e os documentos ficam intactos', r.ok && r.montagem.checklists[0].itens.length === 2 && r.montagem.documentos.length === 3);
+  const dois = comRep((o) => { o.encaminhamentos.push(enc('ligar_a', 'Ligar para a Alliance Française de Marseille primeiro'), enc('ligar_b', 'Ligar para Alliance Française Marseille primeiro, amanhã')); });
+  const r2 = crmMontagemValidar(dois, CAT);
+  check('dois encaminhamentos da pessoa quase iguais viram um só (fica o primeiro)', r2.ok && r2.montagem.encaminhamentos.filter((x) => /Alliance/.test(x.texto)).length === 1 && r2.montagem.duplicados.some((d) => d.motivo === 'repetido'));
+  check('a tarefa da equipe nunca é juntada com passo da pessoa, mesmo parecida', (() => { const o = comRep((x) => { x.encaminhamentos.push(enc('ela_guia', 'Ler o guia de escolas credenciadas'), enc('eq_guia', 'Mandar o guia de escolas credenciadas', { dono: 'ingryd', camada: 'entrega_equipe' })); }); const r3 = crmMontagemValidar(o, CAT); const c = r3.ok ? r3.montagem.encaminhamentos.map((x) => x.chave) : []; return r3.ok && c.includes('ela_guia') && c.includes('eq_guia'); })());
+  check('o compromisso coberto pelo encaminhamento juntado não vira pendência falsa', (() => { const o = comRep((x) => { x.compromissos.push({ texto: 'Enviar o checklist das escolas', momento: '30:00', trecho: 't' }); x.encaminhamentos.push(enc('perguntar_escolas', 'Perguntar às escolas se a carga é de pelo menos 20h por semana', { cobre: [1] })); }); const r4 = crmMontagemValidar(o, CAT); return r4.ok && !r4.montagem.encaminhamentos.some((x) => x.chave === 'perguntar_escolas') && r4.montagem.omissoes.length === 0; })());
+  check('sem repetidos, nada é registrado e a proposta antiga continua válida', v.ok && Array.isArray(v.montagem.duplicados) && v.montagem.duplicados.length === 0);
+  check('o prompt manda pôr cada coisa num lugar só', /UMA vez|um lugar só/i.test(sis) && /nunca repita/i.test(sis));
+}
+
 console.log('\n== Panorama da pessoa (o retrato de como ela está) ==');
 const PAN = () => ({ leitura: 'Ansiosa com prazo e dinheiro, mas decidida a estudar francês.',
   termometros: [{ chave: 'angustia', nivel: 3, porque: 'Voltou ao prazo do visto três vezes', momento: '12:30' }, { chave: 'duvida', nivel: 2, porque: 'Não sabe se liga ou escreve', momento: '20:05' }],
