@@ -1,5 +1,7 @@
 # CRM retrabalhado — plano de implementação
 
+> **Executado em 16/11** (branch `claude/affectionate-cori-5udinl`). Desvios: Potencial ligado no `crm.js` (o artefato só trazia o cabeçalho da coluna); testes antigos ajustados ao texto novo; `um_a_um.registro` pendente de SQL. Ver `admin/crm/PLANO.md`.
+
 > **Para quem executa:** REQUIRED SUB-SKILL: superpowers:executing-plans (recomendado aqui: os arquivos se tocam entre si) ou superpowers:subagent-driven-development. Passos com `- [ ]`.
 
 **Objetivo:** levar para `admin/crm/` tudo o que o artefato do CRM retrabalhado desenvolveu, de uma vez.

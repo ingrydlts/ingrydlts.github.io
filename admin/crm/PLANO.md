@@ -7,8 +7,8 @@ Backend: o **mesmo Supabase** do app (projeto `hslhpktfgxwfvljvsxkj`). Painel: e
 
 | Tela | Fonte | Situação |
 |---|---|---|
-| Hoje (KPIs, "Precisa de você", 1:1) | view `crm_contatos`, `perguntas_unicas` | pronto |
-| Contatos (filtros, visões, CSV) | `crm_contatos`; rótulos de subpersona = `caminhos_opcoes` | pronto |
+| Hoje (período, 4 KPIs, abas, calendário de 1:1) | view `crm_contatos`, `perguntas_unicas`, `um_a_um`, `um_a_um_pagamentos`, `assinaturas` | pronto (16/11, ver "CRM retrabalhado") |
+| Contatos (filtros, visões, CSV, Potencial ordenável) | `crm_contatos`; rótulos de subpersona = `caminhos_opcoes` | pronto |
 | Funil (quadro por próxima ação, em três visões: Leads, No app, Clientes) | colunas de `crm_contatos` + `assinaturas` + compras; lógica em `funil.js` | pronto no código; sem SQL novo |
 | Página da pessoa (feed, anotações, consentimento, mudar estágio) | `eventos`, `consentimentos`, `contatos.nota` | pronto |
 | Marcar 1:1 / Enviar sinal | `um_a_um`, `sinais` (o app lê com `meus_sinais()`) | pronto no painel; **falta o dashboard do app mostrar o sinal** |
@@ -270,3 +270,18 @@ Troca o kanban por estágio (que só media uso do app) por um quadro de **próxi
 **Botões** (nenhum envia sozinho): Responder (`data-openconv`), Escrever e-mail e Convidar para o 1:1 (`data-emailfor`, desabilitados sem aceite de novidades), Abrir ficha (`data-open`). "Por que aqui?" mostra a conta dos pontos.
 
 **Fase 2 (exige SQL, com teste de isolamento e Supabase de teste primeiro):** fluxo "Você quer continuar?" com saída da lista, botão Adiar, contagem de cliques por pessoa (hoje só se conhece o status do último e-mail).
+
+## CRM retrabalhado (16/11, `docs/superpowers/specs/2026-11-16-crm-retrabalhado-design.md`)
+
+Levou para o CRM real o que o artefato do CRM retrabalhado desenvolveu (versão 1794834812-352b). **Não há SQL novo nesta entrega**: `um_a_um_pagamentos` já existe (`db/crm-1a1.sql`).
+
+- **Hoje:** seletor de período (7 dias a 6 meses) que vale para quatro indicadores (Novos leads, 1:1 marcados, Pessoas na plataforma, Revenue estimado); abas de seções (resumo, "Precisa de você", Agenda, Mensagens, Caixa, Processos, Radar, Guias, Prazos); calendário de 1:1 por mês; "Próximas mensagens da Equipe Por Dentro" em cartão. O revenue é **estimativa** com preço de tabela (compras da vitrine + mensalidades das assinaturas ativas), sem cupom nem reembolso: o valor real está no Stripe.
+- **Contatos:** coluna **Potencial** (0 a 100, faixas Alto/Médio/Baixo), ordenável (maior, menor, original). Na lista o cálculo usa só as colunas de `crm_contatos` e a assinatura; a dica da célula mostra os motivos. Os pesos (`FX.potencial`) são um rascunho a calibrar com a base real.
+- **Ficha** (continua atrás de `?ficha=2` ou `localStorage.crm_ficha_v2 = '1'`): cabeçalho minimalista por tipo (lead, plataforma, assinante; o plano abre um dropdown), "Minhas próximas ações" em carrossel com Adicionar e Concluídas, ações da equipe (`caso_acoes`) como cartões, a próxima ação sugerida pelo Potencial como cartão, sessões novas (Espaço, Guias, Perfil; Só eu, O que ela trouxe, Mais detalhes). "iAssistente" virou "Equipe Por Dentro" nos textos.
+- **Panorama dela e O que ela trouxe** (`panorama.js`, lógica e HTML puros): lê o que a pessoa acrescenta de público ao app. Com menos de 3 pessoas na coorte da persona diz "Poucos dados para comparar"; e-mail, IBAN e números longos são ocultados antes de mostrar.
+- **Pendências:**
+  1. `um_a_um.registro` (painel "Registro do 1:1"): a coluna não existe e `db/crm-1a1-registro.sql` não foi escrito. Sem ele a lista de 1:1 carrega sem a coluna e "Salvar registro" avisa. Criar o SQL segue a regra de isolamento (testes de `db/testes`, Supabase de teste antes do de produção, `db/auditoria-isolamento.sql` e `db/conferir-banco.sql` do app).
+  2. As colunas `titulo_custom`, `nota_custom`, `links_custom`, `quando_custom` de `checklist_items` vêm do `db/checklist-editar.sql` do app; sem elas o Panorama fica vazio (há fallback).
+  3. A caixa "Suas anotações" (`contatos.nota`) saiu da ficha no artefato; o salvamento continua no `crm.js`. Decidir se volta.
+  4. O Potencial (célula, ordenação e cartão da ficha) não existia no `crm.js` do artefato e foi escrito aqui; conferir os pesos.
+
