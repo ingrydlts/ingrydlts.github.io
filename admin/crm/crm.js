@@ -3245,13 +3245,17 @@ async function criarNaJornada(valor) {
 function podeExcluir(m) { return !!(M && M.length && Object.prototype.hasOwnProperty.call(M[0], 'excluido_em')) && !/^cf_guia_/.test(m.chave); }
 async function excluirModelo(k, voltar) {
   var m = modeloDe(k); if (!m) return;
+  var pgAntes = !voltar && ST.k === k ? pgAtual(jornadaAtual()) : null;
   if (!voltar && !window.confirm('Excluir "' + m.nome + '"? Ele sai da Jornada e do "Escrever e-mail"' + (m.envio_ligado ? ' e a sequência para de sair' : '') +
     '. As versões ficam guardadas em "Excluídos", no fim da Jornada, onde dá para restaurar.')) return;
   await salvar();
   var r = await supabase.from('modelos_email').update({ excluido_em: voltar ? null : new Date().toISOString() }).eq('chave', k).select();
   if (r.error) return fail(voltar ? 'restaurar o modelo' : 'excluir o modelo', r.error);
   Object.assign(m, (r.data && r.data[0]) || { excluido_em: voltar ? null : new Date().toISOString() });
-  if (!voltar && ST.k === k) { ST.k = null; ST.vista = 'jornada'; }
+  if (!voltar && ST.k === k) {
+    var irm = modelosDaPagina(jornadaAtual(), pgAntes).filter(function (x) { return x.chave !== k; });
+    if (irm.length) abrirModelo(irm[0].chave); else { ST.vazio = true; ST.pg = pgAntes; ST.k = null; ST.v = null; ST.d = null; ST.dKey = null; ST.montado = null; }
+  }
   if (voltar) { ST.k = k; abrirModelo(k); }
   toast(voltar ? '"' + m.nome + '" restaurado' + (m.envio_gatilho ? ' (com o Envio desligado)' : '') : '"' + m.nome + '" excluído', 3200);
   renderModelos();
@@ -3423,6 +3427,14 @@ function modelosDaPagina(J, pg) {   // na ordem das etapas; "OUT" são os que n�
   if (l) JR.ETAPAS.forEach(function (e) { l.celulas[e.k].forEach(function (m) { r.push(m); }); });
   return r;
 }
+// Dois botões lado a lado, sempre à mão: excluir o e-mail aberto e criar um novo já na página de entrada que está na tela.
+function botoesGestao(m) {
+  var exc = !m ? '' : podeExcluir(m)
+    ? '<button class="btn perigo" type="button" id="st-excluir-aqui" data-stexcluir="' + esc(m.chave) + '" title="Tira este e-mail da Jornada. As versões ficam em Excluídos, na Jornada, e dá para restaurar.">Excluir e-mail</button>'
+    : '<button class="btn perigo" type="button" disabled title="Este e-mail sai pelo código: excluir aqui não pararia o envio.">Excluir e-mail</button>';
+  var novo = temEstudio3() ? '<button class="btn" type="button" id="st-novo-aqui" title="Cria um e-mail novo já nesta página de entrada">+ Novo e-mail</button>' : '';
+  return exc || novo ? '<span class="st-gestao" role="group" aria-label="Excluir ou criar e-mail">' + exc + novo + '</span>' : '';
+}
 function cabecalhoHtml(J, pg) {
   var temOutros = ['aquecimento', 'campanhas', 'semEtapa'].some(function (g) { return J.bandejas[g].length; });
   var paginas = J.linhas.map(function (l) {
@@ -3456,8 +3468,8 @@ function ajustaCab() {
 function renderEditor(lista) {
   var box = $('st-edit'), cab = $('st-cab');
   if (ST.vazio && M) {   // escolheu uma página de entrada que ainda não tem e-mail
-    var Jv = jornadaAtual(); cab.innerHTML = '<div class="ee-fixo">' + cabecalhoHtml(Jv, pgAtual(Jv)) + '</div>';
-    box.innerHTML = '<div class="empty">Este percurso ainda não tem e-mail. Clique em <b>+ criar</b> numa etapa, acima, para começar pelo rascunho já preenchido.</div>';
+    var Jv = jornadaAtual(); cab.innerHTML = '<div class="ee-fixo">' + cabecalhoHtml(Jv, pgAtual(Jv)) + '<div class="st-acts st-acts-vazio">' + botoesGestao(null) + '</div></div>';
+    box.innerHTML = '<div class="empty">Esta página ainda não tem e-mail. Clique em <b>+ Novo e-mail</b> (ou em <b>+ criar</b> numa etapa, acima) para começar.</div>';
     ajustaCab(); return;
   }
   cab.innerHTML = '';
@@ -3483,7 +3495,7 @@ function renderEditor(lista) {
       : '<button class="btn primary" type="button" id="st-nova">Editar em versão nova</button>';
     acoes = '<button class="btn" type="button" id="st-teste">Enviar teste para mim</button>' + acoes;
   }
-  acoes = acoes + '<button class="btn" type="button" id="st-previa-tg" aria-pressed="' + previaAberta() + '">' + (previaAberta() ? 'Esconder prévia' : 'Ver como chega') + '</button>';
+  acoes = acoes + '<button class="btn" type="button" id="st-previa-tg" aria-pressed="' + previaAberta() + '">' + (previaAberta() ? 'Esconder prévia' : 'Ver como chega') + '</button>' + botoesGestao(m);
   var topo = '<div class="st-head"><div class="st-head-t"><h3 class="st-title">' + esc(m.nome) + '</h3><div class="st-pills">' + pillDe(TIPO_EMAIL, m.tipo) + (v ? pillDe(ETAPA_EMAIL, v.etapa) + '<span class="sub">v' + v.versao + '</span>' : '') +
     '<span class="sub" id="st-salvo">' + esc(ST.salvo) + '</span></div></div><div class="st-acts">' + acoes + '</div></div>' +
     (v && ro && temBlocos() ? '<p class="st-msg tip">' + (v.etapa === 'no_ar' ? 'Esta é a versão No ar: é ela que sai. ' : v.etapa === 'arquivado' ? 'Esta versão já saiu e fica guardada como está. ' : '') +
@@ -4792,6 +4804,13 @@ document.addEventListener('click', async function (e) {
   if (t.dataset.vista) { await salvar(); ST.vista = t.dataset.vista; return renderModelos(); }
   if (t.dataset.jrAbrir) { await salvar(); ST.criar = null; abrirModelo(t.dataset.jrAbrir); ST.vista = 'estudio'; ST.tab = 'editar'; ST.passo = 'texto'; return renderModelos(); }
   if (t.dataset.jrCriar) return criarNaJornada(t.dataset.jrCriar);
+  if (t.id === 'st-novo-aqui') {
+    await salvar();
+    var pgN = pgAtual(jornadaAtual()), paraN = paraVazio(), matN = Object.keys(ORIGEM_PAGINA).filter(function (x) { return ORIGEM_PAGINA[x] === pgN; })[0];
+    if (matN) paraN.materiais = [matN];
+    ST.criar = { passo: 1, obj: null, nome: '', para: paraN, classe: { familia: null, pagina: TX.PAGINAS.some(function (p) { return p.k === pgN; }) ? pgN : null, etapa: null, persona: null } };
+    ST.vazio = false; ST.vista = 'estudio'; ST.tab = 'editar'; return renderModelos();
+  }
   if (t.id === 'st-novo-modelo') { await salvar(); ST.criar = { passo: 1, obj: null, nome: '', para: paraVazio(), classe: { familia: null, pagina: null, etapa: null, persona: null } }; ST.vista = 'estudio'; ST.tab = 'editar'; return renderModelos(); }
   if (t.id === 'novo-cancelar') { ST.criar = null; ST.vista = 'jornada'; return renderModelos(); }
   if (t.dataset.novoobj) { var ob = ES.objetivo(t.dataset.novoobj); ST.criar.obj = ob.k; ST.criar.classe.familia = TX.familiaDoObjetivo(ob.k); if (!ST.criar.nome || ES.OBJETIVOS.some(function (x) { return x.nome === ST.criar.nome; })) ST.criar.nome = ob.nome; ST.criar.passo = 2; return renderModelos(); }

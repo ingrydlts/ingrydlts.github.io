@@ -1166,3 +1166,10 @@ details.ee-sec[open]>summary{margin-bottom:8px}
 .st-excl-i{display:flex; gap:8px; align-items:center; justify-content:space-between; padding:6px 4px; border-top:1px solid var(--line); font-size:12.5px}
 .st-excl-i > span{min-width:0} .st-excl-i b{display:block; font-weight:600} .st-excl-i .btn{flex:none}
 .ee-irmaos .ee-et{max-width:420px}
+
+/* Excluir e + Novo e-mail, lado a lado no topo do editor */
+.st-gestao{display:inline-flex; gap:6px; margin-left:8px; padding-left:8px; border-left:1px solid var(--line-2)}
+.st-gestao .btn.perigo{color:var(--red)}
+.st-gestao .btn.perigo:not([disabled]):hover{border-color:var(--red)}
+.st-acts-vazio{padding:10px 0}
+.st-acts-vazio .st-gestao{margin-left:0; padding-left:0; border-left:0}
