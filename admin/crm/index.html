@@ -10,7 +10,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600&display=swap">
-<link rel="stylesheet" href="crm.css?v=2026-11-15.8">
+<link rel="stylesheet" href="crm.css?v=2026-11-16.1">
 <style>
   .gate{max-width:420px;margin:12vh auto 0;text-align:center}
   .gate h1{font-size:28px;margin-bottom:6px}
@@ -54,48 +54,74 @@
 
   <main class="main">
     <section data-panel="hoje">
-      <div class="head"><div><h2 id="hello">Bom dia, Ingryd</h2><p id="hello-sub"></p></div></div>
-      <div class="kpis" style="margin-top:14px">
-        <div class="kpi"><p>Novos leads · 7 dias</p><strong class="num" id="k-leads">0</strong><small id="k-leads-sub"></small></div>
-        <div class="kpi"><p>Abriram o app</p><strong class="num" id="k-app">0%</strong><small id="k-app-sub"></small></div>
-        <div class="kpi"><p>Caixa de entrada sem resposta</p><strong class="num" id="k-perg">0</strong><small id="k-perg-sub"></small></div>
-        <div class="kpi"><p>Urgência alta</p><strong class="num" id="k-urg">0</strong><small>já na França com prazo, ou marcou urgência</small></div>
+      <div class="head hj-head"><div><h2 id="hello">Bom dia, Ingryd</h2><p id="hello-sub"></p></div>
+        <div class="kpi-bar"><label for="k-per">Período</label>
+        <select id="k-per" class="kpi-sel" aria-label="Período dos indicadores">
+          <option value="7">7 dias</option><option value="14">14 dias</option><option value="30">30 dias</option><option value="90">3 meses</option><option value="180">6 meses</option>
+        </select></div>
       </div>
-      <div class="today" style="margin-top:16px">
+      <div class="kpis hj-kpis">
+        <div class="kpi"><p>Novos leads</p><strong class="num" id="k-leads">0</strong><small id="k-leads-sub"></small></div>
+        <div class="kpi"><p>1:1 marcados</p><strong class="num" id="k-um">0</strong><small id="k-um-sub"></small></div>
+        <div class="kpi"><p>Pessoas na plataforma</p><strong class="num" id="k-plat">0</strong><small id="k-plat-sub"></small></div>
+        <div class="kpi"><p>Revenue estimado</p><strong class="num" id="k-rev">€ 0</strong><small id="k-rev-sub"></small></div>
+      </div>
+      <nav class="hj-abas" id="hj-abas" role="tablist" aria-label="Seções da Hoje"></nav>
+      <div class="hj-pane" data-hojepane="resumo"><div class="hj-resumo" id="hj-resumo"></div></div>
+      <div class="hj-pane" data-hojepane="fila" hidden>
         <div class="panel">
-          <div class="panel-h"><h3>Precisa de você</h3><button class="link" data-go="contatos" data-view-preset="urgentes" type="button">Ver todos os urgentes →</button></div>
+          <div class="panel-h"><h3>Por onde começar</h3></div>
+          <div class="fila-ctl">
+            <label class="sr" for="h-cat">O que mostrar</label><select id="h-cat" class="kpi-sel" aria-label="O que mostrar"></select>
+            <label class="sr" for="h-ord">Ordem</label><select id="h-ord" class="kpi-sel" aria-label="Ordem">
+              <option value="antigos">Mais antigos primeiro</option><option value="prazo">Prazo mais próximo primeiro</option></select>
+          </div>
+          <p class="sub fila-resumo" id="h-resumo"></p>
           <div id="attention"></div>
         </div>
-        <div style="display:flex; flex-direction:column; gap:16px">
-          <div class="panel" id="today-fila-box" hidden style="border-color:var(--moss)">
-            <div class="panel-h"><h3>Próximas mensagens da IAssistente</h3></div>
-            <p class="sub" style="margin:0 16px 8px">A próxima de cada pessoa. Envie antes ou atrase: o que vem depois acompanha e as pausas se mantêm.</p>
-            <div id="today-fila"></div>
-          </div>
-          <div class="panel">
-            <div class="panel-h"><h3>Radar por persona</h3><button class="link" data-go="radar" type="button">Abrir Radar →</button></div>
-            <div id="today-radar"></div>
-          </div>
-          <div class="panel">
-            <div class="panel-h"><h3>Caixa de entrada</h3><button class="link" data-go="perguntas" type="button">Abrir caixa →</button></div>
-            <div id="today-q"></div>
-          </div>
-          <div class="panel" id="today-procs-box" hidden>
-            <div class="panel-h"><h3>Processos para revisar</h3></div>
-            <div id="today-procs"></div>
-          </div>
-          <div class="panel">
-            <div class="panel-h"><h3>Próximos 1:1</h3></div>
-            <div id="today-1a1"></div>
-          </div>
-          <div class="panel">
-            <div class="panel-h"><h3>Guias</h3><button class="link" data-go="contatos" data-view-preset="voltaram" type="button">Quem voltou →</button></div>
-            <div id="today-guias"></div>
-          </div>
-          <div class="panel">
-            <div class="panel-h"><h3>Lembretes de prazo</h3></div>
-            <div id="today-lembretes"></div>
-          </div>
+      </div>
+      <div class="hj-pane" data-hojepane="agenda" hidden>
+        <div class="panel" id="today-cal-box">
+          <div class="panel-h"><h3>Calendário de 1:1</h3><span class="cal-nav"><button class="link" type="button" data-calmes="-1" aria-label="Mês anterior">‹</button><b id="cal-mes" class="num"></b><button class="link" type="button" data-calmes="1" aria-label="Próximo mês">›</button></span></div>
+          <div id="today-cal"></div>
+        </div>
+      </div>
+      <div class="hj-pane" data-hojepane="msgs" hidden>
+        <section class="panel fila-card" id="today-fila-box" aria-label="Próximas mensagens da Equipe Por Dentro" hidden>
+          <div class="fila-kicker">Fila de mensagens</div>
+          <h3 class="fila-titulo" title="A próxima de cada pessoa. Envie antes ou atrase: o que vem depois acompanha e as pausas se mantêm.">Próximas mensagens da Equipe Por Dentro</h3>
+          <div id="today-fila"></div>
+        </section>
+        <div class="panel" id="today-fila-vazio" hidden><div class="empty">Nenhuma mensagem agendada na fila.</div></div>
+      </div>
+      <div class="hj-pane" data-hojepane="caixa" hidden>
+        <div class="panel">
+          <div class="panel-h"><h3>Caixa de entrada</h3><button class="link" data-go="perguntas" type="button">Abrir caixa →</button></div>
+          <div id="today-q"></div>
+        </div>
+      </div>
+      <div class="hj-pane" data-hojepane="procs" hidden>
+        <div class="panel" id="today-procs-box">
+          <div class="panel-h"><h3>Processos para revisar</h3></div>
+          <div id="today-procs"></div>
+        </div>
+      </div>
+      <div class="hj-pane" data-hojepane="radar" hidden>
+        <div class="panel">
+          <div class="panel-h"><h3>Radar por persona</h3><button class="link" data-go="radar" type="button">Abrir Radar →</button></div>
+          <div id="today-radar"></div>
+        </div>
+      </div>
+      <div class="hj-pane" data-hojepane="guias" hidden>
+        <div class="panel">
+          <div class="panel-h"><h3>Guias</h3><button class="link" data-go="contatos" data-view-preset="voltaram" type="button">Quem voltou →</button></div>
+          <div id="today-guias"></div>
+        </div>
+      </div>
+      <div class="hj-pane" data-hojepane="prazos" hidden>
+        <div class="panel">
+          <div class="panel-h"><h3>Lembretes de prazo</h3></div>
+          <div id="today-lembretes"></div>
         </div>
       </div>
     </section>
@@ -129,7 +155,7 @@
       </div>
       <div class="panel tablewrap" style="margin-top:14px">
         <table>
-          <thead><tr><th>Pessoa</th><th>Persona · subpersona</th><th>Urgência</th><th>Estágio</th><th>Prazo VLS-TS</th><th>Último sinal</th></tr></thead>
+          <thead><tr><th>Pessoa</th><th>Persona · subpersona</th><th><button class="th-sort" id="th-pot" type="button" data-potsort="1" title="Ordenar pelo Potencial">Potencial</button></th><th>Urgência</th><th>Estágio</th><th>Prazo VLS-TS</th><th>Último sinal</th></tr></thead>
           <tbody id="tbody"></tbody>
         </table>
         <div class="empty" id="empty" hidden>Ninguém com esses filtros. Tire um filtro ou escolha outra visão.</div>
@@ -235,6 +261,6 @@
 <div id="compose-backdrop" hidden style="position:fixed; inset:0; background:rgba(20,18,14,.4); z-index:9"></div>
 <div class="toast" id="toast" hidden></div>
 
-<script type="module" src="crm.js?v=2026-11-15.8"></script>
+<script type="module" src="crm.js?v=2026-11-16.1"></script>
 </body>
 </html>
