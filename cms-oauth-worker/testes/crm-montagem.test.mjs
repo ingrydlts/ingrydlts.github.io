@@ -198,6 +198,39 @@ const comRep = (mut) => { const o = OK(); o.encaminhamentos = [o.encaminhamentos
   check('o prompt manda pôr cada coisa num lugar só', /UMA vez|um lugar só/i.test(sis) && /nunca repita/i.test(sis));
 }
 
+console.log('\n== Cada coisa no canal certo: lembrete (Início), mensagem (chat) ou pergunta (dossiê) ==');
+{
+  const LEMB = () => ({ lembretes: [{ titulo: 'Matrícula fecha em 30/11', texto: 'Oi! Passando para lembrar que a matrícula fecha no fim do mês. Quer ajuda para decidir a escola?', dias_apos: 3, momento: '33:10' }],
+    mensagens_chat: [{ texto: 'Que tal uma conversa de 20 min para escolher entre as duas escolas?', motivo: 'propor_1a1', momento: '40:00' }, { texto: 'Dá uma olhada no guia de escolas que te mandei e me diz qual faz mais sentido.', motivo: 'redirecionar', momento: '45:10' }] });
+  const comL = (mut) => { const o = OK(); Object.assign(o, LEMB()); if (mut) mut(o); return o; };
+  const falhaL = (mut) => !crmMontagemValidar(comL(mut), CAT).ok;
+  check('o schema pede lembretes e mensagens_chat, com os motivos fechados', schema.required.includes('lembretes') && schema.required.includes('mensagens_chat') && JSON.stringify(schema.properties.mensagens_chat.items.properties.motivo.enum) === JSON.stringify(['propor_1a1', 'redirecionar', 'cobrar_passo']) && schema.properties.lembretes.maxItems === 6);
+  check('o prompt explica os três canais: lembrete, chat (1:1 ou redirecionar) e pergunta (entender o dossiê)', /lembretes/.test(sis) && /mensagens_chat/.test(sis) && /1:1/.test(sis) && /entender/i.test(sis));
+  const r = crmMontagemValidar(comL(), CAT);
+  check('lembretes e mensagens certos passam e chegam inteiros', r.ok && r.montagem.lembretes.length === 1 && r.montagem.lembretes[0].dias_apos === 3 && r.montagem.mensagens_chat.length === 2 && r.montagem.mensagens_chat[0].motivo === 'propor_1a1');
+  check('o lembrete ganha chave estável pelo título (não pela posição)', r.ok && /^lembrete_[0-9a-f]{6}$/.test(r.montagem.lembretes[0].chave) && crmMontagemValidar(comL((o) => { o.lembretes.unshift({ titulo: 'Outro lembrete', texto: 'Texto', dias_apos: 1 }); }), CAT).montagem.lembretes.find((x) => x.titulo === 'Matrícula fecha em 30/11').chave === r.montagem.lembretes[0].chave);
+  check('proposta antiga (sem os campos) passa com listas vazias', v.ok && v.montagem.lembretes.length === 0 && v.montagem.mensagens_chat.length === 0);
+  check('motivo de mensagem fora da lista, dias fora de 0 a 60 e mais de 6 itens derrubam tudo', falhaL((o) => { o.mensagens_chat[0].motivo = 'vender'; }) && falhaL((o) => { o.lembretes[0].dias_apos = 90; }) && falhaL((o) => { o.mensagens_chat = Array.from({ length: 7 }, () => ({ texto: 'x', motivo: 'redirecionar' })); }));
+  check('dado pessoal em lembrete ou mensagem derruba tudo', falhaL((o) => { o.lembretes[0].texto = 'Escreva para ana@example.com'; }) && falhaL((o) => { o.mensagens_chat[0].texto = 'Me liga no 06 12 34 56 78'; }));
+  check('chave inesperada nos itens derruba tudo', falhaL((o) => { o.lembretes[0].estado = 'publicado'; }) && falhaL((o) => { o.mensagens_chat[0].enviar = true; }));
+  check('lembrete que repete um passo do checklist é juntado (fica o passo)', (() => { const o = comL((x) => { x.lembretes.push({ titulo: 'Perguntar a carga', texto: 'Perguntar se a carga é de pelo menos 20h por semana', dias_apos: 1 }); x.checklists[0].itens.push({ chave: 'perg_carga', titulo: 'Perguntar se a carga é de pelo menos 20h por semana' }); }); const q = crmMontagemValidar(o, CAT); return q.ok && q.montagem.lembretes.length === 1 && q.montagem.duplicados.some((d) => d.motivo === 'ja_no_checklist'); })());
+}
+
+console.log('\n== Rascunho do e-mail do Bilan (Resumo, Próximos passos e o que você responde) ==');
+{
+  const EM = () => ({ duvidas: ['Como funciona o visto de estudante depois do PVT', 'Se a atestação precisa do selo Qualiopi'], proximos: ['Ligar para a Alliance Française amanhã', 'Reunir diploma, passaporte e comprovante de endereço'], respostas: ['Eu te mando o guia de escolas credenciadas', 'Eu confirmo se a escola exige tradução juramentada'] });
+  const comE = (mut) => { const o = OK(); o.bilan.email = EM(); if (mut) mut(o.bilan.email); return o; };
+  const falhaE = (mut) => !crmMontagemValidar(comE(mut), CAT).ok;
+  check('o schema do bilan pede o email com as três seções', schema.properties.bilan.required.includes('email') && ['duvidas', 'proximos', 'respostas'].every((k) => schema.properties.bilan.properties.email.properties[k].maxItems === 6));
+  check('o prompt explica o rascunho do e-mail (segunda pessoa, três seções) e o resumo para o Dossiê', /bilan\.email/.test(sis) && /segunda pessoa|"você"/.test(sis));
+  const r = crmMontagemValidar(comE(), CAT);
+  check('o e-mail certo passa e chega inteiro, uma linha por item', r.ok && r.montagem.bilan.email.duvidas.length === 2 && r.montagem.bilan.email.proximos[0] === 'Ligar para a Alliance Française amanhã' && r.montagem.bilan.email.respostas.length === 2);
+  check('proposta antiga (sem email) passa com as três seções vazias', v.ok && v.montagem.bilan.email.duvidas.length === 0 && v.montagem.bilan.email.proximos.length === 0 && v.montagem.bilan.email.respostas.length === 0);
+  check('mais de 6 linhas, linha vazia ou seção estranha derrubam tudo', falhaE((e) => { e.duvidas = Array.from({ length: 7 }, (_, i) => 'Dúvida ' + i); }) && falhaE((e) => { e.proximos = ['']; }) && falhaE((e) => { e.extra = ['x']; }));
+  check('dado pessoal no e-mail derruba tudo', falhaE((e) => { e.respostas = ['Escreva para ana@example.com']; }) && falhaE((e) => { e.proximos = ['Ligar para 06 12 34 56 78']; }));
+  check('o e-mail que não é objeto, ou com seção que não é lista, derruba tudo', !crmMontagemValidar((() => { const o = OK(); o.bilan.email = 'texto'; return o; })(), CAT).ok && falhaE((e) => { e.duvidas = 'uma só'; }));
+}
+
 console.log('\n== Panorama da pessoa (o retrato de como ela está) ==');
 const PAN = () => ({ leitura: 'Ansiosa com prazo e dinheiro, mas decidida a estudar francês.',
   termometros: [{ chave: 'angustia', nivel: 3, porque: 'Voltou ao prazo do visto três vezes', momento: '12:30' }, { chave: 'duvida', nivel: 2, porque: 'Não sabe se liga ou escreve', momento: '20:05' }],

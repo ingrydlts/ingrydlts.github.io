@@ -4,7 +4,7 @@
 // As chaves dos itens (enc:, lista:, chk:, doc:, perg:, bloco:) são as mesmas de crm_montagem_aplicar (db/crm-montagem-aplicar.sql).
 
 export var MOTIVOS = [['fato_errado', 'Fato extraído errado'], ['regra_inadequada', 'Regra do percurso inadequada'], ['prazo_desatualizado', 'Prazo desatualizado'], ['excecao', 'Exceção desta pessoa']];
-export var GRUPOS = ['Gerais da persona', 'Particulares do percurso', 'Entregas da equipe', 'Prometido na chamada e ainda sem item', 'Checklists', 'Documentos para reunir', 'Perguntas da equipe', 'Contatos para acionar'];
+export var GRUPOS = ['Gerais da persona', 'Particulares do percurso', 'Entregas da equipe', 'Prometido na chamada e ainda sem item', 'Checklists', 'Documentos para reunir', 'Perguntas da equipe', 'Lembretes no Início', 'Contatos para acionar'];
 var GRUPO_CAMADA = { persona: 'Gerais da persona', particular: 'Particulares do percurso', entrega_equipe: 'Entregas da equipe' };
 var DIAS_TESTE = 7;
 // As démarches (tipos de checklist) do catálogo processos.json; um teste confere que as chaves são as mesmas.
@@ -41,6 +41,9 @@ export function itensDaProposta(p) {
   });
   lista(p.perguntas_equipe).forEach(function (q) {
     saida.push({ k: 'perg:' + q.chave, grupo: 'Perguntas da equipe', titulo: String(q.texto || ''), detalhe: 'Resposta em ' + (q.resposta_tipo === 'data' ? 'data' : 'opções') + ' · grava em ' + q.grava_em, momento: '', trecho: '', certeza: 'inferido', aConferir: false });
+  });
+  lista(p.lembretes).forEach(function (l) {
+    saida.push({ k: 'lemb:' + l.chave, grupo: 'Lembretes no Início', titulo: String(l.titulo || ''), detalhe: String(l.texto || '') + ' · aviso em rascunho no Início, chega ' + (l.dias_apos ? l.dias_apos + ' dias depois do primeiro acesso' : 'no primeiro acesso'), momento: l.momento || '', trecho: '', certeza: 'inferido', aConferir: false });
   });
   lista(p.blocos).forEach(function (b) {
     lista(b.itens).forEach(function (i) {
@@ -94,23 +97,30 @@ function itemHtml(i, m, esc) {
 
 // O que ficou da conversa: o resumo, cada afirmação com quem disse, quando, o trecho e quantas vezes (duas posições aparecem as duas),
 // e as promessas da equipe com o que as cumpre. É a base para você conferir a proposta contra o que foi dito.
-function conversaHtml(p, esc) {
+// Uma gaveta (details): a tela era uma lista longa; agora cada grupo abre e fecha. O estado aberto vive em m.dd (o CRM o guarda entre repaints).
+function gaveta(m, chave, titulo, resumo, corpo, padrao) {
+  var dd = (m && m.dd) || {}, aberto = dd['mont-' + chave] === undefined ? !!padrao : !!dd['mont-' + chave];
+  return '<details class="mont-gaveta" data-dd="mont-' + chave + '"' + (aberto ? ' open' : '') + '><summary><b>' + titulo + '</b>' + (resumo ? ' <span class="sub">' + resumo + '</span>' : '') + '</summary>' + corpo + '</details>';
+}
+function conversaHtml(p, esc, m) {
   if (!p) return '';
   var b = p.bilan || {}, afs = lista(b.afirmacoes), cs = lista(p.compromissos), h = '';
   if (b.resumo || afs.length) {
-    h += '<h5 class="mont-grupo">O que ficou da conversa</h5>' + (b.resumo ? '<p class="sub" style="margin:0 0 6px">' + esc(b.resumo) + '</p>' : '');
-    if (afs.length) h += '<ul class="mont-lista">' + afs.map(function (a) {
+    var corpo = (b.resumo ? '<p class="sub" style="margin:0 0 6px">' + esc(b.resumo) + '</p>' : '');
+    if (afs.length) corpo += '<ul class="mont-lista">' + afs.map(function (a) {
       return '<li class="mont-item"><b>' + esc(a.texto) + '</b><br><small class="sub">' + esc(a.quem === 'ingryd' ? 'Você' : a.quem === 'pessoa' ? 'Ela' : 'incerto') + (a.momento ? ' · ' + esc(a.momento) : '') + ' · ' + esc(a.certeza) +
         (a.vezes_dito > 1 ? ' · dito ' + a.vezes_dito + ' vezes' : '') + (a.trecho ? '<br>“' + esc(a.trecho) + '”' : '') + '</small></li>';
     }).join('') + '</ul>';
+    h += gaveta(m, 'conversa', 'O que ficou da conversa', afs.length + (afs.length === 1 ? ' afirmação' : ' afirmações'), corpo, false);
   }
   if (cs.length) {
     var cobre = function (i) { return lista(p.encaminhamentos).concat(lista(p.documentos)).filter(function (x) { return lista(x.cobre).indexOf(i) >= 0; }).map(function (x) { return x.texto || x.rotulo; }); };
-    h += '<h5 class="mont-grupo">Prometido na chamada · ' + cs.length + '</h5><ul class="mont-lista">' + cs.map(function (c, i) {
+    var semItem = cs.filter(function (c, i) { return !cobre(i).length; }).length;
+    h += gaveta(m, 'prometido', 'Prometido na chamada · ' + cs.length, semItem ? semItem + ' sem item' : 'tudo coberto', '<ul class="mont-lista">' + cs.map(function (c, i) {
       var q = cobre(i);
       return '<li class="mont-item"><b>' + esc(c.texto) + '</b> ' + (q.length ? '<span class="pill u-baixa">coberto</span><br><small class="sub">por: ' + q.map(esc).join('; ') + '</small>' : '<span class="pill u-media">sem item</span><br><small class="sub">vira pendência para você</small>') +
         (c.momento || c.trecho ? '<br><small class="sub">' + (c.momento ? esc(c.momento) : '') + (c.trecho ? ' “' + esc(c.trecho) + '”' : '') + '</small>' : '') + '</li>';
-    }).join('') + '</ul>';
+    }).join('') + '</ul>', semItem > 0);
   }
   return h;
 }
@@ -133,29 +143,38 @@ function duplicadosHtml(p, esc) {
 function propostaHtml(m, c, esc) {
   var itens = itensDaProposta(m.prop && m.prop.proposta), marcados = decisoesDe(itens, m.sel, m.motivos).filter(function (d) { return d.decisao === 'aprovar'; }).length;
   var h = '<p class="sub" style="margin:0 0 8px">Leitura' + (m.prop && m.prop.versao ? ' (versão ' + esc(String(m.prop.versao)) + ')' : '') + '. Marque o que vale; o que você desmarcar fica de fora e o motivo ajuda a melhorar os modelos.</p>';
-  h += conversaHtml(m.prop && m.prop.proposta, esc);
+  h += conversaHtml(m.prop && m.prop.proposta, esc, m);
   h += duplicadosHtml(m.prop && m.prop.proposta, esc);
+  var pb = (m.prop && m.prop.proposta && m.prop.proposta.bilan) || {};
+  if (pb.resumo || lista(pb.email && pb.email.proximos).length) h += '<p style="margin:0 0 8px"><button class="btn" type="button" data-montdossie="' + esc(String(c.id)) + '">Atualizar Resumo e Próximos passos do Dossiê com esta leitura</button> <small class="sub">Eles já foram preenchidos se estavam vazios. Este botão sobrescreve.</small></p>';
   var afet = promessasAfetadas(m.prop && m.prop.proposta, m.sel);
   if (afet.length) h += '<p class="err" role="alert" style="margin:0 0 8px">Você desmarcou o que cumpre uma promessa da chamada: ' + afet.map(esc).join('; ') + '. Anote à mão, ou ela some do plano.</p>';
   h += diffHtml(m.diff, esc);
+  var nConf = itens.filter(function (i) { return i.aConferir && (m.sel[i.k] === undefined ? true : m.sel[i.k]); }).length;
+  h += '<p class="sub" style="margin:0 0 6px"><b>' + itens.length + (itens.length === 1 ? ' item' : ' itens') + '</b> em ' + GRUPOS.filter(function (g) { return itens.some(function (i) { return i.grupo === g; }); }).length + ' grupos · ' + marcados + ' marcados' + (nConf ? ' · ' + nConf + ' sem fonte oficial' : '') + '. Abra cada grupo para revisar.</p>';
   GRUPOS.forEach(function (g) {
     var lst = itens.filter(function (i) { return i.grupo === g; });
-    if (lst.length) h += '<h5 class="mont-grupo">' + esc(g) + ' · ' + lst.length + '</h5><ul class="mont-lista">' + lst.map(function (i) { return itemHtml(i, m, esc); }).join('') + '</ul>';
+    if (!lst.length) return;
+    var marc = lst.filter(function (i) { return m.sel[i.k] === undefined ? true : !!m.sel[i.k]; }).length, conf = lst.filter(function (i) { return i.aConferir; }).length;
+    h += gaveta(m, g.toLowerCase().replace(/[^a-z0-9]+/g, '-'), esc(g) + ' · ' + lst.length, marc + (marc === 1 ? ' marcado' : ' marcados') + (conf ? ' · ' + conf + ' a conferir' : ''), '<ul class="mont-lista">' + lst.map(function (i) { return itemHtml(i, m, esc); }).join('') + '</ul>', false);
   });
   if (!itens.length) h += '<p class="sub">A conversa não trouxe nada para montar. Cole uma transcrição mais completa ou monte à mão na aba Caso.</p>';
-  return h + '<div class="actions" style="margin-top:10px"><button class="btn primary" type="button" data-montaplicar="' + esc(c.id) + '"' + (m.estado === 'aplicando' ? ' disabled' : '') + '>' +
-    (m.estado === 'aplicando' ? 'Criando os rascunhos…' : 'Criar rascunhos dos itens marcados (' + marcados + ')') + '</button> <button class="btn" type="button" data-montdescartar="' + esc(c.id) + '">Descartar a proposta</button></div>' +
-    '<p class="sub" style="margin:6px 0 0">Nada chega a ela agora: viram rascunhos na aba Caso, onde você revisa e publica.</p>';
+  // Uma aprovação só: os itens marcados já entram no Checklist, nos Avisos e no Espaço dela (nada de segunda etapa em outra sessão).
+  var confiro = m.confiro === undefined ? true : !!m.confiro;
+  return h + (nConf ? '<label class="pccheck" style="margin:10px 0 0"><input type="checkbox" data-montconfiro' + (confiro ? ' checked' : '') + '> <span>Conferi o texto dos ' + nConf + (nConf === 1 ? ' item' : ' itens') + ' sem fonte oficial: podem ir para ela. (Desmarque para segurá-los em “A conferir”.)</span></label>' : '') +
+    '<div class="actions" style="margin-top:10px"><button class="btn primary" type="button" data-montaplicar="' + esc(c.id) + '"' + (m.estado === 'aplicando' ? ' disabled' : '') + '>' +
+    (m.estado === 'aplicando' ? 'Aprovando…' : 'Aprovar e adicionar ao Checklist (' + marcados + ')') + '</button> <button class="btn" type="button" data-montdescartar="' + esc(c.id) + '">Descartar a proposta</button></div>' +
+    '<p class="sub" style="margin:6px 0 0">Aprovar já põe os passos no Checklist e os avisos no Início, prontos para ela ver quando entrar. Você edita a escrita lá, sem repetir a aprovação.</p>';
 }
 
 function resultadoHtml(m, c, esc) {
   var r = m.res || {};
   var n = function (v, um, varios) { return v + ' ' + (v === 1 ? um : varios); };
-  var h = '<p class="sub" role="status" style="margin:0 0 6px"><b>Rascunhos criados:</b> ' + n(r.criados || 0, 'criado', 'criados') + ', ' + n(r.atualizados || 0, 'atualizado', 'atualizados') + ', ' + n(r.rejeitados || 0, 'rejeitado', 'rejeitados') + '.</p>';
+  var h = '<p class="sub" role="status" style="margin:0 0 6px"><b>Aprovado:</b> ' + n(r.criados || 0, 'criado', 'criados') + ', ' + n(r.atualizados || 0, 'atualizado', 'atualizados') + ', ' + n(r.rejeitados || 0, 'rejeitado', 'rejeitados') + '.</p>';
   var conf = lista(r.conflitos);
   if (conf.length) h += '<p class="sub" style="margin:0 0 6px">Ficaram como estavam (você já revisou ou ela já fez): ' + conf.map(function (k) { return '<code>' + esc(k) + '</code>'; }).join(', ') + '.</p>';
-  h += '<p class="sub" style="margin:0 0 6px">Revise os rascunhos na aba <b>Caso</b> se quiser mexer em algo. Quando estiver certo, libere:</p>' +
-    '<div class="actions" style="margin:0 0 6px"><button class="btn primary" type="button" data-montliberar="' + esc(c.id) + '">Liberar para ela</button></div>';
+  if (!m.lib) h += '<p class="sub" style="margin:0 0 6px">Falta só liberar para ela:</p><div class="actions" style="margin:0 0 6px"><button class="btn primary" type="button" data-montliberar="' + esc(c.id) + '">Liberar para ela</button></div>';
+  else h += '<p class="sub" style="margin:0 0 6px">Os passos estão no <b>Checklist</b> dela (e os avisos no <b>Início</b>): é lá que você edita a escrita.</p>';
   if (m.lib) h += '<p class="sub" role="status" style="margin:0 0 6px"><b>Liberado:</b> ' + n(m.lib.liberados || 0, 'liberado', 'liberados') + '. ' +
     (m.lib.publicados_agora ? 'Os itens do espaço já estão no espaço dela.' : 'Os itens do espaço aparecem para ela quando aceitar o convite.') +
     (m.lib.a_conferir_pulados ? ' ' + m.lib.a_conferir_pulados + ' ficaram de fora por falta de fonte (abaixo).' : '') + '</p>';
@@ -214,15 +233,16 @@ export function passosPropostosHtml(aco, listas, h) {
   var passos = lista(aco).filter(function (a) { return a.dono === 'ela' && a.canal === 'plataforma' && /^(enc|chk):/.test(a.origem_chave || ''); });
   if (!passos.length) return '';
   return passos.map(function (a) {
+    if (h.editor && h.editando && h.editando(a)) return h.editor(a);
     var subs = lista(a.subitens), fim = a.estado === 'concluida';
     var est = fim ? h.pil('Concluído', 'u-baixa') : a.publicada_em ? h.pil('Publicado', 'u-baixa') : a.a_conferir ? h.pil('A conferir', 'u-media') : h.pil('Rascunho', 'u-media');
     var meta = [a.demarche ? h.rotulo(a.demarche) : 'Sem démarche', subs.length ? subs.length + (subs.length === 1 ? ' subitem' : ' subitens') : '', a.camada === 'persona' ? 'da persona' : 'só deste percurso',
       h.prazo(a), a.lista_chave && tit[a.lista_chave] ? 'lista "' + tit[a.lista_chave] + '"' : ''].filter(Boolean).join(' · ');
     var corpo = (fim ? '<s>' + e(a.titulo) + '</s>' : '<b>' + e(a.titulo) + '</b>') + '<br><span class="sub">' + e(meta) + '</span>' +
       (subs.length ? '<ul class="mont-sub" aria-label="Subitens">' + subs.map(function (x) { return '<li>' + e(String(x)) + '</li>'; }).join('') + '</ul>' : '') +
-      (a.a_conferir && !a.publicada_em ? '<br><small class="sub">Falta conferir a fonte: confira e clique em "Conferi a fonte" para poder publicar.</small>' : '');
+      (a.a_conferir && !a.publicada_em ? '<br><small class="sub">Falta conferir a fonte: confira e clique em "Conferi a fonte" para poder publicar.</small>' : '') + (a.editado_em ? '<br><small class="sub">Texto editado por você: a releitura não muda.</small>' : '');
     // Uma ação por linha, sempre: conferir a fonte → publicar para ela → retirar. (Concluído não tem botão.)
-    var btns = fim ? '' : a.publicada_em ? h.btn('aco-retirar', a.id, 'Retirar') : a.a_conferir ? h.conferi(a.id) : h.btn('aco-pub', a.id, 'Publicar para ela');
+    var btns = (fim ? '' : a.publicada_em ? h.btn('aco-retirar', a.id, 'Retirar') : a.a_conferir ? h.conferi(a.id) : h.btn('aco-pub', a.id, 'Publicar para ela')) + (fim ? '' : h.btn('ed-aco', a.id, 'Editar'));
     return h.linha(est, corpo, btns);
   }).join('');
 }
