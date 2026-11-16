@@ -80,7 +80,7 @@ mod.state.dosAberto = true;
 rpcResp.crm_curadoria_contagem = { data: [{ tema: 'dap_verte', n_pessoas: 3, n_itens: 4, pronto: true }, { tema: 'outro', n_pessoas: 1, n_itens: 1, pronto: false }], error: null };
 html = await pagina({});
 check('aberto: o painel aparece dentro do dossiê, antes do checklist', html.includes('id="poscall-box"') && html.indexOf('id="poscall-box"') < html.indexOf('id="chk-box"'));
-check('tem a caixa de sinais com o vocabulário carregado, sem IA', caixa().includes('data-pcsinal="dap_verte"') && caixa().includes('Mora na França, vaga em L1'));
+check('a caixa de sinais à mão foi removida', !caixa().includes('data-pcsinal="') && !caixa().includes('Salvar sinais'));
 check('sem transcrição, avisa e oferece ler', caixa().includes('Ainda não há transcrição colada') && caixa().includes('data-pcler="c1"'));
 check('mostra a fila de curadoria: 3 pessoas = pronto para virar padrão; "outro" nunca fica pronto', /DAP verte[\s\S]*3 pessoas[\s\S]*pronto para virar padrão/.test(caixa()) && /Outros temas[\s\S]*1 pessoa(?!s)/.test(caixa()) && (caixa().match(/dchip insnovo/g) || []).length === 1);
 check('o bloco Sinais da call (chaves novas) está no formulário e fora da barra de progresso', html.includes('Sinais da call</h4>') && html.includes('data-dk="formacao_alvo"') && html.includes('data-dk="plano_b"'));
@@ -90,16 +90,6 @@ vocabErro = true; mod.state.pc = null;
 html = await pagina({});
 check('sem o SQL rodado: avisa o nome do arquivo e o resto do dossiê segue', caixa().includes('db/crm-pos-call.sql') && html.includes('data-dossalvar="c1"'));
 vocabErro = false; mod.state.pc = null;
-
-console.log('\n== Sinais à mão (sem IA) ==');
-await pagina({ sinais: ['sem_graduacao'] });
-check('os sinais salvos vêm marcados', /data-pcsinal="sem_graduacao" checked/.test(caixa()) && !/data-pcsinal="dap_verte" checked/.test(caixa()));
-check('"Salvar sinais" começa desligado', /data-pcsalvarsinais="c1" disabled/.test(caixa()));
-muda({ pcsinal: 'dap_verte' }, { checked: true }); muda({ pcsinal: 'sem_graduacao' }, { checked: false });
-rpcs.length = 0;
-await click({ pcsalvarsinais: 'c1' });
-const sv = rpcs.find((r) => r.n === 'crm_salvar_dossie');
-check('salva exatamente o que ficou marcado, pelo crm_salvar_dossie', sv && sv.a.p_contato === 'c1' && JSON.stringify(sv.a.p_dados) === '{"sinais":["dap_verte"]}');
 
 console.log('\n== Ler a call ==');
 mod.state.pc = null;
