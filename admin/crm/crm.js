@@ -257,7 +257,7 @@ async function loadAll() {
     // Os 1:1 (db/crm-fase2.sql): alimentam o calendário e o indicador "1:1 marcados". Sem a tabela, ficam vazios.
     supabase.from('um_a_um').select('id,contato_id,quando,status,criado_em,registro').order('quando', { ascending: true }).limit(2000),
     // Os 1:1 pagos (db/crm-1a1.sql): quantos minutos e quando pagou. O valor em euros não é guardado: o Worker só repassa os minutos.
-    supabase.from('um_a_um_pagamentos').select('contato_id,minutos,pago_em').order('pago_em', { ascending: false }).limit(2000)
+    supabase.from('um_a_um_pagamentos').select('contato_id,minutos,pago_em,um_a_um_id').order('pago_em', { ascending: false }).limit(2000)
   ]);
   if (r[0].error) return fail('carregar os contatos', r[0].error);
   COMPRAS = {}; COMPRAS_EV = [];
@@ -268,6 +268,10 @@ async function loadAll() {
     UM = u2 && !u2.error ? (u2.data || []) : [];
   }
   PAG1A1 = r[15] && !r[15].error ? (r[15].data || []) : [];
+  if (r[15] && r[15].error && /um_a_um_id/.test(String(r[15].error.message || ''))) {   // o vínculo ainda não existe (db/crm-1a1-vinculo.sql não rodou): carrega sem ele
+    var g2 = await supabase.from('um_a_um_pagamentos').select('contato_id,minutos,pago_em').order('pago_em', { ascending: false }).limit(2000);
+    PAG1A1 = g2 && !g2.error ? (g2.data || []) : [];
+  }
   C = r[0].data || [];
   ASSIN = {};
   ((r[13] && !r[13].error && r[13].data) || []).forEach(function (a) { ASSIN[a.contato_id] = a; });
@@ -3637,6 +3641,8 @@ function r1Html(c, S) {
     var cod = r1Rotulo(r1Codigo(c, u)), aberto = state.fx.r1 === String(u.id), passou = u.status === 'feito' || (u.quando && new Date(u.quando).getTime() < Date.now() - 36e5);
     var reg = u.registro && typeof u.registro === 'object' ? u.registro : {};
     var estado = reg.conclusao || reg.encaminhamento ? 'registrado' : passou ? 'feito, sem registro' : 'marcado';
+    var pg = PAG1A1.filter(function (p) { return p.um_a_um_id != null && String(p.um_a_um_id) === String(u.id); })[0];
+    if (pg) estado += ' · pago (' + pg.minutos + ' min)';
     return '<button type="button" class="r1-tg' + (aberto ? ' on' : '') + '" data-r1="' + esc(u.id) + '" aria-expanded="' + (aberto ? 'true' : 'false') + '">' +
       (cod ? '<b class="r1-cod">' + esc(cod) + '</b>' : '') + '<span>1:1 ' + (u.quando ? 'de ' + esc(fmtDate(u.quando)) + ' ' + esc(fmtHora(u.quando)) : 'sem data') + '</span><i class="dv-fonte">' + esc(estado) + '</i></button>';
   }).join('') + '</div>' + r1PainelHtml(c, S, lista.filter(function (u) { return String(u.id) === state.fx.r1; })[0]);

@@ -116,5 +116,17 @@ console.log('== Panorama dela ==');
   check('quem não tem conta: texto de "ainda não entrou no app"', sem.mod.fxSinaisCorpo(c2).includes('ainda não entrou no app'));
 }
 
+console.log('== Pagamento ligado ao 1:1 ==');
+{
+  const h = await carregarCrm({ respostas: {} });
+  h.mod.setC([pessoa({ id: 'a' })]);
+  h.mod.setUM([{ id: 10, contato_id: 'a', quando: ha(-3), status: 'agendado', criado_em: ha(5) }, { id: 11, contato_id: 'a', quando: ha(-9), status: 'agendado', criado_em: ha(5) }]);
+  h.mod.setPAG1A1([{ contato_id: 'a', minutos: 40, pago_em: ha(2), um_a_um_id: 10 }, { contato_id: 'a', minutos: 20, pago_em: ha(1), um_a_um_id: null }]);
+  const t = h.mod.r1Html(pessoa({ id: 'a' }), null);
+  check('o 1:1 pago mostra "pago (40 min)" e o outro não', (t.match(/pago \(40 min\)/g) || []).length === 1 && !t.includes('pago (20 min)'));
+  h.mod.setPAG1A1([{ contato_id: 'a', minutos: 20, pago_em: ha(1) }]);
+  check('sem a coluna um_a_um_id (SQL ainda não rodou) nada quebra e nada aparece como pago', !h.mod.r1Html(pessoa({ id: 'a' }), null).includes('pago ('));
+}
+
 console.log('\n' + passed + ' passaram, ' + failed + ' falharam');
 if (failed) process.exit(1);
