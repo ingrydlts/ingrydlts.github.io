@@ -2819,14 +2819,6 @@ function poscallHtml(c, fixo) {
   h += '<section class="dbloco poscall"><h4>Pós-call</h4>';
   if (pc.vocabErro) return h + '<p class="sub" style="margin:0">Falta rodar <b>db/crm-pos-call.sql</b> no SQL Editor do Supabase.</p></section>';
 
-  // Sinais desta pessoa: caixa de seleção (funciona sem IA).
-  var atuais = pc.manual || pcSinaisDela(d);
-  h += '<div class="pcsinais"><p class="sub" style="margin:0 0 6px">Sinais desta pessoa (o app lê como <code>sinal_…</code> e mostra só o que vale para ela).</p>' +
-    (pc.vocab.length ? pc.vocab.map(function (v) {
-      return '<label class="pccheck"><input type="checkbox" data-pcsinal="' + esc(v.chave) + '"' + (atuais.indexOf(v.chave) >= 0 ? ' checked' : '') + '> <span>' + esc(v.rotulo) + '</span></label>';
-    }).join('') : '<span class="sub">Carregando…</span>') +
-    '<div class="actions" style="margin-top:8px"><button class="btn" type="button" data-pcsalvarsinais="' + esc(c.id) + '"' + (pc.manual ? '' : ' disabled') + '>Salvar sinais</button></div></div>';
-
   if (pc.estado === 'lendo') return h + (fixo ? '' : '<p class="sub" role="status">Lendo a call… (leva alguns segundos)</p>') + '</section>';
   if (pc.estado === 'proposta' && pc.prop) return h + poscallPropostaHtml(c, pc, d, fixo) + poscallCuradoriaHtml(pc) + '</section>';
 
@@ -3243,17 +3235,6 @@ async function pcDescartar(cid, t) {
   if (r.error) return fail('descartar a proposta', r.error);
   var vocab = pc.vocab; state.pc = pcInicial(cid); state.pc.vocab = vocab; state.pc.carregou = true;
   pcCarregarDados(cid); toast('Proposta descartada');
-}
-async function pcSalvarSinais(cid, t) {
-  var pc = pcEstado(cid);
-  if (!pc.manual) return;
-  if (t) t.disabled = true;
-  var r = await supabase.rpc('crm_salvar_dossie', { p_contato: cid, p_dados: { sinais: pc.manual } });
-  if (t) t.disabled = false;
-  if (r.error) return fail('salvar os sinais', r.error);
-  pc.manual = null;
-  await reload(); if (state.view === 'pessoa') renderPessoa();
-  toast('Sinais salvos');
 }
 async function pcResolver(cid, tema, t) {
   if (t) t.disabled = true;
@@ -6240,7 +6221,6 @@ document.addEventListener('click', async function (e) {
   if (t.dataset.pcaplicar) return pcAplicar(t.dataset.pcaplicar, t);
   if (t.dataset.pcdescartar) return pcDescartar(t.dataset.pcdescartar, t);
   if (t.dataset.pcchat) return pcChat(t.dataset.pcchat);
-  if (t.dataset.pcsalvarsinais) return pcSalvarSinais(t.dataset.pcsalvarsinais, t);
   if (t.dataset.pcresolver) return pcResolver(state.sel, t.dataset.pcresolver, t);
   if (t.id === 'onb-enviar') return onbEnviar();
   if (t.id === 'onb-abrir') return openPessoa(ONB.contato, 'ficha');
@@ -6457,14 +6437,8 @@ document.addEventListener('input', function (e) {
 });
 document.addEventListener('change', function (e) {
   var dsx = e.target.dataset || {}, cidPc = state.sel;
-  if (state.pc && state.pc.cid === cidPc && (dsx.pcsinal !== undefined || dsx.pccampo !== undefined || dsx.pcsinalprop !== undefined || dsx.pcfila !== undefined || dsx.pccamada !== undefined || dsx.pcperg !== undefined)) {
+  if (state.pc && state.pc.cid === cidPc && (dsx.pccampo !== undefined || dsx.pcsinalprop !== undefined || dsx.pcfila !== undefined || dsx.pccamada !== undefined || dsx.pcperg !== undefined)) {
     var pcx = state.pc;
-    if (dsx.pcsinal !== undefined) {
-      var cur = (pcx.manual || pcSinaisDela(state.dos && state.dos.d)).filter(function (k) { return k !== dsx.pcsinal; });
-      if (e.target.checked) cur.push(dsx.pcsinal);
-      pcx.manual = cur;
-      var bt = document.querySelector('[data-pcsalvarsinais]'); if (bt) bt.disabled = false;
-    }
     if (dsx.pccampo !== undefined) pcx.sel.campos[dsx.pccampo] = !!e.target.checked;
     if (dsx.pcsinalprop !== undefined) pcx.sel.sinais[dsx.pcsinalprop] = !!e.target.checked;
     if (dsx.pcfila !== undefined) pcx.sel.fila[dsx.pcfila] = !!e.target.checked;
