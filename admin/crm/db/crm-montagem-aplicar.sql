@@ -13,6 +13,7 @@
 --      (o que veio de proposta anterior e a nova não traz mais: é só uma sugestão, nada é apagado).
 -- Chaves: enc:<chave> (encaminhamento ou pendência de compromisso), lista:<chave>, chk:<lista>:<item>, doc:<chave>, perg:<chave>,
 --         bloco:<tipo>:<chave>.
+-- Documento: direcao 'equipe_envia' da proposta vira 'recebe' (a equipe manda para ela) e o resto 'reune' (ela reúne), que são os valores que o app e o CRM leem.
 -- Motivos de edição ou rejeição (alimentam a manutenção do catálogo): fato_errado, regra_inadequada, prazo_desatualizado, excecao.
 
 alter table public.caso_acoes add column if not exists origem_chave text check (origem_chave is null or origem_chave ~ '^[a-z0-9_:.-]{1,80}$');
@@ -138,7 +139,7 @@ begin
     elsif it.kind in ('doc', 'bloco') then
       if it.kind = 'doc' then
         v_titulo := left(it.d->>'rotulo', 120);
-        v_dados := jsonb_build_object('rotulo', left(it.d->>'rotulo', 120), 'direcao', coalesce(it.d->>'direcao', 'ela_envia'), 'selos', coalesce(it.d->'selos', '[]'::jsonb), 'checklists', coalesce(it.d->'checklists', '[]'::jsonb));
+        v_dados := jsonb_build_object('rotulo', left(it.d->>'rotulo', 120), 'direcao', case when it.d->>'direcao' = 'equipe_envia' then 'recebe' else 'reune' end, 'selos', coalesce(it.d->'selos', '[]'::jsonb), 'checklists', coalesce(it.d->'checklists', '[]'::jsonb));
       else
         v_titulo := left(it.d->>'nome', 120);
         v_dados := jsonb_strip_nulls(jsonb_build_object('bloco_tipo', it.ctx->>'tipo', 'nome', it.d->>'nome', 'link', nullif(it.d->>'link', ''), 'canal', nullif(it.d->>'canal', ''), 'nota', nullif(it.d->>'nota', '')));

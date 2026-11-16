@@ -81,7 +81,7 @@ async function main() {
   check('checklist vira lista proposta, com os itens ligados a ela e a camada "particular"', lst.estado === 'proposto' && lst.origem === 'particular' && (await q("select * from caso_acoes where contato_id=$1 and lista_chave='dossie_empresa' and camada='particular'", [ana.c])).length === 2);
   check('item sem fonte nasce a_conferir; com fonte, não', (await ac('chk:dossie_empresa:cv_fr')).a_conferir === true && (await ac('chk:dossie_empresa:carta')).a_conferir === false);
   const doc = await um("select * from board_itens where contato_id=$1 and origem_chave='doc:diploma'", [ana.c]);
-  check('documento vira item do espaço (proposto) com selos e checklists', doc.tipo === 'documento' && doc.estado === 'proposto' && doc.dados.selos[0] === 'traducao' && doc.dados.checklists[0] === 'dossie_empresa' && doc.titulo === 'Diploma do ensino médio');
+  check('documento vira item do espaço (proposto) com selos e checklists', doc.tipo === 'documento' && doc.estado === 'proposto' && doc.dados.selos[0] === 'traducao' && doc.dados.checklists[0] === 'dossie_empresa' && doc.dados.direcao === 'reune' && doc.titulo === 'Diploma do ensino médio');
   const ct = await um("select * from board_itens where contato_id=$1 and origem_chave='bloco:empresa:acme'", [ana.c]);
   check('contato do bloco vira item "contato" do tipo de bloco certo', ct.tipo === 'contato' && ct.dados.bloco_tipo === 'empresa' && ct.dados.nome === 'Acme SAS' && ct.estado === 'proposto');
   const pg = await um("select * from caso_avisos where contato_id=$1 and origem_chave='perg:fim_pvt'", [ana.c]);
@@ -114,6 +114,10 @@ async function main() {
   const p4 = PROP(); p4.blocos[0].itens.push({ chave: 'gama', nome: 'Gama SA', link: null, canal: '', nota: '' }); p4.perguntas_equipe[0] = { chave: 'ruim', texto: 'Pergunta com destino fora da tabela', resposta_tipo: 'data', grava_em: 'respostas.qualquer' };
   const m4 = await montagem(ana, p4);
   check('um item inválido desfaz a aplicação inteira (tudo ou nada)', await falha(() => aplicar(ana, m4, [{ origem_chave: 'bloco:empresa:gama', decisao: 'aprovar' }, { origem_chave: 'perg:ruim', decisao: 'aprovar' }])) && (await q("select 1 from board_itens where contato_id=$1 and origem_chave='bloco:empresa:gama'", [ana.c])).length === 0);
+
+  const p6 = PROP(); p6.documentos.push({ chave: 'guia_pdf', rotulo: 'Guia de escolas (PDF)', selos: [], checklists: [], direcao: 'equipe_envia', cobre: [1] });
+  const m6 = await montagem(ana, p6); await aplicar(ana, m6, [{ origem_chave: 'doc:guia_pdf', decisao: 'aprovar' }]);
+  check('documento que a EQUIPE manda vira direcao "recebe" (como o app e o CRM já leem), e o que ela reúne, "reune"', (await um("select dados->>'direcao' d from board_itens where contato_id=$1 and origem_chave='doc:guia_pdf'", [ana.c])).d === 'recebe');
 
   console.log('\n== Diff: mudança de percurso ==');
   const p5 = PROP(); p5.blocos = [{ tipo: 'escola', titulo: 'Escolas para contactar', itens: [{ chave: 'alliance', nome: 'Alliance Française', link: null, canal: '', nota: '' }] }];

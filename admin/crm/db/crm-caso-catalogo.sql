@@ -37,8 +37,8 @@ revoke all on public.bloco_tipos from anon;
 revoke all on public.respostas_permitidas from anon;
 
 insert into public.bloco_tipos (chave, rotulo) values
-  ('escola', 'Escolas para você contactar'), ('empresa', 'Empresas para você contactar'), ('consulado', 'Consulados para você contactar'),
-  ('tradutor', 'Tradutores para você contactar'), ('seguro', 'Seguros para você contactar'), ('contador', 'Contadores para você contactar')
+  ('escola', 'Escolas para você contatar'), ('empresa', 'Empresas para você contatar'), ('consulado', 'Consulados para você contatar'),
+  ('tradutor', 'Tradutores para você contatar'), ('seguro', 'Seguros para você contatar'), ('contador', 'Contadores para você contatar')
 on conflict (chave) do nothing;
 insert into public.respostas_permitidas (chave, tipo) values
   ('respostas.fim_pvt', 'data'), ('respostas.nivel_frances', 'opcoes'), ('respostas.escola_prioridade', 'opcoes'), ('respostas.sponsor', 'opcoes')
