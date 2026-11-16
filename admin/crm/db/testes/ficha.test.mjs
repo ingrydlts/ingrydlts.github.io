@@ -101,7 +101,7 @@ console.log('== Task 7: sessões e preferências ==');
   check('normalizar descarta e acrescenta', FX.normalizarOrdem(['x', 'b'], ['a', 'b', 'c']).join() === 'b,a,c');
   check('normalizar lixo', FX.normalizarOrdem('lixo', ['a']).join() === 'a' && FX.normalizarOrdem(null, ['a', 'b']).join() === 'a,b');
   check('normalizar repetidos', FX.normalizarOrdem(['b', 'b', 'a'], ['a', 'b']).join() === 'b,a');
-  check('padrão das sessões da fase 1', FX.SESSOES_PADRAO.app.join() === 'chat,inicio,checklist' && FX.SESSOES_PADRAO.ela.join() === 'bilan,hist');   // o dossiê virou aba própria
+  check('padrão das sessões da fase 1', FX.SESSOES_PADRAO.app.join() === 'chat,inicio,checklist,espaco,guias,perfil' && FX.SESSOES_PADRAO.ela.join() === 'eu,bilan,trouxe,sinais,hist,mais');   // o dossiê virou aba própria; Espaço, Guias, Perfil, Só eu e O que ela trouxe entraram no retrabalho
   // Review Focus 5: localStorage indisponível
   const bloqueado = { getItem() { throw new Error('bloqueado'); }, setItem() { throw new Error('cheio'); } };
   let ok = true, p; try { p = FX.lerPrefs(bloqueado); FX.gravarPrefs(bloqueado, { tour: false }); } catch (e) { ok = false; }
@@ -109,10 +109,10 @@ console.log('== Task 7: sessões e preferências ==');
   const mem = {}, st = { getItem: (k) => (k in mem ? mem[k] : null), setItem: (k, v) => { mem[k] = v; } };
   FX.gravarPrefs(st, { ord: { app: ['inicio', 'chat'], ela: ['hist'] }, tour: false });
   const lido = FX.lerPrefs(st);
-  check('grava e lê', lido.tour === false && lido.ord.app.join() === 'inicio,chat,checklist' && lido.ord.ela.join() === 'hist,bilan');
+  check('grava e lê', lido.tour === false && lido.ord.app.join() === 'inicio,chat,checklist,espaco,guias,perfil' && lido.ord.ela.join() === 'hist,eu,bilan,trouxe,sinais,mais');
   check('chaves do spec', 'crm_ficha_ord_v1' in mem && 'crm_ficha_tour' in mem);
   mem.crm_ficha_ord_v1 = JSON.stringify({ app: ['chat'], ela: ['hist', 'dossie', 'bilan'] });
-  check('ordem salva com o dossiê antigo: ele some, o resto fica', FX.lerPrefs(st).ord.ela.join() === 'hist,bilan');
+  check('ordem salva com o dossiê antigo: ele some, o resto fica', FX.lerPrefs(st).ord.ela.join() === 'hist,bilan,eu,trouxe,sinais,mais');
   mem.crm_ficha_ord_v1 = '{lixo'; check('JSON inválido volta ao padrão', FX.lerPrefs(st).ord === null);
   mem.crm_ficha_ord_v1 = '"texto"'; check('formato errado volta ao padrão', FX.lerPrefs(st).ord === null);
 }
@@ -123,9 +123,9 @@ console.log('== Cabeçalho fixo: tipo e cartões ==');
   check('active é assinante', FX.tipoCabecalho({ user_id: 'u' }, ass('active')) === 'assinante');
   check('trialing é assinante', FX.tipoCabecalho({ user_id: 'u' }, ass('trialing')) === 'assinante');
   check('canceled com conta cai em plataforma', FX.tipoCabecalho({ user_id: 'u' }, ass('canceled')) === 'plataforma');
-  check('past_due sem conta cai em lead', FX.tipoCabecalho({}, ass('past_due')) === 'lead');
-  check('sem assinatura e com conta é plataforma; sem nada é lead', FX.tipoCabecalho({ user_id: 'u' }, null) === 'plataforma' && FX.tipoCabecalho({}, null) === 'lead');
-  check('etiqueta: sem assinatura', FX.etiquetaPagamento(null).texto === 'Não assina' && FX.etiquetaPagamento(null).tom === 'neutro');
+  check('past_due com assinatura registrada é plataforma, mesmo sem conta', FX.tipoCabecalho({}, ass('past_due')) === 'plataforma');
+  check('sem assinatura é lead, mesmo com conta (o app só abre para quem paga); sem nada também', FX.tipoCabecalho({ user_id: 'u' }, null) === 'lead' && FX.tipoCabecalho({}, null) === 'lead');
+  check('etiqueta: sem assinatura', FX.etiquetaPagamento(null).texto === 'Não assinante' && FX.etiquetaPagamento(null).tom === 'neutro');
   check('etiqueta: ativa, em teste e atraso', FX.etiquetaPagamento(ass('active')).texto === 'Assinatura ativa' && FX.etiquetaPagamento(ass('trialing')).texto === 'Em teste' && FX.etiquetaPagamento(ass('past_due')).tom === 'aviso');
   check('etiqueta: cancelada nunca diz ativa', !/ativa/.test(FX.etiquetaPagamento(ass('canceled')).texto) && FX.etiquetaPagamento(ass('canceled')).tom === 'aviso');
 
@@ -177,6 +177,38 @@ console.log('== Revisão final: cartões ==');
   check('teste que vai cancelar não diz que "vira cobrança"', !/vira cobrança/.test(por(r, 'Fim do teste').sub) && /cancela/.test(por(r, 'Fim do teste').sub));
   r = FX.cartoesDe('assinante', base({ assin: ass({ periodo_fim: '2026-11-02T10:00:00Z' }) }));
   check('data de cobrança já passada: avisa para conferir no Stripe, em alerta', /confira/.test(por(r, 'Próxima cobrança').sub) && por(r, 'Próxima cobrança').tom === 'alerta');
+}
+
+console.log('== CRM retrabalhado: urgentes, cartoesMinimos, potencial ==');
+{
+  check('urgentes: respostas novas', JSON.stringify(FX.urgentes({ respostasNovas: 2 })) === JSON.stringify(['2 respostas dela esperando']));
+  check('urgentes: singular', FX.urgentes({ respostasNovas: 1 })[0] === '1 resposta dela esperando');
+  check('urgentes: nada pendente devolve lista vazia', FX.urgentes({}).length === 0 && FX.urgentes().length === 0);
+  const AGORA = Date.parse('2026-11-16T12:00:00Z');
+  const lead = FX.cartoesMinimos('lead', { c: { criado_em: '2026-11-01T10:00:00Z' }, mailsTotal: 0, agora: AGORA });
+  const cs = lead.blocos[0].cartoes;
+  const em = cs.find((x) => x.rotulo === 'E-mail');
+  check('lead sem e-mail: cartão E-mail com valor —', !!em && em.valor === '—');
+  check('lead sem acesso: não mostra cliques nem sessões', !cs.some((x) => /clique|sess/i.test(x.rotulo + ' ' + x.valor + ' ' + x.sub)));
+  const ass = FX.cartoesMinimos('assinante', { c: {}, assin: { status: 'trialing', teste_fim: '2026-11-20T00:00:00Z', plano: 'Mensal', criado_em: '2026-11-10T00:00:00Z' }, ultimoAcesso: '2026-11-15T10:00:00Z', agora: AGORA });
+  const plano = ass.blocos[0].cartoes[0];
+  check('assinante em teste: detalhes rotulam "Fim do teste"', plano.rotulo === 'Plano' && plano.detalhes.some((d) => d[0] === 'Fim do teste'));
+  const assAtivo = FX.cartoesMinimos('assinante', { c: {}, assin: { status: 'active', periodo_fim: '2026-12-10T00:00:00Z', plano: 'Mensal' }, agora: AGORA });
+  check('assinante ativo: "Próxima cobrança"', assAtivo.blocos[0].cartoes[0].detalhes.some((d) => d[0] === 'Próxima cobrança'));
+  check('assinante sem acesso registrado: último acesso —, sem quebrar', assAtivo.blocos[0].cartoes[1].valor === '—');
+  const plat = FX.cartoesMinimos('plataforma', { c: {}, chk: { feitos: 2, total: 5, atrasados: 1 }, ultimoAcesso: '2026-11-14T10:00:00Z', agora: AGORA });
+  check('plataforma: Último acesso e Checklist', plat.blocos[0].cartoes.map((x) => x.rotulo).join() === 'Último acesso,Checklist');
+
+  const quente = FX.potencial({ tipo: 'lead', respostas: 1, mails: { total: 2, abertos: 1, clicados: 0 }, urgencia: 'alta', diasSemSinal: 1 });
+  const frio = FX.potencial({ tipo: 'lead', mails: { total: 2, abertos: 0, clicados: 0 }, diasSemSinal: 20 });
+  check('potencial: inteiro entre 0 e 100', Number.isInteger(quente.nota) && quente.nota >= 0 && quente.nota <= 100 && Number.isInteger(frio.nota) && frio.nota >= 0 && frio.nota <= 100);
+  check('potencial: quem respondeu e tem prazo curto (75, Alto) supera o lead frio (0, Baixo)', quente.nota === 75 && quente.faixa === 'Alto' && frio.nota === 0 && frio.faixa === 'Baixo');
+  check('potencial: cada ponto traz o motivo', quente.motivos.length === quente.sinais && quente.motivos.every((m) => m.t && Number.isFinite(m.p)));
+  const vazio = FX.potencial({ tipo: 'lead' });
+  check('potencial sem dados: nota 20 e "poucos dados", sem NaN', vazio.nota === 20 && vazio.poucosDados === true);
+  check('potencial sem argumento não quebra', Number.isInteger(FX.potencial().nota));
+  const sai = FX.potencial({ tipo: 'assinante', assin: { status: 'canceled', cancela_no_fim: true }, ultimoAcessoDias: 40 });
+  check('potencial: assinatura cancelada e sem acesso fica no mínimo, nunca negativo', sai.nota === 0);
 }
 
 console.log('\n' + passed + ' passaram, ' + failed + ' falharam');

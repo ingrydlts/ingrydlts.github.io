@@ -15,7 +15,7 @@ console.log('== Task 8: fila, header, abas, guia ==');
   const itens = [{ c: { id: 'c1', nome: XSS, urgencia: 'alta' }, novas: 2, proxima: 'Responder Ana', sub: 'Au pair · captação' }, { c: { id: 'c2', nome: 'Bia Lima', urgencia: 'baixa' }, novas: 0, proxima: 'Abrir a ficha' }];
   const f = FH.htmlFila(itens, 'c1', h);
   check('fila: a aberta tem aria-pressed true, a outra false', count(f, /aria-pressed="true"/g) === 1 && count(f, /aria-pressed="false"/g) === 1);
-  check('fila: novas, e o texto da próxima ação não aparece mais', f.includes('2 novas') && !f.includes('Responder Ana') && !f.includes('Au pair · captação') && !f.includes('1 nova<'));
+  check('fila: novas, e a linha "Ação:" só aparece quando a ação não é só abrir a ficha', f.includes('2 novas') && f.includes('Ação: Responder Ana') && !f.includes('Abrir a ficha') && f.includes('Au pair · captação') && !f.includes('1 nova<'));
   check('fila: chips em uma linha, bolinha com a classe da urgência', f.includes('class="mf-i') && f.includes('mf-d alta') && f.includes('mf-d baixa') && !f.includes('fx-fcard'));
   check('fila: HTML do nome sai escapado', f.includes('&lt;img') && !f.includes('<img'));
   check('fila: cartão abre a pessoa', f.includes('data-fx="pessoa"') && f.includes('data-id="c2"'));
@@ -128,12 +128,12 @@ console.log('== Cabeçalho fixo ==');
     nota: 'Baseado nos 300 cliques mais recentes.' };
   const hd = FH.htmlCabecalho(d, h);
   check('cabeçalho: nome com HTML sai escapado', hd.includes('&lt;img') && !hd.includes('<img') && !hd.includes('<b>x</b>') && hd.includes('&lt;b&gt;x&lt;/b&gt;'));
-  check('cabeçalho: mantém os botões e o seletor de estágio', hd.includes('data-emailfor="c1"') && hd.includes('data-open1a1="c1"') && hd.includes('id="stage-pick"'));
+  check('cabeçalho: mantém os botões e o seletor de estágio', hd.includes('hd-n') && hd.includes('hd-av') && !hd.includes('data-emailfor'));   // os botões saíram do cabeçalho minimalista: o crm.js monta a barra de ações
   check('cabeçalho: classes dos cartões (alerta e ok) e título do bloco', hd.includes('k alerta') && hd.includes('k ok') && hd.includes('>Pagamento<') && count(hd, /class="k( |")/g) === 3);
   check('cabeçalho: nota aparece quando existe e some quando não existe', hd.includes('class="est"') && !FH.htmlCabecalho(Object.assign({}, d, { nota: null }), h).includes('class="est"'));
   check('cabeçalho: etiqueta de pagamento e persona', hd.includes('Assinatura ativa') && hd.includes('Au pair → estudante'));
   check('cabeçalho: iniciais (duas palavras, uma palavra, sem nome usa o e-mail) sem lançar', FH.htmlCabecalho({ c: { id: 'z', nome: 'Ana Souza' }, blocos: [] }, h).includes('>AS<') && FH.htmlCabecalho({ c: { id: 'z', nome: 'Clara' }, blocos: [] }, h).includes('>C<') && FH.htmlCabecalho({ c: { id: 'z', email: 'bruna@x.com' }, blocos: [] }, h).includes('>B<'));
-  check('cabeçalho: mostra No app ou Sem conta', FH.htmlCabecalho(Object.assign({}, d, { temConta: true }), h).includes('No app') && FH.htmlCabecalho(Object.assign({}, d, { temConta: false }), h).includes('Sem conta'));
+  check('cabeçalho: um selo só de conta (a etiqueta de pagamento); sem etiqueta, nenhum selo e nada de No app/Sem conta', hd.includes('pg-ok') && !hd.includes('No app') && !FH.htmlCabecalho(Object.assign({}, d, { etiqueta: { texto: '', tom: 'neutro' } }), h).includes('class="pill pg-'));
   check('cabeçalho: sem blocos não quebra', FH.htmlCabecalho({ c: { id: 'z', nome: 'Z' } }, h).includes('class="hd"'));
 }
 
@@ -145,6 +145,20 @@ console.log('== Funil de conversão (lista vertical da Jornada) ==');
   check('funil: etapas feitas, atual e próximas', count(fu, /fx-seg done/g) === 3 && count(fu, /fx-seg cur/g) === 1 && count(fu, /fx-seg next/g) === 3);
   check('funil: etapa 7 não tem "Próxima:" e etapa fora da faixa é limitada', !FH.htmlFunil({ etapa: 7 }, h).includes('Próxima:') && FH.htmlFunil({ etapa: 99, semCaixa: true }, h).includes('data-etapa="7"') && /data-etapa="7"[^>]*aria-current="step"|aria-current="step"[^>]*data-etapa="7"/.test(FH.htmlFunil({ etapa: 99, semCaixa: true }, h)));
   check('funil sem caixa não traz o título; com caixa traz', !fu.includes('<h4') && FH.htmlFunil({ etapa: 2 }, h).includes('Funil de conversão</h4>'));
+}
+
+console.log('== CRM retrabalhado: carrossel de ações ==');
+{
+  const v = FH.htmlCarrossel([], h, 0, { nome: 'Ana' });
+  check('carrossel vazio: "Nenhuma ação pendente" e "+ Adicionar"', v.includes('Nenhuma ação pendente') && v.includes('+ Adicionar'));
+  check('carrossel vazio: nome da pessoa no título', v.includes('Minhas próximas ações · Ana'));
+  const ts = [{ t: 'Responder Ana', tag: 'Resposta', k: 'resp', id: 'r1', cta: 'Abrir', why: 'x' }, { t: 'Ligar <b>x</b>', tag: 'Só eu', k: 'acao', id: 'acao:1', cta: 'Abrir', why: 'y' }];
+  const c = FH.htmlCarrossel(ts, h, 0, { nome: 'Ana', concluidas: 3 });
+  check('carrossel com 2 tarefas: "1 de 2"', c.includes('1 de 2'));
+  check('carrossel: "Concluídas (3)"', c.includes('Concluídas (3)'));
+  check('carrossel: sem concluídas não mostra o botão', !FH.htmlCarrossel(ts, h, 0, {}).includes('Concluídas ('));
+  check('carrossel: texto da tarefa sai escapado', c.includes('Ligar &lt;b&gt;x&lt;/b&gt;') && !c.includes('<b>x</b>'));
+  check('carrossel: índice fora da faixa é limitado', FH.htmlCarrossel(ts, h, 99, {}).includes('2 de 2'));
 }
 
 console.log('\n' + passed + ' passaram, ' + failed + ' falharam');
