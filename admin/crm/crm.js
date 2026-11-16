@@ -3739,7 +3739,7 @@ function fxCorpo(c, d, tab) {
   var quem = '<details class="panel fx-quem"><summary><span class="fx-quem-t">Quem é ela</span>' + (qresumo ? '<span class="fx-quem-r">' + esc(qresumo) + '</span>' : '') + '</summary>' + kvHtml(qrows) + '</details>';
   return FH.htmlFluxo(etapa <= 3 ? 1 : etapa <= 5 ? 2 : 3, H_FX) + onbResumoHtml(c) +
     '<div class="fx-ficha3">' +
-    '<aside class="fx-rail fx-ctx" aria-label="Quem é ela e jornada">' + quem + jornadaPistasHtml(c, d.mails || [], d.resps || [], d.jor || montaJornada([]), h4) + jornadaHtml(c, d.mails || [], d.resps || [], d.jor, h4, FH.htmlFunil({ etapa: etapa, semCaixa: true }, H_FX)) + '</aside>' +
+    '<aside class="fx-rail fx-ctx" aria-label="Quem é ela e jornada">' + quem + jornadaHtml(c, d.mails || [], d.resps || [], d.jor, h4, FH.htmlFunil({ etapa: etapa, semCaixa: true }, H_FX)) + '</aside>' +
     '<section class="fx-centro" aria-label="Tudo que ela fez">' + fichaFeedHtml(d.eventos || []) +
     fichaMaisHtml(c, { perg: d.perg || [], resps: d.resps || [], cons: d.cons || [], last: d.last, h4: h4 }) + '</section>' +
     '<aside class="fx-rail fx-mail" aria-label="E-mails">' + emailsPanel(c, d.mails || [], h4, d.resps || [], d.jor) + '</aside></div>';
