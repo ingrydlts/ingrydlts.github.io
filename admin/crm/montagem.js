@@ -4,7 +4,7 @@
 // As chaves dos itens (enc:, lista:, chk:, doc:, perg:, bloco:) são as mesmas de crm_montagem_aplicar (db/crm-montagem-aplicar.sql).
 
 export var MOTIVOS = [['fato_errado', 'Fato extraído errado'], ['regra_inadequada', 'Regra do percurso inadequada'], ['prazo_desatualizado', 'Prazo desatualizado'], ['excecao', 'Exceção desta pessoa']];
-export var GRUPOS = ['Gerais da persona', 'Particulares do percurso', 'Entregas da equipe', 'Prometido na chamada e ainda sem item', 'Checklists', 'Documentos para reunir', 'Perguntas da equipe', 'Contatos para acionar'];
+export var GRUPOS = ['Gerais da persona', 'Particulares do percurso', 'Entregas da equipe', 'Prometido na chamada e ainda sem item', 'Checklists', 'Documentos para reunir', 'Perguntas da equipe', 'Lembretes no Início', 'Contatos para acionar'];
 var GRUPO_CAMADA = { persona: 'Gerais da persona', particular: 'Particulares do percurso', entrega_equipe: 'Entregas da equipe' };
 var DIAS_TESTE = 7;
 // As démarches (tipos de checklist) do catálogo processos.json; um teste confere que as chaves são as mesmas.
@@ -41,6 +41,9 @@ export function itensDaProposta(p) {
   });
   lista(p.perguntas_equipe).forEach(function (q) {
     saida.push({ k: 'perg:' + q.chave, grupo: 'Perguntas da equipe', titulo: String(q.texto || ''), detalhe: 'Resposta em ' + (q.resposta_tipo === 'data' ? 'data' : 'opções') + ' · grava em ' + q.grava_em, momento: '', trecho: '', certeza: 'inferido', aConferir: false });
+  });
+  lista(p.lembretes).forEach(function (l) {
+    saida.push({ k: 'lemb:' + l.chave, grupo: 'Lembretes no Início', titulo: String(l.titulo || ''), detalhe: String(l.texto || '') + ' · aviso em rascunho no Início, chega ' + (l.dias_apos ? l.dias_apos + ' dias depois do primeiro acesso' : 'no primeiro acesso'), momento: l.momento || '', trecho: '', certeza: 'inferido', aConferir: false });
   });
   lista(p.blocos).forEach(function (b) {
     lista(b.itens).forEach(function (i) {

@@ -11,7 +11,7 @@
 --      a pessoa já concluiu NUNCA é alterado: vai para "conflitos". Tudo ou nada: um item inválido desfaz a aplicação inteira.
 --   3. crm_montagem_diff(contato, montagem)  compara uma proposta com o que já existe: novos, mantidos, conflitos e retirar_sugerido
 --      (o que veio de proposta anterior e a nova não traz mais: é só uma sugestão, nada é apagado).
--- Chaves: enc:<chave> (encaminhamento ou pendência de compromisso), lista:<chave>, chk:<lista>:<item>, doc:<chave>, perg:<chave>,
+-- Chaves: enc:<chave> (encaminhamento ou pendência de compromisso), lista:<chave>, chk:<lista>:<item>, doc:<chave>, perg:<chave>, lemb:<chave> (lembrete = aviso em rascunho no Início),
 --         bloco:<tipo>:<chave>.
 -- Documento: direcao 'equipe_envia' da proposta vira 'recebe' (a equipe manda para ela) e o resto 'reune' (ela reúne), que são os valores que o app e o CRM leem.
 -- Motivos de edição ou rejeição (alimentam a manutenção do catálogo): fato_errado, regra_inadequada, prazo_desatualizado, excecao.
@@ -50,6 +50,7 @@ as $$
     from jsonb_array_elements(coalesce(p->'checklists', '[]'::jsonb)) c, jsonb_array_elements(coalesce(c->'itens', '[]'::jsonb)) i
   union all select 'doc:' || (d->>'chave'), 'doc', d, '{}'::jsonb from jsonb_array_elements(coalesce(p->'documentos', '[]'::jsonb)) d
   union all select 'perg:' || (q->>'chave'), 'perg', q, '{}'::jsonb from jsonb_array_elements(coalesce(p->'perguntas_equipe', '[]'::jsonb)) q
+  union all select 'lemb:' || (l->>'chave'), 'lemb', l, '{}'::jsonb from jsonb_array_elements(coalesce(p->'lembretes', '[]'::jsonb)) l
   union all select 'bloco:' || (b->>'tipo') || ':' || (i->>'chave'), 'bloco', i, jsonb_build_object('tipo', b->>'tipo')
     from jsonb_array_elements(coalesce(p->'blocos', '[]'::jsonb)) b, jsonb_array_elements(coalesce(b->'itens', '[]'::jsonb)) i
 $$;
@@ -67,7 +68,7 @@ declare
   v_criados int := 0; v_atualizados int := 0; v_mantidos int := 0; v_rejeitados int := 0;
   v_conf text[] := '{}';
   ac caso_acoes%rowtype; li caso_listas%rowtype; bi board_itens%rowtype; av caso_avisos%rowtype;
-  v_dados jsonb; v_titulo text; v_ctx jsonb; v_chave text;
+  v_dados jsonb; v_titulo text; v_ctx jsonb; v_chave text; v_txt text; v_dias int;
   v_dono text; v_prazo date; v_pt text; v_cert text; v_conferir boolean; v_passo text; v_camada text; v_lista text; v_dem text; v_subs jsonb;
 begin
   if not public.eh_admin() then raise exception 'sem_permissao'; end if;
@@ -86,7 +87,7 @@ begin
   for it in
     select d.value as dec, x.k, x.kind, x.d, x.ctx
       from jsonb_array_elements(p_decisoes) d(value) join montagem_itens(m.proposta) x on x.k = d.value->>'origem_chave'
-     order by case x.kind when 'lista' then 1 when 'enc' then 2 when 'chk' then 3 when 'doc' then 4 when 'bloco' then 5 else 6 end, x.k
+     order by case x.kind when 'lista' then 1 when 'enc' then 2 when 'chk' then 3 when 'doc' then 4 when 'bloco' then 5 when 'perg' then 6 else 7 end, x.k
   loop
     if it.dec->>'decisao' = 'rejeitar' then
       insert into eventos (contato_id, tipo, dados) values (p_contato, 'montagem_item_rejeitado',
@@ -156,6 +157,19 @@ begin
         update board_itens set titulo = v_titulo, dados = v_dados where id = bi.id; v_atualizados := v_atualizados + 1;
       else v_mantidos := v_mantidos + 1; end if;
 
+    elsif it.kind = 'lemb' then
+      -- Lembrete = aviso curto para o Início dela (tipo "inteligência"), em rascunho: você aprova e agenda em Início.
+      v_titulo := left(it.d->>'titulo', 120); v_txt := left(it.d->>'texto', 600); v_dias := coalesce((it.d->>'dias_apos')::int, 1);
+      select * into av from caso_avisos where contato_id = p_contato and origem_chave = it.k;
+      if not found then
+        insert into caso_avisos (contato_id, origem_chave, tipo, titulo, texto, dias_apos) values (p_contato, it.k, 'inteligencia', v_titulo, v_txt, v_dias);
+        v_criados := v_criados + 1;
+      elsif av.estado <> 'rascunho' then v_conf := v_conf || it.k;
+      elsif (av.titulo, av.texto, av.dias_apos) is distinct from (v_titulo, v_txt, v_dias) then
+        update caso_avisos set titulo = v_titulo, texto = v_txt, dias_apos = v_dias where id = av.id;
+        v_atualizados := v_atualizados + 1;
+      else v_mantidos := v_mantidos + 1; end if;
+
     elsif it.kind = 'perg' then
       v_titulo := left(it.d->>'texto', 120);
       select * into av from caso_avisos where contato_id = p_contato and origem_chave = it.k;
@@ -199,7 +213,7 @@ begin
     ex as (
       select origem_chave as k, (estado <> 'aberta' or publicada_em is not null or concluida_em is not null) as tocado from caso_acoes where contato_id = p_contato and origem_chave ~ '^(enc|chk):'
       union all select origem_chave, estado <> 'proposto' from board_itens where contato_id = p_contato and origem_chave ~ '^(doc|bloco):'
-      union all select origem_chave, estado <> 'rascunho' from caso_avisos where contato_id = p_contato and origem_chave ~ '^perg:'
+      union all select origem_chave, estado <> 'rascunho' from caso_avisos where contato_id = p_contato and origem_chave ~ '^(perg|lemb):'
       union all select origem_chave, estado <> 'proposto' from caso_listas where contato_id = p_contato and origem_chave ~ '^lista:'
     )
     select jsonb_build_object(

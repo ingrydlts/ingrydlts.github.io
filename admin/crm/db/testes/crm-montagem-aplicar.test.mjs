@@ -64,7 +64,7 @@ async function main() {
   let hashN = 0;
   const montagem = async (p, prop) => (await um('insert into montagens (contato_id, hash_entrada, proposta, persona) values ($1,$2,$3,$4) returning id, versao', [p.c, String(++hashN).repeat(64).slice(0, 64), JSON.stringify(prop), 'pvt']));
   const aprovarTudo = (prop, extra = []) => [...prop.encaminhamentos.map((x) => 'enc:' + x.chave), ...prop.omissoes.map((x) => 'enc:' + x.chave), ...prop.checklists.map((c) => 'lista:' + c.chave),
-    ...prop.checklists.flatMap((c) => c.itens.map((i) => 'chk:' + c.chave + ':' + i.chave)), ...prop.documentos.map((d) => 'doc:' + d.chave), ...prop.perguntas_equipe.map((p) => 'perg:' + p.chave),
+    ...prop.checklists.flatMap((c) => c.itens.map((i) => 'chk:' + c.chave + ':' + i.chave)), ...prop.documentos.map((d) => 'doc:' + d.chave), ...prop.perguntas_equipe.map((p) => 'perg:' + p.chave), ...(prop.lembretes || []).map((l) => 'lemb:' + l.chave),
     ...prop.blocos.flatMap((b) => b.itens.map((i) => 'bloco:' + b.tipo + ':' + i.chave)), ...extra].map((k) => ({ origem_chave: k, decisao: 'aprovar' }));
   const aplicar = (p, m, dec) => asUser(admin.id, () => um('select crm_montagem_aplicar($1, $2, $3::jsonb) r', [p.c, m.id, JSON.stringify(dec)])).then((x) => x.r);
   const meu = async (p) => (await asUser(p.u.id, () => um('select meu_caso() r'))).r;
@@ -154,6 +154,23 @@ async function main() {
   const mcB = await meu(bia), pasB = mcB.acoes.find((a) => a.passo_chave === 'mont_dossie_empresa_carta');
   check('o app recebe a démarche, os subitens e a camada do passo publicado', pasB && pasB.demarche === 'estudos' && JSON.stringify(pasB.subitens) === JSON.stringify(['Escolher a escola']) && pasB.camada === 'particular');
   check('montagem descartada não pode ser aplicada', await (async () => { await asUser(admin.id, () => db.query('select crm_montagem_descartar($1)', [mL2.id])); return falha(() => aplicar(bia, mL2, aprovarTudo(pL2)), 'montagem_descartada'); })());
+
+  console.log('\n== Lembretes viram avisos em rascunho no Início ==');
+  {
+    const pLm = PROP(); pLm.lembretes = [{ chave: 'lembrete_a1b2c3', titulo: 'Matrícula fecha em 30/11', texto: 'Oi! A matrícula fecha no fim do mês. Quer ajuda para decidir?', dias_apos: 3, momento: '33:10' }];
+    const mLm = await montagem(bia, pLm);
+    const rLm = await aplicar(bia, mLm, aprovarTudo(pLm));
+    const av = await um("select * from caso_avisos where contato_id=$1 and origem_chave='lemb:lembrete_a1b2c3'", [bia.c]);
+    check('o lembrete vira aviso do tipo "inteligência", em rascunho, com os dias e o texto', av && av.tipo === 'inteligencia' && av.estado === 'rascunho' && av.dias_apos === 3 && av.titulo === 'Matrícula fecha em 30/11' && /decidir/.test(av.texto) && av.resposta_tipo === null && av.grava_em === null);
+    check('nada chega à pessoa: o aviso é rascunho e não sai em meu_caso()', !(await meu(bia)).avisos.some((a) => a.titulo === 'Matrícula fecha em 30/11'));
+    const pLm2 = JSON.parse(JSON.stringify(pLm)); pLm2.lembretes[0].dias_apos = 5;
+    const rLm2 = await aplicar(bia, await montagem(bia, pLm2), aprovarTudo(pLm2));
+    check('reaplicar com outro prazo atualiza o rascunho (sem duplicar)', (await um("select dias_apos from caso_avisos where contato_id=$1 and origem_chave='lemb:lembrete_a1b2c3'", [bia.c])).dias_apos === 5 && (await um("select count(*)::int n from caso_avisos where contato_id=$1 and origem_chave='lemb:lembrete_a1b2c3'", [bia.c])).n === 1);
+    await db.query("update caso_avisos set estado='agendado', liberar_em = now() where contato_id=$1 and origem_chave='lemb:lembrete_a1b2c3'", [bia.c]);
+    const pLm3 = JSON.parse(JSON.stringify(pLm)); pLm3.lembretes[0].texto = 'Texto novo da releitura';
+    const rLm3 = await aplicar(bia, await montagem(bia, pLm3), aprovarTudo(pLm3));
+    check('aviso que você já agendou não é mexido pela releitura (vira conflito)', (rLm3.conflitos || []).includes('lemb:lembrete_a1b2c3') && !/Texto novo/.test((await um("select texto from caso_avisos where contato_id=$1 and origem_chave='lemb:lembrete_a1b2c3'", [bia.c])).texto));
+  }
 
   console.log('\n== Acesso ==');
   check('quem não é admin não aplica nem vê o diff; a montagem de outra pessoa não vale', await falha(() => asUser(ana.u.id, () => db.query('select crm_montagem_aplicar($1,$2,$3::jsonb)', [ana.c, m5.id, '[]'])), 'sem_permissao') && await falha(() => asUser(ana.u.id, () => db.query('select crm_montagem_diff($1,$2)', [ana.c, m5.id])), 'sem_permissao') && await falha(() => aplicar(bia, m5, []), 'montagem_nao_encontrada'));

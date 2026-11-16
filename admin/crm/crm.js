@@ -2,15 +2,15 @@
 // Nada de service_role aqui. O banco é db/crm-fase2.sql; o desenho é o artefato "CRM Por Dentro".
 // Tudo que vem do banco é texto de terceiros (nome, e-mail, pergunta): passa sempre por esc().
 import { supabase } from '/assets/js/supabase-client.js';
-import * as TX from './taxonomia.js?v=2026-11-16.6';   // páginas, famílias e agrupamento dos modelos
-import * as ES from './estudio.js?v=2026-11-16.6';   // os blocos do estúdio de e-mails (entregas 2 e 3)
-import * as EE from './editor-email.js?v=2026-11-16.6';
-import * as EQ from './editor-quem.js?v=2026-11-16.6';
-import * as JR from './jornada.js?v=2026-11-16.6';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
-import * as FX from './ficha.js?v=2026-11-16.6';   // ficha v2: lógica pura (fila, démarches, funil, ações)
-import * as FH from './ficha-html.js?v=2026-11-16.6';   // ficha v2: HTML puro
-import * as PN from './panorama.js?v=2026-11-16.6';
-import * as MT from './montagem.js?v=2026-11-16.6';   // Montagem do espaço a partir do transcript (lógica e HTML puros)   // Panorama dela e O que ela trouxe (lógica e HTML puros)
+import * as TX from './taxonomia.js?v=2026-11-16.7';   // páginas, famílias e agrupamento dos modelos
+import * as ES from './estudio.js?v=2026-11-16.7';   // os blocos do estúdio de e-mails (entregas 2 e 3)
+import * as EE from './editor-email.js?v=2026-11-16.7';
+import * as EQ from './editor-quem.js?v=2026-11-16.7';
+import * as JR from './jornada.js?v=2026-11-16.7';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
+import * as FX from './ficha.js?v=2026-11-16.7';   // ficha v2: lógica pura (fila, démarches, funil, ações)
+import * as FH from './ficha-html.js?v=2026-11-16.7';   // ficha v2: HTML puro
+import * as PN from './panorama.js?v=2026-11-16.7';
+import * as MT from './montagem.js?v=2026-11-16.7';   // Montagem do espaço a partir do transcript (lógica e HTML puros)   // Panorama dela e O que ela trouxe (lógica e HTML puros)
 
 var PERSONAS = {
   au_pair_estudante: 'Au pair → estudante', campus_france: 'Campus France', alternancia_emprego: 'Alternância / emprego',
@@ -1797,12 +1797,40 @@ function chatFioHtml(chat, agora) {
   if (chat.err) return '<div class="empty">Falta rodar <b>db/crm-chat.sql</b> no SQL Editor do Supabase.</div>';
   return chat.msgs.map(function (m) { return chatMsgHtml(m, chat, agora); }).join('') || '<div class="empty">Nenhuma mensagem ainda. Escreva abaixo e ela vê no chat do app.</div>';
 }
+// As mensagens que a montagem sugere para o chat (o que pode puxar um 1:1 ou levá-la a outro lugar). Só sugestão: você revisa e envia.
+var CHAT_MOTIVO = { propor_1a1: 'Propor 1:1', redirecionar: 'Redirecionar', cobrar_passo: 'Cobrar um passo' };
+function chatSugLista(c) {
+  var cv = state.pnConv && state.pnConv.cid === c.id ? state.pnConv.lista : [], ult = null, dec = fxSugsLidas(c.id);
+  cv.forEach(function (x) { if (x.m && x.m.length) ult = x; });
+  if (!ult) return [];
+  return ult.m.map(function (x, i) { return { id: 'm-' + ult.versao + '-' + i, texto: x.texto, motivo: x.motivo, momento: x.momento || '', v: ult.versao, est: dec['m-' + ult.versao + '-' + i] || '' }; })
+    .filter(function (x) { return x.est !== 'descartada'; });
+}
+function chatSugestoesHtml(c) {
+  if (!state.pnConv || state.pnConv.cid !== c.id) setTimeout(function () { fxCarregaConversas(c); }, 0);   // as sugestões vêm das leituras da montagem
+  var l = chatSugLista(c);
+  if (!l.length) return '';
+  return '<div class="msgsug" style="margin:10px 0 0"><div class="k">Sugeridas pela montagem · você revisa antes de enviar</div>' + l.map(function (x) {
+    return '<div class="feeditem" style="align-items:flex-start"><div style="flex:none;min-width:84px"><span class="pill">' + esc(CHAT_MOTIVO[x.motivo] || x.motivo) + '</span></div><div class="fbody" style="min-width:0"><p style="margin:0">' + esc(x.texto) + '</p>' +
+      '<time>conversa ' + esc(String(x.v)) + (x.momento ? ' · ' + esc(x.momento) : '') + (x.est === 'usada' ? ' · já levada para a caixa' : '') + '</time></div>' +
+      '<div style="flex:none;display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end"><button type="button" class="btn" style="padding:5px 10px;font-size:12px" data-chatsug="' + esc(x.id) + '">Usar no chat</button>' +
+      '<button type="button" class="btn" style="padding:5px 10px;font-size:12px" data-chatsugdesc="' + esc(x.id) + '">Descartar</button></div></div>';
+  }).join('') + '</div>';
+}
+function chatSugUsar(id) {
+  var c = byC(state.sel); if (!c) return;
+  var x = chatSugLista(c).filter(function (y) { return y.id === id; })[0]; if (!x) return;
+  var nome = (c.nome || '').split(/\s+/)[0], tx = (!/^oi\b/i.test(x.texto) && nome ? 'Oi, ' + nome + '! ' : '') + x.texto;
+  state.chatRasc = tx; var box = $('chat-txt'); if (box) { box.value = tx; if (box.focus) box.focus(); }
+  fxSugGuarda(c.id, id, 'usada');
+}
+function chatSugDescartar(id) { var c = byC(state.sel); if (!c) return; fxSugGuarda(c.id, id, 'descartada'); var b = $('chat-box'); if (b) b.innerHTML = chatPanelHtml(c, state.chat, H4_PLAT); else fxPintaCorpo(); }
 function chatPanelHtml(c, chat, h4) {
   var btn = function (k, rot) { return '<button class="chip" type="button" data-chatquick="' + k + '">' + esc(rot) + '</button>'; };
   var nova = chatNaoLidas(chat);
   return '<div class="panel" style="padding:16px"><h4 style="' + h4 + '">Chat com ela' + (nova ? ' <span class="count">' + nova + (nova === 1 ? ' nova' : ' novas') + '</span>' : '') + '</h4>' +
     '<p class="sub" style="margin:0 0 10px">O que você escreve aparece na Central de perguntas do app dela, no avatar que flutua, e ela recebe um e-mail a cada mensagem sua. O combinado com ela: perguntas completas, resposta em até 3 dias úteis, e uma ligação quando o assunto for grande demais para texto.</p>' +
-    '<div class="cfio chatfio" id="chat-fio" aria-live="polite">' + chatFioHtml(chat, Date.now()) + '</div>' +
+    '<div class="cfio chatfio" id="chat-fio" aria-live="polite">' + chatFioHtml(chat, Date.now()) + '</div>' + chatSugestoesHtml(c) +
     '<div class="tpls" style="margin:10px 0 8px">' + btn('um_a_um', 'Propor 1:1 de 20 min') + btn('como_vai', 'Perguntar como está') + btn('documentos', 'Pedir documentos') + btn('prazo', 'Lembrar do prazo') + btn('proposta', 'Nova proposta') + '</div>' +
     '<textarea class="notebox" id="chat-txt" maxlength="1000" placeholder="Escreva para ela. Aparece no chat do app." aria-label="Mensagem para ela" style="min-height:76px"></textarea>' +
     '<div class="actions" style="margin-top:8px"><button class="btn primary" type="button" data-chatenviar="' + esc(c.id) + '">Enviar</button></div></div>';
@@ -3455,7 +3483,7 @@ function fxHeaderHtml(c, d) {
 // Catálogo de démarches (cópia do app, processos.json): carregado uma vez; sem ele, tudo cai na démarche padrão.
 var FX_PROC = null;
 async function fxCarregaProcessos() {
-  try { var r = await fetch('processos.json?v=2026-11-16.6'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
+  try { var r = await fetch('processos.json?v=2026-11-16.7'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
 }
 // A sessão Checklist: pílulas por démarche, os 4 mais urgentes, pasta do Drive privada e "Ver mais desta sessão".
 // Os passos que a montagem do espaço propôs para ela, com démarche, subitens e origem: o mesmo detalhe do Checklist. Existem antes de ela ter conta.
@@ -3540,9 +3568,10 @@ function fxPanoramaDados(c) {
 async function fxCarregaConversas(c, forcar) {
   if (!forcar && state.pnConv && state.pnConv.cid === c.id) return;
   state.pnConv = { cid: c.id, lista: [], carregando: true };
-  var r = await supabase.from('montagens').select('versao,estado,criado_em,proposta').eq('contato_id', c.id).neq('estado', 'descartada').order('versao', { ascending: true });
+  var r;
+  try { r = await supabase.from('montagens').select('versao,estado,criado_em,proposta').eq('contato_id', c.id).neq('estado', 'descartada').order('versao', { ascending: true }); } catch (e) { r = { error: e }; }   // sem a tabela ou sem rede: o Panorama e o chat seguem como antes
   if (!state.pnConv || state.pnConv.cid !== c.id) return;
-  var lista = r.error ? [] : (r.data || []).map(function (m) { return { versao: m.versao, quando: m.criado_em, p: m.proposta && m.proposta.panorama ? m.proposta.panorama : null }; });
+  var lista = r.error ? [] : (r.data || []).map(function (m) { return { versao: m.versao, quando: m.criado_em, p: m.proposta && m.proposta.panorama ? m.proposta.panorama : null, m: m.proposta && Array.isArray(m.proposta.mensagens_chat) ? m.proposta.mensagens_chat : [] }; });
   state.pnConv = { cid: c.id, lista: lista, carregando: false };
   if (state.sel === c.id && state.fx && state.fx.tab === 'plataforma' && fxSessaoAberta('sinais')) fxPintaCorpo();
 }
@@ -6156,6 +6185,8 @@ document.addEventListener('click', async function (e) {
   if (t.dataset.montpub) return montPub(t.dataset.montpub);
   if (t.dataset.montliberar) return montLiberar(t.dataset.montliberar, t);
   if (t.dataset.montconferido) return montConferido(state.sel, t.dataset.montconferido);
+  if (t.dataset.chatsug) return chatSugUsar(t.dataset.chatsug);
+  if (t.dataset.chatsugdesc) return chatSugDescartar(t.dataset.chatsugdesc);
   if (t.dataset.montprevia) return montPrevia(state.sel, t.dataset.montprevia);
   if (t.dataset.montenviar) return montEnviar(state.sel, t.dataset.montenviar, t);
   if (t.dataset.pcaplicar) return pcAplicar(t.dataset.pcaplicar, t);
