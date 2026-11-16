@@ -97,7 +97,7 @@ console.log('== Task 10: ligação aos dados, abas, ações, deep link ==');
   h = await montar('u1');
   html = await abre(h, pessoa({ user_id: 'u1' }));
   check('com conta: abre na aba Plataforma', /data-v="plataforma"[^>]*aria-selected="true"/.test(html));
-  check('com conta: header sem o aviso de "sem conta"', !html.includes('Sem conta</span>') && html.includes('No app'));
+  check('com conta: header sem o aviso de "sem conta"', !html.includes('Sem conta</span>') && !html.includes('>No app<'));
   h.mod.pararAoVivo();
 }
 
@@ -284,7 +284,7 @@ console.log('== Cabeçalho fixo por tipo de pessoa ==');
   h.mod.pararAoVivo();
   h = await montar('u2', null);
   html = await abre(h, pessoa({ user_id: 'u2' }));
-  check('na plataforma sem assinar: Não assina, Sessões e sem bloco Pagamento', !html.includes('Não assina') && html.includes('No app') && html.includes('Último acesso') && !html.includes('class="tag">Pagamento<'));
+  check('na plataforma sem assinar: Não assina, Sessões e sem bloco Pagamento', !html.includes('Não assina') && !html.includes('>No app<') && html.includes('Último acesso') && !html.includes('class="tag">Pagamento<'));
   h.mod.pararAoVivo();
   h = await montar('u3', { status: 'canceled', plano: 'Básico', periodo_fim: iso(1), cancela_no_fim: false, criado_em: iso(200) });
   html = await abre(h, pessoa({ user_id: 'u3' }));

@@ -35,7 +35,7 @@ export function htmlCabecalho(d, h) {
   };
   const blocos = (d.blocos || []).map((b) => (b.titulo ? '<span class="tag">' + e(b.titulo) + '</span>' : '') + '<div class="hd-k">' + (b.cartoes || []).map(card).join('') + '</div>').join('');
   // Quem está na plataforma ou assina: um selo só (assinar e "no app" não divergem). Lead sem conta: nenhum selo de conta.
-  const conta = et.texto ? '<span class="pill pg-' + e(et.tom) + '">' + e(et.texto) + '</span>' : (d.temConta ? '<span class="pill">No app</span>' : '');
+  const conta = et.texto ? '<span class="pill pg-' + e(et.tom) + '">' + e(et.texto) + '</span>' : '';
   return '<header class="hd" id="fx-hd">' +
     '<div class="hd-l1"><span class="hd-av" aria-hidden="true">' + e(iniciais(c)) + '</span><h2 class="hd-n">' + e(c.nome || c.email || 'Sem nome') + '</h2>' +
     (d.estagioLabel ? '<span class="pill"><span class="dot"></span>' + e(d.estagioLabel) + '</span>' : '') +
