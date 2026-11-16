@@ -98,6 +98,9 @@ export function tarefasDe(ctx, rotuloProcesso) {
     why: x.chatNaoLidas === 1 ? 'Há 1 mensagem dela no chat do app sem ler.' : 'Há ' + x.chatNaoLidas + ' mensagens dela no chat do app sem ler.', dest: { tab: 'plataforma', sessao: 'chat' } });
   (x.processosDetectados || []).forEach((k) => out.push({ id: 'processo:' + k, k: 'processo', t: 'Decidir o processo ' + rot(k), tag: 'Dela', cta: 'Ver o processo',
     why: 'O app percebeu sinais de que ela pode precisar de ' + rot(k) + '. Aprove ou descarte a sugestão.', dest: { tab: 'plataforma', sessao: 'checklist' } }));
+  // A próxima ação do Potencial (faixa × situação) também vira cartão. "Responder" já tem o seu cartão acima; "manter na sequência" não é ação.
+  const pa = x.potAcao;
+  if (pa && pa.titulo && pa.canal !== 'Nenhuma' && !/^Responder/.test(pa.titulo)) out.push({ id: 'potencial', k: 'potencial', t: pa.titulo, tag: 'Potencial', cta: 'Abrir a conversa', why: pa.porque + (x.potNota != null ? ' (Potencial ' + x.potNota + ' de 100)' : ''), texto: pa.texto || '', dest: { tab: 'conversa' } });
   if (x.bilanPendente) out.push({ id: 'bilan', k: 'bilan', t: 'Enviar o bilan da conversa', tag: 'Reunião', cta: 'Abrir o bilan',
     why: 'A leitura da reunião está pronta e o e-mail do bilan ainda não saiu.', dest: { tab: 'plataforma', sessao: 'bilan' } });
   if (x.dossieFalta > 0) out.push({ id: 'dossie', k: 'dossie', t: 'Completar o dossiê (' + x.dossieFalta + (x.dossieFalta === 1 ? ' pergunta' : ' perguntas') + ')', tag: 'Reunião', cta: 'Abrir o dossiê',

@@ -214,5 +214,16 @@ console.log('== Próxima ação sugerida pelo Potencial ==');
   check('toda ação traz canal e porquê; sem dados não lança', lead(quente).canal && lead(quente).porque && FX.proximaAcao(undefined, undefined).titulo);
 }
 
+console.log('== Próxima ação do Potencial no carrossel ==');
+{
+  const t = (x) => FX.tarefasDe(x);
+  const pa = { titulo: 'Reimpacto personalizado oferecendo o 1:1', canal: 'E-mail', porque: 'Interesse alto.', texto: 'Oi, Ana!' };
+  const r = t({ potAcao: pa, potNota: 72 }).filter((x) => x.k === 'potencial')[0];
+  check('a próxima ação vira cartão com tag Potencial, nota no porquê e texto para copiar', r && r.tag === 'Potencial' && r.t === pa.titulo && /72 de 100/.test(r.why) && r.texto === 'Oi, Ana!' && r.dest.tab === 'conversa');
+  check('"Responder" não duplica o cartão da resposta; "manter na sequência" não vira cartão', !t({ potAcao: { titulo: 'Responder Ana agora', canal: 'Mensagem', porque: 'x' } }).some((x) => x.k === 'potencial') && !t({ potAcao: { titulo: 'Manter na sequência automática', canal: 'Nenhuma', porque: 'x' } }).some((x) => x.k === 'potencial'));
+  check('sem potAcao nada muda', !t({}).some((x) => x.k === 'potencial'));
+  check('vem depois da resposta e antes do bilan', (() => { const ks = t({ respostasNovas: 1, nome: 'Ana', potAcao: pa, bilanPendente: true }).map((x) => x.k); return ks.indexOf('resposta') < ks.indexOf('potencial') && ks.indexOf('potencial') < ks.indexOf('bilan'); })());
+}
+
 console.log('\n' + passed + ' passaram, ' + failed + ' falharam');
 if (failed) process.exit(1);
