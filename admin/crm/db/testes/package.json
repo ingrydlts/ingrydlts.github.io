@@ -69,7 +69,8 @@
     "test:catalogo": "node crm-caso-catalogo.test.mjs",
     "test:listas": "node crm-caso-listas.test.mjs",
     "test:montagem": "node crm-montagem.test.mjs",
-    "test:montagem-aplicar": "node crm-montagem-aplicar.test.mjs"
+    "test:montagem-aplicar": "node crm-montagem-aplicar.test.mjs",
+    "test:entrar": "node crm-entrar.test.mjs"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.8"

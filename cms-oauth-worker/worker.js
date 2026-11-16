@@ -3311,6 +3311,162 @@ async function handleCrmMontagemLer(request, env) {
   return json({ ok: true, reutilizada: false, id: linha.id, versao: linha.versao, proposta: v.montagem, custo_usd: custo, catalogo: cat });
 }
 
+// ---------- CRM: convite de acesso (/entrar/) e aviso de espaço atualizado ----------
+// POST /api/crm/convite             { contato_id, enviar?, confirmo?, forcar? }   (só admin) o botão "Enviar convite de acesso" da ficha.
+// POST /api/crm/espaco-atualizado   { contato_id, enviar?, confirmo? }            (só admin) o aviso para quem JÁ tem conta.
+//   Sem "enviar": só a prévia. Para enviar: "enviar" E "confirmo" (o seu "pode enviar"). Nada sai sozinho.
+//   O convite só vai se houver espaço pronto (crm_montagem_publicavel) ou se você mandar "forcar": não se manda link para um espaço vazio.
+// POST /api/entrar/contexto         { t }                  (público, com o link assinado do e-mail) nome, dias de teste e o texto do consentimento.
+// POST /api/entrar/aceitar          { t, aceito, versao }  (público) grava o consentimento, abre o teste, cria a conta SEM senha com o e-mail que
+//   já está na ficha e manda o e-mail com o link para criar a senha. A pessoa não digita e-mail nem escolhe de qual ficha se trata.
+// O link do convite é assinado com CRM_LINK_SECRET e vale só para /entrar/ (um link da página de planos não abre aqui).
+// O link de entrada é uma credencial de uso único: não vai para o histórico de e-mails.
+const CRM_ENTRAR_URL = 'https://imigrantepordentro.com/entrar/';
+const CRM_ENTRAR_DIAS = 7;
+const CRM_ENTRAR_LINK_DIAS = 14;
+const CRM_ENTRAR_VERSAO = 'entrar-2026-11-16';
+const CRM_ENTRAR_TEXTO = 'Aceito usar a plataforma Por Dentro e receber mensagens de serviço sobre o meu caso (avisos, lembretes e respostas da equipe). Li a política de privacidade e posso retirar este consentimento quando quiser.';
+const CRM_ENTRAR_MAX_ENVIOS = 10;
+const CRM_ENTRAR_MAX_ACEITES = 5;
+
+async function crmEntrarAssinar(env, contatoId, agoraMs) {
+  const exp = Math.floor((agoraMs || Date.now()) / 1000) + CRM_ENTRAR_LINK_DIAS * 86400;
+  const dados = new TextEncoder().encode('entrar.' + String(contatoId).toLowerCase() + '.' + exp);
+  const sig = new Uint8Array(await crypto.subtle.sign('HMAC', await crmLinkChave(env), dados));
+  return crmB64url(dados) + '.' + crmB64url(sig);
+}
+async function crmEntrarConferir(env, token, agoraMs) {
+  if (String(env.CRM_LINK_SECRET || '').length < 32) return { erro: 'config' };
+  const partes = String(token || '').split('.');
+  if (partes.length !== 2 || !partes[0] || !partes[1] || token.length > 300) return { erro: 'invalido' };
+  let dados, sig;
+  try { dados = crmB64urlBytes(partes[0]); sig = crmB64urlBytes(partes[1]); } catch (e) { return { erro: 'invalido' }; }
+  if (!(await crypto.subtle.verify('HMAC', await crmLinkChave(env), sig, dados))) return { erro: 'invalido' };
+  const m = /^entrar\.([0-9a-f-]{36})\.(\d{9,11})$/.exec(new TextDecoder().decode(dados));
+  if (!m || !CRM_UUID_RE.test(m[1])) return { erro: 'invalido' };
+  if (Number(m[2]) * 1000 < (agoraMs || Date.now())) return { erro: 'vencido' };
+  return { contato_id: m[1] };
+}
+
+// E-mail ao Brevo + histórico (sem o link, que é credencial) + evento. Devolve { ok, registrado } ou { ok:false, status }.
+async function crmEnviarEmailSimples(env, contato, modelo, assunto, texto, linkSecreto) {
+  const bRes = await fetch('https://api.brevo.com/v3/smtp/email', {
+    method: 'POST', headers: { 'api-key': env.BREVO_API_KEY, 'Content-Type': 'application/json', Accept: 'application/json' },
+    body: JSON.stringify({
+      sender: { email: env.BREVO_SENDER_EMAIL, name: env.BREVO_SENDER_NAME || 'Ingryd · Por Dentro' },
+      to: [contato.nome ? { email: contato.email, name: contato.nome } : { email: contato.email }],
+      replyTo: { email: crmReplyTo(env) }, subject: assunto, htmlContent: crmTextToHtml(texto), textContent: texto, tags: ['crm', modelo] })
+  });
+  const bTexto = await bRes.text();
+  if (!bRes.ok) { console.error('crm/' + modelo + ': Brevo respondeu ' + bRes.status); return { ok: false, status: bRes.status }; }
+  let messageId = null; try { messageId = JSON.parse(bTexto).messageId || null; } catch (e) { /* segue sem id */ }
+  const corpo = linkSecreto ? texto.split(linkSecreto).join('[link de acesso, uso único]') : texto;
+  const ins = await fetch(`${CRM_SUPABASE_URL}/rest/v1/emails_enviados`, { method: 'POST', headers: { ...crmServiceHeaders(env), Prefer: 'return=minimal' },
+    body: JSON.stringify({ contato_id: contato.id, modelo, assunto, corpo, status: 'agendado', provedor_id: messageId, enviado_em: new Date().toISOString() }) });
+  if (!ins.ok) console.error('crm/' + modelo + ': e-mail enviado mas não registrado — ' + ins.status);
+  return { ok: true, registrado: ins.ok };
+}
+
+async function crmAvisoDaFicha(request, env, tipo) {
+  const admin = await crmRequireAdmin(request);
+  if (!admin) return json({ error: 'Sem permissão. Entre de novo no CRM.' }, 401);
+  const body = await crmLerJson(request);
+  if (!body) return json({ error: 'Corpo inválido.' }, 400);
+  const contatoId = String(body.contato_id || '');
+  if (!CRM_UUID_RE.test(contatoId)) return json({ error: 'Contato inválido.' }, 400);
+  const auth = { apikey: CRM_SUPABASE_ANON_KEY, Authorization: `Bearer ${admin.token}` };
+  const cRes = await fetch(`${CRM_SUPABASE_URL}/rest/v1/crm_contatos?select=id,email,nome&id=eq.${contatoId}`, { headers: auth });
+  const contato = cRes.ok ? (await cRes.json())[0] : null;
+  if (!contato || !contato.email) return json({ error: 'Contato não encontrado.' }, 404);
+  const pRes = await fetch(`${CRM_SUPABASE_URL}/rest/v1/rpc/crm_montagem_publicavel`, { method: 'POST', headers: { ...auth, 'Content-Type': 'application/json' }, body: JSON.stringify({ p_contato: contatoId }) });
+  if (!pRes.ok) return json({ error: 'Falta rodar admin/crm/db/crm-entrar.sql no SQL Editor do Supabase.', codigo: 'sql_pendente' }, 500);
+  const pub = await pRes.json();
+
+  const enviando = body.enviar === true;
+  const nome = crmPrimeiroNome(contato.nome);
+  let assunto, texto, link = null;
+  if (tipo === 'convite') {
+    if (pub.conta_ja_existe) return json({ error: 'Ela já tem conta. Para avisar de uma mudança no espaço, use o aviso de espaço atualizado.', codigo: 'conta_ja_existe' }, 409);
+    if (String(env.CRM_LINK_SECRET || '').length < 32) return json({ error: 'Falta o secret CRM_LINK_SECRET no Worker (README, seção 18): é ele que assina o link do convite.' }, 500);
+    link = CRM_ENTRAR_URL + '?t=' + (await crmEntrarAssinar(env, contato.id));
+    assunto = nome ? `${nome}, o seu espaço no Por Dentro está pronto` : 'O seu espaço no Por Dentro está pronto';
+    texto = `${nome ? `Oi ${nome}!` : 'Oi!'}\n\nMontei o seu espaço na plataforma do Por Dentro com o que combinamos na nossa conversa: seus checklists, os documentos para reunir e as pessoas e lugares para você contactar.\n\n` +
+      `Para entrar, abra o link abaixo, aceite os termos e crie a sua senha. Você tem ${CRM_ENTRAR_DIAS} dias para testar a plataforma.\n\n${link}\n\nO link vale por ${CRM_ENTRAR_LINK_DIAS} dias e é só seu. Se qualquer coisa não funcionar, é só responder este e-mail.\n\nIngryd · Por Dentro`;
+  } else {
+    if (!pub.conta_ja_existe) return json({ error: 'Ela ainda não tem conta. Para dar acesso, use o convite de acesso.', codigo: 'sem_conta' }, 409);
+    assunto = nome ? `${nome}, atualizei o seu espaço no Por Dentro` : 'Atualizei o seu espaço no Por Dentro';
+    texto = `${nome ? `Oi ${nome}!` : 'Oi!'}\n\nAtualizei o seu espaço na plataforma do Por Dentro depois da nossa última conversa. Tem novidade nos seus checklists, documentos e contatos.\n\nPara ver, é só abrir:\n${CRM_APP_LINK}\n\nSe quiser tirar qualquer dúvida, é só responder este e-mail.\n\nIngryd · Por Dentro`;
+  }
+  const dica = { ha_rascunho_aprovado: pub.ha_rascunho_aprovado, itens_prontos: pub.itens_prontos, itens_a_conferir: pub.itens_a_conferir };
+  if (!enviando) return json({ ok: true, enviado: false, para: contato.email, assunto, texto, ...dica });
+
+  // A partir daqui sai e-mail de verdade: só com o "pode enviar" da Ingryd.
+  if (body.confirmo !== true) return json({ error: 'Confirme o "pode enviar" antes de mandar este e-mail.', codigo: 'sem_confirmacao' }, 400);
+  if (tipo === 'convite' && !pub.ha_rascunho_aprovado && body.forcar !== true) {
+    return json({ error: 'Ainda não há nada revisado para ela ver. Revise e aprove o rascunho do espaço antes de mandar o link (ou envie assim mesmo, de propósito).', codigo: 'sem_rascunho_aprovado', ...dica }, 409);
+  }
+  if (!env.BREVO_API_KEY || !env.BREVO_SENDER_EMAIL) return json({ error: 'Brevo ainda não configurado no Worker (BREVO_API_KEY / BREVO_SENDER_EMAIL).' }, 500);
+  if (!(await crmLimite(env, 'convite', admin.user.id, CRM_ENTRAR_MAX_ENVIOS))) return json({ error: 'Muitos envios seguidos. Espere alguns minutos.', codigo: 'limite' }, 429);
+  const r = await crmEnviarEmailSimples(env, contato, tipo === 'convite' ? 'convite_acesso' : 'espaco_atualizado', assunto, texto, link);
+  if (!r.ok) return json({ error: 'O Brevo recusou o e-mail (' + r.status + ').' }, 502);
+  const ev = await fetch(`${CRM_SUPABASE_URL}/rest/v1/rpc/crm_evento_admin`, { method: 'POST', headers: { ...auth, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ p_contato: contatoId, p_tipo: tipo === 'convite' ? 'convite_enviado' : 'espaco_atualizado_aviso', p_dados: { itens_prontos: pub.itens_prontos } }) });
+  if (!ev.ok) console.error('crm/convite: e-mail enviado mas o evento não foi registrado — ' + ev.status);
+  return json({ ok: true, enviado: true, registrado: r.registrado });
+}
+const handleCrmConvite = (request, env) => crmAvisoDaFicha(request, env, 'convite');
+const handleCrmEspacoAtualizado = (request, env) => crmAvisoDaFicha(request, env, 'espaco');
+
+async function crmEntrarContato(env, token) {
+  const link = await crmEntrarConferir(env, token);
+  if (link.erro) return { resp: crmLinkErro(link) };
+  if (!env.SUPABASE_SERVICE_ROLE_KEY) return { resp: json({ error: 'config' }, 500) };
+  const r = await fetch(`${CRM_SUPABASE_URL}/rest/v1/contatos?select=id,email,nome,user_id&id=eq.${link.contato_id}`, { headers: crmServiceHeaders(env) });
+  const c = r.ok ? (await r.json())[0] : null;
+  return c ? { contato: c } : { resp: json({ error: 'invalido' }, 404) };
+}
+
+async function handleEntrarContexto(request, env) {
+  const body = await crmLerJson(request);
+  if (!body) return json({ error: 'invalido' }, 400);
+  const x = await crmEntrarContato(env, String(body.t || ''));
+  if (x.resp) return x.resp;
+  return json({ ok: true, nome: crmPrimeiroNome(x.contato.nome) || null, dias: CRM_ENTRAR_DIAS, versao: CRM_ENTRAR_VERSAO, texto: CRM_ENTRAR_TEXTO, ja_tem_conta: !!x.contato.user_id });
+}
+
+async function handleEntrarAceitar(request, env) {
+  const body = await crmLerJson(request);
+  if (!body) return json({ error: 'invalido' }, 400);
+  const x = await crmEntrarContato(env, String(body.t || ''));
+  if (x.resp) return x.resp;
+  if (body.versao !== CRM_ENTRAR_VERSAO) return json({ error: 'O texto dos termos mudou. Recarregue a página e leia de novo.', codigo: 'versao' }, 400);
+  if (body.aceito !== true) return json({ error: 'Marque que você leu e aceita para continuar.', codigo: 'sem_aceite' }, 400);
+  const contato = x.contato;
+  if (contato.user_id) return json({ ok: true, ja_tem_conta: true });   // não renova teste, não cria conta, não manda e-mail
+  if (!env.BREVO_API_KEY || !env.BREVO_SENDER_EMAIL) return json({ error: 'config' }, 500);
+  if (!(await crmLimite(env, 'entrar', contato.id, CRM_ENTRAR_MAX_ACEITES))) return json({ error: 'Muitas tentativas seguidas. Espere alguns minutos.', codigo: 'limite' }, 429);
+
+  // 1) o consentimento e o teste são gravados antes de qualquer conta existir
+  const reg = await crmRpc(env, 'crm_entrar_registrar', { p_contato: contato.id, p_dias: CRM_ENTRAR_DIAS, p_versao: CRM_ENTRAR_VERSAO, p_texto: CRM_ENTRAR_TEXTO });
+  if (!reg || !reg.status) return json({ error: 'Não consegui registrar o seu aceite agora. Tente de novo em instantes.', codigo: 'registro' }, 502);
+  // 2) a conta nasce sem senha, com o e-mail que já está na ficha
+  let link;
+  try { link = await crmLinkDeEntrada(env, contato.email); } catch (e) {
+    console.error('crm/entrar: ' + (e && e.message));
+    return json({ error: 'Não consegui criar o seu acesso agora. Tente de novo em instantes.', codigo: 'conta' }, 502);
+  }
+  // 3) o e-mail com o link para entrar e criar a senha
+  const nome = crmPrimeiroNome(contato.nome);
+  const fim = crmDiaBr(String(reg.fim_teste || '').slice(0, 10));
+  const assunto = nome ? `${nome}, o seu acesso ao Por Dentro está liberado` : 'O seu acesso ao Por Dentro está liberado';
+  const texto = `${nome ? `Oi ${nome}!` : 'Oi!'}\n\nO seu acesso ao Por Dentro está liberado. Para entrar e criar a sua senha, abra o link abaixo:\n\n${link}\n\n` +
+    (fim ? `Você pode testar a plataforma até ${fim}. Depois dessa data, é só escolher um plano para continuar; nada do que você preencher é apagado.\n\n` : '') +
+    `O link é de uso único. Se ele não abrir, responda este e-mail que eu mando outro.\n\nIngryd · Por Dentro`;
+  const r = await crmEnviarEmailSimples(env, contato, 'acesso_liberado', assunto, texto, link);
+  if (!r.ok) return json({ error: 'O seu aceite foi registrado, mas não consegui enviar o e-mail agora. Tente de novo em alguns minutos ou responda à Ingryd.', codigo: 'email' }, 502);
+  return json({ ok: true, fim_teste: reg.fim_teste || null });
+}
+
 // ---------- CRM: Onboarding pelo Notion (a página da ligação, padronizada pela skill /bilan-notion → proposta PENDENTE) ----------
 // POST /api/crm/onboarding/notion/ler { url }   (só admin) lê a página pela API do Notion (SÓ LEITURA: o Worker não escreve no Notion),
 //   confere o contrato fixo (README.md, seção 31), acha ou cria a ficha pelo e-mail e a PREENCHE com o que a página trouxe
@@ -4836,6 +4992,18 @@ export default {
       }
       if (url.pathname === '/api/crm/montagem/ler' && request.method === 'POST') {
         return await handleCrmMontagemLer(request, env);
+      }
+      if (url.pathname === '/api/crm/convite' && request.method === 'POST') {
+        return await handleCrmConvite(request, env);
+      }
+      if (url.pathname === '/api/crm/espaco-atualizado' && request.method === 'POST') {
+        return await handleCrmEspacoAtualizado(request, env);
+      }
+      if (url.pathname === '/api/entrar/contexto' && request.method === 'POST') {
+        return await handleEntrarContexto(request, env);
+      }
+      if (url.pathname === '/api/entrar/aceitar' && request.method === 'POST') {
+        return await handleEntrarAceitar(request, env);
       }
       if (url.pathname === '/api/crm/onboarding/status' && request.method === 'GET') {
         return await handleCrmOnboardingStatus(request, env);
