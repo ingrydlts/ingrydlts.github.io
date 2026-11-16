@@ -65,7 +65,9 @@
         <div class="kpi"><p>Pessoas na plataforma</p><strong class="num" id="k-plat">0</strong><small id="k-plat-sub"></small></div>
         <div class="kpi"><p>Revenue estimado</p><strong class="num" id="k-rev">€ 0</strong><small id="k-rev-sub"></small></div>
       </div>
-      <div class="today" style="margin-top:16px">
+      <nav class="hj-abas" id="hj-abas" role="tablist" aria-label="Seções da Hoje"></nav>
+      <div class="hj-pane" data-hojepane="resumo"><div class="hj-resumo" id="hj-resumo"></div></div>
+      <div class="hj-pane" data-hojepane="fila" hidden>
         <div class="panel">
           <div class="panel-h"><h3>Por onde começar</h3></div>
           <div class="fila-ctl">
@@ -76,36 +78,49 @@
           <p class="sub fila-resumo" id="h-resumo"></p>
           <div id="attention"></div>
         </div>
-        <div style="display:flex; flex-direction:column; gap:16px">
-          <div class="panel" id="today-cal-box">
-            <div class="panel-h"><h3>Calendário de 1:1</h3><span class="cal-nav"><button class="link" type="button" data-calmes="-1" aria-label="Mês anterior">‹</button><b id="cal-mes" class="num"></b><button class="link" type="button" data-calmes="1" aria-label="Próximo mês">›</button></span></div>
-            <div id="today-cal"></div>
-          </div>
-          <section class="panel fila-card" id="today-fila-box" aria-label="Próximas mensagens da Equipe Por Dentro" hidden>
-            <div class="fila-kicker">Fila de mensagens</div>
-            <h3 class="fila-titulo" title="A próxima de cada pessoa. Envie antes ou atrase: o que vem depois acompanha e as pausas se mantêm.">Próximas mensagens da Equipe Por Dentro</h3>
-            <div id="today-fila"></div>
-          </section>
-          <div class="panel">
-            <div class="panel-h"><h3>Caixa de entrada</h3><button class="link" data-go="perguntas" type="button">Abrir caixa →</button></div>
-            <div id="today-q"></div>
-          </div>
-          <div class="panel" id="today-procs-box" hidden>
-            <div class="panel-h"><h3>Processos para revisar</h3></div>
-            <div id="today-procs"></div>
-          </div>
-          <div class="panel">
-            <div class="panel-h"><h3>Radar por persona</h3><button class="link" data-go="radar" type="button">Abrir Radar →</button></div>
-            <div id="today-radar"></div>
-          </div>
-          <div class="panel">
-            <div class="panel-h"><h3>Guias</h3><button class="link" data-go="contatos" data-view-preset="voltaram" type="button">Quem voltou →</button></div>
-            <div id="today-guias"></div>
-          </div>
-          <div class="panel">
-            <div class="panel-h"><h3>Lembretes de prazo</h3></div>
-            <div id="today-lembretes"></div>
-          </div>
+      </div>
+      <div class="hj-pane" data-hojepane="agenda" hidden>
+        <div class="panel" id="today-cal-box">
+          <div class="panel-h"><h3>Calendário de 1:1</h3><span class="cal-nav"><button class="link" type="button" data-calmes="-1" aria-label="Mês anterior">‹</button><b id="cal-mes" class="num"></b><button class="link" type="button" data-calmes="1" aria-label="Próximo mês">›</button></span></div>
+          <div id="today-cal"></div>
+        </div>
+      </div>
+      <div class="hj-pane" data-hojepane="msgs" hidden>
+        <section class="panel fila-card" id="today-fila-box" aria-label="Próximas mensagens da Equipe Por Dentro" hidden>
+          <div class="fila-kicker">Fila de mensagens</div>
+          <h3 class="fila-titulo" title="A próxima de cada pessoa. Envie antes ou atrase: o que vem depois acompanha e as pausas se mantêm.">Próximas mensagens da Equipe Por Dentro</h3>
+          <div id="today-fila"></div>
+        </section>
+        <div class="panel" id="today-fila-vazio" hidden><div class="empty">Nenhuma mensagem agendada na fila.</div></div>
+      </div>
+      <div class="hj-pane" data-hojepane="caixa" hidden>
+        <div class="panel">
+          <div class="panel-h"><h3>Caixa de entrada</h3><button class="link" data-go="perguntas" type="button">Abrir caixa →</button></div>
+          <div id="today-q"></div>
+        </div>
+      </div>
+      <div class="hj-pane" data-hojepane="procs" hidden>
+        <div class="panel" id="today-procs-box">
+          <div class="panel-h"><h3>Processos para revisar</h3></div>
+          <div id="today-procs"></div>
+        </div>
+      </div>
+      <div class="hj-pane" data-hojepane="radar" hidden>
+        <div class="panel">
+          <div class="panel-h"><h3>Radar por persona</h3><button class="link" data-go="radar" type="button">Abrir Radar →</button></div>
+          <div id="today-radar"></div>
+        </div>
+      </div>
+      <div class="hj-pane" data-hojepane="guias" hidden>
+        <div class="panel">
+          <div class="panel-h"><h3>Guias</h3><button class="link" data-go="contatos" data-view-preset="voltaram" type="button">Quem voltou →</button></div>
+          <div id="today-guias"></div>
+        </div>
+      </div>
+      <div class="hj-pane" data-hojepane="prazos" hidden>
+        <div class="panel">
+          <div class="panel-h"><h3>Lembretes de prazo</h3></div>
+          <div id="today-lembretes"></div>
         </div>
       </div>
     </section>

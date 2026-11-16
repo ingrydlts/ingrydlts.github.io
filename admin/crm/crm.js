@@ -592,12 +592,8 @@ function renderToday() {
       '</b><span>Possível novo processo: ' + esc(procLabel(p.processo)) + '</span></div><span class="pill u-media">revisar</span></button>';
   }).join('');
 
-  var nq = Q.filter(function (x) { return x.status === 'nova'; }).sort(function (a, b) { return a.criado_em < b.criado_em ? -1 : 1; });
-  var nr = R.filter(function (x) { return x.status === 'nova'; });
-  // Caixa de entrada: perguntas e respostas por e-mail juntas, a mais antiga primeiro.
-  var caixa = nq.map(function (x) { return { k: 'q', x: x, em: x.criado_em }; })
-    .concat(nr.map(function (x) { return { k: 'r', x: x, em: x.recebido_em }; }))
-    .sort(function (a, b) { return a.em < b.em ? -1 : 1; });
+  var nq = Q.filter(function (x) { return x.status === 'nova'; }), nr = R.filter(function (x) { return x.status === 'nova'; });
+  var caixa = caixaLista();
   $('today-q').innerHTML = caixa.slice(0, 5).map(function (it) {
     var x = it.x, c = byC(x.contato_id), h = hrsSince(it.em);
     if (it.k === 'q' && !c) return '';
@@ -619,6 +615,84 @@ function renderToday() {
   renderGuias();
   renderRadarHoje();
   renderFilaHoje();
+  renderHojeResumo();
+}
+
+// Caixa de entrada: perguntas e respostas por e-mail juntas, a mais antiga primeiro.
+function caixaLista() {
+  var nq = Q.filter(function (x) { return x.status === 'nova'; }), nr = R.filter(function (x) { return x.status === 'nova'; });
+  return nq.map(function (x) { return { k: 'q', x: x, em: x.criado_em }; })
+    .concat(nr.map(function (x) { return { k: 'r', x: x, em: x.recebido_em }; }))
+    .sort(function (a, b) { return a.em < b.em ? -1 : 1; });
+}
+// ---------- Hoje: Resumo e abas (uma seção por vez, nada rola por dentro) ----------
+var HOJE_ABAS = [['resumo', 'Resumo'], ['fila', 'Precisa de você'], ['agenda', 'Agenda'], ['msgs', 'Mensagens'], ['caixa', 'Caixa'], ['procs', 'Processos'], ['radar', 'Radar'], ['guias', 'Guias'], ['prazos', 'Prazos']];
+function cortaTxt(t, n) { t = String(t == null ? '' : t).replace(/\s+/g, ' ').trim(); return t.length > n ? t.slice(0, n - 1) + '…' : t; }
+function linhaDoItem(it) {
+  if (it.k === 'q' || it.k === 'r') { var c = byC(it.x.contato_id); return (c ? short(c) : it.x.de_email || 'Sem ficha') + ': ' + cortaTxt(it.x.texto, 70); }
+  if (it.k === 'p') return 'Problema no app: ' + cortaTxt(it.x.texto, 70);
+  if (it.k === 'proc') return short(it.c) + ': possível novo processo (' + procLabel(it.x.processo) + ')';
+  return short(it.c) + ': ' + cortaTxt(it.c.motivo, 70);
+}
+// O mais urgente da fila: problema do app, depois resposta parada há 72 h ou mais, depois prazo em até 7 dias; senão o primeiro.
+function itemMaisUrgente(lista) {
+  var pontos = function (it) { return it.k === 'p' ? 3 : (it.k === 'q' || it.k === 'r') && hrsSince(it.desde) >= 72 ? 2 : it.dias != null && it.dias >= 0 && it.dias <= 7 ? 2 : 0; };
+  var melhor = null, mp = -1; lista.forEach(function (it) { var p = pontos(it); if (p > mp) { mp = p; melhor = it; } });
+  return { it: melhor, urgente: mp >= 2 };
+}
+function filaProximas() {
+  var proximas = {}; FILA.forEach(function (a) { if (!proximas[a.contato_id]) proximas[a.contato_id] = a; });
+  var t = function (a) { return a.liberar_em ? new Date(a.liberar_em).getTime() : Infinity; };
+  return Object.keys(proximas).map(function (cid) { return proximas[cid]; }).filter(function (a) { return byC(a.contato_id); }).sort(function (a, b) { return t(a) - t(b); });
+}
+// Os números e a linha de cada seção, calculados com o que a Hoje já carregou (nenhuma chamada nova).
+function hojeSecoes() {
+  var agora = Date.now(), r = {}, o;
+  var fila = ordenaFila(itensDeHoje(), 'antigos'); o = itemMaisUrgente(fila);
+  r.fila = { n: fila.length, urg: o.urgente, linha: o.it ? linhaDoItem(o.it) : '', btn: 'Começar pela fila →' };
+  var um = UM.filter(function (x) { return x.status === 'agendado' && x.quando; }).sort(function (a, b) { return a.quando < b.quando ? -1 : 1; });
+  var prox = um.filter(function (x) { return new Date(x.quando).getTime() >= agora - 36e5; }), n30 = prox.filter(function (x) { return new Date(x.quando).getTime() <= agora + 30 * 864e5; });
+  var p1 = prox[0], c1 = p1 && byC(p1.contato_id), hojeIso = new Date().toISOString().slice(0, 10);
+  r.agenda = { n: n30.length, urg: !!(p1 && p1.quando.slice(0, 10) === hojeIso), linha: p1 ? 'Próximo: ' + (c1 ? short(c1) : 'contato') + ' · ' + new Date(p1.quando).toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit' }).replace('.', '') + ' · ' + fmtHora(p1.quando) : '', btn: 'Abrir agenda →' };
+  var fp = filaProximas(), f1 = fp[0];
+  r.msgs = { n: fp.length, urg: false, linha: f1 ? short(byC(f1.contato_id)) + ': ' + cortaTxt(f1.titulo, 50) + ' · ' + casoSaiEm(f1) : '', btn: 'Revisar fila →' };
+  var cx = caixaLista().filter(function (it) { return it.k !== 'q' || byC(it.x.contato_id); }), x1 = cx[0];
+  r.caixa = { n: cx.length, urg: !!(x1 && hrsSince(x1.em) >= 72), linha: x1 ? (byC(x1.x.contato_id) ? short(byC(x1.x.contato_id)) : x1.x.de_email || 'Sem ficha') + ' espera há ' + hrs(hrsSince(x1.em)) : '', btn: 'Responder →', go: 'perguntas' };
+  var pr = PSUG.filter(function (p) { return byC(p.contato_id); });
+  r.procs = { n: pr.length, urg: false, linha: pr[0] ? short(byC(pr[0].contato_id)) + ': ' + procLabel(pr[0].processo) : '', btn: 'Revisar →' };
+  var sem = [], tot = 0;
+  if (RD !== null) PERSONAS_RADAR.forEach(function (p) { var n = radarSemAviso(radarDaPersona(p)).length; if (n) { tot += n; sem.push(PERSONAS[p]); } });
+  r.radar = { n: tot, urg: false, linha: RD === null ? 'O Radar ainda não está ligado.' : sem.length ? 'Sem aviso: ' + sem.join(', ') : '', btn: 'Abrir Radar →', go: 'radar' };
+  var vol = C.filter(voltou).length, ng = {}; C.forEach(function (c) { origensDe(c).forEach(function (o2) { if (o2.indexOf('guia-') === 0) ng[o2] = 1; }); });
+  r.guias = { n: vol, urg: false, linha: vol ? vol + (vol === 1 ? ' pessoa voltou' : ' pessoas voltaram') + ' a pedir material · ' + Object.keys(ng).length + ' guias' : '', btn: 'Quem voltou →', go: 'contatos', preset: 'voltaram' };
+  var hoje = hojeIso, em7 = new Date(agora + 7 * 864e5).toISOString().slice(0, 10), lm = L.filter(function (l) { return l.avisar_em <= em7; }).sort(function (a, b) { return a.avisar_em < b.avisar_em ? -1 : 1; }), l1 = lm[0], cl = l1 && byC(l1.contato_id);
+  r.prazos = { n: lm.length, urg: !!(l1 && l1.avisar_em <= hoje), linha: l1 ? (cl ? short(cl) : 'Contato') + ' · prazo ' + fmtDay(l1.prazo) + (l1.avisar_em <= hoje ? ' · avisar hoje' : '') : '', btn: 'Ver prazos →' };
+  return r;
+}
+var HOJE_CARTOES = [['fila', 'Precisa de você'], ['agenda', 'Agenda 1:1'], ['msgs', 'Mensagens da Equipe Por Dentro'], ['caixa', 'Caixa de entrada'], ['procs', 'Processos para revisar'], ['radar', 'Radar por persona'], ['guias', 'Guias'], ['prazos', 'Prazos']];
+function hojeAbaAtual(sec) {
+  var k = state.hojeAba; if (!k) { try { k = localStorage.getItem('crm_hoje_aba') || ''; } catch (e) { k = ''; } }
+  if (!HOJE_ABAS.some(function (a) { return a[0] === k; }) || (k === 'procs' && !sec.procs.n)) k = 'resumo';
+  return (state.hojeAba = k);
+}
+function renderHojeResumo() {
+  var box = $('hj-resumo'), tabs = $('hj-abas'); if (!box || !tabs) return;
+  var sec = hojeSecoes(), atual = hojeAbaAtual(sec);
+  tabs.innerHTML = HOJE_ABAS.filter(function (a) { return a[0] !== 'procs' || sec.procs.n; }).map(function (a) {
+    var s = sec[a[0]], b = s && s.n ? '<span class="hj-b' + (s.urg ? ' urg' : '') + ' num">' + s.n + '</span>' : '';
+    return '<button type="button" class="hj-aba" role="tab" data-hojeaba="' + a[0] + '" aria-selected="' + (a[0] === atual) + '">' + esc(a[1]) + b + '</button>';
+  }).join('');
+  box.innerHTML = HOJE_CARTOES.filter(function (c) { return c[0] !== 'procs' || sec.procs.n; }).map(function (c) {
+    var s = sec[c[0]], vazio = !s.n, go = s.go ? ' data-go="' + s.go + '"' + (s.preset ? ' data-view-preset="' + s.preset + '"' : '') : ' data-hojeaba="' + c[0] + '"';
+    return '<article class="hj-card' + (s.urg ? ' urg' : '') + (vazio ? ' vazio' : '') + '"><header><button type="button" class="hj-tit" data-hojeaba="' + c[0] + '">' + esc(c[1]) + '</button><span class="hj-n num">' + s.n + '</span></header>' +
+      '<p class="hj-linha">' + (vazio ? (s.linha ? esc(s.linha) : 'Nada pendente.') : esc(s.linha)) + '</p>' +
+      (vazio ? '' : '<button type="button" class="hj-go"' + go + '>' + esc(s.btn) + '</button>') + '</article>';
+  }).join('');
+  document.querySelectorAll('[data-hojepane]').forEach(function (p) { p.hidden = p.getAttribute('data-hojepane') !== atual; });
+}
+function hojeIrAba(k) {
+  state.hojeAba = k; try { localStorage.setItem('crm_hoje_aba', k); } catch (e) { /* sem localStorage */ }
+  renderHojeResumo(); var t = $('hj-abas'); if (t && t.scrollIntoView && k !== 'resumo') t.scrollIntoView({ block: 'nearest' });
 }
 
 // Visão macro: por guia/origem, quantas pessoas passaram, quantas voltaram e quantas aceitam novidades.
@@ -2064,17 +2138,13 @@ async function filaAcao(acao, id, t, cid) {
 // O bloco da Hoje: a próxima mensagem de cada pessoa, a que sai mais cedo primeiro.
 function renderFilaHoje() {
   var box = $('today-fila-box'); if (!box) return;
-  var proximas = {}; FILA.forEach(function (a) { if (!proximas[a.contato_id]) proximas[a.contato_id] = a; });
-  var lista = Object.keys(proximas).map(function (cid) { return proximas[cid]; }).filter(function (a) { return byC(a.contato_id); })
-    .sort(function (a, b) { return (a.liberar_em ? new Date(a.liberar_em).getTime() : Infinity) - (b.liberar_em ? new Date(b.liberar_em).getTime() : Infinity); }).slice(0, 8);
-  box.hidden = !lista.length;
-  var total = lista.length, vis = state.filaTodas ? lista : lista.slice(0, 3);
-  var mais = total > 3 ? '<button class="link fila-mais" type="button" data-filamais="1">' + (state.filaTodas ? 'Ver só as 3 primeiras' : 'Ver mais ' + (total - 3)) + '</button>' : '';
-  $('today-fila').innerHTML = vis.map(function (a) {
+  var lista = filaProximas().slice(0, 8);
+  box.hidden = !lista.length; if ($('today-fila-vazio')) $('today-fila-vazio').hidden = !!lista.length;
+  $('today-fila').innerHTML = lista.map(function (a) {
     var c = byC(a.contato_id);
     return '<div class="fila-item"><button class="fila-quem" data-caso-ficha="' + esc(c.id) + '" type="button">' +
       '<b>' + esc(short(c)) + '</b><span>' + esc(a.titulo) + ' · ' + esc(casoSaiEm(a)) + '</span></button><div class="fila-acoes">' + casoRitmoBtns(a, true, 'h-') + '</div></div>';
-  }).join('') + mais;
+  }).join('');
 }
 async function casoAcao(acao, id, t) {
   var k = state.caso; if (!k) return;
@@ -5800,7 +5870,7 @@ document.addEventListener('click', async function (e) {
   var t = e.target.closest('button, tr[data-id]'); if (!t) return;
   if (t.dataset.caldia !== undefined) { state.calDia = state.calDia === t.dataset.caldia ? '' : t.dataset.caldia; return renderCalendario(); }
   if (t.dataset.calfil !== undefined) { state.calFil = t.dataset.calfil; state.calDia = ''; return renderCalendario(); }
-  if (t.dataset.filamais) { state.filaTodas = !state.filaTodas; return renderFilaHoje(); }
+  if (t.dataset.hojeaba) return hojeIrAba(t.dataset.hojeaba);
   if (t.dataset.calmes) { state.calOff = (state.calOff || 0) + Number(t.dataset.calmes); return renderCalendario(); }
   if (t.dataset.hojemais) { state.hMais = true; return renderFila(); }
   if (t.dataset.hojeprob) { state.inbox = 'problemas'; return show('perguntas'); }
@@ -5826,7 +5896,6 @@ document.addEventListener('click', async function (e) {
   if (t.dataset.open) return openPessoa(t.dataset.open);
   if (t.dataset.caldia !== undefined) { state.calDia = state.calDia === t.dataset.caldia ? '' : t.dataset.caldia; return renderCalendario(); }
   if (t.dataset.calfil !== undefined) { state.calFil = t.dataset.calfil; state.calDia = ''; return renderCalendario(); }
-  if (t.dataset.filamais) { state.filaTodas = !state.filaTodas; return renderFilaHoje(); }
   if (t.dataset.pistaemail) { state.rascunho[t.dataset.pistaemail] = (state.rascPista || {})[t.dataset.pistaemail] || ''; return openPessoa(t.dataset.pistaemail, 'conversa'); }
   if (t.dataset.insacao) {
     var cc0 = byC(state.sel); if (!cc0) return;
