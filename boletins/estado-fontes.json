@@ -1,0 +1,110 @@
+{
+  "_readme": "Estado das fontes monitoradas pelo boletim semanal de atualizações legais do Por Dentro. Cada entrada tem lastKnownSummary (base de comparação) e lastChecked (data ISO da última verificação). accessMethod indica se o conteúdo veio de leitura direta da página ou de busca indexada (fallback usado quando o fetch direto foi bloqueado pelo proxy de rede do ambiente de execução).",
+  "sources": {
+    "campusfrance-como-solicitar": {
+      "url": "https://www.bresil.campusfrance.org/como-solicitar-seu-visto-de-estudante",
+      "vistoTipos": ["Visto Estudante"],
+      "lastChecked": "2026-11-16",
+      "accessMethod": "websearch_fallback",
+      "lastKnownSummary": "Checagem de 2026-11-16: processo pré-consular Campus France (plataforma Études en France) reconfirmado sem alteração — dossiê eletrônico, pagamento de taxa, entrevista presencial no Brasil e só depois agendamento do visto no consulado. Taxa do visto consular: 50€. Taxa administrativa Campus France continua com divergência entre fontes de terceiros (R$600 segundo UFES/SKEMA/guia do candidato 2026-2027; R$570 segundo outra fonte comercial) — mesma divergência já registrada em checagens anteriores, sem fonte oficial que unifique o valor. Recursos financeiros: fontes de terceiros ainda mencionam o valor antigo de 615€/mês (de 2025) ao lado do valor atualizado de 877,50€/mês do Decreto 2026-526; a página oficial não foi acessada diretamente para confirmar qual valor ela exibe agora. Sem mudança confirmada desde 2026-11-02."
+    },
+    "campusfrance-quem-precisa": {
+      "url": "https://www.bresil.campusfrance.org/quem-precisa-visto-estudante",
+      "vistoTipos": ["Visto Estudante"],
+      "lastChecked": "2026-11-16",
+      "accessMethod": "websearch_fallback_nao_reconfirmado",
+      "lastKnownSummary": "Checagem de 2026-11-16: a busca indireta novamente não retornou conteúdo específico desta página oficial. Confirma-se apenas o princípio geral (fora da página): estadias de até 90 dias dispensam visto (regime Schengen); acima disso, exige-se visto de longa duração e passagem pelo Campus France; cidadãos europeus são dispensados do visto de estudante. Nenhuma fonte encontrada detalha as categorias específicas dispensadas (visitante, científico, au pair) ou a regra de impossibilidade de troca de categoria já registradas em checagens anteriores — mantendo o último estado conhecido sem reconfirmação direta pela quinta semana consecutiva. Sem mudança confirmada desde 2026-08-31."
+    },
+    "france-visas-bresil": {
+      "url": "https://france-visas.gouv.fr/en/bresil",
+      "vistoTipos": ["Visto Estudante", "Vacances-Travail (PVT)"],
+      "lastChecked": "2026-11-16",
+      "accessMethod": "websearch_fallback",
+      "lastKnownSummary": "WebFetch direto a france-visas.gouv.fr/en/bresil bloqueado nesta sessão (host fora da allowlist de rede do ambiente). Busca indireta (2026-11-16) reconfirma as regras já conhecidas do PVT: idade 18-30 anos na data do pedido, estadia máxima 12 meses não prorrogável, recursos financeiros mínimos ~2.500€, sem dependentes, nunca ter se beneficiado do programa antes, seguro-saúde obrigatório, pedido feito antes da partida. Fontes de terceiros (pvt.fr, atualizado em 02/02/2026) mantêm a cota de 500 vagas/ano para o lado francês (Brasil→França), sem indicar esgotamento. Nenhuma informação nova específica sobre a página oficial brasileira (Brasil→França) foi encontrada. Sem mudança desde a checagem de 2026-09-28."
+    },
+    "legifrance-decreto-recursos": {
+      "url": "https://www.legifrance.gouv.fr/jorf/id/JORFTEXT000054300340",
+      "vistoTipos": ["Visto Estudante"],
+      "lastChecked": "2026-11-16",
+      "accessMethod": "websearch_fallback",
+      "lastKnownSummary": "Checagem de 2026-11-16: Légifrance continua inacessível por fetch direto (falha de DNS no proxy do ambiente). Via busca indireta, múltiplas fontes de imprensa jurídica francesa (le360.ma, kohenavocats.com, franceaccueil.com) reconfirmam que o Décret n° 2026-526 (22/06/2026) permanece vigente e sem substituição: recursos mínimos de 877,50€/mês (47% do SMIC bruto mensal de 1.867,02€, vigente desde a revalorização do SMIC em 1º/05/2026), aplicável a pedidos depositados a partir de 1º/08/2026 (data de depósito, não de expedição), sem modulação por país. Uma fonte nota que a ficha Service-Public ainda podia exibir o valor antigo de 615€/mês em alguns pontos à época de sua publicação — divergência de terceiros já conhecida, não confirmada como alteração oficial. Nenhum decreto novo substituindo o 2026-526 foi encontrado. Sem mudança desde 2026-09-21."
+    },
+    "alternance-professionnelle": {
+      "url": "https://www.alternance-professionnelle.fr/apprentissage-etudiants-etrangers/",
+      "vistoTipos": ["Visto Estudante"],
+      "lastChecked": "2026-11-16",
+      "accessMethod": "websearch_fallback",
+      "lastKnownSummary": "Checagem de 2026-11-16: regras de alternância para estudantes estrangeiros reconfirmadas sem mudança. Contrato de aprendizagem validado pelo OPCO/DREETS dispensa autorização de trabalho separada (mesmo para quem está sob o teto de 964h/ano — acima disso a autorização é da responsabilidade do empregador); contrato de profissionalização continua exigindo autorização de trabalho. Exceção por diploma de nível Mestrado/Grande École (decreto de 2021) permanece sem indício de revogação. Uma fonte de terceiros (demarchesetrangers.fr) contradiz as fontes oficiais ao afirmar que falta de autorização DREETS invalida o contrato de aprendizagem — tratada como não confiável, mesma avaliação de checagens anteriores. Nenhuma notícia nova sobre fim de autorizações de trabalho em alternância. Sem mudança desde 2026-08-31."
+    },
+    "demarchesetrangers-conjuge-ue": {
+      "url": "https://demarchesetrangers.fr/titre-de-sejour/conjoint-membre-famille-citoyen-ue",
+      "vistoTipos": ["Cônjuge de cidadão(ã) da UE (não francês)"],
+      "lastChecked": "2026-11-16",
+      "accessMethod": "websearch_fallback",
+      "lastKnownSummary": "Checagem de 2026-11-16: fetch direto a demarchesetrangers.fr continua bloqueado pelo proxy do ambiente (falha de DNS), mesma situação de checagens anteriores. Busca indireta reconfirma: o título de residência de membro de família de cidadão da UE/EEE/Suíça (não francês) permanece GRATUITO, não afetado pelo aumento geral das taxas de título de séjour para 350€ (vigente desde 1º/mai/2026), por estar sob a diretiva europeia 2004/38/CE. Validade de 5 anos (ou pelo tempo de permanência do cidadão UE titular, se menor), pedido via ANEF em até 3 meses da chegada, sem exame cívico nem nível de francês exigido. Após 5 anos de residência legal ininterrupta, pode obter residência permanente. Nenhuma fonte oficial (ANEF, service-public.fr, prefeituras) foi encontrada nesta busca confirmando um valor específico de taxa para este título, o que é consistente com a regra permanecer gratuita. Sem mudança desde a checagem de 2026-11-02."
+    },
+    "info-droits-etrangers-europeus": {
+      "url": "https://www.info-droits-etrangers.org/sejourner-en-france/les-statuts-particuliers/les-ressortissants-europeens-et-les-membres-de-leur-famille/",
+      "vistoTipos": ["Cônjuge de cidadão(ã) da UE (não francês)"],
+      "lastChecked": "2026-11-16",
+      "accessMethod": "websearch_fallback",
+      "lastKnownSummary": "Checagem de 2026-11-16: verificação indireta via WebSearch, já que a busca não trouxe o conteúdo integral da página info-droits-etrangers.org (apenas um trecho). A regra geral é reconfirmada: cidadãos da UE/EEE e membros de família devem obter direito de residência em até 3 meses da chegada; os 'inativos' precisam comprovar recursos suficientes (para não se tornarem encargo da assistência social) e seguro-saúde. Residência permanente após 5 anos. Uma fonte comercial (demarchesetrangers.fr) cita o valor do RSA individual em 651,69€/mês desde 1º/abril/2026 (reajuste de 0,8%, Decreto n° 2026-220) como referência de patamar de recursos — esse número não foi cruzado com fonte oficial (Légifrance/CAF) nesta checagem, e a regra em si (usar o RSA como teto de referência) não mudou, só o valor nominal do RSA sofreu o reajuste anual já esperado. Não é uma mudança de regra para quem está nesse tipo de visto. Sem mudança substantiva desde a checagem de 2026-08-31."
+    },
+    "dicaparis-pvt": {
+      "url": "https://dicaparis.com/dicas/visto-ferias-trabalho-da-franca/",
+      "vistoTipos": ["Vacances-Travail (PVT)"],
+      "lastChecked": "2026-11-16",
+      "accessMethod": "websearch_fallback",
+      "lastKnownSummary": "WebFetch direto a dicaparis.com bloqueado (DNS fora da allowlist). Busca indireta não retornou o conteúdo específico desta página, mas fontes equivalentes (eurodicas, mundodosvistos, nomadglobal) reconfirmam os mesmos parâmetros já registrados: 18-30 anos (pedido até a véspera de completar 31), sem dependentes, recursos mínimos ~2.500€ (cartão de crédito/recursos de terceiros não aceitos), seguro-saúde obrigatório, validade de passaporte com pelo menos 1 ano e 3 meses, 1 ano não prorrogável. Há pequena divergência de terceiros sobre taxa (uma fonte cita gratuito, outra cita taxa consular de 99€) — mesma divergência não resolvida de checagens anteriores. Sem mudança confirmada desde a checagem de 2026-09-28."
+    },
+    "lexoraeurope-pvt": {
+      "url": "https://lexoraeurope.com/franca/motivos-pessoais/visto-vacances-travail-franca-brasil",
+      "vistoTipos": ["Vacances-Travail (PVT)"],
+      "lastChecked": "2026-11-16",
+      "accessMethod": "websearch_fallback_nao_reconfirmado",
+      "lastKnownSummary": "WebFetch direto a lexoraeurope.com bloqueado (DNS fora da allowlist). Busca indireta não encontrou nenhum resultado específico desta página (nenhuma menção a 'lexoraeurope' nos resultados). Fontes gerais sobre o PVT Brasil-França continuam divergentes quanto à cota: uma vertente cita 500 vagas/ano para o sentido França→Brasil (nunca esgotada do lado francês); outra descreve cotas mensais/anuais por circunscrição consular para o sentido Brasil→França, com lista de espera quando a cota do mês se esgota — mesma divergência já registrada em checagens anteriores, sem fonte oficial que unifique os números. Mantendo último estado conhecido sem reconfirmação direta nesta semana."
+    },
+    "diplomatie-pvt-cota-2026": {
+      "url": "https://br.diplomatie.gouv.fr/pt-br/nordeste-campanha-de-visto-de-ferias-trabalho-2026",
+      "vistoTipos": ["Vacances-Travail (PVT)"],
+      "lastChecked": "2026-11-16",
+      "accessMethod": "websearch_fallback_nao_reconfirmado",
+      "lastKnownSummary": "Buscas indiretas (2026-11-16) não encontraram a página oficial br.diplomatie.gouv.fr nem qualquer anúncio específico sobre o status atual das cotas de São Paulo, Brasília ou Recife, nem sobre abertura de campanha para 2027 (padrão histórico seria 1º de janeiro). Um relato de fórum (não oficial, referente a 2024) menciona que a cota da seção consular de Brasília já foi superada antes, mas não há confirmação direta para 2026. QUINTA semana consecutiva sem reconfirmação específica desta página — mantendo o último estado conhecido (SP e Brasília esgotadas em 2026, Recife com campanha aberta e vagas limitadas, confirmado em 2026-09-28) com confiança reduzida. Nota: a instrução original deste boletim mencionava 'nova campanha de Recife prevista para 01/01/2026', mas essa data já passou em relação a hoje (2026-11-16); não há evidência de anúncio de uma campanha 2027. Recomenda-se fortemente verificação manual direta no site do consulado, especialmente para clientes de Recife que ainda não deram entrada."
+    },
+    "demarchesetrangers-vpf": {
+      "url": "https://demarchesetrangers.fr/titre-de-sejour/carte-sejour-vie-privee-familiale",
+      "vistoTipos": ["Cônjuge de francês(a)", "Pai/mãe de filho(a) francês(a)", "Residência de longa data"],
+      "lastChecked": "2026-11-16",
+      "accessMethod": "websearch_fallback",
+      "lastKnownSummary": "Checagem de 2026-11-16 (fetch direto bloqueado; via WebSearch). Fontes consultadas (KPMG, Deloitte, integrationfrance.fr, demarchesetrangers.fr/blog/timbre-fiscal-titre-sejour, service-public.gouv.fr) continuam a indicar o mesmo quadro da checagem anterior: taxa da carte vie privée et familiale em 350€ na primeira emissão / 250€ na renovação desde 01/05/2026, com algumas fontes secundárias ainda divergindo entre si sobre o valor exato do timbre fiscal (25€ vs 50€) — mesma divergência de terceiros já registrada, sem fonte oficial que unifique. Cônjuge de francês, pai/mãe de filho francês e residência de longa data continuam com as mesmas condições já descritas (casamento civil+comunhão de vida; participação efetiva na educação do filho; 5 anos+B1+exame cívico para longa duração, respectivamente). NOTA PARA PRÓXIMA CHECAGEM: apareceu nesta busca o Décret n° 2026-1001 de 26/10/2026 (em vigor desde 30/10/2026), que reduz de 4 meses para 90 dias o prazo de resposta da prefeitura para certas categorias de título — mas as fontes indicam que ele mira carte bleue européenne / ICT / destacados (diretiva \"permis unique\"), não claramente a VPF. Não há confirmação de que esse decreto altere o prazo da VPF; registrado como alerta para verificação futura, não como achado confirmado. Sem mudança confirmada no valor da taxa ou nas regras de VPF desde a checagem de 2026-09-21."
+    },
+    "formation-civique": {
+      "url": "https://www.formation-civique.interieur.gouv.fr",
+      "vistoTipos": ["Cônjuge de francês(a)", "Residência de longa data"],
+      "lastChecked": "2026-11-16",
+      "accessMethod": "websearch_fallback",
+      "lastKnownSummary": "Checagem de 2026-11-16 (fetch direto bloqueado; via WebSearch). Reconfirmado via interieur.gouv.fr e service-public.gouv.fr/A18713: exame cívico obrigatório desde 01/01/2026 para primeira carte pluriannuelle, primeira carte de résident (10 anos) e naturalização; isento na renovação. Formato: 40 questões de múltipla escolha, 45 minutos, nota mínima 32/40 (80%). Detalhe adicional (não é mudança, apenas mais granularidade): há dois níveis de exigência de francês associados — A2 para a carte pluriannuelle (2-4 anos) e B1 para a carte de résident de 10 anos. Nenhuma fonte trata de uma exceção específica para a VPF por vida privada e familiar além do que já era conhecido. Sem mudança desde a checagem de 2026-08-31."
+    },
+    "campusfrance-passeport-talent-chercheur": {
+      "url": "https://www.campusfrance.org/en/the-researcher-talent-passport-long-stay-visa",
+      "vistoTipos": ["Passeport Talent (pesquisa/doutorado)"],
+      "lastChecked": "2026-11-16",
+      "accessMethod": "websearch_fallback",
+      "lastKnownSummary": "WebFetch direto a campusfrance.org continua bloqueado (host fora da rede permitida). Busca indireta em 2026-11-16 encontrou, pela primeira vez, uma base legal oficial que esclarece a divergência de valores que vinha sendo monitorada desde checagens anteriores: o financiamento mínimo da convention d'accueil para o Passeport Talent-chercheur deve igualar o piso de remuneração do 'contrat doctoral' público, fixado pelo Arrêté de 29/08/2016 (modificado por arrêté de 26/12/2022), que estabelece 2.200€ brutos/mês em 2025 e 2.300€ brutos/mês desde 1º/01/2026 (confirmado por u-paris.fr, integrationfrance.fr e páginas universitárias). O valor líquido equivalente (~1.848€/mês) citado anteriormente por fontes universitárias é consistente com esse bruto de 2.300€ (líquido ≈ 80% do bruto). O valor de 615€ citado em checagens mais antigas referia-se à alocação mínima de bolsista anterior à reforma e está desatualizado para esse propósito. Taxa consular (99€) e timbre fiscal do título (350€/250€, desde 01/05/2026) permanecem sem indício de mudança. Nenhum arrêté de 2026 substituindo este foi encontrado; a escala de 2016/2022 segue vigente."
+    },
+    "service-public-assalariado": {
+      "url": "https://www.service-public.fr/particuliers/vosdroits/F35602?idFicheParent=F2728",
+      "vistoTipos": ["Assalariado"],
+      "lastChecked": "2026-11-16",
+      "accessMethod": "websearch_fallback_divergente",
+      "lastKnownSummary": "Autorização de trabalho solicitada pelo EMPREGADOR via ANEF, prazo regulamentar de resposta de 2 meses. Taxa (ex-taxe OFII, hoje administrada pela DGFiP) paga pelo empregador, devida no fim do mês do 1º dia de trabalho do estrangeiro: para contratos de 3-12 meses, faixa de 74€ quando o salário é ≤ SMIC; para contratos ≥12 meses, 55% do salário limitado ao teto de 2,5×SMIC bruto mensal. Particulares empregadores e trabalhadores dispensados de autorização (UE/EEE/Suíça/Mônaco) são isentos. PENDÊNCIA AINDA NÃO RESOLVIDA (checagem de 2026-11-16): fontes de terceiros (PayFit, LegiSocial) consultadas nesta semana continuam calculando a faixa de 74€ e o teto de 2,5×SMIC sobre o valor de 1.823,03€/mês — SMIC que elas atribuem a '1º de janeiro de 2026', não sobre o SMIC de 1.867,02€/mês vigente desde 01/06/2026 confirmado em checagens anteriores. Nenhuma fonte oficial (service-public.fr, DGFiP) foi acessada diretamente nesta checagem (bloqueio de rede), então não há confirmação de que o teto em euros tenha sido oficialmente atualizado. Mesma situação não resolvida desde pelo menos 2026-10-19 — mantido como pendência, não como achado confirmado."
+    },
+    "service-public-busca-emprego-negocio": {
+      "url": "https://www.service-public.fr/particuliers/vosdroits/F17319",
+      "vistoTipos": ["Busca de emprego / negócio"],
+      "lastChecked": "2026-11-16",
+      "accessMethod": "websearch_fallback",
+      "lastKnownSummary": "Carte RECE (recherche d'emploi/création d'entreprise) reconfirmada nesta checagem (2026-11-16) via service-public.gouv.fr/A18881 (timbre fiscal) e fontes privadas (persmind.com, franceaccueil.com): tarifa reduzida do timbre fiscal em 150€ desde 1º/05/2026 (antes 75€), decomposta por uma fonte como 100€ de taxa + 50€ de timbre. Uma fonte privada (franceaccueil.com) menciona adicionalmente 100€ para eventual renovação da tarifa reduzida — detalhe não confirmado em checagens anteriores nem em fonte oficial, citado aqui apenas como informação complementar. Validade continua até 1 ano, não renovável, para diplomados por estabelecimento francês ou ex-titulares de Passeport Talent-Chercheur; trabalho em tempo integral permitido se o cargo for qualificado e remunerado acima de 1,5×SMIC. Sem mudança de regra ou valor desde a checagem de 2026-09-14."
+    }
+  }
+}
