@@ -37,24 +37,19 @@ function iniciais(c) {
 }
 export function htmlCabecalho(d, h) {
   const e = h.esc, c = d.c || {}, et = d.etiqueta || { texto: '', tom: 'neutro' };
-  const blocos = (d.blocos || []).map((b) =>
-    (b.titulo ? '<span class="tag">' + e(b.titulo) + '</span>' : '') +
-    '<div class="hd-k">' + (b.cartoes || []).map((k) => {
-      const cls = 'k' + (k.tom === 'alerta' ? ' alerta' : k.tom === 'ok' ? ' ok' : '') + (k.id && d.aberto === k.id ? ' aberto' : ''), tt = k.sub ? ' title="' + e(k.sub) + '"' : '';
-      const miolo = '<b class="l">' + e(k.rotulo) + '</b><div class="v">' + e(k.valor) + '</div>' + (k.sub ? '<div class="s">' + e(k.sub) + '</div>' : '');
-      // Com id, o cartão é um botão: abre os detalhes logo abaixo (1:1, plataforma, dossiê, prazo, e-mails).
-      return k.id ? '<button type="button" class="' + cls + '" data-fx="hdTile" data-id="' + e(k.id) + '" aria-expanded="' + (d.aberto === k.id) + '"' + tt + '>' + miolo + '<span class="k-chev" aria-hidden="true">▾</span></button>'
-        : '<div class="' + cls + '"' + tt + '>' + miolo + '</div>';
-    }).join('') + '</div>').join('') + (d.detalhe ? '<div class="hd-det" id="fx-hd-det">' + d.detalhe + '</div>' : '');
+  const card = (k) => {
+    const cls = 'k' + (k.tom === 'alerta' ? ' alerta' : k.tom === 'ok' ? ' ok' : '');
+    const corpo = '<b class="l">' + e(k.rotulo) + '</b><div class="v">' + e(k.valor) + '</div>' + (k.sub ? '<div class="s">' + e(k.sub) + '</div>' : '');
+    if (!(k.detalhes && k.detalhes.length)) return '<div class="' + cls + '">' + corpo + '</div>';
+    return '<details class="' + cls + ' hd-dd"><summary>' + corpo + '</summary><dl class="hd-det">' + k.detalhes.map((x) => '<dt>' + e(x[0]) + '</dt><dd>' + e(x[1]) + '</dd>').join('') + '</dl></details>';
+  };
+  const blocos = (d.blocos || []).map((b) => (b.titulo ? '<span class="tag">' + e(b.titulo) + '</span>' : '') + '<div class="hd-k">' + (b.cartoes || []).map(card).join('') + '</div>').join('');
+  // Quem está na plataforma ou assina: um selo só (assinar e "no app" não divergem). Lead sem conta: nenhum selo de conta.
+  const conta = et.texto ? '<span class="pill pg-' + e(et.tom) + '">' + e(et.texto) + '</span>' : (d.temConta ? '<span class="pill">No app</span>' : '');
   return '<header class="hd" id="fx-hd">' +
     '<div class="hd-l1"><span class="hd-av" aria-hidden="true">' + e(iniciais(c)) + '</span><h2 class="hd-n">' + e(c.nome || c.email || 'Sem nome') + '</h2>' +
-    (d.personaLabel ? '<span class="pill">' + e(d.personaLabel) + '</span>' : '') +
     (d.estagioLabel ? '<span class="pill"><span class="dot"></span>' + e(d.estagioLabel) + '</span>' : '') +
-    (et.texto ? '<span class="pill pg-' + e(et.tom) + '">' + e(et.texto) + '</span>' : '') +
-    (d.temConta != null ? '<span class="pill">' + (d.temConta ? 'No app' : 'Lead') + '</span>' : '') +
-    '<span class="hd-sp"><button class="btn primary" type="button" data-emailfor="' + e(c.id) + '">Escrever mensagem</button>' +
-    '<button class="btn" type="button" data-open1a1="' + e(c.id) + '">Marcar 1:1</button>' +
-    '<span class="sel"><select id="stage-pick" aria-label="Mudar estágio">' + (d.estagios || []).map((s) => '<option value="' + e(s.k) + '"' + (s.k === c.estagio ? ' selected' : '') + '>Estágio: ' + e(s.l) + '</option>').join('') + '</select></span></span></div>' +
+    (d.personaLabel ? '<span class="pill">' + e(d.personaLabel) + '</span>' : '') + conta + '</div>' +
     blocos + (d.nota ? '<p class="est">' + e(d.nota) + '</p>' : '') + '</header>';
 }
 
@@ -89,33 +84,61 @@ export function htmlTour(aberto, h) {
     '<button class="btn" type="button" data-fx="tourFechar">Entendi</button></section>';
 }
 
-// ---------- Minhas próximas ações: carrossel e pop-up (Task 9) ----------
+// ---------- Minhas próximas ações: carrossel e pop-ups ----------
 // tarefas: Tarefa[] de FX.tarefasDe; i = índice do primeiro cartão visível (0 por padrão).
-export function htmlCarrossel(tarefas, h, i) {
-  const e = h.esc, ts = tarefas || [], n = ts.length, ini = Math.min(Math.max(0, i || 0), Math.max(0, n - 1));
-  if (!n) return '<section class="fx-acoes" id="fx-acoes" aria-label="Minhas próximas ações"><div class="fx-acoes-cab"><h3 class="fx-h3">Minhas próximas ações</h3></div><p class="sub" style="margin:0">Nenhuma ação pendente. Quando ela responder ou o app perceber algo, aparece aqui.</p></section>';
-  return '<section class="fx-acoes" id="fx-acoes" aria-label="Minhas próximas ações"><div class="fx-acoes-cab"><h3 class="fx-h3">Minhas próximas ações</h3>' +
+// o = { nome, concluidas (n), urgente: [frases] }. Cabeçalho como na Ficha-universo: nome da pessoa, "1 de n", setas, Adicionar e Concluídas.
+// O quadro de urgência (o.urgente) só aparece quando há algo que não pode esperar.
+const slugTag = (t) => String(t || '').toLowerCase().replace(/\s+/g, '');
+export function htmlCarrossel(tarefas, h, i, o) {
+  const e = h.esc, ts = tarefas || [], n = ts.length, ini = Math.min(Math.max(0, i || 0), Math.max(0, n - 1)), op = o || {}, urg = op.urgente || [];
+  const titulo = 'Minhas próximas ações' + (op.nome ? ' · ' + e(op.nome) : '');
+  const quadro = urg.length ? '<div class="fx-urg" role="status"><b>Precisa de você agora</b><span>' + urg.map(e).join(' · ') + '</span></div>' : '';
+  const extra = '<button type="button" class="btn s fx-add" data-fx="agNovo">+ Adicionar</button>' +
+    (op.concluidas > 0 ? '<button type="button" class="fx-conc" data-fx="agFeitas">Concluídas (' + op.concluidas + ')</button>' : '');
+  const cls = 'fx-acoes' + (urg.length ? ' urg' : '');
+  if (!n) return '<section class="' + cls + '" id="fx-acoes" aria-label="Minhas próximas ações">' + quadro + '<div class="fx-acoes-cab"><h3 class="fx-h3">' + titulo + '</h3><div class="fx-acoes-nav">' + extra + '</div></div>' +
+    '<p class="sub" style="margin:0">Nenhuma ação pendente. Quando ela responder ou o app perceber algo, aparece aqui. Use Adicionar para anotar uma tarefa sua.</p></section>';
+  return '<section class="' + cls + '" id="fx-acoes" aria-label="Minhas próximas ações">' + quadro + '<div class="fx-acoes-cab"><h3 class="fx-h3">' + titulo + '</h3>' +
     '<div class="fx-acoes-nav"><span class="fx-cont" aria-live="polite">' + (ini + 1) + ' de ' + n + '</span>' +
     '<button type="button" class="fx-seta" data-fx="agPrev" aria-label="Ações anteriores"' + (ini <= 0 ? ' disabled' : '') + '>‹</button>' +
-    '<button type="button" class="fx-seta" data-fx="agNext" aria-label="Próximas ações"' + (ini >= n - 1 ? ' disabled' : '') + '>›</button></div></div>' +
+    '<button type="button" class="fx-seta" data-fx="agNext" aria-label="Próximas ações"' + (ini >= n - 1 ? ' disabled' : '') + '>›</button>' + extra + '</div></div>' +
     '<div class="fx-car" role="region" aria-roledescription="carrossel" aria-label="Minhas próximas ações" tabindex="0">' + ts.map((t, k) =>
       '<button type="button" class="fx-card' + (k === 0 ? ' first' : '') + '" data-fx="agAbrir" data-i="' + k + '" aria-label="Ação ' + (k + 1) + ' de ' + n + ': ' + e(t.t) + '. Abrir detalhes">' +
-      '<span class="fx-n">' + (k + 1) + '</span><span class="fx-t">' + e(t.t) + '</span><span class="fx-tag fx-tag-' + e(String(t.tag || '').toLowerCase()) + '">' + e(t.tag) + '</span></button>').join('') + '</div></section>';
+      '<span class="fx-n">' + (k + 1) + '</span><span class="fx-t">' + e(t.t) + '</span><span class="fx-tag fx-tag-' + e(slugTag(t.tag)) + '">' + e(t.tag) + '</span></button>').join('') + '</div></section>';
 }
 
+// Pop-up de uma ação (i = índice), de "Adicionar" (i = 'add') ou de "Concluídas" (i = 'feitas', com a lista em feitas).
+const fundo = '<button type="button" class="fx-pop-bg" data-fx="agFechar" aria-label="Fechar" tabindex="-1"></button>';
 export function htmlPopup(tarefas, i, h) {
   const e = h.esc, ts = tarefas || [], n = ts.length;
   if (!n) return '';
   const k = Math.min(Math.max(0, i || 0), n - 1), t = ts[k];
-  return '<button type="button" class="fx-pop-bg" data-fx="agFechar" aria-label="Fechar" tabindex="-1"></button>' +
+  return fundo +
     '<div class="fx-pop" role="dialog" aria-modal="true" aria-labelledby="fx-pop-t" tabindex="-1">' +
-    '<p class="fx-pop-tipo"><span class="fx-tag fx-tag-' + e(String(t.tag || '').toLowerCase()) + '">' + e(t.tag) + '</span> Ação ' + (k + 1) + ' de ' + n + '</p>' +
+    '<p class="fx-pop-tipo"><span class="fx-tag fx-tag-' + e(slugTag(t.tag)) + '">' + e(t.tag) + '</span> Ação ' + (k + 1) + ' de ' + n + '</p>' +
     '<h3 class="fx-pop-t" id="fx-pop-t">' + e(t.t) + '</h3>' +
     '<p class="fx-pop-why"><b>Por que agora:</b> ' + e(t.why) + '</p>' +
     '<div class="actions fx-pop-acoes"><button type="button" class="btn primary" data-fx="agIr" data-k="' + e(t.k) + '" data-id="' + e(t.id) + '">' + e(t.cta) + ' →</button>' +
+    (t.acaoId != null ? '<button type="button" class="btn" data-fx="agFeito" data-id="' + e(t.acaoId) + '">Já fiz</button>' : '') +
     '<button type="button" class="btn" data-fx="agFechar">Fechar</button>' +
     '<span class="fx-pop-nav"><button type="button" class="fx-seta" data-fx="agNav" data-d="-1" aria-label="Ação anterior"' + (k <= 0 ? ' disabled' : '') + '>‹</button>' +
     '<button type="button" class="fx-seta" data-fx="agNav" data-d="1" aria-label="Próxima ação"' + (k >= n - 1 ? ' disabled' : '') + '>›</button></span></div></div>';
+}
+export function htmlPopupAdd(h) {
+  return fundo + '<div class="fx-pop" role="dialog" aria-modal="true" aria-labelledby="fx-pop-t" tabindex="-1">' +
+    '<p class="fx-pop-tipo">Novo encaminhamento</p><h3 class="fx-pop-t" id="fx-pop-t">Adicionar uma tarefa minha</h3>' +
+    '<p class="fx-pop-why">Só você vê. Nada disto aparece no app dela. Fica em Só eu e entra no quadro como “Só eu”.</p>' +
+    '<form id="fx-add-form" class="fx-add-form"><label class="sr" for="fx-add-in">Tarefa</label><input id="fx-add-in" class="t" maxlength="160" autocomplete="off" placeholder="Ex.: Pedir o resumo financeiro à escola">' +
+    '<p class="sub" id="fx-add-err" role="alert" hidden style="margin:6px 0 0;color:var(--red)"></p>' +
+    '<div class="actions fx-pop-acoes"><button type="submit" class="btn primary" data-fx="agAdd">Adicionar</button><button type="button" class="btn" data-fx="agFechar">Fechar</button></div></form></div>';
+}
+// feitas: [{ titulo, quando, quem }]
+export function htmlPopupFeitas(feitas, h) {
+  const e = h.esc, f = feitas || [];
+  return fundo + '<div class="fx-pop" role="dialog" aria-modal="true" aria-labelledby="fx-pop-t" tabindex="-1">' +
+    '<p class="fx-pop-tipo">Concluídas</p><h3 class="fx-pop-t" id="fx-pop-t">Já feitas neste caso</h3>' +
+    (f.length ? '<ul class="fx-feitas">' + f.map((x) => '<li><span>' + e(x.titulo) + '</span>' + (x.quando ? '<small>' + e(x.quando) + (x.quem ? ' · ' + e(x.quem) : '') + '</small>' : '') + '</li>').join('') + '</ul>' : '<p class="sub">Nada concluído ainda.</p>') +
+    '<div class="actions fx-pop-acoes"><button type="button" class="btn" data-fx="agFechar">Fechar</button></div></div>';
 }
 
 // ---------- Sessão Checklist: démarches, os 4 mais urgentes, Drive privado, Ver mais (Task 11) ----------
@@ -184,4 +207,56 @@ export function htmlFluxo(passo, h) {
     const n = i + 1;
     return '<li class="fx-passo-fluxo ' + (n < p ? 'done' : n === p ? 'cur' : 'next') + '" data-passo="' + n + '"' + (n === p ? ' aria-current="step"' : '') + '><span class="fx-segn">' + n + '</span><span><b>' + e(x[0]) + '</b><span class="sub fx-fluxo-frase">' + e(x[1]) + '</span></span></li>';
   }).join('') + '</ol>';
+}
+
+// ---------- Fase 2: prévia do app dela (coluna da direita da aba Plataforma) ----------
+// d = { nome, semConta, aba, dia, camadas, pct, feitos, total, naoLidas, marco: {titulo, dias, data}|null, prox: {label, due}|null,
+//       avisos: [{tipo, titulo, texto}], passos: [{label, tag, feito, due, atrasado}], espaco: {marcos: [{titulo, resumo}], escolas: [{titulo, resumo}], dela: [{nome}]},
+//       guias: {bilan, docs: [{titulo, resumo}], msgs: [{titulo}]}, perfil: {n, tot, kv: [[rotulo, valor]]} }
+// Tudo é dado real da pessoa, só leitura. Nada aqui grava.
+const ABAS_APP = [['inicio', 'Início'], ['checklist', 'Checklist'], ['espaco', 'Espaço'], ['guias', 'Guias'], ['perfil', 'Perfil']];
+const LEGENDA_ABA = {
+  inicio: 'Início junta o próximo passo, o prazo mais perto (prazo publicado) e os avisos que já chegaram à data.',
+  checklist: 'Checklist = passos da persona e o que ela adicionou. Só ela marca.',
+  espaco: 'Espaço = prazos e escolas que você publicou, mais as escolas que ela acrescentou.',
+  guias: 'Guias = bilan, documentos e mensagens prontas que você publicou só para ela.',
+  perfil: 'Perfil = respostas do Dossiê que já existem.'
+};
+export function htmlPreviaApp(d, h) {
+  const e = h.esc, L = (l, t) => (d.camadas ? ' data-l="' + l + '"' : '') + (t || '');
+  const aba = LEGENDA_ABA[d.aba] ? d.aba : 'inicio';
+  const vz = (t) => '<p class="fx-pv-vz">' + e(t) + '</p>';
+  let corpo = '';
+  if (aba === 'inicio') {
+    const frase = d.marco ? 'Faltam ' + d.marco.dias + ' dias: ' + d.marco.titulo + '.' : 'Nada vence nesta semana. O próximo passo está logo abaixo.';
+    corpo = '<section class="fx-pv-card fx-pv-hero' + (d.marco && d.marco.dias <= 21 ? ' urg' : '') + '"' + L('Dela') + '><span class="k">Hoje</span><h4>Olá, ' + e(d.nome) + '</h4><p>' + e(frase) + '</p><b class="fx-pv-pct">' + d.pct + '%</b></section>' +
+      (d.naoLidas ? '<section class="fx-pv-card"' + L('Dela') + '><span class="k">Recado da Ingryd</span><p>Ela tem ' + d.naoLidas + ' novidade' + (d.naoLidas > 1 ? 's' : '') + ' no assistente.</p></section>' : '') +
+      (d.prox ? '<section class="fx-pv-card"' + L('Persona') + '><span class="k">Próximo passo</span><h4>' + e(d.prox.label) + '</h4><p>' + (d.prox.due ? 'Prazo: ' + e(h.fmtDay(d.prox.due)) : 'Sem data ainda') + '</p></section>' : '') +
+      d.avisos.map((a) => '<article class="fx-pv-card"' + L('Dela') + '><span class="k">' + e(a.tipo) + '</span><h4>' + e(a.titulo) + '</h4><p>' + e(a.texto || '') + '</p></article>').join('');
+  } else if (aba === 'checklist') {
+    const linha = (x) => '<div class="fx-pv-row' + (x.feito ? ' f' : '') + '"><span class="bx" aria-hidden="true">' + (x.feito ? '✓' : '') + '</span><span><small>' + e(x.tag || '') + '</small>' + e(x.label) + '</span>' +
+      (x.due && !x.feito ? '<em class="' + (x.atrasado ? 'at' : '') + '">' + e(h.fmtDay(x.due)) + '</em>' : '') + '</div>';
+    corpo = '<section class="fx-pv-card"' + L('Persona') + '><span class="k">Seus passos</span><h4>' + d.feitos + ' de ' + d.total + ' feitos</h4><div class="fx-pv-bar"><i style="width:' + d.pct + '%"></i></div>' +
+      (d.passos.length ? d.passos.map(linha).join('') : vz(d.semConta ? 'Ela ainda não entrou no app: o checklist nasce no primeiro acesso.' : 'Nenhum passo ainda.')) + '</section>';
+  } else if (aba === 'espaco') {
+    const itens = d.espaco.marcos.map((m) => '<article class="fx-pv-card"' + L('Dela') + '><span class="k">Prazo</span><h4>' + e(m.titulo) + '</h4><p>' + e(m.resumo || '') + '</p></article>').join('') +
+      (d.espaco.escolas.length || d.espaco.dela.length ? '<section class="fx-pv-card"' + L('Dela') + '><span class="k">Escolas para você contatar</span>' + d.espaco.escolas.map((x) => '<div class="fx-pv-row"><span><b>' + e(x.titulo) + '</b><small>' + e(x.resumo || '') + '</small></span></div>').join('') +
+        d.espaco.dela.map((x) => '<div class="fx-pv-row"><span><b>' + e(x.nome) + '</b><small>adicionada por ela</small></span></div>').join('') + '</section>' : '');
+    corpo = itens || '<div class="fx-pv-card">' + vz('Ainda não tem nada seu aqui. Ela vê isto até você publicar algo.') + '</div>';
+  } else if (aba === 'guias') {
+    const g = d.guias, grp = (t, n, s) => '<div class="fx-pv-row"><span><b>' + t + '</b><small>' + (n ? e(s) : 'Em breve') + '</small></span><em>' + (n || '') + '</em></div>';
+    corpo = '<section class="fx-pv-card"' + L('Dela') + '><span class="k">Material da equipe</span>' + grp('Bilans das nossas conversas', g.bilan ? 1 : 0, 'a nossa conversa') +
+      grp('Documentos que a equipe te manda', g.docs.length, g.docs.map((x) => x.titulo).join(', ')) + grp('Mensagens prontas', g.msgs.length, g.msgs.map((x) => x.titulo).join(', ')) + '</section>';
+  } else {
+    corpo = '<section class="fx-pv-card"' + L('Dela') + '><h4>' + e(d.nome) + '</h4>' + d.perfil.kv.map((x) => '<div class="fx-pv-row"><span>' + e(x[0]) + '</span><em>' + e(x[1] || '—') + '</em></div>').join('') + '</section>' +
+      '<section class="fx-pv-card"><span class="k">Seu perfil</span><p>' + d.perfil.n + ' de ' + d.perfil.tot + ' respondidas.</p></section>';
+  }
+  return '<div class="fx-pv-cab"><b>Como ' + e(d.nome) + ' vê no app</b><span class="fx-pv-dias" role="group" aria-label="Dias depois do primeiro acesso">' +
+    [0, 1, 3, 7].map((n) => '<button type="button" data-fx="appdia" data-v="' + n + '" aria-pressed="' + (d.dia === n) + '">Dia ' + n + '</button>').join('') + '</span></div>' +
+    '<div class="fx-pv-tel"><div class="fx-pv-top"><span class="fx-pv-marca">Por <i>Dentro</i></span><span class="fx-pv-sino" aria-label="' + (d.naoLidas + d.avisos.length) + ' novidades">🔔' + (d.naoLidas + d.avisos.length ? '<i>' + (d.naoLidas + d.avisos.length) + '</i>' : '') + '</span></div>' +
+    '<div class="fx-pv-corpo">' + (d.semConta ? '<p class="fx-pv-prev"><b>Prévia.</b> ' + e(d.nome) + ' ainda não entrou no app. É o que ela vê ' + (d.dia === 0 ? 'no primeiro acesso' : 'no dia ' + d.dia + ' depois de entrar') + '.</p>' : '') + corpo + '</div>' +
+    '<nav class="fx-pv-nav" aria-label="Seções do app">' + ABAS_APP.map((a) => '<button type="button" data-fx="appaba" data-v="' + a[0] + '"' + (a[0] === aba ? ' aria-current="page"' : '') + '>' + a[1] + '</button>').join('') + '</nav></div>' +
+    '<p class="fx-pv-leg">' + e(LEGENDA_ABA[aba]) + '</p>' +
+    '<button type="button" class="fx-pv-tg" data-fx="camadas" aria-pressed="' + d.camadas + '"><span class="fx-pv-sw" aria-hidden="true"></span><span class="fx-pv-tgt">Mostrar as camadas (<span class="p">Persona</span> igual para quem tem a mesma situação · <span class="d">Dela</span> só desta pessoa)</span></button>';
+//
 }

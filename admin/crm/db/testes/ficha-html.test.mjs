@@ -130,14 +130,13 @@ console.log('== Cabeçalho fixo ==');
     nota: 'Baseado nos 300 cliques mais recentes.' };
   const hd = FH.htmlCabecalho(d, h);
   check('cabeçalho: nome com HTML sai escapado', hd.includes('&lt;img') && !hd.includes('<img') && !hd.includes('<b>x</b>') && hd.includes('&lt;b&gt;x&lt;/b&gt;'));
-  check('cabeçalho: mantém os botões e o seletor de estágio', hd.includes('data-emailfor="c1"') && hd.includes('data-open1a1="c1"') && hd.includes('id="stage-pick"'));
+  check('cabeçalho: sem botões nem seletor de estágio (só nome, pílulas e cartões)', !hd.includes('data-emailfor') && !hd.includes('data-open1a1') && !hd.includes('id="stage-pick"'));
+  check('cabeçalho: a pílula de estágio vem logo depois do nome, antes da persona', hd.indexOf('Lead') > hd.indexOf('hd-n') && hd.indexOf('Lead') < hd.indexOf('Au pair'));
   check('cabeçalho: classes dos cartões (alerta e ok) e título do bloco', hd.includes('k alerta') && hd.includes('k ok') && hd.includes('>Pagamento<') && count(hd, /class="k( |")/g) === 3);
   check('cabeçalho: nota aparece quando existe e some quando não existe', hd.includes('class="est"') && !FH.htmlCabecalho(Object.assign({}, d, { nota: null }), h).includes('class="est"'));
   check('cabeçalho: etiqueta de pagamento e persona', hd.includes('Assinatura ativa') && hd.includes('Au pair → estudante'));
   check('cabeçalho: iniciais (duas palavras, uma palavra, sem nome usa o e-mail) sem lançar', FH.htmlCabecalho({ c: { id: 'z', nome: 'Ana Souza' }, blocos: [] }, h).includes('>AS<') && FH.htmlCabecalho({ c: { id: 'z', nome: 'Clara' }, blocos: [] }, h).includes('>C<') && FH.htmlCabecalho({ c: { id: 'z', email: 'bruna@x.com' }, blocos: [] }, h).includes('>B<'));
-  { const cb = FH.htmlCabecalho(Object.assign({}, d, { blocos: [{ titulo: null, cartoes: [{ id: 'um', rotulo: '1:1', valor: 'ter.', sub: 'x', tom: 'ok' }, { rotulo: 'Fixo', valor: 'v' }] }], aberto: 'um', detalhe: '<p>DET</p>' }), h);
-    check('cabeçalho: cartão com id vira botão aberto e mostra o detalhe; sem id continua div', cb.includes('data-fx="hdTile" data-id="um"') && cb.includes('aria-expanded="true"') && cb.includes('id="fx-hd-det"><p>DET</p>') && /<div class="k" title|<div class="k">/.test(cb)); }
-  check('cabeçalho: mostra No app, ou Lead quando não tem conta', FH.htmlCabecalho(Object.assign({}, d, { temConta: true }), h).includes('No app') && FH.htmlCabecalho(Object.assign({}, d, { temConta: false }), h).includes('>Lead<'));
+  check('cabeçalho: um selo de conta só (assinatura ou No app); lead não tem selo de conta', FH.htmlCabecalho(Object.assign({}, d, { temConta: true, etiqueta: null }), h).includes('No app') && !FH.htmlCabecalho(Object.assign({}, d, { temConta: true }), h).includes('No app') && !FH.htmlCabecalho(Object.assign({}, d, { temConta: false, etiqueta: null }), h).includes('No app') && !FH.htmlCabecalho(Object.assign({}, d, { temConta: true }), h).includes('Não assin'));
   check('cabeçalho: sem blocos não quebra', FH.htmlCabecalho({ c: { id: 'z', nome: 'Z' } }, h).includes('class="hd"'));
 }
 

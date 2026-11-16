@@ -14,6 +14,7 @@ function base(extra = {}) {
 }
 async function abre(h, c) { h.mod.setC([c]); h.mod.state.sel = c.id; h.mod.state.view = 'pessoa'; h.mod.state.ptab = null; h.mod.state.pstab = 'assistente'; await h.mod.renderPessoa(); return h.el('pessoa-page').innerHTML; }
 
+const cab = (t) => t.slice(t.indexOf('<header class="hd"'), t.indexOf('</header>'));   // só o cabeçalho da ficha
 console.log('== Task 1: chave de ligação ==');
 {
   const h = await carregarCrm({ respostas: base() });
@@ -162,21 +163,21 @@ console.log('== Task 12: sessões em pílulas ==');
   const tudo = h.el('fx-corpo').innerHTML;
   check('todas as sessões abrem com os painéis existentes', tudo.includes('id="int-box"') && tudo.includes('id="bilan-box"') && tudo.includes('id="chat-box"') && tudo.includes('id="ins-box"'));
   await h.click({ fx: 'mover', id: 'chat', d: '1' });
-  check('mover troca a ordem e grava crm_ficha_ord_v1', h.mod.state.fx.ord.app.join() === 'inicio,chat,checklist' && JSON.parse(h.store.crm_ficha_ord_v1).app.join() === 'inicio,chat,checklist');
+  check('mover troca a ordem e grava crm_ficha_ord_v1', h.mod.state.fx.ord.app.join() === 'inicio,chat,checklist,espaco,guias,perfil' && JSON.parse(h.store.crm_ficha_ord_v1).app.join() === 'inicio,chat,checklist,espaco,guias,perfil');
   await h.click({ fx: 'mover', id: 'inicio', d: '-1' });
-  check('mover para cima na ponta não muda', h.mod.state.fx.ord.app.join() === 'inicio,chat,checklist');
+  check('mover para cima na ponta não muda', h.mod.state.fx.ord.app.join() === 'inicio,chat,checklist,espaco,guias,perfil');
   // arrastar
   const ev = (g, s) => ({ target: { closest: (sel) => (sel === '.fx-grab' ? g : sel === '.fx-sess' ? s : null) }, dataTransfer: { setData() {} }, preventDefault() {} });
   const chamar = async (tipo, e) => { for (const fn of h.handlers[tipo] || []) await fn(e); };
   await chamar('dragstart', ev({ dataset: { area: 'app', id: 'inicio' } }, null));
   await chamar('drop', ev(null, { dataset: { area: 'app', sessao: 'checklist' } }));
-  check('arrastar para baixo cai depois do alvo', h.mod.state.fx.ord.app.join() === 'chat,checklist,inicio');
+  check('arrastar para baixo cai depois do alvo', h.mod.state.fx.ord.app.join() === 'chat,checklist,inicio,espaco,guias,perfil');
   await chamar('dragstart', ev({ dataset: { area: 'app', id: 'inicio' } }, null));
   await chamar('drop', ev(null, { dataset: { area: 'app', sessao: 'chat' } }));
-  check('arrastar para cima cai antes do alvo', h.mod.state.fx.ord.app.join() === 'inicio,chat,checklist');
+  check('arrastar para cima cai antes do alvo', h.mod.state.fx.ord.app.join() === 'inicio,chat,checklist,espaco,guias,perfil');
   await chamar('dragstart', ev({ dataset: { area: 'app', id: 'chat' } }, null));
   await chamar('drop', ev(null, { dataset: { area: 'ela', sessao: 'bilan' } }));
-  check('arrastar para outro grupo é ignorado', h.mod.state.fx.ord.app.join() === 'inicio,chat,checklist' && h.mod.state.fx.ord.ela.join() === 'bilan,insights,hist' && h.mod.state.fx.drag === null);
+  check('arrastar para outro grupo é ignorado', h.mod.state.fx.ord.app.join() === 'inicio,chat,checklist,espaco,guias,perfil' && h.mod.state.fx.ord.ela.join() === 'eu,bilan,trouxe,sinais,hist,mais' && h.mod.state.fx.drag === null);
   h.mod.pararAoVivo();
   // preferência salva volta ao abrir de novo; preferência inválida volta ao padrão
   h = await mk({ crm_ficha_ord_v1: JSON.stringify({ app: ['checklist', 'chat'], ela: ['hist'] }) });
@@ -191,7 +192,7 @@ console.log('== Task 12: sessões em pílulas ==');
   const hb = await carregarCrm({ respostas: base({ 'contatos:one': { data: { dossie: {}, user_id: 'u1' }, error: null } }), search: '?ficha=2', storageBloqueado: true });
   let lancou = false;
   try { await abre(hb, pessoa({ user_id: 'u1' })); await hb.click({ fx: 'mover', id: 'chat', d: '1' }); await hb.click({ fx: 'tourFechar' }); } catch (e) { lancou = true; }
-  check('com localStorage bloqueado nada lança e a ordem muda na tela', !lancou && hb.mod.state.fx.ord.app.join() === 'inicio,chat,checklist' && hb.el('pessoa-page').innerHTML.includes('id="ficha-v2"'));
+  check('com localStorage bloqueado nada lança e a ordem muda na tela', !lancou && hb.mod.state.fx.ord.app.join() === 'inicio,chat,checklist,espaco,guias,perfil' && hb.el('pessoa-page').innerHTML.includes('id="ficha-v2"'));
   hb.mod.pararAoVivo();
 }
 
@@ -214,17 +215,9 @@ console.log('== Cabeçalho: 1:1, plataforma, dossiê e prazo à vista ==');
   const agora = Date.now(), iso = (dias) => new Date(agora + dias * 864e5).toISOString();
   const h = await carregarCrm({ store: { crm_ficha_v2: '1' }, respostas: base({ 'contatos:one': { data: { dossie: {}, user_id: 'u9' }, error: null } }) });
   let html = await abre(h, pessoa({ user_id: 'u9', ultimo_evento_em: iso(-1), prazo_limite: '2026-12-01', dias_para_prazo: 12, urgencia: 'alta' }));
-  check('prazo à vista no cabeçalho, em alerta', html.includes('>Prazo<') && html.includes('VLS-TS') && /class="k alerta"/.test(html));
-  check('sem 1:1: o cartão diz que nunca fez e nada vem aí', html.includes('ainda não fez 1:1') && html.includes('>Nenhum<'));
-  check('os cartões do cabeçalho são botões que abrem os detalhes (começam fechados)', /data-fx="hdTile" data-id="um"[^>]*aria-expanded="false"/.test(html) && !html.includes('id="fx-hd-det"'));
-  await h.click({ fx: 'hdTile', id: 'um' });
-  let hd = h.el('fx-head-box').innerHTML;
-  check('clicar no cartão do 1:1 abre os detalhes no cabeçalho, com Marcar 1:1', hd.includes('id="fx-hd-det"') && /data-id="um"[^>]*aria-expanded="true"/.test(hd) && hd.includes('1:1 de ') && hd.includes('data-open1a1='));
-  await h.click({ fx: 'hdTile', id: 'email' });
-  hd = h.el('fx-head-box').innerHTML;
-  check('abrir outro cartão troca o detalhe (só um aberto por vez)', hd.includes('Abrir a aba E-mail') && (hd.match(/id="fx-hd-det"/g) || []).length === 1 && /data-id="um"[^>]*aria-expanded="false"/.test(hd));
-  await h.click({ fx: 'hdTile', id: 'email' });
-  check('clicar de novo fecha', !h.el('fx-head-box').innerHTML.includes('id="fx-hd-det"'));
+  check('cabeçalho: sem botões (Escrever mensagem, Marcar 1:1, seletor de estágio), só nome, pílulas e cartões', !cab(html).includes('data-emailfor') && !cab(html).includes('data-open1a1') && !cab(html).includes('id="stage-pick"'));
+  check('cabeçalho: a pílula de estágio vem logo depois do nome, antes da persona', cab(html).indexOf('Lead') > cab(html).indexOf('hd-n') && cab(html).indexOf('Lead') < cab(html).indexOf('Au pair'));
+  check('cabeçalho: conta no app sem assinatura mostra só "No app" (nada de Não assinante)', cab(html).includes('No app') && !cab(html).includes('Não assinante'));
   h.mod.pararAoVivo();
 }
 console.log('== Task 13: abas Ficha e Conversa ==');
@@ -307,16 +300,16 @@ console.log('== Cabeçalho fixo por tipo de pessoa ==');
     'assinaturas:one': { data: assinatura, error: null } }) });
   let h = await montar(null, null);
   let html = await abre(h, pessoa({ user_id: null, dias_sem_sinal: 6 }));
-  check('lead (sem conta): pílulas Lead e Não assinante, cartões 1:1, Dossiê, Prazo e E-mails, sem cartão de Plataforma, uso nem pagamento', ['>1:1<', '>Dossiê<', '>Prazo<', '>E-mails<'].every((x) => html.includes(x)) && !html.includes('class="l">Plataforma<') && html.includes('>Lead<') && html.includes('Não assinante') && !html.includes('Cliques por sessão') && !html.includes('class="tag">Pagamento<'));
+  check('lead (sem conta): cartões de lead, sem cartão de Plataforma nem selo de conta', !cab(html).includes('No app') && !cab(html).includes('Não assinante') && !html.includes('class="l">Plataforma<'));
   h.mod.pararAoVivo();
   h = await montar('u1', { status: 'active', plano: 'Intermediário', periodo_fim: new Date(agora + 5 * 864e5).toISOString(), cancela_no_fim: false, criado_em: iso(95) });
   html = await abre(h, pessoa({ user_id: 'u1', ultimo_evento_em: iso(2) }));
-  check('assinante: a Plataforma diz Assinante, a etiqueta diz Assinatura ativa e mostra a última atividade', html.includes('>Plataforma<') && html.includes('Assinante') && html.includes('Assinatura ativa') && /última atividade há|ativa hoje/.test(html));
+  check('assinante: um selo de conta só, Assinatura ativa, sem "No app" junto', cab(html).includes('Assinatura ativa') && !cab(html).includes('No app') && !cab(html).includes('Não assinante'));
   check('assinante: o cabeçalho não traz mais a nota sobre LTV nem os cartões de uso', !html.includes('LTV') && !html.includes('Duração (estimada)'));
   h.mod.pararAoVivo();
   h = await montar('u2', null);
   html = await abre(h, pessoa({ user_id: 'u2' }));
-  check('na plataforma sem assinar: Não assina, Plataforma No app e sem bloco Pagamento', html.includes('Não assina') && html.includes('No app') && !html.includes('class="tag">Pagamento<'));
+  check('na plataforma sem assinar: só "No app", sem "Não assinante" e sem bloco Pagamento', cab(html).includes('No app') && !cab(html).includes('Não assinante') && !html.includes('class="tag">Pagamento<'));
   h.mod.pararAoVivo();
   h = await montar('u3', { status: 'canceled', plano: 'Básico', periodo_fim: iso(1), cancela_no_fim: false, criado_em: iso(200) });
   html = await abre(h, pessoa({ user_id: 'u3' }));

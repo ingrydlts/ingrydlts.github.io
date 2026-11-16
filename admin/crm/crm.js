@@ -2,13 +2,14 @@
 // Nada de service_role aqui. O banco é db/crm-fase2.sql; o desenho é o artefato "CRM Por Dentro".
 // Tudo que vem do banco é texto de terceiros (nome, e-mail, pergunta): passa sempre por esc().
 import { supabase } from '/assets/js/supabase-client.js';
-import * as TX from './taxonomia.js?v=2026-11-15.38';   // páginas, famílias e agrupamento dos modelos
-import * as ES from './estudio.js?v=2026-11-15.38';   // os blocos do estúdio de e-mails (entregas 2 e 3)
-import * as EE from './editor-email.js?v=2026-11-15.38';
-import * as EQ from './editor-quem.js?v=2026-11-15.38';
-import * as JR from './jornada.js?v=2026-11-15.38';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
-import * as FX from './ficha.js?v=2026-11-15.38';   // ficha v2: lógica pura (fila, démarches, funil, ações)
-import * as FH from './ficha-html.js?v=2026-11-15.38';   // ficha v2: HTML puro
+import * as TX from './taxonomia.js?v=2026-11-16.1';   // páginas, famílias e agrupamento dos modelos
+import * as ES from './estudio.js?v=2026-11-16.1';   // os blocos do estúdio de e-mails (entregas 2 e 3)
+import * as EE from './editor-email.js?v=2026-11-16.1';
+import * as EQ from './editor-quem.js?v=2026-11-16.1';
+import * as JR from './jornada.js?v=2026-11-16.1';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
+import * as FX from './ficha.js?v=2026-11-16.1';   // ficha v2: lógica pura (fila, démarches, funil, ações)
+import * as FH from './ficha-html.js?v=2026-11-16.1';   // ficha v2: HTML puro
+import * as PN from './panorama.js?v=2026-11-16.1';   // Panorama dela e O que ela trouxe (lógica e HTML puros)
 
 var PERSONAS = {
   au_pair_estudante: 'Au pair → estudante', campus_france: 'Campus France', alternancia_emprego: 'Alternância / emprego',
@@ -136,7 +137,7 @@ var P = [], PERR = '';
 var PSUG = [];
 var FILA = [];   // avisos agendados que ainda não saíram, de todas as pessoas (para o bloco da Hoje)
 var state = { funilVisao: 'leads', funilPorque: null, dosAberto: lerDosAberto(), dos: null, pc: null, ptab: null, pstab: 'assistente', pdias: {}, int: null, chatRasc: '', rascunho: {}, view: 'hoje', persona: '', sub: '', urg: '', stage: '', orig: '', camp: '', q: '', sel: null, qs: 'nova', qsel: null, inbox: 'perguntas', rs: 'nova', rsel: null, ps: 'novo', psel: null, preset: 'todos', seg: '', prevView: 'contatos',
-  fx: { tab: null, ord: null, hd: null, abertas: {}, ag: { i: 0, pop: null }, dem: 'todas', ckTodos: false, ckMais: false, tour: true, r1: null, lg: { main: 1, a: 1 } } };
+  fx: { tab: null, ord: null, abertas: {}, ag: { i: 0, pop: null }, dem: 'todas', ckTodos: false, ckMais: false, tour: true, r1: null, lg: { main: 1, a: 1 }, dd: {}, tema: null, coorte: null } };
 var activeCid = null;
 var me = null;
 
@@ -1842,9 +1843,10 @@ function casoPrazo(a) {
   if (a.prazo) return fmtDay(a.prazo) + (a.prazo_a_confirmar ? ' (a confirmar)' : '');
   return a.prazo_texto || (a.prazo_a_confirmar ? 'a confirmar' : '');
 }
-function casoAcoesHtml(k) {
-  if (!k.aco.length) return '<div class="empty" style="padding:14px">Nenhuma ação.</div>';
-  return k.aco.map(function (a) {
+function casoAcoesHtml(k, dono) {
+  var lista = dono ? k.aco.filter(function (a) { return a.dono === dono; }) : k.aco;
+  if (!lista.length) return '<div class="empty" style="padding:14px">Nenhuma ação.</div>';
+  return lista.map(function (a) {
     if (k.ed && k.ed.t === 'aco' && k.ed.id === a.id) return casoEditor('aco', a.id, '<input id="caso-ed-titulo" class="t" maxlength="160" style="width:100%" value="' + esc(a.titulo) + '">');
     var fim = a.estado === 'concluida';
     var pub = a.publicada_em ? casoPil('Publicada', 'u-baixa') : casoPil('Rascunho', 'u-media');
@@ -1928,12 +1930,14 @@ function casoNovoHtml(tipo) {
     '<div style="display:flex;gap:6px;margin-top:8px">' + casoBtn('salvar-novo', tipo, 'Criar') + casoBtn('cancelar', 0, 'Cancelar') + '</div></div></div>';
 }
 function casoResumoCampoNovo() { return casoCampo('O que é (uma linha, ela lê antes de abrir)', '<input id="caso-novo-resumo" class="t" maxlength="240" style="width:100%">'); }
-function casoBarraNovo(k) {
-  return '<div class="ab" style="margin:0 0 8px">' + casoBtn('novo', 'documento', '+ Documento') + casoBtn('novo', 'modelo', '+ Mensagem pronta') + casoBtn('novo', 'bilan', '+ Bilan') + '</div>' + (k.novo ? casoNovoHtml(k.novo) : '');
+function casoBarraNovo(k, so) {
+  var b = { documento: casoBtn('novo', 'documento', '+ Documento'), modelo: casoBtn('novo', 'modelo', '+ Mensagem pronta'), bilan: casoBtn('novo', 'bilan', '+ Bilan') };
+  return '<div class="ab" style="margin:0 0 8px">' + (so || ['documento', 'modelo', 'bilan']).map(function (t) { return b[t]; }).join('') + '</div>' + (k.novo && (!so || so.indexOf(k.novo) >= 0) ? casoNovoHtml(k.novo) : '');
 }
-function casoItensHtml(k) {
-  if (!k.itens.length) return '<div class="empty" style="padding:14px">Nenhum item. Escolas e modelos de e-mail são acrescentados pela equipe.</div>';
-  return k.itens.map(function (it) {
+function casoItensHtml(k, tipos, vazio) {
+  var lista = tipos ? k.itens.filter(function (it) { return tipos.indexOf(it.tipo) >= 0; }) : k.itens;
+  if (!lista.length) return '<div class="empty" style="padding:14px">' + esc(vazio || 'Nenhum item. Escolas e modelos de e-mail são acrescentados pela equipe.') + '</div>';
+  return lista.map(function (it) {
     if (k.ed && k.ed.t === 'item' && k.ed.id === it.id) return casoEditor('item', it.id, casoItemCampos(it));
     var est = it.estado === 'publicado' ? casoPil('Publicado', 'u-baixa') : it.estado === 'revisado' ? casoPil('Revisado', 'u-media') : casoPil('Proposto');
     var btns = (it.estado === 'proposto' ? casoBtn('item-rev', it.id, 'Marcar como revisado') : it.estado === 'revisado' ? casoBtn('item-pub', it.id, 'Publicar para ela') : casoBtn('item-ret', it.id, 'Retirar')) + casoBtn('ed-item', it.id, 'Editar') + (it.estado !== 'publicado' ? (k.confirmaDel === it.id ? casoBtn('item-del', it.id, 'Confirmar remoção') : casoBtn('item-del-pede', it.id, 'Remover')) : '');
@@ -2022,7 +2026,7 @@ function casoPanelHtml(c, k) {
     casoEscolasDelaHtml(k) +
     casoSecao('Avisos da IAssistente', 'você decide a data de cada um', casoAvisosHtml(k));
 }
-function pintaCaso() { var b = $('caso-box'); if (b) b.innerHTML = casoPanelHtml(byC(state.sel) || {}, state.caso); var ab = $('plat-abas'); if (ab) ab.innerHTML = platAbasHtml(); }
+function pintaCaso() { var b = $('caso-box'); if (b) b.innerHTML = casoPanelHtml(byC(state.sel) || {}, state.caso); var ab = $('plat-abas'); if (ab) ab.innerHTML = platAbasHtml(); if (fichaV2Ativa() && state.fx && state.fx.tab === 'plataforma' && state.fx.dados) fxPintaCorpo(); if (fichaV2Ativa() && state.fx && state.fx.dados) fxAtualizaAcoes(); }
 async function carregaCaso(cid) {
   if (state.casoCarregando === cid) return;
   state.casoCarregando = cid;
@@ -2409,10 +2413,12 @@ function chkClique(x) {
   return ['Clique', 'out', (x.rotulo || '(sem texto)') + ' · em ' + telaNome(x.tela)];
 }
 async function buscaChecklist(cid, uid) {
+  // titulo_custom, nota_custom, links_custom e quando_custom são o que ela edita no app (db/checklist-editar.sql do app): alimentam o Panorama.
   var rk = await Promise.all([
-    uid ? supabase.from('checklist_items').select('step_key,category,label,status,due_date,sort_order,updated_at').eq('user_id', uid).order('sort_order', { ascending: true }) : null,
+    uid ? supabase.from('checklist_items').select('step_key,category,label,status,due_date,sort_order,updated_at,titulo_custom,nota_custom,links_custom,quando_custom').eq('user_id', uid).order('sort_order', { ascending: true }) : null,
     supabase.from('plataforma_cliques').select('tela,alvo,rotulo,criado_em').eq('contato_id', cid).or(CHK_FILTRO).order('criado_em', { ascending: false }).limit(300)
   ]);
+  if (rk[0] && rk[0].error) rk[0] = await supabase.from('checklist_items').select('step_key,category,label,status,due_date,sort_order,updated_at').eq('user_id', uid).order('sort_order', { ascending: true });   // sem as colunas novas
   return { semConta: !uid, itens: (rk[0] && rk[0].data) || [], cliques: (rk[1] && rk[1].data) || [], err: (rk[0] && rk[0].error) || null };
 }
 // As contas do resumo, uma vez só: o dossiê e o painel lateral mostram o mesmo número.
@@ -3010,7 +3016,7 @@ var H_FX = { esc: esc, fmtDay: fmtDay };
 var FX_ABAS = ['conversa', 'plataforma', 'ficha', 'dossie'];
 // Zera o que é "desta pessoa" ao abrir outra ficha. A ordem das sessões e o guia são preferências do navegador e ficam.
 function fxReset() {
-  var f = state.fx; f.tab = null; f.hd = null; f.ag = { i: 0, pop: null }; f.dem = 'todas'; f.ckTodos = false; f.ckMais = false; f.abertas = {}; f.flash = null; f.tarefas = []; f.dados = null;
+  var f = state.fx; f.tab = null; f.ag = { i: 0, pop: null }; f.dem = 'todas'; f.ckTodos = false; f.ckMais = false; f.abertas = {}; f.flash = null; f.tarefas = []; f.dados = null; f.appAba = 'inicio'; f.dia = 1; f.camadas = false; f.dd = {}; f.tema = null; f.coorte = null; f.urg = [];
 }
 function fxPrefs() {
   var f = state.fx;
@@ -3038,14 +3044,52 @@ function fxFilaItens(c) {
 function fxTarefas(c, d) {
   var resps = d.resps || [], bilanEnviado = (d.mails || []).some(function (m) { return m.modelo === 'bilan_conversa'; });
   var dosFalta = state.dos && state.dos.cid === c.id ? dosProgresso(c, state.dos.d, state.dos.rasc).falta : 0;
-  // Só o que precisa de você: a sugestão de e-mail do funil já está no aviso do alto, e completar o dossiê só vale perto de um 1:1.
-  var temUm = c.estagio === 'um_a_um' || UM.some(function (x) { return x.contato_id === c.id && x.status === 'agendado'; }) || PAG1A1.some(function (p) { return p.contato_id === c.id; });
-  return FX.tarefasDe({
-    nome: displayName(c), respostasNovas: resps.filter(function (x) { return x.status === 'nova'; }).length, chatNaoLidas: chatNaoLidas(state.chat),
+  var k = state.caso && state.caso.cid === c.id && !state.caso.err ? state.caso : null;
+  var chk = state.dos && state.dos.cid === c.id ? state.dos.chk : null;
+  var x = {
+    nome: displayName(c), respostasNovas: resps.filter(function (r) { return r.status === 'nova'; }).length, chatNaoLidas: chatNaoLidas(state.chat),
     processosDetectados: (state.procs || []).filter(function (p) { return p.status === 'detectada'; }).map(function (p) { return p.processo; }),
-    bilanPendente: !!(state.bilan && state.bilan.cid === c.id && !bilanEnviado), dossieFalta: temUm ? dosFalta : 0,
-    proximoEmail: null
-  }, procLabel);
+    bilanPendente: !!(state.bilan && state.bilan.cid === c.id && !bilanEnviado), dossieFalta: dosFalta,
+    acoes: k ? k.aco.filter(function (a) { return a.dono === 'ingryd' && a.estado !== 'concluida'; }).map(function (a) { return { id: a.id, titulo: a.titulo, canal: a.canal, canalRotulo: CASO_CANAL[a.canal] || '', prazoTxt: casoPrazo(a) }; }) : [],
+    atrasados: chk && !chk.err && !chk.semConta ? chkCalc(chk, Date.now()).atrasados.length : 0,
+    proximoEmail: proximoEmail(c, d.mails || [], resps, d.jor)
+  };
+  state.fx.urg = FX.urgentes(x);   // o quadro de urgência do carrossel
+  return FX.tarefasDe(x, procLabel);
+}
+// O bloco "Minhas próximas ações": cabeçalho com o nome, Adicionar e Concluídas (as ações da equipe vêm de caso_acoes) e, só quando precisa, o quadro de urgência.
+function fxCarrossel(c) {
+  var f = state.fx, k = state.caso && state.caso.cid === c.id && !state.caso.err ? state.caso : null;
+  var conc = k ? k.aco.filter(function (a) { return a.dono === 'ingryd' && a.estado === 'concluida'; }).length : 0;
+  return FH.htmlCarrossel(f.tarefas, H_FX, f.ag.i, { nome: pn(c), concluidas: conc, urgente: f.urg || [] });
+}
+// Depois que o caso carrega ou muda (nova ação, "Já fiz"): recalcula as ações e repinta só o carrossel.
+function fxAtualizaAcoes() {
+  var c = byC(state.sel), f = state.fx, d = f.dados; if (!c || !d || f.cid !== c.id) return;
+  var cv = fxContato(c, d.uid); f.tarefas = fxTarefas(cv, d);
+  f.ag.i = Math.min(f.ag.i || 0, Math.max(0, f.tarefas.length - 1));
+  if (f.ag.pop === null) { var ab = $('fx-acoes-box'); if (ab) ab.innerHTML = fxCarrossel(cv); }
+}
+// Adicionar uma tarefa só sua: vira uma linha de caso_acoes (dono "ingryd", canal "so_eu"), que aparece em Só eu e no quadro como "Só eu".
+async function fxAddAcao() {
+  var c = byC(state.sel), f = state.fx, inp = $('fx-add-in'), err = $('fx-add-err'); if (!c || !inp) return;
+  var tx = inp.value.trim();
+  if (!tx) { if (err) { err.textContent = 'Escreva a tarefa antes de adicionar.'; err.hidden = false; } inp.focus(); return; }
+  var r = await supabase.from('caso_acoes').insert({ contato_id: c.id, titulo: tx.slice(0, 160), dono: 'ingryd', canal: 'so_eu', estado: 'aberta', certeza: 'literal' });
+  if (r.error) { if (err) { err.textContent = /caso_acoes/.test(String(r.error.message || '')) ? 'Falta rodar db/crm-caso.sql no Supabase.' : 'Não salvou: ' + (r.error.message || 'erro'); err.hidden = false; } return; }
+  f.ag.pop = null; var box = $('fx-pop'); if (box) box.innerHTML = '';
+  await casoRecarrega(); toast('Tarefa adicionada em Só eu', 2800);
+}
+async function fxFeitoAcao(id) {
+  var f = state.fx; f.ag.pop = null; var box = $('fx-pop'); if (box) box.innerHTML = '';
+  var r = await supabase.from('caso_acoes').update({ estado: 'concluida', concluida_em: new Date().toISOString(), concluida_por: 'equipe' }).eq('id', Number(id));
+  if (r.error) return fail('concluir a ação', r.error);
+  await casoRecarrega(); toast('Feito. Foi para Concluídas.', 2800);
+}
+function fxFeitas() {
+  var k = state.caso && state.caso.cid === state.sel && !state.caso.err ? state.caso : null;
+  return k ? k.aco.filter(function (a) { return a.dono === 'ingryd' && a.estado === 'concluida'; }).sort(function (a, b) { return String(b.concluida_em || '') < String(a.concluida_em || '') ? -1 : 1; })
+    .map(function (a) { return { titulo: a.titulo, quando: a.concluida_em ? fmtDay(a.concluida_em) : '', quem: a.concluida_por === 'ela' ? 'por ela' : 'pela equipe' }; }) : [];
 }
 // ---------- O cabeçalho da ficha: o que importa da pessoa, na mesma ordem para todo mundo ----------
 // 1:1 (dia, hora, minutos e se pagou), plataforma (conta e uso), dossiê (quanto falta), prazo e e-mails.
@@ -3168,14 +3212,21 @@ function fxHeaderHtml(c, d) {
     entradas: Math.max(jor.entradas.length ? origensDe(c).length : 0, origensDe(c).length, 1), diasNaBase: dd,
     respostas: resps.length, respostasNovas: resps.filter(function (x) { return x.status === 'nova'; }).length,
     proximo: proximoEmail(c, mails, resps, jor), agora: agora };
-  var cart = { blocos: [{ titulo: null, cartoes: fxResumoCartoes(c, d) }], nota: fxFatosChave(c), aberto: state.fx.hd || null, detalhe: fxHdDetalhe(c, d, state.fx.hd) };
+  // Cabeçalho minimalista: lead = quando entrou, onde deixou o e-mail e se abriu; 1:1 = a data; plataforma = último acesso; o plano vira dropdown.
+  var meus1a1 = UM.filter(function (x) { return x.contato_id === c.id && x.status !== 'cancelado' && x.quando; }).sort(function (a, b) { return a.quando < b.quando ? -1 : 1; });
+  var prox1a1 = meus1a1.filter(function (x) { return new Date(x.quando).getTime() >= agora - 36e5; })[0] || meus1a1[meus1a1.length - 1];
+  var orig = ultimaOrigem(c);
+  dados.entradaEm = primeira; dados.origemLabel = orig ? 'em ' + orig : '';
+  dados.um1a1 = prox1a1 ? prox1a1.quando : null; dados.um1a1Hora = prox1a1 ? fmtHora(prox1a1.quando) : '';
+  dados.ultimoAcesso = cliques[0] ? cliques[0].criado_em : null;
+  var cart = FX.cartoesMinimos(tipo, dados);
   return FH.htmlCabecalho({ c: c, estagioLabel: stageLabel(c.estagio), personaLabel: personaLabel(c) + (subLabel(c) ? ' · ' + subLabel(c) : ''),
-    temConta: !!c.user_id, etiqueta: FX.etiquetaPagamento(assin), estagios: STAGES, blocos: cart.blocos, nota: cart.nota, aberto: cart.aberto, detalhe: cart.detalhe }, H_FX);
+    temConta: !!c.user_id, etiqueta: assin ? FX.etiquetaPagamento(assin) : null, estagios: STAGES, blocos: cart.blocos, nota: cart.nota }, H_FX);
 }
 // Catálogo de démarches (cópia do app, processos.json): carregado uma vez; sem ele, tudo cai na démarche padrão.
 var FX_PROC = null;
 async function fxCarregaProcessos() {
-  try { var r = await fetch('processos.json?v=2026-11-15.38'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
+  try { var r = await fetch('processos.json'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
 }
 // A sessão Checklist: pílulas por démarche, os 4 mais urgentes, pasta do Drive privada e "Ver mais desta sessão".
 function fxChecklistCorpo(c) {
@@ -3196,19 +3247,188 @@ function fxOrdem() {
   var f = state.fx;
   return f.ord || { app: FX.SESSOES_PADRAO.app.slice(), ela: FX.SESSOES_PADRAO.ela.slice() };
 }
-function fxSessoes(c) {
-  var mk = function (titulo, sub, id, corpo) { var a = fxSessaoAberta(id); return { titulo: titulo, sub: sub, aberto: a, corpo: a ? corpo() : '' }; };
-  var mapa = {
-    chat: mk('Conversa com ela', 'As mensagens da equipe, do assistente e dela, dentro do app.', 'chat', function () { return '<div id="chat-box">' + chatPanelHtml(c, state.chat, H4_PLAT) + '</div>'; }),
-    inicio: mk('Início (iAssistente)', 'O que o assistente mostra a ela no início do app e os seus avisos.', 'inicio', function () { return '<div id="ins-box">' + insightsHtml(state.ins, Date.now()) + '</div>'; }),
-    checklist: mk('Checklist', 'Os passos dela por démarche, do mais urgente ao mais distante.', 'checklist', function () { return '<div id="fx-chk-corpo">' + fxChecklistCorpo(c) + '</div>'; }),
-    bilan: mk('Bilan', 'O que a conversa mostrou e o e-mail do bilan.', 'bilan', function () { return bilanResumoHtml(c) + bilanBlocoHtml(c, H4_PLAT); }),
-    hist: mk('Histórico', 'Tudo que ela fez no app, dia a dia.', 'hist', function () { return '<div id="int-box">' + interacoesHtml(state.int) + '</div>'; })
-  };
-  if (c.user_id) mapa.insights = mk('Insights', 'O que o uso do app diz sobre ela, depois do 1:1.', 'insights', function () { return insightsPlatHtml(c); });
-  return FH.htmlSessoes(fxOrdem(), mapa, H_FX, gruposFechados());
+// Fase 2: as sessões abaixo usam o mesmo caso (achados, ações, board, avisos, escolas) da aba Caso antiga. Carrega uma vez por pessoa;
+// quando chega, pintaCaso() repinta o corpo. Sem db/crm-caso.sql, cada sessão avisa o que falta em vez de ficar em branco.
+function fxCasoGuarda(c) {
+  var k = state.caso;
+  if (!k || k.cid !== c.id) { setTimeout(function () { carregaCaso(c.id); }, 0); return { html: '<div class="skel" aria-busy="true" style="height:64px"></div>' }; }
+  if (k.err) return { html: '<p class="sub" style="margin:0">Caso ainda não ligado: falta rodar <b>db/crm-caso.sql</b> e <b>db/crm-caso-importar.sql</b> no SQL Editor do Supabase.</p>' };
+  return { k: k };
 }
-// Quais grupos da aba Plataforma você deixou fechados (vale para todas as pessoas; localStorage pode estar bloqueado).
+function fxSemConsent(k) { return k.consent ? '' : '<p class="pill u-media" style="margin:0 0 10px">Sem consentimento de serviço: publicar e agendar ficam bloqueados.</p>'; }
+function fxInicioCorpo(c) {
+  var g = fxCasoGuarda(c), base = '<div id="ins-box">' + insightsHtml(state.ins, Date.now()) + '</div>';
+  if (!g.k) return base + casoSecao('Avisos da IAssistente', 'você decide a data de cada um', g.html);
+  return base + fxSemConsent(g.k) + casoProximaHtml(c, g.k) + casoSecao('Avisos da IAssistente', 'perguntas, propostas e inteligência que chegam como notificação', casoAvisosHtml(g.k));
+}
+function fxEspacoCorpo(c) {
+  var g = fxCasoGuarda(c); if (!g.k) return g.html;
+  var pub = g.k.itens.filter(function (x) { return (x.tipo === 'marco' || x.tipo === 'escola') && x.estado === 'publicado'; }).length;
+  return '<p class="sub" style="margin:0 0 8px">O que você publica só para o caso dela: prazos e escolas. Nada aparece para ela até você publicar (' + pub + ' publicado' + (pub === 1 ? '' : 's') + ').</p>' + fxSemConsent(g.k) +
+    casoItensHtml(g.k, ['marco', 'escola'], 'Nada de prazo ou escola ainda. Leia a página do Notion no Onboarding para a IA propor.') + casoEscolasDelaHtml(g.k);
+}
+function fxGuiasCorpo(c) {
+  var g = fxCasoGuarda(c); if (!g.k) return g.html;
+  return '<p class="sub" style="margin:0 0 8px">O material da equipe que ela abre em Guias: bilan da conversa, documentos e mensagens prontas. Só entra o que você publicar.</p>' + fxSemConsent(g.k) +
+    casoBarraNovo(g.k) + casoItensHtml(g.k, ['bilan', 'documento', 'modelo'], 'Nada para ela em Guias ainda. Use os botões acima para criar.');
+}
+// Perfil: o que o Dossiê ainda não tem, para perguntar na call (o Dossiê é a aba ao lado).
+function fxPerfilCorpo(c) {
+  var d = state.dos && state.dos.cid === c.id ? state.dos : null;
+  if (!d) return '<div class="skel" aria-busy="true" style="height:64px"></div>';
+  var pr = dosProgresso(c, d.d, d.rasc), falta = [];
+  dosVisiveis(c, d.d, d.rasc).forEach(function (b) { if (b.livre) return; b.campos.forEach(function (f) { if (dosValor(c, d.d, d.rasc, f.k) === '') falta.push(f.l); }); });
+  return '<p class="sub" style="margin:0 0 8px"><b>' + pr.n + ' de ' + pr.tot + '</b> perguntas respondidas. Cada resposta ajuda a ajustar o que aparece para ela.</p>' +
+    (falta.length ? '<ul class="fx-falta" style="margin:0 0 10px;padding-left:18px">' + falta.slice(0, 6).map(function (l) { return '<li>' + esc(l) + '</li>'; }).join('') + '</ul>' + (falta.length > 6 ? '<p class="sub" style="margin:0 0 8px">E mais ' + (falta.length - 6) + ' no Dossiê.</p>' : '') : '<p class="sub" style="margin:0 0 8px">Tudo respondido.</p>') +
+    '<button type="button" class="btn" data-fx="tab" data-v="dossie">Abrir o Dossiê</button>';
+}
+// Só eu: o que é seu neste caso (nada aparece no app dela). As linhas dela, que você publica no Checklist, ficam em "Passos para ela".
+function fxEuCorpo(c) {
+  var g = fxCasoGuarda(c); if (!g.k) return g.html;
+  return '<p class="sub" style="margin:0 0 8px">Tarefas suas neste caso. Ela não vê nada daqui.</p>' + casoAcoesHtml(g.k, 'ingryd') +
+    casoSecao('Passos para ela', 'o que você propõe e publica no Checklist dela', fxSemConsent(g.k) + casoAcoesHtml(g.k, 'ela'));
+}
+// ---------- Panorama dela e O que ela trouxe (porte da Ficha-universo, com dados reais) ----------
+// Lê o que ela acrescenta de público ao app: títulos que mudou, observações, datas, links, passos próprios e arquivados (checklist_items)
+// e as escolas que ela adicionou (escolas_dela). Sem pasta do Drive, sem conteúdo de documentos e sem número pessoal (PN.limpa).
+var H_PN = { esc: esc, quando: function (iso) { return iso ? fmtQuando(iso) : ''; } };
+function fxPanoramaDados(c) {
+  var chk = state.dos && state.dos.cid === c.id ? state.dos.chk : null, k = state.caso && state.caso.cid === c.id && !state.caso.err ? state.caso : null, g = state.fx.coorte;
+  if (!state.caso || state.caso.cid !== c.id) setTimeout(function () { carregaCaso(c.id); }, 0);
+  return { nome: displayName(c), itens: chk && !chk.err && !chk.semConta ? (chk.itens || []) : [], escolas: k ? (k.escolasDela || []) : [], coorte: g && g.persona === personaKey(c) ? g.v : null };
+}
+// Os sinais que ela já mostrou e o que a Ingryd decidiu fazer com as sugestões: guardado neste navegador (não vai para o banco).
+function fxSugsLidas(cid) { try { return JSON.parse(localStorage.getItem('crm_ficha_sugs_' + cid) || '{}') || {}; } catch (e) { return {}; } }
+function fxSugGuarda(cid, id, v) { var m = fxSugsLidas(cid); m[id] = v; try { localStorage.setItem('crm_ficha_sugs_' + cid, JSON.stringify(m)); } catch (e) { /* sem localStorage */ } }
+// O grupo: as pessoas da mesma persona que já têm conta, lido uma vez por persona. Menos de 3 pessoas = "poucos dados".
+async function fxCarregaCoorte(c) {
+  var f = state.fx, pk = personaKey(c);
+  if (f.coorte && f.coorte.persona === pk) return;
+  f.coorte = { persona: pk, v: null, carregando: true };
+  var ids = C.filter(function (x) { return x.user_id && personaKey(x) === pk; }).map(function (x) { return x.user_id; }), linhas = [];
+  if (ids.length >= 3) {
+    var r = await supabase.from('checklist_items').select('user_id,step_key,category,label,status,titulo_custom,nota_custom,quando_custom').in('user_id', ids).limit(5000);
+    if (r.error) r = await supabase.from('checklist_items').select('user_id,step_key,category,label,status').in('user_id', ids).limit(5000);   // sem as colunas novas
+    linhas = r.data || [];
+  }
+  if (!state.fx.coorte || state.fx.coorte.persona !== pk) return;
+  f.coorte = { persona: pk, v: PN.montaCoorte(linhas, ids), carregando: false };
+  if (state.sel === c.id && f.tab === 'plataforma' && fxSessaoAberta('sinais')) fxPintaCorpo();
+}
+function fxSemSinais(c, titulo) {
+  var chk = state.dos && state.dos.cid === c.id ? state.dos.chk : null;
+  if (!chk) return '<div class="skel" aria-busy="true" style="height:64px"></div>';
+  if (!c.user_id || chk.semConta) return '<p class="sub" style="margin:0">Ela ainda não entrou no app, então ainda não há o que ler aqui. ' + titulo + ' nasce do que ela edita, cria ou arquiva depois do primeiro acesso.</p>';
+  if (chk.err) return '<p class="sub" style="margin:0">Falta rodar <b>db/crm-checklist.sql</b> no SQL Editor do Supabase.</p>';
+  return '';
+}
+function fxSinaisCorpo(c) {
+  var vazio = fxSemSinais(c, 'O Panorama'); if (vazio) return vazio;
+  setTimeout(function () { fxCarregaCoorte(c); }, 0);
+  var d = fxPanoramaDados(c), a = PN.panorama(d), f = state.fx;
+  return PN.htmlPanorama(a, PN.sugestoes(a), { tema: f.tema, dd: f.dd, sugs: fxSugsLidas(c.id), log: PN.logColetado(d), personaLabel: personaLabel(c), personaCurto: personaLabel(c), carregandoGrupo: !!(f.coorte && f.coorte.carregando) }, H_PN);
+}
+// O que ela trouxe: só o que ela mesma acrescentou e é público, por tipo. Sem pasta do Drive e sem dado pessoal.
+function fxTrouxeCorpo(c) {
+  var vazio = fxSemSinais(c, 'Esta sessão'); if (vazio) return vazio;
+  return PN.htmlTrouxe(PN.panorama(fxPanoramaDados(c)), { dd: state.fx.dd }, H_PN);
+}
+// Criar o aviso sugerido como rascunho de Início (caso_avisos, tipo "inteligencia"): você decide a data depois, em Início.
+async function fxSugCriaAviso(c, s) {
+  var r = await supabase.from('caso_avisos').insert({ contato_id: c.id, tipo: s.aviso.tipo, titulo: s.aviso.tit.slice(0, 120), texto: s.aviso.txt.slice(0, 600), estado: 'rascunho', modo: 'apos_primeiro_acesso', dias_apos: 1 });
+  if (r.error) return fail('criar o aviso', r.error);
+  fxSugGuarda(c.id, s.id, 'aviso'); await casoRecarrega(); fxPintaCorpo(); toast('Aviso criado como rascunho em Início', 3000);
+}
+function fxSugAcao(ds) {
+  var c = byC(state.sel); if (!c) return true;
+  var a = PN.panorama(fxPanoramaDados(c)), s = PN.sugestoes(a).filter(function (x) { return x.id === ds.id; })[0]; if (!s) return true;
+  if (ds.v === 'aviso') return fxSugCriaAviso(c, s);
+  fxSugGuarda(c.id, s.id, ds.v === 'descartada' ? 'descartada' : 'modelo'); fxPintaCorpo(); return true;
+}
+// "Escrever sobre isso": a mensagem entra pronta na caixa do chat dela, para você revisar antes de enviar.
+function fxImpulso(id) {
+  var c = byC(state.sel); if (!c) return true;
+  var im = PN.panorama(fxPanoramaDados(c)).imp.filter(function (x) { return x.id === id; })[0]; if (!im) return true;
+  state.chatRasc = im.msg; var f = state.fx; f.abertas.chat = true; fxPintaCorpo();
+  var tx = $('chat-txt'); if (tx) { if (tx.scrollIntoView) tx.scrollIntoView({ block: 'center' }); if (tx.focus) tx.focus(); }
+  return true;
+}
+document.addEventListener('toggle', function (e) { var d = e.target; if (d && d.matches && d.matches('details[data-dd]') && state.fx && state.fx.dd) state.fx.dd[d.dataset.dd] = d.open; }, true);
+document.addEventListener('submit', function (e) { if (e.target && e.target.id === 'fx-add-form' && e.preventDefault) e.preventDefault(); });
+
+// ---------- Zonas das sessões do app: "O que ela vê agora" e "O que ela faz" (só leitura, com dados reais) ----------
+var FX_ZONAS = {
+  inicio: { pode: ['Abrir o próximo passo', 'Responder a pergunta', '“Agora não” (adia 3 dias)', 'Abrir o assistente no sino'], re: /abriu|respond|adi|assistente|in[ií]cio/i },
+  checklist: { pode: ['Marcar um passo', 'Editar título, data, observação e links', 'Adicionar um passo (+)', 'Arquivar e restaurar', 'Colar a pasta do Drive'], re: /marcou|desmarcou|edit|arquiv|adicion|restaur|checklist/i },
+  espaco: { pode: ['Marcar Sim ou Não nos critérios da escola', 'Adicionar a própria escola (+)', 'Remover a escola que adicionou', 'Responder a pergunta da equipe'], re: /escola|crit[ée]rio|espa[cç]o|pergunta/i },
+  guias: { pode: ['Abrir um guia', 'Ler o bilan', 'Abrir o documento', 'Copiar o texto da mensagem pronta', 'Ver a tradução'], re: /guia|bilan|arquivo|documento|mensagem/i },
+  perfil: { pode: ['Editar o próprio perfil', 'Responder perguntas do assistente'], re: /perfil|dossi/i }
+};
+function fxVeAgora(c, id) {
+  var v = fxPreviaDados(c), li = function (a) { return a.length ? '<ul class="fx-zl">' + a.map(function (x) { return '<li>' + x + '</li>'; }).join('') + '</ul>' : ''; };
+  if (id === 'inicio') return li([v.marco ? 'Marco: <b>faltam ' + v.marco.dias + ' dias</b> · ' + esc(v.marco.titulo) : 'Nenhum marco publicado ainda', v.prox ? 'Próximo passo: <b>' + esc(v.prox.label) + '</b>' : 'Sem próximo passo',
+    v.avisos.length + (v.avisos.length === 1 ? ' aviso visível' : ' avisos visíveis') + ' no dia ' + v.dia + (v.avisos.length ? ': ' + v.avisos.map(function (a) { return esc(a.titulo); }).join(' · ') : ''), v.naoLidas ? v.naoLidas + (v.naoLidas === 1 ? ' recado' : ' recados') + ' no sino, ainda não visto' + (v.naoLidas === 1 ? '' : 's') : 'Nenhum recado novo no sino']);
+  if (id === 'checklist') {
+    var chk = state.dos && state.dos.cid === c.id ? state.dos.chk : null, it = chk && !chk.err && !chk.semConta ? PN.normaliza(chk.itens) : [], abertos = v.total - v.feitos;
+    return li(['<b>' + v.total + ' passos</b> no app: ' + (v.total - it.filter(function (x) { return x.propria; }).length) + ' da persona e ' + it.filter(function (x) { return x.propria; }).length + ' criados por ela', v.pct + '% feito por ela · ' + abertos + (abertos === 1 ? ' aberto' : ' abertos'),
+      'Pasta do Drive: só ela vê o link', it.filter(function (x) { return x.editado; }).length + ' passo(s) editado(s) por ela (veja no Panorama dela)', it.filter(function (x) { return x.arq; }).length ? it.filter(function (x) { return x.arq; }).length + ' arquivado(s) por ela' : 'Nenhum passo arquivado por ela']);
+  }
+  if (id === 'espaco') {
+    var it2 = v.espaco.marcos.map(function (m) { return 'Prazo: <b>' + esc(m.titulo) + '</b>'; }).concat(v.espaco.escolas.map(function (x) { return 'Escola: <b>' + esc(x.titulo) + '</b>'; }), v.espaco.dela.map(function (x) { return 'Escola dela: <b>' + esc(x.nome) + '</b>'; }));
+    return it2.length ? li(it2) : '<p class="nota">Nada publicado ainda: ela vê “Ainda não tem nada seu aqui”.</p>';
+  }
+  if (id === 'guias') return li(['Bilans das nossas conversas: ' + (v.guias.bilan ? '<b>1 publicado</b>' : 'em breve'), 'Documentos que a equipe manda: ' + (v.guias.docs.length ? '<b>' + v.guias.docs.length + ' publicado' + (v.guias.docs.length > 1 ? 's' : '') + '</b>' : 'em breve'), 'Mensagens prontas: ' + (v.guias.msgs.length ? '<b>' + v.guias.msgs.length + ' publicada' + (v.guias.msgs.length > 1 ? 's' : '') + '</b>' : 'em breve')]);
+  return li([v.perfil.n + ' de ' + v.perfil.tot + ' perguntas respondidas'].concat(v.perfil.kv.filter(function (x) { return x[1]; }).map(function (x) { return esc(x[0]) + ': <b>' + esc(x[1]) + '</b>'; })));
+}
+function fxJaFez(c, re) {
+  var cli = state.int && state.int.cid === c.id && !state.int.err ? state.int.cliques || [] : [];
+  var r = cli.filter(function (x) { return re.test(String(x.rotulo || '') + ' ' + telaNome(x.tela || '')); }).slice(0, 3);
+  return r.length ? '<ul class="fx-zl">' + r.map(function (x) { return '<li>' + esc(x.alvo === 'tela' ? 'Abriu ' + telaNome(x.tela) : (x.rotulo || '(sem texto)')) + ' <span class="nota">· ' + esc(fmtQuando(x.criado_em)) + '</span></li>'; }).join('') + '</ul>' : '<p class="nota">Ela ainda não fez nada aqui.</p>';
+}
+function fxZonas(c, id) {
+  var z = FX_ZONAS[id]; if (!z) return '';
+  var det = function (cls, titulo, sub, corpo, aberto) {
+    var o = state.fx.dd['z-' + id + cls]; if (o === undefined) o = aberto;
+    return '<details class="fx-z fx-z-' + cls + '" data-dd="z-' + id + cls + '"' + (o ? ' open' : '') + '><summary><span>' + titulo + '</span>' + (sub ? '<small>' + sub + '</small>' : '') + '</summary>' + corpo + '</details>';
+  };
+  return '<div class="fx-zonas">' + det('ve', 'O que ela vê agora', 'o mesmo que a prévia ao lado', fxVeAgora(c, id), false) +
+    det('ela', 'O que ela faz aqui', 'só consulta', '<p class="nota"><b>O que ela pode fazer no app</b></p><div class="fx-pode">' + z.pode.map(function (x) { return '<span class="pill">' + esc(x) + '</span>'; }).join('') + '</div><p class="nota" style="margin-top:10px"><b>O que ela já fez aqui</b></p>' + fxJaFez(c, z.re), false) + '</div>';
+}
+// Mais detalhes: o que é da persona (igual para quem tem a mesma situação) e o que é só dela.
+function fxMaisCorpo(c) {
+  var g = fxCasoGuarda(c); if (!g.k) return g.html;
+  var k = g.k, chk = state.dos && state.dos.cid === c.id ? state.dos.chk : null, d = state.dos && state.dos.cid === c.id ? state.dos : null, pr = d ? dosProgresso(c, d.d, d.rasc) : null;
+  var pub = k.itens.filter(function (x) { return x.estado === 'publicado'; }).length;
+  return '<p class="sub" style="margin:0 0 8px">O app dela tem duas camadas: a da persona vem pronta; a dela você constrói conversando.</p>' +
+    casoSecao('Persona', personaLabel(c), kvHtml([['Passos no checklist', chk && !chk.err && !chk.semConta ? String(chk.itens.length) : '—'], ['Perguntas no Dossiê', pr ? String(pr.tot) : '—']])) +
+    casoSecao('Só dela', pn(c), kvHtml([['Respostas no Dossiê', pr ? pr.n + ' de ' + pr.tot : '—'], ['Achados da conversa', String(k.ach.length)], ['Ações', String(k.aco.length)],
+      ['Itens do board publicados', pub + ' de ' + k.itens.length], ['Avisos', String(k.avs.length)], ['Escolas que ela acrescentou', String((k.escolasDela || []).length)]]));
+}
+// Prévia do app dela com dados reais (só leitura). O dia simula quando cada aviso agendado chega, somando as pausas em ordem.
+function fxPreviaDados(c) {
+  var f = state.fx, k = state.caso && state.caso.cid === c.id && !state.caso.err ? state.caso : null, chk = state.dos && state.dos.cid === c.id ? state.dos.chk : null;
+  var ok = chk && !chk.err && !chk.semConta, hoje = new Date().toISOString().slice(0, 10), dia = f.dia == null ? 1 : f.dia;
+  var itens = ok ? FX.filtrarPorDemarche(FX_PROC, (chk.itens || []).filter(function (i) { return i.status !== 'arquivado'; }), f.dem || 'todas') : [], feitos = itens.filter(function (i) { return i.status === 'concluido'; });
+  var abertos = itens.filter(function (i) { return i.status !== 'concluido'; }).sort(function (a, b) { return (a.due_date || '9999') < (b.due_date || '9999') ? -1 : 1; });
+  var pub = function (tipos) { return k ? k.itens.filter(function (x) { return x.estado === 'publicado' && tipos.indexOf(x.tipo) >= 0; }) : []; };
+  var marcos = pub(['marco']).map(function (x) { return { titulo: x.titulo, resumo: x.resumo, data: x.dados && x.dados.data }; });
+  var m = marcos.filter(function (x) { return x.data; }).sort(function (a, b) { return a.data < b.data ? -1 : 1; })[0];
+  var acum = 0, avisos = [];
+  if (k) filaDe(k.avs).concat([]).forEach(function (a) { acum += a.pausa_dias || 0; if (acum <= dia) avisos.push({ tipo: CASO_TIPO_AVISO[a.tipo] || a.tipo, titulo: a.titulo, texto: a.texto }); });
+  if (k) k.avs.filter(function (a) { return a.liberado_em && (a.estado === 'liberado' || a.estado === 'lido'); }).forEach(function (a) { avisos.unshift({ tipo: CASO_TIPO_AVISO[a.tipo] || a.tipo, titulo: a.titulo, texto: a.texto }); });
+  var dd = state.dos && state.dos.cid === c.id ? state.dos : null, pr = dd ? dosProgresso(c, dd.d, dd.rasc) : { n: 0, tot: 0 };
+  return { nome: pn(c), semConta: !c.user_id, aba: f.appAba || 'inicio', dia: dia, camadas: !!f.camadas, pct: itens.length ? Math.round(feitos.length / itens.length * 100) : 0, feitos: feitos.length, total: itens.length,
+    naoLidas: chatNaoLidas(state.chat), marco: m ? { titulo: m.titulo, dias: diasAteIso(m.data), data: m.data } : null, prox: abertos[0] ? { label: abertos[0].label, due: abertos[0].due_date } : null, avisos: avisos,
+    passos: abertos.concat(feitos).map(function (i) { return { label: i.label, tag: i.category, feito: i.status === 'concluido', due: i.due_date, atrasado: !!(i.due_date && i.due_date < hoje && i.status !== 'concluido') }; }),
+    espaco: { marcos: marcos, escolas: pub(['escola']).map(function (x) { return { titulo: x.titulo, resumo: x.resumo }; }), dela: k ? (k.escolasDela || []).map(function (x) { return { nome: x.nome }; }) : [] },
+    guias: { bilan: pub(['bilan']).length > 0, docs: pub(['documento']).map(function (x) { return { titulo: x.titulo, resumo: x.resumo }; }), msgs: pub(['modelo']).map(function (x) { return { titulo: x.titulo }; }) },
+    perfil: { n: pr.n, tot: pr.tot, kv: [['Situação', personaLabel(c)], ['Cidade', (dd && dosValor(c, dd.d, dd.rasc, 'cidade')) || ''], ['Fase', (dd && dosValor(c, dd.d, dd.rasc, 'fase')) || '']] } };
+}
+function fxPreviaHtml(c) {
+  if (!state.caso || state.caso.cid !== c.id) setTimeout(function () { carregaCaso(c.id); }, 0);
+  return FH.htmlPreviaApp(fxPreviaDados(c), H_FX);
+}
+function fxPintaPrevia() { var c = byC(state.sel), b = $('fx-previa'); if (c && b) b.innerHTML = fxPreviaHtml(fxContato(c, state.fx.dados && state.fx.dados.uid)); }
 function gruposFechados() { try { return JSON.parse(localStorage.getItem('crm_ficha_grupos_fechados') || '{}') || {}; } catch (e) { return {}; } }
 function gravaGrupoFechado(area, fechado) { var g = gruposFechados(); if (fechado) g[area] = 1; else delete g[area]; try { localStorage.setItem('crm_ficha_grupos_fechados', JSON.stringify(g)); } catch (e) { /* sem localStorage */ } }
 document.addEventListener('toggle', function (e) { var d = e.target; if (d && d.matches && d.matches('details.fx-grupo[data-grupo]')) gravaGrupoFechado(d.dataset.grupo, !d.open); }, true);
@@ -3444,6 +3664,25 @@ function dosVisaoHtml(c, d) {
   return '<section class="panel dv" id="dos-visao" style="padding:16px;margin-bottom:14px"><h3 style="font-size:17px;margin:0 0 2px">' + esc(titulo) + '</h3><p class="sub" style="margin:0 0 12px">' + esc(sub) + '</p>' +
     '<div class="dv-grid">' + card('Quem ela é', quem) + card('Estudos, certificados e prazo', estudos) + card('De onde veio e o que respondeu', veio) + card('O que ela fez', fez) + '</div>' + r1Html(c, S) + '</section>';
 }
+function fxSessoes(c) {
+  var mk = function (titulo, sub, id, corpo) { var a = fxSessaoAberta(id); return { titulo: titulo, sub: sub, aberto: a, corpo: a ? corpo() : '' }; };
+  var mapa = {
+    chat: mk('Conversa com ela', 'As mensagens da equipe, do assistente e dela, dentro do app.', 'chat', function () { return '<div id="chat-box">' + chatPanelHtml(c, state.chat, H4_PLAT) + '</div>'; }),
+    inicio: mk('Início (iAssistente)', 'O que o assistente mostra a ela no início do app e os seus avisos.', 'inicio', function () { return fxInicioCorpo(c) + fxZonas(c, 'inicio'); }),
+    checklist: mk('Checklist', 'Os passos dela por démarche, do mais urgente ao mais distante.', 'checklist', function () { return '<div id="fx-chk-corpo">' + fxChecklistCorpo(c) + '</div>' + fxZonas(c, 'checklist'); }),
+    espaco: mk('Espaço', 'Prazos e escolas que você publica só para ela.', 'espaco', function () { return fxEspacoCorpo(c) + fxZonas(c, 'espaco'); }),
+    guias: mk('Guias', 'Bilan, documentos e mensagens prontas da equipe.', 'guias', function () { return fxGuiasCorpo(c) + fxZonas(c, 'guias'); }),
+    perfil: mk('Perfil', 'O que ela já respondeu e o que falta perguntar.', 'perfil', function () { return fxPerfilCorpo(c) + fxZonas(c, 'perfil'); }),
+    eu: mk('Só eu · minhas tarefas', 'Tarefas suas neste caso. Ela não vê nada daqui.', 'eu', function () { return fxEuCorpo(c); }),
+    bilan: mk('Bilan', 'O que a conversa mostrou, os achados para conferir e o e-mail do bilan.', 'bilan', function () { var g = fxCasoGuarda(c); return (g.k ? casoSecao('O que entendi', g.k.ach.length + ' achados', casoAchadosHtml(g.k)) : g.html) + bilanResumoHtml(c) + bilanBlocoHtml(c, H4_PLAT); }),
+    trouxe: mk('O que ela trouxe', 'Tudo o que ela adicionou de público ao app.', 'trouxe', function () { return fxTrouxeCorpo(c); }),
+    sinais: mk('Panorama dela', 'O que ela traz de público para o app, lido de relance, com impulsos para você.', 'sinais', function () { return fxSinaisCorpo(c); }),
+    mais: mk('Mais detalhes do universo', 'O que é da persona e o que é só dela.', 'mais', function () { return fxMaisCorpo(c); }),
+    hist: mk('Histórico', 'Tudo que ela fez no app, dia a dia.', 'hist', function () { return '<div id="int-box">' + interacoesHtml(state.int) + '</div>'; })
+  };
+  if (c.user_id) mapa.insights = mk('Insights', 'O que o uso do app diz sobre ela, depois do 1:1.', 'insights', function () { return insightsPlatHtml(c); });
+  return FH.htmlSessoes(fxOrdem(), mapa, H_FX, gruposFechados());
+}
 // ---------- Plataforma: a sessão "Insights" (depois do 1:1, com ela no app) ----------
 function insightsDaPlataforma(c, X) {
   var out = [], agora = X.agora || Date.now(), cliques = X.cliques || [];
@@ -3487,7 +3726,7 @@ function insightsPlatHtml(c) {
 function fxCorpo(c, d, tab) {
   if (tab === 'plataforma') {
     if (state.int && state.int.err) return '<div class="panel" style="padding:16px;margin-top:14px"><h3 style="font-size:15px;margin-bottom:8px">Plataforma ainda não ligada</h3><p class="sub" style="margin:0">Falta rodar <b>db/crm-plataforma.sql</b> no SQL Editor do Supabase (depois dele, os cliques novos começam a aparecer aqui).</p></div>';
-    return '<div class="fx-plat"><div class="fx-plat-main">' + fxSessoes(c) + '</div><aside class="fx-plat-lat" aria-label="Pagamento">' + pagamentoHtml(c, H4_PLAT) + '</aside></div>';
+    return '<div class="fx-plat">' + pagamentoHtml(c, H4_PLAT) + '<div class="fx-plat-grade"><div class="fx-plat-esq">' + fxSessoes(c) + '</div><aside class="fx-previa" id="fx-previa" aria-label="O app dela (prévia)">' + fxPreviaHtml(c) + '</aside></div></div>';
   }
   if (tab === 'conversa') return conversaPanel(c, d.mails || [], d.resps || [], d.h4 || H4_PLAT, d.jor);
   // Dossiê: aba própria, sempre aberta. Preenche sozinho com o que ela responde no funil e no app (ver DOS_FUNIL).
@@ -3530,6 +3769,7 @@ function renderFichaV2(c, d) {
   fxPrefs();
   var f = state.fx, cv = fxContato(c, d.uid);
   f.tab = f.tab || (FX_ABAS.indexOf(state.ptab) >= 0 ? state.ptab : null) || FX.abaPadrao(cv);
+  if (!state.caso || state.caso.cid !== c.id) setTimeout(function () { carregaCaso(c.id); }, 0);   // as ações da equipe vêm do caso
   var tarefas = fxTarefas(cv, d);
   f.tarefas = tarefas; f.dados = d; f.cid = c.id; f.ag.pop = null; f.ag.i = Math.min(f.ag.i || 0, Math.max(0, tarefas.length - 1));
   return '<div id="ficha-v2" class="fx" data-cid="' + esc(c.id) + '">' +
@@ -3538,7 +3778,7 @@ function renderFichaV2(c, d) {
     '<div id="fx-fila-box">' + FH.htmlFila(fxFilaItens(cv), c.id, H_FX) + '</div>' +
     '<div id="fx-head-box">' + fxHeaderHtml(cv, d) + '</div>' +
     '<div class="fx-topo" id="fx-topo"><div id="fx-aviso-box">' + avisoDaPessoaHtml(c, d.mails, d.resps, d.jor) + '</div>' +
-    '<div id="fx-acoes-box">' + FH.htmlCarrossel(tarefas, H_FX, f.ag.i) + '</div></div>' +
+    '<div id="fx-acoes-box">' + fxCarrossel(cv) + '</div></div>' +
     FH.htmlAbas(f.tab, !!cv.user_id, H_FX) +
     '<div id="fx-corpo">' + fxCorpo(cv, d, f.tab) + '</div>' +
     '<div id="fx-pop"></div></div>';
@@ -3580,7 +3820,7 @@ function fxLive(c) {
   f.tarefas = fxTarefas(cv, d);
   var hb = $('fx-head-box'); if (hb) { hb.innerHTML = fxHeaderHtml(cv, d); fxMedeCabecalho(); }
   fxPintaChk(cv);
-  if (f.ag.pop === null) { var ab = $('fx-acoes-box'); if (ab) ab.innerHTML = FH.htmlCarrossel(f.tarefas, H_FX, f.ag.i); }
+  if (f.ag.pop === null) { var ab = $('fx-acoes-box'); if (ab) ab.innerHTML = fxCarrossel(cv); }
 }
 function irPara(dest) {
   var f = state.fx; if (!dest) return;
@@ -3592,9 +3832,14 @@ function fxFocaPop() { var dlg = document.querySelector('#fx-pop .fx-pop'); if (
 function fxFechaPop(devolveFoco) {
   var f = state.fx, i = f.ag.pop; f.ag.pop = null;
   var box = $('fx-pop'); if (box) box.innerHTML = '';
-  if (devolveFoco && i !== null) { var card = document.querySelector('.fx-card[data-i="' + i + '"]'); if (card && card.focus) card.focus(); }
+  if (devolveFoco && i !== null) { var card = document.querySelector(typeof i === 'number' ? '.fx-card[data-i="' + i + '"]' : '[data-fx="' + (i === 'add' ? 'agNovo' : 'agFeitas') + '"]'); if (card && card.focus) card.focus(); }
 }
-function fxPintaPop() { var box = $('fx-pop'); if (box) box.innerHTML = FH.htmlPopup(state.fx.tarefas, state.fx.ag.pop, H_FX); fxFocaPop(); }
+function fxPintaPop() {
+  var box = $('fx-pop'), p = state.fx.ag.pop; if (!box) return;
+  box.innerHTML = p === 'add' ? FH.htmlPopupAdd(H_FX) : p === 'feitas' ? FH.htmlPopupFeitas(fxFeitas(), H_FX) : FH.htmlPopup(state.fx.tarefas, p, H_FX);
+  fxFocaPop();
+  if (p === 'add') { var inp = $('fx-add-in'); if (inp && inp.focus) inp.focus(); }
+}
 // Contador e setas do carrossel, sem repintar (a rolagem do carrossel é preservada).
 function fxCarMostra(i, car) {
   var f = state.fx, n = f.tarefas.length; f.ag.i = i;
@@ -3629,7 +3874,14 @@ function fichaClick(el) {
       var tb = $('fx-tour'); if (tb) tb.innerHTML = FH.htmlTour(f.tour, H_FX); return true;
     case 'agAbrir': { var i = Number(ds.i); if (!(i >= 0 && i < n)) return true; f.ag.pop = i; fxPintaPop(); return true; }
     case 'agFechar': fxFechaPop(true); return true;
-    case 'agNav': { if (f.ag.pop === null) return true; f.ag.pop = Math.min(Math.max(0, f.ag.pop + Number(ds.d || 0)), n - 1); fxPintaPop(); return true; }
+    case 'tema': f.tema = f.tema === ds.v ? null : ds.v; fxPintaCorpo(); return true;
+    case 'impulso': return fxImpulso(ds.id);
+    case 'sugAcao': return fxSugAcao(ds);
+    case 'agNovo': f.ag.pop = 'add'; fxPintaPop(); return true;
+    case 'agFeitas': f.ag.pop = 'feitas'; fxPintaPop(); return true;
+    case 'agAdd': return fxAddAcao();
+    case 'agFeito': return fxFeitoAcao(ds.id);
+    case 'agNav': { if (typeof f.ag.pop !== 'number') return true; f.ag.pop = Math.min(Math.max(0, f.ag.pop + Number(ds.d || 0)), n - 1); fxPintaPop(); return true; }
     case 'agIr': {
       var t = (f.tarefas || []).filter(function (x) { return x.id === ds.id; })[0] || (f.tarefas || []).filter(function (x) { return x.k === ds.k; })[0] || (f.ag.pop !== null ? f.tarefas[f.ag.pop] : null);
       fxFechaPop(false); if (t) irPara(t.dest); return true;
@@ -3642,7 +3894,10 @@ function fichaClick(el) {
       f.ord = nova; FX.gravarPrefs(localStorage, { ord: nova }); fxPintaCorpo();
       var mb = document.querySelector('[data-fx="mover"][data-id="' + ds.id + '"][data-d="' + ds.d + '"]'); if (mb && mb.focus) mb.focus(); return true;
     }
-    case 'dem': { f.dem = ds.v || 'todas'; var cd = byC(state.sel); if (cd) fxPintaChk(fxContato(cd, f.dados && f.dados.uid)); return true; }
+    case 'appaba': f.appAba = ds.v; fxPintaPrevia(); return true;
+    case 'appdia': f.dia = Number(ds.v); fxPintaPrevia(); return true;
+    case 'camadas': f.camadas = !f.camadas; fxPintaPrevia(); return true;
+    case 'dem': { f.dem = ds.v || 'todas'; f.appAba = 'checklist'; var cd = byC(state.sel); if (cd) { fxPintaChk(fxContato(cd, f.dados && f.dados.uid)); fxPintaPrevia(); } return true; }
     case 'ckTodos': case 'ckMais': { if (ds.fx === 'ckTodos') f.ckTodos = !f.ckTodos; else f.ckMais = !f.ckMais; var cm = byC(state.sel); if (cm) fxPintaChk(fxContato(cm, f.dados && f.dados.uid)); return true; }
     case 'agPrev': fxCarGo(-1); return true;
     case 'agNext': fxCarGo(1); return true;
@@ -3653,7 +3908,7 @@ function fichaClick(el) {
 function fxTecla(e) {
   var f = state.fx; if (!f || !f.ag || f.ag.pop === null) return;
   if (e.key === 'Escape') { if (e.preventDefault) e.preventDefault(); return fxFechaPop(true); }
-  if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+  if ((e.key === 'ArrowLeft' || e.key === 'ArrowRight') && typeof f.ag.pop === 'number') {
     var ae = document.activeElement; if (ae && /^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName)) return;
     if (e.preventDefault) e.preventDefault(); f.ag.pop = Math.min(Math.max(0, f.ag.pop + (e.key === 'ArrowLeft' ? -1 : 1)), f.tarefas.length - 1); return fxPintaPop();
   }
@@ -5462,14 +5717,12 @@ async function carregarLinksPagamento() {
 }
 function pagamentoHtml(c, h4) {
   var p = state.pagto;
-  return '<div class="panel" style="padding:16px" id="pag-box"><h4 style="' + h4 + '">Pagamento</h4>' +
-    '<div class="pag-linha">' +
+  return '<details class="fx-pag" id="pag-box"><summary><b>Pagamento</b><span class="sub">' + (p ? 'link enviado em ' + esc(fmtDate(p.quando)) : 'nenhum link enviado') + '</span></summary>' +
+    '<div class="fx-pag-corpo"><div class="pag-linha">' +
     (p ? '<span class="pill u-baixa" title="' + esc(p.rotulo || '') + '">Link enviado em ' + esc(fmtDate(p.quando)) + '</span><button class="btn" type="button" data-pagar="' + esc(c.id) + '">Reenviar</button>'
-      : '<button class="btn primary" type="button" data-pagar="' + esc(c.id) + '">Enviar link de pagamento</button>') +
-    '</div>' +
-    (p && p.rotulo ? '<p class="sub" style="margin:8px 0 0">' + esc(p.rotulo) + '</p>' : '') +
-    assinaturaHtml() +
-    '<p class="sub" style="margin:8px 0 0">Manda o e-mail “Link de pagamento” do Estúdio, com o Payment Link do plano. O link leva o e-mail dela e o id da ficha.</p></div>';
+      : '<button class="btn primary" type="button" data-pagar="' + esc(c.id) + '">Enviar link de pagamento</button>') + '</div>' +
+    (p && p.rotulo ? '<p class="sub" style="margin:8px 0 0">' + esc(p.rotulo) + '</p>' : '') + assinaturaHtml() +
+    '<p class="sub" style="margin:8px 0 0">Manda o e-mail “Link de pagamento” do Estúdio, com o Payment Link do plano. O link leva o e-mail dela e o id da ficha.</p></div></details>';
 }
 async function abrirLinkPagamento(cid) {
   var c = byC(cid); if (!c) return; activeCid = cid;
@@ -5533,6 +5786,16 @@ document.addEventListener('click', async function (e) {
   if (e.target.id === 'compose-backdrop') return closeCompose();
   document.querySelectorAll('details.mf-dd[open]').forEach(function (d) { if (!d.contains(e.target)) d.removeAttribute('open'); });   // a fila de hoje fecha ao clicar fora
   var t = e.target.closest('button, tr[data-id]'); if (!t) return;
+  if (t.dataset.caldia !== undefined) { state.calDia = state.calDia === t.dataset.caldia ? '' : t.dataset.caldia; return renderCalendario(); }
+  if (t.dataset.calmes) { state.calOff = (state.calOff || 0) + Number(t.dataset.calmes); return renderCalendario(); }
+  if (t.dataset.hojemais) { state.hMais = true; return renderFila(); }
+  if (t.dataset.hojeprob) { state.inbox = 'problemas'; return show('perguntas'); }
+  if (t.dataset.dosmd) return dosBaixaMd(t.dataset.dosmd);
+  if (t.dataset.dosmsg) return dosMontaMensagem(t.dataset.dosmsg, t.dataset.tipo);
+  if (t.dataset.r1) { state.fx.r1 = state.fx.r1 === t.dataset.r1 ? null : t.dataset.r1; return fxRepinta(); }
+  if (t.dataset.r1save) return r1Salvar(t.dataset.r1save);
+  if (t.dataset.pcpreencher) return pcPreencher(t.dataset.pcpreencher, false);
+  if (t.dataset.pcnotion) return pcLerNotion(t.dataset.pcnotion);
   var fxr = fichaClick(t); if (fxr !== false) return fxr;   // ficha v2 (data-fx); false = não é com ela
   if (t.dataset.fv) { state.funilVisao = t.dataset.fv; state.funilPorque = null; return renderBoard(); }
   if (t.dataset.fporque) { state.funilPorque = state.funilPorque === t.dataset.fporque ? null : t.dataset.fporque; return renderBoard(); }
@@ -5548,19 +5811,12 @@ document.addEventListener('click', async function (e) {
   if (t.matches('tr[data-id]')) return openPessoa(t.dataset.id);
   if (t.dataset.open) return openPessoa(t.dataset.open);
   if (t.dataset.caldia !== undefined) { state.calDia = state.calDia === t.dataset.caldia ? '' : t.dataset.caldia; return renderCalendario(); }
-  if (t.dataset.calmes) { state.calOff = (state.calOff || 0) + Number(t.dataset.calmes); return renderCalendario(); }
   if (t.dataset.pistaemail) { state.rascunho[t.dataset.pistaemail] = (state.rascPista || {})[t.dataset.pistaemail] || ''; return openPessoa(t.dataset.pistaemail, 'conversa'); }
-  if (t.dataset.dosmd) return dosBaixaMd(t.dataset.dosmd);
-  if (t.dataset.dosmsg) return dosMontaMensagem(t.dataset.dosmsg, t.dataset.tipo);
-  if (t.dataset.r1) { state.fx.r1 = state.fx.r1 === t.dataset.r1 ? null : t.dataset.r1; return fxRepinta(); }
-  if (t.dataset.r1save) return r1Salvar(t.dataset.r1save);
   if (t.dataset.insacao) {
     var cc0 = byC(state.sel); if (!cc0) return;
     if (t.dataset.insacao === 'dossie') { state.fx.tab = 'dossie'; return fxRepinta(); }
     state.fx.abertas.chat = true; state.fx.flash = 'chat'; return fxPintaCorpo();
   }
-  if (t.dataset.hojemais) { state.hMais = true; return renderFila(); }
-  if (t.dataset.hojeprob) { state.inbox = 'problemas'; return show('perguntas'); }
   if (t.dataset.openconv) return openPessoa(t.dataset.openconv, 'conversa');
   if (t.dataset.tplpick) return abrirModelosPicker(t.dataset.tplpick);
   if (t.dataset.tplsel) return openCompose(activeCid, t.dataset.tplsel);
@@ -5622,8 +5878,6 @@ document.addEventListener('click', async function (e) {
   }
   if (t.dataset.dossalvar) return salvarDossie(t.dataset.dossalvar, t);
   if (t.dataset.pcler) return pcLer(t.dataset.pcler, t);
-  if (t.dataset.pcpreencher) return pcPreencher(t.dataset.pcpreencher, false);
-  if (t.dataset.pcnotion) return pcLerNotion(t.dataset.pcnotion);
   if (t.dataset.pcaplicar) return pcAplicar(t.dataset.pcaplicar, t);
   if (t.dataset.pcdescartar) return pcDescartar(t.dataset.pcdescartar, t);
   if (t.dataset.pcchat) return pcChat(t.dataset.pcchat);
@@ -5746,6 +6000,7 @@ async function abrirPaginaEntrada(pg) {
 }
 document.addEventListener('change', async function (e) {
   if (e.target.id === 'st-pg-sel') return abrirPaginaEntrada(e.target.value);
+  if (e.target.id === 'pc-arq') return pcEscolheArquivo(e.target);
   if (e.target.id === 'h-cat') { state.hCat = e.target.value; state.hMais = false; return renderFila(); }
   if (e.target.id === 'h-ord') { state.hOrd = e.target.value; return renderFila(); }
   if (e.target.id === 'k-per') { state.kper = Number(e.target.value); return renderKpis(); }
@@ -5830,7 +6085,6 @@ document.addEventListener('input', function (e) {
   }
 });
 document.addEventListener('change', function (e) {
-  if (e.target.id === 'pc-arq') return pcEscolheArquivo(e.target);
   var dsx = e.target.dataset || {}, cidPc = state.sel;
   if (state.pc && state.pc.cid === cidPc && (dsx.pcsinal !== undefined || dsx.pccampo !== undefined || dsx.pcsinalprop !== undefined || dsx.pcfila !== undefined || dsx.pccamada !== undefined || dsx.pcperg !== undefined)) {
     var pcx = state.pc;
