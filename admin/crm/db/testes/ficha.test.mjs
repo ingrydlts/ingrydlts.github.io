@@ -101,7 +101,7 @@ console.log('== Task 7: sessões e preferências ==');
   check('normalizar descarta e acrescenta', FX.normalizarOrdem(['x', 'b'], ['a', 'b', 'c']).join() === 'b,a,c');
   check('normalizar lixo', FX.normalizarOrdem('lixo', ['a']).join() === 'a' && FX.normalizarOrdem(null, ['a', 'b']).join() === 'a,b');
   check('normalizar repetidos', FX.normalizarOrdem(['b', 'b', 'a'], ['a', 'b']).join() === 'b,a');
-  check('padrão das sessões da fase 1', FX.SESSOES_PADRAO.app.join() === 'chat,inicio,checklist' && FX.SESSOES_PADRAO.ela.join() === 'bilan,hist');   // o dossiê virou aba própria
+  check('padrão das sessões da fase 1', FX.SESSOES_PADRAO.app.join() === 'chat,inicio,checklist,espaco,guias,perfil' && FX.SESSOES_PADRAO.ela.join() === 'eu,bilan,trouxe,sinais,hist,mais');   // o dossiê virou aba própria; o Panorama trouxe Espaço, Guias, Perfil, Só eu, O que ela trouxe, Sinais e Mais
   // Review Focus 5: localStorage indisponível
   const bloqueado = { getItem() { throw new Error('bloqueado'); }, setItem() { throw new Error('cheio'); } };
   let ok = true, p; try { p = FX.lerPrefs(bloqueado); FX.gravarPrefs(bloqueado, { tour: false }); } catch (e) { ok = false; }
@@ -109,10 +109,10 @@ console.log('== Task 7: sessões e preferências ==');
   const mem = {}, st = { getItem: (k) => (k in mem ? mem[k] : null), setItem: (k, v) => { mem[k] = v; } };
   FX.gravarPrefs(st, { ord: { app: ['inicio', 'chat'], ela: ['hist'] }, tour: false });
   const lido = FX.lerPrefs(st);
-  check('grava e lê', lido.tour === false && lido.ord.app.join() === 'inicio,chat,checklist' && lido.ord.ela.join() === 'hist,bilan');
+  check('grava e lê', lido.tour === false && lido.ord.app.join() === 'inicio,chat,checklist,espaco,guias,perfil' && lido.ord.ela.join() === 'hist,eu,bilan,trouxe,sinais,mais');
   check('chaves do spec', 'crm_ficha_ord_v1' in mem && 'crm_ficha_tour' in mem);
   mem.crm_ficha_ord_v1 = JSON.stringify({ app: ['chat'], ela: ['hist', 'dossie', 'bilan'] });
-  check('ordem salva com o dossiê antigo: ele some, o resto fica', FX.lerPrefs(st).ord.ela.join() === 'hist,bilan');
+  check('ordem salva com o dossiê antigo: ele some, o resto fica', FX.lerPrefs(st).ord.ela.join() === 'hist,bilan,eu,trouxe,sinais,mais');
   mem.crm_ficha_ord_v1 = '{lixo'; check('JSON inválido volta ao padrão', FX.lerPrefs(st).ord === null);
   mem.crm_ficha_ord_v1 = '"texto"'; check('formato errado volta ao padrão', FX.lerPrefs(st).ord === null);
 }
@@ -125,7 +125,7 @@ console.log('== Cabeçalho fixo: tipo e cartões ==');
   check('canceled com conta cai em plataforma', FX.tipoCabecalho({ user_id: 'u' }, ass('canceled')) === 'plataforma');
   check('past_due sem conta cai em lead', FX.tipoCabecalho({}, ass('past_due')) === 'lead');
   check('sem assinatura e com conta é plataforma; sem nada é lead', FX.tipoCabecalho({ user_id: 'u' }, null) === 'plataforma' && FX.tipoCabecalho({}, null) === 'lead');
-  check('etiqueta: sem assinatura', FX.etiquetaPagamento(null).texto === 'Não assina' && FX.etiquetaPagamento(null).tom === 'neutro');
+  check('etiqueta: sem assinatura', FX.etiquetaPagamento(null).texto === 'Não assinante' && FX.etiquetaPagamento(null).tom === 'neutro');
   check('etiqueta: ativa, em teste e atraso', FX.etiquetaPagamento(ass('active')).texto === 'Assinatura ativa' && FX.etiquetaPagamento(ass('trialing')).texto === 'Em teste' && FX.etiquetaPagamento(ass('past_due')).tom === 'aviso');
   check('etiqueta: cancelada nunca diz ativa', !/ativa/.test(FX.etiquetaPagamento(ass('canceled')).texto) && FX.etiquetaPagamento(ass('canceled')).tom === 'aviso');
 

@@ -150,7 +150,8 @@ check('a aba Ficha traz o próximo e-mail e a jornada, e não mais "De onde veio
 jornadaErro = true;
 await mod.renderPessoa();
 html = el('pessoa-page').innerHTML;
-check('a ficha esconde o resto (perguntas, consentimento, Instagram, notas) em "Mais"', /<details class="mais">[\s\S]*Consentimento[\s\S]*Suas anotações[\s\S]*<\/details>/.test(html) && html.indexOf('nextmail insight') < html.indexOf('class="mais"'));
+check('a ficha esconde o resto (perguntas, consentimento, Instagram) em "Mais"; a caixa de anotações saiu', /<details class="mais">[\s\S]*Consentimento[\s\S]*<\/details>/.test(html) && !html.includes('Suas anotações') && !html.includes('id="nota"') && html.indexOf('nextmail insight') < html.indexOf('class="mais"'));
+check('a troca de e-mails (fila, modelos) mora na aba E-mail, não na Ficha', !html.includes('Troca de e-mails com ela') && !html.includes('Tudo que trocamos'));
 check('se a busca da jornada falhar, a ficha abre mesmo assim', html.includes('Jornada no funil') && html.includes('nextmail insight'));
 jornadaErro = false;
 

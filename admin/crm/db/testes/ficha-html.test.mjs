@@ -15,8 +15,9 @@ console.log('== Task 8: fila, header, abas, guia ==');
   const itens = [{ c: { id: 'c1', nome: XSS, urgencia: 'alta' }, novas: 2, proxima: 'Responder Ana', sub: 'Au pair · captação' }, { c: { id: 'c2', nome: 'Bia Lima', urgencia: 'baixa' }, novas: 0, proxima: 'Abrir a ficha' }];
   const f = FH.htmlFila(itens, 'c1', h);
   check('fila: a aberta tem aria-pressed true, a outra false', count(f, /aria-pressed="true"/g) === 1 && count(f, /aria-pressed="false"/g) === 1);
-  check('fila: novas, e o texto da próxima ação não aparece mais', f.includes('2 novas') && !f.includes('Responder Ana') && !f.includes('Au pair · captação') && !f.includes('1 nova<'));
-  check('fila: chips em uma linha, bolinha com a classe da urgência', f.includes('class="mf-i') && f.includes('mf-d alta') && f.includes('mf-d baixa') && !f.includes('fx-fcard'));
+  check('fila: cada caso mostra as novas, a ação a tomar e de onde a pessoa vem; o nome não vira HTML', f.includes('2 novas') && f.includes('Ação: Responder Ana') && f.includes('Au pair · captação') && !f.includes('1 nova<') && !f.includes('<img src=x'));
+  check('fila: dropdown com um item por pessoa, bolinha com a classe da urgência', f.includes('class="mf-dd"') && f.includes('class="mf-i') && f.includes('mf-d alta') && f.includes('mf-d baixa') && !f.includes('fx-fcard'));
+  check('fila: o resumo conta pessoas e urgentes, e há setas para a anterior e a próxima', /class="mf-conta">[^<]*pessoas/.test(f) && f.includes('class="mf-seta') && f.includes('Próxima pessoa da fila'));
   check('fila: HTML do nome sai escapado', f.includes('&lt;img') && !f.includes('<img'));
   check('fila: cartão abre a pessoa', f.includes('data-fx="pessoa"') && f.includes('data-id="c2"'));
   check('fila vazia tem mensagem', FH.htmlFila([], null, h).includes('Ninguém'));
@@ -104,6 +105,7 @@ console.log('== Task 12: sessões em pílulas ==');
   check('título com HTML escapado', ss.includes('&lt;img') && !ss.includes('<img'));
   check('a pílula sabe o grupo', /data-sessao="chat" data-area="app"/.test(ss) && /data-sessao="bilan" data-area="ela"/.test(ss));
   check('id desconhecido na ordem é ignorado', !FH.htmlSessoes({ app: ['zzz', 'chat'], ela: [] }, mapa, h).includes('zzz'));
+  check('barra "Ir para": um botão por sessão, destacando as abertas', (ss.match(/data-fx="ir"/g) || []).length === 6 && !/data-fx="ir" data-id="zzz"/.test(FH.htmlSessoes({ app: ['zzz', 'chat'], ela: [] }, mapa, h)));
   const um = FH.htmlSessao({ id: 'chat', titulo: 'T', sub: 's', corpo: '<i>C</i>', aberto: true, area: 'app', ativa: true }, h);
   check('htmlSessao solta tem o corpo e a classe ativa', um.includes('<i>C</i>') && um.includes('ativa'));
 }
@@ -128,12 +130,13 @@ console.log('== Cabeçalho fixo ==');
     nota: 'Baseado nos 300 cliques mais recentes.' };
   const hd = FH.htmlCabecalho(d, h);
   check('cabeçalho: nome com HTML sai escapado', hd.includes('&lt;img') && !hd.includes('<img') && !hd.includes('<b>x</b>') && hd.includes('&lt;b&gt;x&lt;/b&gt;'));
-  check('cabeçalho: mantém os botões e o seletor de estágio', hd.includes('data-emailfor="c1"') && hd.includes('data-open1a1="c1"') && hd.includes('id="stage-pick"'));
+  check('cabeçalho: sem botões nem seletor de estágio (só nome, pílulas e cartões)', !hd.includes('data-emailfor') && !hd.includes('data-open1a1') && !hd.includes('id="stage-pick"'));
+  check('cabeçalho: a pílula de estágio vem logo depois do nome, antes da persona', hd.indexOf('Lead') > hd.indexOf('hd-n') && hd.indexOf('Lead') < hd.indexOf('Au pair'));
   check('cabeçalho: classes dos cartões (alerta e ok) e título do bloco', hd.includes('k alerta') && hd.includes('k ok') && hd.includes('>Pagamento<') && count(hd, /class="k( |")/g) === 3);
   check('cabeçalho: nota aparece quando existe e some quando não existe', hd.includes('class="est"') && !FH.htmlCabecalho(Object.assign({}, d, { nota: null }), h).includes('class="est"'));
   check('cabeçalho: etiqueta de pagamento e persona', hd.includes('Assinatura ativa') && hd.includes('Au pair → estudante'));
   check('cabeçalho: iniciais (duas palavras, uma palavra, sem nome usa o e-mail) sem lançar', FH.htmlCabecalho({ c: { id: 'z', nome: 'Ana Souza' }, blocos: [] }, h).includes('>AS<') && FH.htmlCabecalho({ c: { id: 'z', nome: 'Clara' }, blocos: [] }, h).includes('>C<') && FH.htmlCabecalho({ c: { id: 'z', email: 'bruna@x.com' }, blocos: [] }, h).includes('>B<'));
-  check('cabeçalho: mostra No app ou Sem conta', FH.htmlCabecalho(Object.assign({}, d, { temConta: true }), h).includes('No app') && FH.htmlCabecalho(Object.assign({}, d, { temConta: false }), h).includes('Sem conta'));
+  check('cabeçalho: um selo de conta só (assinatura ou No app); lead não tem selo de conta', FH.htmlCabecalho(Object.assign({}, d, { temConta: true, etiqueta: null }), h).includes('No app') && !FH.htmlCabecalho(Object.assign({}, d, { temConta: true }), h).includes('No app') && !FH.htmlCabecalho(Object.assign({}, d, { temConta: false, etiqueta: null }), h).includes('No app') && !FH.htmlCabecalho(Object.assign({}, d, { temConta: true }), h).includes('Não assin'));
   check('cabeçalho: sem blocos não quebra', FH.htmlCabecalho({ c: { id: 'z', nome: 'Z' } }, h).includes('class="hd"'));
 }
 

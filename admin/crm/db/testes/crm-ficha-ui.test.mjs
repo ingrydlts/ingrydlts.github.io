@@ -14,6 +14,7 @@ function base(extra = {}) {
 }
 async function abre(h, c) { h.mod.setC([c]); h.mod.state.sel = c.id; h.mod.state.view = 'pessoa'; h.mod.state.ptab = null; h.mod.state.pstab = 'assistente'; await h.mod.renderPessoa(); return h.el('pessoa-page').innerHTML; }
 
+const cab = (t) => t.slice(t.indexOf('<header class="hd"'), t.indexOf('</header>'));   // só o cabeçalho da ficha
 console.log('== Task 1: chave de ligação ==');
 {
   const h = await carregarCrm({ respostas: base() });
@@ -56,7 +57,7 @@ console.log('== Task 10: ligação aos dados, abas, ações, deep link ==');
   check('renderiza fila, header, abas e carrossel', html.includes('class="fx-fila mf"') && html.includes('class="hd"') && html.includes('class="fx-abas"') && html.includes('class="fx-car"'));
   check('sem conta: abre na aba Ficha', /data-v="ficha"[^>]*aria-selected="true"/.test(html) && !/data-v="plataforma"[^>]*aria-selected="true"/.test(html));
   check('1º cartão é "Responder Ana"', /data-fx="agAbrir" data-i="0"[^>]*aria-label="Ação 1 de \d: Responder Ana\./.test(html));
-  check('a fila é uma linha de chips: a pessoa aberta está destacada e o texto da ação não repete na fila', html.includes('mf-i atual') && !/class="mf[^"]*"[^>]*>[^<]*Responder Ana/.test(html.split('class="hd"')[0].split('class="fx-fila mf"')[1] || ''));
+  check('a fila é um dropdown: resumo, a pessoa aberta destacada e, em cada caso, a ação e o motivo', html.includes('class="mf-dd"') && html.includes('mf-i atual') && html.includes('class="mf-menu"') && /class="mf-conta"/.test(html));
   {
     // só mensagem do app, sem resposta por e-mail: a fila da pessoa aberta continua igual ao 1º cartão
     const h2 = await carregarCrm({ respostas: base({ chat_mensagens: { data: [msg(2), msg(1)], error: null } }), store: { crm_ficha_v2: '1' } });
@@ -162,21 +163,21 @@ console.log('== Task 12: sessões em pílulas ==');
   const tudo = h.el('fx-corpo').innerHTML;
   check('todas as sessões abrem com os painéis existentes', tudo.includes('id="int-box"') && tudo.includes('id="bilan-box"') && tudo.includes('id="chat-box"') && tudo.includes('id="ins-box"'));
   await h.click({ fx: 'mover', id: 'chat', d: '1' });
-  check('mover troca a ordem e grava crm_ficha_ord_v1', h.mod.state.fx.ord.app.join() === 'inicio,chat,checklist' && JSON.parse(h.store.crm_ficha_ord_v1).app.join() === 'inicio,chat,checklist');
+  check('mover troca a ordem e grava crm_ficha_ord_v1', h.mod.state.fx.ord.app.join() === 'inicio,chat,checklist,espaco,guias,perfil' && JSON.parse(h.store.crm_ficha_ord_v1).app.join() === 'inicio,chat,checklist,espaco,guias,perfil');
   await h.click({ fx: 'mover', id: 'inicio', d: '-1' });
-  check('mover para cima na ponta não muda', h.mod.state.fx.ord.app.join() === 'inicio,chat,checklist');
+  check('mover para cima na ponta não muda', h.mod.state.fx.ord.app.join() === 'inicio,chat,checklist,espaco,guias,perfil');
   // arrastar
   const ev = (g, s) => ({ target: { closest: (sel) => (sel === '.fx-grab' ? g : sel === '.fx-sess' ? s : null) }, dataTransfer: { setData() {} }, preventDefault() {} });
   const chamar = async (tipo, e) => { for (const fn of h.handlers[tipo] || []) await fn(e); };
   await chamar('dragstart', ev({ dataset: { area: 'app', id: 'inicio' } }, null));
   await chamar('drop', ev(null, { dataset: { area: 'app', sessao: 'checklist' } }));
-  check('arrastar para baixo cai depois do alvo', h.mod.state.fx.ord.app.join() === 'chat,checklist,inicio');
+  check('arrastar para baixo cai depois do alvo', h.mod.state.fx.ord.app.join() === 'chat,checklist,inicio,espaco,guias,perfil');
   await chamar('dragstart', ev({ dataset: { area: 'app', id: 'inicio' } }, null));
   await chamar('drop', ev(null, { dataset: { area: 'app', sessao: 'chat' } }));
-  check('arrastar para cima cai antes do alvo', h.mod.state.fx.ord.app.join() === 'inicio,chat,checklist');
+  check('arrastar para cima cai antes do alvo', h.mod.state.fx.ord.app.join() === 'inicio,chat,checklist,espaco,guias,perfil');
   await chamar('dragstart', ev({ dataset: { area: 'app', id: 'chat' } }, null));
   await chamar('drop', ev(null, { dataset: { area: 'ela', sessao: 'bilan' } }));
-  check('arrastar para outro grupo é ignorado', h.mod.state.fx.ord.app.join() === 'inicio,chat,checklist' && h.mod.state.fx.ord.ela.join() === 'bilan,hist' && h.mod.state.fx.drag === null);
+  check('arrastar para outro grupo é ignorado', h.mod.state.fx.ord.app.join() === 'inicio,chat,checklist,espaco,guias,perfil' && h.mod.state.fx.ord.ela.join() === 'eu,bilan,trouxe,sinais,hist,mais' && h.mod.state.fx.drag === null);
   h.mod.pararAoVivo();
   // preferência salva volta ao abrir de novo; preferência inválida volta ao padrão
   h = await mk({ crm_ficha_ord_v1: JSON.stringify({ app: ['checklist', 'chat'], ela: ['hist'] }) });
@@ -191,10 +192,34 @@ console.log('== Task 12: sessões em pílulas ==');
   const hb = await carregarCrm({ respostas: base({ 'contatos:one': { data: { dossie: {}, user_id: 'u1' }, error: null } }), search: '?ficha=2', storageBloqueado: true });
   let lancou = false;
   try { await abre(hb, pessoa({ user_id: 'u1' })); await hb.click({ fx: 'mover', id: 'chat', d: '1' }); await hb.click({ fx: 'tourFechar' }); } catch (e) { lancou = true; }
-  check('com localStorage bloqueado nada lança e a ordem muda na tela', !lancou && hb.mod.state.fx.ord.app.join() === 'inicio,chat,checklist' && hb.el('pessoa-page').innerHTML.includes('id="ficha-v2"'));
+  check('com localStorage bloqueado nada lança e a ordem muda na tela', !lancou && hb.mod.state.fx.ord.app.join() === 'inicio,chat,checklist,espaco,guias,perfil' && hb.el('pessoa-page').innerHTML.includes('id="ficha-v2"'));
   hb.mod.pararAoVivo();
 }
 
+console.log('== Aviso no alto da ficha: o motivo e o que fazer ==');
+{
+  const resp = base({ 'contatos:one': { data: { dossie: {}, user_id: null }, error: null }, emails_enviados: { data: [], error: null } });
+  const h = await carregarCrm({ respostas: resp, store: { crm_ficha_v2: '1' } });
+  let pg = await abre(h, pessoa({ motivo: 'prazo do VLS-TS vence em 6 dias (21/11/2026)', urgencia: 'alta', estagio: 'lead' }));
+  check('com motivo: o aviso aparece logo abaixo do cabeçalho, antes das ações', pg.includes('id="fx-aviso-box"') && pg.includes('aviso aviso-alta') && pg.includes('prazo do VLS-TS vence em 6 dias') && pg.indexOf('fx-head-box') < pg.indexOf('aviso aviso-alta') && pg.indexOf('aviso aviso-alta') < pg.indexOf('fx-acoes-box'));
+  check('o aviso diz o que fazer e traz o botão da ação e o Marcar 1:1', pg.includes('O que fazer:') && /class="btn primary"[^>]*data-(openconv|emailfor)=/.test(pg.slice(pg.indexOf('aviso aviso-alta'))) && pg.slice(pg.indexOf('aviso aviso-alta')).includes('data-open1a1='));
+  pg = await abre(h, pessoa({ motivo: null, urgencia: 'baixa' }));
+  check('sem motivo, não há aviso', !pg.includes('aviso aviso-'));
+  pg = await abre(h, pessoa({ motivo: 'parada há 9 dias', urgencia: 'media', estagio: 'concluido' }));
+  check('pessoa concluída não mostra aviso', !pg.includes('aviso aviso-'));
+}
+
+
+console.log('== Cabeçalho: 1:1, plataforma, dossiê e prazo à vista ==');
+{
+  const agora = Date.now(), iso = (dias) => new Date(agora + dias * 864e5).toISOString();
+  const h = await carregarCrm({ store: { crm_ficha_v2: '1' }, respostas: base({ 'contatos:one': { data: { dossie: {}, user_id: 'u9' }, error: null } }) });
+  let html = await abre(h, pessoa({ user_id: 'u9', ultimo_evento_em: iso(-1), prazo_limite: '2026-12-01', dias_para_prazo: 12, urgencia: 'alta' }));
+  check('cabeçalho: sem botões (Escrever mensagem, Marcar 1:1, seletor de estágio), só nome, pílulas e cartões', !cab(html).includes('data-emailfor') && !cab(html).includes('data-open1a1') && !cab(html).includes('id="stage-pick"'));
+  check('cabeçalho: a pílula de estágio vem logo depois do nome, antes da persona', cab(html).indexOf('Lead') > cab(html).indexOf('hd-n') && cab(html).indexOf('Lead') < cab(html).indexOf('Au pair'));
+  check('cabeçalho: conta no app sem assinatura mostra só "No app" (nada de Não assinante)', cab(html).includes('No app') && !cab(html).includes('Não assinante'));
+  h.mod.pararAoVivo();
+}
 console.log('== Task 13: abas Ficha e Conversa ==');
 {
   const mailX = { id: 9, modelo: 'x', status: 'enviado', criado_em: new Date().toISOString(), enviado_em: new Date().toISOString(), assunto: 'Oi' };
@@ -209,7 +234,7 @@ console.log('== Task 13: abas Ficha e Conversa ==');
   let pg = h.el('pessoa-page').innerHTML;
   check('Ficha, etapa 2: passo 1 destacado', /data-passo="1"[^>]*aria-current="step"/.test(pg) && (pg.match(/aria-current="step"/g) || []).length === 2);   // 1 do fluxo + 1 do funil
   check('Ficha: painéis existentes de jornada e e-mails', pg.includes('class="fx-ficha3"') && pg.includes('Tudo que ela fez') && /Jornada|jornada/.test(pg) && pg.includes('Quem é ela'));
-  check('Ficha: perguntas, consentimento, Instagram e anotações seguem na ficha', pg.includes('Consentimento') && pg.includes('id="ig-handle"') && pg.includes('id="nota"'));
+  check('Ficha: perguntas, consentimento e Instagram seguem na ficha; a caixa de anotações saiu e a troca de e-mails mora na aba E-mail', pg.includes('Consentimento') && pg.includes('id="ig-handle"') && !pg.includes('id="nota"') && !pg.includes('Troca de e-mails com ela'));
   check('Ficha não traz o Checklist nem as sessões', !pg.includes('data-sessao='));
   h.mod.pararAoVivo();
   h = await comEtapa(4); await h.click({ fx: 'tab', v: 'ficha' });
@@ -219,7 +244,7 @@ console.log('== Task 13: abas Ficha e Conversa ==');
   check('Ficha, etapa 7: passo 3 destacado', /data-passo="3"[^>]*aria-current="step"/.test(h.el('pessoa-page').innerHTML));
   await h.click({ fx: 'tab', v: 'conversa' });
   pg = h.el('pessoa-page').innerHTML;
-  check('Conversa reaproveita o painel de e-mail', pg.includes('id="conv-send"') && pg.includes('id="conv-txt"') && !pg.includes('data-sessao='));
+  check('A aba E-mail traz a conversa, a fila e o pop-up de modelos, sem anotações', pg.includes('id="conv-send"') && pg.includes('id="conv-txt"') && !pg.includes('data-sessao=') && pg.includes('Próximo na fila') && pg.includes('data-tplpick=') && pg.includes('Caminho de e-mail desta pessoa') && !pg.includes('id="nota"') && !/aria-selected="[a-z]+"[^>]*>Conversa/.test(pg));
   // sem o checklist carregado: skeleton, não erro
   h.mod.state.dos.chk = null; await h.click({ fx: 'tab', v: 'plataforma' });
   pg = h.el('pessoa-page').innerHTML;
@@ -275,16 +300,16 @@ console.log('== Cabeçalho fixo por tipo de pessoa ==');
     'assinaturas:one': { data: assinatura, error: null } }) });
   let h = await montar(null, null);
   let html = await abre(h, pessoa({ user_id: null, dias_sem_sinal: 6 }));
-  check('lead: tem Parada há e Próximo e-mail, e não tem uso nem pagamento', html.includes('Parada há') && html.includes('Próximo e-mail') && !html.includes('Cliques por sessão') && !html.includes('class="tag">Pagamento<') && html.includes('Não assina'));
+  check('lead (sem conta): cartões de lead, sem cartão de Plataforma nem selo de conta', !cab(html).includes('No app') && !cab(html).includes('Não assinante') && !html.includes('class="l">Plataforma<'));
   h.mod.pararAoVivo();
   h = await montar('u1', { status: 'active', plano: 'Intermediário', periodo_fim: new Date(agora + 5 * 864e5).toISOString(), cancela_no_fim: false, criado_em: iso(95) });
-  html = await abre(h, pessoa({ user_id: 'u1' }));
-  check('assinante: Pagamento, Plano, Assinatura ativa e o uso (sessões e cliques por sessão)', html.includes('class="tag">Pagamento<') && html.includes('Intermediário') && html.includes('Assinatura ativa') && html.includes('Sessões') && html.includes('Cliques por sessão') && html.includes('Duração (estimada)'));
-  check('assinante: 3 sessões de 4 cliques → 4 cliques por sessão; nota sobre LTV', html.includes('>4<') && html.includes('LTV'));
+  html = await abre(h, pessoa({ user_id: 'u1', ultimo_evento_em: iso(2) }));
+  check('assinante: um selo de conta só, Assinatura ativa, sem "No app" junto', cab(html).includes('Assinatura ativa') && !cab(html).includes('No app') && !cab(html).includes('Não assinante'));
+  check('assinante: o cabeçalho não traz mais a nota sobre LTV nem os cartões de uso', !html.includes('LTV') && !html.includes('Duração (estimada)'));
   h.mod.pararAoVivo();
   h = await montar('u2', null);
   html = await abre(h, pessoa({ user_id: 'u2' }));
-  check('na plataforma sem assinar: Não assina, Sessões e sem bloco Pagamento', html.includes('Não assina') && html.includes('Sessões') && !html.includes('class="tag">Pagamento<'));
+  check('na plataforma sem assinar: só "No app", sem "Não assinante" e sem bloco Pagamento', cab(html).includes('No app') && !cab(html).includes('Não assinante') && !html.includes('class="tag">Pagamento<'));
   h.mod.pararAoVivo();
   h = await montar('u3', { status: 'canceled', plano: 'Básico', periodo_fim: iso(1), cancela_no_fim: false, criado_em: iso(200) });
   html = await abre(h, pessoa({ user_id: 'u3' }));
@@ -292,7 +317,7 @@ console.log('== Cabeçalho fixo por tipo de pessoa ==');
   h.mod.pararAoVivo();
   h = await montar(null, null);
   html = await abre(h, pessoa({ user_id: null, nome: '<img src=x onerror=alert(1)>', dias_sem_sinal: null }));
-  check('nome com HTML sai escapado no cabeçalho e na fila; sem dias_sem_sinal mostra traço', !html.includes('<img src=x') && html.includes('&lt;img') && html.includes('sem atividade registrada'));
+  check('nome com HTML sai escapado no cabeçalho e na fila', !html.includes('<img src=x') && html.includes('&lt;img'));
   h.mod.pararAoVivo();
 }
 

@@ -61,6 +61,9 @@ const doInsert = () => chamadas.filter((c) => /\/rest\/v1\/pos_call_propostas$/.
 
 const iaOk = (input, uso = { input_tokens: 2000, output_tokens: 400 }) => ({ body: { content: [{ type: 'tool_use', name: 'registrar_pos_call', id: 't1', input }], usage: uso } });
 const PROP_OK = {
+  resumo: 'Au pair recém-chegada que quer a área de cinema. Ficou combinado revisar o calendário da L1.',
+  proximos_passos: ['Ingryd: mandar o guia da L1', 'Ela: reunir o diploma do ensino médio'],
+  pontos_de_atencao: ['Janela de candidatura fecha em dezembro.'],
   mapa_da_call: [{ titulo: 'Por que a França', resumo: 'Ela explica por que quer estudar cinema aqui.', tema: 'outro' }, { titulo: 'Como entrar na L1', resumo: 'Calendário e DAP verte.', tema: 'dap_verte' }],
   perguntas_para_ela: [{ texto: 'Você tem o diploma do ensino médio em PDF ou em papel?', motivo: 'A call não fechou isso.', campo: 'ensino_medio_ano' }, { texto: 'Qual é o fim do seu contrato de au pair?', motivo: 'Só se falou em "8 meses".' }],
   campos: { ensino_medio_ano: { valor: 2018, confianca: 'alta', trecho: 'terminei em 2018' }, formacao_alvo: { valor: 'l1_universidade', confianca: 'media', trecho: 'quero fazer cinema' },
@@ -207,6 +210,44 @@ fakeFetch([...adminOk, contatoOk, vocabOk, [/\/pos_call_propostas\?select=/, () 
   [/\/rest\/v1\/pos_call_propostas$/, { method: 'POST', status: 409, body: { code: '23505' } }], [/api\.anthropic\.com/, iaOk(PROP_OK)]]);
 r = await ler(corpoOk()); j = await r.json();
 check('duas leituras ao mesmo tempo: a segunda recebe a proposta que entrou primeiro', r.status === 200 && j.reutilizada === true && j.id === 9);
+
+console.log('\n== Resumo, próximos passos e pontos de atenção ==');
+check('o schema pede resumo, próximos passos e pontos de atenção', ['resumo', 'proximos_passos', 'pontos_de_atencao'].every((k) => schema.required.includes(k)) && schema.properties.proximos_passos.maxItems === 8);
+check('o prompt explica os três campos', /"resumo": 3 a 5 frases/.test(sis) && /"Ingryd:" ou "Ela:"/.test(sis) && /pontos_de_atencao/.test(sis));
+v = crmPosValidar(PROP_OK, VOCAB);
+check('a proposta validada guarda resumo, próximos passos e pontos de atenção', v.ok && /Au pair/.test(v.proposta.resumo) && v.proposta.proximos_passos.length === 2 && v.proposta.pontos_de_atencao[0] === 'Janela de candidatura fecha em dezembro.');
+v = crmPosValidar({ ...PROP_OK, resumo: undefined, proximos_passos: undefined, pontos_de_atencao: undefined }, VOCAB);
+check('propostas antigas, sem esses campos, continuam válidas (vazios)', v.ok && v.proposta.resumo === '' && v.proposta.proximos_passos.length === 0);
+v = crmPosValidar({ ...PROP_OK, proximos_passos: new Array(9).fill('x') }, VOCAB);
+check('mais de 8 próximos passos é recusado', !v.ok);
+v = crmPosValidar({ ...PROP_OK, resumo: 42 }, VOCAB);
+check('resumo que não é texto é recusado', !v.ok);
+
+console.log('\n== Arquivo da ligação (PDF, imagem) ==');
+const PDF = new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2d, 0x31, 0x2e, 0x34, 0x0a, 1, 2, 3]);
+const TXT = new Uint8Array([104, 105, 104, 105]);
+function lerArquivo(bytes) {
+  const f = new FormData(); f.set('contato_id', CID);
+  f.set('arquivo', new Blob([bytes], { type: 'application/octet-stream' }), 'ligacao.pdf');
+  return worker.fetch(new Request('https://w.example/api/crm/pos-call/ler', { method: 'POST', headers: { Authorization: 'Bearer ' + TOKEN }, body: f }), env, {});
+}
+let ra, ja;
+chamadas = []; fakeFetch(base([/api\.anthropic\.com/, iaOk(PROP_OK)]));
+ra = await lerArquivo(PDF); ja = await ra.json();
+const msgPdf = doAnthropic()[0] && doAnthropic()[0].body.messages[0].content;
+check('PDF sem texto colado: lê e devolve a proposta', ra.status === 200 && ja.ok === true && doAnthropic().length === 1);
+check('o PDF vai para a IA como documento, antes do pedido em texto', Array.isArray(msgPdf) && msgPdf[0].type === 'document' && msgPdf[0].source.media_type === 'application/pdf' && msgPdf[1].type === 'text' && /arquivo acima/.test(msgPdf[1].text));
+const hashA = doInsert()[0].body.hash_entrada;
+chamadas = []; fakeFetch(base([/api\.anthropic\.com/, iaOk(PROP_OK)]));
+ra = await lerArquivo(TXT);
+check('arquivo que não é PDF, JPG nem PNG: 415 e a IA não é chamada', ra.status === 415 && (await ra.json()).codigo === 'tipo_invalido' && doAnthropic().length === 0);
+chamadas = []; fakeFetch(base([/api\.anthropic\.com/, iaOk(PROP_OK)]));
+await lerArquivo(new Uint8Array([...PDF, 9]));
+check('arquivo diferente = hash diferente (a leitura roda de novo)', doInsert()[0].body.hash_entrada !== hashA);
+chamadas = []; fakeFetch(base([/api\.anthropic\.com/, iaOk(PROP_OK)]));
+const f2 = new FormData(); f2.set('contato_id', CID); f2.set('transcricao', 'curto');
+ra = await worker.fetch(new Request('https://w.example/api/crm/pos-call/ler', { method: 'POST', headers: { Authorization: 'Bearer ' + TOKEN }, body: f2 }), env, {});
+check('sem arquivo e com texto curto: continua pedindo a transcrição', ra.status === 400 && (await ra.json()).codigo === 'sem_transcricao');
 
 console.log(`\n${passed} passaram, ${failed} falharam.`);
 process.exit(failed ? 1 : 0);

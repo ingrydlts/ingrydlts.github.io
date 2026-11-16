@@ -59,7 +59,8 @@ declare
   k_texto text[] := array['telefone', 'cidade', 'maior_preocupacao', 'faixa_idade', 'nivel_frances', 'profissao_regulamentada',
     'numero_secu', 'comprovante_endereco', 'conta_anef', 'certificado_frances', 'certificado_frances_qual', 'ano_au_pair', 'intencao_au_pair', 'trilha_estudo',
     'cfNivel', 'cfEscolaAno', 'cfTeste', 'cfPrazoCursoTem',
-    'formacao_alvo', 'grupo_area', 'frances_gargalo', 'area_interesse'];
+    'formacao_alvo', 'grupo_area', 'frances_gargalo', 'area_interesse',
+    'etapa_i01', 'etapa_i02', 'etapa_i03', 'etapa_i04', 'etapa_i05'];
   k_longo text[] := array['ligacao_resumo', 'ligacao_transcricao', 'proximos_passos'];
   k_data text[] := array['data_chegada', 'contrato_fim', 'documento_vencimento', 'data_prova_frances_master', 'cfPrazoCurso', 'ligacao_data'];
   k_bool text[] := array['moradia_resolvida', 'conta_resolvida', 'securite_resolvida', 'tem_certificado_matricula',
