@@ -11,7 +11,9 @@ function check(label, cond) { if (cond) passed++; else { failed++; console.log('
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
 
 const PROP = () => ({
-  bilan: { resumo: 'x', afirmacoes: [] },
+  bilan: { resumo: 'Ela quer estudar francês e decidir como falar com a escola.', afirmacoes: [
+    { texto: 'Ligar para a escola em vez de escrever', quem: 'ingryd', momento: '20:05', trecho: 'tu peux les appeler', certeza: 'literal', vezes_dito: 3 },
+    { texto: 'Escrever um e-mail para a escola', quem: 'incerto', momento: '31:40', trecho: 'on peut aussi écrire', certeza: 'inferido', vezes_dito: 1 }] },
   encaminhamentos: [
     { chave: 'ligar_escola', texto: 'Ligar para a escola', camada: 'particular', dono: 'ela', prazo: '2026-11-30', prazo_texto: '', origem: { momento: '20:05', trecho: 'tu peux les appeler' }, certeza: 'literal', cobre: [] },
     { chave: 'mandar_guia', texto: 'Enviar o guia de escolas', camada: 'entrega_equipe', dono: 'ingryd', prazo: null, prazo_texto: '', origem: { momento: '45:10', trecho: 'je t\'envoie' }, certeza: 'literal', cobre: [0] },
@@ -35,7 +37,12 @@ check('a pendência de compromisso não cumprido aparece à parte, com o trecho 
 check('item sem fonte ou de certeza "confirmar" fica marcado a conferir; com fonte, não', itens.find((i) => i.k === 'chk:dossie_empresa:cv_fr').aConferir === true && itens.find((i) => i.k === 'chk:dossie_empresa:carta').aConferir === false && itens.find((i) => i.k === 'enc:compromisso_2').aConferir === true);
 check('o momento e o trecho da conversa acompanham o item (para você conferir de onde veio)', itens.find((i) => i.k === 'enc:ligar_escola').momento === '20:05' && itens.find((i) => i.k === 'enc:ligar_escola').trecho === 'tu peux les appeler');
 check('o singular e o plural dos itens da lista ficam certos (2 itens, 1 item)', itens.find((i) => i.k === 'lista:dossie_empresa').detalhe.startsWith('2 itens') && MT.itensDaProposta({ checklists: [{ chave: 'a', titulo: 'A', origem: 'modelo', itens: [{ chave: 'x', titulo: 'X' }] }] }).find((i) => i.k === 'lista:a').detalhe.startsWith('1 item '));
+check('a fonte do item (rótulo, nível e o LINK) aparece na revisão: o link que a IA citou nunca fica escondido', /https:\/\/exemplo\.org\/guia/.test(itens.find((i) => i.k === 'chk:dossie_empresa:carta').detalhe) && /institucional/.test(itens.find((i) => i.k === 'chk:dossie_empresa:carta').detalhe));
+check('o link do contato também aparece (a pessoa recebe "Abrir o site": você precisa ver para onde ele vai)', /https:\/\/acme\.example/.test(itens.find((i) => i.k === 'bloco:empresa:acme').detalhe));
 check('proposta vazia ou estranha não quebra', MT.itensDaProposta({}).length === 0 && MT.itensDaProposta(null).length === 0);
+
+console.log('\n== O que ficou da conversa ==');
+check('promessas que só um item cumpria e foi desmarcado são avisadas (a pendência não nasce sozinha)', JSON.stringify(MT.promessasAfetadas(PROP(), { 'enc:mandar_guia': false })) === JSON.stringify(['Enviar o guia']) && MT.promessasAfetadas(PROP(), {}).length === 0);
 
 console.log('\n== O que vai para o banco ==');
 let d = MT.decisoesDe(itens, {}, {});
@@ -49,6 +56,7 @@ check('lista e todos os itens dela desmarcados: a lista fica rejeitada', d.find(
 check('motivo desconhecido é descartado (o banco só aceita a lista fechada)', MT.decisoesDe(itens, { 'enc:mandar_guia': false }, { 'enc:mandar_guia': 'porque_sim' }).find((x) => x.origem_chave === 'enc:mandar_guia').motivo === undefined);
 
 console.log('\n== O painel ==');
+const pubOk = { ha_rascunho_aprovado: true, itens_prontos: 6, itens_proposta: 2, itens_a_conferir: 1, conta_ja_existe: false, tem_assinatura: false, a_conferir_itens: [{ id: 41, titulo: 'Montar o CV em francês' }] };
 const base = { cid: 'c1', estado: 'vazio', erro: '', prop: null, sel: {}, motivos: {}, res: null, pub: null, previa: null, pode: false, forcar: false, msg: '', temTranscricao: true };
 const c = pessoa();
 let h = MT.painelHtml(base, c, esc);
@@ -64,14 +72,22 @@ check('proposta: um checkbox por item, marcados, com o trecho e o momento da con
 check('item a conferir tem o rótulo escrito "a conferir" (não só cor) e a explicação de que não vai para ela', /a conferir/.test(h) && /não vai para ela/.test(h));
 check('desmarcado mostra o seletor de motivo; marcado não', /data-montmotivo="enc:mandar_guia"/.test(MT.painelHtml({ ...comProp, sel: { 'enc:mandar_guia': false } }, c, esc)) && !/data-montmotivo/.test(h));
 check('botões: criar rascunhos (com a contagem) e descartar', /data-montaplicar="c1"/.test(h) && /10/.test(h.match(/data-montaplicar[^<]*</)[0]) && /data-montdescartar="c1"/.test(h));
+check('o bilan aparece: resumo e cada afirmação com quem disse, o momento, o trecho, a certeza e quantas vezes foi dita', /decidir como falar com a escola/.test(h) && /dito 3 vezes/.test(h) && /31:40/.test(h) && /incerto/.test(h) && /on peut aussi écrire/.test(h) && /inferido/.test(h));
+check('as DUAS posições da conversa (ligar × escrever) aparecem lado a lado', /Ligar para a escola em vez de escrever/.test(h) && /Escrever um e-mail para a escola/.test(h));
+check('os compromissos da chamada aparecem; o que nenhum item cobre vem escrito "sem item"', /Mandar o link da gravação/.test(h) && /sem item/.test(h) && /coberto/.test(h));
+check('desmarcar o item que cumpre uma promessa mostra o aviso com a promessa', /cumpre uma promessa da chamada/.test(MT.painelHtml({ ...comProp, sel: { 'enc:mandar_guia': false } }, c, esc)) && /Enviar o guia/.test(MT.painelHtml({ ...comProp, sel: { 'enc:mandar_guia': false } }, c, esc)));
+check('a comparação com a leitura anterior mostra o que sai (sugestão: nada é apagado) e o que já foi tratado', /Saiu da proposta nova/.test(MT.painelHtml({ ...comProp, diff: { novos: [], mantidos: [], conflitos: ['doc:diploma'], retirar_sugerido: ['bloco:escola:alliance'] } }, c, esc)) && /bloco:escola:alliance/.test(MT.painelHtml({ ...comProp, diff: { novos: [], mantidos: [], conflitos: ['doc:diploma'], retirar_sugerido: ['bloco:escola:alliance'] } }, c, esc)) && /não é apagado/.test(MT.painelHtml({ ...comProp, diff: { novos: [], mantidos: [], conflitos: [], retirar_sugerido: ['x'] } }, c, esc)));
 check('versão da leitura aparece (v2)', /versão 2/.test(h) || /v2/.test(h));
 h = MT.painelHtml({ ...comProp, prop: { id: 5, versao: 1, proposta: { ...PROP(), encaminhamentos: [{ ...PROP().encaminhamentos[0], texto: '<img src=x onerror=alert(1)>' }] } } }, c, esc);
 check('texto vindo da IA é escapado (nada de HTML solto na tela)', !/<img src=x/.test(h) && /&lt;img src=x/.test(h));
 h = MT.painelHtml({ ...base, estado: 'aplicado', res: { criados: 8, atualizados: 1, mantidos: 0, rejeitados: 1, conflitos: ['doc:diploma'] } }, c, esc);
+h = MT.painelHtml({ ...base, estado: 'aplicado', res: { criados: 8, atualizados: 0, mantidos: 0, rejeitados: 0, conflitos: [] }, pub: pubOk }, c, esc);
+check('aplicado: botão "Liberar para ela" (a sua aprovação) e os itens a conferir, cada um com "Conferi a fonte"', /data-montliberar="c1"/.test(h) && /Liberar para ela/.test(h) && /data-montconferido="41"/.test(h) && /Conferi a fonte/.test(h) && /Montar o CV em francês/.test(h));
+check('depois de liberar: diz quantos foram liberados, que os a conferir ficaram de fora e quando ela vê', /3 liberados/.test(MT.painelHtml({ ...base, estado: 'aplicado', res: { criados: 8, conflitos: [] }, lib: { liberados: 3, a_conferir_pulados: 1, publicados_agora: false } }, c, esc)) && /quando aceitar/.test(MT.painelHtml({ ...base, estado: 'aplicado', res: { criados: 8, conflitos: [] }, lib: { liberados: 3, a_conferir_pulados: 1, publicados_agora: false } }, c, esc)) && /já estão no espaço dela/.test(MT.painelHtml({ ...base, estado: 'aplicado', res: { criados: 8, conflitos: [] }, lib: { liberados: 3, a_conferir_pulados: 0, publicados_agora: true } }, c, esc)));
+h = MT.painelHtml({ ...base, estado: 'aplicado', res: { criados: 8, atualizados: 1, mantidos: 0, rejeitados: 1, conflitos: ['doc:diploma'] } }, c, esc);
 check('aplicado: resumo (criados, atualizados, rejeitados) e os conflitos explicados', /8 criados/.test(h) && /1 atualizado/.test(h) && /1 rejeitado/.test(h) && /doc:diploma/.test(h) && /já revisou ou ela já fez/.test(h));
 
 console.log('\n== O acesso dela (convite e aviso) ==');
-const pubOk = { ha_rascunho_aprovado: true, itens_prontos: 6, itens_proposta: 2, itens_a_conferir: 1, conta_ja_existe: false };
 h = MT.painelHtml({ ...base, pub: pubOk }, c, esc);
 check('mostra quantos itens ela veria e quantos ficam de fora por falta de fonte', /6 itens prontos/.test(h) && /1 a conferir/.test(h));
 check('sem conta: oferece o convite (teste de 7 dias); com a prévia, e só habilita "Enviar" depois da prévia e do "pode enviar"', /data-montprevia="convite"/.test(h) && /7 dias/.test(h) && /data-montenviar="convite"[^>]*disabled/.test(h));
@@ -82,26 +98,32 @@ h = MT.painelHtml({ ...base, pub: pubOk, previa: prev, pode: true }, c, esc);
 check('com a prévia e o "pode enviar" marcado, o envio liga', /data-montpode[^>]*checked/.test(h) && !/data-montenviar="convite"[^>]*disabled/.test(h));
 h = MT.painelHtml({ ...base, pub: { ...pubOk, ha_rascunho_aprovado: false, itens_prontos: 0 }, previa: prev, pode: true }, c, esc);
 check('sem nada revisado: avisa que o espaço dela estaria vazio e só envia se você marcar "enviar assim mesmo"', /espaço dela estaria vazio/.test(h) && /data-montforcar/.test(h) && /data-montenviar="convite"[^>]*disabled/.test(h) && !/data-montenviar="convite"[^>]*disabled/.test(MT.painelHtml({ ...base, pub: { ...pubOk, ha_rascunho_aprovado: false }, previa: prev, pode: true, forcar: true }, c, esc)));
-h = MT.painelHtml({ ...base, pub: { ...pubOk, conta_ja_existe: true } }, c, esc);
-check('quem já tem conta: o caminho é avisar que o espaço mudou (e-mail com o seu "pode enviar"), não um novo convite', /data-montprevia="espaco"/.test(h) && /Ela já tem conta/.test(h) && !/data-montprevia="convite"/.test(h));
+h = MT.painelHtml({ ...base, pub: { ...pubOk, conta_ja_existe: true, tem_assinatura: true } }, c, esc);
+check('quem já tem conta e acesso: o caminho é avisar que o espaço mudou (e-mail com o seu "pode enviar"), não um novo convite', /data-montprevia="espaco"/.test(h) && /Ela já tem conta/.test(h) && !/data-montprevia="convite"/.test(h));
+h = MT.painelHtml({ ...base, pub: { ...pubOk, conta_ja_existe: true, tem_assinatura: false } }, c, esc);
+check('conta sem teste nem plano (veio do funil): oferece o CONVITE (abre o teste de 7 dias), com a explicação', /data-montprevia="convite"/.test(h) && /ainda não tem teste/.test(h) && !/data-montprevia="espaco"/.test(h));
 check('mensagem de resultado aparece com role=status', /role="status"[^>]*><b>Convite enviado/.test(MT.painelHtml({ ...base, pub: pubOk, msg: 'Convite enviado.' }, c, esc)));
 
 console.log('\n== crm.js: ler, aplicar, convite ==');
 const rpcResp = {
   crm_montagem_aplicar: { data: { criados: 9, atualizados: 0, mantidos: 0, rejeitados: 1, conflitos: [] }, error: null },
   crm_montagem_publicavel: { data: pubOk, error: null },
-  crm_montagem_descartar: { data: null, error: null }
+  crm_montagem_descartar: { data: null, error: null },
+  crm_montagem_diff: { data: { novos: [], mantidos: [], conflitos: ['doc:diploma'], retirar_sugerido: ['bloco:escola:alliance'] }, error: null },
+  crm_montagem_liberar: { data: { liberados: 4, a_conferir_pulados: 1, publicados_agora: false }, error: null },
+  crm_acao_conferida: { data: null, error: null }
 };
 const chamadas = [];
 let respostaWorker = (url) => ({ ok: true, status: 200, json: async () => ({ ok: true, id: 5, versao: 1, proposta: PROP() }) });
 const fetch = async (url, opt) => { chamadas.push({ url: String(url), opt }); return respostaWorker(String(url), opt); };
-const { mod, rpcs } = await carregarCrm({ sessao: { access_token: 'tok-admin' }, fetch, rpcResp, expor: ['montEstado', 'montLer', 'montMarca', 'montAplicar', 'montDescartar', 'montPub', 'montPrevia', 'montEnviar', 'montHtml'] });
+const { mod, rpcs } = await carregarCrm({ sessao: { access_token: 'tok-admin' }, fetch, rpcResp, expor: ['montLiberar', 'montConferido', 'montEstado', 'montLer', 'montMarca', 'montAplicar', 'montDescartar', 'montPub', 'montPrevia', 'montEnviar', 'montHtml'] });
 mod.setC([pessoa({ id: 'c1' })]);
 mod.state.sel = 'c1'; mod.state.dos = { cid: 'c1', d: {}, rasc: { ligacao_transcricao: 'Ela contou que o PVT termina em fevereiro. '.repeat(10), ligacao_resumo: 'Resumo da call.' } };
 check('crm.js expõe o painel (montHtml) dentro de um #mont-box', typeof mod.montHtml === 'function' && /id="mont-box"/.test(mod.montHtml(pessoa({ id: 'c1' }))) && /data-montler="c1"/.test(mod.montHtml(pessoa({ id: 'c1' }))));
 await mod.montLer('c1', { disabled: false });
 const lido = chamadas.find((x) => /\/api\/crm\/montagem\/ler$/.test(x.url));
 check('ler: chama o Worker com o token de quem está logada, o contato e a transcrição do Dossiê (o mesmo texto do Pós-call)', lido && lido.opt.method === 'POST' && lido.opt.headers.Authorization === 'Bearer tok-admin' && JSON.parse(lido.opt.body).contato_id === 'c1' && /PVT termina/.test(JSON.parse(lido.opt.body).transcricao) && JSON.parse(lido.opt.body).notas === 'Resumo da call.');
+check('ao ler, compara com o que já existe (crm_montagem_diff) para sugerir o que retirar', rpcs.some((r) => r.n === 'crm_montagem_diff' && r.a.p_montagem === 5) && mod.montEstado('c1').diff.retirar_sugerido[0] === 'bloco:escola:alliance');
 check('depois de ler: estado "proposta", com a proposta guardada e nada aplicado ainda', mod.montEstado('c1').estado === 'proposta' && mod.montEstado('c1').prop.id === 5 && !rpcs.some((r) => r.n === 'crm_montagem_aplicar'));
 mod.montMarca('c1', 'enc:mandar_guia', false);
 mod.montMarca('c1', 'enc:mandar_guia', false, 'excecao');
@@ -109,6 +131,11 @@ await mod.montAplicar('c1', { disabled: false });
 const ap = rpcs.find((r) => r.n === 'crm_montagem_aplicar');
 check('aplicar: manda ao banco o contato, a montagem e as decisões (o item desmarcado vai como rejeitado, com o motivo)', ap && ap.a.p_contato === 'c1' && ap.a.p_montagem === 5 && ap.a.p_decisoes.length === 10 && ap.a.p_decisoes.find((x) => x.origem_chave === 'enc:mandar_guia').decisao === 'rejeitar' && ap.a.p_decisoes.find((x) => x.origem_chave === 'enc:mandar_guia').motivo === 'excecao');
 check('depois de aplicar: estado "aplicado", resumo guardado e a situação do acesso é consultada', mod.montEstado('c1').estado === 'aplicado' && mod.montEstado('c1').res.criados === 9 && rpcs.some((r) => r.n === 'crm_montagem_publicavel') && mod.montEstado('c1').pub.itens_prontos === 6);
+
+await mod.montLiberar('c1', { disabled: false });
+check('liberar: chama crm_montagem_liberar com o contato e a montagem, guarda o resultado e atualiza a situação do acesso', rpcs.some((r) => r.n === 'crm_montagem_liberar' && r.a.p_contato === 'c1' && r.a.p_montagem === 5) && mod.montEstado('c1').lib.liberados === 4 && rpcs.filter((r) => r.n === 'crm_montagem_publicavel').length >= 2);
+await mod.montConferido('c1', 41);
+check('"Conferi a fonte": chama crm_acao_conferida com o id do passo e atualiza a lista', rpcs.some((r) => r.n === 'crm_acao_conferida' && r.a.p_id === 41));
 
 chamadas.length = 0;
 respostaWorker = () => ({ ok: true, status: 200, json: async () => ({ ok: true, enviado: false, para: 'ana@example.com', assunto: 'Ana, o seu espaço está pronto', texto: 'Oi Ana! https://x/entrar/?t=abc' }) });

@@ -66,6 +66,7 @@ let v = crmMontagemValidar(OK(), CAT);
 check('proposta certa passa', v.ok);
 check('as duas posições da conversa chegam, com o momento de cada uma', v.ok && v.montagem.bilan.afirmacoes.length === 2 && v.montagem.bilan.afirmacoes[0].vezes_dito === 3 && v.montagem.bilan.afirmacoes[1].momento === '31:40');
 check('item de checklist sem fonte fica a_conferir; com fonte, não', v.ok && v.montagem.checklists[0].itens[0].a_conferir === true && v.montagem.checklists[0].itens[1].a_conferir === false);
+check('fonte que não é oficial nem institucional (fórum, privada, sem nível) NÃO tira a marca a_conferir', (() => { const o = OK(); o.checklists[0].itens[1].nivel = 'forum'; const r1 = crmMontagemValidar(o, CAT); delete o.checklists[0].itens[1].nivel; const r2 = crmMontagemValidar(o, CAT); o.checklists[0].itens[1].nivel = 'oficial'; const r3 = crmMontagemValidar(o, CAT); return r1.montagem.checklists[0].itens[1].a_conferir === true && r2.montagem.checklists[0].itens[1].a_conferir === true && r3.montagem.checklists[0].itens[1].a_conferir === false; })());
 check('afirmação sem trecho vira certeza "confirmar", nunca fato', (() => { const o = OK(); o.bilan.afirmacoes[0].trecho = ''; const r = crmMontagemValidar(o, CAT); return r.ok && r.montagem.bilan.afirmacoes[0].certeza === 'confirmar'; })());
 check('quem não informado vira "incerto"', (() => { const o = OK(); delete o.bilan.afirmacoes[0].quem; const r = crmMontagemValidar(o, CAT); return r.ok && r.montagem.bilan.afirmacoes[0].quem === 'incerto'; })());
 check('quem com valor fora de ingryd/pessoa/incerto derruba tudo', falha((o) => { o.bilan.afirmacoes[0].quem = 'maria'; }));
@@ -89,6 +90,7 @@ console.log('\n== O que foi prometido na chamada e sumiu do plano ==');
 check('compromisso que nenhum item cobre vira pendência para a equipe, com o trecho', v.ok && v.montagem.omissoes.length === 1 && v.montagem.omissoes[0].dono === 'ingryd' && v.montagem.omissoes[0].camada === 'entrega_equipe' && v.montagem.omissoes[0].origem.trecho === 'je te mande le lien' && v.montagem.omissoes[0].certeza === 'confirmar');
 check('compromisso coberto por um item não vira pendência', (() => { const o = OK(); o.documentos[0].cobre = [1]; return crmMontagemValidar(o, CAT).montagem.omissoes.length === 0; })());
 check('item que cobre um compromisso que não existe derruba tudo', falha((o) => { o.encaminhamentos[0].cobre = [9]; }));
+check('a chave da pendência não depende da posição do compromisso (uma promessa nova não colide com a antiga)', (() => { const a = OK(); const b = OK(); b.compromissos = [{ texto: 'Mandar o contrato da escola', momento: '10:00', trecho: 'je te mande le contrat' }].concat(b.compromissos); b.encaminhamentos[1].cobre = [1]; const ra = crmMontagemValidar(a, CAT).montagem.omissoes, rb = crmMontagemValidar(b, CAT).montagem.omissoes; const ka = ra.map((x) => x.chave), kb = rb.map((x) => x.chave); return ka.length === 1 && kb.length === 2 && kb.includes(ka[0]) && ka[0] !== kb.find((k) => k !== ka[0]) && /^compromisso_[0-9a-f]{6}$/.test(ka[0]); })());
 check('crmMontagemOmissoes é pura: a mesma entrada dá a mesma saída', JSON.stringify(crmMontagemOmissoes(OK())) === JSON.stringify(crmMontagemOmissoes(OK())));
 
 console.log('\n== A rota ==');
@@ -137,6 +139,7 @@ let j = await r.json();
 check('leitura certa: 200 com a proposta validada, o id e o custo', r.status === 200 && j.ok === true && j.id === 5 && j.proposta.checklists.length === 1 && j.custo_usd > 0);
 check('a IA é chamada uma vez, com a ferramenta registrar_montagem, e a transcrição vai dentro de uma tag de dado', doAnthropic().length === 1 && doAnthropic()[0].body.tools[0].name === 'registrar_montagem' && /<transcricao>/.test(doAnthropic()[0].body.messages[0].content));
 const ins = doInsert()[0];
+check('a IA é OBRIGADA a chamar a ferramenta (sem isso, 2 leituras pagas podem voltar sem proposta)', JSON.stringify(doAnthropic()[0].body.tool_choice) === JSON.stringify({ type: 'tool', name: 'registrar_montagem' }));
 check('grava a proposta como pendente (o banco não recebe estado do Worker além do padrão), com hash e sem a transcrição', ins && !('estado' in ins.body) && /^[0-9a-f]{64}$/.test(ins.body.hash_entrada) && !JSON.stringify(ins.body).includes('Ignore as regras') && ins.body.contato_id === CID);
 
 chamadas = []; fakeFetch(base([/api\.anthropic\.com/, iaOk(OK())]).map((x) => (x[0].source.includes('montagens\\?select=') ? [x[0], { method: 'GET', body: [{ id: 9, proposta: OK(), custo_usd: 0.01, criado_em: '2026-11-16T10:00:00Z' }] }] : x)));

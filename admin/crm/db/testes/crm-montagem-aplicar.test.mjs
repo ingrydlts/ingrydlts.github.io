@@ -130,6 +130,25 @@ async function main() {
   await aplicar(ana, m5, [{ origem_chave: 'bloco:escola:alliance', decisao: 'aprovar' }]);
   check('aplicar a troca de novo não duplica a escola', (await q("select 1 from board_itens where contato_id=$1 and origem_chave='bloco:escola:alliance'", [ana.c])).length === 1);
 
+
+  console.log('\n== Liberar para ela (a sua aprovação do rascunho) ==');
+  const pL = PROP(), mL = await montagem(bia, pL);
+  await db.query("insert into consentimentos (contato_id, finalidade, aceito) values ($1, 'servico', false)", [bia.c]);
+  await aplicar(bia, mL, aprovarTudo(pL));
+  const lib = (p, m) => asUser(admin.id, () => um('select crm_montagem_liberar($1, $2) r', [p.c, m.id])).then((x) => x.r);
+  const rl = await lib(bia, mL);
+  check('liberar: itens do espaço e a lista passam a "revisado" (sem consentimento ainda não publicam) e os passos com fonte ficam publicados', rl.publicados_agora === false && (await um("select estado from board_itens where contato_id=$1 and origem_chave='doc:diploma'", [bia.c])).estado === 'revisado' && (await um("select estado from caso_listas where contato_id=$1 and chave='dossie_empresa'", [bia.c])).estado === 'revisado' && (await um("select publicada_em is not null p from caso_acoes where contato_id=$1 and origem_chave='enc:ligar_escola'", [bia.c])).p === true);
+  check('o que está a_conferir NÃO é liberado e é contado', rl.a_conferir_pulados >= 2 && (await um("select publicada_em is null p from caso_acoes where contato_id=$1 and origem_chave='chk:dossie_empresa:cv_fr'", [bia.c])).p === true);
+  check('a montagem vira "publicada"', (await um('select estado from montagens where id=$1', [mL.id])).estado === 'publicada');
+  const idCvB = (await um("select id from caso_acoes where contato_id=$1 and origem_chave='chk:dossie_empresa:cv_fr'", [bia.c])).id;
+  await asUser(admin.id, () => db.query('select crm_acao_conferida($1)', [idCvB]));
+  check('"Conferi a fonte" tira a marca a_conferir e registra o evento; depois o passo pode ser publicado', (await um('select a_conferir from caso_acoes where id=$1', [idCvB])).a_conferir === false && (await um("select count(*)::int n from eventos where contato_id=$1 and tipo='montagem_item_conferido'", [bia.c])).n === 1 && (await attempt(() => db.query('update caso_acoes set publicada_em = now() where id=$1', [idCvB]))).ok);
+  check('só admin libera ou confere; anônimo não executa', await falha(() => asUser(bia.u.id, () => db.query('select crm_montagem_liberar($1,$2)', [bia.c, mL.id])), 'sem_permissao') && await falha(() => asUser(bia.u.id, () => db.query('select crm_acao_conferida($1)', [idCvB])), 'sem_permissao') && !(await attempt(() => asAnon(() => db.query('select crm_acao_conferida($1)', [idCvB])))).ok);
+  await db.query("insert into consentimentos (contato_id, finalidade, aceito) values ($1, 'servico', true)", [bia.c]);
+  const pL2 = PROP(); pL2.documentos[0].rotulo = 'Diploma (v2)'; const mL2 = await montagem(bia, pL2);
+  check('liberar de novo, já com consentimento: publica de verdade o que está revisado da montagem', (await lib(bia, mL)).publicados_agora === true && (await um("select estado from board_itens where contato_id=$1 and origem_chave='doc:diploma'", [bia.c])).estado === 'publicado' && (await um("select estado from caso_listas where contato_id=$1 and chave='dossie_empresa'", [bia.c])).estado === 'publicado');
+  check('montagem descartada não pode ser aplicada', await (async () => { await asUser(admin.id, () => db.query('select crm_montagem_descartar($1)', [mL2.id])); return falha(() => aplicar(bia, mL2, aprovarTudo(pL2)), 'montagem_descartada'); })());
+
   console.log('\n== Acesso ==');
   check('quem não é admin não aplica nem vê o diff; a montagem de outra pessoa não vale', await falha(() => asUser(ana.u.id, () => db.query('select crm_montagem_aplicar($1,$2,$3::jsonb)', [ana.c, m5.id, '[]'])), 'sem_permissao') && await falha(() => asUser(ana.u.id, () => db.query('select crm_montagem_diff($1,$2)', [ana.c, m5.id])), 'sem_permissao') && await falha(() => aplicar(bia, m5, []), 'montagem_nao_encontrada'));
   check('anônimo não executa nenhuma das duas', !(await attempt(() => asAnon(() => db.query('select crm_montagem_diff($1,$2)', [ana.c, m5.id])))).ok && !(await attempt(() => asAnon(() => db.query('select crm_montagem_aplicar($1,$2,$3::jsonb)', [ana.c, m5.id, '[]'])))).ok);

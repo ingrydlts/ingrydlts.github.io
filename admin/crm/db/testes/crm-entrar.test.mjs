@@ -54,9 +54,10 @@ async function main() {
   check('dias fora de 1 a 30, consentimento sem texto e contato inexistente são recusados', await falha(() => registrar(cBia, 0), 'dias_invalidos') && await falha(() => registrar(cBia, 31), 'dias_invalidos') && await falha(() => registrar(cBia, null), 'dias_invalidos') && await falha(() => registrar(cBia, 7, 'v', 'curto'), 'consentimento_invalido') && await falha(() => registrar('00000000-0000-4000-8000-000000000000'), 'contato_nao_encontrado'));
 
   console.log('\n== O aceite: consentimento + teste de 7 dias ==');
-  await item(cBia, 'documento', 'Documento revisado', { rotulo: 'x' }); await db.query("update board_itens set estado='revisado' where contato_id=$1", [cBia]);
+  await item(cBia, 'documento', 'Documento revisado', { rotulo: 'x' }); await db.query("update board_itens set estado='revisado', origem_chave='doc:diploma' where contato_id=$1", [cBia]);
+  await item(cBia, 'bilan', 'Bilan editado pela metade', {}); await db.query("update board_itens set estado='revisado' where contato_id=$1 and tipo='bilan'", [cBia]);
   await item(cBia, 'escola', 'Escola ainda proposta', {});
-  await um("insert into caso_listas (contato_id, chave, titulo) values ($1,'dossie','Dossiê') returning id", [cBia]); await db.query("update caso_listas set estado='revisado' where contato_id=$1", [cBia]);
+  await um("insert into caso_listas (contato_id, chave, titulo, origem_chave) values ($1,'dossie','Dossiê','lista:dossie') returning id", [cBia]); await db.query("update caso_listas set estado='revisado' where contato_id=$1", [cBia]);
   const r = await registrar(cBia);
   check('devolve o fim do teste (7 dias) e que não havia assinatura', r.ja_tinha_assinatura === false && r.status === 'trialing' && Math.abs((new Date(r.fim_teste) - Date.now()) / 86400000 - 7) < 0.1);
   const cons = await um("select * from consentimentos where contato_id=$1 and finalidade='servico' order by id desc limit 1", [cBia]);
@@ -64,6 +65,7 @@ async function main() {
   const ass = await um('select * from assinaturas where contato_id=$1', [cBia]);
   check('nasce a assinatura de teste, sem Stripe', ass.status === 'trialing' && ass.stripe_subscription_id === null && ass.plano === 'Teste do 1:1');
   check('o evento convite_aceito entra na linha do tempo', (await um("select count(*)::int n from eventos where contato_id=$1 and tipo='convite_aceito'", [cBia])).n === 1);
+  check('o que veio da montagem e foi liberado (revisado) é publicado no aceite; um Bilan que ela só editou, não', (await um("select estado from board_itens where contato_id=$1 and tipo='bilan'", [cBia])).estado === 'revisado');
   check('o que a equipe já revisou (documento, lista) é publicado agora que há consentimento; o que ainda é proposta não', (await um("select estado from board_itens where contato_id=$1 and titulo='Documento revisado'", [cBia])).estado === 'publicado' && (await um("select estado from board_itens where contato_id=$1 and titulo='Escola ainda proposta'", [cBia])).estado === 'proposto' && (await um("select estado from caso_listas where contato_id=$1", [cBia])).estado === 'publicado');
 
   console.log('\n== Acesso por 7 dias, depois bloqueio ==');
@@ -93,7 +95,9 @@ async function main() {
   await db.query("insert into caso_acoes (contato_id, titulo, dono, canal, passo_chave, a_conferir) values ($1,'Passo sem fonte','ela','plataforma','p2', true)", [cDan]);
   p = await pub(cDan);
   check('revisado e passo publicado contam como pronto; o item sem fonte aparece como a conferir', p.ha_rascunho_aprovado === true && p.itens_prontos === 2 && p.itens_a_conferir === 1);
-  check('conta_ja_existe é verdadeiro para quem já tem conta ligada à ficha (Ana)', (await pub(cAna)).conta_ja_existe === true);
+  check('conta_ja_existe é verdadeiro para quem já tem conta ligada à ficha (Ana), e tem_assinatura diz se ela já tem teste ou plano', (await pub(cAna)).conta_ja_existe === true && (await pub(cAna)).tem_assinatura === true && p.tem_assinatura === false);
+  await db.query("insert into caso_acoes (contato_id, titulo, dono, canal, passo_chave, a_conferir) values ($1,'Passo a conferir','ela','plataforma','p3', true)", [cDan]);
+  check('a lista de itens a conferir vem com o id e o título (para o botão "Conferi a fonte")', (await pub(cDan)).a_conferir_itens.some((x) => x.titulo === 'Passo a conferir' && Number.isInteger(x.id)));
   check('só admin consulta; anônimo não executa', await falha(() => asUser(uAna.id, () => db.query('select crm_montagem_publicavel($1)', [cDan])), 'sem_permissao') && !(await attempt(() => asAnon(() => db.query('select crm_montagem_publicavel($1)', [cDan])))).ok);
 
   console.log('\n== Eventos do convite (só os permitidos) ==');

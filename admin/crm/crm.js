@@ -3070,7 +3070,8 @@ async function montLer(cid, t) {
   try {
     var r = await montWorker('/api/crm/montagem/ler', { contato_id: cid, transcricao: tr.texto, notas: tr.notas });
     if (!r.ok || !r.j.proposta) throw new Error(r.j.error || 'A leitura falhou (' + r.status + ').');
-    m.prop = { id: r.j.id, versao: r.j.versao, proposta: r.j.proposta, reutilizada: !!r.j.reutilizada }; m.sel = {}; m.motivos = {}; m.res = null; m.previa = null; m.estado = 'proposta';
+    m.prop = { id: r.j.id, versao: r.j.versao, proposta: r.j.proposta, reutilizada: !!r.j.reutilizada }; m.sel = {}; m.motivos = {}; m.res = null; m.lib = null; m.previa = null; m.estado = 'proposta';
+    var df = await supabase.rpc('crm_montagem_diff', { p_contato: cid, p_montagem: r.j.id }); m.diff = df.error ? null : df.data;   // o que já existe da leitura anterior
   } catch (e) { m.estado = 'vazio'; m.erro = e && e.message ? e.message : 'A leitura falhou.'; }
   pintaMont(cid);
 }
@@ -3093,6 +3094,21 @@ async function montAplicar(cid, t) {
   m.res = r.data || {}; m.estado = 'aplicado'; m.msg = '';
   await montPub(cid);
   if (state.sel === cid && state.caso) casoRecarrega();
+}
+async function montLiberar(cid, t) {
+  var m = montEstado(cid); if (!m.prop) return;
+  m.erro = '';
+  var r = await supabase.rpc('crm_montagem_liberar', { p_contato: cid, p_montagem: m.prop.id });
+  if (r.error) { m.erro = 'Não consegui liberar: ' + (r.error.message || 'tente de novo'); return pintaMont(cid); }
+  m.lib = r.data || {};
+  await montPub(cid);
+  if (state.sel === cid && state.caso) casoRecarrega();
+}
+async function montConferido(cid, id) {
+  var m = montEstado(cid), r = await supabase.rpc('crm_acao_conferida', { p_id: Number(id) });
+  if (r.error) { m.erro = 'Não consegui marcar como conferido: ' + (r.error.message || 'tente de novo'); return pintaMont(cid); }
+  toast('Marcado como conferido. Libere de novo para ela ver.');
+  await montPub(cid);
 }
 async function montDescartar(cid, t) {
   var m = montEstado(cid); if (!m.prop) return;
@@ -6100,6 +6116,8 @@ document.addEventListener('click', async function (e) {
   if (t.dataset.montaplicar) return montAplicar(t.dataset.montaplicar, t);
   if (t.dataset.montdescartar) return montDescartar(t.dataset.montdescartar, t);
   if (t.dataset.montpub) return montPub(t.dataset.montpub);
+  if (t.dataset.montliberar) return montLiberar(t.dataset.montliberar, t);
+  if (t.dataset.montconferido) return montConferido(state.sel, t.dataset.montconferido);
   if (t.dataset.montprevia) return montPrevia(state.sel, t.dataset.montprevia);
   if (t.dataset.montenviar) return montEnviar(state.sel, t.dataset.montenviar, t);
   if (t.dataset.pcaplicar) return pcAplicar(t.dataset.pcaplicar, t);

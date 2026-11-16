@@ -26,8 +26,9 @@ begin
   insert into consentimentos (contato_id, finalidade, aceito, versao, texto, origem) values (p_contato, 'servico', true, p_versao, p_texto, 'entrar');
 
   -- Agora que há consentimento, o que a equipe já revisou chega ao espaço dela (o gatilho confere o consentimento de novo).
-  update board_itens set estado = 'publicado' where contato_id = p_contato and estado = 'revisado';
-  update caso_listas set estado = 'publicado' where contato_id = p_contato and estado = 'revisado';
+  -- Só o que veio da montagem e você liberou: um Bilan ou modelo que você só editou (revisado) não vai sozinho.
+  update board_itens set estado = 'publicado' where contato_id = p_contato and estado = 'revisado' and origem_chave ~ '^(doc|bloco):';
+  update caso_listas set estado = 'publicado' where contato_id = p_contato and estado = 'revisado' and origem_chave ~ '^lista:';
 
   select * into a from assinaturas where contato_id = p_contato;
   if found then
@@ -54,7 +55,7 @@ language plpgsql security definer stable
 set search_path = public, pg_temp
 as $$
 declare
-  v_prontos int; v_proposta int; v_conf int; v_conta boolean;
+  v_prontos int; v_proposta int; v_conf int; v_conta boolean; v_ass boolean; v_itens jsonb;
 begin
   if not public.eh_admin() then raise exception 'sem_permissao'; end if;
   select (select count(*) from board_itens where contato_id = p_contato and estado in ('revisado', 'publicado'))
@@ -66,7 +67,10 @@ begin
     into v_proposta;
   select count(*) into v_conf from caso_acoes where contato_id = p_contato and a_conferir;
   select exists (select 1 from contatos c join auth.users u on u.id = c.user_id where c.id = p_contato and u.email_confirmed_at is not null) into v_conta;
-  return jsonb_build_object('ha_rascunho_aprovado', v_prontos > 0, 'itens_prontos', v_prontos, 'itens_proposta', v_proposta, 'itens_a_conferir', v_conf, 'conta_ja_existe', v_conta);
+  select exists (select 1 from assinaturas where contato_id = p_contato) into v_ass;
+  select coalesce(jsonb_agg(jsonb_build_object('id', t.id, 'titulo', t.titulo) order by t.id), '[]'::jsonb) into v_itens
+    from (select id, titulo from caso_acoes where contato_id = p_contato and a_conferir order by id limit 20) t;
+  return jsonb_build_object('ha_rascunho_aprovado', v_prontos > 0, 'itens_prontos', v_prontos, 'itens_proposta', v_proposta, 'itens_a_conferir', v_conf, 'conta_ja_existe', v_conta, 'tem_assinatura', v_ass, 'a_conferir_itens', v_itens);
 end;
 $$;
 revoke all on function public.crm_montagem_publicavel(uuid) from public;

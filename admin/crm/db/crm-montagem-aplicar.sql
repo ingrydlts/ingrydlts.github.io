@@ -74,6 +74,7 @@ begin
   if p_decisoes is null or jsonb_typeof(p_decisoes) <> 'array' then raise exception 'decisoes_invalidas'; end if;
   select * into m from montagens where id = p_montagem and contato_id = p_contato for update;
   if not found then raise exception 'montagem_nao_encontrada'; end if;
+  if m.estado = 'descartada' then raise exception 'montagem_descartada'; end if;
 
   -- Valida tudo antes de escrever qualquer coisa (e a ordem: lista, encaminhamento, item de lista, documento, bloco, pergunta).
   for dec in select * from jsonb_array_elements(p_decisoes) loop
@@ -210,3 +211,63 @@ $$;
 revoke all on function public.crm_montagem_diff(uuid, bigint) from public;
 revoke all on function public.crm_montagem_diff(uuid, bigint) from anon;
 grant execute on function public.crm_montagem_diff(uuid, bigint) to authenticated;
+
+-- ---------- Liberar para ela ----------
+-- A sua aprovação do rascunho. Itens do espaço e listas desta montagem passam de "proposto" a "revisado"; os passos dela (com fonte) ficam
+-- publicados. Se ela já deu o consentimento "servico", o que está revisado é publicado agora; se não, fica revisado e o aceite do convite
+-- publica (crm_entrar_registrar). O que está a_conferir NÃO é liberado: só depois de "Conferi a fonte" (crm_acao_conferida).
+-- Só mexe em itens que vieram desta montagem (origem_chave) e que ainda estão como rascunho: o que você já tratou à mão não muda.
+create or replace function public.crm_montagem_liberar(p_contato uuid, p_montagem bigint) returns jsonb
+language plpgsql security definer
+set search_path = public, pg_temp
+as $$
+declare
+  m montagens%rowtype;
+  v_chaves text[]; v_lib int := 0; v_n int; v_conf int; v_cons boolean;
+begin
+  if not public.eh_admin() then raise exception 'sem_permissao'; end if;
+  select * into m from montagens where id = p_montagem and contato_id = p_contato for update;
+  if not found then raise exception 'montagem_nao_encontrada'; end if;
+  if m.estado = 'descartada' then raise exception 'montagem_descartada'; end if;
+  select array_agg(x.k) into v_chaves from montagem_itens(m.proposta) x;
+  v_chaves := coalesce(v_chaves, '{}');
+
+  update board_itens set estado = 'revisado' where contato_id = p_contato and estado = 'proposto' and origem_chave = any (v_chaves);
+  get diagnostics v_n = row_count; v_lib := v_lib + v_n;
+  update caso_listas set estado = 'revisado' where contato_id = p_contato and estado = 'proposto' and origem_chave = any (v_chaves);
+  get diagnostics v_n = row_count; v_lib := v_lib + v_n;
+  update caso_acoes set publicada_em = now()
+   where contato_id = p_contato and origem_chave = any (v_chaves) and publicada_em is null and estado = 'aberta' and not a_conferir and dono = 'ela' and canal = 'plataforma';
+  get diagnostics v_n = row_count; v_lib := v_lib + v_n;
+  select count(*) into v_conf from caso_acoes where contato_id = p_contato and origem_chave = any (v_chaves) and a_conferir and publicada_em is null;
+
+  v_cons := public.caso_tem_consentimento(p_contato);
+  if v_cons then
+    update board_itens set estado = 'publicado' where contato_id = p_contato and estado = 'revisado' and origem_chave = any (v_chaves);
+    update caso_listas set estado = 'publicado' where contato_id = p_contato and estado = 'revisado' and origem_chave = any (v_chaves);
+  end if;
+  update montagens set estado = 'publicada' where id = m.id;
+  insert into eventos (contato_id, tipo, dados) values (p_contato, 'montagem_liberada', jsonb_build_object('montagem_id', m.id, 'liberados', v_lib, 'a_conferir', v_conf, 'publicados_agora', v_cons));
+  return jsonb_build_object('liberados', v_lib, 'a_conferir_pulados', v_conf, 'publicados_agora', v_cons);
+end;
+$$;
+revoke all on function public.crm_montagem_liberar(uuid, bigint) from public;
+revoke all on function public.crm_montagem_liberar(uuid, bigint) from anon;
+grant execute on function public.crm_montagem_liberar(uuid, bigint) to authenticated;
+
+-- "Conferi a fonte": tira a marca a_conferir de um passo. Depois disso ele pode ser publicado (ou liberado de novo).
+create or replace function public.crm_acao_conferida(p_id bigint) returns void
+language plpgsql security definer
+set search_path = public, pg_temp
+as $$
+declare v_c uuid;
+begin
+  if not public.eh_admin() then raise exception 'sem_permissao'; end if;
+  update caso_acoes set a_conferir = false where id = p_id and a_conferir returning contato_id into v_c;
+  if v_c is null then raise exception 'acao_nao_encontrada'; end if;
+  insert into eventos (contato_id, tipo, dados) values (v_c, 'montagem_item_conferido', jsonb_build_object('acao_id', p_id));
+end;
+$$;
+revoke all on function public.crm_acao_conferida(bigint) from public;
+revoke all on function public.crm_acao_conferida(bigint) from anon;
+grant execute on function public.crm_acao_conferida(bigint) to authenticated;
