@@ -156,7 +156,7 @@ function propostaHtml(m, c, esc) {
     var lst = itens.filter(function (i) { return i.grupo === g; });
     if (!lst.length) return;
     var marc = lst.filter(function (i) { return m.sel[i.k] === undefined ? true : !!m.sel[i.k]; }).length, conf = lst.filter(function (i) { return i.aConferir; }).length;
-    h += gaveta(m, g.toLowerCase().replace(/[^a-z0-9]+/g, '-'), esc(g) + ' · ' + lst.length, marc + ' marcados' + (conf ? ' · ' + conf + ' a conferir' : ''), '<ul class="mont-lista">' + lst.map(function (i) { return itemHtml(i, m, esc); }).join('') + '</ul>', false);
+    h += gaveta(m, g.toLowerCase().replace(/[^a-z0-9]+/g, '-'), esc(g) + ' · ' + lst.length, marc + (marc === 1 ? ' marcado' : ' marcados') + (conf ? ' · ' + conf + ' a conferir' : ''), '<ul class="mont-lista">' + lst.map(function (i) { return itemHtml(i, m, esc); }).join('') + '</ul>', false);
   });
   if (!itens.length) h += '<p class="sub">A conversa não trouxe nada para montar. Cole uma transcrição mais completa ou monte à mão na aba Caso.</p>';
   // Uma aprovação só: os itens marcados já entram no Checklist, nos Avisos e no Espaço dela (nada de segunda etapa em outra sessão).
