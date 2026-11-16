@@ -61,7 +61,9 @@
     "test:ficha": "node ficha.test.mjs",
     "test:ficha-html": "node ficha-html.test.mjs",
     "test:ficha-ui": "node crm-ficha-ui.test.mjs",
-    "test:ficha-sync": "node ficha-sync.test.mjs"
+    "test:ficha-sync": "node ficha-sync.test.mjs",
+    "test:panorama": "node panorama.test.mjs",
+    "test:retrabalho-ui": "node crm-retrabalho-ui.test.mjs"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.8"
