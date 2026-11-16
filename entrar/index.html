@@ -208,7 +208,7 @@ function carregar() {
     CTX = c;
     if (c.ja_tem_conta) return estado('ja');
     $('en-titulo').textContent = c.nome ? c.nome + ', o seu espaço está pronto' : 'O seu espaço está pronto';
-    $('en-sub').textContent = 'Montei o seu espaço com o que combinamos na nossa conversa. Para entrar, leia e aceite abaixo: você ganha ' + c.dias + ' dias para testar a plataforma, sem precisar de cartão.';
+    $('en-sub').textContent = 'Montei o seu espaço com o que combinamos na nossa conversa. Para entrar, leia e aceite abaixo: você ganha ' + c.dias + ' dias para testar a plataforma.';
     $('en-texto').textContent = c.texto;
     $('en-aceito').checked = false; $('en-botao').disabled = true; mostrarErro('');
     estado('aceite');
