@@ -1566,6 +1566,11 @@ button.bar-r b{text-align:right; font-variant-numeric:tabular-nums}
 .pn-d .hist{list-style:none; margin:6px 0 0; padding:0}
 .pn-d .hist li{display:flex; flex-wrap:wrap; gap:6px 8px; align-items:center; padding:8px 0; border-top:1px solid var(--line); font-size:13.5px}
 .pn-d .hist li:first-child{border-top:0}
+.termo{padding:10px 0; border-top:1px solid var(--line)}
+.termo:first-child{border-top:0}
+.termo-h{display:flex; flex-wrap:wrap; gap:6px 8px; align-items:center; margin-bottom:6px; font-size:14px}
+.termo .bar-t{display:block}
+.termo .nota{margin:6px 0 0}
 .pn-d .hist time{margin-left:auto; font-size:11.5px; color:var(--ink-2)}
 .pn-priv{margin-top:14px; padding:10px 12px; border-radius:8px; background:var(--beige-soft); color:var(--beige-ink); font-size:12.5px; line-height:1.5}
 .fx-zonas{display:flex; flex-direction:column; gap:8px; margin-top:16px}

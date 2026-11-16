@@ -163,5 +163,50 @@ chamadas = []; fakeFetch(base([/api\.anthropic\.com/, { status: 400, body: { typ
 r = await ler(corpoOk()); j = await r.json();
 check('400 por falta de créditos continua com a mensagem de créditos', j.codigo === 'creditos_ia');
 
+console.log('\n== Panorama da pessoa (o retrato de como ela está) ==');
+const PAN = () => ({ leitura: 'Ansiosa com prazo e dinheiro, mas decidida a estudar francês.',
+  termometros: [{ chave: 'angustia', nivel: 3, porque: 'Voltou ao prazo do visto três vezes', momento: '12:30' }, { chave: 'duvida', nivel: 2, porque: 'Não sabe se liga ou escreve', momento: '20:05' }],
+  temas: [{ tema: 'Visto', peso: 3, nota: 'Prazo do PVT pesa mais que o resto', momento: '12:30' }, { tema: 'Dinheiro', peso: 2, nota: 'Quer parcelar a matrícula', momento: '33:10' }],
+  palavras: [{ palavra: 'parcelamento', vezes: 4 }, { palavra: 'prazo', vezes: 6 }],
+  acoes: [{ texto: 'Ligar para a escola esta semana', dono: 'ela', momento: '20:05' }, { texto: 'Mandar o guia de escolas', dono: 'ingryd', momento: '45:10' }],
+  maneiras: [{ chave: 'quer_passo_a_passo', momento: '08:00' }, { chave: 'adia_burocracia', momento: '15:20' }],
+  hipoteses: [{ texto: 'Provavelmente trava no telefone', evidencia: 'Evitou ligar duas vezes', confirmar: 'Ver se concluiu o passo Ligar', momento: '20:05' }] });
+const comPan = (mut) => { const o = OK(); o.panorama = PAN(); if (mut) mut(o.panorama); return o; };
+const falhaP = (mut) => !crmMontagemValidar(comPan(mut), CAT).ok;
+check('o schema pede o panorama, com vocabulário fechado de termômetros, temas e maneiras', schema.required.includes('panorama') && JSON.stringify(schema.properties.panorama.properties.termometros.items.properties.chave.enum) === JSON.stringify(['angustia', 'duvida', 'urgencia', 'confianca', 'autonomia']) && schema.properties.panorama.properties.temas.items.properties.tema.enum.includes('Visto') && schema.properties.panorama.properties.maneiras.items.properties.chave.enum.includes('prefere_ligar'));
+check('o prompt explica o panorama, manda não citar o que ela disse e consolidar as conversas', /panorama/i.test(sis) && /nunca cite|sem citar/i.test(sis) && /todas as conversas/i.test(sis));
+const vp = crmMontagemValidar(comPan(), CAT);
+check('panorama certo passa e chega inteiro', vp.ok && vp.montagem.panorama.termometros.length === 2 && vp.montagem.panorama.temas[0].tema === 'Visto' && vp.montagem.panorama.hipoteses[0].confirmar.length > 0 && vp.montagem.panorama.maneiras[1].chave === 'adia_burocracia');
+check('proposta sem panorama (antigas) passa com panorama vazio', v.ok && v.montagem.panorama && v.montagem.panorama.termometros.length === 0 && v.montagem.panorama.leitura === '');
+check('termômetro com chave fora da lista derruba tudo', falhaP((p) => { p.termometros[0].chave = 'raiva'; }));
+check('nível de termômetro fora de 0 a 4 derruba tudo', falhaP((p) => { p.termometros[0].nivel = 5; }) && falhaP((p) => { p.termometros[0].nivel = 1.5; }));
+check('termômetro repetido derruba tudo', falhaP((p) => { p.termometros[1].chave = 'angustia'; }));
+check('tema fora da lista, peso fora de 1 a 3 e maneira inventada derrubam tudo', falhaP((p) => { p.temas[0].tema = 'Futebol'; }) && falhaP((p) => { p.temas[0].peso = 4; }) && falhaP((p) => { p.maneiras[0].chave = 'mal_humorada'; }));
+check('dono da ação precisa ser ela ou ingryd', falhaP((p) => { p.acoes[0].dono = 'maria'; }));
+check('palavra com espaço ou com dado pessoal derruba tudo', falhaP((p) => { p.palavras[0].palavra = 'duas palavras'; }) && falhaP((p) => { p.palavras[0].palavra = 'ana@example.com'; }));
+check('dado pessoal em qualquer texto do panorama derruba tudo', falhaP((p) => { p.leitura = 'Escreve para ana@example.com'; }) && falhaP((p) => { p.hipoteses[0].evidencia = 'Ligou do 06 12 34 56 78'; }) && falhaP((p) => { p.temas[0].nota = 'Segue @ana_silva'; }));
+check('chave inesperada no panorama derruba tudo, também dentro dos itens', falhaP((p) => { p.humor = 'bom'; }) && falhaP((p) => { p.termometros[0].cor = 'vermelho'; }));
+check('mais de 5 hipóteses derruba tudo', falhaP((p) => { p.hipoteses = Array.from({ length: 6 }, () => PAN().hipoteses[0]); }));
+check('momento mal formado no panorama derruba tudo', falhaP((p) => { p.acoes[0].momento = 'meio da conversa'; }));
+
+chamadas = []; fakeFetch(base([/api\.anthropic\.com/, iaOk(comPan())]));
+r = await ler(corpoOk()); j = await r.json();
+check('a rota devolve o panorama junto da proposta, sem segunda chamada de IA', r.status === 200 && j.proposta.panorama.termometros.length === 2 && doAnthropic().length === 1);
+check('o corpo gravado leva o panorama', doInsert().length === 1 && doInsert()[0].body.proposta.panorama.leitura.length > 0);
+
+console.log('\n== Conversas anteriores entram como contexto (releitura conjunta) ==');
+const anteriorOk = [/\/montagens\?select=versao,proposta/, { method: 'GET', body: [{ versao: 1, estado: 'publicada', proposta: { panorama: PAN(), bilan: { resumo: 'NÃO DEVE IR: texto do bilan', afirmacoes: [{ texto: 'NÃO DEVE IR: afirmação', trecho: 'trecho' }] } } }] }];
+chamadas = []; fakeFetch([...adminOk, contatoOk, blocosOk, destinosOk, anteriorOk, semPendente, gravaOk, [/api\.anthropic\.com/, iaOk(comPan())]]);
+r = await ler(corpoOk());
+const msg = doAnthropic()[0] ? doAnthropic()[0].body.messages[0].content : '';
+check('a IA recebe o panorama anterior numa tag de dado, com a versão', r.status === 200 && /<panorama_anterior>/.test(msg) && /"versao":1/.test(msg) && /Provavelmente trava no telefone/.test(msg));
+check('só o panorama anterior vai, nunca o bilan, as afirmações nem os trechos', !/NÃO DEVE IR/.test(msg));
+chamadas = []; fakeFetch(base([/api\.anthropic\.com/, iaOk(comPan())]));
+r = await ler(corpoOk());
+check('sem conversa anterior não há tag de panorama anterior', !/<panorama_anterior>/.test(doAnthropic()[0].body.messages[0].content));
+chamadas = []; fakeFetch([...adminOk, contatoOk, blocosOk, destinosOk, [/\/montagens\?select=versao,proposta/, { status: 500, body: {} }], semPendente, gravaOk, [/api\.anthropic\.com/, iaOk(comPan())]]);
+r = await ler(corpoOk());
+check('se não der para ler as conversas anteriores, a leitura segue sem elas', r.status === 200 && doAnthropic().length === 1);
+
 console.log(`\n${passed} passaram, ${failed} falharam`);
 process.exit(failed ? 1 : 0);

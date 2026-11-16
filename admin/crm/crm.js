@@ -2,15 +2,15 @@
 // Nada de service_role aqui. O banco é db/crm-fase2.sql; o desenho é o artefato "CRM Por Dentro".
 // Tudo que vem do banco é texto de terceiros (nome, e-mail, pergunta): passa sempre por esc().
 import { supabase } from '/assets/js/supabase-client.js';
-import * as TX from './taxonomia.js?v=2026-11-16.2';   // páginas, famílias e agrupamento dos modelos
-import * as ES from './estudio.js?v=2026-11-16.2';   // os blocos do estúdio de e-mails (entregas 2 e 3)
-import * as EE from './editor-email.js?v=2026-11-16.2';
-import * as EQ from './editor-quem.js?v=2026-11-16.2';
-import * as JR from './jornada.js?v=2026-11-16.2';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
-import * as FX from './ficha.js?v=2026-11-16.2';   // ficha v2: lógica pura (fila, démarches, funil, ações)
-import * as FH from './ficha-html.js?v=2026-11-16.2';   // ficha v2: HTML puro
-import * as PN from './panorama.js?v=2026-11-16.2';
-import * as MT from './montagem.js?v=2026-11-16.2';   // Montagem do espaço a partir do transcript (lógica e HTML puros)   // Panorama dela e O que ela trouxe (lógica e HTML puros)
+import * as TX from './taxonomia.js?v=2026-11-16.3';   // páginas, famílias e agrupamento dos modelos
+import * as ES from './estudio.js?v=2026-11-16.3';   // os blocos do estúdio de e-mails (entregas 2 e 3)
+import * as EE from './editor-email.js?v=2026-11-16.3';
+import * as EQ from './editor-quem.js?v=2026-11-16.3';
+import * as JR from './jornada.js?v=2026-11-16.3';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
+import * as FX from './ficha.js?v=2026-11-16.3';   // ficha v2: lógica pura (fila, démarches, funil, ações)
+import * as FH from './ficha-html.js?v=2026-11-16.3';   // ficha v2: HTML puro
+import * as PN from './panorama.js?v=2026-11-16.3';
+import * as MT from './montagem.js?v=2026-11-16.3';   // Montagem do espaço a partir do transcript (lógica e HTML puros)   // Panorama dela e O que ela trouxe (lógica e HTML puros)
 
 var PERSONAS = {
   au_pair_estudante: 'Au pair → estudante', campus_france: 'Campus France', alternancia_emprego: 'Alternância / emprego',
@@ -3072,6 +3072,7 @@ async function montLer(cid, t) {
     if (!r.ok || !r.j.proposta) throw new Error(r.j.error || 'A leitura falhou (' + r.status + ').');
     m.prop = { id: r.j.id, versao: r.j.versao, proposta: r.j.proposta, reutilizada: !!r.j.reutilizada }; m.sel = {}; m.motivos = {}; m.res = null; m.lib = null; m.previa = null; m.estado = 'proposta';
     var df = await supabase.rpc('crm_montagem_diff', { p_contato: cid, p_montagem: r.j.id }); m.diff = df.error ? null : df.data;   // o que já existe da leitura anterior
+    if (c) fxCarregaConversas(c, true);   // o Panorama dela já nasce (ou se atualiza) com esta conversa
   } catch (e) { m.estado = 'vazio'; m.erro = e && e.message ? e.message : 'A leitura falhou.'; }
   pintaMont(cid);
 }
@@ -3448,7 +3449,7 @@ function fxHeaderHtml(c, d) {
 // Catálogo de démarches (cópia do app, processos.json): carregado uma vez; sem ele, tudo cai na démarche padrão.
 var FX_PROC = null;
 async function fxCarregaProcessos() {
-  try { var r = await fetch('processos.json?v=2026-11-16.2'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
+  try { var r = await fetch('processos.json?v=2026-11-16.3'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
 }
 // A sessão Checklist: pílulas por démarche, os 4 mais urgentes, pasta do Drive privada e "Ver mais desta sessão".
 function fxChecklistCorpo(c) {
@@ -3517,7 +3518,19 @@ var H_PN = { esc: esc, quando: function (iso) { return iso ? fmtQuando(iso) : ''
 function fxPanoramaDados(c) {
   var chk = state.dos && state.dos.cid === c.id ? state.dos.chk : null, k = state.caso && state.caso.cid === c.id && !state.caso.err ? state.caso : null, g = state.fx.coorte;
   if (!state.caso || state.caso.cid !== c.id) setTimeout(function () { carregaCaso(c.id); }, 0);
-  return { nome: displayName(c), itens: chk && !chk.err && !chk.semConta ? (chk.itens || []) : [], escolas: k ? (k.escolasDela || []) : [], coorte: g && g.persona === personaKey(c) ? g.v : null };
+  var cv = state.pnConv && state.pnConv.cid === c.id ? state.pnConv.lista : [];
+  return { nome: displayName(c), itens: chk && !chk.err && !chk.semConta ? (chk.itens || []) : [], escolas: k ? (k.escolasDela || []) : [], coorte: g && g.persona === personaKey(c) ? g.v : null, conversas: cv };
+}
+// As conversas lidas (montagens.proposta.panorama): o Panorama nasce delas e depois se mistura com o que ela faz no app. Só o panorama
+// de cada leitura vem para cá (nada de bilan nem trecho); leituras descartadas ficam de fora. Vazio se o SQL da montagem não foi rodado.
+async function fxCarregaConversas(c, forcar) {
+  if (!forcar && state.pnConv && state.pnConv.cid === c.id) return;
+  state.pnConv = { cid: c.id, lista: [], carregando: true };
+  var r = await supabase.from('montagens').select('versao,estado,criado_em,proposta').eq('contato_id', c.id).neq('estado', 'descartada').order('versao', { ascending: true });
+  if (!state.pnConv || state.pnConv.cid !== c.id) return;
+  var lista = r.error ? [] : (r.data || []).map(function (m) { return { versao: m.versao, quando: m.criado_em, p: m.proposta && m.proposta.panorama ? m.proposta.panorama : null }; });
+  state.pnConv = { cid: c.id, lista: lista, carregando: false };
+  if (state.sel === c.id && state.fx && state.fx.tab === 'plataforma' && fxSessaoAberta('sinais')) fxPintaCorpo();
 }
 // Os sinais que ela já mostrou e o que a Ingryd decidiu fazer com as sugestões: guardado neste navegador (não vai para o banco).
 function fxSugsLidas(cid) { try { return JSON.parse(localStorage.getItem('crm_ficha_sugs_' + cid) || '{}') || {}; } catch (e) { return {}; } }
@@ -3545,7 +3558,9 @@ function fxSemSinais(c, titulo) {
   return '';
 }
 function fxSinaisCorpo(c) {
-  var vazio = fxSemSinais(c, 'O Panorama'); if (vazio) return vazio;
+  setTimeout(function () { fxCarregaConversas(c); }, 0);
+  var temConversa = state.pnConv && state.pnConv.cid === c.id && state.pnConv.lista.some(function (x) { return x.p; });
+  var vazio = fxSemSinais(c, 'O Panorama'); if (vazio && !temConversa) return vazio;   // com conversa lida, o Panorama já existe mesmo sem conta no app
   setTimeout(function () { fxCarregaCoorte(c); }, 0);
   var d = fxPanoramaDados(c), a = PN.panorama(d), f = state.fx;
   return PN.htmlPanorama(a, PN.sugestoes(a), { tema: f.tema, dd: f.dd, sugs: fxSugsLidas(c.id), log: PN.logColetado(d), personaLabel: personaLabel(c), personaCurto: personaLabel(c), carregandoGrupo: !!(f.coorte && f.coorte.carregando) }, H_PN);
@@ -3563,6 +3578,7 @@ async function fxSugCriaAviso(c, s) {
 }
 function fxSugAcao(ds) {
   var c = byC(state.sel); if (!c) return true;
+  if (/^h-/.test(ds.id || '')) { fxSugGuarda(c.id, ds.id, ds.v === 'descartada' ? 'descartada' : 'confirmada'); fxPintaCorpo(); return true; }   // hipótese do Panorama: decisão guardada neste navegador
   var a = PN.panorama(fxPanoramaDados(c)), s = PN.sugestoes(a).filter(function (x) { return x.id === ds.id; })[0]; if (!s) return true;
   if (ds.v === 'aviso') return fxSugCriaAviso(c, s);
   fxSugGuarda(c.id, s.id, ds.v === 'descartada' ? 'descartada' : 'modelo'); fxPintaCorpo(); return true;
@@ -3900,7 +3916,7 @@ function fxSessoes(c) {
     eu: mk('Só eu · minhas tarefas', 'Tarefas suas neste caso. Ela não vê nada daqui.', 'eu', function () { return fxEuCorpo(c); }),
     bilan: mk('Bilan', 'O que a conversa mostrou, os achados para conferir e o e-mail do bilan.', 'bilan', function () { var g = fxCasoGuarda(c); return (g.k ? casoSecao('O que entendi', g.k.ach.length + ' achados', casoAchadosHtml(g.k)) : g.html) + bilanResumoHtml(c) + bilanBlocoHtml(c, H4_PLAT); }),
     trouxe: mk('O que ela trouxe', 'Tudo o que ela adicionou de público ao app.', 'trouxe', function () { return fxTrouxeCorpo(c); }),
-    sinais: mk('Panorama dela', 'O que ela traz de público para o app, lido de relance, com impulsos para você.', 'sinais', function () { return fxSinaisCorpo(c); }),
+    sinais: mk('Panorama dela', 'Como ela está: lido das conversas e do que ela faz no app, com impulsos para você.', 'sinais', function () { return fxSinaisCorpo(c); }),
     mais: mk('Mais detalhes do universo', 'O que é da persona e o que é só dela.', 'mais', function () { return fxMaisCorpo(c); }),
     hist: mk('Histórico', 'Tudo que ela fez no app, dia a dia.', 'hist', function () { return '<div id="int-box">' + interacoesHtml(state.int) + '</div>'; })
   };

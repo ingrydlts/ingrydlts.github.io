@@ -31,8 +31,19 @@ const THEMES = {
   Documentos: ['atesta', 'tradu', 'historico', 'diploma', 'certificado', 'passaporte', 'documento', 'dossie'],
   Visto: ['visto', 'consul', 'anef', 'prefeit', 'titre'],
   Idioma: ['nivel', 'frances', 'delf', 'tcf', 'a2', 'b1', 'b2'],
-  Prazos: []
+  Prazos: [],
+  // Só vêm da conversa (a IA classifica); sem palavra-chave, para não mudar o que o app já mostra.
+  Moradia: [], Trabalho: [], 'Família': [], 'Saúde': []
 };
+// Panorama vivo: o retrato de como ela está, lido das conversas (montagens.proposta.panorama). Vocabulários fechados, iguais aos do Worker.
+const TERMO = { angustia: 'Angústia', duvida: 'Dúvida', urgencia: 'Urgência', confianca: 'Confiança', autonomia: 'Autonomia', app: 'Uso do app' };
+const NIVEL = ['nenhuma', 'leve', 'moderada', 'alta', 'muito alta'];
+const NIVEL_APP = ['nenhum', 'pouco', 'médio', 'bom', 'intenso'];
+export const MANEIRAS = { prefere_ligar: 'Prefere ligar', prefere_escrever: 'Prefere escrever', quer_passo_a_passo: 'Quer passo a passo', quer_visao_geral: 'Quer a visão geral primeiro',
+  decide_rapido: 'Decide rápido', decide_devagar: 'Decide devagar', pesquisa_sozinha: 'Pesquisa sozinha', precisa_de_validacao: 'Precisa de validação', adia_burocracia: 'Adia a burocracia', tem_rede_de_apoio: 'Tem rede de apoio' };
+const origemConv = (v, m) => 'conversa ' + v + (m ? ' · ' + m : '');
+// Só entram conversas com panorama no formato certo (propostas antigas, sem panorama, ficam de fora). Da mais antiga para a mais recente.
+const conversasValidas = (d) => (d.conversas || []).filter((x) => x && x.p && typeof x.p === 'object' && Array.isArray(x.p.termometros)).slice().sort((a, b) => a.versao - b.versao);
 const juntar = (a) => (a.length < 2 ? a.join('') : a.slice(0, -1).join(', ') + ' e ' + a[a.length - 1]);
 const conta = (crit) => { let sim = 0, nao = 0; Object.keys(crit || {}).forEach((k) => { if (crit[k] === 'sim') sim++; else if (crit[k] === 'nao') nao++; }); return { sim, nao }; };
 
@@ -48,6 +59,7 @@ export function normaliza(itens) {
 
 export function panorama(d) {
   const L = normaliza(d.itens), escolasD = d.escolas || [];
+  const cv = conversasValidas(d), ult = cv.length ? cv[cv.length - 1] : null, ant = cv.length > 1 ? cv[cv.length - 2] : null, pc = ult ? ult.p : null;
   const ed = L.filter((x) => x.editado), prop = L.filter((x) => x.propria), arq = L.filter((x) => x.arq);
   let priv = 0, red = 0; const textos = [];
   const push = (s, f) => { const o = limpa(s); if (o.r) red++; if (o.t) textos.push({ t: o.t, f }); };
@@ -67,23 +79,45 @@ export function panorama(d) {
   datas.forEach((x) => ev.Prazos.push({ t: x.passo + ' · ' + rotQ(x.q), f: 'data escolhida' }));
   escolas.forEach((e) => ev.Escola.push({ t: e.nome + (e.host ? ' · ' + e.host : ''), f: 'escola adicionada' }));
   sc.Prazos += datas.length * 2; sc.Escola += escolas.length * 2;
+  if (pc) (pc.temas || []).forEach((t) => { if (sc[t.tema] === undefined) { sc[t.tema] = 0; ev[t.tema] = []; } sc[t.tema] += (t.peso || 1) * 2; ev[t.tema].push({ t: limpa(t.nota).t || 'Assunto da conversa ' + ult.versao, f: origemConv(ult.versao, t.momento) }); });
   const temas = Object.keys(sc).map((k) => [k, sc[k]]).filter((x) => x[1] > 0).sort((a, b) => b[1] - a[1]), max = temas.length ? temas[0][1] : 1;
   const cnt = {}; textos.forEach((o) => palavrasDe(o.t).forEach((x) => { cnt[x.w] = cnt[x.w] || { n: 0, o: x.o }; cnt[x.w].n++; }));
+  if (pc) (pc.palavras || []).forEach((x) => { const w = semAcento(x.palavra); cnt[w] = { n: (cnt[w] ? cnt[w].n : 0) + (x.vezes || 1), o: cnt[w] ? cnt[w].o : x.palavra }; });
   const chips = Object.keys(cnt).map((w) => ({ w, o: cnt[w].o, n: cnt[w].n })).sort((a, b) => b.n - a.n || a.w.localeCompare(b.w)).slice(0, 10);
   const distintos = new Set(); ed.concat(prop, arq).forEach((x) => distintos.add(x.k));
-  const n = distintos.size + escolasD.length;
+  const nApp = distintos.size + escolasD.length;
+  const n = nApp + (pc ? (pc.temas || []).length + (pc.acoes || []).length + (pc.maneiras || []).length + (pc.hipoteses || []).length : 0);
   const ritmo = [datas.length ? 'define as próprias datas' : '', ed.length >= 2 ? 'personaliza o checklist' : '', prop.length ? 'cria os próprios passos' : '', arq.length ? 'arquiva o que não serve' : ''].filter(Boolean);
   const rt = juntar(ritmo);
-  const leitura = n === 0 ? 'Ainda sem sinais: ela não editou, criou nem arquivou nada no app.' : (temas.length ? 'Foco em ' + juntar(temas.slice(0, 2).map((x) => x[0])) + '. ' : '') + (rt ? rt.charAt(0).toUpperCase() + rt.slice(1) + '.' : '');
+  let leitura = n === 0 ? 'Ainda sem sinais: ela não editou, criou nem arquivou nada no app.' : (temas.length ? 'Foco em ' + juntar(temas.slice(0, 2).map((x) => x[0])) + '. ' : '') + (rt ? rt.charAt(0).toUpperCase() + rt.slice(1) + '.' : '');
+  if (pc) leitura = (limpa(pc.leitura).t || 'Conversa lida, sem leitura resumida.') + (nApp > 0 && rt ? ' No app: ' + rt + '.' : '');
   const nm = String(d.nome || '').trim().split(/\s+/)[0] || 'tudo bem', imp = [];
   if (sc.Dinheiro >= 2) imp.push({ id: 'i-din', t: 'Falar de parcelamento e custo', ev: 'Dinheiro é um dos temas dela: ' + sc.Dinheiro + ' menções', msg: 'Oi, ' + nm + '! Vi que o valor e o parcelamento estão no seu radar. Posso te mandar as escolas que parcelam?' });
   if (datas.length) imp.push({ id: 'i-data', t: 'Reforçar o dia ' + rotQ(datas[0].q), ev: 'Ela escolheu essa data em “' + datas[0].passo + '”', msg: 'Oi, ' + nm + '! Vi que você marcou ' + rotQ(datas[0].q) + ' para "' + datas[0].passo + '". Quer que eu te lembre na véspera?' });
   escolas.forEach((e) => { if (e.conf.sim + e.conf.nao === 0) imp.push({ id: 'i-esc-' + semAcento(e.nome).replace(/[^a-z0-9]+/g, '-').slice(0, 24), t: 'Ajudar a completar os critérios de ' + e.nome, ev: 'Ela ainda não respondeu nenhum critério', msg: 'Oi, ' + nm + '! Vi que você adicionou ' + e.nome + '. Quer ajuda para confirmar o que falta (como nível e parcelamento)?' }); });
   if (arq.length) imp.push({ id: 'i-arq', t: 'Entender por que arquivou “' + arq[0].orig + '”', ev: 'Passo da persona arquivado', msg: 'Oi, ' + nm + '! Vi que você arquivou "' + arq[0].orig + '". Esse passo não fazia sentido para o seu caso? Me conta que eu ajusto.' });
   if (prop.length) imp.push({ id: 'i-prop', t: 'Apoiar o passo próprio “' + prop[0].label + '”', ev: 'Ela criou um passo que o modelo não tem', msg: 'Oi, ' + nm + '! Gostei do passo "' + prop[0].label + '" que você criou. Se precisar de ajuda com ele, me conta.' });
+  let conv = null;
+  if (pc) {
+    const termo = (pc.termometros || []).map((t) => { const o = ant ? (ant.p.termometros || []).filter((x) => x.chave === t.chave)[0] : null;
+      return { chave: t.chave, rotulo: TERMO[t.chave] || t.chave, nivel: t.nivel, nivelRot: NIVEL[t.nivel] || '', porque: limpa(t.porque).t, momento: t.momento || '', v: ult.versao, antes: o ? o.nivel : null,
+        tend: o ? (t.nivel < o.nivel ? 'caiu' : t.nivel > o.nivel ? 'subiu' : 'igual') : null }; });
+    const un = nApp === 0 ? 0 : nApp < 3 ? 1 : nApp < 6 ? 2 : nApp < 10 ? 3 : 4;
+    termo.push({ chave: 'app', rotulo: TERMO.app, nivel: un, nivelRot: NIVEL_APP[un], porque: nApp === 0 ? 'Ainda não mexeu em nada no app' : nApp + (nApp === 1 ? ' sinal' : ' sinais') + ' no app', momento: '', v: 0, antes: null, tend: null, calc: true });
+    conv = { n: cv.length, ult: ult.versao, quando: ult.quando || '', termo,
+      acoes: (pc.acoes || []).map((x) => ({ texto: limpa(x.texto).t, dono: x.dono, momento: x.momento || '', v: ult.versao })),
+      maneiras: (pc.maneiras || []).map((x) => ({ chave: x.chave, rotulo: MANEIRAS[x.chave] || x.chave, momento: x.momento || '', v: ult.versao })),
+      hip: (pc.hipoteses || []).map((x) => ({ id: 'h-' + semAcento(x.texto).replace(/[^a-z0-9]+/g, '-').slice(0, 30), texto: limpa(x.texto).t, evidencia: limpa(x.evidencia).t, confirmar: limpa(x.confirmar).t, momento: x.momento || '', v: ult.versao })) };
+    const impC = [], alto = (k) => termo.filter((t) => t.chave === k && t.nivel >= 3)[0];
+    const ang = alto('angustia'), duv = alto('duvida'), prom = conv.acoes.filter((x) => x.dono === 'ingryd')[0];
+    if (ang) impC.push({ id: 'i-ang', t: 'Acolher antes de listar tarefas', ev: 'Angústia ' + ang.nivelRot + ' (' + origemConv(ult.versao, ang.momento) + ')', msg: 'Oi, ' + nm + '! Quero te lembrar que não precisa resolver tudo de uma vez. Qual é o próximo passo que mais pesa para você agora?' });
+    if (duv) impC.push({ id: 'i-duv', t: 'Tirar a dúvida que mais trava', ev: 'Dúvida ' + duv.nivelRot + ' (' + origemConv(ult.versao, duv.momento) + ')', msg: 'Oi, ' + nm + '! Qual é a dúvida que mais está te travando agora? Me conta que a gente resolve junto.' });
+    if (prom) impC.push({ id: 'i-prom', t: 'Cumprir o que ficou combinado: ' + prom.texto, ev: 'Promessa da equipe (' + origemConv(ult.versao, prom.momento) + ')', msg: 'Oi, ' + nm + '! Sobre o que combinamos (' + prom.texto + '): te aviso assim que estiver pronto.' });
+    imp.unshift(...impC);
+  }
   const co = d.coorte && d.coorte.n >= 3 ? d.coorte : null, palavras = new Set(chips.map((c) => c.w));
   const comum = co ? co.kw.filter((k) => palavras.has(semAcento(k[0]))) : [];
-  return { ev, n, leitura, temas, max, chips, escolas, fontes, datas, notas, renom, prop, arq, imp: imp.slice(0, 3), priv, red, co, comum, coorteN: d.coorte ? d.coorte.n : 0 };
+  return { ev, n, leitura, temas, max, chips, conv, escolas, fontes, datas, notas, renom, prop, arq, imp: imp.slice(0, 3), priv, red, co, comum, coorteN: d.coorte ? d.coorte.n : 0 };
 }
 
 // Sugestões para o sistema (o modelo da persona), com a evidência do grupo quando há amostra (3 pessoas ou mais).
@@ -130,6 +164,7 @@ export function logColetado(d) {
     else if (x.editado) out.push({ tipo: 'Editou', label: x.orig, campos: [x.label !== x.orig ? 'título' : '', x.nota ? 'observação' : '', x.links.length ? 'links' : '', x.quando ? 'data' : ''].filter(Boolean), ts: x.ts });
   });
   (d.escolas || []).forEach((e) => out.push({ tipo: 'Adicionou escola', label: e.nome, campos: [], ts: e.criado_em || '' }));
+  conversasValidas(d).forEach((c) => out.push({ tipo: 'Leu a conversa', label: 'Conversa ' + c.versao, campos: [], ts: c.quando || '' }));
   return out.sort((a, b) => (a.ts < b.ts ? 1 : a.ts > b.ts ? -1 : 0));
 }
 
@@ -153,19 +188,30 @@ export function htmlPanorama(a, sugs, ui, h) {
       '<button type="button" class="btn s" data-fx="sugAcao" data-id="' + e(s.id) + '" data-v="descartada">Descartar</button></div>') + '</article>'; }).join('') || '<p class="nota">Nenhuma sugestão por enquanto.</p>';
   const log = (ui.log || []).slice(0, 8).map((s) => '<li><span class="pill">' + e(s.tipo) + '</span> ' + e(s.label) + (s.campos && s.campos.length ? ' <span class="nota">(' + e(s.campos.join(', ')) + ')</span>' : '') + (s.ts ? '<time>' + e(h.quando ? h.quando(s.ts) : s.ts) + '</time>' : '') + '</li>').join('');
   const grupoN = a.coorteN || 0;
+  const cv = a.conv;
+  const termosH = cv ? cv.termo.map((t) => '<div class="termo"><div class="termo-h"><b>' + e(t.rotulo) + '</b> <span class="pill">' + e(t.nivelRot) + ' (' + t.nivel + '/4)</span>' +
+    (t.tend ? ' <span class="pill">' + (t.tend === 'igual' ? 'igual à conversa anterior' : e(t.tend) + ' desde a conversa anterior (era ' + (NIVEL[t.antes] || t.antes) + ')') + '</span>' : '') +
+    '</div><span class="bar-t"><i style="width:' + Math.round(t.nivel / 4 * 100) + '%"></i></span><p class="nota">' + e(t.porque) + (t.calc ? ' · calculado do app' : t.momento ? ' · ' + e(origemConv(t.v, t.momento)) : '') + '</p></div>').join('') : '';
+  const manH = cv ? (cv.maneiras.length ? '<div class="kws">' + cv.maneiras.map((m) => '<span class="kw">' + e(m.rotulo) + (m.momento ? '<b>' + e(m.momento) + '</b>' : '') + '</span>').join('') + '</div>' : '<p class="nota">Nenhuma maneira identificada.</p>') +
+    (cv.acoes.length ? '<ul class="hist">' + cv.acoes.map((x) => '<li><span class="pill">' + (x.dono === 'ingryd' ? 'Equipe' : 'Ela') + '</span> ' + e(x.texto) + ' <span class="nota">' + e(origemConv(x.v, x.momento)) + '</span></li>').join('') + '</ul>' : '<p class="nota">Nenhuma ação combinada.</p>') : '';
+  const hipV = cv ? cv.hip.filter((x) => ui.sugs[x.id] !== 'descartada') : [];
+  const hipH = cv ? hipV.map((x) => '<article class="sg"><p><b>' + e(x.texto) + '</b></p><p class="nota">Por quê: ' + e(x.evidencia) + ' · ' + e(origemConv(x.v, x.momento)) + '</p><p class="nota">O que confirma ou derruba: ' + e(x.confirmar) + '</p>' +
+    (ui.sugs[x.id] === 'confirmada' ? '<span class="pill ok">Confirmada (neste navegador)</span>' : '<div class="pn-bt"><button type="button" class="btn s primary" data-fx="sugAcao" data-id="' + e(x.id) + '" data-v="confirmada">Confirmar</button><button type="button" class="btn s" data-fx="sugAcao" data-id="' + e(x.id) + '" data-v="descartada">Descartar</button></div>') + '</article>').join('') || '<p class="nota">Nenhuma hipótese aberta.</p>' : '';
   const comp = co
     ? '<p class="pn-c">' + (a.comum.length ? 'Ela fala de ' + a.comum.map((k) => '<b>' + e(k[0]) + '</b> (' + k[1] + ' de ' + co.n + ')').join(', ') + ', como parte do grupo. ' : '') +
       'No grupo (' + co.n + ' pessoas na plataforma): ' + [['arquivam algum passo', co.pad.arq], ['mudam títulos', co.pad.ren], ['definem datas próprias', co.pad.data], ['criam passos próprios', co.pad.prop]].map((x) => e(x[0]) + ' (' + x[1] + ' de ' + co.n + ')').join('; ') + '.</p>'
     : ui.carregandoGrupo ? '<p class="pn-c">Carregando o grupo da persona…</p>'
     : '<p class="pn-c">Poucos dados para comparar: ' + (grupoN ? 'só ' + grupoN + (grupoN === 1 ? ' pessoa' : ' pessoas') : 'ninguém') + ' desta persona está na plataforma. A comparação aparece com 3 pessoas ou mais.</p>';
   return '<div class="pn-lead"><div class="k">Leitura rápida · ' + a.n + (a.n === 1 ? ' sinal' : ' sinais') + (a.n < 3 ? ' · poucos dados' : '') + '</div><p class="pn-t">' + e(a.leitura) + '</p></div>' +
+    (cv ? dd(ui, e, 'como', 'Como ela está', 'conversa ' + cv.ult + (cv.n > 1 ? ' · ' + cv.n + ' conversas lidas' : ''), termosH, true) : '') +
     '<div class="pn-sec"><div class="k">Temas · clique para ver o que ela colocou</div><div class="bars">' + bars + '</div>' + evh + '</div>' +
     dd(ui, e, 'imp', 'Impulsos possíveis', '<b>' + a.imp.length + '</b>' + (a.imp[0] ? ' · ' + e(a.imp[0].t) : ''), imp) +
+    (cv ? dd(ui, e, 'man', 'Maneiras e ações', cv.maneiras.length + ' maneiras · ' + cv.acoes.length + ' ações', manH, true) + dd(ui, e, 'hip', 'Hipóteses abertas', hipV.length + ' em aberto', hipH, true) : '') +
     dd(ui, e, 'pal', 'Palavras', a.chips.length + ' no total', a.chips.length ? '<div class="kws">' + a.chips.map((c) => '<span class="kw">' + e(c.o) + '<b>' + c.n + '</b></span>').join('') + '</div>' : '<p class="nota">Sem palavras ainda.</p>') +
     dd(ui, e, 'comp', 'Comparação com ' + e(ui.personaCurto || 'a persona'), co ? 'n=' + co.n : 'poucos dados', comp) +
     dd(ui, e, 'sug', 'Sugestões para o sistema', 'revise de vez em quando', sgh) +
     dd(ui, e, 'log', 'O que foi coletado', '', '<ul class="hist">' + (log || '<li class="nota">Nada coletado ainda.</li>') + '</ul>') +
-    '<p class="pn-priv"><b>Não coletado:</b> pastas privadas' + (a.priv ? ' (' + a.priv + (a.priv === 1 ? ' link ignorado' : ' links ignorados') + ')' : '') + ', conteúdo de documentos e números pessoais' + (a.red ? ' (' + a.red + (a.red === 1 ? ' trecho ocultado' : ' trechos ocultados') + ')' : '') + '. A pasta do Drive só se abre por autorização dela, por e-mail.</p>';
+    '<p class="pn-priv"><b>Não coletado:</b> pastas privadas' + (a.priv ? ' (' + a.priv + (a.priv === 1 ? ' link ignorado' : ' links ignorados') + ')' : '') + ', conteúdo de documentos e números pessoais' + (a.red ? ' (' + a.red + (a.red === 1 ? ' trecho ocultado' : ' trechos ocultados') + ')' : '') + '. A pasta do Drive só se abre por autorização dela, por e-mail.' + (cv ? ' Da conversa entram só tema, resumo e o momento (para você ouvir o trecho), nunca o que ela disse.' : '') + '</p>';
 }
 
 // O que ela trouxe: só dado público, em dropdowns por tipo.
