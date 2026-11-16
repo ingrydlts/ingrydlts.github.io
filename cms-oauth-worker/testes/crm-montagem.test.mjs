@@ -216,6 +216,21 @@ console.log('\n== Cada coisa no canal certo: lembrete (Início), mensagem (chat)
   check('lembrete que repete um passo do checklist é juntado (fica o passo)', (() => { const o = comL((x) => { x.lembretes.push({ titulo: 'Perguntar a carga', texto: 'Perguntar se a carga é de pelo menos 20h por semana', dias_apos: 1 }); x.checklists[0].itens.push({ chave: 'perg_carga', titulo: 'Perguntar se a carga é de pelo menos 20h por semana' }); }); const q = crmMontagemValidar(o, CAT); return q.ok && q.montagem.lembretes.length === 1 && q.montagem.duplicados.some((d) => d.motivo === 'ja_no_checklist'); })());
 }
 
+console.log('\n== Rascunho do e-mail do Bilan (Resumo, Próximos passos e o que você responde) ==');
+{
+  const EM = () => ({ duvidas: ['Como funciona o visto de estudante depois do PVT', 'Se a atestação precisa do selo Qualiopi'], proximos: ['Ligar para a Alliance Française amanhã', 'Reunir diploma, passaporte e comprovante de endereço'], respostas: ['Eu te mando o guia de escolas credenciadas', 'Eu confirmo se a escola exige tradução juramentada'] });
+  const comE = (mut) => { const o = OK(); o.bilan.email = EM(); if (mut) mut(o.bilan.email); return o; };
+  const falhaE = (mut) => !crmMontagemValidar(comE(mut), CAT).ok;
+  check('o schema do bilan pede o email com as três seções', schema.properties.bilan.required.includes('email') && ['duvidas', 'proximos', 'respostas'].every((k) => schema.properties.bilan.properties.email.properties[k].maxItems === 6));
+  check('o prompt explica o rascunho do e-mail (segunda pessoa, três seções) e o resumo para o Dossiê', /bilan\.email/.test(sis) && /segunda pessoa|"você"/.test(sis));
+  const r = crmMontagemValidar(comE(), CAT);
+  check('o e-mail certo passa e chega inteiro, uma linha por item', r.ok && r.montagem.bilan.email.duvidas.length === 2 && r.montagem.bilan.email.proximos[0] === 'Ligar para a Alliance Française amanhã' && r.montagem.bilan.email.respostas.length === 2);
+  check('proposta antiga (sem email) passa com as três seções vazias', v.ok && v.montagem.bilan.email.duvidas.length === 0 && v.montagem.bilan.email.proximos.length === 0 && v.montagem.bilan.email.respostas.length === 0);
+  check('mais de 6 linhas, linha vazia ou seção estranha derrubam tudo', falhaE((e) => { e.duvidas = Array.from({ length: 7 }, (_, i) => 'Dúvida ' + i); }) && falhaE((e) => { e.proximos = ['']; }) && falhaE((e) => { e.extra = ['x']; }));
+  check('dado pessoal no e-mail derruba tudo', falhaE((e) => { e.respostas = ['Escreva para ana@example.com']; }) && falhaE((e) => { e.proximos = ['Ligar para 06 12 34 56 78']; }));
+  check('o e-mail que não é objeto, ou com seção que não é lista, derruba tudo', !crmMontagemValidar((() => { const o = OK(); o.bilan.email = 'texto'; return o; })(), CAT).ok && falhaE((e) => { e.duvidas = 'uma só'; }));
+}
+
 console.log('\n== Panorama da pessoa (o retrato de como ela está) ==');
 const PAN = () => ({ leitura: 'Ansiosa com prazo e dinheiro, mas decidida a estudar francês.',
   termometros: [{ chave: 'angustia', nivel: 3, porque: 'Voltou ao prazo do visto três vezes', momento: '12:30' }, { chave: 'duvida', nivel: 2, porque: 'Não sabe se liga ou escreve', momento: '20:05' }],

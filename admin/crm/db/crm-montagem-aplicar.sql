@@ -18,6 +18,8 @@
 
 alter table public.caso_acoes add column if not exists origem_chave text check (origem_chave is null or origem_chave ~ '^[a-z0-9_:.-]{1,80}$');
 alter table public.caso_acoes add column if not exists a_conferir boolean not null default false;
+-- editado_em: você mexeu na escrita deste passo. A releitura da conversa não sobrescreve (vira conflito, como o que já foi publicado).
+alter table public.caso_acoes add column if not exists editado_em timestamptz;
 alter table public.caso_listas add column if not exists origem_chave text check (origem_chave is null or origem_chave ~ '^[a-z0-9_:.-]{1,80}$');
 create unique index if not exists caso_acoes_origem_idx on public.caso_acoes (contato_id, origem_chave) where origem_chave is not null;
 create unique index if not exists caso_listas_origem_idx on public.caso_listas (contato_id, origem_chave) where origem_chave is not null;
@@ -132,7 +134,7 @@ begin
         insert into caso_acoes (contato_id, origem_chave, titulo, dono, canal, passo_chave, prazo, prazo_texto, prazo_a_confirmar, certeza, camada, lista_chave, a_conferir, demarche, subitens)
         values (p_contato, it.k, v_titulo, v_dono, case when v_dono = 'ela' then 'plataforma' else 'so_eu' end, v_passo, v_prazo, v_pt, (v_pt is not null and v_prazo is null), v_cert, v_camada, v_lista, v_conferir, v_dem, v_subs);
         v_criados := v_criados + 1;
-      elsif ac.estado <> 'aberta' or ac.publicada_em is not null or ac.concluida_em is not null then v_conf := v_conf || it.k;
+      elsif ac.estado <> 'aberta' or ac.publicada_em is not null or ac.concluida_em is not null or ac.editado_em is not null then v_conf := v_conf || it.k;
       elsif (ac.titulo, ac.dono, ac.prazo, ac.prazo_texto, ac.certeza, ac.camada, ac.lista_chave, ac.a_conferir, ac.demarche, ac.subitens)
             is distinct from (v_titulo, v_dono, v_prazo, v_pt, v_cert, v_camada, v_lista, v_conferir, v_dem, v_subs) then
         update caso_acoes set titulo = v_titulo, dono = v_dono, canal = case when v_dono = 'ela' then 'plataforma' else 'so_eu' end, passo_chave = v_passo, prazo = v_prazo, prazo_texto = v_pt,
@@ -211,7 +213,7 @@ begin
   return (
     with prop as (select x.k from montagem_itens(m.proposta) x),
     ex as (
-      select origem_chave as k, (estado <> 'aberta' or publicada_em is not null or concluida_em is not null) as tocado from caso_acoes where contato_id = p_contato and origem_chave ~ '^(enc|chk):'
+      select origem_chave as k, (estado <> 'aberta' or publicada_em is not null or concluida_em is not null or editado_em is not null) as tocado from caso_acoes where contato_id = p_contato and origem_chave ~ '^(enc|chk):'
       union all select origem_chave, estado <> 'proposto' from board_itens where contato_id = p_contato and origem_chave ~ '^(doc|bloco):'
       union all select origem_chave, estado <> 'rascunho' from caso_avisos where contato_id = p_contato and origem_chave ~ '^(perg|lemb):'
       union all select origem_chave, estado <> 'proposto' from caso_listas where contato_id = p_contato and origem_chave ~ '^lista:'

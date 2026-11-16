@@ -2,15 +2,15 @@
 // Nada de service_role aqui. O banco é db/crm-fase2.sql; o desenho é o artefato "CRM Por Dentro".
 // Tudo que vem do banco é texto de terceiros (nome, e-mail, pergunta): passa sempre por esc().
 import { supabase } from '/assets/js/supabase-client.js';
-import * as TX from './taxonomia.js?v=2026-11-16.7';   // páginas, famílias e agrupamento dos modelos
-import * as ES from './estudio.js?v=2026-11-16.7';   // os blocos do estúdio de e-mails (entregas 2 e 3)
-import * as EE from './editor-email.js?v=2026-11-16.7';
-import * as EQ from './editor-quem.js?v=2026-11-16.7';
-import * as JR from './jornada.js?v=2026-11-16.7';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
-import * as FX from './ficha.js?v=2026-11-16.7';   // ficha v2: lógica pura (fila, démarches, funil, ações)
-import * as FH from './ficha-html.js?v=2026-11-16.7';   // ficha v2: HTML puro
-import * as PN from './panorama.js?v=2026-11-16.7';
-import * as MT from './montagem.js?v=2026-11-16.7';   // Montagem do espaço a partir do transcript (lógica e HTML puros)   // Panorama dela e O que ela trouxe (lógica e HTML puros)
+import * as TX from './taxonomia.js?v=2026-11-16.9';   // páginas, famílias e agrupamento dos modelos
+import * as ES from './estudio.js?v=2026-11-16.9';   // os blocos do estúdio de e-mails (entregas 2 e 3)
+import * as EE from './editor-email.js?v=2026-11-16.9';
+import * as EQ from './editor-quem.js?v=2026-11-16.9';
+import * as JR from './jornada.js?v=2026-11-16.9';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
+import * as FX from './ficha.js?v=2026-11-16.9';   // ficha v2: lógica pura (fila, démarches, funil, ações)
+import * as FH from './ficha-html.js?v=2026-11-16.9';   // ficha v2: HTML puro
+import * as PN from './panorama.js?v=2026-11-16.9';
+import * as MT from './montagem.js?v=2026-11-16.9';   // Montagem do espaço a partir do transcript (lógica e HTML puros)   // Panorama dela e O que ela trouxe (lógica e HTML puros)
 
 var PERSONAS = {
   au_pair_estudante: 'Au pair → estudante', campus_france: 'Campus France', alternancia_emprego: 'Alternância / emprego',
@@ -1957,7 +1957,7 @@ var CASO_TIPO_ITEM = { bilan: 'Bilan', marco: 'Prazo', documento: 'Documento', e
 var CASO_TIPO_AVISO = { pergunta: 'Pergunta', proposta: 'Proposta', inteligencia: 'Inteligência', oferta: 'Oferta' };
 var CASO_ESTADO_AVISO = { rascunho: 'Rascunho', agendado: 'Agendado', liberado: 'Liberado', lido: 'Lido', respondido: 'Respondido', dispensado: 'Dispensado', cancelado: 'Cancelado' };
 var CASO_ACO_COLS = 'id,n,titulo,dono,canal,botao,prazo,prazo_texto,prazo_a_confirmar,estado,certeza,publicada_em,concluida_em,concluida_por';
-var CASO_ACO_COLS_MONT = 'lista_chave,camada,a_conferir,origem_chave,demarche,subitens';   // db/crm-caso-listas.sql e crm-montagem-aplicar.sql
+var CASO_ACO_COLS_MONT = 'lista_chave,camada,a_conferir,origem_chave,demarche,subitens,editado_em';   // db/crm-caso-listas.sql e crm-montagem-aplicar.sql
 async function buscaCaso(cid) {
   var r = await Promise.all([
     supabase.from('caso_achados').select('id,chave,tipo,texto,origem,certeza,estado,conferido_em').eq('contato_id', cid).order('id', { ascending: true }).limit(80),
@@ -2237,7 +2237,11 @@ async function casoAcao(acao, id, t) {
   else if (acao === 'aco-reabrir') r = await supabase.from('caso_acoes').update({ estado: 'aberta', concluida_em: null, concluida_por: null }).eq('id', nid);
   else if (acao === 'aco-pub') r = await supabase.from('caso_acoes').update({ publicada_em: agora }).eq('id', nid);
   else if (acao === 'aco-retirar') r = await supabase.from('caso_acoes').update({ publicada_em: null }).eq('id', nid);
-  else if (acao === 'salvar-aco') { var ti = $('caso-ed-titulo') ? $('caso-ed-titulo').value.trim() : ''; if (!ti) { if (t) t.disabled = false; return toast('O título não pode ficar vazio'); } r = await supabase.from('caso_acoes').update({ titulo: ti.slice(0, 160) }).eq('id', nid); k.ed = null; }
+  else if (acao === 'salvar-aco') { var ti = $('caso-ed-titulo') ? $('caso-ed-titulo').value.trim() : ''; if (!ti) { if (t) t.disabled = false; return toast('O título não pode ficar vazio'); } var upd = { titulo: ti.slice(0, 160) }, sbx = $('caso-ed-subitens');
+    if (sbx) { var lin = String(sbx.value || '').split('\n').map(function (x) { return x.trim().slice(0, 120); }).filter(Boolean); if (lin.length > 6) { if (t) t.disabled = false; return toast('No máximo 6 subitens'); } upd.subitens = lin.length ? lin : null; upd.editado_em = agora; }
+    r = await supabase.from('caso_acoes').update(upd).eq('id', nid);
+    if (r.error && /editado_em/.test(String(r.error.message || ''))) { delete upd.editado_em; r = await supabase.from('caso_acoes').update(upd).eq('id', nid); }   // sem a coluna nova (SQL ainda não rodado)
+    k.ed = null; }
   else if (acao === 'item-rev') r = await supabase.from('board_itens').update({ estado: 'revisado' }).eq('id', nid);
   else if (acao === 'item-pub') r = await supabase.rpc('crm_board_publicar', { p_id: nid });
   else if (acao === 'item-ret') r = await supabase.rpc('crm_board_retirar', { p_id: nid });
@@ -3087,7 +3091,7 @@ async function pcAplicar(cid, t) {
 function montInicial(cid) { return { cid: cid, estado: 'vazio', erro: '', prop: null, sel: {}, motivos: {}, res: null, pub: null, previa: null, pode: false, forcar: false, msg: '' }; }
 function montEstado(cid) { if (!state.mont || state.mont.cid !== cid) state.mont = montInicial(cid); return state.mont; }
 function montTranscricao(c) { var S = state.dos && state.dos.cid === c.id ? state.dos : null; return { texto: String(dosValor(c, (S && S.d) || {}, (S && S.rasc) || {}, 'ligacao_transcricao') || '').trim(), notas: String(dosValor(c, (S && S.d) || {}, (S && S.rasc) || {}, 'ligacao_resumo') || '').trim() }; }
-function montPainel(c) { var m = montEstado(c.id); m.temTranscricao = montTranscricao(c).texto.length >= 200; return MT.painelHtml(m, c, esc); }
+function montPainel(c) { var m = montEstado(c.id); m.dd = (state.fx && state.fx.dd) || {}; m.temTranscricao = montTranscricao(c).texto.length >= 200; return MT.painelHtml(m, c, esc); }
 function montHtml(c) { return typeof MT === 'undefined' ? '' : '<div id="mont-box">' + montPainel(c) + '</div>'; }   // (os testes antigos montam o crm.js sem este módulo)
 function pintaMont(cid) { var b = $('mont-box'), c = byC(cid); if (b && c) b.innerHTML = montPainel(c); }
 async function montToken() { var sess = await supabase.auth.getSession(); if (!sess.data.session) throw new Error('Entre de novo no CRM.'); return sess.data.session.access_token; }
@@ -3095,6 +3099,27 @@ async function montWorker(caminho, corpo) {
   var res = await fetch(WORKER_BASE + caminho, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + (await montToken()) }, body: JSON.stringify(corpo) });
   var j = await res.json().catch(function () { return {}; });
   return { ok: res.ok && j.ok !== false, status: res.status, j: j };
+}
+// O Resumo e os Próximos passos do Dossiê ("A ligação") já nascem da leitura: preenche só o que estiver VAZIO (o que você escreveu nunca é sobrescrito),
+// salvo se pedir de novo (forcar). Salva direto: sem outro botão.
+async function montPreencheDossie(cid, forcar) {
+  var c = byC(cid), p = state.mont && state.mont.cid === cid && state.mont.prop ? state.mont.prop.proposta : null;
+  if (!c || !p || !state.dos || state.dos.cid !== cid) return 0;
+  var b = p.bilan || {}, e = b.email || {}, rasc = state.dos.rasc || {}, dados = {};
+  var alvo = { ligacao_resumo: String(b.resumo || ''), proximos_passos: (e.proximos || []).map(function (x) { return '- ' + x; }).join('\n') };
+  Object.keys(alvo).forEach(function (k) { if (alvo[k] && (forcar || String(dosValor(c, state.dos.d, rasc, k) || '').trim() === '')) dados[k] = alvo[k]; });
+  if (!Object.keys(dados).length) return 0;
+  var r = await supabase.rpc('crm_salvar_dossie', { p_contato: cid, p_dados: dados });
+  if (r.error) { fail('preencher o Resumo e os Próximos passos', r.error); return 0; }
+  Object.keys(dados).forEach(function (k) { delete rasc[k]; });
+  await reload(); if (state.view === 'pessoa') renderPessoa();
+  return Object.keys(dados).length;
+}
+// O e-mail do bilan, rascunhado pela leitura da conversa (sem precisar do Notion). Vale a leitura mais recente que trouxe o e-mail.
+function bilanDaMontagem(c) {
+  var cv = state.pnConv && state.pnConv.cid === c.id ? state.pnConv.lista : [], ult = null;
+  cv.forEach(function (x) { if (x.e && ((x.e.duvidas || []).length || (x.e.proximos || []).length || (x.e.respostas || []).length)) ult = x; });
+  return ult ? { duvidas: ult.e.duvidas || [], proximos: ult.e.proximos || [], respostas: ult.e.respostas || [], doRascunho: 0, usouResumo: false, daLeitura: ult.versao } : null;
 }
 async function montLer(cid, t) {
   var m = montEstado(cid), c = byC(cid), tr = montTranscricao(c);
@@ -3106,6 +3131,8 @@ async function montLer(cid, t) {
     m.prop = { id: r.j.id, versao: r.j.versao, proposta: r.j.proposta, reutilizada: !!r.j.reutilizada }; m.sel = {}; m.motivos = {}; m.res = null; m.lib = null; m.previa = null; m.estado = 'proposta';
     var df = await supabase.rpc('crm_montagem_diff', { p_contato: cid, p_montagem: r.j.id }); m.diff = df.error ? null : df.data;   // o que já existe da leitura anterior
     if (c) fxCarregaConversas(c, true);   // o Panorama dela já nasce (ou se atualiza) com esta conversa
+    var nPre = await montPreencheDossie(cid, false);
+    if (nPre) m.msg = 'Preenchi ' + (nPre === 1 ? 'um campo' : 'os dois campos') + ' do Dossiê (Resumo e Próximos passos) com a leitura.';
   } catch (e) { m.estado = 'vazio'; m.erro = e && e.message ? e.message : 'A leitura falhou.'; }
   pintaMont(cid);
 }
@@ -3127,6 +3154,23 @@ async function montAplicar(cid, t) {
   if (r.error) { m.estado = 'proposta'; m.erro = 'Não consegui criar os rascunhos: ' + (r.error.message || 'tente de novo'); return pintaMont(cid); }
   m.res = r.data || {}; m.estado = 'aplicado'; m.msg = '';
   await montPub(cid);
+  if (state.sel === cid && state.caso) casoRecarrega();
+}
+// A aprovação única: cria os rascunhos, confere os itens sem fonte (se você marcou que conferiu) e libera, tudo de uma vez.
+// (Os passos já aparecem no Checklist e os avisos no Início; a escrita se edita lá.)
+async function montAprovar(cid, t) {
+  var m = montEstado(cid); if (!m.prop) return;
+  await montAplicar(cid, t);
+  if (m.estado !== 'aplicado' || m.erro) return;
+  var confiro = m.confiro === undefined ? true : !!m.confiro;
+  if (confiro) {
+    var ids = (m.pub && m.pub.a_conferir_itens || []).map(function (x) { return x.id; });
+    for (var i = 0; i < ids.length; i++) {
+      var rc = await supabase.rpc('crm_acao_conferida', { p_id: Number(ids[i]) });
+      if (rc.error) { m.erro = 'Não consegui marcar um item como conferido: ' + (rc.error.message || 'tente de novo'); return pintaMont(cid); }
+    }
+  }
+  await montLiberar(cid, t);
   if (state.sel === cid && state.caso) casoRecarrega();
 }
 async function montLiberar(cid, t) {
@@ -3483,7 +3527,7 @@ function fxHeaderHtml(c, d) {
 // Catálogo de démarches (cópia do app, processos.json): carregado uma vez; sem ele, tudo cai na démarche padrão.
 var FX_PROC = null;
 async function fxCarregaProcessos() {
-  try { var r = await fetch('processos.json?v=2026-11-16.7'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
+  try { var r = await fetch('processos.json?v=2026-11-16.9'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
 }
 // A sessão Checklist: pílulas por démarche, os 4 mais urgentes, pasta do Drive privada e "Ver mais desta sessão".
 // Os passos que a montagem do espaço propôs para ela, com démarche, subitens e origem: o mesmo detalhe do Checklist. Existem antes de ela ter conta.
@@ -3491,7 +3535,9 @@ function fxPassosPropostos(c) {
   var k = state.caso && state.caso.cid === c.id && !state.caso.err ? state.caso : null;
   if (!state.caso || state.caso.cid !== c.id) setTimeout(function () { carregaCaso(c.id); }, 0);
   if (!k) return '';
-  var h = MT.passosPropostosHtml(k.aco, k.listas, { esc: esc, rotulo: function (d) { return FX.rotuloDemarche(FX_PROC, d, personaKey(c)); }, prazo: casoPrazo, pil: casoPil, btn: casoBtn, conferi: function (id) { return '<button type="button" class="btn" data-montconferido="' + esc(String(id)) + '" style="padding:5px 10px;font-size:12px">Conferi a fonte</button>'; }, linha: casoLinha });
+  var h = MT.passosPropostosHtml(k.aco, k.listas, { editando: function (a) { return !!(k.ed && k.ed.t === 'aco' && k.ed.id === a.id); },
+    editor: function (a) { return casoEditor('aco', a.id, '<input id="caso-ed-titulo" class="t" maxlength="160" style="width:100%" value="' + esc(a.titulo) + '" aria-label="Texto do passo">' +
+      casoCampo('Subitens (um por linha, até 6)', '<textarea id="caso-ed-subitens" rows="4" style="width:100%" maxlength="800">' + esc((a.subitens || []).join('\n')) + '</textarea>')); }, esc: esc, rotulo: function (d) { return FX.rotuloDemarche(FX_PROC, d, personaKey(c)); }, prazo: casoPrazo, pil: casoPil, btn: casoBtn, conferi: function (id) { return '<button type="button" class="btn" data-montconferido="' + esc(String(id)) + '" style="padding:5px 10px;font-size:12px">Conferi a fonte</button>'; }, linha: casoLinha });
   return h ? casoSecao('Passos propostos para ela', 'da montagem do espaço · você revisa e publica', fxSemConsent(k) + h) : '';
 }
 function fxChecklistCorpo(c) {
@@ -3571,7 +3617,7 @@ async function fxCarregaConversas(c, forcar) {
   var r;
   try { r = await supabase.from('montagens').select('versao,estado,criado_em,proposta').eq('contato_id', c.id).neq('estado', 'descartada').order('versao', { ascending: true }); } catch (e) { r = { error: e }; }   // sem a tabela ou sem rede: o Panorama e o chat seguem como antes
   if (!state.pnConv || state.pnConv.cid !== c.id) return;
-  var lista = r.error ? [] : (r.data || []).map(function (m) { return { versao: m.versao, quando: m.criado_em, p: m.proposta && m.proposta.panorama ? m.proposta.panorama : null, m: m.proposta && Array.isArray(m.proposta.mensagens_chat) ? m.proposta.mensagens_chat : [] }; });
+  var lista = r.error ? [] : (r.data || []).map(function (m) { return { versao: m.versao, quando: m.criado_em, p: m.proposta && m.proposta.panorama ? m.proposta.panorama : null, m: m.proposta && Array.isArray(m.proposta.mensagens_chat) ? m.proposta.mensagens_chat : [], e: m.proposta && m.proposta.bilan && m.proposta.bilan.email ? m.proposta.bilan.email : null }; });
   state.pnConv = { cid: c.id, lista: lista, carregando: false };
   if (state.sel === c.id && state.fx && state.fx.tab === 'plataforma' && fxSessaoAberta('sinais')) fxPintaCorpo();
 }
@@ -5868,12 +5914,13 @@ function bilanResumoHtml(c) {
 }
 // O botão do e-mail do bilan: coluna da direita da aba Plataforma, logo abaixo do Pagamento (fora da subaba Interações).
 function bilanBlocoHtml(c, h4) {
-  var b = state.bilan && state.bilan.cid === c.id ? state.bilan : null;
+  if (!state.pnConv || state.pnConv.cid !== c.id) setTimeout(function () { fxCarregaConversas(c); }, 0);   // o rascunho vem da leitura da conversa
+  var b = state.bilan && state.bilan.cid === c.id ? state.bilan : null, pm = bilanDaMontagem(c);
   var ultimo = (state.mails || []).filter(function (m) { return m.modelo === 'bilan_conversa'; })[0];
   return '<div class="panel bilan-box" id="bilan-box" style="padding:16px"><h4 style="' + h4 + '">Bilan da conversa</h4>' +
-    '<button class="btn primary" type="button" data-bilanabrir="' + esc(c.id) + '"' + (b ? '' : ' disabled') + '>Enviar e-mail com bilan da conversa</button>' +
+    '<button class="btn primary" type="button" data-bilanabrir="' + esc(c.id) + '"' + (b || pm ? '' : ' disabled') + '>Enviar e-mail com bilan da conversa</button>' +
     '<p class="sub" style="margin:8px 0 0">Sempre o mesmo título e as mesmas seções: dúvidas tiradas, próximos passos, o que você responde ou confirma e o código de redução da lista de espera. O conteúdo vem do Notion e você revisa e anexa arquivos antes de enviar.</p>' +
-    (b ? '' : '<p class="sub" style="margin:8px 0 0">Ainda não há uma ligação lida do Notion para esta pessoa. Cole o link em Onboarding → Link do Notion.</p>') +
+    (pm ? '<p class="sub" style="margin:8px 0 0">O rascunho já vem da leitura da conversa (Montagem do espaço): você só revisa.</p>' : b ? '' : '<p class="sub" style="margin:8px 0 0">Ainda não há uma ligação lida do Notion para esta pessoa. Cole o link em Onboarding → Link do Notion. Ou leia a transcrição em Dossiê → A ligação → Montagem do espaço: o rascunho nasce dela.</p>') +
     (ultimo ? '<p class="sub" style="margin:8px 0 0">Último bilan enviado em ' + esc(fmtDay(String(ultimo.enviado_em || ultimo.criado_em || '').slice(0, 10))) + '.</p>' : '') + '</div>';
 }
 var BL = null;
@@ -5925,10 +5972,10 @@ function bilanErro(msg, forcar) {
   var f = $('bl-forcar'); if (f) f.hidden = !forcar;
 }
 function bilanAbrir(cid) {
-  var c = byC(cid), b = state.bilan; if (!c || !b || b.cid !== cid) return;
-  var ini = bilanIniciais(b.proposta.notion); BL = { cid: cid, ini: ini, anexos: [] };
+  var c = byC(cid), b = state.bilan && state.bilan.cid === cid ? state.bilan : null, pm = c ? bilanDaMontagem(c) : null; if (!c || (!b && !pm)) return;
+  var ini = pm || bilanIniciais(b.proposta.notion); BL = { cid: cid, ini: ini, anexos: [] };
   modalOpen(modalTop(c) + '<h4 style="margin:14px 0 6px;font-size:14px">E-mail com o bilan da conversa</h4>' +
-    '<p class="sub" style="margin:0 0 10px">Vai para <b id="bl-para"></b>. Título e seções são sempre os mesmos; você edita o conteúdo. Um item por linha.' + (ini.doRascunho ? ' Preenchido a partir do “Rascunho de e-mail” da página do Notion' + (ini.doRascunho < 3 ? ' (o que o rascunho não tem veio do resto da página)' : '') + '.' : '') + (ini.usouResumo ? ' A página não tem “Dúvidas tiradas”: usei o Resumo do Bilan d’action. Ajuste.' : '') + '</p>' +
+    '<p class="sub" style="margin:0 0 10px">Vai para <b id="bl-para"></b>. Título e seções são sempre os mesmos; você edita o conteúdo. Um item por linha.' + (ini.daLeitura ? ' Preenchido a partir da leitura da conversa (versão ' + ini.daLeitura + ').' : '') + (ini.doRascunho ? ' Preenchido a partir do “Rascunho de e-mail” da página do Notion' + (ini.doRascunho < 3 ? ' (o que o rascunho não tem veio do resto da página)' : '') + '.' : '') + (ini.usouResumo ? ' A página não tem “Dúvidas tiradas”: usei o Resumo do Bilan d’action. Ajuste.' : '') + '</p>' +
     '<label class="sub" for="bl-duvidas" style="display:block;margin:0 0 4px">1 · Dúvidas que tiramos na conversa</label><textarea id="bl-duvidas" class="bl-ta" rows="4"></textarea>' +
     '<label class="sub" for="bl-proximos" style="display:block;margin:10px 0 4px">2 · Seus próximos passos</label><textarea id="bl-proximos" class="bl-ta" rows="4"></textarea>' +
     '<label class="sub" for="bl-respostas" style="display:block;margin:10px 0 4px">3 · O que eu respondo ou confirmo pra você</label><textarea id="bl-respostas" class="bl-ta" rows="4"></textarea>' +
@@ -6180,11 +6227,12 @@ document.addEventListener('click', async function (e) {
   if (t.dataset.dossalvar) return salvarDossie(t.dataset.dossalvar, t);
   if (t.dataset.pcler) return pcLer(t.dataset.pcler, t);
   if (t.dataset.montler) return montLer(t.dataset.montler, t);
-  if (t.dataset.montaplicar) return montAplicar(t.dataset.montaplicar, t);
+  if (t.dataset.montaplicar) return montAprovar(t.dataset.montaplicar, t);
   if (t.dataset.montdescartar) return montDescartar(t.dataset.montdescartar, t);
   if (t.dataset.montpub) return montPub(t.dataset.montpub);
   if (t.dataset.montliberar) return montLiberar(t.dataset.montliberar, t);
   if (t.dataset.montconferido) return montConferido(state.sel, t.dataset.montconferido);
+  if (t.dataset.montdossie) { if (!window.confirm('Isto troca o Resumo e os Próximos passos do Dossiê pelo texto desta leitura. Continuar?')) return; return montPreencheDossie(t.dataset.montdossie, true).then(function (n) { toast(n ? 'Resumo e Próximos passos atualizados.' : 'A leitura não trouxe resumo nem próximos passos.'); }); }
   if (t.dataset.chatsug) return chatSugUsar(t.dataset.chatsug);
   if (t.dataset.chatsugdesc) return chatSugDescartar(t.dataset.chatsugdesc);
   if (t.dataset.montprevia) return montPrevia(state.sel, t.dataset.montprevia);
@@ -6322,6 +6370,7 @@ document.addEventListener('change', async function (e) {
   if (e.target.dataset && e.target.dataset.montmarca) return montMarca(state.sel, e.target.dataset.montmarca, e.target.checked);
   if (e.target.dataset && e.target.dataset.montmotivo) return montMarca(state.sel, e.target.dataset.montmotivo, false, e.target.value);
   if (e.target.dataset && e.target.dataset.montpode !== undefined) { montEstado(state.sel).pode = e.target.checked; return pintaMont(state.sel); }
+  if (e.target.dataset && e.target.dataset.montconfiro !== undefined) { montEstado(state.sel).confiro = e.target.checked; return pintaMont(state.sel); }
   if (e.target.dataset && e.target.dataset.montforcar !== undefined) { montEstado(state.sel).forcar = e.target.checked; return pintaMont(state.sel); }
   if (e.target.id === 'h-cat') { state.hCat = e.target.value; state.hMais = false; return renderFila(); }
   if (e.target.id === 'h-ord') { state.hOrd = e.target.value; return renderFila(); }

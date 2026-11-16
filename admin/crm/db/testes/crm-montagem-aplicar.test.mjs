@@ -43,7 +43,7 @@ async function main() {
   const nova = async (email) => { const [u] = await q("insert into auth.users (email, email_confirmed_at) values ($1, now()) returning id", [email]);
     await db.query("insert into contatos (email, user_id, estagio) values ($1, $2, 'em_uso') on conflict (email) do update set user_id = excluded.user_id", [email, u.id]);
     return { u, c: (await um('select id from contatos where email=$1', [email])).id }; };
-  const ana = await nova('ana@example.com'), bia = await nova('bia@example.com');
+  const ana = await nova('ana@example.com'), bia = await nova('bia@example.com'), cai = await nova('cai@example.com');
   await db.query("insert into consentimentos (contato_id, finalidade, aceito) values ($1, 'servico', true)", [ana.c]);
   const adm = (sqlTxt, p) => asUser(admin.id, () => db.query(sqlTxt, p));
   const o = { momento: '20:05', trecho: 'tu peux les appeler' };
@@ -170,6 +170,18 @@ async function main() {
     const pLm3 = JSON.parse(JSON.stringify(pLm)); pLm3.lembretes[0].texto = 'Texto novo da releitura';
     const rLm3 = await aplicar(bia, await montagem(bia, pLm3), aprovarTudo(pLm3));
     check('aviso que você já agendou não é mexido pela releitura (vira conflito)', (rLm3.conflitos || []).includes('lemb:lembrete_a1b2c3') && !/Texto novo/.test((await um("select texto from caso_avisos where contato_id=$1 and origem_chave='lemb:lembrete_a1b2c3'", [bia.c])).texto));
+  }
+
+  console.log('\n== O que você editou à mão não é sobrescrito pela releitura ==');
+  {
+    const pEd = PROP();
+    const mEd = await montagem(cai, pEd); await aplicar(cai, mEd, aprovarTudo(pEd));
+    await db.query("update caso_acoes set titulo = 'Ligar para a escola (meu texto)', subitens = '[\"Meu subitem\"]'::jsonb, editado_em = now() where contato_id=$1 and origem_chave='enc:ligar_escola'", [cai.c]);
+    const pEd2 = PROP(); pEd2.encaminhamentos[0].texto = 'Ligar para a escola (texto novo da IA)';
+    const rEd = await aplicar(cai, await montagem(cai, pEd2), aprovarTudo(pEd2));
+    const a = await um("select titulo, subitens from caso_acoes where contato_id=$1 and origem_chave='enc:ligar_escola'", [cai.c]);
+    check('o passo que você editou vira conflito e o seu texto fica', (rEd.conflitos || []).includes('enc:ligar_escola') && a.titulo === 'Ligar para a escola (meu texto)' && a.subitens[0] === 'Meu subitem');
+    check('o que você não editou continua atualizando na releitura', (await um("select count(*)::int n from caso_acoes where contato_id=$1", [cai.c])).n >= 4);
   }
 
   console.log('\n== Acesso ==');
