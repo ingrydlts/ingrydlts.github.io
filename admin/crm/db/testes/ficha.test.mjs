@@ -195,5 +195,24 @@ console.log('== Potencial (índice 0 a 100) ==');
   check('sem dados não lança', FX.potencial().faixa === 'Baixo' && FX.potencial({ tipo: 'assinante' }).nota >= 0);
 }
 
+console.log('== Próxima ação sugerida pelo Potencial ==');
+{
+  const lead = (o) => { const x = Object.assign({ tipo: 'lead', etapa: 2, mails: { total: 0, abertos: 0, clicados: 0 }, respostas: 0, respostasNovas: 0, capturas: 1, materiais: 1, diasSemSinal: 7, nome: 'Ana Souza' }, o); return FX.proximaAcao(x, FX.potencial(x)); };
+  const plat = (o) => { const x = Object.assign({ tipo: 'assinante', assin: { status: 'active' }, ultimoAcessoDias: 2, sessoes30: 5, chk: { feitos: 3, total: 6, atrasados: 0 }, respostas: 0, nome: 'Ana Souza' }, o); return FX.proximaAcao(x, FX.potencial(x)); };
+  const quente = { etapa: 2, mails: { total: 2, abertos: 2, clicados: 2 }, respostas: 1, diasSemSinal: 1, urgencia: 'alta', materiais: 2 };
+  check('lead com resposta nova: responder agora, antes de qualquer faixa', lead({ respostas: 1, respostasNovas: 1 }).titulo.startsWith('Responder Ana'));
+  check('lead alto sem 1:1: reimpacto personalizado oferecendo o 1:1, com o nome no texto', /1:1/.test(lead(quente).titulo) && lead(quente).texto.includes('Oi, Ana!') && !lead(quente).texto.includes('{nome}'));
+  check('lead alto com 1:1 marcado: preparo; com 1:1 feito: oferecer a plataforma', /preparo/i.test(lead(Object.assign({}, quente, { etapa: 4 })).titulo) && /plataforma/i.test(lead(Object.assign({}, quente, { etapa: 5 })).titulo));
+  check('lead médio que não abriu: trocar o assunto', /assunto/i.test(lead({ mails: { total: 1, abertos: 0, clicados: 0 }, urgencia: 'alta', materiais: 2 }).titulo));
+  check('lead baixo com mais de 14 dias sem sinal: último reimpacto leve', /reimpacto leve/i.test(lead({ diasSemSinal: 20 }).titulo));
+  check('lead baixo e frio sem e-mail: primeiro e-mail', /primeiro e-mail/i.test(lead({ diasSemSinal: 8 }).titulo));
+  check('plataforma alta: depoimento ou indicação', /depoimento/i.test(plat().titulo));
+  check('plataforma em atraso: cobrança antes de tudo', /Cobrança/i.test(plat({ assin: { status: 'past_due' } }).titulo));
+  check('plataforma que vai cancelar: 1:1 de retenção', /retenção/i.test(plat({ assin: { status: 'active', cancela_no_fim: true } }).titulo) && plat({ assin: { status: 'active', cancela_no_fim: true } }).canal === '1:1');
+  check('plataforma baixa que nunca acessou: primeiro acesso guiado', /Primeiro acesso/i.test(plat({ ultimoAcessoDias: null, sessoes30: 0, chk: { feitos: 0, total: 6, atrasados: 2 } }).titulo));
+  check('plataforma baixa sumida há mais de 30 dias: reativação', /Reativação/i.test(plat({ ultimoAcessoDias: 45, sessoes30: 0, chk: { feitos: 0, total: 6, atrasados: 0 } }).titulo));
+  check('toda ação traz canal e porquê; sem dados não lança', lead(quente).canal && lead(quente).porque && FX.proximaAcao(undefined, undefined).titulo);
+}
+
 console.log('\n' + passed + ' passaram, ' + failed + ' falharam');
 if (failed) process.exit(1);

@@ -286,10 +286,10 @@ export function potencial(x) {
   const soma = (t, p) => { motivos.push({ t, p }); sinais++; };
   if (o.tipo === 'lead') {
     base = 20;
-    if (o.respostas > 0) soma('Já escreveu para você', 20);
+    if (o.respostas > 0) soma('Já escreveu para você', 25);
     if (m.clicados > 0) soma('Clicou em e-mail', 15); else if (m.abertos > 0) soma('Abriu e-mail', 10);
     else if (m.total >= 2) soma(m.total + ' e-mails sem abrir', -10);
-    const et = { 3: ['1:1 oferecido', 8], 4: ['1:1 marcado', 18], 5: ['1:1 feito', 25], 6: ['Plataforma oferecida', 30], 7: ['Na plataforma', 30] }[o.etapa];
+    const et = { 3: ['1:1 oferecido', 8], 4: ['1:1 marcado', 20], 5: ['1:1 feito', 25], 6: ['Plataforma oferecida', 15], 7: ['Na plataforma', 15] }[o.etapa];
     if (et) soma(et[0], et[1]);
     if (o.materiais >= 2) soma('Pegou ' + o.materiais + ' materiais', 10); else if (o.capturas >= 2) soma('Pediu o mesmo material ' + o.capturas + 'x', 8);
     if (o.urgencia === 'alta') soma('Prazo urgente', 10);
@@ -299,7 +299,7 @@ export function potencial(x) {
     base = 50;
     const d = o.ultimoAcessoDias;
     if (d == null) soma('Nunca acessou o app', -25); else if (d <= 7) soma('Acessou há ' + (d === 0 ? 'menos de 1 dia' : d + (d === 1 ? ' dia' : ' dias')), 20); else if (d <= 14) soma('Último acesso há ' + d + ' dias', 5); else if (d <= 30) soma('Último acesso há ' + d + ' dias', -10); else soma('Mais de 30 dias sem acessar', -25);
-    if (o.sessoes30 >= 3) soma(o.sessoes30 + ' sessões em 30 dias', 10); else if (o.sessoes30 === 0) soma('Nenhuma sessão em 30 dias', -10);
+    if (o.sessoes30 >= 3) soma(o.sessoes30 + ' sessões em 30 dias', 10); else if (o.sessoes30 === 0 && d != null) soma('Nenhuma sessão em 30 dias', -10);   // quem nunca acessou já foi descontado acima
     if (o.chk && o.chk.total > 0) {
       const pct = o.chk.feitos / o.chk.total;
       if (pct > 0) soma('Checklist ' + Math.round(pct * 100) + '% feito', Math.round(pct * 20));
@@ -313,4 +313,42 @@ export function potencial(x) {
   const nota = Math.max(0, Math.min(100, Math.round(base + motivos.reduce((s, z) => s + z.p, 0))));
   motivos.sort((a, b) => Math.abs(b.p) - Math.abs(a.p));
   return { nota, faixa: faixaPotencial(nota), motivos, sinais, poucosDados: sinais < 2 };
+}
+
+// ---------- Próxima ação sugerida pelo Potencial ----------
+// Cruza a faixa (Alto/Médio/Baixo) com a situação da pessoa. Devolve { titulo, canal, porque, texto }; `texto` é uma mensagem pronta para copiar
+// (com o nome já no lugar). É sugestão: a Ingryd decide e edita antes de mandar. x = os mesmos dados de potencial() + { nome, gancho }.
+export function proximaAcao(x, pot) {
+  const o = x || {}, n = (o.nome || '').split(/\s+/)[0] || 'você', m = o.mails || {}, faixa = pot ? pot.faixa : 'Baixo', a = o.assin || {};
+  const A = (titulo, canal, porque, texto) => ({ titulo, canal, porque, texto: texto ? texto.replace(/\{nome\}/g, n) : '' });
+  const gancho = o.gancho ? ' ' + o.gancho : '';
+  if (o.tipo === 'lead') {
+    if (o.respostas > 0 && o.respostasNovas > 0) return A('Responder ' + n + ' agora', 'Mensagem', 'Ela escreveu e ainda não foi respondida: é o sinal mais forte que existe.', '');
+    if (faixa === 'Alto') {
+      if (o.etapa <= 3) return A('Reimpacto personalizado oferecendo o 1:1', 'E-mail', 'Interesse alto e ainda sem 1:1: é a hora de convidar.',
+        'Oi, {nome}! Vi que você' + (o.gancho ? ' ' + o.gancho : ' está olhando o seu caso com atenção') + '. Queria te oferecer um 1:1 de 20 min: a gente olha a sua situação e eu te mostro o próximo passo. Qual horário fica bom para você?');
+      if (o.etapa === 4) return A('Mandar o preparo do 1:1', 'Mensagem', 'O 1:1 já está marcado: chega mais útil se ela separar os documentos.', 'Oi, {nome}! Para aproveitarmos os 20 min, separe a data em que a sua situação atual termina e o que você já pesquisou. Até lá!');
+      if (o.etapa === 5) return A('Oferecer a plataforma com o teste de 7 dias', 'Mensagem', 'O 1:1 já aconteceu e o interesse segue alto: o próximo passo natural é a plataforma.', 'Oi, {nome}! Montei o que combinamos num espaço só seu na plataforma: passos, prazos e o que eu acompanho com você. Dá para testar 7 dias de graça: [link]');
+      return A('Fechar a adesão: lembrar do teste grátis', 'Mensagem', 'A plataforma já foi oferecida e o interesse é alto: falta tirar a última dúvida.', 'Oi, {nome}! Passando para ver se ficou alguma dúvida sobre a plataforma. O teste de 7 dias é gratuito e você cancela quando quiser: [link]');
+    }
+    if (faixa === 'Médio') {
+      if (m.total >= 1 && !(m.abertos > 0)) return A('Trocar o assunto do e-mail ou chamar no Instagram', 'E-mail', 'Recebeu e não abriu: o canal ou o assunto não chamou.', 'Oi, {nome}! Te mandei um e-mail e acho que ele se perdeu por aí. Em uma frase: qual é a sua maior dúvida hoje sobre a França?');
+      if (m.abertos > 0) return A('Convite curto para o 1:1 com uma pergunta fácil', 'E-mail', 'Abriu e ainda não respondeu: falta um convite concreto e leve.', 'Oi, {nome}! Vi que você' + gancho + '. Quer 20 min comigo? Eu te digo por onde eu começaria no seu caso.');
+      return A('Mandar a pergunta única do guia', 'E-mail', 'Ainda sem sinal claro: uma pergunta simples abre a conversa.', 'Oi, {nome}! Qual é o passo que mais te trava hoje? Respondendo isso eu te mando o material certo.');
+    }
+    if (o.diasSemSinal != null && o.diasSemSinal > 14) return A('Último reimpacto leve, sem pedir nada', 'E-mail', 'Mais de 14 dias sem sinal: um conteúdo útil reacende sem pressionar. Se não abrir, pare por ora.', 'Oi, {nome}! Lembrei de você e separei um conteúdo que costuma ajudar quem está no seu momento: [link]. Sem pressa.');
+    if (!(m.total > 0)) return A('Mandar o primeiro e-mail', 'E-mail', 'Ainda não recebeu nenhum e-mail do CRM: o primeiro contato é seu.', 'Oi, {nome}! Vi que você pediu o guia. Me conta: em que ponto você está hoje?');
+    return A('Manter na sequência automática', 'Nenhuma', 'Potencial baixo e sem sinal novo: não vale tempo manual agora.', '');
+  }
+  // Plataforma: assinante ou conta com assinatura registrada.
+  if (a.status === 'past_due' || a.status === 'unpaid') return A('Cobrança em atraso: avisar com carinho', 'Mensagem', 'Pagamento em atraso é a causa mais comum de saída, e a mais fácil de resolver.', 'Oi, {nome}! O pagamento da plataforma não passou. Pode ter sido o cartão. Aqui está o link para atualizar: [link]. Qualquer coisa me chama.');
+  if (a.cancela_no_fim) return A('1:1 de retenção antes do fim do período', '1:1', 'Ela marcou para cancelar: entender o motivo vale mais que um desconto.', 'Oi, {nome}! Vi que você marcou para cancelar. Antes do fim, topa 15 min comigo? Quero entender o que não serviu e ver se dá para ajustar (ou pausar).');
+  if (faixa === 'Alto') return A('Pedir depoimento ou indicação e oferecer um pacote', 'Mensagem', 'Quem usa e avança é o melhor momento para pedir um depoimento e apresentar os serviços com desconto.', 'Oi, {nome}! Fico feliz de ver o seu avanço. Posso usar um trechinho do seu relato (sem o seu nome, se preferir)? E se quiser, tenho pacotes com 20% de desconto para assinantes.');
+  if (faixa === 'Médio') return o.chk && o.chk.atrasados > 0
+    ? A('Replanejar os passos atrasados', 'Mensagem', 'Tem passo atrasado: o risco é ela desanimar.', 'Oi, {nome}! Vi que alguns prazos passaram. Sem drama: me conta o que travou e a gente reorganiza a ordem.')
+    : A('Lembrar do próximo passo do checklist', 'Mensagem', 'Uso razoável: um empurrão no próximo passo mantém o ritmo.', 'Oi, {nome}! Passando para lembrar do seu próximo passo no checklist. Se travou em algo, me conta por aqui.');
+  if (o.ultimoAcessoDias == null) return A('Primeiro acesso guiado', '1:1', 'Assina mas nunca entrou: é o maior risco de saída no primeiro mês.', 'Oi, {nome}! Vi que você ainda não entrou na plataforma. Topa 10 min comigo para fazermos o primeiro passo juntas? Aqui está o link de acesso: [link]');
+  if (o.ultimoAcessoDias > 30) return A('Reativação pessoal com o passo mais urgente', 'Mensagem', 'Mais de 30 dias sem acessar: lembre do prazo que mais importa agora.', 'Oi, {nome}! Faz um tempo que você não passa por lá. O passo mais urgente do seu caso hoje é [passo]. Quer que eu te ajude a resolver?');
+  if (o.chk && o.chk.atrasados > 0) return A('1:1 de 20 min para replanejar', '1:1', 'Passos atrasados e pouco uso: sem plano claro ela tende a sair.', 'Oi, {nome}! Vamos reorganizar os seus prazos juntas? 20 min e você sai com a ordem certa.');
+  return A('Mensagem de acompanhamento', 'Mensagem', 'Uso baixo, sem sinal de saída imediata: um contato pessoal costuma bastar.', 'Oi, {nome}! Como está o seu caso? Se algo travou, me conta que eu ajusto o que aparece para você.');
 }
