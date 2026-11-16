@@ -270,3 +270,47 @@ export function cartoesMinimos(tipo, d) {
   const k = d.chk;
   return { blocos: [{ titulo: null, cartoes: [acesso, k ? cartao('Checklist', k.feitos + ' de ' + k.total, k.atrasados > 0 ? plural(k.atrasados, 'atrasado', 'atrasados') : '', k.atrasados > 0 ? 'alerta' : undefined) : cartao('Checklist', '—', 'ainda não carregou')] }], nota: null };
 }
+
+// ---------- Potencial: um índice de 0 a 100 por pessoa (conversa com a Ingryd, 16/11) ----------
+// Alto = quem tem mais chance de aderir (lead) ou de ficar (assinante); Baixo = quem está mais longe de aderir ou mais perto de sair.
+// Lead: parte de 20 e soma o que mostra interesse (resposta, e-mail aberto, etapa do funil, vários materiais, prazo urgente, link enviado) e
+// desconta o que esfria (e-mails sem abrir, dias sem sinal). Assinante: parte de 50 e mede uso (último acesso, sessões, checklist) e pagamento.
+// Cada ponto vem com o motivo, para a tela explicar a nota. Os pesos são um rascunho a calibrar com a base real.
+export const FAIXAS_POTENCIAL = { alto: 65, medio: 35 };
+export function faixaPotencial(nota) { return nota >= FAIXAS_POTENCIAL.alto ? 'Alto' : nota >= FAIXAS_POTENCIAL.medio ? 'Médio' : 'Baixo'; }
+// x = { tipo: 'lead'|'plataforma'|'assinante', etapa (1..7), mails: { total, abertos, clicados }, respostas, capturas, materiais, diasSemSinal, urgencia,
+//       linkPagamento, assin, ultimoAcessoDias, sessoes30, chk: { feitos, total, atrasados }|null }
+export function potencial(x) {
+  const o = x || {}, m = o.mails || {}, motivos = [];
+  let base, sinais = 0;
+  const soma = (t, p) => { motivos.push({ t, p }); sinais++; };
+  if (o.tipo === 'lead') {
+    base = 20;
+    if (o.respostas > 0) soma('Já escreveu para você', 20);
+    if (m.clicados > 0) soma('Clicou em e-mail', 15); else if (m.abertos > 0) soma('Abriu e-mail', 10);
+    else if (m.total >= 2) soma(m.total + ' e-mails sem abrir', -10);
+    const et = { 3: ['1:1 oferecido', 8], 4: ['1:1 marcado', 18], 5: ['1:1 feito', 25], 6: ['Plataforma oferecida', 30], 7: ['Na plataforma', 30] }[o.etapa];
+    if (et) soma(et[0], et[1]);
+    if (o.materiais >= 2) soma('Pegou ' + o.materiais + ' materiais', 10); else if (o.capturas >= 2) soma('Pediu o mesmo material ' + o.capturas + 'x', 8);
+    if (o.urgencia === 'alta') soma('Prazo urgente', 10);
+    if (o.linkPagamento) soma('Link de pagamento enviado', 10);
+    if (o.diasSemSinal != null) { if (o.diasSemSinal <= 3) soma('Sinal recente', 10); else if (o.diasSemSinal > 14) soma(o.diasSemSinal + ' dias sem sinal', -15); }
+  } else {
+    base = 50;
+    const d = o.ultimoAcessoDias;
+    if (d == null) soma('Nunca acessou o app', -25); else if (d <= 7) soma('Acessou há ' + (d === 0 ? 'menos de 1 dia' : d + (d === 1 ? ' dia' : ' dias')), 20); else if (d <= 14) soma('Último acesso há ' + d + ' dias', 5); else if (d <= 30) soma('Último acesso há ' + d + ' dias', -10); else soma('Mais de 30 dias sem acessar', -25);
+    if (o.sessoes30 >= 3) soma(o.sessoes30 + ' sessões em 30 dias', 10); else if (o.sessoes30 === 0) soma('Nenhuma sessão em 30 dias', -10);
+    if (o.chk && o.chk.total > 0) {
+      const pct = o.chk.feitos / o.chk.total;
+      if (pct > 0) soma('Checklist ' + Math.round(pct * 100) + '% feito', Math.round(pct * 20));
+      if (o.chk.atrasados > 0) soma(o.chk.atrasados + (o.chk.atrasados === 1 ? ' passo atrasado' : ' passos atrasados'), -Math.min(15, o.chk.atrasados * 5));
+    }
+    const a = o.assin || {};
+    if (a.status === 'active') soma('Assinatura ativa', 10); else if (a.status === 'past_due' || a.status === 'unpaid') soma('Pagamento em atraso', -25); else if (a.status === 'canceled') soma('Assinatura cancelada', -40);
+    if (a.cancela_no_fim) soma('Vai cancelar no fim do período', -20);
+    if (o.respostas > 0) soma('Conversa com você', 5);
+  }
+  const nota = Math.max(0, Math.min(100, Math.round(base + motivos.reduce((s, z) => s + z.p, 0))));
+  motivos.sort((a, b) => Math.abs(b.p) - Math.abs(a.p));
+  return { nota, faixa: faixaPotencial(nota), motivos, sinais, poucosDados: sinais < 2 };
+}

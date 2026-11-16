@@ -179,5 +179,21 @@ console.log('== Revisão final: cartões ==');
   check('data de cobrança já passada: avisa para conferir no Stripe, em alerta', /confira/.test(por(r, 'Próxima cobrança').sub) && por(r, 'Próxima cobrança').tom === 'alerta');
 }
 
+console.log('== Potencial (índice 0 a 100) ==');
+{
+  const lead = (o) => FX.potencial(Object.assign({ tipo: 'lead', etapa: 2, mails: { total: 0, abertos: 0, clicados: 0 }, respostas: 0, capturas: 1, materiais: 1, diasSemSinal: 7 }, o));
+  check('faixas: 65+ alto, 35 a 64 médio, abaixo baixo', FX.faixaPotencial(65) === 'Alto' && FX.faixaPotencial(64) === 'Médio' && FX.faixaPotencial(35) === 'Médio' && FX.faixaPotencial(34) === 'Baixo');
+  check('lead frio e sem sinais: nota 20, baixo, poucos dados', lead().nota === 20 && lead().faixa === 'Baixo' && lead().poucosDados === true);
+  const quente = lead({ etapa: 4, respostas: 1, mails: { total: 2, abertos: 2, clicados: 1 }, diasSemSinal: 1, urgencia: 'alta', materiais: 2 });
+  check('lead quente (respondeu, clicou, 1:1 marcado, urgente) é alto', quente.nota >= 65 && quente.faixa === 'Alto' && !quente.poucosDados);
+  check('2 e-mails sem abrir e 20 dias sem sinal derrubam a nota (20 - 10 - 15, nunca abaixo de 0)', lead({ mails: { total: 2, abertos: 0, clicados: 0 }, diasSemSinal: 20 }).nota === 0);
+  check('a nota nunca passa de 100', lead({ etapa: 7, respostas: 1, mails: { total: 3, abertos: 3, clicados: 3 }, materiais: 3, urgencia: 'alta', linkPagamento: true, diasSemSinal: 0 }).nota === 100);
+  const ass = (o) => FX.potencial(Object.assign({ tipo: 'assinante', assin: { status: 'active' }, ultimoAcessoDias: 2, sessoes30: 5, chk: { feitos: 3, total: 6, atrasados: 0 }, respostas: 0 }, o));
+  check('assinante ativo e engajado é alto', ass().faixa === 'Alto');
+  check('assinante que vai cancelar, em atraso e sumido é baixo', ass({ assin: { status: 'past_due', cancela_no_fim: true }, ultimoAcessoDias: 40, sessoes30: 0, chk: { feitos: 0, total: 6, atrasados: 3 } }).faixa === 'Baixo');
+  check('motivos vêm ordenados do mais forte ao mais fraco, com texto', quente.motivos.length > 3 && Math.abs(quente.motivos[0].p) >= Math.abs(quente.motivos[quente.motivos.length - 1].p) && typeof quente.motivos[0].t === 'string');
+  check('sem dados não lança', FX.potencial().faixa === 'Baixo' && FX.potencial({ tipo: 'assinante' }).nota >= 0);
+}
+
 console.log('\n' + passed + ' passaram, ' + failed + ' falharam');
 if (failed) process.exit(1);
