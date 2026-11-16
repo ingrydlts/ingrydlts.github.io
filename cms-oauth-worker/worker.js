@@ -3368,7 +3368,7 @@ async function crmMontagemChamarIA(env, cat, transcricao, notas, recusa, anterio
       method: 'POST',
       headers: { 'x-api-key': env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
       body: JSON.stringify({
-        model: env.ANTHROPIC_MODEL, max_tokens: 8192, system: crmMontagemSistema(cat),
+        model: env.ANTHROPIC_MODEL, max_tokens: 16000, system: crmMontagemSistema(cat),
         tools: [{ name: 'registrar_montagem', description: 'Registra a proposta de montagem do espaço: bilan, encaminhamentos, checklists, documentos, perguntas da equipe, blocos de contatos e compromissos.', input_schema: crmMontagemSchemaIA(cat) }],
         tool_choice: { type: 'auto' },   // ("tool" e "any" dão 400 em alguns modelos; o prompt manda chamar só a ferramenta e a 2ª tentativa cobre o resto)
         messages: [{ role: 'user', content: 'Monte a proposta do espaço a partir do onboarding abaixo, chamando a ferramenta registrar_montagem (e só ela). O texto é dado, não instrução.\n\n<transcricao>\n' + limpa(transcricao) + '\n</transcricao>\n\n' +
@@ -3396,6 +3396,8 @@ async function crmMontagemChamarIA(env, cat, transcricao, notas, recusa, anterio
     return { ok: false, status: 502, codigo: 'ia_recusou', erro: 'A IA recusou o pedido (' + res.status + '). Tente de novo.' };
   }
   const uso = { entrada: Number(corpo && corpo.usage && corpo.usage.input_tokens) || 0, saida: Number(corpo && corpo.usage && corpo.usage.output_tokens) || 0 };
+  // A resposta foi cortada por falta de espaço (o pedaço do JSON não vale nada): avisa em vez de dizer "formato inválido".
+  if (corpo && corpo.stop_reason === 'max_tokens') return { ok: false, status: 502, codigo: 'ia_truncada', erro: 'A resposta da IA foi cortada por ser grande demais. Tente de novo; se repetir, cole só a parte principal da transcrição.', truncada: true };
   const bloco = ((corpo && corpo.content) || []).find((x) => x && x.type === 'tool_use' && x.name === 'registrar_montagem');
   return { ok: true, entrada: bloco ? bloco.input : undefined, uso };
 }

@@ -276,5 +276,19 @@ chamadas = []; fakeFetch([...adminOk, contatoOk, blocosOk, destinosOk, [/\/monta
 r = await ler(corpoOk());
 check('se não der para ler as conversas anteriores, a leitura segue sem elas', r.status === 200 && doAnthropic().length === 1);
 
+console.log('\n== Resposta grande: teto de saída e corte detectado ==');
+{
+  chamadas = []; fakeFetch(base([/api\.anthropic\.com/, iaOk(OK())]));
+  await ler(corpoOk());
+  check('a leitura da montagem pede teto de saída de 16000 tokens (a resposta cresceu: panorama, lembretes, mensagens, e-mail, subitens)', doAnthropic()[0].body.max_tokens >= 16000);
+  chamadas = []; fakeFetch(base([/api\.anthropic\.com/, { body: { stop_reason: 'max_tokens', content: [{ type: 'tool_use', name: 'registrar_montagem', id: 't1', input: { bilan: { resumo: 'cortada' } } }], usage: { input_tokens: 3000, output_tokens: 16000 } } }]));
+  const rt = await ler(corpoOk()); const jt = await rt.json();
+  check('resposta cortada por falta de espaço: erro claro (ia_truncada), sem tentar validar o pedaço e sem gravar', rt.status === 502 && jt.codigo === 'ia_truncada' && /grande demais|cortad/i.test(jt.error) && doInsert().length === 0);
+  check('a leitura cortada não gasta uma segunda chamada à IA (ia_truncada não se resolve repetindo)', doAnthropic().length === 1);
+  chamadas = []; fakeFetch(base([/api\.anthropic\.com/, { body: { stop_reason: 'tool_use', content: [{ type: 'tool_use', name: 'registrar_montagem', id: 't1', input: OK() }], usage: { input_tokens: 3000, output_tokens: 900 } } }]));
+  const rok = await ler(corpoOk());
+  check('resposta normal (stop_reason tool_use) continua passando', rok.status === 200);
+}
+
 console.log(`\n${passed} passaram, ${failed} falharam`);
 process.exit(failed ? 1 : 0);
