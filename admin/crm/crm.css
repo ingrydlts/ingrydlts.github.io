@@ -1341,3 +1341,36 @@ details.ee-sec[open]>summary{margin-bottom:8px}
 .hd .hd-det{position:absolute; top:calc(100% + 6px); right:0; z-index:20; min-width:260px; margin:0; padding:10px 14px; background:var(--surface); border:1px solid var(--line); border-radius:10px; box-shadow:0 8px 24px rgba(0,0,0,.14)}
 .hd .est,.hd .tag{flex:1 0 100%}
 @media (max-width:760px){.hd .hd-k{grid-auto-flow:row; grid-template-columns:repeat(2,minmax(0,1fr)); flex:1 1 100%}}
+
+/* ===== Cabeçalho da ficha, redesenho (16/11) =====
+   Linha 1: avatar, nome e pílulas. Linha 2: grade de cartões iguais que preenche toda a largura (sem vazio, sem quebra de valor).
+   Só um dropdown abre por vez (details name="hd") e cada um abre embaixo do próprio cartão, sem cobrir o vizinho. */
+#fx-hd.hd{display:block; padding:12px 14px}
+#fx-hd .hd-l1{display:flex; align-items:center; flex-wrap:wrap; gap:6px 8px; flex:none}
+#fx-hd .hd-k{display:grid; grid-auto-flow:row; grid-auto-columns:auto; grid-template-columns:repeat(auto-fit,minmax(168px,1fr)); gap:8px; margin:10px 0 0; flex:none; justify-content:stretch}
+#fx-hd .hd-k .k{position:relative; display:block; min-width:0; width:auto; min-height:52px; padding:8px 28px 8px 12px; background:var(--surface-2); border-radius:10px}
+#fx-hd .hd-k .k.ok{background:var(--moss-soft)} #fx-hd .hd-k .k.alerta{background:var(--red-soft)}
+#fx-hd .hd-k .l{display:flex; align-items:center; gap:6px; white-space:nowrap}
+#fx-hd .hd-k .v{margin:2px 0 0; font-size:16px; line-height:1.2; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+#fx-hd .hd-k .s{display:none}
+#fx-hd .hd-dd{padding:0; cursor:pointer}
+#fx-hd .hd-dd>summary{display:block; position:static; padding:8px 28px 8px 12px; outline:0; list-style:none; min-height:52px; box-sizing:border-box}
+#fx-hd .hd-dd>summary::after{content:'▾'; position:absolute; top:10px; right:10px; float:none; color:var(--ink-3); font-size:11px}
+#fx-hd .hd-dd[open]>summary::after{content:'▴'}
+#fx-hd .hd-dd>summary:focus-visible{outline:2px solid var(--moss); outline-offset:-2px; border-radius:10px}
+#fx-hd .hd-dd[open]{grid-column:auto; box-shadow:0 0 0 2px var(--moss) inset}
+#fx-hd .hd-dd .hd-pop{position:absolute; top:calc(100% + 8px); left:0; right:auto; z-index:30; width:min(320px,86vw); margin:0; padding:12px 14px; background:var(--surface); border:1px solid var(--line); border-radius:12px; box-shadow:0 12px 32px rgba(0,0,0,.16); cursor:default}
+#fx-hd .hd-k>.hd-dd:nth-last-child(-n+2) .hd-pop{left:auto; right:0}
+#fx-hd .hd-dd:not([open]) .hd-pop{display:none}
+#fx-hd .hd-det{position:static; display:grid; grid-template-columns:auto 1fr; gap:4px 12px; min-width:0; margin:0; padding:0; border:0; box-shadow:none; background:none}
+@media (max-width:760px){
+  #fx-hd .hd-k{grid-template-columns:repeat(2,minmax(0,1fr))}
+  #fx-hd .hd-k>.hd-dd:nth-child(2n) .hd-pop{left:auto; right:0}
+  #fx-hd .hd-k>.hd-dd:nth-child(2n+1) .hd-pop{left:0; right:auto}
+}
+#fx-hd .hd-k .k.hd-dd{padding:0}
+#fx-hd .hd-dd>summary{padding:8px 22px 8px 12px}
+@media (max-width:760px){
+  #fx-hd .hd-k .hd-dd[open]{grid-column:1/-1}
+  #fx-hd .hd-k .hd-dd[open] .hd-pop{position:static; width:auto; margin:0 12px 12px; box-shadow:none; border:0; border-top:1px solid var(--line); border-radius:0; padding:10px 0 0}
+}
