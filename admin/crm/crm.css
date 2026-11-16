@@ -1167,7 +1167,7 @@ details.ee-sec[open]>summary{margin-bottom:8px}
 .st-excl-i > span{min-width:0} .st-excl-i b{display:block; font-weight:600} .st-excl-i .btn{flex:none}
 .ee-irmaos .ee-et{max-width:420px}
 
-/* Próximas mensagens da IAssistente (Hoje): o mesmo cartão da "Pergunta da equipe" do app — fundo bege-claro sem borda, raio 22,
+/* Próximas mensagens da Equipe Por Dentro (Hoje): o mesmo cartão da "Pergunta da equipe" do app — fundo bege-claro sem borda, raio 22,
    etiqueta azul em caixa-alta, título em serifa, botões em pílula com contorno azul. */
 .fila-card{--azul:#5F87AE; background:var(--surface); border:0; border-radius:22px; padding:18px 20px}
 :root[data-theme="dark"] .fila-card{--azul:#8AACD2}

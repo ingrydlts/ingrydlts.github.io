@@ -1138,13 +1138,13 @@ function insMudanca(h) {
   return '<div class="insmud"><time>' + esc(fmtDia(h.criado_em) + ' ' + fmtHora(h.criado_em)) + '</time>' + lista(h.entrou, 'Entrou', 'u-media') + lista(h.saiu, 'Saiu', 'out') + '</div>';
 }
 function insightsHtml(ins, agora) {
-  var cab = '<h3 style="font-size:15px;margin:0 0 4px">Minha iAssistente</h3>';
+  var cab = '<h3 style="font-size:15px;margin:0 0 4px">Equipe Por Dentro</h3>';
   if (!ins) return '<div class="panel" style="padding:16px">' + cab + '<p class="sub" style="margin:0">Carregando…</p></div>';
   if (ins.err) return '<div class="panel" style="padding:16px">' + cab + '<p class="sub" style="margin:0">Falta rodar <b>db/crm-insights.sql</b> no SQL Editor do Supabase.</p></div>';
   var notas = (ins.vivos && ins.vivos.notas) || [], vivosIds = {};
   notas.forEach(function (n) { vivosIds[n.id] = 1; });
   var card = notas.length
-    ? '<div class="inscard"><div class="inskicker">Minha iAssistente</div>' + notas.map(function (n) { return insNota(n, /^ingryd:/.test(n.id) ? 'nota sua' : 'automática'); }).join('') + '</div>'
+    ? '<div class="inscard"><div class="inskicker">Equipe Por Dentro</div>' + notas.map(function (n) { return insNota(n, /^ingryd:/.test(n.id) ? 'nota sua' : 'automática'); }).join('') + '</div>'
     : '<div class="empty">' + (ins.vivos ? 'Nenhuma nota no ar para ela agora.' : 'Ela ainda não abriu o dashboard depois que isso foi ligado.') + '</div>';
   var quando = ins.vivos ? 'Atualizado ' + fmtDia(ins.vivos.atualizado_em) + ' às ' + fmtHora(ins.vivos.atualizado_em) : '';
   var mudancas = ins.hist.filter(function (h) { return !h.inicial; });
@@ -1169,7 +1169,7 @@ function insightsHtml(ins, agora) {
 function dosChipIns(ins) {
   if (!ins || ins.err || !ins.vivos) return '';
   var rec = ins.hist.filter(function (h) { return !h.inicial; })[0], novo = rec && Date.now() - new Date(rec.criado_em).getTime() < 10 * 60e3;
-  return '<span class="dchip' + (novo ? ' insnovo' : '') + '"><b>iAssistente</b> ' + ins.vivos.notas.length + (ins.vivos.notas.length === 1 ? ' nota no ar' : ' notas no ar') + (novo ? ' · mudou agora' : '') + '</span>';
+  return '<span class="dchip' + (novo ? ' insnovo' : '') + '"><b>Equipe Por Dentro</b> ' + ins.vivos.notas.length + (ins.vivos.notas.length === 1 ? ' nota no ar' : ' notas no ar') + (novo ? ' · mudou agora' : '') + '</span>';
 }
 // Ao vivo: o Realtime avisa quando algo dela muda e a ficha se atualiza sozinha. Se o Realtime não estiver ligado no
 // projeto, uma consulta a cada 20 s faz o mesmo mais devagar.
@@ -1349,7 +1349,7 @@ function propostaEstado(x, agora) {
 // A aba Plataforma tem três sub-abas: iAssistente, Chat e Interações. A coluna da direita (pagamento, checklist e resumo)
 // fica fixa e é a mesma nas três. Interações junta cada clique dela no app (checklist, dossiê, telas, botões) com as vezes
 // em que o dossiê foi salvo, separados por dia (um dropdown por dia, o mais recente aberto).
-var PLAT_ABAS = [['assistente', 'iAssistente'], ['chat', 'Chat'], ['checklist', 'Checklist'], ['caso', 'Caso'], ['interacoes', 'Interações']];
+var PLAT_ABAS = [['assistente', 'Equipe Por Dentro'], ['chat', 'Chat'], ['checklist', 'Checklist'], ['caso', 'Caso'], ['interacoes', 'Interações']];
 var INT_TIPOS = { checklist: ['Checklist', 'u-baixa'], dossie: ['Dossiê', 'u-media'], tela: ['Tela', 'tp-artigo'], botao: ['Botão', 'out'], link: ['Link', 'out'] };
 var TELAS_DOSSIE = /^\/(perfil|landing|onboarding)\//;   // as telas em que o app faz as perguntas do dossiê
 async function buscaInteracoes(cid) {
@@ -1625,7 +1625,7 @@ function casoPanelHtml(c, k) {
     casoSecao('Ações', k.aco.length + ' linhas', casoAcoesHtml(k)) +
     casoSecao('Board dela', 'o que aparece no Espaço e nos Guias', casoBarraNovo(k) + casoItensHtml(k)) +
     casoEscolasDelaHtml(k) +
-    casoSecao('Avisos da IAssistente', 'você decide a data de cada um', casoAvisosHtml(k));
+    casoSecao('Avisos da Equipe Por Dentro', 'você decide a data de cada um', casoAvisosHtml(k));
 }
 function pintaCaso() { var b = $('caso-box'); if (b) b.innerHTML = casoPanelHtml(byC(state.sel) || {}, state.caso); var ab = $('plat-abas'); if (ab) ab.innerHTML = platAbasHtml(); }
 async function carregaCaso(cid) {
@@ -2581,7 +2581,7 @@ function fxSessoes(c) {
   var mk = function (titulo, sub, id, corpo) { var a = fxSessaoAberta(id); return { titulo: titulo, sub: sub, aberto: a, corpo: a ? corpo() : '' }; };
   var mapa = {
     chat: mk('Conversa com ela', 'As mensagens da equipe, do assistente e dela, dentro do app.', 'chat', function () { return '<div id="chat-box">' + chatPanelHtml(c, state.chat, H4_PLAT) + '</div>'; }),
-    inicio: mk('Início (iAssistente)', 'O que o assistente mostra a ela no início do app e os seus avisos.', 'inicio', function () { return '<div id="ins-box">' + insightsHtml(state.ins, Date.now()) + '</div>'; }),
+    inicio: mk('Início (Equipe Por Dentro)', 'O que a equipe mostra a ela no início do app e os seus avisos.', 'inicio', function () { return '<div id="ins-box">' + insightsHtml(state.ins, Date.now()) + '</div>'; }),
     checklist: mk('Checklist', 'Os passos dela por démarche, do mais urgente ao mais distante.', 'checklist', function () { return '<div id="fx-chk-corpo">' + fxChecklistCorpo(c) + '</div>'; }),
     bilan: mk('Bilan', 'O que a conversa mostrou e o e-mail do bilan.', 'bilan', function () { return bilanResumoHtml(c) + bilanBlocoHtml(c, H4_PLAT); }),
     hist: mk('Histórico', 'Tudo que ela fez no app, dia a dia.', 'hist', function () { return '<div id="int-box">' + interacoesHtml(state.int) + '</div>'; })
