@@ -69,7 +69,7 @@ fixture({ ach: ACH, aco: ACO, itens: ITENS, avs: AVS });
 await pagina();
 let h = html();
 check('a sub-aba Caso existe e mostra quantas coisas esperam revisão (1 achado + 1 item + 1 aviso = 3)', /data-pstab="caso"/.test(el('pessoa-page').innerHTML) && /<b>3<\/b> coisas esperam/.test(h));
-check('as quatro seções aparecem', ['O que entendi', 'Ações', 'Board dela', 'Avisos da IAssistente'].every((t) => h.includes(t)));
+check('as quatro seções aparecem', ['O que entendi', 'Ações', 'Board dela', 'Avisos da Equipe Por Dentro'].every((t) => h.includes(t)));
 check('texto da pessoa/Notion passa por esc(): nada de HTML vivo', !h.includes('<img src=x') && h.includes('&lt;img src=x'));
 check('ação dela pela plataforma pode ser publicada; a de e-mail é "Só equipe"', h.includes('data-caso="aco-pub" data-id="10"') && !h.includes('data-caso="aco-pub" data-id="11"') && h.includes('Só equipe'));
 check('prazo em texto e prazo em data aparecem', h.includes('dia seguinte à ligação') && h.includes('30/11/2026'));

@@ -59,7 +59,7 @@ const click = async (ds) => { const b = { id: '', dataset: ds, disabled: false, 
 console.log('== O que ela vê agora ==');
 fixture({ hist: [{ inicial: true, entrou: [N('sem_matricula', 'x')], saiu: [], criado_em: agora(-300) }] });
 let html = await pagina('plataforma');
-check('aba Plataforma mostra o card dela com as notas no ar', html.includes('Minha iAssistente') && html.includes('Vi que você ainda não tem a matrícula fechada.') && html.includes('Ligue para o OFII'));
+check('aba Plataforma mostra o card dela com as notas no ar', html.includes('Equipe Por Dentro') && html.includes('Vi que você ainda não tem a matrícula fechada.') && html.includes('Ligue para o OFII'));
 check('cada nota diz de onde veio: automática ou nota sua', html.includes('>automática<') && html.includes('>nota sua<'));
 check('mostra quando foi atualizado', /Atualizado [A-Z]{3}, \d\d\/\d\d às \d\d:\d\d/.test(html));
 check('o painel mora dentro de #ins-box (repinta sozinho)', html.includes('id="ins-box"'));
@@ -115,7 +115,7 @@ check('retirar marca inativa, com data, na nota certa', ret && ret.row.ativo ===
 
 console.log('\n== No resumo do dossiê, em qualquer aba ==');
 fixture({ hist: [{ inicial: false, entrou: [N('a', 'a')], saiu: [], criado_em: agora(-2) }] });
-for (const tab of ['conversa', 'ficha']) { html = await pagina(tab); check('aba ' + tab + ': chip "iAssistente 2 notas no ar · mudou agora"', /<b>iAssistente<\/b> 2 notas no ar · mudou agora/.test(html)); }
+for (const tab of ['conversa', 'ficha']) { html = await pagina(tab); check('aba ' + tab + ': chip "Equipe Por Dentro 2 notas no ar · mudou agora"', /<b>Equipe Por Dentro<\/b> 2 notas no ar · mudou agora/.test(html)); }
 
 console.log('\n== Ao vivo ==');
 mod.pararAoVivo(); canais.length = 0; removidos.length = 0;
