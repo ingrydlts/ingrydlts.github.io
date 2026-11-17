@@ -1750,3 +1750,127 @@ button.bar-r b{text-align:right; font-variant-numeric:tabular-nums}
 .fx-edita{cursor:text}
 .fx-edita:hover{text-decoration:underline dotted; text-underline-offset:3px}
 .fx-passo{gap:8px}
+
+/* ===== Visual minimalista da ficha (2026-11-17): ponto + texto + ícones, o mesmo em todas as sessões ===== */
+.fx-ln{display:flex; align-items:center; gap:10px; padding:9px 0; border-top:1px solid var(--line)}
+.fx-ln:first-child{border-top:0}
+.fx-ln-e{flex:none; width:14px; display:grid; place-items:center}
+.fx-dot{display:block; width:10px; height:10px; border-radius:50%; background:var(--line-2)}
+.fx-dot.ok{background:#577328}
+.fx-dot.mid{background:#C98A1B}
+.fx-ln-t{flex:1 1 auto; min-width:0; cursor:text; border-radius:6px}
+.fx-ln-t:hover{background:var(--sunk)}
+.fx-ln-t:focus-visible{outline:2px solid var(--moss); outline-offset:2px}
+.fx-ln-t p{font-size:14px; line-height:1.3; overflow-wrap:anywhere}
+.fx-tp{display:inline-block; width:1.3em; color:var(--ink-3); font-size:12px}
+.fx-meta{display:inline; margin-left:6px; font-size:11.5px; font-weight:400; color:var(--ink-3); white-space:nowrap}
+.fx-ln-b{flex:none; display:flex; align-items:center; gap:4px}
+.fx-ln-b .fx-ic{width:28px; height:28px; font-size:14px; border-color:transparent; color:var(--ink-2)}
+.fx-ln-b .fx-ic:hover,.fx-ln-b .fx-ic:focus-visible{border-color:var(--moss)}
+.fx-ln-b .btn{padding:4px 9px; font-size:12px}
+/* Botões de criar: fichas pequenas */
+.ab .btn[data-caso="novo"]{padding:3px 10px; font-size:12px; border-radius:999px; background:none; border-color:var(--line-2); color:var(--ink-2)}
+.ab .btn[data-caso="novo"]:hover{border-color:var(--moss); color:var(--ink)}
+/* Cabeçalho de sessão: uma linha, sem subtítulo, setas só ao passar o mouse */
+.fx-sess-cab{padding:4px 6px; border-radius:10px; background:none; border:0; border-bottom:1px solid var(--line)}
+.fx-sess.aberta .fx-sess-cab{border-radius:10px 10px 0 0; background:none; border:0; border-bottom:2px solid var(--moss)}
+.fx-grupo-ela .fx-sess.aberta .fx-sess-cab{background:none; border-bottom-color:var(--brown)}
+.fx-sess-sub{display:none}
+.fx-sess-nome{font-size:14.5px; display:inline-flex; align-items:center; gap:8px}
+.fx-sess-nome::before{content:""; width:7px; height:7px; border-right:2px solid var(--ink-3); border-bottom:2px solid var(--ink-3); transform:rotate(-45deg); transition:transform .15s}
+.fx-sess-t[aria-expanded="true"] .fx-sess-nome::before{transform:rotate(45deg)}
+.fx-sess-t{min-height:36px; align-items:center}
+.fx-grab{opacity:.35}
+.fx-sess-cab:hover .fx-grab{opacity:1}
+.fx-mover{opacity:0; transition:opacity .12s}
+.fx-sess-cab:hover .fx-mover,.fx-sess-cab:focus-within .fx-mover{opacity:1}
+.fx-seta{width:26px; height:26px; font-size:14px; border-color:transparent; background:none}
+.fx-sess-corpo{border:0; border-radius:0; padding:10px 4px 14px; background:none}
+.fx-grupo-dica{display:none}
+.fx-grupo .fx-h3{font-size:13px; text-transform:uppercase; letter-spacing:.08em; color:var(--ink-2)}
+/* "O que ela vê agora" / "O que ela faz aqui": sem fundo colorido */
+.fx-z{background:none; border:0; border-top:1px solid var(--line); border-radius:0; padding:6px 2px; color:var(--ink-2)}
+.fx-z-ve,.fx-z-ela{background:none; color:var(--ink-2)}
+.fx-z>summary{font-size:11px; min-height:34px}
+.fx-z>summary small{display:none}
+@media (hover:none){ .fx-mover{opacity:1} .fx-grab{display:none} }
+@media (max-width:640px){
+  .fx-ln{gap:8px; align-items:flex-start}
+  .fx-ln-e{padding-top:5px}
+  .fx-ln-b{flex-wrap:wrap; justify-content:flex-end; max-width:122px}
+  .fx-ln-b .fx-ic{width:36px; height:36px; font-size:16px}
+  .fx-meta{display:block; margin:2px 0 0}
+  .fx-sess-cab{border-radius:0; flex-wrap:nowrap}
+  .fx-seta{width:34px; height:34px}
+  .ab .btn[data-caso="novo"]{padding:7px 12px}
+}
+
+/* ===== Fila de mensagens, menu "⋯" e cabeçalhos de bloco ===== */
+.dbloco h4 .fx-sub{text-transform:none; letter-spacing:0; font-weight:400; font-size:12px; margin-left:6px}
+.fx-prox{display:flex; align-items:center; gap:12px; padding:10px 14px; margin-top:12px; border-color:var(--moss)}
+.fx-prox-t{flex:1 1 auto; min-width:0; font-size:14px; line-height:1.35}
+.fx-prox-k{display:block; font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-3)}
+.fx-prox .fx-meta{display:block; margin:2px 0 0; white-space:normal}
+.fx-prox-b{flex:none; display:flex; align-items:center; gap:6px}
+.fx-mn{position:relative}
+.fx-mn>summary{list-style:none; cursor:pointer}
+.fx-mn>summary::-webkit-details-marker{display:none}
+.fx-mn-p{position:absolute; right:0; top:calc(100% + 4px); z-index:20; display:flex; flex-direction:column; gap:4px; min-width:150px; padding:6px; background:var(--surface-2); border:1px solid var(--line-2); border-radius:10px; box-shadow:0 6px 20px rgba(0,0,0,.25)}
+.fx-mn-p .btn{width:100%; text-align:left; white-space:nowrap}
+.fx-ln-t p b{font-weight:600}
+@media (max-width:640px){
+  .fx-prox{flex-direction:column; align-items:stretch}
+  .fx-prox-b{justify-content:flex-end}
+  .fx-mn-p{min-width:180px}
+}
+
+/* ===== Refino do cartão de sessão e das linhas (2026-11-17) ===== */
+.fx-sess{padding:2px 6px 6px; border-radius:14px; background:var(--surface); box-shadow:none}
+.fx-sess.aberta{border-color:var(--line-2); box-shadow:0 2px 10px rgba(0,0,0,.07)}
+.fx-sess .fx-sess-cab,.fx-sess.aberta .fx-sess-cab,.fx-grupo-ela .fx-sess.aberta .fx-sess-cab{border:0; border-radius:10px; padding:2px 6px}
+.fx-sess-t{gap:0}
+.fx-sess-nome{font-size:15px; font-weight:600; letter-spacing:-.005em}
+.fx-sess-corpo{border-top:1px solid var(--line); margin-top:2px; padding:12px 4px 8px}
+.fx-sess.aberta .fx-sess-t[aria-expanded="true"] .fx-sess-nome{color:var(--moss-ink)}
+.fx-ln{padding:6px 4px; border-top:0; border-radius:10px; gap:12px}
+.fx-ln + .fx-ln{border-top:0}
+.fx-ln:hover{background:var(--sunk)}
+.fx-ln-t:hover{background:none}
+.fx-ln-t p{font-size:14.5px; font-weight:500; line-height:1.4}
+.fx-ln-t .fx-meta{margin-left:6px}
+.fx-dot{width:9px; height:9px; box-shadow:0 0 0 3px transparent; background-clip:padding-box}
+.fx-dot.ok{box-shadow:0 0 0 3px rgba(87,115,40,.16)}
+.fx-dot.mid{box-shadow:0 0 0 3px rgba(201,138,27,.18)}
+.fx-tp{display:inline-grid; place-items:center; width:22px; height:22px; border-radius:7px; background:var(--sunk); color:var(--ink-2); flex:none; vertical-align:middle; margin-right:8px}
+.fx-ln:hover .fx-tp{background:var(--surface-2)}
+.fx-tp svg{display:block}
+.fx-meta{margin-left:0; font-size:12px; font-weight:400; color:var(--ink-3)}
+.fx-ln-b{gap:2px}
+.fx-ln-b .fx-ic,.fx-slot{width:30px; height:30px; flex:none}
+.fx-ln-b .fx-ic{border:0; border-radius:8px; background:none; color:var(--ink-3); opacity:.9}
+.fx-ln-b .fx-ic svg{display:block}
+.fx-ln-b .fx-ic:hover,.fx-ln-b .fx-ic:focus-visible{background:var(--moss-soft); color:var(--moss-ink); opacity:1}
+.fx-ln-b .fx-ic.on{color:var(--moss-ink); background:var(--moss-soft)}
+.fx-ln-b .fx-ic[data-caso="item-del-pede"]:hover,.fx-ln-b .fx-ic[data-caso="av-cancel"]:hover{background:var(--red-soft); color:var(--red)}
+.ab .btn[data-caso="novo"]{border-style:dashed; padding:4px 12px}
+@media (max-width:640px){
+  .fx-ln{align-items:center}
+  .fx-ln-e{padding-top:0}
+  .fx-ln-t .fx-meta{margin-left:30px}
+  .fx-ln-b{max-width:none}
+  .fx-ln-b .fx-ic,.fx-slot{width:34px; height:34px}
+  .fx-slot{display:none}
+  .fx-ln-b{flex-wrap:nowrap}
+}
+
+/* ===== Espaço com subseções, aviso de título genérico, anexar arquivo ===== */
+.fx-sb{border-top:1px solid var(--line); padding:2px 0}
+.fx-sb:first-child{border-top:0}
+.fx-sb>summary{cursor:pointer; list-style:none; display:flex; align-items:center; gap:8px; min-height:38px; font-size:11.5px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-2)}
+.fx-sb>summary::-webkit-details-marker{display:none}
+.fx-sb>summary::before{content:""; width:6px; height:6px; border-right:2px solid var(--ink-3); border-bottom:2px solid var(--ink-3); transform:rotate(-45deg); transition:transform .15s}
+.fx-sb[open]>summary::before{transform:rotate(45deg)}
+.fx-sb-c{padding:2px 0 10px}
+.fx-aviso{display:inline-block; margin-left:6px; padding:1px 8px; border-radius:999px; background:var(--amber-soft); color:var(--amber); font-size:11.5px; font-weight:500}
+.fx-anexar{position:relative; cursor:pointer}
+.fx-anexar input{position:absolute; inset:0; width:100%; height:100%; opacity:0; cursor:pointer}

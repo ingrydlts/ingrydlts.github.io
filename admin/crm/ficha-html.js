@@ -206,7 +206,7 @@ export function htmlSessao(s, h) {
   return '<section class="fx-sess' + (s.aberto ? ' aberta' : '') + (s.ativa ? ' ativa' : '') + '" data-sessao="' + e(s.id) + '" data-area="' + e(s.area) + '">' +
     '<div class="fx-sess-cab">' +
     '<span class="fx-grab" draggable="true" role="img" aria-label="Arrastar ' + e(s.titulo) + '" data-id="' + e(s.id) + '" data-area="' + e(s.area) + '">⋮⋮</span>' +
-    '<button type="button" class="fx-sess-t" data-fx="sessao" data-id="' + e(s.id) + '" aria-expanded="' + !!s.aberto + '" aria-controls="fx-s-' + e(s.id) + '">' +
+    '<button type="button" class="fx-sess-t" title="' + e(s.sub || '') + '" data-fx="sessao" data-id="' + e(s.id) + '" aria-expanded="' + !!s.aberto + '" aria-controls="fx-s-' + e(s.id) + '">' +
     '<span class="fx-sess-nome">' + e(s.titulo) + '</span><span class="fx-sess-sub">' + e(s.sub || '') + '</span></button>' +
     '<span class="fx-mover"><button type="button" class="fx-seta" data-fx="mover" data-id="' + e(s.id) + '" data-area="' + e(s.area) + '" data-d="-1" aria-label="Subir ' + e(s.titulo) + '">↑</button>' +
     '<button type="button" class="fx-seta" data-fx="mover" data-id="' + e(s.id) + '" data-area="' + e(s.area) + '" data-d="1" aria-label="Descer ' + e(s.titulo) + '">↓</button></span></div>' +

@@ -63,6 +63,9 @@ async function main() {
   console.log('== A coluna e o bucket ==');
   const b = await um("select public, file_size_limit, allowed_mime_types from storage.buckets where id = 'casos-arquivos'");
   check('bucket privado, 10 MB, só PDF/MD/texto', b && b.public === false && Number(b.file_size_limit) === 10485760 && b.allowed_mime_types.join() === 'application/pdf,text/markdown,text/plain');
+  await db.exec(readFileSync(path.resolve(HERE, '../crm-caso-arquivos-tipos.sql'), 'utf8')); await db.exec(readFileSync(path.resolve(HERE, '../crm-caso-arquivos-tipos.sql'), 'utf8'));   // roda duas vezes: idempotente
+  const b2 = await um("select public, file_size_limit, allowed_mime_types from storage.buckets where id = 'casos-arquivos'");
+  check('depois de crm-caso-arquivos-tipos.sql: continua privado e de 10 MB, e aceita PDF, MD, texto, imagem e ZIP', b2.public === false && Number(b2.file_size_limit) === 10485760 && ['application/pdf', 'text/markdown', 'text/plain', 'image/png', 'image/jpeg', 'image/webp', 'image/gif', 'application/zip', 'application/x-zip-compressed'].every((t) => b2.allowed_mime_types.includes(t)) && !b2.allowed_mime_types.includes('text/html') && !b2.allowed_mime_types.includes('image/svg+xml'));
   const doc = async (p, extra = {}) => um(`insert into board_itens (contato_id, tipo, titulo, dados, estado, arquivo_caminho, descricao) values ($1,'documento','Guia', '{"direcao":"recebe","rotulo":"Guia"}', $2, $3, $4) returning id`,
     [p.c, extra.estado || 'revisado', extra.arq ?? null, extra.desc ?? null]);
   check('descrição de 8000 cabe; 8001 não', (await attempt(() => doc(ana, { desc: 'x'.repeat(8000) }))).ok && !(await attempt(() => doc(ana, { desc: 'x'.repeat(8001) }))).ok);

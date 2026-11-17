@@ -149,7 +149,7 @@ rpcErro = null;
 console.log('\n== A próxima mensagem e o ritmo ==');
 fixture({ avs: AVS.slice(1) }); await pagina();
 h = html();
-check('a próxima mensagem aparece em destaque no topo da aba, com quando sai e quantas vêm depois', /Próxima mensagem para Ana/.test(h) && /Seu bilan/.test(h.split('Avisos da IAssistente')[0]) && /sai em 2 dias/.test(h) && /vem mais 1/.test(h) && /as pausas se mantêm/.test(h));
+check('a próxima mensagem aparece em destaque no topo da aba, com quando sai e quantas vêm depois', /Próxima para Ana/.test(h) && /Seu bilan/.test(h.split('Avisos da IAssistente')[0]) && /sai em 2 dias/.test(h) && /\+1 na fila/.test(h) && /as pausas se mantêm/.test(h));
 check('só a próxima tem "Enviar agora"; atrasar vale para todas; adiantar só com pausa maior que zero', (h.match(/data-caso="enviar-agora"/g) || []).length === 2 && h.includes('data-caso="enviar-agora" data-id="31"') && !h.includes('data-caso="enviar-agora" data-id="32"') && h.includes('data-caso="atrasar-3" data-id="32"') && h.includes('data-caso="adiantar-1" data-id="32"'));
 check('a lista mostra a pausa de cada uma', /pausa de 2 dias depois do anterior/.test(h) || /pausa de 2 dias depois do 1º acesso/.test(h));
 rpcs.length = 0;
@@ -169,7 +169,7 @@ fixture({ avs: [AVS[1]].map((x) => Object.assign({}, x, { liberado_em: '2026-11-
 check('o que já saiu não tem botões de ritmo nem aparece como "próxima mensagem"', !/Próxima mensagem para/.test(html()) && !html().includes('data-caso="atrasar-1"'));
 
 fixture({ itens: [ITENS[1]] }); await pagina();
-check('prazo-chave genérico avisa que ela só vê o título; título específico não avisa', /Diga a que se refere/.test(html()));
+check('prazo-chave genérico avisa que ela só vê o título; título específico não avisa', /sem nome: dois cliques para dizer qual prazo é/.test(html()));
 fixture({ itens: [Object.assign({}, ITENS[1], { titulo: 'Fim da inscrição na Alliance Française' })] }); await pagina();
 check('título específico não recebe o aviso', !/Diga a que se refere/.test(html()));
 
@@ -242,8 +242,16 @@ console.log('\n== Guias dela: documentos, bilans e mensagens prontas ==');
   writes.length = 0; await click({ caso: 'salvar-item', id: '40' });
   const e1 = writes.at(-1);
   check('salvar o bilan grava título, palavras, resumo e vira "revisado"', e1.row.titulo === 'Primeira conversa' && e1.row.dados.palavras.join() === 'PVT,visto de estudante,Alliance' && e1.row.resumo === 'Do PVT ao visto de estudante' && e1.row.estado === 'revisado' && JSON.stringify(e1.row.dados.secoes) === '[]');
+  await click({ caso: 'ed-item', id: '40' });
+  check('linha minimalista: ponto de estado com rótulo, ícones no lugar dos botões de texto e dois cliques no texto para editar', /class="fx-dot (ok|mid|off)"[^>]*aria-label="[^"]+"/.test(html()) && /data-dbl="ed-item" data-id="41"/.test(html()) && /class="fx-ic"[^>]*data-caso="ed-item"[^>]*aria-label="Editar"/.test(html()) && !/>Marcar como revisado<|>Publicar para ela</.test(html()));
+  check('documento que a equipe manda tem o clipe para anexar arquivo direto da linha', /class="fx-ic fx-anexar[^"]*"[^>]*>[\s\S]*?<input type="file" data-anexar="41"/.test(html()));
+  check('o bilan tem o campo das seções (ela lê o que está aqui)', /id="caso-ed-secoes"/.test(html()));
+  el('caso-ed-secoes').value = '# Dúvidas\nA data da L1\n? Prazo exato\n\n# Próximos passos\nAchar professora';
+  writes.length = 0; await click({ caso: 'salvar-item', id: '40' });
+  const e2 = writes.at(-1).row.dados.secoes;
+  check('salvar o bilan grava as seções: itens com "?" ficam em conferência', e2.length === 2 && e2[0].titulo === 'Dúvidas' && e2[0].itens[1].estado === 'em_conferencia' && e2[0].itens[0].estado === 'confirmado' && e2[1].itens[0].texto === 'Achar professora');
   await click({ caso: 'ed-item', id: '41' });
-  check('editar um documento: nome, "o que é" e arquivo', /id="caso-ed-resumo"[^>]*value="Escolas"/.test(html()) && /Arquivo \(link https/.test(html()));
+  check('editar um documento que a equipe manda: nome, "o que é", descrição, link e campo para anexar arquivo', /id="caso-ed-resumo"[^>]*value="Escolas"/.test(html()) && /id="caso-ed-descricao"/.test(html()) && /id="caso-ed-link"/.test(html()) && /id="caso-arq"[^>]*type="file"/.test(html()));
   el('caso-ed-titulo').value = 'PDF das escolas'; el('caso-ed-resumo').value = 'Escolas'; el('caso-ed-link').value = 'https://exemplo.org/pdf'; writes.length = 0; await click({ caso: 'salvar-item', id: '41' });
   check('salvar o documento grava o link e o rótulo', writes.at(-1).row.link === 'https://exemplo.org/pdf' && writes.at(-1).row.dados.rotulo === 'PDF das escolas');
   await click({ caso: 'ed-item', id: '42' });
