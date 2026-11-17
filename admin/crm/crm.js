@@ -2,15 +2,15 @@
 // Nada de service_role aqui. O banco é db/crm-fase2.sql; o desenho é o artefato "CRM Por Dentro".
 // Tudo que vem do banco é texto de terceiros (nome, e-mail, pergunta): passa sempre por esc().
 import { supabase } from '/assets/js/supabase-client.js';
-import * as TX from './taxonomia.js?v=2026-11-17.2';   // páginas, famílias e agrupamento dos modelos
-import * as ES from './estudio.js?v=2026-11-17.2';   // os blocos do estúdio de e-mails (entregas 2 e 3)
-import * as EE from './editor-email.js?v=2026-11-17.2';
-import * as EQ from './editor-quem.js?v=2026-11-17.2';
-import * as JR from './jornada.js?v=2026-11-17.2';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
-import * as FX from './ficha.js?v=2026-11-17.2';   // ficha v2: lógica pura (fila, démarches, funil, ações)
-import * as FH from './ficha-html.js?v=2026-11-17.2';   // ficha v2: HTML puro
-import * as PN from './panorama.js?v=2026-11-17.2';
-import * as MT from './montagem.js?v=2026-11-17.2';   // Montagem do espaço a partir do transcript (lógica e HTML puros)   // Panorama dela e O que ela trouxe (lógica e HTML puros)
+import * as TX from './taxonomia.js?v=2026-11-17.3';   // páginas, famílias e agrupamento dos modelos
+import * as ES from './estudio.js?v=2026-11-17.3';   // os blocos do estúdio de e-mails (entregas 2 e 3)
+import * as EE from './editor-email.js?v=2026-11-17.3';
+import * as EQ from './editor-quem.js?v=2026-11-17.3';
+import * as JR from './jornada.js?v=2026-11-17.3';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
+import * as FX from './ficha.js?v=2026-11-17.3';   // ficha v2: lógica pura (fila, démarches, funil, ações)
+import * as FH from './ficha-html.js?v=2026-11-17.3';   // ficha v2: HTML puro
+import * as PN from './panorama.js?v=2026-11-17.3';
+import * as MT from './montagem.js?v=2026-11-17.3';   // Montagem do espaço a partir do transcript (lógica e HTML puros)   // Panorama dela e O que ela trouxe (lógica e HTML puros)
 
 var PERSONAS = {
   au_pair_estudante: 'Au pair → estudante', campus_france: 'Campus France', alternancia_emprego: 'Alternância / emprego',
@@ -3541,13 +3541,13 @@ function fxHeaderHtml(c, d) {
   dados.um1a1 = prox1a1 ? prox1a1.quando : null; dados.um1a1Hora = prox1a1 ? fmtHora(prox1a1.quando) : '';
   dados.ultimoAcesso = cliques[0] ? cliques[0].criado_em : null;
   var cart = FX.cartoesMinimos(tipo, dados);
-  return FH.htmlCabecalho({ c: c, estagioLabel: estagioRotulo(c), personaLabel: personaLabel(c) + (subLabel(c) ? ' · ' + subLabel(c) : ''),
+  return FH.htmlCabecalho({ c: c, linkPagamentoEnviado: !!state.pagto, estagioLabel: estagioRotulo(c), personaLabel: personaLabel(c) + (subLabel(c) ? ' · ' + subLabel(c) : ''),
     temConta: !!c.user_id, etiqueta: assin ? FX.etiquetaPagamento(assin) : null, estagios: STAGES, blocos: cart.blocos, nota: cart.nota }, H_FX);
 }
 // Catálogo de démarches (cópia do app, processos.json): carregado uma vez; sem ele, tudo cai na démarche padrão.
 var FX_PROC = null;
 async function fxCarregaProcessos() {
-  try { var r = await fetch('processos.json?v=2026-11-17.2'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
+  try { var r = await fetch('processos.json?v=2026-11-17.3'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
 }
 // A sessão Checklist: pílulas por démarche, os 4 mais urgentes, pasta do Drive privada e "Ver mais desta sessão".
 // Os passos que a montagem do espaço propôs para ela, com démarche, subitens e origem: o mesmo detalhe do Checklist. Existem antes de ela ter conta.
