@@ -3853,7 +3853,7 @@ function fxPreviaDados(c) {
     naoLidas: chatNaoLidas(state.chat), marco: m ? { titulo: m.titulo, dias: diasAteIso(m.data), data: m.data } : null, prox: passosL[0] ? { label: passosL[0].label, due: passosL[0].due } : null, avisos: avisos,
     passos: passosL.concat(feitosL),
     espaco: { marcos: marcos, escolas: pub(['escola']).map(function (x) { return { titulo: x.titulo, resumo: x.resumo }; }), dela: k ? (k.escolasDela || []).map(function (x) { return { nome: x.nome }; }) : [] },
-    guias: { bilan: pub(['bilan']).length > 0, docs: pub(['documento']).map(function (x) { return { titulo: x.titulo, resumo: x.resumo }; }), msgs: pub(['modelo']).map(function (x) { return { titulo: x.titulo }; }) },
+    guias: { bilan: pub(['bilan']).length > 0, docs: pub(['documento']).filter(function (x) { return x.dados && x.dados.direcao === 'recebe'; }).map(function (x) { return { titulo: x.titulo, resumo: x.resumo }; }), msgs: pub(['modelo']).map(function (x) { return { titulo: x.titulo }; }) },
     perfil: { n: pr.n, tot: pr.tot, kv: [['Situação', personaLabel(c)], ['Cidade', (dd && dosValor(c, dd.d, dd.rasc, 'cidade')) || ''], ['Fase', (dd && dosValor(c, dd.d, dd.rasc, 'fase')) || '']] } };
 }
 function fxPreviaHtml(c) {
