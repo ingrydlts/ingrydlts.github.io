@@ -1,5 +1,5 @@
 // Ficha-universo, fase 1: HTML puro das peças novas. Todas recebem h = { esc, fmtDay } e escapam todo texto vindo do banco.
-import { ETAPAS_FUNIL, maisUrgentes } from './ficha.js?v=2026-11-17.7';   // o ?v= acompanha o de crm.js (cache do navegador)
+import { ETAPAS_FUNIL, maisUrgentes } from './ficha.js?v=2026-11-17.8';   // o ?v= acompanha o de crm.js (cache do navegador)
 
 
 const URG = { alta: 'Alta', media: 'Média', baixa: 'Baixa' };
@@ -187,25 +187,31 @@ export function htmlSessao(s, h) {
   const e = h.esc;
   return '<section class="fx-sess' + (s.aberto ? ' aberta' : '') + (s.ativa ? ' ativa' : '') + '" data-sessao="' + e(s.id) + '" data-area="' + e(s.area) + '">' +
     '<div class="fx-sess-cab">' +
-    '<span class="fx-grab" draggable="true" role="img" aria-label="Arrastar ' + e(s.titulo) + '" data-id="' + e(s.id) + '" data-area="' + e(s.area) + '">⋮⋮</span>' +
+    (s.area === 'home' ? '' : '<span class="fx-grab" draggable="true" role="img" aria-label="Arrastar ' + e(s.titulo) + '" data-id="' + e(s.id) + '" data-area="' + e(s.area) + '">⋮⋮</span>') +
     '<button type="button" class="fx-sess-t" data-fx="sessao" data-id="' + e(s.id) + '" aria-expanded="' + !!s.aberto + '" aria-controls="fx-s-' + e(s.id) + '">' +
     '<span class="fx-sess-nome">' + e(s.titulo) + '</span><span class="fx-sess-sub">' + e(s.sub || '') + '</span></button>' +
-    '<span class="fx-mover"><button type="button" class="fx-seta" data-fx="mover" data-id="' + e(s.id) + '" data-d="-1" aria-label="Subir ' + e(s.titulo) + '">↑</button>' +
-    '<button type="button" class="fx-seta" data-fx="mover" data-id="' + e(s.id) + '" data-d="1" aria-label="Descer ' + e(s.titulo) + '">↓</button></span></div>' +
+    '<button type="button" class="fx-pin' + (s.fixada ? ' on' : '') + '" data-fx="home" data-id="' + e(s.id) + '" aria-pressed="' + !!s.fixada + '" aria-label="' + (s.fixada ? 'Tirar ' : 'Pôr ') + e(s.titulo) + (s.fixada ? ' da página inicial' : ' na página inicial') + '"><span class="fx-pin-sw" aria-hidden="true"></span>Página inicial</button>' +
+    '<span class="fx-mover"><button type="button" class="fx-seta" data-fx="mover" data-id="' + e(s.id) + '" data-area="' + e(s.area) + '" data-d="-1" aria-label="Subir ' + e(s.titulo) + '">↑</button>' +
+    '<button type="button" class="fx-seta" data-fx="mover" data-id="' + e(s.id) + '" data-area="' + e(s.area) + '" data-d="1" aria-label="Descer ' + e(s.titulo) + '">↓</button></span></div>' +
     (s.aberto ? '<div class="fx-sess-corpo" id="fx-s-' + e(s.id) + '">' + (s.corpo || '') + '</div>' : '') + '</section>';
 }
 // ord = { app: [ids], ela: [ids] }; mapa = { id: { titulo, sub, corpo, aberto } }. Dois grupos, como no spec §5.2.
-export function htmlSessoes(ord, mapa, h, fechados) {
+export function htmlSessoes(ord, mapa, h, fechados, home) {
   const fech = fechados || {};
+  const fixadas = (home || []).filter((id) => mapa && mapa[id]);
   const grupo = (area, titulo, dica) => {
-    const itens = ((ord && ord[area]) || []).filter((id) => mapa && mapa[id]);
+    const itens = ((ord && ord[area]) || []).filter((id) => mapa && mapa[id] && !fixadas.includes(id));
+    if (!itens.length) return '';
     return '<details class="fx-grupo fx-grupo-' + area + '" data-grupo="' + area + '"' + (fech[area] ? '' : ' open') + '><summary class="fx-grupo-sum"><h3 class="fx-h3" id="fx-g-' + area + '">' + h.esc(titulo) + '</h3>' +
       '<span class="sub fx-grupo-dica">' + h.esc(dica) + '</span><span class="fx-grupo-n">' + itens.length + (itens.length === 1 ? ' sessão' : ' sessões') + '</span><span class="fx-grupo-chev" aria-hidden="true">▾</span></summary>' +
-      itens.map((id) => htmlSessao(Object.assign({ id, area }, mapa[id]), h)).join('') + '</details>';
+      itens.map((id) => htmlSessao(Object.assign({ id, area, fixada: false }, mapa[id]), h)).join('') + '</details>';
   };
   const todos = [].concat((ord && ord.app) || [], (ord && ord.ela) || []).filter((id) => mapa && mapa[id]);
   const ir = todos.length ? '<nav class="fx-ir" aria-label="Ir para uma sessão"><span class="fx-ir-t">Ir para</span>' + todos.map((id) => '<button type="button" class="fx-ir-b' + (mapa[id].aberto ? ' on' : '') + '" data-fx="ir" data-id="' + h.esc(id) + '">' + h.esc(mapa[id].titulo) + '</button>').join('') + '</nav>' : '';
-  return '<div class="fx-sessoes">' + ir + grupo('app', 'Acompanhar o app dela', 'O que ela vê e faz no app.') + grupo('ela', 'Conhecer e registrar', 'Só a equipe vê.') + '</div>';
+  const topo = '<section class="fx-home" aria-labelledby="fx-g-home"><div class="fx-home-cab"><h3 class="fx-h3" id="fx-g-home">Página inicial</h3><span class="sub fx-grupo-dica">' +
+    (fixadas.length ? 'O mais importante dela, sempre no topo. “Página inicial” em qualquer sessão põe ou tira daqui.' : 'Nada fixado. Use “Página inicial” em uma sessão para ela ficar aqui, no topo.') + '</span></div>' +
+    fixadas.map((id) => htmlSessao(Object.assign({ id, area: 'home', fixada: true }, mapa[id]), h)).join('') + '</section>';
+  return '<div class="fx-sessoes">' + ir + topo + grupo('app', 'Acompanhar o app dela', 'O que ela vê e faz no app.') + grupo('ela', 'Conhecer e registrar', 'Só a equipe vê.') + '</div>';
 }
 
 // ---------- Aba Ficha: fluxo de 3 passos (Task 13) ----------
