@@ -263,5 +263,14 @@ console.log('\n== Curadoria do Checklist ==');
   check('resumo sem dados', FX.resumoCuradoria().total === 0 && FX.resumoCuradoria({}).ocultos === 0);
   check('a curadoria é uma sessão do grupo do app, logo depois do Checklist', FX.SESSOES_PADRAO.app.indexOf('curadoria') === FX.SESSOES_PADRAO.app.indexOf('checklist') + 1);
 }
+console.log('\n== Repetidos do board ==');
+{
+  const d = (id, titulo, extra = {}) => Object.assign({ id, tipo: 'documento', titulo, dados: { direcao: 'recebe' }, estado: 'revisado' }, extra);
+  const r = FX.repetidosDoBoard([d(1, 'Notion de estudos de francês'), d(2, 'Notion de estudos de francês (link gratuito)', { estado: 'publicado', link: 'https://x.org' }), d(3, 'Passaporte'), d(4, 'Certificado de francês', { dados: { direcao: 'reune' } }), d(5, 'Certificado de francês', { dados: { direcao: 'recebe' } }), d(6, 'Bilan', { tipo: 'bilan' }), d(7, 'Bilan', { tipo: 'bilan' })]);
+  check('só documento e mensagem entram; o mesmo nome com direção diferente (reúne × recebe) não é repetido; bilan fica de fora', r.length === 1 && r[0].manter.id === 2 && r[0].excluir.map((x) => x.id).join() === '1');
+  const e = FX.repetidosDoBoard([d(1, 'Certificado', { arquivo_caminho: 'a/b.pdf' }), d(2, 'Certificado', { estado: 'publicado' }), d(3, 'Certificado')]);
+  check('fica o mais completo (publicado pesa 4, revisado 2 + arquivo 2 = 4); empate, o mais antigo (1)', e[0].manter.id === 1 && e[0].excluir.map((x) => x.id).sort().join() === '2,3');
+  check('sem itens nada quebra', FX.repetidosDoBoard().length === 0 && FX.repetidosDoBoard([d(1, '')]).length === 0);
+}
 console.log('\n' + passed + ' passaram, ' + failed + ' falharam');
 if (failed) process.exit(1);

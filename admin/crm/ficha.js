@@ -476,6 +476,17 @@ export function resumoCuradoria(o) {
   return { total: vis.length, conferidos: vis.filter((k) => m[k] && m[k].conferido_em).length, ocultos: gerais.length - gerais.filter((i) => !(m[i.step_key] && m[i.step_key].oculto)).length };
 }
 
+// Documentos e mensagens repetidos no board (mesmo nome normalizado, mesmo tipo e direção): fica o mais completo (publicado, com arquivo, link ou descrição), os outros saem.
+export function repetidosDoBoard(itens) {
+  const grupos = {};
+  (itens || []).filter((i) => i.tipo === 'documento' || i.tipo === 'modelo').forEach((i) => {
+    const n = normalizaTituloPasso(i.titulo); if (!n) return;
+    const k = i.tipo + '|' + ((i.dados || {}).direcao || '') + '|' + n; (grupos[k] = grupos[k] || []).push(i);
+  });
+  const peso = (i) => (i.estado === 'publicado' ? 4 : i.estado === 'revisado' ? 2 : 0) + (i.arquivo_caminho ? 2 : 0) + (i.link ? 1 : 0) + (i.descricao ? 1 : 0);
+  return Object.keys(grupos).map((k) => grupos[k]).filter((g) => g.length > 1).map((g) => { const o = g.slice().sort((a, b) => peso(b) - peso(a) || a.id - b.id); return { manter: o[0], excluir: o.slice(1) }; });
+}
+
 // ---------- O Início do app, como ele monta (porte de montarInicio, assets/js/caso.js do app) ----------
 // Mesma ordem e mesmas contas: 1) "Oi, nome" (+ escolas); 2) prazos (marcos com data); 3) "Agora" = o primeiro passo da equipe
 // (atrasados, depois com data, depois sem data); 4) "Em seguida" = os passos da equipe que sobram + os próximos do checklist geral, até 4;

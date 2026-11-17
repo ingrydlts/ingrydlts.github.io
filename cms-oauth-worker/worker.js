@@ -3114,7 +3114,7 @@ function crmMontagemSistema(cat) {
     '6b. Cada coisa aparece UMA vez, no lugar certo: o passo que a PESSOA faz vai em checklists (com démarche e subitens); encaminhamentos só para o que é da equipe (dono ingryd), para entrega_equipe, ou para um passo dela que não cabe em nenhuma lista. Nunca repita como encaminhamento o que já está num checklist ou em documentos; "reunir os documentos X, Y e Z" não é passo: os documentos ficam em documentos.',
     '6a. Todo item de checklist leva a démarche (o tipo de checklist a que o passo pertence), UMA destas: ' + Object.keys(CRM_MONT_DEMARCHES).map((k) => k + ' (' + CRM_MONT_DEMARCHES[k] + ')').join(', ') + '; e, quando a conversa justificar, até 6 subitens: os pontos concretos do passo (o que fazer ou reunir). Os subitens seguem a mesma regra do item: nada de exigência, prazo, valor ou lei que não foi dita.',
     '6. checklists: proponha só listas que o percurso desta pessoa pede. Item com fonte oficial leva a fonte (rótulo e link https) e o nível; sem fonte, deixe a fonte de fora: ele ficará "a conferir". É proibido inventar exigência administrativa, prazo, valor ou lei que não foi dito.',
-    '7. documentos: o que a pessoa precisa reunir, com os selos que a conversa justificar (traducao, haia, equivaler, original) e os checklists onde aparece.',
+    '7. documentos: o que a pessoa precisa reunir, com os selos que a conversa justificar (traducao, haia, equivaler, original) e os checklists onde aparece. Cada documento aparece UMA vez, com um nome curto (até 8 palavras), sem instrução entre parênteses: a instrução fica nos subitens do passo. O que a EQUIPE manda para ela não é documento: é entrega_equipe.',
     '8. perguntas_equipe: só perguntas cuja resposta falta e muda o plano, e só com os destinos permitidos. O campo texto é SÓ a pergunta, do jeito que a Ingryd vai fazê-la à pessoa (segunda pessoa, "você", termina em ?), sem explicação, justificativa ou observação do sistema: ela lê esse texto no app. O porquê (ex.: "é a âncora do cronograma") não entra no texto.',
     '9. blocos: listas de contatos que a pessoa deve acionar (escolas, empresas, consulados…). Use SOMENTE estes tipos: ' + cat.blocos.join(', ') + '. Só inclua contatos que a conversa citou.',
     '10. Datas AAAA-MM-DD, só se foram ditas. Use exatamente os valores permitidos de cada lista.',
@@ -3127,6 +3127,47 @@ function crmMontagemSistema(cat) {
   ].join('\n');
 }
 
+// Dois títulos "iguais para quem lê": sem acento, sem o que vem entre parênteses, sem pontuação, sem palavra de ligação e sem letra solta.
+// (A mesma regra do CRM, em ficha.js, para o aviso de repetido e a deduplicação baterem.)
+const CRM_NORM_PARADAS = new Set(['de', 'do', 'da', 'dos', 'das', 'e', 'o', 'a', 'os', 'as', 'para', 'pra', 'pro', 'que', 'quem', 'ja', 'esta', 'na', 'no', 'em', 'um', 'uma', 'com', 'seu', 'sua']);
+function crmNormTitulo(t) {
+  return String(t || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\([^)]*\)/g, ' ').replace(/[^a-z0-9 ]+/g, ' ')
+    .split(/\s+/).filter((w) => w.length > 1 && !CRM_NORM_PARADAS.has(w)).join(' ');
+}
+// Separa "Diploma do ensino médio (conferir a lista oficial)" em nome e dica: o nome é o que a pessoa lê como documento; a dica vira o "o que é".
+function crmSeparaDica(texto) {
+  const t = String(texto || '').trim(), m = /^(.*?)\s*\(([^()]{3,160})\)\s*$/.exec(t);
+  return m && m[1].trim().length >= 3 ? { nome: m[1].trim().replace(/[,;:\s]+$/, ''), dica: m[2].trim() } : { nome: t, dica: '' };
+}
+// A IA às vezes repete o mesmo documento, o mesmo passo ou um encaminhamento que já é passo/documento. Aqui cada coisa fica UMA vez (a primeira), sem perder
+// o que as repetições traziam (selos, listas, subitens, o compromisso que cobriam). Roda depois da validação e é idempotente.
+// A IA às vezes repete o mesmo documento ou o mesmo passo (em duas listas). Cada um fica UMA vez (o primeiro), sem perder o que a repetição trazia
+// (selos, listas, subitens, fonte, prazo). Os encaminhamentos repetidos já são tratados por crmMontagemDeduplica. Idempotente.
+function crmMontagemSemRepeticao(m) {
+  const uniq = (a, max) => [...new Set(a)].slice(0, max);
+  // documentos: mesmo nome normalizado = um só
+  const vistoDoc = new Map(), docs = [];
+  for (const d of m.documentos) {
+    const k = crmNormTitulo(d.rotulo), ja = k ? vistoDoc.get(k) : null;
+    if (!ja) { if (k) vistoDoc.set(k, d); docs.push(d); continue; }
+    ja.selos = uniq(ja.selos.concat(d.selos), 4); ja.checklists = uniq(ja.checklists.concat(d.checklists), 8); ja.cobre = uniq(ja.cobre.concat(d.cobre), 10);
+  }
+  m.documentos = docs;
+  // itens de checklist: mesmo passo em duas listas (ou duas vezes na mesma) = um só, com os subitens e a fonte de quem tiver
+  const vistoIt = new Map();
+  for (const c of m.checklists) {
+    c.itens = c.itens.filter((it) => {
+      const k = crmNormTitulo(it.titulo), ja = k ? vistoIt.get(k) : null;
+      if (!ja) { if (k) vistoIt.set(k, it); return true; }
+      ja.subitens = uniq(ja.subitens.concat(it.subitens), 6);
+      if (!ja.fonte && it.fonte) { ja.fonte = it.fonte; ja.nivel = it.nivel; ja.a_conferir = it.a_conferir; }
+      if (!ja.prazo && it.prazo) ja.prazo = it.prazo;
+      if (!ja.demarche && it.demarche) ja.demarche = it.demarche;
+      return false;
+    });
+  }
+  return m;
+}
 // A pergunta que ela lê é só a pergunta: o que vier depois do primeiro "?" é observação do sistema e não vai para o app.
 function crmSoAPergunta(t) { const s = String(t || ''), i = s.indexOf('?'); return i >= 0 && s.slice(i + 1).trim() ? s.slice(0, i + 1).trim() : s; }
 function crmMontagemHashCurto(t) { let h = 5381; for (const ch of String(t)) h = ((h * 33) ^ ch.codePointAt(0)) >>> 0; return h.toString(16).padStart(8, '0').slice(0, 6); }
@@ -3278,6 +3319,8 @@ function crmMontagemValidar(entrada, cat) {
       soChaves(c, ['texto', 'momento', 'trecho'], 'compromisso');
       m.compromissos.push({ texto: txt(c.texto, 200, 'compromisso', true), momento: momentoDe(c.momento, 'compromisso'), trecho: txt(c.trecho, 160, 'compromisso.trecho') });
     }
+
+    crmMontagemSemRepeticao(m);
 
     const pn = entrada.panorama === undefined ? {} : entrada.panorama;
     if (!obj(pn)) F('"panorama" deve ser um objeto');
@@ -4081,6 +4124,14 @@ async function crmCasoHash(texto) {
   return [...new Uint8Array(buf)].slice(0, 6).map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 // Divide "a; b, c (d, e)" em itens, sem partir vírgula dentro de parênteses.
+// A lista de documentos pendentes vem separada por vírgula, mas o nome de um documento também leva vírgula ("Diploma do ensino médio, traduzido e juramentado").
+// Um pedaço que começa por qualificador de documento (traduzido, juramentado, apostilado, cópia, original…) é continuação do nome anterior, não um documento novo.
+const CRM_DOC_QUALIFICADOR = /^(traduzid|juramentad|apostilad|legalizad|autenticad|reconhecid|atualizad|v[aá]lid|c[oó]pia|original|originais|frente e verso)/i;
+function crmListaDocumentos(texto) {
+  const out = [];
+  for (const f of crmCasoLista(texto)) { if (out.length && CRM_DOC_QUALIFICADOR.test(f)) out[out.length - 1] += ', ' + f; else out.push(f); }
+  return out;
+}
 function crmCasoLista(texto) {
   const out = []; let atual = '', nivel = 0;
   for (const ch of String(texto || '')) {
@@ -4124,9 +4175,17 @@ async function crmNotionCaso(p, c, itens, meta) {
   }
 
   const board = [];
+  // Cada documento entra UMA vez, por nome normalizado (sem acento, sem parênteses): o texto da página do Notion muda um pouco a cada edição e, com a chave
+  // do texto cru, cada edição criava um documento novo. A dica entre parênteses ("conferir a lista oficial") vira o "o que é", não parte do nome.
+  const docsVistos = new Set();
   const doc = async (prefixo, texto, ordem, direcao) => {
-    const t = limpa(texto.replace(/^(enviar|anexar|mandar)\s+(o|a|os|as|um|uma)?\s*/i, ''), 120); if (!t || board.length >= 50) return;
-    board.push({ origem_chave: prefixo + (prefixo.endsWith(':') ? await crmCasoHash(t) : ''), tipo: 'documento', titulo: t.charAt(0).toUpperCase() + t.slice(1), ordem, dados: { rotulo: t, direcao } });
+    const bruto = limpa(texto.replace(/^(enviar|anexar|mandar)\s+(o|a|os|as|um|uma)?\s*/i, ''), 120); if (!bruto || board.length >= 50) return;
+    // "S detalhes…": a letra solta no começo é erro do texto de origem e sai do nome.
+    const sep = crmSeparaDica(bruto), nome = sep.nome.replace(/^[B-DF-NP-Zb-df-np-z]\s+(?=[a-zà-ÿ])/, ''), dica = sep.dica, k = crmNormTitulo(nome);
+    if (!k || docsVistos.has(k)) return; docsVistos.add(k);
+    const item = { origem_chave: prefixo + (await crmCasoHash(k)), tipo: 'documento', titulo: nome.charAt(0).toUpperCase() + nome.slice(1), ordem, dados: { rotulo: nome, direcao } };
+    if (dica) item.resumo = limpa(dica, 240);
+    board.push(item);
   };
   const secoes = [];
   const sec = (titulo, lista, estadoFn) => { if (lista.length) secoes.push({ titulo, itens: lista.slice(0, 10).map((x) => ({ texto: limpa(x, 220), estado: estadoFn(x) })) }); };
@@ -4147,9 +4206,9 @@ async function crmNotionCaso(p, c, itens, meta) {
   if (p.prazo_chave && (p.prazo_chave.data || p.prazo_chave.texto)) {
     board.push({ origem_chave: 'notion:prazo_chave', tipo: 'marco', titulo: 'Prazo-chave', ordem: 5, dados: p.prazo_chave.data ? { data: p.prazo_chave.data, a_confirmar: false } : { a_confirmar: true, nota: limpa(p.prazo_chave.texto, 200) } });
   }
-  for (const it of itens) if (it.dono === 'Ingryd' && it.canal === 'Plataforma' && it.botao === 'anexar_documento') await doc('notion:envio:' + it.n, it.titulo, 10 + Math.min(it.n, 9), 'recebe');
+  for (const it of itens) if (it.dono === 'Ingryd' && it.canal === 'Plataforma' && it.botao === 'anexar_documento') await doc('notion:envio:', it.titulo, 10 + Math.min(it.n, 9), 'recebe');
   let o = 20;
-  for (const d of crmCasoLista(p.documentos_pendentes).slice(0, 12)) await doc('notion:doc:', d, o++, 'reune');
+  for (const d of crmListaDocumentos(p.documentos_pendentes).slice(0, 12)) await doc('notion:doc:', d, o++, 'reune');
 
   const avisos = [];
   if (temBilan) avisos.push({ origem_chave: 'notion:aviso:bilan', tipo: 'proposta', titulo: 'O bilan da nossa conversa está aqui', texto: 'Guardei a cópia do e-mail no seu Espaço.', destino: { tela: 'guias' }, dias_apos: 0 });

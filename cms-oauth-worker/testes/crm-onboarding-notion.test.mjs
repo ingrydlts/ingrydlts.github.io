@@ -15,11 +15,11 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const dir = mkdtempSync(path.join(tmpdir(), 'crm-notion-'));
 const arq = path.join(dir, 'worker.mjs');
-writeFileSync(arq, readFileSync(path.resolve(HERE, '../worker.js'), 'utf8') + '\nexport { crmNotionId, crmNotionPrazo, CRM_NOTION_COLUNAS, crmNotionCaso };\n');
+writeFileSync(arq, readFileSync(path.resolve(HERE, '../worker.js'), 'utf8') + '\nexport { crmNotionId, crmNotionPrazo, CRM_NOTION_COLUNAS, crmNotionCaso, crmNormTitulo, crmSeparaDica };\n');
 const mod = await import(pathToFileURL(arq).href);
 rmSync(dir, { recursive: true, force: true });
 const worker = mod.default;
-const { crmNotionId, crmNotionPrazo, CRM_NOTION_COLUNAS, crmNotionCaso } = mod;
+const { crmNotionId, crmNotionPrazo, CRM_NOTION_COLUNAS, crmNotionCaso, crmNormTitulo, crmSeparaDica } = mod;
 
 let passed = 0, failed = 0;
 function check(label, cond) { if (cond) passed++; else { failed++; console.log('  FALHOU:', label); } }
@@ -533,6 +533,24 @@ check('canais traduzidos e estados mantidos', a1.canal === 'plataforma' && a4.ca
 check('certeza: "Documento · alta" não é literal; texto que diz literal é', a1.certeza === 'inferido');
 check('o marco do prazo-chave e os documentos viram itens com chave de origem estável', pl.itens.some((i) => i.origem_chave === 'notion:prazo_chave' && i.tipo === 'marco' && i.dados.data === '2026-12-01') && pl.itens.filter((i) => i.tipo === 'documento' && i.dados.direcao === 'reune').length === 2 && pl.itens.every((i) => /^[a-z0-9_:.-]{1,80}$/.test(i.origem_chave)));
 check('documento que a Ingryd envia (anexar_documento) vira item "recebe"', pl.itens.some((i) => i.origem_chave === 'notion:envio:3' && i.dados.direcao === 'recebe') === false || pl.itens.some((i) => i.dados.direcao === 'recebe'));
+console.log('\n== Documentos sem repetição (mesmo nome, edições do texto, ordem) ==');
+{
+  const p0 = { persona: 'campus_france', dores: [], prazo_chave: null, data_ligacao: null,
+    documentos_pendentes: 'Diploma do ensino médio traduzido e juramentado (conferir a lista oficial); Certificado de francês; Diploma do ensino médio, traduzido e juramentado; certificado de Francês' };
+  const c0 = { resumo: '', duvidas: [], bilan: { duvidas: [], respostas: [], proximos: [] } };
+  const env = (n, t) => ({ n, titulo: t, dono: 'Ingryd', canal: 'Plataforma', botao: 'anexar_documento', estado: 'aberta', origem_certeza: '', prazo: null });
+  const k1 = await crmNotionCaso(p0, c0, [env(3, 'Enviar o Notion de estudos de francês'), env(6, 'Enviar o Notion de estudos de francês (link gratuito, para duplicar)'), env(7, 'Enviar S detalhes do sistema de candidatura de quem já está na França'), env(8, 'Enviar detalhes do sistema de candidatura para quem já está na França')], { pagina: 'abc12345', editada_em: '' });
+  const docs = k1.itens.filter((i) => i.tipo === 'documento'), reune = docs.filter((i) => i.dados.direcao === 'reune'), recebe = docs.filter((i) => i.dados.direcao === 'recebe');
+  check('o mesmo documento escrito de jeitos diferentes entra UMA vez (diploma, certificado; com e sem vírgula, parênteses e maiúscula)', reune.length === 2 && recebe.length === 2);
+  check('o que a Ingryd envia também não repete: "Notion de estudos" (com a dica do link) e "detalhes do sistema" (com a letra solta) viram um cada', recebe.map((i) => i.titulo).join('|') === 'Notion de estudos de francês|Detalhes do sistema de candidatura de quem já está na França');
+  check('a instrução entre parênteses vira "o que é" (resumo) e sai do nome; sem parênteses não há resumo', reune[0].titulo === 'Diploma do ensino médio traduzido e juramentado' && reune[0].resumo === 'conferir a lista oficial' && !('resumo' in reune[1]));
+  check('as chaves vêm do nome normalizado (hash), não da posição: 12 hex, e "envio" também', docs.every((i) => /^notion:(doc|envio):[0-9a-f]{12}$/.test(i.origem_chave)) && new Set(docs.map((i) => i.origem_chave)).size === docs.length);
+  const k2 = await crmNotionCaso(Object.assign({}, p0, { documentos_pendentes: 'Certificado de francês., Diploma do ensino médio traduzido e juramentado' }), c0, [env(9, 'Enviar detalhes do sistema de candidatura para quem já está na França'), env(1, 'Enviar o Notion de estudos de francês')], { pagina: 'abc12345', editada_em: '' });
+  const chaves = (k) => k.itens.filter((i) => i.tipo === 'documento').map((i) => i.origem_chave + '|' + i.dados.direcao);
+  check('ler de novo com o texto editado, a ordem trocada e os números das linhas mudados dá as MESMAS chaves (nada duplica no banco)', chaves(k2).every((x) => chaves(k1).includes(x)) && k2.itens.filter((i) => i.tipo === 'documento').length === 4);
+  check('o nome com vírgula não vira dois documentos ("Diploma…, traduzido e juramentado"), e uma letra solta de origem ("S detalhes") sai do nome', !docs.some((i) => /^Traduzido e juramentado$/i.test(i.titulo)) && !docs.some((i) => /^S /.test(i.titulo)));
+  check('crmNormTitulo e crmSeparaDica', crmNormTitulo('Diploma do ensino médio, traduzido e juramentado') === crmNormTitulo('Diploma do ensino médio traduzido e juramentado (conferir a lista oficial)') && crmSeparaDica('Passaporte (válido por 6 meses)').nome === 'Passaporte' && crmSeparaDica('Passaporte').dica === '' && crmSeparaDica('(x)').nome === '(x)');
+}
 check('avisos nascem só como rascunho de proposta/pergunta, com a chave de origem', pl.avisos.every((a) => /^notion:aviso:/.test(a.origem_chave) && ['proposta', 'pergunta'].includes(a.tipo) && !('liberar_em' in a)));
 // Duas leituras da mesma página geram a MESMA carga (é isso que torna a leitura repetível).
 instalar(); await ler(); const pl2 = importacoes()[0].body.p_payload;
