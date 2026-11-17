@@ -3176,7 +3176,14 @@ function montNotionUrl(c) {
   var pc = pcEstado(c.id), u = String(pc.notionUrl || '').trim(), n = pc.notionAplicada && pc.notionAplicada.proposta && pc.notionAplicada.proposta.notion;
   return /^https:\/\//i.test(u) ? u : (n && /^[0-9a-f]{32}$/i.test(String(n.pagina || '')) ? 'https://www.notion.so/' + n.pagina : '');
 }
-function montPainel(c) { var m = montEstado(c.id); m.dd = (state.fx && state.fx.dd) || {}; m.temTranscricao = montTranscricao(c).texto.length >= 200 || !!montNotionUrl(c); return MT.painelHtml(m, c, esc); }
+// De onde a Montagem lê: a conversa vinculada a esta pessoa (pelo e-mail da ficha), seja a página do Notion lida ou a transcrição do Registro.
+function montFonte(c) {
+  var pc = pcEstado(c.id), n = pc.notionAplicada;
+  if (montTranscricao(c).texto.length >= 200) return 'a transcrição colada em “Registro da ligação”';
+  if (n) return 'a ligação do Notion lida em ' + fmtDay(String(n.quando || '').slice(0, 10));
+  return montNotionUrl(c) ? 'o link do Notion informado' : '';
+}
+function montPainel(c) { var m = montEstado(c.id); m.dd = (state.fx && state.fx.dd) || {}; m.temTranscricao = montTranscricao(c).texto.length >= 200 || !!montNotionUrl(c); m.fonte = montFonte(c); return MT.painelHtml(m, c, esc); }
 function montHtml(c) { return typeof MT === 'undefined' ? '' : '<div id="mont-box">' + montPainel(c) + '</div>'; }   // (os testes antigos montam o crm.js sem este módulo)
 function pintaMont(cid) { var b = $('mont-box'), c = byC(cid); if (b && c) b.innerHTML = montPainel(c); }
 async function montToken() { var sess = await supabase.auth.getSession(); if (!sess.data.session) throw new Error('Entre de novo no CRM.'); return sess.data.session.access_token; }
@@ -4006,8 +4013,8 @@ function dosLigacaoHtml(c, d) {
   var passo = function (k, n, t, resumo, corpo) { return lgDet(k, 'lg-passo', '<span class="lg-n">' + n + '</span><b>' + t + '</b><span class="sub lg-res">' + esc(resumo) + '</span>', corpo); };
   var miolo = passo('a', 1, 'Antes da ligação', nFalta + (nFalta === 1 ? ' resposta falta' : ' respostas faltam') + (X.diverge.length ? ' · ' + X.diverge.length + ' a confirmar' : ''), p1) +
     passo('b', 2, 'Análise 1:1', notionLido || pcs.estado === 'proposta' ? 'conversa lida' : dv('ligacao_resumo') ? 'resumo no dossiê' : 'conversa ainda não lida', pAn) +
-    passo('r', 3, 'Registro da ligação', dv('ligacao_transcricao') ? 'transcrição colada' : 'sem transcrição ainda', pReg) +
-    passo('m', 4, 'Montagem do espaço', (state.mont && state.mont.cid === c.id && state.mont.estado === 'aplicado') ? 'aprovada' : (state.mont && state.mont.cid === c.id && state.mont.estado === 'proposta') ? 'proposta para revisar' : 'ainda não proposta', pMont) +
+    passo('m', 3, 'Montagem App', (state.mont && state.mont.cid === c.id && state.mont.estado === 'aplicado') ? 'aprovada' : (state.mont && state.mont.cid === c.id && state.mont.estado === 'proposta') ? 'proposta para revisar' : (montFonte(c) ? 'conversa vinculada: pronta para propor' : 'aguardando a conversa'), pMont) +
+    passo('r', 4, 'Registro da ligação', dv('ligacao_transcricao') ? 'transcrição colada' : 'sem transcrição ainda', pReg) +
     passo('c', 5, 'O que sai da conversa', enviado ? 'bilan enviado' : B ? 'bilan pronto para revisar' : 'bilan ainda não gerado', p3);
   return '<section class="panel dv lg" id="dos-ligacao" style="padding:16px;margin-bottom:14px">' +
     lgDet('main', 'lg-main', '<h3 style="font-size:17px;margin:0">A ligação</h3><span class="sub lg-res">Antes: contexto e o que perguntar. Durante: registre. Depois: a IA lê a conversa e preenche o Dossiê, e sai o bilan.</span>', miolo) + '</section>';
