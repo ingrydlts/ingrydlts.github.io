@@ -107,7 +107,7 @@ console.log('== Curadoria: sessão própria, esconder, ordenar e conferir ==');
   const itens = [{ step_key: 'k1', category: 'Documentação', label: 'Pedir o documento X', status: 'pendente', due_date: '2099-12-01', sort_order: 1, updated_at: null },
     { step_key: 'k2', category: 'Sécurité sociale', label: 'Abrir o Ameli', status: 'pendente', due_date: '2099-12-09', sort_order: 2, updated_at: null },
     { step_key: 'k3', category: 'Documentação', label: 'Passo já feito', status: 'concluido', due_date: null, sort_order: 3, updated_at: null }];
-  const h = await carregarCrm({ respostas: base({ 'contatos:one': { data: { dossie: {}, user_id: 'u1' }, error: null }, checklist_items: { data: itens, error: null }, checklist_curadoria: { data: [{ step_key: 'k2', oculto: false, ordem: 0, conferido_em: null }, { step_key: 'k3', oculto: true, ordem: null, conferido_em: null }], error: null } }), store: { crm_ficha_v2: '1' } });
+  const h = await carregarCrm({ respostas: base({ 'contatos:one': { data: { dossie: {}, user_id: 'u1' }, error: null }, checklist_items: { data: itens, error: null }, checklist_curadoria: { data: [{ step_key: 'k2', oculto: false, ordem: 0, conferido_em: null }, { step_key: 'k3', oculto: true, ordem: null, conferido_em: null }], error: null }, caso_acoes: { data: [{ id: 12, titulo: 'Abrir a conta bancária', dono: 'ela', canal: 'plataforma', origem_chave: 'enc:1', estado: 'aberta', publicada_em: '2026-11-10', subitens: [], demarche: 'banco', prazo: '2099-12-20' }], error: null } }), store: { crm_ficha_v2: '1' } });
   await abre(h, pessoa({ user_id: 'u1' }));
   await h.click({ fx: 'ir', id: 'curadoria' }); await espera();
   let t = h.el('fx-corpo').innerHTML;
@@ -131,6 +131,15 @@ console.log('== Curadoria: sessão própria, esconder, ordenar e conferir ==');
   await h.click({ fx: 'curOrigem', v: 'dela' });
   check('"Só dela" esconde os gerais e os escondidos na Curadoria', h.mod.state.fx.curOrigem === 'dela' && !/Gerais da démarche/.test(h.el('fx-corpo').innerHTML));
   await h.click({ fx: 'curOrigem', v: 'todos' });
+  await h.click({ fx: 'curOrigem', v: 'todos' }); await espera();
+  t = h.el('fx-corpo').innerHTML;
+  check('o passo só dela também tem ✓ (chave aco:12) e ✕ (tirar da lista dela), e não o ↓ de retirar de antes', /data-fx="curConf" data-id="aco:12"/.test(t) && /data-fx="curRetira" data-id="12"/.test(t) && !/data-caso="aco-retirar"/.test(t));
+  h.writes.length = 0; await h.click({ fx: 'curRetira', id: '12' });
+  const w6 = h.writes.find((x) => x.table === 'caso_acoes');
+  check('✕ no passo só dela tira da página dela (publicada_em = null, no passo certo) e não apaga nada', w6 && w6.op === 'update' && w6.row.publicada_em === null && w6.filtros.join() === 'id=12' && !h.writes.some((x) => x.op === 'delete'));
+  h.writes.length = 0; await h.click({ fx: 'curConf', id: 'aco:12' });
+  const w7 = h.writes.find((x) => x.table === 'checklist_curadoria');
+  check('✓ no passo só dela grava a conferência com a chave aco:12', w7 && w7.row[0].step_key === 'aco:12' && !!w7.row[0].conferido_em);
   await h.click({ caso: 'ed-chk', id: 'k2' });
   check('o ✎ da Curadoria abre o editor do passo ali mesmo', h.mod.state.fx.ckEd === 'k2' && /data-ckform="k2"/.test(h.el('fx-corpo').innerHTML));
   h.mod.pararAoVivo();

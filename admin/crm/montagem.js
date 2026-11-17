@@ -248,7 +248,7 @@ export function passosPropostosHtml(aco, listas, h, modo) {
     // Uma ação por linha, sempre: conferir a fonte → publicar para ela → retirar. (Concluído não tem botão.)
     // Minimalista: editar = dois cliques no texto; retirar (publicado) e recusar (rascunho) = ×. O que decide (conferir / publicar) continua em palavras.
     var x = function (acao, rot) { return h.ico ? h.ico(acao, a.id, '×', rot) : h.btn(acao, a.id, rot); };
-    var btns = (fim ? '' : a.publicada_em ? x('aco-retirar', 'Retirar da página dela') : (a.a_conferir ? h.conferi(a.id) : h.btn('aco-pub', a.id, 'Publicar para ela')) + x('aco-recusar', 'Recusar este passo'));
+    var btns = (fim ? '' : a.publicada_em ? (h.semRetirar ? '' : x('aco-retirar', 'Retirar da página dela')) : (a.a_conferir ? h.conferi(a.id) : h.btn('aco-pub', a.id, 'Publicar para ela')) + x('aco-recusar', 'Recusar este passo'));
     if (h.linhaPasso) {   // o mesmo desenho de linha do Checklist: ponto de estado, título, etiquetas e ícones
       var chips = [{ t: a.camada === 'persona' ? 'Da persona' : 'Só dela', c: 'del' }, { t: a.demarche ? h.rotulo(a.demarche) : 'Sem démarche', c: 'dem' }];
       var pz = h.prazo(a); if (pz) chips.push({ t: pz, c: 'due' });

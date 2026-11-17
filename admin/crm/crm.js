@@ -2,15 +2,15 @@
 // Nada de service_role aqui. O banco é db/crm-fase2.sql; o desenho é o artefato "CRM Por Dentro".
 // Tudo que vem do banco é texto de terceiros (nome, e-mail, pergunta): passa sempre por esc().
 import { supabase } from '/assets/js/supabase-client.js';
-import * as TX from './taxonomia.js?v=2026-11-17.31';   // páginas, famílias e agrupamento dos modelos
-import * as ES from './estudio.js?v=2026-11-17.31';   // os blocos do estúdio de e-mails (entregas 2 e 3)
-import * as EE from './editor-email.js?v=2026-11-17.31';
-import * as EQ from './editor-quem.js?v=2026-11-17.31';
-import * as JR from './jornada.js?v=2026-11-17.31';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
-import * as FX from './ficha.js?v=2026-11-17.31';   // ficha v2: lógica pura (fila, démarches, funil, ações)
-import * as FH from './ficha-html.js?v=2026-11-17.31';   // ficha v2: HTML puro
-import * as PN from './panorama.js?v=2026-11-17.31';
-import * as MT from './montagem.js?v=2026-11-17.31';   // Montagem do espaço a partir do transcript (lógica e HTML puros)   // Panorama dela e O que ela trouxe (lógica e HTML puros)
+import * as TX from './taxonomia.js?v=2026-11-17.32';   // páginas, famílias e agrupamento dos modelos
+import * as ES from './estudio.js?v=2026-11-17.32';   // os blocos do estúdio de e-mails (entregas 2 e 3)
+import * as EE from './editor-email.js?v=2026-11-17.32';
+import * as EQ from './editor-quem.js?v=2026-11-17.32';
+import * as JR from './jornada.js?v=2026-11-17.32';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
+import * as FX from './ficha.js?v=2026-11-17.32';   // ficha v2: lógica pura (fila, démarches, funil, ações)
+import * as FH from './ficha-html.js?v=2026-11-17.32';   // ficha v2: HTML puro
+import * as PN from './panorama.js?v=2026-11-17.32';
+import * as MT from './montagem.js?v=2026-11-17.32';   // Montagem do espaço a partir do transcript (lógica e HTML puros)   // Panorama dela e O que ela trouxe (lógica e HTML puros)
 
 var PERSONAS = {
   au_pair_estudante: 'Au pair → estudante', campus_france: 'Campus France', alternancia_emprego: 'Alternância / emprego',
@@ -3791,7 +3791,7 @@ function fxHeaderHtml(c, d) {
 // Catálogo de démarches (cópia do app, processos.json): carregado uma vez; sem ele, tudo cai na démarche padrão.
 var FX_PROC = null, FX_QUANDO = null;   // FX_QUANDO: o "quando" de cada passo do template (guias-quando.json), para o prazo curto do Início
 async function fxCarregaProcessos() {
-  try { var r = await fetch('processos.json?v=2026-11-17.31'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
+  try { var r = await fetch('processos.json?v=2026-11-17.32'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
 }
 // A sessão Checklist: pílulas por démarche, os 4 mais urgentes, pasta do Drive privada e "Ver mais desta sessão".
 // Os passos que a montagem do espaço propôs para ela, com démarche, subitens e origem: o mesmo detalhe do Checklist. Existem antes de ela ter conta.
@@ -3856,6 +3856,7 @@ async function fxCurOrdena(c, chaves) { return fxCurGrava(c, chaves.map(function
 async function fxCurAcao(c, ds) {
   var cur = state.cur && state.cur.cid === c.id ? state.cur : null; if (!cur) return;
   var mapa = FX.mapaDaCuradoria(cur.linhas), k = ds.id, m = mapa[k] || {};
+  if (ds.fx === 'curRetira') return casoAcao('aco-retirar', ds.id, null);   // só dela: tira da página dela (volta a rascunho; dá para publicar de novo)
   if (ds.fx === 'curConf') return fxCurGrava(c, [{ step_key: k, conferido_em: m.conferido_em ? null : new Date().toISOString() }], m.conferido_em ? 'Conferência desfeita.' : 'Conferido.');
   if (ds.fx === 'curEsc') return fxCurGrava(c, [{ step_key: k, oculto: true }], 'Escondido: ela não vê mais este passo no app.');
   if (ds.fx === 'curMostrar') return fxCurGrava(c, [{ step_key: k, oculto: false }], 'Ela volta a ver este passo.');
@@ -3881,8 +3882,9 @@ function fxCuradoriaCorpo(c) {
   var mapa = FX.mapaDaCuradoria(cur.linhas), itens = (chk.itens || []).filter(function (i) { return i.status !== 'arquivado'; }), hoje = new Date().toISOString().slice(0, 10);
   var oc = function (i) { return !!(mapa[i.step_key] && mapa[i.step_key].oculto); }, visiveis = itens.filter(function (i) { return !oc(i); }), escondidos = itens.filter(oc);
   var equipe = fxEquipePublicada(c), k = fxCasoPassos(c);
-  var hk = k ? Object.assign({}, fxHooksPassos(c, k), { extraLinha: function (a) { var ok = !!(mapa['aco:' + a.id] && mapa['aco:' + a.id].conferido_em);
-    return '<button type="button" class="fx-ic ' + (ok ? 'on' : '') + '" data-fx="curConf" data-id="aco:' + esc(String(a.id)) + '" aria-pressed="' + ok + '" aria-label="' + (ok ? 'Conferido: clique para desfazer' : 'Marcar como conferido') + '" title="' + (ok ? 'Conferido: clique para desfazer' : 'Marcar como conferido') + '">' + casoSvg('check', 16) + '</button>'; } }) : null;
+  var hk = k ? Object.assign({}, fxHooksPassos(c, k), { semRetirar: true, extraLinha: function (a) { var ok = !!(mapa['aco:' + a.id] && mapa['aco:' + a.id].conferido_em), rot = ok ? 'Conferido: clique para desfazer' : 'Marcar como conferido';
+    return '<button type="button" class="fx-ic ' + (ok ? 'on' : '') + '" data-fx="curConf" data-id="aco:' + esc(String(a.id)) + '" aria-pressed="' + ok + '" aria-label="' + rot + '" title="' + rot + '">' + casoSvg('check', 16) + '</button>' +
+      (a.estado === 'concluida' ? '' : '<button type="button" class="fx-ic" data-fx="curRetira" data-id="' + esc(String(a.id)) + '" aria-label="Tirar da lista dela (volta a rascunho)" title="Tirar da lista dela (volta a rascunho)">' + casoSvg('x', 16) + '</button>'); } }) : null;
   return FH.htmlCuradoria({ origem: f.curOrigem || 'todos', resumo: FX.resumoCuradoria({ itens: itens, equipe: equipe, mapa: mapa }), alertas: fxAlertasChk(c), gerais: FX.ordenarGerais(visiveis, mapa, hoje), escondidos: escondidos,
     equipeHtml: k && hk ? MT.passosPropostosHtml(k.aco, k.listas, hk, 'publicados') : '', equipeN: equipe.length, mapa: mapa, hoje: hoje, ckEd: f.ckEd || null,
     temOrdem: visiveis.some(function (i) { return mapa[i.step_key] && mapa[i.step_key].ordem != null; }),
@@ -4669,7 +4671,7 @@ function fichaClick(el) {
     case 'camadas': f.camadas = !f.camadas; fxPintaPrevia(); return true;
     case 'dem': { f.dem = ds.v || 'todas'; f.appAba = 'checklist'; var cd = byC(state.sel); if (cd) { fxPintaChk(fxContato(cd, f.dados && f.dados.uid)); fxPintaPrevia(); } return true; }
     case 'curOrigem': f.curOrigem = ds.v; fxPintaCorpo(); return true;
-    case 'curConf': case 'curEsc': case 'curMostrar': case 'curMov': case 'curReset': { var cc = byC(state.sel); if (cc) fxCurAcao(cc, ds); return true; }
+    case 'curConf': case 'curEsc': case 'curMostrar': case 'curMov': case 'curReset': case 'curRetira': { var cc = byC(state.sel); if (cc) fxCurAcao(cc, ds); return true; }
     case 'ckOrigem': f.ckOrigem = ds.v; fxRepintaChkDe(); return true;
     case 'ckEditar': fxFechaQuadro(); f.ckEd = ds.id; fxRepintaChkDe(); return true;
     case 'qdFechar': fxFechaQuadro(); return true;
@@ -4705,7 +4707,7 @@ async function renderPessoa() {
   if (!c) { $('pessoa-page').innerHTML = '<div class="empty">Pessoa não encontrada.</div>'; return; }
   $('pessoa-page').innerHTML = '<div class="loading">Carregando a ficha…</div>';
   if (fichaV2Ativa() && FX_PROC === null) FX_PROC = await fxCarregaProcessos();
-  if (fichaV2Ativa() && FX_QUANDO === null) { try { var rq = await fetch('guias-quando.json?v=2026-11-17.31'); FX_QUANDO = rq.ok ? await rq.json() : {}; } catch (e) { FX_QUANDO = {}; } }
+  if (fichaV2Ativa() && FX_QUANDO === null) { try { var rq = await fetch('guias-quando.json?v=2026-11-17.32'); FX_QUANDO = rq.ok ? await rq.json() : {}; } catch (e) { FX_QUANDO = {}; } }
   var r = await Promise.all([
     supabase.from('eventos').select('tipo,dados,criado_em').eq('contato_id', c.id).order('criado_em', { ascending: false }).limit(200),
     supabase.from('consentimentos').select('finalidade,aceito,texto,origem,criado_em').eq('contato_id', c.id).order('criado_em', { ascending: false }),
@@ -6616,7 +6618,7 @@ async function enviarLinkPagamento(btn) {
 var FX_DETALHE = null, qdTimer = null, qdOrigem = null, qdAberto = false;
 async function fxCarregaDetalhe() {
   if (FX_DETALHE) return FX_DETALHE;
-  try { var r = await fetch('guias-detalhe.json?v=2026-11-17.31'); FX_DETALHE = r.ok ? await r.json() : {}; } catch (e) { FX_DETALHE = {}; }
+  try { var r = await fetch('guias-detalhe.json?v=2026-11-17.32'); FX_DETALHE = r.ok ? await r.json() : {}; } catch (e) { FX_DETALHE = {}; }
   return FX_DETALHE;
 }
 function fxFechaQuadro() {
