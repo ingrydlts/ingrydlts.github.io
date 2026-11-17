@@ -8,6 +8,8 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import * as ES from '../../estudio.js';
+import * as JR from '../../jornada.js';
+import * as TX from '../../taxonomia.js';
 import { gerar, CHAVE_1, CHAVE_2, ORIGEM, SLUG } from '../modelo-mapa-saude.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -97,6 +99,19 @@ async function main() {
   const sqlOk = sqlLink.replace('COLE-AQUI-O-ENDERECO-NOTION-SITE', 'https://exemplo.notion.site/mapa-da-saude-123');
   const l1 = await attempt(() => db.exec(sqlOk)), l2 = await attempt(() => db.exec(sqlOk));
   check('com um https válido registra a linha, e roda de novo sem duplicar', l1.ok && l2.ok && (await q("select count(*)::int n from guias_links where slug = $1", [SLUG]))[0].n === 1);
+
+  console.log('\n== crm-pagina-i06.sql e a Jornada ==');
+  for (const f of ['crm-taxonomia-modelos.sql', 'crm-pagina-i05.sql']) await db.exec(readFileSync(path.resolve(HERE, '..', f), 'utf8'));
+  const sqlI06 = readFileSync(path.resolve(HERE, '../crm-pagina-i06.sql'), 'utf8');
+  const i1 = await attempt(() => db.exec(sqlI06)), i2 = await attempt(() => db.exec(sqlI06));
+  check('crm-pagina-i06.sql roda duas vezes sem erro', i1.ok && i2.ok); if (!i1.ok) console.log(i1.error.message);
+  const cls = await q("select chave, familia, pagina from modelos_email where chave in ($1, $2) order by chave", [CHAVE_1, CHAVE_2]);
+  check('os dois e-mails ficam na família Entrega e na página I06', cls.length === 2 && cls.every((m) => m.familia === 'entrega' && m.pagina === 'I06'));
+  check('o banco aceita I06 e continua recusando página inventada', (await attempt(() => db.query("update modelos_email set pagina = 'I06' where chave = $1", [CHAVE_1]))).ok && !(await attempt(() => db.query("update modelos_email set pagina = 'I99' where chave = $1", [CHAVE_1]))).ok);
+  const modelos = await q('select * from modelos_email order by chave');
+  const jor = JR.montaJornada(modelos, TX);
+  const l6 = (jor.linhas || jor).find((l) => l.k === 'I06');
+  check('a Jornada tem a linha I06, com o e-mail 1 no Inbound lead e o 2 no Primeiro contato', l6 && l6.celulas.lead.some((m) => m.chave === CHAVE_1) && l6.celulas.contato.some((m) => m.chave === CHAVE_2));
 
   console.log(`\n${passed} ok, ${failed} falharam`);
   process.exit(failed ? 1 : 0);
