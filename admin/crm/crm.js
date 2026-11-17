@@ -4364,7 +4364,17 @@ function fichaClick(el) {
       fxFechaPop(false); if (t) irPara(t.dest); return true;
     }
     case 'sessao': { f.abertas[ds.id] = !fxSessaoAberta(ds.id); fxPintaCorpo(); var tb2 = document.querySelector('[data-fx="sessao"][data-id="' + ds.id + '"]'); if (tb2 && tb2.focus) tb2.focus(); return true; }
-    case 'ir': { f.abertas[ds.id] = true; fxPintaCorpo(); var sc = document.querySelector('section.fx-sess[data-sessao="' + ds.id + '"]'); if (sc && sc.scrollIntoView) sc.scrollIntoView({ behavior: 'smooth', block: 'start' }); return true; }
+    case 'ir': {
+      // Pílula apagada: abre a sessão e a centraliza na tela. Pílula verde (já aberta): só fecha, sem rolar.
+      if (fxSessaoAberta(ds.id)) { f.abertas[ds.id] = false; fxPintaCorpo(); return true; }
+      f.abertas[ds.id] = true; fxPintaCorpo();
+      var sc = document.querySelector('section.fx-sess[data-sessao="' + ds.id + '"]');
+      if (sc && sc.scrollIntoView) {
+        var alta = sc.getBoundingClientRect().height > window.innerHeight * 0.9;   // sessão maior que a tela: centralizar cortaria o topo
+        sc.scrollIntoView({ behavior: 'smooth', block: alta ? 'start' : 'center' });
+      }
+      return true;
+    }
     case 'mover': {
       var ord = fxOrdem(), area = ord.app.indexOf(ds.id) >= 0 ? 'app' : ord.ela.indexOf(ds.id) >= 0 ? 'ela' : null; if (!area) return true;
       var nova = { app: ord.app.slice(), ela: ord.ela.slice() }; nova[area] = FX.moverSessao(nova[area], ds.id, Number(ds.d) < 0 ? -1 : 1);
