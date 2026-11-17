@@ -1722,3 +1722,8 @@ button.bar-r b{text-align:right; font-variant-numeric:tabular-nums}
 .lg-edit > summary { cursor: pointer; font-size: 13px; font-weight: 600; }
 /* Editando o registro, a visão legível some: o mesmo texto não aparece duas vezes */
 #pc-an:has(.lg-edit[open]) .pc-leitura { display: none; }
+.fx-pv-oi{margin:4px 0 8px; font:700 19px/1.2 Fraunces,Georgia,serif; color:#2B2B2B}
+.fx-pv-cab-in{margin-bottom:8px}.fx-pv-cab-in .fx-pv-oi{margin:2px 0}
+.fx-pv-foco{background:#7B9BC9; border-color:transparent}.fx-pv-foco.urg{background:#E8B4A6}
+.fx-pv-foco .k{color:#2B2B2B}
+.fx-pv-btn{display:inline-block; margin-top:10px; padding:6px 14px; border-radius:999px; background:#222; color:#fff; font-size:12px; font-weight:700}
