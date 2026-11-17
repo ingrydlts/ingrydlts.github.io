@@ -1,5 +1,5 @@
 // Ficha-universo, fase 1: HTML puro das peças novas. Todas recebem h = { esc, fmtDay } e escapam todo texto vindo do banco.
-import { ETAPAS_FUNIL, maisUrgentes } from './ficha.js?v=2026-11-17.10';   // o ?v= acompanha o de crm.js (cache do navegador)
+import { ETAPAS_FUNIL, maisUrgentes } from './ficha.js?v=2026-11-17.11';   // o ?v= acompanha o de crm.js (cache do navegador)
 
 
 const URG = { alta: 'Alta', media: 'Média', baixa: 'Baixa' };
@@ -165,6 +165,14 @@ function rotuloPasso(i, hoje, e, fmtDay) {
 export function botaoHome(tem, ref, e) {
   return '<button type="button" class="btn fx-hb' + (tem ? ' on' : '') + '" data-caso="' + (tem ? 'home-del' : 'home-add') + '" data-id="checklist:' + e(ref) + '" aria-pressed="' + !!tem + '">' + (tem ? 'Na home ✓ · tirar' : 'Adicionar na home') + '</button>';
 }
+// O texto de um passo do checklist dela. O original do template continua guardado; vazio volta ao original; ela vê o novo texto no app.
+function editorPasso(i, e) {
+  return '<li class="fx-passo fx-passo-ed"><form class="fx-ck-ed" data-ckform="' + e(i.step_key) + '">' +
+    '<label class="fx-ck-l">Texto do passo<input id="fx-ck-t" type="text" maxlength="120" value="' + e(i.titulo_custom || i.label) + '" data-orig="' + e(i.label) + '"></label>' +
+    '<label class="fx-ck-l">Observação (opcional, até 100 letras)<input id="fx-ck-n" type="text" maxlength="100" value="' + e(i.nota_custom || '') + '"></label>' +
+    '<p class="sub" style="margin:2px 0 8px">Original: ' + e(i.label) + '. Deixar o texto vazio volta ao original. Ela vê o novo texto no app.</p>' +
+    '<div class="actions"><button type="button" class="btn primary" data-fx="ckSalvar" data-id="' + e(i.step_key) + '">Salvar</button><button type="button" class="btn" data-fx="ckCancelar">Cancelar</button></div></form></li>';
+}
 export function htmlChecklistSessao(d, h) {
   const e = h.esc;
   if (d.semConta) return '<p class="sub" style="margin:0">Ela ainda não entrou no app, então ainda não tem checklist.</p>';
@@ -178,10 +186,11 @@ export function htmlChecklistSessao(d, h) {
   const lista = d.todos ? maisUrgentes(itens, itens.length, hoje) : maisUrgentes(itens, 4, hoje);
   const esc4 = itens.length - 4;
   const passos = '<div class="fx-passos"><h4 class="fx-h4">Passos do checklist</h4>' + (itens.length
-    ? '<ul class="fx-passos-lista">' + lista.map((i) => '<li class="fx-passo ' + (i.status === 'concluido' ? 'feito' : i.status === 'arquivado' ? 'arq' : 'pend') + '"><span class="fx-p-t">' + e(i.label) + '</span>' + rotuloPasso(i, hoje, e, h.fmtDay) + (d.homeRefs && i.status !== 'arquivado' ? botaoHome(d.homeRefs.indexOf(i.step_key) >= 0, i.step_key, e) : '') + '</li>').join('') + '</ul>' +
+    ? '<ul class="fx-passos-lista">' + lista.map((i) => d.ckEd && d.ckEd === i.step_key ? editorPasso(i, e) : '<li class="fx-passo ' + (i.status === 'concluido' ? 'feito' : i.status === 'arquivado' ? 'arq' : 'pend') + '"><span class="fx-p-t">' + e(i.titulo_custom || i.label) + (i.nota_custom ? '<small class="fx-p-nota">' + e(i.nota_custom) + '</small>' : '') + '</span>' + rotuloPasso(i, hoje, e, h.fmtDay) + (i.status !== 'arquivado' ? '<button type="button" class="btn fx-hb" data-fx="ckEditar" data-id="' + e(i.step_key) + '">Editar</button>' : '') + (d.homeRefs && i.status !== 'arquivado' ? botaoHome(d.homeRefs.indexOf(i.step_key) >= 0, i.step_key, e) : '') + '</li>').join('') + '</ul>' +
       (itens.length > 4 ? '<button type="button" class="link" data-fx="ckTodos" aria-expanded="' + !!d.todos + '">' + (d.todos ? 'Mostrar só os 4 mais urgentes' : 'Ver todos os ' + itens.length + ' passos (' + esc4 + (esc4 === 1 ? ' escondido)' : ' escondidos)')) + '</button>' : '')
     : '<p class="sub" style="margin:0">O checklist dela ainda está vazio.</p>') + '</div>';
-  return velho + pilulas + drive + passos +
+  const equipe = d.equipeHtml ? '<div class="fx-passos fx-passos-equipe"><h4 class="fx-h4">Combinados só com ela (da montagem do espaço)</h4>' + d.equipeHtml + '</div>' : '';
+  return velho + pilulas + drive + passos + equipe +
     '<div class="fx-mais"><button type="button" class="btn" data-fx="ckMais" aria-expanded="' + !!d.mais + '">' + (d.mais ? 'Ver menos desta sessão' : 'Ver mais desta sessão') + '</button>' + (d.mais ? '<div class="fx-mais-corpo">' + (d.extraMais || '') + '</div>' : '') + '</div>';
 }
 

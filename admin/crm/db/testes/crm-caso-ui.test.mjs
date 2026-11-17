@@ -3,6 +3,8 @@
 //
 // Uso: cd admin/crm/db/testes && node crm-caso-ui.test.mjs
 import * as FXMOD from '../../ficha.js';
+import * as FHMOD from '../../ficha-html.js';
+import * as MTMOD from '../../montagem.js';
 import * as TXMOD from '../../taxonomia.js';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
@@ -36,9 +38,9 @@ const supabase = { from: qb, auth: { getSession: async () => ({ data: { session:
   rpc: async (n, a) => { rpcs.push({ n, a }); return { data: null, error: rpcErro }; },
   channel: (nome) => { const ch = { nome, ons: [], on(t, o, cb) { ch.ons.push({ o, cb }); return ch; }, subscribe(cb) { ch.status = cb; return ch; } }; canais.push(ch); return ch; }, removeChannel() {} };
 const store = {};
-const mod = new Function('supabase', 'ES', 'TX', 'EE', 'EQ', 'JR', 'FX', 'document', 'window', 'location', 'localStorage', 'setInterval', 'clearInterval',
+const mod = new Function('supabase', 'ES', 'TX', 'EE', 'EQ', 'JR', 'FX', 'FH', 'MT', 'document', 'window', 'location', 'localStorage', 'setInterval', 'clearInterval',
   src + '\n;return { state, setC: function (v) { C = v; }, renderPessoa, eventText, pararAoVivo, fxHomeCorpo: fxHomeCorpo };')(
-  supabase, {}, TXMOD, { iniciar() {}, depois() {}, campoMudou() {} }, {}, {}, FXMOD, document, { addEventListener() {} }, { href: '' }, { getItem: (k) => store[k] ?? null, setItem: (k, v) => { store[k] = v; } }, () => 1, () => {});
+  supabase, {}, TXMOD, { iniciar() {}, depois() {}, campoMudou() {} }, {}, {}, FXMOD, FHMOD, MTMOD, document, { addEventListener() {} }, { href: '' }, { getItem: (k) => store[k] ?? null, setItem: (k, v) => { store[k] = v; } }, () => 1, () => {});
 
 
 const base = { id: 'c1', email: 'ana@example.com', nome: 'Ana Souza', estagio: 'em_uso', urgencia: 'baixa', persona: 'pvt' };
@@ -298,6 +300,28 @@ console.log('\n== Página inicial: "Adicionar na home" ==');
   check('sem o SQL, a sessão pede o crm-caso-home.sql', /crm-caso-home\.sql/.test(mod.fxHomeCorpo(base)));
   writes.length = 0; await click({ caso: 'home-add', id: 'guias:20' });
   check('sem o SQL da home: não grava e pede o crm-caso-home.sql', writes.filter((x) => x.table === 'caso_home').length === 0 && /crm-caso-home\.sql/.test(els.get('toast').textContent));
+}
+
+console.log('\n== Editar o texto de um passo do checklist ==');
+{
+  mod.setC([Object.assign({}, base, { user_id: 'u1' })]);
+  mod.state.sel = 'c1'; mod.state.dos = { cid: 'c1', chk: { itens: [{ step_key: 'k1', label: 'Original', status: 'pendente', titulo_custom: null, nota_custom: null }], cliques: [] } };
+  mod.state.fx.dados = { uid: 'u1' }; mod.state.fx.dem = 'todas';
+  el('fx-chk-corpo'); 
+  await click({ fx: 'ckEditar', id: 'k1' });
+  check('"Editar" abre o editor do passo, com o texto de hoje e o original à vista', /data-ckform="k1"/.test(els.get('fx-chk-corpo').innerHTML) && /Original: Original/.test(els.get('fx-chk-corpo').innerHTML));
+  await click({ fx: 'ckCancelar' });
+  check('"Cancelar" fecha o editor sem gravar', !/data-ckform/.test(els.get('fx-chk-corpo').innerHTML) && rpcs.filter((x) => x.n === 'crm_checklist_editar').length === 0);
+  await click({ fx: 'ckEditar', id: 'k1' });
+  el('fx-ck-t').value = '  Validar o VLS-TS até 12/12  '; el('fx-ck-t').getAttribute = () => 'Original'; el('fx-ck-n').value = 'Pelo celular';
+  rpcs.length = 0; await click({ fx: 'ckSalvar', id: 'k1' });
+  const rp = rpcs.find((x) => x.n === 'crm_checklist_editar');
+  check('"Salvar" chama a rpc só de admin com a pessoa, o passo, o texto e a observação', rp && rp.a.p_user === 'u1' && rp.a.p_step_key === 'k1' && rp.a.p_titulo === 'Validar o VLS-TS até 12/12' && rp.a.p_nota === 'Pelo celular');
+  check('a lista passa a mostrar o novo texto e a observação, e o editor fecha', mod.state.dos.chk.itens[0].titulo_custom === 'Validar o VLS-TS até 12/12' && /Validar o VLS-TS até 12\/12/.test(els.get('fx-chk-corpo').innerHTML) && /Pelo celular/.test(els.get('fx-chk-corpo').innerHTML) && !/data-ckform/.test(els.get('fx-chk-corpo').innerHTML));
+  await click({ fx: 'ckEditar', id: 'k1' }); el('fx-ck-t').value = 'Original'; el('fx-ck-t').getAttribute = () => 'Original'; el('fx-ck-n').value = ''; rpcs.length = 0; await click({ fx: 'ckSalvar', id: 'k1' });
+  check('texto igual ao original não guarda cópia (manda vazio = volta ao original)', rpcs.find((x) => x.n === 'crm_checklist_editar').a.p_titulo === '' && mod.state.dos.chk.itens[0].titulo_custom === null);
+  await click({ fx: 'ckEditar', id: 'k1' }); el('fx-ck-t').value = 'x'.repeat(121); el('fx-ck-t').getAttribute = () => 'Original'; rpcs.length = 0; await click({ fx: 'ckSalvar', id: 'k1' });
+  check('texto com mais de 120 caracteres é recusado antes de chamar o banco', rpcs.filter((x) => x.n === 'crm_checklist_editar').length === 0 && /120 caracteres/.test(els.get('toast').textContent));
 }
 
 console.log('\n' + passed + ' passaram, ' + failed + ' falharam');
