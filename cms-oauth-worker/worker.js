@@ -4709,16 +4709,20 @@ async function handleCrmChatAviso(request, env) {
   const msg = mRes.ok ? (await mRes.json())[0] : null;
   if (!msg || msg.de !== 'ingryd') return json({ error: 'Mensagem não encontrada.' }, 404);
 
+  // O texto vem do modelo "chat_aviso" do Estúdio de e-mails (db/crm-chat-aviso-email.sql), que você edita lá. Se o modelo não
+  // estiver No ar ou der erro, sai este texto de reserva (o mesmo da versão 1). O e-mail não leva o conteúdo da mensagem: ela lê dentro do app.
   const nome = crmPrimeiroNome(contato.nome);
-  const trecho = String(msg.texto || '').replace(/\s+/g, ' ').trim().slice(0, 140);
-  const destaque = msg.tipo === 'proposta' ? `Te mandei uma proposta: "${trecho}".` : `"${trecho}${String(msg.texto || '').length > 140 ? '…' : ''}"`;
-  const assunto = nome ? `${nome}, a Ingryd te respondeu no Por Dentro` : 'A Ingryd te respondeu no Por Dentro';
-  const texto = `${nome ? `Oi ${nome}!` : 'Oi!'}\n\nAcabei de te responder na Central de perguntas da plataforma do Por Dentro:\n\n${destaque}\n\nPara ler tudo, é só abrir:\n${CRM_APP_LINK}\n\nSe quiser continuar, mande uma nova pergunta completa (o seu caso, o que você já fez e onde travou): eu respondo em até 3 dias úteis. Se o assunto for grande demais para texto, eu te proponho uma ligação.\n\nSe pedir para entrar, use este mesmo e-mail.\n\nIngryd · Por Dentro`;
+  const tpl = await crmModeloNoAr(env, 'chat_aviso');
+  const mail = crmMontarOuReserva('chat_aviso', tpl, () => ({ nome, email: contato.email, link_acesso: CRM_APP_LINK }), () => {
+    const texto = `${nome ? `Olá ${nome}` : 'Olá'}, você recebeu uma nova mensagem da Ingryd. Para conferir e responder, clique no botão abaixo para entrar na plataforma:\n\n${CRM_APP_LINK}\n\nIngryd · Por Dentro`;
+    return { assunto: 'Nova mensagem da Ingryd pra você', texto, html: crmTextToHtml(texto), versao: null };
+  });
+  const assunto = mail.assunto, texto = mail.texto;
   const brevoBody = {
     sender: { email: env.BREVO_SENDER_EMAIL, name: env.BREVO_SENDER_NAME || 'Ingryd · Por Dentro' },
     to: [contato.nome ? { email: contato.email, name: contato.nome } : { email: contato.email }],
     replyTo: { email: crmReplyTo(env) },
-    subject: assunto, htmlContent: crmTextToHtml(texto), textContent: texto,
+    subject: assunto, htmlContent: mail.html, textContent: texto,
     tags: ['crm', 'chat_aviso'],
   };
   const bRes = await fetch('https://api.brevo.com/v3/smtp/email', {
@@ -4735,7 +4739,7 @@ async function handleCrmChatAviso(request, env) {
   try { messageId = JSON.parse(bText).messageId || null; } catch (e) { /* segue sem id */ }
   const ins = await fetch(`${CRM_SUPABASE_URL}/rest/v1/emails_enviados`, {
     method: 'POST', headers: { ...auth, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
-    body: JSON.stringify({ contato_id: contatoId, modelo: 'chat_aviso', assunto, corpo: texto, status: 'agendado', provedor_id: messageId, enviado_em: new Date().toISOString() }),
+    body: JSON.stringify({ contato_id: contatoId, modelo: 'chat_aviso', assunto, corpo: texto, status: 'agendado', provedor_id: messageId, enviado_em: new Date().toISOString(), ...(mail.versao ? { modelo_versao: mail.versao } : {}) }),
   });
   if (!ins.ok) console.error('crm/chat-aviso: aviso enviado mas não registrado — ' + ins.status + ' ' + (await ins.text()));
   return json({ ok: true, enviado: true, registrado: ins.ok });
