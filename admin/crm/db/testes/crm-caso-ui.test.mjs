@@ -317,9 +317,9 @@ console.log('\n== Página inicial: "Adicionar na home" ==');
   const wd = writes.find((x) => x.table === 'caso_home');
   check('tirar apaga a linha certa', wd && wd.op === 'delete' && wd.filtros.join() === 'id=1');
   { const corpo = mod.fxHomeCorpo(base);
-    check('a sessão Página inicial: 3 blocos (Checklist, Espaço, Guias) com "n de máx" e "cheio"', /Checklist <span class="sub">0 de 3/.test(corpo) && /Espaço <span class="sub">2 de 2 · cheio/.test(corpo) && /Guias <span class="sub">0 de 2/.test(corpo));
-    check('item não publicado é avisado; item removido também; cada um tem "Tirar"', /não publicado: ela só vê depois de publicar/.test(corpo) && /o item não existe mais/.test(corpo) && /data-caso="home-del" data-id="espaco:21"/.test(corpo));
-    check('espaços livres explicam como preencher e levam à sessão', (corpo.match(/Espaço livre/g) || []).length === 5 && /data-fx="ir" data-id="checklist"/.test(corpo) && /data-fx="ir" data-id="guias"/.test(corpo)); }
+    check('a sessão Página inicial: 3 blocos (Checklist, Espaço, Guias) com a contagem em pontos ("n de máx", "cheio")', /aria-label="0 de 3"/.test(corpo) && /aria-label="2 de 2" title="2 de 2 \(cheio\)"/.test(corpo) && /aria-label="0 de 2"/.test(corpo) && /<h4>Checklist<\/h4>/.test(corpo) && /<h4>Guias<\/h4>/.test(corpo));
+    check('item não publicado é avisado (ponto âmbar com rótulo); item removido também; cada um tem o ícone de tirar', /fx-dot mid[^>]*aria-label="Rascunho: ela só vê depois que você publicar"/.test(corpo) && /o item não existe mais/.test(corpo) && /data-caso="home-del" data-id="espaco:21"[^>]*aria-label="Tirar da página inicial"/.test(corpo));
+    check('espaços livres são uma linha só e abrem a sessão certa (sem fechar; Guias leva ao Espaço)', (corpo.match(/class="fx-hm-add"/g) || []).length === 5 && /data-fx="abrir" data-id="checklist"/.test(corpo) && /data-fx="abrir" data-id="espaco"/.test(corpo) && !/data-id="guias"/.test(corpo) && !/Espaço livre/.test(corpo)); }
   cfg(null); await pagina();
   check('sem o SQL, a sessão pede o crm-caso-home.sql', /crm-caso-home\.sql/.test(mod.fxHomeCorpo(base)));
   writes.length = 0; await click({ caso: 'home-add', id: 'guias:20' });

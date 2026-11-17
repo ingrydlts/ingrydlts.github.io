@@ -2,15 +2,15 @@
 // Nada de service_role aqui. O banco é db/crm-fase2.sql; o desenho é o artefato "CRM Por Dentro".
 // Tudo que vem do banco é texto de terceiros (nome, e-mail, pergunta): passa sempre por esc().
 import { supabase } from '/assets/js/supabase-client.js';
-import * as TX from './taxonomia.js?v=2026-11-17.19';   // páginas, famílias e agrupamento dos modelos
-import * as ES from './estudio.js?v=2026-11-17.19';   // os blocos do estúdio de e-mails (entregas 2 e 3)
-import * as EE from './editor-email.js?v=2026-11-17.19';
-import * as EQ from './editor-quem.js?v=2026-11-17.19';
-import * as JR from './jornada.js?v=2026-11-17.19';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
-import * as FX from './ficha.js?v=2026-11-17.19';   // ficha v2: lógica pura (fila, démarches, funil, ações)
-import * as FH from './ficha-html.js?v=2026-11-17.19';   // ficha v2: HTML puro
-import * as PN from './panorama.js?v=2026-11-17.19';
-import * as MT from './montagem.js?v=2026-11-17.19';   // Montagem do espaço a partir do transcript (lógica e HTML puros)   // Panorama dela e O que ela trouxe (lógica e HTML puros)
+import * as TX from './taxonomia.js?v=2026-11-17.21';   // páginas, famílias e agrupamento dos modelos
+import * as ES from './estudio.js?v=2026-11-17.21';   // os blocos do estúdio de e-mails (entregas 2 e 3)
+import * as EE from './editor-email.js?v=2026-11-17.21';
+import * as EQ from './editor-quem.js?v=2026-11-17.21';
+import * as JR from './jornada.js?v=2026-11-17.21';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
+import * as FX from './ficha.js?v=2026-11-17.21';   // ficha v2: lógica pura (fila, démarches, funil, ações)
+import * as FH from './ficha-html.js?v=2026-11-17.21';   // ficha v2: HTML puro
+import * as PN from './panorama.js?v=2026-11-17.21';
+import * as MT from './montagem.js?v=2026-11-17.21';   // Montagem do espaço a partir do transcript (lógica e HTML puros)   // Panorama dela e O que ela trouxe (lógica e HTML puros)
 
 var PERSONAS = {
   au_pair_estudante: 'Au pair → estudante', campus_france: 'Campus France', alternancia_emprego: 'Alternância / emprego',
@@ -3771,7 +3771,7 @@ function fxHeaderHtml(c, d) {
 // Catálogo de démarches (cópia do app, processos.json): carregado uma vez; sem ele, tudo cai na démarche padrão.
 var FX_PROC = null, FX_QUANDO = null;   // FX_QUANDO: o "quando" de cada passo do template (guias-quando.json), para o prazo curto do Início
 async function fxCarregaProcessos() {
-  try { var r = await fetch('processos.json?v=2026-11-17.19'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
+  try { var r = await fetch('processos.json?v=2026-11-17.21'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
 }
 // A sessão Checklist: pílulas por démarche, os 4 mais urgentes, pasta do Drive privada e "Ver mais desta sessão".
 // Os passos que a montagem do espaço propôs para ela, com démarche, subitens e origem: o mesmo detalhe do Checklist. Existem antes de ela ter conta.
@@ -3837,17 +3837,21 @@ function fxHomeCorpo(c) {
   var chk = state.dos && state.dos.cid === c.id ? state.dos.chk : null;
   var itens = chk && !chk.err && !chk.semConta ? (chk.itens || []).filter(function (i) { return i.status !== 'arquivado'; }) : [];
   var d = FX.destaquesDaHome({ home: k.home, itens: itens, board: k.itens });
-  var onde = { checklist: ['do Checklist', 'checklist', 'Passos do checklist'], espaco: ['do Espaço', 'espaco', 'prazos e escolas'], guias: ['dos Guias', 'guias', 'bilan, documentos e mensagens prontas'] };
+  // Cada categoria aponta para a sessão onde o item mora (Guias e Material da equipe moram dentro do Espaço).
+  var onde = { checklist: { sessao: 'checklist', nome: 'Checklist' }, espaco: { sessao: 'espaco', nome: 'Espaço' }, guias: { sessao: 'espaco', nome: 'Material da equipe' } };
   var bloco = function (cat) {
     var b = d[cat], linhas = b.itens.map(function (x) {
-      return '<div class="fx-home-slot"><span class="fx-home-t"><b>' + esc(x.titulo) + '</b>' + (x.meta ? ' <small>' + esc(x.meta) + '</small>' : '') +
-        (x.falta ? ' ' + casoPil('o item não existe mais', 'u-media') : !x.publicado ? ' ' + casoPil('não publicado: ela só vê depois de publicar', 'u-media') : '') + '</span>' + casoBtn('home-del', cat + ':' + x.ref, 'Tirar') + '</div>';
+      var estado = x.falta ? ['off', 'o item não existe mais'] : !x.publicado ? ['mid', 'Rascunho: ela só vê depois que você publicar'] : ['ok', 'Publicado: ela já vê'];
+      return '<li class="fx-hm"><span class="fx-dot ' + estado[0] + '" role="img" aria-label="' + esc(estado[1]) + '" title="' + esc(estado[1]) + '"></span>' +
+        '<span class="fx-hm-t"><b>' + esc(x.titulo) + '</b>' + (x.falta ? '<small>removido do caso</small>' : x.meta ? '<small>' + esc(x.meta) + '</small>' : '') + '</span>' +
+        '<button type="button" class="fx-ic" data-caso="home-del" data-id="' + esc(cat + ':' + x.ref) + '" aria-label="Tirar da página inicial" title="Tirar da página inicial">' + casoSvg('x', 16) + '</button></li>';
     });
-    for (var i = b.itens.length; i < b.max; i++) linhas.push('<div class="fx-home-slot vazio"><span class="sub">Espaço livre. Em <b>' + esc(onde[cat][1] === 'checklist' ? 'Checklist' : cat === 'espaco' ? 'Espaço' : 'Guias') + '</b>, use “Adicionar na home” num item (' + esc(onde[cat][2]) + ').</span><button type="button" class="link" data-fx="ir" data-id="' + onde[cat][1] + '">Ir para a sessão</button></div>');
-    return '<section class="fx-home-bloco" aria-label="' + esc(FX.HOME_ROTULOS[cat]) + ' na home"><h4 class="fx-h4">' + esc(FX.HOME_ROTULOS[cat]) + ' <span class="sub">' + b.n + ' de ' + b.max + (b.n >= b.max ? ' · cheio' : '') + '</span></h4>' + linhas.join('') + '</section>';
+    for (var i = b.itens.length; i < b.max; i++) linhas.push('<li class="fx-hm vazio"><button type="button" class="fx-hm-add" data-fx="abrir" data-id="' + onde[cat].sessao + '" title="Abre a sessão: use o + do item que você quer pôr aqui">' + casoSvg('plus', 15) + '<span>Escolher no ' + esc(onde[cat].nome) + '</span></button></li>');
+    var pontos = ''; for (var j = 0; j < b.max; j++) pontos += '<i class="' + (j < b.n ? 'on' : '') + '"></i>';
+    return '<section class="fx-hbl" aria-label="' + esc(FX.HOME_ROTULOS[cat]) + ' na home"><header><h4>' + esc(FX.HOME_ROTULOS[cat]) + '</h4><span class="fx-hb-n" role="img" aria-label="' + b.n + ' de ' + b.max + '" title="' + b.n + ' de ' + b.max + (b.n >= b.max ? ' (cheio)' : '') + '">' + pontos + '</span></header><ul>' + linhas.join('') + '</ul></section>';
   };
-  return '<p class="sub" style="margin:0 0 10px">Ela vê isto no Início do app, em “Em destaque” (o que não está publicado fica fora até você publicar). Para trocar um item: tire aqui e use “Adicionar na home” em outro.</p>' +
-    '<div class="fx-home-grade">' + bloco('checklist') + bloco('espaco') + bloco('guias') + '</div>';
+  return '<p class="fx-hnota" title="Ela vê isto no Início do app, em “Em destaque”. O que não está publicado fica fora até você publicar. Para trocar um item: tire aqui e use o + em outro.">Em destaque no Início dela · só aparece o que está publicado</p>' +
+    '<div class="fx-home-wrap"><div class="fx-home-grade">' + bloco('checklist') + bloco('espaco') + bloco('guias') + '</div></div>';
 }
 function fxOrdem() {
   var f = state.fx;
@@ -4550,6 +4554,11 @@ function fichaClick(el) {
       fxFechaPop(false); if (t) irPara(t.dest); return true;
     }
     case 'sessao': { f.abertas[ds.id] = !fxSessaoAberta(ds.id); fxPintaCorpo(); if (f.abertas[ds.id]) fxPrevia(ds.id); var tb2 = document.querySelector('[data-fx="sessao"][data-id="' + ds.id + '"]'); if (tb2 && tb2.focus) tb2.focus(); return true; }
+    case 'abrir': {   // abre a sessão (nunca fecha) e leva a tela até ela
+      f.abertas[ds.id] = true; fxPintaCorpo(); fxPrevia(ds.id);
+      var sa = document.querySelector('section.fx-sess[data-sessao="' + ds.id + '"]'); if (sa && sa.scrollIntoView) sa.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      return true;
+    }
     case 'ir': {
       // Pílula apagada: abre a sessão e a centraliza na tela. Pílula verde (já aberta): só fecha, sem rolar.
       if (fxSessaoAberta(ds.id)) { f.abertas[ds.id] = false; fxPintaCorpo(); return true; }
@@ -4628,7 +4637,7 @@ async function renderPessoa() {
   if (!c) { $('pessoa-page').innerHTML = '<div class="empty">Pessoa não encontrada.</div>'; return; }
   $('pessoa-page').innerHTML = '<div class="loading">Carregando a ficha…</div>';
   if (fichaV2Ativa() && FX_PROC === null) FX_PROC = await fxCarregaProcessos();
-  if (fichaV2Ativa() && FX_QUANDO === null) { try { var rq = await fetch('guias-quando.json?v=2026-11-17.19'); FX_QUANDO = rq.ok ? await rq.json() : {}; } catch (e) { FX_QUANDO = {}; } }
+  if (fichaV2Ativa() && FX_QUANDO === null) { try { var rq = await fetch('guias-quando.json?v=2026-11-17.21'); FX_QUANDO = rq.ok ? await rq.json() : {}; } catch (e) { FX_QUANDO = {}; } }
   var r = await Promise.all([
     supabase.from('eventos').select('tipo,dados,criado_em').eq('contato_id', c.id).order('criado_em', { ascending: false }).limit(200),
     supabase.from('consentimentos').select('finalidade,aceito,texto,origem,criado_em').eq('contato_id', c.id).order('criado_em', { ascending: false }),

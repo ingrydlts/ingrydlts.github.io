@@ -1728,12 +1728,6 @@ button.bar-r b{text-align:right; font-variant-numeric:tabular-nums}
 .fx-pv-foco .k{color:#2B2B2B}
 .fx-pv-btn{display:inline-block; margin-top:10px; padding:6px 14px; border-radius:999px; background:#222; color:#fff; font-size:12px; font-weight:700}
 /* Página inicial (destaques do Início dela) e botão "Adicionar na home" */
-.fx-home-grade{display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:12px}
-.fx-home-bloco{border:1px solid var(--line); border-radius:12px; padding:12px; background:var(--surface)}
-.fx-home-bloco .fx-h4{margin:0 0 8px}
-.fx-home-slot{display:flex; align-items:center; justify-content:space-between; gap:8px; padding:8px 0; border-top:1px solid var(--line)}
-.fx-home-slot.vazio{flex-direction:column; align-items:flex-start; border:1px dashed var(--line-2); border-radius:10px; padding:8px 10px; margin-top:6px}
-.fx-home-t{min-width:0; overflow-wrap:anywhere}
 .fx-hb{padding:4px 10px; font-size:12px; margin-left:8px}
 .fx-hb.on{border-color:var(--moss); background:var(--moss-soft)}
 .fx-pv-dsub{display:block; margin:8px 0 2px; font-size:10.5px; font-weight:700; color:#6E6862}
@@ -1877,3 +1871,58 @@ button.bar-r b{text-align:right; font-variant-numeric:tabular-nums}
 .fx-ln-b .btn[data-caso="item-del"]{border-color:var(--red); color:var(--red); white-space:nowrap}
 
 .fx-sis{background:var(--sunk); color:var(--ink-3); font-weight:400; font-style:italic}
+
+/* ===== Página inicial: destaques do Início dela (compacto, em colunas quando há largura) ===== */
+.fx-hnota{margin:0 0 12px; font-size:12.5px; color:var(--ink-3)}
+.fx-home-wrap{container-type:inline-size}
+.fx-home-grade{display:grid; grid-template-columns:1fr; gap:12px}
+@container (min-width:600px){ .fx-home-grade{grid-template-columns:repeat(3,minmax(0,1fr))} }
+.fx-hbl{min-width:0; padding:12px 12px 8px; border:1px solid var(--line); border-radius:14px; background:var(--surface)}
+.fx-hbl>header{display:flex; align-items:center; justify-content:space-between; gap:10px; margin:0 2px 6px}
+.fx-hbl h4{margin:0; font-size:11.5px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-2)}
+.fx-hb-n{display:inline-flex; gap:4px}
+.fx-hb-n i{width:8px; height:8px; border-radius:50%; background:var(--line-2)}
+.fx-hb-n i.on{background:#577328}
+.fx-hbl ul{list-style:none; margin:0; padding:0}
+.fx-hm{display:flex; align-items:flex-start; gap:10px; padding:8px 2px; border-top:1px solid var(--line); min-width:0}
+.fx-hm:first-child{border-top:0}
+.fx-hm .fx-dot{flex:none; margin-top:6px}
+.fx-hm-t{flex:1 1 auto; min-width:0; display:block}
+.fx-hm-t b{display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; font-size:13.5px; font-weight:600; line-height:1.35}
+.fx-hm-t small{display:block; margin-top:2px; font-size:11.5px; color:var(--ink-3)}
+.fx-hm .fx-ic{flex:none; width:30px; height:30px; border:0; border-radius:8px; background:none; color:var(--ink-3)}
+.fx-hm .fx-ic:hover,.fx-hm .fx-ic:focus-visible{background:var(--red-soft); color:var(--red)}
+.fx-hm.vazio{padding:6px 0 4px; border-top:0}
+.fx-hm-add{display:flex; align-items:center; justify-content:center; gap:8px; width:100%; min-height:38px; padding:0 12px; border:1px dashed var(--line-2); border-radius:10px; background:none; color:var(--ink-3); font-size:12.5px; font-weight:600; cursor:pointer}
+.fx-hm-add:hover,.fx-hm-add:focus-visible{border-color:var(--moss); color:var(--ink); background:var(--moss-soft)}
+.fx-hm-add svg{flex:none}
+@media (max-width:640px){ .fx-hm .fx-ic{width:36px; height:36px} .fx-hm-add{min-height:44px} }
+
+/* ===== Padrão da Ficha-universo (2026-11-17): pílula com ícone redondo, Fraunces, filete colorido por grupo ===== */
+.fx-grupo-sum{border-bottom:2px solid var(--moss); padding:6px 4px 8px; margin-bottom:2px}
+.fx-grupo-ela>.fx-grupo-sum{border-bottom-color:var(--brown)}
+.fx-grupo-app>.fx-grupo-sum .fx-h3{color:var(--moss-ink)}
+.fx-grupo-ela>.fx-grupo-sum .fx-h3{color:var(--brown)}
+.fx-grupo .fx-h3::before{display:none}
+.fx-grupo-sum .fx-grupo-n{color:var(--ink-3)}
+.fx-sess,.fx-sess.aberta{padding:0; background:var(--surface); border:1px solid var(--line); border-radius:30px; box-shadow:none; transition:border-radius .15s}
+.fx-sess.aberta{border-radius:22px; border-color:var(--moss); box-shadow:0 2px 10px rgba(0,0,0,.06)}
+.fx-grupo-ela .fx-sess.aberta{border-color:var(--brown)}
+.fx-sess .fx-sess-cab,.fx-sess.aberta .fx-sess-cab,.fx-grupo-ela .fx-sess.aberta .fx-sess-cab{display:flex; align-items:center; gap:4px; padding:2px 8px 2px 4px; border:0; border-radius:0; background:none}
+.fx-grab{display:grid; place-items:center; width:30px; height:44px; padding:0; font-size:15px; letter-spacing:-2px}
+.fx-sess-t{flex:1 1 auto; min-width:0; display:flex; flex-wrap:nowrap; align-items:center; gap:10px; min-height:54px; padding:0 6px}
+.fx-sess-ic{display:grid; place-items:center; flex:none; width:32px; height:32px; border-radius:50%; background:var(--moss-soft); color:var(--moss-ink)}
+.fx-grupo-ela .fx-sess-ic{background:var(--brown-soft); color:var(--brown)}
+.fx-sess-nome{flex:1 1 auto; min-width:0; font-family:var(--display); font-size:16px; font-weight:700; line-height:1.2; color:var(--ink)}
+.fx-sess.aberta .fx-sess-t[aria-expanded="true"] .fx-sess-nome{color:var(--ink)}
+.fx-sess-nome::before{display:none}
+.fx-sess-meta{margin-left:0; font-size:12px; font-weight:600; color:var(--ink-3); white-space:nowrap}
+.fx-sess-sub{display:none}
+.fx-sess-t::after{content:""; margin-left:0; flex:none; width:8px; height:8px; border-right:2px solid var(--ink-3); border-bottom:2px solid var(--ink-3); transform:rotate(45deg); transition:transform .15s}
+.fx-sess-t[aria-expanded="true"]::after{transform:rotate(-135deg)}
+.fx-sess-corpo{border:0; border-top:1px solid var(--line); border-radius:0; margin:0 14px; padding:12px 4px 16px; background:none}
+@media (max-width:640px){
+  .fx-sess,.fx-sess.aberta{border-radius:22px}
+  .fx-sess-corpo{margin:0 8px}
+  .fx-sess .fx-sess-cab,.fx-sess.aberta .fx-sess-cab{flex-wrap:nowrap}
+}

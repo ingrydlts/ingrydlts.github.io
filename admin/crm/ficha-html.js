@@ -201,13 +201,19 @@ export function htmlChecklistSessao(d, h) {
 
 // ---------- Sessões em pílulas (Task 12) ----------
 // s = { id, titulo, sub, corpo, aberto, area: 'app'|'ela', ativa }. O corpo só vem pintado quando a sessão está aberta.
+const ICONE_SESSAO = { home: 'M3 10l9-7 9 7v10a1 1 0 01-1 1h-5v-6H9v6H4a1 1 0 01-1-1z', chat: 'M4 5h16v11H9l-5 4z', checklist: 'M5 12.5l4.5 4.5L19 7.5', espaco: 'M4 5h7v14H4zM13 5h7v6h-7zM13 13h7v6h-7z',
+  perfil: 'M12 12a4 4 0 100-8 4 4 0 000 8zM4 21c0-4 4-6 8-6s8 2 8 6', eu: 'M12 3l2.5 5.5L20 9l-4 4 1 6-5-3-5 3 1-6-4-4 5.5-.5z', bilan: 'M7 3h10v18l-5-3-5 3z', trouxe: 'M4 8h16v12H4zM9 8V5h6v3',
+  sinais: 'M3 17l5-6 4 3 5-8 4 5', hist: 'M12 7v5l3 2M12 3a9 9 0 100 18 9 9 0 000-18z', mais: 'M6 12h.01M12 12h.01M18 12h.01', insights: 'M12 3a6 6 0 00-4 10.5V17h8v-3.5A6 6 0 0012 3zM9 21h6' };
+// Cartão de sessão no padrão da Ficha-universo: pílula com ícone redondo, título em Fraunces, a contagem curta à direita e a seta de abrir.
+// s = { id, titulo, sub, corpo, aberto, area: 'app'|'ela', ativa }.
 export function htmlSessao(s, h) {
-  const e = h.esc;
+  const e = h.esc, ic = ICONE_SESSAO[s.id] || ICONE_SESSAO.mais;
   return '<section class="fx-sess' + (s.aberto ? ' aberta' : '') + (s.ativa ? ' ativa' : '') + '" data-sessao="' + e(s.id) + '" data-area="' + e(s.area) + '">' +
     '<div class="fx-sess-cab">' +
     '<span class="fx-grab" draggable="true" role="img" aria-label="Arrastar ' + e(s.titulo) + '" data-id="' + e(s.id) + '" data-area="' + e(s.area) + '">⋮⋮</span>' +
     '<button type="button" class="fx-sess-t" title="' + e(s.sub || '') + '" data-fx="sessao" data-id="' + e(s.id) + '" aria-expanded="' + !!s.aberto + '" aria-controls="fx-s-' + e(s.id) + '">' +
-    '<span class="fx-sess-nome">' + e(s.titulo) + '</span><span class="fx-sess-sub">' + e(s.sub || '') + '</span></button>' +
+    '<span class="fx-sess-ic" aria-hidden="true"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="' + ic + '"/></svg></span>' +
+    '<span class="fx-sess-nome">' + e(s.titulo) + '</span>' + (s.meta ? '<small class="fx-sess-meta">' + e(s.meta) + '</small>' : '') + '<span class="fx-sess-sub">' + e(s.sub || '') + '</span></button>' +
     '<span class="fx-mover"><button type="button" class="fx-seta" data-fx="mover" data-id="' + e(s.id) + '" data-area="' + e(s.area) + '" data-d="-1" aria-label="Subir ' + e(s.titulo) + '">↑</button>' +
     '<button type="button" class="fx-seta" data-fx="mover" data-id="' + e(s.id) + '" data-area="' + e(s.area) + '" data-d="1" aria-label="Descer ' + e(s.titulo) + '">↓</button></span></div>' +
     (s.aberto ? '<div class="fx-sess-corpo" id="fx-s-' + e(s.id) + '">' + (s.corpo || '') + '</div>' : '') + '</section>';
