@@ -1708,3 +1708,13 @@ button.bar-r b{text-align:right; font-variant-numeric:tabular-nums}
 .montagem .mont-gaveta>summary{cursor:pointer;min-height:36px;padding:8px 12px;display:flex;flex-wrap:wrap;gap:4px 10px;align-items:center;color:var(--ink)}
 .montagem .mont-gaveta>summary .sub{font-weight:400}
 .montagem .mont-gaveta>.mont-lista,.montagem .mont-gaveta>p{margin:0;padding:0 10px 10px}
+/* Análise 1:1: arquivo, link e botão numa linha só (desktop); resumo e encaminhamentos legíveis; um bloco único de atenção */
+.pc-uma { flex-wrap: nowrap; }
+.pc-uma .pc-notion-in { flex: 1 1 auto; }
+@media (max-width: 720px) { .pc-uma { flex-wrap: wrap; } }
+.pc-h { margin: 14px 0 6px; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted, #8a8578); }
+.pc-rp { margin: 0 0 8px; font-size: 15px; line-height: 1.55; }
+.pc-rl { margin: 0 0 6px; font-size: 14px; line-height: 1.5; }
+.pc-rk { display: block; font-size: 11px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--muted, #8a8578); }
+.pc-ul li { margin: 0 0 5px; line-height: 1.45; }
+.pc-unico { margin-top: 14px; }

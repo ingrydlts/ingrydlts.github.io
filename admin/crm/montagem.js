@@ -211,11 +211,11 @@ export function painelHtml(m, c, esc) {
   var h = '<section class="dbloco montagem"><h4>Montagem do espaço</h4>';
   if (m.estado === 'lendo') return h + '<p class="sub" role="status">Lendo o onboarding… (leva alguns segundos)</p><div class="mont-skel" aria-hidden="true"><i></i><i></i><i></i></div></section>';
   if (m.estado === 'vazio' || m.estado === 'erro' || !m.estado) {
-    h += '<p class="sub" style="margin:0 0 8px">A partir do transcript colado em <b>A ligação</b>, a IA propõe checklists, documentos, perguntas da equipe e contatos para ela acionar. Ela só propõe: nada chega a ela sem a sua aprovação.</p>';
+    h += '<p class="sub" style="margin:0 0 8px">A partir da transcrição colada em <b>Registro da ligação</b> ou do link do Notion lido em <b>Análise 1:1</b>, a IA propõe checklists, documentos, perguntas da equipe e contatos para ela acionar. Ela só propõe: nada chega a ela sem a sua aprovação.</p>';
     if (m.erro) h += '<p class="err" role="alert">' + esc(m.erro) + '</p>';
     var tentar = !!m.erro;
     h += '<div class="actions"><button class="btn primary" type="button" data-montler="' + esc(c.id) + '"' + (m.temTranscricao ? '' : ' disabled') + '>' + (tentar ? 'Tentar de novo' : 'Propor a montagem do espaço') + '</button></div>' +
-      (m.temTranscricao ? '' : '<p class="sub" style="margin:6px 0 0">Cole a transcrição em “Gravação transcrita” (pelo menos algumas frases) para liberar.</p>');
+      (m.temTranscricao ? '' : '<p class="sub" style="margin:6px 0 0">Cole a transcrição em “Registro da ligação” ou leia o link do Notion em “Análise 1:1” para liberar.</p>');
   } else if (m.estado === 'proposta' || m.estado === 'aplicando') h += propostaHtml(m, c, esc);
   else if (m.estado === 'aplicado' && m.res) h += resultadoHtml(m, c, esc);
   if (m.erro && (m.estado === 'proposta' || m.estado === 'aplicando' || m.estado === 'aplicado')) h += '<p class="err" role="alert">' + esc(m.erro) + '</p>';
