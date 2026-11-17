@@ -67,4 +67,13 @@ console.log('\n== A cópia do "quando" dos passos não pode ficar velha ==');
   if (t) check('guias-quando.json = o do template do app (rode: node admin/crm/gerar-guias-quando.mjs <app>)', JSON.stringify(extrairQuando(t)) === JSON.stringify(copia));
   else console.log('  (app não encontrado em ' + APP + ': conferência da cópia pulada)');
 }
+console.log('\n== Em seguida: o passo do checklist fixado no CRM vai primeiro ==');
+{
+  const itens = [it('c1', 'Licence', 'pendente', '2026-12-20'), it('c2', 'Licence', 'pendente'), it('c3', 'Licence', 'concluido')];
+  const r = FX.inicioDoApp({ nome: 'L', mapa, persona: 'au_pair_estudante', itens, board: [], acoes: [], listas: [], home: [{ id: 1, categoria: 'checklist', step_key: 'c2', ordem: 0 }, { id: 2, categoria: 'checklist', step_key: 'c3', ordem: 1 }], agora: AGORA });
+  check('o fixado abre a fila do "Em seguida" (mesmo sem passo da equipe)', r.seguintes[0] && r.seguintes[0].titulo === 'L c2');
+  check('o fixado que ela já concluiu não entra; o mesmo título não se repete (fixado e do checklist geral)', !r.seguintes.some((q) => q.titulo === 'L c3') && r.seguintes.filter((q) => q.titulo === 'L c2').length === 1);
+  const sem = FX.inicioDoApp({ nome: 'L', mapa, persona: 'au_pair_estudante', itens, board: [], acoes: [], listas: [], home: [], agora: AGORA });
+  check('sem passo da equipe nem fixado, o "Em seguida" fica vazio, como no app', sem.seguintes.length === 0);
+}
 console.log(bad ? `\n${bad} falhou, ${ok} ok` : `\nok: ${ok} verificações`); process.exit(bad ? 1 : 0);

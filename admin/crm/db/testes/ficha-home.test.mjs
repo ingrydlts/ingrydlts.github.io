@@ -2,7 +2,7 @@
 import * as FX from '../../ficha.js';
 import * as FH from '../../ficha-html.js';
 let ok = 0, bad = 0; const check = (l, c) => { if (c) ok++; else { bad++; console.log('  FALHOU:', l); } };
-const h = { esc: (x) => String(x), fmtDay: (x) => x };
+const h = { esc: (x) => String(x), fmtDay: (x) => x, linhaPasso: (o) => '<div class="lp" data-ed="' + o.ed + '" data-id="' + o.id + '">' + o.titulo + '|' + (o.home || '') + '</div>' };
 
 console.log('== Limites e categorias ==');
 check('limites 3 / 3 / 2', FX.HOME_LIMITES.checklist === 3 && FX.HOME_LIMITES.so_seu === 3 && FX.HOME_LIMITES.guias === 2 && FX.HOME_LIMITES.espaco === undefined);
@@ -32,8 +32,8 @@ console.log('\n== Botão no Checklist ==');
   const sem = FH.htmlChecklistSessao(Object.assign({}, base, { homeRefs: null }), h);
   check('sem os dados da home (SQL não rodado ou caso carregando): nenhum botão', !/Adicionar na home/.test(sem));
   const com = FH.htmlChecklistSessao(Object.assign({}, base, { homeRefs: ['k2'] }), h);
-  check('minimalista: cada passo tem "+" (põe na home); o que já está lá vira "×" (tira); com rótulo escrito', /data-caso="home-add" data-id="checklist:k1"[^>]*aria-label="Adicionar na página inicial"[^>]*>\+</.test(com) && /data-caso="home-del" data-id="checklist:k2"[^>]*aria-label="Tirar da página inicial"[^>]*>×</.test(com) && /aria-pressed="true"/.test(com) && !/Adicionar na home|Na home ✓/.test(com));
-  check('sem botão "Editar": o texto do passo abre o editor com dois cliques (ou Enter)', !/>Editar</.test(com) && /class="fx-p-t fx-edita" data-dbl="ckEditar" data-id="k1" tabindex="0"/.test(com));
+  check('minimalista: cada passo tem "+" (fixa no Em seguida); o que já está lá vira "×" (tira); com rótulo escrito', /data-caso="home-add" data-id="checklist:k1"[^>]*aria-label="Fixar no Em seguida"[^>]*>\+</.test(com) && /data-caso="home-del" data-id="checklist:k2"[^>]*aria-label="Tirar do Em seguida"[^>]*>×</.test(com) && /aria-pressed="true"/.test(com) && !/Adicionar na home|Na home ✓/.test(com));
+  check('cada linha de passo é editável (ed-chk) e leva o botão da home que a linha desenha', /class="lp" data-ed="ed-chk" data-id="k1"/.test(com) && /class="lp" data-ed="ed-chk" data-id="k2"/.test(com));
   check('passo arquivado por ela não tem botão', !/checklist:k3/.test(com));
 }
 
@@ -54,6 +54,12 @@ console.log('\n== A página inicial na prévia do app ==');
   check('só seu: o bilan escolhido e o encaminhamento; sem escolha, o bilan segue como atalho', r.soSeu.bilans.length === 1 && r.soSeu.docs.length === 1 && r.soSeu.atalhoBilan === false
     && FX.inicioDoApp({ mapa, persona: 'x', itens, board: pub, acoes: [], listas: [], home: [], quando: {} }).soSeu.atalhoBilan === true);
   check('só com destaques (sem passos da equipe) já é Início pessoal', FX.inicioDoApp({ mapa, persona: 'x', itens, board: [], acoes: [], listas: [], home: [{ id: 1, categoria: 'checklist', step_key: 'k1', ordem: 0 }] }).pessoal === true && FX.inicioDoApp({ mapa, persona: 'x', itens, board: [], acoes: [], listas: [], home: [] }).pessoal === false);
+  const base = { nome: 'L', semConta: false, aba: 'guias', dia: 1, camadas: false, pct: 0, feitos: 0, total: 0, naoLidas: 0, marco: null, prox: null, avisos: [], passos: [], espaco: { marcos: [], escolas: [], dela: [] }, guias: { bilan: false, docs: [], msgs: [] }, perfil: { n: 0, tot: 0, kv: [] }, inicio: null };
+  const gv = FH.htmlPreviaApp(Object.assign({}, base, { esp: { perguntas: [], percebeu: [], docs: [{ titulo: 'Guia PDF', resumo: '', conteudo: true }], escolas: [], dela: [], mensagens: [{ titulo: 'E-mail para as escolas' }], bilans: [{ titulo: 'Conversa de 16/11/2026' }], vazio: false } }), { esc: (x) => String(x), fmtDay: (x) => x });
+  check('a prévia mobile tem as 5 abas, com Guias de volta (Início, Checklist, Espaço, Guias, Perfil)', ['Início', 'Checklist', 'Espaço', 'Guias', 'Perfil'].every((t) => new RegExp('>' + t + '<').test(gv)) && /data-v="guias"[^>]*aria-current="page"/.test(gv));
+  check('a aba Guias mostra o Material da equipe: Da Ingryd, Mensagens prontas e Meu Bilan', /Da Ingryd para você/.test(gv) && /Guia PDF/.test(gv) && /Mensagens prontas/.test(gv) && /Meu Bilan/.test(gv) && !/Pergunta da equipe/.test(gv));
+  const gz = FH.htmlPreviaApp(Object.assign({}, base, { esp: { perguntas: [], percebeu: [], docs: [], escolas: [], dela: [], mensagens: [], bilans: [], vazio: true } }), { esc: (x) => String(x), fmtDay: (x) => x });
+  check('Guias sem material: estado vazio honesto', /Ainda não tem material seu aqui/.test(gz));
   const dados = (inicio, esp) => ({ nome: 'Letícia', semConta: false, aba: 'inicio', dia: 1, camadas: false, pct: 0, feitos: 0, total: 0, naoLidas: 0, marco: null, prox: null, avisos: [], passos: [], espaco: { marcos: [], escolas: [], dela: [] }, guias: { bilan: false, docs: [], msgs: [] }, perfil: { n: 0, tot: 0, kv: [] }, inicio, esp });
   const html = FH.htmlPreviaApp(dados(r, FX.espacoDoApp({ board: [], avisos: [{ tipo: 'pergunta', titulo: 'Quando você chega?', estado: 'liberado' }] })), h);
   check('a prévia: "Em seguida" com o passo escolhido, "Só seu" com os "Encaminhamentos da Ingryd", "Guias", e sem "Em destaque"', !/Em destaque/.test(html) && /Em seguida/.test(html) && /Validar o VLS-TS/.test(html) && /Só seu/.test(html) && /Encaminhamentos da Ingryd/.test(html) && /Plano de estudos/.test(html) && /Guias/.test(html) && /E-mail para escolas/.test(html));

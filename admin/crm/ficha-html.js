@@ -155,16 +155,10 @@ export function htmlPopupFeitas(feitas, h) {
 // d = { semConta, erro, demarches: [{k,nome,feitos,total}], ativa, totalFeitos, total, itens: ChkItem[], hoje, todos, mais, extraMais, velhoDias? }.
 // velhoDias > 0 = dado velho (spec §11: banner depois de 48 h sem atividade).
 // A equipe não dá check no checklist dela e o CRM nunca lê nem mostra o link da pasta do Drive (spec §5.4, §8.2).
-function rotuloPasso(i, hoje, e, fmtDay) {
-  if (i.status === 'concluido') return '<span class="fx-p-d ok">feito</span>';
-  if (i.status === 'arquivado') return '<span class="fx-p-d">Arquivado por ela</span>';
-  if (!i.due_date) return '<span class="fx-p-d">sem data</span>';
-  return '<span class="fx-p-d' + (String(i.due_date).slice(0, 10) < hoje ? ' atraso' : '') + '">' + (String(i.due_date).slice(0, 10) < hoje ? 'atrasado · ' : 'vence ') + e(fmtDay(i.due_date)) + '</span>';
-}
 // "Adicionar na home": põe o passo (ou o item do Espaço / dos Guias) nos destaques do Início dela. Usa o despachante data-caso do CRM.
 // Minimalista: "+" põe na home e "×" tira (com rótulo escrito para leitor de tela e dica ao passar o mouse).
 export function iconeHome(tem, ref, e) {
-  const rot = tem ? 'Tirar da página inicial' : 'Adicionar na página inicial';
+  const rot = /^checklist:/.test(ref) ? (tem ? 'Tirar do Em seguida' : 'Fixar no Em seguida') : (tem ? 'Tirar da página inicial' : 'Adicionar na página inicial');
   return '<button type="button" class="fx-ic' + (tem ? ' on' : '') + '" data-caso="' + (tem ? 'home-del' : 'home-add') + '" data-id="' + e(ref) + '" aria-pressed="' + !!tem + '" aria-label="' + rot + '" title="' + rot + '">' + (tem ? '×' : '+') + '</button>';
 }
 export function botaoHome(tem, ref, e) {
@@ -172,63 +166,138 @@ export function botaoHome(tem, ref, e) {
 }
 // O texto de um passo do checklist dela. O original do template continua guardado; vazio volta ao original; ela vê o novo texto no app.
 function editorPasso(i, e) {
-  return '<li class="fx-passo fx-passo-ed"><form class="fx-ck-ed" data-ckform="' + e(i.step_key) + '">' +
+  return '<div class="fx-passo fx-passo-ed"><form class="fx-ck-ed" data-ckform="' + e(i.step_key) + '">' +
     '<label class="fx-ck-l">Texto do passo<input id="fx-ck-t" type="text" maxlength="120" value="' + e(i.titulo_custom || i.label) + '" data-orig="' + e(i.label) + '"></label>' +
     '<label class="fx-ck-l">Observação (opcional, até 100 letras)<input id="fx-ck-n" type="text" maxlength="100" value="' + e(i.nota_custom || '') + '"></label>' +
     '<p class="sub" style="margin:2px 0 8px">Original: ' + e(i.label) + '. Deixar o texto vazio volta ao original. Ela vê o novo texto no app.</p>' +
-    '<div class="actions"><button type="button" class="btn primary" data-fx="ckSalvar" data-id="' + e(i.step_key) + '">Salvar</button><button type="button" class="btn" data-fx="ckCancelar">Cancelar</button></div></form></li>';
+    '<div class="actions"><button type="button" class="btn primary" data-fx="ckSalvar" data-id="' + e(i.step_key) + '">Salvar</button><button type="button" class="btn" data-fx="ckCancelar">Cancelar</button></div></form></div>';
 }
+const ORIGENS_CK = [['todos', 'Todos'], ['gerais', 'Gerais'], ['dela', 'Só dela']];
+// d = { semConta, erro, velhoDias, demarches, ativa, origem, itens (gerais, já filtrados), equipeHtml, equipeN, alertas: {lista, porRef}, homeRefs, ckEd, totalFeitos, total,
+//       hoje, todos, mais, extraMais, demDe(item) }. h.linhaPasso(o) desenha a linha (a mesma nas duas listas).
 export function htmlChecklistSessao(d, h) {
   const e = h.esc;
   if (d.semConta) return '<p class="sub" style="margin:0">Ela ainda não entrou no app, então ainda não tem checklist.</p>';
   if (d.erro) return '<p class="sub" style="margin:0">Falta rodar <b>db/crm-checklist.sql</b> no SQL Editor do Supabase.</p>';
-  const itens = d.itens || [], hoje = d.hoje || '';
+  const itens = d.itens || [], hoje = d.hoje || '', origem = d.origem || 'todos', alertas = d.alertas || { lista: [], porRef: {} };
   const velho = d.velhoDias > 0 ? '<p class="fx-velho" role="status">Sem atividade dela no checklist há ' + e(d.velhoDias) + ' dias. O que aparece aqui pode estar desatualizado.</p>' : '';
+  const pct = d.total ? Math.round(100 * d.totalFeitos / d.total) : 0;
+  const topo = '<div class="fx-ck-top"><div class="fx-ck-prog"><b>' + e(d.totalFeitos) + ' de ' + e(d.total) + '</b><small>feitos por ela</small>' +
+    '<span class="fx-i" tabindex="0" title="A pasta do Drive dela é privada: o CRM não vê o link nem guarda nada dela. Se a equipe precisar de um documento, ela autoriza por e-mail.">ⓘ</span>' +
+    '<div class="fx-ck-bar" aria-hidden="true"><i style="width:' + pct + '%"></i></div></div>' +
+    '<div class="fx-orig" role="group" aria-label="Mostrar">' + ORIGENS_CK.map((o) => '<button type="button" data-fx="ckOrigem" data-v="' + o[0] + '" aria-pressed="' + (o[0] === origem) + '">' + o[1] + '</button>').join('') + '</div></div>';
   const pilulas = '<div class="fx-dems" role="group" aria-label="Démarches">' +
     [{ k: 'todas', nome: 'Todas', feitos: d.totalFeitos, total: d.total }].concat(d.demarches || []).map((x) =>
       '<button type="button" class="fx-dem" data-fx="dem" data-v="' + e(x.k) + '" aria-pressed="' + (x.k === d.ativa) + '"><span class="fx-dem-nome">' + e(x.nome) + '</span> <span class="fx-dem-n">' + e(x.feitos) + '/' + e(x.total) + '</span></button>').join('') + '</div>';
-  const drive = '<div class="fx-pasta"><h4 class="fx-h4">Pasta do Drive dela</h4><p class="sub" style="margin:0">A pasta é privada: o CRM não vê o link e não guarda nada dela. Se a equipe precisar de um documento, ela autoriza por e-mail.</p></div>';
-  const lista = d.todos ? maisUrgentes(itens, itens.length, hoje) : maisUrgentes(itens, 4, hoje);
-  const esc4 = itens.length - 4;
-  const passos = '<div class="fx-passos"><h4 class="fx-h4">Passos do checklist</h4>' + (itens.length
-    ? '<ul class="fx-passos-lista">' + lista.map((i) => d.ckEd && d.ckEd === i.step_key ? editorPasso(i, e) : '<li class="fx-passo ' + (i.status === 'concluido' ? 'feito' : i.status === 'arquivado' ? 'arq' : 'pend') + '"><span class="fx-p-t fx-edita" data-dbl="ckEditar" data-id="' + e(i.step_key) + '" tabindex="0" title="Dois cliques (ou Enter) para editar" aria-label="' + e(i.titulo_custom || i.label) + '. Dois cliques ou Enter para editar">' + e(i.titulo_custom || i.label) + (i.nota_custom ? '<small class="fx-p-nota">' + e(i.nota_custom) + '</small>' : '') + '</span>' + rotuloPasso(i, hoje, e, h.fmtDay) + (d.homeRefs && i.status !== 'arquivado' ? botaoHome(d.homeRefs.indexOf(i.step_key) >= 0, i.step_key, e) : '') + '</li>').join('') + '</ul>' +
-      (itens.length > 4 ? '<button type="button" class="link" data-fx="ckTodos" aria-expanded="' + !!d.todos + '">' + (d.todos ? 'Mostrar só os 4 mais urgentes' : 'Ver todos os ' + itens.length + ' passos (' + esc4 + (esc4 === 1 ? ' escondido)' : ' escondidos)')) + '</button>' : '')
-    : '<p class="sub" style="margin:0">O checklist dela ainda está vazio.</p>') + '</div>';
-  const equipe = d.equipeHtml ? '<div class="fx-passos fx-passos-equipe"><h4 class="fx-h4">Combinados só com ela (da montagem do espaço)</h4>' + d.equipeHtml + '</div>' : '';
-  return velho + pilulas + drive + passos + equipe +
-    '<div class="fx-mais"><button type="button" class="btn" data-fx="ckMais" aria-expanded="' + !!d.mais + '">' + (d.mais ? 'Ver menos desta sessão' : 'Ver mais desta sessão') + '</button>' + (d.mais ? '<div class="fx-mais-corpo">' + (d.extraMais || '') + '</div>' : '') + '</div>';
+  const acaoAlerta = (a) => /^chk:/.test(a.ref) ? '<button type="button" class="link" data-fx="ckEditar" data-id="' + e(a.ref.slice(4)) + '">Editar</button>' : '<button type="button" class="link" data-caso="ed-aco" data-id="' + e(a.ref.slice(4)) + '">Editar</button>';
+  const painel = alertas.lista.length ? '<div class="fx-valid" role="status"><span class="fx-valid-ic" aria-hidden="true">!</span><div><b>' + alertas.lista.length + (alertas.lista.length === 1 ? ' coisa para validar' : ' coisas para validar') + '</b><ul>' +
+    alertas.lista.slice(0, 6).map((a) => '<li><span>“' + e(a.titulo) + '”: ' + e(a.texto) + '</span> ' + acaoAlerta(a) + '</li>').join('') + '</ul>' + (alertas.lista.length > 6 ? '<small>e mais ' + (alertas.lista.length - 6) + '</small>' : '') + '</div></div>' : '';
+  const linhaGeral = (i) => {
+    if (d.ckEd && d.ckEd === i.step_key) return editorPasso(i, e);
+    const feito = i.status === 'concluido', arq = i.status === 'arquivado', venc = i.due_date ? String(i.due_date).slice(0, 10) : '', atras = !feito && !arq && !!venc && venc < hoje;
+    const chips = [{ t: 'Geral', c: 'ger' }];
+    if (d.ativa === 'todas' && d.demDe) chips.push({ t: d.demDe(i), c: 'dem' });
+    if (feito) chips.push({ t: 'feito', c: 'ok' }); else if (arq) chips.push({ t: 'arquivado por ela', c: '' });
+    else if (venc) chips.push({ t: (atras ? 'atrasado · ' : 'vence ') + h.fmtDay(venc), c: 'due' + (atras ? ' atraso' : '') }); else chips.push({ t: 'sem data', c: 'vz' });
+    return h.linhaPasso({ estado: feito ? 'ok' : atras ? 'bad' : 'off', rot: feito ? 'Feito por ela' : arq ? 'Arquivado por ela' : atras ? 'Atrasado' : 'Pendente', cls: feito ? 'feito' : arq ? 'arq' : '',
+      titulo: e(i.titulo_custom || i.label), nota: i.nota_custom ? e(i.nota_custom) : '', chips, alerta: ((alertas.porRef['chk:' + i.step_key]) || [])[0] || '', ed: 'ed-chk', id: i.step_key,
+      home: d.homeRefs && !arq ? botaoHome(d.homeRefs.indexOf(i.step_key) >= 0, i.step_key, e) : '' });
+  };
+  const lista = d.todos ? maisUrgentes(itens, itens.length, hoje) : maisUrgentes(itens, 6, hoje), esc6 = itens.length - 6;
+  const grupoG = origem === 'dela' ? '' : '<div class="fx-g"><span>Gerais da démarche · ' + itens.length + '</span><span>vale para toda a persona</span></div>' +
+    (itens.length ? '<div class="fx-ck-lista">' + lista.map(linhaGeral).join('') + '</div>' +
+      (itens.length > 6 ? '<button type="button" class="link" data-fx="ckTodos" aria-expanded="' + !!d.todos + '">' + (d.todos ? 'Mostrar só os 6 mais urgentes' : 'Mostrar os ' + esc6 + (esc6 === 1 ? ' restante' : ' restantes')) + '</button>' : '')
+      : '<p class="sub" style="margin:0 0 8px">O checklist dela ainda está vazio.</p>');
+  const grupoD = origem === 'gerais' || !d.equipeHtml ? '' : '<div class="fx-g"><span>Só dela · ' + (d.equipeN || 0) + '</span><span>combinado com ela</span></div><div class="fx-ck-lista">' + d.equipeHtml + '</div>';
+  return velho + topo + pilulas + painel + grupoG + grupoD +
+    '<div class="fx-mais"><button type="button" class="link" data-fx="ckMais" aria-expanded="' + !!d.mais + '">' + (d.mais ? 'Ver menos detalhes' : 'Ver detalhes completos do checklist') + '</button>' + (d.mais ? '<div class="fx-mais-corpo">' + (d.extraMais || '') + '</div>' : '') + '</div>';
+}
+
+// ---------- Curadoria: limpar, editar, posicionar e validar os passos dela ----------
+// d = { erro, carregando, origem, resumo: {total, conferidos, ocultos}, alertas, gerais (já na ordem dela), escondidos, equipeHtml, equipeN, mapa, hoje, ckEd, temOrdem, demDe(item) }
+// h.linhaCur(o) desenha a linha do passo geral (alça, ponto, título, etiquetas, ↑ ↓ ✓ ✎ ✕).
+export function htmlCuradoria(d, h) {
+  const e = h.esc;
+  if (d.carregando) return '<div class="skel" aria-busy="true" style="height:64px"></div>';
+  if (d.erro) return '<p class="sub" style="margin:0">A curadoria ainda não está ligada: falta rodar <b>db/crm-checklist-curadoria.sql</b> no SQL Editor do Supabase (primeiro no teste, depois na produção).</p>';
+  const r = d.resumo || { total: 0, conferidos: 0, ocultos: 0 }, origem = d.origem || 'todos', m = d.mapa || {}, alertas = d.alertas || { lista: [], porRef: {} }, hoje = d.hoje || '';
+  const pct = r.total ? Math.round(100 * r.conferidos / r.total) : 0;
+  const topo = '<div class="fx-ck-top"><div class="fx-ck-prog"><b>' + e(r.conferidos) + ' de ' + e(r.total) + '</b><small>conferidos por você' + (r.ocultos ? ' · ' + e(r.ocultos) + (r.ocultos === 1 ? ' escondido' : ' escondidos') : '') + '</small>' +
+    '<div class="fx-ck-bar" aria-hidden="true"><i style="width:' + pct + '%"></i></div></div>' +
+    '<div class="fx-orig" role="group" aria-label="Mostrar">' + ORIGENS_CK.map((o) => '<button type="button" data-fx="curOrigem" data-v="' + o[0] + '" aria-pressed="' + (o[0] === origem) + '">' + o[1] + '</button>').join('') + '</div></div>';
+  const acaoAlerta = (a) => /^chk:/.test(a.ref) ? '<button type="button" class="link" data-caso="ed-chk" data-id="' + e(a.ref.slice(4)) + '">Editar</button>' : '<button type="button" class="link" data-caso="ed-aco" data-id="' + e(a.ref.slice(4)) + '">Editar</button>';
+  const painel = alertas.lista.length ? '<div class="fx-valid" role="status"><span class="fx-valid-ic" aria-hidden="true">!</span><div><b>' + alertas.lista.length + (alertas.lista.length === 1 ? ' coisa para validar' : ' coisas para validar') + '</b><ul>' +
+    alertas.lista.slice(0, 6).map((a) => '<li><span>“' + e(a.titulo) + '”: ' + e(a.texto) + '</span> ' + acaoAlerta(a) + '</li>').join('') + '</ul>' + (alertas.lista.length > 6 ? '<small>e mais ' + (alertas.lista.length - 6) + '</small>' : '') + '</div></div>' : '<p class="fx-valid-ok" role="status">Nada para validar: todos os passos têm data, démarche e título único.</p>';
+  const gerais = d.gerais || [], n = gerais.length;
+  const linha = (i, k) => {
+    if (d.ckEd && d.ckEd === i.step_key) return editorPasso(i, e);
+    const c = m[i.step_key] || {}, feito = i.status === 'concluido', venc = i.due_date ? String(i.due_date).slice(0, 10) : '', atras = !feito && !!venc && venc < hoje;
+    const chips = [{ t: 'Geral', c: 'ger' }];
+    if (d.demDe) chips.push({ t: d.demDe(i), c: 'dem' });
+    if (feito) chips.push({ t: 'feito por ela', c: 'ok' }); else if (venc) chips.push({ t: (atras ? 'atrasado · ' : 'vence ') + h.fmtDay(venc), c: 'due' + (atras ? ' atraso' : '') }); else chips.push({ t: 'sem data', c: 'vz' });
+    return h.linhaCur({ chave: i.step_key, pos: k, n, estado: feito ? 'ok' : atras ? 'bad' : 'off', titulo: e(i.titulo_custom || i.label), chips, alerta: ((alertas.porRef['chk:' + i.step_key]) || [])[0] || '', conferido: !!c.conferido_em, escondido: false });
+  };
+  const grupoG = origem === 'dela' ? '' : '<div class="fx-g"><span>Gerais da démarche · ' + n + '</span><span>' + (d.temOrdem ? '<button type="button" class="link" data-fx="curReset">Voltar à ordem automática</button>' : 'arraste ⋮⋮ ou use ↑ ↓ para posicionar') + '</span></div>' +
+    (n ? '<div class="fx-cur-lista">' + gerais.map(linha).join('') + '</div>' : '<p class="sub" style="margin:0 0 8px">Nenhum passo geral para mostrar.</p>');
+  const esc = d.escondidos || [];
+  const grupoE = origem === 'dela' || !esc.length ? '' : '<div class="fx-g"><span>Escondidos da lista dela · ' + esc.length + '</span><span>ela não vê</span></div><div class="fx-cur-lista">' + esc.map((i) =>
+    h.linhaCur({ chave: i.step_key, estado: 'off', titulo: e(i.titulo_custom || i.label), chips: [{ t: 'Geral', c: 'ger' }, { t: 'escondido', c: '' }], alerta: '', conferido: false, escondido: true })).join('') + '</div>';
+  const grupoD = origem === 'gerais' || !d.equipeHtml ? '' : '<div class="fx-g"><span>Só dela · ' + (d.equipeN || 0) + '</span><span>combinado com ela · retire pelo ↓</span></div><div class="fx-ck-lista">' + d.equipeHtml + '</div>';
+  return topo + painel + grupoG + grupoE + grupoD;
+}
+
+// ---------- Quadro do passo: o que ela vê ao abrir um passo do checklist (o mesmo desenho do app), com a ação da equipe no rodapé ----------
+// d = { item: { step_key, label, titulo_custom, nota_custom, status, due_date, category }, guia: { c, l, q, p, t, s, k } | null, hoje: 'AAAA-MM-DD' }
+const QD_SVG = { x: 'M6 6l12 12M18 6L6 18', check: 'M5 12.5l4.5 4.5L19 7.5', rel: 'M12 7v5l3 2M12 3a9 9 0 100 18 9 9 0 000-18z', alerta: 'M12 8v5M12 17h.01M12 3l10 18H2z', link: 'M7 17L17 7M9 7h8v8', arq: 'M5 7h14M7 7v12h10V7M10 7V4h4v3', lapis: 'M4 20l1-4L16.5 4.5a2 2 0 013 3L8 19l-4 1z' };
+const qdIco = (n, t) => '<svg viewBox="0 0 24 24" width="' + (t || 16) + '" height="' + (t || 16) + '" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="' + QD_SVG[n] + '"/></svg>';
+// Marcadores do app ({ciclo}, {nivel}…) só se resolvem lá: no CRM saem do texto para não aparecerem como chaves soltas.
+export const limpaMarcadores = (t) => String(t || '').replace(/\s*\{[a-z0-9_.]+\}/gi, '').replace(/\s+([,.;:])/g, '$1');
+export function htmlQuadroPasso(d, h) {
+  const e = h.esc, it = d.item || {}, g = d.guia || null, hoje = d.hoje || '';
+  const titulo = it.titulo_custom || it.label || (g && g.l) || '';
+  const feito = it.status === 'concluido', arq = it.status === 'arquivado';
+  const status = feito ? '<span class="qd-chip ok">' + qdIco('check', 13) + 'Concluído</span>' : arq ? '<span class="qd-chip">Arquivado por ela</span>' : '<span class="qd-chip">Pendente</span>';
+  const venc = it.due_date ? String(it.due_date).slice(0, 10) : '';
+  const prazo = venc ? '<span class="qd-chip prazo' + (!feito && venc < hoje ? ' atraso' : '') + '">' + qdIco('rel', 13) + (venc < hoje && !feito ? 'atrasado · ' : 'até ') + e(h.fmtDay(venc)) + '</span>'
+    : g && g.q ? '<span class="qd-chip prazo">' + qdIco('rel', 13) + e(limpaMarcadores(g.q)) + '</span>' : '';
+  const sec = (rot, corpo, cls) => '<section class="qd-sec' + (cls ? ' ' + cls : '') + '"><h4 class="qd-k">' + rot + '</h4>' + corpo + '</section>';
+  let corpo = '';
+  if (it.nota_custom) corpo += '<p class="qd-nota">' + e(it.nota_custom) + '</p>';
+  if (g && g.p) corpo += sec('Por que importa', '<p class="qd-lead">' + e(limpaMarcadores(g.p)) + '</p>');
+  if (g && g.t) corpo += '<section class="qd-sec qd-atencao"><span class="qd-ico" aria-hidden="true">' + qdIco('alerta', 16) + '</span><div><h4 class="qd-k">Atenção</h4><p>' + e(limpaMarcadores(g.t)) + '</p></div></section>';
+  if (g && g.s && g.s.length) corpo += sec('Passo a passo', '<ol class="qd-passos">' + g.s.map((x) => '<li><span>' + e(limpaMarcadores(x)) + '</span></li>').join('') + '</ol>');
+  const links = ((g && g.k) || []).filter((x) => x.f || /^https:\/\//.test(x.u || ''));
+  if (links.length) corpo += sec('Links de apoio', '<div class="qd-links">' + links.map((x) => x.f ? '<span class="qd-link futuro">' + e(limpaMarcadores(x.l)) + ' · em breve</span>' : '<a class="qd-link" href="' + e(x.u) + '" target="_blank" rel="noopener noreferrer">' + qdIco('link', 14) + '<span>' + e(limpaMarcadores(x.l)) + '</span></a>').join('') + '</div>');
+  if (!g) corpo += '<p class="qd-vazio">Este passo não tem guia no app: ela vê só o título' + (it.nota_custom ? ' e a observação' : '') + '.</p>';
+  return '<div class="qd-fundo" data-fx="qdFechar"></div><div class="qd" role="dialog" aria-modal="true" aria-labelledby="qd-t">' +
+    '<header class="qd-cab"><div class="qd-topo"><span class="qd-kick">' + e((g && g.c) || it.category || 'Passo') + '</span><button type="button" class="qd-x" data-fx="qdFechar" aria-label="Fechar">' + qdIco('x', 18) + '</button></div>' +
+    '<h3 class="qd-tit" id="qd-t">' + e(titulo) + '</h3><div class="qd-meta">' + status + prazo + '</div></header>' +
+    '<div class="qd-corpo">' + corpo + '</div>' +
+    '<footer class="qd-rod"><span class="qd-aviso">É isto que ela vê no app.</span><span class="qd-acoes">' +
+    '<button type="button" class="btn" data-fx="ckEditar" data-id="' + e(it.step_key) + '">' + qdIco('lapis', 14) + ' Editar texto</button><button type="button" class="btn primary" data-fx="qdFechar">Fechar</button></span></footer></div>';
 }
 
 // ---------- Sessões em pílulas (Task 12) ----------
 // s = { id, titulo, sub, corpo, aberto, area: 'app'|'ela', ativa }. O corpo só vem pintado quando a sessão está aberta.
-export function htmlSessao(s, h) {
-  const e = h.esc;
-  return '<section class="fx-sess' + (s.aberto ? ' aberta' : '') + (s.ativa ? ' ativa' : '') + '" data-sessao="' + e(s.id) + '" data-area="' + e(s.area) + '">' +
-    '<div class="fx-sess-cab">' +
-    '<span class="fx-grab" draggable="true" role="img" aria-label="Arrastar ' + e(s.titulo) + '" data-id="' + e(s.id) + '" data-area="' + e(s.area) + '">⋮⋮</span>' +
-    '<button type="button" class="fx-sess-t" title="' + e(s.sub || '') + '" data-fx="sessao" data-id="' + e(s.id) + '" aria-expanded="' + !!s.aberto + '" aria-controls="fx-s-' + e(s.id) + '">' +
-    '<span class="fx-sess-nome">' + e(s.titulo) + '</span><span class="fx-sess-sub">' + e(s.sub || '') + '</span></button>' +
-    '<span class="fx-mover"><button type="button" class="fx-seta" data-fx="mover" data-id="' + e(s.id) + '" data-area="' + e(s.area) + '" data-d="-1" aria-label="Subir ' + e(s.titulo) + '">↑</button>' +
-    '<button type="button" class="fx-seta" data-fx="mover" data-id="' + e(s.id) + '" data-area="' + e(s.area) + '" data-d="1" aria-label="Descer ' + e(s.titulo) + '">↓</button></span></div>' +
-    (s.aberto ? '<div class="fx-sess-corpo" id="fx-s-' + e(s.id) + '">' + (s.corpo || '') + '</div>' : '') + '</section>';
+const ICONE_SESSAO = { home: 'M3 10l9-7 9 7v10a1 1 0 01-1 1h-5v-6H9v6H4a1 1 0 01-1-1z', chat: 'M4 5h16v11H9l-5 4z', checklist: 'M5 12.5l4.5 4.5L19 7.5', espaco: 'M4 5h7v14H4zM13 5h7v6h-7zM13 13h7v6h-7z',
+  perfil: 'M12 12a4 4 0 100-8 4 4 0 000 8zM4 21c0-4 4-6 8-6s8 2 8 6', eu: 'M12 3l2.5 5.5L20 9l-4 4 1 6-5-3-5 3 1-6-4-4 5.5-.5z', bilan: 'M7 3h10v18l-5-3-5 3z', trouxe: 'M4 8h16v12H4zM9 8V5h6v3',
+  sinais: 'M3 17l5-6 4 3 5-8 4 5', hist: 'M12 7v5l3 2M12 3a9 9 0 100 18 9 9 0 000-18z', curadoria: 'M4 6h10M4 12h16M4 18h7M17 4v4M19 6h-4', mais: 'M6 12h.01M12 12h.01M18 12h.01', insights: 'M12 3a6 6 0 00-4 10.5V17h8v-3.5A6 6 0 0012 3zM9 21h6' };
+// A sessão aberta ocupa a página inteira (sem dropdown): cabeçalho com ícone e título em Fraunces, e o corpo logo abaixo.
+// As outras sessões só se alcançam pelas pílulas "Ir para". mapa = { id: { titulo, sub, corpo, aberto, meta } }; ord = { app: [ids], ela: [ids] }.
+export function htmlPaginaSessao(ord, mapa, h) {
+  const e = h.esc, todos = [].concat((ord && ord.app) || [], (ord && ord.ela) || []).filter((id) => mapa && mapa[id]);
+  const id = todos.find((x) => mapa[x].aberto) || todos[0]; if (!id) return '';
+  const s = mapa[id], area = ((ord && ord.ela) || []).indexOf(id) >= 0 ? 'ela' : 'app', ic = ICONE_SESSAO[id] || ICONE_SESSAO.mais;
+  return '<section class="fx-pagina fx-pagina-' + area + '" data-sessao="' + e(id) + '" data-area="' + area + '" aria-labelledby="fx-pg-t">' +
+    '<header class="fx-pagina-cab"><span class="fx-sess-ic" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="' + ic + '"/></svg></span>' +
+    '<div class="fx-pagina-tt"><h3 id="fx-pg-t">' + e(s.titulo) + '</h3>' + (s.sub ? '<p>' + e(s.sub) + '</p>' : '') + '</div>' + (s.meta ? '<small class="fx-sess-meta">' + e(s.meta) + '</small>' : '') + '</header>' +
+    '<div class="fx-pagina-corpo" id="fx-s-' + e(id) + '">' + (s.corpo || '') + '</div></section>';
 }
-// ord = { app: [ids], ela: [ids] }; mapa = { id: { titulo, sub, corpo, aberto } }. Dois grupos, como no spec §5.2.
-// A barra "Ir para": um botão por sessão. Fica fora da coluna das sessões, em largura total, logo abaixo do Pagamento.
+// As pílulas "Ir para": a única porta para as sessões. A da página aberta fica marcada (aria-current); um traço separa os dois grupos.
 export function htmlIrPara(ord, mapa, h) {
-  const todos = [].concat((ord && ord.app) || [], (ord && ord.ela) || []).filter((id) => mapa && mapa[id]);
-  return todos.length ? '<nav class="fx-ir" aria-label="Ir para uma sessão"><span class="fx-ir-t">Ir para</span>' + todos.map((id) => '<button type="button" class="fx-ir-b' + (mapa[id].aberto ? ' on' : '') + '" data-fx="ir" data-id="' + h.esc(id) + '">' + h.esc(mapa[id].titulo) + '</button>').join('') + '</nav>' : '';
-}
-// opcoes.semIr: não desenha a barra "Ir para" (quem chama a põe em largura total, com htmlIrPara).
-export function htmlSessoes(ord, mapa, h, fechados, opcoes) {
-  const fech = fechados || {};
-  const grupo = (area, titulo, dica) => {
-    const itens = ((ord && ord[area]) || []).filter((id) => mapa && mapa[id]);
-    return '<details class="fx-grupo fx-grupo-' + area + '" data-grupo="' + area + '"' + (fech[area] ? '' : ' open') + '><summary class="fx-grupo-sum"><h3 class="fx-h3" id="fx-g-' + area + '">' + h.esc(titulo) + '</h3>' +
-      '<span class="sub fx-grupo-dica">' + h.esc(dica) + '</span><span class="fx-grupo-n">' + itens.length + (itens.length === 1 ? ' sessão' : ' sessões') + '</span><span class="fx-grupo-chev" aria-hidden="true">▾</span></summary>' +
-      itens.map((id) => htmlSessao(Object.assign({ id, area }, mapa[id]), h)).join('') + '</details>';
-  };
-  const ir = opcoes && opcoes.semIr ? '' : htmlIrPara(ord, mapa, h);
-  return '<div class="fx-sessoes">' + ir + grupo('app', 'Acompanhar o app dela', 'O que ela vê e faz no app.') + grupo('ela', 'Conhecer e registrar', 'Só a equipe vê.') + '</div>';
+  const grupo = (ids) => ids.filter((id) => mapa && mapa[id]).map((id) => '<button type="button" class="fx-ir-b' + (mapa[id].aberto ? ' on' : '') + '" data-fx="ir" data-id="' + h.esc(id) + '"' + (mapa[id].aberto ? ' aria-current="page"' : '') + '>' + h.esc(mapa[id].titulo) + '</button>').join('');
+  const app = grupo((ord && ord.app) || []), ela = grupo((ord && ord.ela) || []);
+  return app || ela ? '<nav class="fx-ir" aria-label="Sessões da ficha">' + app + (app && ela ? '<span class="fx-ir-sep" aria-hidden="true"></span>' : '') + ela + '</nav>' : '';
 }
 
 // ---------- Aba Ficha: fluxo de 3 passos (Task 13) ----------
@@ -247,11 +316,12 @@ export function htmlFluxo(passo, h) {
 //       avisos: [{tipo, titulo, texto}], passos: [{label, tag, feito, due, atrasado}], espaco: {marcos: [{titulo, resumo}], escolas: [{titulo, resumo}], dela: [{nome}]},
 //       guias: {bilan, docs: [{titulo, resumo}], msgs: [{titulo}]}, perfil: {n, tot, kv: [[rotulo, valor]]} }
 // Tudo é dado real da pessoa, só leitura. Nada aqui grava.
-const ABAS_APP = [['inicio', 'Início'], ['checklist', 'Checklist'], ['espaco', 'Espaço'], ['perfil', 'Perfil']];
+const ABAS_APP = [['inicio', 'Início'], ['checklist', 'Checklist'], ['espaco', 'Espaço'], ['guias', 'Guias'], ['perfil', 'Perfil']];
 const LEGENDA_ABA = {
   inicio: 'Início = o prazo mais perto, o passo de agora, os que vêm em seguida (primeiro os que você escolheu), o que é só dela e os guias. A pergunta da equipe vem sempre embaixo.',
   checklist: 'Checklist = passos da persona e o que ela adicionou. Só ela marca.',
   espaco: 'Espaço = a pergunta da equipe (com as perguntas rápidas do perfil na mesma fila), o que a equipe percebeu, o que a Ingryd manda, escolas, mensagens prontas e o bilan.',
+  guias: 'Guias = o material da equipe só para ela: documentos que você manda, mensagens prontas e o bilan.',
   perfil: 'Perfil = respostas do Dossiê que já existem.'
 };
 // Início do app, depois do "Em seguida": "Só seu" (bilan e encaminhamentos da Ingryd) e "Guias", como ele monta (os que ela escolheu em Espaço).
@@ -303,6 +373,14 @@ export function htmlPreviaApp(d, h) {
       ? '<section class="fx-pv-card"' + L('Dela') + '><h4>Seu espaço ainda está sendo preparado.</h4><p>Depois da nossa conversa, a Ingryd coloca aqui o que é só do seu caso: arquivos, mensagens e contatos. Quando ela publicar, aparece aqui e a equipe avisa.</p></section>'
       : perguntas + p.percebeu.map((a) => '<section class="fx-pv-card"' + L('Dela') + '><span class="k">O que a equipe percebeu</span><h4>' + e(a.titulo) + '</h4>' + (a.texto ? '<p>' + e(a.texto) + '</p>' : '') + '</section>').join('') + daIngryd + esc2 +
         (p.mensagens.length ? bloco('Mensagens prontas', p.mensagens.map((x) => lin(x.titulo, x.resumo)).join('')) : '') + (p.bilans.length ? bloco('Meu Bilan', p.bilans.map((x) => lin(x.titulo, x.resumo)).join('')) : ''));
+  } else if (aba === 'guias') {
+    const p = d.esp || { docs: [], mensagens: [], bilans: [], vazio: true };
+    const bloco = (tit, linhas) => '<section class="fx-pv-card"' + L('Dela') + '><span class="k">' + e(tit) + '</span>' + linhas + '</section>';
+    const lin = (t, s2, em) => '<div class="fx-pv-row"><span><b>' + e(t) + '</b>' + (s2 ? '<small>' + e(s2) + '</small>' : '') + '</span>' + (em ? '<em>' + e(em) + '</em>' : '') + '</div>';
+    const novos = p.docs.filter((x) => x.novo).length;
+    const blocos = (p.docs.length ? bloco('Da Ingryd para você' + (novos ? ' · ' + novos + (novos === 1 ? ' novo' : ' novos') : ''), p.docs.map((x) => lin(x.titulo, x.resumo || (x.descricao ? 'com descrição para ler e copiar' : ''), x.conteudo ? 'Abrir' : x.descricao ? 'Ler' : 'chega em breve')).join('')) : '') +
+      (p.mensagens.length ? bloco('Mensagens prontas', p.mensagens.map((x) => lin(x.titulo, x.resumo)).join('')) : '') + (p.bilans.length ? bloco('Meu Bilan', p.bilans.map((x) => lin(x.titulo, x.resumo)).join('')) : '');
+    corpo = '<h3 class="fx-pv-oi">Guias</h3>' + (blocos || '<section class="fx-pv-card"' + L('Dela') + '><h4>Ainda não tem material seu aqui.</h4><p>Quando você publicar um documento, uma mensagem pronta ou o bilan, aparece aqui.</p></section>');
   } else {
     corpo = '<section class="fx-pv-card"' + L('Dela') + '><h4>' + e(d.nome) + '</h4>' + d.perfil.kv.map((x) => '<div class="fx-pv-row"><span>' + e(x[0]) + '</span><em>' + e(x[1] || '—') + '</em></div>').join('') + '</section>' +
       '<section class="fx-pv-card"><span class="k">Seu perfil</span><p>' + d.perfil.n + ' de ' + d.perfil.tot + ' respondidas.</p></section>';

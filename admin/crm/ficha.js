@@ -168,7 +168,7 @@ export function ordenarFila(itens) {
 
 // ---------- Ordem das sessões e preferências do navegador (spec §5.2) ----------
 // Fase 2: o app dela ganha Espaço, Guias e Perfil; "Conhecer e registrar" ganha Só eu, O que ela trouxe e Mais detalhes.
-export const SESSOES_PADRAO = { app: ['home', 'chat', 'checklist', 'espaco', 'perfil'], ela: ['eu', 'bilan', 'trouxe', 'sinais', 'hist', 'mais'] };
+export const SESSOES_PADRAO = { app: ['home', 'chat', 'checklist', 'curadoria', 'espaco', 'perfil'], ela: ['eu', 'bilan', 'trouxe', 'sinais', 'hist', 'mais'] };
 export function moverSessao(ordem, id, delta) {
   const o = (ordem || []).slice(), i = o.indexOf(id), j = i + delta;
   if (i < 0 || j < 0 || j >= o.length) return o;
@@ -425,6 +425,66 @@ export function proximaAcao(x, pot) {
   if (o.ultimoAcessoDias > 30) return A('Reativação pessoal com o passo mais urgente', 'Mensagem', 'Mais de 30 dias sem acessar: lembre do prazo que mais importa agora.', 'Oi, {nome}! Faz um tempo que você não passa por lá. O passo mais urgente do seu caso hoje é [passo]. Quer que eu te ajude a resolver?');
   if (o.chk && o.chk.atrasados > 0) return A('1:1 de 20 min para replanejar', '1:1', 'Passos atrasados e pouco uso: sem plano claro ela tende a sair.', 'Oi, {nome}! Vamos reorganizar os seus prazos juntas? 20 min e você sai com a ordem certa.');
   return A('Mensagem de acompanhamento', 'Mensagem', 'Uso baixo, sem sinal de saída imediata: um contato pessoal costuma bastar.', 'Oi, {nome}! Como está o seu caso? Se algo travou, me conta que eu ajusto o que aparece para você.');
+}
+
+// ---------- Validação do Checklist: o que a Ingryd precisa resolver, calculado aqui (nada é inventado) ----------
+const PARADAS_PASSO = new Set(['de', 'do', 'da', 'dos', 'das', 'e', 'o', 'a', 'os', 'as', 'para', 'pra', 'pro', 'que', 'quem', 'ja', 'esta', 'na', 'no', 'em', 'um', 'uma', 'com', 'seu', 'sua']);
+// Dois títulos "iguais para quem lê": sem acento, sem o que vem entre parênteses, sem pontuação, sem palavra de ligação e sem letra solta.
+export function normalizaTituloPasso(t) {
+  return String(t || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\([^)]*\)/g, ' ').replace(/[^a-z0-9 ]+/g, ' ')
+    .split(/\s+/).filter((w) => w.length > 1 && !PARADAS_PASSO.has(w)).join(' ');
+}
+// o = { itens (checklist dela), equipe (passos só dela já publicados), quando ({step_key: texto do template}) } → { lista: [{ref, tipo, titulo, texto}], porRef: {ref: [texto]} }
+// ref = "chk:<step_key>" (passo geral) ou "aco:<id>" (só dela).
+export function alertasChecklist(o) {
+  const x = o || {}, quando = x.quando || {}, lista = [], porRef = {};
+  const poe = (ref, tipo, titulo, texto) => { lista.push({ ref, tipo, titulo, texto }); (porRef[ref] = porRef[ref] || []).push(texto); };
+  const itens = (x.itens || []).filter((i) => i.status !== 'arquivado'), abertos = itens.filter((i) => i.status !== 'concluido');
+  const equipe = (x.equipe || []).filter((a) => a.estado !== 'concluida' && a.estado !== 'recusada');
+  abertos.forEach((i) => { if (!i.due_date && !quando[i.step_key]) poe('chk:' + i.step_key, 'sem_data', i.titulo_custom || i.label, 'Sem data: ela não vê quando fazer.'); });
+  equipe.forEach((a) => {
+    if (!a.prazo && !a.prazo_texto) poe('aco:' + a.id, 'sem_data', a.titulo, 'Sem data: ela não vê quando fazer.');
+    if (!a.demarche) poe('aco:' + a.id, 'sem_demarche', a.titulo, 'Sem démarche: não entra em nenhuma aba.');
+  });
+  const grupos = {}, add = (k, ref, tit, eq) => { if (k) (grupos[k] = grupos[k] || []).push({ ref, tit, eq }); };
+  itens.forEach((i) => add(normalizaTituloPasso(i.titulo_custom || i.label), 'chk:' + i.step_key, i.titulo_custom || i.label, false));
+  equipe.forEach((a) => add(normalizaTituloPasso(a.titulo), 'aco:' + a.id, a.titulo, true));
+  Object.keys(grupos).forEach((k) => {
+    const g = grupos[k]; if (g.length < 2) return;
+    const temGeral = g.some((y) => !y.eq);
+    g.filter((y) => y.eq).forEach((y) => poe(y.ref, 'repetido', y.tit, temGeral ? 'Já existe como passo geral. Manter só um?' : 'Repetido: aparece mais de uma vez em “Só dela”.'));
+  });
+  return { lista, porRef };
+}
+
+// ---------- Curadoria do Checklist (esconder, ordenar e conferir; db/crm-checklist-curadoria.sql) ----------
+// Chave da linha: o step_key do passo geral, ou "aco:<id>" para um passo só dela. A pessoa recebe só oculto e ordem (minha_curadoria).
+export function mapaDaCuradoria(linhas) {
+  const m = {};
+  (Array.isArray(linhas) ? linhas : []).forEach((x) => { if (x && typeof x.step_key === 'string') m[x.step_key] = { oculto: x.oculto === true, ordem: x.ordem == null ? null : Number(x.ordem), conferido_em: x.conferido_em || null }; });
+  return m;
+}
+// Os passos gerais na ordem em que ela os verá: primeiro os que têm ordem (pela ordem), depois os demais pela urgência de sempre.
+export function ordenarGerais(itens, mapa, hoje) {
+  const m = mapa || {}, base = maisUrgentes(itens || [], (itens || []).length, hoje), tem = (i) => !!(m[i.step_key] && m[i.step_key].ordem != null);
+  return base.filter(tem).sort((a, b) => m[a.step_key].ordem - m[b.step_key].ordem).concat(base.filter((i) => !tem(i)));
+}
+// Quantos já foram conferidos entre os que ela vê (escondidos não contam) e quantos estão escondidos.
+export function resumoCuradoria(o) {
+  const x = o || {}, m = x.mapa || {}, gerais = (x.itens || []).filter((i) => i.status !== 'arquivado'), equipe = x.equipe || [];
+  const vis = gerais.filter((i) => !(m[i.step_key] && m[i.step_key].oculto)).map((i) => i.step_key).concat(equipe.map((a) => 'aco:' + a.id));
+  return { total: vis.length, conferidos: vis.filter((k) => m[k] && m[k].conferido_em).length, ocultos: gerais.length - gerais.filter((i) => !(m[i.step_key] && m[i.step_key].oculto)).length };
+}
+
+// Documentos e mensagens repetidos no board (mesmo nome normalizado, mesmo tipo e direção): fica o mais completo (publicado, com arquivo, link ou descrição), os outros saem.
+export function repetidosDoBoard(itens) {
+  const grupos = {};
+  (itens || []).filter((i) => i.tipo === 'documento' || i.tipo === 'modelo').forEach((i) => {
+    const n = normalizaTituloPasso(i.titulo); if (!n) return;
+    const k = i.tipo + '|' + ((i.dados || {}).direcao || '') + '|' + n; (grupos[k] = grupos[k] || []).push(i);
+  });
+  const peso = (i) => (i.estado === 'publicado' ? 4 : i.estado === 'revisado' ? 2 : 0) + (i.arquivo_caminho ? 2 : 0) + (i.link ? 1 : 0) + (i.descricao ? 1 : 0);
+  return Object.keys(grupos).map((k) => grupos[k]).filter((g) => g.length > 1).map((g) => { const o = g.slice().sort((a, b) => peso(b) - peso(a) || a.id - b.id); return { manter: o[0], excluir: o.slice(1) }; });
 }
 
 // ---------- O Início do app, como ele monta (porte de montarInicio, assets/js/caso.js do app) ----------

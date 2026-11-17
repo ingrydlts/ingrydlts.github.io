@@ -28,7 +28,7 @@ function qb(table) {
   const b = { select: () => b, eq: () => b, or: () => b, is: () => b, order: () => b, limit: () => b,
     maybeSingle: async () => respostas[table + ':one'] || { data: null, error: null },
     insert: async (row) => { writes.push({ op: 'insert', table, row }); return { error: null }; },
-    delete: () => { const f = { op: 'delete', table, filtros: [] }; const ch = { eq(c, v) { f.filtros.push(c + '=' + v); return ch; }, then(ok, ko) { writes.push(f); return Promise.resolve({ error: null }).then(ok, ko); } }; return ch; },
+    delete: () => { const f = { op: 'delete', table, filtros: [] }; const ch = { eq(c, v) { f.filtros.push(c + '=' + v); return ch; }, in(c, v) { f.filtros.push(c + ' in ' + v.join()); return ch; }, then(ok, ko) { writes.push(f); return Promise.resolve({ error: null }).then(ok, ko); } }; return ch; },
     update: (row) => { const f = { op: 'update', table, row, filtros: [] }; const ch = { eq(c, v) { f.filtros.push(c + '=' + v); return ch; }, is(c, v) { f.filtros.push(c + ' is ' + v); return ch; },
       then(ok, ko) { writes.push(f); return Promise.resolve({ error: null }).then(ok, ko); } }; return ch; },
     then: (ok, ko) => Promise.resolve(JSON.parse(JSON.stringify(respostas[table] || { data: [], error: null }))).then(ok, ko) };   // cópia nova a cada busca, como o banco
@@ -39,7 +39,7 @@ const supabase = { from: qb, auth: { getSession: async () => ({ data: { session:
   channel: (nome) => { const ch = { nome, ons: [], on(t, o, cb) { ch.ons.push({ o, cb }); return ch; }, subscribe(cb) { ch.status = cb; return ch; } }; canais.push(ch); return ch; }, removeChannel() {} };
 const store = {};
 const mod = new Function('supabase', 'ES', 'TX', 'EE', 'EQ', 'JR', 'FX', 'FH', 'MT', 'document', 'window', 'location', 'localStorage', 'setInterval', 'clearInterval',
-  src + '\n;return { state, setC: function (v) { C = v; }, renderPessoa, eventText, pararAoVivo, fxHomeCorpo: fxHomeCorpo };')(
+  src + '\n;return { state, setC: function (v) { C = v; }, renderPessoa, eventText, pararAoVivo, fxHomeCorpo: fxHomeCorpo, fxHomeMuda: fxHomeMuda, fxEspacoTudo: fxEspacoTudo };')(
   supabase, {}, TXMOD, { iniciar() {}, depois() {}, campoMudou() {} }, {}, {}, FXMOD, FHMOD, MTMOD, document, { addEventListener() {} }, { href: '' }, { getItem: (k) => store[k] ?? null, setItem: (k, v) => { store[k] = v; } }, () => 1, () => {});
 
 
@@ -260,15 +260,47 @@ console.log('\n== Guias dela: documentos, bilans e mensagens prontas ==');
   check('mensagem sem texto não salva', writes.length === 0);
   el('caso-ed-corpo').value = 'Bonjour, madame.'; el('caso-ed-resumo').value = 'Para a Alliance'; await click({ caso: 'salvar-item', id: '42' });
   check('mensagem publicada continua publicada e a correção chega a ela', writes.at(-1).row.dados.corpo === 'Bonjour, madame.' && writes.at(-1).row.resumo === 'Para a Alliance' && !('estado' in writes.at(-1).row));
-  // Remover: dois toques; publicado não se remove
+  // Excluir: dois toques; vale também para o publicado (a confirmação avisa que ela deixa de ver)
   fixture({ itens: [BIL, MODE] }); await pagina();
-  check('item publicado não tem "Remover" (retire antes); os outros têm', !/data-caso="item-del-pede" data-id="42"/.test(html()) && /data-caso="item-del-pede" data-id="40"/.test(html()));
+  check('todo item tem o ícone de excluir, inclusive o publicado', /data-caso="item-del-pede" data-id="42"/.test(html()) && /data-caso="item-del-pede" data-id="40"/.test(html()));
   writes.length = 0; await click({ caso: 'item-del-pede', id: '40' });
-  check('o primeiro toque só pede confirmação (não apaga)', /Confirmar remoção/.test(html()) && writes.length === 0);
+  check('o primeiro toque só pede confirmação (não apaga)', />Excluir</.test(html()) && />Não</.test(html()) && writes.length === 0);
   await click({ caso: 'item-del', id: '40' });
-  check('o segundo toque remove o item', writes.at(-1).op === 'delete' && writes.at(-1).table === 'board_itens');
+  check('o segundo toque exclui o item', writes.at(-1).op === 'delete' && writes.at(-1).table === 'board_itens');
+  await click({ caso: 'item-del-pede', id: '42' });
+  check('item publicado: a confirmação avisa que ela deixa de ver', /Excluir \(ela deixa de ver\)/.test(html()));
+  await click({ caso: 'item-del', id: '42' });
+  check('o publicado também é excluído', writes.at(-1).op === 'delete' && writes.at(-1).table === 'board_itens');
 }
 
+
+console.log('\n== Pergunta limpa: a observação do sistema não se mistura com a pergunta ==');
+{
+  const MIST = Object.assign({}, AVS[0], { id: 33, titulo: 'Qual é a data de vencimento do VLS-TS dela? É a âncora do cronograma.', estado: 'agendado' });
+  fixture({ avs: [MIST] }); await pagina();
+  check('a pergunta aparece sozinha e a observação vira etiqueta "sistema"', /Qual é a data de vencimento do VLS-TS dela\?/.test(html()) && /class="fx-aviso fx-sis"[^>]*>sistema: É a âncora do cronograma\./.test(html()));
+  await click({ caso: 'ed-av', id: '33' });
+  check('editar a pergunta abre só a pergunta (sem a observação) e avisa o que sai', /id="caso-ed-titulo"[^>]*value="Qual é a data de vencimento do VLS-TS dela\?"/.test(html()) && /sai da pergunta dela/.test(html()));
+  el('caso-ed-titulo').value = 'Qual é a data de vencimento do VLS-TS dela?';
+  writes.length = 0; await click({ caso: 'salvar-av', id: '33' });
+  check('salvar grava só a pergunta no título do aviso', writes.at(-1).table === 'caso_avisos' && writes.at(-1).row.titulo === 'Qual é a data de vencimento do VLS-TS dela?');
+}
+
+console.log('\n== Documentos repetidos: avisar e juntar ==');
+{
+  const d = (id, titulo, extra = {}) => Object.assign({ id, tipo: 'documento', titulo, resumo: null, dados: { direcao: 'recebe' }, estado: 'revisado', ordem: 20, link: null, versao: 1 }, extra);
+  fixture({ itens: [d(51, 'Notion de estudos de francês', { link: 'https://exemplo.org/n', estado: 'publicado' }), d(52, 'Notion de estudos de francês (link gratuito, para duplicar)'), d(53, 'Passaporte'), d(54, 'Certificado de francês', { dados: { direcao: 'reune' } }), d(55, 'Certificado de francês', { dados: { direcao: 'reune' }, estado: 'publicado' })] });
+  await pagina();
+  const corpo = mod.fxEspacoTudo ? mod.fxEspacoTudo(base) : '';
+  check('a lista do Material avisa quantos repetidos há e qual fica (a mais completa)', /2 repetidos/.test(corpo) && /Notion de estudos de francês”: 2 cópias/.test(corpo) && /Certificado de francês”: 2 cópias/.test(corpo) && /data-caso="item-dedup-pede"/.test(corpo));
+  await click({ caso: 'item-dedup-pede', id: '0' });
+  check('o primeiro toque só pede confirmação (não apaga)', /Excluir 2 repetidos/.test(mod.fxEspacoTudo(base)) && !writes.some((x) => x.op === 'delete'));
+  writes.length = 0; await click({ caso: 'item-dedup', id: '0' });
+  const wd = writes.find((x) => x.op === 'delete' && x.table === 'board_itens');
+  check('confirmar exclui só os que NÃO ficam (52: sem link e não publicado; 54: reúne, não publicado), de uma vez', wd && wd.filtros.join() === 'id in 52,54' && !wd.filtros.join().includes('51') && !wd.filtros.join().includes('55') && !wd.filtros.join().includes('53'));
+  fixture({ itens: [d(61, 'Passaporte'), d(62, 'Visto')] }); await pagina();
+  check('sem repetidos não há aviso', !/repetido/.test(mod.fxEspacoTudo(base)));
+}
 
 console.log('\n== Escolas que ela acrescentou ==');
 fixture({ itens: [ITENS[0]], escolasDela: [{ id: 1, nome: 'Alliance Française de Lyon', link: 'https://exemplo.org/af', nota: 'Curso intensivo, 20 h.', criado_em: '2026-11-10T10:00:00Z' }, { id: 2, nome: '<img src=x onerror=alert(1)>', link: 'javascript:alert(1)', nota: null, criado_em: '2026-11-11T10:00:00Z' }] }); await pagina();

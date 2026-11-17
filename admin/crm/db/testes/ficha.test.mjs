@@ -103,7 +103,7 @@ console.log('== Task 7: sessões e preferências ==');
   check('normalizar descarta e acrescenta', FX.normalizarOrdem(['x', 'b'], ['a', 'b', 'c']).join() === 'b,a,c');
   check('normalizar lixo', FX.normalizarOrdem('lixo', ['a']).join() === 'a' && FX.normalizarOrdem(null, ['a', 'b']).join() === 'a,b');
   check('normalizar repetidos', FX.normalizarOrdem(['b', 'b', 'a'], ['a', 'b']).join() === 'b,a');
-  check('padrão das sessões da fase 1', FX.SESSOES_PADRAO.app.join() === 'home,chat,checklist,espaco,perfil' && FX.SESSOES_PADRAO.ela.join() === 'eu,bilan,trouxe,sinais,hist,mais');   // o dossiê virou aba própria; Espaço, Guias, Perfil, Só eu e O que ela trouxe entraram no retrabalho
+  check('padrão das sessões da fase 1', FX.SESSOES_PADRAO.app.join() === 'home,chat,checklist,curadoria,espaco,perfil' && FX.SESSOES_PADRAO.ela.join() === 'eu,bilan,trouxe,sinais,hist,mais');   // o dossiê virou aba própria; Espaço, Guias, Perfil, Só eu e O que ela trouxe entraram no retrabalho
   // Review Focus 5: localStorage indisponível
   const bloqueado = { getItem() { throw new Error('bloqueado'); }, setItem() { throw new Error('cheio'); } };
   let ok = true, p; try { p = FX.lerPrefs(bloqueado); FX.gravarPrefs(bloqueado, { tour: false }); } catch (e) { ok = false; }
@@ -111,11 +111,11 @@ console.log('== Task 7: sessões e preferências ==');
   const mem = {}, st = { getItem: (k) => (k in mem ? mem[k] : null), setItem: (k, v) => { mem[k] = v; } };
   FX.gravarPrefs(st, { ord: { app: ['inicio', 'chat'], ela: ['hist'] }, tour: false });
   const lido = FX.lerPrefs(st);
-  check('grava e lê', lido.tour === false && lido.ord.app.join() === 'home,chat,checklist,espaco,perfil' && lido.ord.ela.join() === 'hist,eu,bilan,trouxe,sinais,mais');
+  check('grava e lê', lido.tour === false && lido.ord.app.join() === 'home,chat,checklist,curadoria,espaco,perfil' && lido.ord.ela.join() === 'hist,eu,bilan,trouxe,sinais,mais');
   check('chaves do spec', 'crm_ficha_ord_v1' in mem && 'crm_ficha_tour' in mem);
   mem.crm_ficha_ord_v1 = JSON.stringify({ app: ['chat'], ela: ['hist', 'dossie', 'bilan'] });
   mem.crm_ficha_ord_v1 = JSON.stringify({ app: ['chat', 'checklist', 'inicio'], ela: ['hist'] });
-  check('ordem guardada antes da Página inicial: ela entra no TOPO, não no fim', FX.lerPrefs(st).ord.app[0] === 'home' && FX.lerPrefs(st).ord.app.slice(1, 4).join() === 'chat,checklist,espaco');
+  check('ordem guardada antes da Página inicial: ela entra no TOPO, não no fim', FX.lerPrefs(st).ord.app[0] === 'home' && FX.lerPrefs(st).ord.app.slice(1, 4).join() === 'chat,checklist,curadoria');
   mem.crm_ficha_ord_v1 = JSON.stringify({ app: ['chat'], ela: ['hist', 'dossie', 'bilan'] });
   check('ordem salva com o dossiê antigo: ele some, o resto fica', FX.lerPrefs(st).ord.ela.join() === 'hist,bilan,eu,trouxe,sinais,mais');
   mem.crm_ficha_ord_v1 = '{lixo'; check('JSON inválido volta ao padrão', FX.lerPrefs(st).ord === null);
@@ -234,5 +234,43 @@ console.log('== CRM retrabalhado: urgentes, cartoesMinimos, potencial ==');
   check('potencial: assinatura cancelada e sem acesso fica no mínimo, nunca negativo', sai.nota === 0);
 }
 
+console.log('\n== Validação do Checklist ==');
+{
+  check('títulos iguais para quem lê: sem acento, sem parênteses, sem pontuação, sem palavra de ligação e sem letra solta', FX.normalizaTituloPasso('Diploma do ensino médio, traduzido e juramentado') === FX.normalizaTituloPasso('Diploma do ensino médio traduzido e juramentado (conferir a lista oficial)') && FX.normalizaTituloPasso('S detalhes do sistema de candidatura de quem já está na França') === FX.normalizaTituloPasso('Detalhes do sistema de candidatura para quem já está na França') && FX.normalizaTituloPasso('Abrir conta') !== FX.normalizaTituloPasso('Fechar conta'));
+  const it = (k, extra) => Object.assign({ step_key: k, label: 'Passo ' + k, status: 'pendente', due_date: null }, extra);
+  const ac = (id, titulo, extra) => Object.assign({ id, titulo, estado: 'aberta', prazo: null, prazo_texto: '', demarche: 'banco' }, extra);
+  const r = FX.alertasChecklist({ itens: [it('a'), it('b', { due_date: '2026-12-01' }), it('c'), it('d', { status: 'concluido' }), it('e', { status: 'arquivado' }), it('dip', { label: 'Juntar o diploma do ensino médio', due_date: '2026-12-02' })], quando: { c: 'Antes de se candidatar' },
+    equipe: [ac(1, 'Abrir a conta bancária francesa'), ac(2, 'Juntar o diploma do ensino médio (traduzido)', { prazo: '2026-12-15' }), ac(3, 'Sem aba', { prazo: '2026-12-20', demarche: null }), ac(4, 'Recusado', { estado: 'recusada' }), ac(5, 'Feito', { estado: 'concluida' })] });
+  const tipos = (ref) => r.lista.filter((x) => x.ref === ref).map((x) => x.tipo).join();
+  check('passo geral aberto sem data e sem "quando" do template avisa; com data, com "quando", concluído ou arquivado, não', tipos('chk:a') === 'sem_data' && tipos('chk:b') === '' && tipos('chk:c') === '' && tipos('chk:d') === '' && tipos('chk:e') === '');
+  check('passo só dela sem prazo avisa; sem démarche avisa; recusado e concluído ficam fora', tipos('aco:1') === 'sem_data' && tipos('aco:3') === 'sem_demarche' && tipos('aco:4') === '' && tipos('aco:5') === '');
+  check('o só dela que repete um passo geral avisa "Já existe como passo geral"; o geral não é acusado', tipos('aco:2') === 'repetido' && /Já existe como passo geral/.test(r.porRef['aco:2'][0]) && tipos('chk:dip') === '');
+  check('porRef junta os textos por passo e a lista guarda o título', r.porRef['chk:a'].length === 1 && r.lista.find((x) => x.ref === 'aco:1').titulo === 'Abrir a conta bancária francesa');
+  const dois = FX.alertasChecklist({ itens: [], equipe: [ac(7, 'Abrir conta', { prazo: '2026-12-01' }), ac(8, 'Abrir a conta', { prazo: '2026-12-01' })] });
+  check('dois só dela repetidos entre si: os dois avisam "Repetido"', dois.lista.length === 2 && dois.lista.every((x) => x.tipo === 'repetido' && /Repetido/.test(x.texto)));
+  check('sem dados nada quebra', FX.alertasChecklist().lista.length === 0 && FX.alertasChecklist({}).lista.length === 0);
+}
+console.log('\n== Curadoria do Checklist ==');
+{
+  const it = (k, extra) => Object.assign({ step_key: k, label: 'Passo ' + k, status: 'pendente', due_date: null }, extra);
+  const m = FX.mapaDaCuradoria([{ step_key: 'a', oculto: true, ordem: null, conferido_em: null }, { step_key: 'c', oculto: false, ordem: 2, conferido_em: '2026-11-17T10:00:00Z' }, { step_key: 'd', oculto: false, ordem: 1 }, { step_key: 'aco:7', conferido_em: '2026-11-17T10:00:00Z' }, null, { oculto: true }]);
+  check('o mapa vem por chave (step_key ou aco:id), ignora linha vazia ou sem chave e normaliza os campos', Object.keys(m).sort().join() === 'a,aco:7,c,d' && m.a.oculto === true && m.a.ordem === null && m.c.ordem === 2 && m.c.conferido_em && m.d.conferido_em === null && m['aco:7'].oculto === false && Object.keys(FX.mapaDaCuradoria(null)).length === 0);
+  const itens = [it('a'), it('b', { due_date: '2026-12-09' }), it('c'), it('d'), it('e', { due_date: '2026-12-01' })];
+  check('ordenarGerais: primeiro os com ordem (pela ordem), depois os demais pela urgência de sempre (data primeiro)', FX.ordenarGerais(itens, m, '2026-11-17').map((x) => x.step_key).join() === 'd,c,e,b,a');
+  check('sem curadoria é só a urgência; entrada vazia não quebra', FX.ordenarGerais(itens, {}, '2026-11-17').map((x) => x.step_key).join() === 'e,b,a,c,d' && FX.ordenarGerais(null, null, '2026-11-17').length === 0);
+  const r = FX.resumoCuradoria({ itens: itens.concat([it('z', { status: 'arquivado' })]), equipe: [{ id: 7 }, { id: 8 }], mapa: m });
+  check('resumo: conta o que ela vê (escondido e arquivado ficam fora), os conferidos (geral e só dela) e os escondidos', r.total === 6 && r.conferidos === 2 && r.ocultos === 1);
+  check('resumo sem dados', FX.resumoCuradoria().total === 0 && FX.resumoCuradoria({}).ocultos === 0);
+  check('a curadoria é uma sessão do grupo do app, logo depois do Checklist', FX.SESSOES_PADRAO.app.indexOf('curadoria') === FX.SESSOES_PADRAO.app.indexOf('checklist') + 1);
+}
+console.log('\n== Repetidos do board ==');
+{
+  const d = (id, titulo, extra = {}) => Object.assign({ id, tipo: 'documento', titulo, dados: { direcao: 'recebe' }, estado: 'revisado' }, extra);
+  const r = FX.repetidosDoBoard([d(1, 'Notion de estudos de francês'), d(2, 'Notion de estudos de francês (link gratuito)', { estado: 'publicado', link: 'https://x.org' }), d(3, 'Passaporte'), d(4, 'Certificado de francês', { dados: { direcao: 'reune' } }), d(5, 'Certificado de francês', { dados: { direcao: 'recebe' } }), d(6, 'Bilan', { tipo: 'bilan' }), d(7, 'Bilan', { tipo: 'bilan' })]);
+  check('só documento e mensagem entram; o mesmo nome com direção diferente (reúne × recebe) não é repetido; bilan fica de fora', r.length === 1 && r[0].manter.id === 2 && r[0].excluir.map((x) => x.id).join() === '1');
+  const e = FX.repetidosDoBoard([d(1, 'Certificado', { arquivo_caminho: 'a/b.pdf' }), d(2, 'Certificado', { estado: 'publicado' }), d(3, 'Certificado')]);
+  check('fica o mais completo (publicado pesa 4, revisado 2 + arquivo 2 = 4); empate, o mais antigo (1)', e[0].manter.id === 1 && e[0].excluir.map((x) => x.id).sort().join() === '2,3');
+  check('sem itens nada quebra', FX.repetidosDoBoard().length === 0 && FX.repetidosDoBoard([d(1, '')]).length === 0);
+}
 console.log('\n' + passed + ' passaram, ' + failed + ' falharam');
 if (failed) process.exit(1);

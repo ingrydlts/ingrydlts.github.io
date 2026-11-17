@@ -6,7 +6,7 @@ import * as FX from '../../ficha.js';
 let passed = 0, failed = 0;
 function check(label, cond) { if (cond) passed++; else { failed++; console.log('  FALHOU:', label); } }
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
-const h = { esc, fmtDay: (s) => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s || ''); return m ? m[3] + '/' + m[2] + '/' + m[1] : '—'; } };
+const h = { esc, linhaPasso: (o) => '<div class="lp" data-ed="' + o.ed + '" data-id="' + o.id + '" data-estado="' + o.estado + '">' + o.titulo + '|' + o.chips.map((c) => c.t).join(',') + '|' + (o.nota || '') + '|' + (o.alerta || '') + '|' + (o.home || '') + '</div>', linhaCur: (o) => '<div class="lc" data-chave="' + o.chave + '" data-pos="' + o.pos + '" data-n="' + o.n + '" data-esc="' + o.escondido + '" data-conf="' + o.conferido + '">' + o.titulo + '|' + o.chips.map((c) => c.t).join(',') + '|' + (o.alerta || '') + '</div>', fmtDay: (s) => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s || ''); return m ? m[3] + '/' + m[2] + '/' + m[1] : '—'; } };
 const count = (s, re) => (s.match(re) || []).length;
 const XSS = '<img src=x onerror=alert(1)>';
 
@@ -69,23 +69,34 @@ console.log('== Task 11: sessão Checklist ==');
   check('sem conta: aviso e nenhuma pílula (Review Focus 1)', sc.includes('Ela ainda não entrou no app') && !sc.includes('data-fx="dem"'));
   const er = FH.htmlChecklistSessao(d({ erro: true }), h);
   check('erro: aviso do SQL e nenhuma pílula (Review Focus 2)', er.includes('db/crm-checklist.sql') && !er.includes('data-fx="dem"'));
-  const ok = FH.htmlChecklistSessao(d(), h);
+  const oito = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'].map((k, i) => it(k, 'pendente', '2026-12-0' + (i + 1)));
+  const ok = FH.htmlChecklistSessao(d({ itens: oito, total: 8 }), h);
   check('Todas + 3 démarches, com contagem', count(ok, /data-fx="dem"/g) === 4 && ok.includes('1/4') && ok.includes('0/1'));
-  check('aria-pressed só na ativa', count(ok, /aria-pressed="true"/g) === 1 && /data-v="todas"[^>]*aria-pressed="true"/.test(ok));
-  check('4 linhas de passo e botão "Ver todos"', count(ok, /class="fx-passo (feito|arq|pend)"/g) === 4 && ok.includes('Ver todos os 6 passos (2 escondidos)'));
-  check('os 4 são os mais urgentes por data', ok.includes('Passo a') && ok.includes('Passo d') && !ok.includes('Passo e') && !ok.includes('Passo f'));
-  const tod = FH.htmlChecklistSessao(d({ todos: true }), h);
-  check('todos: 6 linhas e "Mostrar só os 4"', count(tod, /class="fx-passo (feito|arq|pend)"/g) === 6 && tod.includes('Mostrar só os 4 mais urgentes'));
+  check('aria-pressed: uma démarche ativa e uma origem ativa (Todos)', count(ok, /aria-pressed="true"/g) === 2 && /data-v="todas"[^>]*aria-pressed="true"/.test(ok) && /data-fx="ckOrigem" data-v="todos" aria-pressed="true"/.test(ok));
+  check('o topo mostra o progresso e as três origens (Todos, Gerais, Só dela)', ok.includes('1 de 8') && ok.includes('feitos por ela') && count(ok, /data-fx="ckOrigem"/g) === 3 && ok.includes('fx-ck-bar'));
+  check('6 linhas dos mais urgentes por data e o botão para os 2 restantes', count(ok, /class="lp"/g) === 6 && ok.includes('Passo a') && ok.includes('Passo f') && !ok.includes('Passo g') && ok.includes('Mostrar os 2 restantes'));
+  const tod = FH.htmlChecklistSessao(d({ itens: oito, total: 8, todos: true }), h);
+  check('todos: 8 linhas e "Mostrar só os 6 mais urgentes"', count(tod, /class="lp"/g) === 8 && tod.includes('Mostrar só os 6 mais urgentes'));
   const tres = FH.htmlChecklistSessao(d({ itens: seis.slice(0, 3), total: 3 }), h);
-  check('com 3 passos não há botão de ver todos', !tres.includes('Ver todos') && !tres.includes('Mostrar só os 4') && count(tres, /class="fx-passo (feito|arq|pend)"/g) === 3);
-  check('1 escondido no singular', FH.htmlChecklistSessao(d({ itens: seis.slice(0, 5) }), h).includes('(1 escondido)'));
-  check('pasta do Drive: só texto de privacidade', ok.includes('privada') && ok.includes('não vê o link') && !ok.includes('<input') && !ok.includes('href') && !/drive/i.test(ok.replace(/pasta do Drive/gi, '')));
-  check('Ver mais: fechado não traz o extra; aberto traz', ok.includes('Ver mais desta sessão') && !ok.includes('EXTRA') && FH.htmlChecklistSessao(d({ mais: true }), h).includes('EXTRA') && FH.htmlChecklistSessao(d({ mais: true }), h).includes('Ver menos desta sessão'));
+  check('com até 6 passos não há botão de ver os restantes', !tres.includes('restante') && !tres.includes('Mostrar só os 6') && count(tres, /class="lp"/g) === 3);
+  check('1 restante no singular', FH.htmlChecklistSessao(d({ itens: oito.slice(0, 7) }), h).includes('Mostrar os 1 restante'));
+  check('cada passo geral traz a etiqueta Geral, a démarche (em "Todas") e o prazo; o texto abre o editor (ed-chk)', /class="lp" data-ed="ed-chk" data-id="a"[^>]*>Passo a\|Geral,[^|]*,vence 01\/12\/2026/.test(FH.htmlChecklistSessao(d({ itens: oito, total: 8, demDe: () => 'Visa' }), h)));
+  check('privacidade do Drive vira dica do ⓘ (sem caixa, sem link, sem campo)', ok.includes('title="A pasta do Drive dela é privada') && ok.includes('não vê o link') && !ok.includes('<input') && !ok.includes('href') && !ok.includes('fx-pasta'));
+  check('Ver detalhes: fechado não traz o extra; aberto traz', ok.includes('Ver detalhes completos do checklist') && !ok.includes('EXTRA') && FH.htmlChecklistSessao(d({ mais: true }), h).includes('EXTRA') && FH.htmlChecklistSessao(d({ mais: true }), h).includes('Ver menos detalhes'));
   check('a equipe não dá check', !ok.includes('data-fx="marcar"') && !/type="checkbox"/.test(ok));
   check('dado velho: banner só quando há dias sem atividade', FH.htmlChecklistSessao(d({ velhoDias: 5 }), h).includes('há 5 dias') && !ok.includes('fx-velho') && !FH.htmlChecklistSessao(d({ velhoDias: 0 }), h).includes('fx-velho'));
   check('vazio com conta', FH.htmlChecklistSessao(d({ itens: [], demarches: [], total: 0, totalFeitos: 0 }), h).includes('ainda está vazio'));
   check('rótulo com HTML escapado', FH.htmlChecklistSessao(d({ itens: [it('x', 'pendente', null, { label: XSS })] }), h).includes('&lt;img'));
-  check('feito e arquivado têm texto próprio', (() => { const t = FH.htmlChecklistSessao(d({ itens: [it('f', 'concluido', null), it('g', 'arquivado', null)] }), h); return t.includes('feito') && t.includes('Arquivado'); })());
+  check('feito, arquivado, atrasado e sem data têm estado e texto próprios', (() => { const t = FH.htmlChecklistSessao(d({ itens: [it('f', 'concluido', null), it('g', 'arquivado', null), it('h', 'pendente', '2026-11-01'), it('i', 'pendente', null)] }), h); return /data-estado="ok"[^>]*>Passo f\|Geral,[^|]*feito/.test(t) && t.includes('arquivado por ela') && /data-estado="bad"[^>]*>Passo h\|[^|]*atrasado · 01\/11\/2026/.test(t) && t.includes('sem data'); })());
+  // origem, equipe e validação
+  const eq = '<div class="lp-eq">EQUIPE</div>';
+  const so = FH.htmlChecklistSessao(d({ origem: 'dela', equipeHtml: eq, equipeN: 2 }), h), ge = FH.htmlChecklistSessao(d({ origem: 'gerais', equipeHtml: eq, equipeN: 2 }), h), to = FH.htmlChecklistSessao(d({ equipeHtml: eq, equipeN: 2 }), h);
+  check('Só dela: mostra o grupo da equipe e esconde os gerais; Gerais: o contrário; Todos: os dois, com contagem', so.includes('EQUIPE') && !so.includes('Gerais da démarche') && /Só dela · 2/.test(so) && ge.includes('Gerais da démarche') && !ge.includes('EQUIPE') && to.includes('EQUIPE') && to.includes('Gerais da démarche'));
+  const al = { lista: [{ ref: 'aco:7', tipo: 'sem_data', titulo: 'Abrir a conta', texto: 'Sem data: ela não vê quando fazer.' }, { ref: 'chk:k9', tipo: 'sem_data', titulo: '<img src=x>', texto: 'Sem data.' }], porRef: { 'chk:a': ['Sem data: ela não vê quando fazer.'] } };
+  const va = FH.htmlChecklistSessao(d({ alertas: al }), h);
+  check('faixa de validação: contagem, texto e o botão certo para cada tipo de passo (geral: ckEditar; só dela: ed-aco), título escapado', va.includes('2 coisas para validar') && /data-caso="ed-aco" data-id="7"/.test(va) && /data-fx="ckEditar" data-id="k9"/.test(va) && va.includes('&lt;img') && !va.includes('<img'));
+  check('sem alertas, sem faixa; o alerta do passo vai para a linha dele', !ok.includes('coisa') && /Passo a\|[^|]*\|[^|]*\|Sem data: ela não vê quando fazer\./.test(va));
+  check('o passo em edição mostra o editor no lugar da linha', FH.htmlChecklistSessao(d({ ckEd: 'a' }), h).includes('data-ckform="a"'));
 }
 
 console.log('== Task 12: sessões em pílulas ==');
@@ -94,18 +105,14 @@ console.log('== Task 12: sessões em pílulas ==');
     checklist: { titulo: 'Checklist', sub: 'y', corpo: '<p>CORPO-CHK</p>', aberto: false }, bilan: { titulo: 'Bilan', sub: 'z', corpo: '<p>CORPO-BILAN</p>', aberto: true },
     dossie: { titulo: 'Dossiê', sub: 'z', corpo: '', aberto: false }, hist: { titulo: 'Histórico', sub: 'z', corpo: '', aberto: false } };
   const ord = { app: ['inicio', 'chat', 'checklist'], ela: ['bilan', 'dossie', 'hist'] };
-  const ss = FH.htmlSessoes(ord, mapa, h);
-  check('dois grupos com título', ss.includes('Acompanhar o app dela') && ss.includes('Conhecer e registrar'));
-  check('pílulas na ordem recebida', ss.indexOf('data-sessao="inicio"') < ss.indexOf('data-sessao="chat"') && ss.indexOf('data-sessao="chat"') < ss.indexOf('data-sessao="checklist"') && ss.indexOf('data-sessao="checklist"') < ss.indexOf('data-sessao="bilan"'));
-  check('aria-expanded conforme aberto', /data-fx="sessao" data-id="chat"[^>]*aria-expanded="true"/.test(ss) && /data-fx="sessao" data-id="inicio"[^>]*aria-expanded="false"/.test(ss));
-  check('corpo só das abertas', ss.includes('CORPO-CHAT') && ss.includes('CORPO-BILAN') && !ss.includes('CORPO-INICIO') && !ss.includes('CORPO-CHK'));
-  check('alça de arrastar com rótulo', ss.includes('aria-label="Arrastar Conversa com ela"') && count(ss, /draggable="true"/g) === 6);
-  check('dois botões de mover por pílula (Subir/Descer)', count(ss, /data-fx="mover"/g) === 12 && ss.includes('aria-label="Subir Conversa com ela"') && ss.includes('aria-label="Descer Conversa com ela"'));
-  check('título com HTML escapado', ss.includes('&lt;img') && !ss.includes('<img'));
-  check('a pílula sabe o grupo', /data-sessao="chat" data-area="app"/.test(ss) && /data-sessao="bilan" data-area="ela"/.test(ss));
-  check('id desconhecido na ordem é ignorado', !FH.htmlSessoes({ app: ['zzz', 'chat'], ela: [] }, mapa, h).includes('zzz'));
-  const um = FH.htmlSessao({ id: 'chat', titulo: 'T', sub: 's', corpo: '<i>C</i>', aberto: true, area: 'app', ativa: true }, h);
-  check('htmlSessao solta tem o corpo e a classe ativa', um.includes('<i>C</i>') && um.includes('ativa'));
+  const ir = FH.htmlIrPara(ord, mapa, h), pg = FH.htmlPaginaSessao(ord, mapa, h);
+  check('as pílulas "Ir para" vêm na ordem recebida, com um traço entre os dois grupos', ir.indexOf('data-id="inicio"') < ir.indexOf('data-id="chat"') && ir.indexOf('data-id="checklist"') < ir.indexOf('fx-ir-sep') && ir.indexOf('fx-ir-sep') < ir.indexOf('data-id="bilan"'));
+  check('a pílula da página aberta fica marcada (aria-current) e as outras não', /data-id="chat"[^>]*aria-current="page"/.test(ir) && !/data-id="inicio"[^>]*aria-current/.test(ir));
+  check('a página mostra só a primeira sessão aberta (sem dropdowns): o corpo dela e de mais nenhuma', pg.includes('CORPO-CHAT') && !pg.includes('CORPO-BILAN') && !pg.includes('CORPO-INICIO') && !pg.includes('CORPO-CHK') && /<section class="fx-pagina fx-pagina-app" data-sessao="chat"/.test(pg));
+  check('sem alça de arrastar, sem setas de mover e sem aria-expanded', !/draggable|data-fx="mover"|aria-expanded/.test(pg + ir));
+  check('título com HTML escapado', ir.includes('&lt;img') && !ir.includes('<img'));
+  check('sessão do grupo "ela" vira página do grupo ela', FH.htmlPaginaSessao(ord, Object.assign({}, mapa, { chat: Object.assign({}, mapa.chat, { aberto: false }) }), h).includes('data-area="ela"'));
+  check('id desconhecido na ordem é ignorado; sem nenhuma aberta, abre a primeira', !FH.htmlIrPara({ app: ['zzz', 'chat'], ela: [] }, mapa, h).includes('zzz') && FH.htmlPaginaSessao({ app: ['inicio', 'chat'], ela: [] }, { inicio: { titulo: 'I', corpo: '<b>PRIMEIRA</b>', aberto: false }, chat: { titulo: 'C', corpo: '', aberto: false } }, h).includes('PRIMEIRA'));
 }
 
 console.log('== Task 13: fluxo de 3 passos ==');
@@ -161,5 +168,21 @@ console.log('== CRM retrabalhado: carrossel de ações ==');
   check('carrossel: índice fora da faixa é limitado', FH.htmlCarrossel(ts, h, 99, {}).includes('2 de 2'));
 }
 
+console.log('\n== Curadoria ==');
+{
+  const it = (k, extra = {}) => Object.assign({ step_key: k, category: 'X', label: 'Passo ' + k, status: 'pendente', due_date: null }, extra);
+  const base = (o = {}) => Object.assign({ origem: 'todos', resumo: { total: 5, conferidos: 2, ocultos: 1 }, alertas: { lista: [], porRef: {} }, gerais: [it('a', { due_date: '2026-12-01' }), it('b'), it('c', { status: 'concluido' })], escondidos: [it('z')], equipeHtml: '<div class="eq">EQUIPE</div>', equipeN: 2, mapa: { b: { conferido_em: '2026-11-17T10:00:00Z' } }, hoje: '2026-11-17', temOrdem: false, demDe: () => 'Visa' }, o);
+  check('carregando: esqueleto; sem o SQL: pede o crm-checklist-curadoria.sql', FH.htmlCuradoria({ carregando: true }, h).includes('skel') && FH.htmlCuradoria({ erro: true }, h).includes('db/crm-checklist-curadoria.sql'));
+  const t = FH.htmlCuradoria(base(), h);
+  check('topo: "2 de 5 conferidos por você", escondidos, barra e as três origens', t.includes('2 de 5') && t.includes('conferidos por você') && t.includes('1 escondido') && count(t, /data-fx="curOrigem"/g) === 3 && /data-fx="curOrigem" data-v="todos" aria-pressed="true"/.test(t) && t.includes('fx-ck-bar'));
+  check('sem alertas: mensagem de tudo certo; com alertas: faixa com contagem e botão de editar certo para cada tipo', t.includes('Nada para validar') && (() => { const a = FH.htmlCuradoria(base({ alertas: { lista: [{ ref: 'aco:7', titulo: 'X', texto: 'Sem data.' }, { ref: 'chk:k9', titulo: '<img src=x>', texto: 'Sem data.' }], porRef: {} } }), h); return a.includes('2 coisas para validar') && /data-caso="ed-aco" data-id="7"/.test(a) && /data-caso="ed-chk" data-id="k9"/.test(a) && a.includes('&lt;img') && !a.includes('<img'); })());
+  check('uma linha por passo geral, com a posição e o total (para ↑ ↓), o estado de conferido e a etiqueta Geral com a démarche', count(t, /class="lc"/g) === 4 && /data-chave="a" data-pos="0" data-n="3"/.test(t) && /data-chave="c" data-pos="2" data-n="3"/.test(t) && /data-chave="b"[^>]*data-conf="true"/.test(t) && /data-chave="a"[^>]*data-conf="false"/.test(t) && t.includes('Geral,Visa'));
+  check('feito, prazo e sem data viram etiqueta; atrasado vira "atrasado · data"', t.includes('feito por ela') && t.includes('vence 01/12/2026') && t.includes('sem data') && FH.htmlCuradoria(base({ gerais: [it('o', { due_date: '2026-11-01' })] }), h).includes('atrasado · 01/11/2026'));
+  check('escondidos têm o grupo deles (ela não vê), marcados como escondidos', t.includes('Escondidos da lista dela · 1') && /data-chave="z"[^>]*data-esc="true"/.test(t) && !FH.htmlCuradoria(base({ escondidos: [] }), h).includes('Escondidos da lista dela'));
+  check('o grupo Só dela mostra a equipe e a dica do ↓; "Gerais" esconde o grupo; "Só dela" esconde os gerais e os escondidos', t.includes('EQUIPE') && t.includes('Só dela · 2') && !FH.htmlCuradoria(base({ origem: 'gerais' }), h).includes('EQUIPE') && !FH.htmlCuradoria(base({ origem: 'dela' }), h).includes('Gerais da démarche') && !FH.htmlCuradoria(base({ origem: 'dela' }), h).includes('Escondidos'));
+  check('sem ordem definida: dica "arraste ou use ↑ ↓"; com ordem: botão "Voltar à ordem automática"', t.includes('arraste ⋮⋮ ou use ↑ ↓') && !t.includes('curReset') && FH.htmlCuradoria(base({ temOrdem: true }), h).includes('data-fx="curReset"'));
+  check('o passo em edição mostra o editor no lugar da linha', FH.htmlCuradoria(base({ ckEd: 'a' }), h).includes('data-ckform="a"') && !/data-chave="a"/.test(FH.htmlCuradoria(base({ ckEd: 'a' }), h)));
+  check('título com HTML escapado', FH.htmlCuradoria(base({ gerais: [it('x', { label: XSS })] }), h).includes('&lt;img'));
+}
 console.log('\n' + passed + ' passaram, ' + failed + ' falharam');
 if (failed) process.exit(1);
