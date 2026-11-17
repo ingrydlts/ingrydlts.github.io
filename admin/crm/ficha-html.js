@@ -1,5 +1,5 @@
 // Ficha-universo, fase 1: HTML puro das peças novas. Todas recebem h = { esc, fmtDay } e escapam todo texto vindo do banco.
-import { ETAPAS_FUNIL, maisUrgentes } from './ficha.js?v=2026-11-17.6';   // o ?v= acompanha o de crm.js (cache do navegador)
+import { ETAPAS_FUNIL, maisUrgentes } from './ficha.js?v=2026-11-17.7';   // o ?v= acompanha o de crm.js (cache do navegador)
 
 
 const URG = { alta: 'Alta', media: 'Média', baixa: 'Baixa' };
@@ -226,9 +226,9 @@ export function htmlFluxo(passo, h) {
 // Tudo é dado real da pessoa, só leitura. Nada aqui grava.
 const ABAS_APP = [['inicio', 'Início'], ['checklist', 'Checklist'], ['espaco', 'Espaço'], ['perfil', 'Perfil']];
 const LEGENDA_ABA = {
-  inicio: 'Início junta o próximo passo, o prazo mais perto (prazo publicado) e os avisos que já chegaram à data.',
+  inicio: 'Início = o prazo mais perto, o passo de agora, os que vêm em seguida e os atalhos do que é só dela. As perguntas da equipe moram no Espaço.',
   checklist: 'Checklist = passos da persona e o que ela adicionou. Só ela marca.',
-  espaco: 'Espaço = prazos e escolas que você publicou, as escolas que ela acrescentou e o Material da equipe (bilan, documentos, mensagens prontas).',
+  espaco: 'Espaço = a pergunta da equipe (com as perguntas rápidas do perfil na mesma fila), o que a equipe percebeu, o que a Ingryd manda, escolas, mensagens prontas e o bilan.',
   perfil: 'Perfil = respostas do Dossiê que já existem.'
 };
 export function htmlPreviaApp(d, h) {
@@ -236,12 +236,18 @@ export function htmlPreviaApp(d, h) {
   const aba = LEGENDA_ABA[d.aba] ? d.aba : 'inicio';
   const vz = (t) => '<p class="fx-pv-vz">' + e(t) + '</p>';
   let corpo = '';
-  if (aba === 'inicio') {
+  if (aba === 'inicio' && d.inicio && d.inicio.pessoal) {
+    // O Início de quem já tem caso: igual ao do app (Oi, prazos, Agora, Em seguida, atalhos).
+    const n = d.inicio, linhaSeg = (q) => '<div class="fx-pv-row"><span class="bx" aria-hidden="true">✓</span><span>' + (q.de ? '<small>Checklist · ' + e(q.de) + '</small>' : '') + e(q.titulo) + '</span>' + (q.meta ? '<em class="' + (q.atrasado ? 'at' : '') + '">' + e(q.meta) + '</em>' : '') + '</div>';
+    corpo = '<section class="fx-pv-cab-in"' + L('Dela') + '><h3 class="fx-pv-oi">' + (n.nome ? 'Oi, ' + e(n.nome) + '.' : 'Oi.') + '</h3>' + (n.escolas.length ? '<p class="fx-pv-vz">O seu caso: ' + e(n.escolas.join(' e ')) + '.</p>' : '') + '</section>' +
+      n.marcos.map((m) => '<section class="fx-pv-card"' + L('Dela') + '><span class="k">Prazo</span><h4>' + e(m.titulo) + '</h4><p>' + (m.aConfirmar ? 'Data a confirmar' : e(m.data) + (m.quando ? ' · ' + e(m.quando) : '')) + '</p></section>').join('') +
+      (n.foco ? '<section class="fx-pv-card fx-pv-foco' + (n.foco.atrasado ? ' urg' : '') + '"' + L('Dela') + '><span class="k">' + e(n.foco.rotulo) + '</span><h4>' + e(n.foco.titulo) + '</h4>' + (n.foco.quando ? '<p>' + e(n.foco.quando) + '</p>' : '') + '<span class="fx-pv-btn">' + e(n.foco.botao) + '</span></section>' : '') +
+      (n.seguintes.length ? '<section class="fx-pv-card"' + L('Persona') + '><span class="k">Em seguida</span>' + n.seguintes.map(linhaSeg).join('') + '</section>' : '') +
+      (n.atalhos.length ? '<section class="fx-pv-card"' + L('Dela') + '><span class="k">Só seu</span>' + n.atalhos.map((a) => '<div class="fx-pv-row"><span><b>' + e(a.tit) + '</b><small>' + e(a.sub) + '</small></span></div>').join('') + '</section>' : '');
+  } else if (aba === 'inicio') {
     const frase = d.marco ? 'Faltam ' + d.marco.dias + ' dias: ' + d.marco.titulo + '.' : 'Nada vence nesta semana. O próximo passo está logo abaixo.';
     corpo = '<section class="fx-pv-card fx-pv-hero' + (d.marco && d.marco.dias <= 21 ? ' urg' : '') + '"' + L('Dela') + '><span class="k">Hoje</span><h4>Olá, ' + e(d.nome) + '</h4><p>' + e(frase) + '</p><b class="fx-pv-pct">' + d.pct + '%</b></section>' +
-      (d.naoLidas ? '<section class="fx-pv-card"' + L('Dela') + '><span class="k">Recado da Ingryd</span><p>Ela tem ' + d.naoLidas + ' novidade' + (d.naoLidas > 1 ? 's' : '') + ' no assistente.</p></section>' : '') +
-      (d.prox ? '<section class="fx-pv-card"' + L('Persona') + '><span class="k">Próximo passo</span><h4>' + e(d.prox.label) + '</h4><p>' + (d.prox.due ? 'Prazo: ' + e(h.fmtDay(d.prox.due)) : 'Sem data ainda') + '</p></section>' : '') +
-      d.avisos.map((a) => '<article class="fx-pv-card"' + L('Dela') + '><span class="k">' + e(a.tipo) + '</span><h4>' + e(a.titulo) + '</h4><p>' + e(a.texto || '') + '</p></article>').join('');
+      (d.prox ? '<section class="fx-pv-card"' + L('Persona') + '><span class="k">Próximo passo</span><h4>' + e(d.prox.label) + '</h4><p>' + (d.prox.due ? 'Prazo: ' + e(h.fmtDay(d.prox.due)) : 'Sem data ainda') + '</p></section>' : '');
   } else if (aba === 'checklist') {
     const linha = (x) => '<div class="fx-pv-row' + (x.feito ? ' f' : '') + '"><span class="bx" aria-hidden="true">' + (x.feito ? '✓' : '') + '</span><span><small>' + e(x.tag || '') + '</small>' + e(x.label) + '</span>' +
       (x.due && !x.feito ? '<em class="' + (x.atrasado ? 'at' : '') + '">' + e(h.fmtDay(x.due)) + '</em>' : '') + '</div>';
@@ -251,13 +257,17 @@ export function htmlPreviaApp(d, h) {
         (x.due ? '<em>' + e(h.fmtDay(x.due)) + '</em>' : '') + '</div>').join('') : '') +
       (d.semConta && (d.passos.length || (d.rascunhos || []).length) ? '<p class="fx-pv-vz">Prévia do que ela verá ao entrar.</p>' : '') + '</section>';
   } else if (aba === 'espaco') {
-    const itens = d.espaco.marcos.map((m) => '<article class="fx-pv-card"' + L('Dela') + '><span class="k">Prazo</span><h4>' + e(m.titulo) + '</h4><p>' + e(m.resumo || '') + '</p></article>').join('') +
-      (d.espaco.escolas.length || d.espaco.dela.length ? '<section class="fx-pv-card"' + L('Dela') + '><span class="k">Escolas para você contatar</span>' + d.espaco.escolas.map((x) => '<div class="fx-pv-row"><span><b>' + e(x.titulo) + '</b><small>' + e(x.resumo || '') + '</small></span></div>').join('') +
-        d.espaco.dela.map((x) => '<div class="fx-pv-row"><span><b>' + e(x.nome) + '</b><small>adicionada por ela</small></span></div>').join('') + '</section>' : '');
-    const g = d.guias, grp = (t, n, s) => '<div class="fx-pv-row"><span><b>' + t + '</b><small>' + (n ? e(s) : 'Em breve') + '</small></span><em>' + (n || '') + '</em></div>';
-    const material = '<section class="fx-pv-card"' + L('Dela') + '><span class="k">Material da equipe</span>' + grp('Bilans das nossas conversas', g.bilan ? 1 : 0, 'a nossa conversa') +
-      grp('Documentos que a equipe te manda', g.docs.length, g.docs.map((x) => x.titulo).join(', ')) + grp('Mensagens prontas', g.msgs.length, g.msgs.map((x) => x.titulo).join(', ')) + '</section>';
-    corpo = (itens || '<div class="fx-pv-card">' + vz('Ainda não tem nada seu aqui. Ela vê isto até você publicar algo.') + '</div>') + material;
+    const p = d.esp || { perguntas: [], percebeu: [], docs: [], escolas: [], dela: [], mensagens: [], bilans: [], vazio: true };
+    const bloco = (tit, linhas) => '<section class="fx-pv-card"' + L('Dela') + '><span class="k">' + e(tit) + '</span>' + linhas + '</section>';
+    const lin = (t, s2, em) => '<div class="fx-pv-row"><span><b>' + e(t) + '</b>' + (s2 ? '<small>' + e(s2) + '</small>' : '') + '</span>' + (em ? '<em>' + e(em) + '</em>' : '') + '</div>';
+    const perguntas = p.perguntas.map((a) => '<section class="fx-pv-card"' + L('Dela') + '><span class="k">Pergunta da equipe</span><h4>' + e(a.titulo) + '</h4>' + (a.texto ? '<p>' + e(a.texto) + '</p>' : '') + '</section>').join('');
+    const novos = p.docs.filter((x) => x.novo).length;
+    const daIngryd = p.docs.length ? bloco('Da Ingryd para você' + (novos ? ' · ' + novos + (novos === 1 ? ' novo' : ' novos') : ''), p.docs.map((x) => lin(x.titulo, x.resumo || (x.descricao ? 'com descrição para ler e copiar' : ''), x.conteudo ? 'Abrir' : x.descricao ? 'Ler' : 'chega em breve')).join('')) : '';
+    const esc2 = p.escolas.length || p.dela.length ? bloco('Escolas para você contatar', p.escolas.map((x) => lin(x.titulo, x.resumo)).join('') + p.dela.map((x) => lin(x.nome, 'adicionada por ela')).join('')) : '';
+    corpo = '<h3 class="fx-pv-oi">Materiais pro seu caso</h3>' + (p.vazio && !p.dela.length
+      ? '<section class="fx-pv-card"' + L('Dela') + '><h4>Seu espaço ainda está sendo preparado.</h4><p>Depois da nossa conversa, a Ingryd coloca aqui o que é só do seu caso: arquivos, mensagens e contatos. Quando ela publicar, aparece aqui e a equipe avisa.</p></section>'
+      : perguntas + p.percebeu.map((a) => '<section class="fx-pv-card"' + L('Dela') + '><span class="k">O que a equipe percebeu</span><h4>' + e(a.titulo) + '</h4>' + (a.texto ? '<p>' + e(a.texto) + '</p>' : '') + '</section>').join('') + daIngryd + esc2 +
+        (p.mensagens.length ? bloco('Mensagens prontas', p.mensagens.map((x) => lin(x.titulo, x.resumo)).join('')) : '') + (p.bilans.length ? bloco('Meu Bilan', p.bilans.map((x) => lin(x.titulo, x.resumo)).join('')) : ''));
   } else {
     corpo = '<section class="fx-pv-card"' + L('Dela') + '><h4>' + e(d.nome) + '</h4>' + d.perfil.kv.map((x) => '<div class="fx-pv-row"><span>' + e(x[0]) + '</span><em>' + e(x[1] || '—') + '</em></div>').join('') + '</section>' +
       '<section class="fx-pv-card"><span class="k">Seu perfil</span><p>' + d.perfil.n + ' de ' + d.perfil.tot + ' respondidas.</p></section>';

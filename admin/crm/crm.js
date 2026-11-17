@@ -2,15 +2,15 @@
 // Nada de service_role aqui. O banco é db/crm-fase2.sql; o desenho é o artefato "CRM Por Dentro".
 // Tudo que vem do banco é texto de terceiros (nome, e-mail, pergunta): passa sempre por esc().
 import { supabase } from '/assets/js/supabase-client.js';
-import * as TX from './taxonomia.js?v=2026-11-17.6';   // páginas, famílias e agrupamento dos modelos
-import * as ES from './estudio.js?v=2026-11-17.6';   // os blocos do estúdio de e-mails (entregas 2 e 3)
-import * as EE from './editor-email.js?v=2026-11-17.6';
-import * as EQ from './editor-quem.js?v=2026-11-17.6';
-import * as JR from './jornada.js?v=2026-11-17.6';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
-import * as FX from './ficha.js?v=2026-11-17.6';   // ficha v2: lógica pura (fila, démarches, funil, ações)
-import * as FH from './ficha-html.js?v=2026-11-17.6';   // ficha v2: HTML puro
-import * as PN from './panorama.js?v=2026-11-17.6';
-import * as MT from './montagem.js?v=2026-11-17.6';   // Montagem do espaço a partir do transcript (lógica e HTML puros)   // Panorama dela e O que ela trouxe (lógica e HTML puros)
+import * as TX from './taxonomia.js?v=2026-11-17.7';   // páginas, famílias e agrupamento dos modelos
+import * as ES from './estudio.js?v=2026-11-17.7';   // os blocos do estúdio de e-mails (entregas 2 e 3)
+import * as EE from './editor-email.js?v=2026-11-17.7';
+import * as EQ from './editor-quem.js?v=2026-11-17.7';
+import * as JR from './jornada.js?v=2026-11-17.7';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
+import * as FX from './ficha.js?v=2026-11-17.7';   // ficha v2: lógica pura (fila, démarches, funil, ações)
+import * as FH from './ficha-html.js?v=2026-11-17.7';   // ficha v2: HTML puro
+import * as PN from './panorama.js?v=2026-11-17.7';
+import * as MT from './montagem.js?v=2026-11-17.7';   // Montagem do espaço a partir do transcript (lógica e HTML puros)   // Panorama dela e O que ela trouxe (lógica e HTML puros)
 
 var PERSONAS = {
   au_pair_estudante: 'Au pair → estudante', campus_france: 'Campus France', alternancia_emprego: 'Alternância / emprego',
@@ -3657,9 +3657,9 @@ function fxHeaderHtml(c, d) {
     temConta: !!c.user_id, etiqueta: assin ? FX.etiquetaPagamento(assin) : null, estagios: STAGES, blocos: cart.blocos, nota: cart.nota }, H_FX);
 }
 // Catálogo de démarches (cópia do app, processos.json): carregado uma vez; sem ele, tudo cai na démarche padrão.
-var FX_PROC = null;
+var FX_PROC = null, FX_QUANDO = null;   // FX_QUANDO: o "quando" de cada passo do template (guias-quando.json), para o prazo curto do Início
 async function fxCarregaProcessos() {
-  try { var r = await fetch('processos.json?v=2026-11-17.6'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
+  try { var r = await fetch('processos.json?v=2026-11-17.7'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
 }
 // A sessão Checklist: pílulas por démarche, os 4 mais urgentes, pasta do Drive privada e "Ver mais desta sessão".
 // Os passos que a montagem do espaço propôs para ela, com démarche, subitens e origem: o mesmo detalhe do Checklist. Existem antes de ela ter conta.
@@ -3699,10 +3699,15 @@ function fxCasoGuarda(c) {
   return { k: k };
 }
 function fxSemConsent(k) { return k.consent ? '' : '<p class="pill u-media" style="margin:0 0 10px">Sem consentimento de serviço: publicar e agendar ficam bloqueados.</p>'; }
+// Perguntas da equipe Por Dentro: o que o app mostra no Espaço, em "Pergunta da equipe". As perguntas rápidas do perfil entram na mesma fila (só o app sabe
+// quais faltam). As outras mensagens da equipe (proposta, inteligência, oferta) seguem logo abaixo, com a data de cada uma.
 function fxInicioCorpo(c) {
-  var g = fxCasoGuarda(c), base = '<div id="ins-box">' + insightsHtml(state.ins, Date.now()) + '</div>';
-  if (!g.k) return base + casoSecao('Avisos da Equipe Por Dentro', 'você decide a data de cada um', g.html);
-  return base + fxSemConsent(g.k) + casoProximaHtml(c, g.k) + casoSecao('Avisos da Equipe Por Dentro', 'perguntas, propostas e inteligência que chegam como notificação', casoAvisosHtml(g.k));
+  var g = fxCasoGuarda(c); if (!g.k) return g.html;
+  var perguntas = g.k.avs.filter(function (a) { return a.tipo === 'pergunta'; }), outros = g.k.avs.filter(function (a) { return a.tipo !== 'pergunta'; });
+  var lista = function (l, vazio) { return l.length ? casoAvisosHtml({ avs: l, ed: g.k.ed, agenda: g.k.agenda }) : '<div class="empty" style="padding:14px">' + esc(vazio) + '</div>'; };
+  return fxSemConsent(g.k) + casoProximaHtml(c, g.k) +
+    casoSecao('Perguntas da equipe', 'ela as vê no Espaço, uma a uma, com as perguntas rápidas do perfil na mesma fila · você decide a data de cada uma', lista(perguntas, 'Nenhuma pergunta da equipe ainda.')) +
+    (outros.length ? casoSecao('Outros avisos da equipe', 'proposta, o que a equipe percebeu e oferta: chegam como notificação', lista(outros, '')) : '');
 }
 function fxEspacoCorpo(c) {
   var g = fxCasoGuarda(c); if (!g.k) return g.html;
@@ -3817,7 +3822,7 @@ document.addEventListener('submit', function (e) { if (e.target && e.target.id =
 
 // ---------- Zonas das sessões do app: "O que ela vê agora" e "O que ela faz" (só leitura, com dados reais) ----------
 var FX_ZONAS = {
-  inicio: { pode: ['Abrir o próximo passo', 'Responder a pergunta', '“Agora não” (adia 3 dias)', 'Abrir o assistente no sino'], re: /abriu|respond|adi|assistente|in[ií]cio/i },
+  inicio: { pode: ['Responder a pergunta da equipe', '“Agora não” (adia 3 dias)', 'Responder as perguntas rápidas do perfil, na mesma fila'], re: /abriu|respond|adi|assistente|in[ií]cio|pergunta/i },
   checklist: { pode: ['Marcar um passo', 'Editar título, data, observação e links', 'Adicionar um passo (+)', 'Arquivar e restaurar', 'Colar a pasta do Drive'], re: /marcou|desmarcou|edit|arquiv|adicion|restaur|checklist/i },
   espaco: { pode: ['Marcar Sim ou Não nos critérios da escola', 'Adicionar a própria escola (+)', 'Remover a escola que adicionou', 'Responder a pergunta da equipe'], re: /escola|crit[ée]rio|espa[cç]o|pergunta/i },
   guias: { pode: ['Abrir um guia', 'Ler o bilan', 'Abrir o documento', 'Copiar o texto da mensagem pronta', 'Ver a tradução'], re: /guia|bilan|arquivo|documento|mensagem/i },
@@ -3825,8 +3830,11 @@ var FX_ZONAS = {
 };
 function fxVeAgora(c, id) {
   var v = fxPreviaDados(c), li = function (a) { return a.length ? '<ul class="fx-zl">' + a.map(function (x) { return '<li>' + x + '</li>'; }).join('') + '</ul>' : ''; };
-  if (id === 'inicio') return li([v.marco ? 'Marco: <b>faltam ' + v.marco.dias + ' dias</b> · ' + esc(v.marco.titulo) : 'Nenhum marco publicado ainda', v.prox ? 'Próximo passo: <b>' + esc(v.prox.label) + '</b>' : 'Sem próximo passo',
-    v.avisos.length + (v.avisos.length === 1 ? ' aviso visível' : ' avisos visíveis') + ' no dia ' + v.dia + (v.avisos.length ? ': ' + v.avisos.map(function (a) { return esc(a.titulo); }).join(' · ') : ''), v.naoLidas ? v.naoLidas + (v.naoLidas === 1 ? ' recado' : ' recados') + ' no sino, ainda não visto' + (v.naoLidas === 1 ? '' : 's') : 'Nenhum recado novo no sino']);
+  if (id === 'inicio') {   // a sessão "Perguntas da equipe": o que ela vê no Espaço, em "Pergunta da equipe"
+    var pq = v.esp.perguntas;
+    return li([pq.length + (pq.length === 1 ? ' pergunta da equipe visível' : ' perguntas da equipe visíveis') + ' no dia ' + v.dia + (pq.length ? ': ' + pq.map(function (a) { return esc(a.titulo); }).join(' · ') : ''),
+      'As perguntas rápidas do perfil entram na mesma fila, no Espaço (só o app sabe quais ainda faltam)', v.naoLidas ? v.naoLidas + (v.naoLidas === 1 ? ' recado' : ' recados') + ' no sino, ainda não lidos' : 'Nada pendente no sino']);
+  }
   if (id === 'checklist') {
     var chk = state.dos && state.dos.cid === c.id ? state.dos.chk : null, it = chk && !chk.err && !chk.semConta ? PN.normaliza(chk.itens) : [], abertos = v.total - v.feitos;
     return li(['<b>' + v.total + ' passos</b> no app: ' + (v.total - it.filter(function (x) { return x.propria; }).length) + ' da persona e ' + it.filter(function (x) { return x.propria; }).length + ' criados por ela', v.pct + '% feito por ela · ' + abertos + (abertos === 1 ? ' aberto' : ' abertos'),
@@ -3880,15 +3888,19 @@ function fxPreviaDados(c) {
   var pubP = cnt.passos.map(function (a) { return { label: a.titulo, tag: det(a), feito: a.estado === 'concluida', due: a.prazo, atrasado: !!(a.prazo && a.prazo < hoje && a.estado !== 'concluida') }; });
   var rascP = prop.filter(function (a) { return !a.publicada_em; }).map(function (a) { return { label: a.titulo, tag: det(a), conferir: !!a.a_conferir, due: a.prazo }; });
   var acum = 0, avisos = [];
-  if (k) filaDe(k.avs).concat([]).forEach(function (a) { acum += a.pausa_dias || 0; if (acum <= dia) avisos.push({ tipo: CASO_TIPO_AVISO[a.tipo] || a.tipo, titulo: a.titulo, texto: a.texto }); });
-  if (k) k.avs.filter(function (a) { return a.liberado_em && (a.estado === 'liberado' || a.estado === 'lido'); }).forEach(function (a) { avisos.unshift({ tipo: CASO_TIPO_AVISO[a.tipo] || a.tipo, titulo: a.titulo, texto: a.texto }); });
+  if (k) filaDe(k.avs).concat([]).forEach(function (a) { acum += a.pausa_dias || 0; if (acum <= dia) avisos.push({ tipo: CASO_TIPO_AVISO[a.tipo] || a.tipo, titulo: a.titulo, texto: a.texto, cru: a.tipo, estado: 'liberado' }); });
+  if (k) k.avs.filter(function (a) { return a.liberado_em && (a.estado === 'liberado' || a.estado === 'lido'); }).forEach(function (a) { avisos.unshift({ tipo: CASO_TIPO_AVISO[a.tipo] || a.tipo, titulo: a.titulo, texto: a.texto, cru: a.tipo, estado: a.estado }); });
   var dd = state.dos && state.dos.cid === c.id ? state.dos : null, pr = dd ? dosProgresso(c, dd.d, dd.rasc) : { n: 0, tot: 0 };
   var feitosN = cnt.feitos, totalN = cnt.total;
+  // O Início e o Espaço, montados pela mesma regra do app (FX.inicioDoApp / FX.espacoDoApp).
+  var boardPub = k ? k.itens.filter(function (x) { return x.estado === 'publicado'; }) : [];
+  var inicio = FX.inicioDoApp({ nome: String(pn(c) || '').trim().split(/\s+/)[0], mapa: FX_PROC, persona: personaKey(c), itens: ok ? chk.itens : [], board: boardPub, acoes: k ? k.aco : [], listas: k ? k.listas : [], quando: FX_QUANDO || {} });
+  var esp = FX.espacoDoApp({ board: boardPub, avisos: avisos.map(function (a) { return { tipo: a.cru, titulo: a.titulo, texto: a.texto, estado: a.estado }; }), escolasDela: k ? (k.escolasDela || []) : [] });
   var passosL = abertos.map(function (i) { return { label: i.label, tag: i.category, feito: false, due: i.due_date, atrasado: !!(i.due_date && i.due_date < hoje) }; }).concat(pubP.filter(function (x) { return !x.feito; }));
   var feitosL = feitos.map(function (i) { return { label: i.label, tag: i.category, feito: true, due: i.due_date, atrasado: false }; }).concat(pubP.filter(function (x) { return x.feito; }));
   return { nome: pn(c), semConta: !c.user_id, aba: f.appAba || 'inicio', dia: dia, camadas: !!f.camadas, pct: totalN ? Math.round(feitosN / totalN * 100) : 0, feitos: feitosN, total: totalN, rascunhos: rascP,
     naoLidas: chatNaoLidas(state.chat), marco: m ? { titulo: m.titulo, dias: diasAteIso(m.data), data: m.data } : null, prox: passosL[0] ? { label: passosL[0].label, due: passosL[0].due } : null, avisos: avisos,
-    passos: passosL.concat(feitosL),
+    inicio: inicio, esp: esp, passos: passosL.concat(feitosL),
     espaco: { marcos: marcos, escolas: pub(['escola']).map(function (x) { return { titulo: x.titulo, resumo: x.resumo }; }), dela: k ? (k.escolasDela || []).map(function (x) { return { nome: x.nome }; }) : [] },
     guias: { bilan: pub(['bilan']).length > 0, docs: pub(['documento']).filter(function (x) { return x.dados && x.dados.direcao === 'recebe'; }).map(function (x) { return { titulo: x.titulo, resumo: x.resumo }; }), msgs: pub(['modelo']).map(function (x) { return { titulo: x.titulo }; }) },
     perfil: { n: pr.n, tot: pr.tot, kv: [['Situação', personaLabel(c)], ['Cidade', (dd && dosValor(c, dd.d, dd.rasc, 'cidade')) || ''], ['Fase', (dd && dosValor(c, dd.d, dd.rasc, 'fase')) || '']] } };
@@ -4145,7 +4157,7 @@ function fxSessoes(c) {
   var mk = function (titulo, sub, id, corpo) { var a = fxSessaoAberta(id); return { titulo: titulo, sub: sub, aberto: a, corpo: a ? corpo() : '' }; };
   var mapa = {
     chat: mk('Conversa com ela', 'As mensagens da equipe, do assistente e dela, dentro do app.', 'chat', function () { return '<div id="chat-box">' + chatPanelHtml(c, state.chat, H4_PLAT) + '</div>'; }),
-    inicio: mk('Início (Equipe Por Dentro)', 'O que a equipe mostra a ela no início do app e os seus avisos.', 'inicio', function () { return fxInicioCorpo(c) + fxZonas(c, 'inicio'); }),
+    inicio: mk('Perguntas da equipe Por Dentro', 'As perguntas que a equipe faz a ela no Espaço do app, com o dia de cada uma e a resposta.', 'inicio', function () { return fxInicioCorpo(c) + fxZonas(c, 'inicio'); }),
     checklist: mk('Checklist', 'Os passos dela por démarche, do mais urgente ao mais distante.', 'checklist', function () { return '<div id="fx-chk-corpo">' + fxChecklistCorpo(c) + '</div>' + fxZonas(c, 'checklist'); }),
     espaco: mk('Espaço', 'Prazos e escolas que você publica só para ela. O material da equipe fica na sessão logo abaixo.', 'espaco', function () { return fxEspacoCorpo(c) + fxZonas(c, 'espaco'); }),
     guias: mk('Material da equipe (aparece no Espaço)', 'Bilan, documentos e mensagens prontas que ela abre na aba Espaço.', 'guias', function () { return fxGuiasCorpo(c) + fxZonas(c, 'guias'); }),
@@ -4439,6 +4451,7 @@ async function renderPessoa() {
   if (!c) { $('pessoa-page').innerHTML = '<div class="empty">Pessoa não encontrada.</div>'; return; }
   $('pessoa-page').innerHTML = '<div class="loading">Carregando a ficha…</div>';
   if (fichaV2Ativa() && FX_PROC === null) FX_PROC = await fxCarregaProcessos();
+  if (fichaV2Ativa() && FX_QUANDO === null) { try { var rq = await fetch('guias-quando.json?v=2026-11-17.7'); FX_QUANDO = rq.ok ? await rq.json() : {}; } catch (e) { FX_QUANDO = {}; } }
   var r = await Promise.all([
     supabase.from('eventos').select('tipo,dados,criado_em').eq('contato_id', c.id).order('criado_em', { ascending: false }).limit(200),
     supabase.from('consentimentos').select('finalidade,aceito,texto,origem,criado_em').eq('contato_id', c.id).order('criado_em', { ascending: false }),

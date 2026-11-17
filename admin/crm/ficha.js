@@ -3,8 +3,8 @@
 
 // ---------- Urgência dos passos do checklist (spec §5.4) ----------
 // ChkItem = { step_key, category, label, status, due_date, sort_order } (colunas de buscaChecklist em crm.js).
-export { calcularUso } from './ficha-uso.js?v=2026-11-17.6';
-export * as funil from './funil.js?v=2026-11-17.6';   // Funil por próxima ação (lógica pura); o crm.js usa FX.funil
+export { calcularUso } from './ficha-uso.js?v=2026-11-17.7';
+export * as funil from './funil.js?v=2026-11-17.7';   // Funil por próxima ação (lógica pura); o crm.js usa FX.funil
 const DIA = 86400e3;
 function diasEntre(hoje, data) {
   const a = Date.parse(hoje + 'T00:00:00Z'), b = Date.parse(String(data).slice(0, 10) + 'T00:00:00Z');
@@ -425,4 +425,104 @@ export function proximaAcao(x, pot) {
   if (o.ultimoAcessoDias > 30) return A('Reativação pessoal com o passo mais urgente', 'Mensagem', 'Mais de 30 dias sem acessar: lembre do prazo que mais importa agora.', 'Oi, {nome}! Faz um tempo que você não passa por lá. O passo mais urgente do seu caso hoje é [passo]. Quer que eu te ajude a resolver?');
   if (o.chk && o.chk.atrasados > 0) return A('1:1 de 20 min para replanejar', '1:1', 'Passos atrasados e pouco uso: sem plano claro ela tende a sair.', 'Oi, {nome}! Vamos reorganizar os seus prazos juntas? 20 min e você sai com a ordem certa.');
   return A('Mensagem de acompanhamento', 'Mensagem', 'Uso baixo, sem sinal de saída imediata: um contato pessoal costuma bastar.', 'Oi, {nome}! Como está o seu caso? Se algo travou, me conta que eu ajusto o que aparece para você.');
+}
+
+// ---------- O Início do app, como ele monta (porte de montarInicio, assets/js/caso.js do app) ----------
+// Mesma ordem e mesmas contas: 1) "Oi, nome" (+ escolas); 2) prazos (marcos com data); 3) "Agora" = o primeiro passo da equipe
+// (atrasados, depois com data, depois sem data); 4) "Em seguida" = os passos da equipe que sobram + os próximos do checklist geral, até 4;
+// 5) atalhos "Só seu". Sem caso publicado (nem board nem passos), o app mostra o Início genérico e `pessoal` vem falso.
+const DIA_MS = 864e5;
+function diasAteApp(iso, agora) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso || ''); if (!m) return null;
+  const h = new Date(agora === undefined ? Date.now() : agora);
+  return Math.round((Date.UTC(+m[1], +m[2] - 1, +m[3]) - Date.UTC(h.getFullYear(), h.getMonth(), h.getDate())) / DIA_MS);
+}
+function dataBR(iso) { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso || ''); return m ? m[3] + '/' + m[2] + '/' + m[1] : ''; }
+function quandoTextoApp(d) { return d === null ? '' : d < 0 ? 'passou há ' + (-d) + (d === -1 ? ' dia' : ' dias') : d === 0 ? 'é hoje' : 'faltam ' + d + (d === 1 ? ' dia' : ' dias'); }
+export function metaDoPassoApp(p, agora) {
+  const d = p.prazo ? diasAteApp(p.prazo, agora) : null;
+  if (d !== null && d < 0 && p.estado !== 'concluida') return (-d) + (d === -1 ? ' dia em atraso' : ' dias em atraso');
+  return p.prazo ? dataBR(p.prazo) + (d !== null ? ' · ' + quandoTextoApp(d) : '') : (p.prazo_texto || '');
+}
+export function tipoDoPassoApp(p) {
+  if (!p) return 'feito';
+  if (p.botao === 'conferir_documentos' && /^docs:[a-z0-9_]{1,30}$/.test(p.passo_chave || '')) return 'documentos';
+  if (p.botao === 'marcar_marco') return 'data';
+  if (p.botao === 'gerar_rascunho' && /ligar|liga[cç]/i.test(p.titulo || '')) return 'roteiro';
+  return 'feito';
+}
+export function ordenarPassosApp(passos, agora) {
+  const grupo = (p) => { const d = p.prazo ? diasAteApp(p.prazo, agora) : null; return d === null ? 2 : d < 0 ? 0 : 1; };
+  return (passos || []).filter((p) => p.estado !== 'concluida')
+    .sort((a, b) => grupo(a) - grupo(b) || String(a.prazo || '').localeCompare(String(b.prazo || '')) || (a.n || 999) - (b.n || 999) || (a.id - b.id));
+}
+// A parte curta do "quando" de um passo (a pílula): o que vem antes de " · ", se couber em 22 letras; senão, nada.
+export function pilulaDoQuando(texto) {
+  if (!texto) return '';
+  const i = texto.indexOf(' · '), cabeca = i > -1 ? texto.slice(0, i) : texto;
+  return cabeca.length <= 22 ? cabeca : '';
+}
+// Título do processo na aba do app ("Visa au pair: o status de hoje"): o da persona; sem ele (ou com {trilha}), o rótulo curto.
+export function tituloDemarche(mapa, chave, persona) {
+  const t = mp(mapa).titulos && mp(mapa).titulos[persona] && mp(mapa).titulos[persona][chave];
+  return t && String(t).indexOf('{trilha}') < 0 ? t : rotuloDemarche(mapa, chave, persona);
+}
+export function temCasoApp(caso) { return !!caso && ((caso.board || []).length > 0 || (caso.acoes || []).length > 0); }
+// o = { nome, mapa, persona, itens (checklist_items), board (publicado), acoes, listas, quando ({step_key: texto}), agora }
+export function inicioDoApp(o) {
+  const x = o || {}, agora = x.agora === undefined ? Date.now() : x.agora, board = x.board || [];
+  const passos = passosPublicadosDoApp(x.acoes, x.listas);
+  const escolas = board.filter((b) => b.tipo === 'escola'), marcos = board.filter((b) => b.tipo === 'marco' && b.dados && b.dados.data);
+  const base = contaChecklistApp({ mapa: x.mapa, persona: x.persona, itens: x.itens, acoes: x.acoes, listas: x.listas, dem: 'todas' });
+  const ordem = ordenarPassosApp(passos, agora), p = ordem[0] || null;
+  let foco = null, seguintes = [];
+  if (p) {
+    const d = p.prazo ? diasAteApp(p.prazo, agora) : null, tipo = tipoDoPassoApp(p), atrasado = d !== null && d < 0;
+    foco = { rotulo: atrasado ? 'Atrasado' : 'Agora', atrasado, titulo: p.titulo, quando: tipo === 'documentos' ? '' : metaDoPassoApp(p, agora),
+      botao: tipo === 'data' ? 'Informar a data' : tipo === 'documentos' ? 'Ver os documentos' : 'Feito', roteiro: tipo === 'roteiro' };
+    const demarche = base.principal ? tituloDemarche(x.mapa, base.principal, x.persona) : '';
+    const dosPassos = ordem.slice(1).map((q) => { const dq = q.prazo ? diasAteApp(q.prazo, agora) : null; return { titulo: q.titulo, atrasado: dq !== null && dq < 0, meta: metaDoPassoApp(q, agora).replace(/^(\d{2}\/\d{2})\/\d{4}/, '$1'), de: demarche }; });
+    // Os próximos do checklist geral: abertos, por data (os com data primeiro; sem data mantêm a ordem), como ordenarPorUrgencia do app.
+    const quando = x.quando || {};
+    const gerais = base.itens.filter((i) => i.status !== 'concluido').slice().sort((a, b) => (a.due_date && b.due_date) ? (a.due_date < b.due_date ? -1 : a.due_date > b.due_date ? 1 : 0) : a.due_date ? -1 : b.due_date ? 1 : 0)
+      .slice(0, 4).map((i) => ({ titulo: i.label, atrasado: !!(i.due_date && diasAteApp(i.due_date, agora) < 0), meta: i.due_date ? dataBR(i.due_date).slice(0, 5) : pilulaDoQuando(quando[i.step_key]), de: demarche }));
+    seguintes = dosPassos.concat(gerais).slice(0, 4);
+  }
+  const atalhos = [];
+  if (escolas.length) atalhos.push({ tit: 'Escolas para contatar', sub: escolas.length + (escolas.length === 1 ? ' escola' : ' escolas') });
+  if (board.some((b) => b.tipo === 'bilan')) atalhos.push({ tit: 'O que combinamos na conversa', sub: 'o bilan da nossa conversa' });
+  if (board.some((b) => b.tipo === 'modelo')) atalhos.push({ tit: 'Mensagem pronta para as escolas', sub: 'copie e envie' });
+  return { pessoal: temCasoApp({ board, acoes: x.acoes }), nome: x.nome || '', escolas: escolas.map((e) => e.titulo),
+    marcos: marcos.map((m) => { const d = diasAteApp(m.dados.data, agora); return { titulo: m.titulo, data: dataBR(m.dados.data), dias: d, quando: quandoTextoApp(d), aConfirmar: !!m.dados.a_confirmar }; }),
+    foco, seguintes, atalhos };
+}
+
+// ---------- O Espaço do app, como ele monta (porte de montarEspaco, assets/js/caso.js do app) ----------
+// De cima para baixo: pergunta(s) da equipe (as rápidas do perfil entram na mesma fila, só o app sabe quais faltam); "O que a equipe percebeu"
+// (sem repetir prazo); "Da Ingryd para você"; Escolas; Mensagens prontas; Meu Bilan. Seção sem nada não aparece; sem nada, "ainda sendo preparado".
+export function duplicaPrazoApp(aviso, marcos, agora) {
+  const t = ((aviso && aviso.titulo) || '') + ' ' + ((aviso && aviso.texto) || '');
+  if (/\b(prazo|fecha|fechamento|vence|vencimento|faltam|inscri[cç][aã]o)\b/i.test(t)) return true;
+  return (marcos || []).some((m) => {
+    const d = m && m.dados && m.dados.data; if (!d) return false;
+    const f = dataBR(d), curto = f.slice(0, 5), dias = diasAteApp(d, agora);
+    return t.indexOf(f) >= 0 || new RegExp('(^|[^0-9])' + curto.replace('/', '\\/') + '([^0-9]|$)').test(t) || (dias !== null && dias > 0 && new RegExp('(^|[^0-9])' + dias + ' dias?').test(t));
+  });
+}
+// o = { board (publicado), avisos: [{tipo, titulo, texto, estado}] (os que ela já vê), escolasDela: [{nome}], agora }
+export function espacoDoApp(o) {
+  const x = o || {}, agora = x.agora === undefined ? Date.now() : x.agora, board = x.board || [];
+  const abertos = (x.avisos || []).filter((a) => a && a.estado !== 'respondido' && a.estado !== 'dispensado');
+  const marcos = board.filter((b) => b.tipo === 'marco');
+  const docs = board.filter((b) => b.tipo === 'documento' && b.dados && b.dados.direcao === 'recebe').map((d) => {
+    const temLink = /^https:\/\//i.test(d.link || ''), temArquivo = !!d.arquivo_caminho, temDescricao = !!(typeof d.descricao === 'string' && d.descricao.trim());
+    return { titulo: d.titulo, resumo: d.resumo || '', descricao: temDescricao ? d.descricao : '', conteudo: temLink ? 'link' : temArquivo ? 'arquivo' : '', ordem: d.ordem || 999, id: d.id, novo: temLink || temArquivo || temDescricao };
+  }).sort((a, b) => (b.novo ? 1 : 0) - (a.novo ? 1 : 0) || a.ordem - b.ordem || a.id - b.id);
+  const escolas = board.filter((b) => b.tipo === 'escola').map((e) => ({ titulo: e.titulo, resumo: e.resumo || '' }));
+  const dela = (x.escolasDela || []).map((e) => ({ nome: e.nome }));
+  const mensagens = board.filter((b) => b.tipo === 'modelo').map((m) => ({ titulo: m.titulo, resumo: m.resumo || '' }));
+  const bilans = board.filter((b) => b.tipo === 'bilan').sort((a, b) => String((b.dados && b.dados.data) || '').localeCompare(String((a.dados && a.dados.data) || ''))).map((b) => ({ titulo: b.titulo, resumo: b.resumo || '' }));
+  const e = { perguntas: abertos.filter((a) => a.tipo === 'pergunta'), percebeu: abertos.filter((a) => a.tipo === 'inteligencia' && !duplicaPrazoApp(a, marcos, agora)), docs, escolas, dela, mensagens, bilans };
+  e.vazio = !e.perguntas.length && !e.percebeu.length && !docs.length && !escolas.length && !mensagens.length && !bilans.length;
+  return e;
 }
