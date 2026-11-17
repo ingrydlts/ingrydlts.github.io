@@ -223,12 +223,11 @@ export function htmlFluxo(passo, h) {
 //       avisos: [{tipo, titulo, texto}], passos: [{label, tag, feito, due, atrasado}], espaco: {marcos: [{titulo, resumo}], escolas: [{titulo, resumo}], dela: [{nome}]},
 //       guias: {bilan, docs: [{titulo, resumo}], msgs: [{titulo}]}, perfil: {n, tot, kv: [[rotulo, valor]]} }
 // Tudo é dado real da pessoa, só leitura. Nada aqui grava.
-const ABAS_APP = [['inicio', 'Início'], ['checklist', 'Checklist'], ['espaco', 'Espaço'], ['guias', 'Guias'], ['perfil', 'Perfil']];
+const ABAS_APP = [['inicio', 'Início'], ['checklist', 'Checklist'], ['espaco', 'Espaço'], ['perfil', 'Perfil']];
 const LEGENDA_ABA = {
   inicio: 'Início junta o próximo passo, o prazo mais perto (prazo publicado) e os avisos que já chegaram à data.',
   checklist: 'Checklist = passos da persona e o que ela adicionou. Só ela marca.',
-  espaco: 'Espaço = prazos e escolas que você publicou, mais as escolas que ela acrescentou.',
-  guias: 'Guias = bilan, documentos e mensagens prontas que você publicou só para ela.',
+  espaco: 'Espaço = prazos e escolas que você publicou, as escolas que ela acrescentou e o Material da equipe (bilan, documentos, mensagens prontas).',
   perfil: 'Perfil = respostas do Dossiê que já existem.'
 };
 export function htmlPreviaApp(d, h) {
@@ -254,11 +253,10 @@ export function htmlPreviaApp(d, h) {
     const itens = d.espaco.marcos.map((m) => '<article class="fx-pv-card"' + L('Dela') + '><span class="k">Prazo</span><h4>' + e(m.titulo) + '</h4><p>' + e(m.resumo || '') + '</p></article>').join('') +
       (d.espaco.escolas.length || d.espaco.dela.length ? '<section class="fx-pv-card"' + L('Dela') + '><span class="k">Escolas para você contatar</span>' + d.espaco.escolas.map((x) => '<div class="fx-pv-row"><span><b>' + e(x.titulo) + '</b><small>' + e(x.resumo || '') + '</small></span></div>').join('') +
         d.espaco.dela.map((x) => '<div class="fx-pv-row"><span><b>' + e(x.nome) + '</b><small>adicionada por ela</small></span></div>').join('') + '</section>' : '');
-    corpo = itens || '<div class="fx-pv-card">' + vz('Ainda não tem nada seu aqui. Ela vê isto até você publicar algo.') + '</div>';
-  } else if (aba === 'guias') {
     const g = d.guias, grp = (t, n, s) => '<div class="fx-pv-row"><span><b>' + t + '</b><small>' + (n ? e(s) : 'Em breve') + '</small></span><em>' + (n || '') + '</em></div>';
-    corpo = '<section class="fx-pv-card"' + L('Dela') + '><span class="k">Material da equipe</span>' + grp('Bilans das nossas conversas', g.bilan ? 1 : 0, 'a nossa conversa') +
+    const material = '<section class="fx-pv-card"' + L('Dela') + '><span class="k">Material da equipe</span>' + grp('Bilans das nossas conversas', g.bilan ? 1 : 0, 'a nossa conversa') +
       grp('Documentos que a equipe te manda', g.docs.length, g.docs.map((x) => x.titulo).join(', ')) + grp('Mensagens prontas', g.msgs.length, g.msgs.map((x) => x.titulo).join(', ')) + '</section>';
+    corpo = (itens || '<div class="fx-pv-card">' + vz('Ainda não tem nada seu aqui. Ela vê isto até você publicar algo.') + '</div>') + material;
   } else {
     corpo = '<section class="fx-pv-card"' + L('Dela') + '><h4>' + e(d.nome) + '</h4>' + d.perfil.kv.map((x) => '<div class="fx-pv-row"><span>' + e(x[0]) + '</span><em>' + e(x[1] || '—') + '</em></div>').join('') + '</section>' +
       '<section class="fx-pv-card"><span class="k">Seu perfil</span><p>' + d.perfil.n + ' de ' + d.perfil.tot + ' respondidas.</p></section>';
