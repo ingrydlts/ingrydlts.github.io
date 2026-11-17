@@ -2,15 +2,15 @@
 // Nada de service_role aqui. O banco é db/crm-fase2.sql; o desenho é o artefato "CRM Por Dentro".
 // Tudo que vem do banco é texto de terceiros (nome, e-mail, pergunta): passa sempre por esc().
 import { supabase } from '/assets/js/supabase-client.js';
-import * as TX from './taxonomia.js?v=2026-11-17.8';   // páginas, famílias e agrupamento dos modelos
-import * as ES from './estudio.js?v=2026-11-17.8';   // os blocos do estúdio de e-mails (entregas 2 e 3)
-import * as EE from './editor-email.js?v=2026-11-17.8';
-import * as EQ from './editor-quem.js?v=2026-11-17.8';
-import * as JR from './jornada.js?v=2026-11-17.8';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
-import * as FX from './ficha.js?v=2026-11-17.8';   // ficha v2: lógica pura (fila, démarches, funil, ações)
-import * as FH from './ficha-html.js?v=2026-11-17.8';   // ficha v2: HTML puro
-import * as PN from './panorama.js?v=2026-11-17.8';
-import * as MT from './montagem.js?v=2026-11-17.8';   // Montagem do espaço a partir do transcript (lógica e HTML puros)   // Panorama dela e O que ela trouxe (lógica e HTML puros)
+import * as TX from './taxonomia.js?v=2026-11-17.9';   // páginas, famílias e agrupamento dos modelos
+import * as ES from './estudio.js?v=2026-11-17.9';   // os blocos do estúdio de e-mails (entregas 2 e 3)
+import * as EE from './editor-email.js?v=2026-11-17.9';
+import * as EQ from './editor-quem.js?v=2026-11-17.9';
+import * as JR from './jornada.js?v=2026-11-17.9';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
+import * as FX from './ficha.js?v=2026-11-17.9';   // ficha v2: lógica pura (fila, démarches, funil, ações)
+import * as FH from './ficha-html.js?v=2026-11-17.9';   // ficha v2: HTML puro
+import * as PN from './panorama.js?v=2026-11-17.9';
+import * as MT from './montagem.js?v=2026-11-17.9';   // Montagem do espaço a partir do transcript (lógica e HTML puros)   // Panorama dela e O que ela trouxe (lógica e HTML puros)
 
 var PERSONAS = {
   au_pair_estudante: 'Au pair → estudante', campus_france: 'Campus France', alternancia_emprego: 'Alternância / emprego',
@@ -3659,7 +3659,7 @@ function fxHeaderHtml(c, d) {
 // Catálogo de démarches (cópia do app, processos.json): carregado uma vez; sem ele, tudo cai na démarche padrão.
 var FX_PROC = null, FX_QUANDO = null;   // FX_QUANDO: o "quando" de cada passo do template (guias-quando.json), para o prazo curto do Início
 async function fxCarregaProcessos() {
-  try { var r = await fetch('processos.json?v=2026-11-17.8'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
+  try { var r = await fetch('processos.json?v=2026-11-17.9'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
 }
 // A sessão Checklist: pílulas por démarche, os 4 mais urgentes, pasta do Drive privada e "Ver mais desta sessão".
 // Os passos que a montagem do espaço propôs para ela, com démarche, subitens e origem: o mesmo detalhe do Checklist. Existem antes de ela ter conta.
@@ -4171,7 +4171,7 @@ function fxSessoes(c) {
     hist: mk('Histórico', 'Tudo que ela fez no app, dia a dia.', 'hist', function () { return '<div id="int-box">' + interacoesHtml(state.int) + '</div>'; })
   };
   if (c.user_id) mapa.insights = mk('Insights', 'O que o uso do app diz sobre ela, depois do 1:1.', 'insights', function () { return insightsPlatHtml(c); });
-  return FH.htmlSessoes(fxOrdem(), mapa, H_FX, gruposFechados(), fxHome());
+  return { ir: FH.htmlIrPara(fxOrdem(), mapa, H_FX), sessoes: FH.htmlSessoes(fxOrdem(), mapa, H_FX, gruposFechados(), fxHome(), { semIr: true }) };
 }
 // ---------- Plataforma: a sessão "Insights" (depois do 1:1, com ela no app) ----------
 function insightsDaPlataforma(c, X) {
@@ -4216,7 +4216,8 @@ function insightsPlatHtml(c) {
 function fxCorpo(c, d, tab) {
   if (tab === 'plataforma') {
     if (state.int && state.int.err) return '<div class="panel" style="padding:16px;margin-top:14px"><h3 style="font-size:15px;margin-bottom:8px">Plataforma ainda não ligada</h3><p class="sub" style="margin:0">Falta rodar <b>db/crm-plataforma.sql</b> no SQL Editor do Supabase (depois dele, os cliques novos começam a aparecer aqui).</p></div>';
-    return '<div class="fx-plat">' + pagamentoHtml(c, H4_PLAT) + '<div class="fx-plat-grade"><div class="fx-plat-esq">' + fxSessoes(c) + '</div><aside class="fx-previa" id="fx-previa" aria-label="O app dela (prévia)">' + fxPreviaHtml(c) + '</aside></div></div>';
+    var sess = fxSessoes(c);   // "Ir para" em largura total, como o Pagamento; as sessões e a prévia do app ficam abaixo
+    return '<div class="fx-plat">' + pagamentoHtml(c, H4_PLAT) + sess.ir + '<div class="fx-plat-grade"><div class="fx-plat-esq">' + sess.sessoes + '</div><aside class="fx-previa" id="fx-previa" aria-label="O app dela (prévia)">' + fxPreviaHtml(c) + '</aside></div></div>';
   }
   if (tab === 'conversa') return conversaPanel(c, d.mails || [], d.resps || [], d.h4 || H4_PLAT, d.jor);
   // Dossiê: aba própria, sempre aberta. Preenche sozinho com o que ela responde no funil e no app (ver DOS_FUNIL).
@@ -4460,7 +4461,7 @@ async function renderPessoa() {
   if (!c) { $('pessoa-page').innerHTML = '<div class="empty">Pessoa não encontrada.</div>'; return; }
   $('pessoa-page').innerHTML = '<div class="loading">Carregando a ficha…</div>';
   if (fichaV2Ativa() && FX_PROC === null) FX_PROC = await fxCarregaProcessos();
-  if (fichaV2Ativa() && FX_QUANDO === null) { try { var rq = await fetch('guias-quando.json?v=2026-11-17.8'); FX_QUANDO = rq.ok ? await rq.json() : {}; } catch (e) { FX_QUANDO = {}; } }
+  if (fichaV2Ativa() && FX_QUANDO === null) { try { var rq = await fetch('guias-quando.json?v=2026-11-17.9'); FX_QUANDO = rq.ok ? await rq.json() : {}; } catch (e) { FX_QUANDO = {}; } }
   var r = await Promise.all([
     supabase.from('eventos').select('tipo,dados,criado_em').eq('contato_id', c.id).order('criado_em', { ascending: false }).limit(200),
     supabase.from('consentimentos').select('finalidade,aceito,texto,origem,criado_em').eq('contato_id', c.id).order('criado_em', { ascending: false }),

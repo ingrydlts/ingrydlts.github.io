@@ -1,5 +1,5 @@
 // Ficha-universo, fase 1: HTML puro das peças novas. Todas recebem h = { esc, fmtDay } e escapam todo texto vindo do banco.
-import { ETAPAS_FUNIL, maisUrgentes } from './ficha.js?v=2026-11-17.8';   // o ?v= acompanha o de crm.js (cache do navegador)
+import { ETAPAS_FUNIL, maisUrgentes } from './ficha.js?v=2026-11-17.9';   // o ?v= acompanha o de crm.js (cache do navegador)
 
 
 const URG = { alta: 'Alta', media: 'Média', baixa: 'Baixa' };
@@ -196,7 +196,13 @@ export function htmlSessao(s, h) {
     (s.aberto ? '<div class="fx-sess-corpo" id="fx-s-' + e(s.id) + '">' + (s.corpo || '') + '</div>' : '') + '</section>';
 }
 // ord = { app: [ids], ela: [ids] }; mapa = { id: { titulo, sub, corpo, aberto } }. Dois grupos, como no spec §5.2.
-export function htmlSessoes(ord, mapa, h, fechados, home) {
+// A barra "Ir para": um botão por sessão. Fica fora da coluna das sessões, em largura total, logo abaixo do Pagamento.
+export function htmlIrPara(ord, mapa, h) {
+  const todos = [].concat((ord && ord.app) || [], (ord && ord.ela) || []).filter((id) => mapa && mapa[id]);
+  return todos.length ? '<nav class="fx-ir" aria-label="Ir para uma sessão"><span class="fx-ir-t">Ir para</span>' + todos.map((id) => '<button type="button" class="fx-ir-b' + (mapa[id].aberto ? ' on' : '') + '" data-fx="ir" data-id="' + h.esc(id) + '">' + h.esc(mapa[id].titulo) + '</button>').join('') + '</nav>' : '';
+}
+// opcoes.semIr: não desenha a barra "Ir para" (quem chama a põe em largura total, com htmlIrPara).
+export function htmlSessoes(ord, mapa, h, fechados, home, opcoes) {
   const fech = fechados || {};
   const fixadas = (home || []).filter((id) => mapa && mapa[id]);
   const grupo = (area, titulo, dica) => {
@@ -206,8 +212,7 @@ export function htmlSessoes(ord, mapa, h, fechados, home) {
       '<span class="sub fx-grupo-dica">' + h.esc(dica) + '</span><span class="fx-grupo-n">' + itens.length + (itens.length === 1 ? ' sessão' : ' sessões') + '</span><span class="fx-grupo-chev" aria-hidden="true">▾</span></summary>' +
       itens.map((id) => htmlSessao(Object.assign({ id, area, fixada: false }, mapa[id]), h)).join('') + '</details>';
   };
-  const todos = [].concat((ord && ord.app) || [], (ord && ord.ela) || []).filter((id) => mapa && mapa[id]);
-  const ir = todos.length ? '<nav class="fx-ir" aria-label="Ir para uma sessão"><span class="fx-ir-t">Ir para</span>' + todos.map((id) => '<button type="button" class="fx-ir-b' + (mapa[id].aberto ? ' on' : '') + '" data-fx="ir" data-id="' + h.esc(id) + '">' + h.esc(mapa[id].titulo) + '</button>').join('') + '</nav>' : '';
+  const ir = opcoes && opcoes.semIr ? '' : htmlIrPara(ord, mapa, h);
   const topo = '<section class="fx-home" aria-labelledby="fx-g-home"><div class="fx-home-cab"><h3 class="fx-h3" id="fx-g-home">Página inicial</h3><span class="sub fx-grupo-dica">' +
     (fixadas.length ? 'O mais importante dela, sempre no topo. “Página inicial” em qualquer sessão põe ou tira daqui.' : 'Nada fixado. Use “Página inicial” em uma sessão para ela ficar aqui, no topo.') + '</span></div>' +
     fixadas.map((id) => htmlSessao(Object.assign({ id, area: 'home', fixada: true }, mapa[id]), h)).join('') + '</section>';
