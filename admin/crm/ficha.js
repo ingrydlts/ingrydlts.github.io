@@ -3,8 +3,8 @@
 
 // ---------- Urgência dos passos do checklist (spec §5.4) ----------
 // ChkItem = { step_key, category, label, status, due_date, sort_order } (colunas de buscaChecklist em crm.js).
-export { calcularUso } from './ficha-uso.js?v=2026-11-17.8';
-export * as funil from './funil.js?v=2026-11-17.8';   // Funil por próxima ação (lógica pura); o crm.js usa FX.funil
+export { calcularUso } from './ficha-uso.js?v=2026-11-17.10';
+export * as funil from './funil.js?v=2026-11-17.10';   // Funil por próxima ação (lógica pura); o crm.js usa FX.funil
 const DIA = 86400e3;
 function diasEntre(hoje, data) {
   const a = Date.parse(hoje + 'T00:00:00Z'), b = Date.parse(String(data).slice(0, 10) + 'T00:00:00Z');
@@ -168,7 +168,7 @@ export function ordenarFila(itens) {
 
 // ---------- Ordem das sessões e preferências do navegador (spec §5.2) ----------
 // Fase 2: o app dela ganha Espaço, Guias e Perfil; "Conhecer e registrar" ganha Só eu, O que ela trouxe e Mais detalhes.
-export const SESSOES_PADRAO = { app: ['chat', 'inicio', 'checklist', 'espaco', 'guias', 'perfil'], ela: ['eu', 'bilan', 'trouxe', 'sinais', 'hist', 'mais'] };
+export const SESSOES_PADRAO = { app: ['home', 'chat', 'inicio', 'checklist', 'espaco', 'guias', 'perfil'], ela: ['eu', 'bilan', 'trouxe', 'sinais', 'hist', 'mais'] };
 export function moverSessao(ordem, id, delta) {
   const o = (ordem || []).slice(), i = o.indexOf(id), j = i + delta;
   if (i < 0 || j < 0 || j >= o.length) return o;
@@ -190,37 +190,22 @@ export function normalizarOrdem(salva, padrao) {
   base.forEach((id) => { if (!vistos[id]) out.push(id); });
   return out;
 }
-// Página inicial da ficha: as sessões que ela marcou como importantes ficam no topo, na ordem que ela escolheu. Padrão: Checklist, Conversa e Perguntas da equipe.
-export const HOME_PADRAO = ['checklist', 'chat', 'inicio'];
-const SESSOES_VALIDAS = SESSOES_PADRAO.app.concat(SESSOES_PADRAO.ela, ['insights']);
-export function normalizarHome(v) {
-  const vistos = {};
-  return (Array.isArray(v) ? v : []).filter((id) => { if (typeof id !== 'string' || !SESSOES_VALIDAS.includes(id) || vistos[id]) return false; vistos[id] = 1; return true; });
-}
-// Põe a sessão na página inicial (no fim da lista) ou tira. Devolve uma cópia.
-export function alternarHome(home, id) {
-  const h = normalizarHome(home), i = h.indexOf(id);
-  if (i >= 0) h.splice(i, 1); else if (SESSOES_VALIDAS.includes(id)) h.push(id);
-  return h;
-}
-const CHAVE_ORD = 'crm_ficha_ord_v1', CHAVE_TOUR = 'crm_ficha_tour', CHAVE_HOME = 'crm_ficha_home_v1';
+const CHAVE_ORD = 'crm_ficha_ord_v1', CHAVE_TOUR = 'crm_ficha_tour';
 // localStorage pode estar bloqueado ou cheio: nunca lança.
 export function lerPrefs(storage) {
-  const out = { ord: null, tour: true, home: null };
+  const out = { ord: null, tour: true };
   try {
     const t = storage.getItem(CHAVE_TOUR); if (t === '0') out.tour = false;
   } catch (e) { /* segue com o padrão */ }
   try {
     const raw = storage.getItem(CHAVE_ORD), v = raw ? JSON.parse(raw) : null;
-    if (v && typeof v === 'object' && !Array.isArray(v)) out.ord = { app: normalizarOrdem(v.app, SESSOES_PADRAO.app), ela: normalizarOrdem(v.ela, SESSOES_PADRAO.ela) };
+    if (v && typeof v === 'object' && !Array.isArray(v)) out.ord = { app: normalizarOrdem(Array.isArray(v.app) && v.app.indexOf('home') < 0 ? ['home'].concat(v.app) : v.app, SESSOES_PADRAO.app), ela: normalizarOrdem(v.ela, SESSOES_PADRAO.ela) };
   } catch (e) { out.ord = null; }
-  try { const raw = storage.getItem(CHAVE_HOME); if (raw) { const v = JSON.parse(raw); if (Array.isArray(v)) out.home = normalizarHome(v); } } catch (e) { out.home = null; }
   return out;
 }
 export function gravarPrefs(storage, prefs) {
   const p = prefs || {};
   try { if (p.ord) storage.setItem(CHAVE_ORD, JSON.stringify({ app: p.ord.app, ela: p.ord.ela })); } catch (e) { /* ignora */ }
-  try { if (Array.isArray(p.home)) storage.setItem(CHAVE_HOME, JSON.stringify(normalizarHome(p.home))); } catch (e) { /* ignora */ }
   try { if (typeof p.tour === 'boolean') storage.setItem(CHAVE_TOUR, p.tour ? '1' : '0'); } catch (e) { /* ignora */ }
 }
 
@@ -482,7 +467,7 @@ export function tituloDemarche(mapa, chave, persona) {
   const t = mp(mapa).titulos && mp(mapa).titulos[persona] && mp(mapa).titulos[persona][chave];
   return t && String(t).indexOf('{trilha}') < 0 ? t : rotuloDemarche(mapa, chave, persona);
 }
-export function temCasoApp(caso) { return !!caso && ((caso.board || []).length > 0 || (caso.acoes || []).length > 0); }
+export function temCasoApp(caso) { return !!caso && ((caso.board || []).length > 0 || (caso.acoes || []).length > 0 || (caso.home || []).length > 0); }
 // o = { nome, mapa, persona, itens (checklist_items), board (publicado), acoes, listas, quando ({step_key: texto}), agora }
 export function inicioDoApp(o) {
   const x = o || {}, agora = x.agora === undefined ? Date.now() : x.agora, board = x.board || [];
@@ -507,7 +492,12 @@ export function inicioDoApp(o) {
   if (escolas.length) atalhos.push({ tit: 'Escolas para contatar', sub: escolas.length + (escolas.length === 1 ? ' escola' : ' escolas') });
   if (board.some((b) => b.tipo === 'bilan')) atalhos.push({ tit: 'O que combinamos na conversa', sub: 'o bilan da nossa conversa' });
   if (board.some((b) => b.tipo === 'modelo')) atalhos.push({ tit: 'Mensagem pronta para as escolas', sub: 'copie e envie' });
-  return { pessoal: temCasoApp({ board, acoes: x.acoes }), nome: x.nome || '', escolas: escolas.map((e) => e.titulo),
+  // Em destaque (a página inicial do CRM): só o que ela vê — passo do checklist que existe e item do board publicado, nos limites 3 / 2 / 2.
+  const hm = x.home || [], vivos = (x.itens || []).filter((i) => i.status !== 'arquivado');
+  const porCat = (c) => hm.filter((h) => h.categoria === c).sort((a, b) => (a.ordem || 0) - (b.ordem || 0) || a.id - b.id);
+  const doBoard = (c, max) => porCat(c).map((h) => board.find((b) => b.id === h.board_id)).filter(Boolean).slice(0, max).map((b) => ({ titulo: b.titulo, sub: b.resumo || (b.tipo === 'marco' && b.dados && b.dados.data ? dataBR(b.dados.data) : ''), tipo: b.tipo, conteudo: /^https:\/\//i.test(b.link || '') ? 'link' : b.arquivo_caminho ? 'arquivo' : b.descricao ? 'descricao' : '' }));
+  const destaques = { checklist: porCat('checklist').map((h) => vivos.find((i) => i.step_key === h.step_key)).filter(Boolean).slice(0, 3).map((i) => ({ titulo: i.label, meta: i.due_date ? dataBR(i.due_date).slice(0, 5) : pilulaDoQuando((x.quando || {})[i.step_key]) })), espaco: doBoard('espaco', 2), guias: doBoard('guias', 2) };
+  return { pessoal: temCasoApp({ board, acoes: x.acoes, home: hm }), nome: x.nome || '', destaques, escolas: escolas.map((e) => e.titulo),
     marcos: marcos.map((m) => { const d = diasAteApp(m.dados.data, agora); return { titulo: m.titulo, data: dataBR(m.dados.data), dias: d, quando: quandoTextoApp(d), aConfirmar: !!m.dados.a_confirmar }; }),
     foco, seguintes, atalhos };
 }
@@ -540,4 +530,32 @@ export function espacoDoApp(o) {
   const e = { perguntas: abertos.filter((a) => a.tipo === 'pergunta'), percebeu: abertos.filter((a) => a.tipo === 'inteligencia' && !duplicaPrazoApp(a, marcos, agora)), docs, escolas, dela, mensagens, bilans };
   e.vazio = !e.perguntas.length && !e.percebeu.length && !docs.length && !escolas.length && !mensagens.length && !bilans.length;
   return e;
+}
+
+// ---------- Página inicial: os destaques que a Ingryd escolhe para o Início dela ----------
+// Três categorias, cada uma com limite fixo (o banco confere de novo, crm-caso-home.sql): 3 passos do checklist, 2 itens do Espaço, 2 dos Guias.
+// A categoria vem de onde o item mora no CRM: marco e escola são da sessão Espaço; bilan, documento e mensagem pronta, da sessão Guias.
+export const HOME_LIMITES = { checklist: 3, espaco: 2, guias: 2 };
+export const HOME_ROTULOS = { checklist: 'Checklist', espaco: 'Espaço', guias: 'Guias' };
+export function categoriaHomeDoBoard(tipo) { return tipo === 'marco' || tipo === 'escola' ? 'espaco' : tipo === 'bilan' || tipo === 'documento' || tipo === 'modelo' ? 'guias' : null; }
+// home = linhas de caso_home { id, categoria, step_key, board_id, ordem }. Devolve { ok, motivo }.
+export function podeAdicionarHome(home, categoria) {
+  if (!HOME_LIMITES[categoria]) return { ok: false, motivo: 'categoria' };
+  const n = (home || []).filter((x) => x.categoria === categoria).length;
+  return n >= HOME_LIMITES[categoria] ? { ok: false, motivo: 'cheia', n, max: HOME_LIMITES[categoria] } : { ok: true, n, max: HOME_LIMITES[categoria] };
+}
+export function homeTem(home, categoria, ref) { return (home || []).find((x) => x.categoria === categoria && (categoria === 'checklist' ? x.step_key === ref : String(x.board_id) === String(ref))) || null; }
+// o = { home, itens (checklist_items, sem arquivados), board (todos os itens do board, de qualquer estado) }.
+// Devolve { checklist, espaco, guias }: cada um { max, n, itens: [{ id, titulo, meta, publicado, falta }] }. "falta" = o item não existe mais.
+export function destaquesDaHome(o) {
+  const x = o || {}, home = x.home || [], itens = x.itens || [], board = x.board || [], out = {};
+  Object.keys(HOME_LIMITES).forEach((cat) => {
+    const linhas = home.filter((h) => h.categoria === cat).sort((a, b) => (a.ordem || 0) - (b.ordem || 0) || a.id - b.id);
+    out[cat] = { max: HOME_LIMITES[cat], n: linhas.length, itens: linhas.map((h) => {
+      if (cat === 'checklist') { const i = itens.find((y) => y.step_key === h.step_key); return i ? { id: h.id, ref: h.step_key, titulo: i.label, meta: i.status === 'concluido' ? 'feito' : (i.due_date ? 'prazo ' + String(i.due_date).slice(8, 10) + '/' + String(i.due_date).slice(5, 7) : ''), publicado: true, falta: false } : { id: h.id, ref: h.step_key, titulo: h.step_key, meta: '', publicado: true, falta: true }; }
+      const b = board.find((y) => y.id === h.board_id);
+      return b ? { id: h.id, ref: h.board_id, titulo: b.titulo, meta: b.resumo || '', publicado: b.estado === 'publicado', falta: false } : { id: h.id, ref: h.board_id, titulo: '(item removido)', meta: '', publicado: false, falta: true };
+    }) };
+  });
+  return out;
 }

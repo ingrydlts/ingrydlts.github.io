@@ -146,15 +146,8 @@ console.log('== Task 12: sessões em pílulas ==');
   let pg = h.el('pessoa-page').innerHTML;
   check('Plataforma tem os dois grupos e as 5 sessões (o Dossiê virou aba)', pg.includes('Acompanhar o app dela') && pg.includes('Conhecer e registrar') && ['chat', 'inicio', 'checklist', 'bilan', 'hist'].every((id) => pg.includes('data-sessao="' + id + '"')) && !pg.includes('data-sessao="dossie"'));
   check('só o Checklist abre por padrão; dossiê fechado não está na página', pg.includes('id="fx-chk-corpo"') && !pg.includes('id="dossie-box"') && !pg.includes('id="int-box"') && !pg.includes('id="chat-box"'));
-  check('página inicial no topo: Checklist primeiro, depois Conversa e Perguntas da equipe, antes dos grupos', pg.includes('class="fx-home"') && pg.indexOf('data-sessao="checklist"') < pg.indexOf('data-sessao="chat"') && pg.indexOf('data-sessao="chat"') < pg.indexOf('data-sessao="inicio"') && pg.indexOf('data-sessao="inicio"') < pg.indexOf('fx-grupo-app'));
-  await h.click({ fx: 'home', id: 'checklist' });
-  pg = h.el('fx-corpo').innerHTML;
-  check('tirar o Checklist da página inicial: ele desce para o grupo, uma vez só, ', pg.indexOf('data-sessao="checklist"') > pg.indexOf('fx-grupo-app') && pg.split('data-sessao="checklist"').length === 2);
-  await h.click({ fx: 'home', id: 'perfil' });
-  pg = h.el('fx-corpo').innerHTML;
-  check('pôr o Perfil na página inicial: ele sobe para o topo', pg.indexOf('data-sessao="perfil"') < pg.indexOf('fx-grupo-app') && /data-fx="home" data-id="perfil" aria-pressed="true"/.test(pg));
-  await h.click({ fx: 'home', id: 'perfil' }); await h.click({ fx: 'home', id: 'checklist' });
-  pg = h.el('pessoa-page').innerHTML;   // volta ao estado do começo: o padrão (Checklist, Conversa e Perguntas na página inicial)
+  check('a sessão Página inicial é a primeira do grupo e abre por padrão, junto com o Checklist', pg.indexOf('data-sessao="home"') > -1 && pg.indexOf('data-sessao="home"') < pg.indexOf('data-sessao="chat"') && pg.includes('fx-home-grade') || pg.includes('Página inicial'));
+  check('sem o SQL da home, a sessão pede o crm-caso-home.sql (e não quebra)', pg.includes('Página inicial'));
   // sessão fechada: o repaint ao vivo do dossiê não lança
   let ok = true; try { h.mod.pintaDossie(h.mod.byC('c1')); } catch (e) { ok = false; }
   check('fora da aba Dossiê, pintaDossie não lança', ok);
@@ -171,21 +164,21 @@ console.log('== Task 12: sessões em pílulas ==');
   check('todas as sessões abrem com os painéis existentes', tudo.includes('id="int-box"') && tudo.includes('id="bilan-box"') && tudo.includes('id="chat-box"'));
   check('a antiga sessão "Início (Equipe Por Dentro)" virou "Perguntas da equipe Por Dentro" e não traz mais as notas', tudo.includes('Perguntas da equipe Por Dentro') && !tudo.includes('Início (Equipe Por Dentro)') && !tudo.includes('id="ins-box"') && !tudo.includes('Escreva uma nota para ela'));
   await h.click({ fx: 'mover', id: 'chat', d: '1' });
-  check('mover troca a ordem e grava crm_ficha_ord_v1', h.mod.state.fx.ord.app.join() === 'inicio,chat,checklist,espaco,guias,perfil' && JSON.parse(h.store.crm_ficha_ord_v1).app.join() === 'inicio,chat,checklist,espaco,guias,perfil');
-  await h.click({ fx: 'mover', id: 'inicio', d: '-1' });
-  check('mover para cima na ponta não muda', h.mod.state.fx.ord.app.join() === 'inicio,chat,checklist,espaco,guias,perfil');
+  check('mover troca a ordem e grava crm_ficha_ord_v1', h.mod.state.fx.ord.app.join() === 'home,inicio,chat,checklist,espaco,guias,perfil' && JSON.parse(h.store.crm_ficha_ord_v1).app.join() === 'home,inicio,chat,checklist,espaco,guias,perfil');
+  await h.click({ fx: 'mover', id: 'home', d: '-1' });
+  check('mover para cima na ponta não muda', h.mod.state.fx.ord.app.join() === 'home,inicio,chat,checklist,espaco,guias,perfil');
   // arrastar
   const ev = (g, s) => ({ target: { closest: (sel) => (sel === '.fx-grab' ? g : sel === '.fx-sess' ? s : null) }, dataTransfer: { setData() {} }, preventDefault() {} });
   const chamar = async (tipo, e) => { for (const fn of h.handlers[tipo] || []) await fn(e); };
   await chamar('dragstart', ev({ dataset: { area: 'app', id: 'inicio' } }, null));
   await chamar('drop', ev(null, { dataset: { area: 'app', sessao: 'checklist' } }));
-  check('arrastar para baixo cai depois do alvo', h.mod.state.fx.ord.app.join() === 'chat,checklist,inicio,espaco,guias,perfil');
+  check('arrastar para baixo cai depois do alvo', h.mod.state.fx.ord.app.join() === 'home,chat,checklist,inicio,espaco,guias,perfil');
   await chamar('dragstart', ev({ dataset: { area: 'app', id: 'inicio' } }, null));
   await chamar('drop', ev(null, { dataset: { area: 'app', sessao: 'chat' } }));
-  check('arrastar para cima cai antes do alvo', h.mod.state.fx.ord.app.join() === 'inicio,chat,checklist,espaco,guias,perfil');
+  check('arrastar para cima cai antes do alvo', h.mod.state.fx.ord.app.join() === 'home,inicio,chat,checklist,espaco,guias,perfil');
   await chamar('dragstart', ev({ dataset: { area: 'app', id: 'chat' } }, null));
   await chamar('drop', ev(null, { dataset: { area: 'ela', sessao: 'bilan' } }));
-  check('arrastar para outro grupo é ignorado', h.mod.state.fx.ord.app.join() === 'inicio,chat,checklist,espaco,guias,perfil' && h.mod.state.fx.ord.ela.join() === 'eu,bilan,trouxe,sinais,hist,mais' && h.mod.state.fx.drag === null);
+  check('arrastar para outro grupo é ignorado', h.mod.state.fx.ord.app.join() === 'home,inicio,chat,checklist,espaco,guias,perfil' && h.mod.state.fx.ord.ela.join() === 'eu,bilan,trouxe,sinais,hist,mais' && h.mod.state.fx.drag === null);
   h.mod.pararAoVivo();
   // preferência salva volta ao abrir de novo; preferência inválida volta ao padrão
   h = await mk({ crm_ficha_ord_v1: JSON.stringify({ app: ['checklist', 'chat'], ela: ['hist'] }) });
@@ -200,7 +193,7 @@ console.log('== Task 12: sessões em pílulas ==');
   const hb = await carregarCrm({ respostas: base({ 'contatos:one': { data: { dossie: {}, user_id: 'u1' }, error: null } }), search: '?ficha=2', storageBloqueado: true });
   let lancou = false;
   try { await abre(hb, pessoa({ user_id: 'u1' })); await hb.click({ fx: 'mover', id: 'chat', d: '1' }); await hb.click({ fx: 'tourFechar' }); } catch (e) { lancou = true; }
-  check('com localStorage bloqueado nada lança e a ordem muda na tela', !lancou && hb.mod.state.fx.ord.app.join() === 'inicio,chat,checklist,espaco,guias,perfil' && hb.el('pessoa-page').innerHTML.includes('id="ficha-v2"'));
+  check('com localStorage bloqueado nada lança e a ordem muda na tela', !lancou && hb.mod.state.fx.ord.app.join() === 'home,inicio,chat,checklist,espaco,guias,perfil' && hb.el('pessoa-page').innerHTML.includes('id="ficha-v2"'));
   hb.mod.pararAoVivo();
 }
 
