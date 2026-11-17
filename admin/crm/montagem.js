@@ -241,12 +241,14 @@ export function passosPropostosHtml(aco, listas, h, modo) {
     var est = fim ? h.pil('Concluído', 'u-baixa') : a.publicada_em ? h.pil('Publicado', 'u-baixa') : a.a_conferir ? h.pil('A conferir', 'u-media') : h.pil('Rascunho', 'u-media');
     var meta = [a.demarche ? h.rotulo(a.demarche) : 'Sem démarche', subs.length ? subs.length + (subs.length === 1 ? ' subitem' : ' subitens') : '', a.camada === 'persona' ? 'da persona' : 'só deste percurso',
       h.prazo(a), a.lista_chave && tit[a.lista_chave] ? 'lista "' + tit[a.lista_chave] + '"' : ''].filter(Boolean).join(' · ');
-    var corpo = (fim ? '<s>' + e(a.titulo) + '</s>' : '<b>' + e(a.titulo) + '</b>') + '<br><span class="sub">' + e(meta) + '</span>' +
+    var dica = ' data-dbl="ed-aco" data-id="' + e(String(a.id)) + '" tabindex="0" title="Dois cliques (ou Enter) para editar" class="fx-edita"';
+    var corpo = (fim ? '<s>' + e(a.titulo) + '</s>' : '<b' + dica + '>' + e(a.titulo) + '</b>') + '<br><span class="sub">' + e(meta) + '</span>' +
       (subs.length ? '<ul class="mont-sub" aria-label="Subitens">' + subs.map(function (x) { return '<li>' + e(String(x)) + '</li>'; }).join('') + '</ul>' : '') +
       (a.a_conferir && !a.publicada_em ? '<br><small class="sub">Falta conferir a fonte: confira e clique em "Conferi a fonte" para poder publicar.</small>' : '') + (a.editado_em ? '<br><small class="sub">Texto editado por você: a releitura não muda.</small>' : '');
     // Uma ação por linha, sempre: conferir a fonte → publicar para ela → retirar. (Concluído não tem botão.)
-    var btns = (fim ? '' : a.publicada_em ? h.btn('aco-retirar', a.id, 'Retirar') : a.a_conferir ? h.conferi(a.id) : h.btn('aco-pub', a.id, 'Publicar para ela')) + (fim ? '' : h.btn('ed-aco', a.id, 'Editar')) +
-      (!fim && !a.publicada_em && h.btn ? h.btn('aco-recusar', a.id, 'Recusar') : '');   // recusar só do que ainda é rascunho
+    // Minimalista: editar = dois cliques no texto; retirar (publicado) e recusar (rascunho) = ×. O que decide (conferir / publicar) continua em palavras.
+    var x = function (acao, rot) { return h.ico ? h.ico(acao, a.id, '×', rot) : h.btn(acao, a.id, rot); };
+    var btns = (fim ? '' : a.publicada_em ? x('aco-retirar', 'Retirar da página dela') : (a.a_conferir ? h.conferi(a.id) : h.btn('aco-pub', a.id, 'Publicar para ela')) + x('aco-recusar', 'Recusar este passo'));
     return h.linha(est, corpo, btns);
   }).join('');
 }

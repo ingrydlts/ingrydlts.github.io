@@ -2,15 +2,15 @@
 // Nada de service_role aqui. O banco é db/crm-fase2.sql; o desenho é o artefato "CRM Por Dentro".
 // Tudo que vem do banco é texto de terceiros (nome, e-mail, pergunta): passa sempre por esc().
 import { supabase } from '/assets/js/supabase-client.js';
-import * as TX from './taxonomia.js?v=2026-11-17.11';   // páginas, famílias e agrupamento dos modelos
-import * as ES from './estudio.js?v=2026-11-17.11';   // os blocos do estúdio de e-mails (entregas 2 e 3)
-import * as EE from './editor-email.js?v=2026-11-17.11';
-import * as EQ from './editor-quem.js?v=2026-11-17.11';
-import * as JR from './jornada.js?v=2026-11-17.11';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
-import * as FX from './ficha.js?v=2026-11-17.11';   // ficha v2: lógica pura (fila, démarches, funil, ações)
-import * as FH from './ficha-html.js?v=2026-11-17.11';   // ficha v2: HTML puro
-import * as PN from './panorama.js?v=2026-11-17.11';
-import * as MT from './montagem.js?v=2026-11-17.11';   // Montagem do espaço a partir do transcript (lógica e HTML puros)   // Panorama dela e O que ela trouxe (lógica e HTML puros)
+import * as TX from './taxonomia.js?v=2026-11-17.12';   // páginas, famílias e agrupamento dos modelos
+import * as ES from './estudio.js?v=2026-11-17.12';   // os blocos do estúdio de e-mails (entregas 2 e 3)
+import * as EE from './editor-email.js?v=2026-11-17.12';
+import * as EQ from './editor-quem.js?v=2026-11-17.12';
+import * as JR from './jornada.js?v=2026-11-17.12';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
+import * as FX from './ficha.js?v=2026-11-17.12';   // ficha v2: lógica pura (fila, démarches, funil, ações)
+import * as FH from './ficha-html.js?v=2026-11-17.12';   // ficha v2: HTML puro
+import * as PN from './panorama.js?v=2026-11-17.12';
+import * as MT from './montagem.js?v=2026-11-17.12';   // Montagem do espaço a partir do transcript (lógica e HTML puros)   // Panorama dela e O que ela trouxe (lógica e HTML puros)
 
 var PERSONAS = {
   au_pair_estudante: 'Au pair → estudante', campus_france: 'Campus France', alternancia_emprego: 'Alternância / emprego',
@@ -2014,6 +2014,8 @@ function casoPendentes(k) {
   return k.ach.filter(function (x) { return x.estado === 'conferir'; }).length + k.itens.filter(function (x) { return x.estado === 'proposto'; }).length + k.avs.filter(function (x) { return x.estado === 'rascunho'; }).length;
 }
 function casoPil(txt, cls) { return '<span class="pill' + (cls ? ' ' + cls : '') + '">' + esc(txt) + '</span>'; }
+// Botão só com um símbolo (+ ou ×): o rótulo vai em aria-label e na dica.
+function casoIco(acao, id, glifo, rot, ligado) { return '<button type="button" class="fx-ic' + (ligado ? ' on' : '') + '" data-caso="' + acao + '" data-id="' + esc(String(id)) + '"' + (ligado ? ' aria-pressed="true"' : '') + ' aria-label="' + esc(rot) + '" title="' + esc(rot) + '">' + esc(glifo) + '</button>'; }
 function casoBtn(acao, id, rot, extra) { return '<button type="button" class="btn" data-caso="' + acao + '" data-id="' + esc(String(id)) + '"' + (extra || '') + ' style="padding:5px 10px;font-size:12px">' + esc(rot) + '</button>'; }
 function casoSecao(titulo, sub, corpo) { return '<section class="dbloco" style="margin-top:14px"><h4>' + esc(titulo) + (sub ? ' <span class="sub" style="font-weight:400">' + esc(sub) + '</span>' : '') + '</h4>' + corpo + '</section>'; }
 function casoLinha(esq, meio, btns) {
@@ -2302,7 +2304,7 @@ async function casoHome(acao, id, t) {
 function casoHomeBtn(k, it) {
   var cat = FX.categoriaHomeDoBoard(it.tipo); if (!cat || !k) return '';
   var tem = Array.isArray(k.home) && FX.homeTem(k.home, cat, it.id);
-  return casoBtn(tem ? 'home-del' : 'home-add', cat + ':' + it.id, tem ? 'Na home ✓ · tirar' : 'Adicionar na home', tem ? ' aria-pressed="true"' : '');
+  return casoIco(tem ? 'home-del' : 'home-add', cat + ':' + it.id, tem ? '×' : '+', tem ? 'Tirar da página inicial' : 'Adicionar na página inicial', tem);
 }
 async function casoAcao(acao, id, t) {
   var k = state.caso; if (!k) return;
@@ -3685,7 +3687,7 @@ function fxHeaderHtml(c, d) {
 // Catálogo de démarches (cópia do app, processos.json): carregado uma vez; sem ele, tudo cai na démarche padrão.
 var FX_PROC = null, FX_QUANDO = null;   // FX_QUANDO: o "quando" de cada passo do template (guias-quando.json), para o prazo curto do Início
 async function fxCarregaProcessos() {
-  try { var r = await fetch('processos.json?v=2026-11-17.11'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
+  try { var r = await fetch('processos.json?v=2026-11-17.12'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
 }
 // A sessão Checklist: pílulas por démarche, os 4 mais urgentes, pasta do Drive privada e "Ver mais desta sessão".
 // Os passos que a montagem do espaço propôs para ela, com démarche, subitens e origem: o mesmo detalhe do Checklist. Existem antes de ela ter conta.
@@ -3694,7 +3696,7 @@ function fxHooksPassos(c, k) {
   return { editando: function (a) { return !!(k.ed && k.ed.t === 'aco' && k.ed.id === a.id); },
     editor: function (a) { return casoEditor('aco', a.id, '<input id="caso-ed-titulo" class="t" maxlength="160" style="width:100%" value="' + esc(a.titulo) + '" aria-label="Texto do passo">' +
       casoCampo('Subitens (um por linha, até 6)', '<textarea id="caso-ed-subitens" rows="4" style="width:100%" maxlength="800">' + esc((a.subitens || []).join('\n')) + '</textarea>')); },
-    esc: esc, rotulo: function (d) { return FX.rotuloDemarche(FX_PROC, d, personaKey(c)); }, prazo: casoPrazo, pil: casoPil, btn: casoBtn,
+    esc: esc, rotulo: function (d) { return FX.rotuloDemarche(FX_PROC, d, personaKey(c)); }, prazo: casoPrazo, pil: casoPil, btn: casoBtn, ico: casoIco,
     conferi: function (id) { return '<button type="button" class="btn" data-montconferido="' + esc(String(id)) + '" style="padding:5px 10px;font-size:12px">Conferi a fonte</button>'; }, linha: casoLinha };
 }
 function fxCasoPassos(c) {
@@ -4533,7 +4535,7 @@ async function renderPessoa() {
   if (!c) { $('pessoa-page').innerHTML = '<div class="empty">Pessoa não encontrada.</div>'; return; }
   $('pessoa-page').innerHTML = '<div class="loading">Carregando a ficha…</div>';
   if (fichaV2Ativa() && FX_PROC === null) FX_PROC = await fxCarregaProcessos();
-  if (fichaV2Ativa() && FX_QUANDO === null) { try { var rq = await fetch('guias-quando.json?v=2026-11-17.11'); FX_QUANDO = rq.ok ? await rq.json() : {}; } catch (e) { FX_QUANDO = {}; } }
+  if (fichaV2Ativa() && FX_QUANDO === null) { try { var rq = await fetch('guias-quando.json?v=2026-11-17.12'); FX_QUANDO = rq.ok ? await rq.json() : {}; } catch (e) { FX_QUANDO = {}; } }
   var r = await Promise.all([
     supabase.from('eventos').select('tipo,dados,criado_em').eq('contato_id', c.id).order('criado_em', { ascending: false }).limit(200),
     supabase.from('consentimentos').select('finalidade,aceito,texto,origem,criado_em').eq('contato_id', c.id).order('criado_em', { ascending: false }),
@@ -6439,6 +6441,15 @@ async function enviarLinkPagamento(btn) {
 }
 
 // ---------- Eventos ----------
+// Editar sem botão: dois cliques (ou Enter) no texto de um passo. data-dbl = a ação; data-id = o passo.
+function editaPorDuploClique(e) {
+  var t = e.target && e.target.closest && e.target.closest('[data-dbl]'); if (!t) return false;
+  if (t.dataset.dbl === 'ckEditar') { fichaClick({ dataset: { fx: 'ckEditar', id: t.dataset.id } }); return true; }
+  if (t.dataset.dbl === 'ed-aco') { casoAcao('ed-aco', t.dataset.id, null); return true; }
+  return false;
+}
+document.addEventListener('dblclick', function (e) { if (editaPorDuploClique(e)) e.preventDefault(); });
+document.addEventListener('keydown', function (e) { if (e.key === 'Enter' && e.target && e.target.dataset && e.target.dataset.dbl && editaPorDuploClique(e)) e.preventDefault(); });
 document.addEventListener('click', async function (e) {
   if (e.target.id === 'compose-backdrop') return closeCompose();
   document.querySelectorAll('details.mf-dd[open]').forEach(function (d) { if (!d.contains(e.target)) d.removeAttribute('open'); });   // a fila de hoje fecha ao clicar fora

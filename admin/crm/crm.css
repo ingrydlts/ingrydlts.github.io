@@ -1743,3 +1743,10 @@ button.bar-r b{text-align:right; font-variant-numeric:tabular-nums}
 .fx-ck-l{display:flex; flex-direction:column; gap:3px; font-size:12px; color:var(--ink-2)}
 .fx-ck-l input{font:inherit; font-size:14px; padding:7px 9px; border:1px solid var(--line-2); border-radius:8px; background:var(--surface-2); color:var(--ink)}
 .fx-passos-equipe{margin-top:14px}
+/* Minimalista: + e × em vez de botões com texto; editar = dois cliques no texto */
+.fx-ic{display:inline-flex; align-items:center; justify-content:center; flex:none; width:28px; height:28px; padding:0; border:1px solid var(--line-2); border-radius:50%; background:transparent; color:var(--ink-2); font:inherit; font-size:17px; line-height:1; cursor:pointer}
+.fx-ic:hover,.fx-ic:focus-visible{border-color:var(--moss); color:var(--ink); background:var(--moss-soft)}
+.fx-ic.on{border-color:var(--moss); color:var(--ink)}
+.fx-edita{cursor:text}
+.fx-edita:hover{text-decoration:underline dotted; text-underline-offset:3px}
+.fx-passo{gap:8px}

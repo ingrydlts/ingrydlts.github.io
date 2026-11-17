@@ -310,6 +310,13 @@ console.log('\n== Editar o texto de um passo do checklist ==');
   el('fx-chk-corpo'); 
   await click({ fx: 'ckEditar', id: 'k1' });
   check('"Editar" abre o editor do passo, com o texto de hoje e o original à vista', /data-ckform="k1"/.test(els.get('fx-chk-corpo').innerHTML) && /Original: Original/.test(els.get('fx-chk-corpo').innerHTML));
+  { await click({ fx: 'ckCancelar' }); const dbl = handlers.dblclick && handlers.dblclick[0]; let evitou = false;
+    await dbl({ target: { closest: () => ({ dataset: { dbl: 'ckEditar', id: 'k1' } }) }, preventDefault() { evitou = true; } });
+    check('dois cliques no texto do passo abrem o editor (sem botão)', /data-ckform="k1"/.test(els.get('fx-chk-corpo').innerHTML) && evitou);
+    await click({ fx: 'ckCancelar' });
+    for (const fn of handlers.keydown || []) await fn({ key: 'Enter', target: { matches: () => false, dataset: { dbl: 'ckEditar', id: 'k1' }, closest: () => ({ dataset: { dbl: 'ckEditar', id: 'k1' } }) }, preventDefault() {} });
+    check('Enter no texto também abre (teclado)', /data-ckform="k1"/.test(els.get('fx-chk-corpo').innerHTML));
+    await click({ fx: 'ckCancelar' }); }
   await click({ fx: 'ckCancelar' });
   check('"Cancelar" fecha o editor sem gravar', !/data-ckform/.test(els.get('fx-chk-corpo').innerHTML) && rpcs.filter((x) => x.n === 'crm_checklist_editar').length === 0);
   await click({ fx: 'ckEditar', id: 'k1' });
