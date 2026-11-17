@@ -284,11 +284,12 @@ export function htmlFluxo(passo, h) {
 //       avisos: [{tipo, titulo, texto}], passos: [{label, tag, feito, due, atrasado}], espaco: {marcos: [{titulo, resumo}], escolas: [{titulo, resumo}], dela: [{nome}]},
 //       guias: {bilan, docs: [{titulo, resumo}], msgs: [{titulo}]}, perfil: {n, tot, kv: [[rotulo, valor]]} }
 // Tudo é dado real da pessoa, só leitura. Nada aqui grava.
-const ABAS_APP = [['inicio', 'Início'], ['checklist', 'Checklist'], ['espaco', 'Espaço'], ['perfil', 'Perfil']];
+const ABAS_APP = [['inicio', 'Início'], ['checklist', 'Checklist'], ['espaco', 'Espaço'], ['guias', 'Guias'], ['perfil', 'Perfil']];
 const LEGENDA_ABA = {
   inicio: 'Início = o prazo mais perto, o passo de agora, os que vêm em seguida e os atalhos do que é só dela. As perguntas da equipe moram no Espaço.',
   checklist: 'Checklist = passos da persona e o que ela adicionou. Só ela marca.',
   espaco: 'Espaço = a pergunta da equipe (com as perguntas rápidas do perfil na mesma fila), o que a equipe percebeu, o que a Ingryd manda, escolas, mensagens prontas e o bilan.',
+  guias: 'Guias = o material da equipe só para ela: documentos que você manda, mensagens prontas e o bilan.',
   perfil: 'Perfil = respostas do Dossiê que já existem.'
 };
 export function htmlPreviaApp(d, h) {
@@ -330,6 +331,14 @@ export function htmlPreviaApp(d, h) {
       ? '<section class="fx-pv-card"' + L('Dela') + '><h4>Seu espaço ainda está sendo preparado.</h4><p>Depois da nossa conversa, a Ingryd coloca aqui o que é só do seu caso: arquivos, mensagens e contatos. Quando ela publicar, aparece aqui e a equipe avisa.</p></section>'
       : perguntas + p.percebeu.map((a) => '<section class="fx-pv-card"' + L('Dela') + '><span class="k">O que a equipe percebeu</span><h4>' + e(a.titulo) + '</h4>' + (a.texto ? '<p>' + e(a.texto) + '</p>' : '') + '</section>').join('') + daIngryd + esc2 +
         (p.mensagens.length ? bloco('Mensagens prontas', p.mensagens.map((x) => lin(x.titulo, x.resumo)).join('')) : '') + (p.bilans.length ? bloco('Meu Bilan', p.bilans.map((x) => lin(x.titulo, x.resumo)).join('')) : ''));
+  } else if (aba === 'guias') {
+    const p = d.esp || { docs: [], mensagens: [], bilans: [], vazio: true };
+    const bloco = (tit, linhas) => '<section class="fx-pv-card"' + L('Dela') + '><span class="k">' + e(tit) + '</span>' + linhas + '</section>';
+    const lin = (t, s2, em) => '<div class="fx-pv-row"><span><b>' + e(t) + '</b>' + (s2 ? '<small>' + e(s2) + '</small>' : '') + '</span>' + (em ? '<em>' + e(em) + '</em>' : '') + '</div>';
+    const novos = p.docs.filter((x) => x.novo).length;
+    const blocos = (p.docs.length ? bloco('Da Ingryd para você' + (novos ? ' · ' + novos + (novos === 1 ? ' novo' : ' novos') : ''), p.docs.map((x) => lin(x.titulo, x.resumo || (x.descricao ? 'com descrição para ler e copiar' : ''), x.conteudo ? 'Abrir' : x.descricao ? 'Ler' : 'chega em breve')).join('')) : '') +
+      (p.mensagens.length ? bloco('Mensagens prontas', p.mensagens.map((x) => lin(x.titulo, x.resumo)).join('')) : '') + (p.bilans.length ? bloco('Meu Bilan', p.bilans.map((x) => lin(x.titulo, x.resumo)).join('')) : '');
+    corpo = '<h3 class="fx-pv-oi">Guias</h3>' + (blocos || '<section class="fx-pv-card"' + L('Dela') + '><h4>Ainda não tem material seu aqui.</h4><p>Quando você publicar um documento, uma mensagem pronta ou o bilan, aparece aqui.</p></section>');
   } else {
     corpo = '<section class="fx-pv-card"' + L('Dela') + '><h4>' + e(d.nome) + '</h4>' + d.perfil.kv.map((x) => '<div class="fx-pv-row"><span>' + e(x[0]) + '</span><em>' + e(x[1] || '—') + '</em></div>').join('') + '</section>' +
       '<section class="fx-pv-card"><span class="k">Seu perfil</span><p>' + d.perfil.n + ' de ' + d.perfil.tot + ' respondidas.</p></section>';

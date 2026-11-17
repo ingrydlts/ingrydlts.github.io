@@ -2,15 +2,15 @@
 // Nada de service_role aqui. O banco é db/crm-fase2.sql; o desenho é o artefato "CRM Por Dentro".
 // Tudo que vem do banco é texto de terceiros (nome, e-mail, pergunta): passa sempre por esc().
 import { supabase } from '/assets/js/supabase-client.js';
-import * as TX from './taxonomia.js?v=2026-11-17.24';   // páginas, famílias e agrupamento dos modelos
-import * as ES from './estudio.js?v=2026-11-17.24';   // os blocos do estúdio de e-mails (entregas 2 e 3)
-import * as EE from './editor-email.js?v=2026-11-17.24';
-import * as EQ from './editor-quem.js?v=2026-11-17.24';
-import * as JR from './jornada.js?v=2026-11-17.24';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
-import * as FX from './ficha.js?v=2026-11-17.24';   // ficha v2: lógica pura (fila, démarches, funil, ações)
-import * as FH from './ficha-html.js?v=2026-11-17.24';   // ficha v2: HTML puro
-import * as PN from './panorama.js?v=2026-11-17.24';
-import * as MT from './montagem.js?v=2026-11-17.24';   // Montagem do espaço a partir do transcript (lógica e HTML puros)   // Panorama dela e O que ela trouxe (lógica e HTML puros)
+import * as TX from './taxonomia.js?v=2026-11-17.25';   // páginas, famílias e agrupamento dos modelos
+import * as ES from './estudio.js?v=2026-11-17.25';   // os blocos do estúdio de e-mails (entregas 2 e 3)
+import * as EE from './editor-email.js?v=2026-11-17.25';
+import * as EQ from './editor-quem.js?v=2026-11-17.25';
+import * as JR from './jornada.js?v=2026-11-17.25';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
+import * as FX from './ficha.js?v=2026-11-17.25';   // ficha v2: lógica pura (fila, démarches, funil, ações)
+import * as FH from './ficha-html.js?v=2026-11-17.25';   // ficha v2: HTML puro
+import * as PN from './panorama.js?v=2026-11-17.25';
+import * as MT from './montagem.js?v=2026-11-17.25';   // Montagem do espaço a partir do transcript (lógica e HTML puros)   // Panorama dela e O que ela trouxe (lógica e HTML puros)
 
 var PERSONAS = {
   au_pair_estudante: 'Au pair → estudante', campus_france: 'Campus France', alternancia_emprego: 'Alternância / emprego',
@@ -2375,6 +2375,16 @@ async function casoHome(acao, id, t) {
   await casoRecarrega();
   toast(acao === 'home-add' ? 'Na home: ' + FX.HOME_ROTULOS[cat] + '. Ela vê no Início.' : 'Tirado da home.');
 }
+// Trocar o item de uma vaga da Página inicial por outro, na própria linha (o banco confere o tipo e o dono de novo).
+async function casoHomeTroca(cat, antigo, novo) {
+  var k = state.caso; if (!k || !Array.isArray(k.home) || !novo || String(antigo) === String(novo)) return;
+  var ja = FX.homeTem(k.home, cat, antigo); if (!ja) return toast('Essa vaga não existe mais. Atualize a aba.');
+  if (FX.homeTem(k.home, cat, novo)) return toast('Esse item já está na home.');
+  var mud = cat === 'checklist' ? { step_key: novo } : { board_id: Number(novo) };
+  var r = await supabase.from('caso_home').update(mud).eq('id', ja.id);
+  if (r.error) return casoFalha('trocar o item da home', r.error);
+  await casoRecarrega(); toast('Trocado. Ela vê no Início.');
+}
 // O botão "Adicionar na home" de um item do board (marco e escola → Espaço; bilan, documento e mensagem pronta → Guias).
 function casoHomeBtn(k, it) {
   var cat = FX.categoriaHomeDoBoard(it.tipo); if (!cat || !k) return '';
@@ -3771,7 +3781,7 @@ function fxHeaderHtml(c, d) {
 // Catálogo de démarches (cópia do app, processos.json): carregado uma vez; sem ele, tudo cai na démarche padrão.
 var FX_PROC = null, FX_QUANDO = null;   // FX_QUANDO: o "quando" de cada passo do template (guias-quando.json), para o prazo curto do Início
 async function fxCarregaProcessos() {
-  try { var r = await fetch('processos.json?v=2026-11-17.24'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
+  try { var r = await fetch('processos.json?v=2026-11-17.25'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
 }
 // A sessão Checklist: pílulas por démarche, os 4 mais urgentes, pasta do Drive privada e "Ver mais desta sessão".
 // Os passos que a montagem do espaço propôs para ela, com démarche, subitens e origem: o mesmo detalhe do Checklist. Existem antes de ela ter conta.
@@ -3839,14 +3849,28 @@ function fxHomeCorpo(c) {
   var d = FX.destaquesDaHome({ home: k.home, itens: itens, board: k.itens });
   // Cada categoria aponta para a sessão onde o item mora (Guias e Material da equipe moram dentro do Espaço).
   var onde = { checklist: { sessao: 'checklist', nome: 'Checklist (vai para o Em seguida)' }, espaco: { sessao: 'espaco', nome: 'Espaço' }, guias: { sessao: 'espaco', nome: 'Material da equipe' } };
+  // O que dá para escolher em cada bloco (menos o que já está nele): passo aberto do checklist; marco e escola; bilan, documento que a equipe manda e mensagem pronta.
+  var jaNa = function (cat, ref) { return !!FX.homeTem(k.home, cat, ref); };
+  var elegiveis = function (cat) {
+    if (cat === 'checklist') return itens.filter(function (i) { return i.status !== 'concluido' && !jaNa(cat, i.step_key); }).map(function (i) { return { ref: i.step_key, rot: i.titulo_custom || i.label }; });
+    var tipos = cat === 'espaco' ? ['marco', 'escola'] : ['bilan', 'documento', 'modelo'];
+    return k.itens.filter(function (x) { return tipos.indexOf(x.tipo) >= 0 && !(x.tipo === 'documento' && (x.dados || {}).direcao !== 'recebe') && !jaNa(cat, x.id); })
+      .map(function (x) { return { ref: x.id, rot: x.titulo + (x.estado !== 'publicado' ? ' · rascunho' : '') }; });
+  };
+  var opts = function (lista, atual) { return lista.map(function (o) { return '<option value="' + esc(String(o.ref)) + '"' + (atual !== undefined && String(o.ref) === String(atual) ? ' selected' : '') + '>' + esc(o.rot) + '</option>'; }).join(''); };
   var bloco = function (cat) {
-    var b = d[cat], linhas = b.itens.map(function (x) {
+    var b = d[cat], alt = elegiveis(cat), linhas = b.itens.map(function (x) {
       var estado = x.falta ? ['off', 'o item não existe mais'] : !x.publicado ? ['mid', 'Rascunho: ela só vê depois que você publicar'] : ['ok', 'Publicado: ela já vê'];
+      var titulo = alt.length && !x.falta
+        ? '<select class="fx-hm-sel" data-home-troca="' + esc(cat + ':' + x.ref) + '" aria-label="Trocar “' + esc(x.titulo) + '” por outro item" title="' + esc(x.titulo) + ' · trocar por outro item"><option value="' + esc(String(x.ref)) + '" selected>' + esc(x.titulo) + '</option>' + opts(alt) + '</select>'
+        : '<b>' + esc(x.titulo) + '</b>';
       return '<li class="fx-hm"><span class="fx-dot ' + estado[0] + '" role="img" aria-label="' + esc(estado[1]) + '" title="' + esc(estado[1]) + '"></span>' +
-        '<span class="fx-hm-t"><b>' + esc(x.titulo) + '</b>' + (x.falta ? '<small>removido do caso</small>' : x.meta ? '<small>' + esc(x.meta) + '</small>' : '') + '</span>' +
+        '<span class="fx-hm-t">' + titulo + (x.falta ? '<small>removido do caso</small>' : x.meta ? '<small>' + esc(x.meta) + '</small>' : '') + '</span>' +
         '<button type="button" class="fx-ic" data-caso="home-del" data-id="' + esc(cat + ':' + x.ref) + '" aria-label="Tirar da página inicial" title="Tirar da página inicial">' + casoSvg('x', 16) + '</button></li>';
     });
-    for (var i = b.itens.length; i < b.max; i++) linhas.push('<li class="fx-hm vazio"><button type="button" class="fx-hm-add" data-fx="abrir" data-id="' + onde[cat].sessao + '" title="Abre a sessão: use o + do item que você quer pôr aqui">' + casoSvg('plus', 15) + '<span>Escolher no ' + esc(onde[cat].nome) + '</span></button></li>');
+    for (var i = b.itens.length; i < b.max; i++) linhas.push(alt.length
+      ? '<li class="fx-hm vazio"><select class="fx-hm-add" data-home-add="' + cat + '" aria-label="Escolher um item para ' + esc(cat === 'checklist' ? 'o Em seguida' : FX.HOME_ROTULOS[cat]) + '"><option value="">＋ Escolher…</option>' + opts(alt) + '</select></li>'
+      : '<li class="fx-hm vazio"><button type="button" class="fx-hm-add" data-fx="abrir" data-id="' + onde[cat].sessao + '" title="Não há mais itens para escolher aqui. Abre a sessão.">' + casoSvg('plus', 15) + '<span>Nada para escolher no ' + esc(onde[cat].nome) + '</span></button></li>');
     var pontos = ''; for (var j = 0; j < b.max; j++) pontos += '<i class="' + (j < b.n ? 'on' : '') + '"></i>';
     return '<section class="fx-hbl" aria-label="' + esc(FX.HOME_ROTULOS[cat]) + ' na home"><header><h4>' + esc(cat === 'checklist' ? 'Em seguida' : FX.HOME_ROTULOS[cat]) + '</h4><span class="fx-hb-n" role="img" aria-label="' + b.n + ' de ' + b.max + '" title="' + b.n + ' de ' + b.max + (b.n >= b.max ? ' (cheio)' : '') + '">' + pontos + '</span></header><ul>' + linhas.join('') + '</ul></section>';
   };
@@ -4638,7 +4662,7 @@ async function renderPessoa() {
   if (!c) { $('pessoa-page').innerHTML = '<div class="empty">Pessoa não encontrada.</div>'; return; }
   $('pessoa-page').innerHTML = '<div class="loading">Carregando a ficha…</div>';
   if (fichaV2Ativa() && FX_PROC === null) FX_PROC = await fxCarregaProcessos();
-  if (fichaV2Ativa() && FX_QUANDO === null) { try { var rq = await fetch('guias-quando.json?v=2026-11-17.24'); FX_QUANDO = rq.ok ? await rq.json() : {}; } catch (e) { FX_QUANDO = {}; } }
+  if (fichaV2Ativa() && FX_QUANDO === null) { try { var rq = await fetch('guias-quando.json?v=2026-11-17.25'); FX_QUANDO = rq.ok ? await rq.json() : {}; } catch (e) { FX_QUANDO = {}; } }
   var r = await Promise.all([
     supabase.from('eventos').select('tipo,dados,criado_em').eq('contato_id', c.id).order('criado_em', { ascending: false }).limit(200),
     supabase.from('consentimentos').select('finalidade,aceito,texto,origem,criado_em').eq('contato_id', c.id).order('criado_em', { ascending: false }),
@@ -6549,7 +6573,7 @@ async function enviarLinkPagamento(btn) {
 var FX_DETALHE = null, qdTimer = null, qdOrigem = null, qdAberto = false;
 async function fxCarregaDetalhe() {
   if (FX_DETALHE) return FX_DETALHE;
-  try { var r = await fetch('guias-detalhe.json?v=2026-11-17.24'); FX_DETALHE = r.ok ? await r.json() : {}; } catch (e) { FX_DETALHE = {}; }
+  try { var r = await fetch('guias-detalhe.json?v=2026-11-17.25'); FX_DETALHE = r.ok ? await r.json() : {}; } catch (e) { FX_DETALHE = {}; }
   return FX_DETALHE;
 }
 function fxFechaQuadro() {
@@ -6995,3 +7019,11 @@ document.addEventListener('keydown', function (e) {
   var a = document.activeElement, i = fs.indexOf(a);
   if (e.shiftKey && i <= 0) { e.preventDefault(); fs[fs.length - 1].focus(); } else if (!e.shiftKey && (i === fs.length - 1 || i < 0)) { e.preventDefault(); fs[0].focus(); }
 });
+// Página inicial: escolher ou trocar o item de uma vaga direto no seletor.
+async function fxHomeMuda(sel) {
+  var troca = sel.dataset && sel.dataset.homeTroca, add = sel.dataset && sel.dataset.homeAdd;
+  if (!sel.value) return;
+  if (troca) { var p = troca.split(':'); return casoHomeTroca(p[0], p.slice(1).join(':'), sel.value); }
+  if (add) return casoHome('home-add', add + ':' + sel.value, null);
+}
+document.addEventListener('change', function (e) { var t = e.target; if (t && t.matches && t.matches('select[data-home-troca], select[data-home-add]')) fxHomeMuda(t); });

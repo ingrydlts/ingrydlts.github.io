@@ -39,7 +39,7 @@ const supabase = { from: qb, auth: { getSession: async () => ({ data: { session:
   channel: (nome) => { const ch = { nome, ons: [], on(t, o, cb) { ch.ons.push({ o, cb }); return ch; }, subscribe(cb) { ch.status = cb; return ch; } }; canais.push(ch); return ch; }, removeChannel() {} };
 const store = {};
 const mod = new Function('supabase', 'ES', 'TX', 'EE', 'EQ', 'JR', 'FX', 'FH', 'MT', 'document', 'window', 'location', 'localStorage', 'setInterval', 'clearInterval',
-  src + '\n;return { state, setC: function (v) { C = v; }, renderPessoa, eventText, pararAoVivo, fxHomeCorpo: fxHomeCorpo };')(
+  src + '\n;return { state, setC: function (v) { C = v; }, renderPessoa, eventText, pararAoVivo, fxHomeCorpo: fxHomeCorpo, fxHomeMuda: fxHomeMuda };')(
   supabase, {}, TXMOD, { iniciar() {}, depois() {}, campoMudou() {} }, {}, {}, FXMOD, FHMOD, MTMOD, document, { addEventListener() {} }, { href: '' }, { getItem: (k) => store[k] ?? null, setItem: (k, v) => { store[k] = v; } }, () => 1, () => {});
 
 
@@ -308,18 +308,32 @@ console.log('\n== Página inicial: "Adicionar na home" ==');
   writes.length = 0; await click({ caso: 'home-add', id: 'checklist:ofii_validacao' });
   const wc = writes.find((x) => x.table === 'caso_home');
   check('passo do checklist grava o step_key (e não board_id)', wc && wc.row.categoria === 'checklist' && wc.row.step_key === 'ofii_validacao' && !('board_id' in wc.row));
-  // espaço cheio (2 de 2)
-  cfg([{ id: 1, categoria: 'espaco', step_key: null, board_id: 21, ordem: 0 }, { id: 2, categoria: 'espaco', step_key: null, board_id: 23, ordem: 1 }]); await pagina();
+  // espaço cheio (3 de 3)
+  cfg([{ id: 1, categoria: 'espaco', step_key: null, board_id: 21, ordem: 0 }, { id: 2, categoria: 'espaco', step_key: null, board_id: 23, ordem: 1 }, { id: 3, categoria: 'espaco', step_key: null, board_id: 24, ordem: 2 }]); await pagina();
   writes.length = 0; await click({ caso: 'home-add', id: 'espaco:99' });
-  check('espaço cheio: não grava e avisa para tirar um', writes.filter((x) => x.table === 'caso_home').length === 0 && /2 de 2 em Espaço/.test(els.get('toast').textContent) && /Tire um/.test(els.get('toast').textContent));
+  check('espaço cheio: não grava e avisa para tirar um', writes.filter((x) => x.table === 'caso_home').length === 0 && /3 de 3 em Espaço/.test(els.get('toast').textContent) && /Tire um/.test(els.get('toast').textContent));
   check('quem já está na home mostra "Na home ✓ · tirar"', /data-caso="home-del" data-id="espaco:21"/.test(html()));
   writes.length = 0; await click({ caso: 'home-del', id: 'espaco:21' });
   const wd = writes.find((x) => x.table === 'caso_home');
   check('tirar apaga a linha certa', wd && wd.op === 'delete' && wd.filtros.join() === 'id=1');
   { const corpo = mod.fxHomeCorpo(base);
-    check('a sessão Página inicial: 3 blocos (Checklist, Espaço, Guias) com a contagem em pontos ("n de máx", "cheio")', /aria-label="0 de 3"/.test(corpo) && /aria-label="2 de 2" title="2 de 2 \(cheio\)"/.test(corpo) && /aria-label="0 de 2"/.test(corpo) && /<h4>Em seguida<\/h4>/.test(corpo) && /<h4>Guias<\/h4>/.test(corpo));
+    check('a sessão Página inicial: 3 blocos (Em seguida, Espaço, Guias), no máximo 3 itens cada, com a contagem em pontos ("n de máx", "cheio")', (corpo.match(/aria-label="0 de 3"/g) || []).length === 2 && /aria-label="3 de 3" title="3 de 3 \(cheio\)"/.test(corpo) && /<h4>Em seguida<\/h4>/.test(corpo) && /<h4>Guias<\/h4>/.test(corpo));
     check('item não publicado é avisado (ponto âmbar com rótulo); item removido também; cada um tem o ícone de tirar', /fx-dot mid[^>]*aria-label="Rascunho: ela só vê depois que você publicar"/.test(corpo) && /o item não existe mais/.test(corpo) && /data-caso="home-del" data-id="espaco:21"[^>]*aria-label="Tirar da página inicial"/.test(corpo));
-    check('espaços livres são uma linha só e abrem a sessão certa (sem fechar; Guias leva ao Espaço)', (corpo.match(/class="fx-hm-add"/g) || []).length === 5 && /data-fx="abrir" data-id="checklist"/.test(corpo) && /data-fx="abrir" data-id="espaco"/.test(corpo) && !/data-id="guias"/.test(corpo) && !/Espaço livre/.test(corpo)); }
+    check('vaga livre com opções vira um seletor ("＋ Escolher…"); sem opções, uma linha que abre a sessão (nunca fecha)', (corpo.match(/<select class="fx-hm-add" data-home-add="guias"/g) || []).length === 3 && /<option value="20">Bilan da nossa conversa · rascunho<\/option>/.test(corpo) && !/<option value="22">/.test(corpo) && (corpo.match(/<button type="button" class="fx-hm-add" data-fx="abrir" data-id="checklist"/g) || []).length === 3 && !/Espaço livre/.test(corpo));
+    writes.length = 0; await mod.fxHomeMuda({ dataset: { homeAdd: 'guias' }, value: '20' });
+    const wa = writes.find((x) => x.table === 'caso_home');
+    check('escolher no seletor da vaga livre grava na categoria certa (guias, board 20)', wa && wa.op === 'insert' && wa.row.categoria === 'guias' && wa.row.board_id === 20);
+    writes.length = 0; await mod.fxHomeMuda({ dataset: { homeAdd: 'guias' }, value: '' });
+    check('"＋ Escolher…" sem valor não grava nada', writes.filter((x) => x.table === 'caso_home').length === 0); }
+  { fixture({ itens: [ITENS[0], ITENS[1], ITENS[2], { id: 25, tipo: 'escola', titulo: 'DU Aix', resumo: null, dados: {}, estado: 'publicado', ordem: 3, link: null, versao: 1 }] });
+    respostas.caso_home = { data: [{ id: 1, categoria: 'espaco', step_key: null, board_id: 21, ordem: 0 }], error: null }; await pagina();
+    const corpo2 = mod.fxHomeCorpo(base);
+    check('cada item da home é um seletor que oferece os outros itens do mesmo tipo (trocar ali mesmo)', /<select class="fx-hm-sel" data-home-troca="espaco:21"[^>]*>[\s\S]*?<option value="25">DU Aix<\/option>/.test(corpo2));
+    writes.length = 0; await mod.fxHomeMuda({ dataset: { homeTroca: 'espaco:21' }, value: '25' });
+    const wt = writes.find((x) => x.table === 'caso_home');
+    check('trocar atualiza a MESMA vaga (não apaga e cria): board 25, linha id=1', wt && wt.op === 'update' && wt.row.board_id === 25 && wt.filtros.join() === 'id=1');
+    writes.length = 0; await mod.fxHomeMuda({ dataset: { homeTroca: 'espaco:21' }, value: '21' });
+    check('escolher o mesmo item não grava', writes.filter((x) => x.table === 'caso_home').length === 0); }
   cfg(null); await pagina();
   check('sem o SQL, a sessão pede o crm-caso-home.sql', /crm-caso-home\.sql/.test(mod.fxHomeCorpo(base)));
   writes.length = 0; await click({ caso: 'home-add', id: 'guias:20' });

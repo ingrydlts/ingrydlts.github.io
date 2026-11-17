@@ -496,7 +496,7 @@ export function inicioDoApp(o) {
   if (escolas.length) atalhos.push({ tit: 'Escolas para contatar', sub: escolas.length + (escolas.length === 1 ? ' escola' : ' escolas') });
   if (board.some((b) => b.tipo === 'bilan')) atalhos.push({ tit: 'O que combinamos na conversa', sub: 'o bilan da nossa conversa' });
   if (board.some((b) => b.tipo === 'modelo')) atalhos.push({ tit: 'Mensagem pronta para as escolas', sub: 'copie e envie' });
-  // Em destaque (a página inicial do CRM): só o que ela vê — passo do checklist que existe e item do board publicado, nos limites 3 / 2 / 2.
+  // Em destaque (a página inicial do CRM): só o que ela vê — passo do checklist que existe e item do board publicado, nos limites 3 / 3 / 3.
   const hm = x.home || [], vivos = (x.itens || []).filter((i) => i.status !== 'arquivado');
   const porCat = (c) => hm.filter((h) => h.categoria === c).sort((a, b) => (a.ordem || 0) - (b.ordem || 0) || a.id - b.id);
   const doBoard = (c, max) => porCat(c).map((h) => board.find((b) => b.id === h.board_id)).filter(Boolean).slice(0, max).map((b) => ({ titulo: b.titulo, sub: b.resumo || (b.tipo === 'marco' && b.dados && b.dados.data ? dataBR(b.dados.data) : ''), tipo: b.tipo, conteudo: /^https:\/\//i.test(b.link || '') ? 'link' : b.arquivo_caminho ? 'arquivo' : b.descricao ? 'descricao' : '' }));
@@ -539,7 +539,7 @@ export function espacoDoApp(o) {
 // ---------- Página inicial: os destaques que a Ingryd escolhe para o Início dela ----------
 // Três categorias, cada uma com limite fixo (o banco confere de novo, crm-caso-home.sql): 3 passos do checklist, 2 itens do Espaço, 2 dos Guias.
 // A categoria vem de onde o item mora no CRM: marco e escola são da sessão Espaço; bilan, documento e mensagem pronta, da sessão Guias.
-export const HOME_LIMITES = { checklist: 3, espaco: 2, guias: 2 };
+export const HOME_LIMITES = { checklist: 3, espaco: 3, guias: 3 };
 export const HOME_ROTULOS = { checklist: 'Checklist', espaco: 'Espaço', guias: 'Guias' };
 export function categoriaHomeDoBoard(tipo) { return tipo === 'marco' || tipo === 'escola' ? 'espaco' : tipo === 'bilan' || tipo === 'documento' || tipo === 'modelo' ? 'guias' : null; }
 // home = linhas de caso_home { id, categoria, step_key, board_id, ordem }. Devolve { ok, motivo }.

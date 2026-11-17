@@ -79,6 +79,13 @@ async function main() {
   const g1 = await bi(ana, 'documento'), g2 = await bi(ana, 'bilan'), g3 = await bi(ana, 'modelo');
   await home(ana, 'guias', { board: g1 }); await home(ana, 'guias', { board: g2 });
   check('guias: 2 cabem, o 3º não', await falha(() => home(ana, 'guias', { board: g3 }), 'home_cheia'));
+  const lim3 = readFileSync(path.resolve(HERE, '../crm-caso-home-limite3.sql'), 'utf8');
+  check('crm-caso-home-limite3.sql roda e é idempotente (2 vezes)', (await attempt(() => db.exec(lim3))).ok && (await attempt(() => db.exec(lim3))).ok);
+  const e4 = await bi(ana, 'escola'), g4 = await bi(ana, 'bilan');
+  await home(ana, 'espaco', { board: e3 }); await home(ana, 'guias', { board: g3 });
+  check('depois do limite3: Espaço e Guias aceitam o 3º item e recusam o 4º', await falha(() => home(ana, 'espaco', { board: e4 }), 'home_cheia') && await falha(() => home(ana, 'guias', { board: g4 }), 'home_cheia'));
+  check('o checklist continua em 3', await falha(() => home(ana, 'checklist', { step: 'd' }), 'home_cheia'));
+  await db.query("delete from caso_home where board_id in ($1,$2)", [e3, g3]);   // volta ao estado que os testes seguintes esperam
   check('o limite é por pessoa: a Bia tem o seu', (await attempt(() => home(bia, 'checklist', { step: 'a' }))).ok);
   check('o mesmo passo não entra duas vezes', await falha(() => home(bia, 'checklist', { step: 'a' })));
 

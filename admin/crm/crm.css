@@ -1971,3 +1971,11 @@ body.qd-aberto{overflow:hidden}
   .qd-acoes{width:100%} .qd-acoes .btn{flex:1; justify-content:center; min-height:46px}
 }
 @media (prefers-reduced-motion:no-preference){ .qd{animation:qd-entra .18s ease-out} @keyframes qd-entra{from{opacity:0; transform:translate(-50%,-47%)}} @media (max-width:640px){ .qd{animation:none} } }
+
+/* Página inicial: cada vaga é um seletor (troca o item ali mesmo) */
+.fx-hm-sel,.fx-hm-add{max-width:100%; font:inherit}
+.fx-hm-sel{width:100%; padding:2px 22px 2px 0; border:0; border-radius:6px; background:transparent url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6' fill='none' stroke='%23888' stroke-width='1.6' stroke-linecap='round'%3E%3Cpath d='M1 1l4 4 4-4'/%3E%3C/svg%3E") no-repeat right 4px center; color:var(--ink); font-size:13.5px; font-weight:600; line-height:1.35; text-overflow:ellipsis; appearance:none; -webkit-appearance:none; cursor:pointer}
+.fx-hm-sel:hover,.fx-hm-sel:focus-visible{background-color:var(--sunk)}
+select.fx-hm-add{width:100%; min-height:38px; padding:0 12px; border:1px dashed var(--line-2); border-radius:10px; background:transparent; color:var(--ink-3); font-size:12.5px; font-weight:600; cursor:pointer}
+select.fx-hm-add:hover,select.fx-hm-add:focus-visible{border-color:var(--moss); color:var(--ink); background:var(--moss-soft)}
+@media (max-width:640px){ select.fx-hm-add{min-height:44px} .fx-hm-sel{min-height:32px} }
