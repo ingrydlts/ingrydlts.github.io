@@ -2,15 +2,15 @@
 // Nada de service_role aqui. O banco é db/crm-fase2.sql; o desenho é o artefato "CRM Por Dentro".
 // Tudo que vem do banco é texto de terceiros (nome, e-mail, pergunta): passa sempre por esc().
 import { supabase } from '/assets/js/supabase-client.js';
-import * as TX from './taxonomia.js?v=2026-11-17.5';   // páginas, famílias e agrupamento dos modelos
-import * as ES from './estudio.js?v=2026-11-17.5';   // os blocos do estúdio de e-mails (entregas 2 e 3)
-import * as EE from './editor-email.js?v=2026-11-17.5';
-import * as EQ from './editor-quem.js?v=2026-11-17.5';
-import * as JR from './jornada.js?v=2026-11-17.5';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
-import * as FX from './ficha.js?v=2026-11-17.5';   // ficha v2: lógica pura (fila, démarches, funil, ações)
-import * as FH from './ficha-html.js?v=2026-11-17.5';   // ficha v2: HTML puro
-import * as PN from './panorama.js?v=2026-11-17.5';
-import * as MT from './montagem.js?v=2026-11-17.5';   // Montagem do espaço a partir do transcript (lógica e HTML puros)   // Panorama dela e O que ela trouxe (lógica e HTML puros)
+import * as TX from './taxonomia.js?v=2026-11-17.6';   // páginas, famílias e agrupamento dos modelos
+import * as ES from './estudio.js?v=2026-11-17.6';   // os blocos do estúdio de e-mails (entregas 2 e 3)
+import * as EE from './editor-email.js?v=2026-11-17.6';
+import * as EQ from './editor-quem.js?v=2026-11-17.6';
+import * as JR from './jornada.js?v=2026-11-17.6';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
+import * as FX from './ficha.js?v=2026-11-17.6';   // ficha v2: lógica pura (fila, démarches, funil, ações)
+import * as FH from './ficha-html.js?v=2026-11-17.6';   // ficha v2: HTML puro
+import * as PN from './panorama.js?v=2026-11-17.6';
+import * as MT from './montagem.js?v=2026-11-17.6';   // Montagem do espaço a partir do transcript (lógica e HTML puros)   // Panorama dela e O que ela trouxe (lógica e HTML puros)
 
 var PERSONAS = {
   au_pair_estudante: 'Au pair → estudante', campus_france: 'Campus France', alternancia_emprego: 'Alternância / emprego',
@@ -1996,7 +1996,7 @@ async function buscaCaso(cid) {
   var r = await Promise.all([
     supabase.from('caso_achados').select('id,chave,tipo,texto,origem,certeza,estado,conferido_em').eq('contato_id', cid).order('id', { ascending: true }).limit(80),
     supabase.from('caso_acoes').select(CASO_ACO_COLS + ',' + CASO_ACO_COLS_MONT).eq('contato_id', cid).order('n', { ascending: true }).limit(150),
-    supabase.from('board_itens').select('id,tipo,titulo,resumo,dados,estado,ordem,link,versao').eq('contato_id', cid).order('ordem', { ascending: true }).limit(80),
+    supabase.from('board_itens').select('id,tipo,titulo,resumo,dados,estado,ordem,link,versao,descricao,arquivo_caminho').eq('contato_id', cid).order('ordem', { ascending: true }).limit(80),   // descricao/arquivo: db/crm-caso-arquivos.sql
     supabase.from('caso_avisos').select('id,tipo,titulo,texto,resposta_tipo,grava_em,modo,dias_apos,ordem,pausa_dias,liberar_em,liberado_em,estado,resposta,adiado_ate').eq('contato_id', cid).order('ordem', { ascending: true }).limit(40),
     supabase.from('consentimentos').select('aceito,criado_em').eq('contato_id', cid).eq('finalidade', 'servico').order('criado_em', { ascending: false }).limit(1),
     supabase.from('escolas_dela').select('id,nome,link,nota,criterios,criado_em').eq('contato_id', cid).order('criado_em', { ascending: true }).limit(40),   // db/crm-escolas-dela.sql; sem ele, a seção some
@@ -2004,6 +2004,7 @@ async function buscaCaso(cid) {
   ]);
   // Sem as colunas da montagem (SQL ainda não rodado), volta à busca antiga: o caso continua abrindo.
   if (r[1].error) r[1] = await supabase.from('caso_acoes').select(CASO_ACO_COLS).eq('contato_id', cid).order('n', { ascending: true }).limit(150);
+  if (r[2].error) r[2] = await supabase.from('board_itens').select('id,tipo,titulo,resumo,dados,estado,ordem,link,versao').eq('contato_id', cid).order('ordem', { ascending: true }).limit(80);   // sem crm-caso-arquivos.sql: abre sem o upload
   var err = r[0].error || r[1].error || r[2].error || r[3].error || null;
   return { cid: cid, err: err, ach: r[0].data || [], aco: r[1].data || [], itens: r[2].data || [], avs: r[3].data || [], consent: !!(r[4].data && r[4].data[0] && r[4].data[0].aceito === true), escolasDela: r[5] && !r[5].error ? (r[5].data || []) : [], listas: r[6] && !r[6].error ? (r[6].data || []) : [], ed: null, agenda: null };
 }
@@ -2054,7 +2055,7 @@ function casoItemResumo(it) {
   var d = it.dados || {};
   if (it.tipo === 'marco') return d.data ? fmtDay(d.data) + (d.a_confirmar ? ' (a confirmar)' : '') : (d.nota || 'a confirmar');
   if (it.tipo === 'bilan') return ((d.secoes || []).length) + ' seções';
-  if (it.tipo === 'documento') return d.direcao === 'recebe' ? 'ela recebe de você' : 'ela reúne';
+  if (it.tipo === 'documento') return d.direcao === 'recebe' ? 'ela recebe de você' + (it.arquivo_caminho ? ' · arquivo ' + casoNomeArquivo(it.arquivo_caminho) : it.link ? ' · link' : ' · sem arquivo ainda') + (it.descricao ? ' · com descrição' : '') : 'ela reúne';
   return it.resumo || '';
 }
 // O editor de um item do board. O que a pessoa vê (nome, data, escola) você corrige aqui: quando ela sinalizar "algo está errado", é este o lugar.
@@ -2102,6 +2103,10 @@ function casoItemCampos(it) {
       casoCampo('Palavras-chave (até 6, separadas por vírgula: é o que faz ela lembrar do assunto)', '<input id="caso-ed-palavras" class="t" maxlength="200" style="width:100%" value="' + esc((d.palavras || []).join(', ')) + '">') +
       casoResumoCampo(it.resumo, 'Resumo de uma linha (opcional)');
   }
+  if (it.tipo === 'documento' && d.direcao === 'recebe') {
+    return tit('Nome do documento') + casoResumoCampo(it.resumo) + casoDescricaoCampo(it.descricao, 'caso-ed-') +
+      casoCampo('Link (Notion público ou privado, Drive… https://…)', '<input id="caso-ed-link" class="t" maxlength="500" placeholder="https://…" style="width:100%" value="' + esc(it.link || '') + '">') + casoArquivoCampo(it);
+  }
   return tit('Título') + casoCampo('Link (opcional)', '<input id="caso-ed-link" class="t" maxlength="500" placeholder="https://…" style="width:100%" value="' + esc(it.link || '') + '">');
 }
 function casoResumoCampo(valor, rot) { return casoCampo(rot || 'O que é (uma linha, ela lê antes de abrir)', '<input id="caso-ed-resumo" class="t" maxlength="240" style="width:100%" value="' + esc(valor || '') + '">'); }
@@ -2109,7 +2114,7 @@ function casoResumoCampo(valor, rot) { return casoCampo(rot || 'O que é (uma li
 function casoNovoHtml(tipo) {
   var d = new Date().toISOString().slice(0, 10);
   var campos = tipo === 'documento'
-    ? casoCampo('Nome do documento', '<input id="caso-novo-titulo" class="t" maxlength="120" style="width:100%" placeholder="ex.: PDF das escolas de FLE">') + casoResumoCampoNovo() + casoCampo('Arquivo (link https://…; vazio = "chega em breve")', '<input id="caso-novo-link" class="t" maxlength="500" style="width:100%">')
+    ? casoCampo('Nome do documento', '<input id="caso-novo-titulo" class="t" maxlength="120" style="width:100%" placeholder="ex.: PDF das escolas de FLE">') + casoResumoCampoNovo() + casoDescricaoCampo('', 'caso-novo-') + casoCampo('Link (Notion público ou privado, Drive… https://…)', '<input id="caso-novo-link" class="t" maxlength="500" style="width:100%">') + casoArquivoCampo(null, 'caso-novo-arq') + '<p class="sub" style="margin:6px 0 0">Sem link nem arquivo, ela vê “chega em breve”. Notion privado: ela precisa ter acesso à página.</p>'
     : tipo === 'modelo'
     ? casoCampo('Nome da mensagem', '<input id="caso-novo-titulo" class="t" maxlength="120" style="width:100%" placeholder="ex.: E-mail para as escolas">') + casoResumoCampoNovo() +
       casoCampo('Assunto (e-mail)', '<input id="caso-novo-assunto" class="t" maxlength="150" style="width:100%">') + casoCampo('Texto', '<textarea id="caso-novo-corpo" maxlength="3000" rows="6" style="width:100%"></textarea>') + casoCampo('Tradução (opcional)', '<textarea id="caso-novo-traducao" maxlength="3000" rows="3" style="width:100%"></textarea>')
@@ -2119,6 +2124,28 @@ function casoNovoHtml(tipo) {
       casoCampo('O que combinamos (uma frase por linha)', '<textarea id="caso-novo-texto" maxlength="2000" rows="5" style="width:100%"></textarea>');
   return '<div class="feeditem"><div class="fbody" style="width:100%"><b>Novo: ' + esc(tipo === 'documento' ? 'documento que a equipe manda' : tipo === 'modelo' ? 'mensagem pronta' : 'bilan de uma conversa') + '</b>' + campos +
     '<div style="display:flex;gap:6px;margin-top:8px">' + casoBtn('salvar-novo', tipo, 'Criar') + casoBtn('cancelar', 0, 'Cancelar') + '</div></div></div>';
+}
+// Arquivo do documento (PDF ou MD) no bucket privado `casos-arquivos` (db/crm-caso-arquivos.sql). Caminho: <contato>/<uuid>-<nome>.
+var CASO_ARQ_TIPOS = { pdf: 'application/pdf', md: 'text/markdown', markdown: 'text/markdown', txt: 'text/plain' }, CASO_ARQ_MAX = 10 * 1024 * 1024;
+function casoArquivoCampo(it, idp) {
+  var tem = it && it.arquivo_caminho;
+  return casoCampo('Arquivo (PDF ou MD, até 10 MB) — ou use o link do Notion/Drive acima', '<input id="' + (idp || 'caso-arq') + '" type="file" accept=".pdf,.md,.markdown,.txt,application/pdf,text/markdown,text/plain" style="width:100%">') +
+    (tem ? '<label style="display:flex;gap:8px;align-items:center;margin-top:6px"><input id="caso-arq-tirar" type="checkbox"> <span>Tirar o arquivo atual (<b>' + esc(casoNomeArquivo(it.arquivo_caminho)) + '</b>)</span></label>' : '');
+}
+function casoNomeArquivo(caminho) { return String(caminho || '').split('/').pop().replace(/^[0-9a-f-]{36}-/, ''); }
+function casoDescricaoCampo(valor, idp) {
+  return casoCampo('Descrição longa (opcional: ela lê e copia; serve para um modelo de e-mail, por exemplo)', '<textarea id="' + idp + 'descricao" maxlength="8000" rows="8" style="width:100%">' + esc(valor || '') + '</textarea>');
+}
+// Sobe o arquivo escolhido. Devolve { caminho } ou { erro }. Sem arquivo escolhido: {}.
+async function casoSobeArquivo(contatoId, idp) {
+  var inp = $(idp || 'caso-arq'), f = inp && inp.files && inp.files[0]; if (!f) return {};
+  var ext = (f.name.split('.').pop() || '').toLowerCase(), tipo = CASO_ARQ_TIPOS[ext];
+  if (!tipo) return { erro: 'Use PDF, MD ou TXT' };
+  if (f.size > CASO_ARQ_MAX) return { erro: 'O arquivo passa de 10 MB' };
+  var base = f.name.replace(/\.[^.]+$/, '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9._-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60) || 'arquivo';
+  var caminho = contatoId + '/' + (window.crypto && crypto.randomUUID ? crypto.randomUUID() : String(Date.now())) + '-' + base + '.' + ext;
+  var up = await supabase.storage.from('casos-arquivos').upload(caminho, f, { contentType: tipo, upsert: false });
+  return up.error ? { erro: 'Não consegui subir o arquivo (' + (up.error.message || 'erro') + '). O SQL crm-caso-arquivos.sql já rodou?' } : { caminho: caminho };
 }
 function casoResumoCampoNovo() { return casoCampo('O que é (uma linha, ela lê antes de abrir)', '<input id="caso-novo-resumo" class="t" maxlength="240" style="width:100%">'); }
 function casoBarraNovo(k, so) {
@@ -2288,6 +2315,9 @@ async function casoAcao(acao, id, t) {
     if (tnovo === 'documento') {
       var lk = vn('caso-novo-link'); if (lk && !/^https:\/\//.test(lk)) return fl('O link precisa começar com https://');
       dn = { direcao: 'recebe', rotulo: tn.slice(0, 120) }; linha.link = lk || null; linha.resumo = vn('caso-novo-resumo').slice(0, 240) || null; linha.ordem = 20;
+      var dsc = vn('caso-novo-descricao'); if (dsc) linha.descricao = dsc.slice(0, 8000);
+      var sb = await casoSobeArquivo(state.sel, 'caso-novo-arq'); if (sb.erro) return fl(sb.erro);
+      if (sb.caminho) { linha.arquivo_caminho = sb.caminho; linha.arquivo_anexado_em = new Date().toISOString(); }
     } else if (tnovo === 'modelo') {
       var cp = vn('caso-novo-corpo'); if (!cp) return fl('Escreva o texto da mensagem');
       dn = { corpo: cp.slice(0, 3000) }; if (vn('caso-novo-assunto')) dn.assunto = vn('caso-novo-assunto').slice(0, 150); if (vn('caso-novo-traducao')) dn.traducao = vn('caso-novo-traducao').slice(0, 3000);
@@ -2338,10 +2368,17 @@ async function casoAcao(acao, id, t) {
       var palb = casoPalavras(val('caso-ed-palavras')); if (palb === null) return falha('Use até 6 palavras-chave, de até 30 letras cada');
       if (palb.length) dados.palavras = palb; else delete dados.palavras;
     }
-    var mud = { titulo: tt.slice(0, 120), dados: dados, link: ln || null };
+    var mud = { titulo: tt.slice(0, 120), dados: dados, link: ln || null }, arqAntigo = null;
     if ($('caso-ed-resumo')) mud.resumo = val('caso-ed-resumo').slice(0, 240) || null;
+    if ($('caso-ed-descricao')) mud.descricao = val('caso-ed-descricao').slice(0, 8000) || null;
+    if (itm.tipo === 'documento' && $('caso-arq')) {
+      var sbe = await casoSobeArquivo(itm.contato_id || state.sel); if (sbe.erro) return falha(sbe.erro);
+      if (sbe.caminho) { arqAntigo = itm.arquivo_caminho || null; mud.arquivo_caminho = sbe.caminho; mud.arquivo_anexado_em = new Date().toISOString(); }
+      else if ($('caso-arq-tirar') && $('caso-arq-tirar').checked) { arqAntigo = itm.arquivo_caminho; mud.arquivo_caminho = null; mud.arquivo_anexado_em = null; }
+    }
     if (itm.estado === 'proposto') mud.estado = 'revisado';   // você mexeu: é seu. Ler o Notion de novo não desfaz.
     r = await supabase.from('board_itens').update(mud).eq('id', nid); k.ed = null;
+    if (!r.error && arqAntigo) { try { await supabase.storage.from('casos-arquivos').remove([arqAntigo]); } catch (e) { /* sobra de arquivo não quebra nada */ } }
     if (!r.error) { await casoRecarrega(); toast(itm.estado === 'publicado' ? 'Salvo. Ela já vê a correção.' : 'Salvo.'); return; }
   }
   else if (acao === 'ag-dias') { var dd = $('caso-ag-dias'); r = await supabase.rpc('crm_aviso_agendar', { p_id: nid, p_quando: null, p_dias_apos: Number(dd ? dd.value : 1) }); k.agenda = null; }
@@ -3622,7 +3659,7 @@ function fxHeaderHtml(c, d) {
 // Catálogo de démarches (cópia do app, processos.json): carregado uma vez; sem ele, tudo cai na démarche padrão.
 var FX_PROC = null;
 async function fxCarregaProcessos() {
-  try { var r = await fetch('processos.json?v=2026-11-17.5'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
+  try { var r = await fetch('processos.json?v=2026-11-17.6'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
 }
 // A sessão Checklist: pílulas por démarche, os 4 mais urgentes, pasta do Drive privada e "Ver mais desta sessão".
 // Os passos que a montagem do espaço propôs para ela, com démarche, subitens e origem: o mesmo detalhe do Checklist. Existem antes de ela ter conta.
