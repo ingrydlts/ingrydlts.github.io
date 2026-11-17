@@ -68,6 +68,7 @@
     "test:panorama": "node panorama.test.mjs",
     "test:retrabalho-ui": "node crm-retrabalho-ui.test.mjs",
     "test:catalogo": "node crm-caso-catalogo.test.mjs",
+    "test:arquivos": "node crm-caso-arquivos.test.mjs",
     "test:listas": "node crm-caso-listas.test.mjs",
     "test:montagem": "node crm-montagem.test.mjs",
     "test:montagem-aplicar": "node crm-montagem-aplicar.test.mjs",

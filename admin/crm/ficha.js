@@ -3,8 +3,8 @@
 
 // ---------- Urgência dos passos do checklist (spec §5.4) ----------
 // ChkItem = { step_key, category, label, status, due_date, sort_order } (colunas de buscaChecklist em crm.js).
-export { calcularUso } from './ficha-uso.js?v=2026-11-17.4';
-export * as funil from './funil.js?v=2026-11-17.4';   // Funil por próxima ação (lógica pura); o crm.js usa FX.funil
+export { calcularUso } from './ficha-uso.js?v=2026-11-17.6';
+export * as funil from './funil.js?v=2026-11-17.6';   // Funil por próxima ação (lógica pura); o crm.js usa FX.funil
 const DIA = 86400e3;
 function diasEntre(hoje, data) {
   const a = Date.parse(hoje + 'T00:00:00Z'), b = Date.parse(String(data).slice(0, 10) + 'T00:00:00Z');
@@ -61,6 +61,29 @@ export function demarchesDe(mapa, persona, itens) {
 export function filtrarPorDemarche(mapa, itens, k) {
   if (!k || k === 'todas') return (itens || []).slice();
   return (itens || []).filter((i) => processoDoItem(mapa, i.step_key, i.category) === k);
+}
+
+// ---------- A conta do checklist, igual à do app ----------
+// Uma regra só para todo "X de Y" do CRM (cabeçalho, pílula "Todas", prévia). Porte do que o app faz:
+//  · os passos que ela vê são os de checklist_items (sem os arquivados) + as ações da equipe que meu_caso() entrega:
+//    dono 'ela', canal 'plataforma', publicada, e (sem lista, ou de uma lista publicada); as "na mesma ligação" não contam (absorvido);
+//  · as ações da equipe só aparecem na aba principal (a primeira démarche que ainda tem passo aberto); numa aba só dos itens, essas ações não entram.
+const absorvidoApp = (p) => !!p && /mesma\s+liga[cç][aã]o/i.test(p.prazo_texto || '');
+export function passosPublicadosDoApp(acoes, listas) {
+  const pub = new Set((listas || []).filter((l) => l && l.estado === 'publicado').map((l) => l.chave));
+  return (acoes || []).filter((a) => a && a.dono === 'ela' && a.canal === 'plataforma' && a.publicada_em && (!a.lista_chave || pub.has(a.lista_chave)) && !absorvidoApp(a));
+}
+// dem = 'todas' (tudo o que o app mostra, somando as abas) ou a chave da démarche (como a aba dela no app).
+// Devolve { feitos, total, itens (checklist_items da vista), passos (ações publicadas da vista), principal }.
+export function contaChecklistApp(o) {
+  const x = o || {}, ativos = (x.itens || []).filter((i) => i.status !== 'arquivado');
+  const grupos = demarchesDe(x.mapa, x.persona, ativos), principal = ((grupos.find((g) => g.feitos < g.total) || grupos[0]) || {}).k || null;
+  const todosPassos = passosPublicadosDoApp(x.acoes, x.listas);
+  const dem = !x.dem || x.dem === 'todas' || !grupos.some((g) => g.k === x.dem) ? 'todas' : x.dem;
+  const itens = filtrarPorDemarche(x.mapa, ativos, dem);
+  const passos = dem === 'todas' || dem === principal ? todosPassos : [];
+  const feitos = itens.filter((i) => i.status === 'concluido').length + passos.filter((a) => a.estado === 'concluida').length;
+  return { dem, principal, itens, passos, feitos, total: itens.length + passos.length };
 }
 
 // ---------- Funil de conversão e aba padrão (spec §3.1) ----------
