@@ -2967,7 +2967,7 @@ async function pcCarregarDados(cid) {
     if (nt.status === 'pendente') { if (pc.estado !== 'proposta') { pc.prop = { id: nt.id, proposta: nt.proposta, reutilizada: false }; pc.estado = 'proposta'; pc.sel = { campos: {}, sinais: {}, fila: {}, perg: {} }; pc.camadas = {}; } }
     else pc.notionAplicada = { id: nt.id, proposta: nt.proposta, quando: nt.criado_em };
   }
-  pintaPoscall(cid);
+  pintaPoscall(cid); pintaMont(cid);
 }
 // O alto da sessão "A ligação": anexar o arquivo da ligação transcrita (.txt, PDF ou imagem) e pedir a leitura da IA.
 function pcTopoHtml(c) {
@@ -2998,24 +2998,28 @@ function pcResumoAmigavel(txt) {
     return m ? '<p class="pc-rl"><span class="pc-rk">' + esc(m[1]) + '</span>' + esc(m[2]) + '</p>' : '<p class="pc-rp">' + esc(l) + '</p>';
   }).join('');
 }
-function pcPassosAmigavel(txt) {
+function pcPassosDados(txt) {
   var quem = { ela: [], ingryd: [], outros: [] }, linhas = String(txt || '').split('\n').map(function (x) { return x.trim(); }).filter(Boolean);
   linhas.forEach(function (l) {
     var re = /(^|[.\s])(Ela|Ingryd)\s*:\s*/gi, marcas = [], m;
     while ((m = re.exec(l))) marcas.push({ k: m[2].toLowerCase(), de: m.index + m[1].length, ini: m.index + m[0].length });
-    if (!marcas.length) { var o = /^([^:]{2,40}):\s*(.+)$/.exec(l); if (o) quem.outros.push('<b>' + esc(o[1]) + ':</b> ' + pcItensDe(o[2]).map(esc).join('; ')); else pcItensDe(l.replace(/^[-•*]\s*/, '')).forEach(function (x) { quem.outros.push(esc(x)); }); return; }
-    marcas.forEach(function (mk, i) { var fim = i + 1 < marcas.length ? marcas[i + 1].de : l.length; pcItensDe(l.slice(mk.ini, fim)).forEach(function (x) { quem[mk.k].push(esc(x)); }); });
+    if (!marcas.length) { var o = /^([^:]{2,40}):\s*(.+)$/.exec(l); if (o) quem.outros.push(o[1] + ': ' + pcItensDe(o[2]).join('; ')); else pcItensDe(l.replace(/^[-•*]\s*/, '')).forEach(function (x) { quem.outros.push(x); }); return; }
+    marcas.forEach(function (mk, i) { var fim = i + 1 < marcas.length ? marcas[i + 1].de : l.length; pcItensDe(l.slice(mk.ini, fim)).forEach(function (x) { quem[mk.k].push(x); }); });
   });
-  var col = function (t, arr) { return arr.length ? '<div class="dv-card"><div class="k">' + t + ' · ' + arr.length + '</div><ul class="dv-ul pc-ul">' + arr.map(function (x) { return '<li>' + x + '</li>'; }).join('') + '</ul></div>' : ''; };
+  return quem;
+}
+function pcPassosAmigavel(txt) {
+  var quem = pcPassosDados(txt);
+  var col = function (t, arr) { return arr.length ? '<div class="dv-card"><div class="k">' + t + ' · ' + arr.length + '</div><ul class="dv-ul pc-ul">' + arr.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul></div>' : ''; };
   var h = col('Com ela', quem.ela) + col('Comigo', quem.ingryd);
   if (!h && !quem.outros.length) return '<p class="sub" style="margin:0">Sem encaminhamentos ainda.</p>';
-  return '<div class="dv-grid">' + h + '</div>' + (quem.outros.length ? '<ul class="dv-ul pc-ul" style="margin-top:8px">' + quem.outros.map(function (x) { return '<li>' + x + '</li>'; }).join('') + '</ul>' : '');
+  return '<div class="dv-grid">' + h + '</div>' + (quem.outros.length ? '<ul class="dv-ul pc-ul" style="margin-top:8px">' + quem.outros.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul>' : '');
 }
 // O que a leitura entrega além de Resumo e Próximos passos: Resumo e Encaminhamentos legíveis e UM bloco só para pontos de atenção + o que confirmar.
 function pcQuadrosHtml(c) {
   var pc = pcEstado(c.id), p = pc.estado === 'proposta' && pc.prop && pc.prop.proposta && pc.prop.proposta.origem !== 'notion' ? pc.prop.proposta : null;
   var S = state.dos && state.dos.cid === c.id ? state.dos : null, dv = function (k) { return S ? String(dosValor(c, S.d, S.rasc || {}, k) || '') : ''; };
-  var h = '<h5 class="pc-h">Resumo</h5>' + pcResumoAmigavel(dv('ligacao_resumo')) + '<h5 class="pc-h">Encaminhamentos</h5>' + pcPassosAmigavel(dv('proximos_passos'));
+  var h = '<div class="pc-leitura"><h5 class="pc-h">Resumo</h5>' + pcResumoAmigavel(dv('ligacao_resumo')) + '<h5 class="pc-h">Encaminhamentos</h5>' + pcPassosAmigavel(dv('proximos_passos')) + '</div>';
   var aten = p ? (p.pontos_de_atencao || []) : [], pe = p ? (p.perguntas_para_ela || []) : [], conf = p ? (p.a_conferir || []) : [];
   var corpo = '';
   if (aten.length) corpo += '<p class="sub" style="margin:0 0 4px"><b>Pontos de atenção</b></p><ul class="dv-ul">' + aten.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul>';
@@ -3173,19 +3177,22 @@ function montEstado(cid) { if (!state.mont || state.mont.cid !== cid) state.mont
 function montTranscricao(c) { var S = state.dos && state.dos.cid === c.id ? state.dos : null; return { texto: String(dosValor(c, (S && S.d) || {}, (S && S.rasc) || {}, 'ligacao_transcricao') || '').trim(), notas: String(dosValor(c, (S && S.d) || {}, (S && S.rasc) || {}, 'ligacao_resumo') || '').trim() }; }
 // Sem transcrição colada, a Montagem lê a página do Notion da ligação: o link digitado agora ou a página já lida no Onboarding.
 function montNotionUrl(c) {
-  var pc = pcEstado(c.id), u = String(pc.notionUrl || '').trim(), n = pc.notionAplicada && pc.notionAplicada.proposta && pc.notionAplicada.proposta.notion;
+  var pc = pcEstado(c.id), u = String(pc.notionUrl || '').trim(), B = state.bilan && state.bilan.cid === c.id ? state.bilan : null;
+  // A página lida no Onboarding: vale a proposta aplicada, a pendente ou a que a ficha já carregou (state.bilan), o que vier primeiro.
+  var n = (pc.notionAplicada && pc.notionAplicada.proposta && pc.notionAplicada.proposta.notion) || (pc.prop && pc.prop.proposta && pc.prop.proposta.notion) || (B && B.proposta && B.proposta.notion);
   return /^https:\/\//i.test(u) ? u : (n && /^[0-9a-f]{32}$/i.test(String(n.pagina || '')) ? 'https://www.notion.so/' + n.pagina : '');
 }
 // De onde a Montagem lê: a conversa vinculada a esta pessoa (pelo e-mail da ficha), seja a página do Notion lida ou a transcrição do Registro.
 function montFonte(c) {
   var pc = pcEstado(c.id), n = pc.notionAplicada;
-  if (montTranscricao(c).texto.length >= 200) return 'a transcrição colada em “Registro da ligação”';
+  if (montTranscricao(c).texto.length >= 200) return 'a transcrição colada em “Análise 1:1”';
   if (n) return 'a ligação do Notion lida em ' + fmtDay(String(n.quando || '').slice(0, 10));
+  if (montNotionUrl(c)) return 'a ligação do Notion já lida';
   return montNotionUrl(c) ? 'o link do Notion informado' : '';
 }
 function montPainel(c) { var m = montEstado(c.id); m.dd = (state.fx && state.fx.dd) || {}; m.temTranscricao = montTranscricao(c).texto.length >= 200 || !!montNotionUrl(c); m.fonte = montFonte(c); return MT.painelHtml(m, c, esc); }
 function montHtml(c) { return typeof MT === 'undefined' ? '' : '<div id="mont-box">' + montPainel(c) + '</div>'; }   // (os testes antigos montam o crm.js sem este módulo)
-function pintaMont(cid) { var b = $('mont-box'), c = byC(cid); if (b && c) b.innerHTML = montPainel(c); }
+function pintaMont(cid) { var b = $('mont-box'), c = byC(cid); if (typeof MT !== 'undefined' && b && c) b.innerHTML = montPainel(c); }
 async function montToken() { var sess = await supabase.auth.getSession(); if (!sess.data.session) throw new Error('Entre de novo no CRM.'); return sess.data.session.access_token; }
 async function montWorker(caminho, corpo) {
   var res = await fetch(WORKER_BASE + caminho, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + (await montToken()) }, body: JSON.stringify(corpo) });
@@ -3996,26 +4003,29 @@ function dosLigacaoHtml(c, d) {
   var S = state.dos && state.dos.cid === c.id && state.dos.d ? state.dos : null; if (!S) return '';
   var dv = function (k) { return dosValor(c, S.d, S.rasc, k); }, F = dosFaltaPorCanal(c, S), X = dosCruzamentos(c, S), nFalta = F.conversa.length + F.app.length + F.doc.length;
   var campo = function (k) { var f = dosCampo(k); return f ? dosCampoHtml(f, c, S.d, S.rasc) : ''; };
-  var B = state.bilan && state.bilan.cid === c.id ? state.bilan : null, enviado = (d.mails || []).filter(function (m) { return m.modelo === 'bilan_conversa'; })[0];
+  var B = state.bilan && state.bilan.cid === c.id ? state.bilan : null, enviado = (d.mails || []).filter(function (m) { return m.modelo === 'bilan_conversa' || m.modelo === 'conversa_convite'; })[0], enviadoConv = (d.mails || []).filter(function (m) { return m.modelo === 'conversa_convite'; })[0];
   var col = function (t, n, corpo) { return '<div class="dv-card"><div class="k">' + esc(t) + (n != null ? ' · ' + n : '') + '</div>' + corpo + '</div>'; };
   var p1 = dosPerguntarHtml(c, S) || '<p class="sub" style="margin:0">Nada a perguntar.</p>';
   var pcs = pcEstado(c.id), notionLido = !!(pcs.notionAplicada || pcs.notionMsg || pcs.notionUrl);
-  var pAn = '<div id="pc-topo">' + pcTopoHtml(c) + '</div><div id="pc-quadros">' + pcQuadrosHtml(c) + '</div>' +
-    '<div id="poscall-box">' + poscallHtml(c, (pcEstado(c.id).fixo = true)) + '</div>';
-  var pReg = '<div class="dgrid lg-form">' + campo('ligacao_resumo') + campo('proximos_passos') + '</div>' +
+  // Um toggle só: ler a conversa, ver o resumo e os encaminhamentos e, recolhido, editar o registro (resumo, passos, data, transcrição).
+  // O texto editável fica uma vez só, dentro do "Editar o registro"; a visão de cima é a mesma informação, só mais legível.
+  var pAn = '<div id="pc-an"><div id="pc-topo">' + pcTopoHtml(c) + '</div><div id="pc-quadros">' + pcQuadrosHtml(c) + '</div>' +
+    '<details class="lg-edit" data-lg="e"' + (lgAberto('e') ? ' open' : '') + '><summary>Editar o registro (resumo, passos, data e transcrição)</summary><div class="lg-corpo">' +
+    '<div class="dgrid lg-form">' + campo('ligacao_resumo') + campo('proximos_passos') + '</div>' +
     '<div class="dgrid lg-form">' + campo('ligacao_data') + campo('ligacao_transcricao') + '</div>' +
-    '<div class="actions" style="margin-top:6px"><button class="btn primary" type="button" data-dossalvar="' + esc(c.id) + '">Salvar dossiê</button></div>';
+    '<div class="actions" style="margin-top:6px"><button class="btn primary" type="button" data-dossalvar="' + esc(c.id) + '">Salvar dossiê</button></div></div></details>' +
+    '<div id="poscall-box">' + poscallHtml(c, (pcEstado(c.id).fixo = true)) + '</div></div>';
   var pMont = montHtml(c);
   var p3 = '<div class="lg-saidas">' +
-    '<div class="dv-card"><div class="k">Bilan (você edita antes de enviar)</div><p class="sub" style="margin:0 0 8px">' + (B ? 'Leitura do Notion de ' + esc(fmtDay(String(B.quando || '').slice(0, 10))) + '.' : 'Sem leitura do Notion ainda.') + (enviado ? ' Enviado em ' + esc(fmtDay(String(enviado.enviado_em || enviado.criado_em || '').slice(0, 10))) + '.' : '') + '</p>' +
-    '<button type="button" class="btn" data-bilanabrir="' + esc(c.id) + '"' + (B ? '' : ' disabled') + '>' + (enviado ? 'Reenviar o bilan' : 'Rascunho do e-mail com o bilan') + '</button></div>' +
+    '<div class="dv-card"><div class="k">E-mail para ela</div><p class="sub" style="margin:0 0 8px">O rascunho junta o que foi conversado, o que ela faz, o que você faz e o convite para o espaço dela no <b>Por Dentro das Démarches</b> (um lugar só dela, com todas as démarches e o próximo passo). Você revisa e só sai com o seu “pode enviar”.' +
+    (enviadoConv ? ' <b>Enviado em ' + esc(fmtDay(String(enviadoConv.enviado_em || enviadoConv.criado_em || '').slice(0, 10))) + '.</b>' : '') + '</p>' +
+    '<button type="button" class="btn primary" data-convabrir="' + esc(c.id) + '">' + (enviadoConv ? 'Fazer novo rascunho' : 'Fazer rascunho') + '</button></div>' +
     '<div class="dv-card"><div class="k">Arquivo para o seu sistema</div><p class="sub" style="margin:0 0 8px">Um .md com o que ela informou, o resumo e os encaminhamentos em lista de tarefas.</p><button type="button" class="btn" data-dosmd="' + esc(c.id) + '">Baixar o .md</button></div></div>';
   var passo = function (k, n, t, resumo, corpo) { return lgDet(k, 'lg-passo', '<span class="lg-n">' + n + '</span><b>' + t + '</b><span class="sub lg-res">' + esc(resumo) + '</span>', corpo); };
   var miolo = passo('a', 1, 'Antes da ligação', nFalta + (nFalta === 1 ? ' resposta falta' : ' respostas faltam') + (X.diverge.length ? ' · ' + X.diverge.length + ' a confirmar' : ''), p1) +
     passo('b', 2, 'Análise 1:1', notionLido || pcs.estado === 'proposta' ? 'conversa lida' : dv('ligacao_resumo') ? 'resumo no dossiê' : 'conversa ainda não lida', pAn) +
     passo('m', 3, 'Montagem App', (state.mont && state.mont.cid === c.id && state.mont.estado === 'aplicado') ? 'aprovada' : (state.mont && state.mont.cid === c.id && state.mont.estado === 'proposta') ? 'proposta para revisar' : (montFonte(c) ? 'conversa vinculada: pronta para propor' : 'aguardando a conversa'), pMont) +
-    passo('r', 4, 'Registro da ligação', dv('ligacao_transcricao') ? 'transcrição colada' : 'sem transcrição ainda', pReg) +
-    passo('c', 5, 'O que sai da conversa', enviado ? 'bilan enviado' : B ? 'bilan pronto para revisar' : 'bilan ainda não gerado', p3);
+    passo('c', 4, 'O que sai da conversa', enviado ? 'e-mail enviado' : 'e-mail ainda não feito', p3);
   return '<section class="panel dv lg" id="dos-ligacao" style="padding:16px;margin-bottom:14px">' +
     lgDet('main', 'lg-main', '<h3 style="font-size:17px;margin:0">A ligação</h3><span class="sub lg-res">Antes: contexto e o que perguntar. Durante: registre. Depois: a IA lê a conversa e preenche o Dossiê, e sai o bilan.</span>', miolo) + '</section>';
 }
@@ -6114,6 +6124,74 @@ async function bilanEnviar(forcar) {
   }
 }
 
+// ---------- O e-mail da conversa: o que conversamos, o que ela faz, o que eu faço e o convite para o Por Dentro das Démarches ----------
+// O rascunho nasce do que já foi lido (Montagem, página do Notion ou o texto do Dossiê); não chama a IA de novo. Worker: POST /api/crm/conversa-email.
+var CV = null;
+function conversaRascunho(c) {
+  var B = state.bilan && state.bilan.cid === c.id ? state.bilan : null, pm = bilanDaMontagem(c), ini = pm || (B && B.proposta && B.proposta.notion ? bilanIniciais(B.proposta.notion) : null);
+  var conv = ini ? ini.duvidas.slice() : [], ela = ini ? ini.proximos.slice() : [], ing = ini ? ini.respostas.slice() : [];
+  if (!conv.length && !ela.length && !ing.length) {   // sem leitura: vale o que está no Dossiê
+    var S = state.dos && state.dos.cid === c.id ? state.dos : null, dv = function (k) { return S ? String(dosValor(c, S.d, S.rasc || {}, k) || '') : ''; };
+    var q = pcPassosDados(dv('proximos_passos'));
+    conv = dv('ligacao_resumo').split('\n').map(function (x) { return x.trim(); }).filter(Boolean).slice(0, 12);
+    ela = q.ela.concat(q.outros); ing = q.ingryd;
+  }
+  return { conversamos: conv, ela: ela, ingryd: ing };
+}
+function conversaLinhas(id) { return String(($(id) && $(id).value) || '').split('\n').map(function (x) { return x.trim(); }).filter(Boolean); }
+function conversaCorpo(extra) { return JSON.stringify(Object.assign({ contato_id: CV.cid, secoes: { conversamos: conversaLinhas('cv-conversamos'), ela: conversaLinhas('cv-ela'), ingryd: conversaLinhas('cv-ingryd') } }, extra || {})); }
+function conversaErro(msg, forcar) { var er = $('cv-err'); if (er) { er.textContent = msg || ''; er.hidden = !msg; } var f = $('cv-forcar'); if (f) f.hidden = !forcar; }
+function conversaAbrir(cid) {
+  var c = byC(cid); if (!c) return;
+  var ini = conversaRascunho(c); CV = { cid: cid };
+  var vazio = !ini.conversamos.length && !ini.ela.length && !ini.ingryd.length;
+  modalOpen(modalTop(c) + '<h4 style="margin:14px 0 6px;font-size:14px">E-mail da conversa e convite para o Por Dentro das Démarches</h4>' +
+    '<p class="sub" style="margin:0 0 10px">Vai para <b id="cv-para"></b>. Um item por linha. O quarto bloco, o convite para o espaço dela, é fixo e leva o link de acesso só na hora de enviar.' + (vazio ? ' <b>Ainda não há leitura da conversa nem resumo no Dossiê:</b> leia a conversa em Análise 1:1 e faça o rascunho de novo, ou escreva aqui.' : '') + '</p>' +
+    '<label class="sub" for="cv-conversamos" style="display:block;margin:0 0 4px">1 · O que conversamos</label><textarea id="cv-conversamos" class="bl-ta" rows="4"></textarea>' +
+    '<label class="sub" for="cv-ela" style="display:block;margin:10px 0 4px">2 · O que você faz agora</label><textarea id="cv-ela" class="bl-ta" rows="4"></textarea>' +
+    '<label class="sub" for="cv-ingryd" style="display:block;margin:10px 0 4px">3 · O que eu faço por você</label><textarea id="cv-ingryd" class="bl-ta" rows="4"></textarea>' +
+    '<div id="cv-previa" class="bl-previa"></div>' +
+    '<label class="pccheck" style="margin:12px 0 0"><input type="checkbox" id="cv-confirmo"> <span>Pode enviar: esta pessoa aceitou receber este e-mail.</span></label>' +
+    '<p class="onb-erro" id="cv-err" role="alert" hidden style="margin:10px 0 0"></p>' +
+    '<div class="actions"><button class="btn" type="button" id="modal-cancel">Cancelar</button><button class="btn" type="button" id="cv-previa-btn">Atualizar prévia</button><button class="btn" type="button" id="cv-forcar" hidden>Enviar mesmo assim</button><button class="btn primary" type="button" id="cv-enviar">Enviar e-mail</button></div>', true);
+  $('cv-para').textContent = c.email;
+  $('cv-conversamos').value = ini.conversamos.join('\n'); $('cv-ela').value = ini.ela.join('\n'); $('cv-ingryd').value = ini.ingryd.join('\n');
+  conversaPrevia();
+}
+async function conversaChamar(corpo) {
+  var sess = await supabase.auth.getSession();
+  if (!sess.data.session) throw new Error('Sessão expirada. Recarregue a página e entre de novo.');
+  var res = await fetch(WORKER_BASE + '/api/crm/conversa-email', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + sess.data.session.access_token }, body: corpo });
+  var data = await res.json().catch(function () { return {}; });
+  if (!res.ok) { var e = new Error(data.error || ('Erro ' + res.status)); e.codigo = data.codigo; throw e; }
+  return data;
+}
+async function conversaPrevia() {
+  if (!CV) return;
+  var box = $('cv-previa'); if (box) box.innerHTML = '<p class="sub" role="status" style="margin:12px 0 0">Montando a prévia…</p>';
+  conversaErro('');
+  try {
+    var d = await conversaChamar(conversaCorpo());
+    if (box) box.innerHTML = '<p class="sub" style="margin:12px 0 4px">Prévia · assunto: <b id="cv-assunto"></b>' + (d.acesso === 'convite' ? ' · ela ainda não tem acesso: vai o link de convite' : ' · ela já tem acesso: vai o link do app') + '</p>' + previaFrame(d.html, 'cmpframe') +
+      (d.acesso === 'convite' && !d.ha_rascunho_aprovado ? '<p class="err" role="alert" style="margin:8px 0 0">Ainda não há nada revisado no espaço dela: aprove a Montagem App antes, ou envie assim mesmo.</p>' : '');
+    var as = $('cv-assunto'); if (as) as.textContent = d.assunto;
+  } catch (e) { if (box) box.innerHTML = ''; conversaErro(e instanceof TypeError ? 'Não consegui falar com o Worker. Confira a internet e tente de novo.' : e.message); }
+}
+async function conversaEnviar(forcar) {
+  if (!CV) return;
+  if (!($('cv-confirmo') && $('cv-confirmo').checked)) return conversaErro('Marque que a pessoa aceitou receber este e-mail.');
+  var bt = $('cv-enviar'); if (bt) { bt.disabled = true; bt.textContent = 'Enviando…'; }
+  try {
+    var d = await conversaChamar(conversaCorpo({ enviar: true, confirmo: true, forcar: !!forcar }));
+    closeCompose(); toast('E-mail enviado para ' + d.para + '.', 5000);
+    var cid = CV.cid; CV = null;
+    if (state.view === 'pessoa' && state.sel === cid) await renderPessoa();
+  } catch (e) {
+    if (bt) { bt.disabled = false; bt.textContent = 'Enviar e-mail'; }
+    conversaErro(e instanceof TypeError ? 'Não consegui falar com o Worker. Confira a internet e tente de novo.' : e.message, e.codigo === 'enviado_recentemente' || e.codigo === 'sem_rascunho_aprovado');
+  }
+}
+
 // ---------- Link de pagamento (aba Plataforma): o seletor vem de planos/planos.json ----------
 var PAGTO = { itens: null, erro: '' };
 var ASSIN_ST = { trialing: 'em teste grátis', active: 'ativa', past_due: 'pagamento falhou', canceled: 'cancelada', unpaid: 'não paga', incomplete: 'incompleta', paused: 'pausada' };
@@ -6343,6 +6421,10 @@ document.addEventListener('click', async function (e) {
   if (t.dataset.pagar) return abrirLinkPagamento(t.dataset.pagar);
   if (t.id === 'pg-enviar') return enviarLinkPagamento(t);
   if (t.dataset.bilanabrir) return bilanAbrir(t.dataset.bilanabrir);
+  if (t.dataset.convabrir) return conversaAbrir(t.dataset.convabrir);
+  if (t.id === 'cv-previa-btn') return conversaPrevia();
+  if (t.id === 'cv-enviar') return conversaEnviar(false);
+  if (t.id === 'cv-forcar') return conversaEnviar(true);
   if (t.id === 'bl-previa-btn') return bilanPrevia();
   if (t.id === 'bl-enviar') return bilanEnviar(false);
   if (t.id === 'bl-forcar') return bilanEnviar(true);

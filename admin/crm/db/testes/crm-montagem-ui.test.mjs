@@ -82,7 +82,7 @@ const base = { cid: 'c1', estado: 'vazio', erro: '', prop: null, sel: {}, motivo
 const c = pessoa();
 let h = MT.painelHtml(base, c, esc);
 check('vazio: botão de propor a montagem e a explicação de que nada chega a ela sem aprovação', /data-montler="c1"/.test(h) && !/data-montler="c1"[^>]*disabled/.test(h) && /nada chega/i.test(h));
-check('vazio sem transcrição: o botão fica desligado e diz o que fazer', /data-montler="c1"[^>]*disabled/.test(MT.painelHtml({ ...base, temTranscricao: false }, c, esc)) && /Cole a transcrição/.test(MT.painelHtml({ ...base, temTranscricao: false }, c, esc)));
+check('vazio sem transcrição: o botão fica LIGADO e diz o que fazer', !/data-montler="c1"[^>]*disabled/.test(MT.painelHtml({ ...base, temTranscricao: false }, c, esc)) && /Vincule uma conversa/.test(MT.painelHtml({ ...base, temTranscricao: false }, c, esc)));
 h = MT.painelHtml({ ...base, estado: 'lendo' }, c, esc);
 check('lendo: mostra o estado de carregamento (sem texto solto) e não oferece reler', /role="status"/.test(h) && /mont-skel/.test(h) && !/data-montler/.test(h));
 h = MT.painelHtml({ ...base, erro: 'A IA está ocupada agora.' }, c, esc);
