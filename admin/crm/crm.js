@@ -24,7 +24,7 @@ var STAGES = [
   { k: 'concluido', l: 'Concluído', d: 'terminou o percurso' }, { k: 'inativo', l: 'Inativo', d: 'sumiu há 30+ dias' }
 ];
 var ORIG = { instagram: 'Instagram', bot: 'Assistente de vistos', blog: 'Blog', direto: 'Direto', artigo: 'Artigo', login_direto: 'Login direto',
-  'guia-vls-ts': 'Guia VLS-TS', 'guia-checklist-chegada-au-pair': 'Guia au pair: checklist de chegada', 'guia-email-alt30': 'Guia alternância 30+', 'guia-tecnologo': 'Guia tecnólogo', 'guia-etudes-en-france-2027': 'Guia Campus France',
+  'guia-vls-ts': 'Guia VLS-TS', 'guia-checklist-chegada-au-pair': 'Guia au pair: checklist de chegada', 'guia-mapa-saude-franca': 'Guia mapa da saúde na França', 'guia-email-alt30': 'Guia alternância 30+', 'guia-tecnologo': 'Guia tecnólogo', 'guia-etudes-en-france-2027': 'Guia Campus France',
   // Newsletter da bolsa Eiffel, no artigo de bolsas (o CRM guarda a origem como token; aqui volta a ser o endereço).
   'artigo-como-conseguir-bolsa-de-estudo': '/artigos/post/como-conseguir-bolsa-de-estudo/' };
 function origLabel(o) { return ORIG[o] || o; }
@@ -1131,7 +1131,7 @@ function tipoFunil(o) {
     : o === 'instagram' ? 'link do Instagram' : (o === 'direto' || o === 'login_direto') ? 'acesso direto' : '';
 }
 // A página (landing) de onde a pessoa veio, pela origem que o site grava. É a linha da matriz do Estúdio de e-mails (Jornada).
-var ORIGEM_PAGINA = { 'guia-email-alt30': 'I01', 'guia-tecnologo': 'I02', 'guia-etudes-en-france-2027': 'I03', 'guia-vls-ts': 'I04', 'guia-checklist-chegada-au-pair': 'I05' };
+var ORIGEM_PAGINA = { 'guia-email-alt30': 'I01', 'guia-tecnologo': 'I02', 'guia-etudes-en-france-2027': 'I03', 'guia-vls-ts': 'I04', 'guia-checklist-chegada-au-pair': 'I05', 'guia-mapa-saude-franca': 'I06' };
 // Os modelos de uma página numa etapa da jornada (lead, contato, reimp, plat), do jeito que o Estúdio os organiza.
 // Só entram os que têm versão No ar (sem a tabela de modelos, vale a lista do código).
 function modelosDaEtapa(pagina, etapa, incluiRascunho) {
@@ -1374,7 +1374,7 @@ function itemResposta(x) {
 }
 // ---------- Jornada e pistas: por onde ela entrou, o que respondeu em cada entrada e o que isso sugere ----------
 var TEMA_FUNIL = { 'guia-etudes-en-france-2027': 'estudar na França (Campus France)', 'guia-tecnologo': 'o diploma de tecnólogo e o nível de francês', 'guia-email-alt30': 'a alternância depois dos 30',
-  'guia-vls-ts': 'a validação do VLS-TS', 'guia-checklist-chegada-au-pair': 'a chegada como au pair' };
+  'guia-vls-ts': 'a validação do VLS-TS', 'guia-checklist-chegada-au-pair': 'a chegada como au pair', 'guia-mapa-saude-franca': 'a saúde na França (o sistema e a ordem do cadastro)' };
 function funisDaPessoa(c, jor) {
   var out = [], vistos = {};
   (jor.entradas || []).forEach(function (x) { var o = x.origem || ''; if (o && !vistos[o]) { vistos[o] = 1; out.push(o); } });
