@@ -24,7 +24,7 @@ var STAGES = [
   { k: 'concluido', l: 'Concluído', d: 'terminou o percurso' }, { k: 'inativo', l: 'Inativo', d: 'sumiu há 30+ dias' }
 ];
 var ORIG = { instagram: 'Instagram', bot: 'Assistente de vistos', blog: 'Blog', direto: 'Direto', artigo: 'Artigo', login_direto: 'Login direto',
-  'guia-vls-ts': 'Guia VLS-TS', 'guia-checklist-chegada-au-pair': 'Guia au pair: checklist de chegada', 'guia-email-alt30': 'Guia alternância 30+', 'guia-tecnologo': 'Guia tecnólogo', 'guia-etudes-en-france-2027': 'Guia Campus France',
+  'guia-vls-ts': 'Guia VLS-TS', 'guia-checklist-chegada-au-pair': 'Guia au pair: checklist de chegada', 'guia-mapa-saude-franca': 'Guia mapa da saúde na França', 'guia-email-alt30': 'Guia alternância 30+', 'guia-tecnologo': 'Guia tecnólogo', 'guia-etudes-en-france-2027': 'Guia Campus France',
   // Newsletter da bolsa Eiffel, no artigo de bolsas (o CRM guarda a origem como token; aqui volta a ser o endereço).
   'artigo-como-conseguir-bolsa-de-estudo': '/artigos/post/como-conseguir-bolsa-de-estudo/' };
 function origLabel(o) { return ORIG[o] || o; }
@@ -1131,7 +1131,7 @@ function tipoFunil(o) {
     : o === 'instagram' ? 'link do Instagram' : (o === 'direto' || o === 'login_direto') ? 'acesso direto' : '';
 }
 // A página (landing) de onde a pessoa veio, pela origem que o site grava. É a linha da matriz do Estúdio de e-mails (Jornada).
-var ORIGEM_PAGINA = { 'guia-email-alt30': 'I01', 'guia-tecnologo': 'I02', 'guia-etudes-en-france-2027': 'I03', 'guia-vls-ts': 'I04', 'guia-checklist-chegada-au-pair': 'I05' };
+var ORIGEM_PAGINA = { 'guia-email-alt30': 'I01', 'guia-tecnologo': 'I02', 'guia-etudes-en-france-2027': 'I03', 'guia-vls-ts': 'I04', 'guia-checklist-chegada-au-pair': 'I05', 'guia-mapa-saude-franca': 'I06' };
 // Os modelos de uma página numa etapa da jornada (lead, contato, reimp, plat), do jeito que o Estúdio os organiza.
 // Só entram os que têm versão No ar (sem a tabela de modelos, vale a lista do código).
 function modelosDaEtapa(pagina, etapa, incluiRascunho) {
@@ -1374,7 +1374,7 @@ function itemResposta(x) {
 }
 // ---------- Jornada e pistas: por onde ela entrou, o que respondeu em cada entrada e o que isso sugere ----------
 var TEMA_FUNIL = { 'guia-etudes-en-france-2027': 'estudar na França (Campus France)', 'guia-tecnologo': 'o diploma de tecnólogo e o nível de francês', 'guia-email-alt30': 'a alternância depois dos 30',
-  'guia-vls-ts': 'a validação do VLS-TS', 'guia-checklist-chegada-au-pair': 'a chegada como au pair' };
+  'guia-vls-ts': 'a validação do VLS-TS', 'guia-checklist-chegada-au-pair': 'a chegada como au pair', 'guia-mapa-saude-franca': 'a saúde na França (o sistema e a ordem do cadastro)' };
 function funisDaPessoa(c, jor) {
   var out = [], vistos = {};
   (jor.entradas || []).forEach(function (x) { var o = x.origem || ''; if (o && !vistos[o]) { vistos[o] = 1; out.push(o); } });
@@ -2214,18 +2214,21 @@ function casoBarraNovo(k, so) {
   var b = { documento: casoBtn('novo', 'documento', '+ Documento'), modelo: casoBtn('novo', 'modelo', '+ Mensagem pronta'), bilan: casoBtn('novo', 'bilan', '+ Bilan') };
   return '<div class="ab" style="margin:0 0 8px">' + (so || ['documento', 'modelo', 'bilan']).map(function (t) { return b[t]; }).join('') + '</div>' + (k.novo && (!so || so.indexOf(k.novo) >= 0) ? casoNovoHtml(k.novo) : '');
 }
-function casoItensHtml(k, tipos, vazio) {
+function casoAvisoRepetidos(k) {
+  var lista = k.itens || [];
+  var rep = FX.repetidosDoBoard(lista), nrep = rep.reduce(function (n, g) { return n + g.excluir.length; }, 0);
+  return nrep ? '<div class="fx-valid" role="status"><span class="fx-valid-ic" aria-hidden="true">!</span><div><b>' + nrep + (nrep === 1 ? ' repetido' : ' repetidos') + '</b><ul>' + rep.map(function (g) { return '<li>“' + esc(g.manter.titulo) + '”: ' + (g.excluir.length + 1) + ' cópias. Fica a mais completa.</li>'; }).join('') + '</ul>' +
+    (k.confirmaDedup ? casoBtn('item-dedup', 0, 'Excluir ' + nrep + (nrep === 1 ? ' repetido' : ' repetidos')) + ' ' + casoBtn('cancelar', 0, 'Não') : casoBtn('item-dedup-pede', 0, 'Juntar repetidos')) + '</div></div>' : '';
+}
+function casoItensHtml(k, tipos, vazio, homeCat) {
   var lista = tipos ? k.itens.filter(function (it) { return tipos.indexOf(it.tipo) >= 0; }) : k.itens;
   if (!lista.length) return '<div class="empty" style="padding:14px">' + esc(vazio || 'Nenhum item. Escolas e modelos de e-mail são acrescentados pela equipe.') + '</div>';
   var temDoc = lista.some(function (x) { return x.tipo === 'documento' && (x.dados || {}).direcao === 'recebe'; });
-  var rep = tipos && tipos.indexOf('documento') >= 0 ? FX.repetidosDoBoard(lista) : [], nrep = rep.reduce(function (n, g) { return n + g.excluir.length; }, 0);
-  var aviso = nrep ? '<div class="fx-valid" role="status"><span class="fx-valid-ic" aria-hidden="true">!</span><div><b>' + nrep + (nrep === 1 ? ' repetido' : ' repetidos') + '</b><ul>' + rep.map(function (g) { return '<li>“' + esc(g.manter.titulo) + '”: ' + (g.excluir.length + 1) + ' cópias. Fica a mais completa.</li>'; }).join('') + '</ul>' +
-    (k.confirmaDedup ? casoBtn('item-dedup', 0, 'Excluir ' + nrep + (nrep === 1 ? ' repetido' : ' repetidos')) + ' ' + casoBtn('cancelar', 0, 'Não') : casoBtn('item-dedup-pede', 0, 'Juntar repetidos')) + '</div></div>' : '';
-  return aviso + lista.map(function (it) {
+  return lista.map(function (it) {
     if (k.ed && k.ed.t === 'item' && k.ed.id === it.id) return casoEditor('item', it.id, casoItemCampos(it));
     var est = it.estado === 'publicado' ? casoPil('Publicado', 'u-baixa') : it.estado === 'revisado' ? casoPil('Revisado', 'u-media') : casoPil('Proposto');
     var docRecebe = it.tipo === 'documento' && (it.dados || {}).direcao === 'recebe';
-    var btns = (docRecebe ? casoAnexarIco(it) : temDoc ? '<i class="fx-s0"></i>' : '') + (it.estado === 'proposto' ? casoBtn('item-rev', it.id, 'Marcar como revisado') : it.estado === 'revisado' ? casoBtn('item-pub', it.id, 'Publicar para ela') : casoBtn('item-ret', it.id, 'Retirar')) + casoBtn('ed-item', it.id, 'Editar') + casoHomeBtn(k, it) + (k.confirmaDel === it.id ? casoBtn('item-del', it.id, it.estado === 'publicado' ? 'Excluir (ela deixa de ver)' : 'Excluir') + casoBtn('cancelar', it.id, 'Não') : casoBtn('item-del-pede', it.id, 'Excluir'));
+    var btns = (docRecebe ? casoAnexarIco(it) : temDoc ? '<i class="fx-s0"></i>' : '') + (it.estado === 'proposto' ? casoBtn('item-rev', it.id, 'Marcar como revisado') : it.estado === 'revisado' ? casoBtn('item-pub', it.id, 'Publicar para ela') : casoBtn('item-ret', it.id, 'Retirar')) + casoBtn('ed-item', it.id, 'Editar') + casoHomeBtn(k, it, homeCat) + (k.confirmaDel === it.id ? casoBtn('item-del', it.id, it.estado === 'publicado' ? 'Excluir (ela deixa de ver)' : 'Excluir') + casoBtn('cancelar', it.id, 'Não') : casoBtn('item-del-pede', it.id, 'Excluir'));
     var generico = it.tipo === 'marco' && /^prazo-chave$/i.test(it.titulo) ? ' <span class="fx-aviso">sem nome: dois cliques para dizer qual prazo é (ex.: Inscrição na licence)</span>' : '';
     var leitura = it.tipo === 'bilan' && ((it.dados || {}).secoes || []).length ? '<details style="margin-top:6px"><summary class="sub" style="cursor:pointer">Ler o bilan</summary>' + it.dados.secoes.map(function (sec) { return '<p style="margin:8px 0 2px"><b>' + esc(sec.titulo) + '</b></p><ul style="margin:0 0 0 18px">' + (sec.itens || []).map(function (x) { return '<li>' + esc(x.texto) + (x.estado === 'em_conferencia' ? ' <span class="sub">(a confirmar)</span>' : '') + '</li>'; }).join('') + '</ul>'; }).join('') + '</details>' : '';
     return casoLinha(est, '<span class="fx-tp" aria-hidden="true">' + (CASO_GLIFO[it.tipo] || '') + '</span>' + esc(it.titulo) + generico + (casoItemMeta(it) ? ' <small class="fx-meta">' + esc(casoItemMeta(it)) + '</small>' : '') + leitura, btns);
@@ -2361,7 +2364,7 @@ function renderFilaHoje() {
       '<b>' + esc(short(c)) + '</b><span>' + esc(a.titulo) + ' · ' + esc(casoSaiEm(a)) + '</span></button><div class="fila-acoes">' + casoRitmoBtns(a, true, 'h-') + '</div></div>';
   }).join('');
 }
-// Página inicial: pôr um item nos destaques do Início dela ("categoria:ref") ou tirar. Limites 3 / 2 / 2; o banco confere de novo.
+// Página inicial: pôr um item nos destaques do Início dela ("categoria:ref") ou tirar. Limites 3 (checklist) / 3 (só seu) / 2 (guias); o banco confere de novo.
 async function casoHome(acao, id, t) {
   var k = state.caso, p = String(id).split(':'), cat = p[0], ref = p.slice(1).join(':');
   if (!k || !Array.isArray(k.home)) return toast('A Página inicial ainda não está ligada: falta rodar db/crm-caso-home.sql no Supabase.', 4600);
@@ -2378,19 +2381,12 @@ async function casoHome(acao, id, t) {
   await casoRecarrega();
   toast(acao === 'home-add' ? 'Na home: ' + FX.HOME_ROTULOS[cat] + '. Ela vê no Início.' : 'Tirado da home.');
 }
-// Trocar o item de uma vaga da Página inicial por outro, na própria linha (o banco confere o tipo e o dono de novo).
-async function casoHomeTroca(cat, antigo, novo) {
-  var k = state.caso; if (!k || !Array.isArray(k.home) || !novo || String(antigo) === String(novo)) return;
-  var ja = FX.homeTem(k.home, cat, antigo); if (!ja) return toast('Essa vaga não existe mais. Atualize a aba.');
-  if (FX.homeTem(k.home, cat, novo)) return toast('Esse item já está na home.');
-  var mud = cat === 'checklist' ? { step_key: novo } : { board_id: Number(novo) };
-  var r = await supabase.from('caso_home').update(mud).eq('id', ja.id);
-  if (r.error) return casoFalha('trocar o item da home', r.error);
-  await casoRecarrega(); toast('Trocado. Ela vê no Início.');
-}
-// O botão "Adicionar na home" de um item do board (marco e escola → Espaço; bilan, documento e mensagem pronta → Guias).
-function casoHomeBtn(k, it) {
-  var cat = FX.categoriaHomeDoBoard(it.tipo); if (!cat || !k) return '';
+// O botão "Adicionar na home" de um item do board: bilan e encaminhamento (documento que ela recebe) → Só seu; documento e mensagem pronta → Guias.
+// `cat` diz de qual lista o botão é; sem ele, vale a primeira categoria em que o item cabe. Prazo e escola não vão para a página inicial.
+function casoHomeBtn(k, it, cat) {
+  if (!k) return '';
+  cat = cat || ['so_seu', 'guias'].filter(function (c) { return FX.itemPodeNaHome(it, c); })[0];
+  if (!cat || !FX.itemPodeNaHome(it, cat)) return '';
   var tem = Array.isArray(k.home) && FX.homeTem(k.home, cat, it.id);
   return casoIco(tem ? 'home-del' : 'home-add', cat + ':' + it.id, tem ? '×' : '+', tem ? 'Tirar da página inicial' : 'Adicionar na página inicial', tem);
 }
@@ -3935,8 +3931,8 @@ async function fxSalvaPasso(stepKey) {
 function fxPintaChk(c) { var b = $('fx-chk-corpo'); if (b) b.innerHTML = fxChecklistCorpo(c); }
 // As sessões da aba Plataforma, em pílulas e em dois grupos. O corpo só é montado nas abertas: os ids antigos (dossie-box,
 // ins-box, int-box, chat-fio) existem enquanto a sessão está aberta, e as atualizações ao vivo ignoram o que não está na tela.
-// Página inicial: os destaques do Início dela. Cada categoria tem espaços fixos (3 / 2 / 2). Para pôr um item, use "Adicionar na home" na sessão
-// dele (Checklist, Espaço ou Guias); aqui você vê o que está nos espaços e tira para trocar.
+// Página inicial: o que você escolheu para o Início dela. Cada categoria tem espaços fixos (3 / 3 / 2). Para pôr um item, use o "+" em Espaço
+// (Checklist, Só seu ou Guias); aqui você vê o que está nos espaços e tira para trocar.
 function fxHomeCorpo(c) {
   var g = fxCasoGuarda(c); if (!g.k) return g.html;
   var k = g.k;
@@ -3944,35 +3940,17 @@ function fxHomeCorpo(c) {
   var chk = state.dos && state.dos.cid === c.id ? state.dos.chk : null;
   var itens = chk && !chk.err && !chk.semConta ? (chk.itens || []).filter(function (i) { return i.status !== 'arquivado'; }) : [];
   var d = FX.destaquesDaHome({ home: k.home, itens: itens, board: k.itens });
-  // Cada categoria aponta para a sessão onde o item mora (Guias e Material da equipe moram dentro do Espaço).
-  var onde = { checklist: { sessao: 'checklist', nome: 'Checklist (vai para o Em seguida)' }, espaco: { sessao: 'espaco', nome: 'Espaço' }, guias: { sessao: 'espaco', nome: 'Material da equipe' } };
-  // O que dá para escolher em cada bloco (menos o que já está nele): passo aberto do checklist; marco e escola; bilan, documento que a equipe manda e mensagem pronta.
-  var jaNa = function (cat, ref) { return !!FX.homeTem(k.home, cat, ref); };
-  var elegiveis = function (cat) {
-    if (cat === 'checklist') return itens.filter(function (i) { return i.status !== 'concluido' && !jaNa(cat, i.step_key); }).map(function (i) { return { ref: i.step_key, rot: i.titulo_custom || i.label }; });
-    var tipos = cat === 'espaco' ? ['marco', 'escola'] : ['bilan', 'documento', 'modelo'];
-    return k.itens.filter(function (x) { return tipos.indexOf(x.tipo) >= 0 && !(x.tipo === 'documento' && (x.dados || {}).direcao !== 'recebe') && !jaNa(cat, x.id); })
-      .map(function (x) { return { ref: x.id, rot: x.titulo + (x.estado !== 'publicado' ? ' · rascunho' : '') }; });
-  };
-  var opts = function (lista, atual) { return lista.map(function (o) { return '<option value="' + esc(String(o.ref)) + '"' + (atual !== undefined && String(o.ref) === String(atual) ? ' selected' : '') + '>' + esc(o.rot) + '</option>'; }).join(''); };
+  var onde = { checklist: ['Checklist', 'passos do checklist, que entram no “Em seguida”'], so_seu: ['Só seu', 'o bilan e os encaminhamentos da Ingryd'], guias: ['Guias', 'documentos e mensagens prontas'] };
   var bloco = function (cat) {
-    var b = d[cat], alt = elegiveis(cat), linhas = b.itens.map(function (x) {
-      var estado = x.falta ? ['off', 'o item não existe mais'] : !x.publicado ? ['mid', 'Rascunho: ela só vê depois que você publicar'] : ['ok', 'Publicado: ela já vê'];
-      var titulo = alt.length && !x.falta
-        ? '<select class="fx-hm-sel" data-home-troca="' + esc(cat + ':' + x.ref) + '" aria-label="Trocar “' + esc(x.titulo) + '” por outro item" title="' + esc(x.titulo) + ' · trocar por outro item"><option value="' + esc(String(x.ref)) + '" selected>' + esc(x.titulo) + '</option>' + opts(alt) + '</select>'
-        : '<b>' + esc(x.titulo) + '</b>';
-      return '<li class="fx-hm"><span class="fx-dot ' + estado[0] + '" role="img" aria-label="' + esc(estado[1]) + '" title="' + esc(estado[1]) + '"></span>' +
-        '<span class="fx-hm-t">' + titulo + (x.falta ? '<small>removido do caso</small>' : x.meta ? '<small>' + esc(x.meta) + '</small>' : '') + '</span>' +
-        '<button type="button" class="fx-ic" data-caso="home-del" data-id="' + esc(cat + ':' + x.ref) + '" aria-label="Tirar da página inicial" title="Tirar da página inicial">' + casoSvg('x', 16) + '</button></li>';
+    var b = d[cat], linhas = b.itens.map(function (x) {
+      return '<div class="fx-home-slot"><span class="fx-home-t"><b>' + esc(x.titulo) + '</b>' + (x.meta ? ' <small>' + esc(x.meta) + '</small>' : '') +
+        (x.falta ? ' ' + casoPil('o item não existe mais', 'u-media') : !x.publicado ? ' ' + casoPil('não publicado: ela só vê depois de publicar', 'u-media') : '') + '</span>' + casoBtn('home-del', cat + ':' + x.ref, 'Tirar') + '</div>';
     });
-    for (var i = b.itens.length; i < b.max; i++) linhas.push(alt.length
-      ? '<li class="fx-hm vazio"><select class="fx-hm-add" data-home-add="' + cat + '" aria-label="Escolher um item para ' + esc(cat === 'checklist' ? 'o Em seguida' : FX.HOME_ROTULOS[cat]) + '"><option value="">＋ Escolher…</option>' + opts(alt) + '</select></li>'
-      : '<li class="fx-hm vazio"><button type="button" class="fx-hm-add" data-fx="abrir" data-id="' + onde[cat].sessao + '" title="Não há mais itens para escolher aqui. Abre a sessão.">' + casoSvg('plus', 15) + '<span>Nada para escolher no ' + esc(onde[cat].nome) + '</span></button></li>');
-    var pontos = ''; for (var j = 0; j < b.max; j++) pontos += '<i class="' + (j < b.n ? 'on' : '') + '"></i>';
-    return '<section class="fx-hbl" aria-label="' + esc(FX.HOME_ROTULOS[cat]) + ' na home"><header><h4>' + esc(cat === 'checklist' ? 'Em seguida' : FX.HOME_ROTULOS[cat]) + '</h4><span class="fx-hb-n" role="img" aria-label="' + b.n + ' de ' + b.max + '" title="' + b.n + ' de ' + b.max + (b.n >= b.max ? ' (cheio)' : '') + '">' + pontos + '</span></header><ul>' + linhas.join('') + '</ul></section>';
+    for (var i = b.itens.length; i < b.max; i++) linhas.push('<div class="fx-home-slot vazio"><span class="sub">Espaço livre. Em <b>Espaço › ' + esc(onde[cat][0]) + '</b>, use o “+” num item (' + esc(onde[cat][1]) + ').</span><button type="button" class="link" data-fx="ir" data-id="espaco">Ir para a sessão</button></div>');
+    return '<section class="fx-home-bloco" aria-label="' + esc(FX.HOME_ROTULOS[cat]) + ' na home"><h4 class="fx-h4">' + esc(FX.HOME_ROTULOS[cat]) + ' <span class="sub">' + b.n + ' de ' + b.max + (b.n >= b.max ? ' · cheio' : '') + '</span></h4>' + linhas.join('') + '</section>';
   };
-  return '<p class="fx-hnota" title="O passo do checklist fixado vai para o “Em seguida” do Início dela, antes dos outros. Itens do Espaço e dos Guias vão para o “Em destaque”. O que não está publicado fica fora até você publicar.">Em destaque no Início dela · só aparece o que está publicado</p>' +
-    '<div class="fx-home-wrap"><div class="fx-home-grade">' + bloco('checklist') + bloco('espaco') + bloco('guias') + '</div></div>';
+  return '<p class="sub" style="margin:0 0 10px">Ela vê isto no Início do app: os passos escolhidos entram primeiro no “Em seguida”, e abaixo vêm “Só seu” e “Guias” (o que não está publicado fica fora até você publicar). Para trocar um item: tire aqui e escolha outro em Espaço.</p>' +
+    '<div class="fx-home-grade">' + bloco('checklist') + bloco('so_seu') + bloco('guias') + '</div>';
 }
 function fxOrdem() {
   var f = state.fx;
@@ -4002,19 +3980,52 @@ function fxSub(chave, titulo, corpo) {
   var o = state.fx.dd['sb-' + chave]; if (o === undefined) o = true;
   return '<details class="fx-sb" data-dd="sb-' + chave + '"' + (o ? ' open' : '') + '><summary><span>' + esc(titulo) + '</span></summary><div class="fx-sb-c">' + corpo + '</div></details>';
 }
-// O Espaço do app tem tudo isto: as perguntas da equipe, os prazos e escolas dela e o material que ela abre. Aqui também.
+// O Espaço aqui segue o Início dela: você escolhe o que aparece em cada parte. Checklist (até 3 passos, entram no "Em seguida"), Só seu (o bilan e os
+// encaminhamentos da Ingryd, até 3) e Guias (até 2); embaixo, a pergunta da equipe, que o app mostra sempre no fim do Início.
+// Prazos e escolas não vão para a página inicial; ficam no fim, fechados, só para criar e publicar o que ela vê na aba Espaço do app.
 function fxEspacoTudo(c) {
-  return fxSub('perg', 'Perguntas da equipe', fxInicioCorpo(c)) + fxSub('prazos', 'Prazos e escolas', fxEspacoCorpo(c)) + fxSub('mat', 'Material da equipe', fxGuiasCorpo(c)) + fxZonas(c, 'espaco');
+  var dd = state.fx.dd; if (dd['sb-prazos'] === undefined) dd['sb-prazos'] = false;
+  var gk = fxCasoGuarda(c).k;
+  return (gk && Array.isArray(gk.itens) ? casoAvisoRepetidos(gk) : '') + fxSub('ck', 'Checklist', fxEspacoChecklist(c)) + fxSub('so', 'Só seu', fxEspacoSoSeu(c)) + fxSub('gu', 'Guias', fxEspacoGuias(c)) +
+    fxSub('perg', 'Pergunta da equipe Por Dentro', fxInicioCorpo(c)) + fxSub('prazos', 'Prazos e escolas (fora da página inicial)', fxEspacoCorpo(c)) + fxZonas(c, 'espaco');
+}
+function fxHomeAviso() { return '<p class="sub" style="margin:0">A Página inicial ainda não está ligada: falta rodar <b>db/crm-caso-home.sql</b> e <b>db/crm-caso-home-so-seu.sql</b> no SQL Editor do Supabase (primeiro no teste, depois na produção).</p>'; }
+function fxEspacoChecklist(c) {
+  var g = fxCasoGuarda(c); if (!g.k) return g.html;
+  if (!Array.isArray(g.k.home)) return fxHomeAviso();
+  var chk = state.dos && state.dos.cid === c.id ? state.dos.chk : null;
+  if (!chk) return '<div class="skel" aria-busy="true" style="height:64px"></div>';
+  if (chk.err || chk.semConta) return '<p class="sub" style="margin:0">Ela ainda não entrou no app: o checklist nasce no primeiro acesso. Depois você escolhe aqui os passos mais importantes.</p>';
+  var escolhidos = g.k.home.filter(function (x) { return x.categoria === 'checklist'; }), max = FX.HOME_LIMITES.checklist;
+  var itens = (chk.itens || []).filter(function (i) { return i.status !== 'arquivado'; }).sort(function (a, b) {
+    var ea = FX.homeTem(g.k.home, 'checklist', a.step_key) ? 0 : 1, eb = FX.homeTem(g.k.home, 'checklist', b.step_key) ? 0 : 1, fa = a.status === 'concluido' ? 1 : 0, fb = b.status === 'concluido' ? 1 : 0;
+    return ea - eb || fa - fb || String(a.due_date || '9999').localeCompare(String(b.due_date || '9999'));
+  });
+  var linhas = itens.map(function (i) {
+    var tem = FX.homeTem(g.k.home, 'checklist', i.step_key), meta = i.status === 'concluido' ? 'feito' : i.due_date ? 'prazo ' + String(i.due_date).slice(8, 10) + '/' + String(i.due_date).slice(5, 7) : '';
+    return '<div class="fx-home-slot' + (tem ? ' on' : '') + '"><span class="fx-home-t"><b>' + esc(i.titulo_custom || i.label) + '</b>' + (meta ? ' <small>' + esc(meta) + '</small>' : '') + '</span>' + FH.botaoHome(tem, i.step_key, esc) + '</div>';
+  });
+  return '<p class="sub" style="margin:0 0 8px">Os passos que você marcar com “+” aparecem primeiro no “Em seguida” do Início dela. <b>' + escolhidos.length + ' de ' + max + '</b>' + (escolhidos.length >= max ? ' · cheio: tire um para trocar' : '') + '.</p>' +
+    (linhas.length ? '<div class="fx-home-lista" style="max-height:340px;overflow:auto">' + linhas.join('') + '</div>' : '<div class="empty" style="padding:14px">O checklist dela ainda não tem passos.</div>');
+}
+// Só o que cabe em cada parte: "Só seu" = bilan e documento que ela recebe; "Guias" = documento que ela recebe e mensagem pronta.
+function fxKDe(k, tipos) { return Object.assign({}, k, { itens: k.itens.filter(function (it) { return tipos(it); }) }); }
+function fxEspacoSoSeu(c) {
+  var g = fxCasoGuarda(c); if (!g.k) return g.html;
+  var kk = fxKDe(g.k, function (it) { return FX.itemPodeNaHome(it, 'so_seu'); });
+  return fxSemConsent(g.k) + '<p class="sub" style="margin:0 0 8px">O bilan e os encaminhamentos da Ingryd. Marque com “+” o que ela vê no “Só seu” do Início (até ' + FX.HOME_LIMITES.so_seu + '); o resto fica na aba Espaço dela.</p>' +
+    casoBarraNovo(g.k, ['bilan', 'documento']) + casoItensHtml(kk, null, 'Nada para ela em “Só seu” ainda. Use os botões acima para criar um bilan ou um encaminhamento.', 'so_seu');
+}
+function fxEspacoGuias(c) {
+  var g = fxCasoGuarda(c); if (!g.k) return g.html;
+  var kk = fxKDe(g.k, function (it) { return it.tipo === 'modelo' || (it.tipo === 'documento' && (it.dados || {}).direcao === 'recebe'); });
+  return fxSemConsent(g.k) + '<p class="sub" style="margin:0 0 8px">Documentos e mensagens prontas. Marque com “+” o que ela vê em “Guias” no Início (até ' + FX.HOME_LIMITES.guias + ').</p>' +
+    casoBarraNovo(g.k, ['modelo']) + casoItensHtml(kk, null, 'Nada para ela em Guias ainda. Crie uma mensagem pronta acima ou um documento em “Só seu”.', 'guias');
 }
 function fxEspacoCorpo(c) {
   var g = fxCasoGuarda(c); if (!g.k) return g.html;
     return fxSemConsent(g.k) +
     casoItensHtml(g.k, ['marco', 'escola'], 'Nada de prazo ou escola ainda. Leia a página do Notion no Onboarding para a IA propor.') + casoEscolasDelaHtml(g.k);
-}
-function fxGuiasCorpo(c) {
-  var g = fxCasoGuarda(c); if (!g.k) return g.html;
-  return fxSemConsent(g.k) +
-    casoBarraNovo(g.k) + casoItensHtml(g.k, ['bilan', 'documento', 'modelo'], 'Nada para ela em Material da equipe ainda. Use os botões acima para criar.');
 }
 // Perfil: o que o Dossiê ainda não tem, para perguntar na call (o Dossiê é a aba ao lado).
 function fxPerfilCorpo(c) {
@@ -4453,7 +4464,7 @@ function fxSessoes(c) {
     chat: mk('Conversa com ela', 'As mensagens da equipe, do assistente e dela, dentro do app.', 'chat', function () { return '<div id="chat-box">' + chatPanelHtml(c, state.chat, H4_PLAT) + '</div>'; }),
     checklist: mk('Checklist', 'Os passos dela por démarche, do mais urgente ao mais distante.', 'checklist', function () { return '<div id="fx-chk-corpo">' + fxChecklistCorpo(c) + '</div>' + fxZonas(c, 'checklist'); }),
     curadoria: mk('Curadoria', 'Limpar, editar, posicionar e validar os passos dela.', 'curadoria', function () { return fxCuradoriaCorpo(c); }),
-    espaco: mk('Espaço', 'Perguntas da equipe, prazos e escolas e o material que ela abre na aba Espaço do app.', 'espaco', function () { return fxEspacoTudo(c); }),
+    espaco: mk('Espaço', 'Como o Início dela: você escolhe os passos do checklist, o que é só dela e os guias; embaixo, a pergunta da equipe.', 'espaco', function () { return fxEspacoTudo(c); }),
     perfil: mk('Perfil', 'O que ela já respondeu e o que falta perguntar.', 'perfil', function () { return fxPerfilCorpo(c) + fxZonas(c, 'perfil'); }),
     eu: mk('Só eu · minhas tarefas', 'Tarefas suas neste caso. Ela não vê nada daqui.', 'eu', function () { return fxEuCorpo(c); }),
     bilan: mk('Bilan', 'O que a conversa mostrou, os achados para conferir e o e-mail do bilan.', 'bilan', function () { var g = fxCasoGuarda(c); return (g.k ? casoSecao('O que entendi', g.k.ach.length + ' achados', casoAchadosHtml(g.k)) : g.html) + bilanResumoHtml(c) + bilanBlocoHtml(c, H4_PLAT); }),

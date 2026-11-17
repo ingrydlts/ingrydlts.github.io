@@ -46,6 +46,21 @@ var ETAPAS_AP = { tudo_bem: 'está tudo bem e ainda não olhou os papéis', nao_
   medo_prazo: 'tem medo de perder algum prazo', travado: 'tem um passo travado (validação, conta ou sécu)', pesado: 'está pesado e deixou os papéis de lado' };
 Object.keys(ETAPAS_CF).forEach(function (k) { CAT['etapa_' + k] = { t: 'sim', o: 'etapa do guia: ' + ETAPAS_CF[k], etapa: true }; });
 Object.keys(ETAPAS_ALT).forEach(function (k) { CAT['etapa_' + k] = { t: 'sim', o: 'etapa do guia: ' + ETAPAS_ALT[k], etapa: true }; });
+// Guia "Mapa da saúde" (S2): as duas perguntas do formulário viram a persona porta.ponto (20 combinações). Cada valor vira um sim/não,
+// e o Worker preenche também a seção do mapa, o assunto da persona e as astúcias conferidas (que somem depois da data de revisão).
+export var PORTAS_SAUDE = { estudante: 'Estudante', trabalho: 'Trabalho com contrato', aupair: 'Au pair', outro: 'Outro ou não sei' };
+export var PONTOS_SAUDE = { nao_cheguei: 'ainda não chegou', sem_numero: 'chegou e está sem número', esperando: 'pediu e está esperando',
+  sem_vitale: 'tem o número e não a carte vitale', completo: 'já tem a carte vitale' };
+export var ASTUCIAS_SAUDE = { astucia_a0007: 'astúcia A-0007 (inscrição no ameli antes da chegada) está conferida e em vigor',
+  astucia_a0008: 'astúcia A-0008 (Puma e atividade profissional) está conferida e em vigor',
+  astucia_a0009: 'astúcia A-0009 (declaração da família na Urssaf) está conferida e em vigor' };
+Object.keys(PORTAS_SAUDE).forEach(function (k) { CAT['porta_' + k] = { t: 'sim', o: 'a porta que ela escolheu: ' + PORTAS_SAUDE[k] }; });
+Object.keys(PONTOS_SAUDE).forEach(function (k) { CAT['ponto_' + k] = { t: 'sim', o: 'o ponto da saúde: ' + PONTOS_SAUDE[k] }; });
+Object.keys(ASTUCIAS_SAUDE).forEach(function (k) { CAT[k] = { t: 'sim', o: ASTUCIAS_SAUDE[k] }; });
+Object.keys(PORTAS_SAUDE).forEach(function (k) { CAT['retomada_' + k] = { t: 'sim', o: 'e-mail 2: a porta é ' + PORTAS_SAUDE[k] + ' e ela ainda não tem a carte vitale' }; });
+CAT.secao = { t: 'texto', o: 'a seção do mapa da saúde que ela abre primeiro', plano: 'tronco do mapa' };
+CAT.assunto_persona = { t: 'texto', o: 'o assunto do e-mail 1 para a persona dela (porta e ponto)', plano: '' };
+CAT.assunto_retomada = { t: 'texto', o: 'o assunto do e-mail 2 (retomada) para a persona dela', plano: '' };
 
 // Os dados que cada modelo tem na hora do envio (o Worker ou o painel preenche exatamente estes).
 var PAINEL = ['nome', 'persona', 'link_acesso', 'link_agenda', 'au_pair', 'motivo', 'prazo_vencido', 'prazo_a_vencer', 'prazo_limite', 'dias_para_prazo'];
@@ -66,12 +81,15 @@ export var VARS_DE = {
 // O Worker preenche exatamente estes (crmVarsNovos em worker.js).
 // As etapas do guia viram um sim/não cada (etapa_…), para o bloco "Só para uma etapa".
 export var VARS_NOVOS = ['nome', 'email', 'persona', 'nivel', 'prazo_nivel', 'etapa', 'cidade', 'prazo_limite', 'dias_para_prazo',
-  'prazo_vencido', 'prazo_a_vencer', 'link_acesso', 'link_agenda'].concat(Object.keys(ETAPAS_CF).concat(Object.keys(ETAPAS_ALT)).map(function (k) { return 'etapa_' + k; }));
+  'prazo_vencido', 'prazo_a_vencer', 'link_acesso', 'link_agenda'].concat(Object.keys(ETAPAS_CF).concat(Object.keys(ETAPAS_ALT)).map(function (k) { return 'etapa_' + k; })).concat(Object.keys(PORTAS_SAUDE).map(function (k) { return 'porta_' + k; }), Object.keys(PONTOS_SAUDE).map(function (k) { return 'ponto_' + k; }), Object.keys(ASTUCIAS_SAUDE), Object.keys(PORTAS_SAUDE).map(function (k) { return 'retomada_' + k; }), ['secao', 'assunto_persona', 'assunto_retomada']);
 // A regra "Etapa do guia" do Para quem: o valor é o que fica em contatos.respostas.objetivo (crm_sequencia_pendentes compara igual).
 export var ETAPAS_GUIA = Object.keys(ETAPAS_CF).map(function (k) { return ['cf-' + k.replace(/_/g, '-'), 'Campus France: ' + ETAPAS_CF[k]]; })
   .concat(Object.keys(ETAPAS_ALT).map(function (k) { return ['alt-' + k.replace(/_/g, '-'), 'Alternância 30+: ' + ETAPAS_ALT[k]]; }));
 // As etapas do guia do Au pair só servem ao filtro do Para quem (o Worker não as vira em sim/não no texto), por isso ficam fora de ETAPAS_GUIA.
 export var ETAPAS_FILTRO = ETAPAS_GUIA.concat(Object.keys(ETAPAS_AP).map(function (k) { return ['ap-' + k.replace(/_/g, '-'), 'Au pair: ' + ETAPAS_AP[k]]; }));
+// Os e-mails do guia "Mapa da saúde": os dados novos + o link do mapa (o Worker o lê de guias_links, SAUDE_GUIA_DO_MODELO em worker.js).
+VARS_DE.saude_mapa_1 = VARS_NOVOS.concat(['link_checklist']);
+VARS_DE.saude_mapa_2 = VARS_NOVOS.concat(['link_checklist']);
 var VARS_PRODUTO = ['produto', 'link_produto'];
 export function varsDoModelo(chave, m) {
   if (VARS_DE[chave]) return VARS_DE[chave];

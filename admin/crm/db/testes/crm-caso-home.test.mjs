@@ -1,4 +1,4 @@
-// Testa crm-caso-home.sql (destaques da Página inicial: tabela, limites 3/2/2 e meu_caso) num Postgres efêmero (PGlite).
+// Testa crm-caso-home.sql + crm-caso-home-so-seu.sql (destaques da Página inicial: tabela, limites 3/3/2, categorias e meu_caso) num Postgres efêmero (PGlite).
 // Uso: cd admin/crm/db/testes && APP_DB_DIR=<POR-DENTRO-APP>/db node crm-caso-home.test.mjs
 import { PGlite } from '@electric-sql/pglite';
 import { readFileSync } from 'node:fs';
@@ -70,37 +70,46 @@ async function main() {
   check('o admin grava', (await attempt(() => asUser(admin.id, () => db.query("insert into caso_home (contato_id, categoria, step_key) values ($1,'checklist','k0')", [ana.c])))).ok);
   await db.query('delete from caso_home');
 
-  console.log('\n== Limites 3 / 2 / 2 (no banco, não só na tela) ==');
+  console.log('\n== A migração (crm-caso-home-so-seu.sql): espaco sai, bilan de guias vira so_seu ==');
+  const mig = readFileSync(path.resolve(HERE, '../crm-caso-home-so-seu.sql'), 'utf8');
+  const e0 = await bi(ana, 'escola'), b0 = await bi(ana, 'bilan'), d0 = await bi(ana, 'documento');
+  await home(ana, 'espaco', { board: e0 }); await home(ana, 'guias', { board: b0 }); await home(ana, 'guias', { board: d0 });
+  const r2 = await attempt(() => db.exec(mig)); check('roda a 1ª vez', r2.ok); if (!r2.ok) { console.log(r2.error.message); process.exit(1); }
+  check('roda a 2ª vez (idempotente)', (await attempt(() => db.exec(mig))).ok);
+  check('"espaco" foi apagado; o bilan virou so_seu; o documento continua em guias; o item do board continua existindo', (await q("select 1 from caso_home where categoria = 'espaco'")).length === 0
+    && (await q("select 1 from caso_home where categoria = 'so_seu' and board_id = $1", [b0])).length === 1 && (await q("select 1 from caso_home where categoria = 'guias' and board_id = $1", [d0])).length === 1 && (await q('select 1 from board_itens where id = $1', [e0])).length === 1);
+  check('"espaco" não entra mais', await falha(() => home(ana, 'espaco', { board: e0 })));
+  await db.query('delete from caso_home');
+
+  console.log('\n== Limites 3 / 3 / 2 (no banco, não só na tela) ==');
   for (const k of ['a', 'b', 'c']) await home(ana, 'checklist', { step: k });
   check('checklist: 3 cabem, o 4º não ("home_cheia")', await falha(() => home(ana, 'checklist', { step: 'd' }), 'home_cheia'));
-  const e1 = await bi(ana, 'escola'), e2 = await bi(ana, 'marco'), e3 = await bi(ana, 'escola');
-  await home(ana, 'espaco', { board: e1 }); await home(ana, 'espaco', { board: e2 });
-  check('espaço: 2 cabem, o 3º não', await falha(() => home(ana, 'espaco', { board: e3 }), 'home_cheia'));
-  const g1 = await bi(ana, 'documento'), g2 = await bi(ana, 'bilan'), g3 = await bi(ana, 'modelo');
+  const rec = '{"direcao":"recebe"}';
+  const s1 = await bi(ana, 'bilan'), s2 = await bi(ana, 'documento', 'revisado', rec), s3 = await bi(ana, 'documento', 'revisado', rec), s4 = await bi(ana, 'documento', 'revisado', rec);
+  await home(ana, 'so_seu', { board: s1 }); await home(ana, 'so_seu', { board: s2 }); await home(ana, 'so_seu', { board: s3 });
+  check('só seu: 3 cabem, o 4º não', await falha(() => home(ana, 'so_seu', { board: s4 }), 'home_cheia'));
+  const g1 = await bi(ana, 'documento'), g2 = await bi(ana, 'modelo'), g3 = await bi(ana, 'modelo');
   await home(ana, 'guias', { board: g1 }); await home(ana, 'guias', { board: g2 });
   check('guias: 2 cabem, o 3º não', await falha(() => home(ana, 'guias', { board: g3 }), 'home_cheia'));
-  const lim3 = readFileSync(path.resolve(HERE, '../crm-caso-home-limite3.sql'), 'utf8');
-  check('crm-caso-home-limite3.sql roda e é idempotente (2 vezes)', (await attempt(() => db.exec(lim3))).ok && (await attempt(() => db.exec(lim3))).ok);
-  const e4 = await bi(ana, 'escola'), g4 = await bi(ana, 'bilan');
-  await home(ana, 'espaco', { board: e3 }); await home(ana, 'guias', { board: g3 });
-  check('depois do limite3: Espaço e Guias aceitam o 3º item e recusam o 4º', await falha(() => home(ana, 'espaco', { board: e4 }), 'home_cheia') && await falha(() => home(ana, 'guias', { board: g4 }), 'home_cheia'));
-  check('o checklist continua em 3', await falha(() => home(ana, 'checklist', { step: 'd' }), 'home_cheia'));
-  await db.query("delete from caso_home where board_id in ($1,$2)", [e3, g3]);   // volta ao estado que os testes seguintes esperam
   check('o limite é por pessoa: a Bia tem o seu', (await attempt(() => home(bia, 'checklist', { step: 'a' }))).ok);
   check('o mesmo passo não entra duas vezes', await falha(() => home(bia, 'checklist', { step: 'a' })));
 
   console.log('\n== Item da categoria certa, da mesma pessoa ==');
-  const doc = await bi(bia, 'documento'), esc = await bi(bia, 'escola'), deAna = await bi(ana, 'escola');
-  check('documento não vai para "espaço"; escola não vai para "guias"', await falha(() => home(bia, 'espaco', { board: doc }), 'item_invalido') && await falha(() => home(bia, 'guias', { board: esc }), 'item_invalido'));
-  check('item de OUTRA pessoa não entra', await falha(() => home(bia, 'espaco', { board: deAna }), 'item_invalido'));
+  const doc = await bi(bia, 'documento'), docRec = await bi(bia, 'documento', 'revisado', rec), esc = await bi(bia, 'escola'), mod = await bi(bia, 'modelo'), bil = await bi(bia, 'bilan'), deAna = await bi(ana, 'bilan');
+  check('só seu aceita bilan e encaminhamento (documento que ela recebe); recusa documento comum, mensagem e escola', (await attempt(() => home(bia, 'so_seu', { board: bil }))).ok && (await attempt(() => home(bia, 'so_seu', { board: docRec }))).ok
+    && await falha(() => home(bia, 'so_seu', { board: doc }), 'item_invalido') && await falha(() => home(bia, 'so_seu', { board: mod }), 'item_invalido') && await falha(() => home(bia, 'so_seu', { board: esc }), 'item_invalido'));
+  check('guias aceita documento e mensagem pronta; recusa bilan e escola', await falha(() => home(bia, 'guias', { board: bil }), 'item_invalido') && await falha(() => home(bia, 'guias', { board: esc }), 'item_invalido')
+    && (await attempt(() => home(bia, 'guias', { board: doc }))).ok && (await attempt(() => home(bia, 'guias', { board: mod }))).ok);
+  check('item de OUTRA pessoa não entra', await falha(() => home(bia, 'so_seu', { board: deAna }), 'item_invalido'));
   check('forma da linha: checklist exige step_key; board exige board_id', await falha(() => db.query("insert into caso_home (contato_id, categoria) values ($1,'checklist')", [bia.c])) && await falha(() => db.query("insert into caso_home (contato_id, categoria, step_key) values ($1,'guias','x')", [bia.c])));
+  await db.query('delete from caso_home where contato_id = $1 and categoria <> $2', [bia.c, 'checklist']);
 
   console.log('\n== O que a pessoa recebe ==');
   let m = (await asUser(ana.u.id, () => um('select meu_caso() r'))).r;
   check('só o checklist vem (os itens do board ainda não foram publicados)', m.home.length === 3 && m.home.every((x) => x.categoria === 'checklist'));
-  await pub(e1); await pub(g1);
+  await pub(s1); await pub(g1);
   m = (await asUser(ana.u.id, () => um('select meu_caso() r'))).r;
-  check('publicado: o item do Espaço e o do Guias entram; o não publicado continua fora', m.home.filter((x) => x.categoria === 'espaco').length === 1 && m.home.filter((x) => x.categoria === 'guias').length === 1 && m.home.length === 5);
+  check('publicado: o do Só seu e o dos Guias entram; o não publicado continua fora', m.home.filter((x) => x.categoria === 'so_seu').length === 1 && m.home.filter((x) => x.categoria === 'guias').length === 1 && m.home.length === 5);
   const mb = (await asUser(bia.u.id, () => um('select meu_caso() r'))).r.home;
   check('a Bia só vê o dela (1 passo do checklist), nada da Ana', mb.length === 1 && mb[0].categoria === 'checklist' && mb[0].step_key === 'a' && mb.every((x) => !x.board_id));
   check('apagar o item do board apaga o destaque', (await db.query('delete from board_itens where id = $1', [g2]), (await q('select 1 from caso_home where board_id = $1', [g2])).length === 0));

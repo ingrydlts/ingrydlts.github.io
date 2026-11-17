@@ -318,12 +318,24 @@ export function htmlFluxo(passo, h) {
 // Tudo é dado real da pessoa, só leitura. Nada aqui grava.
 const ABAS_APP = [['inicio', 'Início'], ['checklist', 'Checklist'], ['espaco', 'Espaço'], ['guias', 'Guias'], ['perfil', 'Perfil']];
 const LEGENDA_ABA = {
-  inicio: 'Início = o prazo mais perto, o passo de agora, os que vêm em seguida e os atalhos do que é só dela. As perguntas da equipe moram no Espaço.',
+  inicio: 'Início = o prazo mais perto, o passo de agora, os que vêm em seguida (primeiro os que você escolheu), o que é só dela e os guias. A pergunta da equipe vem sempre embaixo.',
   checklist: 'Checklist = passos da persona e o que ela adicionou. Só ela marca.',
   espaco: 'Espaço = a pergunta da equipe (com as perguntas rápidas do perfil na mesma fila), o que a equipe percebeu, o que a Ingryd manda, escolas, mensagens prontas e o bilan.',
   guias: 'Guias = o material da equipe só para ela: documentos que você manda, mensagens prontas e o bilan.',
   perfil: 'Perfil = respostas do Dossiê que já existem.'
 };
+// Início do app, depois do "Em seguida": "Só seu" (bilan e encaminhamentos da Ingryd) e "Guias", como ele monta (os que ela escolheu em Espaço).
+function linhasHome(n, L, e) {
+  const em = (x) => x.conteudo ? 'Abrir' : x.tipo === 'documento' ? 'chega em breve' : 'Ver no Espaço';
+  const linha = (x) => '<div class="fx-pv-row"><span><b>' + e(x.titulo) + '</b>' + (x.sub ? '<small>' + e(x.sub) + '</small>' : '') + '</span><em>' + em(x) + '</em></div>';
+  const s = n.soSeu || { atalhoBilan: false, bilans: [], docs: [] };
+  const soSeu = s.atalhoBilan || s.bilans.length || s.docs.length
+    ? '<section class="fx-pv-card"' + L('Dela') + '><span class="k">Só seu</span>' + (s.atalhoBilan ? '<div class="fx-pv-row"><span><b>O que combinamos na conversa</b><small>o bilan da nossa conversa</small></span></div>' : '') +
+      s.bilans.map((x) => '<div class="fx-pv-row"><span><b>' + e(x.titulo) + '</b><small>' + e(x.sub || 'o bilan da nossa conversa') + '</small></span><em>Ver no Espaço</em></div>').join('') +
+      (s.docs.length ? '<small class="fx-pv-dsub">Encaminhamentos da Ingryd</small>' + s.docs.map(linha).join('') : '') + '</section>' : '';
+  const g = (n.destaques && n.destaques.guias) || [];
+  return soSeu + (g.length ? '<section class="fx-pv-card"' + L('Dela') + '><span class="k">Guias</span>' + g.map(linha).join('') + '</section>' : '');
+}
 export function htmlPreviaApp(d, h) {
   const e = h.esc, L = (l, t) => (d.camadas ? ' data-l="' + l + '"' : '') + (t || '');
   const aba = LEGENDA_ABA[d.aba] ? d.aba : 'inicio';
@@ -336,9 +348,7 @@ export function htmlPreviaApp(d, h) {
       n.marcos.map((m) => '<section class="fx-pv-card"' + L('Dela') + '><span class="k">Prazo</span><h4>' + e(m.titulo) + '</h4><p>' + (m.aConfirmar ? 'Data a confirmar' : e(m.data) + (m.quando ? ' · ' + e(m.quando) : '')) + '</p></section>').join('') +
       (n.foco ? '<section class="fx-pv-card fx-pv-foco' + (n.foco.atrasado ? ' urg' : '') + '"' + L('Dela') + '><span class="k">' + e(n.foco.rotulo) + '</span><h4>' + e(n.foco.titulo) + '</h4>' + (n.foco.quando ? '<p>' + e(n.foco.quando) + '</p>' : '') + '<span class="fx-pv-btn">' + e(n.foco.botao) + '</span></section>' : '') +
       (n.seguintes.length ? '<section class="fx-pv-card"' + L('Persona') + '><span class="k">Em seguida</span>' + n.seguintes.map(linhaSeg).join('') + '</section>' : '') +
-      ((n.destaques && (n.destaques.espaco.length || n.destaques.guias.length)) ? '<section class="fx-pv-card fx-pv-dest"' + L('Dela') + '><span class="k">Em destaque</span>' +
-        [['Do Espaço', n.destaques.espaco], ['Guias', n.destaques.guias]].map((par) => par[1].length ? '<small class="fx-pv-dsub">' + par[0] + '</small>' + par[1].map((x) => '<div class="fx-pv-row"><span><b>' + e(x.titulo) + '</b>' + (x.sub ? '<small>' + e(x.sub) + '</small>' : '') + '</span><em>' + (x.conteudo ? 'Abrir' : x.tipo === 'documento' ? 'chega em breve' : 'Ver no Espaço') + '</em></div>').join('') : '').join('') + '</section>' : '') +
-      (n.atalhos.length ? '<section class="fx-pv-card"' + L('Dela') + '><span class="k">Só seu</span>' + n.atalhos.map((a) => '<div class="fx-pv-row"><span><b>' + e(a.tit) + '</b><small>' + e(a.sub) + '</small></span></div>').join('') + '</section>' : '');
+      linhasHome(n, L, e);
   } else if (aba === 'inicio') {
     const frase = d.marco ? 'Faltam ' + d.marco.dias + ' dias: ' + d.marco.titulo + '.' : 'Nada vence nesta semana. O próximo passo está logo abaixo.';
     corpo = '<section class="fx-pv-card fx-pv-hero' + (d.marco && d.marco.dias <= 21 ? ' urg' : '') + '"' + L('Dela') + '><span class="k">Hoje</span><h4>Olá, ' + e(d.nome) + '</h4><p>' + e(frase) + '</p><b class="fx-pv-pct">' + d.pct + '%</b></section>' +
@@ -357,7 +367,7 @@ export function htmlPreviaApp(d, h) {
     const lin = (t, s2, em) => '<div class="fx-pv-row"><span><b>' + e(t) + '</b>' + (s2 ? '<small>' + e(s2) + '</small>' : '') + '</span>' + (em ? '<em>' + e(em) + '</em>' : '') + '</div>';
     const perguntas = p.perguntas.map((a) => '<section class="fx-pv-card"' + L('Dela') + '><span class="k">Pergunta da equipe</span><h4>' + e(a.titulo) + '</h4>' + (a.texto ? '<p>' + e(a.texto) + '</p>' : '') + '</section>').join('');
     const novos = p.docs.filter((x) => x.novo).length;
-    const daIngryd = p.docs.length ? bloco('Da Ingryd para você' + (novos ? ' · ' + novos + (novos === 1 ? ' novo' : ' novos') : ''), p.docs.map((x) => lin(x.titulo, x.resumo || (x.descricao ? 'com descrição para ler e copiar' : ''), x.conteudo ? 'Abrir' : x.descricao ? 'Ler' : 'chega em breve')).join('')) : '';
+    const daIngryd = p.docs.length ? bloco('Encaminhamentos da Ingryd' + (novos ? ' · ' + novos + (novos === 1 ? ' novo' : ' novos') : ''), p.docs.map((x) => lin(x.titulo, x.resumo || (x.descricao ? 'com descrição para ler e copiar' : ''), x.conteudo ? 'Abrir' : x.descricao ? 'Ler' : 'chega em breve')).join('')) : '';
     const esc2 = p.escolas.length || p.dela.length ? bloco('Escolas para você contatar', p.escolas.map((x) => lin(x.titulo, x.resumo)).join('') + p.dela.map((x) => lin(x.nome, 'adicionada por ela')).join('')) : '';
     corpo = '<h3 class="fx-pv-oi">Materiais pro seu caso</h3>' + (p.vazio && !p.dela.length
       ? '<section class="fx-pv-card"' + L('Dela') + '><h4>Seu espaço ainda está sendo preparado.</h4><p>Depois da nossa conversa, a Ingryd coloca aqui o que é só do seu caso: arquivos, mensagens e contatos. Quando ela publicar, aparece aqui e a equipe avisa.</p></section>'
@@ -374,6 +384,11 @@ export function htmlPreviaApp(d, h) {
   } else {
     corpo = '<section class="fx-pv-card"' + L('Dela') + '><h4>' + e(d.nome) + '</h4>' + d.perfil.kv.map((x) => '<div class="fx-pv-row"><span>' + e(x[0]) + '</span><em>' + e(x[1] || '—') + '</em></div>').join('') + '</section>' +
       '<section class="fx-pv-card"><span class="k">Seu perfil</span><p>' + d.perfil.n + ' de ' + d.perfil.tot + ' respondidas.</p></section>';
+  }
+  if (aba === 'inicio' && d.inicio && d.inicio.pessoal) {
+    // Embaixo do Início, sempre: a pergunta da equipe (o app soma as perguntas rápidas do perfil, que só ele sabe quais faltam).
+    const np = d.esp && d.esp.perguntas ? d.esp.perguntas.length : 0;
+    if (np) corpo += '<p class="fx-pv-card fx-pv-aviso"' + L('Dela') + '>' + (np === 1 ? 'Você tem 1 nova pergunta da Equipe Por Dentro' : 'Você tem ' + np + ' novas perguntas da Equipe Por Dentro') + ' ›</p>';
   }
   return '<div class="fx-pv-cab"><b>Como ' + e(d.nome) + ' vê no app</b><span class="fx-pv-dias" role="group" aria-label="Dias depois do primeiro acesso">' +
     [0, 1, 3, 7].map((n) => '<button type="button" data-fx="appdia" data-v="' + n + '" aria-pressed="' + (d.dia === n) + '">Dia ' + n + '</button>').join('') + '</span></div>' +

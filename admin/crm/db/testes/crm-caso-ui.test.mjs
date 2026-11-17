@@ -39,7 +39,7 @@ const supabase = { from: qb, auth: { getSession: async () => ({ data: { session:
   channel: (nome) => { const ch = { nome, ons: [], on(t, o, cb) { ch.ons.push({ o, cb }); return ch; }, subscribe(cb) { ch.status = cb; return ch; } }; canais.push(ch); return ch; }, removeChannel() {} };
 const store = {};
 const mod = new Function('supabase', 'ES', 'TX', 'EE', 'EQ', 'JR', 'FX', 'FH', 'MT', 'document', 'window', 'location', 'localStorage', 'setInterval', 'clearInterval',
-  src + '\n;return { state, setC: function (v) { C = v; }, renderPessoa, eventText, pararAoVivo, fxHomeCorpo: fxHomeCorpo, fxHomeMuda: fxHomeMuda, fxGuiasCorpo: fxGuiasCorpo };')(
+  src + '\n;return { state, setC: function (v) { C = v; }, renderPessoa, eventText, pararAoVivo, fxHomeCorpo: fxHomeCorpo, fxHomeMuda: fxHomeMuda, fxEspacoTudo: fxEspacoTudo };')(
   supabase, {}, TXMOD, { iniciar() {}, depois() {}, campoMudou() {} }, {}, {}, FXMOD, FHMOD, MTMOD, document, { addEventListener() {} }, { href: '' }, { getItem: (k) => store[k] ?? null, setItem: (k, v) => { store[k] = v; } }, () => 1, () => {});
 
 
@@ -291,15 +291,15 @@ console.log('\n== Documentos repetidos: avisar e juntar ==');
   const d = (id, titulo, extra = {}) => Object.assign({ id, tipo: 'documento', titulo, resumo: null, dados: { direcao: 'recebe' }, estado: 'revisado', ordem: 20, link: null, versao: 1 }, extra);
   fixture({ itens: [d(51, 'Notion de estudos de francês', { link: 'https://exemplo.org/n', estado: 'publicado' }), d(52, 'Notion de estudos de francês (link gratuito, para duplicar)'), d(53, 'Passaporte'), d(54, 'Certificado de francês', { dados: { direcao: 'reune' } }), d(55, 'Certificado de francês', { dados: { direcao: 'reune' }, estado: 'publicado' })] });
   await pagina();
-  const corpo = mod.fxGuiasCorpo ? mod.fxGuiasCorpo(base) : '';
+  const corpo = mod.fxEspacoTudo ? mod.fxEspacoTudo(base) : '';
   check('a lista do Material avisa quantos repetidos há e qual fica (a mais completa)', /2 repetidos/.test(corpo) && /Notion de estudos de francês”: 2 cópias/.test(corpo) && /Certificado de francês”: 2 cópias/.test(corpo) && /data-caso="item-dedup-pede"/.test(corpo));
   await click({ caso: 'item-dedup-pede', id: '0' });
-  check('o primeiro toque só pede confirmação (não apaga)', /Excluir 2 repetidos/.test(mod.fxGuiasCorpo(base)) && !writes.some((x) => x.op === 'delete'));
+  check('o primeiro toque só pede confirmação (não apaga)', /Excluir 2 repetidos/.test(mod.fxEspacoTudo(base)) && !writes.some((x) => x.op === 'delete'));
   writes.length = 0; await click({ caso: 'item-dedup', id: '0' });
   const wd = writes.find((x) => x.op === 'delete' && x.table === 'board_itens');
   check('confirmar exclui só os que NÃO ficam (52: sem link e não publicado; 54: reúne, não publicado), de uma vez', wd && wd.filtros.join() === 'id in 52,54' && !wd.filtros.join().includes('51') && !wd.filtros.join().includes('55') && !wd.filtros.join().includes('53'));
   fixture({ itens: [d(61, 'Passaporte'), d(62, 'Visto')] }); await pagina();
-  check('sem repetidos não há aviso', !/repetido/.test(mod.fxGuiasCorpo(base)));
+  check('sem repetidos não há aviso', !/repetido/.test(mod.fxEspacoTudo(base)));
 }
 
 console.log('\n== Escolas que ela acrescentou ==');
@@ -313,46 +313,36 @@ check('sem o SQL das escolas, a aba segue normal e a seção some', /Board dela/
 
 console.log('\n== Página inicial: "Adicionar na home" ==');
 {
-  const cfg = (home) => { fixture({ itens: [ITENS[0], ITENS[1], ITENS[2]] }); respostas.caso_home = home === null ? { data: null, error: { message: 'relation "caso_home" does not exist' } } : { data: home, error: null }; };
+  const MOD23 = { id: 23, tipo: 'modelo', titulo: 'E-mail para escolas', resumo: null, dados: { corpo: 'Bonjour' }, estado: 'publicado', ordem: 6, link: null, versao: 1 };
+  const DOC24 = { id: 24, tipo: 'documento', titulo: 'Plano de estudos', resumo: null, dados: { direcao: 'recebe' }, estado: 'publicado', ordem: 7, link: 'https://exemplo.org/p', versao: 1 };
+  const DOC25 = { id: 25, tipo: 'documento', titulo: 'Outro encaminhamento', resumo: null, dados: { direcao: 'recebe' }, estado: 'publicado', ordem: 8, link: 'https://exemplo.org/o', versao: 1 };
+  const cfg = (home) => { fixture({ itens: [ITENS[0], ITENS[1], ITENS[2], MOD23, DOC24, DOC25] }); respostas.caso_home = home === null ? { data: null, error: { message: 'relation "caso_home" does not exist' } } : { data: home, error: null }; };
   cfg([]); await pagina();
-  check('item do Espaço (marco) e do Guias (bilan) ganham "Adicionar na home"; documento a reunir (Passaporte) é do Guias também', /data-caso="home-add" data-id="espaco:21"/.test(html()) && /data-caso="home-add" data-id="guias:20"/.test(html()) && /data-caso="home-add" data-id="guias:22"/.test(html()));
-  writes.length = 0; await click({ caso: 'home-add', id: 'espaco:21' });
+  check('bilan e encaminhamento (documento que ela recebe) ganham "+" para Só seu; mensagem pronta, para Guias (no Caso; em Espaço o encaminhamento também aparece em Guias)', /data-caso="home-add" data-id="so_seu:20"/.test(html()) && /data-caso="home-add" data-id="so_seu:24"/.test(html()) && /data-caso="home-add" data-id="guias:23"/.test(html()));
+  check('prazo, escola e documento a reunir (Passaporte) não vão para a página inicial', !/data-id="(so_seu|guias|espaco):(21|22)"/.test(html()));
+  writes.length = 0; await click({ caso: 'home-add', id: 'so_seu:24' });
   const w = writes.find((x) => x.table === 'caso_home');
-  check('clicar grava em caso_home com a categoria, o item e a pessoa', w && w.op === 'insert' && w.row.categoria === 'espaco' && w.row.board_id === 21 && w.row.contato_id === 'c1' && w.row.ordem === 0 && !('step_key' in w.row));
-  check('o aviso diz que ela vê no Início', /Na home: Espaço/.test(els.get('toast').textContent));
+  check('clicar grava em caso_home com a categoria, o item e a pessoa', w && w.op === 'insert' && w.row.categoria === 'so_seu' && w.row.board_id === 24 && w.row.contato_id === 'c1' && w.row.ordem === 0 && !('step_key' in w.row));
+  check('o aviso diz que ela vê no Início', /Na home: Só seu/.test(els.get('toast').textContent));
   // item do checklist: o step_key
   writes.length = 0; await click({ caso: 'home-add', id: 'checklist:ofii_validacao' });
   const wc = writes.find((x) => x.table === 'caso_home');
   check('passo do checklist grava o step_key (e não board_id)', wc && wc.row.categoria === 'checklist' && wc.row.step_key === 'ofii_validacao' && !('board_id' in wc.row));
-  // espaço cheio (3 de 3)
-  cfg([{ id: 1, categoria: 'espaco', step_key: null, board_id: 21, ordem: 0 }, { id: 2, categoria: 'espaco', step_key: null, board_id: 23, ordem: 1 }, { id: 3, categoria: 'espaco', step_key: null, board_id: 24, ordem: 2 }]); await pagina();
-  writes.length = 0; await click({ caso: 'home-add', id: 'espaco:99' });
-  check('espaço cheio: não grava e avisa para tirar um', writes.filter((x) => x.table === 'caso_home').length === 0 && /3 de 3 em Espaço/.test(els.get('toast').textContent) && /Tire um/.test(els.get('toast').textContent));
-  check('quem já está na home mostra "Na home ✓ · tirar"', /data-caso="home-del" data-id="espaco:21"/.test(html()));
-  writes.length = 0; await click({ caso: 'home-del', id: 'espaco:21' });
+  // só seu cheio (3 de 3)
+  cfg([{ id: 1, categoria: 'so_seu', step_key: null, board_id: 20, ordem: 0 }, { id: 2, categoria: 'so_seu', step_key: null, board_id: 24, ordem: 1 }, { id: 3, categoria: 'so_seu', step_key: null, board_id: 25, ordem: 2 }]); await pagina();
+  writes.length = 0; await click({ caso: 'home-add', id: 'so_seu:99' });
+  check('só seu cheio: não grava e avisa para tirar um', writes.filter((x) => x.table === 'caso_home').length === 0 && /3 de 3 em Só seu/.test(els.get('toast').textContent) && /Tire um/.test(els.get('toast').textContent));
+  check('quem já está na home mostra "×" (tirar)', /data-caso="home-del" data-id="so_seu:20"/.test(html()));
+  writes.length = 0; await click({ caso: 'home-del', id: 'so_seu:20' });
   const wd = writes.find((x) => x.table === 'caso_home');
   check('tirar apaga a linha certa', wd && wd.op === 'delete' && wd.filtros.join() === 'id=1');
   { const corpo = mod.fxHomeCorpo(base);
-    check('a sessão Página inicial: 3 blocos (Em seguida, Espaço, Guias), no máximo 3 itens cada, com a contagem em pontos ("n de máx", "cheio")', (corpo.match(/aria-label="0 de 3"/g) || []).length === 2 && /aria-label="3 de 3" title="3 de 3 \(cheio\)"/.test(corpo) && /<h4>Em seguida<\/h4>/.test(corpo) && /<h4>Guias<\/h4>/.test(corpo));
-    check('item não publicado é avisado (ponto âmbar com rótulo); item removido também; cada um tem o ícone de tirar', /fx-dot mid[^>]*aria-label="Rascunho: ela só vê depois que você publicar"/.test(corpo) && /o item não existe mais/.test(corpo) && /data-caso="home-del" data-id="espaco:21"[^>]*aria-label="Tirar da página inicial"/.test(corpo));
-    check('vaga livre com opções vira um seletor ("＋ Escolher…"); sem opções, uma linha que abre a sessão (nunca fecha)', (corpo.match(/<select class="fx-hm-add" data-home-add="guias"/g) || []).length === 3 && /<option value="20">Bilan da nossa conversa · rascunho<\/option>/.test(corpo) && !/<option value="22">/.test(corpo) && (corpo.match(/<button type="button" class="fx-hm-add" data-fx="abrir" data-id="checklist"/g) || []).length === 3 && !/Espaço livre/.test(corpo));
-    writes.length = 0; await mod.fxHomeMuda({ dataset: { homeAdd: 'guias' }, value: '20' });
-    const wa = writes.find((x) => x.table === 'caso_home');
-    check('escolher no seletor da vaga livre grava na categoria certa (guias, board 20)', wa && wa.op === 'insert' && wa.row.categoria === 'guias' && wa.row.board_id === 20);
-    writes.length = 0; await mod.fxHomeMuda({ dataset: { homeAdd: 'guias' }, value: '' });
-    check('"＋ Escolher…" sem valor não grava nada', writes.filter((x) => x.table === 'caso_home').length === 0); }
-  { fixture({ itens: [ITENS[0], ITENS[1], ITENS[2], { id: 25, tipo: 'escola', titulo: 'DU Aix', resumo: null, dados: {}, estado: 'publicado', ordem: 3, link: null, versao: 1 }] });
-    respostas.caso_home = { data: [{ id: 1, categoria: 'espaco', step_key: null, board_id: 21, ordem: 0 }], error: null }; await pagina();
-    const corpo2 = mod.fxHomeCorpo(base);
-    check('cada item da home é um seletor que oferece os outros itens do mesmo tipo (trocar ali mesmo)', /<select class="fx-hm-sel" data-home-troca="espaco:21"[^>]*>[\s\S]*?<option value="25">DU Aix<\/option>/.test(corpo2));
-    writes.length = 0; await mod.fxHomeMuda({ dataset: { homeTroca: 'espaco:21' }, value: '25' });
-    const wt = writes.find((x) => x.table === 'caso_home');
-    check('trocar atualiza a MESMA vaga (não apaga e cria): board 25, linha id=1', wt && wt.op === 'update' && wt.row.board_id === 25 && wt.filtros.join() === 'id=1');
-    writes.length = 0; await mod.fxHomeMuda({ dataset: { homeTroca: 'espaco:21' }, value: '21' });
-    check('escolher o mesmo item não grava', writes.filter((x) => x.table === 'caso_home').length === 0); }
+    check('a sessão Página inicial: 3 blocos (Checklist, Só seu, Guias) com "n de máx" e "cheio"', /Checklist <span class="sub">0 de 3/.test(corpo) && /Só seu <span class="sub">3 de 3 · cheio/.test(corpo) && /Guias <span class="sub">0 de 2/.test(corpo));
+    check('cada item tem "Tirar"', /data-caso="home-del" data-id="so_seu:20"/.test(corpo));
+    check('espaços livres explicam como preencher e levam ao Espaço', (corpo.match(/Espaço livre/g) || []).length === 5 && /data-fx="ir" data-id="espaco"/.test(corpo) && /Espaço › Guias/.test(corpo)); }
   cfg(null); await pagina();
   check('sem o SQL, a sessão pede o crm-caso-home.sql', /crm-caso-home\.sql/.test(mod.fxHomeCorpo(base)));
-  writes.length = 0; await click({ caso: 'home-add', id: 'guias:20' });
+  writes.length = 0; await click({ caso: 'home-add', id: 'guias:23' });
   check('sem o SQL da home: não grava e pede o crm-caso-home.sql', writes.filter((x) => x.table === 'caso_home').length === 0 && /crm-caso-home\.sql/.test(els.get('toast').textContent));
 }
 

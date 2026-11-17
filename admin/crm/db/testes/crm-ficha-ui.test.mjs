@@ -219,8 +219,8 @@ console.log('== Task 12: sessões em pílulas ==');
   const abreIr = async (id) => { await h.click({ fx: 'ir', id }); return h.el('fx-corpo').innerHTML; };
   const tHist = await abreIr('hist'), tBilan = await abreIr('bilan'), tChat = await abreIr('chat'), tEsp = await abreIr('espaco');
   check('cada pílula abre a sessão inteira, com os painéis existentes, uma por vez', tHist.includes('id="int-box"') && !tHist.includes('id="bilan-box"') && tBilan.includes('id="bilan-box"') && !tBilan.includes('id="int-box"') && tChat.includes('id="chat-box"') && !tChat.includes('id="bilan-box"'));
-  check('clicar de novo na pílula da página aberta não fecha nada', (await abreIr('espaco')).includes('Perguntas da equipe') && h.mod.state.fx.sessao === 'espaco');
-  check('"Perguntas da equipe" e "Material da equipe" moram dentro da sessão Espaço e as notas saíram', tEsp.includes('Perguntas da equipe') && tEsp.includes('Material da equipe') && !tEsp.includes('data-sessao="inicio"') && !tEsp.includes('data-sessao="guias"') && !tEsp.includes('id="ins-box"') && !tEsp.includes('Escreva uma nota para ela'));
+  check('clicar de novo na pílula da página aberta não fecha nada', (await abreIr('espaco')).includes('Seu espaço') && h.mod.state.fx.sessao === 'espaco');
+  check('a sessão Espaço (como o Início dela) não carrega as notas nem outras sessões', tEsp.includes('Seu espaço') && !tEsp.includes('data-sessao="inicio"') && !tEsp.includes('data-sessao="guias"') && !tEsp.includes('id="ins-box"') && !tEsp.includes('Escreva uma nota para ela'));
   // preferência salva volta ao abrir de novo; preferência inválida volta ao padrão
   h = await mk({ crm_ficha_ord_v1: JSON.stringify({ app: ['checklist', 'chat'], ela: ['hist'] }) });
   pg = h.el('pessoa-page').innerHTML;

@@ -1995,6 +1995,42 @@ function crmDiaBr(ymd) { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(ymd ||
 // p = uma linha de crm_sequencia_pendentes (ou o mesmo formato).
 // As etapas do guia viram um sim/não cada (etapa_nao_comecei, etapa_pesquisando…), como ES.ETAPAS_GUIA em estudio.js.
 const CRM_ETAPAS_GUIA = Object.keys(CF_PASSO).concat(['alt-pesquisando', 'alt-escolhendo-escola', 'alt-recusa-idade', 'alt-buscando-empresa', 'alt-montando-contrato']);
+// Guia "Mapa da saúde" (S2): porta e ponto vêm do formulário (contatos.respostas.porta e .ponto, só valores das listas abaixo).
+// Os textos do assunto e as astúcias são os do artefato "Templates de e-mail S2". As astúcias conferidas vencem em 14/02/2027:
+// depois dessa data o dado vira falso e o bloco some sozinho do e-mail.
+// Os modelos do mapa e o guia (slug em guias_links) de onde sai o link do botão "Abrir o mapa".
+const SAUDE_GUIA_DO_MODELO = { saude_mapa_1: 'mapa-saude-franca', saude_mapa_2: 'mapa-saude-franca' };
+const SAUDE_PORTAS = ['estudante', 'trabalho', 'aupair', 'outro'];
+const SAUDE_PONTOS = ['nao_cheguei', 'sem_numero', 'esperando', 'sem_vitale', 'completo'];
+const SAUDE_SECAO = { estudante: 'Estudante', trabalho: 'Trabalho', aupair: 'Au pair', outro: 'tronco do mapa' };
+const SAUDE_REVISAO_ASTUCIAS = Date.UTC(2027, 1, 14, 23, 59, 59);
+const SAUDE_ASSUNTO = {
+  estudante: { nao_cheguei: 'Seu número de sécu começa antes de você chegar', sem_numero: 'Seu cadastro de sécu como estudante, no site do ameli', esperando: 'Inscrição feita: o que vem depois do número provisório', sem_vitale: 'Número em mãos: o passo da carte vitale', completo: 'Carte vitale em mãos: o que vem depois' },
+  trabalho: { nao_cheguei: 'Seu mapa da saúde antes de chegar com contrato', sem_numero: 'Seu mapa da saúde e uma pergunta sobre o seu contrato', esperando: 'Pedido feito: a ordem do que vem depois', sem_vitale: 'Número em mãos: o passo da carte vitale', completo: 'Carte vitale em mãos: médecin traitant e reembolso' },
+  aupair: { nao_cheguei: 'Antes de chegar como au pair: quem declara você na Urssaf', sem_numero: 'Seu número de sécu começa na declaração da família', esperando: 'Pedido feito: uma pergunta sobre quem o enviou', sem_vitale: 'Número em mãos: o passo da carte vitale', completo: 'Carte vitale em mãos: e depois do contrato de au pair?' },
+  outro: { nao_cheguei: 'Seu mapa da saúde e uma pergunta para achar o seu caminho', sem_numero: 'Seu mapa da saúde e uma pergunta para achar o seu caminho', esperando: 'Pedido feito: qual é o seu visto?', sem_vitale: 'Número em mãos: e qual é o seu visto?', completo: 'Carte vitale feita: e qual é o seu visto?' },
+};
+const SAUDE_ASSUNTO_RETOMADA = { estudante: 'O cadastro de estudante no ameli, passo a passo', trabalho: 'Uma pergunta sobre o seu contrato', aupair: 'Seu visto de au pair e a declaração da família', outro: 'Qual é o seu visto?' };
+// Dados da persona porta.ponto. Valor fora das listas (ou lead antigo, sem porta e ponto) = tudo vazio e falso: o e-mail cai no plano B.
+function crmVarsSaude(resp, agora) {
+  // Lead antigo (sem porta válida) vira "outro": recebe o tronco do mapa e a pergunta do visto.
+  const portaOk = SAUDE_PORTAS.includes(resp && resp.porta), porta = portaOk ? resp.porta : 'outro';
+  const ponto = SAUDE_PONTOS.includes(resp && resp.ponto) ? resp.ponto : '';
+  const v = {};
+  for (const k of SAUDE_PORTAS) v['porta_' + k] = porta === k;
+  for (const k of SAUDE_PONTOS) v['ponto_' + k] = ponto === k;
+  const valida = agora <= SAUDE_REVISAO_ASTUCIAS, inicio = ponto === 'nao_cheguei' || ponto === 'sem_numero';
+  v.astucia_a0007 = valida && porta === 'estudante' && inicio;
+  v.astucia_a0008 = valida && porta === 'trabalho' && inicio;
+  v.astucia_a0009 = valida && porta === 'aupair' && (inicio || ponto === 'esperando');
+  // E-mail 2: quem ainda não tem a carte vitale volta pelo gancho da porta; quem já está adiante, pelo gancho do ponto (ponto_sem_vitale, ponto_completo).
+  const retomada = ponto !== 'sem_vitale' && ponto !== 'completo';
+  for (const k of SAUDE_PORTAS) v['retomada_' + k] = retomada && porta === k;
+  v.secao = SAUDE_SECAO[porta];
+  v.assunto_persona = portaOk && ponto ? SAUDE_ASSUNTO[porta][ponto] : '';
+  v.assunto_retomada = !portaOk || !ponto ? '' : ponto === 'sem_vitale' ? 'O passo da carte vitale' : ponto === 'completo' ? 'O que vem depois da carte vitale' : SAUDE_ASSUNTO_RETOMADA[porta];
+  return v;
+}
 function crmVarsNovos(env, p) {
   const d = p.dados || {}, resp = d.respostas || {};
   const nivel = CF_NIVEIS[resp.cfNivel];
@@ -2003,6 +2039,7 @@ function crmVarsNovos(env, p) {
   for (const k of CRM_ETAPAS_GUIA) etapas['etapa_' + k.replace(/^(cf|alt)-/, '').replace(/-/g, '_')] = resp.objetivo === k;
   return {
     ...etapas,
+    ...crmVarsSaude(resp, Date.now()),
     nome: crmPrimeiroNome(p.nome), email: p.email,
     persona: (CRM_PERSONAS[d.persona || 'sem'] || d.persona || '').toLowerCase(),
     nivel: nivel ? nivel[0] : '', prazo_nivel: nivel ? nivel[1] : '',
@@ -2060,7 +2097,20 @@ async function crmSequenciasRodada(env) {
       const tpl = versoes[k];
       if (!tpl) { r.falhas++; continue; }
       let mail;
-      try { mail = crmMontarNovo(tpl, crmVarsNovos(env, p)); }
+      try {
+        const vars = crmVarsNovos(env, p);
+        // O botão "Abrir o mapa": o link privado do Notion sai de guias_links (lido uma vez por rodada), com a UTM do e-mail.
+        if (SAUDE_GUIA_DO_MODELO[chave]) {
+          if (!('guia:' + chave in versoes)) {
+            const lRes = await fetch(`${CRM_SUPABASE_URL}/rest/v1/guias_links?select=notion_url&slug=eq.${SAUDE_GUIA_DO_MODELO[chave]}`, { headers: sb });
+            const l = lRes.ok ? (await lRes.json())[0] : null;
+            versoes['guia:' + chave] = l && /^https:\/\//.test(l.notion_url || '') ? l.notion_url : '';
+          }
+          const n = versoes['guia:' + chave];
+          if (n) vars.link_checklist = n + (n.includes('?') ? '&' : '?') + 'utm_source=email&utm_medium=email&utm_campaign=mapa-saude-franca&utm_content=' + chave;
+        }
+        mail = crmMontarNovo(tpl, vars);
+      }
       catch (e) { console.error('crm/sequencias: ' + chave + ' v' + p.versao + ' com erro (' + e.message + '), não mandei'); r.falhas++; continue; }
       const contato = { id: p.contato_id, email: p.email, nome: p.nome };
       const s = await crmEnviarGuia(env, sb, contato, chave, mail, p.tipo === 'novidades', { sequencia: true, formato: 'html' });

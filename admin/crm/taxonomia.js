@@ -54,7 +54,9 @@ export var PAGINAS = [
     ['ap-medo-prazo', 'Medo de perder um prazo'],
     ['ap-travado', 'Um passo travado'],
     ['ap-pesado', 'Pesado, deixei os papéis de lado']
-  ] }
+  ] },
+  // A persona do Mapa da saúde é porta.ponto (20 combinações), calculada no Worker; não há "etapa do guia" para filtrar.
+  { k: 'I06', nome: 'Saúde · mapa da saúde na França', rota: '/guias/mapa-saude-franca/', etapas: [] }
 ];
 
 export var PERSONAS = [
@@ -115,6 +117,8 @@ var RESERVA_CHAVE = {
   tec_recap_30min: ['entrega', 'I02', null],
   aupair_chegada_1: ['entrega', 'I05', 'au_pair'],
   aupair_chegada_2: ['entrega', 'I05', 'au_pair'],
+  saude_mapa_1: ['entrega', 'I06', null],
+  saude_mapa_2: ['entrega', 'I06', null],
   hub_estudos_lancamento: ['campanha', null, null],
   lembrete_prazo_vlsts: ['campanha', null, null]
 };
