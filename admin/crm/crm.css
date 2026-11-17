@@ -1823,3 +1823,42 @@ button.bar-r b{text-align:right; font-variant-numeric:tabular-nums}
   .fx-prox-b{justify-content:flex-end}
   .fx-mn-p{min-width:180px}
 }
+
+/* ===== Refino do cartão de sessão e das linhas (2026-11-17) ===== */
+.fx-sess{padding:2px 6px 6px; border-radius:14px; background:var(--surface); box-shadow:none}
+.fx-sess.aberta{border-color:var(--line-2); box-shadow:0 2px 10px rgba(0,0,0,.07)}
+.fx-sess .fx-sess-cab,.fx-sess.aberta .fx-sess-cab,.fx-grupo-ela .fx-sess.aberta .fx-sess-cab{border:0; border-radius:10px; padding:2px 6px}
+.fx-sess-t{gap:0}
+.fx-sess-nome{font-size:15px; font-weight:600; letter-spacing:-.005em}
+.fx-sess-corpo{border-top:1px solid var(--line); margin-top:2px; padding:12px 4px 8px}
+.fx-sess.aberta .fx-sess-t[aria-expanded="true"] .fx-sess-nome{color:var(--moss-ink)}
+.fx-ln{padding:6px 4px; border-top:0; border-radius:10px; gap:12px}
+.fx-ln + .fx-ln{border-top:0}
+.fx-ln:hover{background:var(--sunk)}
+.fx-ln-t:hover{background:none}
+.fx-ln-t p{font-size:14.5px; font-weight:500; line-height:1.4}
+.fx-ln-t .fx-meta{margin-left:6px}
+.fx-dot{width:9px; height:9px; box-shadow:0 0 0 3px transparent; background-clip:padding-box}
+.fx-dot.ok{box-shadow:0 0 0 3px rgba(87,115,40,.16)}
+.fx-dot.mid{box-shadow:0 0 0 3px rgba(201,138,27,.18)}
+.fx-tp{display:inline-grid; place-items:center; width:22px; height:22px; border-radius:7px; background:var(--sunk); color:var(--ink-2); flex:none; vertical-align:middle; margin-right:8px}
+.fx-ln:hover .fx-tp{background:var(--surface-2)}
+.fx-tp svg{display:block}
+.fx-meta{margin-left:0; font-size:12px; font-weight:400; color:var(--ink-3)}
+.fx-ln-b{gap:2px}
+.fx-ln-b .fx-ic,.fx-slot{width:30px; height:30px; flex:none}
+.fx-ln-b .fx-ic{border:0; border-radius:8px; background:none; color:var(--ink-3); opacity:.9}
+.fx-ln-b .fx-ic svg{display:block}
+.fx-ln-b .fx-ic:hover,.fx-ln-b .fx-ic:focus-visible{background:var(--moss-soft); color:var(--moss-ink); opacity:1}
+.fx-ln-b .fx-ic.on{color:var(--moss-ink); background:var(--moss-soft)}
+.fx-ln-b .fx-ic[data-caso="item-del-pede"]:hover,.fx-ln-b .fx-ic[data-caso="av-cancel"]:hover{background:var(--red-soft); color:var(--red)}
+.ab .btn[data-caso="novo"]{border-style:dashed; padding:4px 12px}
+@media (max-width:640px){
+  .fx-ln{align-items:center}
+  .fx-ln-e{padding-top:0}
+  .fx-ln-t .fx-meta{margin-left:30px}
+  .fx-ln-b{max-width:none}
+  .fx-ln-b .fx-ic,.fx-slot{width:34px; height:34px}
+  .fx-slot{display:none}
+  .fx-ln-b{flex-wrap:nowrap}
+}
