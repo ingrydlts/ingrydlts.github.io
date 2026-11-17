@@ -2,7 +2,7 @@
 import * as FX from '../../ficha.js';
 import * as FH from '../../ficha-html.js';
 let ok = 0, bad = 0; const check = (l, c) => { if (c) ok++; else { bad++; console.log('  FALHOU:', l); } };
-const h = { esc: (x) => String(x), fmtDay: (x) => x };
+const h = { esc: (x) => String(x), fmtDay: (x) => x, linhaPasso: (o) => '<div class="lp" data-ed="' + o.ed + '" data-id="' + o.id + '">' + o.titulo + '|' + (o.home || '') + '</div>' };
 
 console.log('== Limites e categorias ==');
 check('limites 3 / 3 / 3 (no máximo 3 itens por bloco)', FX.HOME_LIMITES.checklist === 3 && FX.HOME_LIMITES.espaco === 3 && FX.HOME_LIMITES.guias === 3);
@@ -29,7 +29,7 @@ console.log('\n== Botão no Checklist ==');
   check('sem os dados da home (SQL não rodado ou caso carregando): nenhum botão', !/Adicionar na home/.test(sem));
   const com = FH.htmlChecklistSessao(Object.assign({}, base, { homeRefs: ['k2'] }), h);
   check('minimalista: cada passo tem "+" (fixa no Em seguida); o que já está lá vira "×" (tira); com rótulo escrito', /data-caso="home-add" data-id="checklist:k1"[^>]*aria-label="Fixar no Em seguida"[^>]*>\+</.test(com) && /data-caso="home-del" data-id="checklist:k2"[^>]*aria-label="Tirar do Em seguida"[^>]*>×</.test(com) && /aria-pressed="true"/.test(com) && !/Adicionar na home|Na home ✓/.test(com));
-  check('sem botão "Editar": o texto do passo abre o editor com dois cliques (ou Enter)', !/>Editar</.test(com) && /class="fx-p-t fx-edita" data-dbl="ckEditar" data-id="k1" tabindex="0"/.test(com));
+  check('cada linha de passo é editável (ed-chk) e leva o botão da home que a linha desenha', /class="lp" data-ed="ed-chk" data-id="k1"/.test(com) && /class="lp" data-ed="ed-chk" data-id="k2"/.test(com));
   check('passo arquivado por ela não tem botão', !/checklist:k3/.test(com));
 }
 

@@ -2,15 +2,15 @@
 // Nada de service_role aqui. O banco é db/crm-fase2.sql; o desenho é o artefato "CRM Por Dentro".
 // Tudo que vem do banco é texto de terceiros (nome, e-mail, pergunta): passa sempre por esc().
 import { supabase } from '/assets/js/supabase-client.js';
-import * as TX from './taxonomia.js?v=2026-11-17.26';   // páginas, famílias e agrupamento dos modelos
-import * as ES from './estudio.js?v=2026-11-17.26';   // os blocos do estúdio de e-mails (entregas 2 e 3)
-import * as EE from './editor-email.js?v=2026-11-17.26';
-import * as EQ from './editor-quem.js?v=2026-11-17.26';
-import * as JR from './jornada.js?v=2026-11-17.26';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
-import * as FX from './ficha.js?v=2026-11-17.26';   // ficha v2: lógica pura (fila, démarches, funil, ações)
-import * as FH from './ficha-html.js?v=2026-11-17.26';   // ficha v2: HTML puro
-import * as PN from './panorama.js?v=2026-11-17.26';
-import * as MT from './montagem.js?v=2026-11-17.26';   // Montagem do espaço a partir do transcript (lógica e HTML puros)   // Panorama dela e O que ela trouxe (lógica e HTML puros)
+import * as TX from './taxonomia.js?v=2026-11-17.29';   // páginas, famílias e agrupamento dos modelos
+import * as ES from './estudio.js?v=2026-11-17.29';   // os blocos do estúdio de e-mails (entregas 2 e 3)
+import * as EE from './editor-email.js?v=2026-11-17.29';
+import * as EQ from './editor-quem.js?v=2026-11-17.29';
+import * as JR from './jornada.js?v=2026-11-17.29';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
+import * as FX from './ficha.js?v=2026-11-17.29';   // ficha v2: lógica pura (fila, démarches, funil, ações)
+import * as FH from './ficha-html.js?v=2026-11-17.29';   // ficha v2: HTML puro
+import * as PN from './panorama.js?v=2026-11-17.29';
+import * as MT from './montagem.js?v=2026-11-17.29';   // Montagem do espaço a partir do transcript (lógica e HTML puros)   // Panorama dela e O que ela trouxe (lógica e HTML puros)
 
 var PERSONAS = {
   au_pair_estudante: 'Au pair → estudante', campus_france: 'Campus France', alternancia_emprego: 'Alternância / emprego',
@@ -2026,12 +2026,12 @@ var CASO_SVG = { check: 'M5 12.5l4.5 4.5L19 7.5', up: 'M12 19V5M6 11l6-6 6 6', d
 function casoSvg(n, tam) { return '<svg viewBox="0 0 24 24" width="' + (tam || 16) + '" height="' + (tam || 16) + '" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="' + CASO_SVG[n] + '"/></svg>'; }
 // Posição fixa de cada ação: os ícones ficam alinhados em colunas, mesmo quando a linha tem menos ações.
 var CASO_ICONES = { 'item-rev': ['check', 'Marcar como revisado', 1], 'item-pub': ['up', 'Publicar para ela', 1], 'item-ret': ['down', 'Retirar', 1], 'aco-pub': ['up', 'Publicar para ela', 1], 'aco-retirar': ['down', 'Retirar', 1],
-  'aco-fim': ['check', 'Concluir', 0], 'aco-reabrir': ['undo', 'Reabrir', 0], 'ed-item': ['pencil', 'Editar', 2], 'ed-aco': ['pencil', 'Editar', 2], 'ed-ach': ['pencil', 'Editar', 2], 'ed-av': ['pencil', 'Editar a pergunta', 2], 'ag-abrir': ['clock', 'Mudar a pausa', 2],
+  'aco-fim': ['check', 'Concluir', 0], 'aco-reabrir': ['undo', 'Reabrir', 0], 'ed-item': ['pencil', 'Editar', 2], 'ed-aco': ['pencil', 'Editar', 2], 'ed-ach': ['pencil', 'Editar', 2], 'ed-av': ['pencil', 'Editar a pergunta', 2], 'ed-chk': ['pencil', 'Editar', 2], 'aco-recusar': ['x', 'Recusar este passo', 4], 'ag-abrir': ['clock', 'Mudar a pausa', 2],
   'home-add': ['plus', 'Adicionar na página inicial', 3], 'home-del': ['x', 'Tirar da página inicial', 3], 'item-del-pede': ['trash', 'Excluir', 4], 'av-cancel': ['x', 'Cancelar', 4] };
-function casoLinha(esq, meio, btns) {
+function casoLinha(esq, meio, btns, cls) {
   var ed = /data-caso="(ed-[a-z]+)" data-id="([^"]*)"/.exec(btns || '');
   var ponto = String(esq || '').replace(/<span class="pill([^"]*)">([^<]*)<\/span>/, function (m, cls, txt) {
-    return '<span class="fx-dot ' + (/u-baixa/.test(cls) ? 'ok' : /u-media/.test(cls) ? 'mid' : 'off') + '" role="img" aria-label="' + txt + '" title="' + txt + '"></span>';
+    return '<span class="fx-dot ' + (/u-baixa/.test(cls) ? 'ok' : /u-media/.test(cls) ? 'mid' : /u-alta/.test(cls) ? 'bad' : 'off') + '" role="img" aria-label="' + txt + '" title="' + txt + '"></span>';
   });
   var slots = ['', '', '', ''], resto = '';
   var sem = String(btns || '').replace(/<button type="button" class="(?:btn|fx-ic(?: on)?)" data-caso="([^"]+)" data-id="([^"]*)"([^>]*)>([^<]*)<\/button>/g, function (m, acao, id, resto2, txt) {
@@ -2041,7 +2041,7 @@ function casoLinha(esq, meio, btns) {
     return '';
   });
   var icones = slots.map(function (x) { return x || '<span class="fx-slot" aria-hidden="true"></span>'; }).join('') + sem;
-  return '<div class="feeditem fx-ln"><div class="fx-ln-e">' + ponto + '</div><div class="fbody fx-ln-t"' + (ed ? ' data-dbl="' + ed[1] + '" data-id="' + ed[2] + '" tabindex="0" title="Dois cliques para editar"' : '') + '><p style="margin:0">' + meio + '</p></div><div class="fx-ln-b">' + icones + '</div></div>';
+  return '<div class="feeditem fx-ln' + (cls ? ' ' + cls : '') + '"><div class="fx-ln-e">' + ponto + '</div><div class="fbody fx-ln-t"' + (ed ? ' data-dbl="' + ed[1] + '" data-id="' + ed[2] + '" tabindex="0" title="Dois cliques para editar"' : '') + '><p style="margin:0">' + meio + '</p></div><div class="fx-ln-b">' + icones + '</div></div>';
 }
 function casoEditor(tipo, id, campos) {
   return '<div class="feeditem"><div class="fbody" style="width:100%">' + campos + '<div style="display:flex;gap:6px;margin-top:6px">' + casoBtn('salvar-' + tipo, id, 'Salvar') + casoBtn('cancelar', id, 'Cancelar') + '</div></div></div>';
@@ -2392,6 +2392,7 @@ function casoHomeBtn(k, it) {
   return casoIco(tem ? 'home-del' : 'home-add', cat + ':' + it.id, tem ? '×' : '+', tem ? 'Tirar da página inicial' : 'Adicionar na página inicial', tem);
 }
 async function casoAcao(acao, id, t) {
+  if (acao === 'ed-chk') { fxFechaQuadro(); state.fx.ckEd = String(id); fxRepintaChkDe(); return; }
   var k = state.caso; if (!k) return;
   var agora = new Date().toISOString(), nid = Number(id), r = null;
   if (acao === 'cancelar') { k.ed = null; k.agenda = null; k.novo = null; k.confirmaDel = null; return pintaCaso(); }
@@ -3552,11 +3553,20 @@ function fichaV2Ativa() {
   try { if (/[?&]ficha=2(&|$)/.test(String(location.search || ''))) return true; } catch (e) { /* sem location */ }
   try { return localStorage.getItem('crm_ficha_v2') === '1'; } catch (e) { return false; }
 }
-var H_FX = { esc: esc, fmtDay: fmtDay };
+// A linha do passo do Checklist: a mesma para os gerais e os só dela (ponto de estado, título, etiquetas, ícones).
+// o = { estado, rot, cls, titulo (já escapado), nota (já escapada), chips: [{t, c}], alerta, ed, id, home, extra }
+function fxLinhaPasso(o) {
+  var cps = (o.chips || []).map(function (c) { return '<span class="fx-cp ' + (c.c || '') + '">' + esc(c.t) + '</span>'; }).join('');
+  var meio = '<span class="fx-pt">' + o.titulo + '</span><span class="fx-cps">' + cps + (o.nota ? '<span class="fx-nota">' + o.nota + '</span>' : '') + '</span>' +
+    (o.alerta ? '<span class="fx-alerta">' + casoSvg('alerta', 13) + ' ' + esc(o.alerta) + '</span>' : '') + (o.sub || '');
+  var btns = (o.ed ? casoBtn(o.ed, o.id, 'Editar') : '') + (o.home || '') + (o.extra || '');
+  return casoLinha(casoPil(o.rot, o.estado === 'ok' ? 'u-baixa' : o.estado === 'bad' ? 'u-alta' : o.estado === 'mid' ? 'u-media' : ''), meio, btns, ((o.cls || '') + (o.alerta ? ' alerta' : '')).trim());
+}
+var H_FX = { esc: esc, fmtDay: fmtDay, linhaPasso: fxLinhaPasso };
 var FX_ABAS = ['conversa', 'plataforma', 'ficha', 'dossie'];
 // Zera o que é "desta pessoa" ao abrir outra ficha. A ordem das sessões e o guia são preferências do navegador e ficam.
 function fxReset() {
-  var f = state.fx; f.tab = null; f.ag = { i: 0, pop: null }; f.dem = 'todas'; f.ckTodos = false; f.ckMais = false; f.ckEd = null; f.abertas = {}; f.sessao = null; f.flash = null; f.tarefas = []; f.dados = null; f.appAba = 'inicio'; f.dia = 1; f.camadas = false; f.dd = {}; f.tema = null; f.coorte = null; f.urg = [];
+  var f = state.fx; f.tab = null; f.ag = { i: 0, pop: null }; f.dem = 'todas'; f.ckTodos = false; f.ckMais = false; f.ckEd = null; f.ckOrigem = 'todos'; f.abertas = {}; f.sessao = null; f.flash = null; f.tarefas = []; f.dados = null; f.appAba = 'inicio'; f.dia = 1; f.camadas = false; f.dd = {}; f.tema = null; f.coorte = null; f.urg = [];
 }
 function fxPrefs() {
   var f = state.fx;
@@ -3781,7 +3791,7 @@ function fxHeaderHtml(c, d) {
 // Catálogo de démarches (cópia do app, processos.json): carregado uma vez; sem ele, tudo cai na démarche padrão.
 var FX_PROC = null, FX_QUANDO = null;   // FX_QUANDO: o "quando" de cada passo do template (guias-quando.json), para o prazo curto do Início
 async function fxCarregaProcessos() {
-  try { var r = await fetch('processos.json?v=2026-11-17.26'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
+  try { var r = await fetch('processos.json?v=2026-11-17.29'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
 }
 // A sessão Checklist: pílulas por démarche, os 4 mais urgentes, pasta do Drive privada e "Ver mais desta sessão".
 // Os passos que a montagem do espaço propôs para ela, com démarche, subitens e origem: o mesmo detalhe do Checklist. Existem antes de ela ter conta.
@@ -3790,7 +3800,8 @@ function fxHooksPassos(c, k) {
   return { editando: function (a) { return !!(k.ed && k.ed.t === 'aco' && k.ed.id === a.id); },
     editor: function (a) { return casoEditor('aco', a.id, '<input id="caso-ed-titulo" class="t" maxlength="160" style="width:100%" value="' + esc(a.titulo) + '" aria-label="Texto do passo">' +
       casoCampo('Subitens (um por linha, até 6)', '<textarea id="caso-ed-subitens" rows="4" style="width:100%" maxlength="800">' + esc((a.subitens || []).join('\n')) + '</textarea>')); },
-    esc: esc, rotulo: function (d) { return FX.rotuloDemarche(FX_PROC, d, personaKey(c)); }, prazo: casoPrazo, pil: casoPil, btn: casoBtn, ico: casoIco,
+    linhaPasso: fxLinhaPasso, esc: esc, rotulo: function (d) { return FX.rotuloDemarche(FX_PROC, d, personaKey(c)); }, prazo: casoPrazo, pil: casoPil, btn: casoBtn, ico: casoIco,
+    alerta: function (a) { var al = fxAlertasChk(c); return (al.porRef['aco:' + a.id] || [])[0] || ''; },
     conferi: function (id) { return '<button type="button" class="btn" data-montconferido="' + esc(String(id)) + '" style="padding:5px 10px;font-size:12px">Conferi a fonte</button>'; }, linha: casoLinha };
 }
 function fxCasoPassos(c) {
@@ -3809,6 +3820,15 @@ function fxPassosPublicados(c) {
   var k = fxCasoPassos(c); if (!k) return '';
   return MT.passosPropostosHtml(k.aco, k.listas, fxHooksPassos(c, k), 'publicados');
 }
+// Os passos só dela já publicados (ou concluídos), como o app os conta.
+function fxEquipePublicada(c) {
+  var k = fxCasoPassos(c); if (!k) return [];
+  return k.aco.filter(function (a) { return a.dono === 'ela' && a.canal === 'plataforma' && /^(enc|chk):/.test(a.origem_chave || '') && a.estado !== 'recusada' && (a.publicada_em || a.estado === 'concluida'); });
+}
+function fxAlertasChk(c) {
+  var chk = state.dos && state.dos.cid === c.id ? state.dos.chk : null;
+  return FX.alertasChecklist({ itens: chk && !chk.err && !chk.semConta ? chk.itens || [] : [], equipe: fxEquipePublicada(c), quando: FX_QUANDO || {} });
+}
 function fxChecklistCorpo(c) {
   var chk = state.dos && state.dos.cid === c.id ? state.dos.chk : null, f = state.fx;
   if (!chk) return '<div class="skel" aria-busy="true" style="height:64px"></div>';
@@ -3817,8 +3837,11 @@ function fxChecklistCorpo(c) {
   var agora = Date.now(), cc = chkCalc(chk, agora), itens = chk.itens || [];
   var dem = FX.demarchesDe(FX_PROC, personaKey(c), itens), ativa = f.dem !== 'todas' && dem.some(function (x) { return x.k === f.dem; }) ? f.dem : 'todas';
   var ult = chk.cliques && chk.cliques[0], horas = ult ? (agora - new Date(ult.criado_em).getTime()) / 36e5 : 0;   // dado velho: mais de 48 h sem atividade dela
-  return pre + FH.htmlChecklistSessao({ semConta: false, erro: false, velhoDias: horas > 48 ? Math.floor(horas / 24) : 0, demarches: dem, ativa: ativa, homeRefs: state.caso && state.caso.cid === c.id && Array.isArray(state.caso.home) ? state.caso.home.filter(function (x) { return x.categoria === 'checklist'; }).map(function (x) { return x.step_key; }) : null,
-    equipeHtml: fxPassosPublicados(c), ckEd: f.ckEd || null,
+  var origem = f.ckOrigem || 'todos', equipe = fxEquipePublicada(c);
+  return pre + FH.htmlChecklistSessao({ semConta: false, erro: false, velhoDias: horas > 48 ? Math.floor(horas / 24) : 0, demarches: dem, ativa: ativa, origem: origem,
+    homeRefs: state.caso && state.caso.cid === c.id && Array.isArray(state.caso.home) ? state.caso.home.filter(function (x) { return x.categoria === 'checklist'; }).map(function (x) { return x.step_key; }) : null,
+    equipeHtml: fxPassosPublicados(c), equipeN: equipe.length, alertas: fxAlertasChk(c), ckEd: f.ckEd || null,
+    demDe: function (i) { return FX.rotuloDemarche(FX_PROC, FX.processoDoItem(FX_PROC, i.step_key, i.category), personaKey(c)); },
     totalFeitos: fxContaApp(c, chk).feitos, total: fxContaApp(c, chk).total, itens: FX.filtrarPorDemarche(FX_PROC, itens, ativa),
     hoje: cc.hoje, todos: f.ckTodos, mais: f.ckMais, extraMais: f.ckMais ? checklistLateralHtml(chk, agora, H4_PLAT) + checklistHtml(chk, agora) : '' }, H_FX);
 }
@@ -4585,6 +4608,7 @@ function fichaClick(el) {
     case 'appdia': f.dia = Number(ds.v); fxPintaPrevia(); return true;
     case 'camadas': f.camadas = !f.camadas; fxPintaPrevia(); return true;
     case 'dem': { f.dem = ds.v || 'todas'; f.appAba = 'checklist'; var cd = byC(state.sel); if (cd) { fxPintaChk(fxContato(cd, f.dados && f.dados.uid)); fxPintaPrevia(); } return true; }
+    case 'ckOrigem': f.ckOrigem = ds.v; fxRepintaChkDe(); return true;
     case 'ckEditar': fxFechaQuadro(); f.ckEd = ds.id; fxRepintaChkDe(); return true;
     case 'qdFechar': fxFechaQuadro(); return true;
     case 'ckCancelar': f.ckEd = null; fxRepintaChkDe(); return true;
@@ -4619,7 +4643,7 @@ async function renderPessoa() {
   if (!c) { $('pessoa-page').innerHTML = '<div class="empty">Pessoa não encontrada.</div>'; return; }
   $('pessoa-page').innerHTML = '<div class="loading">Carregando a ficha…</div>';
   if (fichaV2Ativa() && FX_PROC === null) FX_PROC = await fxCarregaProcessos();
-  if (fichaV2Ativa() && FX_QUANDO === null) { try { var rq = await fetch('guias-quando.json?v=2026-11-17.26'); FX_QUANDO = rq.ok ? await rq.json() : {}; } catch (e) { FX_QUANDO = {}; } }
+  if (fichaV2Ativa() && FX_QUANDO === null) { try { var rq = await fetch('guias-quando.json?v=2026-11-17.29'); FX_QUANDO = rq.ok ? await rq.json() : {}; } catch (e) { FX_QUANDO = {}; } }
   var r = await Promise.all([
     supabase.from('eventos').select('tipo,dados,criado_em').eq('contato_id', c.id).order('criado_em', { ascending: false }).limit(200),
     supabase.from('consentimentos').select('finalidade,aceito,texto,origem,criado_em').eq('contato_id', c.id).order('criado_em', { ascending: false }),
@@ -6530,7 +6554,7 @@ async function enviarLinkPagamento(btn) {
 var FX_DETALHE = null, qdTimer = null, qdOrigem = null, qdAberto = false;
 async function fxCarregaDetalhe() {
   if (FX_DETALHE) return FX_DETALHE;
-  try { var r = await fetch('guias-detalhe.json?v=2026-11-17.26'); FX_DETALHE = r.ok ? await r.json() : {}; } catch (e) { FX_DETALHE = {}; }
+  try { var r = await fetch('guias-detalhe.json?v=2026-11-17.29'); FX_DETALHE = r.ok ? await r.json() : {}; } catch (e) { FX_DETALHE = {}; }
   return FX_DETALHE;
 }
 function fxFechaQuadro() {
@@ -6965,7 +6989,7 @@ boot().catch(function (err) { console.error(err); showGate('Erro ao abrir o CRM.
 // O quadro do passo registra os seus ouvintes por último: os testes (e a ordem de tratamento) esperam o clique principal primeiro.
 document.addEventListener('click', function (e) {
   if (e.target && e.target.classList && e.target.classList.contains('qd-fundo')) return fxFechaQuadro();
-  var t = e.target && e.target.closest && e.target.closest('.fx-p-t[data-dbl="ckEditar"]'); if (!t) return;
+  var t = e.target && e.target.closest && e.target.closest('.fx-ln-t[data-dbl="ed-chk"]'); if (!t) return;
   clearTimeout(qdTimer); qdTimer = setTimeout(function () { fxAbreQuadro(t.dataset.id, t); }, 260);   // dois cliques cancelam: viram edição
 });
 document.addEventListener('keydown', function (e) {

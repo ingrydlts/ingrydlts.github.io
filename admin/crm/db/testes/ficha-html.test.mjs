@@ -6,7 +6,7 @@ import * as FX from '../../ficha.js';
 let passed = 0, failed = 0;
 function check(label, cond) { if (cond) passed++; else { failed++; console.log('  FALHOU:', label); } }
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
-const h = { esc, fmtDay: (s) => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s || ''); return m ? m[3] + '/' + m[2] + '/' + m[1] : '—'; } };
+const h = { esc, linhaPasso: (o) => '<div class="lp" data-ed="' + o.ed + '" data-id="' + o.id + '" data-estado="' + o.estado + '">' + o.titulo + '|' + o.chips.map((c) => c.t).join(',') + '|' + (o.nota || '') + '|' + (o.alerta || '') + '|' + (o.home || '') + '</div>', fmtDay: (s) => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s || ''); return m ? m[3] + '/' + m[2] + '/' + m[1] : '—'; } };
 const count = (s, re) => (s.match(re) || []).length;
 const XSS = '<img src=x onerror=alert(1)>';
 
@@ -69,23 +69,34 @@ console.log('== Task 11: sessão Checklist ==');
   check('sem conta: aviso e nenhuma pílula (Review Focus 1)', sc.includes('Ela ainda não entrou no app') && !sc.includes('data-fx="dem"'));
   const er = FH.htmlChecklistSessao(d({ erro: true }), h);
   check('erro: aviso do SQL e nenhuma pílula (Review Focus 2)', er.includes('db/crm-checklist.sql') && !er.includes('data-fx="dem"'));
-  const ok = FH.htmlChecklistSessao(d(), h);
+  const oito = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'].map((k, i) => it(k, 'pendente', '2026-12-0' + (i + 1)));
+  const ok = FH.htmlChecklistSessao(d({ itens: oito, total: 8 }), h);
   check('Todas + 3 démarches, com contagem', count(ok, /data-fx="dem"/g) === 4 && ok.includes('1/4') && ok.includes('0/1'));
-  check('aria-pressed só na ativa', count(ok, /aria-pressed="true"/g) === 1 && /data-v="todas"[^>]*aria-pressed="true"/.test(ok));
-  check('4 linhas de passo e botão "Ver todos"', count(ok, /class="fx-passo (feito|arq|pend)"/g) === 4 && ok.includes('Ver todos os 6 passos (2 escondidos)'));
-  check('os 4 são os mais urgentes por data', ok.includes('Passo a') && ok.includes('Passo d') && !ok.includes('Passo e') && !ok.includes('Passo f'));
-  const tod = FH.htmlChecklistSessao(d({ todos: true }), h);
-  check('todos: 6 linhas e "Mostrar só os 4"', count(tod, /class="fx-passo (feito|arq|pend)"/g) === 6 && tod.includes('Mostrar só os 4 mais urgentes'));
+  check('aria-pressed: uma démarche ativa e uma origem ativa (Todos)', count(ok, /aria-pressed="true"/g) === 2 && /data-v="todas"[^>]*aria-pressed="true"/.test(ok) && /data-fx="ckOrigem" data-v="todos" aria-pressed="true"/.test(ok));
+  check('o topo mostra o progresso e as três origens (Todos, Gerais, Só dela)', ok.includes('1 de 8') && ok.includes('feitos por ela') && count(ok, /data-fx="ckOrigem"/g) === 3 && ok.includes('fx-ck-bar'));
+  check('6 linhas dos mais urgentes por data e o botão para os 2 restantes', count(ok, /class="lp"/g) === 6 && ok.includes('Passo a') && ok.includes('Passo f') && !ok.includes('Passo g') && ok.includes('Mostrar os 2 restantes'));
+  const tod = FH.htmlChecklistSessao(d({ itens: oito, total: 8, todos: true }), h);
+  check('todos: 8 linhas e "Mostrar só os 6 mais urgentes"', count(tod, /class="lp"/g) === 8 && tod.includes('Mostrar só os 6 mais urgentes'));
   const tres = FH.htmlChecklistSessao(d({ itens: seis.slice(0, 3), total: 3 }), h);
-  check('com 3 passos não há botão de ver todos', !tres.includes('Ver todos') && !tres.includes('Mostrar só os 4') && count(tres, /class="fx-passo (feito|arq|pend)"/g) === 3);
-  check('1 escondido no singular', FH.htmlChecklistSessao(d({ itens: seis.slice(0, 5) }), h).includes('(1 escondido)'));
-  check('pasta do Drive: só texto de privacidade', ok.includes('privada') && ok.includes('não vê o link') && !ok.includes('<input') && !ok.includes('href') && !/drive/i.test(ok.replace(/pasta do Drive/gi, '')));
-  check('Ver mais: fechado não traz o extra; aberto traz', ok.includes('Ver mais desta sessão') && !ok.includes('EXTRA') && FH.htmlChecklistSessao(d({ mais: true }), h).includes('EXTRA') && FH.htmlChecklistSessao(d({ mais: true }), h).includes('Ver menos desta sessão'));
+  check('com até 6 passos não há botão de ver os restantes', !tres.includes('restante') && !tres.includes('Mostrar só os 6') && count(tres, /class="lp"/g) === 3);
+  check('1 restante no singular', FH.htmlChecklistSessao(d({ itens: oito.slice(0, 7) }), h).includes('Mostrar os 1 restante'));
+  check('cada passo geral traz a etiqueta Geral, a démarche (em "Todas") e o prazo; o texto abre o editor (ed-chk)', /class="lp" data-ed="ed-chk" data-id="a"[^>]*>Passo a\|Geral,[^|]*,vence 01\/12\/2026/.test(FH.htmlChecklistSessao(d({ itens: oito, total: 8, demDe: () => 'Visa' }), h)));
+  check('privacidade do Drive vira dica do ⓘ (sem caixa, sem link, sem campo)', ok.includes('title="A pasta do Drive dela é privada') && ok.includes('não vê o link') && !ok.includes('<input') && !ok.includes('href') && !ok.includes('fx-pasta'));
+  check('Ver detalhes: fechado não traz o extra; aberto traz', ok.includes('Ver detalhes completos do checklist') && !ok.includes('EXTRA') && FH.htmlChecklistSessao(d({ mais: true }), h).includes('EXTRA') && FH.htmlChecklistSessao(d({ mais: true }), h).includes('Ver menos detalhes'));
   check('a equipe não dá check', !ok.includes('data-fx="marcar"') && !/type="checkbox"/.test(ok));
   check('dado velho: banner só quando há dias sem atividade', FH.htmlChecklistSessao(d({ velhoDias: 5 }), h).includes('há 5 dias') && !ok.includes('fx-velho') && !FH.htmlChecklistSessao(d({ velhoDias: 0 }), h).includes('fx-velho'));
   check('vazio com conta', FH.htmlChecklistSessao(d({ itens: [], demarches: [], total: 0, totalFeitos: 0 }), h).includes('ainda está vazio'));
   check('rótulo com HTML escapado', FH.htmlChecklistSessao(d({ itens: [it('x', 'pendente', null, { label: XSS })] }), h).includes('&lt;img'));
-  check('feito e arquivado têm texto próprio', (() => { const t = FH.htmlChecklistSessao(d({ itens: [it('f', 'concluido', null), it('g', 'arquivado', null)] }), h); return t.includes('feito') && t.includes('Arquivado'); })());
+  check('feito, arquivado, atrasado e sem data têm estado e texto próprios', (() => { const t = FH.htmlChecklistSessao(d({ itens: [it('f', 'concluido', null), it('g', 'arquivado', null), it('h', 'pendente', '2026-11-01'), it('i', 'pendente', null)] }), h); return /data-estado="ok"[^>]*>Passo f\|Geral,[^|]*feito/.test(t) && t.includes('arquivado por ela') && /data-estado="bad"[^>]*>Passo h\|[^|]*atrasado · 01\/11\/2026/.test(t) && t.includes('sem data'); })());
+  // origem, equipe e validação
+  const eq = '<div class="lp-eq">EQUIPE</div>';
+  const so = FH.htmlChecklistSessao(d({ origem: 'dela', equipeHtml: eq, equipeN: 2 }), h), ge = FH.htmlChecklistSessao(d({ origem: 'gerais', equipeHtml: eq, equipeN: 2 }), h), to = FH.htmlChecklistSessao(d({ equipeHtml: eq, equipeN: 2 }), h);
+  check('Só dela: mostra o grupo da equipe e esconde os gerais; Gerais: o contrário; Todos: os dois, com contagem', so.includes('EQUIPE') && !so.includes('Gerais da démarche') && /Só dela · 2/.test(so) && ge.includes('Gerais da démarche') && !ge.includes('EQUIPE') && to.includes('EQUIPE') && to.includes('Gerais da démarche'));
+  const al = { lista: [{ ref: 'aco:7', tipo: 'sem_data', titulo: 'Abrir a conta', texto: 'Sem data: ela não vê quando fazer.' }, { ref: 'chk:k9', tipo: 'sem_data', titulo: '<img src=x>', texto: 'Sem data.' }], porRef: { 'chk:a': ['Sem data: ela não vê quando fazer.'] } };
+  const va = FH.htmlChecklistSessao(d({ alertas: al }), h);
+  check('faixa de validação: contagem, texto e o botão certo para cada tipo de passo (geral: ckEditar; só dela: ed-aco), título escapado', va.includes('2 coisas para validar') && /data-caso="ed-aco" data-id="7"/.test(va) && /data-fx="ckEditar" data-id="k9"/.test(va) && va.includes('&lt;img') && !va.includes('<img'));
+  check('sem alertas, sem faixa; o alerta do passo vai para a linha dele', !ok.includes('coisa') && /Passo a\|[^|]*\|[^|]*\|Sem data: ela não vê quando fazer\./.test(va));
+  check('o passo em edição mostra o editor no lugar da linha', FH.htmlChecklistSessao(d({ ckEd: 'a' }), h).includes('data-ckform="a"'));
 }
 
 console.log('== Task 12: sessões em pílulas ==');

@@ -155,12 +155,6 @@ export function htmlPopupFeitas(feitas, h) {
 // d = { semConta, erro, demarches: [{k,nome,feitos,total}], ativa, totalFeitos, total, itens: ChkItem[], hoje, todos, mais, extraMais, velhoDias? }.
 // velhoDias > 0 = dado velho (spec §11: banner depois de 48 h sem atividade).
 // A equipe não dá check no checklist dela e o CRM nunca lê nem mostra o link da pasta do Drive (spec §5.4, §8.2).
-function rotuloPasso(i, hoje, e, fmtDay) {
-  if (i.status === 'concluido') return '<span class="fx-p-d ok">feito</span>';
-  if (i.status === 'arquivado') return '<span class="fx-p-d">Arquivado por ela</span>';
-  if (!i.due_date) return '<span class="fx-p-d">sem data</span>';
-  return '<span class="fx-p-d' + (String(i.due_date).slice(0, 10) < hoje ? ' atraso' : '') + '">' + (String(i.due_date).slice(0, 10) < hoje ? 'atrasado · ' : 'vence ') + e(fmtDay(i.due_date)) + '</span>';
-}
 // "Adicionar na home": põe o passo (ou o item do Espaço / dos Guias) nos destaques do Início dela. Usa o despachante data-caso do CRM.
 // Minimalista: "+" põe na home e "×" tira (com rótulo escrito para leitor de tela e dica ao passar o mouse).
 export function iconeHome(tem, ref, e) {
@@ -172,31 +166,51 @@ export function botaoHome(tem, ref, e) {
 }
 // O texto de um passo do checklist dela. O original do template continua guardado; vazio volta ao original; ela vê o novo texto no app.
 function editorPasso(i, e) {
-  return '<li class="fx-passo fx-passo-ed"><form class="fx-ck-ed" data-ckform="' + e(i.step_key) + '">' +
+  return '<div class="fx-passo fx-passo-ed"><form class="fx-ck-ed" data-ckform="' + e(i.step_key) + '">' +
     '<label class="fx-ck-l">Texto do passo<input id="fx-ck-t" type="text" maxlength="120" value="' + e(i.titulo_custom || i.label) + '" data-orig="' + e(i.label) + '"></label>' +
     '<label class="fx-ck-l">Observação (opcional, até 100 letras)<input id="fx-ck-n" type="text" maxlength="100" value="' + e(i.nota_custom || '') + '"></label>' +
     '<p class="sub" style="margin:2px 0 8px">Original: ' + e(i.label) + '. Deixar o texto vazio volta ao original. Ela vê o novo texto no app.</p>' +
-    '<div class="actions"><button type="button" class="btn primary" data-fx="ckSalvar" data-id="' + e(i.step_key) + '">Salvar</button><button type="button" class="btn" data-fx="ckCancelar">Cancelar</button></div></form></li>';
+    '<div class="actions"><button type="button" class="btn primary" data-fx="ckSalvar" data-id="' + e(i.step_key) + '">Salvar</button><button type="button" class="btn" data-fx="ckCancelar">Cancelar</button></div></form></div>';
 }
+const ORIGENS_CK = [['todos', 'Todos'], ['gerais', 'Gerais'], ['dela', 'Só dela']];
+// d = { semConta, erro, velhoDias, demarches, ativa, origem, itens (gerais, já filtrados), equipeHtml, equipeN, alertas: {lista, porRef}, homeRefs, ckEd, totalFeitos, total,
+//       hoje, todos, mais, extraMais, demDe(item) }. h.linhaPasso(o) desenha a linha (a mesma nas duas listas).
 export function htmlChecklistSessao(d, h) {
   const e = h.esc;
   if (d.semConta) return '<p class="sub" style="margin:0">Ela ainda não entrou no app, então ainda não tem checklist.</p>';
   if (d.erro) return '<p class="sub" style="margin:0">Falta rodar <b>db/crm-checklist.sql</b> no SQL Editor do Supabase.</p>';
-  const itens = d.itens || [], hoje = d.hoje || '';
+  const itens = d.itens || [], hoje = d.hoje || '', origem = d.origem || 'todos', alertas = d.alertas || { lista: [], porRef: {} };
   const velho = d.velhoDias > 0 ? '<p class="fx-velho" role="status">Sem atividade dela no checklist há ' + e(d.velhoDias) + ' dias. O que aparece aqui pode estar desatualizado.</p>' : '';
+  const pct = d.total ? Math.round(100 * d.totalFeitos / d.total) : 0;
+  const topo = '<div class="fx-ck-top"><div class="fx-ck-prog"><b>' + e(d.totalFeitos) + ' de ' + e(d.total) + '</b><small>feitos por ela</small>' +
+    '<span class="fx-i" tabindex="0" title="A pasta do Drive dela é privada: o CRM não vê o link nem guarda nada dela. Se a equipe precisar de um documento, ela autoriza por e-mail.">ⓘ</span>' +
+    '<div class="fx-ck-bar" aria-hidden="true"><i style="width:' + pct + '%"></i></div></div>' +
+    '<div class="fx-orig" role="group" aria-label="Mostrar">' + ORIGENS_CK.map((o) => '<button type="button" data-fx="ckOrigem" data-v="' + o[0] + '" aria-pressed="' + (o[0] === origem) + '">' + o[1] + '</button>').join('') + '</div></div>';
   const pilulas = '<div class="fx-dems" role="group" aria-label="Démarches">' +
     [{ k: 'todas', nome: 'Todas', feitos: d.totalFeitos, total: d.total }].concat(d.demarches || []).map((x) =>
       '<button type="button" class="fx-dem" data-fx="dem" data-v="' + e(x.k) + '" aria-pressed="' + (x.k === d.ativa) + '"><span class="fx-dem-nome">' + e(x.nome) + '</span> <span class="fx-dem-n">' + e(x.feitos) + '/' + e(x.total) + '</span></button>').join('') + '</div>';
-  const drive = '<div class="fx-pasta"><h4 class="fx-h4">Pasta do Drive dela</h4><p class="sub" style="margin:0">A pasta é privada: o CRM não vê o link e não guarda nada dela. Se a equipe precisar de um documento, ela autoriza por e-mail.</p></div>';
-  const lista = d.todos ? maisUrgentes(itens, itens.length, hoje) : maisUrgentes(itens, 4, hoje);
-  const esc4 = itens.length - 4;
-  const passos = '<div class="fx-passos"><h4 class="fx-h4">Passos do checklist</h4>' + (itens.length
-    ? '<ul class="fx-passos-lista">' + lista.map((i) => d.ckEd && d.ckEd === i.step_key ? editorPasso(i, e) : '<li class="fx-passo ' + (i.status === 'concluido' ? 'feito' : i.status === 'arquivado' ? 'arq' : 'pend') + '"><span class="fx-p-t fx-edita" data-dbl="ckEditar" data-id="' + e(i.step_key) + '" tabindex="0" title="Clique para abrir · dois cliques (ou Enter) para editar" aria-label="' + e(i.titulo_custom || i.label) + '. Clique para abrir, dois cliques ou Enter para editar">' + e(i.titulo_custom || i.label) + (i.nota_custom ? '<small class="fx-p-nota">' + e(i.nota_custom) + '</small>' : '') + '</span>' + rotuloPasso(i, hoje, e, h.fmtDay) + (d.homeRefs && i.status !== 'arquivado' ? botaoHome(d.homeRefs.indexOf(i.step_key) >= 0, i.step_key, e) : '') + '</li>').join('') + '</ul>' +
-      (itens.length > 4 ? '<button type="button" class="link" data-fx="ckTodos" aria-expanded="' + !!d.todos + '">' + (d.todos ? 'Mostrar só os 4 mais urgentes' : 'Ver todos os ' + itens.length + ' passos (' + esc4 + (esc4 === 1 ? ' escondido)' : ' escondidos)')) + '</button>' : '')
-    : '<p class="sub" style="margin:0">O checklist dela ainda está vazio.</p>') + '</div>';
-  const equipe = d.equipeHtml ? '<div class="fx-passos fx-passos-equipe"><h4 class="fx-h4">Combinados só com ela (da montagem do espaço)</h4>' + d.equipeHtml + '</div>' : '';
-  return velho + pilulas + drive + passos + equipe +
-    '<div class="fx-mais"><button type="button" class="btn" data-fx="ckMais" aria-expanded="' + !!d.mais + '">' + (d.mais ? 'Ver menos desta sessão' : 'Ver mais desta sessão') + '</button>' + (d.mais ? '<div class="fx-mais-corpo">' + (d.extraMais || '') + '</div>' : '') + '</div>';
+  const acaoAlerta = (a) => /^chk:/.test(a.ref) ? '<button type="button" class="link" data-fx="ckEditar" data-id="' + e(a.ref.slice(4)) + '">Editar</button>' : '<button type="button" class="link" data-caso="ed-aco" data-id="' + e(a.ref.slice(4)) + '">Editar</button>';
+  const painel = alertas.lista.length ? '<div class="fx-valid" role="status"><span class="fx-valid-ic" aria-hidden="true">!</span><div><b>' + alertas.lista.length + (alertas.lista.length === 1 ? ' coisa para validar' : ' coisas para validar') + '</b><ul>' +
+    alertas.lista.slice(0, 6).map((a) => '<li><span>“' + e(a.titulo) + '”: ' + e(a.texto) + '</span> ' + acaoAlerta(a) + '</li>').join('') + '</ul>' + (alertas.lista.length > 6 ? '<small>e mais ' + (alertas.lista.length - 6) + '</small>' : '') + '</div></div>' : '';
+  const linhaGeral = (i) => {
+    if (d.ckEd && d.ckEd === i.step_key) return editorPasso(i, e);
+    const feito = i.status === 'concluido', arq = i.status === 'arquivado', venc = i.due_date ? String(i.due_date).slice(0, 10) : '', atras = !feito && !arq && !!venc && venc < hoje;
+    const chips = [{ t: 'Geral', c: 'ger' }];
+    if (d.ativa === 'todas' && d.demDe) chips.push({ t: d.demDe(i), c: 'dem' });
+    if (feito) chips.push({ t: 'feito', c: 'ok' }); else if (arq) chips.push({ t: 'arquivado por ela', c: '' });
+    else if (venc) chips.push({ t: (atras ? 'atrasado · ' : 'vence ') + h.fmtDay(venc), c: 'due' + (atras ? ' atraso' : '') }); else chips.push({ t: 'sem data', c: 'vz' });
+    return h.linhaPasso({ estado: feito ? 'ok' : atras ? 'bad' : 'off', rot: feito ? 'Feito por ela' : arq ? 'Arquivado por ela' : atras ? 'Atrasado' : 'Pendente', cls: feito ? 'feito' : arq ? 'arq' : '',
+      titulo: e(i.titulo_custom || i.label), nota: i.nota_custom ? e(i.nota_custom) : '', chips, alerta: ((alertas.porRef['chk:' + i.step_key]) || [])[0] || '', ed: 'ed-chk', id: i.step_key,
+      home: d.homeRefs && !arq ? botaoHome(d.homeRefs.indexOf(i.step_key) >= 0, i.step_key, e) : '' });
+  };
+  const lista = d.todos ? maisUrgentes(itens, itens.length, hoje) : maisUrgentes(itens, 6, hoje), esc6 = itens.length - 6;
+  const grupoG = origem === 'dela' ? '' : '<div class="fx-g"><span>Gerais da démarche · ' + itens.length + '</span><span>vale para toda a persona</span></div>' +
+    (itens.length ? '<div class="fx-ck-lista">' + lista.map(linhaGeral).join('') + '</div>' +
+      (itens.length > 6 ? '<button type="button" class="link" data-fx="ckTodos" aria-expanded="' + !!d.todos + '">' + (d.todos ? 'Mostrar só os 6 mais urgentes' : 'Mostrar os ' + esc6 + (esc6 === 1 ? ' restante' : ' restantes')) + '</button>' : '')
+      : '<p class="sub" style="margin:0 0 8px">O checklist dela ainda está vazio.</p>');
+  const grupoD = origem === 'gerais' || !d.equipeHtml ? '' : '<div class="fx-g"><span>Só dela · ' + (d.equipeN || 0) + '</span><span>combinado com ela</span></div><div class="fx-ck-lista">' + d.equipeHtml + '</div>';
+  return velho + topo + pilulas + painel + grupoG + grupoD +
+    '<div class="fx-mais"><button type="button" class="link" data-fx="ckMais" aria-expanded="' + !!d.mais + '">' + (d.mais ? 'Ver menos detalhes' : 'Ver detalhes completos do checklist') + '</button>' + (d.mais ? '<div class="fx-mais-corpo">' + (d.extraMais || '') + '</div>' : '') + '</div>';
 }
 
 // ---------- Quadro do passo: o que ela vê ao abrir um passo do checklist (o mesmo desenho do app), com a ação da equipe no rodapé ----------

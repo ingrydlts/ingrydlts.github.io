@@ -249,6 +249,14 @@ export function passosPropostosHtml(aco, listas, h, modo) {
     // Minimalista: editar = dois cliques no texto; retirar (publicado) e recusar (rascunho) = ×. O que decide (conferir / publicar) continua em palavras.
     var x = function (acao, rot) { return h.ico ? h.ico(acao, a.id, '×', rot) : h.btn(acao, a.id, rot); };
     var btns = (fim ? '' : a.publicada_em ? x('aco-retirar', 'Retirar da página dela') : (a.a_conferir ? h.conferi(a.id) : h.btn('aco-pub', a.id, 'Publicar para ela')) + x('aco-recusar', 'Recusar este passo'));
+    if (h.linhaPasso) {   // o mesmo desenho de linha do Checklist: ponto de estado, título, etiquetas e ícones
+      var chips = [{ t: a.camada === 'persona' ? 'Da persona' : 'Só dela', c: 'del' }, { t: a.demarche ? h.rotulo(a.demarche) : 'Sem démarche', c: 'dem' }];
+      var pz = h.prazo(a); if (pz) chips.push({ t: pz, c: 'due' });
+      var alerta = a.a_conferir && !a.publicada_em ? 'Falta conferir a fonte para poder publicar.' : (h.alerta ? h.alerta(a) : '');
+      return h.linhaPasso({ estado: fim || a.publicada_em ? 'ok' : 'mid', rot: fim ? 'Concluído' : a.publicada_em ? 'Publicado' : a.a_conferir ? 'A conferir' : 'Rascunho', cls: fim ? 'feito' : '',
+        titulo: e(a.titulo), nota: fim ? 'concluído' + (a.concluida_por === 'ela' ? ' por ela' : '') : a.publicada_em ? 'publicado' : 'rascunho', chips: chips, alerta: alerta, ed: fim ? '' : 'ed-aco', id: a.id, extra: btns,
+        sub: subs.length ? '<details class="fx-subs"><summary>' + subs.length + (subs.length === 1 ? ' subitem' : ' subitens') + '</summary><ul aria-label="Subitens">' + subs.map(function (x) { return '<li>' + e(String(x)) + '</li>'; }).join('') + '</ul></details>' : '' });
+    }
     return h.linha(est, corpo, btns);
   }).join('');
 }

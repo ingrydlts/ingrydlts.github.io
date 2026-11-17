@@ -234,5 +234,21 @@ console.log('== CRM retrabalhado: urgentes, cartoesMinimos, potencial ==');
   check('potencial: assinatura cancelada e sem acesso fica no mínimo, nunca negativo', sai.nota === 0);
 }
 
+console.log('\n== Validação do Checklist ==');
+{
+  check('títulos iguais para quem lê: sem acento, sem parênteses, sem pontuação, sem palavra de ligação e sem letra solta', FX.normalizaTituloPasso('Diploma do ensino médio, traduzido e juramentado') === FX.normalizaTituloPasso('Diploma do ensino médio traduzido e juramentado (conferir a lista oficial)') && FX.normalizaTituloPasso('S detalhes do sistema de candidatura de quem já está na França') === FX.normalizaTituloPasso('Detalhes do sistema de candidatura para quem já está na França') && FX.normalizaTituloPasso('Abrir conta') !== FX.normalizaTituloPasso('Fechar conta'));
+  const it = (k, extra) => Object.assign({ step_key: k, label: 'Passo ' + k, status: 'pendente', due_date: null }, extra);
+  const ac = (id, titulo, extra) => Object.assign({ id, titulo, estado: 'aberta', prazo: null, prazo_texto: '', demarche: 'banco' }, extra);
+  const r = FX.alertasChecklist({ itens: [it('a'), it('b', { due_date: '2026-12-01' }), it('c'), it('d', { status: 'concluido' }), it('e', { status: 'arquivado' }), it('dip', { label: 'Juntar o diploma do ensino médio', due_date: '2026-12-02' })], quando: { c: 'Antes de se candidatar' },
+    equipe: [ac(1, 'Abrir a conta bancária francesa'), ac(2, 'Juntar o diploma do ensino médio (traduzido)', { prazo: '2026-12-15' }), ac(3, 'Sem aba', { prazo: '2026-12-20', demarche: null }), ac(4, 'Recusado', { estado: 'recusada' }), ac(5, 'Feito', { estado: 'concluida' })] });
+  const tipos = (ref) => r.lista.filter((x) => x.ref === ref).map((x) => x.tipo).join();
+  check('passo geral aberto sem data e sem "quando" do template avisa; com data, com "quando", concluído ou arquivado, não', tipos('chk:a') === 'sem_data' && tipos('chk:b') === '' && tipos('chk:c') === '' && tipos('chk:d') === '' && tipos('chk:e') === '');
+  check('passo só dela sem prazo avisa; sem démarche avisa; recusado e concluído ficam fora', tipos('aco:1') === 'sem_data' && tipos('aco:3') === 'sem_demarche' && tipos('aco:4') === '' && tipos('aco:5') === '');
+  check('o só dela que repete um passo geral avisa "Já existe como passo geral"; o geral não é acusado', tipos('aco:2') === 'repetido' && /Já existe como passo geral/.test(r.porRef['aco:2'][0]) && tipos('chk:dip') === '');
+  check('porRef junta os textos por passo e a lista guarda o título', r.porRef['chk:a'].length === 1 && r.lista.find((x) => x.ref === 'aco:1').titulo === 'Abrir a conta bancária francesa');
+  const dois = FX.alertasChecklist({ itens: [], equipe: [ac(7, 'Abrir conta', { prazo: '2026-12-01' }), ac(8, 'Abrir a conta', { prazo: '2026-12-01' })] });
+  check('dois só dela repetidos entre si: os dois avisam "Repetido"', dois.lista.length === 2 && dois.lista.every((x) => x.tipo === 'repetido' && /Repetido/.test(x.texto)));
+  check('sem dados nada quebra', FX.alertasChecklist().lista.length === 0 && FX.alertasChecklist({}).lista.length === 0);
+}
 console.log('\n' + passed + ' passaram, ' + failed + ' falharam');
 if (failed) process.exit(1);

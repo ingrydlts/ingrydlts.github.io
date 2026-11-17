@@ -50,7 +50,7 @@ console.log('== Na sessão Checklist do CRM ==');
   await h.mod.carregaCaso('p1');
   const html = h.mod.fxChecklistCorpo(c);
   check('sem conta no app, o Checklist já mostra os passos propostos, com démarche e subitens', html.includes('Passos propostos para ela') && html.includes('Abrir conta em banco francês') && html.includes('Reunir comprovante'));
-  check('a démarche aparece com os subitens (o rótulo bonito vem do catálogo, carregado no navegador)', /banco · 2 subitens/i.test(html));
+  check('a démarche aparece com os subitens (o rótulo bonito vem do catálogo, carregado no navegador)', /class="fx-cp dem">banco<\/span>/i.test(html) && /<summary>2 subitens<\/summary>/.test(html));
   const sem = await carregarCrm({ respostas: { ...respostas, caso_acoes: { data: [], error: null } }, expor: ['carregaCaso', 'fxChecklistCorpo'] });
   sem.mod.setC([c]); sem.mod.state.sel = 'p1'; sem.mod.state.dos = { cid: 'p1', chk: { semConta: true, itens: [] }, d: {}, rasc: {} };
   await sem.mod.carregaCaso('p1');
