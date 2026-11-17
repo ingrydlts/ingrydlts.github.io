@@ -2967,7 +2967,7 @@ async function pcCarregarDados(cid) {
     if (nt.status === 'pendente') { if (pc.estado !== 'proposta') { pc.prop = { id: nt.id, proposta: nt.proposta, reutilizada: false }; pc.estado = 'proposta'; pc.sel = { campos: {}, sinais: {}, fila: {}, perg: {} }; pc.camadas = {}; } }
     else pc.notionAplicada = { id: nt.id, proposta: nt.proposta, quando: nt.criado_em };
   }
-  pintaPoscall(cid);
+  pintaPoscall(cid); pintaMont(cid);
 }
 // O alto da sessão "A ligação": anexar o arquivo da ligação transcrita (.txt, PDF ou imagem) e pedir a leitura da IA.
 function pcTopoHtml(c) {
@@ -3177,7 +3177,9 @@ function montEstado(cid) { if (!state.mont || state.mont.cid !== cid) state.mont
 function montTranscricao(c) { var S = state.dos && state.dos.cid === c.id ? state.dos : null; return { texto: String(dosValor(c, (S && S.d) || {}, (S && S.rasc) || {}, 'ligacao_transcricao') || '').trim(), notas: String(dosValor(c, (S && S.d) || {}, (S && S.rasc) || {}, 'ligacao_resumo') || '').trim() }; }
 // Sem transcrição colada, a Montagem lê a página do Notion da ligação: o link digitado agora ou a página já lida no Onboarding.
 function montNotionUrl(c) {
-  var pc = pcEstado(c.id), u = String(pc.notionUrl || '').trim(), n = pc.notionAplicada && pc.notionAplicada.proposta && pc.notionAplicada.proposta.notion;
+  var pc = pcEstado(c.id), u = String(pc.notionUrl || '').trim(), B = state.bilan && state.bilan.cid === c.id ? state.bilan : null;
+  // A página lida no Onboarding: vale a proposta aplicada, a pendente ou a que a ficha já carregou (state.bilan), o que vier primeiro.
+  var n = (pc.notionAplicada && pc.notionAplicada.proposta && pc.notionAplicada.proposta.notion) || (pc.prop && pc.prop.proposta && pc.prop.proposta.notion) || (B && B.proposta && B.proposta.notion);
   return /^https:\/\//i.test(u) ? u : (n && /^[0-9a-f]{32}$/i.test(String(n.pagina || '')) ? 'https://www.notion.so/' + n.pagina : '');
 }
 // De onde a Montagem lê: a conversa vinculada a esta pessoa (pelo e-mail da ficha), seja a página do Notion lida ou a transcrição do Registro.
@@ -3185,11 +3187,12 @@ function montFonte(c) {
   var pc = pcEstado(c.id), n = pc.notionAplicada;
   if (montTranscricao(c).texto.length >= 200) return 'a transcrição colada em “Análise 1:1”';
   if (n) return 'a ligação do Notion lida em ' + fmtDay(String(n.quando || '').slice(0, 10));
+  if (montNotionUrl(c)) return 'a ligação do Notion já lida';
   return montNotionUrl(c) ? 'o link do Notion informado' : '';
 }
 function montPainel(c) { var m = montEstado(c.id); m.dd = (state.fx && state.fx.dd) || {}; m.temTranscricao = montTranscricao(c).texto.length >= 200 || !!montNotionUrl(c); m.fonte = montFonte(c); return MT.painelHtml(m, c, esc); }
 function montHtml(c) { return typeof MT === 'undefined' ? '' : '<div id="mont-box">' + montPainel(c) + '</div>'; }   // (os testes antigos montam o crm.js sem este módulo)
-function pintaMont(cid) { var b = $('mont-box'), c = byC(cid); if (b && c) b.innerHTML = montPainel(c); }
+function pintaMont(cid) { var b = $('mont-box'), c = byC(cid); if (typeof MT !== 'undefined' && b && c) b.innerHTML = montPainel(c); }
 async function montToken() { var sess = await supabase.auth.getSession(); if (!sess.data.session) throw new Error('Entre de novo no CRM.'); return sess.data.session.access_token; }
 async function montWorker(caminho, corpo) {
   var res = await fetch(WORKER_BASE + caminho, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + (await montToken()) }, body: JSON.stringify(corpo) });
