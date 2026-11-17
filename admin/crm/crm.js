@@ -2,15 +2,16 @@
 // Nada de service_role aqui. O banco é db/crm-fase2.sql; o desenho é o artefato "CRM Por Dentro".
 // Tudo que vem do banco é texto de terceiros (nome, e-mail, pergunta): passa sempre por esc().
 import { supabase } from '/assets/js/supabase-client.js';
-import * as TX from './taxonomia.js?v=2026-11-17.1';   // páginas, famílias e agrupamento dos modelos
-import * as ES from './estudio.js?v=2026-11-17.1';   // os blocos do estúdio de e-mails (entregas 2 e 3)
-import * as EE from './editor-email.js?v=2026-11-17.1';
-import * as EQ from './editor-quem.js?v=2026-11-17.1';
-import * as JR from './jornada.js?v=2026-11-17.1';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
-import * as FX from './ficha.js?v=2026-11-17.1';   // ficha v2: lógica pura (fila, démarches, funil, ações)
-import * as FH from './ficha-html.js?v=2026-11-17.1';   // ficha v2: HTML puro
-import * as PN from './panorama.js?v=2026-11-17.1';
-import * as MT from './montagem.js?v=2026-11-17.1';   // Montagem do espaço a partir do transcript (lógica e HTML puros)   // Panorama dela e O que ela trouxe (lógica e HTML puros)
+import * as TX from './taxonomia.js?v=2026-11-17.2';   // páginas, famílias e agrupamento dos modelos
+import * as ES from './estudio.js?v=2026-11-17.2';   // os blocos do estúdio de e-mails (entregas 2 e 3)
+import * as EE from './editor-email.js?v=2026-11-17.2';
+import * as EQ from './editor-quem.js?v=2026-11-17.2';
+import * as JR from './jornada.js?v=2026-11-17.2';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
+import * as FX from './ficha.js?v=2026-11-17.2';   // ficha v2: lógica pura (fila, démarches, funil, ações)
+import * as FH from './ficha-html.js?v=2026-11-17.2';   // ficha v2: HTML puro
+import * as PN from './panorama.js?v=2026-11-17.2';
+import * as MT from './montagem.js?v=2026-11-17.2';
+import * as GU from './guias.js?v=2026-11-17.2';   // guias gratuitos de cada pessoa (catálogo, o que ela pediu, sugestões)   // Montagem do espaço a partir do transcript (lógica e HTML puros)   // Panorama dela e O que ela trouxe (lógica e HTML puros)
 
 var PERSONAS = {
   au_pair_estudante: 'Au pair → estudante', campus_france: 'Campus France', alternancia_emprego: 'Alternância / emprego',
@@ -3597,7 +3598,7 @@ function fxHeaderHtml(c, d) {
 // Catálogo de démarches (cópia do app, processos.json): carregado uma vez; sem ele, tudo cai na démarche padrão.
 var FX_PROC = null;
 async function fxCarregaProcessos() {
-  try { var r = await fetch('processos.json?v=2026-11-17.1'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
+  try { var r = await fetch('processos.json?v=2026-11-17.2'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
 }
 // A sessão Checklist: pílulas por démarche, os 4 mais urgentes, pasta do Drive privada e "Ver mais desta sessão".
 // Os passos que a montagem do espaço propôs para ela, com démarche, subitens e origem: o mesmo detalhe do Checklist. Existem antes de ela ter conta.
@@ -3648,10 +3649,56 @@ function fxEspacoCorpo(c) {
   return '<p class="sub" style="margin:0 0 8px">O que você publica só para o caso dela: prazos e escolas. Nada aparece para ela até você publicar (' + pub + ' publicado' + (pub === 1 ? '' : 's') + ').</p>' + fxSemConsent(g.k) +
     casoItensHtml(g.k, ['marco', 'escola'], 'Nada de prazo ou escola ainda. Leia a página do Notion no Onboarding para a IA propor.') + casoEscolasDelaHtml(g.k);
 }
+// Os guias gratuitos de /guias/: o que ela pediu aparece sozinho no app dela; o resto você decide ("Mostrar para ela"). Banco: db/crm-guias.sql.
+function guiasEstado(cid) { if (!state.guias || state.guias.cid !== cid) state.guias = { cid: cid, catalogo: null, indicados: null, err: '', carregando: false }; return state.guias; }
+async function fxCarregaGuias(c) {
+  var g = guiasEstado(c.id); if (g.carregando || g.err || (g.catalogo && g.indicados)) return;
+  g.carregando = true;
+  try {
+    if (!state.guiasCat) { var r = await fetch('../../content/guias.json'); if (!r.ok) throw new Error('catalogo'); state.guiasCat = GU.montaCatalogo(await r.json()); }
+    g.catalogo = state.guiasCat;
+    if (!state.guiasSync) {   // o banco guarda o catálogo para o app dela montar a lista sem depender do site
+      var sy = await supabase.rpc('crm_guias_catalogo_sincronizar', { p_itens: g.catalogo });
+      if (sy.error) throw new Error('sql'); state.guiasSync = true;
+    }
+    var q = await supabase.from('caso_guias').select('slug').eq('contato_id', c.id);
+    if (q.error) throw new Error('sql');
+    g.indicados = (q.data || []).map(function (x) { return x.slug; });
+  } catch (e) { g.err = e && e.message === 'sql' ? 'sql' : 'catalogo'; }
+  g.carregando = false;
+  if (state.sel === c.id && state.fx && state.fx.tab === 'plataforma') { if (fxSessaoAberta('guias')) fxPintaCorpo(); fxPintaPrevia(); }
+}
+function guiaBtn(acao, slug, rot) { return '<button type="button" class="btn" data-guia="' + acao + '" data-slug="' + esc(slug) + '" style="padding:5px 10px;font-size:12px">' + esc(rot) + '</button>'; }
+function guiasLinhas(c) {
+  var g = guiasEstado(c.id);
+  return g.catalogo && g.indicados ? GU.linhas({ catalogo: g.catalogo, origens: origensDe(c), persona: personaKey(c), indicados: g.indicados }) : null;
+}
+function fxGuiasGratuitosHtml(c) {
+  setTimeout(function () { fxCarregaGuias(c); }, 0);
+  var g = guiasEstado(c.id), sub = 'o que ela pediu aparece sozinho; você escolhe os outros';
+  if (g.err === 'sql') return casoSecao('Guias gratuitos', '', '<p class="sub" style="margin:0">Falta rodar <b>db/crm-guias.sql</b> no SQL Editor do Supabase.</p>');
+  if (g.err === 'catalogo') return casoSecao('Guias gratuitos', '', '<p class="sub" style="margin:0">Não consegui carregar o catálogo de guias (content/guias.json). Recarregue a página.</p>');
+  var ls = guiasLinhas(c);
+  return casoSecao('Guias gratuitos', sub, ls ? GU.guiasHtml(ls, { esc: esc, btn: guiaBtn }) : '<div class="skel" aria-busy="true" style="height:64px"></div>');
+}
+async function guiaAcao(acao, slug, t) {
+  var c = byC(state.sel), g = c ? guiasEstado(c.id) : null; if (!c || !g || !g.indicados) return;
+  var ls = guiasLinhas(c), alvo = acao === 'sugeridos' ? ls.filter(function (x) { return x.estado === 'sugerido'; }).map(function (x) { return x.slug; }) : [slug];
+  if (t) t.disabled = true;
+  for (var i = 0; i < alvo.length; i++) {
+    var r = await supabase.rpc(acao === 'retirar' ? 'crm_guia_retirar' : 'crm_guia_indicar', { p_contato: c.id, p_slug: alvo[i] });
+    if (r.error) { if (t) t.disabled = false; return fail(acao === 'retirar' ? 'retirar o guia' : 'mostrar o guia', r.error); }
+    if (acao === 'retirar') g.indicados = g.indicados.filter(function (x) { return x !== alvo[i]; });
+    else if (g.indicados.indexOf(alvo[i]) < 0) g.indicados.push(alvo[i]);
+  }
+  toast(acao === 'retirar' ? 'Guia retirado do app dela' : (alvo.length === 1 ? 'Guia no app dela' : alvo.length + ' guias no app dela'), 2500);
+  fxPintaCorpo(); fxPintaPrevia();
+}
 function fxGuiasCorpo(c) {
-  var g = fxCasoGuarda(c); if (!g.k) return g.html;
-  return '<p class="sub" style="margin:0 0 8px">O material da equipe que ela abre em Guias: bilan da conversa, documentos e mensagens prontas. Só entra o que você publicar.</p>' + fxSemConsent(g.k) +
-    casoBarraNovo(g.k) + casoItensHtml(g.k, ['bilan', 'documento', 'modelo'], 'Nada para ela em Guias ainda. Use os botões acima para criar.');
+  var g = fxCasoGuarda(c), gratis = fxGuiasGratuitosHtml(c);
+  if (!g.k) return gratis + g.html;
+  return gratis + casoSecao('Material da equipe', 'bilan da conversa, documentos e mensagens prontas; só entra o que você publicar', fxSemConsent(g.k) +
+    casoBarraNovo(g.k) + casoItensHtml(g.k, ['bilan', 'documento', 'modelo'], 'Nada para ela em Guias ainda. Use os botões acima para criar.'));
 }
 // Perfil: o que o Dossiê ainda não tem, para perguntar na call (o Dossiê é a aba ao lado).
 function fxPerfilCorpo(c) {
@@ -3826,7 +3873,7 @@ function fxPreviaDados(c) {
     naoLidas: chatNaoLidas(state.chat), marco: m ? { titulo: m.titulo, dias: diasAteIso(m.data), data: m.data } : null, prox: passosL[0] ? { label: passosL[0].label, due: passosL[0].due } : null, avisos: avisos,
     passos: passosL.concat(feitosL),
     espaco: { marcos: marcos, escolas: pub(['escola']).map(function (x) { return { titulo: x.titulo, resumo: x.resumo }; }), dela: k ? (k.escolasDela || []).map(function (x) { return { nome: x.nome }; }) : [] },
-    guias: { bilan: pub(['bilan']).length > 0, docs: pub(['documento']).map(function (x) { return { titulo: x.titulo, resumo: x.resumo }; }), msgs: pub(['modelo']).map(function (x) { return { titulo: x.titulo }; }) },
+    guias: { gratuitos: (guiasLinhas(c) || []).filter(function (x) { return x.estado === 'pediu' || x.estado === 'indicado'; }).map(function (x) { return { titulo: x.titulo, motivo: x.estado }; }), bilan: pub(['bilan']).length > 0, docs: pub(['documento']).map(function (x) { return { titulo: x.titulo, resumo: x.resumo }; }), msgs: pub(['modelo']).map(function (x) { return { titulo: x.titulo }; }) },
     perfil: { n: pr.n, tot: pr.tot, kv: [['Situação', personaLabel(c)], ['Cidade', (dd && dosValor(c, dd.d, dd.rasc, 'cidade')) || ''], ['Fase', (dd && dosValor(c, dd.d, dd.rasc, 'fase')) || '']] } };
 }
 function fxPreviaHtml(c) {
@@ -4078,7 +4125,7 @@ function fxSessoes(c) {
     inicio: mk('Início (Equipe Por Dentro)', 'O que a equipe mostra a ela no início do app e os seus avisos.', 'inicio', function () { return fxInicioCorpo(c) + fxZonas(c, 'inicio'); }),
     checklist: mk('Checklist', 'Os passos dela por démarche, do mais urgente ao mais distante.', 'checklist', function () { return '<div id="fx-chk-corpo">' + fxChecklistCorpo(c) + '</div>' + fxZonas(c, 'checklist'); }),
     espaco: mk('Espaço', 'Prazos e escolas que você publica só para ela.', 'espaco', function () { return fxEspacoCorpo(c) + fxZonas(c, 'espaco'); }),
-    guias: mk('Guias', 'Bilan, documentos e mensagens prontas da equipe.', 'guias', function () { return fxGuiasCorpo(c) + fxZonas(c, 'guias'); }),
+    guias: mk('Guias', 'Guias gratuitos (o que ela pediu e o que você indica), bilan, documentos e mensagens prontas.', 'guias', function () { return fxGuiasCorpo(c) + fxZonas(c, 'guias'); }),
     perfil: mk('Perfil', 'O que ela já respondeu e o que falta perguntar.', 'perfil', function () { return fxPerfilCorpo(c) + fxZonas(c, 'perfil'); }),
     eu: mk('Só eu · minhas tarefas', 'Tarefas suas neste caso. Ela não vê nada daqui.', 'eu', function () { return fxEuCorpo(c); }),
     bilan: mk('Bilan', 'O que a conversa mostrou, os achados para conferir e o e-mail do bilan.', 'bilan', function () { var g = fxCasoGuarda(c); return (g.k ? casoSecao('O que entendi', g.k.ach.length + ' achados', casoAchadosHtml(g.k)) : g.html) + bilanResumoHtml(c) + bilanBlocoHtml(c, H4_PLAT); }),
@@ -6305,6 +6352,7 @@ document.addEventListener('click', async function (e) {
   if (t.dataset.montedok) { montEstado(state.sel).editando = null; return pintaMont(state.sel); }
   if (t.dataset.montconferido) return montConferido(state.sel, t.dataset.montconferido);
   if (t.dataset.montdossie) { if (!window.confirm('Isto troca o Resumo e os Próximos passos do Dossiê pelo texto desta leitura. Continuar?')) return; return montPreencheDossie(t.dataset.montdossie, true).then(function (n) { toast(n ? 'Resumo e Próximos passos atualizados.' : 'A leitura não trouxe resumo nem próximos passos.'); }); }
+  if (t.dataset.guia) return guiaAcao(t.dataset.guia, t.dataset.slug || '', t);
   if (t.dataset.chatsug) return chatSugUsar(t.dataset.chatsug);
   if (t.dataset.chatsugdesc) return chatSugDescartar(t.dataset.chatsugdesc);
   if (t.dataset.montprevia) return montPrevia(state.sel, t.dataset.montprevia);

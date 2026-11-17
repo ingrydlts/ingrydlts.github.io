@@ -103,11 +103,17 @@ set search_path = public, pg_temp
 as $$
 declare
   v_c uuid;
+  v_g jsonb := '[]'::jsonb;
 begin
   v_c := public.meu_contato_id();
   if auth.uid() is null or v_c is null then
     return null;
   end if;
+  -- Guias gratuitos (crm-guias.sql): o que ela pediu + o que a equipe indicou. Chamada dinâmica: sem o crm-guias.sql rodado, vira lista vazia.
+  begin
+    execute 'select public.guias_da_pessoa($1)' into v_g using v_c;
+  exception when undefined_function or undefined_table or undefined_column then v_g := '[]'::jsonb;
+  end;
   return jsonb_build_object(
     'board', coalesce((
       select jsonb_agg(jsonb_build_object('id', b.id, 'tipo', b.tipo, 'titulo', b.titulo, 'resumo', b.resumo, 'dados', b.dados,
@@ -127,6 +133,7 @@ begin
       select jsonb_agg(jsonb_build_object('id', a.id, 'tipo', a.tipo, 'titulo', a.titulo, 'texto', a.texto, 'resposta_tipo', a.resposta_tipo,
                'opcoes', to_jsonb(a.opcoes), 'destino', a.destino, 'liberar_em', a.liberar_em, 'lido', a.estado = 'lido') order by a.liberar_em, a.id)
         from caso_avisos a where a.contato_id = v_c and public.caso_aviso_visivel(a)), '[]'::jsonb),
+    'guias', coalesce(v_g, '[]'::jsonb),
     'respondidas', coalesce((
       select jsonb_agg(jsonb_build_object('id', r.id, 'titulo', r.titulo, 'resposta', r.resposta, 'respondido_em', r.respondido_em) order by r.respondido_em desc)
         from (select * from caso_avisos where contato_id = v_c and estado = 'respondido' order by respondido_em desc limit 10) r), '[]'::jsonb)
