@@ -2,15 +2,15 @@
 // Nada de service_role aqui. O banco é db/crm-fase2.sql; o desenho é o artefato "CRM Por Dentro".
 // Tudo que vem do banco é texto de terceiros (nome, e-mail, pergunta): passa sempre por esc().
 import { supabase } from '/assets/js/supabase-client.js';
-import * as TX from './taxonomia.js?v=2026-11-16.10';   // páginas, famílias e agrupamento dos modelos
-import * as ES from './estudio.js?v=2026-11-16.10';   // os blocos do estúdio de e-mails (entregas 2 e 3)
-import * as EE from './editor-email.js?v=2026-11-16.10';
-import * as EQ from './editor-quem.js?v=2026-11-16.10';
-import * as JR from './jornada.js?v=2026-11-16.10';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
-import * as FX from './ficha.js?v=2026-11-16.10';   // ficha v2: lógica pura (fila, démarches, funil, ações)
-import * as FH from './ficha-html.js?v=2026-11-16.10';   // ficha v2: HTML puro
-import * as PN from './panorama.js?v=2026-11-16.10';
-import * as MT from './montagem.js?v=2026-11-16.10';   // Montagem do espaço a partir do transcript (lógica e HTML puros)   // Panorama dela e O que ela trouxe (lógica e HTML puros)
+import * as TX from './taxonomia.js?v=2026-11-17.1';   // páginas, famílias e agrupamento dos modelos
+import * as ES from './estudio.js?v=2026-11-17.1';   // os blocos do estúdio de e-mails (entregas 2 e 3)
+import * as EE from './editor-email.js?v=2026-11-17.1';
+import * as EQ from './editor-quem.js?v=2026-11-17.1';
+import * as JR from './jornada.js?v=2026-11-17.1';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
+import * as FX from './ficha.js?v=2026-11-17.1';   // ficha v2: lógica pura (fila, démarches, funil, ações)
+import * as FH from './ficha-html.js?v=2026-11-17.1';   // ficha v2: HTML puro
+import * as PN from './panorama.js?v=2026-11-17.1';
+import * as MT from './montagem.js?v=2026-11-17.1';   // Montagem do espaço a partir do transcript (lógica e HTML puros)   // Panorama dela e O que ela trouxe (lógica e HTML puros)
 
 var PERSONAS = {
   au_pair_estudante: 'Au pair → estudante', campus_france: 'Campus France', alternancia_emprego: 'Alternância / emprego',
@@ -165,7 +165,7 @@ function potEntrada(c, o) {
     clicados: ms.filter(function (x) { return x.clicado_em || x.status === 'clicado'; }).length }
     : { total: st ? 1 : 0, abertos: st === 'aberto' || st === 'clicado' ? 1 : 0, clicados: st === 'clicado' ? 1 : 0 };
   var resp = o.respostas != null ? o.respostas : (c.resposta_aberta_id || c.pergunta_aberta_id ? 1 : 0);
-  return { tipo: FX.tipoCabecalho(c, assin), etapa: FX.etapaFunil(c, { mails: ms || [], propostas: [], temBilan: !!o.temBilan }), mails: m, respostas: resp,
+  return { tipo: FX.tipoCabecalho(c, assin), etapa: FX.etapaFunil(c, { mails: ms || [], propostas: [], temBilan: !!o.temBilan, umFeito: umFeito(c.id) }), mails: m, respostas: resp,
     respostasNovas: o.respostasNovas != null ? o.respostasNovas : resp, capturas: Number(c.capturas) || 0, materiais: origensDe(c).length,
     diasSemSinal: c.dias != null && isFinite(Number(c.dias)) ? Number(c.dias) : null, urgencia: c.urgencia, linkPagamento: !!o.linkPagamento, assin: assin,
     ultimoAcessoDias: o.ultimoAcessoDias !== undefined ? o.ultimoAcessoDias : dias(c.ultimo_evento_em || c.criado_em), sessoes30: o.sessoes30, chk: o.chk || null, nome: displayName(c) };
@@ -3006,6 +3006,27 @@ function pcPreencher(cid, auto) {
   poe('proximos_passos', (p.proximos_passos || []).map(function (x) { return '- ' + x; }).join('\n'));
   if (!auto) toast(mudou ? 'Resumo e próximos passos preenchidos. Salve o dossiê para guardar.' : 'A leitura não trouxe resumo nem próximos passos.');
 }
+// 1:1 feito: a leitura da call (IA ou Notion) prova que a conversa aconteceu. Grava em `um_a_um` (status 'feito', já existente) e leva o estágio
+// para '1:1' se a pessoa ainda estava antes dele. Idempotente: ler de novo não duplica. Se falhar, a leitura continua valendo; só avisa.
+function umFeito(cid) { return (UM || []).some(function (u) { return u.contato_id === cid && u.status === 'feito'; }); }
+function estagioRotulo(c) { return c.estagio === 'um_a_um' && umFeito(c.id) ? '1:1 feito' : stageLabel(c.estagio); }
+async function sincronizarUmAUm(cid, origem) {
+  var c = byC(cid); if (!c) return false;
+  try {
+    if (!umFeito(cid)) {
+      var marcado = (UM || []).filter(function (u) { return u.contato_id === cid && u.status === 'agendado'; })[0];
+      var w = marcado ? await supabase.from('um_a_um').update({ status: 'feito' }).eq('id', marcado.id)
+        : await supabase.from('um_a_um').insert({ contato_id: cid, quando: new Date().toISOString(), status: 'feito', nota: 'Registrado ao ler a call (' + origem + ')' });
+      if (w.error) throw w.error;
+    }
+    if (['lead', 'ativado', 'em_uso', 'inativo'].indexOf(c.estagio) >= 0) {
+      var e = await supabase.from('contatos').update({ estagio: 'um_a_um' }).eq('id', cid);
+      if (e.error) throw e.error;
+    }
+    await reload();
+    return true;
+  } catch (err) { toast('A leitura deu certo, mas não consegui marcar o 1:1 como feito: ' + ((err && err.message) || 'tente de novo') + '.'); return false; }
+}
 // Ler a página do Notion da ligação (a mesma leitura do menu Onboarding), sem sair da ficha. O Worker acha a ficha pelo e-mail da página:
 // se for outra pessoa, não mexo nesta ficha e aviso. O Notion só é lido, nada é escrito lá nem enviado a ninguém.
 async function pcLerNotion(cid) {
@@ -3034,6 +3055,7 @@ async function pcLerNotion(cid) {
     return pintaPoscall(cid);
   }
   var n = ((data.aplicado || {}).preenchidos || []).length;
+  await sincronizarUmAUm(cid, 'Notion');
   state.ontResumo = data; state.pc = null;
   pcEstado(cid).notionMsg = 'Notion lido: ' + (n ? n + (n === 1 ? ' campo preenchido' : ' campos preenchidos') + ' no Dossiê' : 'nenhum campo novo no Dossiê') + '. O que ficou como proposta aparece abaixo.';
   toast('Notion lido.');
@@ -3056,6 +3078,7 @@ async function pcLer(cid, t) {
     if (!res.ok || !j.ok) throw new Error(j.error || 'A leitura falhou (' + res.status + ').');
     pc.prop = j; pc.vocab = j.vocabulario && j.vocabulario.length ? j.vocabulario : pc.vocab; pc.estado = 'proposta'; pc.sel = { campos: {}, sinais: {}, fila: {}, perg: {} }; pc.camadas = {};
     pintaPoscall(cid); pcPreencher(cid, true);
+    if (await sincronizarUmAUm(cid, 'IA') && state.view === 'pessoa') renderPessoa();
   } catch (e) { pc.estado = 'vazio'; pc.erro = e && e.message ? e.message : 'A leitura falhou.'; }
   pintaPoscall(cid);
 }
@@ -3344,7 +3367,7 @@ function fxTarefas(c, d) {
     atrasados: chk && !chk.err && !chk.semConta ? chkCalc(chk, Date.now()).atrasados.length : 0,
     proximoEmail: proximoEmail(c, d.mails || [], resps, d.jor)
   };
-  var pe = potEntrada(c, { mails: d.mails || [], respostas: resps.length, respostasNovas: x.respostasNovas, temBilan: !!(state.bilan && state.bilan.cid === c.id),
+  var pe = potEntrada(c, { mails: d.mails || [], respostas: resps.length, respostasNovas: x.respostasNovas, temBilan: !!(state.bilan && state.bilan.cid === c.id), umFeito: umFeito(c.id),
     linkPagamento: !!state.pagto, assin: state.assin || null, chk: fxChkResumo(chk) });
   if (state.int && state.int.cid === c.id) { var uso = FX.calcularUso(state.int.err ? [] : state.int.cliques || [], Date.now()); pe.ultimoAcessoDias = uso.diasDesdeUltima; pe.sessoes30 = uso.sessoes; }
   var pot = FX.potencial(pe); x.potNota = pot.nota; x.potAcao = FX.proximaAcao(pe, pot);
@@ -3499,7 +3522,7 @@ function fxHeaderHtml(c, d) {
   var mails = d.mails || [], resps = d.resps || [], jor = d.jor || montaJornada([]), assin = state.assin || null, tipo = FX.tipoCabecalho(c, assin);
   var cliques = state.int && state.int.cid === c.id && !state.int.err ? state.int.cliques || [] : [];
   var primeira = jor.entradas.length ? jor.entradas[0].em : c.criado_em, dd = diasDesde(primeira);
-  var dados = { c: c, estagioLabel: stageLabel(c.estagio), assin: assin, uso: FX.calcularUso(cliques, agora), chk: k,
+  var dados = { c: c, estagioLabel: estagioRotulo(c), assin: assin, uso: FX.calcularUso(cliques, agora), chk: k,
     chkMsg: !chk ? 'carregando o checklist…' : chk.err ? 'não carregou (falta rodar db/crm-checklist.sql)' : 'ela ainda não entrou no app',
     mailsTotal: mails.length, mailsAbertos: mails.filter(function (m) { return m.aberto_em || m.status === 'aberto' || m.status === 'clicado'; }).length,
     mailsClicados: mails.filter(function (m) { return m.clicado_em || m.status === 'clicado'; }).length,
@@ -3514,13 +3537,13 @@ function fxHeaderHtml(c, d) {
   dados.um1a1 = prox1a1 ? prox1a1.quando : null; dados.um1a1Hora = prox1a1 ? fmtHora(prox1a1.quando) : '';
   dados.ultimoAcesso = cliques[0] ? cliques[0].criado_em : null;
   var cart = FX.cartoesMinimos(tipo, dados);
-  return FH.htmlCabecalho({ c: c, estagioLabel: stageLabel(c.estagio), personaLabel: personaLabel(c) + (subLabel(c) ? ' · ' + subLabel(c) : ''),
+  return FH.htmlCabecalho({ c: c, estagioLabel: estagioRotulo(c), personaLabel: personaLabel(c) + (subLabel(c) ? ' · ' + subLabel(c) : ''),
     temConta: !!c.user_id, etiqueta: assin ? FX.etiquetaPagamento(assin) : null, estagios: STAGES, blocos: cart.blocos, nota: cart.nota }, H_FX);
 }
 // Catálogo de démarches (cópia do app, processos.json): carregado uma vez; sem ele, tudo cai na démarche padrão.
 var FX_PROC = null;
 async function fxCarregaProcessos() {
-  try { var r = await fetch('processos.json?v=2026-11-16.10'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
+  try { var r = await fetch('processos.json?v=2026-11-17.1'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
 }
 // A sessão Checklist: pílulas por démarche, os 4 mais urgentes, pasta do Drive privada e "Ver mais desta sessão".
 // Os passos que a montagem do espaço propôs para ela, com démarche, subitens e origem: o mesmo detalhe do Checklist. Existem antes de ela ter conta.
@@ -4062,7 +4085,7 @@ function fxCorpo(c, d, tab) {
   // Dossiê: aba própria, sempre aberta. Preenche sozinho com o que ela responde no funil e no app (ver DOS_FUNIL).
   if (tab === 'dossie') return dosVisaoHtml(c, d) + dosLigacaoHtml(c, d) + '<div id="dossie-box">' + dossieHtml(c, state.dos.d, state.dos.err, state.dos.rasc, true, state.dos.chk, true) + '</div>';
   // Ficha (captação): o fluxo de 3 passos e os painéis que já existiam (feed, e-mails, jornada, quem é ela, mais).
-  var etapa = FX.etapaFunil(c, { mails: d.mails || [], propostas: [], temBilan: !!(state.bilan && state.bilan.cid === c.id) }), h4 = d.h4 || H4_PLAT;
+  var etapa = FX.etapaFunil(c, { mails: d.mails || [], propostas: [], temBilan: !!(state.bilan && state.bilan.cid === c.id), umFeito: umFeito(c.id) }), h4 = d.h4 || H4_PLAT;
   // Três colunas, cada uma com um papel: à esquerda quem ela é e onde está no funil; no meio o que ela fez; à direita o que fazer (e-mail).
   // Quem é ela abre e fecha: fechado mostra só o essencial (persona e etapa) numa linha; aberto, todas as respostas.
   var qrows = respostasKv(c, d.jor), qresumo = qrows.slice(0, 2).filter(function (x) { return !x[2]; }).map(function (x) { return x[1]; }).join(' · ');

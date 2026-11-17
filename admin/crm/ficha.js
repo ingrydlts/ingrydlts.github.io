@@ -3,8 +3,8 @@
 
 // ---------- Urgência dos passos do checklist (spec §5.4) ----------
 // ChkItem = { step_key, category, label, status, due_date, sort_order } (colunas de buscaChecklist em crm.js).
-export { calcularUso } from './ficha-uso.js?v=2026-11-16.10';
-export * as funil from './funil.js?v=2026-11-16.10';   // Funil por próxima ação (lógica pura); o crm.js usa FX.funil
+export { calcularUso } from './ficha-uso.js?v=2026-11-17.1';
+export * as funil from './funil.js?v=2026-11-17.1';   // Funil por próxima ação (lógica pura); o crm.js usa FX.funil
 const DIA = 86400e3;
 function diasEntre(hoje, data) {
   const a = Date.parse(hoje + 'T00:00:00Z'), b = Date.parse(String(data).slice(0, 10) + 'T00:00:00Z');
@@ -75,7 +75,7 @@ export function etapaFunil(c, ctx) {
     mails.length > 0,
     mails.some((m) => m.modelo === 'guia_chamada') || props.some((p) => /1:1/.test(String((p && p.titulo) || ''))),
     cc.estagio === 'um_a_um',
-    feito1a1 && !!x.temBilan,
+    feito1a1 && (!!x.temBilan || !!x.umFeito),   // o Bilan só vive na tela; um_a_um 'feito' fica gravado
     mails.some((m) => m.modelo === 'boas_vindas'),
     !!cc.user_id
   ];
