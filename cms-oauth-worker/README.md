@@ -748,7 +748,8 @@ Admin sempre entra; **todas as outras contas, inclusive as de testadoras antigas
 **3. Criar o endpoint no Stripe**
 1. Stripe → **Desenvolvedores** → **Webhooks** → **Adicionar endpoint**. (Use o modo **teste** primeiro; depois repita no modo real: cada modo tem o seu endpoint e o seu segredo.)
 2. URL: `https://por-dentro-cms-oauth.ingrydigitalmanagement.workers.dev/api/stripe/webhook`
-3. Eventos (só estes quatro): `checkout.session.completed`, `customer.subscription.updated`, `customer.subscription.deleted`, `invoice.payment_failed`.
+3. Eventos (só estes cinco): `checkout.session.completed`, `customer.subscription.updated`, `customer.subscription.deleted`, `invoice.payment_failed`, `invoice.paid`.
+   O `invoice.paid` é o que registra cada mensalidade paga (valor real) em `pagamentos`: sem ele a home e a ficha não veem as cobranças das assinaturas. Já tem o endpoint? Abra-o no Stripe → **Adicionar eventos** → marque `invoice.paid`. O 1:1 pago já vem pelo `checkout.session.completed`. Rode antes `admin/crm/db/crm-pagamentos.sql` no Supabase.
 4. Salve e copie o **Segredo de assinatura** (`whsec_...`).
 5. No Cloudflare: `STRIPE_WEBHOOK_SECRET` (Secret) = esse valor → **Deploy**. Sem ele o Worker responde 500 e o Stripe tenta de novo depois.
    Atenção: a `STRIPE_SECRET_KEY` também tem que ser do mesmo modo (teste ou real) do endpoint.

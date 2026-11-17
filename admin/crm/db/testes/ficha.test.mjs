@@ -199,7 +199,25 @@ console.log('== CRM retrabalhado: urgentes, cartoesMinimos, potencial ==');
   check('assinante ativo: "Próxima cobrança"', assAtivo.blocos[0].cartoes[0].detalhes.some((d) => d[0] === 'Próxima cobrança'));
   check('assinante sem acesso registrado: último acesso —, sem quebrar', assAtivo.blocos[0].cartoes[1].valor === '—');
   const plat = FX.cartoesMinimos('plataforma', { c: {}, chk: { feitos: 2, total: 5, atrasados: 1 }, ultimoAcesso: '2026-11-14T10:00:00Z', agora: AGORA });
-  check('plataforma: Último acesso e Checklist', plat.blocos[0].cartoes.map((x) => x.rotulo).join() === 'Último acesso,Checklist');
+  check('plataforma: Último acesso, Checklist e Já gastou', plat.blocos[0].cartoes.map((x) => x.rotulo).join() === 'Último acesso,Checklist,Já gastou');
+
+  console.log('== Já gastou: acumulado e dropdown de pagamentos ==');
+  const pagos = [
+    { servico: '1:1 de 20 min', valor_centavos: 2000, moeda: 'EUR', pago_em: '2026-11-17T10:00:00Z' },
+    { servico: 'Assinatura · por dentro das démarches', valor_centavos: 1990, moeda: 'EUR', pago_em: '2026-11-10T10:00:00Z' },
+    { servico: 'Pix do dossiê', valor_centavos: 60000, moeda: 'BRL', pago_em: '2026-11-01T10:00:00Z' },
+    { servico: 'Teste grátis', valor_centavos: 0, moeda: 'EUR', pago_em: '2026-11-02T10:00:00Z' }
+  ];
+  const r = FX.resumoPagamentos(pagos);
+  check('soma por moeda, sem misturar € com R$, e ignora valor zero', r.n === 3 && r.texto === '€ 39,90 + R$ 600');
+  check('linhas do mais recente ao mais antigo: quando, valor e serviço', r.linhas[0][0] === '17/11/2026' && r.linhas[0][1] === '€ 20 · 1:1 de 20 min' && r.linhas[2][1] === 'R$ 600 · Pix do dossiê');
+  check('sem pagamento: € 0 e n = 0, sem quebrar com null', FX.resumoPagamentos([]).texto === '€ 0' && FX.resumoPagamentos(null).n === 0);
+  const ass2 = FX.cartoesMinimos('assinante', { c: {}, assin: { status: 'trialing', teste_fim: '2026-11-24T00:00:00Z', plano: 'Mensal' }, pagamentos: pagos.slice(0, 1), agora: AGORA });
+  const gasto = ass2.blocos[0].cartoes.find((x) => x.rotulo === 'Já gastou');
+  check('assinante: cartão Já gastou com o total, a contagem e o dropdown', !!gasto && gasto.valor === '€ 20' && gasto.sub === '1 pagamento' && gasto.detalhes.length === 1);
+  check('assinante sem pagamento: Já gastou € 0 (a compra ainda não entrou)', ass.blocos[0].cartoes.find((x) => x.rotulo === 'Já gastou').valor === '€ 0');
+  const leadPago = FX.cartoesMinimos('lead', { c: { estagio: 'um_a_um' }, pagamentos: pagos.slice(0, 1), agora: AGORA });
+  check('lead que pagou o 1:1 também vê o Já gastou; lead sem pagamento não', leadPago.blocos[0].cartoes.some((x) => x.rotulo === 'Já gastou') && !cs.some((x) => x.rotulo === 'Já gastou'));
 
   const quente = FX.potencial({ tipo: 'lead', respostas: 1, mails: { total: 2, abertos: 1, clicados: 0 }, urgencia: 'alta', diasSemSinal: 1 });
   const frio = FX.potencial({ tipo: 'lead', mails: { total: 2, abertos: 0, clicados: 0 }, diasSemSinal: 20 });

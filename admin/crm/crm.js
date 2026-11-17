@@ -2,15 +2,15 @@
 // Nada de service_role aqui. O banco é db/crm-fase2.sql; o desenho é o artefato "CRM Por Dentro".
 // Tudo que vem do banco é texto de terceiros (nome, e-mail, pergunta): passa sempre por esc().
 import { supabase } from '/assets/js/supabase-client.js';
-import * as TX from './taxonomia.js?v=2026-11-17.3';   // páginas, famílias e agrupamento dos modelos
-import * as ES from './estudio.js?v=2026-11-17.3';   // os blocos do estúdio de e-mails (entregas 2 e 3)
-import * as EE from './editor-email.js?v=2026-11-17.3';
-import * as EQ from './editor-quem.js?v=2026-11-17.3';
-import * as JR from './jornada.js?v=2026-11-17.3';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
-import * as FX from './ficha.js?v=2026-11-17.3';   // ficha v2: lógica pura (fila, démarches, funil, ações)
-import * as FH from './ficha-html.js?v=2026-11-17.3';   // ficha v2: HTML puro
-import * as PN from './panorama.js?v=2026-11-17.3';
-import * as MT from './montagem.js?v=2026-11-17.3';   // Montagem do espaço a partir do transcript (lógica e HTML puros)   // Panorama dela e O que ela trouxe (lógica e HTML puros)
+import * as TX from './taxonomia.js?v=2026-11-17.4';   // páginas, famílias e agrupamento dos modelos
+import * as ES from './estudio.js?v=2026-11-17.4';   // os blocos do estúdio de e-mails (entregas 2 e 3)
+import * as EE from './editor-email.js?v=2026-11-17.4';
+import * as EQ from './editor-quem.js?v=2026-11-17.4';
+import * as JR from './jornada.js?v=2026-11-17.4';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
+import * as FX from './ficha.js?v=2026-11-17.4';   // ficha v2: lógica pura (fila, démarches, funil, ações)
+import * as FH from './ficha-html.js?v=2026-11-17.4';   // ficha v2: HTML puro
+import * as PN from './panorama.js?v=2026-11-17.4';
+import * as MT from './montagem.js?v=2026-11-17.4';   // Montagem do espaço a partir do transcript (lógica e HTML puros)   // Panorama dela e O que ela trouxe (lógica e HTML puros)
 
 var PERSONAS = {
   au_pair_estudante: 'Au pair → estudante', campus_france: 'Campus France', alternancia_emprego: 'Alternância / emprego',
@@ -258,8 +258,12 @@ async function loadAll() {
     // Os 1:1 (db/crm-fase2.sql): alimentam o calendário e o indicador "1:1 marcados". Sem a tabela, ficam vazios.
     supabase.from('um_a_um').select('id,contato_id,quando,status,criado_em,registro').order('quando', { ascending: true }).limit(2000),
     // Os 1:1 pagos (db/crm-1a1.sql): quantos minutos e quando pagou. O valor em euros não é guardado: o Worker só repassa os minutos.
-    supabase.from('um_a_um_pagamentos').select('contato_id,minutos,pago_em,um_a_um_id').order('pago_em', { ascending: false }).limit(2000)
+    supabase.from('um_a_um_pagamentos').select('contato_id,minutos,pago_em,um_a_um_id').order('pago_em', { ascending: false }).limit(2000),
+    // O dinheiro que entrou de verdade (db/crm-pagamentos.sql, alimentado pelo webhook do Stripe): valor, serviço e quando. Sem o SQL, fica vazio.
+    supabase.from('pagamentos').select('contato_id,tipo,servico,valor_centavos,moeda,pago_em').order('pago_em', { ascending: false }).limit(5000)
   ]);
+  PAGOS = r[16] && !r[16].error ? (r[16].data || []) : [];
+  PAGOS_ERRO = r[16] && r[16].error ? String(r[16].error.message || 'erro') : '';
   if (r[0].error) return fail('carregar os contatos', r[0].error);
   COMPRAS = {}; COMPRAS_EV = [];
   ((r[7] && !r[7].error && r[7].data) || []).forEach(function (e) { var p = (e.dados || {}).produto; if (p) { (COMPRAS[e.contato_id] = COMPRAS[e.contato_id] || {})[p] = 1; COMPRAS_EV.push({ produto: p, em: e.criado_em }); } });
@@ -302,7 +306,7 @@ async function loadAll() {
   });
 }
 // Os produtos pagos da vitrine (content/produtos-digitais.json, público): nome e slug, para "Para quem" e "Registrar compra".
-var PRODUTOS = [], COMPRAS = {}, COMPRAS_EV = [], UM = [], PAG1A1 = [], PRECOS = [];
+var PRODUTOS = [], COMPRAS = {}, COMPRAS_EV = [], UM = [], PAG1A1 = [], PRECOS = [], PAGOS = [], PAGOS_ERRO = '';
 function comprou(cid, prod) { return !!(COMPRAS[cid] && COMPRAS[cid][prod]); }
 async function carregarProdutos() {
   try {
@@ -431,17 +435,25 @@ function applyPreset(p) {
 // ---------- Indicadores da Hoje: um período só (7, 14, 30 dias, 3 e 6 meses) vale para os quatro ----------
 var KPER_ROT = { 7: '7 dias', 14: '14 dias', 30: '30 dias', 90: '3 meses', 180: '6 meses' };
 function eur(v) { return '€ ' + (Math.round(v * 100) / 100).toLocaleString('pt-BR', { minimumFractionDigits: v % 1 ? 2 : 0, maximumFractionDigits: 2 }); }
-// Receita estimada entre ini e fim. O CRM não guarda pagamentos (o Stripe é quem manda), então é conta de tabela:
-// compras de produto registradas (preço da vitrine) + as mensalidades das assinaturas ativas (1ª cobrança no fim do teste, ou na criação, e uma por mês).
-// Cupom, reembolso e pagamento que falhou não entram.
+// Receita entre ini e fim. O que o Stripe confirmou (tabela pagamentos, valor real) entra como veio. O que ainda não tem registro entra
+// por conta de tabela: compras de produto registradas à mão (preço da vitrine) e, só para quem NÃO tem mensalidade paga registrada, as
+// mensalidades das assinaturas ativas (1ª cobrança no fim do teste, ou na criação, e uma por mês). Cupom e reembolso não entram na parte estimada.
+// Devolve { total (em €), porMoeda: { EUR: x, BRL: y }, pagamentos, compras, mensalidades }. Outras moedas ficam fora do total em €.
 function receitaEstimada(ini, fim) {
-  var total = 0, nCompras = 0, nMens = 0, agora = Date.now();
+  var porMoeda = {}, nPag = 0, nCompras = 0, nMens = 0, agora = Date.now();
+  var soma = function (moeda, v) { porMoeda[moeda] = (porMoeda[moeda] || 0) + v; };
+  var comMensalidadeReal = {};
+  PAGOS.forEach(function (g) {
+    if (g.tipo === 'assinatura') comMensalidadeReal[g.contato_id] = true;
+    var t = new Date(g.pago_em);
+    if (t >= ini && t < fim && Number(g.valor_centavos) > 0) { soma(String(g.moeda || 'EUR').toUpperCase(), Number(g.valor_centavos) / 100); nPag++; }
+  });
   COMPRAS_EV.forEach(function (e) {
     var t = new Date(e.em), p = PRODUTOS.filter(function (x) { return x.slug === e.produto; })[0];
-    if (t >= ini && t < fim && p && p.preco) { total += p.preco; nCompras++; }
+    if (t >= ini && t < fim && p && p.preco) { soma('EUR', p.preco); nCompras++; }
   });
   Object.keys(ASSIN).forEach(function (k) {
-    var a = ASSIN[k]; if (a.status !== 'active') return;
+    var a = ASSIN[k]; if (a.status !== 'active' || comMensalidadeReal[k]) return;
     var pl = PRECOS.filter(function (x) { return x.chave === a.plano; })[0] || (PRECOS.length === 1 ? PRECOS[0] : null);
     if (!pl || !pl.mensal) return;
     var base = new Date(a.teste_fim || a.criado_em); if (isNaN(base)) return;
@@ -449,11 +461,13 @@ function receitaEstimada(ini, fim) {
     for (var i = 0; i < 120; i++) {
       var d = new Date(base.getTime()); d.setMonth(d.getMonth() + i);
       if (d.getTime() > limite) break;
-      if (d >= ini && d < fim) { total += pl.valor; nMens++; }
+      if (d >= ini && d < fim) { soma(String(pl.moeda || 'EUR').toUpperCase(), pl.valor); nMens++; }
     }
   });
-  return { total: total, compras: nCompras, mensalidades: nMens };
+  return { total: porMoeda.EUR || 0, porMoeda: porMoeda, pagamentos: nPag, compras: nCompras, mensalidades: nMens };
 }
+// As moedas que não são euro, para o texto abaixo do indicador: "+ R$ 600".
+function receitaOutras(rv) { return Object.keys(rv.porMoeda).filter(function (m) { return m !== 'EUR' && rv.porMoeda[m] > 0; }).map(function (m) { return FX.fmtMoeda(rv.porMoeda[m], m); }); }
 function renderKpis() {
   var sel = $('k-per'); if (!sel) return;
   var dias = Number(state.kper || 7), agora = Date.now(), ini = new Date(agora - dias * 864e5), ant = new Date(agora - 2 * dias * 864e5), rot = KPER_ROT[dias] || dias + ' dias';
@@ -473,9 +487,13 @@ function renderKpis() {
   $('k-plat').textContent = ativas; $('k-plat-sub').textContent = 'com atividade, de ' + comConta.length + ' com conta';
   // Revenue estimado
   var rv = receitaEstimada(ini, new Date(agora + 1)), rv0 = receitaEstimada(ant, ini);
+  var outras = receitaOutras(rv), partes = [];
+  if (rv.pagamentos) partes.push(rv.pagamentos + (rv.pagamentos === 1 ? ' pagamento' : ' pagamentos'));
+  if (rv.compras) partes.push(rv.compras + (rv.compras === 1 ? ' compra' : ' compras'));
+  if (rv.mensalidades) partes.push(rv.mensalidades + (rv.mensalidades === 1 ? ' mensalidade estimada' : ' mensalidades estimadas'));
   $('k-rev').textContent = eur(rv.total);
-  $('k-rev-sub').textContent = (rv.compras || rv.mensalidades ? rv.compras + (rv.compras === 1 ? ' compra' : ' compras') + ' + ' + rv.mensalidades + (rv.mensalidades === 1 ? ' mensalidade' : ' mensalidades') : 'nada registrado no período') + ' · antes: ' + eur(rv0.total);
-  $('k-rev-sub').title = 'Estimativa com o valor de tabela (sem cupom). O CRM não guarda os pagamentos: o valor real está no Stripe.';
+  $('k-rev-sub').textContent = (partes.length ? partes.join(' + ') : 'nada registrado no período') + (outras.length ? ' · + ' + outras.join(' + ') : '') + ' · antes: ' + eur(rv0.total);
+  $('k-rev-sub').title = 'Pagamentos confirmados pelo Stripe entram com o valor real (db/crm-pagamentos.sql). Compras de produto e mensalidades sem registro entram pelo preço de tabela, sem cupom.' + (PAGOS_ERRO ? ' Atenção: não consegui ler a tabela pagamentos (' + PAGOS_ERRO + '): falta rodar o SQL?' : '');
   $('k-rev-sub').className = rv.total >= rv0.total ? 'up' : '';
 }
 // ---------- Calendário de 1:1: o mês (com os dias que têm conversa) e a lista do que vem pela frente ----------
@@ -3540,6 +3558,7 @@ function fxHeaderHtml(c, d) {
   dados.entradaEm = primeira; dados.origemLabel = orig ? 'em ' + orig : '';
   dados.um1a1 = prox1a1 ? prox1a1.quando : null; dados.um1a1Hora = prox1a1 ? fmtHora(prox1a1.quando) : '';
   dados.ultimoAcesso = cliques[0] ? cliques[0].criado_em : null;
+  dados.pagamentos = PAGOS.filter(function (g) { return g.contato_id === c.id; });
   var cart = FX.cartoesMinimos(tipo, dados);
   return FH.htmlCabecalho({ c: c, linkPagamentoEnviado: !!state.pagto, estagioLabel: estagioRotulo(c), personaLabel: personaLabel(c) + (subLabel(c) ? ' · ' + subLabel(c) : ''),
     temConta: !!c.user_id, etiqueta: assin ? FX.etiquetaPagamento(assin) : null, estagios: STAGES, blocos: cart.blocos, nota: cart.nota }, H_FX);
@@ -3547,7 +3566,7 @@ function fxHeaderHtml(c, d) {
 // Catálogo de démarches (cópia do app, processos.json): carregado uma vez; sem ele, tudo cai na démarche padrão.
 var FX_PROC = null;
 async function fxCarregaProcessos() {
-  try { var r = await fetch('processos.json?v=2026-11-17.3'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
+  try { var r = await fetch('processos.json?v=2026-11-17.4'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
 }
 // A sessão Checklist: pílulas por démarche, os 4 mais urgentes, pasta do Drive privada e "Ver mais desta sessão".
 // Os passos que a montagem do espaço propôs para ela, com démarche, subitens e origem: o mesmo detalhe do Checklist. Existem antes de ela ter conta.
