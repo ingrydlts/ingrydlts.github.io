@@ -168,7 +168,7 @@ export function ordenarFila(itens) {
 
 // ---------- Ordem das sessões e preferências do navegador (spec §5.2) ----------
 // Fase 2: o app dela ganha Espaço, Guias e Perfil; "Conhecer e registrar" ganha Só eu, O que ela trouxe e Mais detalhes.
-export const SESSOES_PADRAO = { app: ['home', 'chat', 'checklist', 'espaco', 'perfil'], ela: ['eu', 'bilan', 'trouxe', 'sinais', 'hist', 'mais'] };
+export const SESSOES_PADRAO = { app: ['home', 'chat', 'checklist', 'curadoria', 'espaco', 'perfil'], ela: ['eu', 'bilan', 'trouxe', 'sinais', 'hist', 'mais'] };
 export function moverSessao(ordem, id, delta) {
   const o = (ordem || []).slice(), i = o.indexOf(id), j = i + delta;
   if (i < 0 || j < 0 || j >= o.length) return o;
@@ -455,6 +455,25 @@ export function alertasChecklist(o) {
     g.filter((y) => y.eq).forEach((y) => poe(y.ref, 'repetido', y.tit, temGeral ? 'Já existe como passo geral. Manter só um?' : 'Repetido: aparece mais de uma vez em “Só dela”.'));
   });
   return { lista, porRef };
+}
+
+// ---------- Curadoria do Checklist (esconder, ordenar e conferir; db/crm-checklist-curadoria.sql) ----------
+// Chave da linha: o step_key do passo geral, ou "aco:<id>" para um passo só dela. A pessoa recebe só oculto e ordem (minha_curadoria).
+export function mapaDaCuradoria(linhas) {
+  const m = {};
+  (Array.isArray(linhas) ? linhas : []).forEach((x) => { if (x && typeof x.step_key === 'string') m[x.step_key] = { oculto: x.oculto === true, ordem: x.ordem == null ? null : Number(x.ordem), conferido_em: x.conferido_em || null }; });
+  return m;
+}
+// Os passos gerais na ordem em que ela os verá: primeiro os que têm ordem (pela ordem), depois os demais pela urgência de sempre.
+export function ordenarGerais(itens, mapa, hoje) {
+  const m = mapa || {}, base = maisUrgentes(itens || [], (itens || []).length, hoje), tem = (i) => !!(m[i.step_key] && m[i.step_key].ordem != null);
+  return base.filter(tem).sort((a, b) => m[a.step_key].ordem - m[b.step_key].ordem).concat(base.filter((i) => !tem(i)));
+}
+// Quantos já foram conferidos entre os que ela vê (escondidos não contam) e quantos estão escondidos.
+export function resumoCuradoria(o) {
+  const x = o || {}, m = x.mapa || {}, gerais = (x.itens || []).filter((i) => i.status !== 'arquivado'), equipe = x.equipe || [];
+  const vis = gerais.filter((i) => !(m[i.step_key] && m[i.step_key].oculto)).map((i) => i.step_key).concat(equipe.map((a) => 'aco:' + a.id));
+  return { total: vis.length, conferidos: vis.filter((k) => m[k] && m[k].conferido_em).length, ocultos: gerais.length - gerais.filter((i) => !(m[i.step_key] && m[i.step_key].oculto)).length };
 }
 
 // ---------- O Início do app, como ele monta (porte de montarInicio, assets/js/caso.js do app) ----------

@@ -213,6 +213,39 @@ export function htmlChecklistSessao(d, h) {
     '<div class="fx-mais"><button type="button" class="link" data-fx="ckMais" aria-expanded="' + !!d.mais + '">' + (d.mais ? 'Ver menos detalhes' : 'Ver detalhes completos do checklist') + '</button>' + (d.mais ? '<div class="fx-mais-corpo">' + (d.extraMais || '') + '</div>' : '') + '</div>';
 }
 
+// ---------- Curadoria: limpar, editar, posicionar e validar os passos dela ----------
+// d = { erro, carregando, origem, resumo: {total, conferidos, ocultos}, alertas, gerais (já na ordem dela), escondidos, equipeHtml, equipeN, mapa, hoje, ckEd, temOrdem, demDe(item) }
+// h.linhaCur(o) desenha a linha do passo geral (alça, ponto, título, etiquetas, ↑ ↓ ✓ ✎ ✕).
+export function htmlCuradoria(d, h) {
+  const e = h.esc;
+  if (d.carregando) return '<div class="skel" aria-busy="true" style="height:64px"></div>';
+  if (d.erro) return '<p class="sub" style="margin:0">A curadoria ainda não está ligada: falta rodar <b>db/crm-checklist-curadoria.sql</b> no SQL Editor do Supabase (primeiro no teste, depois na produção).</p>';
+  const r = d.resumo || { total: 0, conferidos: 0, ocultos: 0 }, origem = d.origem || 'todos', m = d.mapa || {}, alertas = d.alertas || { lista: [], porRef: {} }, hoje = d.hoje || '';
+  const pct = r.total ? Math.round(100 * r.conferidos / r.total) : 0;
+  const topo = '<div class="fx-ck-top"><div class="fx-ck-prog"><b>' + e(r.conferidos) + ' de ' + e(r.total) + '</b><small>conferidos por você' + (r.ocultos ? ' · ' + e(r.ocultos) + (r.ocultos === 1 ? ' escondido' : ' escondidos') : '') + '</small>' +
+    '<div class="fx-ck-bar" aria-hidden="true"><i style="width:' + pct + '%"></i></div></div>' +
+    '<div class="fx-orig" role="group" aria-label="Mostrar">' + ORIGENS_CK.map((o) => '<button type="button" data-fx="curOrigem" data-v="' + o[0] + '" aria-pressed="' + (o[0] === origem) + '">' + o[1] + '</button>').join('') + '</div></div>';
+  const acaoAlerta = (a) => /^chk:/.test(a.ref) ? '<button type="button" class="link" data-caso="ed-chk" data-id="' + e(a.ref.slice(4)) + '">Editar</button>' : '<button type="button" class="link" data-caso="ed-aco" data-id="' + e(a.ref.slice(4)) + '">Editar</button>';
+  const painel = alertas.lista.length ? '<div class="fx-valid" role="status"><span class="fx-valid-ic" aria-hidden="true">!</span><div><b>' + alertas.lista.length + (alertas.lista.length === 1 ? ' coisa para validar' : ' coisas para validar') + '</b><ul>' +
+    alertas.lista.slice(0, 6).map((a) => '<li><span>“' + e(a.titulo) + '”: ' + e(a.texto) + '</span> ' + acaoAlerta(a) + '</li>').join('') + '</ul>' + (alertas.lista.length > 6 ? '<small>e mais ' + (alertas.lista.length - 6) + '</small>' : '') + '</div></div>' : '<p class="fx-valid-ok" role="status">Nada para validar: todos os passos têm data, démarche e título único.</p>';
+  const gerais = d.gerais || [], n = gerais.length;
+  const linha = (i, k) => {
+    if (d.ckEd && d.ckEd === i.step_key) return editorPasso(i, e);
+    const c = m[i.step_key] || {}, feito = i.status === 'concluido', venc = i.due_date ? String(i.due_date).slice(0, 10) : '', atras = !feito && !!venc && venc < hoje;
+    const chips = [{ t: 'Geral', c: 'ger' }];
+    if (d.demDe) chips.push({ t: d.demDe(i), c: 'dem' });
+    if (feito) chips.push({ t: 'feito por ela', c: 'ok' }); else if (venc) chips.push({ t: (atras ? 'atrasado · ' : 'vence ') + h.fmtDay(venc), c: 'due' + (atras ? ' atraso' : '') }); else chips.push({ t: 'sem data', c: 'vz' });
+    return h.linhaCur({ chave: i.step_key, pos: k, n, estado: feito ? 'ok' : atras ? 'bad' : 'off', titulo: e(i.titulo_custom || i.label), chips, alerta: ((alertas.porRef['chk:' + i.step_key]) || [])[0] || '', conferido: !!c.conferido_em, escondido: false });
+  };
+  const grupoG = origem === 'dela' ? '' : '<div class="fx-g"><span>Gerais da démarche · ' + n + '</span><span>' + (d.temOrdem ? '<button type="button" class="link" data-fx="curReset">Voltar à ordem automática</button>' : 'arraste ⋮⋮ ou use ↑ ↓ para posicionar') + '</span></div>' +
+    (n ? '<div class="fx-cur-lista">' + gerais.map(linha).join('') + '</div>' : '<p class="sub" style="margin:0 0 8px">Nenhum passo geral para mostrar.</p>');
+  const esc = d.escondidos || [];
+  const grupoE = origem === 'dela' || !esc.length ? '' : '<div class="fx-g"><span>Escondidos da lista dela · ' + esc.length + '</span><span>ela não vê</span></div><div class="fx-cur-lista">' + esc.map((i) =>
+    h.linhaCur({ chave: i.step_key, estado: 'off', titulo: e(i.titulo_custom || i.label), chips: [{ t: 'Geral', c: 'ger' }, { t: 'escondido', c: '' }], alerta: '', conferido: false, escondido: true })).join('') + '</div>';
+  const grupoD = origem === 'gerais' || !d.equipeHtml ? '' : '<div class="fx-g"><span>Só dela · ' + (d.equipeN || 0) + '</span><span>combinado com ela · retire pelo ↓</span></div><div class="fx-ck-lista">' + d.equipeHtml + '</div>';
+  return topo + painel + grupoG + grupoE + grupoD;
+}
+
 // ---------- Quadro do passo: o que ela vê ao abrir um passo do checklist (o mesmo desenho do app), com a ação da equipe no rodapé ----------
 // d = { item: { step_key, label, titulo_custom, nota_custom, status, due_date, category }, guia: { c, l, q, p, t, s, k } | null, hoje: 'AAAA-MM-DD' }
 const QD_SVG = { x: 'M6 6l12 12M18 6L6 18', check: 'M5 12.5l4.5 4.5L19 7.5', rel: 'M12 7v5l3 2M12 3a9 9 0 100 18 9 9 0 000-18z', alerta: 'M12 8v5M12 17h.01M12 3l10 18H2z', link: 'M7 17L17 7M9 7h8v8', arq: 'M5 7h14M7 7v12h10V7M10 7V4h4v3', lapis: 'M4 20l1-4L16.5 4.5a2 2 0 013 3L8 19l-4 1z' };
@@ -248,7 +281,7 @@ export function htmlQuadroPasso(d, h) {
 // s = { id, titulo, sub, corpo, aberto, area: 'app'|'ela', ativa }. O corpo só vem pintado quando a sessão está aberta.
 const ICONE_SESSAO = { home: 'M3 10l9-7 9 7v10a1 1 0 01-1 1h-5v-6H9v6H4a1 1 0 01-1-1z', chat: 'M4 5h16v11H9l-5 4z', checklist: 'M5 12.5l4.5 4.5L19 7.5', espaco: 'M4 5h7v14H4zM13 5h7v6h-7zM13 13h7v6h-7z',
   perfil: 'M12 12a4 4 0 100-8 4 4 0 000 8zM4 21c0-4 4-6 8-6s8 2 8 6', eu: 'M12 3l2.5 5.5L20 9l-4 4 1 6-5-3-5 3 1-6-4-4 5.5-.5z', bilan: 'M7 3h10v18l-5-3-5 3z', trouxe: 'M4 8h16v12H4zM9 8V5h6v3',
-  sinais: 'M3 17l5-6 4 3 5-8 4 5', hist: 'M12 7v5l3 2M12 3a9 9 0 100 18 9 9 0 000-18z', mais: 'M6 12h.01M12 12h.01M18 12h.01', insights: 'M12 3a6 6 0 00-4 10.5V17h8v-3.5A6 6 0 0012 3zM9 21h6' };
+  sinais: 'M3 17l5-6 4 3 5-8 4 5', hist: 'M12 7v5l3 2M12 3a9 9 0 100 18 9 9 0 000-18z', curadoria: 'M4 6h10M4 12h16M4 18h7M17 4v4M19 6h-4', mais: 'M6 12h.01M12 12h.01M18 12h.01', insights: 'M12 3a6 6 0 00-4 10.5V17h8v-3.5A6 6 0 0012 3zM9 21h6' };
 // A sessão aberta ocupa a página inteira (sem dropdown): cabeçalho com ícone e título em Fraunces, e o corpo logo abaixo.
 // As outras sessões só se alcançam pelas pílulas "Ir para". mapa = { id: { titulo, sub, corpo, aberto, meta } }; ord = { app: [ids], ela: [ids] }.
 export function htmlPaginaSessao(ord, mapa, h) {

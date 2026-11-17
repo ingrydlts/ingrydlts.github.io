@@ -14,7 +14,7 @@ A Ingryd abre o Checklist de uma pessoa para **limpar, editar, posicionar e vali
 3. **✎ abre o editor:** escolha de escopo (para todas da démarche, guardado na biblioteca / só para a pessoa), "Analisar link", campos (título, por que importa, atenção, passo a passo, links), prévia "Como ela vê", rodapé (conferi, restaurar original, rascunho, publicar).
 4. **Biblioteca de guias gerais:** tabela nova no Supabase, escrita pelo CRM, lida pelo app (só o publicado). Aparece em todas as sessões do CRM que mostram o passo.
 5. **Analisar link:** qualquer endereço (inclusive `share.google/aimode/...`). Se a página não carregar para o Worker (JavaScript, login), pede o texto colado.
-6. **Curadoria por pessoa vale no app (opção 1):** esconder e ordem chegam à cliente; "conferido" é só da Ingryd. *(Leitura minha de "tudo até aqui aprovado"; a escolha explícita 1/2/3 não foi dada. Confirmar antes do SQL.)*
+6. **Curadoria é uma sessão própria ("Curadoria", logo depois do Checklist)** e vale no app (opção 1): esconder e ordem chegam à cliente; "conferido" é só da Ingryd. *(Leitura minha de "tudo até aqui aprovado"; a escolha explícita 1/2/3 não foi dada. Confirmar antes do SQL.)*
 
 ## Abordagem
 Fases independentes, cada uma entregável e testável:
@@ -29,3 +29,7 @@ Isolamento entre clientes (RLS, `revoke ... from anon`, `set search_path`), SQL 
 
 ## Deixado para quem constrói
 Nomes de colunas, formato exato do JSON da IA, textos de alerta, ícones.
+
+
+## Curadoria: o que foi construído (17/11/2026)
+`db/crm-checklist-curadoria.sql` (tabela `checklist_curadoria`: oculto, ordem, conferido_em; função `minha_curadoria()` só com oculto e ordem), sessão Curadoria no CRM (↑ ↓ e arrastar, ✓ conferi, ✕ esconder, ✎ editar, faixa de validação, escondidos) e `assets/js/curadoria.js` no app (esconde e ordena). Passos só dela usam as ações que já existem (retirar) e a chave `aco:<id>` só para ✓.

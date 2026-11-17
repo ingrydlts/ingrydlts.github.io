@@ -6,7 +6,7 @@ import * as FX from '../../ficha.js';
 let passed = 0, failed = 0;
 function check(label, cond) { if (cond) passed++; else { failed++; console.log('  FALHOU:', label); } }
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
-const h = { esc, linhaPasso: (o) => '<div class="lp" data-ed="' + o.ed + '" data-id="' + o.id + '" data-estado="' + o.estado + '">' + o.titulo + '|' + o.chips.map((c) => c.t).join(',') + '|' + (o.nota || '') + '|' + (o.alerta || '') + '|' + (o.home || '') + '</div>', fmtDay: (s) => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s || ''); return m ? m[3] + '/' + m[2] + '/' + m[1] : '—'; } };
+const h = { esc, linhaPasso: (o) => '<div class="lp" data-ed="' + o.ed + '" data-id="' + o.id + '" data-estado="' + o.estado + '">' + o.titulo + '|' + o.chips.map((c) => c.t).join(',') + '|' + (o.nota || '') + '|' + (o.alerta || '') + '|' + (o.home || '') + '</div>', linhaCur: (o) => '<div class="lc" data-chave="' + o.chave + '" data-pos="' + o.pos + '" data-n="' + o.n + '" data-esc="' + o.escondido + '" data-conf="' + o.conferido + '">' + o.titulo + '|' + o.chips.map((c) => c.t).join(',') + '|' + (o.alerta || '') + '</div>', fmtDay: (s) => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s || ''); return m ? m[3] + '/' + m[2] + '/' + m[1] : '—'; } };
 const count = (s, re) => (s.match(re) || []).length;
 const XSS = '<img src=x onerror=alert(1)>';
 
@@ -168,5 +168,21 @@ console.log('== CRM retrabalhado: carrossel de ações ==');
   check('carrossel: índice fora da faixa é limitado', FH.htmlCarrossel(ts, h, 99, {}).includes('2 de 2'));
 }
 
+console.log('\n== Curadoria ==');
+{
+  const it = (k, extra = {}) => Object.assign({ step_key: k, category: 'X', label: 'Passo ' + k, status: 'pendente', due_date: null }, extra);
+  const base = (o = {}) => Object.assign({ origem: 'todos', resumo: { total: 5, conferidos: 2, ocultos: 1 }, alertas: { lista: [], porRef: {} }, gerais: [it('a', { due_date: '2026-12-01' }), it('b'), it('c', { status: 'concluido' })], escondidos: [it('z')], equipeHtml: '<div class="eq">EQUIPE</div>', equipeN: 2, mapa: { b: { conferido_em: '2026-11-17T10:00:00Z' } }, hoje: '2026-11-17', temOrdem: false, demDe: () => 'Visa' }, o);
+  check('carregando: esqueleto; sem o SQL: pede o crm-checklist-curadoria.sql', FH.htmlCuradoria({ carregando: true }, h).includes('skel') && FH.htmlCuradoria({ erro: true }, h).includes('db/crm-checklist-curadoria.sql'));
+  const t = FH.htmlCuradoria(base(), h);
+  check('topo: "2 de 5 conferidos por você", escondidos, barra e as três origens', t.includes('2 de 5') && t.includes('conferidos por você') && t.includes('1 escondido') && count(t, /data-fx="curOrigem"/g) === 3 && /data-fx="curOrigem" data-v="todos" aria-pressed="true"/.test(t) && t.includes('fx-ck-bar'));
+  check('sem alertas: mensagem de tudo certo; com alertas: faixa com contagem e botão de editar certo para cada tipo', t.includes('Nada para validar') && (() => { const a = FH.htmlCuradoria(base({ alertas: { lista: [{ ref: 'aco:7', titulo: 'X', texto: 'Sem data.' }, { ref: 'chk:k9', titulo: '<img src=x>', texto: 'Sem data.' }], porRef: {} } }), h); return a.includes('2 coisas para validar') && /data-caso="ed-aco" data-id="7"/.test(a) && /data-caso="ed-chk" data-id="k9"/.test(a) && a.includes('&lt;img') && !a.includes('<img'); })());
+  check('uma linha por passo geral, com a posição e o total (para ↑ ↓), o estado de conferido e a etiqueta Geral com a démarche', count(t, /class="lc"/g) === 4 && /data-chave="a" data-pos="0" data-n="3"/.test(t) && /data-chave="c" data-pos="2" data-n="3"/.test(t) && /data-chave="b"[^>]*data-conf="true"/.test(t) && /data-chave="a"[^>]*data-conf="false"/.test(t) && t.includes('Geral,Visa'));
+  check('feito, prazo e sem data viram etiqueta; atrasado vira "atrasado · data"', t.includes('feito por ela') && t.includes('vence 01/12/2026') && t.includes('sem data') && FH.htmlCuradoria(base({ gerais: [it('o', { due_date: '2026-11-01' })] }), h).includes('atrasado · 01/11/2026'));
+  check('escondidos têm o grupo deles (ela não vê), marcados como escondidos', t.includes('Escondidos da lista dela · 1') && /data-chave="z"[^>]*data-esc="true"/.test(t) && !FH.htmlCuradoria(base({ escondidos: [] }), h).includes('Escondidos da lista dela'));
+  check('o grupo Só dela mostra a equipe e a dica do ↓; "Gerais" esconde o grupo; "Só dela" esconde os gerais e os escondidos', t.includes('EQUIPE') && t.includes('Só dela · 2') && !FH.htmlCuradoria(base({ origem: 'gerais' }), h).includes('EQUIPE') && !FH.htmlCuradoria(base({ origem: 'dela' }), h).includes('Gerais da démarche') && !FH.htmlCuradoria(base({ origem: 'dela' }), h).includes('Escondidos'));
+  check('sem ordem definida: dica "arraste ou use ↑ ↓"; com ordem: botão "Voltar à ordem automática"', t.includes('arraste ⋮⋮ ou use ↑ ↓') && !t.includes('curReset') && FH.htmlCuradoria(base({ temOrdem: true }), h).includes('data-fx="curReset"'));
+  check('o passo em edição mostra o editor no lugar da linha', FH.htmlCuradoria(base({ ckEd: 'a' }), h).includes('data-ckform="a"') && !/data-chave="a"/.test(FH.htmlCuradoria(base({ ckEd: 'a' }), h)));
+  check('título com HTML escapado', FH.htmlCuradoria(base({ gerais: [it('x', { label: XSS })] }), h).includes('&lt;img'));
+}
 console.log('\n' + passed + ' passaram, ' + failed + ' falharam');
 if (failed) process.exit(1);

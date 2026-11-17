@@ -101,6 +101,46 @@ console.log('== Task 10: ligação aos dados, abas, ações, deep link ==');
   h.mod.pararAoVivo();
 }
 
+console.log('== Curadoria: sessão própria, esconder, ordenar e conferir ==');
+{
+  const espera = (ms = 30) => new Promise((r) => setTimeout(r, ms));
+  const itens = [{ step_key: 'k1', category: 'Documentação', label: 'Pedir o documento X', status: 'pendente', due_date: '2099-12-01', sort_order: 1, updated_at: null },
+    { step_key: 'k2', category: 'Sécurité sociale', label: 'Abrir o Ameli', status: 'pendente', due_date: '2099-12-09', sort_order: 2, updated_at: null },
+    { step_key: 'k3', category: 'Documentação', label: 'Passo já feito', status: 'concluido', due_date: null, sort_order: 3, updated_at: null }];
+  const h = await carregarCrm({ respostas: base({ 'contatos:one': { data: { dossie: {}, user_id: 'u1' }, error: null }, checklist_items: { data: itens, error: null }, checklist_curadoria: { data: [{ step_key: 'k2', oculto: false, ordem: 0, conferido_em: null }, { step_key: 'k3', oculto: true, ordem: null, conferido_em: null }], error: null } }), store: { crm_ficha_v2: '1' } });
+  await abre(h, pessoa({ user_id: 'u1' }));
+  await h.click({ fx: 'ir', id: 'curadoria' }); await espera();
+  let t = h.el('fx-corpo').innerHTML;
+  check('a Curadoria é uma pílula e uma página própria (e a página do Checklist deixa de estar na tela)', /data-fx="ir" data-id="curadoria"/.test(t) && /data-sessao="curadoria"/.test(t) && !/data-sessao="checklist"/.test(t));
+  check('mostra os passos na ordem definida (k2 tem ordem 0, vem antes de k1) e o escondido (k3) no grupo dele', t.indexOf('data-cur="k2"') > -1 && t.indexOf('data-cur="k2"') < t.indexOf('data-cur="k1"') && /Escondidos da lista dela · 1/.test(t) && /data-fx="curMostrar" data-id="k3"/.test(t) && /Voltar à ordem automática/.test(t));
+  h.writes.length = 0; await h.click({ fx: 'curConf', id: 'k1' });
+  const w1 = h.writes.find((x) => x.table === 'checklist_curadoria');
+  check('✓ conferi grava só conferido_em (com a hora) no passo certo, da pessoa certa', w1 && w1.op === 'upsert' && w1.row[0].step_key === 'k1' && w1.row[0].contato_id === 'c1' && !!w1.row[0].conferido_em && !('oculto' in w1.row[0]) && !('ordem' in w1.row[0]));
+  h.writes.length = 0; await h.click({ fx: 'curEsc', id: 'k1' });
+  const w2 = h.writes.find((x) => x.table === 'checklist_curadoria');
+  check('✕ esconde: grava oculto = true e mais nada', w2 && w2.row[0].step_key === 'k1' && w2.row[0].oculto === true && !('ordem' in w2.row[0]) && !('conferido_em' in w2.row[0]));
+  h.writes.length = 0; await h.click({ fx: 'curMostrar', id: 'k3' });
+  const w3 = h.writes.find((x) => x.table === 'checklist_curadoria');
+  check('"Mostrar de novo" grava oculto = false', w3 && w3.row[0].step_key === 'k3' && w3.row[0].oculto === false);
+  h.writes.length = 0; await h.click({ fx: 'curMov', id: 'k1', d: '-1' });
+  const w4 = h.writes.find((x) => x.table === 'checklist_curadoria');
+  check('↑ regrava a ordem de TODOS os visíveis (0..n-1), sempre com as mesmas colunas, e k1 passa para o topo', w4 && w4.row.length === 2 && w4.row.every((r) => Object.keys(r).sort().join() === 'atualizado_em,contato_id,ordem,step_key') && w4.row[0].step_key === 'k1' && w4.row[0].ordem === 0 && w4.row[1].step_key === 'k2' && w4.row[1].ordem === 1);
+  h.writes.length = 0; await h.click({ fx: 'curReset' });
+  const w5 = h.writes.find((x) => x.table === 'checklist_curadoria');
+  check('"Voltar à ordem automática" limpa só a ordem (null) dos que têm ordem', w5 && w5.row.length === 1 && w5.row[0].step_key === 'k2' && w5.row[0].ordem === null);
+  await h.click({ fx: 'curOrigem', v: 'dela' });
+  check('"Só dela" esconde os gerais e os escondidos na Curadoria', h.mod.state.fx.curOrigem === 'dela' && !/Gerais da démarche/.test(h.el('fx-corpo').innerHTML));
+  await h.click({ fx: 'curOrigem', v: 'todos' });
+  await h.click({ caso: 'ed-chk', id: 'k2' });
+  check('o ✎ da Curadoria abre o editor do passo ali mesmo', h.mod.state.fx.ckEd === 'k2' && /data-ckform="k2"/.test(h.el('fx-corpo').innerHTML));
+  h.mod.pararAoVivo();
+  // sem o SQL: aviso claro e nada quebra
+  const er = await carregarCrm({ respostas: base({ 'contatos:one': { data: { dossie: {}, user_id: 'u1' }, error: null }, checklist_items: { data: itens, error: null }, checklist_curadoria: { data: null, error: { message: 'relation "checklist_curadoria" does not exist' } } }), store: { crm_ficha_v2: '1' } });
+  await abre(er, pessoa({ user_id: 'u1' })); await er.click({ fx: 'ir', id: 'curadoria' }); await espera();
+  check('tabela ausente: aviso do db/crm-checklist-curadoria.sql e nenhuma linha', er.el('fx-corpo').innerHTML.includes('db/crm-checklist-curadoria.sql') && !er.el('fx-corpo').innerHTML.includes('data-cur='));
+  er.mod.pararAoVivo();
+}
+
 console.log('== Task 11: sessão Checklist (ligação) ==');
 {
   const itens = [{ step_key: 'k1', category: 'Documentação', label: 'Pedir o documento X', status: 'pendente', due_date: '2099-12-01', sort_order: 1, updated_at: null },

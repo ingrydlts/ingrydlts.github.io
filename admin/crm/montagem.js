@@ -254,7 +254,7 @@ export function passosPropostosHtml(aco, listas, h, modo) {
       var pz = h.prazo(a); if (pz) chips.push({ t: pz, c: 'due' });
       var alerta = a.a_conferir && !a.publicada_em ? 'Falta conferir a fonte para poder publicar.' : (h.alerta ? h.alerta(a) : '');
       return h.linhaPasso({ estado: fim || a.publicada_em ? 'ok' : 'mid', rot: fim ? 'Concluído' : a.publicada_em ? 'Publicado' : a.a_conferir ? 'A conferir' : 'Rascunho', cls: fim ? 'feito' : '',
-        titulo: e(a.titulo), nota: fim ? 'concluído' + (a.concluida_por === 'ela' ? ' por ela' : '') : a.publicada_em ? 'publicado' : 'rascunho', chips: chips, alerta: alerta, ed: fim ? '' : 'ed-aco', id: a.id, extra: btns,
+        titulo: e(a.titulo), nota: fim ? 'concluído' + (a.concluida_por === 'ela' ? ' por ela' : '') : a.publicada_em ? 'publicado' : 'rascunho', chips: chips, alerta: alerta, ed: fim ? '' : 'ed-aco', id: a.id, extra: btns + (h.extraLinha ? h.extraLinha(a) : ''),
         sub: subs.length ? '<details class="fx-subs"><summary>' + subs.length + (subs.length === 1 ? ' subitem' : ' subitens') + '</summary><ul aria-label="Subitens">' + subs.map(function (x) { return '<li>' + e(String(x)) + '</li>'; }).join('') + '</ul></details>' : '' });
     }
     return h.linha(est, corpo, btns);

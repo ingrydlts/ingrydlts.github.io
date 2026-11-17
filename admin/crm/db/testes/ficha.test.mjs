@@ -103,7 +103,7 @@ console.log('== Task 7: sessões e preferências ==');
   check('normalizar descarta e acrescenta', FX.normalizarOrdem(['x', 'b'], ['a', 'b', 'c']).join() === 'b,a,c');
   check('normalizar lixo', FX.normalizarOrdem('lixo', ['a']).join() === 'a' && FX.normalizarOrdem(null, ['a', 'b']).join() === 'a,b');
   check('normalizar repetidos', FX.normalizarOrdem(['b', 'b', 'a'], ['a', 'b']).join() === 'b,a');
-  check('padrão das sessões da fase 1', FX.SESSOES_PADRAO.app.join() === 'home,chat,checklist,espaco,perfil' && FX.SESSOES_PADRAO.ela.join() === 'eu,bilan,trouxe,sinais,hist,mais');   // o dossiê virou aba própria; Espaço, Guias, Perfil, Só eu e O que ela trouxe entraram no retrabalho
+  check('padrão das sessões da fase 1', FX.SESSOES_PADRAO.app.join() === 'home,chat,checklist,curadoria,espaco,perfil' && FX.SESSOES_PADRAO.ela.join() === 'eu,bilan,trouxe,sinais,hist,mais');   // o dossiê virou aba própria; Espaço, Guias, Perfil, Só eu e O que ela trouxe entraram no retrabalho
   // Review Focus 5: localStorage indisponível
   const bloqueado = { getItem() { throw new Error('bloqueado'); }, setItem() { throw new Error('cheio'); } };
   let ok = true, p; try { p = FX.lerPrefs(bloqueado); FX.gravarPrefs(bloqueado, { tour: false }); } catch (e) { ok = false; }
@@ -111,11 +111,11 @@ console.log('== Task 7: sessões e preferências ==');
   const mem = {}, st = { getItem: (k) => (k in mem ? mem[k] : null), setItem: (k, v) => { mem[k] = v; } };
   FX.gravarPrefs(st, { ord: { app: ['inicio', 'chat'], ela: ['hist'] }, tour: false });
   const lido = FX.lerPrefs(st);
-  check('grava e lê', lido.tour === false && lido.ord.app.join() === 'home,chat,checklist,espaco,perfil' && lido.ord.ela.join() === 'hist,eu,bilan,trouxe,sinais,mais');
+  check('grava e lê', lido.tour === false && lido.ord.app.join() === 'home,chat,checklist,curadoria,espaco,perfil' && lido.ord.ela.join() === 'hist,eu,bilan,trouxe,sinais,mais');
   check('chaves do spec', 'crm_ficha_ord_v1' in mem && 'crm_ficha_tour' in mem);
   mem.crm_ficha_ord_v1 = JSON.stringify({ app: ['chat'], ela: ['hist', 'dossie', 'bilan'] });
   mem.crm_ficha_ord_v1 = JSON.stringify({ app: ['chat', 'checklist', 'inicio'], ela: ['hist'] });
-  check('ordem guardada antes da Página inicial: ela entra no TOPO, não no fim', FX.lerPrefs(st).ord.app[0] === 'home' && FX.lerPrefs(st).ord.app.slice(1, 4).join() === 'chat,checklist,espaco');
+  check('ordem guardada antes da Página inicial: ela entra no TOPO, não no fim', FX.lerPrefs(st).ord.app[0] === 'home' && FX.lerPrefs(st).ord.app.slice(1, 4).join() === 'chat,checklist,curadoria');
   mem.crm_ficha_ord_v1 = JSON.stringify({ app: ['chat'], ela: ['hist', 'dossie', 'bilan'] });
   check('ordem salva com o dossiê antigo: ele some, o resto fica', FX.lerPrefs(st).ord.ela.join() === 'hist,bilan,eu,trouxe,sinais,mais');
   mem.crm_ficha_ord_v1 = '{lixo'; check('JSON inválido volta ao padrão', FX.lerPrefs(st).ord === null);
@@ -249,6 +249,19 @@ console.log('\n== Validação do Checklist ==');
   const dois = FX.alertasChecklist({ itens: [], equipe: [ac(7, 'Abrir conta', { prazo: '2026-12-01' }), ac(8, 'Abrir a conta', { prazo: '2026-12-01' })] });
   check('dois só dela repetidos entre si: os dois avisam "Repetido"', dois.lista.length === 2 && dois.lista.every((x) => x.tipo === 'repetido' && /Repetido/.test(x.texto)));
   check('sem dados nada quebra', FX.alertasChecklist().lista.length === 0 && FX.alertasChecklist({}).lista.length === 0);
+}
+console.log('\n== Curadoria do Checklist ==');
+{
+  const it = (k, extra) => Object.assign({ step_key: k, label: 'Passo ' + k, status: 'pendente', due_date: null }, extra);
+  const m = FX.mapaDaCuradoria([{ step_key: 'a', oculto: true, ordem: null, conferido_em: null }, { step_key: 'c', oculto: false, ordem: 2, conferido_em: '2026-11-17T10:00:00Z' }, { step_key: 'd', oculto: false, ordem: 1 }, { step_key: 'aco:7', conferido_em: '2026-11-17T10:00:00Z' }, null, { oculto: true }]);
+  check('o mapa vem por chave (step_key ou aco:id), ignora linha vazia ou sem chave e normaliza os campos', Object.keys(m).sort().join() === 'a,aco:7,c,d' && m.a.oculto === true && m.a.ordem === null && m.c.ordem === 2 && m.c.conferido_em && m.d.conferido_em === null && m['aco:7'].oculto === false && Object.keys(FX.mapaDaCuradoria(null)).length === 0);
+  const itens = [it('a'), it('b', { due_date: '2026-12-09' }), it('c'), it('d'), it('e', { due_date: '2026-12-01' })];
+  check('ordenarGerais: primeiro os com ordem (pela ordem), depois os demais pela urgência de sempre (data primeiro)', FX.ordenarGerais(itens, m, '2026-11-17').map((x) => x.step_key).join() === 'd,c,e,b,a');
+  check('sem curadoria é só a urgência; entrada vazia não quebra', FX.ordenarGerais(itens, {}, '2026-11-17').map((x) => x.step_key).join() === 'e,b,a,c,d' && FX.ordenarGerais(null, null, '2026-11-17').length === 0);
+  const r = FX.resumoCuradoria({ itens: itens.concat([it('z', { status: 'arquivado' })]), equipe: [{ id: 7 }, { id: 8 }], mapa: m });
+  check('resumo: conta o que ela vê (escondido e arquivado ficam fora), os conferidos (geral e só dela) e os escondidos', r.total === 6 && r.conferidos === 2 && r.ocultos === 1);
+  check('resumo sem dados', FX.resumoCuradoria().total === 0 && FX.resumoCuradoria({}).ocultos === 0);
+  check('a curadoria é uma sessão do grupo do app, logo depois do Checklist', FX.SESSOES_PADRAO.app.indexOf('curadoria') === FX.SESSOES_PADRAO.app.indexOf('checklist') + 1);
 }
 console.log('\n' + passed + ' passaram, ' + failed + ' falharam');
 if (failed) process.exit(1);
