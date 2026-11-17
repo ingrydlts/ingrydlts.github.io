@@ -5409,7 +5409,9 @@ function chaveNova(nome) {
   return k;
 }
 // O "Para quem": as regras de quem pode receber. attr = data-novopara (passos) ou data-pq (modelo já criado).
-function paraQuemHtml(para, attr, obj, produtoFixo) {
+// `meio` (opcional) entra no lugar dos grupos Persona, Material de origem e Etapa do guia: no passo 2 do modelo novo, "Onde este
+// e-mail mora" substitui os três. Persona/material/etapa continuam editáveis depois, no próprio modelo (popovers do "Para quem").
+function paraQuemHtml(para, attr, obj, produtoFixo, meio) {
   para = para || {};
   var marca = function (grupo, k) { return (para[grupo] || []).indexOf(k) >= 0 ? ' checked' : ''; };
   var grupo = function (titulo, g, itens, dica) {
@@ -5423,10 +5425,10 @@ function paraQuemHtml(para, attr, obj, produtoFixo) {
       : '<label class="st-fld"><span>Produto (só quem comprou)</span><select class="st-in" ' + attr + '="produto">' + opcoes(PRODUTOS.map(function (p) { return [p.slug, p.nome]; }), para.produto, 'Escolha o produto') + '</select>' +
         (PRODUTOS.length ? '' : '<small>Não consegui ler a lista de produtos do site.</small>') + '</label>';
   }
-  return prod +
+  return prod + (meio != null ? meio :
     grupo('Persona', 'personas', Object.keys(PERSONAS).filter(function (k) { return k !== 'sem'; }).map(function (k) { return [k, PERSONAS[k]]; }), 'Nenhuma marcada = todas.') +
     grupo('Material de origem', 'materiais', materiaisConhecidos(), 'Só quem pegou um destes guias. Nenhum = qualquer origem.') +
-    grupo('Etapa do guia', 'etapas', etapasDosMateriais(para), 'Só quem marcou uma destas etapas no guia. Nenhuma = qualquer etapa (quem não marcou etapa também recebe).') +
+    grupo('Etapa do guia', 'etapas', etapasDosMateriais(para), 'Só quem marcou uma destas etapas no guia. Nenhuma = qualquer etapa (quem não marcou etapa também recebe).')) +
     grupo('Estágio', 'estagios', STAGES.map(function (x) { return [x.k, x.l]; }), 'Nenhum = qualquer estágio.') +
     grupo('Segmento do reimpacto', 'segmentos', SEGMENTS.map(function (x) { return [x.k, x.t]; }), 'Nenhum = sem regra de segmento.');
 }
@@ -5475,10 +5477,10 @@ function renderCriar() {
   } else if (cr.passo === 2) {
     pode = !!cr.nome.trim() && (!o.produto || !!cr.para.produto);
     corpo = '<label class="st-fld"><span>Nome do modelo (só você vê)</span><input class="st-in" id="novo-nome" maxlength="120" value="' + esc(cr.nome) + '"></label>' +
-      '<p class="st-msg tip">' + esc(ES.TIPO_RODAPE[o.tipo]) + '</p>' + paraQuemHtml(cr.para, 'data-novopara', o, false) +
+      '<p class="st-msg tip">' + esc(ES.TIPO_RODAPE[o.tipo]) + '</p>' + paraQuemHtml(cr.para, 'data-novopara', o, false,
       '<fieldset class="st-classe" style="border:0;padding:0;margin:0"><legend class="sub">Onde este e-mail mora</legend>' +
       (temColunasReais() ? '' : '<p class="st-msg warn">Para classificar, rode db/crm-taxonomia-modelos.sql no Supabase.</p>') +
-      classeSelects(cr.classe, 'data-novoclasse', !temColunasReais()) + '</fieldset>';
+      classeSelects(cr.classe, 'data-novoclasse', !temColunasReais()) + '</fieldset>');
   } else if (cr.passo === 3) {
     var fake = { chave: '_novo', criado_no_estudio: true, tipo: o.tipo, para_quem: cr.para };
     corpo = '<p class="st-msg tip">O que o e-mail pode usar dela. O plano B de cada dado (o que aparece se faltar) você ajusta depois, em Contexto da pessoa.</p>' +
