@@ -3019,7 +3019,7 @@ function pcPassosAmigavel(txt) {
 function pcQuadrosHtml(c) {
   var pc = pcEstado(c.id), p = pc.estado === 'proposta' && pc.prop && pc.prop.proposta && pc.prop.proposta.origem !== 'notion' ? pc.prop.proposta : null;
   var S = state.dos && state.dos.cid === c.id ? state.dos : null, dv = function (k) { return S ? String(dosValor(c, S.d, S.rasc || {}, k) || '') : ''; };
-  var h = '<h5 class="pc-h">Resumo</h5>' + pcResumoAmigavel(dv('ligacao_resumo')) + '<h5 class="pc-h">Encaminhamentos</h5>' + pcPassosAmigavel(dv('proximos_passos'));
+  var h = '<div class="pc-leitura"><h5 class="pc-h">Resumo</h5>' + pcResumoAmigavel(dv('ligacao_resumo')) + '<h5 class="pc-h">Encaminhamentos</h5>' + pcPassosAmigavel(dv('proximos_passos')) + '</div>';
   var aten = p ? (p.pontos_de_atencao || []) : [], pe = p ? (p.perguntas_para_ela || []) : [], conf = p ? (p.a_conferir || []) : [];
   var corpo = '';
   if (aten.length) corpo += '<p class="sub" style="margin:0 0 4px"><b>Pontos de atenção</b></p><ul class="dv-ul">' + aten.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul>';
@@ -4009,12 +4009,12 @@ function dosLigacaoHtml(c, d) {
   var pcs = pcEstado(c.id), notionLido = !!(pcs.notionAplicada || pcs.notionMsg || pcs.notionUrl);
   // Um toggle só: ler a conversa, ver o resumo e os encaminhamentos e, recolhido, editar o registro (resumo, passos, data, transcrição).
   // O texto editável fica uma vez só, dentro do "Editar o registro"; a visão de cima é a mesma informação, só mais legível.
-  var pAn = '<div id="pc-topo">' + pcTopoHtml(c) + '</div><div id="pc-quadros">' + pcQuadrosHtml(c) + '</div>' +
+  var pAn = '<div id="pc-an"><div id="pc-topo">' + pcTopoHtml(c) + '</div><div id="pc-quadros">' + pcQuadrosHtml(c) + '</div>' +
     '<details class="lg-edit" data-lg="e"' + (lgAberto('e') ? ' open' : '') + '><summary>Editar o registro (resumo, passos, data e transcrição)</summary><div class="lg-corpo">' +
     '<div class="dgrid lg-form">' + campo('ligacao_resumo') + campo('proximos_passos') + '</div>' +
     '<div class="dgrid lg-form">' + campo('ligacao_data') + campo('ligacao_transcricao') + '</div>' +
     '<div class="actions" style="margin-top:6px"><button class="btn primary" type="button" data-dossalvar="' + esc(c.id) + '">Salvar dossiê</button></div></div></details>' +
-    '<div id="poscall-box">' + poscallHtml(c, (pcEstado(c.id).fixo = true)) + '</div>';
+    '<div id="poscall-box">' + poscallHtml(c, (pcEstado(c.id).fixo = true)) + '</div></div>';
   var pMont = montHtml(c);
   var p3 = '<div class="lg-saidas">' +
     '<div class="dv-card"><div class="k">E-mail para ela</div><p class="sub" style="margin:0 0 8px">O rascunho junta o que foi conversado, o que ela faz, o que você faz e o convite para o espaço dela no <b>Por Dentro das Démarches</b> (um lugar só dela, com todas as démarches e o próximo passo). Você revisa e só sai com o seu “pode enviar”.' +

@@ -1720,3 +1720,5 @@ button.bar-r b{text-align:right; font-variant-numeric:tabular-nums}
 .pc-unico { margin-top: 14px; }
 .lg-edit { margin-top: 14px; border: 1px dashed var(--line-2, #d8d3c9); border-radius: 8px; padding: 8px 12px; }
 .lg-edit > summary { cursor: pointer; font-size: 13px; font-weight: 600; }
+/* Editando o registro, a visão legível some: o mesmo texto não aparece duas vezes */
+#pc-an:has(.lg-edit[open]) .pc-leitura { display: none; }
