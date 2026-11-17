@@ -259,7 +259,7 @@ check('cabeçalho: página escolhida sem e-mail continua selecionada, sem e-mail
 H.ST.vazio = false; H.ST.pg = null; H.ST.k = 'cf_guia_1';
 H.setM(mods);
 check('cabeçalho: modelosDaPagina da I03 tem o cf_guia_1', H.modelosDaPagina(Jx, 'I03').some((m) => m.chave === 'cf_guia_1'));
-check('handler: clicar na página abre o primeiro e-mail dela ou mostra o estado vazio', /dataset\.stpg[\s\S]*?modelosDaPagina\(jornadaAtual\(\), t\.dataset\.stpg\)\[0\][\s\S]*?ST\.vazio = true/.test(csrc));
+check('handler: escolher a página no dropdown abre o primeiro e-mail dela ou mostra o estado vazio', /async function abrirPaginaEntrada\(pg\)[\s\S]*?modelosDaPagina\(jornadaAtual\(\), pg\)\[0\][\s\S]*?ST\.vazio = true/.test(csrc) && /e\.target\.id === 'st-pg-sel'\) return abrirPaginaEntrada\(e\.target\.value\)/.test(csrc));
 
 check('css: o grid do estúdio tem só o editor e a prévia', /\.studio\{position:relative; display:grid; grid-template-columns:minmax\(0,1\.25fr\) minmax\(0,\.95fr\);/.test(cssSrc));
 
