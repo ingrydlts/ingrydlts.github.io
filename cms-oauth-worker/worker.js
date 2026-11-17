@@ -3402,6 +3402,38 @@ async function crmMontagemChamarIA(env, cat, transcricao, notas, recusa, anterio
   return { ok: true, entrada: bloco ? bloco.input : undefined, uso };
 }
 
+// O texto corrido de uma página do Notion (títulos, parágrafos, listas, tabelas), na ordem, para a Montagem ler quando não há transcrição colada.
+// Só leitura; é DADO NÃO CONFIÁVEL como a transcrição (a IA só propõe) e não é guardado.
+async function crmNotionTextoPlano(env, paginaUuid) {
+  const linhas = [], fila = [paginaUuid];
+  let vistos = 0;
+  while (fila.length) {
+    const id = fila.shift();
+    let cursor = null;
+    for (let pag = 0; pag < 10; pag++) {
+      const r = await crmNotionGet(env, 'blocks/' + id + '/children?page_size=100' + (cursor ? '&start_cursor=' + encodeURIComponent(cursor) : ''));
+      if (!r.ok) return r;
+      const res = r.corpo && Array.isArray(r.corpo.results) ? r.corpo.results : null;
+      if (!res) return { ok: false, status: 502, codigo: 'notion_resposta', erro: 'O Notion respondeu num formato inesperado.' };
+      for (const b of res) {
+        if (!b || typeof b !== 'object') continue;
+        if (++vistos > CRM_NOTION_MAX_BLOCOS) return crmNotionRecusa('pagina_grande', 'A página tem blocos demais para ler (limite ' + CRM_NOTION_MAX_BLOCOS + ').');
+        const tipo = String(b.type || '');
+        const dado = b[tipo] || {};
+        if (tipo === 'table_row') { const cel = (Array.isArray(dado.cells) ? dado.cells : []).map((c) => crmNotionRt(c, 400)).filter(Boolean); if (cel.length) linhas.push(cel.join(' | ')); }
+        else if (Array.isArray(dado.rich_text)) {
+          const t = crmNotionRt(dado.rich_text, 2000, true);
+          if (t) linhas.push(/^heading_/.test(tipo) ? '\n' + t : /list_item|to_do/.test(tipo) ? '- ' + t : t);
+        }
+        if (b.has_children === true && typeof b.id === 'string' && fila.length < 400) fila.push(b.id);
+      }
+      if (r.corpo.has_more !== true || typeof r.corpo.next_cursor !== 'string' || r.corpo.next_cursor.length > 200) break;
+      cursor = r.corpo.next_cursor;
+    }
+  }
+  return { ok: true, texto: linhas.join('\n').replace(/\n{3,}/g, '\n\n').trim() };
+}
+
 async function handleCrmMontagemLer(request, env) {
   const admin = await crmRequireAdmin(request);
   if (!admin) return json({ error: 'Sem permissão. Entre de novo no CRM.' }, 401);
@@ -3411,8 +3443,18 @@ async function handleCrmMontagemLer(request, env) {
   if (!body) return json({ error: 'Corpo inválido.' }, 400);
   const contatoId = String(body.contato_id || '');
   if (!CRM_UUID_RE.test(contatoId)) return json({ error: 'Contato inválido.' }, 400);
-  const transcricao = String(body.transcricao || '').trim();
+  let transcricao = String(body.transcricao || '').trim();
   const notas = String(body.notas || '').trim();
+  // Sem transcrição colada, vale o link da página do Notion da ligação (a mesma que o Onboarding lê): o texto da página vira a entrada. Só leitura.
+  if (transcricao.length < 200 && body.notion_url) {
+    const cn = crmNotionConfig(env);
+    if (!cn.ok) return json({ error: cn.erro, codigo: 'notion_nao_configurada' }, 503);
+    const alvoN = crmNotionId(body.notion_url);
+    if (!alvoN.ok) return json({ error: alvoN.erro, codigo: 'link_invalido' }, 400);
+    const tn = await crmNotionTextoPlano(env, alvoN.uuid);
+    if (!tn.ok) return json({ error: tn.erro, codigo: tn.codigo }, tn.status);
+    transcricao = tn.texto;
+  }
   if (transcricao.length < 200) return json({ error: 'Cole a transcrição do onboarding (pelo menos algumas frases) antes de pedir a montagem.', codigo: 'sem_transcricao' }, 400);
   if (transcricao.length > CRM_POS_MAX_TRANSCRICAO) return json({ error: 'A transcrição passou de ' + CRM_POS_MAX_TRANSCRICAO + ' letras. Corte a parte que não interessa.', codigo: 'texto_grande' }, 400);
   if (notas.length > CRM_POS_MAX_NOTAS) return json({ error: 'As notas passaram de ' + CRM_POS_MAX_NOTAS + ' letras.', codigo: 'texto_grande' }, 400);

@@ -2971,31 +2971,62 @@ async function pcCarregarDados(cid) {
 }
 // O alto da sessão "A ligação": anexar o arquivo da ligação transcrita (.txt, PDF ou imagem) e pedir a leitura da IA.
 function pcTopoHtml(c) {
-  var pc = pcEstado(c.id);
-  return '<div class="pc-linha"><input type="file" id="pc-arq" class="pc-arq-in" accept=".txt,.pdf,.jpg,.jpeg,.png,text/plain,application/pdf,image/jpeg,image/png" data-pcarq="' + esc(c.id) + '"><label class="btn pc-arq" for="pc-arq">Anexar a ligação transcrita</label>' +
-    '<button class="btn primary" type="button" data-pcler="' + esc(c.id) + '"' + (pc.estado === 'lendo' ? ' disabled' : '') + '>' + (pc.estado === 'lendo' ? 'Lendo a call…' : 'Ler a call com IA') + '</button></div>' +
-    '<div class="pc-linha pc-notion"><input type="url" id="pc-notion" class="pc-notion-in" placeholder="Ou cole o link da página do Notion da ligação" value="' + esc(pc.notionUrl || '') + '" aria-label="Link da página do Notion da ligação">' +
-    '<button class="btn" type="button" data-pcnotion="' + esc(c.id) + '"' + (pc.notionLendo ? ' disabled' : '') + '>' + (pc.notionLendo ? 'Lendo o Notion…' : 'Ler do Notion') + '</button></div>' +
+  var pc = pcEstado(c.id), lendo = pc.estado === 'lendo' || pc.notionLendo;
+  return '<div class="pc-linha pc-uma"><input type="file" id="pc-arq" class="pc-arq-in" accept=".txt,.pdf,.jpg,.jpeg,.png,text/plain,application/pdf,image/jpeg,image/png" data-pcarq="' + esc(c.id) + '"><label class="btn pc-arq" for="pc-arq">' + (pc.arqNome ? 'Trocar arquivo' : 'Anexar arquivo') + '</label>' +
+    '<input type="url" id="pc-notion" class="pc-notion-in" placeholder="…ou cole o link da página do Notion da ligação" value="' + esc(pc.notionUrl || '') + '" aria-label="Link da página do Notion da ligação">' +
+    '<button class="btn primary" type="button" data-pcler="' + esc(c.id) + '"' + (lendo ? ' disabled' : '') + '>' + (lendo ? 'Lendo…' : 'Ler a conversa') + '</button></div>' +
     (pc.notionMsg ? '<p class="sub" role="status" style="margin:0 0 6px">' + esc(pc.notionMsg) + '</p>' : '') +
-    '<p class="sub pc-dica">' + (pc.arqNome ? '<b>' + esc(pc.arqNome) + '</b>. ' : 'Aceita .txt, PDF ou imagem, ou o link do Notion. ') + 'A IA só propõe: nada entra na ficha sem você conferir. A leitura usa tokens pagos da Anthropic.</p>' +
+    '<p class="sub pc-dica">' + (pc.arqNome ? '<b>' + esc(pc.arqNome) + '</b>. ' : 'Aceita .txt, PDF, imagem ou o link do Notion: o botão percebe sozinho qual é. ') + 'A IA só propõe: nada entra na ficha sem você conferir. A leitura de arquivo usa tokens pagos da Anthropic.</p>' +
     (pc.estado === 'lendo' ? '<p class="sub" role="status">Lendo a call… (leva alguns segundos)</p>' : '') + (pc.erro ? '<p class="err" role="alert">' + esc(pc.erro) + '</p>' : '');
 }
 // Os quadros que a leitura preenche além de Resumo e Próximos passos (que são os campos do Dossiê): pontos de atenção e o que confirmar.
+// Texto do Dossiê em blocos legíveis: o resumo vira parágrafo + linhas "Rótulo: texto"; os próximos passos viram listas de quem faz o quê.
+function pcItensDe(txt) {
+  var out = [], atual = '', nivel = 0;
+  String(txt || '').split('').forEach(function (ch) {
+    if (ch === '(') nivel++; if (ch === ')') nivel = Math.max(0, nivel - 1);
+    if ((ch === ',' || ch === ';') && !nivel) { out.push(atual); atual = ''; } else atual += ch;
+  });
+  out.push(atual);
+  return out.map(function (x) { return x.trim().replace(/^(e|and)\s+/i, '').replace(/[.\s]+$/, ''); }).filter(Boolean).map(function (x) { return x.charAt(0).toUpperCase() + x.slice(1); });
+}
+function pcResumoAmigavel(txt) {
+  var linhas = String(txt || '').split('\n').map(function (x) { return x.trim(); }).filter(Boolean);
+  if (!linhas.length) return '<p class="sub" style="margin:0">Sem resumo ainda. Leia a conversa acima ou escreva em “Registro”.</p>';
+  return linhas.map(function (l, i) {
+    var m = i > 0 ? /^([^:]{2,40}):\s*(.+)$/.exec(l) : null;
+    return m ? '<p class="pc-rl"><span class="pc-rk">' + esc(m[1]) + '</span>' + esc(m[2]) + '</p>' : '<p class="pc-rp">' + esc(l) + '</p>';
+  }).join('');
+}
+function pcPassosAmigavel(txt) {
+  var quem = { ela: [], ingryd: [], outros: [] }, linhas = String(txt || '').split('\n').map(function (x) { return x.trim(); }).filter(Boolean);
+  linhas.forEach(function (l) {
+    var re = /(^|[.\s])(Ela|Ingryd)\s*:\s*/gi, marcas = [], m;
+    while ((m = re.exec(l))) marcas.push({ k: m[2].toLowerCase(), de: m.index + m[1].length, ini: m.index + m[0].length });
+    if (!marcas.length) { var o = /^([^:]{2,40}):\s*(.+)$/.exec(l); if (o) quem.outros.push('<b>' + esc(o[1]) + ':</b> ' + pcItensDe(o[2]).map(esc).join('; ')); else pcItensDe(l.replace(/^[-•*]\s*/, '')).forEach(function (x) { quem.outros.push(esc(x)); }); return; }
+    marcas.forEach(function (mk, i) { var fim = i + 1 < marcas.length ? marcas[i + 1].de : l.length; pcItensDe(l.slice(mk.ini, fim)).forEach(function (x) { quem[mk.k].push(esc(x)); }); });
+  });
+  var col = function (t, arr) { return arr.length ? '<div class="dv-card"><div class="k">' + t + ' · ' + arr.length + '</div><ul class="dv-ul pc-ul">' + arr.map(function (x) { return '<li>' + x + '</li>'; }).join('') + '</ul></div>' : ''; };
+  var h = col('Com ela', quem.ela) + col('Comigo', quem.ingryd);
+  if (!h && !quem.outros.length) return '<p class="sub" style="margin:0">Sem encaminhamentos ainda.</p>';
+  return '<div class="dv-grid">' + h + '</div>' + (quem.outros.length ? '<ul class="dv-ul pc-ul" style="margin-top:8px">' + quem.outros.map(function (x) { return '<li>' + x + '</li>'; }).join('') + '</ul>' : '');
+}
+// O que a leitura entrega além de Resumo e Próximos passos: Resumo e Encaminhamentos legíveis e UM bloco só para pontos de atenção + o que confirmar.
 function pcQuadrosHtml(c) {
   var pc = pcEstado(c.id), p = pc.estado === 'proposta' && pc.prop && pc.prop.proposta && pc.prop.proposta.origem !== 'notion' ? pc.prop.proposta : null;
-  var card = function (t, corpo) { return '<div class="dv-card"><div class="k">' + esc(t) + '</div>' + corpo + '</div>'; };
-  var aten = p && (p.pontos_de_atencao || []).length ? '<ul class="dv-ul">' + p.pontos_de_atencao.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul>' : '<p class="sub" style="margin:0">' + (p ? 'A leitura não apontou nada.' : 'Aparece depois da leitura.') + '</p>';
-  var pe = p ? (p.perguntas_para_ela || []) : [], conf = p ? (p.a_conferir || []) : [];
-  var info = '';
-  if (conf.length) info += '<p class="sub" style="margin:0 0 4px"><b>Conferir na fonte oficial</b></p><ul class="dv-ul">' + conf.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul>';
-  if (pe.length) info += '<p class="sub" style="margin:8px 0 4px"><b>Confirmar com ela</b> (marque as que quer fazer; vão para o rascunho do chat)</p>' + pe.map(function (q, i) {
+  var S = state.dos && state.dos.cid === c.id ? state.dos : null, dv = function (k) { return S ? String(dosValor(c, S.d, S.rasc || {}, k) || '') : ''; };
+  var h = '<h5 class="pc-h">Resumo</h5>' + pcResumoAmigavel(dv('ligacao_resumo')) + '<h5 class="pc-h">Encaminhamentos</h5>' + pcPassosAmigavel(dv('proximos_passos'));
+  var aten = p ? (p.pontos_de_atencao || []) : [], pe = p ? (p.perguntas_para_ela || []) : [], conf = p ? (p.a_conferir || []) : [];
+  var corpo = '';
+  if (aten.length) corpo += '<p class="sub" style="margin:0 0 4px"><b>Pontos de atenção</b></p><ul class="dv-ul">' + aten.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul>';
+  if (conf.length) corpo += '<p class="sub" style="margin:8px 0 4px"><b>Conferir na fonte oficial</b></p><ul class="dv-ul">' + conf.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul>';
+  if (pe.length) corpo += '<p class="sub" style="margin:8px 0 4px"><b>Confirmar com ela</b> (marque as que quer fazer; vão para o rascunho do chat)</p>' + pe.map(function (q, i) {
     var marcado = pc.sel.perg['q' + i] === undefined ? true : pc.sel.perg['q' + i], f = q.campo ? dosCampo(q.campo) : null;
     return '<label class="pclinha"><input type="checkbox" data-pcperg="q' + i + '"' + (marcado ? ' checked' : '') + '> <span>' + esc(q.texto) + (q.motivo ? '<br><small class="sub">Por quê: ' + esc(q.motivo) + (f ? ' · preenche “' + esc(f.l) + '”' : '') + '</small>' : '') + '</span></label>';
   }).join('') + '<div class="actions" style="margin-top:8px"><button class="btn" type="button" data-pcchat="' + esc(c.id) + '">Levar para o chat</button></div>';
-  if (p && !pe.length) info += '<p class="sub" style="margin:' + (conf.length ? '8px' : '0') + ' 0 0">A call fechou o que importava com ela: nada a confirmar com ela.</p>';
-  if (!info) info = '<p class="sub" style="margin:0">Aparece depois da leitura.</p>';
+  if (!corpo) corpo = '<p class="sub" style="margin:0">' + (p ? 'A leitura não apontou nada a confirmar.' : 'Aparece depois da leitura da conversa.') + '</p>';
   var preencher = p && (p.resumo || (p.proximos_passos || []).length) ? '<div class="actions" style="margin:0 0 10px"><button class="btn" type="button" data-pcpreencher="' + esc(c.id) + '">Preencher Resumo e Próximos passos com a leitura</button></div>' : '';
-  return preencher + '<div class="dv-grid">' + card('Pontos de atenção', aten) + card('Infos para confirmar', info) + '</div>';
+  return preencher + h + '<div class="dv-card pc-unico"><div class="k">Pontos de atenção e a confirmar</div>' + corpo + '</div>';
 }
 function pcEscolheArquivo(inp) {
   var cid = inp.dataset.pcarq, pc = pcEstado(cid), f = inp.files && inp.files[0]; if (!f) return;
@@ -3079,7 +3110,7 @@ async function pcLerNotion(cid) {
   var n = ((data.aplicado || {}).preenchidos || []).length;
   await sincronizarUmAUm(cid, 'Notion');
   state.ontResumo = data; state.pc = null;
-  pcEstado(cid).notionMsg = 'Notion lido: ' + (n ? n + (n === 1 ? ' campo preenchido' : ' campos preenchidos') + ' no Dossiê' : 'nenhum campo novo no Dossiê') + '. O que ficou como proposta aparece abaixo.';
+  pcEstado(cid).notionUrl = url; pcEstado(cid).notionMsg = 'Notion lido: ' + (n ? n + (n === 1 ? ' campo preenchido' : ' campos preenchidos') + ' no Dossiê' : 'nenhum campo novo no Dossiê') + '. O que ficou como proposta aparece abaixo.';
   toast('Notion lido.');
   if (state.view === 'pessoa') renderPessoa();
 }
@@ -3140,7 +3171,19 @@ async function pcAplicar(cid, t) {
 function montInicial(cid) { return { cid: cid, estado: 'vazio', erro: '', prop: null, sel: {}, motivos: {}, res: null, pub: null, previa: null, pode: false, forcar: false, msg: '' }; }
 function montEstado(cid) { if (!state.mont || state.mont.cid !== cid) state.mont = montInicial(cid); return state.mont; }
 function montTranscricao(c) { var S = state.dos && state.dos.cid === c.id ? state.dos : null; return { texto: String(dosValor(c, (S && S.d) || {}, (S && S.rasc) || {}, 'ligacao_transcricao') || '').trim(), notas: String(dosValor(c, (S && S.d) || {}, (S && S.rasc) || {}, 'ligacao_resumo') || '').trim() }; }
-function montPainel(c) { var m = montEstado(c.id); m.dd = (state.fx && state.fx.dd) || {}; m.temTranscricao = montTranscricao(c).texto.length >= 200; return MT.painelHtml(m, c, esc); }
+// Sem transcrição colada, a Montagem lê a página do Notion da ligação: o link digitado agora ou a página já lida no Onboarding.
+function montNotionUrl(c) {
+  var pc = pcEstado(c.id), u = String(pc.notionUrl || '').trim(), n = pc.notionAplicada && pc.notionAplicada.proposta && pc.notionAplicada.proposta.notion;
+  return /^https:\/\//i.test(u) ? u : (n && /^[0-9a-f]{32}$/i.test(String(n.pagina || '')) ? 'https://www.notion.so/' + n.pagina : '');
+}
+// De onde a Montagem lê: a conversa vinculada a esta pessoa (pelo e-mail da ficha), seja a página do Notion lida ou a transcrição do Registro.
+function montFonte(c) {
+  var pc = pcEstado(c.id), n = pc.notionAplicada;
+  if (montTranscricao(c).texto.length >= 200) return 'a transcrição colada em “Registro da ligação”';
+  if (n) return 'a ligação do Notion lida em ' + fmtDay(String(n.quando || '').slice(0, 10));
+  return montNotionUrl(c) ? 'o link do Notion informado' : '';
+}
+function montPainel(c) { var m = montEstado(c.id); m.dd = (state.fx && state.fx.dd) || {}; m.temTranscricao = montTranscricao(c).texto.length >= 200 || !!montNotionUrl(c); m.fonte = montFonte(c); return MT.painelHtml(m, c, esc); }
 function montHtml(c) { return typeof MT === 'undefined' ? '' : '<div id="mont-box">' + montPainel(c) + '</div>'; }   // (os testes antigos montam o crm.js sem este módulo)
 function pintaMont(cid) { var b = $('mont-box'), c = byC(cid); if (b && c) b.innerHTML = montPainel(c); }
 async function montToken() { var sess = await supabase.auth.getSession(); if (!sess.data.session) throw new Error('Entre de novo no CRM.'); return sess.data.session.access_token; }
@@ -3172,10 +3215,11 @@ function bilanDaMontagem(c) {
 }
 async function montLer(cid, t) {
   var m = montEstado(cid), c = byC(cid), tr = montTranscricao(c);
-  if (tr.texto.length < 200) { m.erro = 'Cole a transcrição em “Gravação transcrita” (pelo menos algumas frases).'; return pintaMont(cid); }
+  var nUrl = tr.texto.length < 200 ? montNotionUrl(c) : '';
+  if (tr.texto.length < 200 && !nUrl) { m.erro = 'Cole a transcrição em “Gravação transcrita” ou o link do Notion da ligação (em “Análise 1:1”).'; return pintaMont(cid); }
   m.estado = 'lendo'; m.erro = ''; m.msg = ''; pintaMont(cid);
   try {
-    var r = await montWorker('/api/crm/montagem/ler', { contato_id: cid, transcricao: tr.texto, notas: tr.notas });
+    var r = await montWorker('/api/crm/montagem/ler', nUrl ? { contato_id: cid, notion_url: nUrl, notas: tr.notas } : { contato_id: cid, transcricao: tr.texto, notas: tr.notas });
     if (!r.ok || !r.j.proposta) throw new Error(r.j.error || 'A leitura falhou (' + r.status + ').');
     m.prop = { id: r.j.id, versao: r.j.versao, proposta: r.j.proposta, reutilizada: !!r.j.reutilizada }; m.sel = {}; m.motivos = {}; m.res = null; m.lib = null; m.previa = null; m.estado = 'proposta';
     var df = await supabase.rpc('crm_montagem_diff', { p_contato: cid, p_montagem: r.j.id }); m.diff = df.error ? null : df.data;   // o que já existe da leitura anterior
@@ -3955,20 +3999,23 @@ function dosLigacaoHtml(c, d) {
   var B = state.bilan && state.bilan.cid === c.id ? state.bilan : null, enviado = (d.mails || []).filter(function (m) { return m.modelo === 'bilan_conversa'; })[0];
   var col = function (t, n, corpo) { return '<div class="dv-card"><div class="k">' + esc(t) + (n != null ? ' · ' + n : '') + '</div>' + corpo + '</div>'; };
   var p1 = dosPerguntarHtml(c, S) || '<p class="sub" style="margin:0">Nada a perguntar.</p>';
-  var p2 = '<div id="pc-topo">' + pcTopoHtml(c) + '</div>' +
-    '<div class="dgrid lg-form">' + campo('ligacao_resumo') + campo('proximos_passos') + '</div>' +
-    '<div id="pc-quadros">' + pcQuadrosHtml(c) + '</div>' +
+  var pcs = pcEstado(c.id), notionLido = !!(pcs.notionAplicada || pcs.notionMsg || pcs.notionUrl);
+  var pAn = '<div id="pc-topo">' + pcTopoHtml(c) + '</div><div id="pc-quadros">' + pcQuadrosHtml(c) + '</div>' +
+    '<div id="poscall-box">' + poscallHtml(c, (pcEstado(c.id).fixo = true)) + '</div>';
+  var pReg = '<div class="dgrid lg-form">' + campo('ligacao_resumo') + campo('proximos_passos') + '</div>' +
     '<div class="dgrid lg-form">' + campo('ligacao_data') + campo('ligacao_transcricao') + '</div>' +
-    '<div class="actions" style="margin-top:6px"><button class="btn primary" type="button" data-dossalvar="' + esc(c.id) + '">Salvar dossiê</button></div>' +
-    '<div id="poscall-box">' + poscallHtml(c, (pcEstado(c.id).fixo = true)) + '</div>' + montHtml(c);
+    '<div class="actions" style="margin-top:6px"><button class="btn primary" type="button" data-dossalvar="' + esc(c.id) + '">Salvar dossiê</button></div>';
+  var pMont = montHtml(c);
   var p3 = '<div class="lg-saidas">' +
     '<div class="dv-card"><div class="k">Bilan (você edita antes de enviar)</div><p class="sub" style="margin:0 0 8px">' + (B ? 'Leitura do Notion de ' + esc(fmtDay(String(B.quando || '').slice(0, 10))) + '.' : 'Sem leitura do Notion ainda.') + (enviado ? ' Enviado em ' + esc(fmtDay(String(enviado.enviado_em || enviado.criado_em || '').slice(0, 10))) + '.' : '') + '</p>' +
     '<button type="button" class="btn" data-bilanabrir="' + esc(c.id) + '"' + (B ? '' : ' disabled') + '>' + (enviado ? 'Reenviar o bilan' : 'Rascunho do e-mail com o bilan') + '</button></div>' +
     '<div class="dv-card"><div class="k">Arquivo para o seu sistema</div><p class="sub" style="margin:0 0 8px">Um .md com o que ela informou, o resumo e os encaminhamentos em lista de tarefas.</p><button type="button" class="btn" data-dosmd="' + esc(c.id) + '">Baixar o .md</button></div></div>';
   var passo = function (k, n, t, resumo, corpo) { return lgDet(k, 'lg-passo', '<span class="lg-n">' + n + '</span><b>' + t + '</b><span class="sub lg-res">' + esc(resumo) + '</span>', corpo); };
   var miolo = passo('a', 1, 'Antes da ligação', nFalta + (nFalta === 1 ? ' resposta falta' : ' respostas faltam') + (X.diverge.length ? ' · ' + X.diverge.length + ' a confirmar' : ''), p1) +
-    passo('b', 2, 'Durante e depois: registrar e ler com a IA', dv('ligacao_transcricao') ? 'transcrição colada' : 'sem transcrição ainda', p2) +
-    passo('c', 3, 'O que sai da conversa', enviado ? 'bilan enviado' : B ? 'bilan pronto para revisar' : 'bilan ainda não gerado', p3);
+    passo('b', 2, 'Análise 1:1', notionLido || pcs.estado === 'proposta' ? 'conversa lida' : dv('ligacao_resumo') ? 'resumo no dossiê' : 'conversa ainda não lida', pAn) +
+    passo('m', 3, 'Montagem App', (state.mont && state.mont.cid === c.id && state.mont.estado === 'aplicado') ? 'aprovada' : (state.mont && state.mont.cid === c.id && state.mont.estado === 'proposta') ? 'proposta para revisar' : (montFonte(c) ? 'conversa vinculada: pronta para propor' : 'aguardando a conversa'), pMont) +
+    passo('r', 4, 'Registro da ligação', dv('ligacao_transcricao') ? 'transcrição colada' : 'sem transcrição ainda', pReg) +
+    passo('c', 5, 'O que sai da conversa', enviado ? 'bilan enviado' : B ? 'bilan pronto para revisar' : 'bilan ainda não gerado', p3);
   return '<section class="panel dv lg" id="dos-ligacao" style="padding:16px;margin-bottom:14px">' +
     lgDet('main', 'lg-main', '<h3 style="font-size:17px;margin:0">A ligação</h3><span class="sub lg-res">Antes: contexto e o que perguntar. Durante: registre. Depois: a IA lê a conversa e preenche o Dossiê, e sai o bilan.</span>', miolo) + '</section>';
 }
@@ -6264,7 +6311,10 @@ document.addEventListener('click', async function (e) {
     return pintaDossie(byC(state.sel));
   }
   if (t.dataset.dossalvar) return salvarDossie(t.dataset.dossalvar, t);
-  if (t.dataset.pcler) return pcLer(t.dataset.pcler, t);
+  if (t.dataset.pcler) {   // um botão só: link do Notion no campo → lê o Notion; senão lê o arquivo ou a transcrição colada
+    var uNotion = String(($('pc-notion') || {}).value || pcEstado(t.dataset.pcler).notionUrl || '').trim();
+    return uNotion ? pcLerNotion(t.dataset.pcler) : pcLer(t.dataset.pcler, t);
+  }
   if (t.dataset.montler) return montLer(t.dataset.montler, t);
   if (t.dataset.montaplicar) return montAprovar(t.dataset.montaplicar, t);
   if (t.dataset.montdescartar) return montDescartar(t.dataset.montdescartar, t);
@@ -6406,6 +6456,7 @@ async function abrirPaginaEntrada(pg) {
 document.addEventListener('change', async function (e) {
   if (e.target.id === 'st-pg-sel') return abrirPaginaEntrada(e.target.value);
   if (e.target.id === 'pc-arq') return pcEscolheArquivo(e.target);
+  if (e.target.id === 'pc-notion' && state.sel) { pcEstado(state.sel).notionUrl = e.target.value; return; }
   if (e.target.dataset && e.target.dataset.montmarca) return montMarca(state.sel, e.target.dataset.montmarca, e.target.checked);
   if (e.target.dataset && e.target.dataset.montmotivo) return montMarca(state.sel, e.target.dataset.montmotivo, false, e.target.value);
   if (e.target.dataset && e.target.dataset.montpode !== undefined) { montEstado(state.sel).pode = e.target.checked; return pintaMont(state.sel); }
