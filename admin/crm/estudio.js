@@ -58,7 +58,9 @@ export var VARS_DE = {
   // O e-mail do botão "Enviar link de pagamento" da aba Plataforma (db/crm-link-pagamento-email.sql). O link vem do Worker, por plano e moeda.
   link_pagamento: ['nome', 'email', 'link_pagamento'],
   // O e-mail que sai sozinho quando o Stripe confirma o pagamento (db/crm-acesso-email.sql): conta criada, link para entrar e criar a senha.
-  acesso_confirmado: ['nome', 'email', 'link_entrada', 'fim_teste']
+  acesso_confirmado: ['nome', 'email', 'link_entrada', 'fim_teste'],
+  // O aviso de "nova mensagem no chat" (db/crm-chat-aviso-email.sql): o Worker manda a cada mensagem da Ingryd no app.
+  chat_aviso: ['nome', 'email', 'link_acesso']
 };
 // Os modelos criados no estúdio (entrega 3) têm todos os mesmos dados; os de compra ganham o produto e o link dele.
 // O Worker preenche exatamente estes (crmVarsNovos em worker.js).

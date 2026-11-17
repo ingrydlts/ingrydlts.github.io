@@ -68,7 +68,7 @@ var EXIGEM_NOVIDADES = { naoclicou: 1, parouapp: 1, guia_chamada: 1, guia_plataf
 // Os modelos novos do estúdio que você envia pela ficha (sem Envio) e já têm versão No ar.
 // Excluído (o X do estúdio, db/crm-estudio-emails-3.sql): some da lista e do "Escrever e-mail"; as versões ficam e dá para restaurar.
 function excluido(k) { var m = modeloDe(k); return !!(m && m.excluido_em); }
-function novosManuais() { return (M || []).filter(function (m) { return m.chave !== 'link_pagamento' && m.chave !== 'acesso_confirmado' && m.criado_no_estudio && !m.automatico && !m.excluido_em && versoesDe(m.chave).some(function (v) { return v.etapa === 'no_ar'; }); }); }
+function novosManuais() { return (M || []).filter(function (m) { return m.chave !== 'link_pagamento' && m.chave !== 'acesso_confirmado' && m.chave !== 'chat_aviso' && m.criado_no_estudio && !m.automatico && !m.excluido_em && versoesDe(m.chave).some(function (v) { return v.etapa === 'no_ar'; }); }); }
 function exigeNovidades(k) { var m = modeloDe(k); return m && m.criado_no_estudio ? m.tipo === 'novidades' : !!EXIGEM_NOVIDADES[k]; }
 // Rótulo, alavanca e quando usar, para o pop-up: os 8 do código (TPLS) ou o modelo novo.
 function tplInfo(k) {
