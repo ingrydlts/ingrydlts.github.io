@@ -2,15 +2,15 @@
 // Nada de service_role aqui. O banco é db/crm-fase2.sql; o desenho é o artefato "CRM Por Dentro".
 // Tudo que vem do banco é texto de terceiros (nome, e-mail, pergunta): passa sempre por esc().
 import { supabase } from '/assets/js/supabase-client.js';
-import * as TX from './taxonomia.js?v=2026-11-17.18';   // páginas, famílias e agrupamento dos modelos
-import * as ES from './estudio.js?v=2026-11-17.18';   // os blocos do estúdio de e-mails (entregas 2 e 3)
-import * as EE from './editor-email.js?v=2026-11-17.18';
-import * as EQ from './editor-quem.js?v=2026-11-17.18';
-import * as JR from './jornada.js?v=2026-11-17.18';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
-import * as FX from './ficha.js?v=2026-11-17.18';   // ficha v2: lógica pura (fila, démarches, funil, ações)
-import * as FH from './ficha-html.js?v=2026-11-17.18';   // ficha v2: HTML puro
-import * as PN from './panorama.js?v=2026-11-17.18';
-import * as MT from './montagem.js?v=2026-11-17.18';   // Montagem do espaço a partir do transcript (lógica e HTML puros)   // Panorama dela e O que ela trouxe (lógica e HTML puros)
+import * as TX from './taxonomia.js?v=2026-11-17.19';   // páginas, famílias e agrupamento dos modelos
+import * as ES from './estudio.js?v=2026-11-17.19';   // os blocos do estúdio de e-mails (entregas 2 e 3)
+import * as EE from './editor-email.js?v=2026-11-17.19';
+import * as EQ from './editor-quem.js?v=2026-11-17.19';
+import * as JR from './jornada.js?v=2026-11-17.19';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
+import * as FX from './ficha.js?v=2026-11-17.19';   // ficha v2: lógica pura (fila, démarches, funil, ações)
+import * as FH from './ficha-html.js?v=2026-11-17.19';   // ficha v2: HTML puro
+import * as PN from './panorama.js?v=2026-11-17.19';
+import * as MT from './montagem.js?v=2026-11-17.19';   // Montagem do espaço a partir do transcript (lógica e HTML puros)   // Panorama dela e O que ela trouxe (lógica e HTML puros)
 
 var PERSONAS = {
   au_pair_estudante: 'Au pair → estudante', campus_france: 'Campus France', alternancia_emprego: 'Alternância / emprego',
@@ -2026,7 +2026,7 @@ var CASO_SVG = { check: 'M5 12.5l4.5 4.5L19 7.5', up: 'M12 19V5M6 11l6-6 6 6', d
 function casoSvg(n, tam) { return '<svg viewBox="0 0 24 24" width="' + (tam || 16) + '" height="' + (tam || 16) + '" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="' + CASO_SVG[n] + '"/></svg>'; }
 // Posição fixa de cada ação: os ícones ficam alinhados em colunas, mesmo quando a linha tem menos ações.
 var CASO_ICONES = { 'item-rev': ['check', 'Marcar como revisado', 1], 'item-pub': ['up', 'Publicar para ela', 1], 'item-ret': ['down', 'Retirar', 1], 'aco-pub': ['up', 'Publicar para ela', 1], 'aco-retirar': ['down', 'Retirar', 1],
-  'aco-fim': ['check', 'Concluir', 0], 'aco-reabrir': ['undo', 'Reabrir', 0], 'ed-item': ['pencil', 'Editar', 2], 'ed-aco': ['pencil', 'Editar', 2], 'ed-ach': ['pencil', 'Editar', 2], 'ag-abrir': ['clock', 'Mudar a pausa', 2],
+  'aco-fim': ['check', 'Concluir', 0], 'aco-reabrir': ['undo', 'Reabrir', 0], 'ed-item': ['pencil', 'Editar', 2], 'ed-aco': ['pencil', 'Editar', 2], 'ed-ach': ['pencil', 'Editar', 2], 'ed-av': ['pencil', 'Editar a pergunta', 2], 'ag-abrir': ['clock', 'Mudar a pausa', 2],
   'home-add': ['plus', 'Adicionar na página inicial', 3], 'home-del': ['x', 'Tirar da página inicial', 3], 'item-del-pede': ['trash', 'Excluir', 4], 'av-cancel': ['x', 'Cancelar', 4] };
 function casoLinha(esq, meio, btns) {
   var ed = /data-caso="(ed-[a-z]+)" data-id="([^"]*)"/.exec(btns || '');
@@ -2261,12 +2261,22 @@ function casoProximaHtml(c, k) {
     '<small class="fx-meta" title="Se você adiantar ou atrasar, o que vem depois acompanha e as pausas se mantêm.">' + esc(casoSaiEm(a)) + (f.length > 1 ? ' · +' + (f.length - 1) + ' na fila' : '') + '</small></div>' +
     '<div class="fx-prox-b">' + casoBtn('enviar-agora', a.id, 'Enviar agora', dc) + casoMenu(resto) + '</div></div>';
 }
+// Tudo depois do primeiro "?" é observação do sistema, não a pergunta que a Ingryd faz a ela.
+function casoSeparaPergunta(titulo) {
+  var t = String(titulo || ''), i = t.indexOf('?'), resto = i >= 0 ? t.slice(i + 1).trim() : '';
+  return resto ? { p: t.slice(0, i + 1).trim(), obs: resto } : { p: t, obs: '' };
+}
 function casoAvisosHtml(k) {
   if (!k.avs.length) return '<div class="empty" style="padding:14px">Nenhum aviso.</div>';
   return k.avs.map(function (a) {
     var est = casoPil(CASO_ESTADO_AVISO[a.estado] || a.estado, a.estado === 'rascunho' ? 'u-media' : a.estado === 'respondido' ? 'u-baixa' : '');
-    var meio = '<b>' + esc(CASO_TIPO_AVISO[a.tipo] || a.tipo) + ':</b> ' + esc(a.titulo) + ' <small class="fx-meta">' + esc(casoQuando(a)) + (a.estado === 'respondido' && a.resposta ? ' · resposta: ' + esc(typeof a.resposta === 'object' ? String(a.resposta.valor !== undefined ? a.resposta.valor : JSON.stringify(a.resposta)) : String(a.resposta)) : '') + '</small>';
+    var sp = a.tipo === 'pergunta' ? casoSeparaPergunta(a.titulo) : { p: a.titulo, obs: '' };
+    var meio = '<b>' + esc(CASO_TIPO_AVISO[a.tipo] || a.tipo) + ':</b> ' + (sp.obs ? esc(sp.p) + ' <span class="fx-aviso fx-sis" title="Observação do sistema, não é a pergunta. Ela ainda vê esta frase no app: ✎ para deixar só a pergunta.">sistema: ' + esc(sp.obs) + '</span>' : esc(a.titulo)) + ' <small class="fx-meta">' + esc(casoQuando(a)) + (a.estado === 'respondido' && a.resposta ? ' · resposta: ' + esc(typeof a.resposta === 'object' ? String(a.resposta.valor !== undefined ? a.resposta.valor : JSON.stringify(a.resposta)) : String(a.resposta)) : '') + '</small>';
     var editavel = a.estado === 'rascunho' || a.estado === 'agendado';
+    if (k.ed && k.ed.t === 'av' && k.ed.id === a.id) {
+      return casoEditor('av', a.id, casoCampo('A pergunta que ela lê no app (só a pergunta)', '<input id="caso-ed-titulo" class="t" maxlength="120" style="width:100%" value="' + esc(sp.p) + '">') +
+        (sp.obs ? '<p class="sub" style="margin:6px 0 0">Ao salvar, “' + esc(sp.obs) + '” sai da pergunta dela. É observação do sistema.</p>' : ''));
+    }
     if (k.agenda === a.id) {
       var form = '<div class="feeditem"><div class="fbody"><p style="margin:0 0 6px"><b>Quando ela recebe: ' + esc(a.titulo) + '</b></p>' +
         '<label class="sub">Pausa depois ' + (a.ordem > 1 ? 'do aviso anterior' : 'do primeiro acesso dela') + ' (dias) <select id="caso-ag-dias">' + [0, 1, 2, 3, 5, 7, 14].map(function (n) { return '<option value="' + n + '"' + (n === a.pausa_dias ? ' selected' : '') + '>' + n + '</option>'; }).join('') + '</select></label> ' +
@@ -2274,7 +2284,7 @@ function casoAvisosHtml(k) {
         ' ' + casoBtn('cancelar', a.id, 'Fechar') + '</div></div>';
       return casoLinha(est, meio, '') + form;
     }
-    var btns = editavel ? casoBtn('ag-abrir', a.id, a.estado === 'rascunho' ? 'Aprovar e agendar' : 'Mudar a pausa') : '';
+    var btns = (editavel && a.tipo === 'pergunta' ? casoBtn('ed-av', a.id, 'Editar a pergunta') : '') + (editavel ? casoBtn('ag-abrir', a.id, a.estado === 'rascunho' ? 'Aprovar e agendar' : 'Mudar a pausa') : '');
     if (a.estado === 'agendado' && !a.liberado_em) btns += casoMenu(casoRitmoBtns(Object.assign({ contato_id: k.cid }, a), filaDe(k.avs)[0] === a, ''));
     if (a.estado === 'rascunho' || a.estado === 'agendado') btns += casoBtn('av-cancel', a.id, 'Cancelar');
     return casoLinha(est, meio, btns);
@@ -2391,6 +2401,10 @@ async function casoAcao(acao, id, t) {
   else if (acao === 'aco-pub') r = await supabase.from('caso_acoes').update({ publicada_em: agora }).eq('id', nid);
   else if (acao === 'aco-retirar') r = await supabase.from('caso_acoes').update({ publicada_em: null }).eq('id', nid);
   else if (acao === 'aco-recusar') r = await supabase.from('caso_acoes').update({ estado: 'recusada', publicada_em: null }).eq('id', nid);   // db/crm-passos-revisao.sql
+  else if (acao === 'salvar-av') {
+    var tav = $('caso-ed-titulo') ? $('caso-ed-titulo').value.trim() : ''; if (!tav) { if (t) t.disabled = false; return toast('A pergunta não pode ficar vazia'); }
+    r = await supabase.from('caso_avisos').update({ titulo: tav.slice(0, 120) }).eq('id', nid); k.ed = null;
+  }
   else if (acao === 'salvar-aco') { var ti = $('caso-ed-titulo') ? $('caso-ed-titulo').value.trim() : ''; if (!ti) { if (t) t.disabled = false; return toast('O título não pode ficar vazio'); } var upd = { titulo: ti.slice(0, 160) }, sbx = $('caso-ed-subitens');
     if (sbx) { var lin = String(sbx.value || '').split('\n').map(function (x) { return x.trim().slice(0, 120); }).filter(Boolean); if (lin.length > 6) { if (t) t.disabled = false; return toast('No máximo 6 subitens'); } upd.subitens = lin.length ? lin : null; upd.editado_em = agora; }
     r = await supabase.from('caso_acoes').update(upd).eq('id', nid);
@@ -3757,7 +3771,7 @@ function fxHeaderHtml(c, d) {
 // Catálogo de démarches (cópia do app, processos.json): carregado uma vez; sem ele, tudo cai na démarche padrão.
 var FX_PROC = null, FX_QUANDO = null;   // FX_QUANDO: o "quando" de cada passo do template (guias-quando.json), para o prazo curto do Início
 async function fxCarregaProcessos() {
-  try { var r = await fetch('processos.json?v=2026-11-17.18'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
+  try { var r = await fetch('processos.json?v=2026-11-17.19'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
 }
 // A sessão Checklist: pílulas por démarche, os 4 mais urgentes, pasta do Drive privada e "Ver mais desta sessão".
 // Os passos que a montagem do espaço propôs para ela, com démarche, subitens e origem: o mesmo detalhe do Checklist. Existem antes de ela ter conta.
@@ -3852,7 +3866,7 @@ function fxSemConsent(k) { return k.consent ? '' : '<p class="pill u-media" styl
 // quais faltam). As outras mensagens da equipe (proposta, inteligência, oferta) seguem logo abaixo, com a data de cada uma.
 function fxInicioCorpo(c) {
   var g = fxCasoGuarda(c); if (!g.k) return g.html;
-  var perguntas = g.k.avs.filter(function (a) { return a.tipo === 'pergunta'; }), outros = g.k.avs.filter(function (a) { return a.tipo !== 'pergunta'; });
+  var perguntas = g.k.avs.filter(function (a) { return a.tipo === 'pergunta'; }).sort(function (x, y) { return (/âncora|ancora/i.test(casoSeparaPergunta(y.titulo).obs) ? 1 : 0) - (/âncora|ancora/i.test(casoSeparaPergunta(x.titulo).obs) ? 1 : 0); }), outros = g.k.avs.filter(function (a) { return a.tipo !== 'pergunta'; });
   var lista = function (l, vazio) { return l.length ? casoAvisosHtml({ avs: l, ed: g.k.ed, agenda: g.k.agenda }) : '<div class="empty" style="padding:14px">' + esc(vazio) + '</div>'; };
   return fxSemConsent(g.k) + casoProximaHtml(c, g.k) +
     lista(perguntas, 'Nenhuma pergunta da equipe ainda.') +
@@ -4614,7 +4628,7 @@ async function renderPessoa() {
   if (!c) { $('pessoa-page').innerHTML = '<div class="empty">Pessoa não encontrada.</div>'; return; }
   $('pessoa-page').innerHTML = '<div class="loading">Carregando a ficha…</div>';
   if (fichaV2Ativa() && FX_PROC === null) FX_PROC = await fxCarregaProcessos();
-  if (fichaV2Ativa() && FX_QUANDO === null) { try { var rq = await fetch('guias-quando.json?v=2026-11-17.18'); FX_QUANDO = rq.ok ? await rq.json() : {}; } catch (e) { FX_QUANDO = {}; } }
+  if (fichaV2Ativa() && FX_QUANDO === null) { try { var rq = await fetch('guias-quando.json?v=2026-11-17.19'); FX_QUANDO = rq.ok ? await rq.json() : {}; } catch (e) { FX_QUANDO = {}; } }
   var r = await Promise.all([
     supabase.from('eventos').select('tipo,dados,criado_em').eq('contato_id', c.id).order('criado_em', { ascending: false }).limit(200),
     supabase.from('consentimentos').select('finalidade,aceito,texto,origem,criado_em').eq('contato_id', c.id).order('criado_em', { ascending: false }),

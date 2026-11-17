@@ -274,6 +274,18 @@ console.log('\n== Guias dela: documentos, bilans e mensagens prontas ==');
 }
 
 
+console.log('\n== Pergunta limpa: a observação do sistema não se mistura com a pergunta ==');
+{
+  const MIST = Object.assign({}, AVS[0], { id: 33, titulo: 'Qual é a data de vencimento do VLS-TS dela? É a âncora do cronograma.', estado: 'agendado' });
+  fixture({ avs: [MIST] }); await pagina();
+  check('a pergunta aparece sozinha e a observação vira etiqueta "sistema"', /Qual é a data de vencimento do VLS-TS dela\?/.test(html()) && /class="fx-aviso fx-sis"[^>]*>sistema: É a âncora do cronograma\./.test(html()));
+  await click({ caso: 'ed-av', id: '33' });
+  check('editar a pergunta abre só a pergunta (sem a observação) e avisa o que sai', /id="caso-ed-titulo"[^>]*value="Qual é a data de vencimento do VLS-TS dela\?"/.test(html()) && /sai da pergunta dela/.test(html()));
+  el('caso-ed-titulo').value = 'Qual é a data de vencimento do VLS-TS dela?';
+  writes.length = 0; await click({ caso: 'salvar-av', id: '33' });
+  check('salvar grava só a pergunta no título do aviso', writes.at(-1).table === 'caso_avisos' && writes.at(-1).row.titulo === 'Qual é a data de vencimento do VLS-TS dela?');
+}
+
 console.log('\n== Escolas que ela acrescentou ==');
 fixture({ itens: [ITENS[0]], escolasDela: [{ id: 1, nome: 'Alliance Française de Lyon', link: 'https://exemplo.org/af', nota: 'Curso intensivo, 20 h.', criado_em: '2026-11-10T10:00:00Z' }, { id: 2, nome: '<img src=x onerror=alert(1)>', link: 'javascript:alert(1)', nota: null, criado_em: '2026-11-11T10:00:00Z' }] }); await pagina();
 check('a ficha mostra as escolas que ela acrescentou: nome, o que ela sabe, data e o site (só https)', /Escolas que ela acrescentou/.test(html()) && /Alliance Française de Lyon/.test(html()) && /Curso intensivo, 20 h\./.test(html()) && /href="https:\/\/exemplo.org\/af"/.test(html()) && /10\/11\/2026/.test(html()));

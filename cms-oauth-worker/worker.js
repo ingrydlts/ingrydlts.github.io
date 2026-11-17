@@ -3115,7 +3115,7 @@ function crmMontagemSistema(cat) {
     '6a. Todo item de checklist leva a démarche (o tipo de checklist a que o passo pertence), UMA destas: ' + Object.keys(CRM_MONT_DEMARCHES).map((k) => k + ' (' + CRM_MONT_DEMARCHES[k] + ')').join(', ') + '; e, quando a conversa justificar, até 6 subitens: os pontos concretos do passo (o que fazer ou reunir). Os subitens seguem a mesma regra do item: nada de exigência, prazo, valor ou lei que não foi dita.',
     '6. checklists: proponha só listas que o percurso desta pessoa pede. Item com fonte oficial leva a fonte (rótulo e link https) e o nível; sem fonte, deixe a fonte de fora: ele ficará "a conferir". É proibido inventar exigência administrativa, prazo, valor ou lei que não foi dito.',
     '7. documentos: o que a pessoa precisa reunir, com os selos que a conversa justificar (traducao, haia, equivaler, original) e os checklists onde aparece.',
-    '8. perguntas_equipe: só perguntas cuja resposta falta e muda o plano, e só com os destinos permitidos.',
+    '8. perguntas_equipe: só perguntas cuja resposta falta e muda o plano, e só com os destinos permitidos. O campo texto é SÓ a pergunta, do jeito que a Ingryd vai fazê-la à pessoa (segunda pessoa, "você", termina em ?), sem explicação, justificativa ou observação do sistema: ela lê esse texto no app. O porquê (ex.: "é a âncora do cronograma") não entra no texto.',
     '9. blocos: listas de contatos que a pessoa deve acionar (escolas, empresas, consulados…). Use SOMENTE estes tipos: ' + cat.blocos.join(', ') + '. Só inclua contatos que a conversa citou.',
     '10. Datas AAAA-MM-DD, só se foram ditas. Use exatamente os valores permitidos de cada lista.',
     '11. Nunca escreva nome, telefone, e-mail, @usuário, número de documento ou endereço em nenhum texto. Fale em "ela". Textos em português, curtos.',
@@ -3127,6 +3127,8 @@ function crmMontagemSistema(cat) {
   ].join('\n');
 }
 
+// A pergunta que ela lê é só a pergunta: o que vier depois do primeiro "?" é observação do sistema e não vai para o app.
+function crmSoAPergunta(t) { const s = String(t || ''), i = s.indexOf('?'); return i >= 0 && s.slice(i + 1).trim() ? s.slice(0, i + 1).trim() : s; }
 function crmMontagemHashCurto(t) { let h = 5381; for (const ch of String(t)) h = ((h * 33) ^ ch.codePointAt(0)) >>> 0; return h.toString(16).padStart(8, '0').slice(0, 6); }
 // Compromissos que nenhum item cobre → pendências para a equipe (pura: mesma entrada, mesma saída).
 function crmMontagemOmissoes(m) {
@@ -3253,7 +3255,7 @@ function crmMontagemValidar(entrada, cat) {
       const op = lista(p.opcoes, 6, 'pergunta.opcoes').map((o) => txt(o, 40, 'pergunta.opcoes', true));
       if (p.resposta_tipo === 'opcoes' && !op.length) F('pergunta de opções precisa de 1 a 6 opções');
       if (p.resposta_tipo === 'data' && op.length) F('pergunta de data não tem opções');
-      const item = { chave: chaveDe(p.chave, 'pergunta', vPer), texto: txt(p.texto, 300, 'pergunta', true), resposta_tipo: p.resposta_tipo, grava_em: p.grava_em };
+      const item = { chave: chaveDe(p.chave, 'pergunta', vPer), texto: crmSoAPergunta(txt(p.texto, 300, 'pergunta', true)), resposta_tipo: p.resposta_tipo, grava_em: p.grava_em };
       if (op.length) item.opcoes = op;
       m.perguntas_equipe.push(item);
     }
