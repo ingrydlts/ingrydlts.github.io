@@ -2,15 +2,15 @@
 // Nada de service_role aqui. O banco é db/crm-fase2.sql; o desenho é o artefato "CRM Por Dentro".
 // Tudo que vem do banco é texto de terceiros (nome, e-mail, pergunta): passa sempre por esc().
 import { supabase } from '/assets/js/supabase-client.js';
-import * as TX from './taxonomia.js?v=2026-11-17.7';   // páginas, famílias e agrupamento dos modelos
-import * as ES from './estudio.js?v=2026-11-17.7';   // os blocos do estúdio de e-mails (entregas 2 e 3)
-import * as EE from './editor-email.js?v=2026-11-17.7';
-import * as EQ from './editor-quem.js?v=2026-11-17.7';
-import * as JR from './jornada.js?v=2026-11-17.7';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
-import * as FX from './ficha.js?v=2026-11-17.7';   // ficha v2: lógica pura (fila, démarches, funil, ações)
-import * as FH from './ficha-html.js?v=2026-11-17.7';   // ficha v2: HTML puro
-import * as PN from './panorama.js?v=2026-11-17.7';
-import * as MT from './montagem.js?v=2026-11-17.7';   // Montagem do espaço a partir do transcript (lógica e HTML puros)   // Panorama dela e O que ela trouxe (lógica e HTML puros)
+import * as TX from './taxonomia.js?v=2026-11-17.8';   // páginas, famílias e agrupamento dos modelos
+import * as ES from './estudio.js?v=2026-11-17.8';   // os blocos do estúdio de e-mails (entregas 2 e 3)
+import * as EE from './editor-email.js?v=2026-11-17.8';
+import * as EQ from './editor-quem.js?v=2026-11-17.8';
+import * as JR from './jornada.js?v=2026-11-17.8';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
+import * as FX from './ficha.js?v=2026-11-17.8';   // ficha v2: lógica pura (fila, démarches, funil, ações)
+import * as FH from './ficha-html.js?v=2026-11-17.8';   // ficha v2: HTML puro
+import * as PN from './panorama.js?v=2026-11-17.8';
+import * as MT from './montagem.js?v=2026-11-17.8';   // Montagem do espaço a partir do transcript (lógica e HTML puros)   // Panorama dela e O que ela trouxe (lógica e HTML puros)
 
 var PERSONAS = {
   au_pair_estudante: 'Au pair → estudante', campus_france: 'Campus France', alternancia_emprego: 'Alternância / emprego',
@@ -3439,7 +3439,7 @@ function fxReset() {
 function fxPrefs() {
   var f = state.fx;
   if (f.prefsLidas) return;
-  var p = FX.lerPrefs(localStorage); f.tour = p.tour; f.ord = p.ord; f.prefsLidas = true;
+  var p = FX.lerPrefs(localStorage); f.tour = p.tour; f.ord = p.ord; f.home = p.home; f.prefsLidas = true;
 }
 function fxContato(c, uid) { return Object.assign({}, c, { user_id: uid || c.user_id || null }); }
 // A fila de hoje: quem tem resposta nova, processo para decidir ou urgência alta (e a pessoa aberta), mais novidades primeiro.
@@ -3659,7 +3659,7 @@ function fxHeaderHtml(c, d) {
 // Catálogo de démarches (cópia do app, processos.json): carregado uma vez; sem ele, tudo cai na démarche padrão.
 var FX_PROC = null, FX_QUANDO = null;   // FX_QUANDO: o "quando" de cada passo do template (guias-quando.json), para o prazo curto do Início
 async function fxCarregaProcessos() {
-  try { var r = await fetch('processos.json?v=2026-11-17.7'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
+  try { var r = await fetch('processos.json?v=2026-11-17.8'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
 }
 // A sessão Checklist: pílulas por démarche, os 4 mais urgentes, pasta do Drive privada e "Ver mais desta sessão".
 // Os passos que a montagem do espaço propôs para ela, com démarche, subitens e origem: o mesmo detalhe do Checklist. Existem antes de ela ter conta.
@@ -3686,6 +3686,7 @@ function fxChecklistCorpo(c) {
 function fxPintaChk(c) { var b = $('fx-chk-corpo'); if (b) b.innerHTML = fxChecklistCorpo(c); }
 // As sessões da aba Plataforma, em pílulas e em dois grupos. O corpo só é montado nas abertas: os ids antigos (dossie-box,
 // ins-box, int-box, chat-fio) existem enquanto a sessão está aberta, e as atualizações ao vivo ignoram o que não está na tela.
+function fxHome() { var f = state.fx; return f.home || FX.HOME_PADRAO.slice(); }
 function fxOrdem() {
   var f = state.fx;
   return f.ord || { app: FX.SESSOES_PADRAO.app.slice(), ela: FX.SESSOES_PADRAO.ela.slice() };
@@ -4170,7 +4171,7 @@ function fxSessoes(c) {
     hist: mk('Histórico', 'Tudo que ela fez no app, dia a dia.', 'hist', function () { return '<div id="int-box">' + interacoesHtml(state.int) + '</div>'; })
   };
   if (c.user_id) mapa.insights = mk('Insights', 'O que o uso do app diz sobre ela, depois do 1:1.', 'insights', function () { return insightsPlatHtml(c); });
-  return FH.htmlSessoes(fxOrdem(), mapa, H_FX, gruposFechados());
+  return FH.htmlSessoes(fxOrdem(), mapa, H_FX, gruposFechados(), fxHome());
 }
 // ---------- Plataforma: a sessão "Insights" (depois do 1:1, com ela no app) ----------
 function insightsDaPlataforma(c, X) {
@@ -4387,7 +4388,15 @@ function fichaClick(el) {
       }
       return true;
     }
+    case 'home': {   // põe a sessão na página inicial (topo) ou tira
+      f.home = FX.alternarHome(fxHome(), ds.id); FX.gravarPrefs(localStorage, { home: f.home }); fxPintaCorpo();
+      var hb = document.querySelector('[data-fx="home"][data-id="' + ds.id + '"]'); if (hb && hb.focus) hb.focus(); return true;
+    }
     case 'mover': {
+      if (ds.area === 'home') {   // dentro da página inicial: só a ordem das fixadas
+        f.home = FX.moverSessao(fxHome(), ds.id, Number(ds.d) < 0 ? -1 : 1); FX.gravarPrefs(localStorage, { home: f.home }); fxPintaCorpo();
+        var hm = document.querySelector('[data-fx="mover"][data-area="home"][data-id="' + ds.id + '"][data-d="' + ds.d + '"]'); if (hm && hm.focus) hm.focus(); return true;
+      }
       var ord = fxOrdem(), area = ord.app.indexOf(ds.id) >= 0 ? 'app' : ord.ela.indexOf(ds.id) >= 0 ? 'ela' : null; if (!area) return true;
       var nova = { app: ord.app.slice(), ela: ord.ela.slice() }; nova[area] = FX.moverSessao(nova[area], ds.id, Number(ds.d) < 0 ? -1 : 1);
       f.ord = nova; FX.gravarPrefs(localStorage, { ord: nova }); fxPintaCorpo();
@@ -4451,7 +4460,7 @@ async function renderPessoa() {
   if (!c) { $('pessoa-page').innerHTML = '<div class="empty">Pessoa não encontrada.</div>'; return; }
   $('pessoa-page').innerHTML = '<div class="loading">Carregando a ficha…</div>';
   if (fichaV2Ativa() && FX_PROC === null) FX_PROC = await fxCarregaProcessos();
-  if (fichaV2Ativa() && FX_QUANDO === null) { try { var rq = await fetch('guias-quando.json?v=2026-11-17.7'); FX_QUANDO = rq.ok ? await rq.json() : {}; } catch (e) { FX_QUANDO = {}; } }
+  if (fichaV2Ativa() && FX_QUANDO === null) { try { var rq = await fetch('guias-quando.json?v=2026-11-17.8'); FX_QUANDO = rq.ok ? await rq.json() : {}; } catch (e) { FX_QUANDO = {}; } }
   var r = await Promise.all([
     supabase.from('eventos').select('tipo,dados,criado_em').eq('contato_id', c.id).order('criado_em', { ascending: false }).limit(200),
     supabase.from('consentimentos').select('finalidade,aceito,texto,origem,criado_em').eq('contato_id', c.id).order('criado_em', { ascending: false }),

@@ -146,7 +146,15 @@ console.log('== Task 12: sessões em pílulas ==');
   let pg = h.el('pessoa-page').innerHTML;
   check('Plataforma tem os dois grupos e as 5 sessões (o Dossiê virou aba)', pg.includes('Acompanhar o app dela') && pg.includes('Conhecer e registrar') && ['chat', 'inicio', 'checklist', 'bilan', 'hist'].every((id) => pg.includes('data-sessao="' + id + '"')) && !pg.includes('data-sessao="dossie"'));
   check('só o Checklist abre por padrão; dossiê fechado não está na página', pg.includes('id="fx-chk-corpo"') && !pg.includes('id="dossie-box"') && !pg.includes('id="int-box"') && !pg.includes('id="chat-box"'));
-  check('ordem padrão: chat, início, checklist', pg.indexOf('data-sessao="chat"') < pg.indexOf('data-sessao="inicio"') && pg.indexOf('data-sessao="inicio"') < pg.indexOf('data-sessao="checklist"'));
+  check('página inicial no topo: Checklist primeiro, depois Conversa e Perguntas da equipe, antes dos grupos', pg.includes('class="fx-home"') && pg.indexOf('data-sessao="checklist"') < pg.indexOf('data-sessao="chat"') && pg.indexOf('data-sessao="chat"') < pg.indexOf('data-sessao="inicio"') && pg.indexOf('data-sessao="inicio"') < pg.indexOf('fx-grupo-app'));
+  await h.click({ fx: 'home', id: 'checklist' });
+  pg = h.el('fx-corpo').innerHTML;
+  check('tirar o Checklist da página inicial: ele desce para o grupo, uma vez só, ', pg.indexOf('data-sessao="checklist"') > pg.indexOf('fx-grupo-app') && pg.split('data-sessao="checklist"').length === 2);
+  await h.click({ fx: 'home', id: 'perfil' });
+  pg = h.el('fx-corpo').innerHTML;
+  check('pôr o Perfil na página inicial: ele sobe para o topo', pg.indexOf('data-sessao="perfil"') < pg.indexOf('fx-grupo-app') && /data-fx="home" data-id="perfil" aria-pressed="true"/.test(pg));
+  await h.click({ fx: 'home', id: 'perfil' }); await h.click({ fx: 'home', id: 'checklist' });
+  pg = h.el('pessoa-page').innerHTML;   // volta ao estado do começo: o padrão (Checklist, Conversa e Perguntas na página inicial)
   // sessão fechada: o repaint ao vivo do dossiê não lança
   let ok = true; try { h.mod.pintaDossie(h.mod.byC('c1')); } catch (e) { ok = false; }
   check('fora da aba Dossiê, pintaDossie não lança', ok);

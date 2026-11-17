@@ -3,8 +3,8 @@
 
 // ---------- Urgência dos passos do checklist (spec §5.4) ----------
 // ChkItem = { step_key, category, label, status, due_date, sort_order } (colunas de buscaChecklist em crm.js).
-export { calcularUso } from './ficha-uso.js?v=2026-11-17.7';
-export * as funil from './funil.js?v=2026-11-17.7';   // Funil por próxima ação (lógica pura); o crm.js usa FX.funil
+export { calcularUso } from './ficha-uso.js?v=2026-11-17.8';
+export * as funil from './funil.js?v=2026-11-17.8';   // Funil por próxima ação (lógica pura); o crm.js usa FX.funil
 const DIA = 86400e3;
 function diasEntre(hoje, data) {
   const a = Date.parse(hoje + 'T00:00:00Z'), b = Date.parse(String(data).slice(0, 10) + 'T00:00:00Z');
@@ -190,10 +190,23 @@ export function normalizarOrdem(salva, padrao) {
   base.forEach((id) => { if (!vistos[id]) out.push(id); });
   return out;
 }
-const CHAVE_ORD = 'crm_ficha_ord_v1', CHAVE_TOUR = 'crm_ficha_tour';
+// Página inicial da ficha: as sessões que ela marcou como importantes ficam no topo, na ordem que ela escolheu. Padrão: Checklist, Conversa e Perguntas da equipe.
+export const HOME_PADRAO = ['checklist', 'chat', 'inicio'];
+const SESSOES_VALIDAS = SESSOES_PADRAO.app.concat(SESSOES_PADRAO.ela, ['insights']);
+export function normalizarHome(v) {
+  const vistos = {};
+  return (Array.isArray(v) ? v : []).filter((id) => { if (typeof id !== 'string' || !SESSOES_VALIDAS.includes(id) || vistos[id]) return false; vistos[id] = 1; return true; });
+}
+// Põe a sessão na página inicial (no fim da lista) ou tira. Devolve uma cópia.
+export function alternarHome(home, id) {
+  const h = normalizarHome(home), i = h.indexOf(id);
+  if (i >= 0) h.splice(i, 1); else if (SESSOES_VALIDAS.includes(id)) h.push(id);
+  return h;
+}
+const CHAVE_ORD = 'crm_ficha_ord_v1', CHAVE_TOUR = 'crm_ficha_tour', CHAVE_HOME = 'crm_ficha_home_v1';
 // localStorage pode estar bloqueado ou cheio: nunca lança.
 export function lerPrefs(storage) {
-  const out = { ord: null, tour: true };
+  const out = { ord: null, tour: true, home: null };
   try {
     const t = storage.getItem(CHAVE_TOUR); if (t === '0') out.tour = false;
   } catch (e) { /* segue com o padrão */ }
@@ -201,11 +214,13 @@ export function lerPrefs(storage) {
     const raw = storage.getItem(CHAVE_ORD), v = raw ? JSON.parse(raw) : null;
     if (v && typeof v === 'object' && !Array.isArray(v)) out.ord = { app: normalizarOrdem(v.app, SESSOES_PADRAO.app), ela: normalizarOrdem(v.ela, SESSOES_PADRAO.ela) };
   } catch (e) { out.ord = null; }
+  try { const raw = storage.getItem(CHAVE_HOME); if (raw) { const v = JSON.parse(raw); if (Array.isArray(v)) out.home = normalizarHome(v); } } catch (e) { out.home = null; }
   return out;
 }
 export function gravarPrefs(storage, prefs) {
   const p = prefs || {};
   try { if (p.ord) storage.setItem(CHAVE_ORD, JSON.stringify({ app: p.ord.app, ela: p.ord.ela })); } catch (e) { /* ignora */ }
+  try { if (Array.isArray(p.home)) storage.setItem(CHAVE_HOME, JSON.stringify(normalizarHome(p.home))); } catch (e) { /* ignora */ }
   try { if (typeof p.tour === 'boolean') storage.setItem(CHAVE_TOUR, p.tour ? '1' : '0'); } catch (e) { /* ignora */ }
 }
 
