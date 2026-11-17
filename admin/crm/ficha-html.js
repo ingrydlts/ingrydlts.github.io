@@ -191,12 +191,43 @@ export function htmlChecklistSessao(d, h) {
   const lista = d.todos ? maisUrgentes(itens, itens.length, hoje) : maisUrgentes(itens, 4, hoje);
   const esc4 = itens.length - 4;
   const passos = '<div class="fx-passos"><h4 class="fx-h4">Passos do checklist</h4>' + (itens.length
-    ? '<ul class="fx-passos-lista">' + lista.map((i) => d.ckEd && d.ckEd === i.step_key ? editorPasso(i, e) : '<li class="fx-passo ' + (i.status === 'concluido' ? 'feito' : i.status === 'arquivado' ? 'arq' : 'pend') + '"><span class="fx-p-t fx-edita" data-dbl="ckEditar" data-id="' + e(i.step_key) + '" tabindex="0" title="Dois cliques (ou Enter) para editar" aria-label="' + e(i.titulo_custom || i.label) + '. Dois cliques ou Enter para editar">' + e(i.titulo_custom || i.label) + (i.nota_custom ? '<small class="fx-p-nota">' + e(i.nota_custom) + '</small>' : '') + '</span>' + rotuloPasso(i, hoje, e, h.fmtDay) + (d.homeRefs && i.status !== 'arquivado' ? botaoHome(d.homeRefs.indexOf(i.step_key) >= 0, i.step_key, e) : '') + '</li>').join('') + '</ul>' +
+    ? '<ul class="fx-passos-lista">' + lista.map((i) => d.ckEd && d.ckEd === i.step_key ? editorPasso(i, e) : '<li class="fx-passo ' + (i.status === 'concluido' ? 'feito' : i.status === 'arquivado' ? 'arq' : 'pend') + '"><span class="fx-p-t fx-edita" data-dbl="ckEditar" data-id="' + e(i.step_key) + '" tabindex="0" title="Clique para abrir · dois cliques (ou Enter) para editar" aria-label="' + e(i.titulo_custom || i.label) + '. Clique para abrir, dois cliques ou Enter para editar">' + e(i.titulo_custom || i.label) + (i.nota_custom ? '<small class="fx-p-nota">' + e(i.nota_custom) + '</small>' : '') + '</span>' + rotuloPasso(i, hoje, e, h.fmtDay) + (d.homeRefs && i.status !== 'arquivado' ? botaoHome(d.homeRefs.indexOf(i.step_key) >= 0, i.step_key, e) : '') + '</li>').join('') + '</ul>' +
       (itens.length > 4 ? '<button type="button" class="link" data-fx="ckTodos" aria-expanded="' + !!d.todos + '">' + (d.todos ? 'Mostrar só os 4 mais urgentes' : 'Ver todos os ' + itens.length + ' passos (' + esc4 + (esc4 === 1 ? ' escondido)' : ' escondidos)')) + '</button>' : '')
     : '<p class="sub" style="margin:0">O checklist dela ainda está vazio.</p>') + '</div>';
   const equipe = d.equipeHtml ? '<div class="fx-passos fx-passos-equipe"><h4 class="fx-h4">Combinados só com ela (da montagem do espaço)</h4>' + d.equipeHtml + '</div>' : '';
   return velho + pilulas + drive + passos + equipe +
     '<div class="fx-mais"><button type="button" class="btn" data-fx="ckMais" aria-expanded="' + !!d.mais + '">' + (d.mais ? 'Ver menos desta sessão' : 'Ver mais desta sessão') + '</button>' + (d.mais ? '<div class="fx-mais-corpo">' + (d.extraMais || '') + '</div>' : '') + '</div>';
+}
+
+// ---------- Quadro do passo: o que ela vê ao abrir um passo do checklist (o mesmo desenho do app), com a ação da equipe no rodapé ----------
+// d = { item: { step_key, label, titulo_custom, nota_custom, status, due_date, category }, guia: { c, l, q, p, t, s, k } | null, hoje: 'AAAA-MM-DD' }
+const QD_SVG = { x: 'M6 6l12 12M18 6L6 18', check: 'M5 12.5l4.5 4.5L19 7.5', rel: 'M12 7v5l3 2M12 3a9 9 0 100 18 9 9 0 000-18z', alerta: 'M12 8v5M12 17h.01M12 3l10 18H2z', link: 'M7 17L17 7M9 7h8v8', arq: 'M5 7h14M7 7v12h10V7M10 7V4h4v3', lapis: 'M4 20l1-4L16.5 4.5a2 2 0 013 3L8 19l-4 1z' };
+const qdIco = (n, t) => '<svg viewBox="0 0 24 24" width="' + (t || 16) + '" height="' + (t || 16) + '" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="' + QD_SVG[n] + '"/></svg>';
+// Marcadores do app ({ciclo}, {nivel}…) só se resolvem lá: no CRM saem do texto para não aparecerem como chaves soltas.
+export const limpaMarcadores = (t) => String(t || '').replace(/\s*\{[a-z0-9_.]+\}/gi, '').replace(/\s+([,.;:])/g, '$1');
+export function htmlQuadroPasso(d, h) {
+  const e = h.esc, it = d.item || {}, g = d.guia || null, hoje = d.hoje || '';
+  const titulo = it.titulo_custom || it.label || (g && g.l) || '';
+  const feito = it.status === 'concluido', arq = it.status === 'arquivado';
+  const status = feito ? '<span class="qd-chip ok">' + qdIco('check', 13) + 'Concluído</span>' : arq ? '<span class="qd-chip">Arquivado por ela</span>' : '<span class="qd-chip">Pendente</span>';
+  const venc = it.due_date ? String(it.due_date).slice(0, 10) : '';
+  const prazo = venc ? '<span class="qd-chip prazo' + (!feito && venc < hoje ? ' atraso' : '') + '">' + qdIco('rel', 13) + (venc < hoje && !feito ? 'atrasado · ' : 'até ') + e(h.fmtDay(venc)) + '</span>'
+    : g && g.q ? '<span class="qd-chip prazo">' + qdIco('rel', 13) + e(limpaMarcadores(g.q)) + '</span>' : '';
+  const sec = (rot, corpo, cls) => '<section class="qd-sec' + (cls ? ' ' + cls : '') + '"><h4 class="qd-k">' + rot + '</h4>' + corpo + '</section>';
+  let corpo = '';
+  if (it.nota_custom) corpo += '<p class="qd-nota">' + e(it.nota_custom) + '</p>';
+  if (g && g.p) corpo += sec('Por que importa', '<p class="qd-lead">' + e(limpaMarcadores(g.p)) + '</p>');
+  if (g && g.t) corpo += '<section class="qd-sec qd-atencao"><span class="qd-ico" aria-hidden="true">' + qdIco('alerta', 16) + '</span><div><h4 class="qd-k">Atenção</h4><p>' + e(limpaMarcadores(g.t)) + '</p></div></section>';
+  if (g && g.s && g.s.length) corpo += sec('Passo a passo', '<ol class="qd-passos">' + g.s.map((x) => '<li><span>' + e(limpaMarcadores(x)) + '</span></li>').join('') + '</ol>');
+  const links = ((g && g.k) || []).filter((x) => x.f || /^https:\/\//.test(x.u || ''));
+  if (links.length) corpo += sec('Links de apoio', '<div class="qd-links">' + links.map((x) => x.f ? '<span class="qd-link futuro">' + e(limpaMarcadores(x.l)) + ' · em breve</span>' : '<a class="qd-link" href="' + e(x.u) + '" target="_blank" rel="noopener noreferrer">' + qdIco('link', 14) + '<span>' + e(limpaMarcadores(x.l)) + '</span></a>').join('') + '</div>');
+  if (!g) corpo += '<p class="qd-vazio">Este passo não tem guia no app: ela vê só o título' + (it.nota_custom ? ' e a observação' : '') + '.</p>';
+  return '<div class="qd-fundo" data-fx="qdFechar"></div><div class="qd" role="dialog" aria-modal="true" aria-labelledby="qd-t">' +
+    '<header class="qd-cab"><div class="qd-topo"><span class="qd-kick">' + e((g && g.c) || it.category || 'Passo') + '</span><button type="button" class="qd-x" data-fx="qdFechar" aria-label="Fechar">' + qdIco('x', 18) + '</button></div>' +
+    '<h3 class="qd-tit" id="qd-t">' + e(titulo) + '</h3><div class="qd-meta">' + status + prazo + '</div></header>' +
+    '<div class="qd-corpo">' + corpo + '</div>' +
+    '<footer class="qd-rod"><span class="qd-aviso">É isto que ela vê no app.</span><span class="qd-acoes">' +
+    '<button type="button" class="btn" data-fx="ckEditar" data-id="' + e(it.step_key) + '">' + qdIco('lapis', 14) + ' Editar texto</button><button type="button" class="btn primary" data-fx="qdFechar">Fechar</button></span></footer></div>';
 }
 
 // ---------- Sessões em pílulas (Task 12) ----------

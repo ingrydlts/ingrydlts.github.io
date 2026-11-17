@@ -2,15 +2,15 @@
 // Nada de service_role aqui. O banco é db/crm-fase2.sql; o desenho é o artefato "CRM Por Dentro".
 // Tudo que vem do banco é texto de terceiros (nome, e-mail, pergunta): passa sempre por esc().
 import { supabase } from '/assets/js/supabase-client.js';
-import * as TX from './taxonomia.js?v=2026-11-17.21';   // páginas, famílias e agrupamento dos modelos
-import * as ES from './estudio.js?v=2026-11-17.21';   // os blocos do estúdio de e-mails (entregas 2 e 3)
-import * as EE from './editor-email.js?v=2026-11-17.21';
-import * as EQ from './editor-quem.js?v=2026-11-17.21';
-import * as JR from './jornada.js?v=2026-11-17.21';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
-import * as FX from './ficha.js?v=2026-11-17.21';   // ficha v2: lógica pura (fila, démarches, funil, ações)
-import * as FH from './ficha-html.js?v=2026-11-17.21';   // ficha v2: HTML puro
-import * as PN from './panorama.js?v=2026-11-17.21';
-import * as MT from './montagem.js?v=2026-11-17.21';   // Montagem do espaço a partir do transcript (lógica e HTML puros)   // Panorama dela e O que ela trouxe (lógica e HTML puros)
+import * as TX from './taxonomia.js?v=2026-11-17.23';   // páginas, famílias e agrupamento dos modelos
+import * as ES from './estudio.js?v=2026-11-17.23';   // os blocos do estúdio de e-mails (entregas 2 e 3)
+import * as EE from './editor-email.js?v=2026-11-17.23';
+import * as EQ from './editor-quem.js?v=2026-11-17.23';
+import * as JR from './jornada.js?v=2026-11-17.23';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
+import * as FX from './ficha.js?v=2026-11-17.23';   // ficha v2: lógica pura (fila, démarches, funil, ações)
+import * as FH from './ficha-html.js?v=2026-11-17.23';   // ficha v2: HTML puro
+import * as PN from './panorama.js?v=2026-11-17.23';
+import * as MT from './montagem.js?v=2026-11-17.23';   // Montagem do espaço a partir do transcript (lógica e HTML puros)   // Panorama dela e O que ela trouxe (lógica e HTML puros)
 
 var PERSONAS = {
   au_pair_estudante: 'Au pair → estudante', campus_france: 'Campus France', alternancia_emprego: 'Alternância / emprego',
@@ -3771,7 +3771,7 @@ function fxHeaderHtml(c, d) {
 // Catálogo de démarches (cópia do app, processos.json): carregado uma vez; sem ele, tudo cai na démarche padrão.
 var FX_PROC = null, FX_QUANDO = null;   // FX_QUANDO: o "quando" de cada passo do template (guias-quando.json), para o prazo curto do Início
 async function fxCarregaProcessos() {
-  try { var r = await fetch('processos.json?v=2026-11-17.21'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
+  try { var r = await fetch('processos.json?v=2026-11-17.23'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
 }
 // A sessão Checklist: pílulas por démarche, os 4 mais urgentes, pasta do Drive privada e "Ver mais desta sessão".
 // Os passos que a montagem do espaço propôs para ela, com démarche, subitens e origem: o mesmo detalhe do Checklist. Existem antes de ela ter conta.
@@ -4580,7 +4580,8 @@ function fichaClick(el) {
     case 'appdia': f.dia = Number(ds.v); fxPintaPrevia(); return true;
     case 'camadas': f.camadas = !f.camadas; fxPintaPrevia(); return true;
     case 'dem': { f.dem = ds.v || 'todas'; f.appAba = 'checklist'; var cd = byC(state.sel); if (cd) { fxPintaChk(fxContato(cd, f.dados && f.dados.uid)); fxPintaPrevia(); } return true; }
-    case 'ckEditar': f.ckEd = ds.id; fxRepintaChkDe(); return true;
+    case 'ckEditar': fxFechaQuadro(); f.ckEd = ds.id; fxRepintaChkDe(); return true;
+    case 'qdFechar': fxFechaQuadro(); return true;
     case 'ckCancelar': f.ckEd = null; fxRepintaChkDe(); return true;
     case 'ckSalvar': return fxSalvaPasso(ds.id);
     case 'ckTodos': case 'ckMais': { if (ds.fx === 'ckTodos') f.ckTodos = !f.ckTodos; else f.ckMais = !f.ckMais; var cm = byC(state.sel); if (cm) fxPintaChk(fxContato(cm, f.dados && f.dados.uid)); return true; }
@@ -4637,7 +4638,7 @@ async function renderPessoa() {
   if (!c) { $('pessoa-page').innerHTML = '<div class="empty">Pessoa não encontrada.</div>'; return; }
   $('pessoa-page').innerHTML = '<div class="loading">Carregando a ficha…</div>';
   if (fichaV2Ativa() && FX_PROC === null) FX_PROC = await fxCarregaProcessos();
-  if (fichaV2Ativa() && FX_QUANDO === null) { try { var rq = await fetch('guias-quando.json?v=2026-11-17.21'); FX_QUANDO = rq.ok ? await rq.json() : {}; } catch (e) { FX_QUANDO = {}; } }
+  if (fichaV2Ativa() && FX_QUANDO === null) { try { var rq = await fetch('guias-quando.json?v=2026-11-17.23'); FX_QUANDO = rq.ok ? await rq.json() : {}; } catch (e) { FX_QUANDO = {}; } }
   var r = await Promise.all([
     supabase.from('eventos').select('tipo,dados,criado_em').eq('contato_id', c.id).order('criado_em', { ascending: false }).limit(200),
     supabase.from('consentimentos').select('finalidade,aceito,texto,origem,criado_em').eq('contato_id', c.id).order('criado_em', { ascending: false }),
@@ -6544,7 +6545,33 @@ async function enviarLinkPagamento(btn) {
 
 // ---------- Eventos ----------
 // Editar sem botão: dois cliques (ou Enter) no texto de um passo. data-dbl = a ação; data-id = o passo.
+// ---------- Quadro do passo (checklist dela): clique no passo abre o que ela vê no app; dois cliques editam o texto ----------
+var FX_DETALHE = null, qdTimer = null, qdOrigem = null, qdAberto = false;
+async function fxCarregaDetalhe() {
+  if (FX_DETALHE) return FX_DETALHE;
+  try { var r = await fetch('guias-detalhe.json?v=2026-11-17.23'); FX_DETALHE = r.ok ? await r.json() : {}; } catch (e) { FX_DETALHE = {}; }
+  return FX_DETALHE;
+}
+function fxFechaQuadro() {
+  if (!qdAberto) return;
+  qdAberto = false;
+  var h = document.getElementById('fx-qd-host'); if (h) h.remove();
+  document.body.classList.remove('qd-aberto');
+  if (qdOrigem && qdOrigem.focus && document.contains(qdOrigem)) qdOrigem.focus();
+  qdOrigem = null;
+}
+async function fxAbreQuadro(stepKey, origem) {
+  var chk = state.dos && state.dos.chk; if (!chk || !chk.itens) return;
+  var item = chk.itens.filter(function (i) { return i.step_key === stepKey; })[0]; if (!item) return;
+  var det = await fxCarregaDetalhe();
+  fxFechaQuadro(); qdOrigem = origem || null;
+  var host = document.createElement('div'); host.id = 'fx-qd-host';
+  host.innerHTML = FH.htmlQuadroPasso({ item: item, guia: det[stepKey] || null, hoje: new Date().toISOString().slice(0, 10) }, H_FX);
+  document.body.appendChild(host); document.body.classList.add('qd-aberto'); qdAberto = true;
+  var fe = host.querySelector('.qd-x'); if (fe && fe.focus) fe.focus();
+}
 function editaPorDuploClique(e) {
+  clearTimeout(qdTimer);
   var t = e.target && e.target.closest && e.target.closest('[data-dbl]'); if (!t) return false;
   if (t.dataset.dbl === 'ckEditar') { fichaClick({ dataset: { fx: 'ckEditar', id: t.dataset.id } }); return true; }
   if (/^ed-[a-z]+$/.test(t.dataset.dbl)) { casoAcao(t.dataset.dbl, t.dataset.id, null); return true; }
@@ -6954,3 +6981,17 @@ document.addEventListener('keydown', function (e) {
 });
 
 boot().catch(function (err) { console.error(err); showGate('Erro ao abrir o CRM. Recarregue a página.'); });
+// O quadro do passo registra os seus ouvintes por último: os testes (e a ordem de tratamento) esperam o clique principal primeiro.
+document.addEventListener('click', function (e) {
+  if (e.target && e.target.classList && e.target.classList.contains('qd-fundo')) return fxFechaQuadro();
+  var t = e.target && e.target.closest && e.target.closest('.fx-p-t[data-dbl="ckEditar"]'); if (!t) return;
+  clearTimeout(qdTimer); qdTimer = setTimeout(function () { fxAbreQuadro(t.dataset.id, t); }, 260);   // dois cliques cancelam: viram edição
+});
+document.addEventListener('keydown', function (e) {
+  if (!qdAberto) return;
+  if (e.key === 'Escape') { e.preventDefault(); fxFechaQuadro(); return; }
+  if (e.key !== 'Tab') return;   // o foco fica preso dentro do quadro
+  var fs = Array.prototype.slice.call(document.getElementById('fx-qd-host').querySelectorAll('button, a[href]')); if (!fs.length) return;
+  var a = document.activeElement, i = fs.indexOf(a);
+  if (e.shiftKey && i <= 0) { e.preventDefault(); fs[fs.length - 1].focus(); } else if (!e.shiftKey && (i === fs.length - 1 || i < 0)) { e.preventDefault(); fs[0].focus(); }
+});
