@@ -83,7 +83,7 @@ console.log('== Task 10: ligação aos dados, abas, ações, deep link ==');
   await h.click({ fx: 'agAbrir', i: '99' });
   check('agAbrir com índice inválido não muda o pop-up', h.mod.state.fx.ag.pop === 1);
   await h.click({ fx: 'agIr', k: 'chat', id: 'chat' });
-  check('agIr leva à Plataforma, abre a sessão e fecha o pop-up', h.mod.state.fx.tab === 'plataforma' && h.mod.state.fx.abertas.chat === true && h.mod.state.fx.ag.pop === null);
+  check('agIr leva à Plataforma, abre a sessão e fecha o pop-up', h.mod.state.fx.tab === 'plataforma' && h.mod.state.fx.sessao === 'chat' && h.mod.state.fx.ag.pop === null);
   await h.click({ fx: 'tab', v: 'conversa' });
   check('tab muda a aba', h.mod.state.fx.tab === 'conversa' && h.el('pessoa-page').innerHTML.includes('id="ficha-v2"'));
   await h.click({ fx: 'agAbrir', i: '0' });
@@ -144,9 +144,8 @@ console.log('== Task 12: sessões em pílulas ==');
   };
   let h = await mk({});
   let pg = h.el('pessoa-page').innerHTML;
-  check('Plataforma tem os dois grupos e as 5 sessões (o Dossiê virou aba)', pg.includes('Acompanhar o app dela') && pg.includes('Conhecer e registrar') && ['chat', 'espaco', 'checklist', 'bilan', 'hist'].every((id) => pg.includes('data-sessao="' + id + '"')) && !pg.includes('data-sessao="dossie"'));
-  check('só o Checklist abre por padrão; dossiê fechado não está na página', pg.includes('id="fx-chk-corpo"') && !pg.includes('id="dossie-box"') && !pg.includes('id="int-box"') && !pg.includes('id="chat-box"'));
-  check('a sessão Página inicial é a primeira do grupo e abre por padrão, junto com o Checklist', pg.indexOf('data-sessao="home"') > -1 && pg.indexOf('data-sessao="home"') < pg.indexOf('data-sessao="chat"') && pg.includes('fx-home-grade') || pg.includes('Página inicial'));
+  check('Plataforma tem as pílulas "Ir para" de todas as sessões (o Dossiê virou aba) e nenhum dropdown de sessão', ['home', 'chat', 'checklist', 'espaco', 'perfil', 'eu', 'bilan', 'hist'].every((id) => pg.includes('data-fx="ir" data-id="' + id + '"')) && !pg.includes('data-id="dossie"') && !/data-fx="sessao"|fx-sess-cab|fx-grupo/.test(pg));
+  check('só o Checklist abre por padrão, como página inteira; as outras sessões e o dossiê não estão na página', pg.includes('id="fx-chk-corpo"') && /class="fx-pagina[^"]*" data-sessao="checklist"/.test(pg) && (pg.match(/<section class="fx-pagina /g) || []).length === 1 && !pg.includes('id="dossie-box"') && !pg.includes('id="int-box"') && !pg.includes('id="chat-box"'));
   check('sem o SQL da home, a sessão pede o crm-caso-home.sql (e não quebra)', pg.includes('Página inicial'));
   // sessão fechada: o repaint ao vivo do dossiê não lança
   let ok = true; try { h.mod.pintaDossie(h.mod.byC('c1')); } catch (e) { ok = false; }
@@ -159,41 +158,26 @@ console.log('== Task 12: sessões em pílulas ==');
   check('depois de repintar tudo, a aba Dossiê segue aberta', h.mod.state.fx.tab === 'dossie' && pg.includes('id="dossie-box"'));
   await h.click({ fx: 'tab', v: 'plataforma' });
   check('de volta à Plataforma, o dossiê não aparece lá', !h.el('pessoa-page').innerHTML.includes('id="dossie-box"'));
-  await h.click({ fx: 'sessao', id: 'hist' }); await h.click({ fx: 'sessao', id: 'bilan' }); await h.click({ fx: 'sessao', id: 'chat' }); await h.click({ fx: 'sessao', id: 'espaco' });
-  const tudo = h.el('fx-corpo').innerHTML;
-  check('todas as sessões abrem com os painéis existentes', tudo.includes('id="int-box"') && tudo.includes('id="bilan-box"') && tudo.includes('id="chat-box"'));
-  check('"Perguntas da equipe" e "Material da equipe" moram dentro da sessão Espaço e as notas saíram', tudo.includes('Perguntas da equipe') && tudo.includes('Material da equipe') && !tudo.includes('data-sessao="inicio"') && !tudo.includes('data-sessao="guias"') && !tudo.includes('Início (Equipe Por Dentro)') && !tudo.includes('id="ins-box"') && !tudo.includes('Escreva uma nota para ela'));
-  await h.click({ fx: 'mover', id: 'chat', d: '1' });
-  check('mover troca a ordem e grava crm_ficha_ord_v1', h.mod.state.fx.ord.app.join() === 'home,checklist,chat,espaco,perfil' && JSON.parse(h.store.crm_ficha_ord_v1).app.join() === 'home,checklist,chat,espaco,perfil');
-  await h.click({ fx: 'mover', id: 'home', d: '-1' });
-  check('mover para cima na ponta não muda', h.mod.state.fx.ord.app.join() === 'home,checklist,chat,espaco,perfil');
-  // arrastar
-  const ev = (g, s) => ({ target: { closest: (sel) => (sel === '.fx-grab' ? g : sel === '.fx-sess' ? s : null) }, dataTransfer: { setData() {} }, preventDefault() {} });
-  const chamar = async (tipo, e) => { for (const fn of h.handlers[tipo] || []) await fn(e); };
-  await chamar('dragstart', ev({ dataset: { area: 'app', id: 'chat' } }, null));
-  await chamar('drop', ev(null, { dataset: { area: 'app', sessao: 'espaco' } }));
-  check('arrastar para baixo cai depois do alvo', h.mod.state.fx.ord.app.join() === 'home,checklist,espaco,chat,perfil');
-  await chamar('dragstart', ev({ dataset: { area: 'app', id: 'chat' } }, null));
-  await chamar('drop', ev(null, { dataset: { area: 'app', sessao: 'checklist' } }));
-  check('arrastar para cima cai antes do alvo', h.mod.state.fx.ord.app.join() === 'home,chat,checklist,espaco,perfil');
-  await chamar('dragstart', ev({ dataset: { area: 'app', id: 'chat' } }, null));
-  await chamar('drop', ev(null, { dataset: { area: 'ela', sessao: 'bilan' } }));
-  check('arrastar para outro grupo é ignorado', h.mod.state.fx.ord.app.join() === 'home,chat,checklist,espaco,perfil' && h.mod.state.fx.ord.ela.join() === 'eu,bilan,trouxe,sinais,hist,mais' && h.mod.state.fx.drag === null);
-  h.mod.pararAoVivo();
+  const abreIr = async (id) => { await h.click({ fx: 'ir', id }); return h.el('fx-corpo').innerHTML; };
+  const tHist = await abreIr('hist'), tBilan = await abreIr('bilan'), tChat = await abreIr('chat'), tEsp = await abreIr('espaco');
+  check('cada pílula abre a sessão inteira, com os painéis existentes, uma por vez', tHist.includes('id="int-box"') && !tHist.includes('id="bilan-box"') && tBilan.includes('id="bilan-box"') && !tBilan.includes('id="int-box"') && tChat.includes('id="chat-box"') && !tChat.includes('id="bilan-box"'));
+  check('clicar de novo na pílula da página aberta não fecha nada', (await abreIr('espaco')).includes('Perguntas da equipe') && h.mod.state.fx.sessao === 'espaco');
+  check('"Perguntas da equipe" e "Material da equipe" moram dentro da sessão Espaço e as notas saíram', tEsp.includes('Perguntas da equipe') && tEsp.includes('Material da equipe') && !tEsp.includes('data-sessao="inicio"') && !tEsp.includes('data-sessao="guias"') && !tEsp.includes('id="ins-box"') && !tEsp.includes('Escreva uma nota para ela'));
   // preferência salva volta ao abrir de novo; preferência inválida volta ao padrão
   h = await mk({ crm_ficha_ord_v1: JSON.stringify({ app: ['checklist', 'chat'], ela: ['hist'] }) });
   pg = h.el('pessoa-page').innerHTML;
-  check('a ordem salva é aplicada e completada com o que faltava', pg.indexOf('data-sessao="checklist"') < pg.indexOf('data-sessao="chat"') && pg.indexOf('data-sessao="chat"') < pg.indexOf('data-sessao="espaco"') && pg.indexOf('data-sessao="hist"') < pg.indexOf('data-sessao="bilan"'));
+  const pos = (t, id) => t.indexOf('data-fx="ir" data-id="' + id + '"');
+  check('a ordem salva é a das pílulas, completada com o que faltava', pos(pg, 'checklist') < pos(pg, 'chat') && pos(pg, 'chat') < pos(pg, 'espaco') && pos(pg, 'hist') < pos(pg, 'bilan'));
   h.mod.pararAoVivo();
   h = await mk({ crm_ficha_ord_v1: '{lixo' });
   pg = h.el('pessoa-page').innerHTML;
-  check('ordem inválida volta ao padrão', pg.indexOf('data-sessao="chat"') < pg.indexOf('data-sessao="espaco"'));
+  check('ordem inválida volta ao padrão das pílulas', pos(pg, 'chat') < pos(pg, 'espaco') && pos(pg, 'home') < pos(pg, 'chat'));
   h.mod.pararAoVivo();
-  // localStorage indisponível (Review Focus 5): a ficha abre, mover e fechar o guia funcionam na tela sem lançar
+  // localStorage indisponível: a ficha abre e trocar de sessão pela pílula funciona sem lançar
   const hb = await carregarCrm({ respostas: base({ 'contatos:one': { data: { dossie: {}, user_id: 'u1' }, error: null } }), search: '?ficha=2', storageBloqueado: true });
   let lancou = false;
-  try { await abre(hb, pessoa({ user_id: 'u1' })); await hb.click({ fx: 'mover', id: 'chat', d: '1' }); await hb.click({ fx: 'tourFechar' }); } catch (e) { lancou = true; }
-  check('com localStorage bloqueado nada lança e a ordem muda na tela', !lancou && hb.mod.state.fx.ord.app.join() === 'home,checklist,chat,espaco,perfil' && hb.el('pessoa-page').innerHTML.includes('id="ficha-v2"'));
+  try { await abre(hb, pessoa({ user_id: 'u1' })); await hb.click({ fx: 'ir', id: 'chat' }); await hb.click({ fx: 'tourFechar' }); } catch (e) { lancou = true; }
+  check('com localStorage bloqueado nada lança e a pílula troca a página', !lancou && hb.mod.state.fx.sessao === 'chat' && hb.el('pessoa-page').innerHTML.includes('id="ficha-v2"'));
   hb.mod.pararAoVivo();
 }
 

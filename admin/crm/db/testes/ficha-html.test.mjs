@@ -94,18 +94,14 @@ console.log('== Task 12: sessões em pílulas ==');
     checklist: { titulo: 'Checklist', sub: 'y', corpo: '<p>CORPO-CHK</p>', aberto: false }, bilan: { titulo: 'Bilan', sub: 'z', corpo: '<p>CORPO-BILAN</p>', aberto: true },
     dossie: { titulo: 'Dossiê', sub: 'z', corpo: '', aberto: false }, hist: { titulo: 'Histórico', sub: 'z', corpo: '', aberto: false } };
   const ord = { app: ['inicio', 'chat', 'checklist'], ela: ['bilan', 'dossie', 'hist'] };
-  const ss = FH.htmlSessoes(ord, mapa, h);
-  check('dois grupos com título', ss.includes('Acompanhar o app dela') && ss.includes('Conhecer e registrar'));
-  check('pílulas na ordem recebida', ss.indexOf('data-sessao="inicio"') < ss.indexOf('data-sessao="chat"') && ss.indexOf('data-sessao="chat"') < ss.indexOf('data-sessao="checklist"') && ss.indexOf('data-sessao="checklist"') < ss.indexOf('data-sessao="bilan"'));
-  check('aria-expanded conforme aberto', /data-fx="sessao" data-id="chat"[^>]*aria-expanded="true"/.test(ss) && /data-fx="sessao" data-id="inicio"[^>]*aria-expanded="false"/.test(ss));
-  check('corpo só das abertas', ss.includes('CORPO-CHAT') && ss.includes('CORPO-BILAN') && !ss.includes('CORPO-INICIO') && !ss.includes('CORPO-CHK'));
-  check('alça de arrastar com rótulo', ss.includes('aria-label="Arrastar Conversa com ela"') && count(ss, /draggable="true"/g) === 6);
-  check('dois botões de mover por pílula (Subir/Descer)', count(ss, /data-fx="mover"/g) === 12 && ss.includes('aria-label="Subir Conversa com ela"') && ss.includes('aria-label="Descer Conversa com ela"'));
-  check('título com HTML escapado', ss.includes('&lt;img') && !ss.includes('<img'));
-  check('a pílula sabe o grupo', /data-sessao="chat" data-area="app"/.test(ss) && /data-sessao="bilan" data-area="ela"/.test(ss));
-  check('id desconhecido na ordem é ignorado', !FH.htmlSessoes({ app: ['zzz', 'chat'], ela: [] }, mapa, h).includes('zzz'));
-  const um = FH.htmlSessao({ id: 'chat', titulo: 'T', sub: 's', corpo: '<i>C</i>', aberto: true, area: 'app', ativa: true }, h);
-  check('htmlSessao solta tem o corpo e a classe ativa', um.includes('<i>C</i>') && um.includes('ativa'));
+  const ir = FH.htmlIrPara(ord, mapa, h), pg = FH.htmlPaginaSessao(ord, mapa, h);
+  check('as pílulas "Ir para" vêm na ordem recebida, com um traço entre os dois grupos', ir.indexOf('data-id="inicio"') < ir.indexOf('data-id="chat"') && ir.indexOf('data-id="checklist"') < ir.indexOf('fx-ir-sep') && ir.indexOf('fx-ir-sep') < ir.indexOf('data-id="bilan"'));
+  check('a pílula da página aberta fica marcada (aria-current) e as outras não', /data-id="chat"[^>]*aria-current="page"/.test(ir) && !/data-id="inicio"[^>]*aria-current/.test(ir));
+  check('a página mostra só a primeira sessão aberta (sem dropdowns): o corpo dela e de mais nenhuma', pg.includes('CORPO-CHAT') && !pg.includes('CORPO-BILAN') && !pg.includes('CORPO-INICIO') && !pg.includes('CORPO-CHK') && /<section class="fx-pagina fx-pagina-app" data-sessao="chat"/.test(pg));
+  check('sem alça de arrastar, sem setas de mover e sem aria-expanded', !/draggable|data-fx="mover"|aria-expanded/.test(pg + ir));
+  check('título com HTML escapado', ir.includes('&lt;img') && !ir.includes('<img'));
+  check('sessão do grupo "ela" vira página do grupo ela', FH.htmlPaginaSessao(ord, Object.assign({}, mapa, { chat: Object.assign({}, mapa.chat, { aberto: false }) }), h).includes('data-area="ela"'));
+  check('id desconhecido na ordem é ignorado; sem nenhuma aberta, abre a primeira', !FH.htmlIrPara({ app: ['zzz', 'chat'], ela: [] }, mapa, h).includes('zzz') && FH.htmlPaginaSessao({ app: ['inicio', 'chat'], ela: [] }, { inicio: { titulo: 'I', corpo: '<b>PRIMEIRA</b>', aberto: false }, chat: { titulo: 'C', corpo: '', aberto: false } }, h).includes('PRIMEIRA'));
 }
 
 console.log('== Task 13: fluxo de 3 passos ==');

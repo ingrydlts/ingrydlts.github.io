@@ -1979,3 +1979,26 @@ body.qd-aberto{overflow:hidden}
 select.fx-hm-add{width:100%; min-height:38px; padding:0 12px; border:1px dashed var(--line-2); border-radius:10px; background:transparent; color:var(--ink-3); font-size:12.5px; font-weight:600; cursor:pointer}
 select.fx-hm-add:hover,select.fx-hm-add:focus-visible{border-color:var(--moss); color:var(--ink); background:var(--moss-soft)}
 @media (max-width:640px){ select.fx-hm-add{min-height:44px} .fx-hm-sel{min-height:32px} }
+
+/* ===== Sessões em página inteira, só pelas pílulas "Ir para" (sem dropdown) ===== */
+.fx-ir{position:sticky; top:0; z-index:5; display:flex; flex-wrap:wrap; align-items:center; gap:6px; padding:10px 12px; margin:0 0 14px; background:var(--bg); border:1px solid var(--line); border-radius:16px}
+.fx-ir-t{display:none}
+.fx-ir-b{min-height:36px; padding:0 14px; border:1px solid var(--line-2); border-radius:999px; background:var(--surface); color:var(--ink-2); font-size:13px; font-weight:600; cursor:pointer}
+.fx-ir-b:hover,.fx-ir-b:focus-visible{border-color:var(--moss); color:var(--ink)}
+.fx-ir-b.on,.fx-ir-b[aria-current="page"]{background:var(--ink); border-color:var(--ink); color:var(--surface)}
+.fx-ir-sep{width:1px; height:22px; margin:0 6px; background:var(--line-2)}
+.fx-pagina{min-width:0; padding:4px 20px 22px; background:var(--surface); border:1px solid var(--line); border-radius:22px}
+.fx-pagina-app{border-color:var(--moss)} .fx-pagina-ela{border-color:var(--brown)}
+.fx-pagina-cab{display:flex; align-items:center; gap:12px; padding:14px 2px 14px; margin-bottom:14px; border-bottom:1px solid var(--line)}
+.fx-pagina-ela .fx-sess-ic{background:var(--brown-soft); color:var(--brown)}
+.fx-pagina-tt{flex:1 1 auto; min-width:0}
+.fx-pagina-tt h3{margin:0; font-family:var(--display); font-size:21px; font-weight:700; line-height:1.2; letter-spacing:-.01em}
+.fx-pagina-tt p{margin:3px 0 0; font-size:13px; color:var(--ink-3)}
+.fx-pagina-corpo{min-width:0; overflow-wrap:anywhere}
+@media (max-width:640px){
+  .fx-ir{flex-wrap:nowrap; overflow-x:auto; scrollbar-width:none; border-radius:14px}
+  .fx-ir::-webkit-scrollbar{display:none}
+  .fx-ir-b{flex:none; min-height:40px}
+  .fx-pagina{padding:2px 14px 18px; border-radius:18px}
+  .fx-pagina-tt h3{font-size:19px}
+}

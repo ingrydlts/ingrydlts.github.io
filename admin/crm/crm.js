@@ -2,15 +2,15 @@
 // Nada de service_role aqui. O banco é db/crm-fase2.sql; o desenho é o artefato "CRM Por Dentro".
 // Tudo que vem do banco é texto de terceiros (nome, e-mail, pergunta): passa sempre por esc().
 import { supabase } from '/assets/js/supabase-client.js';
-import * as TX from './taxonomia.js?v=2026-11-17.25';   // páginas, famílias e agrupamento dos modelos
-import * as ES from './estudio.js?v=2026-11-17.25';   // os blocos do estúdio de e-mails (entregas 2 e 3)
-import * as EE from './editor-email.js?v=2026-11-17.25';
-import * as EQ from './editor-quem.js?v=2026-11-17.25';
-import * as JR from './jornada.js?v=2026-11-17.25';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
-import * as FX from './ficha.js?v=2026-11-17.25';   // ficha v2: lógica pura (fila, démarches, funil, ações)
-import * as FH from './ficha-html.js?v=2026-11-17.25';   // ficha v2: HTML puro
-import * as PN from './panorama.js?v=2026-11-17.25';
-import * as MT from './montagem.js?v=2026-11-17.25';   // Montagem do espaço a partir do transcript (lógica e HTML puros)   // Panorama dela e O que ela trouxe (lógica e HTML puros)
+import * as TX from './taxonomia.js?v=2026-11-17.26';   // páginas, famílias e agrupamento dos modelos
+import * as ES from './estudio.js?v=2026-11-17.26';   // os blocos do estúdio de e-mails (entregas 2 e 3)
+import * as EE from './editor-email.js?v=2026-11-17.26';
+import * as EQ from './editor-quem.js?v=2026-11-17.26';
+import * as JR from './jornada.js?v=2026-11-17.26';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
+import * as FX from './ficha.js?v=2026-11-17.26';   // ficha v2: lógica pura (fila, démarches, funil, ações)
+import * as FH from './ficha-html.js?v=2026-11-17.26';   // ficha v2: HTML puro
+import * as PN from './panorama.js?v=2026-11-17.26';
+import * as MT from './montagem.js?v=2026-11-17.26';   // Montagem do espaço a partir do transcript (lógica e HTML puros)   // Panorama dela e O que ela trouxe (lógica e HTML puros)
 
 var PERSONAS = {
   au_pair_estudante: 'Au pair → estudante', campus_france: 'Campus France', alternancia_emprego: 'Alternância / emprego',
@@ -3556,7 +3556,7 @@ var H_FX = { esc: esc, fmtDay: fmtDay };
 var FX_ABAS = ['conversa', 'plataforma', 'ficha', 'dossie'];
 // Zera o que é "desta pessoa" ao abrir outra ficha. A ordem das sessões e o guia são preferências do navegador e ficam.
 function fxReset() {
-  var f = state.fx; f.tab = null; f.ag = { i: 0, pop: null }; f.dem = 'todas'; f.ckTodos = false; f.ckMais = false; f.ckEd = null; f.abertas = {}; f.flash = null; f.tarefas = []; f.dados = null; f.appAba = 'inicio'; f.dia = 1; f.camadas = false; f.dd = {}; f.tema = null; f.coorte = null; f.urg = [];
+  var f = state.fx; f.tab = null; f.ag = { i: 0, pop: null }; f.dem = 'todas'; f.ckTodos = false; f.ckMais = false; f.ckEd = null; f.abertas = {}; f.sessao = null; f.flash = null; f.tarefas = []; f.dados = null; f.appAba = 'inicio'; f.dia = 1; f.camadas = false; f.dd = {}; f.tema = null; f.coorte = null; f.urg = [];
 }
 function fxPrefs() {
   var f = state.fx;
@@ -3781,7 +3781,7 @@ function fxHeaderHtml(c, d) {
 // Catálogo de démarches (cópia do app, processos.json): carregado uma vez; sem ele, tudo cai na démarche padrão.
 var FX_PROC = null, FX_QUANDO = null;   // FX_QUANDO: o "quando" de cada passo do template (guias-quando.json), para o prazo curto do Início
 async function fxCarregaProcessos() {
-  try { var r = await fetch('processos.json?v=2026-11-17.25'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
+  try { var r = await fetch('processos.json?v=2026-11-17.26'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
 }
 // A sessão Checklist: pílulas por démarche, os 4 mais urgentes, pasta do Drive privada e "Ver mais desta sessão".
 // Os passos que a montagem do espaço propôs para ela, com démarche, subitens e origem: o mesmo detalhe do Checklist. Existem antes de ela ter conta.
@@ -4012,7 +4012,7 @@ function fxSugAcao(ds) {
 function fxImpulso(id) {
   var c = byC(state.sel); if (!c) return true;
   var im = PN.panorama(fxPanoramaDados(c)).imp.filter(function (x) { return x.id === id; })[0]; if (!im) return true;
-  state.chatRasc = im.msg; var f = state.fx; f.abertas.chat = true; fxPintaCorpo();
+  state.chatRasc = im.msg; var f = state.fx; f.sessao = 'chat'; fxPintaCorpo();
   var tx = $('chat-txt'); if (tx) { if (tx.scrollIntoView) tx.scrollIntoView({ block: 'center' }); if (tx.focus) tx.focus(); }
   return true;
 }
@@ -4109,9 +4109,6 @@ function fxPreviaHtml(c) {
   return FH.htmlPreviaApp(fxPreviaDados(c), H_FX);
 }
 function fxPintaPrevia() { var c = byC(state.sel), b = $('fx-previa'); if (c && b) b.innerHTML = fxPreviaHtml(fxContato(c, state.fx.dados && state.fx.dados.uid)); }
-function gruposFechados() { try { return JSON.parse(localStorage.getItem('crm_ficha_grupos_fechados') || '{}') || {}; } catch (e) { return {}; } }
-function gravaGrupoFechado(area, fechado) { var g = gruposFechados(); if (fechado) g[area] = 1; else delete g[area]; try { localStorage.setItem('crm_ficha_grupos_fechados', JSON.stringify(g)); } catch (e) { /* sem localStorage */ } }
-document.addEventListener('toggle', function (e) { var d = e.target; if (d && d.matches && d.matches('details.fx-grupo[data-grupo]')) gravaGrupoFechado(d.dataset.grupo, !d.open); }, true);
 // ---------- Dossiê: a visão geral (a janela-mãe da pessoa) ----------
 // Junta o que as bases já sabem dela (cadastro, quizzes das páginas de entrada, e-mails, perguntas, artigos, 1:1, app, o que a chamada trouxe),
 // mostra onde as fontes batem ou divergem e diz como completar o que falta. Tudo por regra: nada inventado.
@@ -4158,7 +4155,7 @@ function dosMontaMensagem(cid, tipo) {
   var c = byC(cid), falta = c && dosFaltaPorCanal(c, state.dos && state.dos.cid === c.id ? state.dos : null); if (!c || !falta) return;
   var campos = tipo === 'doc' ? falta.doc : falta.conversa, txt = dosMensagemTexto(c, campos, tipo === 'doc');
   if (c.user_id) {   // já está na plataforma: a mensagem vai para o chat do app
-    state.chatRasc = txt; var f = state.fx; f.tab = 'plataforma'; f.hd = null; f.abertas.chat = true; fxRepinta();
+    state.chatRasc = txt; var f = state.fx; f.tab = 'plataforma'; f.hd = null; f.sessao = 'chat'; fxRepinta();
     setTimeout(function () { var tx = $('chat-txt'); if (tx) { tx.value = txt; tx.focus(); } }, 0);
   } else { state.rascunho[cid] = txt; openPessoa(cid, 'conversa'); }
 }
@@ -4368,7 +4365,7 @@ function fxSessoes(c) {
     hist: mk('Histórico', 'Tudo que ela fez no app, dia a dia.', 'hist', function () { return '<div id="int-box">' + interacoesHtml(state.int) + '</div>'; })
   };
   if (c.user_id) mapa.insights = mk('Insights', 'O que o uso do app diz sobre ela, depois do 1:1.', 'insights', function () { return insightsPlatHtml(c); });
-  return { ir: FH.htmlIrPara(fxOrdem(), mapa, H_FX), sessoes: FH.htmlSessoes(fxOrdem(), mapa, H_FX, gruposFechados(), { semIr: true }) };
+  return { ir: FH.htmlIrPara(fxOrdem(), mapa, H_FX), sessoes: FH.htmlPaginaSessao(fxOrdem(), mapa, H_FX) };
 }
 // ---------- Plataforma: a sessão "Insights" (depois do 1:1, com ela no app) ----------
 function insightsDaPlataforma(c, X) {
@@ -4503,7 +4500,13 @@ function fxPos(c) {
 // A prévia do app vai para a aba da sessão que você abriu.
 var FX_ABA_DA_SESSAO = { home: 'inicio', inicio: 'inicio', checklist: 'checklist', espaco: 'espaco', guias: 'espaco', bilan: 'espaco', perfil: 'perfil' };
 function fxPrevia(id) { if (FX_ABA_DA_SESSAO[id]) { state.fx.appAba = FX_ABA_DA_SESSAO[id]; fxPintaPrevia(); } }
-function fxSessaoAberta(id) { var v = state.fx.abertas[id]; return v === undefined ? id === 'checklist' || id === 'home' : !!v; }
+// Uma sessão por vez, em página inteira: o que está aberta é a que a pílula "Ir para" escolheu (Checklist é a de entrada).
+function fxSessaoAtual() { var f = state.fx, o = fxOrdem(), todos = o.app.concat(o.ela); return f.sessao && todos.indexOf(f.sessao) >= 0 ? f.sessao : 'checklist'; }
+function fxSessaoAberta(id) { return id === fxSessaoAtual(); }
+function fxVaiPara(id) {
+  state.fx.sessao = id; fxPintaCorpo(); fxPrevia(id);
+  var nav = document.querySelector('.fx-ir'); if (nav && nav.scrollIntoView) nav.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
 // Atualização ao vivo: só as peças de cima e o corpo do Checklist; o que ela digita (chat, dossiê) não é tocado.
 function fxLive(c) {
   var f = state.fx, d = f.dados; if (!d || f.cid !== c.id) return;
@@ -4516,7 +4519,7 @@ function fxLive(c) {
 function irPara(dest) {
   var f = state.fx; if (!dest) return;
   f.tab = dest.tab;
-  if (dest.sessao) { f.abertas[dest.sessao] = true; f.flash = dest.sessao; }
+  if (dest.sessao) { f.sessao = dest.sessao; f.flash = dest.sessao; }
   fxRepinta();
 }
 function fxFocaPop() { var dlg = document.querySelector('#fx-pop .fx-pop'); if (dlg && dlg.focus) dlg.focus(); }
@@ -4577,29 +4580,7 @@ function fichaClick(el) {
       var t = (f.tarefas || []).filter(function (x) { return x.id === ds.id; })[0] || (f.tarefas || []).filter(function (x) { return x.k === ds.k; })[0] || (f.ag.pop !== null ? f.tarefas[f.ag.pop] : null);
       fxFechaPop(false); if (t) irPara(t.dest); return true;
     }
-    case 'sessao': { f.abertas[ds.id] = !fxSessaoAberta(ds.id); fxPintaCorpo(); if (f.abertas[ds.id]) fxPrevia(ds.id); var tb2 = document.querySelector('[data-fx="sessao"][data-id="' + ds.id + '"]'); if (tb2 && tb2.focus) tb2.focus(); return true; }
-    case 'abrir': {   // abre a sessão (nunca fecha) e leva a tela até ela
-      f.abertas[ds.id] = true; fxPintaCorpo(); fxPrevia(ds.id);
-      var sa = document.querySelector('section.fx-sess[data-sessao="' + ds.id + '"]'); if (sa && sa.scrollIntoView) sa.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      return true;
-    }
-    case 'ir': {
-      // Pílula apagada: abre a sessão e a centraliza na tela. Pílula verde (já aberta): só fecha, sem rolar.
-      if (fxSessaoAberta(ds.id)) { f.abertas[ds.id] = false; fxPintaCorpo(); return true; }
-      f.abertas[ds.id] = true; fxPintaCorpo(); fxPrevia(ds.id);
-      var sc = document.querySelector('section.fx-sess[data-sessao="' + ds.id + '"]');
-      if (sc && sc.scrollIntoView) {
-        var alta = sc.getBoundingClientRect().height > window.innerHeight * 0.9;   // sessão maior que a tela: centralizar cortaria o topo
-        sc.scrollIntoView({ behavior: 'smooth', block: alta ? 'start' : 'center' });
-      }
-      return true;
-    }
-    case 'mover': {
-      var ord = fxOrdem(), area = ord.app.indexOf(ds.id) >= 0 ? 'app' : ord.ela.indexOf(ds.id) >= 0 ? 'ela' : null; if (!area) return true;
-      var nova = { app: ord.app.slice(), ela: ord.ela.slice() }; nova[area] = FX.moverSessao(nova[area], ds.id, Number(ds.d) < 0 ? -1 : 1);
-      f.ord = nova; FX.gravarPrefs(localStorage, { ord: nova }); fxPintaCorpo();
-      var mb = document.querySelector('[data-fx="mover"][data-id="' + ds.id + '"][data-d="' + ds.d + '"]'); if (mb && mb.focus) mb.focus(); return true;
-    }
+    case 'sessao': case 'abrir': case 'ir': fxVaiPara(ds.id); return true;
     case 'appaba': f.appAba = ds.v; fxPintaPrevia(); return true;
     case 'appdia': f.dia = Number(ds.v); fxPintaPrevia(); return true;
     case 'camadas': f.camadas = !f.camadas; fxPintaPrevia(); return true;
@@ -4632,37 +4613,13 @@ function fxTecla(e) {
   }
 }
 document.addEventListener('keydown', fxTecla);
-// Arrastar sessão: só dentro do próprio grupo; quem não puder arrastar usa as setas ↑ ↓ (mesma função, FX.reordenarSessao).
-document.addEventListener('dragstart', function (e) {
-  var g = e.target && e.target.closest && e.target.closest('.fx-grab'); if (!g) return;
-  state.fx.drag = { area: g.dataset.area, id: g.dataset.id };
-  try { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', g.dataset.id); } catch (x) { /* sem dataTransfer */ }
-});
-document.addEventListener('dragover', function (e) {
-  var dr = state.fx && state.fx.drag; if (!dr) return;
-  var s = e.target && e.target.closest && e.target.closest('.fx-sess');
-  if (s && s.dataset.area === dr.area) e.preventDefault();
-});
-document.addEventListener('drop', function (e) {
-  var dr = state.fx && state.fx.drag; if (!dr) return;
-  state.fx.drag = null;
-  var s = e.target && e.target.closest && e.target.closest('.fx-sess');
-  if (!s || s.dataset.area !== dr.area) return;   // outro grupo: ignora
-  e.preventDefault();
-  var ord = fxOrdem(), lista = ord[dr.area], de = lista.indexOf(dr.id), para = lista.indexOf(s.dataset.sessao);
-  if (de < 0 || para < 0 || de === para) return;
-  var antes = de < para ? (lista[para + 1] === undefined ? null : lista[para + 1]) : s.dataset.sessao;   // arrastou para baixo: cai depois do alvo
-  var nova = { app: ord.app.slice(), ela: ord.ela.slice() }; nova[dr.area] = FX.reordenarSessao(lista, dr.id, antes);
-  state.fx.ord = nova; FX.gravarPrefs(localStorage, { ord: nova }); fxPintaCorpo();
-});
-document.addEventListener('dragend', function () { if (state.fx) state.fx.drag = null; });
 document.addEventListener('scroll', function (e) { var t = e.target; if (t && t.classList && t.classList.contains('fx-car')) fxCarScroll(t); }, true);
 async function renderPessoa() {
   var c = byC(state.sel);
   if (!c) { $('pessoa-page').innerHTML = '<div class="empty">Pessoa não encontrada.</div>'; return; }
   $('pessoa-page').innerHTML = '<div class="loading">Carregando a ficha…</div>';
   if (fichaV2Ativa() && FX_PROC === null) FX_PROC = await fxCarregaProcessos();
-  if (fichaV2Ativa() && FX_QUANDO === null) { try { var rq = await fetch('guias-quando.json?v=2026-11-17.25'); FX_QUANDO = rq.ok ? await rq.json() : {}; } catch (e) { FX_QUANDO = {}; } }
+  if (fichaV2Ativa() && FX_QUANDO === null) { try { var rq = await fetch('guias-quando.json?v=2026-11-17.26'); FX_QUANDO = rq.ok ? await rq.json() : {}; } catch (e) { FX_QUANDO = {}; } }
   var r = await Promise.all([
     supabase.from('eventos').select('tipo,dados,criado_em').eq('contato_id', c.id).order('criado_em', { ascending: false }).limit(200),
     supabase.from('consentimentos').select('finalidade,aceito,texto,origem,criado_em').eq('contato_id', c.id).order('criado_em', { ascending: false }),
@@ -6573,7 +6530,7 @@ async function enviarLinkPagamento(btn) {
 var FX_DETALHE = null, qdTimer = null, qdOrigem = null, qdAberto = false;
 async function fxCarregaDetalhe() {
   if (FX_DETALHE) return FX_DETALHE;
-  try { var r = await fetch('guias-detalhe.json?v=2026-11-17.25'); FX_DETALHE = r.ok ? await r.json() : {}; } catch (e) { FX_DETALHE = {}; }
+  try { var r = await fetch('guias-detalhe.json?v=2026-11-17.26'); FX_DETALHE = r.ok ? await r.json() : {}; } catch (e) { FX_DETALHE = {}; }
   return FX_DETALHE;
 }
 function fxFechaQuadro() {
@@ -6651,7 +6608,7 @@ document.addEventListener('click', async function (e) {
   if (t.dataset.insacao) {
     var cc0 = byC(state.sel); if (!cc0) return;
     if (t.dataset.insacao === 'dossie') { state.fx.tab = 'dossie'; return fxRepinta(); }
-    state.fx.abertas.chat = true; state.fx.flash = 'chat'; return fxPintaCorpo();
+    state.fx.sessao = 'chat'; state.fx.flash = 'chat'; return fxPintaCorpo();
   }
   if (t.dataset.openconv) return openPessoa(t.dataset.openconv, 'conversa');
   if (t.dataset.tplpick) return abrirModelosPicker(t.dataset.tplpick);

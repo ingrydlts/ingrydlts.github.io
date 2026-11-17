@@ -235,37 +235,22 @@ export function htmlQuadroPasso(d, h) {
 const ICONE_SESSAO = { home: 'M3 10l9-7 9 7v10a1 1 0 01-1 1h-5v-6H9v6H4a1 1 0 01-1-1z', chat: 'M4 5h16v11H9l-5 4z', checklist: 'M5 12.5l4.5 4.5L19 7.5', espaco: 'M4 5h7v14H4zM13 5h7v6h-7zM13 13h7v6h-7z',
   perfil: 'M12 12a4 4 0 100-8 4 4 0 000 8zM4 21c0-4 4-6 8-6s8 2 8 6', eu: 'M12 3l2.5 5.5L20 9l-4 4 1 6-5-3-5 3 1-6-4-4 5.5-.5z', bilan: 'M7 3h10v18l-5-3-5 3z', trouxe: 'M4 8h16v12H4zM9 8V5h6v3',
   sinais: 'M3 17l5-6 4 3 5-8 4 5', hist: 'M12 7v5l3 2M12 3a9 9 0 100 18 9 9 0 000-18z', mais: 'M6 12h.01M12 12h.01M18 12h.01', insights: 'M12 3a6 6 0 00-4 10.5V17h8v-3.5A6 6 0 0012 3zM9 21h6' };
-// Cartão de sessão no padrão da Ficha-universo: pílula com ícone redondo, título em Fraunces, a contagem curta à direita e a seta de abrir.
-// s = { id, titulo, sub, corpo, aberto, area: 'app'|'ela', ativa }.
-export function htmlSessao(s, h) {
-  const e = h.esc, ic = ICONE_SESSAO[s.id] || ICONE_SESSAO.mais;
-  return '<section class="fx-sess' + (s.aberto ? ' aberta' : '') + (s.ativa ? ' ativa' : '') + '" data-sessao="' + e(s.id) + '" data-area="' + e(s.area) + '">' +
-    '<div class="fx-sess-cab">' +
-    '<span class="fx-grab" draggable="true" role="img" aria-label="Arrastar ' + e(s.titulo) + '" data-id="' + e(s.id) + '" data-area="' + e(s.area) + '">⋮⋮</span>' +
-    '<button type="button" class="fx-sess-t" title="' + e(s.sub || '') + '" data-fx="sessao" data-id="' + e(s.id) + '" aria-expanded="' + !!s.aberto + '" aria-controls="fx-s-' + e(s.id) + '">' +
-    '<span class="fx-sess-ic" aria-hidden="true"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="' + ic + '"/></svg></span>' +
-    '<span class="fx-sess-nome">' + e(s.titulo) + '</span>' + (s.meta ? '<small class="fx-sess-meta">' + e(s.meta) + '</small>' : '') + '<span class="fx-sess-sub">' + e(s.sub || '') + '</span></button>' +
-    '<span class="fx-mover"><button type="button" class="fx-seta" data-fx="mover" data-id="' + e(s.id) + '" data-area="' + e(s.area) + '" data-d="-1" aria-label="Subir ' + e(s.titulo) + '">↑</button>' +
-    '<button type="button" class="fx-seta" data-fx="mover" data-id="' + e(s.id) + '" data-area="' + e(s.area) + '" data-d="1" aria-label="Descer ' + e(s.titulo) + '">↓</button></span></div>' +
-    (s.aberto ? '<div class="fx-sess-corpo" id="fx-s-' + e(s.id) + '">' + (s.corpo || '') + '</div>' : '') + '</section>';
+// A sessão aberta ocupa a página inteira (sem dropdown): cabeçalho com ícone e título em Fraunces, e o corpo logo abaixo.
+// As outras sessões só se alcançam pelas pílulas "Ir para". mapa = { id: { titulo, sub, corpo, aberto, meta } }; ord = { app: [ids], ela: [ids] }.
+export function htmlPaginaSessao(ord, mapa, h) {
+  const e = h.esc, todos = [].concat((ord && ord.app) || [], (ord && ord.ela) || []).filter((id) => mapa && mapa[id]);
+  const id = todos.find((x) => mapa[x].aberto) || todos[0]; if (!id) return '';
+  const s = mapa[id], area = ((ord && ord.ela) || []).indexOf(id) >= 0 ? 'ela' : 'app', ic = ICONE_SESSAO[id] || ICONE_SESSAO.mais;
+  return '<section class="fx-pagina fx-pagina-' + area + '" data-sessao="' + e(id) + '" data-area="' + area + '" aria-labelledby="fx-pg-t">' +
+    '<header class="fx-pagina-cab"><span class="fx-sess-ic" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="' + ic + '"/></svg></span>' +
+    '<div class="fx-pagina-tt"><h3 id="fx-pg-t">' + e(s.titulo) + '</h3>' + (s.sub ? '<p>' + e(s.sub) + '</p>' : '') + '</div>' + (s.meta ? '<small class="fx-sess-meta">' + e(s.meta) + '</small>' : '') + '</header>' +
+    '<div class="fx-pagina-corpo" id="fx-s-' + e(id) + '">' + (s.corpo || '') + '</div></section>';
 }
-// ord = { app: [ids], ela: [ids] }; mapa = { id: { titulo, sub, corpo, aberto } }. Dois grupos, como no spec §5.2.
-// A barra "Ir para": um botão por sessão. Fica fora da coluna das sessões, em largura total, logo abaixo do Pagamento.
+// As pílulas "Ir para": a única porta para as sessões. A da página aberta fica marcada (aria-current); um traço separa os dois grupos.
 export function htmlIrPara(ord, mapa, h) {
-  const todos = [].concat((ord && ord.app) || [], (ord && ord.ela) || []).filter((id) => mapa && mapa[id]);
-  return todos.length ? '<nav class="fx-ir" aria-label="Ir para uma sessão"><span class="fx-ir-t">Ir para</span>' + todos.map((id) => '<button type="button" class="fx-ir-b' + (mapa[id].aberto ? ' on' : '') + '" data-fx="ir" data-id="' + h.esc(id) + '">' + h.esc(mapa[id].titulo) + '</button>').join('') + '</nav>' : '';
-}
-// opcoes.semIr: não desenha a barra "Ir para" (quem chama a põe em largura total, com htmlIrPara).
-export function htmlSessoes(ord, mapa, h, fechados, opcoes) {
-  const fech = fechados || {};
-  const grupo = (area, titulo, dica) => {
-    const itens = ((ord && ord[area]) || []).filter((id) => mapa && mapa[id]);
-    return '<details class="fx-grupo fx-grupo-' + area + '" data-grupo="' + area + '"' + (fech[area] ? '' : ' open') + '><summary class="fx-grupo-sum"><h3 class="fx-h3" id="fx-g-' + area + '">' + h.esc(titulo) + '</h3>' +
-      '<span class="sub fx-grupo-dica">' + h.esc(dica) + '</span><span class="fx-grupo-n">' + itens.length + (itens.length === 1 ? ' sessão' : ' sessões') + '</span><span class="fx-grupo-chev" aria-hidden="true">▾</span></summary>' +
-      itens.map((id) => htmlSessao(Object.assign({ id, area }, mapa[id]), h)).join('') + '</details>';
-  };
-  const ir = opcoes && opcoes.semIr ? '' : htmlIrPara(ord, mapa, h);
-  return '<div class="fx-sessoes">' + ir + grupo('app', 'Acompanhar o app dela', 'O que ela vê e faz no app.') + grupo('ela', 'Conhecer e registrar', 'Só a equipe vê.') + '</div>';
+  const grupo = (ids) => ids.filter((id) => mapa && mapa[id]).map((id) => '<button type="button" class="fx-ir-b' + (mapa[id].aberto ? ' on' : '') + '" data-fx="ir" data-id="' + h.esc(id) + '"' + (mapa[id].aberto ? ' aria-current="page"' : '') + '>' + h.esc(mapa[id].titulo) + '</button>').join('');
+  const app = grupo((ord && ord.app) || []), ela = grupo((ord && ord.ela) || []);
+  return app || ela ? '<nav class="fx-ir" aria-label="Sessões da ficha">' + app + (app && ela ? '<span class="fx-ir-sep" aria-hidden="true"></span>' : '') + ela + '</nav>' : '';
 }
 
 // ---------- Aba Ficha: fluxo de 3 passos (Task 13) ----------
