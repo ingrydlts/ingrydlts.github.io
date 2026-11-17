@@ -169,7 +169,7 @@ fixture({ avs: [AVS[1]].map((x) => Object.assign({}, x, { liberado_em: '2026-11-
 check('o que já saiu não tem botões de ritmo nem aparece como "próxima mensagem"', !/Próxima mensagem para/.test(html()) && !html().includes('data-caso="atrasar-1"'));
 
 fixture({ itens: [ITENS[1]] }); await pagina();
-check('prazo-chave genérico avisa que ela só vê o título; título específico não avisa', /Diga a que se refere/.test(html()));
+check('prazo-chave genérico avisa que ela só vê o título; título específico não avisa', /sem nome: dois cliques para dizer qual prazo é/.test(html()));
 fixture({ itens: [Object.assign({}, ITENS[1], { titulo: 'Fim da inscrição na Alliance Française' })] }); await pagina();
 check('título específico não recebe o aviso', !/Diga a que se refere/.test(html()));
 
@@ -244,6 +244,7 @@ console.log('\n== Guias dela: documentos, bilans e mensagens prontas ==');
   check('salvar o bilan grava título, palavras, resumo e vira "revisado"', e1.row.titulo === 'Primeira conversa' && e1.row.dados.palavras.join() === 'PVT,visto de estudante,Alliance' && e1.row.resumo === 'Do PVT ao visto de estudante' && e1.row.estado === 'revisado' && JSON.stringify(e1.row.dados.secoes) === '[]');
   await click({ caso: 'ed-item', id: '40' });
   check('linha minimalista: ponto de estado com rótulo, ícones no lugar dos botões de texto e dois cliques no texto para editar', /class="fx-dot (ok|mid|off)"[^>]*aria-label="[^"]+"/.test(html()) && /data-dbl="ed-item" data-id="41"/.test(html()) && /class="fx-ic"[^>]*data-caso="ed-item"[^>]*aria-label="Editar"/.test(html()) && !/>Marcar como revisado<|>Publicar para ela</.test(html()));
+  check('documento que a equipe manda tem o clipe para anexar arquivo direto da linha', /class="fx-ic fx-anexar[^"]*"[^>]*>[\s\S]*?<input type="file" data-anexar="41"/.test(html()));
   check('o bilan tem o campo das seções (ela lê o que está aqui)', /id="caso-ed-secoes"/.test(html()));
   el('caso-ed-secoes').value = '# Dúvidas\nA data da L1\n? Prazo exato\n\n# Próximos passos\nAchar professora';
   writes.length = 0; await click({ caso: 'salvar-item', id: '40' });

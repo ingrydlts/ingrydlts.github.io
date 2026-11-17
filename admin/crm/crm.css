@@ -1862,3 +1862,15 @@ button.bar-r b{text-align:right; font-variant-numeric:tabular-nums}
   .fx-slot{display:none}
   .fx-ln-b{flex-wrap:nowrap}
 }
+
+/* ===== Espaço com subseções, aviso de título genérico, anexar arquivo ===== */
+.fx-sb{border-top:1px solid var(--line); padding:2px 0}
+.fx-sb:first-child{border-top:0}
+.fx-sb>summary{cursor:pointer; list-style:none; display:flex; align-items:center; gap:8px; min-height:38px; font-size:11.5px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-2)}
+.fx-sb>summary::-webkit-details-marker{display:none}
+.fx-sb>summary::before{content:""; width:6px; height:6px; border-right:2px solid var(--ink-3); border-bottom:2px solid var(--ink-3); transform:rotate(-45deg); transition:transform .15s}
+.fx-sb[open]>summary::before{transform:rotate(45deg)}
+.fx-sb-c{padding:2px 0 10px}
+.fx-aviso{display:inline-block; margin-left:6px; padding:1px 8px; border-radius:999px; background:var(--amber-soft); color:var(--amber); font-size:11.5px; font-weight:500}
+.fx-anexar{position:relative; cursor:pointer}
+.fx-anexar input{position:absolute; inset:0; width:100%; height:100%; opacity:0; cursor:pointer}

@@ -168,7 +168,7 @@ export function ordenarFila(itens) {
 
 // ---------- Ordem das sessões e preferências do navegador (spec §5.2) ----------
 // Fase 2: o app dela ganha Espaço, Guias e Perfil; "Conhecer e registrar" ganha Só eu, O que ela trouxe e Mais detalhes.
-export const SESSOES_PADRAO = { app: ['home', 'chat', 'inicio', 'checklist', 'espaco', 'guias', 'perfil'], ela: ['eu', 'bilan', 'trouxe', 'sinais', 'hist', 'mais'] };
+export const SESSOES_PADRAO = { app: ['home', 'chat', 'checklist', 'espaco', 'perfil'], ela: ['eu', 'bilan', 'trouxe', 'sinais', 'hist', 'mais'] };
 export function moverSessao(ordem, id, delta) {
   const o = (ordem || []).slice(), i = o.indexOf(id), j = i + delta;
   if (i < 0 || j < 0 || j >= o.length) return o;

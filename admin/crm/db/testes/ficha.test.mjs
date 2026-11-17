@@ -103,7 +103,7 @@ console.log('== Task 7: sessões e preferências ==');
   check('normalizar descarta e acrescenta', FX.normalizarOrdem(['x', 'b'], ['a', 'b', 'c']).join() === 'b,a,c');
   check('normalizar lixo', FX.normalizarOrdem('lixo', ['a']).join() === 'a' && FX.normalizarOrdem(null, ['a', 'b']).join() === 'a,b');
   check('normalizar repetidos', FX.normalizarOrdem(['b', 'b', 'a'], ['a', 'b']).join() === 'b,a');
-  check('padrão das sessões da fase 1', FX.SESSOES_PADRAO.app.join() === 'home,chat,inicio,checklist,espaco,guias,perfil' && FX.SESSOES_PADRAO.ela.join() === 'eu,bilan,trouxe,sinais,hist,mais');   // o dossiê virou aba própria; Espaço, Guias, Perfil, Só eu e O que ela trouxe entraram no retrabalho
+  check('padrão das sessões da fase 1', FX.SESSOES_PADRAO.app.join() === 'home,chat,checklist,espaco,perfil' && FX.SESSOES_PADRAO.ela.join() === 'eu,bilan,trouxe,sinais,hist,mais');   // o dossiê virou aba própria; Espaço, Guias, Perfil, Só eu e O que ela trouxe entraram no retrabalho
   // Review Focus 5: localStorage indisponível
   const bloqueado = { getItem() { throw new Error('bloqueado'); }, setItem() { throw new Error('cheio'); } };
   let ok = true, p; try { p = FX.lerPrefs(bloqueado); FX.gravarPrefs(bloqueado, { tour: false }); } catch (e) { ok = false; }
@@ -111,11 +111,11 @@ console.log('== Task 7: sessões e preferências ==');
   const mem = {}, st = { getItem: (k) => (k in mem ? mem[k] : null), setItem: (k, v) => { mem[k] = v; } };
   FX.gravarPrefs(st, { ord: { app: ['inicio', 'chat'], ela: ['hist'] }, tour: false });
   const lido = FX.lerPrefs(st);
-  check('grava e lê', lido.tour === false && lido.ord.app.join() === 'home,inicio,chat,checklist,espaco,guias,perfil' && lido.ord.ela.join() === 'hist,eu,bilan,trouxe,sinais,mais');
+  check('grava e lê', lido.tour === false && lido.ord.app.join() === 'home,chat,checklist,espaco,perfil' && lido.ord.ela.join() === 'hist,eu,bilan,trouxe,sinais,mais');
   check('chaves do spec', 'crm_ficha_ord_v1' in mem && 'crm_ficha_tour' in mem);
   mem.crm_ficha_ord_v1 = JSON.stringify({ app: ['chat'], ela: ['hist', 'dossie', 'bilan'] });
   mem.crm_ficha_ord_v1 = JSON.stringify({ app: ['chat', 'checklist', 'inicio'], ela: ['hist'] });
-  check('ordem guardada antes da Página inicial: ela entra no TOPO, não no fim', FX.lerPrefs(st).ord.app[0] === 'home' && FX.lerPrefs(st).ord.app.slice(1, 4).join() === 'chat,checklist,inicio');
+  check('ordem guardada antes da Página inicial: ela entra no TOPO, não no fim', FX.lerPrefs(st).ord.app[0] === 'home' && FX.lerPrefs(st).ord.app.slice(1, 4).join() === 'chat,checklist,espaco');
   mem.crm_ficha_ord_v1 = JSON.stringify({ app: ['chat'], ela: ['hist', 'dossie', 'bilan'] });
   check('ordem salva com o dossiê antigo: ele some, o resto fica', FX.lerPrefs(st).ord.ela.join() === 'hist,bilan,eu,trouxe,sinais,mais');
   mem.crm_ficha_ord_v1 = '{lixo'; check('JSON inválido volta ao padrão', FX.lerPrefs(st).ord === null);
