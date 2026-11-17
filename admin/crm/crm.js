@@ -2054,6 +2054,23 @@ function casoAcoesHtml(k, dono) {
     return casoLinha((vis ? pub : casoPil('Só equipe')), (fim ? '<s>' + esc(a.titulo) + '</s>' : esc(a.titulo)) + ' <span class="sub">· ' + esc(meta) + (fim ? ' · concluída' + (a.concluida_por === 'ela' ? ' por ela' : ' pela equipe') : '') + '</span>', btns);
   }).join('');
 }
+// Seções do bilan <-> texto editável. "# Título" abre seção; cada linha é um item; "? texto" = em conferência.
+function casoSecoesTexto(secoes) {
+  return (Array.isArray(secoes) ? secoes : []).map(function (sec) {
+    return '# ' + (sec.titulo || '') + '\n' + (Array.isArray(sec.itens) ? sec.itens : []).map(function (x) { return (x.estado === 'em_conferencia' ? '? ' : '') + (x.texto || ''); }).join('\n');
+  }).join('\n\n');
+}
+function casoTextoSecoes(txt) {
+  var secoes = [], atual = null;
+  String(txt || '').split('\n').forEach(function (l) {
+    l = l.trim(); if (!l) return;
+    if (l.charAt(0) === '#') { atual = { titulo: l.replace(/^#+\s*/, '').slice(0, 80) || 'Sem título', itens: [] }; secoes.push(atual); return; }
+    if (!atual) { atual = { titulo: 'Conversa', itens: [] }; secoes.push(atual); }
+    var conf = l.charAt(0) === '?'; if (conf) l = l.replace(/^\?\s*/, '');
+    if (l) atual.itens.push({ texto: l.slice(0, 220), estado: conf ? 'em_conferencia' : 'confirmado' });
+  });
+  return secoes.slice(0, 8).map(function (sec) { sec.itens = sec.itens.slice(0, 12); return sec; });
+}
 function casoItemResumo(it) {
   var d = it.dados || {};
   if (it.tipo === 'marco') return d.data ? fmtDay(d.data) + (d.a_confirmar ? ' (a confirmar)' : '') : (d.nota || 'a confirmar');
@@ -2084,7 +2101,7 @@ function casoItemCampos(it) {
       casoCampo('Custo estimado (€)', '<input id="caso-ed-custo" type="number" min="0" max="100000" step="50" style="min-height:40px" value="' + esc(d.custo_eur == null ? '' : d.custo_eur) + '">') +
       casoCampo('Site (https://…)', '<input id="caso-ed-link" class="t" maxlength="500" style="width:100%" value="' + esc(it.link || '') + '">');
   }
-  if (it.tipo === 'documento') {
+  if (it.tipo === 'documento' && d.direcao !== 'recebe') {
     // Os selos (o que o documento exige) aparecem no Checklist dela como palavras-chave; só para o que ela reúne.
     var selosAtuais = (d && d.selos) || [], selosHtml = '';
     if (d.direcao !== 'recebe') {
@@ -2104,7 +2121,8 @@ function casoItemCampos(it) {
     return tit('Nome da conversa (ela lê este título)') +
       casoCampo('Dia da conversa', '<input id="caso-ed-data" type="date" style="min-height:40px" value="' + esc(d.data || '') + '">') +
       casoCampo('Palavras-chave (até 6, separadas por vírgula: é o que faz ela lembrar do assunto)', '<input id="caso-ed-palavras" class="t" maxlength="200" style="width:100%" value="' + esc((d.palavras || []).join(', ')) + '">') +
-      casoResumoCampo(it.resumo, 'Resumo de uma linha (opcional)');
+      casoResumoCampo(it.resumo, 'Resumo de uma linha (opcional)') +
+      casoCampo('O que ela lê na conversa. Uma linha com # abre uma seção; cada linha abaixo é um item; começar com ? marca “a equipe ainda vai confirmar”', '<textarea id="caso-ed-secoes" rows="14" maxlength="6000" style="width:100%">' + esc(casoSecoesTexto(d.secoes)) + '</textarea>');
   }
   if (it.tipo === 'documento' && d.direcao === 'recebe') {
     return tit('Nome do documento') + casoResumoCampo(it.resumo) + casoDescricaoCampo(it.descricao, 'caso-ed-') +
@@ -2163,7 +2181,8 @@ function casoItensHtml(k, tipos, vazio) {
     var est = it.estado === 'publicado' ? casoPil('Publicado', 'u-baixa') : it.estado === 'revisado' ? casoPil('Revisado', 'u-media') : casoPil('Proposto');
     var btns = (it.estado === 'proposto' ? casoBtn('item-rev', it.id, 'Marcar como revisado') : it.estado === 'revisado' ? casoBtn('item-pub', it.id, 'Publicar para ela') : casoBtn('item-ret', it.id, 'Retirar')) + casoBtn('ed-item', it.id, 'Editar') + casoHomeBtn(k, it) + (it.estado !== 'publicado' ? (k.confirmaDel === it.id ? casoBtn('item-del', it.id, 'Confirmar remoção') : casoBtn('item-del-pede', it.id, 'Remover')) : '');
     var generico = it.tipo === 'marco' && /^prazo-chave$/i.test(it.titulo) ? ' <span class="pill u-media">Diga a que se refere: ela vê só este título</span>' : '';
-    return casoLinha(est, esc(it.titulo) + generico + ' <span class="sub">· ' + esc(CASO_TIPO_ITEM[it.tipo] || it.tipo) + (casoItemResumo(it) ? ', ' + esc(casoItemResumo(it)) : '') + '</span>', btns);
+    var leitura = it.tipo === 'bilan' && ((it.dados || {}).secoes || []).length ? '<details style="margin-top:6px"><summary class="sub" style="cursor:pointer">Ler o bilan</summary>' + it.dados.secoes.map(function (sec) { return '<p style="margin:8px 0 2px"><b>' + esc(sec.titulo) + '</b></p><ul style="margin:0 0 0 18px">' + (sec.itens || []).map(function (x) { return '<li>' + esc(x.texto) + (x.estado === 'em_conferencia' ? ' <span class="sub">(a confirmar)</span>' : '') + '</li>'; }).join('') + '</ul>'; }).join('') + '</details>' : '';
+    return casoLinha(est, esc(it.titulo) + generico + ' <span class="sub">· ' + esc(CASO_TIPO_ITEM[it.tipo] || it.tipo) + (casoItemResumo(it) ? ', ' + esc(casoItemResumo(it)) : '') + '</span>' + leitura, btns);
   }).join('');
 }
 // A fila: o que ainda não saiu, na ordem. A primeira é "a próxima mensagem".
@@ -2395,6 +2414,7 @@ async function casoAcao(acao, id, t) {
       if (dib) dados.data = dib; else delete dados.data;
       var palb = casoPalavras(val('caso-ed-palavras')); if (palb === null) return falha('Use até 6 palavras-chave, de até 30 letras cada');
       if (palb.length) dados.palavras = palb; else delete dados.palavras;
+      if ($('caso-ed-secoes')) dados.secoes = casoTextoSecoes($('caso-ed-secoes').value);
     }
     var mud = { titulo: tt.slice(0, 120), dados: dados, link: ln || null }, arqAntigo = null;
     if ($('caso-ed-resumo')) mud.resumo = val('caso-ed-resumo').slice(0, 240) || null;
