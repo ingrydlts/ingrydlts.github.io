@@ -322,9 +322,9 @@ check('modelo sem versão No ar: 409', res.status === 409 && j.codigo === 'sem_v
 chamadas = []; fakeFetch([...adminOk, contatoRota(), modeloRota({ excluido_em: '2026-10-20T10:00:00Z' }), versaoRota(), brevoOk]);
 res = await enviarLink(base);
 check('modelo excluído no Estúdio: 400', res.status === 400 && !chamadas.some((x) => /brevo/.test(x.url)));
-chamadas = []; fakeFetch([...adminOk, contatoRota(), modeloRota({ automatico: true }), versaoRota(), brevoOk]);
+chamadas = []; fakeFetch([...adminOk, contatoRota(), modeloRota({ automatico: true }), versaoRota(), brevoOk, gravaOk, eventoOk]);
 res = await enviarLink(base);
-check('modelo com Envio automático: não sai pela ficha', res.status === 400 && !chamadas.some((x) => /brevo/.test(x.url)));
+check('modelo com Envio automático: o botão ainda envia e registra em emails_enviados (a sequência não manda de novo)', res.status === 200 && chamadas.some((x) => /brevo/.test(x.url)) && chamadas.some((x) => /emails_enviados/.test(x.url)));
 chamadas = []; fakeFetch([...adminOk, contatoRota({ aceita_novidades: false }), modeloRota({ tipo: 'servico' }), versaoRota(), brevoOk, gravaOk, eventoOk]);
 res = await enviarLink(base);
 check('serviço sai mesmo sem aceite de novidades (transacional)', res.status === 200);

@@ -1000,6 +1000,7 @@ details.ee-sec[open]>summary{margin-bottom:8px}
 .fx [data-sessao],#fx-acoes{scroll-margin-top:calc(var(--hd-h, 0px) + 20px)}
 .hd{background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:12px 14px; box-shadow:0 4px 14px rgba(0,0,0,.06)}
 .hd-l1{display:flex; align-items:center; gap:10px; flex-wrap:wrap}
+.hd-pag-btn{margin-left:auto; font-size:13px; padding:6px 12px}
 .hd-av{width:30px; height:30px; border-radius:50%; background:var(--moss-soft); display:grid; place-items:center; font-size:11px; font-weight:700; color:var(--moss-ink); flex:0 0 auto}
 .hd-n{margin:0; font-size:20px; overflow-wrap:anywhere}
 .hd-sp{margin-left:auto; display:flex; gap:8px; align-items:center; flex-wrap:wrap}

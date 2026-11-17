@@ -31,7 +31,7 @@ const supabase = { from: qb, auth: { getSession: async () => ({ data: { session:
   channel: () => ({ on() { return this; }, subscribe() { return this; } }), removeChannel() {} };
 const store = {};
 const mod = new Function('supabase', 'ES', 'TX', 'EE', 'EQ', 'JR', 'document', 'window', 'location', 'localStorage', 'setInterval', 'clearInterval',
-  src + '\n;return { state, setC: function (v) { C = v; }, renderPessoa, proximoEmail, montaJornada, jornadaHtml, emailsPanel, respostasKv };')(
+  src + '\n;return { state, setUM: function (v) { UM = v; }, setC: function (v) { C = v; }, renderPessoa, proximoEmail, montaJornada, jornadaHtml, emailsPanel, respostasKv };')(
   supabase, {}, TXMOD, { iniciar() {}, depois() {}, campoMudou() {} }, {}, JRMOD, document, { addEventListener() {} }, { href: '' }, { getItem: (k) => store[k] ?? null, setItem: (k, v) => { store[k] = v; } }, () => 1, () => {});
 
 const dias = (n) => new Date(Date.now() - n * 864e5).toISOString();
@@ -70,6 +70,12 @@ p = prox(base(), [mail({ status: 'nao_entregue' })]);
 check('não entregue: manda corrigir o endereço, sem modelo', p.k === null && p.quando === 'nao' && /endereço/.test(p.titulo));
 p = prox(base({ um_a_um_quando: new Date(Date.now() + 864e5).toISOString() }), [mail()]);
 check('1:1 marcado: sem campanha', p.k === null && /1:1 marcado/.test(p.titulo));
+mod.setUM([{ contato_id: 'c1', status: 'feito' }]);
+p = prox(base({ estagio: 'um_a_um' }), []);
+check('1:1 feito: não diz "marcado" nem manda lembrete; fala do Bilan e da plataforma', p.k === null && p.quando === 'nao' && /já aconteceu/.test(p.titulo) && /plataforma/.test(p.angulo) && !/marcado/.test(p.titulo));
+p = prox(base({ estagio: 'um_a_um' }), [mail()]);
+check('1:1 feito e boas-vindas já enviada: volta às regras normais', !/já aconteceu/.test(p.titulo));
+mod.setUM([]);
 p = prox(base(), [mail()], [{ status: 'nova' }]);
 check('resposta nova esperando: manda responder primeiro e abre a conversa', p.conversa === true && p.k === null && /Responda/.test(p.titulo));
 p = prox(base({ origem: 'guia-etudes-en-france-2027', origens: ['guia-etudes-en-france-2027'] }), [mail({ modelo: 'cf_guia_1', enviado_em: dias(1), criado_em: dias(1) })]);

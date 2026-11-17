@@ -4608,7 +4608,8 @@ async function handleCrmLinkPagamento(request, env) {
   const mRes = await fetch(`${CRM_SUPABASE_URL}/rest/v1/modelos_email?select=chave,tipo,criado_no_estudio,automatico,excluido_em&chave=eq.link_pagamento`, { headers: auth });
   const modelo = mRes.ok ? (await mRes.json())[0] : null;
   if (!modelo || !modelo.criado_no_estudio) return json({ error: 'O modelo link_pagamento ainda não existe. Rode admin/crm/db/crm-link-pagamento-email.sql no Supabase.', codigo: 'sql_pendente' }, 409);
-  if (modelo.automatico) return json({ error: 'O modelo link_pagamento está com Envio automático. Desligue no Estúdio: este e-mail sai pelo botão da ficha.' }, 400);
+  // Com Envio automático ligado, o botão continua valendo: o envio fica registrado em emails_enviados (modelo link_pagamento) e a sequência
+  // só manda a quem ainda não recebeu o modelo (crm_sequencia_pendentes). Saiu à mão, não sai de novo sozinho.
   if (modelo.excluido_em) return json({ error: 'O modelo link_pagamento foi excluído no Estúdio. Restaure para enviar.' }, 400);
   // Serviço e compra são transacionais. Se alguém mudar o tipo para novidades no Estúdio, vale a regra de consentimento de sempre.
   if (modelo.tipo === 'novidades' && !contato.aceita_novidades) {

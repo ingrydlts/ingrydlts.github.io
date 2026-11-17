@@ -1,5 +1,5 @@
 // Ficha-universo, fase 1: HTML puro das peças novas. Todas recebem h = { esc, fmtDay } e escapam todo texto vindo do banco.
-import { ETAPAS_FUNIL, maisUrgentes } from './ficha.js?v=2026-11-17.1';   // o ?v= acompanha o de crm.js (cache do navegador)
+import { ETAPAS_FUNIL, maisUrgentes } from './ficha.js?v=2026-11-17.3';   // o ?v= acompanha o de crm.js (cache do navegador)
 
 
 const URG = { alta: 'Alta', media: 'Média', baixa: 'Baixa' };
@@ -58,7 +58,8 @@ export function htmlCabecalho(d, h) {
   return '<header class="hd" id="fx-hd">' +
     '<div class="hd-l1"><span class="hd-av" aria-hidden="true">' + e(iniciais(c)) + '</span><h2 class="hd-n">' + e(c.nome || c.email || 'Sem nome') + '</h2>' +
     (d.estagioLabel ? '<span class="pill"><span class="dot"></span>' + e(d.estagioLabel) + '</span>' : '') +
-    (d.personaLabel ? '<span class="pill">' + e(d.personaLabel) + '</span>' : '') + conta + '</div>' +
+    (d.personaLabel ? '<span class="pill">' + e(d.personaLabel) + '</span>' : '') + conta +
+    (c.id ? '<button type="button" class="btn hd-pag-btn" data-pagar="' + e(c.id) + '" title="Manda o e-mail Link de pagamento. Você revisa a escolha antes de enviar.">' + (d.linkPagamentoEnviado ? 'Reenviar link de pagamento' : 'Enviar link de pagamento') + '</button>' : '') + '</div>' +
     blocos + (d.nota ? '<p class="est">' + e(d.nota) + '</p>' : '') + '</header>';
 }
 
