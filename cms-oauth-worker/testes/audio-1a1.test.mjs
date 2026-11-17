@@ -23,7 +23,7 @@ const kv = new Map();
 const baseEnv = { STRIPE_WEBHOOK_SECRET: SEGREDO, STRIPE_SECRET_KEY: 'sk_test_x', SUPABASE_SERVICE_ROLE_KEY: 'srv', REVIEWS_KV: { get: async (k) => kv.get(k) ?? null, put: async (k, v) => { kv.set(k, v); } } };
 let chamadas = [], logs = [];
 const origErr = console.error; console.error = (...a) => { logs.push(a.join(' ')); };
-function falso({ contato = { id: CID, email: 'ana@example.com', nome: 'Ana', user_id: UID }, pago = { status: 200, body: { duplicado: false, aviso_agendado: true } }, audioLiberado = true, userOk = true } = {}) {
+function falso({ contato = { id: CID, email: 'ana@example.com', nome: 'Ana', user_id: UID }, pago = { status: 200, body: { duplicado: false, aviso_agendado: true } }, audioLiberado = true, userOk = true, registrar = { status: 200, body: { duplicado: false } } } = {}) {
   chamadas = []; logs = [];
   globalThis.fetch = async (url, opt = {}) => {
     const c = { url: String(url), method: opt.method || 'GET', body: typeof opt.body === 'string' ? opt.body : null, headers: opt.headers || {} };
@@ -32,6 +32,7 @@ function falso({ contato = { id: CID, email: 'ana@example.com', nome: 'Ana', use
     if (/\/rest\/v1\/contatos\?select=id,email,nome,user_id&id=eq\./.test(c.url)) return r(200, contato ? [contato] : []);
     if (/\/rest\/v1\/contatos\?select=id,email,nome,user_id&email=eq\./.test(c.url)) return r(200, contato ? [contato] : []);
     if (/\/rpc\/crm_1a1_pago$/.test(c.url)) return r(pago.status, pago.body);
+    if (/\/rpc\/crm_pagamento_registrar$/.test(c.url)) return r(registrar.status, registrar.body);
     if (/\/auth\/v1\/user$/.test(c.url)) return userOk ? r(200, { id: UID }) : r(401, {});
     if (/\/rpc\/meu_1a1$/.test(c.url)) return r(200, { audio: audioLiberado });
     return r(404, {});
@@ -40,7 +41,7 @@ function falso({ contato = { id: CID, email: 'ana@example.com', nome: 'Ana', use
 const assina = (corpo) => `t=${agora},v1=${createHmac('sha256', SEGREDO).update(agora + '.' + corpo).digest('hex')}`;
 const hook = (obj, env = baseEnv) => { const corpo = JSON.stringify({ id: 'evt_1', type: 'checkout.session.completed', created: agora, data: { object: obj } });
   return worker.fetch(new Request('https://w.example/api/stripe/webhook', { method: 'POST', headers: { 'Stripe-Signature': assina(corpo), 'Content-Type': 'application/json' }, body: corpo }), env, {}); };
-const SESSAO = (extra = {}) => ({ id: 'cs_1a1', mode: 'payment', payment_status: 'paid', client_reference_id: CID, customer_details: { email: 'ana@example.com', name: 'Ana' }, metadata: { por_dentro: '1a1_20' }, ...extra });
+const SESSAO = (extra = {}) => ({ id: 'cs_1a1', mode: 'payment', amount_total: 2000, currency: 'eur', created: agora, payment_status: 'paid', client_reference_id: CID, customer_details: { email: 'ana@example.com', name: 'Ana' }, metadata: { por_dentro: '1a1_20' }, ...extra });
 
 console.log('== O pagamento do 1:1 (webhook do Stripe) ==');
 falso();
@@ -62,6 +63,19 @@ falso({ pago: { status: 404, body: {} } }); res = await hook(SESSAO()); j = awai
 check('sem o SQL novo: manda rodar crm-1a1.sql (500)', res.status === 500 && /crm-1a1\.sql/.test(j.error));
 falso({ contato: null }); res = await hook(SESSAO({ client_reference_id: null, customer_details: { email: 'sem-ficha@example.com' } }));
 check('sem achar nem criar a ficha: 500 para o Stripe tentar de novo', res.status === 500 && !chamadas.some((c) => /crm_1a1_pago$/.test(c.url)));
+
+console.log('\n== O dinheiro do 1:1 vai para pagamentos (valor real do Stripe) ==');
+falso(); res = await hook(SESSAO()); j = await res.json();
+const regCh = chamadas.find((c) => /crm_pagamento_registrar$/.test(c.url)), reg = regCh && JSON.parse(regCh.body);
+check('registra valor em centavos, moeda, serviço, tipo, sessão, ficha e a hora do pagamento', !!reg && reg.p_valor_centavos === 2000 && reg.p_moeda === 'EUR' && reg.p_servico === '1:1 de 20 min' && reg.p_tipo === '1a1' && reg.p_referencia === 'cs_1a1' && reg.p_contato === CID && reg.p_pago_em === new Date(agora * 1000).toISOString());
+falso({ pago: { status: 200, body: { duplicado: true } } }); res = await hook(SESSAO({ metadata: { por_dentro: '1a1_40' }, amount_total: 4000 }));
+check('reenvio do evento (duplicado) também registra o valor: é assim que se recupera um pagamento antigo pelo painel do Stripe', res.status === 200 && JSON.parse(chamadas.find((c) => /crm_pagamento_registrar$/.test(c.url)).body).p_valor_centavos === 4000);
+falso({ registrar: { status: 404, body: {} } }); res = await hook(SESSAO());
+check('sem o SQL crm-pagamentos.sql: o 1:1 continua liberado (200) e o log pede para rodar', res.status === 200 && logs.some((l) => /crm-pagamentos\.sql/.test(l)));
+falso({ registrar: { status: 500, body: {} } }); res = await hook(SESSAO());
+check('o banco falhou ao registrar: 500, o Stripe tenta de novo', res.status === 500);
+falso(); res = await hook(SESSAO({ amount_total: 0 }));
+check('sessão de valor zero (cupom de 100%) não registra pagamento', res.status === 200 && !chamadas.some((c) => /crm_pagamento_registrar$/.test(c.url)));
 
 console.log('\n== A transcrição do áudio ==');
 const AUDIO = new Uint8Array([1, 2, 3, 4, 5, 6, 7, 8]);

@@ -4672,8 +4672,9 @@ async function handleCrmLinkPagamento(request, env) {
 // ---------- CRM: webhook do Stripe (pagamento → assinatura na ficha → conta → e-mail de acesso) ----------
 // POST /api/stripe/webhook  (o Stripe chama; sem login: a segurança é a ASSINATURA do Stripe, conferida abaixo)
 //
-// Eventos tratados (cadastre estes quatro no Stripe): checkout.session.completed, customer.subscription.updated,
-// customer.subscription.deleted, invoice.payment_failed. Os outros são ignorados com 200.
+// Eventos tratados (cadastre estes cinco no Stripe): checkout.session.completed, customer.subscription.updated,
+// customer.subscription.deleted, invoice.payment_failed, invoice.paid. Os outros são ignorados com 200.
+// Cada dinheiro que entra (1:1 pago, mensalidade paga) é gravado em `pagamentos` (db/crm-pagamentos.sql): é o que a home e a ficha somam.
 //
 // O que acontece num pagamento novo (checkout.session.completed, modo assinatura):
 //   1. acha a ficha (client_reference_id = id da ficha, posto pelo botão "Enviar link de pagamento"; sem ele, pelo e-mail);
@@ -4686,7 +4687,7 @@ async function handleCrmLinkPagamento(request, env) {
 //   Variáveis: STRIPE_WEBHOOK_SECRET (Secret, whsec_..., do endpoint no Stripe), STRIPE_SECRET_KEY, SUPABASE_SERVICE_ROLE_KEY,
 //              BREVO_API_KEY, BREVO_SENDER_EMAIL. Ver README.md, seção 25.
 const STRIPE_TOLERANCIA_SEG = 300;
-const STRIPE_EVENTOS = ['checkout.session.completed', 'customer.subscription.updated', 'customer.subscription.deleted', 'invoice.payment_failed'];
+const STRIPE_EVENTOS = ['checkout.session.completed', 'customer.subscription.updated', 'customer.subscription.deleted', 'invoice.payment_failed', 'invoice.paid'];
 
 function stripeHex(buf) { return Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, '0')).join(''); }
 // O cabeçalho Stripe-Signature é "t=...,v1=...,v1=..."; vale se algum v1 for o HMAC-SHA256 de "t.corpo" com o segredo do endpoint
@@ -4799,7 +4800,37 @@ async function crmStripe1a1(env, obj) {
   if (res.status === 404) { console.error('crm/stripe: falta rodar admin/crm/db/crm-1a1.sql'); return json({ error: 'Falta rodar crm-1a1.sql.' }, 500); }
   if (!res.ok) throw new Error('crm_1a1_pago respondeu ' + res.status);
   const r = await res.json().catch(() => ({}));
+  // O dinheiro: valor e moeda reais da sessão. Roda também no reenvio (duplicado), assim reenviar o evento pelo painel do Stripe
+  // recupera um pagamento que entrou antes de existir o registro.
+  await crmRegistrarPagamento(env, { p_contato: contato.id, p_referencia: String(obj.id || ''), p_tipo: '1a1', p_servico: '1:1 de ' + m[1] + ' min',
+    p_valor_centavos: obj.amount_total, p_moeda: obj.currency, p_pago_em: stripeIso(obj.created) });
   return json({ ok: true, um_a_um: true, duplicado: !!(r && r.duplicado) });
+}
+
+// Grava um pagamento em `pagamentos`. Sem o SQL rodado (404), só avisa no log: o resto do webhook continua valendo.
+// Valor zero (teste grátis, cupom de 100%) não é dinheiro: não grava. Devolve 'sem_ficha' quando não achou de quem é.
+async function crmRegistrarPagamento(env, args) {
+  const valor = Number(args.p_valor_centavos), moeda = String(args.p_moeda || '').toUpperCase();
+  if (!Number.isInteger(valor) || valor <= 0 || !/^[A-Z]{3}$/.test(moeda) || !args.p_referencia) return 'sem_valor';
+  const res = await fetch(`${CRM_SUPABASE_URL}/rest/v1/rpc/crm_pagamento_registrar`, { method: 'POST', headers: crmServiceHeaders(env),
+    body: JSON.stringify({ p_contato: null, p_assinatura: null, p_cliente: null, p_email: null, p_servico: null, p_pago_em: null, ...args, p_valor_centavos: valor, p_moeda: moeda }) });
+  if (res.ok) return 'ok';
+  const msg = await res.text().catch(() => '');
+  if (res.status === 404) { console.error('crm/stripe: falta rodar admin/crm/db/crm-pagamentos.sql'); return 'sem_sql'; }
+  if (/contato_nao_encontrado/.test(msg)) return 'sem_ficha';
+  throw new Error('crm_pagamento_registrar respondeu ' + res.status + ' ' + msg.slice(0, 200));
+}
+
+// Fatura paga de uma assinatura (invoice.paid): a mensalidade que de fato entrou. Fatura de 0 (teste grátis) e fatura sem
+// assinatura (outra cobrança da mesma conta Stripe) não contam.
+async function crmStripeFatura(env, fatura) {
+  const subId = typeof fatura.subscription === 'string' ? fatura.subscription : (fatura.subscription && fatura.subscription.id)
+    || (fatura.parent && fatura.parent.subscription_details && fatura.parent.subscription_details.subscription) || null;
+  if (!subId) return json({ ok: true, ignorado: true });
+  const paga = stripeIso(fatura.status_transitions && fatura.status_transitions.paid_at) || stripeIso(fatura.created);
+  const r = await crmRegistrarPagamento(env, { p_referencia: String(fatura.id || ''), p_tipo: 'assinatura', p_valor_centavos: fatura.amount_paid, p_moeda: fatura.currency,
+    p_pago_em: paga, p_assinatura: subId, p_cliente: typeof fatura.customer === 'string' ? fatura.customer : null, p_email: fatura.customer_email || null });
+  return json({ ok: true, pagamento: r });
 }
 
 async function handleStripeWebhook(request, env) {
@@ -4818,6 +4849,7 @@ async function handleStripeWebhook(request, env) {
 
   try {
     let contato = null, assinatura, subId;
+    if (ev.type === 'invoice.paid') return await crmStripeFatura(env, obj);
     if (ev.type === 'checkout.session.completed') {
       // O 1:1 pago (Payment Link avulso com o metadado por_dentro = 1a1_20 ou 1a1_40): libera o áudio e agenda o aviso do dia seguinte.
       if (obj.mode === 'payment') return await crmStripe1a1(env, obj);

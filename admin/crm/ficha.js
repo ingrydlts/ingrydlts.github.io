@@ -3,8 +3,8 @@
 
 // ---------- Urgência dos passos do checklist (spec §5.4) ----------
 // ChkItem = { step_key, category, label, status, due_date, sort_order } (colunas de buscaChecklist em crm.js).
-export { calcularUso } from './ficha-uso.js?v=2026-11-17.3';
-export * as funil from './funil.js?v=2026-11-17.3';   // Funil por próxima ação (lógica pura); o crm.js usa FX.funil
+export { calcularUso } from './ficha-uso.js?v=2026-11-17.4';
+export * as funil from './funil.js?v=2026-11-17.4';   // Funil por próxima ação (lógica pura); o crm.js usa FX.funil
 const DIA = 86400e3;
 function diasEntre(hoje, data) {
   const a = Date.parse(hoje + 'T00:00:00Z'), b = Date.parse(String(data).slice(0, 10) + 'T00:00:00Z');
@@ -229,6 +229,35 @@ function cartoesUso(d) {
   } else chk = cartao('Checklist', '—', d.chkMsg || 'ainda não carregou');
   return [sessoes, cliques, dur, chk];
 }
+// ---------- O que ela já pagou (db/crm-pagamentos.sql) ----------
+// Valor com o símbolo da moeda: € 20, € 20,50, R$ 600. Moeda fora do comum cai no código (USD 10).
+export function fmtMoeda(valor, moeda) {
+  const v = Number(valor), m = String(moeda || 'EUR').toUpperCase();
+  if (!Number.isFinite(v)) return '—';
+  const n = v.toLocaleString('pt-BR', { minimumFractionDigits: Number.isInteger(v) ? 0 : 2, maximumFractionDigits: 2 });
+  return (m === 'EUR' ? '€' : m === 'BRL' ? 'R$' : m) + ' ' + n;
+}
+// pagamentos: [{ servico, valor_centavos, moeda, pago_em }]. Soma por moeda (nunca mistura € com R$), do mais recente ao mais antigo.
+// Devolve { n, texto: '€ 70' | '€ 70 + R$ 600' | '€ 0', linhas: [[quando, 'valor · serviço']] }
+export function resumoPagamentos(pagamentos) {
+  const lista = (pagamentos || []).filter((p) => p && Number(p.valor_centavos) > 0).slice().sort((a, b) => String(b.pago_em).localeCompare(String(a.pago_em)));
+  const porMoeda = new Map();
+  for (const p of lista) { const m = String(p.moeda || 'EUR').toUpperCase(); porMoeda.set(m, (porMoeda.get(m) || 0) + Number(p.valor_centavos)); }
+  const moedas = [...porMoeda.keys()].sort((a, b) => (a === 'EUR' ? -1 : b === 'EUR' ? 1 : a.localeCompare(b)));
+  const quando = (iso) => { const t = Date.parse(iso); return Number.isFinite(t) ? new Date(t).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'Europe/Paris' }) : '—'; };
+  return {
+    n: lista.length,
+    texto: moedas.length ? moedas.map((m) => fmtMoeda(porMoeda.get(m) / 100, m)).join(' + ') : '€ 0',
+    linhas: lista.map((p) => [quando(p.pago_em), fmtMoeda(Number(p.valor_centavos) / 100, p.moeda) + ' · ' + String(p.servico || 'Pagamento')])
+  };
+}
+// O cartão "Já gastou": o acumulado e, ao abrir, cada pagamento (quando, valor e serviço). Sem pagamento: só para quem é cliente.
+function cartaoGasto(d, sempre) {
+  const r = resumoPagamentos(d.pagamentos);
+  if (!r.n) return sempre ? [cartao('Já gastou', '€ 0', 'nenhum pagamento registrado')] : [];
+  return [cartao('Já gastou', r.texto, plural(r.n, 'pagamento', 'pagamentos'), 'ok', r.linhas)];
+}
+
 function cartaoRespostas(d) {
   return cartao('Respostas', String(d.respostas || 0), d.respostasNovas > 0 ? d.respostasNovas + ' esperando você' : 'nenhuma esperando você');
 }
@@ -265,7 +294,8 @@ export function cartoesDe(tipo, d) {
 // ---------- Cabeçalho minimalista (comentários da Ingryd no artefato, 15/11) ----------
 // Poucos cartões, poucas palavras. Lead: quando entrou, onde deixou o e-mail e se abriu. Estágio 1:1: a data do 1:1.
 // Plataforma: a última vez que entrou no app. O plano e tudo que vem com ele vira um dropdown dentro do cartão do plano.
-// Nada de cliques, sessões ou duração para quem ainda não está na plataforma. d = { c, assin, uso, chk, entradaEm, origemLabel, mailsTotal, mailsAbertos, um1a1, ultimoAcesso, agora }
+// Nada de cliques, sessões ou duração para quem ainda não está na plataforma. O cartão "Já gastou" mostra o acumulado e abre cada pagamento.
+// d = { c, assin, uso, chk, entradaEm, origemLabel, mailsTotal, mailsAbertos, um1a1, ultimoAcesso, pagamentos, agora }
 export function cartoesMinimos(tipo, d) {
   const c = d.c || {}, agora = d.agora || Date.now();
   const dias = (iso) => (iso ? Math.max(0, Math.floor((agora - Date.parse(iso)) / 864e5)) : null);
@@ -273,6 +303,7 @@ export function cartoesMinimos(tipo, d) {
     const out = [cartao('Entrou', dm(d.entradaEm || c.criado_em), d.origemLabel || '')];
     out.push(d.mailsTotal > 0 ? cartao('E-mail', d.mailsAbertos > 0 ? 'Abriu' : 'Não abriu', plural(d.mailsTotal, 'enviado', 'enviados')) : cartao('E-mail', '—', 'nenhum enviado'));
     if (c.estagio === 'um_a_um') out.push(d.um1a1 ? cartao('1:1', dm(d.um1a1), d.um1a1Hora || '', 'ok') : cartao('1:1', 'a combinar', ''));
+    out.push(...cartaoGasto(d, false));
     return { blocos: [{ titulo: null, cartoes: out }], nota: null };
   }
   const nd = dias(d.ultimoAcesso);
@@ -285,10 +316,10 @@ export function cartoesMinimos(tipo, d) {
     if (u.suficiente && u.cliquesPorSessao != null) det.push(['Cliques por sessão', String(u.cliquesPorSessao).replace('.', ',')]);
     if (u.suficiente && u.duracaoSeg != null) det.push(['Duração estimada', fmtDuracao(u.duracaoSeg)]);
     if (k) det.push(['Checklist', k.feitos + ' de ' + k.total + (k.atrasados ? ' · ' + plural(k.atrasados, 'atrasado', 'atrasados') : '')]);
-    return { blocos: [{ titulo: null, cartoes: [cartao('Plano', a.plano || '—', etiquetaPagamento(a).texto, 'ok', det), acesso] }], nota: null };
+    return { blocos: [{ titulo: null, cartoes: [cartao('Plano', a.plano || '—', etiquetaPagamento(a).texto, 'ok', det), acesso, ...cartaoGasto(d, true)] }], nota: null };
   }
   const k = d.chk;
-  return { blocos: [{ titulo: null, cartoes: [acesso, k ? cartao('Checklist', k.feitos + ' de ' + k.total, k.atrasados > 0 ? plural(k.atrasados, 'atrasado', 'atrasados') : '', k.atrasados > 0 ? 'alerta' : undefined) : cartao('Checklist', '—', 'ainda não carregou')] }], nota: null };
+  return { blocos: [{ titulo: null, cartoes: [acesso, k ? cartao('Checklist', k.feitos + ' de ' + k.total, k.atrasados > 0 ? plural(k.atrasados, 'atrasado', 'atrasados') : '', k.atrasados > 0 ? 'alerta' : undefined) : cartao('Checklist', '—', 'ainda não carregou'), ...cartaoGasto(d, true)] }], nota: null };
 }
 
 // ---------- Potencial: um índice de 0 a 100 por pessoa (conversa com a Ingryd, 16/11) ----------
