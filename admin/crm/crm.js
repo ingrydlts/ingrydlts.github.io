@@ -2,15 +2,15 @@
 // Nada de service_role aqui. O banco é db/crm-fase2.sql; o desenho é o artefato "CRM Por Dentro".
 // Tudo que vem do banco é texto de terceiros (nome, e-mail, pergunta): passa sempre por esc().
 import { supabase } from '/assets/js/supabase-client.js';
-import * as TX from './taxonomia.js?v=2026-11-17.4';   // páginas, famílias e agrupamento dos modelos
-import * as ES from './estudio.js?v=2026-11-17.4';   // os blocos do estúdio de e-mails (entregas 2 e 3)
-import * as EE from './editor-email.js?v=2026-11-17.4';
-import * as EQ from './editor-quem.js?v=2026-11-17.4';
-import * as JR from './jornada.js?v=2026-11-17.4';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
-import * as FX from './ficha.js?v=2026-11-17.4';   // ficha v2: lógica pura (fila, démarches, funil, ações)
-import * as FH from './ficha-html.js?v=2026-11-17.4';   // ficha v2: HTML puro
-import * as PN from './panorama.js?v=2026-11-17.4';
-import * as MT from './montagem.js?v=2026-11-17.4';   // Montagem do espaço a partir do transcript (lógica e HTML puros)   // Panorama dela e O que ela trouxe (lógica e HTML puros)
+import * as TX from './taxonomia.js?v=2026-11-17.5';   // páginas, famílias e agrupamento dos modelos
+import * as ES from './estudio.js?v=2026-11-17.5';   // os blocos do estúdio de e-mails (entregas 2 e 3)
+import * as EE from './editor-email.js?v=2026-11-17.5';
+import * as EQ from './editor-quem.js?v=2026-11-17.5';
+import * as JR from './jornada.js?v=2026-11-17.5';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
+import * as FX from './ficha.js?v=2026-11-17.5';   // ficha v2: lógica pura (fila, démarches, funil, ações)
+import * as FH from './ficha-html.js?v=2026-11-17.5';   // ficha v2: HTML puro
+import * as PN from './panorama.js?v=2026-11-17.5';
+import * as MT from './montagem.js?v=2026-11-17.5';   // Montagem do espaço a partir do transcript (lógica e HTML puros)   // Panorama dela e O que ela trouxe (lógica e HTML puros)
 
 var PERSONAS = {
   au_pair_estudante: 'Au pair → estudante', campus_france: 'Campus France', alternancia_emprego: 'Alternância / emprego',
@@ -3422,10 +3422,15 @@ function fxFilaItens(c) {
   return itens;
 }
 // As ações da equipe para esta pessoa, com os dados que o CRM já lê hoje (spec §4.3).
-function fxChkResumo(chk) {
+// A conta de "X de Y" do checklist, igual à do app (itens + ações publicadas da equipe): um lugar só para o cabeçalho, as pílulas e a prévia.
+function fxContaApp(c, chk, dem) {
+  var k = state.caso && state.caso.cid === c.id && !state.caso.err ? state.caso : null;
+  return FX.contaChecklistApp({ mapa: FX_PROC, persona: personaKey(c), itens: chk.itens || [], acoes: k ? k.aco : [], listas: k ? k.listas : [], dem: dem || 'todas' });
+}
+function fxChkResumo(c, chk) {
   if (!chk || chk.err || chk.semConta) return null;
-  var cc = chkCalc(chk, Date.now()), ativos = cc.itens.filter(function (i) { return i.status !== 'arquivado'; });
-  return { feitos: ativos.filter(function (i) { return i.status === 'concluido'; }).length, total: ativos.length, atrasados: cc.atrasados.length };
+  var cc = chkCalc(chk, Date.now()), n = fxContaApp(c, chk);
+  return { feitos: n.feitos, total: n.total, atrasados: cc.atrasados.length };
 }
 function fxTarefas(c, d) {
   var resps = d.resps || [], bilanEnviado = (d.mails || []).some(function (m) { return m.modelo === 'bilan_conversa'; });
@@ -3441,7 +3446,7 @@ function fxTarefas(c, d) {
     proximoEmail: proximoEmail(c, d.mails || [], resps, d.jor)
   };
   var pe = potEntrada(c, { mails: d.mails || [], respostas: resps.length, respostasNovas: x.respostasNovas, temBilan: !!(state.bilan && state.bilan.cid === c.id), umFeito: umFeito(c.id),
-    linkPagamento: !!state.pagto, assin: state.assin || null, chk: fxChkResumo(chk) });
+    linkPagamento: !!state.pagto, assin: state.assin || null, chk: fxChkResumo(c, chk) });
   if (state.int && state.int.cid === c.id) { var uso = FX.calcularUso(state.int.err ? [] : state.int.cliques || [], Date.now()); pe.ultimoAcessoDias = uso.diasDesdeUltima; pe.sessoes30 = uso.sessoes; }
   var pot = FX.potencial(pe); x.potNota = pot.nota; x.potAcao = FX.proximaAcao(pe, pot);
   state.fx.urg = FX.urgentes(x);   // o quadro de urgência do carrossel
@@ -3588,8 +3593,8 @@ function fxPintaHeader() {
 function fxHeaderHtml(c, d) {
   var chk = state.dos && state.dos.cid === c.id ? state.dos.chk : null, k = null, agora = Date.now();
   if (chk && !chk.err && !chk.semConta) {
-    var cc = chkCalc(chk, agora), ativos = cc.itens.filter(function (i) { return i.status !== 'arquivado'; }), lim = new Date(agora + 3 * 864e5).toISOString().slice(0, 10);
-    k = { feitos: ativos.filter(function (i) { return i.status === 'concluido'; }).length, total: ativos.length, atrasados: cc.atrasados.length,
+    var cc = chkCalc(chk, agora), ativos = cc.itens.filter(function (i) { return i.status !== 'arquivado'; }), lim = new Date(agora + 3 * 864e5).toISOString().slice(0, 10), nApp = fxContaApp(c, chk);
+    k = { feitos: nApp.feitos, total: nApp.total, atrasados: cc.atrasados.length,
       vencem3: ativos.filter(function (i) { return i.status !== 'concluido' && i.due_date && i.due_date >= cc.hoje && i.due_date <= lim; }).length };
   }
   var mails = d.mails || [], resps = d.resps || [], jor = d.jor || montaJornada([]), assin = state.assin || null, tipo = FX.tipoCabecalho(c, assin);
@@ -3617,7 +3622,7 @@ function fxHeaderHtml(c, d) {
 // Catálogo de démarches (cópia do app, processos.json): carregado uma vez; sem ele, tudo cai na démarche padrão.
 var FX_PROC = null;
 async function fxCarregaProcessos() {
-  try { var r = await fetch('processos.json?v=2026-11-17.4'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
+  try { var r = await fetch('processos.json?v=2026-11-17.5'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
 }
 // A sessão Checklist: pílulas por démarche, os 4 mais urgentes, pasta do Drive privada e "Ver mais desta sessão".
 // Os passos que a montagem do espaço propôs para ela, com démarche, subitens e origem: o mesmo detalhe do Checklist. Existem antes de ela ter conta.
@@ -3638,7 +3643,7 @@ function fxChecklistCorpo(c) {
   var agora = Date.now(), cc = chkCalc(chk, agora), itens = chk.itens || [];
   var dem = FX.demarchesDe(FX_PROC, personaKey(c), itens), ativa = f.dem !== 'todas' && dem.some(function (x) { return x.k === f.dem; }) ? f.dem : 'todas';
   var ult = chk.cliques && chk.cliques[0], horas = ult ? (agora - new Date(ult.criado_em).getTime()) / 36e5 : 0;   // dado velho: mais de 48 h sem atividade dela
-  return pre + FH.htmlChecklistSessao({ semConta: false, erro: false, velhoDias: horas > 48 ? Math.floor(horas / 24) : 0, demarches: dem, ativa: ativa, totalFeitos: cc.feitos, total: itens.length, itens: FX.filtrarPorDemarche(FX_PROC, itens, ativa),
+  return pre + FH.htmlChecklistSessao({ semConta: false, erro: false, velhoDias: horas > 48 ? Math.floor(horas / 24) : 0, demarches: dem, ativa: ativa, totalFeitos: fxContaApp(c, chk).feitos, total: fxContaApp(c, chk).total, itens: FX.filtrarPorDemarche(FX_PROC, itens, ativa),
     hoje: cc.hoje, todos: f.ckTodos, mais: f.ckMais, extraMais: f.ckMais ? checklistLateralHtml(chk, agora, H4_PLAT) + checklistHtml(chk, agora) : '' }, H_FX);
 }
 function fxPintaChk(c) { var b = $('fx-chk-corpo'); if (b) b.innerHTML = fxChecklistCorpo(c); }
@@ -3825,7 +3830,9 @@ function fxMaisCorpo(c) {
 function fxPreviaDados(c) {
   var f = state.fx, k = state.caso && state.caso.cid === c.id && !state.caso.err ? state.caso : null, chk = state.dos && state.dos.cid === c.id ? state.dos.chk : null;
   var ok = chk && !chk.err && !chk.semConta, hoje = new Date().toISOString().slice(0, 10), dia = f.dia == null ? 1 : f.dia;
-  var itens = ok ? FX.filtrarPorDemarche(FX_PROC, (chk.itens || []).filter(function (i) { return i.status !== 'arquivado'; }), f.dem || 'todas') : [], feitos = itens.filter(function (i) { return i.status === 'concluido'; });
+  // A conta vem de FX.contaChecklistApp: a mesma regra do app (itens + ações publicadas, só na aba principal), para o número bater com o dela.
+  var cnt = FX.contaChecklistApp({ mapa: FX_PROC, persona: personaKey(c), itens: ok ? chk.itens : [], acoes: k ? k.aco : [], listas: k ? k.listas : [], dem: f.dem || 'todas' });
+  var itens = cnt.itens, feitos = itens.filter(function (i) { return i.status === 'concluido'; });
   var abertos = itens.filter(function (i) { return i.status !== 'concluido'; }).sort(function (a, b) { return (a.due_date || '9999') < (b.due_date || '9999') ? -1 : 1; });
   var pub = function (tipos) { return k ? k.itens.filter(function (x) { return x.estado === 'publicado' && tipos.indexOf(x.tipo) >= 0; }) : []; };
   var marcos = pub(['marco']).map(function (x) { return { titulo: x.titulo, resumo: x.resumo, data: x.dados && x.dados.data }; });
@@ -3833,13 +3840,13 @@ function fxPreviaDados(c) {
   // Os passos que a montagem propôs: os publicados já contam como passos dela (é o que o app mostra); os rascunhos aparecem à parte, esmaecidos.
   var det = function (a) { var n = (a.subitens || []).length; return [a.demarche ? FX.rotuloDemarche(FX_PROC, a.demarche, personaKey(c)) : '', n ? n + (n === 1 ? ' subitem' : ' subitens') : ''].filter(Boolean).join(' · '); };
   var prop = k ? k.aco.filter(function (a) { return a.dono === 'ela' && a.canal === 'plataforma' && /^(enc|chk):/.test(a.origem_chave || ''); }) : [];
-  var pubP = prop.filter(function (a) { return a.publicada_em; }).map(function (a) { return { label: a.titulo, tag: det(a), feito: a.estado === 'concluida', due: a.prazo, atrasado: !!(a.prazo && a.prazo < hoje && a.estado !== 'concluida') }; });
+  var pubP = cnt.passos.map(function (a) { return { label: a.titulo, tag: det(a), feito: a.estado === 'concluida', due: a.prazo, atrasado: !!(a.prazo && a.prazo < hoje && a.estado !== 'concluida') }; });
   var rascP = prop.filter(function (a) { return !a.publicada_em; }).map(function (a) { return { label: a.titulo, tag: det(a), conferir: !!a.a_conferir, due: a.prazo }; });
   var acum = 0, avisos = [];
   if (k) filaDe(k.avs).concat([]).forEach(function (a) { acum += a.pausa_dias || 0; if (acum <= dia) avisos.push({ tipo: CASO_TIPO_AVISO[a.tipo] || a.tipo, titulo: a.titulo, texto: a.texto }); });
   if (k) k.avs.filter(function (a) { return a.liberado_em && (a.estado === 'liberado' || a.estado === 'lido'); }).forEach(function (a) { avisos.unshift({ tipo: CASO_TIPO_AVISO[a.tipo] || a.tipo, titulo: a.titulo, texto: a.texto }); });
   var dd = state.dos && state.dos.cid === c.id ? state.dos : null, pr = dd ? dosProgresso(c, dd.d, dd.rasc) : { n: 0, tot: 0 };
-  var feitosN = feitos.length + pubP.filter(function (x) { return x.feito; }).length, totalN = itens.length + pubP.length;
+  var feitosN = cnt.feitos, totalN = cnt.total;
   var passosL = abertos.map(function (i) { return { label: i.label, tag: i.category, feito: false, due: i.due_date, atrasado: !!(i.due_date && i.due_date < hoje) }; }).concat(pubP.filter(function (x) { return !x.feito; }));
   var feitosL = feitos.map(function (i) { return { label: i.label, tag: i.category, feito: true, due: i.due_date, atrasado: false }; }).concat(pubP.filter(function (x) { return x.feito; }));
   return { nome: pn(c), semConta: !c.user_id, aba: f.appAba || 'inicio', dia: dia, camadas: !!f.camadas, pct: totalN ? Math.round(feitosN / totalN * 100) : 0, feitos: feitosN, total: totalN, rascunhos: rascP,
