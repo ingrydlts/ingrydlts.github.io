@@ -70,7 +70,7 @@ declare
   v_criados int := 0; v_atualizados int := 0; v_mantidos int := 0; v_rejeitados int := 0;
   v_conf text[] := '{}';
   ac caso_acoes%rowtype; li caso_listas%rowtype; bi board_itens%rowtype; av caso_avisos%rowtype;
-  v_dados jsonb; v_titulo text; v_ctx jsonb; v_chave text; v_txt text; v_dias int;
+  v_dados jsonb; v_titulo text; v_ctx jsonb; v_chave text; v_txt text; v_dias int; v_edit text;
   v_dono text; v_prazo date; v_pt text; v_cert text; v_conferir boolean; v_passo text; v_camada text; v_lista text; v_dem text; v_subs jsonb;
 begin
   if not public.eh_admin() then raise exception 'sem_permissao'; end if;
@@ -101,6 +101,8 @@ begin
       insert into eventos (contato_id, tipo, dados) values (p_contato, 'montagem_item_editado',
         jsonb_build_object('montagem_id', m.id, 'origem_chave', it.k, 'motivo', it.dec->>'motivo'));
     end if;
+    -- Texto que você escreveu na tela antes de aprovar: vale no lugar do texto da IA (só espaços = ignora).
+    v_edit := nullif(btrim(coalesce(it.dec->>'texto', '')), '');
 
     if it.kind = 'lista' then
       select * into li from caso_listas where contato_id = p_contato and chave = it.d->>'chave';
@@ -109,12 +111,12 @@ begin
         v_criados := v_criados + 1;
       elsif li.estado <> 'proposto' then v_conf := v_conf || it.k;
       elsif li.titulo is distinct from left(it.d->>'titulo', 80) or li.origem is distinct from it.d->>'origem' then
-        update caso_listas set titulo = left(it.d->>'titulo', 80), origem = it.d->>'origem' where id = li.id; v_atualizados := v_atualizados + 1;
+        update caso_listas set titulo = left(coalesce(v_edit, it.d->>'titulo'), 80), origem = it.d->>'origem' where id = li.id; v_atualizados := v_atualizados + 1;
       else v_mantidos := v_mantidos + 1; end if;
 
     elsif it.kind in ('enc', 'chk') then
       if it.kind = 'enc' then
-        v_titulo := left(it.d->>'texto', 160); v_dono := it.d->>'dono'; v_camada := it.d->>'camada'; v_lista := null; v_dem := null; v_subs := null;
+        v_titulo := left(coalesce(v_edit, it.d->>'texto'), 160); v_dono := it.d->>'dono'; v_camada := it.d->>'camada'; v_lista := null; v_dem := null; v_subs := null;
         v_prazo := nullif(it.d->>'prazo', '')::date; v_pt := nullif(it.d->>'prazo_texto', '');
         v_cert := case when it.d->>'certeza' = 'literal' then 'literal' else 'inferido' end;
         v_conferir := (it.d->>'certeza') = 'confirmar';
@@ -122,7 +124,7 @@ begin
       else
         v_lista := it.ctx->>'lista';
         if not exists (select 1 from caso_listas l where l.contato_id = p_contato and l.chave = v_lista) then raise exception 'lista_nao_aprovada'; end if;
-        v_titulo := left(it.d->>'titulo', 160); v_dono := 'ela'; v_camada := case when it.ctx->>'origem' = 'modelo' then 'persona' else 'particular' end;
+        v_titulo := left(coalesce(v_edit, it.d->>'titulo'), 160); v_dono := 'ela'; v_camada := case when it.ctx->>'origem' = 'modelo' then 'persona' else 'particular' end;
         v_prazo := nullif(it.d->>'prazo', '')::date; v_pt := null; v_cert := 'inferido';
         v_conferir := coalesce((it.d->>'a_conferir')::boolean, true);
         v_dem := nullif(it.d->>'demarche', '');
@@ -131,24 +133,24 @@ begin
       end if;
       select * into ac from caso_acoes where contato_id = p_contato and origem_chave = it.k;
       if not found then
-        insert into caso_acoes (contato_id, origem_chave, titulo, dono, canal, passo_chave, prazo, prazo_texto, prazo_a_confirmar, certeza, camada, lista_chave, a_conferir, demarche, subitens)
-        values (p_contato, it.k, v_titulo, v_dono, case when v_dono = 'ela' then 'plataforma' else 'so_eu' end, v_passo, v_prazo, v_pt, (v_pt is not null and v_prazo is null), v_cert, v_camada, v_lista, v_conferir, v_dem, v_subs);
+        insert into caso_acoes (contato_id, origem_chave, titulo, dono, canal, passo_chave, prazo, prazo_texto, prazo_a_confirmar, certeza, camada, lista_chave, a_conferir, demarche, subitens, editado_em)
+        values (p_contato, it.k, v_titulo, v_dono, case when v_dono = 'ela' then 'plataforma' else 'so_eu' end, v_passo, v_prazo, v_pt, (v_pt is not null and v_prazo is null), v_cert, v_camada, v_lista, v_conferir, v_dem, v_subs, case when v_edit is not null then now() end);
         v_criados := v_criados + 1;
       elsif ac.estado <> 'aberta' or ac.publicada_em is not null or ac.concluida_em is not null or ac.editado_em is not null then v_conf := v_conf || it.k;
       elsif (ac.titulo, ac.dono, ac.prazo, ac.prazo_texto, ac.certeza, ac.camada, ac.lista_chave, ac.a_conferir, ac.demarche, ac.subitens)
             is distinct from (v_titulo, v_dono, v_prazo, v_pt, v_cert, v_camada, v_lista, v_conferir, v_dem, v_subs) then
         update caso_acoes set titulo = v_titulo, dono = v_dono, canal = case when v_dono = 'ela' then 'plataforma' else 'so_eu' end, passo_chave = v_passo, prazo = v_prazo, prazo_texto = v_pt,
-               prazo_a_confirmar = (v_pt is not null and v_prazo is null), certeza = v_cert, camada = v_camada, lista_chave = v_lista, a_conferir = v_conferir, demarche = v_dem, subitens = v_subs where id = ac.id;
+               prazo_a_confirmar = (v_pt is not null and v_prazo is null), certeza = v_cert, camada = v_camada, lista_chave = v_lista, a_conferir = v_conferir, demarche = v_dem, subitens = v_subs, editado_em = case when v_edit is not null then now() else editado_em end where id = ac.id;
         v_atualizados := v_atualizados + 1;
       else v_mantidos := v_mantidos + 1; end if;
 
     elsif it.kind in ('doc', 'bloco') then
       if it.kind = 'doc' then
-        v_titulo := left(it.d->>'rotulo', 120);
-        v_dados := jsonb_build_object('rotulo', left(it.d->>'rotulo', 120), 'direcao', case when it.d->>'direcao' = 'equipe_envia' then 'recebe' else 'reune' end, 'selos', coalesce(it.d->'selos', '[]'::jsonb), 'checklists', coalesce(it.d->'checklists', '[]'::jsonb));
+        v_titulo := left(coalesce(v_edit, it.d->>'rotulo'), 120);
+        v_dados := jsonb_build_object('rotulo', v_titulo, 'direcao', case when it.d->>'direcao' = 'equipe_envia' then 'recebe' else 'reune' end, 'selos', coalesce(it.d->'selos', '[]'::jsonb), 'checklists', coalesce(it.d->'checklists', '[]'::jsonb));
       else
-        v_titulo := left(it.d->>'nome', 120);
-        v_dados := jsonb_strip_nulls(jsonb_build_object('bloco_tipo', it.ctx->>'tipo', 'nome', it.d->>'nome', 'link', nullif(it.d->>'link', ''), 'canal', nullif(it.d->>'canal', ''), 'nota', nullif(it.d->>'nota', '')));
+        v_titulo := left(coalesce(v_edit, it.d->>'nome'), 120);
+        v_dados := jsonb_strip_nulls(jsonb_build_object('bloco_tipo', it.ctx->>'tipo', 'nome', v_titulo, 'link', nullif(it.d->>'link', ''), 'canal', nullif(it.d->>'canal', ''), 'nota', nullif(it.d->>'nota', '')));
       end if;
       select * into bi from board_itens where contato_id = p_contato and origem_chave = it.k;
       if not found then
@@ -161,7 +163,7 @@ begin
 
     elsif it.kind = 'lemb' then
       -- Lembrete = aviso curto para o Início dela (tipo "inteligência"), em rascunho: você aprova e agenda em Início.
-      v_titulo := left(it.d->>'titulo', 120); v_txt := left(it.d->>'texto', 600); v_dias := coalesce((it.d->>'dias_apos')::int, 1);
+      v_titulo := left(coalesce(v_edit, it.d->>'titulo'), 120); v_txt := left(it.d->>'texto', 600); v_dias := coalesce((it.d->>'dias_apos')::int, 1);
       select * into av from caso_avisos where contato_id = p_contato and origem_chave = it.k;
       if not found then
         insert into caso_avisos (contato_id, origem_chave, tipo, titulo, texto, dias_apos) values (p_contato, it.k, 'inteligencia', v_titulo, v_txt, v_dias);
@@ -173,7 +175,7 @@ begin
       else v_mantidos := v_mantidos + 1; end if;
 
     elsif it.kind = 'perg' then
-      v_titulo := left(it.d->>'texto', 120);
+      v_titulo := left(coalesce(v_edit, it.d->>'texto'), 120);
       select * into av from caso_avisos where contato_id = p_contato and origem_chave = it.k;
       if not found then
         insert into caso_avisos (contato_id, origem_chave, tipo, titulo, resposta_tipo, opcoes, grava_em)

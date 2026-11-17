@@ -43,7 +43,7 @@ async function main() {
   const nova = async (email) => { const [u] = await q("insert into auth.users (email, email_confirmed_at) values ($1, now()) returning id", [email]);
     await db.query("insert into contatos (email, user_id, estagio) values ($1, $2, 'em_uso') on conflict (email) do update set user_id = excluded.user_id", [email, u.id]);
     return { u, c: (await um('select id from contatos where email=$1', [email])).id }; };
-  const ana = await nova('ana@example.com'), bia = await nova('bia@example.com'), cai = await nova('cai@example.com');
+  const ana = await nova('ana@example.com'), bia = await nova('bia@example.com'), cai = await nova('cai@example.com'), dai = await nova('dai@example.com');
   await db.query("insert into consentimentos (contato_id, finalidade, aceito) values ($1, 'servico', true)", [ana.c]);
   const adm = (sqlTxt, p) => asUser(admin.id, () => db.query(sqlTxt, p));
   const o = { momento: '20:05', trecho: 'tu peux les appeler' };
@@ -182,6 +182,23 @@ async function main() {
     const a = await um("select titulo, subitens from caso_acoes where contato_id=$1 and origem_chave='enc:ligar_escola'", [cai.c]);
     check('o passo que você editou vira conflito e o seu texto fica', (rEd.conflitos || []).includes('enc:ligar_escola') && a.titulo === 'Ligar para a escola (meu texto)' && a.subitens[0] === 'Meu subitem');
     check('o que você não editou continua atualizando na releitura', (await um("select count(*)::int n from caso_acoes where contato_id=$1", [cai.c])).n >= 4);
+  }
+
+  console.log('\n== Texto editado na tela antes de aprovar ==');
+  {
+    const dec = (prop, edits) => aprovarTudo(prop).map((d) => (edits[d.origem_chave] ? { ...d, decisao: 'editar', texto: edits[d.origem_chave] } : d));
+    const pT = PROP(); pT.lembretes = [{ chave: 'lembrete_t1t2t3', titulo: 'Lembrete original', texto: 'Texto.', dias_apos: 2 }];
+    const mT = await montagem(dai, pT);
+    const edits = { 'enc:ligar_escola': 'Ligar para a Alliance amanhã de manhã', 'chk:dossie_empresa:cv_fr': 'Montar o CV em francês (1 página)', 'doc:diploma': 'Diploma do ensino médio, traduzido', 'perg:fim_pvt': 'Quando termina o seu visto PVT?', 'lemb:lembrete_t1t2t3': 'Lembrete reescrito por mim', 'bloco:empresa:acme': 'Acme SAS (estágio)' };
+    const rT = await aplicar(dai, mT, dec(pT, edits));
+    const a = async (k) => um('select titulo, editado_em from caso_acoes where contato_id=$1 and origem_chave=$2', [dai.c, k]);
+    check('o passo (encaminhamento e item de checklist) é criado com o texto que você escreveu e marcado como editado', (await a('enc:ligar_escola')).titulo === 'Ligar para a Alliance amanhã de manhã' && (await a('enc:ligar_escola')).editado_em !== null && (await a('chk:dossie_empresa:cv_fr')).titulo === 'Montar o CV em francês (1 página)' && (await a('chk:dossie_empresa:cv_fr')).editado_em !== null);
+    check('o que você não editou continua com o texto da IA e sem a marca de editado', (await a('chk:dossie_empresa:carta')).titulo === 'Escrever a carta de motivação' && (await a('chk:dossie_empresa:carta')).editado_em === null);
+    const dc = await um("select titulo, dados from board_itens where contato_id=$1 and origem_chave='doc:diploma'", [dai.c]), ct = await um("select titulo, dados from board_itens where contato_id=$1 and origem_chave='bloco:empresa:acme'", [dai.c]);
+    check('documento e contato levam o texto editado (título e dados)', dc.titulo === 'Diploma do ensino médio, traduzido' && dc.dados.rotulo === 'Diploma do ensino médio, traduzido' && ct.titulo === 'Acme SAS (estágio)' && ct.dados.nome === 'Acme SAS (estágio)');
+    check('pergunta da equipe e lembrete levam o texto editado', (await um("select titulo from caso_avisos where contato_id=$1 and origem_chave='perg:fim_pvt'", [dai.c])).titulo === 'Quando termina o seu visto PVT?' && (await um("select titulo, texto from caso_avisos where contato_id=$1 and origem_chave='lemb:lembrete_t1t2t3'", [dai.c])).titulo === 'Lembrete reescrito por mim');
+    check('texto editado vazio ou só espaços é ignorado (vale o da IA)', await (async () => { const p2 = PROP(); const m2 = await montagem(dai, p2); await aplicar(dai, m2, aprovarTudo(p2).map((d) => (d.origem_chave === 'chk:dossie_empresa:carta' ? { ...d, decisao: 'editar', texto: '   ' } : d))); return (await a('chk:dossie_empresa:carta')).titulo === 'Escrever a carta de motivação'; })());
+    check('texto editado muito longo é cortado no limite da coluna, sem erro', await (async () => { const p3 = PROP(); const m3 = await montagem(dai, p3); await aplicar(dai, m3, aprovarTudo(p3).map((d) => (d.origem_chave === 'enc:mandar_guia' ? { ...d, decisao: 'editar', texto: 'x'.repeat(400) } : d))); return (await a('enc:mandar_guia')).titulo.length === 160; })());
   }
 
   console.log('\n== Acesso ==');

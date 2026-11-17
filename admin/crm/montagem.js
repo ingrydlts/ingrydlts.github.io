@@ -68,14 +68,19 @@ export function promessasAfetadas(p, sel) {
 
 // O que vai ao banco: tudo marcado por padrão; desmarcado vira "rejeitar" (com o motivo, se for um dos conhecidos).
 // Item de uma lista marcado puxa a lista junto: o banco recusa um item cuja lista não existe.
-export function decisoesDe(itens, sel, motivos) {
-  sel = sel || {}; motivos = motivos || {};
+export function decisoesDe(itens, sel, motivos, edits) {
+  sel = sel || {}; motivos = motivos || {}; edits = edits || {};
   var marcado = function (k) { return sel[k] === undefined ? true : !!sel[k]; };
   var listasPuxadas = {};
   itens.forEach(function (i) { var m = /^chk:([a-z0-9_]+):/.exec(i.k); if (m && marcado(i.k)) listasPuxadas['lista:' + m[1]] = true; });
   var validos = MOTIVOS.map(function (m) { return m[0]; });
   return itens.map(function (i) {
-    if (marcado(i.k) || listasPuxadas[i.k]) return { origem_chave: i.k, decisao: 'aprovar' };
+    if (marcado(i.k) || listasPuxadas[i.k]) {
+      // Texto que você reescreveu na lista: vai junto (o banco usa no lugar do da IA). A lista em si não se edita aqui.
+      var tx = typeof edits[i.k] === 'string' ? edits[i.k].trim() : '';
+      if (marcado(i.k) && tx && tx !== i.titulo && !/^lista:/.test(i.k)) return { origem_chave: i.k, decisao: 'editar', texto: tx.slice(0, 400) };
+      return { origem_chave: i.k, decisao: 'aprovar' };
+    }
     var d = { origem_chave: i.k, decisao: 'rejeitar' };
     if (validos.indexOf(motivos[i.k]) >= 0) d.motivo = motivos[i.k];
     return d;
@@ -84,10 +89,14 @@ export function decisoesDe(itens, sel, motivos) {
 
 function itemHtml(i, m, esc) {
   var marcado = m.sel[i.k] === undefined ? true : !!m.sel[i.k];
-  var h = '<li class="mont-item"><label><input type="checkbox" data-montmarca="' + esc(i.k) + '"' + (marcado ? ' checked' : '') + '> <span>' + (i.demarche ? '<span class="pill">' + esc(i.demarche) + '</span> ' : '') + '<b>' + esc(i.titulo) + '</b>' +
+  var ed = m.edits || {}, editado = typeof ed[i.k] === 'string' && ed[i.k].trim() && ed[i.k].trim() !== i.titulo, texto = editado ? ed[i.k].trim() : i.titulo, editavel = !/^lista:/.test(i.k);
+  var campo = m.editando === i.k ? '<div class="mont-edita"><input type="text" class="t" maxlength="400" style="width:100%" data-montedit="' + esc(i.k) + '" value="' + esc(texto) + '" aria-label="Texto do item"> <button class="btn" type="button" data-montedok="' + esc(i.k) + '" style="padding:5px 10px;font-size:12px">OK</button></div>' : '';
+  var h = '<li class="mont-item"><label><input type="checkbox" data-montmarca="' + esc(i.k) + '"' + (marcado ? ' checked' : '') + '> <span>' + (i.demarche ? '<span class="pill">' + esc(i.demarche) + '</span> ' : '') + '<b>' + esc(texto) + '</b>' + (editado ? ' <span class="pill u-baixa">editado</span>' : '') +
     (i.aConferir ? ' <span class="pill u-media">a conferir</span>' : '') + '<br><small class="sub">' + esc(i.demarche && i.detalhe.indexOf(i.demarche + ' · ') === 0 ? i.detalhe.slice(i.demarche.length + 3) : i.detalhe) + (i.aConferir ? ' · não vai para ela até você conferir a fonte' : '') + '</small>' +
     (i.subitens && i.subitens.length ? '<ul class="mont-sub" aria-label="Subitens">' + i.subitens.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul>' : '') +
     (i.trecho || i.momento ? '<br><small class="sub">' + (i.momento ? 'Na conversa, ' + esc(i.momento) : 'Na conversa') + (i.trecho ? ': “' + esc(i.trecho) + '”' : '') + '</small>' : '') + '</span></label>';
+  if (editavel && marcado && m.editando !== i.k) h += ' <button class="btn" type="button" data-montedito="' + esc(i.k) + '" style="padding:3px 8px;font-size:12px">Editar</button>';
+  h += campo;
   if (!marcado) {
     h += '<select data-montmotivo="' + esc(i.k) + '" aria-label="Por que não entra"><option value="">Por que não entra? (opcional)</option>' +
       MOTIVOS.map(function (mo) { return '<option value="' + mo[0] + '"' + (m.motivos[i.k] === mo[0] ? ' selected' : '') + '>' + esc(mo[1]) + '</option>'; }).join('') + '</select>';
@@ -105,7 +114,7 @@ function gaveta(m, chave, titulo, resumo, corpo, padrao) {
 function conversaHtml(p, esc, m) {
   if (!p) return '';
   var b = p.bilan || {}, afs = lista(b.afirmacoes), cs = lista(p.compromissos), h = '';
-  if (b.resumo || afs.length) {
+  if ((b.resumo || afs.length) && !(m && m.embutido)) {
     var corpo = (b.resumo ? '<p class="sub" style="margin:0 0 6px">' + esc(b.resumo) + '</p>' : '');
     if (afs.length) corpo += '<ul class="mont-lista">' + afs.map(function (a) {
       return '<li class="mont-item"><b>' + esc(a.texto) + '</b><br><small class="sub">' + esc(a.quem === 'ingryd' ? 'Você' : a.quem === 'pessoa' ? 'Ela' : 'incerto') + (a.momento ? ' · ' + esc(a.momento) : '') + ' · ' + esc(a.certeza) +
@@ -140,13 +149,14 @@ function duplicadosHtml(p, esc) {
   return '<details class="mont-dup" style="margin:0 0 8px"><summary class="sub">Juntei ' + d.length + (d.length === 1 ? ' item repetido' : ' itens repetidos') + ' (cada coisa fica num lugar só)</summary><ul class="mont-sub">' +
     d.map(function (x) { return '<li>' + esc(String(x.texto || '')) + ' <span class="sub">· ' + esc(MOTIVO_DUP[x.motivo] || 'repetido') + (x.em ? ': ' + esc(String(x.em)) : '') + '</span></li>'; }).join('') + '</ul></details>';
 }
-function propostaHtml(m, c, esc) {
-  var itens = itensDaProposta(m.prop && m.prop.proposta), marcados = decisoesDe(itens, m.sel, m.motivos).filter(function (d) { return d.decisao === 'aprovar'; }).length;
-  var h = '<p class="sub" style="margin:0 0 8px">Leitura' + (m.prop && m.prop.versao ? ' (versão ' + esc(String(m.prop.versao)) + ')' : '') + '. Marque o que vale; o que você desmarcar fica de fora e o motivo ajuda a melhorar os modelos.</p>';
+function propostaHtml(m, c, esc, embutido) {
+  if (embutido) m = Object.assign({}, m, { embutido: true });
+  var itens = itensDaProposta(m.prop && m.prop.proposta), marcados = decisoesDe(itens, m.sel, m.motivos, m.edits).filter(function (d) { return d.decisao !== 'rejeitar'; }).length;
+  var h = embutido ? '' : '<p class="sub" style="margin:0 0 8px">Leitura' + (m.prop && m.prop.versao ? ' (versão ' + esc(String(m.prop.versao)) + ')' : '') + '. Marque o que vale; o que você desmarcar fica de fora e o motivo ajuda a melhorar os modelos.</p>';
   h += conversaHtml(m.prop && m.prop.proposta, esc, m);
   h += duplicadosHtml(m.prop && m.prop.proposta, esc);
   var pb = (m.prop && m.prop.proposta && m.prop.proposta.bilan) || {};
-  if (pb.resumo || lista(pb.email && pb.email.proximos).length) h += '<p style="margin:0 0 8px"><button class="btn" type="button" data-montdossie="' + esc(String(c.id)) + '">Atualizar Resumo e Próximos passos do Dossiê com esta leitura</button> <small class="sub">Eles já foram preenchidos se estavam vazios. Este botão sobrescreve.</small></p>';
+  if (!embutido && (pb.resumo || lista(pb.email && pb.email.proximos).length)) h += '<p style="margin:0 0 8px"><button class="btn" type="button" data-montdossie="' + esc(String(c.id)) + '">Atualizar Resumo e Próximos passos do Dossiê com esta leitura</button> <small class="sub">Eles já foram preenchidos se estavam vazios. Este botão sobrescreve.</small></p>';
   var afet = promessasAfetadas(m.prop && m.prop.proposta, m.sel);
   if (afet.length) h += '<p class="err" role="alert" style="margin:0 0 8px">Você desmarcou o que cumpre uma promessa da chamada: ' + afet.map(esc).join('; ') + '. Anote à mão, ou ela some do plano.</p>';
   h += diffHtml(m.diff, esc);
@@ -161,6 +171,8 @@ function propostaHtml(m, c, esc) {
   if (!itens.length) h += '<p class="sub">A conversa não trouxe nada para montar. Cole uma transcrição mais completa ou monte à mão na aba Caso.</p>';
   // Uma aprovação só: os itens marcados já entram no Checklist, nos Avisos e no Espaço dela (nada de segunda etapa em outra sessão).
   var confiro = m.confiro === undefined ? true : !!m.confiro;
+  if (embutido) return h + (nConf ? '<label class="pccheck" style="margin:10px 0 0"><input type="checkbox" data-montconfiro' + (confiro ? ' checked' : '') + '> <span>Conferi o texto dos ' + nConf + (nConf === 1 ? ' item' : ' itens') + ' sem fonte oficial: podem ir para ela. (Desmarque para segurá-los em “A conferir”.)</span></label>' : '') +
+    (m.erro ? '<p class="err" role="alert" style="margin:8px 0 0">' + esc(m.erro) + '</p>' : '');
   return h + (nConf ? '<label class="pccheck" style="margin:10px 0 0"><input type="checkbox" data-montconfiro' + (confiro ? ' checked' : '') + '> <span>Conferi o texto dos ' + nConf + (nConf === 1 ? ' item' : ' itens') + ' sem fonte oficial: podem ir para ela. (Desmarque para segurá-los em “A conferir”.)</span></label>' : '') +
     '<div class="actions" style="margin-top:10px"><button class="btn primary" type="button" data-montaplicar="' + esc(c.id) + '"' + (m.estado === 'aplicando' ? ' disabled' : '') + '>' +
     (m.estado === 'aplicando' ? 'Aprovando…' : 'Aprovar e adicionar ao Checklist (' + marcados + ')') + '</button> <button class="btn" type="button" data-montdescartar="' + esc(c.id) + '">Descartar a proposta</button></div>' +
@@ -245,4 +257,15 @@ export function passosPropostosHtml(aco, listas, h) {
     var btns = (fim ? '' : a.publicada_em ? h.btn('aco-retirar', a.id, 'Retirar') : a.a_conferir ? h.conferi(a.id) : h.btn('aco-pub', a.id, 'Publicar para ela')) + (fim ? '' : h.btn('ed-aco', a.id, 'Editar'));
     return h.linha(est, corpo, btns);
   }).join('');
+}
+
+// A lista da montagem para embutir no painel do Pós-call (um botão "Ler com IA" só, uma lista só, um "Aplicar o que eu marquei" só).
+export function listaHtml(m, c, esc) { return propostaHtml(m, c, esc, true); }
+// Só o acesso dela (convite ou aviso), quando não há proposta em revisão.
+export function painelAcessoHtml(m, c, esc) {
+  var h = '<section class="dbloco montagem"><h4>Plataforma dela</h4>';
+  if (m.erro) h += '<p class="err" role="alert">' + esc(m.erro) + '</p>';
+  h += acessoHtml(m, c, esc);
+  if (m.msg) h += '<p class="sub" role="status" style="margin:8px 0 0"><b>' + esc(m.msg) + '</b></p>';
+  return h + '</section>';
 }

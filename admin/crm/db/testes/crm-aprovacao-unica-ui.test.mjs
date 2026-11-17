@@ -23,6 +23,24 @@ console.log('== Gavetas: a tela deixa de ser uma lista comprida ==');
   check('a gaveta lembra que estava aberta (m.dd)', /<details class="mont-gaveta" data-dd="mont-checklists" open/.test(MT.painelHtml({ ...m, dd: { 'mont-checklists': true } }, pessoa({ id: 'c1' }), esc)));
 }
 
+console.log('== Editar o texto antes de aprovar (na própria lista) ==');
+{
+  const itens = MT.itensDaProposta(PROP());
+  const k = itens.find((i) => i.k === 'chk:l:a').k;
+  check('decisoesDe leva o texto editado como decisão "editar" com o texto novo (só do item marcado)', (() => { const d = MT.decisoesDe(itens, {}, {}, { [k]: '  Item A reescrito  ' }).find((x) => x.origem_chave === k); return d.decisao === 'editar' && d.texto === 'Item A reescrito'; })());
+  check('texto igual ao original, vazio ou de item desmarcado não vira edição', (() => { const orig = itens.find((i) => i.k === k).titulo; const a = MT.decisoesDe(itens, {}, {}, { [k]: orig }).find((x) => x.origem_chave === k); const b = MT.decisoesDe(itens, {}, {}, { [k]: '   ' }).find((x) => x.origem_chave === k); const c = MT.decisoesDe(itens, { [k]: false }, {}, { [k]: 'Outro' }).find((x) => x.origem_chave === k); return a.decisao === 'aprovar' && !('texto' in a) && b.decisao === 'aprovar' && c.decisao === 'rejeitar' && !('texto' in c); })());
+  check('a lista (título da lista) não é editável aqui', !MT.decisoesDe(itens, {}, {}, { 'lista:l': 'X' }).find((x) => x.origem_chave === 'lista:l').texto);
+  const base = { cid: 'c1', estado: 'proposta', erro: '', prop: { id: 1, versao: 1, proposta: PROP() }, sel: {}, motivos: {}, res: null, pub: null, previa: null, pode: false, forcar: false, msg: '', temTranscricao: true, diff: null, lib: null, dd: { 'mont-checklists': true }, edits: {}, editando: null };
+  let h = MT.painelHtml(base, pessoa({ id: 'c1' }), esc);
+  check('cada item editável tem o botão Editar; a lista não tem', (h.match(/data-montedito="/g) || []).length === 3 && !/data-montedito="lista:/.test(h));
+  h = MT.painelHtml({ ...base, editando: 'chk:l:a' }, pessoa({ id: 'c1' }), esc);
+  check('em edição o item vira um campo de texto com o texto atual e botão OK', /<input[^>]*data-montedit="chk:l:a"[^>]*value="Item A"/.test(h) && /data-montedok="chk:l:a"/.test(h));
+  h = MT.painelHtml({ ...base, edits: { 'chk:l:a': 'Item A reescrito' } }, pessoa({ id: 'c1' }), esc);
+  check('o item editado mostra o texto novo e a marca "editado"', h.includes('Item A reescrito') && /editado/.test(h) && !/<b>Item A<\/b>/.test(h));
+  h = MT.painelHtml({ ...base, edits: { 'chk:l:a': '<img src=x>' } }, pessoa({ id: 'c1' }), esc);
+  check('o texto editado é escapado', !h.includes('<img'));
+}
+
 console.log('== Aprovar uma vez só ==');
 {
   const pub = { ha_rascunho_aprovado: true, itens_prontos: 2, itens_proposta: 0, itens_a_conferir: 1, conta_ja_existe: false, tem_assinatura: false, a_conferir_itens: [{ id: 41, titulo: 'Item A' }] };
