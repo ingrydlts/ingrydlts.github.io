@@ -486,25 +486,25 @@ export function inicioDoApp(o) {
     const quando = x.quando || {};
     const gerais = base.itens.filter((i) => i.status !== 'concluido').slice().sort((a, b) => (a.due_date && b.due_date) ? (a.due_date < b.due_date ? -1 : a.due_date > b.due_date ? 1 : 0) : a.due_date ? -1 : b.due_date ? 1 : 0)
       .slice(0, 4).map((i) => ({ titulo: i.titulo_custom || i.label, atrasado: !!(i.due_date && diasAteApp(i.due_date, agora) < 0), meta: i.due_date ? dataBR(i.due_date).slice(0, 5) : pilulaDoQuando(quando[i.step_key]), de: demarche }));
-    seguintes = dosPassos.concat(gerais).slice(0, 4);
+    seguintes = dosPassos.concat(gerais);
   }
-  const atalhos = [];
-  if (escolas.length) atalhos.push({ tit: 'Escolas para contatar', sub: escolas.length + (escolas.length === 1 ? ' escola' : ' escolas') });
-  if (board.some((b) => b.tipo === 'bilan')) atalhos.push({ tit: 'O que combinamos na conversa', sub: 'o bilan da nossa conversa' });
-  if (board.some((b) => b.tipo === 'modelo')) atalhos.push({ tit: 'Mensagem pronta para as escolas', sub: 'copie e envie' });
-  // Em destaque (a página inicial do CRM): só o que ela vê — passo do checklist que existe e item do board publicado, nos limites 3 / 2 / 2.
+  // Página inicial: só o que ela vê — passo do checklist que existe e item do board publicado, nos limites 3 / 3 / 2. Os passos escolhidos vão para o início do "Em seguida".
   const hm = x.home || [], vivos = (x.itens || []).filter((i) => i.status !== 'arquivado');
   const porCat = (c) => hm.filter((h) => h.categoria === c).sort((a, b) => (a.ordem || 0) - (b.ordem || 0) || a.id - b.id);
-  const doBoard = (c, max) => porCat(c).map((h) => board.find((b) => b.id === h.board_id)).filter(Boolean).slice(0, max).map((b) => ({ titulo: b.titulo, sub: b.resumo || (b.tipo === 'marco' && b.dados && b.dados.data ? dataBR(b.dados.data) : ''), tipo: b.tipo, conteudo: /^https:\/\//i.test(b.link || '') ? 'link' : b.arquivo_caminho ? 'arquivo' : b.descricao ? 'descricao' : '' }));
-  const destaques = { checklist: porCat('checklist').map((h) => vivos.find((i) => i.step_key === h.step_key)).filter(Boolean).slice(0, 3).map((i) => ({ titulo: i.titulo_custom || i.label, meta: i.due_date ? dataBR(i.due_date).slice(0, 5) : pilulaDoQuando((x.quando || {})[i.step_key]) })), espaco: doBoard('espaco', 2), guias: doBoard('guias', 2) };
-  return { pessoal: temCasoApp({ board, acoes: x.acoes, home: hm }), nome: x.nome || '', destaques, escolas: escolas.map((e) => e.titulo),
+  const doBoard = (c, max) => porCat(c).map((h) => board.find((b) => b.id === h.board_id)).filter(Boolean).slice(0, max).map((b) => ({ titulo: b.titulo, sub: b.resumo || (b.tipo === 'bilan' ? 'o bilan da nossa conversa' : ''), tipo: b.tipo, conteudo: /^https:\/\//i.test(b.link || '') ? 'link' : b.arquivo_caminho ? 'arquivo' : b.descricao ? 'descricao' : '' }));
+  const picks = porCat('checklist').map((h) => vivos.find((i) => i.step_key === h.step_key)).filter(Boolean).slice(0, 3).map((i) => ({ titulo: i.titulo_custom || i.label, feito: i.status === 'concluido', meta: i.due_date ? dataBR(i.due_date).slice(0, 5) : pilulaDoQuando((x.quando || {})[i.step_key]) }));
+  const destaques = { checklist: picks, soSeu: doBoard('so_seu', 3), guias: doBoard('guias', 2) };
+  const vistos = {}; if (foco) vistos[foco.titulo] = true;
+  seguintes = picks.filter((q) => !q.feito).map((q) => ({ titulo: q.titulo, atrasado: false, meta: q.meta, de: '' })).concat(seguintes).filter((q) => { if (vistos[q.titulo]) return false; vistos[q.titulo] = true; return true; }).slice(0, 4);
+  const soSeu = { atalhoBilan: !destaques.soSeu.length && board.some((b) => b.tipo === 'bilan'), bilans: destaques.soSeu.filter((b) => b.tipo === 'bilan'), docs: destaques.soSeu.filter((b) => b.tipo !== 'bilan') };
+  return { pessoal: temCasoApp({ board, acoes: x.acoes, home: hm }), nome: x.nome || '', destaques, soSeu, escolas: escolas.map((e) => e.titulo),
     marcos: marcos.map((m) => { const d = diasAteApp(m.dados.data, agora); return { titulo: m.titulo, data: dataBR(m.dados.data), dias: d, quando: quandoTextoApp(d), aConfirmar: !!m.dados.a_confirmar }; }),
-    foco, seguintes, atalhos };
+    foco, seguintes };
 }
 
 // ---------- O Espaço do app, como ele monta (porte de montarEspaco, assets/js/caso.js do app) ----------
 // De cima para baixo: pergunta(s) da equipe (as rápidas do perfil entram na mesma fila, só o app sabe quais faltam); "O que a equipe percebeu"
-// (sem repetir prazo); "Da Ingryd para você"; Escolas; Mensagens prontas; Meu Bilan. Seção sem nada não aparece; sem nada, "ainda sendo preparado".
+// (sem repetir prazo); "Encaminhamentos da Ingryd"; Escolas; Mensagens prontas; Meu Bilan. Seção sem nada não aparece; sem nada, "ainda sendo preparado".
 export function duplicaPrazoApp(aviso, marcos, agora) {
   const t = ((aviso && aviso.titulo) || '') + ' ' + ((aviso && aviso.texto) || '');
   if (/\b(prazo|fecha|fechamento|vence|vencimento|faltam|inscri[cç][aã]o)\b/i.test(t)) return true;
@@ -533,11 +533,17 @@ export function espacoDoApp(o) {
 }
 
 // ---------- Página inicial: os destaques que a Ingryd escolhe para o Início dela ----------
-// Três categorias, cada uma com limite fixo (o banco confere de novo, crm-caso-home.sql): 3 passos do checklist, 2 itens do Espaço, 2 dos Guias.
-// A categoria vem de onde o item mora no CRM: marco e escola são da sessão Espaço; bilan, documento e mensagem pronta, da sessão Guias.
-export const HOME_LIMITES = { checklist: 3, espaco: 2, guias: 2 };
-export const HOME_ROTULOS = { checklist: 'Checklist', espaco: 'Espaço', guias: 'Guias' };
-export function categoriaHomeDoBoard(tipo) { return tipo === 'marco' || tipo === 'escola' ? 'espaco' : tipo === 'bilan' || tipo === 'documento' || tipo === 'modelo' ? 'guias' : null; }
+// Três categorias, as mesmas seções do Início dela (o banco confere de novo, crm-caso-home-so-seu.sql):
+//   checklist  até 3 passos do checklist — entram no "Em seguida" do Início
+//   so_seu     até 3: o bilan e os encaminhamentos da Ingryd (documento que ela recebe)
+//   guias      até 2: documento que ela recebe ou mensagem pronta
+export const HOME_LIMITES = { checklist: 3, so_seu: 3, guias: 2 };
+export const HOME_ROTULOS = { checklist: 'Checklist', so_seu: 'Só seu', guias: 'Guias' };
+// O item do board (bilan, documento, mensagem pronta) pode ir para esta categoria? Prazo e escola não vão para a página inicial.
+export function itemPodeNaHome(it, categoria) {
+  const t = it && it.tipo, recebe = !!(it && it.dados && it.dados.direcao === 'recebe');
+  return categoria === 'so_seu' ? (t === 'bilan' || (t === 'documento' && recebe)) : categoria === 'guias' ? (t === 'modelo' || (t === 'documento' && recebe)) : false;
+}
 // home = linhas de caso_home { id, categoria, step_key, board_id, ordem }. Devolve { ok, motivo }.
 export function podeAdicionarHome(home, categoria) {
   if (!HOME_LIMITES[categoria]) return { ok: false, motivo: 'categoria' };
