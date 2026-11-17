@@ -149,7 +149,7 @@ rpcErro = null;
 console.log('\n== A próxima mensagem e o ritmo ==');
 fixture({ avs: AVS.slice(1) }); await pagina();
 h = html();
-check('a próxima mensagem aparece em destaque no topo da aba, com quando sai e quantas vêm depois', /Próxima mensagem para Ana/.test(h) && /Seu bilan/.test(h.split('Avisos da IAssistente')[0]) && /sai em 2 dias/.test(h) && /vem mais 1/.test(h) && /as pausas se mantêm/.test(h));
+check('a próxima mensagem aparece em destaque no topo da aba, com quando sai e quantas vêm depois', /Próxima para Ana/.test(h) && /Seu bilan/.test(h.split('Avisos da IAssistente')[0]) && /sai em 2 dias/.test(h) && /\+1 na fila/.test(h) && /as pausas se mantêm/.test(h));
 check('só a próxima tem "Enviar agora"; atrasar vale para todas; adiantar só com pausa maior que zero', (h.match(/data-caso="enviar-agora"/g) || []).length === 2 && h.includes('data-caso="enviar-agora" data-id="31"') && !h.includes('data-caso="enviar-agora" data-id="32"') && h.includes('data-caso="atrasar-3" data-id="32"') && h.includes('data-caso="adiantar-1" data-id="32"'));
 check('a lista mostra a pausa de cada uma', /pausa de 2 dias depois do anterior/.test(h) || /pausa de 2 dias depois do 1º acesso/.test(h));
 rpcs.length = 0;

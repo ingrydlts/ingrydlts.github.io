@@ -2,15 +2,15 @@
 // Nada de service_role aqui. O banco é db/crm-fase2.sql; o desenho é o artefato "CRM Por Dentro".
 // Tudo que vem do banco é texto de terceiros (nome, e-mail, pergunta): passa sempre por esc().
 import { supabase } from '/assets/js/supabase-client.js';
-import * as TX from './taxonomia.js?v=2026-11-17.13';   // páginas, famílias e agrupamento dos modelos
-import * as ES from './estudio.js?v=2026-11-17.13';   // os blocos do estúdio de e-mails (entregas 2 e 3)
-import * as EE from './editor-email.js?v=2026-11-17.13';
-import * as EQ from './editor-quem.js?v=2026-11-17.13';
-import * as JR from './jornada.js?v=2026-11-17.13';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
-import * as FX from './ficha.js?v=2026-11-17.13';   // ficha v2: lógica pura (fila, démarches, funil, ações)
-import * as FH from './ficha-html.js?v=2026-11-17.13';   // ficha v2: HTML puro
-import * as PN from './panorama.js?v=2026-11-17.13';
-import * as MT from './montagem.js?v=2026-11-17.13';   // Montagem do espaço a partir do transcript (lógica e HTML puros)   // Panorama dela e O que ela trouxe (lógica e HTML puros)
+import * as TX from './taxonomia.js?v=2026-11-17.14';   // páginas, famílias e agrupamento dos modelos
+import * as ES from './estudio.js?v=2026-11-17.14';   // os blocos do estúdio de e-mails (entregas 2 e 3)
+import * as EE from './editor-email.js?v=2026-11-17.14';
+import * as EQ from './editor-quem.js?v=2026-11-17.14';
+import * as JR from './jornada.js?v=2026-11-17.14';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
+import * as FX from './ficha.js?v=2026-11-17.14';   // ficha v2: lógica pura (fila, démarches, funil, ações)
+import * as FH from './ficha-html.js?v=2026-11-17.14';   // ficha v2: HTML puro
+import * as PN from './panorama.js?v=2026-11-17.14';
+import * as MT from './montagem.js?v=2026-11-17.14';   // Montagem do espaço a partir do transcript (lógica e HTML puros)   // Panorama dela e O que ela trouxe (lógica e HTML puros)
 
 var PERSONAS = {
   au_pair_estudante: 'Au pair → estudante', campus_france: 'Campus France', alternancia_emprego: 'Alternância / emprego',
@@ -2017,10 +2017,10 @@ function casoPil(txt, cls) { return '<span class="pill' + (cls ? ' ' + cls : '')
 // Botão só com um símbolo (+ ou ×): o rótulo vai em aria-label e na dica.
 function casoIco(acao, id, glifo, rot, ligado) { return '<button type="button" class="fx-ic' + (ligado ? ' on' : '') + '" data-caso="' + acao + '" data-id="' + esc(String(id)) + '"' + (ligado ? ' aria-pressed="true"' : '') + ' aria-label="' + esc(rot) + '" title="' + esc(rot) + '">' + esc(glifo) + '</button>'; }
 function casoBtn(acao, id, rot, extra) { return '<button type="button" class="btn" data-caso="' + acao + '" data-id="' + esc(String(id)) + '"' + (extra || '') + ' style="padding:5px 10px;font-size:12px">' + esc(rot) + '</button>'; }
-function casoSecao(titulo, sub, corpo) { return '<section class="dbloco" style="margin-top:14px"><h4>' + esc(titulo) + (sub ? ' <span class="sub" style="font-weight:400">' + esc(sub) + '</span>' : '') + '</h4>' + corpo + '</section>'; }
+function casoSecao(titulo, sub, corpo) { var longo = sub && sub.length > 28; return '<section class="dbloco" style="margin-top:14px"><h4' + (longo ? ' title="' + esc(sub) + '"' : '') + '>' + esc(titulo) + (sub && !longo ? ' <span class="sub fx-sub">' + esc(sub) + '</span>' : '') + '</h4>' + corpo + '</section>'; }
 // Linha minimalista, a mesma em todas as listas do caso: ponto de estado, texto, ícones. Dois cliques no texto (ou Enter) editam; no celular o ✎ faz o mesmo.
 var CASO_ICONES = { 'item-rev': ['✓', 'Marcar como revisado'], 'item-pub': ['↑', 'Publicar para ela'], 'item-ret': ['↓', 'Retirar'], 'aco-pub': ['↑', 'Publicar para ela'], 'aco-retirar': ['↓', 'Retirar'],
-  'aco-fim': ['✓', 'Concluir'], 'aco-reabrir': ['↺', 'Reabrir'], 'ed-item': ['✎', 'Editar'], 'ed-aco': ['✎', 'Editar'], 'ed-ach': ['✎', 'Editar'], 'item-del-pede': ['⌫', 'Remover'] };
+  'aco-fim': ['✓', 'Concluir'], 'aco-reabrir': ['↺', 'Reabrir'], 'ed-item': ['✎', 'Editar'], 'ed-aco': ['✎', 'Editar'], 'ed-ach': ['✎', 'Editar'], 'item-del-pede': ['⌫', 'Remover'], 'ag-abrir': ['⏱', 'Mudar a pausa'], 'av-cancel': ['✕', 'Cancelar'] };
 function casoLinha(esq, meio, btns) {
   var ed = /data-caso="(ed-[a-z]+)" data-id="([^"]*)"/.exec(btns || '');
   var ponto = String(esq || '').replace(/<span class="pill([^"]*)">([^<]*)<\/span>/, function (m, cls, txt) {
@@ -2219,6 +2219,8 @@ function casoQuando(a) {
   return a.liberado_em ? 'saiu em ' + fmtDay(new Date(a.liberado_em).toISOString()) : '';
 }
 // Botões de ritmo: valem para qualquer aviso agendado que ainda não saiu. Enviar agora só para a próxima da fila.
+// Ações secundárias dentro de um menu "⋯" (fecha ao clicar fora). Os botões de texto ficam empilhados dentro dele.
+function casoMenu(html) { return html ? '<details class="fx-mn"><summary class="fx-ic" aria-label="Mais ações" title="Mais ações">⋯</summary><div class="fx-mn-p">' + html + '</div></details>' : ''; }
 function casoRitmoBtns(a, proxima, pre) {
   var b = '';
   if (proxima) b += casoBtn(pre + 'enviar-agora', a.id, 'Enviar agora', ' data-c="' + esc(String(a.contato_id || '')) + '"');
@@ -2230,16 +2232,17 @@ function casoProximaHtml(c, k) {
   var f = filaDe(k.avs), a = f[0];
   if (!a) return '';
   a = Object.assign({ contato_id: c.id }, a);
-  return '<div class="panel" style="padding:16px;margin-top:14px;border-color:var(--moss)"><h4 style="margin:0 0 4px">Próxima mensagem para ' + esc(pn(c)) + '</h4>' +
-    '<p style="margin:0 0 4px"><b>' + esc(CASO_TIPO_AVISO[a.tipo] || a.tipo) + ':</b> ' + esc(a.titulo) + '</p><p class="sub" style="margin:0 0 10px">' + esc(casoSaiEm(a)) +
-    (f.length > 1 ? ' · depois dela ' + (f.length - 1 === 1 ? 'vem mais 1' : 'vêm mais ' + (f.length - 1)) + ', cada uma com a sua pausa' : '') + '. Se você adiantar ou atrasar, o que vem depois acompanha e as pausas se mantêm.</p>' +
-    '<div class="ab">' + casoRitmoBtns(a, true, '') + '</div></div>';
+  var dc = ' data-c="' + esc(String(a.contato_id || '')) + '"';
+  var resto = casoBtn('atrasar-1', a.id, 'Atrasar 1 dia', dc) + casoBtn('atrasar-3', a.id, 'Atrasar 3 dias', dc) + (a.pausa_dias > 0 ? casoBtn('adiantar-1', a.id, 'Adiantar 1 dia', dc) : '');
+  return '<div class="panel fx-prox"><div class="fx-prox-t"><span class="fx-prox-k">Próxima para ' + esc(pn(c)) + '</span><b>' + esc(CASO_TIPO_AVISO[a.tipo] || a.tipo) + ':</b> ' + esc(a.titulo) +
+    '<small class="fx-meta" title="Se você adiantar ou atrasar, o que vem depois acompanha e as pausas se mantêm.">' + esc(casoSaiEm(a)) + (f.length > 1 ? ' · +' + (f.length - 1) + ' na fila' : '') + '</small></div>' +
+    '<div class="fx-prox-b">' + casoBtn('enviar-agora', a.id, 'Enviar agora', dc) + casoMenu(resto) + '</div></div>';
 }
 function casoAvisosHtml(k) {
   if (!k.avs.length) return '<div class="empty" style="padding:14px">Nenhum aviso.</div>';
   return k.avs.map(function (a) {
     var est = casoPil(CASO_ESTADO_AVISO[a.estado] || a.estado, a.estado === 'rascunho' ? 'u-media' : a.estado === 'respondido' ? 'u-baixa' : '');
-    var meio = '<b>' + esc(CASO_TIPO_AVISO[a.tipo] || a.tipo) + ':</b> ' + esc(a.titulo) + ' <span class="sub">· ' + esc(casoQuando(a)) + (a.estado === 'respondido' && a.resposta ? ' · resposta: ' + esc(typeof a.resposta === 'object' ? String(a.resposta.valor !== undefined ? a.resposta.valor : JSON.stringify(a.resposta)) : String(a.resposta)) : '') + '</span>';
+    var meio = '<b>' + esc(CASO_TIPO_AVISO[a.tipo] || a.tipo) + ':</b> ' + esc(a.titulo) + ' <small class="fx-meta">' + esc(casoQuando(a)) + (a.estado === 'respondido' && a.resposta ? ' · resposta: ' + esc(typeof a.resposta === 'object' ? String(a.resposta.valor !== undefined ? a.resposta.valor : JSON.stringify(a.resposta)) : String(a.resposta)) : '') + '</small>';
     var editavel = a.estado === 'rascunho' || a.estado === 'agendado';
     if (k.agenda === a.id) {
       var form = '<div class="feeditem"><div class="fbody"><p style="margin:0 0 6px"><b>Quando ela recebe: ' + esc(a.titulo) + '</b></p>' +
@@ -2249,7 +2252,7 @@ function casoAvisosHtml(k) {
       return casoLinha(est, meio, '') + form;
     }
     var btns = editavel ? casoBtn('ag-abrir', a.id, a.estado === 'rascunho' ? 'Aprovar e agendar' : 'Mudar a pausa') : '';
-    if (a.estado === 'agendado' && !a.liberado_em) btns += casoRitmoBtns(Object.assign({ contato_id: k.cid }, a), filaDe(k.avs)[0] === a, '');
+    if (a.estado === 'agendado' && !a.liberado_em) btns += casoMenu(casoRitmoBtns(Object.assign({ contato_id: k.cid }, a), filaDe(k.avs)[0] === a, ''));
     if (a.estado === 'rascunho' || a.estado === 'agendado') btns += casoBtn('av-cancel', a.id, 'Cancelar');
     return casoLinha(est, meio, btns);
   }).join('');
@@ -3727,7 +3730,7 @@ function fxHeaderHtml(c, d) {
 // Catálogo de démarches (cópia do app, processos.json): carregado uma vez; sem ele, tudo cai na démarche padrão.
 var FX_PROC = null, FX_QUANDO = null;   // FX_QUANDO: o "quando" de cada passo do template (guias-quando.json), para o prazo curto do Início
 async function fxCarregaProcessos() {
-  try { var r = await fetch('processos.json?v=2026-11-17.13'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
+  try { var r = await fetch('processos.json?v=2026-11-17.14'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
 }
 // A sessão Checklist: pílulas por démarche, os 4 mais urgentes, pasta do Drive privada e "Ver mais desta sessão".
 // Os passos que a montagem do espaço propôs para ela, com démarche, subitens e origem: o mesmo detalhe do Checklist. Existem antes de ela ter conta.
@@ -4577,7 +4580,7 @@ async function renderPessoa() {
   if (!c) { $('pessoa-page').innerHTML = '<div class="empty">Pessoa não encontrada.</div>'; return; }
   $('pessoa-page').innerHTML = '<div class="loading">Carregando a ficha…</div>';
   if (fichaV2Ativa() && FX_PROC === null) FX_PROC = await fxCarregaProcessos();
-  if (fichaV2Ativa() && FX_QUANDO === null) { try { var rq = await fetch('guias-quando.json?v=2026-11-17.13'); FX_QUANDO = rq.ok ? await rq.json() : {}; } catch (e) { FX_QUANDO = {}; } }
+  if (fichaV2Ativa() && FX_QUANDO === null) { try { var rq = await fetch('guias-quando.json?v=2026-11-17.14'); FX_QUANDO = rq.ok ? await rq.json() : {}; } catch (e) { FX_QUANDO = {}; } }
   var r = await Promise.all([
     supabase.from('eventos').select('tipo,dados,criado_em').eq('contato_id', c.id).order('criado_em', { ascending: false }).limit(200),
     supabase.from('consentimentos').select('finalidade,aceito,texto,origem,criado_em').eq('contato_id', c.id).order('criado_em', { ascending: false }),
@@ -6494,7 +6497,7 @@ document.addEventListener('dblclick', function (e) { if (editaPorDuploClique(e))
 document.addEventListener('keydown', function (e) { if (e.key === 'Enter' && e.target && e.target.dataset && e.target.dataset.dbl && editaPorDuploClique(e)) e.preventDefault(); });
 document.addEventListener('click', async function (e) {
   if (e.target.id === 'compose-backdrop') return closeCompose();
-  document.querySelectorAll('details.mf-dd[open]').forEach(function (d) { if (!d.contains(e.target)) d.removeAttribute('open'); });   // a fila de hoje fecha ao clicar fora
+  document.querySelectorAll('details.mf-dd[open], details.fx-mn[open]').forEach(function (d) { if (!d.contains(e.target)) d.removeAttribute('open'); });   // a fila de hoje fecha ao clicar fora
   var t = e.target.closest('button, tr[data-id]'); if (!t) return;
   if (t.dataset.potsort) { state.potOrd = !state.potOrd ? 'desc' : state.potOrd === 'desc' ? 'asc' : ''; return renderContacts(); }
   if (t.dataset.caldia !== undefined) { state.calDia = state.calDia === t.dataset.caldia ? '' : t.dataset.caldia; return renderCalendario(); }

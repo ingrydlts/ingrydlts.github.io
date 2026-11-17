@@ -1804,3 +1804,22 @@ button.bar-r b{text-align:right; font-variant-numeric:tabular-nums}
   .fx-seta{width:34px; height:34px}
   .ab .btn[data-caso="novo"]{padding:7px 12px}
 }
+
+/* ===== Fila de mensagens, menu "⋯" e cabeçalhos de bloco ===== */
+.dbloco h4 .fx-sub{text-transform:none; letter-spacing:0; font-weight:400; font-size:12px; margin-left:6px}
+.fx-prox{display:flex; align-items:center; gap:12px; padding:10px 14px; margin-top:12px; border-color:var(--moss)}
+.fx-prox-t{flex:1 1 auto; min-width:0; font-size:14px; line-height:1.35}
+.fx-prox-k{display:block; font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-3)}
+.fx-prox .fx-meta{display:block; margin:2px 0 0; white-space:normal}
+.fx-prox-b{flex:none; display:flex; align-items:center; gap:6px}
+.fx-mn{position:relative}
+.fx-mn>summary{list-style:none; cursor:pointer}
+.fx-mn>summary::-webkit-details-marker{display:none}
+.fx-mn-p{position:absolute; right:0; top:calc(100% + 4px); z-index:20; display:flex; flex-direction:column; gap:4px; min-width:150px; padding:6px; background:var(--surface-2); border:1px solid var(--line-2); border-radius:10px; box-shadow:0 6px 20px rgba(0,0,0,.25)}
+.fx-mn-p .btn{width:100%; text-align:left; white-space:nowrap}
+.fx-ln-t p b{font-weight:600}
+@media (max-width:640px){
+  .fx-prox{flex-direction:column; align-items:stretch}
+  .fx-prox-b{justify-content:flex-end}
+  .fx-mn-p{min-width:180px}
+}
