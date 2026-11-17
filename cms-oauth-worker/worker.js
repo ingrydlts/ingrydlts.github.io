@@ -4442,6 +4442,135 @@ async function handleCrmBilanEmail(request, env) {
   return json({ ok: true, enviado: true, registrado: ins.ok, para: contato.email, assunto: mail.assunto, anexos: ax.itens.length });
 }
 
+// ---------- CRM: e-mail "O que combinamos + convite para o Por Dentro das Démarches" (o rascunho da sessão "O que sai da conversa") ----------
+// POST /api/crm/conversa-email { contato_id, secoes: { conversamos, ela, ingryd }, enviar?, confirmo?, forcar? } (só admin).
+//   Sem "enviar": só a PRÉVIA (o link não aparece: é credencial). Com enviar:true e confirmo:true sai pelo Brevo e registra em emails_enviados
+//   (modelo 'conversa_convite', sem o link). Quem ainda não tem acesso recebe o link assinado de /entrar/ (aceita os termos, escolhe o plano,
+//   7 dias grátis); quem já tem recebe o link do app. Mesma regra do convite: sem espaço revisado, só com "forcar". Um por pessoa a cada 3 dias.
+const CRM_CONVERSA_MAX_ENVIOS = 10;
+const CRM_CONVERSA_INTERVALO_DIAS = 3;
+function crmConversaMontar(nome, s, cta) {
+  const e = crmEscapeHtml, vazio = 'Nada por aqui desta vez.';
+  const ola = nome ? 'Olá, ' + nome + '!' : 'Olá!';
+  const quem = 'Ingryd · Por Dentro';
+  const assunto = (nome ? nome + ', o' : 'O') + ' que combinamos e o seu espaço no Por Dentro das Démarches';
+  const abertura = 'Foi muito bom conversar com você. Aqui vai o resumo do que vimos juntas e do que cada uma faz agora.';
+  const secoes = [['O que conversamos', s.conversamos], ['O que você faz agora', s.ela], ['O que eu faço por você', s.ingryd]];
+  const convite = 'Montei para você um espaço exclusivo na plataforma Por Dentro das Démarches: um lugar só seu, centrado no seu caso, onde ficam todas as suas démarches organizadas num só lugar, com checklists, documentos e contatos, para você saber sempre qual é o próximo passo e avançar.';
+  const novo = cta.tipo === 'convite';
+  const como = novo
+    ? `Para entrar, abra o link, aceite os termos e escolha o plano. São ${CRM_ENTRAR_DIAS} dias grátis e a cobrança só começa depois desse período. Em seguida você recebe um e-mail para criar a sua senha. O link vale por ${CRM_ENTRAR_LINK_DIAS} dias e é só seu.`
+    : 'Você já tem acesso: é só abrir o seu espaço pelo link.';
+  const rotuloBotao = novo ? 'Entrar no meu espaço' : 'Abrir o meu espaço';
+  const linkTxt = cta.link || '[o link do seu espaço vai aqui, só no envio]';
+  const fecho = 'Se quiser tirar qualquer dúvida, é só responder este e-mail.';
+  const rodape = 'Você recebeu este e-mail porque conversou com a Ingryd no Por Dentro. Pra não receber mais e-mails, é só responder este com a palavra "sair".';
+  const texto = [ola, '', 'O QUE COMBINAMOS', '', abertura, '']
+    .concat(...secoes.map(([t, l], i) => [(i + 1) + '. ' + t, ...(l.length ? l.map((x) => '- ' + x) : [vazio]), '']))
+    .concat(['4. Seu espaço no Por Dentro das Démarches', convite, '', como, '', linkTxt, '', fecho, '', quem, '', '—', rodape]).join('\n');
+  const sans = "font-family:'Inter', Arial, Helvetica, sans-serif;", serif = "font-family:'Fraunces', Georgia, 'Times New Roman', serif;";
+  const h2 = (i, t) => `<h2 style="margin:26px 0 8px; ${serif} font-size:18px; line-height:1.3; font-weight:700; color:#2B2B2B;"><span style="color:#577328;">${i}</span> · ${e(t)}</h2>`;
+  const lista = (l) => (l.length
+    ? `<ul style="margin:0; padding-left:20px; ${sans} font-size:15px; line-height:1.6; color:#2B2B2B;">${l.map((x) => `<li style="margin-bottom:6px;">${e(x)}</li>`).join('')}</ul>`
+    : `<p style="margin:0; ${sans} font-size:14px; line-height:1.55; color:#6E6862;">${vazio}</p>`);
+  const html = `<!DOCTYPE html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="color-scheme" content="light"><title>${e(assunto)}</title></head>
+<body style="margin:0; padding:0; background:#F4F1EC;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#F4F1EC;"><tr><td align="center" style="padding:32px 16px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;">
+<tr><td style="padding:0 4px 20px; ${serif} font-size:22px; font-weight:700; color:#2B2B2B;">Por <span style="color:#604034;">Dentro</span></td></tr>
+<tr><td style="background:#FBFAF7; border:1px solid #E2DED7; border-radius:8px; padding:32px 28px;">
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 22px;"><tr>
+<td style="width:68px; vertical-align:middle;"><img src="${CRM_FOTO_URL}" width="68" height="68" alt="Foto da Ingryd" style="display:block; width:68px; height:68px; border-radius:50%; border:2px solid #DEB975; object-fit:cover;"></td>
+<td style="padding-left:14px; vertical-align:middle;"><div style="${serif} font-size:18px; font-weight:700; line-height:1.2; color:#2B2B2B;">${e(ola)}</div>
+<div style="${sans} font-size:13px; line-height:1.45; color:#6E6862; margin-top:2px;">${e(quem)}</div></td></tr></table>
+<h1 style="margin:0 0 10px; ${serif} font-size:24px; line-height:1.25; font-weight:700; color:#2B2B2B;">O que combinamos</h1>
+<p style="margin:0 0 4px; ${sans} font-size:15px; line-height:1.6; color:#2B2B2B;">${e(abertura)}</p>
+${secoes.map(([t, l], i) => h2(i + 1, t) + lista(l)).join('')}
+${h2(4, 'Seu espaço no Por Dentro das Démarches')}
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 4px;"><tr><td style="background:#F4F1EC; border:1px solid #DEB975; border-radius:8px; padding:18px;">
+<div style="${sans} font-size:15px; line-height:1.6; color:#2B2B2B;">${e(convite)}</div>
+<div style="${sans} font-size:14px; line-height:1.55; color:#6E6862; margin-top:10px;">${e(como)}</div>
+<div style="margin-top:14px;"><a href="${e(cta.link || '#')}" style="display:inline-block; background:#577328; color:#FFFFFF; ${sans} font-size:15px; font-weight:700; text-decoration:none; padding:12px 20px; border-radius:8px;">${e(rotuloBotao)}</a></div>
+</td></tr></table>
+<p style="margin:22px 0 18px; ${sans} font-size:14px; line-height:1.55; color:#6E6862;">${e(fecho)}</p>
+<p style="margin:0; ${serif} font-size:16px; font-style:italic; color:#2B2B2B;">${e(quem)}</p>
+</td></tr>
+<tr><td style="padding:20px 4px 0; ${sans} font-size:12px; line-height:1.55; color:#6E6862;">${e(rodape)}</td></tr>
+</table></td></tr></table>
+</body></html>`;
+  return { assunto, texto, html };
+}
+async function handleCrmConversaEmail(request, env) {
+  const admin = await crmRequireAdmin(request);
+  if (!admin) return json({ error: 'Sem permissão. Entre de novo no CRM.' }, 401);
+  const body = await crmLerJson(request);
+  if (!body) return json({ error: 'Corpo inválido.' }, 400);
+  const contatoId = String(body.contato_id || '');
+  if (!CRM_UUID_RE.test(contatoId)) return json({ error: 'Contato inválido.' }, 400);
+  const s0 = body.secoes && typeof body.secoes === 'object' && !Array.isArray(body.secoes) ? body.secoes : {};
+  const sec = {};
+  for (const [k, nome] of [['conversamos', 'O que conversamos'], ['ela', 'O que você faz agora'], ['ingryd', 'O que eu faço por você']]) {
+    const r = crmBilanLista(s0[k], nome);
+    if (!r.ok) return json({ error: r.erro, codigo: 'secao_invalida' }, 400);
+    sec[k] = r.itens;
+  }
+  const auth = { apikey: CRM_SUPABASE_ANON_KEY, Authorization: `Bearer ${admin.token}` };
+  const cRes = await fetch(`${CRM_SUPABASE_URL}/rest/v1/crm_contatos?select=id,email,nome&id=eq.${contatoId}`, { headers: auth });
+  const contato = cRes.ok ? (await cRes.json())[0] : null;
+  if (!contato || !contato.email) return json({ error: 'Contato não encontrado.' }, 404);
+  const pRes = await fetch(`${CRM_SUPABASE_URL}/rest/v1/rpc/crm_montagem_publicavel`, { method: 'POST', headers: { ...auth, 'Content-Type': 'application/json' }, body: JSON.stringify({ p_contato: contatoId }) });
+  if (!pRes.ok) return json({ error: 'Falta rodar admin/crm/db/crm-entrar.sql no SQL Editor do Supabase.', codigo: 'sql_pendente' }, 500);
+  const pub = await pRes.json();
+  const tipo = pub.conta_ja_existe && pub.tem_assinatura ? 'app' : 'convite';
+  const nome = crmPrimeiroNome(contato.nome);
+  const dica = { ha_rascunho_aprovado: !!pub.ha_rascunho_aprovado, itens_prontos: pub.itens_prontos, acesso: tipo };
+  const enviando = body.enviar === true;
+  if (!enviando) {
+    const m = crmConversaMontar(nome, sec, { tipo, link: null });
+    return json({ ok: true, enviado: false, para: contato.email, assunto: m.assunto, texto: m.texto, html: m.html, ...dica });
+  }
+
+  // A partir daqui sai e-mail de verdade: só com o "pode enviar" da Ingryd.
+  if (body.confirmo !== true) return json({ error: 'Confirme o "pode enviar" antes de mandar este e-mail.', codigo: 'sem_confirmacao' }, 400);
+  if (tipo === 'convite' && !pub.ha_rascunho_aprovado && body.forcar !== true) {
+    return json({ error: 'Ainda não há nada revisado para ela ver no espaço. Aprove a Montagem App antes de mandar o convite (ou envie assim mesmo, de propósito).', codigo: 'sem_rascunho_aprovado', ...dica }, 409);
+  }
+  if (!env.BREVO_API_KEY || !env.BREVO_SENDER_EMAIL) return json({ error: 'Brevo ainda não configurado no Worker (BREVO_API_KEY / BREVO_SENDER_EMAIL).' }, 500);
+  if (tipo === 'convite' && String(env.CRM_LINK_SECRET || '').length < 32) return json({ error: 'Falta o secret CRM_LINK_SECRET no Worker (README, seção 18): é ele que assina o link do convite.' }, 500);
+  if (!(await crmLimite(env, 'conversa-email', admin.user.id, CRM_CONVERSA_MAX_ENVIOS))) return json({ error: 'Muitos envios seguidos. Espere alguns minutos.', codigo: 'limite' }, 429);
+  if (body.forcar !== true) {
+    const desde = new Date(Date.now() - CRM_CONVERSA_INTERVALO_DIAS * 86400000).toISOString();
+    const rec = await fetch(`${CRM_SUPABASE_URL}/rest/v1/emails_enviados?select=id&contato_id=eq.${contatoId}&modelo=eq.conversa_convite&enviado_em=gte.${encodeURIComponent(desde)}&limit=1`, { headers: auth });
+    const ja = rec.ok ? (await rec.json())[0] : null;
+    if (ja) return json({ error: 'Este e-mail já foi enviado para esta pessoa há menos de ' + CRM_CONVERSA_INTERVALO_DIAS + ' dias.', codigo: 'enviado_recentemente' }, 409);
+  }
+  const link = tipo === 'convite' ? CRM_ENTRAR_URL + '?t=' + (await crmEntrarAssinar(env, contato.id)) : CRM_APP_LINK;
+  const mail = crmConversaMontar(nome, sec, { tipo, link });
+  const bRes = await fetch('https://api.brevo.com/v3/smtp/email', {
+    method: 'POST', headers: { 'api-key': env.BREVO_API_KEY, 'Content-Type': 'application/json', Accept: 'application/json' },
+    body: JSON.stringify({
+      sender: { email: env.BREVO_SENDER_EMAIL, name: env.BREVO_SENDER_NAME || 'Ingryd · Por Dentro' },
+      to: [contato.nome ? { email: contato.email, name: contato.nome } : { email: contato.email }],
+      replyTo: { email: crmReplyTo(env) }, subject: mail.assunto, htmlContent: mail.html, textContent: mail.texto,
+      headers: { 'List-Unsubscribe': `<mailto:${env.BREVO_SENDER_EMAIL}?subject=sair>` }, tags: ['crm', 'conversa_convite'] })
+  });
+  const bTexto = await bRes.text();
+  if (!bRes.ok) { console.error('crm/conversa-email: Brevo respondeu ' + bRes.status); return json({ error: 'O Brevo recusou o envio (' + bRes.status + '). Confira a chave da API e se o remetente está verificado.' }, 502); }
+  let messageId = null; try { messageId = JSON.parse(bTexto).messageId || null; } catch (e) { /* segue sem id */ }
+  // O link de entrada é credencial de uso único: não vai para o histórico.
+  const corpo = tipo === 'convite' ? mail.texto.split(link).join('[link de acesso, uso único]') : mail.texto;
+  const ins = await fetch(`${CRM_SUPABASE_URL}/rest/v1/emails_enviados`, { method: 'POST', headers: { ...auth, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+    body: JSON.stringify({ contato_id: contatoId, modelo: 'conversa_convite', assunto: mail.assunto, corpo, status: 'agendado', provedor_id: messageId, enviado_em: new Date().toISOString() }) });
+  if (!ins.ok) console.error('crm/conversa-email: enviado mas não registrado — ' + ins.status);
+  if (tipo === 'convite') {
+    const ev = await fetch(`${CRM_SUPABASE_URL}/rest/v1/rpc/crm_evento_admin`, { method: 'POST', headers: { ...auth, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ p_contato: contatoId, p_tipo: 'convite_enviado', p_dados: { itens_prontos: pub.itens_prontos, via: 'conversa_email' } }) });
+    if (!ev.ok) console.error('crm/conversa-email: enviado mas o evento não foi registrado — ' + ev.status);
+  }
+  return json({ ok: true, enviado: true, registrado: ins.ok, para: contato.email, assunto: mail.assunto, acesso: tipo });
+}
+
 async function handleCrmOnboardingStatus(request, env) {
   const admin = await crmRequireAdmin(request);
   if (!admin) return json({ error: 'Sem permissão. Entre de novo no CRM.' }, 401);
@@ -5219,6 +5348,9 @@ export default {
       }
       if (url.pathname === '/api/crm/onboarding/notion/ler' && request.method === 'POST') {
         return await handleCrmOnboardingNotion(request, env);
+      }
+      if (url.pathname === '/api/crm/conversa-email' && request.method === 'POST') {
+        return await handleCrmConversaEmail(request, env);
       }
       if (url.pathname === '/api/crm/onboarding/bilan-email' && request.method === 'POST') {
         return await handleCrmBilanEmail(request, env);

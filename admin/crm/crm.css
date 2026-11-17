@@ -1718,3 +1718,5 @@ button.bar-r b{text-align:right; font-variant-numeric:tabular-nums}
 .pc-rk { display: block; font-size: 11px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--muted, #8a8578); }
 .pc-ul li { margin: 0 0 5px; line-height: 1.45; }
 .pc-unico { margin-top: 14px; }
+.lg-edit { margin-top: 14px; border: 1px dashed var(--line-2, #d8d3c9); border-radius: 8px; padding: 8px 12px; }
+.lg-edit > summary { cursor: pointer; font-size: 13px; font-weight: 600; }
