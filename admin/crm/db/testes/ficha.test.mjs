@@ -51,6 +51,8 @@ console.log('== Task 4: funil ==');
   check('guia_chamada = 3', FX.etapaFunil(c0, ctx({ mails: [{ modelo: 'guia_chamada' }] })) === 3);
   check('proposta de 1:1 = 3', FX.etapaFunil(c0, ctx({ propostas: [{ titulo: 'Um 1:1 de 20 minutos?' }] })) === 3);
   check('um_a_um = 4', FX.etapaFunil({ user_id: null, estagio: 'um_a_um' }, vazio) === 4);
+  check('um_a_um com 1:1 feito gravado (sem Bilan na tela) = 5', FX.etapaFunil({ user_id: null, estagio: 'um_a_um' }, ctx({ umFeito: true })) === 5);
+  check('1:1 feito gravado mas estágio ainda lead: não adianta a etapa', FX.etapaFunil({ user_id: null, estagio: 'lead' }, ctx({ umFeito: true })) === 1);
   check('um_a_um com bilan = 5', FX.etapaFunil({ user_id: null, estagio: 'um_a_um' }, ctx({ temBilan: true })) === 5);
   check('boas_vindas sem conta = 6', FX.etapaFunil(c0, ctx({ mails: [{ modelo: 'boas_vindas' }] })) === 6);
   check('com conta = 7', FX.etapaFunil({ user_id: 'u1', estagio: 'em_uso' }, vazio) === 7);

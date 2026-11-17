@@ -20,14 +20,14 @@ function el(id) {
 }
 const document = { getElementById: el, addEventListener: (t, f) => { (handlers[t] = handlers[t] || []).push(f); }, querySelectorAll: () => [], querySelector: () => null };
 const VOCAB = [{ chave: 'sem_graduacao', rotulo: 'Só o ensino médio', descricao: null }, { chave: 'dap_verte', rotulo: 'Mora na França, vaga em L1 (DAP verte)', descricao: null }, { chave: 'quer_plano_b', rotulo: 'Quer um plano B', descricao: null }];
-const rpcs = [];
+const rpcs = [], escritas = [];
 let rpcResp = {}, respostas = {}, vocabErro = false;
 function qb(table) {
   // Qualquer método de consulta devolve o próprio construtor (select, eq, is, order...); só o que importa tem comportamento.
   const b = new Proxy({}, { get(_, k) {
     if (k === 'maybeSingle') return async () => respostas[table + ':one'] || { data: null, error: null };
-    if (k === 'update') return () => ({ eq: async () => ({ error: null }) });
-    if (k === 'insert') return async () => ({ error: null });
+    if (k === 'update') return (v) => ({ eq: async (c, id) => { escritas.push({ t: table, op: 'update', v, id }); return { error: null }; } });
+    if (k === 'insert') return async (v) => { escritas.push({ t: table, op: 'insert', v }); return { error: null }; };
     if (k === 'then') return (ok, ko) => Promise.resolve(table === 'sinais_vocabulario' ? (vocabErro ? { data: null, error: { message: 'relation does not exist' } } : { data: VOCAB, error: null }) : (respostas[table] || { data: [], error: null })).then(ok, ko);
     return () => b;
   } });
@@ -100,6 +100,7 @@ await pagina({ ligacao_transcricao: TRANSCRICAO, ligacao_resumo: 'Resumo da call
 await click({ pcler: 'c1' });
 check('chama o Worker certo, com o token, o contato, a transcrição e as notas', pedidos.length === 1 && /\/api\/crm\/pos-call\/ler$/.test(pedidos[0].url) && pedidos[0].opt.headers.Authorization === 'Bearer tok'
   && JSON.parse(pedidos[0].opt.body).contato_id === 'c1' && JSON.parse(pedidos[0].opt.body).transcricao === TRANSCRICAO.trim() && JSON.parse(pedidos[0].opt.body).notas === 'Resumo da call.');
+check('ler a call grava 1:1 feito em um_a_um e leva o estágio a um_a_um', escritas.some((w) => w.t === 'um_a_um' && w.op === 'insert' && w.v.status === 'feito' && w.v.contato_id === 'c1') && escritas.some((w) => w.t === 'contatos' && w.op === 'update' && w.v.estagio === 'um_a_um' && w.id === 'c1'));
 check('a proposta aparece com os 4 baldes e diz que nada entrou na ficha', /Nada entrou na ficha ainda/.test(caixa()) && caixa().includes('1 · Fatos') && caixa().includes('2 · Sinais') && caixa().includes('3 · Padrão ou individual') && caixa().includes('4 · Perguntas dela') && caixa().includes('5 · A conferir'));
 check('fato novo com confiança alta/média vem marcado; confiança baixa NÃO', /data-pccampo="ensino_medio_ano" checked/.test(caixa()) && /data-pccampo="formacao_alvo" checked/.test(caixa()) && !/data-pccampo="plano_b" checked/.test(caixa()) && caixa().includes('confiança baixa: confira'));
 check('mostra o trecho que sustenta cada fato', caixa().includes('terminei em 2018'));
