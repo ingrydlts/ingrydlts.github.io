@@ -1789,7 +1789,7 @@ function chatMsgHtml(m, chat, agora) {
       '<small>' + hora + (p.prazo ? ' · responder até ' + esc(fmtDay(p.prazo)) : '') + (p.respondido_em ? ' · respondida ' + esc(fmtDia(p.respondido_em) + ' ' + fmtHora(p.respondido_em)) : '') + '</small></div>';
   }
   var eu = m.de === 'ingryd';
-  return '<div class="cm ' + (eu ? 'eu' : 'ela') + (!eu && !m.lida_em ? ' nova' : '') + '">' + (m.acao ? '<span class="pill u-media">' + esc(CHAT_ACOES[m.acao] || m.acao) + '</span> ' : '') + esc(m.texto) +
+  return '<div class="cm ' + (eu ? 'eu' : 'ela') + (!eu && !m.lida_em ? ' nova' : '') + '">' + (m.acao ? '<span class="pill u-media">' + esc(CHAT_ACOES[m.acao] || m.acao) + '</span> ' : '') + esc(String(m.texto || '').replace(/\[([^\]\n]{1,60})\]\((https:\/\/\S+?)\)/g, '🔗 $1')) +
     '<small>' + hora + (eu ? (m.lida_em ? ' · lida' : ' · ainda não lida') : '') + '</small></div>';
 }
 function chatFioHtml(chat, agora) {
@@ -1833,7 +1833,19 @@ function chatPanelHtml(c, chat, h4) {
     '<div class="cfio chatfio" id="chat-fio" aria-live="polite">' + chatFioHtml(chat, Date.now()) + '</div>' + chatSugestoesHtml(c) +
     '<div class="tpls" style="margin:10px 0 8px">' + btn('um_a_um', 'Propor 1:1 de 20 min') + btn('como_vai', 'Perguntar como está') + btn('documentos', 'Pedir documentos') + btn('prazo', 'Lembrar do prazo') + btn('proposta', 'Nova proposta') + '</div>' +
     '<textarea class="notebox" id="chat-txt" maxlength="1000" placeholder="Escreva para ela. Aparece no chat do app." aria-label="Mensagem para ela" style="min-height:76px"></textarea>' +
+    '<div class="tpls" style="margin:8px 0 0;display:flex;gap:6px;flex-wrap:wrap;align-items:center"><input id="chat-bt-rot" type="text" maxlength="40" placeholder="Texto do botão" aria-label="Texto do botão" style="flex:1 1 130px;min-width:0">' +
+    '<input id="chat-bt-url" type="url" placeholder="https://link" aria-label="Link do botão (https)" style="flex:2 1 190px;min-width:0"><button class="btn" type="button" data-chatbotao="1">+ Botão com link</button></div>' +
+    '<p class="sub" style="margin:4px 0 0">Ela vê o botão abaixo da mensagem. Só links https.</p>' +
     '<div class="actions" style="margin-top:8px"><button class="btn primary" type="button" data-chatenviar="' + esc(c.id) + '">Enviar</button></div></div>';
+}
+// Botão de link no chat: vira [texto](https://…) no fim da mensagem; o app transforma em botão (assets/js/chat.js, extrairBotoes).
+function chatInserirBotao() {
+  var r = $('chat-bt-rot'), u = $('chat-bt-url'), tx = $('chat-txt'); if (!r || !u || !tx) return;
+  var rot = r.value.replace(/[\[\]()\n]/g, ' ').trim(), url = u.value.trim();
+  if (!rot) return toast('Escreva o texto do botão.', 3500);
+  if (!/^https:\/\/\S+$/i.test(url) || /[()\s]/.test(url)) return toast('O link precisa começar com https:// e não ter espaços nem parênteses.', 5000);
+  tx.value = (tx.value.trim() ? tx.value.replace(/\s+$/, '') + '\n' : '') + '[' + rot + '](' + url + ')';
+  state.chatRasc = tx.value; r.value = ''; u.value = ''; tx.focus();
 }
 function chatTextoRapido(k, c) {
   var nome = (c.nome || '').split(/\s+/)[0], oi = nome ? 'Oi, ' + nome + '! ' : 'Oi! ';
@@ -2174,12 +2186,12 @@ function casoPanelHtml(c, k) {
   var vazio = !k.ach.length && !k.aco.length && !k.itens.length && !k.avs.length;
   var cab = '<div class="panel" style="padding:16px"><h3 style="font-size:15px;margin:0 0 4px">O caso de ' + esc(pn(c)) + '</h3><p class="sub" style="margin:0">Tudo veio da leitura da página do Notion como <b>rascunho</b>. Ela só vê o que você revisar e publicar' +
     (k.consent ? '.' : ', e <b>só depois do consentimento de serviço</b>, que ainda não está registrado: publicar e agendar ficam bloqueados.') + ' O que você já decidiu não é refeito se a página for lida de novo.</p></div>';
-  if (vazio) return cab + '<div class="panel empty" style="margin-top:14px">Ainda sem caso. Cole o link da página no menu Onboarding e use “Ler do Notion”, ou acrescente à mão o que ela vai ver:</div>' + casoSecao('Board dela', 'o que aparece no Espaço e nos Guias', casoBarraNovo(k));
+  if (vazio) return cab + '<div class="panel empty" style="margin-top:14px">Ainda sem caso. Cole o link da página no menu Onboarding e use “Ler do Notion”, ou acrescente à mão o que ela vai ver:</div>' + casoSecao('Board dela', 'o que aparece no Espaço', casoBarraNovo(k));
   var pend = casoPendentes(k);
   return cab + casoProximaHtml(c, k) + (pend ? '<p class="sub" style="margin:10px 2px 0"><b>' + pend + '</b> ' + (pend === 1 ? 'coisa espera' : 'coisas esperam') + ' a sua revisão.</p>' : '') +
     casoSecao('O que entendi', k.ach.length + ' achados', casoAchadosHtml(k)) +
     casoSecao('Ações', k.aco.length + ' linhas', casoAcoesHtml(k)) +
-    casoSecao('Board dela', 'o que aparece no Espaço e nos Guias', casoBarraNovo(k) + casoItensHtml(k)) +
+    casoSecao('Board dela', 'o que aparece no Espaço', casoBarraNovo(k) + casoItensHtml(k)) +
     casoEscolasDelaHtml(k) +
     casoSecao('Avisos da Equipe Por Dentro', 'você decide a data de cada um', casoAvisosHtml(k));
 }
@@ -3561,8 +3573,8 @@ function fxEspacoCorpo(c) {
 }
 function fxGuiasCorpo(c) {
   var g = fxCasoGuarda(c); if (!g.k) return g.html;
-  return '<p class="sub" style="margin:0 0 8px">O material da equipe que ela abre em Guias: bilan da conversa, documentos e mensagens prontas. Só entra o que você publicar.</p>' + fxSemConsent(g.k) +
-    casoBarraNovo(g.k) + casoItensHtml(g.k, ['bilan', 'documento', 'modelo'], 'Nada para ela em Guias ainda. Use os botões acima para criar.');
+  return '<p class="sub" style="margin:0 0 8px">O material da equipe que ela abre na aba Espaço, em “Material da equipe”: bilan da conversa, documentos e mensagens prontas. Só entra o que você publicar.</p>' + fxSemConsent(g.k) +
+    casoBarraNovo(g.k) + casoItensHtml(g.k, ['bilan', 'documento', 'modelo'], 'Nada para ela em Material da equipe ainda. Use os botões acima para criar.');
 }
 // Perfil: o que o Dossiê ainda não tem, para perguntar na call (o Dossiê é a aba ao lado).
 function fxPerfilCorpo(c) {
@@ -3988,8 +4000,8 @@ function fxSessoes(c) {
     chat: mk('Conversa com ela', 'As mensagens da equipe, do assistente e dela, dentro do app.', 'chat', function () { return '<div id="chat-box">' + chatPanelHtml(c, state.chat, H4_PLAT) + '</div>'; }),
     inicio: mk('Início (Equipe Por Dentro)', 'O que a equipe mostra a ela no início do app e os seus avisos.', 'inicio', function () { return fxInicioCorpo(c) + fxZonas(c, 'inicio'); }),
     checklist: mk('Checklist', 'Os passos dela por démarche, do mais urgente ao mais distante.', 'checklist', function () { return '<div id="fx-chk-corpo">' + fxChecklistCorpo(c) + '</div>' + fxZonas(c, 'checklist'); }),
-    espaco: mk('Espaço', 'Prazos e escolas que você publica só para ela.', 'espaco', function () { return fxEspacoCorpo(c) + fxZonas(c, 'espaco'); }),
-    guias: mk('Guias', 'Bilan, documentos e mensagens prontas da equipe.', 'guias', function () { return fxGuiasCorpo(c) + fxZonas(c, 'guias'); }),
+    espaco: mk('Espaço', 'Prazos e escolas que você publica só para ela. O material da equipe fica na sessão logo abaixo.', 'espaco', function () { return fxEspacoCorpo(c) + fxZonas(c, 'espaco'); }),
+    guias: mk('Material da equipe (aparece no Espaço)', 'Bilan, documentos e mensagens prontas que ela abre na aba Espaço.', 'guias', function () { return fxGuiasCorpo(c) + fxZonas(c, 'guias'); }),
     perfil: mk('Perfil', 'O que ela já respondeu e o que falta perguntar.', 'perfil', function () { return fxPerfilCorpo(c) + fxZonas(c, 'perfil'); }),
     eu: mk('Só eu · minhas tarefas', 'Tarefas suas neste caso. Ela não vê nada daqui.', 'eu', function () { return fxEuCorpo(c); }),
     bilan: mk('Bilan', 'O que a conversa mostrou, os achados para conferir e o e-mail do bilan.', 'bilan', function () { var g = fxCasoGuarda(c); return (g.k ? casoSecao('O que entendi', g.k.ach.length + ' achados', casoAchadosHtml(g.k)) : g.html) + bilanResumoHtml(c) + bilanBlocoHtml(c, H4_PLAT); }),
@@ -6239,6 +6251,7 @@ document.addEventListener('click', async function (e) {
   if (t.id === 'bl-enviar') return bilanEnviar(false);
   if (t.id === 'bl-forcar') return bilanEnviar(true);
   if (t.dataset.blrem !== undefined) { BL.anexos.splice(Number(t.dataset.blrem), 1); bilanPintaAnexos(); return bilanPrevia(); }
+  if (t.dataset.chatbotao) return chatInserirBotao();
   if (t.dataset.chatenviar) return enviarChat(t.dataset.chatenviar, t);
   if (t.dataset.chkvia) return chkAgir(t.dataset.chkvia, Number(t.dataset.chki));
   if (t.dataset.chatquick) {
