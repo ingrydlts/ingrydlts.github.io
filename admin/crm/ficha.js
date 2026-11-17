@@ -3,8 +3,8 @@
 
 // ---------- Urgência dos passos do checklist (spec §5.4) ----------
 // ChkItem = { step_key, category, label, status, due_date, sort_order } (colunas de buscaChecklist em crm.js).
-export { calcularUso } from './ficha-uso.js?v=2026-11-17.10';
-export * as funil from './funil.js?v=2026-11-17.10';   // Funil por próxima ação (lógica pura); o crm.js usa FX.funil
+export { calcularUso } from './ficha-uso.js?v=2026-11-17.11';
+export * as funil from './funil.js?v=2026-11-17.11';   // Funil por próxima ação (lógica pura); o crm.js usa FX.funil
 const DIA = 86400e3;
 function diasEntre(hoje, data) {
   const a = Date.parse(hoje + 'T00:00:00Z'), b = Date.parse(String(data).slice(0, 10) + 'T00:00:00Z');
@@ -485,7 +485,7 @@ export function inicioDoApp(o) {
     // Os próximos do checklist geral: abertos, por data (os com data primeiro; sem data mantêm a ordem), como ordenarPorUrgencia do app.
     const quando = x.quando || {};
     const gerais = base.itens.filter((i) => i.status !== 'concluido').slice().sort((a, b) => (a.due_date && b.due_date) ? (a.due_date < b.due_date ? -1 : a.due_date > b.due_date ? 1 : 0) : a.due_date ? -1 : b.due_date ? 1 : 0)
-      .slice(0, 4).map((i) => ({ titulo: i.label, atrasado: !!(i.due_date && diasAteApp(i.due_date, agora) < 0), meta: i.due_date ? dataBR(i.due_date).slice(0, 5) : pilulaDoQuando(quando[i.step_key]), de: demarche }));
+      .slice(0, 4).map((i) => ({ titulo: i.titulo_custom || i.label, atrasado: !!(i.due_date && diasAteApp(i.due_date, agora) < 0), meta: i.due_date ? dataBR(i.due_date).slice(0, 5) : pilulaDoQuando(quando[i.step_key]), de: demarche }));
     seguintes = dosPassos.concat(gerais).slice(0, 4);
   }
   const atalhos = [];
@@ -496,7 +496,7 @@ export function inicioDoApp(o) {
   const hm = x.home || [], vivos = (x.itens || []).filter((i) => i.status !== 'arquivado');
   const porCat = (c) => hm.filter((h) => h.categoria === c).sort((a, b) => (a.ordem || 0) - (b.ordem || 0) || a.id - b.id);
   const doBoard = (c, max) => porCat(c).map((h) => board.find((b) => b.id === h.board_id)).filter(Boolean).slice(0, max).map((b) => ({ titulo: b.titulo, sub: b.resumo || (b.tipo === 'marco' && b.dados && b.dados.data ? dataBR(b.dados.data) : ''), tipo: b.tipo, conteudo: /^https:\/\//i.test(b.link || '') ? 'link' : b.arquivo_caminho ? 'arquivo' : b.descricao ? 'descricao' : '' }));
-  const destaques = { checklist: porCat('checklist').map((h) => vivos.find((i) => i.step_key === h.step_key)).filter(Boolean).slice(0, 3).map((i) => ({ titulo: i.label, meta: i.due_date ? dataBR(i.due_date).slice(0, 5) : pilulaDoQuando((x.quando || {})[i.step_key]) })), espaco: doBoard('espaco', 2), guias: doBoard('guias', 2) };
+  const destaques = { checklist: porCat('checklist').map((h) => vivos.find((i) => i.step_key === h.step_key)).filter(Boolean).slice(0, 3).map((i) => ({ titulo: i.titulo_custom || i.label, meta: i.due_date ? dataBR(i.due_date).slice(0, 5) : pilulaDoQuando((x.quando || {})[i.step_key]) })), espaco: doBoard('espaco', 2), guias: doBoard('guias', 2) };
   return { pessoal: temCasoApp({ board, acoes: x.acoes, home: hm }), nome: x.nome || '', destaques, escolas: escolas.map((e) => e.titulo),
     marcos: marcos.map((m) => { const d = diasAteApp(m.dados.data, agora); return { titulo: m.titulo, data: dataBR(m.dados.data), dias: d, quando: quandoTextoApp(d), aConfirmar: !!m.dados.a_confirmar }; }),
     foco, seguintes, atalhos };
@@ -552,7 +552,7 @@ export function destaquesDaHome(o) {
   Object.keys(HOME_LIMITES).forEach((cat) => {
     const linhas = home.filter((h) => h.categoria === cat).sort((a, b) => (a.ordem || 0) - (b.ordem || 0) || a.id - b.id);
     out[cat] = { max: HOME_LIMITES[cat], n: linhas.length, itens: linhas.map((h) => {
-      if (cat === 'checklist') { const i = itens.find((y) => y.step_key === h.step_key); return i ? { id: h.id, ref: h.step_key, titulo: i.label, meta: i.status === 'concluido' ? 'feito' : (i.due_date ? 'prazo ' + String(i.due_date).slice(8, 10) + '/' + String(i.due_date).slice(5, 7) : ''), publicado: true, falta: false } : { id: h.id, ref: h.step_key, titulo: h.step_key, meta: '', publicado: true, falta: true }; }
+      if (cat === 'checklist') { const i = itens.find((y) => y.step_key === h.step_key); return i ? { id: h.id, ref: h.step_key, titulo: i.titulo_custom || i.label, meta: i.status === 'concluido' ? 'feito' : (i.due_date ? 'prazo ' + String(i.due_date).slice(8, 10) + '/' + String(i.due_date).slice(5, 7) : ''), publicado: true, falta: false } : { id: h.id, ref: h.step_key, titulo: h.step_key, meta: '', publicado: true, falta: true }; }
       const b = board.find((y) => y.id === h.board_id);
       return b ? { id: h.id, ref: h.board_id, titulo: b.titulo, meta: b.resumo || '', publicado: b.estado === 'publicado', falta: false } : { id: h.id, ref: h.board_id, titulo: '(item removido)', meta: '', publicado: false, falta: true };
     }) };

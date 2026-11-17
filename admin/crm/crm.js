@@ -2,15 +2,15 @@
 // Nada de service_role aqui. O banco é db/crm-fase2.sql; o desenho é o artefato "CRM Por Dentro".
 // Tudo que vem do banco é texto de terceiros (nome, e-mail, pergunta): passa sempre por esc().
 import { supabase } from '/assets/js/supabase-client.js';
-import * as TX from './taxonomia.js?v=2026-11-17.10';   // páginas, famílias e agrupamento dos modelos
-import * as ES from './estudio.js?v=2026-11-17.10';   // os blocos do estúdio de e-mails (entregas 2 e 3)
-import * as EE from './editor-email.js?v=2026-11-17.10';
-import * as EQ from './editor-quem.js?v=2026-11-17.10';
-import * as JR from './jornada.js?v=2026-11-17.10';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
-import * as FX from './ficha.js?v=2026-11-17.10';   // ficha v2: lógica pura (fila, démarches, funil, ações)
-import * as FH from './ficha-html.js?v=2026-11-17.10';   // ficha v2: HTML puro
-import * as PN from './panorama.js?v=2026-11-17.10';
-import * as MT from './montagem.js?v=2026-11-17.10';   // Montagem do espaço a partir do transcript (lógica e HTML puros)   // Panorama dela e O que ela trouxe (lógica e HTML puros)
+import * as TX from './taxonomia.js?v=2026-11-17.11';   // páginas, famílias e agrupamento dos modelos
+import * as ES from './estudio.js?v=2026-11-17.11';   // os blocos do estúdio de e-mails (entregas 2 e 3)
+import * as EE from './editor-email.js?v=2026-11-17.11';
+import * as EQ from './editor-quem.js?v=2026-11-17.11';
+import * as JR from './jornada.js?v=2026-11-17.11';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
+import * as FX from './ficha.js?v=2026-11-17.11';   // ficha v2: lógica pura (fila, démarches, funil, ações)
+import * as FH from './ficha-html.js?v=2026-11-17.11';   // ficha v2: HTML puro
+import * as PN from './panorama.js?v=2026-11-17.11';
+import * as MT from './montagem.js?v=2026-11-17.11';   // Montagem do espaço a partir do transcript (lógica e HTML puros)   // Panorama dela e O que ela trouxe (lógica e HTML puros)
 
 var PERSONAS = {
   au_pair_estudante: 'Au pair → estudante', campus_france: 'Campus France', alternancia_emprego: 'Alternância / emprego',
@@ -1983,7 +1983,7 @@ document.addEventListener('toggle', function (e) {
 // Tudo nasce como rascunho (a leitura do Notion). Nada chega à pessoa sem você revisar e publicar; ela só vê o que está publicado
 // ou agendado, e só se houver consentimento de serviço. As regras ficam no banco (gatilhos): aqui só se mostra e se aperta o botão.
 var CASO_ERROS = { sem_consentimento: 'Falta o consentimento de serviço dela (aba Ficha). Sem ele nada é publicado nem agendado.', revise_antes_de_publicar: 'Revise o item antes de publicar.',
-  sem_permissao: 'Sem permissão. Entre de novo no CRM.', aviso_encerrado: 'Esse aviso já foi encerrado.', item_nao_encontrado: 'O item não existe mais. Atualize a aba.', home_cheia: 'A home já está cheia nessa categoria. Tire um item na Página inicial para trocar.', item_invalido: 'Esse item não cabe nessa categoria da home.' };
+  sem_permissao: 'Sem permissão. Entre de novo no CRM.', aviso_encerrado: 'Esse aviso já foi encerrado.', item_nao_encontrado: 'O item não existe mais. Atualize a aba.', caso_acoes_estado_check: 'Falta rodar db/crm-passos-revisao.sql no Supabase (primeiro no teste) para recusar um passo.', titulo_longo: 'O texto do passo passa de 120 caracteres.', nota_longa: 'A observação passa de 100 caracteres.', home_cheia: 'A home já está cheia nessa categoria. Tire um item na Página inicial para trocar.', item_invalido: 'Esse item não cabe nessa categoria da home.' };
 var CASO_TIPO_ACH = { fato: 'Fato', deducao: 'Dedução', duvida: 'Dúvida' };
 var CASO_CERTEZA = { literal: 'literal', inferido: 'inferido', a_confirmar: 'a confirmar', nao_bate: 'não bate' };
 var CASO_CANAL = { plataforma: 'Plataforma', email: 'E-mail', convite: 'Convite', instagram: 'Instagram', so_eu: 'Só eu' };
@@ -2042,7 +2042,7 @@ function casoAcoesHtml(k, dono) {
   return lista.map(function (a) {
     if (k.ed && k.ed.t === 'aco' && k.ed.id === a.id) return casoEditor('aco', a.id, '<input id="caso-ed-titulo" class="t" maxlength="160" style="width:100%" value="' + esc(a.titulo) + '">');
     var fim = a.estado === 'concluida';
-    var pub = a.publicada_em ? casoPil('Publicada', 'u-baixa') : casoPil('Rascunho', 'u-media');
+    var pub = a.estado === 'recusada' ? casoPil('Recusada') : a.publicada_em ? casoPil('Publicada', 'u-baixa') : casoPil('Rascunho', 'u-media');
     var vis = a.dono === 'ela' && a.canal === 'plataforma';   // só estas aparecem para ela no Checklist
     var btns = (fim ? casoBtn('aco-reabrir', a.id, 'Reabrir') : casoBtn('aco-fim', a.id, 'Concluir')) +
       (vis ? (a.publicada_em ? casoBtn('aco-retirar', a.id, 'Retirar') : casoBtn('aco-pub', a.id, 'Publicar para ela')) : '') + casoBtn('ed-aco', a.id, 'Editar');
@@ -2323,6 +2323,7 @@ async function casoAcao(acao, id, t) {
   else if (acao === 'aco-reabrir') r = await supabase.from('caso_acoes').update({ estado: 'aberta', concluida_em: null, concluida_por: null }).eq('id', nid);
   else if (acao === 'aco-pub') r = await supabase.from('caso_acoes').update({ publicada_em: agora }).eq('id', nid);
   else if (acao === 'aco-retirar') r = await supabase.from('caso_acoes').update({ publicada_em: null }).eq('id', nid);
+  else if (acao === 'aco-recusar') r = await supabase.from('caso_acoes').update({ estado: 'recusada', publicada_em: null }).eq('id', nid);   // db/crm-passos-revisao.sql
   else if (acao === 'salvar-aco') { var ti = $('caso-ed-titulo') ? $('caso-ed-titulo').value.trim() : ''; if (!ti) { if (t) t.disabled = false; return toast('O título não pode ficar vazio'); } var upd = { titulo: ti.slice(0, 160) }, sbx = $('caso-ed-subitens');
     if (sbx) { var lin = String(sbx.value || '').split('\n').map(function (x) { return x.trim().slice(0, 120); }).filter(Boolean); if (lin.length > 6) { if (t) t.disabled = false; return toast('No máximo 6 subitens'); } upd.subitens = lin.length ? lin : null; upd.editado_em = agora; }
     r = await supabase.from('caso_acoes').update(upd).eq('id', nid);
@@ -2415,7 +2416,7 @@ async function casoAcao(acao, id, t) {
   else { if (t) t.disabled = false; return; }
   if (r && r.error) { if (t) t.disabled = false; return casoFalha('salvar', r.error); }
   await casoRecarrega();
-  toast(acao === 'item-pub' || acao === 'aco-pub' ? 'Publicado: ela já pode ver' : acao === 'ag-dias' || acao === 'ag-data' ? 'Aviso agendado' : 'Salvo');
+  toast(acao === 'aco-recusar' ? 'Recusado: o passo sai da fila.' : acao === 'item-pub' || acao === 'aco-pub' ? 'Publicado: ela já pode ver' : acao === 'ag-dias' || acao === 'ag-data' ? 'Aviso agendado' : 'Salvo');
 }
 function platAbasHtml() {
   var nova = chatNaoLidas(state.chat);
@@ -3459,7 +3460,7 @@ var H_FX = { esc: esc, fmtDay: fmtDay };
 var FX_ABAS = ['conversa', 'plataforma', 'ficha', 'dossie'];
 // Zera o que é "desta pessoa" ao abrir outra ficha. A ordem das sessões e o guia são preferências do navegador e ficam.
 function fxReset() {
-  var f = state.fx; f.tab = null; f.ag = { i: 0, pop: null }; f.dem = 'todas'; f.ckTodos = false; f.ckMais = false; f.abertas = {}; f.flash = null; f.tarefas = []; f.dados = null; f.appAba = 'inicio'; f.dia = 1; f.camadas = false; f.dd = {}; f.tema = null; f.coorte = null; f.urg = [];
+  var f = state.fx; f.tab = null; f.ag = { i: 0, pop: null }; f.dem = 'todas'; f.ckTodos = false; f.ckMais = false; f.ckEd = null; f.abertas = {}; f.flash = null; f.tarefas = []; f.dados = null; f.appAba = 'inicio'; f.dia = 1; f.camadas = false; f.dd = {}; f.tema = null; f.coorte = null; f.urg = [];
 }
 function fxPrefs() {
   var f = state.fx;
@@ -3684,18 +3685,33 @@ function fxHeaderHtml(c, d) {
 // Catálogo de démarches (cópia do app, processos.json): carregado uma vez; sem ele, tudo cai na démarche padrão.
 var FX_PROC = null, FX_QUANDO = null;   // FX_QUANDO: o "quando" de cada passo do template (guias-quando.json), para o prazo curto do Início
 async function fxCarregaProcessos() {
-  try { var r = await fetch('processos.json?v=2026-11-17.10'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
+  try { var r = await fetch('processos.json?v=2026-11-17.11'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
 }
 // A sessão Checklist: pílulas por démarche, os 4 mais urgentes, pasta do Drive privada e "Ver mais desta sessão".
 // Os passos que a montagem do espaço propôs para ela, com démarche, subitens e origem: o mesmo detalhe do Checklist. Existem antes de ela ter conta.
-function fxPassosPropostos(c) {
+// Os ganchos dos cards de passo da montagem (editar o texto, rótulos, botões): os mesmos na fila e nos publicados.
+function fxHooksPassos(c, k) {
+  return { editando: function (a) { return !!(k.ed && k.ed.t === 'aco' && k.ed.id === a.id); },
+    editor: function (a) { return casoEditor('aco', a.id, '<input id="caso-ed-titulo" class="t" maxlength="160" style="width:100%" value="' + esc(a.titulo) + '" aria-label="Texto do passo">' +
+      casoCampo('Subitens (um por linha, até 6)', '<textarea id="caso-ed-subitens" rows="4" style="width:100%" maxlength="800">' + esc((a.subitens || []).join('\n')) + '</textarea>')); },
+    esc: esc, rotulo: function (d) { return FX.rotuloDemarche(FX_PROC, d, personaKey(c)); }, prazo: casoPrazo, pil: casoPil, btn: casoBtn,
+    conferi: function (id) { return '<button type="button" class="btn" data-montconferido="' + esc(String(id)) + '" style="padding:5px 10px;font-size:12px">Conferi a fonte</button>'; }, linha: casoLinha };
+}
+function fxCasoPassos(c) {
   var k = state.caso && state.caso.cid === c.id && !state.caso.err ? state.caso : null;
   if (!state.caso || state.caso.cid !== c.id) setTimeout(function () { carregaCaso(c.id); }, 0);
-  if (!k) return '';
-  var h = MT.passosPropostosHtml(k.aco, k.listas, { editando: function (a) { return !!(k.ed && k.ed.t === 'aco' && k.ed.id === a.id); },
-    editor: function (a) { return casoEditor('aco', a.id, '<input id="caso-ed-titulo" class="t" maxlength="160" style="width:100%" value="' + esc(a.titulo) + '" aria-label="Texto do passo">' +
-      casoCampo('Subitens (um por linha, até 6)', '<textarea id="caso-ed-subitens" rows="4" style="width:100%" maxlength="800">' + esc((a.subitens || []).join('\n')) + '</textarea>')); }, esc: esc, rotulo: function (d) { return FX.rotuloDemarche(FX_PROC, d, personaKey(c)); }, prazo: casoPrazo, pil: casoPil, btn: casoBtn, conferi: function (id) { return '<button type="button" class="btn" data-montconferido="' + esc(String(id)) + '" style="padding:5px 10px;font-size:12px">Conferi a fonte</button>'; }, linha: casoLinha });
-  return h ? casoSecao('Passos propostos para ela', 'da montagem do espaço · você revisa e publica', fxSemConsent(k) + h) : '';
+  return k;
+}
+// A fila: só o que espera a sua decisão. Publicar ou recusar tira o card; vazia, a seção some.
+function fxPassosPropostos(c) {
+  var k = fxCasoPassos(c); if (!k) return '';
+  var h = MT.passosPropostosHtml(k.aco, k.listas, fxHooksPassos(c, k), 'fila');
+  return h ? casoSecao('Passos propostos para ela', 'da montagem do espaço · publique ou recuse: o card sai daqui', fxSemConsent(k) + h) : '';
+}
+// Os passos da montagem que você já publicou (ou que ela concluiu): moram junto dos passos do checklist, com Editar e Retirar.
+function fxPassosPublicados(c) {
+  var k = fxCasoPassos(c); if (!k) return '';
+  return MT.passosPropostosHtml(k.aco, k.listas, fxHooksPassos(c, k), 'publicados');
 }
 function fxChecklistCorpo(c) {
   var chk = state.dos && state.dos.cid === c.id ? state.dos.chk : null, f = state.fx;
@@ -3706,8 +3722,22 @@ function fxChecklistCorpo(c) {
   var dem = FX.demarchesDe(FX_PROC, personaKey(c), itens), ativa = f.dem !== 'todas' && dem.some(function (x) { return x.k === f.dem; }) ? f.dem : 'todas';
   var ult = chk.cliques && chk.cliques[0], horas = ult ? (agora - new Date(ult.criado_em).getTime()) / 36e5 : 0;   // dado velho: mais de 48 h sem atividade dela
   return pre + FH.htmlChecklistSessao({ semConta: false, erro: false, velhoDias: horas > 48 ? Math.floor(horas / 24) : 0, demarches: dem, ativa: ativa, homeRefs: state.caso && state.caso.cid === c.id && Array.isArray(state.caso.home) ? state.caso.home.filter(function (x) { return x.categoria === 'checklist'; }).map(function (x) { return x.step_key; }) : null,
+    equipeHtml: fxPassosPublicados(c), ckEd: f.ckEd || null,
     totalFeitos: fxContaApp(c, chk).feitos, total: fxContaApp(c, chk).total, itens: FX.filtrarPorDemarche(FX_PROC, itens, ativa),
     hoje: cc.hoje, todos: f.ckTodos, mais: f.ckMais, extraMais: f.ckMais ? checklistLateralHtml(chk, agora, H4_PLAT) + checklistHtml(chk, agora) : '' }, H_FX);
+}
+function fxRepintaChkDe() { var cm = byC(state.sel); if (cm) fxPintaChk(fxContato(cm, state.fx.dados && state.fx.dados.uid)); }
+// Salva o texto de um passo do checklist dela (rpc só de admin). Título vazio = volta ao original.
+async function fxSalvaPasso(stepKey) {
+  var c = byC(state.sel), f = state.fx, chk = state.dos && c && state.dos.cid === c.id ? state.dos.chk : null; if (!c || !chk || !c.user_id) return true;
+  var t = ($('fx-ck-t') ? $('fx-ck-t').value : '').trim(), n = ($('fx-ck-n') ? $('fx-ck-n').value : '').trim(), orig = $('fx-ck-t') ? $('fx-ck-t').getAttribute('data-orig') : '';
+  if (t.length > 120) return toast('O texto do passo passa de 120 caracteres.'), true;
+  if (n.length > 100) return toast('A observação passa de 100 caracteres.'), true;
+  if (t === orig) t = '';   // igual ao original: não guarda cópia
+  var r = await supabase.rpc('crm_checklist_editar', { p_user: c.user_id, p_step_key: stepKey, p_titulo: t, p_nota: n });
+  if (r.error) { casoFalha('salvar o passo', r.error); return true; }
+  (chk.itens || []).forEach(function (i) { if (i.step_key === stepKey) { i.titulo_custom = t || null; i.nota_custom = n || null; } });
+  f.ckEd = null; fxRepintaChkDe(); fxPintaPrevia(); toast('Passo salvo. Ela vê o novo texto no app.'); return true;
 }
 function fxPintaChk(c) { var b = $('fx-chk-corpo'); if (b) b.innerHTML = fxChecklistCorpo(c); }
 // As sessões da aba Plataforma, em pílulas e em dois grupos. O corpo só é montado nas abertas: os ids antigos (dossie-box,
@@ -3931,7 +3961,7 @@ function fxPreviaDados(c) {
   var m = marcos.filter(function (x) { return x.data; }).sort(function (a, b) { return a.data < b.data ? -1 : 1; })[0];
   // Os passos que a montagem propôs: os publicados já contam como passos dela (é o que o app mostra); os rascunhos aparecem à parte, esmaecidos.
   var det = function (a) { var n = (a.subitens || []).length; return [a.demarche ? FX.rotuloDemarche(FX_PROC, a.demarche, personaKey(c)) : '', n ? n + (n === 1 ? ' subitem' : ' subitens') : ''].filter(Boolean).join(' · '); };
-  var prop = k ? k.aco.filter(function (a) { return a.dono === 'ela' && a.canal === 'plataforma' && /^(enc|chk):/.test(a.origem_chave || ''); }) : [];
+  var prop = k ? k.aco.filter(function (a) { return a.dono === 'ela' && a.canal === 'plataforma' && /^(enc|chk):/.test(a.origem_chave || '') && a.estado !== 'recusada' && a.estado !== 'concluida'; }) : [];
   var pubP = cnt.passos.map(function (a) { return { label: a.titulo, tag: det(a), feito: a.estado === 'concluida', due: a.prazo, atrasado: !!(a.prazo && a.prazo < hoje && a.estado !== 'concluida') }; });
   var rascP = prop.filter(function (a) { return !a.publicada_em; }).map(function (a) { return { label: a.titulo, tag: det(a), conferir: !!a.a_conferir, due: a.prazo }; });
   var acum = 0, avisos = [];
@@ -4446,6 +4476,9 @@ function fichaClick(el) {
     case 'appdia': f.dia = Number(ds.v); fxPintaPrevia(); return true;
     case 'camadas': f.camadas = !f.camadas; fxPintaPrevia(); return true;
     case 'dem': { f.dem = ds.v || 'todas'; f.appAba = 'checklist'; var cd = byC(state.sel); if (cd) { fxPintaChk(fxContato(cd, f.dados && f.dados.uid)); fxPintaPrevia(); } return true; }
+    case 'ckEditar': f.ckEd = ds.id; fxRepintaChkDe(); return true;
+    case 'ckCancelar': f.ckEd = null; fxRepintaChkDe(); return true;
+    case 'ckSalvar': return fxSalvaPasso(ds.id);
     case 'ckTodos': case 'ckMais': { if (ds.fx === 'ckTodos') f.ckTodos = !f.ckTodos; else f.ckMais = !f.ckMais; var cm = byC(state.sel); if (cm) fxPintaChk(fxContato(cm, f.dados && f.dados.uid)); return true; }
     case 'agPrev': fxCarGo(-1); return true;
     case 'agNext': fxCarGo(1); return true;
@@ -4500,7 +4533,7 @@ async function renderPessoa() {
   if (!c) { $('pessoa-page').innerHTML = '<div class="empty">Pessoa não encontrada.</div>'; return; }
   $('pessoa-page').innerHTML = '<div class="loading">Carregando a ficha…</div>';
   if (fichaV2Ativa() && FX_PROC === null) FX_PROC = await fxCarregaProcessos();
-  if (fichaV2Ativa() && FX_QUANDO === null) { try { var rq = await fetch('guias-quando.json?v=2026-11-17.10'); FX_QUANDO = rq.ok ? await rq.json() : {}; } catch (e) { FX_QUANDO = {}; } }
+  if (fichaV2Ativa() && FX_QUANDO === null) { try { var rq = await fetch('guias-quando.json?v=2026-11-17.11'); FX_QUANDO = rq.ok ? await rq.json() : {}; } catch (e) { FX_QUANDO = {}; } }
   var r = await Promise.all([
     supabase.from('eventos').select('tipo,dados,criado_em').eq('contato_id', c.id).order('criado_em', { ascending: false }).limit(200),
     supabase.from('consentimentos').select('finalidade,aceito,texto,origem,criado_em').eq('contato_id', c.id).order('criado_em', { ascending: false }),

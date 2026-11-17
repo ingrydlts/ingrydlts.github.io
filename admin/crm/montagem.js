@@ -227,10 +227,13 @@ export function painelHtml(m, c, esc) {
 // ---------- Os passos propostos, na sessão Checklist da Plataforma ----------
 // Cada passo que a montagem criou para ela, com o mesmo detalhe do Checklist: démarche, subitens, de onde vem (da persona ou só deste percurso),
 // prazo e lista. aco = linhas de caso_acoes; listas = linhas de caso_listas. h = { esc, rotulo(chaveDemarche), prazo(acao), pil(txt, cls), btn(acao, id, rot), conferi(id), linha(esq, meio, btns) }.
-export function passosPropostosHtml(aco, listas, h) {
+// modo 'fila': só o que ainda espera a sua decisão (rascunho ou a conferir) — publicar ou recusar tira o card daqui.
+// modo 'publicados': o que já virou passo dela (publicado ou concluído), para ficar junto dos passos do checklist; os recusados não aparecem em lugar nenhum. Sem modo: todos (menos os recusados).
+export function passosPropostosHtml(aco, listas, h, modo) {
   var e = h.esc, tit = {};
   lista(listas).forEach(function (l) { tit[l.chave] = l.titulo; });
-  var passos = lista(aco).filter(function (a) { return a.dono === 'ela' && a.canal === 'plataforma' && /^(enc|chk):/.test(a.origem_chave || ''); });
+  var noModo = function (a) { return modo === 'publicados' ? !!(a.publicada_em || a.estado === 'concluida') : modo === 'fila' ? !a.publicada_em && a.estado !== 'concluida' : true; };
+  var passos = lista(aco).filter(function (a) { return a.dono === 'ela' && a.canal === 'plataforma' && /^(enc|chk):/.test(a.origem_chave || '') && a.estado !== 'recusada' && noModo(a); });
   if (!passos.length) return '';
   return passos.map(function (a) {
     if (h.editor && h.editando && h.editando(a)) return h.editor(a);
@@ -242,7 +245,8 @@ export function passosPropostosHtml(aco, listas, h) {
       (subs.length ? '<ul class="mont-sub" aria-label="Subitens">' + subs.map(function (x) { return '<li>' + e(String(x)) + '</li>'; }).join('') + '</ul>' : '') +
       (a.a_conferir && !a.publicada_em ? '<br><small class="sub">Falta conferir a fonte: confira e clique em "Conferi a fonte" para poder publicar.</small>' : '') + (a.editado_em ? '<br><small class="sub">Texto editado por você: a releitura não muda.</small>' : '');
     // Uma ação por linha, sempre: conferir a fonte → publicar para ela → retirar. (Concluído não tem botão.)
-    var btns = (fim ? '' : a.publicada_em ? h.btn('aco-retirar', a.id, 'Retirar') : a.a_conferir ? h.conferi(a.id) : h.btn('aco-pub', a.id, 'Publicar para ela')) + (fim ? '' : h.btn('ed-aco', a.id, 'Editar'));
+    var btns = (fim ? '' : a.publicada_em ? h.btn('aco-retirar', a.id, 'Retirar') : a.a_conferir ? h.conferi(a.id) : h.btn('aco-pub', a.id, 'Publicar para ela')) + (fim ? '' : h.btn('ed-aco', a.id, 'Editar')) +
+      (!fim && !a.publicada_em && h.btn ? h.btn('aco-recusar', a.id, 'Recusar') : '');   // recusar só do que ainda é rascunho
     return h.linha(est, corpo, btns);
   }).join('');
 }
