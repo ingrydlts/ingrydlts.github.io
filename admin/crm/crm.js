@@ -2,15 +2,15 @@
 // Nada de service_role aqui. O banco é db/crm-fase2.sql; o desenho é o artefato "CRM Por Dentro".
 // Tudo que vem do banco é texto de terceiros (nome, e-mail, pergunta): passa sempre por esc().
 import { supabase } from '/assets/js/supabase-client.js';
-import * as TX from './taxonomia.js?v=2026-11-17.16';   // páginas, famílias e agrupamento dos modelos
-import * as ES from './estudio.js?v=2026-11-17.16';   // os blocos do estúdio de e-mails (entregas 2 e 3)
-import * as EE from './editor-email.js?v=2026-11-17.16';
-import * as EQ from './editor-quem.js?v=2026-11-17.16';
-import * as JR from './jornada.js?v=2026-11-17.16';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
-import * as FX from './ficha.js?v=2026-11-17.16';   // ficha v2: lógica pura (fila, démarches, funil, ações)
-import * as FH from './ficha-html.js?v=2026-11-17.16';   // ficha v2: HTML puro
-import * as PN from './panorama.js?v=2026-11-17.16';
-import * as MT from './montagem.js?v=2026-11-17.16';   // Montagem do espaço a partir do transcript (lógica e HTML puros)   // Panorama dela e O que ela trouxe (lógica e HTML puros)
+import * as TX from './taxonomia.js?v=2026-11-17.17';   // páginas, famílias e agrupamento dos modelos
+import * as ES from './estudio.js?v=2026-11-17.17';   // os blocos do estúdio de e-mails (entregas 2 e 3)
+import * as EE from './editor-email.js?v=2026-11-17.17';
+import * as EQ from './editor-quem.js?v=2026-11-17.17';
+import * as JR from './jornada.js?v=2026-11-17.17';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
+import * as FX from './ficha.js?v=2026-11-17.17';   // ficha v2: lógica pura (fila, démarches, funil, ações)
+import * as FH from './ficha-html.js?v=2026-11-17.17';   // ficha v2: HTML puro
+import * as PN from './panorama.js?v=2026-11-17.17';
+import * as MT from './montagem.js?v=2026-11-17.17';   // Montagem do espaço a partir do transcript (lógica e HTML puros)   // Panorama dela e O que ela trouxe (lógica e HTML puros)
 
 var PERSONAS = {
   au_pair_estudante: 'Au pair → estudante', campus_france: 'Campus France', alternancia_emprego: 'Alternância / emprego',
@@ -2105,8 +2105,8 @@ function casoItemMeta(it) {
 }
 // Anexar direto da linha: escolhe o arquivo e ele sobe na hora (o controle nativo evita o bloqueio de pop-up do navegador).
 function casoAnexarIco(it) {
-  var r = it.arquivo_caminho ? 'Trocar o arquivo (PDF, MD ou TXT, até 10 MB)' : 'Anexar arquivo (PDF, MD ou TXT, até 10 MB)';
-  return '<label class="fx-ic fx-anexar' + (it.arquivo_caminho ? ' on' : '') + '" title="' + r + '">' + casoSvg('clip', 16) + '<input type="file" data-anexar="' + esc(String(it.id)) + '" aria-label="' + r + '" accept=".pdf,.md,.markdown,.txt,application/pdf,text/markdown,text/plain"></label>';
+  var r = it.arquivo_caminho ? 'Trocar o arquivo (PDF, imagem, ZIP, MD ou TXT, até 10 MB)' : 'Anexar arquivo (PDF, imagem, ZIP, MD ou TXT, até 10 MB)';
+  return '<label class="fx-ic fx-anexar' + (it.arquivo_caminho ? ' on' : '') + '" title="' + r + '">' + casoSvg('clip', 16) + '<input type="file" data-anexar="' + esc(String(it.id)) + '" aria-label="' + r + '" accept="' + CASO_ARQ_ACCEPT + '"></label>';
 }
 function casoItemResumo(it) {
   var d = it.dados || {};
@@ -2183,11 +2183,12 @@ function casoNovoHtml(tipo) {
   return '<div class="feeditem"><div class="fbody" style="width:100%"><b>Novo: ' + esc(tipo === 'documento' ? 'documento que a equipe manda' : tipo === 'modelo' ? 'mensagem pronta' : 'bilan de uma conversa') + '</b>' + campos +
     '<div style="display:flex;gap:6px;margin-top:8px">' + casoBtn('salvar-novo', tipo, 'Criar') + casoBtn('cancelar', 0, 'Cancelar') + '</div></div></div>';
 }
-// Arquivo do documento (PDF ou MD) no bucket privado `casos-arquivos` (db/crm-caso-arquivos.sql). Caminho: <contato>/<uuid>-<nome>.
-var CASO_ARQ_TIPOS = { pdf: 'application/pdf', md: 'text/markdown', markdown: 'text/markdown', txt: 'text/plain' }, CASO_ARQ_MAX = 10 * 1024 * 1024;
+// Arquivo do documento (PDF, imagem, ZIP, MD ou TXT) no bucket privado `casos-arquivos` (db/crm-caso-arquivos.sql). Caminho: <contato>/<uuid>-<nome>.
+var CASO_ARQ_TIPOS = { pdf: 'application/pdf', md: 'text/markdown', markdown: 'text/markdown', txt: 'text/plain', png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', webp: 'image/webp', gif: 'image/gif', zip: 'application/zip' }, CASO_ARQ_MAX = 10 * 1024 * 1024,
+  CASO_ARQ_ACCEPT = '.pdf,.md,.markdown,.txt,.png,.jpg,.jpeg,.webp,.gif,.zip,application/pdf,text/markdown,text/plain,image/png,image/jpeg,image/webp,image/gif,application/zip';
 function casoArquivoCampo(it, idp) {
   var tem = it && it.arquivo_caminho;
-  return casoCampo('Arquivo (PDF ou MD, até 10 MB) — ou use o link do Notion/Drive acima', '<input id="' + (idp || 'caso-arq') + '" type="file" accept=".pdf,.md,.markdown,.txt,application/pdf,text/markdown,text/plain" style="width:100%">') +
+  return casoCampo('Arquivo (PDF, imagem, ZIP, MD ou TXT, até 10 MB) — ou use o link do Notion/Drive acima', '<input id="' + (idp || 'caso-arq') + '" type="file" accept="' + CASO_ARQ_ACCEPT + '" style="width:100%">') +
     (tem ? '<label style="display:flex;gap:8px;align-items:center;margin-top:6px"><input id="caso-arq-tirar" type="checkbox"> <span>Tirar o arquivo atual (<b>' + esc(casoNomeArquivo(it.arquivo_caminho)) + '</b>)</span></label>' : '');
 }
 function casoNomeArquivo(caminho) { return String(caminho || '').split('/').pop().replace(/^[0-9a-f-]{36}-/, ''); }
@@ -2201,7 +2202,7 @@ async function casoSobeArquivo(contatoId, idp) {
 async function casoSobeArquivoDe(contatoId, f) {
   if (!f) return {};
   var ext = (f.name.split('.').pop() || '').toLowerCase(), tipo = CASO_ARQ_TIPOS[ext];
-  if (!tipo) return { erro: 'Use PDF, MD ou TXT' };
+  if (!tipo) return { erro: 'Use PDF, imagem (PNG, JPG, WebP, GIF), ZIP, MD ou TXT' };
   if (f.size > CASO_ARQ_MAX) return { erro: 'O arquivo passa de 10 MB' };
   var base = f.name.replace(/\.[^.]+$/, '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9._-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60) || 'arquivo';
   var caminho = contatoId + '/' + (window.crypto && crypto.randomUUID ? crypto.randomUUID() : String(Date.now())) + '-' + base + '.' + ext;
@@ -3752,7 +3753,7 @@ function fxHeaderHtml(c, d) {
 // Catálogo de démarches (cópia do app, processos.json): carregado uma vez; sem ele, tudo cai na démarche padrão.
 var FX_PROC = null, FX_QUANDO = null;   // FX_QUANDO: o "quando" de cada passo do template (guias-quando.json), para o prazo curto do Início
 async function fxCarregaProcessos() {
-  try { var r = await fetch('processos.json?v=2026-11-17.16'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
+  try { var r = await fetch('processos.json?v=2026-11-17.17'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
 }
 // A sessão Checklist: pílulas por démarche, os 4 mais urgentes, pasta do Drive privada e "Ver mais desta sessão".
 // Os passos que a montagem do espaço propôs para ela, com démarche, subitens e origem: o mesmo detalhe do Checklist. Existem antes de ela ter conta.
@@ -4609,7 +4610,7 @@ async function renderPessoa() {
   if (!c) { $('pessoa-page').innerHTML = '<div class="empty">Pessoa não encontrada.</div>'; return; }
   $('pessoa-page').innerHTML = '<div class="loading">Carregando a ficha…</div>';
   if (fichaV2Ativa() && FX_PROC === null) FX_PROC = await fxCarregaProcessos();
-  if (fichaV2Ativa() && FX_QUANDO === null) { try { var rq = await fetch('guias-quando.json?v=2026-11-17.16'); FX_QUANDO = rq.ok ? await rq.json() : {}; } catch (e) { FX_QUANDO = {}; } }
+  if (fichaV2Ativa() && FX_QUANDO === null) { try { var rq = await fetch('guias-quando.json?v=2026-11-17.17'); FX_QUANDO = rq.ok ? await rq.json() : {}; } catch (e) { FX_QUANDO = {}; } }
   var r = await Promise.all([
     supabase.from('eventos').select('tipo,dados,criado_em').eq('contato_id', c.id).order('criado_em', { ascending: false }).limit(200),
     supabase.from('consentimentos').select('finalidade,aceito,texto,origem,criado_em').eq('contato_id', c.id).order('criado_em', { ascending: false }),
