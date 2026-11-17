@@ -1750,3 +1750,57 @@ button.bar-r b{text-align:right; font-variant-numeric:tabular-nums}
 .fx-edita{cursor:text}
 .fx-edita:hover{text-decoration:underline dotted; text-underline-offset:3px}
 .fx-passo{gap:8px}
+
+/* ===== Visual minimalista da ficha (2026-11-17): ponto + texto + ícones, o mesmo em todas as sessões ===== */
+.fx-ln{display:flex; align-items:center; gap:10px; padding:9px 0; border-top:1px solid var(--line)}
+.fx-ln:first-child{border-top:0}
+.fx-ln-e{flex:none; width:14px; display:grid; place-items:center}
+.fx-dot{display:block; width:10px; height:10px; border-radius:50%; background:var(--line-2)}
+.fx-dot.ok{background:#577328}
+.fx-dot.mid{background:#C98A1B}
+.fx-ln-t{flex:1 1 auto; min-width:0; cursor:text; border-radius:6px}
+.fx-ln-t:hover{background:var(--sunk)}
+.fx-ln-t:focus-visible{outline:2px solid var(--moss); outline-offset:2px}
+.fx-ln-t p{font-size:14px; line-height:1.3; overflow-wrap:anywhere}
+.fx-tp{display:inline-block; width:1.3em; color:var(--ink-3); font-size:12px}
+.fx-meta{display:inline; margin-left:6px; font-size:11.5px; font-weight:400; color:var(--ink-3); white-space:nowrap}
+.fx-ln-b{flex:none; display:flex; align-items:center; gap:4px}
+.fx-ln-b .fx-ic{width:28px; height:28px; font-size:14px; border-color:transparent; color:var(--ink-2)}
+.fx-ln-b .fx-ic:hover,.fx-ln-b .fx-ic:focus-visible{border-color:var(--moss)}
+.fx-ln-b .btn{padding:4px 9px; font-size:12px}
+/* Botões de criar: fichas pequenas */
+.ab .btn[data-caso="novo"]{padding:3px 10px; font-size:12px; border-radius:999px; background:none; border-color:var(--line-2); color:var(--ink-2)}
+.ab .btn[data-caso="novo"]:hover{border-color:var(--moss); color:var(--ink)}
+/* Cabeçalho de sessão: uma linha, sem subtítulo, setas só ao passar o mouse */
+.fx-sess-cab{padding:4px 6px; border-radius:10px; background:none; border:0; border-bottom:1px solid var(--line)}
+.fx-sess.aberta .fx-sess-cab{border-radius:10px 10px 0 0; background:none; border:0; border-bottom:2px solid var(--moss)}
+.fx-grupo-ela .fx-sess.aberta .fx-sess-cab{background:none; border-bottom-color:var(--brown)}
+.fx-sess-sub{display:none}
+.fx-sess-nome{font-size:14.5px; display:inline-flex; align-items:center; gap:8px}
+.fx-sess-nome::before{content:""; width:7px; height:7px; border-right:2px solid var(--ink-3); border-bottom:2px solid var(--ink-3); transform:rotate(-45deg); transition:transform .15s}
+.fx-sess-t[aria-expanded="true"] .fx-sess-nome::before{transform:rotate(45deg)}
+.fx-sess-t{min-height:36px; align-items:center}
+.fx-grab{opacity:.35}
+.fx-sess-cab:hover .fx-grab{opacity:1}
+.fx-mover{opacity:0; transition:opacity .12s}
+.fx-sess-cab:hover .fx-mover,.fx-sess-cab:focus-within .fx-mover{opacity:1}
+.fx-seta{width:26px; height:26px; font-size:14px; border-color:transparent; background:none}
+.fx-sess-corpo{border:0; border-radius:0; padding:10px 4px 14px; background:none}
+.fx-grupo-dica{display:none}
+.fx-grupo .fx-h3{font-size:13px; text-transform:uppercase; letter-spacing:.08em; color:var(--ink-2)}
+/* "O que ela vê agora" / "O que ela faz aqui": sem fundo colorido */
+.fx-z{background:none; border:0; border-top:1px solid var(--line); border-radius:0; padding:6px 2px; color:var(--ink-2)}
+.fx-z-ve,.fx-z-ela{background:none; color:var(--ink-2)}
+.fx-z>summary{font-size:11px; min-height:34px}
+.fx-z>summary small{display:none}
+@media (hover:none){ .fx-mover{opacity:1} .fx-grab{display:none} }
+@media (max-width:640px){
+  .fx-ln{gap:8px; align-items:flex-start}
+  .fx-ln-e{padding-top:5px}
+  .fx-ln-b{flex-wrap:wrap; justify-content:flex-end; max-width:122px}
+  .fx-ln-b .fx-ic{width:36px; height:36px; font-size:16px}
+  .fx-meta{display:block; margin:2px 0 0}
+  .fx-sess-cab{border-radius:0; flex-wrap:nowrap}
+  .fx-seta{width:34px; height:34px}
+  .ab .btn[data-caso="novo"]{padding:7px 12px}
+}

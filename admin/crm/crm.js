@@ -2,15 +2,15 @@
 // Nada de service_role aqui. O banco é db/crm-fase2.sql; o desenho é o artefato "CRM Por Dentro".
 // Tudo que vem do banco é texto de terceiros (nome, e-mail, pergunta): passa sempre por esc().
 import { supabase } from '/assets/js/supabase-client.js';
-import * as TX from './taxonomia.js?v=2026-11-17.12';   // páginas, famílias e agrupamento dos modelos
-import * as ES from './estudio.js?v=2026-11-17.12';   // os blocos do estúdio de e-mails (entregas 2 e 3)
-import * as EE from './editor-email.js?v=2026-11-17.12';
-import * as EQ from './editor-quem.js?v=2026-11-17.12';
-import * as JR from './jornada.js?v=2026-11-17.12';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
-import * as FX from './ficha.js?v=2026-11-17.12';   // ficha v2: lógica pura (fila, démarches, funil, ações)
-import * as FH from './ficha-html.js?v=2026-11-17.12';   // ficha v2: HTML puro
-import * as PN from './panorama.js?v=2026-11-17.12';
-import * as MT from './montagem.js?v=2026-11-17.12';   // Montagem do espaço a partir do transcript (lógica e HTML puros)   // Panorama dela e O que ela trouxe (lógica e HTML puros)
+import * as TX from './taxonomia.js?v=2026-11-17.13';   // páginas, famílias e agrupamento dos modelos
+import * as ES from './estudio.js?v=2026-11-17.13';   // os blocos do estúdio de e-mails (entregas 2 e 3)
+import * as EE from './editor-email.js?v=2026-11-17.13';
+import * as EQ from './editor-quem.js?v=2026-11-17.13';
+import * as JR from './jornada.js?v=2026-11-17.13';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
+import * as FX from './ficha.js?v=2026-11-17.13';   // ficha v2: lógica pura (fila, démarches, funil, ações)
+import * as FH from './ficha-html.js?v=2026-11-17.13';   // ficha v2: HTML puro
+import * as PN from './panorama.js?v=2026-11-17.13';
+import * as MT from './montagem.js?v=2026-11-17.13';   // Montagem do espaço a partir do transcript (lógica e HTML puros)   // Panorama dela e O que ela trouxe (lógica e HTML puros)
 
 var PERSONAS = {
   au_pair_estudante: 'Au pair → estudante', campus_france: 'Campus France', alternancia_emprego: 'Alternância / emprego',
@@ -2018,8 +2018,18 @@ function casoPil(txt, cls) { return '<span class="pill' + (cls ? ' ' + cls : '')
 function casoIco(acao, id, glifo, rot, ligado) { return '<button type="button" class="fx-ic' + (ligado ? ' on' : '') + '" data-caso="' + acao + '" data-id="' + esc(String(id)) + '"' + (ligado ? ' aria-pressed="true"' : '') + ' aria-label="' + esc(rot) + '" title="' + esc(rot) + '">' + esc(glifo) + '</button>'; }
 function casoBtn(acao, id, rot, extra) { return '<button type="button" class="btn" data-caso="' + acao + '" data-id="' + esc(String(id)) + '"' + (extra || '') + ' style="padding:5px 10px;font-size:12px">' + esc(rot) + '</button>'; }
 function casoSecao(titulo, sub, corpo) { return '<section class="dbloco" style="margin-top:14px"><h4>' + esc(titulo) + (sub ? ' <span class="sub" style="font-weight:400">' + esc(sub) + '</span>' : '') + '</h4>' + corpo + '</section>'; }
+// Linha minimalista, a mesma em todas as listas do caso: ponto de estado, texto, ícones. Dois cliques no texto (ou Enter) editam; no celular o ✎ faz o mesmo.
+var CASO_ICONES = { 'item-rev': ['✓', 'Marcar como revisado'], 'item-pub': ['↑', 'Publicar para ela'], 'item-ret': ['↓', 'Retirar'], 'aco-pub': ['↑', 'Publicar para ela'], 'aco-retirar': ['↓', 'Retirar'],
+  'aco-fim': ['✓', 'Concluir'], 'aco-reabrir': ['↺', 'Reabrir'], 'ed-item': ['✎', 'Editar'], 'ed-aco': ['✎', 'Editar'], 'ed-ach': ['✎', 'Editar'], 'item-del-pede': ['⌫', 'Remover'] };
 function casoLinha(esq, meio, btns) {
-  return '<div class="feeditem" style="align-items:flex-start"><div style="flex:none;min-width:84px">' + esq + '</div><div class="fbody" style="min-width:0"><p style="margin:0">' + meio + '</p></div><div style="flex:none;display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">' + btns + '</div></div>';
+  var ed = /data-caso="(ed-[a-z]+)" data-id="([^"]*)"/.exec(btns || '');
+  var ponto = String(esq || '').replace(/<span class="pill([^"]*)">([^<]*)<\/span>/, function (m, cls, txt) {
+    return '<span class="fx-dot ' + (/u-baixa/.test(cls) ? 'ok' : /u-media/.test(cls) ? 'mid' : 'off') + '" role="img" aria-label="' + txt + '" title="' + txt + '"></span>';
+  });
+  var icones = String(btns || '').replace(/<button type="button" class="btn" data-caso="([^"]+)" data-id="([^"]*)"[^>]*>([^<]*)<\/button>/g, function (m, acao, id, rot) {
+    var i = CASO_ICONES[acao]; return i ? casoIco(acao, id, i[0], rot || i[1], false) : m;
+  });
+  return '<div class="feeditem fx-ln"><div class="fx-ln-e">' + ponto + '</div><div class="fbody fx-ln-t"' + (ed ? ' data-dbl="' + ed[1] + '" data-id="' + ed[2] + '" tabindex="0" title="Dois cliques para editar"' : '') + '><p style="margin:0">' + meio + '</p></div><div class="fx-ln-b">' + icones + '</div></div>';
 }
 function casoEditor(tipo, id, campos) {
   return '<div class="feeditem"><div class="fbody" style="width:100%">' + campos + '<div style="display:flex;gap:6px;margin-top:6px">' + casoBtn('salvar-' + tipo, id, 'Salvar') + casoBtn('cancelar', id, 'Cancelar') + '</div></div></div>';
@@ -2070,6 +2080,16 @@ function casoTextoSecoes(txt) {
     if (l) atual.itens.push({ texto: l.slice(0, 220), estado: conf ? 'em_conferencia' : 'confirmado' });
   });
   return secoes.slice(0, 8).map(function (sec) { sec.itens = sec.itens.slice(0, 12); return sec; });
+}
+var CASO_GLIFO = { documento: '▤', modelo: '✉', bilan: '❝', marco: '◷', escola: '⌂' };
+// O resto da linha, curto: só o que muda a decisão.
+function casoItemMeta(it) {
+  var d = it.dados || {};
+  if (it.tipo === 'marco') return d.data ? fmtDay(d.data) + (d.a_confirmar ? ' · a confirmar' : '') : 'a confirmar';
+  if (it.tipo === 'bilan') return ((d.secoes || []).length) + ' seções';
+  if (it.tipo === 'documento') return d.direcao === 'recebe' ? (it.arquivo_caminho ? 'arquivo' : it.link ? 'link' : it.descricao ? 'texto' : 'sem arquivo') : 'ela reúne';
+  if (it.tipo === 'escola') return d.cidade || '';
+  return it.resumo || '';
 }
 function casoItemResumo(it) {
   var d = it.dados || {};
@@ -2182,7 +2202,7 @@ function casoItensHtml(k, tipos, vazio) {
     var btns = (it.estado === 'proposto' ? casoBtn('item-rev', it.id, 'Marcar como revisado') : it.estado === 'revisado' ? casoBtn('item-pub', it.id, 'Publicar para ela') : casoBtn('item-ret', it.id, 'Retirar')) + casoBtn('ed-item', it.id, 'Editar') + casoHomeBtn(k, it) + (it.estado !== 'publicado' ? (k.confirmaDel === it.id ? casoBtn('item-del', it.id, 'Confirmar remoção') : casoBtn('item-del-pede', it.id, 'Remover')) : '');
     var generico = it.tipo === 'marco' && /^prazo-chave$/i.test(it.titulo) ? ' <span class="pill u-media">Diga a que se refere: ela vê só este título</span>' : '';
     var leitura = it.tipo === 'bilan' && ((it.dados || {}).secoes || []).length ? '<details style="margin-top:6px"><summary class="sub" style="cursor:pointer">Ler o bilan</summary>' + it.dados.secoes.map(function (sec) { return '<p style="margin:8px 0 2px"><b>' + esc(sec.titulo) + '</b></p><ul style="margin:0 0 0 18px">' + (sec.itens || []).map(function (x) { return '<li>' + esc(x.texto) + (x.estado === 'em_conferencia' ? ' <span class="sub">(a confirmar)</span>' : '') + '</li>'; }).join('') + '</ul>'; }).join('') + '</details>' : '';
-    return casoLinha(est, esc(it.titulo) + generico + ' <span class="sub">· ' + esc(CASO_TIPO_ITEM[it.tipo] || it.tipo) + (casoItemResumo(it) ? ', ' + esc(casoItemResumo(it)) : '') + '</span>' + leitura, btns);
+    return casoLinha(est, '<span class="fx-tp" aria-hidden="true">' + (CASO_GLIFO[it.tipo] || '•') + '</span>' + esc(it.titulo) + generico + (casoItemMeta(it) ? ' <small class="fx-meta">' + esc(casoItemMeta(it)) + '</small>' : '') + leitura, btns);
   }).join('');
 }
 // A fila: o que ainda não saiu, na ordem. A primeira é "a próxima mensagem".
@@ -3707,7 +3727,7 @@ function fxHeaderHtml(c, d) {
 // Catálogo de démarches (cópia do app, processos.json): carregado uma vez; sem ele, tudo cai na démarche padrão.
 var FX_PROC = null, FX_QUANDO = null;   // FX_QUANDO: o "quando" de cada passo do template (guias-quando.json), para o prazo curto do Início
 async function fxCarregaProcessos() {
-  try { var r = await fetch('processos.json?v=2026-11-17.12'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
+  try { var r = await fetch('processos.json?v=2026-11-17.13'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
 }
 // A sessão Checklist: pílulas por démarche, os 4 mais urgentes, pasta do Drive privada e "Ver mais desta sessão".
 // Os passos que a montagem do espaço propôs para ela, com démarche, subitens e origem: o mesmo detalhe do Checklist. Existem antes de ela ter conta.
@@ -3810,13 +3830,12 @@ function fxInicioCorpo(c) {
 }
 function fxEspacoCorpo(c) {
   var g = fxCasoGuarda(c); if (!g.k) return g.html;
-  var pub = g.k.itens.filter(function (x) { return (x.tipo === 'marco' || x.tipo === 'escola') && x.estado === 'publicado'; }).length;
-  return '<p class="sub" style="margin:0 0 8px">O que você publica só para o caso dela: prazos e escolas. Nada aparece para ela até você publicar (' + pub + ' publicado' + (pub === 1 ? '' : 's') + ').</p>' + fxSemConsent(g.k) +
+    return fxSemConsent(g.k) +
     casoItensHtml(g.k, ['marco', 'escola'], 'Nada de prazo ou escola ainda. Leia a página do Notion no Onboarding para a IA propor.') + casoEscolasDelaHtml(g.k);
 }
 function fxGuiasCorpo(c) {
   var g = fxCasoGuarda(c); if (!g.k) return g.html;
-  return '<p class="sub" style="margin:0 0 8px">O material da equipe que ela abre na aba Espaço, em “Material da equipe”: bilan da conversa, documentos e mensagens prontas. Só entra o que você publicar.</p>' + fxSemConsent(g.k) +
+  return fxSemConsent(g.k) +
     casoBarraNovo(g.k) + casoItensHtml(g.k, ['bilan', 'documento', 'modelo'], 'Nada para ela em Material da equipe ainda. Use os botões acima para criar.');
 }
 // Perfil: o que o Dossiê ainda não tem, para perguntar na call (o Dossiê é a aba ao lado).
@@ -4402,6 +4421,9 @@ function fxPos(c) {
     f.flash = null;
   }
 }
+// A prévia do app vai para a aba da sessão que você abriu.
+var FX_ABA_DA_SESSAO = { home: 'inicio', inicio: 'inicio', checklist: 'checklist', espaco: 'espaco', guias: 'espaco', bilan: 'espaco', perfil: 'perfil' };
+function fxPrevia(id) { if (FX_ABA_DA_SESSAO[id]) { state.fx.appAba = FX_ABA_DA_SESSAO[id]; fxPintaPrevia(); } }
 function fxSessaoAberta(id) { var v = state.fx.abertas[id]; return v === undefined ? id === 'checklist' || id === 'home' : !!v; }
 // Atualização ao vivo: só as peças de cima e o corpo do Checklist; o que ela digita (chat, dossiê) não é tocado.
 function fxLive(c) {
@@ -4476,11 +4498,11 @@ function fichaClick(el) {
       var t = (f.tarefas || []).filter(function (x) { return x.id === ds.id; })[0] || (f.tarefas || []).filter(function (x) { return x.k === ds.k; })[0] || (f.ag.pop !== null ? f.tarefas[f.ag.pop] : null);
       fxFechaPop(false); if (t) irPara(t.dest); return true;
     }
-    case 'sessao': { f.abertas[ds.id] = !fxSessaoAberta(ds.id); fxPintaCorpo(); var tb2 = document.querySelector('[data-fx="sessao"][data-id="' + ds.id + '"]'); if (tb2 && tb2.focus) tb2.focus(); return true; }
+    case 'sessao': { f.abertas[ds.id] = !fxSessaoAberta(ds.id); fxPintaCorpo(); if (f.abertas[ds.id]) fxPrevia(ds.id); var tb2 = document.querySelector('[data-fx="sessao"][data-id="' + ds.id + '"]'); if (tb2 && tb2.focus) tb2.focus(); return true; }
     case 'ir': {
       // Pílula apagada: abre a sessão e a centraliza na tela. Pílula verde (já aberta): só fecha, sem rolar.
       if (fxSessaoAberta(ds.id)) { f.abertas[ds.id] = false; fxPintaCorpo(); return true; }
-      f.abertas[ds.id] = true; fxPintaCorpo();
+      f.abertas[ds.id] = true; fxPintaCorpo(); fxPrevia(ds.id);
       var sc = document.querySelector('section.fx-sess[data-sessao="' + ds.id + '"]');
       if (sc && sc.scrollIntoView) {
         var alta = sc.getBoundingClientRect().height > window.innerHeight * 0.9;   // sessão maior que a tela: centralizar cortaria o topo
@@ -4555,7 +4577,7 @@ async function renderPessoa() {
   if (!c) { $('pessoa-page').innerHTML = '<div class="empty">Pessoa não encontrada.</div>'; return; }
   $('pessoa-page').innerHTML = '<div class="loading">Carregando a ficha…</div>';
   if (fichaV2Ativa() && FX_PROC === null) FX_PROC = await fxCarregaProcessos();
-  if (fichaV2Ativa() && FX_QUANDO === null) { try { var rq = await fetch('guias-quando.json?v=2026-11-17.12'); FX_QUANDO = rq.ok ? await rq.json() : {}; } catch (e) { FX_QUANDO = {}; } }
+  if (fichaV2Ativa() && FX_QUANDO === null) { try { var rq = await fetch('guias-quando.json?v=2026-11-17.13'); FX_QUANDO = rq.ok ? await rq.json() : {}; } catch (e) { FX_QUANDO = {}; } }
   var r = await Promise.all([
     supabase.from('eventos').select('tipo,dados,criado_em').eq('contato_id', c.id).order('criado_em', { ascending: false }).limit(200),
     supabase.from('consentimentos').select('finalidade,aceito,texto,origem,criado_em').eq('contato_id', c.id).order('criado_em', { ascending: false }),
@@ -6465,7 +6487,7 @@ async function enviarLinkPagamento(btn) {
 function editaPorDuploClique(e) {
   var t = e.target && e.target.closest && e.target.closest('[data-dbl]'); if (!t) return false;
   if (t.dataset.dbl === 'ckEditar') { fichaClick({ dataset: { fx: 'ckEditar', id: t.dataset.id } }); return true; }
-  if (t.dataset.dbl === 'ed-aco') { casoAcao('ed-aco', t.dataset.id, null); return true; }
+  if (/^ed-[a-z]+$/.test(t.dataset.dbl)) { casoAcao(t.dataset.dbl, t.dataset.id, null); return true; }
   return false;
 }
 document.addEventListener('dblclick', function (e) { if (editaPorDuploClique(e)) e.preventDefault(); });

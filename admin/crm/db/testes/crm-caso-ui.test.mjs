@@ -243,6 +243,7 @@ console.log('\n== Guias dela: documentos, bilans e mensagens prontas ==');
   const e1 = writes.at(-1);
   check('salvar o bilan grava título, palavras, resumo e vira "revisado"', e1.row.titulo === 'Primeira conversa' && e1.row.dados.palavras.join() === 'PVT,visto de estudante,Alliance' && e1.row.resumo === 'Do PVT ao visto de estudante' && e1.row.estado === 'revisado' && JSON.stringify(e1.row.dados.secoes) === '[]');
   await click({ caso: 'ed-item', id: '40' });
+  check('linha minimalista: ponto de estado com rótulo, ícones no lugar dos botões de texto e dois cliques no texto para editar', /class="fx-dot (ok|mid|off)"[^>]*aria-label="[^"]+"/.test(html()) && /data-dbl="ed-item" data-id="41"/.test(html()) && /class="fx-ic"[^>]*data-caso="ed-item"[^>]*aria-label="Editar"/.test(html()) && !/>Marcar como revisado<|>Publicar para ela</.test(html()));
   check('o bilan tem o campo das seções (ela lê o que está aqui)', /id="caso-ed-secoes"/.test(html()));
   el('caso-ed-secoes').value = '# Dúvidas\nA data da L1\n? Prazo exato\n\n# Próximos passos\nAchar professora';
   writes.length = 0; await click({ caso: 'salvar-item', id: '40' });
