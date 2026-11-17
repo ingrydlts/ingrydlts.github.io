@@ -164,7 +164,7 @@ function rotuloPasso(i, hoje, e, fmtDay) {
 // "Adicionar na home": põe o passo (ou o item do Espaço / dos Guias) nos destaques do Início dela. Usa o despachante data-caso do CRM.
 // Minimalista: "+" põe na home e "×" tira (com rótulo escrito para leitor de tela e dica ao passar o mouse).
 export function iconeHome(tem, ref, e) {
-  const rot = tem ? 'Tirar da página inicial' : 'Adicionar na página inicial';
+  const rot = /^checklist:/.test(ref) ? (tem ? 'Tirar do Em seguida' : 'Fixar no Em seguida') : (tem ? 'Tirar da página inicial' : 'Adicionar na página inicial');
   return '<button type="button" class="fx-ic' + (tem ? ' on' : '') + '" data-caso="' + (tem ? 'home-del' : 'home-add') + '" data-id="' + e(ref) + '" aria-pressed="' + !!tem + '" aria-label="' + rot + '" title="' + rot + '">' + (tem ? '×' : '+') + '</button>';
 }
 export function botaoHome(tem, ref, e) {
@@ -303,8 +303,7 @@ export function htmlPreviaApp(d, h) {
       n.marcos.map((m) => '<section class="fx-pv-card"' + L('Dela') + '><span class="k">Prazo</span><h4>' + e(m.titulo) + '</h4><p>' + (m.aConfirmar ? 'Data a confirmar' : e(m.data) + (m.quando ? ' · ' + e(m.quando) : '')) + '</p></section>').join('') +
       (n.foco ? '<section class="fx-pv-card fx-pv-foco' + (n.foco.atrasado ? ' urg' : '') + '"' + L('Dela') + '><span class="k">' + e(n.foco.rotulo) + '</span><h4>' + e(n.foco.titulo) + '</h4>' + (n.foco.quando ? '<p>' + e(n.foco.quando) + '</p>' : '') + '<span class="fx-pv-btn">' + e(n.foco.botao) + '</span></section>' : '') +
       (n.seguintes.length ? '<section class="fx-pv-card"' + L('Persona') + '><span class="k">Em seguida</span>' + n.seguintes.map(linhaSeg).join('') + '</section>' : '') +
-      ((n.destaques && (n.destaques.checklist.length || n.destaques.espaco.length || n.destaques.guias.length)) ? '<section class="fx-pv-card fx-pv-dest"' + L('Dela') + '><span class="k">Em destaque</span>' +
-        (n.destaques.checklist.length ? '<small class="fx-pv-dsub">Do seu checklist</small>' + n.destaques.checklist.map(linhaSeg).join('') : '') +
+      ((n.destaques && (n.destaques.espaco.length || n.destaques.guias.length)) ? '<section class="fx-pv-card fx-pv-dest"' + L('Dela') + '><span class="k">Em destaque</span>' +
         [['Do Espaço', n.destaques.espaco], ['Guias', n.destaques.guias]].map((par) => par[1].length ? '<small class="fx-pv-dsub">' + par[0] + '</small>' + par[1].map((x) => '<div class="fx-pv-row"><span><b>' + e(x.titulo) + '</b>' + (x.sub ? '<small>' + e(x.sub) + '</small>' : '') + '</span><em>' + (x.conteudo ? 'Abrir' : x.tipo === 'documento' ? 'chega em breve' : 'Ver no Espaço') + '</em></div>').join('') : '').join('') + '</section>' : '') +
       (n.atalhos.length ? '<section class="fx-pv-card"' + L('Dela') + '><span class="k">Só seu</span>' + n.atalhos.map((a) => '<div class="fx-pv-row"><span><b>' + e(a.tit) + '</b><small>' + e(a.sub) + '</small></span></div>').join('') + '</section>' : '');
   } else if (aba === 'inicio') {

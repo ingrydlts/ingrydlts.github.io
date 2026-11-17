@@ -480,14 +480,18 @@ export function inicioDoApp(o) {
     const d = p.prazo ? diasAteApp(p.prazo, agora) : null, tipo = tipoDoPassoApp(p), atrasado = d !== null && d < 0;
     foco = { rotulo: atrasado ? 'Atrasado' : 'Agora', atrasado, titulo: p.titulo, quando: tipo === 'documentos' ? '' : metaDoPassoApp(p, agora),
       botao: tipo === 'data' ? 'Informar a data' : tipo === 'documentos' ? 'Ver os documentos' : 'Feito', roteiro: tipo === 'roteiro' };
-    const demarche = base.principal ? tituloDemarche(x.mapa, base.principal, x.persona) : '';
-    const dosPassos = ordem.slice(1).map((q) => { const dq = q.prazo ? diasAteApp(q.prazo, agora) : null; return { titulo: q.titulo, atrasado: dq !== null && dq < 0, meta: metaDoPassoApp(q, agora).replace(/^(\d{2}\/\d{2})\/\d{4}/, '$1'), de: demarche }; });
-    // Os próximos do checklist geral: abertos, por data (os com data primeiro; sem data mantêm a ordem), como ordenarPorUrgencia do app.
-    const quando = x.quando || {};
-    const gerais = base.itens.filter((i) => i.status !== 'concluido').slice().sort((a, b) => (a.due_date && b.due_date) ? (a.due_date < b.due_date ? -1 : a.due_date > b.due_date ? 1 : 0) : a.due_date ? -1 : b.due_date ? 1 : 0)
-      .slice(0, 4).map((i) => ({ titulo: i.titulo_custom || i.label, atrasado: !!(i.due_date && diasAteApp(i.due_date, agora) < 0), meta: i.due_date ? dataBR(i.due_date).slice(0, 5) : pilulaDoQuando(quando[i.step_key]), de: demarche }));
-    seguintes = dosPassos.concat(gerais).slice(0, 4);
   }
+  const demarche = base.principal ? tituloDemarche(x.mapa, base.principal, x.persona) : '';
+  const dosPassos = ordem.slice(1).map((q) => { const dq = q.prazo ? diasAteApp(q.prazo, agora) : null; return { titulo: q.titulo, atrasado: dq !== null && dq < 0, meta: metaDoPassoApp(q, agora).replace(/^(\d{2}\/\d{2})\/\d{4}/, '$1'), de: demarche }; });
+  // Os próximos do checklist geral: abertos, por data (os com data primeiro; sem data mantêm a ordem), como ordenarPorUrgencia do app.
+  const quando = x.quando || {};
+  const gerais = base.itens.filter((i) => i.status !== 'concluido').slice().sort((a, b) => (a.due_date && b.due_date) ? (a.due_date < b.due_date ? -1 : a.due_date > b.due_date ? 1 : 0) : a.due_date ? -1 : b.due_date ? 1 : 0)
+    .slice(0, 4).map((i) => ({ titulo: i.titulo_custom || i.label, atrasado: !!(i.due_date && diasAteApp(i.due_date, agora) < 0), meta: i.due_date ? dataBR(i.due_date).slice(0, 5) : pilulaDoQuando(quando[i.step_key]), de: demarche }));
+  // Os passos do checklist que a Ingryd fixou (o "+" do passo) vão primeiro no "Em seguida"; depois os da equipe e os do checklist geral, sem repetir o título.
+  const hmx = x.home || [], vivosx = (x.itens || []).filter((i) => i.status !== 'arquivado');
+  const fixados = hmx.filter((h) => h.categoria === 'checklist').sort((a, b) => (a.ordem || 0) - (b.ordem || 0) || a.id - b.id).map((h) => vivosx.find((i) => i.step_key === h.step_key)).filter((i) => i && i.status !== 'concluido').slice(0, 3)
+    .map((i) => ({ titulo: i.titulo_custom || i.label, atrasado: !!(i.due_date && diasAteApp(i.due_date, agora) < 0), meta: i.due_date ? dataBR(i.due_date).slice(0, 5) : pilulaDoQuando((x.quando || {})[i.step_key]), de: demarche, fixado: true }));
+  if (p || fixados.length) { const vistos = new Set(); seguintes = fixados.concat(dosPassos, gerais).filter((q) => { const k = String(q.titulo || '').trim().toLowerCase(); if (vistos.has(k)) return false; vistos.add(k); return true; }).slice(0, 4); }
   const atalhos = [];
   if (escolas.length) atalhos.push({ tit: 'Escolas para contatar', sub: escolas.length + (escolas.length === 1 ? ' escola' : ' escolas') });
   if (board.some((b) => b.tipo === 'bilan')) atalhos.push({ tit: 'O que combinamos na conversa', sub: 'o bilan da nossa conversa' });

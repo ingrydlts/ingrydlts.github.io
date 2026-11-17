@@ -2,15 +2,15 @@
 // Nada de service_role aqui. O banco é db/crm-fase2.sql; o desenho é o artefato "CRM Por Dentro".
 // Tudo que vem do banco é texto de terceiros (nome, e-mail, pergunta): passa sempre por esc().
 import { supabase } from '/assets/js/supabase-client.js';
-import * as TX from './taxonomia.js?v=2026-11-17.23';   // páginas, famílias e agrupamento dos modelos
-import * as ES from './estudio.js?v=2026-11-17.23';   // os blocos do estúdio de e-mails (entregas 2 e 3)
-import * as EE from './editor-email.js?v=2026-11-17.23';
-import * as EQ from './editor-quem.js?v=2026-11-17.23';
-import * as JR from './jornada.js?v=2026-11-17.23';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
-import * as FX from './ficha.js?v=2026-11-17.23';   // ficha v2: lógica pura (fila, démarches, funil, ações)
-import * as FH from './ficha-html.js?v=2026-11-17.23';   // ficha v2: HTML puro
-import * as PN from './panorama.js?v=2026-11-17.23';
-import * as MT from './montagem.js?v=2026-11-17.23';   // Montagem do espaço a partir do transcript (lógica e HTML puros)   // Panorama dela e O que ela trouxe (lógica e HTML puros)
+import * as TX from './taxonomia.js?v=2026-11-17.24';   // páginas, famílias e agrupamento dos modelos
+import * as ES from './estudio.js?v=2026-11-17.24';   // os blocos do estúdio de e-mails (entregas 2 e 3)
+import * as EE from './editor-email.js?v=2026-11-17.24';
+import * as EQ from './editor-quem.js?v=2026-11-17.24';
+import * as JR from './jornada.js?v=2026-11-17.24';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
+import * as FX from './ficha.js?v=2026-11-17.24';   // ficha v2: lógica pura (fila, démarches, funil, ações)
+import * as FH from './ficha-html.js?v=2026-11-17.24';   // ficha v2: HTML puro
+import * as PN from './panorama.js?v=2026-11-17.24';
+import * as MT from './montagem.js?v=2026-11-17.24';   // Montagem do espaço a partir do transcript (lógica e HTML puros)   // Panorama dela e O que ela trouxe (lógica e HTML puros)
 
 var PERSONAS = {
   au_pair_estudante: 'Au pair → estudante', campus_france: 'Campus France', alternancia_emprego: 'Alternância / emprego',
@@ -3771,7 +3771,7 @@ function fxHeaderHtml(c, d) {
 // Catálogo de démarches (cópia do app, processos.json): carregado uma vez; sem ele, tudo cai na démarche padrão.
 var FX_PROC = null, FX_QUANDO = null;   // FX_QUANDO: o "quando" de cada passo do template (guias-quando.json), para o prazo curto do Início
 async function fxCarregaProcessos() {
-  try { var r = await fetch('processos.json?v=2026-11-17.23'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
+  try { var r = await fetch('processos.json?v=2026-11-17.24'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
 }
 // A sessão Checklist: pílulas por démarche, os 4 mais urgentes, pasta do Drive privada e "Ver mais desta sessão".
 // Os passos que a montagem do espaço propôs para ela, com démarche, subitens e origem: o mesmo detalhe do Checklist. Existem antes de ela ter conta.
@@ -3838,7 +3838,7 @@ function fxHomeCorpo(c) {
   var itens = chk && !chk.err && !chk.semConta ? (chk.itens || []).filter(function (i) { return i.status !== 'arquivado'; }) : [];
   var d = FX.destaquesDaHome({ home: k.home, itens: itens, board: k.itens });
   // Cada categoria aponta para a sessão onde o item mora (Guias e Material da equipe moram dentro do Espaço).
-  var onde = { checklist: { sessao: 'checklist', nome: 'Checklist' }, espaco: { sessao: 'espaco', nome: 'Espaço' }, guias: { sessao: 'espaco', nome: 'Material da equipe' } };
+  var onde = { checklist: { sessao: 'checklist', nome: 'Checklist (vai para o Em seguida)' }, espaco: { sessao: 'espaco', nome: 'Espaço' }, guias: { sessao: 'espaco', nome: 'Material da equipe' } };
   var bloco = function (cat) {
     var b = d[cat], linhas = b.itens.map(function (x) {
       var estado = x.falta ? ['off', 'o item não existe mais'] : !x.publicado ? ['mid', 'Rascunho: ela só vê depois que você publicar'] : ['ok', 'Publicado: ela já vê'];
@@ -3848,9 +3848,9 @@ function fxHomeCorpo(c) {
     });
     for (var i = b.itens.length; i < b.max; i++) linhas.push('<li class="fx-hm vazio"><button type="button" class="fx-hm-add" data-fx="abrir" data-id="' + onde[cat].sessao + '" title="Abre a sessão: use o + do item que você quer pôr aqui">' + casoSvg('plus', 15) + '<span>Escolher no ' + esc(onde[cat].nome) + '</span></button></li>');
     var pontos = ''; for (var j = 0; j < b.max; j++) pontos += '<i class="' + (j < b.n ? 'on' : '') + '"></i>';
-    return '<section class="fx-hbl" aria-label="' + esc(FX.HOME_ROTULOS[cat]) + ' na home"><header><h4>' + esc(FX.HOME_ROTULOS[cat]) + '</h4><span class="fx-hb-n" role="img" aria-label="' + b.n + ' de ' + b.max + '" title="' + b.n + ' de ' + b.max + (b.n >= b.max ? ' (cheio)' : '') + '">' + pontos + '</span></header><ul>' + linhas.join('') + '</ul></section>';
+    return '<section class="fx-hbl" aria-label="' + esc(FX.HOME_ROTULOS[cat]) + ' na home"><header><h4>' + esc(cat === 'checklist' ? 'Em seguida' : FX.HOME_ROTULOS[cat]) + '</h4><span class="fx-hb-n" role="img" aria-label="' + b.n + ' de ' + b.max + '" title="' + b.n + ' de ' + b.max + (b.n >= b.max ? ' (cheio)' : '') + '">' + pontos + '</span></header><ul>' + linhas.join('') + '</ul></section>';
   };
-  return '<p class="fx-hnota" title="Ela vê isto no Início do app, em “Em destaque”. O que não está publicado fica fora até você publicar. Para trocar um item: tire aqui e use o + em outro.">Em destaque no Início dela · só aparece o que está publicado</p>' +
+  return '<p class="fx-hnota" title="O passo do checklist fixado vai para o “Em seguida” do Início dela, antes dos outros. Itens do Espaço e dos Guias vão para o “Em destaque”. O que não está publicado fica fora até você publicar.">Em destaque no Início dela · só aparece o que está publicado</p>' +
     '<div class="fx-home-wrap"><div class="fx-home-grade">' + bloco('checklist') + bloco('espaco') + bloco('guias') + '</div></div>';
 }
 function fxOrdem() {
@@ -4638,7 +4638,7 @@ async function renderPessoa() {
   if (!c) { $('pessoa-page').innerHTML = '<div class="empty">Pessoa não encontrada.</div>'; return; }
   $('pessoa-page').innerHTML = '<div class="loading">Carregando a ficha…</div>';
   if (fichaV2Ativa() && FX_PROC === null) FX_PROC = await fxCarregaProcessos();
-  if (fichaV2Ativa() && FX_QUANDO === null) { try { var rq = await fetch('guias-quando.json?v=2026-11-17.23'); FX_QUANDO = rq.ok ? await rq.json() : {}; } catch (e) { FX_QUANDO = {}; } }
+  if (fichaV2Ativa() && FX_QUANDO === null) { try { var rq = await fetch('guias-quando.json?v=2026-11-17.24'); FX_QUANDO = rq.ok ? await rq.json() : {}; } catch (e) { FX_QUANDO = {}; } }
   var r = await Promise.all([
     supabase.from('eventos').select('tipo,dados,criado_em').eq('contato_id', c.id).order('criado_em', { ascending: false }).limit(200),
     supabase.from('consentimentos').select('finalidade,aceito,texto,origem,criado_em').eq('contato_id', c.id).order('criado_em', { ascending: false }),
@@ -6549,7 +6549,7 @@ async function enviarLinkPagamento(btn) {
 var FX_DETALHE = null, qdTimer = null, qdOrigem = null, qdAberto = false;
 async function fxCarregaDetalhe() {
   if (FX_DETALHE) return FX_DETALHE;
-  try { var r = await fetch('guias-detalhe.json?v=2026-11-17.23'); FX_DETALHE = r.ok ? await r.json() : {}; } catch (e) { FX_DETALHE = {}; }
+  try { var r = await fetch('guias-detalhe.json?v=2026-11-17.24'); FX_DETALHE = r.ok ? await r.json() : {}; } catch (e) { FX_DETALHE = {}; }
   return FX_DETALHE;
 }
 function fxFechaQuadro() {
