@@ -1,5 +1,5 @@
 // Ficha-universo, fase 1: HTML puro das peças novas. Todas recebem h = { esc, fmtDay } e escapam todo texto vindo do banco.
-import { ETAPAS_FUNIL, maisUrgentes } from './ficha.js?v=2026-11-17.11';   // o ?v= acompanha o de crm.js (cache do navegador)
+import { ETAPAS_FUNIL, maisUrgentes } from './ficha.js?v=2026-11-17.12';   // o ?v= acompanha o de crm.js (cache do navegador)
 
 
 const URG = { alta: 'Alta', media: 'Média', baixa: 'Baixa' };
@@ -162,8 +162,13 @@ function rotuloPasso(i, hoje, e, fmtDay) {
   return '<span class="fx-p-d' + (String(i.due_date).slice(0, 10) < hoje ? ' atraso' : '') + '">' + (String(i.due_date).slice(0, 10) < hoje ? 'atrasado · ' : 'vence ') + e(fmtDay(i.due_date)) + '</span>';
 }
 // "Adicionar na home": põe o passo (ou o item do Espaço / dos Guias) nos destaques do Início dela. Usa o despachante data-caso do CRM.
+// Minimalista: "+" põe na home e "×" tira (com rótulo escrito para leitor de tela e dica ao passar o mouse).
+export function iconeHome(tem, ref, e) {
+  const rot = tem ? 'Tirar da página inicial' : 'Adicionar na página inicial';
+  return '<button type="button" class="fx-ic' + (tem ? ' on' : '') + '" data-caso="' + (tem ? 'home-del' : 'home-add') + '" data-id="' + e(ref) + '" aria-pressed="' + !!tem + '" aria-label="' + rot + '" title="' + rot + '">' + (tem ? '×' : '+') + '</button>';
+}
 export function botaoHome(tem, ref, e) {
-  return '<button type="button" class="btn fx-hb' + (tem ? ' on' : '') + '" data-caso="' + (tem ? 'home-del' : 'home-add') + '" data-id="checklist:' + e(ref) + '" aria-pressed="' + !!tem + '">' + (tem ? 'Na home ✓ · tirar' : 'Adicionar na home') + '</button>';
+  return iconeHome(tem, 'checklist:' + ref, e);
 }
 // O texto de um passo do checklist dela. O original do template continua guardado; vazio volta ao original; ela vê o novo texto no app.
 function editorPasso(i, e) {
@@ -186,7 +191,7 @@ export function htmlChecklistSessao(d, h) {
   const lista = d.todos ? maisUrgentes(itens, itens.length, hoje) : maisUrgentes(itens, 4, hoje);
   const esc4 = itens.length - 4;
   const passos = '<div class="fx-passos"><h4 class="fx-h4">Passos do checklist</h4>' + (itens.length
-    ? '<ul class="fx-passos-lista">' + lista.map((i) => d.ckEd && d.ckEd === i.step_key ? editorPasso(i, e) : '<li class="fx-passo ' + (i.status === 'concluido' ? 'feito' : i.status === 'arquivado' ? 'arq' : 'pend') + '"><span class="fx-p-t">' + e(i.titulo_custom || i.label) + (i.nota_custom ? '<small class="fx-p-nota">' + e(i.nota_custom) + '</small>' : '') + '</span>' + rotuloPasso(i, hoje, e, h.fmtDay) + (i.status !== 'arquivado' ? '<button type="button" class="btn fx-hb" data-fx="ckEditar" data-id="' + e(i.step_key) + '">Editar</button>' : '') + (d.homeRefs && i.status !== 'arquivado' ? botaoHome(d.homeRefs.indexOf(i.step_key) >= 0, i.step_key, e) : '') + '</li>').join('') + '</ul>' +
+    ? '<ul class="fx-passos-lista">' + lista.map((i) => d.ckEd && d.ckEd === i.step_key ? editorPasso(i, e) : '<li class="fx-passo ' + (i.status === 'concluido' ? 'feito' : i.status === 'arquivado' ? 'arq' : 'pend') + '"><span class="fx-p-t fx-edita" data-dbl="ckEditar" data-id="' + e(i.step_key) + '" tabindex="0" title="Dois cliques (ou Enter) para editar" aria-label="' + e(i.titulo_custom || i.label) + '. Dois cliques ou Enter para editar">' + e(i.titulo_custom || i.label) + (i.nota_custom ? '<small class="fx-p-nota">' + e(i.nota_custom) + '</small>' : '') + '</span>' + rotuloPasso(i, hoje, e, h.fmtDay) + (d.homeRefs && i.status !== 'arquivado' ? botaoHome(d.homeRefs.indexOf(i.step_key) >= 0, i.step_key, e) : '') + '</li>').join('') + '</ul>' +
       (itens.length > 4 ? '<button type="button" class="link" data-fx="ckTodos" aria-expanded="' + !!d.todos + '">' + (d.todos ? 'Mostrar só os 4 mais urgentes' : 'Ver todos os ' + itens.length + ' passos (' + esc4 + (esc4 === 1 ? ' escondido)' : ' escondidos)')) + '</button>' : '')
     : '<p class="sub" style="margin:0">O checklist dela ainda está vazio.</p>') + '</div>';
   const equipe = d.equipeHtml ? '<div class="fx-passos fx-passos-equipe"><h4 class="fx-h4">Combinados só com ela (da montagem do espaço)</h4>' + d.equipeHtml + '</div>' : '';

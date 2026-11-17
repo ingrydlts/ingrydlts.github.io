@@ -28,7 +28,8 @@ console.log('\n== Botão no Checklist ==');
   const sem = FH.htmlChecklistSessao(Object.assign({}, base, { homeRefs: null }), h);
   check('sem os dados da home (SQL não rodado ou caso carregando): nenhum botão', !/Adicionar na home/.test(sem));
   const com = FH.htmlChecklistSessao(Object.assign({}, base, { homeRefs: ['k2'] }), h);
-  check('cada passo tem o botão; o que já está na home vira "Na home ✓ · tirar"', /data-caso="home-add" data-id="checklist:k1"/.test(com) && /data-caso="home-del" data-id="checklist:k2"/.test(com) && /aria-pressed="true"/.test(com) && /Na home ✓ · tirar/.test(com));
+  check('minimalista: cada passo tem "+" (põe na home); o que já está lá vira "×" (tira); com rótulo escrito', /data-caso="home-add" data-id="checklist:k1"[^>]*aria-label="Adicionar na página inicial"[^>]*>\+</.test(com) && /data-caso="home-del" data-id="checklist:k2"[^>]*aria-label="Tirar da página inicial"[^>]*>×</.test(com) && /aria-pressed="true"/.test(com) && !/Adicionar na home|Na home ✓/.test(com));
+  check('sem botão "Editar": o texto do passo abre o editor com dois cliques (ou Enter)', !/>Editar</.test(com) && /class="fx-p-t fx-edita" data-dbl="ckEditar" data-id="k1" tabindex="0"/.test(com));
   check('passo arquivado por ela não tem botão', !/checklist:k3/.test(com));
 }
 
