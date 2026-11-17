@@ -2,15 +2,15 @@
 // Nada de service_role aqui. O banco é db/crm-fase2.sql; o desenho é o artefato "CRM Por Dentro".
 // Tudo que vem do banco é texto de terceiros (nome, e-mail, pergunta): passa sempre por esc().
 import { supabase } from '/assets/js/supabase-client.js';
-import * as TX from './taxonomia.js?v=2026-11-17.9';   // páginas, famílias e agrupamento dos modelos
-import * as ES from './estudio.js?v=2026-11-17.9';   // os blocos do estúdio de e-mails (entregas 2 e 3)
-import * as EE from './editor-email.js?v=2026-11-17.9';
-import * as EQ from './editor-quem.js?v=2026-11-17.9';
-import * as JR from './jornada.js?v=2026-11-17.9';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
-import * as FX from './ficha.js?v=2026-11-17.9';   // ficha v2: lógica pura (fila, démarches, funil, ações)
-import * as FH from './ficha-html.js?v=2026-11-17.9';   // ficha v2: HTML puro
-import * as PN from './panorama.js?v=2026-11-17.9';
-import * as MT from './montagem.js?v=2026-11-17.9';   // Montagem do espaço a partir do transcript (lógica e HTML puros)   // Panorama dela e O que ela trouxe (lógica e HTML puros)
+import * as TX from './taxonomia.js?v=2026-11-17.10';   // páginas, famílias e agrupamento dos modelos
+import * as ES from './estudio.js?v=2026-11-17.10';   // os blocos do estúdio de e-mails (entregas 2 e 3)
+import * as EE from './editor-email.js?v=2026-11-17.10';
+import * as EQ from './editor-quem.js?v=2026-11-17.10';
+import * as JR from './jornada.js?v=2026-11-17.10';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
+import * as FX from './ficha.js?v=2026-11-17.10';   // ficha v2: lógica pura (fila, démarches, funil, ações)
+import * as FH from './ficha-html.js?v=2026-11-17.10';   // ficha v2: HTML puro
+import * as PN from './panorama.js?v=2026-11-17.10';
+import * as MT from './montagem.js?v=2026-11-17.10';   // Montagem do espaço a partir do transcript (lógica e HTML puros)   // Panorama dela e O que ela trouxe (lógica e HTML puros)
 
 var PERSONAS = {
   au_pair_estudante: 'Au pair → estudante', campus_france: 'Campus France', alternancia_emprego: 'Alternância / emprego',
@@ -1983,7 +1983,7 @@ document.addEventListener('toggle', function (e) {
 // Tudo nasce como rascunho (a leitura do Notion). Nada chega à pessoa sem você revisar e publicar; ela só vê o que está publicado
 // ou agendado, e só se houver consentimento de serviço. As regras ficam no banco (gatilhos): aqui só se mostra e se aperta o botão.
 var CASO_ERROS = { sem_consentimento: 'Falta o consentimento de serviço dela (aba Ficha). Sem ele nada é publicado nem agendado.', revise_antes_de_publicar: 'Revise o item antes de publicar.',
-  sem_permissao: 'Sem permissão. Entre de novo no CRM.', aviso_encerrado: 'Esse aviso já foi encerrado.', item_nao_encontrado: 'O item não existe mais. Atualize a aba.' };
+  sem_permissao: 'Sem permissão. Entre de novo no CRM.', aviso_encerrado: 'Esse aviso já foi encerrado.', item_nao_encontrado: 'O item não existe mais. Atualize a aba.', home_cheia: 'A home já está cheia nessa categoria. Tire um item na Página inicial para trocar.', item_invalido: 'Esse item não cabe nessa categoria da home.' };
 var CASO_TIPO_ACH = { fato: 'Fato', deducao: 'Dedução', duvida: 'Dúvida' };
 var CASO_CERTEZA = { literal: 'literal', inferido: 'inferido', a_confirmar: 'a confirmar', nao_bate: 'não bate' };
 var CASO_CANAL = { plataforma: 'Plataforma', email: 'E-mail', convite: 'Convite', instagram: 'Instagram', so_eu: 'Só eu' };
@@ -2000,13 +2000,14 @@ async function buscaCaso(cid) {
     supabase.from('caso_avisos').select('id,tipo,titulo,texto,resposta_tipo,grava_em,modo,dias_apos,ordem,pausa_dias,liberar_em,liberado_em,estado,resposta,adiado_ate').eq('contato_id', cid).order('ordem', { ascending: true }).limit(40),
     supabase.from('consentimentos').select('aceito,criado_em').eq('contato_id', cid).eq('finalidade', 'servico').order('criado_em', { ascending: false }).limit(1),
     supabase.from('escolas_dela').select('id,nome,link,nota,criterios,criado_em').eq('contato_id', cid).order('criado_em', { ascending: true }).limit(40),   // db/crm-escolas-dela.sql; sem ele, a seção some
-    supabase.from('caso_listas').select('chave,titulo,estado,origem').eq('contato_id', cid).order('ordem', { ascending: true }).limit(20)   // db/crm-caso-listas.sql; sem ele, só some o nome da lista
+    supabase.from('caso_listas').select('chave,titulo,estado,origem').eq('contato_id', cid).order('ordem', { ascending: true }).limit(20),   // db/crm-caso-listas.sql; sem ele, só some o nome da lista
+    supabase.from('caso_home').select('id,categoria,step_key,board_id,ordem').eq('contato_id', cid).order('ordem', { ascending: true }).limit(20)   // db/crm-caso-home.sql; sem ele, a Página inicial pede o SQL
   ]);
   // Sem as colunas da montagem (SQL ainda não rodado), volta à busca antiga: o caso continua abrindo.
   if (r[1].error) r[1] = await supabase.from('caso_acoes').select(CASO_ACO_COLS).eq('contato_id', cid).order('n', { ascending: true }).limit(150);
   if (r[2].error) r[2] = await supabase.from('board_itens').select('id,tipo,titulo,resumo,dados,estado,ordem,link,versao').eq('contato_id', cid).order('ordem', { ascending: true }).limit(80);   // sem crm-caso-arquivos.sql: abre sem o upload
   var err = r[0].error || r[1].error || r[2].error || r[3].error || null;
-  return { cid: cid, err: err, ach: r[0].data || [], aco: r[1].data || [], itens: r[2].data || [], avs: r[3].data || [], consent: !!(r[4].data && r[4].data[0] && r[4].data[0].aceito === true), escolasDela: r[5] && !r[5].error ? (r[5].data || []) : [], listas: r[6] && !r[6].error ? (r[6].data || []) : [], ed: null, agenda: null };
+  return { cid: cid, err: err, ach: r[0].data || [], aco: r[1].data || [], itens: r[2].data || [], avs: r[3].data || [], consent: !!(r[4].data && r[4].data[0] && r[4].data[0].aceito === true), escolasDela: r[5] && !r[5].error ? (r[5].data || []) : [], listas: r[6] && !r[6].error ? (r[6].data || []) : [], home: r[7] && !r[7].error ? (r[7].data || []) : null, ed: null, agenda: null };
 }
 function casoPendentes(k) {
   if (!k || k.err) return 0;
@@ -2158,7 +2159,7 @@ function casoItensHtml(k, tipos, vazio) {
   return lista.map(function (it) {
     if (k.ed && k.ed.t === 'item' && k.ed.id === it.id) return casoEditor('item', it.id, casoItemCampos(it));
     var est = it.estado === 'publicado' ? casoPil('Publicado', 'u-baixa') : it.estado === 'revisado' ? casoPil('Revisado', 'u-media') : casoPil('Proposto');
-    var btns = (it.estado === 'proposto' ? casoBtn('item-rev', it.id, 'Marcar como revisado') : it.estado === 'revisado' ? casoBtn('item-pub', it.id, 'Publicar para ela') : casoBtn('item-ret', it.id, 'Retirar')) + casoBtn('ed-item', it.id, 'Editar') + (it.estado !== 'publicado' ? (k.confirmaDel === it.id ? casoBtn('item-del', it.id, 'Confirmar remoção') : casoBtn('item-del-pede', it.id, 'Remover')) : '');
+    var btns = (it.estado === 'proposto' ? casoBtn('item-rev', it.id, 'Marcar como revisado') : it.estado === 'revisado' ? casoBtn('item-pub', it.id, 'Publicar para ela') : casoBtn('item-ret', it.id, 'Retirar')) + casoBtn('ed-item', it.id, 'Editar') + casoHomeBtn(k, it) + (it.estado !== 'publicado' ? (k.confirmaDel === it.id ? casoBtn('item-del', it.id, 'Confirmar remoção') : casoBtn('item-del-pede', it.id, 'Remover')) : '');
     var generico = it.tipo === 'marco' && /^prazo-chave$/i.test(it.titulo) ? ' <span class="pill u-media">Diga a que se refere: ela vê só este título</span>' : '';
     return casoLinha(est, esc(it.titulo) + generico + ' <span class="sub">· ' + esc(CASO_TIPO_ITEM[it.tipo] || it.tipo) + (casoItemResumo(it) ? ', ' + esc(casoItemResumo(it)) : '') + '</span>', btns);
   }).join('');
@@ -2280,6 +2281,29 @@ function renderFilaHoje() {
       '<b>' + esc(short(c)) + '</b><span>' + esc(a.titulo) + ' · ' + esc(casoSaiEm(a)) + '</span></button><div class="fila-acoes">' + casoRitmoBtns(a, true, 'h-') + '</div></div>';
   }).join('');
 }
+// Página inicial: pôr um item nos destaques do Início dela ("categoria:ref") ou tirar. Limites 3 / 2 / 2; o banco confere de novo.
+async function casoHome(acao, id, t) {
+  var k = state.caso, p = String(id).split(':'), cat = p[0], ref = p.slice(1).join(':');
+  if (!k || !Array.isArray(k.home)) return toast('A Página inicial ainda não está ligada: falta rodar db/crm-caso-home.sql no Supabase.', 4600);
+  var ja = FX.homeTem(k.home, cat, ref), r;
+  if (acao === 'home-del') { if (!ja) return; if (t) t.disabled = true; r = await supabase.from('caso_home').delete().eq('id', ja.id); }
+  else {
+    if (ja) return toast('Esse item já está na home.');
+    var pode = FX.podeAdicionarHome(k.home, cat);
+    if (!pode.ok) return toast('A home já tem ' + pode.n + ' de ' + pode.max + ' em ' + FX.HOME_ROTULOS[cat] + '. Tire um na Página inicial para trocar.', 5200);
+    var linha = { contato_id: state.sel, categoria: cat, ordem: pode.n }; if (cat === 'checklist') linha.step_key = ref; else linha.board_id = Number(ref);
+    if (t) t.disabled = true; r = await supabase.from('caso_home').insert(linha);
+  }
+  if (r.error) { if (t) t.disabled = false; return casoFalha('mexer na home', r.error); }
+  await casoRecarrega();
+  toast(acao === 'home-add' ? 'Na home: ' + FX.HOME_ROTULOS[cat] + '. Ela vê no Início.' : 'Tirado da home.');
+}
+// O botão "Adicionar na home" de um item do board (marco e escola → Espaço; bilan, documento e mensagem pronta → Guias).
+function casoHomeBtn(k, it) {
+  var cat = FX.categoriaHomeDoBoard(it.tipo); if (!cat || !k) return '';
+  var tem = Array.isArray(k.home) && FX.homeTem(k.home, cat, it.id);
+  return casoBtn(tem ? 'home-del' : 'home-add', cat + ':' + it.id, tem ? 'Na home ✓ · tirar' : 'Adicionar na home', tem ? ' aria-pressed="true"' : '');
+}
 async function casoAcao(acao, id, t) {
   var k = state.caso; if (!k) return;
   var agora = new Date().toISOString(), nid = Number(id), r = null;
@@ -2289,6 +2313,7 @@ async function casoAcao(acao, id, t) {
   if (acao === 'novo') { k.novo = id; k.ed = null; pintaCaso(); var fn = $('caso-novo-titulo'); if (fn && fn.focus) fn.focus(); return; }
   if (acao === 'item-del-pede') { k.confirmaDel = nid; return pintaCaso(); }
   if (/^(enviar-agora|atrasar-\d+|adiantar-\d+)$/.test(acao)) return filaAcao(acao, nid, t, state.sel);
+  if (acao === 'home-add' || acao === 'home-del') return casoHome(acao, id, t);
   if (t) t.disabled = true;
   if (acao === 'ach-ok') r = await supabase.from('caso_achados').update({ estado: 'ok', conferido_em: agora }).eq('id', nid);
   else if (acao === 'ach-voltar') r = await supabase.from('caso_achados').update({ estado: 'conferir', conferido_em: null }).eq('id', nid);
@@ -3439,7 +3464,7 @@ function fxReset() {
 function fxPrefs() {
   var f = state.fx;
   if (f.prefsLidas) return;
-  var p = FX.lerPrefs(localStorage); f.tour = p.tour; f.ord = p.ord; f.home = p.home; f.prefsLidas = true;
+  var p = FX.lerPrefs(localStorage); f.tour = p.tour; f.ord = p.ord; f.prefsLidas = true;
 }
 function fxContato(c, uid) { return Object.assign({}, c, { user_id: uid || c.user_id || null }); }
 // A fila de hoje: quem tem resposta nova, processo para decidir ou urgência alta (e a pessoa aberta), mais novidades primeiro.
@@ -3659,7 +3684,7 @@ function fxHeaderHtml(c, d) {
 // Catálogo de démarches (cópia do app, processos.json): carregado uma vez; sem ele, tudo cai na démarche padrão.
 var FX_PROC = null, FX_QUANDO = null;   // FX_QUANDO: o "quando" de cada passo do template (guias-quando.json), para o prazo curto do Início
 async function fxCarregaProcessos() {
-  try { var r = await fetch('processos.json?v=2026-11-17.9'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
+  try { var r = await fetch('processos.json?v=2026-11-17.10'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
 }
 // A sessão Checklist: pílulas por démarche, os 4 mais urgentes, pasta do Drive privada e "Ver mais desta sessão".
 // Os passos que a montagem do espaço propôs para ela, com démarche, subitens e origem: o mesmo detalhe do Checklist. Existem antes de ela ter conta.
@@ -3680,13 +3705,34 @@ function fxChecklistCorpo(c) {
   var agora = Date.now(), cc = chkCalc(chk, agora), itens = chk.itens || [];
   var dem = FX.demarchesDe(FX_PROC, personaKey(c), itens), ativa = f.dem !== 'todas' && dem.some(function (x) { return x.k === f.dem; }) ? f.dem : 'todas';
   var ult = chk.cliques && chk.cliques[0], horas = ult ? (agora - new Date(ult.criado_em).getTime()) / 36e5 : 0;   // dado velho: mais de 48 h sem atividade dela
-  return pre + FH.htmlChecklistSessao({ semConta: false, erro: false, velhoDias: horas > 48 ? Math.floor(horas / 24) : 0, demarches: dem, ativa: ativa, totalFeitos: fxContaApp(c, chk).feitos, total: fxContaApp(c, chk).total, itens: FX.filtrarPorDemarche(FX_PROC, itens, ativa),
+  return pre + FH.htmlChecklistSessao({ semConta: false, erro: false, velhoDias: horas > 48 ? Math.floor(horas / 24) : 0, demarches: dem, ativa: ativa, homeRefs: state.caso && state.caso.cid === c.id && Array.isArray(state.caso.home) ? state.caso.home.filter(function (x) { return x.categoria === 'checklist'; }).map(function (x) { return x.step_key; }) : null,
+    totalFeitos: fxContaApp(c, chk).feitos, total: fxContaApp(c, chk).total, itens: FX.filtrarPorDemarche(FX_PROC, itens, ativa),
     hoje: cc.hoje, todos: f.ckTodos, mais: f.ckMais, extraMais: f.ckMais ? checklistLateralHtml(chk, agora, H4_PLAT) + checklistHtml(chk, agora) : '' }, H_FX);
 }
 function fxPintaChk(c) { var b = $('fx-chk-corpo'); if (b) b.innerHTML = fxChecklistCorpo(c); }
 // As sessões da aba Plataforma, em pílulas e em dois grupos. O corpo só é montado nas abertas: os ids antigos (dossie-box,
 // ins-box, int-box, chat-fio) existem enquanto a sessão está aberta, e as atualizações ao vivo ignoram o que não está na tela.
-function fxHome() { var f = state.fx; return f.home || FX.HOME_PADRAO.slice(); }
+// Página inicial: os destaques do Início dela. Cada categoria tem espaços fixos (3 / 2 / 2). Para pôr um item, use "Adicionar na home" na sessão
+// dele (Checklist, Espaço ou Guias); aqui você vê o que está nos espaços e tira para trocar.
+function fxHomeCorpo(c) {
+  var g = fxCasoGuarda(c); if (!g.k) return g.html;
+  var k = g.k;
+  if (!Array.isArray(k.home)) return '<p class="sub" style="margin:0">A Página inicial ainda não está ligada: falta rodar <b>db/crm-caso-home.sql</b> no SQL Editor do Supabase (primeiro no teste, depois na produção).</p>';
+  var chk = state.dos && state.dos.cid === c.id ? state.dos.chk : null;
+  var itens = chk && !chk.err && !chk.semConta ? (chk.itens || []).filter(function (i) { return i.status !== 'arquivado'; }) : [];
+  var d = FX.destaquesDaHome({ home: k.home, itens: itens, board: k.itens });
+  var onde = { checklist: ['do Checklist', 'checklist', 'Passos do checklist'], espaco: ['do Espaço', 'espaco', 'prazos e escolas'], guias: ['dos Guias', 'guias', 'bilan, documentos e mensagens prontas'] };
+  var bloco = function (cat) {
+    var b = d[cat], linhas = b.itens.map(function (x) {
+      return '<div class="fx-home-slot"><span class="fx-home-t"><b>' + esc(x.titulo) + '</b>' + (x.meta ? ' <small>' + esc(x.meta) + '</small>' : '') +
+        (x.falta ? ' ' + casoPil('o item não existe mais', 'u-media') : !x.publicado ? ' ' + casoPil('não publicado: ela só vê depois de publicar', 'u-media') : '') + '</span>' + casoBtn('home-del', cat + ':' + x.ref, 'Tirar') + '</div>';
+    });
+    for (var i = b.itens.length; i < b.max; i++) linhas.push('<div class="fx-home-slot vazio"><span class="sub">Espaço livre. Em <b>' + esc(onde[cat][1] === 'checklist' ? 'Checklist' : cat === 'espaco' ? 'Espaço' : 'Guias') + '</b>, use “Adicionar na home” num item (' + esc(onde[cat][2]) + ').</span><button type="button" class="link" data-fx="ir" data-id="' + onde[cat][1] + '">Ir para a sessão</button></div>');
+    return '<section class="fx-home-bloco" aria-label="' + esc(FX.HOME_ROTULOS[cat]) + ' na home"><h4 class="fx-h4">' + esc(FX.HOME_ROTULOS[cat]) + ' <span class="sub">' + b.n + ' de ' + b.max + (b.n >= b.max ? ' · cheio' : '') + '</span></h4>' + linhas.join('') + '</section>';
+  };
+  return '<p class="sub" style="margin:0 0 10px">Ela vê isto no Início do app, em “Em destaque” (o que não está publicado fica fora até você publicar). Para trocar um item: tire aqui e use “Adicionar na home” em outro.</p>' +
+    '<div class="fx-home-grade">' + bloco('checklist') + bloco('espaco') + bloco('guias') + '</div>';
+}
 function fxOrdem() {
   var f = state.fx;
   return f.ord || { app: FX.SESSOES_PADRAO.app.slice(), ela: FX.SESSOES_PADRAO.ela.slice() };
@@ -3895,7 +3941,7 @@ function fxPreviaDados(c) {
   var feitosN = cnt.feitos, totalN = cnt.total;
   // O Início e o Espaço, montados pela mesma regra do app (FX.inicioDoApp / FX.espacoDoApp).
   var boardPub = k ? k.itens.filter(function (x) { return x.estado === 'publicado'; }) : [];
-  var inicio = FX.inicioDoApp({ nome: String(pn(c) || '').trim().split(/\s+/)[0], mapa: FX_PROC, persona: personaKey(c), itens: ok ? chk.itens : [], board: boardPub, acoes: k ? k.aco : [], listas: k ? k.listas : [], quando: FX_QUANDO || {} });
+  var inicio = FX.inicioDoApp({ nome: String(pn(c) || '').trim().split(/\s+/)[0], mapa: FX_PROC, persona: personaKey(c), itens: ok ? chk.itens : [], board: boardPub, acoes: k ? k.aco : [], listas: k ? k.listas : [], home: k && Array.isArray(k.home) ? k.home : [], quando: FX_QUANDO || {} });
   var esp = FX.espacoDoApp({ board: boardPub, avisos: avisos.map(function (a) { return { tipo: a.cru, titulo: a.titulo, texto: a.texto, estado: a.estado }; }), escolasDela: k ? (k.escolasDela || []) : [] });
   var passosL = abertos.map(function (i) { return { label: i.label, tag: i.category, feito: false, due: i.due_date, atrasado: !!(i.due_date && i.due_date < hoje) }; }).concat(pubP.filter(function (x) { return !x.feito; }));
   var feitosL = feitos.map(function (i) { return { label: i.label, tag: i.category, feito: true, due: i.due_date, atrasado: false }; }).concat(pubP.filter(function (x) { return x.feito; }));
@@ -4157,6 +4203,7 @@ function dosVisaoHtml(c, d) {
 function fxSessoes(c) {
   var mk = function (titulo, sub, id, corpo) { var a = fxSessaoAberta(id); return { titulo: titulo, sub: sub, aberto: a, corpo: a ? corpo() : '' }; };
   var mapa = {
+    home: mk('Página inicial', 'O que fica em destaque no Início dela: 3 passos do checklist, 2 do Espaço e 2 dos Guias.', 'home', function () { return fxHomeCorpo(c); }),
     chat: mk('Conversa com ela', 'As mensagens da equipe, do assistente e dela, dentro do app.', 'chat', function () { return '<div id="chat-box">' + chatPanelHtml(c, state.chat, H4_PLAT) + '</div>'; }),
     inicio: mk('Perguntas da equipe Por Dentro', 'As perguntas que a equipe faz a ela no Espaço do app, com o dia de cada uma e a resposta.', 'inicio', function () { return fxInicioCorpo(c) + fxZonas(c, 'inicio'); }),
     checklist: mk('Checklist', 'Os passos dela por démarche, do mais urgente ao mais distante.', 'checklist', function () { return '<div id="fx-chk-corpo">' + fxChecklistCorpo(c) + '</div>' + fxZonas(c, 'checklist'); }),
@@ -4171,7 +4218,7 @@ function fxSessoes(c) {
     hist: mk('Histórico', 'Tudo que ela fez no app, dia a dia.', 'hist', function () { return '<div id="int-box">' + interacoesHtml(state.int) + '</div>'; })
   };
   if (c.user_id) mapa.insights = mk('Insights', 'O que o uso do app diz sobre ela, depois do 1:1.', 'insights', function () { return insightsPlatHtml(c); });
-  return { ir: FH.htmlIrPara(fxOrdem(), mapa, H_FX), sessoes: FH.htmlSessoes(fxOrdem(), mapa, H_FX, gruposFechados(), fxHome(), { semIr: true }) };
+  return { ir: FH.htmlIrPara(fxOrdem(), mapa, H_FX), sessoes: FH.htmlSessoes(fxOrdem(), mapa, H_FX, gruposFechados(), { semIr: true }) };
 }
 // ---------- Plataforma: a sessão "Insights" (depois do 1:1, com ela no app) ----------
 function insightsDaPlataforma(c, X) {
@@ -4303,7 +4350,7 @@ function fxPos(c) {
     f.flash = null;
   }
 }
-function fxSessaoAberta(id) { var v = state.fx.abertas[id]; return v === undefined ? id === 'checklist' : !!v; }
+function fxSessaoAberta(id) { var v = state.fx.abertas[id]; return v === undefined ? id === 'checklist' || id === 'home' : !!v; }
 // Atualização ao vivo: só as peças de cima e o corpo do Checklist; o que ela digita (chat, dossiê) não é tocado.
 function fxLive(c) {
   var f = state.fx, d = f.dados; if (!d || f.cid !== c.id) return;
@@ -4389,15 +4436,7 @@ function fichaClick(el) {
       }
       return true;
     }
-    case 'home': {   // põe a sessão na página inicial (topo) ou tira
-      f.home = FX.alternarHome(fxHome(), ds.id); FX.gravarPrefs(localStorage, { home: f.home }); fxPintaCorpo();
-      var hb = document.querySelector('[data-fx="home"][data-id="' + ds.id + '"]'); if (hb && hb.focus) hb.focus(); return true;
-    }
     case 'mover': {
-      if (ds.area === 'home') {   // dentro da página inicial: só a ordem das fixadas
-        f.home = FX.moverSessao(fxHome(), ds.id, Number(ds.d) < 0 ? -1 : 1); FX.gravarPrefs(localStorage, { home: f.home }); fxPintaCorpo();
-        var hm = document.querySelector('[data-fx="mover"][data-area="home"][data-id="' + ds.id + '"][data-d="' + ds.d + '"]'); if (hm && hm.focus) hm.focus(); return true;
-      }
       var ord = fxOrdem(), area = ord.app.indexOf(ds.id) >= 0 ? 'app' : ord.ela.indexOf(ds.id) >= 0 ? 'ela' : null; if (!area) return true;
       var nova = { app: ord.app.slice(), ela: ord.ela.slice() }; nova[area] = FX.moverSessao(nova[area], ds.id, Number(ds.d) < 0 ? -1 : 1);
       f.ord = nova; FX.gravarPrefs(localStorage, { ord: nova }); fxPintaCorpo();
@@ -4461,7 +4500,7 @@ async function renderPessoa() {
   if (!c) { $('pessoa-page').innerHTML = '<div class="empty">Pessoa não encontrada.</div>'; return; }
   $('pessoa-page').innerHTML = '<div class="loading">Carregando a ficha…</div>';
   if (fichaV2Ativa() && FX_PROC === null) FX_PROC = await fxCarregaProcessos();
-  if (fichaV2Ativa() && FX_QUANDO === null) { try { var rq = await fetch('guias-quando.json?v=2026-11-17.9'); FX_QUANDO = rq.ok ? await rq.json() : {}; } catch (e) { FX_QUANDO = {}; } }
+  if (fichaV2Ativa() && FX_QUANDO === null) { try { var rq = await fetch('guias-quando.json?v=2026-11-17.10'); FX_QUANDO = rq.ok ? await rq.json() : {}; } catch (e) { FX_QUANDO = {}; } }
   var r = await Promise.all([
     supabase.from('eventos').select('tipo,dados,criado_em').eq('contato_id', c.id).order('criado_em', { ascending: false }).limit(200),
     supabase.from('consentimentos').select('finalidade,aceito,texto,origem,criado_em').eq('contato_id', c.id).order('criado_em', { ascending: false }),

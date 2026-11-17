@@ -1,5 +1,5 @@
 // Ficha-universo, fase 1: HTML puro das peças novas. Todas recebem h = { esc, fmtDay } e escapam todo texto vindo do banco.
-import { ETAPAS_FUNIL, maisUrgentes } from './ficha.js?v=2026-11-17.9';   // o ?v= acompanha o de crm.js (cache do navegador)
+import { ETAPAS_FUNIL, maisUrgentes } from './ficha.js?v=2026-11-17.10';   // o ?v= acompanha o de crm.js (cache do navegador)
 
 
 const URG = { alta: 'Alta', media: 'Média', baixa: 'Baixa' };
@@ -161,6 +161,10 @@ function rotuloPasso(i, hoje, e, fmtDay) {
   if (!i.due_date) return '<span class="fx-p-d">sem data</span>';
   return '<span class="fx-p-d' + (String(i.due_date).slice(0, 10) < hoje ? ' atraso' : '') + '">' + (String(i.due_date).slice(0, 10) < hoje ? 'atrasado · ' : 'vence ') + e(fmtDay(i.due_date)) + '</span>';
 }
+// "Adicionar na home": põe o passo (ou o item do Espaço / dos Guias) nos destaques do Início dela. Usa o despachante data-caso do CRM.
+export function botaoHome(tem, ref, e) {
+  return '<button type="button" class="btn fx-hb' + (tem ? ' on' : '') + '" data-caso="' + (tem ? 'home-del' : 'home-add') + '" data-id="checklist:' + e(ref) + '" aria-pressed="' + !!tem + '">' + (tem ? 'Na home ✓ · tirar' : 'Adicionar na home') + '</button>';
+}
 export function htmlChecklistSessao(d, h) {
   const e = h.esc;
   if (d.semConta) return '<p class="sub" style="margin:0">Ela ainda não entrou no app, então ainda não tem checklist.</p>';
@@ -174,7 +178,7 @@ export function htmlChecklistSessao(d, h) {
   const lista = d.todos ? maisUrgentes(itens, itens.length, hoje) : maisUrgentes(itens, 4, hoje);
   const esc4 = itens.length - 4;
   const passos = '<div class="fx-passos"><h4 class="fx-h4">Passos do checklist</h4>' + (itens.length
-    ? '<ul class="fx-passos-lista">' + lista.map((i) => '<li class="fx-passo ' + (i.status === 'concluido' ? 'feito' : i.status === 'arquivado' ? 'arq' : 'pend') + '"><span class="fx-p-t">' + e(i.label) + '</span>' + rotuloPasso(i, hoje, e, h.fmtDay) + '</li>').join('') + '</ul>' +
+    ? '<ul class="fx-passos-lista">' + lista.map((i) => '<li class="fx-passo ' + (i.status === 'concluido' ? 'feito' : i.status === 'arquivado' ? 'arq' : 'pend') + '"><span class="fx-p-t">' + e(i.label) + '</span>' + rotuloPasso(i, hoje, e, h.fmtDay) + (d.homeRefs && i.status !== 'arquivado' ? botaoHome(d.homeRefs.indexOf(i.step_key) >= 0, i.step_key, e) : '') + '</li>').join('') + '</ul>' +
       (itens.length > 4 ? '<button type="button" class="link" data-fx="ckTodos" aria-expanded="' + !!d.todos + '">' + (d.todos ? 'Mostrar só os 4 mais urgentes' : 'Ver todos os ' + itens.length + ' passos (' + esc4 + (esc4 === 1 ? ' escondido)' : ' escondidos)')) + '</button>' : '')
     : '<p class="sub" style="margin:0">O checklist dela ainda está vazio.</p>') + '</div>';
   return velho + pilulas + drive + passos +
@@ -187,10 +191,9 @@ export function htmlSessao(s, h) {
   const e = h.esc;
   return '<section class="fx-sess' + (s.aberto ? ' aberta' : '') + (s.ativa ? ' ativa' : '') + '" data-sessao="' + e(s.id) + '" data-area="' + e(s.area) + '">' +
     '<div class="fx-sess-cab">' +
-    (s.area === 'home' ? '' : '<span class="fx-grab" draggable="true" role="img" aria-label="Arrastar ' + e(s.titulo) + '" data-id="' + e(s.id) + '" data-area="' + e(s.area) + '">⋮⋮</span>') +
+    '<span class="fx-grab" draggable="true" role="img" aria-label="Arrastar ' + e(s.titulo) + '" data-id="' + e(s.id) + '" data-area="' + e(s.area) + '">⋮⋮</span>' +
     '<button type="button" class="fx-sess-t" data-fx="sessao" data-id="' + e(s.id) + '" aria-expanded="' + !!s.aberto + '" aria-controls="fx-s-' + e(s.id) + '">' +
     '<span class="fx-sess-nome">' + e(s.titulo) + '</span><span class="fx-sess-sub">' + e(s.sub || '') + '</span></button>' +
-    '<button type="button" class="fx-pin' + (s.fixada ? ' on' : '') + '" data-fx="home" data-id="' + e(s.id) + '" aria-pressed="' + !!s.fixada + '" aria-label="' + (s.fixada ? 'Tirar ' : 'Pôr ') + e(s.titulo) + (s.fixada ? ' da página inicial' : ' na página inicial') + '"><span class="fx-pin-sw" aria-hidden="true"></span>Página inicial</button>' +
     '<span class="fx-mover"><button type="button" class="fx-seta" data-fx="mover" data-id="' + e(s.id) + '" data-area="' + e(s.area) + '" data-d="-1" aria-label="Subir ' + e(s.titulo) + '">↑</button>' +
     '<button type="button" class="fx-seta" data-fx="mover" data-id="' + e(s.id) + '" data-area="' + e(s.area) + '" data-d="1" aria-label="Descer ' + e(s.titulo) + '">↓</button></span></div>' +
     (s.aberto ? '<div class="fx-sess-corpo" id="fx-s-' + e(s.id) + '">' + (s.corpo || '') + '</div>' : '') + '</section>';
@@ -202,21 +205,16 @@ export function htmlIrPara(ord, mapa, h) {
   return todos.length ? '<nav class="fx-ir" aria-label="Ir para uma sessão"><span class="fx-ir-t">Ir para</span>' + todos.map((id) => '<button type="button" class="fx-ir-b' + (mapa[id].aberto ? ' on' : '') + '" data-fx="ir" data-id="' + h.esc(id) + '">' + h.esc(mapa[id].titulo) + '</button>').join('') + '</nav>' : '';
 }
 // opcoes.semIr: não desenha a barra "Ir para" (quem chama a põe em largura total, com htmlIrPara).
-export function htmlSessoes(ord, mapa, h, fechados, home, opcoes) {
+export function htmlSessoes(ord, mapa, h, fechados, opcoes) {
   const fech = fechados || {};
-  const fixadas = (home || []).filter((id) => mapa && mapa[id]);
   const grupo = (area, titulo, dica) => {
-    const itens = ((ord && ord[area]) || []).filter((id) => mapa && mapa[id] && !fixadas.includes(id));
-    if (!itens.length) return '';
+    const itens = ((ord && ord[area]) || []).filter((id) => mapa && mapa[id]);
     return '<details class="fx-grupo fx-grupo-' + area + '" data-grupo="' + area + '"' + (fech[area] ? '' : ' open') + '><summary class="fx-grupo-sum"><h3 class="fx-h3" id="fx-g-' + area + '">' + h.esc(titulo) + '</h3>' +
       '<span class="sub fx-grupo-dica">' + h.esc(dica) + '</span><span class="fx-grupo-n">' + itens.length + (itens.length === 1 ? ' sessão' : ' sessões') + '</span><span class="fx-grupo-chev" aria-hidden="true">▾</span></summary>' +
-      itens.map((id) => htmlSessao(Object.assign({ id, area, fixada: false }, mapa[id]), h)).join('') + '</details>';
+      itens.map((id) => htmlSessao(Object.assign({ id, area }, mapa[id]), h)).join('') + '</details>';
   };
   const ir = opcoes && opcoes.semIr ? '' : htmlIrPara(ord, mapa, h);
-  const topo = '<section class="fx-home" aria-labelledby="fx-g-home"><div class="fx-home-cab"><h3 class="fx-h3" id="fx-g-home">Página inicial</h3><span class="sub fx-grupo-dica">' +
-    (fixadas.length ? 'O mais importante dela, sempre no topo. “Página inicial” em qualquer sessão põe ou tira daqui.' : 'Nada fixado. Use “Página inicial” em uma sessão para ela ficar aqui, no topo.') + '</span></div>' +
-    fixadas.map((id) => htmlSessao(Object.assign({ id, area: 'home', fixada: true }, mapa[id]), h)).join('') + '</section>';
-  return '<div class="fx-sessoes">' + ir + topo + grupo('app', 'Acompanhar o app dela', 'O que ela vê e faz no app.') + grupo('ela', 'Conhecer e registrar', 'Só a equipe vê.') + '</div>';
+  return '<div class="fx-sessoes">' + ir + grupo('app', 'Acompanhar o app dela', 'O que ela vê e faz no app.') + grupo('ela', 'Conhecer e registrar', 'Só a equipe vê.') + '</div>';
 }
 
 // ---------- Aba Ficha: fluxo de 3 passos (Task 13) ----------
@@ -254,6 +252,9 @@ export function htmlPreviaApp(d, h) {
       n.marcos.map((m) => '<section class="fx-pv-card"' + L('Dela') + '><span class="k">Prazo</span><h4>' + e(m.titulo) + '</h4><p>' + (m.aConfirmar ? 'Data a confirmar' : e(m.data) + (m.quando ? ' · ' + e(m.quando) : '')) + '</p></section>').join('') +
       (n.foco ? '<section class="fx-pv-card fx-pv-foco' + (n.foco.atrasado ? ' urg' : '') + '"' + L('Dela') + '><span class="k">' + e(n.foco.rotulo) + '</span><h4>' + e(n.foco.titulo) + '</h4>' + (n.foco.quando ? '<p>' + e(n.foco.quando) + '</p>' : '') + '<span class="fx-pv-btn">' + e(n.foco.botao) + '</span></section>' : '') +
       (n.seguintes.length ? '<section class="fx-pv-card"' + L('Persona') + '><span class="k">Em seguida</span>' + n.seguintes.map(linhaSeg).join('') + '</section>' : '') +
+      ((n.destaques && (n.destaques.checklist.length || n.destaques.espaco.length || n.destaques.guias.length)) ? '<section class="fx-pv-card fx-pv-dest"' + L('Dela') + '><span class="k">Em destaque</span>' +
+        (n.destaques.checklist.length ? '<small class="fx-pv-dsub">Do seu checklist</small>' + n.destaques.checklist.map(linhaSeg).join('') : '') +
+        [['Do Espaço', n.destaques.espaco], ['Guias', n.destaques.guias]].map((par) => par[1].length ? '<small class="fx-pv-dsub">' + par[0] + '</small>' + par[1].map((x) => '<div class="fx-pv-row"><span><b>' + e(x.titulo) + '</b>' + (x.sub ? '<small>' + e(x.sub) + '</small>' : '') + '</span><em>' + (x.conteudo ? 'Abrir' : x.tipo === 'documento' ? 'chega em breve' : 'Ver no Espaço') + '</em></div>').join('') : '').join('') + '</section>' : '') +
       (n.atalhos.length ? '<section class="fx-pv-card"' + L('Dela') + '><span class="k">Só seu</span>' + n.atalhos.map((a) => '<div class="fx-pv-row"><span><b>' + e(a.tit) + '</b><small>' + e(a.sub) + '</small></span></div>').join('') + '</section>' : '');
   } else if (aba === 'inicio') {
     const frase = d.marco ? 'Faltam ' + d.marco.dias + ' dias: ' + d.marco.titulo + '.' : 'Nada vence nesta semana. O próximo passo está logo abaixo.';
