@@ -2,15 +2,15 @@
 // Nada de service_role aqui. O banco é db/crm-fase2.sql; o desenho é o artefato "CRM Por Dentro".
 // Tudo que vem do banco é texto de terceiros (nome, e-mail, pergunta): passa sempre por esc().
 import { supabase } from '/assets/js/supabase-client.js';
-import * as TX from './taxonomia.js?v=2026-11-17.17';   // páginas, famílias e agrupamento dos modelos
-import * as ES from './estudio.js?v=2026-11-17.17';   // os blocos do estúdio de e-mails (entregas 2 e 3)
-import * as EE from './editor-email.js?v=2026-11-17.17';
-import * as EQ from './editor-quem.js?v=2026-11-17.17';
-import * as JR from './jornada.js?v=2026-11-17.17';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
-import * as FX from './ficha.js?v=2026-11-17.17';   // ficha v2: lógica pura (fila, démarches, funil, ações)
-import * as FH from './ficha-html.js?v=2026-11-17.17';   // ficha v2: HTML puro
-import * as PN from './panorama.js?v=2026-11-17.17';
-import * as MT from './montagem.js?v=2026-11-17.17';   // Montagem do espaço a partir do transcript (lógica e HTML puros)   // Panorama dela e O que ela trouxe (lógica e HTML puros)
+import * as TX from './taxonomia.js?v=2026-11-17.18';   // páginas, famílias e agrupamento dos modelos
+import * as ES from './estudio.js?v=2026-11-17.18';   // os blocos do estúdio de e-mails (entregas 2 e 3)
+import * as EE from './editor-email.js?v=2026-11-17.18';
+import * as EQ from './editor-quem.js?v=2026-11-17.18';
+import * as JR from './jornada.js?v=2026-11-17.18';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
+import * as FX from './ficha.js?v=2026-11-17.18';   // ficha v2: lógica pura (fila, démarches, funil, ações)
+import * as FH from './ficha-html.js?v=2026-11-17.18';   // ficha v2: HTML puro
+import * as PN from './panorama.js?v=2026-11-17.18';
+import * as MT from './montagem.js?v=2026-11-17.18';   // Montagem do espaço a partir do transcript (lógica e HTML puros)   // Panorama dela e O que ela trouxe (lógica e HTML puros)
 
 var PERSONAS = {
   au_pair_estudante: 'Au pair → estudante', campus_france: 'Campus France', alternancia_emprego: 'Alternância / emprego',
@@ -2027,7 +2027,7 @@ function casoSvg(n, tam) { return '<svg viewBox="0 0 24 24" width="' + (tam || 1
 // Posição fixa de cada ação: os ícones ficam alinhados em colunas, mesmo quando a linha tem menos ações.
 var CASO_ICONES = { 'item-rev': ['check', 'Marcar como revisado', 1], 'item-pub': ['up', 'Publicar para ela', 1], 'item-ret': ['down', 'Retirar', 1], 'aco-pub': ['up', 'Publicar para ela', 1], 'aco-retirar': ['down', 'Retirar', 1],
   'aco-fim': ['check', 'Concluir', 0], 'aco-reabrir': ['undo', 'Reabrir', 0], 'ed-item': ['pencil', 'Editar', 2], 'ed-aco': ['pencil', 'Editar', 2], 'ed-ach': ['pencil', 'Editar', 2], 'ag-abrir': ['clock', 'Mudar a pausa', 2],
-  'home-add': ['plus', 'Adicionar na página inicial', 3], 'home-del': ['x', 'Tirar da página inicial', 3], 'item-del-pede': ['trash', 'Remover', 4], 'av-cancel': ['x', 'Cancelar', 4] };
+  'home-add': ['plus', 'Adicionar na página inicial', 3], 'home-del': ['x', 'Tirar da página inicial', 3], 'item-del-pede': ['trash', 'Excluir', 4], 'av-cancel': ['x', 'Cancelar', 4] };
 function casoLinha(esq, meio, btns) {
   var ed = /data-caso="(ed-[a-z]+)" data-id="([^"]*)"/.exec(btns || '');
   var ponto = String(esq || '').replace(/<span class="pill([^"]*)">([^<]*)<\/span>/, function (m, cls, txt) {
@@ -2222,7 +2222,7 @@ function casoItensHtml(k, tipos, vazio) {
     if (k.ed && k.ed.t === 'item' && k.ed.id === it.id) return casoEditor('item', it.id, casoItemCampos(it));
     var est = it.estado === 'publicado' ? casoPil('Publicado', 'u-baixa') : it.estado === 'revisado' ? casoPil('Revisado', 'u-media') : casoPil('Proposto');
     var docRecebe = it.tipo === 'documento' && (it.dados || {}).direcao === 'recebe';
-    var btns = (docRecebe ? casoAnexarIco(it) : temDoc ? '<i class="fx-s0"></i>' : '') + (it.estado === 'proposto' ? casoBtn('item-rev', it.id, 'Marcar como revisado') : it.estado === 'revisado' ? casoBtn('item-pub', it.id, 'Publicar para ela') : casoBtn('item-ret', it.id, 'Retirar')) + casoBtn('ed-item', it.id, 'Editar') + casoHomeBtn(k, it) + (it.estado !== 'publicado' ? (k.confirmaDel === it.id ? casoBtn('item-del', it.id, 'Confirmar remoção') : casoBtn('item-del-pede', it.id, 'Remover')) : '');
+    var btns = (docRecebe ? casoAnexarIco(it) : temDoc ? '<i class="fx-s0"></i>' : '') + (it.estado === 'proposto' ? casoBtn('item-rev', it.id, 'Marcar como revisado') : it.estado === 'revisado' ? casoBtn('item-pub', it.id, 'Publicar para ela') : casoBtn('item-ret', it.id, 'Retirar')) + casoBtn('ed-item', it.id, 'Editar') + casoHomeBtn(k, it) + (k.confirmaDel === it.id ? casoBtn('item-del', it.id, it.estado === 'publicado' ? 'Excluir (ela deixa de ver)' : 'Excluir') + casoBtn('cancelar', it.id, 'Não') : casoBtn('item-del-pede', it.id, 'Excluir'));
     var generico = it.tipo === 'marco' && /^prazo-chave$/i.test(it.titulo) ? ' <span class="fx-aviso">sem nome: dois cliques para dizer qual prazo é (ex.: Inscrição na licence)</span>' : '';
     var leitura = it.tipo === 'bilan' && ((it.dados || {}).secoes || []).length ? '<details style="margin-top:6px"><summary class="sub" style="cursor:pointer">Ler o bilan</summary>' + it.dados.secoes.map(function (sec) { return '<p style="margin:8px 0 2px"><b>' + esc(sec.titulo) + '</b></p><ul style="margin:0 0 0 18px">' + (sec.itens || []).map(function (x) { return '<li>' + esc(x.texto) + (x.estado === 'em_conferencia' ? ' <span class="sub">(a confirmar)</span>' : '') + '</li>'; }).join('') + '</ul>'; }).join('') + '</details>' : '';
     return casoLinha(est, '<span class="fx-tp" aria-hidden="true">' + (CASO_GLIFO[it.tipo] || '') + '</span>' + esc(it.titulo) + generico + (casoItemMeta(it) ? ' <small class="fx-meta">' + esc(casoItemMeta(it)) + '</small>' : '') + leitura, btns);
@@ -2399,7 +2399,11 @@ async function casoAcao(acao, id, t) {
   else if (acao === 'item-rev') r = await supabase.from('board_itens').update({ estado: 'revisado' }).eq('id', nid);
   else if (acao === 'item-pub') r = await supabase.rpc('crm_board_publicar', { p_id: nid });
   else if (acao === 'item-ret') r = await supabase.rpc('crm_board_retirar', { p_id: nid });
-  else if (acao === 'item-del') { r = await supabase.from('board_itens').delete().eq('id', nid); k.confirmaDel = null; }
+  else if (acao === 'item-del') {
+    var apagar = k.itens.filter(function (x) { return x.id === nid; })[0];
+    r = await supabase.from('board_itens').delete().eq('id', nid); k.confirmaDel = null;
+    if (!r.error && apagar && apagar.arquivo_caminho) { try { await supabase.storage.from('casos-arquivos').remove([apagar.arquivo_caminho]); } catch (e) { /* sobra de arquivo não quebra nada */ } }
+  }
   else if (acao === 'salvar-novo') {
     var vn = function (id) { return $(id) ? $(id).value.trim() : ''; };
     var fl = function (m) { if (t) t.disabled = false; return toast(m); };
@@ -2484,7 +2488,7 @@ async function casoAcao(acao, id, t) {
   else { if (t) t.disabled = false; return; }
   if (r && r.error) { if (t) t.disabled = false; return casoFalha('salvar', r.error); }
   await casoRecarrega();
-  toast(acao === 'aco-recusar' ? 'Recusado: o passo sai da fila.' : acao === 'item-pub' || acao === 'aco-pub' ? 'Publicado: ela já pode ver' : acao === 'ag-dias' || acao === 'ag-data' ? 'Aviso agendado' : 'Salvo');
+  toast(acao === 'item-del' ? 'Excluído.' : acao === 'aco-recusar' ? 'Recusado: o passo sai da fila.' : acao === 'item-pub' || acao === 'aco-pub' ? 'Publicado: ela já pode ver' : acao === 'ag-dias' || acao === 'ag-data' ? 'Aviso agendado' : 'Salvo');
 }
 function platAbasHtml() {
   var nova = chatNaoLidas(state.chat);
@@ -3753,7 +3757,7 @@ function fxHeaderHtml(c, d) {
 // Catálogo de démarches (cópia do app, processos.json): carregado uma vez; sem ele, tudo cai na démarche padrão.
 var FX_PROC = null, FX_QUANDO = null;   // FX_QUANDO: o "quando" de cada passo do template (guias-quando.json), para o prazo curto do Início
 async function fxCarregaProcessos() {
-  try { var r = await fetch('processos.json?v=2026-11-17.17'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
+  try { var r = await fetch('processos.json?v=2026-11-17.18'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
 }
 // A sessão Checklist: pílulas por démarche, os 4 mais urgentes, pasta do Drive privada e "Ver mais desta sessão".
 // Os passos que a montagem do espaço propôs para ela, com démarche, subitens e origem: o mesmo detalhe do Checklist. Existem antes de ela ter conta.
@@ -4610,7 +4614,7 @@ async function renderPessoa() {
   if (!c) { $('pessoa-page').innerHTML = '<div class="empty">Pessoa não encontrada.</div>'; return; }
   $('pessoa-page').innerHTML = '<div class="loading">Carregando a ficha…</div>';
   if (fichaV2Ativa() && FX_PROC === null) FX_PROC = await fxCarregaProcessos();
-  if (fichaV2Ativa() && FX_QUANDO === null) { try { var rq = await fetch('guias-quando.json?v=2026-11-17.17'); FX_QUANDO = rq.ok ? await rq.json() : {}; } catch (e) { FX_QUANDO = {}; } }
+  if (fichaV2Ativa() && FX_QUANDO === null) { try { var rq = await fetch('guias-quando.json?v=2026-11-17.18'); FX_QUANDO = rq.ok ? await rq.json() : {}; } catch (e) { FX_QUANDO = {}; } }
   var r = await Promise.all([
     supabase.from('eventos').select('tipo,dados,criado_em').eq('contato_id', c.id).order('criado_em', { ascending: false }).limit(200),
     supabase.from('consentimentos').select('finalidade,aceito,texto,origem,criado_em').eq('contato_id', c.id).order('criado_em', { ascending: false }),

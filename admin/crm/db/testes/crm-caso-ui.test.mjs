@@ -260,13 +260,17 @@ console.log('\n== Guias dela: documentos, bilans e mensagens prontas ==');
   check('mensagem sem texto não salva', writes.length === 0);
   el('caso-ed-corpo').value = 'Bonjour, madame.'; el('caso-ed-resumo').value = 'Para a Alliance'; await click({ caso: 'salvar-item', id: '42' });
   check('mensagem publicada continua publicada e a correção chega a ela', writes.at(-1).row.dados.corpo === 'Bonjour, madame.' && writes.at(-1).row.resumo === 'Para a Alliance' && !('estado' in writes.at(-1).row));
-  // Remover: dois toques; publicado não se remove
+  // Excluir: dois toques; vale também para o publicado (a confirmação avisa que ela deixa de ver)
   fixture({ itens: [BIL, MODE] }); await pagina();
-  check('item publicado não tem "Remover" (retire antes); os outros têm', !/data-caso="item-del-pede" data-id="42"/.test(html()) && /data-caso="item-del-pede" data-id="40"/.test(html()));
+  check('todo item tem o ícone de excluir, inclusive o publicado', /data-caso="item-del-pede" data-id="42"/.test(html()) && /data-caso="item-del-pede" data-id="40"/.test(html()));
   writes.length = 0; await click({ caso: 'item-del-pede', id: '40' });
-  check('o primeiro toque só pede confirmação (não apaga)', /Confirmar remoção/.test(html()) && writes.length === 0);
+  check('o primeiro toque só pede confirmação (não apaga)', />Excluir</.test(html()) && />Não</.test(html()) && writes.length === 0);
   await click({ caso: 'item-del', id: '40' });
-  check('o segundo toque remove o item', writes.at(-1).op === 'delete' && writes.at(-1).table === 'board_itens');
+  check('o segundo toque exclui o item', writes.at(-1).op === 'delete' && writes.at(-1).table === 'board_itens');
+  await click({ caso: 'item-del-pede', id: '42' });
+  check('item publicado: a confirmação avisa que ela deixa de ver', /Excluir \(ela deixa de ver\)/.test(html()));
+  await click({ caso: 'item-del', id: '42' });
+  check('o publicado também é excluído', writes.at(-1).op === 'delete' && writes.at(-1).table === 'board_itens');
 }
 
 
