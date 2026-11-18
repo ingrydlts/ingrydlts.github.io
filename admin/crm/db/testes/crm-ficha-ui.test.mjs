@@ -329,13 +329,28 @@ console.log('== Aba Dossiê: se preenche com o que ela responde no funil ==');
   const c = pessoa({ respostas: resp });
   await abre(h, c);
   await h.click({ fx: 'tab', v: 'dossie' });
-  const pg = h.el('pessoa-page').innerHTML;
-  const sel = (k, v) => new RegExp('data-dk="' + k + '"[^>]*>(?:(?!</select>).)*<option value="' + v + '" selected', 's').test(pg);
+  await h.click({ fx: 'dosFiltro', v: 'tudo' });   // o padrão é "Só o que falta"; o que veio do funil já conta como respondido
+  const pg = h.el('dossie-box').innerHTML;
+  const sel = (k, v) => new RegExp('data-k="' + k + '" data-v="' + v + '" aria-pressed="true"').test(pg) || new RegExp('data-dk="' + k + '"[^>]*>(?:(?!</select>).)*<option value="' + v + '" selected', 's').test(pg);
   check('ano de au pair, intenção (migrar → migrar_estudante) e sim/não vêm do funil', sel('ano_au_pair', 'primeiro') && sel('intencao_au_pair', 'migrar_estudante') && sel('comprova_recursos', 'false') && sel('tem_sponsor', 'true') && sel('tem_certificado_matricula', 'false'));
   check('a cidade do funil entra como texto legível', pg.includes('data-dk="cidade"') && pg.includes('value="Lyon"'));
+  // Formulário do Dossiê: grupos recolhíveis, filtros e fonte de cada resposta
+  check('os blocos viram grupos recolhíveis e só o 1º vem aberto', (pg.match(/<details class="fg-d"/g) || []).length >= 3 && (pg.match(/<details class="fg-d"[^>]*open/g) || []).length === 1);
+  check('a faixa de fontes conta as respostas por origem (funil)', /data-v="funil"[^>]*>Funil<small>[1-9]/.test(pg));
+  await h.click({ fx: 'dosFonte', v: 'funil' });
+  const soFunil = h.el('dossie-box').innerHTML;
+  check('filtrar por fonte "Funil" mostra só campos respondidos pelo funil', soFunil.includes('data-dk="cidade"') && !soFunil.includes('data-dk="telefone"') && !/class="ds (call|voce)"/.test(soFunil));
+  await h.click({ fx: 'dosFiltro', v: 'falta' });
+  const soFalta = h.el('dossie-box').innerHTML;
+  check('"Só o que falta" esconde o que já está respondido (cidade veio do funil)', !soFalta.includes('data-dk="cidade"') && soFalta.includes('data-dk="telefone"'));
+  await h.click({ fx: 'dosChip', k: 'fase', v: 'adaptando' });
+  check('um toque num chip grava a resposta (e outro toque desmarca)', h.mod.state.dos.rasc.fase === 'adaptando' && /data-fx="dosChip" data-k="fase" data-v="adaptando" aria-pressed="true"/.test(h.el('dossie-box').innerHTML) && h.el('dossie-box').innerHTML.includes('fx-salvar'));
+  await h.click({ fx: 'dosChip', k: 'fase', v: 'adaptando' });
+  check('tocar de novo no mesmo chip limpa a resposta', h.mod.state.dos.rasc.fase === '');
+  await h.click({ fx: 'dosFiltro', v: 'tudo' });
   check('o que já está no dossiê ganha do funil (cfNivel: master, não l1)', h.mod.dosValor(c, { cfNivel: 'master' }, {}, 'cfNivel') === 'master' && h.mod.dosValor(c, {}, {}, 'cfNivel') === 'l1');
   check('valor que o formulário não conhece é ignorado (cfTeste "inventado")', !sel('cfTeste', 'inventado') && h.mod.dosDoFunil(c, 'cfTeste') === null);
-  check('campo vindo do funil traz a etiqueta e o dossiê conta como respondido', pg.includes('Veio do funil') && h.mod.dosProgresso(c, {}, {}).n >= 6);
+  check('campo vindo do funil traz a etiqueta de fonte e o dossiê conta como respondido', pg.includes('Veio do funil') && pg.includes('class="ds funil"') && h.mod.dosProgresso(c, {}, {}).n >= 6);
   check('o que você apagou no formulário não volta do funil', h.mod.dosValor(c, {}, { ano_au_pair: '' }, 'ano_au_pair') === '');
   h.mod.pararAoVivo();
 }

@@ -2,15 +2,15 @@
 // Nada de service_role aqui. O banco é db/crm-fase2.sql; o desenho é o artefato "CRM Por Dentro".
 // Tudo que vem do banco é texto de terceiros (nome, e-mail, pergunta): passa sempre por esc().
 import { supabase } from '/assets/js/supabase-client.js';
-import * as TX from './taxonomia.js?v=2026-11-18.04';   // páginas, famílias e agrupamento dos modelos
-import * as ES from './estudio.js?v=2026-11-18.04';   // os blocos do estúdio de e-mails (entregas 2 e 3)
-import * as EE from './editor-email.js?v=2026-11-18.04';
-import * as EQ from './editor-quem.js?v=2026-11-18.04';
-import * as JR from './jornada.js?v=2026-11-18.04';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
-import * as FX from './ficha.js?v=2026-11-18.04';   // ficha v2: lógica pura (fila, démarches, funil, ações)
-import * as FH from './ficha-html.js?v=2026-11-18.04';   // ficha v2: HTML puro
-import * as PN from './panorama.js?v=2026-11-18.04';
-import * as MT from './montagem.js?v=2026-11-18.04';   // Montagem do espaço a partir do transcript (lógica e HTML puros)   // Panorama dela e O que ela trouxe (lógica e HTML puros)
+import * as TX from './taxonomia.js?v=2026-11-18.05';   // páginas, famílias e agrupamento dos modelos
+import * as ES from './estudio.js?v=2026-11-18.05';   // os blocos do estúdio de e-mails (entregas 2 e 3)
+import * as EE from './editor-email.js?v=2026-11-18.05';
+import * as EQ from './editor-quem.js?v=2026-11-18.05';
+import * as JR from './jornada.js?v=2026-11-18.05';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
+import * as FX from './ficha.js?v=2026-11-18.05';   // ficha v2: lógica pura (fila, démarches, funil, ações)
+import * as FH from './ficha-html.js?v=2026-11-18.05';   // ficha v2: HTML puro
+import * as PN from './panorama.js?v=2026-11-18.05';
+import * as MT from './montagem.js?v=2026-11-18.05';   // Montagem do espaço a partir do transcript (lógica e HTML puros)   // Panorama dela e O que ela trouxe (lógica e HTML puros)
 
 var PERSONAS = {
   au_pair_estudante: 'Au pair → estudante', campus_france: 'Campus France', alternancia_emprego: 'Alternância / emprego',
@@ -2748,9 +2748,21 @@ function dosProgresso(c, d, rasc) {
   dosVisiveis(c, d, rasc).forEach(function (b) { if (b.livre) return; b.campos.forEach(function (f) { tot++; if (dosValor(c, d, rasc, f.k) !== '') n++; }); });
   return { n: n, tot: tot, falta: tot - n };
 }
-function dosCampoHtml(f, c, d, rasc) {
+// De onde veio a resposta que está na tela: o que você digitou agora, o que a IA leu da call, o que ela respondeu nas páginas de entrada ou no funil, ou o que já estava salvo.
+function dosFonteDe(f, c, d, rasc, v) {
+  if (v === '') return '';
+  if (rasc && Object.prototype.hasOwnProperty.call(rasc, f.k)) return 'voce';
+  if (onbOrigemDe(f.k, v)) return 'call';
+  if (dosVeioDoFunil(c, d, rasc, f.k)) return /^etapa_i0[1-5]$/.test(f.k) ? 'entrada' : 'funil';
+  return 'voce';
+}
+var DOS_FONTES = { funil: 'Funil', entrada: 'Páginas de entrada', call: 'Call', voce: 'Você' };
+function dosCampoHtml(f, c, d, rasc, modo) {
   var v = dosValor(c, d, rasc, f.k), id = 'dk-' + f.k, a = ' id="' + id + '" data-dk="' + esc(f.k) + '" data-cid="' + esc(c.id) + '"', ctl;
-  if (f.t === 'op' || f.t === 'sn') {
+  var opcoes = f.t === 'sn' ? SN : f.o;
+  if (modo === 'fixo' && (f.t === 'op' || f.t === 'sn') && opcoes.length <= 6) {   // poucas opções: um toque, em vez de abrir a lista
+    ctl = '<div class="seg" role="group" aria-label="' + esc(f.l) + '">' + opcoes.map(function (o) { return '<button type="button" data-fx="dosChip" data-k="' + esc(f.k) + '" data-v="' + esc(o[0]) + '" aria-pressed="' + (o[0] === v) + '">' + esc(o[1]) + '</button>'; }).join('') + '</div>';
+  } else if (f.t === 'op' || f.t === 'sn') {
     ctl = '<select' + a + '><option value="">— sem resposta</option>' + (f.t === 'sn' ? SN : f.o).map(function (o) { return '<option value="' + esc(o[0]) + '"' + (o[0] === v ? ' selected' : '') + '>' + esc(o[1]) + '</option>'; }).join('') + '</select>';
   } else if (f.t === 'lg') {
     ctl = '<textarea' + a + ' style="min-height:' + (f.alto ? 190 : 84) + 'px">' + esc(v) + '</textarea>';
@@ -2758,7 +2770,8 @@ function dosCampoHtml(f, c, d, rasc) {
     ctl = '<input' + a + ' type="' + (f.t === 'dt' ? 'date' : f.t === 'mes' ? 'month' : 'text') + '" value="' + esc(v) + '" maxlength="300">';
   }
   var og = onbOrigemDe(f.k, v), fn = dosVeioDoFunil(c, d, rasc, f.k);
-  return '<div class="dfield' + (f.t === 'lg' ? ' wide' : '') + (v === '' ? ' vazio' : '') + '"><label for="' + id + '">' + esc(f.l) + '</label>' + ctl + (f.ajuda ? '<small>' + esc(f.ajuda) + '</small>' : '') +
+  var fonte = modo === 'fixo' ? dosFonteDe(f, c, d, rasc, v) : '';
+  return '<div class="dfield' + (f.t === 'lg' ? ' wide' : '') + (v === '' ? ' vazio' : '') + '"><label for="' + id + '">' + esc(f.l) + (fonte ? '<span class="ds ' + fonte + '">' + DOS_FONTES[fonte] + '</span>' : '') + '</label>' + ctl + (f.ajuda ? '<small>' + esc(f.ajuda) + '</small>' : '') +
     (og ? '<small class="orig ' + og.conf + '">' + esc(og.origem) + ' · ' + esc(ONB_CONF[og.conf]) + '</small>' : '') +
     (fn ? '<small class="orig alta">Veio do funil, ela mesma respondeu · salve para guardar no dossiê</small>' : '') + '</div>';
 }
@@ -2982,7 +2995,27 @@ function dossieHtml(c, d, err, rasc, aberto, chk, fixo) {
   if (err) return '<div class="panel dossie"><div class="dhead"><h3>Dossiê</h3></div><p class="sub" style="margin:0">Falta rodar <b>db/crm-dossie.sql</b> no SQL Editor do Supabase.</p></div>';
   var pr = dosProgresso(c, d, rasc), pct = pr.tot ? Math.round(pr.n * 100 / pr.tot) : 0, sujo = rasc && Object.keys(rasc).length;
   var corpo = '';
-  if (aberto) {
+  if (aberto && fixo) {
+    var fx = state.fx, filtro = fx.dosFiltro || 'falta', fonteF = fx.dosFonte || 'todas', blocos = dosVisiveis(c, d, rasc).filter(function (b) { return b.t !== 'A ligação'; });
+    var resp = function (f) { return dosValor(c, d, rasc, f.k) !== ''; }, ordem = ['funil', 'entrada', 'call', 'voce'], cont = { todas: 0 };
+    ordem.forEach(function (o) { cont[o] = 0; });
+    blocos.forEach(function (b) { if (!b.livre) b.campos.forEach(function (f) { var v = dosValor(c, d, rasc, f.k); if (v !== '') { cont.todas++; cont[dosFonteDe(f, c, d, rasc, v)]++; } }); });
+    var faixa = '<div class="fontes" role="group" aria-label="Fonte da resposta"><span class="t">Fonte</span>' + [['todas', 'Todas']].concat(ordem.map(function (o) { return [o, DOS_FONTES[o]]; })).map(function (x) {
+      return '<button type="button" class="fonte" data-fx="dosFonte" data-v="' + x[0] + '" aria-pressed="' + (fonteF === x[0]) + '">' + esc(x[1]) + '<small>' + cont[x[0]] + '</small></button>'; }).join('') + '</div>';
+    var tog = '<span class="filtro" role="group" aria-label="Mostrar"><button type="button" data-fx="dosFiltro" data-v="falta" aria-pressed="' + (filtro === 'falta') + '">Só o que falta · ' + pr.falta + '</button><button type="button" data-fx="dosFiltro" data-v="tudo" aria-pressed="' + (filtro === 'tudo') + '">Tudo · ' + pr.tot + '</button></span>';
+    var grupos = blocos.map(function (b, i) {
+      var todos = b.campos, feitos = todos.filter(resp).length, vis = todos;
+      if (fonteF !== 'todas') vis = todos.filter(function (f) { var v = dosValor(c, d, rasc, f.k); return v !== '' && dosFonteDe(f, c, d, rasc, v) === fonteF; });
+      else if (filtro === 'falta' && !b.livre) vis = todos.filter(function (f) { return !resp(f) || (rasc && Object.prototype.hasOwnProperty.call(rasc, f.k)); });   // o que você mexeu agora não some da tela
+      if (!vis.length) return '';
+      var aberto2 = fonteF !== 'todas' || (fx.dosAb && fx.dosAb[b.t] !== undefined ? fx.dosAb[b.t] : i === 0);
+      return '<details class="fg-d" data-dosg="' + esc(b.t) + '"' + (aberto2 ? ' open' : '') + '><summary><span>' + esc(b.t) + (b.livre ? '' : '<small>' + feitos + ' de ' + todos.length + (todos.length - feitos ? ' · faltam ' + (todos.length - feitos) : '') + '</small>') + '</span></summary><div class="dgrid">' + vis.map(function (f) { return dosCampoHtml(f, c, d, rasc, 'fixo'); }).join('') + '</div></details>';
+    }).join('') || '<p class="sub" style="margin:12px 0 0">Nada com esse filtro.</p>';
+    var nSujo = sujo || 0;
+    corpo = '<div class="dcorpo"><div class="prog">' + tog + '</div>' + faixa + grupos +
+      (nSujo ? '<div class="fx-salvar"><span class="sub">' + nSujo + (nSujo === 1 ? ' alteração' : ' alterações') + ' sem salvar</span><button class="btn primary" type="button" data-dossalvar="' + esc(c.id) + '">Salvar dossiê</button></div>' : '<div class="actions" style="margin-top:10px"><button class="btn primary" type="button" data-dossalvar="' + esc(c.id) + '">Salvar dossiê</button></div>') +
+      '<div id="chk-box">' + checklistHtml(chk, Date.now()) + '</div></div>';
+  } else if (aberto) {
     corpo = '<div class="dcorpo">' + dosVisiveis(c, d, rasc).filter(function (b) { return !(fixo && b.t === 'A ligação'); }).map(function (b) {
       return '<section class="dbloco"><h4>' + esc(b.t) + '</h4><div class="dgrid">' + b.campos.map(function (f) { return dosCampoHtml(f, c, d, rasc); }).join('') + '</div></section>';
     }).join('') + '<div class="actions" style="margin-top:6px"><button class="btn primary" type="button" data-dossalvar="' + esc(c.id) + '">Salvar dossiê</button>' +
@@ -3845,7 +3878,7 @@ function fxHeaderHtml(c, d) {
 // Catálogo de démarches (cópia do app, processos.json): carregado uma vez; sem ele, tudo cai na démarche padrão.
 var FX_PROC = null, FX_QUANDO = null;   // FX_QUANDO: o "quando" de cada passo do template (guias-quando.json), para o prazo curto do Início
 async function fxCarregaProcessos() {
-  try { var r = await fetch('processos.json?v=2026-11-18.04'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
+  try { var r = await fetch('processos.json?v=2026-11-18.05'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
 }
 // A sessão Checklist: pílulas por démarche, os 4 mais urgentes, pasta do Drive privada e "Ver mais desta sessão".
 // Os passos que a montagem do espaço propôs para ela, com démarche, subitens e origem: o mesmo detalhe do Checklist. Existem antes de ela ter conta.
@@ -4823,6 +4856,9 @@ function fichaClick(el) {
     case 'camadas': f.camadas = !f.camadas; fxPintaPrevia(); return true;
     case 'dem': { f.dem = ds.v || 'todas'; f.appAba = 'checklist'; var cd = byC(state.sel); if (cd) { fxPintaChk(fxContato(cd, f.dados && f.dados.uid)); fxPintaPrevia(); } return true; }
     case 'lgPasso': f.lgPasso = ds.v; fxPintaCorpo(); return true;
+    case 'dosChip': { var cc2 = byC(state.sel); if (!cc2 || !state.dos || state.dos.cid !== cc2.id) return true; var at2 = dosValor(cc2, state.dos.d, state.dos.rasc, ds.k); state.dos.rasc[ds.k] = at2 === ds.v ? '' : ds.v; pintaDossie(cc2); return true; }
+    case 'dosFiltro': f.dosFiltro = ds.v; f.dosFonte = 'todas'; { var cdf = byC(state.sel); if (cdf) pintaDossie(cdf); } return true;
+    case 'dosFonte': f.dosFonte = ds.v; { var cds = byC(state.sel); if (cds) pintaDossie(cds); } return true;
     case 'curOrigem': f.curOrigem = ds.v; fxPintaCorpo(); return true;
     case 'curConf': case 'curEsc': case 'curMostrar': case 'curMov': case 'curReset': case 'curRetira': { var cc = byC(state.sel); if (cc) fxCurAcao(cc, ds); return true; }
     case 'ckOrigem': f.ckOrigem = ds.v; fxRepintaChkDe(); return true;
@@ -4864,7 +4900,7 @@ async function renderPessoa() {
   if (!c) { $('pessoa-page').innerHTML = '<div class="empty">Pessoa não encontrada.</div>'; return; }
   $('pessoa-page').innerHTML = '<div class="loading">Carregando a ficha…</div>';
   if (fichaV2Ativa() && FX_PROC === null) FX_PROC = await fxCarregaProcessos();
-  if (fichaV2Ativa() && FX_QUANDO === null) { try { var rq = await fetch('guias-quando.json?v=2026-11-18.04'); FX_QUANDO = rq.ok ? await rq.json() : {}; } catch (e) { FX_QUANDO = {}; } }
+  if (fichaV2Ativa() && FX_QUANDO === null) { try { var rq = await fetch('guias-quando.json?v=2026-11-18.05'); FX_QUANDO = rq.ok ? await rq.json() : {}; } catch (e) { FX_QUANDO = {}; } }
   var r = await Promise.all([
     supabase.from('eventos').select('tipo,dados,criado_em').eq('contato_id', c.id).order('criado_em', { ascending: false }).limit(200),
     supabase.from('consentimentos').select('finalidade,aceito,texto,origem,criado_em').eq('contato_id', c.id).order('criado_em', { ascending: false }),
@@ -6777,7 +6813,7 @@ async function enviarLinkPagamento(btn) {
 var FX_DETALHE = null, qdTimer = null, qdOrigem = null, qdAberto = false;
 async function fxCarregaDetalhe() {
   if (FX_DETALHE) return FX_DETALHE;
-  try { var r = await fetch('guias-detalhe.json?v=2026-11-18.04'); FX_DETALHE = r.ok ? await r.json() : {}; } catch (e) { FX_DETALHE = {}; }
+  try { var r = await fetch('guias-detalhe.json?v=2026-11-18.05'); FX_DETALHE = r.ok ? await r.json() : {}; } catch (e) { FX_DETALHE = {}; }
   return FX_DETALHE;
 }
 function fxFechaQuadro() {
@@ -7177,6 +7213,7 @@ document.addEventListener('change', function (e) {
   if (e.target.checked) RS.sel[e.target.dataset.radarsel] = true; else delete RS.sel[e.target.dataset.radarsel];
   var go = $('radar-enviar-go'); if (go) go.textContent = radarRotuloEnviar();
 });
+document.addEventListener('toggle', function (e) { var d = e.target; if (d && d.matches && d.matches('details[data-dosg]')) { var fx = state.fx; fx.dosAb = fx.dosAb || {}; fx.dosAb[d.dataset.dosg] = d.open; } }, true);
 document.addEventListener('input', function (e) {
   if (e.target.dataset && e.target.dataset.dk && state.dos && state.dos.cid === e.target.dataset.cid) {
     var c0 = byC(e.target.dataset.cid), k0 = e.target.dataset.dk, antes = JSON.stringify(dosVisiveis(c0, state.dos.d, state.dos.rasc).map(function (b) { return b.campos.map(function (f) { return f.k; }); }));
