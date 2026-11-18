@@ -2,15 +2,15 @@
 // Nada de service_role aqui. O banco é db/crm-fase2.sql; o desenho é o artefato "CRM Por Dentro".
 // Tudo que vem do banco é texto de terceiros (nome, e-mail, pergunta): passa sempre por esc().
 import { supabase } from '/assets/js/supabase-client.js';
-import * as TX from './taxonomia.js?v=2026-11-18.01';   // páginas, famílias e agrupamento dos modelos
-import * as ES from './estudio.js?v=2026-11-18.01';   // os blocos do estúdio de e-mails (entregas 2 e 3)
-import * as EE from './editor-email.js?v=2026-11-18.01';
-import * as EQ from './editor-quem.js?v=2026-11-18.01';
-import * as JR from './jornada.js?v=2026-11-18.01';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
-import * as FX from './ficha.js?v=2026-11-18.01';   // ficha v2: lógica pura (fila, démarches, funil, ações)
-import * as FH from './ficha-html.js?v=2026-11-18.01';   // ficha v2: HTML puro
-import * as PN from './panorama.js?v=2026-11-18.01';
-import * as MT from './montagem.js?v=2026-11-18.01';   // Montagem do espaço a partir do transcript (lógica e HTML puros)   // Panorama dela e O que ela trouxe (lógica e HTML puros)
+import * as TX from './taxonomia.js?v=2026-11-18.02';   // páginas, famílias e agrupamento dos modelos
+import * as ES from './estudio.js?v=2026-11-18.02';   // os blocos do estúdio de e-mails (entregas 2 e 3)
+import * as EE from './editor-email.js?v=2026-11-18.02';
+import * as EQ from './editor-quem.js?v=2026-11-18.02';
+import * as JR from './jornada.js?v=2026-11-18.02';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
+import * as FX from './ficha.js?v=2026-11-18.02';   // ficha v2: lógica pura (fila, démarches, funil, ações)
+import * as FH from './ficha-html.js?v=2026-11-18.02';   // ficha v2: HTML puro
+import * as PN from './panorama.js?v=2026-11-18.02';
+import * as MT from './montagem.js?v=2026-11-18.02';   // Montagem do espaço a partir do transcript (lógica e HTML puros)   // Panorama dela e O que ela trouxe (lógica e HTML puros)
 
 var PERSONAS = {
   au_pair_estudante: 'Au pair → estudante', campus_france: 'Campus France', alternancia_emprego: 'Alternância / emprego',
@@ -1847,13 +1847,36 @@ function chatSugUsar(id) {
   fxSugGuarda(c.id, id, 'usada');
 }
 function chatSugDescartar(id) { var c = byC(state.sel); if (!c) return; fxSugGuarda(c.id, id, 'descartada'); var b = $('chat-box'); if (b) b.innerHTML = chatPanelHtml(c, state.chat, H4_PLAT); else fxPintaCorpo(); }
+// Interações: os botões que escrevem (ou abrem a proposta) por você, num dropdown. Os seus próprios botões ficam só neste navegador.
+function chatAtalhos() { try { var v = JSON.parse(localStorage.getItem('crm_chat_atalhos') || '[]'); return Array.isArray(v) ? v : []; } catch (e) { return []; } }
+function chatAtalhosSalva(l) { try { localStorage.setItem('crm_chat_atalhos', JSON.stringify(l)); } catch (e) { /* sem localStorage */ } }
+function chatInteracoesConteudo() {
+  var chip = function (k, rot) { return '<button class="chip" type="button" data-chatquick="' + k + '">' + esc(rot) + '</button>'; };
+  var meus = chatAtalhos().map(function (a) { return '<span class="fx-chipb"><button class="chip" type="button" data-chatquick="' + esc(a.k) + '" title="' + (a.u ? 'Escreve a mensagem e anexa o link' : 'Escreve a mensagem') + '">' + esc(a.r) + (a.u ? ' ↗' : '') + '</button><button type="button" class="fx-x" data-chatatdel="' + esc(a.k) + '" aria-label="Apagar o botão ' + esc(a.r) + '">×</button></span>'; }).join('');
+  var novo = state.chatNovoAt ? '<div class="fx-atal"><input id="chat-at-nome" type="text" maxlength="28" placeholder="Nome do botão (ex.: Revisão de dossiê)" aria-label="Nome do botão"><textarea id="chat-at-msg" class="notebox" maxlength="600" placeholder="Mensagem que o botão escreve para ela" aria-label="Mensagem do botão" style="min-height:64px"></textarea><input id="chat-at-url" type="url" placeholder="https://link (opcional): vira botão na mensagem" aria-label="Link do botão (opcional)"><p class="sub" id="chat-at-err" hidden style="margin:0"></p><div class="actions"><button class="btn" type="button" data-chatatnovo="1">Cancelar</button><button class="btn primary" type="button" data-chatatsalva="1">Salvar botão</button></div></div>' : '';
+  return '<h4 class="fx-h4">Propor serviço</h4><div class="tpls">' + chip('um_a_um', 'Propor 1:1 de 20 min') + chip('proposta', 'Nova proposta') + meus + '<button class="chip" type="button" data-chatatnovo="1" aria-expanded="' + !!state.chatNovoAt + '">+ Criar meu botão</button></div>' + novo +
+    '<h4 class="fx-h4">Perguntar e lembrar</h4><div class="tpls">' + chip('como_vai', 'Perguntar como está') + chip('documentos', 'Pedir documentos') + chip('prazo', 'Lembrar do prazo') + '</div>';
+}
+function chatInteracoesHtml() {
+  return '<h4 class="fx-h4" style="margin:12px 0 6px">Interações</h4><details class="fx-drop" id="chat-drop"><summary><span>Propor serviço, perguntar e lembrar <small>' + (5 + chatAtalhos().length) + ' botões</small></span></summary><div class="fx-drop-c" id="chat-inter-c">' + chatInteracoesConteudo() + '</div></details>';
+}
+function chatAtalhoAcao(t) {
+  var box = $('chat-inter-c'); if (!box) return;
+  if (t.dataset.chatatnovo) { state.chatNovoAt = !state.chatNovoAt; box.innerHTML = chatInteracoesConteudo(); var n = $('chat-at-nome'); if (n) n.focus(); return; }
+  if (t.dataset.chatatdel) { chatAtalhosSalva(chatAtalhos().filter(function (a) { return a.k !== t.dataset.chatatdel; })); box.innerHTML = chatInteracoesConteudo(); return; }
+  var r = $('chat-at-nome').value.replace(/[\[\]()\n]/g, ' ').trim(), m = $('chat-at-msg').value.trim(), u = $('chat-at-url').value.trim(), er = $('chat-at-err');
+  var falha = function (x) { er.textContent = x; er.hidden = false; };
+  if (!r) return falha('Dê um nome ao botão.'); if (!m) return falha('Escreva a mensagem que o botão coloca para ela.');
+  if (u && (!/^https:\/\/\S+$/i.test(u) || /[()\s]/.test(u))) return falha('O link precisa começar com https:// e não ter espaços nem parênteses.');
+  var l = chatAtalhos(); l.push({ k: 'c_' + Date.now(), r: r, t: m, u: u }); chatAtalhosSalva(l); state.chatNovoAt = false; box.innerHTML = chatInteracoesConteudo();
+  var dr = $('chat-drop'); if (dr) { var sm = dr.querySelector('summary small'); if (sm) sm.textContent = (5 + l.length) + ' botões'; }
+}
 function chatPanelHtml(c, chat, h4) {
   var btn = function (k, rot) { return '<button class="chip" type="button" data-chatquick="' + k + '">' + esc(rot) + '</button>'; };
   var nova = chatNaoLidas(chat);
   return '<div class="panel" style="padding:16px"><h4 style="' + h4 + '">Chat com ela' + (nova ? ' <span class="count">' + nova + (nova === 1 ? ' nova' : ' novas') + '</span>' : '') + '</h4>' +
-    '<p class="sub" style="margin:0 0 10px">O que você escreve aparece na Central de perguntas do app dela, no avatar que flutua, e ela recebe um e-mail a cada mensagem sua. O combinado com ela: perguntas completas, resposta em até 3 dias úteis, e uma ligação quando o assunto for grande demais para texto.</p>' +
     '<div class="cfio chatfio" id="chat-fio" aria-live="polite">' + chatFioHtml(chat, Date.now()) + '</div>' + chatSugestoesHtml(c) +
-    '<div class="tpls" style="margin:10px 0 8px">' + btn('um_a_um', 'Propor 1:1 de 20 min') + btn('como_vai', 'Perguntar como está') + btn('documentos', 'Pedir documentos') + btn('prazo', 'Lembrar do prazo') + btn('proposta', 'Nova proposta') + '</div>' +
+    '<div id="chat-inter">' + chatInteracoesHtml() + '</div>' +
     '<textarea class="notebox" id="chat-txt" maxlength="1000" placeholder="Escreva para ela. Aparece no chat do app." aria-label="Mensagem para ela" style="min-height:76px"></textarea>' +
     '<div class="tpls" style="margin:8px 0 0;display:flex;gap:6px;flex-wrap:wrap;align-items:center"><input id="chat-bt-rot" type="text" maxlength="40" placeholder="Texto do botão" aria-label="Texto do botão" style="flex:1 1 130px;min-width:0">' +
     '<input id="chat-bt-url" type="url" placeholder="https://link" aria-label="Link do botão (https)" style="flex:2 1 190px;min-width:0"><button class="btn" type="button" data-chatbotao="1">+ Botão com link</button></div>' +
@@ -3800,7 +3823,7 @@ function fxHeaderHtml(c, d) {
 // Catálogo de démarches (cópia do app, processos.json): carregado uma vez; sem ele, tudo cai na démarche padrão.
 var FX_PROC = null, FX_QUANDO = null;   // FX_QUANDO: o "quando" de cada passo do template (guias-quando.json), para o prazo curto do Início
 async function fxCarregaProcessos() {
-  try { var r = await fetch('processos.json?v=2026-11-18.01'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
+  try { var r = await fetch('processos.json?v=2026-11-18.02'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
 }
 // A sessão Checklist: pílulas por démarche, os 4 mais urgentes, pasta do Drive privada e "Ver mais desta sessão".
 // Os passos que a montagem do espaço propôs para ela, com démarche, subitens e origem: o mesmo detalhe do Checklist. Existem antes de ela ter conta.
@@ -4013,15 +4036,27 @@ function fxCasoGuarda(c) {
   return { k: k };
 }
 function fxSemConsent(k) { return k.consent ? '' : '<p class="pill u-media" style="margin:0 0 10px">Sem consentimento de serviço: publicar e agendar ficam bloqueados.</p>'; }
-// Perguntas da equipe Por Dentro: o que o app mostra no Espaço, em "Pergunta da equipe". As perguntas rápidas do perfil entram na mesma fila (só o app sabe
-// quais faltam). As outras mensagens da equipe (proposta, inteligência, oferta) seguem logo abaixo, com a data de cada uma.
-function fxInicioCorpo(c) {
+// Perguntas da equipe: um card por vez, na ordem em que saem. O relógio abre a agenda de sempre (pausa em dias, data fixa às 9h de Paris, enviar agora)
+// e dois cliques no texto editam. "Ordem e saída" lista todos com a data de cada um.
+function fxPerLista(k) { return (k.avs || []).filter(function (a) { return a.estado !== 'cancelado'; }).sort(function (a, b) { return (a.ordem - b.ordem) || (a.id - b.id); }); }
+function fxPerguntasCarrossel(c) {
   var g = fxCasoGuarda(c); if (!g.k) return g.html;
-  var perguntas = g.k.avs.filter(function (a) { return a.tipo === 'pergunta'; }).sort(function (x, y) { return (/âncora|ancora/i.test(casoSeparaPergunta(y.titulo).obs) ? 1 : 0) - (/âncora|ancora/i.test(casoSeparaPergunta(x.titulo).obs) ? 1 : 0); }), outros = g.k.avs.filter(function (a) { return a.tipo !== 'pergunta'; });
-  var lista = function (l, vazio) { return l.length ? casoAvisosHtml({ avs: l, ed: g.k.ed, agenda: g.k.agenda }) : '<div class="empty" style="padding:14px">' + esc(vazio) + '</div>'; };
-  return fxSemConsent(g.k) + casoProximaHtml(c, g.k) +
-    lista(perguntas, 'Nenhuma pergunta da equipe ainda.') +
-    (outros.length ? casoSecao('Outros avisos da equipe', 'proposta, o que a equipe percebeu e oferta: chegam como notificação', lista(outros, '')) : '');
+  var k = g.k, f = state.fx, avs = fxPerLista(k);
+  if (!avs.length) return fxSemConsent(k) + casoProximaHtml(c, k) + '<div class="empty" style="padding:14px">Nenhuma pergunta da equipe ainda.</div>';
+  var foco = k.ed && k.ed.t === 'av' ? k.ed.id : k.agenda, fi = avs.findIndex(function (x) { return x.id === foco; });
+  if (fi >= 0) f.carPerg = fi;
+  var i = Math.min(Math.max(0, f.carPerg || 0), avs.length - 1), a = avs[i], n = avs.length;
+  var editavel = a.estado === 'rascunho' || a.estado === 'agendado';
+  var pontos = avs.map(function (x, j) { return '<button type="button" class="fx-pt" data-fx="perIr" data-v="' + j + '" aria-label="Card ' + (j + 1) + ': ' + esc(x.titulo) + '"' + (j === i ? ' aria-current="true"' : '') + '></button>'; }).join('');
+  var relogio = editavel ? '<button type="button" class="fx-relogio" data-caso="ag-abrir" data-id="' + esc(String(a.id)) + '" aria-label="Definir quando este card sai">' + casoSvg('clock', 18) + '<span>' + esc(casoQuando(a)) + '</span></button>' : '<span class="fx-relogio off">' + casoSvg('clock', 18) + '<span>' + esc(casoQuando(a) || 'já saiu') + '</span></span>';
+  var ordem = '<div class="fx-ordem">' + avs.map(function (x, j) {
+    return '<button type="button" class="fx-ordem-l' + (j === i ? ' on' : '') + '" data-fx="perIr" data-v="' + j + '"><span class="fx-ordem-n">' + (j + 1) + '</span><span class="fx-ordem-t">' + esc(x.titulo) + '</span><small>' + esc(casoQuando(x) || 'já saiu') + '</small></button>';
+  }).join('') + '</div>';
+  return fxSemConsent(k) + '<div class="fx-car"><div class="fx-car-top"><span class="sub">' + esc(CASO_TIPO_AVISO[a.tipo] || a.tipo) + '</span><span class="sub">' + (i + 1) + ' de ' + n + '</span></div>' +
+    '<div class="fx-car-palco"><button type="button" class="fx-seta" data-fx="perAnt" aria-label="Card anterior"' + (i === 0 ? ' disabled' : '') + '>‹</button><div class="fx-car-card">' + casoAvisosHtml({ avs: [a], ed: k.ed, agenda: k.agenda }) + '</div>' +
+    '<button type="button" class="fx-seta" data-fx="perProx" aria-label="Próximo card"' + (i === n - 1 ? ' disabled' : '') + '>›</button></div>' +
+    '<div class="fx-pts">' + pontos + '</div><div class="fx-rel">' + relogio + '</div><p class="sub" style="margin:6px 0 0;text-align:center">Dois cliques no texto para editar.</p></div>' +
+    fxSub('ordem', 'Ordem e saída · ' + n + ' cards', ordem);
 }
 // Subseção de uma sessão (aberta por padrão; lembra o que você fechou).
 function fxSub(chave, titulo, corpo) {
@@ -4032,37 +4067,31 @@ function fxSub(chave, titulo, corpo) {
 // encaminhamentos da Ingryd, até 3) e Guias (até 2); embaixo, a pergunta da equipe, que o app mostra sempre no fim do Início.
 // Prazos e escolas não vão para a página inicial; ficam no fim, fechados, só para criar e publicar o que ela vê na aba Espaço do app.
 function fxEspacoTudo(c) {
-  var dd = state.fx.dd; if (dd['sb-prazos'] === undefined) dd['sb-prazos'] = false;
+  var dd = state.fx.dd; if (dd['sb-prazos'] === undefined) dd['sb-prazos'] = false; if (dd['sb-ordem'] === undefined) dd['sb-ordem'] = false;
   var gk = fxCasoGuarda(c).k;
-  return (gk && Array.isArray(gk.itens) ? casoAvisoRepetidos(gk) : '') + fxSub('ck', 'Checklist', fxEspacoChecklist(c)) + fxSub('so', 'Só seu', fxEspacoSoSeu(c)) + fxSub('gu', 'Guias', fxEspacoGuias(c)) +
-    fxSub('perg', 'Pergunta da equipe Por Dentro', fxInicioCorpo(c)) + fxSub('prazos', 'Prazos e escolas (fora da página inicial)', fxEspacoCorpo(c)) + fxZonas(c, 'espaco');
+  return (gk && Array.isArray(gk.itens) ? casoAvisoRepetidos(gk) : '') + fxSub('perg', 'Perguntas da equipe Por Dentro', fxPerguntasCarrossel(c)) + fxSub('bil', 'Bilans das nossas conversas', fxEspacoBilans(c)) +
+    fxSub('enc', 'Encaminhamentos da Ingryd', fxEspacoEncam(c)) + fxSub('msg', 'Mensagens prontas', fxEspacoMsgs(c)) + fxSub('prazos', 'Prazos e escolas (fora da página inicial)', fxEspacoCorpo(c)) + fxZonas(c, 'espaco');
 }
 function fxHomeAviso() { return '<p class="sub" style="margin:0">A Página inicial ainda não está ligada: falta rodar <b>db/crm-caso-home.sql</b> e <b>db/crm-caso-home-so-seu.sql</b> no SQL Editor do Supabase (primeiro no teste, depois na produção).</p>'; }
-function fxEspacoChecklist(c) {
-  var g = fxCasoGuarda(c); if (!g.k) return g.html;
-  if (!Array.isArray(g.k.home)) return fxHomeAviso();
-  var chk = state.dos && state.dos.cid === c.id ? state.dos.chk : null;
-  if (!chk) return '<div class="skel" aria-busy="true" style="height:64px"></div>';
-  if (chk.err || chk.semConta) return '<p class="sub" style="margin:0">Ela ainda não entrou no app: o checklist nasce no primeiro acesso. Depois você escolhe aqui os passos mais importantes.</p>';
-  var escolhidos = g.k.home.filter(function (x) { return x.categoria === 'checklist'; }), max = FX.HOME_LIMITES.checklist;
-  var itens = (chk.itens || []).filter(function (i) { return i.status !== 'arquivado'; }).sort(function (a, b) {
-    var ea = FX.homeTem(g.k.home, 'checklist', a.step_key) ? 0 : 1, eb = FX.homeTem(g.k.home, 'checklist', b.step_key) ? 0 : 1, fa = a.status === 'concluido' ? 1 : 0, fb = b.status === 'concluido' ? 1 : 0;
-    return ea - eb || fa - fb || String(a.due_date || '9999').localeCompare(String(b.due_date || '9999'));
-  });
-  var linhas = itens.map(function (i) {
-    var tem = FX.homeTem(g.k.home, 'checklist', i.step_key), meta = i.status === 'concluido' ? 'feito' : i.due_date ? 'prazo ' + String(i.due_date).slice(8, 10) + '/' + String(i.due_date).slice(5, 7) : '';
-    return '<div class="fx-home-slot' + (tem ? ' on' : '') + '"><span class="fx-home-t"><b>' + esc(i.titulo_custom || i.label) + '</b>' + (meta ? ' <small>' + esc(meta) + '</small>' : '') + '</span>' + FH.botaoHome(tem, i.step_key, esc) + '</div>';
-  });
-  return '<p class="sub" style="margin:0 0 8px">Os passos que você marcar com “+” aparecem primeiro no “Em seguida” do Início dela. <b>' + escolhidos.length + ' de ' + max + '</b>' + (escolhidos.length >= max ? ' · cheio: tire um para trocar' : '') + '.</p>' +
-    (linhas.length ? '<div class="fx-home-lista" style="max-height:340px;overflow:auto">' + linhas.join('') + '</div>' : '<div class="empty" style="padding:14px">O checklist dela ainda não tem passos.</div>');
-}
 // Só o que cabe em cada parte: "Só seu" = bilan e documento que ela recebe; "Guias" = documento que ela recebe e mensagem pronta.
 function fxKDe(k, tipos) { return Object.assign({}, k, { itens: k.itens.filter(function (it) { return tipos(it); }) }); }
-function fxEspacoSoSeu(c) {
+function fxEspacoBilans(c) {
   var g = fxCasoGuarda(c); if (!g.k) return g.html;
-  var kk = fxKDe(g.k, function (it) { return FX.itemPodeNaHome(it, 'so_seu'); });
-  return fxSemConsent(g.k) + '<p class="sub" style="margin:0 0 8px">O bilan e os encaminhamentos da Ingryd. Marque com “+” o que ela vê no “Só seu” do Início (até ' + FX.HOME_LIMITES.so_seu + '); o resto fica na aba Espaço dela.</p>' +
-    casoBarraNovo(g.k, ['bilan', 'documento']) + casoItensHtml(kk, null, 'Nada para ela em “Só seu” ainda. Use os botões acima para criar um bilan ou um encaminhamento.', 'so_seu');
+  var kk = fxKDe(g.k, function (it) { return it.tipo === 'bilan'; });
+  return fxSemConsent(g.k) + '<p class="sub" style="margin:0 0 8px">Cada bilan resume uma conversa. Marque com “+” o que ela vê no “Só seu” do Início (até ' + FX.HOME_LIMITES.so_seu + ').</p>' +
+    casoBarraNovo(g.k, ['bilan']) + casoItensHtml(kk, null, 'Nenhum bilan ainda. Use “+ Bilan” para registrar a conversa.', 'so_seu');
+}
+function fxEspacoEncam(c) {
+  var g = fxCasoGuarda(c); if (!g.k) return g.html;
+  var kk = fxKDe(g.k, function (it) { return it.tipo === 'documento' && (it.dados || {}).direcao === 'recebe'; });
+  return fxSemConsent(g.k) + '<p class="sub" style="margin:0 0 8px">Documentos e links que você manda para ela. Marque com “+” o que ela vê no “Só seu” do Início.</p>' +
+    casoBarraNovo(g.k, ['documento']) + casoItensHtml(kk, null, 'Nenhum encaminhamento ainda. Use “+ Documento”.', 'so_seu');
+}
+function fxEspacoMsgs(c) {
+  var g = fxCasoGuarda(c); if (!g.k) return g.html;
+  var kk = fxKDe(g.k, function (it) { return it.tipo === 'modelo'; });
+  return fxSemConsent(g.k) + '<p class="sub" style="margin:0 0 8px">Mensagens prontas para ela copiar e usar. O destaque na Página inicial dos Guias é feito na pílula Guias.</p>' +
+    casoBarraNovo(g.k, ['modelo']) + casoItensHtml(kk, null, 'Nenhuma mensagem pronta ainda. Use “+ Mensagem pronta”.', 'nenhuma');
 }
 function fxEspacoGuias(c) {
   var g = fxCasoGuarda(c); if (!g.k) return g.html;
@@ -4510,9 +4539,10 @@ function fxSessoes(c) {
   var mapa = {
     home: mk('Página inicial', 'O que fica em destaque no Início dela: 3 passos do checklist, 2 do Espaço e 2 dos Guias.', 'home', function () { return fxHomeCorpo(c); }),
     chat: mk('Conversa com ela', 'As mensagens da equipe, do assistente e dela, dentro do app.', 'chat', function () { return '<div id="chat-box">' + chatPanelHtml(c, state.chat, H4_PLAT) + '</div>'; }),
-    checklist: mk('Checklist', 'Os passos dela por démarche, do mais urgente ao mais distante.', 'checklist', function () { return '<div id="fx-chk-corpo">' + fxChecklistCorpo(c) + '</div>' + fxZonas(c, 'checklist'); }),
+    checklist: mk('Checklist', 'Os passos dela por démarche, do mais urgente ao mais distante. Aqui você escolhe os 3 que aparecem na Página inicial.', 'checklist', function () { return '<div id="fx-chk-corpo">' + fxChecklistCorpo(c) + '</div>' + fxZonas(c, 'checklist'); }),
     curadoria: mk('Curadoria', 'Limpar, editar, posicionar e validar os passos dela.', 'curadoria', function () { return fxCuradoriaCorpo(c); }),
-    espaco: mk('Espaço', 'Como o Início dela: você escolhe os passos do checklist, o que é só dela e os guias; embaixo, a pergunta da equipe.', 'espaco', function () { return fxEspacoTudo(c); }),
+    espaco: mk('Espaço', 'O que ela vê na aba Espaço: perguntas da equipe, bilans, encaminhamentos da Ingryd e mensagens prontas.', 'espaco', function () { return fxEspacoTudo(c); }),
+    guias: mk('Guias', 'Documentos e mensagens prontas que ela vê em “Guias” no Início (até 2). Guias vive só aqui.', 'guias', function () { return fxEspacoGuias(c); }),
     perfil: mk('Perfil', 'O que ela já respondeu e o que falta perguntar.', 'perfil', function () { return fxPerfilCorpo(c) + fxZonas(c, 'perfil'); }),
     eu: mk('Só eu · minhas tarefas', 'Tarefas suas neste caso. Ela não vê nada daqui.', 'eu', function () { return fxEuCorpo(c); }),
     bilan: mk('Bilan', 'O que a conversa mostrou, os achados para conferir e o e-mail do bilan.', 'bilan', function () { var g = fxCasoGuarda(c); return (g.k ? casoSecao('O que entendi', g.k.ach.length + ' achados', casoAchadosHtml(g.k)) : g.html) + bilanResumoHtml(c) + bilanBlocoHtml(c, H4_PLAT); }),
@@ -4655,7 +4685,7 @@ function fxPos(c) {
   }
 }
 // A prévia do app vai para a aba da sessão que você abriu.
-var FX_ABA_DA_SESSAO = { home: 'inicio', inicio: 'inicio', checklist: 'checklist', curadoria: 'checklist', espaco: 'espaco', guias: 'espaco', bilan: 'espaco', perfil: 'perfil' };
+var FX_ABA_DA_SESSAO = { home: 'inicio', inicio: 'inicio', checklist: 'checklist', curadoria: 'checklist', espaco: 'espaco', guias: 'guias', bilan: 'espaco', perfil: 'perfil' };
 function fxPrevia(id) { if (FX_ABA_DA_SESSAO[id]) { state.fx.appAba = FX_ABA_DA_SESSAO[id]; fxPintaPrevia(); } }
 // Uma sessão por vez, em página inteira: o que está aberta é a que a pílula "Ir para" escolheu (Checklist é a de entrada).
 function fxSessaoAtual() { var f = state.fx, o = fxOrdem(), todos = o.app.concat(o.ela); return f.sessao && todos.indexOf(f.sessao) >= 0 ? f.sessao : 'checklist'; }
@@ -4755,6 +4785,7 @@ function fichaClick(el) {
     case 'guiaSalvar': fxGuiaSalva(ds.id, ds.estado); return true;
     case 'guiaApagar': fxGuiaApaga(ds.id); return true;
     case 'ckTodos': case 'ckMais': { if (ds.fx === 'ckTodos') f.ckTodos = !f.ckTodos; else f.ckMais = !f.ckMais; var cm = byC(state.sel); if (cm) fxPintaChk(fxContato(cm, f.dados && f.dados.uid)); return true; }
+    case 'perAnt': case 'perProx': case 'perIr': { var gp = fxCasoGuarda(byC(state.sel) || {}).k; if (!gp) return true; var np = fxPerLista(gp).length; f.carPerg = ds.fx === 'perIr' ? Number(ds.v) : (f.carPerg || 0) + (ds.fx === 'perAnt' ? -1 : 1); f.carPerg = Math.min(Math.max(0, f.carPerg), Math.max(0, np - 1)); if (gp.ed && gp.ed.t === 'av') gp.ed = null; gp.agenda = null; fxPintaCorpo(); return true; }
     case 'agPrev': fxCarGo(-1); return true;
     case 'agNext': fxCarGo(1); return true;
   }
@@ -4784,7 +4815,7 @@ async function renderPessoa() {
   if (!c) { $('pessoa-page').innerHTML = '<div class="empty">Pessoa não encontrada.</div>'; return; }
   $('pessoa-page').innerHTML = '<div class="loading">Carregando a ficha…</div>';
   if (fichaV2Ativa() && FX_PROC === null) FX_PROC = await fxCarregaProcessos();
-  if (fichaV2Ativa() && FX_QUANDO === null) { try { var rq = await fetch('guias-quando.json?v=2026-11-18.01'); FX_QUANDO = rq.ok ? await rq.json() : {}; } catch (e) { FX_QUANDO = {}; } }
+  if (fichaV2Ativa() && FX_QUANDO === null) { try { var rq = await fetch('guias-quando.json?v=2026-11-18.02'); FX_QUANDO = rq.ok ? await rq.json() : {}; } catch (e) { FX_QUANDO = {}; } }
   var r = await Promise.all([
     supabase.from('eventos').select('tipo,dados,criado_em').eq('contato_id', c.id).order('criado_em', { ascending: false }).limit(200),
     supabase.from('consentimentos').select('finalidade,aceito,texto,origem,criado_em').eq('contato_id', c.id).order('criado_em', { ascending: false }),
@@ -6697,7 +6728,7 @@ async function enviarLinkPagamento(btn) {
 var FX_DETALHE = null, qdTimer = null, qdOrigem = null, qdAberto = false;
 async function fxCarregaDetalhe() {
   if (FX_DETALHE) return FX_DETALHE;
-  try { var r = await fetch('guias-detalhe.json?v=2026-11-18.01'); FX_DETALHE = r.ok ? await r.json() : {}; } catch (e) { FX_DETALHE = {}; }
+  try { var r = await fetch('guias-detalhe.json?v=2026-11-18.02'); FX_DETALHE = r.ok ? await r.json() : {}; } catch (e) { FX_DETALHE = {}; }
   return FX_DETALHE;
 }
 function fxFechaQuadro() {
@@ -6877,11 +6908,17 @@ document.addEventListener('click', async function (e) {
   if (t.id === 'bl-enviar') return bilanEnviar(false);
   if (t.id === 'bl-forcar') return bilanEnviar(true);
   if (t.dataset.blrem !== undefined) { BL.anexos.splice(Number(t.dataset.blrem), 1); bilanPintaAnexos(); return bilanPrevia(); }
+  if (t.dataset.chatatnovo || t.dataset.chatatdel || t.dataset.chatatsalva) return chatAtalhoAcao(t);
   if (t.dataset.chatbotao) return chatInserirBotao();
   if (t.dataset.chatenviar) return enviarChat(t.dataset.chatenviar, t);
   if (t.dataset.chkvia) return chkAgir(t.dataset.chkvia, Number(t.dataset.chki));
   if (t.dataset.chatquick) {
     var cq = byC(state.sel);
+    if (/^c_/.test(t.dataset.chatquick)) {
+      var meu = chatAtalhos().filter(function (a) { return a.k === t.dataset.chatquick; })[0], cm = $('chat-txt');
+      if (meu && cm) { cm.value = (cm.value.trim() ? cm.value.replace(/\s+$/, '') + '\n' : '') + meu.t + (meu.u ? '\n[' + meu.r + '](' + meu.u + ')' : ''); state.chatRasc = cm.value; cm.focus(); }
+      return;
+    }
     if (t.dataset.chatquick === 'um_a_um') return openProposta(cq.id, 'um_a_um');
     if (t.dataset.chatquick === 'proposta') return openProposta(cq.id);
     var cx = $('chat-txt'); if (cx) { cx.value = chatTextoRapido(t.dataset.chatquick, cq); cx.focus(); }

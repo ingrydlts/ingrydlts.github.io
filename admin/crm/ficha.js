@@ -168,7 +168,7 @@ export function ordenarFila(itens) {
 
 // ---------- Ordem das sessões e preferências do navegador (spec §5.2) ----------
 // Fase 2: o app dela ganha Espaço, Guias e Perfil; "Conhecer e registrar" ganha Só eu, O que ela trouxe e Mais detalhes.
-export const SESSOES_PADRAO = { app: ['home', 'chat', 'checklist', 'curadoria', 'espaco', 'perfil'], ela: ['eu', 'bilan', 'trouxe', 'sinais', 'hist', 'mais'] };
+export const SESSOES_PADRAO = { app: ['curadoria', 'home', 'checklist', 'espaco', 'guias', 'chat', 'perfil'], ela: ['eu', 'bilan', 'trouxe', 'sinais', 'hist', 'mais'] };
 export function moverSessao(ordem, id, delta) {
   const o = (ordem || []).slice(), i = o.indexOf(id), j = i + delta;
   if (i < 0 || j < 0 || j >= o.length) return o;
@@ -190,7 +190,7 @@ export function normalizarOrdem(salva, padrao) {
   base.forEach((id) => { if (!vistos[id]) out.push(id); });
   return out;
 }
-const CHAVE_ORD = 'crm_ficha_ord_v1', CHAVE_TOUR = 'crm_ficha_tour';
+const CHAVE_ORD = 'crm_ficha_ord_v2', CHAVE_TOUR = 'crm_ficha_tour';
 // localStorage pode estar bloqueado ou cheio: nunca lança.
 export function lerPrefs(storage) {
   const out = { ord: null, tour: true };

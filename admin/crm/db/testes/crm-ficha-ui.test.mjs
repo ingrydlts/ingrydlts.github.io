@@ -221,15 +221,35 @@ console.log('== Task 12: sessões em pílulas ==');
   check('cada pílula abre a sessão inteira, com os painéis existentes, uma por vez', tHist.includes('id="int-box"') && !tHist.includes('id="bilan-box"') && tBilan.includes('id="bilan-box"') && !tBilan.includes('id="int-box"') && tChat.includes('id="chat-box"') && !tChat.includes('id="bilan-box"'));
   check('clicar de novo na pílula da página aberta não fecha nada', (await abreIr('espaco')).includes('Seu espaço') && h.mod.state.fx.sessao === 'espaco');
   check('a sessão Espaço (como o Início dela) não carrega as notas nem outras sessões', tEsp.includes('Seu espaço') && !tEsp.includes('data-sessao="inicio"') && !tEsp.includes('data-sessao="guias"') && !tEsp.includes('id="ins-box"') && !tEsp.includes('Escreva uma nota para ela'));
+  // Espaço refeito: só perguntas (carrossel), bilans, encaminhamentos e mensagens prontas; checklist e guias têm pílula própria
+  check('o Espaço tem as quatro seções novas e não tem mais Checklist nem Guias', ['Perguntas da equipe Por Dentro', 'Bilans das nossas conversas', 'Encaminhamentos da Ingryd', 'Mensagens prontas'].every((t) => tEsp.includes(t)) && !tEsp.includes('>Checklist</span>') && !/<span>Guias<\/span>/.test(tEsp));
+  check('a pílula Guias existe, depois do Espaço', h.el('pessoa-page').innerHTML.indexOf('data-fx="ir" data-id="guias"') > h.el('pessoa-page').innerHTML.indexOf('data-fx="ir" data-id="espaco"'));
+  const tGuias = await abreIr('guias');
+  check('a sessão Guias abre a página própria dos guias', tGuias.includes('Guias') && h.mod.state.fx.sessao === 'guias');
+  const tChat2 = await abreIr('chat');
+  check('o chat tem o dropdown "Interações" com os botões de proposta e o "+ Criar meu botão"', tChat2.includes('>Interações<') && tChat2.includes('id="chat-drop"') && tChat2.includes('+ Criar meu botão') && tChat2.includes('Propor 1:1 de 20 min') && !tChat2.includes('no avatar que flutua'));
+  await abreIr('espaco');
+  // carrossel: um card por vez, na ordem; setas e pontos trocam; "Ordem e saída" lista todos
+  const cid = h.mod.state.sel;
+  h.mod.state.caso = { cid, err: false, ach: [], aco: [], itens: [], consent: true, escolasDela: [], listas: [], home: [], ed: null, agenda: null,
+    avs: [{ id: 1, tipo: 'pergunta', titulo: 'Qual é o seu nível de francês hoje?', estado: 'agendado', ordem: 1, pausa_dias: 1, liberar_em: null }, { id: 2, tipo: 'pergunta', titulo: 'Ela prioriza escola pública ou privada?', estado: 'rascunho', ordem: 2, pausa_dias: 0 }, { id: 3, tipo: 'proposta', titulo: 'O bilan está aqui', estado: 'cancelado', ordem: 3, pausa_dias: 0 }] };
+  await h.click({ fx: 'ir', id: 'espaco' });
+  let car = h.el('fx-corpo').innerHTML;
+  check('o carrossel mostra só o 1º card, com "1 de 2" (o cancelado fica fora) e o relógio', car.includes('1 de 2') && car.includes('nível de francês') && !/fx-car-card[^]*?escola pública[^]*?<\/div><button[^>]*perProx/.test(car) && car.includes('fx-relogio') && car.includes('data-caso="ag-abrir"'));
+  await h.click({ fx: 'perProx' });
+  car = h.el('fx-corpo').innerHTML;
+  check('a seta troca para o 2º card; no último a seta de próximo desliga', car.includes('2 de 2') && car.includes('escola pública ou privada') && /data-fx="perProx"[^>]*disabled/.test(car));
+  await h.click({ fx: 'perIr', v: '0' });
+  check('o ponto volta ao 1º card e "Ordem e saída" lista os dois', h.el('fx-corpo').innerHTML.includes('1 de 2') && h.el('fx-corpo').innerHTML.includes('Ordem e saída · 2 cards'));
   // preferência salva volta ao abrir de novo; preferência inválida volta ao padrão
-  h = await mk({ crm_ficha_ord_v1: JSON.stringify({ app: ['checklist', 'chat'], ela: ['hist'] }) });
+  h = await mk({ crm_ficha_ord_v2: JSON.stringify({ app: ['checklist', 'chat'], ela: ['hist'] }) });
   pg = h.el('pessoa-page').innerHTML;
   const pos = (t, id) => t.indexOf('data-fx="ir" data-id="' + id + '"');
   check('a ordem salva é a das pílulas, completada com o que faltava', pos(pg, 'checklist') < pos(pg, 'chat') && pos(pg, 'chat') < pos(pg, 'espaco') && pos(pg, 'hist') < pos(pg, 'bilan'));
   h.mod.pararAoVivo();
-  h = await mk({ crm_ficha_ord_v1: '{lixo' });
+  h = await mk({ crm_ficha_ord_v2: '{lixo' });
   pg = h.el('pessoa-page').innerHTML;
-  check('ordem inválida volta ao padrão das pílulas', pos(pg, 'chat') < pos(pg, 'espaco') && pos(pg, 'home') < pos(pg, 'chat'));
+  check('ordem inválida volta ao padrão das pílulas', pos(pg, 'curadoria') < pos(pg, 'home') && pos(pg, 'espaco') < pos(pg, 'chat') && pos(pg, 'home') < pos(pg, 'chat'));
   h.mod.pararAoVivo();
   // localStorage indisponível: a ficha abre e trocar de sessão pela pílula funciona sem lançar
   const hb = await carregarCrm({ respostas: base({ 'contatos:one': { data: { dossie: {}, user_id: 'u1' }, error: null } }), search: '?ficha=2', storageBloqueado: true });

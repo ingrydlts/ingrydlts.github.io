@@ -550,7 +550,7 @@ select.st-in{height:36px; padding:0 8px}
 .fbody time + .link{margin-left:8px}
 
 /* Chat com ela */
-.chatfio{max-height:380px; padding:2px 2px 8px}
+.chatfio{max-height:min(56vh,460px); min-height:260px; padding:2px 2px 8px}
 .cm.nova{box-shadow:0 0 0 2px #DEB975}
 .cm.cprop{display:flex; flex-direction:column; gap:6px; align-items:flex-start}
 .cm.cprop p{margin:0; opacity:.92}
@@ -2081,3 +2081,36 @@ select.fx-hm-add:hover,select.fx-hm-add:focus-visible{border-color:var(--moss); 
 .fx-gd-msg{margin:0; color:var(--ink-2)}
 .fx-gd-colar summary{cursor:pointer; font-size:13px; color:var(--ink-2)}
 .fx-gd-colar button{margin-top:6px}
+
+/* Espaço: carrossel de perguntas da equipe, "Ordem e saída" e a lista de interações do chat */
+.fx-car{max-width:640px}
+.fx-car-top{display:flex; justify-content:space-between; margin-bottom:6px}
+.fx-car-palco{display:grid; grid-template-columns:40px minmax(0,1fr) 40px; gap:8px; align-items:center}
+.fx-car-card{min-width:0; min-height:96px; display:flex; flex-direction:column; justify-content:center; padding:6px 10px; border:1px solid var(--line-2); border-radius:16px; background:var(--surface-2)}
+.fx-seta{width:40px; height:40px; border-radius:50%; border:1px solid var(--line-2); background:var(--surface-2); color:var(--ink-2); font-size:18px; cursor:pointer}
+.fx-seta:disabled{opacity:.35; cursor:default}
+.fx-pts{display:flex; justify-content:center; gap:8px; margin-top:10px}
+.fx-pt{width:10px; height:10px; padding:0; border:0; border-radius:50%; background:var(--line-2); cursor:pointer}
+.fx-pt[aria-current="true"]{background:var(--moss); transform:scale(1.25)}
+.fx-rel{display:flex; justify-content:center; margin-top:12px}
+.fx-relogio{display:inline-flex; align-items:center; gap:8px; min-height:40px; padding:0 14px 0 10px; border:1px solid var(--line-2); border-radius:999px; background:var(--surface-2); color:var(--ink); font:inherit; font-size:13px; font-weight:600; cursor:pointer}
+.fx-relogio.off{color:var(--ink-2); cursor:default}
+.fx-ordem{display:flex; flex-direction:column; gap:6px; max-width:640px}
+.fx-ordem-l{display:grid; grid-template-columns:22px minmax(0,1fr) auto; gap:8px; align-items:center; padding:8px 10px; border:1px solid var(--line); border-radius:12px; background:var(--surface-2); text-align:left; font:inherit; font-size:13.5px; cursor:pointer}
+.fx-ordem-l.on{border-color:var(--moss); background:var(--moss-soft)}
+.fx-ordem-n{font-size:12px; font-weight:700; color:var(--ink-3)}
+.fx-ordem-t{min-width:0; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.fx-ordem-l small{color:var(--ink-2); white-space:nowrap}
+@media (max-width:560px){.fx-car-palco{grid-template-columns:34px minmax(0,1fr) 34px; gap:4px}.fx-seta{width:34px; height:34px}.fx-ordem-l{grid-template-columns:22px minmax(0,1fr)}.fx-ordem-l small{grid-column:2; white-space:normal}}
+.fx-drop{border:1px solid var(--line-2); border-radius:14px; background:var(--surface-2); margin:0 0 12px}
+.fx-drop>summary{display:flex; align-items:center; justify-content:space-between; gap:10px; min-height:44px; padding:0 14px; cursor:pointer; list-style:none; font-size:13.5px; font-weight:700}
+.fx-drop>summary::-webkit-details-marker{display:none}
+.fx-drop>summary::after{content:'▾'; color:var(--ink-3)}
+.fx-drop[open]>summary::after{transform:rotate(180deg)}
+.fx-drop>summary small{margin-left:8px; font-weight:500; color:var(--ink-3); font-size:12px}
+.fx-drop-c{padding:0 14px 10px}
+.fx-chipb{display:inline-flex; align-items:center; border:1px solid var(--moss); border-radius:999px; overflow:hidden}
+.fx-chipb .chip{border:0; border-radius:0}
+.fx-x{border:0; background:none; padding:0 9px 0 3px; color:var(--ink-3); font-size:15px; cursor:pointer}
+.fx-atal{display:grid; gap:8px; padding:12px; margin:6px 0 10px; border:1px solid var(--moss); border-radius:14px; max-width:560px}
+.fx-atal input{padding:8px 10px; border:1px solid var(--line-2); border-radius:9px; background:var(--surface-2); color:var(--ink); font:inherit; font-size:14px}
