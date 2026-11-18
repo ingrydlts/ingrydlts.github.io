@@ -2,15 +2,15 @@
 // Nada de service_role aqui. O banco é db/crm-fase2.sql; o desenho é o artefato "CRM Por Dentro".
 // Tudo que vem do banco é texto de terceiros (nome, e-mail, pergunta): passa sempre por esc().
 import { supabase } from '/assets/js/supabase-client.js';
-import * as TX from './taxonomia.js?v=2026-11-18.03';   // páginas, famílias e agrupamento dos modelos
-import * as ES from './estudio.js?v=2026-11-18.03';   // os blocos do estúdio de e-mails (entregas 2 e 3)
-import * as EE from './editor-email.js?v=2026-11-18.03';
-import * as EQ from './editor-quem.js?v=2026-11-18.03';
-import * as JR from './jornada.js?v=2026-11-18.03';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
-import * as FX from './ficha.js?v=2026-11-18.03';   // ficha v2: lógica pura (fila, démarches, funil, ações)
-import * as FH from './ficha-html.js?v=2026-11-18.03';   // ficha v2: HTML puro
-import * as PN from './panorama.js?v=2026-11-18.03';
-import * as MT from './montagem.js?v=2026-11-18.03';   // Montagem do espaço a partir do transcript (lógica e HTML puros)   // Panorama dela e O que ela trouxe (lógica e HTML puros)
+import * as TX from './taxonomia.js?v=2026-11-18.04';   // páginas, famílias e agrupamento dos modelos
+import * as ES from './estudio.js?v=2026-11-18.04';   // os blocos do estúdio de e-mails (entregas 2 e 3)
+import * as EE from './editor-email.js?v=2026-11-18.04';
+import * as EQ from './editor-quem.js?v=2026-11-18.04';
+import * as JR from './jornada.js?v=2026-11-18.04';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
+import * as FX from './ficha.js?v=2026-11-18.04';   // ficha v2: lógica pura (fila, démarches, funil, ações)
+import * as FH from './ficha-html.js?v=2026-11-18.04';   // ficha v2: HTML puro
+import * as PN from './panorama.js?v=2026-11-18.04';
+import * as MT from './montagem.js?v=2026-11-18.04';   // Montagem do espaço a partir do transcript (lógica e HTML puros)   // Panorama dela e O que ela trouxe (lógica e HTML puros)
 
 var PERSONAS = {
   au_pair_estudante: 'Au pair → estudante', campus_france: 'Campus France', alternancia_emprego: 'Alternância / emprego',
@@ -3222,7 +3222,7 @@ function pcQuadrosHtml(c) {
   }).join('') + '<div class="actions" style="margin-top:8px"><button class="btn" type="button" data-pcchat="' + esc(c.id) + '">Levar para o chat</button></div>';
   if (!corpo) corpo = '<p class="sub" style="margin:0">' + (p ? 'A leitura não apontou nada a confirmar.' : 'Aparece depois da leitura da conversa.') + '</p>';
   var preencher = p && (p.resumo || (p.proximos_passos || []).length) ? '<div class="actions" style="margin:0 0 10px"><button class="btn" type="button" data-pcpreencher="' + esc(c.id) + '">Preencher Resumo e Próximos passos com a leitura</button></div>' : '';
-  return preencher + h + '<div class="dv-card pc-unico"><div class="k">Pontos de atenção e a confirmar</div>' + corpo + '</div>';
+  return preencher + h + '<details class="lg-det" data-lg="atencao"' + (lgAberto('atencao') ? ' open' : '') + '><summary>Pontos de atenção e a confirmar' + (aten.length + conf.length + pe.length ? ' · ' + (aten.length + conf.length + pe.length) : '') + '</summary><div class="dv-card pc-unico">' + corpo + '</div></details>';
 }
 function pcEscolheArquivo(inp) {
   var cid = inp.dataset.pcarq, pc = pcEstado(cid), f = inp.files && inp.files[0]; if (!f) return;
@@ -3309,6 +3309,7 @@ async function pcLerNotion(cid) {
   pcEstado(cid).notionUrl = url; pcEstado(cid).notionMsg = 'Notion lido: ' + (n ? n + (n === 1 ? ' campo preenchido' : ' campos preenchidos') + ' no Dossiê' : 'nenhum campo novo no Dossiê') + '. O que ficou como proposta aparece abaixo.';
   toast('Notion lido.');
   if (state.view === 'pessoa') renderPessoa();
+  montAutoLer(cid);
 }
 async function pcLer(cid, t) {
   var pc = pcEstado(cid), c = byC(cid), transcricao = String(dosValor(c, state.dos.d, state.dos.rasc || {}, 'ligacao_transcricao') || '').trim();
@@ -3330,6 +3331,14 @@ async function pcLer(cid, t) {
     if (await sincronizarUmAUm(cid, 'IA') && state.view === 'pessoa') renderPessoa();
   } catch (e) { pc.estado = 'vazio'; pc.erro = e && e.message ? e.message : 'A leitura falhou.'; }
   pintaPoscall(cid);
+  if (pc.estado === 'proposta') montAutoLer(cid);
+}
+// Um clique só: depois de ler a conversa, a montagem do espaço já é proposta (sem o segundo botão "Propor a montagem").
+async function montAutoLer(cid) {
+  var m = montEstado(cid), c = byC(cid);
+  if (!c || m.estado === 'lendo' || m.estado === 'proposta' || m.estado === 'aplicando' || m.estado === 'aplicado') return;
+  if (montTranscricao(c).texto.length < 200 && !montNotionUrl(c)) return;
+  return montLer(cid);
 }
 // Monta o que vai ao banco a partir do que está marcado na tela.
 function pcMontarAplicacao(c, pc, d) {
@@ -3454,6 +3463,19 @@ async function montAprovar(cid, t) {
   var m = montEstado(cid); if (!m.prop) return;
   await montAplicar(cid, t);
   if (m.estado !== 'aplicado' || m.erro) return;
+  return montAprovarFila(cid, t);
+}
+// "Levar para a Curadoria": cria os rascunhos da montagem (nada chega a ela) e abre a Curadoria, onde você aprova item por item.
+async function montLevar(cid, t) {
+  var m = montEstado(cid); if (!m.prop) return;
+  await montAplicar(cid, t);
+  if (m.estado !== 'aplicado' || m.erro) return;
+  toast('Montagem levada para a Curadoria.', 3200);
+  if (state.sel === cid && state.fx) irPara({ tab: 'plataforma', sessao: 'curadoria' });
+}
+// A aprovação única de tudo o que espera na Curadoria: confere os itens sem fonte (se você marcou que conferiu) e libera.
+async function montAprovarFila(cid, t) {
+  var m = montEstado(cid); if (!m.prop) return;
   var confiro = m.confiro === undefined ? true : !!m.confiro;
   if (confiro) {
     var ids = (m.pub && m.pub.a_conferir_itens || []).map(function (x) { return x.id; });
@@ -3823,7 +3845,7 @@ function fxHeaderHtml(c, d) {
 // Catálogo de démarches (cópia do app, processos.json): carregado uma vez; sem ele, tudo cai na démarche padrão.
 var FX_PROC = null, FX_QUANDO = null;   // FX_QUANDO: o "quando" de cada passo do template (guias-quando.json), para o prazo curto do Início
 async function fxCarregaProcessos() {
-  try { var r = await fetch('processos.json?v=2026-11-18.03'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
+  try { var r = await fetch('processos.json?v=2026-11-18.04'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
 }
 // A sessão Checklist: pílulas por démarche, os 4 mais urgentes, pasta do Drive privada e "Ver mais desta sessão".
 // Os passos que a montagem do espaço propôs para ela, com démarche, subitens e origem: o mesmo detalhe do Checklist. Existem antes de ela ter conta.
@@ -3906,7 +3928,7 @@ function fxLinhaCur(o) {
     '<span class="fx-dot ' + (o.estado || 'off') + '" aria-hidden="true"></span><div class="fx-cur-t"><span class="fx-pt">' + o.titulo + '</span><span class="fx-cps">' + cps + '</span>' +
     (o.alerta ? '<span class="fx-alerta">' + casoSvg('alerta', 13) + ' ' + e(o.alerta) + '</span>' : '') + '</div><div class="fx-cur-b">' + btns + '</div></div>';
 }
-function fxCuradoriaCorpo(c) {
+function fxCuradoriaPassos(c) {
   var chk = state.dos && state.dos.cid === c.id ? state.dos.chk : null, cur = fxCur(c), f = state.fx, H = Object.assign({}, H_FX, { linhaCur: fxLinhaCur });
   if (!chk || !cur) return FH.htmlCuradoria({ carregando: true }, H);
   if (cur.err) return FH.htmlCuradoria({ erro: true }, H);
@@ -3921,6 +3943,29 @@ function fxCuradoriaCorpo(c) {
     equipeHtml: k && hk ? MT.passosPropostosHtml(k.aco, k.listas, hk, 'publicados') : '', equipeN: equipe.length, mapa: mapa, hoje: hoje, guiaEd: f.guiaEd && f.guiaEd.key === f.ckEd ? f.guiaEd : undefined, ckEd: f.ckEd || null,
     temOrdem: visiveis.some(function (i) { return mapa[i.step_key] && mapa[i.step_key].ordem != null; }),
     demDe: function (i) { return FX.rotuloDemarche(FX_PROC, FX.processoDoItem(FX_PROC, i.step_key, i.category), personaKey(c)); } }, H);
+}
+// Chegou da montagem: tudo o que a leitura da conversa propôs e espera a sua decisão, por destino. Cada card tem as ações de sempre (publicar, editar, recusar).
+function fxCuradoriaFila(c) {
+  var k = fxCasoPassos(c); if (!k) return '<div class="skel" aria-busy="true" style="height:64px"></div>';
+  var m = state.mont && state.mont.cid === c.id ? state.mont : null, nao = function (it) { return it.estado !== 'publicado'; };
+  var passos = MT.passosPropostosHtml(k.aco, k.listas, fxHooksPassos(c, k), 'fila');
+  var docs = fxKDe(k, function (it) { return it.tipo === 'documento' && (it.dados || {}).direcao !== 'recebe' && nao(it); });
+  var perg = (k.avs || []).filter(function (a) { return a.estado === 'rascunho'; });
+  var enc = fxKDe(k, function (it) { return (it.tipo === 'bilan' || (it.tipo === 'documento' && (it.dados || {}).direcao === 'recebe')) && nao(it); });
+  var msgs = fxKDe(k, function (it) { return it.tipo === 'modelo' && nao(it); });
+  var conferir = (m && m.pub && m.pub.a_conferir_itens) || [];
+  var sec = function (t, n, corpo) { return n ? '<section class="fx-cf-sec"><h4 class="fx-h4">' + esc(t) + ' <span class="sub">' + n + '</span></h4>' + corpo + '</section>' : ''; };
+  var nPassos = (k.aco || []).filter(function (a) { return a.estado === 'rascunho' || a.estado === 'a_conferir'; }).length, total = nPassos + docs.itens.length + perg.length + enc.itens.length + msgs.itens.length;
+  if (!total) return '<div class="fx-cf-vazio"><b>Nada esperando a sua decisão.</b> Leia a conversa no Dossiê: a montagem proposta chega aqui com <i>Levar para a Curadoria</i>. <button type="button" class="link" data-fx="tab" data-v="dossie">Ir para o Dossiê</button></div>';
+  var confiro = m && m.confiro !== undefined ? !!m.confiro : true;
+  var topo = '<div class="fx-cf-topo"><p class="sub" style="margin:0"><b>' + total + (total === 1 ? ' item espera' : ' itens esperam') + '</b> a sua decisão. Nada chega a ela antes de você publicar.</p>' +
+    (m && m.prop ? '<span class="fx-cf-ac">' + (conferir.length ? '<label class="pccheck"><input type="checkbox" data-montconfiro' + (confiro ? ' checked' : '') + '> <span>Conferi os ' + conferir.length + ' sem fonte</span></label>' : '') + '<button type="button" class="btn primary" data-montaprovar="' + esc(c.id) + '">Aprovar tudo</button></span>' : '') + '</div>';
+  return '<div class="fx-cf">' + topo + fxSemConsent(k) + sec('Checklist', nPassos, passos) + sec('Documentos a preparar', docs.itens.length, casoItensHtml(docs, null, '', 'nenhuma')) +
+    sec('Perguntas da equipe', perg.length, casoAvisosHtml({ avs: perg, ed: k.ed, agenda: k.agenda })) + sec('Encaminhamentos da Ingryd', enc.itens.length, casoItensHtml(enc, null, '', 'nenhuma')) +
+    sec('Mensagens prontas', msgs.itens.length, casoItensHtml(msgs, null, '', 'nenhuma')) + '</div>';
+}
+function fxCuradoriaCorpo(c) {
+  return fxCuradoriaFila(c) + '<h4 class="fx-h4" style="margin:22px 0 8px">Passos dela: organizar e validar</h4>' + fxCuradoriaPassos(c);
 }
 function fxChecklistCorpo(c) {
   var chk = state.dos && state.dos.cid === c.id ? state.dos.chk : null, f = state.fx;
@@ -4450,7 +4495,9 @@ function dosLigacaoHtml(c, d) {
     '<div class="dgrid lg-form">' + campo('ligacao_resumo') + campo('proximos_passos') + '</div>' +
     '<div class="dgrid lg-form">' + campo('ligacao_data') + campo('ligacao_transcricao') + '</div>' +
     '<div class="actions" style="margin-top:6px"><button class="btn primary" type="button" data-dossalvar="' + esc(c.id) + '">Salvar dossiê</button></div></div></details>' +
-    '<div id="poscall-box">' + poscallHtml(c, (pcEstado(c.id).fixo = true)) + '</div></div>';
+    (pcs.estado === 'proposta' || pcs.notionAplicada
+      ? '<details class="lg-det" data-lg="leitura"' + (lgAberto('leitura') ? ' open' : '') + '><summary>Detalhes da leitura: fatos, pendências, lembretes e e-mail</summary><div id="poscall-box">' + poscallHtml(c, (pcEstado(c.id).fixo = true)) + '</div></details>'
+      : '<div id="poscall-box">' + poscallHtml(c, (pcEstado(c.id).fixo = true)) + '</div>') + '</div>';
   var pMont = montHtml(c);
   var p3 = '<div class="lg-saidas">' +
     '<div class="dv-card"><div class="k">E-mail para ela</div><p class="sub" style="margin:0 0 8px">O rascunho junta o que foi conversado, o que ela faz, o que você faz e o convite para o espaço dela no <b>Por Dentro das Démarches</b> (um lugar só dela, com todas as démarches e o próximo passo). Você revisa e só sai com o seu “pode enviar”.' +
@@ -4817,7 +4864,7 @@ async function renderPessoa() {
   if (!c) { $('pessoa-page').innerHTML = '<div class="empty">Pessoa não encontrada.</div>'; return; }
   $('pessoa-page').innerHTML = '<div class="loading">Carregando a ficha…</div>';
   if (fichaV2Ativa() && FX_PROC === null) FX_PROC = await fxCarregaProcessos();
-  if (fichaV2Ativa() && FX_QUANDO === null) { try { var rq = await fetch('guias-quando.json?v=2026-11-18.03'); FX_QUANDO = rq.ok ? await rq.json() : {}; } catch (e) { FX_QUANDO = {}; } }
+  if (fichaV2Ativa() && FX_QUANDO === null) { try { var rq = await fetch('guias-quando.json?v=2026-11-18.04'); FX_QUANDO = rq.ok ? await rq.json() : {}; } catch (e) { FX_QUANDO = {}; } }
   var r = await Promise.all([
     supabase.from('eventos').select('tipo,dados,criado_em').eq('contato_id', c.id).order('criado_em', { ascending: false }).limit(200),
     supabase.from('consentimentos').select('finalidade,aceito,texto,origem,criado_em').eq('contato_id', c.id).order('criado_em', { ascending: false }),
@@ -6730,7 +6777,7 @@ async function enviarLinkPagamento(btn) {
 var FX_DETALHE = null, qdTimer = null, qdOrigem = null, qdAberto = false;
 async function fxCarregaDetalhe() {
   if (FX_DETALHE) return FX_DETALHE;
-  try { var r = await fetch('guias-detalhe.json?v=2026-11-18.03'); FX_DETALHE = r.ok ? await r.json() : {}; } catch (e) { FX_DETALHE = {}; }
+  try { var r = await fetch('guias-detalhe.json?v=2026-11-18.04'); FX_DETALHE = r.ok ? await r.json() : {}; } catch (e) { FX_DETALHE = {}; }
   return FX_DETALHE;
 }
 function fxFechaQuadro() {
@@ -6875,7 +6922,8 @@ document.addEventListener('click', async function (e) {
     return uNotion ? pcLerNotion(t.dataset.pcler) : pcLer(t.dataset.pcler, t);
   }
   if (t.dataset.montler) return montLer(t.dataset.montler, t);
-  if (t.dataset.montaplicar) return montAprovar(t.dataset.montaplicar, t);
+  if (t.dataset.montaplicar) return montLevar(t.dataset.montaplicar, t);
+  if (t.dataset.montaprovar) return montAprovarFila(t.dataset.montaprovar, t);
   if (t.dataset.montdescartar) return montDescartar(t.dataset.montdescartar, t);
   if (t.dataset.montpub) return montPub(t.dataset.montpub);
   if (t.dataset.montliberar) return montLiberar(t.dataset.montliberar, t);

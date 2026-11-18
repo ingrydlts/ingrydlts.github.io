@@ -246,6 +246,19 @@ console.log('== Task 12: sessões em pílulas ==');
   await h.click({ fx: 'perProx' });
   car = h.el('fx-corpo').innerHTML;
   check('a seta troca para o 2º card; no último a seta de próximo desliga', car.includes('2 de 2') && car.includes('escola pública ou privada') && /data-fx="perProx"[^>]*disabled/.test(car));
+  // Curadoria como fila de aprovação (chegou da montagem)
+  const avsOrig = h.mod.state.caso.avs; h.mod.state.caso.avs = [];
+  await h.click({ fx: 'ir', id: 'curadoria' });
+  let cf = h.el('fx-corpo').innerHTML;
+  check('a Curadoria sem nada pendente explica como chegar lá a partir do Dossiê', cf.includes('Nada esperando a sua decisão') && cf.includes('data-v="dossie"'));
+  h.mod.state.caso.itens = [{ id: 11, tipo: 'documento', titulo: 'Contrato de au pair', estado: 'proposto', dados: { direcao: 'pede' } }, { id: 12, tipo: 'documento', titulo: 'Fonte oficial do visto', estado: 'proposto', dados: { direcao: 'recebe' } }, { id: 13, tipo: 'modelo', titulo: 'Como pedir o atestado', estado: 'proposto', dados: {} }, { id: 14, tipo: 'documento', titulo: 'Já publicado', estado: 'publicado', dados: { direcao: 'recebe' } }];
+  h.mod.state.caso.avs = [{ id: 21, tipo: 'pergunta', titulo: 'Qual a data de chegada?', estado: 'rascunho', ordem: 1, pausa_dias: 0 }];
+  await h.click({ fx: 'ir', id: 'curadoria' });
+  cf = h.el('fx-corpo').innerHTML;
+  check('a fila reúne, por destino, só o que espera decisão (o publicado fica de fora)', cf.includes('Documentos a preparar') && cf.includes('Contrato de au pair') && cf.includes('Perguntas da equipe') && cf.includes('Qual a data de chegada?') && cf.includes('Encaminhamentos da Ingryd') && cf.includes('Fonte oficial do visto') && cf.includes('Mensagens prontas') && cf.includes('Como pedir o atestado') && !cf.includes('Já publicado') && cf.includes('4 itens esperam'));
+  check('sem montagem proposta carregada não há "Aprovar tudo" (aprova-se item por item)', !cf.includes('data-montaprovar'));
+  h.mod.state.caso.avs = avsOrig; h.mod.state.caso.itens = [];
+  await h.click({ fx: 'ir', id: 'espaco' });
   await h.click({ fx: 'perIr', v: '0' });
   check('o ponto volta ao 1º card e "Ordem e saída" lista os dois', h.el('fx-corpo').innerHTML.includes('1 de 2') && h.el('fx-corpo').innerHTML.includes('Ordem e saída · 2 cards'));
   // preferência salva volta ao abrir de novo; preferência inválida volta ao padrão

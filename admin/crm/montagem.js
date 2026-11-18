@@ -160,11 +160,9 @@ function propostaHtml(m, c, esc) {
   });
   if (!itens.length) h += '<p class="sub">A conversa não trouxe nada para montar. Cole uma transcrição mais completa ou monte à mão na aba Caso.</p>';
   // Uma aprovação só: os itens marcados já entram no Checklist, nos Avisos e no Espaço dela (nada de segunda etapa em outra sessão).
-  var confiro = m.confiro === undefined ? true : !!m.confiro;
-  return h + (nConf ? '<label class="pccheck" style="margin:10px 0 0"><input type="checkbox" data-montconfiro' + (confiro ? ' checked' : '') + '> <span>Conferi o texto dos ' + nConf + (nConf === 1 ? ' item' : ' itens') + ' sem fonte oficial: podem ir para ela. (Desmarque para segurá-los em “A conferir”.)</span></label>' : '') +
-    '<div class="actions" style="margin-top:10px"><button class="btn primary" type="button" data-montaplicar="' + esc(c.id) + '"' + (m.estado === 'aplicando' ? ' disabled' : '') + '>' +
-    (m.estado === 'aplicando' ? 'Aprovando…' : 'Aprovar e adicionar ao Checklist (' + marcados + ')') + '</button> <button class="btn" type="button" data-montdescartar="' + esc(c.id) + '">Descartar a proposta</button></div>' +
-    '<p class="sub" style="margin:6px 0 0">Aprovar já põe os passos no Checklist e os avisos no Início, prontos para ela ver quando entrar. Você edita a escrita lá, sem repetir a aprovação.</p>';
+  return h + '<div class="actions" style="margin-top:10px"><button class="btn primary" type="button" data-montaplicar="' + esc(c.id) + '"' + (m.estado === 'aplicando' ? ' disabled' : '') + '>' +
+    (m.estado === 'aplicando' ? 'Levando…' : 'Levar para a Curadoria (' + marcados + ')') + '</button> <button class="btn" type="button" data-montdescartar="' + esc(c.id) + '">Descartar a proposta</button></div>' +
+    '<p class="sub" style="margin:6px 0 0">Levar cria os rascunhos e abre a Curadoria, onde você aprova item por item. Nada chega a ela antes disso.</p>';
 }
 
 function resultadoHtml(m, c, esc) {

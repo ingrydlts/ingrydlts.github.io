@@ -2128,3 +2128,15 @@ select.fx-hm-add:hover,select.fx-hm-add:focus-visible{border-color:var(--moss); 
 .dv-chips{display:flex; flex-wrap:wrap; gap:6px; margin:6px 0 4px}
 .dv-chip{padding:5px 11px; border:1px solid var(--line-2); border-radius:999px; background:var(--surface-2); font-size:13px; font-weight:600}
 .dv-chip.mais{border-style:dashed; color:var(--ink-3); font-weight:500}
+
+/* Curadoria: chegou da montagem */
+.fx-cf-topo{display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; margin:0 0 12px}
+.fx-cf-ac{display:flex; gap:10px; align-items:center; flex-wrap:wrap}
+.fx-cf-sec{margin:14px 0 0}
+.fx-cf-vazio{padding:14px; border:1px dashed var(--line-2); border-radius:14px; color:var(--ink-2); font-size:13.5px; max-width:70ch}
+.lg-det{margin:12px 0 0; border:1px solid var(--line); border-radius:12px; background:var(--surface)}
+.lg-det>summary{cursor:pointer; padding:10px 14px; font-size:13px; font-weight:600; color:var(--ink-2); list-style:none}
+.lg-det>summary::-webkit-details-marker{display:none}
+.lg-det>summary::after{content:'▾'; float:right; color:var(--ink-3)}
+.lg-det:not([open])>summary::after{transform:rotate(-90deg)}
+.lg-det>div{padding:0 14px 12px}
