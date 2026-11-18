@@ -57,7 +57,7 @@ console.log('== Editar a escrita dos passos no Checklist ==');
     { id: 8, titulo: 'Passo já editado', dono: 'ela', canal: 'plataforma', estado: 'aberta', publicada_em: null, a_conferir: false, origem_chave: 'enc:x', editado_em: '2026-11-16T10:00:00Z' }];
   const H = { esc, rotulo: (d) => d, prazo: () => '', pil: (t) => '<i>' + t + '</i>', btn: (a, id, r) => '<button data-caso="' + a + '" data-id="' + id + '">' + r + '</button>', conferi: (id) => '<button data-montconferido="' + id + '">C</button>', linha: (e, m, b) => '<div>' + e + m + b + '</div>' };
   const html = MT.passosPropostosHtml(ACO, [], H);
-  check('cada passo não concluído tem o botão "Editar"', (html.match(/data-caso="ed-aco"/g) || []).length === 2);
+  check('cada passo não concluído se edita com dois cliques no título (ou Enter): é a edição de hoje, sem botão "Editar"', (html.match(/data-dbl="ed-aco"/g) || []).length === 2 && !/data-caso="ed-aco"/.test(html));
   check('o passo que você editou avisa que a releitura não o muda', html.includes('Texto editado por você'));
   check('em edição, a linha vira o editor', MT.passosPropostosHtml(ACO, [], { ...H, editando: (a) => a.id === 7, editor: (a) => '<form>EDITOR ' + a.id + '</form>' }).includes('EDITOR 7') && !MT.passosPropostosHtml(ACO, [], { ...H, editando: (a) => a.id === 7, editor: (a) => '<form>EDITOR ' + a.id + '</form>' }).includes('Ligar para a escola'));
 

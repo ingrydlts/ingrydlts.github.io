@@ -552,12 +552,13 @@ export function inicioDoApp(o) {
   const hm = x.home || [], vivos = (x.itens || []).filter((i) => i.status !== 'arquivado');
   const porCat = (c) => hm.filter((h) => h.categoria === c).sort((a, b) => (a.ordem || 0) - (b.ordem || 0) || a.id - b.id);
   const doBoard = (c, max) => porCat(c).map((h) => board.find((b) => b.id === h.board_id)).filter(Boolean).slice(0, max).map((b) => ({ titulo: b.titulo, sub: b.resumo || (b.tipo === 'bilan' ? 'o bilan da nossa conversa' : ''), tipo: b.tipo, conteudo: /^https:\/\//i.test(b.link || '') ? 'link' : b.arquivo_caminho ? 'arquivo' : b.descricao ? 'descricao' : '' }));
-  const picks = porCat('checklist').map((h) => vivos.find((i) => i.step_key === h.step_key)).filter(Boolean).slice(0, 3).map((i) => ({ titulo: i.titulo_custom || i.label, feito: i.status === 'concluido', meta: i.due_date ? dataBR(i.due_date).slice(0, 5) : pilulaDoQuando((x.quando || {})[i.step_key]) }));
+  const picks = porCat('checklist').map((h) => { const i = vivos.find((y) => y.step_key === h.step_key); return i ? Object.assign({}, i, { _dest: !!h.destaque }) : null; }).filter(Boolean).slice(0, 3).map((i) => ({ destaque: !!i._dest, titulo: i.titulo_custom || i.label, feito: i.status === 'concluido', meta: i.due_date ? dataBR(i.due_date).slice(0, 5) : pilulaDoQuando((x.quando || {})[i.step_key]) }));
   const destaques = { checklist: picks, soSeu: doBoard('so_seu', 3), guias: doBoard('guias', 2) };
+  const emDestaque = picks.find((q) => q.destaque && !q.feito) || null;   // o item principal, grande no topo do Início (db/crm-caso-home-destaque.sql)
   const vistos = {}; if (foco) vistos[foco.titulo] = true;
   seguintes = picks.filter((q) => !q.feito).map((q) => ({ titulo: q.titulo, atrasado: false, meta: q.meta, de: '' })).concat(seguintes).filter((q) => { if (vistos[q.titulo]) return false; vistos[q.titulo] = true; return true; }).slice(0, 4);
   const soSeu = { atalhoBilan: !destaques.soSeu.length && board.some((b) => b.tipo === 'bilan'), bilans: destaques.soSeu.filter((b) => b.tipo === 'bilan'), docs: destaques.soSeu.filter((b) => b.tipo !== 'bilan') };
-  return { pessoal: temCasoApp({ board, acoes: x.acoes, home: hm }), nome: x.nome || '', destaques, soSeu, escolas: escolas.map((e) => e.titulo),
+  return { pessoal: temCasoApp({ board, acoes: x.acoes, home: hm }), nome: x.nome || '', destaques, emDestaque, soSeu, escolas: escolas.map((e) => e.titulo),
     marcos: marcos.map((m) => { const d = diasAteApp(m.dados.data, agora); return { titulo: m.titulo, data: dataBR(m.dados.data), dias: d, quando: quandoTextoApp(d), aConfirmar: !!m.dados.a_confirmar }; }),
     foco, seguintes };
 }
@@ -618,7 +619,7 @@ export function destaquesDaHome(o) {
   Object.keys(HOME_LIMITES).forEach((cat) => {
     const linhas = home.filter((h) => h.categoria === cat).sort((a, b) => (a.ordem || 0) - (b.ordem || 0) || a.id - b.id);
     out[cat] = { max: HOME_LIMITES[cat], n: linhas.length, itens: linhas.map((h) => {
-      if (cat === 'checklist') { const i = itens.find((y) => y.step_key === h.step_key); return i ? { id: h.id, ref: h.step_key, titulo: i.titulo_custom || i.label, meta: i.status === 'concluido' ? 'feito' : (i.due_date ? 'prazo ' + String(i.due_date).slice(8, 10) + '/' + String(i.due_date).slice(5, 7) : ''), publicado: true, falta: false } : { id: h.id, ref: h.step_key, titulo: h.step_key, meta: '', publicado: true, falta: true }; }
+      if (cat === 'checklist') { const i = itens.find((y) => y.step_key === h.step_key); return i ? { id: h.id, ref: h.step_key, destaque: !!h.destaque, titulo: i.titulo_custom || i.label, meta: i.status === 'concluido' ? 'feito' : (i.due_date ? 'prazo ' + String(i.due_date).slice(8, 10) + '/' + String(i.due_date).slice(5, 7) : ''), publicado: true, falta: false } : { id: h.id, ref: h.step_key, destaque: !!h.destaque, titulo: h.step_key, meta: '', publicado: true, falta: true }; }
       const b = board.find((y) => y.id === h.board_id);
       return b ? { id: h.id, ref: h.board_id, titulo: b.titulo, meta: b.resumo || '', publicado: b.estado === 'publicado', falta: false } : { id: h.id, ref: h.board_id, titulo: '(item removido)', meta: '', publicado: false, falta: true };
     }) };

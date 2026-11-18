@@ -246,6 +246,34 @@ console.log('== Task 12: sessões em pílulas ==');
   await h.click({ fx: 'perProx' });
   car = h.el('fx-corpo').innerHTML;
   check('a seta troca para o 2º card; no último a seta de próximo desliga', car.includes('2 de 2') && car.includes('escola pública ou privada') && /data-fx="perProx"[^>]*disabled/.test(car));
+  // Reordenar perguntas: só o que ainda não saiu é arrastável; o banco decide (crm_aviso_reordenar)
+  const avsBase = h.mod.state.caso.avs.map((a) => ({ ...a })), cidB = h.mod.state.sel;
+  const injeta = async (home) => { await new Promise((r) => setTimeout(r, 40)); h.mod.state.caso = { cid: cidB, err: false, ach: [], aco: [], itens: [], consent: true, escolasDela: [], listas: [], home, homeSemDestaque: false, ed: null, agenda: null, avs: avsBase.map((a) => ({ ...a })) }; };
+  await h.click({ fx: 'perIr', v: '0' });
+  const ordemH = h.el('fx-corpo').innerHTML;
+  check('em "Ordem e saída" cada card pendente tem alça de arrastar e ▲ ▼', (ordemH.match(/class="fx-ordem-l[^"]*mexe"[^>]*draggable="true"/g) || []).length === 2 && ordemH.includes('data-fx="perMov"'));
+  await h.click({ fx: 'perMov', id: '1', d: '1' });
+  const rr = h.rpcs.filter((r) => r.n === 'crm_aviso_reordenar');
+  check('▼ no 1º card chama crm_aviso_reordenar com a nova ordem dos pendentes ([2, 1])', rr.length === 1 && JSON.stringify(rr[0].a.p_ids) === '[2,1]' && rr[0].a.p_contato === h.mod.state.sel);
+  h.rpcs.length = 0;
+  await h.click({ fx: 'perMov', id: '1', d: '-1' });
+  check('▲ no que já é o 1º não faz nada (nenhuma chamada ao banco)', !h.rpcs.some((r) => r.n === 'crm_aviso_reordenar'));
+  // O item em destaque da Página inicial
+  const HOME2 = [{ id: 1, categoria: 'checklist', step_key: 'k1', board_id: null, ordem: 0, destaque: true }, { id: 2, categoria: 'checklist', step_key: 'k2', board_id: null, ordem: 1, destaque: false }];
+  h.mod.state.dos.chk = { itens: [{ step_key: 'k1', label: 'Passo 1', status: 'pendente' }, { step_key: 'k2', label: 'Passo 2', status: 'pendente' }] };
+  await injeta(HOME2);
+  await h.click({ fx: 'ir', id: 'home' });
+  const hm = h.el('fx-corpo').innerHTML;
+  check('a Página inicial mostra "Em destaque 1 de 1" com o passo marcado e ★ Destacar no outro', hm.includes('Em destaque') && hm.includes('1 de 1') && hm.includes('Tirar destaque') && /data-fx="homeDestaque" data-id="k2"[^>]*>★ Destacar/.test(hm));
+  h.rpcs.length = 0;
+  await h.click({ fx: 'homeDestaque', id: 'k2' });
+  const rd = h.rpcs.filter((r) => r.n === 'crm_home_destacar');
+  check('★ Destacar chama crm_home_destacar com o passo (e tirar o destaque manda null)', rd.length === 1 && rd[0].a.p_step_key === 'k2');
+  await injeta(HOME2); h.rpcs.length = 0; await h.click({ fx: 'homeDestaque', id: 'k1' });
+  check('no que já é o destaque, o clique limpa (p_step_key null)', h.rpcs.some((r) => r.n === 'crm_home_destacar' && r.a.p_step_key === null));
+  await injeta(HOME2); h.mod.state.caso.homeSemDestaque = true; await h.click({ fx: 'ir', id: 'home' });
+  check('sem o SQL do destaque, a home avisa qual arquivo rodar', h.el('fx-corpo').innerHTML.includes('crm-caso-home-destaque.sql'));
+  await injeta([]);
   // Curadoria como fila de aprovação (chegou da montagem)
   const avsOrig = h.mod.state.caso.avs; h.mod.state.caso.avs = [];
   await h.click({ fx: 'ir', id: 'curadoria' });

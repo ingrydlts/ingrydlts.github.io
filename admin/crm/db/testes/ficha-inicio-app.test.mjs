@@ -75,5 +75,9 @@ console.log('\n== Em seguida: o passo do checklist fixado no CRM vai primeiro ==
   check('o fixado que ela já concluiu não entra; o mesmo título não se repete (fixado e do checklist geral)', !r.seguintes.some((q) => q.titulo === 'L c3') && r.seguintes.filter((q) => q.titulo === 'L c2').length === 1);
   const sem = FX.inicioDoApp({ nome: 'L', mapa, persona: 'au_pair_estudante', itens, board: [], acoes: [], listas: [], home: [], agora: AGORA });
   check('sem passo da equipe nem fixado, o "Em seguida" fica vazio, como no app', sem.seguintes.length === 0);
+  const dst = FX.inicioDoApp({ nome: 'L', mapa, persona: 'au_pair_estudante', itens, board: [], acoes: [], listas: [], home: [{ id: 1, categoria: 'checklist', step_key: 'c1', ordem: 0, destaque: false }, { id: 2, categoria: 'checklist', step_key: 'c2', ordem: 1, destaque: true }], agora: AGORA });
+  check('o passo marcado como destaque vira "emDestaque" (o principal do topo do Início)', dst.emDestaque && dst.emDestaque.titulo === 'L c2');
+  check('sem destaque marcado, não há emDestaque', FX.inicioDoApp({ nome: 'L', mapa, persona: 'au_pair_estudante', itens, board: [], acoes: [], listas: [], home: [{ id: 1, categoria: 'checklist', step_key: 'c2', ordem: 0 }], agora: AGORA }).emDestaque === null);
+  check('destaque já concluído por ela não aparece em destaque', FX.inicioDoApp({ nome: 'L', mapa, persona: 'au_pair_estudante', itens, board: [], acoes: [], listas: [], home: [{ id: 1, categoria: 'checklist', step_key: 'c3', ordem: 0, destaque: true }], agora: AGORA }).emDestaque === null);
 }
 console.log(bad ? `\n${bad} falhou, ${ok} ok` : `\nok: ${ok} verificações`); process.exit(bad ? 1 : 0);
