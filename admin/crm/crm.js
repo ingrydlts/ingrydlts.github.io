@@ -4661,8 +4661,10 @@ function fxPrevia(id) { if (FX_ABA_DA_SESSAO[id]) { state.fx.appAba = FX_ABA_DA_
 function fxSessaoAtual() { var f = state.fx, o = fxOrdem(), todos = o.app.concat(o.ela); return f.sessao && todos.indexOf(f.sessao) >= 0 ? f.sessao : 'checklist'; }
 function fxSessaoAberta(id) { return id === fxSessaoAtual(); }
 function fxVaiPara(id) {
+  // Trocar de pílula não move a tela: guarda a rolagem, repinta e devolve (nada de scrollIntoView).
+  var x = window.pageXOffset || 0, y = window.pageYOffset || 0;
   state.fx.sessao = id; fxPintaCorpo(); fxPrevia(id);
-  var nav = document.querySelector('.fx-ir'); if (nav && nav.scrollIntoView) nav.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  if (window.scrollTo) window.scrollTo(x, y);
 }
 // Atualização ao vivo: só as peças de cima e o corpo do Checklist; o que ela digita (chat, dossiê) não é tocado.
 function fxLive(c) {
