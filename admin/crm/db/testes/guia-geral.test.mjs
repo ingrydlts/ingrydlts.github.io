@@ -1,0 +1,24 @@
+// Editor do guia do passo: leitura dos campos (ficha.js) e o HTML do editor (ficha-html.js). Uso: node guia-geral.test.mjs
+import * as FX from '../../ficha.js';
+import * as FH from '../../ficha-html.js';
+let ok = 0, bad = 0; const check = (l, c) => { if (c) ok++; else { bad++; console.log('  FALHOU:', l); } };
+console.log('== Campos ==');
+const v = FX.guiaDeCampos({ pq: ' Porque  importa ', at: '', ps: 'um\n\n dois ', ln: 'Portal | https://a.gouv.fr/x\nhttps://b.org' });
+check('limpa e monta', v.ok && v.por_que === 'Porque importa' && v.atencao === null && v.passos.join() === 'um,dois' && v.links.length === 2 && v.links[0].rotulo === 'Portal' && v.links[1].rotulo === undefined);
+check('recusa link http, javascript e sem url', ['http://a.org', 'javascript:1', 'Portal |'].every((l) => !FX.guiaDeCampos({ pq: 'x', ln: l }).ok));
+check('recusa mais de 8 passos e mais de 6 links', !FX.guiaDeCampos({ ps: Array(9).fill('a').join('\n') }).ok && !FX.guiaDeCampos({ pq: 'x', ln: Array(7).fill('https://a.org/x').join('\n') }).ok);
+check('recusa texto acima do limite e tudo vazio', !FX.guiaDeCampos({ pq: 'a'.repeat(401) }).ok && !FX.guiaDeCampos({}).ok);
+console.log('== Editor ==');
+const e = (x) => String(x).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+const d = (guiaEd) => ({ semConta: false, erro: false, demarches: [], ativa: 'todas', totalFeitos: 0, total: 1, itens: [{ step_key: 'k1', label: 'Passo 1', status: 'pendente', category: 'X' }], ckEd: 'k1', guiaEd, origem: 'todos', alertas: { lista: [], porRef: {} } });
+const h = { esc: e, fmtDay: (x) => x, linhaPasso: (o) => '<div>' + o.titulo + '</div>' };
+const html = (g) => FH.htmlChecklistSessao(d(g), h);
+check('sem dados do guia (carregando): o editor do texto aparece sem a seção', /data-ckform="k1"/.test(html(undefined)) && !/Analisar link/.test(html(undefined)));
+check('SQL não rodado: pede crm-guias-gerais.sql', /crm-guias-gerais\.sql/.test(html({ key: 'k1', erro: true })));
+const g = html({ key: 'k1', row: { step_key: 'k1', por_que: 'P <b>', passos: ['a', 'b'], links: [{ url: 'https://x.org', rotulo: 'X' }], estado: 'rascunho', fonte_url: 'https://f.org' } });
+check('mostra o botão, os campos preenchidos (escapados) e "Rascunho"', /data-fx="guiaAnalisar"/.test(g) && /P &lt;b>/.test(g) && /a\nb/.test(g) && /X \| https:\/\/x\.org/.test(g) && /Rascunho/.test(g) && /value="https:\/\/f\.org"/.test(g));
+check('Salvar rascunho, Publicar para todas e Voltar ao original', /data-estado="rascunho"/.test(g) && /data-estado="publicado"/.test(g) && /data-fx="guiaApagar"/.test(g));
+check('rotula como sugestão da IA', /Sugestão da IA/.test(g));
+check('analisando: botão desabilitado; mensagem e lacunas aparecem', /disabled>Analisando…/.test(html({ key: 'k1', analisando: true, msg: 'Lendo' })) && /A página não diz, confira: Taxa/.test(html({ key: 'k1', lacunas: ['Taxa'] })));
+check('página vazia abre o campo para colar o texto', /<details class="fx-gd-colar" open>/.test(html({ key: 'k1', colar: true })));
+console.log(bad ? `\n${bad} falharam, ${ok} passaram` : `\n${ok} passaram, 0 falharam`); process.exit(bad ? 1 : 0);

@@ -165,12 +165,32 @@ export function botaoHome(tem, ref, e) {
   return iconeHome(tem, 'checklist:' + ref, e);
 }
 // O texto de um passo do checklist dela. O original do template continua guardado; vazio volta ao original; ela vê o novo texto no app.
-function editorPasso(i, e) {
+function guiaEditor(i, e, g) {
+  if (g === undefined) return '';
+  if (g && g.erro) return '<div class="fx-gd"><p class="sub" style="margin:0">Falta rodar <b>db/crm-guias-gerais.sql</b> no SQL Editor do Supabase para escrever o guia deste passo.</p></div>';
+  const r = (g && g.row) || {};
+  const linhas = (Array.isArray(r.links) ? r.links : []).map((l) => (l.rotulo ? l.rotulo + ' | ' : '') + l.url).join('\n');
+  const estado = r.estado === 'publicado' ? '<span class="fx-cp ok">Publicado para todas</span>' : r.step_key ? '<span class="fx-cp">Rascunho</span>' : '';
+  return '<fieldset class="fx-gd"><legend>Guia do passo <small>vale para todas as pessoas</small> ' + estado + '</legend>' +
+    '<div class="fx-gd-url"><input id="fx-g-url" type="url" inputmode="url" placeholder="Cole um link (site oficial, busca, artigo)" value="' + e(r.fonte_url || '') + '" aria-label="Link para analisar">' +
+    '<button type="button" class="btn" data-fx="guiaAnalisar" data-id="' + e(i.step_key) + '"' + (g && g.analisando ? ' disabled' : '') + '>' + (g && g.analisando ? 'Analisando…' : 'Analisar link') + '</button></div>' +
+    (g && g.msg ? '<p class="sub fx-gd-msg" role="status">' + e(g.msg) + '</p>' : '') +
+    '<details class="fx-gd-colar"' + (g && g.colar ? ' open' : '') + '><summary>ou cole o texto da página</summary><textarea id="fx-g-txt" rows="4" maxlength="18000" placeholder="Cole aqui o texto, se o link não abrir para mim"></textarea><button type="button" class="btn" data-fx="guiaAnalisar" data-id="' + e(i.step_key) + '" data-texto="1">Analisar o texto</button></details>' +
+    '<label class="fx-ck-l">Por que importa (até 400)<textarea id="fx-g-pq" rows="2" maxlength="400">' + e(r.por_que || '') + '</textarea></label>' +
+    '<label class="fx-ck-l">Atenção (até 500)<textarea id="fx-g-at" rows="2" maxlength="500">' + e(r.atencao || '') + '</textarea></label>' +
+    '<label class="fx-ck-l">Passo a passo (um por linha, até 8)<textarea id="fx-g-ps" rows="4">' + e((Array.isArray(r.passos) ? r.passos : []).join('\n')) + '</textarea></label>' +
+    '<label class="fx-ck-l">Links (um por linha: Rótulo | https://…, até 6)<textarea id="fx-g-ln" rows="3">' + e(linhas) + '</textarea></label>' +
+    (g && g.lacunas && g.lacunas.length ? '<p class="sub fx-gd-msg">A página não diz, confira: ' + e(g.lacunas.join('; ')) + '</p>' : '') +
+    '<p class="sub" style="margin:0">Sugestão da IA: confira antes de publicar. Campo vazio deixa o texto original do template.</p>' +
+    '<div class="actions"><button type="button" class="btn" data-fx="guiaSalvar" data-id="' + e(i.step_key) + '" data-estado="rascunho">Salvar rascunho</button><button type="button" class="btn primary" data-fx="guiaSalvar" data-id="' + e(i.step_key) + '" data-estado="publicado">Publicar para todas</button>' +
+    (r.step_key ? '<button type="button" class="btn" data-fx="guiaApagar" data-id="' + e(i.step_key) + '">Voltar ao original</button>' : '') + '</div></fieldset>';
+}
+function editorPasso(i, e, g) {
   return '<div class="fx-passo fx-passo-ed"><form class="fx-ck-ed" data-ckform="' + e(i.step_key) + '">' +
     '<label class="fx-ck-l">Texto do passo<input id="fx-ck-t" type="text" maxlength="120" value="' + e(i.titulo_custom || i.label) + '" data-orig="' + e(i.label) + '"></label>' +
     '<label class="fx-ck-l">Observação (opcional, até 100 letras)<input id="fx-ck-n" type="text" maxlength="100" value="' + e(i.nota_custom || '') + '"></label>' +
     '<p class="sub" style="margin:2px 0 8px">Original: ' + e(i.label) + '. Deixar o texto vazio volta ao original. Ela vê o novo texto no app.</p>' +
-    '<div class="actions"><button type="button" class="btn primary" data-fx="ckSalvar" data-id="' + e(i.step_key) + '">Salvar</button><button type="button" class="btn" data-fx="ckCancelar">Cancelar</button></div></form></div>';
+    '<div class="actions"><button type="button" class="btn primary" data-fx="ckSalvar" data-id="' + e(i.step_key) + '">Salvar</button><button type="button" class="btn" data-fx="ckCancelar">Cancelar</button></div></form>' + guiaEditor(i, e, g) + '</div>';
 }
 const ORIGENS_CK = [['todos', 'Todos'], ['gerais', 'Gerais'], ['dela', 'Só dela']];
 // d = { semConta, erro, velhoDias, demarches, ativa, origem, itens (gerais, já filtrados), equipeHtml, equipeN, alertas: {lista, porRef}, homeRefs, ckEd, totalFeitos, total,
@@ -193,7 +213,7 @@ export function htmlChecklistSessao(d, h) {
   const painel = alertas.lista.length ? '<div class="fx-valid" role="status"><span class="fx-valid-ic" aria-hidden="true">!</span><div><b>' + alertas.lista.length + (alertas.lista.length === 1 ? ' coisa para validar' : ' coisas para validar') + '</b><ul>' +
     alertas.lista.slice(0, 6).map((a) => '<li><span>“' + e(a.titulo) + '”: ' + e(a.texto) + '</span> ' + acaoAlerta(a) + '</li>').join('') + '</ul>' + (alertas.lista.length > 6 ? '<small>e mais ' + (alertas.lista.length - 6) + '</small>' : '') + '</div></div>' : '';
   const linhaGeral = (i) => {
-    if (d.ckEd && d.ckEd === i.step_key) return editorPasso(i, e);
+    if (d.ckEd && d.ckEd === i.step_key) return editorPasso(i, e, d.guiaEd);
     const feito = i.status === 'concluido', arq = i.status === 'arquivado', venc = i.due_date ? String(i.due_date).slice(0, 10) : '', atras = !feito && !arq && !!venc && venc < hoje;
     const chips = [{ t: 'Geral', c: 'ger' }];
     if (d.ativa === 'todas' && d.demDe) chips.push({ t: d.demDe(i), c: 'dem' });
@@ -230,7 +250,7 @@ export function htmlCuradoria(d, h) {
     alertas.lista.slice(0, 6).map((a) => '<li><span>“' + e(a.titulo) + '”: ' + e(a.texto) + '</span> ' + acaoAlerta(a) + '</li>').join('') + '</ul>' + (alertas.lista.length > 6 ? '<small>e mais ' + (alertas.lista.length - 6) + '</small>' : '') + '</div></div>' : '<p class="fx-valid-ok" role="status">Nada para validar: todos os passos têm data, démarche e título único.</p>';
   const gerais = d.gerais || [], n = gerais.length;
   const linha = (i, k) => {
-    if (d.ckEd && d.ckEd === i.step_key) return editorPasso(i, e);
+    if (d.ckEd && d.ckEd === i.step_key) return editorPasso(i, e, d.guiaEd);
     const c = m[i.step_key] || {}, feito = i.status === 'concluido', venc = i.due_date ? String(i.due_date).slice(0, 10) : '', atras = !feito && !!venc && venc < hoje;
     const chips = [{ t: 'Geral', c: 'ger' }];
     if (d.demDe) chips.push({ t: d.demDe(i), c: 'dem' });
