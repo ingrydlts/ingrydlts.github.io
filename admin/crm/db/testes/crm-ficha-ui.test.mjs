@@ -212,6 +212,13 @@ console.log('== Task 12: sessões em pílulas ==');
   await h.click({ fx: 'tab', v: 'dossie' });
   const dz = h.el('pessoa-page').innerHTML;
   check('a aba Dossiê abre o dossiê sempre aberto, sem botão de fechar', dz.includes('id="dossie-box"') && dz.includes('data-dossalvar') && !dz.includes('data-dostoggle'));
+  // A ligação em 3 etapas, uma por vez
+  check('a ligação tem as 3 etapas, com a 1ª aberta (só ela renderiza)', (dz.match(/data-fx="lgPasso"/g) || []).length === 3 && dz.includes('aria-current="step"') && !dz.includes('id="pc-an"'));
+  await h.click({ fx: 'lgPasso', v: 'b' });
+  const dzb = h.el('fx-corpo').innerHTML;   check('"Depois do 1:1" junta a análise e a montagem', dzb.includes('id="pc-an"') && h.mod.state.fx.lgPasso === 'b');
+  await h.click({ fx: 'lgPasso', v: 'c' });
+  check('"O que sai da conversa" mostra o e-mail e o .md', h.el('fx-corpo').innerHTML.includes('data-convabrir') && h.el('fx-corpo').innerHTML.includes('data-dosmd'));
+  await h.click({ fx: 'lgPasso', v: 'a' });
   await h.mod.renderPessoa(); pg = h.el('pessoa-page').innerHTML;
   check('depois de repintar tudo, a aba Dossiê segue aberta', h.mod.state.fx.tab === 'dossie' && pg.includes('id="dossie-box"'));
   await h.click({ fx: 'tab', v: 'plataforma' });
@@ -221,15 +228,76 @@ console.log('== Task 12: sessões em pílulas ==');
   check('cada pílula abre a sessão inteira, com os painéis existentes, uma por vez', tHist.includes('id="int-box"') && !tHist.includes('id="bilan-box"') && tBilan.includes('id="bilan-box"') && !tBilan.includes('id="int-box"') && tChat.includes('id="chat-box"') && !tChat.includes('id="bilan-box"'));
   check('clicar de novo na pílula da página aberta não fecha nada', (await abreIr('espaco')).includes('Seu espaço') && h.mod.state.fx.sessao === 'espaco');
   check('a sessão Espaço (como o Início dela) não carrega as notas nem outras sessões', tEsp.includes('Seu espaço') && !tEsp.includes('data-sessao="inicio"') && !tEsp.includes('data-sessao="guias"') && !tEsp.includes('id="ins-box"') && !tEsp.includes('Escreva uma nota para ela'));
+  // Espaço refeito: só perguntas (carrossel), bilans, encaminhamentos e mensagens prontas; checklist e guias têm pílula própria
+  check('o Espaço tem as quatro seções novas e não tem mais Checklist nem Guias', ['Perguntas da equipe Por Dentro', 'Bilans das nossas conversas', 'Encaminhamentos da Ingryd', 'Mensagens prontas'].every((t) => tEsp.includes(t)) && !tEsp.includes('>Checklist</span>') && !/<span>Guias<\/span>/.test(tEsp));
+  check('a pílula Guias existe, depois do Espaço', h.el('pessoa-page').innerHTML.indexOf('data-fx="ir" data-id="guias"') > h.el('pessoa-page').innerHTML.indexOf('data-fx="ir" data-id="espaco"'));
+  const tGuias = await abreIr('guias');
+  check('a sessão Guias abre a página própria dos guias', tGuias.includes('Guias') && h.mod.state.fx.sessao === 'guias');
+  const tChat2 = await abreIr('chat');
+  check('o chat tem o dropdown "Interações" com os botões de proposta e o "+ Criar meu botão"', tChat2.includes('>Interações<') && tChat2.includes('id="chat-drop"') && tChat2.includes('+ Criar meu botão') && tChat2.includes('Propor 1:1 de 20 min') && !tChat2.includes('no avatar que flutua'));
+  await abreIr('espaco');
+  // carrossel: um card por vez, na ordem; setas e pontos trocam; "Ordem e saída" lista todos
+  const cid = h.mod.state.sel;
+  h.mod.state.caso = { cid, err: false, ach: [], aco: [], itens: [], consent: true, escolasDela: [], listas: [], home: [], ed: null, agenda: null,
+    avs: [{ id: 1, tipo: 'pergunta', titulo: 'Qual é o seu nível de francês hoje?', estado: 'agendado', ordem: 1, pausa_dias: 1, liberar_em: null }, { id: 2, tipo: 'pergunta', titulo: 'Ela prioriza escola pública ou privada?', estado: 'rascunho', ordem: 2, pausa_dias: 0 }, { id: 3, tipo: 'proposta', titulo: 'O bilan está aqui', estado: 'cancelado', ordem: 3, pausa_dias: 0 }] };
+  await h.click({ fx: 'ir', id: 'espaco' });
+  let car = h.el('fx-corpo').innerHTML;
+  check('o carrossel mostra só o 1º card, com "1 de 2" (o cancelado fica fora) e o relógio', car.includes('1 de 2') && car.includes('nível de francês') && !/fx-car-card[^]*?escola pública[^]*?<\/div><button[^>]*perProx/.test(car) && car.includes('fx-relogio') && car.includes('data-caso="ag-abrir"'));
+  await h.click({ fx: 'perProx' });
+  car = h.el('fx-corpo').innerHTML;
+  check('a seta troca para o 2º card; no último a seta de próximo desliga', car.includes('2 de 2') && car.includes('escola pública ou privada') && /data-fx="perProx"[^>]*disabled/.test(car));
+  // Reordenar perguntas: só o que ainda não saiu é arrastável; o banco decide (crm_aviso_reordenar)
+  const avsBase = h.mod.state.caso.avs.map((a) => ({ ...a })), cidB = h.mod.state.sel;
+  const injeta = async (home) => { await new Promise((r) => setTimeout(r, 40)); h.mod.state.caso = { cid: cidB, err: false, ach: [], aco: [], itens: [], consent: true, escolasDela: [], listas: [], home, homeSemDestaque: false, ed: null, agenda: null, avs: avsBase.map((a) => ({ ...a })) }; };
+  await h.click({ fx: 'perIr', v: '0' });
+  const ordemH = h.el('fx-corpo').innerHTML;
+  check('em "Ordem e saída" cada card pendente tem alça de arrastar e ▲ ▼', (ordemH.match(/class="fx-ordem-l[^"]*mexe"[^>]*draggable="true"/g) || []).length === 2 && ordemH.includes('data-fx="perMov"'));
+  await h.click({ fx: 'perMov', id: '1', d: '1' });
+  const rr = h.rpcs.filter((r) => r.n === 'crm_aviso_reordenar');
+  check('▼ no 1º card chama crm_aviso_reordenar com a nova ordem dos pendentes ([2, 1])', rr.length === 1 && JSON.stringify(rr[0].a.p_ids) === '[2,1]' && rr[0].a.p_contato === h.mod.state.sel);
+  h.rpcs.length = 0;
+  await h.click({ fx: 'perMov', id: '1', d: '-1' });
+  check('▲ no que já é o 1º não faz nada (nenhuma chamada ao banco)', !h.rpcs.some((r) => r.n === 'crm_aviso_reordenar'));
+  // O item em destaque da Página inicial
+  const HOME2 = [{ id: 1, categoria: 'checklist', step_key: 'k1', board_id: null, ordem: 0, destaque: true }, { id: 2, categoria: 'checklist', step_key: 'k2', board_id: null, ordem: 1, destaque: false }];
+  h.mod.state.dos.chk = { itens: [{ step_key: 'k1', label: 'Passo 1', status: 'pendente' }, { step_key: 'k2', label: 'Passo 2', status: 'pendente' }] };
+  await injeta(HOME2);
+  await h.click({ fx: 'ir', id: 'home' });
+  const hm = h.el('fx-corpo').innerHTML;
+  check('a Página inicial mostra "Em destaque 1 de 1" com o passo marcado e ★ Destacar no outro', hm.includes('Em destaque') && hm.includes('1 de 1') && hm.includes('Tirar destaque') && /data-fx="homeDestaque" data-id="k2"[^>]*>★ Destacar/.test(hm));
+  h.rpcs.length = 0;
+  await h.click({ fx: 'homeDestaque', id: 'k2' });
+  const rd = h.rpcs.filter((r) => r.n === 'crm_home_destacar');
+  check('★ Destacar chama crm_home_destacar com o passo (e tirar o destaque manda null)', rd.length === 1 && rd[0].a.p_step_key === 'k2');
+  await injeta(HOME2); h.rpcs.length = 0; await h.click({ fx: 'homeDestaque', id: 'k1' });
+  check('no que já é o destaque, o clique limpa (p_step_key null)', h.rpcs.some((r) => r.n === 'crm_home_destacar' && r.a.p_step_key === null));
+  await injeta(HOME2); h.mod.state.caso.homeSemDestaque = true; await h.click({ fx: 'ir', id: 'home' });
+  check('sem o SQL do destaque, a home avisa qual arquivo rodar', h.el('fx-corpo').innerHTML.includes('crm-caso-home-destaque.sql'));
+  await injeta([]);
+  // Curadoria como fila de aprovação (chegou da montagem)
+  const avsOrig = h.mod.state.caso.avs; h.mod.state.caso.avs = [];
+  await h.click({ fx: 'ir', id: 'curadoria' });
+  let cf = h.el('fx-corpo').innerHTML;
+  check('a Curadoria sem nada pendente explica como chegar lá a partir do Dossiê', cf.includes('Nada esperando a sua decisão') && cf.includes('data-v="dossie"'));
+  h.mod.state.caso.itens = [{ id: 11, tipo: 'documento', titulo: 'Contrato de au pair', estado: 'proposto', dados: { direcao: 'pede' } }, { id: 12, tipo: 'documento', titulo: 'Fonte oficial do visto', estado: 'proposto', dados: { direcao: 'recebe' } }, { id: 13, tipo: 'modelo', titulo: 'Como pedir o atestado', estado: 'proposto', dados: {} }, { id: 14, tipo: 'documento', titulo: 'Já publicado', estado: 'publicado', dados: { direcao: 'recebe' } }];
+  h.mod.state.caso.avs = [{ id: 21, tipo: 'pergunta', titulo: 'Qual a data de chegada?', estado: 'rascunho', ordem: 1, pausa_dias: 0 }];
+  await h.click({ fx: 'ir', id: 'curadoria' });
+  cf = h.el('fx-corpo').innerHTML;
+  check('a fila reúne, por destino, só o que espera decisão (o publicado fica de fora)', cf.includes('Documentos a preparar') && cf.includes('Contrato de au pair') && cf.includes('Perguntas da equipe') && cf.includes('Qual a data de chegada?') && cf.includes('Encaminhamentos da Ingryd') && cf.includes('Fonte oficial do visto') && cf.includes('Mensagens prontas') && cf.includes('Como pedir o atestado') && !cf.includes('Já publicado') && cf.includes('4 itens esperam'));
+  check('sem montagem proposta carregada não há "Aprovar tudo" (aprova-se item por item)', !cf.includes('data-montaprovar'));
+  h.mod.state.caso.avs = avsOrig; h.mod.state.caso.itens = [];
+  await h.click({ fx: 'ir', id: 'espaco' });
+  await h.click({ fx: 'perIr', v: '0' });
+  check('o ponto volta ao 1º card e "Ordem e saída" lista os dois', h.el('fx-corpo').innerHTML.includes('1 de 2') && h.el('fx-corpo').innerHTML.includes('Ordem e saída · 2 cards'));
   // preferência salva volta ao abrir de novo; preferência inválida volta ao padrão
-  h = await mk({ crm_ficha_ord_v1: JSON.stringify({ app: ['checklist', 'chat'], ela: ['hist'] }) });
+  h = await mk({ crm_ficha_ord_v2: JSON.stringify({ app: ['checklist', 'chat'], ela: ['hist'] }) });
   pg = h.el('pessoa-page').innerHTML;
   const pos = (t, id) => t.indexOf('data-fx="ir" data-id="' + id + '"');
   check('a ordem salva é a das pílulas, completada com o que faltava', pos(pg, 'checklist') < pos(pg, 'chat') && pos(pg, 'chat') < pos(pg, 'espaco') && pos(pg, 'hist') < pos(pg, 'bilan'));
   h.mod.pararAoVivo();
-  h = await mk({ crm_ficha_ord_v1: '{lixo' });
+  h = await mk({ crm_ficha_ord_v2: '{lixo' });
   pg = h.el('pessoa-page').innerHTML;
-  check('ordem inválida volta ao padrão das pílulas', pos(pg, 'chat') < pos(pg, 'espaco') && pos(pg, 'home') < pos(pg, 'chat'));
+  check('ordem inválida volta ao padrão das pílulas', pos(pg, 'curadoria') < pos(pg, 'home') && pos(pg, 'espaco') < pos(pg, 'chat') && pos(pg, 'home') < pos(pg, 'chat'));
   h.mod.pararAoVivo();
   // localStorage indisponível: a ficha abre e trocar de sessão pela pílula funciona sem lançar
   const hb = await carregarCrm({ respostas: base({ 'contatos:one': { data: { dossie: {}, user_id: 'u1' }, error: null } }), search: '?ficha=2', storageBloqueado: true });
@@ -289,13 +357,28 @@ console.log('== Aba Dossiê: se preenche com o que ela responde no funil ==');
   const c = pessoa({ respostas: resp });
   await abre(h, c);
   await h.click({ fx: 'tab', v: 'dossie' });
-  const pg = h.el('pessoa-page').innerHTML;
-  const sel = (k, v) => new RegExp('data-dk="' + k + '"[^>]*>(?:(?!</select>).)*<option value="' + v + '" selected', 's').test(pg);
+  await h.click({ fx: 'dosFiltro', v: 'tudo' });   // o padrão é "Só o que falta"; o que veio do funil já conta como respondido
+  const pg = h.el('dossie-box').innerHTML;
+  const sel = (k, v) => new RegExp('data-k="' + k + '" data-v="' + v + '" aria-pressed="true"').test(pg) || new RegExp('data-dk="' + k + '"[^>]*>(?:(?!</select>).)*<option value="' + v + '" selected', 's').test(pg);
   check('ano de au pair, intenção (migrar → migrar_estudante) e sim/não vêm do funil', sel('ano_au_pair', 'primeiro') && sel('intencao_au_pair', 'migrar_estudante') && sel('comprova_recursos', 'false') && sel('tem_sponsor', 'true') && sel('tem_certificado_matricula', 'false'));
   check('a cidade do funil entra como texto legível', pg.includes('data-dk="cidade"') && pg.includes('value="Lyon"'));
+  // Formulário do Dossiê: grupos recolhíveis, filtros e fonte de cada resposta
+  check('os blocos viram grupos recolhíveis e só o 1º vem aberto', (pg.match(/<details class="fg-d"/g) || []).length >= 3 && (pg.match(/<details class="fg-d"[^>]*open/g) || []).length === 1);
+  check('a faixa de fontes conta as respostas por origem (funil)', /data-v="funil"[^>]*>Funil<small>[1-9]/.test(pg));
+  await h.click({ fx: 'dosFonte', v: 'funil' });
+  const soFunil = h.el('dossie-box').innerHTML;
+  check('filtrar por fonte "Funil" mostra só campos respondidos pelo funil', soFunil.includes('data-dk="cidade"') && !soFunil.includes('data-dk="telefone"') && !/class="ds (call|voce)"/.test(soFunil));
+  await h.click({ fx: 'dosFiltro', v: 'falta' });
+  const soFalta = h.el('dossie-box').innerHTML;
+  check('"Só o que falta" esconde o que já está respondido (cidade veio do funil)', !soFalta.includes('data-dk="cidade"') && soFalta.includes('data-dk="telefone"'));
+  await h.click({ fx: 'dosChip', k: 'fase', v: 'adaptando' });
+  check('um toque num chip grava a resposta (e outro toque desmarca)', h.mod.state.dos.rasc.fase === 'adaptando' && /data-fx="dosChip" data-k="fase" data-v="adaptando" aria-pressed="true"/.test(h.el('dossie-box').innerHTML) && h.el('dossie-box').innerHTML.includes('fx-salvar'));
+  await h.click({ fx: 'dosChip', k: 'fase', v: 'adaptando' });
+  check('tocar de novo no mesmo chip limpa a resposta', h.mod.state.dos.rasc.fase === '');
+  await h.click({ fx: 'dosFiltro', v: 'tudo' });
   check('o que já está no dossiê ganha do funil (cfNivel: master, não l1)', h.mod.dosValor(c, { cfNivel: 'master' }, {}, 'cfNivel') === 'master' && h.mod.dosValor(c, {}, {}, 'cfNivel') === 'l1');
   check('valor que o formulário não conhece é ignorado (cfTeste "inventado")', !sel('cfTeste', 'inventado') && h.mod.dosDoFunil(c, 'cfTeste') === null);
-  check('campo vindo do funil traz a etiqueta e o dossiê conta como respondido', pg.includes('Veio do funil') && h.mod.dosProgresso(c, {}, {}).n >= 6);
+  check('campo vindo do funil traz a etiqueta de fonte e o dossiê conta como respondido', pg.includes('Veio do funil') && pg.includes('class="ds funil"') && h.mod.dosProgresso(c, {}, {}).n >= 6);
   check('o que você apagou no formulário não volta do funil', h.mod.dosValor(c, {}, { ano_au_pair: '' }, 'ano_au_pair') === '');
   h.mod.pararAoVivo();
 }

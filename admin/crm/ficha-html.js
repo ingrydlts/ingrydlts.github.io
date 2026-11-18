@@ -299,7 +299,7 @@ export function htmlQuadroPasso(d, h) {
 
 // ---------- Sessões em pílulas (Task 12) ----------
 // s = { id, titulo, sub, corpo, aberto, area: 'app'|'ela', ativa }. O corpo só vem pintado quando a sessão está aberta.
-const ICONE_SESSAO = { home: 'M3 10l9-7 9 7v10a1 1 0 01-1 1h-5v-6H9v6H4a1 1 0 01-1-1z', chat: 'M4 5h16v11H9l-5 4z', checklist: 'M5 12.5l4.5 4.5L19 7.5', espaco: 'M4 5h7v14H4zM13 5h7v6h-7zM13 13h7v6h-7z',
+const ICONE_SESSAO = { home: 'M3 10l9-7 9 7v10a1 1 0 01-1 1h-5v-6H9v6H4a1 1 0 01-1-1z', chat: 'M4 5h16v11H9l-5 4z', checklist: 'M5 12.5l4.5 4.5L19 7.5', guias: 'M5 4h11l3 3v13H5zM9 11h6M9 15h6', espaco: 'M4 5h7v14H4zM13 5h7v6h-7zM13 13h7v6h-7z',
   perfil: 'M12 12a4 4 0 100-8 4 4 0 000 8zM4 21c0-4 4-6 8-6s8 2 8 6', eu: 'M12 3l2.5 5.5L20 9l-4 4 1 6-5-3-5 3 1-6-4-4 5.5-.5z', bilan: 'M7 3h10v18l-5-3-5 3z', trouxe: 'M4 8h16v12H4zM9 8V5h6v3',
   sinais: 'M3 17l5-6 4 3 5-8 4 5', hist: 'M12 7v5l3 2M12 3a9 9 0 100 18 9 9 0 000-18z', curadoria: 'M4 6h10M4 12h16M4 18h7M17 4v4M19 6h-4', mais: 'M6 12h.01M12 12h.01M18 12h.01', insights: 'M12 3a6 6 0 00-4 10.5V17h8v-3.5A6 6 0 0012 3zM9 21h6' };
 // A sessão aberta ocupa a página inteira (sem dropdown): cabeçalho com ícone e título em Fraunces, e o corpo logo abaixo.
@@ -366,6 +366,7 @@ export function htmlPreviaApp(d, h) {
     const n = d.inicio, linhaSeg = (q) => '<div class="fx-pv-row"><span class="bx" aria-hidden="true">✓</span><span>' + (q.de ? '<small>Checklist · ' + e(q.de) + '</small>' : '') + e(q.titulo) + '</span>' + (q.meta ? '<em class="' + (q.atrasado ? 'at' : '') + '">' + e(q.meta) + '</em>' : '') + '</div>';
     corpo = '<section class="fx-pv-cab-in"' + L('Dela') + '><h3 class="fx-pv-oi">' + (n.nome ? 'Oi, ' + e(n.nome) + '.' : 'Oi.') + '</h3>' + (n.escolas.length ? '<p class="fx-pv-vz">O seu caso: ' + e(n.escolas.join(' e ')) + '.</p>' : '') + '</section>' +
       n.marcos.map((m) => '<section class="fx-pv-card"' + L('Dela') + '><span class="k">Prazo</span><h4>' + e(m.titulo) + '</h4><p>' + (m.aConfirmar ? 'Data a confirmar' : e(m.data) + (m.quando ? ' · ' + e(m.quando) : '')) + '</p></section>').join('') +
+      (n.emDestaque ? '<section class="fx-pv-card fx-pv-dest"' + L('Dela') + '><span class="k">Em destaque</span><h4>' + e(n.emDestaque.titulo) + '</h4>' + (n.emDestaque.meta ? '<p>' + e(n.emDestaque.meta) + '</p>' : '') + '</section>' : '') +
       (n.foco ? '<section class="fx-pv-card fx-pv-foco' + (n.foco.atrasado ? ' urg' : '') + '"' + L('Dela') + '><span class="k">' + e(n.foco.rotulo) + '</span><h4>' + e(n.foco.titulo) + '</h4>' + (n.foco.quando ? '<p>' + e(n.foco.quando) + '</p>' : '') + '<span class="fx-pv-btn">' + e(n.foco.botao) + '</span></section>' : '') +
       (n.seguintes.length ? '<section class="fx-pv-card"' + L('Persona') + '><span class="k">Em seguida</span>' + n.seguintes.map(linhaSeg).join('') + '</section>' : '') +
       linhasHome(n, L, e);
