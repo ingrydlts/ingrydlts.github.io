@@ -2083,23 +2083,23 @@ select.fx-hm-add:hover,select.fx-hm-add:focus-visible{border-color:var(--moss); 
 .fx-gd-colar button{margin-top:6px}
 
 /* Espaço: carrossel de perguntas da equipe, "Ordem e saída" e a lista de interações do chat */
-.fx-car{max-width:640px}
-.fx-car-top{display:flex; justify-content:space-between; margin-bottom:6px}
-.fx-car-palco{display:grid; grid-template-columns:40px minmax(0,1fr) 40px; gap:8px; align-items:center}
-.fx-car-card{min-width:0; min-height:96px; display:flex; flex-direction:column; justify-content:center; padding:6px 10px; border:1px solid var(--line-2); border-radius:16px; background:var(--surface-2)}
-.fx-seta{width:40px; height:40px; border-radius:50%; border:1px solid var(--line-2); background:var(--surface-2); color:var(--ink-2); font-size:18px; cursor:pointer}
-.fx-seta:disabled{opacity:.35; cursor:default}
-.fx-pts{display:flex; justify-content:center; gap:8px; margin-top:10px}
-.fx-pt{width:10px; height:10px; padding:0; border:0; border-radius:50%; background:var(--line-2); cursor:pointer}
-.fx-pt[aria-current="true"]{background:var(--moss); transform:scale(1.25)}
-.fx-rel{display:flex; justify-content:center; margin-top:12px}
-.fx-relogio{display:inline-flex; align-items:center; gap:8px; min-height:40px; padding:0 14px 0 10px; border:1px solid var(--line-2); border-radius:999px; background:var(--surface-2); color:var(--ink); font:inherit; font-size:13px; font-weight:600; cursor:pointer}
-.fx-relogio.off{color:var(--ink-2); cursor:default}
+.fxp{max-width:640px}
+.fxp-top{display:flex; justify-content:space-between; margin-bottom:6px}
+.fxp-palco{display:grid; grid-template-columns:40px minmax(0,1fr) 40px; gap:8px; align-items:center}
+.fxp-card{min-width:0; min-height:96px; display:flex; flex-direction:column; justify-content:center; padding:6px 10px; border:1px solid var(--line-2); border-radius:16px; background:var(--surface-2)}
+.fxp-seta{width:40px; height:40px; border-radius:50%; border:1px solid var(--line-2); background:var(--surface-2); color:var(--ink-2); font-size:18px; cursor:pointer}
+.fxp-seta:disabled{opacity:.35; cursor:default}
+.fxp-pts{display:flex; justify-content:center; gap:8px; margin-top:10px}
+.fxp-pt{width:10px; height:10px; padding:0; border:0; border-radius:50%; background:var(--line-2); cursor:pointer}
+.fxp-pt[aria-current="true"]{background:var(--moss); transform:scale(1.25)}
+.fxp-rel{display:flex; justify-content:center; margin-top:12px}
+.fxp-relogio{display:inline-flex; align-items:center; gap:8px; min-height:40px; padding:0 14px 0 10px; border:1px solid var(--line-2); border-radius:999px; background:var(--surface-2); color:var(--ink); font:inherit; font-size:13px; font-weight:600; cursor:pointer}
+.fxp-relogio.off{color:var(--ink-2); cursor:default}
 .fx-ordem{display:flex; flex-direction:column; gap:6px; max-width:640px}
 .fx-ordem-n{font-size:12px; font-weight:700; color:var(--ink-3)}
 .fx-ordem-t{min-width:0; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
 .fx-ordem-b small{color:var(--ink-2); white-space:nowrap}
-@media (max-width:560px){.fx-car-palco{grid-template-columns:34px minmax(0,1fr) 34px; gap:4px}.fx-seta{width:34px; height:34px}}
+@media (max-width:560px){.fxp-palco{grid-template-columns:34px minmax(0,1fr) 34px; gap:4px}.fxp-seta{width:34px; height:34px}}
 .fx-drop{border:1px solid var(--line-2); border-radius:14px; background:var(--surface-2); margin:0 0 12px}
 .fx-drop>summary{display:flex; align-items:center; justify-content:space-between; gap:10px; min-height:44px; padding:0 14px; cursor:pointer; list-style:none; font-size:13.5px; font-weight:700}
 .fx-drop>summary::-webkit-details-marker{display:none}
@@ -2161,9 +2161,9 @@ select.fx-hm-add:hover,select.fx-hm-add:focus-visible{border-color:var(--moss); 
 .fg-d>summary::after{content:'▾'; color:var(--ink-3)}
 .fg-d:not([open])>summary::after{transform:rotate(-90deg)}
 .fg-d>.dgrid{padding:0 14px 14px}
-.seg{display:flex; flex-wrap:wrap; gap:5px}
-.seg button{min-height:32px; padding:0 11px; border:1px solid var(--line-2); border-radius:999px; background:var(--surface); font:inherit; font-size:13px; color:var(--ink); cursor:pointer}
-.seg button[aria-pressed="true"]{background:var(--moss); border-color:var(--moss); color:#fff; font-weight:600}
+.dk-seg{display:flex; flex-wrap:wrap; gap:5px}
+.dk-seg button{min-height:32px; padding:0 11px; border:1px solid var(--line-2); border-radius:999px; background:var(--surface); font:inherit; font-size:13px; color:var(--ink); cursor:pointer}
+.dk-seg button[aria-pressed="true"]{background:var(--moss); border-color:var(--moss); color:#fff; font-weight:600}
 .fx-salvar{position:sticky; bottom:calc(8px + env(safe-area-inset-bottom,0px)); z-index:4; display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; margin-top:14px; padding:12px 16px; border:1px solid var(--moss); border-radius:16px; background:var(--surface-2); box-shadow:0 8px 24px rgb(0 0 0 / .14)}
 
 /* Reordenar perguntas (arrastar) e o item em destaque da home */
@@ -2182,3 +2182,72 @@ select.fx-hm-add:hover,select.fx-hm-add:focus-visible{border-color:var(--moss); 
 .fx-home-slot.on{border-color:var(--moss)}
 .fx-home-dest{margin-bottom:14px}
 .fx-pv-dest{border-color:var(--moss); background:var(--moss-soft)}
+
+/* Página inicial: cada item é um card com os botões à direita (como no desenho) */
+.fx-home-bloco{margin-top:18px}
+.fx-home-slot{display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px 12px; border:1px solid var(--line); border-radius:12px; background:var(--surface-2); margin-bottom:6px}
+.fx-home-slot.vazio{background:transparent; border-style:dashed}
+.fx-home-slot.on{border-color:var(--moss); background:var(--moss-soft)}
+.fx-home-t{min-width:0; flex:1 1 auto}
+.fx-home-t small{display:block; color:var(--ink-3); font-size:12px; margin-top:1px}
+.fx-home-ac{display:flex; gap:6px; flex:none; align-items:center}
+.fx-home-slot .btn{padding:5px 10px; font-size:12px}
+.fx-home-slot .link{white-space:nowrap}
+.fx-home-bloco .fx-h4{margin:0 0 8px}
+@media (max-width:560px){.fx-home-slot{flex-wrap:wrap}}
+
+/* Curadoria: cards com Aprovar, Editar e Recusar; carrossel de perguntas com card grande */
+.fxc-sec{margin:0 0 12px}
+.fxc-card{display:grid; grid-template-columns:minmax(0,1fr) auto; gap:8px 14px; align-items:center; padding:12px 14px; border:1px solid var(--line); border-radius:12px; background:var(--surface-2); margin-bottom:8px}
+.fxc-t b{display:block; font-weight:600; font-size:14px; line-height:1.4}
+.fxc-m{display:flex; gap:6px; flex-wrap:wrap; margin-top:5px}
+.fxc-chip{display:inline-block; padding:1px 9px; border-radius:999px; background:var(--brown-soft); color:var(--brown); font-size:11.5px; font-weight:700}
+.fxc-chip.est{background:var(--sunk); color:var(--ink-2); font-weight:600}
+.fxc-ac{display:flex; gap:6px; flex-wrap:wrap; justify-content:flex-end}
+.fxc-ac .btn{padding:5px 10px; font-size:12px}
+.fxc-leit{margin-top:6px; font-size:13px} .fxc-leit summary{cursor:pointer; color:var(--moss-ink); font-weight:600}
+.fxc-leit p{margin:8px 0 2px} .fxc-leit ul{margin:0 0 0 18px}
+@media (max-width:560px){.fxc-card{grid-template-columns:1fr}.fxc-ac{justify-content:flex-start}}
+.fxp-big{min-height:132px; padding:20px 22px; border:1px solid var(--line-2); border-radius:18px; background:var(--surface-2); display:flex; align-items:center; font-family:var(--display); font-size:20px; line-height:1.35; user-select:none}
+.fxp-big:focus-visible{outline:2px solid var(--moss); outline-offset:2px}
+.fxp-ac{display:flex; gap:8px; justify-content:center; flex-wrap:wrap; margin-top:12px}
+.fxp-ac .btn{padding:5px 12px; font-size:12.5px}
+.fxp-top{align-items:center}
+@media (max-width:560px){.fxp-big{font-size:18px; padding:16px}}
+
+.fxc-est{display:inline-flex; align-items:center; gap:6px; font-size:12px; color:var(--ink-2); margin-right:2px}
+.fxc-est i{width:9px; height:9px; border-radius:50%; background:var(--line-2); display:inline-block}
+.fxc-est.on i{background:var(--moss)}
+.fxc-ico{display:inline-flex; gap:2px; align-items:center}
+
+/* Dossiê: o formulário é a etapa 1 (sem moldura dupla), cartões do topo em 4 colunas e blocos de ajuda recolhidos */
+.panel.dossie.in{border:0; box-shadow:none; background:none; padding:0; margin:0}
+.panel.dossie.in .dhead h3{font-family:var(--display); font-size:18px}
+#dos-visao .dv-grid{grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px}
+@media (max-width:1000px){#dos-visao .dv-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:560px){#dos-visao .dv-grid{grid-template-columns:1fr}}
+.lg-painel .lg-det>div{padding-bottom:14px}
+#chat-bt-rot,#chat-bt-url,#chat-at-nome,#chat-at-url,#chat-txt{border:1px solid var(--line-2); border-radius:10px; background:var(--surface-2); color:var(--ink); font:inherit; font-size:14px; padding:9px 12px}
+#chat-bt-rot:focus,#chat-bt-url:focus,#chat-at-nome:focus,#chat-at-url:focus,#chat-txt:focus{outline:2px solid var(--moss); border-color:var(--moss)}
+
+/* Depois do 1:1: Resumo e Próximos passos lado a lado, abas por destino e barra fixa */
+.pc-leitura{display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; margin-top:16px}
+@media (max-width:760px){.pc-leitura{grid-template-columns:1fr}}
+.pc-card{padding:14px 16px; border:1px solid var(--line); border-radius:14px; background:var(--surface-2); min-width:0}
+.pc-card .pc-h{margin:0 0 8px; font-size:10.5px; letter-spacing:.08em; font-weight:700; color:var(--ink-2)}
+.pc-lac{display:flex; flex-wrap:wrap; gap:6px; align-items:center; margin:12px 0 0; font-size:13px; color:var(--ink-2)}
+.pc-lac-t{padding:3px 10px; border-radius:999px; background:var(--amber-soft,#F3E6C8); color:var(--amber-ink,#7A5A12); font-size:12px; font-weight:600}
+.mont-tabs{display:flex; flex-wrap:wrap; gap:6px; margin:12px 0}
+.mont-tab{min-height:34px; padding:0 12px; border:1px solid var(--line-2); border-radius:999px; background:var(--surface-2); font:inherit; font-size:13px; font-weight:600; color:var(--ink-2); cursor:pointer}
+.mont-tab small{margin-left:4px; font-weight:500; opacity:.75}
+.mont-tab[aria-pressed="true"]{background:var(--ink); border-color:var(--ink); color:var(--surface)}
+.montagem .mont-item{border-radius:12px; padding:10px 12px}
+.mont-rodape{position:sticky; bottom:calc(8px + env(safe-area-inset-bottom,0px)); z-index:4; display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; margin-top:16px; padding:12px 16px; border:1px solid var(--moss); border-radius:16px; background:var(--surface-2); box-shadow:0 8px 24px rgb(0 0 0 / .14)}
+.mont-info{font-size:13px; color:var(--ink-2)} .mont-info b{color:var(--ink)}
+.mont-ac{display:flex; gap:8px; flex-wrap:wrap}
+
+.dv-div{list-style:none; padding:0; margin:8px 0; display:flex; flex-direction:column; gap:8px}
+.dv-div li{padding:10px 12px; border:1px solid var(--amber-ink,#7A5A12); border-radius:12px; background:var(--amber-soft,#F3E6C8); color:var(--ink)}
+.dv-div-ac{display:flex; gap:8px; flex-wrap:wrap; margin-top:8px}
+.dv-div-ac .btn{padding:5px 10px; font-size:12px}
+.dbloco.poscall:not(:has(> :not(h4))){display:none}

@@ -223,13 +223,16 @@ export function htmlChecklistSessao(d, h) {
       titulo: e(i.titulo_custom || i.label), nota: i.nota_custom ? e(i.nota_custom) : '', chips, alerta: ((alertas.porRef['chk:' + i.step_key]) || [])[0] || '', ed: 'ed-chk', id: i.step_key,
       home: d.homeRefs && !arq ? botaoHome(d.homeRefs.indexOf(i.step_key) >= 0, i.step_key, e) : '' });
   };
-  const lista = d.todos ? maisUrgentes(itens, itens.length, hoje) : maisUrgentes(itens, 6, hoje), esc6 = itens.length - 6;
-  const grupoG = origem === 'dela' ? '' : '<div class="fx-g"><span>Gerais da démarche · ' + itens.length + '</span><span>vale para toda a persona</span></div>' +
-    (itens.length ? '<div class="fx-ck-lista">' + lista.map(linhaGeral).join('') + '</div>' +
-      (itens.length > 6 ? '<button type="button" class="link" data-fx="ckTodos" aria-expanded="' + !!d.todos + '">' + (d.todos ? 'Mostrar só os 6 mais urgentes' : 'Mostrar os ' + esc6 + (esc6 === 1 ? ' restante' : ' restantes')) + '</button>' : '')
+  // Os passos "Documento: …" são os documentos a preparar: ficam numa seção própria, separados dos passos.
+  const ehDoc = (i) => /^Documento:/i.test(String(i.titulo_custom || i.label || '')), docs = itens.filter(ehDoc), passosSo = itens.filter((i) => !ehDoc(i));
+  const lista = d.todos ? maisUrgentes(passosSo, passosSo.length, hoje) : maisUrgentes(passosSo, 6, hoje), esc6 = passosSo.length - 6;
+  const grupoDocs = origem === 'dela' || !docs.length ? '' : '<div class="fx-g"><span>Documentos a preparar · ' + docs.length + '</span><span>' + docs.filter((i) => i.status === 'concluido').length + ' de ' + docs.length + ' prontos</span></div><div class="fx-ck-lista">' + maisUrgentes(docs, docs.length, hoje).map(linhaGeral).join('') + '</div>';
+  const grupoG = origem === 'dela' ? '' : '<div class="fx-g"><span>Gerais da démarche · ' + passosSo.length + '</span><span>vale para toda a persona</span></div>' +
+    (passosSo.length ? '<div class="fx-ck-lista">' + lista.map(linhaGeral).join('') + '</div>' +
+      (passosSo.length > 6 ? '<button type="button" class="link" data-fx="ckTodos" aria-expanded="' + !!d.todos + '">' + (d.todos ? 'Mostrar só os 6 mais urgentes' : 'Mostrar os ' + esc6 + (esc6 === 1 ? ' restante' : ' restantes')) + '</button>' : '')
       : '<p class="sub" style="margin:0 0 8px">O checklist dela ainda está vazio.</p>');
   const grupoD = origem === 'gerais' || !d.equipeHtml ? '' : '<div class="fx-g"><span>Só dela · ' + (d.equipeN || 0) + '</span><span>combinado com ela</span></div><div class="fx-ck-lista">' + d.equipeHtml + '</div>';
-  return velho + topo + pilulas + painel + grupoG + grupoD +
+  return velho + topo + pilulas + painel + grupoG + grupoDocs + grupoD +
     '<div class="fx-mais"><button type="button" class="link" data-fx="ckMais" aria-expanded="' + !!d.mais + '">' + (d.mais ? 'Ver menos detalhes' : 'Ver detalhes completos do checklist') + '</button>' + (d.mais ? '<div class="fx-mais-corpo">' + (d.extraMais || '') + '</div>' : '') + '</div>';
 }
 

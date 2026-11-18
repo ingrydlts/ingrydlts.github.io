@@ -2,15 +2,15 @@
 // Nada de service_role aqui. O banco é db/crm-fase2.sql; o desenho é o artefato "CRM Por Dentro".
 // Tudo que vem do banco é texto de terceiros (nome, e-mail, pergunta): passa sempre por esc().
 import { supabase } from '/assets/js/supabase-client.js';
-import * as TX from './taxonomia.js?v=2026-11-18.06';   // páginas, famílias e agrupamento dos modelos
-import * as ES from './estudio.js?v=2026-11-18.06';   // os blocos do estúdio de e-mails (entregas 2 e 3)
-import * as EE from './editor-email.js?v=2026-11-18.06';
-import * as EQ from './editor-quem.js?v=2026-11-18.06';
-import * as JR from './jornada.js?v=2026-11-18.06';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
-import * as FX from './ficha.js?v=2026-11-18.06';   // ficha v2: lógica pura (fila, démarches, funil, ações)
-import * as FH from './ficha-html.js?v=2026-11-18.06';   // ficha v2: HTML puro
-import * as PN from './panorama.js?v=2026-11-18.06';
-import * as MT from './montagem.js?v=2026-11-18.06';   // Montagem do espaço a partir do transcript (lógica e HTML puros)   // Panorama dela e O que ela trouxe (lógica e HTML puros)
+import * as TX from './taxonomia.js?v=2026-11-18.15';   // páginas, famílias e agrupamento dos modelos
+import * as ES from './estudio.js?v=2026-11-18.15';   // os blocos do estúdio de e-mails (entregas 2 e 3)
+import * as EE from './editor-email.js?v=2026-11-18.15';
+import * as EQ from './editor-quem.js?v=2026-11-18.15';
+import * as JR from './jornada.js?v=2026-11-18.15';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
+import * as FX from './ficha.js?v=2026-11-18.15';   // ficha v2: lógica pura (fila, démarches, funil, ações)
+import * as FH from './ficha-html.js?v=2026-11-18.15';   // ficha v2: HTML puro
+import * as PN from './panorama.js?v=2026-11-18.15';
+import * as MT from './montagem.js?v=2026-11-18.15';   // Montagem do espaço a partir do transcript (lógica e HTML puros)   // Panorama dela e O que ela trouxe (lógica e HTML puros)
 
 var PERSONAS = {
   au_pair_estudante: 'Au pair → estudante', campus_france: 'Campus France', alternancia_emprego: 'Alternância / emprego',
@@ -2455,6 +2455,11 @@ async function casoAcao(acao, id, t) {
     r = await supabase.from('caso_acoes').update(upd).eq('id', nid);
     if (r.error && /editado_em/.test(String(r.error.message || ''))) { delete upd.editado_em; r = await supabase.from('caso_acoes').update(upd).eq('id', nid); }   // sem a coluna nova (SQL ainda não rodado)
     k.ed = null; }
+  else if (acao === 'item-aprova') {   // Curadoria: aprovar = revisar e publicar, num clique só (o banco confere consentimento)
+    var itA = (k.itens || []).filter(function (x) { return x.id === nid; })[0];
+    r = itA && itA.estado === 'proposto' ? await supabase.from('board_itens').update({ estado: 'revisado' }).eq('id', nid) : { error: null };
+    if (!r.error) r = await supabase.rpc('crm_board_publicar', { p_id: nid });
+  }
   else if (acao === 'item-rev') r = await supabase.from('board_itens').update({ estado: 'revisado' }).eq('id', nid);
   else if (acao === 'item-pub') r = await supabase.rpc('crm_board_publicar', { p_id: nid });
   else if (acao === 'item-ret') r = await supabase.rpc('crm_board_retirar', { p_id: nid });
@@ -2547,7 +2552,7 @@ async function casoAcao(acao, id, t) {
   else { if (t) t.disabled = false; return; }
   if (r && r.error) { if (t) t.disabled = false; return casoFalha('salvar', r.error); }
   await casoRecarrega();
-  toast(acao === 'item-del' ? 'Excluído.' : acao === 'aco-recusar' ? 'Recusado: o passo sai da fila.' : acao === 'item-pub' || acao === 'aco-pub' ? 'Publicado: ela já pode ver' : acao === 'ag-dias' || acao === 'ag-data' ? 'Aviso agendado' : 'Salvo');
+  toast(acao === 'item-del' ? 'Excluído.' : acao === 'aco-recusar' ? 'Recusado: o passo sai da fila.' : acao === 'item-pub' || acao === 'item-aprova' || acao === 'aco-pub' ? 'Publicado: ela já pode ver' : acao === 'ag-dias' || acao === 'ag-data' ? 'Aviso agendado' : 'Salvo');
 }
 function platAbasHtml() {
   var nova = chatNaoLidas(state.chat);
@@ -2763,7 +2768,7 @@ function dosCampoHtml(f, c, d, rasc, modo) {
   var v = dosValor(c, d, rasc, f.k), id = 'dk-' + f.k, a = ' id="' + id + '" data-dk="' + esc(f.k) + '" data-cid="' + esc(c.id) + '"', ctl;
   var opcoes = f.t === 'sn' ? SN : f.o;
   if (modo === 'fixo' && (f.t === 'op' || f.t === 'sn') && opcoes.length <= 6) {   // poucas opções: um toque, em vez de abrir a lista
-    ctl = '<div class="seg" role="group" aria-label="' + esc(f.l) + '">' + opcoes.map(function (o) { return '<button type="button" data-fx="dosChip" data-k="' + esc(f.k) + '" data-v="' + esc(o[0]) + '" aria-pressed="' + (o[0] === v) + '">' + esc(o[1]) + '</button>'; }).join('') + '</div>';
+    ctl = '<div class="dk-seg" role="group" aria-label="' + esc(f.l) + '">' + opcoes.map(function (o) { return '<button type="button" data-fx="dosChip" data-k="' + esc(f.k) + '" data-v="' + esc(o[0]) + '" aria-pressed="' + (o[0] === v) + '">' + esc(o[1]) + '</button>'; }).join('') + '</div>';
   } else if (f.t === 'op' || f.t === 'sn') {
     ctl = '<select' + a + '><option value="">— sem resposta</option>' + (f.t === 'sn' ? SN : f.o).map(function (o) { return '<option value="' + esc(o[0]) + '"' + (o[0] === v ? ' selected' : '') + '>' + esc(o[1]) + '</option>'; }).join('') + '</select>';
   } else if (f.t === 'lg') {
@@ -3023,10 +3028,10 @@ function dossieHtml(c, d, err, rasc, aberto, chk, fixo) {
     }).join('') + '<div class="actions" style="margin-top:6px"><button class="btn primary" type="button" data-dossalvar="' + esc(c.id) + '">Salvar dossiê</button>' +
       (sujo ? '<span class="sub" style="align-self:center">Há alterações ainda não salvas.</span>' : '') + '</div>' + (fixo ? '' : '<div id="poscall-box">' + poscallHtml(c) + '</div>') + '<div id="chk-box">' + checklistHtml(chk, Date.now()) + '</div></div>';
   }
-  return '<div class="panel dossie"><div class="dhead"><h3>Dossiê</h3><span class="sub">' + pr.n + ' de ' + pr.tot + ' respondidas' + (pr.falta ? ' · faltam ' + pr.falta : ' · completo') + '</span>' +
+  return '<div class="panel dossie' + (fixo ? ' in' : '') + '"><div class="dhead"><h3>Dossiê</h3><span class="sub">' + pr.n + ' de ' + pr.tot + ' respondidas' + (pr.falta ? ' · faltam ' + pr.falta : ' · completo') + '</span>' +
     (fixo ? '' : '<button class="btn" type="button" data-dostoggle="1" aria-expanded="' + !!aberto + '" style="margin-left:auto">' + (aberto ? 'Fechar dossiê' : 'Abrir dossiê completo') + '</button>') + '</div>' +
     '<div class="dprog" role="progressbar" aria-valuenow="' + pct + '" aria-valuemin="0" aria-valuemax="100"><span style="width:' + pct + '%"></span></div>' +
-    '<div class="dchips">' + dosChipChk(chk) + dosChipSinais(d) + dosChipIns(state.ins) + dosChipChat(state.chat) + (dosChips(c, d, rasc) || '<span class="sub">' + (fixo ? 'Nada preenchido ainda. Preencha durante a ligação; o que ela responder no funil e no app entra aqui sozinho.' : 'Nada preenchido ainda. Abra o dossiê para preencher durante a ligação.') + '</span>') + '</div>' + onbFaltaHtml(c, d, rasc) + corpo + '</div>';
+    (fixo ? '' : '<div class="dchips">' + dosChipChk(chk) + dosChipSinais(d) + dosChipIns(state.ins) + dosChipChat(state.chat) + (dosChips(c, d, rasc) || '<span class="sub">Nada preenchido ainda. Abra o dossiê para preencher durante a ligação.</span>') + '</div>' + onbFaltaHtml(c, d, rasc)) + corpo + '</div>';
 }
 function pintaDossie(c) {
   var box = $('dossie-box'); if (!box || !state.dos || state.dos.cid !== c.id) return;
@@ -3246,7 +3251,9 @@ function pcPassosAmigavel(txt) {
 function pcQuadrosHtml(c) {
   var pc = pcEstado(c.id), p = pc.estado === 'proposta' && pc.prop && pc.prop.proposta && pc.prop.proposta.origem !== 'notion' ? pc.prop.proposta : null;
   var S = state.dos && state.dos.cid === c.id ? state.dos : null, dv = function (k) { return S ? String(dosValor(c, S.d, S.rasc || {}, k) || '') : ''; };
-  var h = '<div class="pc-leitura"><h5 class="pc-h">Resumo</h5>' + pcResumoAmigavel(dv('ligacao_resumo')) + '<h5 class="pc-h">Encaminhamentos</h5>' + pcPassosAmigavel(dv('proximos_passos')) + '</div>';
+  var Sf = S ? dosFaltaPorCanal(c, S) : null, lacs = Sf ? Sf.conversa.concat(Sf.doc).slice(0, 5) : [], nLac = Sf ? Sf.conversa.length + Sf.doc.length : 0;
+  var h = '<div class="pc-leitura"><div class="pc-card"><h5 class="pc-h">Resumo</h5>' + pcResumoAmigavel(dv('ligacao_resumo')) + '</div><div class="pc-card"><h5 class="pc-h">Próximos passos</h5>' + pcPassosAmigavel(dv('proximos_passos')) + '</div></div>' +
+    (lacs.length ? '<div class="pc-lac"><span>Ainda não sabemos:</span>' + lacs.map(function (f) { return '<span class="pc-lac-t">' + esc(f.l) + '</span>'; }).join('') + (nLac > lacs.length ? '<span class="sub">e mais ' + (nLac - lacs.length) + '</span>' : '') + '</div>' : '');
   var aten = p ? (p.pontos_de_atencao || []) : [], pe = p ? (p.perguntas_para_ela || []) : [], conf = p ? (p.a_conferir || []) : [];
   var corpo = '';
   if (aten.length) corpo += '<p class="sub" style="margin:0 0 4px"><b>Pontos de atenção</b></p><ul class="dv-ul">' + aten.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul>';
@@ -3880,7 +3887,7 @@ function fxHeaderHtml(c, d) {
 // Catálogo de démarches (cópia do app, processos.json): carregado uma vez; sem ele, tudo cai na démarche padrão.
 var FX_PROC = null, FX_QUANDO = null;   // FX_QUANDO: o "quando" de cada passo do template (guias-quando.json), para o prazo curto do Início
 async function fxCarregaProcessos() {
-  try { var r = await fetch('processos.json?v=2026-11-18.06'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
+  try { var r = await fetch('processos.json?v=2026-11-18.15'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
 }
 // A sessão Checklist: pílulas por démarche, os 4 mais urgentes, pasta do Drive privada e "Ver mais desta sessão".
 // Os passos que a montagem do espaço propôs para ela, com démarche, subitens e origem: o mesmo detalhe do Checklist. Existem antes de ela ter conta.
@@ -3979,25 +3986,46 @@ function fxCuradoriaPassos(c) {
     temOrdem: visiveis.some(function (i) { return mapa[i.step_key] && mapa[i.step_key].ordem != null; }),
     demDe: function (i) { return FX.rotuloDemarche(FX_PROC, FX.processoDoItem(FX_PROC, i.step_key, i.category), personaKey(c)); } }, H);
 }
-// Chegou da montagem: tudo o que a leitura da conversa propôs e espera a sua decisão, por destino. Cada card tem as ações de sempre (publicar, editar, recusar).
+// Chegou da montagem: tudo o que a leitura da conversa propôs e espera a sua decisão, por destino. Cada item é um card com Aprovar, Editar e Recusar.
+var CUR_TIPO = { documento: 'Documento', modelo: 'Mensagem pronta', bilan: 'Bilan' };
+function fxCurChip(t, cls) { return '<span class="fxc-chip' + (cls ? ' ' + cls : '') + '">' + esc(t) + '</span>'; }
+function fxCurBtn(acao, id, rot, pri) { return '<button type="button" class="btn' + (pri ? ' primary' : '') + '" data-caso="' + acao + '" data-id="' + esc(String(id)) + '">' + esc(rot) + '</button>'; }
+function fxCurCard(o) {
+  return '<div class="fxc-card"><div class="fxc-t"' + (o.dbl ? ' data-dbl="' + o.dbl[0] + '" data-id="' + esc(String(o.dbl[1])) + '" tabindex="0" title="Dois cliques (ou Enter) para editar"' : '') + '><b>' + esc(o.titulo) + '</b>' + (o.chips ? '<div class="fxc-m">' + o.chips + '</div>' : '') + (o.extra || '') + '</div><div class="fxc-ac">' + o.acoes + '</div></div>';
+}
+function fxCurItens(k, lista) {
+  return lista.map(function (it) {
+    if (k.ed && k.ed.t === 'item' && k.ed.id === it.id) return casoEditor('item', it.id, casoItemCampos(it));
+    var meta = casoItemMeta(it), secs = it.tipo === 'bilan' ? ((it.dados || {}).secoes || []) : [];
+    var leit = secs.length ? '<details class="fxc-leit"><summary>Ler o bilan</summary>' + secs.map(function (sec) { return '<p><b>' + esc(sec.titulo) + '</b></p><ul>' + (sec.itens || []).map(function (x) { return '<li>' + esc(x.texto) + (x.estado === 'em_conferencia' ? ' <span class="sub">(a confirmar)</span>' : '') + '</li>'; }).join('') + '</ul>'; }).join('') + '</details>' : '';
+    var ac = k.confirmaDel === it.id ? fxCurBtn('item-del', it.id, 'Recusar e excluir', 1) + fxCurBtn('cancelar', it.id, 'Não') : fxCurBtn('item-aprova', it.id, 'Aprovar', 1) + fxCurBtn('ed-item', it.id, 'Editar') + fxCurBtn('item-del-pede', it.id, 'Recusar');
+    return fxCurCard({ titulo: it.titulo, chips: fxCurChip(CUR_TIPO[it.tipo] || it.tipo) + (meta ? fxCurChip(meta, 'est') : '') + fxCurChip(it.estado === 'revisado' ? 'Revisado' : 'Proposto', 'est'), extra: leit, acoes: ac, dbl: ['ed-item', it.id] });
+  }).join('');
+}
+function fxCurAvisos(k, lista) {
+  return lista.map(function (a) {
+    if ((k.ed && k.ed.t === 'av' && k.ed.id === a.id) || k.agenda === a.id) return casoAvisosHtml({ avs: [a], ed: k.ed, agenda: k.agenda });
+    var sp = a.tipo === 'pergunta' ? casoSeparaPergunta(a.titulo) : { p: a.titulo };
+    return fxCurCard({ titulo: sp.p, chips: fxCurChip(CASO_TIPO_AVISO[a.tipo] || a.tipo) + fxCurChip(casoQuando(a), 'est'), acoes: fxCurBtn('ag-abrir', a.id, 'Aprovar e agendar', 1) + (a.tipo === 'pergunta' ? fxCurBtn('ed-av', a.id, 'Editar') : '') + fxCurBtn('av-cancel', a.id, 'Recusar'), dbl: a.tipo === 'pergunta' ? ['ed-av', a.id] : null });
+  }).join('');
+}
 function fxCuradoriaFila(c) {
   var k = fxCasoPassos(c); if (!k) return '<div class="skel" aria-busy="true" style="height:64px"></div>';
   var m = state.mont && state.mont.cid === c.id ? state.mont : null, nao = function (it) { return it.estado !== 'publicado'; };
   var passos = MT.passosPropostosHtml(k.aco, k.listas, fxHooksPassos(c, k), 'fila');
-  var docs = fxKDe(k, function (it) { return it.tipo === 'documento' && (it.dados || {}).direcao !== 'recebe' && nao(it); });
+  var docs = (k.itens || []).filter(function (it) { return it.tipo === 'documento' && (it.dados || {}).direcao !== 'recebe' && nao(it); });
   var perg = (k.avs || []).filter(function (a) { return a.estado === 'rascunho'; });
-  var enc = fxKDe(k, function (it) { return (it.tipo === 'bilan' || (it.tipo === 'documento' && (it.dados || {}).direcao === 'recebe')) && nao(it); });
-  var msgs = fxKDe(k, function (it) { return it.tipo === 'modelo' && nao(it); });
+  var enc = (k.itens || []).filter(function (it) { return (it.tipo === 'bilan' || (it.tipo === 'documento' && (it.dados || {}).direcao === 'recebe')) && nao(it); });
+  var msgs = (k.itens || []).filter(function (it) { return it.tipo === 'modelo' && nao(it); });
   var conferir = (m && m.pub && m.pub.a_conferir_itens) || [];
-  var sec = function (t, n, corpo) { return n ? '<section class="fx-cf-sec"><h4 class="fx-h4">' + esc(t) + ' <span class="sub">' + n + '</span></h4>' + corpo + '</section>' : ''; };
-  var nPassos = (k.aco || []).filter(function (a) { return a.estado === 'rascunho' || a.estado === 'a_conferir'; }).length, total = nPassos + docs.itens.length + perg.length + enc.itens.length + msgs.itens.length;
+  var sec = function (t, n, corpo) { return n ? '<details class="fx-drop fxc-sec" open><summary><span>' + esc(t) + '<small>' + n + (n === 1 ? ' pendente' : ' pendentes') + '</small></span></summary><div class="fx-drop-c">' + corpo + '</div></details>' : ''; };
+  var nPassos = (k.aco || []).filter(function (a) { return a.estado === 'rascunho' || a.estado === 'a_conferir'; }).length, total = nPassos + docs.length + perg.length + enc.length + msgs.length;
   if (!total) return '<div class="fx-cf-vazio"><b>Nada esperando a sua decisão.</b> Leia a conversa no Dossiê: a montagem proposta chega aqui com <i>Levar para a Curadoria</i>. <button type="button" class="link" data-fx="tab" data-v="dossie">Ir para o Dossiê</button></div>';
   var confiro = m && m.confiro !== undefined ? !!m.confiro : true;
-  var topo = '<div class="fx-cf-topo"><p class="sub" style="margin:0"><b>' + total + (total === 1 ? ' item espera' : ' itens esperam') + '</b> a sua decisão. Nada chega a ela antes de você publicar.</p>' +
+  var topo = '<div class="fx-cf-topo"><p class="sub" style="margin:0"><b>' + total + (total === 1 ? ' item espera' : ' itens esperam') + '</b> a sua decisão. Nada chega a ela antes de você aprovar.</p>' +
     (m && m.prop ? '<span class="fx-cf-ac">' + (conferir.length ? '<label class="pccheck"><input type="checkbox" data-montconfiro' + (confiro ? ' checked' : '') + '> <span>Conferi os ' + conferir.length + ' sem fonte</span></label>' : '') + '<button type="button" class="btn primary" data-montaprovar="' + esc(c.id) + '">Aprovar tudo</button></span>' : '') + '</div>';
-  return '<div class="fx-cf">' + topo + fxSemConsent(k) + sec('Checklist', nPassos, passos) + sec('Documentos a preparar', docs.itens.length, casoItensHtml(docs, null, '', 'nenhuma')) +
-    sec('Perguntas da equipe', perg.length, casoAvisosHtml({ avs: perg, ed: k.ed, agenda: k.agenda })) + sec('Encaminhamentos da Ingryd', enc.itens.length, casoItensHtml(enc, null, '', 'nenhuma')) +
-    sec('Mensagens prontas', msgs.itens.length, casoItensHtml(msgs, null, '', 'nenhuma')) + '</div>';
+  return '<div class="fx-cf">' + topo + fxSemConsent(k) + sec('Checklist', nPassos, passos) + sec('Documentos a preparar', docs.length, fxCurItens(k, docs)) +
+    sec('Perguntas da equipe', perg.length, fxCurAvisos(k, perg)) + sec('Encaminhamentos da Ingryd', enc.length, fxCurItens(k, enc)) + sec('Mensagens prontas', msgs.length, fxCurItens(k, msgs)) + '</div>';
 }
 function fxCuradoriaCorpo(c) {
   return fxCuradoriaFila(c) + '<h4 class="fx-h4" style="margin:22px 0 8px">Passos dela: organizar e validar</h4>' + fxCuradoriaPassos(c);
@@ -4089,7 +4117,7 @@ function fxHomeDestaqueBloco(d, k) {
   if (k.homeSemDestaque) return '<p class="sub" style="margin:0 0 10px">Para destacar um item falta rodar <b>db/crm-caso-home-destaque.sql</b> no SQL Editor do Supabase (primeiro no teste, depois na produção).</p>';
   var x = (d.checklist.itens || []).filter(function (i) { return i.destaque; })[0];
   return '<section class="fx-home-bloco fx-home-dest" aria-label="Em destaque no app"><h4 class="fx-h4">Em destaque <span class="sub">' + (x ? 1 : 0) + ' de 1</span></h4>' +
-    (x ? '<div class="fx-home-slot on"><span class="fx-home-t"><b>' + esc(x.titulo) + '</b> <small>Aparece grande no topo do Início dela</small></span><button type="button" class="btn" data-fx="homeDestaque" data-id="' + esc(String(x.ref)) + '">Tirar destaque</button></div>'
+    (x ? '<div class="fx-home-slot on"><span class="fx-home-t"><b>' + esc(x.titulo) + '</b> <small>Aparece grande no topo do Início dela</small></span><span class="fx-home-ac"><button type="button" class="btn" data-fx="homeDestaque" data-id="' + esc(String(x.ref)) + '">Tirar destaque</button></span></div>'
       : '<div class="fx-home-slot vazio"><span class="sub">Nenhum item em destaque. Use ★ Destacar num dos passos do Checklist abaixo.</span></div>') + '</section>';
 }
 async function fxHomeDestacar(ref) {
@@ -4107,16 +4135,16 @@ function fxHomeCorpo(c) {
   var chk = state.dos && state.dos.cid === c.id ? state.dos.chk : null;
   var itens = chk && !chk.err && !chk.semConta ? (chk.itens || []).filter(function (i) { return i.status !== 'arquivado'; }) : [];
   var d = FX.destaquesDaHome({ home: k.home, itens: itens, board: k.itens });
-  var onde = { checklist: ['Checklist', 'passos do checklist, que entram no “Em seguida”'], so_seu: ['Só seu', 'o bilan e os encaminhamentos da Ingryd'], guias: ['Guias', 'documentos e mensagens prontas'] };
+  var onde = { checklist: ['pílula Checklist', 'o “+” num passo, que entra no “Em seguida”', 'checklist'], so_seu: ['Espaço › Bilans ou Encaminhamentos', 'o “+” num bilan ou encaminhamento da Ingryd', 'espaco'], guias: ['pílula Guias', 'o “+” num documento ou mensagem pronta', 'guias'] };
   var bloco = function (cat) {
     var b = d[cat], linhas = b.itens.map(function (x) {
       return '<div class="fx-home-slot' + (x.destaque ? ' on' : '') + '"><span class="fx-home-t"><b>' + esc(x.titulo) + '</b>' + (x.meta ? ' <small>' + esc(x.meta) + '</small>' : '') +
-        (x.falta ? ' ' + casoPil('o item não existe mais', 'u-media') : !x.publicado ? ' ' + casoPil('não publicado: ela só vê depois de publicar', 'u-media') : '') + '</span>' + (cat === 'checklist' && !x.falta ? '<button type="button" class="btn fx-star' + (x.destaque ? ' on' : '') + '" data-fx="homeDestaque" data-id="' + esc(String(x.ref)) + '" aria-pressed="' + !!x.destaque + '" title="O item principal que aparece grande no topo do Início dela">★ ' + (x.destaque ? 'Em destaque' : 'Destacar') + '</button> ' : '') + casoBtn('home-del', cat + ':' + x.ref, 'Tirar') + '</div>';
+        (x.falta ? ' ' + casoPil('o item não existe mais', 'u-media') : !x.publicado ? ' ' + casoPil('não publicado: ela só vê depois de publicar', 'u-media') : '') + '</span><span class="fx-home-ac">' + (cat === 'checklist' && !x.falta ? '<button type="button" class="btn fx-star' + (x.destaque ? ' on' : '') + '" data-fx="homeDestaque" data-id="' + esc(String(x.ref)) + '" aria-pressed="' + !!x.destaque + '" title="O item principal que aparece grande no topo do Início dela">★ ' + (x.destaque ? 'Em destaque' : 'Destacar') + '</button> ' : '') + casoBtn('home-del', cat + ':' + x.ref, 'Tirar') + '</span></div>';
     });
-    for (var i = b.itens.length; i < b.max; i++) linhas.push('<div class="fx-home-slot vazio"><span class="sub">Espaço livre. Em <b>Espaço › ' + esc(onde[cat][0]) + '</b>, use o “+” num item (' + esc(onde[cat][1]) + ').</span><button type="button" class="link" data-fx="ir" data-id="espaco">Ir para a sessão</button></div>');
+    for (var i = b.itens.length; i < b.max; i++) linhas.push('<div class="fx-home-slot vazio"><span class="sub">Espaço livre. Em <b>' + esc(onde[cat][0]) + '</b>, use ' + esc(onde[cat][1]) + '.</span><button type="button" class="link" data-fx="ir" data-id="' + onde[cat][2] + '">Ir para a sessão</button></div>');
     return '<section class="fx-home-bloco" aria-label="' + esc(FX.HOME_ROTULOS[cat]) + ' na home"><h4 class="fx-h4">' + esc(FX.HOME_ROTULOS[cat]) + ' <span class="sub">' + b.n + ' de ' + b.max + (b.n >= b.max ? ' · cheio' : '') + '</span></h4>' + linhas.join('') + '</section>';
   };
-  return '<p class="sub" style="margin:0 0 10px">Ela vê isto no Início do app: os passos escolhidos entram primeiro no “Em seguida”, e abaixo vêm “Só seu” e “Guias” (o que não está publicado fica fora até você publicar). Para trocar um item: tire aqui e escolha outro em Espaço.</p>' +
+  return '<p class="sub" style="margin:0 0 14px;max-width:66ch">Ela vê isto no Início do app. O item em destaque aparece grande no topo; os passos do checklist entram primeiro no “Em seguida”; abaixo vêm “Só seu” e “Guias” (o que não está publicado fica fora até você publicar). Para trocar um item: tire aqui e escolha outro na pílula indicada.</p>' +
     fxHomeDestaqueBloco(d, k) + '<div class="fx-home-grade">' + bloco('checklist') + bloco('so_seu') + bloco('guias') + '</div>';
 }
 function fxOrdem() {
@@ -4163,6 +4191,16 @@ document.addEventListener('dragstart', function (e) { var l = e.target.closest &
 document.addEventListener('dragover', function (e) { var l = e.target.closest && e.target.closest('.fx-ordem-l.mexe'); if (!l || !perArrasta) return; e.preventDefault(); document.querySelectorAll('.fx-ordem-l.sobre').forEach(function (x) { x.classList.remove('sobre'); }); l.classList.add('sobre'); });
 document.addEventListener('drop', function (e) { var l = e.target.closest && e.target.closest('.fx-ordem-l.mexe'); if (!l || !perArrasta) return; e.preventDefault(); var de = perArrasta; perArrasta = null; fxPerSoltar(de, l.dataset.aid); });
 document.addEventListener('dragend', function () { perArrasta = null; document.querySelectorAll('.fx-ordem-l.arrasta, .fx-ordem-l.sobre').forEach(function (x) { x.classList.remove('arrasta', 'sobre'); }); });
+function fxPerCard(k, a, editavel) {
+  if ((k.ed && k.ed.t === 'av' && k.ed.id === a.id) || k.agenda === a.id) return '<div class="fxp-card">' + casoAvisosHtml({ avs: [a], ed: k.ed, agenda: k.agenda }) + '</div>';
+  var sp = a.tipo === 'pergunta' ? casoSeparaPergunta(a.titulo) : { p: a.titulo }, edita = a.tipo === 'pergunta' && editavel;
+  return '<article class="fxp-big"' + (edita ? ' data-dbl="ed-av" data-id="' + esc(String(a.id)) + '" tabindex="0" title="Dois cliques (ou Enter) para editar"' : '') + '>' + esc(sp.p) + '</article>';
+}
+function fxPerAcoes(k, a, editavel) {
+  if (!editavel || (k.ed && k.ed.t === 'av' && k.ed.id === a.id) || k.agenda === a.id) return '';
+  var ritmo = a.estado === 'agendado' && !a.liberado_em ? casoMenu(casoRitmoBtns(Object.assign({ contato_id: k.cid }, a), filaDe(k.avs)[0] === a, '')) : '';
+  return '<div class="fxp-ac">' + (a.estado === 'rascunho' ? fxCurBtn('ag-abrir', a.id, 'Aprovar e agendar', 1) : '') + (a.tipo === 'pergunta' ? fxCurBtn('ed-av', a.id, 'Editar') : '') + fxCurBtn('av-cancel', a.id, 'Cancelar') + ritmo + '</div>';
+}
 function fxPerguntasCarrossel(c) {
   var g = fxCasoGuarda(c); if (!g.k) return g.html;
   var k = g.k, f = state.fx, avs = fxPerLista(k);
@@ -4171,8 +4209,8 @@ function fxPerguntasCarrossel(c) {
   if (fi >= 0) f.carPerg = fi;
   var i = Math.min(Math.max(0, f.carPerg || 0), avs.length - 1), a = avs[i], n = avs.length;
   var editavel = a.estado === 'rascunho' || a.estado === 'agendado';
-  var pontos = avs.map(function (x, j) { return '<button type="button" class="fx-pt" data-fx="perIr" data-v="' + j + '" aria-label="Card ' + (j + 1) + ': ' + esc(x.titulo) + '"' + (j === i ? ' aria-current="true"' : '') + '></button>'; }).join('');
-  var relogio = editavel ? '<button type="button" class="fx-relogio" data-caso="ag-abrir" data-id="' + esc(String(a.id)) + '" aria-label="Definir quando este card sai">' + casoSvg('clock', 18) + '<span>' + esc(casoQuando(a)) + '</span></button>' : '<span class="fx-relogio off">' + casoSvg('clock', 18) + '<span>' + esc(casoQuando(a) || 'já saiu') + '</span></span>';
+  var pontos = avs.map(function (x, j) { return '<button type="button" class="fxp-pt" data-fx="perIr" data-v="' + j + '" aria-label="Card ' + (j + 1) + ': ' + esc(x.titulo) + '"' + (j === i ? ' aria-current="true"' : '') + '></button>'; }).join('');
+  var relogio = editavel ? '<button type="button" class="fxp-relogio" data-caso="ag-abrir" data-id="' + esc(String(a.id)) + '" aria-label="Definir quando este card sai">' + casoSvg('clock', 18) + '<span>' + esc(casoQuando(a)) + '</span></button>' : '<span class="fxp-relogio off">' + casoSvg('clock', 18) + '<span>' + esc(casoQuando(a) || 'já saiu') + '</span></span>';
   var pend = fxPerPendentes(k), pendIds = pend.map(function (x) { return x.id; });
   var ordem = '<p class="sub" style="margin:0 0 8px">Arraste os cards que ainda não saíram, ou use ▲ ▼. Os que já saíram ficam onde estão.</p><div class="fx-ordem" id="fx-ordem">' + avs.map(function (x, j) {
     var mexe = pendIds.indexOf(x.id) >= 0, pi = pendIds.indexOf(x.id);
@@ -4181,10 +4219,10 @@ function fxPerguntasCarrossel(c) {
       '<button type="button" class="fx-ordem-b" data-fx="perIr" data-v="' + j + '"><span class="fx-ordem-n">' + (j + 1) + '</span><span class="fx-ordem-t">' + esc(x.titulo) + '</span><small>' + esc(casoQuando(x) || 'já saiu') + '</small></button>' +
       (mexe ? '<span class="fx-mv"><button type="button" data-fx="perMov" data-id="' + esc(String(x.id)) + '" data-d="-1" aria-label="Subir"' + (pi === 0 ? ' disabled' : '') + '>▲</button><button type="button" data-fx="perMov" data-id="' + esc(String(x.id)) + '" data-d="1" aria-label="Descer"' + (pi === pendIds.length - 1 ? ' disabled' : '') + '>▼</button></span>' : '') + '</div>';
   }).join('') + '</div>';
-  return fxSemConsent(k) + '<div class="fx-car"><div class="fx-car-top"><span class="sub">' + esc(CASO_TIPO_AVISO[a.tipo] || a.tipo) + '</span><span class="sub">' + (i + 1) + ' de ' + n + '</span></div>' +
-    '<div class="fx-car-palco"><button type="button" class="fx-seta" data-fx="perAnt" aria-label="Card anterior"' + (i === 0 ? ' disabled' : '') + '>‹</button><div class="fx-car-card">' + casoAvisosHtml({ avs: [a], ed: k.ed, agenda: k.agenda }) + '</div>' +
-    '<button type="button" class="fx-seta" data-fx="perProx" aria-label="Próximo card"' + (i === n - 1 ? ' disabled' : '') + '>›</button></div>' +
-    '<div class="fx-pts">' + pontos + '</div><div class="fx-rel">' + relogio + '</div><p class="sub" style="margin:6px 0 0;text-align:center">Dois cliques no texto para editar.</p></div>' +
+  return fxSemConsent(k) + '<div class="fxp"><div class="fxp-top">' + fxCurChip(CASO_TIPO_AVISO[a.tipo] || a.tipo) + '<span class="sub">' + (i + 1) + ' de ' + n + '</span></div>' +
+    '<div class="fxp-palco"><button type="button" class="fxp-seta" data-fx="perAnt" aria-label="Card anterior"' + (i === 0 ? ' disabled' : '') + '>‹</button>' + fxPerCard(k, a, editavel) +
+    '<button type="button" class="fxp-seta" data-fx="perProx" aria-label="Próximo card"' + (i === n - 1 ? ' disabled' : '') + '>›</button></div>' +
+    '<div class="fxp-pts">' + pontos + '</div><div class="fxp-rel">' + relogio + '</div>' + fxPerAcoes(k, a, editavel) + (a.tipo === 'pergunta' && editavel ? '<p class="sub" style="margin:8px 0 0;text-align:center">Dois cliques no texto para editar.</p>' : '') + '</div>' +
     fxSub('ordem', 'Ordem e saída · ' + n + ' cards', ordem);
 }
 // Subseção de uma sessão (aberta por padrão; lembra o que você fechou).
@@ -4204,29 +4242,45 @@ function fxEspacoTudo(c) {
 function fxHomeAviso() { return '<p class="sub" style="margin:0">A Página inicial ainda não está ligada: falta rodar <b>db/crm-caso-home.sql</b> e <b>db/crm-caso-home-so-seu.sql</b> no SQL Editor do Supabase (primeiro no teste, depois na produção).</p>'; }
 // Só o que cabe em cada parte: "Só seu" = bilan e documento que ela recebe; "Guias" = documento que ela recebe e mensagem pronta.
 function fxKDe(k, tipos) { return Object.assign({}, k, { itens: k.itens.filter(function (it) { return tipos(it); }) }); }
+// Itens do Espaço (bilans, encaminhamentos, mensagens prontas) como cards: título, etiquetas, estado e os botões à direita.
+function fxEspItens(k, vazio, homeCat) {
+  var lista = k.itens || [];
+  if (!lista.length) return '<div class="fx-cf-vazio">' + esc(vazio) + '</div>';
+  var temDoc = lista.some(function (x) { return x.tipo === 'documento' && (x.dados || {}).direcao === 'recebe'; });
+  return lista.map(function (it) {
+    if (k.ed && k.ed.t === 'item' && k.ed.id === it.id) return casoEditor('item', it.id, casoItemCampos(it));
+    var meta = casoItemMeta(it), secs = it.tipo === 'bilan' ? ((it.dados || {}).secoes || []) : [], docRecebe = it.tipo === 'documento' && (it.dados || {}).direcao === 'recebe';
+    var leit = secs.length ? '<details class="fxc-leit"><summary>Ler o bilan</summary>' + secs.map(function (sec) { return '<p><b>' + esc(sec.titulo) + '</b></p><ul>' + (sec.itens || []).map(function (x) { return '<li>' + esc(x.texto) + (x.estado === 'em_conferencia' ? ' <span class="sub">(a confirmar)</span>' : '') + '</li>'; }).join('') + '</ul>'; }).join('') + '</details>' : '';
+    var pub = it.estado === 'publicado', est = '<span class="fxc-est' + (pub ? ' on' : '') + '"><i></i>' + (pub ? 'Publicado' : it.estado === 'revisado' ? 'Revisado' : 'Rascunho') + '</span>';
+    var principal = it.estado === 'proposto' ? fxCurBtn('item-rev', it.id, 'Marcar como revisado') : it.estado === 'revisado' ? fxCurBtn('item-pub', it.id, 'Publicar para ela', 1) : fxCurBtn('item-ret', it.id, 'Despublicar');
+    var excluir = k.confirmaDel === it.id ? fxCurBtn('item-del', it.id, pub ? 'Excluir (ela deixa de ver)' : 'Confirmar exclusão', 1) + fxCurBtn('cancelar', it.id, 'Não') : fxCurBtn('item-del-pede', it.id, 'Excluir');
+    var ico = (docRecebe ? casoAnexarIco(it) : '') + casoHomeBtn(k, it, homeCat);
+    return fxCurCard({ titulo: it.titulo, chips: (CUR_TIPO[it.tipo] ? fxCurChip(CUR_TIPO[it.tipo]) : '') + (meta ? fxCurChip(meta, 'est') : ''), extra: leit, acoes: est + principal + fxCurBtn('ed-item', it.id, 'Editar') + excluir + (ico ? '<span class="fxc-ico">' + ico + '</span>' : ''), dbl: ['ed-item', it.id] });
+  }).join('');
+}
 function fxEspacoBilans(c) {
   var g = fxCasoGuarda(c); if (!g.k) return g.html;
   var kk = fxKDe(g.k, function (it) { return it.tipo === 'bilan'; });
   return fxSemConsent(g.k) + '<p class="sub" style="margin:0 0 8px">Cada bilan resume uma conversa. Marque com “+” o que ela vê no “Só seu” do Início (até ' + FX.HOME_LIMITES.so_seu + ').</p>' +
-    casoBarraNovo(g.k, ['bilan']) + casoItensHtml(kk, null, 'Nenhum bilan ainda. Use “+ Bilan” para registrar a conversa.', 'so_seu');
+    casoBarraNovo(g.k, ['bilan']) + fxEspItens(kk, 'Nenhum bilan ainda. Use “+ Bilan” para registrar a conversa.', 'so_seu');
 }
 function fxEspacoEncam(c) {
   var g = fxCasoGuarda(c); if (!g.k) return g.html;
   var kk = fxKDe(g.k, function (it) { return it.tipo === 'documento' && (it.dados || {}).direcao === 'recebe'; });
   return fxSemConsent(g.k) + '<p class="sub" style="margin:0 0 8px">Documentos e links que você manda para ela. Marque com “+” o que ela vê no “Só seu” do Início.</p>' +
-    casoBarraNovo(g.k, ['documento']) + casoItensHtml(kk, null, 'Nenhum encaminhamento ainda. Use “+ Documento”.', 'so_seu');
+    casoBarraNovo(g.k, ['documento']) + fxEspItens(kk, 'Nenhum encaminhamento ainda. Use “+ Documento”.', 'so_seu');
 }
 function fxEspacoMsgs(c) {
   var g = fxCasoGuarda(c); if (!g.k) return g.html;
   var kk = fxKDe(g.k, function (it) { return it.tipo === 'modelo'; });
   return fxSemConsent(g.k) + '<p class="sub" style="margin:0 0 8px">Mensagens prontas para ela copiar e usar. O destaque na Página inicial dos Guias é feito na pílula Guias.</p>' +
-    casoBarraNovo(g.k, ['modelo']) + casoItensHtml(kk, null, 'Nenhuma mensagem pronta ainda. Use “+ Mensagem pronta”.', 'nenhuma');
+    casoBarraNovo(g.k, ['modelo']) + fxEspItens(kk, 'Nenhuma mensagem pronta ainda. Use “+ Mensagem pronta”.', 'nenhuma');
 }
 function fxEspacoGuias(c) {
   var g = fxCasoGuarda(c); if (!g.k) return g.html;
   var kk = fxKDe(g.k, function (it) { return it.tipo === 'modelo' || (it.tipo === 'documento' && (it.dados || {}).direcao === 'recebe'); });
   return fxSemConsent(g.k) + '<p class="sub" style="margin:0 0 8px">Documentos e mensagens prontas. Marque com “+” o que ela vê em “Guias” no Início (até ' + FX.HOME_LIMITES.guias + ').</p>' +
-    casoBarraNovo(g.k, ['modelo']) + casoItensHtml(kk, null, 'Nada para ela em Guias ainda. Crie uma mensagem pronta acima ou um documento em “Só seu”.', 'guias');
+    casoBarraNovo(g.k, ['modelo']) + fxEspItens(kk, 'Nada para ela em Guias ainda. Crie uma mensagem pronta acima ou use um documento dos Encaminhamentos.', 'guias');
 }
 function fxEspacoCorpo(c) {
   var g = fxCasoGuarda(c); if (!g.k) return g.html;
@@ -4433,6 +4487,9 @@ function dosRotuloOpcao(f, v) {
   return o ? o[1] : (v === 'true' ? 'Sim' : v === 'false' ? 'Não' : String(v));
 }
 // Onde as fontes batem: o que o funil disse x o que está no dossiê; o que veio só do funil; o que a chamada trouxe.
+// Divergência entre o funil e o dossiê: "Manter o do dossiê" fica guardado neste navegador (some da lista); "Usar o do funil" troca o valor (salve o dossiê).
+function dosDivResolvida(cid, k) { try { return !!(JSON.parse(localStorage.getItem('crm_dos_div_' + cid) || '{}') || {})[k]; } catch (e) { return false; } }
+function dosDivGuarda(cid, k) { try { var m = JSON.parse(localStorage.getItem('crm_dos_div_' + cid) || '{}') || {}; m[k] = 1; localStorage.setItem('crm_dos_div_' + cid, JSON.stringify(m)); } catch (e) { /* sem localStorage */ } }
 function dosCruzamentos(c, S) {
   var out = { confere: [], diverge: [], soFunil: [], daChamada: [] };
   if (!S) return out;
@@ -4441,7 +4498,7 @@ function dosCruzamentos(c, S) {
       var fun = dosDoFunil(c, f.k), sv = (S.d || {})[f.k], salvo = sv === undefined || sv === null || sv === '' ? null : String(sv);
       var org = salvo === null ? null : onbOrigemDe(f.k, salvo);
       if (org) out.daChamada.push({ l: f.l, v: dosRotuloOpcao(f, salvo), conf: org.conf, origem: org.origem });
-      if (fun !== null && salvo !== null) (String(fun) === salvo ? out.confere : out.diverge).push({ l: f.l, funil: dosRotuloOpcao(f, fun), dossie: dosRotuloOpcao(f, salvo) });
+      if (fun !== null && salvo !== null) ((String(fun) === salvo || dosDivResolvida(c.id, f.k)) ? out.confere : out.diverge).push({ k: f.k, l: f.l, funil: dosRotuloOpcao(f, fun), dossie: dosRotuloOpcao(f, salvo) });
       else if (fun !== null && salvo === null) out.soFunil.push({ l: f.l, v: dosRotuloOpcao(f, fun) });
     });
   });
@@ -4564,7 +4621,7 @@ function dosBaixaMd(cid) {
 // Os dropdowns da sessão "A ligação" (o grande e os três passos): lembram o que você deixou aberto.
 function lgAberto(k) { var g = state.fx.lg || { main: 1, a: 1 }; return !!g[k]; }
 document.addEventListener('toggle', function (e) { var d = e.target; if (d && d.matches && d.matches('details[data-lg]')) { var g = state.fx.lg || (state.fx.lg = { main: 1, a: 1 }); if (d.open) g[d.dataset.lg] = 1; else delete g[d.dataset.lg]; } }, true);
-function dosLigacaoHtml(c, d) {
+function dosLigacaoHtml(c, d, formHtml) {
   var S = state.dos && state.dos.cid === c.id && state.dos.d ? state.dos : null; if (!S) return '';
   var dv = function (k) { return dosValor(c, S.d, S.rasc, k); }, F = dosFaltaPorCanal(c, S), X = dosCruzamentos(c, S), nFalta = F.conversa.length + F.app.length + F.doc.length;
   var campo = function (k) { var f = dosCampo(k); return f ? dosCampoHtml(f, c, S.d, S.rasc) : ''; };
@@ -4595,8 +4652,9 @@ function dosLigacaoHtml(c, d) {
   var nav = '<nav class="lg-nav" aria-label="Etapas da ligação">' + etapas.map(function (e, i) {
     return '<button type="button" class="lg-et' + (e[0] === ps ? ' on' : '') + '" data-fx="lgPasso" data-v="' + e[0] + '"' + (e[0] === ps ? ' aria-current="step"' : '') + '><span class="lg-n">' + (i + 1) + '</span><span><b>' + e[1] + '</b><small>' + esc(e[2]) + '</small></span></button>';
   }).join('') + '</nav>';
-  var painel = ps === 'b' ? pAn + (pMont ? '<div class="lg-mont"><h4 class="fx-h4">Montagem proposta para o espaço dela</h4>' + pMont + '</div>' : '') : ps === 'c' ? p3 : p1;
-  return '<section class="panel dv lg" id="dos-ligacao" style="padding:16px;margin-bottom:14px"><h3 style="font-size:17px;margin:0 0 10px">A ligação</h3>' + nav + '<div class="lg-painel">' + painel + '</div></section>';
+  var ajuda = p1 ? '<details class="lg-det" data-lg="completar"' + (lgAberto('completar') ? ' open' : '') + '><summary>Cruzamentos entre as fontes e como completar o que falta' + (nFalta ? ' · ' + nFalta : '') + '</summary><div>' + p1 + '</div></details>' : '';
+  var painel = ps === 'b' ? pAn + (pMont ? '<div class="lg-mont"><h4 class="fx-h4">Montagem proposta para o espaço dela</h4>' + pMont + '</div>' : '') : ps === 'c' ? p3 : (formHtml ? formHtml + ajuda : p1);
+  return '<section class="panel dv lg" id="dos-ligacao" style="padding:16px;margin-bottom:14px"><h3 style="font-size:17px;margin:0 0 10px">Dossiê e ligação</h3>' + nav + '<div class="lg-painel">' + painel + '</div></section>';
 }
 // O que conferir e o que perguntar: cada resposta que falta aparece só aqui, separada pelo canal (conversa, app, documento).
 function dosPerguntarHtml(c, S) {
@@ -4605,7 +4663,7 @@ function dosPerguntarHtml(c, S) {
   var X = dosCruzamentos(c, S), cruz = '';
   if (S && (X.confere.length || X.diverge.length || X.soFunil.length || X.daChamada.length)) {
     cruz = '<div class="dv-sec"><div class="k">Cruzamentos entre as fontes</div><p class="sub" style="margin:0 0 6px">' + X.confere.length + ' confirmados por mais de uma fonte · ' + X.diverge.length + ' divergem · ' + X.soFunil.length + ' só vêm do funil' + (pos ? ' · ' + X.daChamada.length + ' lidos da chamada' : '') + '.</p>' +
-      (X.diverge.length ? '<ul class="dv-ul dv-div">' + X.diverge.map(function (x) { return '<li><b>' + esc(x.l) + ':</b> o funil disse “' + esc(x.funil) + '”, o dossiê diz “' + esc(x.dossie) + '”. Confirme no 1:1.</li>'; }).join('') + '</ul>' : '') +
+      (X.diverge.length ? '<ul class="dv-ul dv-div">' + X.diverge.map(function (x) { return '<li><b>' + esc(x.l) + ':</b> o funil disse “' + esc(x.funil) + '”, o dossiê diz “' + esc(x.dossie) + '”. Confirme no 1:1.<span class="dv-div-ac"><button type="button" class="btn" data-fx="dosUsa" data-k="' + esc(x.k) + '" data-v="funil">Usar o do funil</button><button type="button" class="btn" data-fx="dosUsa" data-k="' + esc(x.k) + '" data-v="dossie">Manter o do dossiê</button></span></li>'; }).join('') + '</ul>' : '') +
       (X.soFunil.length ? '<p class="sub" style="margin:6px 0 0"><b>Só vieram do funil, confirme com ela:</b> ' + esc(X.soFunil.map(function (x) { return x.l; }).join(', ')) + '.</p>' : '') +
       (pos && X.daChamada.length ? '<ul class="dv-ul">' + X.daChamada.slice(0, 8).map(function (x) { return '<li>' + esc(x.l) + ' <i class="dv-fonte">' + esc(x.origem) + ' · ' + esc(ONB_CONF[x.conf] || x.conf) + '</i></li>'; }).join('') + '</ul>' : '') + '</div>';
   }
@@ -4669,10 +4727,10 @@ function dosVisaoHtml(c, d) {
 function fxSessoes(c) {
   var mk = function (titulo, sub, id, corpo) { var a = fxSessaoAberta(id); return { titulo: titulo, sub: sub, aberto: a, corpo: a ? corpo() : '' }; };
   var mapa = {
-    home: mk('Página inicial', 'O que fica em destaque no Início dela: 3 passos do checklist, 2 do Espaço e 2 dos Guias.', 'home', function () { return fxHomeCorpo(c); }),
+    home: mk('Página inicial', 'O que fica em destaque no Início dela: 1 item principal, 3 passos do checklist, 3 do Só seu e 2 dos Guias.', 'home', function () { return fxHomeCorpo(c); }),
     chat: mk('Conversa com ela', 'As mensagens da equipe, do assistente e dela, dentro do app.', 'chat', function () { return '<div id="chat-box">' + chatPanelHtml(c, state.chat, H4_PLAT) + '</div>'; }),
     checklist: mk('Checklist', 'Os passos dela por démarche, do mais urgente ao mais distante. Aqui você escolhe os 3 que aparecem na Página inicial.', 'checklist', function () { return '<div id="fx-chk-corpo">' + fxChecklistCorpo(c) + '</div>' + fxZonas(c, 'checklist'); }),
-    curadoria: mk('Curadoria', 'Limpar, editar, posicionar e validar os passos dela.', 'curadoria', function () { return fxCuradoriaCorpo(c); }),
+    curadoria: mk('Curadoria', 'A montagem proposta a partir do Dossiê e da conversa. Aprove, edite ou recuse; cada item aprovado vai para a pílula certa.', 'curadoria', function () { return fxCuradoriaCorpo(c); }),
     espaco: mk('Espaço', 'O que ela vê na aba Espaço: perguntas da equipe, bilans, encaminhamentos da Ingryd e mensagens prontas.', 'espaco', function () { return fxEspacoTudo(c); }),
     guias: mk('Guias', 'Documentos e mensagens prontas que ela vê em “Guias” no Início (até 2). Guias vive só aqui.', 'guias', function () { return fxEspacoGuias(c); }),
     perfil: mk('Perfil', 'O que ela já respondeu e o que falta perguntar.', 'perfil', function () { return fxPerfilCorpo(c) + fxZonas(c, 'perfil'); }),
@@ -4734,7 +4792,7 @@ function fxCorpo(c, d, tab) {
   }
   if (tab === 'conversa') return conversaPanel(c, d.mails || [], d.resps || [], d.h4 || H4_PLAT, d.jor);
   // Dossiê: aba própria, sempre aberta. Preenche sozinho com o que ela responde no funil e no app (ver DOS_FUNIL).
-  if (tab === 'dossie') return dosVisaoHtml(c, d) + dosLigacaoHtml(c, d) + '<div id="dossie-box">' + dossieHtml(c, state.dos.d, state.dos.err, state.dos.rasc, true, state.dos.chk, true) + '</div>';
+  if (tab === 'dossie') return dosVisaoHtml(c, d) + dosLigacaoHtml(c, d, '<div id="dossie-box">' + dossieHtml(c, state.dos.d, state.dos.err, state.dos.rasc, true, state.dos.chk, true) + '</div>');
   // Ficha (captação): o fluxo de 3 passos e os painéis que já existiam (feed, e-mails, jornada, quem é ela, mais).
   var etapa = FX.etapaFunil(c, { mails: d.mails || [], propostas: [], temBilan: !!(state.bilan && state.bilan.cid === c.id), umFeito: umFeito(c.id) }), h4 = d.h4 || H4_PLAT;
   // Três colunas, cada uma com um papel: à esquerda quem ela é e onde está no funil; no meio o que ela fez; à direita o que fazer (e-mail).
@@ -4910,6 +4968,9 @@ function fichaClick(el) {
     case 'dosChip': { var cc2 = byC(state.sel); if (!cc2 || !state.dos || state.dos.cid !== cc2.id) return true; var at2 = dosValor(cc2, state.dos.d, state.dos.rasc, ds.k); state.dos.rasc[ds.k] = at2 === ds.v ? '' : ds.v; pintaDossie(cc2); return true; }
     case 'perMov': fxPerMover(ds.id, Number(ds.d)); return true;
     case 'homeDestaque': fxHomeDestacar(ds.id); return true;
+    case 'dosUsa': { var cdu = byC(state.sel); if (!cdu || !state.dos || state.dos.cid !== cdu.id) return true;
+      if (ds.v === 'funil') { var fv = dosDoFunil(cdu, ds.k); if (fv !== null) { state.dos.rasc[ds.k] = String(fv); toast('Valor do funil no formulário: salve o dossiê para guardar.', 3600); } } else dosDivGuarda(cdu.id, ds.k);
+      pintaDossie(cdu); fxPintaCorpo(); return true; }
     case 'dosFiltro': f.dosFiltro = ds.v; f.dosFonte = 'todas'; { var cdf = byC(state.sel); if (cdf) pintaDossie(cdf); } return true;
     case 'dosFonte': f.dosFonte = ds.v; { var cds = byC(state.sel); if (cds) pintaDossie(cds); } return true;
     case 'curOrigem': f.curOrigem = ds.v; fxPintaCorpo(); return true;
@@ -4953,7 +5014,7 @@ async function renderPessoa() {
   if (!c) { $('pessoa-page').innerHTML = '<div class="empty">Pessoa não encontrada.</div>'; return; }
   $('pessoa-page').innerHTML = '<div class="loading">Carregando a ficha…</div>';
   if (fichaV2Ativa() && FX_PROC === null) FX_PROC = await fxCarregaProcessos();
-  if (fichaV2Ativa() && FX_QUANDO === null) { try { var rq = await fetch('guias-quando.json?v=2026-11-18.06'); FX_QUANDO = rq.ok ? await rq.json() : {}; } catch (e) { FX_QUANDO = {}; } }
+  if (fichaV2Ativa() && FX_QUANDO === null) { try { var rq = await fetch('guias-quando.json?v=2026-11-18.15'); FX_QUANDO = rq.ok ? await rq.json() : {}; } catch (e) { FX_QUANDO = {}; } }
   var r = await Promise.all([
     supabase.from('eventos').select('tipo,dados,criado_em').eq('contato_id', c.id).order('criado_em', { ascending: false }).limit(200),
     supabase.from('consentimentos').select('finalidade,aceito,texto,origem,criado_em').eq('contato_id', c.id).order('criado_em', { ascending: false }),
@@ -6866,7 +6927,7 @@ async function enviarLinkPagamento(btn) {
 var FX_DETALHE = null, qdTimer = null, qdOrigem = null, qdAberto = false;
 async function fxCarregaDetalhe() {
   if (FX_DETALHE) return FX_DETALHE;
-  try { var r = await fetch('guias-detalhe.json?v=2026-11-18.06'); FX_DETALHE = r.ok ? await r.json() : {}; } catch (e) { FX_DETALHE = {}; }
+  try { var r = await fetch('guias-detalhe.json?v=2026-11-18.15'); FX_DETALHE = r.ok ? await r.json() : {}; } catch (e) { FX_DETALHE = {}; }
   return FX_DETALHE;
 }
 function fxFechaQuadro() {
@@ -7011,6 +7072,7 @@ document.addEventListener('click', async function (e) {
     return uNotion ? pcLerNotion(t.dataset.pcler) : pcLer(t.dataset.pcler, t);
   }
   if (t.dataset.montler) return montLer(t.dataset.montler, t);
+  if (t.dataset.montgrupo) { montEstado(state.sel).grupo = t.dataset.montgrupo; return pintaMont(state.sel); }
   if (t.dataset.montaplicar) return montLevar(t.dataset.montaplicar, t);
   if (t.dataset.montaprovar) return montAprovarFila(t.dataset.montaprovar, t);
   if (t.dataset.montdescartar) return montDescartar(t.dataset.montdescartar, t);
