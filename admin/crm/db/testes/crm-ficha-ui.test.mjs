@@ -242,7 +242,7 @@ console.log('== Task 12: sessões em pílulas ==');
     avs: [{ id: 1, tipo: 'pergunta', titulo: 'Qual é o seu nível de francês hoje?', estado: 'agendado', ordem: 1, pausa_dias: 1, liberar_em: null }, { id: 2, tipo: 'pergunta', titulo: 'Ela prioriza escola pública ou privada?', estado: 'rascunho', ordem: 2, pausa_dias: 0 }, { id: 3, tipo: 'proposta', titulo: 'O bilan está aqui', estado: 'cancelado', ordem: 3, pausa_dias: 0 }] };
   await h.click({ fx: 'ir', id: 'espaco' });
   let car = h.el('fx-corpo').innerHTML;
-  check('o carrossel mostra só o 1º card, com "1 de 2" (o cancelado fica fora) e o relógio', car.includes('1 de 2') && car.includes('nível de francês') && !/fx-car-card[^]*?escola pública[^]*?<\/div><button[^>]*perProx/.test(car) && car.includes('fx-relogio') && car.includes('data-caso="ag-abrir"'));
+  check('o carrossel mostra só o 1º card, com "1 de 2" (o cancelado fica fora) e o relógio', car.includes('1 de 2') && car.includes('nível de francês') && !/fxp-big[^>]*>[^<]*escola pública/.test(car) && car.includes('fxp-relogio') && car.includes('data-caso="ag-abrir"'));
   await h.click({ fx: 'perProx' });
   car = h.el('fx-corpo').innerHTML;
   check('a seta troca para o 2º card; no último a seta de próximo desliga', car.includes('2 de 2') && car.includes('escola pública ou privada') && /data-fx="perProx"[^>]*disabled/.test(car));

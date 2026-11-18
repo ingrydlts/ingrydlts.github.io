@@ -339,7 +339,7 @@ console.log('\n== Página inicial: "Adicionar na home" ==');
   { const corpo = mod.fxHomeCorpo(base);
     check('a sessão Página inicial: 3 blocos (Checklist, Só seu, Guias) com "n de máx" e "cheio"', /Checklist <span class="sub">0 de 3/.test(corpo) && /Só seu <span class="sub">3 de 3 · cheio/.test(corpo) && /Guias <span class="sub">0 de 2/.test(corpo));
     check('cada item tem "Tirar"', /data-caso="home-del" data-id="so_seu:20"/.test(corpo));
-    check('espaços livres explicam como preencher e levam ao Espaço', (corpo.match(/Espaço livre/g) || []).length === 5 && /data-fx="ir" data-id="espaco"/.test(corpo) && /Espaço › Guias/.test(corpo)); }
+    check('espaços livres explicam como preencher e levam à pílula certa (Checklist, Espaço ou Guias)', (corpo.match(/Espaço livre/g) || []).length === 5 && /data-fx="ir" data-id="checklist"/.test(corpo) && /data-fx="ir" data-id="guias"/.test(corpo) && /pílula Guias/.test(corpo)); }
   cfg(null); await pagina();
   check('sem o SQL, a sessão pede o crm-caso-home.sql', /crm-caso-home\.sql/.test(mod.fxHomeCorpo(base)));
   writes.length = 0; await click({ caso: 'home-add', id: 'guias:23' });
