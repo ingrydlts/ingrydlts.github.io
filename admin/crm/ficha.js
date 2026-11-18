@@ -625,3 +625,22 @@ export function destaquesDaHome(o) {
   });
   return out;
 }
+
+// Guia geral de um passo (biblioteca guias_gerais): lê os campos do editor e confere os limites do banco antes de gravar.
+// ln: um link por linha, "Rótulo | https://…" ou só "https://…".
+export function guiaDeCampos(c) {
+  const lim = (s, n) => String(s || '').replace(/\s+/g, ' ').trim().slice(0, n);
+  const passos = String(c.ps || '').split('\n').map((x) => lim(x, 220)).filter(Boolean);
+  if (passos.length > 8) return { erro: 'No máximo 8 passos (tem ' + passos.length + ').' };
+  const links = [];
+  for (const linha of String(c.ln || '').split('\n').map((x) => x.trim()).filter(Boolean)) {
+    const i = linha.lastIndexOf('|'), url = (i >= 0 ? linha.slice(i + 1) : linha).trim(), rotulo = i >= 0 ? lim(linha.slice(0, i), 120) : '';
+    if (!/^https:\/\/[^\s]+$/.test(url) || url.length > 500) return { erro: 'Link inválido: “' + lim(linha, 60) + '”. Só https://, um por linha.' };
+    links.push(rotulo ? { url, rotulo } : { url });
+  }
+  if (links.length > 6) return { erro: 'No máximo 6 links (tem ' + links.length + ').' };
+  const pq = lim(c.pq, 400), at = lim(c.at, 500);
+  if (String(c.pq || '').trim().length > 400 || String(c.at || '').trim().length > 500) return { erro: 'Por que importa vai até 400 letras e Atenção até 500.' };
+  if (!pq && !at && !passos.length && !links.length) return { erro: 'Escreva ao menos um campo do guia (ou use Analisar link).' };
+  return { ok: true, por_que: pq || null, atencao: at || null, passos, links };
+}

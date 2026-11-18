@@ -2,15 +2,15 @@
 // Nada de service_role aqui. O banco é db/crm-fase2.sql; o desenho é o artefato "CRM Por Dentro".
 // Tudo que vem do banco é texto de terceiros (nome, e-mail, pergunta): passa sempre por esc().
 import { supabase } from '/assets/js/supabase-client.js';
-import * as TX from './taxonomia.js?v=2026-11-17.33';   // páginas, famílias e agrupamento dos modelos
-import * as ES from './estudio.js?v=2026-11-17.33';   // os blocos do estúdio de e-mails (entregas 2 e 3)
-import * as EE from './editor-email.js?v=2026-11-17.33';
-import * as EQ from './editor-quem.js?v=2026-11-17.33';
-import * as JR from './jornada.js?v=2026-11-17.33';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
-import * as FX from './ficha.js?v=2026-11-17.33';   // ficha v2: lógica pura (fila, démarches, funil, ações)
-import * as FH from './ficha-html.js?v=2026-11-17.33';   // ficha v2: HTML puro
-import * as PN from './panorama.js?v=2026-11-17.33';
-import * as MT from './montagem.js?v=2026-11-17.33';   // Montagem do espaço a partir do transcript (lógica e HTML puros)   // Panorama dela e O que ela trouxe (lógica e HTML puros)
+import * as TX from './taxonomia.js?v=2026-11-18.01';   // páginas, famílias e agrupamento dos modelos
+import * as ES from './estudio.js?v=2026-11-18.01';   // os blocos do estúdio de e-mails (entregas 2 e 3)
+import * as EE from './editor-email.js?v=2026-11-18.01';
+import * as EQ from './editor-quem.js?v=2026-11-18.01';
+import * as JR from './jornada.js?v=2026-11-18.01';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
+import * as FX from './ficha.js?v=2026-11-18.01';   // ficha v2: lógica pura (fila, démarches, funil, ações)
+import * as FH from './ficha-html.js?v=2026-11-18.01';   // ficha v2: HTML puro
+import * as PN from './panorama.js?v=2026-11-18.01';
+import * as MT from './montagem.js?v=2026-11-18.01';   // Montagem do espaço a partir do transcript (lógica e HTML puros)   // Panorama dela e O que ela trouxe (lógica e HTML puros)
 
 var PERSONAS = {
   au_pair_estudante: 'Au pair → estudante', campus_france: 'Campus France', alternancia_emprego: 'Alternância / emprego',
@@ -2391,7 +2391,7 @@ function casoHomeBtn(k, it, cat) {
   return casoIco(tem ? 'home-del' : 'home-add', cat + ':' + it.id, tem ? '×' : '+', tem ? 'Tirar da página inicial' : 'Adicionar na página inicial', tem);
 }
 async function casoAcao(acao, id, t) {
-  if (acao === 'ed-chk') { fxFechaQuadro(); state.fx.ckEd = String(id); fxRepintaChkDe(); return; }
+  if (acao === 'ed-chk') { fxFechaQuadro(); state.fx.ckEd = String(id); fxRepintaChkDe(); fxGuiaCarrega(String(id)); return; }
   var k = state.caso; if (!k) return;
   var agora = new Date().toISOString(), nid = Number(id), r = null;
   if (acao === 'cancelar') { k.ed = null; k.agenda = null; k.novo = null; k.confirmaDel = null; k.confirmaDedup = false; return pintaCaso(); }
@@ -3800,7 +3800,7 @@ function fxHeaderHtml(c, d) {
 // Catálogo de démarches (cópia do app, processos.json): carregado uma vez; sem ele, tudo cai na démarche padrão.
 var FX_PROC = null, FX_QUANDO = null;   // FX_QUANDO: o "quando" de cada passo do template (guias-quando.json), para o prazo curto do Início
 async function fxCarregaProcessos() {
-  try { var r = await fetch('processos.json?v=2026-11-17.33'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
+  try { var r = await fetch('processos.json?v=2026-11-18.01'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
 }
 // A sessão Checklist: pílulas por démarche, os 4 mais urgentes, pasta do Drive privada e "Ver mais desta sessão".
 // Os passos que a montagem do espaço propôs para ela, com démarche, subitens e origem: o mesmo detalhe do Checklist. Existem antes de ela ter conta.
@@ -3895,7 +3895,7 @@ function fxCuradoriaCorpo(c) {
     return '<button type="button" class="fx-ic ' + (ok ? 'on' : '') + '" data-fx="curConf" data-id="aco:' + esc(String(a.id)) + '" aria-pressed="' + ok + '" aria-label="' + rot + '" title="' + rot + '">' + casoSvg('check', 16) + '</button>' +
       (a.estado === 'concluida' ? '' : '<button type="button" class="fx-ic" data-fx="curRetira" data-id="' + esc(String(a.id)) + '" aria-label="Tirar da lista dela (volta a rascunho)" title="Tirar da lista dela (volta a rascunho)">' + casoSvg('x', 16) + '</button>'); } }) : null;
   return FH.htmlCuradoria({ origem: f.curOrigem || 'todos', resumo: FX.resumoCuradoria({ itens: itens, equipe: equipe, mapa: mapa }), alertas: fxAlertasChk(c), gerais: FX.ordenarGerais(visiveis, mapa, hoje), escondidos: escondidos,
-    equipeHtml: k && hk ? MT.passosPropostosHtml(k.aco, k.listas, hk, 'publicados') : '', equipeN: equipe.length, mapa: mapa, hoje: hoje, ckEd: f.ckEd || null,
+    equipeHtml: k && hk ? MT.passosPropostosHtml(k.aco, k.listas, hk, 'publicados') : '', equipeN: equipe.length, mapa: mapa, hoje: hoje, guiaEd: f.guiaEd && f.guiaEd.key === f.ckEd ? f.guiaEd : undefined, ckEd: f.ckEd || null,
     temOrdem: visiveis.some(function (i) { return mapa[i.step_key] && mapa[i.step_key].ordem != null; }),
     demDe: function (i) { return FX.rotuloDemarche(FX_PROC, FX.processoDoItem(FX_PROC, i.step_key, i.category), personaKey(c)); } }, H);
 }
@@ -3910,12 +3910,60 @@ function fxChecklistCorpo(c) {
   var origem = f.ckOrigem || 'todos', equipe = fxEquipePublicada(c);
   return pre + FH.htmlChecklistSessao({ semConta: false, erro: false, velhoDias: horas > 48 ? Math.floor(horas / 24) : 0, demarches: dem, ativa: ativa, origem: origem,
     homeRefs: state.caso && state.caso.cid === c.id && Array.isArray(state.caso.home) ? state.caso.home.filter(function (x) { return x.categoria === 'checklist'; }).map(function (x) { return x.step_key; }) : null,
-    equipeHtml: fxPassosPublicados(c), equipeN: equipe.length, alertas: fxAlertasChk(c), ckEd: f.ckEd || null,
+    equipeHtml: fxPassosPublicados(c), equipeN: equipe.length, alertas: fxAlertasChk(c), guiaEd: f.guiaEd && f.guiaEd.key === f.ckEd ? f.guiaEd : undefined, ckEd: f.ckEd || null,
     demDe: function (i) { return FX.rotuloDemarche(FX_PROC, FX.processoDoItem(FX_PROC, i.step_key, i.category), personaKey(c)); },
     totalFeitos: fxContaApp(c, chk).feitos, total: fxContaApp(c, chk).total, itens: FX.filtrarPorDemarche(FX_PROC, itens, ativa),
     hoje: cc.hoje, todos: f.ckTodos, mais: f.ckMais, extraMais: f.ckMais ? checklistLateralHtml(chk, agora, H4_PLAT) + checklistHtml(chk, agora) : '' }, H_FX);
 }
 function fxRepintaChkDe() { var cm = byC(state.sel); if (cm) fxPintaChk(fxContato(cm, state.fx.dados && state.fx.dados.uid)); if (fxSessaoAberta('curadoria')) fxPintaCorpo(); }
+
+// ---- Guia do passo (biblioteca de guias gerais): carregar, analisar um link, salvar, publicar, voltar ao original ----
+function fxGuiaCampos() { var v = function (id) { var el = $(id); return el ? el.value : ''; }; return { pq: v('fx-g-pq'), at: v('fx-g-at'), ps: v('fx-g-ps'), ln: v('fx-g-ln') }; }
+async function fxGuiaCarrega(stepKey) {
+  var f = state.fx; f.guiaEd = { key: stepKey, row: null, erro: false };
+  try {
+    var r = await supabase.from('guias_gerais').select('step_key,por_que,atencao,passos,links,fonte_url,estado').eq('step_key', stepKey).maybeSingle();
+    if (f.ckEd !== stepKey) return;
+    if (r.error) f.guiaEd.erro = true; else f.guiaEd.row = r.data || null;
+  } catch (e) { f.guiaEd.erro = true; }
+  fxRepintaChkDe();
+}
+function fxGuiaRascunhoLocal(stepKey) {   // guarda o que está digitado antes de repintar, para não perder
+  var f = state.fx, g = f.guiaEd; if (!g || g.key !== stepKey) return;
+  var c = fxGuiaCampos(), u = $('fx-g-url');
+  g.row = Object.assign({}, g.row || {}, { por_que: c.pq, atencao: c.at, passos: c.ps.split('\n').filter(Boolean), links: c.ln.split('\n').map(function (x) { x = x.trim(); var i = x.lastIndexOf('|'); return x ? { url: (i >= 0 ? x.slice(i + 1) : x).trim(), rotulo: i >= 0 ? x.slice(0, i).trim() : '' } : null; }).filter(Boolean), fonte_url: u ? u.value.trim() : '' });
+}
+async function fxGuiaAnalisar(stepKey, doTexto) {
+  var f = state.fx, g = f.guiaEd; if (!g || g.key !== stepKey || g.analisando) return;
+  var url = $('fx-g-url') ? $('fx-g-url').value.trim() : '', texto = doTexto && $('fx-g-txt') ? $('fx-g-txt').value.trim() : '';
+  if (!url && !texto) { g.msg = 'Cole um link (ou o texto da página) para eu analisar.'; return fxRepintaChkDe(); }
+  fxGuiaRascunhoLocal(stepKey); g.analisando = true; g.msg = 'Lendo a página e montando a proposta…'; g.lacunas = null; fxRepintaChkDe();
+  var chk = state.dos && state.dos.chk, it = chk && (chk.itens || []).filter(function (i) { return i.step_key === stepKey; })[0];
+  var r; try { r = await montWorker('/api/crm/guia/analisar', texto ? { texto: texto, titulo: it ? (it.titulo_custom || it.label) : '' } : { url: url, titulo: it ? (it.titulo_custom || it.label) : '' }); } catch (e) { r = { ok: false, j: { error: (e && e.message) || 'Entre de novo no CRM.' } }; }
+  g.analisando = false;
+  if (f.ckEd !== stepKey) return;
+  if (!r.ok) { g.msg = (r.j && r.j.error) || 'Não consegui analisar agora.'; g.colar = !!(r.j && (r.j.codigo === 'pagina_vazia' || r.j.codigo === 'pagina_nao_abriu')); return fxRepintaChkDe(); }
+  var gd = r.j.guia || {};
+  g.row = Object.assign({}, g.row || {}, { por_que: gd.por_que || '', atencao: gd.atencao || '', passos: gd.passos || [], links: gd.links || [], fonte_url: r.j.url || url || (g.row && g.row.fonte_url) || '' });
+  g.lacunas = gd.lacunas || []; g.msg = 'Proposta pronta. Confira, edite o que quiser e salve ou publique.'; g.colar = false;
+  fxRepintaChkDe();
+}
+async function fxGuiaSalva(stepKey, estado) {
+  var f = state.fx, g = f.guiaEd; if (!g || g.key !== stepKey) return;
+  var v = FX.guiaDeCampos(fxGuiaCampos()); if (!v.ok) { g.msg = v.erro; return fxRepintaChkDe(); }
+  var u = $('fx-g-url'), fonte = u && /^https?:\/\/\S+$/.test(u.value.trim()) ? u.value.trim().slice(0, 500) : null;
+  var ses = await supabase.auth.getSession(), uid = ses && ses.data && ses.data.session ? ses.data.session.user.id : null;
+  var r = await supabase.from('guias_gerais').upsert({ step_key: stepKey, por_que: v.por_que, atencao: v.atencao, passos: v.passos, links: v.links, fonte_url: fonte, estado: estado === 'publicado' ? 'publicado' : 'rascunho', atualizado_em: new Date().toISOString(), atualizado_por: uid }, { onConflict: 'step_key' }).select('step_key,por_que,atencao,passos,links,fonte_url,estado').maybeSingle();
+  if (r.error) { g.msg = 'Não consegui salvar: ' + (r.error.message || 'erro'); return fxRepintaChkDe(); }
+  g.row = r.data || g.row; g.msg = estado === 'publicado' ? 'Publicado. Todas as pessoas veem este guia no app.' : 'Rascunho salvo. Só a equipe vê.'; g.lacunas = null;
+  toast(g.msg); fxRepintaChkDe();
+}
+async function fxGuiaApaga(stepKey) {
+  var f = state.fx, g = f.guiaEd; if (!g || g.key !== stepKey) return;
+  var r = await supabase.from('guias_gerais').delete().eq('step_key', stepKey);
+  if (r.error) { g.msg = 'Não consegui voltar ao original: ' + (r.error.message || 'erro'); return fxRepintaChkDe(); }
+  g.row = null; g.msg = 'Voltou ao texto original do template.'; g.lacunas = null; toast(g.msg); fxRepintaChkDe();
+}
 // Salva o texto de um passo do checklist dela (rpc só de admin). Título vazio = volta ao original.
 async function fxSalvaPasso(stepKey) {
   var c = byC(state.sel), f = state.fx, chk = state.dos && c && state.dos.cid === c.id ? state.dos.chk : null; if (!c || !chk || !c.user_id) return true;
@@ -4697,10 +4745,13 @@ function fichaClick(el) {
     case 'curOrigem': f.curOrigem = ds.v; fxPintaCorpo(); return true;
     case 'curConf': case 'curEsc': case 'curMostrar': case 'curMov': case 'curReset': case 'curRetira': { var cc = byC(state.sel); if (cc) fxCurAcao(cc, ds); return true; }
     case 'ckOrigem': f.ckOrigem = ds.v; fxRepintaChkDe(); return true;
-    case 'ckEditar': fxFechaQuadro(); f.ckEd = ds.id; fxRepintaChkDe(); return true;
+    case 'ckEditar': fxFechaQuadro(); f.ckEd = ds.id; fxRepintaChkDe(); fxGuiaCarrega(ds.id); return true;
     case 'qdFechar': fxFechaQuadro(); return true;
     case 'ckCancelar': f.ckEd = null; fxRepintaChkDe(); return true;
     case 'ckSalvar': return fxSalvaPasso(ds.id);
+    case 'guiaAnalisar': fxGuiaAnalisar(ds.id, !!ds.texto); return true;
+    case 'guiaSalvar': fxGuiaSalva(ds.id, ds.estado); return true;
+    case 'guiaApagar': fxGuiaApaga(ds.id); return true;
     case 'ckTodos': case 'ckMais': { if (ds.fx === 'ckTodos') f.ckTodos = !f.ckTodos; else f.ckMais = !f.ckMais; var cm = byC(state.sel); if (cm) fxPintaChk(fxContato(cm, f.dados && f.dados.uid)); return true; }
     case 'agPrev': fxCarGo(-1); return true;
     case 'agNext': fxCarGo(1); return true;
@@ -4731,7 +4782,7 @@ async function renderPessoa() {
   if (!c) { $('pessoa-page').innerHTML = '<div class="empty">Pessoa não encontrada.</div>'; return; }
   $('pessoa-page').innerHTML = '<div class="loading">Carregando a ficha…</div>';
   if (fichaV2Ativa() && FX_PROC === null) FX_PROC = await fxCarregaProcessos();
-  if (fichaV2Ativa() && FX_QUANDO === null) { try { var rq = await fetch('guias-quando.json?v=2026-11-17.33'); FX_QUANDO = rq.ok ? await rq.json() : {}; } catch (e) { FX_QUANDO = {}; } }
+  if (fichaV2Ativa() && FX_QUANDO === null) { try { var rq = await fetch('guias-quando.json?v=2026-11-18.01'); FX_QUANDO = rq.ok ? await rq.json() : {}; } catch (e) { FX_QUANDO = {}; } }
   var r = await Promise.all([
     supabase.from('eventos').select('tipo,dados,criado_em').eq('contato_id', c.id).order('criado_em', { ascending: false }).limit(200),
     supabase.from('consentimentos').select('finalidade,aceito,texto,origem,criado_em').eq('contato_id', c.id).order('criado_em', { ascending: false }),
@@ -6644,7 +6695,7 @@ async function enviarLinkPagamento(btn) {
 var FX_DETALHE = null, qdTimer = null, qdOrigem = null, qdAberto = false;
 async function fxCarregaDetalhe() {
   if (FX_DETALHE) return FX_DETALHE;
-  try { var r = await fetch('guias-detalhe.json?v=2026-11-17.33'); FX_DETALHE = r.ok ? await r.json() : {}; } catch (e) { FX_DETALHE = {}; }
+  try { var r = await fetch('guias-detalhe.json?v=2026-11-18.01'); FX_DETALHE = r.ok ? await r.json() : {}; } catch (e) { FX_DETALHE = {}; }
   return FX_DETALHE;
 }
 function fxFechaQuadro() {

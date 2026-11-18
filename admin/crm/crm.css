@@ -2070,3 +2070,14 @@ select.fx-hm-add:hover,select.fx-hm-add:focus-visible{border-color:var(--moss); 
 @media (max-width:640px){ .fx-cur-row{flex-wrap:wrap} .fx-cur-grab,.fx-cur-gap{display:none} .fx-cur-b{width:100%; justify-content:flex-end} .fx-cur-b .fx-ic{width:38px; height:38px} }
 
 .fx-cur-b .fx-ic[data-fx="curRetira"]:hover{background:var(--red-soft); color:var(--red)}
+
+/* Guia do passo (biblioteca de guias gerais) dentro do editor do passo */
+.fx-gd{display:flex; flex-direction:column; gap:8px; margin:10px 0 0; padding:12px; border:1px solid var(--line-2); border-radius:12px; background:var(--surface)}
+.fx-gd legend{font-family:'Fraunces',Georgia,serif; font-size:15px; padding:0 6px}
+.fx-gd legend small{font:12px system-ui,sans-serif; color:var(--ink-2); margin:0 4px}
+.fx-gd-url{display:flex; gap:8px; flex-wrap:wrap}
+.fx-gd-url input{flex:1 1 220px; min-width:0; font:inherit; font-size:14px; padding:8px 10px; border:1px solid var(--line-2); border-radius:8px; background:var(--surface-2); color:var(--ink)}
+.fx-gd textarea{font:inherit; font-size:14px; padding:7px 9px; border:1px solid var(--line-2); border-radius:8px; background:var(--surface-2); color:var(--ink); resize:vertical; width:100%; box-sizing:border-box}
+.fx-gd-msg{margin:0; color:var(--ink-2)}
+.fx-gd-colar summary{cursor:pointer; font-size:13px; color:var(--ink-2)}
+.fx-gd-colar button{margin-top:6px}

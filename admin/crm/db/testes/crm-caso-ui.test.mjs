@@ -364,6 +364,13 @@ console.log('\n== Editar o texto de um passo do checklist ==');
   await click({ fx: 'ckCancelar' });
   check('"Cancelar" fecha o editor sem gravar', !/data-ckform/.test(els.get('fx-chk-corpo').innerHTML) && rpcs.filter((x) => x.n === 'crm_checklist_editar').length === 0);
   await click({ fx: 'ckEditar', id: 'k1' });
+  check('o editor traz a seção "Guia do passo" com o botão Analisar link', /data-fx="guiaAnalisar"/.test(els.get('fx-chk-corpo').innerHTML));
+  { await click({ fx: 'guiaAnalisar', id: 'k1' });
+    check('Analisar sem link nem texto avisa e não chama o Worker', /Cole um link/.test(els.get('fx-chk-corpo').innerHTML));
+    el('fx-g-url').value = 'https://www.service-public.fr/x'; await click({ fx: 'guiaAnalisar', id: 'k1' }); await new Promise((r) => setTimeout(r, 20));
+    check('sem sessão do CRM: mostra o erro e destrava o botão (não fica "Analisando…")', /Entre de novo/.test(els.get('fx-chk-corpo').innerHTML) && !/Analisando…/.test(els.get('fx-chk-corpo').innerHTML));
+    await click({ fx: 'ckCancelar' }); }
+  await click({ fx: 'ckEditar', id: 'k1' });
   el('fx-ck-t').value = '  Validar o VLS-TS até 12/12  '; el('fx-ck-t').getAttribute = () => 'Original'; el('fx-ck-n').value = 'Pelo celular';
   rpcs.length = 0; await click({ fx: 'ckSalvar', id: 'k1' });
   const rp = rpcs.find((x) => x.n === 'crm_checklist_editar');
