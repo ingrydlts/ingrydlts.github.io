@@ -212,6 +212,13 @@ console.log('== Task 12: sessões em pílulas ==');
   await h.click({ fx: 'tab', v: 'dossie' });
   const dz = h.el('pessoa-page').innerHTML;
   check('a aba Dossiê abre o dossiê sempre aberto, sem botão de fechar', dz.includes('id="dossie-box"') && dz.includes('data-dossalvar') && !dz.includes('data-dostoggle'));
+  // A ligação em 3 etapas, uma por vez
+  check('a ligação tem as 3 etapas, com a 1ª aberta (só ela renderiza)', (dz.match(/data-fx="lgPasso"/g) || []).length === 3 && dz.includes('aria-current="step"') && !dz.includes('id="pc-an"'));
+  await h.click({ fx: 'lgPasso', v: 'b' });
+  const dzb = h.el('fx-corpo').innerHTML;   check('"Depois do 1:1" junta a análise e a montagem', dzb.includes('id="pc-an"') && h.mod.state.fx.lgPasso === 'b');
+  await h.click({ fx: 'lgPasso', v: 'c' });
+  check('"O que sai da conversa" mostra o e-mail e o .md', h.el('fx-corpo').innerHTML.includes('data-convabrir') && h.el('fx-corpo').innerHTML.includes('data-dosmd'));
+  await h.click({ fx: 'lgPasso', v: 'a' });
   await h.mod.renderPessoa(); pg = h.el('pessoa-page').innerHTML;
   check('depois de repintar tudo, a aba Dossiê segue aberta', h.mod.state.fx.tab === 'dossie' && pg.includes('id="dossie-box"'));
   await h.click({ fx: 'tab', v: 'plataforma' });

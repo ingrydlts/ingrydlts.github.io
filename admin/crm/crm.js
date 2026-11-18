@@ -2,15 +2,15 @@
 // Nada de service_role aqui. O banco é db/crm-fase2.sql; o desenho é o artefato "CRM Por Dentro".
 // Tudo que vem do banco é texto de terceiros (nome, e-mail, pergunta): passa sempre por esc().
 import { supabase } from '/assets/js/supabase-client.js';
-import * as TX from './taxonomia.js?v=2026-11-18.02';   // páginas, famílias e agrupamento dos modelos
-import * as ES from './estudio.js?v=2026-11-18.02';   // os blocos do estúdio de e-mails (entregas 2 e 3)
-import * as EE from './editor-email.js?v=2026-11-18.02';
-import * as EQ from './editor-quem.js?v=2026-11-18.02';
-import * as JR from './jornada.js?v=2026-11-18.02';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
-import * as FX from './ficha.js?v=2026-11-18.02';   // ficha v2: lógica pura (fila, démarches, funil, ações)
-import * as FH from './ficha-html.js?v=2026-11-18.02';   // ficha v2: HTML puro
-import * as PN from './panorama.js?v=2026-11-18.02';
-import * as MT from './montagem.js?v=2026-11-18.02';   // Montagem do espaço a partir do transcript (lógica e HTML puros)   // Panorama dela e O que ela trouxe (lógica e HTML puros)
+import * as TX from './taxonomia.js?v=2026-11-18.03';   // páginas, famílias e agrupamento dos modelos
+import * as ES from './estudio.js?v=2026-11-18.03';   // os blocos do estúdio de e-mails (entregas 2 e 3)
+import * as EE from './editor-email.js?v=2026-11-18.03';
+import * as EQ from './editor-quem.js?v=2026-11-18.03';
+import * as JR from './jornada.js?v=2026-11-18.03';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
+import * as FX from './ficha.js?v=2026-11-18.03';   // ficha v2: lógica pura (fila, démarches, funil, ações)
+import * as FH from './ficha-html.js?v=2026-11-18.03';   // ficha v2: HTML puro
+import * as PN from './panorama.js?v=2026-11-18.03';
+import * as MT from './montagem.js?v=2026-11-18.03';   // Montagem do espaço a partir do transcript (lógica e HTML puros)   // Panorama dela e O que ela trouxe (lógica e HTML puros)
 
 var PERSONAS = {
   au_pair_estudante: 'Au pair → estudante', campus_france: 'Campus France', alternancia_emprego: 'Alternância / emprego',
@@ -3823,7 +3823,7 @@ function fxHeaderHtml(c, d) {
 // Catálogo de démarches (cópia do app, processos.json): carregado uma vez; sem ele, tudo cai na démarche padrão.
 var FX_PROC = null, FX_QUANDO = null;   // FX_QUANDO: o "quando" de cada passo do template (guias-quando.json), para o prazo curto do Início
 async function fxCarregaProcessos() {
-  try { var r = await fetch('processos.json?v=2026-11-18.02'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
+  try { var r = await fetch('processos.json?v=2026-11-18.03'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
 }
 // A sessão Checklist: pílulas por démarche, os 4 mais urgentes, pasta do Drive privada e "Ver mais desta sessão".
 // Os passos que a montagem do espaço propôs para ela, com démarche, subitens e origem: o mesmo detalhe do Checklist. Existem antes de ela ter conta.
@@ -4434,7 +4434,6 @@ function dosBaixaMd(cid) {
 }
 // Os dropdowns da sessão "A ligação" (o grande e os três passos): lembram o que você deixou aberto.
 function lgAberto(k) { var g = state.fx.lg || { main: 1, a: 1 }; return !!g[k]; }
-function lgDet(k, cls, sum, corpo) { return '<details class="' + cls + '" data-lg="' + k + '"' + (lgAberto(k) ? ' open' : '') + '><summary>' + sum + '</summary><div class="lg-corpo">' + corpo + '</div></details>'; }
 document.addEventListener('toggle', function (e) { var d = e.target; if (d && d.matches && d.matches('details[data-lg]')) { var g = state.fx.lg || (state.fx.lg = { main: 1, a: 1 }); if (d.open) g[d.dataset.lg] = 1; else delete g[d.dataset.lg]; } }, true);
 function dosLigacaoHtml(c, d) {
   var S = state.dos && state.dos.cid === c.id && state.dos.d ? state.dos : null; if (!S) return '';
@@ -4458,13 +4457,15 @@ function dosLigacaoHtml(c, d) {
     (enviadoConv ? ' <b>Enviado em ' + esc(fmtDay(String(enviadoConv.enviado_em || enviadoConv.criado_em || '').slice(0, 10))) + '.</b>' : '') + '</p>' +
     '<button type="button" class="btn primary" data-convabrir="' + esc(c.id) + '">' + (enviadoConv ? 'Fazer novo rascunho' : 'Fazer rascunho') + '</button></div>' +
     '<div class="dv-card"><div class="k">Arquivo para o seu sistema</div><p class="sub" style="margin:0 0 8px">Um .md com o que ela informou, o resumo e os encaminhamentos em lista de tarefas.</p><button type="button" class="btn" data-dosmd="' + esc(c.id) + '">Baixar o .md</button></div></div>';
-  var passo = function (k, n, t, resumo, corpo) { return lgDet(k, 'lg-passo', '<span class="lg-n">' + n + '</span><b>' + t + '</b><span class="sub lg-res">' + esc(resumo) + '</span>', corpo); };
-  var miolo = passo('a', 1, 'Antes da ligação', nFalta + (nFalta === 1 ? ' resposta falta' : ' respostas faltam') + (X.diverge.length ? ' · ' + X.diverge.length + ' a confirmar' : ''), p1) +
-    passo('b', 2, 'Análise 1:1', notionLido || pcs.estado === 'proposta' ? 'conversa lida' : dv('ligacao_resumo') ? 'resumo no dossiê' : 'conversa ainda não lida', pAn) +
-    passo('m', 3, 'Montagem App', (state.mont && state.mont.cid === c.id && state.mont.estado === 'aplicado') ? 'aprovada' : (state.mont && state.mont.cid === c.id && state.mont.estado === 'proposta') ? 'proposta para revisar' : (montFonte(c) ? 'conversa vinculada: pronta para propor' : 'aguardando a conversa'), pMont) +
-    passo('c', 4, 'O que sai da conversa', enviado ? 'e-mail enviado' : 'e-mail ainda não feito', p3);
-  return '<section class="panel dv lg" id="dos-ligacao" style="padding:16px;margin-bottom:14px">' +
-    lgDet('main', 'lg-main', '<h3 style="font-size:17px;margin:0">A ligação</h3><span class="sub lg-res">Antes: contexto e o que perguntar. Durante: registre. Depois: a IA lê a conversa e preenche o Dossiê, e sai o bilan.</span>', miolo) + '</section>';
+  // Três etapas, uma por vez (sem rolar): antes da ligação; depois do 1:1 (a análise e a montagem juntas); o que sai da conversa.
+  var ps = state.fx.lgPasso || 'a', mp = state.mont && state.mont.cid === c.id ? state.mont : null;
+  var resB = (mp && mp.estado === 'aplicado') ? 'montagem aprovada' : (mp && mp.estado === 'proposta') ? 'montagem para revisar' : (notionLido || pcs.estado === 'proposta') ? 'conversa lida' : dv('ligacao_resumo') ? 'resumo no dossiê' : 'conversa ainda não lida';
+  var etapas = [['a', 'Antes da ligação', nFalta + (nFalta === 1 ? ' resposta falta' : ' respostas faltam') + (X.diverge.length ? ' · ' + X.diverge.length + ' a confirmar' : '')], ['b', 'Depois do 1:1', resB], ['c', 'O que sai da conversa', enviado ? 'e-mail enviado' : 'e-mail ainda não feito']];
+  var nav = '<nav class="lg-nav" aria-label="Etapas da ligação">' + etapas.map(function (e, i) {
+    return '<button type="button" class="lg-et' + (e[0] === ps ? ' on' : '') + '" data-fx="lgPasso" data-v="' + e[0] + '"' + (e[0] === ps ? ' aria-current="step"' : '') + '><span class="lg-n">' + (i + 1) + '</span><span><b>' + e[1] + '</b><small>' + esc(e[2]) + '</small></span></button>';
+  }).join('') + '</nav>';
+  var painel = ps === 'b' ? pAn + (pMont ? '<div class="lg-mont"><h4 class="fx-h4">Montagem proposta para o espaço dela</h4>' + pMont + '</div>' : '') : ps === 'c' ? p3 : p1;
+  return '<section class="panel dv lg" id="dos-ligacao" style="padding:16px;margin-bottom:14px"><h3 style="font-size:17px;margin:0 0 10px">A ligação</h3>' + nav + '<div class="lg-painel">' + painel + '</div></section>';
 }
 // O que conferir e o que perguntar: cada resposta que falta aparece só aqui, separada pelo canal (conversa, app, documento).
 function dosPerguntarHtml(c, S) {
@@ -4484,7 +4485,7 @@ function dosPerguntarHtml(c, S) {
     if (!conta) {
       var todos = F.conversa.concat(F.doc).concat(F.app);
       falta = '<div class="dv-sec"><div class="k">Perguntas para o 1:1</div><p class="sub" style="margin:0 0 6px">' + 'O que você perguntar na conversa já entra no formulário abaixo.</p>' +
-        '<ol class="dv-ol">' + todos.slice(0, 10).map(function (f) { return '<li>' + esc(f.l) + '</li>'; }).join('') + '</ol>' + (todos.length > 10 ? '<p class="sub" style="margin:4px 0 0">E mais ' + (todos.length - 10) + ' no formulário.</p>' : '') + '</div>';
+        '<div class="dv-chips">' + todos.slice(0, 10).map(function (f) { return '<span class="dv-chip">' + esc(f.l) + '</span>'; }).join('') + (todos.length > 10 ? '<span class="dv-chip mais">+ ' + (todos.length - 10) + ' no formulário</span>' : '') + '</div></div>';
     } else {
       falta = '<div class="dv-sec"><div class="k">Como completar o que falta' + (pos ? '' : ' (depois do 1:1)') + '</div><div class="dv-estr">' +
         (F.conversa.length ? '<div class="dv-e"><b>Perguntar por mensagem</b><span class="sub">' + F.conversa.length + ' respostas: ela responde no chat.</span>' + lista(F.conversa) + '<button type="button" class="btn" data-dosmsg="' + esc(c.id) + '" data-tipo="conversa">Montar a mensagem →</button></div>' : '') +
@@ -4774,6 +4775,7 @@ function fichaClick(el) {
     case 'appdia': f.dia = Number(ds.v); fxPintaPrevia(); return true;
     case 'camadas': f.camadas = !f.camadas; fxPintaPrevia(); return true;
     case 'dem': { f.dem = ds.v || 'todas'; f.appAba = 'checklist'; var cd = byC(state.sel); if (cd) { fxPintaChk(fxContato(cd, f.dados && f.dados.uid)); fxPintaPrevia(); } return true; }
+    case 'lgPasso': f.lgPasso = ds.v; fxPintaCorpo(); return true;
     case 'curOrigem': f.curOrigem = ds.v; fxPintaCorpo(); return true;
     case 'curConf': case 'curEsc': case 'curMostrar': case 'curMov': case 'curReset': case 'curRetira': { var cc = byC(state.sel); if (cc) fxCurAcao(cc, ds); return true; }
     case 'ckOrigem': f.ckOrigem = ds.v; fxRepintaChkDe(); return true;
@@ -4815,7 +4817,7 @@ async function renderPessoa() {
   if (!c) { $('pessoa-page').innerHTML = '<div class="empty">Pessoa não encontrada.</div>'; return; }
   $('pessoa-page').innerHTML = '<div class="loading">Carregando a ficha…</div>';
   if (fichaV2Ativa() && FX_PROC === null) FX_PROC = await fxCarregaProcessos();
-  if (fichaV2Ativa() && FX_QUANDO === null) { try { var rq = await fetch('guias-quando.json?v=2026-11-18.02'); FX_QUANDO = rq.ok ? await rq.json() : {}; } catch (e) { FX_QUANDO = {}; } }
+  if (fichaV2Ativa() && FX_QUANDO === null) { try { var rq = await fetch('guias-quando.json?v=2026-11-18.03'); FX_QUANDO = rq.ok ? await rq.json() : {}; } catch (e) { FX_QUANDO = {}; } }
   var r = await Promise.all([
     supabase.from('eventos').select('tipo,dados,criado_em').eq('contato_id', c.id).order('criado_em', { ascending: false }).limit(200),
     supabase.from('consentimentos').select('finalidade,aceito,texto,origem,criado_em').eq('contato_id', c.id).order('criado_em', { ascending: false }),
@@ -6728,7 +6730,7 @@ async function enviarLinkPagamento(btn) {
 var FX_DETALHE = null, qdTimer = null, qdOrigem = null, qdAberto = false;
 async function fxCarregaDetalhe() {
   if (FX_DETALHE) return FX_DETALHE;
-  try { var r = await fetch('guias-detalhe.json?v=2026-11-18.02'); FX_DETALHE = r.ok ? await r.json() : {}; } catch (e) { FX_DETALHE = {}; }
+  try { var r = await fetch('guias-detalhe.json?v=2026-11-18.03'); FX_DETALHE = r.ok ? await r.json() : {}; } catch (e) { FX_DETALHE = {}; }
   return FX_DETALHE;
 }
 function fxFechaQuadro() {

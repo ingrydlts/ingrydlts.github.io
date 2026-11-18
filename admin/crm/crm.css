@@ -2114,3 +2114,17 @@ select.fx-hm-add:hover,select.fx-hm-add:focus-visible{border-color:var(--moss); 
 .fx-x{border:0; background:none; padding:0 9px 0 3px; color:var(--ink-3); font-size:15px; cursor:pointer}
 .fx-atal{display:grid; gap:8px; padding:12px; margin:6px 0 10px; border:1px solid var(--moss); border-radius:14px; max-width:560px}
 .fx-atal input{padding:8px 10px; border:1px solid var(--line-2); border-radius:9px; background:var(--surface-2); color:var(--ink); font:inherit; font-size:14px}
+
+/* A ligação em três etapas (uma por vez) e as perguntas do 1:1 em chips */
+.lg-nav{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; margin:0 0 14px}
+.lg-et{display:flex; align-items:center; gap:10px; min-height:56px; padding:10px 14px; border:1px solid var(--line-2); border-radius:14px; background:var(--surface); text-align:left; font:inherit; cursor:pointer}
+.lg-et b{display:block; font-size:14px}
+.lg-et small{color:var(--ink-3); font-size:12px}
+.lg-et.on{border-color:var(--moss); background:var(--moss-soft)}
+.lg-et.on .lg-n{background:var(--moss); color:#fff}
+.lg-mont{margin-top:18px; padding-top:14px; border-top:1px solid var(--line)}
+.lg-painel{min-width:0}
+@media (max-width:760px){.lg-nav{grid-template-columns:1fr}}
+.dv-chips{display:flex; flex-wrap:wrap; gap:6px; margin:6px 0 4px}
+.dv-chip{padding:5px 11px; border:1px solid var(--line-2); border-radius:999px; background:var(--surface-2); font-size:13px; font-weight:600}
+.dv-chip.mais{border-style:dashed; color:var(--ink-3); font-weight:500}
