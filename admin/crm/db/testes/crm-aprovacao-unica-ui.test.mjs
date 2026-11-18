@@ -12,15 +12,15 @@ const PROP = () => ({ bilan: { resumo: 'Resumo.', afirmacoes: [{ texto: 'Ligar',
   checklists: [{ chave: 'l', titulo: 'Lista', origem: 'particular', itens: [{ chave: 'a', titulo: 'Item A', demarche: 'banco', subitens: [], prazo: null, fonte: null, nivel: null, a_conferir: true }, { chave: 'b', titulo: 'Item B', demarche: 'caf', subitens: [], prazo: null, fonte: { rotulo: 'G', url: 'https://x.org/g' }, nivel: 'oficial', a_conferir: false }] }],
   documentos: [], perguntas_equipe: [], blocos: [], compromissos: [], omissoes: [], lembretes: [], mensagens_chat: [] });
 
-console.log('== Gavetas: a tela deixa de ser uma lista comprida ==');
+console.log('== Abas por destino: a tela deixa de ser uma lista comprida ==');
 {
   const m = { cid: 'c1', estado: 'proposta', erro: '', prop: { id: 1, versao: 1, proposta: PROP() }, sel: {}, motivos: {}, res: null, pub: null, previa: null, pode: false, forcar: false, msg: '', temTranscricao: true, diff: null, lib: null, dd: {} };
-  const h = MT.painelHtml(m, pessoa({ id: 'c1' }), esc);
-  check('os grupos viram gavetas (details), fechadas por padrão', (h.match(/<details class="mont-gaveta"/g) || []).length >= 3 && !/<details class="mont-gaveta" data-dd="mont-checklists" open/.test(h));
-  check('o título da gaveta traz a contagem e quantos estão marcados e a conferir', /Checklists · 3[\s\S]*?3 marcados · 1 a conferir/.test(h));
-  check('há um resumo no alto: quantos itens, grupos, marcados e sem fonte', /<b>4 itens<\/b> em 2 grupos · 4 marcados · 1 sem fonte oficial/.test(h) || /itens<\/b> em \d+ grupos · \d+ marcados · 1 sem fonte oficial/.test(h));
-  check('o conteúdo continua dentro das gavetas (nada some)', h.includes('Item A') && h.includes('Item B') && h.includes('Ligar para a escola'));
-  check('a gaveta lembra que estava aberta (m.dd)', /<details class="mont-gaveta" data-dd="mont-checklists" open/.test(MT.painelHtml({ ...m, dd: { 'mont-checklists': true } }, pessoa({ id: 'c1' }), esc)));
+  const c = pessoa({ id: 'c1' }), h = MT.painelHtml(m, c, esc);
+  check('os grupos viram abas (um botão por destino) e só o grupo ativo mostra os itens', (h.match(/class="mont-tab"/g) || []).length >= 2 && !/<details class="mont-gaveta" data-dd="mont-checklists"/.test(h));
+  check('cada aba traz marcados/total do grupo', /data-montgrupo="Checklists" aria-pressed="(true|false)">Checklists<small>3\/3<\/small>/.test(h));
+  check('há uma barra de resumo no rodapé: quantos itens marcados e quantos sem fonte oficial', /<b>4 de 4<\/b> itens marcados · 1 sem fonte oficial/.test(h));
+  const lista = (g) => MT.painelHtml({ ...m, grupo: g }, c, esc);
+  check('trocar de aba (m.grupo) mostra os itens daquele grupo, e juntas as abas mostram tudo (nada some)', (lista('Checklists') + lista('Particulares do percurso')).includes('Item A') && lista('Checklists').includes('Item B') && lista('Particulares do percurso').includes('Ligar para a escola') && !lista('Checklists').includes('Ligar para a escola'));
 }
 
 console.log('== Aprovar uma vez só ==');

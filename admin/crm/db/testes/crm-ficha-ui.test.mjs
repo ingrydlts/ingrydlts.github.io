@@ -376,6 +376,17 @@ console.log('== Aba Dossiê: se preenche com o que ela responde no funil ==');
   await h.click({ fx: 'dosChip', k: 'fase', v: 'adaptando' });
   check('tocar de novo no mesmo chip limpa a resposta', h.mod.state.dos.rasc.fase === '');
   await h.click({ fx: 'dosFiltro', v: 'tudo' });
+  // Divergência funil × dossiê: "Usar o do funil" ou "Manter o do dossiê"
+  h.mod.state.dos.d = { ...(h.mod.state.dos.d || {}), ano_au_pair: 'segundo' };
+  await h.click({ fx: 'lgPasso', v: 'a' });
+  const divH = h.el('fx-corpo').innerHTML;
+  check('a divergência do ano de au pair (funil: primeiro, dossiê: segundo) ganha os botões de resolver', divH.includes('data-fx="dosUsa" data-k="ano_au_pair" data-v="funil"') && divH.includes('data-fx="dosUsa" data-k="ano_au_pair" data-v="dossie"'));
+  await h.click({ fx: 'dosUsa', k: 'ano_au_pair', v: 'funil' });
+  check('"Usar o do funil" põe o valor do funil no formulário (para salvar)', h.mod.state.dos.rasc.ano_au_pair === 'primeiro');
+  delete h.mod.state.dos.rasc.ano_au_pair;
+  await h.click({ fx: 'dosUsa', k: 'ano_au_pair', v: 'dossie' });
+  await h.click({ fx: 'lgPasso', v: 'a' });
+  check('"Manter o do dossiê" tira a divergência da lista', !h.el('fx-corpo').innerHTML.includes('data-fx="dosUsa" data-k="ano_au_pair"') && h.mod.state.dos.rasc.ano_au_pair === undefined);
   check('o que já está no dossiê ganha do funil (cfNivel: master, não l1)', h.mod.dosValor(c, { cfNivel: 'master' }, {}, 'cfNivel') === 'master' && h.mod.dosValor(c, {}, {}, 'cfNivel') === 'l1');
   check('valor que o formulário não conhece é ignorado (cfTeste "inventado")', !sel('cfTeste', 'inventado') && h.mod.dosDoFunil(c, 'cfTeste') === null);
   check('campo vindo do funil traz a etiqueta de fonte e o dossiê conta como respondido', pg.includes('Veio do funil') && pg.includes('class="ds funil"') && h.mod.dosProgresso(c, {}, {}).n >= 6);

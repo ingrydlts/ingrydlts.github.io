@@ -152,16 +152,18 @@ function propostaHtml(m, c, esc) {
   h += diffHtml(m.diff, esc);
   var nConf = itens.filter(function (i) { return i.aConferir && (m.sel[i.k] === undefined ? true : m.sel[i.k]); }).length;
   h += '<p class="sub" style="margin:0 0 6px"><b>' + itens.length + (itens.length === 1 ? ' item' : ' itens') + '</b> em ' + GRUPOS.filter(function (g) { return itens.some(function (i) { return i.grupo === g; }); }).length + ' grupos · ' + marcados + ' marcados' + (nConf ? ' · ' + nConf + ' sem fonte oficial' : '') + '. Abra cada grupo para revisar.</p>';
-  GRUPOS.forEach(function (g) {
-    var lst = itens.filter(function (i) { return i.grupo === g; });
-    if (!lst.length) return;
-    var marc = lst.filter(function (i) { return m.sel[i.k] === undefined ? true : !!m.sel[i.k]; }).length, conf = lst.filter(function (i) { return i.aConferir; }).length;
-    h += gaveta(m, g.toLowerCase().replace(/[^a-z0-9]+/g, '-'), esc(g) + ' · ' + lst.length, marc + (marc === 1 ? ' marcado' : ' marcados') + (conf ? ' · ' + conf + ' a conferir' : ''), '<ul class="mont-lista">' + lst.map(function (i) { return itemHtml(i, m, esc); }).join('') + '</ul>', false);
-  });
+  var comItens = GRUPOS.filter(function (g) { return itens.some(function (i) { return i.grupo === g; }); }), ativo = comItens.indexOf(m.grupo) >= 0 ? m.grupo : comItens[0];
+  var marcou = function (i) { return m.sel[i.k] === undefined ? true : !!m.sel[i.k]; };
+  if (comItens.length) {
+    h += '<div class="mont-tabs" role="group" aria-label="Destino">' + comItens.map(function (g) {
+      var lst = itens.filter(function (i) { return i.grupo === g; });
+      return '<button type="button" class="mont-tab" data-montgrupo="' + esc(g) + '" aria-pressed="' + (g === ativo) + '">' + esc(g) + '<small>' + lst.filter(marcou).length + '/' + lst.length + '</small></button>';
+    }).join('') + '</div><ul class="mont-lista">' + itens.filter(function (i) { return i.grupo === ativo; }).map(function (i) { return itemHtml(i, m, esc); }).join('') + '</ul>';
+  }
   if (!itens.length) h += '<p class="sub">A conversa não trouxe nada para montar. Cole uma transcrição mais completa ou monte à mão na aba Caso.</p>';
   // Uma aprovação só: os itens marcados já entram no Checklist, nos Avisos e no Espaço dela (nada de segunda etapa em outra sessão).
-  return h + '<div class="actions" style="margin-top:10px"><button class="btn primary" type="button" data-montaplicar="' + esc(c.id) + '"' + (m.estado === 'aplicando' ? ' disabled' : '') + '>' +
-    (m.estado === 'aplicando' ? 'Levando…' : 'Levar para a Curadoria (' + marcados + ')') + '</button> <button class="btn" type="button" data-montdescartar="' + esc(c.id) + '">Descartar a proposta</button></div>' +
+  return h + '<div class="mont-rodape"><span class="mont-info"><b>' + marcados + ' de ' + itens.length + '</b> ' + (itens.length === 1 ? 'item marcado' : 'itens marcados') + (nConf ? ' · ' + nConf + ' sem fonte oficial' : '') + '</span><span class="mont-ac"><button class="btn" type="button" data-montdescartar="' + esc(c.id) + '">Descartar a proposta</button> <button class="btn primary" type="button" data-montaplicar="' + esc(c.id) + '"' + (m.estado === 'aplicando' ? ' disabled' : '') + '>' +
+    (m.estado === 'aplicando' ? 'Levando…' : 'Levar para a Curadoria (' + marcados + ')') + '</button></span></div>' +
     '<p class="sub" style="margin:6px 0 0">Levar cria os rascunhos e abre a Curadoria, onde você aprova item por item. Nada chega a ela antes disso.</p>';
 }
 

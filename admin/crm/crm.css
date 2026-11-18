@@ -2229,3 +2229,25 @@ select.fx-hm-add:hover,select.fx-hm-add:focus-visible{border-color:var(--moss); 
 .lg-painel .lg-det>div{padding-bottom:14px}
 #chat-bt-rot,#chat-bt-url,#chat-at-nome,#chat-at-url,#chat-txt{border:1px solid var(--line-2); border-radius:10px; background:var(--surface-2); color:var(--ink); font:inherit; font-size:14px; padding:9px 12px}
 #chat-bt-rot:focus,#chat-bt-url:focus,#chat-at-nome:focus,#chat-at-url:focus,#chat-txt:focus{outline:2px solid var(--moss); border-color:var(--moss)}
+
+/* Depois do 1:1: Resumo e Próximos passos lado a lado, abas por destino e barra fixa */
+.pc-leitura{display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; margin-top:16px}
+@media (max-width:760px){.pc-leitura{grid-template-columns:1fr}}
+.pc-card{padding:14px 16px; border:1px solid var(--line); border-radius:14px; background:var(--surface-2); min-width:0}
+.pc-card .pc-h{margin:0 0 8px; font-size:10.5px; letter-spacing:.08em; font-weight:700; color:var(--ink-2)}
+.pc-lac{display:flex; flex-wrap:wrap; gap:6px; align-items:center; margin:12px 0 0; font-size:13px; color:var(--ink-2)}
+.pc-lac-t{padding:3px 10px; border-radius:999px; background:var(--amber-soft,#F3E6C8); color:var(--amber-ink,#7A5A12); font-size:12px; font-weight:600}
+.mont-tabs{display:flex; flex-wrap:wrap; gap:6px; margin:12px 0}
+.mont-tab{min-height:34px; padding:0 12px; border:1px solid var(--line-2); border-radius:999px; background:var(--surface-2); font:inherit; font-size:13px; font-weight:600; color:var(--ink-2); cursor:pointer}
+.mont-tab small{margin-left:4px; font-weight:500; opacity:.75}
+.mont-tab[aria-pressed="true"]{background:var(--ink); border-color:var(--ink); color:var(--surface)}
+.montagem .mont-item{border-radius:12px; padding:10px 12px}
+.mont-rodape{position:sticky; bottom:calc(8px + env(safe-area-inset-bottom,0px)); z-index:4; display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; margin-top:16px; padding:12px 16px; border:1px solid var(--moss); border-radius:16px; background:var(--surface-2); box-shadow:0 8px 24px rgb(0 0 0 / .14)}
+.mont-info{font-size:13px; color:var(--ink-2)} .mont-info b{color:var(--ink)}
+.mont-ac{display:flex; gap:8px; flex-wrap:wrap}
+
+.dv-div{list-style:none; padding:0; margin:8px 0; display:flex; flex-direction:column; gap:8px}
+.dv-div li{padding:10px 12px; border:1px solid var(--amber-ink,#7A5A12); border-radius:12px; background:var(--amber-soft,#F3E6C8); color:var(--ink)}
+.dv-div-ac{display:flex; gap:8px; flex-wrap:wrap; margin-top:8px}
+.dv-div-ac .btn{padding:5px 10px; font-size:12px}
+.dbloco.poscall:not(:has(> :not(h4))){display:none}

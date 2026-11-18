@@ -2,15 +2,15 @@
 // Nada de service_role aqui. O banco é db/crm-fase2.sql; o desenho é o artefato "CRM Por Dentro".
 // Tudo que vem do banco é texto de terceiros (nome, e-mail, pergunta): passa sempre por esc().
 import { supabase } from '/assets/js/supabase-client.js';
-import * as TX from './taxonomia.js?v=2026-11-18.12';   // páginas, famílias e agrupamento dos modelos
-import * as ES from './estudio.js?v=2026-11-18.12';   // os blocos do estúdio de e-mails (entregas 2 e 3)
-import * as EE from './editor-email.js?v=2026-11-18.12';
-import * as EQ from './editor-quem.js?v=2026-11-18.12';
-import * as JR from './jornada.js?v=2026-11-18.12';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
-import * as FX from './ficha.js?v=2026-11-18.12';   // ficha v2: lógica pura (fila, démarches, funil, ações)
-import * as FH from './ficha-html.js?v=2026-11-18.12';   // ficha v2: HTML puro
-import * as PN from './panorama.js?v=2026-11-18.12';
-import * as MT from './montagem.js?v=2026-11-18.12';   // Montagem do espaço a partir do transcript (lógica e HTML puros)   // Panorama dela e O que ela trouxe (lógica e HTML puros)
+import * as TX from './taxonomia.js?v=2026-11-18.15';   // páginas, famílias e agrupamento dos modelos
+import * as ES from './estudio.js?v=2026-11-18.15';   // os blocos do estúdio de e-mails (entregas 2 e 3)
+import * as EE from './editor-email.js?v=2026-11-18.15';
+import * as EQ from './editor-quem.js?v=2026-11-18.15';
+import * as JR from './jornada.js?v=2026-11-18.15';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
+import * as FX from './ficha.js?v=2026-11-18.15';   // ficha v2: lógica pura (fila, démarches, funil, ações)
+import * as FH from './ficha-html.js?v=2026-11-18.15';   // ficha v2: HTML puro
+import * as PN from './panorama.js?v=2026-11-18.15';
+import * as MT from './montagem.js?v=2026-11-18.15';   // Montagem do espaço a partir do transcript (lógica e HTML puros)   // Panorama dela e O que ela trouxe (lógica e HTML puros)
 
 var PERSONAS = {
   au_pair_estudante: 'Au pair → estudante', campus_france: 'Campus France', alternancia_emprego: 'Alternância / emprego',
@@ -3251,7 +3251,9 @@ function pcPassosAmigavel(txt) {
 function pcQuadrosHtml(c) {
   var pc = pcEstado(c.id), p = pc.estado === 'proposta' && pc.prop && pc.prop.proposta && pc.prop.proposta.origem !== 'notion' ? pc.prop.proposta : null;
   var S = state.dos && state.dos.cid === c.id ? state.dos : null, dv = function (k) { return S ? String(dosValor(c, S.d, S.rasc || {}, k) || '') : ''; };
-  var h = '<div class="pc-leitura"><h5 class="pc-h">Resumo</h5>' + pcResumoAmigavel(dv('ligacao_resumo')) + '<h5 class="pc-h">Encaminhamentos</h5>' + pcPassosAmigavel(dv('proximos_passos')) + '</div>';
+  var Sf = S ? dosFaltaPorCanal(c, S) : null, lacs = Sf ? Sf.conversa.concat(Sf.doc).slice(0, 5) : [], nLac = Sf ? Sf.conversa.length + Sf.doc.length : 0;
+  var h = '<div class="pc-leitura"><div class="pc-card"><h5 class="pc-h">Resumo</h5>' + pcResumoAmigavel(dv('ligacao_resumo')) + '</div><div class="pc-card"><h5 class="pc-h">Próximos passos</h5>' + pcPassosAmigavel(dv('proximos_passos')) + '</div></div>' +
+    (lacs.length ? '<div class="pc-lac"><span>Ainda não sabemos:</span>' + lacs.map(function (f) { return '<span class="pc-lac-t">' + esc(f.l) + '</span>'; }).join('') + (nLac > lacs.length ? '<span class="sub">e mais ' + (nLac - lacs.length) + '</span>' : '') + '</div>' : '');
   var aten = p ? (p.pontos_de_atencao || []) : [], pe = p ? (p.perguntas_para_ela || []) : [], conf = p ? (p.a_conferir || []) : [];
   var corpo = '';
   if (aten.length) corpo += '<p class="sub" style="margin:0 0 4px"><b>Pontos de atenção</b></p><ul class="dv-ul">' + aten.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul>';
@@ -3885,7 +3887,7 @@ function fxHeaderHtml(c, d) {
 // Catálogo de démarches (cópia do app, processos.json): carregado uma vez; sem ele, tudo cai na démarche padrão.
 var FX_PROC = null, FX_QUANDO = null;   // FX_QUANDO: o "quando" de cada passo do template (guias-quando.json), para o prazo curto do Início
 async function fxCarregaProcessos() {
-  try { var r = await fetch('processos.json?v=2026-11-18.12'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
+  try { var r = await fetch('processos.json?v=2026-11-18.15'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
 }
 // A sessão Checklist: pílulas por démarche, os 4 mais urgentes, pasta do Drive privada e "Ver mais desta sessão".
 // Os passos que a montagem do espaço propôs para ela, com démarche, subitens e origem: o mesmo detalhe do Checklist. Existem antes de ela ter conta.
@@ -4485,6 +4487,9 @@ function dosRotuloOpcao(f, v) {
   return o ? o[1] : (v === 'true' ? 'Sim' : v === 'false' ? 'Não' : String(v));
 }
 // Onde as fontes batem: o que o funil disse x o que está no dossiê; o que veio só do funil; o que a chamada trouxe.
+// Divergência entre o funil e o dossiê: "Manter o do dossiê" fica guardado neste navegador (some da lista); "Usar o do funil" troca o valor (salve o dossiê).
+function dosDivResolvida(cid, k) { try { return !!(JSON.parse(localStorage.getItem('crm_dos_div_' + cid) || '{}') || {})[k]; } catch (e) { return false; } }
+function dosDivGuarda(cid, k) { try { var m = JSON.parse(localStorage.getItem('crm_dos_div_' + cid) || '{}') || {}; m[k] = 1; localStorage.setItem('crm_dos_div_' + cid, JSON.stringify(m)); } catch (e) { /* sem localStorage */ } }
 function dosCruzamentos(c, S) {
   var out = { confere: [], diverge: [], soFunil: [], daChamada: [] };
   if (!S) return out;
@@ -4493,7 +4498,7 @@ function dosCruzamentos(c, S) {
       var fun = dosDoFunil(c, f.k), sv = (S.d || {})[f.k], salvo = sv === undefined || sv === null || sv === '' ? null : String(sv);
       var org = salvo === null ? null : onbOrigemDe(f.k, salvo);
       if (org) out.daChamada.push({ l: f.l, v: dosRotuloOpcao(f, salvo), conf: org.conf, origem: org.origem });
-      if (fun !== null && salvo !== null) (String(fun) === salvo ? out.confere : out.diverge).push({ l: f.l, funil: dosRotuloOpcao(f, fun), dossie: dosRotuloOpcao(f, salvo) });
+      if (fun !== null && salvo !== null) ((String(fun) === salvo || dosDivResolvida(c.id, f.k)) ? out.confere : out.diverge).push({ k: f.k, l: f.l, funil: dosRotuloOpcao(f, fun), dossie: dosRotuloOpcao(f, salvo) });
       else if (fun !== null && salvo === null) out.soFunil.push({ l: f.l, v: dosRotuloOpcao(f, fun) });
     });
   });
@@ -4658,7 +4663,7 @@ function dosPerguntarHtml(c, S) {
   var X = dosCruzamentos(c, S), cruz = '';
   if (S && (X.confere.length || X.diverge.length || X.soFunil.length || X.daChamada.length)) {
     cruz = '<div class="dv-sec"><div class="k">Cruzamentos entre as fontes</div><p class="sub" style="margin:0 0 6px">' + X.confere.length + ' confirmados por mais de uma fonte · ' + X.diverge.length + ' divergem · ' + X.soFunil.length + ' só vêm do funil' + (pos ? ' · ' + X.daChamada.length + ' lidos da chamada' : '') + '.</p>' +
-      (X.diverge.length ? '<ul class="dv-ul dv-div">' + X.diverge.map(function (x) { return '<li><b>' + esc(x.l) + ':</b> o funil disse “' + esc(x.funil) + '”, o dossiê diz “' + esc(x.dossie) + '”. Confirme no 1:1.</li>'; }).join('') + '</ul>' : '') +
+      (X.diverge.length ? '<ul class="dv-ul dv-div">' + X.diverge.map(function (x) { return '<li><b>' + esc(x.l) + ':</b> o funil disse “' + esc(x.funil) + '”, o dossiê diz “' + esc(x.dossie) + '”. Confirme no 1:1.<span class="dv-div-ac"><button type="button" class="btn" data-fx="dosUsa" data-k="' + esc(x.k) + '" data-v="funil">Usar o do funil</button><button type="button" class="btn" data-fx="dosUsa" data-k="' + esc(x.k) + '" data-v="dossie">Manter o do dossiê</button></span></li>'; }).join('') + '</ul>' : '') +
       (X.soFunil.length ? '<p class="sub" style="margin:6px 0 0"><b>Só vieram do funil, confirme com ela:</b> ' + esc(X.soFunil.map(function (x) { return x.l; }).join(', ')) + '.</p>' : '') +
       (pos && X.daChamada.length ? '<ul class="dv-ul">' + X.daChamada.slice(0, 8).map(function (x) { return '<li>' + esc(x.l) + ' <i class="dv-fonte">' + esc(x.origem) + ' · ' + esc(ONB_CONF[x.conf] || x.conf) + '</i></li>'; }).join('') + '</ul>' : '') + '</div>';
   }
@@ -4963,6 +4968,9 @@ function fichaClick(el) {
     case 'dosChip': { var cc2 = byC(state.sel); if (!cc2 || !state.dos || state.dos.cid !== cc2.id) return true; var at2 = dosValor(cc2, state.dos.d, state.dos.rasc, ds.k); state.dos.rasc[ds.k] = at2 === ds.v ? '' : ds.v; pintaDossie(cc2); return true; }
     case 'perMov': fxPerMover(ds.id, Number(ds.d)); return true;
     case 'homeDestaque': fxHomeDestacar(ds.id); return true;
+    case 'dosUsa': { var cdu = byC(state.sel); if (!cdu || !state.dos || state.dos.cid !== cdu.id) return true;
+      if (ds.v === 'funil') { var fv = dosDoFunil(cdu, ds.k); if (fv !== null) { state.dos.rasc[ds.k] = String(fv); toast('Valor do funil no formulário: salve o dossiê para guardar.', 3600); } } else dosDivGuarda(cdu.id, ds.k);
+      pintaDossie(cdu); fxPintaCorpo(); return true; }
     case 'dosFiltro': f.dosFiltro = ds.v; f.dosFonte = 'todas'; { var cdf = byC(state.sel); if (cdf) pintaDossie(cdf); } return true;
     case 'dosFonte': f.dosFonte = ds.v; { var cds = byC(state.sel); if (cds) pintaDossie(cds); } return true;
     case 'curOrigem': f.curOrigem = ds.v; fxPintaCorpo(); return true;
@@ -5006,7 +5014,7 @@ async function renderPessoa() {
   if (!c) { $('pessoa-page').innerHTML = '<div class="empty">Pessoa não encontrada.</div>'; return; }
   $('pessoa-page').innerHTML = '<div class="loading">Carregando a ficha…</div>';
   if (fichaV2Ativa() && FX_PROC === null) FX_PROC = await fxCarregaProcessos();
-  if (fichaV2Ativa() && FX_QUANDO === null) { try { var rq = await fetch('guias-quando.json?v=2026-11-18.12'); FX_QUANDO = rq.ok ? await rq.json() : {}; } catch (e) { FX_QUANDO = {}; } }
+  if (fichaV2Ativa() && FX_QUANDO === null) { try { var rq = await fetch('guias-quando.json?v=2026-11-18.15'); FX_QUANDO = rq.ok ? await rq.json() : {}; } catch (e) { FX_QUANDO = {}; } }
   var r = await Promise.all([
     supabase.from('eventos').select('tipo,dados,criado_em').eq('contato_id', c.id).order('criado_em', { ascending: false }).limit(200),
     supabase.from('consentimentos').select('finalidade,aceito,texto,origem,criado_em').eq('contato_id', c.id).order('criado_em', { ascending: false }),
@@ -6919,7 +6927,7 @@ async function enviarLinkPagamento(btn) {
 var FX_DETALHE = null, qdTimer = null, qdOrigem = null, qdAberto = false;
 async function fxCarregaDetalhe() {
   if (FX_DETALHE) return FX_DETALHE;
-  try { var r = await fetch('guias-detalhe.json?v=2026-11-18.12'); FX_DETALHE = r.ok ? await r.json() : {}; } catch (e) { FX_DETALHE = {}; }
+  try { var r = await fetch('guias-detalhe.json?v=2026-11-18.15'); FX_DETALHE = r.ok ? await r.json() : {}; } catch (e) { FX_DETALHE = {}; }
   return FX_DETALHE;
 }
 function fxFechaQuadro() {
@@ -7064,6 +7072,7 @@ document.addEventListener('click', async function (e) {
     return uNotion ? pcLerNotion(t.dataset.pcler) : pcLer(t.dataset.pcler, t);
   }
   if (t.dataset.montler) return montLer(t.dataset.montler, t);
+  if (t.dataset.montgrupo) { montEstado(state.sel).grupo = t.dataset.montgrupo; return pintaMont(state.sel); }
   if (t.dataset.montaplicar) return montLevar(t.dataset.montaplicar, t);
   if (t.dataset.montaprovar) return montAprovarFila(t.dataset.montaprovar, t);
   if (t.dataset.montdescartar) return montDescartar(t.dataset.montdescartar, t);

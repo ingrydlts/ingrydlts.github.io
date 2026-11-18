@@ -9,6 +9,8 @@ import { carregarCrm, pessoa } from './ficha-harness.mjs';
 let passed = 0, failed = 0;
 function check(label, cond) { if (cond) passed++; else { failed++; console.log('  FALHOU:', label); } }
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+// A proposta agora mostra um grupo por aba: para conferir TODOS os itens, junta a tela de cada aba.
+const todasAbas = (m, c0) => [...new Set(MT.itensDaProposta(m.prop.proposta).map((i) => i.grupo))].map((g) => MT.painelHtml({ ...m, grupo: g }, c0, esc)).join('');
 
 const PROP = () => ({
   bilan: { resumo: 'Ela quer estudar francês e decidir como falar com a escola.', afirmacoes: [
@@ -48,7 +50,7 @@ console.log('\n== Démarche e subitens no item do checklist ==');
   check('o detalhe segue o do Checklist real: démarche, subitens, de onde vem, prazo', /^Trabalho · 2 subitens · só deste percurso · prazo 05\/12 · em "Dossiê para empresas"/.test(it.detalhe));
   check('item sem démarche (proposta antiga) diz "Sem démarche" e não quebra', MT.itensDaProposta(PROP()).find((i) => i.k === 'chk:dossie_empresa:carta').detalhe.startsWith('Sem démarche · '));
   check('lista de modelo da persona diz "da persona"', MT.itensDaProposta({ checklists: [{ chave: 'a', titulo: 'A', origem: 'modelo', itens: [{ chave: 'x', titulo: 'X', demarche: 'banco', subitens: ['Um'] }] }] }).find((i) => i.k === 'chk:a:x').detalhe.startsWith('Banco · 1 subitem · da persona'));
-  const h = MT.painelHtml({ cid: 'c1', estado: 'proposta', erro: '', prop: { id: 1, versao: 1, proposta: PROP() }, sel: {}, motivos: {}, res: null, pub: null, previa: null, pode: false, forcar: false, msg: '', temTranscricao: true, diff: null, lib: null }, pessoa(), esc);
+  const h = todasAbas({ cid: 'c1', estado: 'proposta', erro: '', prop: { id: 1, versao: 1, proposta: PROP() }, sel: {}, motivos: {}, res: null, pub: null, previa: null, pode: false, forcar: false, msg: '', temTranscricao: true, diff: null, lib: null }, pessoa());
   check('a tela mostra a pílula da démarche e os subitens do passo', h.includes('<span class="pill">Trabalho</span>') && h.includes('Versão em francês') && h.includes('mont-sub'));
   check('as démarches da tela são as do catálogo processos.json', JSON.stringify(Object.keys(MT.DEMARCHES).sort()) === JSON.stringify(Object.keys(JSON.parse(readFileSync(new URL('../../processos.json', import.meta.url), 'utf8')).definicoes).sort()));
 }
@@ -88,10 +90,10 @@ check('lendo: mostra o estado de carregamento (sem texto solto) e não oferece r
 h = MT.painelHtml({ ...base, erro: 'A IA está ocupada agora.' }, c, esc);
 check('erro: mostra a mensagem e o botão "Tentar de novo"', /role="alert"/.test(h) && /A IA está ocupada/.test(h) && /Tentar de novo/.test(h));
 const comProp = { ...base, estado: 'proposta', prop: { id: 5, versao: 2, proposta: PROP() }, sel: {}, motivos: {} };
-h = MT.painelHtml(comProp, c, esc);
+h = todasAbas(comProp, c);
 check('proposta: um checkbox por item, marcados, com o trecho e o momento da conversa', (h.match(/data-montmarca=/g) || []).length === 10 && !/data-montmarca="[^"]*"[^>]*>/.test('') && /20:05/.test(h) && /tu peux les appeler/.test(h) && (h.match(/data-montmarca="[^"]*" checked/g) || []).length === 10);
 check('item a conferir tem o rótulo escrito "a conferir" (não só cor) e a explicação de que não vai para ela', /a conferir/.test(h) && /não vai para ela/.test(h));
-check('desmarcado mostra o seletor de motivo; marcado não', /data-montmotivo="enc:mandar_guia"/.test(MT.painelHtml({ ...comProp, sel: { 'enc:mandar_guia': false } }, c, esc)) && !/data-montmotivo/.test(h));
+check('desmarcado mostra o seletor de motivo; marcado não', /data-montmotivo="enc:mandar_guia"/.test(todasAbas({ ...comProp, sel: { 'enc:mandar_guia': false } }, c)) && !/data-montmotivo/.test(h));
 check('botões: criar rascunhos (com a contagem) e descartar', /data-montaplicar="c1"/.test(h) && /10/.test(h.match(/data-montaplicar[^<]*</)[0]) && /data-montdescartar="c1"/.test(h));
 check('o bilan aparece: resumo e cada afirmação com quem disse, o momento, o trecho, a certeza e quantas vezes foi dita', /decidir como falar com a escola/.test(h) && /dito 3 vezes/.test(h) && /31:40/.test(h) && /incerto/.test(h) && /on peut aussi écrire/.test(h) && /inferido/.test(h));
 check('as DUAS posições da conversa (ligar × escrever) aparecem lado a lado', /Ligar para a escola em vez de escrever/.test(h) && /Escrever um e-mail para a escola/.test(h));
