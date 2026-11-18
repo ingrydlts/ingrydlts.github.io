@@ -1868,6 +1868,14 @@ button.bar-r b{text-align:right; font-variant-numeric:tabular-nums}
 .fx-aviso{display:inline-block; margin-left:6px; padding:1px 8px; border-radius:999px; background:var(--amber-soft); color:var(--amber); font-size:11.5px; font-weight:500}
 .fx-anexar{position:relative; cursor:pointer}
 .fx-anexar input{position:absolute; inset:0; width:100%; height:100%; opacity:0; cursor:pointer}
+/* Publicar / Retirar em palavra (as setas ↑↓ confundiam) */
+.fx-ln-b .fx-ic.fx-tx{width:auto; height:28px; padding:0 10px; border:1px solid var(--line-2); border-radius:8px; font-size:12px; font-weight:600; color:var(--ink-2); white-space:nowrap}
+.fx-ln-b .fx-ic.fx-tx:hover,.fx-ln-b .fx-ic.fx-tx:focus-visible{border-color:var(--moss)}
+/* Pergunta da equipe: cartão em destaque no topo do Espaço */
+.fx-sb.fx-sb-dest{border:1px solid var(--moss); border-radius:14px; background:var(--moss-soft); padding:4px 14px 6px; margin:0 0 14px}
+.fx-sb-dest>summary{color:var(--moss-ink); font-size:12.5px}
+.fx-sb-selo{margin-left:auto; padding:1px 9px; border-radius:999px; background:var(--moss); color:#fff; font-size:11px; font-weight:600; letter-spacing:0; text-transform:none}
+.fx-sb-dest .fx-sb-c{padding-top:6px}
 .fx-ln-b .btn[data-caso="item-del"]{border-color:var(--red); color:var(--red); white-space:nowrap}
 
 .fx-sis{background:var(--sunk); color:var(--ink-3); font-weight:400; font-style:italic}

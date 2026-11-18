@@ -2028,6 +2028,7 @@ function casoSvg(n, tam) { return '<svg viewBox="0 0 24 24" width="' + (tam || 1
 var CASO_ICONES = { 'item-rev': ['check', 'Marcar como revisado', 1], 'item-pub': ['up', 'Publicar para ela', 1], 'item-ret': ['down', 'Retirar', 1], 'aco-pub': ['up', 'Publicar para ela', 1], 'aco-retirar': ['down', 'Retirar', 1],
   'aco-fim': ['check', 'Concluir', 0], 'aco-reabrir': ['undo', 'Reabrir', 0], 'ed-item': ['pencil', 'Editar', 2], 'ed-aco': ['pencil', 'Editar', 2], 'ed-ach': ['pencil', 'Editar', 2], 'ed-av': ['pencil', 'Editar a pergunta', 2], 'ed-chk': ['pencil', 'Editar', 2], 'aco-recusar': ['x', 'Recusar este passo', 4], 'ag-abrir': ['clock', 'Mudar a pausa', 2],
   'home-add': ['plus', 'Adicionar na página inicial', 3], 'home-del': ['x', 'Tirar da página inicial', 3], 'item-del-pede': ['trash', 'Excluir', 4], 'av-cancel': ['x', 'Cancelar', 4] };
+var CASO_TEXTO = { 'item-pub': 'Publicar', 'item-ret': 'Retirar', 'aco-pub': 'Publicar', 'aco-retirar': 'Retirar' };
 function casoLinha(esq, meio, btns, cls) {
   var ed = /data-caso="(ed-[a-z]+)" data-id="([^"]*)"/.exec(btns || '');
   var ponto = String(esq || '').replace(/<span class="pill([^"]*)">([^<]*)<\/span>/, function (m, cls, txt) {
@@ -2037,7 +2038,8 @@ function casoLinha(esq, meio, btns, cls) {
   var sem = String(btns || '').replace(/<button type="button" class="(?:btn|fx-ic(?: on)?)" data-caso="([^"]+)" data-id="([^"]*)"([^>]*)>([^<]*)<\/button>/g, function (m, acao, id, resto2, txt) {
     var i = CASO_ICONES[acao]; if (!i) return m;
     var al = /aria-label="([^"]*)"/.exec(resto2), r = al ? al[1] : (acao.indexOf('home-') === 0 ? i[1] : txt || i[1]), on = acao === 'home-del';   // já vêm escapados
-    slots[i[2]] = '<button type="button" class="fx-ic' + (on ? ' on' : '') + '" data-caso="' + acao + '" data-id="' + id + '"' + (on ? ' aria-pressed="true"' : '') + ' aria-label="' + r + '" title="' + r + '">' + casoSvg(i[0], 16) + '</button>';
+    if (CASO_TEXTO[acao]) { slots[i[2]] = '<button type="button" class="fx-ic fx-tx" data-caso="' + acao + '" data-id="' + id + '" title="' + r + '">' + CASO_TEXTO[acao] + '</button>'; return ''; }   // publicar/retirar: palavra, não seta
+    slots[i[2]] ='<button type="button" class="fx-ic' + (on ? ' on' : '') + '" data-caso="' + acao + '" data-id="' + id + '"' + (on ? ' aria-pressed="true"' : '') + ' aria-label="' + r + '" title="' + r + '">' + casoSvg(i[0], 16) + '</button>';
     return '';
   });
   var icones = slots.map(function (x) { return x || '<span class="fx-slot" aria-hidden="true"></span>'; }).join('') + sem;
@@ -2064,7 +2066,7 @@ function casoAcoesHtml(k, dono) {
   var lista = dono ? k.aco.filter(function (a) { return a.dono === dono; }) : k.aco;
   if (!lista.length) return '<div class="empty" style="padding:14px">Nenhuma ação.</div>';
   return lista.map(function (a) {
-    if (k.ed && k.ed.t === 'aco' && k.ed.id === a.id) return casoEditor('aco', a.id, '<input id="caso-ed-titulo" class="t" maxlength="160" style="width:100%" value="' + esc(a.titulo) + '">');
+    if (k.ed && k.ed.t === 'aco' && k.ed.id === a.id) return casoEditor('aco', a.id, '<input id="caso-ed-titulo" class="t" maxlength="160" style="width:100%" value="' + esc(a.titulo) + '">' + casoDataCampo(a.prazo ? String(a.prazo).slice(0, 10) : '', 'caso-ed-prazo', 'Data do passo (opcional, só você muda)'));
     var fim = a.estado === 'concluida';
     var pub = a.estado === 'recusada' ? casoPil('Recusada') : a.publicada_em ? casoPil('Publicada', 'u-baixa') : casoPil('Rascunho', 'u-media');
     var vis = a.dono === 'ela' && a.canal === 'plataforma';   // só estas aparecem para ela no Checklist
@@ -2099,9 +2101,10 @@ function casoItemMeta(it) {
   var d = it.dados || {};
   if (it.tipo === 'marco') return d.data ? fmtDay(d.data) + (d.a_confirmar ? ' · a confirmar' : '') : 'a confirmar';
   if (it.tipo === 'bilan') return ((d.secoes || []).length) + ' seções';
-  if (it.tipo === 'documento') return d.direcao === 'recebe' ? (it.arquivo_caminho ? 'arquivo' : it.link ? 'link' : it.descricao ? 'texto' : 'sem arquivo') : 'ela reúne';
+  var quando = d.data ? fmtDay(d.data) : '';
+  if (it.tipo === 'documento') return (d.direcao === 'recebe' ? (it.arquivo_caminho ? 'arquivo' : it.link ? 'link' : it.descricao ? 'texto' : 'sem arquivo') : 'ela reúne') + (quando ? ' · ' + quando : '');
   if (it.tipo === 'escola') return d.cidade || '';
-  return it.resumo || '';
+  return (it.resumo || '') + (quando ? (it.resumo ? ' · ' : '') + quando : '');
 }
 // Anexar direto da linha: escolhe o arquivo e ele sobe na hora (o controle nativo evita o bloqueio de pop-up do navegador).
 function casoAnexarIco(it) {
@@ -2146,10 +2149,10 @@ function casoItemCampos(it) {
         return '<label style="margin-right:12px"><input type="checkbox" class="caso-ed-selo" value="' + s[0] + '"' + (selosAtuais.indexOf(s[0]) >= 0 ? ' checked' : '') + '> ' + esc(s[1]) + '</label>';
       }).join(''));
     }
-    return tit('Nome do documento') + casoResumoCampo(it.resumo) + selosHtml + casoCampo('Arquivo (link https://…; vazio = "chega em breve")', '<input id="caso-ed-link" class="t" maxlength="500" style="width:100%" value="' + esc(it.link || '') + '">');
+    return tit('Nome do documento') + casoResumoCampo(it.resumo) + casoDataCampo(d.data) + selosHtml + casoCampo('Arquivo (link https://…; vazio = "chega em breve")', '<input id="caso-ed-link" class="t" maxlength="500" style="width:100%" value="' + esc(it.link || '') + '">');
   }
   if (it.tipo === 'modelo') {
-    return tit('Nome da mensagem') + casoResumoCampo(it.resumo) +
+    return tit('Nome da mensagem') + casoResumoCampo(it.resumo) + casoDataCampo(d.data) +
       casoCampo('Assunto (e-mail)', '<input id="caso-ed-assunto" class="t" maxlength="150" style="width:100%" value="' + esc(d.assunto || '') + '">') +
       casoCampo('Texto', '<textarea id="caso-ed-corpo" maxlength="3000" rows="6" style="width:100%">' + esc(d.corpo || '') + '</textarea>') +
       casoCampo('Tradução (opcional)', '<textarea id="caso-ed-traducao" maxlength="3000" rows="3" style="width:100%">' + esc(d.traducao || '') + '</textarea>');
@@ -2162,11 +2165,13 @@ function casoItemCampos(it) {
       casoCampo('O que ela lê na conversa. Uma linha com # abre uma seção; cada linha abaixo é um item; começar com ? marca “a equipe ainda vai confirmar”', '<textarea id="caso-ed-secoes" rows="14" maxlength="6000" style="width:100%">' + esc(casoSecoesTexto(d.secoes)) + '</textarea>');
   }
   if (it.tipo === 'documento' && d.direcao === 'recebe') {
-    return tit('Nome do documento') + casoResumoCampo(it.resumo) + casoDescricaoCampo(it.descricao, 'caso-ed-') +
+    return tit('Nome do documento') + casoResumoCampo(it.resumo) + casoDataCampo(d.data) + casoDescricaoCampo(it.descricao, 'caso-ed-') +
       casoCampo('Link (Notion público ou privado, Drive… https://…)', '<input id="caso-ed-link" class="t" maxlength="500" placeholder="https://…" style="width:100%" value="' + esc(it.link || '') + '">') + casoArquivoCampo(it);
   }
   return tit('Título') + casoCampo('Link (opcional)', '<input id="caso-ed-link" class="t" maxlength="500" placeholder="https://…" style="width:100%" value="' + esc(it.link || '') + '">');
 }
+// Data de um item ou passo: só você marca e muda (por enquanto ela não edita datas).
+function casoDataCampo(valor, id, rot) { return casoCampo(rot || 'Data (opcional, só você muda)', '<input id="' + (id || 'caso-ed-data') + '" type="date" style="min-height:40px" value="' + esc(valor || '') + '">'); }
 function casoResumoCampo(valor, rot) { return casoCampo(rot || 'O que é (uma linha, ela lê antes de abrir)', '<input id="caso-ed-resumo" class="t" maxlength="240" style="width:100%" value="' + esc(valor || '') + '">'); }
 // Formulário de um item novo (documento, mensagem pronta ou bilan). Entra como "proposto": você revisa e publica como os outros.
 function casoNovoHtml(tipo) {
@@ -2425,7 +2430,8 @@ async function casoAcao(acao, id, t) {
     var tav = $('caso-ed-titulo') ? $('caso-ed-titulo').value.trim() : ''; if (!tav) { if (t) t.disabled = false; return toast('A pergunta não pode ficar vazia'); }
     r = await supabase.from('caso_avisos').update({ titulo: tav.slice(0, 120) }).eq('id', nid); k.ed = null;
   }
-  else if (acao === 'salvar-aco') { var ti = $('caso-ed-titulo') ? $('caso-ed-titulo').value.trim() : ''; if (!ti) { if (t) t.disabled = false; return toast('O título não pode ficar vazio'); } var upd = { titulo: ti.slice(0, 160) }, sbx = $('caso-ed-subitens');
+  else if (acao === 'salvar-aco') { var ti = $('caso-ed-titulo') ? $('caso-ed-titulo').value.trim() : ''; if (!ti) { if (t) t.disabled = false; return toast('O título não pode ficar vazio'); } var upd = { titulo: ti.slice(0, 160) }, sbx = $('caso-ed-subitens'), pzx = $('caso-ed-prazo');
+    if (pzx) { var pz = pzx.value.trim(); if (pz && !/^\d{4}-\d{2}-\d{2}$/.test(pz)) { if (t) t.disabled = false; return toast('Escolha uma data válida'); } upd.prazo = pz || null; if (pz) upd.prazo_a_confirmar = false; }
     if (sbx) { var lin = String(sbx.value || '').split('\n').map(function (x) { return x.trim().slice(0, 120); }).filter(Boolean); if (lin.length > 6) { if (t) t.disabled = false; return toast('No máximo 6 subitens'); } upd.subitens = lin.length ? lin : null; upd.editado_em = agora; }
     r = await supabase.from('caso_acoes').update(upd).eq('id', nid);
     if (r.error && /editado_em/.test(String(r.error.message || ''))) { delete upd.editado_em; r = await supabase.from('caso_acoes').update(upd).eq('id', nid); }   // sem a coluna nova (SQL ainda não rodado)
@@ -2492,6 +2498,10 @@ async function casoAcao(acao, id, t) {
     if (itm.tipo === 'modelo') {
       ['assunto', 'corpo', 'traducao'].forEach(function (c) { var v = val('caso-ed-' + c); if (v) dados[c] = v; else delete dados[c]; });
       if (!dados.corpo) return falha('Escreva o texto da mensagem');
+    }
+    if (itm.tipo === 'documento' || itm.tipo === 'modelo') {   // data só sua (a Ingryd marca e muda)
+      var dda = val('caso-ed-data'); if (dda && !/^\d{4}-\d{2}-\d{2}$/.test(dda)) return falha('Escolha uma data válida');
+      if (dda) dados.data = dda; else delete dados.data;
     }
     if (itm.tipo === 'bilan') {
       var dib = val('caso-ed-data'); if (dib && !/^\d{4}-\d{2}-\d{2}$/.test(dib)) return falha('Escolha um dia válido');
@@ -3808,6 +3818,7 @@ async function fxCarregaProcessos() {
 function fxHooksPassos(c, k) {
   return { editando: function (a) { return !!(k.ed && k.ed.t === 'aco' && k.ed.id === a.id); },
     editor: function (a) { return casoEditor('aco', a.id, '<input id="caso-ed-titulo" class="t" maxlength="160" style="width:100%" value="' + esc(a.titulo) + '" aria-label="Texto do passo">' +
+      casoDataCampo(a.prazo ? String(a.prazo).slice(0, 10) : '', 'caso-ed-prazo', 'Data do passo (opcional, só você muda)') +
       casoCampo('Subitens (um por linha, até 6)', '<textarea id="caso-ed-subitens" rows="4" style="width:100%" maxlength="800">' + esc((a.subitens || []).join('\n')) + '</textarea>')); },
     linhaPasso: fxLinhaPasso, esc: esc, rotulo: function (d) { return FX.rotuloDemarche(FX_PROC, d, personaKey(c)); }, prazo: casoPrazo, pil: casoPil, btn: casoBtn, ico: casoIco,
     alerta: function (a) { var al = fxAlertasChk(c); return (al.porRef['aco:' + a.id] || [])[0] || ''; },
@@ -3976,9 +3987,9 @@ function fxInicioCorpo(c) {
     (outros.length ? casoSecao('Outros avisos da equipe', 'proposta, o que a equipe percebeu e oferta: chegam como notificação', lista(outros, '')) : '');
 }
 // Subseção de uma sessão (aberta por padrão; lembra o que você fechou).
-function fxSub(chave, titulo, corpo) {
+function fxSub(chave, titulo, corpo, cls, selo) {
   var o = state.fx.dd['sb-' + chave]; if (o === undefined) o = true;
-  return '<details class="fx-sb" data-dd="sb-' + chave + '"' + (o ? ' open' : '') + '><summary><span>' + esc(titulo) + '</span></summary><div class="fx-sb-c">' + corpo + '</div></details>';
+  return '<details class="fx-sb' + (cls ? ' ' + cls : '') + '" data-dd="sb-' + chave + '"' + (o ? ' open' : '') + '><summary><span>' + esc(titulo) + '</span>' + (selo ? '<span class="fx-sb-selo">' + esc(selo) + '</span>' : '') + '</summary><div class="fx-sb-c">' + corpo + '</div></details>';
 }
 // O Espaço aqui segue o Início dela: você escolhe o que aparece em cada parte. Checklist (até 3 passos, entram no "Em seguida"), Só seu (o bilan e os
 // encaminhamentos da Ingryd, até 3) e Guias (até 2); embaixo, a pergunta da equipe, que o app mostra sempre no fim do Início.
@@ -3986,8 +3997,10 @@ function fxSub(chave, titulo, corpo) {
 function fxEspacoTudo(c) {
   var dd = state.fx.dd; if (dd['sb-prazos'] === undefined) dd['sb-prazos'] = false;
   var gk = fxCasoGuarda(c).k;
-  return (gk && Array.isArray(gk.itens) ? casoAvisoRepetidos(gk) : '') + fxSub('ck', 'Checklist', fxEspacoChecklist(c)) + fxSub('so', 'Só seu', fxEspacoSoSeu(c)) + fxSub('gu', 'Guias', fxEspacoGuias(c)) +
-    fxSub('perg', 'Pergunta da equipe Por Dentro', fxInicioCorpo(c)) + fxSub('prazos', 'Prazos e escolas (fora da página inicial)', fxEspacoCorpo(c)) + fxZonas(c, 'espaco');
+  var np = gk && Array.isArray(gk.avs) ? gk.avs.filter(function (a) { return a.tipo === 'pergunta'; }).length : 0;
+  // A pergunta da equipe vem primeiro e em destaque (era difícil de achar no fim). O Checklist não é mais uma sessão do Espaço.
+  return fxSub('perg', 'Pergunta da equipe Por Dentro', fxInicioCorpo(c), 'fx-sb-dest', np ? np + (np === 1 ? ' pergunta' : ' perguntas') : '') +
+    (gk && Array.isArray(gk.itens) ? casoAvisoRepetidos(gk) : '') + fxSub('so', 'Só seu', fxEspacoSoSeu(c)) + fxSub('gu', 'Guias', fxEspacoGuias(c)) + fxSub('prazos', 'Prazos e escolas (fora da página inicial)', fxEspacoCorpo(c)) + fxZonas(c, 'espaco');
 }
 function fxHomeAviso() { return '<p class="sub" style="margin:0">A Página inicial ainda não está ligada: falta rodar <b>db/crm-caso-home.sql</b> e <b>db/crm-caso-home-so-seu.sql</b> no SQL Editor do Supabase (primeiro no teste, depois na produção).</p>'; }
 function fxEspacoChecklist(c) {
@@ -4464,7 +4477,7 @@ function fxSessoes(c) {
     chat: mk('Conversa com ela', 'As mensagens da equipe, do assistente e dela, dentro do app.', 'chat', function () { return '<div id="chat-box">' + chatPanelHtml(c, state.chat, H4_PLAT) + '</div>'; }),
     checklist: mk('Checklist', 'Os passos dela por démarche, do mais urgente ao mais distante.', 'checklist', function () { return '<div id="fx-chk-corpo">' + fxChecklistCorpo(c) + '</div>' + fxZonas(c, 'checklist'); }),
     curadoria: mk('Curadoria', 'Limpar, editar, posicionar e validar os passos dela.', 'curadoria', function () { return fxCuradoriaCorpo(c); }),
-    espaco: mk('Espaço', 'Como o Início dela: você escolhe os passos do checklist, o que é só dela e os guias; embaixo, a pergunta da equipe.', 'espaco', function () { return fxEspacoTudo(c); }),
+    espaco: mk('Espaço', 'A pergunta da equipe em destaque no topo; depois o que é só dela, os guias, e as datas que só você muda.', 'espaco', function () { return fxEspacoTudo(c); }),
     perfil: mk('Perfil', 'O que ela já respondeu e o que falta perguntar.', 'perfil', function () { return fxPerfilCorpo(c) + fxZonas(c, 'perfil'); }),
     eu: mk('Só eu · minhas tarefas', 'Tarefas suas neste caso. Ela não vê nada daqui.', 'eu', function () { return fxEuCorpo(c); }),
     bilan: mk('Bilan', 'O que a conversa mostrou, os achados para conferir e o e-mail do bilan.', 'bilan', function () { var g = fxCasoGuarda(c); return (g.k ? casoSecao('O que entendi', g.k.ach.length + ' achados', casoAchadosHtml(g.k)) : g.html) + bilanResumoHtml(c) + bilanBlocoHtml(c, H4_PLAT); }),
@@ -6309,8 +6322,8 @@ async function ontLer() {
   ONT.fase = 'ok'; ONT.res = data;
   if (state.view === 'onboarding') ontPinta();
   await reload();   // a ficha nova entra na lista
-  // A ficha criada pelo Onboarding abre em Plataforma → Interações, com o resumo da leitura no topo e o botão do e-mail do bilan.
-  if (byC(data.contato_id) && state.view === 'onboarding') { state.ontResumo = data; openPessoa(data.contato_id, 'plataforma', 'interacoes'); toast(data.criado ? 'Ficha criada. Confira o resumo e envie o bilan.' : 'Ficha encontrada. Confira o resumo e envie o bilan.', 5000); }
+  // Não redireciona sozinho: ela confere o resumo aqui e aperta "Abrir a ficha e aplicar" (#ont-abrir) quando quiser ir para a ficha.
+  if (byC(data.contato_id) && state.view === 'onboarding') toast(data.criado ? 'Ficha criada. Confira o resumo e aperte “Abrir a ficha e aplicar”.' : 'Ficha encontrada. Confira o resumo e aperte “Abrir a ficha e aplicar”.', 5000);
 }
 async function ontCopiar() {
   var pc = state.pc, n = pc && ((pc.prop && pc.prop.proposta && pc.prop.proposta.notion) || (pc.notionAplicada && pc.notionAplicada.proposta.notion)), txt = n && n.email ? n.email.rascunho : '';
