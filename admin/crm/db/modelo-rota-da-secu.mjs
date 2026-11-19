@@ -27,12 +27,13 @@ const PERGUNTA = {
   outro: 'Para eu entender melhor: qual é o seu visto hoje, você exerce atividade profissional e quando chegou?'
 };
 
-// Os blocos de um caso: o primeiro passo e um bloco por passo, com a frase em francês de apoio embaixo (se houver).
+// Os blocos de um caso: o primeiro passo numa faixa verde (o que fazer já) e um bloco "passo" numerado por passo,
+// com a frase em francês de apoio num cartão dentro do passo (se houver).
 function blocosDoCaso(porta, ponto) {
   const c = caso(porta, ponto), se = '#caso_' + porta + '_' + ponto;
   return [
-    { tipo: 'texto', se, texto: '**' + c.tipo + '.** ' + c.primeiro },
-    ...c.passos.map((p, i) => ({ tipo: 'texto', se, texto: '**' + (i + 1) + '. ' + p.t + '.** ' + p.x + (p.fr ? '\n' + rotuloFrances() + ': ' + p.fr : '') }))
+    { tipo: 'destaque', se, estilo: 'verde', rotulo: c.tipo, valor: c.primeiro, nota: '' },
+    ...c.passos.map((p, i) => ({ tipo: 'passo', se, n: String(i + 1), titulo: p.t, texto: p.x, ...(p.fr ? { fr_rotulo: rotuloFrances(), fr: p.fr } : {}) }))
   ];
 }
 
@@ -45,7 +46,7 @@ export const D1 = {
   itens: [
     { tipo: 'titulo', texto: 'O seu roteiro da Sécu está aqui.' },
     { tipo: 'texto', texto: 'Oi, {nome},', alt: 'Oi,' },
-    { tipo: 'texto', texto: '**Lembrete:** o formulário oficial (Cerfa S1106) e a sua CPAM estão no site do governo: ' + OFICIAL + '\n**Estudante?** O seu pedido é em etudiant-etranger.ameli.fr.' },
+    { tipo: 'texto', estilo: 'caixa', texto: '**Lembrete:** o formulário oficial (Cerfa S1106) e a sua CPAM estão no site do governo: ' + OFICIAL + '\n**Estudante?** O seu pedido é em etudiant-etranger.ameli.fr.' },
     ...PORTAS.flatMap((p) => PONTOS.flatMap((o) => blocosDoCaso(p.id, o.id))),
     { tipo: 'texto', se: '#caso_geral', texto: 'Para ver o roteiro do seu caso, abra a página e responda as duas perguntas: a sua situação e em que ponto você está.' },
     { tipo: 'botao', rotulo: 'Voltar à página', link: 'link_pagina' },
@@ -148,6 +149,28 @@ $$;
 ${modelo({ chave: CHAVE_1, nome: 'Saúde · Rota da Sécu (e-mail 1)', objetivo: 'freebie', D: D1, quem: 'se cadastrou na Rota da Sécu', gatilho: 'material', depois: ORIGEM, dias: null, hora: null, minutos: 5, ordem: 562, nota: 'e-mail 1 da Rota da Sécu' })}${CLASSIFICAR}`;
 }
 
+// Para quem já rodou o SQL de criação: troca o desenho da versão 1 enquanto ela ainda é RASCUNHO (nunca mexe no que foi publicado).
+export function gerarVisual() {
+  const o = ES.objetivo('freebie'), d = JSON.parse(JSON.stringify(D1)); d.v = 1; d.planos = d.planos || {};
+  const mt = ES.montar(d, o.tipo), t = CHAVE_1 + '_v';
+  return `-- Por Dentro — E-mail 1 da Rota da Sécu: passo a passo visual (${HOJE})
+-- Rode no SQL Editor do Supabase (teste primeiro, depois produção). Idempotente.
+-- GERADO por admin/crm/db/modelo-rota-da-secu.mjs. O primeiro passo vira uma faixa verde, cada passo ganha o seu número e a frase em francês
+-- vira um cartão dentro do passo. O texto dito é o mesmo; só o desenho do HTML muda.
+-- Só troca a versão 1 se ela ainda estiver em RASCUNHO. ATENÇÃO: se você editou esse rascunho no Estúdio, as edições dele são substituídas.
+-- Depois de rodar, mande um teste novo (a troca zera o "testado") antes de publicar.
+update public.modelos_email_versoes
+   set assunto = ${dolar(t + '_a', mt.assunto)},
+       preheader = ${mt.preheader == null ? 'null' : dolar(t + '_p', mt.preheader)},
+       corpo_texto = ${dolar(t + '_t', mt.corpo_texto)},
+       corpo_html = ${dolar(t + '_h', mt.corpo_html)},
+       blocos = ${dolar(t + '_b', JSON.stringify(d))}::jsonb,
+       testado_em = null, testado_por = null
+ where chave = ${lit(CHAVE_1)} and versao = 1 and etapa = 'rascunho';
+`;
+}
+
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   writeFileSync(path.join(HERE, 'crm-modelos-rota-da-secu.sql'), gerar());
+  writeFileSync(path.join(HERE, 'crm-modelos-rota-da-secu-visual.sql'), gerarVisual());
 }
