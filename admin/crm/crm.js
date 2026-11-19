@@ -2,15 +2,15 @@
 // Nada de service_role aqui. O banco é db/crm-fase2.sql; o desenho é o artefato "CRM Por Dentro".
 // Tudo que vem do banco é texto de terceiros (nome, e-mail, pergunta): passa sempre por esc().
 import { supabase } from '/assets/js/supabase-client.js';
-import * as TX from './taxonomia.js?v=2026-11-19.3';   // páginas, famílias e agrupamento dos modelos
-import * as ES from './estudio.js?v=2026-11-19.3';   // os blocos do estúdio de e-mails (entregas 2 e 3)
-import * as EE from './editor-email.js?v=2026-11-19.3';
-import * as EQ from './editor-quem.js?v=2026-11-19.3';
-import * as JR from './jornada.js?v=2026-11-19.3';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
-import * as FX from './ficha.js?v=2026-11-19.3';   // ficha v2: lógica pura (fila, démarches, funil, ações)
-import * as FH from './ficha-html.js?v=2026-11-19.3';   // ficha v2: HTML puro
-import * as PN from './panorama.js?v=2026-11-19.3';
-import * as MT from './montagem.js?v=2026-11-19.3';   // Montagem do espaço a partir do transcript (lógica e HTML puros)   // Panorama dela e O que ela trouxe (lógica e HTML puros)
+import * as TX from './taxonomia.js?v=2026-11-19.4';   // páginas, famílias e agrupamento dos modelos
+import * as ES from './estudio.js?v=2026-11-19.4';   // os blocos do estúdio de e-mails (entregas 2 e 3)
+import * as EE from './editor-email.js?v=2026-11-19.4';
+import * as EQ from './editor-quem.js?v=2026-11-19.4';
+import * as JR from './jornada.js?v=2026-11-19.4';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
+import * as FX from './ficha.js?v=2026-11-19.4';   // ficha v2: lógica pura (fila, démarches, funil, ações)
+import * as FH from './ficha-html.js?v=2026-11-19.4';   // ficha v2: HTML puro
+import * as PN from './panorama.js?v=2026-11-19.4';
+import * as MT from './montagem.js?v=2026-11-19.4';   // Montagem do espaço a partir do transcript (lógica e HTML puros)   // Panorama dela e O que ela trouxe (lógica e HTML puros)
 
 var PERSONAS = {
   au_pair_estudante: 'Au pair → estudante', campus_france: 'Campus France', alternancia_emprego: 'Alternância / emprego',
@@ -3894,7 +3894,7 @@ function fxHeaderHtml(c, d) {
 // Catálogo de démarches (cópia do app, processos.json): carregado uma vez; sem ele, tudo cai na démarche padrão.
 var FX_PROC = null, FX_QUANDO = null;   // FX_QUANDO: o "quando" de cada passo do template (guias-quando.json), para o prazo curto do Início
 async function fxCarregaProcessos() {
-  try { var r = await fetch('processos.json?v=2026-11-19.3'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
+  try { var r = await fetch('processos.json?v=2026-11-19.4'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
 }
 // A sessão Checklist: pílulas por démarche, os 4 mais urgentes, pasta do Drive privada e "Ver mais desta sessão".
 // Os passos que a montagem do espaço propôs para ela, com démarche, subitens e origem: o mesmo detalhe do Checklist. Existem antes de ela ter conta.
@@ -5021,7 +5021,7 @@ async function renderPessoa() {
   if (!c) { $('pessoa-page').innerHTML = '<div class="empty">Pessoa não encontrada.</div>'; return; }
   $('pessoa-page').innerHTML = '<div class="loading">Carregando a ficha…</div>';
   if (fichaV2Ativa() && FX_PROC === null) FX_PROC = await fxCarregaProcessos();
-  if (fichaV2Ativa() && FX_QUANDO === null) { try { var rq = await fetch('guias-quando.json?v=2026-11-19.3'); FX_QUANDO = rq.ok ? await rq.json() : {}; } catch (e) { FX_QUANDO = {}; } }
+  if (fichaV2Ativa() && FX_QUANDO === null) { try { var rq = await fetch('guias-quando.json?v=2026-11-19.4'); FX_QUANDO = rq.ok ? await rq.json() : {}; } catch (e) { FX_QUANDO = {}; } }
   var r = await Promise.all([
     supabase.from('eventos').select('tipo,dados,criado_em').eq('contato_id', c.id).order('criado_em', { ascending: false }).limit(200),
     supabase.from('consentimentos').select('finalidade,aceito,texto,origem,criado_em').eq('contato_id', c.id).order('criado_em', { ascending: false }),
@@ -5322,7 +5322,7 @@ async function radarEnviar(btn) {
 // Sem a migração da entrega 1, a tela mostra os 8 do código; sem a da entrega 2, mostra tudo sem editar.
 var TIPO_EMAIL = { servico: ['Serviço', 'u-baixa'], novidades: ['Novidades', 'u-media'], compra: ['Compra', 'tp-pergunta'] };
 var ETAPA_EMAIL = { rascunho: ['Rascunho', ''], revisao: ['Revisão', 'u-media'], no_ar: ['No ar', 'u-baixa'], arquivado: ['Arquivado', 'out'] };
-var ST = { caso: null, vista: 'jornada', qpop: '', previa: null, modo: 'exemplo', k: null, v: null, passo: 'texto', who: null, q: '', dev: 'pc', marcar: true, tab: 'editar', d: null, dKey: null, montado: null, vistos: {}, foco: null, salvo: '', timer: null, vazio: false, pg: null };
+var ST = { caso: null, verTodos: false, vista: 'jornada', qpop: '', previa: null, modo: 'exemplo', k: null, v: null, passo: 'texto', who: null, q: '', dev: 'pc', marcar: true, tab: 'editar', d: null, dKey: null, montado: null, vistos: {}, foco: null, salvo: '', timer: null, vazio: false, pg: null };
 function versoesDe(k) { return MV.filter(function (v) { return v.chave === k; }); }   // da mais nova para a mais velha
 function versaoAtual(k) { var vs = versoesDe(k); return vs.filter(function (v) { return v.etapa === 'no_ar'; })[0] || vs[0] || null; }
 function versaoEmObra(k) { return versoesDe(k).filter(function (v) { return v.etapa === 'rascunho' || v.etapa === 'revisao'; })[0] || null; }
@@ -5750,6 +5750,24 @@ function renderEditor(lista) {
   EE.depois();
 }
 // O e-mail editável pede ao estúdio o rascunho, o catálogo de dados e o salvamento (tudo isto já existe aqui).
+// Com a prévia aberta em "com exemplo" e um caso escolhido, o editor mostra só os blocos daquele caso (os outros seguem guardados).
+function casoDoEditor() {
+  var m = M ? modeloAtual() : null;
+  if (!m || ST.criar || ST.verTodos || !previaAberta() || (ST.modo === 'dados' || ST.modo === 'chaves')) return null;
+  var casos = casosDaPrevia(ST.k), caso = casoEscolhido(casos);
+  return caso ? { caso: caso, dados: dadosPara(ST.k, pessoaExemplo(m, caso)) } : null;
+}
+function blocoDoCasoVisivel(b) {
+  var cx = casoDoEditor(), c = cx && /^([#^])(\w+)$/.exec(String(b.se || ''));
+  if (!c || !(c[2] in cx.dados) || ES.CAT[c[2]] == null || ES.CAT[c[2]].t !== 'sim') return true;
+  return (c[1] === '#') === !!cx.dados[c[2]];
+}
+function notaDoFiltro(ocultos) {
+  var cx = casoDoEditor();
+  if (cx) return '<p class="ee-filtro">Só os trechos de <b>' + esc(cx.caso.grupo + ' · ' + cx.caso.rotulo) + '</b>' + (ocultos ? ' (' + ocultos + ' de outros casos escondidos)' : '') + '. <button type="button" class="ee-volta" data-stvertodos="1">Mostrar todos os casos</button></p>';
+  if (ST.verTodos && previaAberta() && ES.casosDe(ST.k).length) return '<p class="ee-filtro">Mostrando todos os casos. <button type="button" class="ee-volta" data-stvertodos="1">Só o caso da prévia</button></p>';
+  return '';
+}
 EE.iniciar({
   ES: ES,
   rascunho: function () { return ST.d; },
@@ -5759,6 +5777,8 @@ EE.iniciar({
   camposDoBloco: camposDoBloco,
   dados: function () { return varsDe(ST.k).filter(function (x) { return ES.CAT[x] && ES.CAT[x].t !== 'sim' && ES.CAT[x].t !== 'pronto' && !/^link_/.test(x); }).map(function (x) { return [x, ES.CAT[x].o]; }); },
   disponiveis: function () { var vs = varsDe(ST.k); return { etapa: vs.some(function (x) { return ES.CAT[x] && ES.CAT[x].etapa; }), toques: vs.some(function (x) { return ES.CAT[x] && ES.CAT[x].t === 'pronto'; }) }; },
+  visivel: blocoDoCasoVisivel,
+  notaFiltro: notaDoFiltro,
   rodapeTexto: function () { var m = modeloAtual(); return ST.d && m ? ES.rodapeDe(ST.d, m.tipo) : ''; }
 });
 
@@ -6963,7 +6983,7 @@ async function enviarLinkPagamento(btn) {
 var FX_DETALHE = null, qdTimer = null, qdOrigem = null, qdAberto = false;
 async function fxCarregaDetalhe() {
   if (FX_DETALHE) return FX_DETALHE;
-  try { var r = await fetch('guias-detalhe.json?v=2026-11-19.3'); FX_DETALHE = r.ok ? await r.json() : {}; } catch (e) { FX_DETALHE = {}; }
+  try { var r = await fetch('guias-detalhe.json?v=2026-11-19.4'); FX_DETALHE = r.ok ? await r.json() : {}; } catch (e) { FX_DETALHE = {}; }
   return FX_DETALHE;
 }
 function fxFechaQuadro() {
@@ -7182,10 +7202,11 @@ document.addEventListener('click', async function (e) {
   if (t.dataset.tplPick) { ST.criar = null; await salvar(); abrirModelo(t.dataset.tplPick); ST.tab = 'editar'; return renderModelos(); }
   if (t.dataset.eepasso) { await salvar(); ST.passo = t.dataset.eepasso; $('studio').dataset.previa = previaAberta() ? '1' : '0'; renderEditor(); return renderPrevia(); }
   if (t.dataset.stdev) { ST.dev = t.dataset.stdev; return renderPrevia(); }
-  if (t.dataset.stmodo) { ST.modo = t.dataset.stmodo; return renderPrevia(); }
+  if (t.dataset.stvertodos) { ST.verTodos = !ST.verTodos; return renderModelos(); }
+  if (t.dataset.stmodo) { ST.modo = t.dataset.stmodo; renderPrevia(); return renderEditor(); }
   if (t.dataset.stcasoPasso) {
     var cs = casosDaPrevia(ST.k), ic = cs.indexOf(casoEscolhido(cs)) + Number(t.dataset.stcasoPasso);
-    if (cs[ic]) { ST.caso = cs[ic].id; renderPrevia(); }
+    if (cs[ic]) { ST.caso = cs[ic].id; renderPrevia(); renderEditor(); }
     return;
   }
   if (t.dataset.sttab) { ST.tab = t.dataset.sttab; return renderModelos(); }
@@ -7275,7 +7296,7 @@ document.addEventListener('change', async function (e) {
   if (e.target.id === 'h-ord') { state.hOrd = e.target.value; return renderFila(); }
   if (e.target.id === 'k-per') { state.kper = Number(e.target.value); return renderKpis(); }
   if (e.target.id === 'compose-tpl') return openCompose(activeCid, e.target.value);
-  if (e.target.id === 'st-caso') { ST.caso = e.target.value; return renderPrevia(); }
+  if (e.target.id === 'st-caso') { ST.caso = e.target.value; renderPrevia(); return renderEditor(); }
   if (e.target.id === 'st-who') { ST.who = e.target.value; return renderPrevia(); }
   if (e.target.dataset && e.target.dataset.novopara && ST.criar) { mudarPara(ST.criar.para, e.target.dataset.novopara, e.target.value, e.target.checked); if (e.target.dataset.novopara === 'produto' || e.target.dataset.novopara === 'materiais') renderCriar(); criarPode(); return renderPrevia(); }
   if (e.target.dataset && e.target.dataset.pq) {
