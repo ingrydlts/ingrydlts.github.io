@@ -75,6 +75,7 @@
     { id: "bio", label: "Link na bio", icon: "link", c: "links_page", e: "links_page", open: "Abrir estúdio da Link na bio" },
     { id: "menu", label: "Menu do site", icon: "menu", c: "header_config", e: "header_config", open: "Abrir estúdio do menu" },
     { id: "paginas", label: "Cabeçalho e rodapé", icon: "layout", c: "nav_visibility", e: "nav_visibility", open: "Abrir estúdio de cabeçalho e rodapé" },
+    { id: "inbound", label: "Inbound Page", icon: "layout", c: "inbound_pages", e: "inbound_pages" },
     { id: "quiz", label: "Questionário VIP", icon: "quiz", c: "quiz_config", e: "quiz_config" },
     { id: "cookies", label: "Consentimento e cookies", icon: "cookie", c: "analytics_config", e: "analytics_config" },
     { group: "Acompanhar" },
