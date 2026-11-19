@@ -315,3 +315,47 @@ document.addEventListener('drop', function (e) {
   var r = EB.moverBloco(itens(), de, para - de); if (r.indice !== de) aplica(r.itens, null); else redesenha();
 });
 document.addEventListener('dragend', function () { S.arrasto = null; document.querySelectorAll('#ee .ee-over').forEach(function (x) { x.classList.remove('ee-over'); }); });
+
+// Arrastar segurando em qualquer parte do bloco (mouse ou caneta): segurar ~0,35 s sem mexer começa o arrasto; mexer antes disso continua sendo
+// selecionar texto. A alça ⋮⋮ e as setas continuam valendo (e são o jeito no toque).
+var SEGURA = { t: null, bk: null, x: 0, y: 0, de: -1, alvo: -1, ativo: false, raf: 0 };
+function limpaOver() { document.querySelectorAll('#ee .ee-over, #ee .ee-arrastando').forEach(function (x) { x.classList.remove('ee-over', 'ee-arrastando'); }); }
+function fimDoSegurar(cancelou) {
+  clearTimeout(SEGURA.t); cancelAnimationFrame(SEGURA.raf);
+  var ativo = SEGURA.ativo, de = SEGURA.de, alvo = SEGURA.alvo;
+  SEGURA.t = null; SEGURA.bk = null; SEGURA.ativo = false; SEGURA.de = -1; SEGURA.alvo = -1;
+  document.documentElement.classList.remove('ee-segurando'); limpaOver();
+  if (!ativo) return;
+  var calado = function (ev) { ev.stopPropagation(); ev.preventDefault(); document.removeEventListener('click', calado, true); };
+  document.addEventListener('click', calado, true); setTimeout(function () { document.removeEventListener('click', calado, true); }, 0);
+  if (cancelou || alvo < 0 || alvo === de) return;
+  var r = EB.moverBloco(itens(), de, alvo - de); if (r.indice !== de) aplica(r.itens, null); else redesenha();
+}
+document.addEventListener('pointerdown', function (e) {
+  if (!DEP || e.button !== 0 || e.pointerType === 'touch' || DEP.somenteLeitura()) return;
+  var bk = e.target.closest && e.target.closest('#ee [data-eebk]'); if (!bk) return;
+  if (e.target.closest('button, input, select, textarea, a, .ee-pop, .ee-bar, .ee-grip, .ee-x, .ee-menu')) return;
+  SEGURA.bk = bk; SEGURA.x = e.clientX; SEGURA.y = e.clientY; SEGURA.ativo = false;
+  SEGURA.t = setTimeout(function () {
+    if (!SEGURA.bk) return;
+    SEGURA.ativo = true; SEGURA.de = +SEGURA.bk.dataset.eebk; SEGURA.alvo = SEGURA.de;
+    var f = document.activeElement; if (f && f.blur && f.closest && f.closest('#ee')) f.blur();
+    var sel = getSelection(); if (sel) sel.removeAllRanges();
+    SEGURA.bk.classList.add('ee-arrastando'); document.documentElement.classList.add('ee-segurando');
+  }, 350);
+});
+document.addEventListener('pointermove', function (e) {
+  if (!SEGURA.bk) return;
+  if (!SEGURA.ativo) { if (Math.abs(e.clientX - SEGURA.x) + Math.abs(e.clientY - SEGURA.y) > 6) { clearTimeout(SEGURA.t); SEGURA.bk = null; } return; }
+  e.preventDefault();
+  var el = document.elementFromPoint(e.clientX, e.clientY), bk = el && el.closest && el.closest('#ee [data-eebk]');
+  document.querySelectorAll('#ee .ee-over').forEach(function (x) { x.classList.remove('ee-over'); });
+  if (bk && +bk.dataset.eebk !== SEGURA.de) { bk.classList.add('ee-over'); SEGURA.alvo = +bk.dataset.eebk; } else if (bk) SEGURA.alvo = SEGURA.de;
+  // perto da borda da janela, rola a página
+  var passo = e.clientY < 90 ? -14 : e.clientY > innerHeight - 90 ? 14 : 0;
+  cancelAnimationFrame(SEGURA.raf);
+  if (passo) { var gira = function () { if (!SEGURA.ativo) return; scrollBy(0, passo); SEGURA.raf = requestAnimationFrame(gira); }; SEGURA.raf = requestAnimationFrame(gira); }
+});
+document.addEventListener('pointerup', function () { if (SEGURA.bk) fimDoSegurar(false); });
+document.addEventListener('pointercancel', function () { if (SEGURA.bk) fimDoSegurar(true); });
+document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && SEGURA.ativo) fimDoSegurar(true); });
