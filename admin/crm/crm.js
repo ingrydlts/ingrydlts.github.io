@@ -1635,6 +1635,9 @@ function orcamentoTexto(nome) {
   return 'Oi ' + nome + ', tudo bem?\n\n' +
     'Eu posso te ajudar nesse processo para perder o medo e ligar na CPAM. Podemos fazer uma ligação inicial de 20 minutos para entender o seu caso e preparar o roteiro da ligação, e depois marcar um dia para ligarmos juntas à CPAM? ' +
     'Infelizmente eu não posso fazer esse tipo de ligação por você, pois dossiês de órgãos públicos somente a pessoa pode pedir esclarecimento. Mas é comum, quando a pessoa não fala francês, ter um acompanhante na ligação para auxiliar.\n\n' +
+    'Serviços e valores:\n' +
+    '• Ligação inicial de 20 minutos (entender o seu caso e preparar o roteiro): [valor] €\n' +
+    '• Acompanhamento na ligação à CPAM: [valor] €\n\n' +
     'Em anexo você encontra o orçamento.';
 }
 var CONV_AX = {};
@@ -1674,6 +1677,7 @@ async function sendResposta(btn) {
   err.hidden = true;
   if (!txt) { err.textContent = 'Escreva a resposta antes de enviar.'; err.hidden = false; return; }
   if (as && !as.value.trim()) { err.textContent = 'Escreva um assunto: ainda não há conversa por e-mail com ela.'; err.hidden = false; return; }
+  if (/\[[^\]\n]{1,40}\]/.test(txt) && !confirm('O texto ainda tem um campo entre colchetes (ex.: [valor]). Enviar assim mesmo?')) return;
   var axs = CONV_AX[cid] || [];
   if (!axs.length && /\b(em anexo|anexad[oa]s?|segue (o|a|em))\b/i.test(txt) && !confirm('O texto fala em anexo, mas nenhum arquivo foi anexado. Enviar assim mesmo?')) return;
   var sess = await supabase.auth.getSession();
