@@ -2,15 +2,15 @@
 // Nada de service_role aqui. O banco é db/crm-fase2.sql; o desenho é o artefato "CRM Por Dentro".
 // Tudo que vem do banco é texto de terceiros (nome, e-mail, pergunta): passa sempre por esc().
 import { supabase } from '/assets/js/supabase-client.js';
-import * as TX from './taxonomia.js?v=2026-11-19.6';   // páginas, famílias e agrupamento dos modelos
-import * as ES from './estudio.js?v=2026-11-19.6';   // os blocos do estúdio de e-mails (entregas 2 e 3)
-import * as EE from './editor-email.js?v=2026-11-19.6';
-import * as EQ from './editor-quem.js?v=2026-11-19.6';
-import * as JR from './jornada.js?v=2026-11-19.6';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
-import * as FX from './ficha.js?v=2026-11-19.6';   // ficha v2: lógica pura (fila, démarches, funil, ações)
-import * as FH from './ficha-html.js?v=2026-11-19.6';   // ficha v2: HTML puro
-import * as PN from './panorama.js?v=2026-11-19.6';
-import * as MT from './montagem.js?v=2026-11-19.6';   // Montagem do espaço a partir do transcript (lógica e HTML puros)   // Panorama dela e O que ela trouxe (lógica e HTML puros)
+import * as TX from './taxonomia.js?v=2026-11-19.7';   // páginas, famílias e agrupamento dos modelos
+import * as ES from './estudio.js?v=2026-11-19.7';   // os blocos do estúdio de e-mails (entregas 2 e 3)
+import * as EE from './editor-email.js?v=2026-11-19.7';
+import * as EQ from './editor-quem.js?v=2026-11-19.7';
+import * as JR from './jornada.js?v=2026-11-19.7';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
+import * as FX from './ficha.js?v=2026-11-19.7';   // ficha v2: lógica pura (fila, démarches, funil, ações)
+import * as FH from './ficha-html.js?v=2026-11-19.7';   // ficha v2: HTML puro
+import * as PN from './panorama.js?v=2026-11-19.7';
+import * as MT from './montagem.js?v=2026-11-19.7';   // Montagem do espaço a partir do transcript (lógica e HTML puros)   // Panorama dela e O que ela trouxe (lógica e HTML puros)
 
 var PERSONAS = {
   au_pair_estudante: 'Au pair → estudante', campus_france: 'Campus France', alternancia_emprego: 'Alternância / emprego',
@@ -1617,6 +1617,7 @@ function conversaPanel(c, mails, resps, h4, jor) {
     '<section class="thread" aria-label="Conversa com ' + esc(pn(c)) + '"><div class="msgs" id="conv-thread">' + fio + '</div>' +
     '<div class="compose">' +
     '<div class="cam-acoes"><button class="btn primary" type="button" data-tplpick="' + esc(c.id) + '">Usar um modelo de e-mail…</button>' +
+      '<button class="btn" type="button" data-orcamento="' + esc(c.id) + '">Modelo de orçamento</button>' +
       (sug ? '<button class="btn" type="button" data-usarrasc="' + esc(c.id) + '">Usar o rascunho sugerido</button>' : '') + '</div>' +
     (assunto ? '<p class="sub" style="margin:0">Vai como <b>' + esc(assunto) + '</b></p>'
       : '<label class="sub" for="conv-assunto">Assunto (ainda não há conversa por e-mail com ela)</label><input id="conv-assunto" maxlength="200" autocomplete="off">') +
@@ -1628,6 +1629,14 @@ function conversaPanel(c, mails, resps, h4, jor) {
     '<button class="btn primary" type="button" id="conv-send" data-cid="' + esc(c.id) + '">Enviar</button></div></div></section></div>';
 }
 // Anexos da resposta (ficha → E-mail): ficam só na memória, por contato. Mesma regra do bilan (bilanJuntar).
+// Modelo de orçamento (Ligue sem medo): só o primeiro nome da pessoa muda. Edite aqui para mudar o texto de todos.
+var ORCAMENTO_ASSUNTO = 'Ligue sem Medo à Ameli :)';
+function orcamentoTexto(nome) {
+  return 'Oi ' + nome + ', tudo bem?\n\n' +
+    'Eu posso te ajudar nesse processo para perder o medo e ligar na CPAM. Podemos fazer uma ligação inicial de 20 minutos para entender o seu caso e preparar o roteiro da ligação, e depois marcar um dia para ligarmos juntas à CPAM? ' +
+    'Infelizmente eu não posso fazer esse tipo de ligação por você, pois dossiês de órgãos públicos somente a pessoa pode pedir esclarecimento. Mas é comum, quando a pessoa não fala francês, ter um acompanhante na ligação para auxiliar.\n\n' +
+    'Em anexo você encontra o orçamento.';
+}
 var CONV_AX = {};
 // Prévia do e-mail como ela vai receber (o mesmo HTML simples do Worker), sem enviar nada.
 function convPrevia(cid) {
@@ -3932,7 +3941,7 @@ function fxHeaderHtml(c, d) {
 // Catálogo de démarches (cópia do app, processos.json): carregado uma vez; sem ele, tudo cai na démarche padrão.
 var FX_PROC = null, FX_QUANDO = null;   // FX_QUANDO: o "quando" de cada passo do template (guias-quando.json), para o prazo curto do Início
 async function fxCarregaProcessos() {
-  try { var r = await fetch('processos.json?v=2026-11-19.6'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
+  try { var r = await fetch('processos.json?v=2026-11-19.7'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
 }
 // A sessão Checklist: pílulas por démarche, os 4 mais urgentes, pasta do Drive privada e "Ver mais desta sessão".
 // Os passos que a montagem do espaço propôs para ela, com démarche, subitens e origem: o mesmo detalhe do Checklist. Existem antes de ela ter conta.
@@ -5059,7 +5068,7 @@ async function renderPessoa() {
   if (!c) { $('pessoa-page').innerHTML = '<div class="empty">Pessoa não encontrada.</div>'; return; }
   $('pessoa-page').innerHTML = '<div class="loading">Carregando a ficha…</div>';
   if (fichaV2Ativa() && FX_PROC === null) FX_PROC = await fxCarregaProcessos();
-  if (fichaV2Ativa() && FX_QUANDO === null) { try { var rq = await fetch('guias-quando.json?v=2026-11-19.6'); FX_QUANDO = rq.ok ? await rq.json() : {}; } catch (e) { FX_QUANDO = {}; } }
+  if (fichaV2Ativa() && FX_QUANDO === null) { try { var rq = await fetch('guias-quando.json?v=2026-11-19.7'); FX_QUANDO = rq.ok ? await rq.json() : {}; } catch (e) { FX_QUANDO = {}; } }
   var r = await Promise.all([
     supabase.from('eventos').select('tipo,dados,criado_em').eq('contato_id', c.id).order('criado_em', { ascending: false }).limit(200),
     supabase.from('consentimentos').select('finalidade,aceito,texto,origem,criado_em').eq('contato_id', c.id).order('criado_em', { ascending: false }),
@@ -7021,7 +7030,7 @@ async function enviarLinkPagamento(btn) {
 var FX_DETALHE = null, qdTimer = null, qdOrigem = null, qdAberto = false;
 async function fxCarregaDetalhe() {
   if (FX_DETALHE) return FX_DETALHE;
-  try { var r = await fetch('guias-detalhe.json?v=2026-11-19.6'); FX_DETALHE = r.ok ? await r.json() : {}; } catch (e) { FX_DETALHE = {}; }
+  try { var r = await fetch('guias-detalhe.json?v=2026-11-19.7'); FX_DETALHE = r.ok ? await r.json() : {}; } catch (e) { FX_DETALHE = {}; }
   return FX_DETALHE;
 }
 function fxFechaQuadro() {
@@ -7104,6 +7113,11 @@ document.addEventListener('click', async function (e) {
   if (t.dataset.openconv) return openPessoa(t.dataset.openconv, 'conversa');
   if (t.dataset.tplpick) return abrirModelosPicker(t.dataset.tplpick);
   if (t.dataset.tplsel) return openCompose(activeCid, t.dataset.tplsel);
+  if (t.dataset.orcamento) {
+    var cc = byC(t.dataset.orcamento), ct2 = $('conv-txt'), as2 = $('conv-assunto');
+    if (cc && ct2) { ct2.value = orcamentoTexto(pn(cc)); state.rascunho[cc.id] = ct2.value; if (as2 && !as2.value.trim()) as2.value = ORCAMENTO_ASSUNTO; ct2.focus(); }
+    return;
+  }
   if (t.dataset.usarrasc) { var sg = (state.rascSug || {})[t.dataset.usarrasc], ct = $('conv-txt'); if (sg && ct) { ct.value = sg; state.rascunho[t.dataset.usarrasc] = sg; ct.focus(); } return; }
   if (t.dataset.ptab) { state.ptab = t.dataset.ptab; return renderPessoa(); }
   if (t.dataset.pstab) return trocaPlatAba(t.dataset.pstab);
