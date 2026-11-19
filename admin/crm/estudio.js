@@ -60,6 +60,16 @@ Object.keys(ASTUCIAS_SAUDE).forEach(function (k) { CAT[k] = { t: 'sim', o: ASTUC
 Object.keys(PORTAS_SAUDE).forEach(function (k) { CAT['retomada_' + k] = { t: 'sim', o: 'e-mail 2: a porta é ' + PORTAS_SAUDE[k] + ' e ela ainda não tem a carte vitale' }; });
 CAT.secao = { t: 'texto', o: 'a seção do mapa da saúde que ela abre primeiro', plano: 'tronco do mapa' };
 CAT.assunto_persona = { t: 'texto', o: 'o assunto do e-mail 1 para a persona dela (porta e ponto)', plano: '' };
+// Guia "Rota da Sécu": a condição de um bloco é UMA variável, então cada combinação porta.ponto é um sim/não (caso_<porta>_<ponto>);
+// caso_geral acende para quem não tem porta ou ponto válidos (lead antigo) e mostra só o lembrete, o botão e a oferta.
+export var CASOS_ROTA = [];
+Object.keys(PORTAS_SAUDE).forEach(function (p) { Object.keys(PONTOS_SAUDE).forEach(function (o) {
+  CASOS_ROTA.push('caso_' + p + '_' + o);
+  CAT['caso_' + p + '_' + o] = { t: 'sim', o: 'o caso da Rota da Sécu: ' + PORTAS_SAUDE[p] + ', ' + PONTOS_SAUDE[o] };
+}); });
+CAT.caso_geral = { t: 'sim', o: 'a Rota da Sécu: ela não tem porta e ponto válidos (cadastro antigo), então vai só o lembrete, o botão e a oferta' };
+CAT.assunto_rota = { t: 'texto', o: 'o assunto do e-mail 1 da Rota da Sécu, pela porta dela', plano: '' };
+CAT.link_pagina = { t: 'link', o: 'o link da página da Rota da Sécu, com a UTM do e-mail e a porta e o ponto dela (abre o roteiro direto)' };
 CAT.assunto_retomada = { t: 'texto', o: 'o assunto do e-mail 2 (retomada) para a persona dela', plano: '' };
 
 // Os dados que cada modelo tem na hora do envio (o Worker ou o painel preenche exatamente estes).
@@ -90,6 +100,8 @@ export var ETAPAS_FILTRO = ETAPAS_GUIA.concat(Object.keys(ETAPAS_AP).map(functio
 // Os e-mails do guia "Mapa da saúde": os dados novos + o link do mapa (o Worker o lê de guias_links, SAUDE_GUIA_DO_MODELO em worker.js).
 VARS_DE.saude_mapa_1 = VARS_NOVOS.concat(['link_checklist']);
 VARS_DE.saude_mapa_2 = VARS_NOVOS.concat(['link_checklist']);
+// O e-mail 1 da Rota da Sécu (o Worker preenche com crmVarsRota): os dados novos + o caso de cada combinação, o assunto por porta e o link da página.
+VARS_DE.saude_rota_1 = VARS_NOVOS.concat(CASOS_ROTA, ['caso_geral', 'assunto_rota', 'link_pagina']);
 var VARS_PRODUTO = ['produto', 'link_produto'];
 export function varsDoModelo(chave, m) {
   if (VARS_DE[chave]) return VARS_DE[chave];
@@ -381,8 +393,24 @@ function botoesPrevia() {
         (i >= 6 ? 'border:1.5px solid #CFC9C0; background:#FFFFFF; color:#6E6862;' : 'border:1.5px solid #577328; background:#E4EAD6; color:#3F5519;') + '">' + escH(c[1]) + '</a>';
     }).join('') };
 }
+// Os dados da Rota da Sécu na prévia e no "Enviar teste para mim": iguais aos de crmVarsRota (worker.js); o teste cms-oauth-worker/testes/crm-rota-da-secu.test.mjs
+// confere as duas. O Worker aceita no máximo 40 dados do painel no teste, por isso só vão os que o e-mail 1 usa (28).
+var ROTA_ASSUNTO = { estudante: 'Seu roteiro da Sécu como estudante, na ordem', trabalho: 'Seu roteiro da Sécu com contrato de trabalho, na ordem',
+  aupair: 'Seu roteiro da Sécu como au pair, na ordem', outro: 'Seu roteiro da Sécu, na ordem' };
+function dadosRota(chave, c, h) {
+  var resp = c.respostas || {}, pOk = !!PORTAS_SAUDE[resp.porta], qOk = !!PONTOS_SAUDE[resp.ponto], d = { nome: h.pn(c), email: c.email };
+  Object.keys(PORTAS_SAUDE).forEach(function (p) { d['porta_' + p] = pOk && resp.porta === p; });
+  CASOS_ROTA.forEach(function (k) { d[k] = pOk && qOk && k === 'caso_' + resp.porta + '_' + resp.ponto; });
+  d.caso_geral = !(pOk && qOk);
+  d.assunto_rota = pOk ? ROTA_ASSUNTO[resp.porta] : '';
+  var q = 'utm_source=email&utm_medium=email&utm_campaign=rota-da-secu&utm_content=' + chave;
+  if (pOk && qOk) q += '&porta=' + resp.porta + '&ponto=' + resp.ponto + '&aberto=1';
+  d.link_pagina = 'https://imigrantepordentro.com/guias/rota-da-secu/?' + q;
+  return d;
+}
 export function dadosDe(chave, c, h, m) {
   var resp = c.respostas || {};
+  if (chave === 'saude_rota_1') return dadosRota(chave, c, h);
   // O link de pagamento é montado no envio (plano, moeda e o e-mail dela): na prévia fica entre colchetes.
   if (chave === 'link_pagamento') return { nome: h.pn(c), email: c.email, link_pagamento: '[link de pagamento]' };
   if (chave === 'acesso_confirmado') return { nome: h.pn(c), email: c.email, link_entrada: '[link de entrada]', fim_teste: '[fim do teste]' };

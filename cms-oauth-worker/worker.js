@@ -2031,6 +2031,30 @@ function crmVarsSaude(resp, agora) {
   v.assunto_retomada = !portaOk || !ponto ? '' : ponto === 'sem_vitale' ? 'O passo da carte vitale' : ponto === 'completo' ? 'O que vem depois da carte vitale' : SAUDE_ASSUNTO_RETOMADA[porta];
   return v;
 }
+// Guia "Rota da Sécu" (e-mail saude_rota_1): a condição de um bloco do estúdio é UMA variável, então cada uma das 20 combinações
+// porta.ponto vira um booleano (caso_<porta>_<ponto>). Porta ou ponto fora das listas (lead antigo) acende só o caso_geral (reserva).
+// O link de volta à página leva porta, ponto e aberto=1 para abrir o roteiro direto, também em outro aparelho (portão suave).
+const ROTA_MODELOS = ['saude_rota_1', 'saude_rota_2'];
+const ROTA_PAGINA = 'https://imigrantepordentro.com/guias/rota-da-secu/';
+const ROTA_ASSUNTO = {
+  estudante: 'Seu roteiro da Sécu como estudante, na ordem',
+  trabalho: 'Seu roteiro da Sécu com contrato de trabalho, na ordem',
+  aupair: 'Seu roteiro da Sécu como au pair, na ordem',
+  outro: 'Seu roteiro da Sécu, na ordem',
+};
+function crmVarsRota(resp, chave) {
+  const portaOk = SAUDE_PORTAS.includes(resp && resp.porta), pontoOk = SAUDE_PONTOS.includes(resp && resp.ponto);
+  const v = {};
+  for (const a of SAUDE_PORTAS) for (const b of SAUDE_PONTOS) v['caso_' + a + '_' + b] = portaOk && pontoOk && resp.porta === a && resp.ponto === b;
+  v.caso_geral = !(portaOk && pontoOk);
+  v.assunto_rota = portaOk ? ROTA_ASSUNTO[resp.porta] : '';
+  if (ROTA_MODELOS.includes(chave)) {
+    const q = new URLSearchParams({ utm_source: 'email', utm_medium: 'email', utm_campaign: 'rota-da-secu', utm_content: chave });
+    if (portaOk && pontoOk) { q.set('porta', resp.porta); q.set('ponto', resp.ponto); q.set('aberto', '1'); }
+    v.link_pagina = ROTA_PAGINA + '?' + q.toString();
+  }
+  return v;
+}
 function crmVarsNovos(env, p) {
   const d = p.dados || {}, resp = d.respostas || {};
   const nivel = CF_NIVEIS[resp.cfNivel];
@@ -2040,6 +2064,7 @@ function crmVarsNovos(env, p) {
   return {
     ...etapas,
     ...crmVarsSaude(resp, Date.now()),
+    ...crmVarsRota(resp, p.chave),
     nome: crmPrimeiroNome(p.nome), email: p.email,
     persona: (CRM_PERSONAS[d.persona || 'sem'] || d.persona || '').toLowerCase(),
     nivel: nivel ? nivel[0] : '', prazo_nivel: nivel ? nivel[1] : '',

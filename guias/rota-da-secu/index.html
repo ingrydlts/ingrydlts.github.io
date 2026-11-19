@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rota da Sécu: o seu caminho até a carte vitale — Por Dentro</title>
+<meta name="description" content="Abertura e acompanhamento de direitos na Sécurité Sociale: o link oficial primeiro e, depois de duas perguntas, o roteiro do seu caso.">
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Nunito:wght@400;600;700;800&family=Inter:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,600;9..144,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/css/style.css">
+<link rel="canonical" href="https://imigrantepordentro.com/guias/rota-da-secu/">
+<link rel="icon" href="/favicon.png" type="image/png">
+<link rel="icon" href="/favicon-32x32.png" sizes="32x32" type="image/png">
+<link rel="icon" href="/favicon-16x16.png" sizes="16x16" type="image/png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<meta name="theme-color" content="#F4F1EC">
+<style>
+:root{--nav-active:#577328;--bg:#F4F1EC;--ink:#2B2B2B;--ink2:#5E5850;--forest:#063B35;--moss:#577328;--soft:#E4EAD6;--soft2:#C9D6A8;--beige:#DEB975;--edge:rgba(6,59,53,.16);--glass:rgba(255,255,255,.62);--glass-line:rgba(255,255,255,.95);--display:'DM Serif Display',Georgia,serif;--body:'Nunito',system-ui,sans-serif}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+body.lp-body{background:var(--bg);color:var(--ink);font-family:var(--body);overflow-x:hidden}
+.lp-body .site-header{background:rgba(255,255,255,.85);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid var(--edge)}
+.lp-body .site-logo,.lp-body .site-nav a{color:var(--ink)}
+.lp-body .site-nav a[aria-current="page"]{color:var(--moss)}
+.lp-body .nav-toggle span{background:var(--ink)}
+.lp-body .mobile-nav{background:var(--bg)}
+.lp-body .mobile-nav a{color:var(--ink)}
+.lp-body .site-footer{margin-top:0}
+
+main.rs{max-width:680px;margin:0 auto;padding:28px 20px 56px;display:grid;gap:28px;font-size:16px;line-height:1.55}
+.rs *{min-width:0}
+.rs p{margin:0}
+.eyebrow{font-size:12px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--moss)}
+.rs h1{font-family:var(--display);font-weight:400;color:var(--forest);font-size:28px;line-height:1.12;letter-spacing:-.01em;margin:8px 0 0}
+.rs h2{font-family:var(--display);font-weight:400;color:var(--forest);font-size:22px;line-height:1.18;margin:0}
+.lnk{color:var(--forest);font-weight:800;text-decoration:underline;text-underline-offset:3px;text-decoration-thickness:1.5px;overflow-wrap:anywhere}
+.lnk:hover{color:var(--moss)}
+.oficial{display:grid;gap:10px}
+.small{font-size:14px;color:var(--ink2)}
+fieldset{border:0;padding:0;margin:0}
+legend{padding:0;font-weight:800;color:var(--forest);margin-bottom:12px;font-size:16px}
+.opts{display:grid;gap:10px}
+.opts.two{grid-template-columns:repeat(2,minmax(0,1fr))}
+@media (max-width:420px){.opts.two{grid-template-columns:minmax(0,1fr)}}
+.opt{position:relative;display:block}
+.opt input{position:absolute;opacity:0;pointer-events:none}
+.opt span{display:flex;align-items:center;background:var(--glass);border:1px solid var(--glass-line);box-shadow:inset 0 1px 0 rgba(255,255,255,.9),0 0 0 1px var(--edge);border-radius:999px;padding:11px 18px;font-weight:700;font-size:15px;line-height:1.3;cursor:pointer}
+.opt input:checked+span{background:var(--soft2);box-shadow:0 0 0 2px var(--moss)}
+.opt input:focus-visible+span{outline:2px solid var(--forest);outline-offset:2px}
+.perguntas{display:grid;gap:22px}
+.passo1{background:var(--soft);border-radius:22px;padding:18px;display:grid;gap:6px}
+.passo1 h2{font-size:19px}
+.glass{background:var(--glass);border:1px solid var(--glass-line);border-radius:22px;box-shadow:inset 0 1px 0 rgba(255,255,255,.9),0 1px 0 var(--edge);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);padding:18px;display:grid;gap:14px}
+.form{display:grid;gap:14px}
+.form label.t{display:grid;gap:6px;font-weight:700;font-size:14px}
+.form input[type="text"],.form input[type="email"]{background:#fff;border:1.5px solid var(--edge);border-radius:999px;padding:10px 16px;font:inherit;font-size:16px;min-height:44px;color:var(--ink)}
+.form input:focus-visible{outline:2px solid var(--forest);outline-offset:1px}
+.ck{display:flex;gap:10px;align-items:flex-start;font-size:14px;line-height:1.4;font-weight:600}
+.ck input{margin-top:3px;width:18px;height:18px;accent-color:var(--moss);flex:none}
+.hp{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
+.err{color:#A8322A;font-size:14px;font-weight:700;min-height:0}
+.btn{display:inline-flex;align-items:center;justify-content:center;background:var(--moss);color:#fff!important;font:800 16px/1 var(--body);border:0;border-radius:999px;padding:14px 24px;text-decoration:none;text-align:center;min-height:48px;cursor:pointer}
+.btn:hover{background:#47601F}
+.btn[disabled]{opacity:.6;cursor:wait}
+.liberado{display:flex;gap:8px;align-items:center;font-size:14px;font-weight:800;color:var(--moss)}
+.liberado::before{content:"";width:10px;height:10px;border-radius:50%;background:var(--moss);flex:none}
+.passos{display:grid;gap:14px;margin:0;padding:0;list-style:none}
+.passos li{background:var(--glass);border:1px solid var(--glass-line);box-shadow:inset 0 1px 0 rgba(255,255,255,.9),0 0 0 1px var(--edge);border-radius:20px;padding:16px}
+.passos .n{display:flex;gap:10px;align-items:baseline;font-weight:800;color:var(--forest);font-size:16px;margin-bottom:2px}
+.passos .n b{font-family:var(--display);font-weight:400;font-size:24px;color:var(--moss)}
+.fr{margin-top:10px;background:#fff;border:1px dashed var(--soft2);border-radius:14px;padding:10px 12px;display:grid;gap:8px}
+.fr .rot{font-size:11.5px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--ink2)}
+.fr q{quotes:none;font-style:italic;color:var(--forest);font-size:15px}
+.copy{justify-self:start;border:1.5px solid var(--forest);background:transparent;color:var(--forest);border-radius:999px;padding:6px 14px;font:800 13px var(--body);cursor:pointer}
+.copy:hover{background:var(--soft)}
+.fontes{font-size:13.5px;color:var(--ink2)}
+.fontes a{color:var(--forest);text-decoration:underline;overflow-wrap:anywhere}
+.cta{background:var(--forest);color:#F4F1EC;border-radius:24px;padding:22px 18px;display:grid;gap:14px}
+.cta h2{color:#F4F1EC}
+.cta p{color:#DDE5D2}
+.cta ul{margin:0;padding:0;list-style:none;display:grid;gap:10px}
+.cta li{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.28);border-radius:18px;padding:12px 16px;display:grid;gap:2px}
+.cta li b{font-size:16px;color:#F4F1EC}
+.cta li span{font-size:14px;color:#DDE5D2}
+.cta .btn{background:var(--beige);color:#2B2B2B!important;justify-self:start}
+.cta .btn:hover{background:#E8C98B}
+.cta .selo{font-size:13px}
+.rodape{font-size:13px;color:var(--ink2);border-top:1px solid var(--edge);padding-top:14px}
+.dyn{display:grid;gap:28px}
+.dyn:empty{display:none}
+:focus-visible{outline:2px solid var(--forest);outline-offset:2px}
+@media (min-width:760px){main.rs{padding-top:44px}.rs h1{font-size:40px}.rs h2{font-size:26px}}
+</style>
+</head>
+<body class="lp-body">
+<header class="site-header">
+  <a href="/" class="site-logo" data-logo-link><img src="/images/logo-por-dentro.png" alt="Por Dentro" class="site-logo-img">Por Dentro</a>
+  <nav class="site-nav" aria-label="Navegação principal" data-header-nav>
+    <a href="/produtos-digitais/" data-nav-key="produtos-digitais">Produtos digitais</a>
+    <a href="/produtos-de-estudo/" data-nav-key="produtos-de-estudo">Produtos de estudo</a>
+    <a href="/produtos-de-compras/" data-nav-key="produtos-de-compras">Produtos de compras</a>
+    <a href="/guias/" data-nav-key="guias" aria-current="page">Guias</a>
+    <a href="/artigos/" data-nav-key="blog">Blog</a>
+    <a href="/sobre/" data-nav-key="sobre">Sobre</a>
+  </nav>
+  <button class="nav-toggle" aria-label="Abrir menu" aria-expanded="false">
+    <span></span><span></span><span></span>
+  </button>
+</header>
+<nav class="mobile-nav" aria-label="Navegação mobile" data-header-nav>
+  <a href="/produtos-digitais/" data-nav-key="produtos-digitais">Produtos digitais</a>
+  <a href="/produtos-de-estudo/" data-nav-key="produtos-de-estudo">Produtos de estudo</a>
+  <a href="/produtos-de-compras/" data-nav-key="produtos-de-compras">Produtos de compras</a>
+  <a href="/guias/" data-nav-key="guias" aria-current="page">Guias</a>
+  <a href="/artigos/" data-nav-key="blog">Blog</a>
+  <a href="/sobre/" data-nav-key="sobre">Sobre</a>
+</nav>
+
+<main class="rs" id="rs">
+  <header>
+    <div class="eyebrow">Por Dentro · Saúde na França</div>
+    <h1>Abertura e acompanhamento de direitos na Sécurité Sociale</h1>
+  </header>
+
+  <!-- O link oficial vem primeiro e está no HTML, não no script: aparece mesmo sem JavaScript. -->
+  <section class="oficial" aria-label="Link oficial">
+    <p><a class="lnk" id="lnk-oficial" href="https://www.service-public.gouv.fr/particuliers/vosdroits/R45084" target="_blank" rel="noopener">Abra o formulário oficial</a>: baixe o Cerfa S1106 e encontre a sua CPAM.</p>
+    <p class="small"><b>Estudante?</b> O seu pedido é em etudiant-etranger.ameli.fr.</p>
+  </section>
+
+  <section aria-labelledby="h-q">
+    <h2 id="h-q" style="margin-bottom:14px">Roteiro do seu caso: 2 perguntas</h2>
+    <div class="perguntas" id="perguntas">
+      <fieldset><legend>1. Qual é a sua situação?</legend><div class="opts two" id="opts-porta"></div></fieldset>
+      <fieldset><legend>2. Em que ponto você está?</legend><div class="opts" id="opts-ponto"></div></fieldset>
+    </div>
+    <noscript><p class="small" style="margin-top:12px">Para ver o roteiro do seu caso, ative o JavaScript. O link oficial acima funciona sem ele.</p></noscript>
+  </section>
+
+  <div class="dyn" id="dyn" aria-live="polite"></div>
+
+  <p class="rodape">Baseado em fontes públicas. Não sou advogada.</p>
+</main>
+
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-grid">
+      <div>
+        <a href="/" class="site-logo" data-logo-link style="color:#F4F1EC; margin-bottom:14px;"><img src="/images/logo-por-dentro.png" alt="Por Dentro" class="site-logo-img">Por Dentro</a>
+        <p style="color:#A8A29C; max-width:32ch; font-size:13px;">Templates, indicações de estudo e de compras para quem vive a vida real fora do Brasil.</p>
+      </div>
+      <div data-footer-nav>
+        <div class="footer-col-title">Navegação</div>
+        <div class="footer-links">
+          <a href="/produtos-digitais/" data-nav-key="produtos-digitais">Produtos digitais</a>
+          <a href="/produtos-de-estudo/" data-nav-key="produtos-de-estudo">Produtos de estudo</a>
+          <a href="/produtos-de-compras/" data-nav-key="produtos-de-compras">Produtos de compras</a>
+          <a href="/guias/" data-nav-key="guias">Guias</a>
+          <a href="/artigos/" data-nav-key="blog">Blog</a>
+          <a href="/sobre/" data-nav-key="sobre">Sobre</a>
+        </div>
+      </div>
+      <div>
+        <div class="footer-col-title">Legal</div>
+        <div class="footer-links">
+          <a href="/mentions-legales/">Mentions légales</a>
+          <a href="/cgv/">CGV</a>
+          <a href="/confidentialite/">Confidentialité</a>
+        </div>
+      </div>
+      <div>
+        <div class="footer-col-title">Redes</div>
+        <div class="footer-links"><a href="https://instagram.com/" target="_blank" rel="noopener">@ingryd.pordentro</a></div>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>© Por Dentro · LO TIERZO SILVA INGRYD · SIRET 108 644 485 00014 · France</span>
+      <span>Feito por quem vive isso.</span>
+    </div>
+  </div>
+</footer>
+
+<script src="/assets/js/main.js"></script>
+<script src="/assets/js/consent.js"></script>
+<script src="/assets/js/events.js"></script>
+<script src="/assets/js/analytics.js"></script>
+<script type="module" src="/assets/js/header.js"></script>
+
+<script type="module">
+import { PORTAS, PONTOS, FONTES, caso, rotuloFrances } from './casos.js';
+
+var GUIA = 'rota-da-secu';
+var ORIGEM = 'guia-rota-da-secu';
+var LS_KEY = 'pd_guia_' + GUIA;
+var CONSENTIMENTO_VERSAO = 'rota-v1';
+var TEXTO_SERVICO = 'Aceito receber o roteiro por e-mail e que a Ingryd guarde meu nome, meu e-mail e minhas respostas. Posso sair quando quiser. Li a Política de Privacidade.';
+var TEXTO_NOVIDADES = 'Quero receber e-mails do Por Dentro, inclusive sobre a plataforma para quem mora na França. Cancelo quando quiser.';
+var AGENDA = 'https://cal.com/ingryd-silva-jf1cnx/1-1?overlayCalendar=true';
+var ACOMP = [
+  { rot: 'Ligue sem medo', desc: 'Eu preparo você antes da ligação e entro na linha com você.' },
+  { rot: 'Escreva sem erro', desc: 'Eu redijo o e-mail em francês com você e confiro antes de você enviar.' },
+  { rot: 'Resolva de ponta a ponta', desc: 'Durante 30 dias, até 3 ligações preparadas e e-mails acompanhados.' }
+];
+
+var byId = function (i) { return document.getElementById(i); };
+var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
+function track(t, p) { try { if (window.PDEvents) window.PDEvents.send(t, null, p || {}); } catch (e) {} }
+function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+var portaOk = function (v) { return PORTAS.some(function (p) { return p.id === v; }); };
+var pontoOk = function (v) { return PONTOS.some(function (p) { return p.id === v; }); };
+var porRot = function (id) { return PORTAS.filter(function (p) { return p.id === id; })[0]; };
+var ponRot = function (id) { return PONTOS.filter(function (p) { return p.id === id; })[0]; };
+
+// O Supabase só carrega no envio: se o CDN dele cair, as perguntas, o roteiro e o link do e-mail continuam funcionando.
+async function carregarSupabase() { return (await import('/assets/js/supabase-client.js')).supabase; }
+
+var params = new URLSearchParams(window.location.search);
+var S = { porta: '', ponto: '', aberto: false, nome: '', email: '', consent: false, novidades: false, erro: '', enviando: false, shownAt: 0 };
+
+// O que a pessoa já fez neste aparelho (só a escolha, nunca nome nem e-mail) e o que o link do e-mail traz (porta, ponto, aberto=1).
+function lerSalvo() { try { var v = JSON.parse(lsGet(LS_KEY) || 'null'); return v && v.ok ? v : null; } catch (e) { return null; } }
+(function iniciar() {
+  var salvo = lerSalvo(), p = params.get('porta'), q = params.get('ponto');
+  if (portaOk(p) && pontoOk(q)) { S.porta = p; S.ponto = q; S.aberto = params.get('aberto') === '1'; }
+  if (salvo) {
+    S.aberto = true;
+    if (!S.porta && portaOk(salvo.porta)) S.porta = salvo.porta;
+    if (!S.ponto && pontoOk(salvo.ponto)) S.ponto = salvo.ponto;
+  }
+})();
+
+function opcoes() {
+  byId('opts-porta').innerHTML = PORTAS.map(function (x) {
+    return '<label class="opt"><input type="radio" name="porta" value="' + x.id + '"' + (S.porta === x.id ? ' checked' : '') + '><span>' + esc(x.desc) + '</span></label>';
+  }).join('');
+  byId('opts-ponto').innerHTML = PONTOS.map(function (x) {
+    return '<label class="opt"><input type="radio" name="ponto" value="' + x.id + '"' + (S.ponto === x.id ? ' checked' : '') + '><span>' + esc(x.rot) + '</span></label>';
+  }).join('');
+}
+
+function fontesHtml(c) {
+  return '<p class="fontes">Fontes: ' + c.fontes.map(function (k) { var f = FONTES[k]; return (f.url ? '<a href="' + esc(f.url) + '" target="_blank" rel="noopener">' + esc(f.rot) + '</a>' : esc(f.rot)) + ' (' + esc(f.data) + ')'; }).join('; ') + '.</p>';
+}
+function primeiroHtml(c) {
+  return '<section class="passo1" aria-labelledby="h-p1"><div class="eyebrow">O seu primeiro passo</div><h2 id="h-p1">' + esc(c.primeiro) + '</h2>' + fontesHtml(c) + '</section>';
+}
+function portaoHtml(c) {
+  return '<section class="glass" aria-labelledby="h-g"><h2 id="h-g">' + esc(c.tipo) + ': o roteiro completo do seu caso</h2>' +
+    '<p class="small">Deixe o seu e-mail e o roteiro abre aqui, em português e com frases em francês. No seu primeiro cadastro, mando também um e-mail com o mesmo texto, em alguns minutos.</p>' +
+    '<form class="form" id="rs-form" novalidate>' +
+    '<label class="t" for="f-nome">Seu nome<input type="text" id="f-nome" autocomplete="given-name" value="' + esc(S.nome) + '"></label>' +
+    '<label class="t" for="f-email">Seu e-mail<input type="email" id="f-email" autocomplete="email" inputmode="email" value="' + esc(S.email) + '"></label>' +
+    '<label class="ck" for="f-consent"><input type="checkbox" id="f-consent"' + (S.consent ? ' checked' : '') + '><span>' + esc(TEXTO_SERVICO.replace(' Li a Política de Privacidade.', '')) + ' Li a <a class="lnk" href="/confidentialite/" target="_blank" rel="noopener">Política de Privacidade</a>.</span></label>' +
+    '<label class="ck" for="f-nov"><input type="checkbox" id="f-nov"' + (S.novidades ? ' checked' : '') + '><span>Quero as novidades do Por Dentro (opcional).</span></label>' +
+    '<div class="hp" aria-hidden="true"><label for="hp-website">Deixe este campo em branco</label><input type="text" id="hp-website" name="website" tabindex="-1" autocomplete="off"></div>' +
+    '<div class="err" id="f-err" role="alert">' + esc(S.erro) + '</div>' +
+    '<button class="btn" id="f-btn" type="submit"' + (S.enviando ? ' disabled' : '') + '>Abrir o meu roteiro</button></form></section>';
+}
+function roteiroHtml(c) {
+  var h = '<div class="liberado" id="liberado" tabindex="-1">Roteiro aberto.' + (S.email ? ' O e-mail com o mesmo texto chega em alguns minutos para ' + esc(S.email) + ', se este for o seu primeiro cadastro.' : '') + '</div>';
+  h += '<section aria-labelledby="h-r"><h2 id="h-r">' + esc(c.tipo) + '</h2><p class="small" style="margin:4px 0 14px">' + esc(porRot(S.porta).rot) + ' · ' + esc(ponRot(S.ponto).curto) + '</p><ol class="passos">';
+  c.passos.forEach(function (p, i) {
+    h += '<li><div class="n"><b>' + (i + 1) + '</b>' + esc(p.t) + '</div><p>' + esc(p.x) + '</p>';
+    if (p.fr) h += '<div class="fr"><span class="rot">' + esc(rotuloFrances()) + '</span><q lang="fr">' + esc(p.fr) + '</q><button class="copy" type="button" data-copy="' + esc(p.fr) + '">Copiar frase</button></div>';
+    h += '</li>';
+  });
+  h += '</ol>' + fontesHtml(c) + '</section>';
+  h += '<section class="cta" aria-labelledby="h-c"><h2 id="h-c">Prefere ter alguém com você?</h2><p>Eu acompanho o seu caso, de três jeitos:</p><ul>' +
+    ACOMP.map(function (a) { return '<li><b>' + esc(a.rot) + '</b><span>' + esc(a.desc) + '</span></li>'; }).join('') + '</ul>' +
+    '<a class="btn" id="b-agenda" href="' + AGENDA + '" target="_blank" rel="noopener">Quero conversar sobre o meu caso</a>' +
+    '<p class="selo">Quem fala com a CPAM é você. Não é consulta jurídica: é ajuda para organizar o seu processo administrativo.</p></section>';
+  return h;
+}
+
+function render() {
+  var dyn = byId('dyn');
+  if (!S.porta || !S.ponto) { dyn.innerHTML = ''; return; }
+  var c = caso(S.porta, S.ponto);
+  dyn.innerHTML = primeiroHtml(c) + (S.aberto ? roteiroHtml(c) : portaoHtml(c));
+  if (!S.aberto && !S.shownAt) S.shownAt = Date.now();   // uma vez só: trocar a resposta não reinicia a espera anti-robô
+}
+
+document.addEventListener('change', function (e) {
+  var t = e.target;
+  if (t.name === 'porta') { S.porta = t.value; S.erro = ''; render(); }
+  else if (t.name === 'ponto') { S.ponto = t.value; S.erro = ''; render(); }
+  else if (t.id === 'f-consent') S.consent = t.checked;
+  else if (t.id === 'f-nov') S.novidades = t.checked;
+});
+document.addEventListener('input', function (e) {
+  if (e.target.id === 'f-nome') S.nome = e.target.value;
+  if (e.target.id === 'f-email') S.email = e.target.value;
+});
+function erro(msg, foco) { S.erro = msg; var el = byId('f-err'); if (el) el.textContent = msg; if (foco && byId(foco)) byId(foco).focus(); }
+
+document.addEventListener('submit', async function (e) {
+  if (e.target.id !== 'rs-form') return;
+  e.preventDefault();
+  if (S.enviando) return;
+  S.nome = byId('f-nome').value.trim(); S.email = byId('f-email').value.trim();
+  S.consent = byId('f-consent').checked; S.novidades = byId('f-nov').checked;
+  if (byId('hp-website').value || (Date.now() - S.shownAt) < 2500) { return; }
+  if (!S.nome) { erro('Diga o seu nome para eu saber com quem falo.', 'f-nome'); return; }
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(S.email)) { erro('Esse e-mail parece incompleto. Confira e tente de novo.', 'f-email'); return; }
+  if (!S.consent) { erro('Marque o aceite para eu poder mandar o roteiro.', 'f-consent'); return; }
+  erro('');
+  S.enviando = true; byId('f-btn').disabled = true;
+  var payload = {
+    guia: GUIA, email: S.email, nome: S.nome, origem: ORIGEM, respostas: { porta: S.porta, ponto: S.ponto },
+    aceita_servico: true, aceita_novidades: S.novidades,
+    consentimento_versao: CONSENTIMENTO_VERSAO, texto_servico: TEXTO_SERVICO, texto_novidades: TEXTO_NOVIDADES
+  };
+  ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content'].forEach(function (k) { var v = params.get(k); if (v) payload[k] = v.slice(0, 100); });
+  var ig = params.get('ig'); if (ig) payload.ig = ig.slice(0, 60);
+  try {
+    var supabase = await carregarSupabase();
+    var r = await supabase.rpc('capturar_lead_guia', { payload: payload });
+    if (r.error) throw r.error;
+    lsSet(LS_KEY, JSON.stringify({ ok: true, porta: S.porta, ponto: S.ponto }));
+    track('guia_lead_capturado', { guia: GUIA, porta: S.porta, ponto: S.ponto, utm_campaign: params.get('utm_campaign') || null });
+    S.aberto = true; S.enviando = false; render();
+    var el = byId('liberado');
+    if (el) { el.scrollIntoView({ behavior: window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' }); el.focus({ preventScroll: true }); }
+  } catch (err) {
+    console.error('capturar_lead_guia:', err);
+    S.enviando = false;
+    var b = byId('f-btn'); if (b) b.disabled = false;
+    erro('Não consegui confirmar agora. Confira o e-mail e tente de novo.');
+  }
+});
+
+document.addEventListener('click', function (e) {
+  var b = e.target.closest && e.target.closest('button[data-copy]');
+  if (!b) return;
+  var txt = b.getAttribute('data-copy'), ok = function () { var o = b.textContent; b.textContent = 'Copiado'; setTimeout(function () { b.textContent = o; }, 1600); };
+  var sel = function () { var q = b.parentNode.querySelector('q'); if (!q) return; var r = document.createRange(); r.selectNodeContents(q); var s = window.getSelection(); s.removeAllRanges(); s.addRange(r); };
+  try { navigator.clipboard.writeText(txt).then(ok, sel); } catch (err) { sel(); }
+});
+
+opcoes();
+render();
+if (S.porta && S.ponto) track('rota_da_secu_visita', { aberto: S.aberto, utm_campaign: params.get('utm_campaign') || null });
+</script>
+</body>
+</html>
