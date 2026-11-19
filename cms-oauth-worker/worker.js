@@ -2216,6 +2216,47 @@ async function handleConversaTexto(request, env) {
   return json({ ok: true });
 }
 
+// ---------- Rota da Sécu: pedido de acompanhamento (página pública guias/rota-da-secu/) ----------
+// POST /api/rota/pedido { email, acompanhamento, texto } → o texto entra na Conversa da ficha (crm_conversa_texto, que já existe e já
+// limita a 10 por pessoa a cada 24h) e a Jornada ganha o evento pedido_acompanhamento. Sem SQL novo, sem função nova para o site público.
+// Só aceita quem já se cadastrou na Rota (evento email_capturado/email_recapturado com origem guia-rota-da-secu); qualquer outro caso
+// (e-mail sem ficha, ficha de outro guia) recebe a MESMA resposta 404, para a rota não revelar quem tem ficha. Devolve só { ok: true }.
+const ROTA_ORIGEM = 'guia-rota-da-secu';
+const ROTA_ACOMP = { chamada: 'Ligue sem medo', email: 'Escreva sem erro', mes: 'Resolva de ponta a ponta' };
+async function handleRotaPedido(request, env) {
+  const body = await crmLerJson(request);
+  if (!body) return json({ error: 'invalido' }, 400);
+  const email = String(body.email || '').trim().toLowerCase();
+  const acomp = String(body.acompanhamento || '');
+  const texto = typeof body.texto === 'string' ? body.texto.trim() : '';
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email) || email.length > 254 || !Object.prototype.hasOwnProperty.call(ROTA_ACOMP, acomp)
+    || texto.length < 10 || texto.length > 1500) return json({ error: 'invalido' }, 400);
+  if (!env.SUPABASE_SERVICE_ROLE_KEY) return json({ error: 'config' }, 500);
+  const sb = crmServiceHeaders(env);
+  const cRes = await fetch(`${CRM_SUPABASE_URL}/rest/v1/contatos?select=id&email=eq.${encodeURIComponent(email)}&limit=1`, { headers: sb });
+  const contato = cRes.ok ? (await cRes.json())[0] : null;
+  let veio = false;
+  if (contato && CRM_UUID_RE.test(String(contato.id))) {
+    const eRes = await fetch(`${CRM_SUPABASE_URL}/rest/v1/eventos?select=id&contato_id=eq.${contato.id}&tipo=in.(email_capturado,email_recapturado)` +
+      `&${encodeURIComponent('dados->>origem')}=eq.${ROTA_ORIGEM}&limit=1`, { headers: sb });
+    veio = eRes.ok && ((await eRes.json())[0] != null);
+  }
+  if (!contato || !veio) return json({ error: 'invalido' }, 404);
+  const out = await crmRpc(env, 'crm_conversa_texto', { p_contato: contato.id, p_texto: 'Pedido de orçamento: ' + ROTA_ACOMP[acomp] + '\n\n' + texto });
+  if (!out) return json({ error: 'erro' }, 500);
+  if (out.erro === 'contato') return json({ error: 'invalido' }, 404);
+  if (out.erro === 'limite') return json({ error: 'limite' }, 429);
+  if (out.erro) return json({ error: out.erro }, 400);
+  try {
+    const ev = await fetch(`${CRM_SUPABASE_URL}/rest/v1/eventos`, {
+      method: 'POST', headers: { ...sb, Prefer: 'return=minimal' },
+      body: JSON.stringify({ contato_id: contato.id, tipo: 'pedido_acompanhamento', dados: { acompanhamento: acomp, origem: ROTA_ORIGEM } }),
+    });
+    if (!ev.ok) console.error('crm/rota-pedido: evento ' + ev.status);
+  } catch (e) { console.error('crm/rota-pedido: evento ' + e); }
+  return json({ ok: true });
+}
+
 // ---------- CRM fase 1b: responder da aba Conversa, na mesma conversa do Gmail ----------
 // A aba Conversa da ficha (admin/crm/crm.js) manda texto livre para POST /api/crm/responder.
 // O Worker acha a última mensagem do fio que tem Message-ID (a resposta dela por e-mail ou um e-mail
@@ -5683,6 +5724,9 @@ export default {
       }
       if (url.pathname === '/api/conversa/toque' && request.method === 'POST') {
         return await handleConversaToque(request, env);
+      }
+      if (url.pathname === '/api/rota/pedido' && request.method === 'POST') {
+        return await handleRotaPedido(request, env);
       }
       if (url.pathname === '/api/conversa/texto' && request.method === 'POST') {
         return await handleConversaTexto(request, env);
