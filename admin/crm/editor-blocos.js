@@ -122,6 +122,7 @@ export var PALETA = [
   { tipo: 'titulo', nome: 'Título', d: 'Um título grande' },
   { tipo: 'texto', nome: 'Texto', d: 'Um parágrafo' },
   { tipo: 'botao', nome: 'Botão', d: 'Leva a um link' },
+  { tipo: 'passo', nome: 'Passo numerado', d: 'Um passo do roteiro, com número e frase de apoio' },
   { tipo: 'destaque', nome: 'Destaque', d: 'Faixa de cor com um dado importante' },
   { tipo: 'astucia', nome: 'Astúcia da Equipe', d: 'Uma dica conferida, com a fonte' },
   { tipo: 'pergunta', nome: 'Pergunta', d: 'Convida a responder' },

@@ -119,6 +119,7 @@ export var TIPOS = {
   apresentacao: { nome: 'Apresentação com foto', d: 'A sua foto, o seu nome e uma linha sobre você.' },
   pergunta: { nome: 'Pergunta', d: 'A pergunta grande e uma linha de ajuda.' },
   toques: { nome: 'Respostas de um toque', d: 'Os botões que ela toca para responder (vêm prontos do Worker).' },
+  passo: { nome: 'Passo numerado', d: 'Um passo do roteiro: número, título, texto e, se quiser, uma frase de apoio em outra língua.' },
   etapa: { nome: 'Só para uma etapa', d: 'Um trecho que só aparece para quem marcou aquela etapa.' },
   assinatura: { nome: 'Assinatura', d: 'Ingryd · Por Dentro.' }
 };
@@ -151,6 +152,7 @@ function novoBloco(tipo) {
   if (tipo === 'apresentacao') return { tipo: 'apresentacao', titulo: INTRO_TITULO, texto: INTRO_TEXTO };
   if (tipo === 'pergunta') return { tipo: 'pergunta', texto: '', ajuda: '' };
   if (tipo === 'toques') return { tipo: 'toques', var: 'botoes_cidade' };
+  if (tipo === 'passo') return { tipo: 'passo', n: '', titulo: '', texto: '', fr_rotulo: 'Em francês', fr: '' };
   if (tipo === 'etapa') return { tipo: 'etapa', se: '', rotulo: '', titulo: '', texto: '' };
   return { tipo: 'assinatura', texto: 'Ingryd · Por Dentro' };
 }
@@ -256,6 +258,23 @@ function bloco(b, d) {
           '<div style="' + SANS + ' font-size:13px; line-height:1.45; color:#6E6862; margin-top:2px;">' + z.s + '</div></td></tr></table>' };
     case 'toques':
       return { txt: '{' + (b.var || 'botoes_cidade') + '}', html: '<div style="margin:0 0 12px;">{' + (b.var || 'botoes_cidade') + '}</div>', ess: [] };
+    case 'passo':
+      // Um passo do roteiro: bolinha verde com o número, título em destaque, texto e (opcional) a frase de apoio num cartão com filete dourado.
+      // O texto puro continua "N. Título. texto" e "rótulo: frase", como era antes do visual.
+      var pn = String(b.n || '').trim();
+      a = campo(b.titulo, '', d, false); x = campo(b.titulo, '', d, true);
+      y = campo(b.texto, '', d, false); z = campo(b.texto, '', d, true);
+      var q1 = campo(b.fr, '', d, false), q2 = campo(b.fr, '', d, true), qr = escH(b.fr_rotulo || 'Em francês');
+      t = (pn ? pn + '. ' : '') + a.s + (/[.!?]$/.test(String(b.titulo || '').trim()) ? ' ' : '. ') + y.s + (b.fr ? '\n' + String(b.fr_rotulo || 'Em francês') + ': ' + q1.s : '');
+      h = '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 20px;"><tr>' +
+        (pn ? '<td width="46" valign="top" style="width:46px; padding:1px 0 0;"><table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr><td width="34" height="34" align="center" valign="middle" bgcolor="#577328" style="width:34px; height:34px; background:#577328; border-radius:17px; ' + SANS + ' font-size:16px; font-weight:800; line-height:34px; color:#FBFAF7; text-align:center;">' + escH(pn) + '</td></tr></table></td>' : '') +
+        '<td valign="top"><div style="' + SERIF + ' font-size:18px; font-weight:700; line-height:1.3; color:#2B2B2B; margin:0 0 5px;">' + x.s + '</div>' +
+        '<div style="' + SANS + ' font-size:15px; line-height:1.6; color:#2B2B2B;">' + z.s + '</div>' +
+        (b.fr ? '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:10px 0 0;"><tr><td bgcolor="#F4F1EC" style="background:#F4F1EC; border-left:3px solid #DEB975; border-radius:4px; padding:10px 14px;">' +
+          '<div style="' + SANS + ' font-size:11px; font-weight:800; letter-spacing:.1em; text-transform:uppercase; color:#8A6A2B; margin:0 0 4px;">' + qr + '</div>' +
+          '<div style="' + SANS + ' font-size:14px; line-height:1.55; font-style:italic; color:#2B2B2B;">' + q2.s + '</div></td></tr></table>' : '') +
+        '</td></tr></table>';
+      return { txt: t, html: h, ess: juntaEss(a.ess, y.ess, q1.ess) };
     case 'etapa':
       a = campo(b.rotulo, '', d, false); x = campo(b.rotulo, '', d, true);
       y = campo(b.titulo, '', d, false); z = campo(b.titulo, '', d, true);
