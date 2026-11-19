@@ -119,6 +119,8 @@ var RESERVA_CHAVE = {
   aupair_chegada_2: ['entrega', 'I05', 'au_pair'],
   saude_mapa_1: ['entrega', 'I06', null],
   saude_mapa_2: ['entrega', 'I06', null],
+  // A Rota da Sécu fica sem página (I07 exigiria alterar modelos_email_pagina_check, SQL novo): só a família Entrega, para a Jornada agrupar.
+  saude_rota_1: ['entrega', null, null],
   hub_estudos_lancamento: ['campanha', null, null],
   lembrete_prazo_vlsts: ['campanha', null, null]
 };
