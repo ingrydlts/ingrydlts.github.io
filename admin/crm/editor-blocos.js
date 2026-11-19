@@ -125,6 +125,7 @@ export var PALETA = [
   { tipo: 'destaque', nome: 'Destaque', d: 'Faixa de cor com um dado importante' },
   { tipo: 'astucia', nome: 'Astúcia da Equipe', d: 'Uma dica conferida, com a fonte' },
   { tipo: 'pergunta', nome: 'Pergunta', d: 'Convida a responder' },
+  { tipo: 'separador', nome: 'Separador', d: 'Uma linha para separar um trecho do outro' },
   { tipo: 'assinatura', nome: 'Assinatura', d: 'Fecha o e-mail' }
 ];
 // Só aparecem quando o modelo tem o que eles precisam (as etapas do guia; os botões de um toque do Worker).

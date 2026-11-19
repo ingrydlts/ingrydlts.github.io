@@ -100,7 +100,7 @@ const mc = { chave: '_n', criado_no_estudio: true, tipo: 'servico' };
 const dA = (b) => ({ assunto: 'a', itens: [ast(b)] });
 const confA = (b) => ES.conferir(dA(b), mc, ES.montar(dA(b), 'servico'), false).filter((x) => /stúcia/.test(x.txt))[0];
 check('conferir: astúcia com fonte passa', confA({}) && confA({}).ok);
-check('conferir: astúcia sem fonte trava a publicação', confA({ fonte: '' }) && !confA({ fonte: '' }).ok && confA({ fonte: '' }).trava);
+check('conferir: astúcia sem fonte avisa, mas não trava a publicação', confA({ fonte: '' }) && !confA({ fonte: '' }).ok && !confA({ fonte: '' }).trava);
 check('conferir: sem astúcia no e-mail, a conferência não aparece', !ES.conferir({ assunto: 'a', itens: [{ tipo: 'texto', texto: 'oi' }] }, mc, null, false).some((x) => /stúcia/.test(x.txt)));
 check('esqueleto do freebie traz o destaque e a astúcia', (() => { const t = ES.esqueleto('freebie').itens.map((i) => i.tipo); return t.indexOf('destaque') >= 0 && t.indexOf('astucia') > t.indexOf('destaque'); })());
 
