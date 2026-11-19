@@ -87,6 +87,20 @@ legend{padding:0;font-weight:800;color:var(--forest);margin-bottom:12px;font-siz
 .cta .btn{background:var(--beige);color:#2B2B2B!important;justify-self:start}
 .cta .btn:hover{background:#E8C98B}
 .cta .selo{font-size:13px}
+.cta form{display:grid;gap:14px}
+.cta legend{color:#F4F1EC;font-size:16px}
+.cta .opts{gap:10px}
+.cta .opt span{display:grid;gap:2px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.3);box-shadow:none;color:#F4F1EC;border-radius:18px;padding:12px 16px;cursor:pointer}
+.cta .opt span small{font-size:14px;font-weight:600;color:#DDE5D2}
+.cta .opt input:checked+span{background:rgba(222,185,117,.26);box-shadow:0 0 0 2px var(--beige)}
+.cta .opt input:focus-visible+span{outline:2px solid #fff;outline-offset:2px}
+.cta label.t{display:grid;gap:6px;font-weight:800;font-size:16px;color:#F4F1EC}
+.cta textarea,.cta input[type="email"]{width:100%;border-radius:18px;border:1.5px solid rgba(255,255,255,.35);padding:12px 14px;font:inherit;font-size:16px;line-height:1.45;color:#2B2B2B;background:#fff}
+.cta textarea{min-height:110px;resize:vertical}
+.cta input[type="email"]{border-radius:999px;min-height:44px;padding:10px 16px}
+.cta .err{color:#FFD2CC}
+.cta .vlt{background:transparent;border:0;color:#DDE5D2;text-decoration:underline;font:700 16px var(--body);padding:6px 0;justify-self:start;cursor:pointer}
+.ok-cta{background:rgba(255,255,255,.14);border-radius:16px;padding:12px 14px;font-weight:700}
 .rodape{font-size:13px;color:var(--ink2);border-top:1px solid var(--edge);padding-top:14px}
 .dyn{display:grid;gap:28px}
 .dyn:empty{display:none}
@@ -197,11 +211,11 @@ var LS_KEY = 'pd_guia_' + GUIA;
 var CONSENTIMENTO_VERSAO = 'rota-v1';
 var TEXTO_SERVICO = 'Aceito receber o roteiro por e-mail e que a Ingryd guarde meu nome, meu e-mail e minhas respostas. Posso sair quando quiser. Li a Política de Privacidade.';
 var TEXTO_NOVIDADES = 'Quero receber e-mails do Por Dentro, inclusive sobre a plataforma para quem mora na França. Cancelo quando quiser.';
-var AGENDA = 'https://cal.com/ingryd-silva-jf1cnx/1-1?overlayCalendar=true';
+var WORKER = 'https://por-dentro-cms-oauth.ingrydigitalmanagement.workers.dev';
 var ACOMP = [
-  { rot: 'Ligue sem medo', desc: 'Eu preparo você antes da ligação e entro na linha com você.' },
-  { rot: 'Escreva sem erro', desc: 'Eu redijo o e-mail em francês com você e confiro antes de você enviar.' },
-  { rot: 'Resolva de ponta a ponta', desc: 'Durante 30 dias, até 3 ligações preparadas e e-mails acompanhados.' }
+  { id: 'chamada', rot: 'Ligue sem medo', desc: 'Eu preparo você, entro na linha com você e mando o resumo por escrito.' },
+  { id: 'email', rot: 'Escreva sem erro', desc: 'Redijo o e-mail em francês com você e confiro antes de enviar. Sai da sua conta.' },
+  { id: 'mes', rot: 'Resolva de ponta a ponta', desc: '30 dias: até 3 chamadas preparadas e e-mails acompanhados.' }
 ];
 
 var byId = function (i) { return document.getElementById(i); };
@@ -218,7 +232,8 @@ var ponRot = function (id) { return PONTOS.filter(function (p) { return p.id ===
 async function carregarSupabase() { return (await import('/assets/js/supabase-client.js')).supabase; }
 
 var params = new URLSearchParams(window.location.search);
-var S = { porta: '', ponto: '', aberto: false, nome: '', email: '', consent: false, novidades: false, erro: '', enviando: false, shownAt: 0 };
+var S = { porta: '', ponto: '', aberto: false, nome: '', email: '', consent: false, novidades: false, erro: '', enviando: false, shownAt: 0,
+  cta: 0, orcTipo: '', orcTexto: '', orcEmail: '', orcErro: '', orcEnviando: false };
 
 // O que a pessoa já fez neste aparelho (só a escolha, nunca nome nem e-mail) e o que o link do e-mail traz (porta, ponto, aberto=1).
 function lerSalvo() { try { var v = JSON.parse(lsGet(LS_KEY) || 'null'); return v && v.ok ? v : null; } catch (e) { return null; } }
@@ -259,6 +274,23 @@ function portaoHtml(c) {
     '<div class="err" id="f-err" role="alert">' + esc(S.erro) + '</div>' +
     '<button class="btn" id="f-btn" type="submit"' + (S.enviando ? ' disabled' : '') + '>Abrir o meu roteiro</button></form></section>';
 }
+function ctaHtml() {
+  var h = '<section class="cta" aria-labelledby="h-c"><h2 id="h-c">Prefere ter alguém com você?</h2><p>Eu preparo você e entro na chamada. Quem fala com a CPAM é você.</p>';
+  if (S.cta === 0) {
+    h += '<button class="btn" type="button" id="b-cta">Quero acompanhamento</button>';
+  } else if (S.cta === 1) {
+    h += '<form id="form-orc" novalidate><fieldset><legend>Qual acompanhamento você quer?</legend><div class="opts">' +
+      ACOMP.map(function (a) { return '<label class="opt"><input type="radio" name="acomp" id="acomp-' + a.id + '" value="' + a.id + '"' + (S.orcTipo === a.id ? ' checked' : '') + '><span><b>' + esc(a.rot) + '</b><small>' + esc(a.desc) + '</small></span></label>'; }).join('') + '</div></fieldset>' +
+      '<label class="t" for="f-orc">Descreva a sua situação<textarea id="f-orc" maxlength="1500" placeholder="Em que ponto você está, o que já enviou e onde travou.">' + esc(S.orcTexto) + '</textarea></label>' +
+      (S.email ? '' : '<label class="t" for="f-orc-email">Seu e-mail (o mesmo do cadastro)<input type="email" id="f-orc-email" autocomplete="email" inputmode="email" value="' + esc(S.orcEmail) + '"></label>') +
+      '<div class="err" id="orc-err" role="alert">' + esc(S.orcErro) + '</div>' +
+      '<button class="btn" type="submit"' + (S.orcEnviando ? ' disabled' : '') + '>Pedir orçamento</button><button class="vlt" type="button" id="b-voltar">Voltar</button></form>';
+  } else {
+    var primeiro = (S.nome || '').split(/\s+/)[0];
+    h += '<div class="ok-cta" role="status">Pedido enviado' + (primeiro ? ', ' + esc(primeiro) : '') + '. Eu leio a sua situação e respondo com o orçamento por e-mail.</div>';
+  }
+  return h + '<p class="selo">Não é consulta jurídica. É ajuda para organizar o seu processo administrativo.</p></section>';
+}
 function roteiroHtml(c) {
   var h = '<div class="liberado" id="liberado" tabindex="-1">Roteiro aberto.' + (S.email ? ' O e-mail com o mesmo texto chega em alguns minutos para ' + esc(S.email) + ', se este for o seu primeiro cadastro.' : '') + '</div>';
   h += '<section aria-labelledby="h-r"><h2 id="h-r">' + esc(c.tipo) + '</h2><p class="small" style="margin:4px 0 14px">' + esc(porRot(S.porta).rot) + ' · ' + esc(ponRot(S.ponto).curto) + '</p><ol class="passos">';
@@ -268,10 +300,7 @@ function roteiroHtml(c) {
     h += '</li>';
   });
   h += '</ol>' + fontesHtml(c) + '</section>';
-  h += '<section class="cta" aria-labelledby="h-c"><h2 id="h-c">Prefere ter alguém com você?</h2><p>Eu acompanho o seu caso, de três jeitos:</p><ul>' +
-    ACOMP.map(function (a) { return '<li><b>' + esc(a.rot) + '</b><span>' + esc(a.desc) + '</span></li>'; }).join('') + '</ul>' +
-    '<a class="btn" id="b-agenda" href="' + AGENDA + '" target="_blank" rel="noopener">Quero conversar sobre o meu caso</a>' +
-    '<p class="selo">Quem fala com a CPAM é você. Não é consulta jurídica: é ajuda para organizar o seu processo administrativo.</p></section>';
+  h += ctaHtml();
   return h;
 }
 
@@ -285,18 +314,43 @@ function render() {
 
 document.addEventListener('change', function (e) {
   var t = e.target;
+  if (t.name === 'acomp') { S.orcTipo = t.value; return; }
   if (t.name === 'porta') { S.porta = t.value; S.erro = ''; render(); }
   else if (t.name === 'ponto') { S.ponto = t.value; S.erro = ''; render(); }
   else if (t.id === 'f-consent') S.consent = t.checked;
   else if (t.id === 'f-nov') S.novidades = t.checked;
 });
 document.addEventListener('input', function (e) {
+  if (e.target.id === 'f-orc') S.orcTexto = e.target.value;
+  if (e.target.id === 'f-orc-email') S.orcEmail = e.target.value;
   if (e.target.id === 'f-nome') S.nome = e.target.value;
   if (e.target.id === 'f-email') S.email = e.target.value;
 });
 function erro(msg, foco) { S.erro = msg; var el = byId('f-err'); if (el) el.textContent = msg; if (foco && byId(foco)) byId(foco).focus(); }
 
+function orcErro(msg, foco) { S.orcErro = msg; var el = byId('orc-err'); if (el) el.textContent = msg; if (foco && byId(foco)) byId(foco).focus(); }
+async function pedirOrcamento() {
+  if (S.orcEnviando) return;
+  var email = (S.email || S.orcEmail || '').trim();
+  if (!S.orcTipo) { orcErro('Escolha o acompanhamento que você quer.', 'acomp-chamada'); return; }
+  if (S.orcTexto.trim().length < 10) { orcErro('Conte em poucas palavras a sua situação.', 'f-orc'); return; }
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { orcErro('Esse e-mail parece incompleto. Confira e tente de novo.', 'f-orc-email'); return; }
+  orcErro('');
+  S.orcEnviando = true; var bt = document.querySelector('#form-orc button[type=submit]'); if (bt) bt.disabled = true;
+  var falha = 'Não consegui enviar agora. Tente de novo.';
+  try {
+    var r = await fetch(WORKER + '/api/rota/pedido', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: email, acompanhamento: S.orcTipo, texto: S.orcTexto.trim() }) });
+    if (r.ok) { S.cta = 2; S.orcEnviando = false; track('rota_da_secu_pedido', { acompanhamento: S.orcTipo }); render(); return; }
+    if (r.status === 404) falha = 'Não achei o seu cadastro na Rota. Use o mesmo e-mail do cadastro.';
+    else if (r.status === 429) falha = 'Você já mandou vários pedidos hoje. Tente de novo amanhã.';
+  } catch (err) { console.error('rota/pedido:', err); }
+  S.orcEnviando = false; bt = document.querySelector('#form-orc button[type=submit]'); if (bt) bt.disabled = false;
+  orcErro(falha);
+}
+
 document.addEventListener('submit', async function (e) {
+  if (e.target.id === 'form-orc') { e.preventDefault(); await pedirOrcamento(); return; }
   if (e.target.id !== 'rs-form') return;
   e.preventDefault();
   if (S.enviando) return;
@@ -333,6 +387,9 @@ document.addEventListener('submit', async function (e) {
 });
 
 document.addEventListener('click', function (e) {
+  var t = e.target.closest && e.target.closest('button');
+  if (t && t.id === 'b-cta') { S.cta = 1; S.orcErro = ''; render(); var a = byId('acomp-chamada'); if (a) a.focus(); return; }
+  if (t && t.id === 'b-voltar') { S.cta = 0; S.orcErro = ''; render(); return; }
   var b = e.target.closest && e.target.closest('button[data-copy]');
   if (!b) return;
   var txt = b.getAttribute('data-copy'), ok = function () { var o = b.textContent; b.textContent = 'Copiado'; setTimeout(function () { b.textContent = o; }, 1600); };

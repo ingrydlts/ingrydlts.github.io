@@ -2,15 +2,15 @@
 // Nada de service_role aqui. O banco é db/crm-fase2.sql; o desenho é o artefato "CRM Por Dentro".
 // Tudo que vem do banco é texto de terceiros (nome, e-mail, pergunta): passa sempre por esc().
 import { supabase } from '/assets/js/supabase-client.js';
-import * as TX from './taxonomia.js?v=2026-11-19.2';   // páginas, famílias e agrupamento dos modelos
-import * as ES from './estudio.js?v=2026-11-19.2';   // os blocos do estúdio de e-mails (entregas 2 e 3)
-import * as EE from './editor-email.js?v=2026-11-19.2';
-import * as EQ from './editor-quem.js?v=2026-11-19.2';
-import * as JR from './jornada.js?v=2026-11-19.2';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
-import * as FX from './ficha.js?v=2026-11-19.2';   // ficha v2: lógica pura (fila, démarches, funil, ações)
-import * as FH from './ficha-html.js?v=2026-11-19.2';   // ficha v2: HTML puro
-import * as PN from './panorama.js?v=2026-11-19.2';
-import * as MT from './montagem.js?v=2026-11-19.2';   // Montagem do espaço a partir do transcript (lógica e HTML puros)   // Panorama dela e O que ela trouxe (lógica e HTML puros)
+import * as TX from './taxonomia.js?v=2026-11-19.3';   // páginas, famílias e agrupamento dos modelos
+import * as ES from './estudio.js?v=2026-11-19.3';   // os blocos do estúdio de e-mails (entregas 2 e 3)
+import * as EE from './editor-email.js?v=2026-11-19.3';
+import * as EQ from './editor-quem.js?v=2026-11-19.3';
+import * as JR from './jornada.js?v=2026-11-19.3';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
+import * as FX from './ficha.js?v=2026-11-19.3';   // ficha v2: lógica pura (fila, démarches, funil, ações)
+import * as FH from './ficha-html.js?v=2026-11-19.3';   // ficha v2: HTML puro
+import * as PN from './panorama.js?v=2026-11-19.3';
+import * as MT from './montagem.js?v=2026-11-19.3';   // Montagem do espaço a partir do transcript (lógica e HTML puros)   // Panorama dela e O que ela trouxe (lógica e HTML puros)
 
 var PERSONAS = {
   au_pair_estudante: 'Au pair → estudante', campus_france: 'Campus France', alternancia_emprego: 'Alternância / emprego',
@@ -54,6 +54,7 @@ var CF_CIDADE = { paris: 'Paris', lyon: 'Lyon', toulouse: 'Toulouse', montpellie
 // (o teste crm-rota-ficha.test.mjs confere as duas listas).
 var ROTA_PORTA = { estudante: 'Vim ou vou estudar na França', trabalho: 'Tenho contrato de trabalho', aupair: 'Vim ou vou como au pair', outro: 'Visto de família, PVT ou outro' };
 var ROTA_PONTO = { nao_cheguei: 'Ainda não cheguei à França', sem_numero: 'Cheguei e ainda não pedi o meu número de sécu', esperando: 'Já pedi e estou esperando resposta', sem_vitale: 'Tenho o número, mas ainda não a carte vitale', completo: 'Já tenho a carte vitale' };
+var ROTA_ACOMP = { chamada: 'Ligue sem medo', email: 'Escreva sem erro', mes: 'Resolva de ponta a ponta' };   // o pedido de acompanhamento da página Rota da Sécu (worker.js, ROTA_ACOMP)
 var RESP_LABEL = { porta: ['Situação', function (v) { return ROTA_PORTA[v] || v; }], ponto: ['Ponto na Sécu', function (v) { return ROTA_PONTO[v] || v; }], cfNivel: ['Nível da candidatura (Campus France)', function (v) { return CF_NIVEL[v] || v; }], cfCidade: ['Cidade (tocou no e-mail 2)', function (v) { return CF_CIDADE[v] || v; }] };
 // Prazo de cada nível no calendário Campus France 2027-2028 (igual a CF_NIVEIS no worker.js) e a etapa do guia.
 var CF_PRAZO = { l1: '2026-12-14', arq: '2026-12-14', l2l3: '2027-01-17', lpro: '2027-01-17', master: '2027-01-17', escola: '2027-01-17' };
@@ -1037,6 +1038,8 @@ function eventText(e) {
     email_respondido: ['resposta', d.canal === 'toque' ? 'Tocou no e-mail 2: ' + (d.cidade || '—')
       : d.canal === 'pagina' ? 'Escreveu na página da conversa'
       : (d.email_id ? 'Respondeu o seu e-mail' : 'Mandou um e-mail para você') + (d.assunto ? ': "' + d.assunto + '"' : '')],
+    // Pedido de acompanhamento feito na página Rota da Sécu (POST /api/rota/pedido no Worker); o texto que ela escreveu fica na Conversa.
+    pedido_acompanhamento: ['resposta', 'Pediu orçamento de acompanhamento' + (ROTA_ACOMP[d.acompanhamento] ? ': ' + ROTA_ACOMP[d.acompanhamento] : '')],
     estagio_alterado: ['sistema', 'Estágio: ' + stageLabel(d.de) + ' → ' + stageLabel(d.para)],
     compra: ['sistema', 'Comprou: ' + produtoNome(d.produto)]
   };
@@ -3891,7 +3894,7 @@ function fxHeaderHtml(c, d) {
 // Catálogo de démarches (cópia do app, processos.json): carregado uma vez; sem ele, tudo cai na démarche padrão.
 var FX_PROC = null, FX_QUANDO = null;   // FX_QUANDO: o "quando" de cada passo do template (guias-quando.json), para o prazo curto do Início
 async function fxCarregaProcessos() {
-  try { var r = await fetch('processos.json?v=2026-11-19.2'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
+  try { var r = await fetch('processos.json?v=2026-11-19.3'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
 }
 // A sessão Checklist: pílulas por démarche, os 4 mais urgentes, pasta do Drive privada e "Ver mais desta sessão".
 // Os passos que a montagem do espaço propôs para ela, com démarche, subitens e origem: o mesmo detalhe do Checklist. Existem antes de ela ter conta.
@@ -5018,7 +5021,7 @@ async function renderPessoa() {
   if (!c) { $('pessoa-page').innerHTML = '<div class="empty">Pessoa não encontrada.</div>'; return; }
   $('pessoa-page').innerHTML = '<div class="loading">Carregando a ficha…</div>';
   if (fichaV2Ativa() && FX_PROC === null) FX_PROC = await fxCarregaProcessos();
-  if (fichaV2Ativa() && FX_QUANDO === null) { try { var rq = await fetch('guias-quando.json?v=2026-11-19.2'); FX_QUANDO = rq.ok ? await rq.json() : {}; } catch (e) { FX_QUANDO = {}; } }
+  if (fichaV2Ativa() && FX_QUANDO === null) { try { var rq = await fetch('guias-quando.json?v=2026-11-19.3'); FX_QUANDO = rq.ok ? await rq.json() : {}; } catch (e) { FX_QUANDO = {}; } }
   var r = await Promise.all([
     supabase.from('eventos').select('tipo,dados,criado_em').eq('contato_id', c.id).order('criado_em', { ascending: false }).limit(200),
     supabase.from('consentimentos').select('finalidade,aceito,texto,origem,criado_em').eq('contato_id', c.id).order('criado_em', { ascending: false }),
@@ -6960,7 +6963,7 @@ async function enviarLinkPagamento(btn) {
 var FX_DETALHE = null, qdTimer = null, qdOrigem = null, qdAberto = false;
 async function fxCarregaDetalhe() {
   if (FX_DETALHE) return FX_DETALHE;
-  try { var r = await fetch('guias-detalhe.json?v=2026-11-19.2'); FX_DETALHE = r.ok ? await r.json() : {}; } catch (e) { FX_DETALHE = {}; }
+  try { var r = await fetch('guias-detalhe.json?v=2026-11-19.3'); FX_DETALHE = r.ok ? await r.json() : {}; } catch (e) { FX_DETALHE = {}; }
   return FX_DETALHE;
 }
 function fxFechaQuadro() {
