@@ -369,7 +369,7 @@ export function conferir(d, m, montado, automatico) {
   r.push({ ok: !erro, txt: erro ? 'O texto tem um erro: ' + erro : 'O texto monta sem erro', trava: true });
   if (montado && montado.ess_assunto && montado.ess_assunto.length) r.push({ ok: false, txt: 'O assunto fica vazio sem ' + montado.ess_assunto.map(function (k) { return '{' + k + '}'; }).join(', ') + ': dê um plano B ou um assunto se faltar dado', trava: false });
   var astSemFonte = (d.itens || []).filter(function (b) { return b.tipo === 'astucia' && !String(b.fonte || '').trim(); }).length;
-  if ((d.itens || []).some(function (b) { return b.tipo === 'astucia'; })) r.push({ ok: !astSemFonte, txt: astSemFonte ? (astSemFonte === 1 ? 'Uma astúcia sem fonte: ' : astSemFonte + ' astúcias sem fonte: ') + 'a Equipe só publica dica conferida' : 'Astúcias com fonte', trava: true });
+  if ((d.itens || []).some(function (b) { return b.tipo === 'astucia'; })) r.push({ ok: !astSemFonte, txt: astSemFonte ? (astSemFonte === 1 ? 'Uma astúcia sem fonte: ' : astSemFonte + ' astúcias sem fonte: ') + 'a Equipe só publica dica conferida' : 'Astúcias com fonte', trava: false });
   var assin = (d.itens || []).some(function (b) { return b.tipo === 'assinatura'; });
   r.push({ ok: assin, txt: assin ? 'Assinatura no fim' : 'Sem assinatura', trava: false });
   return r;
