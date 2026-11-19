@@ -1,5 +1,5 @@
 -- Por Dentro — Estúdio de e-mails: o e-mail 1 do guia "Rota da Sécu" (18/11/2026)
--- Rode no SQL Editor do Supabase, DEPOIS de crm-sequencia-minutos.sql e de crm-saude-porta-ponto.sql. Idempotente (pode rodar de novo).
+-- Rode no SQL Editor do Supabase, DEPOIS de crm-sequencia-minutos.sql, crm-saude-porta-ponto.sql, crm-taxonomia-modelos.sql e crm-pagina-i05.sql. Idempotente (pode rodar de novo).
 -- GERADO por admin/crm/db/modelo-rota-da-secu.mjs, a partir de estudio.js (ES.montar) e de guias/rota-da-secu/casos.js (o texto dos 20 casos).
 -- Para mudar um texto, mude lá e gere de novo. Rode primeiro no Supabase de TESTE e só depois no de produção.
 --
@@ -17,6 +17,7 @@
 --   4. As frases em francês precisam de revisão de quem fala francês (casos.js, FRANCES_REVISADO).
 -- Não precisa de linha em guias_links: a página não entrega um link do Notion.
 --
+-- Também alarga a regra modelos_email_pagina_check (de I01-I05 para I01-I06) e põe o e-mail 1 na página I06 da Jornada.
 -- Segurança: só o texto e as regras de um modelo. Nenhuma tabela nem função nova. Nenhum dado de pessoa. Só admin lê e muda (RLS das entregas 1 a 3).
 --
 -- Como desfazer (só apaga o que este arquivo criou e ainda está em rascunho ou revisão; o que você publicou fica):
@@ -30,6 +31,9 @@ do $$
 begin
   if not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'modelos_email' and column_name = 'envio_minutos') then
     raise exception 'Falta rodar antes o crm-sequencia-minutos.sql (e, antes dele, o crm-filtro-etapa.sql) neste banco. Depois rode este arquivo de novo.';
+  end if;
+  if not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'modelos_email' and column_name = 'pagina') then
+    raise exception 'Falta rodar antes o crm-taxonomia-modelos.sql e o crm-pagina-i05.sql neste banco (a classificação por página da Jornada). Depois rode este arquivo de novo.';
   end if;
   if to_regclass('public.modelos_email_versoes') is null then
     raise exception 'Falta rodar antes o crm-estudio-emails-3.sql neste banco. Depois rode este arquivo de novo.';
@@ -434,3 +438,10 @@ Você recebeu este e-mail porque pediu o roteiro da Sécu no Por Dentro com {ema
   'e-mail 1 da Rota da Sécu 18/11/2026: escrita para revisão'
 where exists (select 1 from public.modelos_email where chave = 'saude_rota_1' and criado_no_estudio and objetivo_chave = 'freebie')
   and not exists (select 1 from public.modelos_email_versoes where chave = 'saude_rota_1');
+
+-- Classificação na Jornada: família Entrega, página I06 (Saúde · Rota da Sécu), só se ainda estiver vazia (o que ela já classificou à mão não é sobrescrito).
+alter table public.modelos_email drop constraint if exists modelos_email_pagina_check;
+alter table public.modelos_email add constraint modelos_email_pagina_check check (pagina is null
+  or pagina in ('I01', 'I02', 'I03', 'I04', 'I05', 'I06'));
+update public.modelos_email set familia = coalesce(familia, 'entrega'), pagina = 'I06'
+  where chave = 'saude_rota_1' and pagina is null;

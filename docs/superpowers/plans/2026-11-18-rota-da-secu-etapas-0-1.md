@@ -293,3 +293,15 @@ Hoje o Worker só define `link_checklist` (link do Notion, vindo de `guias_links
 10. **A página fica fora de `/guias/` e do sitemap até o Reel**, e talvez com `noindex`, já que chega por DM. Decidir.
 11. **Os fatos da 1.1:** o que não conseguir fonte oficial datada sai do roteiro ou vira "confirme". As pendências conhecidas estão listadas na 1.1; o francês precisa de revisão nativa antes de ir ao ar.
 12. **Se o Mapa for apagado (0.3-b):** entram no escopo o Worker, o estúdio, a taxonomia, o crm.js e dois testes. Recomendação: PR separado.
+
+---
+
+## Atualização 19/11: o pedido de acompanhamento foi antecipado, sem SQL novo
+
+A Ingryd pediu o comportamento do artefato no fim da página (botão "Quero acompanhamento", três opções, "Descreva a sua situação", "Pedir orçamento"), em vez do botão direto para a agenda. Decisão de desenho, depois de ler a estrutura real do CRM:
+
+- **Sem tabela nem função nova.** O CRM já tem `respostas_email` (canal `pagina`) e a função `crm_conversa_texto`, só do `service_role`, com limite de 10 textos por pessoa a cada 24h. O Worker ganhou `POST /api/rota/pedido`, que chama essa função. As regras de isolamento ficam intactas (nenhuma função para o site público, nada em `anon_pode`).
+- **Quem pode pedir:** só quem já se cadastrou na Rota (evento `email_capturado`/`email_recapturado` com origem `guia-rota-da-secu`). E-mail sem ficha e ficha de outro guia recebem a mesma resposta 404. A resposta é só `{ ok: true }`.
+- **No CRM:** o texto aparece na Conversa da ficha e a Jornada ganha o evento `pedido_acompanhamento` ("Pediu orçamento de acompanhamento: Ligue sem medo"). O evento não guarda o texto.
+- **Fora desta entrega** (continua na etapa 2): a linha "Acompanhamento" em "Quem é ela", o campo "O que ela descreveu" no Dossiê e a etiqueta "orçamento novo" na seção E-mails.
+- **Depende da Ingryd:** publicar o `worker.js` novo no Cloudflare (sem ele o botão mostra "Não consegui enviar agora"). Antes de cobrar, o SIRET (já na análise).

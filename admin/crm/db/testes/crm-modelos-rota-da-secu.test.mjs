@@ -8,6 +8,8 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import * as ES from '../../estudio.js';
+import * as JR from '../../jornada.js';
+import * as TX from '../../taxonomia.js';
 import { caso, PORTAS, PONTOS, OFICIAL } from '../../../../guias/rota-da-secu/casos.js';
 import { gerar, D1, CHAVE_1, ORIGEM, SLUG } from '../modelo-rota-da-secu.mjs';
 
@@ -47,6 +49,10 @@ async function main() {
   check('sem crm-sequencia-minutos.sql: erro que diz o que rodar antes', !semMin.ok && /crm-sequencia-minutos\.sql/.test(semMin.error.message));
   await db.exec(readFileSync(path.resolve(HERE, '../crm-sequencia-minutos.sql'), 'utf8'));
   await db.exec(readFileSync(path.resolve(HERE, '../crm-saude-porta-ponto.sql'), 'utf8'));
+  const semTax = await attempt(() => db.exec(sqlModelos));
+  check('sem crm-taxonomia-modelos.sql e crm-pagina-i05.sql: erro que diz o que rodar antes', !semTax.ok && /crm-taxonomia-modelos\.sql/.test(semTax.error.message) && /crm-pagina-i05\.sql/.test(semTax.error.message));
+  for (const f of ['crm-taxonomia-modelos.sql', 'crm-pagina-i05.sql']) await db.exec(readFileSync(path.resolve(HERE, '..', f), 'utf8'));
+  check('antes do SQL novo o banco recusa a página I06', !(await attempt(() => db.query("update modelos_email set pagina = 'I06' where chave = 'guia_chamada'"))).ok);
 
   console.log('\n== crm-modelos-rota-da-secu.sql ==');
   const r1 = await attempt(() => db.exec(sqlModelos));
@@ -60,6 +66,15 @@ async function main() {
   check('serviço, 5 minutos depois de se cadastrar na origem guia-rota-da-secu', m.tipo === 'servico' && m.envio_gatilho === 'material' && m.envio_depois_de === ORIGEM && m.envio_minutos === 5 && ORIGEM === 'guia-rota-da-secu' && SLUG === 'rota-da-secu');
   const vs = await q('select * from modelos_email_versoes where chave = $1', [CHAVE_1]);
   check('uma versão 1, em rascunho (nada publicado)', vs.length === 1 && vs[0].versao === 1 && vs[0].etapa === 'rascunho');
+
+  console.log('\n== A Jornada: o e-mail 1 fica na linha I06 (Saúde · Rota da Sécu) ==');
+  check('familia entrega e página I06', m.familia === 'entrega' && m.pagina === 'I06');
+  check('o banco aceita I06 e continua recusando página inventada', (await attempt(() => db.query("update modelos_email set pagina = 'I06' where chave = $1", [CHAVE_1]))).ok && !(await attempt(() => db.query("update modelos_email set pagina = 'I99' where chave = $1", [CHAVE_1]))).ok);
+  const i06 = TX.PAGINAS.find((x) => x.k === 'I06');
+  check('a linha I06 da taxonomia é a da Rota da Sécu, não a do Mapa', i06 && /Rota da Sécu/.test(i06.nome) && i06.rota === '/guias/rota-da-secu/' && TX.PAGINAS.length === 6);
+  const jor = JR.montaJornada(await q('select * from modelos_email order by chave'), TX);
+  const l6 = (jor.linhas || jor).find((l) => l.k === 'I06');
+  check('a Jornada tem o e-mail 1 no Inbound lead da linha I06 e nada na linha de todos os percursos', l6 && l6.celulas.lead.some((x) => x.chave === CHAVE_1) && !((jor.linhas || jor).find((l) => l.k === 'TR').celulas.lead || []).some((x) => x.chave === CHAVE_1));
 
   console.log('\n== Só usa dados que o estúdio oferece ==');
   const oferecidos = ES.varsDoModelo(CHAVE_1, { chave: CHAVE_1, criado_no_estudio: true, tipo: m.tipo, para_quem: m.para_quem });

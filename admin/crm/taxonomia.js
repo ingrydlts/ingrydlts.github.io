@@ -55,8 +55,9 @@ export var PAGINAS = [
     ['ap-travado', 'Um passo travado'],
     ['ap-pesado', 'Pesado, deixei os papéis de lado']
   ] },
-  // A persona do Mapa da saúde é porta.ponto (20 combinações), calculada no Worker; não há "etapa do guia" para filtrar.
-  { k: 'I06', nome: 'Saúde · mapa da saúde na França', rota: '/guias/mapa-saude-franca/', etapas: [] }
+  // A persona da Rota da Sécu é porta.ponto (20 combinações), calculada no Worker; não há "etapa do guia" para filtrar.
+  // A I06 era a do Mapa da saúde, que nunca foi ao ar e foi substituído pela Rota da Sécu (18/11/2026).
+  { k: 'I06', nome: 'Saúde · Rota da Sécu', rota: '/guias/rota-da-secu/', etapas: [] }
 ];
 
 export var PERSONAS = [
@@ -119,8 +120,7 @@ var RESERVA_CHAVE = {
   aupair_chegada_2: ['entrega', 'I05', 'au_pair'],
   saude_mapa_1: ['entrega', 'I06', null],
   saude_mapa_2: ['entrega', 'I06', null],
-  // A Rota da Sécu fica sem página (I07 exigiria alterar modelos_email_pagina_check, SQL novo): só a família Entrega, para a Jornada agrupar.
-  saude_rota_1: ['entrega', null, null],
+  saude_rota_1: ['entrega', 'I06', null],
   hub_estudos_lancamento: ['campanha', null, null],
   lembrete_prazo_vlsts: ['campanha', null, null]
 };
