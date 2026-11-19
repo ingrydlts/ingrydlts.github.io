@@ -266,13 +266,13 @@ function bloco(b, d) {
       y = campo(b.texto, '', d, false); z = campo(b.texto, '', d, true);
       var q1 = campo(b.fr, '', d, false), q2 = campo(b.fr, '', d, true), qr = escH(b.fr_rotulo || 'Em francês');
       t = (pn ? pn + '. ' : '') + a.s + (/[.!?]$/.test(String(b.titulo || '').trim()) ? ' ' : '. ') + y.s + (b.fr ? '\n' + String(b.fr_rotulo || 'Em francês') + ': ' + q1.s : '');
+      // Enxuto de propósito: o HTML de um modelo com 20 casos tem limite de 100.000 letras no banco (fonte em atalho, sem tabelas aninhadas).
       h = '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 20px;"><tr>' +
-        (pn ? '<td width="46" valign="top" style="width:46px; padding:1px 0 0;"><table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr><td width="34" height="34" align="center" valign="middle" bgcolor="#577328" style="width:34px; height:34px; background:#577328; border-radius:17px; ' + SANS + ' font-size:16px; font-weight:800; line-height:34px; color:#FBFAF7; text-align:center;">' + escH(pn) + '</td></tr></table></td>' : '') +
-        '<td valign="top"><div style="' + SERIF + ' font-size:18px; font-weight:700; line-height:1.3; color:#2B2B2B; margin:0 0 5px;">' + x.s + '</div>' +
-        '<div style="' + SANS + ' font-size:15px; line-height:1.6; color:#2B2B2B;">' + z.s + '</div>' +
-        (b.fr ? '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:10px 0 0;"><tr><td bgcolor="#F4F1EC" style="background:#F4F1EC; border-left:3px solid #DEB975; border-radius:4px; padding:10px 14px;">' +
-          '<div style="' + SANS + ' font-size:11px; font-weight:800; letter-spacing:.1em; text-transform:uppercase; color:#8A6A2B; margin:0 0 4px;">' + qr + '</div>' +
-          '<div style="' + SANS + ' font-size:14px; line-height:1.55; font-style:italic; color:#2B2B2B;">' + q2.s + '</div></td></tr></table>' : '') +
+        (pn ? '<td width="46" valign="top" style="width:46px;"><div style="width:34px; height:34px; border-radius:17px; background:#577328; color:#FBFAF7; font:800 16px/34px Inter,Arial,sans-serif; text-align:center;">' + escH(pn) + '</div></td>' : '') +
+        '<td valign="top" style="font:15px/1.6 Inter,Arial,sans-serif; color:#2B2B2B;"><div style="font:700 18px/1.3 Fraunces,Georgia,serif; margin:0 0 5px;">' + x.s + '</div>' + z.s +
+        (b.fr ? '<div style="margin:10px 0 0; background:#F4F1EC; border-left:3px solid #DEB975; border-radius:4px; padding:10px 14px;">' +
+          '<div style="font:800 11px/1.4 Inter,Arial,sans-serif; letter-spacing:.1em; text-transform:uppercase; color:#8A6A2B;">' + qr + '</div>' +
+          '<div style="font:italic 14px/1.55 Inter,Arial,sans-serif;">' + q2.s + '</div></div>' : '') +
         '</td></tr></table>';
       return { txt: t, html: h, ess: juntaEss(a.ess, y.ess, q1.ess) };
     case 'etapa':
