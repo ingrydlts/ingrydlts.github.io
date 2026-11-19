@@ -1,0 +1,50 @@
+{
+  "items": [
+    {
+      "slug": "vls-ts-validacao-travou",
+      "url": "/guias/vls-ts-validacao-travou/",
+      "titulo_aba": "VLS-TS travou na ANEF? O que fazer antes do prazo — Por Dentro",
+      "descricao": "Validação do VLS-TS estudante travou no site da ANEF e o prazo está acabando? Guia gratuito: como provar que você agiu a tempo, quem contatar e quando escalar.",
+      "eyebrow": "Guia gratuito · VLS-TS estudante",
+      "h1": "VLS-TS travou na ANEF? Faça isto antes do prazo acabar"
+    },
+    {
+      "slug": "email-alternancia-30-mais",
+      "url": "/guias/email-alternancia-30-mais/",
+      "titulo_aba": "Modelo de e-mail para a escola: alternância depois dos 30 — Por Dentro",
+      "descricao": "Modelo gratuito de e-mail em francês para pedir alternância depois dos 30 anos, com base legal (art. L6222-2) e o que pedir por escrito à escola.",
+      "eyebrow": "Guia gratuito · Alternância depois dos 30",
+      "h1": "O e-mail em francês para a escola, pronto para copiar"
+    },
+    {
+      "slug": "etudes-en-france-2027-2028",
+      "url": "/guias/etudes-en-france-2027-2028/",
+      "titulo_aba": "Candidatura Études en France 2027-2028: linha do tempo e checklist — Por Dentro",
+      "descricao": "Guia gratuito: os prazos por nível (14/12/2026 e 17/01/2027), a linha do tempo e o checklist dos 12 passos da candidatura Études en France 2027-2028, na ordem do guia do Campus France Brasil.",
+      "eyebrow": "Guia gratuito · Campus France",
+      "h1": "Candidatura Études en France 2027‑2028: linha do tempo e checklist dos 12 passos"
+    },
+    {
+      "slug": "tecnologo-nivel-na-franca",
+      "url": "/guias/tecnologo-nivel-na-franca/",
+      "titulo_aba": "Tecnólogo do Brasil: em que nível você entra na França? — Por Dentro",
+      "descricao": "Tecnólogo do Brasil e nível de entrada na França (L3 ou M1): o que cada porta pede, quando dá para assinar contrato de alternância e o modelo de e-mail em francês para perguntar à escola.",
+      "lead": "Libere o checklist para descobrir o seu nível sem gastar e o modelo de e-mail para perguntar a 3 ou 4 escolas."
+    },
+    {
+      "slug": "checklist-chegada-au-pair",
+      "url": "/guias/checklist-chegada-au-pair/",
+      "titulo_aba": "Cheguei como au pair: por onde eu me estabilizo? — Por Dentro",
+      "descricao": "Au pair na França: os 7 passos de chegada, na ordem, com o que ter em mãos em cada um. Validar o visto, casa e contrato, conta, número de sécu, francês, saúde e prazos. Checklist gratuito.",
+      "lead": "Libere o checklist para ver, em cada passo, o que ter em mãos e onde confirmar na fonte oficial."
+    },
+    {
+      "slug": "rota-da-secu",
+      "url": "/guias/rota-da-secu/",
+      "titulo_aba": "Rota da Sécu: o seu caminho até a carte vitale — Por Dentro",
+      "descricao": "Abertura e acompanhamento de direitos na Sécurité Sociale: o link oficial primeiro e, depois de duas perguntas, o roteiro do seu caso.",
+      "eyebrow": "Por Dentro · Saúde na França",
+      "h1": "Abertura e acompanhamento de direitos na Sécurité Sociale"
+    }
+  ]
+}

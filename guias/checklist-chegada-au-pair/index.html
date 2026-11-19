@@ -429,7 +429,7 @@ main.lp{overflow-x:clip;position:relative}
 <section class="lp-gate" id="gate" aria-label="Liberar o checklist de chegada">
   <div class="lp-card rv" id="lp-card">
     <h2>Receba o checklist dos 7 passos de chegada</h2>
-    <p class="lead">Libere o checklist para ver, em cada passo, o que ter em mãos e onde confirmar na fonte oficial.</p>
+    <p class="lead" data-ip="lead">Libere o checklist para ver, em cada passo, o que ter em mãos e onde confirmar na fonte oficial.</p>
     <ul class="lp-inc" aria-label="O que está incluído"><li>Os 7 passos, com caixas para marcar</li><li>O que ter em mãos em cada um</li><li>Onde confirmar na fonte oficial</li></ul>
     <div class="lp-stepper" aria-hidden="true"><span class="lp-dot on">1</span><span class="lp-line"><i></i></span><span class="lp-dot">2</span><span class="lp-line"><i></i></span><span class="lp-dot">3</span></div>
     <form id="gate-form" novalidate>
@@ -764,5 +764,6 @@ byId("gate-form").addEventListener("submit", async function (ev) {
   }
 });
 </script>
+<script src="/assets/js/inbound-textos.js" defer></script>
 </body>
 </html>

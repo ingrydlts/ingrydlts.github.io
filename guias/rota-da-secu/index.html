@@ -134,8 +134,8 @@ legend{padding:0;font-weight:800;color:var(--forest);margin-bottom:12px;font-siz
 
 <main class="rs" id="rs">
   <header>
-    <div class="eyebrow">Por Dentro · Saúde na França</div>
-    <h1>Abertura e acompanhamento de direitos na Sécurité Sociale</h1>
+    <div class="eyebrow" data-ip="eyebrow">Por Dentro · Saúde na França</div>
+    <h1 data-ip="h1">Abertura e acompanhamento de direitos na Sécurité Sociale</h1>
   </header>
 
   <!-- O link oficial vem primeiro e está no HTML, não no script: aparece mesmo sem JavaScript. -->
@@ -401,5 +401,6 @@ opcoes();
 render();
 if (S.porta && S.ponto) track('rota_da_secu_visita', { aberto: S.aberto, utm_campaign: params.get('utm_campaign') || null });
 </script>
+<script src="/assets/js/inbound-textos.js" defer></script>
 </body>
 </html>
