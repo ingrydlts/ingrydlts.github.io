@@ -367,8 +367,8 @@ a.btn{text-decoration:none; color:inherit; display:inline-flex; align-items:cent
 
 /* Estúdio de e-mails (entrega 2): três colunas como o estúdio de produtos do admin —
    modelos · editor em seções · prévia com uma pessoa de verdade. Abaixo de 1000px vira abas. */
-.studio{position:relative; display:grid; grid-template-columns:minmax(0,1.25fr) minmax(0,.95fr); margin-top:14px; background:var(--surface); border:1px solid var(--line); border-radius:14px; overflow:hidden; min-height:640px}
-.st-edit{padding:14px 16px 40px; display:flex; flex-direction:column; gap:10px; min-width:0; background:var(--bg); border-right:1px solid var(--line); overflow-y:auto; max-height:calc(100vh - 120px - var(--st-head-h, 0px))}
+.studio{position:relative; display:grid; grid-template-columns:minmax(0,1.25fr) minmax(0,.95fr); margin-top:14px; background:var(--surface); border:1px solid var(--line); border-radius:14px; overflow:clip; min-height:640px}
+.st-edit{padding:14px 16px 40px; display:flex; flex-direction:column; gap:10px; min-width:0; background:var(--bg); border-right:1px solid var(--line)}
 .st-head{display:flex; flex-wrap:wrap; gap:10px; align-items:flex-start; justify-content:space-between}
 .st-head-t{min-width:0; flex:1 1 220px}
 .st-title{font-size:20px}
@@ -423,7 +423,7 @@ select.st-in{height:36px; padding:0 8px}
 .st-vers li{display:flex; gap:8px; align-items:center; flex-wrap:wrap}
 .st-vers li[aria-current="true"] .st-verbtn{border-color:var(--moss)}
 .st-verbtn{flex:1; display:flex; gap:8px; align-items:center; flex-wrap:wrap; text-align:left; background:var(--surface); border:1px solid var(--line); border-radius:8px; padding:6px 10px}
-.st-prev{padding:14px 16px; display:flex; flex-direction:column; gap:10px; min-width:0; overflow-y:auto; max-height:calc(100vh - 120px - var(--st-head-h, 0px))}
+.st-prev{padding:14px 16px; display:flex; flex-direction:column; gap:10px; min-width:0}
 .st-bar{display:flex; flex-wrap:wrap; gap:8px 12px; align-items:flex-end}
 .st-bar .st-fld{gap:4px} .st-bar .st-fld .st-in + .st-in{margin-top:4px}
 .seg{display:inline-flex; border:1px solid var(--line-2); border-radius:999px; padding:2px}
@@ -435,7 +435,7 @@ select.st-in{height:36px; padding:0 8px}
 .st-frame{background:var(--sunk); border-radius:12px; padding:14px 12px; display:flex; flex-direction:column; align-items:center; gap:8px}
 .st-env{width:100%; max-width:600px; display:flex; flex-direction:column; gap:1px; font-size:13px; padding:0 4px}
 .st-env b{font-weight:600}
-.st-mail{width:100%; max-width:600px; height:max(720px, calc(100vh - 260px)); border:1px solid var(--line); border-radius:8px; background:#F4F1EC; transition:max-width .2s}
+.st-mail{width:100%; max-width:600px; height:720px; overflow:hidden; border:1px solid var(--line); border-radius:8px; background:#F4F1EC; transition:max-width .2s}
 .st-frame.cel .st-env, .st-frame.cel .st-mail{max-width:375px}
 .st-mtabs{display:none; margin-top:12px}
 .st-mtabs button{border:1px solid var(--line-2); background:none; border-radius:999px; padding:6px 14px; font-weight:600; font-size:13px; color:var(--ink-2); margin-right:4px}
@@ -444,7 +444,7 @@ select.st-in{height:36px; padding:0 8px}
 @media (max-width: 1000px){
   .st-mtabs{display:block}
   .studio{display:block}
-  .studio > *{display:none; border-right:0; max-height:none}
+  .studio > *{display:none; border-right:0}
   .studio[data-tab="editar"] .st-edit, .studio[data-tab="previa"] .st-prev{display:flex}
   .st-mail{height:640px}
 }
@@ -1171,7 +1171,7 @@ details.ee-sec[open]>summary{margin-bottom:8px}
 .ee-sd.ok{background:var(--moss)} .ee-sd.rev{background:var(--amber)} .ee-sd.dr{background:var(--ink-3)}
 .ee-fixo .ee-passos{margin:0}
 .ee-fixo .ee-topo{padding:0}
-.st-prev > .st-bar{position:sticky; top:-14px; z-index:3; background:var(--surface); margin-top:-14px; padding:14px 0 8px}
+.st-prev > .st-bar{position:sticky; top:var(--st-head-h, 0px); z-index:3; background:var(--surface); margin-top:-14px; padding:14px 0 8px}
 
 /* Jornada: o botão de novo modelo no alto e a lista de excluídos no fim */
 .jr-acoes{display:flex; justify-content:flex-end; margin:10px 0 0}
@@ -2251,3 +2251,10 @@ select.fx-hm-add:hover,select.fx-hm-add:focus-visible{border-color:var(--moss); 
 .dv-div-ac{display:flex; gap:8px; flex-wrap:wrap; margin-top:8px}
 .dv-div-ac .btn{padding:5px 10px; font-size:12px}
 .dbloco.poscall:not(:has(> :not(h4))){display:none}
+
+/* Prévia: um só seletor de caso (todos os casos de e-mail do modelo) e rolagem única da página */
+.st-caso{display:flex; gap:6px; align-items:center; flex:1 1 280px; min-width:0}
+.st-caso select{flex:1 1 auto; min-width:0}
+.st-caso .btn{padding:6px 10px; flex:none}
+.st-caso-n{font-size:11.5px; color:var(--ink-3); white-space:nowrap}
+.st-edit, .st-prev{scroll-margin-top:var(--st-head-h, 0px)}

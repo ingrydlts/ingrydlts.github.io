@@ -408,6 +408,18 @@ function dadosRota(chave, c, h) {
   d.link_pagina = 'https://imigrantepordentro.com/guias/rota-da-secu/?' + q;
   return d;
 }
+// Os casos de e-mail que um modelo cobre (um por combinação de dados que muda o texto), para a prévia mostrar cada um num seletor.
+// Rota da Sécu: 4 portas x 5 pontos + o cadastro sem porta e ponto. Os outros modelos não têm casos: a lista vem vazia.
+// resp = as respostas que acendem aquele caso (as mesmas que dadosRota lê).
+export function casosDe(chave) {
+  if (chave !== 'saude_rota_1') return [];
+  var l = [];
+  Object.keys(PORTAS_SAUDE).forEach(function (p) { Object.keys(PONTOS_SAUDE).forEach(function (o) {
+    l.push({ id: p + '.' + o, grupo: PORTAS_SAUDE[p], rotulo: PONTOS_SAUDE[o], resp: { porta: p, ponto: o } });
+  }); });
+  l.push({ id: 'geral', grupo: 'Sem porta e ponto', rotulo: 'cadastro antigo (só lembrete, botão e oferta)', resp: {} });
+  return l;
+}
 export function dadosDe(chave, c, h, m) {
   var resp = c.respostas || {};
   if (chave === 'saude_rota_1') return dadosRota(chave, c, h);

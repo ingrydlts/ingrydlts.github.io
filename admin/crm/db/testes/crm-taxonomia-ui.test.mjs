@@ -202,7 +202,7 @@ function fromFake(tab) {
   const q = { insert(v) { chamadas.push({ tab, op: 'insert', v }); return Promise.resolve({ error: null, data: [v] }); }, update(v) { chamadas.push({ tab, op: 'update', v }); return q; }, eq() { return q; }, select() { return Promise.resolve({ error: null, data: [] }); }, then(f) { return Promise.resolve({ error: null, data: [] }).then(f); } };
   return q;
 }
-const ESF = {};
+const ESF = { casosDe: () => [] };
 const sb = { from: fromFake, auth: { getSession: async () => ({ data: { session: null } }) }, rpc: async () => ({ data: null, error: null }),
   channel: () => ({ on() { return this; }, subscribe() { return this; } }), removeChannel() {} };
 const H = new Function('supabase', 'ES', 'TX', 'EE', 'EQ', 'JR', 'document', 'window', 'location', 'localStorage', 'setInterval', 'clearInterval',
