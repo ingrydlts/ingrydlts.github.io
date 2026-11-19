@@ -2258,12 +2258,3 @@ select.fx-hm-add:hover,select.fx-hm-add:focus-visible{border-color:var(--moss); 
 .st-caso .btn{padding:6px 10px; flex:none}
 .st-caso-n{font-size:11.5px; color:var(--ink-3); white-space:nowrap}
 .st-edit, .st-prev{scroll-margin-top:var(--st-head-h, 0px)}
-
-/* Bloco "Passo numerado" no editor: bolinha com o número, título, texto e a frase de apoio */
-.ee-passo-b{display:flex; gap:12px; align-items:flex-start}
-.ee-passo-n{flex:none; width:34px; height:34px; border-radius:50%; background:#577328; color:#FBFAF7; display:flex; align-items:center; justify-content:center; font-weight:800; margin-top:1px}
-.ee-passo-nc{min-width:1ch; text-align:center; color:#FBFAF7; font-weight:800; outline:0}
-.ee-passo-nc:empty::before{color:#DDE6C9}
-.ee-passo-c{flex:1; min-width:0; display:flex; flex-direction:column; gap:4px}
-.ee-passo-fr{background:#F4F1EC; border-left:3px solid #DEB975; border-radius:4px; padding:8px 12px; margin-top:4px}
-.ee-passo-fr small{display:block; font-size:11px; font-weight:800; letter-spacing:.1em; text-transform:uppercase; color:#8A6A2B; margin-bottom:2px}

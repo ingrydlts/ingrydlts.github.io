@@ -58,9 +58,6 @@ function textoDoBloco(b, i, ro) {
   else if (b.tipo === 'titulo') h = campo(p('texto'), b.texto, 'ee-titulo', 'Título', 'Escreva o título', false, ro);
   else if (b.tipo === 'pergunta') h = campo(p('texto'), b.texto, 'ee-titulo', 'Pergunta', 'Escreva a pergunta', false, ro) + campo(p('ajuda'), b.ajuda, 'ee-disc', 'Linha de ajuda', 'Linha de ajuda (opcional)', false, ro);
   else if (b.tipo === 'assinatura') h = campo(p('texto'), b.texto, 'ee-ass', 'Assinatura', 'Assinatura', false, ro);
-  else if (b.tipo === 'passo') h = '<div class="ee-passo-b"><span class="ee-passo-n">' + campo(p('n'), b.n, 'ee-passo-nc', 'Número do passo', '1', false, ro) + '</span><div class="ee-passo-c">' +
-    campo(p('titulo'), b.titulo, 'ee-forte', 'Título do passo', 'Título do passo', false, ro) + campo(p('texto'), b.texto, 'ee-texto', 'Texto do passo', 'Explique o passo', true, ro) +
-    '<div class="ee-passo-fr"><small>' + esc(b.fr_rotulo || 'Em francês') + '</small>' + campo(p('fr'), b.fr, 'ee-disc', 'Frase de apoio', 'Frase de apoio (opcional)', false, ro) + '</div></div></div>';
   else if (b.tipo === 'etapa') h = campo(p('rotulo'), b.rotulo, 'ee-disc', 'Linha pequena de cima', 'Linha pequena de cima (opcional)', false, ro) + campo(p('titulo'), b.titulo, 'ee-forte', 'Frase em negrito', 'Frase em negrito (opcional)', false, ro) + campo(p('texto'), b.texto, 'ee-texto', 'Texto', 'Escreva o texto', true, ro);
   return h;
 }
@@ -72,7 +69,7 @@ function conteudo(b, i, ro) {
   var alt = b.alt != null && b.alt !== '' ? '<div class="ee-alt"><small>Se faltar um dado deste bloco:</small>' + campo('itens.' + i + '.alt', b.alt, 'ee-disc', 'Texto se faltar um dado', 'Texto se faltar um dado', false, ro) + '</div>' : '';
   return textoDoBloco(b, i, ro) + alt;
 }
-var EDITA_NO_LUGAR = { texto: 1, titulo: 1, pergunta: 1, assinatura: 1, etapa: 1, astucia: 1, passo: 1 };
+var EDITA_NO_LUGAR = { texto: 1, titulo: 1, pergunta: 1, assinatura: 1, etapa: 1, astucia: 1 };
 function barraDoBloco(b, i) {
   var txt = b.tipo === 'texto' || b.tipo === 'titulo', noLugar = !!EDITA_NO_LUGAR[b.tipo];
   var h = '<div class="ee-bar" role="toolbar" aria-label="Ferramentas do bloco">';
