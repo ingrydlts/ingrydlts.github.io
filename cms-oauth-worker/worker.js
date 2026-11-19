@@ -2317,6 +2317,8 @@ async function handleCrmResponder(request, env) {
   if (!CRM_UUID_RE.test(contatoId)) return json({ error: 'Contato inválido.' }, 400);
   if (!texto || texto.length > 10000) return json({ error: 'Mensagem vazia ou grande demais.' }, 400);
   if (assuntoNovo.length > 200) return json({ error: 'Assunto grande demais.' }, 400);
+  const ax = crmBilanAnexos(body.anexos, true);   // mesma regra do bilan: PDF/JPG/PNG, 5 arquivos, 3 MB, tipo conferido pelos bytes
+  if (!ax.ok) return json({ error: ax.erro }, 400);
 
   const auth = { apikey: CRM_SUPABASE_ANON_KEY, Authorization: `Bearer ${admin.token}` };
   const ler = async (caminho) => { const r = await fetch(`${CRM_SUPABASE_URL}/rest/v1/${caminho}`, { headers: auth }); return r.ok ? r.json() : []; };
@@ -2341,6 +2343,7 @@ async function handleCrmResponder(request, env) {
     tags: ['crm', 'resposta'],
   };
   if (fio) brevoBody.headers = { 'In-Reply-To': fio.inReplyTo, References: fio.references };
+  if (ax.itens.length) brevoBody.attachment = ax.itens.map((x) => ({ name: x.name, content: x.b64 }));
   const enviar = () => fetch('https://api.brevo.com/v3/smtp/email', {
     method: 'POST',
     headers: { 'api-key': env.BREVO_API_KEY, 'Content-Type': 'application/json', Accept: 'application/json' },
@@ -2377,7 +2380,7 @@ async function handleCrmResponder(request, env) {
   if (!ins.ok) { console.error('crm/responder: enviado mas não registrado — ' + ins.status + ' ' + (await ins.text())); avisos.push('Enviado, mas não consegui registrar no histórico.'); }
   if (!marca.ok) { console.error('crm/responder: não marquei as respostas — ' + marca.status); avisos.push('Enviado, mas não consegui marcar as respostas dela como respondidas.'); }
   const linha = ins.ok ? ((await ins.json().catch(() => []))[0] || null) : null;
-  return json({ ok: true, assunto, no_fio: !!fio && !semFio, email: linha, aviso: avisos.join(' ') || undefined });
+  return json({ ok: true, assunto, no_fio: !!fio && !semFio, anexos: ax.itens.length, email: linha, aviso: avisos.join(' ') || undefined });
 }
 
 // ----- Leitor mínimo de e-mail (sem biblioteca: o Worker é colado no painel, sem build) -----

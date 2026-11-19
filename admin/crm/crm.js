@@ -1621,30 +1621,56 @@ function conversaPanel(c, mails, resps, h4, jor) {
     (assunto ? '<p class="sub" style="margin:0">Vai como <b>' + esc(assunto) + '</b></p>'
       : '<label class="sub" for="conv-assunto">Assunto (ainda não há conversa por e-mail com ela)</label><input id="conv-assunto" maxlength="200" autocomplete="off">') +
     '<label class="sr" for="conv-txt">Sua resposta</label><textarea id="conv-txt" maxlength="10000" data-cid="' + esc(c.id) + '" placeholder="Responder a ' + esc(pn(c)) + '…">' + esc(rasc) + '</textarea>' +
+    '<div class="conv-anexos"><label class="btn" for="conv-anexos">Anexar arquivos</label><input id="conv-anexos" type="file" multiple accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png" class="sr" data-cid="' + esc(c.id) + '"> <small class="sub">PDF, JPG ou PNG · até 5 arquivos · 3 MB no total</small><ul class="onb-arqs" id="conv-anexos-lista">' + convAnexosLi(c.id) + '</ul></div>' +
     '<p class="sub" id="conv-err" style="margin:0;color:var(--red)" role="alert" hidden></p>' +
     '<div class="row"><small>Sai do e-mail do Por Dentro, na mesma conversa do Gmail dela. Se ela responder, volta para esta aba e uma cópia chega no seu e-mail.</small>' +
     '<button class="btn primary" type="button" id="conv-send" data-cid="' + esc(c.id) + '">Enviar</button></div></div></section></div>';
+}
+// Anexos da resposta (ficha → E-mail): ficam só na memória, por contato. Mesma regra do bilan (bilanJuntar).
+var CONV_AX = {};
+function convAnexosLi(cid) {
+  return (CONV_AX[cid] || []).map(function (f, i) {
+    return '<li><span class="nome">' + esc(f.name || 'arquivo') + '</span><span class="tam num">' + esc(onbMb(f.size)) + '</span><button class="btn" type="button" data-convrem="' + i + '" data-cid="' + esc(cid) + '" aria-label="Tirar ' + esc(f.name || 'arquivo') + '">Tirar</button></li>';
+  }).join('');
+}
+function convAdicionar(cid, lista) {
+  var r = bilanJuntar(CONV_AX[cid] || [], Array.prototype.slice.call(lista || []));
+  CONV_AX[cid] = r.arquivos;
+  var ul = $('conv-anexos-lista'); if (ul) ul.innerHTML = convAnexosLi(cid);
+  var err = $('conv-err'); if (err) { err.textContent = r.recusas.join(' '); err.hidden = !r.recusas.length; }
+}
+async function arquivosB64(lista) {
+  var out = [];
+  for (var i = 0; i < lista.length; i++) {
+    var u8 = new Uint8Array(await lista[i].arrayBuffer()), bin = '';
+    for (var k = 0; k < u8.length; k += 0x8000) bin += String.fromCharCode.apply(null, u8.subarray(k, k + 0x8000));
+    out.push({ name: lista[i].name, b64: btoa(bin) });
+  }
+  return out;
 }
 async function sendResposta(btn) {
   var err = $('conv-err'), txt = $('conv-txt').value.trim(), as = $('conv-assunto'), cid = btn.dataset.cid;
   err.hidden = true;
   if (!txt) { err.textContent = 'Escreva a resposta antes de enviar.'; err.hidden = false; return; }
   if (as && !as.value.trim()) { err.textContent = 'Escreva um assunto: ainda não há conversa por e-mail com ela.'; err.hidden = false; return; }
+  var axs = CONV_AX[cid] || [];
+  if (!axs.length && /\b(em anexo|anexad[oa]s?|segue (o|a|em))\b/i.test(txt) && !confirm('O texto fala em anexo, mas nenhum arquivo foi anexado. Enviar assim mesmo?')) return;
   var sess = await supabase.auth.getSession();
   if (!sess.data.session) { err.textContent = 'Sessão expirada. Recarregue a página e entre de novo.'; err.hidden = false; return; }
   btn.disabled = true; btn.textContent = 'Enviando…';
   try {
+    var anexosB64 = await arquivosB64(axs);
     var res = await fetch(WORKER_BASE + '/api/crm/responder', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + sess.data.session.access_token },
-      body: JSON.stringify({ contato_id: cid, texto: txt, assunto: as ? as.value.trim() : undefined })
+      body: JSON.stringify({ contato_id: cid, texto: txt, assunto: as ? as.value.trim() : undefined, anexos: anexosB64 })
     });
     var data = await res.json().catch(function () { return {}; });
     if (!res.ok) throw new Error(data.error || ('Erro ' + res.status));
-    delete state.rascunho[cid];
+    delete state.rascunho[cid]; delete CONV_AX[cid];
     await reload();
     if (state.view === 'pessoa' && state.sel === cid) { state.ptab = 'conversa'; await renderPessoa(); }
-    toast(data.aviso || 'Resposta enviada', data.aviso ? 9000 : 0);
+    toast(data.aviso || ('Resposta enviada' + (data.anexos ? ' com ' + data.anexos + (data.anexos === 1 ? ' anexo' : ' anexos') : '')), data.aviso ? 9000 : 0);
   } catch (e) {
     err.textContent = e.message; err.hidden = false;
     btn.disabled = false; btn.textContent = 'Enviar';
@@ -7075,6 +7101,7 @@ document.addEventListener('click', async function (e) {
   }
   if (t.dataset.casoFicha) return openPessoa(t.dataset.casoFicha, 'plataforma', 'caso');
   if (t.id === 'conv-send') return sendResposta(t);
+  if (t.dataset.convrem !== undefined) { (CONV_AX[t.dataset.cid] || []).splice(Number(t.dataset.convrem), 1); var ul = $('conv-anexos-lista'); if (ul) ul.innerHTML = convAnexosLi(t.dataset.cid); return; }
   if (t.dataset.avisado) {
     t.disabled = true;
     var up = await supabase.from('lembretes_prazo').update({ status: 'avisado', avisado_em: new Date().toISOString() }).eq('id', t.dataset.avisado);
@@ -7411,6 +7438,7 @@ document.addEventListener('input', function (e) {
   if (e.target.id === 'ont-url') ONT.url = e.target.value;
 });
 document.addEventListener('change', function (e) {
+  if (e.target.id === 'conv-anexos') { convAdicionar(e.target.dataset.cid, e.target.files); e.target.value = ''; return; }
   if (e.target.id === 'bl-anexos') { bilanAdicionar(e.target.files); e.target.value = ''; return; }
   if (e.target.id !== 'onb-file') return;
   onbAdicionar(e.target.files); e.target.value = '';
