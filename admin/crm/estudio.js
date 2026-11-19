@@ -120,6 +120,7 @@ export var TIPOS = {
   pergunta: { nome: 'Pergunta', d: 'A pergunta grande e uma linha de ajuda.' },
   toques: { nome: 'Respostas de um toque', d: 'Os botões que ela toca para responder (vêm prontos do Worker).' },
   etapa: { nome: 'Só para uma etapa', d: 'Um trecho que só aparece para quem marcou aquela etapa.' },
+  separador: { nome: 'Separador', d: 'Uma linha fina para separar um trecho do outro.' },
   assinatura: { nome: 'Assinatura', d: 'Ingryd · Por Dentro.' }
 };
 export var FOTO_URL = 'https://imigrantepordentro.com/images/uploads/foto-de-perfil.jpg';
@@ -151,6 +152,7 @@ function novoBloco(tipo) {
   if (tipo === 'apresentacao') return { tipo: 'apresentacao', titulo: INTRO_TITULO, texto: INTRO_TEXTO };
   if (tipo === 'pergunta') return { tipo: 'pergunta', texto: '', ajuda: '' };
   if (tipo === 'toques') return { tipo: 'toques', var: 'botoes_cidade' };
+  if (tipo === 'separador') return { tipo: 'separador' };
   if (tipo === 'etapa') return { tipo: 'etapa', se: '', rotulo: '', titulo: '', texto: '' };
   return { tipo: 'assinatura', texto: 'Ingryd · Por Dentro' };
 }
@@ -256,6 +258,8 @@ function bloco(b, d) {
           '<div style="' + SANS + ' font-size:13px; line-height:1.45; color:#6E6862; margin-top:2px;">' + z.s + '</div></td></tr></table>' };
     case 'toques':
       return { txt: '{' + (b.var || 'botoes_cidade') + '}', html: '<div style="margin:0 0 12px;">{' + (b.var || 'botoes_cidade') + '}</div>', ess: [] };
+    case 'separador':
+      return { txt: '----------', ess: [], html: '<div style="border-top:1px solid #D9D2C6; margin:10px 0 22px; height:0; line-height:0; font-size:0;">&nbsp;</div>' };
     case 'etapa':
       a = campo(b.rotulo, '', d, false); x = campo(b.rotulo, '', d, true);
       y = campo(b.titulo, '', d, false); z = campo(b.titulo, '', d, true);
@@ -369,7 +373,7 @@ export function conferir(d, m, montado, automatico) {
   r.push({ ok: !erro, txt: erro ? 'O texto tem um erro: ' + erro : 'O texto monta sem erro', trava: true });
   if (montado && montado.ess_assunto && montado.ess_assunto.length) r.push({ ok: false, txt: 'O assunto fica vazio sem ' + montado.ess_assunto.map(function (k) { return '{' + k + '}'; }).join(', ') + ': dê um plano B ou um assunto se faltar dado', trava: false });
   var astSemFonte = (d.itens || []).filter(function (b) { return b.tipo === 'astucia' && !String(b.fonte || '').trim(); }).length;
-  if ((d.itens || []).some(function (b) { return b.tipo === 'astucia'; })) r.push({ ok: !astSemFonte, txt: astSemFonte ? (astSemFonte === 1 ? 'Uma astúcia sem fonte: ' : astSemFonte + ' astúcias sem fonte: ') + 'a Equipe só publica dica conferida' : 'Astúcias com fonte', trava: true });
+  if ((d.itens || []).some(function (b) { return b.tipo === 'astucia'; })) r.push({ ok: !astSemFonte, txt: astSemFonte ? (astSemFonte === 1 ? 'Uma astúcia sem fonte: ' : astSemFonte + ' astúcias sem fonte: ') + 'a Equipe só publica dica conferida' : 'Astúcias com fonte', trava: false });
   var assin = (d.itens || []).some(function (b) { return b.tipo === 'assinatura'; });
   r.push({ ok: assin, txt: assin ? 'Assinatura no fim' : 'Sem assinatura', trava: false });
   return r;

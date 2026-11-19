@@ -63,6 +63,7 @@ function textoDoBloco(b, i, ro) {
 }
 function conteudo(b, i, ro) {
   if (b.tipo === 'botao') return '<div class="ee-botao"' + (ro ? '' : ' role="button" tabindex="0" data-eeabre="' + i + '"') + '>' + esc(b.rotulo || 'Botão') + '</div><small class="ee-nota">leva para ' + esc(b.url ? b.url : b.link ? '{' + b.link + '}' : 'o link que você escolher nas opções') + '</small>';
+  if (b.tipo === 'separador') return '<hr class="ee-hr"><small class="ee-nota">Separador: uma linha fina entre os trechos</small>';
   if (b.tipo === 'destaque') return destaqueHtml(b, i, ro);
   if (b.tipo === 'apresentacao') return introHtml(b, i, ro);
   if (b.tipo === 'toques') return '<div class="ee-toques">Os botões de um toque ({' + esc(b.var || 'botoes_cidade') + '}) entram aqui, prontos do Worker.</div>';
@@ -75,7 +76,7 @@ function barraDoBloco(b, i) {
   var h = '<div class="ee-bar" role="toolbar" aria-label="Ferramentas do bloco">';
   if (txt) h += '<button type="button" data-eetipo="' + i + ':texto" aria-pressed="' + (b.tipo === 'texto') + '">Texto</button><button type="button" data-eetipo="' + i + ':titulo" aria-pressed="' + (b.tipo === 'titulo') + '">Título</button><span class="sp"></span>';
   if (noLugar) h += '<button type="button" data-eenegrito="1" aria-label="Negrito"><b>B</b></button><button type="button" data-eedado="1">+ Dado</button><span class="sp"></span><button type="button" data-eeabre="' + i + '">Opções</button>';
-  else h += '<button type="button" data-eeabre="' + i + '">Editar</button>';
+  else if (b.tipo !== 'separador') h += '<button type="button" data-eeabre="' + i + '">Editar</button>';
   return h + '<span class="sp"></span><button type="button" data-eedup="' + i + '">Duplicar</button></div>';
 }
 function blocoHtml(b, i, n, ro) {
@@ -103,8 +104,13 @@ function tela() {
     campo('assunto_alt', d.assunto_alt, 'ee-pre', 'Assunto se faltar um dado', 'Assunto se faltar um dado (opcional)', false, ro) + '</details></div>';
   var corpo = '';
   if (!its.length) corpo = '<p class="ee-vazio">E-mail vazio. Comece por um bloco.</p>' + (ro ? '' : linhaMais(0));
-  else for (var i = 0; i < its.length; i++) corpo += (ro ? '' : linhaMais(i)) + blocoHtml(its[i], i, its.length, ro);
-  if (!ro && its.length) corpo += linhaMais(its.length);
+  else {
+    // Com um caso escolhido na prévia, só os blocos daquele caso aparecem (os outros ficam guardados, só escondidos aqui).
+    var ocultos = 0, vis = DEP.visivel || function () { return true; };
+    for (var i = 0; i < its.length; i++) { if (!vis(its[i])) { ocultos++; continue; } corpo += (ro ? '' : linhaMais(i)) + blocoHtml(its[i], i, its.length, ro); }
+    if (!ro) corpo += linhaMais(its.length);
+    if (DEP.notaFiltro) corpo = DEP.notaFiltro(ocultos) + corpo;
+  }
   var rod = DEP.rodapeTexto();
   var rodape = '<div class="ee-rodape"><div class="ee-l">Rodapé</div><p class="ee-rodtxt">' + esc(rod || 'Sem rodapé (serviço sem motivo escrito).') + '</p>' +
     campo('rodape', d.rodape, 'ee-pre', 'Por que ela recebe', 'Por que ela recebe (opcional), ex.: pediu o checklist com {email}', false, ro) + '</div>';

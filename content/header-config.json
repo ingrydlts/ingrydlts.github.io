@@ -11,7 +11,7 @@
       "href": "/produtos-de-estudo/"
     },
     "produtos-de-compras": {
-      "enabled": true,
+      "enabled": false,
       "label": "Produtos de compras",
       "href": "/produtos-de-compras/"
     },
