@@ -115,6 +115,27 @@ collections:
               - { label: Imagem, name: image, widget: image, required: false, hint: "Tamanho ideal: 1200×900px (proporção 4:3), foto na horizontal. Aparece no card da lista." }
               - { label: "Link de afiliado", name: affiliateUrl, widget: string, required: false }
 
+  - name: inbound_pages
+    label: "Inbound Page"
+    files:
+      - name: inbound_pages
+        label: "Páginas de entrada (guias) e o texto de cada uma"
+        file: content/inbound-pages.json
+        fields:
+          - label: "Páginas"
+            name: items
+            widget: list
+            summary: "{{url}}"
+            hint: "Cada item é uma landing de captação em /guias/. Aqui você troca o texto do topo; o formulário, o roteiro e o resto da página continuam no código. Campo vazio = vale o texto que já está na página. Para criar uma landing nova, o HTML dela precisa existir antes."
+            fields:
+              - { label: "Identificador (slug)", name: slug, widget: string, hint: "O mesmo nome da pasta em /guias/. Não mude em páginas existentes." }
+              - { label: "Endereço da página", name: url, widget: string, hint: "Ex.: /guias/rota-da-secu/" }
+              - { label: "Título da aba do navegador", name: titulo_aba, widget: string, required: false }
+              - { label: "Descrição (Google e compartilhamento)", name: descricao, widget: text, required: false }
+              - { label: "Etiqueta acima do título", name: eyebrow, widget: string, required: false, hint: "Só aparece nas páginas que têm essa etiqueta (VLS-TS, alternância, Campus France, Rota da Sécu)." }
+              - { label: "Título principal", name: h1, widget: string, required: false, hint: "Não vale para as páginas de au pair e tecnólogo: o título delas tem animação palavra por palavra e fica no código." }
+              - { label: "Frase de apoio (abaixo do título)", name: lead, widget: text, required: false, hint: "Só nas páginas de au pair e tecnólogo." }
+
   - name: posts
     label: "Blog — artigos"
     files:
