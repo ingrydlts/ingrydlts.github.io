@@ -2,17 +2,85 @@
   "hero": {
     "handle": "@ingryd.pordentro",
     "title": "Ingryd, tô por dentro!",
-    "bio": "Te ajudo a ficar por dentro das possibilidades pra viver na França. \n\nQuer ajuda personalizada? Fala comigo aqui embaixo!",
+    "bio": "Te ajudo a organizar a papelada na França.",
     "avatar": "/images/uploads/foto-de-perfil.jpg",
     "instagramUrl": "https://www.instagram.com/ingryd.pordentro/",
     "youtubeUrl": "https://www.youtube.com/@ingrydlotierzo"
   },
   "bot": {
-    "title": "Qual é o seu caminho pra França?",
-    "description": "Responda algumas perguntas rápidas para eu entender quais as melhores dicas eu posso te dar!",
+    "title": "Ainda não sabe qual visto cabe em você?",
+    "description": "Responda poucas perguntas e descubra o seu caminho.",
     "href": "/assistente-de-vistos/"
   },
   "sections": [
+    {
+      "title": "Conversa 1:1",
+      "layout": "destaque",
+      "image": "/images/uploads/links-1a1-fundo.jpg",
+      "tag": "Conversa 1:1 comigo",
+      "headline": "Travou na papelada? Vamos olhar o seu caso.",
+      "text": "Você me conta a sua situação antes e eu chego preparada. Nada de resposta genérica: o que vale para você, na ordem certa.",
+      "items": [
+        {
+          "active": true,
+          "icon": "📅",
+          "title": "Agendar meu 1:1",
+          "description": "",
+          "href": "https://cal.com/ingryd-silva-jf1cnx/1-1",
+          "trackId": "um-a-um-agendar",
+          "external": true
+        },
+        {
+          "active": true,
+          "icon": "💬",
+          "title": "Só uma dúvida rápida? Mande uma pergunta única no WhatsApp",
+          "description": "",
+          "href": "https://wa.me/33744822313?text=Oi%2C%20Ingryd!%20Tenho%20uma%20pergunta%20sobre%20a%20papelada%20na%20Fran%C3%A7a%3A%20",
+          "trackId": "pergunta-unica-whatsapp",
+          "external": true,
+          "secondary": true
+        }
+      ]
+    },
+    {
+      "title": "Comece por aqui",
+      "layout": "carrossel",
+      "items": [
+        {
+          "active": true,
+          "icon": "🩺",
+          "tag": "Guia gratuito",
+          "title": "Rota da Sécu",
+          "description": "O seu caminho até a carte vitale. O link oficial primeiro e, depois de duas perguntas, o roteiro do seu caso.",
+          "href": "/guias/rota-da-secu/",
+          "trackId": "guia-rota-da-secu",
+          "external": false,
+          "image": "/images/uploads/links-rota-da-secu.jpg"
+        },
+        {
+          "active": true,
+          "icon": "🗂️",
+          "tag": "Template de Notion gratuito",
+          "title": "Painel do Certificado",
+          "description": "Prazo, materiais, práticas e revisões da sua prova de língua num lugar só, com o próximo passo sempre à vista.",
+          "href": "/produtos-digitais/painel-do-certificado/",
+          "trackId": "painel-do-certificado",
+          "external": false,
+          "image": "/images/uploads/links-painel-certificado.jpg"
+        },
+        {
+          "active": true,
+          "icon": "🎓",
+          "tag": "Guia gratuito",
+          "title": "Candidatura Études en France 2027-2028",
+          "description": "Linha do tempo e checklist dos 12 passos. Prazos: 14/12/2026 e 17/01/2027, por nível.",
+          "href": "/guias/etudes-en-france-2027-2028/",
+          "trackId": "guia-etudes-en-france-2027-2028",
+          "external": false,
+          "image": "/images/uploads/links-etudes-en-france.jpg"
+        }
+      ]
+    },
     {
       "title": "Vídeos",
       "items": [
