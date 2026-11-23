@@ -5183,7 +5183,7 @@ async function handleCrmLinkPagamento(request, env) {
 //   Variáveis: STRIPE_WEBHOOK_SECRET (Secret, whsec_..., do endpoint no Stripe), STRIPE_SECRET_KEY, SUPABASE_SERVICE_ROLE_KEY,
 //              BREVO_API_KEY, BREVO_SENDER_EMAIL. Ver README.md, seção 25.
 const STRIPE_TOLERANCIA_SEG = 300;
-const STRIPE_EVENTOS = ['checkout.session.completed', 'customer.subscription.updated', 'customer.subscription.deleted', 'invoice.payment_failed', 'invoice.paid'];
+const STRIPE_EVENTOS = ['checkout.session.completed', 'customer.subscription.updated', 'customer.subscription.deleted', 'invoice.payment_failed', 'invoice.paid', 'payment_intent.succeeded'];
 
 function stripeHex(buf) { return Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, '0')).join(''); }
 // O cabeçalho Stripe-Signature é "t=...,v1=...,v1=..."; vale se algum v1 for o HMAC-SHA256 de "t.corpo" com o segredo do endpoint
@@ -5317,6 +5317,24 @@ async function crmRegistrarPagamento(env, args) {
   throw new Error('crm_pagamento_registrar respondeu ' + res.status + ' ' + msg.slice(0, 200));
 }
 
+// 1:1 pago pelo Cal.com: o Cal.com cria o PaymentIntent direto pela API (sem Checkout Session e sem o metadado por_dentro), então
+// o evento é payment_intent.succeeded. Só vale PaymentIntent que traga marca do Cal.com nos metadados (identifier = 'cal.com'
+// ou bookingId); qualquer outro PaymentIntent da conta Stripe é ignorado. A ficha vem do e-mail de quem reservou
+// (metadata.bookerEmail, ou receipt_email). Só grava o dinheiro em `pagamentos`: não libera áudio nem agenda aviso
+// (isso continua sendo do Payment Link com por_dentro). Idempotente: referencia = id do PaymentIntent.
+async function crmStripeCal(env, pi) {
+  const md = pi.metadata || {};
+  const doCal = String(md.identifier || '').toLowerCase() === 'cal.com' || !!md.bookingId;
+  if (!doCal) return json({ ok: true, ignorado: true });
+  const email = String(md.bookerEmail || pi.receipt_email || '').trim().toLowerCase();
+  if (!email) return json({ ok: true, ignorado: true, motivo: 'sem_email' });
+  const contato = await crmContatoDoPagamento(env, { customer_email: email, customer_details: { name: md.bookerName || null } });
+  if (!contato) throw new Error('não achei nem criei a ficha deste pagamento do Cal.com');
+  const r = await crmRegistrarPagamento(env, { p_contato: contato.id, p_referencia: String(pi.id || ''), p_tipo: '1a1', p_servico: '1:1 (Cal.com)',
+    p_valor_centavos: pi.amount_received || pi.amount, p_moeda: pi.currency, p_pago_em: stripeIso(pi.created) });
+  return json({ ok: true, pagamento: r });
+}
+
 // Fatura paga de uma assinatura (invoice.paid): a mensalidade que de fato entrou. Fatura de 0 (teste grátis) e fatura sem
 // assinatura (outra cobrança da mesma conta Stripe) não contam.
 async function crmStripeFatura(env, fatura) {
@@ -5346,6 +5364,7 @@ async function handleStripeWebhook(request, env) {
   try {
     let contato = null, assinatura, subId;
     if (ev.type === 'invoice.paid') return await crmStripeFatura(env, obj);
+    if (ev.type === 'payment_intent.succeeded') return await crmStripeCal(env, obj);
     if (ev.type === 'checkout.session.completed') {
       // O 1:1 pago (Payment Link avulso com o metadado por_dentro = 1a1_20 ou 1a1_40): libera o áudio e agenda o aviso do dia seguinte.
       if (obj.mode === 'payment') return await crmStripe1a1(env, obj);
