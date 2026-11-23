@@ -5344,7 +5344,7 @@ async function crmStripeCal(env, pi) {
   return json({ ok: true, pagamento: r, um_a_um: true, duplicado: !!(u && u.duplicado) });
 }
 // Valor pago (em centavos) → minutos do 1:1. Só 20 e 40 existem (crm_1a1_pago recusa outro número). Acrescente aqui o preço do de 40 min.
-const CRM_CAL_MINUTOS = { 3500: 20 };
+const CRM_CAL_MINUTOS = { 3500: 20, 7000: 40 };
 
 // Fatura paga de uma assinatura (invoice.paid): a mensalidade que de fato entrou. Fatura de 0 (teste grátis) e fatura sem
 // assinatura (outra cobrança da mesma conta Stripe) não contam.
@@ -5417,6 +5417,72 @@ async function handleStripeWebhook(request, env) {
   } catch (e) {
     console.error('crm/stripe: ' + ev.type + ' ' + ev.id + ' — ' + (e && e.message));
     return json({ error: 'Não consegui processar. O Stripe vai tentar de novo.' }, 500);
+  }
+}
+
+// ---------- CRM: webhook do Cal.com (a reserva do 1:1 entra na agenda) ----------
+// POST /api/cal/webhook  (o Cal.com chama; sem login: a segurança é a ASSINATURA, conferida abaixo)
+//
+// Eventos tratados (cadastre estes no Cal.com → Settings → Developer → Webhooks): BOOKING_CREATED, BOOKING_RESCHEDULED,
+// BOOKING_CANCELLED (BOOKING_PAID também vale, é o mesmo que "criada"). Os outros, e o PING de teste, voltam 200 sem fazer nada.
+// O Cal.com assina o corpo com HMAC-SHA256 hex, no cabeçalho x-cal-signature-256, usando o "Secret" do webhook.
+// A ficha é a de quem reservou (o primeiro participante); sem ficha, abre uma (origem 'stripe', como no pagamento). Quem faz a
+// conversa entrar, mudar de data ou ser cancelada é crm_cal_reserva (db/crm-1a1-cal.sql), idempotente pelo id da reserva.
+//   Variáveis: CAL_WEBHOOK_SECRET (Secret, 24+ caracteres, o mesmo do webhook no Cal.com), SUPABASE_SERVICE_ROLE_KEY. Ver README.md, seção 33.
+const CAL_EVENTOS = { BOOKING_CREATED: 'criada', BOOKING_PAID: 'criada', BOOKING_RESCHEDULED: 'remarcada', BOOKING_CANCELLED: 'cancelada' };
+const CAL_CORPO_MAX = 200 * 1024;
+
+async function calAssinaturaConfere(segredo, corpo, cabecalho) {
+  if (!segredo || segredo.length < 24 || !cabecalho) return false;
+  const chave = await crypto.subtle.importKey('raw', new TextEncoder().encode(segredo), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  const esperado = stripeHex(await crypto.subtle.sign('HMAC', chave, new TextEncoder().encode(corpo)));
+  return crmSegredoIgualQualquerTamanho(String(cabecalho).trim().toLowerCase(), esperado);
+}
+
+async function handleCalWebhook(request, env) {
+  if (!env.CAL_WEBHOOK_SECRET || !env.SUPABASE_SERVICE_ROLE_KEY) {
+    console.error('crm/cal: faltam CAL_WEBHOOK_SECRET ou SUPABASE_SERVICE_ROLE_KEY no Worker');
+    return json({ error: 'Webhook ainda não configurado no Worker.' }, 500);
+  }
+  const corpo = await request.text();
+  if (corpo.length > CAL_CORPO_MAX) return json({ error: 'Corpo grande demais.' }, 413);
+  if (!(await calAssinaturaConfere(env.CAL_WEBHOOK_SECRET, corpo, request.headers.get('x-cal-signature-256')))) {
+    return json({ error: 'Assinatura inválida.' }, 400);
+  }
+  let ev;
+  try { ev = JSON.parse(corpo); } catch (e) { return json({ error: 'Corpo inválido.' }, 400); }
+  const evento = CAL_EVENTOS[ev && ev.triggerEvent];
+  if (!evento) return json({ ok: true, ignorado: true });
+  const p = (ev && ev.payload) || {};
+  const uid = typeof p.uid === 'string' ? p.uid.trim() : '';
+  const part = Array.isArray(p.attendees) ? p.attendees[0] : null;
+  const email = String((part && part.email) || '').trim().toLowerCase();
+  const quando = new Date(p.startTime);
+  if (!uid || uid.length > 200 || !CRM_ONB_EMAIL_RE.test(email) || (evento !== 'cancelada' && isNaN(quando.getTime()))) {
+    return json({ ok: true, ignorado: true, motivo: 'reserva_incompleta' });
+  }
+  const anterior = typeof p.rescheduleUid === 'string' && p.rescheduleUid.trim() && p.rescheduleUid.trim() !== uid ? p.rescheduleUid.trim().slice(0, 200) : null;
+
+  try {
+    let contato;
+    if (evento === 'cancelada') {
+      // Cancelar não abre ficha: se a pessoa não existe, não há conversa para cancelar.
+      const r = await fetch(`${CRM_SUPABASE_URL}/rest/v1/contatos?select=id&email=eq.${encodeURIComponent(email)}`, { headers: crmServiceHeaders(env) });
+      contato = r.ok ? (await r.json())[0] : null;
+      if (!contato) return json({ ok: true, ignorado: true, motivo: 'sem_ficha' });
+    } else {
+      contato = await crmContatoDoPagamento(env, { customer_email: email, customer_details: { name: (part && part.name) || null } });
+      if (!contato) throw new Error('não achei nem criei a ficha desta reserva do Cal.com');
+    }
+    const res = await fetch(`${CRM_SUPABASE_URL}/rest/v1/rpc/crm_cal_reserva`, { method: 'POST', headers: crmServiceHeaders(env),
+      body: JSON.stringify({ p_contato: contato.id, p_uid: uid, p_evento: evento, p_quando: evento === 'cancelada' ? null : quando.toISOString(), p_uid_anterior: anterior }) });
+    if (res.status === 404) { console.error('crm/cal: falta rodar admin/crm/db/crm-1a1-cal.sql'); return json({ error: 'Falta rodar crm-1a1-cal.sql.' }, 500); }
+    if (!res.ok) throw new Error('crm_cal_reserva respondeu ' + res.status + ' ' + (await res.text().catch(() => '')).slice(0, 200));
+    const r = await res.json().catch(() => ({}));
+    return json({ ok: true, acao: r && r.acao });
+  } catch (e) {
+    console.error('crm/cal: ' + ev.triggerEvent + ' ' + uid + ' — ' + (e && e.message));
+    return json({ error: 'Não consegui processar.' }, 500);
   }
 }
 
@@ -5748,6 +5814,9 @@ export default {
       }
       if (url.pathname === '/api/stripe/webhook' && request.method === 'POST') {
         return await handleStripeWebhook(request, env);
+      }
+      if (url.pathname === '/api/cal/webhook' && request.method === 'POST') {
+        return await handleCalWebhook(request, env);
       }
       if (url.pathname === '/api/crm/chat-aviso' && request.method === 'POST') {
         return await handleCrmChatAviso(request, env);

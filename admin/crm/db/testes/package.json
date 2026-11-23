@@ -70,6 +70,7 @@
     "test:ficha-sync": "node ficha-sync.test.mjs",
     "test:1a1-registro": "node crm-1a1-registro.test.mjs",
     "test:1a1-vinculo": "node crm-1a1-vinculo.test.mjs",
+    "test:1a1-cal": "node crm-1a1-cal.test.mjs",
     "test:panorama": "node panorama.test.mjs",
     "test:retrabalho-ui": "node crm-retrabalho-ui.test.mjs",
     "test:catalogo": "node crm-caso-catalogo.test.mjs",

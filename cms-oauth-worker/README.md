@@ -993,3 +993,34 @@ Do transcript do onboarding a um espaço pronto para a pessoa, sempre com a Ingr
 
 **Regras que o banco e o Worker impõem:** tipo de bloco e destino de resposta só os das tabelas `bloco_tipos` e `respostas_permitidas`; item sem fonte nasce `a_conferir` e não pode ser publicado; o que a equipe já revisou ou ela já concluiu nunca é alterado por uma leitura nova (vai para "conflitos"); **"Liberar para ela"** (`crm_montagem_liberar`) é a sua aprovação: itens do espaço e listas que vieram da montagem passam a `revisado`, passos com fonte ficam publicados, e **o que está `a_conferir` fica de fora até "Conferi a fonte"** (`crm_acao_conferida`); no aceite do convite só o que veio da montagem e está `revisado` é publicado (um Bilan que você só editou não vai sozinho); só fonte **oficial ou institucional** tira a marca `a_conferir`; conta do funil **sem teste nem plano** recebe o convite (abre o teste), não o aviso; e-mail do convite, do acesso e do aviso são texto em código (não são modelos do Estúdio) e o link de acesso não vai para o histórico de e-mails.
 **Teste:** `node cms-oauth-worker/testes/crm-montagem.test.mjs` e `crm-entrar.test.mjs`; no banco, `npm run test:catalogo | test:listas | test:montagem | test:montagem-aplicar | test:entrar | test:montagem-metricas` em `admin/crm/db/testes`; a página, `node admin/crm/db/testes/entrar-pagina.test.mjs` (Chromium).
+
+## 33. O 1:1 reservado no Cal.com entra na agenda e a compra vem junto (`/api/cal/webhook`)
+
+**Por quê.** O Cal.com cobra o 1:1 pelo próprio Stripe: cria um *PaymentIntent* direto pela API (sem Checkout Session e sem o metadado
+`por_dentro` do Payment Link). Antes, o webhook do Stripe ignorava esse pagamento (Revenue em € 0) e nenhum código criava a conversa em
+`um_a_um` a partir da reserva (a pessoa só aparecia na agenda se você a criasse à mão).
+
+**Reserva → agenda.** `POST /api/cal/webhook`, assinado pelo Cal.com (HMAC-SHA256 hex do corpo, cabeçalho `x-cal-signature-256`, com o
+segredo do webhook). Eventos: `BOOKING_CREATED` (e `BOOKING_PAID`) abre a conversa, `BOOKING_RESCHEDULED` muda a mesma conversa de data,
+`BOOKING_CANCELLED` marca cancelado. Os outros eventos e o PING de teste voltam 200 sem fazer nada. A ficha é a do primeiro participante
+(achada pelo e-mail; se não existir, abre uma). Quem grava é `crm_cal_reserva` (`admin/crm/db/crm-1a1-cal.sql`): idempotente pelo id da
+reserva (`um_a_um.cal_uid`), adota uma conversa "a combinar" que você já tinha criado à mão, e liga ao pagamento solto da pessoa.
+
+**Compra → agenda e Revenue.** `payment_intent.succeeded` (só se os metadados trouxerem a marca do Cal.com: `identifier = cal.com` ou
+`bookingId`; qualquer outro PaymentIntent da conta é ignorado) grava o valor real em `pagamentos` e chama `crm_1a1_pago` com os minutos pelo
+valor: `CRM_CAL_MINUTOS` em `worker.js` (hoje 35 € = 20 min e 70 € = 40 min). Valor fora da tabela só entra em `pagamentos` (e vai ao log).
+Como no Payment Link, isso também libera o áudio por 30 dias e agenda o aviso do dia seguinte, às 9h de Paris. Mudou o preço? Mude a tabela.
+
+**Para pôr no ar (nesta ordem).**
+1. SQL Editor do Supabase (primeiro o de teste, depois o de produção): rode `admin/crm/db/crm-1a1-cal.sql`. Depois rode `db/auditoria-isolamento.sql`
+   e `db/conferir-banco.sql` do app. Os dois vazios = pronto.
+2. Cloudflare → Worker → Settings → Variables: crie o Secret `CAL_WEBHOOK_SECRET` (24+ caracteres aleatórios) e cole o `worker.js` novo.
+3. Cal.com → Settings → Developer → Webhooks → New: URL `https://por-dentro-cms-oauth.ingrydigitalmanagement.workers.dev/api/cal/webhook`,
+   eventos *Booking Created*, *Booking Rescheduled*, *Booking Cancelled* (e *Booking Paid*, se existir), **Secret** = o mesmo valor do passo 2.
+   Use o botão de teste do Cal.com (PING): a resposta tem que ser 200.
+4. Stripe → Developers → Webhooks → o endpoint do Worker → acrescente o evento `payment_intent.succeeded`.
+5. Para recuperar o 1:1 que já foi pago: no Stripe, reenvie o evento `payment_intent.succeeded` daquele pagamento. Para a reserva dele, no Cal.com
+   reenvie o webhook da reserva (Webhooks → histórico) ou crie a conversa à mão na ficha: a compra se liga a ela sozinha.
+
+Como desfazer: ver o fim de `crm-1a1-cal.sql`; apague o webhook no Cal.com.
+Testes: `node cms-oauth-worker/testes/cal-webhook.test.mjs` e, em `admin/crm/db/testes`, `APP_DB_DIR=<POR-DENTRO-APP>/db npm run test:1a1-cal`.
