@@ -5332,8 +5332,19 @@ async function crmStripeCal(env, pi) {
   if (!contato) throw new Error('não achei nem criei a ficha deste pagamento do Cal.com');
   const r = await crmRegistrarPagamento(env, { p_contato: contato.id, p_referencia: String(pi.id || ''), p_tipo: '1a1', p_servico: '1:1 (Cal.com)',
     p_valor_centavos: pi.amount_received || pi.amount, p_moeda: pi.currency, p_pago_em: stripeIso(pi.created) });
-  return json({ ok: true, pagamento: r });
+  // A agenda mostra "pago em… · 20 min" a partir de um_a_um_pagamentos, que é o que crm_1a1_pago grava (e liga à conversa marcada
+  // da pessoa, libera o áudio e agenda o aviso do dia seguinte). Os minutos saem do valor pago; valor fora da tabela só entra em `pagamentos`.
+  const minutos = CRM_CAL_MINUTOS[Number(pi.amount_received || pi.amount)];
+  if (!minutos) { console.error('crm/stripe: pagamento do Cal.com com valor sem minutos conhecidos (' + (pi.amount_received || pi.amount) + ') — veja CRM_CAL_MINUTOS'); return json({ ok: true, pagamento: r, um_a_um: false }); }
+  const res = await fetch(`${CRM_SUPABASE_URL}/rest/v1/rpc/crm_1a1_pago`, { method: 'POST', headers: crmServiceHeaders(env),
+    body: JSON.stringify({ p_contato: contato.id, p_minutos: minutos, p_sessao: String(pi.id || '') }) });
+  if (res.status === 404) { console.error('crm/stripe: falta rodar admin/crm/db/crm-1a1.sql'); return json({ error: 'Falta rodar crm-1a1.sql.' }, 500); }
+  if (!res.ok) throw new Error('crm_1a1_pago respondeu ' + res.status);
+  const u = await res.json().catch(() => ({}));
+  return json({ ok: true, pagamento: r, um_a_um: true, duplicado: !!(u && u.duplicado) });
 }
+// Valor pago (em centavos) → minutos do 1:1. Só 20 e 40 existem (crm_1a1_pago recusa outro número). Acrescente aqui o preço do de 40 min.
+const CRM_CAL_MINUTOS = { 3500: 20 };
 
 // Fatura paga de uma assinatura (invoice.paid): a mensalidade que de fato entrou. Fatura de 0 (teste grátis) e fatura sem
 // assinatura (outra cobrança da mesma conta Stripe) não contam.
