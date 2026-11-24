@@ -610,7 +610,7 @@
     FEEDBACK: "Esse artigo te ajudou?",
     POLL: "Pergunta da enquete\nOpção 1\nOpção 2",
     PILULAS: "? Qual é o seu caso?\nPrimeira pílula | Texto que aparece ao clicar. // Segundo parágrafo, se precisar.\nSegunda pílula | Outro texto.",
-    CALL: "Precisa de acompanhamento? | Marque uma call e a gente olha o seu caso junto.\n20 min | Pra tirar uma dúvida pontual | https://cal.com/ingryd-silva-jf1cnx/20min\n40 min | Pra olhar o seu caso com calma | https://cal.com/ingryd-silva-jf1cnx/40min",
+    CALL: "Precisa de acompanhamento? | Marque uma call e a gente olha o seu caso junto.\n20 min | Pra tirar uma dúvida pontual | https://cal.com/ingryd-silva-jf1cnx/1-1\n40 min | Pra olhar o seu caso com calma | https://cal.com/ingryd-silva-jf1cnx/1-1-40-min",
     RESUMO: "Ponto principal 1\nPonto principal 2\nPonto principal 3",
     CONFIANCA: "Quão segura você está sobre esse assunto?",
     MITO: "Mito ou verdade?\nAfirmação que circula nos grupos | mito | Explicação curta do porquê\nOutra afirmação | verdade | Explicação curta",

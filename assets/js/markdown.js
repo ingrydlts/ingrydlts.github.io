@@ -22,6 +22,9 @@
 //
 //   [[CARDS]]
 //   🎂 | Entre 18 e 30 anos | Faixa etária fixa — não tem exceção documentada.
+//   (no lugar do emoji, vale o nome de um ícone de linha: predio, pin, tela, numero,
+//   ampulheta, check, cartao, arquivo, recibo, pessoa, escudo, coracao, casa, pulso,
+//   relogio, carta — ver ICONES abaixo)
 //   🔄 | Uma vez na vida | Não é renovável.
 //   [[/CARDS]]
 //
@@ -105,8 +108,8 @@
 //
 //   [[CALL]]
 //   Precisa de acompanhamento? | Marque uma call e a gente olha o seu caso.
-//   20 min | Pra uma dúvida pontual | https://cal.com/…/20min
-//   40 min | Pra olhar o dossiê com calma | https://cal.com/…/40min
+//   20 min | Pra uma dúvida pontual | https://cal.com/…/1-1
+//   40 min | Pra olhar o dossiê com calma | https://cal.com/…/1-1-40-min
 //   [[/CALL]]
 //   (1ª linha = título | texto de apoio; as demais = opções de duração:
 //   duração | descrição | link de agendamento. Abre em nova aba.)
@@ -212,12 +215,40 @@ function renderStats(lines) {
   return '<div class="rt-hero-stats">' + items + "</div>";
 }
 
+// Ícones de linha (24x24) para os cartões: use o nome no lugar do emoji, ex.: "pin | CPAM | ...".
+const ICONES = {
+  predio: '<path d="M4 21V5a1 1 0 0 1 1-1h8a1 1 0 0 1 1 1v16M14 9h5a1 1 0 0 1 1 1v11M3 21h18M8 8h2M8 12h2M8 16h2"/>',
+  pin: '<path d="M12 21s7-5.5 7-11a7 7 0 1 0-14 0c0 5.5 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/>',
+  tela: '<rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/>',
+  numero: '<path d="M5 9h14M5 15h14M10 4L8 20M16 4l-2 16"/>',
+  ampulheta: '<path d="M6 3h12M6 21h12M7 3c0 5 5 6 5 9s-5 4-5 9M17 3c0 5-5 6-5 9s5 4 5 9"/>',
+  check: '<circle cx="12" cy="12" r="9"/><path d="M8 12.5l3 3 5-6"/>',
+  cartao: '<rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 11h18M7 15h4"/>',
+  arquivo: '<path d="M7 3h7l5 5v13H7z"/><path d="M14 3v5h5M10 13h6M10 17h6"/>',
+  recibo: '<path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/>',
+  pessoa: '<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.5-7 8-7s8 3 8 7"/>',
+  escudo: '<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/>',
+  coracao: '<path d="M12 20s-8-5-8-11a4.5 4.5 0 0 1 8-2.5A4.5 4.5 0 0 1 20 9c0 6-8 11-8 11z"/>',
+  casa: '<path d="M3 11l9-8 9 8M5 10v10h14V10M10 20v-6h4v6"/>',
+  pulso: '<path d="M3 12h4l3-8 4 16 3-8h4"/>',
+  relogio: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  carta: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/>'
+};
+
+function renderIcone(icon) {
+  const nome = String(icon || "").trim().toLowerCase();
+  if (ICONES[nome]) {
+    return '<svg class="rt-icon" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + ICONES[nome] + "</svg>";
+  }
+  return inline(icon || "");
+}
+
 function renderCards(lines) {
   const items = lines
     .map((line) => {
       const [icon, title, desc] = line.split("|").map((s) => s.trim());
       return (
-        '<div class="rt-exempt-item"><span class="rt-exempt-icon">' + inline(icon || "") +
+        '<div class="rt-exempt-item"><span class="rt-exempt-icon">' + renderIcone(icon) +
         "</span><div><h5>" + inline(title || "") + "</h5><p>" + inline(desc || "") + "</p></div></div>"
       );
     })

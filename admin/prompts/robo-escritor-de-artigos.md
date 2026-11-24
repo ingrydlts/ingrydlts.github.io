@@ -176,8 +176,8 @@ Outro rótulo | Outro texto.
 
 [[CALL]]
 Precisa de acompanhamento? | Frase curta de apoio
-20 min | Pra tirar uma dúvida pontual | https://cal.com/ingryd-silva-jf1cnx/20min
-40 min | Pra olhar o seu caso com calma | https://cal.com/ingryd-silva-jf1cnx/40min
+20 min | Pra tirar uma dúvida pontual | https://cal.com/ingryd-silva-jf1cnx/1-1
+40 min | Pra olhar o seu caso com calma | https://cal.com/ingryd-silva-jf1cnx/1-1-40-min
 [[/CALL]]
 ```
 
