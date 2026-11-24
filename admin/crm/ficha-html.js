@@ -59,7 +59,8 @@ export function htmlCabecalho(d, h) {
     '<div class="hd-l1"><span class="hd-av" aria-hidden="true">' + e(iniciais(c)) + '</span><h2 class="hd-n">' + e(c.nome || c.email || 'Sem nome') + '</h2>' +
     (d.estagioLabel ? '<span class="pill"><span class="dot"></span>' + e(d.estagioLabel) + '</span>' : '') +
     (d.personaLabel ? '<span class="pill">' + e(d.personaLabel) + '</span>' : '') + conta +
-    (c.id ? '<button type="button" class="btn hd-pag-btn" data-pagar="' + e(c.id) + '" title="Manda o e-mail Link de pagamento. Você revisa a escolha antes de enviar.">' + (d.linkPagamentoEnviado ? 'Reenviar link de pagamento' : 'Enviar link de pagamento') + '</button>' : '') + '</div>' +
+    (c.id ? '<button type="button" class="btn hd-pag-btn" data-pagar="' + e(c.id) + '" title="Manda o e-mail Link de pagamento. Você revisa a escolha antes de enviar.">' + (d.linkPagamentoEnviado ? 'Reenviar link de pagamento' : 'Enviar link de pagamento') + '</button>' : '') +
+    (c.id ? '<button type="button" class="btn hd-pag-btn hd-pag-reg" data-pagreg="' + e(c.id) + '" title="Lança um pagamento que não passou pelo Stripe (Pix, transferência, dinheiro).">Registrar pagamento</button>' : '') + '</div>' +
     blocos + (d.nota ? '<p class="est">' + e(d.nota) + '</p>' : '') + '</header>';
 }
 

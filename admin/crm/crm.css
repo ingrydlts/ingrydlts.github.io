@@ -2266,3 +2266,20 @@ select.fx-hm-add:hover,select.fx-hm-add:focus-visible{border-color:var(--moss); 
 /* Arrastar segurando em qualquer parte do bloco */
 .ee-bk.ee-arrastando{opacity:.55; box-shadow:0 0 0 2px var(--moss); cursor:grabbing}
 html.ee-segurando, html.ee-segurando *{cursor:grabbing !important; user-select:none !important}
+
+/* Indicadores da Hoje: cada bloco abre a lista de quem compõe o número */
+.kpi[data-kpi]{cursor:pointer; transition:border-color .15s}
+.kpi[data-kpi]:hover{border-color:var(--line-2)}
+.kpi[data-kpi]:focus-visible{outline:2px solid var(--moss); outline-offset:2px}
+.hd-pag-btn.hd-pag-reg{margin-left:8px}
+.kp-lista{max-height:min(52vh,460px); overflow:auto; border:1px solid var(--line); border-radius:10px; margin-top:10px}
+.kp-lista .row:first-child{border-top:0}
+.kp-lista .kp-sec{margin:0; padding:8px 16px; font-size:12px; color:var(--ink-3); background:var(--surface-2); border-top:1px solid var(--line)}
+.kp-resumo{margin:6px 0 0; font-size:13px; color:var(--ink-2)}
+.kp-rev .kp-data{flex:0 0 46px; font-size:12px; color:var(--ink-3)}
+.kp-rev .kp-ap{padding:3px 9px; font-size:12px}
+.pg-form{display:grid; grid-template-columns:1fr 1fr; gap:10px 12px; margin-top:12px}
+.pg-form label{display:block; font-size:12.5px; color:var(--ink-2)}
+.pg-form input,.pg-form select{display:block; width:100%; margin-top:4px; box-sizing:border-box}
+.pg-form .pg-lg{grid-column:1 / -1}
+@media (max-width:520px){ .pg-form{grid-template-columns:1fr} }

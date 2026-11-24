@@ -265,13 +265,13 @@ async function loadAll() {
     // Os 1:1 pagos (db/crm-1a1.sql): quantos minutos e quando pagou. O valor em euros não é guardado: o Worker só repassa os minutos.
     supabase.from('um_a_um_pagamentos').select('contato_id,minutos,pago_em,um_a_um_id').order('pago_em', { ascending: false }).limit(2000),
     // O dinheiro que entrou de verdade (db/crm-pagamentos.sql, alimentado pelo webhook do Stripe): valor, serviço e quando. Sem o SQL, fica vazio.
-    supabase.from('pagamentos').select('contato_id,tipo,servico,valor_centavos,moeda,pago_em').order('pago_em', { ascending: false }).limit(5000)
+    supabase.from('pagamentos').select('contato_id,referencia,tipo,servico,valor_centavos,moeda,pago_em').order('pago_em', { ascending: false }).limit(5000)
   ]);
   PAGOS = r[16] && !r[16].error ? (r[16].data || []) : [];
   PAGOS_ERRO = r[16] && r[16].error ? String(r[16].error.message || 'erro') : '';
   if (r[0].error) return fail('carregar os contatos', r[0].error);
   COMPRAS = {}; COMPRAS_EV = [];
-  ((r[7] && !r[7].error && r[7].data) || []).forEach(function (e) { var p = (e.dados || {}).produto; if (p) { (COMPRAS[e.contato_id] = COMPRAS[e.contato_id] || {})[p] = 1; COMPRAS_EV.push({ produto: p, em: e.criado_em }); } });
+  ((r[7] && !r[7].error && r[7].data) || []).forEach(function (e) { var p = (e.dados || {}).produto; if (p) { (COMPRAS[e.contato_id] = COMPRAS[e.contato_id] || {})[p] = 1; COMPRAS_EV.push({ produto: p, em: e.criado_em, contato_id: e.contato_id }); } });
   UM = r[14] && !r[14].error ? (r[14].data || []) : [];
   if (r[14] && r[14].error && /registro/.test(String(r[14].error.message || ''))) {   // a coluna registro ainda não existe (db/crm-1a1-registro.sql não rodou): carrega sem ela
     var u2 = await supabase.from('um_a_um').select('id,contato_id,quando,status,criado_em').order('quando', { ascending: true }).limit(2000);
@@ -445,17 +445,21 @@ function eur(v) { return '€ ' + (Math.round(v * 100) / 100).toLocaleString('pt
 // mensalidades das assinaturas ativas (1ª cobrança no fim do teste, ou na criação, e uma por mês). Cupom e reembolso não entram na parte estimada.
 // Devolve { total (em €), porMoeda: { EUR: x, BRL: y }, pagamentos, compras, mensalidades }. Outras moedas ficam fora do total em €.
 function receitaEstimada(ini, fim) {
-  var porMoeda = {}, nPag = 0, nCompras = 0, nMens = 0, agora = Date.now();
+  var porMoeda = {}, nPag = 0, nCompras = 0, nMens = 0, agora = Date.now(), itens = [];
   var soma = function (moeda, v) { porMoeda[moeda] = (porMoeda[moeda] || 0) + v; };
   var comMensalidadeReal = {};
   PAGOS.forEach(function (g) {
     if (g.tipo === 'assinatura') comMensalidadeReal[g.contato_id] = true;
     var t = new Date(g.pago_em);
-    if (t >= ini && t < fim && Number(g.valor_centavos) > 0) { soma(String(g.moeda || 'EUR').toUpperCase(), Number(g.valor_centavos) / 100); nPag++; }
+    if (t >= ini && t < fim && Number(g.valor_centavos) > 0) {
+      var moeda = String(g.moeda || 'EUR').toUpperCase(), valor = Number(g.valor_centavos) / 100, m = /^manual-([a-z]+)-/.exec(String(g.referencia || ''));
+      soma(moeda, valor); nPag++;
+      itens.push({ em: g.pago_em, valor: valor, moeda: moeda, servico: g.servico || 'Pagamento', contato_id: g.contato_id, origem: m ? 'direto' : 'stripe', forma: m ? m[1] : '', ref: g.referencia || '' });
+    }
   });
   COMPRAS_EV.forEach(function (e) {
     var t = new Date(e.em), p = PRODUTOS.filter(function (x) { return x.slug === e.produto; })[0];
-    if (t >= ini && t < fim && p && p.preco) { soma('EUR', p.preco); nCompras++; }
+    if (t >= ini && t < fim && p && p.preco) { soma('EUR', p.preco); nCompras++; itens.push({ em: e.em, valor: p.preco, moeda: 'EUR', servico: p.nome || e.produto, contato_id: e.contato_id || '', origem: 'estimado', forma: '', ref: '' }); }
   });
   Object.keys(ASSIN).forEach(function (k) {
     var a = ASSIN[k]; if (a.status !== 'active' || comMensalidadeReal[k]) return;
@@ -466,10 +470,10 @@ function receitaEstimada(ini, fim) {
     for (var i = 0; i < 120; i++) {
       var d = new Date(base.getTime()); d.setMonth(d.getMonth() + i);
       if (d.getTime() > limite) break;
-      if (d >= ini && d < fim) { soma(String(pl.moeda || 'EUR').toUpperCase(), pl.valor); nMens++; }
+      if (d >= ini && d < fim) { var mo = String(pl.moeda || 'EUR').toUpperCase(); soma(mo, pl.valor); nMens++; itens.push({ em: d.toISOString(), valor: pl.valor, moeda: mo, servico: 'Mensalidade' + (a.plano ? ' · ' + a.plano : ''), contato_id: k, origem: 'estimado', forma: '', ref: '' }); }
     }
   });
-  return { total: porMoeda.EUR || 0, porMoeda: porMoeda, pagamentos: nPag, compras: nCompras, mensalidades: nMens };
+  return { total: porMoeda.EUR || 0, porMoeda: porMoeda, pagamentos: nPag, compras: nCompras, mensalidades: nMens, itens: itens };
 }
 // As moedas que não são euro, para o texto abaixo do indicador: "+ R$ 600".
 function receitaOutras(rv) { return Object.keys(rv.porMoeda).filter(function (m) { return m !== 'EUR' && rv.porMoeda[m] > 0; }).map(function (m) { return FX.fmtMoeda(rv.porMoeda[m], m); }); }
@@ -500,6 +504,117 @@ function renderKpis() {
   $('k-rev-sub').textContent = (partes.length ? partes.join(' + ') : 'nada registrado no período') + (outras.length ? ' · + ' + outras.join(' + ') : '') + ' · antes: ' + eur(rv0.total);
   $('k-rev-sub').title = 'Pagamentos confirmados pelo Stripe entram com o valor real (db/crm-pagamentos.sql). Compras de produto e mensalidades sem registro entram pelo preço de tabela, sem cupom.' + (PAGOS_ERRO ? ' Atenção: não consegui ler a tabela pagamentos (' + PAGOS_ERRO + '): falta rodar o SQL?' : '');
   $('k-rev-sub').className = rv.total >= rv0.total ? 'up' : '';
+}
+// ---------- Pop-up de cada indicador da Hoje: quem compõe o número, no mesmo período do seletor ----------
+var FORMAS_PAG = [['pix', 'Pix'], ['transferencia', 'Transferência'], ['dinheiro', 'Dinheiro'], ['paypal', 'PayPal'], ['outro', 'Outro']];
+function formaRotulo(k) { var f = FORMAS_PAG.filter(function (x) { return x[0] === k; })[0]; return f ? f[1] : ''; }
+function kpiJanela() { var dias = Number(state.kper || 7), agora = Date.now(); return { de: new Date(agora - dias * 864e5), ate: new Date(agora + 1), rot: KPER_ROT[dias] || dias + ' dias' }; }
+function kpiNoPer(iso, a, b) { var t = new Date(iso); return t >= a && t < b; }
+// Uma pessoa por linha (abre a ficha): nome, uma linha de detalhe e, à direita, um selo opcional.
+function kpiLinha(c, det, dir) {
+  return '<button class="row" type="button" data-kpiopen="' + esc(c.id) + '"><div class="' + avClass(c) + '">' + esc(ini(c)) + '</div><div class="who"><b>' + esc(short(c)) + '</b><span>' + esc(det) + '</span></div>' + (dir || '') + '</button>';
+}
+function kpiPopHtml(kind, w) {
+  var vazio = function (t) { return '<div class="empty">' + esc(t) + '</div>'; };
+  if (kind === 'leads') {
+    var ls = C.filter(function (c) { return kpiNoPer(c.criado_em, w.de, w.ate); }).sort(function (a, b) { return a.criado_em < b.criado_em ? 1 : -1; });
+    return { titulo: 'Novos leads · ' + w.rot, sub: ls.length + (ls.length === 1 ? ' pessoa deixou' : ' pessoas deixaram') + ' o e-mail no período.',
+      corpo: ls.map(function (c) { var o = ultimaOrigem(c); return kpiLinha(c, [personaLabel(c), fmtDate(c.criado_em), o ? 'em ' + o : ''].filter(Boolean).join(' · ')); }).join('') || vazio('Nenhum lead novo nos últimos ' + w.rot + '.') };
+  }
+  if (kind === 'um') {
+    var us = UM.filter(function (x) { return x.status !== 'cancelado' && kpiNoPer(x.criado_em, w.de, w.ate); }).sort(function (a, b) { return a.criado_em < b.criado_em ? 1 : -1; });
+    return { titulo: '1:1 marcados · ' + w.rot, sub: us.length + (us.length === 1 ? ' conversa marcada' : ' conversas marcadas') + ' no período (a data é a de quando você marcou).',
+      corpo: us.map(function (x) {
+        var c = byC(x.contato_id); if (!c) return '';
+        var p = PAG1A1.filter(function (g) { return g.um_a_um_id ? g.um_a_um_id === x.id : g.contato_id === x.contato_id; })[0];
+        return kpiLinha(c, 'marcou em ' + fmtDate(x.criado_em) + ' · conversa ' + (x.quando ? fmtQuando(x.quando) : 'sem data') + ' · ' + (p ? 'pago em ' + fmtDate(p.pago_em) : 'sem pagamento registrado'), p ? '<span class="pill out num">' + p.minutos + ' min</span>' : '');
+      }).join('') || vazio('Nenhum 1:1 marcado nos últimos ' + w.rot + '.') };
+  }
+  if (kind === 'plat') {
+    var com = C.filter(function (c) { return c.user_id && c.estagio !== 'inativo'; });
+    var quando = function (c) { return c.ultimo_evento_em || c.criado_em; };
+    var at = com.filter(function (c) { return kpiNoPer(quando(c), w.de, w.ate); }).sort(function (a, b) { return quando(a) < quando(b) ? 1 : -1; });
+    var fora = com.filter(function (c) { return at.indexOf(c) < 0; }).sort(function (a, b) { return quando(a) < quando(b) ? 1 : -1; });
+    var l1 = function (c) { return kpiLinha(c, personaLabel(c) + ' · última atividade ' + fmtDate(quando(c))); };
+    return { titulo: 'Pessoas na plataforma · ' + w.rot, sub: at.length + ' com atividade no período, de ' + com.length + ' com conta.',
+      corpo: (at.map(l1).join('') || vazio('Ninguém com atividade nos últimos ' + w.rot + '.')) + (fora.length ? '<p class="kp-sec">Com conta, sem atividade no período (' + fora.length + ')</p>' + fora.map(l1).join('') : '') };
+  }
+  var rv = receitaEstimada(w.de, w.ate), itens = rv.itens.slice().sort(function (a, b) { return a.em < b.em ? 1 : -1; }), por = {};
+  itens.forEach(function (x) { var k = x.origem + '|' + x.moeda; por[k] = (por[k] || 0) + x.valor; });
+  var ROT = { stripe: 'Stripe', direto: 'Direto', estimado: 'Estimado' };
+  var partes = ['stripe', 'direto', 'estimado'].map(function (o) {
+    var ms = Object.keys(por).filter(function (k) { return k.split('|')[0] === o; }).map(function (k) { return FX.fmtMoeda(por[k], k.split('|')[1]); });
+    return ms.length ? ROT[o] + ' ' + ms.join(' + ') : '';
+  }).filter(Boolean);
+  var linha = function (x) {
+    var c = byC(x.contato_id), nome = c ? short(c) : 'Pessoa sem ficha';
+    var orig = x.origem === 'direto' ? 'direto' + (x.forma ? ' · ' + formaRotulo(x.forma) : '') : x.origem === 'estimado' ? 'estimado, preço de tabela' : 'Stripe';
+    var quem = '<span class="kp-data num">' + esc(fmtDate(x.em)) + '</span><div class="who"><b>' + esc(x.servico) + '</b><span>' + esc(nome + ' · ' + orig) + '</span></div><span class="pill ' + (x.origem === 'estimado' ? '' : 'out ') + 'num">' + esc(FX.fmtMoeda(x.valor, x.moeda)) + '</span>';
+    return '<div class="row kp-rev">' + (c ? '<button class="row" style="flex:1;border:0;padding:0;background:none" type="button" data-kpiopen="' + esc(c.id) + '">' + quem + '</button>' : quem) +
+      (x.origem === 'direto' ? '<button class="btn kp-ap" type="button" data-pagapagar="' + esc(x.ref) + '" aria-label="Apagar o pagamento de ' + esc(x.servico) + '">Apagar</button>' : '') + '</div>';
+  };
+  return { titulo: 'Revenue estimado · ' + w.rot, sub: partes.length ? partes.join(' · ') : 'Nada registrado no período.', extra: '<button class="btn primary" type="button" data-pagreg="" data-voltar="1">+ Registrar pagamento</button>',
+    corpo: itens.map(linha).join('') || vazio('Nenhum pagamento nos últimos ' + w.rot + '. Pagamentos fora do Stripe entram por "Registrar pagamento".') };
+}
+function kpiPop(kind) {
+  var h = kpiPopHtml(kind, kpiJanela());
+  modalOpen('<h3 style="margin:0">' + esc(h.titulo) + '</h3><p class="kp-resumo">' + esc(h.sub) + '</p><div class="kp-lista">' + h.corpo + '</div>' +
+    '<div class="actions">' + (h.extra || '') + '<button class="btn" type="button" id="modal-cancel">Fechar</button></div>', true);
+}
+// ---------- Registrar um pagamento que não passou pelo Stripe (Pix, transferência, dinheiro) ----------
+// Vai para a mesma tabela `pagamentos` (db/crm-pagamentos.sql): a referência 'manual-<forma>-<id>' é única, tipo 'outro'. Entra no revenue e no "Já gastou" da ficha.
+// Pura: confere os campos e devolve { erro } ou { linha }. Valor em formato brasileiro ("1.200,50" ou "70").
+function pagRegLer(f) {
+  var servico = String(f.servico || '').replace(/\s+/g, ' ').trim(), moeda = String(f.moeda || 'EUR').toUpperCase(), forma = FORMAS_PAG.some(function (x) { return x[0] === f.forma; }) ? f.forma : 'outro';
+  if (!f.contato_id) return { erro: 'Escolha a pessoa.' };
+  if (!servico || servico.length > 160) return { erro: 'Diga qual serviço foi (até 160 letras).' };
+  var bruto = String(f.valor || '').replace(/[€R$\s]/g, ''), n = Number(bruto.indexOf(',') >= 0 ? bruto.replace(/\./g, '').replace(',', '.') : bruto);
+  if (!Number.isFinite(n) || n <= 0 || n > 100000) return { erro: 'Valor inválido. Exemplo: 70 ou 70,50.' };
+  if (moeda !== 'EUR' && moeda !== 'BRL') return { erro: 'Escolha euro ou real.' };
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(f.data || '')) || isNaN(new Date(f.data + 'T12:00:00Z'))) return { erro: 'Escolha a data do pagamento.' };
+  if (new Date(f.data + 'T00:00:00Z').getTime() > Date.now() + 864e5) return { erro: 'A data não pode ser no futuro.' };
+  var uid = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
+  return { linha: { contato_id: f.contato_id, referencia: 'manual-' + forma + '-' + uid, tipo: 'outro', servico: servico, valor_centavos: Math.round(n * 100), moeda: moeda, pago_em: f.data + 'T12:00:00Z' } };
+}
+function hojeData() { var d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+function pagRegAbrir(cid, voltar) {
+  state.pagVoltar = !!voltar;
+  var c = cid ? byC(cid) : null;
+  var pessoa = c ? modalTop(c) + '<input type="hidden" id="pg-pessoa" value="' + esc(c.id) + '">'
+    : '<div class="pg-lg"><label for="pg-pessoa">Pessoa<select id="pg-pessoa" class="st-in"><option value="">Escolha quem pagou</option>' +
+      C.slice().sort(function (a, b) { return displayName(a).localeCompare(displayName(b), 'pt-BR'); }).map(function (x) { return '<option value="' + esc(x.id) + '">' + esc(displayName(x) + ' · ' + x.email) + '</option>'; }).join('') + '</select></label></div>';
+  var servicos = PRODUTOS.map(function (p) { return p.nome; }).concat(['Ligação inicial de 20 minutos', 'Acompanhamento na ligação à CPAM']).filter(function (v, i, a) { return v && a.indexOf(v) === i; });
+  modalOpen('<h3 style="margin:0 0 4px">Registrar pagamento</h3><p class="sub" style="margin:0">Para o que a pessoa pagou direto, sem passar pelo Stripe. Entra no revenue e no "Já gastou" da ficha dela.</p>' +
+    '<div class="pg-form">' + pessoa +
+    '<label class="pg-lg" for="pg-servico">Serviço<input id="pg-servico" class="st-in" maxlength="160" list="pg-servicos" autocomplete="off" placeholder="Ex.: Ligue sem Medo à Ameli"></label>' +
+    '<datalist id="pg-servicos">' + servicos.map(function (v) { return '<option value="' + esc(v) + '">'; }).join('') + '</datalist>' +
+    '<label for="pg-valor">Valor<input id="pg-valor" class="st-in" inputmode="decimal" autocomplete="off" placeholder="70 ou 70,50"></label>' +
+    '<label for="pg-moeda">Moeda<select id="pg-moeda" class="st-in"><option value="EUR">Euro (€)</option><option value="BRL">Real (R$)</option></select></label>' +
+    '<label for="pg-data">Data do pagamento<input id="pg-data" class="st-in" type="date" value="' + hojeData() + '" max="' + hojeData() + '"></label>' +
+    '<label for="pg-forma">Forma<select id="pg-forma" class="st-in">' + FORMAS_PAG.map(function (x) { return '<option value="' + x[0] + '">' + x[1] + '</option>'; }).join('') + '</select></label></div>' +
+    '<p class="sub" id="pg-err" style="margin:8px 0 0;color:var(--red)" role="alert" hidden></p>' +
+    '<div class="actions"><button class="btn primary" type="button" data-pagregsalvar="1">Registrar</button><button class="btn" type="button" data-pagregvoltar="1">Cancelar</button></div>');
+  var f = $('pg-servico'); if (f) f.focus();
+}
+function pagRegVolta() { if (state.pagVoltar) kpiPop('rev'); else closeCompose(); }
+async function pagRegSalvar() {
+  var v = function (id) { var e = $(id); return e ? e.value : ''; }, er = $('pg-err');
+  var lido = pagRegLer({ contato_id: v('pg-pessoa'), servico: v('pg-servico'), valor: v('pg-valor'), moeda: v('pg-moeda'), data: v('pg-data'), forma: v('pg-forma') });
+  var erro = function (t) { if (er) { er.textContent = t; er.hidden = false; } };
+  if (lido.erro) return erro(lido.erro);
+  var r = await supabase.from('pagamentos').insert(lido.linha);
+  if (r && r.error) return erro(/relation|does not exist|schema cache/i.test(String(r.error.message || '')) ? 'A tabela de pagamentos não existe neste banco: falta rodar db/crm-pagamentos.sql.' : 'Não consegui registrar: ' + (r.error.message || 'erro'));
+  PAGOS.unshift(lido.linha); renderKpis();
+  if (state.view === 'pessoa' && state.sel === lido.linha.contato_id && typeof fxRepinta === 'function') { try { fxRepinta(); } catch (e) { /* a ficha se atualiza na próxima abertura */ } }
+  toast('Pagamento registrado');
+  pagRegVolta();
+}
+async function pagRegApagar(ref) {
+  if (!/^manual-/.test(String(ref || ''))) return;   // o que veio do Stripe não se apaga por aqui
+  if (typeof confirm === 'function' && !confirm('Apagar este pagamento lançado à mão?')) return;
+  var r = await supabase.from('pagamentos').delete().eq('referencia', ref);
+  if (r && r.error) return toast('Não consegui apagar: ' + (r.error.message || 'erro'), 5000);
+  PAGOS = PAGOS.filter(function (g) { return g.referencia !== ref; }); renderKpis(); toast('Pagamento apagado'); kpiPop('rev');
 }
 // ---------- Calendário de 1:1: o mês (com os dias que têm conversa) e a lista do que vem pela frente ----------
 function renderCalendario() {
@@ -7091,11 +7206,19 @@ document.addEventListener('change', async function (e) {
   await casoRecarrega(); toast(itm.estado === 'publicado' ? 'Arquivo anexado. Ela já pode abrir.' : 'Arquivo anexado. Publique para ela ver.');
 });
 document.addEventListener('dblclick', function (e) { if (editaPorDuploClique(e)) e.preventDefault(); });
+// Os quatro indicadores da Hoje são div com role=button: Enter e Espaço abrem a lista, como o clique.
+document.addEventListener('keydown', function (e) { var k = e.target && e.target.dataset && e.target.dataset.kpi; if (k && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); kpiPop(k); } });
 document.addEventListener('keydown', function (e) { if (e.key === 'Enter' && e.target && e.target.dataset && e.target.dataset.dbl && editaPorDuploClique(e)) e.preventDefault(); });
 document.addEventListener('click', async function (e) {
   if (e.target.id === 'compose-backdrop') return closeCompose();
   document.querySelectorAll('details.mf-dd[open], details.fx-mn[open]').forEach(function (d) { if (!d.contains(e.target)) d.removeAttribute('open'); });   // a fila de hoje fecha ao clicar fora
-  var t = e.target.closest('button, tr[data-id]'); if (!t) return;
+  var t = e.target.closest('button, tr[data-id], .kpi[data-kpi]'); if (!t) return;
+  if (t.dataset.kpi) return kpiPop(t.dataset.kpi);
+  if (t.dataset.kpiopen) { closeCompose(); return openPessoa(t.dataset.kpiopen); }
+  if (t.dataset.pagreg !== undefined) return pagRegAbrir(t.dataset.pagreg, !!t.dataset.voltar);
+  if (t.dataset.pagregsalvar) return pagRegSalvar();
+  if (t.dataset.pagregvoltar) return pagRegVolta();
+  if (t.dataset.pagapagar) return pagRegApagar(t.dataset.pagapagar);
   if (t.dataset.potsort) { state.potOrd = !state.potOrd ? 'desc' : state.potOrd === 'desc' ? 'asc' : ''; return renderContacts(); }
   if (t.dataset.caldia !== undefined) { state.calDia = state.calDia === t.dataset.caldia ? '' : t.dataset.caldia; return renderCalendario(); }
   if (t.dataset.calfil !== undefined) { state.calFil = t.dataset.calfil; state.calDia = ''; return renderCalendario(); }
