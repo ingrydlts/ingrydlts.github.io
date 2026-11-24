@@ -1231,7 +1231,7 @@ function crmTextToHtml(text) {
 }
 
 // A resposta da aba E-mail (POST /api/crm/responder) sai no visual Por Dentro: a moldura dos modelos (fundo bege, "Por Dentro" no topo,
-// cartão claro) com o texto dela no miolo e a assinatura (foto, Ingryd, Por Dentro) embaixo. Sem rodapé de descadastro: é conversa 1:1.
+// cartão claro) com o texto dela no miolo e a assinatura "Ingryd · Por Dentro" (serifada itálica, sem foto) embaixo. Sem rodapé de descadastro: é conversa 1:1.
 // Existe uma cópia igual, `moldeResposta`, em admin/crm/crm.js para a prévia; o teste crm-email confere que as duas geram o mesmo HTML.
 const CRM_ASSINATURA_TXT = '—\nIngryd · Por Dentro';
 function crmMoldeResposta(texto, assunto) {
@@ -1245,10 +1245,7 @@ function crmMoldeResposta(texto, assunto) {
 <tr><td style="padding:0 4px 20px; ${serif} font-size:22px; font-weight:700; color:#2B2B2B;">Por <span style="color:#604034;">Dentro</span></td></tr>
 <tr><td style="background:#FBFAF7; border:1px solid #E2DED7; border-radius:8px; padding:32px 28px;">
 <div style="${sans} font-size:15px; line-height:1.6; color:#2B2B2B;">${corpo}</div>
-<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:26px 0 0;"><tr>
-<td style="width:68px; vertical-align:middle;"><img src="${CRM_FOTO_URL}" width="68" height="68" alt="Foto da Ingryd" style="display:block; width:68px; height:68px; border-radius:50%; border:2px solid #DEB975; object-fit:cover;"></td>
-<td style="padding-left:14px; vertical-align:middle;"><div style="${serif} font-size:18px; font-weight:700; line-height:1.2; color:#2B2B2B;">Ingryd</div>
-<div style="${sans} font-size:13px; line-height:1.45; color:#6E6862; margin-top:2px;">Por Dentro</div></td></tr></table>
+<p style="margin:26px 0 0; ${serif} font-size:18px; font-style:italic; color:#2B2B2B;">Ingryd · Por Dentro</p>
 </td></tr>
 </table></td></tr></table>
 </body></html>`;

@@ -9,7 +9,7 @@ Toda mensagem escrita na aba E-mail da ficha (`POST /api/crm/responder`) sai no 
 
 ## Objetivos
 - O HTML da resposta usa a moldura dos modelos (`estudio.js` `montar`): fundo `#F4F1EC`, "Por Dentro" no topo, cartão `#FBFAF7`.
-- O texto escrito vira o miolo do cartão; embaixo entra a assinatura: foto redonda (borda `#DEB975`), **Ingryd**, **Por Dentro**.
+- O texto escrito vira o miolo do cartão; embaixo entra a assinatura "Ingryd · Por Dentro" em serifada itálica (a do bloco assinatura dos modelos), sem foto (pedido da Ingryd, 2026-11-24).
 - A prévia ("Ver como vai chegar") mostra exatamente o mesmo HTML.
 - O `textContent` (versão sem HTML) leva a assinatura em texto.
 - O texto gravado em `emails_enviados.corpo` continua sendo só o que ela escreveu (sem moldura).
@@ -27,5 +27,5 @@ compartilhado (Worker não tem build); buscar a prévia no Worker (prévia deixa
 
 ## Decisões minhas (a conferir)
 - Assinatura sem links extras (site/Instagram) por ora; a Ingryd pode pedir depois.
-- Foto: `FOTO_URL` já usada nos modelos.
+- Sem foto e sem logo em imagem: só o texto da assinatura.
 - Texto escapado e links viram `<a>`, como hoje; quebras de linha viram `<br>`.

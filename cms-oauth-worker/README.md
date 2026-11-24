@@ -449,7 +449,7 @@ A Conversa mostra num fio só, em ordem, os e-mails que saíram (os automáticos
 nível dela, a etapa, a cidade, de onde veio e se aceitou novidades. Embaixo, a caixa para responder. Na Caixa de entrada,
 "Responder pelo e-mail" virou **Abrir conversa** (quem não tem ficha continua com o botão de e-mail).
 
-Visual (2026-11-24): a resposta sai no template Por Dentro (moldura bege, cartão claro e assinatura com a foto, "Ingryd" e "Por Dentro"), montado por `crmMoldeResposta` no Worker; a prévia do painel usa a cópia `moldeResposta` (`admin/crm/crm.js`), e `crm-email.test.mjs` confere que as duas geram o mesmo HTML. O histórico (`emails_enviados.corpo`) guarda só o texto escrito.
+Visual (2026-11-24): a resposta sai no template Por Dentro (moldura bege, cartão claro e assinatura "Ingryd · Por Dentro" em serifada itálica, sem foto), montado por `crmMoldeResposta` no Worker; a prévia do painel usa a cópia `moldeResposta` (`admin/crm/crm.js`), e `crm-email.test.mjs` confere que as duas geram o mesmo HTML. O histórico (`emails_enviados.corpo`) guarda só o texto escrito.
 
 Como funciona: o painel chama `POST /api/crm/responder` (mesmo login de admin do `/api/crm/enviar`). O Worker pega a
 última mensagem da conversa que existe no Gmail dela (a resposta dela por e-mail ou um e-mail nosso), manda com o assunto

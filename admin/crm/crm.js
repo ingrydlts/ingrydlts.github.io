@@ -5398,10 +5398,7 @@ function moldeResposta(texto, assunto) {
 '<tr><td style="padding:0 4px 20px; ' + serif + ' font-size:22px; font-weight:700; color:#2B2B2B;">Por <span style="color:#604034;">Dentro</span></td></tr>\n' +
 '<tr><td style="background:#FBFAF7; border:1px solid #E2DED7; border-radius:8px; padding:32px 28px;">\n' +
 '<div style="' + sans + ' font-size:15px; line-height:1.6; color:#2B2B2B;">' + corpo + '</div>\n' +
-'<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:26px 0 0;"><tr>\n' +
-'<td style="width:68px; vertical-align:middle;"><img src="' + ES.FOTO_URL + '" width="68" height="68" alt="Foto da Ingryd" style="display:block; width:68px; height:68px; border-radius:50%; border:2px solid #DEB975; object-fit:cover;"></td>\n' +
-'<td style="padding-left:14px; vertical-align:middle;"><div style="' + serif + ' font-size:18px; font-weight:700; line-height:1.2; color:#2B2B2B;">Ingryd</div>\n' +
-'<div style="' + sans + ' font-size:13px; line-height:1.45; color:#6E6862; margin-top:2px;">Por Dentro</div></td></tr></table>\n' +
+'<p style="margin:26px 0 0; ' + serif + ' font-size:18px; font-style:italic; color:#2B2B2B;">Ingryd · Por Dentro</p>\n' +
 '</td></tr>\n' +
 '</table></td></tr></table>\n' +
 '</body></html>';
