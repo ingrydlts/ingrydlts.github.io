@@ -8,8 +8,8 @@ Formato de todos os episódios: **visual, pouco texto, pílulas por caso**, sem 
 | 1 | `percurso-saude-assurance-maladie` | Percurso em 7 etapas, glossário, como pedir por perfil, onde trava | rascunho |
 | 2 | `carte-vitale` | Dossiê travado e domiciliação (endereço) | rascunho |
 | 3 | `medecin-traitant-nia-clinicas` | NIA na mão, declarar o médecin traitant (S3704), redes de clínicas, agendamento e custos | rascunho |
-| 4 | a definir | ALD: como pedir, o que cobre, transportes e fim do período | ideia (fontes já no Drive) |
-| 5 | a definir | Feuille de soins e reembolso na prática (prazos, app, mutuelle) | ideia |
+| 4 | `ald-affection-longue-duree` | ALD: o que é, como pedir, o que cobre, lista, transportes e ajudas | rascunho |
+| 5 | `feuille-de-soins-reembolso` | Feuille de soins: preencher, enviar (app/correio/balcão), prazo de 2 anos e reembolso | rascunho |
 | 6 | a definir | PVT sem cobertura pública: seguro privado, o que escolher | ideia (precisa de fonte) |
 
 ## Fontes
