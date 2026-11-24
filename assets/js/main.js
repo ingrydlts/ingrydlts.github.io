@@ -119,6 +119,46 @@
     });
   }
 
+  // Pílulas ([[PILULAS]], ver assets/js/markdown.js): clicar abre o texto da
+  // pílula embaixo; clicar de novo fecha. Uma aberta por vez por bloco.
+  function initPills() {
+    document.addEventListener("click", function (e) {
+      var pill = e.target.closest(".rt-pill");
+      if (!pill) return;
+      var wrap = pill.closest(".rt-pills");
+      if (!wrap) return;
+      var wasOpen = pill.getAttribute("aria-expanded") === "true";
+      wrap.querySelectorAll(".rt-pill").forEach(function (b) {
+        b.setAttribute("aria-expanded", "false");
+        var panel = document.getElementById(b.getAttribute("aria-controls"));
+        if (panel) panel.hidden = true;
+      });
+      if (wasOpen) return;
+      pill.setAttribute("aria-expanded", "true");
+      var target = document.getElementById(pill.getAttribute("aria-controls"));
+      if (target) target.hidden = false;
+      if (window.PDEvents) {
+        window.PDEvents.send("block", getArticleSlug(pill), {
+          type: "pill_open",
+          id: pill.dataset.pillId || null,
+          label: (pill.dataset.pillLabel || "").slice(0, 80)
+        });
+      }
+    });
+  }
+
+  // Clique numa duração do [[CALL]] vira 1 evento no bot (o link abre em nova aba).
+  function initCallClicks() {
+    document.addEventListener("click", function (e) {
+      var link = e.target.closest(".rt-call-option");
+      if (!link || !window.PDEvents) return;
+      window.PDEvents.send("block", getArticleSlug(link), {
+        type: "call_click",
+        duration: (link.dataset.callDuration || "").slice(0, 20)
+      });
+    });
+  }
+
   // Clique em fonte externa ([[RESOURCES]], ver markdown.js) vira 1 evento
   // no bot — mostra quais fontes a audiência realmente confere. O link abre
   // em nova aba (target="_blank"), então o fetch do evento não é cortado
@@ -482,6 +522,8 @@
     initCopyButtons();
     initTabSwitcher();
     initFaqAccordion();
+    initPills();
+    initCallClicks();
     initResourceTracking();
     initProdutoTracking();
     initChecklist();

@@ -55,10 +55,12 @@ O site assume que vai rodar na raiz do domínio (links tipo `/produtos-digitais/
 
 ## Microengajamento, ferramenta-assinatura e capas por palavra-chave
 
-Todo artigo tem 1 ferramenta-assinatura (`[[PRAZO]]`, `[[QUIZ]]`, `[[SELETOR]]`,
+Um artigo pode ter 1 ferramenta-assinatura (`[[PRAZO]]`, `[[QUIZ]]`, `[[SELETOR]]`,
 `[[LINHA-DO-TEMPO]]` ou `[[ROTEIRO]]`), blocos de microengajamento (`[[RESUMO]]`,
-`[[CONFIANCA]]`, `[[MITO]]`, `[[TRILHA]]`) e fecha com `[[PROXIMO-PASSO]]`,
-que recomenda uma Solução digital conforme as respostas da leitora. No fim de todo artigo, antes do
+`[[CONFIANCA]]`, `[[MITO]]`, `[[TRILHA]]`) e fechar com `[[PROXIMO-PASSO]]`,
+que recomenda uma Solução digital conforme as respostas da leitora. **Nada disso é obrigatório**: use
+só o que ajuda a leitora naquele artigo. Para texto longo, prefira `[[PILULAS]]` (a leitora clica e só
+aparece o texto daquela pílula) e `[[CALL]]` (convite com as opções de 20 e 40 min). No fim de todo artigo, antes do
 rodapé, fica o formulário "Pergunta pra Ingryd" (nome, e-mail e pergunta); ele e o lembrete da
 calculadora de prazo vão pro CRM em /admin/crm (`assets/js/leads.js` →
 `enviar_pergunta_unica` / `pedir_lembrete_prazo`; banco em `admin/crm/db/crm-fase2c-lembretes.sql`). A capa é desenhada pelo
@@ -267,19 +269,21 @@ chegarem quase ao mesmo tempo.
   produto; enquanto estiver vazio, o botão mostra um aviso em vez de um link quebrado (mesmo padrão
   dos produtos digitais).
 
-## Regra de todo artigo: interação + dado de audiência
+## Interação nos artigos (tudo opcional)
 
-Todo artigo do blog precisa dar pra leitora pelo menos um jeito de clicar em algo — e esse clique precisa
-virar dado, não só ficar bonito. O mínimo obrigatório, em qualquer artigo novo:
+A interação existe pra tornar o artigo uma experiência, não pra cumprir tabela. Nada é obrigatório — nem
+`[[FEEDBACK]]` (o "esse artigo te ajudou? 👍/👎"), nem ferramenta-assinatura, nem o "Essa parte ficou clara?"
+no fim de cada seção (`sectionReactions`, desligado por padrão). Quando fizer sentido:
 
-- **`[[FAQ]]`** no fim — sempre em dropdown (acordeão), nunca perguntas soltas no meio do texto.
-- **`[[FEEDBACK]]`** no fim — o "esse artigo te ajudou? 👍/👎".
+- **`[[PILULAS]]`** — fileira de botões; clicar abre o texto. Bom pra trocar um bloco longo (ex.: "por perfil").
+- **`[[CALL]]`** — convite pra marcar conversa, com as durações de 20 e 40 min cada uma com seu link.
+- **`[[FAQ]]`** — sempre em dropdown (acordeão), nunca perguntas soltas no meio do texto.
 
 Use também `[[CHECKLIST]]` quando o tema tiver um critério de elegibilidade ou passo a passo verificável, e
 `[[RESOURCES]]` pra toda fonte oficial citada (cada link já sai rastreado, abrindo em nova aba). Todo clique
 nesses blocos vira 1 evento no bot (`window.PDEvents`) e aparece agregado em `/admin/dashboard` — perguntas
 mais abertas no FAQ, fontes mais clicadas, checklists completadas, feedback por artigo. O campo "Corpo do
-artigo" no `/admin` já mostra essa lista de blocos no hint, com FAQ e Feedback marcados como obrigatórios.
+artigo" no `/admin` já mostra essa lista de blocos no hint.
 
 Detalhe técnico completo (como cada bloco vira evento, e o que ainda falta nos artigos com HTML próprio) em
 [`GUIA-DE-IMPLEMENTACAO.md`](GUIA-DE-IMPLEMENTACAO.md#regra--interação-e-instrumentação-de-audiência-em-artigos-).

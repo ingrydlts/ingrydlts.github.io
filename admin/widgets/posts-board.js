@@ -189,8 +189,9 @@
   function words(text) { return String(text || "").replace(/\[\[[^\]]*\]\]/g, " ").split(/\s+/).filter(Boolean).length; }
   function statusOf(p) { return LABEL[p.status] ? p.status : "ideia"; }
 
-  // O que falta pro artigo (regras do README: todo artigo termina com FAQ e
-  // Feedback). Artigos com página própria (url) têm o HTML fixo — o corpo
+  // O que falta pro artigo. Só o essencial: título, resumo, categoria, capa e FAQ.
+  // Feedback, ferramenta-assinatura, próximo passo e as demais microinterações
+  // são opcionais — entram só quando fazem sentido no artigo. Artigos com página própria (url) têm o HTML fixo — o corpo
   // daqui não vale pra eles.
   function issues(p) {
     var out = [];
@@ -203,12 +204,6 @@
     if (!p.url) {
       var body = p.body || "";
       if (!/\[\[FAQ\]\]/.test(body)) out.push("Falta FAQ");
-      if (!/\[\[FEEDBACK\]\]/.test(body)) out.push("Falta Feedback");
-      if (body && !hasSignature(body)) out.push("Falta ferramenta-assinatura");
-      if (body && !/\[\[PROXIMO-PASSO\]\]/.test(body)) out.push("Falta próximo passo");
-    } else {
-      if (!hasSignature(p.mxBlocks)) out.push("Falta ferramenta-assinatura");
-      if (!/\[\[PROXIMO-PASSO\]\]/.test(p.mxBlocks || "")) out.push("Falta próximo passo");
     }
     if (p.status === "agendado" && !p.date) out.push("Sem data");
     return out;
@@ -221,13 +216,13 @@
   var SIGNATURE_RE = /\[\[(PRAZO|QUIZ|SELETOR|LINHA-DO-TEMPO|ROTEIRO|MAPA-FLE|SIMULADOR-CUSTO|VAE-SIMULADOR|DIPLOMA-DOSSIE|AU-PAIR-FLE-SCROLL|EXAME-TEMPLATE-GRATIS)\]\]/;
   function hasSignature(body) { return SIGNATURE_RE.test(body || ""); }
   var MX_PARTS = [
-    { re: SIGNATURE_RE, label: "Ferramenta-assinatura", need: true },
+    { re: SIGNATURE_RE, label: "Ferramenta-assinatura" },
     { re: /\[\[RESUMO\]\]/, label: "Resumo em 20s" },
     { re: /\[\[CONFIANCA\]\]/, label: "Termômetro de confiança" },
     { re: /\[\[(MITO|POLL|CHECKLIST)\]\]/, label: "Mito / enquete / checklist" },
-    { re: /\[\[PROXIMO-PASSO\]\]/, label: "Próximo passo (Soluções digitais)", need: true },
-    { re: /\[\[FAQ\]\]/, label: "FAQ", need: true },
-    { re: /\[\[FEEDBACK\]\]/, label: "Feedback", need: true }
+    { re: /\[\[PROXIMO-PASSO\]\]/, label: "Próximo passo (Soluções digitais)" },
+    { re: /\[\[FAQ\]\]/, label: "FAQ" },
+    { re: /\[\[FEEDBACK\]\]/, label: "Feedback" }
   ];
 
   // Limite da palavra-chave da capa (a letra diminui pra caber: ver kwSize em assets/js/cover.js).
@@ -747,7 +742,7 @@
           h("div", { className: "pdb-checks", "aria-label": "O que falta" },
             flags.length ? flags.map(function (f) { return h("span", { key: f }, h("b", { style: { color: "#B07A1E" } }, "•"), f); })
               : [h("span", { key: "ok" }, h("b", { style: { color: "#577328" } }, "✓"), "Tudo certo pra ir pro ar")],
-            !p.url && flags.some(function (f) { return /FAQ|Feedback/.test(f); }) ? h("small", { style: { color: "#6E6862", fontSize: "11.5px" } }, "Regra do site: todo artigo termina com um bloco FAQ e um de Feedback (no editor visual, pelo +).") : null),
+            !p.url && flags.some(function (f) { return /FAQ/.test(f); }) ? h("small", { style: { color: "#6E6862", fontSize: "11.5px" } }, "Sugestão: feche o artigo com um bloco de Perguntas frequentes (no editor visual, pelo +).") : null),
           h("div", { className: "pdb-actions" },
             st === "publicado"
               ? h("a", { className: "pdb-live", href: p.url || "/artigos/" + p.slug + "/", target: "_blank", rel: "noopener", title: "Abrir o artigo no site" }, "✓ No ar ↗", isLive(p) ? "" : " (entra na data marcada)")

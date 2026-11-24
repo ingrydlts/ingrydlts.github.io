@@ -11,12 +11,14 @@ campo **Blocos de microengajamento**.
 | Capa por palavra-chave | 1 | campos `coverKeyword`, `coverTags`, `coverFormat` |
 | Resumo em 20s | 1, logo depois da abertura | `[[RESUMO]]` |
 | Termômetro de confiança | 1, logo depois do resumo | `[[CONFIANCA]]` (o "depois" aparece sozinho no fim) |
-| **Ferramenta-assinatura** | **1** | `[[PRAZO]]`, `[[QUIZ]]`, `[[SELETOR]]`, `[[LINHA-DO-TEMPO]]` ou `[[ROTEIRO]]` |
+| **Ferramenta-assinatura** | 0 ou 1 | `[[PRAZO]]`, `[[QUIZ]]`, `[[SELETOR]]`, `[[LINHA-DO-TEMPO]]` ou `[[ROTEIRO]]` |
 | Apoio | até 3 | `[[MITO]]`, `[[POLL]]`, `[[CHECKLIST]]`, `[[STEPS]]`… |
 | FAQ | 1 | `[[FAQ]]` |
-| Próximo passo → Soluções digitais | 1 | `[[PROXIMO-PASSO]]` |
+| Próximo passo → Soluções digitais | opcional | `[[PROXIMO-PASSO]]` |
 | Trilha | se o artigo fizer parte de uma | `[[TRILHA]]` |
-| Feedback | 1, sempre por último | `[[FEEDBACK]]` |
+| Feedback | opcional | `[[FEEDBACK]]` |
+| Pílulas | quando houver texto longo por caso/perfil | `[[PILULAS]]` |
+| Call (20 / 40 min) | quando fizer sentido convidar | `[[CALL]]` |
 
 O quadro de artigos do /admin mostra essa lista em cada artigo, com ✓ e o que falta.
 

@@ -34,7 +34,7 @@
     return;
   }
 
-  var PAIR_TAGS = ["BAND", "STATS", "CARDS", "LIST", "STEPS", "FAQ", "RESOURCES", "CHECKLIST", "FEEDBACK", "AFILIADO", "PRODUTO", "POLL",
+  var PAIR_TAGS = ["BAND", "STATS", "CARDS", "LIST", "STEPS", "FAQ", "RESOURCES", "CHECKLIST", "FEEDBACK", "AFILIADO", "PRODUTO", "POLL", "PILULAS", "CALL",
     "RESUMO", "CONFIANCA", "MITO", "QUIZ", "SELETOR", "PRAZO", "LINHA-DO-TEMPO", "ROTEIRO", "PERGUNTA", "PROXIMO-PASSO", "TRILHA"];
   var AFILIADO_NAME = "AFILIADO";
   var TOOL_TOKENS = [
@@ -176,7 +176,9 @@
 
   function inlineLite(text) {
     var s = escapeHtml(text);
+    s = s.replace(/\*\*\*(.+?)\*\*\*/g, "<strong><em>$1</em></strong>");
     s = s.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+    s = s.replace(/\*(.+?)\*/g, "<em>$1</em>");
     s = s.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>');
     return s;
   }
@@ -607,6 +609,8 @@
     CHECKLIST: "Título da checklist\nItem 1\nItem 2",
     FEEDBACK: "Esse artigo te ajudou?",
     POLL: "Pergunta da enquete\nOpção 1\nOpção 2",
+    PILULAS: "? Qual é o seu caso?\nPrimeira pílula | Texto que aparece ao clicar. // Segundo parágrafo, se precisar.\nSegunda pílula | Outro texto.",
+    CALL: "Precisa de acompanhamento? | Marque uma call e a gente olha o seu caso junto.\n20 min | Pra tirar uma dúvida pontual | https://cal.com/ingryd-silva-jf1cnx/20min\n40 min | Pra olhar o seu caso com calma | https://cal.com/ingryd-silva-jf1cnx/40min",
     RESUMO: "Ponto principal 1\nPonto principal 2\nPonto principal 3",
     CONFIANCA: "Quão segura você está sobre esse assunto?",
     MITO: "Mito ou verdade?\nAfirmação que circula nos grupos | mito | Explicação curta do porquê\nOutra afirmação | verdade | Explicação curta",
@@ -630,6 +634,8 @@
     RESOURCES: "Uma linha por fonte: título | descrição | texto do link | URL",
     CHECKLIST: "1ª linha = título da checklist, as demais = itens marcáveis.",
     FEEDBACK: "Pergunta opcional — em branco usa a pergunta padrão.",
+    PILULAS: "Uma linha por pílula: rótulo | texto que abre ao clicar. \" // \" separa parágrafos dentro da pílula. Uma linha começando com \"? \" vira o título acima das pílulas (opcional). Aceita **negrito**, *itálico* e [link](https://...).",
+    CALL: "1ª linha = título | texto de apoio. Depois, uma linha por duração: duração | descrição | link de agendamento (https://...).",
     POLL: "1ª linha = pergunta, as demais = opções de resposta única. A resposta também alimenta o Próximo passo (se enquete=Opção exata).",
     RESUMO: "Uma linha por tópico. Aparece fechado no topo: \"Sem tempo? O resumo em 20 segundos\".",
     CONFIANCA: "A pergunta de 1 a 5. Coloque no começo — a versão \"depois\" aparece sozinha no fim do artigo, com a diferença.",
@@ -673,6 +679,8 @@
         { key: "CHECKLIST", emoji: "✅", label: "Checklist", make: function () { return richBlock("CHECKLIST"); } },
         { key: "RESOURCES", emoji: "📚", label: "Fontes / recursos", make: function () { return richBlock("RESOURCES"); } },
         { key: "STEPS", emoji: "🪜", label: "Passo a passo", make: function () { return richBlock("STEPS"); } },
+        { key: "PILULAS", emoji: "💊", label: "Pílulas (clica e abre o texto)", make: function () { return richBlock("PILULAS"); } },
+        { key: "CALL", emoji: "📞", label: "Marcar call (20 e 40 min)", make: function () { return richBlock("CALL"); } },
         { key: "POLL", emoji: "🗳️", label: "Enquete", make: function () { return richBlock("POLL"); } },
         { key: "FEEDBACK", emoji: "🙏", label: "Pergunta de feedback", make: function () { return richBlock("FEEDBACK"); } },
         { key: "BAND", emoji: "🎗️", label: "Faixa de destaque", make: function () { return richBlock("BAND"); } },
@@ -1343,14 +1351,68 @@
           value: value,
           autoFocus: true,
           style: { minHeight: b.type === "richblock" ? "96px" : "56px" },
+          onKeyDown: function (e) {
+            if (!(e.ctrlKey || e.metaKey) || e.altKey) return;
+            var k = String(e.key).toLowerCase();
+            if (k === "b" || k === "i") { e.preventDefault(); self.applyFormat(b, k === "b" ? "**" : "*"); }
+          },
           ref: function (el) { if (el) { self._textareas = self._textareas || {}; self._textareas[b.id] = el; } },
           onChange: function (e) { self.editBlock(b.id, e.target.value); }
         }),
+        this.renderFormatTool(b),
         b.type === "text" ? this.renderLinkTool(b) : null,
         b.type === "richblock" && RICH_HINT[b.name] ? h("p", { className: "pdac-hint" }, RICH_HINT[b.name]) : null,
         b.type === "text" && /^## /.test(b.raw) ? this.renderReactionToggle(b) : null,
-        b.type === "text" ? h("p", { className: "pdac-hint" }, "Use \"## \" pra título ou \"### \" pra subtítulo no início da linha. Link no meio do texto: [texto que a pessoa clica](https://endereco.com) — links de fora abrem em nova aba. Negrito: **assim**.") : null
+        b.type === "text" ? h("p", { className: "pdac-hint" }, "Use \"## \" pra título ou \"### \" pra subtítulo no início da linha. Link no meio do texto: [texto que a pessoa clica](https://endereco.com) — links de fora abrem em nova aba. Negrito: **assim**. Itálico: *assim*. Ou selecione o trecho e use os botões B e I (ou Ctrl/⌘+B e Ctrl/⌘+I).") : null
       );
+    },
+
+    // Negrito e itálico: envolve o trecho selecionado com ** ou * (ou tira, se já estava).
+    // Sem trecho selecionado, insere o marcador com a palavra "texto" já selecionada.
+    applyFormat: function (b, mark) {
+      var ta = this._textareas && this._textareas[b.id];
+      var value = b.type === "richblock" ? b.inner : b.raw;
+      var start = ta ? ta.selectionStart : value.length;
+      var end = ta ? ta.selectionEnd : value.length;
+      var m = mark.length;
+      var sel = value.slice(start, end);
+      var out, selStart, selEnd;
+      var single = mark === "*";
+      var isDouble = function (str) { return /^\*\*[^]*\*\*$/.test(str) && str.length >= 4; };
+      if (sel.length >= 2 * m && sel.slice(0, m) === mark && sel.slice(-m) === mark && !(single && isDouble(sel) && !/^\*\*\*/.test(sel))) {
+        out = value.slice(0, start) + sel.slice(m, -m) + value.slice(end);
+        selStart = start; selEnd = end - 2 * m;
+      } else if (start >= m && value.slice(start - m, start) === mark && value.slice(end, end + m) === mark &&
+        !(single && (value.charAt(start - 2) === "*" || value.charAt(end + 1) === "*"))) {
+        out = value.slice(0, start - m) + sel + value.slice(end + m);
+        selStart = start - m; selEnd = end - m;
+      } else {
+        var inner = sel || "texto";
+        out = value.slice(0, start) + mark + inner + mark + value.slice(end);
+        selStart = start + m; selEnd = start + m + inner.length;
+      }
+      this.editBlock(b.id, out);
+      var self = this;
+      setTimeout(function () {
+        var t = self._textareas && self._textareas[b.id];
+        if (t) { t.focus(); t.setSelectionRange(selStart, selEnd); }
+      }, 0);
+    },
+
+    renderFormatTool: function (b) {
+      var self = this;
+      if (b.type === "richblock" && b.name === AFILIADO_NAME) return null;
+      function btn(label, mark, title, style) {
+        return h("button", {
+          type: "button", className: "pdac-link-btn pdac-fmt-btn", title: title, "aria-label": title,
+          style: style,
+          onMouseDown: function (e) { e.preventDefault(); },
+          onClick: function () { self.applyFormat(b, mark); }
+        }, label);
+      }
+      return h("div", { className: "pdac-fmt-bar", style: { display: "inline-flex", gap: "6px", marginRight: "8px" } },
+        btn("B", "**", "Negrito (Ctrl/⌘+B)", { fontWeight: 800, minWidth: "36px" }),
+        btn("I", "*", "Itálico (Ctrl/⌘+I)", { fontStyle: "italic", fontFamily: "Georgia,serif", minWidth: "36px" }));
     },
 
     // Botão "Link": pega o trecho selecionado no parágrafo, pede o endereço e escreve [trecho](endereço).
