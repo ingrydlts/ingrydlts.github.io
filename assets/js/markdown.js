@@ -94,6 +94,23 @@
 //   pergunta e opção. Um voto por pessoa por enquete, travado no
 //   navegador de quem lê — igual ao FEEDBACK)
 //
+//   [[PILULAS]]
+//   ? Pergunta ou título acima das pílulas (opcional)
+//   Estudante estrangeiro | Texto que aparece ao clicar. // Segundo parágrafo.
+//   PVT | Outro texto, com **negrito**, *itálico* e [link](https://…).
+//   [[/PILULAS]]
+//   (cada linha vira uma pílula clicável; ao clicar, o texto abre embaixo e
+//   o clique vira 1 evento "pill_open" no bot. " // " separa parágrafos
+//   dentro da mesma pílula. Uma pílula aberta por vez)
+//
+//   [[CALL]]
+//   Precisa de acompanhamento? | Marque uma call e a gente olha o seu caso.
+//   20 min | Pra uma dúvida pontual | https://cal.com/…/20min
+//   40 min | Pra olhar o dossiê com calma | https://cal.com/…/40min
+//   [[/CALL]]
+//   (1ª linha = título | texto de apoio; as demais = opções de duração:
+//   duração | descrição | link de agendamento. Abre em nova aba.)
+//
 //
 // ---- Microengajamento e ferramenta-assinatura (ver MICROENGAJAMENTO.md) ----
 // Comportamento em assets/js/microengajamento.js; todo clique vira evento
@@ -161,12 +178,13 @@ function inline(text) {
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
+    .replace(/\*\*\*(.+?)\*\*\*/g, "<strong><em>$1</em></strong>")
     .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
     .replace(/\*(.+?)\*/g, "<em>$1</em>")
     .replace(/\[(.+?)\]\((.+?)\)/g, '<a href="$2">$1</a>');
 }
 
-const BLOCK_TAGS = ["BAND", "STATS", "CARDS", "LIST", "STEPS", "FAQ", "RESOURCES", "CHECKLIST", "FEEDBACK", "AFILIADO", "PRODUTO", "POLL",
+const BLOCK_TAGS = ["BAND", "STATS", "CARDS", "LIST", "STEPS", "FAQ", "RESOURCES", "CHECKLIST", "FEEDBACK", "AFILIADO", "PRODUTO", "POLL", "PILULAS", "CALL",
   "RESUMO", "CONFIANCA", "MITO", "QUIZ", "SELETOR", "PRAZO", "LINHA-DO-TEMPO", "ROTEIRO", "PERGUNTA", "PROXIMO-PASSO", "TRILHA"];
 
 function escapeAttr(str) {
@@ -524,6 +542,54 @@ function renderTrilha(lines, ctx) {
     '<div class="mx-trail">' + slugs.map((s) => '<a href="/artigos/post/?slug=' + escapeAttr(s) + '" data-slug="' + escapeAttr(s) + '"></a>').join("") + "</div></div>";
 }
 
+// Pílulas: cada linha "Rótulo | texto" vira um botão; o texto só aparece ao
+// clicar (comportamento em assets/js/main.js). " // " separa parágrafos.
+function renderPilulas(lines, ctx) {
+  const slug = (ctx && ctx.slug) || "artigo";
+  const blockId = slug + "-pilulas-" + ((ctx && ctx.index) || 0);
+  let titulo = "";
+  const pills = [];
+  lines.forEach((line) => {
+    if (/^\?\s/.test(line) && !pills.length) { titulo = line.replace(/^\?\s*/, ""); return; }
+    const cut = line.indexOf("|");
+    if (cut === -1) return;
+    const label = line.slice(0, cut).trim();
+    const text = line.slice(cut + 1).trim();
+    if (label) pills.push({ label, text });
+  });
+  if (!pills.length) return "";
+  const buttons = pills.map((p, i) =>
+    '<button type="button" class="rt-pill" id="' + escapeAttr(blockId + "-b" + i) + '" aria-expanded="false" aria-controls="' + escapeAttr(blockId + "-p" + i) +
+    '" data-pill-id="' + escapeAttr(blockId + "-" + i) + '" data-pill-label="' + escapeAttr(p.label) + '">' + inline(p.label) + "</button>"
+  ).join("");
+  const panels = pills.map((p, i) =>
+    '<div class="rt-pill-panel" id="' + escapeAttr(blockId + "-p" + i) + '" role="region" aria-labelledby="' + escapeAttr(blockId + "-b" + i) + '" hidden>' +
+    p.text.split(/\s\/\/\s/).map((t) => "<p>" + inline(t.trim()) + "</p>").join("") + "</div>"
+  ).join("");
+  return '<div class="rt-pills" data-article-slug="' + escapeAttr(slug) + '">' +
+    (titulo ? '<p class="rt-pills-title">' + inline(titulo) + "</p>" : "") +
+    '<div class="rt-pills-row">' + buttons + "</div>" + panels + "</div>";
+}
+
+// Call: convite pra marcar conversa, com as durações pra escolher. Os links
+// abrem em nova aba; o clique vira 1 evento "call_click" no bot.
+function renderCall(lines, ctx) {
+  const slug = (ctx && ctx.slug) || "artigo";
+  const head = cols(lines[0] || "");
+  const options = lines.slice(1).map((l) => cols(l)).filter((c) => c[0] && /^https?:\/\//i.test(c[2] || ""));
+  if (!options.length) return "";
+  return '<aside class="rt-call" data-article-slug="' + escapeAttr(slug) + '">' +
+    '<h3 class="rt-call-title">' + inline(head[0] || "Precisa de acompanhamento?") + "</h3>" +
+    (head[1] ? '<p class="rt-call-text">' + inline(head[1]) + "</p>" : "") +
+    '<div class="rt-call-options">' +
+    options.map((o) =>
+      '<a class="rt-call-option" href="' + escapeAttr(o[2]) + '" target="_blank" rel="noopener" data-call-duration="' + escapeAttr(o[0]) + '">' +
+      '<span class="rt-call-dur">' + inline(o[0]) + "</span>" +
+      (o[1] ? '<span class="rt-call-desc">' + inline(o[1]) + "</span>" : "") +
+      '<span class="rt-call-go">Marcar →</span></a>'
+    ).join("") + "</div></aside>";
+}
+
 const BLOCK_RENDERERS = {
   BAND: renderBand,
   STATS: renderStats,
@@ -537,6 +603,8 @@ const BLOCK_RENDERERS = {
   AFILIADO: renderAfiliado,
   PRODUTO: renderProduto,
   POLL: renderPoll,
+  PILULAS: renderPilulas,
+  CALL: renderCall,
   RESUMO: renderResumo,
   CONFIANCA: renderConfianca,
   MITO: renderMito,

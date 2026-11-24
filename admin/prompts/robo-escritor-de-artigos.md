@@ -39,7 +39,7 @@ tempo: minutos de leitura (200 palavras por minuto)
 capa-palavra: 1 termo de até 15 caracteres (quanto mais curto, maior a letra)
 capa-apoio: palavra1, palavra2, palavra3 (curtas: a capa quebra a linha a cada 25 caracteres)
 capa-formato: Guia | Passo a passo | Comparativo | Mapa | Roteiro | Checklist | Série · ep. N
-reacoes-por-secao: sim (artigo longo, 5+ seções) ou não
+reacoes-por-secao: não (use `sim` só se a Ingryd pedir)
 ===CORPO===
 (o artigo, no formato abaixo)
 ===NOTAS===
@@ -50,15 +50,15 @@ reacoes-por-secao: sim (artigo longo, 5+ seções) ou não
 ## Estrutura do corpo (nesta ordem)
 1. Parágrafo de abertura: 2 a 3 frases com o problema real.
 2. `[[RESUMO]]` com 3 tópicos.
-3. `[[CONFIANCA]]` com a pergunta "Quão segura você está sobre …?".
+3. (Opcional) `[[CONFIANCA]]` com a pergunta "Quão segura você está sobre …?".
 4. Seções com `## Título` (use perguntas que a pessoa faria). Parágrafos curtos, listas com `- `.
-5. **1 ferramenta-assinatura**, na seção em que ela resolve a dúvida (veja abaixo como escolher).
-6. Até 3 blocos de apoio espalhados: `[[MITO]]`, `[[POLL]]`, `[[CHECKLIST]]`, `[[STEPS]]`, `[[CARDS]]`, `[[STATS]]`.
+5. Ferramenta-assinatura **só se resolver uma dúvida real** (veja abaixo como escolher); não é obrigatória.
+6. Blocos de apoio quando ajudarem: `[[PILULAS]]` (texto longo por caso/perfil, a leitora clica e abre), `[[CALL]]` (convite pra marcar 20 ou 40 min), `[[MITO]]`, `[[CHECKLIST]]`, `[[STEPS]]`, `[[CARDS]]`, `[[STATS]]`. Evite `[[POLL]]`.
 7. `## Perguntas frequentes` + `[[FAQ]]` com 3 a 5 perguntas.
 8. `[[RESOURCES]]` com as fontes.
-9. `[[PROXIMO-PASSO]]` com 2 ou 3 regras + `padrao`.
+9. `[[PROXIMO-PASSO]]` (opcional) com 2 ou 3 regras + `padrao`.
 10. `[[TRILHA]]`, se o artigo fizer parte de uma sequência.
-11. `[[FEEDBACK]]`, sempre por último.
+11. Não feche com `[[FEEDBACK]]` nem pergunte "deu pra entender?": a leitora não quer ser interrompida.
 
 Não coloque bloco de pergunta: o formulário "Pergunta pra Ingryd" (nome, e-mail e pergunta) já
 aparece sozinho no fim de todo artigo.
@@ -168,10 +168,21 @@ slug-artigo-1
 slug-artigo-2
 [[/TRILHA]]
 
-[[FEEDBACK]]
-Esse artigo resolveu sua dúvida?
-[[/FEEDBACK]]
+[[PILULAS]]
+? Qual é o seu caso? (opcional)
+Rótulo curto | Texto que abre ao clicar. // Segundo parágrafo da mesma pílula.
+Outro rótulo | Outro texto.
+[[/PILULAS]]
+
+[[CALL]]
+Precisa de acompanhamento? | Frase curta de apoio
+20 min | Pra tirar uma dúvida pontual | https://cal.com/ingryd-silva-jf1cnx/20min
+40 min | Pra olhar o seu caso com calma | https://cal.com/ingryd-silva-jf1cnx/40min
+[[/CALL]]
 ```
+
+`[[PILULAS]]`: uma pílula por linha, rótulo de 1 a 4 palavras; use no lugar de uma lista longa de casos/perfis.
+Dentro do texto, ` // ` separa parágrafos e valem `**negrito**`, `*itálico*` e `[link](https://…)`.
 
 Condições do PROXIMO-PASSO: `prazo<=45`, `prazo<0`, `enquete=Opção exata`, `seletor=chave`,
 `quiz<60`, `checklist=completo`, `confianca<=2`. A condição tem que usar um bloco que existe no artigo.
@@ -207,6 +218,6 @@ Crescimento: Qualité FLE, Grátis, Bolsa, VAE, Diploma · Leveza: Reims
 
 ## Antes de entregar, confira
 - A palavra da capa tem até 15 caracteres e não está na lista de já usadas do mesmo pilar.
-- Tem exatamente 1 ferramenta-assinatura, 1 FAQ, 1 PROXIMO-PASSO e o FEEDBACK por último.
-- Toda condição do PROXIMO-PASSO usa um bloco que está no artigo, e a opção do `enquete=` é idêntica à do POLL.
+- Tem 1 FAQ. Ferramenta-assinatura, PROXIMO-PASSO e FEEDBACK são opcionais; nenhuma pergunta de "está tudo bem?" no meio ou no fim do texto.
+- Se houver PROXIMO-PASSO, toda condição dele usa um bloco que está no artigo.
 - Nenhum número sem fonte.

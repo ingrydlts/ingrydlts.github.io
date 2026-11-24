@@ -150,13 +150,15 @@ criado só no JSON, sem `url`) são 100% editáveis pelo `/admin`, corpo incluí
 artigo novo (e, com o tempo, os antigos) precisa dar pelo menos um jeito de a leitora **clicar em algo**, e
 esse clique precisa **virar dado** em `/admin/dashboard`, não só ficar bonito na tela.
 
-### O mínimo obrigatório em todo artigo novo
+### Sugestões pra todo artigo novo (nada é obrigatório)
 
 1. **`[[FAQ]]`** — sempre em formato dropdown/acordeão (é o padrão de `renderFaq` em `assets/js/markdown.js`,
    não precisa fazer nada além de usar o marcador). 3 a 6 perguntas reais, as que a leitora resolveria
    perguntando no Instagram se pudesse.
-2. **`[[FEEDBACK]]`** — sempre no fim do artigo. Pode usar a pergunta padrão ("Esse artigo foi útil pra
-   você?") ou uma pergunta customizada, mas o bloco tem que existir.
+2. **`[[FEEDBACK]]`** — opcional. Só use se quiser medir um artigo específico; não precisa fechar todo artigo
+   com essa pergunta.
+3. **`[[PILULAS]]`** e **`[[CALL]]`** — pílulas pra esconder texto longo atrás de um clique; call pra convidar a
+   leitora a marcar 20 ou 40 min.
 
 ### Use quando fizer sentido pro tema (não é todo artigo que precisa)
 
@@ -166,8 +168,7 @@ esse clique precisa **virar dado** em `/admin/dashboard`, não só ficar bonito 
   Cada link já sai com `target="_blank"` e rastreio de clique — não precisa fazer nada além de preencher a
   URL.
 
-O widget "Corpo do artigo" no `/admin` já mostra essa regra no hint do campo, com o `[[FAQ]]`/`[[FEEDBACK]]`
-marcados como obrigatórios — ver `admin/config.yml`.
+O widget "Corpo do artigo" no `/admin` mostra esses blocos no hint do campo — ver `admin/config.yml`.
 
 ### Como cada clique vira dado
 

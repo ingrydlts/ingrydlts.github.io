@@ -764,6 +764,33 @@ p { margin: 0 0 1em; color: var(--grafite); }
 .rt-faq-a { max-height: 0; overflow: hidden; transition: max-height .3s ease; font-size: 13.5px; color: var(--texto-secundario); line-height: 1.7; }
 .rt-faq-a-inner { padding: 0 20px 18px; }
 
+/* Pílulas: o texto só abre ao clicar (bloco [[PILULAS]]) */
+.rt-pills { margin: 24px 0; }
+.rt-pills-title { margin: 0 0 10px; font-family: var(--font-body); font-size: 14px; font-weight: 600; color: var(--grafite); }
+.rt-pills-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.rt-pill { background: #fff; border: 1px solid var(--borda); border-radius: 999px; padding: 10px 18px; font-family: var(--font-body); font-size: 14px; font-weight: 600; color: var(--grafite); cursor: pointer; transition: background .15s, color .15s, border-color .15s; }
+.rt-pill:hover { border-color: var(--downtown-brown); }
+.rt-pill:focus-visible { outline: 2px solid var(--downtown-brown); outline-offset: 2px; }
+.rt-pill[aria-expanded="true"] { background: var(--downtown-brown); border-color: var(--downtown-brown); color: #fff; }
+.rt-pill-panel { margin-top: 12px; background: #fff; border: 1px solid var(--borda); border-left: 4px solid var(--downtown-brown); border-radius: var(--radius-md); padding: 18px 20px; font-size: 15px; line-height: 1.7; color: var(--grafite); animation: rt-pill-in .2s ease; }
+.rt-pill-panel[hidden] { display: none; }
+.rt-pill-panel p { margin: 0 0 .8em; }
+.rt-pill-panel p:last-child { margin-bottom: 0; }
+@keyframes rt-pill-in { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .rt-pill-panel { animation: none; } }
+
+/* Call: convite pra marcar conversa de 20 ou 40 min (bloco [[CALL]]) */
+.rt-call { margin: 28px 0; background: var(--off-white-soft); border: 1px solid var(--borda); border-radius: var(--radius-md); padding: 22px; }
+.rt-call-title { margin: 0 0 6px; font-family: var(--font-display); font-size: 20px; line-height: 1.25; color: var(--grafite); }
+.rt-call-text { margin: 0 0 16px; font-size: 14.5px; line-height: 1.6; color: var(--texto-secundario); }
+.rt-call-options { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; }
+.rt-call-option { display: flex; flex-direction: column; gap: 4px; background: #fff; border: 1px solid var(--borda); border-radius: var(--radius-md); padding: 16px 18px; text-decoration: none; color: var(--grafite); transition: border-color .15s, transform .15s; }
+.rt-call-option:hover { border-color: var(--downtown-brown); transform: translateY(-2px); }
+.rt-call-option:focus-visible { outline: 2px solid var(--downtown-brown); outline-offset: 2px; }
+.rt-call-dur { font-family: var(--font-display); font-size: 26px; line-height: 1.1; }
+.rt-call-desc { font-size: 13.5px; line-height: 1.5; color: var(--texto-secundario); }
+.rt-call-go { margin-top: 6px; font-size: 13px; font-weight: 600; color: var(--downtown-brown); }
+
 .rt-tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 0; }
 .rt-tab-btn { background: #fff; border: 1px solid var(--borda); border-radius: var(--radius-sm); padding: 10px 16px; font-family: var(--font-body); font-size: 13px; font-weight: 600; color: var(--texto-secundario); cursor: pointer; }
 .rt-tab-btn.is-active { background: var(--grafite); color: #fff; border-color: var(--grafite); }
