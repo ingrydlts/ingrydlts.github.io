@@ -23,12 +23,12 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 const dir = mkdtempSync(path.join(tmpdir(), 'crm-email-'));
 const arq = path.join(dir, 'worker.mjs');
 writeFileSync(arq, readFileSync(path.resolve(HERE, '../worker.js'), 'utf8') +
-  '\nexport { crmLerEmail, crmTirarCitacao, crmDecodePalavras, cfGuia1, crmBytesParaBinario, cfGuiaConversa, crmLinkAssinar, crmLinkConferir, CF_CIDADES, crmMontarResposta, crmAssuntoBase, crmIdMsg, crmPreencher, crmMontarModelo, cfGuia1Vars, cfGuiaConversaVars, cfBotoesCidade };\n');
+  '\nexport { crmLerEmail, crmTirarCitacao, crmDecodePalavras, cfGuia1, crmBytesParaBinario, cfGuiaConversa, crmLinkAssinar, crmLinkConferir, CF_CIDADES, crmMontarResposta, crmAssuntoBase, crmIdMsg, crmPreencher, crmMontarModelo, cfGuia1Vars, cfGuiaConversaVars, cfBotoesCidade, crmMoldeResposta, CRM_FOTO_URL };\n');
 const mod = await import(pathToFileURL(arq).href);
 rmSync(dir, { recursive: true, force: true });
 const worker = mod.default;
 const { crmLerEmail, crmTirarCitacao, crmDecodePalavras, cfGuia1, crmBytesParaBinario, cfGuiaConversa, crmLinkAssinar, crmLinkConferir, CF_CIDADES, crmMontarResposta, crmAssuntoBase, crmIdMsg,
-  crmPreencher, crmMontarModelo, cfGuia1Vars, cfGuiaConversaVars, cfBotoesCidade } = mod;
+  crmPreencher, crmMontarModelo, cfGuia1Vars, cfGuiaConversaVars, cfBotoesCidade, crmMoldeResposta, CRM_FOTO_URL } = mod;
 
 let passed = 0, failed = 0;
 function check(label, cond) { if (cond) passed++; else { failed++; console.log('  FALHOU:', label); } }
@@ -403,7 +403,9 @@ check('Brevo: assunto "Re: <assunto do fio>"', bv.body.subject === 'Re: Ana, aqu
 check('Brevo: In-Reply-To e References', bv.body.headers['In-Reply-To'] === '<r1@mail.example.com>' && bv.body.headers.References === '<e1@smtp.example.net> <r1@mail.example.com>');
 check('Brevo: sem List-Unsubscribe e sem rodapé "sair"', !('List-Unsubscribe' in bv.body.headers) && !/sair/.test(bv.body.textContent));
 check('Brevo: Reply-To = respostas, para ela, texto e HTML', bv.body.replyTo.email === 'respostas@example.org' && bv.body.to[0].email === 'ana@example.com' &&
-  bv.body.textContent === 'Ana, que bom saber!\nMe manda o link do Master.' && bv.body.htmlContent.includes('Ana, que bom saber!<br>Me manda'));
+  bv.body.textContent === 'Ana, que bom saber!\nMe manda o link do Master.\n\n—\nIngryd · Por Dentro' && bv.body.htmlContent.includes('Ana, que bom saber!<br>Me manda'));
+check('Brevo: HTML no visual Por Dentro, com a assinatura Ingryd · Por Dentro', bv.body.htmlContent === crmMoldeResposta('Ana, que bom saber!\nMe manda o link do Master.', bv.body.subject) &&
+  /background:#F4F1EC/.test(bv.body.htmlContent) && />Ingryd<\/div>/.test(bv.body.htmlContent) && bv.body.htmlContent.includes(CRM_FOTO_URL) && !/descadastr|responda com a palavra sair/i.test(bv.body.htmlContent));
 check('Brevo: tag resposta', bv.body.tags.includes('resposta'));
 const lidas = chamadas.filter((c) => /\/(crm_contatos|emails_enviados|respostas_email)\?select=/.test(c.url));
 check('lê ficha e fio com o token da admin (não a service_role)', lidas.length === 3 && lidas.every((c) => c.headers.Authorization === 'Bearer ' + TOKEN));
@@ -414,6 +416,19 @@ check('grava em emails_enviados: modelo resposta, provedor_id do Brevo, assunto 
 const mk = chamadas.find((c) => c.method === 'PATCH');
 check('marca as respostas novas dela como respondidas', /respostas_email\?contato_id=eq\.11111111-2222-4333-8444-555555555555&status=eq\.nova$/.test(mk.url) && mk.body.status === 'respondida' && !!mk.body.respondida_em);
 check('envia antes de gravar', chamadas.indexOf(bv) < chamadas.indexOf(gr));
+check('o histórico guarda só o que ela escreveu (sem moldura nem assinatura)', gr.body.corpo === 'Ana, que bom saber!\nMe manda o link do Master.');
+
+console.log('\n== Resposta no visual Por Dentro: moldura do Worker = prévia do painel ==');
+const crmJsR = readFileSync(path.resolve(HERE, '../../admin/crm/crm.js'), 'utf8');
+const srcMolde = crmJsR.slice(crmJsR.indexOf('function moldeResposta'), crmJsR.indexOf('var temBlocos'));
+const escR = (t) => String(t == null ? '' : t).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const moldePainel = new Function('esc', 'ES', srcMolde + '; return moldeResposta;')(escR, { FOTO_URL: CRM_FOTO_URL });
+for (const [t, a] of [['Oi!\nSegue o link: https://example.org/x?a=1&b=2', 'Re: Teste'], ['a < b & "c"', ''], ['<img src=x onerror=alert(1)>', 'Re: <b>x</b>']]) {
+  check('prévia do painel = HTML do Worker: ' + JSON.stringify(t).slice(0, 30), moldePainel(t, a) === crmMoldeResposta(t, a));
+}
+check('moldura escapa HTML escrito por ela', !crmMoldeResposta('<img src=x onerror=alert(1)>', 'x').includes('<img src=x'));
+check('link vira <a> verde', crmMoldeResposta('veja https://example.org/x', 'x').includes('<a href="https://example.org/x" style="color:#577328;">'));
+check('assunto sem texto cai em "Por Dentro" no <title>', crmMoldeResposta('oi', '').includes('<title>Por Dentro</title>'));
 
 // Brevo recusa os cabeçalhos padrão: reenvia sem eles e avisa.
 chamadas = [];

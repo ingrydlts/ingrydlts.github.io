@@ -1649,7 +1649,7 @@ function convPrevia(cid) {
   var ax = (CONV_AX[cid] || []).map(function (f) { return esc(f.name) + ' (' + esc(onbMb(f.size)) + ')'; });
   modalOpen(modalTop(c) + '<h3 style="margin:14px 0 4px">Como vai chegar</h3>' +
     '<p class="sub" style="margin:0 0 8px">Para <b>' + esc(c.email) + '</b>' + (assunto ? ' · Assunto: <b>' + esc(assunto) + '</b>' : '') + (ax.length ? ' · Anexos: ' + ax.join(', ') : '') + '</p>' +
-    '<iframe class="st-mail" style="height:420px;max-width:none" sandbox title="Prévia do e-mail" srcdoc="' + esc(textoParaHtml(txt)) + '"></iframe>' +
+    '<iframe class="st-mail" style="height:520px;max-width:none" sandbox title="Prévia do e-mail" srcdoc="' + esc(moldeResposta(txt, assunto)) + '"></iframe>' +
     '<div class="actions"><button class="btn primary" type="button" id="modal-cancel">Voltar e editar</button></div>', true);
 }
 function convAnexosLi(cid) {
@@ -5385,6 +5385,26 @@ function marcarVars(txt) { return esc(txt).replace(/\{([#^/]?)(\w+)\}/g, functio
 function textoParaHtml(text) {
   var safe = esc(text).replace(/(https?:\/\/[^\s<]+)/g, function (u) { return '<a href="' + u + '">' + u + '</a>'; });
   return '<div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.6;color:#2B2B2B">' + safe.replace(/\n/g, '<br>') + '</div>';
+}
+// Resposta da aba E-mail no visual Por Dentro: cópia igual de crmMoldeResposta (cms-oauth-worker/worker.js). O teste crm-email confere as duas.
+function moldeResposta(texto, assunto) {
+  var sans = "font-family:'Inter', Arial, Helvetica, sans-serif;", serif = "font-family:'Fraunces', Georgia, 'Times New Roman', serif;";
+  var corpo = esc(texto).replace(/(https?:\/\/[^\s<]+)/g, function (u) { return '<a href="' + u + '" style="color:#577328;">' + u + '</a>'; }).replace(/\n/g, '<br>');
+  return '<!DOCTYPE html>\n' +
+'<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="color-scheme" content="light"><title>' + esc(assunto || 'Por Dentro') + '</title></head>\n' +
+'<body style="margin:0; padding:0; background:#F4F1EC;">\n' +
+'<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#F4F1EC;"><tr><td align="center" style="padding:32px 16px;">\n' +
+'<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;">\n' +
+'<tr><td style="padding:0 4px 20px; ' + serif + ' font-size:22px; font-weight:700; color:#2B2B2B;">Por <span style="color:#604034;">Dentro</span></td></tr>\n' +
+'<tr><td style="background:#FBFAF7; border:1px solid #E2DED7; border-radius:8px; padding:32px 28px;">\n' +
+'<div style="' + sans + ' font-size:15px; line-height:1.6; color:#2B2B2B;">' + corpo + '</div>\n' +
+'<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:26px 0 0;"><tr>\n' +
+'<td style="width:68px; vertical-align:middle;"><img src="' + ES.FOTO_URL + '" width="68" height="68" alt="Foto da Ingryd" style="display:block; width:68px; height:68px; border-radius:50%; border:2px solid #DEB975; object-fit:cover;"></td>\n' +
+'<td style="padding-left:14px; vertical-align:middle;"><div style="' + serif + ' font-size:18px; font-weight:700; line-height:1.2; color:#2B2B2B;">Ingryd</div>\n' +
+'<div style="' + sans + ' font-size:13px; line-height:1.45; color:#6E6862; margin-top:2px;">Por Dentro</div></td></tr></table>\n' +
+'</td></tr>\n' +
+'</table></td></tr></table>\n' +
+'</body></html>';
 }
 var temBlocos = function () { return MV.length > 0 && Object.prototype.hasOwnProperty.call(MV[0], 'blocos'); };   // migração da entrega 2
 function modeloAtual() { return (M || []).filter(function (x) { return x.chave === ST.k; })[0] || null; }
