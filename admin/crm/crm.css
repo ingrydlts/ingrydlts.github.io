@@ -2283,3 +2283,27 @@ html.ee-segurando, html.ee-segurando *{cursor:grabbing !important; user-select:n
 .pg-form input,.pg-form select{display:block; width:100%; margin-top:4px; box-sizing:border-box}
 .pg-form .pg-lg{grid-column:1 / -1}
 @media (max-width:520px){ .pg-form{grid-template-columns:1fr} }
+
+/* Novo orçamento (aba E-mail da ficha) */
+.orc-cab,.orc-l{display:grid; grid-template-columns:minmax(0,1fr) 92px 104px 84px 62px; gap:8px; align-items:center}
+.orc-cab{font-size:12px; color:var(--ink-3); padding:0 2px 4px}
+.orc-l{padding:4px 0}
+.orc-l .orc-serv{grid-column:1; grid-row:1}
+.orc-l .orc-preco{grid-column:2; grid-row:1}
+.orc-l .orc-d{grid-column:3; grid-row:1; display:flex; align-items:center; gap:5px; font-size:12.5px; color:var(--ink-2); white-space:nowrap}
+.orc-l .orc-tot{grid-column:4; grid-row:1; text-align:right; font-weight:600; font-size:13px}
+.orc-l .orc-rm{grid-column:5; grid-row:1; padding:4px 8px; font-size:12px}
+.orc-l .orc-dc{grid-column:3 / 5; grid-row:2; display:flex; gap:4px}
+.orc-dc .orc-dval{width:64px}
+.orc-dc .orc-dtipo{width:auto}
+@media (max-width:620px){
+  .orc-cab{display:none}
+  .orc-l{grid-template-columns:minmax(0,1fr) auto; border-top:1px solid var(--line); padding:10px 0}
+  .orc-l .orc-serv{grid-column:1 / -1; grid-row:auto}
+  .orc-l .orc-preco,.orc-l .orc-d,.orc-l .orc-tot,.orc-l .orc-rm,.orc-l .orc-dc{grid-row:auto}
+  .orc-l .orc-preco{grid-column:1}
+  .orc-l .orc-d{grid-column:2}
+  .orc-l .orc-dc{grid-column:1 / -1}
+  .orc-l .orc-tot{grid-column:1; text-align:left}
+  .orc-l .orc-rm{grid-column:2; justify-self:end}
+}

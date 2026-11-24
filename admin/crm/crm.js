@@ -2,15 +2,16 @@
 // Nada de service_role aqui. O banco é db/crm-fase2.sql; o desenho é o artefato "CRM Por Dentro".
 // Tudo que vem do banco é texto de terceiros (nome, e-mail, pergunta): passa sempre por esc().
 import { supabase } from '/assets/js/supabase-client.js';
-import * as TX from './taxonomia.js?v=2026-11-19.7';   // páginas, famílias e agrupamento dos modelos
-import * as ES from './estudio.js?v=2026-11-19.7';   // os blocos do estúdio de e-mails (entregas 2 e 3)
-import * as EE from './editor-email.js?v=2026-11-19.7';
-import * as EQ from './editor-quem.js?v=2026-11-19.7';
-import * as JR from './jornada.js?v=2026-11-19.7';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
-import * as FX from './ficha.js?v=2026-11-19.7';   // ficha v2: lógica pura (fila, démarches, funil, ações)
-import * as FH from './ficha-html.js?v=2026-11-19.7';   // ficha v2: HTML puro
-import * as PN from './panorama.js?v=2026-11-19.7';
-import * as MT from './montagem.js?v=2026-11-19.7';   // Montagem do espaço a partir do transcript (lógica e HTML puros)   // Panorama dela e O que ela trouxe (lógica e HTML puros)
+import * as TX from './taxonomia.js?v=2026-11-24.1';   // páginas, famílias e agrupamento dos modelos
+import * as ES from './estudio.js?v=2026-11-24.1';   // os blocos do estúdio de e-mails (entregas 2 e 3)
+import * as EE from './editor-email.js?v=2026-11-24.1';
+import * as EQ from './editor-quem.js?v=2026-11-24.1';
+import * as JR from './jornada.js?v=2026-11-24.1';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
+import * as FX from './ficha.js?v=2026-11-24.1';   // ficha v2: lógica pura (fila, démarches, funil, ações)
+import * as FH from './ficha-html.js?v=2026-11-24.1';   // ficha v2: HTML puro
+import * as PN from './panorama.js?v=2026-11-24.1';
+import * as OC from './orcamento.js?v=2026-11-24.1';   // Novo orçamento: a conta, o texto do e-mail e o PDF (jsPDF em vendor/)
+import * as MT from './montagem.js?v=2026-11-24.1';   // Montagem do espaço a partir do transcript (lógica e HTML puros)   // Panorama dela e O que ela trouxe (lógica e HTML puros)
 
 var PERSONAS = {
   au_pair_estudante: 'Au pair → estudante', campus_france: 'Campus France', alternancia_emprego: 'Alternância / emprego',
@@ -568,8 +569,8 @@ function pagRegLer(f) {
   var servico = String(f.servico || '').replace(/\s+/g, ' ').trim(), moeda = String(f.moeda || 'EUR').toUpperCase(), forma = FORMAS_PAG.some(function (x) { return x[0] === f.forma; }) ? f.forma : 'outro';
   if (!f.contato_id) return { erro: 'Escolha a pessoa.' };
   if (!servico || servico.length > 160) return { erro: 'Diga qual serviço foi (até 160 letras).' };
-  var bruto = String(f.valor || '').replace(/[€R$\s]/g, ''), n = Number(bruto.indexOf(',') >= 0 ? bruto.replace(/\./g, '').replace(',', '.') : bruto);
-  if (!Number.isFinite(n) || n <= 0 || n > 100000) return { erro: 'Valor inválido. Exemplo: 70 ou 70,50.' };
+  var n = OC.lerValor(f.valor);   // formato brasileiro: 70, 70,50, 1.200,50
+  if (n == null || n > 100000) return { erro: 'Valor inválido. Exemplo: 70 ou 70,50.' };
   if (moeda !== 'EUR' && moeda !== 'BRL') return { erro: 'Escolha euro ou real.' };
   if (!/^\d{4}-\d{2}-\d{2}$/.test(String(f.data || '')) || isNaN(new Date(f.data + 'T12:00:00Z'))) return { erro: 'Escolha a data do pagamento.' };
   if (new Date(f.data + 'T00:00:00Z').getTime() > Date.now() + 864e5) return { erro: 'A data não pode ser no futuro.' };
@@ -1732,7 +1733,7 @@ function conversaPanel(c, mails, resps, h4, jor) {
     '<section class="thread" aria-label="Conversa com ' + esc(pn(c)) + '"><div class="msgs" id="conv-thread">' + fio + '</div>' +
     '<div class="compose">' +
     '<div class="cam-acoes"><button class="btn primary" type="button" data-tplpick="' + esc(c.id) + '">Usar um modelo de e-mail…</button>' +
-      '<button class="btn" type="button" data-orcamento="' + esc(c.id) + '">Modelo de orçamento</button>' +
+      '<button class="btn" type="button" data-orcamento="' + esc(c.id) + '">Novo orçamento</button>' +
       (sug ? '<button class="btn" type="button" data-usarrasc="' + esc(c.id) + '">Usar o rascunho sugerido</button>' : '') + '</div>' +
     (assunto ? '<p class="sub" style="margin:0">Vai como <b>' + esc(assunto) + '</b></p>'
       : '<label class="sub" for="conv-assunto">Assunto (ainda não há conversa por e-mail com ela)</label><input id="conv-assunto" maxlength="200" autocomplete="off">') +
@@ -1744,16 +1745,95 @@ function conversaPanel(c, mails, resps, h4, jor) {
     '<button class="btn primary" type="button" id="conv-send" data-cid="' + esc(c.id) + '">Enviar</button></div></div></section></div>';
 }
 // Anexos da resposta (ficha → E-mail): ficam só na memória, por contato. Mesma regra do bilan (bilanJuntar).
-// Modelo de orçamento (Ligue sem medo): só o primeiro nome da pessoa muda. Edite aqui para mudar o texto de todos.
-var ORCAMENTO_ASSUNTO = 'Ligue sem Medo à Ameli :)';
-function orcamentoTexto(nome) {
-  return 'Oi ' + nome + ', tudo bem?\n\n' +
-    'Eu posso te ajudar nesse processo para perder o medo e ligar na CPAM. Podemos fazer uma ligação inicial de 20 minutos para entender o seu caso e preparar o roteiro da ligação, e depois marcar um dia para ligarmos juntas à CPAM? ' +
-    'Infelizmente eu não posso fazer esse tipo de ligação por você, pois dossiês de órgãos públicos somente a pessoa pode pedir esclarecimento. Mas é comum, quando a pessoa não fala francês, ter um acompanhante na ligação para auxiliar.\n\n' +
-    'Serviços e valores:\n' +
-    '• Ligação inicial de 20 minutos (entender o seu caso e preparar o roteiro): [valor] €\n' +
-    '• Acompanhamento na ligação à CPAM: [valor] €\n\n' +
-    'Em anexo você encontra o orçamento.';
+// ---------- Novo orçamento: serviços, preços e descontos viram um PDF anexado ao e-mail ----------
+// A conta, o texto e o PDF vivem em orcamento.js (puro). Aqui só a tela. O jsPDF (vendor/jspdf.umd.min.js) carrega na primeira vez que ela abre o orçamento.
+var ORCAMENTO_ASSUNTO = 'Seu orçamento · Por Dentro';
+var JSPDF_P = null;
+function carregarJsPdf() {
+  if (window.jspdf && window.jspdf.jsPDF) return Promise.resolve(window.jspdf.jsPDF);
+  if (!JSPDF_P) JSPDF_P = new Promise(function (ok, no) {
+    var sc = document.createElement('script'); sc.src = 'vendor/jspdf.umd.min.js?v=2.5.2';
+    sc.onload = function () { return window.jspdf && window.jspdf.jsPDF ? ok(window.jspdf.jsPDF) : (JSPDF_P = null, no(new Error('jsPDF sem construtor'))); };
+    sc.onerror = function () { JSPDF_P = null; no(new Error('não carreguei o jsPDF')); };
+    document.head.appendChild(sc);
+  });
+  return JSPDF_P;
+}
+function orcLinhaVazia() { return { servico: '', preco: '', desc: { ativo: false, tipo: 'pct', valor: '' } }; }
+function orcLinhaHtml(l, i) {
+  return '<div class="orc-l" role="group" aria-label="Serviço ' + (i + 1) + '">' +
+    '<input class="st-in orc-serv" id="orc-serv-' + i + '" maxlength="160" list="orc-servicos" autocomplete="off" placeholder="Serviço" aria-label="Serviço ' + (i + 1) + '" value="' + esc(l.servico) + '">' +
+    '<input class="st-in orc-preco" id="orc-preco-' + i + '" inputmode="decimal" autocomplete="off" placeholder="Preço" aria-label="Preço do serviço ' + (i + 1) + '" value="' + esc(l.preco) + '">' +
+    '<label class="orc-d"><input type="checkbox" id="orc-dchk-' + i + '" class="orc-dchk"' + (l.desc.ativo ? ' checked' : '') + '> Desconto</label>' +
+    (l.desc.ativo ? '<span class="orc-dc"><input class="st-in orc-dval" id="orc-dval-' + i + '" inputmode="decimal" autocomplete="off" aria-label="Valor do desconto" value="' + esc(l.desc.valor) + '">' +
+      '<select class="st-in orc-dtipo" id="orc-dtipo-' + i + '" aria-label="Tipo do desconto"><option value="pct"' + (l.desc.tipo === 'val' ? '' : ' selected') + '>%</option><option value="val"' + (l.desc.tipo === 'val' ? ' selected' : '') + '>valor</option></select></span>' : '') +
+    '<span class="orc-tot num" id="orc-tot-' + i + '"></span>' +
+    '<button class="btn orc-rm" type="button" data-orcrm="' + i + '" aria-label="Tirar o serviço ' + (i + 1) + '">Tirar</button></div>';
+}
+function orcAbrir(cid) {
+  var c = byC(cid); if (!c) return;
+  state.orc = { cid: cid, moeda: 'EUR', validade: '15', obs: '', linhas: [orcLinhaVazia(), orcLinhaVazia()] };
+  var servicos = PRODUTOS.map(function (p) { return p.nome; }).concat(['Ligação inicial de 20 minutos', 'Acompanhamento na ligação à CPAM']).filter(function (v, i, a) { return v && a.indexOf(v) === i; });
+  modalOpen(modalTop(c) + '<h3 style="margin:14px 0 4px">Novo orçamento</h3>' +
+    '<p class="sub" style="margin:0 0 8px">Adicione os serviços e os preços. Marque "Desconto" só onde quiser. O PDF sai pronto e já vai anexado ao e-mail.</p>' +
+    '<div id="orc-form"><div class="orc-cab" aria-hidden="true"><span>Serviço</span><span>Preço</span><span>Desconto</span><span>Total</span></div>' +
+    '<div id="orc-linhas"></div><datalist id="orc-servicos">' + servicos.map(function (v) { return '<option value="' + esc(v) + '">'; }).join('') + '</datalist>' +
+    '<button class="btn" type="button" data-orcadd="1" style="margin-top:8px">+ Adicionar serviço</button>' +
+    '<div class="pg-form"><label for="orc-moeda">Moeda<select id="orc-moeda" class="st-in"><option value="EUR">Euro (€)</option><option value="BRL">Real (R$)</option></select></label>' +
+    '<label for="orc-validade">Vale por quantos dias<input id="orc-validade" class="st-in" inputmode="numeric" value="15"></label>' +
+    '<label class="pg-lg" for="orc-obs">Observações (opcional: forma de pagamento, condições)<textarea id="orc-obs" class="st-in" rows="3" maxlength="800"></textarea></label></div>' +
+    '<p class="kp-resumo" id="orc-resumo" aria-live="polite"></p>' +
+    '<p class="sub" id="orc-err" style="margin:6px 0 0;color:var(--red)" role="alert" hidden></p></div>' +
+    '<div class="actions"><button class="btn primary" type="button" data-orcgerar="anexar">Anexar ao e-mail</button><button class="btn" type="button" data-orcgerar="baixar">Baixar PDF</button><button class="btn" type="button" id="modal-cancel">Cancelar</button></div>', true);
+  orcPinta();
+}
+// Lê a tela para o estado (cada campo tem id com o número da linha).
+function orcLer() {
+  var o = state.orc; if (!o) return null;
+  var v = function (id) { var e = $(id); return e ? String(e.value == null ? '' : e.value) : ''; };
+  o.linhas = o.linhas.map(function (l, i) {
+    var ativo = !!($('orc-dchk-' + i) || {}).checked;
+    return { servico: v('orc-serv-' + i), preco: v('orc-preco-' + i), desc: { ativo: ativo, tipo: v('orc-dtipo-' + i) === 'val' ? 'val' : 'pct', valor: ativo ? v('orc-dval-' + i) : l.desc.valor } };
+  });
+  o.moeda = v('orc-moeda') === 'BRL' ? 'BRL' : 'EUR'; o.validade = v('orc-validade') || '15'; o.obs = v('orc-obs');
+  return o;
+}
+function orcPinta() {
+  var o = state.orc, box = $('orc-linhas'); if (!o || !box) return;
+  box.innerHTML = o.linhas.map(orcLinhaHtml).join('');
+  var m = $('orc-moeda'); if (m) m.value = o.moeda;
+  orcAtualiza();
+}
+// O total de cada linha e o resumo, enquanto ela digita. Erro de preenchimento só aparece ao gerar.
+function orcAtualiza() {
+  var o = orcLer(); if (!o) return;
+  o.linhas.forEach(function (l, i) { var t = $('orc-tot-' + i), r = OC.calcular([l], o.moeda); if (t) t.textContent = r.erro ? '' : OC.fmt(r.total, o.moeda); });
+  var r = OC.calcular(o.linhas, o.moeda), rs = $('orc-resumo');
+  if (rs) rs.textContent = r.erro ? '' : (r.descontos > 0 ? 'Subtotal ' + OC.fmt(r.subtotal, o.moeda) + ' · Descontos ' + OC.fmt(r.descontos, o.moeda) + ' · ' : '') + 'Total ' + OC.fmt(r.total, o.moeda);
+}
+async function orcGerar(acao) {
+  var o = orcLer(), c = o && byC(o.cid), er = $('orc-err'); if (!c) return;
+  var erro = function (t) { if (er) { er.textContent = t; er.hidden = false; } };
+  if (er) er.hidden = true;
+  var calc = OC.calcular(o.linhas, o.moeda); if (calc.erro) return erro(calc.erro);
+  var hoje = new Date(), ate = OC.validadeAte(hoje, o.validade), JsPDF;
+  try { JsPDF = await carregarJsPdf(); } catch (e) { return erro('Não consegui carregar o gerador de PDF. Recarregue a página e tente de novo.'); }
+  var doc, buf;
+  try { doc = OC.montarPdf(JsPDF, { nome: displayName(c), email: c.email, calc: calc, numero: OC.numeroOrcamento(hoje), hoje: hoje, ate: ate, obs: o.obs }); buf = doc.output('arraybuffer'); }
+  catch (e) { console.error(e); return erro('Não consegui montar o PDF: ' + (e && e.message ? e.message : 'erro')); }
+  var nome = OC.nomeArquivo(displayName(c), hoje);
+  if (acao === 'baixar') {
+    var a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([buf], { type: 'application/pdf' })); a.download = nome; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 4000); return;
+  }
+  var arquivo = new File([buf], nome, { type: 'application/pdf' });
+  CONV_AX[c.id] = (CONV_AX[c.id] || []).filter(function (f) { return !/^Orcamento-Por-Dentro-/.test(f.name || ''); });   // um orçamento novo troca o anterior
+  convAdicionar(c.id, [arquivo]);
+  if (!(CONV_AX[c.id] || []).some(function (f) { return f.name === nome; })) return erro('O PDF ficou grande demais para anexar (limite de 3 MB no total dos anexos).');
+  var ct = $('conv-txt'), as = $('conv-assunto'), texto = OC.textoEmail(pn(c), calc, { ate: ate, obs: o.obs });
+  if (ct && (!ct.value.trim() || typeof confirm !== 'function' || confirm('Já existe texto na resposta. Trocar pelo texto do orçamento?'))) { ct.value = texto; state.rascunho[c.id] = texto; }
+  if (as && !as.value.trim()) as.value = ORCAMENTO_ASSUNTO;
+  closeCompose(); toast('Orçamento anexado ao e-mail. Confira o texto e envie.');
 }
 var CONV_AX = {};
 // Prévia do e-mail como ela vai receber (o mesmo HTML simples do Worker), sem enviar nada.
@@ -4060,7 +4140,7 @@ function fxHeaderHtml(c, d) {
 // Catálogo de démarches (cópia do app, processos.json): carregado uma vez; sem ele, tudo cai na démarche padrão.
 var FX_PROC = null, FX_QUANDO = null;   // FX_QUANDO: o "quando" de cada passo do template (guias-quando.json), para o prazo curto do Início
 async function fxCarregaProcessos() {
-  try { var r = await fetch('processos.json?v=2026-11-19.7'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
+  try { var r = await fetch('processos.json?v=2026-11-24.1'); return r.ok ? await r.json() : {}; } catch (e) { return {}; }
 }
 // A sessão Checklist: pílulas por démarche, os 4 mais urgentes, pasta do Drive privada e "Ver mais desta sessão".
 // Os passos que a montagem do espaço propôs para ela, com démarche, subitens e origem: o mesmo detalhe do Checklist. Existem antes de ela ter conta.
@@ -5187,7 +5267,7 @@ async function renderPessoa() {
   if (!c) { $('pessoa-page').innerHTML = '<div class="empty">Pessoa não encontrada.</div>'; return; }
   $('pessoa-page').innerHTML = '<div class="loading">Carregando a ficha…</div>';
   if (fichaV2Ativa() && FX_PROC === null) FX_PROC = await fxCarregaProcessos();
-  if (fichaV2Ativa() && FX_QUANDO === null) { try { var rq = await fetch('guias-quando.json?v=2026-11-19.7'); FX_QUANDO = rq.ok ? await rq.json() : {}; } catch (e) { FX_QUANDO = {}; } }
+  if (fichaV2Ativa() && FX_QUANDO === null) { try { var rq = await fetch('guias-quando.json?v=2026-11-24.1'); FX_QUANDO = rq.ok ? await rq.json() : {}; } catch (e) { FX_QUANDO = {}; } }
   var r = await Promise.all([
     supabase.from('eventos').select('tipo,dados,criado_em').eq('contato_id', c.id).order('criado_em', { ascending: false }).limit(200),
     supabase.from('consentimentos').select('finalidade,aceito,texto,origem,criado_em').eq('contato_id', c.id).order('criado_em', { ascending: false }),
@@ -7166,7 +7246,7 @@ async function enviarLinkPagamento(btn) {
 var FX_DETALHE = null, qdTimer = null, qdOrigem = null, qdAberto = false;
 async function fxCarregaDetalhe() {
   if (FX_DETALHE) return FX_DETALHE;
-  try { var r = await fetch('guias-detalhe.json?v=2026-11-19.7'); FX_DETALHE = r.ok ? await r.json() : {}; } catch (e) { FX_DETALHE = {}; }
+  try { var r = await fetch('guias-detalhe.json?v=2026-11-24.1'); FX_DETALHE = r.ok ? await r.json() : {}; } catch (e) { FX_DETALHE = {}; }
   return FX_DETALHE;
 }
 function fxFechaQuadro() {
@@ -7257,11 +7337,10 @@ document.addEventListener('click', async function (e) {
   if (t.dataset.openconv) return openPessoa(t.dataset.openconv, 'conversa');
   if (t.dataset.tplpick) return abrirModelosPicker(t.dataset.tplpick);
   if (t.dataset.tplsel) return openCompose(activeCid, t.dataset.tplsel);
-  if (t.dataset.orcamento) {
-    var cc = byC(t.dataset.orcamento), ct2 = $('conv-txt'), as2 = $('conv-assunto');
-    if (cc && ct2) { ct2.value = orcamentoTexto(pn(cc)); state.rascunho[cc.id] = ct2.value; if (as2 && !as2.value.trim()) as2.value = ORCAMENTO_ASSUNTO; ct2.focus(); }
-    return;
-  }
+  if (t.dataset.orcamento) return orcAbrir(t.dataset.orcamento);
+  if (t.dataset.orcadd) { if (state.orc) { orcLer(); state.orc.linhas.push(orcLinhaVazia()); orcPinta(); var nl = $('orc-serv-' + (state.orc.linhas.length - 1)); if (nl) nl.focus(); } return; }
+  if (t.dataset.orcrm !== undefined) { if (state.orc) { orcLer(); state.orc.linhas.splice(Number(t.dataset.orcrm), 1); if (!state.orc.linhas.length) state.orc.linhas.push(orcLinhaVazia()); orcPinta(); } return; }
+  if (t.dataset.orcgerar) return orcGerar(t.dataset.orcgerar);
   if (t.dataset.usarrasc) { var sg = (state.rascSug || {})[t.dataset.usarrasc], ct = $('conv-txt'); if (sg && ct) { ct.value = sg; state.rascunho[t.dataset.usarrasc] = sg; ct.focus(); } return; }
   if (t.dataset.ptab) { state.ptab = t.dataset.ptab; return renderPessoa(); }
   if (t.dataset.pstab) return trocaPlatAba(t.dataset.pstab);
@@ -7667,3 +7746,10 @@ document.addEventListener('drop', function (e) {
   fxCurOrdena(c, FX.reordenarSessao(lista, de, antes));
 });
 document.addEventListener('dragend', function () { state.curDrag = null; });
+// Novo orçamento: totais ao digitar; marcar ou desmarcar "Desconto" redesenha a linha (aparece ou some o campo do desconto).
+document.addEventListener('input', function (e) { var t = e.target; if (t && t.closest && t.closest('#orc-form')) orcAtualiza(); });
+document.addEventListener('change', function (e) {
+  var t = e.target; if (!t || !t.closest || !t.closest('#orc-form')) return;
+  if (t.classList && t.classList.contains('orc-dchk')) { orcLer(); orcPinta(); return; }
+  orcAtualiza();
+});

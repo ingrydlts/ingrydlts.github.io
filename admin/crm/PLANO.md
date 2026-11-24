@@ -289,3 +289,6 @@ Levou para o CRM real o que o artefato do CRM retrabalhado desenvolveu (versão 
 
 ## 2026-11-24: pop-ups dos indicadores e pagamento direto
 Os quatro blocos do topo da Hoje abrem uma lista (leads, 1:1, plataforma, revenue com valor + serviço + origem). "Registrar pagamento" (no pop-up do revenue e na ficha) grava em `pagamentos` com `referencia = 'manual-<forma>-<id>'`, sem SQL novo. Design: `docs/superpowers/specs/2026-11-24-crm-popups-pagamento-direto-design.md`. Teste: `admin/crm/db/testes/crm-kpi-pop.test.mjs`.
+
+## 2026-11-24: Novo orçamento com PDF
+O botão da aba E-mail vira "Novo orçamento": serviços, preços e desconto por linha geram um PDF (jsPDF 2.5.2 em `admin/crm/vendor/`, carregado só ao abrir) anexado ao e-mail, com o texto pronto. Lógica em `admin/crm/orcamento.js`; teste `admin/crm/db/testes/crm-orcamento.test.mjs`. Design: `docs/superpowers/specs/2026-11-24-crm-novo-orcamento-design.md`. Subi a versão de cache do CRM para `2026-11-24.1`.
