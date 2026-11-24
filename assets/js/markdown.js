@@ -278,15 +278,15 @@ function renderResources(lines, ctx) {
   const slug = (ctx && ctx.slug) || "artigo";
   const items = lines
     .map((line) => {
-      const [title, desc, linkText, href] = line.split("|").map((s) => s.trim());
+      const [title, desc, , href] = line.split("|").map((s) => s.trim());
       return (
-        '<div class="rt-resource-card"><h4>' + inline(title || "") + "</h4><p>" + inline(desc || "") + "</p>" +
-        '<a href="' + escapeAttr(href || "#") + '" target="_blank" rel="noopener" data-resource-title="' +
-        escapeAttr(title || href || "") + '">' + inline(linkText || "Saiba mais") + " →</a></div>"
+        '<li><a href="' + escapeAttr(href || "#") + '" target="_blank" rel="noopener" data-resource-title="' +
+        escapeAttr(title || href || "") + '">' + inline(title || href || "") + "</a>" +
+        (desc ? ' <span class="rt-source-desc">' + (/^[\w.-]+\.[a-z]{2,}$/i.test(desc) ? "(" + escapeAttr(desc) + ")" : "— " + inline(desc)) + "</span>" : "") + "</li>"
       );
     })
     .join("");
-  return '<div class="rt-resource-grid" data-article-slug="' + escapeAttr(slug) + '">' + items + "</div>";
+  return '<ul class="rt-sources" data-article-slug="' + escapeAttr(slug) + '">' + items + "</ul>";
 }
 
 // 1ª linha = título, o resto vira itens marcáveis. blockIndex (posição do

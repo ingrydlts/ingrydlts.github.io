@@ -165,7 +165,7 @@
   // pela navegação.
   function initResourceTracking() {
     document.addEventListener("click", function (e) {
-      var link = e.target.closest(".rt-resource-card a");
+      var link = e.target.closest(".rt-resource-card a, .rt-sources a");
       if (!link || !window.PDEvents) return;
       window.PDEvents.send("block", getArticleSlug(link), {
         type: "resource_click",
