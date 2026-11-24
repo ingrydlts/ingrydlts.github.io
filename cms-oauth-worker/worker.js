@@ -2257,6 +2257,130 @@ async function handleRotaPedido(request, env) {
   return json({ ok: true });
 }
 
+// ---------- CRM: webhook do Cal.com (1:1 marcado na agenda → linha em um_a_um → Agenda, Funil e Jornada) ----------
+// POST /api/cal/webhook  (o Cal.com chama; sem login: a segurança é a ASSINATURA, o cabeçalho X-Cal-Signature-256 = HMAC-SHA256 em hex
+// do corpo, com o segredo que você escolhe ao criar o webhook no Cal.com)
+//
+// Gatilhos que o webhook precisa ter marcados no Cal.com: BOOKING_CREATED, BOOKING_RESCHEDULED, BOOKING_CANCELLED (PING, do botão de teste,
+// responde 200). Só vale o tipo de evento "1:1" (slug 1-1, o do CAL_LINK); qualquer outro tipo é ignorado com 200.
+//
+// O que acontece:
+//   - marcou: acha (ou abre) a ficha pelo e-mail de quem marcou e grava um_a_um (status agendado, data da reserva, cal_uid = código da
+//     reserva). O gatilho do banco (crm_um_a_um_evento) faz o resto: evento "1:1 marcado" na Jornada e estágio 1:1, igual ao botão manual;
+//   - remarcou: acha a linha pelo código da reserva antiga (rescheduleUid) ou da nova, e atualiza a data e o código;
+//   - cancelou: marca a linha como cancelada (um 1:1 já "feito" nunca volta atrás).
+// Reenvio do mesmo aviso não duplica (índice único em cal_uid, db/crm-1a1-cal.sql). Se algo falhar, responde 500 e o Cal.com pode tentar de novo.
+//   Variáveis: CAL_WEBHOOK_SECRET (Secret), SUPABASE_SERVICE_ROLE_KEY. Ver README.md, seção 34.
+const CAL_EVENTO_SLUG = '1-1';
+const CAL_GATILHOS = ['BOOKING_CREATED', 'BOOKING_RESCHEDULED', 'BOOKING_CANCELLED'];
+
+async function calAssinaturaConfere(segredo, corpo, cabecalho) {
+  if (!segredo || !cabecalho) return false;
+  const chave = await crypto.subtle.importKey('raw', new TextEncoder().encode(segredo), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  const esperado = stripeHex(await crypto.subtle.sign('HMAC', chave, new TextEncoder().encode(corpo)));
+  return crmSegredoIgualQualquerTamanho(String(cabecalho).trim().toLowerCase(), esperado);
+}
+
+// Quem marcou: o primeiro participante com e-mail válido que não é a própria organizadora.
+function calConvidado(p) {
+  const org = String((p.organizer && p.organizer.email) || '').trim().toLowerCase();
+  for (const a of Array.isArray(p.attendees) ? p.attendees : []) {
+    const email = String((a && a.email) || '').trim().toLowerCase();
+    if (email.length <= 254 && CRM_ONB_EMAIL_RE.test(email) && email !== org) return { email, nome: String((a && a.name) || '').trim().slice(0, 100) || null };
+  }
+  return null;
+}
+
+async function calContato(env, convidado) {
+  const sb = crmServiceHeaders(env);
+  const url = `${CRM_SUPABASE_URL}/rest/v1/contatos?select=id&email=eq.${encodeURIComponent(convidado.email)}&limit=1`;
+  const r = await fetch(url, { headers: sb });
+  if (!r.ok) throw new Error('não li a ficha (' + r.status + ')');
+  const achado = (await r.json())[0];
+  if (achado) return achado;
+  // Marcou sem ter ficha: abre a ficha agora, pelo e-mail da reserva.
+  const ins = await fetch(`${CRM_SUPABASE_URL}/rest/v1/contatos?select=id`, {
+    method: 'POST', headers: { ...sb, Prefer: 'return=representation,resolution=ignore-duplicates' },
+    body: JSON.stringify({ email: convidado.email, nome: convidado.nome, origem: 'cal' }) });
+  if (!ins.ok) throw new Error('não abri a ficha (' + ins.status + ')');
+  const novo = (await ins.json())[0];
+  if (novo) return novo;
+  const de_novo = await fetch(url, { headers: sb });   // outra chamada abriu a mesma ficha no meio: lê de novo
+  const c = de_novo.ok ? (await de_novo.json())[0] : null;
+  if (!c) throw new Error('não achei a ficha depois de abrir');
+  return c;
+}
+
+async function handleCalWebhook(request, env) {
+  if (!env.CAL_WEBHOOK_SECRET || !env.SUPABASE_SERVICE_ROLE_KEY) {
+    console.error('crm/cal: faltam CAL_WEBHOOK_SECRET ou SUPABASE_SERVICE_ROLE_KEY no Worker');
+    return json({ error: 'Webhook ainda não configurado no Worker.' }, 500);
+  }
+  const corpo = await request.text();
+  if (!(await calAssinaturaConfere(env.CAL_WEBHOOK_SECRET, corpo, request.headers.get('X-Cal-Signature-256')))) {
+    return json({ error: 'Assinatura inválida.' }, 400);
+  }
+  let ev;
+  try { ev = JSON.parse(corpo); } catch (e) { return json({ error: 'Corpo inválido.' }, 400); }
+  const gatilho = ev && ev.triggerEvent;
+  const p = (ev && ev.payload) || {};
+  if (!CAL_GATILHOS.includes(gatilho)) return json({ ok: true, ignorado: true });   // PING e os outros gatilhos
+  const titulo = String(p.title || p.eventTitle || '');
+  if (String(p.type || '') !== CAL_EVENTO_SLUG && !/^1:1\b/.test(titulo)) return json({ ok: true, ignorado: true });   // outro tipo de evento do Cal.com
+
+  const uid = typeof p.uid === 'string' ? p.uid.trim() : '';
+  if (!uid || uid.length > 100) return json({ error: 'Reserva sem código.' }, 400);
+  const sb = crmServiceHeaders(env);
+  const um = `${CRM_SUPABASE_URL}/rest/v1/um_a_um`;
+  const aviso = (r, o) => { if (!r.ok) throw new Error(o + ' respondeu ' + r.status); return r; };
+
+  try {
+    if (gatilho === 'BOOKING_CANCELLED') {
+      // Só o que ainda está agendado: um 1:1 já feito ou já cancelado não muda.
+      const r = aviso(await fetch(`${um}?cal_uid=eq.${encodeURIComponent(uid)}&status=eq.agendado&select=id`, {
+        method: 'PATCH', headers: { ...sb, Prefer: 'return=representation' }, body: JSON.stringify({ status: 'cancelado' }) }), 'cancelar');
+      return json({ ok: true, cancelado: (await r.json()).length });
+    }
+
+    const quandoMs = Date.parse(p.startTime);
+    if (!Number.isFinite(quandoMs)) return json({ error: 'Reserva sem data.' }, 400);
+    const quando = new Date(quandoMs).toISOString();
+    const antigo = typeof p.rescheduleUid === 'string' && p.rescheduleUid.trim() && p.rescheduleUid.trim().length <= 100 ? p.rescheduleUid.trim() : '';
+    const codigos = [uid].concat(antigo && antigo !== uid ? [antigo] : []);
+
+    // Já existe linha desta reserva (reenvio) ou da reserva que foi remarcada?
+    const procura = async () => {
+      const r = aviso(await fetch(`${um}?select=id,status&cal_uid=in.(${codigos.map((c) => '"' + c.replace(/["\\]/g, '') + '"').join(',')})&limit=1`, { headers: sb }), 'ler');
+      return (await r.json())[0] || null;
+    };
+    const atualiza = async (linha) => {
+      // Um 1:1 já "feito" não volta a agendado por um aviso atrasado.
+      const campos = linha.status === 'feito' ? { cal_uid: uid } : { quando, status: 'agendado', cal_uid: uid };
+      aviso(await fetch(`${um}?id=eq.${linha.id}`, { method: 'PATCH', headers: { ...sb, Prefer: 'return=minimal' }, body: JSON.stringify(campos) }), 'atualizar');
+    };
+    let linha = await procura();
+    if (linha) { await atualiza(linha); return json({ ok: true, atualizado: true }); }
+
+    const convidado = calConvidado(p);
+    if (!convidado) return json({ ok: true, ignorado: true });   // sem e-mail de quem marcou, não há ficha para ligar
+    const contato = await calContato(env, convidado);
+    const minutos = (/\((\d{2,3}) min\)/.exec(titulo) || [])[1] || Math.round((Date.parse(p.endTime) - quandoMs) / 60000) || '';
+    const notaDela = String(p.additionalNotes || '').replace(/\s+/g, ' ').trim().slice(0, 300);
+    const nota = ('Marcado pelo Cal.com' + (minutos ? ' (' + minutos + ' min)' : '') + '.' + (notaDela ? ' Nota dela: ' + notaDela : '')).slice(0, 500);
+    const ins = await fetch(um, { method: 'POST', headers: { ...sb, Prefer: 'return=minimal' },
+      body: JSON.stringify({ contato_id: contato.id, quando, status: 'agendado', cal_uid: uid, nota }) });
+    if (ins.status === 409) {   // duas chamadas ao mesmo tempo: a outra gravou primeiro; esta só atualiza
+      linha = await procura();
+      if (linha) { await atualiza(linha); return json({ ok: true, atualizado: true }); }
+    }
+    aviso(ins, 'gravar');
+    return json({ ok: true, criado: true });
+  } catch (e) {
+    console.error('crm/cal: ' + e);
+    return json({ error: 'Não consegui gravar o 1:1.' }, 500);
+  }
+}
+
 // ---------- CRM fase 1b: responder da aba Conversa, na mesma conversa do Gmail ----------
 // A aba Conversa da ficha (admin/crm/crm.js) manda texto livre para POST /api/crm/responder.
 // O Worker acha a última mensagem do fio que tem Message-ID (a resposta dela por e-mail ou um e-mail
@@ -5730,6 +5854,9 @@ export default {
       }
       if (url.pathname === '/api/rota/pedido' && request.method === 'POST') {
         return await handleRotaPedido(request, env);
+      }
+      if (url.pathname === '/api/cal/webhook' && request.method === 'POST') {
+        return await handleCalWebhook(request, env);
       }
       if (url.pathname === '/api/conversa/texto' && request.method === 'POST') {
         return await handleConversaTexto(request, env);

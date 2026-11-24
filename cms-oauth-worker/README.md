@@ -993,3 +993,34 @@ Do transcript do onboarding a um espaço pronto para a pessoa, sempre com a Ingr
 
 **Regras que o banco e o Worker impõem:** tipo de bloco e destino de resposta só os das tabelas `bloco_tipos` e `respostas_permitidas`; item sem fonte nasce `a_conferir` e não pode ser publicado; o que a equipe já revisou ou ela já concluiu nunca é alterado por uma leitura nova (vai para "conflitos"); **"Liberar para ela"** (`crm_montagem_liberar`) é a sua aprovação: itens do espaço e listas que vieram da montagem passam a `revisado`, passos com fonte ficam publicados, e **o que está `a_conferir` fica de fora até "Conferi a fonte"** (`crm_acao_conferida`); no aceite do convite só o que veio da montagem e está `revisado` é publicado (um Bilan que você só editou não vai sozinho); só fonte **oficial ou institucional** tira a marca `a_conferir`; conta do funil **sem teste nem plano** recebe o convite (abre o teste), não o aviso; e-mail do convite, do acesso e do aviso são texto em código (não são modelos do Estúdio) e o link de acesso não vai para o histórico de e-mails.
 **Teste:** `node cms-oauth-worker/testes/crm-montagem.test.mjs` e `crm-entrar.test.mjs`; no banco, `npm run test:catalogo | test:listas | test:montagem | test:montagem-aplicar | test:entrar | test:montagem-metricas` em `admin/crm/db/testes`; a página, `node admin/crm/db/testes/entrar-pagina.test.mjs` (Chromium).
+
+## 34. 1:1 marcado no Cal.com entra no CRM (`POST /api/cal/webhook`)
+
+Antes, quem marcava o 1:1 pelo Cal.com (link `cal.com/ingryd-silva-jf1cnx/1-1`, usado na Rota da Sécu, no bot, no checklist e nos guias) só avisava você por e-mail do Cal.com: o CRM não sabia, e a Agenda, o card "1:1 marcados" e o Funil ficavam sem a pessoa. Agora o Cal.com avisa o Worker, e o Worker grava em `um_a_um` (o gatilho `crm_um_a_um_evento` já cria o evento "1:1 marcado" na Jornada e leva a pessoa ao estágio 1:1, igual ao botão manual "Marcar 1:1").
+
+**Rota:** `POST /api/cal/webhook` (sem login; a segurança é a assinatura). O Cal.com manda o cabeçalho `X-Cal-Signature-256` (HMAC-SHA256 em hexadecimal do corpo, com o segredo que você escolheu). Assinatura ausente ou errada: 400 e nada é gravado.
+
+| Gatilho do Cal.com | O que o Worker faz |
+|---|---|
+| `BOOKING_CREATED` | Acha a ficha pelo e-mail de quem marcou (ou abre uma, com origem `cal`) e grava `um_a_um` (`agendado`, data da reserva, `cal_uid`, nota "Marcado pelo Cal.com (20 min)." + o que ela escreveu nas notas). |
+| `BOOKING_RESCHEDULED` | Acha a linha pelo código da reserva antiga (`rescheduleUid`) ou da nova e atualiza data e código. Se o CRM nunca viu a reserva, entra como 1:1 novo. |
+| `BOOKING_CANCELLED` | Marca a linha como `cancelado`. Um 1:1 já `feito` nunca muda (nem por remarcação atrasada). |
+| `PING` (botão de teste) e os outros | 200, nada gravado. |
+
+Só vale o tipo de evento "1:1" (slug `1-1`, ou título começando com "1:1"); outros tipos do Cal.com respondem 200 e são ignorados. Reenvio do mesmo aviso não duplica (índice único em `cal_uid`). Falha ao gravar no Supabase: 500, sem detalhe interno na resposta, e o Cal.com pode tentar de novo.
+
+**Variáveis:** `CAL_WEBHOOK_SECRET` (Secret, no painel do Cloudflare, em Settings → Variables and Secrets) e `SUPABASE_SERVICE_ROLE_KEY` (já existe). Nada disso vai para arquivo commitado.
+
+**Como ligar (você faz, no painel do Cal.com e no do Cloudflare):**
+1. Cloudflare → Worker `por-dentro-cms-oauth` → crie o Secret `CAL_WEBHOOK_SECRET` com um texto longo e aleatório.
+2. Cal.com → Settings → Developer → Webhooks → New: endereço `https://por-dentro-cms-oauth.ingrydigitalmanagement.workers.dev/api/cal/webhook`, gatilhos `Booking created`, `Booking rescheduled`, `Booking cancelled`, e o mesmo texto no campo Secret. O formato do corpo é o padrão (não use template personalizado).
+3. Use o botão de teste do Cal.com (PING): a resposta tem que ser 200. Depois faça uma reserva de teste com um e-mail seu e confira em Agenda, Funil e na Jornada da ficha.
+
+**SQL (uma vez, no Supabase de teste e depois no de produção):** `admin/crm/db/crm-1a1-cal.sql` (só a coluna `um_a_um.cal_uid`, com limite de tamanho e índice único; sem tabela nem função nova). Rode **antes** de ligar o webhook: sem a coluna, a gravação falha com 500. Depois de rodar, pedir que ela rode `db/auditoria-isolamento.sql` e `db/conferir-banco.sql` (os dois do app) no SQL Editor. Os dois vazios = pronto.
+
+**Limites conhecidos:**
+- O Cal.com não manda carimbo de hora na assinatura, então um aviso capturado poderia ser reenviado. Como cada aviso é idempotente por código de reserva, o pior efeito é repetir uma atualização que já foi feita.
+- A pessoa é ligada pelo **e-mail da reserva**. Se ela marcou com um e-mail diferente do cadastro da Rota, nasce uma ficha nova (origem `cal`) e as duas ficam separadas até você juntá-las.
+- Reservas feitas **antes** de ligar o webhook não entram sozinhas: use "Marcar 1:1" na ficha.
+
+**Teste:** `node cms-oauth-worker/testes/crm-cal-webhook.test.mjs`; no banco, `cd admin/crm/db/testes && APP_DB_DIR=<POR-DENTRO-APP>/db npm run test:1a1-cal`.
