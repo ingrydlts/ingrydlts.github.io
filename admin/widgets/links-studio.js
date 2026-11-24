@@ -32,6 +32,9 @@
     ".pdl-item-row .t small{display:block;font-size:11.5px;color:#6E6862;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}",
     ".pdl-more{border-top:1px solid #E2DCD2;padding:10px 12px 12px;display:flex;flex-direction:column;gap:10px;}",
     ".pdl-avatar{width:84px;height:84px;border-radius:50%;flex:none;}",
+    ".pdl-thumb{width:96px;height:64px;border-radius:10px;flex:none;}",
+    ".pdl-sec-opts{display:flex;flex-direction:column;gap:8px;padding:6px 4px 2px;}",
+    ".pdl-imgrow{display:flex;gap:10px;align-items:center;}",
     ".pdl-top{display:grid;grid-template-columns:84px minmax(0,1fr);gap:14px;align-items:start;}",
     "@media (max-width:560px){.pdl-top{grid-template-columns:minmax(0,1fr);}}"
   ].join("\n"));
@@ -49,6 +52,21 @@
     },
 
     sections: function () { return K.toJS(this.props.value, []); },
+
+    // Botão de foto de fundo (seletor de imagens do próprio estúdio).
+    imageField: function (label, current, target, onPick, onClear) {
+      var hp = K.part("hero");
+      var url = hp && current ? K.assetUrl(hp.props, current) : current;
+      return h("div", { className: "pds-field", key: target },
+        h("label", null, label),
+        h("div", { className: "pdl-imgrow" },
+          h("button", {
+            type: "button", className: "pds-img pdl-thumb" + (url ? " has" : ""), style: url ? { backgroundImage: "url(" + JSON.stringify(url) + ")" } : null,
+            "aria-label": label,
+            onClick: function () { if (hp) hp.pickImage(target, current, onPick); }
+          }, url ? "" : "Foto"),
+          current ? h("button", { type: "button", className: "pds-btn ghost sm", onClick: onClear }, "Tirar foto") : null));
+    },
 
     // hero e bot: cópia local enquanto o estúdio está aberto, gravada no
     // campo irmão a cada mudança.
@@ -175,9 +193,16 @@
         open ? h("div", { className: "pdl-more" },
           this.input("Título", it.title, function (v) { set("title", v); }, { id: "i-title-" + key }),
           this.input("Descrição", it.description, function (v) { set("description", v); }, { id: "i-desc-" + key, multiline: true, rows: 2 }),
+          s.layout === "carrossel" ? this.input("Etiqueta (ex.: Guia gratuito)", it.tag, function (v) { set("tag", v); }, { id: "i-tag-" + key }) : null,
+          s.layout === "carrossel" ? this.imageField("Foto de fundo do card", it.image, "item-" + key,
+            function (path) { set("image", path); },
+            function () { self.change(function (secs) { delete secs[si].items[ii].image; }); }) : null,
           h("div", { className: "pds-grid2" },
             this.input("Link", it.href, function (v) { set("href", v.trim()); }, { id: "i-href-" + key, placeholder: "/artigos/post/?slug=… ou https://…" }),
             this.input("Preço (opcional)", it.price, function (v) { set("price", v); }, { id: "i-price-" + key, placeholder: "Ex.: 25€" })),
+          s.layout === "destaque" ? h("div", { className: "pds-row" },
+            h("button", { type: "button", className: "pds-switch", role: "switch", "aria-checked": String(!!it.secondary), "aria-label": "Link de texto (secundário)", onClick: function () { set("secondary", !it.secondary); } }),
+            h("span", { className: "pds-hint" }, "Link de texto abaixo do botão grande")) : null,
           h("div", { className: "pds-row" },
             h("button", { type: "button", className: "pds-switch", role: "switch", "aria-checked": String(!!it.external), "aria-label": "Abrir em nova aba", onClick: function () { set("external", !it.external); } }),
             h("span", { className: "pds-hint" }, "Abre em nova aba" + (isExternal(it.href) ? " (link de fora do site)" : ""))),
@@ -241,6 +266,23 @@
                     else self.setState({ confirmSec: si });
                   } }, "×")
             ),
+            h("div", { className: "pdl-sec-opts" },
+              h("div", { className: "pds-field" },
+                h("label", { htmlFor: "pdl-lay-" + si }, "Jeito de mostrar"),
+                h("select", { id: "pdl-lay-" + si, className: "pds-input", value: s.layout || "",
+                  onChange: function (e) { var v = e.target.value; self.change(function (secs) { if (v) secs[si].layout = v; else delete secs[si].layout; }); } },
+                  h("option", { value: "" }, "Lista de links (padrão)"),
+                  h("option", { value: "destaque" }, "Destaque com foto e chamada (1:1)"),
+                  h("option", { value: "carrossel" }, "Carrossel de cards com foto"))),
+              s.layout === "destaque" ? [
+                self.input("Etiqueta", s.tag, function (v) { self.change(function (secs) { secs[si].tag = v; }); }, { id: "s-tag-" + si }),
+                self.input("Chamada", s.headline, function (v) { self.change(function (secs) { secs[si].headline = v; }); }, { id: "s-head-" + si }),
+                self.input("Texto", s.text, function (v) { self.change(function (secs) { secs[si].text = v; }); }, { id: "s-text-" + si, multiline: true, rows: 3 }),
+                self.imageField("Foto de fundo", s.image, "sec-" + si,
+                  function (path) { self.change(function (secs) { secs[si].image = path; }); },
+                  function () { self.change(function (secs) { delete secs[si].image; }); }),
+                h("p", { key: "dica", className: "pds-hint" }, "O link sem “secundário” vira o botão grande; os com “secundário” ligado viram link de texto abaixo.")
+              ] : null),
             h(K.SortableList, { className: "pdl-items", listKey: String(si), group: "pdl-items", handle: ".pdl-item-row > .pds-grip", onSort: function (e) { self.onItemSort(e); } },
               s.items.map(function (it, ii) { return self.renderItem(s, si, it, ii); })),
             !s.items.length ? h("p", { className: "pds-hint", style: { textAlign: "center" } }, "Seção vazia não aparece no site. Arraste um link pra cá.") : null

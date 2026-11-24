@@ -128,6 +128,44 @@
 
   .pd-links-grid { display: grid; gap: 14px; grid-template-columns: 1fr; }
   @media (min-width: 640px) { .pd-links-grid-2 { grid-template-columns: repeat(2, 1fr); } }
+
+  /* 1:1 em destaque: foto de fundo + véu marrom pra o texto ler */
+  .pd-um {
+    position: relative; overflow: hidden; border-radius: var(--radius-lg, 24px);
+    margin: 28px 0 4px; padding: 28px 22px 20px; color: #F4F1EC;
+    background: #604034 center / cover no-repeat;
+    display: flex; flex-direction: column; gap: 12px; min-height: 380px; justify-content: flex-end;
+  }
+  .pd-um::before { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(60,38,30,.35) 0%, rgba(60,38,30,.78) 55%, rgba(48,30,24,.94) 100%); }
+  .pd-um > * { position: relative; }
+  .pd-um-tag { align-self: flex-start; font-size: 12px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; background: #DEB975; color: #3A2A20; padding: 5px 12px; border-radius: 999px; }
+  .pd-um h2 { font-family: var(--font-display); font-weight: 600; font-size: 30px; line-height: 1.1; margin: 0; color: #F4F1EC; text-wrap: balance; }
+  .pd-um p { margin: 0; font-size: 16px; line-height: 1.5; color: rgba(244,241,236,.95); }
+  .pd-um-cta { display: flex; align-items: center; justify-content: center; min-height: 54px; padding: 14px 20px; border-radius: 999px; background: #DEB975; color: #3A2A20; font-weight: 700; font-size: 17px; margin-top: 4px; transition: transform .25s cubic-bezier(.4,0,.2,1); }
+  .pd-um-cta:hover { transform: translateY(-2px); }
+  .pd-um-sec { display: block; text-align: center; font-size: 14px; padding: 10px 4px; color: #F4F1EC; text-decoration: underline; text-underline-offset: 3px; }
+
+  /* Carrossel de guias: cartão com foto, véu escuro e texto claro */
+  .pd-guias { display: flex; gap: 12px; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; padding: 4px 2px 8px; margin: 0 -2px; -webkit-overflow-scrolling: touch; }
+  .pd-guias::-webkit-scrollbar { display: none; }
+  .pd-guia {
+    position: relative; overflow: hidden; flex: 0 0 82%; max-width: 340px; min-height: 340px; scroll-snap-align: start;
+    border-radius: var(--radius-lg, 20px); padding: 22px; color: #F4F1EC; background: #3A2A20 center / cover no-repeat;
+    display: flex; flex-direction: column; justify-content: flex-end; gap: 8px; transition: transform .25s cubic-bezier(.4,0,.2,1);
+  }
+  .pd-guia::before { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(34,24,19,.15) 0%, rgba(34,24,19,.72) 40%, rgba(26,18,14,.94) 100%); }
+  .pd-guia > * { position: relative; }
+  .pd-guia:hover { transform: translateY(-3px); }
+  .pd-guia-tag { align-self: flex-start; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; background: #577328; color: #fff; padding: 4px 10px; border-radius: 999px; }
+  .pd-guia h3 { font-family: var(--font-display); font-weight: 600; font-size: 25px; line-height: 1.12; margin: 0; color: #F4F1EC; text-wrap: balance; }
+  .pd-guia p { margin: 0; font-size: 14px; line-height: 1.45; color: rgba(244,241,236,.92); }
+  .pd-guia-go { font-weight: 700; font-size: 15px; color: #DEB975; margin-top: 4px; }
+  .pd-guia h3 a { color: inherit; }
+  .pd-guia a::after { content: ""; position: absolute; inset: 0; }
+  .pd-guias-ctrl { display: flex; justify-content: center; gap: 8px; margin-top: 8px; }
+  .pd-guias-ctrl button { width: 9px; height: 9px; border-radius: 50%; border: 0; padding: 0; background: rgba(244,241,236,.28); cursor: pointer; }
+  .pd-guias-ctrl button[aria-current="true"] { width: 24px; border-radius: 9px; background: #DEB975; }
+  @media (prefers-reduced-motion: reduce) { .pd-guia, .pd-um-cta { transition: none; } }
 </style>
 <link rel="icon" href="/favicon.png" type="image/png">
 <link rel="icon" href="/favicon-32x32.png" sizes="32x32" type="image/png">
@@ -166,9 +204,11 @@
       <p class="muted">Carregando...</p>
     </section>
 
+    <div id="pd-destaque-mount"></div>
+
     <div id="pd-bot-mount"></div>
 
-    <div id="pd-sections-mount"></div>
+    <div id="pd-carrossel-mount"></div>
 
     <section class="pd-links-section">
       <div style="display:flex; align-items:baseline; justify-content:space-between; gap:16px;">
@@ -179,6 +219,8 @@
         <p class="muted">Carregando artigos...</p>
       </div>
     </section>
+
+    <div id="pd-sections-mount"></div>
 
   </div>
 </main>
@@ -253,6 +295,76 @@
     );
   }
 
+  function bgStyle(src) {
+    return src ? ' style="background-image:url(' + escapeHtml(JSON.stringify(src)) + ')"' : "";
+  }
+
+  // Bloco de destaque (1:1): foto de fundo, chamada e dois links (principal + secundário).
+  function destaqueHTML(section) {
+    var items = (section.items || []).filter(function (i) { return i.active !== false && i.href; });
+    if (!items.length) return "";
+    var main = items.filter(function (i) { return !i.secondary; })[0];
+    var seconds = items.filter(function (i) { return i.secondary; });
+    function attrs(i) {
+      return ' href="' + escapeHtml(i.href) + '"' + (i.external ? ' target="_blank" rel="noopener"' : "") + ' data-track-link="' + escapeHtml(i.trackId || "") + '"';
+    }
+    return (
+      '<section class="pd-um" aria-labelledby="pd-um-h"' + bgStyle(section.image) + ">" +
+      (section.tag ? '<span class="pd-um-tag">' + escapeHtml(section.tag) + "</span>" : "") +
+      '<h2 id="pd-um-h">' + escapeHtml(section.headline || section.title || "") + "</h2>" +
+      (section.text ? "<p>" + escapeHtml(section.text) + "</p>" : "") +
+      (main ? '<a class="pd-um-cta"' + attrs(main) + ">" + escapeHtml(main.title) + " →</a>" : "") +
+      seconds.map(function (i) { return '<a class="pd-um-sec"' + attrs(i) + ">" + escapeHtml(i.title) + "</a>"; }).join("") +
+      "</section>"
+    );
+  }
+
+  // Carrossel de guias: cada item pode ter foto de fundo (item.image) e etiqueta (item.tag).
+  function carrosselHTML(section) {
+    var items = (section.items || []).filter(function (i) { return i.active !== false && i.href; });
+    if (!items.length) return "";
+    var cards = items.map(function (i) {
+      var target = i.external ? ' target="_blank" rel="noopener"' : "";
+      return (
+        '<div class="pd-guia"' + bgStyle(i.image) + ">" +
+        (i.tag ? '<span class="pd-guia-tag">' + escapeHtml(i.tag) + "</span>" : "") +
+        '<h3><a href="' + escapeHtml(i.href) + '"' + target + ' data-track-link="' + escapeHtml(i.trackId || "") + '">' + escapeHtml(i.title) + "</a></h3>" +
+        "<p>" + escapeHtml(i.description || "") + "</p>" +
+        '<span class="pd-guia-go" aria-hidden="true">Abrir →</span>' +
+        "</div>"
+      );
+    }).join("");
+    return (
+      '<section class="pd-links-section">' +
+      '<span class="eyebrow">' + escapeHtml(section.title) + "</span>" +
+      '<div class="pd-guias" id="pd-guias" tabindex="0" aria-label="' + escapeHtml(section.title) + ', deslize para o lado">' + cards + "</div>" +
+      '<div class="pd-guias-ctrl" id="pd-guias-ctrl" role="group" aria-label="Escolher guia"></div>' +
+      "</section>"
+    );
+  }
+
+  function initGuias() {
+    var trilho = document.getElementById("pd-guias");
+    var ctrl = document.getElementById("pd-guias-ctrl");
+    if (!trilho || !ctrl) return;
+    var cards = Array.prototype.slice.call(trilho.querySelectorAll(".pd-guia"));
+    cards.forEach(function (c, i) {
+      var b = document.createElement("button");
+      b.type = "button";
+      b.setAttribute("aria-label", "Guia " + (i + 1) + " de " + cards.length);
+      b.addEventListener("click", function () { trilho.scrollTo({ left: c.offsetLeft - trilho.offsetLeft - 2, behavior: "smooth" }); });
+      ctrl.appendChild(b);
+    });
+    function marcar() {
+      var base = trilho.scrollLeft + trilho.offsetLeft + 2, best = 0, dist = 1e9;
+      cards.forEach(function (c, i) { var d = Math.abs(c.offsetLeft - base); if (d < dist) { dist = d; best = i; } });
+      if (trilho.scrollLeft + trilho.clientWidth >= trilho.scrollWidth - 2) best = cards.length - 1;
+      Array.prototype.forEach.call(ctrl.children, function (b, i) { b.setAttribute("aria-current", i === best ? "true" : "false"); });
+    }
+    trilho.addEventListener("scroll", function () { requestAnimationFrame(marcar); }, { passive: true });
+    marcar();
+  }
+
   function sectionHTML(section) {
     var items = (section.items || []).filter(function (item) { return item.active !== false; });
     if (!items.length) return "";
@@ -296,7 +408,12 @@
           "</a>";
       }
 
-      document.getElementById("pd-sections-mount").innerHTML = (data.sections || []).map(sectionHTML).join("");
+      var secs = data.sections || [];
+      function doLayout(l) { return secs.filter(function (x) { return x.layout === l; }); }
+      document.getElementById("pd-destaque-mount").innerHTML = doLayout("destaque").map(destaqueHTML).join("");
+      document.getElementById("pd-carrossel-mount").innerHTML = doLayout("carrossel").map(carrosselHTML).join("");
+      document.getElementById("pd-sections-mount").innerHTML = secs.filter(function (x) { return !x.layout; }).map(sectionHTML).join("");
+      initGuias();
     } catch (e) {
       console.warn(e);
       document.getElementById("pd-hero").innerHTML = '<p class="empty-state">Não foi possível carregar o conteúdo da página agora.</p>';
