@@ -325,6 +325,67 @@
         }
       ],
       "bundleWith": []
+    },
+    {
+      "active": false,
+      "slug": "manual-destrave-ameli",
+      "kicker": "Manual de bolso · Sécurité sociale",
+      "title": "Manual Destrave da Ameli",
+      "summary": "Domiciliação, abertura de direitos e cadastro do estudante estrangeiro na Ameli, com a fonte oficial e a data de cada item.",
+      "description": "Feito para quem chegou à França e trava no mesmo ponto: o dossiê da Ameli não anda porque o endereço, o comprovante ou a ordem dos passos está errado. O Manual mostra por onde começar, os bloqueios mais comuns, como fazer a domiciliação na ordem certa e o que fazer enquanto o cartão não chega. Cada afirmação traz a fonte oficial, o link e a data de \"consultado em\". É um plano, não uma garantia de resultado, e não é aconselhamento médico nem jurídico. Casos fora do guia (sem status regular, OQTF ou recusa) pedem a préfecture, um advogado ou uma ligação.",
+      "image": "",
+      "gallery": [],
+      "price": 9,
+      "launchNote": "Preço de lançamento para os 20 primeiros compradores. Depois, 14 €.",
+      "guaranteeDays": 7,
+      "features": [
+        "Mapa do caminho: por onde começar e em que ordem avançar com a Ameli",
+        "Os bloqueios mais comuns do dossiê, e como reconhecer o seu caso",
+        "Domiciliação passo a passo, com a ordem certa: atualizar a Ameli só depois do comprovante",
+        "Três modelos em francês com resumo em português: e-mail à CPAM, attestation d'hébergement e pedido de atualização de endereço",
+        "O que fazer enquanto o cartão não chega",
+        "Fonte oficial, trecho, link e data de \"consultado em\" em cada item",
+        "Atualizações de fontes e informações por 12 meses",
+        "4 cupons de 5 € na ligação de 20 min (válidos por 30 dias)"
+      ],
+      "faq": [
+        {
+          "q": "Como eu recebo o Manual?",
+          "a": "Por e-mail, em alguns minutos depois do pagamento, com um link só seu. Olhe também a caixa de spam. Se não chegar em 24 horas, responda ao recibo do Stripe ou me chame no Instagram."
+        },
+        {
+          "q": "Posso pedir o dinheiro de volta?",
+          "a": "Sim. Há garantia de 7 dias: se o Manual não for o que você esperava, é só pedir por e-mail em até 7 dias e eu devolvo o valor (CGV, artigo 11)."
+        },
+        {
+          "q": "Por quanto tempo tenho acesso e atualizações?",
+          "a": "12 meses a partir da compra. Quando uma regra ou uma fonte mudar, a página é atualizada, o link continua o mesmo e você recebe o aviso por e-mail."
+        },
+        {
+          "q": "O Manual resolve o meu caso?",
+          "a": "Ele é um plano com fontes oficiais, não uma promessa de resultado, e não é aconselhamento médico nem jurídico. Se o seu caso é de quem está sem status regular, com OQTF ou com recusa, procure a préfecture, um advogado ou uma ligação comigo."
+        },
+        {
+          "q": "Os cupons de ligação, como funcionam?",
+          "a": "O e-mail de entrega traz 4 códigos de 5 € (DOMICILIACAO-5, ABERTURA-5, ESTUDANTE-5 e MUDANCA-5) para a ligação de 20 min, válidos por 30 dias. Você responde o e-mail com o código e eu mando o link de pagamento com o desconto."
+        }
+      ],
+      "bundleWith": [],
+      "stripeLink": "",
+      "nextSteps": [
+        {
+          "title": "Abra o e-mail da compra",
+          "text": "O link único chega em alguns minutos. Olhe também o spam."
+        },
+        {
+          "title": "Guarde o e-mail",
+          "text": "Ele traz o seu link, os 4 cupons da ligação e o prazo de 12 meses de atualizações."
+        },
+        {
+          "title": "Travou em algum ponto?",
+          "text": "Responda o próprio e-mail da compra."
+        }
+      ]
     }
   ]
 }
