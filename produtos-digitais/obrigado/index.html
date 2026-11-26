@@ -208,8 +208,8 @@
     // Manual / Guia vivo Destrave da Ameli — o link único é gerado pelo Worker
     // (webhook do Stripe, crmGuiaCompra) e vai SÓ por e-mail: esta página nunca
     // mostra nem recebe a chave de acesso.
-    if (result.slug === "manual-destrave-ameli" || result.slug === "guia-vivo-destrave-ameli") {
-      const p = product || { slug: result.slug, title: result.slug === "guia-vivo-destrave-ameli" ? "Guia vivo Destrave da Ameli" : "Manual Destrave da Ameli", nextSteps: [] };
+    if (result.slug === "manual-destrave-domiciliacao" || result.slug === "guia-vivo-destrave-ameli") {
+      const p = product || { slug: result.slug, title: result.slug === "guia-vivo-destrave-ameli" ? "Guia vivo Destrave da Ameli" : "Manual Destrave: Endereço e Domiciliação", nextSteps: [] };
       renderConfirm(root, p, {
         amount: result.amount,
         lead: "O link único chega por e-mail em alguns minutos (olhe também o spam). Se não chegar em 24 horas, me chame no Instagram.",

@@ -28,15 +28,21 @@ const SEGREDO = 'whsec_teste_segredo_do_endpoint';
 const PLINK_9 = 'plink_manual_9', PLINK_14 = 'plink_manual_14', PLINK_VIVO = 'plink_vivo_19';
 const CID = '11111111-2222-4333-8444-555555555555';
 const mkEnv = (extra = {}) => ({ STRIPE_WEBHOOK_SECRET: SEGREDO, STRIPE_SECRET_KEY: 'sk_test_x', SUPABASE_SERVICE_ROLE_KEY: 'srv', BREVO_API_KEY: 'k',
-  BREVO_SENDER_EMAIL: 'contato@example.org', CRM_REPLY_TO: 'respostas@example.org', STRIPE_PLINK_MANUAL: PLINK_9 + ', ' + PLINK_14, STRIPE_PLINK_GUIA_VIVO: PLINK_VIVO,
+  BREVO_SENDER_EMAIL: 'contato@example.org', CRM_REPLY_TO: 'respostas@example.org', STRIPE_PLINK_MANUAL_DOMICILIACAO: PLINK_9 + ', ' + PLINK_14, STRIPE_PLINK_GUIA_VIVO: PLINK_VIVO,
   REVIEWS_KV: new KV(), ...extra });
 
 const agora = Math.floor(Date.now() / 1000);
 const assina = (corpo) => `t=${agora},v1=${createHmac('sha256', SEGREDO).update(agora + '.' + corpo).digest('hex')}`;
 const hook = (evento, env) => { const corpo = JSON.stringify(evento);
   return worker.fetch(new Request('https://w.example/api/stripe/webhook', { method: 'POST', headers: { 'Stripe-Signature': assina(corpo) }, body: corpo }), env, {}); };
-const api = (env, caminho, chave, ip = '1.1.1.1') => worker.fetch(new Request('https://w.example/api/guia' + caminho, { headers: { 'CF-Connecting-IP': ip, ...(chave ? { Authorization: 'Bearer ' + chave } : {}) } }), env, {});
+const api = async (env, caminho, chave, ip = '1.1.1.1') => { const r = await worker.fetch(new Request('https://w.example/api/guia' + caminho, { headers: { 'CF-Connecting-IP': ip, ...(chave ? { Authorization: 'Bearer ' + chave } : {}) } }), env, ctxFalso); await Promise.all(esperar.splice(0)); return r; };
 const get = (env, caminho) => worker.fetch(new Request('https://w.example' + caminho), env, {});
+const esperar = [];
+const ctxFalso = { waitUntil: (p) => esperar.push(p) };
+class D1 {
+  constructor() { this.sql = []; this.linhas = new Map(); }
+  prepare(sql) { const d1 = this; return { bind: (...a) => ({ run: async () => { d1.sql.push({ sql, a }); if (/INSERT INTO guia_uso/.test(sql)) { const k = a.join('|'); d1.linhas.set(k, (d1.linhas.get(k) || 0) + 1); } return {}; } }), run: async () => { d1.sql.push({ sql, a: [] }); return {}; } }; }
+}
 
 let chamadas = [];
 function fakeFetch(regras) {
@@ -58,7 +64,7 @@ const ENTREGUE = [/\/rpc\/crm_compra_entregue$/, { status: 204 }];
 const BREVO = [/api\.brevo\.com/, { body: { messageId: '<g1@x.net>' } }];
 const HIST = [/\/rest\/v1\/emails_enviados$/, { status: 201, body: [] }];
 const fluxo = (reg = REG()) => [reg, ENTREGUE, BREVO, HIST];
-const SESSAO = (extra = {}) => ({ id: 'cs_g1', object: 'checkout.session', mode: 'payment', payment_status: 'paid', client_reference_id: 'manual-destrave-ameli', payment_link: PLINK_9,
+const SESSAO = (extra = {}) => ({ id: 'cs_g1', object: 'checkout.session', mode: 'payment', payment_status: 'paid', client_reference_id: 'manual-destrave-domiciliacao', payment_link: PLINK_9,
   amount_total: 900, currency: 'eur', created: agora, customer_details: { email: 'Ana@Example.com', name: 'Ana Maria' }, metadata: {}, ...extra });
 const EV = (obj = SESSAO(), tipo = 'checkout.session.completed', id = 'evt_g1') => ({ id, type: tipo, created: agora, data: { object: obj } });
 const quieto = async (fn) => { const a = [console.log, console.error, console.warn]; const logs = []; console.log = console.error = console.warn = (...x) => logs.push(x.join(' ')); try { return [await fn(), logs]; } finally { [console.log, console.error, console.warn] = a; } };
@@ -69,18 +75,18 @@ let [res, logs] = await quieto(() => hook(EV(), env));
 let j = await res.json();
 check('200, entregue', res.status === 200 && j.ok === true && j.entregue === true);
 const reg = toca(/crm_compra_registrar/)[0];
-check('registra no CRM com a sessão, o produto, o e-mail minúsculo, centavos e EUR', reg.body.p_referencia === 'cs_g1' && reg.body.p_slug === 'manual-destrave-ameli' && reg.body.p_email === 'ana@example.com' && reg.body.p_valor_centavos === 900 && reg.body.p_moeda === 'EUR');
+check('registra no CRM com a sessão, o produto, o e-mail minúsculo, centavos e EUR', reg.body.p_referencia === 'cs_g1' && reg.body.p_slug === 'manual-destrave-domiciliacao' && reg.body.p_email === 'ana@example.com' && reg.body.p_valor_centavos === 900 && reg.body.p_moeda === 'EUR');
 check('chama o banco só com a service_role', reg.headers.Authorization === 'Bearer srv');
 const chaves = env.REVIEWS_KV.chaves('guia:chave:');
 check('uma chave única de 43 caracteres, ligada à sessão', chaves.length === 1 && /^guia:chave:[A-Za-z0-9_-]{43}$/.test(chaves[0]) && env.REVIEWS_KV.m.get('guia:sessao:cs_g1') === chaves[0].slice('guia:chave:'.length));
 const token = chaves[0].slice('guia:chave:'.length);
 const regKv = JSON.parse(env.REVIEWS_KV.m.get(chaves[0]));
-check('a chave guarda produto, sessão, validade e revogado=false, e NUNCA o e-mail', regKv.slug === 'manual-destrave-ameli' && regKv.sessao === 'cs_g1' && regKv.revogado === false && regKv.expira_em === ACESSO && !JSON.stringify(regKv).includes('ana@'));
+check('a chave guarda produto, sessão, validade e revogado=false, e NUNCA o e-mail', regKv.slug === 'manual-destrave-domiciliacao' && regKv.sessao === 'cs_g1' && regKv.revogado === false && regKv.expira_em === ACESSO && !JSON.stringify(regKv).includes('ana@'));
 const mail = toca(/api\.brevo\.com/)[0];
 check('um e-mail só, para o e-mail do Stripe, com o remetente e a resposta configurados', toca(/api\.brevo\.com/).length === 1 && mail.body.to[0].email === 'ana@example.com' && mail.body.sender.email === 'contato@example.org' && mail.body.replyTo.email === 'respostas@example.org');
 check('o e-mail leva o link único do próprio Worker, com a chave depois do # (não vai ao servidor nem ao log)', mail.body.textContent.includes('https://w.example/guia/#k=' + token) && mail.body.htmlContent.includes('/guia/#k=' + token));
-check('os 4 cupons, 12 meses de atualização, garantia de 7 dias e "responda este e-mail"', ['DOMICILIACAO-5', 'ABERTURA-5', 'ESTUDANTE-5', 'MUDANCA-5'].every((c) => mail.body.textContent.includes(c)) &&
-  /12 meses/.test(mail.body.textContent) && /7 dias/.test(mail.body.textContent) && /responder? este e-mail|responda este e-mail/.test(mail.body.textContent) && mail.body.subject === 'Seu Manual Destrave da Ameli chegou');
+check('só os cupons que existem neste manual (DOMICILIACAO-5 e MUDANCA-5), 12 meses de atualização, garantia de 7 dias e "responda este e-mail"', ['DOMICILIACAO-5', 'MUDANCA-5'].every((c) => mail.body.textContent.includes(c)) && !/ABERTURA-5|ESTUDANTE-5/.test(mail.body.textContent) &&
+  /12 meses/.test(mail.body.textContent) && /7 dias/.test(mail.body.textContent) && /responder? este e-mail|responda este e-mail/.test(mail.body.textContent) && mail.body.subject === 'Seu Manual Destrave: Endereço e Domiciliação chegou');
 check('nenhum [trecho entre colchetes] esquecido e saudação com o primeiro nome', !/\[[^\]\n]{2,60}\]/.test(mail.body.textContent) && mail.body.textContent.startsWith('Oi Ana,'));
 const hist = toca(/emails_enviados$/)[0];
 check('o histórico fica na ficha, SEM o link', hist.body.contato_id === CID && hist.body.modelo === 'guia_compra' && !hist.body.corpo.includes(token) && hist.body.corpo.includes('[link do guia, só do comprador]'));
@@ -117,9 +123,9 @@ for (const [rotulo, obj] of casos) {
 env = mkEnv(); chamadas = []; fakeFetch(fluxo());
 [res] = await quieto(() => hook(EV(SESSAO({ payment_status: 'unpaid' })), env)); j = await res.json();
 check('ainda não pago: ignorado', res.status === 200 && j.ignorado === true && chamadas.length === 0);
-env = mkEnv({ STRIPE_PLINK_MANUAL: undefined }); chamadas = []; fakeFetch(fluxo());
+env = mkEnv({ STRIPE_PLINK_MANUAL_DOMICILIACAO: undefined }); chamadas = []; fakeFetch(fluxo());
 [res] = await quieto(() => hook(EV(), env));
-check('sem STRIPE_PLINK_MANUAL: 500 (falha fechada; o Stripe tenta de novo quando você configurar)', res.status === 500 && chamadas.length === 0);
+check('sem STRIPE_PLINK_MANUAL_DOMICILIACAO: 500 (falha fechada; o Stripe tenta de novo quando você configurar)', res.status === 500 && chamadas.length === 0);
 env = mkEnv(); chamadas = []; fakeFetch(fluxo());
 [res] = await quieto(() => hook(EV(SESSAO({ customer_details: {} })), env));
 check('sem e-mail do comprador: 500, nada entregue', res.status === 500 && toca(/api\.brevo\.com/).length === 0);
@@ -130,6 +136,7 @@ check('falta rodar crm-compras.sql: 500 e nada entregue', res.status === 500 && 
 console.log('\n== Guia vivo, 1:1 e pagamento que confirma depois ==');
 env = mkEnv(); chamadas = []; fakeFetch(fluxo());
 [res] = await quieto(() => hook(EV(SESSAO({ id: 'cs_v1', client_reference_id: 'guia-vivo-destrave-ameli', payment_link: PLINK_VIVO, amount_total: 1900 })), env));
+check('Guia vivo: os 4 cupons', ['DOMICILIACAO-5', 'ABERTURA-5', 'ESTUDANTE-5', 'MUDANCA-5'].every((c) => toca(/api\.brevo\.com/)[0].body.textContent.includes(c)));
 check('Guia vivo no link de 19 €: entregue, com o nome do produto', res.status === 200 && toca(/api\.brevo\.com/)[0].body.subject === 'Seu Guia vivo Destrave da Ameli chegou' && toca(/crm_compra_registrar/)[0].body.p_slug === 'guia-vivo-destrave-ameli');
 env = mkEnv(); chamadas = []; fakeFetch(fluxo());
 [res] = await quieto(() => hook(EV(SESSAO({ payment_link: PLINK_14, amount_total: 1400 })), env));
@@ -147,8 +154,8 @@ await quieto(() => hook(EV(), env));
 const tk = env.REVIEWS_KV.chaves('guia:chave:')[0].slice('guia:chave:'.length);
 const kvm = env.REVIEWS_KV.m;
 kvm.set('guia:pagina', '<!doctype html><html><body>CASCO sem texto pago</body></html>');
-kvm.set('guia:manual:manual-destrave-ameli', JSON.stringify({ meta: { versao: '1.0' }, capitulos: [{ id: '1', titulo: 'Domiciliação' }] }));
-kvm.set('guia:cap:manual-destrave-ameli:1', JSON.stringify({ id: '1', titulo: 'Domiciliação', grupos: [{ id: 'a' }] }));
+kvm.set('guia:manual:manual-destrave-domiciliacao', JSON.stringify({ meta: { versao: '1.0' }, capitulos: [{ id: '1', titulo: 'Domiciliação' }] }));
+kvm.set('guia:cap:manual-destrave-domiciliacao:1', JSON.stringify({ id: '1', titulo: 'Domiciliação', grupos: [{ id: 'a' }] }));
 const putsAntes = [...kvm.keys()].filter((k) => k.startsWith('throttle:')).length;
 let res2 = await get(env, '/guia/');
 check('/guia/ serve o casco, sem chave nenhuma', res2.status === 200 && (await res2.text()).includes('CASCO') );
@@ -176,7 +183,7 @@ check('chave revogada: 401 no índice e no capítulo', (await api(env, '/manual'
 kvm.set(k, JSON.stringify({ ...orig, expira_em: new Date(Date.now() - 1000).toISOString() }));
 res2 = await api(env, '/manual', tk);
 check('passou dos 12 meses: 401 "expirado"', res2.status === 401 && (await res2.json()).error === 'expirado');
-kvm.set(k, JSON.stringify(orig)); kvm.delete('guia:manual:manual-destrave-ameli');
+kvm.set(k, JSON.stringify(orig)); kvm.delete('guia:manual:manual-destrave-domiciliacao');
 [res2] = await quieto(() => api(env, '/manual', tk));
 check('comprador válido mas índice ainda não carregado: 503 (e erro no log para você)', res2.status === 503);
 kvm.set('guia:chave:' + 'C'.repeat(43), JSON.stringify({ ...orig, slug: 'produto-que-nao-existe' }));
@@ -190,6 +197,60 @@ res2 = await api(env, '/manual', tk, '9.9.9.9');
 check('o limite só pega quem erra: o mesmo IP com a chave certa continua entrando', res2.status !== 429);
 res2 = await worker.fetch(new Request('https://w.example/api/guia/manual', { method: 'POST', headers: { Authorization: 'Bearer ' + tk } }), env, {});
 check('só GET', res2.status === 404);
+
+console.log('\n== Rascunho: o guia novo só aparece para quem tem a chave de prévia ==');
+env = mkEnv(); chamadas = []; fakeFetch(fluxo());
+await quieto(() => hook(EV(), env));
+const buyer = env.REVIEWS_KV.chaves('guia:chave:')[0].slice('guia:chave:'.length);
+const mk = env.REVIEWS_KV.m;
+mk.set('guia:pagina', 'CASCO NO AR'); mk.set('guia:rascunho:pagina', 'CASCO RASCUNHO');
+mk.set('guia:manual:manual-destrave-domiciliacao', JSON.stringify({ meta: { versao: '1.0' }, capitulos: [] }));
+mk.set('guia:rascunho:manual:manual-destrave-domiciliacao', JSON.stringify({ meta: { versao: '2.0-rascunho' }, capitulos: [] }));
+mk.set('guia:cap:manual-destrave-domiciliacao:1', JSON.stringify({ id: '1', titulo: 'NO AR', grupos: [] }));
+mk.set('guia:rascunho:cap:manual-destrave-domiciliacao:1', JSON.stringify({ id: '1', titulo: 'RASCUNHO', grupos: [] }));
+const PREVIA = 'P'.repeat(43);
+mk.set('guia:chave:' + PREVIA, JSON.stringify({ slug: 'manual-destrave-domiciliacao', canal: 'rascunho', criado_em: new Date().toISOString(), expira_em: '2100-01-01T00:00:00.000Z', revogado: false }));
+check('/guia/rascunho/ serve o casco de rascunho e /guia/ o do ar', (await (await get(env, '/guia/rascunho/')).text()) === 'CASCO RASCUNHO' && (await (await get(env, '/guia/')).text()) === 'CASCO NO AR');
+check('/guia/rascunho não vira uma chave chamada "rascunho" (nada de redirecionamento)', (await get(env, '/guia/rascunho')).status === 200);
+check('o casco de rascunho também sai com noindex e sem cache', /noindex/.test((await get(env, '/guia/rascunho/')).headers.get('X-Robots-Tag')) && (await get(env, '/guia/rascunho/')).headers.get('Cache-Control') === 'no-store');
+let r5 = await (await api(env, '/manual', PREVIA)).json();
+check('a chave de prévia lê o índice e o capítulo de RASCUNHO', r5.meta.versao === '2.0-rascunho' && (await (await api(env, '/capitulos/1', PREVIA)).json()).titulo === 'RASCUNHO');
+r5 = await (await api(env, '/manual', buyer)).json();
+check('o comprador continua lendo SÓ o que está no ar', r5.meta.versao === '1.0' && (await (await api(env, '/capitulos/1', buyer)).json()).titulo === 'NO AR');
+mk.delete('guia:rascunho:cap:manual-destrave-domiciliacao:1');
+check('capítulo que falta no rascunho: 404 (não cai no do ar por engano)', (await api(env, '/capitulos/1', PREVIA)).status === 404);
+mk.set('guia:chave:' + PREVIA, JSON.stringify({ ...JSON.parse(mk.get('guia:chave:' + PREVIA)), revogado: true }));
+check('chave de prévia revogada: 401', (await api(env, '/manual', PREVIA)).status === 401);
+
+console.log('\n== Métricas (nível A): só contadores, sem dado pessoal ==');
+env = mkEnv({ EVENTS_DB: new D1() }); chamadas = []; fakeFetch(fluxo());
+await quieto(() => hook(EV(), env));
+const tkm = env.REVIEWS_KV.chaves('guia:chave:')[0].slice('guia:chave:'.length), km = env.REVIEWS_KV.m;
+km.set('guia:manual:manual-destrave-domiciliacao', JSON.stringify({ meta: {}, capitulos: [] }));
+km.set('guia:cap:manual-destrave-domiciliacao:2', JSON.stringify({ id: '2', grupos: [] }));
+km.set('guia:rascunho:manual:manual-destrave-domiciliacao', JSON.stringify({ meta: {}, capitulos: [] }));
+km.set('guia:chave:' + 'Q'.repeat(43), JSON.stringify({ slug: 'manual-destrave-domiciliacao', canal: 'rascunho', criado_em: 'x', expira_em: '2100-01-01T00:00:00.000Z', revogado: false }));
+await api(env, '/manual', tkm, '3.3.3.3'); await api(env, '/capitulos/2', tkm, '3.3.3.3'); await api(env, '/capitulos/2', tkm, '4.4.4.4');
+const dia = new Date().toISOString().slice(0, 10);
+check('conta 1 abertura do índice e 2 do capítulo 2, no dia, por produto', env.EVENTS_DB.linhas.get(`${dia}|manual-destrave-domiciliacao|indice|`) === 1 && env.EVENTS_DB.linhas.get(`${dia}|manual-destrave-domiciliacao|capitulo|2`) === 2);
+const gravados = JSON.stringify(env.EVENTS_DB.sql);
+check('NADA identifica a pessoa: nem IP, nem chave, nem sessão, nem e-mail no que foi gravado', !/3\.3\.3\.3|4\.4\.4\.4/.test(gravados) && !gravados.includes(tkm) && !/cs_g1|ana@/i.test(gravados));
+check('a tabela só tem dia, produto, tipo, capítulo e contagem', /\(dia TEXT NOT NULL, slug TEXT NOT NULL, tipo TEXT NOT NULL, cap TEXT NOT NULL DEFAULT '', n INTEGER NOT NULL DEFAULT 0/.test(gravados));
+const antes = env.EVENTS_DB.linhas.size, total = [...env.EVENTS_DB.linhas.values()].reduce((a, b) => a + b, 0);
+await api(env, '/manual', 'Q'.repeat(43), '5.5.5.5');
+check('a prévia (rascunho) NÃO entra na métrica', env.EVENTS_DB.linhas.size === antes && [...env.EVENTS_DB.linhas.values()].reduce((a, b) => a + b, 0) === total);
+await api(env, '/manual', 'Z'.repeat(43), '6.6.6.6'); await api(env, '/capitulos/99', tkm, '6.6.6.6');
+check('chave inválida e capítulo inexistente não contam', [...env.EVENTS_DB.linhas.values()].reduce((a, b) => a + b, 0) === total);
+env = mkEnv({ EVENTS_DB: { prepare: () => { throw new Error('D1 fora do ar'); } } }); chamadas = []; fakeFetch(fluxo());
+await quieto(() => hook(EV(), env));
+const tk3 = env.REVIEWS_KV.chaves('guia:chave:')[0].slice('guia:chave:'.length);
+env.REVIEWS_KV.m.set('guia:manual:manual-destrave-domiciliacao', JSON.stringify({ meta: {}, capitulos: [] }));
+[res2] = await quieto(() => api(env, '/manual', tk3));
+check('D1 fora do ar: o comprador continua lendo o guia (a métrica nunca derruba)', res2.status === 200);
+env = mkEnv(); chamadas = []; fakeFetch(fluxo()); await quieto(() => hook(EV(), env));
+const tk4 = env.REVIEWS_KV.chaves('guia:chave:')[0].slice('guia:chave:'.length);
+env.REVIEWS_KV.m.set('guia:manual:manual-destrave-domiciliacao', JSON.stringify({ meta: {}, capitulos: [] }));
+check('sem D1 configurado o guia funciona do mesmo jeito', (await api(env, '/manual', tk4)).status === 200);
 
 console.log(`\n${passed} passaram, ${failed} falharam`);
 process.exit(failed ? 1 : 0);

@@ -48,17 +48,17 @@ async function main() {
   };
   const ana = await comConta('ana@example.com', 'ana@example.com');
   const reg = (o) => asServico(() => um('select crm_compra_registrar($1,$2,$3,$4,$5,$6,$7) r',
-    [o.ref, o.slug ?? 'manual-destrave-ameli', o.email, o.valor ?? 900, o.moeda ?? 'EUR', o.quando ?? '2026-11-25T10:00:00Z', o.origem ?? null])).then((x) => x.r);
+    [o.ref, o.slug ?? 'manual-destrave-domiciliacao', o.email, o.valor ?? 900, o.moeda ?? 'EUR', o.quando ?? '2026-11-25T10:00:00Z', o.origem ?? null])).then((x) => x.r);
   const nCompras = async () => (await um('select count(*)::int n from compras')).n;
 
   console.log('== Quem pode chamar ==');
-  const args = ['cs_x', 'manual-destrave-ameli', 'ana@example.com', 900, 'EUR', null, null];
+  const args = ['cs_x', 'manual-destrave-domiciliacao', 'ana@example.com', 900, 'EUR', null, null];
   const chama = () => db.query('select crm_compra_registrar($1,$2,$3,$4,$5,$6,$7)', args);
   check('só o Worker (service_role): nem anônimo, nem a pessoa, nem a admin', !(await attempt(() => asAnon(chama))).ok && !(await attempt(() => asUser(ana.u.id, chama))).ok && !(await attempt(() => asUser(admin.id, chama))).ok);
   const entrega = () => db.query("select crm_compra_entregue('cs_x')");
   check('entregue: também só o Worker', !(await attempt(() => asAnon(entrega))).ok && !(await attempt(() => asUser(ana.u.id, entrega))).ok && !(await attempt(() => asUser(admin.id, entrega))).ok);
-  check('produto fora da lista, e-mail ruim, valor zero, moeda inválida e referência vazia são recusados',
-    await falha(() => reg({ ref: 'a', slug: 'outro-produto', email: 'a@example.com' }), 'compra_invalida') && await falha(() => reg({ ref: 'a', email: 'sem-arroba' }), 'compra_invalida') &&
+  check('slug fora do formato, e-mail ruim, valor zero, moeda inválida e referência vazia são recusados',
+    await falha(() => reg({ ref: 'a', slug: 'Produto Inválido', email: 'a@example.com' }), 'compra_invalida') && await falha(() => reg({ ref: 'a', slug: '-comeca-com-hifen', email: 'a@example.com' }), 'compra_invalida') && await falha(() => reg({ ref: 'a', email: 'sem-arroba' }), 'compra_invalida') &&
     await falha(() => reg({ ref: 'a', email: 'a@example.com', valor: 0 }), 'compra_invalida') && await falha(() => reg({ ref: 'a', email: 'a@example.com', moeda: 'eu' }), 'compra_invalida') &&
     await falha(() => reg({ ref: '', email: 'a@example.com' }), 'compra_invalida'));
   check('nada foi gravado pelas recusas', (await nCompras()) === 0);
@@ -101,6 +101,12 @@ async function main() {
   check('reenvio de compra sem ficha continua sem ficha (não inventa ligação)', dupDana.duplicado === true && dupDana.contato_id === null);
   const apos = await um("select count(*)::int n from contatos where email='dana@example.com'");
   check('nenhuma ficha duplicada para o e-mail da Dana', apos.n === 1);
+
+  console.log('\n== Banco que já rodou a versão antiga (lista fixa de produtos) ==');
+  await db.exec("alter table compras drop constraint compras_slug_check; alter table compras add constraint compras_slug_check check (slug in ('manual-destrave-ameli', 'guia-vivo-destrave-ameli')) not valid");
+  check('com a regra antiga, um produto novo é recusado', !(await attempt(() => db.query("insert into compras (referencia, slug, email_pagamento, valor_centavos, moeda, acesso_ate) values ('velho','manual-novo','a@example.com',1,'EUR',now())"))).ok);
+  check('rodar o arquivo de novo troca a regra e preserva as compras', (await attempt(() => db.exec(sql))).ok && (await nCompras()) >= 5);
+  check('depois disso, um manual novo entra sem mexer no banco', (await reg({ ref: 'cs_novo', email: 'ana@example.com', slug: 'manual-destrave-outro', valor: 900 })).duplicado === false);
 
   console.log('\n== Entrega ==');
   await asServico(() => db.query("select crm_compra_entregue('cs_ana')"));

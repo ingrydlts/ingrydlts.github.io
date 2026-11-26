@@ -559,6 +559,7 @@ async function handleInsightsSummary(request, env) {
     shareClicks: shareClicks.results || [],
     daily: daily.results || [],
     purchases: purchases.results || [],
+    guiaUso: await guiaUsoResumo(env),
     revenueBySource: revenueBySource.results || [],
     affiliateClicks: affiliateClicks.results || [],
     quiz: {
@@ -5453,40 +5454,47 @@ async function crmStripeFatura(env, fatura) {
   return json({ ok: true, pagamento: r });
 }
 
-// ---------- Guias digitais pagos: Manual Destrave da Ameli (e, depois, Guia vivo) ----------
+// ---------- Guias digitais pagos: Manual Destrave: Endereço e Domiciliação (e, depois, outros manuais e o Guia vivo) ----------
 // Compra no Stripe (Payment Link) -> webhook (a mesma rota e a mesma assinatura de cima) -> compra no CRM (crm-compras.sql) ->
-// chave única do comprador na KV -> e-mail de entrega (Brevo) com o link /guia/<chave> e os 4 cupons.
+// chave única do comprador na KV -> e-mail de entrega (Brevo) com o link /guia/#k=<chave> e os cupons do manual.
 //
 //   KV (REVIEWS_KV, só com estes prefixos):
 //     guia:sessao:<id da sessão Stripe>  -> a chave desta compra (o reenvio do Stripe não cria uma segunda)
-//     guia:chave:<chave>                 -> { slug, sessao, criado_em, expira_em, revogado }  (nunca o e-mail)
+//     guia:chave:<chave>                 -> { slug, sessao, criado_em, expira_em, revogado, canal? }  (nunca o e-mail)
 //     guia:pagina                        -> o casco do guia (HTML + CSS + JS, SEM texto pago), servido em /guia/
 //     guia:manual:<slug>                 -> { meta, capitulos[] sem "grupos" } (o índice)
 //     guia:cap:<slug>:<id>               -> um capítulo completo
-//     O texto pago (manual e capítulos) é carregado por você com `wrangler kv bulk put` (nunca vai ao repositório).
+//     guia:rascunho:pagina|manual:<slug>|cap:<slug>:<id> -> o MESMO conjunto, em rascunho: só quem tem uma chave com canal "rascunho" vê
+//     guia:anterior:...                  -> cópia do que estava no ar antes da última promoção (para "voltar a versão anterior")
+//     O texto pago é carregado por você (ou pelo Claude, a seu pedido) com a API do Cloudflare ou `wrangler kv bulk put`; nunca vai ao repositório.
 //   Revogar um link: troque "revogado" para true no valor de guia:chave:<chave>.
 //   O link do e-mail é <worker>/guia/#k=<chave>: a chave fica depois do "#", que o navegador não envia ao servidor (não entra
 //   em log nem em Referer). O casco lê a chave de lá, pede o texto à API com "Authorization: Bearer <chave>" e limpa a URL.
 //   GET /guia/                       (público) o casco, sem nada pago dentro
+//   GET /guia/rascunho/              (público) o casco em rascunho (também sem texto pago); o texto vem da API, só com chave de rascunho
 //   GET /guia/<chave>                (público) redireciona para /guia/#k=<chave> (link digitado à mão)
 //   GET /api/guia/manual             (Bearer) o índice do guia da chave
 //   GET /api/guia/capitulos/<id>     (Bearer) um capítulo
 //   Chave inexistente, revogada ou vencida (12 meses): 401. Tentativas inválidas: 30 por IP a cada 10 min (429).
+//   Uso (nível A, sem dado pessoal): cada abertura do índice e de cada capítulo soma 1 em D1 guia_uso (dia, produto, tipo, capítulo).
+//   Não grava IP, chave, e-mail, sessão nem navegador, e não conta acessos de rascunho. Painel: /api/insights/summary -> guiaUso.
 //
-//   Variáveis: STRIPE_PLINK_MANUAL e STRIPE_PLINK_GUIA_VIVO (ids plink_... dos Payment Links, separados por vírgula: o link de 9 €
-//   e o de 14 € do Manual). O client_reference_id vem da URL e o comprador pode editá-lo; o id do Payment Link, não. Sem a variável,
-//   o webhook responde 500 (o Stripe tenta de novo) em vez de aceitar qualquer link. Ver README.md, seção 36.
+//   Variáveis: uma por produto, com os ids plink_... dos Payment Links separados por vírgula (o de 9 € e o de 14 €):
+//   STRIPE_PLINK_MANUAL_DOMICILIACAO e STRIPE_PLINK_GUIA_VIVO. O client_reference_id vem da URL e o comprador pode editá-lo; o id do
+//   Payment Link, não. Sem a variável, o webhook responde 500 (o Stripe tenta de novo) em vez de aceitar qualquer link.
+//   Manual novo = uma entrada em GUIA_PRODUTOS + a variável do Payment Link (o SQL só confere o formato do slug). Ver README.md, seção 36.
 const GUIA_PRODUTOS = {
-  'manual-destrave-ameli': {
-    nome: 'Manual Destrave da Ameli', links: 'STRIPE_PLINK_MANUAL', minCentavos: 900,
-    inclui: 'O Manual: domiciliação, abertura de direitos e o cadastro do estudante estrangeiro, com a fonte oficial e a data de "consultado em" de cada item.'
+  'manual-destrave-domiciliacao': {
+    nome: 'Manual Destrave: Endereço e Domiciliação', links: 'STRIPE_PLINK_MANUAL_DOMICILIACAO', minCentavos: 900,
+    inclui: 'O Manual de endereço e domiciliação: como pedir a domiciliação passo a passo, o que fazer se você mudou de endereço ou de visto no meio do pedido, modelos de carta e e-mail para adaptar, e a lista do que ainda não foi conferido, com a fonte oficial e a data de "consultado em" de cada item.',
+    cupons: [['DOMICILIACAO-5', 'domiciliação'], ['MUDANCA-5', 'mudança de endereço ou de visto']]
   },
   'guia-vivo-destrave-ameli': {
     nome: 'Guia vivo Destrave da Ameli', links: 'STRIPE_PLINK_GUIA_VIVO', minCentavos: 1900,
-    inclui: 'O Manual completo e a biblioteca de casos finalizados (a dor, a situação, a estratégia, como foi solucionado, em quanto tempo e as lições aprendidas).'
+    inclui: 'O Manual completo e a biblioteca de casos finalizados (a dor, a situação, a estratégia, como foi solucionado, em quanto tempo e as lições aprendidas).',
+    cupons: [['DOMICILIACAO-5', 'domiciliação'], ['ABERTURA-5', 'abertura de direitos'], ['ESTUDANTE-5', 'cadastro do estudante estrangeiro'], ['MUDANCA-5', 'mudança']]
   }
 };
-const GUIA_CUPONS = [['DOMICILIACAO-5', 'domiciliação'], ['ABERTURA-5', 'abertura de direitos'], ['ESTUDANTE-5', 'cadastro do estudante estrangeiro'], ['MUDANCA-5', 'mudança']];
 const GUIA_CUPOM_DIAS = 30;
 const GUIA_TOKEN_RE = /^[A-Za-z0-9_-]{43}$/;
 const GUIA_MARGEM_KV_SEG = 30 * 86400;     // a KV guarda a chave um pouco além do acesso; quem decide é expira_em
@@ -5502,7 +5510,7 @@ function guiaEmail(prod, contatoNome, link, acesso, cupomAte) {
     `- ${prod.inclui}\n` +
     `- Atualizações de fontes e informações por 12 meses, até ${acesso}. O link continua o mesmo: quando uma regra mudar, eu atualizo a página e aviso por e-mail.\n\n` +
     `Travou em algum capítulo? Uma ligação de 20 min custa 5 € a menos (30 € por 25 €). Responda este e-mail com o código do capítulo e eu mando o link de pagamento já com o desconto. Os códigos valem ${GUIA_CUPOM_DIAS} dias, até ${cupomAte}:\n` +
-    GUIA_CUPONS.map(([c, cap]) => `- ${c} (${cap})`).join('\n') + `\n\n` +
+    prod.cupons.map(([c, cap]) => `- ${c} (${cap})`).join('\n') + `\n\n` +
     `Garantia de 7 dias (CGV): se não for o que você esperava, responda este e-mail em até 7 dias e eu devolvo o valor.\n\n` +
     `Um aviso honesto: o guia é um plano, não uma garantia de resultado, e não é aconselhamento médico nem jurídico.\n\n` +
     `Se travar em qualquer ponto, é só responder este e-mail.\n\nIngryd · Por Dentro`;
@@ -5589,11 +5597,12 @@ const GUIA_CSP = "default-src 'none'; script-src 'unsafe-inline'; style-src 'uns
   "img-src https: data:; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'";
 
 // Casco do guia: HTML, CSS e JS sem texto pago. Público de propósito (o texto só vem da API, com a chave).
-async function handleGuiaCasco(env) {
+// O casco em rascunho (/guia/rascunho/) também é público e também não tem texto: o texto de rascunho só sai para chave de rascunho.
+async function handleGuiaCasco(env, rascunho) {
   const cab = { ...GUIA_SEGURANCA, 'Content-Type': 'text/html; charset=utf-8', 'X-Frame-Options': 'DENY', 'Content-Security-Policy': GUIA_CSP };
-  const html = env.REVIEWS_KV ? await env.REVIEWS_KV.get('guia:pagina') : null;
+  const html = env.REVIEWS_KV ? await env.REVIEWS_KV.get(rascunho ? 'guia:rascunho:pagina' : 'guia:pagina') : null;
   if (!html) {
-    console.error('crm/guia: falta guia:pagina (o casco do guia) na KV');
+    console.error('crm/guia: falta ' + (rascunho ? 'guia:rascunho:pagina' : 'guia:pagina') + ' (o casco do guia) na KV');
     return guiaPaginaNeutra(503, 'Estamos atualizando o guia', 'Volte em alguns minutos. Se continuar assim, responda ao e-mail da compra.', cab);
   }
   return new Response(html, { status: 200, headers: cab });
@@ -5616,22 +5625,56 @@ async function guiaConferirChave(request, env, token) {
   return { reg };
 }
 
-async function handleGuiaApi(request, env, caminho) {
+// Uso do guia, nível A (agregado, sem dado pessoal): um contador por dia, produto, tipo (índice ou capítulo) e capítulo.
+// Não recebe IP, chave, e-mail, sessão nem navegador. A tabela é criada na primeira gravação; falha aqui nunca derruba o guia.
+let guiaUsoPronto = false;
+async function guiaUsoRegistrar(env, slug, tipo, cap) {
+  if (!env.EVENTS_DB) return;
+  try {
+    if (!guiaUsoPronto) {
+      await env.EVENTS_DB.prepare("CREATE TABLE IF NOT EXISTS guia_uso (dia TEXT NOT NULL, slug TEXT NOT NULL, tipo TEXT NOT NULL, cap TEXT NOT NULL DEFAULT '', n INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (dia, slug, tipo, cap))").run();
+      guiaUsoPronto = true;
+    }
+    await env.EVENTS_DB.prepare('INSERT INTO guia_uso (dia, slug, tipo, cap, n) VALUES (?, ?, ?, ?, 1) ON CONFLICT(dia, slug, tipo, cap) DO UPDATE SET n = n + 1')
+      .bind(new Date().toISOString().slice(0, 10), slug, tipo, cap || '').run();
+  } catch (e) { console.error('crm/guia: não registrei o uso — ' + (e && e.message)); }
+}
+
+async function handleGuiaApi(request, env, ctx, caminho) {
   const token = (request.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '').trim();
   const c = await guiaConferirChave(request, env, token);
   if (c.erro) return c.erro;
   const cab = { ...GUIA_SEGURANCA, 'Content-Type': 'application/json; charset=utf-8' };
+  const rascunho = c.reg.canal === 'rascunho';
+  const pre = rascunho ? 'guia:rascunho:' : 'guia:';
   const cap = /^\/capitulos\/([^/]+)$/.exec(caminho);
   let chave = null;
-  if (caminho === '/manual') chave = `guia:manual:${c.reg.slug}`;
-  else if (cap && GUIA_CAP_ID_RE.test(cap[1])) chave = `guia:cap:${c.reg.slug}:${cap[1]}`;
+  if (caminho === '/manual') chave = `${pre}manual:${c.reg.slug}`;
+  else if (cap && GUIA_CAP_ID_RE.test(cap[1])) chave = `${pre}cap:${c.reg.slug}:${cap[1]}`;
   else return new Response(JSON.stringify({ error: 'nao_encontrado' }), { status: 404, headers: cab });
   const corpo = await env.REVIEWS_KV.get(chave);
   if (!corpo) {
     if (caminho === '/manual') console.error('crm/guia: falta ' + chave + ' na KV');
     return new Response(JSON.stringify({ error: 'nao_encontrado' }), { status: caminho === '/manual' ? 503 : 404, headers: cab });
   }
+  // Conta só o que o comprador de verdade abriu: a prévia (rascunho) não entra na métrica.
+  if (!rascunho) {
+    const registro = guiaUsoRegistrar(env, c.reg.slug, caminho === '/manual' ? 'indice' : 'capitulo', cap ? cap[1] : '');
+    if (ctx && ctx.waitUntil) ctx.waitUntil(registro); else await registro;
+  }
   return new Response(corpo, { status: 200, headers: cab });
+}
+
+// Para o painel (/api/insights/summary): últimos 30 dias, por capítulo e por dia. Se a tabela ainda não existe, devolve vazio.
+async function guiaUsoResumo(env) {
+  const vazio = { capitulos: [], dias: [] };
+  try {
+    const [caps, dias] = await Promise.all([
+      env.EVENTS_DB.prepare("SELECT slug, tipo, cap, SUM(n) AS n FROM guia_uso WHERE dia >= date('now','-29 day') GROUP BY slug, tipo, cap ORDER BY n DESC").all(),
+      env.EVENTS_DB.prepare("SELECT dia, slug, SUM(n) AS n FROM guia_uso WHERE tipo = 'indice' AND dia >= date('now','-29 day') GROUP BY dia, slug ORDER BY dia").all(),
+    ]);
+    return { capitulos: caps.results || [], dias: dias.results || [] };
+  } catch (e) { return vazio; }
 }
 
 async function handleStripeWebhook(request, env) {
@@ -5914,11 +5957,12 @@ export default {
       );
     }
 
-    if (request.method === 'GET' && (url.pathname === '/guia' || url.pathname === '/guia/')) return await handleGuiaCasco(env);
+    if (request.method === 'GET' && (url.pathname === '/guia' || url.pathname === '/guia/')) return await handleGuiaCasco(env, false);
+    if (request.method === 'GET' && (url.pathname === '/guia/rascunho' || url.pathname === '/guia/rascunho/')) return await handleGuiaCasco(env, true);
     const guiaRota = /^\/guia\/([^/]+)\/?$/.exec(url.pathname);
     if (guiaRota && request.method === 'GET') return Response.redirect(`${url.origin}/guia/#k=${encodeURIComponent(guiaRota[1])}`, 302);
     const guiaApi = /^\/api\/guia(\/.*)$/.exec(url.pathname);
-    if (guiaApi && request.method === 'GET') return await handleGuiaApi(request, env, guiaApi[1]);
+    if (guiaApi && request.method === 'GET') return await handleGuiaApi(request, env, ctx, guiaApi[1]);
 
     try {
       if (url.pathname === '/api/events' && request.method === 'POST') {
