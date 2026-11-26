@@ -35,7 +35,8 @@ const agora = Math.floor(Date.now() / 1000);
 const assina = (corpo) => `t=${agora},v1=${createHmac('sha256', SEGREDO).update(agora + '.' + corpo).digest('hex')}`;
 const hook = (evento, env) => { const corpo = JSON.stringify(evento);
   return worker.fetch(new Request('https://w.example/api/stripe/webhook', { method: 'POST', headers: { 'Stripe-Signature': assina(corpo) }, body: corpo }), env, {}); };
-const pagina = (env, chave, ip = '1.1.1.1') => worker.fetch(new Request('https://w.example/guia/' + chave, { headers: { 'CF-Connecting-IP': ip } }), env, {});
+const api = (env, caminho, chave, ip = '1.1.1.1') => worker.fetch(new Request('https://w.example/api/guia' + caminho, { headers: { 'CF-Connecting-IP': ip, ...(chave ? { Authorization: 'Bearer ' + chave } : {}) } }), env, {});
+const get = (env, caminho) => worker.fetch(new Request('https://w.example' + caminho), env, {});
 
 let chamadas = [];
 function fakeFetch(regras) {
@@ -77,7 +78,7 @@ const regKv = JSON.parse(env.REVIEWS_KV.m.get(chaves[0]));
 check('a chave guarda produto, sessão, validade e revogado=false, e NUNCA o e-mail', regKv.slug === 'manual-destrave-ameli' && regKv.sessao === 'cs_g1' && regKv.revogado === false && regKv.expira_em === ACESSO && !JSON.stringify(regKv).includes('ana@'));
 const mail = toca(/api\.brevo\.com/)[0];
 check('um e-mail só, para o e-mail do Stripe, com o remetente e a resposta configurados', toca(/api\.brevo\.com/).length === 1 && mail.body.to[0].email === 'ana@example.com' && mail.body.sender.email === 'contato@example.org' && mail.body.replyTo.email === 'respostas@example.org');
-check('o e-mail leva o link único do próprio Worker', mail.body.textContent.includes('https://w.example/guia/' + token) && mail.body.htmlContent.includes('/guia/' + token));
+check('o e-mail leva o link único do próprio Worker, com a chave depois do # (não vai ao servidor nem ao log)', mail.body.textContent.includes('https://w.example/guia/#k=' + token) && mail.body.htmlContent.includes('/guia/#k=' + token));
 check('os 4 cupons, 12 meses de atualização, garantia de 7 dias e "responda este e-mail"', ['DOMICILIACAO-5', 'ABERTURA-5', 'ESTUDANTE-5', 'MUDANCA-5'].every((c) => mail.body.textContent.includes(c)) &&
   /12 meses/.test(mail.body.textContent) && /7 dias/.test(mail.body.textContent) && /responder? este e-mail|responda este e-mail/.test(mail.body.textContent) && mail.body.subject === 'Seu Manual Destrave da Ameli chegou');
 check('nenhum [trecho entre colchetes] esquecido e saudação com o primeiro nome', !/\[[^\]\n]{2,60}\]/.test(mail.body.textContent) && mail.body.textContent.startsWith('Oi Ana,'));
@@ -140,36 +141,55 @@ env = mkEnv(); chamadas = []; fakeFetch(fluxo());
 [res] = await quieto(() => hook(EV(SESSAO({ client_reference_id: CID, mode: 'payment', metadata: {} })), env)); j = await res.json();
 check('compra avulsa de outro produto continua seguindo o caminho de antes (1:1): nada do guia', res.status === 200 && toca(/crm_compra_registrar/).length === 0 && toca(/api\.brevo\.com/).length === 0);
 
-console.log('\n== GET /guia/<chave> ==');
+console.log('\n== O casco do guia e a API (a chave vai em Authorization: Bearer) ==');
 env = mkEnv(); chamadas = []; fakeFetch(fluxo());
 await quieto(() => hook(EV(), env));
 const tk = env.REVIEWS_KV.chaves('guia:chave:')[0].slice('guia:chave:'.length);
-env.REVIEWS_KV.m.set('guia:conteudo:manual-destrave-ameli', '<!doctype html><html><body><h1>Manual v1</h1></body></html>');
-res = await pagina(env, tk);
-check('chave certa: 200 e o HTML do guia', res.status === 200 && (await res.text()).includes('Manual v1'));
-check('cabeçalhos: sem cache, noindex, sem referrer, sem script, sem moldura', res.headers.get('Cache-Control') === 'no-store' && /noindex/.test(res.headers.get('X-Robots-Tag')) && res.headers.get('Referrer-Policy') === 'no-referrer' &&
-  !/script-src/.test(res.headers.get('Content-Security-Policy')) && /default-src 'none'/.test(res.headers.get('Content-Security-Policy')) && res.headers.get('X-Frame-Options') === 'DENY');
-for (const [rotulo, ch] of [['chave inventada', 'A'.repeat(43)], ['chave curta', 'abc'], ['chave com caracteres estranhos', '../../etc/passwd'], ['chave de outra compra', 'B'.repeat(43)]]) {
-  res = await pagina(env, ch);
-  check(rotulo + ': 404 neutro, sem vazar nada', res.status === 404 && !(await res.text()).includes('Manual v1'));
+const kvm = env.REVIEWS_KV.m;
+kvm.set('guia:pagina', '<!doctype html><html><body>CASCO sem texto pago</body></html>');
+kvm.set('guia:manual:manual-destrave-ameli', JSON.stringify({ meta: { versao: '1.0' }, capitulos: [{ id: '1', titulo: 'Domiciliação' }] }));
+kvm.set('guia:cap:manual-destrave-ameli:1', JSON.stringify({ id: '1', titulo: 'Domiciliação', grupos: [{ id: 'a' }] }));
+const putsAntes = [...kvm.keys()].filter((k) => k.startsWith('throttle:')).length;
+let res2 = await get(env, '/guia/');
+check('/guia/ serve o casco, sem chave nenhuma', res2.status === 200 && (await res2.text()).includes('CASCO') );
+check('cabeçalhos do casco: sem cache, noindex, sem referrer, sem moldura, fala só com o próprio Worker', res2.headers.get('Cache-Control') === 'no-store' && /noindex/.test(res2.headers.get('X-Robots-Tag')) && res2.headers.get('Referrer-Policy') === 'no-referrer' &&
+  res2.headers.get('X-Frame-Options') === 'DENY' && /connect-src 'self'/.test(res2.headers.get('Content-Security-Policy')) && /default-src 'none'/.test(res2.headers.get('Content-Security-Policy')));
+check('/guia (sem barra) também serve o casco', (await get(env, '/guia')).status === 200);
+res2 = await get(env, '/guia/' + tk);
+check('link digitado como /guia/<chave> vira /guia/#k=<chave>', res2.status === 302 && res2.headers.get('Location') === 'https://w.example/guia/#k=' + tk);
+res2 = await api(env, '/manual', tk);
+let jj = await res2.json();
+check('índice com a chave certa: 200 e JSON, sem cache', res2.status === 200 && jj.meta.versao === '1.0' && jj.capitulos.length === 1 && jj.capitulos[0].grupos === undefined && res2.headers.get('Cache-Control') === 'no-store' && /json/.test(res2.headers.get('Content-Type')));
+res2 = await api(env, '/capitulos/1', tk); jj = await res2.json();
+check('capítulo com a chave certa: 200 com os grupos', res2.status === 200 && jj.grupos.length === 1);
+check('abrir o guia com chave válida não gasta escrita na KV (o limite só conta tentativas inválidas)', [...kvm.keys()].filter((k) => k.startsWith('throttle:')).length === putsAntes);
+for (const [rotulo, ch] of [['sem chave', null], ['chave inventada', 'A'.repeat(43)], ['chave curta', 'abc'], ['chave com caracteres estranhos', '../../etc/passwd']]) {
+  res2 = await api(env, '/manual', ch);
+  check(rotulo + ': 401 e nenhum texto', res2.status === 401 && !(await res2.text()).includes('Domicilia'));
 }
-const k = 'guia:chave:' + tk, orig = JSON.parse(env.REVIEWS_KV.m.get(k));
-env.REVIEWS_KV.m.set(k, JSON.stringify({ ...orig, revogado: true }));
-res = await pagina(env, tk);
-check('chave revogada: 404', res.status === 404);
-env.REVIEWS_KV.m.set(k, JSON.stringify({ ...orig, expira_em: new Date(Date.now() - 1000).toISOString() }));
-res = await pagina(env, tk);
-check('passou dos 12 meses: 410 com a explicação', res.status === 410 && /12 meses/.test(await res.text()));
-env.REVIEWS_KV.m.set(k, JSON.stringify(orig)); env.REVIEWS_KV.m.delete('guia:conteudo:manual-destrave-ameli');
-[res] = await quieto(() => pagina(env, tk));
-check('comprador válido mas conteúdo ainda não carregado: 503 (e erro no log para você)', res.status === 503);
-env.REVIEWS_KV.m.set('guia:conteudo:manual-destrave-ameli', 'ok');
-env.REVIEWS_KV.m.set('guia:chave:' + 'C'.repeat(43), JSON.stringify({ ...orig, slug: 'produto-que-nao-existe' }));
-check('chave de produto que não existe mais: 404', (await pagina(env, 'C'.repeat(43))).status === 404);
-let ultimo; for (let i = 0; i < 62; i++) ultimo = await pagina(env, 'D'.repeat(43), '9.9.9.9');
-check('muitas tentativas do mesmo IP: 429', ultimo.status === 429);
-res = await worker.fetch(new Request('https://w.example/guia/' + tk, { method: 'POST' }), env, {});
-check('só GET', res.status === 404);
+res2 = await api(env, '/capitulos/1', null);
+check('capítulo sem chave: 401 (o texto pago nunca sai sem a chave)', res2.status === 401);
+check('capítulo com id estranho ou inexistente: 404', (await api(env, '/capitulos/..%2F1', tk)).status === 404 && (await api(env, '/capitulos/99', tk)).status === 404 && (await api(env, '/outra-coisa', tk)).status === 404);
+const k = 'guia:chave:' + tk, orig = JSON.parse(kvm.get(k));
+kvm.set(k, JSON.stringify({ ...orig, revogado: true }));
+check('chave revogada: 401 no índice e no capítulo', (await api(env, '/manual', tk)).status === 401 && (await api(env, '/capitulos/1', tk)).status === 401);
+kvm.set(k, JSON.stringify({ ...orig, expira_em: new Date(Date.now() - 1000).toISOString() }));
+res2 = await api(env, '/manual', tk);
+check('passou dos 12 meses: 401 "expirado"', res2.status === 401 && (await res2.json()).error === 'expirado');
+kvm.set(k, JSON.stringify(orig)); kvm.delete('guia:manual:manual-destrave-ameli');
+[res2] = await quieto(() => api(env, '/manual', tk));
+check('comprador válido mas índice ainda não carregado: 503 (e erro no log para você)', res2.status === 503);
+kvm.set('guia:chave:' + 'C'.repeat(43), JSON.stringify({ ...orig, slug: 'produto-que-nao-existe' }));
+check('chave de produto que não existe mais: 401', (await api(env, '/manual', 'C'.repeat(43))).status === 401);
+kvm.delete('guia:pagina');
+[res2] = await quieto(() => get(env, '/guia/'));
+check('casco ainda não carregado: 503 neutro', res2.status === 503);
+let ultimo; for (let i = 0; i < 32; i++) ultimo = await api(env, '/manual', 'D'.repeat(43), '9.9.9.9');
+check('muitas tentativas inválidas do mesmo IP: 429', ultimo.status === 429);
+res2 = await api(env, '/manual', tk, '9.9.9.9');
+check('o limite só pega quem erra: o mesmo IP com a chave certa continua entrando', res2.status !== 429);
+res2 = await worker.fetch(new Request('https://w.example/api/guia/manual', { method: 'POST', headers: { Authorization: 'Bearer ' + tk } }), env, {});
+check('só GET', res2.status === 404);
 
 console.log(`\n${passed} passaram, ${failed} falharam`);
 process.exit(failed ? 1 : 0);

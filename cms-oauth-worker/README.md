@@ -1029,15 +1029,19 @@ Só vale o tipo de evento "1:1" (slug `1-1`, ou título começando com "1:1"); o
 
 **O que acontece.** A pessoa paga num Payment Link do Stripe. O webhook que já existe (`POST /api/stripe/webhook`, seção 25, mesma assinatura e mesmo `STRIPE_WEBHOOK_SECRET`) reconhece o produto pelo `client_reference_id` (`manual-destrave-ameli` ou `guia-vivo-destrave-ameli`) e: (1) registra a compra no CRM (`crm_compra_registrar`); (2) cria uma chave única de 256 bits na KV; (3) manda o e-mail de entrega pelo Brevo, com o link `https://<worker>/guia/<chave>`, os 4 cupons (`DOMICILIACAO-5`, `ABERTURA-5`, `ESTUDANTE-5`, `MUDANCA-5`; 5 € na ligação de 20 min, 30 dias), os 12 meses de atualização e a garantia de 7 dias; (4) marca a entrega. O Stripe repete eventos: a compra é única por sessão e o e-mail sai uma vez só. Se o Brevo falhar, o Worker responde 500, o Stripe tenta de novo e a chave é a mesma.
 
-**Rota pública:** `GET /guia/<chave>` serve o HTML do guia se a chave existe, não foi revogada e está dentro dos 12 meses (`expira_em`). Chave inválida: 404 neutro. Passou de 12 meses: 410. Respostas com `no-store`, `noindex`, `no-referrer`, CSP sem script e 60 tentativas por IP a cada 10 min.
+**Rotas.** O guia é um casco (HTML + CSS + JS, sem texto pago) que pede o texto a uma API com a chave. O link do e-mail é `https://<worker>/guia/#k=<chave>`: a chave fica depois do `#`, que o navegador não manda ao servidor (não entra em log nem em Referer); o casco a lê, limpa a URL e pede o texto.
+- `GET /guia/` (público): o casco. `GET /guia/<chave>` redireciona para `/guia/#k=<chave>` (link digitado à mão).
+- `GET /api/guia/manual` e `GET /api/guia/capitulos/<id>` (com `Authorization: Bearer <chave>`): o índice e cada capítulo do produto daquela chave. Sem chave, chave inventada, revogada ou com mais de 12 meses: 401 (o casco mostra "Não foi possível abrir o Manual com este link"). Só as tentativas inválidas contam no limite (30 por IP a cada 10 min), então abrir o guia não gasta escrita na KV.
+- Respostas com `no-store`, `noindex`, sem referrer e CSP (script e estilo só do casco, fontes do Google, conexão só com o próprio Worker).
 
-**O texto do guia nunca vai para o repositório.** Você escreve no Notion, exporta como HTML e carrega na KV (o HTML não pode ter `<script>`: a CSP bloqueia):
+**O texto do guia nunca vai para o repositório.** Você mantém o HTML do guia (o artefato de design, com o texto dentro de `<script id="dados-exemplo">`) no seu computador e roda o script que separa casco e texto e escreve um arquivo **fora** do repositório:
 ```
-npx wrangler kv key put --binding REVIEWS_KV "guia:conteudo:manual-destrave-ameli" --path ./manual.html --remote
+node cms-oauth-worker/scripts/guia-preparar.mjs ~/Downloads/manual.html manual-destrave-ameli ~/guia-kv
+npx wrangler kv bulk put ~/guia-kv/kv-bulk.json --binding REVIEWS_KV --remote
 ```
-Para atualizar o guia (uma regra mudou), rode o mesmo comando: todo comprador vê a versão nova no mesmo link.
+O script tira do casco o painel "Prévia: testar os 4 estados" e o texto, aponta o casco para `/api/guia` e gera as chaves `guia:pagina`, `guia:manual:<produto>` e `guia:cap:<produto>:<id>`. Para atualizar o guia (uma regra mudou), edite o HTML, rode os dois comandos de novo e atualize `versao` e `ultima_atualizacao` no JSON: todo comprador vê a versão nova no mesmo link. O casco avisa que a página está desatualizada quando `ultima_atualizacao` tem mais de 48 horas. O `estado` do JSON (hoje "rascunho") aparece para o comprador em "O que mudou": troque antes de vender.
 
-**KV (sempre `REVIEWS_KV`, prefixos `guia:`):** `guia:conteudo:<produto>` (o HTML), `guia:chave:<chave>` (`{slug, sessao, criado_em, expira_em, revogado}`, sem e-mail) e `guia:sessao:<id da sessão>` (a chave daquela compra). **Revogar** um link: troque `"revogado": false` por `true` no valor de `guia:chave:<chave>`. **Reenviar** o link de quem não recebeu: ache a sessão do pagamento no Stripe, leia `guia:sessao:<cs_...>` para ver a chave e mande `https://<worker>/guia/<chave>` à mão (não crie outra chave).
+**KV (sempre `REVIEWS_KV`, prefixos `guia:`):** `guia:pagina` (o casco), `guia:manual:<produto>` (o índice) e `guia:cap:<produto>:<id>` (um capítulo) são o que você carrega; `guia:chave:<chave>` (`{slug, sessao, criado_em, expira_em, revogado}`, sem e-mail) e `guia:sessao:<id da sessão>` (a chave daquela compra) são criadas pelo Worker. **Revogar** um link: troque `"revogado": false` por `true` no valor de `guia:chave:<chave>`. **Reenviar** o link de quem não recebeu: ache a sessão do pagamento no Stripe, leia `guia:sessao:<cs_...>` para ver a chave e mande `https://<worker>/guia/#k=<chave>` à mão (não crie outra chave).
 
 **Variáveis (Cloudflare → Worker → Settings):** além das da seção 25 (`STRIPE_WEBHOOK_SECRET`, `STRIPE_SECRET_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `BREVO_API_KEY`, `BREVO_SENDER_EMAIL`):
 - `STRIPE_PLINK_MANUAL`: os ids `plink_...` dos Payment Links do Manual, separados por vírgula (o de 9 € e, depois, o de 14 €).
@@ -1056,6 +1060,6 @@ O `client_reference_id` vem da URL e o comprador pode editá-lo; o id do Payment
 **Limites conhecidos:**
 - Duas entregas exatamente simultâneas da mesma sessão poderiam criar duas chaves (a KV não é atômica); o Stripe repete em sequência, então na prática não acontece.
 - Cupons: o e-mail só informa os códigos; quem honra o desconto é você, ao mandar o link de pagamento da ligação.
-- O Guia vivo reaproveita tudo isso, mas o conteúdo dele (`guia:conteudo:guia-vivo-destrave-ameli`) e o Payment Link ainda não existem.
+- O Guia vivo reaproveita tudo isso, mas o conteúdo dele (`guia:manual:guia-vivo-destrave-ameli` e os capítulos) e o Payment Link ainda não existem.
 
 **Teste:** `node cms-oauth-worker/testes/guia-compra.test.mjs`; no banco, `cd admin/crm/db/testes && APP_DB_DIR=<POR-DENTRO-APP>/db npm run test:compras`.

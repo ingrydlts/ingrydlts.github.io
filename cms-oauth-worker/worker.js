@@ -5460,9 +5460,18 @@ async function crmStripeFatura(env, fatura) {
 //   KV (REVIEWS_KV, só com estes prefixos):
 //     guia:sessao:<id da sessão Stripe>  -> a chave desta compra (o reenvio do Stripe não cria uma segunda)
 //     guia:chave:<chave>                 -> { slug, sessao, criado_em, expira_em, revogado }  (nunca o e-mail)
-//     guia:conteudo:<slug>               -> o HTML do guia, carregado por você com `wrangler kv key put` (nunca vai ao repositório)
+//     guia:pagina                        -> o casco do guia (HTML + CSS + JS, SEM texto pago), servido em /guia/
+//     guia:manual:<slug>                 -> { meta, capitulos[] sem "grupos" } (o índice)
+//     guia:cap:<slug>:<id>               -> um capítulo completo
+//     O texto pago (manual e capítulos) é carregado por você com `wrangler kv bulk put` (nunca vai ao repositório).
 //   Revogar um link: troque "revogado" para true no valor de guia:chave:<chave>.
-//   GET /guia/<chave> (público): serve o HTML se a chave existe, não foi revogada e está dentro dos 12 meses.
+//   O link do e-mail é <worker>/guia/#k=<chave>: a chave fica depois do "#", que o navegador não envia ao servidor (não entra
+//   em log nem em Referer). O casco lê a chave de lá, pede o texto à API com "Authorization: Bearer <chave>" e limpa a URL.
+//   GET /guia/                       (público) o casco, sem nada pago dentro
+//   GET /guia/<chave>                (público) redireciona para /guia/#k=<chave> (link digitado à mão)
+//   GET /api/guia/manual             (Bearer) o índice do guia da chave
+//   GET /api/guia/capitulos/<id>     (Bearer) um capítulo
+//   Chave inexistente, revogada ou vencida (12 meses): 401. Tentativas inválidas: 30 por IP a cada 10 min (429).
 //
 //   Variáveis: STRIPE_PLINK_MANUAL e STRIPE_PLINK_GUIA_VIVO (ids plink_... dos Payment Links, separados por vírgula: o link de 9 €
 //   e o de 14 € do Manual). O client_reference_id vem da URL e o comprador pode editá-lo; o id do Payment Link, não. Sem a variável,
@@ -5540,7 +5549,7 @@ async function crmGuiaCompra(env, obj, origin) {
     await env.REVIEWS_KV.put(`guia:sessao:${obj.id}`, token, { expirationTtl: ttl });
   }
 
-  const link = `${origin}/guia/${token}`;
+  const link = `${origin}/guia/#k=${token}`;
   const cupomAte = new Date(Date.now() + GUIA_CUPOM_DIAS * 86400000).toISOString().slice(0, 10);
   const mail = guiaEmail(prod, r.nome, link, crmDiaBr(new Date(expiraEm).toISOString().slice(0, 10)), crmDiaBr(cupomAte));
   const bRes = await fetch('https://api.brevo.com/v3/smtp/email', {
@@ -5573,28 +5582,56 @@ function guiaPaginaNeutra(status, titulo, texto, cab) {
   return new Response(html, { status, headers: cab });
 }
 
-async function handleGuiaPagina(request, env, token) {
-  const cab = { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex, nofollow', 'Referrer-Policy': 'no-referrer',
-    'X-Content-Type-Options': 'nosniff', 'X-Frame-Options': 'DENY',
-    'Content-Security-Policy': "default-src 'none'; style-src 'unsafe-inline'; img-src https: data:; font-src https: data:; base-uri 'none'; form-action 'none'; frame-ancestors 'none'" };
-  if (!env.REVIEWS_KV) return guiaPaginaNeutra(503, 'Indisponível por enquanto', 'Tente de novo em alguns minutos.', cab);
-  if (!(await crmLimite(env, 'guia', request.headers.get('CF-Connecting-IP') || 'unknown', 60))) {
-    return guiaPaginaNeutra(429, 'Muitas tentativas', 'Espere alguns minutos e tente de novo.', cab);
-  }
-  const invalido = () => guiaPaginaNeutra(404, 'Este link não é válido', 'Procure o e-mail da compra e abra o link de lá. Se não achar, responda a esse e-mail.', cab);
-  if (!GUIA_TOKEN_RE.test(token)) return invalido();
-  let reg = null;
-  try { reg = JSON.parse(await env.REVIEWS_KV.get(`guia:chave:${token}`)); } catch (e) { reg = null; }
-  if (!reg || reg.revogado === true || !GUIA_PRODUTOS[reg.slug]) return invalido();
-  if (!(Date.parse(reg.expira_em) >= Date.now())) {
-    return guiaPaginaNeutra(410, 'O acesso deste link terminou', 'O acesso de 12 meses acabou. Responda ao e-mail da compra para falar comigo.', cab);
-  }
-  const conteudo = await env.REVIEWS_KV.get(`guia:conteudo:${reg.slug}`);
-  if (!conteudo) {
-    console.error('crm/guia: falta o conteúdo guia:conteudo:' + reg.slug + ' na KV');
+const GUIA_CAP_ID_RE = /^[A-Za-z0-9_-]{1,40}$/;
+const GUIA_SEGURANCA = { 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex, nofollow', 'Referrer-Policy': 'no-referrer', 'X-Content-Type-Options': 'nosniff' };
+// O casco tem script e estilo próprios (inline) e carrega só as fontes do Google; fala apenas com o próprio Worker.
+const GUIA_CSP = "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; " +
+  "img-src https: data:; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'";
+
+// Casco do guia: HTML, CSS e JS sem texto pago. Público de propósito (o texto só vem da API, com a chave).
+async function handleGuiaCasco(env) {
+  const cab = { ...GUIA_SEGURANCA, 'Content-Type': 'text/html; charset=utf-8', 'X-Frame-Options': 'DENY', 'Content-Security-Policy': GUIA_CSP };
+  const html = env.REVIEWS_KV ? await env.REVIEWS_KV.get('guia:pagina') : null;
+  if (!html) {
+    console.error('crm/guia: falta guia:pagina (o casco do guia) na KV');
     return guiaPaginaNeutra(503, 'Estamos atualizando o guia', 'Volte em alguns minutos. Se continuar assim, responda ao e-mail da compra.', cab);
   }
-  return new Response(conteudo, { status: 200, headers: cab });
+  return new Response(html, { status: 200, headers: cab });
+}
+
+// Confere a chave (formato, existência, revogação, 12 meses). Devolve { reg } ou { erro: Response }.
+async function guiaConferirChave(request, env, token) {
+  const resp = (status, erro) => ({ erro: new Response(JSON.stringify({ error: erro }), { status, headers: { ...GUIA_SEGURANCA, 'Content-Type': 'application/json; charset=utf-8' } }) });
+  if (!env.REVIEWS_KV) return resp(503, 'indisponivel');
+  const falhou = async () => {
+    // Só as tentativas inválidas gastam o limite (e escrita na KV): a chave tem 256 bits, adivinhar não é o risco; abrir o guia à toa não conta.
+    if (!(await crmLimite(env, 'guia', request.headers.get('CF-Connecting-IP') || 'unknown', 30))) return resp(429, 'muitas_tentativas');
+    return null;
+  };
+  if (!GUIA_TOKEN_RE.test(token || '')) return (await falhou()) || resp(401, 'acesso');
+  let reg = null;
+  try { reg = JSON.parse(await env.REVIEWS_KV.get(`guia:chave:${token}`)); } catch (e) { reg = null; }
+  if (!reg || reg.revogado === true || !GUIA_PRODUTOS[reg.slug]) return (await falhou()) || resp(401, 'acesso');
+  if (!(Date.parse(reg.expira_em) >= Date.now())) return resp(401, 'expirado');
+  return { reg };
+}
+
+async function handleGuiaApi(request, env, caminho) {
+  const token = (request.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '').trim();
+  const c = await guiaConferirChave(request, env, token);
+  if (c.erro) return c.erro;
+  const cab = { ...GUIA_SEGURANCA, 'Content-Type': 'application/json; charset=utf-8' };
+  const cap = /^\/capitulos\/([^/]+)$/.exec(caminho);
+  let chave = null;
+  if (caminho === '/manual') chave = `guia:manual:${c.reg.slug}`;
+  else if (cap && GUIA_CAP_ID_RE.test(cap[1])) chave = `guia:cap:${c.reg.slug}:${cap[1]}`;
+  else return new Response(JSON.stringify({ error: 'nao_encontrado' }), { status: 404, headers: cab });
+  const corpo = await env.REVIEWS_KV.get(chave);
+  if (!corpo) {
+    if (caminho === '/manual') console.error('crm/guia: falta ' + chave + ' na KV');
+    return new Response(JSON.stringify({ error: 'nao_encontrado' }), { status: caminho === '/manual' ? 503 : 404, headers: cab });
+  }
+  return new Response(corpo, { status: 200, headers: cab });
 }
 
 async function handleStripeWebhook(request, env) {
@@ -5877,8 +5914,11 @@ export default {
       );
     }
 
+    if (request.method === 'GET' && (url.pathname === '/guia' || url.pathname === '/guia/')) return await handleGuiaCasco(env);
     const guiaRota = /^\/guia\/([^/]+)\/?$/.exec(url.pathname);
-    if (guiaRota && request.method === 'GET') return await handleGuiaPagina(request, env, guiaRota[1]);
+    if (guiaRota && request.method === 'GET') return Response.redirect(`${url.origin}/guia/#k=${encodeURIComponent(guiaRota[1])}`, 302);
+    const guiaApi = /^\/api\/guia(\/.*)$/.exec(url.pathname);
+    if (guiaApi && request.method === 'GET') return await handleGuiaApi(request, env, guiaApi[1]);
 
     try {
       if (url.pathname === '/api/events' && request.method === 'POST') {
