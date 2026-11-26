@@ -1024,3 +1024,42 @@ Só vale o tipo de evento "1:1" (slug `1-1`, ou título começando com "1:1"); o
 - Reservas feitas **antes** de ligar o webhook não entram sozinhas: use "Marcar 1:1" na ficha.
 
 **Teste:** `node cms-oauth-worker/testes/crm-cal-webhook.test.mjs`; no banco, `cd admin/crm/db/testes && APP_DB_DIR=<POR-DENTRO-APP>/db npm run test:1a1-cal`.
+
+## 36. Manual Destrave da Ameli (e, depois, Guia vivo): compra → link único → e-mail
+
+**O que acontece.** A pessoa paga num Payment Link do Stripe. O webhook que já existe (`POST /api/stripe/webhook`, seção 25, mesma assinatura e mesmo `STRIPE_WEBHOOK_SECRET`) reconhece o produto pelo `client_reference_id` (`manual-destrave-ameli` ou `guia-vivo-destrave-ameli`) e: (1) registra a compra no CRM (`crm_compra_registrar`); (2) cria uma chave única de 256 bits na KV; (3) manda o e-mail de entrega pelo Brevo, com o link `https://<worker>/guia/<chave>`, os 4 cupons (`DOMICILIACAO-5`, `ABERTURA-5`, `ESTUDANTE-5`, `MUDANCA-5`; 5 € na ligação de 20 min, 30 dias), os 12 meses de atualização e a garantia de 7 dias; (4) marca a entrega. O Stripe repete eventos: a compra é única por sessão e o e-mail sai uma vez só. Se o Brevo falhar, o Worker responde 500, o Stripe tenta de novo e a chave é a mesma.
+
+**Rotas.** O guia é um casco (HTML + CSS + JS, sem texto pago) que pede o texto a uma API com a chave. O link do e-mail é `https://<worker>/guia/#k=<chave>`: a chave fica depois do `#`, que o navegador não manda ao servidor (não entra em log nem em Referer); o casco a lê, limpa a URL e pede o texto.
+- `GET /guia/` (público): o casco. `GET /guia/<chave>` redireciona para `/guia/#k=<chave>` (link digitado à mão).
+- `GET /api/guia/manual` e `GET /api/guia/capitulos/<id>` (com `Authorization: Bearer <chave>`): o índice e cada capítulo do produto daquela chave. Sem chave, chave inventada, revogada ou com mais de 12 meses: 401 (o casco mostra "Não foi possível abrir o Manual com este link"). Só as tentativas inválidas contam no limite (30 por IP a cada 10 min), então abrir o guia não gasta escrita na KV.
+- Respostas com `no-store`, `noindex`, sem referrer e CSP (script e estilo só do casco, fontes do Google, conexão só com o próprio Worker).
+
+**O texto do guia nunca vai para o repositório.** Você mantém o HTML do guia (o artefato de design, com o texto dentro de `<script id="dados-exemplo">`) no seu computador e roda o script que separa casco e texto e escreve um arquivo **fora** do repositório:
+```
+node cms-oauth-worker/scripts/guia-preparar.mjs ~/Downloads/manual.html manual-destrave-ameli ~/guia-kv
+npx wrangler kv bulk put ~/guia-kv/kv-bulk.json --binding REVIEWS_KV --remote
+```
+O script tira do casco o painel "Prévia: testar os 4 estados" e o texto, aponta o casco para `/api/guia` e gera as chaves `guia:pagina`, `guia:manual:<produto>` e `guia:cap:<produto>:<id>`. Para atualizar o guia (uma regra mudou), edite o HTML, rode os dois comandos de novo e atualize `versao` e `ultima_atualizacao` no JSON: todo comprador vê a versão nova no mesmo link. O casco avisa que a página está desatualizada quando `ultima_atualizacao` tem mais de 48 horas. O `estado` do JSON (hoje "rascunho") aparece para o comprador em "O que mudou": troque antes de vender.
+
+**KV (sempre `REVIEWS_KV`, prefixos `guia:`):** `guia:pagina` (o casco), `guia:manual:<produto>` (o índice) e `guia:cap:<produto>:<id>` (um capítulo) são o que você carrega; `guia:chave:<chave>` (`{slug, sessao, criado_em, expira_em, revogado}`, sem e-mail) e `guia:sessao:<id da sessão>` (a chave daquela compra) são criadas pelo Worker. **Revogar** um link: troque `"revogado": false` por `true` no valor de `guia:chave:<chave>`. **Reenviar** o link de quem não recebeu: ache a sessão do pagamento no Stripe, leia `guia:sessao:<cs_...>` para ver a chave e mande `https://<worker>/guia/#k=<chave>` à mão (não crie outra chave).
+
+**Variáveis (Cloudflare → Worker → Settings):** além das da seção 25 (`STRIPE_WEBHOOK_SECRET`, `STRIPE_SECRET_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `BREVO_API_KEY`, `BREVO_SENDER_EMAIL`):
+- `STRIPE_PLINK_MANUAL`: os ids `plink_...` dos Payment Links do Manual, separados por vírgula (o de 9 € e, depois, o de 14 €).
+- `STRIPE_PLINK_GUIA_VIVO`: o id do Payment Link do Guia vivo (só quando ele abrir).
+
+O `client_reference_id` vem da URL e o comprador pode editá-lo; o id do Payment Link, não. Por isso o Worker só entrega se o pagamento veio de um desses links, em EUR e com o valor mínimo do produto (9 € / 19 €). Sem a variável, o webhook responde 500 (falha fechada). Fora do esperado: 200, não entrega e deixa `crm/guia: ... NÃO entreguei` no log.
+
+**Stripe (uma vez):** Payment Link com `client_reference_id=manual-destrave-ameli` (o botão da página já acrescenta), retorno para `https://imigrantepordentro.com/produtos-digitais/obrigado/?session_id={CHECKOUT_SESSION_ID}`, coleta de e-mail, caixa de aceite dos termos não pré-marcada com a renúncia (CGV art. 11) e limite de 20 pagamentos. No endpoint do webhook, além dos eventos da seção 25, acrescente `checkout.session.async_payment_succeeded` (só importa se aceitar débito SEPA, que confirma depois). Modo teste e modo real têm segredos de webhook diferentes.
+
+**Página de venda:** item `manual-destrave-ameli` em `content/produtos-digitais.json`, hoje com `active: false` e sem `stripeLink`. A caixa de renúncia (não pré-marcada), a garantia de 7 dias e o botão já são da página de produto existente. Para publicar: cole o link do Stripe, confira a data do lançamento no selo e ligue `active` pelo /admin.
+
+**SQL (uma vez, no Supabase de teste e depois no de produção):** `admin/crm/db/crm-compras.sql` (tabela `compras`, funções `crm_compra_registrar` e `crm_compra_entregue`; nada é apagado). Rode **antes** de ligar o link: sem o SQL a rota responde 500 e o Stripe tenta de novo. Depois de rodar, peça que ela rode `db/auditoria-isolamento.sql` e `db/conferir-banco.sql` (os dois do app) no SQL Editor. Os dois vazios = pronto.
+
+**Ficha e consentimento.** O e-mail do pagamento é o que a pessoa digitou no Stripe, então ele sozinho não liga uma conta a uma ficha: liga à ficha de quem tem conta com e-mail **confirmado** igual; ou a uma ficha **sem conta** com o mesmo e-mail; se não há ficha nenhuma, abre uma (origem `stripe`). Se a ficha tem conta e o e-mail da conta é outro (ou não confirmado), a compra fica **sem ficha** (o e-mail do pagamento fica guardado em `compras`; a admin liga à mão). O e-mail da compra é de serviço (`consentimentos.finalidade = 'servico'`, origem `compra`); `novidades_email` nunca é marcado por aqui.
+
+**Limites conhecidos:**
+- Duas entregas exatamente simultâneas da mesma sessão poderiam criar duas chaves (a KV não é atômica); o Stripe repete em sequência, então na prática não acontece.
+- Cupons: o e-mail só informa os códigos; quem honra o desconto é você, ao mandar o link de pagamento da ligação.
+- O Guia vivo reaproveita tudo isso, mas o conteúdo dele (`guia:manual:guia-vivo-destrave-ameli` e os capítulos) e o Payment Link ainda não existem.
+
+**Teste:** `node cms-oauth-worker/testes/guia-compra.test.mjs`; no banco, `cd admin/crm/db/testes && APP_DB_DIR=<POR-DENTRO-APP>/db npm run test:compras`.

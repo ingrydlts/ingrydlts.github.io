@@ -44,6 +44,7 @@
     "test:caso-guias": "node crm-caso-guias.test.mjs",
     "test:1a1": "node crm-1a1.test.mjs",
     "test:pagamentos": "node crm-pagamentos.test.mjs",
+    "test:compras": "node crm-compras.test.mjs",
     "test:caso-fluxo": "node crm-caso-fluxo.test.mjs",
     "test:aviso-reordenar": "node crm-aviso-reordenar.test.mjs",
     "test:home-destaque": "node crm-caso-home-destaque.test.mjs",

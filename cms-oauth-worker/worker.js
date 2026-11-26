@@ -5307,7 +5307,7 @@ async function handleCrmLinkPagamento(request, env) {
 //   Variáveis: STRIPE_WEBHOOK_SECRET (Secret, whsec_..., do endpoint no Stripe), STRIPE_SECRET_KEY, SUPABASE_SERVICE_ROLE_KEY,
 //              BREVO_API_KEY, BREVO_SENDER_EMAIL. Ver README.md, seção 25.
 const STRIPE_TOLERANCIA_SEG = 300;
-const STRIPE_EVENTOS = ['checkout.session.completed', 'customer.subscription.updated', 'customer.subscription.deleted', 'invoice.payment_failed', 'invoice.paid'];
+const STRIPE_EVENTOS = ['checkout.session.completed', 'checkout.session.async_payment_succeeded', 'customer.subscription.updated', 'customer.subscription.deleted', 'invoice.payment_failed', 'invoice.paid'];
 
 function stripeHex(buf) { return Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, '0')).join(''); }
 // O cabeçalho Stripe-Signature é "t=...,v1=...,v1=..."; vale se algum v1 for o HMAC-SHA256 de "t.corpo" com o segredo do endpoint
@@ -5453,6 +5453,187 @@ async function crmStripeFatura(env, fatura) {
   return json({ ok: true, pagamento: r });
 }
 
+// ---------- Guias digitais pagos: Manual Destrave da Ameli (e, depois, Guia vivo) ----------
+// Compra no Stripe (Payment Link) -> webhook (a mesma rota e a mesma assinatura de cima) -> compra no CRM (crm-compras.sql) ->
+// chave única do comprador na KV -> e-mail de entrega (Brevo) com o link /guia/<chave> e os 4 cupons.
+//
+//   KV (REVIEWS_KV, só com estes prefixos):
+//     guia:sessao:<id da sessão Stripe>  -> a chave desta compra (o reenvio do Stripe não cria uma segunda)
+//     guia:chave:<chave>                 -> { slug, sessao, criado_em, expira_em, revogado }  (nunca o e-mail)
+//     guia:pagina                        -> o casco do guia (HTML + CSS + JS, SEM texto pago), servido em /guia/
+//     guia:manual:<slug>                 -> { meta, capitulos[] sem "grupos" } (o índice)
+//     guia:cap:<slug>:<id>               -> um capítulo completo
+//     O texto pago (manual e capítulos) é carregado por você com `wrangler kv bulk put` (nunca vai ao repositório).
+//   Revogar um link: troque "revogado" para true no valor de guia:chave:<chave>.
+//   O link do e-mail é <worker>/guia/#k=<chave>: a chave fica depois do "#", que o navegador não envia ao servidor (não entra
+//   em log nem em Referer). O casco lê a chave de lá, pede o texto à API com "Authorization: Bearer <chave>" e limpa a URL.
+//   GET /guia/                       (público) o casco, sem nada pago dentro
+//   GET /guia/<chave>                (público) redireciona para /guia/#k=<chave> (link digitado à mão)
+//   GET /api/guia/manual             (Bearer) o índice do guia da chave
+//   GET /api/guia/capitulos/<id>     (Bearer) um capítulo
+//   Chave inexistente, revogada ou vencida (12 meses): 401. Tentativas inválidas: 30 por IP a cada 10 min (429).
+//
+//   Variáveis: STRIPE_PLINK_MANUAL e STRIPE_PLINK_GUIA_VIVO (ids plink_... dos Payment Links, separados por vírgula: o link de 9 €
+//   e o de 14 € do Manual). O client_reference_id vem da URL e o comprador pode editá-lo; o id do Payment Link, não. Sem a variável,
+//   o webhook responde 500 (o Stripe tenta de novo) em vez de aceitar qualquer link. Ver README.md, seção 36.
+const GUIA_PRODUTOS = {
+  'manual-destrave-ameli': {
+    nome: 'Manual Destrave da Ameli', links: 'STRIPE_PLINK_MANUAL', minCentavos: 900,
+    inclui: 'O Manual: domiciliação, abertura de direitos e o cadastro do estudante estrangeiro, com a fonte oficial e a data de "consultado em" de cada item.'
+  },
+  'guia-vivo-destrave-ameli': {
+    nome: 'Guia vivo Destrave da Ameli', links: 'STRIPE_PLINK_GUIA_VIVO', minCentavos: 1900,
+    inclui: 'O Manual completo e a biblioteca de casos finalizados (a dor, a situação, a estratégia, como foi solucionado, em quanto tempo e as lições aprendidas).'
+  }
+};
+const GUIA_CUPONS = [['DOMICILIACAO-5', 'domiciliação'], ['ABERTURA-5', 'abertura de direitos'], ['ESTUDANTE-5', 'cadastro do estudante estrangeiro'], ['MUDANCA-5', 'mudança']];
+const GUIA_CUPOM_DIAS = 30;
+const GUIA_TOKEN_RE = /^[A-Za-z0-9_-]{43}$/;
+const GUIA_MARGEM_KV_SEG = 30 * 86400;     // a KV guarda a chave um pouco além do acesso; quem decide é expira_em
+
+function guiaToken() { const b = new Uint8Array(32); crypto.getRandomValues(b); return crmB64url(b); }   // 256 bits -> 43 caracteres
+
+function guiaEmail(prod, contatoNome, link, acesso, cupomAte) {
+  const nome = crmPrimeiroNome(contatoNome);
+  const texto = `${nome ? `Oi ${nome},` : 'Oi,'}\n\n` +
+    `Pagamento confirmado. Aqui está o seu ${prod.nome}:\n\n${link}\n\n` +
+    `O link é só seu (não compartilhe) e abre em qualquer aparelho, sem login. Guarde este e-mail.\n\n` +
+    `O que você tem:\n` +
+    `- ${prod.inclui}\n` +
+    `- Atualizações de fontes e informações por 12 meses, até ${acesso}. O link continua o mesmo: quando uma regra mudar, eu atualizo a página e aviso por e-mail.\n\n` +
+    `Travou em algum capítulo? Uma ligação de 20 min custa 5 € a menos (30 € por 25 €). Responda este e-mail com o código do capítulo e eu mando o link de pagamento já com o desconto. Os códigos valem ${GUIA_CUPOM_DIAS} dias, até ${cupomAte}:\n` +
+    GUIA_CUPONS.map(([c, cap]) => `- ${c} (${cap})`).join('\n') + `\n\n` +
+    `Garantia de 7 dias (CGV): se não for o que você esperava, responda este e-mail em até 7 dias e eu devolvo o valor.\n\n` +
+    `Um aviso honesto: o guia é um plano, não uma garantia de resultado, e não é aconselhamento médico nem jurídico.\n\n` +
+    `Se travar em qualquer ponto, é só responder este e-mail.\n\nIngryd · Por Dentro`;
+  return { assunto: `Seu ${prod.nome} chegou`, texto, html: crmTextToHtml(texto) };
+}
+
+async function crmGuiaCompra(env, obj, origin) {
+  const slug = String(obj.client_reference_id || '');
+  const prod = GUIA_PRODUTOS[slug];
+  if (!prod) return json({ ok: true, ignorado: true });
+  if (obj.payment_status !== 'paid') return json({ ok: true, ignorado: true, motivo: 'nao_pago' });
+  const permitidos = String(env[prod.links] || '').split(',').map((x) => x.trim()).filter(Boolean);
+  if (!permitidos.length) {
+    console.error('crm/guia: falta ' + prod.links + ' no Worker (o id plink_... do Payment Link); a compra ' + obj.id + ' não foi entregue');
+    return json({ error: 'Faltam os Payment Links do guia no Worker.' }, 500);
+  }
+  const moeda = String(obj.currency || '').toLowerCase();
+  if (!permitidos.includes(String(obj.payment_link || '')) || moeda !== 'eur' || !(obj.amount_total >= prod.minCentavos)) {
+    // Não é a venda do guia (link, moeda ou valor fora do esperado): não entrega, mas não adianta o Stripe tentar de novo.
+    console.error('crm/guia: compra ' + obj.id + ' com client_reference_id ' + slug + ' fora do esperado (link, moeda ou valor); NÃO entreguei');
+    return json({ ok: true, ignorado: true, motivo: 'fora_do_esperado' });
+  }
+  const email = String((obj.customer_details && obj.customer_details.email) || obj.customer_email || '').trim().toLowerCase();
+  if (!CRM_ONB_EMAIL_RE.test(email)) throw new Error('compra ' + obj.id + ' sem e-mail do comprador');
+  if (!env.REVIEWS_KV) throw new Error('REVIEWS_KV não está ligada ao Worker');
+
+  const sb = crmServiceHeaders(env);
+  const regRes = await fetch(`${CRM_SUPABASE_URL}/rest/v1/rpc/crm_compra_registrar`, { method: 'POST', headers: sb, body: JSON.stringify({
+    p_referencia: String(obj.id), p_slug: slug, p_email: email, p_valor_centavos: obj.amount_total, p_moeda: String(obj.currency || '').toUpperCase(),
+    p_pago_em: stripeIso(obj.created), p_origem: (obj.metadata && obj.metadata.utm_content) || null }) });
+  if (regRes.status === 404) { console.error('crm/guia: falta rodar admin/crm/db/crm-compras.sql'); return json({ error: 'Falta rodar crm-compras.sql.' }, 500); }
+  if (!regRes.ok) throw new Error('crm_compra_registrar respondeu ' + regRes.status + ' ' + (await regRes.text().catch(() => '')).slice(0, 200));
+  const r = await regRes.json();
+  if (r.entregue_em) return json({ ok: true, duplicado: true });   // o Stripe repetiu um evento já entregue: nada de segundo e-mail
+
+  // A chave única. Se uma tentativa anterior já criou a chave desta compra (e o e-mail falhou), reaproveita a mesma.
+  const expiraEm = Date.parse(r.acesso_ate);
+  if (!Number.isFinite(expiraEm)) throw new Error('crm_compra_registrar sem acesso_ate');
+  let token = await env.REVIEWS_KV.get(`guia:sessao:${obj.id}`);
+  if (!token || !GUIA_TOKEN_RE.test(token)) {
+    token = guiaToken();
+    const ttl = Math.max(60, Math.ceil((expiraEm - Date.now()) / 1000) + GUIA_MARGEM_KV_SEG);
+    await env.REVIEWS_KV.put(`guia:chave:${token}`, JSON.stringify({ slug, sessao: String(obj.id), criado_em: new Date().toISOString(), expira_em: new Date(expiraEm).toISOString(), revogado: false }), { expirationTtl: ttl });
+    await env.REVIEWS_KV.put(`guia:sessao:${obj.id}`, token, { expirationTtl: ttl });
+  }
+
+  const link = `${origin}/guia/#k=${token}`;
+  const cupomAte = new Date(Date.now() + GUIA_CUPOM_DIAS * 86400000).toISOString().slice(0, 10);
+  const mail = guiaEmail(prod, r.nome, link, crmDiaBr(new Date(expiraEm).toISOString().slice(0, 10)), crmDiaBr(cupomAte));
+  const bRes = await fetch('https://api.brevo.com/v3/smtp/email', {
+    method: 'POST', headers: { 'api-key': env.BREVO_API_KEY, 'Content-Type': 'application/json', Accept: 'application/json' },
+    body: JSON.stringify({
+      sender: { email: env.BREVO_SENDER_EMAIL, name: env.BREVO_SENDER_NAME || 'Ingryd · Por Dentro' },
+      to: [r.nome ? { email, name: r.nome } : { email }],
+      replyTo: { email: crmReplyTo(env) }, subject: mail.assunto, htmlContent: mail.html, textContent: mail.texto, tags: ['crm', 'guia_compra', slug] })
+  });
+  const resp = await bRes.text();
+  if (!bRes.ok) throw new Error('o Brevo recusou o e-mail da compra ' + obj.id + ' (' + bRes.status + ')');
+  let messageId = null; try { messageId = JSON.parse(resp).messageId || null; } catch (e) { /* segue */ }
+
+  // Depois que o e-mail saiu, falha de registro só vai para o log: responder 500 aqui mandaria um segundo e-mail na nova tentativa.
+  const marca = await fetch(`${CRM_SUPABASE_URL}/rest/v1/rpc/crm_compra_entregue`, { method: 'POST', headers: sb, body: JSON.stringify({ p_referencia: String(obj.id) }) });
+  if (!marca.ok) console.error('crm/guia: e-mail enviado mas não marquei a entrega — ' + marca.status);
+  if (r.contato_id) {
+    // O link é uma credencial: o histórico guarda o texto sem ele.
+    const ins = await fetch(`${CRM_SUPABASE_URL}/rest/v1/emails_enviados`, { method: 'POST', headers: { ...sb, Prefer: 'return=minimal' },
+      body: JSON.stringify({ contato_id: r.contato_id, modelo: 'guia_compra', assunto: mail.assunto, corpo: mail.texto.split(link).join('[link do guia, só do comprador]'),
+        status: 'agendado', provedor_id: messageId, enviado_em: new Date().toISOString() }) });
+    if (!ins.ok) console.error('crm/guia: e-mail enviado mas não registrado no histórico — ' + ins.status);
+  }
+  return json({ ok: true, entregue: true, ficha_nova: !!r.ficha_nova });
+}
+
+function guiaPaginaNeutra(status, titulo, texto, cab) {
+  const html = `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>${crmEscapeHtml(titulo)}</title></head>` +
+    `<body style="font-family:Arial,Helvetica,sans-serif;max-width:32rem;margin:15vh auto;padding:0 1rem;line-height:1.6;color:#2B2B2B"><h1 style="font-size:1.3rem">${crmEscapeHtml(titulo)}</h1><p>${crmEscapeHtml(texto)}</p></body></html>`;
+  return new Response(html, { status, headers: cab });
+}
+
+const GUIA_CAP_ID_RE = /^[A-Za-z0-9_-]{1,40}$/;
+const GUIA_SEGURANCA = { 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex, nofollow', 'Referrer-Policy': 'no-referrer', 'X-Content-Type-Options': 'nosniff' };
+// O casco tem script e estilo próprios (inline) e carrega só as fontes do Google; fala apenas com o próprio Worker.
+const GUIA_CSP = "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; " +
+  "img-src https: data:; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'";
+
+// Casco do guia: HTML, CSS e JS sem texto pago. Público de propósito (o texto só vem da API, com a chave).
+async function handleGuiaCasco(env) {
+  const cab = { ...GUIA_SEGURANCA, 'Content-Type': 'text/html; charset=utf-8', 'X-Frame-Options': 'DENY', 'Content-Security-Policy': GUIA_CSP };
+  const html = env.REVIEWS_KV ? await env.REVIEWS_KV.get('guia:pagina') : null;
+  if (!html) {
+    console.error('crm/guia: falta guia:pagina (o casco do guia) na KV');
+    return guiaPaginaNeutra(503, 'Estamos atualizando o guia', 'Volte em alguns minutos. Se continuar assim, responda ao e-mail da compra.', cab);
+  }
+  return new Response(html, { status: 200, headers: cab });
+}
+
+// Confere a chave (formato, existência, revogação, 12 meses). Devolve { reg } ou { erro: Response }.
+async function guiaConferirChave(request, env, token) {
+  const resp = (status, erro) => ({ erro: new Response(JSON.stringify({ error: erro }), { status, headers: { ...GUIA_SEGURANCA, 'Content-Type': 'application/json; charset=utf-8' } }) });
+  if (!env.REVIEWS_KV) return resp(503, 'indisponivel');
+  const falhou = async () => {
+    // Só as tentativas inválidas gastam o limite (e escrita na KV): a chave tem 256 bits, adivinhar não é o risco; abrir o guia à toa não conta.
+    if (!(await crmLimite(env, 'guia', request.headers.get('CF-Connecting-IP') || 'unknown', 30))) return resp(429, 'muitas_tentativas');
+    return null;
+  };
+  if (!GUIA_TOKEN_RE.test(token || '')) return (await falhou()) || resp(401, 'acesso');
+  let reg = null;
+  try { reg = JSON.parse(await env.REVIEWS_KV.get(`guia:chave:${token}`)); } catch (e) { reg = null; }
+  if (!reg || reg.revogado === true || !GUIA_PRODUTOS[reg.slug]) return (await falhou()) || resp(401, 'acesso');
+  if (!(Date.parse(reg.expira_em) >= Date.now())) return resp(401, 'expirado');
+  return { reg };
+}
+
+async function handleGuiaApi(request, env, caminho) {
+  const token = (request.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '').trim();
+  const c = await guiaConferirChave(request, env, token);
+  if (c.erro) return c.erro;
+  const cab = { ...GUIA_SEGURANCA, 'Content-Type': 'application/json; charset=utf-8' };
+  const cap = /^\/capitulos\/([^/]+)$/.exec(caminho);
+  let chave = null;
+  if (caminho === '/manual') chave = `guia:manual:${c.reg.slug}`;
+  else if (cap && GUIA_CAP_ID_RE.test(cap[1])) chave = `guia:cap:${c.reg.slug}:${cap[1]}`;
+  else return new Response(JSON.stringify({ error: 'nao_encontrado' }), { status: 404, headers: cab });
+  const corpo = await env.REVIEWS_KV.get(chave);
+  if (!corpo) {
+    if (caminho === '/manual') console.error('crm/guia: falta ' + chave + ' na KV');
+    return new Response(JSON.stringify({ error: 'nao_encontrado' }), { status: caminho === '/manual' ? 503 : 404, headers: cab });
+  }
+  return new Response(corpo, { status: 200, headers: cab });
+}
+
 async function handleStripeWebhook(request, env) {
   if (!env.STRIPE_WEBHOOK_SECRET || !env.STRIPE_SECRET_KEY || !env.SUPABASE_SERVICE_ROLE_KEY) {
     console.error('crm/stripe: faltam STRIPE_WEBHOOK_SECRET, STRIPE_SECRET_KEY ou SUPABASE_SERVICE_ROLE_KEY no Worker');
@@ -5470,9 +5651,11 @@ async function handleStripeWebhook(request, env) {
   try {
     let contato = null, assinatura, subId;
     if (ev.type === 'invoice.paid') return await crmStripeFatura(env, obj);
+    // Pagamento que confirma depois (débito SEPA): o guia é entregue quando o dinheiro entra, não antes.
+    if (ev.type === 'checkout.session.async_payment_succeeded') return obj.mode === 'payment' && GUIA_PRODUTOS[String(obj.client_reference_id || '')] ? await crmGuiaCompra(env, obj, new URL(request.url).origin) : json({ ok: true, ignorado: true });
     if (ev.type === 'checkout.session.completed') {
       // O 1:1 pago (Payment Link avulso com o metadado por_dentro = 1a1_20 ou 1a1_40): libera o áudio e agenda o aviso do dia seguinte.
-      if (obj.mode === 'payment') return await crmStripe1a1(env, obj);
+      if (obj.mode === 'payment') return GUIA_PRODUTOS[String(obj.client_reference_id || '')] ? await crmGuiaCompra(env, obj, new URL(request.url).origin) : await crmStripe1a1(env, obj);
       if (obj.mode !== 'subscription' || !obj.subscription) return json({ ok: true, ignorado: true });   // compras avulsas (produtos digitais) não são aqui
       const sub = await stripeBuscarAssinatura(env, obj.subscription);
       if (!sub) throw new Error('não li a assinatura no Stripe');
@@ -5730,6 +5913,12 @@ export default {
         { headers: { 'Content-Type': 'text/html' } }
       );
     }
+
+    if (request.method === 'GET' && (url.pathname === '/guia' || url.pathname === '/guia/')) return await handleGuiaCasco(env);
+    const guiaRota = /^\/guia\/([^/]+)\/?$/.exec(url.pathname);
+    if (guiaRota && request.method === 'GET') return Response.redirect(`${url.origin}/guia/#k=${encodeURIComponent(guiaRota[1])}`, 302);
+    const guiaApi = /^\/api\/guia(\/.*)$/.exec(url.pathname);
+    if (guiaApi && request.method === 'GET') return await handleGuiaApi(request, env, guiaApi[1]);
 
     try {
       if (url.pathname === '/api/events' && request.method === 'POST') {
