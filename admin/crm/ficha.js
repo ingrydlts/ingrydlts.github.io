@@ -405,10 +405,34 @@ export function potencial(x) {
 // ---------- Próxima ação sugerida pelo Potencial ----------
 // Cruza a faixa (Alto/Médio/Baixo) com a situação da pessoa. Devolve { titulo, canal, porque, texto }; `texto` é uma mensagem pronta para copiar
 // (com o nome já no lugar). É sugestão: a Ingryd decide e edita antes de mandar. x = os mesmos dados de potencial() + { nome, gancho }.
+// A abordagem de quem JÁ COMPROU um guia digital: o objetivo deixa de ser vender e vira fazer a pessoa usar o material, tirar a dúvida dela,
+// pedir o relato e, quando faz sentido, oferecer a ligação. c = { n, entradas, diasSemEntrar, diasDesdeCompra } (ver ficha-compras.js, resumoParaPontos).
+// Devolve { titulo, canal, porque, texto } ou null se não comprou. `texto` leva {nome}; [link de entrada] é o /guia/ (não é segredo) e a chave está no e-mail da compra.
+export function acaoComprador(c, nome) {
+  if (!c || !(c.n > 0)) return null;
+  const n = String(nome || '').split(/\s+/)[0] || 'você';
+  const A = (titulo, canal, porque, texto) => ({ titulo, canal, porque, texto: texto ? texto.replace(/\{nome\}/g, n) : '' });
+  const entradas = c.entradas || 0, dc = c.diasDesdeCompra == null ? 0 : c.diasDesdeCompra, ds = c.diasSemEntrar;
+  if (entradas === 0 && dc < 1) return A('Deixe ' + n + ' entrar: comprou agora', 'Nenhuma', 'A entrega da chave acabou de sair. Outro e-mail por cima só atrapalha; veja de novo amanhã.', '');
+  if (entradas === 0) return A('Lembrar o link de entrada e a chave', 'E-mail', 'Comprou há ' + dc + (dc === 1 ? ' dia' : ' dias') + ' e nunca entrou no material: o risco é a chave ter ido para o spam. Não é hora de vender nada.',
+    'Oi, {nome}! Passando para ver se você conseguiu abrir o Manual. O link de entrada é [link de entrada]: digite o e-mail da compra e a chave, que está no e-mail "Seu Manual Destrave chegou" (olhe o spam). Se não achar, me responda e eu reenvio. Dica: use a barra de busca no topo e digite uma palavra do seu caso, como "visto" ou "carta".');
+  if (entradas >= 5) return A('Pedir o relato e oferecer a ligação', 'E-mail', 'Usa o material com frequência (' + entradas + ' entradas): é quem mais tem a dizer e quem mais pode querer ajuda no caso dela.',
+    'Oi, {nome}! Vi que o Manual está sendo útil. Me conta em 3 pontos: qual CPAM ou préfecture, qual era o bloqueio e o que aconteceu? Se o seu caso ainda estiver parado, a ligação de 20 min (35 €, 30 € com o cupom DOMICILIACAO-5) sai com um plano de ação.');
+  if (ds != null && ds >= 10) return A('Mostrar o que mais ela encontra no Manual', 'E-mail', 'Entrou ' + entradas + (entradas === 1 ? ' vez' : ' vezes') + ' e não volta há ' + ds + ' dias: lembre o que ainda tem lá, sem vender.',
+    'Oi, {nome}! Passando para lembrar que no Manual você também encontra os modelos de carta prontos, os formulários oficiais e o que fazer se o seu visto mudou no meio do pedido: [link de entrada]. Se travou em algum ponto, me responda com o tema.');
+  if (dc >= 7) return A('Pedir o relato em 3 perguntas', 'E-mail', 'Está entrando e já passou a garantia de 7 dias: boa hora para pedir o relato.',
+    'Oi, {nome}! Faz uma semana que você tem o Manual. Se ajudou (ou não), me responde: 1) qual CPAM ou préfecture, 2) qual era o bloqueio, 3) o que aconteceu?');
+  return A('Deixar usar: sem e-mail agora', 'Nenhuma', 'Está entrando no material. Mais e-mail agora só atrapalha; espere os 7 dias para pedir o relato.', '');
+}
 export function proximaAcao(x, pot) {
   const o = x || {}, n = (o.nome || '').split(/\s+/)[0] || 'você', m = o.mails || {}, faixa = pot ? pot.faixa : 'Baixo', a = o.assin || {};
   const A = (titulo, canal, porque, texto) => ({ titulo, canal, porque, texto: texto ? texto.replace(/\{nome\}/g, n) : '' });
   const gancho = o.gancho ? ' ' + o.gancho : '';
+  // Quem já comprou tem outra abordagem (uso do material, relato, ligação), não a de conversão. Responder uma mensagem dela segue sendo o primeiro.
+  if (o.compras && o.compras.n > 0) {
+    if (o.respostas > 0 && o.respostasNovas > 0) return A('Responder ' + n + ' agora', 'Mensagem', 'Ela escreveu e ainda não foi respondida: é o sinal mais forte que existe.', '');
+    return acaoComprador(o.compras, o.nome);
+  }
   if (o.tipo === 'lead') {
     if (o.respostas > 0 && o.respostasNovas > 0) return A('Responder ' + n + ' agora', 'Mensagem', 'Ela escreveu e ainda não foi respondida: é o sinal mais forte que existe.', '');
     if (faixa === 'Alto') {

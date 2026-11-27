@@ -83,5 +83,25 @@ console.log('== A lista de pessoas ==');
   const ana = t.split('<tr ')[1] || '', bia = t.split('<tr ')[2] || '';
   check('os pontos (Potencial) de quem comprou trazem o motivo da compra; os de quem não comprou, não', /Comprou um guia \(\+25\)/.test(ana) && !/Comprou um guia/.test(bia));
 }
+console.log('== A abordagem e o filtro: quem comprou × quem não comprou ==');
+{
+  const h = await carregarCrm({ respostas: base({ emails_enviados: { data: [MAIL], error: null } }), store: STORE, expor: ['proximoEmail'] });
+  const comprou = pessoa({ id: 'c1', nome: 'Ana Souza', respostas: {}, dias: 2 }), nao = pessoa({ id: 'c2', email: 'bia@example.com', nome: 'Bia Lima', respostas: {}, dias: 2 });
+  h.mod.setC([comprou, nao]);
+  h.mod.setCOMPRAS_GUIA([COMPRA]); h.mod.setENTRADAS_GUIA([]);
+  const pc = h.mod.proximoEmail(comprou, [MAIL], [], { entradas: [], quizzes: [] }), pn = h.mod.proximoEmail(nao, [], [], { entradas: [], quizzes: [] });
+  check('quem comprou: o "O que fazer" é a abordagem de comprador (não a de captação)', /Lembrar o link de entrada e a chave/.test(pc.titulo) && /Comprou um guia/.test(pc.sinais[0]) && /ainda não entrou/.test(pc.sinais[0]));
+  check('quem não comprou: segue a abordagem de captação', !/chave|Comprou/.test(pn.titulo) && !/Comprou/.test(pn.sinais.join(' ')));
+  h.mod.state.view = 'contatos';
+  h.mod.state.compra = 'sim'; h.mod.renderContacts();
+  let t = h.el('tbody').innerHTML;
+  check('filtro "Já comprou": só quem comprou', /Ana Souza/.test(t) && !/Bia Lima/.test(t));
+  h.mod.state.compra = 'nao'; h.mod.renderContacts();
+  t = h.el('tbody').innerHTML;
+  check('filtro "Ainda não comprou": só quem não comprou', !/Ana Souza/.test(t) && /Bia Lima/.test(t));
+  h.mod.state.compra = ''; h.mod.renderContacts();
+  t = h.el('tbody').innerHTML;
+  check('sem filtro: as duas pessoas', /Ana Souza/.test(t) && /Bia Lima/.test(t));
+}
 console.log(`\n${passed} passaram, ${failed} falharam`);
 process.exit(failed ? 1 : 0);

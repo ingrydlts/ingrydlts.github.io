@@ -143,7 +143,7 @@ var P = [], PERR = '';
 // Processos sugeridos esperando a sua decisão (db/crm-processos-sugeridos.sql). Sem a migração, fica vazio.
 var PSUG = [];
 var FILA = [];   // avisos agendados que ainda não saíram, de todas as pessoas (para o bloco da Hoje)
-var state = { funilVisao: 'leads', funilPorque: null, dosAberto: lerDosAberto(), dos: null, pc: null, ptab: null, pstab: 'assistente', pdias: {}, int: null, chatRasc: '', rascunho: {}, view: 'hoje', persona: '', sub: '', urg: '', stage: '', orig: '', camp: '', q: '', sel: null, qs: 'nova', qsel: null, inbox: 'perguntas', rs: 'nova', rsel: null, ps: 'novo', psel: null, preset: 'todos', seg: '', prevView: 'contatos',
+var state = { funilVisao: 'leads', funilPorque: null, dosAberto: lerDosAberto(), dos: null, pc: null, ptab: null, pstab: 'assistente', pdias: {}, compra: '', int: null, chatRasc: '', rascunho: {}, view: 'hoje', persona: '', sub: '', urg: '', stage: '', orig: '', camp: '', q: '', sel: null, qs: 'nova', qsel: null, inbox: 'perguntas', rs: 'nova', rsel: null, ps: 'novo', psel: null, preset: 'todos', seg: '', prevView: 'contatos',
   fx: { tab: null, ord: null, abertas: {}, ag: { i: 0, pop: null }, dem: 'todas', ckTodos: false, ckMais: false, tour: true, r1: null, lg: { main: 1, a: 1 }, dd: {}, tema: null, coorte: null } };
 var activeCid = null;
 var me = null;
@@ -177,7 +177,7 @@ function potEntrada(c, o) {
     ultimoAcessoDias: o.ultimoAcessoDias !== undefined ? o.ultimoAcessoDias : dias(c.ultimo_evento_em || c.criado_em), sessoes30: o.sessoes30, chk: o.chk || null, nome: displayName(c), compras: comprasPot(c) };
 }
 // As compras de guia digital entram no Potencial (pontos): ver FX.potencial.
-function comprasPot(c) { return FC.resumoParaPontos(comprasGuiaDe(c.id), ENTRADAS_GUIA, Date.now()); }
+function comprasPot(c) { if (!COMPRAS_GUIA.length) return null; return FC.resumoParaPontos(comprasGuiaDe(c.id), ENTRADAS_GUIA, Date.now()); }
 function potDe(c) { return FX.potencial(potEntrada(c)); }
 function potPill(p) {
   var tip = p.motivos.map(function (z) { return z.t + ' (' + (z.p > 0 ? '+' : '−') + Math.abs(z.p) + ')'; }).join(' · ') || 'Sem sinais ainda';
@@ -397,13 +397,14 @@ function refreshSub() {
 }
 function syncControls() {
   $('f-persona').value = state.persona; refreshSub();
-  $('f-urg').value = state.urg; $('f-stage').value = state.stage; $('f-orig').value = state.orig; $('f-camp').value = state.camp; $('q').value = state.q;
-  ['f-persona', 'f-sub', 'f-urg', 'f-stage', 'f-orig', 'f-camp'].forEach(function (id) { $(id).classList.toggle('on', !!$(id).value); });
+  $('f-compra').value = state.compra; $('f-urg').value = state.urg; $('f-stage').value = state.stage; $('f-orig').value = state.orig; $('f-camp').value = state.camp; $('q').value = state.q;
+  ['f-persona', 'f-sub', 'f-compra', 'f-urg', 'f-stage', 'f-orig', 'f-camp'].forEach(function (id) { $(id).classList.toggle('on', !!$(id).value); });
   document.querySelectorAll('[data-preset]').forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.preset === state.preset)); });
 }
 function initControls() {
   fillSelect($('f-persona'), 'Toda persona', PERSONAS);
   fillSelect($('f-urg'), 'Toda urgência', URG);
+  fillSelect($('f-compra'), 'Comprou ou não', { sim: 'Já comprou', nao: 'Ainda não comprou' });
   var stMap = {}; STAGES.forEach(function (s) { stMap[s.k] = s.l; });
   fillSelect($('f-stage'), 'Todo estágio', stMap);
   var origs = {}; Object.keys(ORIG).forEach(function (k) { origs[k] = ORIG[k]; });
@@ -412,7 +413,7 @@ function initControls() {
   fillCampanhas();
   fillSelect($('funil-persona'), 'Toda persona', PERSONAS);
   syncControls();
-  [['f-persona', 'persona'], ['f-sub', 'sub'], ['f-urg', 'urg'], ['f-stage', 'stage'], ['f-orig', 'orig'], ['f-camp', 'camp']].forEach(function (p) {
+  [['f-persona', 'persona'], ['f-sub', 'sub'], ['f-compra', 'compra'], ['f-urg', 'urg'], ['f-stage', 'stage'], ['f-orig', 'orig'], ['f-camp', 'camp']].forEach(function (p) {
     $(p[0]).addEventListener('change', function () {
       state[p[1]] = this.value; if (p[1] === 'persona') state.sub = ''; state.preset = '';
       syncControls(); renderContacts();
@@ -423,7 +424,10 @@ function initControls() {
 }
 function filtered() {
   var q = state.q.trim().toLowerCase();
+  var compradores = {}; COMPRAS_GUIA.forEach(function (x) { if (x.contato_id) compradores[x.contato_id] = 1; });
   return C.filter(function (c) {
+    if (state.compra === 'sim' && !compradores[c.id]) return false;
+    if (state.compra === 'nao' && compradores[c.id]) return false;
     if (state.persona && personaKey(c) !== state.persona) return false;
     if (state.sub && c.subpersona !== state.sub) return false;
     if (state.urg && c.urgencia !== state.urg) return false;
@@ -439,7 +443,7 @@ function filtered() {
   }).sort(function (a, b) { var o = { alta: 0, media: 1, baixa: 2 }; return o[a.urgencia] - o[b.urgencia] || prazoKey(a) - prazoKey(b) || a.dias - b.dias; });
 }
 function applyPreset(p) {
-  state.preset = p; state.persona = ''; state.sub = ''; state.urg = ''; state.stage = ''; state.orig = ''; state.camp = ''; state.q = '';
+  state.preset = p; state.compra = ''; state.persona = ''; state.sub = ''; state.urg = ''; state.stage = ''; state.orig = ''; state.camp = ''; state.q = '';
   if (p === 'urgentes') state.urg = 'alta';
   if (p === 'semchecklist') state.persona = 'sem';
   syncControls(); renderContacts();
@@ -818,6 +822,7 @@ function renderContacts() {
   var chips = [];
   if (state.persona) chips.push(['persona', PERSONAS[state.persona]]);
   if (state.sub) chips.push(['sub', SUBS[state.persona + '|' + state.sub] || state.sub]);
+  if (state.compra) chips.push(['compra', state.compra === 'sim' ? 'Já comprou' : 'Ainda não comprou']);
   if (state.urg) chips.push(['urg', 'Urgência ' + URG[state.urg].toLowerCase()]);
   if (state.stage) chips.push(['stage', stageLabel(state.stage)]);
   if (state.orig) chips.push(['orig', ORIG[state.orig] || state.orig]);
@@ -1203,6 +1208,13 @@ function proximoEmail(c, mails, resps, jor) {
   if (origensDe(c).indexOf(CF_GUIA_ORIGEM) >= 0 && m1 && !m2 && c.aceita_novidades && diasDesde(m1.enviado_em || m1.criado_em) <= 7)
     return out({ titulo: 'Deixe o e-mail 2 do guia sair sozinho',
       angulo: 'A sequência do Campus France já tem o e-mail 2 (a conversa) programado para o próximo envio diário, às 10h de Brasília. Mandar outro na frente atropela ele.' });
+  // Quem já comprou um guia digital tem outra abordagem: não é venda, é fazer usar o material, tirar a dúvida, pedir o relato e (só então) oferecer a ligação.
+  var cp = comprasPot(c);
+  if (cp) {
+    var ac = FX.acaoComprador(cp, c.nome);
+    sinais.unshift('Comprou ' + (cp.n === 1 ? 'um guia' : cp.n + ' guias') + ' · entrou ' + (cp.entradas ? cp.entradas + (cp.entradas === 1 ? ' vez' : ' vezes') + ' no material' + (cp.diasSemEntrar != null ? ', a última há ' + haDias(cp.diasSemEntrar) : '') : 'ainda não entrou no material'));
+    return out({ titulo: ac.titulo, angulo: ac.porque + (ac.texto ? ' Mensagem pronta na aba Compras e em "Próxima ação".' : '') });
+  }
   if (!mails.length) {
     // A captação convida para o 1:1; o app não é a primeira oferta. O primeiro contato é o e-mail da etapa "Primeiro contato"
     // da página dela no Estúdio (Jornada). A entrega do material (etapa "Inbound lead") sai sozinha, não é este botão.
