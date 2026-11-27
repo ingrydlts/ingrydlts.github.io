@@ -5501,11 +5501,13 @@ const GUIA_MARGEM_KV_SEG = 30 * 86400;     // a KV guarda a chave um pouco além
 
 function guiaToken() { const b = new Uint8Array(32); crypto.getRandomValues(b); return crmB64url(b); }   // 256 bits -> 43 caracteres
 
-function guiaEmail(prod, contatoNome, link, acesso, cupomAte) {
+function guiaEmail(prod, contatoNome, link, acesso, cupomAte, chave, emailCompra) {
   const nome = crmPrimeiroNome(contatoNome);
   const texto = `${nome ? `Oi ${nome},` : 'Oi,'}\n\n` +
-    `Pagamento confirmado. Aqui está o seu ${prod.nome}:\n\n${link}\n\n` +
-    `O link é só seu (não compartilhe) e abre em qualquer aparelho, sem login. Guarde este e-mail.\n\n` +
+    `Pagamento confirmado. Aqui está o acesso ao seu ${prod.nome}.\n\n` +
+    `1. Abra a página de acesso: ${link}\n` +
+    `2. Digite o e-mail que você usou na compra (${emailCompra}) e esta chave de acesso:\n\n${chave}\n\n` +
+    `A página de acesso pede o e-mail e a chave toda vez que você entra. A chave é só sua (não compartilhe). Guarde este e-mail.\n\n` +
     `O que você tem:\n` +
     `- ${prod.inclui}\n` +
     `- Atualizações de fontes e informações por 12 meses, até ${acesso}. O link continua o mesmo: quando uma regra mudar, eu atualizo a página e aviso por e-mail.\n\n` +
@@ -5553,13 +5555,13 @@ async function crmGuiaCompra(env, obj, origin) {
   if (!token || !GUIA_TOKEN_RE.test(token)) {
     token = guiaToken();
     const ttl = Math.max(60, Math.ceil((expiraEm - Date.now()) / 1000) + GUIA_MARGEM_KV_SEG);
-    await env.REVIEWS_KV.put(`guia:chave:${token}`, JSON.stringify({ slug, sessao: String(obj.id), criado_em: new Date().toISOString(), expira_em: new Date(expiraEm).toISOString(), revogado: false }), { expirationTtl: ttl });
+    await env.REVIEWS_KV.put(`guia:chave:${token}`, JSON.stringify({ slug, sessao: String(obj.id), criado_em: new Date().toISOString(), expira_em: new Date(expiraEm).toISOString(), revogado: false, email_hash: await guiaEmailHash(email) }), { expirationTtl: ttl });
     await env.REVIEWS_KV.put(`guia:sessao:${obj.id}`, token, { expirationTtl: ttl });
   }
 
-  const link = `${origin}/guia/#k=${token}`;
+  const link = `${origin}/guia/#k=${token}`;   // só preenche o campo da chave na página de acesso; entrar exige o e-mail da compra
   const cupomAte = new Date(Date.now() + GUIA_CUPOM_DIAS * 86400000).toISOString().slice(0, 10);
-  const mail = guiaEmail(prod, r.nome, link, crmDiaBr(new Date(expiraEm).toISOString().slice(0, 10)), crmDiaBr(cupomAte));
+  const mail = guiaEmail(prod, r.nome, link, crmDiaBr(new Date(expiraEm).toISOString().slice(0, 10)), crmDiaBr(cupomAte), token, email);
   const bRes = await fetch('https://api.brevo.com/v3/smtp/email', {
     method: 'POST', headers: { 'api-key': env.BREVO_API_KEY, 'Content-Type': 'application/json', Accept: 'application/json' },
     body: JSON.stringify({
@@ -5577,7 +5579,7 @@ async function crmGuiaCompra(env, obj, origin) {
   if (r.contato_id) {
     // O link é uma credencial: o histórico guarda o texto sem ele.
     const ins = await fetch(`${CRM_SUPABASE_URL}/rest/v1/emails_enviados`, { method: 'POST', headers: { ...sb, Prefer: 'return=minimal' },
-      body: JSON.stringify({ contato_id: r.contato_id, modelo: 'guia_compra', assunto: mail.assunto, corpo: mail.texto.split(link).join('[link do guia, só do comprador]'),
+      body: JSON.stringify({ contato_id: r.contato_id, modelo: 'guia_compra', assunto: mail.assunto, corpo: mail.texto.split(link).join('[link do guia]').split(token).join('[chave de acesso, só do comprador]'),
         status: 'agendado', provedor_id: messageId, enviado_em: new Date().toISOString() }) });
     if (!ins.ok) console.error('crm/guia: e-mail enviado mas não registrado no histórico — ' + ins.status);
   }
@@ -5622,7 +5624,103 @@ async function guiaConferirChave(request, env, token) {
   try { reg = JSON.parse(await env.REVIEWS_KV.get(`guia:chave:${token}`)); } catch (e) { reg = null; }
   if (!reg || reg.revogado === true || !GUIA_PRODUTOS[reg.slug]) return (await falhou()) || resp(401, 'acesso');
   if (!(Date.parse(reg.expira_em) >= Date.now())) return resp(401, 'expirado');
+  // O texto pago só abre com uma sessão criada pelo login (e-mail + chave) ou com a chave de prévia da Ingryd.
+  // A chave do comprador sozinha, mandada direto à API, não serve.
+  if (reg.canal !== 'rascunho') {
+    if (reg.via !== 'login') return (await falhou()) || resp(401, 'login');
+    let origem = null;
+    try { origem = JSON.parse(await env.REVIEWS_KV.get(`guia:chave:${reg.chave_origem}`)); } catch (e) { origem = null; }
+    if (!origem || origem.revogado === true) return resp(401, 'acesso');   // chave revogada depois do login: a sessão cai junto
+  }
   return { reg };
+}
+
+// ---- Login do guia: e-mail da compra + chave de acesso, toda vez ----
+const GUIA_SESSAO_SEG = 3 * 3600;   // a sessão do login dura 3 horas; depois pede e-mail e chave de novo
+const GUIA_ENTRAR_MAX = 10;         // tentativas que falham, por IP a cada 10 min
+const GUIA_LOGIN_MSG = 'Não achei um acesso com esse e-mail e essa chave. Confira o e-mail que você usou na compra e copie a chave do e-mail "Seu Manual chegou".';
+
+async function guiaEmailHash(email) {
+  const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('guia:' + String(email || '').trim().toLowerCase()));
+  return [...new Uint8Array(b)].map((x) => x.toString(16).padStart(2, '0')).join('');
+}
+function guiaIgual(a, b) {   // comparação de tempo constante, para o hash do e-mail
+  a = String(a || ''); b = String(b || '');
+  let d = a.length ^ b.length;
+  for (let i = 0; i < Math.max(a.length, b.length); i++) d |= (a.charCodeAt(i) || 0) ^ (b.charCodeAt(i) || 0);
+  return d === 0;
+}
+
+async function handleGuiaEntrar(request, env) {
+  const cab = { ...GUIA_SEGURANCA, 'Content-Type': 'application/json; charset=utf-8' };
+  const res = (status, corpo) => new Response(JSON.stringify(corpo), { status, headers: cab });
+  if (!env.REVIEWS_KV) return res(503, { error: 'indisponivel' });
+  let corpo = null;
+  try { corpo = await request.json(); } catch (e) { corpo = null; }
+  const email = String((corpo && corpo.email) || '').trim().toLowerCase().slice(0, 254);
+  const chave = String((corpo && corpo.chave) || '').trim();
+  const falhou = async () => (await crmLimite(env, 'guia-entrar', request.headers.get('CF-Connecting-IP') || 'unknown', GUIA_ENTRAR_MAX))
+    ? res(401, { error: 'acesso', mensagem: GUIA_LOGIN_MSG }) : res(429, { error: 'muitas_tentativas', mensagem: 'Muitas tentativas. Espere alguns minutos e tente de novo.' });
+  if (!CRM_ONB_EMAIL_RE.test(email) || !GUIA_TOKEN_RE.test(chave)) return await falhou();
+  let reg = null;
+  try { reg = JSON.parse(await env.REVIEWS_KV.get(`guia:chave:${chave}`)); } catch (e) { reg = null; }
+  // A chave de prévia (canal rascunho) e as sessões de login não entram por aqui; chave sem e-mail guardado também não.
+  if (!reg || reg.canal === 'rascunho' || reg.via === 'login' || reg.revogado === true || !GUIA_PRODUTOS[reg.slug] || !reg.email_hash) return await falhou();
+  if (!guiaIgual(await guiaEmailHash(email), reg.email_hash)) return await falhou();
+  const expiraChave = Date.parse(reg.expira_em);
+  if (!(expiraChave >= Date.now())) return res(401, { error: 'expirado', mensagem: 'O acesso de 12 meses deste Manual terminou. Responda o e-mail da compra e eu vejo com você.' });
+  const sessao = guiaToken();
+  const expira = Math.min(expiraChave, Date.now() + GUIA_SESSAO_SEG * 1000);
+  await env.REVIEWS_KV.put(`guia:chave:${sessao}`, JSON.stringify({ slug: reg.slug, via: 'login', chave_origem: chave, criado_em: new Date().toISOString(), expira_em: new Date(expira).toISOString(), revogado: false }), { expirationTtl: GUIA_SESSAO_SEG + 600 });
+  return res(200, { ok: true, sessao, expira_em: new Date(expira).toISOString() });
+}
+
+// A página de acesso: HTML do Worker, sem nenhum texto pago. O JS pede ao /api/guia/entrar e leva à página do guia com a sessão.
+function guiaLoginHtml() {
+  return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>Entrar no Manual</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:wght@700&family=Inter:wght@400;600;700&display=swap">
+<style>
+:root{--bg:#F5EFE2;--ink:#2B2B2B;--ink2:#5F574B;--head:#063B35;--moss:#577328;--line:rgba(70,52,20,.22);--erro:#7A2318;--erro-bg:#F6DEDA}
+*{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;background:var(--bg);color:var(--ink);font:17px/1.55 Inter,-apple-system,"Segoe UI",sans-serif;padding:20px}
+main{width:100%;max-width:440px;background:#FBF7EE;border:1px solid rgba(255,255,255,.9);border-radius:28px;padding:clamp(22px,5vw,34px);box-shadow:0 14px 34px rgba(80,58,20,.12)}
+h1{margin:0 0 6px;font:700 28px/1.1 Fraunces,Georgia,serif;color:var(--head)}p{margin:0 0 18px;color:var(--ink2)}
+label{display:block;margin:0 0 6px;font-weight:600;font-size:15px;color:var(--head)}
+input[type=email],input[type=password],input[type=text]{width:100%;padding:13px 16px;border-radius:14px;border:1.5px solid var(--line);background:#fff;color:var(--ink);font:500 16px Inter,sans-serif;margin-bottom:14px}
+input:focus-visible,button:focus-visible{outline:3px solid #3A6590;outline-offset:2px}
+.ver{display:flex;gap:8px;align-items:center;margin:-4px 0 16px;font-size:14px;color:var(--ink2)}.ver input{width:18px;height:18px;accent-color:var(--moss)}
+button.ir{width:100%;padding:14px;border:0;border-radius:999px;background:var(--moss);color:#FBF7EE;font:700 17px Inter,sans-serif;cursor:pointer}button.ir[disabled]{opacity:.6;cursor:default}
+.erro{margin:0 0 14px;padding:10px 14px;border-radius:14px;background:var(--erro-bg);color:var(--erro);font-size:14.5px}.erro[hidden]{display:none}
+small{display:block;margin-top:16px;color:var(--ink2);font-size:13.5px}
+</style></head><body><main>
+<h1>Entrar no Manual</h1><p>Digite o e-mail da compra e a chave de acesso que chegou no seu e-mail. A página pede os dois toda vez que você entra.</p>
+<form id="f" novalidate>
+<p class="erro" id="erro" role="alert" hidden></p>
+<label for="e">E-mail da compra</label><input id="e" type="email" autocomplete="email" inputmode="email" required>
+<label for="k">Chave de acesso</label><input id="k" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" required>
+<label class="ver"><input type="checkbox" id="m"> Mostrar a chave</label>
+<button class="ir" id="b" type="submit">Entrar</button>
+</form>
+<small>Perdeu a chave? Responda o e-mail da compra (assunto "Seu Manual Destrave chegou") e eu reenvio.</small>
+</main><script>
+(function(){
+var f=document.getElementById('f'),e=document.getElementById('e'),k=document.getElementById('k'),b=document.getElementById('b'),er=document.getElementById('erro'),m=document.getElementById('m');
+var h=/[#&]k=([A-Za-z0-9_-]{43})/.exec(location.hash||'');
+if(h){k.value=h[1];try{history.replaceState(null,'',location.pathname)}catch(x){}}
+m.addEventListener('change',function(){k.type=m.checked?'text':'password'});
+function msg(t){er.textContent=t;er.hidden=false}
+f.addEventListener('submit',function(ev){ev.preventDefault();er.hidden=true;
+if(!e.value.trim()||!k.value.trim()){msg('Preencha o e-mail e a chave.');return}
+b.disabled=true;b.textContent='Entrando...';
+fetch('/api/guia/entrar',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:e.value,chave:k.value})})
+.then(function(r){return r.json().catch(function(){return {}}).then(function(j){return {s:r.status,j:j}})})
+.then(function(o){if(o.s===200&&o.j.sessao){location.replace('/guia/app/#k='+o.j.sessao);return}
+msg(o.j.mensagem||'Não consegui entrar agora. Tente de novo em alguns minutos.');b.disabled=false;b.textContent='Entrar'})
+.catch(function(){msg('Sem conexão. Tente de novo.');b.disabled=false;b.textContent='Entrar'})});
+})();
+</script></body></html>`;
+}
+function handleGuiaLogin() {
+  return new Response(guiaLoginHtml(), { status: 200, headers: { ...GUIA_SEGURANCA, 'Content-Type': 'text/html; charset=utf-8', 'X-Frame-Options': 'DENY', 'Content-Security-Policy': GUIA_CSP } });
 }
 
 // Uso do guia, nível A (agregado, sem dado pessoal): um contador por dia, produto, tipo (índice ou capítulo) e capítulo.
@@ -5957,7 +6055,9 @@ export default {
       );
     }
 
-    if (request.method === 'GET' && (url.pathname === '/guia' || url.pathname === '/guia/')) return await handleGuiaCasco(env, false);
+    if (request.method === 'GET' && (url.pathname === '/guia' || url.pathname === '/guia/')) return handleGuiaLogin();
+    if (request.method === 'GET' && (url.pathname === '/guia/app' || url.pathname === '/guia/app/')) return await handleGuiaCasco(env, false);
+    if (request.method === 'POST' && url.pathname === '/api/guia/entrar') return await handleGuiaEntrar(request, env);
     if (request.method === 'GET' && (url.pathname === '/guia/rascunho' || url.pathname === '/guia/rascunho/')) return await handleGuiaCasco(env, true);
     const guiaRota = /^\/guia\/([^/]+)\/?$/.exec(url.pathname);
     if (guiaRota && request.method === 'GET') return Response.redirect(`${url.origin}/guia/#k=${encodeURIComponent(guiaRota[1])}`, 302);
