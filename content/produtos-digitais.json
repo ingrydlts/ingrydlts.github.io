@@ -386,6 +386,71 @@
           "text": "Responda o próprio e-mail da compra."
         }
       ]
+    },
+    {
+      "active": true,
+      "slug": "manual-destrave-domiciliacao",
+      "kicker": "Manual de bolso · Endereço e domiciliação",
+      "title": "Manual Destrave: Endereço e Domiciliação",
+      "summary": "Cartas prontas, formulários oficiais a 1 clique e a base legal de cada item, para resolver o endereço do seu dossiê da Ameli.",
+      "description": "Feito para quem precisa de endereço para o dossiê da Ameli (au pair, estudante, PVT ou cônjuge) e trava na domiciliação, na mudança de endereço ou na resposta do órgão. O Manual reúne 8 modelos de carta e e-mail, 3 formulários oficiais a 1 clique (Cerfa 15763*02, 16029*01 e 16030*01) e a base legal de cada item, com a data de consulta. Só entra o que tem base confirmada: Code de la sécurité sociale, CASF, Code du travail, Service-Public e Ameli. É um plano, não uma garantia de resultado: quem decide é o órgão ou a CPAM. Não é aconselhamento médico nem jurídico. Casos fora do roteiro (sem status regular, OQTF ou recusa) pedem a préfecture ou um advogado.",
+      "image": "",
+      "gallery": [],
+      "price": 9.9,
+      "priceOld": 19.9,
+      "launchNote": "Preço de lançamento por tempo limitado. Depois volta para 19,90 €.",
+      "guaranteeDays": 7,
+      "features": [
+        "8 modelos de carta e e-mail, com os campos para preencher",
+        "3 formulários oficiais a 1 clique: Cerfa 15763*02 (S1106a), 16029*01 e 16030*01",
+        "Base legal e data de consulta em cada item",
+        "Resumo em português ao lado dos textos em francês",
+        "5 temas, 29 situações explicadas: do pedido de domiciliação ao dossiê da CPAM",
+        "Atualizações automáticas por 1 ano a partir da compra",
+        "Cupom de 5 € na ligação de 20 min"
+      ],
+      "faq": [
+        {
+          "q": "O Manual garante que a Ameli vai aceitar o meu pedido?",
+          "a": "Não. Quem decide é o órgão ou a CPAM. O Manual é um plano e não é aconselhamento médico nem jurídico. Casos fora do roteiro, como sem status regular, OQTF ou recusa: procure a préfecture ou um advogado."
+        },
+        {
+          "q": "Serve para o meu perfil?",
+          "a": "Foi escrito para quem precisa de endereço para o dossiê da Ameli: au pair, estudante, PVT ou cônjuge. As regras dependem do seu caso, então confirme na fonte de cada item."
+        },
+        {
+          "q": "Posso pedir reembolso? E os outros manuais?",
+          "a": "Sim, em até 7 dias, por e-mail, conforme as CGV. Abertura de direitos, Carte Vitale e médecin traitant serão manuais próprios, ainda sem data."
+        },
+        {
+          "q": "Em que o Manual se baseia?",
+          "a": "Em fontes oficiais: Code de la sécurité sociale, CASF, Code du travail, Service-Public e Ameli. Só entra o que tem base confirmada."
+        },
+        {
+          "q": "Como funcionam as atualizações?",
+          "a": "Quando a fonte oficial muda e eu confirmo, o Manual muda e registra o que mudou, com a data. Você recebe automaticamente por 1 ano a partir da compra."
+        },
+        {
+          "q": "Como eu recebo o Manual?",
+          "a": "O link chega por e-mail em até 24 horas depois do pagamento. Olhe também a caixa de spam. Se não chegar nesse prazo, responda ao recibo do Stripe ou me chame no Instagram."
+        }
+      ],
+      "bundleWith": [],
+      "stripeLink": "https://buy.stripe.com/14A00jbcx3ot8rbfWxaR209",
+      "nextSteps": [
+        {
+          "title": "Abra o e-mail da compra",
+          "text": "O link chega em até 24 horas. Olhe também o spam."
+        },
+        {
+          "title": "Guarde o e-mail",
+          "text": "Ele traz o seu link e o cupom de 5 € para a ligação de 20 min."
+        },
+        {
+          "title": "Travou em algum ponto?",
+          "text": "Responda o próprio e-mail da compra."
+        }
+      ]
     }
   ]
 }
