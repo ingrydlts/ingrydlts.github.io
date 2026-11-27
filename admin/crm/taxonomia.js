@@ -112,6 +112,7 @@ var RESERVA_CHAVE = {
   parouapp: ['reimpacto', null, null],
   cf_guia_1: ['entrega', 'I03', null],
   cf_guia_conversa: ['entrega', 'I03', null],
+  guia_modelo_b0: ['entrega', null, null],
   guia_alternancia: ['entrega', 'I01', null],
   guia_chamada: ['entrega', 'I04', null],
   guia_plataforma: ['entrega', 'I04', null],

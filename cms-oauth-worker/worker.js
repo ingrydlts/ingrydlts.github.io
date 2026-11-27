@@ -1426,7 +1426,10 @@ function crmServiceHeaders(env) {
 }
 
 // Guia → modelo do e-mail 1. Só estes guias mandam e-mail sozinhos.
-const CRM_GUIAS_EMAIL = { 'etudes-en-france-2027-2028': 'cf_guia_1' };
+const CRM_GUIAS_EMAIL = { 'etudes-en-france-2027-2028': 'cf_guia_1', 'modelo-mudanca-endereco-mesma-cidade': 'guia_modelo_b0' };
+// O B0 (modelo grátis de mudança de endereço) é serviço e não tem link do Notion: leva só o MODELO da carta, com os
+// campos em branco. Endereços e número de dossiê ficam na página e nunca chegam ao Worker.
+const CRM_GUIA_SEM_LINK = ['guia_modelo_b0'];
 const CF_UTM = 'utm_source=email&utm_medium=email&utm_campaign=guia-etudes-en-france-2027&utm_content=cf_guia_1';
 // Texto aprovado no artefato "Jornada do freebie Campus France" (fonte: guia do Campus France Brasil, set/2026).
 const CF_ETAPA_TXT = {
@@ -1610,6 +1613,46 @@ function cfGuiaConversaVars(contato, token) {
   return { nome: crmPrimeiroNome(contato.nome), email: contato.email, botoes_cidade: cfBotoesCidade(token) };
 }
 
+// Variáveis do B0. A carta em si é fixa (campos em ___); só o nome e o e-mail mudam.
+function guiaModeloB0Vars(contato) {
+  return { nome: crmPrimeiroNome(contato.nome), email: contato.email };
+}
+// Texto de reserva do B0 (o mesmo da versão 1 de crm-guia-modelo-b0.sql): vale se a tabela de modelos falhar.
+const CF_B0_RESERVA = {
+  versao: null,
+  assunto: '{#nome}{nome}, a sua carta de mudança de endereço{/nome}{^nome}A sua carta de mudança de endereço{/nome}',
+  preheader: 'O modelo em francês, para adaptar e enviar.',
+  corpo_html: null,
+  corpo_texto: `{#nome}Oi {nome}!{/nome}{^nome}Oi!{/nome} Aqui está o modelo de carta que você pediu, para mudança de endereço na mesma cidade. Troque cada ___ pelo seu dado e confirme na fonte oficial antes de enviar.
+
+Seu nome
+Endereço novo: ___
+
+Objet : Changement d'adresse au sein de la même commune
+
+Madame, Monsieur,
+
+Je vous informe de mon changement d'adresse au sein de la même commune, à compter du ___ (date). Mon ancienne adresse était : ___. Ma nouvelle adresse est : ___.
+
+Mon numéro de dossier auprès de ___ (CAF, CPAM, etc.) est : ___.
+
+Je vous remercie de bien vouloir mettre à jour mes coordonnées dans mon dossier et de m'en confirmer la prise en compte par écrit. Je reste à votre disposition pour tout justificatif complémentaire.
+
+Cordialement,
+Seu nome
+
+Se você já copiou a carta preenchida na página, pode usar aquela: este e-mail é só para você guardar o modelo.
+
+O Manual tem os outros 7 modelos de carta e e-mail, com a base legal de cada item.
+
+Ficou com dúvida? É só responder este e-mail. Chega direto para mim.
+
+Ingryd · Por Dentro
+
+—
+Você recebeu este e-mail porque pediu o modelo de carta de mudança de endereço no Por Dentro com {email}.`,
+};
+
 async function handleCrmGuiaCapturado(request, env) {
   if (!crmSegredoIgual(request.headers.get('X-Crm-Hook') || '', env.CRM_HOOK_SECRET || '')) {
     return new Response('Unauthorized', { status: 401 });
@@ -1625,17 +1668,21 @@ async function handleCrmGuiaCapturado(request, env) {
   if (!CRM_UUID_RE.test(contatoId) || !modelo) return json({ error: 'Contato ou guia inválido.' }, 400);
 
   const sb = crmServiceHeaders(env);
+  const semLink = CRM_GUIA_SEM_LINK.includes(modelo);
   const [cRes, lRes] = await Promise.all([
     fetch(`${CRM_SUPABASE_URL}/rest/v1/contatos?select=id,email,nome,respostas&id=eq.${contatoId}`, { headers: sb }),
-    fetch(`${CRM_SUPABASE_URL}/rest/v1/guias_links?select=notion_url&slug=eq.${encodeURIComponent(guia)}`, { headers: sb }),
+    semLink ? Promise.resolve(null)
+      : fetch(`${CRM_SUPABASE_URL}/rest/v1/guias_links?select=notion_url&slug=eq.${encodeURIComponent(guia)}`, { headers: sb }),
   ]);
   const contato = cRes.ok ? (await cRes.json())[0] : null;
-  const link = lRes.ok ? (await lRes.json())[0] : null;
+  const link = lRes && lRes.ok ? (await lRes.json())[0] : null;
   if (!contato) return json({ error: 'Contato não encontrado.' }, 404);
-  if (!link || !/^https:\/\//.test(link.notion_url || '')) return json({ error: 'Guia sem link do Notion em guias_links.' }, 500);
+  if (!semLink && (!link || !/^https:\/\//.test(link.notion_url || ''))) return json({ error: 'Guia sem link do Notion em guias_links.' }, 500);
 
   const tpl = await crmModeloNoAr(env, modelo);
-  const mail = crmMontarOuReserva(modelo, tpl, () => cfGuia1Vars(contato, link.notion_url), () => cfGuia1(contato, link.notion_url));
+  const mail = semLink
+    ? crmMontarOuReserva(modelo, tpl, () => guiaModeloB0Vars(contato), () => crmMontarModelo(CF_B0_RESERVA, guiaModeloB0Vars(contato)))
+    : crmMontarOuReserva(modelo, tpl, () => cfGuia1Vars(contato, link.notion_url), () => cfGuia1(contato, link.notion_url));
   const r = await crmEnviarGuia(env, sb, contato, modelo, mail);
   if (r === 'ja') return json({ ok: true, ja_enviado: true });
   if (r === 'reserva') return json({ error: 'Não consegui registrar o envio.' }, 500);

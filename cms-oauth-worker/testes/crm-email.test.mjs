@@ -23,12 +23,12 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 const dir = mkdtempSync(path.join(tmpdir(), 'crm-email-'));
 const arq = path.join(dir, 'worker.mjs');
 writeFileSync(arq, readFileSync(path.resolve(HERE, '../worker.js'), 'utf8') +
-  '\nexport { crmLerEmail, crmTirarCitacao, crmDecodePalavras, cfGuia1, crmBytesParaBinario, cfGuiaConversa, crmLinkAssinar, crmLinkConferir, CF_CIDADES, crmMontarResposta, crmAssuntoBase, crmIdMsg, crmPreencher, crmMontarModelo, cfGuia1Vars, cfGuiaConversaVars, cfBotoesCidade };\n');
+  '\nexport { crmLerEmail, crmTirarCitacao, crmDecodePalavras, cfGuia1, crmBytesParaBinario, cfGuiaConversa, crmLinkAssinar, crmLinkConferir, CF_CIDADES, crmMontarResposta, crmAssuntoBase, crmIdMsg, crmPreencher, crmMontarModelo, cfGuia1Vars, cfGuiaConversaVars, cfBotoesCidade, CF_B0_RESERVA, guiaModeloB0Vars };\n');
 const mod = await import(pathToFileURL(arq).href);
 rmSync(dir, { recursive: true, force: true });
 const worker = mod.default;
 const { crmLerEmail, crmTirarCitacao, crmDecodePalavras, cfGuia1, crmBytesParaBinario, cfGuiaConversa, crmLinkAssinar, crmLinkConferir, CF_CIDADES, crmMontarResposta, crmAssuntoBase, crmIdMsg,
-  crmPreencher, crmMontarModelo, cfGuia1Vars, cfGuiaConversaVars, cfBotoesCidade } = mod;
+  crmPreencher, crmMontarModelo, cfGuia1Vars, cfGuiaConversaVars, cfBotoesCidade, CF_B0_RESERVA, guiaModeloB0Vars } = mod;
 
 let passed = 0, failed = 0;
 function check(label, cond) { if (cond) passed++; else { failed++; console.log('  FALHOU:', label); } }
@@ -831,6 +831,58 @@ console.log('\n== Estúdio de e-mails 3: sequências de hora em hora ==');
   chamadas = []; fakeFetch([...adminOk, modeloNovo(null), fichaNov, brevoOk]);
   res = await enviar({ contato_id: CID, modelo: 'nao_existe', assunto: 'oi', corpo: 'Oi Ana!' });
   check('modelo que não existe: 400', res.status === 400 && !chamadas.some((c) => /brevo/.test(c.url)));
+}
+
+console.log('\n== B0 do modelo grátis (guia_modelo_b0), sem link do Notion ==');
+{
+  const sqlB0 = readFileSync(path.resolve(HERE, '../../admin/crm/db/crm-guia-modelo-b0.sql'), 'utf8');
+  const textoSql = (sqlB0.match(/\$guia_modelo_b0_t\$([\s\S]*?)\$guia_modelo_b0_t\$/) || [])[1];
+  check('o texto de reserva do Worker é o mesmo da versão 1 do SQL', textoSql === CF_B0_RESERVA.corpo_texto);
+  const assuntoSql = (sqlB0.match(/\$guia_modelo_b0_a\$([\s\S]*?)\$guia_modelo_b0_a\$/) || [])[1];
+  check('o assunto de reserva é o mesmo do SQL', assuntoSql === CF_B0_RESERVA.assunto);
+  const GUIA_B0 = 'modelo-mudanca-endereco-mesma-cidade';
+  const contatoB0 = [/\/contatos\?/, { body: [{ id: CID, email: 'ana@example.com', nome: 'Ana Souza', respostas: {} }] }];
+
+  chamadas = [];
+  fakeFetch([contatoB0, [/\/emails_enviados$/, { method: 'POST', status: 201, body: [{ id: 21 }] }], [/api\.brevo\.com/, { body: { messageId: '<b0@smtp.example.net>' } }]]);
+  let r0 = await worker.fetch(req({ contato_id: CID, guia: GUIA_B0 }), env, {});
+  const b0 = chamadas.find((c) => /brevo/.test(c.url));
+  const res0 = chamadas.find((c) => /emails_enviados$/.test(c.url));
+  check('B0 envia: 200', r0.status === 200);
+  check('B0 não busca link do Notion (guias_links)', !chamadas.some((c) => /guias_links/.test(c.url)));
+  check('B0 reserva a linha antes de enviar, com o modelo certo', chamadas.indexOf(res0) < chamadas.indexOf(b0) && res0.body.modelo === 'guia_modelo_b0');
+  check('B0: assunto com o primeiro nome', b0.body.subject === 'Ana, a sua carta de mudança de endereço');
+  check('B0: para ela, Reply-To = respostas, sem List-Unsubscribe (serviço)', b0.body.to[0].email === 'ana@example.com' && b0.body.replyTo.email === 'respostas@example.org' && !b0.body.headers);
+  check('B0: a carta em francês, com os campos em ___', b0.body.textContent.includes("Objet : Changement d'adresse au sein de la même commune") && b0.body.textContent.includes('___'));
+  check('B0: sem [colchetes] e sem dado de endereço', !/\[[^\]\n]{2,60}\]/.test(b0.body.textContent) && !/dossi[eê]\s*n?[º°]?\s*\d/i.test(b0.body.textContent));
+  check('B0: rodapé de serviço com o e-mail dela, sem "sair"', b0.body.textContent.includes('porque pediu o modelo de carta de mudança de endereço no Por Dentro com ana@example.com') && !/palavra "?sair/i.test(b0.body.textContent));
+  check('B0: HTML escapa e mantém quebras', b0.body.htmlContent.includes('<br>') && !/<script/i.test(b0.body.htmlContent));
+
+  const semNome = guiaModeloB0Vars({ nome: '', email: 'x@example.com' });
+  const mSem = crmMontarModelo(CF_B0_RESERVA, semNome);
+  check('B0 sem nome: assunto e abertura sem vírgula solta', mSem.assunto === 'A sua carta de mudança de endereço' && mSem.texto.startsWith('Oi! Aqui está'));
+  const mXss = crmMontarModelo(CF_B0_RESERVA, guiaModeloB0Vars({ nome: '<script>x</script>', email: 'x@example.com' }));
+  check('B0: nome escapado no HTML', !mXss.html.includes('<script>'));
+
+  chamadas = [];
+  fakeFetch([contatoB0, [/\/emails_enviados$/, { method: 'POST', status: 409, body: { code: '23505' } }]]);
+  r0 = await worker.fetch(req({ contato_id: CID, guia: GUIA_B0 }), env, {});
+  check('B0 já enviado (409): não chama o Brevo', r0.status === 200 && !chamadas.some((c) => /brevo/.test(c.url)));
+
+  chamadas = [];
+  fakeFetch([contatoB0, [/\/emails_enviados$/, { method: 'POST', status: 201, body: [{ id: 22 }] }], [/api\.brevo\.com/, { status: 400, body: { message: 'x' } }]]);
+  r0 = await worker.fetch(req({ contato_id: CID, guia: GUIA_B0 }), env, {});
+  check('B0 Brevo recusou: 502 e desfaz a reserva', r0.status === 502 && chamadas.some((c) => c.method === 'DELETE' && /emails_enviados\?id=eq\.22/.test(c.url)));
+
+  // Versão No ar vinda da tabela: o Worker usa o texto dela e grava a versão.
+  chamadas = [];
+  fakeFetch([contatoB0,
+    [/modelos_email_versoes/, { body: [{ versao: 3, assunto: 'Carta de {nome}', preheader: 'p', corpo_texto: 'Texto v3 de {nome} ({email})', corpo_html: null }] }],
+    [/\/emails_enviados$/, { method: 'POST', status: 201, body: [{ id: 23 }] }], [/api\.brevo\.com/, { body: { messageId: '<b0v3@smtp.example.net>' } }]]);
+  await worker.fetch(req({ contato_id: CID, guia: GUIA_B0 }), env, {});
+  const b0v3 = chamadas.find((c) => /brevo/.test(c.url));
+  const resv3 = chamadas.find((c) => /emails_enviados$/.test(c.url));
+  check('B0 usa a versão No ar da tabela e grava a versão', b0v3.body.subject === 'Carta de Ana' && /Texto v3 de Ana \(ana@example\.com\)/.test(b0v3.body.textContent) && resv3.body.modelo_versao === 3);
 }
 
 console.log(`\n${passed} passaram, ${failed} falharam`);
