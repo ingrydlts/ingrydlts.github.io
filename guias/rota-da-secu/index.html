@@ -38,6 +38,13 @@ main.rs{max-width:680px;margin:0 auto;padding:28px 20px 56px;display:grid;gap:28
 .lnk{color:var(--forest);font-weight:800;text-decoration:underline;text-underline-offset:3px;text-decoration-thickness:1.5px;overflow-wrap:anywhere}
 .lnk:hover{color:var(--moss)}
 .oficial{display:grid;gap:10px}
+.dom{border-radius:20px;padding:16px 18px;background:var(--glass);border:1px solid var(--glass-line)}
+.dom h2{font-size:19px;margin-bottom:6px}
+.dom p{margin:0 0 6px}
+.botoes{display:flex;flex-wrap:wrap;gap:10px}
+.btn{display:inline-block;padding:12px 20px;border-radius:999px;background:var(--forest);color:#fff;font-weight:800;text-decoration:none;font-size:15px}
+.btn:hover{background:var(--moss)}
+.btn:focus-visible{outline:3px solid var(--moss);outline-offset:2px}
 .small{font-size:14px;color:var(--ink2)}
 fieldset{border:0;padding:0;margin:0}
 legend{padding:0;font-weight:800;color:var(--forest);margin-bottom:12px;font-size:16px}
@@ -140,8 +147,19 @@ legend{padding:0;font-weight:800;color:var(--forest);margin-bottom:12px;font-siz
 
   <!-- O link oficial vem primeiro e está no HTML, não no script: aparece mesmo sem JavaScript. -->
   <section class="oficial" aria-label="Link oficial">
-    <p><a class="lnk" id="lnk-oficial" href="https://www.service-public.gouv.fr/particuliers/vosdroits/R45084" target="_blank" rel="noopener">Abra o formulário oficial</a>: baixe o Cerfa S1106 e encontre a sua CPAM.</p>
+    <div class="botoes">
+      <a class="btn" id="lnk-oficial" href="https://www.service-public.gouv.fr/particuliers/vosdroits/R45084" target="_blank" rel="noopener">Formulário abertura de direitos</a>
+      <a class="btn" id="lnk-domiciliacao" href="https://www.service-public.gouv.fr/particuliers/vosdroits/F17317" target="_blank" rel="noopener">Formulário domiciliação</a>
+    </div>
+    <p class="small">No formulário de abertura de direitos você baixa o Cerfa S1106 e encontra a sua CPAM.</p>
     <p class="small"><b>Estudante?</b> O seu pedido é em etudiant-etranger.ameli.fr.</p>
+  </section>
+
+  <section class="dom" aria-labelledby="h-dom">
+    <h2 id="h-dom">Sem endereço fixo? A domiciliação resolve o endereço</h2>
+    <p class="small">A domiciliação (élection de domicile) é para quem não tem domicílio estável, inclusive quem está hospedado temporariamente na casa de alguém. Ela dá um comprovante de domicílio e um endereço para receber correspondência.</p>
+    <p class="small">Fonte: Service Public, página verificada em 10/10/2024, consultada em 27/11/2026. Confirme as condições do seu caso na página oficial.</p>
+    <div class="botoes"><a class="btn" id="lnk-manual" href="/produtos-digitais/produto/?slug=manual-destrave-ameli">Conhecer o Manual Destrave</a></div>
   </section>
 
   <section aria-labelledby="h-q">
