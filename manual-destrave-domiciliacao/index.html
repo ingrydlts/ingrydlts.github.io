@@ -1,0 +1,767 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Manual Destrave Domiciliação</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,600;0,9..144,700;1,9..144,600&family=Inter:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: página de venda interativa sobre fundo creme, com um só visual (decisão da Ingryd). Telas do Manual recortadas, sem moldura,
+   pousam direto no creme. Carrossel dos 8 modelos como no Manual: cartões de foto, centro em destaque, vizinhos esmaecidos.
+   Ao tocar no preview, aparecem o preço e o botão de comprar. Blocos surgem ao rolar a partir de um primeiro quadro completo. */
+:root{
+  color-scheme:light;
+  --bg:#F5EFE2; --bg2:#EFE7D6; --ink:#2B2B2B; --ink2:#5F574B; --head:#063B35; --moss:#577328; --moss-ink:#FBF7EE;
+  --soft:#E6E8CF; --line:rgba(70,52,20,.16); --card:#FBF7EE; --card-line:rgba(255,255,255,.9);
+  --shadow:0 14px 34px rgba(80,58,20,.12);
+  --glass:linear-gradient(135deg,rgba(255,252,245,.9),rgba(255,252,245,.55));
+  --wash:linear-gradient(180deg,rgba(222,185,117,0) 0%,rgba(222,185,117,.22) 55%,rgba(222,185,117,0) 100%);
+  --warn:#F3E3BC; --warn-ink:#4A3410; --focus:#3A6590; --input:rgba(255,252,245,.95);
+  --paper:#FFFDF8; --paper-ink:#2B2B2B; --paper-bar:#D9D3C6; --dark:#0C0B0A;
+  --font-display:"Fraunces",Georgia,serif; --font-body:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+}
+*{box-sizing:border-box}
+html,body{overflow-x:clip}
+html{scroll-behavior:smooth;scroll-padding-top:84px}
+body{margin:0;background:var(--bg);color:var(--ink);font:17px/1.55 var(--font-body);
+  padding-block:0 84px;padding-left:max(18px,env(safe-area-inset-left,0px));padding-right:max(18px,env(safe-area-inset-right,0px))}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:40;background:var(--bg)}
+h1,h2,h3{font-family:var(--font-display);color:var(--head);text-wrap:balance;margin:0;line-height:1.08;letter-spacing:-.015em}
+h1{font-size:clamp(34px,6vw,64px);font-weight:700}
+h2{font-size:clamp(26px,4vw,40px);font-weight:700}
+h3{font-size:19px;font-weight:600;line-height:1.25}
+p{margin:0 0 .9em}
+em{color:var(--moss);font-style:italic}
+a{color:var(--moss);text-underline-offset:3px}
+a:focus-visible,button:focus-visible,summary:focus-visible,input:focus-visible,.car:focus-visible{outline:3px solid var(--focus);outline-offset:3px}
+.wrap{max-width:1100px;margin:0 auto}
+section{padding-block:clamp(40px,7vw,80px)}
+.center{text-align:center}
+.center .lead{margin-inline:auto}
+.k{display:inline-block;font:700 12.5px/1 var(--font-body);letter-spacing:.14em;text-transform:uppercase;color:var(--moss);margin-bottom:12px}
+.lead{font-size:clamp(17px,1.9vw,20px);color:var(--ink2);max-width:58ch}
+.small{font-size:14px;color:var(--ink2)}
+.glass{background:var(--glass);border:1px solid var(--card-line);box-shadow:var(--shadow);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}
+
+.rv{transition:opacity .7s ease,transform .7s cubic-bezier(.2,.7,.2,1);transition-delay:var(--d,0ms)}
+.rv.pre{opacity:0;transform:translateY(30px)}
+@media (prefers-reduced-motion:reduce){.rv{transition:none}.rv.pre{opacity:1;transform:none}html{scroll-behavior:auto}}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;padding:14px 24px;border:0;border-radius:999px;background:var(--moss);color:var(--moss-ink);font:700 16.5px/1.1 var(--font-body);text-decoration:none;cursor:pointer;box-shadow:0 10px 24px rgba(87,115,40,.26)}
+.btn:hover{filter:brightness(1.06)}
+.btn.ghost{background:transparent;color:var(--head);box-shadow:none;border:1.5px solid var(--line)}
+.btn.sm{padding:10px 18px;font-size:15px}
+
+/* menu fixo */
+.nav{position:sticky;top:env(safe-area-inset-top,0px);z-index:30;max-width:1100px;margin:10px auto 0;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 12px 10px 22px;border-radius:999px}
+.nav b{font:700 18px/1 var(--font-display);color:var(--head)}
+.nav nav{display:flex;gap:6px}
+.nav nav a{padding:8px 14px;border-radius:999px;text-decoration:none;color:var(--ink2);font-weight:600;font-size:15px}
+.nav nav a:hover{background:var(--soft);color:var(--head)}
+@media (max-width:760px){.nav nav{display:none}}
+
+/* topo */
+.hero{text-align:center;padding-bottom:0;position:relative;margin-top:-66px;padding-top:calc(66px + clamp(36px,6vw,72px))}
+.hero::before{content:"";position:absolute;top:0;bottom:0;left:50%;width:100vw;transform:translateX(-50%);background:var(--wash);z-index:-1}
+.hero-in{max-width:760px;margin:0 auto}
+.pill{display:inline-flex;align-items:center;gap:8px;padding:8px 16px;border-radius:999px;font:700 12.5px/1 var(--font-body);letter-spacing:.08em;text-transform:uppercase;color:var(--moss);margin-bottom:20px}
+.pill i{width:8px;height:8px;border-radius:50%;background:var(--moss)}
+.hero .lead{margin:18px auto 0}
+.preco-linha{margin:16px 0 0;font-weight:700;color:var(--head)}
+.preco-linha span{color:var(--moss)}
+.preco-linha s,.de-por s,.reveal .de{color:var(--ink2);text-decoration-thickness:2px}
+.preco-linha small{font-weight:600;color:var(--ink2)}
+.off{display:inline-block;background:#5A7329;color:#fff;font:800 12px/1 var(--font-body);padding:4px 8px;border-radius:999px;text-decoration:none;vertical-align:middle;letter-spacing:.02em}
+.de-por{margin:6px 0 0;font-size:15px;color:var(--ink2)}
+.reveal .de{display:block;font:600 18px/1 var(--font-body);margin-bottom:6px}
+.cta-row{display:flex;flex-wrap:wrap;gap:10px;margin-top:22px;justify-content:center}
+.micro{display:flex;flex-wrap:wrap;gap:4px 16px;margin:14px 0 0;padding:0;list-style:none;font-size:14px;color:var(--ink2);justify-content:center}
+.micro li::before{content:"✓ ";color:var(--moss);font-weight:700}
+
+/* celular realista, com a mão */
+.stage{--W:clamp(270px,66vw,400px);--C:.74;margin-bottom:calc(var(--W)*-.28);position:relative;display:flex;justify-content:center;margin-top:clamp(28px,5vw,48px)}
+.hold{position:relative;width:var(--W);aspect-ratio:420/760;cursor:pointer;z-index:2}
+.hold:focus-visible{outline:3px solid var(--focus);outline-offset:6px;border-radius:40px}
+.mao{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible}
+.mao.back{z-index:1}.mao.front{z-index:3}
+.phone{position:absolute;z-index:2;left:17.86%;width:64.29%;top:5.26%;height:73.68%;border-radius:15% / 7%;padding:1.1%;
+  background:linear-gradient(145deg,#E4E0D6 0%,#9A958A 22%,#D6D1C6 46%,#7C776C 70%,#CFCABF 100%);
+  box-shadow:0 30px 50px rgba(50,34,10,.38),0 6px 14px rgba(50,34,10,.3),inset 0 0 0 1.5px rgba(255,255,255,.55),inset 0 0 6px rgba(0,0,0,.25)}
+.bezel{width:100%;height:100%;border-radius:14% / 6.6%;background:#050505;padding:3.2%;box-shadow:inset 0 0 0 1px #2a2a2a,inset 0 0 8px #000}
+.screen{position:relative;width:100%;height:100%;border-radius:11.4% / 5.4%;overflow:hidden;background:#161412;--s:.5;--dist:0px}
+.bt{position:absolute;display:block;width:1.4%;border-radius:2px;background:linear-gradient(90deg,#8d887d,#d3cec3)}
+.bt.ba{left:-1.1%;top:13%;height:3.2%}.bt.v1{left:-1.1%;top:19%;height:6.5%}.bt.v2{left:-1.1%;top:27%;height:6.5%}.bt.pw{right:-1.1%;top:22%;height:11%;background:linear-gradient(270deg,#8d887d,#d3cec3)}
+.sb{position:absolute;z-index:5;left:0;right:0;top:0;height:7%;padding:0 9%;display:flex;justify-content:space-between;align-items:center;color:#fff;font:600 clamp(8px,1.9vw,12px)/1 var(--font-body);pointer-events:none}
+.sb .sbi{display:flex;gap:5px;align-items:center}.sb svg{height:.95em;width:auto}
+.isl{position:absolute;z-index:6;top:2.2%;left:50%;transform:translateX(-50%);width:29%;height:3.5%;border-radius:99px;background:#000;display:flex;justify-content:flex-end;align-items:center;padding-right:5%}
+.isl i{width:22%;aspect-ratio:1;border-radius:50%;background:radial-gradient(circle at 35% 35%,#2c3a52,#0a0f18 60%)}
+.refl{position:absolute;z-index:7;inset:0;pointer-events:none;background:linear-gradient(118deg,rgba(255,255,255,.2) 0%,rgba(255,255,255,.06) 24%,rgba(255,255,255,0) 40%),linear-gradient(0deg,rgba(255,255,255,.04),rgba(255,255,255,0) 20%)}
+.hb{position:absolute;z-index:6;bottom:1.6%;left:50%;transform:translateX(-50%);width:34%;height:.55%;border-radius:99px;background:rgba(255,255,255,.75)}
+.sin{position:absolute;left:0;top:0;width:390px;padding:50px 14px 40px;transform-origin:0 0;transform:scale(var(--s));color:#F1EEE7;font-family:var(--font-body);text-align:left}
+@media (prefers-reduced-motion:no-preference){.sin{animation:rolar 24s ease-in-out infinite alternate}.hold:hover .sin{animation-play-state:paused}}
+@keyframes rolar{0%,10%{transform:translateY(0) scale(var(--s))}90%,100%{transform:translateY(calc(var(--dist) * -1)) scale(var(--s))}}
+.a-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.a-top b{display:block;font:700 19px/1.1 var(--font-display)}.a-top small{display:block;font-size:10.5px;color:#B9B3A8}
+.a-upd{padding:7px 12px;border-radius:99px;background:#26231F;font-size:10.5px;color:#D9D4C9}
+.a-tabs{display:flex;gap:8px;margin-bottom:14px;overflow:hidden;white-space:nowrap}
+.a-tabs span{padding:10px 15px;border-radius:12px;font-weight:600;font-size:13px;color:#C9C3B8}.a-tabs .on{background:#26231F;color:#fff}
+.a-hero{position:relative;border-radius:22px;padding:20px 18px;background:linear-gradient(160deg,#D4C6AB,#B7A685 70%);color:#1A1814;overflow:hidden;margin-bottom:10px}
+.a-hero svg{position:absolute;right:-10px;top:10px;width:230px;height:300px;opacity:.9}
+.a-bd{position:relative;display:inline-block;padding:6px 11px;border-radius:9px;background:rgba(255,255,255,.35);font:700 10px/1 var(--font-body);letter-spacing:.08em;text-transform:uppercase}
+.a-hero h4{position:relative;margin:14px 0 8px;font:700 38px/1.02 var(--font-display);letter-spacing:-.02em;color:#1A1814}
+.a-hero p{position:relative;margin:0 0 14px;font-size:13px;color:#3a352c;max-width:200px}
+.a-busca{position:relative;padding:13px 16px;border-radius:14px;background:rgba(255,255,255,.55);font-size:13px;color:#4a4438;margin-bottom:10px}
+.a-chips{position:relative;display:flex;flex-wrap:wrap;gap:8px}.a-chips i{font-style:normal;padding:8px 12px;border-radius:11px;background:rgba(255,255,255,.7);font-weight:600;font-size:11.5px;color:#26211a}
+.a-pas,.a-apoio{display:flex;gap:12px;align-items:center;padding:13px 14px;border-radius:14px;background:#FBF9F4;color:#1A1814;margin-bottom:8px}
+.a-pas b{display:grid;place-items:center;width:36px;height:36px;border-radius:10px;background:#EADFCB;color:#501318;font:700 17px/1 var(--font-display);flex:none}
+.a-pas strong,.a-apoio strong{display:block;font-size:14px}.a-pas small,.a-apoio small{display:block;font-size:11.5px;color:#6d675c}
+.a-apoio{align-items:flex-start}.a-apoio .al{display:grid;place-items:center;width:34px;height:34px;border-radius:9px;background:#501318;color:#fff;font:700 18px/1 var(--font-body);flex:none}
+.a-apoio em{display:inline-block;margin-top:8px;padding:8px 13px;border-radius:99px;background:#501318;color:#fff;font:700 11.5px/1 var(--font-body);font-style:normal}
+.a-nums{display:grid;grid-template-columns:1fr 1fr;gap:14px 0;margin:16px 0;text-align:center}
+.a-nums div:nth-child(odd){border-right:1px solid #2f2b26}
+.a-nums b{display:block;font:700 30px/1 var(--font-display)}.a-nums span{font-size:11px;color:#B9B3A8}
+.a-forms{border-radius:20px;padding:18px 14px;background:#E3D6BF;color:#1A1814;margin-bottom:22px}
+.a-forms h5{margin:0 0 4px;font:700 24px/1.1 var(--font-display)}.a-forms p{margin:0 0 12px;font-size:11.5px;color:#4a4438}
+.a-forms>div{display:flex;gap:11px;align-items:center;padding:12px;border-radius:12px;background:#26231F;color:#F1EEE7;margin-bottom:8px}
+.a-forms b{display:grid;place-items:center;width:34px;height:34px;border-radius:9px;background:#161412;font-size:16px;flex:none}
+.a-forms strong{display:block;font:700 14px/1.2 var(--font-display)}.a-forms small{display:block;font-size:10.5px;color:#B9B3A8}
+.a-mod small{font:700 10.5px/1 var(--font-body);letter-spacing:.1em;color:#B9B3A8}
+.a-mod h5{margin:8px 0;font:700 28px/1.05 var(--font-display)}.a-mod p{font-size:12px;color:#B9B3A8;margin:0 0 14px}
+.a-cards{display:flex;gap:10px;justify-content:center;align-items:center}.a-cards .viz{flex:none;width:36px;height:220px;border-radius:16px;background:#242019;opacity:.6}
+.a-c1{position:relative;flex:none;width:210px;height:290px;border-radius:20px;overflow:hidden;background:#0C0B0A}
+.a-c1 img{position:absolute;left:0;top:0;width:100%;height:55%;object-fit:cover}
+.a-c1::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.15),rgba(0,0,0,0) 28%,rgba(12,11,10,.6) 48%,#0C0B0A 66%)}
+.a-c1 .b{position:absolute;z-index:2;top:10px;left:10px;padding:5px 9px;border-radius:99px;background:rgba(255,255,255,.25);font:700 9px/1 var(--font-body);letter-spacing:.06em}
+.a-c1 strong{position:absolute;z-index:2;left:14px;right:14px;bottom:50px;font:700 15px/1.2 var(--font-body)}.a-c1 small{position:absolute;z-index:2;left:14px;right:14px;bottom:14px;font-size:10px;color:#ddd;letter-spacing:0}
+.fl{position:absolute;z-index:1}
+.fl-l{right:calc(50% + var(--W)*.5 - var(--W)*var(--C)*.16);top:calc(var(--W)*.27)}
+.fl-r{left:calc(50% + var(--W)*.5 - var(--W)*var(--C)*.16);top:calc(var(--W)*.27)}
+@media (max-width:640px){.stage{--C:.62}.fl-l{right:calc(50% + var(--W)*.5 - var(--W)*var(--C)*.42)}.fl-r{left:calc(50% + var(--W)*.5 - var(--W)*var(--C)*.42)}}
+
+/* telas recortadas: sem moldura, direto sobre o creme */
+.devs{display:flex;justify-content:center;align-items:flex-end;gap:clamp(6px,2.4vw,30px);margin-top:clamp(28px,5vw,52px)}
+.dev{padding:0;border:0;background:none;cursor:pointer;filter:drop-shadow(0 24px 30px rgba(70,50,15,.30))}
+.dev img{display:block;width:100%;height:auto}
+.dev.c{width:clamp(180px,31vw,310px);z-index:2}
+.dev.s{width:calc(var(--W)*var(--C));margin:0}
+.dev.l{transform:rotate(-3deg)}.dev.r{transform:rotate(3deg)}
+@media (prefers-reduced-motion:no-preference){.dev.c{animation:flut 6s ease-in-out infinite}.dev.l{animation:flutl 7s ease-in-out infinite}.dev.r{animation:flutr 7.5s ease-in-out infinite}}
+@keyframes flut{50%{transform:translateY(-8px)}}
+@keyframes flutl{50%{transform:rotate(-5deg) translateY(6px)}}
+@keyframes flutr{50%{transform:rotate(5deg) translateY(6px)}}
+.devs-cap{margin:14px 0 0;font-size:13.5px;color:var(--ink2)}
+
+.feats{display:flex;gap:10px;overflow-x:auto;padding:6px 2px 12px;justify-content:center;flex-wrap:wrap}
+.feat{padding:11px 20px;border-radius:999px;font-weight:600;font-size:15px;color:var(--head);white-space:nowrap}
+.feats-t{margin:0 0 12px;font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink2);font-weight:700}
+@media (max-width:760px){.feats{justify-content:flex-start;flex-wrap:nowrap}}
+
+.nums{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.nums li{border-radius:30px;padding:20px 22px;display:grid;gap:6px;align-content:start}
+.nums b{font:700 clamp(40px,6vw,56px)/1 var(--font-display);color:var(--moss);font-variant-numeric:tabular-nums}
+.nums strong{font-size:15.5px;line-height:1.3;color:var(--head)}
+.nums span{font-size:14.5px;line-height:1.4;color:var(--ink2)}
+@media (max-width:820px){.nums{grid-template-columns:1fr 1fr}.nums li{border-radius:26px;padding:16px 18px}}
+.pubs{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin:22px 0 0;padding:0;list-style:none}
+.pubs li{padding:7px 16px;border-radius:999px;background:var(--soft);color:var(--head);font-weight:600;font-size:14.5px}
+
+/* por dentro: painéis reais, sem caixa em volta */
+.row{display:grid;grid-template-columns:minmax(0,.8fr) minmax(0,1.5fr);gap:clamp(18px,4vw,48px);align-items:center;margin-top:clamp(28px,5vw,48px);text-align:left}
+.row.rev{grid-template-columns:minmax(0,1.5fr) minmax(0,.8fr)}.row.rev .txt{order:2}
+.row .txt b{display:inline-grid;place-items:center;width:38px;height:38px;border-radius:50%;background:var(--moss);color:var(--moss-ink);font:700 18px/1 var(--font-display);margin-bottom:10px}
+.row .txt p{margin:8px 0 0;color:var(--ink2)}
+.cut{margin:0}
+.cutb{display:block;width:100%;padding:0;border:0;background:none;cursor:zoom-in;filter:drop-shadow(0 22px 28px rgba(70,50,15,.26))}
+.cutb img{display:block;width:100%;height:auto}
+@media (max-width:820px){.row,.row.rev{grid-template-columns:1fr}.row.rev .txt{order:0}}
+.mais{list-style:none;margin:26px 0 0;padding:0;display:grid;grid-template-columns:1fr 1fr;gap:12px;text-align:left}
+.mais li{border-radius:28px;padding:18px 22px;display:grid;grid-template-columns:auto 1fr;gap:4px 14px;align-items:start}
+.mais b{grid-row:1 / span 2;display:grid;place-items:center;width:38px;height:38px;border-radius:50%;background:var(--moss);color:var(--moss-ink);font:700 18px/1 var(--font-display)}
+.mais strong{font:600 18px/1.25 var(--font-display);color:var(--head)}
+.mais span{color:var(--ink2);font-size:15.5px}
+@media (max-width:760px){.mais{grid-template-columns:1fr}}
+
+/* modelos: carrossel como o do Manual */
+.escolha{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap;margin:clamp(28px,5vw,44px) 0 0;text-align:left}
+.escolha h3{font:700 clamp(26px,3.6vw,34px)/1.1 var(--font-display)}
+.escolha p{margin:0;font-size:14.5px;color:var(--ink2)}
+.car{--cw:300px;display:flex;gap:16px;overflow-x:auto;scroll-snap-type:x mandatory;padding:26px 0 22px;scrollbar-width:none;-webkit-overflow-scrolling:touch;outline-offset:-3px}
+.car::-webkit-scrollbar{display:none}
+.car::before,.car::after{content:"";flex:0 0 calc(50% - var(--cw)/2 - 16px)}
+.cm{flex:none;width:var(--cw);height:calc(var(--cw)*1.33);border-radius:28px;position:relative;overflow:hidden;scroll-snap-align:center;background:var(--dark);color:#fff;border:0;padding:0;text-align:left;cursor:pointer;
+  box-shadow:0 22px 44px rgba(60,40,10,.30);transform:scale(.86);opacity:.5;filter:blur(1.4px);transition:transform .4s cubic-bezier(.2,.7,.2,1),opacity .4s,filter .4s}
+.cm.on{transform:scale(1);opacity:1;filter:none}
+.cm .foto{position:absolute;inset:0 0 auto 0;height:64%;overflow:hidden}
+.cm .foto img{display:block;width:100%;height:100%;object-fit:cover}
+.cm::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.18) 0%,rgba(0,0,0,0) 28%,rgba(12,11,10,.55) 46%,#0C0B0A 66%)}
+.cm .bd{position:absolute;z-index:2;top:14px;left:14px;padding:6px 12px;border-radius:999px;background:rgba(255,255,255,.22);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);font:700 11.5px/1 var(--font-body);letter-spacing:.08em;text-transform:uppercase}
+.cm .tx{position:absolute;z-index:2;left:20px;right:20px;bottom:18px;display:grid;gap:8px}
+.cm .tt{font:700 clamp(17px,4.6vw,20px)/1.2 var(--font-body);margin:0}
+.cm .ma{display:flex;align-items:center;gap:8px;font:700 11px/1 var(--font-body);letter-spacing:.06em;text-transform:uppercase}
+.cm .ma i{width:9px;height:9px;border-radius:50%;border:2px solid #fff;display:inline-block}
+.cm .sm{justify-self:start;margin-top:4px;padding:0 0 3px;border:0;border-bottom:2px solid #fff;background:none;color:#fff;font:700 15px/1 var(--font-body);cursor:pointer}
+.carbar{display:flex;align-items:center;gap:16px;margin-top:4px}
+.carbar .n{font:700 13px/1 var(--font-body);letter-spacing:.1em;color:var(--ink2);white-space:nowrap}
+.carbar .trilho{flex:1;height:3px;border-radius:3px;background:rgba(70,52,20,.18);overflow:hidden}
+.carbar .trilho i{display:block;height:100%;width:11%;background:var(--head);border-radius:3px;transition:width .3s}
+.carbar .sets{display:flex;gap:8px}
+.carbar .sets button{width:46px;height:46px;border-radius:14px;border:0;background:#1B1814;color:#fff;font:700 20px/1 var(--font-body);cursor:pointer}
+.carbar .sets button:disabled{opacity:.35;cursor:default}
+@media (max-width:520px){.car{--cw:262px}}
+
+.pane{margin-top:clamp(22px,4vw,36px);display:grid;grid-template-columns:minmax(0,.8fr) minmax(0,1.4fr);gap:clamp(16px,3vw,32px);align-items:start;text-align:left}
+.pane>*{min-width:0}
+.pane h3{font:700 clamp(22px,3vw,28px)/1.15 var(--font-display)}
+.pane .ps{margin:8px 0 14px;color:var(--ink2);font-size:15.5px}
+.fields{display:grid;gap:10px}
+.fields input{width:100%;padding:12px 18px;border-radius:999px;border:1.5px solid var(--line);background:var(--input);color:#2B2B2B;font:500 16px/1 var(--font-body)}
+@media (max-width:820px){.pane{grid-template-columns:1fr}.fields{grid-template-columns:1fr 1fr}}
+@media (max-width:520px){.fields{grid-template-columns:1fr}}
+.paper{position:relative;background:var(--paper);color:var(--paper-ink);border-radius:18px;padding:clamp(18px,3vw,30px);box-shadow:0 18px 40px rgba(80,58,20,.18),0 2px 6px rgba(80,58,20,.08);overflow:hidden;min-height:340px}
+.paper .tag{display:inline-block;margin:0 0 14px;padding:5px 12px;border-radius:999px;background:#E6E8CF;color:#063B35;font:700 11.5px/1 var(--font-body);letter-spacing:.08em;text-transform:uppercase}
+.paper .de{font:500 14.5px/1.5 var(--font-body);min-height:44px}
+.paper .ph{color:#9A9488}
+.paper .obj{margin:14px 0 10px;font:600 14.5px/1.4 var(--font-body)}
+.paper .sal{margin:0 0 10px;font:14.5px/1.5 var(--font-body)}
+.paper .abre{margin:0 0 12px;font:14.5px/1.55 var(--font-body)}
+.bars{display:grid;gap:9px;margin:6px 0 14px}
+.bars i{display:block;height:10px;border-radius:6px;background:var(--paper-bar);filter:blur(1.6px)}
+.paper .fim{font:14.5px/1.5 var(--font-body)}
+.lock{position:absolute;inset:0;top:200px;display:grid;place-items:center;border:0;background:linear-gradient(180deg,rgba(255,253,248,0),rgba(255,253,248,.88) 38%);cursor:pointer;color:#063B35;padding:0 16px}
+.lock span{display:inline-flex;align-items:center;gap:10px;padding:12px 20px;border-radius:999px;background:#063B35;color:#FBF7EE;font:700 15px/1.2 var(--font-body);box-shadow:0 10px 24px rgba(6,59,53,.28)}
+.lock:hover span{filter:brightness(1.15)}
+.reveal{position:absolute;inset:0;display:grid;place-items:center;padding:14px;background:#FFFDF8;text-align:center}
+.reveal[hidden]{display:none}
+.reveal .box{max-width:360px;display:grid;gap:8px;justify-items:center;animation:pop .45s cubic-bezier(.2,.8,.2,1)}
+@keyframes pop{from{opacity:0;transform:translateY(16px) scale(.97)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.reveal .box{animation:none}}
+.reveal .tit{font:700 15px/1.3 var(--font-body);color:#063B35;margin:0}
+.reveal .v{font:700 clamp(46px,9vw,64px)/1 var(--font-display);color:#063B35}
+.reveal .v i{font-style:normal;font-size:.5em;margin-left:4px}
+.reveal .dep{margin:0;font-size:14.5px;color:#5F574B}
+.reveal .ben{margin:0;font-size:14px;color:#2B2B2B}
+.reveal .fechar{border:0;background:none;color:#5F574B;text-decoration:underline;font:500 14px/1 var(--font-body);cursor:pointer;margin-top:2px}
+.reveal .aviso{margin:6px 0 0;padding:8px 12px;border-radius:14px;background:#F3E3BC;color:#4A3410;font-size:13px}
+.paper-note{margin:10px 0 0;font-size:13px;color:var(--ink2)}
+.copiar{margin-top:12px}
+.forms{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:22px;text-align:left}
+.forms button{display:grid;gap:2px;text-align:left;padding:14px 18px;border-radius:22px;border:1.5px solid var(--line);background:rgba(255,252,245,.6);color:var(--head);cursor:pointer;font:600 15px/1.3 var(--font-body)}
+.forms button small{font-weight:500;color:var(--ink2);font-size:13px}
+.forms button:hover{background:var(--soft)}
+@media (max-width:760px){.forms{grid-template-columns:1fr}}
+
+/* dores */
+.refs{margin-top:22px;border-radius:36px;padding:clamp(18px,3.5vw,32px);text-align:left}
+.refs-chips{display:flex;flex-wrap:wrap;gap:10px;justify-content:center}
+.ref{padding:12px 20px;border-radius:999px;border:1.5px solid var(--line);background:transparent;color:var(--head);font:italic 600 17px/1.3 var(--font-display);cursor:pointer;text-align:left}
+.ref[aria-pressed="true"]{background:var(--soft);border-color:var(--moss);border-width:2px;padding:11.5px 19.5px}
+.refs-out{margin:20px 0 0;padding:16px 20px;border-radius:26px;background:var(--soft);color:var(--head);font:600 clamp(17px,2vw,20px)/1.45 var(--font-display);text-align:center}
+.refs-out b{color:var(--moss)}
+
+/* preço */
+.planos{display:grid;grid-template-columns:1fr 1.25fr 1fr;gap:14px;margin-top:28px;align-items:stretch}
+.plano{border-radius:34px;padding:24px;display:flex;flex-direction:column;gap:6px;min-width:0;text-align:left}
+.plano.d{background:var(--soft);border:2px solid var(--moss);box-shadow:0 22px 50px rgba(87,115,40,.18)}
+.plano .tag{font:700 12px/1 var(--font-body);letter-spacing:.12em;text-transform:uppercase;color:var(--moss)}
+.plano .valor{font:700 clamp(44px,6vw,60px)/1 var(--font-display);color:var(--head);margin:8px 0 2px;font-variant-numeric:tabular-nums}
+.plano .valor i{font-style:normal;font-size:.5em;margin-left:4px}
+.plano.l .valor{font-size:clamp(32px,4vw,40px)}
+.plano .nota{font-size:14.5px;color:var(--ink2);margin:0 0 10px}
+.plano ul{list-style:none;margin:6px 0 16px;padding:0;display:grid;gap:7px;font-size:15.5px;line-height:1.4}
+.plano li::before{content:"✓ ";color:var(--moss);font-weight:700}
+.plano .btn{margin-top:auto}
+.aviso-previa{margin:10px 0 0;padding:10px 16px;border-radius:20px;background:var(--warn);color:var(--warn-ink);font-size:14px}
+@media (max-width:900px){.planos{grid-template-columns:1fr}.plano.d{order:-1}}
+.honesto{margin:16px auto 0;font-size:14.5px;color:var(--ink2);max-width:76ch;text-align:center}
+
+/* dúvidas */
+.duv{display:grid;grid-template-columns:minmax(0,.8fr) minmax(0,1.4fr);gap:clamp(20px,4vw,48px);align-items:start}
+.duv aside{border-radius:30px;padding:22px 24px;margin-top:18px}
+.duv aside p{margin:0 0 12px;color:var(--ink2);font-size:15.5px}
+.faq{display:grid;gap:10px}
+.faq details{border-radius:26px;padding:2px 22px}
+.faq summary{cursor:pointer;list-style:none;padding:14px 0;font:600 18px/1.3 var(--font-display);color:var(--head)}
+.faq summary::-webkit-details-marker{display:none}
+.faq summary::after{content:"+";float:right;color:var(--moss);font-size:24px;line-height:1}
+.faq details[open] summary::after{content:"\2212"}
+.faq details p{margin:0 0 16px;color:var(--ink2);font-size:16px}
+@media (max-width:820px){.duv{grid-template-columns:1fr}}
+
+.gratis{border-radius:40px;padding:clamp(22px,4vw,40px);display:grid;grid-template-columns:1fr 1fr;gap:clamp(16px,3vw,36px);align-items:center}
+.gratis form{display:grid;gap:12px}
+.gratis .g-esq{grid-column:1}.gratis .g-carta{grid-column:2;grid-row:1 / span 2;min-height:0}.gratis .g-form{grid-column:1}
+.g-campos{display:grid;grid-template-columns:1fr 1fr;gap:10px}.g-campos input:first-child,.g-campos input:nth-child(2){grid-column:1 / -1}
+.gratis .g-esq h2{font-size:clamp(24px,3.4vw,34px)}
+.gratis input[type=email],.gratis input[type=text]{width:100%;padding:14px 20px;border-radius:999px;border:1.5px solid var(--line);background:var(--input);color:#2B2B2B;font:500 16.5px/1 var(--font-body)}
+.sw{display:grid;grid-template-columns:auto 1fr;gap:10px;align-items:start;font-size:14px;line-height:1.45;color:var(--ink2)}
+.sw input{width:20px;height:20px;margin:2px 0 0;accent-color:var(--moss)}
+@media (max-width:820px){.gratis{grid-template-columns:1fr;border-radius:30px}.gratis .g-esq,.gratis .g-carta,.gratis .g-form{grid-column:1;grid-row:auto}.g-campos{grid-template-columns:1fr}}
+
+footer{padding-block:24px 8px;border-top:1px solid var(--line);font-size:13.5px;color:var(--ink2)}
+footer p{margin:0 0 .5em;max-width:84ch}
+
+.barra{position:fixed;left:0;right:0;bottom:0;z-index:35;display:none;align-items:center;justify-content:space-between;gap:12px;
+  padding:10px max(16px,env(safe-area-inset-right,0px)) calc(10px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));
+  background:var(--bg);border-top:1px solid var(--line)}
+.barra b{font:700 15px/1.2 var(--font-body);color:var(--head)}
+.barra small{display:block;font-weight:400;color:var(--ink2);font-size:12.5px;white-space:nowrap}
+.barra .btn{padding:12px 20px;font-size:15.5px;white-space:nowrap}
+@media (max-width:760px){.barra{display:flex}}
+
+dialog#zoom{border:0;padding:0;background:transparent;max-width:min(96vw,1100px);width:100%}
+dialog#zoom::backdrop{background:rgba(40,28,8,.78)}
+dialog#zoom img{display:block;width:100%;height:auto}
+dialog#zoom button{position:absolute;top:10px;right:10px;padding:10px 16px;border:0;border-radius:999px;background:var(--moss);color:var(--moss-ink);font:700 15px/1 var(--font-body);cursor:pointer}
+</style>
+
+<header class="nav glass">
+  <b>Por Dentro</b>
+  <nav aria-label="Seções"><a href="#gratis">Modelo grátis</a><a href="#passos">Por dentro</a><a href="#estudio">Modelos</a><a href="#preco">Preço</a><a href="#duvidas">Dúvidas</a></nav>
+  <a class="btn sm" href="#preco">Ver preço</a>
+</header>
+
+<main>
+<section class="hero" id="topo">
+  <div class="wrap">
+    <div class="hero-in">
+      <span class="pill glass"><i></i>Manual · Endereço e domiciliação</span>
+      <h1>Meses de busca, reunidos em um <em>manual</em> só.</h1>
+      <p class="lead">Cartas prontas, formulários oficiais a 1 clique e a base legal de cada item, para resolver o endereço do seu dossiê da Ameli.</p>
+      <p class="preco-linha">De <s>19,90 €</s> por <span>9,90 €</span> <b class="off">-50%</b> <small>no preço de lançamento</small></p>
+      <div class="cta-row">
+        <a class="btn" id="cta-topo" href="#gratis">Pegar um modelo grátis <span aria-hidden="true">→</span></a>
+        <a class="btn ghost" href="#preco">Ver preço</a>
+      </div>
+      <ul class="micro"><li>Pagamento único</li><li>Garantia de 7 dias</li><li>Atualizações automáticas por 1 ano</li></ul>
+    </div>
+    <div class="stage">
+      <button type="button" class="dev s l fl fl-l" data-preview aria-label="Ver o preço do Manual (cartão de modelo)"><img src="img/c-modelo.webp" width="304" height="401" alt="Cartão do Manual: Modelo 1, Mudança de cidade ou de departamento durante o pedido"></button>
+      <div class="hold" id="hold" data-preview role="button" tabindex="0" aria-label="Celular mostrando o Manual no app. Toque para ver o preço">
+        <div class="phone"><i class="bt ba"></i><i class="bt v1"></i><i class="bt v2"></i><i class="bt pw"></i>
+          <div class="bezel"><div class="screen" id="screen">
+            <div class="sb"><span>9:41</span><span class="sbi"><svg viewBox="0 0 18 12" width="18" height="12"><rect x="0" y="8" width="3" height="4" rx="1" fill="#fff"/><rect x="5" y="5" width="3" height="7" rx="1" fill="#fff"/><rect x="10" y="2" width="3" height="10" rx="1" fill="#fff"/><rect x="15" y="0" width="3" height="12" rx="1" fill="#fff"/></svg><svg viewBox="0 0 26 12" width="26" height="12"><rect x=".5" y=".5" width="21" height="11" rx="3.5" fill="none" stroke="#fff" stroke-opacity=".6"/><rect x="2" y="2" width="16" height="8" rx="2" fill="#fff"/><rect x="23" y="4" width="2" height="4" rx="1" fill="#fff" fill-opacity=".6"/></svg></span></div>
+            <div class="isl"><i></i></div>
+            <div class="sin" id="sin">
+  <div class="a-top"><div><b>Por Dentro</b><small>Endereço e Domiciliação</small></div><span class="a-upd">Atualizado em 26/11/2026</span></div>
+  <div class="a-tabs"><span class="on">Início</span><span>Modelos de carta</span><span>Mudança de endereço</span><span>A domiciliação</span></div>
+  <div class="a-hero">
+    <svg viewBox="0 0 200 260" aria-hidden="true"><path d="M70 40 C120 10 180 50 178 120 C176 190 130 245 80 240 C30 235 10 170 22 110 C30 70 45 55 70 40 Z" fill="#E8DECA" fill-opacity=".7"/><path d="M92 62 l10 10 -8 10 12 10 -8 10 12 10 -8 10 12 10 -8 10 10 10" fill="none" stroke="#9C8C70" stroke-opacity=".7" stroke-width="7" stroke-linejoin="round"/></svg>
+    <span class="a-bd">ⓘ Manual de bolso</span>
+    <h4>Qual é o seu caso?</h4><p>Escolha o tema, siga o caminho e copie a carta pronta.</p>
+    <div class="a-busca">⌕ Ex.: visto, bairro, carta</div>
+    <div class="a-chips"><i>sem endereço fixo</i><i>mudei de visto</i><i>ninguém respondeu</i><i>carta pronta</i><i>custo</i></div>
+  </div>
+  <div class="a-pas"><b>1</b><div><strong>Escolha o seu caso</strong><small>Pelo tema ou pela busca</small></div></div>
+  <div class="a-pas"><b>2</b><div><strong>Siga o caminho</strong><small>Passo a passo, um de cada vez</small></div></div>
+  <div class="a-pas"><b>3</b><div><strong>Copie a carta</strong><small>Preencha os campos e copie</small></div></div>
+  <div class="a-apoio"><span class="al">!</span><div><strong>Apoio informativo</strong><small>Não é aconselhamento médico nem jurídico.</small><em>Caso fora do guia?</em></div></div>
+  <div class="a-nums"><div><b>5</b><span>temas para escolher</span></div><div><b>29</b><span>situações explicadas</span></div><div><b>8</b><span>modelos de carta</span></div><div><b>3</b><span>formulários oficiais</span></div></div>
+  <div class="a-forms"><h5>Formulários e sites oficiais</h5><p>Os links abrem em outra aba.</p>
+    <div><b>▤</b><span><strong>Cerfa 15763*02 (S1106a)</strong><small>Demander l'ouverture des droits à l'Assurance maladie</small></span></div>
+    <div><b>▤</b><span><strong>Cerfa 16029*01</strong><small>Demande et décision d'élection de domicile</small></span></div>
+    <div><b>▤</b><span><strong>Cerfa 16030*01</strong><small>Attestation d'élection de domicile (quem preenche é o órgão)</small></span></div>
+  </div>
+  <div class="a-mod"><small>✉ MODELOS DE CARTA</small><h5>Modelos de carta e e-mail</h5><p>Modelo, adapte ao seu caso. Os modelos informam a sua situação e pedem confirmações. Os modelos 1 e 8 citam regras…</p>
+    <div class="a-cards"><i class="viz"></i><div class="a-c1"><img src="img/ph-janela.webp" alt=""><span class="b">MODELO 1</span><strong>Mudança de cidade ou de departamento durante o pedido</strong><small>Você mudou de cidade ou de departamento com o pedido em análise.</small></div><i class="viz"></i></div>
+  </div>
+</div>
+            <div class="refl"></div><div class="hb"></div>
+          </div></div>
+        </div>
+      </div>
+      <button type="button" class="dev s r fl fl-r" data-preview aria-label="Ver o preço do Manual (cartão de domiciliação)"><img src="img/c-domiciliacao.webp" width="287" height="376" alt="Cartão do Manual: Quem pode pedir a domiciliação?"></button>
+    </div>
+    <p class="devs-cap center">O app do Manual no celular. Toque para ver o preço.</p>
+  </div>
+</section>
+
+<section style="padding-block:12px 0">
+  <div class="wrap center">
+    <p class="feats-t">O que vem no Manual</p>
+    <div class="feats">
+      <span class="feat glass">8 modelos de carta e e-mail</span><span class="feat glass">3 formulários oficiais a 1 clique</span><span class="feat glass">Base legal em cada item</span><span class="feat glass">Resumo em português</span><span class="feat glass">Atualizações automáticas</span><span class="feat glass">Garantia de 7 dias</span>
+    </div>
+  </div>
+</section>
+
+<section id="gratis">
+  <div class="wrap">
+    <div class="gratis glass rv">
+      <div class="g-esq">
+        <span class="k">Modelo grátis</span>
+        <h2>Leve o modelo <em>grátis</em>: mudança de endereço na mesma cidade.</h2>
+        <p style="margin:10px 0 14px">Preencha os campos, veja a carta se montar e receba no seu e-mail.</p>
+        <div class="g-campos">
+          <input id="g-nome" type="text" autocomplete="name" placeholder="Seu nome" aria-label="Seu nome">
+          <input id="g-org" type="text" placeholder="Para quem vai a carta (ex.: CAF, CPAM)" aria-label="Destinatário">
+          <input id="g-velho" type="text" placeholder="Endereço antigo" aria-label="Endereço antigo">
+          <input id="g-novo" type="text" autocomplete="street-address" placeholder="Endereço novo" aria-label="Endereço novo">
+          <input id="g-dossie" type="text" placeholder="Número do dossiê" aria-label="Número do dossiê">
+          <input id="g-data" type="text" placeholder="Data da mudança (ex.: 1 de dezembro)" aria-label="Data da mudança">
+        </div>
+      </div>
+      <div class="paper g-carta" aria-label="Carta do modelo grátis, com os campos preenchidos">
+        <span class="tag">Modelo grátis · aberto</span>
+        <div class="de" id="gc-de"></div>
+        <p class="obj">Objet : Changement d'adresse au sein de la même commune</p>
+        <p class="sal">Madame, Monsieur,</p>
+        <p class="abre" id="gc-1"></p>
+        <p class="abre" id="gc-2"></p>
+        <p class="abre">Je vous remercie de bien vouloir mettre à jour mes coordonnées dans mon dossier et de m'en confirmer la prise en compte par écrit. Je reste à votre disposition pour tout justificatif complémentaire.</p>
+        <p class="fim">Cordialement,<br><span id="gc-fim"></span></p>
+      </div>
+      <form id="form-gratis" novalidate class="g-form">
+        <input id="g-email" type="email" autocomplete="email" placeholder="Seu e-mail" aria-label="Seu e-mail">
+        <label class="sw"><input type="checkbox" id="c-servico"><span>Li e aceito a Política de Privacidade. Use o meu e-mail para me enviar o modelo.</span></label>
+        <label class="sw"><input type="checkbox" id="c-mkt"><span>Quero receber e-mails de marketing do Por Dentro sobre o Manual Destrave e outros conteúdos e ofertas. Posso cancelar quando quiser. O modelo chega mesmo sem esta caixa.</span></label>
+        <button class="btn" type="submit">Me envie por e-mail! <span aria-hidden="true">→</span></button>
+        <p class="aviso-previa" id="gratis-msg" role="status" hidden></p>
+        <p class="paper-note">Modelo de exemplo: adapte ao seu caso e confirme na fonte oficial. O Manual traz os outros 7, com base legal e data em cada item.</p>
+      </form>
+    </div>
+  </div>
+</section>
+
+<section id="numeros">
+  <div class="wrap">
+    <ul class="nums">
+      <li class="glass rv"><b>8</b><strong>modelos de carta e e-mail</strong><span>Copie, preencha e envie.</span></li>
+      <li class="glass rv" style="--d:80ms"><b>3</b><strong>formulários oficiais, a 1 clique</strong><span>Sem caçar no site.</span></li>
+      <li class="glass rv" style="--d:160ms"><b>29</b><strong>situações explicadas</strong><span>Vá direto ao seu caso.</span></li>
+      <li class="glass rv" style="--d:240ms"><b>1 ano</b><strong>de atualizações automáticas</strong><span>A regra mudou, o Manual muda.</span></li>
+    </ul>
+    <ul class="pubs" aria-label="Para quem é"><li>Au pair</li><li>Estudante</li><li>PVT</li><li>Cônjuge</li></ul>
+  </div>
+</section>
+
+<!-- Por dentro -->
+<section id="passos">
+  <div class="wrap center">
+    <span class="k rv">Por dentro · 5 temas</span>
+    <h2 class="rv" style="--d:60ms">Do pedido ao dossiê, na ordem em que as dúvidas <em>aparecem</em>.</h2>
+    <ul class="mais">
+      <li class="glass rv"><b>1</b><strong>Preciso de domiciliação?</strong><span>Quem pode pedir, inclusive quem mora na casa de alguém.</span></li>
+      <li class="glass rv" style="--d:80ms"><b>2</b><strong>Como pedir</strong><span>Onde pedir, formulário certo, entrevista, prazo e validade.</span></li>
+      <li class="glass rv"><b>3</b><strong>Usar a attestation no dossiê</strong><span>Como enviar à CPAM e o que fazer se mudar de endereço ou de cidade.</span></li>
+      <li class="glass rv" style="--d:80ms"><b>4</b><strong>Seu visto muda no meio do processo</strong><span>Onde o título pesa: saúde, dossiê da CPAM e domiciliação.</span></li>
+    </ul>
+    <p class="small rv" style="margin-top:16px">Só entra no Manual o que tem base confirmada: Code de la sécurité sociale, CASF, Code du travail, Service-Public e Ameli, com a data da consulta.</p>
+  </div>
+</section>
+
+<!-- Modelos: o carrossel -->
+<section id="estudio">
+  <div class="wrap center">
+    <span class="k rv">Experimente</span>
+    <h2 class="rv" style="--d:60ms">Escolha um modelo e veja a carta tomar <em>forma</em>.</h2>
+    <p class="lead rv" style="--d:100ms">Modelo, adapte ao seu caso. Os modelos informam a sua situação e pedem confirmações.</p>
+    <div class="escolha rv"><h3>Escolha o modelo</h3><p>Deslize os cartões e toque em “Saiba mais”.</p></div>
+    <div class="car rv" id="car" tabindex="0" role="region" aria-roledescription="carrossel" aria-label="Outros 7 modelos de carta e e-mail do Manual"></div>
+    <div class="carbar rv">
+      <span class="n" id="car-n">1 DE 7</span><div class="trilho" aria-hidden="true"><i id="car-t"></i></div>
+      <div class="sets"><button type="button" id="car-prev" aria-label="Modelo anterior">‹</button><button type="button" id="car-next" aria-label="Próximo modelo">›</button></div>
+    </div>
+
+    <div class="pane rv">
+      <div>
+        <h3 id="ps-t">Modelo 1</h3>
+        <p class="ps" id="ps-d"></p>
+        <div class="fields">
+          <input id="f-nome" type="text" autocomplete="name" placeholder="Seu nome" aria-label="Seu nome">
+          <input id="f-cidade" type="text" autocomplete="address-level2" placeholder="Sua cidade" aria-label="Sua cidade">
+        </div>
+        <button type="button" class="btn copiar" id="copiar">Copiar carta <span aria-hidden="true">→</span></button>
+        <p class="paper-note">Prévia: a abertura da carta aparece aqui; o resto do texto, com os campos para preencher, fica no Manual.</p>
+      </div>
+      <div class="paper" id="paper">
+        <span class="tag" id="p-tag">Modelo 1 de 7</span>
+        <div class="de" id="p-de"></div>
+        <p class="obj" id="p-obj"></p>
+        <p class="sal">Madame, Monsieur,</p>
+        <p class="abre" id="p-abre"></p>
+        <div class="bars" aria-hidden="true" id="p-bars"></div>
+        <p class="fim">Cordialement,<br><span id="p-fim"></span></p>
+        <button type="button" class="lock" id="lock" aria-label="Ver o texto completo e o preço"><span>🔒 Texto completo no Manual · toque para ver</span></button>
+        <div class="reveal" id="reveal" hidden role="region" aria-label="Preço do Manual">
+          <div class="box">
+            <p class="tit">Este modelo e os outros 7 estão no Manual</p>
+            <div class="v"><s class="de">19,90 € <b class="off">-50%</b></s>9,90<i>€</i></div>
+            <p class="dep">Preço de lançamento. Depois volta para 19,90 €.</p>
+            <p class="ben">8 modelos, 3 formulários oficiais a 1 clique e atualizações automáticas por 1 ano.</p>
+            <button type="button" class="btn" id="btn-comprar-pop">Quero o Manual <span aria-hidden="true">→</span></button>
+            <p class="aviso" id="aviso-pop" hidden>Prévia: o link de pagamento entra aqui quando o Stripe estiver pronto.</p>
+            <button type="button" class="fechar" id="reveal-fechar">Voltar ao modelo</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="forms rv" aria-label="Formulários oficiais a 1 clique">
+      <button type="button" data-preview>Cerfa 15763*02 (S1106a) ↗<small>Abertura de direitos à Assurance maladie</small></button>
+      <button type="button" data-preview>Cerfa 16029*01 ↗<small>Pedido e decisão de domiciliação</small></button>
+      <button type="button" data-preview>Cerfa 16030*01 ↗<small>Attestation (quem preenche é o órgão)</small></button>
+    </div>
+  </div>
+</section>
+
+<section id="valor">
+  <div class="wrap center">
+    <span class="k rv">Quanto vale economizar</span>
+    <h2 class="rv" style="--d:60ms">“Meu dossiê travou por causa do <em>endereço</em>.”</h2>
+    <p class="lead rv" style="--d:100ms">Toque nas dores que você reconhece.</p>
+    <div class="refs glass rv" style="--d:140ms">
+      <div class="refs-chips" role="group" aria-label="Dores comuns">
+        <button type="button" class="ref" aria-pressed="false">“Meu dossiê travou por causa do endereço.”</button>
+        <button type="button" class="ref" aria-pressed="false">“Meu dossiê ficou incompleto.”</button>
+        <button type="button" class="ref" aria-pressed="false">“Ouvi apenas informações que eu já conhecia.”</button>
+        <button type="button" class="ref" aria-pressed="false">“Paguei alguém e acabei resolvendo por conta própria.”</button>
+        <button type="button" class="ref" aria-pressed="false">“Fui a um órgão e faltou um documento.”</button>
+        <button type="button" class="ref" aria-pressed="false">“Segui uma informação desatualizada.”</button>
+        <button type="button" class="ref" aria-pressed="false">“Esperei dias por uma resposta.”</button>
+      </div>
+      <p class="refs-out" id="refs-out" aria-live="polite">Toque nas dores que você reconhece e compare com o preço do Manual.</p>
+    </div>
+  </div>
+</section>
+
+<section id="preco">
+  <div class="wrap center">
+    <span class="k rv">Preço</span>
+    <h2 class="rv" style="--d:60ms">Pagamento único, com <em>atualizações automáticas</em> por 1 ano a partir da sua compra.</h2>
+    <div class="planos">
+      <article class="plano l glass rv">
+        <span class="tag">Acompanhamento individual</span><h3>Saia da ligação com o seu plano de ação para destravar</h3>
+        <div class="valor">35<i>€</i></div><p class="nota">Ligação individual comigo, só sobre o seu dossiê. Com o cupom do Manual, 30 €.</p>
+        <ul><li>Plano de ação escrito para o seu caso</li><li>Foco no ponto em que o dossiê parou</li><li>Precisa de acompanhamento? Marque comigo!</li></ul>
+        <a class="btn ghost sm" id="btn-ligacao" href="#preco" target="_blank" rel="noopener">Quero marcar a ligação</a>
+      </article>
+      <article class="plano d rv" style="--d:80ms">
+        <span class="tag">Oferta de lançamento</span><h3>Manual Destrave: Endereço e Domiciliação</h3>
+        <p class="de-por">De <s>19,90 €</s> por <b class="off">-50%</b></p><div class="valor">9,90<i>€</i></div>
+        <p class="nota">Preço de lançamento por tempo limitado. Pagamento único, sem renovação automática.</p>
+        <ul><li>8 modelos de carta e e-mail</li><li>3 formulários oficiais a 1 clique</li><li>Base legal e data em cada item</li><li>Atualizações automáticas por 1 ano</li><li>Garantia de 7 dias, por e-mail</li><li>Cupom de 5 € na ligação de 20 min</li></ul>
+        <button class="btn" type="button" id="btn-comprar">Quero o Manual <span aria-hidden="true">→</span></button>
+        <p class="aviso-previa" id="aviso-previa" hidden>Prévia: o link de pagamento entra aqui quando o Stripe estiver pronto.</p>
+      </article>
+      <article class="plano l glass rv" style="--d:160ms">
+        <span class="tag">Em breve · pré-venda</span><h3>Manual 2: Abertura de direitos</h3>
+        <div class="valor">Em preparo</div><p class="nota">O passo depois do endereço, no mesmo formato do Manual 1. Preço e data ainda não definidos.</p>
+        <ul><li>Carte Vitale e médecin traitant, passo a passo</li><li>Cartas e e-mails prontos para copiar</li><li>Formulários oficiais a 1 clique</li><li>Base legal e data em cada item</li><li>Atualizações automáticas por 1 ano, como no Manual 1</li></ul>
+        <a class="btn ghost sm" href="#gratis">Entrar na lista de pré-venda</a>
+      </article>
+    </div>
+    <p class="honesto">O preço de lançamento termina de verdade, sem contagem regressiva falsa. O link chega por e-mail em até 24 horas. No pagamento você confirma o acesso imediato e a renúncia ao direito de retratação (CGV, art. 11); a garantia de 7 dias continua valendo.</p>
+  </div>
+</section>
+
+<section id="duvidas">
+  <div class="wrap duv">
+    <div>
+      <span class="k rv">Dúvidas</span>
+      <h2 class="rv" style="--d:60ms">Perguntas <em>comuns</em>, respostas curtas.</h2>
+      <aside class="glass rv" style="--d:120ms"><p><strong>Ainda com dúvida?</strong></p><p>Se o seu caso travar em um ponto que o Manual não cobre, existe a ligação de 20 minutos.</p><a class="btn ghost sm" href="#preco">Ver a ligação</a></aside>
+    </div>
+    <div class="faq" id="faq">
+      <details class="glass rv"><summary>O Manual garante que a Ameli vai aceitar o meu pedido?</summary><p>Não. Quem decide é o órgão ou a CPAM. O Manual é um plano e não é aconselhamento médico nem jurídico. Casos fora do roteiro, como sem status regular, OQTF ou recusa: procure a préfecture ou um advogado.</p></details>
+      <details class="glass rv"><summary>Serve para o meu perfil?</summary><p>Foi escrito para quem precisa de endereço para o dossiê da Ameli: au pair, estudante, PVT ou cônjuge. As regras dependem do seu caso, então confirme na fonte de cada item.</p></details>
+      <details class="glass rv"><summary>Posso pedir reembolso? E os outros manuais?</summary><p>Sim, em até 7 dias, por e-mail, conforme as CGV. Abertura de direitos, Carte Vitale e médecin traitant serão manuais próprios, ainda sem data.</p></details>
+      <details class="glass rv"><summary>Em que o Manual se baseia?</summary><p>Em fontes oficiais: Code de la sécurité sociale, CASF, Code du travail, Service-Public e Ameli. Só entra o que tem base confirmada.</p></details>
+      <details class="glass rv"><summary>Como funcionam as atualizações?</summary><p>Quando a fonte oficial muda e eu confirmo, o Manual muda e registra o que mudou, com a data. Você recebe automaticamente por 1 ano a partir da compra.</p></details>
+    </div>
+  </div>
+</section>
+
+
+
+<footer>
+  <div class="wrap">
+    <p><strong>Conteúdo de orientação.</strong> Não é aconselhamento médico nem jurídico e não garante o resultado do seu pedido. Confirme na fonte oficial antes de contar com um prazo ou um documento.</p>
+    <p>Por Dentro · Feito por quem vive isso na França.</p>
+  </div>
+</footer>
+</main>
+
+<div class="barra" id="barra">
+  <b>Manual Destrave<small>De 19,90 € por 9,90 €</small></b>
+  <a class="btn" href="#preco" id="barra-comprar">Quero o Manual</a>
+</div>
+
+<dialog id="zoom" aria-label="Imagem ampliada"><button type="button" id="zoom-fechar">Fechar</button><img id="zoom-img" alt=""></dialog>
+
+<script>
+(function () {
+  var $ = function (i) { return document.getElementById(i); };
+  var reduce = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  /* blocos que surgem ao rolar: só o que está abaixo da dobra espera */
+  var rv = Array.prototype.slice.call(document.querySelectorAll(".rv"));
+  if ("IntersectionObserver" in window && !reduce) {
+    var vh = window.innerHeight;
+    var io = new IntersectionObserver(function (es) {
+      es.forEach(function (e) { if (e.isIntersecting) { e.target.classList.remove("pre"); io.unobserve(e.target); } });
+    }, { threshold: 0.12, rootMargin: "0px 0px -6% 0px" });
+    rv.forEach(function (el) { if (el.getBoundingClientRect().top > vh * 0.95) { el.classList.add("pre"); io.observe(el); } });
+  }
+
+  /* os 8 modelos: títulos do Manual; fotos reais das telas, reaproveitadas com variações */
+  var MODELOS = [
+    ["Mudança de cidade ou de departamento durante o pedido", "janela", ""],
+    ["Enviar a attestation d'élection de domicile para a CPAM", "correio", ""],
+    ["Nova mudança de endereço: a domiciliação termina ou você sai da cidade", "caixas", "flip"],
+    ["Pedir os motivos da recusa ou do silêncio do CCAS ou CIAS", "prefeitura", ""],
+    ["Pedir a renovação da domiciliação", "janela", "flip"],
+    ["Avisar uma ausência por razões profissionais", "correio", "flip"],
+    ["Responder à notificação da CPAM sobre o fechamento dos direitos", "concha", "tom"]
+  ];
+  var LARGURAS = [[96, 88, 70, 54], [88, 94, 90, 58], [96, 82, 74, 44], [92, 96, 68, 52], [86, 92, 80, 46], [94, 80, 76, 56], [90, 96, 86, 50]];
+  var atual = 0, car = $("car"), cards = [];
+  function esc(s) { return s.replace(/[&<>]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]; }); }
+  MODELOS.forEach(function (m, i) {
+    var c = document.createElement("div");
+    c.className = "cm"; c.setAttribute("role", "group"); c.setAttribute("aria-label", "Modelo " + (i + 1) + " de 7");
+    var st = m[2] === "flip" ? "transform:scaleX(-1)" : (m[2] === "tom" ? "filter:hue-rotate(70deg) saturate(.8)" : "");
+    c.innerHTML = '<div class="foto"><img src="img/ph-' + m[1] + '.webp" alt="" style="' + st + '"></div><span class="bd">Modelo ' + (i + 1) + '</span>' +
+      '<div class="tx"><p class="tt">' + esc(m[0]) + '</p><span class="ma"><i></i>Modelo, adapte</span><button type="button" class="sm" tabindex="-1">Saiba mais →</button></div>';
+    c.addEventListener("click", function (e) {
+      if (i !== atual) { irPara(i); return; }
+      if (e.target.closest(".sm") || true) { $("ps-t").scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "center" }); setTimeout(function () { $("f-nome").focus({ preventScroll: true }); }, reduce ? 0 : 500); }
+    });
+    car.appendChild(c); cards.push(c);
+  });
+  function irPara(i) {
+    i = Math.max(0, Math.min(cards.length - 1, i));
+    var c = cards[i], alvo = c.offsetLeft - (car.clientWidth - c.offsetWidth) / 2;
+    car.scrollTo({ left: alvo, behavior: reduce ? "auto" : "smooth" });
+  }
+  function pinta() {
+    var nome = $("f-nome").value.trim(), cid = $("f-cidade").value.trim();
+    $("p-tag").textContent = "Modelo " + (atual + 1) + " de 7";
+    $("p-de").innerHTML = (nome ? esc(nome) : '<span class="ph">[Seu nome]</span>') + "<br>" + (cid ? esc(cid) : '<span class="ph">[Sua cidade]</span>');
+    $("p-obj").innerHTML = "Objet : <span class='ph'>" + esc(MODELOS[atual][0].split(":")[0]) + "</span>";
+    $("p-fim").innerHTML = nome ? esc(nome) : '<span class="ph">[Seu nome]</span>';
+    $("ps-t").textContent = "Modelo " + (atual + 1);
+    $("ps-d").textContent = MODELOS[atual][0];
+  }
+  var ABRE = [
+    "Je vous écris au sujet de ma demande en cours : ma situation a changé, je déménage vers <span class='ph'>[nouvelle commune ou département]</span>.",
+    "Je vous transmets ci-joint mon attestation d'élection de domicile afin de mettre à jour mon dossier <span class='ph'>[numéro de dossier]</span>.",
+    "Je vous informe que ma domiciliation prend fin et que je change d'adresse. Ma nouvelle adresse est : <span class='ph'>[adresse]</span>.",
+    "Je vous prie de bien vouloir m'indiquer par écrit les motifs de votre décision, ou de l'absence de réponse à ma demande du <span class='ph'>[date]</span>.",
+    "Je souhaite demander le renouvellement de ma domiciliation, qui arrive à échéance le <span class='ph'>[date]</span>.",
+    "Je vous informe d'une absence pour raisons professionnelles du <span class='ph'>[date]</span> au <span class='ph'>[date]</span>.",
+    "J'ai bien reçu votre notification du <span class='ph'>[date]</span> concernant la fermeture de mes droits, et je souhaite y répondre."
+  ];
+  function barras() { $("p-abre").innerHTML = ABRE[atual]; $("p-bars").innerHTML = LARGURAS[atual].map(function (w) { return '<i style="width:' + w + '%"></i>'; }).join(""); }
+  function marca() {
+    var centro = car.scrollLeft + car.clientWidth / 2, melhor = 0, dist = 1e9;
+    cards.forEach(function (c, i) { var d = Math.abs(c.offsetLeft + c.offsetWidth / 2 - centro); if (d < dist) { dist = d; melhor = i; } });
+    if (melhor !== atual || !cards[melhor].classList.contains("on")) {
+      atual = melhor;
+      cards.forEach(function (c, i) { c.classList.toggle("on", i === melhor); });
+      $("car-n").textContent = (melhor + 1) + " DE 7"; $("car-t").style.width = ((melhor + 1) / 7 * 100) + "%";
+      $("car-prev").disabled = melhor === 0; $("car-next").disabled = melhor === cards.length - 1;
+      barras(); pinta();
+    }
+  }
+  var raf = 0;
+  car.addEventListener("scroll", function () { if (!raf) raf = requestAnimationFrame(function () { raf = 0; marca(); }); }, { passive: true });
+  window.addEventListener("resize", marca);
+  $("car-prev").addEventListener("click", function () { irPara(atual - 1); });
+  $("car-next").addEventListener("click", function () { irPara(atual + 1); });
+  car.addEventListener("keydown", function (e) {
+    if (e.key === "ArrowRight") { e.preventDefault(); irPara(atual + 1); }
+    else if (e.key === "ArrowLeft") { e.preventDefault(); irPara(atual - 1); }
+  });
+  $("f-nome").addEventListener("input", pinta); $("f-cidade").addEventListener("input", pinta);
+  cards[0].classList.add("on"); $("car-prev").disabled = true; barras(); pinta();
+
+  /* celular: a tela do app é desenhada em 390 px e ajustada ao tamanho do aparelho; rola sozinha como numa demonstração */
+  function ajustaTela() {
+    var sc = $("screen"), sn = $("sin"); if (!sc || !sn) return;
+    var k = sc.clientWidth / 390; sc.style.setProperty("--s", k);
+    sc.style.setProperty("--dist", Math.max(0, sn.offsetHeight * k - sc.clientHeight + 6) + "px");
+  }
+  ajustaTela(); window.addEventListener("resize", ajustaTela); window.addEventListener("load", ajustaTela);
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(ajustaTela);
+  $("hold").addEventListener("keydown", function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); $("hold").click(); } });
+
+  /* ao tocar no preview, aparecem o preço e o botão de comprar */
+  function revelar() { $("reveal").hidden = false; $("btn-comprar-pop").focus({ preventScroll: true }); }
+  $("lock").addEventListener("click", revelar);
+  $("copiar").addEventListener("click", function () { $("paper").scrollIntoView({ block: "nearest", behavior: reduce ? "auto" : "smooth" }); revelar(); });
+  $("reveal-fechar").addEventListener("click", function () { $("reveal").hidden = true; $("aviso-pop").hidden = true; });
+  var STRIPE = "https://buy.stripe.com/14A00jbcx3ot8rbfWxaR209?client_reference_id=manual-destrave-domiciliacao";
+  var CAL = "https://app.cal.com/links/1cDoiecai7o81hMeQHDBhP";
+  function comUtm(url, content) {
+    var u = new URL(url);
+    u.searchParams.set("utm_source", "site"); u.searchParams.set("utm_medium", "landing");
+    u.searchParams.set("utm_campaign", "destrave"); u.searchParams.set("utm_content", content);
+    return u.toString();
+  }
+  function comprar(onde) { window.open(comUtm(STRIPE, onde), "_blank", "noopener"); }
+  $("btn-ligacao").href = comUtm(CAL, "cartao-ligacao");
+  $("btn-comprar-pop").addEventListener("click", function () { comprar("pop-modelo"); });
+  Array.prototype.forEach.call(document.querySelectorAll("[data-preview]"), function (b) {
+    b.addEventListener("click", function () {
+      $("paper").scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "center" });
+      setTimeout(revelar, reduce ? 0 : 450);
+    });
+  });
+
+  /* dores comuns: referência pessoal, sem conta exata */
+  var refs = Array.prototype.slice.call(document.querySelectorAll(".ref"));
+  function refsTexto() {
+    var n = refs.filter(function (r) { return r.getAttribute("aria-pressed") === "true"; }).length;
+    if (!n) return "Toque nas dores que você reconhece e compare com o preço do Manual.";
+    var q = n === 1 ? "Você se reconhece em uma dessas dores." : "Você se reconhece em " + n + " dessas dores.";
+    return q + " Quanto cada uma custou, em euros, em dias ou em paciência, só você sabe medir. O Manual custa <b>9,90 €</b> no lançamento (de 19,90 €), e foi feito para você gastar menos dessas coisas.";
+  }
+  refs.forEach(function (r) {
+    r.addEventListener("click", function () {
+      r.setAttribute("aria-pressed", r.getAttribute("aria-pressed") === "true" ? "false" : "true");
+      $("refs-out").innerHTML = refsTexto();
+    });
+  });
+
+  /* ampliar as telas */
+  var dz = $("zoom");
+  Array.prototype.forEach.call(document.querySelectorAll("[data-zoom]"), function (b) {
+    b.addEventListener("click", function () {
+      if (!dz || !dz.showModal) return;
+      $("zoom-img").src = b.getAttribute("data-zoom"); $("zoom-img").alt = b.getAttribute("data-alt") || "";
+      dz.showModal();
+    });
+  });
+  if (dz) { dz.addEventListener("click", function () { dz.close(); }); $("zoom-fechar").addEventListener("click", function () { dz.close(); }); }
+
+  $("btn-comprar").addEventListener("click", function () { comprar("cartao-preco"); });
+
+  function pintaGratis() {
+    var v = function (id, ph) { var t = $(id).value.trim(); return t ? esc(t) : '<span class="ph">[' + ph + ']</span>'; };
+    $("gc-de").innerHTML = v("g-nome", "Seu nome") + "<br>" + v("g-novo", "Endereço novo");
+    $("gc-1").innerHTML = "Je vous informe de mon changement d'adresse au sein de la même commune, à compter du " + v("g-data", "date") + ". Mon ancienne adresse était : " + v("g-velho", "ancienne adresse") + ". Ma nouvelle adresse est : " + v("g-novo", "nouvelle adresse") + ".";
+    $("gc-2").innerHTML = "Mon numéro de dossier" + ($("g-org").value.trim() ? " auprès de " + esc($("g-org").value.trim()) : "") + " est : " + v("g-dossie", "numéro de dossier") + ".";
+    $("gc-fim").innerHTML = v("g-nome", "Seu nome");
+  }
+  ["g-nome", "g-org", "g-velho", "g-novo", "g-dossie", "g-data"].forEach(function (id) { $(id).addEventListener("input", pintaGratis); });
+  pintaGratis();
+  $("form-gratis").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var msg = $("gratis-msg"), email = $("g-email").value.trim(), nome = $("g-nome").value.trim();
+    msg.hidden = false;
+    if (!nome) { msg.textContent = "Conta o seu nome, ali em cima, para eu montar a carta."; return; }
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { msg.textContent = "Confere o e-mail e tenta de novo."; return; }
+    if (!$("c-servico").checked) { msg.textContent = "Preciso que você aceite a Política de Privacidade para enviar o modelo."; return; }
+    msg.textContent = "Prévia: na página publicada, o cadastro vai para o CRM e o modelo, já preenchido com os seus dados, chega por e-mail. O aviso de marketing só vale se a segunda caixa estiver marcada (" + ($("c-mkt").checked ? "marcada" : "desmarcada") + ").";
+  });
+
+  try {
+    var itens = Array.prototype.map.call(document.querySelectorAll("#faq details"), function (d) {
+      return { "@type": "Question", name: d.querySelector("summary").textContent.trim(),
+        acceptedAnswer: { "@type": "Answer", text: d.querySelector("p").textContent.trim() } };
+    });
+    var s = document.createElement("script"); s.type = "application/ld+json";
+    s.textContent = JSON.stringify({ "@context": "https://schema.org", "@type": "FAQPage", mainEntity: itens });
+    document.head.appendChild(s);
+  } catch (err) {}
+})();
+</script>
+
+</body></html>
