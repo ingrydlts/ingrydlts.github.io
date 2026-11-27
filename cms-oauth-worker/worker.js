@@ -2368,18 +2368,115 @@ async function handleCalWebhook(request, env) {
     const minutos = (/\((\d{2,3}) min\)/.exec(titulo) || [])[1] || Math.round((Date.parse(p.endTime) - quandoMs) / 60000) || '';
     const notaDela = String(p.additionalNotes || '').replace(/\s+/g, ' ').trim().slice(0, 300);
     const nota = ('Marcado pelo Cal.com' + (minutos ? ' (' + minutos + ' min)' : '') + '.' + (notaDela ? ' Nota dela: ' + notaDela : '')).slice(0, 500);
-    const ins = await fetch(um, { method: 'POST', headers: { ...sb, Prefer: 'return=minimal' },
+    const ins = await fetch(um, { method: 'POST', headers: { ...sb, Prefer: 'return=representation' },
       body: JSON.stringify({ contato_id: contato.id, quando, status: 'agendado', cal_uid: uid, nota }) });
     if (ins.status === 409) {   // duas chamadas ao mesmo tempo: a outra gravou primeiro; esta só atualiza
       linha = await procura();
       if (linha) { await atualiza(linha); return json({ ok: true, atualizado: true }); }
     }
     aviso(ins, 'gravar');
+    // Se a pessoa está numa sequência de e-mails automáticos, pergunta à Ingryd se deve parar (nada automático sai até ela responder).
+    // Falha aqui nunca derruba o aviso do Cal.com: o 1:1 já está gravado.
+    try {
+      const novas = await ins.json();
+      if (Array.isArray(novas) && novas[0] && novas[0].id) await crmPausaAbrir(env, new URL(request.url).origin, novas[0].id);
+    } catch (e) { console.error('crm/pausa: não abri a pergunta do 1:1 — ' + (e && e.message)); }
     return json({ ok: true, criado: true });
   } catch (e) {
     console.error('crm/cal: ' + e);
     return json({ error: 'Não consegui gravar o 1:1.' }, 500);
   }
+}
+
+// ---------- CRM: a pausa dos e-mails automáticos quando a pessoa marca um 1:1 (admin/crm/db/crm-sequencia-pausas.sql) ----------
+// O Cal.com cria o 1:1 -> crm_sequencia_pausa_abrir (só abre se a pessoa está numa sequência) -> e-mail para a Ingryd com dois links
+// assinados ("Parar" e "Continuar"). Enquanto a pergunta está aberta, o motor não manda nada para a pessoa; sem resposta, nada sai.
+// O link abre uma página com um botão de confirmar (um clique no e-mail nunca decide sozinho: leitores de e-mail abrem links); o POST decide.
+// Variáveis: CRM_LINK_SECRET (a mesma dos outros links, >= 32 caracteres) e, se quiser outro destino, CRM_AVISO_EMAIL (padrão: CRM_REPLY_TO).
+const CRM_PAUSA_LINK_DIAS = 7;
+async function crmPausaAssinar(env, pausaId, decisao, agoraMs) {
+  const exp = Math.floor((agoraMs || Date.now()) / 1000) + CRM_PAUSA_LINK_DIAS * 86400;
+  const dados = new TextEncoder().encode('pausa.' + pausaId + '.' + decisao + '.' + exp);
+  const sig = new Uint8Array(await crypto.subtle.sign('HMAC', await crmLinkChave(env), dados));
+  return crmB64url(dados) + '.' + crmB64url(sig);
+}
+async function crmPausaConferir(env, token, agoraMs) {
+  if (String(env.CRM_LINK_SECRET || '').length < 32) return { erro: 'config' };
+  const partes = String(token || '').split('.');
+  if (partes.length !== 2 || !partes[0] || !partes[1] || token.length > 300) return { erro: 'invalido' };
+  let dados, sig;
+  try { dados = crmB64urlBytes(partes[0]); sig = crmB64urlBytes(partes[1]); } catch (e) { return { erro: 'invalido' }; }
+  if (!(await crypto.subtle.verify('HMAC', await crmLinkChave(env), sig, dados))) return { erro: 'invalido' };
+  const m = /^pausa\.(\d{1,12})\.(parar|continuar)\.(\d{9,11})$/.exec(new TextDecoder().decode(dados));
+  if (!m) return { erro: 'invalido' };
+  if (Number(m[3]) * 1000 < (agoraMs || Date.now())) return { erro: 'vencido' };
+  return { id: Number(m[1]), decisao: m[2] };
+}
+async function crmPausaAbrir(env, origin, umId) {
+  if (!env.SUPABASE_SERVICE_ROLE_KEY) return;
+  const res = await fetch(`${CRM_SUPABASE_URL}/rest/v1/rpc/crm_sequencia_pausa_abrir`, { method: 'POST', headers: crmServiceHeaders(env), body: JSON.stringify({ p_um_a_um_id: umId }) });
+  if (res.status === 404) { console.error('crm/pausa: falta rodar admin/crm/db/crm-sequencia-pausas.sql'); return; }
+  if (!res.ok) throw new Error('crm_sequencia_pausa_abrir respondeu ' + res.status);
+  const r = await res.json();
+  if (r && r.criada) await crmPausaAvisar(env, origin, r);
+}
+async function crmPausaAvisar(env, origin, r) {
+  const para = String(env.CRM_AVISO_EMAIL || crmReplyTo(env) || '').trim();
+  if (!env.BREVO_API_KEY || !env.BREVO_SENDER_EMAIL || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(para)) { console.error('crm/pausa: sem Brevo ou sem e-mail para avisar; a pergunta fica só na ficha'); return; }
+  if (String(env.CRM_LINK_SECRET || '').length < 32) { console.error('crm/pausa: falta CRM_LINK_SECRET; a pergunta fica só na ficha'); return; }
+  const nome = String(r.nome || r.email || 'Uma pessoa').slice(0, 80);
+  const quando = r.quando ? new Date(r.quando).toLocaleString('pt-BR', { timeZone: 'Europe/Paris', weekday: 'long', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : 'a combinar';
+  const parar = `${origin}/api/crm/sequencia-decidir?t=${await crmPausaAssinar(env, r.pausa_id, 'parar')}`;
+  const seguir = `${origin}/api/crm/sequencia-decidir?t=${await crmPausaAssinar(env, r.pausa_id, 'continuar')}`;
+  const assunto = `${nome} marcou um 1:1: os e-mails automáticos devem parar?`;
+  const texto = `${nome} marcou um 1:1 (${quando}, horário de Paris).\n\n` +
+    `Enquanto você não responder, nenhum e-mail automático sai para ela, e o que estava na fila se perde.\n\n` +
+    `Parar os e-mails automáticos: ${parar}\n\nContinuar os e-mails automáticos: ${seguir}\n\n` +
+    `Você também decide na ficha dela no CRM. Os links valem ${CRM_PAUSA_LINK_DIAS} dias e abrem uma página para confirmar.`;
+  const bRes = await fetch('https://api.brevo.com/v3/smtp/email', {
+    method: 'POST', headers: { 'api-key': env.BREVO_API_KEY, 'Content-Type': 'application/json', Accept: 'application/json' },
+    body: JSON.stringify({ sender: { email: env.BREVO_SENDER_EMAIL, name: env.BREVO_SENDER_NAME || 'Ingryd · Por Dentro' }, to: [{ email: para }],
+      subject: assunto, htmlContent: crmTextToHtml(texto), textContent: texto, tags: ['crm', 'pausa_1a1'] }) });
+  if (!bRes.ok) console.error('crm/pausa: o Brevo recusou o aviso (' + bRes.status + '); a pergunta fica na ficha');
+}
+function crmPausaPagina(status, titulo, texto, token) {
+  const e = crmEscapeHtml;
+  const html = `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>${e(titulo)}</title></head>` +
+    `<body style="font-family:Arial,Helvetica,sans-serif;max-width:32rem;margin:12vh auto;padding:0 1rem;line-height:1.6;color:#2B2B2B"><h1 style="font-size:1.3rem">${e(titulo)}</h1><p id="t">${e(texto)}</p>` +
+    (token ? `<button id="b" style="padding:12px 22px;border:0;border-radius:999px;background:#577328;color:#FBF7EE;font:700 16px Arial;cursor:pointer">Confirmar</button>` +
+      `<script>document.getElementById('b').onclick=function(){var b=this;b.disabled=true;fetch(location.pathname,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({t:${JSON.stringify(token)}})})` +
+      `.then(function(r){return r.json()}).then(function(j){document.getElementById('t').textContent=j.mensagem||'Feito.';b.remove()}).catch(function(){document.getElementById('t').textContent='Não consegui agora. Decida pela ficha no CRM.';b.disabled=false})}</script>` : '') +
+    `</body></html>`;
+  return new Response(html, { status, headers: { ...GUIA_SEGURANCA, 'Content-Type': 'text/html; charset=utf-8', 'X-Frame-Options': 'DENY', 'Content-Security-Policy': GUIA_CSP } });
+}
+async function handleCrmPausaPagina(request, env, url) {
+  const t = String(url.searchParams.get('t') || '');
+  const c = await crmPausaConferir(env, t);
+  if (c.erro === 'vencido') return crmPausaPagina(410, 'Link vencido', 'Esse link valia 7 dias. Decida pela ficha da pessoa no CRM.');
+  if (c.erro) return crmPausaPagina(400, 'Link inválido', 'Esse link não confere. Decida pela ficha da pessoa no CRM.');
+  const rot = c.decisao === 'parar' ? 'Parar os e-mails automáticos' : 'Continuar os e-mails automáticos';
+  let nome = 'esta pessoa';
+  try {
+    const lr = await fetch(`${CRM_SUPABASE_URL}/rest/v1/sequencia_pausas?id=eq.${c.id}&select=contatos(nome)`, { headers: crmServiceHeaders(env) });
+    const l = lr.ok ? (await lr.json())[0] : null;
+    if (l && l.contatos && l.contatos.nome) nome = String(l.contatos.nome).slice(0, 80);
+  } catch (e) { /* segue sem o nome */ }
+  return crmPausaPagina(200, rot + '?', `Confirme para ${c.decisao === 'parar' ? 'parar' : 'seguir com'} os e-mails automáticos de ${nome}.`, t);
+}
+async function handleCrmPausaDecidir(request, env) {
+  const cab = { 'Content-Type': 'application/json', ...corsHeaders() };
+  const res = (status, corpo) => new Response(JSON.stringify(corpo), { status, headers: cab });
+  let corpo = null;
+  try { corpo = await request.json(); } catch (e) { corpo = null; }
+  const c = await crmPausaConferir(env, String((corpo && corpo.t) || ''));
+  if (c.erro) return res(400, { ok: false, mensagem: c.erro === 'vencido' ? 'Esse link venceu. Decida pela ficha no CRM.' : 'Link inválido.' });
+  if (!env.SUPABASE_SERVICE_ROLE_KEY) return res(500, { ok: false, mensagem: 'Worker sem SUPABASE_SERVICE_ROLE_KEY.' });
+  const r = await fetch(`${CRM_SUPABASE_URL}/rest/v1/rpc/crm_sequencia_pausa_decidir`, { method: 'POST', headers: crmServiceHeaders(env), body: JSON.stringify({ p_id: c.id, p_decisao: c.decisao }) });
+  if (!r.ok) { console.error('crm/pausa: decidir respondeu ' + r.status); return res(502, { ok: false, mensagem: 'Não consegui gravar agora. Decida pela ficha no CRM.' }); }
+  const j = await r.json();
+  if (!j || !j.ok) return res(404, { ok: false, mensagem: 'Não achei essa pergunta.' });
+  const txt = { parar: 'Pronto: os e-mails automáticos dessa pessoa pararam.', continuar: 'Pronto: os e-mails automáticos dessa pessoa continuam.' };
+  return res(200, { ok: true, decisao: j.decisao, mensagem: j.ja_decidida && j.decisao !== c.decisao ? 'Essa pergunta já tinha sido respondida (' + (j.decisao === 'parar' ? 'parar' : 'continuar') + '). Para mudar, use a ficha no CRM.' : txt[j.decisao] });
 }
 
 // ---------- CRM fase 1b: responder da aba Conversa, na mesma conversa do Gmail ----------
@@ -6131,6 +6228,12 @@ export default {
       }
       if (url.pathname === '/api/crm/enviar' && request.method === 'POST') {
         return await handleCrmEnviar(request, env);
+      }
+      if (url.pathname === '/api/crm/sequencia-decidir' && request.method === 'GET') {
+        return await handleCrmPausaPagina(request, env, url);
+      }
+      if (url.pathname === '/api/crm/sequencia-decidir' && request.method === 'POST') {
+        return await handleCrmPausaDecidir(request, env);
       }
       if (url.pathname === '/api/crm/compra-chave' && request.method === 'GET') {
         return await handleCrmCompraChave(request, env, url);

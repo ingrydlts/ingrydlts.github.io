@@ -271,8 +271,11 @@ async function loadAll() {
     supabase.from('pagamentos').select('contato_id,tipo,servico,valor_centavos,moeda,pago_em').order('pago_em', { ascending: false }).limit(5000),
     // Quem comprou um guia digital (db/crm-compras.sql) e cada entrada no material (db/crm-compras-entradas.sql). Sem o SQL, fica vazio.
     supabase.from('compras').select('id,referencia,slug,email_pagamento,contato_id,valor_centavos,moeda,pago_em,acesso_ate,entregue_em,origem').order('pago_em', { ascending: false }).limit(2000),
-    supabase.from('compras_entradas').select('compra_id,em').order('em', { ascending: false }).limit(20000)
+    supabase.from('compras_entradas').select('compra_id,em').order('em', { ascending: false }).limit(20000),
+    // A pergunta "os e-mails automáticos devem parar?" de quem marcou um 1:1 no meio de uma sequência (db/crm-sequencia-pausas.sql). Sem o SQL, fica vazio.
+    supabase.from('sequencia_pausas').select('id,contato_id,um_a_um_id,criada_em,decisao,decidida_em').order('criada_em', { ascending: false }).limit(2000)
   ]);
+  PAUSAS = r[19] && !r[19].error ? (r[19].data || []) : [];
   COMPRAS_GUIA = r[17] && !r[17].error ? (r[17].data || []) : [];
   ENTRADAS_GUIA = r[18] && !r[18].error ? (r[18].data || []) : [];
   PAGOS = r[16] && !r[16].error ? (r[16].data || []) : [];
@@ -319,6 +322,7 @@ async function loadAll() {
   });
 }
 // Os produtos pagos da vitrine (content/produtos-digitais.json, público): nome e slug, para "Para quem" e "Registrar compra".
+var PAUSAS = [];   // a pergunta dos e-mails automáticos quando a pessoa marca um 1:1
 var COMPRAS_GUIA = [], ENTRADAS_GUIA = [];   // as compras dos guias digitais e as entradas de cada uma no material
 var PRODUTOS = [], COMPRAS = {}, COMPRAS_EV = [], UM = [], PAG1A1 = [], PRECOS = [], PAGOS = [], PAGOS_ERRO = '';
 function comprou(cid, prod) { return !!(COMPRAS[cid] && COMPRAS[cid][prod]); }
@@ -4922,7 +4926,7 @@ function renderFichaV2(c, d) {
     '<div id="fx-tour">' + FH.htmlTour(f.tour, H_FX) + '</div>' +
     '<div id="fx-fila-box">' + FH.htmlFila(fxFilaItens(cv), c.id, H_FX) + '</div>' +
     '<div id="fx-head-box">' + fxHeaderHtml(cv, d) + '</div>' +
-    '<div class="fx-topo" id="fx-topo"><div id="fx-aviso-box">' + avisoDaPessoaHtml(c, d.mails, d.resps, d.jor) + '</div>' +
+    '<div class="fx-topo" id="fx-topo"><div id="fx-pausa-box">' + pausaHtml(c) + '</div><div id="fx-aviso-box">' + avisoDaPessoaHtml(c, d.mails, d.resps, d.jor) + '</div>' +
     '<div id="fx-acoes-box">' + fxCarrossel(cv) + '</div></div>' +
     FH.htmlAbas(f.tab, !!cv.user_id, H_FX, comprasGuiaDe(c.id).length > 0) +
     '<div id="fx-corpo">' + fxCorpo(cv, d, f.tab) + '</div>' +
@@ -5018,6 +5022,29 @@ function fxCarScroll(car) {
   for (var k = 0; k < cards.length; k++) if (cards[k].offsetLeft <= car.scrollLeft + 8) i = k;
   fxCarMostra(i, car);
 }
+// A pergunta dos e-mails automáticos de quem marcou um 1:1: aberta (nada sai até você decidir) ou parada (com "Retomar").
+function pausaHtml(c) {
+  var minhas = PAUSAS.filter(function (p) { return p.contato_id === c.id; });
+  var aberta = minhas.filter(function (p) { return !p.decisao; })[0], parada = minhas.filter(function (p) { return p.decisao === 'parar'; })[0];
+  if (aberta) {
+    var u = UM.filter(function (x) { return x.id === aberta.um_a_um_id; })[0];
+    return '<section class="aviso aviso-alta" aria-label="Pergunta sobre os e-mails automáticos"><div class="aviso-t"><span class="k">Precisa de você</span></div>' +
+      '<p class="aviso-motivo"><b>' + esc(displayName(c)) + ' marcou um 1:1' + (u && u.quando ? ' para ' + esc(fmtWhen(u.quando)) : '') + '. Os e-mails automáticos devem parar?</b></p>' +
+      '<p class="aviso-fazer">Enquanto você não responder, nenhum e-mail automático sai para ela, e o que estava na fila se perde.</p>' +
+      '<div class="cam-acoes"><button class="btn primary" type="button" data-fx="pausa" data-v="parar" data-id="' + esc(aberta.id) + '">Parar a sequência</button> ' +
+      '<button class="btn" type="button" data-fx="pausa" data-v="continuar" data-id="' + esc(aberta.id) + '">Continuar a sequência</button></div></section>';
+  }
+  if (parada) return '<p class="sub" style="margin:8px 0">Os e-mails automáticos dela estão <b>parados</b>' + (parada.decidida_em ? ' desde ' + esc(fmtDate(parada.decidida_em)) : '') + '. <button class="link" type="button" data-fx="pausa" data-v="continuar" data-id="' + esc(parada.id) + '">Retomar</button></p>';
+  return '';
+}
+async function fxDecidePausa(ds) {
+  var alvo = PAUSAS.filter(function (p) { return String(p.id) === String(ds.id); })[0]; if (!alvo || (ds.v !== 'parar' && ds.v !== 'continuar')) return;
+  var r = await supabase.rpc('crm_sequencia_pausa_decidir_admin', { p_id: alvo.id, p_decisao: ds.v });
+  if (r.error || !r.data || r.data.ok === false) { toast('Não consegui gravar a decisão — ' + (r.error && r.error.message ? r.error.message : 'tente de novo')); return; }
+  alvo.decisao = ds.v; alvo.decidida_em = new Date().toISOString();
+  toast(ds.v === 'parar' ? 'Pronto: os e-mails automáticos dela pararam.' : 'Pronto: os e-mails automáticos dela continuam.');
+  var b = $('fx-pausa-box'), cm = byC(state.sel); if (b && cm) b.innerHTML = pausaHtml(cm);
+}
 // "Mostrar a chave": pede ao Worker (só para admin) a chave daquela compra. Ela não fica na página nem no banco.
 async function fxMostraChave(ds) {
   var box = $('cmp-chave-' + ds.id); if (!box) return;
@@ -5041,6 +5068,7 @@ function fichaClick(el) {
     case 'pessoa': fxReset(); openPessoa(ds.id); return true;
     case 'tab': if (FX_ABAS.indexOf(ds.v) >= 0) { f.tab = ds.v; f.hd = null; fxRepinta(); } return true;
     case 'chaveCompra': fxMostraChave(ds); return true;
+    case 'pausa': fxDecidePausa(ds); return true;
     case 'hdTile': f.hd = f.hd === ds.id ? null : ds.id; fxPintaHeader(); return true;
     case 'tourAbrir': case 'tourFechar':
       f.tour = ds.fx === 'tourAbrir'; FX.gravarPrefs(localStorage, { tour: f.tour });

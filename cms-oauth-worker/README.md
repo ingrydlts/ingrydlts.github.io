@@ -1074,3 +1074,18 @@ O `client_reference_id` vem da URL e o comprador pode editá-lo; o id do Payment
 - O Guia vivo reaproveita tudo isso, mas o conteúdo dele (`guia:manual:guia-vivo-destrave-ameli` e os capítulos) e o Payment Link ainda não existem.
 
 **Teste:** `node cms-oauth-worker/testes/guia-compra.test.mjs` e `node cms-oauth-worker/testes/guia-kv.test.mjs`; no banco, `cd admin/crm/db/testes && APP_DB_DIR=<POR-DENTRO-APP>/db npm run test:compras`.
+
+## 37. Pausa dos e-mails automáticos quando a pessoa marca um 1:1 (`admin/crm/db/crm-sequencia-pausas.sql`)
+
+**O que acontece.** O Cal.com cria um 1:1 (`POST /api/cal/webhook`, seção 34). Se a pessoa está numa sequência de e-mails automáticos (recebeu e-mail de sequência ou comprou nos últimos 60 dias) e ainda não foi parada, o banco abre uma **pergunta** (`sequencia_pausas`) e o Worker manda um e-mail para você: "{nome} marcou um 1:1: os e-mails automáticos devem parar?", com dois links assinados, **Parar** e **Continuar**. A pergunta também aparece no alto da ficha dela, com os mesmos dois botões.
+
+- **Enquanto a pergunta está aberta**, `crm_sequencia_pendentes` não manda nada para a pessoa. **Sem resposta, nada sai**: a janela de 2 dias do motor descarta o e-mail segurado.
+- **Parar:** nada automático sai mais dessa pessoa, em nenhuma trilha. **Continuar:** volta ao normal.
+- **Uma pergunta por 1:1.** O aviso repetido do Cal.com não pergunta de novo. Quem já foi parada não é perguntada outra vez.
+- **O link** (`GET /api/crm/sequencia-decidir?t=...`) abre uma página com o botão **Confirmar**; só o clique no botão (`POST`) decide, porque leitores de e-mail abrem links sozinhos. A primeira decisão pelo link vale; para trocar, use a ficha (botão "Retomar" na pessoa parada). O link vale 7 dias, é assinado (HMAC com `CRM_LINK_SECRET`) e decide só aquela pergunta.
+- **Variáveis:** `CRM_LINK_SECRET` (a mesma dos outros links, 32+ caracteres) e, se quiser outro destino, `CRM_AVISO_EMAIL` (padrão: `CRM_REPLY_TO`). Sem `CRM_LINK_SECRET` ou sem Brevo, o e-mail não sai, mas a pergunta continua na ficha.
+- Falha ao abrir a pergunta nunca derruba o aviso do Cal.com: o 1:1 já está gravado.
+
+**Como ligar:** rodar `crm-sequencia-pausas.sql` (depois de `crm-saude-porta-ponto.sql` e `crm-compras.sql`), primeiro no Supabase de teste e depois no de produção; publicar o Worker; rodar `db/auditoria-isolamento.sql` e `db/conferir-banco.sql` do app. **Atenção:** esse arquivo guarda a versão atual de `crm_sequencia_pendentes`; se rodar de novo `crm-saude-porta-ponto.sql` (ou um anterior), rode este logo depois.
+
+**Teste:** `node cms-oauth-worker/testes/crm-pausa-1a1.test.mjs`; no banco, `cd admin/crm/db/testes && APP_DB_DIR=<POR-DENTRO-APP>/db npm run test:pausas`; na ficha, `npm run test:pausa-ui`.
