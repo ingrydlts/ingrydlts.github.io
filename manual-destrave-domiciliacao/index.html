@@ -387,7 +387,7 @@ dialog#zoom button{position:absolute;top:10px;right:10px;padding:10px 16px;borde
       <div class="g-esq">
         <span class="k">Modelo grátis</span>
         <h2>Leve o modelo <em>grátis</em>: mudança de endereço na mesma cidade.</h2>
-        <p style="margin:10px 0 14px">Preencha os campos, veja a carta se montar e receba no seu e-mail.</p>
+        <p style="margin:10px 0 14px">Preencha os campos, veja a carta se montar e copie o texto pronto.</p>
         <div class="g-campos">
           <input id="g-nome" type="text" autocomplete="name" placeholder="Seu nome" aria-label="Seu nome">
           <input id="g-org" type="text" placeholder="Para quem vai a carta (ex.: CAF, CPAM)" aria-label="Destinatário">
@@ -408,11 +408,13 @@ dialog#zoom button{position:absolute;top:10px;right:10px;padding:10px 16px;borde
         <p class="fim">Cordialement,<br><span id="gc-fim"></span></p>
       </div>
       <form id="form-gratis" novalidate class="g-form">
+        <div aria-hidden="true" style="position:absolute;left:-9999px"><label for="hp-website">Deixe em branco</label><input type="text" id="hp-website" name="website" tabindex="-1" autocomplete="off"></div>
         <input id="g-email" type="email" autocomplete="email" placeholder="Seu e-mail" aria-label="Seu e-mail">
-        <label class="sw"><input type="checkbox" id="c-servico"><span>Li e aceito a Política de Privacidade. Use o meu e-mail para me enviar o modelo.</span></label>
-        <label class="sw"><input type="checkbox" id="c-mkt"><span>Quero receber e-mails de marketing do Por Dentro sobre o Manual Destrave e outros conteúdos e ofertas. Posso cancelar quando quiser. O modelo chega mesmo sem esta caixa.</span></label>
-        <button class="btn" type="submit">Me envie por e-mail! <span aria-hidden="true">→</span></button>
+        <label class="sw"><input type="checkbox" id="c-servico"><span>Li e aceito a Política de Privacidade. Use o meu e-mail para me enviar o modelo e falar sobre ele.</span></label>
+        <label class="sw"><input type="checkbox" id="c-mkt"><span>Quero receber e-mails de marketing do Por Dentro sobre o Manual Destrave e outros conteúdos e ofertas. Posso cancelar quando quiser. O modelo é seu mesmo sem esta caixa.</span></label>
+        <button class="btn" id="gratis-btn" type="submit">Quero o modelo! <span aria-hidden="true">→</span></button>
         <p class="aviso-previa" id="gratis-msg" role="status" hidden></p>
+        <button type="button" class="btn ghost sm" id="gratis-copiar" hidden>Copiar a carta preenchida</button>
         <p class="paper-note">Modelo de exemplo: adapte ao seu caso e confirme na fonte oficial. O Manual traz os outros 7, com base legal e data em cada item.</p>
       </form>
     </div>
@@ -742,16 +744,6 @@ dialog#zoom button{position:absolute;top:10px;right:10px;padding:10px 16px;borde
   }
   ["g-nome", "g-org", "g-velho", "g-novo", "g-dossie", "g-data"].forEach(function (id) { $(id).addEventListener("input", pintaGratis); });
   pintaGratis();
-  $("form-gratis").addEventListener("submit", function (e) {
-    e.preventDefault();
-    var msg = $("gratis-msg"), email = $("g-email").value.trim(), nome = $("g-nome").value.trim();
-    msg.hidden = false;
-    if (!nome) { msg.textContent = "Conta o seu nome, ali em cima, para eu montar a carta."; return; }
-    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { msg.textContent = "Confere o e-mail e tenta de novo."; return; }
-    if (!$("c-servico").checked) { msg.textContent = "Preciso que você aceite a Política de Privacidade para enviar o modelo."; return; }
-    msg.textContent = "Prévia: na página publicada, o cadastro vai para o CRM e o modelo, já preenchido com os seus dados, chega por e-mail. O aviso de marketing só vale se a segunda caixa estiver marcada (" + ($("c-mkt").checked ? "marcada" : "desmarcada") + ").";
-  });
-
   try {
     var itens = Array.prototype.map.call(document.querySelectorAll("#faq details"), function (d) {
       return { "@type": "Question", name: d.querySelector("summary").textContent.trim(),
@@ -764,4 +756,47 @@ dialog#zoom button{position:absolute;top:10px;right:10px;padding:10px 16px;borde
 })();
 </script>
 
+<script type="module">
+import { supabase } from '/assets/js/supabase-client.js';
+var $ = function (i) { return document.getElementById(i); };
+var GUIA = "modelo-mudanca-endereco-mesma-cidade";
+var TEXTO_SERVICO = $("c-servico").nextElementSibling.textContent.trim();
+var TEXTO_NOVIDADES = $("c-mkt").nextElementSibling.textContent.trim();
+var shownAt = Date.now();
+function track(t, p) { try { if (window.PDEvents) window.PDEvents.send(t, null, p || {}); } catch (e) {} }
+$("gratis-copiar").addEventListener("click", function () {
+  var c = document.querySelector(".g-carta");
+  var txt = Array.prototype.map.call(c.querySelectorAll(".de,.obj,.sal,.abre,.fim"), function (n) { return n.innerText.trim(); }).join("\n\n");
+  (navigator.clipboard ? navigator.clipboard.writeText(txt) : Promise.reject()).then(function () { $("gratis-msg").textContent = "Carta copiada."; }, function () { $("gratis-msg").textContent = "Não consegui copiar; selecione o texto da carta e copie."; });
+});
+$("form-gratis").addEventListener("submit", async function (e) {
+  e.preventDefault();
+  var msg = $("gratis-msg"), btn = $("gratis-btn"), email = $("g-email").value.trim(), nome = $("g-nome").value.trim();
+  msg.hidden = false;
+  if ($("hp-website").value || Date.now() - shownAt < 2500) { return; }
+  if (!nome) { msg.textContent = "Conta o seu nome, ali em cima, para eu montar a carta."; return; }
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { msg.textContent = "Confere o e-mail e tenta de novo."; return; }
+  if (!$("c-servico").checked) { msg.textContent = "Preciso que você aceite a Política de Privacidade para enviar o modelo."; return; }
+  var rot = btn.innerHTML; btn.disabled = true; btn.textContent = "Enviando…";
+  var params = new URLSearchParams(window.location.search);
+  /* só nome, e-mail e consentimento vão para o CRM: endereços e número de dossiê ficam na página */
+  var payload = { guia: GUIA, email: email, nome: nome, origem: "manual-destrave-domiciliacao",
+    aceita_servico: true, aceita_novidades: $("c-mkt").checked, consentimento_versao: "guia-v1",
+    texto_servico: TEXTO_SERVICO, texto_novidades: TEXTO_NOVIDADES };
+  ["utm_source", "utm_medium", "utm_campaign", "utm_content"].forEach(function (k) { var v = params.get(k); if (v) payload[k] = v.slice(0, 100); });
+  var ig = params.get("ig"); if (ig) payload.ig = ig.slice(0, 60);
+  try {
+    var r = await supabase.rpc("capturar_lead_guia", { payload: payload });
+    if (r.error) throw r.error;
+    msg.textContent = "Pronto, " + nome.split(" ")[0] + "! Seu cadastro foi feito. A carta está montada ao lado: copie o texto abaixo.";
+    $("gratis-copiar").hidden = false;
+    track("guia_lead_capturado", { guia: GUIA, utm_campaign: params.get("utm_campaign") || null });
+  } catch (err) {
+    console.error("capturar_lead_guia:", err);
+    msg.textContent = "Não consegui confirmar agora. Confere o e-mail e tenta de novo.";
+  }
+  btn.disabled = false; btn.innerHTML = rot;
+});
+</script>
+<script src="/assets/js/events.js" defer></script>
 </body></html>
