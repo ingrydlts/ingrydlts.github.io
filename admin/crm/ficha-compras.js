@@ -79,6 +79,18 @@ export function insightsEmail(o, agora) {
   return out;
 }
 
+// O que o Potencial lê das compras de uma pessoa (ficha.js, potencial): quantas, quantas entradas, há quantos dias não entra e da compra.
+// Sem compras devolve null (o Potencial fica como era).
+export function resumoParaPontos(compras, entradas, agora) {
+  const cs = compras || [];
+  if (!cs.length) return null;
+  const ids = new Set(cs.map((c) => c.id));
+  const lista = (entradas || []).filter((e) => e && ids.has(e.compra_id) && ms(e.em) != null);
+  const ultima = lista.reduce((m, e) => Math.max(m, ms(e.em)), 0);
+  const pagos = cs.map((c) => ms(c.pago_em)).filter((x) => x != null);
+  return { n: cs.length, entradas: lista.length, diasSemEntrar: ultima ? Math.max(0, dias(agora, ultima)) : null, diasDesdeCompra: pagos.length ? Math.max(0, dias(agora, Math.max(...pagos))) : null };
+}
+
 // Selo da lista e do cabeçalho: "Comprou" (e quantas vezes ela entrou, se já entrou).
 export function seloComprou(compras, entradas) {
   const cs = compras || [];

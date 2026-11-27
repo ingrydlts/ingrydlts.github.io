@@ -63,5 +63,11 @@ check('ao clicar: mostra a chave e copia a chave e o link SEM a chave na URL', c
 check('chave revogada é avisada', /revogada/.test(FC.htmlChave({ chave: 'K'.repeat(43), link: 'https://w.example/guia/#k=x', revogado: true }, h)));
 check('erro vira aviso, sem chave', /alert/.test(FC.htmlChave({ erro: 'Não achei a chave' }, h)) && /Não achei a chave/.test(FC.htmlChave({ erro: 'Não achei a chave' }, h)));
 
+console.log('== O que o Potencial lê ==');
+check('sem compras: nada (o Potencial fica como era)', FC.resumoParaPontos([], [], AGORA) === null);
+const rp = FC.resumoParaPontos([{ id: 1, pago_em: iso(30) }, { id: 2, pago_em: iso(3) }], [{ compra_id: 1, em: iso(20) }, { compra_id: 2, em: iso(8) }, { compra_id: 9, em: iso(0) }], AGORA);
+check('conta compras, entradas só das compras dela, última entrada e a compra mais recente', rp.n === 2 && rp.entradas === 2 && rp.diasSemEntrar === 8 && rp.diasDesdeCompra === 3);
+check('sem entradas: diasSemEntrar fica vazio', FC.resumoParaPontos([{ id: 1, pago_em: iso(2) }], [], AGORA).diasSemEntrar === null);
+
 console.log(`\n${passed} passaram, ${failed} falharam`);
 process.exit(failed ? 1 : 0);

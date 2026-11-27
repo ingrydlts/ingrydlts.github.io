@@ -350,6 +350,7 @@ export function cartoesMinimos(tipo, d) {
 // Lead: parte de 20 e soma o que mostra interesse (resposta, e-mail aberto, etapa do funil, vários materiais, prazo urgente, link enviado) e
 // desconta o que esfria (e-mails sem abrir, dias sem sinal). Assinante: parte de 50 e mede uso (último acesso, sessões, checklist) e pagamento.
 // Cada ponto vem com o motivo, para a tela explicar a nota. Os pesos são um rascunho a calibrar com a base real.
+// Compras de guia digital somam em qualquer tipo: +25 pela primeira (+10 por cada outra, até +40), +10 se entrou no material, +15 se usa muito (5+), −5 se parou, −10 se não entrou.
 export const FAIXAS_POTENCIAL = { alto: 65, medio: 35 };
 export function faixaPotencial(nota) { return nota >= FAIXAS_POTENCIAL.alto ? 'Alto' : nota >= FAIXAS_POTENCIAL.medio ? 'Médio' : 'Baixo'; }
 // x = { tipo: 'lead'|'plataforma'|'assinante', etapa (1..7), mails: { total, abertos, clicados }, respostas, capturas, materiais, diasSemSinal, urgencia,
@@ -383,6 +384,18 @@ export function potencial(x) {
     if (a.status === 'active') soma('Assinatura ativa', 10); else if (a.status === 'past_due' || a.status === 'unpaid') soma('Pagamento em atraso', -25); else if (a.status === 'canceled') soma('Assinatura cancelada', -40);
     if (a.cancela_no_fim) soma('Vai cancelar no fim do período', -20);
     if (o.respostas > 0) soma('Conversa com você', 5);
+  }
+  // Quem comprou um guia digital soma pontos em qualquer tipo de pessoa (compras da sessão "Compras"): comprar é o sinal mais forte de adesão,
+  // e entrar no material mostra que está usando. Pesos são rascunho, como os outros.
+  // o.compras = { n, entradas, diasSemEntrar (da última entrada, ou null), diasDesdeCompra (da compra mais recente) }
+  const cp = o.compras;
+  if (cp && cp.n > 0) {
+    soma(cp.n === 1 ? 'Comprou um guia' : 'Comprou ' + cp.n + ' guias', Math.min(40, 25 + (cp.n - 1) * 10));
+    if (cp.entradas >= 5) soma('Usa o material (' + cp.entradas + ' entradas)', 15);
+    else if (cp.entradas > 0) {
+      soma('Entrou ' + cp.entradas + (cp.entradas === 1 ? ' vez' : ' vezes') + ' no material', 10);
+      if (cp.diasSemEntrar != null && cp.diasSemEntrar >= 10) soma('Parou de entrar no material há ' + cp.diasSemEntrar + ' dias', -5);
+    } else if (cp.diasDesdeCompra != null && cp.diasDesdeCompra >= 1) soma('Comprou e ainda não entrou no material', -10);
   }
   const nota = Math.max(0, Math.min(100, Math.round(base + motivos.reduce((s, z) => s + z.p, 0))));
   motivos.sort((a, b) => Math.abs(b.p) - Math.abs(a.p));

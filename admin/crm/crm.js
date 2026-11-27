@@ -7,7 +7,7 @@ import * as ES from './estudio.js?v=2026-11-19.7';   // os blocos do estúdio de
 import * as EE from './editor-email.js?v=2026-11-19.7';
 import * as EQ from './editor-quem.js?v=2026-11-19.7';
 import * as JR from './jornada.js?v=2026-11-19.7';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
-import * as FX from './ficha.js?v=2026-11-19.7';   // ficha v2: lógica pura (fila, démarches, funil, ações)
+import * as FX from './ficha.js?v=2026-11-27.1';   // ficha v2: lógica pura (fila, démarches, funil, ações)
 import * as FH from './ficha-html.js?v=2026-11-27.1';   // ficha v2: HTML puro
 import * as FC from './ficha-compras.js?v=2026-11-27.1';   // sessão Compras: fluxo de entrada, chave e insights de e-mail (db/crm-compras-entradas.sql)
 import * as PN from './panorama.js?v=2026-11-19.7';
@@ -174,8 +174,10 @@ function potEntrada(c, o) {
   return { tipo: FX.tipoCabecalho(c, assin), etapa: FX.etapaFunil(c, { mails: ms || [], propostas: [], temBilan: !!o.temBilan, umFeito: umFeito(c.id) }), mails: m, respostas: resp,
     respostasNovas: o.respostasNovas != null ? o.respostasNovas : resp, capturas: Number(c.capturas) || 0, materiais: origensDe(c).length,
     diasSemSinal: c.dias != null && isFinite(Number(c.dias)) ? Number(c.dias) : null, urgencia: c.urgencia, linkPagamento: !!o.linkPagamento, assin: assin,
-    ultimoAcessoDias: o.ultimoAcessoDias !== undefined ? o.ultimoAcessoDias : dias(c.ultimo_evento_em || c.criado_em), sessoes30: o.sessoes30, chk: o.chk || null, nome: displayName(c) };
+    ultimoAcessoDias: o.ultimoAcessoDias !== undefined ? o.ultimoAcessoDias : dias(c.ultimo_evento_em || c.criado_em), sessoes30: o.sessoes30, chk: o.chk || null, nome: displayName(c), compras: comprasPot(c) };
 }
+// As compras de guia digital entram no Potencial (pontos): ver FX.potencial.
+function comprasPot(c) { return FC.resumoParaPontos(comprasGuiaDe(c.id), ENTRADAS_GUIA, Date.now()); }
 function potDe(c) { return FX.potencial(potEntrada(c)); }
 function potPill(p) {
   var tip = p.motivos.map(function (z) { return z.t + ' (' + (z.p > 0 ? '+' : '−') + Math.abs(z.p) + ')'; }).join(' · ') || 'Sem sinais ainda';

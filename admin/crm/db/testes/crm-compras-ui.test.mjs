@@ -79,7 +79,9 @@ console.log('== A lista de pessoas ==');
   h.mod.setCOMPRAS_GUIA([COMPRA]); h.mod.setENTRADAS_GUIA([]);
   h.mod.state.view = 'contatos'; h.mod.renderContacts();
   const t = h.el('tbody').innerHTML;
-  check('a lista marca quem comprou, e só quem comprou', /Ana Souza[^]*?Comprou/.test(t) && (t.match(/Comprou/g) || []).length === 1 && /ainda não entrou/.test(t));
+  check('a lista marca quem comprou, e só quem comprou', /Ana Souza[^]*?Comprou/.test(t) && (t.match(/pill pg-ok/g) || []).length === 1 && /ainda não entrou/.test(t));
+  const ana = t.split('<tr ')[1] || '', bia = t.split('<tr ')[2] || '';
+  check('os pontos (Potencial) de quem comprou trazem o motivo da compra; os de quem não comprou, não', /Comprou um guia \(\+25\)/.test(ana) && !/Comprou um guia/.test(bia));
 }
 console.log(`\n${passed} passaram, ${failed} falharam`);
 process.exit(failed ? 1 : 0);
