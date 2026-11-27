@@ -61,6 +61,7 @@
     "test:minutos": "node crm-sequencia-minutos.test.mjs",
     "test:chegada": "node crm-modelos-chegada-au-pair.test.mjs",
     "test:saude": "node crm-modelos-mapa-saude.test.mjs",
+    "test:domiciliacao": "node crm-modelos-manual-domiciliacao.test.mjs",
     "test:rota": "node crm-modelos-rota-da-secu.test.mjs",
     "test:rota-casos": "node rota-da-secu-casos.test.mjs",
     "test:taxonomia": "node crm-taxonomia-modelos.test.mjs",
