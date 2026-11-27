@@ -59,6 +59,7 @@ export function htmlCabecalho(d, h) {
     '<div class="hd-l1"><span class="hd-av" aria-hidden="true">' + e(iniciais(c)) + '</span><h2 class="hd-n">' + e(c.nome || c.email || 'Sem nome') + '</h2>' +
     (d.estagioLabel ? '<span class="pill"><span class="dot"></span>' + e(d.estagioLabel) + '</span>' : '') +
     (d.personaLabel ? '<span class="pill">' + e(d.personaLabel) + '</span>' : '') + conta +
+    (d.selo ? '<button type="button" class="pill pg-ok" data-fx="tab" data-v="compras" title="Abrir a sessão Compras">' + e(d.selo.texto) + ' · ' + e(d.selo.sub) + '</button>' : '') +
     (c.id ? '<button type="button" class="btn hd-pag-btn" data-pagar="' + e(c.id) + '" title="Manda o e-mail Link de pagamento. Você revisa a escolha antes de enviar.">' + (d.linkPagamentoEnviado ? 'Reenviar link de pagamento' : 'Enviar link de pagamento') + '</button>' : '') + '</div>' +
     blocos + (d.nota ? '<p class="est">' + e(d.nota) + '</p>' : '') + '</header>';
 }
@@ -76,9 +77,9 @@ export function htmlFunil(d, h) {
   return '<section class="panel fx-funilbox" aria-label="Funil de conversão"><h4 class="fx-h4">Funil de conversão</h4>' + funil + '</section>';
 }
 
-export function htmlAbas(tab, convertida, h) {
+export function htmlAbas(tab, convertida, h, comCompras) {
   const e = h.esc;
-  return '<div class="fx-abas"><div class="ptabs" role="tablist" aria-label="Ficha da pessoa">' + ABAS.map((t) =>
+  return '<div class="fx-abas"><div class="ptabs" role="tablist" aria-label="Ficha da pessoa">' + (comCompras ? ABAS.concat([['compras', 'Compras']]) : ABAS).map((t) =>
     '<button class="ptab" role="tab" type="button" data-fx="tab" data-v="' + t[0] + '" aria-selected="' + (tab === t[0]) + '">' + e(t[1]) +
     (t[0] === 'plataforma' ? ' <span class="fx-selo">' + (convertida ? 'convertida' : 'prévia') + '</span>' : '') + '</button>').join('') +
     '</div><button class="link fx-tour-btn" type="button" data-fx="tourAbrir">Como usar esta tela</button></div>';

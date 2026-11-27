@@ -8,6 +8,7 @@ import * as FX from '../../ficha.js';
 import * as FH from '../../ficha-html.js';
 import * as PN from '../../panorama.js';
 import * as MT from '../../montagem.js';
+import * as FC from '../../ficha-compras.js';
 import { readFileSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
@@ -44,9 +45,9 @@ export async function carregarCrm(opts = {}) {
   const localStorage = opts.storageBloqueado ? { getItem() { throw new Error('bloqueado'); }, setItem() { throw new Error('cheio'); } }
     : { getItem: (k) => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = v; } };
   const fetch = opts.fetch || (async (u) => { try { const t = await readFile(path.resolve(HERE, '../../' + String(u).split('?')[0]), 'utf8'); return { ok: true, json: async () => JSON.parse(t) }; } catch (e) { return { ok: false }; } });
-  const mod = new Function('supabase', 'ES', 'TX', 'EE', 'EQ', 'JR', 'FX', 'FH', 'PN', 'MT', 'fetch', 'document', 'window', 'location', 'localStorage', 'setInterval', 'clearInterval',
-    SRC + '\n;return { ' + (opts.expor || []).map((n) => n + ': (typeof ' + n + ' === "function" ? ' + n + ' : null)').join(', ') + ((opts.expor || []).length ? ', ' : '') + 'state, setC: function (v) { C = v; }, setR: function (v) { R = v; }, setPSUG: function (v) { PSUG = v; }, renderPessoa, fichaClick: (typeof fichaClick === "function" ? fichaClick : null), byC, renderBoard, setASSIN: function (v) { ASSIN = v; }, setUM: function (v) { UM = v; }, setPAG1A1: function (v) { PAG1A1 = v; }, r1Html, setPRECOS: function (v) { PRECOS = v; }, setPRODUTOS: function (v) { PRODUTOS = v; }, setCOMPRAS_EV: function (v) { COMPRAS_EV = v; }, receitaEstimada, renderKpis, renderContacts, renderHojeResumo, hojeIrAba, fxSinaisCorpo, potDe, personaKey, pararAoVivo, trocaPlatAba, pintaDossie, atualizaAoVivo, dosDoFunil: (typeof dosDoFunil === "function" ? dosDoFunil : null), dosValor: (typeof dosValor === "function" ? dosValor : null), dosProgresso: (typeof dosProgresso === "function" ? dosProgresso : null) };')(
-    supabase, {}, TXMOD, { iniciar() {}, depois() {}, campoMudou() {} }, {}, JR, FX, FH, PN, MT, fetch, document, { addEventListener() {} }, { href: '', search: opts.search || '' }, localStorage, () => 1, () => {});
+  const mod = new Function('supabase', 'ES', 'TX', 'EE', 'EQ', 'JR', 'FX', 'FH', 'PN', 'MT', 'FC', 'fetch', 'document', 'window', 'location', 'localStorage', 'setInterval', 'clearInterval',
+    SRC + '\n;return { ' + (opts.expor || []).map((n) => n + ': (typeof ' + n + ' === "function" ? ' + n + ' : null)').join(', ') + ((opts.expor || []).length ? ', ' : '') + 'state, setC: function (v) { C = v; }, setR: function (v) { R = v; }, setPSUG: function (v) { PSUG = v; }, renderPessoa, fichaClick: (typeof fichaClick === "function" ? fichaClick : null), byC, renderBoard, setASSIN: function (v) { ASSIN = v; }, setUM: function (v) { UM = v; }, setPAG1A1: function (v) { PAG1A1 = v; }, r1Html, setPRECOS: function (v) { PRECOS = v; }, setPRODUTOS: function (v) { PRODUTOS = v; }, setCOMPRAS_EV: function (v) { COMPRAS_EV = v; }, setCOMPRAS_GUIA: function (v) { COMPRAS_GUIA = v; }, setENTRADAS_GUIA: function (v) { ENTRADAS_GUIA = v; }, receitaEstimada, renderKpis, renderContacts, renderHojeResumo, hojeIrAba, fxSinaisCorpo, potDe, personaKey, pararAoVivo, trocaPlatAba, pintaDossie, atualizaAoVivo, dosDoFunil: (typeof dosDoFunil === "function" ? dosDoFunil : null), dosValor: (typeof dosValor === "function" ? dosValor : null), dosProgresso: (typeof dosProgresso === "function" ? dosProgresso : null) };')(
+    supabase, {}, TXMOD, { iniciar() {}, depois() {}, campoMudou() {} }, {}, JR, FX, FH, PN, MT, FC, fetch, document, { addEventListener() {} }, { href: '', search: opts.search || '' }, localStorage, () => 1, () => {});
   const click = async (ds) => { const b = { id: '', dataset: ds, disabled: false, matches: () => false }; await handlers.click[0]({ target: { id: '', closest: () => b } }); return b; };
   return { mod, el, click, writes, rpcs, respostas, store, handlers };
 }

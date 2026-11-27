@@ -8,7 +8,8 @@ import * as EE from './editor-email.js?v=2026-11-19.7';
 import * as EQ from './editor-quem.js?v=2026-11-19.7';
 import * as JR from './jornada.js?v=2026-11-19.7';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
 import * as FX from './ficha.js?v=2026-11-19.7';   // ficha v2: lógica pura (fila, démarches, funil, ações)
-import * as FH from './ficha-html.js?v=2026-11-19.7';   // ficha v2: HTML puro
+import * as FH from './ficha-html.js?v=2026-11-27.1';   // ficha v2: HTML puro
+import * as FC from './ficha-compras.js?v=2026-11-27.1';   // sessão Compras: fluxo de entrada, chave e insights de e-mail (db/crm-compras-entradas.sql)
 import * as PN from './panorama.js?v=2026-11-19.7';
 import * as MT from './montagem.js?v=2026-11-19.7';   // Montagem do espaço a partir do transcript (lógica e HTML puros)   // Panorama dela e O que ela trouxe (lógica e HTML puros)
 
@@ -265,8 +266,13 @@ async function loadAll() {
     // Os 1:1 pagos (db/crm-1a1.sql): quantos minutos e quando pagou. O valor em euros não é guardado: o Worker só repassa os minutos.
     supabase.from('um_a_um_pagamentos').select('contato_id,minutos,pago_em,um_a_um_id').order('pago_em', { ascending: false }).limit(2000),
     // O dinheiro que entrou de verdade (db/crm-pagamentos.sql, alimentado pelo webhook do Stripe): valor, serviço e quando. Sem o SQL, fica vazio.
-    supabase.from('pagamentos').select('contato_id,tipo,servico,valor_centavos,moeda,pago_em').order('pago_em', { ascending: false }).limit(5000)
+    supabase.from('pagamentos').select('contato_id,tipo,servico,valor_centavos,moeda,pago_em').order('pago_em', { ascending: false }).limit(5000),
+    // Quem comprou um guia digital (db/crm-compras.sql) e cada entrada no material (db/crm-compras-entradas.sql). Sem o SQL, fica vazio.
+    supabase.from('compras').select('id,referencia,slug,email_pagamento,contato_id,valor_centavos,moeda,pago_em,acesso_ate,entregue_em,origem').order('pago_em', { ascending: false }).limit(2000),
+    supabase.from('compras_entradas').select('compra_id,em').order('em', { ascending: false }).limit(20000)
   ]);
+  COMPRAS_GUIA = r[17] && !r[17].error ? (r[17].data || []) : [];
+  ENTRADAS_GUIA = r[18] && !r[18].error ? (r[18].data || []) : [];
   PAGOS = r[16] && !r[16].error ? (r[16].data || []) : [];
   PAGOS_ERRO = r[16] && r[16].error ? String(r[16].error.message || 'erro') : '';
   if (r[0].error) return fail('carregar os contatos', r[0].error);
@@ -311,6 +317,7 @@ async function loadAll() {
   });
 }
 // Os produtos pagos da vitrine (content/produtos-digitais.json, público): nome e slug, para "Para quem" e "Registrar compra".
+var COMPRAS_GUIA = [], ENTRADAS_GUIA = [];   // as compras dos guias digitais e as entradas de cada uma no material
 var PRODUTOS = [], COMPRAS = {}, COMPRAS_EV = [], UM = [], PAG1A1 = [], PRECOS = [], PAGOS = [], PAGOS_ERRO = '';
 function comprou(cid, prod) { return !!(COMPRAS[cid] && COMPRAS[cid][prod]); }
 async function carregarProdutos() {
@@ -800,7 +807,7 @@ function renderContacts() {
   $('tbody').innerHTML = list.map(function (it) {
     var c = it.c;
     return '<tr data-id="' + esc(c.id) + '" aria-selected="' + (c.id === state.sel) + '" tabindex="0">' +
-      '<td><div class="nm"><div class="' + avClass(c) + '">' + esc(ini(c)) + '</div><div><b>' + esc(displayName(c)) + (voltou(c) ? ' <span class="pill" title="Deixou o e-mail ' + nCapturas(c) + ' vezes">voltou ×' + nCapturas(c) + '</span>' : '') + '</b><span>' + esc(c.email) + '</span></div></div></td>' +
+      '<td><div class="nm"><div class="' + avClass(c) + '">' + esc(ini(c)) + '</div><div><b>' + esc(displayName(c)) + (seloCompra(c) ? ' <span class="pill pg-ok" title="' + esc(seloCompra(c).sub) + '">' + esc(seloCompra(c).texto) + '</span>' : '') + (voltou(c) ? ' <span class="pill" title="Deixou o e-mail ' + nCapturas(c) + ' vezes">voltou ×' + nCapturas(c) + '</span>' : '') + '</b><span>' + esc(c.email) + '</span></div></div></td>' +
       '<td><span class="persona">' + esc(personaLabel(c)) + '</span><div class="sub">' + esc(subLabel(c)) + '</div>' + (origensDe(c).length > 1 ? '<div class="sub">' + esc(origensDe(c).map(origLabel).join(' · ')) + '</div>' : '') + '</td>' +
       '<td>' + potPill(it.p) + '</td><td>' + urgPill(c.urgencia) + '</td><td><span class="stage">' + esc(stageLabel(c.estagio)) + '</span></td>' +
       '<td>' + prazoCell(c) + '</td><td class="sub num">' + ago(c.dias) + '</td></tr>';
@@ -3717,7 +3724,10 @@ function fxLinhaPasso(o) {
   return casoLinha(casoPil(o.rot, o.estado === 'ok' ? 'u-baixa' : o.estado === 'bad' ? 'u-alta' : o.estado === 'mid' ? 'u-media' : ''), meio, btns, ((o.cls || '') + (o.alerta ? ' alerta' : '')).trim());
 }
 var H_FX = { esc: esc, fmtDay: fmtDay, linhaPasso: fxLinhaPasso };
-var FX_ABAS = ['conversa', 'plataforma', 'ficha', 'dossie'];
+var FX_ABAS = ['conversa', 'plataforma', 'ficha', 'dossie', 'compras'];
+// As compras de guia digital de uma pessoa e o selo "Comprou" (a aba Compras só aparece para quem comprou).
+function comprasGuiaDe(cid) { return COMPRAS_GUIA.filter(function (x) { return x.contato_id === cid; }); }
+function seloCompra(c) { return FC.seloComprou(comprasGuiaDe(c.id), ENTRADAS_GUIA); }
 // Zera o que é "desta pessoa" ao abrir outra ficha. A ordem das sessões e o guia são preferências do navegador e ficam.
 function fxReset() {
   var f = state.fx; f.tab = null; f.ag = { i: 0, pop: null }; f.dem = 'todas'; f.ckTodos = false; f.ckMais = false; f.ckEd = null; f.ckOrigem = 'todos'; f.curOrigem = 'todos'; state.cur = null; f.abertas = {}; f.sessao = null; f.flash = null; f.tarefas = []; f.dados = null; f.appAba = 'inicio'; f.dia = 1; f.camadas = false; f.dd = {}; f.tema = null; f.coorte = null; f.urg = [];
@@ -3940,7 +3950,7 @@ function fxHeaderHtml(c, d) {
   dados.pagamentos = PAGOS.filter(function (g) { return g.contato_id === c.id; });
   var cart = FX.cartoesMinimos(tipo, dados);
   return FH.htmlCabecalho({ c: c, linkPagamentoEnviado: !!state.pagto, estagioLabel: estagioRotulo(c), personaLabel: personaLabel(c) + (subLabel(c) ? ' · ' + subLabel(c) : ''),
-    temConta: !!c.user_id, etiqueta: assin ? FX.etiquetaPagamento(assin) : null, estagios: STAGES, blocos: cart.blocos, nota: cart.nota }, H_FX);
+    selo: seloCompra(c), temConta: !!c.user_id, etiqueta: assin ? FX.etiquetaPagamento(assin) : null, estagios: STAGES, blocos: cart.blocos, nota: cart.nota }, H_FX);
 }
 // Catálogo de démarches (cópia do app, processos.json): carregado uma vez; sem ele, tudo cai na démarche padrão.
 var FX_PROC = null, FX_QUANDO = null;   // FX_QUANDO: o "quando" de cada passo do template (guias-quando.json), para o prazo curto do Início
@@ -4849,6 +4859,7 @@ function fxCorpo(c, d, tab) {
     return '<div class="fx-plat">' + pagamentoHtml(c, H4_PLAT) + sess.ir + '<div class="fx-plat-grade"><div class="fx-plat-esq">' + sess.sessoes + '</div><aside class="fx-previa" id="fx-previa" aria-label="O app dela (prévia)">' + fxPreviaHtml(c) + '</aside></div></div>';
   }
   if (tab === 'conversa') return conversaPanel(c, d.mails || [], d.resps || [], d.h4 || H4_PLAT, d.jor);
+  if (tab === 'compras') return FC.htmlCompras(FC.montarCompras(comprasGuiaDe(c.id), ENTRADAS_GUIA, d.mails || [], Date.now()), H_FX);
   // Dossiê: aba própria, sempre aberta. Preenche sozinho com o que ela responde no funil e no app (ver DOS_FUNIL).
   if (tab === 'dossie') return dosVisaoHtml(c, d) + dosLigacaoHtml(c, d, '<div id="dossie-box">' + dossieHtml(c, state.dos.d, state.dos.err, state.dos.rasc, true, state.dos.chk, true) + '</div>');
   // Ficha (captação): o fluxo de 3 passos e os painéis que já existiam (feed, e-mails, jornada, quem é ela, mais).
@@ -4899,7 +4910,7 @@ function renderFichaV2(c, d) {
     '<div id="fx-head-box">' + fxHeaderHtml(cv, d) + '</div>' +
     '<div class="fx-topo" id="fx-topo"><div id="fx-aviso-box">' + avisoDaPessoaHtml(c, d.mails, d.resps, d.jor) + '</div>' +
     '<div id="fx-acoes-box">' + fxCarrossel(cv) + '</div></div>' +
-    FH.htmlAbas(f.tab, !!cv.user_id, H_FX) +
+    FH.htmlAbas(f.tab, !!cv.user_id, H_FX, comprasGuiaDe(c.id).length > 0) +
     '<div id="fx-corpo">' + fxCorpo(cv, d, f.tab) + '</div>' +
     '<div id="fx-pop"></div></div>';
 }
@@ -4993,12 +5004,29 @@ function fxCarScroll(car) {
   for (var k = 0; k < cards.length; k++) if (cards[k].offsetLeft <= car.scrollLeft + 8) i = k;
   fxCarMostra(i, car);
 }
+// "Mostrar a chave": pede ao Worker (só para admin) a chave daquela compra. Ela não fica na página nem no banco.
+async function fxMostraChave(ds) {
+  var box = $('cmp-chave-' + ds.id); if (!box) return;
+  box.innerHTML = '<p class="sub" style="margin:8px 0 0">Buscando a chave…</p>';
+  var r;
+  try {
+    var sess = await supabase.auth.getSession();
+    if (!sess.data.session) { r = { erro: 'Sessão expirada. Recarregue a página e entre de novo.' }; }
+    else {
+      var res = await fetch(WORKER_BASE + '/api/crm/compra-chave?ref=' + encodeURIComponent(ds.ref), { headers: { Authorization: 'Bearer ' + sess.data.session.access_token } });
+      var j = await res.json().catch(function () { return {}; });
+      r = res.ok ? j : { erro: j.error || ('Erro ' + res.status) };
+    }
+  } catch (e) { r = { erro: 'Sem conexão com o Worker. Tente de novo.' }; }
+  box = $('cmp-chave-' + ds.id); if (box) box.innerHTML = FC.htmlChave(r, H_FX);
+}
 function fichaClick(el) {
   if (!el || !el.dataset || !el.dataset.fx) return false;
   var f = state.fx, ds = el.dataset, n = f.tarefas ? f.tarefas.length : 0;
   switch (ds.fx) {
     case 'pessoa': fxReset(); openPessoa(ds.id); return true;
     case 'tab': if (FX_ABAS.indexOf(ds.v) >= 0) { f.tab = ds.v; f.hd = null; fxRepinta(); } return true;
+    case 'chaveCompra': fxMostraChave(ds); return true;
     case 'hdTile': f.hd = f.hd === ds.id ? null : ds.id; fxPintaHeader(); return true;
     case 'tourAbrir': case 'tourFechar':
       f.tour = ds.fx === 'tourAbrir'; FX.gravarPrefs(localStorage, { tour: f.tour });

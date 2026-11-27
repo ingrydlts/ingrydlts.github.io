@@ -5651,7 +5651,7 @@ function guiaIgual(a, b) {   // comparação de tempo constante, para o hash do 
   return d === 0;
 }
 
-async function handleGuiaEntrar(request, env) {
+async function handleGuiaEntrar(request, env, ctx) {
   const cab = { ...GUIA_SEGURANCA, 'Content-Type': 'application/json; charset=utf-8' };
   const res = (status, corpo) => new Response(JSON.stringify(corpo), { status, headers: cab });
   if (!env.REVIEWS_KV) return res(503, { error: 'indisponivel' });
@@ -5672,7 +5672,31 @@ async function handleGuiaEntrar(request, env) {
   const sessao = guiaToken();
   const expira = Math.min(expiraChave, Date.now() + GUIA_SESSAO_SEG * 1000);
   await env.REVIEWS_KV.put(`guia:chave:${sessao}`, JSON.stringify({ slug: reg.slug, via: 'login', chave_origem: chave, criado_em: new Date().toISOString(), expira_em: new Date(expira).toISOString(), revogado: false }), { expirationTtl: GUIA_SESSAO_SEG + 600 });
+  // Conta a entrada na compra (a sessão "Compras" da ficha). Só a referência da compra e a hora: nada de IP, chave ou e-mail.
+  // Falha aqui nunca impede a pessoa de entrar.
+  if (reg.sessao && env.SUPABASE_SERVICE_ROLE_KEY) {
+    const conta = fetch(`${CRM_SUPABASE_URL}/rest/v1/rpc/crm_compra_entrada`, { method: 'POST', headers: crmServiceHeaders(env), body: JSON.stringify({ p_referencia: String(reg.sessao) }) })
+      .then((r) => { if (!r.ok) console.error('crm/guia: não contei a entrada — ' + r.status); })
+      .catch((e) => console.error('crm/guia: não contei a entrada — ' + (e && e.message)));
+    if (ctx && ctx.waitUntil) ctx.waitUntil(conta); else await conta;
+  }
   return res(200, { ok: true, sessao, expira_em: new Date(expira).toISOString() });
+}
+
+// Para a sessão "Compras" da ficha: a chave de acesso de uma compra (a admin copia e manda de novo, se a pessoa perdeu).
+// A chave nunca fica no banco: vem da KV, só para quem é admin, e a resposta não é guardada em cache.
+async function handleCrmCompraChave(request, env, url) {
+  const admin = await crmRequireAdmin(request);
+  if (!admin) return json({ error: 'Sem permissão. Entre de novo no CRM.' }, 401);
+  if (!env.REVIEWS_KV) return json({ error: 'KV não configurada no Worker.' }, 503);
+  const ref = String(url.searchParams.get('ref') || '');
+  if (!/^[A-Za-z0-9_]{5,200}$/.test(ref)) return json({ error: 'Referência inválida.' }, 400);
+  const chave = await env.REVIEWS_KV.get(`guia:sessao:${ref}`);
+  if (!chave || !GUIA_TOKEN_RE.test(chave)) return json({ error: 'Não achei a chave desta compra na KV.' }, 404);
+  let reg = null;
+  try { reg = JSON.parse(await env.REVIEWS_KV.get(`guia:chave:${chave}`)); } catch (e) { reg = null; }
+  return new Response(JSON.stringify({ chave, link: `${url.origin}/guia/#k=${chave}`, revogado: !!(reg && reg.revogado), expira_em: reg ? reg.expira_em : null }),
+    { status: 200, headers: { ...GUIA_SEGURANCA, 'Content-Type': 'application/json; charset=utf-8', ...corsHeaders() } });
 }
 
 // A página de acesso: HTML do Worker, sem nenhum texto pago. O JS pede ao /api/guia/entrar e leva à página do guia com a sessão.
@@ -6058,7 +6082,7 @@ export default {
 
     if (request.method === 'GET' && (url.pathname === '/guia' || url.pathname === '/guia/')) return handleGuiaLogin();
     if (request.method === 'GET' && (url.pathname === '/guia/app' || url.pathname === '/guia/app/')) return await handleGuiaCasco(env, false);
-    if (request.method === 'POST' && url.pathname === '/api/guia/entrar') return await handleGuiaEntrar(request, env);
+    if (request.method === 'POST' && url.pathname === '/api/guia/entrar') return await handleGuiaEntrar(request, env, ctx);
     if (request.method === 'GET' && (url.pathname === '/guia/rascunho' || url.pathname === '/guia/rascunho/')) return await handleGuiaCasco(env, true);
     const guiaRota = /^\/guia\/([^/]+)\/?$/.exec(url.pathname);
     if (guiaRota && request.method === 'GET') return Response.redirect(`${url.origin}/guia/#k=${encodeURIComponent(guiaRota[1])}`, 302);
@@ -6107,6 +6131,9 @@ export default {
       }
       if (url.pathname === '/api/crm/enviar' && request.method === 'POST') {
         return await handleCrmEnviar(request, env);
+      }
+      if (url.pathname === '/api/crm/compra-chave' && request.method === 'GET') {
+        return await handleCrmCompraChave(request, env, url);
       }
       if (url.pathname === '/api/crm/modelo-teste' && request.method === 'POST') {
         return await handleCrmModeloTeste(request, env);

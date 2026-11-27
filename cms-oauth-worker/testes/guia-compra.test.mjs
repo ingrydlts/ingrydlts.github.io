@@ -204,7 +204,8 @@ res2 = await worker.fetch(new Request('https://w.example/api/guia/manual', { met
 check('só GET', res2.status === 404);
 
 console.log('\n== Login: página de acesso, e-mail da compra + chave, toda vez ==');
-env = mkEnv(); chamadas = []; fakeFetch(fluxo());
+env = mkEnv(); chamadas = []; fakeFetch([...fluxo(), [/\/rpc\/crm_compra_entrada$/, { status: 204 }],
+  [/\/auth\/v1\/user$/, (c) => (/Bearer admin-ok/.test(c.headers.Authorization || '') ? { body: { id: 'u-admin' } } : { status: 401 })], [/\/rest\/v1\/admins/, { body: [{ user_id: 'u-admin' }] }]]);
 await quieto(() => hook(EV(), env));
 const kl = env.REVIEWS_KV.m, tl = env.REVIEWS_KV.chaves('guia:chave:')[0].slice('guia:chave:'.length);
 kl.set('guia:manual:manual-destrave-domiciliacao', JSON.stringify({ meta: { versao: '1.0' }, capitulos: [] }));
@@ -244,6 +245,32 @@ kl.set('guia:chave:' + tl, JSON.stringify({ ...regL, expira_em: new Date(Date.no
 rl = await entrar(env, tl, 'ana@example.com', '1.2.3.7');
 check('passou dos 12 meses: o login diz que o acesso terminou', rl.status === 401 && (await rl.json()).error === 'expirado');
 check('o login só aceita POST', (await get(env, '/api/guia/entrar')).status !== 200);
+
+console.log('\n== Compras no CRM: a entrada é contada e a admin vê a chave ==');
+env = mkEnv(); chamadas = []; fakeFetch([...fluxo(), [/\/rpc\/crm_compra_entrada$/, { status: 204 }],
+  [/\/auth\/v1\/user$/, (c) => (/Bearer admin-ok/.test(c.headers.Authorization || '') ? { body: { id: 'u-admin' } } : { status: 401 })], [/\/rest\/v1\/admins/, { body: [{ user_id: 'u-admin' }] }]]);
+await quieto(() => hook(EV(), env));
+const tc = env.REVIEWS_KV.chaves('guia:chave:')[0].slice('guia:chave:'.length);
+chamadas = [];
+await entrar(env, tc, 'errada@example.com', '2.2.2.1'); await Promise.all(esperar.splice(0));
+check('login que falha NÃO conta entrada', toca(/crm_compra_entrada/).length === 0);
+const ctxEntrar = { waitUntil: (p) => esperar.push(p) };
+const rEnt = await worker.fetch(new Request('https://w.example/api/guia/entrar', { method: 'POST', headers: { 'Content-Type': 'application/json', 'CF-Connecting-IP': '2.2.2.2' }, body: JSON.stringify({ email: 'ana@example.com', chave: tc }) }), env, ctxEntrar);
+await Promise.all(esperar.splice(0));
+const cont = toca(/crm_compra_entrada/);
+check('login com sucesso conta UMA entrada, com a referência da compra', rEnt.status === 200 && cont.length === 1 && cont[0].body.p_referencia === 'cs_g1');
+check('o que vai ao banco é só a referência: nem e-mail, nem chave, nem sessão do login', JSON.stringify(cont[0].body) === '{"p_referencia":"cs_g1"}');
+check('com o contador fora do ar, a pessoa entra do mesmo jeito', await quieto(async () => { fakeFetch([[/\/rpc\/crm_compra_entrada$/, { status: 500 }]]); return (await worker.fetch(new Request('https://w.example/api/guia/entrar', { method: 'POST', headers: { 'Content-Type': 'application/json', 'CF-Connecting-IP': '2.2.2.3' }, body: JSON.stringify({ email: 'ana@example.com', chave: tc }) }), env, ctxEntrar)).status === 200; }).then(([v]) => v));
+fakeFetch([[/\/auth\/v1\/user$/, (c) => (/Bearer admin-ok/.test(c.headers.Authorization || '') ? { body: { id: 'u-admin' } } : { status: 401 })], [/\/rest\/v1\/admins/, { body: [{ user_id: 'u-admin' }] }]]);
+const chaveAdmin = (ref, tok) => worker.fetch(new Request('https://w.example/api/crm/compra-chave?ref=' + ref, { headers: tok ? { Authorization: 'Bearer ' + tok } : {} }), env, {});
+let rc = await chaveAdmin('cs_g1', null);
+check('sem login de admin: 401 e nenhuma chave', rc.status === 401 && !(await rc.text()).includes(tc));
+rc = await chaveAdmin('cs_g1', 'token-de-comprador');
+check('com token que não é de admin: 401', rc.status === 401);
+rc = await chaveAdmin('cs_g1', 'admin-ok'); let jc = await rc.json();
+check('admin vê a chave da compra, o link de acesso e o estado', rc.status === 200 && jc.chave === tc && jc.link === 'https://w.example/guia/#k=' + tc && jc.revogado === false && !!jc.expira_em && rc.headers.get('Cache-Control') === 'no-store');
+check('a resposta libera o painel (CORS) para a admin ler', rc.headers.get('Access-Control-Allow-Origin') === '*');
+check('referência inexistente: 404; referência estranha: 400', (await chaveAdmin('cs_nao_existe', 'admin-ok')).status === 404 && (await chaveAdmin('../../x', 'admin-ok')).status === 400);
 
 console.log('\n== Rascunho: o guia novo só aparece para quem tem a chave de prévia ==');
 env = mkEnv(); chamadas = []; fakeFetch(fluxo());
