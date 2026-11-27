@@ -5638,7 +5638,7 @@ async function guiaConferirChave(request, env, token) {
 // ---- Login do guia: e-mail da compra + chave de acesso, toda vez ----
 const GUIA_SESSAO_SEG = 3 * 3600;   // a sessão do login dura 3 horas; depois pede e-mail e chave de novo
 const GUIA_ENTRAR_MAX = 10;         // tentativas que falham, por IP a cada 10 min
-const GUIA_LOGIN_MSG = 'Não achei um acesso com esse e-mail e essa chave. Confira o e-mail que você usou na compra e copie a chave do e-mail "Seu Manual chegou".';
+const GUIA_LOGIN_MSG = 'Hmm, esse e-mail e essa chave não bateram. Confira se o e-mail é o mesmo da compra e copie a chave de novo do e-mail "Seu Manual Destrave chegou".';
 
 async function guiaEmailHash(email) {
   const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('guia:' + String(email || '').trim().toLowerCase()));
@@ -5660,7 +5660,7 @@ async function handleGuiaEntrar(request, env) {
   const email = String((corpo && corpo.email) || '').trim().toLowerCase().slice(0, 254);
   const chave = String((corpo && corpo.chave) || '').trim();
   const falhou = async () => (await crmLimite(env, 'guia-entrar', request.headers.get('CF-Connecting-IP') || 'unknown', GUIA_ENTRAR_MAX))
-    ? res(401, { error: 'acesso', mensagem: GUIA_LOGIN_MSG }) : res(429, { error: 'muitas_tentativas', mensagem: 'Muitas tentativas. Espere alguns minutos e tente de novo.' });
+    ? res(401, { error: 'acesso', mensagem: GUIA_LOGIN_MSG }) : res(429, { error: 'muitas_tentativas', mensagem: 'Foram muitas tentativas seguidas. Respire um instante e tente de novo em alguns minutos.' });
   if (!CRM_ONB_EMAIL_RE.test(email) || !GUIA_TOKEN_RE.test(chave)) return await falhou();
   let reg = null;
   try { reg = JSON.parse(await env.REVIEWS_KV.get(`guia:chave:${chave}`)); } catch (e) { reg = null; }
@@ -5668,7 +5668,7 @@ async function handleGuiaEntrar(request, env) {
   if (!reg || reg.canal === 'rascunho' || reg.via === 'login' || reg.revogado === true || !GUIA_PRODUTOS[reg.slug] || !reg.email_hash) return await falhou();
   if (!guiaIgual(await guiaEmailHash(email), reg.email_hash)) return await falhou();
   const expiraChave = Date.parse(reg.expira_em);
-  if (!(expiraChave >= Date.now())) return res(401, { error: 'expirado', mensagem: 'O acesso de 12 meses deste Manual terminou. Responda o e-mail da compra e eu vejo com você.' });
+  if (!(expiraChave >= Date.now())) return res(401, { error: 'expirado', mensagem: 'O seu acesso de 12 meses terminou. Responda o e-mail da compra e eu vejo com você o que dá para fazer.' });
   const sessao = guiaToken();
   const expira = Math.min(expiraChave, Date.now() + GUIA_SESSAO_SEG * 1000);
   await env.REVIEWS_KV.put(`guia:chave:${sessao}`, JSON.stringify({ slug: reg.slug, via: 'login', chave_origem: chave, criado_em: new Date().toISOString(), expira_em: new Date(expira).toISOString(), revogado: false }), { expirationTtl: GUIA_SESSAO_SEG + 600 });
@@ -5677,7 +5677,7 @@ async function handleGuiaEntrar(request, env) {
 
 // A página de acesso: HTML do Worker, sem nenhum texto pago. O JS pede ao /api/guia/entrar e leva à página do guia com a sessão.
 function guiaLoginHtml() {
-  return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>Entrar no Manual</title>
+  return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>Seu Manual · Por Dentro</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:wght@700&family=Inter:wght@400;600;700&display=swap">
 <style>
 :root{--bg:#F5EFE2;--ink:#2B2B2B;--ink2:#5F574B;--head:#063B35;--moss:#577328;--line:rgba(70,52,20,.22);--erro:#7A2318;--erro-bg:#F6DEDA}
@@ -5686,21 +5686,22 @@ main{width:100%;max-width:440px;background:#FBF7EE;border:1px solid rgba(255,255
 h1{margin:0 0 6px;font:700 28px/1.1 Fraunces,Georgia,serif;color:var(--head)}p{margin:0 0 18px;color:var(--ink2)}
 label{display:block;margin:0 0 6px;font-weight:600;font-size:15px;color:var(--head)}
 input[type=email],input[type=password],input[type=text]{width:100%;padding:13px 16px;border-radius:14px;border:1.5px solid var(--line);background:#fff;color:var(--ink);font:500 16px Inter,sans-serif;margin-bottom:14px}
-input:focus-visible,button:focus-visible{outline:3px solid #3A6590;outline-offset:2px}
+input::placeholder{color:#8A8272}input:focus-visible,button:focus-visible{outline:3px solid #3A6590;outline-offset:2px}
 .ver{display:flex;gap:8px;align-items:center;margin:-4px 0 16px;font-size:14px;color:var(--ink2)}.ver input{width:18px;height:18px;accent-color:var(--moss)}
 button.ir{width:100%;padding:14px;border:0;border-radius:999px;background:var(--moss);color:#FBF7EE;font:700 17px Inter,sans-serif;cursor:pointer}button.ir[disabled]{opacity:.6;cursor:default}
 .erro{margin:0 0 14px;padding:10px 14px;border-radius:14px;background:var(--erro-bg);color:var(--erro);font-size:14.5px}.erro[hidden]{display:none}
 small{display:block;margin-top:16px;color:var(--ink2);font-size:13.5px}
 </style></head><body><main>
-<h1>Entrar no Manual</h1><p>Digite o e-mail da compra e a chave de acesso que chegou no seu e-mail. A página pede os dois toda vez que você entra.</p>
+<h1>Que bom te ver por aqui</h1><p>O seu Manual está pronto. Digite o e-mail da compra e a chave que chegou no seu e-mail para abrir.</p>
 <form id="f" novalidate>
 <p class="erro" id="erro" role="alert" hidden></p>
-<label for="e">E-mail da compra</label><input id="e" type="email" autocomplete="email" inputmode="email" required>
-<label for="k">Chave de acesso</label><input id="k" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" required>
+<label for="e">Seu e-mail da compra</label><input id="e" type="email" autocomplete="email" inputmode="email" placeholder="O e-mail que você usou ao pagar" required>
+<label for="k">Sua chave de acesso</label><input id="k" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Cole aqui a chave do e-mail" required>
 <label class="ver"><input type="checkbox" id="m"> Mostrar a chave</label>
-<button class="ir" id="b" type="submit">Entrar</button>
+<button class="ir" id="b" type="submit">Abrir meu Manual</button>
 </form>
-<small>Perdeu a chave? Responda o e-mail da compra (assunto "Seu Manual Destrave chegou") e eu reenvio.</small>
+<small>Pedimos o e-mail e a chave toda vez para o material continuar só seu.</small>
+<small>Não achou a chave? Procure "Seu Manual Destrave chegou" no seu e-mail (olhe o spam). Se não estiver lá, responda o e-mail da compra e eu reenvio.</small>
 </main><script>
 (function(){
 var f=document.getElementById('f'),e=document.getElementById('e'),k=document.getElementById('k'),b=document.getElementById('b'),er=document.getElementById('erro'),m=document.getElementById('m');
@@ -5709,13 +5710,13 @@ if(h){k.value=h[1];try{history.replaceState(null,'',location.pathname)}catch(x){
 m.addEventListener('change',function(){k.type=m.checked?'text':'password'});
 function msg(t){er.textContent=t;er.hidden=false}
 f.addEventListener('submit',function(ev){ev.preventDefault();er.hidden=true;
-if(!e.value.trim()||!k.value.trim()){msg('Preencha o e-mail e a chave.');return}
-b.disabled=true;b.textContent='Entrando...';
+if(!e.value.trim()||!k.value.trim()){msg('Falta o e-mail ou a chave. Preencha os dois para abrir.');return}
+b.disabled=true;b.textContent='Abrindo...';
 fetch('/api/guia/entrar',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:e.value,chave:k.value})})
 .then(function(r){return r.json().catch(function(){return {}}).then(function(j){return {s:r.status,j:j}})})
 .then(function(o){if(o.s===200&&o.j.sessao){location.replace('/guia/app/#k='+o.j.sessao);return}
-msg(o.j.mensagem||'Não consegui entrar agora. Tente de novo em alguns minutos.');b.disabled=false;b.textContent='Entrar'})
-.catch(function(){msg('Sem conexão. Tente de novo.');b.disabled=false;b.textContent='Entrar'})});
+msg(o.j.mensagem||'Não consegui abrir agora. Tente de novo em alguns minutos.');b.disabled=false;b.textContent='Abrir meu Manual'})
+.catch(function(){msg('Sem conexão agora. Confira a internet e tente de novo.');b.disabled=false;b.textContent='Abrir meu Manual'})});
 })();
 </script></body></html>`;
 }
