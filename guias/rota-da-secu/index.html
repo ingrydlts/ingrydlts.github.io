@@ -38,9 +38,13 @@ main.rs{max-width:680px;margin:0 auto;padding:28px 20px 56px;display:grid;gap:28
 .lnk{color:var(--forest);font-weight:800;text-decoration:underline;text-underline-offset:3px;text-decoration-thickness:1.5px;overflow-wrap:anywhere}
 .lnk:hover{color:var(--moss)}
 .oficial{display:grid;gap:10px}
-.dom{border-radius:16px;padding:10px 14px;background:var(--glass);border:1px solid var(--glass-line)}
-.dom p{margin:0 0 4px;font-size:14.5px}
-.dom p:last-child{margin:0}
+.dom{border-radius:20px;padding:14px 16px;background:var(--soft);border:1px solid var(--soft2);display:grid;grid-template-columns:1fr auto;gap:10px 14px;align-items:center}
+.dom p{margin:0}
+.dom-t{font-family:var(--display);font-size:19px;color:var(--forest);line-height:1.2;margin-bottom:2px!important}
+.dom-txt p:last-child{font-size:14.5px;color:var(--ink)}
+.dom-btn{padding:12px 18px;font-size:15px;min-height:44px}
+.dom-fonte{grid-column:1/-1;font-size:12.5px}
+@media (max-width:520px){.dom{grid-template-columns:1fr}.dom-btn{justify-self:stretch}}
 .botoes{display:flex;flex-wrap:wrap;gap:10px}
 .btn{display:inline-block;padding:12px 20px;border-radius:999px;background:var(--forest);color:#fff;font-weight:800;text-decoration:none;font-size:15px}
 .btn:hover{background:var(--moss)}
@@ -150,8 +154,12 @@ legend{padding:0;font-weight:800;color:var(--forest);margin-bottom:12px;font-siz
 
   <!-- Aviso curto sobre mudança de endereço: leva ao modelo grátis da carta para a CPAM. -->
   <aside class="dom" aria-label="Mudou de endereço?">
-    <p><b>Mudou de endereço?</b> Pegue o <a class="lnk" id="lnk-manual" href="/manual-destrave-domiciliacao/#preco">modelo grátis de carta para enviar à CPAM</a>.</p>
-    <p class="small">Sem endereço fixo, a domiciliação (élection de domicile) dá comprovante e endereço para correspondência. Fonte: Service Public, verificada em 10/10/2024, consultada em 27/11/2026.</p>
+    <div class="dom-txt">
+      <p class="dom-t"><span aria-hidden="true">🏠</span> Mudou de endereço?</p>
+      <p>Leve de graça o modelo de carta pronto para avisar a CPAM.</p>
+    </div>
+    <a class="btn dom-btn" id="lnk-manual" href="/manual-destrave-domiciliacao/#preco">Pegar o modelo grátis</a>
+    <p class="small dom-fonte">Sem endereço fixo? A domiciliação (élection de domicile) dá comprovante e endereço para correspondência. Fonte: Service Public, verificada em 10/10/2024, consultada em 27/11/2026.</p>
   </aside>
 
   <section aria-labelledby="h-q">
