@@ -38,9 +38,13 @@ main.rs{max-width:680px;margin:0 auto;padding:28px 20px 56px;display:grid;gap:28
 .lnk{color:var(--forest);font-weight:800;text-decoration:underline;text-underline-offset:3px;text-decoration-thickness:1.5px;overflow-wrap:anywhere}
 .lnk:hover{color:var(--moss)}
 .oficial{display:grid;gap:10px}
-.dom{border-radius:20px;padding:16px 18px;background:var(--glass);border:1px solid var(--glass-line)}
-.dom h2{font-size:19px;margin-bottom:6px}
-.dom p{margin:0 0 6px}
+.dom{border-radius:20px;padding:14px 16px;background:var(--soft);border:1px solid var(--soft2);display:grid;grid-template-columns:1fr auto;gap:10px 14px;align-items:center}
+.dom p{margin:0}
+.dom-t{font-family:var(--display);font-size:19px;color:var(--forest);line-height:1.2;margin-bottom:2px!important}
+.dom-txt p:last-child{font-size:14.5px;color:var(--ink)}
+.dom-btn{padding:12px 18px;font-size:15px;min-height:44px}
+.dom-fonte{grid-column:1/-1;font-size:12px;opacity:.85}
+@media (max-width:520px){.dom{grid-template-columns:1fr}.dom-btn{justify-self:stretch}}
 .botoes{display:flex;flex-wrap:wrap;gap:10px}
 .btn{display:inline-block;padding:12px 20px;border-radius:999px;background:var(--forest);color:#fff;font-weight:800;text-decoration:none;font-size:15px}
 .btn:hover{background:var(--moss)}
@@ -71,6 +75,9 @@ legend{padding:0;font-weight:800;color:var(--forest);margin-bottom:12px;font-siz
 .btn{display:inline-flex;align-items:center;justify-content:center;background:var(--moss);color:#fff!important;font:800 16px/1 var(--body);border:0;border-radius:999px;padding:14px 24px;text-decoration:none;text-align:center;min-height:48px;cursor:pointer}
 .btn:hover{background:#47601F}
 .btn[disabled]{opacity:.6;cursor:wait}
+.ganha{margin:0;padding:0;list-style:none;display:grid;gap:6px;font-size:14px;font-weight:700;color:var(--forest)}
+.ganha li{display:flex;gap:8px;align-items:baseline}
+.ganha li::before{content:"✓";color:var(--moss);font-weight:800}
 .liberado{display:flex;gap:8px;align-items:center;font-size:14px;font-weight:800;color:var(--moss)}
 .liberado::before{content:"";width:10px;height:10px;border-radius:50%;background:var(--moss);flex:none}
 .passos{display:grid;gap:14px;margin:0;padding:0;list-style:none}
@@ -145,8 +152,30 @@ legend{padding:0;font-weight:800;color:var(--forest);margin-bottom:12px;font-siz
     <h1 data-ip="h1">Abertura e acompanhamento de direitos na Sécurité Sociale</h1>
   </header>
 
-  <!-- O link oficial vem primeiro e está no HTML, não no script: aparece mesmo sem JavaScript. -->
-  <section class="oficial" aria-label="Link oficial">
+  <!-- Aviso curto sobre mudança de endereço: leva ao modelo grátis da carta para a CPAM. -->
+  <aside class="dom" aria-label="Mudou de endereço?">
+    <div class="dom-txt">
+      <p class="dom-t"><span aria-hidden="true">🏠</span> Mudou de endereço?</p>
+      <p>Leve de graça o modelo de carta pronto para avisar a CPAM.</p>
+    </div>
+    <a class="btn dom-btn" id="lnk-manual" href="/manual-destrave-domiciliacao/#preco">Pegar o modelo grátis</a>
+    <p class="small dom-fonte">Sem endereço fixo? Veja a domiciliação (Service Public, verificada em 10/10/2024).</p>
+  </aside>
+
+  <section aria-labelledby="h-q">
+    <h2 id="h-q" style="margin-bottom:6px">Conte onde você está e eu monto o seu roteiro</h2>
+    <p class="small" style="margin-bottom:14px">São só 2 perguntas, leva menos de 1 minuto. No fim, o recap do seu caso chega no seu e-mail, com frases em francês, para você guardar e rever quando precisar.</p>
+    <div class="perguntas" id="perguntas">
+      <fieldset><legend>1. O que te trouxe (ou vai trazer) à França?</legend><div class="opts two" id="opts-porta"></div></fieldset>
+      <fieldset><legend>2. Em que ponto você está?</legend><div class="opts" id="opts-ponto"></div></fieldset>
+    </div>
+    <noscript><p class="small" style="margin-top:12px">Para ver o roteiro do seu caso, ative o JavaScript. Os links oficiais abaixo funcionam sem ele.</p></noscript>
+  </section>
+
+  <div class="dyn" id="dyn" aria-live="polite"></div>
+
+  <!-- Links oficiais: ficam logo abaixo da seção do e-mail e funcionam sem JavaScript. -->
+  <section class="oficial" aria-label="Links oficiais">
     <div class="botoes">
       <a class="btn" id="lnk-oficial" href="https://www.service-public.gouv.fr/particuliers/vosdroits/R45084" target="_blank" rel="noopener">Formulário abertura de direitos</a>
       <a class="btn" id="lnk-domiciliacao" href="https://www.service-public.gouv.fr/particuliers/vosdroits/F17317" target="_blank" rel="noopener">Formulário domiciliação</a>
@@ -154,24 +183,6 @@ legend{padding:0;font-weight:800;color:var(--forest);margin-bottom:12px;font-siz
     <p class="small">No formulário de abertura de direitos você baixa o Cerfa S1106 e encontra a sua CPAM.</p>
     <p class="small"><b>Estudante?</b> O seu pedido é em etudiant-etranger.ameli.fr.</p>
   </section>
-
-  <section class="dom" aria-labelledby="h-dom">
-    <h2 id="h-dom">Sem endereço fixo? A domiciliação resolve o endereço</h2>
-    <p class="small">A domiciliação (élection de domicile) é para quem não tem domicílio estável, inclusive quem está hospedado temporariamente na casa de alguém. Ela dá um comprovante de domicílio e um endereço para receber correspondência.</p>
-    <p class="small">Fonte: Service Public, página verificada em 10/10/2024, consultada em 27/11/2026. Confirme as condições do seu caso na página oficial.</p>
-    <div class="botoes"><a class="btn" id="lnk-manual" href="/produtos-digitais/produto/?slug=manual-destrave-ameli">Conhecer o Manual Destrave</a></div>
-  </section>
-
-  <section aria-labelledby="h-q">
-    <h2 id="h-q" style="margin-bottom:14px">Roteiro do seu caso: 2 perguntas</h2>
-    <div class="perguntas" id="perguntas">
-      <fieldset><legend>1. Qual é a sua situação?</legend><div class="opts two" id="opts-porta"></div></fieldset>
-      <fieldset><legend>2. Em que ponto você está?</legend><div class="opts" id="opts-ponto"></div></fieldset>
-    </div>
-    <noscript><p class="small" style="margin-top:12px">Para ver o roteiro do seu caso, ative o JavaScript. O link oficial acima funciona sem ele.</p></noscript>
-  </section>
-
-  <div class="dyn" id="dyn" aria-live="polite"></div>
 
   <p class="rodape">Baseado em fontes públicas. Não sou advogada.</p>
 </main>
@@ -281,8 +292,9 @@ function primeiroHtml(c) {
   return '<section class="passo1" aria-labelledby="h-p1"><div class="eyebrow">O seu primeiro passo</div><h2 id="h-p1">' + esc(c.primeiro) + '</h2>' + fontesHtml(c) + '</section>';
 }
 function portaoHtml(c) {
-  return '<section class="glass" aria-labelledby="h-g"><h2 id="h-g">' + esc(c.tipo) + ': o roteiro completo do seu caso</h2>' +
-    '<p class="small">Deixe o seu e-mail e o roteiro abre aqui, em português e com frases em francês. No seu primeiro cadastro, mando também um e-mail com o mesmo texto, em alguns minutos.</p>' +
+  return '<section class="glass" aria-labelledby="h-g"><h2 id="h-g">Receba o recap do seu caso por e-mail</h2>' +
+    '<p class="small">Você vê só o primeiro passo aqui. Deixe o seu e-mail e eu mando o <b>roteiro completo: ' + esc(c.tipo) + '</b>, com todos os passos e as frases prontas em francês. Fica na sua caixa de entrada para você guardar, revisar depois e copiar quando for falar com a CPAM.</p>' +
+    '<ul class="ganha"><li>Todos os passos do seu caso, em ordem</li><li>Frases em francês para copiar e colar</li><li>O mesmo texto no seu e-mail, para consultar quando quiser</li></ul>' +
     '<form class="form" id="rs-form" novalidate>' +
     '<label class="t" for="f-nome">Seu nome<input type="text" id="f-nome" autocomplete="given-name" value="' + esc(S.nome) + '"></label>' +
     '<label class="t" for="f-email">Seu e-mail<input type="email" id="f-email" autocomplete="email" inputmode="email" value="' + esc(S.email) + '"></label>' +
@@ -290,7 +302,7 @@ function portaoHtml(c) {
     '<label class="ck" for="f-nov"><input type="checkbox" id="f-nov"' + (S.novidades ? ' checked' : '') + '><span>Quero as novidades do Por Dentro (opcional).</span></label>' +
     '<div class="hp" aria-hidden="true"><label for="hp-website">Deixe este campo em branco</label><input type="text" id="hp-website" name="website" tabindex="-1" autocomplete="off"></div>' +
     '<div class="err" id="f-err" role="alert">' + esc(S.erro) + '</div>' +
-    '<button class="btn" id="f-btn" type="submit"' + (S.enviando ? ' disabled' : '') + '>Abrir o meu roteiro</button></form></section>';
+    '<button class="btn" id="f-btn" type="submit"' + (S.enviando ? ' disabled' : '') + '>Receber o recap por e-mail</button></form></section>';
 }
 function ctaHtml() {
   var h = '<section class="cta" aria-labelledby="h-c"><h2 id="h-c">Prefere ter alguém com você?</h2><p>Eu preparo você e entro na chamada. Quem fala com a CPAM é você.</p>';
@@ -310,7 +322,7 @@ function ctaHtml() {
   return h + '<p class="selo">Não é consulta jurídica. É ajuda para organizar o seu processo administrativo.</p></section>';
 }
 function roteiroHtml(c) {
-  var h = '<div class="liberado" id="liberado" tabindex="-1">Roteiro aberto.' + (S.email ? ' O e-mail com o mesmo texto chega em alguns minutos para ' + esc(S.email) + ', se este for o seu primeiro cadastro.' : '') + '</div>';
+  var h = '<div class="liberado" id="liberado" tabindex="-1">Roteiro aberto.' + (S.email ? ' Mandei o recap para ' + esc(S.email) + ' (chega em alguns minutos; olhe também o spam). Guarde o e-mail para rever depois.' : '') + '</div>';
   h += '<section aria-labelledby="h-r"><h2 id="h-r">' + esc(c.tipo) + '</h2><p class="small" style="margin:4px 0 14px">' + esc(porRot(S.porta).rot) + ' · ' + esc(ponRot(S.ponto).curto) + '</p><ol class="passos">';
   c.passos.forEach(function (p, i) {
     h += '<li><div class="n"><b>' + (i + 1) + '</b>' + esc(p.t) + '</div><p>' + esc(p.x) + '</p>';
@@ -327,14 +339,15 @@ function render() {
   if (!S.porta || !S.ponto) { dyn.innerHTML = ''; return; }
   var c = caso(S.porta, S.ponto);
   dyn.innerHTML = primeiroHtml(c) + (S.aberto ? roteiroHtml(c) : portaoHtml(c));
-  if (!S.aberto && !S.shownAt) S.shownAt = Date.now();   // uma vez só: trocar a resposta não reinicia a espera anti-robô
+  if (!S.aberto && !S.shownAt) S.shownAt = Date.now();
+  if (!S.aberto && S.rolar) { S.rolar = false; var g = byId('h-g'); if (g) g.scrollIntoView({ behavior: window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' }); }   // uma vez só: trocar a resposta não reinicia a espera anti-robô
 }
 
 document.addEventListener('change', function (e) {
   var t = e.target;
   if (t.name === 'acomp') { S.orcTipo = t.value; return; }
-  if (t.name === 'porta') { S.porta = t.value; S.erro = ''; render(); }
-  else if (t.name === 'ponto') { S.ponto = t.value; S.erro = ''; render(); }
+  if (t.name === 'porta') { S.porta = t.value; S.erro = ''; S.rolar = !!S.ponto; render(); }
+  else if (t.name === 'ponto') { S.ponto = t.value; S.erro = ''; S.rolar = !!S.porta; render(); }
   else if (t.id === 'f-consent') S.consent = t.checked;
   else if (t.id === 'f-nov') S.novidades = t.checked;
 });
