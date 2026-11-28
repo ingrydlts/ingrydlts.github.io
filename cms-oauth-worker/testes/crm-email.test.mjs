@@ -836,9 +836,9 @@ console.log('\n== Estúdio de e-mails 3: sequências de hora em hora ==');
 console.log('\n== B0 do modelo grátis (guia_modelo_b0): a carta preenchida pelo Worker ==');
 {
   const sqlB0 = readFileSync(path.resolve(HERE, '../../admin/crm/db/crm-guia-modelo-b0.sql'), 'utf8');
-  const textoSql = (sqlB0.match(/\$guia_modelo_b0_t2\$([\s\S]*?)\$guia_modelo_b0_t2\$/) || [])[1];
-  check('o texto de reserva do Worker é o mesmo da versão 2 do SQL', textoSql === CF_B0_RESERVA.corpo_texto);
-  const assuntoSql = (sqlB0.match(/\$guia_modelo_b0_a2\$([\s\S]*?)\$guia_modelo_b0_a2\$/) || [])[1];
+  const textoSql = (sqlB0.match(/\$guia_modelo_b0_t3\$([\s\S]*?)\$guia_modelo_b0_t3\$/) || [])[1];
+  check('o texto de reserva do Worker é o mesmo da versão 3 do SQL', textoSql === CF_B0_RESERVA.corpo_texto);
+  const assuntoSql = (sqlB0.match(/\$guia_modelo_b0_a3\$([\s\S]*?)\$guia_modelo_b0_a3\$/) || [])[1];
   check('o assunto de reserva é o mesmo do SQL', assuntoSql === CF_B0_RESERVA.assunto);
 
   const GUIA_B0 = 'modelo-mudanca-endereco-mesma-cidade';
@@ -873,6 +873,9 @@ console.log('\n== B0 do modelo grátis (guia_modelo_b0): a carta preenchida pelo
   check('para ela, Reply-To = respostas, sem List-Unsubscribe (serviço)', b0.body.to[0].email === 'ana@example.com' && b0.body.replyTo.email === 'respostas@example.org' && !b0.body.headers);
   check('reserva a linha antes de enviar, com o modelo certo', chamadas.indexOf(res0) < chamadas.indexOf(b0) && res0.body.modelo === 'guia_modelo_b0');
   check('o histórico da ficha guarda a carta EM BRANCO (nenhum dado digitado)', res0.body.corpo.includes('___') && !['12 rue Velha', '8 avenue Nova', 'DOS-998877', '1 de dezembro', 'CPAM'].some((t) => res0.body.corpo.includes(t)));
+  check('o rodapé traz o aviso de dados (RGPD): o que não foi gravado, o que fica, quem trata, quem é o responsável, como exercer os direitos e a política',
+    ['Seus dados (RGPD)', 'Não foram gravados no nosso banco de dados nem no nosso CRM', 'o seu nome, o seu e-mail e o seu consentimento', 'Cloudflare', 'Brevo', 'Ingryd Lo Tierzo Silva', 'SIRET 108 644 485 00014', 'responda este e-mail', 'https://imigrantepordentro.com/confidentialite/'].every((t) => b0.body.textContent.includes(t)));
+  check('o aviso de dados também está no HTML, com o link da política', b0.body.htmlContent.includes('Seus dados (RGPD)') && /<a href="https:\/\/imigrantepordentro\.com\/confidentialite\/">/.test(b0.body.htmlContent));
   check('nenhum dado da carta vai para log', !logs.some((l) => /rue Velha|avenue Nova|DOS-998877|1 de dezembro/.test(l)));
   check('nenhum dado da carta é gravado em outro lugar (só o e-mail enviado e o histórico em branco)',
     chamadas.every((c) => /brevo|contatos\?|emails_enviados|modelos_email_versoes/.test(c.url)) && !chamadas.some((c) => !/brevo/.test(c.url) && /DOS-998877|rue Velha/.test(JSON.stringify(c.body || ''))));

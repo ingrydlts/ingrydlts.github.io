@@ -57,24 +57,31 @@ async function main() {
   check('modelo criado: serviço e automático', m && m.tipo === 'servico' && m.automatico === true && m.criado_no_estudio === false);
   check('classificado como entrega', m && m.familia === 'entrega');
   const vs = await q("select * from modelos_email_versoes where chave = 'guia_modelo_b0' order by versao");
-  check('duas versões (mesmo rodando 2x): a 1 arquivada e a 2 No ar, e só uma No ar', vs.length === 2 && vs[0].versao === 1 && vs[0].etapa === 'arquivado' && vs[1].versao === 2 && vs[1].etapa === 'no_ar');
-  const v2 = vs[1];
-  const t = v2.corpo_texto;
+  check('três versões (mesmo rodando 2x): a 1 e a 2 arquivadas, a 3 No ar, e só uma No ar',
+    vs.length === 3 && vs.map((v) => v.etapa).join() === 'arquivado,arquivado,no_ar' && vs.map((v) => v.versao).join() === '1,2,3');
+  const v3 = vs[2];
+  const t = v3.corpo_texto;
   check('a carta em francês, com os campos preenchidos pelas variáveis', t.includes("Objet : Changement d'adresse au sein de la même commune") && ['{velho}', '{novo}', '{dossie}', '{data}', '{nome_completo}'].every((k) => t.includes(k)) && t.includes('{#org} auprès de {org}{/org}'));
-  check('sem [colchetes] e sem rodapé de descadastro', !/\[[^\]\n]{2,60}\]/.test(v2.assunto + t) && !/palavra\s+"?sair/i.test(t));
-  check('diz que os dados digitados não ficam guardados', /não ficam guardados/.test(t));
-  const usados = [...new Set([...(v2.assunto + t).matchAll(/\{[#^/]?(\w+)\}/g)].map((x) => x[1]))];
+  check('sem [colchetes] e sem rodapé de descadastro', !/\[[^\]\n]{2,60}\]/.test(v3.assunto + t) && !/palavra\s+"?sair/i.test(t));
+  check('o rodapé traz o aviso de dados (RGPD): o que não foi gravado, o que fica, prestadores, responsável, direitos e política',
+    ['Seus dados (RGPD)', 'Não foram gravados no nosso banco de dados nem no nosso CRM', 'o seu nome, o seu e-mail e o seu consentimento', 'Cloudflare', 'Brevo', 'Ingryd Lo Tierzo Silva', 'SIRET 108 644 485 00014', 'responda este e-mail', 'https://imigrantepordentro.com/confidentialite/'].every((k) => t.includes(k)));
+  const usados = [...new Set([...(v3.assunto + t).matchAll(/\{[#^/]?(\w+)\}/g)].map((x) => x[1]))];
   const vars = m.variaveis.map((v) => v.nome);
   check('só usa variáveis declaradas no modelo', usados.every((k) => vars.includes(k)));
   check('as variáveis declaradas são as 8 da carta preenchida', ['nome', 'nome_completo', 'email', 'novo', 'velho', 'dossie', 'data', 'org'].every((k) => vars.includes(k)) && vars.length === 8);
-  const nova = await attempt(() => db.query("update modelos_email_versoes set corpo_texto = 'outro' where chave = 'guia_modelo_b0' and versao = 2"));
+  const nova = await attempt(() => db.query("update modelos_email_versoes set corpo_texto = 'outro' where chave = 'guia_modelo_b0' and versao = 3"));
   check('a versão No ar não muda de texto (regra do Estúdio)', !nova.ok);
-  // quem já editou a versão 1 não é tocado: a 2 entra como rascunho
-  await db.exec("delete from modelos_email_versoes where chave = 'guia_modelo_b0' and versao = 2; update modelos_email_versoes set etapa = 'no_ar', nota = 'editada pela Ingryd' where chave = 'guia_modelo_b0' and versao = 1");
+  // quem já tinha rodado só até a versão 2: a 3 entra e a 2 é arquivada
+  await db.exec("delete from modelos_email_versoes where chave = 'guia_modelo_b0' and versao = 3; update modelos_email_versoes set etapa = 'no_ar' where chave = 'guia_modelo_b0' and versao = 2");
+  await db.exec(sql);
+  const ate2 = await q("select versao, etapa from modelos_email_versoes where chave = 'guia_modelo_b0' order by versao");
+  check('quem tinha rodado até a versão 2: a 3 entra No ar e a 2 vai para arquivada', ate2.map((v) => v.etapa).join() === 'arquivado,arquivado,no_ar');
+  // quem já editou a versão 2 à mão não é tocado: a 3 entra como rascunho
+  await db.exec("delete from modelos_email_versoes where chave = 'guia_modelo_b0' and versao = 3; update modelos_email_versoes set etapa = 'no_ar', nota = 'editada pela Ingryd' where chave = 'guia_modelo_b0' and versao = 2");
   await db.exec(sql);
   const ed = await q("select versao, etapa from modelos_email_versoes where chave = 'guia_modelo_b0' order by versao");
-  check('versão 1 editada à mão segue No ar e a 2 entra como rascunho', ed.length === 2 && ed[0].etapa === 'no_ar' && ed[1].etapa === 'rascunho');
-  await db.exec("delete from modelos_email_versoes where chave = 'guia_modelo_b0' and versao = 2; update modelos_email_versoes set etapa = 'arquivado', nota = 'B0: versão inicial (texto simples; carta com campos em branco)' where chave = 'guia_modelo_b0' and versao = 1");
+  check('versão 2 editada à mão segue No ar e a 3 entra como rascunho', ed.map((v) => v.etapa).join() === 'arquivado,no_ar,rascunho');
+  await db.exec("delete from modelos_email_versoes where chave = 'guia_modelo_b0' and versao = 3; update modelos_email_versoes set etapa = 'arquivado', nota = 'B0: versão 2 (a carta preenchida, enviada pelo Worker)' where chave = 'guia_modelo_b0' and versao = 2");
   await db.exec(sql);
 
   console.log('\n== Páginas I07 a I09 (Guia Domiciliação) ==');

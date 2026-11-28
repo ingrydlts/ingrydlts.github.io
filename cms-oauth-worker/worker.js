@@ -1629,7 +1629,7 @@ function guiaModeloB0Vars(contato, carta) {
     org: c.org || '', velho: c.velho || CF_B0_VAZIO, novo: c.novo || CF_B0_VAZIO, dossie: c.dossie || CF_B0_VAZIO, data: c.data || CF_B0_VAZIO,
   };
 }
-// Texto de reserva do B0 (o mesmo da versão 2 de crm-guia-modelo-b0.sql): vale se a tabela de modelos falhar
+// Texto de reserva do B0 (o mesmo da versão 3 de crm-guia-modelo-b0.sql): vale se a tabela de modelos falhar
 // ou se a versão No ar for a antiga, sem os campos da carta.
 const CF_B0_RESERVA = {
   versao: null,
@@ -1654,7 +1654,7 @@ Je vous remercie de bien vouloir mettre à jour mes coordonnées dans mon dossie
 Cordialement,
 {nome_completo}
 
-Este e-mail é só para você guardar a carta. Os endereços e o número do dossiê que você digitou não ficam guardados por nós: foram usados só para montar esta mensagem.
+Este e-mail é só para você guardar a carta.
 
 O Manual tem os outros 7 modelos de carta e e-mail, com a base legal de cada item.
 
@@ -1663,7 +1663,10 @@ Ficou com dúvida? É só responder este e-mail. Chega direto para mim.
 Ingryd · Por Dentro
 
 —
-Você recebeu este e-mail porque pediu o modelo de carta de mudança de endereço no Por Dentro com {email}.`,
+Você recebeu este e-mail porque pediu o modelo de carta de mudança de endereço no Por Dentro com {email}.
+
+Seus dados (RGPD): os endereços, o número do dossiê, o órgão e a data que você digitou na página foram usados só para montar este e-mail. Não foram gravados no nosso banco de dados nem no nosso CRM, e o nosso histórico guarda esta carta em branco. Guardamos apenas o seu nome, o seu e-mail e o seu consentimento, para entregar o modelo. Para montar e enviar a mensagem, os dados passam pela nossa infraestrutura (Cloudflare) e pelo Brevo, o nosso prestador de envio de e-mails, que os trata segundo a política dele. A cópia deste e-mail fica na sua caixa de entrada: apague-a quando quiser.
+Responsável pelo tratamento: Ingryd Lo Tierzo Silva, entrepreneur individuel, SIRET 108 644 485 00014. Para acessar, corrigir ou apagar os seus dados, ou retirar o seu consentimento, responda este e-mail. Política de privacidade: https://imigrantepordentro.com/confidentialite/`,
 };
 
 // O B0 com a carta preenchida. A página, depois do cadastro, manda os campos aqui; o Worker monta o e-mail, envia e NÃO guarda
