@@ -71,6 +71,9 @@ legend{padding:0;font-weight:800;color:var(--forest);margin-bottom:12px;font-siz
 .btn{display:inline-flex;align-items:center;justify-content:center;background:var(--moss);color:#fff!important;font:800 16px/1 var(--body);border:0;border-radius:999px;padding:14px 24px;text-decoration:none;text-align:center;min-height:48px;cursor:pointer}
 .btn:hover{background:#47601F}
 .btn[disabled]{opacity:.6;cursor:wait}
+.ganha{margin:0;padding:0;list-style:none;display:grid;gap:6px;font-size:14px;font-weight:700;color:var(--forest)}
+.ganha li{display:flex;gap:8px;align-items:baseline}
+.ganha li::before{content:"✓";color:var(--moss);font-weight:800}
 .liberado{display:flex;gap:8px;align-items:center;font-size:14px;font-weight:800;color:var(--moss)}
 .liberado::before{content:"";width:10px;height:10px;border-radius:50%;background:var(--moss);flex:none}
 .passos{display:grid;gap:14px;margin:0;padding:0;list-style:none}
@@ -152,7 +155,8 @@ legend{padding:0;font-weight:800;color:var(--forest);margin-bottom:12px;font-siz
   </aside>
 
   <section aria-labelledby="h-q">
-    <h2 id="h-q" style="margin-bottom:14px">Roteiro do seu caso: 2 perguntas</h2>
+    <h2 id="h-q" style="margin-bottom:6px">Roteiro do seu caso: 2 perguntas</h2>
+    <p class="small" style="margin-bottom:14px">Responda e receba o <b>recap do seu caso por e-mail</b>, passo a passo e com frases em francês, para guardar e rever quando precisar.</p>
     <div class="perguntas" id="perguntas">
       <fieldset><legend>1. Qual é a sua situação?</legend><div class="opts two" id="opts-porta"></div></fieldset>
       <fieldset><legend>2. Em que ponto você está?</legend><div class="opts" id="opts-ponto"></div></fieldset>
@@ -280,8 +284,9 @@ function primeiroHtml(c) {
   return '<section class="passo1" aria-labelledby="h-p1"><div class="eyebrow">O seu primeiro passo</div><h2 id="h-p1">' + esc(c.primeiro) + '</h2>' + fontesHtml(c) + '</section>';
 }
 function portaoHtml(c) {
-  return '<section class="glass" aria-labelledby="h-g"><h2 id="h-g">' + esc(c.tipo) + ': o roteiro completo do seu caso</h2>' +
-    '<p class="small">Deixe o seu e-mail e o roteiro abre aqui, em português e com frases em francês. No seu primeiro cadastro, mando também um e-mail com o mesmo texto, em alguns minutos.</p>' +
+  return '<section class="glass" aria-labelledby="h-g"><h2 id="h-g">Receba o recap do seu caso por e-mail</h2>' +
+    '<p class="small">Você vê só o primeiro passo aqui. Deixe o seu e-mail e eu mando o <b>roteiro completo: ' + esc(c.tipo) + '</b>, com todos os passos e as frases prontas em francês. Fica na sua caixa de entrada para você guardar, revisar depois e copiar quando for falar com a CPAM.</p>' +
+    '<ul class="ganha"><li>Todos os passos do seu caso, em ordem</li><li>Frases em francês para copiar e colar</li><li>O mesmo texto no seu e-mail, para consultar quando quiser</li></ul>' +
     '<form class="form" id="rs-form" novalidate>' +
     '<label class="t" for="f-nome">Seu nome<input type="text" id="f-nome" autocomplete="given-name" value="' + esc(S.nome) + '"></label>' +
     '<label class="t" for="f-email">Seu e-mail<input type="email" id="f-email" autocomplete="email" inputmode="email" value="' + esc(S.email) + '"></label>' +
@@ -289,7 +294,7 @@ function portaoHtml(c) {
     '<label class="ck" for="f-nov"><input type="checkbox" id="f-nov"' + (S.novidades ? ' checked' : '') + '><span>Quero as novidades do Por Dentro (opcional).</span></label>' +
     '<div class="hp" aria-hidden="true"><label for="hp-website">Deixe este campo em branco</label><input type="text" id="hp-website" name="website" tabindex="-1" autocomplete="off"></div>' +
     '<div class="err" id="f-err" role="alert">' + esc(S.erro) + '</div>' +
-    '<button class="btn" id="f-btn" type="submit"' + (S.enviando ? ' disabled' : '') + '>Abrir o meu roteiro</button></form></section>';
+    '<button class="btn" id="f-btn" type="submit"' + (S.enviando ? ' disabled' : '') + '>Receber o recap por e-mail</button></form></section>';
 }
 function ctaHtml() {
   var h = '<section class="cta" aria-labelledby="h-c"><h2 id="h-c">Prefere ter alguém com você?</h2><p>Eu preparo você e entro na chamada. Quem fala com a CPAM é você.</p>';
@@ -309,7 +314,7 @@ function ctaHtml() {
   return h + '<p class="selo">Não é consulta jurídica. É ajuda para organizar o seu processo administrativo.</p></section>';
 }
 function roteiroHtml(c) {
-  var h = '<div class="liberado" id="liberado" tabindex="-1">Roteiro aberto.' + (S.email ? ' O e-mail com o mesmo texto chega em alguns minutos para ' + esc(S.email) + ', se este for o seu primeiro cadastro.' : '') + '</div>';
+  var h = '<div class="liberado" id="liberado" tabindex="-1">Roteiro aberto.' + (S.email ? ' Mandei o recap para ' + esc(S.email) + ' (chega em alguns minutos; olhe também o spam). Guarde o e-mail para rever depois.' : '') + '</div>';
   h += '<section aria-labelledby="h-r"><h2 id="h-r">' + esc(c.tipo) + '</h2><p class="small" style="margin:4px 0 14px">' + esc(porRot(S.porta).rot) + ' · ' + esc(ponRot(S.ponto).curto) + '</p><ol class="passos">';
   c.passos.forEach(function (p, i) {
     h += '<li><div class="n"><b>' + (i + 1) + '</b>' + esc(p.t) + '</div><p>' + esc(p.x) + '</p>';
@@ -326,14 +331,15 @@ function render() {
   if (!S.porta || !S.ponto) { dyn.innerHTML = ''; return; }
   var c = caso(S.porta, S.ponto);
   dyn.innerHTML = primeiroHtml(c) + (S.aberto ? roteiroHtml(c) : portaoHtml(c));
-  if (!S.aberto && !S.shownAt) S.shownAt = Date.now();   // uma vez só: trocar a resposta não reinicia a espera anti-robô
+  if (!S.aberto && !S.shownAt) S.shownAt = Date.now();
+  if (!S.aberto && S.rolar) { S.rolar = false; var g = byId('h-g'); if (g) g.scrollIntoView({ behavior: window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' }); }   // uma vez só: trocar a resposta não reinicia a espera anti-robô
 }
 
 document.addEventListener('change', function (e) {
   var t = e.target;
   if (t.name === 'acomp') { S.orcTipo = t.value; return; }
-  if (t.name === 'porta') { S.porta = t.value; S.erro = ''; render(); }
-  else if (t.name === 'ponto') { S.ponto = t.value; S.erro = ''; render(); }
+  if (t.name === 'porta') { S.porta = t.value; S.erro = ''; S.rolar = !!S.ponto; render(); }
+  else if (t.name === 'ponto') { S.ponto = t.value; S.erro = ''; S.rolar = !!S.porta; render(); }
   else if (t.id === 'f-consent') S.consent = t.checked;
   else if (t.id === 'f-nov') S.novidades = t.checked;
 });
