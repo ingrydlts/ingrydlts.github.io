@@ -833,56 +833,118 @@ console.log('\n== Estúdio de e-mails 3: sequências de hora em hora ==');
   check('modelo que não existe: 400', res.status === 400 && !chamadas.some((c) => /brevo/.test(c.url)));
 }
 
-console.log('\n== B0 do modelo grátis (guia_modelo_b0), sem link do Notion ==');
+console.log('\n== B0 do modelo grátis (guia_modelo_b0): a carta preenchida pelo Worker ==');
 {
   const sqlB0 = readFileSync(path.resolve(HERE, '../../admin/crm/db/crm-guia-modelo-b0.sql'), 'utf8');
-  const textoSql = (sqlB0.match(/\$guia_modelo_b0_t\$([\s\S]*?)\$guia_modelo_b0_t\$/) || [])[1];
-  check('o texto de reserva do Worker é o mesmo da versão 1 do SQL', textoSql === CF_B0_RESERVA.corpo_texto);
-  const assuntoSql = (sqlB0.match(/\$guia_modelo_b0_a\$([\s\S]*?)\$guia_modelo_b0_a\$/) || [])[1];
+  const textoSql = (sqlB0.match(/\$guia_modelo_b0_t3\$([\s\S]*?)\$guia_modelo_b0_t3\$/) || [])[1];
+  check('o texto de reserva do Worker é o mesmo da versão 3 do SQL', textoSql === CF_B0_RESERVA.corpo_texto);
+  const assuntoSql = (sqlB0.match(/\$guia_modelo_b0_a3\$([\s\S]*?)\$guia_modelo_b0_a3\$/) || [])[1];
   check('o assunto de reserva é o mesmo do SQL', assuntoSql === CF_B0_RESERVA.assunto);
+
   const GUIA_B0 = 'modelo-mudanca-endereco-mesma-cidade';
-  const contatoB0 = [/\/contatos\?/, { body: [{ id: CID, email: 'ana@example.com', nome: 'Ana Souza', respostas: {} }] }];
+  const agoraIso = () => new Date().toISOString();
+  const ficha = (extra = {}) => ({ id: CID, email: 'ana@example.com', nome: 'Ana Souza', respostas: {}, ultima_origem: 'manual-destrave-domiciliacao', ultima_captura_em: agoraIso(), ...extra });
+  const contatoB0 = (extra) => [/\/contatos\?/, { body: [ficha(extra)] }];
+  const CARTA = { org: 'CPAM', velho: '12 rue Velha, 75011 Paris', novo: '8 avenue Nova, 75012 Paris', dossie: 'DOS-998877', data: '1 de dezembro' };
+  let ipN = 0;
+  const reqCarta = (corpo, ip) => new Request('https://w.example/api/guia/carta', { method: 'POST', headers: { 'Content-Type': 'application/json', 'CF-Connecting-IP': ip || ('203.0.113.' + (++ipN)) }, body: JSON.stringify(corpo) });
+  const envio = [[/\/emails_enviados$/, { method: 'POST', status: 201, body: [{ id: 21 }] }], [/api\.brevo\.com/, { body: { messageId: '<b0@smtp.example.net>' } }]];
+  const brevoDe = () => chamadas.find((c) => /brevo/.test(c.url));
 
-  chamadas = [];
-  fakeFetch([contatoB0, [/\/emails_enviados$/, { method: 'POST', status: 201, body: [{ id: 21 }] }], [/api\.brevo\.com/, { body: { messageId: '<b0@smtp.example.net>' } }]]);
+  // O gancho do banco não manda o B0 em branco: quem manda é a página, com os campos.
+  chamadas = []; fakeFetch([contatoB0()]);
   let r0 = await worker.fetch(req({ contato_id: CID, guia: GUIA_B0 }), env, {});
-  const b0 = chamadas.find((c) => /brevo/.test(c.url));
-  const res0 = chamadas.find((c) => /emails_enviados$/.test(c.url));
-  check('B0 envia: 200', r0.status === 200);
-  check('B0 não busca link do Notion (guias_links)', !chamadas.some((c) => /guias_links/.test(c.url)));
-  check('B0 reserva a linha antes de enviar, com o modelo certo', chamadas.indexOf(res0) < chamadas.indexOf(b0) && res0.body.modelo === 'guia_modelo_b0');
-  check('B0: assunto com o primeiro nome', b0.body.subject === 'Ana, a sua carta de mudança de endereço');
-  check('B0: para ela, Reply-To = respostas, sem List-Unsubscribe (serviço)', b0.body.to[0].email === 'ana@example.com' && b0.body.replyTo.email === 'respostas@example.org' && !b0.body.headers);
-  check('B0: a carta em francês, com os campos em ___', b0.body.textContent.includes("Objet : Changement d'adresse au sein de la même commune") && b0.body.textContent.includes('___'));
-  check('B0: sem [colchetes] e sem dado de endereço', !/\[[^\]\n]{2,60}\]/.test(b0.body.textContent) && !/dossi[eê]\s*n?[º°]?\s*\d/i.test(b0.body.textContent));
-  check('B0: rodapé de serviço com o e-mail dela, sem "sair"', b0.body.textContent.includes('porque pediu o modelo de carta de mudança de endereço no Por Dentro com ana@example.com') && !/palavra "?sair/i.test(b0.body.textContent));
-  check('B0: HTML escapa e mantém quebras', b0.body.htmlContent.includes('<br>') && !/<script/i.test(b0.body.htmlContent));
+  let j0 = await r0.json();
+  check('o gancho do banco para o B0 responde "adiado" e não chama ninguém', r0.status === 200 && j0.adiado === true && chamadas.length === 0);
 
-  const semNome = guiaModeloB0Vars({ nome: '', email: 'x@example.com' });
-  const mSem = crmMontarModelo(CF_B0_RESERVA, semNome);
-  check('B0 sem nome: assunto e abertura sem vírgula solta', mSem.assunto === 'A sua carta de mudança de endereço' && mSem.texto.startsWith('Oi! Aqui está'));
-  const mXss = crmMontarModelo(CF_B0_RESERVA, guiaModeloB0Vars({ nome: '<script>x</script>', email: 'x@example.com' }));
-  check('B0: nome escapado no HTML', !mXss.html.includes('<script>'));
+  // Envio com a carta preenchida.
+  const logs = [];
+  const logAntes = [console.error, console.log, console.warn];
+  console.error = (...a) => logs.push(a.join(' ')); console.log = (...a) => logs.push(a.join(' ')); console.warn = (...a) => logs.push(a.join(' '));
+  chamadas = []; fakeFetch([contatoB0(), ...envio]);
+  r0 = await worker.fetch(reqCarta({ email: 'Ana@Example.com', carta: CARTA }), env, {});
+  [console.error, console.log, console.warn] = logAntes;
+  const b0 = brevoDe(), res0 = chamadas.find((c) => /emails_enviados$/.test(c.url));
+  check('envia com a carta: 200', r0.status === 200);
+  check('não busca link do Notion', !chamadas.some((c) => /guias_links/.test(c.url)));
+  check('o e-mail traz o endereço antigo, o novo, o dossiê, a data e o órgão', ['12 rue Velha, 75011 Paris', '8 avenue Nova, 75012 Paris', 'DOS-998877', '1 de dezembro', 'auprès de CPAM'].every((t) => b0.body.textContent.includes(t)));
+  check('o HTML também traz os dados', ['12 rue Velha, 75011 Paris', '8 avenue Nova, 75012 Paris', 'DOS-998877'].every((t) => b0.body.htmlContent.includes(t)));
+  check('a assinatura usa o nome completo e o assunto o primeiro nome', b0.body.textContent.includes('Cordialement,\nAna Souza') && b0.body.subject === 'Ana, a sua carta de mudança de endereço');
+  check('para ela, Reply-To = respostas, sem List-Unsubscribe (serviço)', b0.body.to[0].email === 'ana@example.com' && b0.body.replyTo.email === 'respostas@example.org' && !b0.body.headers);
+  check('reserva a linha antes de enviar, com o modelo certo', chamadas.indexOf(res0) < chamadas.indexOf(b0) && res0.body.modelo === 'guia_modelo_b0');
+  check('o histórico da ficha guarda a carta EM BRANCO (nenhum dado digitado)', res0.body.corpo.includes('___') && !['12 rue Velha', '8 avenue Nova', 'DOS-998877', '1 de dezembro', 'CPAM'].some((t) => res0.body.corpo.includes(t)));
+  check('o rodapé traz o aviso de dados (RGPD): o que não foi gravado, o que fica, quem trata, quem é o responsável, como exercer os direitos e a política',
+    ['Seus dados (RGPD)', 'Não foram gravados no nosso banco de dados nem no nosso CRM', 'o seu nome, o seu e-mail e o seu consentimento', 'Cloudflare', 'Brevo', 'Ingryd Lo Tierzo Silva', 'SIRET 108 644 485 00014', 'responda este e-mail', 'https://imigrantepordentro.com/confidentialite/'].every((t) => b0.body.textContent.includes(t)));
+  check('o aviso de dados também está no HTML, com o link da política', b0.body.htmlContent.includes('Seus dados (RGPD)') && /<a href="https:\/\/imigrantepordentro\.com\/confidentialite\/">/.test(b0.body.htmlContent));
+  check('nenhum dado da carta vai para log', !logs.some((l) => /rue Velha|avenue Nova|DOS-998877|1 de dezembro/.test(l)));
+  check('nenhum dado da carta é gravado em outro lugar (só o e-mail enviado e o histórico em branco)',
+    chamadas.every((c) => /brevo|contatos\?|emails_enviados|modelos_email_versoes/.test(c.url)) && !chamadas.some((c) => !/brevo/.test(c.url) && /DOS-998877|rue Velha/.test(JSON.stringify(c.body || ''))));
 
-  chamadas = [];
-  fakeFetch([contatoB0, [/\/emails_enviados$/, { method: 'POST', status: 409, body: { code: '23505' } }]]);
-  r0 = await worker.fetch(req({ contato_id: CID, guia: GUIA_B0 }), env, {});
-  check('B0 já enviado (409): não chama o Brevo', r0.status === 200 && !chamadas.some((c) => /brevo/.test(c.url)));
+  // Campos vazios: ___.
+  chamadas = []; fakeFetch([contatoB0(), ...envio]);
+  r0 = await worker.fetch(reqCarta({ email: 'ana@example.com', carta: { velho: '', novo: '  ' } }), env, {});
+  check('campos vazios viram ___ e o órgão some', r0.status === 200 && /à compter du ___\. Mon ancienne adresse était : ___\. Ma nouvelle adresse est : ___\./.test(brevoDe().body.textContent) && !brevoDe().body.textContent.includes('auprès de'));
 
-  chamadas = [];
-  fakeFetch([contatoB0, [/\/emails_enviados$/, { method: 'POST', status: 201, body: [{ id: 22 }] }], [/api\.brevo\.com/, { status: 400, body: { message: 'x' } }]]);
-  r0 = await worker.fetch(req({ contato_id: CID, guia: GUIA_B0 }), env, {});
-  check('B0 Brevo recusou: 502 e desfaz a reserva', r0.status === 502 && chamadas.some((c) => c.method === 'DELETE' && /emails_enviados\?id=eq\.22/.test(c.url)));
+  // Sanitização: HTML, chaves, colchetes e links.
+  chamadas = []; fakeFetch([contatoB0(), ...envio]);
+  r0 = await worker.fetch(reqCarta({ email: 'ana@example.com', carta: { ...CARTA, novo: '<script>x</script> {#nome} [rua] 8', org: 'CAF' } }), env, {});
+  check('<script>, {chaves} e [colchetes] são tirados e o e-mail sai', r0.status === 200 && !brevoDe().body.htmlContent.includes('<script>') && !/[{}\[\]]/.test(brevoDe().body.textContent) && brevoDe().body.textContent.includes('script x /script'));
+  for (const [rotulo, carta] of [['link http', { novo: 'veja https://mal.example/x' }], ['link www', { velho: 'www.mal.example' }], ['e-mail no campo', { dossie: 'a@b.co' }]]) {
+    chamadas = []; fakeFetch([contatoB0(), ...envio]);
+    r0 = await worker.fetch(reqCarta({ email: 'ana@example.com', carta }), env, {});
+    check(rotulo + ' num campo: 400 e nada enviado', r0.status === 400 && !brevoDe() && !chamadas.some((c) => /emails_enviados/.test(c.url)));
+  }
+  chamadas = []; fakeFetch([contatoB0(), ...envio]);
+  r0 = await worker.fetch(reqCarta({ email: 'não é e-mail', carta: CARTA }), env, {});
+  check('e-mail inválido: 400, sem chamar o banco', r0.status === 400 && chamadas.length === 0);
+  chamadas = []; fakeFetch([contatoB0(), ...envio]);
+  r0 = await worker.fetch(reqCarta({ email: 'ana@example.com', carta: { novo: 'x'.repeat(500) } }), env, {});
+  check('campo longo é cortado (140) e o e-mail sai', r0.status === 200 && !brevoDe().body.textContent.includes('x'.repeat(141)));
 
-  // Versão No ar vinda da tabela: o Worker usa o texto dela e grava a versão.
-  chamadas = [];
-  fakeFetch([contatoB0,
-    [/modelos_email_versoes/, { body: [{ versao: 3, assunto: 'Carta de {nome}', preheader: 'p', corpo_texto: 'Texto v3 de {nome} ({email})', corpo_html: null }] }],
-    [/\/emails_enviados$/, { method: 'POST', status: 201, body: [{ id: 23 }] }], [/api\.brevo\.com/, { body: { messageId: '<b0v3@smtp.example.net>' } }]]);
-  await worker.fetch(req({ contato_id: CID, guia: GUIA_B0 }), env, {});
-  const b0v3 = chamadas.find((c) => /brevo/.test(c.url));
-  const resv3 = chamadas.find((c) => /emails_enviados$/.test(c.url));
-  check('B0 usa a versão No ar da tabela e grava a versão', b0v3.body.subject === 'Carta de Ana' && /Texto v3 de Ana \(ana@example\.com\)/.test(b0v3.body.textContent) && resv3.body.modelo_versao === 3);
+  // Só quem acabou de se cadastrar no modelo grátis.
+  for (const [rotulo, regra] of [
+    ['ficha de outra origem', [/\/contatos\?/, { body: [ficha({ ultima_origem: 'guia-etudes-en-france-2027' })] }]],
+    ['cadastro de mais de 30 minutos', [/\/contatos\?/, { body: [ficha({ ultima_captura_em: new Date(Date.now() - 31 * 60000).toISOString() })] }]],
+    ['e-mail sem ficha', [/\/contatos\?/, { body: [] }]],
+  ]) {
+    chamadas = []; fakeFetch([regra, ...envio]);
+    r0 = await worker.fetch(reqCarta({ email: 'ana@example.com', carta: CARTA }), env, {});
+    check(rotulo + ': 404 e nada enviado', r0.status === 404 && !brevoDe() && !chamadas.some((c) => /emails_enviados/.test(c.url)));
+  }
+
+  // Uma carta por pessoa.
+  chamadas = []; fakeFetch([contatoB0(), [/\/emails_enviados$/, { method: 'POST', status: 409, body: { code: '23505' } }]]);
+  r0 = await worker.fetch(reqCarta({ email: 'ana@example.com', carta: CARTA }), env, {});
+  j0 = await r0.json();
+  check('já recebeu (409): ja_enviado e o Brevo não é chamado', r0.status === 200 && j0.ja_enviado === true && !brevoDe());
+
+  // Brevo recusa: 502 e desfaz a reserva (a pessoa pode tentar de novo).
+  chamadas = []; fakeFetch([contatoB0(), [/\/emails_enviados$/, { method: 'POST', status: 201, body: [{ id: 22 }] }], [/api\.brevo\.com/, { status: 400, body: { message: 'x' } }]]);
+  const errAntes = console.error; console.error = () => {};
+  r0 = await worker.fetch(reqCarta({ email: 'ana@example.com', carta: CARTA }), env, {});
+  console.error = errAntes;
+  check('Brevo recusou: 502 e desfaz a reserva', r0.status === 502 && chamadas.some((c) => c.method === 'DELETE' && /emails_enviados\?id=eq\.22/.test(c.url)));
+
+  // Limite por IP.
+  let ultimo = null;
+  for (let i = 0; i < 12; i++) { chamadas = []; fakeFetch([contatoB0({ ultima_origem: 'outra' })]); ultimo = await worker.fetch(reqCarta({ email: 'ana@example.com', carta: CARTA }, '198.51.100.7'), env, {}); }
+  check('depois de 10 tentativas do mesmo IP: 429', ultimo.status === 429);
+
+  // CORS para a página chamar do site.
+  const pre = await worker.fetch(new Request('https://w.example/api/guia/carta', { method: 'OPTIONS' }), env, {});
+  check('pré-voo CORS responde 204 com origem liberada', pre.status === 204 && pre.headers.get('Access-Control-Allow-Origin') === '*');
+
+  // Versão da tabela: com os campos usa a da tabela; a antiga (carta em branco) é ignorada.
+  chamadas = []; fakeFetch([contatoB0(), [/modelos_email_versoes/, { body: [{ versao: 3, assunto: 'Carta de {nome}', preheader: 'p', corpo_texto: 'Texto v3 de {nome} em {novo}', corpo_html: null }] }], ...envio]);
+  await worker.fetch(reqCarta({ email: 'ana@example.com', carta: CARTA }), env, {});
+  const bv3 = brevoDe(), rv3 = chamadas.find((c) => /emails_enviados$/.test(c.url));
+  check('usa a versão No ar da tabela quando ela tem os campos, e grava a versão', bv3.body.subject === 'Carta de Ana' && /Texto v3 de Ana em 8 avenue Nova, 75012 Paris/.test(bv3.body.textContent) && rv3.body.modelo_versao === 3);
+  check('o histórico dessa versão também sai sem o endereço', !rv3.body.corpo.includes('avenue Nova') && rv3.body.corpo.includes('___'));
+  chamadas = []; fakeFetch([contatoB0(), [/modelos_email_versoes/, { body: [{ versao: 1, assunto: 'Carta de {nome}', preheader: 'p', corpo_texto: 'Carta em branco de {nome}', corpo_html: null }] }], ...envio]);
+  const errAntes2 = console.error; console.error = () => {};
+  await worker.fetch(reqCarta({ email: 'ana@example.com', carta: CARTA }), env, {});
+  console.error = errAntes2;
+  check('versão No ar antiga (sem os campos da carta) é ignorada: sai o texto de reserva COM os dados', brevoDe().body.textContent.includes('8 avenue Nova, 75012 Paris') && !brevoDe().body.textContent.includes('Carta em branco'));
 }
 
 console.log(`\n${passed} passaram, ${failed} falharam`);

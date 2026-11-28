@@ -13,9 +13,17 @@
 --      O texto de reserva também mora no Worker: se a tabela falhar, o e-mail sai igual.
 --
 -- O B0 é e-mail de SERVIÇO: sai para todo mundo que pediu o modelo (a caixa de serviço é obrigatória na página), sem exigir
--- "novidades" e sem rodapé de descadastro. Ele leva só o MODELO da carta, com os campos em branco: endereços e número de
--- dossiê ficam na página (só nome, e-mail e consentimento chegam ao CRM). Para o e-mail trazer a carta preenchida seria
--- preciso a página enviar esses campos ao Worker: decisão da Ingryd, ainda não tomada (ver a aba "Trilha B" do documento).
+-- "novidades" e sem rodapé de descadastro.
+--
+-- VERSÃO 2 (28/11/2026): o B0 leva a carta PREENCHIDA. Quem manda o e-mail é a página, que envia os campos (endereços, dossiê, data)
+-- direto ao Worker (POST /api/guia/carta); o Worker monta, envia e NÃO guarda os campos: o banco só recebe nome, e-mail e
+-- consentimento, e o histórico da ficha guarda a mesma carta em branco (___). O gancho do banco (crm_guia_email_pedir) continua
+-- chamando o Worker, que responde "adiado" para este guia: nada sai em branco antes da carta preenchida.
+-- A versão 1 (carta em branco) fica arquivada; rodar este arquivo de novo não repete a versão 2.
+--
+-- VERSÃO 3 (28/11/2026): o rodapé ganha o aviso de dados (RGPD): o que não foi gravado, o que fica (nome, e-mail, consentimento),
+-- por onde os dados passam (Cloudflare e Brevo), quem é o responsável e como exercer os direitos. O texto repete o que a política
+-- de privacidade do site diz; se aquela política mudar, mude este rodapé (nova versão no Estúdio) no mesmo dia.
 --
 -- Como desfazer:
 --   (reponha a crm_guia_email_pedir de crm-fase0-email-guia.sql, seção 2)
@@ -114,3 +122,99 @@ Você recebeu este e-mail porque pediu o modelo de carta de mudança de endereç
   'B0: versão inicial (texto simples; carta com campos em branco)', now()
 where exists (select 1 from public.modelos_email where chave = 'guia_modelo_b0')
   and not exists (select 1 from public.modelos_email_versoes where chave = 'guia_modelo_b0');
+
+-- ---------- 4. Versão 2: a carta preenchida ----------
+-- Variáveis novas: nome_completo, org, velho, novo, dossie e data (os campos da carta, vindos do Worker, nunca do banco).
+update public.modelos_email set variaveis = '[{"nome":"nome","o_que_e":"primeiro nome","se_faltar":"o trecho com o nome some"},{"nome":"nome_completo","o_que_e":"nome como ela digitou na página (assinatura da carta)","se_faltar":"aparece Seu nome"},{"nome":"email","o_que_e":"o e-mail dela (rodapé)","se_faltar":"—"},{"nome":"novo","o_que_e":"endereço novo, como ela digitou (só passa pelo Worker, não é guardado)","se_faltar":"aparece ___"},{"nome":"velho","o_que_e":"endereço antigo (só passa pelo Worker)","se_faltar":"aparece ___"},{"nome":"dossie","o_que_e":"número do dossiê (só passa pelo Worker)","se_faltar":"aparece ___"},{"nome":"data","o_que_e":"data da mudança (só passa pelo Worker)","se_faltar":"aparece ___"},{"nome":"org","o_que_e":"órgão a quem vai a carta (CAF, CPAM...)","se_faltar":"o trecho some"}]'::jsonb
+ where chave = 'guia_modelo_b0';
+
+-- A versão 1 só é arquivada se continua como veio daqui: quem já editou o texto no Estúdio não é tocado
+-- (a versão 2 então entra como rascunho, para ela decidir).
+update public.modelos_email_versoes set etapa = 'arquivado'
+ where chave = 'guia_modelo_b0' and versao = 1 and etapa = 'no_ar' and nota = 'B0: versão inicial (texto simples; carta com campos em branco)';
+
+insert into public.modelos_email_versoes (chave, versao, etapa, assunto, preheader, corpo_texto, corpo_html, nota, publicado_em)
+select 'guia_modelo_b0', 2,
+  case when exists (select 1 from public.modelos_email_versoes where chave = 'guia_modelo_b0' and etapa = 'no_ar') then 'rascunho' else 'no_ar' end,
+  $guia_modelo_b0_a2${#nome}{nome}, a sua carta de mudança de endereço{/nome}{^nome}A sua carta de mudança de endereço{/nome}$guia_modelo_b0_a2$,
+  $guia_modelo_b0_p2$A carta que você montou, para guardar e enviar.$guia_modelo_b0_p2$,
+  $guia_modelo_b0_t2${#nome}Oi {nome}!{/nome}{^nome}Oi!{/nome} Aqui está a carta que você montou, para mudança de endereço na mesma cidade. Confira cada dado, adapte ao seu caso e confirme na fonte oficial antes de enviar.
+
+{nome_completo}
+{novo}
+
+Objet : Changement d'adresse au sein de la même commune
+
+Madame, Monsieur,
+
+Je vous informe de mon changement d'adresse au sein de la même commune, à compter du {data}. Mon ancienne adresse était : {velho}. Ma nouvelle adresse est : {novo}.
+
+Mon numéro de dossier{#org} auprès de {org}{/org} est : {dossie}.
+
+Je vous remercie de bien vouloir mettre à jour mes coordonnées dans mon dossier et de m'en confirmer la prise en compte par écrit. Je reste à votre disposition pour tout justificatif complémentaire.
+
+Cordialement,
+{nome_completo}
+
+Este e-mail é só para você guardar a carta. Os endereços e o número do dossiê que você digitou não ficam guardados por nós: foram usados só para montar esta mensagem.
+
+O Manual tem os outros 7 modelos de carta e e-mail, com a base legal de cada item.
+
+Ficou com dúvida? É só responder este e-mail. Chega direto para mim.
+
+Ingryd · Por Dentro
+
+—
+Você recebeu este e-mail porque pediu o modelo de carta de mudança de endereço no Por Dentro com {email}.$guia_modelo_b0_t2$,
+  null,
+  'B0: versão 2 (a carta preenchida, enviada pelo Worker)',
+  case when exists (select 1 from public.modelos_email_versoes where chave = 'guia_modelo_b0' and etapa = 'no_ar') then null else now() end
+where exists (select 1 from public.modelos_email where chave = 'guia_modelo_b0')
+  and not exists (select 1 from public.modelos_email_versoes where chave = 'guia_modelo_b0' and versao = 2);
+
+-- ---------- 5. Versão 3: o aviso de dados (RGPD) no rodapé ----------
+-- A versão 2 só é arquivada se continua como veio daqui; se foi editada à mão, a 3 entra como rascunho.
+update public.modelos_email_versoes set etapa = 'arquivado'
+ where chave = 'guia_modelo_b0' and versao = 2 and etapa = 'no_ar' and nota = 'B0: versão 2 (a carta preenchida, enviada pelo Worker)';
+
+insert into public.modelos_email_versoes (chave, versao, etapa, assunto, preheader, corpo_texto, corpo_html, nota, publicado_em)
+select 'guia_modelo_b0', 3,
+  case when exists (select 1 from public.modelos_email_versoes where chave = 'guia_modelo_b0' and etapa = 'no_ar') then 'rascunho' else 'no_ar' end,
+  $guia_modelo_b0_a3${#nome}{nome}, a sua carta de mudança de endereço{/nome}{^nome}A sua carta de mudança de endereço{/nome}$guia_modelo_b0_a3$,
+  $guia_modelo_b0_p3$A carta que você montou, para guardar e enviar.$guia_modelo_b0_p3$,
+  $guia_modelo_b0_t3${#nome}Oi {nome}!{/nome}{^nome}Oi!{/nome} Aqui está a carta que você montou, para mudança de endereço na mesma cidade. Confira cada dado, adapte ao seu caso e confirme na fonte oficial antes de enviar.
+
+{nome_completo}
+{novo}
+
+Objet : Changement d'adresse au sein de la même commune
+
+Madame, Monsieur,
+
+Je vous informe de mon changement d'adresse au sein de la même commune, à compter du {data}. Mon ancienne adresse était : {velho}. Ma nouvelle adresse est : {novo}.
+
+Mon numéro de dossier{#org} auprès de {org}{/org} est : {dossie}.
+
+Je vous remercie de bien vouloir mettre à jour mes coordonnées dans mon dossier et de m'en confirmer la prise en compte par écrit. Je reste à votre disposition pour tout justificatif complémentaire.
+
+Cordialement,
+{nome_completo}
+
+Este e-mail é só para você guardar a carta.
+
+O Manual tem os outros 7 modelos de carta e e-mail, com a base legal de cada item.
+
+Ficou com dúvida? É só responder este e-mail. Chega direto para mim.
+
+Ingryd · Por Dentro
+
+—
+Você recebeu este e-mail porque pediu o modelo de carta de mudança de endereço no Por Dentro com {email}.
+
+Seus dados (RGPD): os endereços, o número do dossiê, o órgão e a data que você digitou na página foram usados só para montar este e-mail. Não foram gravados no nosso banco de dados nem no nosso CRM, e o nosso histórico guarda esta carta em branco. Guardamos apenas o seu nome, o seu e-mail e o seu consentimento, para entregar o modelo. Para montar e enviar a mensagem, os dados passam pela nossa infraestrutura (Cloudflare) e pelo Brevo, o nosso prestador de envio de e-mails, que os trata segundo a política dele. A cópia deste e-mail fica na sua caixa de entrada: apague-a quando quiser.
+Responsável pelo tratamento: Ingryd Lo Tierzo Silva, entrepreneur individuel, SIRET 108 644 485 00014. Para acessar, corrigir ou apagar os seus dados, ou retirar o seu consentimento, responda este e-mail. Política de privacidade: https://imigrantepordentro.com/confidentialite/$guia_modelo_b0_t3$,
+  null,
+  'B0: versão 3 (aviso de dados RGPD no rodapé)',
+  case when exists (select 1 from public.modelos_email_versoes where chave = 'guia_modelo_b0' and etapa = 'no_ar') then null else now() end
+where exists (select 1 from public.modelos_email where chave = 'guia_modelo_b0')
+  and not exists (select 1 from public.modelos_email_versoes where chave = 'guia_modelo_b0' and versao = 3);
