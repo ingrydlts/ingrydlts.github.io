@@ -5674,7 +5674,10 @@ async function crmGuiaCompra(env, obj, origin) {
     return json({ error: 'Faltam os Payment Links do guia no Worker.' }, 500);
   }
   const moeda = String(obj.currency || '').toLowerCase();
-  if (!permitidos.includes(String(obj.payment_link || '')) || moeda !== 'eur' || !(obj.amount_total >= prod.minCentavos)) {
+  // O preço conferido é o ANTES do desconto (amount_subtotal): um código promocional, mesmo de 100%, não impede a entrega.
+  // O que barra link adulterado é o id do Payment Link; o valor só confirma que veio do link do produto.
+  const preco = typeof obj.amount_subtotal === 'number' ? obj.amount_subtotal : obj.amount_total;
+  if (!permitidos.includes(String(obj.payment_link || '')) || moeda !== 'eur' || !(preco >= prod.minCentavos)) {
     // Não é a venda do guia (link, moeda ou valor fora do esperado): não entrega, mas não adianta o Stripe tentar de novo.
     console.error('crm/guia: compra ' + obj.id + ' com client_reference_id ' + slug + ' fora do esperado (link, moeda ou valor); NÃO entreguei');
     return json({ ok: true, ignorado: true, motivo: 'fora_do_esperado' });
@@ -5685,7 +5688,7 @@ async function crmGuiaCompra(env, obj, origin) {
 
   const sb = crmServiceHeaders(env);
   const regRes = await fetch(`${CRM_SUPABASE_URL}/rest/v1/rpc/crm_compra_registrar`, { method: 'POST', headers: sb, body: JSON.stringify({
-    p_referencia: String(obj.id), p_slug: slug, p_email: email, p_valor_centavos: obj.amount_total, p_moeda: String(obj.currency || '').toUpperCase(),
+    p_referencia: String(obj.id), p_slug: slug, p_email: email, p_valor_centavos: Number.isInteger(obj.amount_total) ? obj.amount_total : preco, p_moeda: String(obj.currency || '').toUpperCase(),
     p_pago_em: stripeIso(obj.created), p_origem: (obj.metadata && obj.metadata.utm_content) || null }) });
   if (regRes.status === 404) { console.error('crm/guia: falta rodar admin/crm/db/crm-compras.sql'); return json({ error: 'Falta rodar crm-compras.sql.' }, 500); }
   if (!regRes.ok) throw new Error('crm_compra_registrar respondeu ' + regRes.status + ' ' + (await regRes.text().catch(() => '')).slice(0, 200));

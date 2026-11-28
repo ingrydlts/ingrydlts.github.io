@@ -113,6 +113,23 @@ env = mkEnv();
 [res] = await quieto(() => hook(EV(), env));
 check('e-mail saiu mas o registro falhou: 200 (um 500 mandaria o e-mail duas vezes)', res.status === 200);
 
+console.log('\n== Código promocional: o preço conferido é o de antes do desconto ==');
+env = mkEnv(); chamadas = []; fakeFetch(fluxo());
+[res] = await quieto(() => hook(EV(SESSAO({ id: 'cs_promo', amount_subtotal: 990, amount_total: 0 })), env));
+let regPromo = chamadas.find((c) => /crm_compra_registrar/.test(c.url));
+check('código de 100% (subtotal 9,90 €, total 0): entrega, com chave e e-mail', res.status === 200 && env.REVIEWS_KV.chaves('guia:chave:').length === 1 && toca(/api\.brevo\.com/).length === 1);
+check('a compra é registrada com o que foi PAGO (0), não com o preço de tabela', regPromo && regPromo.body.p_valor_centavos === 0);
+env = mkEnv(); chamadas = []; fakeFetch(fluxo());
+[res] = await quieto(() => hook(EV(SESSAO({ id: 'cs_promo5', amount_subtotal: 990, amount_total: 490 })), env));
+regPromo = chamadas.find((c) => /crm_compra_registrar/.test(c.url));
+check('desconto de 5 € (total 4,90 €): entrega e registra 490', res.status === 200 && toca(/api\.brevo\.com/).length === 1 && regPromo.body.p_valor_centavos === 490);
+env = mkEnv(); chamadas = []; fakeFetch(fluxo());
+[res] = await quieto(() => hook(EV(SESSAO({ amount_subtotal: 100, amount_total: 0 })), env)); j = await res.json();
+check('preço de tabela abaixo de 9 € (link de outro produto/valor), mesmo com desconto: não entrega', res.status === 200 && j.ignorado === true && chamadas.length === 0);
+env = mkEnv(); chamadas = []; fakeFetch(fluxo());
+[res] = await quieto(() => hook(EV(SESSAO({ amount_subtotal: 990, amount_total: 0, payment_link: 'plink_outro' })), env)); j = await res.json();
+check('código de 100% em outro Payment Link: não entrega (o link continua mandando)', res.status === 200 && j.ignorado === true && chamadas.length === 0);
+
 console.log('\n== Venda que não é a do guia: não entrega ==');
 const casos = [['link de pagamento de outro produto', SESSAO({ payment_link: 'plink_outro' })], ['sem link de pagamento (sessão criada por fora)', SESSAO({ payment_link: null })],
   ['valor abaixo do preço (9 €)', SESSAO({ amount_total: 100 })], ['moeda diferente', SESSAO({ currency: 'brl' })],

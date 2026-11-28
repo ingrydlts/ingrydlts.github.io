@@ -35,7 +35,7 @@ create table if not exists public.compras (
   slug text not null,   -- o produto (ex.: manual-destrave-domiciliacao); quais produtos existem quem decide é o Worker (GUIA_PRODUTOS)
   email_pagamento text not null check (email_pagamento = lower(email_pagamento) and length(email_pagamento) between 3 and 254),
   contato_id uuid references public.contatos(id) on delete set null,
-  valor_centavos integer not null check (valor_centavos > 0),
+  valor_centavos integer not null check (valor_centavos >= 0),   -- o que foi PAGO: 0 com código promocional de 100%
   moeda text not null check (moeda ~ '^[A-Z]{3}$'),
   pago_em timestamptz not null default now(),
   acesso_ate timestamptz not null,
@@ -47,6 +47,9 @@ create table if not exists public.compras (
 -- (lista fixa de dois produtos) em quem já rodou a primeira versão deste arquivo.
 alter table public.compras drop constraint if exists compras_slug_check;
 alter table public.compras add constraint compras_slug_check check (slug ~ '^[a-z0-9]+(-[a-z0-9]+)*$' and length(slug) <= 80);
+-- O valor pago pode ser 0 (código promocional de 100%): troca a regra antiga (> 0) em quem já rodou a primeira versão deste arquivo.
+alter table public.compras drop constraint if exists compras_valor_centavos_check;
+alter table public.compras add constraint compras_valor_centavos_check check (valor_centavos >= 0);
 create index if not exists compras_contato_idx on public.compras (contato_id, pago_em desc);
 create index if not exists compras_pago_em_idx on public.compras (pago_em desc);
 
@@ -76,7 +79,7 @@ begin
   if p_referencia is null or length(p_referencia) not between 1 and 200
      or p_slug is null or p_slug !~ '^[a-z0-9]+(-[a-z0-9]+)*$' or length(p_slug) > 80
      or v_email !~ '^[^@\s]+@[^@\s]+\.[^@\s]+$' or length(v_email) > 254
-     or p_valor_centavos is null or p_valor_centavos <= 0
+     or p_valor_centavos is null or p_valor_centavos < 0
      or p_moeda is null or upper(p_moeda) !~ '^[A-Z]{3}$' then
     raise exception 'compra_invalida';
   end if;
