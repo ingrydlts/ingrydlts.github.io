@@ -5730,10 +5730,22 @@ async function crmGuiaCompra(env, obj, origin) {
   return json({ ok: true, entregue: true, ficha_nova: !!r.ficha_nova });
 }
 
+// A conchinha do Por Dentro na aba do navegador. As páginas do Manual saem do Worker (outro domínio que o site),
+// então o endereço do ícone é absoluto. Entra na hora de servir (o casco da KV não precisa ser enviado de novo)
+// e só se a página ainda não tem ícone próprio. O CSP do guia já deixa img-src https:.
+const GUIA_ICONES = '<link rel="icon" href="https://imigrantepordentro.com/favicon-32x32.png" sizes="32x32" type="image/png">' +
+  '<link rel="icon" href="https://imigrantepordentro.com/favicon-16x16.png" sizes="16x16" type="image/png">' +
+  '<link rel="apple-touch-icon" href="https://imigrantepordentro.com/apple-touch-icon.png">';
+function guiaComIcones(html) {
+  const s = String(html);
+  if (/<link[^>]+rel=["']?(?:shortcut )?icon/i.test(s) || !/<\/head>/i.test(s)) return s;
+  return s.replace(/<\/head>/i, GUIA_ICONES + '</head>');
+}
+
 function guiaPaginaNeutra(status, titulo, texto, cab) {
   const html = `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>${crmEscapeHtml(titulo)}</title></head>` +
     `<body style="font-family:Arial,Helvetica,sans-serif;max-width:32rem;margin:15vh auto;padding:0 1rem;line-height:1.6;color:#2B2B2B"><h1 style="font-size:1.3rem">${crmEscapeHtml(titulo)}</h1><p>${crmEscapeHtml(texto)}</p></body></html>`;
-  return new Response(html, { status, headers: cab });
+  return new Response(guiaComIcones(html), { status, headers: cab });
 }
 
 const GUIA_CAP_ID_RE = /^[A-Za-z0-9_-]{1,40}$/;
@@ -5751,7 +5763,7 @@ async function handleGuiaCasco(env, rascunho) {
     console.error('crm/guia: falta ' + (rascunho ? 'guia:rascunho:pagina' : 'guia:pagina') + ' (o casco do guia) na KV');
     return guiaPaginaNeutra(503, 'Estamos atualizando o guia', 'Volte em alguns minutos. Se continuar assim, responda ao e-mail da compra.', cab);
   }
-  return new Response(html, { status: 200, headers: cab });
+  return new Response(guiaComIcones(html), { status: 200, headers: cab });
 }
 
 // Confere a chave (formato, existência, revogação, 12 meses). Devolve { reg } ou { erro: Response }.
@@ -5889,7 +5901,7 @@ msg(o.j.mensagem||'Não consegui abrir agora. Tente de novo em alguns minutos.')
 </script></body></html>`;
 }
 function handleGuiaLogin() {
-  return new Response(guiaLoginHtml(), { status: 200, headers: { ...GUIA_SEGURANCA, 'Content-Type': 'text/html; charset=utf-8', 'X-Frame-Options': 'DENY', 'Content-Security-Policy': GUIA_CSP } });
+  return new Response(guiaComIcones(guiaLoginHtml()), { status: 200, headers: { ...GUIA_SEGURANCA, 'Content-Type': 'text/html; charset=utf-8', 'X-Frame-Options': 'DENY', 'Content-Security-Policy': GUIA_CSP } });
 }
 
 // Uso do guia, nível A (agregado, sem dado pessoal): um contador por dia, produto, tipo (índice ou capítulo) e capítulo.
