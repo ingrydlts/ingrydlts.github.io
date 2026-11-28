@@ -1427,9 +1427,8 @@ function crmServiceHeaders(env) {
 
 // Guia → modelo do e-mail 1. Só estes guias mandam e-mail sozinhos.
 const CRM_GUIAS_EMAIL = { 'etudes-en-france-2027-2028': 'cf_guia_1', 'modelo-mudanca-endereco-mesma-cidade': 'guia_modelo_b0' };
-// O B0 (modelo grátis de mudança de endereço) é serviço e não tem link do Notion: leva só o MODELO da carta, com os
-// campos em branco. Endereços e número de dossiê ficam na página e nunca chegam ao Worker.
-const CRM_GUIA_SEM_LINK = ['guia_modelo_b0'];
+// O B0 (modelo grátis de mudança de endereço) é serviço e não tem link do Notion; ele NÃO sai por esta rota do banco, mas
+// por /api/guia/carta, com a carta preenchida (ver handleGuiaCarta). O mapa fica aqui para o banco poder pedir e receber "adiado".
 const CF_UTM = 'utm_source=email&utm_medium=email&utm_campaign=guia-etudes-en-france-2027&utm_content=cf_guia_1';
 // Texto aprovado no artefato "Jornada do freebie Campus France" (fonte: guia do Campus France Brasil, set/2026).
 const CF_ETAPA_TXT = {
@@ -1613,35 +1612,49 @@ function cfGuiaConversaVars(contato, token) {
   return { nome: crmPrimeiroNome(contato.nome), email: contato.email, botoes_cidade: cfBotoesCidade(token) };
 }
 
-// Variáveis do B0. A carta em si é fixa (campos em ___); só o nome e o e-mail mudam.
-function guiaModeloB0Vars(contato) {
-  return { nome: crmPrimeiroNome(contato.nome), email: contato.email };
+// Variáveis do B0. Sem dados da carta: tudo em ___ (é o texto do histórico, que nunca guarda endereço nem dossiê).
+// Com dados (a página manda ao Worker, que monta o e-mail, envia e não guarda): os campos preenchidos.
+const CF_B0_VAZIO = '___';
+function guiaCampoCarta(v, max) {
+  // Uma linha, sem colchetes, chaves nem sinais de HTML (o texto é de terceiros), sem links nem e-mails. null = recusar.
+  const t = String(v == null ? '' : v).replace(/[\[\]{}<>]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, max);
+  if (/https?:|www\.|@/i.test(t)) return null;
+  return t;
 }
-// Texto de reserva do B0 (o mesmo da versão 1 de crm-guia-modelo-b0.sql): vale se a tabela de modelos falhar.
+function guiaModeloB0Vars(contato, carta) {
+  const c = carta || {};
+  return {
+    nome: crmPrimeiroNome(contato.nome), email: contato.email,
+    nome_completo: guiaCampoCarta(contato.nome, 80) || 'Seu nome',
+    org: c.org || '', velho: c.velho || CF_B0_VAZIO, novo: c.novo || CF_B0_VAZIO, dossie: c.dossie || CF_B0_VAZIO, data: c.data || CF_B0_VAZIO,
+  };
+}
+// Texto de reserva do B0 (o mesmo da versão 2 de crm-guia-modelo-b0.sql): vale se a tabela de modelos falhar
+// ou se a versão No ar for a antiga, sem os campos da carta.
 const CF_B0_RESERVA = {
   versao: null,
   assunto: '{#nome}{nome}, a sua carta de mudança de endereço{/nome}{^nome}A sua carta de mudança de endereço{/nome}',
-  preheader: 'O modelo em francês, para adaptar e enviar.',
+  preheader: 'A carta que você montou, para guardar e enviar.',
   corpo_html: null,
-  corpo_texto: `{#nome}Oi {nome}!{/nome}{^nome}Oi!{/nome} Aqui está o modelo de carta que você pediu, para mudança de endereço na mesma cidade. Troque cada ___ pelo seu dado e confirme na fonte oficial antes de enviar.
+  corpo_texto: `{#nome}Oi {nome}!{/nome}{^nome}Oi!{/nome} Aqui está a carta que você montou, para mudança de endereço na mesma cidade. Confira cada dado, adapte ao seu caso e confirme na fonte oficial antes de enviar.
 
-Seu nome
-Endereço novo: ___
+{nome_completo}
+{novo}
 
 Objet : Changement d'adresse au sein de la même commune
 
 Madame, Monsieur,
 
-Je vous informe de mon changement d'adresse au sein de la même commune, à compter du ___ (date). Mon ancienne adresse était : ___. Ma nouvelle adresse est : ___.
+Je vous informe de mon changement d'adresse au sein de la même commune, à compter du {data}. Mon ancienne adresse était : {velho}. Ma nouvelle adresse est : {novo}.
 
-Mon numéro de dossier auprès de ___ (CAF, CPAM, etc.) est : ___.
+Mon numéro de dossier{#org} auprès de {org}{/org} est : {dossie}.
 
 Je vous remercie de bien vouloir mettre à jour mes coordonnées dans mon dossier et de m'en confirmer la prise en compte par écrit. Je reste à votre disposition pour tout justificatif complémentaire.
 
 Cordialement,
-Seu nome
+{nome_completo}
 
-Se você já copiou a carta preenchida na página, pode usar aquela: este e-mail é só para você guardar o modelo.
+Este e-mail é só para você guardar a carta. Os endereços e o número do dossiê que você digitou não ficam guardados por nós: foram usados só para montar esta mensagem.
 
 O Manual tem os outros 7 modelos de carta e e-mail, com a base legal de cada item.
 
@@ -1652,6 +1665,50 @@ Ingryd · Por Dentro
 —
 Você recebeu este e-mail porque pediu o modelo de carta de mudança de endereço no Por Dentro com {email}.`,
 };
+
+// O B0 com a carta preenchida. A página, depois do cadastro, manda os campos aqui; o Worker monta o e-mail, envia e NÃO guarda
+// os campos (nem no histórico da ficha, nem em log). Só vale para quem acabou de se cadastrar no modelo grátis (ficha com essa
+// origem, nos últimos 30 minutos), uma vez por pessoa, com limite por IP e texto sem links.
+//   POST /api/guia/carta  { email, carta: { org, velho, novo, dossie, data } }
+const GUIA_CARTA_ORIGEM = 'manual-destrave-domiciliacao';
+const GUIA_CARTA_JANELA_MS = 30 * 60 * 1000;
+const GUIA_CARTA_MAX_IP = 10;
+async function handleGuiaCarta(request, env) {
+  if (!env.SUPABASE_SERVICE_ROLE_KEY || !env.BREVO_API_KEY || !env.BREVO_SENDER_EMAIL) return json({ error: 'indisponivel' }, 500);
+  let body;
+  try { body = await request.json(); } catch (e) { return json({ error: 'corpo_invalido' }, 400); }
+  const email = String((body && body.email) || '').trim().toLowerCase();
+  if (!CRM_ONB_EMAIL_RE.test(email) || email.length > 254) return json({ error: 'email_invalido' }, 400);
+  const bruto = (body && typeof body.carta === 'object' && body.carta) || {};
+  const carta = {};
+  for (const [k, max] of [['org', 40], ['velho', 140], ['novo', 140], ['dossie', 40], ['data', 40]]) {
+    const v = guiaCampoCarta(bruto[k], max);
+    if (v === null) return json({ error: 'campo_invalido', campo: k }, 400);
+    carta[k] = v;
+  }
+  if (!(await crmLimite(env, 'carta', request.headers.get('CF-Connecting-IP') || 'unknown', GUIA_CARTA_MAX_IP))) return json({ error: 'muitas_tentativas' }, 429);
+
+  const sb = crmServiceHeaders(env);
+  const cRes = await fetch(`${CRM_SUPABASE_URL}/rest/v1/contatos?select=id,email,nome,respostas,ultima_origem,ultima_captura_em&email=eq.${encodeURIComponent(email)}&limit=1`, { headers: sb });
+  if (!cRes.ok) { console.error('crm/carta: não li a ficha (' + cRes.status + ')'); return json({ error: 'indisponivel' }, 500); }
+  const contato = (await cRes.json())[0];
+  const recente = contato && contato.ultima_origem === GUIA_CARTA_ORIGEM && Date.now() - Date.parse(contato.ultima_captura_em) <= GUIA_CARTA_JANELA_MS;
+  if (!recente) return json({ error: 'sem_cadastro' }, 404);
+
+  const modelo = 'guia_modelo_b0';
+  const tpl = await crmModeloNoAr(env, modelo);
+  // A versão No ar só vale se já tem os campos da carta ({velho}, {novo}...); a antiga (carta em branco) cairia num e-mail sem os dados.
+  const tplComCampos = tpl && /\{[#^]?(velho|novo|dossie|data)\}/.test(tpl.corpo_texto) ? tpl : null;
+  const montar = (c) => crmMontarOuReserva(modelo, tplComCampos, () => guiaModeloB0Vars(contato, c), () => crmMontarModelo(CF_B0_RESERVA, guiaModeloB0Vars(contato, c)));
+  const mail = montar(carta);
+  // O histórico da ficha guarda a mesma carta, mas em branco.
+  mail.textoHistorico = montar({}).texto;
+  const r = await crmEnviarGuia(env, sb, contato, modelo, mail);
+  if (r === 'ja') return json({ ok: true, ja_enviado: true });
+  if (r === 'reserva') return json({ error: 'indisponivel' }, 500);
+  if (r === 'brevo') return json({ error: 'envio_falhou' }, 502);
+  return json({ ok: true });
+}
 
 async function handleCrmGuiaCapturado(request, env) {
   if (!crmSegredoIgual(request.headers.get('X-Crm-Hook') || '', env.CRM_HOOK_SECRET || '')) {
@@ -1666,23 +1723,21 @@ async function handleCrmGuiaCapturado(request, env) {
   const guia = String((body && body.guia) || '');
   const modelo = CRM_GUIAS_EMAIL[guia];
   if (!CRM_UUID_RE.test(contatoId) || !modelo) return json({ error: 'Contato ou guia inválido.' }, 400);
+  // O B0 do modelo grátis sai pela rota /api/guia/carta, com a carta preenchida (a página manda os campos; o banco não os recebe).
+  if (modelo === 'guia_modelo_b0') return json({ ok: true, adiado: true });
 
   const sb = crmServiceHeaders(env);
-  const semLink = CRM_GUIA_SEM_LINK.includes(modelo);
   const [cRes, lRes] = await Promise.all([
     fetch(`${CRM_SUPABASE_URL}/rest/v1/contatos?select=id,email,nome,respostas&id=eq.${contatoId}`, { headers: sb }),
-    semLink ? Promise.resolve(null)
-      : fetch(`${CRM_SUPABASE_URL}/rest/v1/guias_links?select=notion_url&slug=eq.${encodeURIComponent(guia)}`, { headers: sb }),
+    fetch(`${CRM_SUPABASE_URL}/rest/v1/guias_links?select=notion_url&slug=eq.${encodeURIComponent(guia)}`, { headers: sb }),
   ]);
   const contato = cRes.ok ? (await cRes.json())[0] : null;
-  const link = lRes && lRes.ok ? (await lRes.json())[0] : null;
+  const link = lRes.ok ? (await lRes.json())[0] : null;
   if (!contato) return json({ error: 'Contato não encontrado.' }, 404);
-  if (!semLink && (!link || !/^https:\/\//.test(link.notion_url || ''))) return json({ error: 'Guia sem link do Notion em guias_links.' }, 500);
+  if (!link || !/^https:\/\//.test(link.notion_url || '')) return json({ error: 'Guia sem link do Notion em guias_links.' }, 500);
 
   const tpl = await crmModeloNoAr(env, modelo);
-  const mail = semLink
-    ? crmMontarOuReserva(modelo, tpl, () => guiaModeloB0Vars(contato), () => crmMontarModelo(CF_B0_RESERVA, guiaModeloB0Vars(contato)))
-    : crmMontarOuReserva(modelo, tpl, () => cfGuia1Vars(contato, link.notion_url), () => cfGuia1(contato, link.notion_url));
+  const mail = crmMontarOuReserva(modelo, tpl, () => cfGuia1Vars(contato, link.notion_url), () => cfGuia1(contato, link.notion_url));
   const r = await crmEnviarGuia(env, sb, contato, modelo, mail);
   if (r === 'ja') return json({ ok: true, ja_enviado: true });
   if (r === 'reserva') return json({ error: 'Não consegui registrar o envio.' }, 500);
@@ -1698,7 +1753,7 @@ async function handleCrmGuiaCapturado(request, env) {
 async function crmEnviarGuia(env, sb, contato, modelo, mail, novidades, extra) {
   const ins = await fetch(`${CRM_SUPABASE_URL}/rest/v1/emails_enviados`, {
     method: 'POST', headers: { ...sb, Prefer: 'return=representation' },
-    body: JSON.stringify({ contato_id: contato.id, modelo, assunto: mail.assunto, corpo: mail.texto, status: 'agendado', enviado_em: new Date().toISOString(),
+    body: JSON.stringify({ contato_id: contato.id, modelo, assunto: mail.assunto, corpo: mail.textoHistorico || mail.texto, status: 'agendado', enviado_em: new Date().toISOString(),
       // Só quando o texto veio da tabela (a coluna nasce no mesmo SQL que a tabela): o texto de reserva não tem versão.
       ...(mail.versao ? { modelo_versao: mail.versao } : {}), ...(extra || {}) }),
   });
@@ -6242,6 +6297,7 @@ export default {
     if (request.method === 'GET' && (url.pathname === '/guia' || url.pathname === '/guia/')) return handleGuiaLogin();
     if (request.method === 'GET' && (url.pathname === '/guia/app' || url.pathname === '/guia/app/')) return await handleGuiaCasco(env, false);
     if (request.method === 'POST' && url.pathname === '/api/guia/entrar') return await handleGuiaEntrar(request, env, ctx);
+    if (request.method === 'POST' && url.pathname === '/api/guia/carta') return await handleGuiaCarta(request, env);
     if (request.method === 'GET' && (url.pathname === '/guia/rascunho' || url.pathname === '/guia/rascunho/')) return await handleGuiaCasco(env, true);
     const guiaRota = /^\/guia\/([^/]+)\/?$/.exec(url.pathname);
     if (guiaRota && request.method === 'GET') return Response.redirect(`${url.origin}/guia/#k=${encodeURIComponent(guiaRota[1])}`, 302);

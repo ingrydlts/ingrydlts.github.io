@@ -13,9 +13,13 @@
 --      O texto de reserva também mora no Worker: se a tabela falhar, o e-mail sai igual.
 --
 -- O B0 é e-mail de SERVIÇO: sai para todo mundo que pediu o modelo (a caixa de serviço é obrigatória na página), sem exigir
--- "novidades" e sem rodapé de descadastro. Ele leva só o MODELO da carta, com os campos em branco: endereços e número de
--- dossiê ficam na página (só nome, e-mail e consentimento chegam ao CRM). Para o e-mail trazer a carta preenchida seria
--- preciso a página enviar esses campos ao Worker: decisão da Ingryd, ainda não tomada (ver a aba "Trilha B" do documento).
+-- "novidades" e sem rodapé de descadastro.
+--
+-- VERSÃO 2 (28/11/2026): o B0 leva a carta PREENCHIDA. Quem manda o e-mail é a página, que envia os campos (endereços, dossiê, data)
+-- direto ao Worker (POST /api/guia/carta); o Worker monta, envia e NÃO guarda os campos: o banco só recebe nome, e-mail e
+-- consentimento, e o histórico da ficha guarda a mesma carta em branco (___). O gancho do banco (crm_guia_email_pedir) continua
+-- chamando o Worker, que responde "adiado" para este guia: nada sai em branco antes da carta preenchida.
+-- A versão 1 (carta em branco) fica arquivada; rodar este arquivo de novo não repete a versão 2.
 --
 -- Como desfazer:
 --   (reponha a crm_guia_email_pedir de crm-fase0-email-guia.sql, seção 2)
@@ -114,3 +118,52 @@ Você recebeu este e-mail porque pediu o modelo de carta de mudança de endereç
   'B0: versão inicial (texto simples; carta com campos em branco)', now()
 where exists (select 1 from public.modelos_email where chave = 'guia_modelo_b0')
   and not exists (select 1 from public.modelos_email_versoes where chave = 'guia_modelo_b0');
+
+-- ---------- 4. Versão 2: a carta preenchida ----------
+-- Variáveis novas: nome_completo, org, velho, novo, dossie e data (os campos da carta, vindos do Worker, nunca do banco).
+update public.modelos_email set variaveis = '[{"nome":"nome","o_que_e":"primeiro nome","se_faltar":"o trecho com o nome some"},{"nome":"nome_completo","o_que_e":"nome como ela digitou na página (assinatura da carta)","se_faltar":"aparece Seu nome"},{"nome":"email","o_que_e":"o e-mail dela (rodapé)","se_faltar":"—"},{"nome":"novo","o_que_e":"endereço novo, como ela digitou (só passa pelo Worker, não é guardado)","se_faltar":"aparece ___"},{"nome":"velho","o_que_e":"endereço antigo (só passa pelo Worker)","se_faltar":"aparece ___"},{"nome":"dossie","o_que_e":"número do dossiê (só passa pelo Worker)","se_faltar":"aparece ___"},{"nome":"data","o_que_e":"data da mudança (só passa pelo Worker)","se_faltar":"aparece ___"},{"nome":"org","o_que_e":"órgão a quem vai a carta (CAF, CPAM...)","se_faltar":"o trecho some"}]'::jsonb
+ where chave = 'guia_modelo_b0';
+
+-- A versão 1 só é arquivada se continua como veio daqui: quem já editou o texto no Estúdio não é tocado
+-- (a versão 2 então entra como rascunho, para ela decidir).
+update public.modelos_email_versoes set etapa = 'arquivado'
+ where chave = 'guia_modelo_b0' and versao = 1 and etapa = 'no_ar' and nota = 'B0: versão inicial (texto simples; carta com campos em branco)';
+
+insert into public.modelos_email_versoes (chave, versao, etapa, assunto, preheader, corpo_texto, corpo_html, nota, publicado_em)
+select 'guia_modelo_b0', 2,
+  case when exists (select 1 from public.modelos_email_versoes where chave = 'guia_modelo_b0' and etapa = 'no_ar') then 'rascunho' else 'no_ar' end,
+  $guia_modelo_b0_a2${#nome}{nome}, a sua carta de mudança de endereço{/nome}{^nome}A sua carta de mudança de endereço{/nome}$guia_modelo_b0_a2$,
+  $guia_modelo_b0_p2$A carta que você montou, para guardar e enviar.$guia_modelo_b0_p2$,
+  $guia_modelo_b0_t2${#nome}Oi {nome}!{/nome}{^nome}Oi!{/nome} Aqui está a carta que você montou, para mudança de endereço na mesma cidade. Confira cada dado, adapte ao seu caso e confirme na fonte oficial antes de enviar.
+
+{nome_completo}
+{novo}
+
+Objet : Changement d'adresse au sein de la même commune
+
+Madame, Monsieur,
+
+Je vous informe de mon changement d'adresse au sein de la même commune, à compter du {data}. Mon ancienne adresse était : {velho}. Ma nouvelle adresse est : {novo}.
+
+Mon numéro de dossier{#org} auprès de {org}{/org} est : {dossie}.
+
+Je vous remercie de bien vouloir mettre à jour mes coordonnées dans mon dossier et de m'en confirmer la prise en compte par écrit. Je reste à votre disposition pour tout justificatif complémentaire.
+
+Cordialement,
+{nome_completo}
+
+Este e-mail é só para você guardar a carta. Os endereços e o número do dossiê que você digitou não ficam guardados por nós: foram usados só para montar esta mensagem.
+
+O Manual tem os outros 7 modelos de carta e e-mail, com a base legal de cada item.
+
+Ficou com dúvida? É só responder este e-mail. Chega direto para mim.
+
+Ingryd · Por Dentro
+
+—
+Você recebeu este e-mail porque pediu o modelo de carta de mudança de endereço no Por Dentro com {email}.$guia_modelo_b0_t2$,
+  null,
+  'B0: versão 2 (a carta preenchida, enviada pelo Worker)',
+  case when exists (select 1 from public.modelos_email_versoes where chave = 'guia_modelo_b0' and etapa = 'no_ar') then null else now() end
+where exists (select 1 from public.modelos_email where chave = 'guia_modelo_b0')
+  and not exists (select 1 from public.modelos_email_versoes where chave = 'guia_modelo_b0' and versao = 2);

@@ -416,6 +416,7 @@ dialog#zoom button{position:absolute;top:10px;right:10px;padding:10px 16px;borde
         <p class="aviso-previa" id="gratis-msg" role="status" hidden></p>
         <button type="button" class="btn ghost sm" id="gratis-copiar" hidden>Copiar a carta preenchida</button>
         <p class="paper-note">Modelo de exemplo: adapte ao seu caso e confirme na fonte oficial. O Manual traz os outros 7, com base legal e data em cada item.</p>
+        <p class="paper-note">Os endereços, o número do dossiê e a data que você digita servem só para montar o e-mail da carta: não ficam guardados por nós.</p>
       </form>
     </div>
   </div>
@@ -760,6 +761,7 @@ dialog#zoom button{position:absolute;top:10px;right:10px;padding:10px 16px;borde
 import { supabase } from '/assets/js/supabase-client.js';
 var $ = function (i) { return document.getElementById(i); };
 var GUIA = "modelo-mudanca-endereco-mesma-cidade";
+var WORKER = location.hostname === "localhost" ? "http://localhost:8788" : "https://por-dentro-cms-oauth.ingrydigitalmanagement.workers.dev";
 var TEXTO_SERVICO = $("c-servico").nextElementSibling.textContent.trim();
 var TEXTO_NOVIDADES = $("c-mkt").nextElementSibling.textContent.trim();
 var shownAt = Date.now();
@@ -779,7 +781,8 @@ $("form-gratis").addEventListener("submit", async function (e) {
   if (!$("c-servico").checked) { msg.textContent = "Preciso que você aceite a Política de Privacidade para enviar o modelo."; return; }
   var rot = btn.innerHTML; btn.disabled = true; btn.textContent = "Enviando…";
   var params = new URLSearchParams(window.location.search);
-  /* só nome, e-mail e consentimento vão para o CRM: endereços e número de dossiê ficam na página */
+  /* só nome, e-mail e consentimento vão para o CRM. Endereços, dossiê e data NÃO vão para o banco: seguem direto ao Worker,
+     que monta o e-mail da carta, envia e não guarda esses campos */
   var payload = { guia: GUIA, email: email, nome: nome, origem: "manual-destrave-domiciliacao",
     aceita_servico: true, aceita_novidades: $("c-mkt").checked, consentimento_versao: "guia-v1",
     texto_servico: TEXTO_SERVICO, texto_novidades: TEXTO_NOVIDADES };
@@ -788,8 +791,19 @@ $("form-gratis").addEventListener("submit", async function (e) {
   try {
     var r = await supabase.rpc("capturar_lead_guia", { payload: payload });
     if (r.error) throw r.error;
-    msg.textContent = "Pronto, " + nome.split(" ")[0] + "! Seu cadastro foi feito. A carta está montada ao lado: copie o texto abaixo.";
     $("gratis-copiar").hidden = false;
+    var enviado = false, jaTinha = false;
+    try {
+      var carta = { org: $("g-org").value, velho: $("g-velho").value, novo: $("g-novo").value, dossie: $("g-dossie").value, data: $("g-data").value };
+      var rc = await fetch(WORKER + "/api/guia/carta", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: email, carta: carta }) });
+      var jc = await rc.json().catch(function () { return {}; });
+      enviado = rc.ok; jaTinha = !!jc.ja_enviado;
+      if (!rc.ok && jc.error === "campo_invalido") { msg.textContent = "Seu cadastro foi feito, mas não consegui enviar o e-mail: tire links e e-mails dos campos da carta e envie de novo. A carta está montada ao lado: copie o texto abaixo."; btn.disabled = false; btn.innerHTML = rot; return; }
+    } catch (e2) { enviado = false; }
+    msg.textContent = enviado
+      ? (jaTinha ? "Pronto, " + nome.split(" ")[0] + "! Você já recebeu a carta por e-mail antes (olhe também o spam). A carta está montada ao lado: copie o texto abaixo."
+        : "Pronto, " + nome.split(" ")[0] + "! Enviei a carta preenchida para o seu e-mail (olhe também o spam). Ela também está montada ao lado: copie o texto abaixo.")
+      : "Seu cadastro foi feito, mas não consegui enviar o e-mail agora. A carta está montada ao lado: copie o texto abaixo.";
     track("guia_lead_capturado", { guia: GUIA, utm_campaign: params.get("utm_campaign") || null });
   } catch (err) {
     console.error("capturar_lead_guia:", err);

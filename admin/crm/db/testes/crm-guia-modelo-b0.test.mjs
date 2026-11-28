@@ -56,15 +56,26 @@ async function main() {
   const [m] = await q("select * from modelos_email where chave = 'guia_modelo_b0'");
   check('modelo criado: serviço e automático', m && m.tipo === 'servico' && m.automatico === true && m.criado_no_estudio === false);
   check('classificado como entrega', m && m.familia === 'entrega');
-  const vs = await q("select * from modelos_email_versoes where chave = 'guia_modelo_b0'");
-  check('uma versão 1 No ar (e só uma, mesmo rodando 2x)', vs.length === 1 && vs[0].versao === 1 && vs[0].etapa === 'no_ar');
-  const t = vs[0]?.corpo_texto || '';
-  check('a carta em francês, com campos em ___', t.includes("Objet : Changement d'adresse au sein de la même commune") && t.includes('___'));
-  check('sem [colchetes] e sem rodapé de descadastro', !/\[[^\]\n]{2,60}\]/.test(vs[0].assunto + t) && !/palavra\s+"?sair/i.test(t));
-  const usados = [...(vs[0].assunto + t).matchAll(/\{[#^/]?(\w+)\}/g)].map((x) => x[1]);
-  check('só usa as variáveis declaradas (nome, email)', usados.every((k) => ['nome', 'email'].includes(k)));
+  const vs = await q("select * from modelos_email_versoes where chave = 'guia_modelo_b0' order by versao");
+  check('duas versões (mesmo rodando 2x): a 1 arquivada e a 2 No ar, e só uma No ar', vs.length === 2 && vs[0].versao === 1 && vs[0].etapa === 'arquivado' && vs[1].versao === 2 && vs[1].etapa === 'no_ar');
+  const v2 = vs[1];
+  const t = v2.corpo_texto;
+  check('a carta em francês, com os campos preenchidos pelas variáveis', t.includes("Objet : Changement d'adresse au sein de la même commune") && ['{velho}', '{novo}', '{dossie}', '{data}', '{nome_completo}'].every((k) => t.includes(k)) && t.includes('{#org} auprès de {org}{/org}'));
+  check('sem [colchetes] e sem rodapé de descadastro', !/\[[^\]\n]{2,60}\]/.test(v2.assunto + t) && !/palavra\s+"?sair/i.test(t));
+  check('diz que os dados digitados não ficam guardados', /não ficam guardados/.test(t));
+  const usados = [...new Set([...(v2.assunto + t).matchAll(/\{[#^/]?(\w+)\}/g)].map((x) => x[1]))];
   const vars = m.variaveis.map((v) => v.nome);
-  check('as variáveis do modelo são nome e email', JSON.stringify(vars) === JSON.stringify(['nome', 'email']));
+  check('só usa variáveis declaradas no modelo', usados.every((k) => vars.includes(k)));
+  check('as variáveis declaradas são as 8 da carta preenchida', ['nome', 'nome_completo', 'email', 'novo', 'velho', 'dossie', 'data', 'org'].every((k) => vars.includes(k)) && vars.length === 8);
+  const nova = await attempt(() => db.query("update modelos_email_versoes set corpo_texto = 'outro' where chave = 'guia_modelo_b0' and versao = 2"));
+  check('a versão No ar não muda de texto (regra do Estúdio)', !nova.ok);
+  // quem já editou a versão 1 não é tocado: a 2 entra como rascunho
+  await db.exec("delete from modelos_email_versoes where chave = 'guia_modelo_b0' and versao = 2; update modelos_email_versoes set etapa = 'no_ar', nota = 'editada pela Ingryd' where chave = 'guia_modelo_b0' and versao = 1");
+  await db.exec(sql);
+  const ed = await q("select versao, etapa from modelos_email_versoes where chave = 'guia_modelo_b0' order by versao");
+  check('versão 1 editada à mão segue No ar e a 2 entra como rascunho', ed.length === 2 && ed[0].etapa === 'no_ar' && ed[1].etapa === 'rascunho');
+  await db.exec("delete from modelos_email_versoes where chave = 'guia_modelo_b0' and versao = 2; update modelos_email_versoes set etapa = 'arquivado', nota = 'B0: versão inicial (texto simples; carta com campos em branco)' where chave = 'guia_modelo_b0' and versao = 1");
+  await db.exec(sql);
 
   console.log('\n== Páginas I07 a I09 (Guia Domiciliação) ==');
   check('antes do SQL das páginas, o banco recusa a I07', !(await attempt(() => db.query("update modelos_email set pagina = 'I07' where chave = 'guia_modelo_b0'"))).ok);
