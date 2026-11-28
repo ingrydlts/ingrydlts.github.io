@@ -5,7 +5,7 @@
 //   - PAGINAS e etapas: espelham emails-por-pagina.json do vault e ETAPAS_GUIA em estudio.js.
 //   - Tabela de classificação de reserva (reserva): espelha a seção 4 de
 //     docs/superpowers/specs/2026-11-09-crm-taxonomia-modelos-design.md (chaves conferidas contra db/modelos-*.mjs).
-//   - Última conferência: 2026-11-09.
+//   - Última conferência: 2026-11-09 (I07 a I09, Guia Domiciliação: 2026-11-28).
 // Mudou página ou etapa no Obsidian: atualizar este arquivo no mesmo dia.
 
 // Ordem de exibição na lista de modelos.
@@ -57,7 +57,12 @@ export var PAGINAS = [
   ] },
   // A persona da Rota da Sécu é porta.ponto (20 combinações), calculada no Worker; não há "etapa do guia" para filtrar.
   // A I06 era a do Mapa da saúde, que nunca foi ao ar e foi substituído pela Rota da Sécu (18/11/2026).
-  { k: 'I06', nome: 'Saúde · Rota da Sécu', rota: '/guias/rota-da-secu/', etapas: [] }
+  { k: 'I06', nome: 'Saúde · Rota da Sécu', rota: '/guias/rota-da-secu/', etapas: [] },
+  // A landing "Guia Domiciliação" (/manual-destrave-domiciliacao/) tem três públicos com caminhos próprios (entrada, consentimento e saída
+  // diferentes): cada trilha é uma linha. Não há "etapa do guia" para filtrar em nenhuma delas.
+  { k: 'I07', nome: 'Guia Domiciliação · modelo grátis', rota: '/manual-destrave-domiciliacao/', etapas: [] },
+  { k: 'I08', nome: 'Guia Domiciliação · lista de pré-venda (Manual 2)', rota: '/manual-destrave-domiciliacao/', etapas: [] },
+  { k: 'I09', nome: 'Guia Domiciliação · compradores', rota: '/manual-destrave-domiciliacao/', etapas: [] }
 ];
 
 export var PERSONAS = [
@@ -112,7 +117,7 @@ var RESERVA_CHAVE = {
   parouapp: ['reimpacto', null, null],
   cf_guia_1: ['entrega', 'I03', null],
   cf_guia_conversa: ['entrega', 'I03', null],
-  guia_modelo_b0: ['entrega', null, null],
+  guia_modelo_b0: ['entrega', 'I07', null],
   guia_alternancia: ['entrega', 'I01', null],
   guia_chamada: ['entrega', 'I04', null],
   guia_plataforma: ['entrega', 'I04', null],

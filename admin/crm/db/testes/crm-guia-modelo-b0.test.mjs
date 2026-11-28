@@ -7,6 +7,8 @@
 import { PGlite } from '@electric-sql/pglite';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
+import * as TX from '../../taxonomia.js';
+import * as JR from '../../jornada.js';
 import { fileURLToPath } from 'node:url';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -63,6 +65,28 @@ async function main() {
   check('só usa as variáveis declaradas (nome, email)', usados.every((k) => ['nome', 'email'].includes(k)));
   const vars = m.variaveis.map((v) => v.nome);
   check('as variáveis do modelo são nome e email', JSON.stringify(vars) === JSON.stringify(['nome', 'email']));
+
+  console.log('\n== Páginas I07 a I09 (Guia Domiciliação) ==');
+  check('antes do SQL das páginas, o banco recusa a I07', !(await attempt(() => db.query("update modelos_email set pagina = 'I07' where chave = 'guia_modelo_b0'"))).ok);
+  const sqlPg = readFileSync(path.resolve(HERE, '../crm-pagina-guia-domiciliacao.sql'), 'utf8');
+  const p1 = await attempt(() => db.exec(sqlPg)), p2 = await attempt(() => db.exec(sqlPg));
+  check('roda a 1ª e a 2ª vez sem erro (idempotente)', p1.ok && p2.ok); if (!p1.ok) console.log(p1.error.message);
+  const [b0] = await q("select familia, pagina from modelos_email where chave = 'guia_modelo_b0'");
+  check('o B0 fica na família Entrega e na página I07', b0.familia === 'entrega' && b0.pagina === 'I07');
+  check('o banco aceita I07, I08 e I09 e continua recusando página inventada',
+    (await attempt(() => db.query("update modelos_email set pagina = 'I09' where chave = 'guia_modelo_b0'"))).ok &&
+    !(await attempt(() => db.query("update modelos_email set pagina = 'I10' where chave = 'guia_modelo_b0'"))).ok);
+  await db.query("update modelos_email set pagina = 'I07' where chave = 'guia_modelo_b0'");
+  check('quem já classificou à mão não é sobrescrito', (await attempt(() => db.query("update modelos_email set pagina = 'I08' where chave = 'guia_modelo_b0'"))).ok &&
+    (await attempt(() => db.exec(sqlPg))).ok && (await q("select pagina from modelos_email where chave = 'guia_modelo_b0'"))[0].pagina === 'I08');
+  await db.query("update modelos_email set pagina = 'I07' where chave = 'guia_modelo_b0'");
+  const mods = await q("select m.*, (select etapa from modelos_email_versoes v where v.chave = m.chave and etapa = 'no_ar' limit 1) as etapa_versao from modelos_email m where chave = 'guia_modelo_b0'");
+  const jor = JR.montaJornada(mods, TX);
+  const linhas = jor.linhas || jor;
+  check('a Jornada tem as linhas I07, I08 e I09 com o nome da landing', ['I07', 'I08', 'I09'].every((k) => { const l = linhas.find((x) => x.k === k); return l && /^Guia Domiciliação · /.test(l.nome) && l.rota === '/manual-destrave-domiciliacao/'; }));
+  const l7 = linhas.find((x) => x.k === 'I07');
+  check('o B0 aparece no Inbound lead da I07', l7 && l7.celulas.lead.some((m) => m.chave === 'guia_modelo_b0'));
+  check('as outras duas linhas começam vazias (falta de verdade, sem e-mail de mentira)', ['I08', 'I09'].every((k) => Object.values(linhas.find((x) => x.k === k).celulas).every((c) => c.length === 0)));
 
   console.log('\n== Cadastro no modelo grátis: pede o B0 ao Worker ==');
   await db.exec(`

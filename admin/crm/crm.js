@@ -1156,7 +1156,7 @@ function tipoFunil(o) {
     : o === 'instagram' ? 'link do Instagram' : (o === 'direto' || o === 'login_direto') ? 'acesso direto' : '';
 }
 // A página (landing) de onde a pessoa veio, pela origem que o site grava. É a linha da matriz do Estúdio de e-mails (Jornada).
-var ORIGEM_PAGINA = { 'guia-email-alt30': 'I01', 'guia-tecnologo': 'I02', 'guia-etudes-en-france-2027': 'I03', 'guia-vls-ts': 'I04', 'guia-checklist-chegada-au-pair': 'I05', 'guia-mapa-saude-franca': 'I06', 'guia-rota-da-secu': 'I06' };
+var ORIGEM_PAGINA = { 'guia-email-alt30': 'I01', 'guia-tecnologo': 'I02', 'guia-etudes-en-france-2027': 'I03', 'guia-vls-ts': 'I04', 'guia-checklist-chegada-au-pair': 'I05', 'guia-mapa-saude-franca': 'I06', 'guia-rota-da-secu': 'I06', 'manual-destrave-domiciliacao': 'I07' };
 // Os modelos de uma página numa etapa da jornada (lead, contato, reimp, plat), do jeito que o Estúdio os organiza.
 // Só entram os que têm versão No ar (sem a tabela de modelos, vale a lista do código).
 function modelosDaEtapa(pagina, etapa, incluiRascunho) {
