@@ -71,7 +71,7 @@ async function main() {
   check('familia entrega e página I06', m.familia === 'entrega' && m.pagina === 'I06');
   check('o banco aceita I06 e continua recusando página inventada', (await attempt(() => db.query("update modelos_email set pagina = 'I06' where chave = $1", [CHAVE_1]))).ok && !(await attempt(() => db.query("update modelos_email set pagina = 'I99' where chave = $1", [CHAVE_1]))).ok);
   const i06 = TX.PAGINAS.find((x) => x.k === 'I06');
-  check('a linha I06 da taxonomia é a da Rota da Sécu, não a do Mapa', i06 && /Rota da Sécu/.test(i06.nome) && i06.rota === '/guias/rota-da-secu/' && TX.PAGINAS.length === 6);
+  check('a linha I06 da taxonomia é a da Rota da Sécu, não a do Mapa', i06 && /Rota da Sécu/.test(i06.nome) && i06.rota === '/guias/rota-da-secu/' && TX.PAGINAS.length === 9);
   const jor = JR.montaJornada(await q('select * from modelos_email order by chave'), TX);
   const l6 = (jor.linhas || jor).find((l) => l.k === 'I06');
   check('a Jornada tem o e-mail 1 no Inbound lead da linha I06 e nada na linha de todos os percursos', l6 && l6.celulas.lead.some((x) => x.chave === CHAVE_1) && !((jor.linhas || jor).find((l) => l.k === 'TR').celulas.lead || []).some((x) => x.chave === CHAVE_1));

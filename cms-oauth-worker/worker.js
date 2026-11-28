@@ -1426,7 +1426,10 @@ function crmServiceHeaders(env) {
 }
 
 // Guia → modelo do e-mail 1. Só estes guias mandam e-mail sozinhos.
-const CRM_GUIAS_EMAIL = { 'etudes-en-france-2027-2028': 'cf_guia_1' };
+const CRM_GUIAS_EMAIL = { 'etudes-en-france-2027-2028': 'cf_guia_1', 'modelo-mudanca-endereco-mesma-cidade': 'guia_modelo_b0' };
+// O B0 (modelo grátis de mudança de endereço) é serviço e não tem link do Notion: leva só o MODELO da carta, com os
+// campos em branco. Endereços e número de dossiê ficam na página e nunca chegam ao Worker.
+const CRM_GUIA_SEM_LINK = ['guia_modelo_b0'];
 const CF_UTM = 'utm_source=email&utm_medium=email&utm_campaign=guia-etudes-en-france-2027&utm_content=cf_guia_1';
 // Texto aprovado no artefato "Jornada do freebie Campus France" (fonte: guia do Campus France Brasil, set/2026).
 const CF_ETAPA_TXT = {
@@ -1610,6 +1613,46 @@ function cfGuiaConversaVars(contato, token) {
   return { nome: crmPrimeiroNome(contato.nome), email: contato.email, botoes_cidade: cfBotoesCidade(token) };
 }
 
+// Variáveis do B0. A carta em si é fixa (campos em ___); só o nome e o e-mail mudam.
+function guiaModeloB0Vars(contato) {
+  return { nome: crmPrimeiroNome(contato.nome), email: contato.email };
+}
+// Texto de reserva do B0 (o mesmo da versão 1 de crm-guia-modelo-b0.sql): vale se a tabela de modelos falhar.
+const CF_B0_RESERVA = {
+  versao: null,
+  assunto: '{#nome}{nome}, a sua carta de mudança de endereço{/nome}{^nome}A sua carta de mudança de endereço{/nome}',
+  preheader: 'O modelo em francês, para adaptar e enviar.',
+  corpo_html: null,
+  corpo_texto: `{#nome}Oi {nome}!{/nome}{^nome}Oi!{/nome} Aqui está o modelo de carta que você pediu, para mudança de endereço na mesma cidade. Troque cada ___ pelo seu dado e confirme na fonte oficial antes de enviar.
+
+Seu nome
+Endereço novo: ___
+
+Objet : Changement d'adresse au sein de la même commune
+
+Madame, Monsieur,
+
+Je vous informe de mon changement d'adresse au sein de la même commune, à compter du ___ (date). Mon ancienne adresse était : ___. Ma nouvelle adresse est : ___.
+
+Mon numéro de dossier auprès de ___ (CAF, CPAM, etc.) est : ___.
+
+Je vous remercie de bien vouloir mettre à jour mes coordonnées dans mon dossier et de m'en confirmer la prise en compte par écrit. Je reste à votre disposition pour tout justificatif complémentaire.
+
+Cordialement,
+Seu nome
+
+Se você já copiou a carta preenchida na página, pode usar aquela: este e-mail é só para você guardar o modelo.
+
+O Manual tem os outros 7 modelos de carta e e-mail, com a base legal de cada item.
+
+Ficou com dúvida? É só responder este e-mail. Chega direto para mim.
+
+Ingryd · Por Dentro
+
+—
+Você recebeu este e-mail porque pediu o modelo de carta de mudança de endereço no Por Dentro com {email}.`,
+};
+
 async function handleCrmGuiaCapturado(request, env) {
   if (!crmSegredoIgual(request.headers.get('X-Crm-Hook') || '', env.CRM_HOOK_SECRET || '')) {
     return new Response('Unauthorized', { status: 401 });
@@ -1625,17 +1668,21 @@ async function handleCrmGuiaCapturado(request, env) {
   if (!CRM_UUID_RE.test(contatoId) || !modelo) return json({ error: 'Contato ou guia inválido.' }, 400);
 
   const sb = crmServiceHeaders(env);
+  const semLink = CRM_GUIA_SEM_LINK.includes(modelo);
   const [cRes, lRes] = await Promise.all([
     fetch(`${CRM_SUPABASE_URL}/rest/v1/contatos?select=id,email,nome,respostas&id=eq.${contatoId}`, { headers: sb }),
-    fetch(`${CRM_SUPABASE_URL}/rest/v1/guias_links?select=notion_url&slug=eq.${encodeURIComponent(guia)}`, { headers: sb }),
+    semLink ? Promise.resolve(null)
+      : fetch(`${CRM_SUPABASE_URL}/rest/v1/guias_links?select=notion_url&slug=eq.${encodeURIComponent(guia)}`, { headers: sb }),
   ]);
   const contato = cRes.ok ? (await cRes.json())[0] : null;
-  const link = lRes.ok ? (await lRes.json())[0] : null;
+  const link = lRes && lRes.ok ? (await lRes.json())[0] : null;
   if (!contato) return json({ error: 'Contato não encontrado.' }, 404);
-  if (!link || !/^https:\/\//.test(link.notion_url || '')) return json({ error: 'Guia sem link do Notion em guias_links.' }, 500);
+  if (!semLink && (!link || !/^https:\/\//.test(link.notion_url || ''))) return json({ error: 'Guia sem link do Notion em guias_links.' }, 500);
 
   const tpl = await crmModeloNoAr(env, modelo);
-  const mail = crmMontarOuReserva(modelo, tpl, () => cfGuia1Vars(contato, link.notion_url), () => cfGuia1(contato, link.notion_url));
+  const mail = semLink
+    ? crmMontarOuReserva(modelo, tpl, () => guiaModeloB0Vars(contato), () => crmMontarModelo(CF_B0_RESERVA, guiaModeloB0Vars(contato)))
+    : crmMontarOuReserva(modelo, tpl, () => cfGuia1Vars(contato, link.notion_url), () => cfGuia1(contato, link.notion_url));
   const r = await crmEnviarGuia(env, sb, contato, modelo, mail);
   if (r === 'ja') return json({ ok: true, ja_enviado: true });
   if (r === 'reserva') return json({ error: 'Não consegui registrar o envio.' }, 500);
@@ -5627,7 +5674,10 @@ async function crmGuiaCompra(env, obj, origin) {
     return json({ error: 'Faltam os Payment Links do guia no Worker.' }, 500);
   }
   const moeda = String(obj.currency || '').toLowerCase();
-  if (!permitidos.includes(String(obj.payment_link || '')) || moeda !== 'eur' || !(obj.amount_total >= prod.minCentavos)) {
+  // O preço conferido é o ANTES do desconto (amount_subtotal): um código promocional, mesmo de 100%, não impede a entrega.
+  // O que barra link adulterado é o id do Payment Link; o valor só confirma que veio do link do produto.
+  const preco = typeof obj.amount_subtotal === 'number' ? obj.amount_subtotal : obj.amount_total;
+  if (!permitidos.includes(String(obj.payment_link || '')) || moeda !== 'eur' || !(preco >= prod.minCentavos)) {
     // Não é a venda do guia (link, moeda ou valor fora do esperado): não entrega, mas não adianta o Stripe tentar de novo.
     console.error('crm/guia: compra ' + obj.id + ' com client_reference_id ' + slug + ' fora do esperado (link, moeda ou valor); NÃO entreguei');
     return json({ ok: true, ignorado: true, motivo: 'fora_do_esperado' });
@@ -5638,7 +5688,7 @@ async function crmGuiaCompra(env, obj, origin) {
 
   const sb = crmServiceHeaders(env);
   const regRes = await fetch(`${CRM_SUPABASE_URL}/rest/v1/rpc/crm_compra_registrar`, { method: 'POST', headers: sb, body: JSON.stringify({
-    p_referencia: String(obj.id), p_slug: slug, p_email: email, p_valor_centavos: obj.amount_total, p_moeda: String(obj.currency || '').toUpperCase(),
+    p_referencia: String(obj.id), p_slug: slug, p_email: email, p_valor_centavos: Number.isInteger(obj.amount_total) ? obj.amount_total : preco, p_moeda: String(obj.currency || '').toUpperCase(),
     p_pago_em: stripeIso(obj.created), p_origem: (obj.metadata && obj.metadata.utm_content) || null }) });
   if (regRes.status === 404) { console.error('crm/guia: falta rodar admin/crm/db/crm-compras.sql'); return json({ error: 'Falta rodar crm-compras.sql.' }, 500); }
   if (!regRes.ok) throw new Error('crm_compra_registrar respondeu ' + regRes.status + ' ' + (await regRes.text().catch(() => '')).slice(0, 200));
@@ -5683,10 +5733,22 @@ async function crmGuiaCompra(env, obj, origin) {
   return json({ ok: true, entregue: true, ficha_nova: !!r.ficha_nova });
 }
 
+// A conchinha do Por Dentro na aba do navegador. As páginas do Manual saem do Worker (outro domínio que o site),
+// então o endereço do ícone é absoluto. Entra na hora de servir (o casco da KV não precisa ser enviado de novo)
+// e só se a página ainda não tem ícone próprio. O CSP do guia já deixa img-src https:.
+const GUIA_ICONES = '<link rel="icon" href="https://imigrantepordentro.com/favicon-32x32.png" sizes="32x32" type="image/png">' +
+  '<link rel="icon" href="https://imigrantepordentro.com/favicon-16x16.png" sizes="16x16" type="image/png">' +
+  '<link rel="apple-touch-icon" href="https://imigrantepordentro.com/apple-touch-icon.png">';
+function guiaComIcones(html) {
+  const s = String(html);
+  if (/<link[^>]+rel=["']?(?:shortcut )?icon/i.test(s) || !/<\/head>/i.test(s)) return s;
+  return s.replace(/<\/head>/i, GUIA_ICONES + '</head>');
+}
+
 function guiaPaginaNeutra(status, titulo, texto, cab) {
   const html = `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>${crmEscapeHtml(titulo)}</title></head>` +
     `<body style="font-family:Arial,Helvetica,sans-serif;max-width:32rem;margin:15vh auto;padding:0 1rem;line-height:1.6;color:#2B2B2B"><h1 style="font-size:1.3rem">${crmEscapeHtml(titulo)}</h1><p>${crmEscapeHtml(texto)}</p></body></html>`;
-  return new Response(html, { status, headers: cab });
+  return new Response(guiaComIcones(html), { status, headers: cab });
 }
 
 const GUIA_CAP_ID_RE = /^[A-Za-z0-9_-]{1,40}$/;
@@ -5704,7 +5766,7 @@ async function handleGuiaCasco(env, rascunho) {
     console.error('crm/guia: falta ' + (rascunho ? 'guia:rascunho:pagina' : 'guia:pagina') + ' (o casco do guia) na KV');
     return guiaPaginaNeutra(503, 'Estamos atualizando o guia', 'Volte em alguns minutos. Se continuar assim, responda ao e-mail da compra.', cab);
   }
-  return new Response(html, { status: 200, headers: cab });
+  return new Response(guiaComIcones(html), { status: 200, headers: cab });
 }
 
 // Confere a chave (formato, existência, revogação, 12 meses). Devolve { reg } ou { erro: Response }.
@@ -5842,7 +5904,7 @@ msg(o.j.mensagem||'Não consegui abrir agora. Tente de novo em alguns minutos.')
 </script></body></html>`;
 }
 function handleGuiaLogin() {
-  return new Response(guiaLoginHtml(), { status: 200, headers: { ...GUIA_SEGURANCA, 'Content-Type': 'text/html; charset=utf-8', 'X-Frame-Options': 'DENY', 'Content-Security-Policy': GUIA_CSP } });
+  return new Response(guiaComIcones(guiaLoginHtml()), { status: 200, headers: { ...GUIA_SEGURANCA, 'Content-Type': 'text/html; charset=utf-8', 'X-Frame-Options': 'DENY', 'Content-Security-Policy': GUIA_CSP } });
 }
 
 // Uso do guia, nível A (agregado, sem dado pessoal): um contador por dia, produto, tipo (índice ou capítulo) e capítulo.

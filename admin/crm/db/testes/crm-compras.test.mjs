@@ -57,9 +57,9 @@ async function main() {
   check('só o Worker (service_role): nem anônimo, nem a pessoa, nem a admin', !(await attempt(() => asAnon(chama))).ok && !(await attempt(() => asUser(ana.u.id, chama))).ok && !(await attempt(() => asUser(admin.id, chama))).ok);
   const entrega = () => db.query("select crm_compra_entregue('cs_x')");
   check('entregue: também só o Worker', !(await attempt(() => asAnon(entrega))).ok && !(await attempt(() => asUser(ana.u.id, entrega))).ok && !(await attempt(() => asUser(admin.id, entrega))).ok);
-  check('slug fora do formato, e-mail ruim, valor zero, moeda inválida e referência vazia são recusados',
+  check('slug fora do formato, e-mail ruim, valor negativo, moeda inválida e referência vazia são recusados',
     await falha(() => reg({ ref: 'a', slug: 'Produto Inválido', email: 'a@example.com' }), 'compra_invalida') && await falha(() => reg({ ref: 'a', slug: '-comeca-com-hifen', email: 'a@example.com' }), 'compra_invalida') && await falha(() => reg({ ref: 'a', email: 'sem-arroba' }), 'compra_invalida') &&
-    await falha(() => reg({ ref: 'a', email: 'a@example.com', valor: 0 }), 'compra_invalida') && await falha(() => reg({ ref: 'a', email: 'a@example.com', moeda: 'eu' }), 'compra_invalida') &&
+    await falha(() => reg({ ref: 'a', email: 'a@example.com', valor: -1 }), 'compra_invalida') && await falha(() => reg({ ref: 'a', email: 'a@example.com', moeda: 'eu' }), 'compra_invalida') &&
     await falha(() => reg({ ref: '', email: 'a@example.com' }), 'compra_invalida'));
   check('nada foi gravado pelas recusas', (await nCompras()) === 0);
 
@@ -122,6 +122,15 @@ async function main() {
   check('a pessoa não escreve na tabela nem muda uma compra', !(await attempt(() => asUser(ana.u.id, () => db.query("insert into compras (referencia, slug, email_pagamento, valor_centavos, moeda, acesso_ate) values ('meu','manual-destrave-ameli','a@example.com',1,'EUR',now())")))).ok &&
     ((await asUser(ana.u.id, () => db.query("update compras set acesso_ate = now() + interval '100 years' where referencia='cs_ana'"))).affectedRows ?? 0) === 0);
   check('apagar a ficha mantém a compra (registro de venda), sem ficha', (await db.query('delete from contatos where id=$1', [ana.c]), (await um("select contato_id from compras where referencia='cs_ana'")).contato_id === null));
+
+  console.log('\n== Valor pago 0 (código promocional de 100%) ==');
+  const zero = await attempt(() => reg({ ref: 'cs_zero', email: 'zero@example.com', valor: 0 }));
+  check('valor 0 é aceito e guarda 0', zero.ok && (await um("select valor_centavos from compras where referencia = 'cs_zero'")).valor_centavos === 0);
+  check('valor negativo continua recusado', await falha(() => reg({ ref: 'cs_neg', email: 'zero@example.com', valor: -5 }), 'compra_invalida'));
+  await db.query("delete from compras where referencia = 'cs_zero'");
+  await db.exec("alter table compras drop constraint compras_valor_centavos_check; alter table compras add constraint compras_valor_centavos_check check (valor_centavos > 0) not valid");
+  check('banco com a regra antiga (> 0) recusa o 0', !(await attempt(() => reg({ ref: 'cs_zero2', email: 'zero@example.com', valor: 0 }))).ok);
+  check('rodar o arquivo de novo troca a regra e preserva as compras', (await attempt(() => db.exec(sql))).ok && (await reg({ ref: 'cs_zero3', email: 'zero@example.com', valor: 0 })).duplicado === false);
 
   console.log(`\n${passed} passaram, ${failed} falharam`);
   process.exit(failed ? 1 : 0);

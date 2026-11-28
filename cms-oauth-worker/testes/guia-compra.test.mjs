@@ -113,6 +113,23 @@ env = mkEnv();
 [res] = await quieto(() => hook(EV(), env));
 check('e-mail saiu mas o registro falhou: 200 (um 500 mandaria o e-mail duas vezes)', res.status === 200);
 
+console.log('\n== Código promocional: o preço conferido é o de antes do desconto ==');
+env = mkEnv(); chamadas = []; fakeFetch(fluxo());
+[res] = await quieto(() => hook(EV(SESSAO({ id: 'cs_promo', amount_subtotal: 990, amount_total: 0 })), env));
+let regPromo = chamadas.find((c) => /crm_compra_registrar/.test(c.url));
+check('código de 100% (subtotal 9,90 €, total 0): entrega, com chave e e-mail', res.status === 200 && env.REVIEWS_KV.chaves('guia:chave:').length === 1 && toca(/api\.brevo\.com/).length === 1);
+check('a compra é registrada com o que foi PAGO (0), não com o preço de tabela', regPromo && regPromo.body.p_valor_centavos === 0);
+env = mkEnv(); chamadas = []; fakeFetch(fluxo());
+[res] = await quieto(() => hook(EV(SESSAO({ id: 'cs_promo5', amount_subtotal: 990, amount_total: 490 })), env));
+regPromo = chamadas.find((c) => /crm_compra_registrar/.test(c.url));
+check('desconto de 5 € (total 4,90 €): entrega e registra 490', res.status === 200 && toca(/api\.brevo\.com/).length === 1 && regPromo.body.p_valor_centavos === 490);
+env = mkEnv(); chamadas = []; fakeFetch(fluxo());
+[res] = await quieto(() => hook(EV(SESSAO({ amount_subtotal: 100, amount_total: 0 })), env)); j = await res.json();
+check('preço de tabela abaixo de 9 € (link de outro produto/valor), mesmo com desconto: não entrega', res.status === 200 && j.ignorado === true && chamadas.length === 0);
+env = mkEnv(); chamadas = []; fakeFetch(fluxo());
+[res] = await quieto(() => hook(EV(SESSAO({ amount_subtotal: 990, amount_total: 0, payment_link: 'plink_outro' })), env)); j = await res.json();
+check('código de 100% em outro Payment Link: não entrega (o link continua mandando)', res.status === 200 && j.ignorado === true && chamadas.length === 0);
+
 console.log('\n== Venda que não é a do guia: não entrega ==');
 const casos = [['link de pagamento de outro produto', SESSAO({ payment_link: 'plink_outro' })], ['sem link de pagamento (sessão criada por fora)', SESSAO({ payment_link: null })],
   ['valor abaixo do preço (9 €)', SESSAO({ amount_total: 100 })], ['moeda diferente', SESSAO({ currency: 'brl' })],
@@ -165,6 +182,16 @@ check('/guia/app/ serve o casco (HTML sem texto pago)', res2.status === 200 && (
 check('cabeçalhos do casco: sem cache, noindex, sem referrer, sem moldura, fala só com o próprio Worker', res2.headers.get('Cache-Control') === 'no-store' && /noindex/.test(res2.headers.get('X-Robots-Tag')) && res2.headers.get('Referrer-Policy') === 'no-referrer' &&
   res2.headers.get('X-Frame-Options') === 'DENY' && /connect-src 'self'/.test(res2.headers.get('Content-Security-Policy')) && /default-src 'none'/.test(res2.headers.get('Content-Security-Policy')));
 check('/guia/app (sem barra) também serve o casco', (await get(env, '/guia/app')).status === 200);
+
+// A conchinha na aba: entra na hora de servir (o casco da KV não é reenviado), com endereço absoluto do site.
+kvm.set('guia:rascunho:pagina', '<!doctype html><html><head><meta charset="utf-8"><title>Manual</title></head><body>CASCO</body></html>');
+const htmlIcone = await (await get(env, '/guia/rascunho/')).text();
+check('o casco ganha a conchinha (favicon absoluto do site) antes de </head>', /<link rel="icon" href="https:\/\/imigrantepordentro\.com\/favicon-32x32\.png"[^>]*><link rel="icon"[^>]*favicon-16x16\.png"[^>]*><link rel="apple-touch-icon" href="https:\/\/imigrantepordentro\.com\/apple-touch-icon\.png"><\/head>/.test(htmlIcone));
+kvm.set('guia:rascunho:pagina', '<!doctype html><html><head><link rel="icon" href="/outro.png"></head><body>CASCO</body></html>');
+const htmlProprio = await (await get(env, '/guia/rascunho/')).text();
+check('casco com ícone próprio não é tocado', !htmlProprio.includes('imigrantepordentro.com') && htmlProprio.includes('/outro.png'));
+check('o casco sem </head> sai como veio (sem quebrar)', (await (await get(env, '/guia/app/')).text()).includes('CASCO sem texto pago'));
+check('a página de login também tem a conchinha', /rel="icon"[^>]*imigrantepordentro\.com\/favicon-32x32\.png/.test(await (await get(env, '/guia/')).text()));
 res2 = await get(env, '/guia/' + tk);
 check('link digitado como /guia/<chave> vira /guia/#k=<chave>', res2.status === 302 && res2.headers.get('Location') === 'https://w.example/guia/#k=' + tk);
 res2 = await api(env, '/manual', sk);

@@ -16,6 +16,7 @@
     "test:guias": "node guias-link-privado.test.mjs",
     "test:enriquecimento": "node crm-enriquecimento.test.mjs",
     "test:fase0": "node crm-fase0-email-guia.test.mjs",
+    "test:b0": "node crm-guia-modelo-b0.test.mjs",
     "test:fase1a": "node crm-fase1a-conversa.test.mjs",
     "test:fase1b": "node crm-fase1b-resposta.test.mjs",
     "test:modelos": "node crm-modelos-email.test.mjs",

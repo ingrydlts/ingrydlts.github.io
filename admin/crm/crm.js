@@ -40,7 +40,7 @@ var SEGMENTS = [
 // 'agendado' = o Brevo aceitou o envio (a linha só é gravada depois disso) e ainda não avisou entrega/abertura pelo webhook.
 var MAIL_ST = { clicado: 'Clicou', aberto: 'Abriu', entregue: 'Entregue, não abriu', nao_entregue: 'Não entregue', agendado: 'Enviado' };
 var MAIL_ST_DICA = { agendado: 'O Brevo aceitou o envio. Entrega e abertura aparecem aqui quando o webhook do Brevo avisar.' };
-var MODELO = { boas_vindas: 'Boas-vindas + link de acesso', guia_chamada: 'Guia VLS-TS — convite pra conversa', guia_plataforma: 'Guia VLS-TS — teste da plataforma',naoabriu: 'Reimpacto — não abriu', naoclicou: 'Reimpacto — abriu, não clicou', cliquenaoapp: 'Reimpacto — clicou, não abriu o app', parouapp: 'Reimpacto — abriu o app e parou', guia_alternancia: 'Guia alternância 30+ — convite pra conversa', cf_guia_1: 'Guia Campus France — e-mail 1 (checklist, automático)', cf_guia_conversa: 'Guia Campus France — e-mail 2 (a conversa, automático)', resposta: 'Sua resposta (aba Conversa)' };
+var MODELO = { boas_vindas: 'Boas-vindas + link de acesso', guia_chamada: 'Guia VLS-TS — convite pra conversa', guia_plataforma: 'Guia VLS-TS — teste da plataforma',naoabriu: 'Reimpacto — não abriu', naoclicou: 'Reimpacto — abriu, não clicou', cliquenaoapp: 'Reimpacto — clicou, não abriu o app', parouapp: 'Reimpacto — abriu o app e parou', guia_alternancia: 'Guia alternância 30+ — convite pra conversa', cf_guia_1: 'Guia Campus France — e-mail 1 (checklist, automático)', cf_guia_conversa: 'Guia Campus France — e-mail 2 (a conversa, automático)', guia_modelo_b0: 'Modelo grátis de endereço — B0 (a carta, automático)', resposta: 'Sua resposta (aba Conversa)' };
 var TYPE_META = {
   sistema: ['Sistema', ''], app: ['Abriu o app', 'u-baixa'], checklist: ['Checklist', 'u-baixa'], pergunta: ['Pergunta única', 'tp-pergunta'],
   artigo: ['Artigo', 'tp-artigo'], uma_um: ['1:1', 'out'], email: ['E-mail', 'out'], sinal: ['Sinal no dashboard', 'out'], proposta: ['Proposta', 'out'],
@@ -1156,7 +1156,7 @@ function tipoFunil(o) {
     : o === 'instagram' ? 'link do Instagram' : (o === 'direto' || o === 'login_direto') ? 'acesso direto' : '';
 }
 // A página (landing) de onde a pessoa veio, pela origem que o site grava. É a linha da matriz do Estúdio de e-mails (Jornada).
-var ORIGEM_PAGINA = { 'guia-email-alt30': 'I01', 'guia-tecnologo': 'I02', 'guia-etudes-en-france-2027': 'I03', 'guia-vls-ts': 'I04', 'guia-checklist-chegada-au-pair': 'I05', 'guia-mapa-saude-franca': 'I06', 'guia-rota-da-secu': 'I06' };
+var ORIGEM_PAGINA = { 'guia-email-alt30': 'I01', 'guia-tecnologo': 'I02', 'guia-etudes-en-france-2027': 'I03', 'guia-vls-ts': 'I04', 'guia-checklist-chegada-au-pair': 'I05', 'guia-mapa-saude-franca': 'I06', 'guia-rota-da-secu': 'I06', 'manual-destrave-domiciliacao': 'I07' };
 // Os modelos de uma página numa etapa da jornada (lead, contato, reimp, plat), do jeito que o Estúdio os organiza.
 // Só entram os que têm versão No ar (sem a tabela de modelos, vale a lista do código).
 function modelosDaEtapa(pagina, etapa, incluiRascunho) {
@@ -1613,8 +1613,8 @@ function conversaCtx(c, h4, lateral) {
 function conversaMsg(it, c) {
   var x = it.x, quando = '<time>' + esc(fmtHora(it.em)) + '</time>';
   if (it.k === 'm') {
-    var auto = /^cf_guia_/.test(x.modelo), resp = x.modelo === 'resposta';
-    var quem = auto ? 'Automático · ' + (x.modelo === 'cf_guia_1' ? 'e-mail 1' : x.modelo === 'cf_guia_conversa' ? 'e-mail 2' : x.modelo)
+    var auto = /^cf_guia_|^guia_modelo_b0$/.test(x.modelo), resp = x.modelo === 'resposta';
+    var quem = auto ? 'Automático · ' + (x.modelo === 'cf_guia_1' ? 'e-mail 1' : x.modelo === 'cf_guia_conversa' ? 'e-mail 2' : x.modelo === 'guia_modelo_b0' ? 'B0 (a carta)' : x.modelo)
       : resp ? 'Você · respondeu daqui' : 'Você · ' + modeloNome(x.modelo);
     var corpo = resp ? '<div class="txt">' + esc(x.corpo || '') + '</div>'
       : '<b class="assunto">' + esc(x.assunto || '(sem assunto)') + '</b>' + (x.corpo ? '<button class="link" type="button" data-mailtoggle="' + x.id + '">ver o e-mail</button>' + mailView(x) : '');
