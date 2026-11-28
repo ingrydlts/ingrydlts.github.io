@@ -684,6 +684,11 @@
         <h2>Cliques em afiliados (top 6)</h2>
         <div class="ins-funnel-chart" id="ins-affiliate-chart"></div>
       </div>
+      <div class="ins-chart-card">
+        <h2>Uso do Manual (últimos 30 dias)</h2>
+        <div class="ins-funnel-chart" id="ins-guia-chart"></div>
+        <p class="ins-empty" style="margin-top:8px">Contagens anônimas por capítulo: não guardam IP, chave, e-mail nem navegador. A prévia (rascunho) não entra.</p>
+      </div>
     </div>
 
     <nav class="ins-tabnav">
@@ -901,6 +906,7 @@
 
     renderRevenueKpis(data);
     renderPurchasesChart(data.purchases || []);
+    renderGuiaUso(data.guiaUso || {});
     renderPurchasesTable(data.purchases || []);
     renderRevenueBySource(data.revenueBySource || []);
     renderAffiliateChart(data.affiliateClicks || []);
@@ -1430,6 +1436,30 @@
     cards.push(kpiCard(ICONS.file, k.completaCount, "Vendas — planilha completa (25€)", "", false, "vendas"));
     cards.push(kpiCard(ICONS.click, k.totalAffiliateClicks, "Cliques em links de afiliado", "", false, "afiliados"));
     el.innerHTML = cards.join("");
+  }
+
+  // Uso do Manual (nível A, ver guiaUsoRegistrar em worker.js): só contadores por capítulo, nada que identifique quem abriu.
+  function renderGuiaUso(uso) {
+    var el = document.getElementById("ins-guia-chart");
+    if (!el) return;
+    var rows = (uso.capitulos || []).filter(function (r) { return r.n > 0; });
+    if (!rows.length) {
+      el.innerHTML = '<p class="ins-empty">Ainda não há aberturas do Manual.</p>';
+      return;
+    }
+    var max = Math.max.apply(null, rows.map(function (r) { return r.n; }).concat([1]));
+    var html = "";
+    rows.forEach(function (r) {
+      var pct = Math.max(Math.round((r.n / max) * 100), 3);
+      var label = (r.tipo === "indice" ? "Abertura do guia" : "Capítulo " + r.cap) + (rows.some(function (x) { return x.slug !== r.slug; }) ? " · " + r.slug : "");
+      html +=
+        '<div class="ins-funnel-row">' +
+          '<span class="lbl" title="' + escapeHtml(label) + '">' + escapeHtml(label) + "</span>" +
+          '<span class="bar-track"><span class="bar-fill result" style="width:' + pct + '%;"></span></span>' +
+          '<span class="val">' + r.n + "</span>" +
+        "</div>";
+    });
+    el.innerHTML = html;
   }
 
   function renderPurchasesChart(rows) {

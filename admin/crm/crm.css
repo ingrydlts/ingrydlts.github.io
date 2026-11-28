@@ -2266,3 +2266,9 @@ select.fx-hm-add:hover,select.fx-hm-add:focus-visible{border-color:var(--moss); 
 /* Arrastar segurando em qualquer parte do bloco */
 .ee-bk.ee-arrastando{opacity:.55; box-shadow:0 0 0 2px var(--moss); cursor:grabbing}
 html.ee-segurando, html.ee-segurando *{cursor:grabbing !important; user-select:none !important}
+
+/* Sessão Compras (ficha): fluxo de entrada no material e lista de e-mails da compra */
+.cmp-fluxo{margin:6px 0 0; padding-left:18px; font-size:14px; color:var(--ink-2,#5F574B)}
+.cmp-fluxo li{margin:0 0 2px}
+.cmp-mails{margin:0; padding-left:18px; font-size:14px}
+.cmp-mails li{margin:0 0 4px}

@@ -81,7 +81,12 @@
     "test:montagem": "node crm-montagem.test.mjs",
     "test:montagem-aplicar": "node crm-montagem-aplicar.test.mjs",
     "test:entrar": "node crm-entrar.test.mjs",
-    "test:montagem-metricas": "node crm-montagem-metricas.test.mjs"
+    "test:montagem-metricas": "node crm-montagem-metricas.test.mjs",
+    "test:compras-entradas": "node crm-compras-entradas.test.mjs",
+    "test:compras-ui": "node crm-compras-ui.test.mjs",
+    "test:ficha-compras": "node ficha-compras.test.mjs",
+    "test:pausas": "node crm-sequencia-pausas.test.mjs",
+    "test:pausa-ui": "node crm-pausa-ui.test.mjs"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.8"

@@ -4,13 +4,16 @@
 // O HTML do guia é um casco (HTML + CSS + JS) com o texto dentro de <script type="application/json" id="dados-exemplo">.
 // Este script separa os dois: o casco vai sem texto (meta manual-api = /api/guia) e o texto vira o índice + um capítulo por chave.
 //
-// Uso:  node cms-oauth-worker/scripts/guia-preparar.mjs <guia.html> <slug> <pasta-de-saida>
-//   ex. node cms-oauth-worker/scripts/guia-preparar.mjs ~/Downloads/manual.html manual-destrave-ameli ~/guia-kv
-// Depois: npx wrangler kv bulk put <pasta-de-saida>/kv-bulk.json --binding REVIEWS_KV --remote
+// Uso:  node cms-oauth-worker/scripts/guia-preparar.mjs <guia.html> <slug> <pasta-de-saida> [rascunho]
+//   ex. node cms-oauth-worker/scripts/guia-preparar.mjs ~/Downloads/manual.html manual-destrave-domiciliacao ~/guia-kv rascunho
+// Com "rascunho" as chaves saem como guia:rascunho:... (só a chave de prévia lê); sem, saem as do ar (guia:...).
+// Depois: node cms-oauth-worker/scripts/guia-kv.mjs enviar <pasta-de-saida>/kv-bulk.json   (ver guia-kv.mjs)
+//   ou, sem o script: npx wrangler kv bulk put <pasta-de-saida>/kv-bulk.json --namespace-id <id da REVIEWS_KV> --remote
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import path from 'node:path';
 
-const [arq, slug, saida] = process.argv.slice(2);
+const [arq, slug, saida, canal] = process.argv.slice(2);
+const pre = canal === 'rascunho' ? 'guia:rascunho:' : 'guia:';
 if (!arq || !slug || !saida || !/^[a-z0-9-]+$/.test(slug)) {
   console.error('Uso: node guia-preparar.mjs <guia.html> <slug> <pasta-de-saida>');
   process.exit(1);
@@ -45,12 +48,12 @@ if (casco.includes('id="prev-root"')) { console.error('O painel de prévia conti
 const manual = { meta: dados.meta, capitulos: dados.capitulos.map(({ grupos, ...resto }) => resto) };
 
 const itens = [
-  { key: 'guia:pagina', value: casco },
-  { key: `guia:manual:${slug}`, value: JSON.stringify(manual) },
-  ...dados.capitulos.map((c) => ({ key: `guia:cap:${slug}:${c.id}`, value: JSON.stringify(c) })),
+  { key: pre + 'pagina', value: casco },
+  { key: `${pre}manual:${slug}`, value: JSON.stringify(manual) },
+  ...dados.capitulos.map((c) => ({ key: `${pre}cap:${slug}:${c.id}`, value: JSON.stringify(c) })),
 ];
 mkdirSync(saida, { recursive: true });
 writeFileSync(path.join(saida, 'kv-bulk.json'), JSON.stringify(itens));
-console.log(`Pronto em ${saida}/kv-bulk.json: ${itens.length} chaves (casco ${(casco.length / 1024).toFixed(0)} KB, índice ${(JSON.stringify(manual).length / 1024).toFixed(0)} KB, ${dados.capitulos.length} capítulos).`);
+console.log(`Pronto em ${saida}/kv-bulk.json (${canal === 'rascunho' ? 'RASCUNHO' : 'NO AR'}): ${itens.length} chaves (casco ${(casco.length / 1024).toFixed(0)} KB, índice ${(JSON.stringify(manual).length / 1024).toFixed(0)} KB, ${dados.capitulos.length} capítulos).`);
 console.log(`Versão ${dados.meta.versao}, estado "${dados.meta.estado}", atualizado em ${dados.meta.ultima_atualizacao}.`);
 if (dados.meta.estado && /rascunho/i.test(dados.meta.estado)) console.log('ATENÇÃO: o estado do guia ainda é "rascunho" e o comprador vai ver isso. Troque no JSON antes de vender, se já estiver aprovado.');

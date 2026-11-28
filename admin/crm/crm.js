@@ -7,8 +7,9 @@ import * as ES from './estudio.js?v=2026-11-19.7';   // os blocos do estúdio de
 import * as EE from './editor-email.js?v=2026-11-19.7';
 import * as EQ from './editor-quem.js?v=2026-11-19.7';
 import * as JR from './jornada.js?v=2026-11-19.7';   // a matriz página × etapa do funil   // o e-mail editável do passo Texto
-import * as FX from './ficha.js?v=2026-11-19.7';   // ficha v2: lógica pura (fila, démarches, funil, ações)
-import * as FH from './ficha-html.js?v=2026-11-19.7';   // ficha v2: HTML puro
+import * as FX from './ficha.js?v=2026-11-27.1';   // ficha v2: lógica pura (fila, démarches, funil, ações)
+import * as FH from './ficha-html.js?v=2026-11-27.1';   // ficha v2: HTML puro
+import * as FC from './ficha-compras.js?v=2026-11-27.1';   // sessão Compras: fluxo de entrada, chave e insights de e-mail (db/crm-compras-entradas.sql)
 import * as PN from './panorama.js?v=2026-11-19.7';
 import * as MT from './montagem.js?v=2026-11-19.7';   // Montagem do espaço a partir do transcript (lógica e HTML puros)   // Panorama dela e O que ela trouxe (lógica e HTML puros)
 
@@ -142,7 +143,7 @@ var P = [], PERR = '';
 // Processos sugeridos esperando a sua decisão (db/crm-processos-sugeridos.sql). Sem a migração, fica vazio.
 var PSUG = [];
 var FILA = [];   // avisos agendados que ainda não saíram, de todas as pessoas (para o bloco da Hoje)
-var state = { funilVisao: 'leads', funilPorque: null, dosAberto: lerDosAberto(), dos: null, pc: null, ptab: null, pstab: 'assistente', pdias: {}, int: null, chatRasc: '', rascunho: {}, view: 'hoje', persona: '', sub: '', urg: '', stage: '', orig: '', camp: '', q: '', sel: null, qs: 'nova', qsel: null, inbox: 'perguntas', rs: 'nova', rsel: null, ps: 'novo', psel: null, preset: 'todos', seg: '', prevView: 'contatos',
+var state = { funilVisao: 'leads', funilPorque: null, dosAberto: lerDosAberto(), dos: null, pc: null, ptab: null, pstab: 'assistente', pdias: {}, compra: '', int: null, chatRasc: '', rascunho: {}, view: 'hoje', persona: '', sub: '', urg: '', stage: '', orig: '', camp: '', q: '', sel: null, qs: 'nova', qsel: null, inbox: 'perguntas', rs: 'nova', rsel: null, ps: 'novo', psel: null, preset: 'todos', seg: '', prevView: 'contatos',
   fx: { tab: null, ord: null, abertas: {}, ag: { i: 0, pop: null }, dem: 'todas', ckTodos: false, ckMais: false, tour: true, r1: null, lg: { main: 1, a: 1 }, dd: {}, tema: null, coorte: null } };
 var activeCid = null;
 var me = null;
@@ -173,8 +174,10 @@ function potEntrada(c, o) {
   return { tipo: FX.tipoCabecalho(c, assin), etapa: FX.etapaFunil(c, { mails: ms || [], propostas: [], temBilan: !!o.temBilan, umFeito: umFeito(c.id) }), mails: m, respostas: resp,
     respostasNovas: o.respostasNovas != null ? o.respostasNovas : resp, capturas: Number(c.capturas) || 0, materiais: origensDe(c).length,
     diasSemSinal: c.dias != null && isFinite(Number(c.dias)) ? Number(c.dias) : null, urgencia: c.urgencia, linkPagamento: !!o.linkPagamento, assin: assin,
-    ultimoAcessoDias: o.ultimoAcessoDias !== undefined ? o.ultimoAcessoDias : dias(c.ultimo_evento_em || c.criado_em), sessoes30: o.sessoes30, chk: o.chk || null, nome: displayName(c) };
+    ultimoAcessoDias: o.ultimoAcessoDias !== undefined ? o.ultimoAcessoDias : dias(c.ultimo_evento_em || c.criado_em), sessoes30: o.sessoes30, chk: o.chk || null, nome: displayName(c), compras: comprasPot(c) };
 }
+// As compras de guia digital entram no Potencial (pontos): ver FX.potencial.
+function comprasPot(c) { if (!COMPRAS_GUIA.length) return null; return FC.resumoParaPontos(comprasGuiaDe(c.id), ENTRADAS_GUIA, Date.now()); }
 function potDe(c) { return FX.potencial(potEntrada(c)); }
 function potPill(p) {
   var tip = p.motivos.map(function (z) { return z.t + ' (' + (z.p > 0 ? '+' : '−') + Math.abs(z.p) + ')'; }).join(' · ') || 'Sem sinais ainda';
@@ -265,8 +268,16 @@ async function loadAll() {
     // Os 1:1 pagos (db/crm-1a1.sql): quantos minutos e quando pagou. O valor em euros não é guardado: o Worker só repassa os minutos.
     supabase.from('um_a_um_pagamentos').select('contato_id,minutos,pago_em,um_a_um_id').order('pago_em', { ascending: false }).limit(2000),
     // O dinheiro que entrou de verdade (db/crm-pagamentos.sql, alimentado pelo webhook do Stripe): valor, serviço e quando. Sem o SQL, fica vazio.
-    supabase.from('pagamentos').select('contato_id,tipo,servico,valor_centavos,moeda,pago_em').order('pago_em', { ascending: false }).limit(5000)
+    supabase.from('pagamentos').select('contato_id,tipo,servico,valor_centavos,moeda,pago_em').order('pago_em', { ascending: false }).limit(5000),
+    // Quem comprou um guia digital (db/crm-compras.sql) e cada entrada no material (db/crm-compras-entradas.sql). Sem o SQL, fica vazio.
+    supabase.from('compras').select('id,referencia,slug,email_pagamento,contato_id,valor_centavos,moeda,pago_em,acesso_ate,entregue_em,origem').order('pago_em', { ascending: false }).limit(2000),
+    supabase.from('compras_entradas').select('compra_id,em').order('em', { ascending: false }).limit(20000),
+    // A pergunta "os e-mails automáticos devem parar?" de quem marcou um 1:1 no meio de uma sequência (db/crm-sequencia-pausas.sql). Sem o SQL, fica vazio.
+    supabase.from('sequencia_pausas').select('id,contato_id,um_a_um_id,criada_em,decisao,decidida_em').order('criada_em', { ascending: false }).limit(2000)
   ]);
+  PAUSAS = r[19] && !r[19].error ? (r[19].data || []) : [];
+  COMPRAS_GUIA = r[17] && !r[17].error ? (r[17].data || []) : [];
+  ENTRADAS_GUIA = r[18] && !r[18].error ? (r[18].data || []) : [];
   PAGOS = r[16] && !r[16].error ? (r[16].data || []) : [];
   PAGOS_ERRO = r[16] && r[16].error ? String(r[16].error.message || 'erro') : '';
   if (r[0].error) return fail('carregar os contatos', r[0].error);
@@ -311,6 +322,8 @@ async function loadAll() {
   });
 }
 // Os produtos pagos da vitrine (content/produtos-digitais.json, público): nome e slug, para "Para quem" e "Registrar compra".
+var PAUSAS = [];   // a pergunta dos e-mails automáticos quando a pessoa marca um 1:1
+var COMPRAS_GUIA = [], ENTRADAS_GUIA = [];   // as compras dos guias digitais e as entradas de cada uma no material
 var PRODUTOS = [], COMPRAS = {}, COMPRAS_EV = [], UM = [], PAG1A1 = [], PRECOS = [], PAGOS = [], PAGOS_ERRO = '';
 function comprou(cid, prod) { return !!(COMPRAS[cid] && COMPRAS[cid][prod]); }
 async function carregarProdutos() {
@@ -388,13 +401,14 @@ function refreshSub() {
 }
 function syncControls() {
   $('f-persona').value = state.persona; refreshSub();
-  $('f-urg').value = state.urg; $('f-stage').value = state.stage; $('f-orig').value = state.orig; $('f-camp').value = state.camp; $('q').value = state.q;
-  ['f-persona', 'f-sub', 'f-urg', 'f-stage', 'f-orig', 'f-camp'].forEach(function (id) { $(id).classList.toggle('on', !!$(id).value); });
+  $('f-compra').value = state.compra; $('f-urg').value = state.urg; $('f-stage').value = state.stage; $('f-orig').value = state.orig; $('f-camp').value = state.camp; $('q').value = state.q;
+  ['f-persona', 'f-sub', 'f-compra', 'f-urg', 'f-stage', 'f-orig', 'f-camp'].forEach(function (id) { $(id).classList.toggle('on', !!$(id).value); });
   document.querySelectorAll('[data-preset]').forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.preset === state.preset)); });
 }
 function initControls() {
   fillSelect($('f-persona'), 'Toda persona', PERSONAS);
   fillSelect($('f-urg'), 'Toda urgência', URG);
+  fillSelect($('f-compra'), 'Comprou ou não', { sim: 'Já comprou', nao: 'Ainda não comprou' });
   var stMap = {}; STAGES.forEach(function (s) { stMap[s.k] = s.l; });
   fillSelect($('f-stage'), 'Todo estágio', stMap);
   var origs = {}; Object.keys(ORIG).forEach(function (k) { origs[k] = ORIG[k]; });
@@ -403,7 +417,7 @@ function initControls() {
   fillCampanhas();
   fillSelect($('funil-persona'), 'Toda persona', PERSONAS);
   syncControls();
-  [['f-persona', 'persona'], ['f-sub', 'sub'], ['f-urg', 'urg'], ['f-stage', 'stage'], ['f-orig', 'orig'], ['f-camp', 'camp']].forEach(function (p) {
+  [['f-persona', 'persona'], ['f-sub', 'sub'], ['f-compra', 'compra'], ['f-urg', 'urg'], ['f-stage', 'stage'], ['f-orig', 'orig'], ['f-camp', 'camp']].forEach(function (p) {
     $(p[0]).addEventListener('change', function () {
       state[p[1]] = this.value; if (p[1] === 'persona') state.sub = ''; state.preset = '';
       syncControls(); renderContacts();
@@ -414,7 +428,10 @@ function initControls() {
 }
 function filtered() {
   var q = state.q.trim().toLowerCase();
+  var compradores = {}; COMPRAS_GUIA.forEach(function (x) { if (x.contato_id) compradores[x.contato_id] = 1; });
   return C.filter(function (c) {
+    if (state.compra === 'sim' && !compradores[c.id]) return false;
+    if (state.compra === 'nao' && compradores[c.id]) return false;
     if (state.persona && personaKey(c) !== state.persona) return false;
     if (state.sub && c.subpersona !== state.sub) return false;
     if (state.urg && c.urgencia !== state.urg) return false;
@@ -430,7 +447,7 @@ function filtered() {
   }).sort(function (a, b) { var o = { alta: 0, media: 1, baixa: 2 }; return o[a.urgencia] - o[b.urgencia] || prazoKey(a) - prazoKey(b) || a.dias - b.dias; });
 }
 function applyPreset(p) {
-  state.preset = p; state.persona = ''; state.sub = ''; state.urg = ''; state.stage = ''; state.orig = ''; state.camp = ''; state.q = '';
+  state.preset = p; state.compra = ''; state.persona = ''; state.sub = ''; state.urg = ''; state.stage = ''; state.orig = ''; state.camp = ''; state.q = '';
   if (p === 'urgentes') state.urg = 'alta';
   if (p === 'semchecklist') state.persona = 'sem';
   syncControls(); renderContacts();
@@ -800,7 +817,7 @@ function renderContacts() {
   $('tbody').innerHTML = list.map(function (it) {
     var c = it.c;
     return '<tr data-id="' + esc(c.id) + '" aria-selected="' + (c.id === state.sel) + '" tabindex="0">' +
-      '<td><div class="nm"><div class="' + avClass(c) + '">' + esc(ini(c)) + '</div><div><b>' + esc(displayName(c)) + (voltou(c) ? ' <span class="pill" title="Deixou o e-mail ' + nCapturas(c) + ' vezes">voltou ×' + nCapturas(c) + '</span>' : '') + '</b><span>' + esc(c.email) + '</span></div></div></td>' +
+      '<td><div class="nm"><div class="' + avClass(c) + '">' + esc(ini(c)) + '</div><div><b>' + esc(displayName(c)) + (seloCompra(c) ? ' <span class="pill pg-ok" title="' + esc(seloCompra(c).sub) + '">' + esc(seloCompra(c).texto) + '</span>' : '') + (voltou(c) ? ' <span class="pill" title="Deixou o e-mail ' + nCapturas(c) + ' vezes">voltou ×' + nCapturas(c) + '</span>' : '') + '</b><span>' + esc(c.email) + '</span></div></div></td>' +
       '<td><span class="persona">' + esc(personaLabel(c)) + '</span><div class="sub">' + esc(subLabel(c)) + '</div>' + (origensDe(c).length > 1 ? '<div class="sub">' + esc(origensDe(c).map(origLabel).join(' · ')) + '</div>' : '') + '</td>' +
       '<td>' + potPill(it.p) + '</td><td>' + urgPill(c.urgencia) + '</td><td><span class="stage">' + esc(stageLabel(c.estagio)) + '</span></td>' +
       '<td>' + prazoCell(c) + '</td><td class="sub num">' + ago(c.dias) + '</td></tr>';
@@ -809,6 +826,7 @@ function renderContacts() {
   var chips = [];
   if (state.persona) chips.push(['persona', PERSONAS[state.persona]]);
   if (state.sub) chips.push(['sub', SUBS[state.persona + '|' + state.sub] || state.sub]);
+  if (state.compra) chips.push(['compra', state.compra === 'sim' ? 'Já comprou' : 'Ainda não comprou']);
   if (state.urg) chips.push(['urg', 'Urgência ' + URG[state.urg].toLowerCase()]);
   if (state.stage) chips.push(['stage', stageLabel(state.stage)]);
   if (state.orig) chips.push(['orig', ORIG[state.orig] || state.orig]);
@@ -1194,6 +1212,13 @@ function proximoEmail(c, mails, resps, jor) {
   if (origensDe(c).indexOf(CF_GUIA_ORIGEM) >= 0 && m1 && !m2 && c.aceita_novidades && diasDesde(m1.enviado_em || m1.criado_em) <= 7)
     return out({ titulo: 'Deixe o e-mail 2 do guia sair sozinho',
       angulo: 'A sequência do Campus France já tem o e-mail 2 (a conversa) programado para o próximo envio diário, às 10h de Brasília. Mandar outro na frente atropela ele.' });
+  // Quem já comprou um guia digital tem outra abordagem: não é venda, é fazer usar o material, tirar a dúvida, pedir o relato e (só então) oferecer a ligação.
+  var cp = comprasPot(c);
+  if (cp) {
+    var ac = FX.acaoComprador(cp, c.nome);
+    sinais.unshift('Comprou ' + (cp.n === 1 ? 'um guia' : cp.n + ' guias') + ' · entrou ' + (cp.entradas ? cp.entradas + (cp.entradas === 1 ? ' vez' : ' vezes') + ' no material' + (cp.diasSemEntrar != null ? ', a última há ' + haDias(cp.diasSemEntrar) : '') : 'ainda não entrou no material'));
+    return out({ titulo: ac.titulo, angulo: ac.porque + (ac.texto ? ' Mensagem pronta na aba Compras e em "Próxima ação".' : '') });
+  }
   if (!mails.length) {
     // A captação convida para o 1:1; o app não é a primeira oferta. O primeiro contato é o e-mail da etapa "Primeiro contato"
     // da página dela no Estúdio (Jornada). A entrega do material (etapa "Inbound lead") sai sozinha, não é este botão.
@@ -3717,7 +3742,10 @@ function fxLinhaPasso(o) {
   return casoLinha(casoPil(o.rot, o.estado === 'ok' ? 'u-baixa' : o.estado === 'bad' ? 'u-alta' : o.estado === 'mid' ? 'u-media' : ''), meio, btns, ((o.cls || '') + (o.alerta ? ' alerta' : '')).trim());
 }
 var H_FX = { esc: esc, fmtDay: fmtDay, linhaPasso: fxLinhaPasso };
-var FX_ABAS = ['conversa', 'plataforma', 'ficha', 'dossie'];
+var FX_ABAS = ['conversa', 'plataforma', 'ficha', 'dossie', 'compras'];
+// As compras de guia digital de uma pessoa e o selo "Comprou" (a aba Compras só aparece para quem comprou).
+function comprasGuiaDe(cid) { return COMPRAS_GUIA.filter(function (x) { return x.contato_id === cid; }); }
+function seloCompra(c) { return FC.seloComprou(comprasGuiaDe(c.id), ENTRADAS_GUIA); }
 // Zera o que é "desta pessoa" ao abrir outra ficha. A ordem das sessões e o guia são preferências do navegador e ficam.
 function fxReset() {
   var f = state.fx; f.tab = null; f.ag = { i: 0, pop: null }; f.dem = 'todas'; f.ckTodos = false; f.ckMais = false; f.ckEd = null; f.ckOrigem = 'todos'; f.curOrigem = 'todos'; state.cur = null; f.abertas = {}; f.sessao = null; f.flash = null; f.tarefas = []; f.dados = null; f.appAba = 'inicio'; f.dia = 1; f.camadas = false; f.dd = {}; f.tema = null; f.coorte = null; f.urg = [];
@@ -3940,7 +3968,7 @@ function fxHeaderHtml(c, d) {
   dados.pagamentos = PAGOS.filter(function (g) { return g.contato_id === c.id; });
   var cart = FX.cartoesMinimos(tipo, dados);
   return FH.htmlCabecalho({ c: c, linkPagamentoEnviado: !!state.pagto, estagioLabel: estagioRotulo(c), personaLabel: personaLabel(c) + (subLabel(c) ? ' · ' + subLabel(c) : ''),
-    temConta: !!c.user_id, etiqueta: assin ? FX.etiquetaPagamento(assin) : null, estagios: STAGES, blocos: cart.blocos, nota: cart.nota }, H_FX);
+    selo: seloCompra(c), temConta: !!c.user_id, etiqueta: assin ? FX.etiquetaPagamento(assin) : null, estagios: STAGES, blocos: cart.blocos, nota: cart.nota }, H_FX);
 }
 // Catálogo de démarches (cópia do app, processos.json): carregado uma vez; sem ele, tudo cai na démarche padrão.
 var FX_PROC = null, FX_QUANDO = null;   // FX_QUANDO: o "quando" de cada passo do template (guias-quando.json), para o prazo curto do Início
@@ -4849,6 +4877,7 @@ function fxCorpo(c, d, tab) {
     return '<div class="fx-plat">' + pagamentoHtml(c, H4_PLAT) + sess.ir + '<div class="fx-plat-grade"><div class="fx-plat-esq">' + sess.sessoes + '</div><aside class="fx-previa" id="fx-previa" aria-label="O app dela (prévia)">' + fxPreviaHtml(c) + '</aside></div></div>';
   }
   if (tab === 'conversa') return conversaPanel(c, d.mails || [], d.resps || [], d.h4 || H4_PLAT, d.jor);
+  if (tab === 'compras') return FC.htmlCompras(FC.montarCompras(comprasGuiaDe(c.id), ENTRADAS_GUIA, d.mails || [], Date.now()), H_FX);
   // Dossiê: aba própria, sempre aberta. Preenche sozinho com o que ela responde no funil e no app (ver DOS_FUNIL).
   if (tab === 'dossie') return dosVisaoHtml(c, d) + dosLigacaoHtml(c, d, '<div id="dossie-box">' + dossieHtml(c, state.dos.d, state.dos.err, state.dos.rasc, true, state.dos.chk, true) + '</div>');
   // Ficha (captação): o fluxo de 3 passos e os painéis que já existiam (feed, e-mails, jornada, quem é ela, mais).
@@ -4897,9 +4926,9 @@ function renderFichaV2(c, d) {
     '<div id="fx-tour">' + FH.htmlTour(f.tour, H_FX) + '</div>' +
     '<div id="fx-fila-box">' + FH.htmlFila(fxFilaItens(cv), c.id, H_FX) + '</div>' +
     '<div id="fx-head-box">' + fxHeaderHtml(cv, d) + '</div>' +
-    '<div class="fx-topo" id="fx-topo"><div id="fx-aviso-box">' + avisoDaPessoaHtml(c, d.mails, d.resps, d.jor) + '</div>' +
+    '<div class="fx-topo" id="fx-topo"><div id="fx-pausa-box">' + pausaHtml(c) + '</div><div id="fx-aviso-box">' + avisoDaPessoaHtml(c, d.mails, d.resps, d.jor) + '</div>' +
     '<div id="fx-acoes-box">' + fxCarrossel(cv) + '</div></div>' +
-    FH.htmlAbas(f.tab, !!cv.user_id, H_FX) +
+    FH.htmlAbas(f.tab, !!cv.user_id, H_FX, comprasGuiaDe(c.id).length > 0) +
     '<div id="fx-corpo">' + fxCorpo(cv, d, f.tab) + '</div>' +
     '<div id="fx-pop"></div></div>';
 }
@@ -4993,12 +5022,53 @@ function fxCarScroll(car) {
   for (var k = 0; k < cards.length; k++) if (cards[k].offsetLeft <= car.scrollLeft + 8) i = k;
   fxCarMostra(i, car);
 }
+// A pergunta dos e-mails automáticos de quem marcou um 1:1: aberta (nada sai até você decidir) ou parada (com "Retomar").
+function pausaHtml(c) {
+  var minhas = PAUSAS.filter(function (p) { return p.contato_id === c.id; });
+  var aberta = minhas.filter(function (p) { return !p.decisao; })[0], parada = minhas.filter(function (p) { return p.decisao === 'parar'; })[0];
+  if (aberta) {
+    var u = UM.filter(function (x) { return x.id === aberta.um_a_um_id; })[0];
+    return '<section class="aviso aviso-alta" aria-label="Pergunta sobre os e-mails automáticos"><div class="aviso-t"><span class="k">Precisa de você</span></div>' +
+      '<p class="aviso-motivo"><b>' + esc(displayName(c)) + ' marcou um 1:1' + (u && u.quando ? ' para ' + esc(fmtWhen(u.quando)) : '') + '. Os e-mails automáticos devem parar?</b></p>' +
+      '<p class="aviso-fazer">Enquanto você não responder, nenhum e-mail automático sai para ela, e o que estava na fila se perde.</p>' +
+      '<div class="cam-acoes"><button class="btn primary" type="button" data-fx="pausa" data-v="parar" data-id="' + esc(aberta.id) + '">Parar a sequência</button> ' +
+      '<button class="btn" type="button" data-fx="pausa" data-v="continuar" data-id="' + esc(aberta.id) + '">Continuar a sequência</button></div></section>';
+  }
+  if (parada) return '<p class="sub" style="margin:8px 0">Os e-mails automáticos dela estão <b>parados</b>' + (parada.decidida_em ? ' desde ' + esc(fmtDate(parada.decidida_em)) : '') + '. <button class="link" type="button" data-fx="pausa" data-v="continuar" data-id="' + esc(parada.id) + '">Retomar</button></p>';
+  return '';
+}
+async function fxDecidePausa(ds) {
+  var alvo = PAUSAS.filter(function (p) { return String(p.id) === String(ds.id); })[0]; if (!alvo || (ds.v !== 'parar' && ds.v !== 'continuar')) return;
+  var r = await supabase.rpc('crm_sequencia_pausa_decidir_admin', { p_id: alvo.id, p_decisao: ds.v });
+  if (r.error || !r.data || r.data.ok === false) { toast('Não consegui gravar a decisão — ' + (r.error && r.error.message ? r.error.message : 'tente de novo')); return; }
+  alvo.decisao = ds.v; alvo.decidida_em = new Date().toISOString();
+  toast(ds.v === 'parar' ? 'Pronto: os e-mails automáticos dela pararam.' : 'Pronto: os e-mails automáticos dela continuam.');
+  var b = $('fx-pausa-box'), cm = byC(state.sel); if (b && cm) b.innerHTML = pausaHtml(cm);
+}
+// "Mostrar a chave": pede ao Worker (só para admin) a chave daquela compra. Ela não fica na página nem no banco.
+async function fxMostraChave(ds) {
+  var box = $('cmp-chave-' + ds.id); if (!box) return;
+  box.innerHTML = '<p class="sub" style="margin:8px 0 0">Buscando a chave…</p>';
+  var r;
+  try {
+    var sess = await supabase.auth.getSession();
+    if (!sess.data.session) { r = { erro: 'Sessão expirada. Recarregue a página e entre de novo.' }; }
+    else {
+      var res = await fetch(WORKER_BASE + '/api/crm/compra-chave?ref=' + encodeURIComponent(ds.ref), { headers: { Authorization: 'Bearer ' + sess.data.session.access_token } });
+      var j = await res.json().catch(function () { return {}; });
+      r = res.ok ? j : { erro: j.error || ('Erro ' + res.status) };
+    }
+  } catch (e) { r = { erro: 'Sem conexão com o Worker. Tente de novo.' }; }
+  box = $('cmp-chave-' + ds.id); if (box) box.innerHTML = FC.htmlChave(r, H_FX);
+}
 function fichaClick(el) {
   if (!el || !el.dataset || !el.dataset.fx) return false;
   var f = state.fx, ds = el.dataset, n = f.tarefas ? f.tarefas.length : 0;
   switch (ds.fx) {
     case 'pessoa': fxReset(); openPessoa(ds.id); return true;
     case 'tab': if (FX_ABAS.indexOf(ds.v) >= 0) { f.tab = ds.v; f.hd = null; fxRepinta(); } return true;
+    case 'chaveCompra': fxMostraChave(ds); return true;
+    case 'pausa': fxDecidePausa(ds); return true;
     case 'hdTile': f.hd = f.hd === ds.id ? null : ds.id; fxPintaHeader(); return true;
     case 'tourAbrir': case 'tourFechar':
       f.tour = ds.fx === 'tourAbrir'; FX.gravarPrefs(localStorage, { tour: f.tour });

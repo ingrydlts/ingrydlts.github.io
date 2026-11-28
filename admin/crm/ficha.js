@@ -350,6 +350,7 @@ export function cartoesMinimos(tipo, d) {
 // Lead: parte de 20 e soma o que mostra interesse (resposta, e-mail aberto, etapa do funil, vários materiais, prazo urgente, link enviado) e
 // desconta o que esfria (e-mails sem abrir, dias sem sinal). Assinante: parte de 50 e mede uso (último acesso, sessões, checklist) e pagamento.
 // Cada ponto vem com o motivo, para a tela explicar a nota. Os pesos são um rascunho a calibrar com a base real.
+// Compras de guia digital somam em qualquer tipo: +25 pela primeira (+10 por cada outra, até +40), +10 se entrou no material, +15 se usa muito (5+), −5 se parou, −10 se não entrou.
 export const FAIXAS_POTENCIAL = { alto: 65, medio: 35 };
 export function faixaPotencial(nota) { return nota >= FAIXAS_POTENCIAL.alto ? 'Alto' : nota >= FAIXAS_POTENCIAL.medio ? 'Médio' : 'Baixo'; }
 // x = { tipo: 'lead'|'plataforma'|'assinante', etapa (1..7), mails: { total, abertos, clicados }, respostas, capturas, materiais, diasSemSinal, urgencia,
@@ -384,6 +385,18 @@ export function potencial(x) {
     if (a.cancela_no_fim) soma('Vai cancelar no fim do período', -20);
     if (o.respostas > 0) soma('Conversa com você', 5);
   }
+  // Quem comprou um guia digital soma pontos em qualquer tipo de pessoa (compras da sessão "Compras"): comprar é o sinal mais forte de adesão,
+  // e entrar no material mostra que está usando. Pesos são rascunho, como os outros.
+  // o.compras = { n, entradas, diasSemEntrar (da última entrada, ou null), diasDesdeCompra (da compra mais recente) }
+  const cp = o.compras;
+  if (cp && cp.n > 0) {
+    soma(cp.n === 1 ? 'Comprou um guia' : 'Comprou ' + cp.n + ' guias', Math.min(40, 25 + (cp.n - 1) * 10));
+    if (cp.entradas >= 5) soma('Usa o material (' + cp.entradas + ' entradas)', 15);
+    else if (cp.entradas > 0) {
+      soma('Entrou ' + cp.entradas + (cp.entradas === 1 ? ' vez' : ' vezes') + ' no material', 10);
+      if (cp.diasSemEntrar != null && cp.diasSemEntrar >= 10) soma('Parou de entrar no material há ' + cp.diasSemEntrar + ' dias', -5);
+    } else if (cp.diasDesdeCompra != null && cp.diasDesdeCompra >= 1) soma('Comprou e ainda não entrou no material', -10);
+  }
   const nota = Math.max(0, Math.min(100, Math.round(base + motivos.reduce((s, z) => s + z.p, 0))));
   motivos.sort((a, b) => Math.abs(b.p) - Math.abs(a.p));
   return { nota, faixa: faixaPotencial(nota), motivos, sinais, poucosDados: sinais < 2 };
@@ -392,10 +405,34 @@ export function potencial(x) {
 // ---------- Próxima ação sugerida pelo Potencial ----------
 // Cruza a faixa (Alto/Médio/Baixo) com a situação da pessoa. Devolve { titulo, canal, porque, texto }; `texto` é uma mensagem pronta para copiar
 // (com o nome já no lugar). É sugestão: a Ingryd decide e edita antes de mandar. x = os mesmos dados de potencial() + { nome, gancho }.
+// A abordagem de quem JÁ COMPROU um guia digital: o objetivo deixa de ser vender e vira fazer a pessoa usar o material, tirar a dúvida dela,
+// pedir o relato e, quando faz sentido, oferecer a ligação. c = { n, entradas, diasSemEntrar, diasDesdeCompra } (ver ficha-compras.js, resumoParaPontos).
+// Devolve { titulo, canal, porque, texto } ou null se não comprou. `texto` leva {nome}; [link de entrada] é o /guia/ (não é segredo) e a chave está no e-mail da compra.
+export function acaoComprador(c, nome) {
+  if (!c || !(c.n > 0)) return null;
+  const n = String(nome || '').split(/\s+/)[0] || 'você';
+  const A = (titulo, canal, porque, texto) => ({ titulo, canal, porque, texto: texto ? texto.replace(/\{nome\}/g, n) : '' });
+  const entradas = c.entradas || 0, dc = c.diasDesdeCompra == null ? 0 : c.diasDesdeCompra, ds = c.diasSemEntrar;
+  if (entradas === 0 && dc < 1) return A('Deixe ' + n + ' entrar: comprou agora', 'Nenhuma', 'A entrega da chave acabou de sair. Outro e-mail por cima só atrapalha; veja de novo amanhã.', '');
+  if (entradas === 0) return A('Lembrar o link de entrada e a chave', 'E-mail', 'Comprou há ' + dc + (dc === 1 ? ' dia' : ' dias') + ' e nunca entrou no material: o risco é a chave ter ido para o spam. Não é hora de vender nada.',
+    'Oi, {nome}! Passando para ver se você conseguiu abrir o Manual. O link de entrada é [link de entrada]: digite o e-mail da compra e a chave, que está no e-mail "Seu Manual Destrave chegou" (olhe o spam). Se não achar, me responda e eu reenvio. Dica: use a barra de busca no topo e digite uma palavra do seu caso, como "visto" ou "carta".');
+  if (entradas >= 5) return A('Pedir o relato e oferecer a ligação', 'E-mail', 'Usa o material com frequência (' + entradas + ' entradas): é quem mais tem a dizer e quem mais pode querer ajuda no caso dela.',
+    'Oi, {nome}! Vi que o Manual está sendo útil. Me conta em 3 pontos: qual CPAM ou préfecture, qual era o bloqueio e o que aconteceu? Se o seu caso ainda estiver parado, a ligação de 20 min (35 €, 30 € com o cupom DOMICILIACAO-5) sai com um plano de ação.');
+  if (ds != null && ds >= 10) return A('Mostrar o que mais ela encontra no Manual', 'E-mail', 'Entrou ' + entradas + (entradas === 1 ? ' vez' : ' vezes') + ' e não volta há ' + ds + ' dias: lembre o que ainda tem lá, sem vender.',
+    'Oi, {nome}! Passando para lembrar que no Manual você também encontra os modelos de carta prontos, os formulários oficiais e o que fazer se o seu visto mudou no meio do pedido: [link de entrada]. Se travou em algum ponto, me responda com o tema.');
+  if (dc >= 7) return A('Pedir o relato em 3 perguntas', 'E-mail', 'Está entrando e já passou a garantia de 7 dias: boa hora para pedir o relato.',
+    'Oi, {nome}! Faz uma semana que você tem o Manual. Se ajudou (ou não), me responde: 1) qual CPAM ou préfecture, 2) qual era o bloqueio, 3) o que aconteceu?');
+  return A('Deixar usar: sem e-mail agora', 'Nenhuma', 'Está entrando no material. Mais e-mail agora só atrapalha; espere os 7 dias para pedir o relato.', '');
+}
 export function proximaAcao(x, pot) {
   const o = x || {}, n = (o.nome || '').split(/\s+/)[0] || 'você', m = o.mails || {}, faixa = pot ? pot.faixa : 'Baixo', a = o.assin || {};
   const A = (titulo, canal, porque, texto) => ({ titulo, canal, porque, texto: texto ? texto.replace(/\{nome\}/g, n) : '' });
   const gancho = o.gancho ? ' ' + o.gancho : '';
+  // Quem já comprou tem outra abordagem (uso do material, relato, ligação), não a de conversão. Responder uma mensagem dela segue sendo o primeiro.
+  if (o.compras && o.compras.n > 0) {
+    if (o.respostas > 0 && o.respostasNovas > 0) return A('Responder ' + n + ' agora', 'Mensagem', 'Ela escreveu e ainda não foi respondida: é o sinal mais forte que existe.', '');
+    return acaoComprador(o.compras, o.nome);
+  }
   if (o.tipo === 'lead') {
     if (o.respostas > 0 && o.respostasNovas > 0) return A('Responder ' + n + ' agora', 'Mensagem', 'Ela escreveu e ainda não foi respondida: é o sinal mais forte que existe.', '');
     if (faixa === 'Alto') {

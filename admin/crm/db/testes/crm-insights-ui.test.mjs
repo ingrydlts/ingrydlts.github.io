@@ -61,7 +61,7 @@ fixture({ hist: [{ inicial: true, entrou: [N('sem_matricula', 'x')], saiu: [], c
 let html = await pagina('plataforma');
 check('aba Plataforma mostra o card dela com as notas no ar', html.includes('Equipe Por Dentro') && html.includes('Vi que você ainda não tem a matrícula fechada.') && html.includes('Ligue para o OFII'));
 check('cada nota diz de onde veio: automática ou nota sua', html.includes('>automática<') && html.includes('>nota sua<'));
-check('mostra quando foi atualizado', /Atualizado [A-Z]{3}, \d\d\/\d\d às \d\d:\d\d/.test(html));
+check('mostra quando foi atualizado', /Atualizado [A-ZÁÉÊÇ]{3}, \d\d\/\d\d às \d\d:\d\d/.test(html));
 check('o painel mora dentro de #ins-box (repinta sozinho)', html.includes('id="ins-box"'));
 fixture({ vivos: null });
 html = await pagina('plataforma');

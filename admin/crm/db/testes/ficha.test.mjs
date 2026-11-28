@@ -224,6 +224,32 @@ console.log('== CRM retrabalhado: urgentes, cartoesMinimos, potencial ==');
 
   const quente = FX.potencial({ tipo: 'lead', respostas: 1, mails: { total: 2, abertos: 1, clicados: 0 }, urgencia: 'alta', diasSemSinal: 1 });
   const frio = FX.potencial({ tipo: 'lead', mails: { total: 2, abertos: 0, clicados: 0 }, diasSemSinal: 20 });
+  // Compras de guia digital rendem pontos
+  const semCompra = FX.potencial({ tipo: 'lead', mails: { total: 0, abertos: 0, clicados: 0 }, diasSemSinal: 5 });
+  const comCompra = (c) => FX.potencial({ tipo: 'lead', mails: { total: 0, abertos: 0, clicados: 0 }, diasSemSinal: 5, compras: c });
+  check('compras: sem compra o potencial é o de antes', semCompra.nota === 20 && !semCompra.motivos.some((z) => /Comprou/.test(z.t)));
+  check('compras: comprar soma 25 e aparece como motivo', comCompra({ n: 1, entradas: 0, diasDesdeCompra: 0 }).nota === semCompra.nota + 25 && comCompra({ n: 1, entradas: 0, diasDesdeCompra: 0 }).motivos.some((z) => z.t === 'Comprou um guia' && z.p === 25));
+  check('compras: comprou e ainda não entrou (1+ dia) desconta 10', comCompra({ n: 1, entradas: 0, diasDesdeCompra: 3 }).nota === semCompra.nota + 15 && comCompra({ n: 1, entradas: 0, diasDesdeCompra: 3 }).motivos.some((z) => /ainda não entrou/.test(z.t) && z.p === -10));
+  check('compras: entrou no material soma 10', comCompra({ n: 1, entradas: 2, diasSemEntrar: 1, diasDesdeCompra: 4 }).nota === semCompra.nota + 35);
+  check('compras: parou de entrar (10+ dias) desconta 5', comCompra({ n: 1, entradas: 2, diasSemEntrar: 12, diasDesdeCompra: 20 }).nota === semCompra.nota + 30);
+  check('compras: usa muito (5+ entradas) soma 15 e vira Alto com sinal recente', comCompra({ n: 1, entradas: 6, diasSemEntrar: 1, diasDesdeCompra: 9 }).nota === semCompra.nota + 40 && FX.potencial({ tipo: 'lead', mails: { total: 1, abertos: 1, clicados: 0 }, diasSemSinal: 1, compras: { n: 1, entradas: 6, diasSemEntrar: 1, diasDesdeCompra: 9 } }).faixa === 'Alto');
+  check('compras: duas compras somam 10 a mais, com teto de 40', comCompra({ n: 2, entradas: 0, diasDesdeCompra: 0 }).nota === semCompra.nota + 35 && comCompra({ n: 9, entradas: 0, diasDesdeCompra: 0 }).nota === semCompra.nota + 40);
+  check('compras: vale também para quem tem plataforma (assinante)', FX.potencial({ tipo: 'assinante', ultimoAcessoDias: 2, compras: { n: 1, entradas: 1, diasSemEntrar: 1, diasDesdeCompra: 2 } }).nota > FX.potencial({ tipo: 'assinante', ultimoAcessoDias: 2 }).nota);
+  check('compras: a nota continua entre 0 e 100', comCompra({ n: 9, entradas: 50, diasSemEntrar: 0, diasDesdeCompra: 1 }).nota <= 100);
+  // Abordagem diferente para quem já comprou
+  const leadBase = { tipo: 'lead', nome: 'Ana Souza', respostas: 0, respostasNovas: 0, etapa: 1, mails: { total: 0, abertos: 0, clicados: 0 }, diasSemSinal: 5 };
+  const potL = FX.potencial(leadBase);
+  const semCompraAcao = FX.proximaAcao(leadBase, potL);
+  const ac = (c, extra = {}) => FX.proximaAcao({ ...leadBase, ...extra, compras: c }, FX.potencial({ ...leadBase, compras: c }));
+  check('abordagem: quem não comprou segue a de conversão (e-mail ou oferta, nunca "uso do material")', !/material|Manual|chave/i.test(semCompraAcao.titulo + semCompraAcao.texto));
+  check('abordagem: comprou agora e não entrou: espera, sem e-mail', ac({ n: 1, entradas: 0, diasDesdeCompra: 0 }).canal === 'Nenhuma' && /comprou agora/.test(ac({ n: 1, entradas: 0, diasDesdeCompra: 0 }).titulo));
+  const nunca = ac({ n: 1, entradas: 0, diasDesdeCompra: 3 });
+  check('abordagem: comprou e nunca entrou: lembrar link e chave, com mensagem pronta e a dica da busca, sem vender', nunca.titulo === 'Lembrar o link de entrada e a chave' && nunca.canal === 'E-mail' && /Oi, Ana!/.test(nunca.texto) && /barra de busca/.test(nunca.texto) && /chave/.test(nunca.texto) && !/1:1|plataforma|teste/.test(nunca.texto));
+  check('abordagem: parou de entrar: mostrar o que mais tem no Manual', /o que mais ela encontra/.test(ac({ n: 1, entradas: 2, diasSemEntrar: 14, diasDesdeCompra: 20 }).titulo));
+  check('abordagem: usa muito: pedir o relato e oferecer a ligação (35 €, cupom 30 €)', /relato e oferecer a ligação/.test(ac({ n: 1, entradas: 7, diasSemEntrar: 1, diasDesdeCompra: 12 }).titulo) && /35 €/.test(ac({ n: 1, entradas: 7, diasSemEntrar: 1, diasDesdeCompra: 12 }).texto) && /30 €/.test(ac({ n: 1, entradas: 7, diasSemEntrar: 1, diasDesdeCompra: 12 }).texto));
+  check('abordagem: entrando e passou 7 dias: pedir o relato; antes disso, deixar usar', /relato em 3 perguntas/.test(ac({ n: 1, entradas: 2, diasSemEntrar: 2, diasDesdeCompra: 9 }).titulo) && ac({ n: 1, entradas: 2, diasSemEntrar: 2, diasDesdeCompra: 3 }).canal === 'Nenhuma');
+  check('abordagem: se ela escreveu e ficou sem resposta, responder vem antes de tudo', /Responder Ana agora/.test(ac({ n: 1, entradas: 0, diasDesdeCompra: 3 }, { respostas: 1, respostasNovas: 1 }).titulo));
+  check('abordagem: acaoComprador sem compra devolve null', FX.acaoComprador(null, 'Ana') === null && FX.acaoComprador({ n: 0 }, 'Ana') === null);
   check('potencial: inteiro entre 0 e 100', Number.isInteger(quente.nota) && quente.nota >= 0 && quente.nota <= 100 && Number.isInteger(frio.nota) && frio.nota >= 0 && frio.nota <= 100);
   check('potencial: quem respondeu e tem prazo curto (75, Alto) supera o lead frio (0, Baixo)', quente.nota === 75 && quente.faixa === 'Alto' && frio.nota === 0 && frio.faixa === 'Baixo');
   check('potencial: cada ponto traz o motivo', quente.motivos.length === quente.sinais && quente.motivos.every((m) => m.t && Number.isFinite(m.p)));
